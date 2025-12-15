@@ -8,6 +8,7 @@
 import std/tables
 import ../controller_types
 import ../../common/types as ai_types
+import ../config  # For globalRBAConfig
 
 # AdvisorType is now defined in controller_types.nim and imported
 # type
@@ -33,56 +34,92 @@ proc calculateAdvisorWeights*(
 
   result = initTable[AdvisorType, float]()
 
+  # Personality influence multipliers from config/rba.toml [basileus]
   # Domestikos: influenced by aggression
-  result[AdvisorType.Domestikos] = 1.0 + (personality.aggression - 0.5) * 0.3
+  result[AdvisorType.Domestikos] = 1.0 + (personality.aggression - 0.5) *
+    globalRBAConfig.basileus.personality_domestikos_multiplier
 
   # Logothete: influenced by tech priority
-  result[AdvisorType.Logothete] = 1.0 + (personality.techPriority - 0.5) * 0.3
+  result[AdvisorType.Logothete] = 1.0 + (personality.techPriority - 0.5) *
+    globalRBAConfig.basileus.personality_logothete_multiplier
 
   # Drungarius: influenced by aggression (espionage supports military)
-  result[AdvisorType.Drungarius] = 1.0 + (personality.aggression - 0.5) * 0.15
+  result[AdvisorType.Drungarius] = 1.0 + (personality.aggression - 0.5) *
+    globalRBAConfig.basileus.personality_drungarius_multiplier
 
   # Protostrator: influenced by diplomacy value
-  result[AdvisorType.Protostrator] = 1.0 + (personality.diplomacyValue - 0.5) * 0.3
+  result[AdvisorType.Protostrator] = 1.0 + (personality.diplomacyValue - 0.5) *
+    globalRBAConfig.basileus.personality_protostrator_multiplier
 
   # Eparch: influenced by economic focus
-  result[AdvisorType.Eparch] = 1.0 + (personality.economicFocus - 0.5) * 0.3
+  result[AdvisorType.Eparch] = 1.0 + (personality.economicFocus - 0.5) *
+    globalRBAConfig.basileus.personality_eparch_multiplier
 
   # Treasurer: always 1.0 (no personality weighting, handles budget allocation)
   result[AdvisorType.Treasurer] = 1.0
 
-  # Act modifiers with war-time escalation
+  # Act-specific advisor priority multipliers (from config/rba.toml [act_priorities])
+  # These multipliers encode the 4-Act Strategic Progression from architecture docs
+  # Baseline multipliers from config, with war-time escalation from [basileus]
   case act
   of ai_types.GameAct.Act1_LandGrab:
-    # Act 1: Classic 4X expansion economy - construction over research
-    result[AdvisorType.Domestikos] *= 1.6  # +60% construction priority
-    result[AdvisorType.Logothete] *= 0.7   # -30% research priority (defer to later Acts)
-    result[AdvisorType.Eparch] *= 1.2      # +20% economy priority (infrastructure investment)
-  of ai_types.GameAct.Act2_RisingTensions:
-    if isAtWar:
-      # Early war: Aggressive military boost + research reduction
-      result[AdvisorType.Domestikos] *= 1.5   # Increased from 1.4
-      result[AdvisorType.Logothete] *= 0.85   # Reduce research during war
-    else:
-      # Peacetime buildup: Balanced growth
-      result[AdvisorType.Domestikos] *= 1.3
-      result[AdvisorType.Logothete] *= 0.9
-  of ai_types.GameAct.Act3_TotalWar, ai_types.GameAct.Act4_Endgame:
-    let warMultiplier = if act == ai_types.GameAct.Act4_Endgame: 2.5 else: 2.0  # Act 4: Aggressive military focus
-    let researchMultiplier = if act == ai_types.GameAct.Act4_Endgame: 0.5 else: 0.7  # Reduced research in Act 4
+    # Act 1: Land Grab - Expansion & Reconnaissance
+    # Architecture priorities: Eparch CRITICAL, Domestikos HIGH, others MEDIUM/LOW
+    let priorities = globalRBAConfig.act_priorities.act1_land_grab
+    result[AdvisorType.Eparch] *= priorities.eparch_multiplier
+    result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
+    result[AdvisorType.Drungarius] *= priorities.drungarius_multiplier
+    result[AdvisorType.Logothete] *= priorities.logothete_multiplier
+    result[AdvisorType.Protostrator] *= priorities.protostrator_multiplier
 
+  of ai_types.GameAct.Act2_RisingTensions:
+    # Act 2: Rising Tensions - Consolidation & Military Buildup
+    # Architecture priorities: Domestikos CRITICAL, Eparch/Logothete HIGH
+    let priorities = globalRBAConfig.act_priorities.act2_rising_tensions
+    result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
+    result[AdvisorType.Eparch] *= priorities.eparch_multiplier
+    result[AdvisorType.Logothete] *= priorities.logothete_multiplier
+    result[AdvisorType.Drungarius] *= priorities.drungarius_multiplier
+    result[AdvisorType.Protostrator] *= priorities.protostrator_multiplier
+    # War-time boost (from [basileus] config for backwards compatibility)
     if isAtWar:
-      # War-time: Maximum military prioritization
-      result[AdvisorType.Domestikos] *= warMultiplier
-      result[AdvisorType.Logothete] *= researchMultiplier  # Minimum research during war
-      result[AdvisorType.Drungarius] *= 1.20  # Intelligence more valuable in late-game war
-      result[AdvisorType.Protostrator] *= 0.60  # Further reduced (focus on war, not diplomacy)
+      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act2_war_research_multiplier
     else:
-      # Peace-time: Moderate military boost + research investment
-      result[AdvisorType.Domestikos] *= (if act == ai_types.GameAct.Act4_Endgame: 2.0 else: 1.3)  # Act 4: Strong peacetime military
-      result[AdvisorType.Logothete] *= (if act == ai_types.GameAct.Act4_Endgame: 1.0 else: 0.8)  # Maintain some tech in Act 4
-      result[AdvisorType.Drungarius] *= 1.15  # Increased peacetime intelligence
-      result[AdvisorType.Protostrator] *= 0.75  # Reduced peacetime diplomacy
+      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act2_hostile_research_multiplier
+
+  of ai_types.GameAct.Act3_TotalWar:
+    # Act 3: Total War - Conquest
+    # Architecture priorities: Domestikos CRITICAL, Drungarius/Protostrator HIGH
+    let priorities = globalRBAConfig.act_priorities.act3_total_war
+    result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
+    result[AdvisorType.Drungarius] *= priorities.drungarius_multiplier
+    result[AdvisorType.Protostrator] *= priorities.protostrator_multiplier
+    result[AdvisorType.Eparch] *= priorities.eparch_multiplier
+    result[AdvisorType.Logothete] *= priorities.logothete_multiplier
+    # War-time escalation (from [basileus] config)
+    if isAtWar:
+      result[AdvisorType.Domestikos] *= globalRBAConfig.basileus.act3_war_military_multiplier
+      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act3_war_research_multiplier
+      result[AdvisorType.Protostrator] *= globalRBAConfig.basileus.act3_war_diplomacy_multiplier
+    else:
+      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act3_peace_research_multiplier
+      result[AdvisorType.Protostrator] *= globalRBAConfig.basileus.act3_peace_diplomacy_multiplier
+
+  of ai_types.GameAct.Act4_Endgame:
+    # Act 4: Endgame - Securing Victory
+    # Architecture priorities: Domestikos CRITICAL, Eparch/Protostrator HIGH
+    let priorities = globalRBAConfig.act_priorities.act4_endgame
+    result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
+    result[AdvisorType.Eparch] *= priorities.eparch_multiplier
+    result[AdvisorType.Protostrator] *= priorities.protostrator_multiplier
+    result[AdvisorType.Logothete] *= priorities.logothete_multiplier
+    result[AdvisorType.Drungarius] *= priorities.drungarius_multiplier
+    # War-time escalation (from [basileus] config)
+    if isAtWar:
+      result[AdvisorType.Domestikos] *= globalRBAConfig.basileus.act4_war_military_multiplier
+      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act4_war_research_multiplier
+    else:
+      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act4_peace_research_multiplier
 
 proc describeWeightRationale*(
   advisorType: AdvisorType,

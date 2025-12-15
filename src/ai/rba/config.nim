@@ -81,10 +81,63 @@ type
     terraforming_costs_benign_to_lush*: int
     terraforming_costs_lush_to_eden*: int
 
+  EparchMaintenanceConfig* = object
+    ## Maintenance shortfall penalty avoidance
+    penalty_turns_critical*: int
+
+  EparchFacilitiesConfig* = object
+    ## Facility threat penalties and target ratios by Act
+    # Threat penalty multipliers (0.0-1.0)
+    threat_penalty_critical_shipyard*: float
+    threat_penalty_high_shipyard*: float
+    threat_penalty_moderate_shipyard*: float
+    threat_penalty_critical_spaceport*: float
+    threat_penalty_high_spaceport*: float
+    threat_penalty_moderate_spaceport*: float
+    threat_penalty_critical_starbase*: float
+    threat_penalty_high_starbase*: float
+    threat_penalty_moderate_starbase*: float
+    staleness_penalty_facility*: float
+    staleness_penalty_starbase*: float
+    # Facility ratios by Act (multipliers)
+    shipyard_ratio_act1*: float
+    shipyard_ratio_act2*: float
+    shipyard_ratio_act3*: float
+    shipyard_ratio_act4*: float
+    starbase_ratio_act1*: float
+    starbase_ratio_act2*: float
+    starbase_ratio_act3*: float
+    starbase_ratio_act4*: float
+
+  EparchTerraformingConfig* = object
+    ## Terraforming priority calculation parameters
+    priority_base*: float
+    priority_cost_divisor*: float
+    priority_critical_threshold*: float
+
+  EparchEconomicPressureConfig* = object
+    ## Competitive economic assessment thresholds
+    production_ratio_moderate*: float
+    production_ratio_severe*: float
+    shipyard_advantage_threshold*: int
+    boost_moderate_pressure*: float
+    boost_severe_pressure*: float
+    boost_shipyard_disadvantage*: float
+
+  EparchReprioritizationConfig* = object
+    ## Eparch-specific reprioritization parameters
+    max_iterations*: int
+    expensive_requirement_ratio*: float
+
   EparchConfig* = object
     ## Eparch (economic administration) parameters
     ## Colony management, auto-repair thresholds, tax rates
     auto_repair_threshold*: int  # Min treasury (PP) to enable auto-repair
+    maintenance*: EparchMaintenanceConfig
+    facilities*: EparchFacilitiesConfig
+    terraforming*: EparchTerraformingConfig
+    economic_pressure*: EparchEconomicPressureConfig
+    reprioritization*: EparchReprioritizationConfig
 
 # ==============================================================================
 # Orders Parameters
@@ -110,6 +163,28 @@ type
     act2_colonization_threshold*: float  # Act 2 → Act 3 when ≥X% colonized
     act2_max_turn*: int                  # Act 2 ends at turn X
     act3_max_turn*: int                  # Act 3 ends at turn X
+
+# ==============================================================================
+# Act-Specific Advisor Priorities
+# ==============================================================================
+
+type
+  ActPrioritiesConfig* = object
+    ## Advisor priority multipliers for a single game Act
+    ## Applied during Basileus mediation to reflect strategic focus
+    ## Based on docs/ai/architecture/ai_architecture.adoc lines 301-407
+    eparch_multiplier*: float
+    domestikos_multiplier*: float
+    drungarius_multiplier*: float
+    logothete_multiplier*: float
+    protostrator_multiplier*: float
+
+  AllActPrioritiesConfig* = object
+    ## Container for all 4 Acts' priority configurations
+    act1_land_grab*: ActPrioritiesConfig
+    act2_rising_tensions*: ActPrioritiesConfig
+    act3_total_war*: ActPrioritiesConfig
+    act4_endgame*: ActPrioritiesConfig
 
 # ==============================================================================
 # Colonization Parameters
@@ -162,6 +237,55 @@ type
 # ==============================================================================
 
 type
+  DomestikosOffensiveConfig* = object
+    ## Offensive operations parameters
+    priority_base*: int
+    priority_high*: int
+    priority_medium*: int
+    priority_low*: int
+    priority_deferred*: int
+    distance_bonus_1_2_jumps*: float
+    distance_bonus_3_4_jumps*: float
+    distance_bonus_5_6_jumps*: float
+    weakness_threshold_vulnerable*: float
+    weakness_threshold_weak*: float
+    weakness_priority_boost*: float
+    fleet_strength_multiplier*: float
+    estimated_value_multiplier*: float
+    vulnerability_multiplier*: float
+    ground_defense_divisor*: int
+    max_intel_age_turns*: int
+    conservative_ship_estimate*: int
+    roe_blitz_priority*: int
+    roe_bombardment_priority*: int
+
+  DomestikosDefensiveConfig* = object
+    ## Defensive operations parameters
+    production_weight*: float
+    threat_boost_critical*: float
+    threat_boost_high*: float
+    threat_boost_moderate*: float
+    proximity_multiplier_1_jump*: float
+    proximity_multiplier_2_jumps*: float
+    movement_boost_base*: float
+    stale_intel_penalty*: float
+    frontier_bonus_per_distance*: float
+    owned_system_priority_boost*: float
+    defend_max_range*: int
+
+  DomestikosIntelligenceOpsConfig* = object
+    ## Intelligence operations scoring
+    threat_contribution_per_fleet*: float
+    threat_level_high_score*: float
+    threat_level_moderate_score*: float
+    threat_level_low_score*: float
+
+  DomestikosStagingConfig* = object
+    ## Staging location priority scoring
+    priority_acceptable_close*: float
+    priority_acceptable_far*: float
+    priority_owned_system*: float
+
   AdmiralConfig* = object
     ## Admiral module parameters (fleet rebalancing)
     enabled*: bool
@@ -169,6 +293,18 @@ type
     merge_threshold_act2*: int
     rendezvous_preference*: string
     max_invasion_eta_turns*: int # Max turns for a fleet to reach an invasion target
+
+    # Affordability thresholds (how much of treasury per build request)
+    affordability_act1*: float
+    affordability_act2*: float
+    affordability_act3*: float
+    affordability_act4*: float
+
+    # Sub-configurations
+    offensive*: DomestikosOffensiveConfig
+    defensive*: DomestikosDefensiveConfig
+    intelligence_ops*: DomestikosIntelligenceOpsConfig
+    staging*: DomestikosStagingConfig
 
     # ZeroTurnCommand Fleet Management (merge/detach/transfer)
     fleet_management_enabled*: bool
@@ -300,6 +436,16 @@ type
     use_combat_lessons*: bool
     use_starbase_surveillance*: bool
     prioritize_high_value_targets*: bool
+    # Espionage budget allocation by Act
+    espionage_budget_act1*: int
+    espionage_budget_act2*: int
+    espionage_budget_act3*: int
+    espionage_budget_act4*: int
+    # Research budget allocation by Act
+    research_budget_act1*: int
+    research_budget_act2*: int
+    research_budget_act3*: int
+    research_budget_act4*: int
 
 # ==============================================================================
 # Gap Fix Configuration (Phase 1-2)
@@ -383,6 +529,108 @@ type
     shield_multiplier*: float
     critical_multiplier*: float
 
+  BasileusConfig* = object
+    ## Basileus (decision mediator) personality-driven weight adjustments
+    # Personality influence multipliers
+    personality_domestikos_multiplier*: float
+    personality_logothete_multiplier*: float
+    personality_drungarius_multiplier*: float
+    personality_protostrator_multiplier*: float
+    personality_eparch_multiplier*: float
+    # Act-specific adjustments
+    act1_research_multiplier*: float
+    act2_war_research_multiplier*: float
+    act2_hostile_research_multiplier*: float
+    act3_war_military_multiplier*: float
+    act4_war_military_multiplier*: float
+    act3_war_research_multiplier*: float
+    act4_war_research_multiplier*: float
+    act3_war_diplomacy_multiplier*: float
+    act3_peace_diplomacy_multiplier*: float
+    act4_peace_research_multiplier*: float
+    act3_peace_research_multiplier*: float
+
+# ==============================================================================
+# Protostrator Configuration (Strategic & Diplomatic Advisor)
+# ==============================================================================
+
+type
+  ProtostratorPactAssessmentConfig* = object
+    ## Pact recommendation scoring
+    shared_enemies_weight*: float
+    mutual_enemies_weight*: float
+    diplomacy_trait_weight*: float
+    trust_weight*: float
+    recommendation_threshold*: float
+
+  ProtostratorStanceConfig* = object
+    ## Stance change recommendation thresholds
+    hostile_threshold*: float
+    enemy_threshold*: float
+    escalate_threshold*: float
+    deescalate_threshold*: float
+    normalize_threshold*: float
+    aggression_hostile_weight*: float
+    aggression_enemy_weight*: float
+    opportunity_hostile_weight*: float
+    opportunity_enemy_weight*: float
+    diplomacy_deescalate_weight*: float
+    diplomacy_normalize_weight*: float
+    peace_bias_weight*: float
+
+  ProtostratorConfig* = object
+    ## Protostrator (strategic/diplomatic advisor) parameters
+    infrastructure_value_per_point*: int
+    combat_freshness_turns*: int
+    opportunity_score_recent_combat*: float
+    opportunity_score_at_war*: float
+    opportunity_score_tensions*: float
+    opportunity_score_multiple_fronts*: float
+    baseline_risk*: float
+    urgency_critical_threats*: int
+    urgency_economic_pressure*: int
+    urgency_diplomatic_isolation*: int
+    urgency_border_tension*: int
+    urgency_prestige_threat*: int
+    threshold_multiplier_act1*: float
+    threshold_multiplier_act2*: float
+    threshold_multiplier_act3*: float
+    threshold_multiplier_act4*: float
+    mutual_enemies_base_score*: float
+    pact_assessment*: ProtostratorPactAssessmentConfig
+    stance_recommendations*: ProtostratorStanceConfig
+
+# ==============================================================================
+# Logothete Configuration (Research & Technology Advisor)
+# ==============================================================================
+
+type
+  LogotheteAllocationConfig* = object
+    ## Research budget allocation ratios
+    act1_economic_ratio*: float
+    act1_science_ratio*: float
+    act1_remainder_split*: bool
+    act3_economic_ratio*: float
+    act3_science_ratio*: float
+    war_economic_ratio*: float
+    war_science_ratio*: float
+    default_economic_ratio*: float
+    default_science_ratio*: float
+
+  LogotheteCounterTechConfig* = object
+    ## Counter-technology parameters
+    enemy_advantage_critical*: int
+    enemy_advantage_high*: int
+
+  LogotheteConfig* = object
+    ## Logothete (research/tech advisor) parameters
+    max_science_level*: int
+    cost_urgent_tech*: int
+    cost_counter_tech*: int
+    cost_field_research*: int
+    allocation*: LogotheteAllocationConfig
+    counter_tech*: LogotheteCounterTechConfig
+
 # ==============================================================================
 # Root Configuration
 # ==============================================================================
@@ -418,6 +666,8 @@ type
     orders*: OrdersConfig
     # Act transitions
     act_transitions*: ActTransitionsConfig
+    # Act-specific advisor priorities
+    act_priorities*: AllActPrioritiesConfig
     # Colonization parameters
     colonization*: RBAColonizationConfig
     # Logistics parameters
@@ -451,6 +701,9 @@ type
     eparch_industrial*: EparchIndustrialConfig
     treasury_thresholds*: TreasuryThresholdsConfig
     affordability_checks*: AffordabilityChecksConfig
+    basileus*: BasileusConfig
+    protostrator*: ProtostratorConfig
+    logothete*: LogotheteConfig
     goap*: GOAPConfig # New GOAP configuration section
 
 # ==============================================================================
@@ -564,6 +817,138 @@ proc validateRBAConfig*(config: RBAConfig) =
   validatePositive(config.economic.terraforming_costs_harsh_to_benign, "economic.terraforming_costs_harsh_to_benign")
   validatePositive(config.economic.terraforming_costs_benign_to_lush, "economic.terraforming_costs_benign_to_lush")
   validatePositive(config.economic.terraforming_costs_lush_to_eden, "economic.terraforming_costs_lush_to_eden")
+
+  # Validate Eparch configuration
+  validatePositive(config.eparch.auto_repair_threshold, "eparch.auto_repair_threshold")
+  validatePositive(config.eparch.maintenance.penalty_turns_critical, "eparch.maintenance.penalty_turns_critical")
+
+  # Validate facility threat penalties are ratios
+  validateRatio(config.eparch.facilities.threat_penalty_critical_shipyard, "eparch.facilities.threat_penalty_critical_shipyard")
+  validateRatio(config.eparch.facilities.threat_penalty_high_shipyard, "eparch.facilities.threat_penalty_high_shipyard")
+  validateRatio(config.eparch.facilities.threat_penalty_moderate_shipyard, "eparch.facilities.threat_penalty_moderate_shipyard")
+  validateRatio(config.eparch.facilities.threat_penalty_critical_spaceport, "eparch.facilities.threat_penalty_critical_spaceport")
+  validateRatio(config.eparch.facilities.threat_penalty_high_spaceport, "eparch.facilities.threat_penalty_high_spaceport")
+  validateRatio(config.eparch.facilities.threat_penalty_moderate_spaceport, "eparch.facilities.threat_penalty_moderate_spaceport")
+  validateRatio(config.eparch.facilities.threat_penalty_critical_starbase, "eparch.facilities.threat_penalty_critical_starbase")
+  validateRatio(config.eparch.facilities.threat_penalty_high_starbase, "eparch.facilities.threat_penalty_high_starbase")
+  validateRatio(config.eparch.facilities.threat_penalty_moderate_starbase, "eparch.facilities.threat_penalty_moderate_starbase")
+  validateRatio(config.eparch.facilities.staleness_penalty_facility, "eparch.facilities.staleness_penalty_facility")
+  validateRatio(config.eparch.facilities.staleness_penalty_starbase, "eparch.facilities.staleness_penalty_starbase")
+
+  # Validate facility ratios are non-negative
+  validateNonNegative(config.eparch.facilities.shipyard_ratio_act1, "eparch.facilities.shipyard_ratio_act1")
+  validateNonNegative(config.eparch.facilities.shipyard_ratio_act2, "eparch.facilities.shipyard_ratio_act2")
+  validateNonNegative(config.eparch.facilities.shipyard_ratio_act3, "eparch.facilities.shipyard_ratio_act3")
+  validateNonNegative(config.eparch.facilities.shipyard_ratio_act4, "eparch.facilities.shipyard_ratio_act4")
+  validateNonNegative(config.eparch.facilities.starbase_ratio_act1, "eparch.facilities.starbase_ratio_act1")
+  validateNonNegative(config.eparch.facilities.starbase_ratio_act2, "eparch.facilities.starbase_ratio_act2")
+  validateNonNegative(config.eparch.facilities.starbase_ratio_act3, "eparch.facilities.starbase_ratio_act3")
+  validateNonNegative(config.eparch.facilities.starbase_ratio_act4, "eparch.facilities.starbase_ratio_act4")
+
+  # Validate terraforming parameters
+  validateRatio(config.eparch.terraforming.priority_base, "eparch.terraforming.priority_base")
+  validatePositive(config.eparch.terraforming.priority_cost_divisor, "eparch.terraforming.priority_cost_divisor")
+  validateRatio(config.eparch.terraforming.priority_critical_threshold, "eparch.terraforming.priority_critical_threshold")
+
+  # Validate economic pressure parameters
+  validateRatio(config.eparch.economic_pressure.production_ratio_moderate, "eparch.economic_pressure.production_ratio_moderate")
+  validateRatio(config.eparch.economic_pressure.production_ratio_severe, "eparch.economic_pressure.production_ratio_severe")
+  validatePositive(config.eparch.economic_pressure.shipyard_advantage_threshold, "eparch.economic_pressure.shipyard_advantage_threshold")
+  validateNonNegative(config.eparch.economic_pressure.boost_moderate_pressure, "eparch.economic_pressure.boost_moderate_pressure")
+  validateNonNegative(config.eparch.economic_pressure.boost_severe_pressure, "eparch.economic_pressure.boost_severe_pressure")
+  validateNonNegative(config.eparch.economic_pressure.boost_shipyard_disadvantage, "eparch.economic_pressure.boost_shipyard_disadvantage")
+
+  # Validate reprioritization parameters
+  validatePositive(config.eparch.reprioritization.max_iterations, "eparch.reprioritization.max_iterations")
+  validateRatio(config.eparch.reprioritization.expensive_requirement_ratio, "eparch.reprioritization.expensive_requirement_ratio")
+
+  # Validate Domestikos affordability thresholds
+  validateRatio(config.domestikos.affordability_act1, "domestikos.affordability_act1")
+  validateRatio(config.domestikos.affordability_act2, "domestikos.affordability_act2")
+  validateRatio(config.domestikos.affordability_act3, "domestikos.affordability_act3")
+  validateRatio(config.domestikos.affordability_act4, "domestikos.affordability_act4")
+
+  # Validate Drungarius budget allocations
+  validatePositive(config.drungarius.espionage_budget_act1, "drungarius.espionage_budget_act1")
+  validatePositive(config.drungarius.espionage_budget_act2, "drungarius.espionage_budget_act2")
+  validatePositive(config.drungarius.espionage_budget_act3, "drungarius.espionage_budget_act3")
+  validatePositive(config.drungarius.espionage_budget_act4, "drungarius.espionage_budget_act4")
+  validatePositive(config.drungarius.research_budget_act1, "drungarius.research_budget_act1")
+  validatePositive(config.drungarius.research_budget_act2, "drungarius.research_budget_act2")
+  validatePositive(config.drungarius.research_budget_act3, "drungarius.research_budget_act3")
+  validatePositive(config.drungarius.research_budget_act4, "drungarius.research_budget_act4")
+
+  # Validate Basileus personality multipliers
+  validateNonNegative(config.basileus.personality_domestikos_multiplier, "basileus.personality_domestikos_multiplier")
+  validateNonNegative(config.basileus.personality_logothete_multiplier, "basileus.personality_logothete_multiplier")
+  validateNonNegative(config.basileus.personality_drungarius_multiplier, "basileus.personality_drungarius_multiplier")
+  validateNonNegative(config.basileus.personality_protostrator_multiplier, "basileus.personality_protostrator_multiplier")
+  validateNonNegative(config.basileus.personality_eparch_multiplier, "basileus.personality_eparch_multiplier")
+
+  # Validate Basileus act-specific adjustments
+  validateNonNegative(config.basileus.act1_research_multiplier, "basileus.act1_research_multiplier")
+  validateNonNegative(config.basileus.act2_war_research_multiplier, "basileus.act2_war_research_multiplier")
+  validateNonNegative(config.basileus.act2_hostile_research_multiplier, "basileus.act2_hostile_research_multiplier")
+  validateNonNegative(config.basileus.act3_war_military_multiplier, "basileus.act3_war_military_multiplier")
+  validateNonNegative(config.basileus.act4_war_military_multiplier, "basileus.act4_war_military_multiplier")
+  validateNonNegative(config.basileus.act3_war_research_multiplier, "basileus.act3_war_research_multiplier")
+  validateNonNegative(config.basileus.act4_war_research_multiplier, "basileus.act4_war_research_multiplier")
+  validateNonNegative(config.basileus.act3_war_diplomacy_multiplier, "basileus.act3_war_diplomacy_multiplier")
+  validateNonNegative(config.basileus.act3_peace_diplomacy_multiplier, "basileus.act3_peace_diplomacy_multiplier")
+  validateNonNegative(config.basileus.act4_peace_research_multiplier, "basileus.act4_peace_research_multiplier")
+  validateNonNegative(config.basileus.act3_peace_research_multiplier, "basileus.act3_peace_research_multiplier")
+
+  # Validate Domestikos offensive operations
+  validatePositive(config.domestikos.offensive.priority_base, "domestikos.offensive.priority_base")
+  validateNonNegative(config.domestikos.offensive.distance_bonus_1_2_jumps, "domestikos.offensive.distance_bonus_1_2_jumps")
+  validateRatio(config.domestikos.offensive.weakness_threshold_vulnerable, "domestikos.offensive.weakness_threshold_vulnerable")
+  validatePositive(config.domestikos.offensive.max_intel_age_turns, "domestikos.offensive.max_intel_age_turns")
+
+  # Validate Domestikos defensive operations
+  validateNonNegative(config.domestikos.defensive.production_weight, "domestikos.defensive.production_weight")
+  validateNonNegative(config.domestikos.defensive.threat_boost_critical, "domestikos.defensive.threat_boost_critical")
+  validateRatio(config.domestikos.defensive.stale_intel_penalty, "domestikos.defensive.stale_intel_penalty")
+  validatePositive(config.domestikos.defensive.defend_max_range, "domestikos.defensive.defend_max_range")
+
+  # Validate Domestikos intelligence_ops
+  validateNonNegative(config.domestikos.intelligence_ops.threat_contribution_per_fleet, "domestikos.intelligence_ops.threat_contribution_per_fleet")
+  validateRatio(config.domestikos.intelligence_ops.threat_level_high_score, "domestikos.intelligence_ops.threat_level_high_score")
+
+  # Validate Domestikos staging
+  validateNonNegative(config.domestikos.staging.priority_acceptable_close, "domestikos.staging.priority_acceptable_close")
+
+  # Validate Protostrator
+  validatePositive(config.protostrator.infrastructure_value_per_point, "protostrator.infrastructure_value_per_point")
+  validatePositive(config.protostrator.combat_freshness_turns, "protostrator.combat_freshness_turns")
+  validateRatio(config.protostrator.opportunity_score_recent_combat, "protostrator.opportunity_score_recent_combat")
+  validateRatio(config.protostrator.baseline_risk, "protostrator.baseline_risk")
+  validatePositive(config.protostrator.urgency_critical_threats, "protostrator.urgency_critical_threats")
+  validateNonNegative(config.protostrator.threshold_multiplier_act1, "protostrator.threshold_multiplier_act1")
+  validateRatio(config.protostrator.pact_assessment.recommendation_threshold, "protostrator.pact_assessment.recommendation_threshold")
+  validateRatio(config.protostrator.stance_recommendations.hostile_threshold, "protostrator.stance_recommendations.hostile_threshold")
+
+  # Validate Logothete
+  validatePositive(config.logothete.max_science_level, "logothete.max_science_level")
+  validatePositive(config.logothete.cost_urgent_tech, "logothete.cost_urgent_tech")
+  validateRatio(config.logothete.allocation.act1_economic_ratio, "logothete.allocation.act1_economic_ratio")
+  validateRatio(config.logothete.allocation.act1_science_ratio, "logothete.allocation.act1_science_ratio")
+  validatePositive(config.logothete.counter_tech.enemy_advantage_critical, "logothete.counter_tech.enemy_advantage_critical")
+
+  # Validate Act-Specific Advisor Priorities
+  # All multipliers should be positive (0.6-1.5 typical range)
+  let actPriorities = [
+    ("act1_land_grab", config.act_priorities.act1_land_grab),
+    ("act2_rising_tensions", config.act_priorities.act2_rising_tensions),
+    ("act3_total_war", config.act_priorities.act3_total_war),
+    ("act4_endgame", config.act_priorities.act4_endgame)
+  ]
+
+  for (actName, priorities) in actPriorities:
+    validateNonNegative(priorities.eparch_multiplier, &"act_priorities.{actName}.eparch_multiplier")
+    validateNonNegative(priorities.domestikos_multiplier, &"act_priorities.{actName}.domestikos_multiplier")
+    validateNonNegative(priorities.drungarius_multiplier, &"act_priorities.{actName}.drungarius_multiplier")
+    validateNonNegative(priorities.logothete_multiplier, &"act_priorities.{actName}.logothete_multiplier")
+    validateNonNegative(priorities.protostrator_multiplier, &"act_priorities.{actName}.protostrator_multiplier")
 
   # Validate GOAP parameters
   validatePositive(config.goap.planning_depth, "goap.planning_depth")
