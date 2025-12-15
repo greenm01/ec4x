@@ -527,11 +527,11 @@ auto_repair_threshold = 100  # Min treasury (PP) to enable auto-repair at coloni
                              # Below this: disable auto-repair to conserve PP
                              # Above this: enable for convenience
 
-[eparch.maintenance]
+[eparch_maintenance]
 # Maintenance shortfall penalty avoidance
 penalty_turns_critical = 3   # Critical response threshold (turns)
 
-[eparch.facilities]
+[eparch_facilities]
 # Threat penalty multipliers for facility placement (0.0-1.0)
 # Applied to colony production score when selecting facility location
 threat_penalty_critical_shipyard = 0.2    # Critical threat: 80% penalty
@@ -561,13 +561,13 @@ starbase_ratio_act2 = 0.5                 # 1 per 2 colonies (economic infrastru
 starbase_ratio_act3 = 1.0                 # 1 per colony (economic + defensive)
 starbase_ratio_act4 = 2.0                 # 2 per colony (full infrastructure)
 
-[eparch.terraforming]
+[eparch_terraforming]
 # Terraforming priority calculation parameters
 priority_base = 0.7                       # Base priority (0.0-1.0)
 priority_cost_divisor = 5000.0            # Cost divisor for scaling (0.7 + cost/divisor)
 priority_critical_threshold = 0.75        # Threshold for Critical priority (vs High)
 
-[eparch.economic_pressure]
+[eparch_economic_pressure]
 # Competitive economic assessment thresholds
 # Used to detect when AI is falling behind economically
 production_ratio_moderate = 0.7           # <70% of average enemy = economic pressure
@@ -579,7 +579,7 @@ boost_moderate_pressure = 1.5             # 50% priority boost at moderate press
 boost_severe_pressure = 2.0               # 100% priority boost at severe pressure
 boost_shipyard_disadvantage = 1.3         # 30% boost for shipyard disadvantage
 
-[eparch.reprioritization]
+[eparch_reprioritization]
 # Reprioritization logic parameters (extends global reprioritization config)
 max_iterations = 3                        # Maximum reprioritization iterations
 expensive_requirement_ratio = 0.3         # >30% of treasury = expensive
@@ -688,7 +688,7 @@ research_budget_act4 = 15               # Act 4: Maximum tech intelligence
 # ESPIONAGE OPERATIONS (src/ai/rba/drungarius/operations.nim)
 # ==============================================================================
 
-[drungarius.operations]
+[drungarius_operations]
 # EBP (Espionage Budget Points) thresholds for operations
 ebp_intelligence_theft = 8              # Steal enemy intel database
 ebp_assassination = 10                  # Assassinate enemy leaders
@@ -746,7 +746,7 @@ counter_intel_aggression_threshold = 0.5  # Below this = defensive (periodic swe
 # ESPIONAGE REQUIREMENTS (src/ai/rba/drungarius/requirements.nim)
 # ==============================================================================
 
-[drungarius.requirements]
+[drungarius_requirements]
 # Target scoring normalization divisors
 tech_value_divisor = 10.0               # Normalize tech level differences
 economic_value_divisor = 100.0          # Normalize production values
@@ -996,7 +996,7 @@ cost_urgent_tech = 200              # Urgent tech research
 cost_counter_tech = 250             # Counter-tech to close gaps
 cost_field_research = 300           # General field research
 
-[logothete.allocation]
+[logothete_allocation]
 # Research budget allocation ratios by situation
 # Act 1-2: Expansion focus (unbalanced allocation)
 act1_economic_ratio = 0.33          # 33% to Economic Level (EL)
@@ -1015,7 +1015,7 @@ war_science_ratio = 0.20            # 20% to SL (reduced)
 default_economic_ratio = 0.33       # 33% to EL
 default_science_ratio = 0.33        # 33% to SL
 
-[logothete.counter_tech]
+[logothete_counter_tech]
 # Counter-technology response parameters
 enemy_advantage_critical = 3        # Enemy 3+ levels ahead = critical
 enemy_advantage_high = 2            # Enemy 2+ levels ahead = high priority
@@ -1027,7 +1027,7 @@ enemy_advantage_high = 2            # Enemy 2+ levels ahead = high priority
 # After EL/SL split, remaining budget (TRP) is allocated across 9 tech fields
 # Percentages as ratios (0.0-1.0) that must sum to ~1.0 per strategy
 
-[logothete.tech_allocations]
+[logothete_tech_allocations_thresholds]
 # Personality thresholds for strategy selection
 tech_priority_threshold = 0.6       # High tech priority cutoff
 economic_focus_threshold = 0.7      # High economic focus cutoff
@@ -1036,7 +1036,7 @@ aggression_peaceful = 0.5           # Threshold for peaceful vs aggressive split
 
 # Tech Priority + Aggressive Strategy (techPriority > 0.6, aggression > 0.5)
 # Focus: Weapons, Construction, Cloaking, FD
-[logothete.tech_allocations.tech_priority_aggressive]
+[logothete_tech_allocations_tech_priority_aggressive]
 weapons_tech = 0.30                 # 30% - Primary offensive tech
 construction_tech = 0.20            # 20% - Build capacity for war fleet
 cloaking_tech = 0.20                # 20% - Stealth operations
@@ -1049,7 +1049,7 @@ counter_intelligence = 0.0          # 0% - Not priority
 
 # Tech Priority + Peaceful Strategy (techPriority > 0.6, aggression <= 0.5)
 # Focus: Infrastructure, Counter-intel, Terraforming
-[logothete.tech_allocations.tech_priority_peaceful]
+[logothete_tech_allocations_tech_priority_peaceful]
 construction_tech = 0.30            # 30% - Infrastructure focus
 terraforming_tech = 0.20            # 20% - Peaceful expansion
 shield_tech = 0.20                  # 20% - Defensive technology
@@ -1062,7 +1062,7 @@ advanced_carrier_ops = 0.0          # 0% - Minimal carrier focus
 
 # Economic Focus Strategy (economicFocus > 0.7)
 # Focus: Construction, Terraforming, light carrier support
-[logothete.tech_allocations.economic_focus]
+[logothete_tech_allocations_economic_focus]
 construction_tech = 0.40            # 40% - Maximum build capacity
 terraforming_tech = 0.30            # 30% - Colony development
 fighter_doctrine = 0.20             # 20% - Carrier for defense
@@ -1075,7 +1075,7 @@ counter_intelligence = 0.0          # 0% - Not economic priority
 
 # War Economy Strategy (aggression > 0.7)
 # Focus: Weapons, Construction for warships, carrier operations
-[logothete.tech_allocations.war_economy]
+[logothete_tech_allocations_war_economy]
 weapons_tech = 0.40                 # 40% - Maximum offensive power
 construction_tech = 0.30            # 30% - Build war fleet
 fighter_doctrine = 0.20             # 20% - Carrier strike capability
@@ -1088,7 +1088,7 @@ counter_intelligence = 0.0          # 0% - Not priority
 
 # Balanced/Default Strategy (fallback)
 # Focus: Construction, Weapons, Carriers, Terraforming
-[logothete.tech_allocations.balanced_default]
+[logothete_tech_allocations_balanced_default]
 construction_tech = 0.30            # 30% - Infrastructure foundation
 weapons_tech = 0.20                 # 20% - Moderate offense
 fighter_doctrine = 0.20             # 20% - Carrier operations
