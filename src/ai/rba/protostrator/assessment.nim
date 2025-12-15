@@ -422,38 +422,38 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
 
     # Stronger neighbor = want pact (defensive)
     if result.relativeMilitaryStrength < 0.8:
-      pactScore += globalRBAConfig.protostrator.pact_assessment.shared_enemies_weight
+      pactScore += globalRBAConfig.protostrator_pact_assessment.shared_enemies_weight
 
     # Mutual enemies = want pact (alliance)
-    pactScore += float(result.mutualEnemies.len) * globalRBAConfig.protostrator.pact_assessment.mutual_enemies_weight
+    pactScore += float(result.mutualEnemies.len) * globalRBAConfig.protostrator_pact_assessment.mutual_enemies_weight
 
     # High diplomacy value = more likely to seek pacts
-    pactScore += p.diplomacyValue * globalRBAConfig.protostrator.pact_assessment.diplomacy_trait_weight
+    pactScore += p.diplomacyValue * globalRBAConfig.protostrator_pact_assessment.diplomacy_trait_weight
 
     # Low violation risk = more likely to trust
-    pactScore += (1.0 - result.violationRisk) * globalRBAConfig.protostrator.pact_assessment.trust_weight
+    pactScore += (1.0 - result.violationRisk) * globalRBAConfig.protostrator_pact_assessment.trust_weight
 
-    result.recommendPact = pactScore > globalRBAConfig.protostrator.pact_assessment.recommendation_threshold
+    result.recommendPact = pactScore > globalRBAConfig.protostrator_pact_assessment.recommendation_threshold
 
     # Should we escalate to Hostile or Enemy?
     var hostileScore = 0.0
     var enemyScore = 0.0
 
     # Aggressive personality
-    hostileScore += p.aggression * globalRBAConfig.protostrator.stance_recommendations.aggression_hostile_weight
-    enemyScore += p.aggression * globalRBAConfig.protostrator.stance_recommendations.aggression_enemy_weight
+    hostileScore += p.aggression * globalRBAConfig.protostrator_stance_recommendations.aggression_hostile_weight
+    enemyScore += p.aggression * globalRBAConfig.protostrator_stance_recommendations.aggression_enemy_weight
 
     # Weaker target
     if result.relativeMilitaryStrength > 1.5:
-      hostileScore += globalRBAConfig.protostrator.stance_recommendations.opportunity_hostile_weight
-      enemyScore += globalRBAConfig.protostrator.stance_recommendations.opportunity_enemy_weight
+      hostileScore += globalRBAConfig.protostrator_stance_recommendations.opportunity_hostile_weight
+      enemyScore += globalRBAConfig.protostrator_stance_recommendations.opportunity_enemy_weight
 
     # Low diplomacy value
-    hostileScore += (1.0 - p.diplomacyValue) * globalRBAConfig.protostrator.stance_recommendations.opportunity_hostile_weight
-    enemyScore += (1.0 - p.diplomacyValue) * globalRBAConfig.protostrator.stance_recommendations.opportunity_enemy_weight
+    hostileScore += (1.0 - p.diplomacyValue) * globalRBAConfig.protostrator_stance_recommendations.opportunity_hostile_weight
+    enemyScore += (1.0 - p.diplomacyValue) * globalRBAConfig.protostrator_stance_recommendations.opportunity_enemy_weight
 
-    result.recommendHostile = hostileScore > globalRBAConfig.protostrator.stance_recommendations.hostile_threshold
-    result.recommendEnemy = enemyScore > globalRBAConfig.protostrator.stance_recommendations.enemy_threshold
+    result.recommendHostile = hostileScore > globalRBAConfig.protostrator_stance_recommendations.hostile_threshold
+    result.recommendEnemy = enemyScore > globalRBAConfig.protostrator_stance_recommendations.enemy_threshold
 
 
   of dip_types.DiplomaticState.Hostile:
@@ -462,21 +462,21 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
     var deescalateScore = 0.0
 
     # Aggressive personality wants war
-    escalateScore += p.aggression * globalRBAConfig.protostrator.stance_recommendations.aggression_enemy_weight
+    escalateScore += p.aggression * globalRBAConfig.protostrator_stance_recommendations.aggression_enemy_weight
 
     # Weaker target = escalate
     if result.relativeMilitaryStrength > 1.3:
-      escalateScore += globalRBAConfig.protostrator.stance_recommendations.opportunity_enemy_weight
+      escalateScore += globalRBAConfig.protostrator_stance_recommendations.opportunity_enemy_weight
 
     # Much stronger enemy = de-escalate
     if result.relativeMilitaryStrength < 0.6:
       deescalateScore += 0.5
 
     # High diplomacy value = prefer de-escalation
-    deescalateScore += p.diplomacyValue * globalRBAConfig.protostrator.stance_recommendations.diplomacy_deescalate_weight
+    deescalateScore += p.diplomacyValue * globalRBAConfig.protostrator_stance_recommendations.diplomacy_deescalate_weight
 
-    result.recommendEnemy = escalateScore > globalRBAConfig.protostrator.stance_recommendations.escalate_threshold
-    result.recommendNeutral = deescalateScore > globalRBAConfig.protostrator.stance_recommendations.deescalate_threshold
+    result.recommendEnemy = escalateScore > globalRBAConfig.protostrator_stance_recommendations.escalate_threshold
+    result.recommendNeutral = deescalateScore > globalRBAConfig.protostrator_stance_recommendations.deescalate_threshold
 
   of dip_types.DiplomaticState.Enemy:
     # Should we normalize relations?
@@ -487,13 +487,13 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
       normalizeScore += 0.5
 
     # High diplomacy value
-    normalizeScore += p.diplomacyValue * globalRBAConfig.protostrator.stance_recommendations.diplomacy_normalize_weight
+    normalizeScore += p.diplomacyValue * globalRBAConfig.protostrator_stance_recommendations.diplomacy_normalize_weight
 
     # Low aggression
-    normalizeScore += (1.0 - p.aggression) * globalRBAConfig.protostrator.stance_recommendations.peace_bias_weight
+    normalizeScore += (1.0 - p.aggression) * globalRBAConfig.protostrator_stance_recommendations.peace_bias_weight
 
     # Recommend neutral if score high enough
-    if normalizeScore > globalRBAConfig.protostrator.stance_recommendations.normalize_threshold:
+    if normalizeScore > globalRBAConfig.protostrator_stance_recommendations.normalize_threshold:
       result.recommendEnemy = false
     else:
       result.recommendEnemy = true  # Stay enemies
