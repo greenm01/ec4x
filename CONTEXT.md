@@ -18,6 +18,7 @@
 8. **80 character line limit** - break long lines naturally (NEP-1)
 9. **2-space indentation** - consistent formatting (NEP-1)
 10. **Spaces around operators** - `let total = value + modifier * 2`
+11. **Don't hard-code game parameters** - Pull from configs or propose new ones if they don't already exist
 
 The src tree API is located in docs/api/api.json for efficient context.
 

@@ -36,7 +36,7 @@ proc estimateLocalThreat*(
       if distance <= radius:
         # Threat decreases with distance
         let threatContribution = 1.0 - (distance.float / radius.float)
-        result += threatContribution * 0.3  # Each nearby enemy fleet adds threat
+        result += threatContribution * globalRBAConfig.domestikos.intelligence_ops.threat_contribution_per_fleet
 
   # Cap at 1.0
   result = min(result, 1.0)
@@ -56,9 +56,9 @@ proc estimateLocalThreatFromIntel*(
     # Convert ThreatLevel to float (0.0-1.0)
     result = case threat.level:
       of tlCritical: 1.0
-      of tlHigh: 0.75
-      of tlModerate: 0.5
-      of tlLow: 0.25
+      of tlHigh: globalRBAConfig.domestikos.intelligence_ops.threat_level_high_score
+      of tlModerate: globalRBAConfig.domestikos.intelligence_ops.threat_level_moderate_score
+      of tlLow: globalRBAConfig.domestikos.intelligence_ops.threat_level_low_score
       of tlNone: 0.0
 
     # Adjust by confidence (reduce threat if intel is stale)

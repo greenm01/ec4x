@@ -10,6 +10,7 @@ import std/[options, tables, algorithm]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, fleet, starmap]
 import ../controller_types
+import ../config  # For globalRBAConfig
 
 proc evaluateStagingCandidate(
   candidate: SystemId,
@@ -37,9 +38,9 @@ proc evaluateStagingCandidate(
   if distance == 2 or distance == 3:
     priority += 100.0  # Ideal distance
   elif distance == 1:
-    priority += 50.0   # Acceptable but close
+    priority += globalRBAConfig.domestikos.staging.priority_acceptable_close   # Acceptable but close
   elif distance == 4 or distance == 5:
-    priority += 30.0   # Acceptable but far
+    priority += globalRBAConfig.domestikos.staging.priority_acceptable_far   # Acceptable but far
 
   # Safety bonus: owned systems are safer
   var isOwnedSystem = false
@@ -49,7 +50,7 @@ proc evaluateStagingCandidate(
       break
 
   if isOwnedSystem:
-    priority += 200.0  # Strong preference for owned systems
+    priority += globalRBAConfig.domestikos.staging.priority_owned_system  # Strong preference for owned systems
 
   # Proximity to homeworld (prefer closer to home for supply lines)
   let pathToHome = filtered.starMap.findPath(candidate, controller.homeworld, Fleet())

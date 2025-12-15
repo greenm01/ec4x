@@ -71,17 +71,19 @@ proc assessCompetitiveEconomicPosition(
       result.productionRatio = float(ourTotalProduction) / avgEnemyProduction
 
   # Flag economic pressure if significantly behind
-  if result.productionRatio < 0.7:  # Producing <70% of average enemy
+  # Configuration from config/rba.toml [eparch.economic_pressure]
+  if result.productionRatio < globalRBAConfig.eparch.economic_pressure.production_ratio_moderate:
     result.underEconomicPressure = true
-    result.infrastructurePriorityBoost = 1.5  # 50% priority boost
+    result.infrastructurePriorityBoost = globalRBAConfig.eparch.economic_pressure.boost_moderate_pressure
 
-  if result.productionRatio < 0.5:  # Producing <50% of average enemy
-    result.infrastructurePriorityBoost = 2.0  # 100% priority boost
+  if result.productionRatio < globalRBAConfig.eparch.economic_pressure.production_ratio_severe:
+    result.infrastructurePriorityBoost = globalRBAConfig.eparch.economic_pressure.boost_severe_pressure
 
   # Also flag pressure if enemy shipyard advantage is significant
-  if result.enemyShipyardAdvantage >= 3:
+  if result.enemyShipyardAdvantage >= globalRBAConfig.eparch.economic_pressure.shipyard_advantage_threshold:
     result.underEconomicPressure = true
-    result.infrastructurePriorityBoost = max(result.infrastructurePriorityBoost, 1.3)
+    result.infrastructurePriorityBoost = max(result.infrastructurePriorityBoost,
+                                              globalRBAConfig.eparch.economic_pressure.boost_shipyard_disadvantage)
 
 proc generateEconomicRequirements*(
   controller: AIController,
@@ -125,8 +127,6 @@ proc generateEconomicRequirements*(
   # See docs/specs/diplomacy.md "Prestige Penalty Mechanics"
   # If facing maintenance shortfall OR current income is negative and treasury is low,
   # prioritize a "BalanceEconomy" action (which will imply tax rate adjustments).
-  let maintenanceConfig = globalRBAConfig.eparch.maintenance
-
   let potentialShortfall = checkMaintenanceShortfall(
     house,
     filtered,
@@ -137,7 +137,8 @@ proc generateEconomicRequirements*(
   let isAlreadyInShortfall = house.consecutiveShortfallTurns > 0
   let isAboutToEnterShortfall = (currentIncome < maintenanceCost) and (currentTreasury < maintenanceCost)
 
-  if (isMaintainPrestigeActive and (isAlreadyInShortfall or isAboutToEnterShortfall)) or (isAlreadyInShortfall and house.consecutiveShortfallTurns < maintenanceConfig.penalty_turns_critical) :
+  if (isMaintainPrestigeActive and (isAlreadyInShortfall or isAboutToEnterShortfall)) or
+     (isAlreadyInShortfall and house.consecutiveShortfallTurns < globalRBAConfig.eparch.maintenance.penalty_turns_critical):
     logWarn(LogCategory.lcAI, &"{controller.houseId} Eparch: CRITICAL - Detecting maintenance shortfall risk. " &
                              &"Current Income: {currentIncome}PP, Maintenance: {maintenanceCost}PP, Treasury: {currentTreasury}PP. " &
                              &"MaintainPrestige active: {isMaintainPrestigeActive}. Consecutive shortfalls: {house.consecutiveShortfallTurns}")
