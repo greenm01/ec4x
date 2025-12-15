@@ -2,9 +2,9 @@
 ##
 ## Handles colonization strategy, including target selection and ETAC fleet dispatch.
 
-import ../../common/types
+import ../../../common/types
 import ../controller_types
-import ../../engine/[gamestate, fog_of_war, orders]
+import ../../../engine/[gamestate, fog_of_war, orders]
 
 proc generateColonizationOrders*(controller: var AIController,
                                  filtered: FilteredGameState,
