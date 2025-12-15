@@ -1154,7 +1154,7 @@ act3_max_turn = 35                  # Act 3 ends at turn 35 (transition to Act 4
 #   MEDIUM   = 1.0x multiplier (baseline)
 #   LOW      = 0.6x multiplier
 
-[act_priorities.act1_land_grab]
+[act_priorities_act1_land_grab]
 # Act 1 Focus: Expansion & Reconnaissance
 # Strategic Goal: Claim as much territory as possible before map fills
 eparch_multiplier = 1.5           # CRITICAL - Drive aggressive colonization
@@ -1163,7 +1163,7 @@ drungarius_multiplier = 1.0       # MEDIUM - Map nearby systems, find targets
 logothete_multiplier = 1.0        # MEDIUM - CST for facilities, Propulsion for speed
 protostrator_multiplier = 0.6     # LOW - Remain neutral, avoid early conflicts
 
-[act_priorities.act2_rising_tensions]
+[act_priorities_act2_rising_tensions]
 # Act 2 Focus: Consolidation & Military Buildup
 # Strategic Goal: Build defensive position and prepare for conflict
 domestikos_multiplier = 1.5       # CRITICAL - Construct credible combat fleet
@@ -1172,7 +1172,7 @@ logothete_multiplier = 1.2        # HIGH - Military tech (Weapons, Shields, Armo
 drungarius_multiplier = 1.0       # MEDIUM - Shift to espionage, assess threats
 protostrator_multiplier = 1.0     # MEDIUM - Form defensive pacts, create blocs
 
-[act_priorities.act3_total_war]
+[act_priorities_act3_total_war]
 # Act 3 Focus: Conquest
 # Strategic Goal: Eliminate rivals through decisive military action
 domestikos_multiplier = 1.5       # CRITICAL - Execute large-scale invasions
@@ -1181,7 +1181,7 @@ protostrator_multiplier = 1.2     # HIGH - Manage war alliances, break coalition
 eparch_multiplier = 1.0           # MEDIUM - War economy, replace combat losses
 logothete_multiplier = 1.0        # MEDIUM - Advanced combat tech for advantage
 
-[act_priorities.act4_endgame]
+[act_priorities_act4_endgame]
 # Act 4 Focus: Securing Victory
 # Strategic Goal: Finish off remaining rivals or defend leading position
 domestikos_multiplier = 1.5       # CRITICAL - Eliminate last rivals, defend lead

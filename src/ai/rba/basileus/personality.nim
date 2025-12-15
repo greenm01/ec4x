@@ -65,7 +65,7 @@ proc calculateAdvisorWeights*(
   of ai_types.GameAct.Act1_LandGrab:
     # Act 1: Land Grab - Expansion & Reconnaissance
     # Architecture priorities: Eparch CRITICAL, Domestikos HIGH, others MEDIUM/LOW
-    let priorities = globalRBAConfig.act_priorities.act1_land_grab
+    let priorities = globalRBAConfig.act_priorities_act1_land_grab
     result[AdvisorType.Eparch] *= priorities.eparch_multiplier
     result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
     result[AdvisorType.Drungarius] *= priorities.drungarius_multiplier
@@ -75,7 +75,7 @@ proc calculateAdvisorWeights*(
   of ai_types.GameAct.Act2_RisingTensions:
     # Act 2: Rising Tensions - Consolidation & Military Buildup
     # Architecture priorities: Domestikos CRITICAL, Eparch/Logothete HIGH
-    let priorities = globalRBAConfig.act_priorities.act2_rising_tensions
+    let priorities = globalRBAConfig.act_priorities_act2_rising_tensions
     result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
     result[AdvisorType.Eparch] *= priorities.eparch_multiplier
     result[AdvisorType.Logothete] *= priorities.logothete_multiplier
@@ -90,7 +90,7 @@ proc calculateAdvisorWeights*(
   of ai_types.GameAct.Act3_TotalWar:
     # Act 3: Total War - Conquest
     # Architecture priorities: Domestikos CRITICAL, Drungarius/Protostrator HIGH
-    let priorities = globalRBAConfig.act_priorities.act3_total_war
+    let priorities = globalRBAConfig.act_priorities_act3_total_war
     result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
     result[AdvisorType.Drungarius] *= priorities.drungarius_multiplier
     result[AdvisorType.Protostrator] *= priorities.protostrator_multiplier
@@ -108,7 +108,7 @@ proc calculateAdvisorWeights*(
   of ai_types.GameAct.Act4_Endgame:
     # Act 4: Endgame - Securing Victory
     # Architecture priorities: Domestikos CRITICAL, Eparch/Protostrator HIGH
-    let priorities = globalRBAConfig.act_priorities.act4_endgame
+    let priorities = globalRBAConfig.act_priorities_act4_endgame
     result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
     result[AdvisorType.Eparch] *= priorities.eparch_multiplier
     result[AdvisorType.Protostrator] *= priorities.protostrator_multiplier
