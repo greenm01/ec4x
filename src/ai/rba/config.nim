@@ -501,6 +501,7 @@ type
     # Counter-intel periodic
     counter_intel_periodic_frequency*: int
     counter_intel_aggression_threshold*: float
+    economic_focus_manipulation*: float
 
   DrungariusRequirementsConfig* = object
     ## Espionage requirements parameters (src/ai/rba/drungarius/requirements.nim)
@@ -571,7 +572,6 @@ type
     aggression_secondary_sabotage*: float
     aggression_disinformation*: float
     aggression_assassination*: float
-    economic_focus_manipulation*: float
     risk_tolerance_ci_maintenance*: float
     # Prestige awareness
     prestige_penalty_threshold_ratio*: float
@@ -1102,6 +1102,7 @@ proc validateRBAConfig*(config: RBAConfig) =
   validateRatio(ops.frequency_economic_focus_threshold, "drungarius.operations.frequency_economic_focus_threshold")
   validateRatio(ops.frequency_aggression_threshold, "drungarius.operations.frequency_aggression_threshold")
   validateRatio(ops.frequency_economic_focus_cap, "drungarius.operations.frequency_economic_focus_cap")
+  validateRatio(ops.economic_focus_manipulation, "drungarius.operations.economic_focus_manipulation")
   validatePositive(ops.counter_intel_periodic_frequency, "drungarius.operations.counter_intel_periodic_frequency")
   validateRatio(ops.counter_intel_aggression_threshold, "drungarius.operations.counter_intel_aggression_threshold")
 
@@ -1163,7 +1164,6 @@ proc validateRBAConfig*(config: RBAConfig) =
   validateRatio(req.aggression_secondary_sabotage, "drungarius.requirements.aggression_secondary_sabotage")
   validateRatio(req.aggression_disinformation, "drungarius.requirements.aggression_disinformation")
   validateRatio(req.aggression_assassination, "drungarius.requirements.aggression_assassination")
-  validateRatio(req.economic_focus_manipulation, "drungarius.requirements.economic_focus_manipulation")
   validateRatio(req.risk_tolerance_ci_maintenance, "drungarius.requirements.risk_tolerance_ci_maintenance")
   validateRatio(req.prestige_penalty_threshold_ratio, "drungarius.requirements.prestige_penalty_threshold_ratio")
 
