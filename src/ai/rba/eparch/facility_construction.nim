@@ -2,7 +2,7 @@
 ##
 ## Handles facility construction strategy, including shipyards and spaceports.
 
-import ../../../common/types
+import ../../common/types
 import ../controller_types
 import ../../../engine/[gamestate, fog_of_war, orders]
 
