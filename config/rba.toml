@@ -957,7 +957,7 @@ threshold_multiplier_act4 = 2.5     # Act 4: Lower threshold (endgame)
 # Mutual enemies scoring
 mutual_enemies_base_score = 2.0     # Base score for shared enemies
 
-[protostrator.pact_assessment]
+[protostrator_pact_assessment]
 # Non-Aggression Pact recommendation scoring (0.0-1.0 scale)
 shared_enemies_weight = 0.3         # Weight for shared enemy count
 mutual_enemies_weight = 0.2         # Weight per mutual enemy
@@ -965,7 +965,7 @@ diplomacy_trait_weight = 0.4        # Weight for diplomacy personality value
 trust_weight = 0.2                  # Weight for low violation risk
 recommendation_threshold = 0.5      # Threshold to recommend pact (≥0.5)
 
-[protostrator.stance_recommendations]
+[protostrator_stance_recommendations]
 # Stance change recommendation thresholds
 hostile_threshold = 0.5             # Recommend Hostile if score ≥0.5
 enemy_threshold = 0.7               # Recommend Enemy (war) if score ≥0.7
