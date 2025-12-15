@@ -48,20 +48,19 @@ def investigate_stall(db_path):
 
         cursor.execute("""
             SELECT house_id, fleet_id, location_system_id,
-                   etac_count, active_order_type, standing_order_type
+                   etac_count, active_order_type
             FROM fleet_tracking
             WHERE turn = ? AND etac_count > 0
             ORDER BY house_id, location_system_id
         """, (check_turn,))
 
         fleets_by_house = defaultdict(list)
-        for house, fleet, loc, etacs, active, standing in cursor.fetchall():
+        for house, fleet, loc, etacs, active in cursor.fetchall():
             fleets_by_house[house].append({
                 'fleet': fleet,
                 'location': loc,
                 'etacs': etacs,
-                'active_order': active or 'None',
-                'standing_order': standing or 'None'
+                'active_order': active or 'None'
             })
 
         # Analyze convergence - multiple ETACs at same location
@@ -82,14 +81,14 @@ def investigate_stall(db_path):
                 for loc, fs in convergence_points.items():
                     print(f"    System {loc}: {len(fs)} ETACs")
                     for f in fs:
-                        print(f"      {f['fleet']}: {f['active_order']} (standing: {f['standing_order']})")
+                        print(f"      {f['fleet']}: {f['active_order']}")
 
             # Find idle ETACs (None orders)
             idle = [f for f in fleets if f['active_order'] == 'None']
             if idle:
                 print(f"  ⚠️  IDLE ETACs: {len(idle)}")
                 for f in idle:
-                    print(f"    {f['fleet']} at system {f['location']} (standing: {f['standing_order']})")
+                    print(f"    {f['fleet']} at system {f['location']}")
 
     # Get colonized systems at turn 34
     print("\n" + "=" * 80)

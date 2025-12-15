@@ -121,21 +121,40 @@ proc executeFacilityOrders*(
     logInfo(LogCategory.lcAI,
             &"{controller.houseId} CREATING BUILDORDER: {facilityType} at {econReq.targetColony}")
 
-    # Convert to BuildOrder
-    let buildOrder = BuildOrder(
-      colonySystem: econReq.targetColony,
-      buildType: BuildType.Building,
-      quantity: 1,
-      shipClass: none(ShipClass),
-      buildingType: some(facilityType),
-      industrialUnits: 0
-    )
+    # SPECIAL CASE: ETACs are ships, not buildings
+    if facilityType == "ETAC":
+      # Calculate quantity from estimated cost (each ETAC costs 15PP)
+      let etacCost = 15  # From ship config
+      let quantity = max(1, econReq.estimatedCost div etacCost)
 
-    result.add(buildOrder)
+      let buildOrder = BuildOrder(
+        colonySystem: econReq.targetColony,
+        buildType: BuildType.Ship,
+        quantity: quantity,
+        shipClass: some(ShipClass.ETAC),
+        buildingType: none(string),
+        industrialUnits: 0
+      )
+      result.add(buildOrder)
 
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} *** FACILITY BUILDORDER CREATED: {facilityType} at " &
-            &"{econReq.targetColony} (cost={econReq.estimatedCost}PP) ***")
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} *** ETAC SHIP BUILDORDER CREATED: {quantity} " &
+              &"ETACs at {econReq.targetColony} (cost={econReq.estimatedCost}PP) ***")
+    else:
+      # Regular facility (Spaceport, Shipyard, Starbase)
+      let buildOrder = BuildOrder(
+        colonySystem: econReq.targetColony,
+        buildType: BuildType.Building,
+        quantity: 1,
+        shipClass: none(ShipClass),
+        buildingType: some(facilityType),
+        industrialUnits: 0
+      )
+      result.add(buildOrder)
+
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} *** FACILITY BUILDORDER CREATED: {facilityType} at " &
+              &"{econReq.targetColony} (cost={econReq.estimatedCost}PP) ***")
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Facility orders: {result.len} facilities queued")

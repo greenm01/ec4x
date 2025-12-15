@@ -60,6 +60,35 @@ type
 # Part 1: ETAC Construction (from Domestikos assessExpansionNeeds)
 # ============================================================================
 
+proc findBestETACConstructionColony(
+  colonies: seq[Colony]
+): Option[SystemId] =
+  ## Find best colony for ETAC ship construction
+  ## Priority: Shipyards > Spaceports (ETACs are ships)
+  ## Score by production capacity (higher production = faster build)
+  var bestColony: Option[SystemId] = none(SystemId)
+  var highestScore = -1000.0
+
+  # Phase 1: Prefer colonies with Shipyards (dedicated ship construction)
+  for colony in colonies:
+    if colony.shipyards.len > 0:
+      let score = float(colony.production)
+      if score > highestScore:
+        bestColony = some(colony.systemId)
+        highestScore = score
+
+  # Phase 2: If no Shipyards, accept colonies with Spaceports
+  if bestColony.isNone:
+    highestScore = -1000.0
+    for colony in colonies:
+      if colony.spaceports.len > 0:
+        let score = float(colony.production)
+        if score > highestScore:
+          bestColony = some(colony.systemId)
+          highestScore = score
+
+  return bestColony
+
 proc assessETACConstructionNeeds(
   filtered: FilteredGameState,
   controller: AIController,
@@ -137,23 +166,29 @@ proc assessETACConstructionNeeds(
 
   let cfg = globalRBAConfig.domestikos
 
-  # Exponential decay: Build fewer ETACs as colonization progresses
-  # Threshold: Apply decay only when <80% systems remain uncolonized
-  # This allows fast early expansion, then scales down to prevent ETAC spam
-  # Example with 49/61 uncolonized (80%): No decay, full production
-  # Example with 30/61 uncolonized (49%): Scaled 0.61, factor 0.37 → reduced production
-  # Example with 10/61 uncolonized (16%): Scaled 0.20, factor 0.04 → minimal production
-  let uncolonizedRatio = uncolonizedActual.float / totalSystems.float
-  let decayFactor = if uncolonizedRatio > 0.8:
-    1.0  # No decay while >80% uncolonized (early expansion)
-  else:
-    # Quadratic decay when <80% uncolonized (late expansion)
-    let scaledRatio = uncolonizedRatio / 0.8
-    scaledRatio * scaledRatio  # Exponential decay
+  # Act 1 AGGRESSIVE EXPANSION: Build as many ETACs as needed for 100% colonization by turn 15
+  # No decay, no artificial caps - just build ETACs for every uncolonized system
+  # Acts 2+: Apply exponential decay to prevent late-game ETAC spam
 
-  # Base capacity per player (scales with map size)
-  let ringsCount = filtered.starMap.numRings.int
-  let baseCapPerPlayer = max(3, (ringsCount + 2) div 2)
+  let decayFactor = if currentAct == ai_common_types.GameAct.Act1_LandGrab:
+    1.0  # Act 1: NO DECAY - full aggressive expansion
+  else:
+    # Acts 2+: Exponential decay based on colonization progress
+    let uncolonizedRatio = uncolonizedActual.float / totalSystems.float
+    if uncolonizedRatio > 0.3:
+      1.0  # No decay while >30% uncolonized
+    else:
+      let scaledRatio = uncolonizedRatio / 0.3
+      scaledRatio * scaledRatio  # Quadratic decay
+
+  # Base capacity per player: aggressive in Act 1, conservative later
+  let baseCapPerPlayer = if currentAct == ai_common_types.GameAct.Act1_LandGrab:
+    # Act 1: Cap = uncolonized systems (build enough for 100% colonization)
+    max(10, uncolonizedActual)  # At least 10, scale up with remaining systems
+  else:
+    # Acts 2+: Conservative cap (scales with map size)
+    let ringsCount = filtered.starMap.numRings.int
+    max(4, ringsCount + 1)
 
   # Apply decay factor to cap
   let dynamicCap = max(1, (baseCapPerPlayer.float * decayFactor).int)
@@ -161,7 +196,12 @@ proc assessETACConstructionNeeds(
   # Calculate deficit and target
   let deficit = uncolonizedActual - readyETACs
   let targetETACs = if deficit > 0:
-    min(dynamicCap, etacCount + 2)  # Never queue more than +2 at once
+    # Act 1: Build many ETACs simultaneously for fast expansion
+    # Acts 2+: Conservative +2 at a time
+    if currentAct == ai_common_types.GameAct.Act1_LandGrab:
+      min(dynamicCap, etacCount + deficit)  # Build as many as needed
+    else:
+      min(dynamicCap, etacCount + 2)  # Conservative expansion
   else:
     etacCount  # No more needed
 
@@ -182,7 +222,7 @@ proc assessETACConstructionNeeds(
     if needed > 0:
       let priority = case currentAct
         of ai_common_types.GameAct.Act1_LandGrab:
-          RequirementPriority.High  # Land grab urgency
+          RequirementPriority.Critical  # CRITICAL: Exponential expansion is #1 priority in Land Grab
         of ai_common_types.GameAct.Act2_RisingTensions:
           RequirementPriority.Medium  # Balanced expansion
         of ai_common_types.GameAct.Act3_TotalWar:
@@ -190,22 +230,31 @@ proc assessETACConstructionNeeds(
         else:
           RequirementPriority.Low
 
-      # ✅ KEY CHANGE: EconomicRequirement (Eparch) instead of BuildRequirement (Domestikos)
-      result.requirements.add(EconomicRequirement(
-        requirementType: EconomicRequirementType.Facility,
-        priority: priority,
-        targetColony: SystemId(0),  # No specific colony (any with spaceport/shipyard)
-        facilityType: some("ETAC"),  # Treat ETAC as infrastructure
-        terraformTarget: none(PlanetClass),
-        estimatedCost: etacCost * needed,
-        reason: &"Expansion (have {etacCount}/{targetETACs} ETACs, " &
-                &"{uncolonizedActual} systems uncolonized, decay={decayFactor:.2f})"
-      ))
+      # Find best colony for ETAC construction (prefer Shipyard, accept Spaceport)
+      let buildColony = findBestETACConstructionColony(filtered.ownColonies)
 
-      logInfo(LogCategory.lcAI,
-             &"Eparch: ETAC construction requirement - {needed} ETACs " &
-             &"(have {etacCount}, target {targetETACs}, " &
-             &"decay factor {decayFactor:.2f})")
+      if buildColony.isNone:
+        logWarn(LogCategory.lcAI,
+                &"Eparch: Cannot create ETAC requirement - no colony with " &
+                &"Spaceport/Shipyard available")
+      else:
+        # ✅ KEY CHANGE: EconomicRequirement (Eparch) instead of BuildRequirement (Domestikos)
+        result.requirements.add(EconomicRequirement(
+          requirementType: EconomicRequirementType.Facility,
+          priority: priority,
+          targetColony: buildColony.get(),  # ✅ FIX: Valid colony with Shipyard/Spaceport
+          facilityType: some("ETAC"),  # Treat ETAC as infrastructure
+          terraformTarget: none(PlanetClass),
+          estimatedCost: etacCost * needed,
+          reason: &"Expansion (have {etacCount}/{targetETACs} ETACs, " &
+                  &"{uncolonizedActual} systems uncolonized, decay={decayFactor:.2f})"
+        ))
+
+        logInfo(LogCategory.lcAI,
+               &"Eparch: ETAC construction requirement - {needed} ETACs " &
+               &"at colony {buildColony.get()} " &
+               &"(have {etacCount}, target {targetETACs}, " &
+               &"decay factor {decayFactor:.2f})")
 
 # ============================================================================
 # Part 2: ETAC Colonization (from etac_manager.nim)
