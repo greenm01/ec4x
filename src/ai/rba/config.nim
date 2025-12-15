@@ -233,7 +233,7 @@ type
     low_threshold*: float
 
 # ==============================================================================
-# Admiral Configuration
+# Domestikos Configuration
 # ==============================================================================
 
 type
@@ -317,8 +317,8 @@ type
     act4_endgame*: ShipClassScores
     strategic_values*: ShipClassScores  # Act-independent strategic value (0.0-2.0)
 
-  AdmiralConfig* = object
-    ## Admiral module parameters (fleet rebalancing)
+  DomestikosConfig* = object
+    ## Domestikos module parameters (fleet rebalancing)
     enabled*: bool
     split_threshold_act1*: int
     merge_threshold_act2*: int
@@ -862,8 +862,8 @@ type
     fleet_composition_defensive*: FleetCompositionRatioConfig
     # Threat assessment
     threat_assessment*: ThreatAssessmentConfig
-    # Admiral module (fleet rebalancing)
-    domestikos*: AdmiralConfig
+    # Domestikos module (fleet rebalancing)
+    domestikos*: DomestikosConfig
     # Eparch module (economic administration)
     eparch*: EparchConfig
     # Intelligence integration (Phase B+)
@@ -977,7 +977,7 @@ proc validateRBAConfig*(config: RBAConfig) =
   validatePositive(config.tactical.max_response_eta_turns, "tactical.max_response_eta_turns")
   validatePositive(config.tactical.min_population_for_reload, "tactical.min_population_for_reload")
 
-  # Validate Domestikos Admiral config
+  # Validate Domestikos config
   validatePositive(config.domestikos.max_invasion_eta_turns, "domestikos.max_invasion_eta_turns")
 
   # Validate orders parameters are ratios

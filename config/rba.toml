@@ -270,6 +270,53 @@ affordability_act2 = 0.50           # Act 2: 50% of treasury per request
 affordability_act3 = 0.70           # Act 3: 70% of treasury per request
 affordability_act4 = 0.90           # Act 4: 90% of treasury per request
 
+# ZeroTurnCommand Fleet Management (Immediate-execution fleet operations)
+fleet_management_enabled = true     # Enable merge/detach/transfer using ZeroTurnCommand API
+
+# Phase 3: Build Requirements System (Requirements-driven ship production)
+build_requirements_enabled = true   # Enable requirements-driven build system
+defense_gap_detection_enabled = true
+defense_gap_max_distance = 5        # Max jump distance to consider for defense
+offensive_requirements_enabled = true
+critical_priority_homeworld = true  # Always Critical priority for homeworld
+high_priority_production_threshold = 50  # Industry threshold for High priority
+threat_assessment_radius = 3        # Jumps to check for enemy fleets
+
+# Strategic Triage Budget Reserves
+min_recon_budget_percent = 0.08     # Minimum 8% for reconnaissance
+min_expansion_budget_percent = 0.15 # Minimum 15% for expansion
+
+# Escalation Thresholds
+escalation_low_to_medium_turns = 3  # Low → Medium after 3 turns undefended
+escalation_medium_to_high_turns = 5 # Medium → High after 5 turns
+escalation_high_to_critical_turns = 7  # High → Critical after 7 turns
+
+# Intelligence-Driven Ship Building (Phase F)
+capacity_high_utilization_threshold = 0.9  # Defer non-critical requirements at 90%+ capacity
+scouts_per_stale_intel_system = 0.5        # 1 scout per 2 stale intel systems
+scouts_per_enemy_house = 1.0               # 1 scout per enemy house for espionage
+max_scouts_act1 = 3                        # Minimal scouts in Act 1
+etacs_per_uncolonized_system = 2.0         # 2.0 ETACs per uncolonized system
+max_etacs_queued = 16                      # Cap ETAC production at 16
+
+# Offensive building (personality-modulated)
+aggressive_transport_ratio = 0.33          # Aggressive AI: 1 transport per 3 colonies
+aggressive_marine_per_transport = 1        # 1 marine division per transport
+reactive_invasion_multiplier = 1.5         # Defensive AI: 1.5x enemy defenses for invasion
+
+# Phase 2: Invasion Campaign Management
+max_concurrent_campaigns = 3               # Maximum simultaneous invasion campaigns
+campaign_stall_timeout = 3                 # Turns without action before abandoning campaign
+campaign_bombardment_max = 10              # Max bombardment rounds before reassessment
+campaign_intel_freshness = 5               # Max age (turns) for intel to be considered fresh
+
+# Fighter/Carrier requirements (threat-based)
+fighter_threat_threshold_low = 0.2         # Threat > 0.2 = threatened colony
+fighter_threat_threshold_high = 0.5        # Threat > 0.5 = high-threat colony
+max_fighters = 20                          # Cap total fighters at 20
+fighters_per_carrier = 4                   # 1 carrier per 4 fighters
+max_carriers = 6                           # Cap total carriers at 6
+
 [domestikos.offensive]
 # Offensive operations priority and scoring parameters
 # Priority values for requirement types
@@ -469,58 +516,6 @@ corvette = 0.5
 scout = 0.5
 troop_transport = 0.5
 fighter = 0.5
-
-# ZeroTurnCommand Fleet Management (Immediate-execution fleet operations)
-fleet_management_enabled = true     # Enable merge/detach/transfer using ZeroTurnCommand API
-                                    # Act 1: Detach ships for exploration coverage
-                                    # Act 2+: Merge fleets for combat power, detach scouts for recon
-                                    # All Acts: Transfer ships to optimize fleet compositions
-
-# Phase 3: Build Requirements System (Requirements-driven ship production)
-build_requirements_enabled = true   # Enable requirements-driven build system (IMMEDIATE ROLLOUT)
-defense_gap_detection_enabled = true
-defense_gap_max_distance = 5        # Max jump distance to consider for defense
-offensive_requirements_enabled = true
-critical_priority_homeworld = true  # Always Critical priority for homeworld
-high_priority_production_threshold = 50  # Industry threshold for High priority
-threat_assessment_radius = 3        # Jumps to check for enemy fleets
-
-# Strategic Triage Budget Reserves (Wise Admiral - maintain awareness)
-min_recon_budget_percent = 0.08     # REDUCED: Minimum 8% for reconnaissance (was 0.10)
-min_expansion_budget_percent = 0.15 # INCREASED: Minimum 15% for expansion (was 0.05)
-
-# Escalation Thresholds (Engaging AI - responds to player actions)
-escalation_low_to_medium_turns = 3  # Low → Medium after 3 turns undefended
-escalation_medium_to_high_turns = 5 # Medium → High after 5 turns
-escalation_high_to_critical_turns = 7  # High → Critical after 7 turns
-
-# Intelligence-Driven Ship Building (Phase F)
-# Squadron capacity awareness and intelligence-driven requirements
-capacity_high_utilization_threshold = 0.9  # Defer non-critical requirements at 90%+ capacity
-scouts_per_stale_intel_system = 0.5        # 1 scout per 2 stale intel systems
-scouts_per_enemy_house = 1.0               # 1 scout per enemy house for espionage
-max_scouts_act1 = 3                        # Minimal scouts in Act 1 (any ship explores)
-etacs_per_uncolonized_system = 2.0         # 2.0 ETACs per uncolonized system (aggressive colonization)
-max_etacs_queued = 16                      # Cap ETAC production at 16 (higher buffer for large maps)
-
-# Offensive building (personality-modulated)
-aggressive_transport_ratio = 0.33          # Aggressive AI: 1 transport per 3 colonies
-aggressive_marine_per_transport = 1        # 1 marine division per transport
-reactive_invasion_multiplier = 1.5         # Defensive AI: 1.5x enemy defenses for invasion
-
-# Phase 2: Invasion Campaign Management (Multi-turn invasion sequencing)
-# Enables Bombardment → Invasion sequences across multiple turns
-max_concurrent_campaigns = 3               # Maximum simultaneous invasion campaigns
-campaign_stall_timeout = 3                 # Turns without action before abandoning campaign
-campaign_bombardment_max = 10              # Max bombardment rounds before reassessment
-campaign_intel_freshness = 5               # Max age (turns) for intel to be considered fresh
-
-# Fighter/Carrier requirements (threat-based)
-fighter_threat_threshold_low = 0.2         # Threat > 0.2 = threatened colony
-fighter_threat_threshold_high = 0.5        # Threat > 0.5 = high-threat colony
-max_fighters = 20                          # Cap total fighters at 20
-fighters_per_carrier = 4                   # 1 carrier per 4 fighters
-max_carriers = 6                           # Cap total carriers at 6
 
 # ==============================================================================
 # EPARCH PARAMETERS (Economic Administration)
