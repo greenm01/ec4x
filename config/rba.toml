@@ -173,6 +173,7 @@ filler_budget_reserved = 0.05  # Reduced to 5% for Act 4
 response_radius_jumps = 3        # Maximum distance for fleet response to threats
 max_invasion_eta_turns = 8       # Maximum ETA for invasion operations
 max_response_eta_turns = 5       # Maximum ETA for defensive responses
+min_population_for_reload = 4    # Minimum colony PU for ETAC reload (must leave 1 PU after 3 PTU drain)
 
 # ==============================================================================
 # STRATEGIC PARAMETERS
@@ -292,8 +293,8 @@ capacity_high_utilization_threshold = 0.9  # Defer non-critical requirements at 
 scouts_per_stale_intel_system = 0.5        # 1 scout per 2 stale intel systems
 scouts_per_enemy_house = 1.0               # 1 scout per enemy house for espionage
 max_scouts_act1 = 3                        # Minimal scouts in Act 1 (any ship explores)
-etacs_per_uncolonized_system = 1.5         # 1.5 ETACs per uncolonized system (buffer for losses)
-max_etacs_queued = 12                      # Cap ETAC production at 12 (increased for resilience)
+etacs_per_uncolonized_system = 2.0         # 2.0 ETACs per uncolonized system (aggressive colonization)
+max_etacs_queued = 16                      # Cap ETAC production at 16 (higher buffer for large maps)
 
 # Offensive building (personality-modulated)
 aggressive_transport_ratio = 0.33          # Aggressive AI: 1 transport per 3 colonies
@@ -503,6 +504,18 @@ invasion_priority_boost = 0.2           # Priority boost for invasion goals
 
 # Phase 3: Campaign Coordination
 disable_rba_campaigns_with_goap = false # Set true to disable Phase 2 RBA campaigns when GOAP handles invasions
+
+# ==============================================================================
+# ACT TRANSITIONS
+# ==============================================================================
+# Configurable thresholds for game Act transitions
+# Act 1 (Land Grab) continues until colonization threshold is met
+
+[act_transitions]
+act1_colonization_threshold = 0.90  # Act 1 ends when ≥90% of systems colonized
+act2_colonization_threshold = 0.98  # Act 2 → Act 3 when ≥98% colonized
+act2_max_turn = 22                  # Act 2 ends at turn 22 even if <98% colonized
+act3_max_turn = 35                  # Act 3 ends at turn 35 (transition to Act 4)
 
 # ==============================================================================
 # COLONIZATION PARAMETERS

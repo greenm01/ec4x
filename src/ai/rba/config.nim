@@ -54,6 +54,7 @@ type
     response_radius_jumps*: int
     max_invasion_eta_turns*: int
     max_response_eta_turns*: int
+    min_population_for_reload*: int
 
 # ==============================================================================
 # Strategic Parameters
@@ -97,6 +98,18 @@ type
     scout_count_act1*: int
     scout_count_act2*: int
     scout_count_act3_plus*: int
+
+# ==============================================================================
+# Act Transitions
+# ==============================================================================
+
+type
+  ActTransitionsConfig* = object
+    ## Game Act transition thresholds
+    act1_colonization_threshold*: float  # Act 1 ends when ≥X% colonized
+    act2_colonization_threshold*: float  # Act 2 → Act 3 when ≥X% colonized
+    act2_max_turn*: int                  # Act 2 ends at turn X
+    act3_max_turn*: int                  # Act 3 ends at turn X
 
 # ==============================================================================
 # Colonization Parameters
@@ -403,6 +416,8 @@ type
     economic*: EconomicParametersConfig
     # Orders parameters
     orders*: OrdersConfig
+    # Act transitions
+    act_transitions*: ActTransitionsConfig
     # Colonization parameters
     colonization*: RBAColonizationConfig
     # Logistics parameters
@@ -523,6 +538,7 @@ proc validateRBAConfig*(config: RBAConfig) =
   validatePositive(config.tactical.response_radius_jumps, "tactical.response_radius_jumps")
   validatePositive(config.tactical.max_invasion_eta_turns, "tactical.max_invasion_eta_turns")
   validatePositive(config.tactical.max_response_eta_turns, "tactical.max_response_eta_turns")
+  validatePositive(config.tactical.min_population_for_reload, "tactical.min_population_for_reload")
 
   # Validate Domestikos Admiral config
   validatePositive(config.domestikos.max_invasion_eta_turns, "domestikos.max_invasion_eta_turns")
