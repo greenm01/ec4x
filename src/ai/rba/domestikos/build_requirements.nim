@@ -566,16 +566,23 @@ proc assessExpansionNeeds*(
   let ringsCount = filtered.starMap.numRings.int
   let baseCapPerPlayer = max(3, (ringsCount + 2) div 2)  # Adjusted for 3 PTU capacity
 
-  # During Act 1, maintain production as long as ANY systems remain uncolonized
-  # Acts 2+: Scale down based on remaining systems
-  let dynamicCap = if currentAct == ai_common_types.GameAct.Act1_LandGrab:
-    # Act 1: Maintain full ETAC fleet until land grab complete
-    # Cap is PER HOUSE (not multiplied by playerCount)
-    baseCapPerPlayer
+  # Calculate total systems for exponential decay
+  let totalSystems = filtered.starMap.systems.len
+
+  # Exponential decay: Build fewer ETACs as colonization progresses
+  # Threshold: Apply decay only when <80% systems remain uncolonized
+  # This allows fast early expansion, then scales down to prevent ETAC spam
+  # Example with 49/61 uncolonized (80%): No decay, full 3 ETACs
+  # Example with 30/61 uncolonized (49%): Scaled 0.61, factor 0.37 → 1 ETAC
+  # Example with 10/61 uncolonized (16%): Scaled 0.20, factor 0.04 → 0 ETACs
+  let uncolonizedRatio = uncolonizedVisible.float / totalSystems.float
+  let decayFactor = if uncolonizedRatio > 0.8:
+    1.0  # No decay while >80% uncolonized (early expansion)
   else:
-    # Acts 2+: Scale based on remaining uncolonized systems
-    min(baseCapPerPlayer,
-        max(2, uncolonizedVisible div 4))
+    # Exponential decay when <80% uncolonized (late expansion)
+    let scaledRatio = uncolonizedRatio / 0.8
+    scaledRatio * scaledRatio  # Quadratic decay
+  let dynamicCap = max(1, (baseCapPerPlayer.float * decayFactor).int)
 
   let targetETACs = if uncolonizedVisible > 0:
     min(dynamicCap, etacCount + 2)  # Never queue more than +2 at once
@@ -584,7 +591,8 @@ proc assessExpansionNeeds*(
 
   logDebug(LogCategory.lcAI,
            &"ETAC assessment: have {etacCount}, target {targetETACs}, " &
-           &"uncolonizedVisible {uncolonizedVisible}, dynamicCap {dynamicCap}")
+           &"uncolonizedVisible {uncolonizedVisible}, dynamicCap {dynamicCap}, " &
+           &"decay {decayFactor:.3f}")
 
   if etacCount < targetETACs:
     let etacCost = getShipConstructionCost(ShipClass.ETAC)
