@@ -263,6 +263,86 @@ merge_threshold_act2 = 3            # Merge when 3+ idle single-ship fleets
 rendezvous_preference = "homeworld" # Where to merge fleets: homeworld, frontline, center
 max_invasion_eta_turns = 8          # Maximum ETA for invasion operations
 
+# Affordability thresholds (how much of treasury per build request)
+# These are per-request limits, not total spending caps
+affordability_act1 = 0.30           # Act 1: 30% of treasury per request
+affordability_act2 = 0.50           # Act 2: 50% of treasury per request
+affordability_act3 = 0.70           # Act 3: 70% of treasury per request
+affordability_act4 = 0.90           # Act 4: 90% of treasury per request
+
+[domestikos.offensive]
+# Offensive operations priority and scoring parameters
+# Priority values for requirement types
+priority_base = 80                  # Base priority for offensive operations
+priority_high = 90                  # High priority (enemy targets)
+priority_medium = 70                # Medium priority
+priority_low = 50                   # Low priority
+priority_deferred = 30              # Deferred priority
+
+# Distance-based proximity bonuses (priority boost by jump distance)
+distance_bonus_1_2_jumps = 300.0    # Immediate neighbors (1-2 jumps)
+distance_bonus_3_4_jumps = 100.0    # Close targets (3-4 jumps)
+distance_bonus_5_6_jumps = 50.0     # Moderate distance (5-6 jumps)
+
+# Target weakness thresholds (strength ratio for vulnerable targets)
+weakness_threshold_vulnerable = 0.7  # <70% of average = vulnerable
+weakness_threshold_weak = 0.4        # <40% of average = very weak
+weakness_priority_boost = 75.0       # Priority boost for weak targets
+
+# Strength and value multipliers
+fleet_strength_multiplier = 50.0     # Fleet strength contribution
+estimated_value_multiplier = 2.0     # Estimated colony value multiplier
+vulnerability_multiplier = 50.0      # Vulnerability score multiplier
+
+# Defense estimation
+ground_defense_divisor = 2           # Estimate ground defenses (div 2)
+
+# Intelligence parameters
+max_intel_age_turns = 5              # Max age for intel to be useful
+conservative_ship_estimate = 5       # Ships to assume if no intel
+
+# ROE (Rules of Engagement) priority
+roe_blitz_priority = 9               # Blitz attack priority
+roe_bombardment_priority = 8         # Bombardment priority
+
+[domestikos.defensive]
+# Defensive operations priority and scoring parameters
+# Production-based scoring
+production_weight = 0.5              # Colony production weight in priority
+
+# Threat-based priority boosts
+threat_boost_critical = 500.0        # Critical threat priority boost
+threat_boost_high = 200.0            # High threat priority boost
+threat_boost_moderate = 50.0         # Moderate threat priority boost
+
+# Proximity-based multipliers (threat escalation by distance)
+proximity_multiplier_1_jump = 3.0    # 1 jump away = imminent threat
+proximity_multiplier_2_jumps = 2.0   # 2 jumps away = near threat
+movement_boost_base = 50.0           # Base movement threat boost
+
+# Intel quality penalties
+stale_intel_penalty = 0.9            # 10% penalty for stale intel
+
+# Strategic bonuses
+frontier_bonus_per_distance = 2.0    # Frontier colony bonus per jump
+owned_system_priority_boost = 75.0   # Boost for threatened owned systems
+
+# Tactical parameters
+defend_max_range = 3                 # Max jump range for defense orders
+
+[domestikos.intelligence_ops]
+# Intelligence operations scoring (threat assessment)
+threat_contribution_per_fleet = 0.3  # Threat added per nearby enemy fleet
+threat_level_high_score = 0.75       # High threat level score
+threat_level_moderate_score = 0.5    # Moderate threat level score
+threat_level_low_score = 0.25        # Low threat level score
+
+[domestikos.staging]
+# Staging location priority scoring
+priority_acceptable_close = 50.0     # Acceptable location, close distance
+priority_acceptable_far = 30.0       # Acceptable location, far distance
+priority_owned_system = 200.0        # Strong preference for owned systems
+
 # ZeroTurnCommand Fleet Management (Immediate-execution fleet operations)
 fleet_management_enabled = true     # Enable merge/detach/transfer using ZeroTurnCommand API
                                     # Act 1: Detach ships for exploration coverage
@@ -324,6 +404,63 @@ max_carriers = 6                           # Cap total carriers at 6
 auto_repair_threshold = 100  # Min treasury (PP) to enable auto-repair at colonies
                              # Below this: disable auto-repair to conserve PP
                              # Above this: enable for convenience
+
+[eparch.maintenance]
+# Maintenance shortfall penalty avoidance
+penalty_turns_critical = 3   # Critical response threshold (turns)
+
+[eparch.facilities]
+# Threat penalty multipliers for facility placement (0.0-1.0)
+# Applied to colony production score when selecting facility location
+threat_penalty_critical_shipyard = 0.2    # Critical threat: 80% penalty
+threat_penalty_high_shipyard = 0.5        # High threat: 50% penalty
+threat_penalty_moderate_shipyard = 0.8    # Moderate threat: 20% penalty
+threat_penalty_critical_spaceport = 0.2   # Critical threat: 80% penalty
+threat_penalty_high_spaceport = 0.5       # High threat: 50% penalty
+threat_penalty_moderate_spaceport = 0.8   # Moderate threat: 20% penalty
+threat_penalty_critical_starbase = 0.1    # Critical threat: 90% penalty (expensive)
+threat_penalty_high_starbase = 0.3        # High threat: 70% penalty
+threat_penalty_moderate_starbase = 0.7    # Moderate threat: 30% penalty
+
+# Staleness penalty for blind spots (stale intelligence)
+staleness_penalty_facility = 0.9          # 10% penalty for unknown risk (shipyard/spaceport)
+staleness_penalty_starbase = 0.85         # 15% penalty for expensive starbase
+
+# Target facility ratios by Act (multipliers applied to colony count)
+# Shipyard targets
+shipyard_ratio_act1 = 0.5                 # 1 per 2 colonies (expansion-focused)
+shipyard_ratio_act2 = 1.0                 # 1 per colony (military buildup)
+shipyard_ratio_act3 = 1.5                 # 1.5 per colony (maximum production)
+shipyard_ratio_act4 = 2.5                 # 2.5 per colony (endgame capacity)
+
+# Starbase targets
+starbase_ratio_act1 = 0.0                 # 0 starbases (low priority during expansion)
+starbase_ratio_act2 = 0.5                 # 1 per 2 colonies (economic infrastructure)
+starbase_ratio_act3 = 1.0                 # 1 per colony (economic + defensive)
+starbase_ratio_act4 = 2.0                 # 2 per colony (full infrastructure)
+
+[eparch.terraforming]
+# Terraforming priority calculation parameters
+priority_base = 0.7                       # Base priority (0.0-1.0)
+priority_cost_divisor = 5000.0            # Cost divisor for scaling (0.7 + cost/divisor)
+priority_critical_threshold = 0.75        # Threshold for Critical priority (vs High)
+
+[eparch.economic_pressure]
+# Competitive economic assessment thresholds
+# Used to detect when AI is falling behind economically
+production_ratio_moderate = 0.7           # <70% of average enemy = economic pressure
+production_ratio_severe = 0.5             # <50% of average enemy = severe pressure
+shipyard_advantage_threshold = 3          # Enemy has 3+ more shipyards
+
+# Infrastructure priority boosts when under economic pressure
+boost_moderate_pressure = 1.5             # 50% priority boost at moderate pressure
+boost_severe_pressure = 2.0               # 100% priority boost at severe pressure
+boost_shipyard_disadvantage = 1.3         # 30% boost for shipyard disadvantage
+
+[eparch.reprioritization]
+# Reprioritization logic parameters (extends global reprioritization config)
+max_iterations = 3                        # Maximum reprioritization iterations
+expensive_requirement_ratio = 0.3         # >30% of treasury = expensive
 
 # ==============================================================================
 # INTELLIGENCE INTEGRATION (Phase B+)
@@ -413,6 +550,45 @@ use_combat_lessons = true              # Use CombatEncounterReport for learning 
 use_starbase_surveillance = true       # Use StarbaseSurveillanceReport (Phase D)
 prioritize_high_value_targets = true   # Focus espionage on valuable targets
 
+# Espionage budget allocation by Act (PP per turn)
+espionage_budget_act1 = 5               # Act 1: Minimal espionage (expansion focus)
+espionage_budget_act2 = 10              # Act 2: Moderate espionage (rising tensions)
+espionage_budget_act3 = 10              # Act 3: Maintain intelligence during war
+espionage_budget_act4 = 20              # Act 4: Maximum espionage (endgame intelligence)
+
+# Research budget allocation by Act (PP per turn, for tech field analysis)
+research_budget_act1 = 3                # Act 1: Minimal tech analysis
+research_budget_act2 = 7                # Act 2: Moderate tech intelligence
+research_budget_act3 = 10               # Act 3: Increased tech tracking
+research_budget_act4 = 15               # Act 4: Maximum tech intelligence
+
+# ==============================================================================
+# BASILEUS CONFIGURATION (Decision Mediator)
+# ==============================================================================
+# Personality-driven advisor weight adjustments
+
+[basileus]
+# Personality influence multipliers (applied to base weight of 1.0)
+# Formula: baseWeight = 1.0 ± (personalityTrait - 0.5) * multiplier
+personality_domestikos_multiplier = 0.3     # Aggression influence on fleet advisor
+personality_logothete_multiplier = 0.3      # Tech priority influence on research advisor
+personality_drungarius_multiplier = 0.15    # Aggression influence on intelligence advisor
+personality_protostrator_multiplier = 0.3   # Diplomacy value influence on strategic advisor
+personality_eparch_multiplier = 0.3         # Economic focus influence on economic advisor
+
+# Act-specific adjustments
+act1_research_multiplier = 0.7              # Reduce research priority in Act 1 (expansion focus)
+act2_war_research_multiplier = 0.85         # Reduce research during Act 2 wars
+act2_hostile_research_multiplier = 0.9      # Reduce research with hostile neighbors in Act 2
+act3_war_military_multiplier = 2.0          # Boost military in Act 3 war
+act4_war_military_multiplier = 2.5          # Maximum military focus in Act 4 war
+act3_war_research_multiplier = 0.7          # Reduce research during Act 3 war
+act4_war_research_multiplier = 0.5          # Minimal research in Act 4 war (all-in military)
+act3_war_diplomacy_multiplier = 0.60        # Reduce diplomacy during war (focus on combat)
+act3_peace_diplomacy_multiplier = 0.75      # Moderate diplomacy in Act 3 peace
+act4_peace_research_multiplier = 1.0        # Maintain tech in Act 4 peace
+act3_peace_research_multiplier = 0.8        # Slight reduction in Act 3 peace
+
 # ==============================================================================
 # GAP FIXES (Phase 1-2)
 # ==============================================================================
@@ -478,6 +654,106 @@ shield_multiplier = 2.0             # Shield affordability check (2x cost)
 critical_multiplier = 3.0           # Critical threshold check (3x cost)
 
 # ==============================================================================
+# PROTOSTRATOR CONFIGURATION (Strategic & Diplomatic Advisor)
+# ==============================================================================
+# Diplomatic assessment and recommendation thresholds
+
+[protostrator]
+# Infrastructure value scoring
+infrastructure_value_per_point = 5  # Value per infrastructure point
+
+# Combat analysis parameters
+combat_freshness_turns = 5          # Recent combat = last 5 turns
+
+# Opportunity scoring (0.0-1.0 scale)
+opportunity_score_recent_combat = 0.2   # Enemy recently in combat
+opportunity_score_at_war = 0.3          # Enemy at war with others
+opportunity_score_tensions = 0.1        # Enemy has diplomatic tensions
+opportunity_score_multiple_fronts = 0.2 # Enemy fighting on multiple fronts
+
+# Risk assessment
+baseline_risk = 0.3                 # 30% baseline diplomatic risk
+
+# Urgency scoring (additive)
+urgency_critical_threats = 3        # +3 for critical military threats
+urgency_economic_pressure = 2       # +2 for economic disadvantage
+urgency_diplomatic_isolation = 2    # +2 for diplomatic isolation
+urgency_border_tension = 2          # +2 for border tensions
+urgency_prestige_threat = 3         # +3 for prestige competition
+
+# Diplomatic requirement thresholds by Act
+threshold_multiplier_act1 = 3.0     # Act 1: High threshold (expansion focus)
+threshold_multiplier_act2 = 3.0     # Act 2: High threshold (buildup)
+threshold_multiplier_act3 = 2.5     # Act 3: Lower threshold (war diplomacy)
+threshold_multiplier_act4 = 2.5     # Act 4: Lower threshold (endgame)
+
+# Mutual enemies scoring
+mutual_enemies_base_score = 2.0     # Base score for shared enemies
+
+[protostrator.pact_assessment]
+# Non-Aggression Pact recommendation scoring (0.0-1.0 scale)
+shared_enemies_weight = 0.3         # Weight for shared enemy count
+mutual_enemies_weight = 0.2         # Weight per mutual enemy
+diplomacy_trait_weight = 0.4        # Weight for diplomacy personality value
+trust_weight = 0.2                  # Weight for low violation risk
+recommendation_threshold = 0.5      # Threshold to recommend pact (≥0.5)
+
+[protostrator.stance_recommendations]
+# Stance change recommendation thresholds
+hostile_threshold = 0.5             # Recommend Hostile if score ≥0.5
+enemy_threshold = 0.7               # Recommend Enemy (war) if score ≥0.7
+escalate_threshold = 0.6            # Escalate stance if score ≥0.6
+deescalate_threshold = 0.5          # De-escalate stance if score ≥0.5
+normalize_threshold = 0.5           # Normalize relations if score ≥0.5
+
+# Stance scoring weights (0.0-1.0 scale)
+aggression_hostile_weight = 0.3     # Aggression → Hostile
+aggression_enemy_weight = 0.5       # Aggression → Enemy (war)
+opportunity_hostile_weight = 0.2    # Opportunity → Hostile
+opportunity_enemy_weight = 0.3      # Opportunity → Enemy
+diplomacy_deescalate_weight = 0.4   # Diplomacy → De-escalate
+diplomacy_normalize_weight = 0.4    # Diplomacy → Normalize
+peace_bias_weight = 0.5             # Peace bias → De-escalate
+
+# ==============================================================================
+# LOGOTHETE CONFIGURATION (Research & Technology Advisor)
+# ==============================================================================
+# Research budget allocation across tech fields
+
+[logothete]
+# Technology caps
+max_science_level = 8               # Science Level caps at 8
+
+# Fixed research costs (estimated PP per tech requirement)
+cost_urgent_tech = 200              # Urgent tech research
+cost_counter_tech = 250             # Counter-tech to close gaps
+cost_field_research = 300           # General field research
+
+[logothete.allocation]
+# Research budget allocation ratios by situation
+# Act 1-2: Expansion focus (unbalanced allocation)
+act1_economic_ratio = 0.33          # 33% to Economic Level (EL)
+act1_science_ratio = 0.25           # 25% to Science Level (SL)
+act1_remainder_split = true         # Split remainder across CST/WEP/DEF
+
+# Act 3: Balanced growth
+act3_economic_ratio = 0.40          # 40% to EL
+act3_science_ratio = 0.40           # 40% to SL
+
+# War economy: Minimal research
+war_economic_ratio = 0.20           # 20% to EL (reduced)
+war_science_ratio = 0.20            # 20% to SL (reduced)
+
+# Default allocation (fallback)
+default_economic_ratio = 0.33       # 33% to EL
+default_science_ratio = 0.33        # 33% to SL
+
+[logothete.counter_tech]
+# Counter-technology response parameters
+enemy_advantage_critical = 3        # Enemy 3+ levels ahead = critical
+enemy_advantage_high = 2            # Enemy 2+ levels ahead = high priority
+
+# ==============================================================================
 # GOAP STRATEGIC PLANNING
 # ==============================================================================
 # Goal-Oriented Action Planning for multi-turn strategic decision making
@@ -516,6 +792,57 @@ act1_colonization_threshold = 0.90  # Act 1 ends when ≥90% of systems colonize
 act2_colonization_threshold = 0.98  # Act 2 → Act 3 when ≥98% colonized
 act2_max_turn = 22                  # Act 2 ends at turn 22 even if <98% colonized
 act3_max_turn = 35                  # Act 3 ends at turn 35 (transition to Act 4)
+
+# ==============================================================================
+# ACT-SPECIFIC ADVISOR PRIORITIES
+# ==============================================================================
+# Maps the 4-Act Strategic Progression to advisor weight multipliers
+# Based on docs/ai/architecture/ai_architecture.adoc lines 301-407
+#
+# These multipliers are applied to advisor requirements during Basileus mediation
+# to reflect the strategic priorities of each game phase.
+#
+# Priority Mapping (Architecture → Config):
+#   CRITICAL = 1.5x multiplier
+#   HIGH     = 1.2x multiplier
+#   MEDIUM   = 1.0x multiplier (baseline)
+#   LOW      = 0.6x multiplier
+
+[act_priorities.act1_land_grab]
+# Act 1 Focus: Expansion & Reconnaissance
+# Strategic Goal: Claim as much territory as possible before map fills
+eparch_multiplier = 1.5           # CRITICAL - Drive aggressive colonization
+domestikos_multiplier = 1.2       # HIGH - Build exploration ships, minimal combat
+drungarius_multiplier = 1.0       # MEDIUM - Map nearby systems, find targets
+logothete_multiplier = 1.0        # MEDIUM - CST for facilities, Propulsion for speed
+protostrator_multiplier = 0.6     # LOW - Remain neutral, avoid early conflicts
+
+[act_priorities.act2_rising_tensions]
+# Act 2 Focus: Consolidation & Military Buildup
+# Strategic Goal: Build defensive position and prepare for conflict
+domestikos_multiplier = 1.5       # CRITICAL - Construct credible combat fleet
+eparch_multiplier = 1.2           # HIGH - Build starbases, invest in industry
+logothete_multiplier = 1.2        # HIGH - Military tech (Weapons, Shields, Armor)
+drungarius_multiplier = 1.0       # MEDIUM - Shift to espionage, assess threats
+protostrator_multiplier = 1.0     # MEDIUM - Form defensive pacts, create blocs
+
+[act_priorities.act3_total_war]
+# Act 3 Focus: Conquest
+# Strategic Goal: Eliminate rivals through decisive military action
+domestikos_multiplier = 1.5       # CRITICAL - Execute large-scale invasions
+drungarius_multiplier = 1.2       # HIGH - Tactical intel, sabotage enemy production
+protostrator_multiplier = 1.2     # HIGH - Manage war alliances, break coalitions
+eparch_multiplier = 1.0           # MEDIUM - War economy, replace combat losses
+logothete_multiplier = 1.0        # MEDIUM - Advanced combat tech for advantage
+
+[act_priorities.act4_endgame]
+# Act 4 Focus: Securing Victory
+# Strategic Goal: Finish off remaining rivals or defend leading position
+domestikos_multiplier = 1.5       # CRITICAL - Eliminate last rivals, defend lead
+eparch_multiplier = 1.2           # HIGH - Maximize prestige generation
+protostrator_multiplier = 1.2     # HIGH - Isolate leader or prevent coalition
+logothete_multiplier = 1.0        # MEDIUM - Game-ending tech for prestige/power
+drungarius_multiplier = 1.0       # MEDIUM - Counter last-ditch espionage
 
 # ==============================================================================
 # COLONIZATION PARAMETERS
