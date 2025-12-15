@@ -371,7 +371,7 @@ proc generateEconomicRequirements*(
   for order in terraformOrders:
     # Terraforming is high priority (permanent population capacity increase)
     # Priority scaled by cost (expensive upgrades need higher priority)
-    # Configuration from config/rba.toml [eparch.terraforming]
+    # Configuration from config/rba.toml [eparch_terraforming]
     let priorityScore = globalRBAConfig.eparch_terraforming.priority_base +
                         (float(order.ppCost) / globalRBAConfig.eparch_terraforming.priority_cost_divisor)
     let priorityEnum = if priorityScore >= globalRBAConfig.eparch_terraforming.priority_critical_threshold:

@@ -133,11 +133,6 @@ type
     ## Eparch (economic administration) parameters
     ## Colony management, auto-repair thresholds, tax rates
     auto_repair_threshold*: int  # Min treasury (PP) to enable auto-repair
-    maintenance*: EparchMaintenanceConfig
-    facilities*: EparchFacilitiesConfig
-    terraforming*: EparchTerraformingConfig
-    economic_pressure*: EparchEconomicPressureConfig
-    reprioritization*: EparchReprioritizationConfig
 
 # ==============================================================================
 # Orders Parameters
@@ -592,9 +587,6 @@ type
     research_budget_act2*: int
     research_budget_act3*: int
     research_budget_act4*: int
-    # Sub-configurations
-    operations*: DrungariusOperationsConfig
-    requirements*: DrungariusRequirementsConfig
 
 # ==============================================================================
 # Gap Fix Configuration (Phase 1-2)
@@ -767,19 +759,12 @@ type
     fighter_doctrine*: float
     advanced_carrier_ops*: float
 
-  TechAllocationsConfig* = object
-    ## Personality-driven tech field allocation strategies
-    # Personality thresholds for strategy selection
+  LogotheteTechAllocationsThresholds* = object
+    ## Personality-driven tech field allocation strategy thresholds
     tech_priority_threshold*: float
     economic_focus_threshold*: float
     aggression_threshold*: float
     aggression_peaceful*: float
-    # Strategy allocations
-    tech_priority_aggressive*: TechFieldAllocation
-    tech_priority_peaceful*: TechFieldAllocation
-    economic_focus*: TechFieldAllocation
-    war_economy*: TechFieldAllocation
-    balanced_default*: TechFieldAllocation
 
   LogotheteAllocationConfig* = object
     ## Research budget allocation ratios
@@ -804,9 +789,6 @@ type
     cost_urgent_tech*: int
     cost_counter_tech*: int
     cost_field_research*: int
-    allocation*: LogotheteAllocationConfig
-    counter_tech*: LogotheteCounterTechConfig
-    tech_allocations*: TechAllocationsConfig
 
 # ==============================================================================
 # Root Configuration
@@ -870,6 +852,11 @@ type
     domestikos_unit_priorities_strategic_values*: ShipClassScores
     # Eparch module (economic administration)
     eparch*: EparchConfig
+    eparch_maintenance*: EparchMaintenanceConfig
+    eparch_facilities*: EparchFacilitiesConfig
+    eparch_terraforming*: EparchTerraformingConfig
+    eparch_economic_pressure*: EparchEconomicPressureConfig
+    eparch_reprioritization*: EparchReprioritizationConfig
     # Intelligence integration (Phase B+)
     intelligence*: IntelligenceConfig
     # Intelligence sub-configurations (Phase D+)
@@ -881,6 +868,8 @@ type
     intelligence_patrol_detection*: PatrolDetectionConfig
     # Drungarius module (intelligence coordinator)
     drungarius*: DrungariusConfig
+    drungarius_operations*: DrungariusOperationsConfig
+    drungarius_requirements*: DrungariusRequirementsConfig
     # Gap Fix modules (Phase 1-2)
     feedback_system*: FeedbackSystemConfig
     reprioritization*: ReprioritizationConfig
@@ -892,6 +881,14 @@ type
     basileus*: BasileusConfig
     protostrator*: ProtostratorConfig
     logothete*: LogotheteConfig
+    logothete_allocation*: LogotheteAllocationConfig
+    logothete_counter_tech*: LogotheteCounterTechConfig
+    logothete_tech_allocations_thresholds*: LogotheteTechAllocationsThresholds
+    logothete_tech_allocations_tech_priority_aggressive*: TechFieldAllocation
+    logothete_tech_allocations_tech_priority_peaceful*: TechFieldAllocation
+    logothete_tech_allocations_economic_focus*: TechFieldAllocation
+    logothete_tech_allocations_war_economy*: TechFieldAllocation
+    logothete_tech_allocations_balanced_default*: TechFieldAllocation
     goap*: GOAPConfig # New GOAP configuration section
 
 # ==============================================================================
@@ -1008,47 +1005,47 @@ proc validateRBAConfig*(config: RBAConfig) =
 
   # Validate Eparch configuration
   validatePositive(config.eparch.auto_repair_threshold, "eparch.auto_repair_threshold")
-  validatePositive(config.eparch.maintenance.penalty_turns_critical, "eparch.maintenance.penalty_turns_critical")
+  validatePositive(config.eparch_maintenance.penalty_turns_critical, "eparch_maintenance.penalty_turns_critical")
 
   # Validate facility threat penalties are ratios
-  validateRatio(config.eparch.facilities.threat_penalty_critical_shipyard, "eparch.facilities.threat_penalty_critical_shipyard")
-  validateRatio(config.eparch.facilities.threat_penalty_high_shipyard, "eparch.facilities.threat_penalty_high_shipyard")
-  validateRatio(config.eparch.facilities.threat_penalty_moderate_shipyard, "eparch.facilities.threat_penalty_moderate_shipyard")
-  validateRatio(config.eparch.facilities.threat_penalty_critical_spaceport, "eparch.facilities.threat_penalty_critical_spaceport")
-  validateRatio(config.eparch.facilities.threat_penalty_high_spaceport, "eparch.facilities.threat_penalty_high_spaceport")
-  validateRatio(config.eparch.facilities.threat_penalty_moderate_spaceport, "eparch.facilities.threat_penalty_moderate_spaceport")
-  validateRatio(config.eparch.facilities.threat_penalty_critical_starbase, "eparch.facilities.threat_penalty_critical_starbase")
-  validateRatio(config.eparch.facilities.threat_penalty_high_starbase, "eparch.facilities.threat_penalty_high_starbase")
-  validateRatio(config.eparch.facilities.threat_penalty_moderate_starbase, "eparch.facilities.threat_penalty_moderate_starbase")
-  validateRatio(config.eparch.facilities.staleness_penalty_facility, "eparch.facilities.staleness_penalty_facility")
-  validateRatio(config.eparch.facilities.staleness_penalty_starbase, "eparch.facilities.staleness_penalty_starbase")
+  validateRatio(config.eparch_facilities.threat_penalty_critical_shipyard, "eparch_facilities.threat_penalty_critical_shipyard")
+  validateRatio(config.eparch_facilities.threat_penalty_high_shipyard, "eparch_facilities.threat_penalty_high_shipyard")
+  validateRatio(config.eparch_facilities.threat_penalty_moderate_shipyard, "eparch_facilities.threat_penalty_moderate_shipyard")
+  validateRatio(config.eparch_facilities.threat_penalty_critical_spaceport, "eparch_facilities.threat_penalty_critical_spaceport")
+  validateRatio(config.eparch_facilities.threat_penalty_high_spaceport, "eparch_facilities.threat_penalty_high_spaceport")
+  validateRatio(config.eparch_facilities.threat_penalty_moderate_spaceport, "eparch_facilities.threat_penalty_moderate_spaceport")
+  validateRatio(config.eparch_facilities.threat_penalty_critical_starbase, "eparch_facilities.threat_penalty_critical_starbase")
+  validateRatio(config.eparch_facilities.threat_penalty_high_starbase, "eparch_facilities.threat_penalty_high_starbase")
+  validateRatio(config.eparch_facilities.threat_penalty_moderate_starbase, "eparch_facilities.threat_penalty_moderate_starbase")
+  validateRatio(config.eparch_facilities.staleness_penalty_facility, "eparch_facilities.staleness_penalty_facility")
+  validateRatio(config.eparch_facilities.staleness_penalty_starbase, "eparch_facilities.staleness_penalty_starbase")
 
   # Validate facility ratios are non-negative
-  validateNonNegative(config.eparch.facilities.shipyard_ratio_act1, "eparch.facilities.shipyard_ratio_act1")
-  validateNonNegative(config.eparch.facilities.shipyard_ratio_act2, "eparch.facilities.shipyard_ratio_act2")
-  validateNonNegative(config.eparch.facilities.shipyard_ratio_act3, "eparch.facilities.shipyard_ratio_act3")
-  validateNonNegative(config.eparch.facilities.shipyard_ratio_act4, "eparch.facilities.shipyard_ratio_act4")
-  validateNonNegative(config.eparch.facilities.starbase_ratio_act1, "eparch.facilities.starbase_ratio_act1")
-  validateNonNegative(config.eparch.facilities.starbase_ratio_act2, "eparch.facilities.starbase_ratio_act2")
-  validateNonNegative(config.eparch.facilities.starbase_ratio_act3, "eparch.facilities.starbase_ratio_act3")
-  validateNonNegative(config.eparch.facilities.starbase_ratio_act4, "eparch.facilities.starbase_ratio_act4")
+  validateNonNegative(config.eparch_facilities.shipyard_ratio_act1, "eparch_facilities.shipyard_ratio_act1")
+  validateNonNegative(config.eparch_facilities.shipyard_ratio_act2, "eparch_facilities.shipyard_ratio_act2")
+  validateNonNegative(config.eparch_facilities.shipyard_ratio_act3, "eparch_facilities.shipyard_ratio_act3")
+  validateNonNegative(config.eparch_facilities.shipyard_ratio_act4, "eparch_facilities.shipyard_ratio_act4")
+  validateNonNegative(config.eparch_facilities.starbase_ratio_act1, "eparch_facilities.starbase_ratio_act1")
+  validateNonNegative(config.eparch_facilities.starbase_ratio_act2, "eparch_facilities.starbase_ratio_act2")
+  validateNonNegative(config.eparch_facilities.starbase_ratio_act3, "eparch_facilities.starbase_ratio_act3")
+  validateNonNegative(config.eparch_facilities.starbase_ratio_act4, "eparch_facilities.starbase_ratio_act4")
 
   # Validate terraforming parameters
-  validateRatio(config.eparch.terraforming.priority_base, "eparch.terraforming.priority_base")
-  validatePositive(config.eparch.terraforming.priority_cost_divisor, "eparch.terraforming.priority_cost_divisor")
-  validateRatio(config.eparch.terraforming.priority_critical_threshold, "eparch.terraforming.priority_critical_threshold")
+  validateRatio(config.eparch_terraforming.priority_base, "eparch_terraforming.priority_base")
+  validatePositive(config.eparch_terraforming.priority_cost_divisor, "eparch_terraforming.priority_cost_divisor")
+  validateRatio(config.eparch_terraforming.priority_critical_threshold, "eparch_terraforming.priority_critical_threshold")
 
   # Validate economic pressure parameters
-  validateRatio(config.eparch.economic_pressure.production_ratio_moderate, "eparch.economic_pressure.production_ratio_moderate")
-  validateRatio(config.eparch.economic_pressure.production_ratio_severe, "eparch.economic_pressure.production_ratio_severe")
-  validatePositive(config.eparch.economic_pressure.shipyard_advantage_threshold, "eparch.economic_pressure.shipyard_advantage_threshold")
-  validateNonNegative(config.eparch.economic_pressure.boost_moderate_pressure, "eparch.economic_pressure.boost_moderate_pressure")
-  validateNonNegative(config.eparch.economic_pressure.boost_severe_pressure, "eparch.economic_pressure.boost_severe_pressure")
-  validateNonNegative(config.eparch.economic_pressure.boost_shipyard_disadvantage, "eparch.economic_pressure.boost_shipyard_disadvantage")
+  validateRatio(config.eparch_economic_pressure.production_ratio_moderate, "eparch_economic_pressure.production_ratio_moderate")
+  validateRatio(config.eparch_economic_pressure.production_ratio_severe, "eparch_economic_pressure.production_ratio_severe")
+  validatePositive(config.eparch_economic_pressure.shipyard_advantage_threshold, "eparch_economic_pressure.shipyard_advantage_threshold")
+  validateNonNegative(config.eparch_economic_pressure.boost_moderate_pressure, "eparch_economic_pressure.boost_moderate_pressure")
+  validateNonNegative(config.eparch_economic_pressure.boost_severe_pressure, "eparch_economic_pressure.boost_severe_pressure")
+  validateNonNegative(config.eparch_economic_pressure.boost_shipyard_disadvantage, "eparch_economic_pressure.boost_shipyard_disadvantage")
 
   # Validate reprioritization parameters
-  validatePositive(config.eparch.reprioritization.max_iterations, "eparch.reprioritization.max_iterations")
-  validateRatio(config.eparch.reprioritization.expensive_requirement_ratio, "eparch.reprioritization.expensive_requirement_ratio")
+  validatePositive(config.eparch_reprioritization.max_iterations, "eparch_reprioritization.max_iterations")
+  validateRatio(config.eparch_reprioritization.expensive_requirement_ratio, "eparch_reprioritization.expensive_requirement_ratio")
 
   # Validate Domestikos affordability thresholds
   validateRatio(config.domestikos.affordability_act1, "domestikos.affordability_act1")
@@ -1109,63 +1106,63 @@ proc validateRBAConfig*(config: RBAConfig) =
   # Validate Drungarius requirements config
   let req = config.drungarius.requirements
   validatePositive(req.tech_value_divisor, "drungarius.requirements.tech_value_divisor")
-  validatePositive(req.economic_value_divisor, "drungarius.requirements.economic_value_divisor")
-  validatePositive(req.military_threat_divisor, "drungarius.requirements.military_threat_divisor")
-  validateNonNegative(req.ci_weakness_unknown, "drungarius.requirements.ci_weakness_unknown")
-  validateNonNegative(req.ci_weakness_low, "drungarius.requirements.ci_weakness_low")
-  validateNonNegative(req.ci_weakness_moderate, "drungarius.requirements.ci_weakness_moderate")
-  validateNonNegative(req.ci_weakness_high, "drungarius.requirements.ci_weakness_high")
-  validateNonNegative(req.ci_weakness_critical, "drungarius.requirements.ci_weakness_critical")
-  validateNonNegative(req.ci_weakness_default, "drungarius.requirements.ci_weakness_default")
-  validateNonNegative(req.diplomatic_weight_enemy, "drungarius.requirements.diplomatic_weight_enemy")
-  validateNonNegative(req.diplomatic_weight_hostile, "drungarius.requirements.diplomatic_weight_hostile")
-  validateNonNegative(req.diplomatic_weight_neutral, "drungarius.requirements.diplomatic_weight_neutral")
-  validateNonNegative(req.score_weight_tech, "drungarius.requirements.score_weight_tech")
-  validateNonNegative(req.score_weight_economic, "drungarius.requirements.score_weight_economic")
-  validateNonNegative(req.score_weight_military, "drungarius.requirements.score_weight_military")
-  validateNonNegative(req.score_weight_ci_weakness, "drungarius.requirements.score_weight_ci_weakness")
-  validateNonNegative(req.score_weight_diplomatic, "drungarius.requirements.score_weight_diplomatic")
-  validateNonNegative(req.sabotage_shipyard_weight, "drungarius.requirements.sabotage_shipyard_weight")
-  validateNonNegative(req.sabotage_project_weight, "drungarius.requirements.sabotage_project_weight")
-  validateNonNegative(req.sabotage_activity_very_high, "drungarius.requirements.sabotage_activity_very_high")
-  validateNonNegative(req.sabotage_activity_high, "drungarius.requirements.sabotage_activity_high")
-  validateNonNegative(req.sabotage_activity_moderate, "drungarius.requirements.sabotage_activity_moderate")
-  validateNonNegative(req.sabotage_activity_low, "drungarius.requirements.sabotage_activity_low")
-  validateNonNegative(req.sabotage_infrastructure_unit_value, "drungarius.requirements.sabotage_infrastructure_unit_value")
-  validateNonNegative(req.sabotage_starbase_value, "drungarius.requirements.sabotage_starbase_value")
-  validateNonNegative(req.sabotage_shipyard_concentration, "drungarius.requirements.sabotage_shipyard_concentration")
-  validateNonNegative(req.ci_detection_heavy_activity, "drungarius.requirements.ci_detection_heavy_activity")
-  validateNonNegative(req.ci_detection_moderate_activity, "drungarius.requirements.ci_detection_moderate_activity")
-  validateNonNegative(req.ci_total_threat_threshold, "drungarius.requirements.ci_total_threat_threshold")
-  validatePositive(req.ci_emergency_cip_boost_max, "drungarius.requirements.ci_emergency_cip_boost_max")
-  validatePositive(req.ci_pp_per_point, "drungarius.requirements.ci_pp_per_point")
-  validatePositive(req.ci_significant_activity, "drungarius.requirements.ci_significant_activity")
-  validateNonNegative(req.ebp_critical_threshold, "drungarius.requirements.ebp_critical_threshold")
-  validatePositive(req.ebp_high_gap_threshold, "drungarius.requirements.ebp_high_gap_threshold")
-  validatePositive(req.cip_high_gap_threshold, "drungarius.requirements.cip_high_gap_threshold")
-  validatePositive(req.cip_high_priority_threshold, "drungarius.requirements.cip_high_priority_threshold")
-  validatePositive(req.cip_risk_averse_threshold, "drungarius.requirements.cip_risk_averse_threshold")
-  validateNonNegative(req.act3_war_ebp_bonus, "drungarius.requirements.act3_war_ebp_bonus")
-  validateNonNegative(req.act3_war_cip_bonus, "drungarius.requirements.act3_war_cip_bonus")
-  validateNonNegative(req.req_ebp_sabotage_bottleneck, "drungarius.requirements.req_ebp_sabotage_bottleneck")
-  validateNonNegative(req.req_ebp_secondary_sabotage, "drungarius.requirements.req_ebp_secondary_sabotage")
-  validateNonNegative(req.req_ebp_operations_vs_enemies, "drungarius.requirements.req_ebp_operations_vs_enemies")
-  validateNonNegative(req.req_ebp_disinformation, "drungarius.requirements.req_ebp_disinformation")
-  validateNonNegative(req.req_ebp_economic_manipulation, "drungarius.requirements.req_ebp_economic_manipulation")
-  validateNonNegative(req.req_ebp_cyber_attack, "drungarius.requirements.req_ebp_cyber_attack")
-  validateNonNegative(req.req_ebp_assassination, "drungarius.requirements.req_ebp_assassination")
-  validatePositive(req.cost_sabotage, "drungarius.requirements.cost_sabotage")
-  validatePositive(req.cost_intelligence_theft, "drungarius.requirements.cost_intelligence_theft")
-  validatePositive(req.cost_disinformation, "drungarius.requirements.cost_disinformation")
-  validatePositive(req.cost_economic_manipulation, "drungarius.requirements.cost_economic_manipulation")
-  validatePositive(req.cost_cyber_attack, "drungarius.requirements.cost_cyber_attack")
-  validatePositive(req.cost_assassination, "drungarius.requirements.cost_assassination")
-  validatePositive(req.cost_counter_intel_sweep, "drungarius.requirements.cost_counter_intel_sweep")
-  validateRatio(req.aggression_secondary_sabotage, "drungarius.requirements.aggression_secondary_sabotage")
-  validateRatio(req.aggression_disinformation, "drungarius.requirements.aggression_disinformation")
-  validateRatio(req.aggression_assassination, "drungarius.requirements.aggression_assassination")
-  validateRatio(req.risk_tolerance_ci_maintenance, "drungarius.requirements.risk_tolerance_ci_maintenance")
-  validateRatio(req.prestige_penalty_threshold_ratio, "drungarius.requirements.prestige_penalty_threshold_ratio")
+  validatePositive(req.economic_value_divisor, "drungarius_requirements.economic_value_divisor")
+  validatePositive(req.military_threat_divisor, "drungarius_requirements.military_threat_divisor")
+  validateNonNegative(req.ci_weakness_unknown, "drungarius_requirements.ci_weakness_unknown")
+  validateNonNegative(req.ci_weakness_low, "drungarius_requirements.ci_weakness_low")
+  validateNonNegative(req.ci_weakness_moderate, "drungarius_requirements.ci_weakness_moderate")
+  validateNonNegative(req.ci_weakness_high, "drungarius_requirements.ci_weakness_high")
+  validateNonNegative(req.ci_weakness_critical, "drungarius_requirements.ci_weakness_critical")
+  validateNonNegative(req.ci_weakness_default, "drungarius_requirements.ci_weakness_default")
+  validateNonNegative(req.diplomatic_weight_enemy, "drungarius_requirements.diplomatic_weight_enemy")
+  validateNonNegative(req.diplomatic_weight_hostile, "drungarius_requirements.diplomatic_weight_hostile")
+  validateNonNegative(req.diplomatic_weight_neutral, "drungarius_requirements.diplomatic_weight_neutral")
+  validateNonNegative(req.score_weight_tech, "drungarius_requirements.score_weight_tech")
+  validateNonNegative(req.score_weight_economic, "drungarius_requirements.score_weight_economic")
+  validateNonNegative(req.score_weight_military, "drungarius_requirements.score_weight_military")
+  validateNonNegative(req.score_weight_ci_weakness, "drungarius_requirements.score_weight_ci_weakness")
+  validateNonNegative(req.score_weight_diplomatic, "drungarius_requirements.score_weight_diplomatic")
+  validateNonNegative(req.sabotage_shipyard_weight, "drungarius_requirements.sabotage_shipyard_weight")
+  validateNonNegative(req.sabotage_project_weight, "drungarius_requirements.sabotage_project_weight")
+  validateNonNegative(req.sabotage_activity_very_high, "drungarius_requirements.sabotage_activity_very_high")
+  validateNonNegative(req.sabotage_activity_high, "drungarius_requirements.sabotage_activity_high")
+  validateNonNegative(req.sabotage_activity_moderate, "drungarius_requirements.sabotage_activity_moderate")
+  validateNonNegative(req.sabotage_activity_low, "drungarius_requirements.sabotage_activity_low")
+  validateNonNegative(req.sabotage_infrastructure_unit_value, "drungarius_requirements.sabotage_infrastructure_unit_value")
+  validateNonNegative(req.sabotage_starbase_value, "drungarius_requirements.sabotage_starbase_value")
+  validateNonNegative(req.sabotage_shipyard_concentration, "drungarius_requirements.sabotage_shipyard_concentration")
+  validateNonNegative(req.ci_detection_heavy_activity, "drungarius_requirements.ci_detection_heavy_activity")
+  validateNonNegative(req.ci_detection_moderate_activity, "drungarius_requirements.ci_detection_moderate_activity")
+  validateNonNegative(req.ci_total_threat_threshold, "drungarius_requirements.ci_total_threat_threshold")
+  validatePositive(req.ci_emergency_cip_boost_max, "drungarius_requirements.ci_emergency_cip_boost_max")
+  validatePositive(req.ci_pp_per_point, "drungarius_requirements.ci_pp_per_point")
+  validatePositive(req.ci_significant_activity, "drungarius_requirements.ci_significant_activity")
+  validateNonNegative(req.ebp_critical_threshold, "drungarius_requirements.ebp_critical_threshold")
+  validatePositive(req.ebp_high_gap_threshold, "drungarius_requirements.ebp_high_gap_threshold")
+  validatePositive(req.cip_high_gap_threshold, "drungarius_requirements.cip_high_gap_threshold")
+  validatePositive(req.cip_high_priority_threshold, "drungarius_requirements.cip_high_priority_threshold")
+  validatePositive(req.cip_risk_averse_threshold, "drungarius_requirements.cip_risk_averse_threshold")
+  validateNonNegative(req.act3_war_ebp_bonus, "drungarius_requirements.act3_war_ebp_bonus")
+  validateNonNegative(req.act3_war_cip_bonus, "drungarius_requirements.act3_war_cip_bonus")
+  validateNonNegative(req.req_ebp_sabotage_bottleneck, "drungarius_requirements.req_ebp_sabotage_bottleneck")
+  validateNonNegative(req.req_ebp_secondary_sabotage, "drungarius_requirements.req_ebp_secondary_sabotage")
+  validateNonNegative(req.req_ebp_operations_vs_enemies, "drungarius_requirements.req_ebp_operations_vs_enemies")
+  validateNonNegative(req.req_ebp_disinformation, "drungarius_requirements.req_ebp_disinformation")
+  validateNonNegative(req.req_ebp_economic_manipulation, "drungarius_requirements.req_ebp_economic_manipulation")
+  validateNonNegative(req.req_ebp_cyber_attack, "drungarius_requirements.req_ebp_cyber_attack")
+  validateNonNegative(req.req_ebp_assassination, "drungarius_requirements.req_ebp_assassination")
+  validatePositive(req.cost_sabotage, "drungarius_requirements.cost_sabotage")
+  validatePositive(req.cost_intelligence_theft, "drungarius_requirements.cost_intelligence_theft")
+  validatePositive(req.cost_disinformation, "drungarius_requirements.cost_disinformation")
+  validatePositive(req.cost_economic_manipulation, "drungarius_requirements.cost_economic_manipulation")
+  validatePositive(req.cost_cyber_attack, "drungarius_requirements.cost_cyber_attack")
+  validatePositive(req.cost_assassination, "drungarius_requirements.cost_assassination")
+  validatePositive(req.cost_counter_intel_sweep, "drungarius_requirements.cost_counter_intel_sweep")
+  validateRatio(req.aggression_secondary_sabotage, "drungarius_requirements.aggression_secondary_sabotage")
+  validateRatio(req.aggression_disinformation, "drungarius_requirements.aggression_disinformation")
+  validateRatio(req.aggression_assassination, "drungarius_requirements.aggression_assassination")
+  validateRatio(req.risk_tolerance_ci_maintenance, "drungarius_requirements.risk_tolerance_ci_maintenance")
+  validateRatio(req.prestige_penalty_threshold_ratio, "drungarius_requirements.prestige_penalty_threshold_ratio")
 
   # Validate Basileus personality multipliers
   validateNonNegative(config.basileus.personality_domestikos_multiplier, "basileus.personality_domestikos_multiplier")
@@ -1246,9 +1243,9 @@ proc validateRBAConfig*(config: RBAConfig) =
   # Validate Logothete
   validatePositive(config.logothete.max_science_level, "logothete.max_science_level")
   validatePositive(config.logothete.cost_urgent_tech, "logothete.cost_urgent_tech")
-  validateRatio(config.logothete.allocation.act1_economic_ratio, "logothete.allocation.act1_economic_ratio")
-  validateRatio(config.logothete.allocation.act1_science_ratio, "logothete.allocation.act1_science_ratio")
-  validatePositive(config.logothete.counter_tech.enemy_advantage_critical, "logothete.counter_tech.enemy_advantage_critical")
+  validateRatio(config.logothete_allocation.act1_economic_ratio, "logothete_allocation.act1_economic_ratio")
+  validateRatio(config.logothete_allocation.act1_science_ratio, "logothete_allocation.act1_science_ratio")
+  validatePositive(config.logothete_counter_tech.enemy_advantage_critical, "logothete_counter_tech.enemy_advantage_critical")
 
   # Validate Logothete tech allocations
   proc validateTechFieldAllocation(alloc: TechFieldAllocation, prefix: string) =
@@ -1263,16 +1260,16 @@ proc validateRBAConfig*(config: RBAConfig) =
     validateRatio(alloc.fighter_doctrine, &"{prefix}.fighter_doctrine")
     validateRatio(alloc.advanced_carrier_ops, &"{prefix}.advanced_carrier_ops")
 
-  let ta = config.logothete.tech_allocations
-  validateRatio(ta.tech_priority_threshold, "logothete.tech_allocations.tech_priority_threshold")
-  validateRatio(ta.economic_focus_threshold, "logothete.tech_allocations.economic_focus_threshold")
-  validateRatio(ta.aggression_threshold, "logothete.tech_allocations.aggression_threshold")
-  validateRatio(ta.aggression_peaceful, "logothete.tech_allocations.aggression_peaceful")
-  validateTechFieldAllocation(ta.tech_priority_aggressive, "logothete.tech_allocations.tech_priority_aggressive")
-  validateTechFieldAllocation(ta.tech_priority_peaceful, "logothete.tech_allocations.tech_priority_peaceful")
-  validateTechFieldAllocation(ta.economic_focus, "logothete.tech_allocations.economic_focus")
-  validateTechFieldAllocation(ta.war_economy, "logothete.tech_allocations.war_economy")
-  validateTechFieldAllocation(ta.balanced_default, "logothete.tech_allocations.balanced_default")
+  let ta_thresholds = config.logothete_tech_allocations_thresholds
+  validateRatio(ta_thresholds.tech_priority_threshold, "logothete_tech_allocations_thresholds.tech_priority_threshold")
+  validateRatio(ta_thresholds.economic_focus_threshold, "logothete_tech_allocations_thresholds.economic_focus_threshold")
+  validateRatio(ta_thresholds.aggression_threshold, "logothete_tech_allocations_thresholds.aggression_threshold")
+  validateRatio(ta_thresholds.aggression_peaceful, "logothete_tech_allocations_thresholds.aggression_peaceful")
+  validateTechFieldAllocation(config.logothete_tech_allocations_tech_priority_aggressive, "logothete_tech_allocations_tech_priority_aggressive")
+  validateTechFieldAllocation(config.logothete_tech_allocations_tech_priority_peaceful, "logothete_tech_allocations_tech_priority_peaceful")
+  validateTechFieldAllocation(config.logothete_tech_allocations_economic_focus, "logothete_tech_allocations_economic_focus")
+  validateTechFieldAllocation(config.logothete_tech_allocations_war_economy, "logothete_tech_allocations_war_economy")
+  validateTechFieldAllocation(config.logothete_tech_allocations_balanced_default, "logothete_tech_allocations_balanced_default")
 
   # Validate Act-Specific Advisor Priorities
   # All multipliers should be positive (0.6-1.5 typical range)
