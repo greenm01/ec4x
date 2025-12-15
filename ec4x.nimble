@@ -15,6 +15,7 @@ requires "cligen >= 1.7.0"
 requires "toml_serialization >= 0.2.0"
 requires "datamancer >= 0.4.0"
 requires "terminaltables >= 0.1.0"
+requires "db_connector"
 
 # ==============================================================================
 # BUILD TASKS
