@@ -317,7 +317,7 @@ max_fighters = 20                          # Cap total fighters at 20
 fighters_per_carrier = 4                   # 1 carrier per 4 fighters
 max_carriers = 6                           # Cap total carriers at 6
 
-[domestikos.offensive]
+[domestikos_offensive]
 # Offensive operations priority and scoring parameters
 # Priority values for requirement types
 priority_base = 80                  # Base priority for offensive operations
@@ -352,7 +352,7 @@ conservative_ship_estimate = 5       # Ships to assume if no intel
 roe_blitz_priority = 9               # Blitz attack priority
 roe_bombardment_priority = 8         # Bombardment priority
 
-[domestikos.defensive]
+[domestikos_defensive]
 # Defensive operations priority and scoring parameters
 # Production-based scoring
 production_weight = 0.5              # Colony production weight in priority
@@ -377,14 +377,14 @@ owned_system_priority_boost = 75.0   # Boost for threatened owned systems
 # Tactical parameters
 defend_max_range = 3                 # Max jump range for defense orders
 
-[domestikos.intelligence_ops]
+[domestikos_intelligence_ops]
 # Intelligence operations scoring (threat assessment)
 threat_contribution_per_fleet = 0.3  # Threat added per nearby enemy fleet
 threat_level_high_score = 0.75       # High threat level score
 threat_level_moderate_score = 0.5    # Moderate threat level score
 threat_level_low_score = 0.25        # Low threat level score
 
-[domestikos.staging]
+[domestikos_staging]
 # Staging location priority scoring
 priority_acceptable_close = 50.0     # Acceptable location, close distance
 priority_acceptable_far = 30.0       # Acceptable location, far distance
@@ -403,7 +403,7 @@ priority_owned_system = 200.0        # Strong preference for owned systems
 #
 # Total max score: 7.0 points
 
-[domestikos.unit_priorities.act1_land_grab]
+[domestikos_unit_priorities_act1_land_grab]
 # Act 1: Land Grab - Expansion and colony defense
 # Priority: ETACs, Escorts, Light ships
 etac = 4.0
@@ -425,7 +425,7 @@ super_carrier = 0.5
 planet_breaker = 0.5
 troop_transport = 0.0  # HARD GATE - Act 2+ only
 
-[domestikos.unit_priorities.act2_rising_tensions]
+[domestikos_unit_priorities_act2_rising_tensions]
 # Act 2: Rising Tensions - Military buildup with medium capitals
 # Priority: Cruisers, Battlecruisers, Carriers
 cruiser = 4.0
@@ -447,7 +447,7 @@ dreadnought = 1.0
 super_dreadnought = 1.0
 planet_breaker = 1.0
 
-[domestikos.unit_priorities.act3_total_war]
+[domestikos_unit_priorities_act3_total_war]
 # Act 3: Total War - Heavy capitals and decisive battles
 # Priority: Battleships, Dreadnoughts, Super Carriers
 battleship = 4.0
@@ -469,7 +469,7 @@ corvette = 1.0
 scout = 1.0
 etac = 0.5
 
-[domestikos.unit_priorities.act4_endgame]
+[domestikos_unit_priorities_act4_endgame]
 # Act 4: Endgame - Ultimate capitals and siege warfare
 # Priority: Super Dreadnoughts, Planet Breakers
 super_dreadnought = 4.0
@@ -491,7 +491,7 @@ corvette = 0.5
 etac = 0.5
 scout = 0.5
 
-[domestikos.unit_priorities.strategic_values]
+[domestikos_unit_priorities_strategic_values]
 # Strategic value scoring (0.0 - 2.0 points)
 # Independent of Act - represents inherent combat value
 # Capital Ships (2.0 points) - Ultimate firepower

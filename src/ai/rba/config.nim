@@ -331,13 +331,6 @@ type
     affordability_act3*: float
     affordability_act4*: float
 
-    # Sub-configurations
-    offensive*: DomestikosOffensiveConfig
-    defensive*: DomestikosDefensiveConfig
-    intelligence_ops*: DomestikosIntelligenceOpsConfig
-    staging*: DomestikosStagingConfig
-    unit_priorities*: UnitPrioritiesConfig
-
     # ZeroTurnCommand Fleet Management (merge/detach/transfer)
     fleet_management_enabled*: bool
 
@@ -864,6 +857,17 @@ type
     threat_assessment*: ThreatAssessmentConfig
     # Domestikos module (fleet rebalancing)
     domestikos*: DomestikosConfig
+    # Domestikos sub-configurations (flattened for toml_serialization)
+    domestikos_offensive*: DomestikosOffensiveConfig
+    domestikos_defensive*: DomestikosDefensiveConfig
+    domestikos_intelligence_ops*: DomestikosIntelligenceOpsConfig
+    domestikos_staging*: DomestikosStagingConfig
+    # Unit priorities (fully flattened - toml_serialization doesn't support any nesting)
+    domestikos_unit_priorities_act1_land_grab*: ShipClassScores
+    domestikos_unit_priorities_act2_rising_tensions*: ShipClassScores
+    domestikos_unit_priorities_act3_total_war*: ShipClassScores
+    domestikos_unit_priorities_act4_endgame*: ShipClassScores
+    domestikos_unit_priorities_strategic_values*: ShipClassScores
     # Eparch module (economic administration)
     eparch*: EparchConfig
     # Intelligence integration (Phase B+)
@@ -1184,23 +1188,23 @@ proc validateRBAConfig*(config: RBAConfig) =
   validateNonNegative(config.basileus.act3_peace_research_multiplier, "basileus.act3_peace_research_multiplier")
 
   # Validate Domestikos offensive operations
-  validatePositive(config.domestikos.offensive.priority_base, "domestikos.offensive.priority_base")
-  validateNonNegative(config.domestikos.offensive.distance_bonus_1_2_jumps, "domestikos.offensive.distance_bonus_1_2_jumps")
-  validateRatio(config.domestikos.offensive.weakness_threshold_vulnerable, "domestikos.offensive.weakness_threshold_vulnerable")
-  validatePositive(config.domestikos.offensive.max_intel_age_turns, "domestikos.offensive.max_intel_age_turns")
+  validatePositive(config.domestikos_offensive.priority_base, "domestikos_offensive.priority_base")
+  validateNonNegative(config.domestikos_offensive.distance_bonus_1_2_jumps, "domestikos_offensive.distance_bonus_1_2_jumps")
+  validateRatio(config.domestikos_offensive.weakness_threshold_vulnerable, "domestikos_offensive.weakness_threshold_vulnerable")
+  validatePositive(config.domestikos_offensive.max_intel_age_turns, "domestikos_offensive.max_intel_age_turns")
 
   # Validate Domestikos defensive operations
-  validateNonNegative(config.domestikos.defensive.production_weight, "domestikos.defensive.production_weight")
-  validateNonNegative(config.domestikos.defensive.threat_boost_critical, "domestikos.defensive.threat_boost_critical")
-  validateRatio(config.domestikos.defensive.stale_intel_penalty, "domestikos.defensive.stale_intel_penalty")
-  validatePositive(config.domestikos.defensive.defend_max_range, "domestikos.defensive.defend_max_range")
+  validateNonNegative(config.domestikos_defensive.production_weight, "domestikos_defensive.production_weight")
+  validateNonNegative(config.domestikos_defensive.threat_boost_critical, "domestikos_defensive.threat_boost_critical")
+  validateRatio(config.domestikos_defensive.stale_intel_penalty, "domestikos_defensive.stale_intel_penalty")
+  validatePositive(config.domestikos_defensive.defend_max_range, "domestikos_defensive.defend_max_range")
 
   # Validate Domestikos intelligence_ops
-  validateNonNegative(config.domestikos.intelligence_ops.threat_contribution_per_fleet, "domestikos.intelligence_ops.threat_contribution_per_fleet")
-  validateRatio(config.domestikos.intelligence_ops.threat_level_high_score, "domestikos.intelligence_ops.threat_level_high_score")
+  validateNonNegative(config.domestikos_intelligence_ops.threat_contribution_per_fleet, "domestikos_intelligence_ops.threat_contribution_per_fleet")
+  validateRatio(config.domestikos_intelligence_ops.threat_level_high_score, "domestikos_intelligence_ops.threat_level_high_score")
 
   # Validate Domestikos staging
-  validateNonNegative(config.domestikos.staging.priority_acceptable_close, "domestikos.staging.priority_acceptable_close")
+  validateNonNegative(config.domestikos_staging.priority_acceptable_close, "domestikos_staging.priority_acceptable_close")
 
   # Validate Domestikos unit priorities (all ship class scores should be non-negative)
   proc validateShipClassScores(scores: ShipClassScores, prefix: string) =
@@ -1223,11 +1227,11 @@ proc validateRBAConfig*(config: RBAConfig) =
     validateNonNegative(scores.troop_transport, &"{prefix}.troop_transport")
     validateNonNegative(scores.fighter, &"{prefix}.fighter")
 
-  validateShipClassScores(config.domestikos.unit_priorities.act1_land_grab, "domestikos.unit_priorities.act1_land_grab")
-  validateShipClassScores(config.domestikos.unit_priorities.act2_rising_tensions, "domestikos.unit_priorities.act2_rising_tensions")
-  validateShipClassScores(config.domestikos.unit_priorities.act3_total_war, "domestikos.unit_priorities.act3_total_war")
-  validateShipClassScores(config.domestikos.unit_priorities.act4_endgame, "domestikos.unit_priorities.act4_endgame")
-  validateShipClassScores(config.domestikos.unit_priorities.strategic_values, "domestikos.unit_priorities.strategic_values")
+  validateShipClassScores(config.domestikos_unit_priorities_act1_land_grab, "domestikos_unit_priorities_act1_land_grab")
+  validateShipClassScores(config.domestikos_unit_priorities_act2_rising_tensions, "domestikos_unit_priorities_act2_rising_tensions")
+  validateShipClassScores(config.domestikos_unit_priorities_act3_total_war, "domestikos_unit_priorities_act3_total_war")
+  validateShipClassScores(config.domestikos_unit_priorities_act4_endgame, "domestikos_unit_priorities_act4_endgame")
+  validateShipClassScores(config.domestikos_unit_priorities_strategic_values, "domestikos_unit_priorities_strategic_values")
 
   # Validate Protostrator
   validatePositive(config.protostrator.infrastructure_value_per_point, "protostrator.infrastructure_value_per_point")
