@@ -62,13 +62,13 @@ proc calculateAffordabilityFactor*(
   let costRatio = float(totalCost) / float(treasury)
 
   # Act-specific thresholds (how much of treasury we're willing to spend per request)
-  # DOUBLED from original values - original thresholds too conservative
   # These are per-request, not total spending caps (multiple requests can compound)
+  # Configuration from config/rba.toml [domestikos]
   let maxCostRatio = case currentAct
-    of ai_common_types.GameAct.Act1_LandGrab: 0.30        # Act 1: 30% per request (was 15%)
-    of ai_common_types.GameAct.Act2_RisingTensions: 0.50  # Act 2: 50% per request (was 25%)
-    of ai_common_types.GameAct.Act3_TotalWar: 0.70        # Act 3: 70% per request (was 40%)
-    of ai_common_types.GameAct.Act4_Endgame: 0.90         # Act 4: 90% per request (was 50%)
+    of ai_common_types.GameAct.Act1_LandGrab: globalRBAConfig.domestikos.affordability_act1
+    of ai_common_types.GameAct.Act2_RisingTensions: globalRBAConfig.domestikos.affordability_act2
+    of ai_common_types.GameAct.Act3_TotalWar: globalRBAConfig.domestikos.affordability_act3
+    of ai_common_types.GameAct.Act4_Endgame: globalRBAConfig.domestikos.affordability_act4
 
   if costRatio > maxCostRatio:
     # Too expensive - scale down quantity
