@@ -43,6 +43,7 @@
             # dev tools
             git
             git-filter-repo
+            sqlite
 
           ];
           shellHook = ''
