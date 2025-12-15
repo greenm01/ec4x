@@ -738,8 +738,6 @@ type
     threshold_multiplier_act3*: float
     threshold_multiplier_act4*: float
     mutual_enemies_base_score*: float
-    pact_assessment*: ProtostratorPactAssessmentConfig
-    stance_recommendations*: ProtostratorStanceConfig
 
 # ==============================================================================
 # Logothete Configuration (Research & Technology Advisor)
@@ -880,6 +878,8 @@ type
     affordability_checks*: AffordabilityChecksConfig
     basileus*: BasileusConfig
     protostrator*: ProtostratorConfig
+    protostrator_pact_assessment*: ProtostratorPactAssessmentConfig
+    protostrator_stance_recommendations*: ProtostratorStanceConfig
     logothete*: LogotheteConfig
     logothete_allocation*: LogotheteAllocationConfig
     logothete_counter_tech*: LogotheteCounterTechConfig
@@ -1237,8 +1237,8 @@ proc validateRBAConfig*(config: RBAConfig) =
   validateRatio(config.protostrator.baseline_risk, "protostrator.baseline_risk")
   validatePositive(config.protostrator.urgency_critical_threats, "protostrator.urgency_critical_threats")
   validateNonNegative(config.protostrator.threshold_multiplier_act1, "protostrator.threshold_multiplier_act1")
-  validateRatio(config.protostrator.pact_assessment.recommendation_threshold, "protostrator.pact_assessment.recommendation_threshold")
-  validateRatio(config.protostrator.stance_recommendations.hostile_threshold, "protostrator.stance_recommendations.hostile_threshold")
+  validateRatio(config.protostrator_pact_assessment.recommendation_threshold, "protostrator_pact_assessment.recommendation_threshold")
+  validateRatio(config.protostrator_stance_recommendations.hostile_threshold, "protostrator_stance_recommendations.hostile_threshold")
 
   # Validate Logothete
   validatePositive(config.logothete.max_science_level, "logothete.max_science_level")
