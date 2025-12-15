@@ -174,13 +174,6 @@ type
     logothete_multiplier*: float
     protostrator_multiplier*: float
 
-  AllActPrioritiesConfig* = object
-    ## Container for all 4 Acts' priority configurations
-    act1_land_grab*: ActPrioritiesConfig
-    act2_rising_tensions*: ActPrioritiesConfig
-    act3_total_war*: ActPrioritiesConfig
-    act4_endgame*: ActPrioritiesConfig
-
 # ==============================================================================
 # Colonization Parameters
 # ==============================================================================
@@ -824,7 +817,10 @@ type
     # Act transitions
     act_transitions*: ActTransitionsConfig
     # Act-specific advisor priorities
-    act_priorities*: AllActPrioritiesConfig
+    act_priorities_act1_land_grab*: ActPrioritiesConfig
+    act_priorities_act2_rising_tensions*: ActPrioritiesConfig
+    act_priorities_act3_total_war*: ActPrioritiesConfig
+    act_priorities_act4_endgame*: ActPrioritiesConfig
     # Colonization parameters
     colonization*: RBAColonizationConfig
     # Logistics parameters
@@ -1274,18 +1270,19 @@ proc validateRBAConfig*(config: RBAConfig) =
   # Validate Act-Specific Advisor Priorities
   # All multipliers should be positive (0.6-1.5 typical range)
   let actPriorities = [
-    ("act1_land_grab", config.act_priorities.act1_land_grab),
-    ("act2_rising_tensions", config.act_priorities.act2_rising_tensions),
-    ("act3_total_war", config.act_priorities.act3_total_war),
-    ("act4_endgame", config.act_priorities.act4_endgame)
+    ("act1_land_grab", config.act_priorities_act1_land_grab),
+    ("act2_rising_tensions", config.act_priorities_act2_rising_tensions),
+    ("act3_total_war", config.act_priorities_act3_total_war),
+    ("act4_endgame", config.act_priorities_act4_endgame)
   ]
 
   for (actName, priorities) in actPriorities:
-    validateNonNegative(priorities.eparch_multiplier, &"act_priorities.{actName}.eparch_multiplier")
-    validateNonNegative(priorities.domestikos_multiplier, &"act_priorities.{actName}.domestikos_multiplier")
-    validateNonNegative(priorities.drungarius_multiplier, &"act_priorities.{actName}.drungarius_multiplier")
-    validateNonNegative(priorities.logothete_multiplier, &"act_priorities.{actName}.logothete_multiplier")
-    validateNonNegative(priorities.protostrator_multiplier, &"act_priorities.{actName}.protostrator_multiplier")
+    let prefix = "act_priorities_" & actName
+    validateNonNegative(priorities.eparch_multiplier, &"{prefix}.eparch_multiplier")
+    validateNonNegative(priorities.domestikos_multiplier, &"{prefix}.domestikos_multiplier")
+    validateNonNegative(priorities.drungarius_multiplier, &"{prefix}.drungarius_multiplier")
+    validateNonNegative(priorities.logothete_multiplier, &"{prefix}.logothete_multiplier")
+    validateNonNegative(priorities.protostrator_multiplier, &"{prefix}.protostrator_multiplier")
 
   # Validate GOAP parameters
   validatePositive(config.goap.planning_depth, "goap.planning_depth")
