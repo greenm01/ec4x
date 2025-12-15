@@ -165,8 +165,7 @@ int ec4x_collect_fleet_snapshots(EC4XGame game, int turn);
 int ec4x_collect_diagnostics(EC4XGame game, int turn);
 
 /**
- * Write all collected diagnostics to SQLite database or CSV
- * If database was enabled, writes to database. Otherwise writes to CSV.
+ * Write all collected diagnostics to SQLite database
  * Should be called once after game completes
  * @param game Game handle
  * @param db_path Path to SQLite database file
