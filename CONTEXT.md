@@ -102,7 +102,7 @@ nimble buildSimulation 2>&1 | tail -10
 # 2. Test single game with specific seed
 ./bin/run_simulation --seed 12345
 # Or with short flags: ./bin/run_simulation -s 12345
-# Output: balance_results/diagnostics/game_12345.db (SQLite) + .csv
+# Output: balance_results/diagnostics/game_12345.db (SQLite)
 
 # 3. Test with custom parameters
 ./bin/run_simulation -s 12345 -t 35 -p 4
@@ -119,7 +119,7 @@ python3.11 scripts/analysis/your_script.py  # Use python3.11 for polars
 
 - **C API with pthreads:** ~3x speedup with parallel AI order generation
 - **Python for analysis:** Dynamic, iterate on queries without recompiling
-- **SQLite databases:** Structured data with fleet tracking, faster than CSVs
+- **SQLite databases:** Structured data with fleet tracking, indexed queries
 - **Polars over pandas:** 10-50x faster on large datasets
 - **Throwaway scripts:** Write quick queries, get answers, move on
 - **Git hash tracking:** `nimble buildSimulation` writes to `bin/.build_git_hash`
@@ -136,12 +136,11 @@ python3.11 scripts/analysis/your_script.py  # Use python3.11 for polars
 --players, -p NUMBER      Number of AI players (default: 4, max: 12)
 --rings, -r NUMBER        Hex rings for map size (default: 4, range: 1-5)
 --db FILE                 SQLite database path (default: game_<seed>.db)
---csv FILE                CSV output path (default: game_<seed>.csv)
 
 # Examples:
 ./bin/run_simulation -s 12345 -t 100
 ./bin/run_simulation -s 99999 -p 6 -r 4
-./bin/run_simulation -s 42 --csv custom.csv
+./bin/run_simulation -s 42 --db custom.db
 ```
 
 ---
@@ -149,14 +148,19 @@ python3.11 scripts/analysis/your_script.py  # Use python3.11 for polars
 ## Key Build Commands
 
 ```bash
-# Primary builds
-nimble buildSimulation      # Parallel simulation (C API, static) - USE THIS
-nimble buildAll             # All binaries (ec4x + simulation)
+# Primary build (USE THIS for development)
+nimble buildSimulation      # Parallel simulation (C API, static binary)
+                            # - Clean build (removes old artifacts)
+                            # - Outputs: bin/run_simulation
+                            # - SQLite database output only
+
+# Other builds
+nimble buildAll             # All binaries (ec4x CLI + simulation)
 nimble buildDebug           # Debug symbols enabled
 
-# Legacy/Advanced builds
-nimble buildSimulationNim   # Nim simulation (sequential, legacy)
-nimble buildCAPI            # C API with dynamic linking (advanced)
+# Legacy builds (not recommended)
+nimble buildSimulationNim   # Nim simulation (sequential, slower)
+nimble buildCAPI            # C API with dynamic linking (complex setup)
 
 # Testing
 nimble testBalanceQuick     # 20 games, 7 turns (~10s)
@@ -194,7 +198,7 @@ Each database contains:
 - **game_events** table: Major events (optional)
 - **game_states** table: Full state snapshots (optional)
 
-**Performance:** SQLite is faster than CSV for complex queries and joins.
+**Benefits:** Indexed queries, table joins, smaller file size than CSV.
 
 ### Available Diagnostic Columns
 
@@ -240,9 +244,6 @@ etac_analysis = pl.read_database("""
 """, conn)
 
 print(etac_analysis)
-
-# Or query CSV for backward compatibility
-# df = pl.read_csv("balance_results/diagnostics/game_12345.csv")
 ```
 
 ### Why Polars + SQLite?
@@ -261,7 +262,7 @@ print(etac_analysis)
 4. Claude interprets results, suggests next analysis
 5. Iterate quickly without recompiling
 
-**DON'T:** Ask user to upload raw databases (5-20MB, wastes 10k+ tokens)
+**DON'T:** Ask user to read raw databases (MB+ size, wastes tokens)
 **DO:** Write Python script that outputs summary text
 
 ---
@@ -378,11 +379,11 @@ error "Invalid order from ", houseId, ": ", reason
 
 ### Philosophy
 
-Complex systems exhibit emergent behaviors. Catch them with **comprehensive CSV diagnostics**.
+Complex systems exhibit emergent behaviors. Catch them with **comprehensive diagnostics in SQLite**.
 
 ### Workflow
 
-1. Run 100+ games → CSV diagnostics output
+1. Run 100+ games → SQLite database output
 2. Write Python script to analyze specific metrics
 3. Find anomalies → Formulate hypothesis
 4. Add targeted logging → Re-test
@@ -412,7 +413,7 @@ Complex systems exhibit emergent behaviors. Catch them with **comprehensive CSV 
 - ❌ Run build commands (1,000-3,000 tokens per compile)
 - ❌ Run test commands (5,000-20,000 tokens per test run)
 - ❌ Parse git output (100-500 tokens each)
-- ❌ Load raw CSV files (10,000+ tokens for multi-MB files)
+- ❌ Load raw database files (databases are MB+ in size)
 
 ### What Claude SHOULD Do
 
@@ -429,7 +430,7 @@ User shares:
 - Compilation errors (last 20-50 lines only)
 - Test failures (specific error messages)
 - Summary results ("20 passed, 2 failed")
-- Python script output (~1-5KB, not raw CSVs)
+- Python script output (~1-5KB, not raw databases)
 
 ---
 

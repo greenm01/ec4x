@@ -143,7 +143,7 @@ int generate_orders_parallel(EC4XGame game, int num_players, int64_t base_seed,
 // =============================================================================
 
 int run_simulation(int num_players, int max_turns, int64_t seed, int map_rings,
-                   const char* output_db, const char* output_csv) {
+                   const char* output_db) {
     printf("=== EC4X Parallel Simulation ===\n");
     printf("Players: %d\n", num_players);
     printf("Max turns: %d\n", max_turns);
@@ -254,16 +254,7 @@ int run_simulation(int num_players, int max_turns, int64_t seed, int map_rings,
         fprintf(stderr, "Error writing diagnostics database: %s\n", ec4x_get_last_error());
     }
     t_end = get_time_ms();
-    printf("Database write completed in %.1fms\n", t_end - t_start);
-
-    // Write diagnostic metrics to CSV (backward compatibility)
-    printf("Writing diagnostics to CSV...\n");
-    t_start = get_time_ms();
-    if (ec4x_write_diagnostics_csv(game, output_csv) != 0) {
-        fprintf(stderr, "Error writing diagnostics CSV: %s\n", ec4x_get_last_error());
-    }
-    t_end = get_time_ms();
-    printf("CSV write completed in %.1fms\n\n", t_end - t_start);
+    printf("Database write completed in %.1fms\n\n", t_end - t_start);
 
     // Profiling summary
     double total_ms = total_ai_time + total_zero_turn_time + total_resolve_time + total_diagnostics_time;
@@ -296,14 +287,11 @@ void print_usage(const char* program_name) {
     printf("  --seed, -s N          Random seed (default: 42)\n");
     printf("  --rings, -r N         Map rings (1-5, default: 4)\n");
     printf("  --db FILE             SQLite database path (default: game_<seed>.db)\n");
-    printf("  --csv FILE            CSV output path (default: game_<seed>.csv)\n");
     printf("  --help, -h            Show this help\n");
-    printf("\n");
-    printf("Both database and CSV outputs are written by default.\n");
     printf("\n");
     printf("Examples:\n");
     printf("  %s --players 4 --turns 45 --seed 12345\n", program_name);
-    printf("  %s -p 8 -t 100 -s 99999 --csv custom.csv\n", program_name);
+    printf("  %s -p 8 -t 100 -s 99999 --db custom.db\n", program_name);
 }
 
 int main(int argc, char** argv) {
@@ -312,7 +300,6 @@ int main(int argc, char** argv) {
     int64_t seed = DEFAULT_SEED;
     int map_rings = DEFAULT_RINGS;
     char* output_db = NULL;
-    char* output_csv = NULL;
 
     // Parse command-line arguments
     for (int i = 1; i < argc; i++) {
@@ -334,9 +321,6 @@ int main(int argc, char** argv) {
         } else if (strcmp(argv[i], "--db") == 0) {
             if (++i >= argc) { fprintf(stderr, "Missing value for --db\n"); return 1; }
             output_db = argv[i];
-        } else if (strcmp(argv[i], "--csv") == 0) {
-            if (++i >= argc) { fprintf(stderr, "Missing value for --csv\n"); return 1; }
-            output_csv = argv[i];
         } else {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
             print_usage(argv[0]);
@@ -362,14 +346,6 @@ int main(int argc, char** argv) {
         output_db = default_db_path;
     }
 
-    // Default CSV path (backward compatibility)
-    char default_csv_path[256];
-    if (output_csv == NULL) {
-        snprintf(default_csv_path, sizeof(default_csv_path),
-                 "balance_results/diagnostics/game_%ld.csv", seed);
-        output_csv = default_csv_path;
-    }
-
     // Initialize Nim runtime
     if (ec4x_init_runtime() != 0) {
         fprintf(stderr, "Error: Failed to initialize Nim runtime\n");
@@ -377,5 +353,5 @@ int main(int argc, char** argv) {
     }
 
     // Run simulation
-    return run_simulation(num_players, max_turns, seed, map_rings, output_db, output_csv);
+    return run_simulation(num_players, max_turns, seed, map_rings, output_db);
 }
