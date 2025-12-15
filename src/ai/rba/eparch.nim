@@ -5,34 +5,29 @@
 ## Public API for economic development and infrastructure management.
 ##
 ## Responsibilities:
-## - Colonization strategy (ETAC dispatch, target selection)
-## - Terraforming strategy (planetary development)
-## - Facility construction (shipyards, spaceports)
-## - Economic policy (future: taxation, trade)
+## - Generate economic requirements (facilities, terraforming, colonization)
+## - Reprioritize requirements based on feedback
 ##
 ## Usage:
 ## ```nim
 ## import ai/rba/eparch
 ##
-## # Generate requirements
-## eparch.generateColonizationOrders(controller, filtered, intel, act)
-##
-## # Execute orders from requirements
-## let facilityOrders = eparch.generateFacilityBuildOrders(...)
-## let terraformOrders = eparch.generateTerraformOrders(...)
+## let economicReqs = eparch.generateEconomicRequirements(c, f, i)
+## let reprioritized = eparch.reprioritizeEconomicRequirements(reqs, f, t)
 ## ```
 
 import ../../common/types/[core, planets]
 import ../../engine/[gamestate, orders]
-import ./eparch/[terraforming, colonization, facility_construction]
+import ./controller_types # For EconomicRequirements
+import ./eparch/[terraforming, requirements]
 
 # =============================================================================
 # Re-export main public APIs from submodules
 # =============================================================================
 
+export requirements.generateEconomicRequirements
+export requirements.reprioritizeEconomicRequirements
 export terraforming.generateTerraformOrders
-export colonization.generateColonizationOrders
-export facility_construction.generateFacilityBuildOrders
 
 # =============================================================================
 # Re-export types for convenience
@@ -42,3 +37,4 @@ export core.SystemId
 export planets.PlanetClass
 export orders.TerraformOrder
 export orders.BuildOrder
+export EconomicRequirements, EconomicRequirement, EconomicRequirementType
