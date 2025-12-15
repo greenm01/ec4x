@@ -276,6 +276,138 @@ proc assessDiplomaticUrgency*(filtered, intelSnapshot) -> seq[ThreatIndicator]
 
 ---
 
+== Dynamic 4-Act Strategic Progression
+
+The AI's strategic focus is governed by a 4-act structure. To make the AI more responsive to the state of the galaxy, the progression between acts is determined by dynamic gates rather than fixed turn counts. This ensures the AI's strategy adapts to the pace of each unique game.
+
+=== Progression Gates
+
+|===
+| Transition | Gate Condition | Rationale
+
+| *Act 1 → Act 2*
+| The map becomes 90% colonized.
+| The initial "land grab" phase is over. Focus shifts from expansion to consolidation and conflict over existing territory.
+
+| *Act 2 → Act 3*
+| A major power is eliminated. (Top 3 house by prestige at the start of Act 2)
+| The elimination of a significant player destabilizes the galaxy, signaling the start of large-scale, decisive warfare.
+
+| *Act 3 → Act 4*
+| One house controls over 50% of the total prestige on the map.
+| A clear leader has emerged. The game enters its final phase where the leader tries to secure victory and others may form a coalition to stop them.
+|===
+
+=== Advisor Priorities by Act
+
+The priorities of the Byzantine advisors are weighted differently in each act to reflect the overall strategic goal.
+
+.Act 1: Land Grab (Focus: Expansion & Reconnaissance)
+[cols="1,1,3"]
+|===
+| Advisor | Priority | Rationale
+
+| *Eparch* (Economy)
+| `CRITICAL`
+| Drive aggressive colonization. Build Spaceports and Shipyards in parallel across all colonies to create a robust ETAC production pipeline.
+
+| *Domestikos* (Military)
+| `HIGH`
+| Build cheap, fast ships (e.g., Destroyers) for exploration and intelligence gathering. Avoid combat unless necessary.
+
+| *Drungarius* (Intel)
+| `MEDIUM`
+| Map out nearby systems to find valuable colonization targets and identify neighbor locations.
+
+| *Logothete* (Research)
+| `MEDIUM`
+| Focus on technologies that accelerate expansion: Construction (for facilities) and Propulsion (for fleet speed).
+
+| *Protostrator* (Diplomacy)
+| `LOW`
+| Establish contact with other houses but remain neutral. Avoid early conflicts that would slow down expansion.
+|===
+
+.Act 2: Rising Tensions (Focus: Consolidation & Military Buildup)
+[cols="1,1,3"]
+|===
+| Advisor | Priority | Rationale
+
+| *Domestikos* (Military)
+| `CRITICAL`
+| Construct a credible combat fleet to secure borders and deter aggression. Consolidate forces and establish defensive positions.
+
+| *Eparch* (Economy)
+| `HIGH`
+| Shift from expansion to economic consolidation. Build defensive Starbases on key worlds and invest in industrial capacity (IU).
+
+| *Logothete* (Research)
+| `HIGH`
+| Prioritize key military technologies (Weapons, Shields, Armor) to prepare for the inevitable conflict.
+
+| *Drungarius* (Intel)
+| `MEDIUM`
+| Shift focus from exploration to espionage. Assess the military capabilities and intentions of potential threats.
+
+| *Protostrator* (Diplomacy)
+| `MEDIUM`
+| Form defensive pacts and alliances to create a stable power bloc. Isolate aggressive neighbors.
+|===
+
+.Act 3: Total War (Focus: Conquest)
+[cols="1,1,3"]
+|===
+| Advisor | Priority | Rationale
+
+| *Domestikos* (Military)
+| `CRITICAL`
+| Wage decisive wars to eliminate rivals. Plan and execute large-scale invasions of enemy core worlds.
+
+| *Drungarius* (Intel)
+| `HIGH`
+| Provide detailed tactical intelligence for invasions. Sabotage enemy war production and disrupt logistics.
+
+| *Protostrator* (Diplomacy)
+| `HIGH`
+| Manage war alliances, coordinate joint operations, and attempt to break enemy coalitions through diplomatic pressure.
+
+| *Eparch* (Economy)
+| `MEDIUM`
+| Manage a full war economy. Focus production on replacing combat losses and supporting massive invasion fleets.
+
+| *Logothete* (Research)
+| `MEDIUM`
+| Research advanced, high-tier combat technologies to gain a decisive battlefield advantage.
+|===
+
+.Act 4: Endgame (Focus: Securing Victory)
+[cols="1,1,3"]
+|===
+| Advisor | Priority | Rationale
+
+| *Domestikos* (Military)
+| `CRITICAL`
+| Eliminate the last remaining rivals to secure a military victory or protect the lead against "last stand" attacks.
+
+| *Eparch* (Economy)
+| `HIGH`
+| Maximize prestige generation from all available sources to accelerate a prestige victory.
+
+| *Protostrator* (Diplomacy)
+| `HIGH`
+| Diplomatically isolate the leading player or, if leading, secure alliances to prevent a coalition from forming.
+
+| *Logothete* (Research)
+| `MEDIUM`
+| Focus on very high-cost, game-ending technologies that provide significant prestige or military power.
+
+| *Drungarius* (Intel)
+| `MEDIUM`
+| Defend against last-ditch espionage efforts and provide intelligence on the final victory push.
+|===
+
+---
+
 == Architecture Overview
 
 === Two-Layer Decision Hierarchy
