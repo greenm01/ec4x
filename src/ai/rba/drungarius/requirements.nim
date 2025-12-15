@@ -627,7 +627,7 @@ proc generateEspionageRequirements*(
       result.totalEstimatedCost += cfg.cost_disinformation
 
   # === MEDIUM: Economic manipulation ===
-  if currentEBP >= cfg.req_ebp_economic_manipulation and p.economicFocus > cfg.economic_focus_manipulation:
+  if currentEBP >= cfg.req_ebp_economic_manipulation and p.economicFocus > globalRBAConfig.drungarius_operations.economic_focus_manipulation:
     # Phase 5.1: Economic-focused AIs target high producers
     if bestTargets.len > 0:
       # For economic ops, prefer second-best target if available (diversify)
