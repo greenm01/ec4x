@@ -662,12 +662,12 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
 
         # Otherwise, tactical sends ETAC home for reload
         # Find nearest colony with sufficient population for PTU transfer
-        const MIN_POPULATION_FOR_RELOAD = 3
+        let minPopulationForReload = controller.rbaConfig.tactical.min_population_for_reload
         var bestColony: Option[SystemId] = none(SystemId)
         var bestDistance = 999
 
         for colony in filtered.ownColonies:
-          if colony.population < MIN_POPULATION_FOR_RELOAD:
+          if colony.population < minPopulationForReload:
             continue  # Colony too small to spare PTUs
 
           # Calculate distance via jump lanes
@@ -696,7 +696,7 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           continue
         else:
           logWarn(LogCategory.lcAI,
-            &"Fleet {fleet.id} empty ETAC has no viable reload colonies (need pop >= {MIN_POPULATION_FOR_RELOAD})")
+            &"Fleet {fleet.id} empty ETAC has no viable reload colonies (need pop >= {minPopulationForReload})")
           continue
 
     # ==========================================================================
