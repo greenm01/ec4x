@@ -291,15 +291,8 @@ proc generateDiplomaticRequirements*(
 
         # Get current game act
 
-        # Calculate total colonized systems from public leaderboard
-        let totalSystems = filtered.starMap.systems.len
-        var totalColonized = 0
-        for houseId, colonyCount in filtered.houseColonies:
-          totalColonized += colonyCount
-
-        # Use colonization-based Act determination (90% threshold for Act 2 transition)
-        let currentAct = ai_types.getCurrentGameAct(totalSystems, totalColonized,
-                                                    filtered.turn)
+        # Get current act from game state (updated during turn resolution)
+        let currentAct = filtered.actProgression.currentAct
 
         # Evaluate war readiness with multi-factor system
         let warEval = evaluateWarReadiness(

@@ -386,12 +386,9 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   # ================================================================
 
   # Use colonization-based Act determination (90% threshold for Act 2 transition)
+  # Get current act from game state (updated during turn resolution)
   # Returns GameAct enum (0-3), convert to 1-4 for display
-  let totalSystems = state.starMap.systems.len
-  let totalColonized = state.colonies.len  # Count all colonies
-
-  let currentAct = ai_types.getCurrentGameAct(totalSystems, totalColonized,
-                                               state.turn)
+  let currentAct = state.actProgression.currentAct
   result.act = ord(currentAct) + 1
 
   # ================================================================

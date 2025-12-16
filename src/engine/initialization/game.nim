@@ -133,7 +133,15 @@ proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
     pendingProposals: @[],
     pendingMilitaryCommissions: @[],
     pendingPlanetaryCommissions: @[],
-    gracePeriodTimers: initTable[HouseId, GracePeriodTracker]()
+    gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
+    actProgression: ActProgressionState(
+      currentAct: GameAct.Act1_LandGrab,
+      actStartTurn: 0,
+      act2TopThreeHouses: @[],
+      act2TopThreePrestige: @[],
+      lastColonizationPercent: 0.0,
+      lastTotalPrestige: 0
+    )
   )
 
   # Create houses and homeworld colonies
@@ -177,7 +185,15 @@ proc newGameState*(gameId: string, playerCount: int,
     pendingProposals: @[],
     pendingMilitaryCommissions: @[],
     pendingPlanetaryCommissions: @[],
-    gracePeriodTimers: initTable[HouseId, GracePeriodTracker]()
+    gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
+    actProgression: ActProgressionState(
+      currentAct: GameAct.Act1_LandGrab,
+      actStartTurn: 0,
+      act2TopThreeHouses: @[],
+      act2TopThreePrestige: @[],
+      lastColonizationPercent: 0.0,
+      lastTotalPrestige: 0
+    )
   )
 
   # Create houses and homeworld colonies

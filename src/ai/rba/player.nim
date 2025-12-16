@@ -19,7 +19,7 @@ export goap_types.GOAPlan # Export GOAPlan type
 export plan_tracking.PlanTracker, plan_tracking.newPlanTracker # Export PlanTracker and its constructor
 export replanning.ReplanReason # Export ReplanReason enum for feedback loops
 export newAIController, newAIControllerWithPersonality
-export getStrategyPersonality, getCurrentGameAct
+export getStrategyPersonality
 export generateAIOrders
 
 ## This module provides the main entry point for using the RBA AI.

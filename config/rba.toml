@@ -11,6 +11,22 @@
 # TOML structure mirrors the Nim type definitions in src/ai/rba/config.nim
 
 # ==============================================================================
+# ACT PROGRESSION THRESHOLDS
+# ==============================================================================
+# Dynamic 4-act strategic progression gates (game-state driven, not turn-based)
+# Per docs/ai/architecture/ai_architecture.adoc lines 279-300
+
+[act_progression]
+# Act 1 → Act 2: Land grab complete (colonization threshold)
+act1_to_act2_colonization_threshold = 0.90  # 90% of map colonized
+
+# Act 2 → Act 3: Major power eliminated (top 3 at Act 2 start)
+# (No threshold needed - checks house.eliminated flag)
+
+# Act 3 → Act 4: Clear leader emerges (prestige dominance threshold)
+act3_to_act4_prestige_threshold = 0.50      # 50% of total prestige
+
+# ==============================================================================
 # STRATEGY PERSONALITIES (12 strategies × 6 traits)
 # ==============================================================================
 # Each strategy defines a unique AI personality with weighted preferences

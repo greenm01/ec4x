@@ -153,11 +153,17 @@ type
 
 type
   ActTransitionsConfig* = object
-    ## Game Act transition thresholds
+    ## Game Act transition thresholds (DEPRECATED - use ActProgressionConfig)
     act1_colonization_threshold*: float  # Act 1 ends when ≥X% colonized
     act2_colonization_threshold*: float  # Act 2 → Act 3 when ≥X% colonized
     act2_max_turn*: int                  # Act 2 ends at turn X
     act3_max_turn*: int                  # Act 3 ends at turn X
+
+  ActProgressionConfig* = object
+    ## Dynamic 4-act strategic progression gates (game-state driven)
+    ## Per docs/ai/architecture/ai_architecture.adoc lines 279-300
+    act1_to_act2_colonization_threshold*: float  # Act 1 → Act 2 gate (90% colonization)
+    act3_to_act4_prestige_threshold*: float      # Act 3 → Act 4 gate (50% prestige dominance)
 
 # ==============================================================================
 # Act-Specific Advisor Priorities
@@ -814,8 +820,10 @@ type
     economic*: EconomicParametersConfig
     # Orders parameters
     orders*: OrdersConfig
-    # Act transitions
+    # Act transitions (DEPRECATED - use act_progression)
     act_transitions*: ActTransitionsConfig
+    # Act progression (dynamic gates)
+    act_progression*: ActProgressionConfig
     # Act-specific advisor priorities
     act_priorities_act1_land_grab*: ActPrioritiesConfig
     act_priorities_act2_rising_tensions*: ActPrioritiesConfig
@@ -1298,6 +1306,12 @@ proc validateRBAConfig*(config: RBAConfig) =
     "goap.replan_budget_shortfall_ratio")
   validateNonNegative(config.goap.new_opportunity_scan_frequency,
     "goap.new_opportunity_scan_frequency")
+
+  # Validate act progression thresholds are ratios (0.0-1.0)
+  validateRatio(config.act_progression.act1_to_act2_colonization_threshold,
+    "act_progression.act1_to_act2_colonization_threshold")
+  validateRatio(config.act_progression.act3_to_act4_prestige_threshold,
+    "act_progression.act3_to_act4_prestige_threshold")
 
 # ==============================================================================
 # Config Loading

@@ -90,8 +90,9 @@ def get_cumulative_stats(data: List[Dict]) -> Dict[str, Dict]:
         'fighters_lost': 0,
         'colonies_lost': 0,
         'colonies_gained': 0,
-        'colonies_gained_via_colonization': 0,
-        'colonies_gained_via_conquest': 0,
+        'colonies_gained_act1': 0,  # Act 1 = mostly colonization
+        'colonies_gained_act2plus': 0,  # Act 2+ = includes conquests
+        'invasions_won': 0,
         'etac_construction_events': 0,  # Total ETAC builds across all turns
         'fighters_built': 0,
         'ship_type_losses': defaultdict(int)
@@ -109,13 +110,22 @@ def get_cumulative_stats(data: List[Dict]) -> Dict[str, Dict]:
     for row in data:
         house = row['house_id']
         turn = int(row['turn'])
+        act = int(row.get('act', 1))
 
         stats[house]['ships_lost'] += int(row.get('ships_lost', 0))
         stats[house]['fighters_lost'] += int(row.get('fighters_lost', 0))
         stats[house]['colonies_lost'] += int(row.get('colonies_lost', 0))
-        stats[house]['colonies_gained'] += int(row.get('colonies_gained', 0))
-        stats[house]['colonies_gained_via_colonization'] += int(row.get('colonies_gained_via_colonization', 0))
-        stats[house]['colonies_gained_via_conquest'] += int(row.get('colonies_gained_via_conquest', 0))
+
+        colonies_gained_this_turn = int(row.get('colonies_gained', 0))
+        stats[house]['colonies_gained'] += colonies_gained_this_turn
+
+        # Separate Act 1 (colonization) from Act 2+ (conquest)
+        if act == 1:
+            stats[house]['colonies_gained_act1'] += colonies_gained_this_turn
+        else:
+            stats[house]['colonies_gained_act2plus'] += colonies_gained_this_turn
+
+        stats[house]['invasions_won'] += int(row.get('invasions_won', 0))
         stats[house]['fighters_built'] += int(row.get('fighters_gained', 0))
 
         # Sum ETAC construction events (etac_ships field shows builds that turn)
@@ -283,21 +293,22 @@ def print_territorial_control(cumulative: Dict[str, Dict], final_data: Dict[str,
     print()
 
     houses = sorted(cumulative.keys())
-    print(f"{'House':<20}{'Final':>8}{'Colonized':>12}{'Conquered':>12}{'Lost':>8}{'Net':>8}")
+    print(f"{'House':<20}{'Final':>8}{'Act 1':>10}{'Act 2+':>10}{'Invasions':>12}{'Lost':>8}{'Net':>8}")
     print("-" * 100)
 
     for house in houses:
         final_colonies = int(final_data[house].get('total_colonies', 0))
-        colonized = cumulative[house]['colonies_gained_via_colonization']
-        conquered = cumulative[house]['colonies_gained_via_conquest']
+        act1_gains = cumulative[house]['colonies_gained_act1']
+        act2plus_gains = cumulative[house]['colonies_gained_act2plus']
+        invasions = cumulative[house]['invasions_won']
         lost = cumulative[house]['colonies_lost']
-        net = (colonized + conquered) - lost
+        net = (act1_gains + act2plus_gains) - lost
 
         short_name = house.replace('house-', '')
         net_str = f"+{net}" if net > 0 else str(net)
-        print(f"{short_name:<20}{final_colonies:>8}{colonized:>12}{conquered:>12}{lost:>8}{net_str:>8}")
+        print(f"{short_name:<20}{final_colonies:>8}{act1_gains:>10}{act2plus_gains:>10}{invasions:>12}{lost:>8}{net_str:>8}")
 
-    print("\nNote: Colonized = via ETAC, Conquered = via invasion/blitz")
+    print("\nNote: Act 1 = Land Grab (ETACs), Act 2+ = Rising Tensions+ (conquests), Invasions = won invasions")
 
 def print_economy_and_prestige(final_data: Dict[str, Dict]):
     """Print economy and prestige summary."""
