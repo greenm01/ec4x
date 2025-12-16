@@ -71,21 +71,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   let p = controller.personality
 
   # Calculate total colonized systems from public leaderboard
-  # Uses public data (houseColonies) to see total map colonization
-  # This avoids fog-of-war issues - colony counts are public like prestige
-  let totalSystems = filtered.starMap.systems.len
-  var totalColonized = 0
-  for houseId, colonyCount in filtered.houseColonies:
-    totalColonized += colonyCount
-
-  # Use colonization-based Act determination (90% threshold for Act 2 transition)
-  var currentAct = ai_types.getCurrentGameAct(totalSystems, totalColonized, filtered.turn)
-
-  let colonizationRatio = float(totalColonized) / float(totalSystems)
-  if currentAct == ai_types.GameAct.Act1_LandGrab and colonizationRatio < 0.90:
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Act 1 LAND GRAB - map colonization " &
-            &"{totalColonized}/{totalSystems} ({int(colonizationRatio*100)}%, need 90%)")
+  # Get current act from game state (updated during turn resolution)
+  var currentAct: gamestate.GameAct = filtered.actProgression.currentAct
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} ========================================")

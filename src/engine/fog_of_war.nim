@@ -94,6 +94,7 @@ type
     houseColonies*: Table[HouseId, int]  # Colony counts (public leaderboard)
     houseDiplomacy*: Table[(HouseId, HouseId), DiplomaticState]  # Diplomatic relations
     houseEliminated*: Table[HouseId, bool]  # Elimination status
+    actProgression*: ActProgressionState  # Current game act (public info)
 
     # Star map (topology only, not full details)
     starMap*: StarMap
@@ -362,6 +363,7 @@ proc createFogOfWarView*(state: GameState, houseId: HouseId): FilteredGameState 
   result.houseColonies = initTable[HouseId, int]()
   result.houseDiplomacy = initTable[(HouseId, HouseId), DiplomaticState]()
   result.houseEliminated = initTable[HouseId, bool]()
+  result.actProgression = state.actProgression  # Current game act (public info)
 
   for otherId, otherHouse in state.houses:
     result.housePrestige[otherId] = otherHouse.prestige

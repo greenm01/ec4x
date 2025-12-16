@@ -108,6 +108,7 @@ import resolution/[types as res_types, fleet_orders, economy_resolution, diploma
 import resolution/phases/[command_phase, conflict_phase]
 import prestige as prestige_types
 import prestige/application as prestige_app
+import ../ai/rba/config as rba_config  # For act progression config
 
 # Import debug-only modules
 when not defined(release):
@@ -142,6 +143,9 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   # Using turn number as seed ensures deterministic replay for debugging
   var rng = initRand(state.turn)
   logRNG("RNG initialized for stochastic resolution", "turn=", $state.turn, " seed=", $state.turn)
+
+  # Update act progression (checks gates and transitions if needed)
+  discard getCurrentGameAct(result.newState, rba_config.globalRBAConfig.act_progression)
 
   logResolve("Starting strategic cycle", "turn=", $state.turn)
 

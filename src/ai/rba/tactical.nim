@@ -480,13 +480,8 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
   let myFleets = getOwnedFleets(filtered, controller.houseId)
 
   # Calculate total colonized systems from public leaderboard
-  let totalSystems = filtered.starMap.systems.len
-  var totalColonized = 0
-  for houseId, colonyCount in filtered.houseColonies:
-    totalColonized += colonyCount
-
-  # Use colonization-based Act determination (90% threshold for Act 2 transition)
-  let currentAct = getCurrentGameAct(totalSystems, totalColonized, filtered.turn)
+  # Get current act from game state (updated during turn resolution)
+  let currentAct = filtered.actProgression.currentAct
 
   # Update operation status
   updateOperationStatus(controller, filtered)
@@ -522,8 +517,8 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
 
     # Special handling for ETAC fleets
     if isETACFleet(fleet):
-      # Check if colonization is complete first
-      let colonizationComplete = totalColonized >= totalSystems
+      # Check if colonization is complete first (Act 1 → Act 2 transition)
+      let colonizationComplete = currentAct != GameAct.Act1_LandGrab
 
       # Check if ETAC has colonists
       var hasColonists = false
@@ -558,8 +553,8 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           continue
 
       if hasColonists:
-        # Check if colonization is complete
-        let colonizationComplete = totalColonized >= totalSystems
+        # Check if colonization is complete (Act 1 → Act 2 transition)
+        let colonizationComplete = currentAct != GameAct.Act1_LandGrab
         if colonizationComplete:
           # All systems colonized - prepare ETAC for salvage
           # Check if ETAC is at a colony
@@ -593,7 +588,7 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
               result.add(order)
               logInfo(LogCategory.lcAI,
                       &"Fleet {fleet.id} loaded ETAC moving to colony for cargo unload and salvage " &
-                      &"(colonization complete: {totalColonized}/{totalSystems}, {totalPTU} PTU)")
+                      &"(colonization complete, {totalPTU} PTU)")
             else:
               logWarn(LogCategory.lcAI,
                       &"Fleet {fleet.id} loaded ETAC has no reachable colonies for salvage!")
@@ -611,7 +606,7 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
             result.add(order)
             logInfo(LogCategory.lcAI,
                     &"Fleet {fleet.id} loaded ETAC at colony - will unload {totalPTU} PTU then salvage " &
-                    &"(colonization complete: {totalColonized}/{totalSystems})")
+                    &"(colonization complete)")
 
           continue
 
@@ -624,9 +619,9 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
         # Standing orders can only generate fleet orders (Hold/Move/Colonize), not load cargo
         # Tactical must issue Move order to colony for autoLoadCargo() to work
 
-        # Check if colonization is complete
-        # If 100% colonized, salvage ETAC instead of reloading
-        let colonizationComplete = totalColonized >= totalSystems
+        # Check if colonization is complete (Act 1 → Act 2 transition)
+        # If colonized, salvage ETAC instead of reloading
+        let colonizationComplete = currentAct != GameAct.Act1_LandGrab
         if colonizationComplete:
           # All systems colonized - salvage this ETAC
           order.orderType = FleetOrderType.Salvage
@@ -639,7 +634,7 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
 
           result.add(order)
           logInfo(LogCategory.lcAI,
-                  &"Fleet {fleet.id} ETAC salvaging (colonization complete: {totalColonized}/{totalSystems})")
+                  &"Fleet {fleet.id} ETAC salvaging (colonization complete)")
           continue
 
         # Otherwise, tactical sends ETAC home for reload

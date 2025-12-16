@@ -402,15 +402,8 @@ proc generateEconomicRequirements*(
   # Generate facility requirements (Shipyards and Spaceports)
   # Phase 7.1: Pass intelligence snapshot for threat-aware facility selection
 
-  # Calculate total colonized systems from public leaderboard
-  let totalSystems = filtered.starMap.systems.len
-  var totalColonized = 0
-  for houseId, colonyCount in filtered.houseColonies:
-    totalColonized += colonyCount
-
-  # Use colonization-based Act determination (90% threshold for Act 2 transition)
-  let currentAct = ai_common_types.getCurrentGameAct(totalSystems, totalColonized,
-                                                      filtered.turn)
+  # Get current act from game state (updated during turn resolution)
+  let currentAct = filtered.actProgression.currentAct
 
   let facilityRequirements = generateFacilityRequirements(filtered,
                                                           controller.houseId,

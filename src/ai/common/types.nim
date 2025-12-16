@@ -4,23 +4,13 @@
 ## Extracted from tests/balance/ to create proper production architecture
 
 import std/[tables, options]
-import ../../engine/gamestate
+import ../../engine/gamestate  # For GameAct enum (re-exported)
 import ../../engine/orders  # For BuildOrder type
 import ../../engine/diplomacy/types as dip_types
 import ../../common/types/[core, planets]
 
-# =============================================================================
-# Game Phase Types
-# =============================================================================
-
-type
-  GameAct* {.pure.} = enum
-    ## 4-Act game structure that scales with map size
-    ## Each act has different strategic priorities
-    Act1_LandGrab,      # Turns 1-7: Rapid colonization, exploration
-    Act2_RisingTensions, # Turns 8-15: Consolidation, military buildup, diplomacy
-    Act3_TotalWar,      # Turns 16-25: Major conflicts, invasions
-    Act4_Endgame        # Turns 26-30: Final push for victory
+# Re-export GameAct from gamestate for backwards compatibility
+export gamestate.GameAct
 
 # =============================================================================
 # AI Strategy & Personality Types
@@ -224,3 +214,5 @@ type
 # Utility Functions
 # =============================================================================
 
+# NOTE: getCurrentGameAct() has been moved to src/engine/gamestate.nim
+# to avoid circular import issues. Import it from there.

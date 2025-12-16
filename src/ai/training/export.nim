@@ -212,11 +212,8 @@ proc encodeGameState*(state: GameState, houseId: HouseId): seq[float] =
   # Game phase (Act1-4)
 
   # Calculate total colonized systems
-  let totalSystems = state.starMap.systems.len
-  let totalColonized = state.colonies.len
-
-  # Use colonization-based Act determination (90% threshold for Act 2 transition)
-  let currentAct = getCurrentGameAct(totalSystems, totalColonized, state.turn)
+  # Get current act from game state (updated during turn resolution)
+  let currentAct = state.actProgression.currentAct
   result[idx] = (if currentAct == GameAct.Act1_LandGrab: 1.0 else: 0.0); inc idx  # 506
   result[idx] = (if currentAct == GameAct.Act2_RisingTensions: 1.0 else: 0.0); inc idx  # 507
   result[idx] = (if currentAct == GameAct.Act3_TotalWar: 1.0 else: 0.0); inc idx  # 508
