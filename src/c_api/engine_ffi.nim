@@ -69,6 +69,8 @@ type
   CFilteredState = ref object
     filtered: FilteredGameState
     rbaConfig: rba_config.RBAConfig  # Config ref for AI generation
+    gameHandle: CGame  # Game handle for accessing persistent controllers
+    houseIdx: int  # Index into controllers seq
 
   COrders = ref object
     submission: AIOrderSubmission
@@ -114,7 +116,7 @@ proc ec4x_init_game(num_players: cint, seed: int64, map_rings: cint,
     reloadPopulationConfig()
     reloadStandingOrdersConfig()
     reloadGroundUnitsConfig()
-    rba_config.reloadRBAConfig()  # Reload into global for consistency
+    # RBA config loaded per-controller (no global state) - race condition eliminated
 
     # Validate parameters
     if num_players < 2 or num_players > 12:
@@ -200,7 +202,8 @@ proc ec4x_create_filtered_state(game: pointer, house_id: cint): pointer
       echo "DEBUG: create_filtered_state house_id=", house_id
       echo "DEBUG: create_filtered_state controllers.len=", handle.controllers.len
 
-    let houseId = handle.controllers[house_id].houseId
+    let houseIdx = int(house_id)  # Convert cint to int for indexing
+    let houseId = handle.controllers[houseIdx].houseId
     when not defined(release):
       echo "DEBUG: create_filtered_state houseId=", houseId
 
@@ -208,7 +211,9 @@ proc ec4x_create_filtered_state(game: pointer, house_id: cint): pointer
 
     let filterHandle = CFilteredState(
       filtered: filteredState,
-      rbaConfig: handle.rbaConfig  # Pass config through
+      rbaConfig: handle.rbaConfig,  # Pass config through
+      gameHandle: handle,  # Store game handle for controller access
+      houseIdx: houseIdx  # Store house index for controller lookup
     )
     GC_ref(filterHandle)  # Prevent GC from collecting this ref object
     result = cast[pointer](filterHandle)
@@ -240,29 +245,20 @@ proc ec4x_generate_ai_orders(filtered_state: pointer, house_id: cint,
 
     # Reload global RBAConfig for this call (FFI safety)
     # Many RBA subsystems access globalRBAConfig directly, so ensure it's valid
-    rba_config.reloadRBAConfig()
-
-    # Create fresh controller for this call (avoids state corruption)
-    # Use house_id to determine strategy (same pattern as game init)
-    let strategyIndex = int(house_id) mod 4
+    # Create fresh controller (testing if accessing seq is causing segfault)
+    let houseId = filterHandle.filtered.viewingHouse
+    let strategyIndex = filterHandle.houseIdx mod 4
     let strategy = case strategyIndex:
       of 0: AIStrategy.Balanced
       of 1: AIStrategy.Aggressive
       of 2: AIStrategy.Turtle
       else: AIStrategy.Economic
 
-    let houseIdStr = filterHandle.filtered.viewingHouse
-    when not defined(release):
-      echo &"DEBUG: generate_ai_orders houseIdStr={houseIdStr}"
-
-    # Use explicit config from handle instead of global
-    var controller = newAIController(houseIdStr, strategy,
-                                     filterHandle.rbaConfig)
+    var controller = newAIController(houseId, strategy, filterHandle.rbaConfig)
 
     # Generate orders with thread-local RNG
     var rng = initRand(rng_seed)
-    let submission = generateAIOrders(controller, filterHandle.filtered,
-                                      rng, @[])
+    let submission = generateAIOrders(controller, filterHandle.filtered, rng, @[])
 
     let ordersHandle = COrders(submission: submission)
     GC_ref(ordersHandle)  # Prevent GC from collecting this ref object

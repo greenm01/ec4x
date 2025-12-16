@@ -33,6 +33,7 @@ type
     diplomaticWeight: float # Prioritize enemies over neutrals
 
 proc scoreEspionageTarget*(
+  controller: AIController,
   targetHouse: HouseId,
   ownHouse: HouseId,
   intelSnapshot: IntelligenceSnapshot,
@@ -45,7 +46,7 @@ proc scoreEspionageTarget*(
 
   result.houseId = targetHouse
   result.score = 0.0
-  let cfg = globalRBAConfig.drungarius_requirements
+  let cfg = controller.rbaConfig.drungarius_requirements
 
   # 1. Tech Value: Target houses ahead in tech (steal research)
   result.techValue = 0.0
@@ -59,10 +60,10 @@ proc scoreEspionageTarget*(
     # Compare to our tech (rough proxy: assume we're around Act-appropriate level)
     # Configuration from config/rba.toml [drungarius]
     let ourTechEstimate = case currentAct
-      of ai_types.GameAct.Act1_LandGrab: globalRBAConfig.drungarius.research_budget_act1 * 5  # ~15 (3 per field)
-      of ai_types.GameAct.Act2_RisingTensions: globalRBAConfig.drungarius.research_budget_act2 * 3 + 4  # ~25 (5 per field)
-      of ai_types.GameAct.Act3_TotalWar: globalRBAConfig.drungarius.research_budget_act3 * 3 + 5  # ~35 (7 per field)
-      of ai_types.GameAct.Act4_Endgame: globalRBAConfig.drungarius.research_budget_act4 * 3  # ~45 (9 per field)
+      of ai_types.GameAct.Act1_LandGrab: controller.rbaConfig.drungarius.research_budget_act1 * 5  # ~15 (3 per field)
+      of ai_types.GameAct.Act2_RisingTensions: controller.rbaConfig.drungarius.research_budget_act2 * 3 + 4  # ~25 (5 per field)
+      of ai_types.GameAct.Act3_TotalWar: controller.rbaConfig.drungarius.research_budget_act3 * 3 + 5  # ~35 (7 per field)
+      of ai_types.GameAct.Act4_Endgame: controller.rbaConfig.drungarius.research_budget_act4 * 3  # ~45 (9 per field)
 
     if totalEnemyTech > ourTechEstimate:
       result.techValue = float(totalEnemyTech - ourTechEstimate) / cfg.tech_value_divisor
@@ -134,6 +135,7 @@ proc scoreEspionageTarget*(
   return result
 
 proc selectBestEspionageTargets*(
+  controller: AIController,
   intelSnapshot: IntelligenceSnapshot,
   filtered: FilteredGameState,
   personality: ai_types.AIPersonality,
@@ -158,7 +160,7 @@ proc selectBestEspionageTargets*(
   # Score each candidate
   for house in candidateHouses:
     let score = scoreEspionageTarget(
-      house, filtered.viewingHouse, intelSnapshot, filtered, personality, currentAct
+      controller, house, filtered.viewingHouse, intelSnapshot, filtered, personality, currentAct
     )
     scoredTargets.add(score)
 
@@ -197,6 +199,7 @@ type
     reason: string
 
 proc selectSabotageBottlenecks*(
+  controller: AIController,
   intelSnapshot: IntelligenceSnapshot,
   maxTargets: int = 3
 ): seq[SabotageTarget] =
@@ -205,7 +208,7 @@ proc selectSabotageBottlenecks*(
 
   result = @[]
   var scoredTargets: seq[SabotageTarget] = @[]
-  let cfg = globalRBAConfig.drungarius_requirements
+  let cfg = controller.rbaConfig.drungarius_requirements
 
   # Analyze construction activity for shipyard concentrations
   for systemId, activity in intelSnapshot.economic.constructionActivity:
@@ -272,6 +275,7 @@ proc selectSabotageBottlenecks*(
 # =============================================================================
 
 proc assessCounterIntelligenceNeeds*(
+  controller: AIController,
   filtered: FilteredGameState,
   intelSnapshot: IntelligenceSnapshot,
   currentCIP: int,
@@ -281,7 +285,7 @@ proc assessCounterIntelligenceNeeds*(
   ## Returns CIP investment and counter-intel sweep requirements
 
   result = @[]
-  let cfg = globalRBAConfig.drungarius_requirements
+  let cfg = controller.rbaConfig.drungarius_requirements
 
   # Track detected espionage activity by house
   var espionageActivityByHouse = initTable[HouseId, int]()
@@ -368,7 +372,7 @@ proc generateEspionageRequirements*(
   let p = controller.personality
   let currentEBP = filtered.ownHouse.espionageBudget.ebpPoints
   let currentCIP = filtered.ownHouse.espionageBudget.cipPoints
-  let cfg = globalRBAConfig.drungarius_requirements
+  let cfg = controller.rbaConfig.drungarius_requirements
 
   # Check if "MaintainPrestige" GOAP goal is active (Gap 6)
   # TODO: Re-enable once goapPlanTracker is integrated into AIController
@@ -384,26 +388,26 @@ proc generateEspionageRequirements*(
           &"(EBP={currentEBP}, CIP={currentCIP}, Act={currentAct}, MaintainPrestigeActive={isMaintainPrestigeActive})")
 
   # Phase 5.1: Select best espionage targets using multi-factor scoring
-  let bestTargets = selectBestEspionageTargets(intelSnapshot, filtered, p, currentAct, maxTargets = 3)
+  let bestTargets = selectBestEspionageTargets(controller, intelSnapshot, filtered, p, currentAct, maxTargets = 3)
 
   # === EBP/CIP Investment Target Levels by Act ===
   # Configuration from config/rba.toml [drungarius]
-  var targetEBP = globalRBAConfig.drungarius.espionage_budget_act1 # Use var for modification
-  var targetCIP = globalRBAConfig.drungarius.research_budget_act1
+  var targetEBP = controller.rbaConfig.drungarius.espionage_budget_act1 # Use var for modification
+  var targetCIP = controller.rbaConfig.drungarius.research_budget_act1
 
   case currentAct
   of ai_types.GameAct.Act1_LandGrab:
-    targetEBP = globalRBAConfig.drungarius.espionage_budget_act1
-    targetCIP = globalRBAConfig.drungarius.research_budget_act1
+    targetEBP = controller.rbaConfig.drungarius.espionage_budget_act1
+    targetCIP = controller.rbaConfig.drungarius.research_budget_act1
   of ai_types.GameAct.Act2_RisingTensions:
-    targetEBP = globalRBAConfig.drungarius.espionage_budget_act2
-    targetCIP = globalRBAConfig.drungarius.research_budget_act2
+    targetEBP = controller.rbaConfig.drungarius.espionage_budget_act2
+    targetCIP = controller.rbaConfig.drungarius.research_budget_act2
   of ai_types.GameAct.Act3_TotalWar:
-    targetEBP = globalRBAConfig.drungarius.espionage_budget_act3 + cfg.act3_war_ebp_bonus
-    targetCIP = globalRBAConfig.drungarius.research_budget_act3 + cfg.act3_war_cip_bonus
+    targetEBP = controller.rbaConfig.drungarius.espionage_budget_act3 + cfg.act3_war_ebp_bonus
+    targetCIP = controller.rbaConfig.drungarius.research_budget_act3 + cfg.act3_war_cip_bonus
   of ai_types.GameAct.Act4_Endgame:
-    targetEBP = globalRBAConfig.drungarius.espionage_budget_act4
-    targetCIP = globalRBAConfig.drungarius.research_budget_act4
+    targetEBP = controller.rbaConfig.drungarius.espionage_budget_act4
+    targetCIP = controller.rbaConfig.drungarius.research_budget_act4
 
   # === PRESTIGE AWARENESS (Gap 6): Adjust target EBP/CIP if MaintainPrestige is active ===
   var adjustedTargetEBP = targetEBP
@@ -490,7 +494,7 @@ proc generateEspionageRequirements*(
 
   # === MEDIUM/HIGH: Phase 5.2 - Intelligence-Driven Counter-Intelligence ===
   # Use intelligence to detect espionage threats and respond
-  let ciRequirements = assessCounterIntelligenceNeeds(filtered, intelSnapshot, currentCIP, targetCIP)
+  let ciRequirements = assessCounterIntelligenceNeeds(controller, filtered, intelSnapshot, currentCIP, targetCIP)
   for req in ciRequirements:
     result.requirements.add(req)
     result.totalEstimatedCost += req.estimatedCost
@@ -526,7 +530,7 @@ proc generateEspionageRequirements*(
   # === HIGH: Phase 5.3 - Economic Bottleneck Sabotage ===
   # Target shipyard concentrations and high-value infrastructure
   if currentEBP >= cfg.req_ebp_sabotage_bottleneck:
-    let bottlenecks = selectSabotageBottlenecks(intelSnapshot, maxTargets = 2)
+    let bottlenecks = selectSabotageBottlenecks(controller, intelSnapshot, maxTargets = 2)
 
     if bottlenecks.len > 0:
       # Target top bottleneck with high-priority sabotage
@@ -627,7 +631,7 @@ proc generateEspionageRequirements*(
       result.totalEstimatedCost += cfg.cost_disinformation
 
   # === MEDIUM: Economic manipulation ===
-  if currentEBP >= cfg.req_ebp_economic_manipulation and p.economicFocus > globalRBAConfig.drungarius_operations.economic_focus_manipulation:
+  if currentEBP >= cfg.req_ebp_economic_manipulation and p.economicFocus > controller.rbaConfig.drungarius_operations.economic_focus_manipulation:
     # Phase 5.1: Economic-focused AIs target high producers
     if bestTargets.len > 0:
       # For economic ops, prefer second-best target if available (diversify)

@@ -127,10 +127,10 @@ proc assessCombatSituation*(controller: AIController, filtered: FilteredGameStat
     result.strategicValue += 50
 
   let p = controller.personality
-  var attackThreshold = globalRBAConfig.strategic.attack_threshold
+  var attackThreshold = controller.rbaConfig.strategic.attack_threshold
 
   if controller.strategy == AIStrategy.Aggressive:
-    attackThreshold = globalRBAConfig.strategic.aggressive_attack_threshold
+    attackThreshold = controller.rbaConfig.strategic.aggressive_attack_threshold
   elif p.riskTolerance > 0.7:
     attackThreshold = 0.5
   elif p.aggression < 0.3:
@@ -147,12 +147,12 @@ proc assessCombatSituation*(controller: AIController, filtered: FilteredGameStat
   result.recommendReinforce = (
     result.attackerFleetStrength > 0 and
     result.estimatedCombatOdds < attackThreshold and
-    result.estimatedCombatOdds > globalRBAConfig.strategic.retreat_threshold
+    result.estimatedCombatOdds > controller.rbaConfig.strategic.retreat_threshold
   )
 
   result.recommendRetreat = (
     result.attackerFleetStrength > 0 and
-    result.estimatedCombatOdds < globalRBAConfig.strategic.retreat_threshold
+    result.estimatedCombatOdds < controller.rbaConfig.strategic.retreat_threshold
   )
 
 proc assessInvasionViability*(controller: AIController, filtered: FilteredGameState,

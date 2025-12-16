@@ -56,6 +56,7 @@ proc reprioritizeAllAdvisors*(controller: var AIController, treasury: int, cstLe
     let feedback = controller.treasurerFeedback.get()
     if feedback.unfulfilledRequirements.len > 0:
       let reprioritized = reprioritizeRequirements(
+        controller,
         controller.domestikosRequirements.get(),
         feedback,
         treasury,  # Budget-aware reprioritization
@@ -94,6 +95,7 @@ proc reprioritizeAllAdvisors*(controller: var AIController, treasury: int, cstLe
     let feedback = controller.eparchFeedback.get()
     if feedback.unfulfilledRequirements.len > 0:
       let reprioritized = eparch_req.reprioritizeEconomicRequirements(
+        controller,
         controller.eparchRequirements.get(),
         feedback,
         treasury  # Budget-aware reprioritization (Gap 4)

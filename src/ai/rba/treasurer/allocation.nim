@@ -195,7 +195,7 @@ proc allocateBudget*(
 
   # 3. Domestikos consultation (Treasurer-Domestikos consultation system)
   if admiralRequirements.isSome and availableBudget > 0:
-    consultDomestikosRequirements(result, admiralRequirements.get(), availableBudget)
+    consultDomestikosRequirements(controller, result, admiralRequirements.get(), availableBudget)
 
   # 4. Threat-aware allocation (Phase D - NEW)
   if intelSnapshot.isSome:

@@ -92,7 +92,7 @@ proc generateDomestikosOrders*(
   result = initTable[FleetId, StandingOrder]()
 
   # Check if Domestikos is enabled in config
-  if not globalRBAConfig.domestikos.enabled:
+  if not controller.rbaConfig.domestikos.enabled:
     return result
 
   logDebug(LogCategory.lcAI,
@@ -124,7 +124,7 @@ proc generateDomestikosOrders*(
     result[fleetId] = order
 
   # Step 2.5: Generate build requirements (Phase 3)
-  if globalRBAConfig.domestikos.build_requirements_enabled and intelSnapshot.isSome:
+  if controller.rbaConfig.domestikos.build_requirements_enabled and intelSnapshot.isSome:
     logDebug(LogCategory.lcAI,
              &"{controller.houseId} Domestikos: Generating build requirements")
 
@@ -233,7 +233,7 @@ proc generateDomestikosOrders*(
   # Step 5: Generate fleet management zero-turn commands (merge/detach/transfer)
   # These execute immediately when fleets are at friendly colonies
   let fleetManagementCommands = fleet_management.generateFleetManagementCommands(
-    filtered, analyses, currentAct, controller.houseId
+    controller, filtered, analyses, currentAct, controller.houseId
   )
 
   # Store in controller for orders.nim to add to AIOrderSubmission

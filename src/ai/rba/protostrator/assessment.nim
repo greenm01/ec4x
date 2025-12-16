@@ -43,7 +43,7 @@ proc calculateMilitaryStrength*(filtered: FilteredGameState, houseId: HouseId): 
   for fleet in fleets:
     result += getFleetStrength(fleet)
 
-proc calculateEconomicStrength*(filtered: FilteredGameState, houseId: HouseId): int =
+proc calculateEconomicStrength*(controller: AIController, filtered: FilteredGameState, houseId: HouseId): int =
   ## Calculate total economic strength for a house
   ## RESPECTS FOG-OF-WAR: Can only see own house's full details
   result = 0
@@ -59,7 +59,7 @@ proc calculateEconomicStrength*(filtered: FilteredGameState, houseId: HouseId): 
     # Colony production value
     for colony in colonies:
       result += colony.production * 10  # Weight production highly
-      result += colony.infrastructure * globalRBAConfig.protostrator.infrastructure_value_per_point
+      result += colony.infrastructure * controller.rbaConfig.protostrator.infrastructure_value_per_point
   else:
     # Enemy house - estimate from visible colonies only
     for visCol in filtered.visibleColonies:
@@ -147,6 +147,7 @@ proc findMutualEnemiesWithIntelligence*(
       result.add(enemy)
 
 proc identifyEnemiesUnderPressure*(
+  controller: AIController,
   filtered: FilteredGameState,
   intelSnapshot: IntelligenceSnapshot
 ): seq[tuple[houseId: HouseId, distractedBy: seq[HouseId], opportunityScore: float]] =
@@ -177,9 +178,9 @@ proc identifyEnemiesUnderPressure*(
     for lesson in intelSnapshot.military.combatLessonsLearned:
       if lesson.enemyHouse == houseId:
         # This enemy fought someone (could be us or others)
-        let recentCombat = (filtered.turn - lesson.turn) <= globalRBAConfig.protostrator.combat_freshness_turns
+        let recentCombat = (filtered.turn - lesson.turn) <= controller.rbaConfig.protostrator.combat_freshness_turns
         if recentCombat:
-          opportunityScore += globalRBAConfig.protostrator.opportunity_score_recent_combat  # Recent combat = distracted
+          opportunityScore += controller.rbaConfig.protostrator.opportunity_score_recent_combat  # Recent combat = distracted
 
       # Check if they're fighting someone else (not us)
       # (This requires checking if the combat was against another house)
@@ -195,12 +196,12 @@ proc identifyEnemiesUnderPressure*(
             if house != houseId and house != ourHouseId:
               if house notin distractedBy:
                 distractedBy.add(house)
-                opportunityScore += globalRBAConfig.protostrator.opportunity_score_at_war  # At war with others = vulnerable
+                opportunityScore += controller.rbaConfig.protostrator.opportunity_score_at_war  # At war with others = vulnerable
         of DiplomaticEventType.DiplomaticBreak:
           # Diplomatic tensions
           for house in event.houses:
             if house != houseId and house != ourHouseId:
-              opportunityScore += globalRBAConfig.protostrator.opportunity_score_tensions  # Tensions = potential distraction
+              opportunityScore += controller.rbaConfig.protostrator.opportunity_score_tensions  # Tensions = potential distraction
         else:
           discard
 
@@ -214,7 +215,7 @@ proc identifyEnemiesUnderPressure*(
         hostileToCount += 1
 
     if hostileToCount >= 2:
-      opportunityScore += globalRBAConfig.protostrator.opportunity_score_multiple_fronts  # Fighting on multiple fronts = vulnerable
+      opportunityScore += controller.rbaConfig.protostrator.opportunity_score_multiple_fronts  # Fighting on multiple fronts = vulnerable
 
     # Only include if there's an opportunity
     if opportunityScore > 0.0 or distractedBy.len > 0:
@@ -226,14 +227,14 @@ proc identifyEnemiesUnderPressure*(
     elif a.opportunityScore < b.opportunityScore: 1
     else: 0
 
-proc estimateViolationRisk*(filtered: FilteredGameState, targetHouse: HouseId): float =
+proc estimateViolationRisk*(controller: AIController, filtered: FilteredGameState, targetHouse: HouseId): float =
   ## Estimate risk that target house will violate a pact (0.0-1.0)
   ## RESPECTS FOG-OF-WAR: Can't see other houses' violation history
   ## Returns a conservative default estimate
 
   # Without access to violation history, use a moderate default risk
   # TODO: Could enhance with intelligence reports if available
-  return globalRBAConfig.protostrator.baseline_risk  # Baseline risk
+  return controller.rbaConfig.protostrator.baseline_risk  # Baseline risk
 
 # =============================================================================
 # Phase 8.2: Impending Attack Detection
@@ -256,6 +257,7 @@ type
     recommendedAction*: string
 
 proc assessDiplomaticUrgency*(
+  controller: AIController,
   filtered: FilteredGameState,
   intelSnapshot: IntelligenceSnapshot
 ): seq[ThreatIndicator] =
@@ -291,7 +293,7 @@ proc assessDiplomaticUrgency*(
             indicators.add(&"Fleet strength {fleet.estimatedStrength} detected at {colony.systemId}")
 
     if nearbyFleetStrength > 50:
-      urgencyScore += globalRBAConfig.protostrator.urgency_critical_threats
+      urgencyScore += controller.rbaConfig.protostrator.urgency_critical_threats
       indicators.add(&"Large fleet presence near borders ({nearbyFleetStrength} total)")
 
     # 2. Recent scouting activity (war preparation indicator)
@@ -303,7 +305,7 @@ proc assessDiplomaticUrgency*(
           recentScoutingCount += 1
 
     if recentScoutingCount >= 2:
-      urgencyScore += globalRBAConfig.protostrator.urgency_border_tension
+      urgencyScore += controller.rbaConfig.protostrator.urgency_border_tension
       indicators.add(&"Increased military contact ({recentScoutingCount} encounters in last 3 turns)")
 
     # 3. Espionage activity (hostile intentions indicator)
@@ -311,7 +313,7 @@ proc assessDiplomaticUrgency*(
       let risk = intelSnapshot.espionage.detectionRisks[houseId]
       case risk
       of DetectionRiskLevel.High, DetectionRiskLevel.Critical:
-        urgencyScore += globalRBAConfig.protostrator.urgency_diplomatic_isolation
+        urgencyScore += controller.rbaConfig.protostrator.urgency_diplomatic_isolation
         indicators.add(&"Heavy espionage activity detected (risk: {$risk})")
       of DetectionRiskLevel.Moderate:
         urgencyScore += 1
@@ -323,7 +325,7 @@ proc assessDiplomaticUrgency*(
     if intelSnapshot.military.enemyMilitaryCapability.hasKey(houseId):
       let capability = intelSnapshot.military.enemyMilitaryCapability[houseId]
       if capability.estimatedFleetStrength > 100:
-        urgencyScore += globalRBAConfig.protostrator.urgency_economic_pressure
+        urgencyScore += controller.rbaConfig.protostrator.urgency_economic_pressure
         indicators.add(&"Strong military capability (estimated strength: {capability.estimatedFleetStrength})")
 
     # 5. Check diplomatic hostility escalation
@@ -331,7 +333,7 @@ proc assessDiplomaticUrgency*(
       let hostility = intelSnapshot.diplomatic.observedHostility[houseId]
       case hostility
       of HostilityLevel.Aggressive:
-        urgencyScore += globalRBAConfig.protostrator.urgency_prestige_threat
+        urgencyScore += controller.rbaConfig.protostrator.urgency_prestige_threat
         indicators.add("Aggressive diplomatic posture observed")
       of HostilityLevel.Hostile:
         urgencyScore += 1
@@ -401,8 +403,8 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
   else:
     10.0  # They have no military
 
-  let myEconomy = calculateEconomicStrength(filtered, controller.houseId)
-  let theirEconomy = calculateEconomicStrength(filtered, targetHouse)
+  let myEconomy = calculateEconomicStrength(controller, filtered, controller.houseId)
+  let theirEconomy = calculateEconomicStrength(controller, filtered, targetHouse)
   result.relativeEconomicStrength = if theirEconomy > 0:
     float(myEconomy) / float(theirEconomy)
   else:
@@ -416,7 +418,7 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
     result.mutualEnemies = findMutualEnemies(filtered, controller.houseId, targetHouse)
 
   # Estimate violation risk
-  result.violationRisk = estimateViolationRisk(filtered, targetHouse)
+  result.violationRisk = estimateViolationRisk(controller, filtered, targetHouse)
 
   # Strategic recommendations based on personality
   case result.currentState
@@ -426,38 +428,38 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
 
     # Stronger neighbor = want pact (defensive)
     if result.relativeMilitaryStrength < 0.8:
-      pactScore += globalRBAConfig.protostrator_pact_assessment.shared_enemies_weight
+      pactScore += controller.rbaConfig.protostrator_pact_assessment.shared_enemies_weight
 
     # Mutual enemies = want pact (alliance)
-    pactScore += float(result.mutualEnemies.len) * globalRBAConfig.protostrator_pact_assessment.mutual_enemies_weight
+    pactScore += float(result.mutualEnemies.len) * controller.rbaConfig.protostrator_pact_assessment.mutual_enemies_weight
 
     # High diplomacy value = more likely to seek pacts
-    pactScore += p.diplomacyValue * globalRBAConfig.protostrator_pact_assessment.diplomacy_trait_weight
+    pactScore += p.diplomacyValue * controller.rbaConfig.protostrator_pact_assessment.diplomacy_trait_weight
 
     # Low violation risk = more likely to trust
-    pactScore += (1.0 - result.violationRisk) * globalRBAConfig.protostrator_pact_assessment.trust_weight
+    pactScore += (1.0 - result.violationRisk) * controller.rbaConfig.protostrator_pact_assessment.trust_weight
 
-    result.recommendPact = pactScore > globalRBAConfig.protostrator_pact_assessment.recommendation_threshold
+    result.recommendPact = pactScore > controller.rbaConfig.protostrator_pact_assessment.recommendation_threshold
 
     # Should we escalate to Hostile or Enemy?
     var hostileScore = 0.0
     var enemyScore = 0.0
 
     # Aggressive personality
-    hostileScore += p.aggression * globalRBAConfig.protostrator_stance_recommendations.aggression_hostile_weight
-    enemyScore += p.aggression * globalRBAConfig.protostrator_stance_recommendations.aggression_enemy_weight
+    hostileScore += p.aggression * controller.rbaConfig.protostrator_stance_recommendations.aggression_hostile_weight
+    enemyScore += p.aggression * controller.rbaConfig.protostrator_stance_recommendations.aggression_enemy_weight
 
     # Weaker target
     if result.relativeMilitaryStrength > 1.5:
-      hostileScore += globalRBAConfig.protostrator_stance_recommendations.opportunity_hostile_weight
-      enemyScore += globalRBAConfig.protostrator_stance_recommendations.opportunity_enemy_weight
+      hostileScore += controller.rbaConfig.protostrator_stance_recommendations.opportunity_hostile_weight
+      enemyScore += controller.rbaConfig.protostrator_stance_recommendations.opportunity_enemy_weight
 
     # Low diplomacy value
-    hostileScore += (1.0 - p.diplomacyValue) * globalRBAConfig.protostrator_stance_recommendations.opportunity_hostile_weight
-    enemyScore += (1.0 - p.diplomacyValue) * globalRBAConfig.protostrator_stance_recommendations.opportunity_enemy_weight
+    hostileScore += (1.0 - p.diplomacyValue) * controller.rbaConfig.protostrator_stance_recommendations.opportunity_hostile_weight
+    enemyScore += (1.0 - p.diplomacyValue) * controller.rbaConfig.protostrator_stance_recommendations.opportunity_enemy_weight
 
-    result.recommendHostile = hostileScore > globalRBAConfig.protostrator_stance_recommendations.hostile_threshold
-    result.recommendEnemy = enemyScore > globalRBAConfig.protostrator_stance_recommendations.enemy_threshold
+    result.recommendHostile = hostileScore > controller.rbaConfig.protostrator_stance_recommendations.hostile_threshold
+    result.recommendEnemy = enemyScore > controller.rbaConfig.protostrator_stance_recommendations.enemy_threshold
 
 
   of dip_types.DiplomaticState.Hostile:
@@ -466,21 +468,21 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
     var deescalateScore = 0.0
 
     # Aggressive personality wants war
-    escalateScore += p.aggression * globalRBAConfig.protostrator_stance_recommendations.aggression_enemy_weight
+    escalateScore += p.aggression * controller.rbaConfig.protostrator_stance_recommendations.aggression_enemy_weight
 
     # Weaker target = escalate
     if result.relativeMilitaryStrength > 1.3:
-      escalateScore += globalRBAConfig.protostrator_stance_recommendations.opportunity_enemy_weight
+      escalateScore += controller.rbaConfig.protostrator_stance_recommendations.opportunity_enemy_weight
 
     # Much stronger enemy = de-escalate
     if result.relativeMilitaryStrength < 0.6:
       deescalateScore += 0.5
 
     # High diplomacy value = prefer de-escalation
-    deescalateScore += p.diplomacyValue * globalRBAConfig.protostrator_stance_recommendations.diplomacy_deescalate_weight
+    deescalateScore += p.diplomacyValue * controller.rbaConfig.protostrator_stance_recommendations.diplomacy_deescalate_weight
 
-    result.recommendEnemy = escalateScore > globalRBAConfig.protostrator_stance_recommendations.escalate_threshold
-    result.recommendNeutral = deescalateScore > globalRBAConfig.protostrator_stance_recommendations.deescalate_threshold
+    result.recommendEnemy = escalateScore > controller.rbaConfig.protostrator_stance_recommendations.escalate_threshold
+    result.recommendNeutral = deescalateScore > controller.rbaConfig.protostrator_stance_recommendations.deescalate_threshold
 
   of dip_types.DiplomaticState.Enemy:
     # Should we normalize relations?
@@ -491,13 +493,13 @@ proc assessDiplomaticSituation*(controller: AIController, filtered: FilteredGame
       normalizeScore += 0.5
 
     # High diplomacy value
-    normalizeScore += p.diplomacyValue * globalRBAConfig.protostrator_stance_recommendations.diplomacy_normalize_weight
+    normalizeScore += p.diplomacyValue * controller.rbaConfig.protostrator_stance_recommendations.diplomacy_normalize_weight
 
     # Low aggression
-    normalizeScore += (1.0 - p.aggression) * globalRBAConfig.protostrator_stance_recommendations.peace_bias_weight
+    normalizeScore += (1.0 - p.aggression) * controller.rbaConfig.protostrator_stance_recommendations.peace_bias_weight
 
     # Recommend neutral if score high enough
-    if normalizeScore > globalRBAConfig.protostrator_stance_recommendations.normalize_threshold:
+    if normalizeScore > controller.rbaConfig.protostrator_stance_recommendations.normalize_threshold:
       result.recommendEnemy = false
     else:
       result.recommendEnemy = true  # Stay enemies

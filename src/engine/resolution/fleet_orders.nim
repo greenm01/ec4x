@@ -554,23 +554,27 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
   # Unload colonists from fleet
   for ship in fleet.spaceLiftShips.mitems:
     if ship.cargo.cargoType == CargoType.Colonists:
-      logDebug(LogCategory.lcColonization,
-        &"Unloading {ship.cargo.quantity} PTU from {ship.shipClass} {ship.id}")
+      logInfo(LogCategory.lcColonization,
+        &"⚠️  PRE-UNLOAD: {ship.shipClass} {ship.id} has {ship.cargo.quantity} PTU")
       discard ship.unloadCargo()
-      logDebug(LogCategory.lcColonization,
-        &"After unload: {ship.shipClass} {ship.id} cargo quantity = {ship.cargo.quantity}")
+      logInfo(LogCategory.lcColonization,
+        &"⚠️  POST-UNLOAD: {ship.shipClass} {ship.id} has {ship.cargo.quantity} PTU")
 
   # ETAC cannibalized - remove from game, structure becomes colony infrastructure
-  logDebug(LogCategory.lcColonization,
-    &"Checking {fleet.spaceLiftShips.len} spaceLiftShips for cannibalization")
+  logInfo(LogCategory.lcColonization,
+    &"⚠️  CANNIBALIZATION CHECK: Fleet {order.fleetId} has " &
+    &"{fleet.spaceLiftShips.len} spacelift ships")
+
+  var cannibalized_count = 0
   for i in countdown(fleet.spaceLiftShips.high, 0):
     let ship = fleet.spaceLiftShips[i]
-    logDebug(LogCategory.lcColonization,
-      &"Ship {i}: class={ship.shipClass}, cargoQty={ship.cargo.quantity}, " &
-      &"cargoType={ship.cargo.cargoType}")
+    logInfo(LogCategory.lcColonization,
+      &"⚠️  Ship {i}: class={ship.shipClass}, cargoQty={ship.cargo.quantity}")
+
     if ship.shipClass == ShipClass.ETAC and ship.cargo.quantity == 0:
       # ETAC cannibalized - ship structure becomes starting IU
       fleet.spaceLiftShips.delete(i)
+      cannibalized_count += 1
 
       # Fire GameEvent for colonization success
       events.add(GameEvent(
@@ -582,8 +586,12 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
         colonyEventType: some("Established")
       ))
 
-      logInfo(LogCategory.lcEconomy,
-        &"ETAC {ship.id} cannibalized - structure became colony infrastructure at {targetId}")
+      logInfo(LogCategory.lcColonization,
+        &"⚠️  ✅ CANNIBALIZED ETAC {ship.id} at {targetId}")
+
+  logInfo(LogCategory.lcColonization,
+    &"⚠️  CANNIBALIZATION RESULT: {cannibalized_count} ETACs removed, " &
+    &"{fleet.spaceLiftShips.len} spacelift ships remain")
 
   state.fleets[order.fleetId] = fleet
 

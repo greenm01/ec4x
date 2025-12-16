@@ -133,7 +133,7 @@ proc analyzeCombatReports*(
   ## Phase C implementation
   result = @[]
 
-  let config = globalRBAConfig.intelligence
+  let config = controller.rbaConfig.intelligence
 
   # Skip if combat learning is disabled
   if not config.combat_report_learning_enabled:

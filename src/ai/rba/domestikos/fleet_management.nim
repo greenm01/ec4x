@@ -18,6 +18,7 @@
 import std/[tables, options, strformat]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, fleet, logger]
+import ../controller_types
 import ../../../engine/commands/zero_turn_commands
 import ../../common/types as ai_types
 import ../config
@@ -408,6 +409,7 @@ proc generateTransferCommands*(
 ## =============================================================================
 
 proc generateFleetManagementCommands*(
+  controller: AIController,
   filtered: FilteredGameState,
   analyses: seq[FleetAnalysis],
   currentAct: ai_types.GameAct,
@@ -423,7 +425,7 @@ proc generateFleetManagementCommands*(
   result = @[]
 
   # Check if enabled in config
-  if not globalRBAConfig.domestikos.fleet_management_enabled:
+  if not controller.rbaConfig.domestikos.fleet_management_enabled:
     return result
 
   logDebug(LogCategory.lcAI,

@@ -7,7 +7,7 @@ import ./[controller, controller_types, intelligence, tactical, strategic, budge
 import ./[basileus, domestikos, drungarius, eparch, logothete, protostrator, treasurer]
 import ./goap/core/types as goap_types # For GOAPlan
 import ./goap/integration/[plan_tracking, replanning] # For PlanTracker, newPlanTracker, ReplanReason
-import ./config # For GOAPConfig (now globalRBAConfig.goap)
+import ./config # For GOAPConfig (now controller.rbaConfig.goap)
 
 export controller, controller_types, types
 export intelligence, tactical, strategic, budget, logistics, orders

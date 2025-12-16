@@ -24,7 +24,7 @@ proc analyzeCounterIntelligence*(
   ## Analyze EspionageActivityReport data for counter-intelligence
   ## Phase E: Critical for detecting espionage threats and adjusting operations
 
-  let config = globalRBAConfig.intelligence_counterintel
+  let config = controller.rbaConfig.intelligence_counterintel
   var espionagePatterns = initTable[HouseId, EspionagePattern]()
   var detectionRisks = initTable[HouseId, DetectionRiskLevel]()
 

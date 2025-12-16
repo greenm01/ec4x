@@ -36,7 +36,7 @@ proc escalateSeverity*(
 
   result = baseSeverity
 
-  let config = globalRBAConfig.domestikos
+  let config = controller.rbaConfig.domestikos
   case baseSeverity
   of RequirementPriority.Low:
     if turnsUndefended >= config.escalation_low_to_medium_turns:
@@ -159,7 +159,7 @@ proc calculateGapSeverity(
   ##   - High risk: Still aggressive, only defend high-value/threatened
   ##   - Medium risk: Balanced defense, standard thresholds
   ##   - Low risk: Cautious, defend everything proactively
-  let config = globalRBAConfig.domestikos
+  let config = controller.rbaConfig.domestikos
 
   # Homeworld always protected (all acts, all personalities)
   if colonyPriority > 500.0 and currentDefenders == 0:
@@ -272,7 +272,7 @@ proc assessDefenseGaps*(
 
     # Estimate local threat using enhanced intelligence (Phase B+)
     let threat = estimateLocalThreatFromIntel(
-      colony.systemId, intelSnapshot
+      controller, colony.systemId, intelSnapshot
     )
 
     # Find nearest available defender
@@ -290,7 +290,7 @@ proc assessDefenseGaps*(
       colonyPriority, threat, currentDefenders, nearestDefender.distance,
       currentAct, controller.personality.risk_tolerance
     )
-    let severity = escalateSeverity(baseSeverity, turnsUndefended)
+    let severity = escalateSeverity(controller, baseSeverity, turnsUndefended)
 
     if severity != RequirementPriority.Deferred:
       result.add(DefenseGap(

@@ -38,9 +38,9 @@ proc evaluateStagingCandidate(
   if distance == 2 or distance == 3:
     priority += 100.0  # Ideal distance
   elif distance == 1:
-    priority += globalRBAConfig.domestikos_staging.priority_acceptable_close   # Acceptable but close
+    priority += controller.rbaConfig.domestikos_staging.priority_acceptable_close   # Acceptable but close
   elif distance == 4 or distance == 5:
-    priority += globalRBAConfig.domestikos_staging.priority_acceptable_far   # Acceptable but far
+    priority += controller.rbaConfig.domestikos_staging.priority_acceptable_far   # Acceptable but far
 
   # Safety bonus: owned systems are safer
   var isOwnedSystem = false
@@ -50,7 +50,7 @@ proc evaluateStagingCandidate(
       break
 
   if isOwnedSystem:
-    priority += globalRBAConfig.domestikos_staging.priority_owned_system  # Strong preference for owned systems
+    priority += controller.rbaConfig.domestikos_staging.priority_owned_system  # Strong preference for owned systems
 
   # Proximity to homeworld (prefer closer to home for supply lines)
   let pathToHome = filtered.starMap.findPath(candidate, controller.homeworld, Fleet())

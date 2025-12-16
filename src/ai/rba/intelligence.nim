@@ -136,7 +136,7 @@ proc needsReconnaissanceController*(controller: AIController,
     return true  # No snapshot = need intel
 
   let snap = controller.intelligenceSnapshot.get()
-  let threshold = config.globalRBAConfig.intelligence.colony_intel_stale_threshold
+  let threshold = controller.rbaConfig.intelligence.colony_intel_stale_threshold
 
   return snap.isIntelStale(systemId, currentTurn, threshold)
 

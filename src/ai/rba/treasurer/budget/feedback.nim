@@ -130,6 +130,7 @@ proc generateSubstitutionSuggestion*(
   return none(string)
 
 proc generateRequirementFeedback*(
+  controller: AIController,
   req: BuildRequirement,
   budgetAvailable: int,
   quantityBuilt: int,
@@ -163,7 +164,7 @@ proc generateRequirementFeedback*(
       feedback.budgetShortfall = unitCost - budgetAvailable
 
       # Generate substitution suggestion if enabled
-      if globalRBAConfig.feedback_system.suggest_cheaper_alternatives:
+      if controller.rbaConfig.feedback_system.suggest_cheaper_alternatives:
         feedback.suggestion = generateSubstitutionSuggestion(
           req, budgetAvailable, cstLevel)
 
@@ -207,6 +208,7 @@ proc generateRequirementFeedback*(
   return feedback
 
 proc generateDetailedFeedback*(
+  controller: AIController,
   unfulfilledRequirements: seq[BuildRequirement],
   budgetAvailable: int,
   cstLevel: int,
@@ -227,7 +229,7 @@ proc generateDetailedFeedback*(
     let hasCapacity = true
 
     let feedback = generateRequirementFeedback(
-      req, budgetAvailable, quantityBuilt, cstLevel, hasCapacity)
+      controller, req, budgetAvailable, quantityBuilt, cstLevel, hasCapacity)
 
     result.add(feedback)
 

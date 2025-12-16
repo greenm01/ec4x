@@ -13,6 +13,7 @@
 
 import std/options
 import ../../../common/types/units
+import ../controller_types
 import ../../../engine/economy/config_accessors
 import ../../common/types as ai_common_types
 import ../config  # For globalRBAConfig
@@ -50,6 +51,7 @@ proc getScoreFromConfig(scores: ShipClassScores, unit: ShipClass): float =
 # ============================================================================
 
 proc getActAppropriatenessScore(
+  controller: AIController,
   unit: ShipClass,
   currentAct: ai_common_types.GameAct
 ): float =
@@ -58,21 +60,21 @@ proc getActAppropriatenessScore(
   ## Scores loaded from config/rba.toml [domestikos.unit_priorities.act*]
   let scores = case currentAct
     of ai_common_types.GameAct.Act1_LandGrab:
-      globalRBAConfig.domestikos_unit_priorities_act1_land_grab
+      controller.rbaConfig.domestikos_unit_priorities_act1_land_grab
     of ai_common_types.GameAct.Act2_RisingTensions:
-      globalRBAConfig.domestikos_unit_priorities_act2_rising_tensions
+      controller.rbaConfig.domestikos_unit_priorities_act2_rising_tensions
     of ai_common_types.GameAct.Act3_TotalWar:
-      globalRBAConfig.domestikos_unit_priorities_act3_total_war
+      controller.rbaConfig.domestikos_unit_priorities_act3_total_war
     of ai_common_types.GameAct.Act4_Endgame:
-      globalRBAConfig.domestikos_unit_priorities_act4_endgame
+      controller.rbaConfig.domestikos_unit_priorities_act4_endgame
 
   return getScoreFromConfig(scores, unit)
 
-proc getStrategicValueScore(unit: ShipClass): float =
+proc getStrategicValueScore(controller: AIController, unit: ShipClass): float =
   ## Get strategic value score for unit (0.0 - 2.0 points)
   ## Capital > Medium > Escort > Light
   ## Scores loaded from config/rba.toml [domestikos.unit_priorities.strategic_values]
-  return getScoreFromConfig(globalRBAConfig.domestikos_unit_priorities_strategic_values, unit)
+  return getScoreFromConfig(controller.rbaConfig.domestikos_unit_priorities_strategic_values, unit)
 
 proc getBudgetEfficiencyScore(unit: ShipClass, budget: int): float =
   ## Get budget efficiency score (0.0 - 1.0 points)
@@ -90,6 +92,7 @@ proc getBudgetEfficiencyScore(unit: ShipClass, budget: int): float =
   return costRatio
 
 proc calculateUnitPriority*(
+  controller: AIController,
   unit: ShipClass,
   currentAct: ai_common_types.GameAct,
   cstLevel: int,
@@ -124,10 +127,10 @@ proc calculateUnitPriority*(
   var score = 0.0
 
   # 1. Act appropriateness (0.0 - 4.0 points)
-  score += getActAppropriatenessScore(unit, currentAct)
+  score += getActAppropriatenessScore(controller, unit, currentAct)
 
   # 2. Strategic value (0.0 - 2.0 points)
-  score += getStrategicValueScore(unit)
+  score += getStrategicValueScore(controller, unit)
 
   # 3. Budget efficiency (0.0 - 1.0 points)
   score += getBudgetEfficiencyScore(unit, budget)
@@ -139,6 +142,7 @@ proc calculateUnitPriority*(
 # ============================================================================
 
 proc selectBestUnit*(
+  controller: AIController,
   candidates: seq[ShipClass],
   currentAct: ai_common_types.GameAct,
   cstLevel: int,
@@ -168,7 +172,7 @@ proc selectBestUnit*(
   var bestScore = -1.0
 
   for candidate in candidates:
-    let score = calculateUnitPriority(candidate, currentAct, cstLevel, budget)
+    let score = calculateUnitPriority(controller, candidate, currentAct, cstLevel, budget)
 
     # Skip unbuildable units (score = -1.0)
     if score < 0.0:

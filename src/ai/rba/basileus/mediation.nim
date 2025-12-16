@@ -179,6 +179,7 @@ proc getDomainType*(req: AdvisorRequirement): Option[DomainType] =
     result = none(DomainType) # Treasurer doesn't map to a GOAP domain for budget guidance
 
 proc mediateRequirements*(
+  controller: AIController,
   domestikosReqs: BuildRequirements,
   logotheteReqs: ResearchRequirements,
   drungariusReqs: EspionageRequirements,
@@ -199,7 +200,7 @@ proc mediateRequirements*(
           &"{houseId} Basileus: Mediating requirements (budget={availableBudget}PP, act={currentAct}, atWar={isAtWar})")
 
   # 1. Calculate advisor weights (personality-driven + war-aware)
-  let weights = calculateAdvisorWeights(personality, currentAct, isAtWar)
+  let weights = calculateAdvisorWeights(controller, personality, currentAct, isAtWar)
 
   logInfo(LogCategory.lcAI,
           &"{houseId} Basileus: Advisor weights - " &

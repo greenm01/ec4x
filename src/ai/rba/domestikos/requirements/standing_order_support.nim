@@ -127,7 +127,7 @@ proc generateStandingOrderSupportRequirements*(
 
   result = @[]
 
-  if not globalRBAConfig.standing_orders_integration
+  if not controller.rbaConfig.standing_orders_integration
       .generate_support_requirements:
     return result
 
@@ -169,13 +169,13 @@ proc generateStandingOrderSupportRequirements*(
                             0
 
     # Escalate priority based on how long system has been undefended
-    let priority = if turnsUndefended >= globalRBAConfig.domestikos
+    let priority = if turnsUndefended >= controller.rbaConfig.domestikos
                       .escalation_high_to_critical_turns:
                      RequirementPriority.Critical
-                   elif turnsUndefended >= globalRBAConfig.domestikos
+                   elif turnsUndefended >= controller.rbaConfig.domestikos
                       .escalation_medium_to_high_turns:
                      RequirementPriority.High
-                   elif turnsUndefended >= globalRBAConfig.domestikos
+                   elif turnsUndefended >= controller.rbaConfig.domestikos
                       .escalation_low_to_medium_turns:
                      RequirementPriority.High
                    else:
@@ -221,7 +221,7 @@ proc biasFillerTowardsDefenders*(
 
   result = baseFillerCandidates
 
-  if not globalRBAConfig.standing_orders_integration
+  if not controller.rbaConfig.standing_orders_integration
       .generate_support_requirements:
     return result
 
@@ -233,7 +233,7 @@ proc biasFillerTowardsDefenders*(
     return result
 
   # Calculate how many defender ships to add to rotation
-  let biasFactor = globalRBAConfig.standing_orders_integration
+  let biasFactor = controller.rbaConfig.standing_orders_integration
                     .filler_standing_order_bias
   let defenderBonus = int(float(undefendedWithOrders.len) * biasFactor)
 

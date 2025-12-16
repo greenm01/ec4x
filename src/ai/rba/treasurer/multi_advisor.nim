@@ -219,6 +219,7 @@ proc isAtWar*(filtered: FilteredGameState, houseId: HouseId): bool =
   return false
 
 proc allocateBudgetMultiAdvisor*(
+  controller: AIController,
   domestikosReqs: BuildRequirements,
   logotheteReqs: ResearchRequirements,
   drungariusReqs: EspionageRequirements,
@@ -304,6 +305,7 @@ proc allocateBudgetMultiAdvisor*(
 
   # === STEP 2: Mediate remaining budget with war-aware weights and GOAP estimates ===
   let mediation = mediateRequirements(
+    controller,
     domestikosReqs, logotheteReqs, drungariusReqs, eparchReqs, protostratorReqs,
     personality, currentAct, effectiveBudgetForMediation, houseId, atWar, goapBudgetEstimates
   )

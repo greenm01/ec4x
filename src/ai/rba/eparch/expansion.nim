@@ -164,7 +164,7 @@ proc assessETACConstructionNeeds(
   # - Wave 4 (turns 10-12): ~10 ETACs built → 10 colonies
   # - Total: 57 ETACs (one per system) → 100% colonization by turn 10-12
 
-  let cfg = globalRBAConfig.domestikos
+  let cfg = controller.rbaConfig.domestikos
 
   # Act 1 AGGRESSIVE EXPANSION: Build as many ETACs as needed for 100% colonization by turn 15
   # No decay, no artificial caps - just build ETACs for every uncolonized system
@@ -270,18 +270,29 @@ proc getAvailableETACs(
   ## with colonists loaded and ready to establish colonies
   result = @[]
 
+  logInfo(LogCategory.lcAI,
+          &"{houseId} getAvailableETACs: Scanning {filtered.ownFleets.len} fleets")
+
   for fleet in filtered.ownFleets:
     if fleet.owner != houseId:
       continue
 
     for ship in fleet.spaceLiftShips:
+      logInfo(LogCategory.lcAI,
+              &"  Fleet {fleet.id} at {fleet.location}: " &
+              &"{ship.shipClass} cargo={ship.cargo.cargoType}:{ship.cargo.quantity}")
+
+      if ship.shipClass == ShipClass.ETAC and ship.cargo.quantity == 0:
+        logWarn(LogCategory.lcAI,
+                &"⚠️  🐛 FOUND EMPTY ETAC! {ship.id} in fleet {fleet.id} " &
+                &"at {fleet.location} - ENGINE BUG!")
+
       if ship.shipClass == ShipClass.ETAC and
          ship.cargo.cargoType == CargoType.Colonists and
          ship.cargo.quantity > 0:
         result.add((fleet.id, ship.id, fleet.location))
-        logDebug(LogCategory.lcAI,
-                &"Found available ETAC {ship.id} in fleet {fleet.id} " &
-                &"at {fleet.location} ({ship.cargo.quantity} PTU)")
+        logInfo(LogCategory.lcAI,
+                &"  ✅ Found loaded ETAC {ship.id} ({ship.cargo.quantity} PTU)")
 
   logInfo(LogCategory.lcAI,
           &"{houseId} has {result.len} ETACs ready to colonize (Eparch)")
@@ -423,6 +434,52 @@ proc assignETACsToTargets(
 
   logInfo(LogCategory.lcAI,
           &"Eparch: Assigned {result.len} ETACs to colonization targets")
+
+proc cleanupCompletedColonizations*(
+  controller: var AIController,
+  filtered: FilteredGameState
+) =
+  ## Remove systems from targetedColonizationSystems once colonized
+  ## Remove ETAC assignments for ETACs that no longer have cargo
+
+  # Remove colonized systems
+  var toRemove: seq[SystemId] = @[]
+  for targetSystem in controller.targetedColonizationSystems:
+    # Check if now colonized
+    for colony in filtered.ownColonies:
+      if colony.systemId == targetSystem:
+        toRemove.add(targetSystem)
+        break
+
+  for systemId in toRemove:
+    controller.targetedColonizationSystems.excl(systemId)
+    logInfo(LogCategory.lcAI,
+            &"Eparch: Removed {systemId} from targets (now colonized)")
+
+  # Remove assignments for ETACs without cargo
+  var fleetsToRemove: seq[FleetId] = @[]
+  for fleetId, targetSystem in controller.etacAssignments:
+    var hasCargoETAC = false
+    for fleet in filtered.ownFleets:
+      if fleet.id == fleetId:
+        for ship in fleet.spaceLiftShips:
+          if ship.shipClass == ShipClass.ETAC and
+             ship.cargo.cargoType == CargoType.Colonists and
+             ship.cargo.quantity > 0:
+            hasCargoETAC = true
+            break
+        break
+
+    if not hasCargoETAC:
+      fleetsToRemove.add(fleetId)
+      controller.targetedColonizationSystems.excl(targetSystem)
+
+  for fleetId in fleetsToRemove:
+    let targetSystem = controller.etacAssignments[fleetId]
+    controller.etacAssignments.del(fleetId)
+    logDebug(LogCategory.lcAI,
+            &"Eparch: Removed ETAC assignment for fleet {fleetId} " &
+            &"(target {targetSystem}, cargo depleted)")
 
 proc generateColonizationOrders(
   assignments: seq[ETACAssignment],

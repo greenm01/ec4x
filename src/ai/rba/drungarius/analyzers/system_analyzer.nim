@@ -82,7 +82,7 @@ proc analyzeSystemIntelligence*(
   ## Phase B implementation
 
   result = @[]
-  let config = globalRBAConfig.intelligence
+  let config = controller.rbaConfig.intelligence
   var processedFleets = initHashSet[FleetId]()
 
   # Process SystemIntelReports (detailed fleet intel)
@@ -227,7 +227,7 @@ proc detectPatrolRoutes*(
   ## Detect enemy patrol routes from FleetMovementHistory
   ## Phase E: Enables predictive threat modeling
 
-  let config = globalRBAConfig.intelligence_patrol_detection
+  let config = controller.rbaConfig.intelligence_patrol_detection
   var routes: seq[PatrolRoute] = @[]
 
   # Process fleet movement history

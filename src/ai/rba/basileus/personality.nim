@@ -16,6 +16,7 @@ import ../config  # For globalRBAConfig
 #     Domestikos, Logothete, Drungarius, Eparch, Protostrator, Treasurer
 
 proc calculateAdvisorWeights*(
+  controller: AIController,
   personality: AIPersonality,
   act: ai_types.GameAct,
   isAtWar: bool = false  # NEW: War condition parameter
@@ -37,23 +38,23 @@ proc calculateAdvisorWeights*(
   # Personality influence multipliers from config/rba.toml [basileus]
   # Domestikos: influenced by aggression
   result[AdvisorType.Domestikos] = 1.0 + (personality.aggression - 0.5) *
-    globalRBAConfig.basileus.personality_domestikos_multiplier
+    controller.rbaConfig.basileus.personality_domestikos_multiplier
 
   # Logothete: influenced by tech priority
   result[AdvisorType.Logothete] = 1.0 + (personality.techPriority - 0.5) *
-    globalRBAConfig.basileus.personality_logothete_multiplier
+    controller.rbaConfig.basileus.personality_logothete_multiplier
 
   # Drungarius: influenced by aggression (espionage supports military)
   result[AdvisorType.Drungarius] = 1.0 + (personality.aggression - 0.5) *
-    globalRBAConfig.basileus.personality_drungarius_multiplier
+    controller.rbaConfig.basileus.personality_drungarius_multiplier
 
   # Protostrator: influenced by diplomacy value
   result[AdvisorType.Protostrator] = 1.0 + (personality.diplomacyValue - 0.5) *
-    globalRBAConfig.basileus.personality_protostrator_multiplier
+    controller.rbaConfig.basileus.personality_protostrator_multiplier
 
   # Eparch: influenced by economic focus
   result[AdvisorType.Eparch] = 1.0 + (personality.economicFocus - 0.5) *
-    globalRBAConfig.basileus.personality_eparch_multiplier
+    controller.rbaConfig.basileus.personality_eparch_multiplier
 
   # Treasurer: always 1.0 (no personality weighting, handles budget allocation)
   result[AdvisorType.Treasurer] = 1.0
@@ -65,7 +66,7 @@ proc calculateAdvisorWeights*(
   of ai_types.GameAct.Act1_LandGrab:
     # Act 1: Land Grab - Expansion & Reconnaissance
     # Architecture priorities: Eparch CRITICAL, Domestikos HIGH, others MEDIUM/LOW
-    let priorities = globalRBAConfig.act_priorities_act1_land_grab
+    let priorities = controller.rbaConfig.act_priorities_act1_land_grab
     result[AdvisorType.Eparch] *= priorities.eparch_multiplier
     result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
     result[AdvisorType.Drungarius] *= priorities.drungarius_multiplier
@@ -75,7 +76,7 @@ proc calculateAdvisorWeights*(
   of ai_types.GameAct.Act2_RisingTensions:
     # Act 2: Rising Tensions - Consolidation & Military Buildup
     # Architecture priorities: Domestikos CRITICAL, Eparch/Logothete HIGH
-    let priorities = globalRBAConfig.act_priorities_act2_rising_tensions
+    let priorities = controller.rbaConfig.act_priorities_act2_rising_tensions
     result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
     result[AdvisorType.Eparch] *= priorities.eparch_multiplier
     result[AdvisorType.Logothete] *= priorities.logothete_multiplier
@@ -83,14 +84,14 @@ proc calculateAdvisorWeights*(
     result[AdvisorType.Protostrator] *= priorities.protostrator_multiplier
     # War-time boost (from [basileus] config for backwards compatibility)
     if isAtWar:
-      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act2_war_research_multiplier
+      result[AdvisorType.Logothete] *= controller.rbaConfig.basileus.act2_war_research_multiplier
     else:
-      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act2_hostile_research_multiplier
+      result[AdvisorType.Logothete] *= controller.rbaConfig.basileus.act2_hostile_research_multiplier
 
   of ai_types.GameAct.Act3_TotalWar:
     # Act 3: Total War - Conquest
     # Architecture priorities: Domestikos CRITICAL, Drungarius/Protostrator HIGH
-    let priorities = globalRBAConfig.act_priorities_act3_total_war
+    let priorities = controller.rbaConfig.act_priorities_act3_total_war
     result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
     result[AdvisorType.Drungarius] *= priorities.drungarius_multiplier
     result[AdvisorType.Protostrator] *= priorities.protostrator_multiplier
@@ -98,17 +99,17 @@ proc calculateAdvisorWeights*(
     result[AdvisorType.Logothete] *= priorities.logothete_multiplier
     # War-time escalation (from [basileus] config)
     if isAtWar:
-      result[AdvisorType.Domestikos] *= globalRBAConfig.basileus.act3_war_military_multiplier
-      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act3_war_research_multiplier
-      result[AdvisorType.Protostrator] *= globalRBAConfig.basileus.act3_war_diplomacy_multiplier
+      result[AdvisorType.Domestikos] *= controller.rbaConfig.basileus.act3_war_military_multiplier
+      result[AdvisorType.Logothete] *= controller.rbaConfig.basileus.act3_war_research_multiplier
+      result[AdvisorType.Protostrator] *= controller.rbaConfig.basileus.act3_war_diplomacy_multiplier
     else:
-      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act3_peace_research_multiplier
-      result[AdvisorType.Protostrator] *= globalRBAConfig.basileus.act3_peace_diplomacy_multiplier
+      result[AdvisorType.Logothete] *= controller.rbaConfig.basileus.act3_peace_research_multiplier
+      result[AdvisorType.Protostrator] *= controller.rbaConfig.basileus.act3_peace_diplomacy_multiplier
 
   of ai_types.GameAct.Act4_Endgame:
     # Act 4: Endgame - Securing Victory
     # Architecture priorities: Domestikos CRITICAL, Eparch/Protostrator HIGH
-    let priorities = globalRBAConfig.act_priorities_act4_endgame
+    let priorities = controller.rbaConfig.act_priorities_act4_endgame
     result[AdvisorType.Domestikos] *= priorities.domestikos_multiplier
     result[AdvisorType.Eparch] *= priorities.eparch_multiplier
     result[AdvisorType.Protostrator] *= priorities.protostrator_multiplier
@@ -116,10 +117,10 @@ proc calculateAdvisorWeights*(
     result[AdvisorType.Drungarius] *= priorities.drungarius_multiplier
     # War-time escalation (from [basileus] config)
     if isAtWar:
-      result[AdvisorType.Domestikos] *= globalRBAConfig.basileus.act4_war_military_multiplier
-      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act4_war_research_multiplier
+      result[AdvisorType.Domestikos] *= controller.rbaConfig.basileus.act4_war_military_multiplier
+      result[AdvisorType.Logothete] *= controller.rbaConfig.basileus.act4_war_research_multiplier
     else:
-      result[AdvisorType.Logothete] *= globalRBAConfig.basileus.act4_peace_research_multiplier
+      result[AdvisorType.Logothete] *= controller.rbaConfig.basileus.act4_peace_research_multiplier
 
 proc describeWeightRationale*(
   advisorType: AdvisorType,

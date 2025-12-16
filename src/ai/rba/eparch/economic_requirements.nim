@@ -72,18 +72,18 @@ proc assessCompetitiveEconomicPosition(
 
   # Flag economic pressure if significantly behind
   # Configuration from config/rba.toml [eparch.economic_pressure]
-  if result.productionRatio < globalRBAConfig.eparch.economic_pressure.production_ratio_moderate:
+  if result.productionRatio < controller.rbaConfig.eparch.economic_pressure.production_ratio_moderate:
     result.underEconomicPressure = true
-    result.infrastructurePriorityBoost = globalRBAConfig.eparch.economic_pressure.boost_moderate_pressure
+    result.infrastructurePriorityBoost = controller.rbaConfig.eparch.economic_pressure.boost_moderate_pressure
 
-  if result.productionRatio < globalRBAConfig.eparch.economic_pressure.production_ratio_severe:
-    result.infrastructurePriorityBoost = globalRBAConfig.eparch.economic_pressure.boost_severe_pressure
+  if result.productionRatio < controller.rbaConfig.eparch.economic_pressure.production_ratio_severe:
+    result.infrastructurePriorityBoost = controller.rbaConfig.eparch.economic_pressure.boost_severe_pressure
 
   # Also flag pressure if enemy shipyard advantage is significant
-  if result.enemyShipyardAdvantage >= globalRBAConfig.eparch.economic_pressure.shipyard_advantage_threshold:
+  if result.enemyShipyardAdvantage >= controller.rbaConfig.eparch.economic_pressure.shipyard_advantage_threshold:
     result.underEconomicPressure = true
     result.infrastructurePriorityBoost = max(result.infrastructurePriorityBoost,
-                                              globalRBAConfig.eparch.economic_pressure.boost_shipyard_disadvantage)
+                                              controller.rbaConfig.eparch.economic_pressure.boost_shipyard_disadvantage)
 
 proc generateEconomicRequirements*(
   controller: AIController,
@@ -138,7 +138,7 @@ proc generateEconomicRequirements*(
   let isAboutToEnterShortfall = (currentIncome < maintenanceCost) and (currentTreasury < maintenanceCost)
 
   if (isMaintainPrestigeActive and (isAlreadyInShortfall or isAboutToEnterShortfall)) or
-     (isAlreadyInShortfall and house.consecutiveShortfallTurns < globalRBAConfig.eparch.maintenance.penalty_turns_critical):
+     (isAlreadyInShortfall and house.consecutiveShortfallTurns < controller.rbaConfig.eparch.maintenance.penalty_turns_critical):
     logWarn(LogCategory.lcAI, &"{controller.houseId} Eparch: CRITICAL - Detecting maintenance shortfall risk. " &
                              &"Current Income: {currentIncome}PP, Maintenance: {maintenanceCost}PP, Treasury: {currentTreasury}PP. " &
                              &"MaintainPrestige active: {isMaintainPrestigeActive}. Consecutive shortfalls: {house.consecutiveShortfallTurns}")

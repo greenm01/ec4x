@@ -84,38 +84,38 @@ proc allocateResearch*(
 
   # Distribute research budget across EL/SL/TRP based on strategy
   # Configuration from config/rba.toml [logothete.allocation] and [logothete.tech_allocations]
-  let cfg_thresholds = globalRBAConfig.logothete_tech_allocations_thresholds
+  let cfg_thresholds = controller.rbaConfig.logothete_tech_allocations_thresholds
 
   if p.techPriority > cfg_thresholds.tech_priority_threshold:
     # Heavy research investment - balance across all three categories (Act 1-2 ratios)
-    result.economic = int(float(researchBudget) * globalRBAConfig.logothete_allocation.act1_economic_ratio)
-    result.science = int(float(researchBudget) * globalRBAConfig.logothete_allocation.act1_science_ratio)
+    result.economic = int(float(researchBudget) * controller.rbaConfig.logothete_allocation.act1_economic_ratio)
+    result.science = int(float(researchBudget) * controller.rbaConfig.logothete_allocation.act1_science_ratio)
     let techBudget = researchBudget - result.economic - result.science
 
     if p.aggression > cfg_thresholds.aggression_peaceful:
       # Aggressive: weapons + cloaking + construction + FD
-      result.technology = applyTechFieldAllocation(globalRBAConfig.logothete_tech_allocations_tech_priority_aggressive, techBudget)
+      result.technology = applyTechFieldAllocation(controller.rbaConfig.logothete_tech_allocations_tech_priority_aggressive, techBudget)
     else:
       # Peaceful: infrastructure + counter-intel + terraforming
-      result.technology = applyTechFieldAllocation(globalRBAConfig.logothete_tech_allocations_tech_priority_peaceful, techBudget)
+      result.technology = applyTechFieldAllocation(controller.rbaConfig.logothete_tech_allocations_tech_priority_peaceful, techBudget)
   elif p.economicFocus > cfg_thresholds.economic_focus_threshold:
     # Economic focus: prioritize EL/SL for growth + infrastructure (Act 3 balanced)
-    result.economic = int(float(researchBudget) * globalRBAConfig.logothete_allocation.act3_economic_ratio)
-    result.science = int(float(researchBudget) * globalRBAConfig.logothete_allocation.act3_science_ratio)
+    result.economic = int(float(researchBudget) * controller.rbaConfig.logothete_allocation.act3_economic_ratio)
+    result.science = int(float(researchBudget) * controller.rbaConfig.logothete_allocation.act3_science_ratio)
     let techBudget = researchBudget - result.economic - result.science
-    result.technology = applyTechFieldAllocation(globalRBAConfig.logothete_tech_allocations_economic_focus, techBudget)
+    result.technology = applyTechFieldAllocation(controller.rbaConfig.logothete_tech_allocations_economic_focus, techBudget)
   elif p.aggression > cfg_thresholds.aggression_threshold:
     # Aggressive: minimal EL/SL, heavy military tech focus (war economy)
-    result.economic = int(float(researchBudget) * globalRBAConfig.logothete_allocation.war_economic_ratio)
-    result.science = int(float(researchBudget) * globalRBAConfig.logothete_allocation.war_science_ratio)
+    result.economic = int(float(researchBudget) * controller.rbaConfig.logothete_allocation.war_economic_ratio)
+    result.science = int(float(researchBudget) * controller.rbaConfig.logothete_allocation.war_science_ratio)
     let techBudget = researchBudget - result.economic - result.science
-    result.technology = applyTechFieldAllocation(globalRBAConfig.logothete_tech_allocations_war_economy, techBudget)
+    result.technology = applyTechFieldAllocation(controller.rbaConfig.logothete_tech_allocations_war_economy, techBudget)
   else:
     # Balanced strategy across all tech (default allocation)
-    result.economic = int(float(researchBudget) * globalRBAConfig.logothete_allocation.default_economic_ratio)
-    result.science = int(float(researchBudget) * globalRBAConfig.logothete_allocation.default_science_ratio)
+    result.economic = int(float(researchBudget) * controller.rbaConfig.logothete_allocation.default_economic_ratio)
+    result.science = int(float(researchBudget) * controller.rbaConfig.logothete_allocation.default_science_ratio)
     let techBudget = researchBudget - result.economic - result.science
-    result.technology = applyTechFieldAllocation(globalRBAConfig.logothete_tech_allocations_balanced_default, techBudget)
+    result.technology = applyTechFieldAllocation(controller.rbaConfig.logothete_tech_allocations_balanced_default, techBudget)
 
   # INTELLIGENCE-DRIVEN TECH GAP BOOSTING (Phase C)
   # Boost allocation to critical tech gaps identified by Drungarius

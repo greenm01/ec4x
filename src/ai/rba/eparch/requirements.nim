@@ -29,19 +29,19 @@ proc countFacilities(colonies: seq[Colony], facilityType: string): int =
     elif facilityType == "Spaceport":
       result += colony.spaceports.len
 
-proc getTargetShipyards(act: ai_common_types.GameAct, colonyCount: int): int =
+proc getTargetShipyards(controller: AIController, act: ai_common_types.GameAct, colonyCount: int): int =
   ## Target Shipyard count by Act (from unit-progression.md)
   ## Scales with colony expansion to support production capacity
   ## Ratios configured in config/rba.toml [eparch.facilities]
   let ratio = case act
     of ai_common_types.GameAct.Act1_LandGrab:
-      globalRBAConfig.eparch_facilities.shipyard_ratio_act1
+      controller.rbaConfig.eparch_facilities.shipyard_ratio_act1
     of ai_common_types.GameAct.Act2_RisingTensions:
-      globalRBAConfig.eparch_facilities.shipyard_ratio_act2
+      controller.rbaConfig.eparch_facilities.shipyard_ratio_act2
     of ai_common_types.GameAct.Act3_TotalWar:
-      globalRBAConfig.eparch_facilities.shipyard_ratio_act3
+      controller.rbaConfig.eparch_facilities.shipyard_ratio_act3
     of ai_common_types.GameAct.Act4_Endgame:
-      globalRBAConfig.eparch_facilities.shipyard_ratio_act4
+      controller.rbaConfig.eparch_facilities.shipyard_ratio_act4
 
   # Apply ratio to colony count, minimum 1 in Act 1, minimum 2 in Act 2+
   let target = int(float(colonyCount) * ratio)
@@ -51,6 +51,7 @@ proc getTargetShipyards(act: ai_common_types.GameAct, colonyCount: int): int =
     max(2, target)
 
 proc findBestShipyardColony(
+  controller: AIController,
   colonies: seq[Colony],
   intelSnapshot: Option[IntelligenceSnapshot]
 ): Option[SystemId] =
@@ -73,17 +74,17 @@ proc findBestShipyardColony(
           let threat = snap.military.threatsByColony[colony.systemId]
           case threat.level
           of intelligence_types.ThreatLevel.tlCritical:
-            score *= globalRBAConfig.eparch_facilities.threat_penalty_critical_shipyard
+            score *= controller.rbaConfig.eparch_facilities.threat_penalty_critical_shipyard
           of intelligence_types.ThreatLevel.tlHigh:
-            score *= globalRBAConfig.eparch_facilities.threat_penalty_high_shipyard
+            score *= controller.rbaConfig.eparch_facilities.threat_penalty_high_shipyard
           of intelligence_types.ThreatLevel.tlModerate:
-            score *= globalRBAConfig.eparch_facilities.threat_penalty_moderate_shipyard
+            score *= controller.rbaConfig.eparch_facilities.threat_penalty_moderate_shipyard
           else:
             discard
 
         # Staleness penalty for blind spots
         if colony.systemId in snap.staleIntelSystems:
-          score *= globalRBAConfig.eparch_facilities.staleness_penalty_facility
+          score *= controller.rbaConfig.eparch_facilities.staleness_penalty_facility
 
       if score > highestScore:
         bestColony = some(colony.systemId)
@@ -92,6 +93,7 @@ proc findBestShipyardColony(
   return bestColony
 
 proc findBestSpaceportColony(
+  controller: AIController,
   colonies: seq[Colony],
   intelSnapshot: Option[IntelligenceSnapshot]
 ): Option[SystemId] =
@@ -110,17 +112,17 @@ proc findBestSpaceportColony(
           let threat = snap.military.threatsByColony[colony.systemId]
           case threat.level
           of intelligence_types.ThreatLevel.tlCritical:
-            score *= globalRBAConfig.eparch_facilities.threat_penalty_critical_spaceport
+            score *= controller.rbaConfig.eparch_facilities.threat_penalty_critical_spaceport
           of intelligence_types.ThreatLevel.tlHigh:
-            score *= globalRBAConfig.eparch_facilities.threat_penalty_high_spaceport
+            score *= controller.rbaConfig.eparch_facilities.threat_penalty_high_spaceport
           of intelligence_types.ThreatLevel.tlModerate:
-            score *= globalRBAConfig.eparch_facilities.threat_penalty_moderate_spaceport
+            score *= controller.rbaConfig.eparch_facilities.threat_penalty_moderate_spaceport
           else:
             discard
 
         # Staleness penalty
         if colony.systemId in snap.staleIntelSystems:
-          score *= globalRBAConfig.eparch_facilities.staleness_penalty_facility
+          score *= controller.rbaConfig.eparch_facilities.staleness_penalty_facility
 
       if score > highestScore:
         bestColony = some(colony.systemId)
@@ -129,6 +131,7 @@ proc findBestSpaceportColony(
   return bestColony
 
 proc findBestStarbaseColony(
+  controller: AIController,
   colonies: seq[Colony],
   intelSnapshot: Option[IntelligenceSnapshot]
 ): Option[SystemId] =
@@ -150,17 +153,17 @@ proc findBestStarbaseColony(
           let threat = snap.military.threatsByColony[colony.systemId]
           case threat.level
           of intelligence_types.ThreatLevel.tlCritical:
-            score *= globalRBAConfig.eparch_facilities.threat_penalty_critical_starbase
+            score *= controller.rbaConfig.eparch_facilities.threat_penalty_critical_starbase
           of intelligence_types.ThreatLevel.tlHigh:
-            score *= globalRBAConfig.eparch_facilities.threat_penalty_high_starbase
+            score *= controller.rbaConfig.eparch_facilities.threat_penalty_high_starbase
           of intelligence_types.ThreatLevel.tlModerate:
-            score *= globalRBAConfig.eparch_facilities.threat_penalty_moderate_starbase
+            score *= controller.rbaConfig.eparch_facilities.threat_penalty_moderate_starbase
           else:
             discard
 
         # Staleness penalty
         if colony.systemId in snap.staleIntelSystems:
-          score *= globalRBAConfig.eparch_facilities.staleness_penalty_starbase
+          score *= controller.rbaConfig.eparch_facilities.staleness_penalty_starbase
 
       if score > highestScore:
         bestColony = some(colony.systemId)
@@ -168,24 +171,25 @@ proc findBestStarbaseColony(
 
   return bestColony
 
-proc getTargetStarbases(act: ai_common_types.GameAct, colonyCount: int): int =
+proc getTargetStarbases(controller: AIController, act: ai_common_types.GameAct, colonyCount: int): int =
   ## Target Starbase count by Act
   ## Starbases provide ELI+2 and growth bonuses - valuable but not urgent
   ## Ratios configured in config/rba.toml [eparch.facilities]
   let ratio = case act
     of ai_common_types.GameAct.Act1_LandGrab:
-      globalRBAConfig.eparch_facilities.starbase_ratio_act1
+      controller.rbaConfig.eparch_facilities.starbase_ratio_act1
     of ai_common_types.GameAct.Act2_RisingTensions:
-      globalRBAConfig.eparch_facilities.starbase_ratio_act2
+      controller.rbaConfig.eparch_facilities.starbase_ratio_act2
     of ai_common_types.GameAct.Act3_TotalWar:
-      globalRBAConfig.eparch_facilities.starbase_ratio_act3
+      controller.rbaConfig.eparch_facilities.starbase_ratio_act3
     of ai_common_types.GameAct.Act4_Endgame:
-      globalRBAConfig.eparch_facilities.starbase_ratio_act4
+      controller.rbaConfig.eparch_facilities.starbase_ratio_act4
 
   # Apply ratio to colony count (can be 0 in Act 1)
   int(float(colonyCount) * ratio)
 
 proc generateFacilityRequirements(
+  controller: AIController,
   filtered: FilteredGameState,
   houseId: HouseId,
   currentAct: ai_common_types.GameAct,
@@ -208,7 +212,7 @@ proc generateFacilityRequirements(
   # Strategy: 1 Spaceport per colony, 1 Shipyard per colony
   # ETACs built at Spaceports initially, then Shipyards once available (cheaper - no commission penalty)
   let currentSpaceports = countFacilities(colonies, "Spaceport")
-  let targetShipyards = getTargetShipyards(currentAct, colonies.len)
+  let targetShipyards = getTargetShipyards(controller, currentAct, colonies.len)
   let spaceportsNeeded = colonies.len  # 1 per colony for ETAC production while Shipyard builds
 
   logInfo(LogCategory.lcAI,
@@ -272,7 +276,7 @@ proc generateFacilityRequirements(
         ))
     else:
       # Acts 2+: Build 1 Shipyard at a time (threat-aware selection)
-      let bestColony = findBestShipyardColony(colonies, intelSnapshot)
+      let bestColony = findBestShipyardColony(controller, colonies, intelSnapshot)
       if bestColony.isSome:
         logInfo(LogCategory.lcAI,
                 &"{houseId} Eparch: Found colony {bestColony.get()} for Shipyard construction")
@@ -292,7 +296,7 @@ proc generateFacilityRequirements(
 
   # 3. Evaluate Starbase needs THIRD (economic and defensive bonuses)
   let currentStarbases = colonies.mapIt(it.starbases.len).sum()
-  let targetStarbases = getTargetStarbases(currentAct, colonies.len)
+  let targetStarbases = getTargetStarbases(controller, currentAct, colonies.len)
 
   logInfo(LogCategory.lcAI,
           &"{houseId} Eparch: Starbases - have {currentStarbases}, need {targetStarbases}")
@@ -301,7 +305,7 @@ proc generateFacilityRequirements(
     # Find best colony for Starbase (Phase 7.1: threat-aware, expensive infrastructure)
     logInfo(LogCategory.lcAI,
             &"{houseId} Eparch: Need {targetStarbases - currentStarbases} more Starbases, finding best colony...")
-    let bestColony = findBestStarbaseColony(colonies, intelSnapshot)
+    let bestColony = findBestStarbaseColony(controller, colonies, intelSnapshot)
     if bestColony.isSome:
       logInfo(LogCategory.lcAI,
               &"{houseId} Eparch: Found colony {bestColony.get()} for Starbase construction")
@@ -372,9 +376,9 @@ proc generateEconomicRequirements*(
     # Terraforming is high priority (permanent population capacity increase)
     # Priority scaled by cost (expensive upgrades need higher priority)
     # Configuration from config/rba.toml [eparch_terraforming]
-    let priorityScore = globalRBAConfig.eparch_terraforming.priority_base +
-                        (float(order.ppCost) / globalRBAConfig.eparch_terraforming.priority_cost_divisor)
-    let priorityEnum = if priorityScore >= globalRBAConfig.eparch_terraforming.priority_critical_threshold:
+    let priorityScore = controller.rbaConfig.eparch_terraforming.priority_base +
+                        (float(order.ppCost) / controller.rbaConfig.eparch_terraforming.priority_cost_divisor)
+    let priorityEnum = if priorityScore >= controller.rbaConfig.eparch_terraforming.priority_critical_threshold:
                          RequirementPriority.Critical
                        else:
                          RequirementPriority.High
@@ -405,7 +409,8 @@ proc generateEconomicRequirements*(
   # Get current act from game state (updated during turn resolution)
   let currentAct = filtered.actProgression.currentAct
 
-  let facilityRequirements = generateFacilityRequirements(filtered,
+  let facilityRequirements = generateFacilityRequirements(controller,
+                                                          filtered,
                                                           controller.houseId,
                                                           currentAct,
                                                           some(intelSnapshot))
@@ -453,6 +458,7 @@ proc generateEconomicRequirements*(
   )
 
 proc reprioritizeEconomicRequirements*(
+  controller: AIController,
   original: EconomicRequirements,
   eparchFeedback: EparchFeedback,
   treasury: int
@@ -470,7 +476,7 @@ proc reprioritizeEconomicRequirements*(
   ## This ensures critical infrastructure eventually gets built while
   ## remaining flexible about expensive long-term investments
 
-  let maxIterations = globalRBAConfig.eparch_reprioritization.max_iterations
+  let maxIterations = controller.rbaConfig.eparch_reprioritization.max_iterations
 
   if original.iteration >= maxIterations:
     logWarn(LogCategory.lcAI,
@@ -494,9 +500,9 @@ proc reprioritizeEconomicRequirements*(
   reprioritized.add(eparchFeedback.fulfilledRequirements)
 
   # Reprioritize unfulfilled requirements based on starvation time
-  let facilityHighToMediumTurns = globalRBAConfig.reprioritization
+  let facilityHighToMediumTurns = controller.rbaConfig.reprioritization
                                    .facility_high_to_medium_turns
-  let facilityCriticalToHighTurns = globalRBAConfig.reprioritization
+  let facilityCriticalToHighTurns = controller.rbaConfig.reprioritization
                                      .facility_critical_to_high_turns
 
   for req in eparchFeedback.unfulfilledRequirements:
@@ -532,7 +538,7 @@ proc reprioritizeEconomicRequirements*(
 
     # Downgrade expensive High requirements to Medium
     # (allows more affordable requirements to get funded first)
-    if costRatio > globalRBAConfig.eparch_reprioritization.expensive_requirement_ratio and
+    if costRatio > controller.rbaConfig.eparch_reprioritization.expensive_requirement_ratio and
        req.priority == RequirementPriority.High:
       adjustedReq.priority = RequirementPriority.Medium
       logDebug(LogCategory.lcAI,

@@ -41,7 +41,7 @@ proc generateMergeOrders*(
           idleCombatFleets.add(analysis)
 
   # Need at least 3 fleets to make merging worthwhile
-  let mergeThreshold = globalRBAConfig.domestikos.merge_threshold_act2
+  let mergeThreshold = controller.rbaConfig.domestikos.merge_threshold_act2
 
   # Merge idle scouts
   if idleScouts.len >= mergeThreshold:
@@ -53,7 +53,7 @@ proc generateMergeOrders*(
         fleetId: analysis.fleetId,
         orderType: FleetOrderType.Move,
         targetSystem: some(stagingArea),
-        priority: globalRBAConfig.domestikos_offensive.priority_base
+        priority: controller.rbaConfig.domestikos_offensive.priority_base
       ))
 
   # Merge idle combat fleets
@@ -66,7 +66,7 @@ proc generateMergeOrders*(
         fleetId: analysis.fleetId,
         orderType: FleetOrderType.Move,
         targetSystem: some(stagingArea),
-        priority: globalRBAConfig.domestikos_offensive.priority_base
+        priority: controller.rbaConfig.domestikos_offensive.priority_base
       ))
 
   return result
@@ -115,10 +115,10 @@ proc generateProbingOrders*(
       # Map priority to numeric value (from config)
       let priorityValue = case target.priority
         of RequirementPriority.Critical: 100  # Keep Critical at 100 (above all)
-        of RequirementPriority.High: globalRBAConfig.domestikos_offensive.priority_high
-        of RequirementPriority.Medium: globalRBAConfig.domestikos_offensive.priority_medium
-        of RequirementPriority.Low: globalRBAConfig.domestikos_offensive.priority_low
-        of RequirementPriority.Deferred: globalRBAConfig.domestikos_offensive.priority_deferred
+        of RequirementPriority.High: controller.rbaConfig.domestikos_offensive.priority_high
+        of RequirementPriority.Medium: controller.rbaConfig.domestikos_offensive.priority_medium
+        of RequirementPriority.Low: controller.rbaConfig.domestikos_offensive.priority_low
+        of RequirementPriority.Deferred: controller.rbaConfig.domestikos_offensive.priority_deferred
 
       intelTargets.add((
         systemId: target.systemId.get(),
@@ -170,8 +170,8 @@ proc generateProbingOrders*(
         continue
 
       let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(visibleColony.owner)
-      let priority = if isEnemy: globalRBAConfig.domestikos_offensive.priority_high
-                     else: globalRBAConfig.domestikos_offensive.priority_medium
+      let priority = if isEnemy: controller.rbaConfig.domestikos_offensive.priority_high
+                     else: controller.rbaConfig.domestikos_offensive.priority_medium
 
       intelTargets.add((
         systemId: visibleColony.systemId,
@@ -265,6 +265,7 @@ proc generateProbingOrders*(
   return result
 
 proc selectCombatOrderType(
+  controller: AIController,
   filtered: FilteredGameState,
   fleetId: FleetId,
   shipCount: int,
@@ -314,7 +315,7 @@ proc selectCombatOrderType(
       if visibleFleet.estimatedShipCount.isSome:
         # Strength multiplier from config
         defendingFleetStrength += visibleFleet.estimatedShipCount.get() *
-          int(globalRBAConfig.domestikos_offensive.fleet_strength_multiplier)
+          int(controller.rbaConfig.domestikos_offensive.fleet_strength_multiplier)
       else:
         # Unknown composition - assume 1 medium ship (100 strength)
         defendingFleetStrength += 100
@@ -339,7 +340,7 @@ proc selectCombatOrderType(
     # Fallback to basic estimate (from config)
     if targetColony.estimatedDefenses.isSome:
       groundDefenses = targetColony.estimatedDefenses.get() div
-        globalRBAConfig.domestikos_offensive.ground_defense_divisor
+        controller.rbaConfig.domestikos_offensive.ground_defense_divisor
 
   # === STEP 3: CHOOSE TACTIC ===
 
@@ -383,6 +384,7 @@ proc selectCombatOrderType(
     return FleetOrderType.Bombard
 
 proc calculateInvasionPriority(
+  controller: AIController,
   opportunity: InvasionOpportunity,
   intelQuality: intel_types.IntelQuality
 ): float =
@@ -391,10 +393,10 @@ proc calculateInvasionPriority(
   var priority = 100.0
 
   # Vulnerability boost (from config)
-  priority += opportunity.vulnerability * globalRBAConfig.domestikos_offensive.vulnerability_multiplier
+  priority += opportunity.vulnerability * controller.rbaConfig.domestikos_offensive.vulnerability_multiplier
 
   # Economic value (from config)
-  priority += float(opportunity.estimatedValue) * globalRBAConfig.domestikos_offensive.estimated_value_multiplier
+  priority += float(opportunity.estimatedValue) * controller.rbaConfig.domestikos_offensive.estimated_value_multiplier
 
   # Distance penalty (-10 points per jump beyond 5)
   if opportunity.distance > 5:
@@ -498,6 +500,7 @@ proc estimateEnemyFleetStrength*(
   )
 
 proc findSuitableInvasionFleet(
+  controller: AIController,
   analyses: seq[FleetAnalysis],
   requiredForceScore: int,
   filtered: FilteredGameState,
@@ -536,8 +539,8 @@ proc findSuitableInvasionFleet(
     let pathResult = filtered.starMap.findPath(analysis.location, targetSystem, fleet)
     if pathResult.found:
       let eta = pathResult.path.len
-      if eta > globalRBAConfig.domestikos.max_invasion_eta_turns:
-        logDebug(LogCategory.lcAI, &"Domestikos: Fleet {fleet.id} too distant for invasion ({eta} turns > {globalRBAConfig.domestikos.max_invasion_eta_turns}).")
+      if eta > controller.rbaConfig.domestikos.max_invasion_eta_turns:
+        logDebug(LogCategory.lcAI, &"Domestikos: Fleet {fleet.id} too distant for invasion ({eta} turns > {controller.rbaConfig.domestikos.max_invasion_eta_turns}).")
         continue  # Too distant
     else:
       logDebug(LogCategory.lcAI, &"Domestikos: No path found for fleet {fleet.id} to {targetSystem}.")
@@ -552,13 +555,14 @@ proc findSuitableInvasionFleet(
 # =============================================================================
 
 proc hasRecentIntel(
+  controller: AIController,
   filtered: FilteredGameState,
   systemId: SystemId,
   maxAge: int = 0  # Will use config default if 0
 ): bool =
   ## Check if we have fresh intelligence on a system (within maxAge turns)
   let currentTurn = filtered.turn
-  let actualMaxAge = if maxAge > 0: maxAge else: globalRBAConfig.domestikos_offensive.max_intel_age_turns
+  let actualMaxAge = if maxAge > 0: maxAge else: controller.rbaConfig.domestikos_offensive.max_intel_age_turns
 
   if filtered.ownHouse.intelligence.colonyReports.hasKey(systemId):
     let report = filtered.ownHouse.intelligence.colonyReports[systemId]
@@ -567,13 +571,14 @@ proc hasRecentIntel(
   return false
 
 proc estimateGroundBatteries(
+  controller: AIController,
   filtered: FilteredGameState,
   systemId: SystemId
 ): int =
   ## Estimate remaining ground batteries from intelligence
   ## Returns 0 if no intel available
   if not filtered.ownHouse.intelligence.colonyReports.hasKey(systemId):
-    return globalRBAConfig.domestikos_offensive.conservative_ship_estimate
+    return controller.rbaConfig.domestikos_offensive.conservative_ship_estimate
 
   let report = filtered.ownHouse.intelligence.colonyReports[systemId]
   # Batteries based on defense strength (rough estimate)
@@ -590,7 +595,7 @@ proc updateCampaignPhase(
 
   let currentTurn = filtered.turn
   let turnsStalled = currentTurn - campaign.lastActionTurn
-  let config = globalRBAConfig.domestikos
+  let config = controller.rbaConfig.domestikos
 
   # Check for stall (no action for N turns)
   if turnsStalled > config.campaign_stall_timeout:
@@ -636,7 +641,7 @@ proc updateCampaignPhase(
   case campaign.phase
   of InvasionCampaignPhase.Scouting:
     # Transition to Bombardment when we have fresh intel
-    if hasRecentIntel(filtered, campaign.targetSystem, maxAge = 3):
+    if hasRecentIntel(controller, filtered, campaign.targetSystem, maxAge = 3):
       campaign.phase = InvasionCampaignPhase.Bombardment
       campaign.bombardmentRounds = 0
       logInfo(LogCategory.lcAI,
@@ -645,7 +650,7 @@ proc updateCampaignPhase(
 
   of InvasionCampaignPhase.Bombardment:
     # Estimate batteries remaining
-    let batteries = estimateGroundBatteries(filtered, campaign.targetSystem)
+    let batteries = estimateGroundBatteries(controller, filtered, campaign.targetSystem)
     campaign.estimatedBatteriesRemaining = batteries
 
     # Transition to Invasion when batteries destroyed or max rounds reached
@@ -756,7 +761,7 @@ proc generateCampaignOrder(
       orderType: FleetOrderType.Bombard,
       targetSystem: some(campaign.targetSystem),
       priority: 95,  # Very high priority - active campaign
-      roe: some(globalRBAConfig.domestikos_offensive.roe_bombardment_priority)
+      roe: some(controller.rbaConfig.domestikos_offensive.roe_bombardment_priority)
     )
     campaign.bombardmentRounds += 1
     logInfo(LogCategory.lcAI,
@@ -767,6 +772,7 @@ proc generateCampaignOrder(
   of InvasionCampaignPhase.Invasion:
     # Choose appropriate invasion tactic
     let orderType = selectCombatOrderType(
+      controller,
       filtered,
       fleet.fleetId,
       fleet.shipCount,
@@ -775,9 +781,9 @@ proc generateCampaignOrder(
     )
 
     let roe = case orderType
-      of FleetOrderType.Blitz: globalRBAConfig.domestikos_offensive.roe_blitz_priority   # Aggressive blitz
+      of FleetOrderType.Blitz: controller.rbaConfig.domestikos_offensive.roe_blitz_priority   # Aggressive blitz
       of FleetOrderType.Invade: 10 # All-out invasion (maximum aggression)
-      else: globalRBAConfig.domestikos_offensive.roe_bombardment_priority  # Fallback to bombardment
+      else: controller.rbaConfig.domestikos_offensive.roe_bombardment_priority  # Fallback to bombardment
 
     order = FleetOrder(
       fleetId: fleet.fleetId,
@@ -889,8 +895,8 @@ proc generateCounterAttackOrders*(
   # Create new campaigns from intelligence vulnerableTargets
   # Can be disabled when GOAP handles strategic invasion planning
 
-  let config = globalRBAConfig.domestikos
-  let goapConfig = globalRBAConfig.goap
+  let config = controller.rbaConfig.domestikos
+  let goapConfig = controller.rbaConfig.goap
   let maxConcurrentCampaigns = config.max_concurrent_campaigns
 
   # Check if RBA campaigns are disabled in favor of GOAP planning
@@ -932,7 +938,7 @@ proc generateCounterAttackOrders*(
           lastActionTurn: filtered.turn - 1,  # -1 so first update triggers action
           bombardmentRounds: 0,
           estimatedBatteriesRemaining: opportunity.estimatedDefenses div 10,
-          priority: calculateInvasionPriority(opportunity, opportunity.intelQuality),
+          priority: calculateInvasionPriority(controller, opportunity, opportunity.intelQuality),
           abandonReason: none(string)
         )
 
@@ -995,10 +1001,10 @@ proc generateCounterAttackOrders*(
       # Surprise attacks and opportunistic land grabs are valid strategies
 
       # Calculate intelligence-driven priority
-      let priority = calculateInvasionPriority(opportunity, opportunity.intelQuality)
+      let priority = calculateInvasionPriority(controller, opportunity, opportunity.intelQuality)
 
       # Find suitable fleet with strength safety margin
-      let assignedFleet = findSuitableInvasionFleet(analyses, opportunity.requiredForce, filtered, opportunity.systemId)
+      let assignedFleet = findSuitableInvasionFleet(controller, analyses, opportunity.requiredForce, filtered, opportunity.systemId)
 
       if assignedFleet.isSome:
         intelTargetsFound = true
@@ -1014,7 +1020,7 @@ proc generateCounterAttackOrders*(
           orderType: FleetOrderType.Invade,  # Intelligence targets warrant invasion
           targetSystem: some(opportunity.systemId),
           priority: int(priority),
-          roe: some(globalRBAConfig.domestikos_offensive.roe_bombardment_priority) # Main assault
+          roe: some(controller.rbaConfig.domestikos_offensive.roe_bombardment_priority) # Main assault
         ))
         assignedFleets.incl(fleetId)  # Mark fleet as assigned
 
@@ -1043,7 +1049,7 @@ proc generateCounterAttackOrders*(
               orderType: FleetOrderType.Bombard,  # Economic disruption via bombardment
               targetSystem: some(hvTarget.systemId),
               priority: int(priority),
-              roe: some(globalRBAConfig.domestikos_offensive.roe_bombardment_priority) # Main assault
+              roe: some(controller.rbaConfig.domestikos_offensive.roe_bombardment_priority) # Main assault
             ))
             assignedFleets.incl(attacker.fleetId)  # Mark fleet as assigned
             break  # One fleet per target
@@ -1124,9 +1130,9 @@ proc generateCounterAttackOrders*(
 
     # Distance-based priority (proximity = opportunity)
     let proximityBonus = case minDistance
-      of 1..2: globalRBAConfig.domestikos_offensive.distance_bonus_1_2_jumps  # Immediate neighbors - ATTACK!
-      of 3..4: globalRBAConfig.domestikos_offensive.distance_bonus_3_4_jumps  # Close neighbors - strong opportunity
-      of 5..6: globalRBAConfig.domestikos_offensive.distance_bonus_5_6_jumps  # Moderate distance - still viable
+      of 1..2: controller.rbaConfig.domestikos_offensive.distance_bonus_1_2_jumps  # Immediate neighbors - ATTACK!
+      of 3..4: controller.rbaConfig.domestikos_offensive.distance_bonus_3_4_jumps  # Close neighbors - strong opportunity
+      of 5..6: controller.rbaConfig.domestikos_offensive.distance_bonus_5_6_jumps  # Moderate distance - still viable
       else: 0.0       # Distant targets - no bonus
 
     priority += proximityBonus
@@ -1142,10 +1148,10 @@ proc generateCounterAttackOrders*(
       let overallRatio = (shipRatio + colonyRatio) / 2.0
 
       # Bonus for weak houses (ratio < vulnerability threshold = significantly weaker)
-      if overallRatio < globalRBAConfig.domestikos_offensive.weakness_threshold_vulnerable:
-        priority += globalRBAConfig.domestikos_offensive.weakness_priority_boost * 2.0  # Large bonus - easy prey
+      if overallRatio < controller.rbaConfig.domestikos_offensive.weakness_threshold_vulnerable:
+        priority += controller.rbaConfig.domestikos_offensive.weakness_priority_boost * 2.0  # Large bonus - easy prey
       elif overallRatio < 1.0:
-        priority += globalRBAConfig.domestikos_offensive.weakness_priority_boost   # Moderate bonus - vulnerable house
+        priority += controller.rbaConfig.domestikos_offensive.weakness_priority_boost   # Moderate bonus - vulnerable house
 
     vulnerableTargets.add(VulnerableTarget(
       systemId: visibleColony.systemId,
@@ -1187,6 +1193,7 @@ proc generateCounterAttackOrders*(
 
     # NEW: Select appropriate combat order based on fleet composition and target defenses
     let combatOrder = selectCombatOrderType(
+      controller,
       filtered,
       attacker.fleetId,
       attacker.shipCount,
@@ -1202,8 +1209,8 @@ proc generateCounterAttackOrders*(
       fleetId: attacker.fleetId,
       orderType: combatOrder,
       targetSystem: some(target.systemId),
-      priority: globalRBAConfig.domestikos_offensive.priority_high, # High priority - opportunistic strikes
-      roe: some(globalRBAConfig.domestikos_offensive.roe_bombardment_priority)  # Main assault
+      priority: controller.rbaConfig.domestikos_offensive.priority_high, # High priority - opportunistic strikes
+      roe: some(controller.rbaConfig.domestikos_offensive.roe_bombardment_priority)  # Main assault
     ))
 
     assignedFleets.incl(attacker.fleetId)  # Mark fleet as assigned

@@ -9,6 +9,7 @@ import std/[tables, strformat]
 import ../../../../engine/logger
 import ../../../common/types as ai_common_types
 import ../../config
+import ../../controller_types
 
 proc getAverageShipCostForAct(act: ai_common_types.GameAct): int =
   ## Get average ship construction cost for act (for capacity-driven budgeting)
@@ -32,6 +33,7 @@ type
     fillerReservationPct*: float    # Actual reservation percentage used
 
 proc splitStrategicAndFillerBudgets*(
+  controller: AIController,
   totalBudget: int,
   act: ai_common_types.GameAct,
   allocation: Table[ai_common_types.BuildObjective, float],
@@ -49,13 +51,13 @@ proc splitStrategicAndFillerBudgets*(
   # Get act-specific filler reservation from config (percentage-based)
   let fillerReservationPct = case act
     of ai_common_types.GameAct.Act1_LandGrab:
-      globalRBAConfig.budget_act1_land_grab.filler_budget_reserved
+      controller.rbaConfig.budget_act1_land_grab.filler_budget_reserved
     of ai_common_types.GameAct.Act2_RisingTensions:
-      globalRBAConfig.budget_act2_rising_tensions.filler_budget_reserved
+      controller.rbaConfig.budget_act2_rising_tensions.filler_budget_reserved
     of ai_common_types.GameAct.Act3_TotalWar:
-      globalRBAConfig.budget_act3_total_war.filler_budget_reserved
+      controller.rbaConfig.budget_act3_total_war.filler_budget_reserved
     of ai_common_types.GameAct.Act4_Endgame:
-      globalRBAConfig.budget_act4_endgame.filler_budget_reserved
+      controller.rbaConfig.budget_act4_endgame.filler_budget_reserved
 
   # Calculate capacity-driven budget (scales with dock capacity)
   let avgActCost = getAverageShipCostForAct(act)

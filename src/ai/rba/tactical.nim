@@ -96,7 +96,7 @@ proc identifyImportantColonies*(controller: AIController, filtered: FilteredGame
 proc assignStrategicReserve*(controller: var AIController, fleetId: FleetId,
                               assignedSystem: Option[SystemId], radius: int = -1) =
   ## Designate a fleet as strategic reserve
-  let effectiveRadius = if radius == -1: globalRBAConfig.tactical.response_radius_jumps else: radius
+  let effectiveRadius = if radius == -1: controller.rbaConfig.tactical.response_radius_jumps else: radius
   let reserve = StrategicReserve(
     fleetId: fleetId,
     assignedTo: assignedSystem,
@@ -142,12 +142,12 @@ proc manageStrategicReserves*(controller: var AIController, filtered: FilteredGa
       let dz = abs((fleetCoords.q + fleetCoords.r) - (systemCoords.q + systemCoords.r))
       let dist = (dx + dy + dz) div 2
 
-      if dist < minDist and dist <= globalRBAConfig.tactical.response_radius_jumps:
+      if dist < minDist and dist <= controller.rbaConfig.tactical.response_radius_jumps:
         minDist = dist
         bestFleet = some(fleet.id)
 
     if bestFleet.isSome:
-      controller.assignStrategicReserve(bestFleet.get(), some(systemId), globalRBAConfig.tactical.response_radius_jumps)
+      controller.assignStrategicReserve(bestFleet.get(), some(systemId), controller.rbaConfig.tactical.response_radius_jumps)
 
 proc respondToThreats*(controller: var AIController, filtered: FilteredGameState): seq[tuple[reserveFleet: FleetId, threatSystem: SystemId]] =
   ## Check for enemy fleets near protected systems
@@ -195,7 +195,7 @@ proc respondToThreats*(controller: var AIController, filtered: FilteredGameState
     # If threat is 2 jumps away and reserve needs 5 turns, too late
     if nearestThreat.isSome:
       let threat = nearestThreat.get()
-      if threat.eta <= globalRBAConfig.tactical.max_response_eta_turns:
+      if threat.eta <= controller.rbaConfig.tactical.max_response_eta_turns:
         logInfo(LogCategory.lcAI, &"{controller.houseId} dispatching reserve {reserve.fleetId} " &
                 &"to threat at {threat.location} (ETA: {threat.eta} turns)")
         result.add((reserveFleet: reserve.fleetId, threatSystem: threat.location))
@@ -523,165 +523,11 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
     logDebug(LogCategory.lcAI, &"  Fleet {fleet.id} ({fleetType}) at {fleet.location}: Determining orders...")
 
     # Special handling for ETAC fleets
+    # Skip ETAC fleets - managed exclusively by Eparch
     if isETACFleet(fleet):
-      # Check if 100% colonization is complete (not just act transition)
-      # ETACs should continue working in Act 2 if there are uncolonized systems
-      let colonizationComplete = mapFullyColonized
-
-      # Check if ETAC has colonists
-      var hasColonists = false
-      var totalPTU = 0
-      for ship in fleet.spaceLiftShips:
-        if ship.cargo.cargoType == CargoType.Colonists:
-          hasColonists = true
-          totalPTU += ship.cargo.quantity
-
-      # Check if ETAC arrived at colony with Move order (salvage flow)
-      # If so, issue Salvage order (unload happens via zero-turn in orders.nim)
-      if colonizationComplete and hasColonists:
-        let atColony = fleet.location in filtered.ownColonies.mapIt(it.systemId)
-        let hasMoveOrder = fleet.id in filtered.ownFleetOrders and
-                          filtered.ownFleetOrders[fleet.id].orderType == FleetOrderType.Move
-
-        if atColony and hasMoveOrder:
-          # ETAC arrived at colony - issue Salvage order
-          # UnloadCargo zero-turn will execute first (in orders.nim)
-          order.orderType = FleetOrderType.Salvage
-          order.targetSystem = none(SystemId)
-          order.priority = 50
-
-          # Clear any standing orders for this fleet
-          if fleet.id in controller.standingOrders:
-            controller.standingOrders.del(fleet.id)
-
-          result.add(order)
-          logInfo(LogCategory.lcAI,
-                  &"Fleet {fleet.id} ETAC arrived at colony - issuing Salvage order " &
-                  &"(will unload {totalPTU} PTU then salvage same turn)")
-          continue
-
-      if hasColonists:
-        # Check if 100% colonization is complete
-        # ETACs should continue working in Act 2 if there are uncolonized systems
-        if colonizationComplete:
-          # All systems colonized - prepare ETAC for salvage
-          # Check if ETAC is at a colony
-          let atColony = fleet.location in filtered.ownColonies.mapIt(it.systemId)
-
-          if not atColony:
-            # Not at colony - move to nearest colony first
-            # Cargo will be unloaded when it arrives (next turn)
-            var bestColony: Option[SystemId] = none(SystemId)
-            var bestDistance = 999
-
-            for colony in filtered.ownColonies:
-              let pathResult = filtered.starMap.findPath(fleet.location, colony.systemId, fleet)
-              if not pathResult.found:
-                continue
-
-              let distance = pathResult.path.len - 1
-              if distance < bestDistance:
-                bestDistance = distance
-                bestColony = some(colony.systemId)
-
-            if bestColony.isSome:
-              order.orderType = FleetOrderType.Move
-              order.targetSystem = bestColony
-              order.priority = 60  # High priority
-
-              # Clear any standing orders for this fleet
-              if fleet.id in controller.standingOrders:
-                controller.standingOrders.del(fleet.id)
-
-              result.add(order)
-              logInfo(LogCategory.lcAI,
-                      &"Fleet {fleet.id} loaded ETAC moving to colony for cargo unload and salvage " &
-                      &"(colonization complete, {totalPTU} PTU)")
-            else:
-              logWarn(LogCategory.lcAI,
-                      &"Fleet {fleet.id} loaded ETAC has no reachable colonies for salvage!")
-          else:
-            # At colony - will unload cargo via zero-turn (handled in orders.nim)
-            # Then salvage (both in same turn)
-            order.orderType = FleetOrderType.Salvage
-            order.targetSystem = none(SystemId)
-            order.priority = 50  # Medium priority
-
-            # Clear any standing orders for this fleet
-            if fleet.id in controller.standingOrders:
-              controller.standingOrders.del(fleet.id)
-
-            result.add(order)
-            logInfo(LogCategory.lcAI,
-                    &"Fleet {fleet.id} loaded ETAC at colony - will unload {totalPTU} PTU then salvage " &
-                    &"(colonization complete)")
-
-          continue
-
-        # ETACs with cargo - Eparch manages colonization (Phase 6.9)
-        logDebug(LogCategory.lcAI,
-          &"Fleet {fleet.id} has {totalPTU} PTU - Eparch manages colonization")
-        continue  # ✅ FIX: Skip to next fleet, don't generate Hold order
-      else:
-        # ETAC empty - tactical handles reload regardless of standing orders
-        # Standing orders can only generate fleet orders (Hold/Move/Colonize), not load cargo
-        # Tactical must issue Move order to colony for autoLoadCargo() to work
-
-        # Check if 100% colonization is complete
-        # ETACs should continue reloading in Act 2 if there are uncolonized systems
-        if colonizationComplete:
-          # All systems colonized - salvage this ETAC
-          order.orderType = FleetOrderType.Salvage
-          order.targetSystem = none(SystemId)
-          order.priority = 50  # Medium priority
-
-          # Clear any standing orders for this fleet
-          if fleet.id in controller.standingOrders:
-            controller.standingOrders.del(fleet.id)
-
-          result.add(order)
-          logInfo(LogCategory.lcAI,
-                  &"Fleet {fleet.id} ETAC salvaging (colonization complete)")
-          continue
-
-        # Otherwise, tactical sends ETAC home for reload
-        # Find nearest colony with sufficient population for PTU transfer
-        let minPopulationForReload = controller.rbaConfig.tactical.min_population_for_reload
-        var bestColony: Option[SystemId] = none(SystemId)
-        var bestDistance = 999
-
-        for colony in filtered.ownColonies:
-          if colony.population < minPopulationForReload:
-            continue  # Colony too small to spare PTUs
-
-          # Calculate distance via jump lanes
-          let pathResult = filtered.starMap.findPath(fleet.location, colony.systemId, fleet)
-          if not pathResult.found:
-            continue
-
-          let distance = pathResult.path.len - 1
-          if distance < bestDistance:
-            bestDistance = distance
-            bestColony = some(colony.systemId)
-
-        if bestColony.isSome:
-          let targetColony = bestColony.get()
-          order.orderType = FleetOrderType.Move
-          order.targetSystem = some(targetColony)
-          order.priority = 100  # Maximum priority - ETAC reload is critical
-
-          result.add(order)
-
-          # Get colony population for logging
-          let targetColonyData = filtered.ownColonies.filterIt(it.systemId == targetColony)[0]
-          logInfo(LogCategory.lcAI,
-            &"Fleet {fleet.id} empty ETAC seeking reload at {targetColony} " &
-            &"({bestDistance} jumps, pop {targetColonyData.population})")
-          continue
-        else:
-          logWarn(LogCategory.lcAI,
-            &"Fleet {fleet.id} empty ETAC has no viable reload colonies (need pop >= {minPopulationForReload})")
-          continue
+      logDebug(LogCategory.lcAI,
+              &"Fleet {fleet.id} is ETAC fleet - skipping (managed by Eparch)")
+      continue
 
     # ==========================================================================
     # PHASE-AWARE PRIORITY SYSTEM
@@ -1116,7 +962,7 @@ proc planCoordinatedInvasion*(controller: var AIController, filtered: FilteredGa
 
   for i in 0..<min(3, fleetsWithETA.len):
     let fleetData = fleetsWithETA[i]
-    if fleetData.eta <= globalRBAConfig.tactical.max_invasion_eta_turns:
+    if fleetData.eta <= controller.rbaConfig.tactical.max_invasion_eta_turns:
       selectedFleets.add(fleetData.fleetId)
       maxETA = max(maxETA, fleetData.eta)
 

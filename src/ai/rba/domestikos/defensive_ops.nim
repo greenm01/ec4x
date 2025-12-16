@@ -38,7 +38,7 @@ proc calculateColonyDefensePriority(
   var priority = 0.0
 
   # Base priority: production value
-  priority += colony.production.float * globalRBAConfig.domestikos_defensive.production_weight
+  priority += colony.production.float * controller.rbaConfig.domestikos_defensive.production_weight
 
   # Bonus: homeworld is always highest priority
   if colony.systemId == homeworld:
@@ -53,13 +53,13 @@ proc calculateColonyDefensePriority(
       let threat: ThreatAssessment = snapshot.military.threatsByColony[colony.systemId]
       case threat.level
       of tlCritical:
-        priority += globalRBAConfig.domestikos_defensive.threat_boost_critical
+        priority += controller.rbaConfig.domestikos_defensive.threat_boost_critical
         logInfo(LogCategory.lcAI,
                 &"{controller.houseId} Domestikos: CRITICAL THREAT at colony {colony.systemId} - defensive priority boosted")
       of tlHigh:
-        priority += globalRBAConfig.domestikos_defensive.threat_boost_high
+        priority += controller.rbaConfig.domestikos_defensive.threat_boost_high
       of tlModerate:
-        priority += globalRBAConfig.domestikos_defensive.threat_boost_moderate
+        priority += controller.rbaConfig.domestikos_defensive.threat_boost_moderate
       of tlNone, tlLow:
         discard  # No priority boost for low/no threats
 
@@ -77,7 +77,7 @@ proc calculateColonyDefensePriority(
       if pathResult.found:
         let distance = pathResult.path.len
         if distance <= 2:  # Enemy fleet within 2 jumps = frontier colony
-          priority += globalRBAConfig.domestikos_defensive.owned_system_priority_boost
+          priority += controller.rbaConfig.domestikos_defensive.owned_system_priority_boost
           break
 
     # Phase 4.3: Predictive threat from fleet movements
@@ -92,12 +92,12 @@ proc calculateColonyDefensePriority(
           if distance <= 3:
             # Priority boost scales with proximity and fleet strength
             let proximityMultiplier = case distance
-              of 1: globalRBAConfig.domestikos_defensive.proximity_multiplier_1_jump  # Adjacent = imminent threat
-              of 2: globalRBAConfig.domestikos_defensive.proximity_multiplier_2_jumps  # 2 jumps = near threat
+              of 1: controller.rbaConfig.domestikos_defensive.proximity_multiplier_1_jump  # Adjacent = imminent threat
+              of 2: controller.rbaConfig.domestikos_defensive.proximity_multiplier_2_jumps  # 2 jumps = near threat
               else: 1.0  # 3 jumps = potential threat
 
             let strengthFactor = float(movement.estimatedStrength) / 100.0
-            let movementBoost = proximityMultiplier * strengthFactor * globalRBAConfig.domestikos_defensive.movement_boost_base
+            let movementBoost = proximityMultiplier * strengthFactor * controller.rbaConfig.domestikos_defensive.movement_boost_base
             priority += movementBoost
 
             logDebug(LogCategory.lcAI,
@@ -109,7 +109,7 @@ proc calculateColonyDefensePriority(
     # Colonies with stale intel are potentially at risk
     if colony.systemId in snapshot.staleIntelSystems:
       # Reduce priority slightly for stale intel (unknown = risky to commit forces)
-      priority *= globalRBAConfig.domestikos_defensive.stale_intel_penalty
+      priority *= controller.rbaConfig.domestikos_defensive.stale_intel_penalty
       logDebug(LogCategory.lcAI,
                &"{controller.houseId} Domestikos: Stale intel at {colony.systemId}, " &
                &"defensive priority reduced (blind spot)")
@@ -118,7 +118,7 @@ proc calculateColonyDefensePriority(
     let pathToHomeworld = filtered.starMap.findPath(colony.systemId, homeworld, Fleet())
     if pathToHomeworld.found:
       let distance = pathToHomeworld.path.len
-      priority += distance.float * globalRBAConfig.domestikos_defensive.frontier_bonus_per_distance  # Frontier bonus (crude proxy)
+      priority += distance.float * controller.rbaConfig.domestikos_defensive.frontier_bonus_per_distance  # Frontier bonus (crude proxy)
 
   return priority
 
@@ -261,7 +261,7 @@ proc generateDefensiveOrders*(
       params: StandingOrderParams(
         orderType: StandingOrderType.DefendSystem,
         defendTargetSystem: assignment.colonySystemId,
-        defendMaxRange: globalRBAConfig.domestikos_defensive.defend_max_range
+        defendMaxRange: controller.rbaConfig.domestikos_defensive.defend_max_range
       ),
       roe: 7,  # Aggressive ROE for defense
       createdTurn: filtered.turn,
