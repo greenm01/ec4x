@@ -297,6 +297,81 @@ proc getAvailableETACs(
   logInfo(LogCategory.lcAI,
           &"{houseId} has {result.len} ETACs ready to colonize (Eparch)")
 
+# =============================================================================
+# Wave-Based Colonization Strategy (Phase 5)
+# =============================================================================
+
+proc getHomeworld(filtered: FilteredGameState): SystemId =
+  ## Get this house's homeworld from filtered state
+  ## Homeworld is the colony with highest population + infrastructure
+  var best = filtered.ownColonies[0].systemId
+  var bestScore = 0
+
+  for colony in filtered.ownColonies:
+    let score = colony.population + colony.infrastructure * 10
+    if score > bestScore:
+      bestScore = score
+      best = colony.systemId
+
+  return best
+
+proc calculateColonizationWaves(
+  filtered: FilteredGameState,
+  homeworld: SystemId,
+  uncolonizedSystems: seq[SystemId]
+): Table[SystemId, int] =
+  ## Calculate which "wave" each uncolonized system belongs to
+  ## Wave 0 = homeworld (already colonized)
+  ## Wave 1 = adjacent to homeworld
+  ## Wave 2 = adjacent to Wave 1 colonies
+  ## etc.
+  ##
+  ## This promotes frontier expansion (colonize adjacent to existing colonies first)
+  result = initTable[SystemId, int]()
+
+  # Track colonized systems by wave
+  var colonizedByWave: Table[int, HashSet[SystemId]] = initTable[int, HashSet[SystemId]]()
+  colonizedByWave[0] = initHashSet[SystemId]()
+  colonizedByWave[0].incl(homeworld)
+
+  # Add all existing colonies to wave 0 (treat as "already conquered frontier")
+  for colony in filtered.ownColonies:
+    if colony.systemId != homeworld:
+      colonizedByWave[0].incl(colony.systemId)
+
+  var currentWave = 1
+  var unassigned = uncolonizedSystems.toHashSet()
+
+  while unassigned.len > 0 and currentWave < 20:  # Max 20 waves
+    colonizedByWave[currentWave] = initHashSet[SystemId]()
+
+    # Find systems adjacent to previous wave
+    for systemId in unassigned:
+      if systemId notin filtered.starMap.systems:
+        continue
+
+      # Check if adjacent to any Wave N-1 colony
+      let adjacentSystemIds = filtered.starMap.getAdjacentSystems(systemId)
+      for neighborId in adjacentSystemIds:
+        if neighborId in colonizedByWave[currentWave - 1]:
+          result[systemId] = currentWave
+          colonizedByWave[currentWave].incl(systemId)
+          break
+
+    # Remove assigned systems
+    for systemId in colonizedByWave[currentWave]:
+      unassigned.excl(systemId)
+
+    # If no systems assigned this wave, remaining are unreachable
+    if colonizedByWave[currentWave].len == 0:
+      break
+
+    inc currentWave
+
+  # Unreachable systems get wave 999
+  for systemId in unassigned:
+    result[systemId] = 999
+
 proc findUncolonizedSystems(
   filtered: FilteredGameState,
   originSystem: SystemId,
@@ -370,12 +445,53 @@ proc findUncolonizedSystems(
       score: score
     ))
 
-  # Sort by score (highest first)
+  # Wave-based sorting: Prioritize frontier expansion (Phase 5)
+  # Sort by wave (closest to frontier first), then by score
+  let homeworld = getHomeworld(filtered)
+  let uncolonizedSystemIds = result.mapIt(it.systemId)
+  let waves = calculateColonizationWaves(filtered, homeworld, uncolonizedSystemIds)
+
   result.sort(proc(a, b: ETACTarget): int =
-    if a.score > b.score: -1
-    elif a.score < b.score: 1
-    else: 0
+    let waveA = waves.getOrDefault(a.systemId, 999)
+    let waveB = waves.getOrDefault(b.systemId, 999)
+
+    # First priority: earlier wave (closer to frontier)
+    if waveA != waveB:
+      return cmp(waveA, waveB)
+
+    # Second priority: higher score (better planet)
+    return cmp(b.score, a.score)  # Descending
   )
+
+  # Log wave information
+  if waves.len > 0:
+    let waveValues = toSeq(waves.values)
+    let minWave = waveValues.min
+    let maxWave = waveValues.max
+    logInfo(LogCategory.lcAI,
+            &"Eparch: Found {result.len} colonization targets " &
+            &"(waves {minWave}-{maxWave}, prioritizing frontier expansion)")
+
+  # Conservative approach: Use leaderboard data to detect stale intel
+  # (Phase 4: Fix Rival Colony Filtering)
+  var totalColonizedByAll = 0
+  for houseId, colonyCount in filtered.houseColonies:
+    totalColonizedByAll += colonyCount
+
+  let totalSystemsOnMap = filtered.starMap.systems.len
+  let estimatedUncolonized = totalSystemsOnMap - totalColonizedByAll
+
+  logDebug(LogCategory.lcAI,
+          &"Colonization estimate: {totalColonizedByAll}/{totalSystemsOnMap} colonized, " &
+          &"~{estimatedUncolonized} uncolonized remaining")
+
+  # If we have few confirmed uncolonized targets but leaderboard shows many exist,
+  # we likely have stale intel - warn but still proceed (can't do much about fog-of-war)
+  if result.len < estimatedUncolonized div 2:
+    logWarn(LogCategory.lcAI,
+            &"⚠️  Intel gap detected: Found {result.len} confirmed uncolonized systems, " &
+            &"but leaderboard suggests ~{estimatedUncolonized} exist. " &
+            &"May target rival colonies due to stale intel (fog-of-war limitation).")
 
   logDebug(LogCategory.lcAI,
            &"Found {result.len} uncolonized systems within {maxRange} jumps " &
