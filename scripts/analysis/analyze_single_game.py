@@ -87,15 +87,18 @@ def get_cumulative_stats(data: List[Dict]) -> Dict[str, Dict]:
     """Calculate cumulative statistics over entire game."""
     stats = defaultdict(lambda: {
         'ships_lost': 0,
+        'ships_gained': 0,
         'fighters_lost': 0,
+        'fighters_gained': 0,
         'colonies_lost': 0,
         'colonies_gained': 0,
         'colonies_gained_act1': 0,  # Act 1 = mostly colonization
         'colonies_gained_act2plus': 0,  # Act 2+ = includes conquests
         'invasions_won': 0,
+        'blitz_won': 0,
         'etac_construction_events': 0,  # Total ETAC builds across all turns
-        'fighters_built': 0,
-        'ship_type_losses': defaultdict(int)
+        'ship_type_losses': defaultdict(int),
+        'ship_type_gains': defaultdict(int)
     })
 
     ship_types = [
@@ -113,7 +116,9 @@ def get_cumulative_stats(data: List[Dict]) -> Dict[str, Dict]:
         act = int(row.get('act', 1))
 
         stats[house]['ships_lost'] += int(row.get('ships_lost', 0))
+        stats[house]['ships_gained'] += int(row.get('ships_gained', 0))
         stats[house]['fighters_lost'] += int(row.get('fighters_lost', 0))
+        stats[house]['fighters_gained'] += int(row.get('fighters_gained', 0))
         stats[house]['colonies_lost'] += int(row.get('colonies_lost', 0))
 
         colonies_gained_this_turn = int(row.get('colonies_gained', 0))
@@ -125,20 +130,28 @@ def get_cumulative_stats(data: List[Dict]) -> Dict[str, Dict]:
         else:
             stats[house]['colonies_gained_act2plus'] += colonies_gained_this_turn
 
-        stats[house]['invasions_won'] += int(row.get('invasions_won', 0))
-        stats[house]['fighters_built'] += int(row.get('fighters_gained', 0))
+        # Track invasion and blitz operations
+        stats[house]['invasions_won'] += int(row.get('ground_victories', 0))
+
+        # Blitz = successful combined bombardment + invasion
+        invasion_orders = int(row.get('invasion_orders_invade', 0))
+        blitz_orders = int(row.get('invasion_orders_blitz', 0))
+        stats[house]['blitz_won'] += blitz_orders
 
         # Sum ETAC construction events (etac_ships field shows builds that turn)
         etac_builds = int(row.get('etac_ships', 0))
         if etac_builds > 0:
             stats[house]['etac_construction_events'] += etac_builds
 
-        # Track per-ship-type losses
+        # Track per-ship-type gains and losses
         for ship_type in ship_types:
             current = int(row.get(ship_type, 0))
             previous = prev_counts[house][ship_type]
 
-            if current < previous and int(row.get('ships_lost', 0)) > 0:
+            if current > previous:
+                increase = current - previous
+                stats[house]['ship_type_gains'][ship_type] += increase
+            elif current < previous:
                 decrease = previous - current
                 stats[house]['ship_type_losses'][ship_type] += decrease
 
@@ -227,45 +240,144 @@ def print_etac_analysis(timeline: List[Dict], cumulative: Dict[str, Dict], data:
     print(f"    - Some ETACs are salvaged after 100% colonization")
     print(f"    - New ETACs built to replace used ones")
 
-def print_final_fleet_composition(final_data: Dict[str, Dict], cumulative: Dict[str, Dict], max_turn: int):
-    """Print detailed fleet composition table by ship type."""
+def get_act_transitions(data: List[Dict]) -> List[Dict]:
+    """Find turn numbers where act transitions occurred."""
+    transitions = []
+    prev_act = None
+
+    for row in data:
+        turn = int(row['turn'])
+        act = int(row.get('act', 1))
+
+        if prev_act is not None and act != prev_act:
+            transitions.append({
+                'turn': turn,
+                'from_act': prev_act,
+                'to_act': act
+            })
+
+        prev_act = act
+
+    return transitions
+
+def print_act_transitions(transitions: List[Dict]):
+    """Print act transition information."""
     print("\n" + "="*100)
-    print(f"FINAL FLEET COMPOSITION (Turn {max_turn})")
+    print("ACT TRANSITIONS")
     print("="*100)
 
-    ship_types = [
-        ('destroyer_ships', 'Destroyers'),
-        ('cruiser_ships', 'Cruisers'),
-        ('light_cruiser_ships', 'Lt Cruisers'),
-        ('heavy_cruiser_ships', 'Hv Cruisers'),
-        ('battlecruiser_ships', 'Battlecruisers'),
-        ('battleship_ships', 'Battleships'),
-        ('dreadnought_ships', 'Dreadnoughts'),
-        ('super_dreadnought_ships', 'Super Dreads'),
-        ('carrier_ships', 'Carriers'),
-        ('super_carrier_ships', 'Super Carriers'),
-        ('total_fighters', 'Fighters'),
-        ('etac_ships', 'ETACs (concurrent)'),
-        ('troop_transport_ships', 'Transports'),
-        ('scout_ships', 'Scouts'),
-        ('corvette_ships', 'Corvettes'),
-        ('frigate_ships', 'Frigates'),
-        ('raider_ships', 'Raiders'),
-        ('planet_breaker_ships', 'Planet Breakers'),
-        ('total_ships', 'TOTAL SHIPS')
+    act_names = {
+        1: "Land Grab",
+        2: "Rising Tensions",
+        3: "Total War",
+        4: "Endgame"
+    }
+
+    if not transitions:
+        print("No act transitions detected (game ended in Act 1)")
+        return
+
+    print(f"\n{'Turn':<8} {'Transition':<50}")
+    print("-" * 100)
+
+    for trans in transitions:
+        from_name = act_names.get(trans['from_act'], f"Act {trans['from_act']}")
+        to_name = act_names.get(trans['to_act'], f"Act {trans['to_act']}")
+        print(f"{trans['turn']:<8} {from_name} → {to_name}")
+
+def print_military_summary(final_data: Dict[str, Dict], cumulative: Dict[str, Dict], max_turn: int):
+    """Print military units built/lost/final summary."""
+    print("\n" + "="*100)
+    print(f"MILITARY UNITS SUMMARY (Turn {max_turn})")
+    print("="*100)
+
+    ship_categories = [
+        ('Escorts', [
+            ('corvette_ships', 'Corvettes'),
+            ('frigate_ships', 'Frigates'),
+            ('destroyer_ships', 'Destroyers'),
+            ('light_cruiser_ships', 'Lt Cruisers'),
+            ('scout_ships', 'Scouts')
+        ]),
+        ('Capitals', [
+            ('heavy_cruiser_ships', 'Hv Cruisers'),
+            ('battlecruiser_ships', 'Battlecruisers'),
+            ('battleship_ships', 'Battleships'),
+            ('dreadnought_ships', 'Dreadnoughts'),
+            ('super_dreadnought_ships', 'Super Dreads'),
+            ('carrier_ships', 'Carriers'),
+            ('super_carrier_ships', 'Super Carriers'),
+            ('raider_ships', 'Raiders')
+        ]),
+        ('Special', [
+            ('planet_breaker_ships', 'Planet Breakers')
+        ]),
+        ('Fighters', [
+            ('total_fighters', 'Fighters')
+        ])
     ]
 
     houses = sorted(final_data.keys())
-    print(f"{'Ship Type':<22}", end='')
+
+    for category_name, ship_types in ship_categories:
+        print(f"\n{category_name}:")
+        print("-" * 100)
+        print(f"{'Unit':<22}", end='')
+        for house in houses:
+            short_name = house.replace('house-', '')
+            print(f"{short_name:>15}", end='')
+        print()
+        print(f"{'':22}", end='')
+        for _ in houses:
+            print(f"{'Blt/Lst/Fin':>15}", end='')
+        print()
+        print("-" * 100)
+
+        for col, label in ship_types:
+            print(f"{label:<22}", end='')
+            for house in houses:
+                built = cumulative[house]['ship_type_gains'].get(col, 0)
+                lost = cumulative[house]['ship_type_losses'].get(col, 0)
+                final = int(final_data[house].get(col, 0))
+
+                if built > 0 or lost > 0 or final > 0:
+                    print(f"{built:>4}/{lost:>4}/{final:>4}", end='')
+                else:
+                    print(f"{'—':>15}", end='')
+            print()
+
+    # Total ships summary
+    print("\n" + "="*100)
+    print(f"{'TOTALS':<22}", end='')
+    for house in houses:
+        total_built = cumulative[house]['ships_gained']
+        total_lost = cumulative[house]['ships_lost']
+        total_final = int(final_data[house].get('total_ships', 0))
+        print(f"{total_built:>4}/{total_lost:>4}/{total_final:>4}", end='')
+    print()
+
+def print_facilities_summary(final_data: Dict[str, Dict], max_turn: int):
+    """Print facilities summary."""
+    print("\n" + "="*100)
+    print(f"FACILITIES & INFRASTRUCTURE (Turn {max_turn})")
+    print("="*100)
+
+    facilities = [
+        ('total_spaceports', 'Spaceports'),
+        ('total_shipyards', 'Shipyards'),
+        ('total_drydocks', 'Drydocks'),
+        ('starbases_actual', 'Starbases')
+    ]
+
+    houses = sorted(final_data.keys())
+    print(f"{'Facility':<22}", end='')
     for house in houses:
         short_name = house.replace('house-', '')
         print(f"{short_name:>15}", end='')
     print(f"{'TOTAL':>15}")
     print("-" * 100)
 
-    for col, label in ship_types:
-        if label == 'TOTAL SHIPS':
-            print("-" * 100)
+    for col, label in facilities:
         print(f"{label:<22}", end='')
         row_total = 0
         for house in houses:
@@ -276,6 +388,78 @@ def print_final_fleet_composition(final_data: Dict[str, Dict], cumulative: Dict[
             else:
                 print(f"{'—':>15}", end='')
         print(f"{row_total:>15}")
+
+def print_ground_forces_summary(final_data: Dict[str, Dict], max_turn: int):
+    """Print ground forces summary."""
+    print("\n" + "="*100)
+    print(f"GROUND FORCES (Turn {max_turn})")
+    print("="*100)
+
+    ground_units = [
+        ('army_units', 'Armies'),
+        ('marine_division_units', 'Marine Divisions'),
+        ('ground_battery_units', 'Ground Batteries'),
+        ('planetary_shield_units', 'Planetary Shields')
+    ]
+
+    houses = sorted(final_data.keys())
+    print(f"{'Unit Type':<22}", end='')
+    for house in houses:
+        short_name = house.replace('house-', '')
+        print(f"{short_name:>15}", end='')
+    print(f"{'TOTAL':>15}")
+    print("-" * 100)
+
+    for col, label in ground_units:
+        print(f"{label:<22}", end='')
+        row_total = 0
+        for house in houses:
+            count = int(final_data[house].get(col, 0))
+            row_total += count
+            if count > 0:
+                print(f"{count:>15}", end='')
+            else:
+                print(f"{'—':>15}", end='')
+        print(f"{row_total:>15}")
+
+def print_spacelift_summary(final_data: Dict[str, Dict], cumulative: Dict[str, Dict], max_turn: int):
+    """Print spacelift command summary."""
+    print("\n" + "="*100)
+    print(f"SPACELIFT COMMAND (Turn {max_turn})")
+    print("="*100)
+
+    houses = sorted(final_data.keys())
+    print(f"{'Unit Type':<22}", end='')
+    for house in houses:
+        short_name = house.replace('house-', '')
+        print(f"{short_name:>15}", end='')
+    print()
+    print(f"{'':22}", end='')
+    for _ in houses:
+        print(f"{'Blt/Fin':>15}", end='')
+    print()
+    print("-" * 100)
+
+    # ETACs - show total built from cumulative and final count
+    print(f"{'ETACs':<22}", end='')
+    for house in houses:
+        built = cumulative[house]['etac_construction_events']
+        final = int(final_data[house].get('etac_ships', 0))
+        print(f"{built:>7}/{final:>5}", end='')
+    print()
+
+    # Troop Transports
+    print(f"{'Troop Transports':<22}", end='')
+    for house in houses:
+        built = cumulative[house]['ship_type_gains'].get('troop_transport_ships', 0)
+        final = int(final_data[house].get('troop_transport_ships', 0))
+        if built > 0 or final > 0:
+            print(f"{built:>7}/{final:>5}", end='')
+        else:
+            print(f"{'—':>15}", end='')
+    print()
+
+    print("\nNote: ETACs are one-time use (cannibalized after colonization or salvaged at 100%)")
 
 def print_territorial_control(cumulative: Dict[str, Dict], final_data: Dict[str, Dict], data: List[Dict]):
     """Print territorial control and colony changes."""
@@ -293,7 +477,7 @@ def print_territorial_control(cumulative: Dict[str, Dict], final_data: Dict[str,
     print()
 
     houses = sorted(cumulative.keys())
-    print(f"{'House':<20}{'Final':>8}{'Act 1':>10}{'Act 2+':>10}{'Invasions':>12}{'Lost':>8}{'Net':>8}")
+    print(f"{'House':<20}{'Final':>8}{'Act 1':>10}{'Act 2+':>10}{'Invade':>8}{'Blitz':>8}{'Lost':>8}{'Net':>8}")
     print("-" * 100)
 
     for house in houses:
@@ -301,14 +485,20 @@ def print_territorial_control(cumulative: Dict[str, Dict], final_data: Dict[str,
         act1_gains = cumulative[house]['colonies_gained_act1']
         act2plus_gains = cumulative[house]['colonies_gained_act2plus']
         invasions = cumulative[house]['invasions_won']
+        blitz = cumulative[house]['blitz_won']
         lost = cumulative[house]['colonies_lost']
         net = (act1_gains + act2plus_gains) - lost
 
         short_name = house.replace('house-', '')
         net_str = f"+{net}" if net > 0 else str(net)
-        print(f"{short_name:<20}{final_colonies:>8}{act1_gains:>10}{act2plus_gains:>10}{invasions:>12}{lost:>8}{net_str:>8}")
+        print(f"{short_name:<20}{final_colonies:>8}{act1_gains:>10}{act2plus_gains:>10}{invasions:>8}{blitz:>8}{lost:>8}{net_str:>8}")
 
-    print("\nNote: Act 1 = Land Grab (ETACs), Act 2+ = Rising Tensions+ (conquests), Invasions = won invasions")
+    print("\nNote:")
+    print("  Act 1 = Land Grab (ETAC colonization)")
+    print("  Act 2+ = Rising Tensions+ (includes conquests)")
+    print("  Invade = Successful ground invasions (ground_victories)")
+    print("  Blitz = Combined bombardment + invasion operations")
+    print("  Lost = Colonies lost to enemy action")
 
 def print_economy_and_prestige(final_data: Dict[str, Dict]):
     """Print economy and prestige summary."""
@@ -370,11 +560,16 @@ def main():
     final_data = get_final_turn_data(data)
     cumulative = get_cumulative_stats(data)
     timeline = get_etac_timeline(conn)
+    transitions = get_act_transitions(data)
     max_turn = max(int(row['turn']) for row in data)
 
     # Print all tables
+    print_act_transitions(transitions)
     print_etac_analysis(timeline, cumulative, data)
-    print_final_fleet_composition(final_data, cumulative, max_turn)
+    print_military_summary(final_data, cumulative, max_turn)
+    print_facilities_summary(final_data, max_turn)
+    print_ground_forces_summary(final_data, max_turn)
+    print_spacelift_summary(final_data, cumulative, max_turn)
     print_territorial_control(cumulative, final_data, data)
     print_economy_and_prestige(final_data)
 
