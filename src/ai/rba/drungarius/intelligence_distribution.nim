@@ -73,7 +73,7 @@ proc needsReconnaissance*(
 
     # Intel is stale if beyond threshold
     # RESOLVED: Use config value (10 turns)
-    if turnsSince > config.globalRBAConfig.intelligence.colony_intel_stale_threshold:
+    if turnsSince > controller.rbaConfig.intelligence.colony_intel_stale_threshold:
       return true
 
   # Check if we have any fleet movement intel for this system
@@ -159,7 +159,7 @@ proc generateIntelligenceReport*(
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Drungarius: Generating enhanced intelligence report for turn {result.turn}")
 
-  let config = globalRBAConfig.intelligence
+  let config = controller.rbaConfig.intelligence
 
   # === PHASE B: COLONY & SYSTEM INTELLIGENCE ===
 

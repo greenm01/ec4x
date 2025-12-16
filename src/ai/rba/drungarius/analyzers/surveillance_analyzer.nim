@@ -20,7 +20,7 @@ proc analyzeSurveillanceReports*(
   ## Analyze StarbaseSurveillanceReport data to identify surveillance gaps
   ## Phase D: Complete implementation
 
-  let config = globalRBAConfig.intelligence
+  let config = controller.rbaConfig.intelligence
   var coverage = initTable[SystemId, StarbaseCoverageInfo]()
   var gaps: seq[SurveillanceGap] = @[]
 

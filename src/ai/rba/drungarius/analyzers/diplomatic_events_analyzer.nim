@@ -49,7 +49,7 @@ proc analyzeDiplomaticEvents*(
   ## Analyze ScoutEncounterReport data for diplomatic intelligence
   ## Phase E: Critical for blockade detection and diplomatic awareness
 
-  let config = globalRBAConfig.intelligence_diplomatic_events
+  let config = controller.rbaConfig.intelligence_diplomatic_events
   var blockades: seq[BlockadeInfo] = @[]
   var events: seq[DiplomaticEvent] = @[]
   var hostility = initTable[HouseId, HostilityLevel]()

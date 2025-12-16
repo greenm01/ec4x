@@ -65,12 +65,12 @@ proc generateTerraformOrders*(controller: AIController, filtered: FilteredGameSt
 
     # Calculate upgrade cost (from config, based on economy.md:4.7)
     let cost = case targetClass
-      of 1: globalRBAConfig.economic.terraforming_costs_extreme_to_desolate     # Extreme → Desolate
-      of 2: globalRBAConfig.economic.terraforming_costs_desolate_to_hostile    # Desolate → Hostile
-      of 3: globalRBAConfig.economic.terraforming_costs_hostile_to_harsh       # Hostile → Harsh
-      of 4: globalRBAConfig.economic.terraforming_costs_harsh_to_benign        # Harsh → Benign
-      of 5: globalRBAConfig.economic.terraforming_costs_benign_to_lush         # Benign → Lush
-      of 6: globalRBAConfig.economic.terraforming_costs_lush_to_eden           # Lush → Eden
+      of 1: controller.rbaConfig.economic.terraforming_costs_extreme_to_desolate     # Extreme → Desolate
+      of 2: controller.rbaConfig.economic.terraforming_costs_desolate_to_hostile    # Desolate → Hostile
+      of 3: controller.rbaConfig.economic.terraforming_costs_hostile_to_harsh       # Hostile → Harsh
+      of 4: controller.rbaConfig.economic.terraforming_costs_harsh_to_benign        # Harsh → Benign
+      of 5: controller.rbaConfig.economic.terraforming_costs_benign_to_lush         # Benign → Lush
+      of 6: controller.rbaConfig.economic.terraforming_costs_lush_to_eden           # Lush → Eden
       else: 1000
 
     # Skip if we can't afford it

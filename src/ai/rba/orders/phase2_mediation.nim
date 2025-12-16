@@ -39,6 +39,7 @@ proc mediateAndAllocateBudget*(
 
   # Multi-advisor allocation (hybrid: reserves + mediation)
   result = allocateBudgetMultiAdvisor(
+    controller,
     controller.domestikosRequirements.get(),
     controller.logotheteRequirements.get(),
     controller.drungariusRequirements.get(),

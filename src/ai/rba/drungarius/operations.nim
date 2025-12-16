@@ -32,15 +32,15 @@ proc selectEspionageTarget*(controller: AIController, filtered: FilteredGameStat
     # Target prestige leaders (disrupt them)
     let prestigeGap = prestige - myPrestige
     if prestigeGap > 0:
-      priority += prestigeGap.float * globalRBAConfig.drungarius_operations.target_prestige_gap_multiplier
+      priority += prestigeGap.float * controller.rbaConfig.drungarius_operations.target_prestige_gap_multiplier
 
     # Target diplomatic enemies (high priority)
     let relation = dip_types.getDiplomaticState(house.diplomaticRelations, houseId)
     if relation == dip_types.DiplomaticState.Enemy:
-      priority += globalRBAConfig.drungarius_operations.target_enemy_priority_boost
+      priority += controller.rbaConfig.drungarius_operations.target_enemy_priority_boost
 
     # Random factor (prevent predictability)
-    priority += rng.rand(globalRBAConfig.drungarius_operations.target_random_factor_max)
+    priority += rng.rand(controller.rbaConfig.drungarius_operations.target_random_factor_max)
 
     targets.add((houseId, priority))
 
@@ -72,7 +72,7 @@ proc selectEspionageOperation*(controller: AIController, filtered: FilteredGameS
   let prestigeGap = targetPrestige - myPrestige
 
   # Load config for shorter references
-  let cfg = globalRBAConfig.drungarius_operations
+  let cfg = controller.rbaConfig.drungarius_operations
 
   # Intelligence Theft - Steal enemy's entire intelligence database (high-value intel warfare)
   # Very valuable when we lack intel on the galaxy or before major operations
@@ -131,7 +131,7 @@ proc selectEspionageOperation*(controller: AIController, filtered: FilteredGameS
 proc shouldUseCounterIntel*(controller: AIController, filtered: FilteredGameState): bool =
   ## Decide if we should use Counter-Intelligence Sweep this turn (defensive)
   let house = filtered.ownHouse
-  let cfg = globalRBAConfig.drungarius_operations
+  let cfg = controller.rbaConfig.drungarius_operations
 
   # Need at least minimum CIP for counter-intel
   if house.espionageBudget.cipPoints < cfg.cip_minimum_counter_intel:
@@ -158,7 +158,7 @@ proc generateEspionageAction*(controller: AIController, filtered: FilteredGameSt
   ## projectedEBP/CIP = current points + this turn's investment (available immediately)
   let p = controller.personality
   let house = filtered.ownHouse
-  let cfg = globalRBAConfig.drungarius_operations
+  let cfg = controller.rbaConfig.drungarius_operations
 
   logDebug(LogCategory.lcAI,
            &"{controller.houseId} Espionage check: prestige={house.prestige}, " &

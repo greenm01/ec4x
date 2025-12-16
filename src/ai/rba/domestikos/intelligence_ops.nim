@@ -21,7 +21,7 @@ proc estimateLocalThreat*(
   ## Kept for backward compatibility during transition
   result = 0.0
 
-  let config = globalRBAConfig.domestikos
+  let config = controller.rbaConfig.domestikos
   let radius = config.threat_assessment_radius
 
   # Check intelligence database for enemy fleets nearby
@@ -36,12 +36,13 @@ proc estimateLocalThreat*(
       if distance <= radius:
         # Threat decreases with distance
         let threatContribution = 1.0 - (distance.float / radius.float)
-        result += threatContribution * globalRBAConfig.domestikos_intelligence_ops.threat_contribution_per_fleet
+        result += threatContribution * controller.rbaConfig.domestikos_intelligence_ops.threat_contribution_per_fleet
 
   # Cap at 1.0
   result = min(result, 1.0)
 
 proc estimateLocalThreatFromIntel*(
+  controller: AIController,
   systemId: SystemId,
   intelSnapshot: IntelligenceSnapshot
 ): float =
@@ -56,9 +57,9 @@ proc estimateLocalThreatFromIntel*(
     # Convert ThreatLevel to float (0.0-1.0)
     result = case threat.level:
       of tlCritical: 1.0
-      of tlHigh: globalRBAConfig.domestikos_intelligence_ops.threat_level_high_score
-      of tlModerate: globalRBAConfig.domestikos_intelligence_ops.threat_level_moderate_score
-      of tlLow: globalRBAConfig.domestikos_intelligence_ops.threat_level_low_score
+      of tlHigh: controller.rbaConfig.domestikos_intelligence_ops.threat_level_high_score
+      of tlModerate: controller.rbaConfig.domestikos_intelligence_ops.threat_level_moderate_score
+      of tlLow: controller.rbaConfig.domestikos_intelligence_ops.threat_level_low_score
       of tlNone: 0.0
 
     # Adjust by confidence (reduce threat if intel is stale)

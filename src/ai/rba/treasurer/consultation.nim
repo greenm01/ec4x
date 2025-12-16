@@ -45,6 +45,7 @@ proc calculateRequiredPP*(
            &"SpecialUnits={result[BuildObjective.SpecialUnits]}PP")
 
 proc applyStrategicTriage*(
+  controller: AIController,
   allocation: var BudgetAllocation,
   requirements: BuildRequirements,
   availableBudget: int
@@ -59,7 +60,7 @@ proc applyStrategicTriage*(
   ## competing with high-priority defense needs (Defense) proportionally,
   ## rather than being starved by larger Defense cost totals.
 
-  let cfg = globalRBAConfig.domestikos
+  let cfg = controller.rbaConfig.domestikos
   let minRecon = int(float(availableBudget) * cfg.min_recon_budget_percent)
   let minExpansion = int(float(availableBudget) * cfg.min_expansion_budget_percent)
   let minReserves = minRecon + minExpansion
@@ -183,6 +184,7 @@ proc applyStrategicTriage*(
           &"Special={int(allocation[BuildObjective.SpecialUnits]*100)}%")
 
 proc blendRequirementsWithBaseline*(
+  controller: AIController,
   allocation: var BudgetAllocation,
   requiredPP: Table[BuildObjective, int],
   availableBudget: int
@@ -198,7 +200,7 @@ proc blendRequirementsWithBaseline*(
   ## - Allocate exactly 53% to Defense (100% of requirement)
   ## - SpecialUnits: blend 70% requirement + 30% baseline
 
-  let cfg = globalRBAConfig.domestikos
+  let cfg = controller.rbaConfig.domestikos
 
   # Defense and Military: 100% requirements-driven (pure tactical allocation)
   for objective in [BuildObjective.Defense, BuildObjective.Military]:
@@ -232,6 +234,7 @@ proc blendRequirementsWithBaseline*(
            &"SpecialUnits={int(allocation[BuildObjective.SpecialUnits]*100)}%")
 
 proc consultDomestikosRequirements*(
+  controller: AIController,
   allocation: var BudgetAllocation,
   requirements: BuildRequirements,
   availableBudget: int
@@ -253,7 +256,7 @@ proc consultDomestikosRequirements*(
   # Decide strategy based on budget availability
   if totalUrgent > availableBudget:
     # Strategic Triage: Oversubscribed - use priority-aware allocation
-    applyStrategicTriage(allocation, requirements, availableBudget)
+    applyStrategicTriage(controller, allocation, requirements, availableBudget)
   else:
     # Normal case: Blend requirements with baseline
-    blendRequirementsWithBaseline(allocation, requiredPP, availableBudget)
+    blendRequirementsWithBaseline(controller, allocation, requiredPP, availableBudget)

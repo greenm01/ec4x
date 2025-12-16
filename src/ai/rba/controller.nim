@@ -2,7 +2,7 @@
 ##
 ## Coordinates all AI subsystems and manages AI state
 
-import std/[tables, options]
+import std/[tables, options, sets]
 import ../common/types
 import ./[controller_types, config]
 import ../../engine/[gamestate, order_types]
@@ -74,6 +74,9 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy,
     fleetManagementCommands: @[],
     pendingIntelUpdates: @[],
     eparchColonizationOrders: @[],  # Eparch colonization orders (Phase 1→6.9)
+    targetedColonizationSystems: initHashSet[SystemId](),  # Persistent ETAC target tracking
+    etacAssignments: initTable[FleetId, SystemId](),  # Track which ETAC targets which system
+    lastETACPlanningTurn: 0,  # When ETAC planning last ran
     # GOAP strategic planning integration (MVP: Fleet + Build domains)
     goapEnabled: rbaConfig.goap.enabled,
     goapLastPlanningTurn: -1,
@@ -115,6 +118,9 @@ proc newAIControllerWithPersonality*(houseId: HouseId,
     fleetManagementCommands: @[],
     pendingIntelUpdates: @[],
     eparchColonizationOrders: @[],  # Eparch colonization orders (Phase 1→6.9)
+    targetedColonizationSystems: initHashSet[SystemId](),  # Persistent ETAC target tracking
+    etacAssignments: initTable[FleetId, SystemId](),  # Track which ETAC targets which system
+    lastETACPlanningTurn: 0,  # When ETAC planning last ran
     # GOAP strategic planning integration (MVP: Fleet + Build domains)
     goapEnabled: rbaConfig.goap.enabled,
     goapLastPlanningTurn: -1,

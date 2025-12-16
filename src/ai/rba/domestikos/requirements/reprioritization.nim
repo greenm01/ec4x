@@ -22,6 +22,7 @@ import ../../treasurer/budget/feedback  # For getCheaperAlternatives()
 # =============================================================================
 
 proc tryQuantityAdjustment*(
+  controller: AIController,
   req: BuildRequirement,
   iteration: int
 ): BuildRequirement =
@@ -30,7 +31,7 @@ proc tryQuantityAdjustment*(
   ##
   ## Used in Iteration 1 before trying substitution
 
-  if not globalRBAConfig.reprioritization.enable_quantity_adjustment:
+  if not controller.rbaConfig.reprioritization.enable_quantity_adjustment:
     return req
 
   if req.quantity <= 1:
@@ -38,7 +39,7 @@ proc tryQuantityAdjustment*(
     return req
 
   var adjusted = req
-  let minReduction = globalRBAConfig.reprioritization.min_quantity_reduction
+  let minReduction = controller.rbaConfig.reprioritization.min_quantity_reduction
   let newQuantity = max(minReduction, req.quantity div 2)  # 50% reduction
 
   if newQuantity < req.quantity:
@@ -53,6 +54,7 @@ proc tryQuantityAdjustment*(
   return adjusted
 
 proc trySubstitution*(
+  controller: AIController,
   req: BuildRequirement,
   cstLevel: int
 ): Option[BuildRequirement] =
@@ -61,7 +63,7 @@ proc trySubstitution*(
   ##
   ## Used in Iterations 2-3 after quantity adjustment failed
 
-  if not globalRBAConfig.reprioritization.enable_substitution:
+  if not controller.rbaConfig.reprioritization.enable_substitution:
     return none(BuildRequirement)
 
   # Only substitute ships (ground units don't have good alternatives yet)
@@ -78,7 +80,7 @@ proc trySubstitution*(
     return none(BuildRequirement)
 
   # Check cost reduction factor from config
-  let maxCostReductionFactor = globalRBAConfig.reprioritization
+  let maxCostReductionFactor = controller.rbaConfig.reprioritization
                                  .max_cost_reduction_factor
 
   # Find cheapest alternative that meets cost reduction threshold
@@ -111,6 +113,7 @@ proc trySubstitution*(
 # =============================================================================
 
 proc reprioritizeRequirements*(
+  controller: AIController,
   originalRequirements: BuildRequirements,
   treasurerFeedback: TreasurerFeedback,
   treasury: int,  # Treasury for budget-aware reprioritization
@@ -164,11 +167,11 @@ proc reprioritizeRequirements*(
 
     # Iteration 1: Try quantity adjustment
     if currentIteration == 1 and req.quantity > 1:
-      adjustedReq = tryQuantityAdjustment(req, currentIteration)
+      adjustedReq = tryQuantityAdjustment(controller, req, currentIteration)
 
     # Iteration 2-3: Try substitution if quantity adjustment didn't help
     elif currentIteration >= 2:
-      let substitutionResult = trySubstitution(adjustedReq, cstLevel)
+      let substitutionResult = trySubstitution(controller, adjustedReq, cstLevel)
       if substitutionResult.isSome:
         adjustedReq = substitutionResult.get()
       # else: keep existing requirement, will be downgraded below

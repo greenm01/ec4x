@@ -46,6 +46,7 @@ proc mediateAndAllocateBudget*(
 
   # Perform multi-advisor allocation
   result = allocateBudgetMultiAdvisor(
+    controller,
     domestikosReqs,
     logotheteReqs,
     drungariusReqs,

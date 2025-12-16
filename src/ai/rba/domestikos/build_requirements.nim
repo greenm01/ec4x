@@ -36,6 +36,7 @@ import ./unit_priority  # Priority scoring for unit selection
 # ============================================================================
 
 proc calculateAffordabilityFactor*(
+  controller: AIController,
   unitCost: int,
   quantity: int,
   treasury: int,
@@ -65,10 +66,10 @@ proc calculateAffordabilityFactor*(
   # These are per-request, not total spending caps (multiple requests can compound)
   # Configuration from config/rba.toml [domestikos]
   let maxCostRatio = case currentAct
-    of ai_common_types.GameAct.Act1_LandGrab: globalRBAConfig.domestikos.affordability_act1
-    of ai_common_types.GameAct.Act2_RisingTensions: globalRBAConfig.domestikos.affordability_act2
-    of ai_common_types.GameAct.Act3_TotalWar: globalRBAConfig.domestikos.affordability_act3
-    of ai_common_types.GameAct.Act4_Endgame: globalRBAConfig.domestikos.affordability_act4
+    of ai_common_types.GameAct.Act1_LandGrab: controller.rbaConfig.domestikos.affordability_act1
+    of ai_common_types.GameAct.Act2_RisingTensions: controller.rbaConfig.domestikos.affordability_act2
+    of ai_common_types.GameAct.Act3_TotalWar: controller.rbaConfig.domestikos.affordability_act3
+    of ai_common_types.GameAct.Act4_Endgame: controller.rbaConfig.domestikos.affordability_act4
 
   if costRatio > maxCostRatio:
     # Too expensive - scale down quantity
@@ -165,6 +166,7 @@ type
 # =============================================================================
 
 proc escalateSeverity*(
+  controller: AIController,
   baseSeverity: RequirementPriority,
   turnsUndefended: int
 ): RequirementPriority =
@@ -179,7 +181,7 @@ proc escalateSeverity*(
 
   result = baseSeverity
 
-  let config = globalRBAConfig.domestikos
+  let config = controller.rbaConfig.domestikos
   case baseSeverity
   of RequirementPriority.Low:
     if turnsUndefended >= config.escalation_low_to_medium_turns:
@@ -289,7 +291,7 @@ proc calculateGapSeverity(
   ## - Personality defines HOW willing you are to take risks within that objective
   ## - Active GOAP goals can override personality/Act tendencies for specific priorities.
 
-  let config = globalRBAConfig.domestikos
+  let config = controller.rbaConfig.domestikos
 
   # Check if a MaintainPrestige GOAP goal is currently active.
   # If active, this implies avoiding prestige penalties (like undefended colony loss) is critical.
@@ -414,7 +416,7 @@ proc assessDefenseGaps*(
 
     # Estimate local threat using enhanced intelligence (Phase B+)
     let threat = estimateLocalThreatFromIntel(
-      colony.systemId, intelSnapshot
+      controller, colony.systemId, intelSnapshot
     )
 
     # Find nearest available defender
@@ -432,7 +434,7 @@ proc assessDefenseGaps*(
       colonyPriority, threat, currentDefenders, nearestDefender.distance,
       currentAct, controller.personality.risk_tolerance, controller # Pass controller here
     )
-    let severity = escalateSeverity(baseSeverity, turnsUndefended)
+    let severity = escalateSeverity(controller, baseSeverity, turnsUndefended)
 
     if severity != RequirementPriority.Deferred:
       result.add(DefenseGap(
@@ -800,7 +802,7 @@ proc assessStrategicAssets*(
 
       # BUDGET-AWARE: Scale quantity based on treasury affordability
       let idealCarriers = targetCarriers - carrierCount
-      let carrierAffordability = calculateAffordabilityFactor(
+      let carrierAffordability = calculateAffordabilityFactor(controller, 
         carrierCost, idealCarriers, filtered.ownHouse.treasury, currentAct
       )
       let requestedCarriers = max(0, int(float(idealCarriers) * carrierAffordability))
@@ -990,7 +992,7 @@ proc assessStrategicAssets*(
 
     # BUDGET-AWARE: Scale quantity based on treasury affordability
     let idealQuantity = targetCapitalShips - totalCapitalShips
-    let affordabilityFactor = calculateAffordabilityFactor(
+    let affordabilityFactor = calculateAffordabilityFactor(controller, 
       capitalCost, idealQuantity, filtered.ownHouse.treasury, currentAct
     )
     let requestedQuantity = max(0, int(float(idealQuantity) * affordabilityFactor))
@@ -1650,7 +1652,7 @@ proc generateBuildRequirements*(
               ShipClass.SuperCarrier, ShipClass.Raider, ShipClass.Battlecruiser, ShipClass.Carrier]
 
         # Select best ship using priority scoring (Act-aware, budget-aware)
-        let selectedUnit = selectBestUnit(candidates, currentAct, cstLevel,
+        let selectedUnit = selectBestUnit(controller, candidates, currentAct, cstLevel,
                                           perSlotBudget)
         shipClass = if selectedUnit.isSome:
                       selectedUnit
@@ -1683,7 +1685,7 @@ proc generateBuildRequirements*(
             ShipClass.Raider, ShipClass.Battlecruiser]
 
       # Select best ship using priority scoring (Act-aware, budget-aware)
-      let selectedUnit = selectBestUnit(candidates, currentAct, cstLevel,
+      let selectedUnit = selectBestUnit(controller, candidates, currentAct, cstLevel,
                                         perSlotBudget)
       shipClass = if selectedUnit.isSome:
                     selectedUnit
@@ -1794,7 +1796,7 @@ proc generateBuildRequirements*(
           @[ShipClass.Battleship, ShipClass.Battlecruiser, ShipClass.HeavyCruiser]
 
       # Select best ship using priority scoring (Act-aware, budget-aware)
-      let selectedUnit = selectBestUnit(candidates, currentAct, cstLevel,
+      let selectedUnit = selectBestUnit(controller, candidates, currentAct, cstLevel,
                                         perSlotBudget)
       shipClass = if selectedUnit.isSome:
                     selectedUnit
@@ -1817,7 +1819,7 @@ proc generateBuildRequirements*(
           @[ShipClass.HeavyCruiser, ShipClass.Cruiser, ShipClass.LightCruiser]
 
       # Select best ship using priority scoring (Act-aware, budget-aware)
-      let selectedUnit = selectBestUnit(candidates, currentAct, cstLevel,
+      let selectedUnit = selectBestUnit(controller, candidates, currentAct, cstLevel,
                                         perSlotBudget)
       shipClass = if selectedUnit.isSome:
                     selectedUnit

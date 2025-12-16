@@ -37,7 +37,7 @@ proc analyzeStarbaseIntelligence*(
   result.enemyEcon = initTable[HouseId, EconomicAssessment]()
   result.enemyTech = initTable[HouseId, TechLevelEstimate]()
 
-  let config = globalRBAConfig.intelligence
+  let config = controller.rbaConfig.intelligence
   let ownHouse = filtered.ownHouse
 
   # Iterate through starbase intelligence reports
@@ -133,7 +133,7 @@ proc generateTechGapPriorities*(
   ## Phase C implementation
   result = @[]
 
-  let config = globalRBAConfig.intelligence
+  let config = controller.rbaConfig.intelligence
 
   # Extract our own tech levels from TechTree
   var ownTech = initTable[TechField, int]()
