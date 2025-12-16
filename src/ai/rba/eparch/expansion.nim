@@ -672,6 +672,99 @@ proc generateColonizationOrders(
             &"Eparch: Generated {result.len} ETAC colonization orders")
 
 # ============================================================================
+# ETAC Salvage (Post-Colonization Cleanup)
+# ============================================================================
+
+proc findNearestColony(
+  fromLocation: SystemId,
+  filtered: FilteredGameState
+): Option[SystemId] =
+  ## Find nearest friendly colony from a given location
+  ## Returns: Some(SystemId) of nearest colony, or none() if no colonies exist
+  if filtered.ownColonies.len == 0:
+    return none(SystemId)
+
+  var nearestColony = filtered.ownColonies[0].systemId
+  var shortestDistance = int.high
+
+  # Create dummy fleet for pathfinding
+  let dummyFleet = Fleet(
+    id: FleetId("salvage_dummy"),
+    owner: filtered.viewingHouse,
+    location: fromLocation,
+    squadrons: @[],
+    spaceLiftShips: @[]
+  )
+
+  # Calculate path distance to each colony
+  for colony in filtered.ownColonies:
+    let pathResult = filtered.starMap.findPath(fromLocation, colony.systemId,
+                                               dummyFleet)
+    if pathResult.found:
+      let distance = pathResult.path.len - 1  # Path includes start system
+      if distance < shortestDistance:
+        shortestDistance = distance
+        nearestColony = colony.systemId
+
+  return some(nearestColony)
+
+proc planETACSalvage(
+  etacs: seq[tuple[fleetId: FleetId, etacId: string, location: SystemId]],
+  filtered: FilteredGameState,
+  houseId: HouseId
+): seq[FleetOrder] =
+  ## Generate salvage orders for ALL ETACs (map is 100% colonized)
+  ##
+  ## **Precondition:** Map must be 100% colonized (checked by caller)
+  ##
+  ## **Purpose:**
+  ## - Recover PP value from unused/idle ETACs
+  ## - Clear out obsolete ETAC fleets after colonization complete
+  ##
+  ## **Algorithm:**
+  ## 1. For each ETAC, find nearest friendly colony
+  ## 2. Generate Salvage order to that colony
+  ## 3. Engine will recover salvage value when ETAC reaches colony
+  ##
+  ## Returns: Sequence of Salvage orders for all ETACs
+  result = @[]
+
+  logInfo(LogCategory.lcAI,
+          &"Eparch: Salvaging {etacs.len} ETACs for {houseId} " &
+          &"(map 100% colonized)")
+
+  for (fleetId, etacId, location) in etacs:
+    # Find nearest friendly colony
+    let nearestColony = findNearestColony(location, filtered)
+
+    if nearestColony.isNone:
+      logWarn(LogCategory.lcAI,
+              &"Eparch: Cannot salvage ETAC {etacId} (fleet {fleetId}) - " &
+              &"no friendly colonies available")
+      continue
+
+    let targetColony = nearestColony.get()
+
+    # Generate Salvage order
+    let order = FleetOrder(
+      fleetId: fleetId,
+      orderType: FleetOrderType.Salvage,
+      targetSystem: some(targetColony),
+      priority: 1
+    )
+
+    result.add(order)
+
+    logInfo(LogCategory.lcAI,
+            &"Eparch: Salvaging idle ETAC {etacId} (fleet {fleetId}) at " &
+            &"nearest colony {targetColony}")
+
+  if result.len > 0:
+    logInfo(LogCategory.lcAI,
+            &"Eparch: Generated {result.len} ETAC salvage orders " &
+            &"(map fully colonized, recovering idle ETACs)")
+
+# ============================================================================
 # Main Entry Point: Unified Expansion Planning
 # ============================================================================
 
@@ -707,7 +800,33 @@ proc planExpansionOperations*(
   result.etacsInConstruction = stats.etacCount - stats.readyETACs
   result.uncolonizedSystems = stats.uncolonizedActual
 
-  # Part 2: ETAC Colonization Orders
+  # Part 2: ETAC Colonization Orders OR Salvage
+  # Check if map is 100% colonized (use leaderboard data)
+  var totalColonizedByAll = 0
+  for houseId, colonyCount in filtered.houseColonies:
+    totalColonizedByAll += colonyCount
+  let totalSystemsOnMap = filtered.starMap.systems.len
+  let mapFullyColonized = (totalColonizedByAll >= totalSystemsOnMap)
+
+  if mapFullyColonized:
+    # Map 100% colonized - salvage ALL ETACs (including those with stale orders)
+    logInfo(LogCategory.lcAI,
+            &"Eparch: Map 100% colonized ({totalColonizedByAll}/{totalSystemsOnMap}), " &
+            &"salvaging all ETACs for {controller.houseId}")
+
+    # Get ALL ETACs (don't filter by orders)
+    var allETACs: seq[tuple[fleetId: FleetId, etacId: string,
+                             location: SystemId]] = @[]
+    for fleet in filtered.ownFleets:
+      for ship in fleet.spaceLiftShips:
+        if ship.shipClass == ShipClass.ETAC:
+          allETACs.add((fleet.id, ship.id, fleet.location))
+
+    let salvageOrders = planETACSalvage(allETACs, filtered, controller.houseId)
+    result.colonizationOrders = salvageOrders
+    return
+
+  # Map not fully colonized - normal colonization logic
   let etacs = getAvailableETACs(filtered, controller.houseId)
 
   if etacs.len == 0:
