@@ -424,10 +424,9 @@ proc generateEconomicRequirements*(
             &"{facility.facilityType.get()} for {facility.estimatedCost} PP " &
             &"(priority {facility.priority}, reason: {facility.reason})")
 
-  # Clean up completed colonizations before planning new ones
-  expansion.cleanupCompletedColonizations(controller, filtered)
-
   # Generate ETAC expansion requirements (construction + colonization)
+  # Note: No cleanup needed - fleetOrders in GameState are automatically
+  # managed by engine when orders complete/cancel
   # Eparch is single source of truth for all expansion operations
   let expansionPlan = planExpansionOperations(filtered, controller, currentAct)
 

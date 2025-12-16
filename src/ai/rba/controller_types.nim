@@ -366,9 +366,6 @@ type
     drungariusFeedback*: Option[DrungariusFeedback]  # Treasurer feedback on espionage budget
     eparchFeedback*: Option[EparchFeedback]  # Treasurer feedback on economic budget
     eparchColonizationOrders*: seq[FleetOrder]  # Eparch colonization orders (stored Phase 1, executed Phase 6.9)
-    targetedColonizationSystems*: HashSet[SystemId]  # Systems with active ETAC orders (persistent across turns)
-    etacAssignments*: Table[FleetId, SystemId]  # Track which ETAC targets which system
-    lastETACPlanningTurn*: int  # When ETAC planning last ran
 
     # GOAP Phase 4: Strategic planning integration (MVP: Fleet + Build domains)
     goapEnabled*: bool  # Quick check if GOAP is enabled

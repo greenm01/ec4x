@@ -23,7 +23,7 @@
 
 import std/[tables, options, sets, strformat, sequtils, algorithm, math]
 import ../../../common/types/core
-import ../../../engine/[gamestate, fleet, orders, fog_of_war, starmap, logger]
+import ../../../engine/[gamestate, fleet, orders, fog_of_war, starmap, logger, order_types]
 import ../../../engine/standing_orders  # For scoreColonizationCandidate
 import ../../../engine/economy/types as econ_types
 import ../../../engine/economy/config_accessors  # For getShipConstructionCost
@@ -384,34 +384,43 @@ proc findUncolonizedSystems(
 proc assignETACsToTargets(
   etacs: seq[tuple[fleetId: FleetId, etacId: string, location: SystemId]],
   filtered: FilteredGameState,
-  controller: var AIController,
   maxRange: int = 20
 ): seq[ETACAssignment] =
   ## Assign ETACs to colonization targets using greedy best-match algorithm
-  ## with PERSISTENT target tracking to prevent convergence
+  ## with PERSISTENT target tracking via existing fleet orders to prevent convergence
   ##
   ## **Algorithm:**
-  ## 1. For each ETAC, find all uncolonized systems within range
-  ## 2. Score targets using Act-aware algorithm
-  ## 3. Assign ETAC to highest-scoring target (excluding already-targeted systems)
-  ## 4. Mark target as assigned (prevent duplicate assignments THIS and FUTURE turns)
+  ## 1. Check existing colonization orders in filtered.ownFleetOrders (persistent!)
+  ## 2. For each ETAC WITHOUT an existing order, find uncolonized systems within range
+  ## 3. Score targets using Act-aware algorithm
+  ## 4. Assign ETAC to highest-scoring target (excluding already-targeted systems)
+  ##
+  ## **Convergence Fix:**
+  ## Uses existing fleetOrders in GameState (persistent across turns, thread-safe)
+  ## instead of controller-based tracking
   ##
   ## Returns: Sequence of ETAC assignments with target systems
   result = @[]
 
-  # Start with already-targeted systems from persistent tracking
-  var assignedTargets = controller.targetedColonizationSystems
+  # CRITICAL FIX: Check existing colonization orders from GameState (persistent!)
+  var assignedTargets = initHashSet[SystemId]()
+  var etacsWithOrders = initHashSet[FleetId]()
+
+  for fleetId, order in filtered.ownFleetOrders:
+    if order.orderType == FleetOrderType.Colonize and order.targetSystem.isSome:
+      assignedTargets.incl(order.targetSystem.get())
+      etacsWithOrders.incl(fleetId)
 
   logDebug(LogCategory.lcAI,
           &"Eparch: Starting ETAC assignment with {assignedTargets.len} " &
-          &"already-targeted systems from previous turns")
+          &"already-targeted systems from existing fleet orders (persistent)")
 
   for (fleetId, etacId, location) in etacs:
-    # Skip if this ETAC already has an assignment
-    if fleetId in controller.etacAssignments:
-      let existingTarget = controller.etacAssignments[fleetId]
+    # Skip if this ETAC already has a colonization order
+    if fleetId in etacsWithOrders:
+      let existingTarget = filtered.ownFleetOrders[fleetId].targetSystem.get()
       logDebug(LogCategory.lcAI,
-              &"ETAC {etacId} (fleet {fleetId}) already assigned to {existingTarget}, skipping")
+              &"ETAC {etacId} (fleet {fleetId}) already has order to {existingTarget}, skipping")
       continue
 
     # Find uncolonized systems within range of this ETAC
@@ -423,7 +432,7 @@ proc assignETACsToTargets(
     if availableTargets.len == 0:
       logDebug(LogCategory.lcAI,
               &"No colonization targets available for ETAC {etacId} " &
-              &"in fleet {fleetId}")
+              &"in fleet {fleetId} (all nearby systems already targeted)")
       continue
 
     # Assign to best available target
@@ -438,10 +447,8 @@ proc assignETACsToTargets(
       priority: 1  # High priority (colonization is critical in Act 1)
     ))
 
-    # Mark target as assigned (both locally and persistently)
+    # Mark target as assigned locally (prevent duplicate assignments THIS turn)
     assignedTargets.incl(best.systemId)
-    controller.targetedColonizationSystems.incl(best.systemId)
-    controller.etacAssignments[fleetId] = best.systemId
 
     logInfo(LogCategory.lcAI,
             &"Eparch: Assigned ETAC {etacId} (fleet {fleetId}) to colonize " &
@@ -450,53 +457,7 @@ proc assignETACsToTargets(
 
   logInfo(LogCategory.lcAI,
           &"Eparch: Assigned {result.len} ETACs to colonization targets, " &
-          &"{controller.targetedColonizationSystems.len} total systems targeted")
-
-proc cleanupCompletedColonizations*(
-  controller: var AIController,
-  filtered: FilteredGameState
-) =
-  ## Remove systems from targetedColonizationSystems once colonized
-  ## Remove ETAC assignments for ETACs that no longer have cargo
-
-  # Remove colonized systems
-  var toRemove: seq[SystemId] = @[]
-  for targetSystem in controller.targetedColonizationSystems:
-    # Check if now colonized
-    for colony in filtered.ownColonies:
-      if colony.systemId == targetSystem:
-        toRemove.add(targetSystem)
-        break
-
-  for systemId in toRemove:
-    controller.targetedColonizationSystems.excl(systemId)
-    logInfo(LogCategory.lcAI,
-            &"Eparch: Removed {systemId} from targets (now colonized)")
-
-  # Remove assignments for ETACs without cargo
-  var fleetsToRemove: seq[FleetId] = @[]
-  for fleetId, targetSystem in controller.etacAssignments:
-    var hasCargoETAC = false
-    for fleet in filtered.ownFleets:
-      if fleet.id == fleetId:
-        for ship in fleet.spaceLiftShips:
-          if ship.shipClass == ShipClass.ETAC and
-             ship.cargo.cargoType == CargoType.Colonists and
-             ship.cargo.quantity > 0:
-            hasCargoETAC = true
-            break
-        break
-
-    if not hasCargoETAC:
-      fleetsToRemove.add(fleetId)
-      controller.targetedColonizationSystems.excl(targetSystem)
-
-  for fleetId in fleetsToRemove:
-    let targetSystem = controller.etacAssignments[fleetId]
-    controller.etacAssignments.del(fleetId)
-    logDebug(LogCategory.lcAI,
-            &"Eparch: Removed ETAC assignment for fleet {fleetId} " &
-            &"(target {targetSystem}, cargo depleted)")
+          &"{assignedTargets.len} total systems targeted (including existing orders)")
 
 proc generateColonizationOrders(
   assignments: seq[ETACAssignment],
@@ -570,7 +531,7 @@ proc planExpansionOperations*(
     result.colonizationOrders = @[]
     return
 
-  let assignments = assignETACsToTargets(etacs, filtered, controller, maxRange = 20)
+  let assignments = assignETACsToTargets(etacs, filtered, maxRange = 20)
 
   if assignments.len == 0:
     logDebug(LogCategory.lcAI,

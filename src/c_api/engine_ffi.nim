@@ -243,9 +243,8 @@ proc ec4x_generate_ai_orders(filtered_state: pointer, house_id: cint,
   try:
     let filterHandle = cast[CFilteredState](filtered_state)
 
-    # Reload global RBAConfig for this call (FFI safety)
-    # Many RBA subsystems access globalRBAConfig directly, so ensure it's valid
-    # Create fresh controller (testing if accessing seq is causing segfault)
+    # REVERT: Create fresh controller each call (old working approach)
+    # TODO: Implement persistent tracking via different mechanism (GameState?)
     let houseId = filterHandle.filtered.viewingHouse
     let strategyIndex = filterHandle.houseIdx mod 4
     let strategy = case strategyIndex:
