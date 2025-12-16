@@ -29,7 +29,7 @@ def load_diagnostics(db_path: str) -> pl.DataFrame:
             turn, act, house_id, strategy,
             total_systems_on_map,
             total_colonies, colonies_gained, colonies_lost,
-            etac_ships, etac_count,
+            etac_ships,
             prestige
         FROM diagnostics
         ORDER BY turn, house_id
@@ -99,16 +99,15 @@ def analyze_etac_efficiency(df: pl.DataFrame) -> None:
     print("=" * 80)
 
     etac_stats = (
-        df.filter(pl.col("etac_count") > 0)
+        df.filter(pl.col("etac_ships") > 0)
         .group_by("act")
         .agg([
-            pl.col("etac_count").mean().alias("avg_etac_fleets"),
             pl.col("etac_ships").mean().alias("avg_etac_ships"),
             pl.col("colonies_gained").mean().alias("avg_colonies_gained"),
         ])
         .with_columns([
-            (pl.col("avg_colonies_gained") / pl.col("avg_etac_fleets"))
-            .alias("colonies_per_etac_fleet")
+            (pl.col("avg_colonies_gained") / pl.col("avg_etac_ships"))
+            .alias("colonies_per_etac")
         ])
         .sort("act")
     )
@@ -124,18 +123,18 @@ def analyze_etac_efficiency(df: pl.DataFrame) -> None:
     etac_lifecycle = (
         df.group_by("turn")
         .agg([
-            pl.col("etac_count").mean().alias("avg_etac_fleets"),
+            pl.col("etac_ships").mean().alias("avg_etac_ships"),
             pl.col("act").first().alias("act"),
         ])
         .sort("turn")
     )
 
     # Show when ETACs are active/salvaged
-    act1_etacs = etac_lifecycle.filter(pl.col("act") == 1)["avg_etac_fleets"].mean()
-    act2_etacs = etac_lifecycle.filter(pl.col("act") == 2)["avg_etac_fleets"].mean()
+    act1_etacs = etac_lifecycle.filter(pl.col("act") == 1)["avg_etac_ships"].mean()
+    act2_etacs = etac_lifecycle.filter(pl.col("act") == 2)["avg_etac_ships"].mean()
 
-    print(f"  Act 1 (Land Grab):       {act1_etacs:.2f} ETAC fleets (active colonization)")
-    print(f"  Act 2 (Rising Tensions): {act2_etacs:.2f} ETAC fleets (should be salvaged)")
+    print(f"  Act 1 (Land Grab):       {act1_etacs:.2f} ETAC ships (active colonization)")
+    print(f"  Act 2 (Rising Tensions): {act2_etacs:.2f} ETAC ships (should be salvaged)")
 
     if act2_etacs > 0.5:
         print("\n  ⚠️  WARNING: ETACs not being salvaged properly in Act 2!")
@@ -152,7 +151,7 @@ def analyze_by_strategy(df: pl.DataFrame) -> None:
         .agg([
             pl.col("total_colonies").mean().alias("avg_colonies"),
             pl.col("colonies_gained").sum().alias("total_gained"),
-            pl.col("etac_count").mean().alias("avg_etacs"),
+            pl.col("etac_ships").mean().alias("avg_etacs"),
         ])
         .sort(["act", "strategy"])
     )
