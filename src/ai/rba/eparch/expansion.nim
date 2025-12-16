@@ -60,34 +60,93 @@ type
 # Part 1: ETAC Construction (from Domestikos assessExpansionNeeds)
 # ============================================================================
 
-proc findBestETACConstructionColony(
-  colonies: seq[Colony]
-): Option[SystemId] =
-  ## Find best colony for ETAC ship construction
-  ## Priority: Shipyards > Spaceports (ETACs are ships)
-  ## Score by production capacity (higher production = faster build)
-  var bestColony: Option[SystemId] = none(SystemId)
-  var highestScore = -1000.0
+# =============================================================================
+# Frontier ETAC Production (Phase 6)
+# =============================================================================
 
-  # Phase 1: Prefer colonies with Shipyards (dedicated ship construction)
-  for colony in colonies:
-    if colony.shipyards.len > 0:
-      let score = float(colony.production)
-      if score > highestScore:
-        bestColony = some(colony.systemId)
-        highestScore = score
+proc getHomeworld(filtered: FilteredGameState): SystemId =
+  ## Get this house's homeworld from filtered state
+  ## Homeworld is the colony with highest population + infrastructure
+  var best = filtered.ownColonies[0].systemId
+  var bestScore = 0
 
-  # Phase 2: If no Shipyards, accept colonies with Spaceports
-  if bestColony.isNone:
-    highestScore = -1000.0
-    for colony in colonies:
-      if colony.spaceports.len > 0:
-        let score = float(colony.production)
-        if score > highestScore:
-          bestColony = some(colony.systemId)
-          highestScore = score
+  for colony in filtered.ownColonies:
+    let score = colony.population + colony.infrastructure * 10
+    if score > bestScore:
+      bestScore = score
+      best = colony.systemId
 
-  return bestColony
+  return best
+
+proc findFrontierColonies(
+  filtered: FilteredGameState,
+  uncolonizedSystems: HashSet[SystemId]
+): seq[tuple[colony: Colony, frontierScore: int]] =
+  ## Find colonies adjacent to uncolonized systems (expansion frontier)
+  ## Returns colonies sorted by frontier score (# of uncolonized neighbors)
+  result = @[]
+
+  for colony in filtered.ownColonies:
+    # Must have Shipyard or Spaceport to build ETACs
+    if colony.shipyards.len == 0 and colony.spaceports.len == 0:
+      continue
+
+    # Count uncolonized neighbors
+    let adjacentSystemIds = filtered.starMap.getAdjacentSystems(colony.systemId)
+    var uncolonizedNeighbors = 0
+    for neighborId in adjacentSystemIds:
+      if neighborId in uncolonizedSystems:
+        inc uncolonizedNeighbors
+
+    if uncolonizedNeighbors > 0:
+      result.add((colony, uncolonizedNeighbors))
+
+  # Sort by frontier score (most uncolonized neighbors first)
+  result.sort(proc(a, b: tuple[colony: Colony, frontierScore: int]): int =
+    cmp(b.frontierScore, a.frontierScore))
+
+proc selectETACConstructionColonies(
+  filtered: FilteredGameState,
+  uncolonizedSystems: HashSet[SystemId],
+  needed: int
+): seq[Colony] =
+  ## Select up to 'needed' colonies for ETAC construction
+  ## Priority: Frontier colonies (adjacent to uncolonized), then homeworld
+  result = @[]
+
+  # Get frontier colonies
+  let frontierColonies = findFrontierColonies(filtered, uncolonizedSystems)
+
+  # Add frontier colonies (max 3)
+  for (colony, score) in frontierColonies:
+    if result.len >= min(needed, 3):  # Cap at 3 frontier colonies
+      break
+    result.add(colony)
+
+  # Always include homeworld if it has shipyard/spaceport and isn't already included
+  let homeworld = getHomeworld(filtered)
+  var homeworldColony: Option[Colony] = none(Colony)
+
+  for colony in filtered.ownColonies:
+    if colony.systemId == homeworld:
+      homeworldColony = some(colony)
+      break
+
+  if homeworldColony.isSome:
+    let hw = homeworldColony.get()
+    if (hw.shipyards.len > 0 or hw.spaceports.len > 0):
+      # Check if not already in result
+      var alreadyIncluded = false
+      for col in result:
+        if col.systemId == hw.systemId:
+          alreadyIncluded = true
+          break
+      if not alreadyIncluded:
+        result.add(hw)
+
+  logInfo(LogCategory.lcAI,
+          &"Eparch: Selected {result.len} colonies for ETAC construction " &
+          &"({frontierColonies.len} frontier colonies available)")
 
 proc assessETACConstructionNeeds(
   filtered: FilteredGameState,
@@ -230,30 +289,54 @@ proc assessETACConstructionNeeds(
         else:
           RequirementPriority.Low
 
-      # Find best colony for ETAC construction (prefer Shipyard, accept Spaceport)
-      let buildColony = findBestETACConstructionColony(filtered.ownColonies)
+      # Phase 6: Multi-colony frontier ETAC production
+      # Build set of uncolonized systems for frontier detection
+      var uncolonizedSystemsSet = initHashSet[SystemId]()
+      for systemId in filtered.starMap.systems.keys:
+        var isColonized = false
+        # Check own colonies
+        for colony in filtered.ownColonies:
+          if colony.systemId == systemId:
+            isColonized = true
+            break
+        # Check visible enemy colonies
+        if not isColonized:
+          for visColony in filtered.visibleColonies:
+            if visColony.systemId == systemId:
+              isColonized = true
+              break
+        if not isColonized:
+          uncolonizedSystemsSet.incl(systemId)
 
-      if buildColony.isNone:
+      # Select colonies for ETAC construction (frontier + homeworld)
+      let buildColonies = selectETACConstructionColonies(
+        filtered,
+        uncolonizedSystemsSet,
+        needed
+      )
+
+      if buildColonies.len == 0:
         logWarn(LogCategory.lcAI,
-                &"Eparch: Cannot create ETAC requirement - no colony with " &
+                &"Eparch: Cannot create ETAC requirement - no colonies with " &
                 &"Spaceport/Shipyard available")
       else:
-        # ✅ KEY CHANGE: EconomicRequirement (Eparch) instead of BuildRequirement (Domestikos)
-        result.requirements.add(EconomicRequirement(
-          requirementType: EconomicRequirementType.Facility,
-          priority: priority,
-          targetColony: buildColony.get(),  # ✅ FIX: Valid colony with Shipyard/Spaceport
-          facilityType: some("ETAC"),  # Treat ETAC as infrastructure
-          terraformTarget: none(PlanetClass),
-          estimatedCost: etacCost * needed,
-          reason: &"Expansion (have {etacCount}/{targetETACs} ETACs, " &
-                  &"{uncolonizedActual} systems uncolonized, decay={decayFactor:.2f})"
-        ))
+        # Create one requirement per colony (distributed production)
+        for colony in buildColonies:
+          result.requirements.add(EconomicRequirement(
+            requirementType: EconomicRequirementType.Facility,
+            priority: priority,
+            targetColony: colony.systemId,
+            facilityType: some("ETAC"),
+            terraformTarget: none(PlanetClass),
+            estimatedCost: etacCost,  # Cost per ETAC
+            reason: &"Frontier expansion (have {etacCount}/{targetETACs} ETACs, " &
+                    &"{uncolonizedActual} systems uncolonized, " &
+                    &"colony at {colony.systemId})"
+          ))
 
         logInfo(LogCategory.lcAI,
-               &"Eparch: ETAC construction requirement - {needed} ETACs " &
-               &"at colony {buildColony.get()} " &
-               &"(have {etacCount}, target {targetETACs}, " &
+               &"Eparch: ETAC construction requirements - {buildColonies.len} colonies " &
+               &"building ETACs (have {etacCount}, target {targetETACs}, " &
                &"decay factor {decayFactor:.2f})")
 
 # ============================================================================
@@ -300,20 +383,6 @@ proc getAvailableETACs(
 # =============================================================================
 # Wave-Based Colonization Strategy (Phase 5)
 # =============================================================================
-
-proc getHomeworld(filtered: FilteredGameState): SystemId =
-  ## Get this house's homeworld from filtered state
-  ## Homeworld is the colony with highest population + infrastructure
-  var best = filtered.ownColonies[0].systemId
-  var bestScore = 0
-
-  for colony in filtered.ownColonies:
-    let score = colony.population + colony.infrastructure * 10
-    if score > bestScore:
-      bestScore = score
-      best = colony.systemId
-
-  return best
 
 proc calculateColonizationWaves(
   filtered: FilteredGameState,
