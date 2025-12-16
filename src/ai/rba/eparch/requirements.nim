@@ -324,7 +324,7 @@ proc generateFacilityRequirements(
               &"{houseId} Eparch: No suitable colony found for Starbase (need Spaceport prerequisite)")
 
 proc generateEconomicRequirements*(
-  controller: AIController,
+  controller: var AIController,
   filtered: FilteredGameState,
   intelSnapshot: IntelligenceSnapshot
 ): EconomicRequirements =
@@ -423,6 +423,9 @@ proc generateEconomicRequirements*(
             &"{controller.houseId} Eparch: FACILITY REQUIREMENT GENERATED at {facility.targetColony}: " &
             &"{facility.facilityType.get()} for {facility.estimatedCost} PP " &
             &"(priority {facility.priority}, reason: {facility.reason})")
+
+  # Clean up completed colonizations before planning new ones
+  expansion.cleanupCompletedColonizations(controller, filtered)
 
   # Generate ETAC expansion requirements (construction + colonization)
   # Eparch is single source of truth for all expansion operations
