@@ -483,6 +483,13 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
   # Get current act from game state (updated during turn resolution)
   let currentAct = filtered.actProgression.currentAct
 
+  # Check if 100% colonization is complete (not just act transition)
+  var totalColonized = 0
+  for count in filtered.houseColonies.values:
+    totalColonized += count
+  let totalSystems = filtered.starMap.systems.len
+  let mapFullyColonized = totalColonized >= totalSystems
+
   # Update operation status
   updateOperationStatus(controller, filtered)
   removeCompletedOperations(controller, filtered.turn)
@@ -517,8 +524,9 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
 
     # Special handling for ETAC fleets
     if isETACFleet(fleet):
-      # Check if colonization is complete first (Act 1 → Act 2 transition)
-      let colonizationComplete = currentAct != GameAct.Act1_LandGrab
+      # Check if 100% colonization is complete (not just act transition)
+      # ETACs should continue working in Act 2 if there are uncolonized systems
+      let colonizationComplete = mapFullyColonized
 
       # Check if ETAC has colonists
       var hasColonists = false
@@ -553,8 +561,8 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
           continue
 
       if hasColonists:
-        # Check if colonization is complete (Act 1 → Act 2 transition)
-        let colonizationComplete = currentAct != GameAct.Act1_LandGrab
+        # Check if 100% colonization is complete
+        # ETACs should continue working in Act 2 if there are uncolonized systems
         if colonizationComplete:
           # All systems colonized - prepare ETAC for salvage
           # Check if ETAC is at a colony
@@ -619,9 +627,8 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
         # Standing orders can only generate fleet orders (Hold/Move/Colonize), not load cargo
         # Tactical must issue Move order to colony for autoLoadCargo() to work
 
-        # Check if colonization is complete (Act 1 → Act 2 transition)
-        # If colonized, salvage ETAC instead of reloading
-        let colonizationComplete = currentAct != GameAct.Act1_LandGrab
+        # Check if 100% colonization is complete
+        # ETACs should continue reloading in Act 2 if there are uncolonized systems
         if colonizationComplete:
           # All systems colonized - salvage this ETAC
           order.orderType = FleetOrderType.Salvage
