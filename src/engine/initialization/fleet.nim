@@ -6,7 +6,6 @@
 import std/[options, tables, strutils]
 import ../fleet
 import ../squadron
-import ../spacelift
 import ../order_types
 import ../config/game_setup_config
 import ../../common/types/[core, units]
@@ -56,7 +55,7 @@ proc createStartingFleets*(owner: HouseId, location: SystemId,
         else:
           continue  # Skip unknown ship classes
 
-      # Check if this is a spacelift ship (ETAC/TroopTransport)
+      # Check if this is a transport ship (ETAC/TroopTransport)
       if shipClass == ShipClass.ETAC or shipClass == ShipClass.TroopTransport:
         # Create squadron for ETAC/TroopTransport (single-ship squadron)
         let squadronId = owner & "-squadron" & $fleetIdx & "-" & $allSquadrons.len

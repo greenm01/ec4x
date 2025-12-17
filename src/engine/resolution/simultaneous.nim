@@ -11,7 +11,6 @@ import ../orders
 import ../order_types
 import ../squadron
 import ../fleet
-import ../spacelift
 import ../logger
 import ../state_helpers
 import ../starmap

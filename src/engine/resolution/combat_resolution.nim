@@ -9,7 +9,7 @@
 
 import std/[tables, options, sequtils, hashes, math, random, strformat]
 import ../../common/[types/core, types/combat, types/units, logger as common_logger]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../logger
+import ../gamestate, ../orders, ../fleet, ../squadron, ../logger
 import ../combat/[engine as combat_engine, types as combat_types, ground]
 import ../economy/[types as econ_types, facility_damage]
 import ../prestige
@@ -65,17 +65,17 @@ proc applySpaceLiftScreeningLosses(
     if spaceliftLosses > 0:
       spaceliftLossesByHouse[fleetBefore.owner] = spaceliftLossesByHouse.getOrDefault(fleetBefore.owner, 0) + spaceliftLosses
 
-      logCombat(&"{combatPhase} combat: Fleet {fleetId} spacelift squadron losses",
+      logCombat(&"{combatPhase} combat: Fleet {fleetId} transport squadron losses",
                 "casualties=", $spaceliftLosses,
                 "before=", $spaceliftSquadronsBefore,
                 "after=", $spaceliftSquadronsAfter)
 
-  # Generate events for spacelift losses
+  # Generate events for transport squadron losses
   for houseId, losses in spaceliftLossesByHouse:
     events.add(event_factory.battle(
       houseId,
       combatOutcome.systemId,
-      &"{combatPhase} combat: {losses} spacelift ships destroyed (screened by task force)"
+      &"{combatPhase} combat: {losses} transport squadrons destroyed (screened by task force)"
     ))
 
 proc isIntelOnlyFleet(fleet: Fleet): bool =

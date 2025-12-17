@@ -2,7 +2,7 @@
 
 import std/[options, tables, strformat, sequtils]
 import ../common/types/[core, units]
-import gamestate, fleet, spacelift, starmap, logger
+import gamestate, fleet, starmap, logger
 import order_types  # Import and re-export fleet order types
 import espionage/types as esp_types
 import research/types as res_types
@@ -105,7 +105,7 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
   ## - Fleet ownership (prevents controlling enemy fleets)
   ## - Fleet mission state (locked if OnSpyMission)
   ## - Target validity (system exists, path exists)
-  ## - Required capabilities (spacelift, combat, scout)
+  ## - Required capabilities (transport, combat, scout)
   ## Creates GameEvent when orders are rejected
   result = ValidationResult(valid: true, error: "")
 

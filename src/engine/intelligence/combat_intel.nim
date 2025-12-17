@@ -6,7 +6,7 @@
 import std/[tables, options, sequtils, strformat]
 import types as intel_types
 import ../../common/logger
-import ../gamestate, ../fleet, ../squadron, ../spacelift
+import ../gamestate, ../fleet, ../squadron
 
 proc createFleetComposition*(
   state: GameState,
@@ -61,7 +61,7 @@ proc createFleetComposition*(
     owner: fleet.owner,
     standingOrders: orderIntel,
     squadrons: squadronDetails,
-    spaceLiftShips: spaceLiftIntel,  # Note: field name unchanged for backward compat
+    spaceLiftShips: spaceLiftIntel,  # Note: field name unchanged (refers to transport squadrons)
     isCloaked: fleet.isCloaked()
   )
 
@@ -501,7 +501,7 @@ proc generateBombardmentIntelligence*(
   ## - Industrial capacity (IU) destroyed
   ## - Planetary defenses status (shields, batteries)
   ## - Ground forces/population casualties (PU)
-  ## - Whether invasion force is present (spacelift ships detected)
+  ## - Whether invasion force is present (transport squadrons detected)
 
   let turn = state.turn
 
@@ -584,7 +584,7 @@ proc generateBombardmentIntelligence*(
   defenderHouse.intelligence.addCombatReport(defenderReport)
   state.houses[defendingHouse] = defenderHouse
 
-  # THREAT ASSESSMENT: If spacelift ships detected, invasion is imminent
+  # THREAT ASSESSMENT: If transport squadrons detected, invasion is imminent
   if spaceLiftShipsInvolved > 0:
     logWarn("Intelligence", "CRITICAL: Invasion force detected",
-            "spaceliftShips=", $spaceLiftShipsInvolved, " system=", $systemId)
+            "transportSquadrons=", $spaceLiftShipsInvolved, " system=", $systemId)

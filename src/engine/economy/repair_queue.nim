@@ -118,7 +118,7 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
       fleet.squadrons = updatedSquadrons
 
       # EMPTY FLEET CLEANUP
-      # If removing this squadron leaves the fleet empty (no squadrons AND no spacelift ships),
+      # If removing this squadron leaves the fleet empty (no squadrons remaining),
       # delete the fleet entirely along with its associated orders.
       if fleet.isEmpty():
         state.fleets.del(fleetId)

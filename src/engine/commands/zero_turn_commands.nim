@@ -15,7 +15,7 @@
 ##   let result = submitZeroTurnCommand(state, cmd)
 ##   if result.success: echo "Success!"
 
-import ../[gamestate, fleet, squadron, spacelift, logger]
+import ../[gamestate, fleet, squadron, logger]
 import ../../common/types/core
 import ../config/population_config  # For population config (soulsPerPtu, ptuSizeMillions)
 import ../economy/capacity/carrier_hangar  # For carrier capacity checks
@@ -38,8 +38,8 @@ type
     MergeFleets        ## Merge entire source fleet into target fleet
 
     # Cargo operations (from CargoManagementOrder)
-    LoadCargo          ## Load marines/colonists onto spacelift ships
-    UnloadCargo        ## Unload cargo from spacelift ships
+    LoadCargo          ## Load marines/colonists onto transport squadrons
+    UnloadCargo        ## Unload cargo from transport squadrons
 
     # Fighter operations (from FighterManagementOrder)
     LoadFighters       ## Load fighter squadrons from colony to carrier
@@ -230,7 +230,7 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
     if not result.valid:
       return result
 
-    # DetachShips specific: cannot detach spacelift-only fleet (except ETACs)
+    # DetachShips specific: cannot detach transport-only fleet (except ETACs)
     if cmd.commandType == ZeroTurnCommandType.DetachShips:
       let squadronIndices = fleet.translateShipIndicesToSquadrons(cmd.shipIndices)
 
@@ -250,7 +250,7 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
         if onlyExpansion and hasNonETAC:
           # Only detaching Expansion squadrons, but some are non-ETAC transports
           # These need combat escorts
-          return ValidationResult(valid: false, error: "Cannot detach non-ETAC spacelift ships without combat escorts")
+          return ValidationResult(valid: false, error: "Cannot detach non-ETAC transport squadrons without combat escorts")
 
     # TransferShips specific: validate target fleet
     if cmd.commandType == ZeroTurnCommandType.TransferShips:
@@ -388,7 +388,7 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var
   var sourceFleet = state.fleets[cmd.sourceFleetId.get()]
   let systemId = sourceFleet.location
 
-  # Translate ship indices to squadron/spacelift indices
+  # Translate ship indices to squadron indices
   let squadronIndices = sourceFleet.translateShipIndicesToSquadrons(cmd.shipIndices)
 
   # Split squadrons (existing proc)
@@ -521,7 +521,7 @@ proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand, events: var
   let squadronsMerged = sourceFleet.squadrons.len
   let systemId = sourceFleet.location
 
-  # Merge all squadrons and spacelift ships
+  # Merge all squadrons
   targetFleet.merge(sourceFleet)
 
   # Balance target fleet after merge
@@ -565,7 +565,7 @@ proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand, events: var
 # ============================================================================
 
 proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
-  ## Load marines or colonists onto spacelift ships at colony
+  ## Load marines or colonists onto transport squadrons at colony
   ## Source: economy_resolution.nim:409-501
 
   let cargoType = cmd.cargoType.get()
@@ -613,7 +613,7 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
   if requestedQty == 0:
     requestedQty = availableUnits
 
-  # Load cargo onto compatible spacelift squadrons (Expansion/Auxiliary flagships)
+  # Load cargo onto compatible transport squadrons (Expansion/Auxiliary flagships)
   var remainingToLoad = min(requestedQty, availableUnits)
 
   for squadron in mutableFleet.squadrons.mitems:
@@ -691,7 +691,7 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
   )
 
 proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
-  ## Unload cargo from spacelift ships at colony
+  ## Unload cargo from transport squadrons at colony
   ## Source: economy_resolution.nim:503-547
 
   let fleetId = cmd.sourceFleetId.get()
@@ -706,7 +706,7 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var
   var totalUnloaded = 0
   var unloadedType = CargoType.None
 
-  # Unload cargo from spacelift squadrons (Expansion/Auxiliary flagships)
+  # Unload cargo from transport squadrons (Expansion/Auxiliary flagships)
   for squadron in mutableFleet.squadrons.mitems:
     # Only Expansion and Auxiliary squadrons carry cargo
     if squadron.squadronType notin {SquadronType.Expansion, SquadronType.Auxiliary}:

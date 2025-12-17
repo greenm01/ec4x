@@ -78,7 +78,7 @@ type
     location*: SystemId
     shipCount*: int
     standingOrders*: Option[string]  # Fleet behavior (Visual+)
-    spaceLiftShipCount*: Option[int]  # Number of transports (Visual+)
+    spaceLiftShipCount*: Option[int]  # Number of transport squadrons (Visual+)
     # Squadron composition (Visual+: ship types/counts, Spy+: tech/damage)
     squadronDetails*: Option[seq[SquadronIntel]]
 
@@ -139,7 +139,7 @@ type
     targetSystem*: Option[SystemId]  # Target system if applicable
 
   SpaceLiftCargoIntel* = object
-    ## Intelligence on spacelift ship cargo (troop transports, ETACs)
+    ## Intelligence on transport squadron cargo (Expansion/Auxiliary types)
     shipClass*: string        # ETAC or TroopTransport
     cargoType*: string        # Marines, Colonists, Supplies, or Empty
     quantity*: int            # How many units loaded (0 = empty)
@@ -151,7 +151,7 @@ type
     owner*: HouseId
     standingOrders*: Option[FleetOrderIntel]  # Fleet's orders (if observed)
     squadrons*: seq[SquadronIntel]  # All squadrons in fleet
-    spaceLiftShips*: seq[SpaceLiftCargoIntel]  # Transport ships with cargo details
+    spaceLiftShips*: seq[SpaceLiftCargoIntel]  # Transport squadrons with cargo details
     isCloaked*: bool                # Was fleet cloaked (if detected)
 
   CombatEncounterReport* = object

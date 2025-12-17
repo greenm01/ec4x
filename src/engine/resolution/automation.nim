@@ -36,7 +36,7 @@
 
 import std/[tables, options, strformat, sequtils]
 import ../../common/types/[core, units]
-import ../gamestate, ../fleet, ../squadron, ../spacelift, ../logger, ../orders, ../order_types
+import ../gamestate, ../fleet, ../squadron, ../logger, ../orders, ../order_types
 import ../economy/repair_queue
 import ../economy/capacity/carrier_hangar
 import ./types as res_types

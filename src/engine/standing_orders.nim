@@ -13,7 +13,7 @@
 ## See docs/architecture/standing-orders.md for complete design.
 
 import std/[tables, options, strformat, algorithm, sets, sequtils]
-import gamestate, orders, fleet, starmap, logger, spacelift, fog_of_war
+import gamestate, orders, fleet, starmap, logger, fog_of_war
 import order_types
 import ../common/types/[core, planets]
 import config/standing_orders_config

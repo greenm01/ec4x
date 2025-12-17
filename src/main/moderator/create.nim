@@ -76,7 +76,7 @@ proc createInitialFleets*(starMap: StarMap): Table[uint, seq[Fleet]] =
     if system.player.isSome:
       let playerId = system.player.get
 
-      # Create initial squadrons: 2 destroyers + 1 spacelift
+      # Create initial squadrons: 2 destroyers + 1 transport
       let squadrons = createFleetSquadrons(
         @[(ShipClass.Destroyer, 2), (ShipClass.TroopTransport, 1)],
         techLevel = 1,

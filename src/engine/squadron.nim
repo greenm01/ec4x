@@ -42,7 +42,7 @@ type
     ## Ship representation (renamed from Ship for clarity)
     ## Used for all ship types: combat, intel, expansion, auxiliary, fighter
     shipClass*: ShipClass
-    shipType*: ShipType      # Military or Spacelift
+    shipType*: ShipType      # Military or Spacelift (transport)
     stats*: ShipStats
     isCrippled*: bool
     name*: string            # Optional ship name
@@ -301,7 +301,7 @@ proc militaryShips*(sq: Squadron): seq[Ship] =
   sq.allShips().filterIt(it.shipType == ShipType.Military)
 
 proc spaceliftShips*(sq: Squadron): seq[Ship] =
-  ## Get all spacelift ships in squadron
+  ## Get all transport ships in squadron (legacy name for backward compatibility)
   sq.allShips().filterIt(it.shipType == ShipType.Spacelift)
 
 proc crippledShips*(sq: Squadron): seq[Ship] =

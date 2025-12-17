@@ -72,7 +72,7 @@ proc assessFleetRole*(fleet: Fleet, filtered: FilteredGameState,
       if ship.isCrippled:
         crippledCount += 1
 
-  # Count spacelift ships (ETACs and Transports now as squadrons)
+  # Count transport squadrons (Expansion and Auxiliary types)
   for squadron in fleet.squadrons:
     if squadron.squadronType == SquadronType.Expansion:
       totalShips += 1

@@ -30,7 +30,7 @@
 
 import std/[tables, options, random, sequtils, hashes, math, strutils, strformat]
 import ../../../common/[hex, types/core, types/units, types/tech]
-import ../../gamestate, ../../orders, ../../fleet, ../../squadron, ../../spacelift
+import ../../gamestate, ../../orders, ../../fleet, ../../squadron
 import ../../starmap, ../../logger
 import ../../order_types
 import ../../economy/[types as econ_types, engine as econ_engine, projects, facility_queue]
