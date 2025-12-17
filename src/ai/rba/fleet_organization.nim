@@ -30,15 +30,16 @@ proc detachETACsIfMixed(
 
   # Check for ETACs
   var etacCount = 0
-  for ship in fleet.spaceLiftShips:
-    if ship.shipClass == ShipClass.ETAC:
-      etacCount += 1
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Expansion:
+      if squadron.flagship.shipClass == ShipClass.ETAC:
+        etacCount += 1
 
   if etacCount == 0:
     return  # No ETACs
 
-  # Check combat squadrons
-  let combatCount = fleet.squadrons.len
+  # Check combat squadrons (count non-Expansion squadrons)
+  let combatCount = fleet.squadrons.len - etacCount
 
   if combatCount == 0:
     return  # Pure ETAC fleet, already optimized
@@ -75,13 +76,21 @@ proc detachETACsIfMixed(
   # Detach: 1 escort squadron + ONLY ETACs → new colonization fleet
   # Leave remaining combat squadrons + TroopTransports for tactical/invasion use
 
-  var shipIndices: seq[int] = @[0]  # First squadron as escort
+  var shipIndices: seq[int] = @[]
 
-  # Add ONLY ETACs (TroopTransports stay with combat fleet for invasions)
-  for i in 0 ..< fleet.spaceLiftShips.len:
-    let ship = fleet.spaceLiftShips[i]
-    if ship.shipClass == ShipClass.ETAC:
-      shipIndices.add(combatCount + i)  # Indexed after squadrons
+  # Add first combat squadron as escort
+  var addedEscort = false
+  for i, squadron in fleet.squadrons:
+    if not addedEscort and squadron.squadronType != SquadronType.Expansion:
+      shipIndices.add(i)
+      addedEscort = true
+      break
+
+  # Add ONLY ETAC squadrons (Auxiliary/TroopTransports stay with combat fleet)
+  for i, squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Expansion:
+      if squadron.flagship.shipClass == ShipClass.ETAC:
+        shipIndices.add(i)
 
   let newFleetId = controller.houseId & "_etac_" & $colony.systemId & "_" &
                    $filtered.turn
@@ -96,9 +105,10 @@ proc detachETACsIfMixed(
 
   # Count TroopTransports staying with combat fleet
   var troopTransportCount = 0
-  for ship in fleet.spaceLiftShips:
-    if ship.shipClass == ShipClass.TroopTransport:
-      troopTransportCount += 1
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Auxiliary:
+      if squadron.flagship.shipClass == ShipClass.TroopTransport:
+        troopTransportCount += 1
 
   logInfo(LogCategory.lcAI,
     &"Detaching {etacCount} ETACs + 1 escort from {fleet.id} at {colony.systemId} " &
@@ -226,10 +236,12 @@ proc loadAppropriateCargo(
 
   # Check for empty ETACs
   var hasEmptyETAC = false
-  for ship in fleet.spaceLiftShips:
-    if ship.shipClass == ShipClass.ETAC and ship.cargo.quantity == 0:
-      hasEmptyETAC = true
-      break
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Expansion:
+      if squadron.flagship.shipClass == ShipClass.ETAC:
+        if squadron.flagship.cargo.isNone or squadron.flagship.cargo.get().quantity == 0:
+          hasEmptyETAC = true
+          break
 
   if hasEmptyETAC and colony.population > 1:
     # Load colonists (leave 1 PU minimum at colony)
@@ -245,10 +257,12 @@ proc loadAppropriateCargo(
 
   # Check for empty TroopTransports
   var hasEmptyTransport = false
-  for ship in fleet.spaceLiftShips:
-    if ship.shipClass == ShipClass.TroopTransport and ship.cargo.quantity == 0:
-      hasEmptyTransport = true
-      break
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Auxiliary:
+      if squadron.flagship.shipClass == ShipClass.TroopTransport:
+        if squadron.flagship.cargo.isNone or squadron.flagship.cargo.get().quantity == 0:
+          hasEmptyTransport = true
+          break
 
   if hasEmptyTransport and colony.marines >= 3:
     # Load marines (need minimum for defense)
@@ -275,7 +289,17 @@ proc mergeUndersizedFleets(
 
   var singleSquadronFleets: seq[Fleet] = @[]
   for fleet in fleetsHere:
-    if fleet.squadrons.len == 1 and fleet.spaceLiftShips.len == 0 and
+    # Count non-Expansion squadrons (combat squadrons)
+    var combatSquadrons = 0
+    var hasExpansionSquadrons = false
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Expansion:
+        hasExpansionSquadrons = true
+      else:
+        combatSquadrons += 1
+
+    # Merge only fleets with exactly 1 combat squadron and no expansion squadrons
+    if combatSquadrons == 1 and not hasExpansionSquadrons and
        fleet.status == FleetStatus.Active:
       singleSquadronFleets.add(fleet)
 

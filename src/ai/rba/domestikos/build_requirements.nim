@@ -479,10 +479,15 @@ proc assessOffensiveReadiness*(
   var loadedMarines = 0
 
   for fleet in filtered.ownFleets:
-    transportCount += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.TroopTransport)
-    for spaceLiftShip in fleet.spaceLiftShips:
-      if spaceLiftShip.cargo.cargoType == CargoType.Marines:
-        loadedMarines += spaceLiftShip.cargo.quantity
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Auxiliary:
+        # TroopTransport is Auxiliary squadron type
+        if squadron.flagship.shipClass == ShipClass.TroopTransport:
+          transportCount += 1
+          if squadron.flagship.cargo.isSome:
+            let cargo = squadron.flagship.cargo.get()
+            if cargo.cargoType == CargoType.Marines:
+              loadedMarines += cargo.quantity
 
   # Aggressive: Build proactively (Act 2+ only - no transports in Act 1)
   if isAggressive and currentAct >= GameAct.Act2_RisingTensions:
@@ -807,7 +812,10 @@ proc assessStrategicAssets*(
   var marineCount = 0
 
   for fleet in filtered.ownFleets:
-    transportCount += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.TroopTransport)
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Auxiliary:
+        if squadron.flagship.shipClass == ShipClass.TroopTransport:
+          transportCount += 1
   for colony in filtered.ownColonies:
     marineCount += colony.marines
 
@@ -1017,9 +1025,12 @@ proc assessStrategicAssets*(
   # Count loaded marines on transports
   var loadedMarines = 0
   for fleet in filtered.ownFleets:
-    for spaceLiftShip in fleet.spaceLiftShips:
-      if spaceLiftShip.cargo.cargoType == CargoType.Marines:
-        loadedMarines += spaceLiftShip.cargo.quantity
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Auxiliary:
+        if squadron.flagship.cargo.isSome:
+          let cargo = squadron.flagship.cargo.get()
+          if cargo.cargoType == CargoType.Marines:
+            loadedMarines += cargo.quantity
 
   let totalMarinesAll = totalMarines + loadedMarines  # Total marines (colony + loaded)
 
@@ -1281,7 +1292,10 @@ proc assessStrategicAssets*(
     # Count transports
     var transportCount = 0
     for fleet in filtered.ownFleets:
-      transportCount += fleet.spaceLiftShips.countIt(it.shipClass == ShipClass.TroopTransport)
+      for squadron in fleet.squadrons:
+        if squadron.squadronType == SquadronType.Auxiliary:
+          if squadron.flagship.shipClass == ShipClass.TroopTransport:
+            transportCount += 1
 
     if transportCount > 0:
       let targetMarines = transportCount * 1  # 1 MD per transport (full capacity)

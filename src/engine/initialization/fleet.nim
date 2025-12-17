@@ -33,8 +33,7 @@ proc createStartingFleets*(owner: HouseId, location: SystemId,
     let config = fleetConfigs[fleetIdx]
     let fleetId = owner & "-fleet" & $fleetIdx
 
-    var combatSquadrons: seq[Squadron] = @[]
-    var spaceliftShips: seq[SpaceLiftShip] = @[]
+    var allSquadrons: seq[Squadron] = @[]
 
     # Process each ship in the configuration
     for shipName in config.ships:
@@ -57,20 +56,33 @@ proc createStartingFleets*(owner: HouseId, location: SystemId,
         else:
           continue  # Skip unknown ship classes
 
-      # Check if this is a spacelift ship
+      # Check if this is a spacelift ship (ETAC/TroopTransport)
       if shipClass == ShipClass.ETAC or shipClass == ShipClass.TroopTransport:
-        # Create spacelift ship
-        let shipId = owner & "-spacelift" & $fleetIdx & "-" & $spaceliftShips.len
-        var spaceliftShip = newSpaceLiftShip(shipId, shipClass, owner, location)
+        # Create squadron for ETAC/TroopTransport (single-ship squadron)
+        let squadronId = owner & "-squadron" & $fleetIdx & "-" & $allSquadrons.len
+        var squadron = createSquadron(
+          shipClass = shipClass,
+          techLevel = 1,
+          id = squadronId,
+          owner = owner,
+          location = location,
+          isCrippled = false
+        )
+        squadron.squadronType = getSquadronType(shipClass)  # Expansion or Auxiliary
 
         # Load cargo if specified (typically 1 PTU for colonization)
         if config.cargoPtu.isSome and shipClass == ShipClass.ETAC:
-          discard spaceliftShip.loadCargo(CargoType.Colonists, config.cargoPtu.get())
+          let cargoQty = config.cargoPtu.get()
+          squadron.flagship.cargo = some(ShipCargo(
+            cargoType: CargoType.Colonists,
+            quantity: cargoQty,
+            capacity: squadron.flagship.stats.carryLimit
+          ))
 
-        spaceliftShips.add(spaceliftShip)
+        allSquadrons.add(squadron)
       else:
         # Create combat squadron (one ship = flagship only, no escorts yet)
-        let squadronId = owner & "-squadron" & $fleetIdx & "-" & $combatSquadrons.len
+        let squadronId = owner & "-squadron" & $fleetIdx & "-" & $allSquadrons.len
         let squadron = createSquadron(
           shipClass = shipClass,
           techLevel = 1,  # Starting ships have base tech level
@@ -80,13 +92,12 @@ proc createStartingFleets*(owner: HouseId, location: SystemId,
           isCrippled = false
         )
 
-        combatSquadrons.add(squadron)
+        allSquadrons.add(squadron)
 
-    # Create fleet with all squadrons and spacelift ships
-    if combatSquadrons.len > 0 or spaceliftShips.len > 0:
+    # Create fleet with all squadrons (combat, expansion, auxiliary, intel)
+    if allSquadrons.len > 0:
       let fleet = newFleet(
-        squadrons = combatSquadrons,
-        spaceLiftShips = spaceliftShips,
+        squadrons = allSquadrons,
         id = fleetId,
         owner = owner,
         location = location

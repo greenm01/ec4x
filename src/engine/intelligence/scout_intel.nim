@@ -10,7 +10,7 @@
 ## - Patrol route analysis
 ## - Witness events (combat, bombardment, blockades)
 
-import std/[tables, options, strformat, random, hashes]
+import std/[tables, options, strformat, random, hashes, sequtils]
 import types as intel_types
 import corruption
 import ../gamestate, ../fleet, ../squadron, ../spacelift
@@ -43,23 +43,31 @@ proc generateScoutFleetEncounter*(
           hullIntegrity: if squadron.flagship.isCrippled: some(50) else: some(100)
         ))
 
-      # Scout also gets spacelift cargo details
+      # Scout also gets Expansion/Auxiliary squadron cargo details
       var spaceliftDetails: seq[intel_types.SpaceLiftCargoIntel] = @[]
-      for ship in fleet.spaceLiftShips:
-        spaceliftDetails.add(intel_types.SpaceLiftCargoIntel(
-          shipClass: $ship.shipClass,
-          cargoType: if ship.cargo.quantity == 0: "Empty" else: $ship.cargo.cargoType,
-          quantity: ship.cargo.quantity,
-          isCrippled: ship.isCrippled
-        ))
+      for squadron in fleet.squadrons:
+        if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+          let cargo = squadron.flagship.cargo
+          let cargoQty = if cargo.isSome: cargo.get().quantity else: 0
+          let cargoType = if cargo.isSome and cargoQty > 0:
+                           $cargo.get().cargoType
+                         else:
+                           "Empty"
+          spaceliftDetails.add(intel_types.SpaceLiftCargoIntel(
+            shipClass: $squadron.flagship.shipClass,
+            cargoType: cargoType,
+            quantity: cargoQty,
+            isCrippled: squadron.flagship.isCrippled
+          ))
 
+      let transportCount = fleet.squadrons.countIt(it.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary})
       let fleetIntel = intel_types.FleetIntel(
         fleetId: fleetId,
         owner: fleet.owner,
         location: systemId,
         shipCount: fleet.squadrons.len,
         standingOrders: some($fleet.status),  # Scout sees fleet behavior
-        spaceLiftShipCount: some(fleet.spaceLiftShips.len),
+        spaceLiftShipCount: some(transportCount),
         squadronDetails: some(squadDetails)
       )
 

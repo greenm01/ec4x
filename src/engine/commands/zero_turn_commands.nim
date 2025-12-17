@@ -232,17 +232,24 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
 
     # DetachShips specific: cannot detach spacelift-only fleet (except ETACs)
     if cmd.commandType == ZeroTurnCommandType.DetachShips:
-      let (squadronIndices, spaceliftIndices) = fleet.translateShipIndicesToSquadrons(cmd.shipIndices)
-      if squadronIndices.len == 0 and spaceliftIndices.len > 0:
-        # Check if ALL spacelift ships being detached are ETACs (don't need escorts)
-        var allETACs = true
-        for idx in spaceliftIndices:
-          if fleet.spaceLiftShips[idx].shipClass != ShipClass.ETAC:
-            allETACs = false
-            break
+      let squadronIndices = fleet.translateShipIndicesToSquadrons(cmd.shipIndices)
 
-        if not allETACs:
-          # TroopTransports and other spacelift ships need combat escorts
+      # Check if only Expansion squadrons (ETACs) are being detached
+      # ETACs don't need combat escorts, but transports do
+      if squadronIndices.len > 0:
+        var onlyExpansion = true
+        var hasNonETAC = false
+
+        for idx in squadronIndices:
+          let squadron = fleet.squadrons[idx]
+          if squadron.squadronType != SquadronType.Expansion:
+            onlyExpansion = false
+          elif squadron.flagship.shipClass != ShipClass.ETAC:
+            hasNonETAC = true
+
+        if onlyExpansion and hasNonETAC:
+          # Only detaching Expansion squadrons, but some are non-ETAC transports
+          # These need combat escorts
           return ValidationResult(valid: false, error: "Cannot detach non-ETAC spacelift ships without combat escorts")
 
     # TransferShips specific: validate target fleet
@@ -382,17 +389,10 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var
   let systemId = sourceFleet.location
 
   # Translate ship indices to squadron/spacelift indices
-  let (squadronIndices, spaceliftIndices) = sourceFleet.translateShipIndicesToSquadrons(cmd.shipIndices)
+  let squadronIndices = sourceFleet.translateShipIndicesToSquadrons(cmd.shipIndices)
 
   # Split squadrons (existing proc)
   let splitResult = sourceFleet.split(squadronIndices)
-
-  # Split spacelift ships
-  var newSpaceLiftShips: seq[SpaceLiftShip] = @[]
-  # Sort indices in descending order to avoid index shifting issues
-  for idx in spaceliftIndices.sorted(Descending):
-    newSpaceLiftShips.add(sourceFleet.spaceLiftShips[idx])
-    sourceFleet.spaceLiftShips.delete(idx)
 
   # Generate new fleet ID if not provided
   let newFleetId = if cmd.newFleetId.isSome:
@@ -404,7 +404,6 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var
   var newFleet = Fleet(
     id: newFleetId,
     squadrons: splitResult.squadrons,
-    spaceLiftShips: newSpaceLiftShips,
     owner: cmd.houseId,
     location: sourceFleet.location,
     status: FleetStatus.Active,
@@ -425,7 +424,7 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var
   else:
     # Write back modified source fleet
     state.fleets[cmd.sourceFleetId.get()] = sourceFleet
-    logInfo(LogCategory.lcFleet, &"DetachShips: Created fleet {newFleetId} with {newFleet.squadrons.len} squadrons and {newFleet.spaceLiftShips.len} spacelift ships")
+    logInfo(LogCategory.lcFleet, &"DetachShips: Created fleet {newFleetId} with {newFleet.squadrons.len} squadrons")
 
   # Write new fleet to state
   state.fleets[newFleetId] = newFleet
@@ -460,19 +459,13 @@ proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand, events: v
   var targetFleet = state.fleets[targetFleetId]
   let systemId = sourceFleet.location
 
-  # Translate ship indices to squadron/spacelift indices
-  let (squadronIndices, spaceliftIndices) = sourceFleet.translateShipIndicesToSquadrons(cmd.shipIndices)
+  # Translate ship indices to squadron indices
+  let squadronIndices = sourceFleet.translateShipIndicesToSquadrons(cmd.shipIndices)
   let squadronsTransferred = squadronIndices.len
 
   # Transfer squadrons
   let transferredFleet = sourceFleet.split(squadronIndices)
   targetFleet.merge(transferredFleet)
-
-  # Transfer spacelift ships
-  # Sort indices in descending order to avoid index shifting issues
-  for idx in spaceliftIndices.sorted(Descending):
-    targetFleet.spaceLiftShips.add(sourceFleet.spaceLiftShips[idx])
-    sourceFleet.spaceLiftShips.delete(idx)
 
   # Balance both fleets
   sourceFleet.balanceSquadrons()
@@ -490,7 +483,7 @@ proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand, events: v
   else:
     # Write back modified source fleet
     state.fleets[cmd.sourceFleetId.get()] = sourceFleet
-    logInfo(LogCategory.lcFleet, &"TransferShips: Transferred {squadronIndices.len} squadrons and {spaceliftIndices.len} spacelift ships from {cmd.sourceFleetId.get()} to {targetFleetId}")
+    logInfo(LogCategory.lcFleet, &"TransferShips: Transferred {squadronIndices.len} squadrons from {cmd.sourceFleetId.get()} to {targetFleetId}")
 
   # Emit FleetTransfer event (Phase 7b)
   events.add(event_factory.fleetTransfer(
@@ -546,7 +539,7 @@ proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand, events: var
   if cmd.sourceFleetId.get() in state.standingOrders:
     state.standingOrders.del(cmd.sourceFleetId.get())
 
-  logInfo(LogCategory.lcFleet, &"MergeFleets: Merged {sourceFleet.squadrons.len} squadrons and {sourceFleet.spaceLiftShips.len} spacelift ships from {cmd.sourceFleetId.get()} into {targetFleetId}")
+  logInfo(LogCategory.lcFleet, &"MergeFleets: Merged {sourceFleet.squadrons.len} squadrons from {cmd.sourceFleetId.get()} into {targetFleetId}")
 
   # Emit FleetMerged event (Phase 7b)
   events.add(event_factory.fleetMerged(
@@ -620,38 +613,42 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
   if requestedQty == 0:
     requestedQty = availableUnits
 
-  # Load cargo onto compatible spacelift ships
+  # Load cargo onto compatible spacelift squadrons (Expansion/Auxiliary flagships)
   var remainingToLoad = min(requestedQty, availableUnits)
-  var modifiedShips: seq[SpaceLiftShip] = @[]
 
-  for ship in mutableFleet.spaceLiftShips:
+  for squadron in mutableFleet.squadrons.mitems:
     if remainingToLoad <= 0:
-      modifiedShips.add(ship)
+      break
+
+    # Only Expansion and Auxiliary squadrons carry cargo
+    if squadron.squadronType notin {SquadronType.Expansion, SquadronType.Auxiliary}:
       continue
 
-    if ship.isCrippled:
-      modifiedShips.add(ship)
+    if squadron.flagship.isCrippled:
       continue
 
     # Determine ship capacity and compatible cargo type
-    let shipCargoType = case ship.shipClass
+    let shipCargoType = case squadron.flagship.shipClass
       of ShipClass.TroopTransport: CargoType.Marines
       of ShipClass.ETAC: CargoType.Colonists
       else: CargoType.None
 
     if shipCargoType != cargoType:
-      modifiedShips.add(ship)
       continue  # Ship can't carry this cargo type
 
-    # Try to load cargo onto this ship
-    var mutableShip = ship
-    let loadAmount = min(remainingToLoad, mutableShip.cargo.capacity - mutableShip.cargo.quantity)
-    if mutableShip.loadCargo(cargoType, loadAmount):
+    # Try to load cargo onto this flagship
+    let currentCargo = if squadron.flagship.cargo.isSome: squadron.flagship.cargo.get() else: ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: 0)
+    let loadAmount = min(remainingToLoad, currentCargo.capacity - currentCargo.quantity)
+
+    if loadAmount > 0:
+      var newCargo = currentCargo
+      newCargo.cargoType = cargoType
+      newCargo.quantity += loadAmount
+      squadron.flagship.cargo = some(newCargo)
+
       totalLoaded += loadAmount
       remainingToLoad -= loadAmount
-      logDebug(LogCategory.lcEconomy, &"Loaded {loadAmount} {cargoType} onto {ship.shipClass} {ship.id}")
-
-    modifiedShips.add(mutableShip)
+      logDebug(LogCategory.lcEconomy, &"Loaded {loadAmount} {cargoType} onto {squadron.flagship.shipClass} squadron {squadron.id}")
 
   # Update colony inventory
   if totalLoaded > 0:
@@ -670,7 +667,6 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
       discard
 
     # Write back modified state
-    mutableFleet.spaceLiftShips = modifiedShips
     state.fleets[fleetId] = mutableFleet
     state.colonies[colonySystem] = colony
     logInfo(LogCategory.lcEconomy, &"LoadCargo: Successfully loaded {totalLoaded} {cargoType} onto fleet {fleetId} at system {colonySystem}")
@@ -707,27 +703,32 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var
   # Get mutable colony and fleet
   var colony = state.colonies[colonySystem]
   var mutableFleet = fleet
-  var modifiedShips: seq[SpaceLiftShip] = @[]
   var totalUnloaded = 0
   var unloadedType = CargoType.None
 
-  # Unload cargo from spacelift ships
-  for ship in mutableFleet.spaceLiftShips:
-    var mutableShip = ship
+  # Unload cargo from spacelift squadrons (Expansion/Auxiliary flagships)
+  for squadron in mutableFleet.squadrons.mitems:
+    # Only Expansion and Auxiliary squadrons carry cargo
+    if squadron.squadronType notin {SquadronType.Expansion, SquadronType.Auxiliary}:
+      continue
 
-    if mutableShip.cargo.cargoType == CargoType.None:
-      modifiedShips.add(mutableShip)
+    if squadron.flagship.cargo.isNone:
       continue  # No cargo to unload
 
+    let cargo = squadron.flagship.cargo.get()
+    if cargo.cargoType == CargoType.None or cargo.quantity == 0:
+      continue  # Empty cargo
+
     # Unload cargo back to colony inventory
-    let (cargoType, quantity) = mutableShip.unloadCargo()
+    let cargoType = cargo.cargoType
+    let quantity = cargo.quantity
     totalUnloaded += quantity
     unloadedType = cargoType
 
     case cargoType
     of CargoType.Marines:
       colony.marines += quantity
-      logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} Marines from {ship.id} to colony")
+      logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} Marines from squadron {squadron.id} to colony")
     of CargoType.Colonists:
       # Colonists are delivered to population: 1 PTU = 50k souls
       # Use souls field for exact counting (no rounding errors)
@@ -735,15 +736,15 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var
       colony.souls += soulsToUnload
       # Update display field (population in millions)
       colony.population = colony.souls div 1_000_000
-      logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} PTU ({soulsToUnload} souls, {quantity.float * ptuSizeMillions()}M) from {ship.id} to colony")
+      logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} PTU ({soulsToUnload} souls, {quantity.float * ptuSizeMillions()}M) from squadron {squadron.id} to colony")
     else:
       discard
 
-    modifiedShips.add(mutableShip)
+    # Clear cargo from flagship
+    squadron.flagship.cargo = some(ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: cargo.capacity))
 
   # Write back modified state
   if totalUnloaded > 0:
-    mutableFleet.spaceLiftShips = modifiedShips
     state.fleets[fleetId] = mutableFleet
     state.colonies[colonySystem] = colony
     logInfo(LogCategory.lcEconomy, &"UnloadCargo: Successfully unloaded {totalUnloaded} {unloadedType} from fleet {fleetId} at system {colonySystem}")
@@ -1020,7 +1021,7 @@ proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, e
     state.fleets[sourceFleetId.get()] = srcFleet
 
     # If source fleet is now empty, remove it and clean up orders (DRY helper)
-    if newSquadrons.len == 0 and srcFleet.spaceLiftShips.len == 0:
+    if newSquadrons.len == 0:
       cleanupEmptyFleet(state, sourceFleetId.get())
 
   # Add squadron to target fleet or create new one
@@ -1095,7 +1096,6 @@ proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, e
       owner: cmd.houseId,
       location: colonySystem,
       squadrons: @[squadron],
-      spaceLiftShips: @[],
       status: FleetStatus.Active,
       autoBalanceSquadrons: true
     )

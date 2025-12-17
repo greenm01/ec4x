@@ -512,15 +512,22 @@ proc ec4x_collect_fleet_snapshots(game: pointer, turn: cint): cint
           if ship.shipClass == ShipClass.Scout:
             scoutCount += 1
 
-      # Combat ships = all squadron ships EXCEPT scouts
-      let combatShips = totalSquadronShips - scoutCount
+      # Count Expansion/Auxiliary squadrons (ETACs and Transports)
+      var expansionShips = 0
+      for squadron in fleet.squadrons:
+        if squadron.squadronType == SquadronType.Expansion:
+          # ETAC squadron - count flagship + escorts
+          let shipCount = 1 + squadron.ships.len
+          etacCount += shipCount
+          expansionShips += shipCount
+        elif squadron.squadronType == SquadronType.Auxiliary:
+          # TroopTransport squadron - count flagship + escorts
+          let shipCount = 1 + squadron.ships.len
+          transportCount += shipCount
+          expansionShips += shipCount
 
-      # Count spacelift ships (ETACs and Transports)
-      for spaceLiftShip in fleet.spaceLiftShips:
-        if spaceLiftShip.shipClass == ShipClass.ETAC:
-          etacCount += 1
-        elif spaceLiftShip.shipClass == ShipClass.TroopTransport:
-          transportCount += 1
+      # Combat ships = all squadron ships EXCEPT scouts and expansion/auxiliary
+      let combatShips = totalSquadronShips - scoutCount - expansionShips
 
       # Get order info
       var orderType = "None"
@@ -596,7 +603,7 @@ proc ec4x_collect_fleet_snapshots(game: pointer, turn: cint): cint
         orderType: orderType,
         orderTarget: orderTarget,
         hasArrived: hasArrived,
-        shipsTotal: totalSquadronShips + fleet.spaceLiftShips.len,
+        shipsTotal: totalSquadronShips,  # All ships now in squadrons
         etacCount: etacCount,
         scoutCount: scoutCount,
         combatShips: combatShips,

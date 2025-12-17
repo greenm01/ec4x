@@ -80,8 +80,7 @@ proc initNewColony*(systemId: SystemId, owner: HouseId,
     activeTerraforming: none(TerraformProject),
 
     # Military assets (all empty for new colony)
-    unassignedSquadrons: @[],
-    unassignedSpaceLiftShips: @[],
+    unassignedSquadrons: @[],  # All squadron types (Combat, Intel, Expansion, Auxiliary)
     fighterSquadrons: @[],
     capacityViolation: CapacityViolation(active: false, violationType: "", turnsRemaining: 0, violationTurn: 0),
     starbases: @[],

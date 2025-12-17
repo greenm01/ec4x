@@ -191,13 +191,16 @@ proc autoLoadColonistsToETACs*(
     if fleet.location != systemId or fleet.owner != colony.owner:
       continue
 
-    # Load PTUs onto ETACs with available capacity
-    for ship in fleet.spaceLiftShips.mitems:
-      if ship.shipClass != ShipClass.ETAC:
+    # Load PTUs onto ETACs with available capacity (Expansion squadrons)
+    for squadron in fleet.squadrons.mitems:
+      if squadron.squadronType != SquadronType.Expansion:
+        continue
+      if squadron.flagship.shipClass != ShipClass.ETAC:
         continue
 
       # Check available capacity
-      let availableCapacity = ship.cargo.capacity - ship.cargo.quantity
+      var cargo = squadron.flagship.cargo.get(ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: squadron.flagship.stats.carryLimit))
+      let availableCapacity = cargo.capacity - cargo.quantity
       if availableCapacity <= 0:
         continue
 
@@ -210,15 +213,16 @@ proc autoLoadColonistsToETACs*(
       let transferAmount = min(needed, available)
 
       # Direct transfer (no extraction cost)
-      ship.cargo.quantity += transferAmount
-      ship.cargo.cargoType = CargoType.Colonists
+      cargo.quantity += transferAmount
+      cargo.cargoType = CargoType.Colonists
+      squadron.flagship.cargo = some(cargo)
       state.colonies[systemId].population -= transferAmount
 
       loadedCount += transferAmount
 
       logDebug(LogCategory.lcEconomy,
-        &"Loaded {transferAmount} PTU onto ETAC {ship.id} at {systemId} " &
-        &"({ship.cargo.quantity}/{ship.cargo.capacity} capacity, " &
+        &"Loaded {transferAmount} PTU onto ETAC {squadron.id} at {systemId} " &
+        &"({cargo.quantity}/{cargo.capacity} capacity, " &
         &"colony pop: {state.colonies[systemId].population})")
 
   if loadedCount > 0:
@@ -344,7 +348,6 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
         owner: colony.owner,
         location: systemId,
         squadrons: @[squadron],
-        spaceLiftShips: @[],
         status: FleetStatus.Active,
         autoBalanceSquadrons: not isIntel  # Intel fleets: false, others: true
       )
@@ -407,7 +410,6 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
         owner: colony.owner,
         location: systemId,
         squadrons: @[squadron],
-        spaceLiftShips: @[],
         status: FleetStatus.Active,
         autoBalanceSquadrons: false  # Intel fleets never auto-balance
       )
@@ -433,7 +435,6 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
         owner: colony.owner,
         location: systemId,
         squadrons: @[squadron],
-        spaceLiftShips: @[],
         status: FleetStatus.Active,
         autoBalanceSquadrons: true
       )

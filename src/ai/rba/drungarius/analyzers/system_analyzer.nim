@@ -22,7 +22,8 @@ proc analyzeFleetComposition(squadronDetails: Option[seq[intel_types.SquadronInt
     destroyers: 0,
     escorts: 0,
     scouts: 0,
-    spaceLiftShips: 0,
+    expansionShips: 0,
+    auxiliaryShips: 0,
     totalShips: 0,
     avgTechLevel: 0
   )

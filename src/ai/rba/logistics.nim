@@ -176,20 +176,22 @@ proc buildAssetInventory*(filtered: FilteredGameState, houseId: HouseId): AssetI
         result.planetBreakers += 1
 
     # Track spacelift cargo status AND count spacelift ships
-    for spaceLift in fleet.spaceLiftShips:
-      case spaceLift.shipClass
-      of ShipClass.ETAC:
-        result.etacs += 1  # Count ETAC in total
-        if spaceLift.isEmpty:
-          result.emptyETACs.add((fleet.id, 1))
-        else:
-          result.loadedETACs.add((fleet.id, spaceLift.cargo.quantity))
-      of ShipClass.TroopTransport:
-        result.transports += 1  # Count transport in total
-        if spaceLift.isEmpty:
-          result.emptyTransports.add((fleet.id, 1))
-        else:
-          result.loadedTransports.add((fleet.id, spaceLift.cargo.quantity))
+    for squadron in fleet.squadrons:
+      case squadron.squadronType
+      of SquadronType.Expansion:
+        if squadron.flagship.shipClass == ShipClass.ETAC:
+          result.etacs += 1  # Count ETAC in total
+          if squadron.flagship.cargo.isNone or squadron.flagship.cargo.get().quantity == 0:
+            result.emptyETACs.add((fleet.id, 1))
+          else:
+            result.loadedETACs.add((fleet.id, squadron.flagship.cargo.get().quantity))
+      of SquadronType.Auxiliary:
+        if squadron.flagship.shipClass == ShipClass.TroopTransport:
+          result.transports += 1  # Count transport in total
+          if squadron.flagship.cargo.isNone or squadron.flagship.cargo.get().quantity == 0:
+            result.emptyTransports.add((fleet.id, 1))
+          else:
+            result.loadedTransports.add((fleet.id, squadron.flagship.cargo.get().quantity))
       else:
         discard
 
@@ -342,12 +344,14 @@ proc generateCargoOrders*(controller: AIController, inventory: AssetInventory,
   for fleet in filtered.ownFleets:
     # Check if fleet has empty transports
     var hasEmptyTransport = false
-    for spaceLift in fleet.spaceLiftShips:
-      if spaceLift.shipClass == ShipClass.TroopTransport and spaceLift.isEmpty:
-        hasEmptyTransport = true
-        fleetsWithEmptyTransports.inc()
-        logDebug(LogCategory.lcAI, &"{controller.houseId} Fleet {fleet.id} has empty transport at {fleet.location}")
-        break
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Auxiliary:
+        if squadron.flagship.shipClass == ShipClass.TroopTransport:
+          if squadron.flagship.cargo.isNone or squadron.flagship.cargo.get().quantity == 0:
+            hasEmptyTransport = true
+            fleetsWithEmptyTransports.inc()
+            logDebug(LogCategory.lcAI, &"{controller.houseId} Fleet {fleet.id} has empty transport at {fleet.location}")
+            break
 
     if hasEmptyTransport:
       # Check if fleet is at a colony with marines
@@ -392,10 +396,12 @@ proc generateCargoOrders*(controller: AIController, inventory: AssetInventory,
 
         # Check if fleet has empty transports at a colony
         var hasEmptyTransport = false
-        for spaceLift in fleet.spaceLiftShips:
-          if spaceLift.shipClass == ShipClass.TroopTransport and spaceLift.isEmpty:
-            hasEmptyTransport = true
-            break
+        for squadron in fleet.squadrons:
+          if squadron.squadronType == SquadronType.Auxiliary:
+            if squadron.flagship.shipClass == ShipClass.TroopTransport:
+              if squadron.flagship.cargo.isNone or squadron.flagship.cargo.get().quantity == 0:
+                hasEmptyTransport = true
+                break
 
         if hasEmptyTransport:
           # Find colony at fleet location to load marines
@@ -824,7 +830,11 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
 
     # NEVER mothball ETACs - keep them active until all planets colonized, then salvage
     # ETACs are expansion ships with persistent colonization missions
-    let hasETAC = fleet.spaceLiftShips.len > 0
+    var hasETAC = false
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Expansion:
+        hasETAC = true
+        break
     if hasETAC:
       continue  # Never mothball ETAC fleets
 
@@ -930,7 +940,11 @@ proc identifySalvageCandidates*(controller: AIController, inventory: AssetInvent
 
     # NEVER salvage ETACs or Scouts - strategic assets
     # ETACs for expansion, Scouts for intelligence
-    let hasETAC = fleet.spaceLiftShips.len > 0
+    var hasETAC = false
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Expansion:
+        hasETAC = true
+        break
     if hasETAC:
       continue  # Never salvage ETAC fleets
 
@@ -1318,16 +1332,23 @@ proc recommendFleetRebalancing*(controller: AIController, inventory: AssetInvent
 
         # Check if fleet has transports
         var hasTransport = false
-        for spaceLift in fleet.spaceLiftShips:
-          if spaceLift.shipClass == ShipClass.TroopTransport:
-            hasTransport = true
-            break
+        for squadron in fleet.squadrons:
+          if squadron.squadronType == SquadronType.Auxiliary:
+            if squadron.flagship.shipClass == ShipClass.TroopTransport:
+              hasTransport = true
+              break
 
         if not hasTransport:
           # Need to add transport to this fleet
-          # Find a colony with unassigned transports
+          # Find a colony with unassigned transports (Auxiliary squadrons)
           for colony in filtered.ownColonies:
-            if colony.unassignedSpaceLiftShips.len > 0:
+            var hasUnassignedTransport = false
+            for squadron in colony.unassignedSquadrons:
+              if squadron.squadronType == SquadronType.Auxiliary:
+                if squadron.flagship.shipClass == ShipClass.TroopTransport:
+                  hasUnassignedTransport = true
+                  break
+            if hasUnassignedTransport:
               # Found unassigned transport - add to fleet
               # (Note: Actual squadron management order would be generated here)
               # For now just log the need
@@ -1455,10 +1476,12 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
   # Find fleets with empty transports
   for fleet in filtered.ownFleets:
     var hasEmptyTransport = false
-    for spaceLift in fleet.spaceLiftShips:
-      if spaceLift.shipClass == ShipClass.TroopTransport and spaceLift.isEmpty:
-        hasEmptyTransport = true
-        break
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Auxiliary:
+        if squadron.flagship.shipClass == ShipClass.TroopTransport:
+          if squadron.flagship.cargo.isNone or squadron.flagship.cargo.get().quantity == 0:
+            hasEmptyTransport = true
+            break
 
     if hasEmptyTransport:
       # Check if fleet is already at a colony with marines

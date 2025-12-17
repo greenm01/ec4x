@@ -3,7 +3,7 @@
 ## Generates intelligence reports from successful spy scout missions
 ## Per intel.md and operations.md specifications
 
-import std/[tables, options, random, hashes]
+import std/[tables, options, random, hashes, sequtils]
 import types as intel_types
 import corruption
 import ../gamestate, ../fleet  # Need FleetStatus from fleet module
@@ -121,10 +121,13 @@ proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
         squadDetails.add(squadIntel)
       fleetIntel.squadronDetails = some(squadDetails)
 
-      # Visual quality: Can see number of transports, but NOT cargo contents
+      # Visual quality: Can see number of transports (Expansion/Auxiliary), but NOT cargo contents
       # Spy/Perfect quality: Full cargo manifest
-      if fleet.spaceLiftShips.len > 0:
-        fleetIntel.spaceLiftShipCount = some(fleet.spaceLiftShips.len)
+      let transportCount = fleet.squadrons.countIt(
+        it.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}
+      )
+      if transportCount > 0:
+        fleetIntel.spaceLiftShipCount = some(transportCount)
 
       fleetIntels.add(fleetIntel)
 

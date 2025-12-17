@@ -72,16 +72,15 @@ proc assessFleetRole*(fleet: Fleet, filtered: FilteredGameState,
       if ship.isCrippled:
         crippledCount += 1
 
-  # Count spacelift ships (ETACs are usually in spaceLiftShips, not squadrons)
-  for spaceLift in fleet.spaceLiftShips:
-    totalShips += 1
-    case spaceLift.shipClass
-    of ShipClass.ETAC:
-      etacCount += 1
-    of ShipClass.TroopTransport:
-      discard  # Transports handled separately
-    else:
-      discard
+  # Count spacelift ships (ETACs and Transports now as squadrons)
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Expansion:
+      totalShips += 1
+      if squadron.flagship.shipClass == ShipClass.ETAC:
+        etacCount += 1
+    elif squadron.squadronType == SquadronType.Auxiliary:
+      totalShips += 1
+      # Transports handled separately
 
   # Calculate damage percentage
   let damagePercent = if totalShips > 0:

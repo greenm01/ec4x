@@ -38,27 +38,30 @@ proc createFleetComposition*(
       targetSystem: order.targetSystem
     ))
 
-  # Capture spacelift cargo details (CRITICAL for invasion threat assessment)
+  # Capture Expansion/Auxiliary squadron cargo details (CRITICAL for invasion threat assessment)
   var spaceLiftIntel: seq[intel_types.SpaceLiftCargoIntel] = @[]
-  for ship in fleet.spaceLiftShips:
-    let cargoTypeStr = if ship.cargo.quantity == 0:
-      "Empty"
-    else:
-      $ship.cargo.cargoType
+  for squadron in fleet.squadrons:
+    if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+      let cargo = squadron.flagship.cargo
+      let cargoQty = if cargo.isSome: cargo.get().quantity else: 0
+      let cargoTypeStr = if cargoQty == 0:
+        "Empty"
+      else:
+        $cargo.get().cargoType
 
-    spaceLiftIntel.add(intel_types.SpaceLiftCargoIntel(
-      shipClass: $ship.shipClass,
-      cargoType: cargoTypeStr,
-      quantity: ship.cargo.quantity,
-      isCrippled: ship.isCrippled
-    ))
+      spaceLiftIntel.add(intel_types.SpaceLiftCargoIntel(
+        shipClass: $squadron.flagship.shipClass,
+        cargoType: cargoTypeStr,
+        quantity: cargoQty,
+        isCrippled: squadron.flagship.isCrippled
+      ))
 
   result = intel_types.CombatFleetComposition(
     fleetId: fleetId,
     owner: fleet.owner,
     standingOrders: orderIntel,
     squadrons: squadronDetails,
-    spaceLiftShips: spaceLiftIntel,
+    spaceLiftShips: spaceLiftIntel,  # Note: field name unchanged for backward compat
     isCloaked: fleet.isCloaked()
   )
 

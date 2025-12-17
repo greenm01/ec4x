@@ -119,7 +119,6 @@ proc findClosestOwnedColony*(state: GameState, fromSystem: SystemId, houseId: Ho
         owner: houseId,
         location: fromSystem,
         squadrons: @[],
-        spaceLiftShips: @[],
         status: FleetStatus.Active
       )
 
@@ -507,12 +506,15 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
       logWarn(LogCategory.lcColonization, &"Fleet {order.fleetId} still not at target after movement (too far)")
       return
 
-  # Check fleet has colonists
+  # Check fleet has colonists (in Expansion squadrons)
   var hasColonists = false
-  for ship in fleet.spaceLiftShips:
-    if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
-      hasColonists = true
-      break
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Expansion:
+      if squadron.flagship.cargo.isSome:
+        let cargo = squadron.flagship.cargo.get()
+        if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+          hasColonists = true
+          break
 
   if not hasColonists:
     logError(LogCategory.lcColonization, &"Fleet {order.fleetId} has no colonists (PTU) - colonization failed")
@@ -526,10 +528,13 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
 
   # Get PTU quantity from ETAC cargo (should be 3 for new ETACs)
   var ptuToDeposit = 0
-  for ship in fleet.spaceLiftShips:
-    if ship.cargo.cargoType == CargoType.Colonists:
-      ptuToDeposit = ship.cargo.quantity
-      break
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Expansion:
+      if squadron.flagship.cargo.isSome:
+        let cargo = squadron.flagship.cargo.get()
+        if cargo.cargoType == CargoType.Colonists:
+          ptuToDeposit = cargo.quantity
+          break
 
   logInfo(LogCategory.lcColonization, &"Fleet {order.fleetId} colonizing {planetClass} world with {resources} resources at {targetId} (depositing {ptuToDeposit} PTU)")
 
@@ -551,47 +556,56 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
 
   state.colonies[targetId] = colony
 
-  # Unload colonists from fleet
-  for ship in fleet.spaceLiftShips.mitems:
-    if ship.cargo.cargoType == CargoType.Colonists:
-      logInfo(LogCategory.lcColonization,
-        &"⚠️  PRE-UNLOAD: {ship.shipClass} {ship.id} has {ship.cargo.quantity} PTU")
-      discard ship.unloadCargo()
-      logInfo(LogCategory.lcColonization,
-        &"⚠️  POST-UNLOAD: {ship.shipClass} {ship.id} has {ship.cargo.quantity} PTU")
+  # Unload colonists from Expansion squadrons
+  for squadron in fleet.squadrons.mitems:
+    if squadron.squadronType == SquadronType.Expansion:
+      if squadron.flagship.cargo.isSome:
+        var cargo = squadron.flagship.cargo.get()
+        if cargo.cargoType == CargoType.Colonists:
+          logInfo(LogCategory.lcColonization,
+            &"⚠️  PRE-UNLOAD: {squadron.flagship.shipClass} {squadron.id} has {cargo.quantity} PTU")
+          # Unload cargo
+          cargo.quantity = 0
+          cargo.cargoType = CargoType.None
+          squadron.flagship.cargo = some(cargo)
+          logInfo(LogCategory.lcColonization,
+            &"⚠️  POST-UNLOAD: {squadron.flagship.shipClass} {squadron.id} has {cargo.quantity} PTU")
 
   # ETAC cannibalized - remove from game, structure becomes colony infrastructure
   logInfo(LogCategory.lcColonization,
     &"⚠️  CANNIBALIZATION CHECK: Fleet {order.fleetId} has " &
-    &"{fleet.spaceLiftShips.len} spacelift ships")
+    &"{fleet.squadrons.len} squadrons")
 
   var cannibalized_count = 0
-  for i in countdown(fleet.spaceLiftShips.high, 0):
-    let ship = fleet.spaceLiftShips[i]
-    logInfo(LogCategory.lcColonization,
-      &"⚠️  Ship {i}: class={ship.shipClass}, cargoQty={ship.cargo.quantity}")
-
-    if ship.shipClass == ShipClass.ETAC and ship.cargo.quantity == 0:
-      # ETAC cannibalized - ship structure becomes starting IU
-      fleet.spaceLiftShips.delete(i)
-      cannibalized_count += 1
-
-      # Fire GameEvent for colonization success
-      events.add(GameEvent(
-        eventType: GameEventType.ColonyEstablished,
-        turn: state.turn,
-        houseId: some(houseId),
-        systemId: some(targetId),
-        description: &"ETAC {ship.id} cannibalized establishing colony infrastructure",
-        colonyEventType: some("Established")
-      ))
-
+  for i in countdown(fleet.squadrons.high, 0):
+    let squadron = fleet.squadrons[i]
+    if squadron.squadronType == SquadronType.Expansion:
+      let cargo = squadron.flagship.cargo
+      let cargoQty = if cargo.isSome: cargo.get().quantity else: 0
       logInfo(LogCategory.lcColonization,
-        &"⚠️  ✅ CANNIBALIZED ETAC {ship.id} at {targetId}")
+        &"⚠️  Squadron {i}: class={squadron.flagship.shipClass}, cargoQty={cargoQty}")
+
+      if squadron.flagship.shipClass == ShipClass.ETAC and cargoQty == 0:
+        # ETAC cannibalized - ship structure becomes starting IU
+        fleet.squadrons.delete(i)
+        cannibalized_count += 1
+
+        # Fire GameEvent for colonization success
+        events.add(GameEvent(
+          eventType: GameEventType.ColonyEstablished,
+          turn: state.turn,
+          houseId: some(houseId),
+          systemId: some(targetId),
+          description: &"ETAC {squadron.id} cannibalized establishing colony infrastructure",
+          colonyEventType: some("Established")
+        ))
+
+        logInfo(LogCategory.lcColonization,
+          &"⚠️  ✅ CANNIBALIZED ETAC {squadron.id} at {targetId}")
 
   logInfo(LogCategory.lcColonization,
     &"⚠️  CANNIBALIZATION RESULT: {cannibalized_count} ETACs removed, " &
-    &"{fleet.spaceLiftShips.len} spacelift ships remain")
+    &"{fleet.squadrons.len} squadrons remain")
 
   state.fleets[order.fleetId] = fleet
 
@@ -720,26 +734,38 @@ proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], e
       # Auto-load empty transports if colony has inventory
       var colony = state.colonies[systemId]
       var fleet = state.fleets[fleetId]
-      var modifiedShips: seq[SpaceLiftShip] = @[]
       var modified = false
 
-      for ship in fleet.spaceLiftShips:
-        var mutableShip = ship
+      for squadron in fleet.squadrons.mitems:
+        # Only process Expansion/Auxiliary squadrons
+        if squadron.squadronType notin {SquadronType.Expansion, SquadronType.Auxiliary}:
+          continue
 
-        if ship.isCrippled or ship.cargo.cargoType != CargoType.None:
-          modifiedShips.add(mutableShip)
-          continue  # Skip crippled ships or ships already loaded
+        # Skip crippled ships
+        if squadron.flagship.isCrippled:
+          continue
+
+        # Skip ships already loaded
+        if squadron.flagship.cargo.isSome:
+          let cargo = squadron.flagship.cargo.get()
+          if cargo.cargoType != CargoType.None:
+            continue
 
         # Determine what cargo this ship can carry
-        case ship.shipClass
+        case squadron.flagship.shipClass
         of ShipClass.TroopTransport:
           # Auto-load marines if available (capacity from config)
           if colony.marines > 0:
-            let loadAmount = min(ship.cargo.capacity, colony.marines)
-            if mutableShip.loadCargo(CargoType.Marines, loadAmount):
-              colony.marines -= loadAmount
-              modified = true
-              logInfo(LogCategory.lcFleet, &"Auto-loaded {loadAmount} Marines onto {ship.id} at {systemId}")
+            let capacity = squadron.flagship.stats.carryLimit
+            let loadAmount = min(capacity, colony.marines)
+            squadron.flagship.cargo = some(ShipCargo(
+              cargoType: CargoType.Marines,
+              quantity: loadAmount,
+              capacity: capacity
+            ))
+            colony.marines -= loadAmount
+            modified = true
+            logInfo(LogCategory.lcFleet, &"Auto-loaded {loadAmount} Marines onto {squadron.id} at {systemId}")
 
         of ShipClass.ETAC:
           # Auto-load colonists if available (1 PTU commitment)
@@ -747,19 +773,21 @@ proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], e
           # Per config/population.toml [transfer_limits] min_source_pu_remaining = 1
           let minSoulsToKeep = 1_000_000  # 1 PU minimum
           if colony.souls > minSoulsToKeep + soulsPerPtu():
-            if mutableShip.loadCargo(CargoType.Colonists, 1):
-              colony.souls -= soulsPerPtu()
-              colony.population = colony.souls div 1_000_000
-              modified = true
-              logInfo(LogCategory.lcColonization, &"Auto-loaded 1 PTU onto {ship.id} at {systemId}")
+            let capacity = squadron.flagship.stats.carryLimit
+            squadron.flagship.cargo = some(ShipCargo(
+              cargoType: CargoType.Colonists,
+              quantity: 1,
+              capacity: capacity
+            ))
+            colony.souls -= soulsPerPtu()
+            colony.population = colony.souls div 1_000_000
+            modified = true
+            logInfo(LogCategory.lcColonization, &"Auto-loaded 1 PTU onto {squadron.id} at {systemId}")
 
         else:
           discard  # Other ship classes don't have spacelift capability
 
-        modifiedShips.add(mutableShip)
-
       # Write back modified state if any cargo was loaded
       if modified:
-        fleet.spaceLiftShips = modifiedShips
         state.fleets[fleetId] = fleet
         state.colonies[systemId] = colony

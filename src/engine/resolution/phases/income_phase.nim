@@ -423,15 +423,17 @@ proc resolveIncomePhase*(
 
     if colonies.len == 0:
       # No colonies - check if house has invasion capability
-      # (marines on transports)
+      # (marines on Auxiliary squadrons)
       var hasInvasionCapability = false
 
       for fleet in fleets:
-        for transport in fleet.spaceLiftShips:
-          if transport.cargo.cargoType == CargoType.Marines and
-             transport.cargo.quantity > 0:
-            hasInvasionCapability = true
-            break
+        for squadron in fleet.squadrons:
+          if squadron.squadronType == SquadronType.Auxiliary:
+            if squadron.flagship.cargo.isSome:
+              let cargo = squadron.flagship.cargo.get()
+              if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+                hasInvasionCapability = true
+                break
         if hasInvasionCapability:
           break
 

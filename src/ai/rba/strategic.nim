@@ -190,10 +190,13 @@ proc assessInvasionViability*(controller: AIController, filtered: FilteredGameSt
   result.defenderGroundForces = combat.groundForces + combat.groundBatteryCount
 
   var marineCount = 0
-  for spaceLiftShip in fleet.spaceLiftShips:
-    if spaceLiftShip.shipClass == ShipClass.TroopTransport and not spaceLiftShip.isCrippled:
-      if spaceLiftShip.cargo.cargoType == CargoType.Marines:
-        marineCount += spaceLiftShip.cargo.quantity
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Auxiliary:
+      if squadron.flagship.shipClass == ShipClass.TroopTransport and not squadron.flagship.isCrippled:
+        if squadron.flagship.cargo.isSome:
+          let cargo = squadron.flagship.cargo.get()
+          if cargo.cargoType == CargoType.Marines:
+            marineCount += cargo.quantity
 
   result.attackerGroundForces = marineCount
 

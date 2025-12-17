@@ -192,8 +192,8 @@ proc createVisibleFleet(fleet: Fleet, isOwned: bool, location: SystemId,
         break
   else:
     # Visual detection (fleet in same system as viewer's fleet)
-    # Count squadrons + spacelift ships for approximate ship count
-    result.estimatedShipCount = some(fleet.squadrons.len + fleet.spaceLiftShips.len)
+    # Count all squadrons (includes Combat, Intel, Expansion, Auxiliary)
+    result.estimatedShipCount = some(fleet.squadrons.len)
     result.detectedInSystem = some(location)
     result.intelTurn = some(currentTurn)
 

@@ -48,10 +48,15 @@ proc collectColonizationIntents*(
 
       let fleet = state.fleets[order.fleetId]
 
-      # Validate: fleet has colonists (PTUs)
-      let hasColonists = fleet.spaceLiftShips.anyIt(
-        it.cargo.cargoType == CargoType.Colonists and it.cargo.quantity > 0
-      )
+      # Validate: fleet has colonists (PTUs) in Expansion/Auxiliary squadron cargo
+      var hasColonists = false
+      for squadron in fleet.squadrons:
+        if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+          if squadron.flagship.cargo.isSome:
+            let cargo = squadron.flagship.cargo.get()
+            if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+              hasColonists = true
+              break
       if not hasColonists:
         continue
 
@@ -129,12 +134,17 @@ proc establishColony(
 
   var fleet = state.fleets[fleetId]
 
-  # Validate fleet has colonists
+  # Validate fleet has colonists in Expansion/Auxiliary squadron cargo
   var hasColonists = false
-  for ship in fleet.spaceLiftShips:
-    if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
-      hasColonists = true
-      break
+  var colonistSquadronIdx = -1
+  for idx, squadron in fleet.squadrons:
+    if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+      if squadron.flagship.cargo.isSome:
+        let cargo = squadron.flagship.cargo.get()
+        if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+          hasColonists = true
+          colonistSquadronIdx = idx
+          break
 
   if not hasColonists:
     logError(LogCategory.lcColonization, &"Fleet {fleetId} has no colonists")
@@ -149,11 +159,9 @@ proc establishColony(
           &"Fleet {fleetId} colonizing {planetClass} world with {resources} resources at {systemId}")
 
   # Get PTU quantity from ETAC cargo (one-time consumable: deposits all PTU)
-  var ptuToDeposit = 0
-  for ship in fleet.spaceLiftShips:
-    if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
-      ptuToDeposit = ship.cargo.quantity
-      break
+  let squadron = fleet.squadrons[colonistSquadronIdx]
+  let cargo = squadron.flagship.cargo.get()
+  let ptuToDeposit = cargo.quantity
 
   # Create ETAC colony with all PTU (foundation colony)
   let colony = createETACColony(systemId, houseId, planetClass, resources)
@@ -174,28 +182,32 @@ proc establishColony(
   # Add colony to state
   state.colonies[systemId] = colony
 
-  # Unload ALL PTU from ETAC (one-time consumable)
-  for ship in fleet.spaceLiftShips.mitems:
-    if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
-      let transferredPTU = ship.cargo.quantity
-      ship.cargo.quantity = 0
-      ship.cargo.cargoType = CargoType.None
-      logDebug(LogCategory.lcColonization,
-        &"ETAC {ship.id} transferred {transferredPTU} PTU to establish colony at {systemId} " &
-        &"(0 PTU remaining)")
+  # Unload ALL PTU from ETAC flagship (one-time consumable)
+  var etacSquadron = fleet.squadrons[colonistSquadronIdx]
+  let transferredPTU = ptuToDeposit
+  etacSquadron.flagship.cargo = some(ShipCargo(
+    cargoType: CargoType.None,
+    quantity: 0,
+    capacity: cargo.capacity
+  ))
+  logDebug(LogCategory.lcColonization,
+    &"ETAC squadron {etacSquadron.id} transferred {transferredPTU} PTU to establish colony at {systemId} " &
+    &"(0 PTU remaining)")
 
-  # ETAC cannibalized - remove from game, structure becomes colony infrastructure
-  for i in countdown(fleet.spaceLiftShips.high, 0):
-    let ship = fleet.spaceLiftShips[i]
-    if ship.shipClass == ShipClass.ETAC and ship.cargo.quantity == 0:
-      # ETAC cannibalized - ship structure becomes starting IU
-      fleet.spaceLiftShips.delete(i)
-      logInfo(LogCategory.lcEconomy,
-        &"ETAC {ship.id} cannibalized - structure became colony infrastructure at {systemId}")
+  # ETAC cannibalized - remove squadron from fleet, structure becomes colony infrastructure
+  if etacSquadron.flagship.shipClass == ShipClass.ETAC:
+    # Remove the squadron from fleet
+    var newSquadrons: seq[Squadron] = @[]
+    for idx, sq in fleet.squadrons:
+      if idx != colonistSquadronIdx:
+        newSquadrons.add(sq)
+    fleet.squadrons = newSquadrons
+    logInfo(LogCategory.lcEconomy,
+      &"ETAC squadron {etacSquadron.id} cannibalized - structure became colony infrastructure at {systemId}")
 
-  # Check if fleet is now empty (no squadrons, no spacelift ships)
+  # Check if fleet is now empty (no squadrons)
   # Empty fleets should be automatically cleaned up to avoid maintenance waste
-  if fleet.squadrons.len == 0 and fleet.spaceLiftShips.len == 0:
+  if fleet.squadrons.len == 0:
     # Fleet is empty - remove it and cleanup associated orders
     state.fleets.del(fleetId)
     if fleetId in state.fleetOrders:
