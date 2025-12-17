@@ -60,7 +60,12 @@ proc analyzeColonyIntelligence*(
     # Calculate economic value (grossOutput + industry production equivalent)
     let grossOutput = report.grossOutput.get(0)  # Default to 0 if unknown
     let industryValue = report.industry * 100  # Each IU worth ~100 PP/turn
-    let economicValue = grossOutput + industryValue
+    var economicValue = grossOutput + industryValue
+
+    # Use population as fallback estimate if economic data is missing
+    # Assume each PTU generates ~5 PP/turn (conservative estimate)
+    if economicValue == 0 and report.population > 0:
+      economicValue = report.population * 5
 
     # Calculate defense strength
     let groundDefenses = report.defenses * 10  # Each ground unit worth ~10 points
@@ -82,43 +87,45 @@ proc analyzeColonyIntelligence*(
       ))
 
     # Vulnerability assessment: weak defenses relative to value
-    if economicValue > 0:
-      let defenseRatio = totalDefenseStrength.float / economicValue.float
+    # Use minimum value of 1 to avoid division by zero and ensure all colonies
+    # are evaluated (even those with no economic intel)
+    let effectiveValue = max(economicValue, 1)
+    let defenseRatio = totalDefenseStrength.float / effectiveValue.float
 
-      # Log ALL candidate evaluations for diagnostic visibility
+    # Log ALL candidate evaluations for diagnostic visibility
+    logDebug(LogCategory.lcAI,
+      &"{filtered.viewingHouse} Colony Analyzer: Evaluating system {systemId} " &
+      &"(owner: {report.targetOwner}) - value={economicValue}, " &
+      &"defenses={totalDefenseStrength}, ratio={defenseRatio:.2f}")
+
+    if defenseRatio < config.vulnerability_defense_ratio_threshold:
+      logInfo(LogCategory.lcAI,
+        &"{filtered.viewingHouse} Colony Analyzer: TARGET IDENTIFIED - {systemId}")
+      # Vulnerable: weak defenses for its value
+      let distance = findNearestOwnColony(systemId, filtered.ownColonies, filtered.starMap)
+
+      # Estimate force required (defenses + buffer)
+      let requiredForce = totalDefenseStrength + (totalDefenseStrength div 2)  # 1.5x defenses
+
+      # Calculate vulnerability score (0.0-1.0, higher = more vulnerable)
+      let vulnerabilityScore = 1.0 - defenseRatio / config.vulnerability_defense_ratio_threshold
+
+      result.vulnerableTargets.add(InvasionOpportunity(
+        systemId: systemId,
+        owner: report.targetOwner,
+        vulnerability: min(vulnerabilityScore, 1.0),
+        estimatedDefenses: totalDefenseStrength,
+        estimatedValue: economicValue,
+        requiredForce: requiredForce,
+        distance: distance,
+        lastIntelTurn: report.gatheredTurn,
+        intelQuality: report.quality
+      ))
+    else:
       logDebug(LogCategory.lcAI,
-        &"{filtered.viewingHouse} Colony Analyzer: Evaluating system {systemId} " &
-        &"(owner: {report.targetOwner}) - value={economicValue}, " &
-        &"defenses={totalDefenseStrength}, ratio={defenseRatio:.2f}")
-
-      if defenseRatio < config.vulnerability_defense_ratio_threshold:
-        logInfo(LogCategory.lcAI,
-          &"{filtered.viewingHouse} Colony Analyzer: TARGET IDENTIFIED - {systemId}")
-        # Vulnerable: weak defenses for its value
-        let distance = findNearestOwnColony(systemId, filtered.ownColonies, filtered.starMap)
-
-        # Estimate force required (defenses + buffer)
-        let requiredForce = totalDefenseStrength + (totalDefenseStrength div 2)  # 1.5x defenses
-
-        # Calculate vulnerability score (0.0-1.0, higher = more vulnerable)
-        let vulnerabilityScore = 1.0 - defenseRatio / config.vulnerability_defense_ratio_threshold
-
-        result.vulnerableTargets.add(InvasionOpportunity(
-          systemId: systemId,
-          owner: report.targetOwner,
-          vulnerability: min(vulnerabilityScore, 1.0),
-          estimatedDefenses: totalDefenseStrength,
-          estimatedValue: economicValue,
-          requiredForce: requiredForce,
-          distance: distance,
-          lastIntelTurn: report.gatheredTurn,
-          intelQuality: report.quality
-        ))
-      else:
-        logDebug(LogCategory.lcAI,
-          &"{filtered.viewingHouse} Colony Analyzer: REJECTED - defenses too " &
-          &"strong (ratio {defenseRatio:.2f} >= threshold " &
-          &"{config.vulnerability_defense_ratio_threshold})")
+        &"{filtered.viewingHouse} Colony Analyzer: REJECTED - defenses too " &
+        &"strong (ratio {defenseRatio:.2f} >= threshold " &
+        &"{config.vulnerability_defense_ratio_threshold})")
 
   # Sort vulnerable targets by vulnerability score (most vulnerable first)
   result.vulnerableTargets.sort(proc(a, b: InvasionOpportunity): int =

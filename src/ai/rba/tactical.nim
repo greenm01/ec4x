@@ -31,8 +31,8 @@ proc getOwnedColonies*(filtered: FilteredGameState, houseId: HouseId): seq[Colon
 # getColony - moved to intelligence.nim to avoid duplication
 
 proc isSingleScoutSquadron*(squadron: Squadron): bool =
-  ## Check if squadron is a single scout (ideal for espionage)
-  result = squadron.flagship.shipClass == ShipClass.Scout and squadron.ships.len == 0
+  ## Check if squadron is a single Intel squadron (ideal for espionage)
+  result = squadron.squadronType == SquadronType.Intel and squadron.ships.len == 0
 
 # =============================================================================
 # Fleet Coordination

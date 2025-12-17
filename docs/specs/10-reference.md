@@ -12,37 +12,69 @@ DS = Defensive Strength
 CC= Command Cost
 CR = Command Rating
 CL = Carry Limit
-Role = Ship operational classification (Escort/Capital/Auxiliary/SpecialWeapon/Fighter)
 
-| Class | Name              | Role          | CST | PC  | MC  | AS  | DS  | CC  | CR  | CL  |
-|:-----:| ----------------- | ------------- |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| CT    | Corvette          | Escort        | 1   | 20  | 3%  | 2   | 3   | 1   | 2   | NA  |
-| FG    | Frigate           | Escort        | 1   | 30  | 3%  | 3   | 4   | 2   | 3   | NA  |
-| DD    | Destroyer         | Escort        | 1   | 40  | 5%  | 5   | 6   | 2   | 4   | NA  |
-| CL    | Light Cruiser     | Escort        | 1   | 60  | 3%  | 8   | 9   | 3   | 6   | NA  |
-| CA    | Heavy Cruiser     | Capital       | 2   | 80  | 5%  | 12  | 13  | 3   | 7   | NA  |
-| BC    | Battle Cruiser    | Capital       | 3   | 100 | 4%  | 16  | 18  | 3   | 8   | NA  |
-| BB    | Battleship        | Capital       | 4   | 150 | 4%  | 20  | 25  | 3   | 10  | NA  |
-| DN    | Dreadnought       | Capital       | 5   | 200 | 5%  | 28  | 30  | 4   | 12  | NA  |
-| SD    | Super Dreadnought | Capital       | 6   | 250 | 5%  | 35  | 40  | 5   | 14  | NA  |
-| PB    | Planet-Breaker    | SpecialWeapon | 10  | 400 | 5%  | 50  | 20  | 6   | 6   | NA  |
-| CV    | Carrier           | Capital       | 3   | 120 | 3%  | 5   | 18  | 3   | 8   | 3   |
-| CX    | Super Carrier     | Capital       | 5   | 200 | 5%  | 8   | 25  | 4   | 10  | 5   |
-| FS    | Fighter Squadron  | Fighter       | 1   | 20  | 5%  | 4   | 3   | NA  | NA  | NA  |
-| RR    | Raider            | Capital       | 3   | 150 | 4%  | 12  | 10  | 2   | 8   | NA  |
-| SC    | Scout             | Auxiliary     | 1   | 50  | 2%  | 1   | 2   | NA  | NA  | NA  |
+### Escort Ships (CR < 7)
+
+Combat-capable ships that can join squadrons as escorts. Count toward total squadron limit.
+
+| Class | Name          | CST | PC | MC  | AS | DS | CC | CR |
+|:-----:| ------------- |:---:|:--:|:---:|:--:|:--:|:--:|:--:|
+| CT    | Corvette      | 1   | 20 | 3%  | 2  | 3  | 1  | 2  |
+| FG    | Frigate       | 1   | 30 | 3%  | 3  | 4  | 2  | 3  |
+| DD    | Destroyer     | 1   | 40 | 5%  | 5  | 6  | 2  | 4  |
+| CL    | Light Cruiser | 1   | 60 | 3%  | 8  | 9  | 3  | 6  |
+
+### Capital Ships (CR >= 7)
+
+Flagship-capable ships that lead squadrons. Subject to both capital squadron limits AND total squadron limits.
+
+| Class | Name              | CST | PC  | MC  | AS | DS | CC | CR | CL |
+|:-----:| ----------------- |:---:|:---:|:---:|:--:|:--:|:--:|:--:|:--:|
+| CA    | Heavy Cruiser     | 2   | 80  | 5%  | 12 | 13 | 3  | 7  | —  |
+| BC    | Battle Cruiser    | 3   | 100 | 4%  | 16 | 18 | 3  | 8  | —  |
+| BB    | Battleship        | 4   | 150 | 4%  | 20 | 25 | 3  | 10 | —  |
+| DN    | Dreadnought       | 5   | 200 | 5%  | 28 | 30 | 4  | 12 | —  |
+| SD    | Super Dreadnought | 6   | 250 | 5%  | 35 | 40 | 5  | 14 | —  |
+| CV    | Carrier           | 3   | 120 | 3%  | 5  | 18 | 3  | 8  | 3  |
+| CX    | Super Carrier     | 5   | 200 | 5%  | 8  | 25 | 4  | 10 | 5  |
+| RR    | Raider            | 3   | 150 | 4%  | 12 | 10 | 2  | 8  | —  |
+
+### Auxiliary Ships
+
+Non-combat support ships. Do not count toward squadron limits. Form Intel/Expansion/Auxiliary squadrons.
+
+| Class | Name  | CST | PC | MC  | AS | DS | Notes                                      |
+|:-----:| ----- |:---:|:--:|:---:|:--:|:--:| ------------------------------------------ |
+| SC    | Scout | 1   | 50 | 2%  | 1  | 2  | Intel operations, never joins combat       |
+| ET    | ETAC  | 1   | 25 | 3%  | —  | 10 | Colonization (CL=1), starts with 3 PTU     |
+| TT    | Troop | 1   | 30 | 3%  | —  | 15 | Planetary invasion (CL=1), carries marines |
+
+### Fighter Squadrons
+
+Embarked strike craft with per-colony capacity limits. Cannot join fleets, stay at colonies or load on carriers.
+
+| Class | Name             | CST | PC | MC  | AS | DS | Notes                           |
+|:-----:| ---------------- |:---:|:--:|:---:|:--:|:--:| ------------------------------- |
+| FS    | Fighter Squadron | 1   | 20 | 5%  | 4  | 3  | Colony-based or carrier-embarked |
+
+### Special Weapons
+
+Unique strategic units with special capacity rules.
+
+| Class | Name           | CST | PC  | MC  | AS | DS | CC | CR | Notes                        |
+|:-----:| -------------- |:---:|:---:|:---:|:--:|:--:|:--:|:--:| ---------------------------- |
+| PB    | Planet-Breaker | 10  | 400 | 5%  | 50 | 20 | 6  | 6  | Max 1 per owned colony       |
 
 *Source: config/ships.toml*
 
 **Note:** Starbases are **facilities** (not ships) and are documented in [Section 2.4.4](02-assets.md#244-starbases). They are built via the Colony pipeline and stored at colonies, never assigned to fleets or squadrons.
 
-**Ship Role Classifications:**
-
-- **Escort**: Combat-capable ships with CR < 7. Not individually capacity-limited, but count toward total squadron limit.
-- **Capital**: Flagship-capable ships with CR >= 7. Subject to both capital squadron limits AND total squadron limits.
-- **Auxiliary**: Non-combat support ships (ETAC, Troop Transports, Scouts). Do not count toward squadron limits.
-- **SpecialWeapon**: Unique strategic units (Planet-Breakers) with special capacity rules.
-- **Fighter**: Embarked strike craft with per-colony capacity limits.
+**Squadron Type Mapping:**
+- **Combat Squadrons**: Escort + Capital ships (participate in combat)
+- **Intel Squadrons**: Scout only (intelligence operations, never mix with combat)
+- **Auxiliary Squadrons**: Troop Transports (invasion support, screened in combat)
+- **Expansion Squadrons**: ETACs (colonization, screened in combat)
+- **Fighter Squadrons**: Fighters (planetary defense, carrier-based)
 
 <!-- SPACE_FORCE_TABLE_END -->
 
@@ -125,19 +157,6 @@ Orbital facilities are infrastructure built at colonies that provide combat, eco
 *Source: config/facilities.toml*
 
 <!-- CONSTRUCTION_FACILITIES_TABLE_END -->
-
-## 10.5 Spacelift Command (WEP1)
-
-<!-- SPACELIFT_TABLE_START -->
-
-| **Class** | **Name**         | CST | PC  | MC  | CL  | DS  |
-|:---------:| ---------------- |:---:|:---:|:---:|:---:|:---:|
-| ET        | ETAC             | 1   | 25  | 3%  | 1   | 10  |
-| TT        | Troop Transports | 1   | 30  | 3%  | 1   | 15  |
-
-*Source: config/ships.toml*
-
-<!-- SPACELIFT_TABLE_END -->
 
 ## 10.4 Prestige
 

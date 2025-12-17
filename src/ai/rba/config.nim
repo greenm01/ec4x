@@ -552,6 +552,9 @@ type
     req_ebp_economic_manipulation*: int
     req_ebp_cyber_attack*: int
     req_ebp_assassination*: int
+    req_ebp_intel_gathering*: int
+    # Intel freshness
+    intel_freshness_threshold*: int
     # Cost estimates
     cost_sabotage*: int
     cost_intelligence_theft*: int
@@ -560,6 +563,7 @@ type
     cost_cyber_attack*: int
     cost_assassination*: int
     cost_counter_intel_sweep*: int
+    cost_spy_mission*: int
     # Personality thresholds
     aggression_secondary_sabotage*: float
     aggression_disinformation*: float

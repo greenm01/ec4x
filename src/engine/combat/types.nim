@@ -10,7 +10,7 @@ import ../../common/types/[core, units, combat as commonCombat, diplomacy]
 import ../squadron, ../fleet
 
 export HouseId, SystemId, FleetId, SquadronId
-export Squadron, EnhancedShip, ShipClass
+export Squadron, Ship, ShipClass
 export commonCombat.CombatState  # Use existing CombatState from common
 export diplomacy.DiplomaticState
 export fleet.FleetStatus

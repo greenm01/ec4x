@@ -687,6 +687,8 @@ proc generateEspionageRequirements*(
       result.totalEstimatedCost += cfg.cost_assassination
 
   # === Scout Requirements and Deployment ===
+  # NOTE: SpyOnPlanet missions are generated in reconnaissance/deployment.nim
+  # as part of generateScoutOrders(), not as espionage requirements
   # Drungarius owns scout pipeline: identify needs → build scouts → deploy
   # scouts
   logInfo(LogCategory.lcAI,

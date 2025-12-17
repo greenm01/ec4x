@@ -10,23 +10,13 @@
 
 import ../common/types/[core, units]
 import config/military_config
-import squadron  # For getShipStats
+import squadron  # For getShipStats, CargoType, ShipCargo
 
 export HouseId, SystemId, ShipClass
+export CargoType, ShipCargo  # Re-export from squadron
 
 type
-  CargoType* {.pure.} = enum
-    ## Type of cargo loaded on spacelift ship
-    None,
-    Marines,      # Marine Division (MD) - TroopTransport
-    Colonists,    # Population Transfer Unit (PTU) - ETAC
-    Supplies      # Generic cargo (future use)
-
-  SpaceLiftCargo* = object
-    ## Cargo loaded on spacelift ship
-    cargoType*: CargoType
-    quantity*: int          # Number of units loaded (0 = empty)
-    capacity*: int          # Maximum capacity (CL = Carry Limit)
+  SpaceLiftCargo* = ShipCargo  # Alias for backward compatibility
 
   SpaceLiftShip* = object
     ## Individual spacelift unit (NOT a squadron)
@@ -36,7 +26,7 @@ type
     owner*: HouseId
     location*: SystemId
     isCrippled*: bool
-    cargo*: SpaceLiftCargo  # What's loaded (marines, colonists, supplies)
+    cargo*: ShipCargo       # What's loaded (marines, colonists, supplies)
 
 proc newSpaceLiftShip*(id: string, shipClass: ShipClass, owner: HouseId,
                        location: SystemId): SpaceLiftShip =
@@ -57,7 +47,7 @@ proc newSpaceLiftShip*(id: string, shipClass: ShipClass, owner: HouseId,
     owner: owner,
     location: location,
     isCrippled: false,
-    cargo: SpaceLiftCargo(
+    cargo: ShipCargo(
       cargoType: CargoType.None,
       quantity: 0,
       capacity: capacity

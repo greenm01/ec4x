@@ -19,12 +19,12 @@ export CombatSquadron, TaskForce
 ## and can counter cloaked raiders during pre-combat detection.
 
 proc hasStarbaseDetection*(taskForce: TaskForce): bool =
-  ## Check if task force contains a starbase for enhanced detection
+  ## Check if task force has starbase facilities for enhanced detection
   ## Starbases provide ELI+2 modifier for detection rolls
-  for squadron in taskForce.squadrons:
-    if squadron.squadron.flagship.shipClass == ShipClass.Starbase:
-      return true
-  return false
+  ##
+  ## NOTE: Starbases are facilities (not squadrons), loaded from colony.starbases
+  ## into TaskForce.facilities during combat initialization
+  return taskForce.facilities.len > 0
 
 proc getStarbaseDetectionBonus*(taskForce: TaskForce): int =
   ## Get detection bonus from starbases in task force

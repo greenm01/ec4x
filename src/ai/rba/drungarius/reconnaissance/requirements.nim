@@ -8,7 +8,7 @@
 
 import std/[strformat, options, sequtils, tables]
 import ../../../../common/types/[core, units]
-import ../../../../engine/[gamestate, fog_of_war, logger]
+import ../../../../engine/[gamestate, fog_of_war, logger, squadron]
 import ../../../../engine/economy/config_accessors
 import ../../../common/types as ai_common_types
 import ../../[controller_types, config]
@@ -30,11 +30,11 @@ proc assessScoutGaps*(
   ## Returns build requirements for scouts to close intelligence gaps
   result = @[]
 
-  # Count current scouts across all fleets
+  # Count current Intel squadrons across all fleets
   var scoutCount = 0
   for fleet in filtered.ownFleets:
     scoutCount += fleet.squadrons.countIt(
-      it.flagship.shipClass == ShipClass.Scout
+      it.squadronType == SquadronType.Intel
     )
 
   # Intelligence-driven targeting

@@ -19,32 +19,23 @@ type
     hasCombatShips*: bool
     location*: SystemId
 
-proc isScoutFleet*(fleet: Fleet): bool =
-  ## Check if fleet is exclusively scouts (reserved for Drungarius)
+proc isIntelFleet*(fleet: Fleet): bool =
+  ## Check if fleet is exclusively Intel squadrons (reserved for Drungarius)
   ##
-  ## Returns true if fleet contains ONLY Scout-class squadrons.
-  ## Mixed fleets (scouts + combat ships) return false - Domestikos can use
-  ## them.
+  ## Returns true if fleet contains ONLY Intel-type squadrons.
+  ## Mixed fleets (intel + combat) return false - Domestikos can use them.
   ##
-  ## This filter ensures scouts are managed by Drungarius (Intelligence
+  ## This filter ensures Intel squadrons are managed by Drungarius (Intelligence
   ## Advisor) for reconnaissance missions, not assigned to combat/patrol/merge
   ## operations by Domestikos (Military Advisor).
-  var hasScouts = false
-  var hasCombatShips = false
+  if fleet.squadrons.len == 0:
+    return false
 
   for squadron in fleet.squadrons:
-    case squadron.flagship.shipClass
-    of ShipClass.Scout:
-      hasScouts = true
-    of ShipClass.Destroyer, ShipClass.Cruiser, ShipClass.Battleship,
-       ShipClass.Carrier, ShipClass.Dreadnought, ShipClass.Battlecruiser,
-       ShipClass.HeavyCruiser, ShipClass.LightCruiser,
-       ShipClass.SuperDreadnought, ShipClass.SuperCarrier:
-      hasCombatShips = true
-    else:
-      discard  # ETACs, Raiders, Transports, etc.
+    if squadron.squadronType != SquadronType.Intel:
+      return false
 
-  return hasScouts and not hasCombatShips
+  return true
 
 proc analyzeFleetUtilization*(
   filtered: FilteredGameState,
@@ -71,16 +62,19 @@ proc analyzeFleetUtilization*(
       location: fleet.location
     )
 
-    # Count ships and categorize
+    # Count ships and categorize by squadron type
     for squadron in fleet.squadrons:
       analysis.shipCount += 1
-      case squadron.flagship.shipClass
-      of ShipClass.Scout:
-        analysis.hasScouts = true
-      of ShipClass.ETAC:
-        analysis.hasETACs = true
-      else:
+      case squadron.squadronType
+      of SquadronType.Intel:
+        analysis.hasScouts = true  # Intel squadrons (scouts)
+      of SquadronType.Expansion:
+        analysis.hasETACs = true  # Expansion squadrons (ETACs)
+      of SquadronType.Combat, SquadronType.Auxiliary:
         analysis.hasCombatShips = true
+      of SquadronType.Fighter:
+        # Fighters stay at colonies, shouldn't be in fleets
+        discard
 
     # CRITICAL FIX: Check spaceLiftShips for ETACs (they're not squadrons!)
     # ETACs are civilian colonization vessels, not military squadrons
