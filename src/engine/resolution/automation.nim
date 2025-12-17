@@ -284,6 +284,13 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
       if fleet.status != FleetStatus.Active:
         continue
 
+      # CRITICAL: Respect autoBalanceSquadrons flag
+      # Scouts and other specialized fleets set this to false to prevent mixing
+      if not fleet.autoBalanceSquadrons:
+        logDebug(LogCategory.lcFleet,
+          &"Fleet {fleetId} excluded from auto-balance (autoBalanceSquadrons=false)")
+        continue
+
       # Check if fleet is stationary (Hold/Guard or no orders)
       var isStationary = true
 
