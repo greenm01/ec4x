@@ -180,7 +180,7 @@ type
 
     # Squadrons awaiting fleet assignment (auto-commissioned from construction)
     unassignedSquadrons*: seq[Squadron]          # Combat squadrons at colony, not in any fleet
-    unassignedSpaceLiftShips*: seq[SpaceLiftShip] # ARCHITECTURE FIX: Spacelift ships separate
+    unassignedSpaceLiftShips*: seq[SpaceLiftShip] # DEPRECATED: Use unassignedSquadrons with SquadronType.Expansion/Auxiliary
     # NOTE: Auto-assignment is ALWAYS enabled (see docs/architecture/standing-orders.md for rationale)
 
     # Fighter squadrons (assets.md:2.4.1)

@@ -31,7 +31,7 @@ type
     ## A collection of squadrons and spacelift ships that move together
     id*: FleetId                       # Unique fleet identifier
     squadrons*: seq[Squadron]          # Combat squadrons ONLY
-    spaceLiftShips*: seq[SpaceLiftShip] # Spacelift ships (separate)
+    spaceLiftShips*: seq[SpaceLiftShip] # DEPRECATED: Use squadrons with SquadronType.Expansion/Auxiliary
     owner*: HouseId                    # House that owns this fleet
     location*: SystemId                # Current system location
     status*: FleetStatus               # Operational status (active/reserve/mothballed)
