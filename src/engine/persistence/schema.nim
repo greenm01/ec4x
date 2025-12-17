@@ -222,6 +222,19 @@ CREATE TABLE IF NOT EXISTS diagnostics (
   invasion_orders_blitz INTEGER NOT NULL,
   invasion_orders_canceled INTEGER NOT NULL,
 
+  -- Invasion Attempt Tracking (11 columns - from game events)
+  invasion_attempts_total INTEGER NOT NULL DEFAULT 0,
+  invasion_attempts_successful INTEGER NOT NULL DEFAULT 0,
+  invasion_attempts_failed INTEGER NOT NULL DEFAULT 0,
+  invasion_orders_rejected INTEGER NOT NULL DEFAULT 0,
+  blitz_attempts_total INTEGER NOT NULL DEFAULT 0,
+  blitz_attempts_successful INTEGER NOT NULL DEFAULT 0,
+  blitz_attempts_failed INTEGER NOT NULL DEFAULT 0,
+  bombardment_attempts_total INTEGER NOT NULL DEFAULT 0,
+  bombardment_orders_failed INTEGER NOT NULL DEFAULT 0,
+  invasion_marines_killed INTEGER NOT NULL DEFAULT 0,
+  invasion_defenders_killed INTEGER NOT NULL DEFAULT 0,
+
   -- Colonization (1 column)
   colonize_orders_generated INTEGER NOT NULL,
 
