@@ -131,6 +131,28 @@ proc validateOrderAtExecution(
           reason: "Fleets no longer in same location"
         )
 
+      # Check squadron type compatibility (Intel cannot mix with non-Intel)
+      let sourceHasIntel = fleet.squadrons.anyIt(it.squadronType == SquadronType.Intel)
+      let sourceHasNonIntel = fleet.squadrons.anyIt(it.squadronType != SquadronType.Intel)
+      let targetHasIntel = targetFleet.squadrons.anyIt(it.squadronType == SquadronType.Intel)
+      let targetHasNonIntel = targetFleet.squadrons.anyIt(it.squadronType != SquadronType.Intel)
+
+      # Intel squadrons cannot join non-Intel fleets
+      if sourceHasIntel and targetHasNonIntel:
+        return ExecutionValidationResult(
+          valid: false,
+          shouldAbort: false,
+          reason: "Cannot join Intel squadron to fleet with non-Intel squadrons"
+        )
+
+      # Non-Intel squadrons cannot join Intel fleets
+      if sourceHasNonIntel and targetHasIntel:
+        return ExecutionValidationResult(
+          valid: false,
+          shouldAbort: false,
+          reason: "Cannot join non-Intel squadron to Intel-only fleet"
+        )
+
   of FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase:
     # Check fleet is still Intel-only (no combat/other squadrons added)
     let hasIntel = fleet.squadrons.anyIt(it.squadronType == SquadronType.Intel)
