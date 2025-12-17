@@ -18,8 +18,9 @@
 import ../[gamestate, fleet, squadron, spacelift, logger]
 import ../../common/types/core
 import ../config/population_config  # For population config (soulsPerPtu, ptuSizeMillions)
+import ../economy/capacity/carrier_hangar  # For carrier capacity checks
 import ../resolution/[event_factory/init as event_factory, types as resolution_types]
-import std/[options, algorithm, tables, strformat]
+import std/[options, algorithm, tables, strformat, sequtils]
 
 # ============================================================================
 # Type Definitions
@@ -39,6 +40,11 @@ type
     # Cargo operations (from CargoManagementOrder)
     LoadCargo          ## Load marines/colonists onto spacelift ships
     UnloadCargo        ## Unload cargo from spacelift ships
+
+    # Fighter operations (from FighterManagementOrder)
+    LoadFighters       ## Load fighter squadrons from colony to carrier
+    UnloadFighters     ## Unload fighter squadrons from carrier to colony
+    TransferFighters   ## Transfer fighter squadrons between carriers
 
     # Squadron operations (from SquadronManagementOrder)
     FormSquadron       ## Create squadron from commissioned ships pool
@@ -68,6 +74,13 @@ type
     cargoType*: Option[CargoType]        ## Type: Marines, Colonists
     cargoQuantity*: Option[int]          ## Amount to load/unload (0 = all available)
 
+    # Fighter-specific
+    fighterSquadronIndices*: seq[int]           ## Colony fighter squadron indices (for LoadFighters)
+    carrierSquadronId*: Option[string]          ## Carrier squadron ID (for Load/Unload)
+    embarkedFighterIndices*: seq[int]           ## Embarked fighter indices (for Unload/Transfer)
+    sourceCarrierSquadronId*: Option[string]    ## Source carrier (for TransferFighters)
+    targetCarrierSquadronId*: Option[string]    ## Target carrier (for TransferFighters)
+
     # Squadron formation
     newSquadronId*: Option[string]       ## Custom squadron ID for FormSquadron
     newFleetId*: Option[FleetId]         ## Custom fleet ID for DetachShips/AssignSquadronToFleet
@@ -82,6 +95,9 @@ type
     newSquadronId*: Option[string]       ## For FormSquadron
     cargoLoaded*: int                    ## For LoadCargo (actual amount loaded)
     cargoUnloaded*: int                  ## For UnloadCargo (actual amount unloaded)
+    fightersLoaded*: int                 ## For LoadFighters (squadrons loaded)
+    fightersUnloaded*: int               ## For UnloadFighters (squadrons unloaded)
+    fightersTransferred*: int            ## For TransferFighters (squadrons transferred)
     warnings*: seq[string]               ## Non-fatal issues
 
   ValidationResult* = object
@@ -183,10 +199,11 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
   if not result.valid:
     return result
 
-  # Layer 2: Fleet operations validation
+  # Layer 2: Fleet operations validation (requires colony)
   if cmd.commandType in {ZeroTurnCommandType.DetachShips, ZeroTurnCommandType.TransferShips,
                          ZeroTurnCommandType.MergeFleets, ZeroTurnCommandType.LoadCargo,
-                         ZeroTurnCommandType.UnloadCargo}:
+                         ZeroTurnCommandType.UnloadCargo, ZeroTurnCommandType.LoadFighters,
+                         ZeroTurnCommandType.UnloadFighters}:
     if cmd.sourceFleetId.isNone:
       return ValidationResult(valid: false, error: "Source fleet ID required")
 
@@ -283,6 +300,41 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
     if cmd.commandType == ZeroTurnCommandType.LoadCargo:
       if cmd.cargoType.isNone:
         return ValidationResult(valid: false, error: "Cargo type required for LoadCargo")
+
+  of ZeroTurnCommandType.LoadFighters:
+    # Validate carrier squadron ID
+    if cmd.carrierSquadronId.isNone:
+      return ValidationResult(valid: false, error: "Carrier squadron ID required")
+    # Validate at least one fighter squadron selected
+    if cmd.fighterSquadronIndices.len == 0:
+      return ValidationResult(valid: false, error: "Must select at least one fighter squadron to load")
+
+  of ZeroTurnCommandType.UnloadFighters:
+    # Validate carrier squadron ID
+    if cmd.carrierSquadronId.isNone:
+      return ValidationResult(valid: false, error: "Carrier squadron ID required")
+    # Validate at least one embarked fighter selected
+    if cmd.embarkedFighterIndices.len == 0:
+      return ValidationResult(valid: false, error: "Must select at least one embarked fighter to unload")
+
+  of ZeroTurnCommandType.TransferFighters:
+    # TransferFighters can happen anywhere (mobile operations)
+    # Validate source and target carrier squadron IDs
+    if cmd.sourceCarrierSquadronId.isNone:
+      return ValidationResult(valid: false, error: "Source carrier squadron ID required")
+    if cmd.targetCarrierSquadronId.isNone:
+      return ValidationResult(valid: false, error: "Target carrier squadron ID required")
+    if cmd.sourceCarrierSquadronId.get() == cmd.targetCarrierSquadronId.get():
+      return ValidationResult(valid: false, error: "Cannot transfer fighters to same carrier")
+    # Validate at least one embarked fighter selected
+    if cmd.embarkedFighterIndices.len == 0:
+      return ValidationResult(valid: false, error: "Must select at least one embarked fighter to transfer")
+    # Validate both carriers exist and are at same location
+    if cmd.sourceFleetId.isNone:
+      return ValidationResult(valid: false, error: "Source fleet ID required")
+    let sourceFleet = state.fleets[cmd.sourceFleetId.get()]
+    # Find both carriers and ensure they're in same fleet or adjacent fleets at same location
+    # (detailed validation in execute function)
 
   of ZeroTurnCommandType.FormSquadron:
     # Must specify ships from commissioned pool
@@ -989,6 +1041,34 @@ proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, e
           cargoUnloaded: 0,
           warnings: @[]
         )
+
+      # CRITICAL: Validate squadron type compatibility (Intel never mixes)
+      let squadronIsIntel = squadron.squadronType == SquadronType.Intel
+      let fleetHasIntel = targetFleet.squadrons.anyIt(it.squadronType == SquadronType.Intel)
+      let fleetHasNonIntel = targetFleet.squadrons.anyIt(it.squadronType != SquadronType.Intel)
+
+      if squadronIsIntel and fleetHasNonIntel:
+        return ZeroTurnResult(
+          success: false,
+          error: "Cannot assign Intel squadron to fleet with non-Intel squadrons (Intel operations require dedicated fleets)",
+          newFleetId: none(FleetId),
+          newSquadronId: none(string),
+          cargoLoaded: 0,
+          cargoUnloaded: 0,
+          warnings: @[]
+        )
+
+      if not squadronIsIntel and fleetHasIntel:
+        return ZeroTurnResult(
+          success: false,
+          error: "Cannot assign non-Intel squadron to Intel-only fleet (Intel operations require dedicated fleets)",
+          newFleetId: none(FleetId),
+          newSquadronId: none(string),
+          cargoLoaded: 0,
+          cargoUnloaded: 0,
+          warnings: @[]
+        )
+
       targetFleet.squadrons.add(squadron)
       state.fleets[targetId] = targetFleet
       resultFleetId = targetId
@@ -1030,6 +1110,287 @@ proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, e
     cargoLoaded: 0,
     cargoUnloaded: 0,
     warnings: @[]
+  )
+
+# ============================================================================
+# Execution - Fighter Operations
+# ============================================================================
+
+proc executeLoadFighters*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+  ## Load fighter squadrons from colony onto carrier
+  ## Requires: Fleet at friendly colony, carrier with available hangar space
+
+  let sourceFleetId = cmd.sourceFleetId.get()
+  var sourceFleet = state.fleets[sourceFleetId]
+  let systemId = sourceFleet.location
+  let carrierSquadronId = cmd.carrierSquadronId.get()
+
+  # Find carrier squadron in fleet
+  var carrierSquadronIdx = -1
+  for i, sq in sourceFleet.squadrons:
+    if sq.id == carrierSquadronId:
+      carrierSquadronIdx = i
+      break
+
+  if carrierSquadronIdx < 0:
+    return ZeroTurnResult(
+      success: false,
+      error: "Carrier squadron not found in fleet",
+      warnings: @[]
+    )
+
+  # Validate carrier
+  let carrierSquadron = sourceFleet.squadrons[carrierSquadronIdx]
+  if not carrierSquadron.isCarrier():
+    return ZeroTurnResult(
+      success: false,
+      error: "Squadron is not a carrier (CV/CX required)",
+      warnings: @[]
+    )
+
+  # Get colony
+  if systemId notin state.colonies:
+    return ZeroTurnResult(
+      success: false,
+      error: "No colony at fleet location",
+      warnings: @[]
+    )
+
+  var colony = state.colonies[systemId]
+
+  # Get ACO tech level for capacity calculation
+  let acoLevel = state.houses[cmd.houseId].techTree.levels.advancedCarrierOps
+  let maxCapacity = carrierSquadron.getCarrierCapacity(acoLevel)
+  let currentLoad = carrierSquadron.embarkedFighters.len
+
+  # Load fighters one at a time until capacity full or all requested loaded
+  var loadedCount = 0
+  var warnings: seq[string] = @[]
+
+  for fighterIdx in cmd.fighterSquadronIndices:
+    # Check capacity
+    if currentLoad + loadedCount >= maxCapacity:
+      warnings.add(&"Carrier at capacity ({maxCapacity} squadrons), remaining fighters not loaded")
+      break
+
+    # Validate fighter index
+    if fighterIdx < 0 or fighterIdx >= colony.fighterSquadrons.len:
+      warnings.add(&"Invalid fighter squadron index {fighterIdx}, skipping")
+      continue
+
+    # Load fighter
+    let fighterSquadron = colony.fighterSquadrons[fighterIdx]
+    sourceFleet.squadrons[carrierSquadronIdx].embarkedFighters.add(fighterSquadron)
+    colony.fighterSquadrons.delete(fighterIdx)
+    loadedCount += 1
+
+    let totalFighters = 1 + fighterSquadron.ships.len
+    logInfo(LogCategory.lcFleet,
+      &"Loaded Fighter squadron {fighterSquadron.id} ({totalFighters}/12) " &
+      &"onto carrier {carrierSquadronId} ({currentLoad + loadedCount}/{maxCapacity})")
+
+  # Write back
+  state.fleets[sourceFleetId] = sourceFleet
+  state.colonies[systemId] = colony
+
+  return ZeroTurnResult(
+    success: true,
+    error: "",
+    fightersLoaded: loadedCount,
+    warnings: warnings
+  )
+
+proc executeUnloadFighters*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+  ## Unload fighter squadrons from carrier to colony
+  ## Requires: Fleet at friendly colony
+
+  let sourceFleetId = cmd.sourceFleetId.get()
+  var sourceFleet = state.fleets[sourceFleetId]
+  let systemId = sourceFleet.location
+  let carrierSquadronId = cmd.carrierSquadronId.get()
+
+  # Find carrier squadron in fleet
+  var carrierSquadronIdx = -1
+  for i, sq in sourceFleet.squadrons:
+    if sq.id == carrierSquadronId:
+      carrierSquadronIdx = i
+      break
+
+  if carrierSquadronIdx < 0:
+    return ZeroTurnResult(
+      success: false,
+      error: "Carrier squadron not found in fleet",
+      warnings: @[]
+    )
+
+  # Get colony
+  if systemId notin state.colonies:
+    return ZeroTurnResult(
+      success: false,
+      error: "No colony at fleet location",
+      warnings: @[]
+    )
+
+  var colony = state.colonies[systemId]
+
+  # Unload fighters (reverse order to avoid index issues)
+  var unloadedCount = 0
+  var warnings: seq[string] = @[]
+  var sortedIndices = cmd.embarkedFighterIndices
+  sortedIndices.sort(system.cmp, order = SortOrder.Descending)
+
+  for fighterIdx in sortedIndices:
+    # Validate fighter index
+    if fighterIdx < 0 or fighterIdx >= sourceFleet.squadrons[carrierSquadronIdx].embarkedFighters.len:
+      warnings.add(&"Invalid embarked fighter index {fighterIdx}, skipping")
+      continue
+
+    # Unload fighter
+    let fighterSquadron = sourceFleet.squadrons[carrierSquadronIdx].embarkedFighters[fighterIdx]
+    colony.fighterSquadrons.add(fighterSquadron)
+    sourceFleet.squadrons[carrierSquadronIdx].embarkedFighters.delete(fighterIdx)
+    unloadedCount += 1
+
+    let totalFighters = 1 + fighterSquadron.ships.len
+    logInfo(LogCategory.lcFleet,
+      &"Unloaded Fighter squadron {fighterSquadron.id} ({totalFighters}/12) " &
+      &"from carrier {carrierSquadronId} to colony {systemId}")
+
+  # Write back
+  state.fleets[sourceFleetId] = sourceFleet
+  state.colonies[systemId] = colony
+
+  return ZeroTurnResult(
+    success: true,
+    error: "",
+    fightersUnloaded: unloadedCount,
+    warnings: warnings
+  )
+
+proc executeTransferFighters*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+  ## Transfer fighter squadrons between carriers (mobile operations)
+  ## Can happen anywhere - both carriers must be in same fleet or adjacent fleets at same location
+
+  let sourceFleetId = cmd.sourceFleetId.get()
+  let sourceCarrierSquadronId = cmd.sourceCarrierSquadronId.get()
+  let targetCarrierSquadronId = cmd.targetCarrierSquadronId.get()
+
+  # Find source carrier
+  var sourceFleet = state.fleets[sourceFleetId]
+  var sourceCarrierIdx = -1
+  for i, sq in sourceFleet.squadrons:
+    if sq.id == sourceCarrierSquadronId:
+      sourceCarrierIdx = i
+      break
+
+  if sourceCarrierIdx < 0:
+    return ZeroTurnResult(
+      success: false,
+      error: "Source carrier squadron not found",
+      warnings: @[]
+    )
+
+  # Find target carrier (could be in same fleet or different fleet at same location)
+  var targetFleet: Fleet
+  var targetFleetId: FleetId
+  var targetCarrierIdx = -1
+  var targetInSameFleet = false
+
+  # Check same fleet first
+  for i, sq in sourceFleet.squadrons:
+    if sq.id == targetCarrierSquadronId:
+      targetCarrierIdx = i
+      targetInSameFleet = true
+      targetFleet = sourceFleet
+      targetFleetId = sourceFleetId
+      break
+
+  # Check other fleets at same location
+  if targetCarrierIdx < 0:
+    for fid, fleet in state.fleets.mpairs:
+      if fleet.location == sourceFleet.location and fleet.owner == cmd.houseId:
+        for i, sq in fleet.squadrons:
+          if sq.id == targetCarrierSquadronId:
+            targetCarrierIdx = i
+            targetFleet = fleet
+            targetFleetId = fid
+            break
+        if targetCarrierIdx >= 0:
+          break
+
+  if targetCarrierIdx < 0:
+    return ZeroTurnResult(
+      success: false,
+      error: "Target carrier squadron not found at same location",
+      warnings: @[]
+    )
+
+  # Validate both are carriers
+  if not sourceFleet.squadrons[sourceCarrierIdx].isCarrier():
+    return ZeroTurnResult(
+      success: false,
+      error: "Source squadron is not a carrier",
+      warnings: @[]
+    )
+
+  if not targetFleet.squadrons[targetCarrierIdx].isCarrier():
+    return ZeroTurnResult(
+      success: false,
+      error: "Target squadron is not a carrier",
+      warnings: @[]
+    )
+
+  # Get ACO tech level for capacity calculation
+  let acoLevel = state.houses[cmd.houseId].techTree.levels.advancedCarrierOps
+  let targetMaxCapacity = targetFleet.squadrons[targetCarrierIdx].getCarrierCapacity(acoLevel)
+  let targetCurrentLoad = targetFleet.squadrons[targetCarrierIdx].embarkedFighters.len
+
+  # Transfer fighters (reverse order to avoid index issues)
+  var transferredCount = 0
+  var warnings: seq[string] = @[]
+  var sortedIndices = cmd.embarkedFighterIndices
+  sortedIndices.sort(system.cmp, order = SortOrder.Descending)
+
+  for fighterIdx in sortedIndices:
+    # Check target capacity
+    if targetCurrentLoad + transferredCount >= targetMaxCapacity:
+      warnings.add(&"Target carrier at capacity ({targetMaxCapacity} squadrons), remaining fighters not transferred")
+      break
+
+    # Validate fighter index
+    if fighterIdx < 0 or fighterIdx >= sourceFleet.squadrons[sourceCarrierIdx].embarkedFighters.len:
+      warnings.add(&"Invalid embarked fighter index {fighterIdx}, skipping")
+      continue
+
+    # Transfer fighter
+    let fighterSquadron = sourceFleet.squadrons[sourceCarrierIdx].embarkedFighters[fighterIdx]
+
+    if targetInSameFleet:
+      # Same fleet - direct transfer
+      sourceFleet.squadrons[targetCarrierIdx].embarkedFighters.add(fighterSquadron)
+      sourceFleet.squadrons[sourceCarrierIdx].embarkedFighters.delete(fighterIdx)
+    else:
+      # Different fleet - need to modify both
+      targetFleet.squadrons[targetCarrierIdx].embarkedFighters.add(fighterSquadron)
+      sourceFleet.squadrons[sourceCarrierIdx].embarkedFighters.delete(fighterIdx)
+
+    transferredCount += 1
+
+    let totalFighters = 1 + fighterSquadron.ships.len
+    logInfo(LogCategory.lcFleet,
+      &"Transferred Fighter squadron {fighterSquadron.id} ({totalFighters}/12) " &
+      &"from carrier {sourceCarrierSquadronId} to {targetCarrierSquadronId}")
+
+  # Write back
+  state.fleets[sourceFleetId] = sourceFleet
+  if not targetInSameFleet:
+    state.fleets[targetFleetId] = targetFleet
+
+  return ZeroTurnResult(
+    success: true,
+    error: "",
+    fightersTransferred: transferredCount,
+    warnings: warnings
   )
 
 # ============================================================================
@@ -1082,6 +1443,12 @@ proc submitZeroTurnCommand*(
     return executeLoadCargo(state, cmd, events)
   of ZeroTurnCommandType.UnloadCargo:
     return executeUnloadCargo(state, cmd, events)
+  of ZeroTurnCommandType.LoadFighters:
+    return executeLoadFighters(state, cmd, events)
+  of ZeroTurnCommandType.UnloadFighters:
+    return executeUnloadFighters(state, cmd, events)
+  of ZeroTurnCommandType.TransferFighters:
+    return executeTransferFighters(state, cmd, events)
   of ZeroTurnCommandType.FormSquadron:
     return executeFormSquadron(state, cmd, events)
   of ZeroTurnCommandType.TransferShipBetweenSquadrons:

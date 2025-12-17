@@ -16,30 +16,50 @@ export HouseId, FleetId, SystemId, SquadronId, ShipClass, ShipStats
 export units.ShipType  # Use ShipType from types/units, not ship
 
 type
-  EnhancedShip* = object
-    ## Enhanced ship with class and stats
+  SquadronType* {.pure.} = enum
+    ## Strategic role classification for squadrons
+    ## Determines fleet composition rules and combat participation
+    Combat      # Combat squadrons (capital ships + escorts)
+    Intel       # Intelligence squadrons (scouts, future intel assets)
+    Auxiliary   # Combat support (TT - planetary invasions)
+    Expansion   # Expansion operations (ETAC - colonization)
+    Fighter     # Fighter squadrons (planetary defense, carrier-based)
+
+  CargoType* {.pure.} = enum
+    ## Type of cargo loaded on transport ships
+    None,
+    Marines,      # Marine Division (MD) - TroopTransport
+    Colonists,    # Population Transfer Unit (PTU) - ETAC
+    Supplies      # Generic cargo (future use)
+
+  ShipCargo* = object
+    ## Cargo loaded on transport ships (ETAC/TT)
+    cargoType*: CargoType
+    quantity*: int          # Number of units loaded (0 = empty)
+    capacity*: int          # Maximum capacity (CL = Carry Limit)
+
+  Ship* = object
+    ## Ship representation (renamed from Ship for clarity)
+    ## Used for all ship types: combat, intel, expansion, auxiliary, fighter
     shipClass*: ShipClass
     shipType*: ShipType      # Military or Spacelift
     stats*: ShipStats
     isCrippled*: bool
     name*: string            # Optional ship name
-
-  CarrierFighter* = object
-    ## Fighter squadron embarked on carrier
-    id*: string                # Fighter squadron ID
-    commissionedTurn*: int     # When fighter was originally commissioned
+    cargo*: Option[ShipCargo]  # Cargo for ETAC/TT (Some), None for combat ships
 
   Squadron* = object
     ## A tactical unit of ships under flagship command
     id*: SquadronId
-    flagship*: EnhancedShip
-    ships*: seq[EnhancedShip]  # Ships under flagship command (excludes flagship)
+    flagship*: Ship  # Renamed from Ship
+    ships*: seq[Ship]  # Ships under flagship command (excludes flagship)
     owner*: HouseId
     location*: SystemId
     destroyed*: bool = false  # Set to true when squadron is destroyed in combat
+    squadronType*: SquadronType  # Strategic role classification (NEW)
 
     # Carrier fighter operations (assets.md:2.4.1.1)
-    embarkedFighters*: seq[CarrierFighter]  # Fighters aboard carriers (carrier-owned)
+    embarkedFighters*: seq[Squadron]  # Embarked fighter squadrons (Squadron.Fighter type)
 
   SquadronFormation* {.pure.} = enum
     ## Formation roles for squadrons in fleet
@@ -118,9 +138,24 @@ proc getShipStats*(shipClass: ShipClass, techLevel: int = 0, configPath: string 
     result.attackStrength = int(float(result.attackStrength) * weaponsMultiplier)
     result.defenseStrength = int(float(result.defenseStrength) * weaponsMultiplier)
 
+proc getSquadronType*(shipClass: ShipClass): SquadronType =
+  ## Determine squadron type from ship class
+  ## Used during commissioning and migration
+  case shipClass
+  of ShipClass.Scout:
+    Intel
+  of ShipClass.ETAC:
+    Expansion
+  of ShipClass.TroopTransport:
+    Auxiliary
+  of ShipClass.Fighter:
+    Fighter
+  else:
+    Combat
+
 ## Ship construction
 
-proc newEnhancedShip*(shipClass: ShipClass, techLevel: int = 0, name: string = ""): EnhancedShip =
+proc newEnhancedShip*(shipClass: ShipClass, techLevel: int = 0, name: string = ""): Ship =
   ## Create a new ship with stats
   let stats = getShipStats(shipClass, techLevel)
   let shipType = case shipClass
@@ -129,7 +164,7 @@ proc newEnhancedShip*(shipClass: ShipClass, techLevel: int = 0, name: string = "
     else:
       ShipType.Military
 
-  EnhancedShip(
+  Ship(
     shipClass: shipClass,
     shipType: shipType,
     stats: stats,
@@ -137,7 +172,7 @@ proc newEnhancedShip*(shipClass: ShipClass, techLevel: int = 0, name: string = "
     name: name
   )
 
-proc `$`*(ship: EnhancedShip): string =
+proc `$`*(ship: Ship): string =
   ## String representation of ship
   let status = if ship.isCrippled: " (crippled)" else: ""
   let name = if ship.name.len > 0: " \"" & ship.name & "\"" else: ""
@@ -145,7 +180,7 @@ proc `$`*(ship: EnhancedShip): string =
 
 ## Squadron construction
 
-proc newSquadron*(flagship: EnhancedShip, id: SquadronId = "",
+proc newSquadron*(flagship: Ship, id: SquadronId = "",
                   owner: HouseId = "", location: SystemId = 0): Squadron =
   ## Create a new squadron with flagship
   Squadron(
@@ -174,14 +209,14 @@ proc availableCommandCapacity*(sq: Squadron): int =
   ## Calculate remaining command capacity
   sq.flagship.stats.commandRating - sq.totalCommandCost()
 
-proc canAddShip*(sq: Squadron, ship: EnhancedShip): bool =
+proc canAddShip*(sq: Squadron, ship: Ship): bool =
   ## Check if ship can be added to squadron
   ## Ship's CC must not exceed available CR
   if ship.stats.commandCost > sq.availableCommandCapacity():
     return false
   return true
 
-proc addShip*(sq: var Squadron, ship: EnhancedShip): bool =
+proc addShip*(sq: var Squadron, ship: Ship): bool =
   ## Add ship to squadron if capacity allows
   ## Returns true on success, false if capacity exceeded
   if not sq.canAddShip(ship):
@@ -189,17 +224,17 @@ proc addShip*(sq: var Squadron, ship: EnhancedShip): bool =
   sq.ships.add(ship)
   return true
 
-proc removeShip*(sq: var Squadron, index: int): Option[EnhancedShip] =
+proc removeShip*(sq: var Squadron, index: int): Option[Ship] =
   ## Remove ship at index from squadron
   ## Returns removed ship, or none if invalid index
   if index < 0 or index >= sq.ships.len:
-    return none(EnhancedShip)
+    return none(Ship)
 
   let ship = sq.ships[index]
   sq.ships.delete(index)
   return some(ship)
 
-proc allShips*(sq: Squadron): seq[EnhancedShip] =
+proc allShips*(sq: Squadron): seq[Ship] =
   ## Get all ships including flagship
   result = @[sq.flagship]
   result.add(sq.ships)
@@ -261,23 +296,23 @@ proc crippleShip*(sq: var Squadron, index: int): bool =
 
 ## Squadron queries
 
-proc militaryShips*(sq: Squadron): seq[EnhancedShip] =
+proc militaryShips*(sq: Squadron): seq[Ship] =
   ## Get all military ships in squadron
   sq.allShips().filterIt(it.shipType == ShipType.Military)
 
-proc spaceliftShips*(sq: Squadron): seq[EnhancedShip] =
+proc spaceliftShips*(sq: Squadron): seq[Ship] =
   ## Get all spacelift ships in squadron
   sq.allShips().filterIt(it.shipType == ShipType.Spacelift)
 
-proc crippledShips*(sq: Squadron): seq[EnhancedShip] =
+proc crippledShips*(sq: Squadron): seq[Ship] =
   ## Get all crippled ships in squadron
   sq.allShips().filterIt(it.isCrippled)
 
-proc effectiveShips*(sq: Squadron): seq[EnhancedShip] =
+proc effectiveShips*(sq: Squadron): seq[Ship] =
   ## Get all non-crippled ships in squadron
   sq.allShips().filterIt(not it.isCrippled)
 
-proc scoutShips*(sq: Squadron): seq[EnhancedShip] =
+proc scoutShips*(sq: Squadron): seq[Ship] =
   ## Get all ships with ELI capability
   sq.allShips().filterIt(it.stats.specialCapability.startsWith("ELI"))
 
@@ -285,7 +320,7 @@ proc hasScouts*(sq: Squadron): bool =
   ## Check if squadron has any operational scouts
   sq.scoutShips().filterIt(not it.isCrippled).len > 0
 
-proc raiderShips*(sq: Squadron): seq[EnhancedShip] =
+proc raiderShips*(sq: Squadron): seq[Ship] =
   ## Get all ships with cloaking capability
   sq.allShips().filterIt(it.stats.specialCapability.startsWith("CLK"))
 
@@ -321,7 +356,7 @@ proc createSquadron*(
     else:
       ShipType.Military
 
-  let flagship = EnhancedShip(
+  let flagship = Ship(
     shipClass: shipClass,
     shipType: shipType,
     stats: getShipStats(shipClass, techLevel),

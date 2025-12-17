@@ -628,54 +628,86 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           logInfo(LogCategory.lcEconomy, &"Commissioning {shipClass}: isFighter={isFighter}, isSpaceLift={isSpaceLift}, isScout={isScout}")
 
           if isFighter:
-            # Path 1: Commission fighter at colony (assets.md:2.4.1)
-            # Use turn + timestamp to ensure unique IDs (avoid collisions when fighters loaded onto carriers)
-            let fighterSeqNum = state.turn * 100 + colony.fighterSquadrons.len
-            let fighterSq = FighterSquadron(
-              id: $systemId & "-FS-" & $fighterSeqNum,
-              commissionedTurn: state.turn
+            # Commission fighter at colony (12 fighters per squadron)
+            let fighterShip = Ship(
+              shipClass: ShipClass.Fighter,
+              shipType: ShipType.Military,
+              stats: getShipStats(ShipClass.Fighter, state.houses[colony.owner].techTree.levels.weaponsTech),
+              isCrippled: false,
+              name: "",
+              cargo: none(ShipCargo)
             )
 
-            colony.fighterSquadrons.add(fighterSq)
-            logDebug(LogCategory.lcEconomy, &"Commissioned fighter squadron {fighterSq.id} at {systemId} (Path 1)")
+            # Find incomplete squadron (< 12 fighters) or create new squadron
+            var incompleteSquadronIdx = -1
+            for i in 0..<colony.fighterSquadrons.len:
+              let sq = colony.fighterSquadrons[i]
+              let totalFighters = 1 + sq.ships.len  # flagship + escorts
+              if totalFighters < 12:
+                incompleteSquadronIdx = i
+                break
 
-            # Path 2: Auto-load onto carriers at same colony (assets.md:2.4.1)
-            # Find carriers at this colony with available hangar space
+            if incompleteSquadronIdx >= 0:
+              # Add to existing squadron
+              colony.fighterSquadrons[incompleteSquadronIdx].ships.add(fighterShip)
+              let totalNow = 1 + colony.fighterSquadrons[incompleteSquadronIdx].ships.len
+              logDebug(LogCategory.lcEconomy,
+                &"Added fighter to squadron {colony.fighterSquadrons[incompleteSquadronIdx].id} " &
+                &"at {systemId} ({totalNow}/12)")
+            else:
+              # Create new squadron with this fighter as flagship
+              let fighterSeqNum = state.turn * 100 + colony.fighterSquadrons.len
+              let newSquadron = Squadron(
+                id: $systemId & "-FS-" & $fighterSeqNum,
+                flagship: fighterShip,
+                ships: @[],  # Will accumulate 11 more fighters
+                owner: colony.owner,
+                location: systemId,
+                destroyed: false,
+                squadronType: SquadronType.Fighter,
+                embarkedFighters: @[]
+              )
+              colony.fighterSquadrons.add(newSquadron)
+              logDebug(LogCategory.lcEconomy,
+                &"Commissioned new Fighter squadron {newSquadron.id} at {systemId} (1/12)")
+
+            # Auto-load complete fighter squadrons onto carriers at same colony
+            # Prefer complete squadrons (12 fighters) for maximum effectiveness
+            var fighterLoaded = false
+            let acoLevel = state.houses[colony.owner].techTree.levels.advancedCarrierOps
             for fleetId, fleet in state.fleets.mpairs:
               if fleet.location == systemId and fleet.owner == colony.owner:
                 for squadron in fleet.squadrons.mitems:
                   if squadron.flagship.shipClass in [ShipClass.Carrier, ShipClass.SuperCarrier]:
-                    # Check hangar capacity (simplified: CV=3, CX=5, ignoring ACO tech for now)
-                    let maxCapacity = if squadron.flagship.shipClass == ShipClass.Carrier: 3 else: 5
+                    let maxCapacity = squadron.getCarrierCapacity(acoLevel)
                     let currentLoad = squadron.embarkedFighters.len
 
-                    if currentLoad < maxCapacity:
-                      # Auto-load fighter onto carrier
-                      let carrierFighter = CarrierFighter(
-                        id: fighterSq.id,
-                        commissionedTurn: fighterSq.commissionedTurn
-                      )
-                      squadron.embarkedFighters.add(carrierFighter)
+                    if currentLoad < maxCapacity and colony.fighterSquadrons.len > 0:
+                      # Find a complete squadron (12 fighters) to load first
+                      var squadronToLoadIdx = -1
+                      for i in 0..<colony.fighterSquadrons.len:
+                        let totalFighters = 1 + colony.fighterSquadrons[i].ships.len
+                        if totalFighters == 12:
+                          squadronToLoadIdx = i
+                          break
 
-                      # Remove from colony (transfer ownership)
-                      # SAFETY CHECK: Ensure we have fighters to remove
-                      let lenBefore = colony.fighterSquadrons.len
-                      if lenBefore > 0:
-                        let indexToDelete = lenBefore - 1
+                      # If no complete squadrons, load any available squadron
+                      if squadronToLoadIdx < 0 and colony.fighterSquadrons.len > 0:
+                        squadronToLoadIdx = 0
+
+                      if squadronToLoadIdx >= 0:
+                        # Transfer full Squadron object to carrier
+                        let fighterSquadron = colony.fighterSquadrons[squadronToLoadIdx]
+                        squadron.embarkedFighters.add(fighterSquadron)
+                        colony.fighterSquadrons.delete(squadronToLoadIdx)
+                        let totalFighters = 1 + fighterSquadron.ships.len
                         logDebug(LogCategory.lcFleet,
-                          &"About to delete fighter at index {indexToDelete} (len={lenBefore})")
-                        colony.fighterSquadrons.delete(indexToDelete)
-                        logDebug(LogCategory.lcFleet,
-                          &"Auto-loaded {fighterSq.id} onto carrier {fleetId} (Path 2, {currentLoad + 1}/{maxCapacity} capacity)")
-                        logDebug(LogCategory.lcFleet,
-                          &"Deleted fighter from colony (len before: {lenBefore}, after: {colony.fighterSquadrons.len})")
-                      else:
-                        logError(LogCategory.lcFleet,
-                          &"ERROR: Tried to auto-load {fighterSq.id} but colony.fighterSquadrons is empty!")
-                      # Exit both loops after successful auto-load
-                      break
-                  if squadron.embarkedFighters.len > 0:  # Fighter was loaded
-                    break
+                          &"Auto-loaded Fighter squadron {fighterSquadron.id} ({totalFighters}/12) " &
+                          &"onto carrier {fleetId} ({currentLoad + 1}/{maxCapacity} capacity)")
+                        fighterLoaded = true
+                        break
+                if fighterLoaded:
+                  break
           elif isSpaceLift:
             # Create SpaceLiftShip (individual unit, not squadron)
             let shipId = colony.owner & "_" & $shipClass & "_" & $systemId & "_" & $state.turn
@@ -755,7 +787,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             # Without this, scouts get mixed into combat fleets via autoBalanceSquadronsToFleets()
             let newShip = newEnhancedShip(shipClass, techLevel)
             let squadronId = $colony.owner & "_scout_sq_" & $systemId & "_" & $state.turn
-            let scoutSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
+            var scoutSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
+            scoutSquadron.squadronType = SquadronType.Intel
 
             # Create dedicated fleet for this scout (don't mix with combat fleets)
             let scoutFleetId = $colony.owner & "_scout_fleet_" & $systemId & "_" & $state.turn
@@ -820,7 +853,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             # Capital ships and unassigned escorts create new squadrons at colony
             if not addedToSquadron:
               let squadronId = colony.owner & "_sq_" & $systemId & "_" & $state.turn & "_" & project.itemId
-              let newSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
+              var newSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
+              newSquadron.squadronType = getSquadronType(newShip.shipClass)
               colony.unassignedSquadrons.add(newSquadron)
               logDebug(LogCategory.lcEconomy, &"Commissioned {shipClass} into new unassigned squadron at {systemId}")
 
@@ -945,7 +979,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           else:
             # Combat ships commission through squadron pipeline
             let stats = getShipStats(shipClass)
-            let ship = EnhancedShip(
+            let ship = Ship(
               shipClass: shipClass,
               shipType: ShipType.Military,
               stats: stats,
@@ -959,12 +993,13 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
                             ShipClass.SuperCarrier, ShipClass.HeavyCruiser,
                             ShipClass.Cruiser}:
               # Capital ships become flagships
-              let newSquadron = newSquadron(
+              var newSquadron = newSquadron(
                 flagship = ship,
                 id = "SQ-" & $systemId & "-" & $(colony.unassignedSquadrons.len + 1),
                 owner = colony.owner,
                 location = systemId
               )
+              newSquadron.squadronType = getSquadronType(ship.shipClass)
               colony.unassignedSquadrons.add(newSquadron)
               logDebug(LogCategory.lcEconomy, &"Recommissioned {shipClass} as new squadron flagship (repaired)")
             else:
@@ -996,12 +1031,13 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
               # If still not joined, create new escort squadron
               if not joined:
-                let newSquadron = newSquadron(
+                var newSquadron = newSquadron(
                   flagship = ship,
                   id = "SQ-" & $systemId & "-" & $(colony.unassignedSquadrons.len + 1),
                   owner = colony.owner,
                   location = systemId
                 )
+                newSquadron.squadronType = getSquadronType(ship.shipClass)
                 colony.unassignedSquadrons.add(newSquadron)
                 logDebug(LogCategory.lcEconomy, &"Recommissioned {shipClass} as new escort squadron (repaired)")
 

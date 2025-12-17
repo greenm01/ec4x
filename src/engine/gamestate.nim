@@ -93,11 +93,6 @@ type
   BuildingType* {.pure.} = enum
     Infrastructure, Shipyard, ResearchLab, DefenseGrid
 
-  FighterSquadron* = object
-    ## Colony-based fighter squadron
-    id*: string                   # Unique identifier
-    commissionedTurn*: int        # Turn when squadron was commissioned
-
   Starbase* = object
     ## Orbital fortress (assets.md:2.4.4)
     id*: string                   # Unique identifier
@@ -189,7 +184,7 @@ type
     # NOTE: Auto-assignment is ALWAYS enabled (see docs/architecture/standing-orders.md for rationale)
 
     # Fighter squadrons (assets.md:2.4.1)
-    fighterSquadrons*: seq[FighterSquadron]  # Colony-based fighters
+    fighterSquadrons*: seq[Squadron]  # Colony-based fighters (Squadron.Fighter type)
     capacityViolation*: CapacityViolation     # Capacity violation tracking
 
     # Starbases (assets.md:2.4.4)
