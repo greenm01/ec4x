@@ -887,19 +887,53 @@ proc generateCounterAttackOrders*(
 
       if assignedFleet.isSome:
         intelTargetsFound = true
+        let fleetId = assignedFleet.get()
+
+        # Find target colony for combat order selection
+        var targetColony: Option[VisibleColony] = none(VisibleColony)
+        for colony in filtered.visibleColonies:
+          if colony.systemId == opportunity.systemId:
+            targetColony = some(colony)
+            break
+
+        # Select appropriate combat order based on conditions
+        var orderType = FleetOrderType.Bombard  # Fallback if no colony visible
+        var shipCount = 1
+
+        # Get fleet ship count for order selection
+        for analysis in analyses:
+          if analysis.fleetId == fleetId:
+            shipCount = analysis.shipCount
+            break
+
+        if targetColony.isSome:
+          orderType = selectCombatOrderType(
+            controller,
+            filtered,
+            fleetId,
+            shipCount,
+            targetColony.get(),
+            intelSnapshot
+          )
+
         logInfo(LogCategory.lcAI,
-                &"{controller.houseId} Domestikos: Intelligence-driven invasion - system {opportunity.systemId} " &
+                &"{controller.houseId} Domestikos: Intelligence-driven {orderType} - system {opportunity.systemId} " &
                 &"({opportunity.owner}), vulnerability {opportunity.vulnerability:.2f}, " &
                 &"value {opportunity.estimatedValue}, confidence {opportunity.intelQuality}")
 
-        # Create order directly (no need to defer to visibility targeting)
-        let fleetId = assignedFleet.get()
+        # Create order with selected tactic
+        let roe = case orderType
+          of FleetOrderType.Blitz: controller.rbaConfig.domestikos_offensive.roe_blitz_priority
+          of FleetOrderType.Invade: 10  # All-out invasion
+          of FleetOrderType.BlockadePlanet: controller.rbaConfig.domestikos_offensive.roe_bombardment_priority
+          else: controller.rbaConfig.domestikos_offensive.roe_bombardment_priority  # Bombard fallback
+
         result.add(FleetOrder(
           fleetId: fleetId,
-          orderType: FleetOrderType.Invade,  # Intelligence targets warrant invasion
+          orderType: orderType,
           targetSystem: some(opportunity.systemId),
           priority: int(priority),
-          roe: some(controller.rbaConfig.domestikos_offensive.roe_bombardment_priority) # Main assault
+          roe: some(roe)
         ))
         assignedFleets.incl(fleetId)  # Mark fleet as assigned
 
