@@ -60,25 +60,26 @@ proc generateScoutOrders*(
   ] = @[]
 
   for espTarget in intelSnapshot.espionage.highPriorityTargets:
-    # Map EspionageTarget to FleetOrder type
+    # Map EspionageTarget to FleetOrder type (all four scout mission types)
     let orderType = case espTarget.targetType
-      of EspionageTargetType.ColonySpy: FleetOrderType.SpyPlanet
-      of EspionageTargetType.ScoutRecon: FleetOrderType.ViewWorld
-      of EspionageTargetType.StarbaseHack: FleetOrderType.HackStarbase
-      else: continue  # Skip non-reconnaissance target types
+      of EspionageTargetType.ColonySpy: FleetOrderType.SpyPlanet      # Order 11: Detailed colony intel
+      of EspionageTargetType.SystemSpy: FleetOrderType.SpySystem      # Order 12: Fleet activity intel
+      of EspionageTargetType.StarbaseHack: FleetOrderType.HackStarbase  # Order 13: Research/strategic intel
+      of EspionageTargetType.ScoutRecon: FleetOrderType.ViewWorld     # Order 20: Safe reconnaissance
 
-    # Map priority to numeric value from config
+    # Map priority to numeric value based on intelligence need
+    # Priority set by Drungarius intelligence analysis (stale intel, advisor needs, etc.)
     let numericPriority = case espTarget.priority
       of RequirementPriority.Critical:
-        100  # Above all other priorities
+        100  # Urgent intelligence gap (e.g., enemy fleet approaching, invasion planning)
       of RequirementPriority.High:
-        controller.rbaConfig.drungarius_reconnaissance.priority_spy_planet
+        90   # Important intelligence (e.g., stale colony intel, fleet movements)
       of RequirementPriority.Medium:
-        controller.rbaConfig.drungarius_reconnaissance.priority_spy_system
+        70   # Routine intelligence refresh (e.g., periodic reconnaissance)
       of RequirementPriority.Low:
-        controller.rbaConfig.drungarius_reconnaissance.priority_view_world
+        50   # Low-priority intelligence (e.g., exploratory scouting)
       else:
-        50  # Deferred
+        30   # Deferred (not urgent)
 
     if espTarget.systemId.isSome:
       intelTargets.add((
