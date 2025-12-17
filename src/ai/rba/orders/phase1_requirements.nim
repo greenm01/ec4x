@@ -99,7 +99,7 @@ proc generateAllAdvisorRequirements*(
           &"{controller.drungariusRequirements.get().requirements.len} espionage requirements")
 
   # === EPARCH: Economic/infrastructure requirements ===
-  logInfo(LogCategory.lcAI, &"{controller.houseId} Eparch: Generating economic requirements")
+  logInfo(LogCategory.lcAI, &"{controller.houseId} 🔵 Eparch: Generating economic requirements (Phase 1)")
 
   controller.eparchRequirements = some(eparch_req.generateEconomicRequirements(
     controller,

@@ -193,7 +193,20 @@ proc establishColony(
       logInfo(LogCategory.lcEconomy,
         &"ETAC {ship.id} cannibalized - structure became colony infrastructure at {systemId}")
 
-  state.fleets[fleetId] = fleet
+  # Check if fleet is now empty (no squadrons, no spacelift ships)
+  # Empty fleets should be automatically cleaned up to avoid maintenance waste
+  if fleet.squadrons.len == 0 and fleet.spaceLiftShips.len == 0:
+    # Fleet is empty - remove it and cleanup associated orders
+    state.fleets.del(fleetId)
+    if fleetId in state.fleetOrders:
+      state.fleetOrders.del(fleetId)
+    if fleetId in state.standingOrders:
+      state.standingOrders.del(fleetId)
+    logInfo(LogCategory.lcFleet,
+            &"Removed empty fleet {fleetId} after ETAC colonization (auto-cleanup)")
+  else:
+    # Fleet still has ships - update it
+    state.fleets[fleetId] = fleet
 
   # Apply prestige award
   if colResult.prestigeEvent.isSome:

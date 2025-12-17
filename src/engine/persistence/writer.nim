@@ -370,23 +370,32 @@ proc insertFleetSnapshot*(db: DbConn, gameId: int64, turn: int,
                          orderType: string, orderTarget: int,
                          hasArrived: bool,
                          shipsTotal, etacCount, scoutCount,
-                         combatShips: int) =
+                         combatShips, transportCount,
+                         idleTurnsCombat, idleTurnsScout,
+                         idleTurnsEtac, idleTurnsTransport: int) =
   ## Insert fleet tracking snapshot (DoD - direct field mapping)
   ## Called per-turn for each fleet in the game
   let arrivedInt = if hasArrived: "1" else: "0"
   let orderTypeVal = if orderType == "": "" else: orderType
-  let orderTargetVal = if orderTarget == 0: "" else: $orderTarget
+  # 0 or negative = no target (NULL in database)
+  let orderTargetVal = if orderTarget <= 0: "" else: $orderTarget
 
   db.exec(sql"""
     INSERT INTO fleet_tracking (
       game_id, turn, fleet_id, house_id, location_system_id,
       active_order_type, order_target_system_id, has_arrived,
-      ships_total, etac_count, scout_count, combat_ships
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ships_total, etac_count, scout_count, combat_ships,
+      troop_transport_count,
+      idle_turns_combat, idle_turns_scout, idle_turns_etac,
+      idle_turns_transport
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   """,
     $gameId, $turn, fleetId, houseId, $locationSystem,
     orderTypeVal, orderTargetVal, arrivedInt,
-    $shipsTotal, $etacCount, $scoutCount, $combatShips
+    $shipsTotal, $etacCount, $scoutCount, $combatShips,
+    $transportCount,
+    $idleTurnsCombat, $idleTurnsScout, $idleTurnsEtac,
+    $idleTurnsTransport
   )
 
 proc insertGameState*(db: DbConn, gameId: int64, turn: int,

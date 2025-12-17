@@ -253,6 +253,8 @@ proc assessETACConstructionNeeds(
   let dynamicCap = max(1, (baseCapPerPlayer.float * decayFactor).int)
 
   # Calculate deficit and target
+  # Use readyETACs (loaded with cargo) since ETACs commission with full cargo
+  # If ETACs are sitting idle without orders, the issue is target visibility, not cargo
   let deficit = uncolonizedActual - readyETACs
   let targetETACs = if deficit > 0:
     # Act 1: Build many ETACs simultaneously for fast expansion
@@ -443,36 +445,48 @@ proc calculateColonizationWaves(
 
 proc findUncolonizedSystems(
   filtered: FilteredGameState,
-  originSystem: SystemId,
-  maxRange: int
+  originSystem: SystemId
 ): seq[ETACTarget] =
-  ## Find all uncolonized systems within range and score them
+  ## Find all uncolonized systems on the map and score them
   ##
   ## Uses Act-aware scoring from engine (frontier expansion in Act 1-2,
   ## quality consolidation in Act 3-4)
   ##
+  ## ETACs have FTL engines and can reach any system - no range limit
+  ##
   ## Returns: Scored colonization targets sorted by score (highest first)
   result = @[]
 
-  # Scan all visible systems
-  for systemId, visSystem in filtered.visibleSystems:
-    # Skip if already colonized
-    var isColonized = false
+  # Scan all visible systems (includes universal map awareness)
+  # ETACs act as exploration vessels - they can target any visible system
+  # even if we haven't scouted them yet (fog-of-war expansion)
+  var candidateSystems = initHashSet[SystemId]()
 
-    # Check own colonies
+  # Add all visible systems (fog_of_war.nim ensures ALL systems are visible)
+  for systemId in filtered.visibleSystems.keys:
+    candidateSystems.incl(systemId)
+
+  for systemId in candidateSystems:
+    # Skip if CONFIRMED colonized (check visible intel)
+    # IMPORTANT: Systems with UNKNOWN status are valid targets!
+    # ETACs act as exploration vessels - they probe unknown systems
+    # If empty → colonize, if occupied → order fails but intel gained
+    var isKnownColonized = false
+
+    # Check own colonies (always known)
     for colony in filtered.ownColonies:
       if colony.systemId == systemId:
-        isColonized = true
+        isKnownColonized = true
         break
 
-    # Check visible enemy colonies
-    if not isColonized:
+    # Check visible enemy colonies (only if we've scouted them)
+    if not isKnownColonized:
       for visColony in filtered.visibleColonies:
         if visColony.systemId == systemId:
-          isColonized = true
+          isKnownColonized = true
           break
 
-    if isColonized:
+    if isKnownColonized:
       continue
 
     # Get planet details from star map
@@ -496,9 +510,6 @@ proc findUncolonizedSystems(
       continue
 
     let distance = pathResult.path.len - 1  # Path includes start system
-
-    if distance > maxRange:
-      continue
 
     # Score using engine's Act-aware algorithm
     let score = scoreColonizationCandidate(
@@ -563,20 +574,18 @@ proc findUncolonizedSystems(
             &"May target rival colonies due to stale intel (fog-of-war limitation).")
 
   logDebug(LogCategory.lcAI,
-           &"Found {result.len} uncolonized systems within {maxRange} jumps " &
-           &"of {originSystem}")
+           &"Found {result.len} uncolonized systems reachable from {originSystem}")
 
 proc assignETACsToTargets(
   etacs: seq[tuple[fleetId: FleetId, etacId: string, location: SystemId]],
-  filtered: FilteredGameState,
-  maxRange: int = 20
+  filtered: FilteredGameState
 ): seq[ETACAssignment] =
   ## Assign ETACs to colonization targets using greedy best-match algorithm
   ## with PERSISTENT target tracking via existing fleet orders to prevent convergence
   ##
   ## **Algorithm:**
   ## 1. Check existing colonization orders in filtered.ownFleetOrders (persistent!)
-  ## 2. For each ETAC WITHOUT an existing order, find uncolonized systems within range
+  ## 2. For each ETAC WITHOUT an existing order, find all uncolonized systems on the map
   ## 3. Score targets using Act-aware algorithm
   ## 4. Assign ETAC to highest-scoring target (excluding already-targeted systems)
   ##
@@ -608,19 +617,31 @@ proc assignETACsToTargets(
               &"ETAC {etacId} (fleet {fleetId}) already has order to {existingTarget}, skipping")
       continue
 
-    # Find uncolonized systems within range of this ETAC
-    let targets = findUncolonizedSystems(filtered, location, maxRange)
+    # Find ALL uncolonized systems from this ETAC's location
+    # ETACs can travel anywhere on the map (no range limit)
+    let allTargets = findUncolonizedSystems(filtered, location)
+
+    logInfo(LogCategory.lcAI,
+            &"ETAC {etacId} (fleet {fleetId}) at {location}: " &
+            &"findUncolonizedSystems returned {allTargets.len} targets, " &
+            &"{assignedTargets.len} already assigned")
 
     # Filter out already-assigned targets
-    let availableTargets = targets.filterIt(it.systemId notin assignedTargets)
+    var availableTargets = allTargets.filterIt(it.systemId notin assignedTargets)
 
     if availableTargets.len == 0:
-      logDebug(LogCategory.lcAI,
-              &"No colonization targets available for ETAC {etacId} " &
-              &"in fleet {fleetId} (all nearby systems already targeted)")
+      logInfo(LogCategory.lcAI,
+              &"❌ No colonization targets available for ETAC {etacId} " &
+              &"in fleet {fleetId} at {location} " &
+              &"(all systems colonized or assigned)")
       continue
 
-    # Assign to best available target
+    # Sort by distance (closest first) - override wave/score sorting
+    availableTargets.sort(proc(a, b: ETACTarget): int =
+      cmp(a.distance, b.distance)
+    )
+
+    # Assign to closest available target
     let best = availableTargets[0]
 
     result.add(ETACAssignment(
@@ -835,7 +856,7 @@ proc planExpansionOperations*(
     result.colonizationOrders = @[]
     return
 
-  let assignments = assignETACsToTargets(etacs, filtered, maxRange = 20)
+  let assignments = assignETACsToTargets(etacs, filtered)
 
   if assignments.len == 0:
     logDebug(LogCategory.lcAI,

@@ -44,6 +44,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   ## Returns both zero-turn commands (immediate execution) and order packet (turn resolution)
   ## Multi-advisor coordination with Basileus mediation and feedback loops
 
+  logInfo(LogCategory.lcAI, &"🚀 {controller.houseId} generateAIOrders ENTRY (turn {filtered.turn})")
+
   result = AIOrderSubmission(
     zeroTurnCommands: @[],
     orderPacket: OrderPacket(
@@ -335,11 +337,22 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} === Phase 6.9: ETAC Colonization (Eparch) ===")
 
-  logInfo(LogCategory.lcAI,
-          &"{controller.houseId} Eparch generated {controller.eparchColonizationOrders.len} colonization orders")
-
-  for order in controller.eparchColonizationOrders:
-    result.orderPacket.fleetOrders.add(order)
+  # Read colonization orders from Eparch requirements (not mutable controller state)
+  if controller.eparchRequirements.isSome:
+    let colonizationOrders = controller.eparchRequirements.get().colonizationOrders
+    logInfo(LogCategory.lcAI,
+            &"📤 {controller.houseId} READING {colonizationOrders.len} colonization orders from EconomicRequirements")
+    for order in colonizationOrders:
+      if order.targetSystem.isSome:
+        logInfo(LogCategory.lcAI,
+                &"   ✓ Adding {order.fleetId} → system {order.targetSystem.get()}")
+      else:
+        logWarn(LogCategory.lcAI,
+                &"   ⚠️  Adding {order.fleetId} with NO TARGET!")
+      result.orderPacket.fleetOrders.add(order)
+  else:
+    logWarn(LogCategory.lcAI,
+            &"{controller.houseId} No Eparch requirements available for colonization orders")
 
   # ==========================================================================
   # PHASE 7: TACTICAL FLEET ORDERS
