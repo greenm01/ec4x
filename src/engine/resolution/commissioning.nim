@@ -126,30 +126,56 @@ proc commissionPlanetaryDefense*(
   for completed in completedProjects:
     logInfo(LogCategory.lcEconomy, &"Commissioning planetary defense: {completed.projectType} itemId={completed.itemId} at system-{completed.colonyId}")
 
-    # Special handling for fighter squadrons
-    # Fighters can come through as either:
-    # 1. ConstructionType.Building with itemId="FighterSquadron" (legacy/planned)
-    # 2. ConstructionType.Ship with itemId="Fighter" (current system via budget.nim)
+    # Special handling for fighter squadrons (12 fighters per squadron)
     if (completed.projectType == econ_types.ConstructionType.Building and
         completed.itemId == "FighterSquadron") or
        (completed.projectType == econ_types.ConstructionType.Ship and
         completed.itemId == "Fighter"):
-      # Commission fighter squadron at colony
       if completed.colonyId in state.colonies:
         var colony = getColony(completed.colonyId)
+        let house = state.houses[colony.owner]
 
-        # Create new fighter squadron
-        let fighterSq = FighterSquadron(
-          id: $completed.colonyId & "-FS-" & $(colony.fighterSquadrons.len + 1),
-          commissionedTurn: state.turn
+        # Create fighter ship
+        let fighterShip = Ship(
+          shipClass: ShipClass.Fighter,
+          shipType: ShipType.Military,
+          stats: getShipStats(ShipClass.Fighter, house.techTree.levels.weaponsTech),
+          isCrippled: false,
+          name: "",
+          cargo: none(ShipCargo)
         )
 
-        colony.fighterSquadrons.add(fighterSq)
+        # Find incomplete squadron (< 12 fighters) or create new squadron
+        var incompleteSquadronIdx = -1
+        for i in 0..<colony.fighterSquadrons.len:
+          let sq = colony.fighterSquadrons[i]
+          let totalFighters = 1 + sq.ships.len  # flagship + escorts
+          if totalFighters < 12:
+            incompleteSquadronIdx = i
+            break
 
-        logInfo(LogCategory.lcEconomy, &"Commissioned fighter squadron {fighterSq.id} at {completed.colonyId}")
-
-        # Fighters remain at colony by default - auto-loading happens in separate step
-        # Per assets.md:2.4.1 - fighters are colony-owned until explicitly transferred
+        if incompleteSquadronIdx >= 0:
+          # Add to existing squadron
+          colony.fighterSquadrons[incompleteSquadronIdx].ships.add(fighterShip)
+          let totalNow = 1 + colony.fighterSquadrons[incompleteSquadronIdx].ships.len
+          logInfo(LogCategory.lcEconomy,
+            &"Added fighter to squadron {colony.fighterSquadrons[incompleteSquadronIdx].id} " &
+            &"at {completed.colonyId} ({totalNow}/12)")
+        else:
+          # Create new squadron with this fighter as flagship
+          let newSquadron = Squadron(
+            id: $completed.colonyId & "-FS-" & $(colony.fighterSquadrons.len + 1),
+            flagship: fighterShip,
+            ships: @[],  # Will accumulate 11 more fighters
+            owner: colony.owner,
+            location: completed.colonyId,
+            destroyed: false,
+            squadronType: SquadronType.Fighter,
+            embarkedFighters: @[]
+          )
+          colony.fighterSquadrons.add(newSquadron)
+          logInfo(LogCategory.lcEconomy,
+            &"Commissioned new Fighter squadron {newSquadron.id} at {completed.colonyId} (1/12)")
 
         saveColony(completed.colonyId, colony)
 
@@ -488,7 +514,8 @@ proc commissionShips*(
 
             # Create squadron with single scout
             let squadronId = $owner & "_scout_sq_" & $completed.colonyId & "_" & $state.turn
-            let scoutSquadron = newSquadron(ship, squadronId, owner, completed.colonyId)
+            var scoutSquadron = newSquadron(ship, squadronId, owner, completed.colonyId)
+            scoutSquadron.squadronType = getSquadronType(shipClass)  # Intel type
 
             # Find existing scout fleet at this location, or create new one
             var scoutFleetId = ""
@@ -657,7 +684,8 @@ proc commissionShips*(
               if fleet.owner == owner:
                 totalSquadrons += fleet.squadrons.len
             let newSquadronId = $owner & "_sq_" & $totalSquadrons & "_" & $state.turn
-            let newSq = newSquadron(ship, newSquadronId, owner, completed.colonyId)
+            var newSq = newSquadron(ship, newSquadronId, owner, completed.colonyId)
+            newSq.squadronType = getSquadronType(shipClass)  # Set appropriate type
 
             # Find or create fleet at this location
             var targetFleetId = ""

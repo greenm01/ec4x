@@ -26,6 +26,7 @@ import std/[sequtils, algorithm, math, tables, strutils]
 import ./types
 import ../types as econ_types  # For ConstructionType
 import ../../gamestate
+import ../../squadron  # For Squadron type
 import ../../state_helpers
 import ../../iterators
 import ../../../common/types/core
@@ -161,10 +162,10 @@ proc planEnforcement*(state: GameState, violation: types.CapacityViolation): typ
   let colony = state.colonies[colonyId]
 
   # Disband oldest squadrons first (per spec)
-  # Sort by commissioned turn (oldest first)
+  # Sort by squadron ID (IDs contain encoded turn: systemId-FS-[turn*100+index])
   var sortedFighters = colony.fighterSquadrons
-  sortedFighters.sort do (a, b: FighterSquadron) -> int:
-    cmp(a.commissionedTurn, b.commissionedTurn)
+  sortedFighters.sort do (a, b: Squadron) -> int:
+    cmp(a.id, b.id)  # Lexicographic sort by ID (encodes commissioning order)
 
   # Select excess fighters for disbanding
   let toDisbandCount = min(violation.excess, sortedFighters.len)
@@ -203,7 +204,7 @@ proc applyEnforcement*(state: var GameState, action: types.EnforcementAction,
         ))
 
       let fid = fighterId  # Copy to avoid lent capture issue
-      colony.fighterSquadrons.keepIf(proc(f: FighterSquadron): bool = f.id != fid)
+      colony.fighterSquadrons.keepIf(proc(f: Squadron): bool = f.id != fid)
 
       logEconomy("Fighter squadron disbanded - capacity violation",
                 "squadronId=", fighterId, " salvage=none")

@@ -110,7 +110,7 @@ proc autoLoadFightersToCarriers*(state: var GameState, colony: var Colony,
     logDebug(LogCategory.lcFleet, &"No available carriers at {systemId} for auto-loading")
     return
 
-  # Load fighters onto carriers
+  # Load fighter squadrons onto carriers (prefer complete squadrons)
   var loadedCount = 0
   for (fleetId, squadronIdx) in candidateCarriers:
     if colony.fighterSquadrons.len == 0:
@@ -119,16 +119,30 @@ proc autoLoadFightersToCarriers*(state: var GameState, colony: var Colony,
     var fleet = state.fleets[fleetId]
     var squadron = fleet.squadrons[squadronIdx]
 
-    # Load fighters until carrier full
+    # Load fighter squadrons until carrier full
     while carrier_hangar.canLoadFighters(state, fleetId, squadronIdx, 1) and
           colony.fighterSquadrons.len > 0:
-      let fighter = colony.fighterSquadrons[0]
-      colony.fighterSquadrons.delete(0)
+      # Prefer complete squadrons (12 fighters) for maximum effectiveness
+      var squadronToLoadIdx = -1
+      for i in 0..<colony.fighterSquadrons.len:
+        let totalFighters = 1 + colony.fighterSquadrons[i].ships.len
+        if totalFighters == 12:
+          squadronToLoadIdx = i
+          break
 
-      squadron.embarkedFighters.add(CarrierFighter(
-        id: fighter.id,
-        commissionedTurn: fighter.commissionedTurn
-      ))
+      # If no complete squadrons, load any available squadron
+      if squadronToLoadIdx < 0:
+        squadronToLoadIdx = 0
+
+      # Transfer full Squadron object to carrier
+      let fighterSquadron = colony.fighterSquadrons[squadronToLoadIdx]
+      squadron.embarkedFighters.add(fighterSquadron)
+      colony.fighterSquadrons.delete(squadronToLoadIdx)
+
+      let totalFighters = 1 + fighterSquadron.ships.len
+      logDebug(LogCategory.lcFleet,
+        &"Embarked Fighter squadron {fighterSquadron.id} ({totalFighters}/12) " &
+        &"onto carrier {squadron.id}")
 
       loadedCount += 1
       # Update the squadron in the fleet
@@ -138,9 +152,9 @@ proc autoLoadFightersToCarriers*(state: var GameState, colony: var Colony,
     state.fleets[fleetId] = fleet
 
   if loadedCount > 0:
-    logInfo(LogCategory.lcFleet, &"Auto-loaded {loadedCount} fighters at {systemId}")
+    logInfo(LogCategory.lcFleet, &"Auto-loaded {loadedCount} fighter squadrons at {systemId}")
   else:
-    logDebug(LogCategory.lcFleet, &"No fighters loaded at {systemId} (carriers at capacity)")
+    logDebug(LogCategory.lcFleet, &"No fighter squadrons loaded at {systemId} (carriers at capacity)")
 
 proc autoLoadColonistsToETACs*(
   state: var GameState, colony: var Colony, systemId: SystemId,
@@ -318,10 +332,101 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
         candidateFleets.add(fleetId)
 
   # Case 1: No candidate fleets - create new fleet for each squadron
+  # Intel squadrons get dedicated fleets with autoBalanceSquadrons=false
   if candidateFleets.len == 0:
     logDebug(LogCategory.lcFleet, &"No stationary fleets at {systemId}, creating new fleets")
 
     for squadron in colony.unassignedSquadrons:
+      let isIntel = squadron.squadronType == SquadronType.Intel
+      let newFleetId = $colony.owner & "_fleet_" & $systemId & "_" & $state.fleets.len
+      state.fleets[newFleetId] = Fleet(
+        id: newFleetId,
+        owner: colony.owner,
+        location: systemId,
+        squadrons: @[squadron],
+        spaceLiftShips: @[],
+        status: FleetStatus.Active,
+        autoBalanceSquadrons: not isIntel  # Intel fleets: false, others: true
+      )
+      if isIntel:
+        logInfo(LogCategory.lcFleet, &"Created Intel-only fleet {newFleetId} with squadron {squadron.id} (autoBalance=false)")
+      else:
+        logInfo(LogCategory.lcFleet, &"Created fleet {newFleetId} with squadron {squadron.id}")
+
+    colony.unassignedSquadrons = @[]
+    return
+
+  # Case 2: Distribute squadrons evenly across candidate fleets
+  # CRITICAL: Respect squadron type compatibility (Intel never mixes with non-Intel)
+
+  logDebug(LogCategory.lcFleet,
+    &"Balancing {colony.unassignedSquadrons.len} squadrons across {candidateFleets.len} fleets")
+
+  # Separate unassigned squadrons by type
+  var intelSquadrons: seq[Squadron] = @[]
+  var nonIntelSquadrons: seq[Squadron] = @[]
+
+  for squadron in colony.unassignedSquadrons:
+    if squadron.squadronType == SquadronType.Intel:
+      intelSquadrons.add(squadron)
+    else:
+      nonIntelSquadrons.add(squadron)
+
+  # Categorize candidate fleets by type
+  var intelFleets: seq[FleetId] = @[]
+  var nonIntelFleets: seq[FleetId] = @[]
+
+  for fleetId in candidateFleets:
+    let fleet = state.fleets[fleetId]
+    let hasIntel = fleet.squadrons.anyIt(it.squadronType == SquadronType.Intel)
+    let hasNonIntel = fleet.squadrons.anyIt(it.squadronType != SquadronType.Intel)
+
+    if hasIntel and not hasNonIntel:
+      intelFleets.add(fleetId)  # Pure Intel fleet
+    elif hasNonIntel and not hasIntel:
+      nonIntelFleets.add(fleetId)  # Non-Intel fleet
+    # Mixed fleets (shouldn't happen, but skip if found)
+
+  # Distribute Intel squadrons to Intel fleets only
+  if intelSquadrons.len > 0:
+    if intelFleets.len > 0:
+      let targetPerFleet = (intelSquadrons.len + intelFleets.mapIt(state.fleets[it].squadrons.len).foldl(a + b, 0)) div intelFleets.len
+      for fleetId in intelFleets:
+        var fleet = state.fleets[fleetId]
+        while fleet.squadrons.len < targetPerFleet and intelSquadrons.len > 0:
+          let squadron = intelSquadrons[0]
+          fleet.squadrons.add(squadron)
+          intelSquadrons.delete(0)
+          logDebug(LogCategory.lcFleet, &"Assigned Intel squadron {squadron.id} to Intel fleet {fleetId}")
+        state.fleets[fleetId] = fleet
+    # If Intel squadrons remain and no Intel fleets, create new Intel-only fleets
+    for squadron in intelSquadrons:
+      let newFleetId = $colony.owner & "_intel_fleet_" & $systemId & "_" & $state.fleets.len
+      state.fleets[newFleetId] = Fleet(
+        id: newFleetId,
+        owner: colony.owner,
+        location: systemId,
+        squadrons: @[squadron],
+        spaceLiftShips: @[],
+        status: FleetStatus.Active,
+        autoBalanceSquadrons: false  # Intel fleets never auto-balance
+      )
+      logInfo(LogCategory.lcFleet, &"Created new Intel-only fleet {newFleetId} with squadron {squadron.id}")
+
+  # Distribute non-Intel squadrons to non-Intel fleets only
+  if nonIntelSquadrons.len > 0:
+    if nonIntelFleets.len > 0:
+      let targetPerFleet = (nonIntelSquadrons.len + nonIntelFleets.mapIt(state.fleets[it].squadrons.len).foldl(a + b, 0)) div nonIntelFleets.len
+      for fleetId in nonIntelFleets:
+        var fleet = state.fleets[fleetId]
+        while fleet.squadrons.len < targetPerFleet and nonIntelSquadrons.len > 0:
+          let squadron = nonIntelSquadrons[0]
+          fleet.squadrons.add(squadron)
+          nonIntelSquadrons.delete(0)
+          logDebug(LogCategory.lcFleet, &"Assigned {squadron.squadronType} squadron {squadron.id} to fleet {fleetId}")
+        state.fleets[fleetId] = fleet
+    # If non-Intel squadrons remain and no compatible fleets, create new fleets
+    for squadron in nonIntelSquadrons:
       let newFleetId = $colony.owner & "_fleet_" & $systemId & "_" & $state.fleets.len
       state.fleets[newFleetId] = Fleet(
         id: newFleetId,
@@ -332,33 +437,10 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
         status: FleetStatus.Active,
         autoBalanceSquadrons: true
       )
-      logInfo(LogCategory.lcFleet, &"Created fleet {newFleetId} with squadron {squadron.id}")
+      logInfo(LogCategory.lcFleet, &"Created new fleet {newFleetId} with {squadron.squadronType} squadron {squadron.id}")
 
-    colony.unassignedSquadrons = @[]
-    return
-
-  # Case 2: Distribute squadrons evenly across candidate fleets
-  let totalSquadrons = colony.unassignedSquadrons.len +
-                        candidateFleets.mapIt(state.fleets[it].squadrons.len).foldl(a + b, 0)
-  let targetPerFleet = totalSquadrons div candidateFleets.len
-
-  logDebug(LogCategory.lcFleet,
-    &"Balancing {colony.unassignedSquadrons.len} squadrons across {candidateFleets.len} fleets " &
-    &"(target: {targetPerFleet} per fleet)")
-
-  # Assign squadrons to fleets to reach target count
-  for fleetId in candidateFleets:
-    var fleet = state.fleets[fleetId]
-    while fleet.squadrons.len < targetPerFleet and colony.unassignedSquadrons.len > 0:
-      let squadron = colony.unassignedSquadrons[0]
-      fleet.squadrons.add(squadron)
-      colony.unassignedSquadrons.delete(0)
-      logDebug(LogCategory.lcFleet, &"Assigned squadron {squadron.id} to fleet {fleetId}")
-    state.fleets[fleetId] = fleet
-
-  if colony.unassignedSquadrons.len > 0:
-    logDebug(LogCategory.lcFleet,
-      &"{colony.unassignedSquadrons.len} squadrons remain unassigned at {systemId}")
+  # All squadrons assigned
+  colony.unassignedSquadrons = @[]
 
 proc processColonyAutomation*(state: var GameState, orders: Table[HouseId, OrderPacket]) =
   ## Process all colony automation in batch
