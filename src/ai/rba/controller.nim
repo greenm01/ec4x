@@ -83,9 +83,8 @@ proc newAIController*(houseId: HouseId, strategy: AIStrategy,
     goapConfig: rbaConfig.goap,
     goapPlanTracker: newPlanTracker(),
     rbaConfig: rbaConfig,  # Store full config for subsystems
-    intelligenceNeedsRefresh: false,  # Initialize refresh flag
-    # Phase 2: Multi-turn invasion campaigns
-    activeCampaigns: @[]
+    intelligenceNeedsRefresh: false  # Initialize refresh flag
+    # NOTE: activeCampaigns removed - GOAP handles multi-turn strategic planning
   )
 
 proc newAIController*(houseId: HouseId, strategy: AIStrategy,
@@ -124,9 +123,8 @@ proc newAIControllerWithPersonality*(houseId: HouseId,
     goapConfig: rbaConfig.goap,
     goapPlanTracker: newPlanTracker(),
     rbaConfig: rbaConfig,  # Store full config for subsystems
-    intelligenceNeedsRefresh: false,  # Initialize refresh flag
-    # Phase 2: Multi-turn invasion campaigns
-    activeCampaigns: @[]
+    intelligenceNeedsRefresh: false  # Initialize refresh flag
+    # NOTE: activeCampaigns removed - GOAP handles multi-turn strategic planning
   )
 
 proc newAIControllerWithPersonality*(houseId: HouseId,

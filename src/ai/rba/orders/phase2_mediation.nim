@@ -13,23 +13,22 @@ proc mediateAndAllocateBudget*(
   controller: var AIController,
   filtered: FilteredGameState,
   currentAct: ai_types.GameAct
-  # goapBudgetEstimates: Option[Table[DomainType, int]] = none(Table[DomainType, int])  # GOAP not yet integrated
 ): MultiAdvisorAllocation =
   ## Phase 2: Basileus mediation and Treasurer budget allocation
   ## Returns per-advisor budgets and feedback
   ##
-  ## GOAP Phase 4 Enhancement:
+  ## GOAP Phase 5 Enhancement:
   ## - Uses GOAP strategic cost estimates to inform budget allocation
   ## - Prioritizes requirements that align with active GOAP plans
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} === Phase 2: Basileus Mediation & Allocation ===")
 
-  # GOAP Phase 4: Log active strategic goals (GOAP not yet integrated)
-  # if controller.goapEnabled and controller.goapActiveGoals.len > 0:
-  #   logInfo(LogCategory.lcAI,
-  #           &"{controller.houseId} Active GOAP goals ({controller.goapActiveGoals.len}): " &
-  #           controller.goapActiveGoals[0..min(2, controller.goapActiveGoals.len-1)].join(", "))
+  # GOAP Phase 5: Log active strategic goals
+  if controller.goapEnabled and controller.goapActiveGoals.len > 0:
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Active GOAP goals ({controller.goapActiveGoals.len}): " &
+            controller.goapActiveGoals[0..min(2, controller.goapActiveGoals.len-1)].join(", "))
 
   # Calculate available budget (projected treasury)
   let projectedTreasury = calculateProjectedTreasury(filtered)
@@ -49,8 +48,8 @@ proc mediateAndAllocateBudget*(
     currentAct,
     projectedTreasury,
     controller.houseId,
-    filtered  # For war status detection
-    # goapBudgetEstimates omitted - GOAP not yet integrated, will use default
+    filtered,  # For war status detection
+    controller.goapBudgetEstimates  # GOAP Phase 5: Pass strategic budget estimates
   )
 
   # Store feedback in controller for feedback loop

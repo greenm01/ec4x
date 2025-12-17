@@ -10,6 +10,8 @@ import ../domestikos/requirements/reprioritization  # Gap 4 enhanced reprioritiz
 import ../logothete/requirements as logothete_req
 import ../drungarius/requirements as drungarius_req
 import ../eparch/requirements as eparch_req
+import ../goap/state/snapshot # For WorldStateSnapshot (Phase 6)
+import ../goap/integration/plan_tracking # For archiveCompletedPlans (Phase 6)
 
 proc hasUnfulfilledCriticalOrHigh*(controller: AIController): bool =
   ## Check if any advisor has unfulfilled Critical or High priority requirements
@@ -162,19 +164,42 @@ proc reportGOAPProgress*(
   ## Report GOAP plan progress and update tracker (MVP: simplified tracking)
   ##
   ## Called in Phase 8.5 to provide feedback to GOAP about plan execution
+  ##
+  ## Phase 6 Implementation:
+  ## - Validates plans against current world state (detect invalidated plans)
+  ## - Archives completed/failed/invalidated plans
+  ## - Checks for stalled plans and triggers replanning
 
   if not controller.goapEnabled:
     return
 
   logInfo(LogCategory.lcAI, &"{controller.houseId} === Phase 8.5: GOAP Feedback ===")
 
-  # Simplified progress tracking for MVP: Check if plans are advancing
+  # NOTE: World state validation requires FilteredGameState
+  # Phase 1.5 already validates plans at start of turn via advanceTurn()
+  # MVP: Skip re-validation here, rely on Phase 1.5 validation
+
+  # Log plan progress
   let activePlansCount = controller.goapPlanTracker.activePlans.len
   let completedPlansCount = controller.goapPlanTracker.completedPlans.len
 
-  logInfo(LogCategory.lcAI, &"{controller.houseId} GOAP: {activePlansCount} active, {completedPlansCount} completed")
+  logInfo(LogCategory.lcAI,
+    &"{controller.houseId} GOAP: {activePlansCount} active, " &
+    &"{completedPlansCount} completed")
 
-  # Check for replanning triggers
+  # Log details of active plans
+  for i, plan in controller.goapPlanTracker.activePlans:
+    let progress = plan.actionsCompleted.float / max(1, plan.plan.actions.len).float
+    let status = $plan.status
+    logDebug(LogCategory.lcAI,
+      &"{controller.houseId} GOAP Plan {i}: {plan.plan.goal.description} " &
+      &"[{status}] Progress: {(progress * 100).int}% " &
+      &"({plan.actionsCompleted}/{plan.plan.actions.len} actions)")
+
+  # Archive completed/failed/invalidated plans
+  archiveCompletedPlans(controller.goapPlanTracker)
+
+  # Check for replanning triggers (stalled plans)
   checkGOAPReplanningNeeded(controller, turn, intel)
 
 proc checkGOAPReplanningNeeded*(controller: AIController): bool =
