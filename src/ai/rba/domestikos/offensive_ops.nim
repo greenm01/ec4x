@@ -166,35 +166,42 @@ proc selectCombatOrderType(
   if not hasSpaceSuperiority:
     return FleetOrderType.Bombard
 
-  # WE HAVE SPACE SUPERIORITY - choose tactic based on ground defenses only
-  # Philosophy: With space control, ground defenses just slow us down, they don't stop us
+  # WE HAVE SPACE SUPERIORITY - choose tactic based on RELATIVE STRENGTH
+  # Philosophy: Compare invasion force vs planetary defenses (scales with game progression)
 
-  if groundDefenses == 0:
-    # No ground resistance - fast capture
+  # Calculate marine-to-defense ratio (relative strength)
+  let marineRatio = if groundDefenses > 0:
+                      float(totalMarines) / float(groundDefenses)
+                    else:
+                      float(totalMarines)  # Undefended = infinite advantage
+
+  # Minimum marines check (need at least 2 for any ground assault)
+  if totalMarines < 2:
+    # Insufficient marines for ground assault - use bombardment to soften
+    if targetColony.estimatedIndustry.isSome and targetColony.estimatedIndustry.get() >= 5:
+      return FleetOrderType.BlockadePlanet  # High-value target = blockade
+    else:
+      return FleetOrderType.Bombard  # Low-value target = bombard to weaken
+
+  # Select tactic based on marine advantage
+  if marineRatio >= 2.0 or groundDefenses == 0:
+    # Overwhelming marine superiority (2:1 or better) OR undefended
+    # Blitz = skip bombardment, immediate assault
     return FleetOrderType.Blitz
 
-  elif groundDefenses <= 3:
-    # Light ground defenses - Blitz (bombardment + simultaneous landing)
-    return FleetOrderType.Blitz
-
-  elif groundDefenses <= 8 and totalMarines >= 4:
-    # Moderate ground defenses, sufficient Marines - Invade (systematic approach)
+  elif marineRatio >= 0.5:
+    # Adequate marines for systematic approach (1:2 ratio or better)
+    # Invade = bombardment round + ground assault
+    # This should be the MOST COMMON order type for conquest
     return FleetOrderType.Invade
 
-  elif groundDefenses > 8 or totalMarines < 4:
-    # Heavy ground defenses OR insufficient Marines
-    # BLOCKADE STRATEGY: Economic warfare instead of costly ground assault
-    # Rationale: Blockade cripples production, forces defender to respond, cheaper than bombardment
-    # Use blockade for high-value colonies (estimated industry > 5)
-    if targetColony.estimatedIndustry.isSome and targetColony.estimatedIndustry.get() >= 5:
-      return FleetOrderType.BlockadePlanet  # Economic siege
-    else:
-      # Low-value colony - bombard to soften, we'll capture later
-      return FleetOrderType.Bombard
-
   else:
-    # Fallback: Bombard to soften defenses
-    return FleetOrderType.Bombard
+    # Insufficient marines (less than 1:2 ratio) - high casualties expected
+    # Use bombardment or blockade to weaken defenses first
+    if targetColony.estimatedIndustry.isSome and targetColony.estimatedIndustry.get() >= 5:
+      return FleetOrderType.BlockadePlanet  # Economic siege for high-value targets
+    else:
+      return FleetOrderType.Bombard  # Bombard to soften defenses
 
 proc calculateInvasionPriority(
   controller: AIController,
@@ -425,277 +432,9 @@ proc estimateGroundBatteries(
   # Each ground defense unit might have ~1 battery
   return report.defenses
 
-proc updateCampaignPhase(
-  campaign: var InvasionCampaign,
-  filtered: FilteredGameState,
-  controller: AIController
-): bool =
-  ## Update campaign phase based on current state
-  ## Returns false if campaign should be abandoned
-
-  let currentTurn = filtered.turn
-  let turnsStalled = currentTurn - campaign.lastActionTurn
-  let config = controller.rbaConfig.domestikos
-
-  # Check for stall (no action for N turns)
-  if turnsStalled > config.campaign_stall_timeout:
-    campaign.abandonReason = some("Stalled for " & $turnsStalled & " turns")
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Campaign: Abandoning campaign on " &
-            &"{campaign.targetSystem} - stalled")
-    return false
-
-  # Check if target still exists and is enemy-owned
-  var targetExists = false
-  var targetOwner: HouseId
-  for colony in filtered.visibleColonies:
-    if colony.systemId == campaign.targetSystem:
-      targetExists = true
-      targetOwner = colony.owner
-      break
-
-  if not targetExists:
-    campaign.abandonReason = some("Target system no longer visible")
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Campaign: Abandoning campaign on " &
-            &"{campaign.targetSystem} - target lost")
-    return false
-
-  # Check if we captured the target!
-  if targetOwner == controller.houseId:
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Campaign: SUCCESS! Captured " &
-            &"{campaign.targetSystem}")
-    campaign.phase = InvasionCampaignPhase.Consolidation
-    return true
-
-  # Check if target was captured by someone else
-  if targetOwner != campaign.targetOwner:
-    campaign.abandonReason = some("Target captured by " & $targetOwner)
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Campaign: Abandoning campaign on " &
-            &"{campaign.targetSystem} - captured by another house")
-    return false
-
-  # Phase transition logic
-  case campaign.phase
-  of InvasionCampaignPhase.Scouting:
-    # Transition to Bombardment when we have fresh intel
-    if hasRecentIntel(controller, filtered, campaign.targetSystem, maxAge = 3):
-      campaign.phase = InvasionCampaignPhase.Bombardment
-      campaign.bombardmentRounds = 0
-      logInfo(LogCategory.lcAI,
-              &"{controller.houseId} Campaign: {campaign.targetSystem} " &
-              &"Scouting → Bombardment")
-
-  of InvasionCampaignPhase.Bombardment:
-    # Estimate batteries remaining
-    let batteries = estimateGroundBatteries(controller, filtered, campaign.targetSystem)
-    campaign.estimatedBatteriesRemaining = batteries
-
-    # Transition to Invasion when batteries destroyed or max rounds reached
-    if batteries <= 0 or
-       campaign.bombardmentRounds >= config.campaign_bombardment_max:
-      campaign.phase = InvasionCampaignPhase.Invasion
-      logInfo(LogCategory.lcAI,
-              &"{controller.houseId} Campaign: {campaign.targetSystem} " &
-              &"Bombardment → Invasion (batteries: {batteries}, " &
-              &"rounds: {campaign.bombardmentRounds})")
-
-  of InvasionCampaignPhase.Invasion:
-    # Stay in Invasion phase until successful (checked above) or stalled
-    discard
-
-  of InvasionCampaignPhase.Consolidation:
-    # Campaign complete - should be cleaned up soon
-    discard
-
-  return true
-
-proc generateCampaignOrder(
-  campaign: var InvasionCampaign,
-  filtered: FilteredGameState,
-  analyses: seq[FleetAnalysis],
-  controller: AIController,
-  intelSnapshot: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot)
-): Option[FleetOrder] =
-  ## Generate phase-appropriate order for campaign
-  ## Phase 4.2: Enhanced with intelligence for defense assessment
-  ## Updates campaign.lastActionTurn if order generated
-
-  # Find best available fleet (prioritize assigned fleets, then nearby idle)
-  var bestFleet: Option[FleetAnalysis] = none(FleetAnalysis)
-  var bestDistance = 999
-
-  # Determine if we need marines for this phase
-  let needsMarines = campaign.phase == InvasionCampaignPhase.Invasion
-
-  # First pass: check assigned fleets
-  # CRITICAL FIX: Never assign ETACs to military campaigns (they're for colonization only)
-  for fleetId in campaign.assignedFleets:
-    for analysis in analyses:
-      if analysis.fleetId == fleetId:
-        # Check if fleet is available (exclude specialized fleets)
-        # ETACs for Eparch, Scouts for Drungarius
-        if analysis.utilization in {FleetUtilization.Idle,
-                                     FleetUtilization.UnderUtilized} and
-           not analysis.hasETACs and not analysis.hasScouts:
-
-          # CRITICAL: For Invasion phase, require loaded marines
-          if needsMarines:
-            var fleetObj: Option[Fleet] = none(Fleet)
-            for f in filtered.ownFleets:
-              if f.id == fleetId:
-                fleetObj = some(f)
-                break
-            if fleetObj.isSome:
-              let (hasTransports, marineCount) = hasLoadedMarines(fleetObj.get())
-              if not hasTransports or marineCount < 2:
-                logDebug(LogCategory.lcAI,
-                         &"{controller.houseId} Campaign: Fleet {fleetId} " &
-                         &"lacks marines for invasion (marines: {marineCount})")
-                break  # Skip this fleet
-
-          let dist = calculateDistance(filtered.starMap,
-                                       analysis.location,
-                                       campaign.targetSystem)
-          if dist < bestDistance:
-            bestFleet = some(analysis)
-            bestDistance = dist
-        break
-
-  # Second pass: find nearby idle fleets if no assigned fleet available
-  # CRITICAL FIX: Never assign specialized fleets to military campaigns
-  # ETACs for Eparch colonization, Scouts for Drungarius reconnaissance
-  if bestFleet.isNone:
-    for analysis in analyses:
-      if analysis.utilization == FleetUtilization.Idle and not analysis.hasETACs and not analysis.hasScouts:
-
-        # CRITICAL: For Invasion phase, require loaded marines
-        if needsMarines:
-          var fleetObj: Option[Fleet] = none(Fleet)
-          for f in filtered.ownFleets:
-            if f.id == analysis.fleetId:
-              fleetObj = some(f)
-              break
-          if fleetObj.isSome:
-            let (hasTransports, marineCount) = hasLoadedMarines(fleetObj.get())
-            if not hasTransports or marineCount < 2:
-              continue  # Skip this fleet
-
-        let dist = calculateDistance(filtered.starMap,
-                                     analysis.location,
-                                     campaign.targetSystem)
-        if dist < bestDistance:
-          bestFleet = some(analysis)
-          bestDistance = dist
-
-  if bestFleet.isNone:
-    if needsMarines:
-      logDebug(LogCategory.lcAI,
-               &"{controller.houseId} Campaign: No available fleet with loaded " &
-               &"marines for invasion of {campaign.targetSystem}")
-    else:
-      logDebug(LogCategory.lcAI,
-               &"{controller.houseId} Campaign: No available fleet for " &
-               &"{campaign.targetSystem}")
-    return none(FleetOrder)
-
-  let fleet = bestFleet.get()
-
-  # Find target colony for defense estimates
-  var targetColony: Option[VisibleColony] = none(VisibleColony)
-  for colony in filtered.visibleColonies:
-    if colony.systemId == campaign.targetSystem:
-      targetColony = some(colony)
-      break
-
-  if targetColony.isNone:
-    logDebug(LogCategory.lcAI,
-             &"{controller.houseId} Campaign: Target {campaign.targetSystem} " &
-             &"not visible")
-    return none(FleetOrder)
-
-  # Generate phase-appropriate order
-  var order: FleetOrder
-
-  case campaign.phase
-  of InvasionCampaignPhase.Scouting:
-    # Spy mission to gather intelligence
-    order = FleetOrder(
-      fleetId: fleet.fleetId,
-      orderType: FleetOrderType.SpyPlanet,
-      targetSystem: some(campaign.targetSystem),
-      priority: 90,  # High priority - campaign order
-      roe: some(4)   # Cautious - gather intel and retreat
-    )
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Campaign: Scouting order - fleet " &
-            &"{fleet.fleetId} → {campaign.targetSystem}")
-
-  of InvasionCampaignPhase.Bombardment:
-    # Bombard to destroy batteries
-    order = FleetOrder(
-      fleetId: fleet.fleetId,
-      orderType: FleetOrderType.Bombard,
-      targetSystem: some(campaign.targetSystem),
-      priority: 95,  # Very high priority - active campaign
-      roe: some(controller.rbaConfig.domestikos_offensive.roe_bombardment_priority)
-    )
-    campaign.bombardmentRounds += 1
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Campaign: Bombardment order (round " &
-            &"{campaign.bombardmentRounds}) - fleet {fleet.fleetId} → " &
-            &"{campaign.targetSystem}")
-
-  of InvasionCampaignPhase.Invasion:
-    # Choose appropriate invasion tactic
-    let orderType = selectCombatOrderType(
-      controller,
-      filtered,
-      fleet.fleetId,
-      fleet.shipCount,
-      targetColony.get(),
-      intelSnapshot  # Phase 4.2: Pass intelligence for defense assessment
-    )
-
-    let roe = case orderType
-      of FleetOrderType.Blitz: controller.rbaConfig.domestikos_offensive.roe_blitz_priority   # Aggressive blitz
-      of FleetOrderType.Invade: 10 # All-out invasion (maximum aggression)
-      else: controller.rbaConfig.domestikos_offensive.roe_bombardment_priority  # Fallback to bombardment
-
-    order = FleetOrder(
-      fleetId: fleet.fleetId,
-      orderType: orderType,
-      targetSystem: some(campaign.targetSystem),
-      priority: 100,  # Maximum priority - invasion assault
-      roe: some(roe)
-    )
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Campaign: {orderType} order - fleet " &
-            &"{fleet.fleetId} → {campaign.targetSystem}")
-
-  of InvasionCampaignPhase.Consolidation:
-    # Defend newly captured system
-    order = FleetOrder(
-      fleetId: fleet.fleetId,
-      orderType: FleetOrderType.Patrol,  # Defend and intercept in system
-      targetSystem: some(campaign.targetSystem),
-      priority: 80,  # Important - protect conquest
-      roe: some(6)   # Defensive posture
-    )
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Campaign: Consolidation order - fleet " &
-            &"{fleet.fleetId} → defend {campaign.targetSystem}")
-
-  # Update campaign action timestamp
-  campaign.lastActionTurn = filtered.turn
-
-  # Add fleet to assigned list if not already there
-  if fleet.fleetId notin campaign.assignedFleets:
-    campaign.assignedFleets.add(fleet.fleetId)
-
-  return some(order)
+# Campaign functions removed - GOAP now handles multi-turn strategic planning
+# See: goap/domains/fleet/goals.nim for InvadeColony, SecureSystem, DefendColony goals
+# RBA Domestikos focuses on tactical order selection via selectCombatOrderType()
 
 # =============================================================================
 # Counter-Attack Order Generation
@@ -704,137 +443,24 @@ proc generateCampaignOrder(
 proc generateCounterAttackOrders*(
   filtered: FilteredGameState,
   analyses: seq[FleetAnalysis],
-  controller: var AIController,  # Phase 2: Mutable for campaign tracking
-  intelSnapshot: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot)  # Phase F: Intelligence integration
+  controller: var AIController,
+  intelSnapshot: Option[IntelligenceSnapshot] = none(IntelligenceSnapshot)
 ): seq[FleetOrder] =
-  ## Generate counter-attack orders against vulnerable enemy targets
-  ## Phase 2: Multi-turn campaign tracking with Bombardment → Invasion sequences
-  ## Phase F: Intelligence-driven targeting using military.vulnerableTargets and economic.highValueTargets
-  ## Fallback: Visibility-based targeting when intelligence unavailable
+  ## Generate opportunistic counter-attack orders against vulnerable enemy targets
+  ##
+  ## Tactical (single-turn) invasion order generation:
+  ## - Intelligence-driven targeting using military.vulnerableTargets
+  ## - Visibility-based fallback when intelligence unavailable
+  ## - Order type selection via selectCombatOrderType (Invade/Blitz/Bombard)
+  ##
+  ## NOTE: Multi-turn strategic campaigns now handled by GOAP
+  ## See: goap/domains/fleet/goals.nim for InvadeColony, SecureSystem goals
   result = @[]
 
   # ==========================================================================
-  # PHASE 2: ACTIVE CAMPAIGN EXECUTION (PRIORITY 1)
+  # TACTICAL INVASION ORDERS (OPPORTUNISTIC)
   # ==========================================================================
-  # Process active campaigns FIRST before creating new ones
-  # This enables multi-turn Bombardment → Invasion sequences
-
-  var completedCampaigns: seq[int] = @[]  # Track campaigns to remove
-  var abandonedCampaigns: seq[int] = @[]
-
-  logDebug(LogCategory.lcAI,
-           &"{controller.houseId} Campaign: Processing {controller.activeCampaigns.len} active campaigns")
-
-  for i in 0..<controller.activeCampaigns.len:
-    var campaign = controller.activeCampaigns[i]
-
-    # Update campaign state and check if should continue
-    if not updateCampaignPhase(campaign, filtered, controller):
-      # Campaign should be abandoned
-      abandonedCampaigns.add(i)
-      continue
-
-    # Check if campaign is complete (Consolidation phase)
-    if campaign.phase == InvasionCampaignPhase.Consolidation:
-      completedCampaigns.add(i)
-      # Still generate consolidation order, then mark for cleanup
-      discard
-
-    # Generate order for this campaign
-    let campaignOrder = generateCampaignOrder(campaign, filtered, analyses,
-                                               controller, intelSnapshot)
-    if campaignOrder.isSome:
-      result.add(campaignOrder.get())
-      # Update campaign in controller (important for state tracking)
-      controller.activeCampaigns[i] = campaign
-
-  # Remove completed/abandoned campaigns (reverse order to preserve indices)
-  for i in countdown(controller.activeCampaigns.len - 1, 0):
-    if i in completedCampaigns:
-      logInfo(LogCategory.lcAI,
-              &"{controller.houseId} Campaign: Completed campaign on " &
-              &"{controller.activeCampaigns[i].targetSystem}")
-      controller.activeCampaigns.delete(i)
-    elif i in abandonedCampaigns:
-      logInfo(LogCategory.lcAI,
-              &"{controller.houseId} Campaign: Abandoned campaign on " &
-              &"{controller.activeCampaigns[i].targetSystem} - " &
-              &"{controller.activeCampaigns[i].abandonReason.get(\"\")}")
-      controller.activeCampaigns.delete(i)
-
-  # If we generated campaign orders, return them (campaigns take priority)
-  if result.len > 0:
-    logInfo(LogCategory.lcAI,
-            &"{controller.houseId} Campaign: Generated {result.len} campaign orders")
-    return result
-
-  # ==========================================================================
-  # PHASE 2: NEW CAMPAIGN CREATION (PRIORITY 2)
-  # ==========================================================================
-  # Create new campaigns from intelligence vulnerableTargets
-  # Can be disabled when GOAP handles strategic invasion planning
-
-  let config = controller.rbaConfig.domestikos
-  let goapConfig = controller.rbaConfig.goap
-  let maxConcurrentCampaigns = config.max_concurrent_campaigns
-
-  # Check if RBA campaigns are disabled in favor of GOAP planning
-  let skipCampaigns = controller.goapEnabled and goapConfig.disable_rba_campaigns_with_goap
-
-  if not skipCampaigns and controller.activeCampaigns.len < maxConcurrentCampaigns:
-    if intelSnapshot.isSome:
-      let snapshot = intelSnapshot.get()
-      let availableSlots = maxConcurrentCampaigns - controller.activeCampaigns.len
-
-      logDebug(LogCategory.lcAI,
-               &"{controller.houseId} Campaign: {availableSlots} campaign " &
-               &"slots available, {snapshot.military.vulnerableTargets.len} " &
-               &"vulnerable targets")
-
-      # Create new campaigns from top vulnerable targets
-      var campaignsCreated = 0
-      for opportunity in snapshot.military.vulnerableTargets:
-        if campaignsCreated >= availableSlots:
-          break
-
-        # Check if we already have a campaign targeting this system
-        var alreadyTargeted = false
-        for existing in controller.activeCampaigns:
-          if existing.targetSystem == opportunity.systemId:
-            alreadyTargeted = true
-            break
-
-        if alreadyTargeted:
-          continue
-
-        # Create new campaign
-        let newCampaign = InvasionCampaign(
-          targetSystem: opportunity.systemId,
-          targetOwner: opportunity.owner,
-          phase: InvasionCampaignPhase.Scouting,  # Start with intel gathering
-          assignedFleets: @[],
-          startTurn: filtered.turn,
-          lastActionTurn: filtered.turn - 1,  # -1 so first update triggers action
-          bombardmentRounds: 0,
-          estimatedBatteriesRemaining: opportunity.estimatedDefenses div 10,
-          priority: calculateInvasionPriority(controller, opportunity, opportunity.intelQuality),
-          abandonReason: none(string)
-        )
-
-        controller.activeCampaigns.add(newCampaign)
-        campaignsCreated += 1
-
-        logInfo(LogCategory.lcAI,
-                &"{controller.houseId} Campaign: NEW campaign on " &
-                &"{opportunity.systemId} ({opportunity.owner}) - " &
-                &"vulnerability {opportunity.vulnerability:.2f}, " &
-                &"value {opportunity.estimatedValue}")
-
-  # ==========================================================================
-  # EXISTING LOGIC: TACTICAL INVASION ORDERS (PRIORITY 3)
-  # ==========================================================================
-  # Original intelligence-driven and visibility-based targeting
-  # Used for immediate tactical opportunities when no campaigns active
+  # Immediate single-turn tactical responses to intelligence opportunities
 
   logDebug(LogCategory.lcAI,
            &"{controller.houseId} Invasion: Evaluating invasion opportunities " &

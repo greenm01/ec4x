@@ -116,8 +116,20 @@ proc createWorldStateSnapshot*(
   result.totalFleetStrength = totalCER
   result.idleFleets = idleFleetIds
 
-  # Fleets under threat - TODO: calculate from visible enemy fleets
-  result.fleetsUnderThreat = @[]
+  # Fleets under threat - calculate from visible enemy fleets
+  var fleetsUnderThreat: seq[tuple[fleetId: FleetId, threatLevel: int]] = @[]
+  for ownFleet in filtered.ownFleets:
+    # Check if any visible enemy fleets are in the same system
+    var enemyCount = 0
+    for enemyFleet in filtered.visibleFleets:
+      if enemyFleet.location == ownFleet.location:
+        enemyCount += 1
+
+    # Add to threatened fleets if enemies present (threat level = enemy count)
+    if enemyCount > 0:
+      fleetsUnderThreat.add((fleetId: ownFleet.id, threatLevel: enemyCount))
+
+  result.fleetsUnderThreat = fleetsUnderThreat
 
   # --- Territory state ---
   result.ownedColonies = filtered.ownColonies.mapIt(it.systemId)
@@ -142,12 +154,9 @@ proc createWorldStateSnapshot*(
     
   result.staleIntelSystems = intel.espionage.staleIntelSystems
   result.espionageTargets = intel.espionage.highPriorityTargets.mapIt(it.houseId)
-    
+
   # Store the full intelligence snapshot
   result.intelSnapshot = intel
-
-  result.staleIntelSystems = @[]  # TODO: track stale intelligence
-  result.espionageTargets = @[]  # TODO: identify espionage targets
 
   # --- Diplomatic relations ---
   result.diplomaticRelations = initTable[HouseId, DiplomaticState]()
@@ -176,7 +185,20 @@ proc createWorldStateSnapshot*(
 
   # Extract TRP (technology research points) per field from ResearchPoints
   result.researchProgress = filtered.ownHouse.techTree.accumulated.technology
-  result.criticalTechGaps = @[]  # TODO: identify tech gaps vs visible enemies
+
+  # Identify critical tech gaps vs enemies (2+ levels behind)
+  var criticalGaps: seq[TechField] = @[]
+  for enemyHouse, enemyTech in intel.research.enemyTechLevels:
+    # Compare each tech field from their tech levels table
+    for field, enemyLevel in enemyTech.techLevels:
+      if field in result.techLevels:
+        let ourLevel = result.techLevels[field]
+        # Critical gap = 2+ levels behind
+        if enemyLevel - ourLevel >= 2:
+          if field notin criticalGaps:
+            criticalGaps.add(field)
+
+  result.criticalTechGaps = criticalGaps
 
   # Note: totalColonies and totalIU fields don't exist in WorldStateSnapshot
   # Can be calculated from ownedColonies.len if needed

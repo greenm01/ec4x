@@ -329,27 +329,9 @@ type
     fleetId*: FleetId
     scheduledTurn*: int  # Turn when intel update is expected
 
-  # Phase 2: Multi-turn invasion campaign tracking
-  InvasionCampaignPhase* {.pure.} = enum
-    ## Campaign lifecycle phases for multi-turn invasion operations
-    Scouting       ## Gathering intelligence on target
-    Bombardment    ## Destroying ground batteries
-    Invasion       ## Landing marines (Blitz or Invade)
-    Consolidation  ## Post-conquest defense
-
-  InvasionCampaign* = object
-    ## Multi-turn invasion campaign state tracker
-    ## Enables Bombard → Invade sequences across multiple turns
-    targetSystem*: SystemId
-    targetOwner*: HouseId
-    phase*: InvasionCampaignPhase
-    assignedFleets*: seq[FleetId]  # Fleets committed to this campaign
-    startTurn*: int
-    lastActionTurn*: int  # Last turn an order was generated
-    bombardmentRounds*: int  # Turns spent bombarding
-    estimatedBatteriesRemaining*: int
-    priority*: float
-    abandonReason*: Option[string]  # Why campaign was abandoned (if applicable)
+  # NOTE: Multi-turn invasion campaigns removed - now handled by GOAP strategic layer
+  # See: goap/domains/fleet/goals.nim for InvadeColony, SecureSystem goals
+  # RBA Domestikos focuses on tactical order selection (Invade/Blitz/Bombard)
 
   AIController* = ref object
     houseId*: HouseId
@@ -393,5 +375,4 @@ type
     intelligenceSnapshot*: Option[IntelligenceSnapshot]  # Current turn's intelligence from Drungarius
     intelligenceNeedsRefresh*: bool  # Flag: Snapshot needs regeneration after events
 
-    # Phase 2: Multi-turn invasion campaigns
-    activeCampaigns*: seq[InvasionCampaign]  # Ongoing invasion operations
+    # NOTE: activeCampaigns removed - GOAP handles multi-turn strategic planning
