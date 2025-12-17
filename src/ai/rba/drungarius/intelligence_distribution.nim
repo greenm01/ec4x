@@ -289,7 +289,34 @@ proc generateIntelligenceReport*(
         lastAttemptTurn: none(int)
       ))
 
-  # Priority 2: ViewWorld missions for unexplored systems (any ship type, basic intel)
+  # Priority 2: SpyPlanet missions for stale intel colonies (scout-only, refresh intel)
+  # Check intelligence database for colonies with stale intel
+  for systemId, colonyReport in filtered.ownHouse.intelligence.colonyReports:
+    if colonyReport.targetOwner == controller.houseId:
+      continue  # Skip own colonies
+
+    # Check if intel is stale
+    let turnsSince = filtered.turn - colonyReport.gatheredTurn
+    if turnsSince > controller.rbaConfig.intelligence.colony_intel_stale_threshold:
+      # Stale intel - need to refresh
+      let isEnemy = filtered.ownHouse.diplomaticRelations.isEnemy(colonyReport.targetOwner)
+      let stalePriority = if isEnemy:
+        RequirementPriority.High  # Enemy colonies = high priority
+      elif turnsSince > 20:
+        RequirementPriority.Medium  # Very stale = medium priority
+      else:
+        RequirementPriority.Low  # Moderately stale = low priority
+
+      reconTargets.add(EspionageTarget(
+        targetType: EspionageTargetType.ColonySpy,
+        systemId: some(systemId),
+        houseId: colonyReport.targetOwner,
+        priority: stalePriority,
+        reason: &"Stale intel ({turnsSince} turns old, threshold {controller.rbaConfig.intelligence.colony_intel_stale_threshold})",
+        lastAttemptTurn: none(int)
+      ))
+
+  # Priority 3: ViewWorld missions for unexplored systems (any ship type, basic intel)
   # Recommend basic reconnaissance of visible but unintelligenced systems
   for systemId in filtered.visibleSystems.keys:
     # Skip if we already have colony intel for this system
