@@ -60,12 +60,14 @@ proc generateScoutOrders*(
   ] = @[]
 
   for espTarget in intelSnapshot.espionage.highPriorityTargets:
-    # Map EspionageTarget to FleetOrder type (all four scout mission types)
+    # Map EspionageTarget to FleetOrder type
+    # ONLY scout-exclusive consumable missions (Orders 11-13)
+    # ViewWorld (Order 20) handled by Domestikos exploration (any ship can do it)
     let orderType = case espTarget.targetType
       of EspionageTargetType.ColonySpy: FleetOrderType.SpyPlanet      # Order 11: Detailed colony intel
       of EspionageTargetType.SystemSpy: FleetOrderType.SpySystem      # Order 12: Fleet activity intel
       of EspionageTargetType.StarbaseHack: FleetOrderType.HackStarbase  # Order 13: Research/strategic intel
-      of EspionageTargetType.ScoutRecon: FleetOrderType.ViewWorld     # Order 20: Safe reconnaissance
+      of EspionageTargetType.ScoutRecon: continue  # Skip - Domestikos handles ViewWorld with combat fleets
 
     # Map priority to numeric value based on intelligence need
     # Priority set by Drungarius intelligence analysis (stale intel, advisor needs, etc.)
