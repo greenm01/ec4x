@@ -198,23 +198,17 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
       var combatShips = 0
       var transportCount = 0
 
-      # Count squadrons (military ships)
+      # Count squadrons by type (all ships now in squadrons)
       for squadron in fleet.squadrons:
         case squadron.flagship.shipClass
         of ShipClass.Scout:
           scoutCount += 1
-        else:
-          combatShips += 1
-
-      # Count spacelift ships (ETAC and TroopTransport stored separately)
-      for spaceLiftShip in fleet.spaceLiftShips:
-        case spaceLiftShip.shipClass
         of ShipClass.ETAC:
           etacCount += 1
         of ShipClass.TroopTransport:
           transportCount += 1
         else:
-          discard
+          combatShips += 1
 
       # Insert fleet snapshot (idle turns not yet tracked, passing 0)
       insertFleetSnapshot(db, gameId, turn, $fleetId, $fleet.owner,

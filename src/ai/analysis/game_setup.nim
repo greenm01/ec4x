@@ -3,8 +3,8 @@
 ## Creates balanced starting conditions for balance test scenarios
 ## Uses existing engine initialization functions
 
-import std/[tables, strformat, sequtils, strutils, algorithm]
-import ../../engine/[gamestate, starmap, fleet, squadron, spacelift, orders, standing_orders]
+import std/[tables, strformat, sequtils, strutils, algorithm, options]
+import ../../engine/[gamestate, starmap, fleet, squadron, orders, standing_orders]
 import ../../engine/initialization/[house, colony]
 import ../../engine/config/[prestige_multiplier, population_growth_multiplier, house_themes, gameplay_config]
 import ../../common/types/[core, units, planets, tech, diplomacy]
@@ -37,21 +37,26 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     location = location,
     isCrippled = false
   )
-  var etac1 = newSpaceLiftShip(
-    id = &"{owner}_ETAC_1",
+  var etac1 = createSquadron(
     shipClass = ShipClass.ETAC,
+    techLevel = 1,
+    id = (&"{owner}_ETAC_sq1").SquadronId,
     owner = owner,
-    location = location
+    location = location,
+    isCrippled = false
   )
   # Load starting PTU for colonization (one-time consumable: 3 PTU foundation colony)
-  etac1.cargo.cargoType = CargoType.Colonists
-  etac1.cargo.quantity = 3
+  etac1.flagship.cargo = some(ShipCargo(
+    cargoType: CargoType.Colonists,
+    quantity: 3,
+    capacity: 3
+  ))
+  etac1.squadronType = SquadronType.Expansion
   result.add(Fleet(
     id: (&"{owner}_fleet1").FleetId,
     owner: owner,
     location: location,
-    squadrons: @[cruiser1],
-    spaceLiftShips: @[etac1]
+    squadrons: @[cruiser1, etac1]
   ))
 
   # Fleet 2: ETAC + Light Cruiser
@@ -63,21 +68,26 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     location = location,
     isCrippled = false
   )
-  var etac2 = newSpaceLiftShip(
-    id = &"{owner}_ETAC_2",
+  var etac2 = createSquadron(
     shipClass = ShipClass.ETAC,
+    techLevel = 1,
+    id = (&"{owner}_ETAC_sq2").SquadronId,
     owner = owner,
-    location = location
+    location = location,
+    isCrippled = false
   )
   # Load starting PTU for colonization (one-time consumable: 3 PTU foundation colony)
-  etac2.cargo.cargoType = CargoType.Colonists
-  etac2.cargo.quantity = 3
+  etac2.flagship.cargo = some(ShipCargo(
+    cargoType: CargoType.Colonists,
+    quantity: 3,
+    capacity: 3
+  ))
+  etac2.squadronType = SquadronType.Expansion
   result.add(Fleet(
     id: (&"{owner}_fleet2").FleetId,
     owner: owner,
     location: location,
-    squadrons: @[cruiser2],
-    spaceLiftShips: @[etac2]
+    squadrons: @[cruiser2, etac2]
   ))
 
   # Fleet 3: ETAC + Light Cruiser (3rd ETAC fleet per plan)
@@ -89,21 +99,26 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     location = location,
     isCrippled = false
   )
-  var etac3 = newSpaceLiftShip(
-    id = &"{owner}_ETAC_3",
+  var etac3 = createSquadron(
     shipClass = ShipClass.ETAC,
+    techLevel = 1,
+    id = (&"{owner}_ETAC_sq3").SquadronId,
     owner = owner,
-    location = location
+    location = location,
+    isCrippled = false
   )
   # Load starting PTU for colonization (one-time consumable: 3 PTU foundation colony)
-  etac3.cargo.cargoType = CargoType.Colonists
-  etac3.cargo.quantity = 3
+  etac3.flagship.cargo = some(ShipCargo(
+    cargoType: CargoType.Colonists,
+    quantity: 3,
+    capacity: 3
+  ))
+  etac3.squadronType = SquadronType.Expansion
   result.add(Fleet(
     id: (&"{owner}_fleet3").FleetId,
     owner: owner,
     location: location,
-    squadrons: @[cruiser3],
-    spaceLiftShips: @[etac3]
+    squadrons: @[cruiser3, etac3]
   ))
 
   # Fleet 4: Destroyer
@@ -119,8 +134,7 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     id: (&"{owner}_fleet4").FleetId,
     owner: owner,
     location: location,
-    squadrons: @[destroyer1],
-    spaceLiftShips: @[]
+    squadrons: @[destroyer1]
   ))
 
   # Fleet 5: Destroyer
@@ -136,8 +150,7 @@ proc createStartingFleets*(owner: HouseId, location: SystemId): seq[Fleet] =
     id: (&"{owner}_fleet5").FleetId,
     owner: owner,
     location: location,
-    squadrons: @[destroyer2],
-    spaceLiftShips: @[]
+    squadrons: @[destroyer2]
   ))
 
 proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameState =

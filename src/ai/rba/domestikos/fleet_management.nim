@@ -108,9 +108,16 @@ proc identifyMergerGroups*(
           foundFleet = true
           break
 
-      if foundFleet and actualFleet.spaceLiftShips.len > 0:
-        # Has spacelift ships - skip to avoid merging ETACs
-        continue
+      if foundFleet:
+        # Check if any squadrons are Expansion type (ETACs)
+        var hasExpansionSquadrons = false
+        for squadron in actualFleet.squadrons:
+          if squadron.squadronType == SquadronType.Expansion:
+            hasExpansionSquadrons = true
+            break
+        if hasExpansionSquadrons:
+          # Has expansion squadrons - skip to avoid merging ETACs
+          continue
 
       if fleetAnalysis.hasScouts and not fleetAnalysis.hasCombatShips:
         scoutFleets.add(fleetAnalysis)

@@ -590,13 +590,16 @@ proc executeInvadeOrder(
     if squadron.flagship.stats.attackStrength > 0:
       hasCombatShips = true
 
-  # Check spacelift ships for loaded marines
-  for ship in fleet.spaceLiftShips:
-    if ship.shipClass == ShipClass.TroopTransport and
-       ship.cargo.cargoType == CargoType.Marines and
-       ship.cargo.quantity > 0:
-      hasLoadedTransports = true
-      break
+  # Check Auxiliary squadrons for loaded marines
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Auxiliary:
+      if squadron.flagship.cargo.isSome:
+        let cargo = squadron.flagship.cargo.get()
+        if squadron.flagship.shipClass == ShipClass.TroopTransport and
+           cargo.cargoType == CargoType.Marines and
+           cargo.quantity > 0:
+          hasLoadedTransports = true
+          break
 
   if not hasCombatShips:
     return OrderOutcome.Failed
@@ -639,16 +642,18 @@ proc executeBlitzOrder(
     if targetHouse.eliminated:
       return OrderOutcome.Failed
 
-  # Check for loaded troop transports (spacelift ships, NOT squadrons)
-  # Per ARCHITECTURE FIX 2025-11-23: Spacelift ships are separate from squadrons
+  # Check for loaded troop transports (Auxiliary squadrons)
   var hasLoadedTransports = false
 
-  for spaceliftShip in fleet.spaceLiftShips:
-    if spaceliftShip.shipClass == ShipClass.TroopTransport:
-      # Check if transport has Marines loaded
-      if spaceliftShip.cargo.cargoType == CargoType.Marines and spaceliftShip.cargo.quantity > 0:
-        hasLoadedTransports = true
-        break
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Auxiliary:
+      if squadron.flagship.shipClass == ShipClass.TroopTransport:
+        # Check if transport has Marines loaded
+        if squadron.flagship.cargo.isSome:
+          let cargo = squadron.flagship.cargo.get()
+          if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+            hasLoadedTransports = true
+            break
 
   if not hasLoadedTransports:
     return OrderOutcome.Failed
@@ -1028,15 +1033,16 @@ proc executeColonizeOrder(
   if order.targetSystem.isNone:
     return OrderOutcome.Failed
 
-  # Check fleet has ETAC with loaded colonists
+  # Check fleet has ETAC with loaded colonists (Expansion squadrons)
   var hasLoadedETAC = false
 
-  for ship in fleet.spaceLiftShips:
-    if ship.shipClass == ShipClass.ETAC and
-       ship.cargo.cargoType == CargoType.Colonists and
-       ship.cargo.quantity > 0:
-      hasLoadedETAC = true
-      break
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Expansion:
+      if squadron.flagship.shipClass == ShipClass.ETAC and squadron.flagship.cargo.isSome:
+        let cargo = squadron.flagship.cargo.get()
+        if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+          hasLoadedETAC = true
+          break
 
   if not hasLoadedETAC:
     return OrderOutcome.Failed
@@ -1167,12 +1173,10 @@ proc executeJoinFleetOrder(
 
     # If we got here, fleet reached target - fall through to merge logic below
 
-  # At same location - merge squadrons and spacelift ships into target fleet
+  # At same location - merge squadrons into target fleet (all squadron types)
   var updatedTargetFleet = targetFleet
   for squadron in fleet.squadrons:
     updatedTargetFleet.squadrons.add(squadron)
-  for ship in fleet.spaceLiftShips:
-    updatedTargetFleet.spaceLiftShips.add(ship)
 
   state.fleets[targetFleetId] = updatedTargetFleet
 
@@ -1306,11 +1310,9 @@ proc executeRendezvousOrder(
     if f.id == lowestId:
       continue  # Skip host
 
-    # Merge squadrons and spacelift ships
+    # Merge squadrons (all squadron types)
     for squadron in f.squadrons:
       hostFleet.squadrons.add(squadron)
-    for ship in f.spaceLiftShips:
-      hostFleet.spaceLiftShips.add(ship)
 
     # Remove merged fleet and clean up orders
     state.fleets.del(f.id)

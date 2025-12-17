@@ -6,7 +6,7 @@
 ## REFACTORED: 2025-12-06 - Extracted from diagnostics.nim (lines 631-841)
 ## NEW: Facility tracking (totalSpaceports, totalShipyards)
 
-import std/[math, strformat, tables]
+import std/[math, strformat, tables, options]
 import ./types
 import ../../../engine/[gamestate, logger]
 import ../../../engine/config/military_config
@@ -192,16 +192,9 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
           if squadron.embarkedFighters.len == 0:
             idleCarrierCount += 1
         of ShipClass.PlanetBreaker: planetBreakerShips += 1
-        of ShipClass.ETAC: etacShips += 1  # Should not happen in squadrons
+        of ShipClass.ETAC: etacShips += 1  # ETACs now in Expansion squadrons
         of ShipClass.TroopTransport:
-          troopTransportShips += 1  # Should not happen in squadrons
-
-      # Count spacelift ships (ETAC and TroopTransport)
-      for spaceLiftShip in fleet.spaceLiftShips:
-        case spaceLiftShip.shipClass:
-        of ShipClass.ETAC: etacShips += 1
-        of ShipClass.TroopTransport: troopTransportShips += 1
-        else: discard  # Spacelift shouldn't have other classes
+          troopTransportShips += 1  # TroopTransports now in Auxiliary squadrons
 
   # Assign ship counts
   result.fighterShips = fighterShips
@@ -260,10 +253,12 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   # Count marines loaded on transports (auto-loaded after commissioning)
   for fleetId, fleet in state.fleets:
     if fleet.owner == houseId:
-      for ship in fleet.spaceLiftShips:
-        if ship.shipClass == ShipClass.TroopTransport and
-           ship.cargo.cargoType == CargoType.Marines:
-          marinesOnTransports += ship.cargo.quantity
+      for squadron in fleet.squadrons:
+        if squadron.squadronType == SquadronType.Auxiliary:
+          if squadron.flagship.cargo.isSome:
+            let cargo = squadron.flagship.cargo.get()
+            if cargo.cargoType == CargoType.Marines:
+              marinesOnTransports += cargo.quantity
 
   result.planetaryShieldUnits = planetaryShieldUnits
   result.groundBatteryUnits = groundBatteryUnits

@@ -51,7 +51,8 @@ type
     destroyers*: int
     escorts*: int
     scouts*: int
-    spaceLiftShips*: int  # Transports
+    expansionShips*: int  # ETACs (colonization)
+    auxiliaryShips*: int  # TroopTransports (invasions)
     totalShips*: int
     avgTechLevel*: int  # Average tech level if known (0 = unknown)
 

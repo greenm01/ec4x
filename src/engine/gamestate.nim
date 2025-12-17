@@ -78,7 +78,7 @@ export core.HouseId, core.SystemId, core.FleetId
 export planets.PlanetClass, planets.ResourceRating
 export tech.TechField, tech.TechLevel
 export diplomacy.DiplomaticState
-export fleet.SpaceLiftShip, fleet.SpaceLiftCargo, fleet.CargoType  # ARCHITECTURE FIX
+export fleet.SquadronType, fleet.ShipCargo, fleet.CargoType  # UNIFIED ARCHITECTURE
 # Note: GameAct and getCurrentGameAct are exported via * in their declarations
 
 type
@@ -179,8 +179,7 @@ type
     activeTerraforming*: Option[TerraformProject]    # Active terraforming project
 
     # Squadrons awaiting fleet assignment (auto-commissioned from construction)
-    unassignedSquadrons*: seq[Squadron]          # Combat squadrons at colony, not in any fleet
-    unassignedSpaceLiftShips*: seq[SpaceLiftShip] # DEPRECATED: Use unassignedSquadrons with SquadronType.Expansion/Auxiliary
+    unassignedSquadrons*: seq[Squadron]          # All squadron types at colony, not in any fleet (Combat, Intel, Expansion, Auxiliary)
     # NOTE: Auto-assignment is ALWAYS enabled (see docs/architecture/standing-orders.md for rationale)
 
     # Fighter squadrons (assets.md:2.4.1)

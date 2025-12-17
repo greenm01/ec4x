@@ -228,8 +228,7 @@ proc calculateTransitTime(state: GameState, sourceSystem: SystemId, destSystem: 
     id: "transit_calc",
     owner: "GUILD".HouseId,
     location: sourceSystem,
-    squadrons: @[],
-    spaceliftShips: @[]
+    squadrons: @[]
   )
 
   # Use starmap pathfinding to get actual jump distance
@@ -636,9 +635,15 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             logError(LogCategory.lcEconomy,
               "Fighters should be built as planetary defense (Building itemId=Fighter)")
           elif isSpaceLift:
-            # Create SpaceLiftShip (individual unit, not squadron)
-            let shipId = colony.owner & "_" & $shipClass & "_" & $systemId & "_" & $state.turn
-            var spaceLiftShip = newSpaceLiftShip(shipId, shipClass, colony.owner, systemId)
+            # Commission spacelift ship as single-ship squadron
+            # ETAC → SquadronType.Expansion, TroopTransport → SquadronType.Auxiliary
+            let techLevel = state.houses[colony.owner].techTree.levels.weaponsTech
+            let stats = getShipStats(shipClass, techLevel)
+            let cargoCapacity = stats.carryLimit
+
+            # Set up cargo (ETAC: empty by default, TroopTransport: empty)
+            var cargo = none(ShipCargo)
+            var extractionCost = 0.0
 
             # Auto-load PTU onto ETAC at commissioning with extraction cost
             # Larger colonies spare PTUs more cheaply due to exponential PU→PTU relationship
@@ -648,68 +653,90 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             # See docs/specs/economy.md:15-27 for PTU mechanics
             if shipClass == ShipClass.ETAC and colony.population > 1:
               # Calculate extraction cost (PU lost from colony to create 1 PTU)
-              let extractionCost = 1.0 / (1.0 + 0.00657 * colony.population.float)
+              extractionCost = 1.0 / (1.0 + 0.00657 * colony.population.float)
 
               # Apply cost by reducing colony population (affects future GCO/production)
               let newPopulation = colony.population.float - extractionCost
               colony.population = max(1, newPopulation.int)
 
               # Load PTU onto ETAC
-              spaceLiftShip.cargo.cargoType = CargoType.Colonists
-              spaceLiftShip.cargo.quantity = 1
-              logInfo(LogCategory.lcEconomy, &"Loaded 1 PTU onto {shipId} (extraction: {extractionCost:.2f} PU from {systemId})")
+              cargo = some(ShipCargo(
+                cargoType: CargoType.Colonists,
+                quantity: 1,
+                capacity: cargoCapacity
+              ))
+              logInfo(LogCategory.lcEconomy, &"Loaded 1 PTU onto ETAC at {systemId} (extraction: {extractionCost:.2f} PU)")
+            elif shipClass == ShipClass.TroopTransport:
+              # TroopTransports start empty
+              cargo = some(ShipCargo(
+                cargoType: CargoType.None,
+                quantity: 0,
+                capacity: cargoCapacity
+              ))
 
-            colony.unassignedSpaceLiftShips.add(spaceLiftShip)
-            logInfo(LogCategory.lcEconomy, &"Commissioned {shipClass} spacelift ship at {systemId}")
+            let ship = Ship(
+              shipClass: shipClass,
+              shipType: ShipType.Spacelift,
+              stats: stats,
+              isCrippled: false,
+              name: "",
+              cargo: cargo
+            )
+
+            let squadronId = $colony.owner & "_" & $shipClass & "_" & $systemId & "_" & $state.turn
+            var squadron = newSquadron(ship, squadronId, colony.owner, systemId)
+            squadron.squadronType = getSquadronType(shipClass)  # Expansion or Auxiliary
+
+            colony.unassignedSquadrons.add(squadron)
+            logInfo(LogCategory.lcEconomy, &"Commissioned {shipClass} squadron {squadronId} at {systemId}")
 
             # Auto-assign to fleets (create new fleet if needed)
-            if colony.unassignedSpaceLiftShips.len > 0:
-              # Get the ship from unassigned pool (use this reference, not the local variable)
-              let shipToAssign = colony.unassignedSpaceLiftShips[colony.unassignedSpaceLiftShips.len - 1]
+            if colony.unassignedSquadrons.len > 0:
+              # Get the squadron from unassigned pool
+              let squadronToAssign = colony.unassignedSquadrons[colony.unassignedSquadrons.len - 1]
 
               # Find or create fleet at this location
               var targetFleetId = ""
               for fleetId, fleet in state.fleets:
-                if fleet.location == systemId and fleet.owner == colony.owner:
+                if fleet.location == systemId and fleet.owner == colony.owner and fleet.status == FleetStatus.Active:
                   targetFleetId = fleetId
                   break
 
               if targetFleetId == "":
-                # Create new fleet for spacelift ship
+                # Create new fleet for squadron
                 targetFleetId = $colony.owner & "_fleet" & $(state.fleets.len + 1)
                 state.fleets[targetFleetId] = Fleet(
                   id: targetFleetId,
                   owner: colony.owner,
                   location: systemId,
-                  squadrons: @[],
-                  spaceLiftShips: @[shipToAssign],
+                  squadrons: @[squadronToAssign],
                   status: FleetStatus.Active,
                   autoBalanceSquadrons: true
                 )
-                let createdFleet = state.fleets[targetFleetId]
-                logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in new fleet {targetFleetId} with {createdFleet.spaceLiftShips.len} spacelift ships")
+                logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} squadron in new fleet {targetFleetId}")
               else:
                 # Add to existing fleet
-                state.fleets[targetFleetId].spaceLiftShips.add(shipToAssign)
-                logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in fleet {targetFleetId}")
+                state.fleets[targetFleetId].squadrons.add(squadronToAssign)
+                logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} squadron in fleet {targetFleetId}")
 
               # Remove from unassigned pool (it's now in fleet)
-              # SAFETY CHECK: Ensure we have ships to remove
-              if colony.unassignedSpaceLiftShips.len > 0:
-                colony.unassignedSpaceLiftShips.delete(colony.unassignedSpaceLiftShips.len - 1)
+              if colony.unassignedSquadrons.len > 0:
+                colony.unassignedSquadrons.delete(colony.unassignedSquadrons.len - 1)
               else:
                 logError(LogCategory.lcFleet,
-                  &"ERROR: Tried to remove spacelift ship but colony.unassignedSpaceLiftShips is empty!")
+                  &"ERROR: Tried to remove squadron but colony.unassignedSquadrons is empty!")
 
               # WARN if ETAC assigned without PTU (potential colonization failure)
-              if shipClass == ShipClass.ETAC and
-                 (spaceLiftShip.cargo.cargoType != CargoType.Colonists or spaceLiftShip.cargo.quantity == 0):
-                logWarn(LogCategory.lcFleet, &"Empty ETAC {shipId} assigned to fleet {targetFleetId} - colonization will fail!")
+              if shipClass == ShipClass.ETAC:
+                if squadronToAssign.flagship.cargo.isNone or
+                   squadronToAssign.flagship.cargo.get().cargoType != CargoType.Colonists or
+                   squadronToAssign.flagship.cargo.get().quantity == 0:
+                  logWarn(LogCategory.lcFleet, &"Empty ETAC squadron {squadronId} assigned to fleet {targetFleetId} - colonization will fail!")
 
-              logInfo(LogCategory.lcFleet, &"Auto-assigned {shipClass} to fleet {targetFleetId}")
+              logInfo(LogCategory.lcFleet, &"Auto-assigned {shipClass} squadron to fleet {targetFleetId}")
 
           elif isScout:
-            # ARCHITECTURE FIX: Scouts form dedicated single-ship fleets (like ETACs)
+            # ARCHITECTURE FIX: Scouts form dedicated single-ship fleets
             # This ensures scouts remain idle and available for Drungarius reconnaissance deployment
             # Without this, scouts get mixed into combat fleets via autoBalanceSquadronsToFleets()
             let newShip = newEnhancedShip(shipClass, techLevel)
@@ -724,7 +751,6 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
               owner: colony.owner,
               location: systemId,
               squadrons: @[scoutSquadron],
-              spaceLiftShips: @[],
               status: FleetStatus.Active,
               autoBalanceSquadrons: false  # Don't merge scouts with combat fleets
             )
@@ -894,15 +920,25 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           let isSpaceLift = shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]
 
           if isSpaceLift:
-            # Spacelift ships commission to unassigned list (use newSpaceLiftShip for config-based capacity)
-            let spaceLiftShip = newSpaceLiftShip(
-              id = "", # Will be assigned during fleet integration
-              shipClass = shipClass,
-              owner = colony.owner,
-              location = colony.systemId
+            # Spacelift ships commission as squadrons (Expansion/Auxiliary)
+            let stats = getShipStats(shipClass)
+            let ship = Ship(
+              shipClass: shipClass,
+              shipType: ShipType.Spacelift,
+              stats: stats,
+              isCrippled: false,  # Repaired!
+              name: "",
+              cargo: some(ShipCargo(
+                cargoType: CargoType.None,
+                quantity: 0,
+                capacity: stats.carryLimit
+              ))
             )
-            colony.unassignedSpaceLiftShips.add(spaceLiftShip)
-            logDebug(LogCategory.lcEconomy, &"Recommissioned {shipClass} as spacelift ship (repaired)")
+            let squadronId = $colony.owner & "_" & $shipClass & "_repair_" & $colony.systemId & "_" & $state.turn
+            var squadron = newSquadron(ship, squadronId, colony.owner, colony.systemId)
+            squadron.squadronType = getSquadronType(shipClass)  # Expansion or Auxiliary
+            colony.unassignedSquadrons.add(squadron)
+            logDebug(LogCategory.lcEconomy, &"Recommissioned {shipClass} squadron (repaired)")
           else:
             # Combat ships commission through squadron pipeline
             let stats = getShipStats(shipClass)
@@ -1227,7 +1263,6 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var gamestate.C
         owner: colony.owner,
         location: systemId,
         squadrons: allSquadrons,  # All squadrons in one fleet
-        spaceLiftShips: @[],
         status: FleetStatus.Active,
         autoBalanceSquadrons: true
       )

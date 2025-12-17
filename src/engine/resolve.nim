@@ -306,14 +306,9 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   # Fighter squadrons are OK to remain at colonies (they're not "unassigned")
   for systemId, colony in result.newState.colonies:
     if colony.unassignedSquadrons.len > 0:
-      logError("Resolve", "Turn ending with unassigned combat squadrons", "colony=", $systemId, " count=", $colony.unassignedSquadrons.len)
+      logError("Resolve", "Turn ending with unassigned squadrons", "colony=", $systemId, " count=", $colony.unassignedSquadrons.len)
       # This should never happen - indicates auto-assignment bug
-      raise newException(ValueError, "Colony " & $systemId & " has " & $colony.unassignedSquadrons.len & " unassigned combat squadrons at turn end")
-
-    if colony.unassignedSpaceLiftShips.len > 0:
-      logError("Resolve", "Turn ending with unassigned spacelift ships", "colony=", $systemId, " count=", $colony.unassignedSpaceLiftShips.len)
-      # This should never happen - indicates auto-assignment bug
-      raise newException(ValueError, "Colony " & $systemId & " has " & $colony.unassignedSpaceLiftShips.len & " unassigned spacelift ships at turn end")
+      raise newException(ValueError, "Colony " & $systemId & " has " & $colony.unassignedSquadrons.len & " unassigned squadrons at turn end")
 
   logDebug("Resolve", "Turn validation passed - all commissioned units assigned", "turn=", $result.newState.turn)
 

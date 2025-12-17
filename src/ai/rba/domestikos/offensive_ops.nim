@@ -97,12 +97,15 @@ proc selectCombatOrderType(
   var totalMarines = 0
   for fleet in filtered.ownFleets:
     if fleet.id == fleetId:
-      # Check spacelift ships for loaded Marines
-      for ship in fleet.spaceLiftShips:
-        if ship.shipClass == ShipClass.TroopTransport:
-          if ship.cargo.cargoType == CargoType.Marines and ship.cargo.quantity > 0:
-            hasLoadedTransports = true
-            totalMarines += ship.cargo.quantity
+      # Check Auxiliary squadrons for loaded Marines
+      for squadron in fleet.squadrons:
+        if squadron.squadronType == SquadronType.Auxiliary:
+          if squadron.flagship.shipClass == ShipClass.TroopTransport:
+            if squadron.flagship.cargo.isSome:
+              let cargo = squadron.flagship.cargo.get()
+              if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+                hasLoadedTransports = true
+                totalMarines += cargo.quantity
       break
 
   # === STEP 1: ASSESS SPACE SUPERIORITY (PRIMARY) ===

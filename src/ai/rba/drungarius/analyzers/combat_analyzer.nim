@@ -24,7 +24,8 @@ proc extractFleetComposition(
     destroyers: 0,
     escorts: 0,
     scouts: 0,
-    spaceLiftShips: 0,
+    expansionShips: 0,
+    auxiliaryShips: 0,
     totalShips: 0
   )
 
@@ -48,8 +49,13 @@ proc extractFleetComposition(
       # Unknown ship type, count as generic
       discard
 
-  # Count space lift ships
-  result.spaceLiftShips = fleetComposition.spaceLiftShips.len
+  # Count spacelift ships by type
+  for spaceLift in fleetComposition.spaceLiftShips:
+    result.totalShips += 1
+    if spaceLift.shipClass == "ETAC":
+      result.expansionShips += 1
+    elif spaceLift.shipClass == "TroopTransport":
+      result.auxiliaryShips += 1
 
 proc determineEffectiveShipTypes(
   outcome: intel_types.CombatOutcome,
@@ -163,7 +169,7 @@ proc analyzeCombatReports*(
     # Extract fleet compositions
     var ourComposition = FleetComposition(
       capitalShips: 0, cruisers: 0, destroyers: 0,
-      escorts: 0, scouts: 0, spaceLiftShips: 0, totalShips: 0
+      escorts: 0, scouts: 0, expansionShips: 0, auxiliaryShips: 0, totalShips: 0
     )
     for fleet in report.alliedForces:
       let fleetComp = extractFleetComposition(fleet)
@@ -172,12 +178,13 @@ proc analyzeCombatReports*(
       ourComposition.destroyers += fleetComp.destroyers
       ourComposition.escorts += fleetComp.escorts
       ourComposition.scouts += fleetComp.scouts
-      ourComposition.spaceLiftShips += fleetComp.spaceLiftShips
+      ourComposition.expansionShips += fleetComp.expansionShips
+      ourComposition.auxiliaryShips += fleetComp.auxiliaryShips
       ourComposition.totalShips += fleetComp.totalShips
 
     var enemyComposition = FleetComposition(
       capitalShips: 0, cruisers: 0, destroyers: 0,
-      escorts: 0, scouts: 0, spaceLiftShips: 0, totalShips: 0
+      escorts: 0, scouts: 0, expansionShips: 0, auxiliaryShips: 0, totalShips: 0
     )
     for fleet in report.enemyForces:
       let fleetComp = extractFleetComposition(fleet)
@@ -186,7 +193,8 @@ proc analyzeCombatReports*(
       enemyComposition.destroyers += fleetComp.destroyers
       enemyComposition.escorts += fleetComp.escorts
       enemyComposition.scouts += fleetComp.scouts
-      enemyComposition.spaceLiftShips += fleetComp.spaceLiftShips
+      enemyComposition.expansionShips += fleetComp.expansionShips
+      enemyComposition.auxiliaryShips += fleetComp.auxiliaryShips
       enemyComposition.totalShips += fleetComp.totalShips
 
     # Analyze effectiveness

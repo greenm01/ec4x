@@ -76,13 +76,6 @@ proc analyzeFleetUtilization*(
         # Fighters stay at colonies, shouldn't be in fleets
         discard
 
-    # CRITICAL FIX: Check spaceLiftShips for ETACs (they're not squadrons!)
-    # ETACs are civilian colonization vessels, not military squadrons
-    for ship in fleet.spaceLiftShips:
-      analysis.shipCount += 1
-      if ship.shipClass == ShipClass.ETAC:
-        analysis.hasETACs = true
-
     # Determine utilization based on orders
     # CRITICAL: Check persistent active orders FIRST (from previous turns)
     # ETAC fleets with any active orders should not be reassigned by Domestikos

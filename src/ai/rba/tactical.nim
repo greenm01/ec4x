@@ -250,7 +250,6 @@ proc updateFallbackRoutes*(controller: var AIController, filtered: FilteredGameS
         owner: controller.houseId,
         location: colony.systemId,
         squadrons: @[],
-        spaceLiftShips: @[],
         status: FleetStatus.Active
       )
 
@@ -454,9 +453,10 @@ proc countAvailableFleets*(controller: AIController, filtered: FilteredGameState
 
 proc isETACFleet(fleet: Fleet): bool =
   ## Check if fleet has ETACs (colonization-only fleet)
-  for ship in fleet.spaceLiftShips:
-    if ship.shipClass == ShipClass.ETAC:
-      return true
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Expansion:
+      if squadron.flagship.shipClass == ShipClass.ETAC:
+        return true
   return false
 
 proc isColonizationOrder(orderType: FleetOrderType): bool =
@@ -513,11 +513,12 @@ proc generateFleetOrders*(controller: var AIController, filtered: FilteredGameSt
     # Determine fleet type for logging
     var hasETAC = false
     var hasCombatShips = false
-    for ship in fleet.spaceLiftShips:
-      if ship.shipClass == ShipClass.ETAC:
-        hasETAC = true
-    if fleet.squadrons.len > 0:
-      hasCombatShips = true
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Expansion:
+        if squadron.flagship.shipClass == ShipClass.ETAC:
+          hasETAC = true
+      elif squadron.squadronType in {SquadronType.Combat, SquadronType.Auxiliary}:
+        hasCombatShips = true
 
     let fleetType = if hasETAC: "ETAC" elif hasCombatShips: "Combat" else: "Empty"
     logDebug(LogCategory.lcAI, &"  Fleet {fleet.id} ({fleetType}) at {fleet.location}: Determining orders...")

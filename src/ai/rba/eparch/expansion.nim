@@ -190,14 +190,19 @@ proc assessETACConstructionNeeds(
   var emptyETACs = 0  # ETACs returning home for PTU refill
 
   for fleet in filtered.ownFleets:
-    for ship in fleet.spaceLiftShips:
-      if ship.shipClass == ShipClass.ETAC:
-        etacCount += 1
-        # Check if ETAC has colonists loaded (ready to colonize)
-        if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
-          readyETACs += 1
-        else:
-          emptyETACs += 1
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Expansion:
+        if squadron.flagship.shipClass == ShipClass.ETAC:
+          etacCount += 1
+          # Check if ETAC has colonists loaded (ready to colonize)
+          if squadron.flagship.cargo.isSome:
+            let cargo = squadron.flagship.cargo.get()
+            if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+              readyETACs += 1
+            else:
+              emptyETACs += 1
+          else:
+            emptyETACs += 1
 
   # Also count ETACs under construction (prevents duplicate orders)
   for colony in filtered.ownColonies:
@@ -362,22 +367,33 @@ proc getAvailableETACs(
     if fleet.owner != houseId:
       continue
 
-    for ship in fleet.spaceLiftShips:
-      logInfo(LogCategory.lcAI,
-              &"  Fleet {fleet.id} at {fleet.location}: " &
-              &"{ship.shipClass} cargo={ship.cargo.cargoType}:{ship.cargo.quantity}")
+    for squadron in fleet.squadrons:
+      if squadron.squadronType != SquadronType.Expansion:
+        continue
 
-      if ship.shipClass == ShipClass.ETAC and ship.cargo.quantity == 0:
-        logWarn(LogCategory.lcAI,
-                &"⚠️  🐛 FOUND EMPTY ETAC! {ship.id} in fleet {fleet.id} " &
-                &"at {fleet.location} - ENGINE BUG!")
+      if squadron.flagship.shipClass != ShipClass.ETAC:
+        continue
 
-      if ship.shipClass == ShipClass.ETAC and
-         ship.cargo.cargoType == CargoType.Colonists and
-         ship.cargo.quantity > 0:
-        result.add((fleet.id, ship.id, fleet.location))
+      let ship = squadron.flagship
+      if ship.cargo.isSome:
+        let cargo = ship.cargo.get()
         logInfo(LogCategory.lcAI,
-                &"  ✅ Found loaded ETAC {ship.id} ({ship.cargo.quantity} PTU)")
+                &"  Fleet {fleet.id} at {fleet.location}: " &
+                &"{ship.shipClass} cargo={cargo.cargoType}:{cargo.quantity}")
+
+        if cargo.quantity == 0:
+          logWarn(LogCategory.lcAI,
+                  &"⚠️  🐛 FOUND EMPTY ETAC! {squadron.id} in fleet {fleet.id} " &
+                  &"at {fleet.location} - ENGINE BUG!")
+
+        if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+          result.add((fleet.id, squadron.id, fleet.location))
+          logInfo(LogCategory.lcAI,
+                  &"  ✅ Found loaded ETAC {squadron.id} ({cargo.quantity} PTU)")
+      else:
+        logInfo(LogCategory.lcAI,
+                &"  Fleet {fleet.id} at {fleet.location}: " &
+                &"{ship.shipClass} cargo=None (empty)")
 
   logInfo(LogCategory.lcAI,
           &"{houseId} has {result.len} ETACs ready to colonize (Eparch)")
@@ -500,8 +516,7 @@ proc findUncolonizedSystems(
       id: FleetId("dummy"),
       owner: filtered.viewingHouse,
       location: originSystem,
-      squadrons: @[],
-      spaceLiftShips: @[]
+      squadrons: @[]
     )
 
     let pathResult = filtered.starMap.findPath(originSystem, systemId,
@@ -713,8 +728,7 @@ proc findNearestColony(
     id: FleetId("salvage_dummy"),
     owner: filtered.viewingHouse,
     location: fromLocation,
-    squadrons: @[],
-    spaceLiftShips: @[]
+    squadrons: @[]
   )
 
   # Calculate path distance to each colony
@@ -839,9 +853,10 @@ proc planExpansionOperations*(
     var allETACs: seq[tuple[fleetId: FleetId, etacId: string,
                              location: SystemId]] = @[]
     for fleet in filtered.ownFleets:
-      for ship in fleet.spaceLiftShips:
-        if ship.shipClass == ShipClass.ETAC:
-          allETACs.add((fleet.id, ship.id, fleet.location))
+      for squadron in fleet.squadrons:
+        if squadron.squadronType == SquadronType.Expansion:
+          if squadron.flagship.shipClass == ShipClass.ETAC:
+            allETACs.add((fleet.id, squadron.id, fleet.location))
 
     let salvageOrders = planETACSalvage(allETACs, filtered, controller.houseId)
     result.colonizationOrders = salvageOrders

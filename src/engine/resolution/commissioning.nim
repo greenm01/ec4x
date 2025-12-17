@@ -593,7 +593,6 @@ proc commissionShips*(
                 owner: owner,
                 location: completed.colonyId,
                 squadrons: @[scoutSquadron],
-                spaceLiftShips: @[],
                 status: FleetStatus.Active,
                 autoBalanceSquadrons: false  # CRITICAL: Don't merge scouts with combat fleets
               )
@@ -682,7 +681,6 @@ proc commissionShips*(
                     owner: owner,
                     location: completed.colonyId,
                     squadrons: @[squadronToAssign],  # Squadron, not spacelift
-                    spaceLiftShips: @[],
                     status: FleetStatus.Active,
                     autoBalanceSquadrons: true
                   )
@@ -703,7 +701,6 @@ proc commissionShips*(
                       owner: owner,
                       location: completed.colonyId,
                       squadrons: @[squadronToAssign],  # Squadron, not spacelift
-                      spaceLiftShips: @[],
                       status: FleetStatus.Active,
                       autoBalanceSquadrons: true
                     )
@@ -790,7 +787,6 @@ proc commissionShips*(
                 owner: owner,
                 location: completed.colonyId,
                 squadrons: @[newSq],
-                spaceLiftShips: @[],
                 status: FleetStatus.Active,
                 autoBalanceSquadrons: true
               )
@@ -822,5 +818,5 @@ proc commissionShips*(
   logDebug(LogCategory.lcEconomy, &"Writing {modifiedColonies.len} modified colonies back to state")
   for systemId, colony in modifiedColonies:
     state.colonies[systemId] = colony
-    logDebug(LogCategory.lcEconomy, &"  Colony {systemId}: unassignedSpaceLiftShips={colony.unassignedSpaceLiftShips.len}")
+    logDebug(LogCategory.lcEconomy, &"  Colony {systemId}: unassignedSquadrons={colony.unassignedSquadrons.len}")
 

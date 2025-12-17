@@ -55,13 +55,14 @@ proc validateOrderAtExecution(
   case order.orderType
   of FleetOrderType.Colonize:
     # Check fleet still has ETAC
-    # ARCHITECTURE FIX: ETACs are spacelift ships, not squadrons (per fleet.nim)
+    # ETACs are in Expansion squadrons
     var hasETAC = false
-    for ship in fleet.spaceLiftShips:
-      if ship.shipClass == ShipClass.ETAC:
-        if not ship.isCrippled:
-          hasETAC = true
-          break
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Expansion:
+        if squadron.flagship.shipClass == ShipClass.ETAC:
+          if not squadron.flagship.isCrippled:
+            hasETAC = true
+            break
 
     if not hasETAC:
       return ExecutionValidationResult(
@@ -149,13 +150,14 @@ proc validateOrderAtExecution(
         reason: "Fleet has non-Intel squadrons (spy missions require pure Intel fleets)"
       )
 
-    # Check no spacelift ships
-    if fleet.spaceLiftShips.len > 0:
-      return ExecutionValidationResult(
-        valid: false,
-        shouldAbort: false,
-        reason: "Fleet has spacelift ships (spy missions require Intel-only)"
-      )
+    # Check no Expansion/Auxiliary squadrons (spy missions require Intel-only)
+    for squadron in fleet.squadrons:
+      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+        return ExecutionValidationResult(
+          valid: false,
+          shouldAbort: false,
+          reason: "Fleet has Expansion/Auxiliary squadrons (spy missions require Intel-only)"
+        )
 
   of FleetOrderType.Patrol:
     # Check if patrol system is now hostile (lost to enemy)

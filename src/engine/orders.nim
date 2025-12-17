@@ -172,20 +172,21 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
              &"({pathResult.path.len - 1} jumps via {fleet.location})")
 
   of FleetOrderType.Colonize:
-    # Check fleet has ETAC
-    # ARCHITECTURE FIX: ETACs are spacelift ships (fleet.spaceLiftShips), not squadrons
+    # Check fleet has operational ETAC (Expansion squadron)
     logDebug(LogCategory.lcOrders,
             &"{issuingHouse} Validating Colonize order for {order.fleetId} at " &
-            &"{fleet.location} ({fleet.spaceLiftShips.len} spacelift ships)")
+            &"{fleet.location} ({fleet.squadrons.len} squadrons)")
     var hasETAC = false
-    for ship in fleet.spaceLiftShips:
-      logDebug(LogCategory.lcOrders,
-              &"  Ship {ship.id}: class={ship.shipClass}, crippled={ship.isCrippled}, " &
-              &"cargo={ship.cargo.cargoType}/{ship.cargo.quantity}")
-      if ship.shipClass == ShipClass.ETAC:
-        if not ship.isCrippled:
-          hasETAC = true
-          break
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Expansion:
+        logDebug(LogCategory.lcOrders,
+                &"  Squadron {squadron.id}: class={squadron.flagship.shipClass}, " &
+                &"crippled={squadron.flagship.isCrippled}, " &
+                &"cargo={squadron.flagship.cargo}")
+        if squadron.flagship.shipClass == ShipClass.ETAC:
+          if not squadron.flagship.isCrippled:
+            hasETAC = true
+            break
 
     if not hasETAC:
       logWarn(LogCategory.lcOrders,

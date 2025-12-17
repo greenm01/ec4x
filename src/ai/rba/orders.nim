@@ -435,9 +435,12 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
 
     # Check if has cargo to unload
     var totalPTU = 0
-    for ship in fleet.spaceLiftShips:
-      if ship.cargo.cargoType == CargoType.Colonists and ship.cargo.quantity > 0:
-        totalPTU += ship.cargo.quantity
+    for squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Expansion:
+        if squadron.flagship.cargo.isSome:
+          let cargo = squadron.flagship.cargo.get()
+          if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+            totalPTU += cargo.quantity
 
     if totalPTU == 0:
       continue  # No cargo to unload

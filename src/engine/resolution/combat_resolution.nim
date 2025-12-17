@@ -34,70 +34,41 @@ proc applySpaceLiftScreeningLosses(
   ## If task force retreated → proportional spacelift ships destroyed (matching casualty %)
 
   # Track spacelift losses by house for event generation
+  # Note: Spacelift ships are now in Expansion/Auxiliary squadrons - these are already
+  # included in squadron casualty calculations, so we don't need separate spacelift loss logic.
+  # However, we still track if these special squadrons were destroyed for event reporting.
   var spaceliftLossesByHouse: Table[HouseId, int] = initTable[HouseId, int]()
 
   for fleetId, fleetBefore in fleetsBeforeCombat.pairs:
-    if fleetBefore.spaceLiftShips.len == 0:
-      continue  # No spacelift ships to lose
+    # Count Expansion/Auxiliary squadrons before
+    var spaceliftSquadronsBefore = 0
+    for squadron in fleetBefore.squadrons:
+      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+        spaceliftSquadronsBefore += 1
+
+    if spaceliftSquadronsBefore == 0:
+      continue  # No spacelift squadrons to lose
 
     # Skip mothballed fleets (they don't participate in combat, handled separately)
     if fleetBefore.status == FleetStatus.Mothballed:
       continue
 
-    # Calculate task force casualties for this fleet
-    var squadronsBefore = fleetBefore.squadrons.len
-    var squadronsAfter = 0
-
+    # Count Expansion/Auxiliary squadrons after
+    var spaceliftSquadronsAfter = 0
     if fleetId in state.fleets:
-      squadronsAfter = state.fleets[fleetId].squadrons.len
+      for squadron in state.fleets[fleetId].squadrons:
+        if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+          spaceliftSquadronsAfter += 1
 
-    # If fleet was completely destroyed, destroy all spacelift ships
-    if squadronsAfter == 0:
-      let spaceliftCount = fleetBefore.spaceLiftShips.len
-      spaceliftLossesByHouse[fleetBefore.owner] = spaceliftLossesByHouse.getOrDefault(fleetBefore.owner, 0) + spaceliftCount
+    # Track losses
+    let spaceliftLosses = spaceliftSquadronsBefore - spaceliftSquadronsAfter
+    if spaceliftLosses > 0:
+      spaceliftLossesByHouse[fleetBefore.owner] = spaceliftLossesByHouse.getOrDefault(fleetBefore.owner, 0) + spaceliftLosses
 
-      logCombat(&"{combatPhase} combat: Fleet {fleetId} destroyed, all spacelift ships lost",
-                "spaceliftShips=", $spaceliftCount)
-
-      # Fleet already destroyed, no need to update
-      continue
-
-    # Check if fleet retreated
-    let didRetreat = fleetBefore.owner in combatOutcome.retreated
-
-    # Calculate casualty percentage
-    let casualtyPercent = if squadronsBefore > 0:
-      float(squadronsBefore - squadronsAfter) / float(squadronsBefore)
-    else:
-      0.0
-
-    # Apply proportional spacelift losses if casualties occurred or fleet retreated
-    if casualtyPercent > 0.0 or didRetreat:
-      let spaceliftBefore = fleetBefore.spaceLiftShips.len
-      let spaceliftLosses = if didRetreat:
-        # On retreat, lose percentage matching task force casualties (minimum 1 if any casualties)
-        max(1, int(float(spaceliftBefore) * casualtyPercent))
-      else:
-        # Normal combat casualties
-        int(float(spaceliftBefore) * casualtyPercent)
-
-      if spaceliftLosses > 0:
-        var updatedFleet = state.fleets[fleetId]
-        let actualLosses = min(spaceliftLosses, updatedFleet.spaceLiftShips.len)
-
-        # Remove spacelift ships from the end of the list
-        if actualLosses >= updatedFleet.spaceLiftShips.len:
-          updatedFleet.spaceLiftShips = @[]
-        else:
-          updatedFleet.spaceLiftShips = updatedFleet.spaceLiftShips[0 ..< (updatedFleet.spaceLiftShips.len - actualLosses)]
-
-        state.fleets[fleetId] = updatedFleet
-        spaceliftLossesByHouse[fleetBefore.owner] = spaceliftLossesByHouse.getOrDefault(fleetBefore.owner, 0) + actualLosses
-
-        logCombat(&"{combatPhase} combat: Fleet {fleetId} spacelift screening losses",
-                  "casualties=", $actualLosses,
-                  "casualtyPercent=", $(int(casualtyPercent * 100)), "%",
-                  "retreated=", $didRetreat)
+      logCombat(&"{combatPhase} combat: Fleet {fleetId} spacelift squadron losses",
+                "casualties=", $spaceliftLosses,
+                "before=", $spaceliftSquadronsBefore,
+                "after=", $spaceliftSquadronsAfter)
 
   # Generate events for spacelift losses
   for houseId, losses in spaceliftLossesByHouse:
@@ -966,7 +937,6 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
     if updatedSquadrons.len > 0:
       state.fleets[fleetId] = Fleet(
         squadrons: updatedSquadrons,
-        spaceLiftShips: fleet.spaceLiftShips,
         id: fleet.id,
         owner: fleet.owner,
         location: fleet.location,
@@ -1022,10 +992,9 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
           if fleet.status == FleetStatus.Mothballed:
             mothballedSquadronsDestroyed += fleet.squadrons.len
             mothballedFleetsDestroyed += 1
-            # Destroy the fleet by removing all squadrons and spacelift ships
+            # Destroy the fleet by removing all squadrons
             state.fleets[fleetId] = Fleet(
               squadrons: @[],  # Empty fleet
-              spaceLiftShips: @[],  # Empty spacelift
               id: fleet.id,
               owner: fleet.owner,
               location: fleet.location,
@@ -1527,7 +1496,7 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
     defense.shields.isSome,  # Were shields active?
     result.batteriesDestroyed,
     groundForcesKilled,
-    fleet.spaceLiftShips.len  # Invasion threat assessment
+    fleet.squadrons.countIt(it.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary})  # Invasion threat assessment (count spacelift squadrons)
   )
 
   # Generate bombardment event with COMPLETE tactical data (Phase 7a fix)
@@ -1651,16 +1620,19 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
     return
 
-  # Build attacking ground forces from spacelift ships (marines only)
+  # Build attacking ground forces from spacelift squadrons (marines only)
   var attackingForces: seq[GroundUnit] = @[]
-  for ship in fleet.spaceLiftShips:
-    if ship.cargo.cargoType == CargoType.Marines and ship.cargo.quantity > 0:
-      for i in 0 ..< ship.cargo.quantity:
-        let marine = createMarine(
-          id = $houseId & "_MD_" & $targetId & "_" & $i,
-          owner = houseId
-        )
-        attackingForces.add(marine)
+  for squadron in fleet.squadrons:
+    if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+      if squadron.flagship.cargo.isSome:
+        let cargo = squadron.flagship.cargo.get()
+        if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+          for i in 0 ..< cargo.quantity:
+            let marine = createMarine(
+              id = $houseId & "_MD_" & $targetId & "_" & $i,
+              owner = houseId
+            )
+            attackingForces.add(marine)
 
   if attackingForces.len == 0:
     logWarn("Combat", "Invasion failed - no marines in fleet",
@@ -1766,11 +1738,19 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     updatedColony.marines = survivingMarines
     updatedColony.armies = 0  # Defender armies all destroyed/disbanded
 
-    # Unload marines from spacelift ships (they've landed)
+    # Unload marines from spacelift squadrons (they've landed)
     var updatedFleet = state.fleets[order.fleetId]
-    for ship in updatedFleet.spaceLiftShips.mitems:
-      if ship.cargo.cargoType == CargoType.Marines:
-        discard ship.unloadCargo()
+    for squadron in updatedFleet.squadrons.mitems:
+      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+        if squadron.flagship.cargo.isSome:
+          let cargo = squadron.flagship.cargo.get()
+          if cargo.cargoType == CargoType.Marines:
+            # Clear the cargo
+            squadron.flagship.cargo = some(ShipCargo(
+              cargoType: CargoType.None,
+              quantity: 0,
+              capacity: cargo.capacity
+            ))
     state.fleets[order.fleetId] = updatedFleet
 
     # Check if colony was undefended (BEFORE taking ownership)
@@ -1841,12 +1821,20 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
       updatedColony.armies = int(float(survivingDefenders) * armyFraction)
       updatedColony.marines = survivingDefenders - updatedColony.armies
 
-    # All attacker marines destroyed - unload ALL marines from spacelift ships
+    # All attacker marines destroyed - unload ALL marines from spacelift squadrons
     # Marines cannot retreat once they've landed on the planet
     var updatedFleet = state.fleets[order.fleetId]
-    for ship in updatedFleet.spaceLiftShips.mitems:
-      if ship.cargo.cargoType == CargoType.Marines:
-        discard ship.unloadCargo()  # Remove all marines (destroyed in combat)
+    for squadron in updatedFleet.squadrons.mitems:
+      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+        if squadron.flagship.cargo.isSome:
+          let cargo = squadron.flagship.cargo.get()
+          if cargo.cargoType == CargoType.Marines:
+            # Clear the cargo (marines destroyed)
+            squadron.flagship.cargo = some(ShipCargo(
+              cargoType: CargoType.None,
+              quantity: 0,
+              capacity: cargo.capacity
+            ))
     state.fleets[order.fleetId] = updatedFleet
 
     # Generate event
@@ -1967,16 +1955,19 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     )
     attackingFleet.add(combatSq)
 
-  # Build attacking ground forces from spacelift ships (marines only)
+  # Build attacking ground forces from spacelift squadrons (marines only)
   var attackingForces: seq[GroundUnit] = @[]
-  for ship in fleet.spaceLiftShips:
-    if ship.cargo.cargoType == CargoType.Marines and ship.cargo.quantity > 0:
-      for i in 0 ..< ship.cargo.quantity:
-        let marine = createMarine(
-          id = $houseId & "_MD_" & $targetId & "_" & $i,
-          owner = houseId
-        )
-        attackingForces.add(marine)
+  for squadron in fleet.squadrons:
+    if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+      if squadron.flagship.cargo.isSome:
+        let cargo = squadron.flagship.cargo.get()
+        if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+          for i in 0 ..< cargo.quantity:
+            let marine = createMarine(
+              id = $houseId & "_MD_" & $targetId & "_" & $i,
+              owner = houseId
+            )
+            attackingForces.add(marine)
 
   if attackingForces.len == 0:
     logWarn("Combat", "Blitz failed - no marines in fleet",
@@ -2065,11 +2056,19 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     updatedColony.marines = survivingMarines
     updatedColony.armies = 0
 
-    # Unload marines from spacelift ships
+    # Unload marines from auxiliary squadrons
     var updatedFleet = state.fleets[order.fleetId]
-    for ship in updatedFleet.spaceLiftShips.mitems:
-      if ship.cargo.cargoType == CargoType.Marines:
-        discard ship.unloadCargo()
+    for squadron in updatedFleet.squadrons.mitems:
+      if squadron.squadronType == SquadronType.Auxiliary:
+        if squadron.flagship.cargo.isSome:
+          let cargo = squadron.flagship.cargo.get()
+          if cargo.cargoType == CargoType.Marines:
+            # Clear marines cargo
+            squadron.flagship.cargo = some(ShipCargo(
+              cargoType: CargoType.None,
+              quantity: 0,
+              capacity: cargo.capacity
+            ))
     state.fleets[order.fleetId] = updatedFleet
 
     # Check if colony was undefended (BEFORE taking ownership)
@@ -2144,12 +2143,20 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     if updatedColony.groundBatteries < 0:
       updatedColony.groundBatteries = 0
 
-    # All attacker marines destroyed - unload ALL marines from spacelift ships
+    # All attacker marines destroyed - unload ALL marines from spacelift squadrons
     # Marines cannot retreat once they've landed on the planet
     var updatedFleet = state.fleets[order.fleetId]
-    for ship in updatedFleet.spaceLiftShips.mitems:
-      if ship.cargo.cargoType == CargoType.Marines:
-        discard ship.unloadCargo()  # Remove all marines (destroyed in combat)
+    for squadron in updatedFleet.squadrons.mitems:
+      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+        if squadron.flagship.cargo.isSome:
+          let cargo = squadron.flagship.cargo.get()
+          if cargo.cargoType == CargoType.Marines:
+            # Clear the cargo (marines destroyed)
+            squadron.flagship.cargo = some(ShipCargo(
+              cargoType: CargoType.None,
+              quantity: 0,
+              capacity: cargo.capacity
+            ))
     state.fleets[order.fleetId] = updatedFleet
 
     # Generate event

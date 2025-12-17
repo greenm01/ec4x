@@ -12,7 +12,7 @@
 ## Data-oriented design: Calculate what WOULD happen (pure function),
 ## then apply changes (explicit mutations).
 
-import std/[tables, algorithm, options]
+import std/[tables, algorithm, options, sequtils]
 import ../gamestate
 import ../state_helpers
 import ../iterators
@@ -133,9 +133,10 @@ proc getFleetDisbandPriority(state: GameState, fleetId: FleetId): int =
 
   let fleet = state.fleets[fleetId]
 
-  # Check for spacelift ships (ETACs) - highest priority (disband last)
-  if fleet.spaceLiftShips.len > 0:
-    return 900  # Critical - colonization capability
+  # Check for Expansion/Auxiliary squadrons (ETACs/TroopTransports) - highest priority (disband last)
+  let hasExpansion = fleet.squadrons.anyIt(it.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary})
+  if hasExpansion:
+    return 900  # Critical - colonization/invasion capability
 
   # Check for combat squadrons
   if fleet.squadrons.len > 0:
