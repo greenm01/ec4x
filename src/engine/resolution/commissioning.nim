@@ -475,7 +475,69 @@ proc commissionShips*(
           # Note: Starbases are now handled as facilities (Building path above)
           let isSpaceLift = shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]
 
-          if isSpaceLift:
+          # ARCHITECTURE FIX: Scouts form dedicated single-ship fleets (like ETACs)
+          # This ensures scouts remain idle for Drungarius reconnaissance deployment
+          let isScout = shipClass == ShipClass.Scout
+
+          if isScout:
+            # Commission scout in dedicated fleet (NEVER mix with combat ships)
+            # Scouts commissioned at same colony join same fleet for mesh network bonuses
+            # (2-3 scouts = +1 ELI, 4-5 = +2, 6+ = +3 ELI)
+            let techLevel = state.houses[owner].techTree.levels.weaponsTech
+            let ship = newEnhancedShip(shipClass, techLevel)
+
+            # Create squadron with single scout
+            let squadronId = $owner & "_scout_sq_" & $completed.colonyId & "_" & $state.turn
+            let scoutSquadron = newSquadron(ship, squadronId, owner, completed.colonyId)
+
+            # Find existing scout fleet at this location, or create new one
+            var scoutFleetId = ""
+            for fleetId, fleet in state.fleets:
+              if fleet.owner == owner and fleet.location == completed.colonyId:
+                # Check if this is a pure scout fleet (only scout squadrons)
+                var isPureScoutFleet = fleet.squadrons.len > 0
+                for squadron in fleet.squadrons:
+                  if squadron.flagship.shipClass != ShipClass.Scout:
+                    isPureScoutFleet = false
+                    break
+
+                if isPureScoutFleet:
+                  scoutFleetId = fleetId
+                  break
+
+            if scoutFleetId != "":
+              # Add to existing scout fleet (mesh network bonus)
+              state.fleets[scoutFleetId].squadrons.add(scoutSquadron)
+              let scoutCount = state.fleets[scoutFleetId].squadrons.len
+              logInfo(LogCategory.lcFleet,
+                &"Commissioned Scout in existing fleet {scoutFleetId} at {completed.colonyId} " &
+                &"({scoutCount} scouts, mesh network bonus)")
+            else:
+              # Create new scout fleet
+              scoutFleetId = $owner & "_scout_fleet_" & $completed.colonyId & "_" & $state.turn
+              state.fleets[scoutFleetId] = Fleet(
+                id: scoutFleetId,
+                owner: owner,
+                location: completed.colonyId,
+                squadrons: @[scoutSquadron],
+                spaceLiftShips: @[],
+                status: FleetStatus.Active,
+                autoBalanceSquadrons: false  # CRITICAL: Don't merge scouts with combat fleets
+              )
+              logInfo(LogCategory.lcFleet,
+                &"Commissioned Scout in new dedicated fleet {scoutFleetId} at {completed.colonyId}")
+
+            # Generate event
+            events.add(event_factory.shipCommissioned(
+              owner,
+              shipClass,
+              completed.colonyId
+            ))
+
+            # Skip rest of combat ship logic
+            continue
+
+          elif isSpaceLift:
             # Commission spacelift ship and auto-assign to fleet
             let shipId = owner & "_" & $shipClass & "_" & $completed.colonyId & "_" & $state.turn
             var spaceLiftShip = newSpaceLiftShip(shipId, shipClass, owner, completed.colonyId)

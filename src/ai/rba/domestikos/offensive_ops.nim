@@ -502,10 +502,11 @@ proc generateCampaignOrder(
   for fleetId in campaign.assignedFleets:
     for analysis in analyses:
       if analysis.fleetId == fleetId:
-        # Check if fleet is available and NOT an ETAC
+        # Check if fleet is available (exclude specialized fleets)
+        # ETACs for Eparch, Scouts for Drungarius
         if analysis.utilization in {FleetUtilization.Idle,
                                      FleetUtilization.UnderUtilized} and
-           not analysis.hasETACs:
+           not analysis.hasETACs and not analysis.hasScouts:
           let dist = calculateDistance(filtered.starMap,
                                        analysis.location,
                                        campaign.targetSystem)
@@ -515,10 +516,11 @@ proc generateCampaignOrder(
         break
 
   # Second pass: find nearby idle fleets if no assigned fleet available
-  # CRITICAL FIX: Never assign ETACs to military campaigns (they're for colonization only)
+  # CRITICAL FIX: Never assign specialized fleets to military campaigns
+  # ETACs for Eparch colonization, Scouts for Drungarius reconnaissance
   if bestFleet.isNone:
     for analysis in analyses:
-      if analysis.utilization == FleetUtilization.Idle and not analysis.hasETACs:
+      if analysis.utilization == FleetUtilization.Idle and not analysis.hasETACs and not analysis.hasScouts:
         let dist = calculateDistance(filtered.starMap,
                                      analysis.location,
                                      campaign.targetSystem)

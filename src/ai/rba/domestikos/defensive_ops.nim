@@ -152,11 +152,13 @@ proc generateDefensiveReassignments*(
     return result
 
   # Identify available Defender fleets (idle or under-utilized)
-  # CRITICAL: ETACs are for colonization ONLY - never use for defense/offense/exploration
+  # CRITICAL: Reserve specialized fleets for their advisors
+  # ETACs for Eparch colonization ONLY
+  # Scouts for Drungarius reconnaissance ONLY
   var availableDefenders: seq[FleetAnalysis] = @[]
   for analysis in analyses:
     if analysis.utilization in {FleetUtilization.Idle, FleetUtilization.UnderUtilized}:
-      if analysis.hasCombatShips and not analysis.hasETACs:
+      if analysis.hasCombatShips and not analysis.hasETACs and not analysis.hasScouts:
         availableDefenders.add(analysis)
 
   if availableDefenders.len == 0:

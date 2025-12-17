@@ -6,9 +6,9 @@
 ## Follows Eparch/ETAC pattern: Intelligence advisor owns scout pipeline
 ## (identify needs → build scouts → deploy scouts)
 
-import std/[logging, strformat, options, sequtils, algorithm, tables]
+import std/[strformat, options, sequtils, algorithm, tables]
 import ../../../../common/types/[core, units]
-import ../../../../engine/[gamestate, fog_of_war, order_types, fleet]
+import ../../../../engine/[gamestate, fog_of_war, order_types, fleet, logger]
 import ../../../common/types as ai_common_types
 import ../../[controller_types, config]
 import ../../shared/intelligence_types
@@ -49,6 +49,9 @@ proc generateScoutOrders*(
       availableScouts.add(analysis)
 
   if availableScouts.len == 0:
+    logDebug(LogCategory.lcAI,
+             &"{controller.houseId} Drungarius: No idle scout fleets available " &
+             &"(analyzed {allAnalyses.len} fleets)")
     return result
 
   # Use Drungarius reconnaissance recommendations
@@ -85,8 +88,9 @@ proc generateScoutOrders*(
       ))
 
   if intelTargets.len == 0:
-    info &"{controller.houseId} Drungarius: No reconnaissance targets " &
-         &"identified (all systems have fresh intel)"
+    logDebug(LogCategory.lcAI,
+             &"{controller.houseId} Drungarius: No reconnaissance targets " &
+             &"identified (highPriorityTargets={intelSnapshot.espionage.highPriorityTargets.len})")
     return result
 
   # Sort scouts by size (largest first) for optimal mesh network bonuses
@@ -111,10 +115,12 @@ proc generateScoutOrders*(
       roe: some(4)  # Cautious: Gather intel and retreat if threatened
     ))
 
-    info &"{controller.houseId} Drungarius: Scout mission - " &
-         &"fleet {scout.fleetId} ({scout.shipCount} scouts) → " &
-         &"system {target.systemId} ({target.orderType})"
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Drungarius: Scout mission - " &
+            &"fleet {scout.fleetId} ({scout.shipCount} scouts) → " &
+            &"system {target.systemId} ({target.orderType})")
 
-  info &"{controller.houseId} Drungarius: Reconnaissance deployment - " &
-       &"{result.len} scout orders generated from " &
-       &"{intelTargets.len} intelligence targets"
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Drungarius: Reconnaissance deployment - " &
+          &"{result.len} scout orders generated from " &
+          &"{intelTargets.len} intelligence targets")
