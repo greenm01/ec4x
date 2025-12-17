@@ -448,6 +448,52 @@ proc commissionPlanetaryDefense*(
     state.colonies[systemId] = colony
     logDebug(LogCategory.lcEconomy, &"  Colony {systemId}: marines={colony.marines}, armies={colony.armies}")
 
+  # Auto-load complete fighter squadrons onto carriers at same colonies
+  # Prefer complete squadrons (12 fighters) for maximum effectiveness
+  for systemId, colony in modifiedColonies:
+    if colony.fighterSquadrons.len > 0:
+      var modifiedColony = state.colonies[systemId]
+      let acoLevel = state.houses[colony.owner].techTree.levels.advancedCarrierOps
+
+      var fightersLoaded = false
+      for fleetId, fleet in state.fleets.mpairs:
+        if fleet.location == systemId and fleet.owner == colony.owner:
+          for squadron in fleet.squadrons.mitems:
+            if squadron.flagship.shipClass in [ShipClass.Carrier, ShipClass.SuperCarrier]:
+              let maxCapacity = squadron.getCarrierCapacity(acoLevel)
+
+              while squadron.embarkedFighters.len < maxCapacity and
+                    modifiedColony.fighterSquadrons.len > 0:
+                # Find a complete squadron (12 fighters) to load first
+                var squadronToLoadIdx = -1
+                for i in 0..<modifiedColony.fighterSquadrons.len:
+                  let totalFighters = 1 + modifiedColony.fighterSquadrons[i].ships.len
+                  if totalFighters == 12:
+                    squadronToLoadIdx = i
+                    break
+
+                # If no complete squadrons, load any available squadron
+                if squadronToLoadIdx < 0 and modifiedColony.fighterSquadrons.len > 0:
+                  squadronToLoadIdx = 0
+
+                if squadronToLoadIdx >= 0:
+                  # Transfer full Squadron object to carrier
+                  let fighterSquadron = modifiedColony.fighterSquadrons[squadronToLoadIdx]
+                  squadron.embarkedFighters.add(fighterSquadron)
+                  modifiedColony.fighterSquadrons.delete(squadronToLoadIdx)
+                  let totalFighters = 1 + fighterSquadron.ships.len
+                  logInfo(LogCategory.lcFleet,
+                    &"Auto-loaded Fighter squadron {fighterSquadron.id} ({totalFighters}/12) " &
+                    &"onto carrier {squadron.id} in fleet {fleetId} ({squadron.embarkedFighters.len}/{maxCapacity})")
+                  fightersLoaded = true
+                else:
+                  break
+
+        if fightersLoaded:
+          # Write back modified colony and fleet
+          state.colonies[systemId] = modifiedColony
+          break
+
 proc commissionShips*(
   state: var GameState,
   completedProjects: seq[econ_types.CompletedProject],
