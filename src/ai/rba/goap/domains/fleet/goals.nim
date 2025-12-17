@@ -8,10 +8,11 @@
 ## - EstablishFleetPresence: Position fleet for strategic control
 ## - ConductReconnaissance: Scout system for intelligence
 
-import std/[tables, options, math]
+import std/[tables, options, math, strformat]
 import ../../core/[types, conditions, heuristics]
 import ../../state/effects
 import ../../../../../engine/intelligence/types as intel_types
+import ../../../../../engine/logger
 import ../../../../../common/types/[core, tech]
 
 # =============================================================================
@@ -58,16 +59,16 @@ proc createInvadeColonyGoal*(
   ## - Target must be known enemy colony
   ##
   ## Success: System added to ownedColonies
-    
+
   result = Goal(
     goalType: GoalType.InvadeColony,
     priority: priority,
     target: some(systemId),
     targetHouse: some(targetHouse),
-    requiredResources: 500,  # Based on estimateGoalCost heuristic: 500 PP
+    requiredResources: 200,  # Lowered from 500 for early-game invasions
     deadline: none(int),
     preconditions: @[
-      hasMinBudget(500)
+      hasMinBudget(200)  # Lowered from 500 to enable early invasions
     ],
     successCondition: nil,
     description: "Invade colony at system " & $systemId & " owned by " & targetHouse
@@ -82,16 +83,16 @@ proc createSecureSystemGoal*(
   ##
   ## Similar to InvadeColony but focuses on military control
   ## May require larger force for sustained presence
-    
+
   result = Goal(
     goalType: GoalType.SecureSystem,
     priority: priority,
     target: some(systemId),
     targetHouse: none(HouseId),
-    requiredResources: 800, # Based on estimateGoalCost heuristic: 800 PP
+    requiredResources: 300, # Lowered from 800 for early-game operations
     deadline: none(int),
     preconditions: @[
-      hasMinBudget(800)
+      hasMinBudget(300)  # Lowered from 800 to enable early operations
     ],
     successCondition: nil,
     description: "Secure system " & $systemId
@@ -199,8 +200,14 @@ proc analyzeOffensiveOpportunities*(state: WorldStateSnapshot): seq[Goal] =
 
   result = @[]
 
+  # DEBUG: Log vulnerable targets count
+  logDebug(LogCategory.lcAI,
+    &"GOAP analyzeOffensive: {state.intelSnapshot.military.vulnerableTargets.len} vulnerable targets found")
+
   # Use detailed vulnerable targets from intelligence snapshot
   for target in state.intelSnapshot.military.vulnerableTargets:
+    logDebug(LogCategory.lcAI,
+      &"GOAP: Analyzing target system {target.systemId} (owner={target.owner}, vuln={target.vulnerability:.2f})")
     # Base priority from vulnerability score (0.0-1.0 → 0.5-0.9 priority range)
     var priority = 0.5 + (target.vulnerability * 0.4)
 
@@ -235,6 +242,8 @@ proc analyzeOffensiveOpportunities*(state: WorldStateSnapshot): seq[Goal] =
       priority = priority
     )
     result.add(goal)
+    logDebug(LogCategory.lcAI,
+      &"GOAP: Created InvadeColony goal for system {target.systemId} (priority={priority:.2f})")
 
 proc analyzeReconnaissanceNeeds*(state: WorldStateSnapshot): seq[Goal] =
   ## Analyze which systems need intelligence updates
