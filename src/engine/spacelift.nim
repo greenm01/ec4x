@@ -1,5 +1,11 @@
 ## Spacelift Command ship management for EC4X
 ##
+## **DEPRECATED:** This module and SpaceLiftShip type are being phased out.
+## Migration: SpaceLiftShip → Squadron with squadronType Expansion/Auxiliary
+## - ETAC → SquadronType.Expansion (single-ship squadron with cargo)
+## - TroopTransport → SquadronType.Auxiliary (single-ship squadron with cargo)
+## - Use Squadron.flagship.cargo instead of SpaceLiftShip.cargo
+##
 ## Per specification (operations.md:1036, operations.md:288):
 ## - Spacelift ships are "individual units" NOT squadrons
 ## - Travel with fleets but separate from combat squadrons
@@ -16,11 +22,12 @@ export HouseId, SystemId, ShipClass
 export CargoType, ShipCargo  # Re-export from squadron
 
 type
-  SpaceLiftCargo* = ShipCargo  # Alias for backward compatibility
+  SpaceLiftCargo* {.deprecated: "Use ShipCargo from squadron module".} = ShipCargo
 
-  SpaceLiftShip* = object
+  SpaceLiftShip* {.deprecated: "Use Squadron with squadronType Expansion/Auxiliary".} = object
     ## Individual spacelift unit (NOT a squadron)
     ## Per operations.md:1036 "individual units within the fleet"
+    ## **DEPRECATED:** Being replaced with Squadron.Expansion/Auxiliary
     id*: string             # Ship identifier
     shipClass*: ShipClass   # ETAC or TroopTransport
     owner*: HouseId
