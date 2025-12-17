@@ -611,73 +611,115 @@ proc commissionShips*(
             continue
 
           elif isSpaceLift:
-            # Commission spacelift ship and auto-assign to fleet
-            let shipId = owner & "_" & $shipClass & "_" & $completed.colonyId & "_" & $state.turn
-            var spaceLiftShip = newSpaceLiftShip(shipId, shipClass, owner, completed.colonyId)
+            # Commission spacelift ship as single-ship squadron
+            # ETAC → SquadronType.Expansion, TroopTransport → SquadronType.Auxiliary
+            let techLevel = state.houses[owner].techTree.levels.weaponsTech
+            let stats = getShipStats(shipClass, techLevel)
+            let cargoCapacity = stats.carryLimit
 
-            # ETACs commission with full cargo (3 PTU) at no extraction cost
-            # Lore: Self-sufficient generation ships with cryostasis colonists
+            # Set up cargo (ETAC: full colonists, TroopTransport: empty)
+            var cargo = none(ShipCargo)
             if shipClass == ShipClass.ETAC:
-              spaceLiftShip.cargo.cargoType = CargoType.Colonists
-              spaceLiftShip.cargo.quantity = 3  # Full capacity, no colony drain
+              # ETACs commission with full cargo (3 PTU) at no extraction cost
+              # Lore: Self-sufficient generation ships with cryostasis colonists
+              cargo = some(ShipCargo(
+                cargoType: CargoType.Colonists,
+                quantity: cargoCapacity,  # Full capacity
+                capacity: cargoCapacity
+              ))
               logInfo(LogCategory.lcEconomy,
-                &"Commissioned {shipId} with 3 PTU (cryostasis generation ship)")
+                &"Commissioned ETAC with {cargoCapacity} PTU (cryostasis generation ship)")
+            elif shipClass == ShipClass.TroopTransport:
+              # TroopTransports start empty (marines loaded later)
+              cargo = some(ShipCargo(
+                cargoType: CargoType.None,
+                quantity: 0,
+                capacity: cargoCapacity
+              ))
 
-            colony.unassignedSpaceLiftShips.add(spaceLiftShip)
+            # Create the ship
+            let ship = Ship(
+              shipClass: shipClass,
+              shipType: ShipType.Spacelift,
+              stats: stats,
+              isCrippled: false,
+              name: "",
+              cargo: cargo
+            )
+
+            # Create single-ship squadron (flagship only, no escorts)
+            let squadronId = $owner & "_" & $shipClass & "_" & $completed.colonyId & "_" & $state.turn
+            var squadron = newSquadron(ship, squadronId, owner, completed.colonyId)
+            squadron.squadronType = getSquadronType(shipClass)  # Expansion or Auxiliary
+
+            # Add to unassignedSquadrons (NOT unassignedSpaceLiftShips)
+            colony.unassignedSquadrons.add(squadron)
             saveColony(completed.colonyId, colony)
-            logInfo(LogCategory.lcEconomy, &"Commissioned {shipClass} spacelift ship at {completed.colonyId}")
+            logInfo(LogCategory.lcEconomy,
+              &"Commissioned {shipClass} squadron {squadronId} at {completed.colonyId}")
 
             # Auto-assign to fleets (create new fleet if needed)
-            if colony.unassignedSpaceLiftShips.len > 0:
-              let shipToAssign = colony.unassignedSpaceLiftShips[colony.unassignedSpaceLiftShips.len - 1]
+            if colony.unassignedSquadrons.len > 0:
+              # Find the squadron we just added (last in the list)
+              var squadronToAssign: Squadron
+              var foundIdx = -1
+              for i in countdown(colony.unassignedSquadrons.len - 1, 0):
+                if colony.unassignedSquadrons[i].squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+                  squadronToAssign = colony.unassignedSquadrons[i]
+                  foundIdx = i
+                  break
 
-              var targetFleetId = ""
+              if foundIdx >= 0:
+                var targetFleetId = ""
 
-              # ETACs ALWAYS get their own fleet for independent colonization
-              # TroopTransports can share fleets (they're for invasions, need coordination)
-              if shipClass == ShipClass.ETAC:
-                # Create new fleet for this ETAC (never share)
-                targetFleetId = $owner & "_fleet" & $(state.fleets.len + 1)
-                state.fleets[targetFleetId] = Fleet(
-                  id: targetFleetId,
-                  owner: owner,
-                  location: completed.colonyId,
-                  squadrons: @[],
-                  spaceLiftShips: @[shipToAssign],
-                  status: FleetStatus.Active,
-                  autoBalanceSquadrons: true
-                )
-                logInfo(LogCategory.lcFleet, &"Commissioned ETAC in new independent fleet {targetFleetId}")
-              else:
-                # TroopTransports: Find existing fleet or create new one
-                for fleetId, fleet in state.fleets:
-                  if fleet.location == completed.colonyId and fleet.owner == owner:
-                    targetFleetId = fleetId
-                    break
-
-                if targetFleetId == "":
-                  # Create new fleet for spacelift ship
+                # ETACs ALWAYS get their own fleet for independent colonization
+                # TroopTransports can share fleets (they're for invasions, need coordination)
+                if shipClass == ShipClass.ETAC:
+                  # Create new fleet for this ETAC (never share)
                   targetFleetId = $owner & "_fleet" & $(state.fleets.len + 1)
                   state.fleets[targetFleetId] = Fleet(
                     id: targetFleetId,
                     owner: owner,
                     location: completed.colonyId,
-                    squadrons: @[],
-                    spaceLiftShips: @[shipToAssign],
+                    squadrons: @[squadronToAssign],  # Squadron, not spacelift
+                    spaceLiftShips: @[],
                     status: FleetStatus.Active,
                     autoBalanceSquadrons: true
                   )
-                  logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in new fleet {targetFleetId}")
+                  logInfo(LogCategory.lcFleet,
+                    &"Commissioned ETAC Expansion squadron in new independent fleet {targetFleetId}")
                 else:
-                  # Add to existing fleet
-                  state.fleets[targetFleetId].spaceLiftShips.add(shipToAssign)
-                  logInfo(LogCategory.lcFleet, &"Commissioned {shipClass} in fleet {targetFleetId}")
+                  # TroopTransports: Find existing fleet or create new one
+                  for fleetId, fleet in state.fleets:
+                    if fleet.location == completed.colonyId and fleet.owner == owner:
+                      targetFleetId = fleetId
+                      break
 
-              # Remove from unassigned pool (it's now in fleet)
-              colony.unassignedSpaceLiftShips.delete(colony.unassignedSpaceLiftShips.len - 1)
-              saveColony(completed.colonyId, colony)
+                  if targetFleetId == "":
+                    # Create new fleet for squadron
+                    targetFleetId = $owner & "_fleet" & $(state.fleets.len + 1)
+                    state.fleets[targetFleetId] = Fleet(
+                      id: targetFleetId,
+                      owner: owner,
+                      location: completed.colonyId,
+                      squadrons: @[squadronToAssign],  # Squadron, not spacelift
+                      spaceLiftShips: @[],
+                      status: FleetStatus.Active,
+                      autoBalanceSquadrons: true
+                    )
+                    logInfo(LogCategory.lcFleet,
+                      &"Commissioned {shipClass} Auxiliary squadron in new fleet {targetFleetId}")
+                  else:
+                    # Add squadron to existing fleet
+                    state.fleets[targetFleetId].squadrons.add(squadronToAssign)
+                    logInfo(LogCategory.lcFleet,
+                      &"Commissioned {shipClass} Auxiliary squadron in fleet {targetFleetId}")
 
-              logInfo(LogCategory.lcFleet, &"Auto-assigned {shipClass} to fleet {targetFleetId}")
+                # Remove from unassigned pool (it's now in fleet)
+                colony.unassignedSquadrons.delete(foundIdx)
+                saveColony(completed.colonyId, colony)
+
+                logInfo(LogCategory.lcFleet, &"Auto-assigned {shipClass} squadron to fleet {targetFleetId}")
 
             # Skip rest of combat ship logic
             continue
