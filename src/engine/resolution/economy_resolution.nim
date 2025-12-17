@@ -619,10 +619,13 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           # ARCHITECTURE FIX: Check if this is a spacelift ship (NOT a combat squadron)
           let isSpaceLift = shipClass in [ShipClass.ETAC, ShipClass.TroopTransport]
 
+          # ARCHITECTURE FIX: Scouts form their own single-ship fleets (like ETACs)
+          let isScout = shipClass == ShipClass.Scout
+
           # ARCHITECTURE FIX: Fighters go to colony.fighterSquadrons, not fleets
           let isFighter = shipClass == ShipClass.Fighter
 
-          logInfo(LogCategory.lcEconomy, &"Commissioning {shipClass}: isFighter={isFighter}, isSpaceLift={isSpaceLift}")
+          logInfo(LogCategory.lcEconomy, &"Commissioning {shipClass}: isFighter={isFighter}, isSpaceLift={isSpaceLift}, isScout={isScout}")
 
           if isFighter:
             # Path 1: Commission fighter at colony (assets.md:2.4.1)
@@ -746,6 +749,27 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
 
               logInfo(LogCategory.lcFleet, &"Auto-assigned {shipClass} to fleet {targetFleetId}")
 
+          elif isScout:
+            # ARCHITECTURE FIX: Scouts form dedicated single-ship fleets (like ETACs)
+            # This ensures scouts remain idle and available for Drungarius reconnaissance deployment
+            # Without this, scouts get mixed into combat fleets via autoBalanceSquadronsToFleets()
+            let newShip = newEnhancedShip(shipClass, techLevel)
+            let squadronId = $colony.owner & "_scout_sq_" & $systemId & "_" & $state.turn
+            let scoutSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
+
+            # Create dedicated fleet for this scout (don't mix with combat fleets)
+            let scoutFleetId = $colony.owner & "_scout_fleet_" & $systemId & "_" & $state.turn
+            state.fleets[scoutFleetId] = Fleet(
+              id: scoutFleetId,
+              owner: colony.owner,
+              location: systemId,
+              squadrons: @[scoutSquadron],
+              spaceLiftShips: @[],
+              status: FleetStatus.Active,
+              autoBalanceSquadrons: false  # Don't merge scouts with combat fleets
+            )
+            logInfo(LogCategory.lcFleet, &"Commissioned Scout in dedicated fleet {scoutFleetId} at {systemId}")
+
           else:
             # Combat ship - create squadron as normal
             let newShip = newEnhancedShip(shipClass, techLevel)
@@ -759,26 +783,18 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             #
             # This creates combined-arms squadrons (e.g., Battleship + 3 Destroyers)
             # which have better tactical capabilities than single-ship squadrons
+            #
+            # Note: Scouts handled separately (dedicated fleets for Drungarius)
+            # Note: ETAC/TroopTransport handled separately (spacelift fleets)
             var addedToSquadron = false
 
             # Classify ship based on role from config
-            # Scouts: Intelligence-only, create standalone squadrons (never join combat)
             # Escorts: Join capital squadrons for combined-arms groups
             # Capitals: Flagship role, create new squadrons
-            # Note: ETAC/TroopTransport are auxiliary but handled separately as spacelift
-            let isScout = shipClass == ShipClass.Scout
             let isEscort = newShip.stats.role == ShipRole.Escort
 
-            # SCOUT ASSIGNMENT: Create standalone squadrons (intelligence-only, never join combat)
-            if isScout:
-              let squadronId = colony.owner & "_sq_" & $systemId & "_" & $state.turn & "_" & project.itemId
-              let newSquadron = newSquadron(newShip, squadronId, colony.owner, systemId)
-              colony.unassignedSquadrons.add(newSquadron)
-              logDebug(LogCategory.lcEconomy, &"Commissioned Scout into standalone squadron at {systemId}")
-              addedToSquadron = true
-
             # ESCORT ASSIGNMENT: Join existing squadrons to create balanced battle groups
-            elif isEscort:
+            if isEscort:
               # Try to join unassigned capital ship squadrons first
               for squadron in colony.unassignedSquadrons.mitems:
                 let flagshipIsCapital = squadron.flagship.shipClass in [

@@ -35,11 +35,13 @@ proc generateExplorationOrders*(
     return result
 
   # Find idle or under-utilized fleets suitable for exploration
-  # CRITICAL: Exclude ETAC fleets - they're for colonization, not exploration
+  # CRITICAL: Exclude ETAC and Scout fleets
+  # ETACs reserved for Eparch colonization
+  # Scouts reserved for Drungarius reconnaissance
   var availableExplorers: seq[FleetAnalysis] = @[]
   for analysis in analyses:
     if analysis.utilization in {FleetUtilization.Idle, FleetUtilization.UnderUtilized} and
-       not analysis.hasETACs:
+       not analysis.hasETACs and not analysis.hasScouts:
       availableExplorers.add(analysis)
 
   if availableExplorers.len == 0:
@@ -84,14 +86,16 @@ proc generateReconnaissanceOrders*(
   if currentAct == ai_types.GameAct.Act1_LandGrab:
     return result
 
-  # Find scout-capable fleets (idle/underutilized with scouts or small ships)
-  # CRITICAL: Exclude ETAC fleets - they're for colonization, not reconnaissance
+  # Find scout-capable fleets (idle/underutilized small fleets)
+  # CRITICAL: Exclude ETAC and Scout fleets
+  # ETACs reserved for Eparch colonization
+  # Scouts reserved for Drungarius reconnaissance (NOT Domestikos)
   var availableScouts: seq[FleetAnalysis] = @[]
   for analysis in analyses:
     if analysis.utilization in {FleetUtilization.Idle, FleetUtilization.UnderUtilized} and
-       not analysis.hasETACs:
-      # Prefer actual scouts, but any small fleet can scout
-      if analysis.hasScouts or analysis.shipCount <= 2:
+       not analysis.hasETACs and not analysis.hasScouts:
+      # Small combat fleets can perform reconnaissance
+      if analysis.shipCount <= 2:
         availableScouts.add(analysis)
 
   if availableScouts.len == 0:

@@ -57,11 +57,9 @@ proc analyzeFleetUtilization*(
   result = @[]
 
   for fleet in filtered.ownFleets:
-    # Skip scout fleets (reserved for Drungarius intelligence operations)
-    if isScoutFleet(fleet):
-      debug &"{houseId} Domestikos: Fleet {fleet.id} skipped " &
-            &"(scout fleet, reserved for Drungarius)"
-      continue
+    # NOTE: Scout fleets are included in analysis but filtered by Domestikos operations
+    # via `not analysis.hasScouts` checks. This allows Drungarius to analyze scouts
+    # for reconnaissance missions.
 
     var analysis = FleetAnalysis(
       fleetId: fleet.id,
