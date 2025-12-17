@@ -53,6 +53,16 @@
             export IN_NIX_SHELL=1
             export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:$PWD/bin:$LD_LIBRARY_PATH"
 
+            # Fish shell compatibility - explicitly add nix store paths to PATH
+            if [ -n "$FISH_VERSION" ]; then
+              for p in ${pkgs.lib.makeBinPath (with pkgs; [
+                nim nimble sqlite pythonEnv aider-chat visidata git git-filter-repo
+              ])}; do
+                fish -c "set -gx PATH $p \$PATH" 2>/dev/null || true
+              done
+              fish -c "set -gx LD_LIBRARY_PATH ${pkgs.stdenv.cc.cc.lib}/lib:$PWD/bin:\$LD_LIBRARY_PATH" 2>/dev/null || true
+            fi
+
             echo "EC4X Development Shell"
             echo "======================"
             echo "Nim version: $(nim --version | head -1)"
@@ -79,11 +89,6 @@
             echo "  ./bin/moderator new my_game"
             echo "  ./bin/client offline --players=4"
             echo ""
-
-            # Launch fish if available (suppress greeting)
-            if command -v fish >/dev/null 2>&1; then
-              exec fish -C "function fish_greeting; end; set -x LD_LIBRARY_PATH $PWD/bin $LD_LIBRARY_PATH"
-            fi
           '';
         };
       });

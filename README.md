@@ -135,12 +135,38 @@ mkdir -p ~/.config/nix
 echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
 ```
 
-### Enter Development Shell
+### Recommended: Automatic Environment with direnv
+
+Install direnv and nix-direnv:
+```bash
+nix profile install nixpkgs#direnv nixpkgs#nix-direnv
+```
+
+Add to your shell config (`~/.bashrc` or `~/.config/fish/config.fish`):
+```bash
+# Bash
+eval "$(direnv hook bash)"
+
+# Fish
+direnv hook fish | source
+```
+
+Allow direnv in the project directory:
+```bash
+cd /path/to/ec4x
+direnv allow
+```
+
+Now the development environment loads automatically when you `cd` into the project directory.
+
+### Alternative: Manual Environment
+
+Enter the development shell manually:
 ```bash
 nix develop
 ```
 
-This provides nim, nimble, and git in an isolated environment (launches fish shell if available).
+This provides nim, nimble, and git in an isolated environment.
 
 ### Quick Start
 ```bash

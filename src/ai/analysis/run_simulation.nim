@@ -196,6 +196,7 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
       var etacCount = 0
       var scoutCount = 0
       var combatShips = 0
+      var transportCount = 0
 
       # Count squadrons (military ships)
       for squadron in fleet.squadrons:
@@ -207,14 +208,20 @@ proc runSimulation*(numHouses: int, maxTurns: int, strategies: seq[AIStrategy], 
 
       # Count spacelift ships (ETAC and TroopTransport stored separately)
       for spaceLiftShip in fleet.spaceLiftShips:
-        if spaceLiftShip.shipClass == ShipClass.ETAC:
+        case spaceLiftShip.shipClass
+        of ShipClass.ETAC:
           etacCount += 1
+        of ShipClass.TroopTransport:
+          transportCount += 1
+        else:
+          discard
 
-      # Insert fleet snapshot
+      # Insert fleet snapshot (idle turns not yet tracked, passing 0)
       insertFleetSnapshot(db, gameId, turn, $fleetId, $fleet.owner,
                          int(fleet.location), orderType, orderTarget,
                          hasArrived, fleet.squadrons.len,
-                         etacCount, scoutCount, combatShips)
+                         etacCount, scoutCount, combatShips, transportCount,
+                         0, 0, 0, 0)  # idleTurns not yet implemented
 
     # Phase 7e: Deliver events to AI controllers for reactive behavior
     # AI updates threat assessments, priorities based on observable events
