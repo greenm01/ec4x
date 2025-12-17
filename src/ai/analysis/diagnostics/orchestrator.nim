@@ -7,7 +7,7 @@
 ## REFACTORED: 2025-12-06 - Extracted from diagnostics.nim (lines 950-1250)
 ## NEW: Advisor reasoning log support (Gap #9 fix)
 
-import std/[options, algorithm, strformat, tables]
+import std/[options, algorithm, strformat, tables, strutils]
 import ./types
 import ./domestikos_collector  # Military commander
 import ./logothete_collector   # Research & technology
@@ -479,18 +479,53 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
       result.eventsOrderCompleted += 1
     of res_types.GameEventType.OrderFailed:
       result.eventsOrderFailed += 1
+      # Track invasion/bombardment order failures
+      if event.houseId.isSome and event.houseId.get() == houseId:
+        if event.reason.isSome:
+          let reason = event.reason.get().toLowerAscii()
+          if "invasion" in reason or "blitz" in reason or "marines" in reason:
+            result.invasionOrdersRejected += 1
+          if "bombardment" in reason:
+            result.bombardmentOrdersFailed += 1
     of res_types.GameEventType.OrderRejected:
       result.eventsOrderRejected += 1
     of res_types.GameEventType.Bombardment:
       result.eventsBombardment += 1
       result.eventsCombatTotal += 1
+      # Track bombardment attempts
+      if event.houseId.isSome and event.houseId.get() == houseId:
+        result.bombardmentAttemptsTotal += 1
     of res_types.GameEventType.ColonyCaptured:
       result.eventsColonyCaptured += 1
       result.eventsCombatTotal += 1
+      # Track successful invasions/blitzes
+      if event.newOwner.isSome and event.newOwner.get() == houseId:
+        result.invasionAttemptsSuccessful += 1
+        if event.outcome.isSome and event.outcome.get() == "Blitz":
+          result.blitzAttemptsSuccessful += 1
+        # Track defender casualties
+        if event.defenderLosses.isSome:
+          result.invasionDefendersKilled += event.defenderLosses.get()
+    of res_types.GameEventType.InvasionBegan:
+      # Track invasion attempts
+      if event.houseId.isSome and event.houseId.get() == houseId:
+        result.invasionAttemptsTotal += 1
+    of res_types.GameEventType.BlitzBegan:
+      # Track blitz attempts
+      if event.houseId.isSome and event.houseId.get() == houseId:
+        result.invasionAttemptsTotal += 1
+        result.blitzAttemptsTotal += 1
+    of res_types.GameEventType.InvasionRepelled:
+      result.eventsCombatTotal += 1
+      # Track failed invasions
+      if event.attackingHouseId.isSome and event.attackingHouseId.get() == houseId:
+        result.invasionAttemptsFailed += 1
+        # Determine if this was a blitz that failed
+        if event.outcome.isSome and "blitz" in event.outcome.get().toLowerAscii():
+          result.blitzAttemptsFailed += 1
     of res_types.GameEventType.CombatResult, res_types.GameEventType.Battle,
        res_types.GameEventType.BattleOccurred,
        res_types.GameEventType.SystemCaptured,
-       res_types.GameEventType.InvasionRepelled,
        res_types.GameEventType.FleetDestroyed:
       result.eventsCombatTotal += 1
     of res_types.GameEventType.Espionage,

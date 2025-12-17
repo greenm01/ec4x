@@ -209,6 +209,20 @@ type
     campaigns_abandoned_stalled*: int   # Campaigns abandoned due to stall (cumulative)
     campaigns_abandoned_captured*: int  # Campaigns abandoned - target taken by other (cumulative)
     campaigns_abandoned_timeout*: int   # Campaigns abandoned due to timeout (cumulative)
+
+    # Invasion attempt tracking (comprehensive - from game events)
+    invasionAttemptsTotal*: int          # InvasionBegan + BlitzBegan events
+    invasionAttemptsSuccessful*: int     # ColonyCaptured events
+    invasionAttemptsFailed*: int         # InvasionRepelled events (combat loss)
+    invasionOrdersRejected*: int         # OrderFailed for invasion/blitz
+    blitzAttemptsTotal*: int             # BlitzBegan events only
+    blitzAttemptsSuccessful*: int        # ColonyCaptured with method="Blitz"
+    blitzAttemptsFailed*: int            # InvasionRepelled from blitz
+    bombardmentAttemptsTotal*: int       # BombardmentRoundCompleted events
+    bombardmentOrdersFailed*: int        # OrderFailed for bombardment
+    invasionMarinesKilled*: int          # Marines lost in failed invasions
+    invasionDefendersKilled*: int        # Defenders killed in invasions
+
     clkResearchedNoRaiders*: bool       # Has CLK but no Raiders built
     scoutCount*: int                    # Phase 2c: Current scout count for ELI mesh tracking
     spyPlanetMissions*: int             # Cumulative SpyOnPlanet missions
