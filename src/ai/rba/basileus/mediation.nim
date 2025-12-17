@@ -124,6 +124,21 @@ proc convertToAdvisorRequirements*(
       diplomaticReq: none(DiplomaticRequirement)
     ))
 
+  # Drungarius (scout build requirements)
+  for req in drungariusReqs.scoutBuildRequirements:
+    result.add(AdvisorRequirement(
+      advisor: AdvisorType.Drungarius,
+      priority: req.priority,
+      requirementType: $req.requirementType,
+      estimatedCost: req.estimatedCost,
+      reason: req.reason,
+      buildReq: some(req),
+      researchReq: none(ResearchRequirement),
+      espionageReq: none(EspionageRequirement),
+      economicReq: none(EconomicRequirement),
+      diplomaticReq: none(DiplomaticRequirement)
+    ))
+
   # Eparch (economic/infrastructure)
   for req in eparchReqs.requirements:
     result.add(AdvisorRequirement(

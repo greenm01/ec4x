@@ -1,7 +1,7 @@
 ## Fleet Analysis Sub-module
 ## Handles fleet utilization analysis, threat assessment, and opportunity identification
 
-import std/[options, tables]
+import std/[options, tables, logging, strformat]
 import ../../../common/types/core
 import ../../../engine/[gamestate, fog_of_war, fleet, order_types, standing_orders, starmap]
 
@@ -19,6 +19,33 @@ type
     hasCombatShips*: bool
     location*: SystemId
 
+proc isScoutFleet*(fleet: Fleet): bool =
+  ## Check if fleet is exclusively scouts (reserved for Drungarius)
+  ##
+  ## Returns true if fleet contains ONLY Scout-class squadrons.
+  ## Mixed fleets (scouts + combat ships) return false - Domestikos can use
+  ## them.
+  ##
+  ## This filter ensures scouts are managed by Drungarius (Intelligence
+  ## Advisor) for reconnaissance missions, not assigned to combat/patrol/merge
+  ## operations by Domestikos (Military Advisor).
+  var hasScouts = false
+  var hasCombatShips = false
+
+  for squadron in fleet.squadrons:
+    case squadron.flagship.shipClass
+    of ShipClass.Scout:
+      hasScouts = true
+    of ShipClass.Destroyer, ShipClass.Cruiser, ShipClass.Battleship,
+       ShipClass.Carrier, ShipClass.Dreadnought, ShipClass.Battlecruiser,
+       ShipClass.HeavyCruiser, ShipClass.LightCruiser,
+       ShipClass.SuperDreadnought, ShipClass.SuperCarrier:
+      hasCombatShips = true
+    else:
+      discard  # ETACs, Raiders, Transports, etc.
+
+  return hasScouts and not hasCombatShips
+
 proc analyzeFleetUtilization*(
   filtered: FilteredGameState,
   houseId: HouseId,
@@ -30,6 +57,12 @@ proc analyzeFleetUtilization*(
   result = @[]
 
   for fleet in filtered.ownFleets:
+    # Skip scout fleets (reserved for Drungarius intelligence operations)
+    if isScoutFleet(fleet):
+      debug &"{houseId} Domestikos: Fleet {fleet.id} skipped " &
+            &"(scout fleet, reserved for Drungarius)"
+      continue
+
     var analysis = FleetAnalysis(
       fleetId: fleet.id,
       shipCount: 0,

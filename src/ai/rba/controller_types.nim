@@ -217,6 +217,11 @@ type
   EspionageRequirements* = object
     ## Collection of espionage requirements from Drungarius
     requirements*: seq[EspionageRequirement]
+
+    # Scout operations (mirrors Eparch's colonizationOrders pattern)
+    scoutBuildRequirements*: seq[BuildRequirement]
+    reconnaissanceOrders*: seq[FleetOrder]
+
     totalEstimatedCost*: int
     generatedTurn*: int
     iteration*: int
@@ -225,6 +230,11 @@ type
     ## Treasurer's feedback to Drungarius on espionage budget
     fulfilledRequirements*: seq[EspionageRequirement]
     unfulfilledRequirements*: seq[EspionageRequirement]
+
+    # Scout-specific feedback
+    fulfilledScoutRequirements*: seq[BuildRequirement]
+    unfulfilledScoutRequirements*: seq[BuildRequirement]
+
     totalBudgetAvailable*: int
     totalBudgetSpent*: int
 
