@@ -54,12 +54,26 @@ type
     etacCount: int
     scoutCount: int
     combatShips: int
+    transportCount: int
+    idleTurnsCombat: int
+    idleTurnsScout: int
+    idleTurnsEtac: int
+    idleTurnsTransport: int
+
+  FleetIdleness = object
+    ## Track idle turn count for each ship type in fleet
+    idleTurnsCombat: int
+    idleTurnsScout: int
+    idleTurnsEtac: int
+    idleTurnsTransport: int
+    lastOrderType: string
 
   CGame = ref object
     state: GameState
     controllers: seq[AIController]
     diagnostics: seq[DiagnosticMetrics]
     fleetSnapshots: seq[FleetSnapshot]  # Fleet tracking data (collected in memory)
+    fleetIdleness: Table[FleetId, FleetIdleness]  # Track idle turns per fleet
     rbaConfig: rba_config.RBAConfig  # Explicit config to avoid global state
     seed: int64
     numPlayers: int
@@ -151,6 +165,7 @@ proc ec4x_init_game(num_players: cint, seed: int64, map_rings: cint,
       controllers: controllers,
       diagnostics: @[],
       fleetSnapshots: @[],
+      fleetIdleness: initTable[FleetId, FleetIdleness](),
       rbaConfig: rbaConf,  # Store config explicitly
       seed: seed,
       numPlayers: num_players.int,
@@ -484,6 +499,7 @@ proc ec4x_collect_fleet_snapshots(game: pointer, turn: cint): cint
       var totalSquadronShips = 0
       var scoutCount = 0
       var etacCount = 0
+      var transportCount = 0
 
       # Count all squadron ships (combat + scouts)
       for squadron in fleet.squadrons:
@@ -499,14 +515,16 @@ proc ec4x_collect_fleet_snapshots(game: pointer, turn: cint): cint
       # Combat ships = all squadron ships EXCEPT scouts
       let combatShips = totalSquadronShips - scoutCount
 
-      # Count spacelift ships (ETACs)
+      # Count spacelift ships (ETACs and Transports)
       for spaceLiftShip in fleet.spaceLiftShips:
         if spaceLiftShip.shipClass == ShipClass.ETAC:
           etacCount += 1
+        elif spaceLiftShip.shipClass == ShipClass.TroopTransport:
+          transportCount += 1
 
       # Get order info
       var orderType = "None"
-      var orderTarget = -1
+      var orderTarget = 0  # 0 = no target (matches run_simulation.nim convention)
       var hasArrived = 1
       if fleetId in handle.state.fleetOrders:
         let order = handle.state.fleetOrders[fleetId]
@@ -514,6 +532,60 @@ proc ec4x_collect_fleet_snapshots(game: pointer, turn: cint): cint
         if order.targetSystem.isSome:
           orderTarget = int(order.targetSystem.get())
           hasArrived = if fleet.location == SystemId(orderTarget): 1 else: 0
+
+      # Calculate idle turns per ship type
+      # If fleet has no orders, all ship types in it are idle
+      var idleTurnsCombat = 0
+      var idleTurnsScout = 0
+      var idleTurnsEtac = 0
+      var idleTurnsTransport = 0
+
+      if fleetId in handle.fleetIdleness:
+        let prevState = handle.fleetIdleness[fleetId]
+        if orderType == "None":
+          # Fleet is idle this turn - all ship types idle
+          if prevState.lastOrderType == "None":
+            # Was idle last turn too - increment all
+            if combatShips > 0:
+              idleTurnsCombat = prevState.idleTurnsCombat + 1
+            if scoutCount > 0:
+              idleTurnsScout = prevState.idleTurnsScout + 1
+            if etacCount > 0:
+              idleTurnsEtac = prevState.idleTurnsEtac + 1
+            if transportCount > 0:
+              idleTurnsTransport = prevState.idleTurnsTransport + 1
+          else:
+            # Just became idle - first idle turn
+            if combatShips > 0:
+              idleTurnsCombat = 1
+            if scoutCount > 0:
+              idleTurnsScout = 1
+            if etacCount > 0:
+              idleTurnsEtac = 1
+            if transportCount > 0:
+              idleTurnsTransport = 1
+        # else: has orders this turn, all idleTurns stay 0
+      else:
+        # First time seeing this fleet
+        if orderType == "None":
+          # New fleet with no orders - count as first idle turn
+          if combatShips > 0:
+            idleTurnsCombat = 1
+          if scoutCount > 0:
+            idleTurnsScout = 1
+          if etacCount > 0:
+            idleTurnsEtac = 1
+          if transportCount > 0:
+            idleTurnsTransport = 1
+
+      # Update idle tracker for next turn
+      handle.fleetIdleness[fleetId] = FleetIdleness(
+        idleTurnsCombat: idleTurnsCombat,
+        idleTurnsScout: idleTurnsScout,
+        idleTurnsEtac: idleTurnsEtac,
+        idleTurnsTransport: idleTurnsTransport,
+        lastOrderType: orderType
+      )
 
       # Store snapshot in memory
       handle.fleetSnapshots.add(FleetSnapshot(
@@ -527,7 +599,12 @@ proc ec4x_collect_fleet_snapshots(game: pointer, turn: cint): cint
         shipsTotal: totalSquadronShips + fleet.spaceLiftShips.len,
         etacCount: etacCount,
         scoutCount: scoutCount,
-        combatShips: combatShips
+        combatShips: combatShips,
+        transportCount: transportCount,
+        idleTurnsCombat: idleTurnsCombat,
+        idleTurnsScout: idleTurnsScout,
+        idleTurnsEtac: idleTurnsEtac,
+        idleTurnsTransport: idleTurnsTransport
       ))
 
     result = 0
@@ -581,7 +658,9 @@ proc ec4x_write_diagnostics_db(game: pointer, db_path: cstring): cint
                          snapshot.orderType, snapshot.orderTarget,
                          snapshot.hasArrived == 1, snapshot.shipsTotal,
                          snapshot.etacCount, snapshot.scoutCount,
-                         snapshot.combatShips)
+                         snapshot.combatShips, snapshot.transportCount,
+                         snapshot.idleTurnsCombat, snapshot.idleTurnsScout,
+                         snapshot.idleTurnsEtac, snapshot.idleTurnsTransport)
 
     result = 0
   except Exception as e:

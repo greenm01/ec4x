@@ -40,6 +40,9 @@
             pythonEnv
             aider-chat
 
+            # Data exploration
+            visidata
+
             # dev tools
             git
             git-filter-repo

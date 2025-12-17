@@ -142,17 +142,32 @@ proc generateEconomicRequirements*(
     logWarn(LogCategory.lcAI, &"{controller.houseId} Eparch: CRITICAL - Detecting maintenance shortfall risk. " &
                              &"Current Income: {currentIncome}PP, Maintenance: {maintenanceCost}PP, Treasury: {currentTreasury}PP. " &
                              &"MaintainPrestige active: {isMaintainPrestigeActive}. Consecutive shortfalls: {house.consecutiveShortfallTurns}")
-    
-    # Generate a high-priority requirement to balance the economy (implies adjusting tax rate)
-    let balanceReq = EconomicRequirement(
-      requirementType: EconomicRequirementType.TaxPolicy,
-      priority: RequirementPriority.Critical, # Critical to avoid escalating prestige penalties
-      targetColony: controller.homeworld, # Tax policy is house-wide, target homeworld as symbolic
-      estimatedCost: 0, # No direct PP cost for changing tax policy
-      reason: &"CRITICAL: Avoid Maintenance Shortfall Prestige Penalty ({house.consecutiveShortfallTurns} turns in shortfall)."
-    )
-    result.requirements.add(balanceReq)
-    # The actual tax adjustment will happen in phase 7.5: Colony Management
+
+    # Determine valid target colony for tax policy requirement
+    # Homeworld if set, otherwise first owned colony
+    var targetColony: SystemId
+    if controller.homeworld != 0.SystemId and filtered.ownColonies.anyIt(it.systemId == controller.homeworld):
+      targetColony = controller.homeworld
+    elif filtered.ownColonies.len > 0:
+      targetColony = filtered.ownColonies[0].systemId
+    else:
+      # No colonies available - skip requirement
+      logWarn(LogCategory.lcAI,
+              &"{controller.houseId} Eparch: Cannot generate tax policy requirement - no valid colonies")
+      discard  # Skip this requirement
+
+    # Only generate requirement if we have a valid target
+    if filtered.ownColonies.len > 0:
+      # Generate a high-priority requirement to balance the economy (implies adjusting tax rate)
+      let balanceReq = EconomicRequirement(
+        requirementType: EconomicRequirementType.TaxPolicy,
+        priority: RequirementPriority.Critical, # Critical to avoid escalating prestige penalties
+        targetColony: targetColony, # Tax policy is house-wide, use homeworld or first colony
+        estimatedCost: 0, # No direct PP cost for changing tax policy
+        reason: &"CRITICAL: Avoid Maintenance Shortfall Prestige Penalty ({house.consecutiveShortfallTurns} turns in shortfall)."
+      )
+      result.requirements.add(balanceReq)
+      # The actual tax adjustment will happen in phase 7.5: Colony Management
 
   # === Phase 7.2: Competitive Economic Assessment ===
   # Compare our economic position with enemy intelligence

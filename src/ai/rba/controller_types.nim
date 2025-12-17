@@ -244,6 +244,7 @@ type
   EconomicRequirements* = object
     ## Collection of economic requirements from Eparch
     requirements*: seq[EconomicRequirement]
+    colonizationOrders*: seq[FleetOrder]  # ETAC colonization orders (executed Phase 6.9)
     totalEstimatedCost*: int
     generatedTurn*: int
     iteration*: int
@@ -365,7 +366,7 @@ type
     scienceFeedback*: Option[ScienceFeedback]  # Treasurer feedback on research allocation
     drungariusFeedback*: Option[DrungariusFeedback]  # Treasurer feedback on espionage budget
     eparchFeedback*: Option[EparchFeedback]  # Treasurer feedback on economic budget
-    eparchColonizationOrders*: seq[FleetOrder]  # Eparch colonization orders (stored Phase 1, executed Phase 6.9)
+    # REMOVED: eparchColonizationOrders - now returned in EconomicRequirements.colonizationOrders
 
     # GOAP Phase 4: Strategic planning integration (MVP: Fleet + Build domains)
     goapEnabled*: bool  # Quick check if GOAP is enabled

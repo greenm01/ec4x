@@ -360,6 +360,11 @@ CREATE TABLE IF NOT EXISTS fleet_tracking (
   etac_count INTEGER NOT NULL,
   scout_count INTEGER NOT NULL,
   combat_ships INTEGER NOT NULL,
+  troop_transport_count INTEGER NOT NULL DEFAULT 0,
+  idle_turns_combat INTEGER NOT NULL DEFAULT 0,
+  idle_turns_scout INTEGER NOT NULL DEFAULT 0,
+  idle_turns_etac INTEGER NOT NULL DEFAULT 0,
+  idle_turns_transport INTEGER NOT NULL DEFAULT 0,
 
   UNIQUE(game_id, turn, fleet_id)
 );

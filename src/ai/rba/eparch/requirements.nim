@@ -441,19 +441,28 @@ proc generateEconomicRequirements*(
             &"for {etacReq.estimatedCost} PP (priority {etacReq.priority}, " &
             &"reason: {etacReq.reason})")
 
-  # Store colonization orders for Phase 6.9 execution
-  # Note: mutable controller - this is a deliberate side-effect
-  controller.eparchColonizationOrders = expansionPlan.colonizationOrders
+  # Return colonization orders in requirements (executed Phase 6.9)
+  # FIX: Don't store in mutable controller state - return as part of requirements
+  logInfo(LogCategory.lcAI,
+          &"📝 TURN {filtered.turn} {controller.houseId} Eparch: RETURNING {expansionPlan.colonizationOrders.len} colonization orders in EconomicRequirements")
+  for order in expansionPlan.colonizationOrders:
+    if order.targetSystem.isSome:
+      logInfo(LogCategory.lcAI,
+              &"   ✓ {order.fleetId} → system {order.targetSystem.get()}")
+    else:
+      logWarn(LogCategory.lcAI,
+              &"   ⚠️  {order.fleetId} → NO TARGET!")
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Eparch: Expansion planning complete - " &
           &"{expansionPlan.buildRequirements.len} ETAC construction reqs, " &
-          &"{expansionPlan.colonizationOrders.len} colonization orders stored, " &
+          &"{expansionPlan.colonizationOrders.len} colonization orders returned, " &
           &"{expansionPlan.etacsReady} ETACs ready, " &
           &"{expansionPlan.uncolonizedSystems} systems uncolonized")
 
   result = EconomicRequirements(
     requirements: requirements,
+    colonizationOrders: expansionPlan.colonizationOrders,  # Return orders here
     totalEstimatedCost: totalCost,
     generatedTurn: filtered.turn,
     iteration: 0
@@ -569,6 +578,7 @@ proc reprioritizeEconomicRequirements*(
 
   result = EconomicRequirements(
     requirements: reprioritized,
+    colonizationOrders: original.colonizationOrders,  # Preserve colonization orders
     totalEstimatedCost: reprioritized.mapIt(it.estimatedCost).foldl(a + b, 0),
     generatedTurn: original.generatedTurn,
     iteration: original.iteration + 1
