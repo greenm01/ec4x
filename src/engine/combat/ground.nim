@@ -25,7 +25,7 @@ type
     Army,           # Garrison forces (defense)
     Marine,         # Invasion forces (offense)
     GroundBattery,  # Planetary defense weapons
-    Spacelift       # Transport ships (Blitz only)
+    Spacelift       # Transport squadrons (Blitz only)
 
   GroundUnit* = object
     ## Individual ground combat unit

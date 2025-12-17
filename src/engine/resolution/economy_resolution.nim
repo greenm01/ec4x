@@ -4,7 +4,7 @@
 ## - Income phase with resource collection and espionage effects
 ## - Build orders and construction management
 ## - Squadron management and fleet organization
-## - Cargo management for spacelift ships
+## - Cargo management for transport squadrons (Expansion/Auxiliary)
 ## - Population transfers via Space Guild
 ## - Terraforming operations
 ## - Maintenance phase with upkeep and effect tracking
@@ -39,7 +39,7 @@
 
 import std/[tables, options, random, sequtils, hashes, math, strutils, strformat]
 import ../../common/[hex, types/core, types/units, types/tech]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../spacelift, ../starmap, ../logger
+import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap, ../logger
 import ../order_types  # For StandingOrder and StandingOrderType
 import ../economy/[types as econ_types, engine as econ_engine, projects, maintenance, facility_queue]
 import ../economy/capacity/fighter as fighter_capacity
@@ -595,8 +595,8 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     #    - Balances squadron count across existing stationary Active fleets
     #    - Creates new fleets if no candidate fleets exist
     #
-    # **Commissioning Pipeline for Spacelift Ships (ETAC/TT):**
-    # 1. Ship commissioned to colony.unassignedSpaceLiftShips
+    # **Commissioning Pipeline for Transport Squadrons (ETAC/TT):**
+    # 1. Squadron commissioned to colony.unassignedSquadrons
     # 2. Immediately joins first available fleet via auto-assignment
     #
     # **Result:**
@@ -625,7 +625,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
           # See commissioning.nim:commissionPlanetaryDefense() for fighter commissioning
           let isFighter = shipClass == ShipClass.Fighter
 
-          logInfo(LogCategory.lcEconomy, &"Commissioning {shipClass}: isFighter={isFighter}, isSpaceLift={isSpaceLift}, isScout={isScout}")
+          logInfo(LogCategory.lcEconomy, &"Commissioning {shipClass}: isFighter={isFighter}, isTransport={isSpaceLift}, isScout={isScout}")
 
           if isFighter:
             # Fighters are commissioned in the planetary defense phase (commissioning.nim)
@@ -635,7 +635,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
             logError(LogCategory.lcEconomy,
               "Fighters should be built as planetary defense (Building itemId=Fighter)")
           elif isSpaceLift:
-            # Commission spacelift ship as single-ship squadron
+            # Commission transport ship as single-ship squadron
             # ETAC → SquadronType.Expansion, TroopTransport → SquadronType.Auxiliary
             let techLevel = state.houses[colony.owner].techTree.levels.weaponsTech
             let stats = getShipStats(shipClass, techLevel)
@@ -1025,8 +1025,7 @@ proc resolveIncomePhase*(state: var GameState, orders: Table[HouseId, OrderPacke
     # CRITICAL: Write back colony to persist ALL modifications in this loop iteration
     # Even with mpairs, nested seq/field modifications require explicit write-back:
     # - fighterSquadrons (commissioned fighters)
-    # - unassignedSpaceLiftShips (commissioned transports/ETACs)
-    # - unassignedSquadrons (repaired ships forming squadrons)
+    # - unassignedSquadrons (commissioned capital ships, repaired ships, transports/ETACs)
     # - population (ETAC PTU extraction cost)
     # - constructionQueue (completed/remaining projects)
     # - repairQueue (completed/remaining repairs)

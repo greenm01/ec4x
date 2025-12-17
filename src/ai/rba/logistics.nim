@@ -23,7 +23,7 @@
 
 import std/[tables, options, algorithm, math, sets, strformat]
 import ../../common/types/[core, units]
-import ../../engine/[gamestate, fog_of_war, orders, order_types, fleet, spacelift, logger]
+import ../../engine/[gamestate, fog_of_war, orders, order_types, fleet, logger]
 import ../../engine/commands/zero_turn_commands
 import ../../engine/economy/maintenance
 import ../common/types as ai_types
@@ -98,7 +98,7 @@ type
     raiders*: int
     planetBreakers*: int
 
-    # SpaceLift Ships (cargo capable)
+    # Transport Squadrons (cargo capable)
     emptyETACs*: seq[tuple[fleetId: FleetId, shipCount: int]]
     emptyTransports*: seq[tuple[fleetId: FleetId, shipCount: int]]
     loadedETACs*: seq[tuple[fleetId: FleetId, ptu: int]]
@@ -175,7 +175,7 @@ proc buildAssetInventory*(filtered: FilteredGameState, houseId: HouseId): AssetI
       of ShipClass.PlanetBreaker:
         result.planetBreakers += 1
 
-    # Track spacelift cargo status AND count spacelift ships
+    # Track transport squadron cargo status and counts
     for squadron in fleet.squadrons:
       case squadron.squadronType
       of SquadronType.Expansion:
@@ -324,7 +324,7 @@ proc recommendAssetReallocations*(controller: AIController, inventory: AssetInve
 
 proc generateCargoOrders*(controller: AIController, inventory: AssetInventory,
                          filtered: FilteredGameState): seq[CargoManagementOrder] =
-  ## Generate all cargo loading/unloading orders for spacelift ships
+  ## Generate all cargo loading/unloading orders for transport squadrons
   ##
   ## Priority order:
   ## 1. Load marines on transports for pending invasions (combat critical)

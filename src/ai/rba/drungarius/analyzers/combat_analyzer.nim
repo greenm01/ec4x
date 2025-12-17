@@ -49,7 +49,7 @@ proc extractFleetComposition(
       # Unknown ship type, count as generic
       discard
 
-  # Count spacelift ships by type
+  # Count transport squadrons by type
   for spaceLift in fleetComposition.spaceLiftShips:
     result.totalShips += 1
     if spaceLift.shipClass == "ETAC":

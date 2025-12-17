@@ -14,7 +14,7 @@
 
 import std/[options, tables, sequtils, algorithm, strformat, strutils]
 import ../../../common/types/[core, units]
-import ../../../engine/[gamestate, fog_of_war, logger, order_types, fleet, starmap, squadron, spacelift]
+import ../../../engine/[gamestate, fog_of_war, logger, order_types, fleet, starmap, squadron]
 import ../../../engine/economy/config_accessors  # For centralized cost accessors
 import ../../../engine/economy/types as econ_types  # For ConstructionType
 import ../../../engine/intelligence/types as intel_types  # For CombatOutcome

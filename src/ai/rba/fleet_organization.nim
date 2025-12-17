@@ -363,7 +363,7 @@ proc organizeFleets*(
   ##
   ## Philosophy: Fleets at colonies should be optimized for their mission:
   ## - ETAC fleets: Pure colonization (1 escort + ETACs only)
-  ## - Combat fleets: Pure combat (no spacelift ships)
+  ## - Combat fleets: Pure combat (no transport squadrons)
   ## - Invasion fleets: Combat + TroopTransports with marines
   ## - Scout fleets: Pure scouts for espionage
   ##

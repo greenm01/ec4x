@@ -8,7 +8,7 @@
 
 import std/[tables, options, sequtils, strformat]
 import ../../common/types/[core, combat, units]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap, ../spacelift, ../logger
+import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap, ../logger
 import ../state_helpers
 import ../initialization/colony
 import ../colonization/engine as col_engine

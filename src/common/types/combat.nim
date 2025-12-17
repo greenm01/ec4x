@@ -11,7 +11,7 @@ type
     ## Determines movement restrictions per game specs
     Major        ## Standard lanes, 2 jumps/turn if owned
     Minor        ## 1 jump/turn
-    Restricted   ## 1 jump/turn, no crippled/spacelift ships
+    Restricted   ## 1 jump/turn, no crippled/transport ships
 
 # =============================================================================
 # Combat Types

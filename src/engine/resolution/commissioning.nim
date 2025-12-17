@@ -41,7 +41,7 @@
 
 import std/[tables, options, strformat, strutils]
 import ../../common/types/[core, units]
-import ../gamestate, ../fleet, ../squadron, ../spacelift, ../logger
+import ../gamestate, ../fleet, ../squadron, ../logger
 import ../economy/types as econ_types
 import ./types as res_types
 import ./event_factory/init as event_factory
@@ -651,7 +651,7 @@ proc commissionShips*(
             var squadron = newSquadron(ship, squadronId, owner, completed.colonyId)
             squadron.squadronType = getSquadronType(shipClass)  # Expansion or Auxiliary
 
-            # Add to unassignedSquadrons (NOT unassignedSpaceLiftShips)
+            # Add to unassignedSquadrons for auto-assignment to fleets
             colony.unassignedSquadrons.add(squadron)
             saveColony(completed.colonyId, colony)
             logInfo(LogCategory.lcEconomy,

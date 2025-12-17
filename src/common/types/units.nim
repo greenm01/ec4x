@@ -61,7 +61,7 @@ type
   ShipType* {.pure.} = enum
     ## Ship category
     Military     ## Combat-capable warship
-    Spacelift    ## Non-combat support vessel
+    Spacelift    ## Non-combat transport vessel (ETAC/TroopTransport)
 
 # =============================================================================
 # Ground Unit Types and Stats

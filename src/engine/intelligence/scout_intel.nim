@@ -13,7 +13,7 @@
 import std/[tables, options, strformat, random, hashes, sequtils]
 import types as intel_types
 import corruption
-import ../gamestate, ../fleet, ../squadron, ../spacelift
+import ../gamestate, ../fleet, ../squadron
 import ../espionage/types as esp_types
 
 proc generateScoutFleetEncounter*(
