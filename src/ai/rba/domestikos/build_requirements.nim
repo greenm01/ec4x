@@ -449,49 +449,8 @@ proc assessDefenseGaps*(
         turnsUndefended: turnsUndefended
       ))
 
-proc assessReconnaissanceGaps*(
-  filtered: FilteredGameState,
-  controller: AIController,
-  currentAct: GameAct,
-  intelSnapshot: IntelligenceSnapshot
-): seq[BuildRequirement] =
-  ## Intelligence-driven scout requirements based on intel coverage
-  ## Calculates need from stale intel systems and enemy house coverage
-  result = @[]
-
-  # Count current scouts
-  var scoutCount = 0
-  for fleet in filtered.ownFleets:
-    scoutCount += fleet.squadrons.countIt(it.flagship.shipClass == ShipClass.Scout)
-
-  # Intelligence-driven targeting
-  let staleIntelSystems = intelSnapshot.espionage.staleIntelSystems
-  let enemyHouses = intelSnapshot.military.enemyMilitaryCapability.len
-
-  # Calculate need: 1 scout per 2 stale systems + 1 per enemy house (min 3)
-  # No hardcoded caps - budget and strategic objectives determine actual builds
-  var targetScouts = max(3, staleIntelSystems.len div 2) + min(3, enemyHouses)
-
-  if scoutCount < targetScouts:
-    let scoutCost = getShipConstructionCost(ShipClass.Scout)
-    let needed = targetScouts - scoutCount
-    let priority = if staleIntelSystems.len > 5:
-      RequirementPriority.High
-    elif staleIntelSystems.len > 2:
-      RequirementPriority.Medium
-    else:
-      RequirementPriority.Low
-
-    result.add(BuildRequirement(
-      requirementType: RequirementType.ReconnaissanceGap,
-      priority: priority,
-      shipClass: some(ShipClass.Scout),
-      quantity: needed,
-      buildObjective: ai_common_types.BuildObjective.Reconnaissance,
-      estimatedCost: scoutCost * needed,
-      reason: &"Intel coverage (have {scoutCount}/{targetScouts}, " &
-              &"{staleIntelSystems.len} stale systems)"
-    ))
+# assessReconnaissanceGaps removed - scouts now managed by Drungarius (intelligence advisor)
+# See src/ai/rba/drungarius/reconnaissance/requirements.nim for scout construction
 
 # assessExpansionNeeds removed - ETACs now managed by Eparch (economic advisor)
 # See src/ai/rba/eparch/expansion.nim for ETAC construction and colonization
@@ -1521,9 +1480,8 @@ proc generateBuildRequirements*(
   # Strategic asset requirements (fighters, carriers, starbases, transports, etc.)
   requirements.add(strategicAssets)
 
-  # Intelligence-driven reconnaissance requirements (scouts)
-  let reconGaps = assessReconnaissanceGaps(filtered, controller, currentAct, intelSnapshot)
-  requirements.add(reconGaps)
+  # NOTE: Scout reconnaissance now managed by Drungarius (intelligence advisor)
+  # See src/ai/rba/drungarius/reconnaissance/requirements.nim
 
   # ETACs now managed by Eparch (economic advisor) - removed from Domestikos
 

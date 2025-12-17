@@ -355,6 +355,33 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
             &"{controller.houseId} No Eparch requirements available for colonization orders")
 
   # ==========================================================================
+  # PHASE 6.10: SCOUT RECONNAISSANCE (Drungarius)
+  # ==========================================================================
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} === Phase 6.10: Scout Reconnaissance " &
+          &"(Drungarius) ===")
+
+  # Read reconnaissance orders from Drungarius requirements
+  if controller.drungariusRequirements.isSome:
+    let reconOrders = controller.drungariusRequirements.get().reconnaissanceOrders
+    logInfo(LogCategory.lcAI,
+            &"📤 {controller.houseId} READING {reconOrders.len} " &
+            &"reconnaissance orders from EspionageRequirements")
+    for order in reconOrders:
+      if order.targetSystem.isSome:
+        logInfo(LogCategory.lcAI,
+                &"   ✓ Adding scout {order.fleetId} → " &
+                &"system {order.targetSystem.get()} ({order.orderType})")
+      else:
+        logWarn(LogCategory.lcAI,
+                &"   ⚠️  Adding scout {order.fleetId} with NO TARGET!")
+      result.orderPacket.fleetOrders.add(order)
+  else:
+    logDebug(LogCategory.lcAI,
+             &"{controller.houseId} No Drungarius requirements available " &
+             &"for reconnaissance orders")
+
+  # ==========================================================================
   # PHASE 7: TACTICAL FLEET ORDERS
   # ==========================================================================
   # Pass standingOrders so tactical knows which fleets have standing orders (skip those fleets)

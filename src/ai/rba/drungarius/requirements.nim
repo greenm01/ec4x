@@ -16,6 +16,7 @@ import ../../common/types as ai_types
 import ../goap/core/types # For GoalType
 import ../goap/integration/plan_tracking # For PlanTracker, PlanStatus
 import ../config  # For globalRBAConfig
+import ./reconnaissance/[requirements as recon_req, deployment as recon_deploy]
 
 # =============================================================================
 # Phase 5.1: Multi-Factor Espionage Target Scoring
@@ -684,6 +685,24 @@ proc generateEspionageRequirements*(
         reason: &"Assassination attempt on {targetHouse} (luxury operation, aggression={p.aggression:.2f}, highest-scored threat)"
       ))
       result.totalEstimatedCost += cfg.cost_assassination
+
+  # === Scout Requirements and Deployment ===
+  # Drungarius owns scout pipeline: identify needs → build scouts → deploy
+  # scouts
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Drungarius: Assessing reconnaissance needs")
+
+  result.scoutBuildRequirements = recon_req.assessScoutGaps(
+    filtered, controller, currentAct, intelSnapshot
+  )
+  result.reconnaissanceOrders = recon_deploy.generateScoutOrders(
+    filtered, controller, intelSnapshot
+  )
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Drungarius: Reconnaissance planning - " &
+          &"{result.scoutBuildRequirements.len} scout build reqs, " &
+          &"{result.reconnaissanceOrders.len} reconnaissance orders")
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Drungarius: Generated {result.requirements.len} espionage requirements " &

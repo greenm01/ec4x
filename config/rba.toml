@@ -222,9 +222,6 @@ terraforming_costs_lush_to_eden = 5100
 [orders]
 research_max_percent = 0.25      # Maximum research budget (% of treasury)
 espionage_investment_percent = 0.03  # Espionage budget (% of original treasury)
-scout_count_act1 = 3             # Reduced from 5 - minimal scouting in Act 1
-scout_count_act2 = 8             # Increased from 7 - ELI mesh priority in Act 2
-scout_count_act3_plus = 10       # Increased from 9 - full coverage in Act 3+
 
 # ==============================================================================
 # LOGISTICS PARAMETERS
@@ -309,9 +306,6 @@ escalation_high_to_critical_turns = 7  # High → Critical after 7 turns
 
 # Intelligence-Driven Ship Building (Phase F)
 capacity_high_utilization_threshold = 0.9  # Defer non-critical requirements at 90%+ capacity
-scouts_per_stale_intel_system = 0.5        # 1 scout per 2 stale intel systems
-scouts_per_enemy_house = 1.0               # 1 scout per enemy house for espionage
-max_scouts_act1 = 3                        # Minimal scouts in Act 1
 etacs_per_uncolonized_system = 2.0         # 2.0 ETACs per uncolonized system
 max_etacs_queued = 16                      # Cap ETAC production at 16
 
@@ -757,6 +751,36 @@ economic_focus_manipulation = 0.6          # For economic manipulation
 # Counter-intel periodic sweep
 counter_intel_periodic_frequency = 5    # Sweep every N turns (defensive AI)
 counter_intel_aggression_threshold = 0.5  # Below this = defensive (periodic sweeps)
+
+# ==============================================================================
+# RECONNAISSANCE (src/ai/rba/drungarius/reconnaissance/)
+# ==============================================================================
+# Scout management moved from Domestikos to Drungarius (Intelligence Advisor)
+# Follows Eparch/ETAC pattern: single advisor owns complete pipeline
+
+[drungarius_reconnaissance]
+# Scout build targets by Act (intelligence coverage scaling)
+scout_target_act1 = 3            # Minimal (ETAC exploration primary)
+scout_target_act2 = 8            # ELI mesh priority
+scout_target_act3 = 10           # Full coverage
+scout_target_act4 = 12           # Comprehensive intelligence
+
+# Intelligence-driven scaling
+scouts_per_stale_system = 0.5    # 1 scout per 2 stale intel systems
+scouts_per_enemy_house = 1.0     # 1 scout per enemy house
+max_scout_distance = 8           # Maximum jumps for reconnaissance mission
+
+# Mission priorities (higher = more urgent)
+priority_spy_planet = 90         # Detailed colony intelligence
+priority_hack_starbase = 85      # Starbase + orbital defense intel
+priority_spy_system = 75         # Fleet movement tracking
+priority_view_world = 70         # Basic system reconnaissance
+
+# Budget affordability thresholds (percentage of total budget)
+affordability_act1 = 0.10        # 10% - limited scouts in land grab
+affordability_act2 = 0.15        # 15% - intelligence escalation
+affordability_act3 = 0.20        # 20% - war intelligence priority
+affordability_act4 = 0.25        # 25% - comprehensive coverage
 
 # ==============================================================================
 # ESPIONAGE REQUIREMENTS (src/ai/rba/drungarius/requirements.nim)

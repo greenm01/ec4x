@@ -181,17 +181,8 @@ proc generateDomestikosOrders*(
     )
     offensiveFleetOrders.add(mergeOrders)
 
-    # Probing attacks to gather intel on enemy defenses
-    let probingOrders = generateProbingOrders(
-      filtered, analyses, controller, intelSnapshot
-    )
-    offensiveFleetOrders.add(probingOrders)
-
-    # Reconnaissance to maintain fresh intelligence on enemy colonies
-    let reconOrders = generateReconnaissanceOrders(
-      filtered, analyses, controller, currentAct
-    )
-    offensiveFleetOrders.add(reconOrders)
+    # NOTE: Scout reconnaissance now managed by Drungarius (intelligence advisor)
+    # See src/ai/rba/drungarius/reconnaissance/ for scout operations
 
     # Counter-attacks against vulnerable targets (Phase F: Intelligence-driven)
     # Lowered threshold from 0.5 → 0.3 to enable more personalities (Balanced, Economic, Espionage, Diplomatic)
@@ -210,17 +201,8 @@ proc generateDomestikosOrders*(
       )
       offensiveFleetOrders.add(counterAttackOrders)
 
-    # Probe enemy defenses with scouts
-    let probingOrders = generateProbingOrders(
-      filtered, analyses, controller, intelSnapshot
-    )
-    offensiveFleetOrders.add(probingOrders)
-
-    # Reconnaissance to maintain fresh intelligence on enemy colonies
-    let reconOrders = generateReconnaissanceOrders(
-      filtered, analyses, controller, currentAct
-    )
-    offensiveFleetOrders.add(reconOrders)
+    # NOTE: Scout reconnaissance now managed by Drungarius (intelligence advisor)
+    # See src/ai/rba/drungarius/reconnaissance/ for scout operations
 
   of DomestikosStrategy.ProbingAttacks, DomestikosStrategy.DefensiveConsolidation,
      DomestikosStrategy.OpportunisticCounter:

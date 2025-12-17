@@ -154,6 +154,8 @@ proc extractDrungariusFeedback*(
   result = DrungariusFeedback(
     fulfilledRequirements: @[],
     unfulfilledRequirements: @[],
+    fulfilledScoutRequirements: @[],
+    unfulfilledScoutRequirements: @[],
     totalBudgetAvailable: availableBudget,
     totalBudgetSpent: mediation.drungariusBudget
   )
@@ -164,6 +166,8 @@ proc extractDrungariusFeedback*(
     if weightedReq.requirement.advisor == AdvisorType.Drungarius:
       if weightedReq.requirement.espionageReq.isSome:
         result.fulfilledRequirements.add(weightedReq.requirement.espionageReq.get())
+      elif weightedReq.requirement.buildReq.isSome:
+        result.fulfilledScoutRequirements.add(weightedReq.requirement.buildReq.get())
 
   for weightedReq in mediation.unfulfilledRequirements:
     if weightedReq.requirement.advisor == AdvisorType.Drungarius:
@@ -173,6 +177,8 @@ proc extractDrungariusFeedback*(
 
         # TODO: Implement detailed feedback mechanism
         # DrungariusFeedback type currently doesn't support detailedFeedback field
+      elif weightedReq.requirement.buildReq.isSome:
+        result.unfulfilledScoutRequirements.add(weightedReq.requirement.buildReq.get())
   return result
 
 proc extractEparchFeedback*(
@@ -312,11 +318,11 @@ proc allocateBudgetMultiAdvisor*(
 
   # === STEP 3: Combine reserves + mediated allocations ===
   # NOTE: Expansion reserve (minExpansionBudget) goes to Eparch (manages ETACs)
-  #       Recon reserve (minReconBudget) goes to Domestikos (scout fleets)
+  #       Recon reserve (minReconBudget) goes to Drungarius (manages scouts)
   result.budgets = initTable[AdvisorType, int]()
-  result.budgets[AdvisorType.Domestikos] = minReconBudget + mediation.domestikosBudget
+  result.budgets[AdvisorType.Domestikos] = mediation.domestikosBudget
   result.budgets[AdvisorType.Logothete] = mediation.logotheteBudget
-  result.budgets[AdvisorType.Drungarius] = mediation.drungariusBudget
+  result.budgets[AdvisorType.Drungarius] = minReconBudget + mediation.drungariusBudget
   result.budgets[AdvisorType.Eparch] = minExpansionBudget + mediation.eparchBudget
   result.budgets[AdvisorType.Protostrator] = 0  # Diplomacy costs 0 PP
   result.budgets[AdvisorType.Treasurer] = 0  # Treasurer doesn't get budget
@@ -343,10 +349,10 @@ proc allocateBudgetMultiAdvisor*(
 
   logInfo(LogCategory.lcAI,
           &"{houseId} Treasurer: Final budgets - " &
-          &"Domestikos={result.budgets[AdvisorType.Domestikos]}PP " &
-          &"(+{minReconBudget}PP recon reserved), " &
+          &"Domestikos={result.budgets[AdvisorType.Domestikos]}PP, " &
           &"Logothete={result.budgets[AdvisorType.Logothete]}PP, " &
-          &"Drungarius={result.budgets[AdvisorType.Drungarius]}PP, " &
+          &"Drungarius={result.budgets[AdvisorType.Drungarius]}PP " &
+          &"(+{minReconBudget}PP recon reserved), " &
           &"Eparch={result.budgets[AdvisorType.Eparch]}PP " &
           &"(+{minExpansionBudget}PP expansion reserved), " &
           &"GOAP Reserved={result.reservedBudget}PP")

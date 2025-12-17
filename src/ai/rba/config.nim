@@ -143,9 +143,7 @@ type
     ## Order generation parameters
     research_max_percent*: float
     espionage_investment_percent*: float
-    scout_count_act1*: int
-    scout_count_act2*: int
-    scout_count_act3_plus*: int
+    # NOTE: Scout management moved to Drungarius (drungarius_reconnaissance)
 
 # ==============================================================================
 # Act Transitions
@@ -587,6 +585,28 @@ type
     research_budget_act3*: int
     research_budget_act4*: int
 
+  DrungariusReconnaissanceConfig* = object
+    ## Scout reconnaissance parameters (src/ai/rba/drungarius/reconnaissance/)
+    # Scout build targets by Act (intelligence coverage scaling)
+    scout_target_act1*: int
+    scout_target_act2*: int
+    scout_target_act3*: int
+    scout_target_act4*: int
+    # Intelligence-driven scaling
+    scouts_per_stale_system*: float
+    scouts_per_enemy_house*: float
+    max_scout_distance*: int
+    # Mission priorities (higher = more urgent)
+    priority_spy_planet*: int
+    priority_hack_starbase*: int
+    priority_spy_system*: int
+    priority_view_world*: int
+    # Budget affordability thresholds (percentage of total budget)
+    affordability_act1*: float
+    affordability_act2*: float
+    affordability_act3*: float
+    affordability_act4*: float
+
 # ==============================================================================
 # Gap Fix Configuration (Phase 1-2)
 # ==============================================================================
@@ -872,6 +892,7 @@ type
     drungarius*: DrungariusConfig
     drungarius_operations*: DrungariusOperationsConfig
     drungarius_requirements*: DrungariusRequirementsConfig
+    drungarius_reconnaissance*: DrungariusReconnaissanceConfig
     # Gap Fix modules (Phase 1-2)
     feedback_system*: FeedbackSystemConfig
     reprioritization*: ReprioritizationConfig
@@ -989,10 +1010,7 @@ proc validateRBAConfig*(config: RBAConfig) =
   validateRatio(config.orders.research_max_percent, "orders.research_max_percent")
   validateRatio(config.orders.espionage_investment_percent, "orders.espionage_investment_percent")
 
-  # Validate orders scout counts are positive
-  validatePositive(config.orders.scout_count_act1, "orders.scout_count_act1")
-  validatePositive(config.orders.scout_count_act2, "orders.scout_count_act2")
-  validatePositive(config.orders.scout_count_act3_plus, "orders.scout_count_act3_plus")
+  # NOTE: Scout validation moved to drungarius_reconnaissance section
 
   # Validate logistics parameters
   validatePositive(config.logistics.mothballing_treasury_threshold_pp, "logistics.mothballing_treasury_threshold_pp")
