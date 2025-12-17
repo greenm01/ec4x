@@ -760,10 +760,10 @@ counter_intel_aggression_threshold = 0.5  # Below this = defensive (periodic swe
 
 [drungarius_reconnaissance]
 # Scout build targets by Act (intelligence coverage scaling)
-scout_target_act1 = 3            # Minimal (ETAC exploration primary)
-scout_target_act2 = 8            # ELI mesh priority
-scout_target_act3 = 10           # Full coverage
-scout_target_act4 = 12           # Comprehensive intelligence
+scout_target_act1 = 8            # Increased from 3 for earlier intelligence (GOAP needs data)
+scout_target_act2 = 10           # Increased to maintain coverage
+scout_target_act3 = 12           # Full coverage
+scout_target_act4 = 14           # Comprehensive intelligence
 
 # Intelligence-driven scaling
 scouts_per_stale_system = 0.5    # 1 scout per 2 stale intel systems

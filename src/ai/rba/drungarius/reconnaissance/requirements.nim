@@ -41,8 +41,15 @@ proc assessScoutGaps*(
   let staleIntelSystems = intelSnapshot.espionage.staleIntelSystems
   let enemyHouses = intelSnapshot.military.enemyMilitaryCapability.len
 
-  # Calculate need: 1 scout per 2 stale systems + 1 per enemy house (min 3)
-  var targetScouts = max(3, staleIntelSystems.len div 2) + min(3, enemyHouses)
+  # Phase 6 Enhancement: Count unexplored adjacent systems (proactive scouting)
+  var adjacentUnexplored = 0
+  for systemId, visSystem in filtered.visibleSystems:
+    if visSystem.visibility == VisibilityLevel.Adjacent:
+      adjacentUnexplored += 1
+
+  # Calculate need: 1 scout per 2 stale systems + 1 per 3 adjacent unexplored + 1 per enemy house (min 3)
+  # Phase 6: Added adjacentUnexplored to drive early exploration
+  var targetScouts = max(3, staleIntelSystems.len div 2 + adjacentUnexplored div 3) + min(3, enemyHouses)
 
   # Act-based caps from config (intelligence coverage scaling)
   let actCap = case currentAct
@@ -85,6 +92,7 @@ proc assessScoutGaps*(
       estimatedCost: scoutCost * needed,
       reason: &"Intel coverage (have {scoutCount}/{targetScouts}, " &
               &"{staleIntelSystems.len} stale systems, " &
+              &"{adjacentUnexplored} unexplored, " &
               &"{enemyHouses} enemy houses)"
     ))
 
@@ -92,5 +100,6 @@ proc assessScoutGaps*(
             &"{controller.houseId} Drungarius: Scout requirement - " &
             &"need {needed}x Scout ({scoutCost * needed}PP), " &
             &"priority={priority}, " &
-            &"reason: {staleIntelSystems.len} stale systems, " &
+            &"reason: {staleIntelSystems.len} stale, " &
+            &"{adjacentUnexplored} unexplored, " &
             &"{enemyHouses} enemies")

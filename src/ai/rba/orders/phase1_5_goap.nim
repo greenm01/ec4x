@@ -236,6 +236,12 @@ proc executePhase15_GOAP*(
         result.plans.add(plan)
         if config.log_plans:
           logDebug(LogCategory.lcAI, &"GOAP Plan: {plan.goal.description}")
+      else:
+        logDebug(LogCategory.lcAI,
+          &"GOAP: Rejected plan for {goal.goalType} (confidence {plan.confidence:.2f} < threshold {config.confidence_threshold})")
+    else:
+      logDebug(LogCategory.lcAI,
+        &"GOAP: No plan found for {goal.goalType} (goal: {goal.description})")
 
   # Sort by confidence * priority, limit to max concurrent
   result.plans = result.plans.sortedByIt(-(it.confidence * it.goal.priority))

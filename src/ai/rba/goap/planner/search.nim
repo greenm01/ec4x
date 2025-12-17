@@ -81,7 +81,9 @@ proc getAvailableActionsForGoal(state: WorldStateSnapshot, goal: Goal): seq[Acti
         duration: 1,
         target: goal.target,
         preconditions: @[hasMinBudget(50)],
-        effects: @[],
+        effects: @[
+          createEffect(EffectKind.GainControl, {"systemId": int(goal.target.get())}.toTable)
+        ],
         description: "Invade colony"
       ))
 

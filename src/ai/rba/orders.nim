@@ -104,10 +104,15 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   if controller.goapEnabled:
     logInfo(LogCategory.lcAI, &"{controller.houseId} === Phase 1.5: GOAP Planning ===")
 
+    # CRITICAL: Regenerate intelligence snapshot AFTER Phase 1 advisor analysis
+    # Phase 1 Drungarius populates vulnerableTargets via colony analysis
+    # GOAP needs this fresh data for offensive goal extraction
+    let freshIntelSnapshot = generateIntelligenceSnapshot(filtered, controller)
+
     let phase15Result = phase1_5_goap.executePhase15_GOAP(
       controller,
       filtered,
-      intelSnapshot,
+      freshIntelSnapshot,  # Use fresh snapshot with updated vulnerableTargets
       controller.goapConfig
     )
 
@@ -117,6 +122,8 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
     controller.goapLastPlanningTurn = filtered.turn
 
     # Add plans to tracker
+    # CRITICAL: Update tracker's current turn before adding plans
+    controller.goapPlanTracker.currentTurn = filtered.turn
     for plan in phase15Result.plans:
       controller.goapPlanTracker.addPlan(plan)
 
