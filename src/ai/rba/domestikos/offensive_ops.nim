@@ -312,6 +312,20 @@ proc estimateEnemyFleetStrength*(
     confidence: totalConfidence
   )
 
+proc hasLoadedMarines(fleet: Fleet): tuple[hasTransports: bool, marineCount: int] =
+  ## Check if fleet has Auxiliary squadrons (TroopTransports) with loaded marines
+  ## Returns (hasTransports, marineCount)
+  result = (hasTransports: false, marineCount: 0)
+
+  for squadron in fleet.squadrons:
+    if squadron.squadronType == SquadronType.Auxiliary:
+      if squadron.flagship.shipClass == ShipClass.TroopTransport:
+        if squadron.flagship.cargo.isSome:
+          let cargo = squadron.flagship.cargo.get()
+          if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+            result.hasTransports = true
+            result.marineCount += cargo.quantity
+
 proc findSuitableInvasionFleet(
   controller: AIController,
   analyses: seq[FleetAnalysis],
@@ -320,6 +334,7 @@ proc findSuitableInvasionFleet(
   targetSystem: SystemId
 ): Option[FleetId] =
   ## Find available fleet with sufficient strength for invasion (Phase F)
+  ## CRITICAL: Fleet MUST have loaded TroopTransports (marines) for ground assault
   ## 1.0x safety margin - take risks for opportunity strikes
   for analysis in analyses:
     # Check availability
@@ -341,6 +356,15 @@ proc findSuitableInvasionFleet(
     if not fleet.hasCombatShips or fleet.squadrons.len < 1: # At least one squadron
       continue
 
+    # CRITICAL: Check for loaded marines (required for invasion)
+    let (hasTransports, marineCount) = hasLoadedMarines(fleet)
+    if not hasTransports or marineCount < 2:
+      # Need at least 2 marines for invasion
+      logDebug(LogCategory.lcAI,
+               &"Domestikos: Fleet {fleet.id} unsuitable for invasion - " &
+               &"no loaded transports (marines: {marineCount})")
+      continue
+
     # Use the engine's actual combat strength calculation
     let fleetStrength = fleet.combatStrength().float
 
@@ -359,6 +383,9 @@ proc findSuitableInvasionFleet(
       logDebug(LogCategory.lcAI, &"Domestikos: No path found for fleet {fleet.id} to {targetSystem}.")
       continue  # No path
 
+    logInfo(LogCategory.lcAI,
+            &"Domestikos: Selected fleet {fleet.id} for invasion - " &
+            &"strength {fleetStrength:.0f}, marines {marineCount}")
     return some(analysis.fleetId)
 
   return none(FleetId)
@@ -500,6 +527,9 @@ proc generateCampaignOrder(
   var bestFleet: Option[FleetAnalysis] = none(FleetAnalysis)
   var bestDistance = 999
 
+  # Determine if we need marines for this phase
+  let needsMarines = campaign.phase == InvasionCampaignPhase.Invasion
+
   # First pass: check assigned fleets
   # CRITICAL FIX: Never assign ETACs to military campaigns (they're for colonization only)
   for fleetId in campaign.assignedFleets:
@@ -510,6 +540,22 @@ proc generateCampaignOrder(
         if analysis.utilization in {FleetUtilization.Idle,
                                      FleetUtilization.UnderUtilized} and
            not analysis.hasETACs and not analysis.hasScouts:
+
+          # CRITICAL: For Invasion phase, require loaded marines
+          if needsMarines:
+            var fleetObj: Option[Fleet] = none(Fleet)
+            for f in filtered.ownFleets:
+              if f.id == fleetId:
+                fleetObj = some(f)
+                break
+            if fleetObj.isSome:
+              let (hasTransports, marineCount) = hasLoadedMarines(fleetObj.get())
+              if not hasTransports or marineCount < 2:
+                logDebug(LogCategory.lcAI,
+                         &"{controller.houseId} Campaign: Fleet {fleetId} " &
+                         &"lacks marines for invasion (marines: {marineCount})")
+                break  # Skip this fleet
+
           let dist = calculateDistance(filtered.starMap,
                                        analysis.location,
                                        campaign.targetSystem)
@@ -524,6 +570,19 @@ proc generateCampaignOrder(
   if bestFleet.isNone:
     for analysis in analyses:
       if analysis.utilization == FleetUtilization.Idle and not analysis.hasETACs and not analysis.hasScouts:
+
+        # CRITICAL: For Invasion phase, require loaded marines
+        if needsMarines:
+          var fleetObj: Option[Fleet] = none(Fleet)
+          for f in filtered.ownFleets:
+            if f.id == analysis.fleetId:
+              fleetObj = some(f)
+              break
+          if fleetObj.isSome:
+            let (hasTransports, marineCount) = hasLoadedMarines(fleetObj.get())
+            if not hasTransports or marineCount < 2:
+              continue  # Skip this fleet
+
         let dist = calculateDistance(filtered.starMap,
                                      analysis.location,
                                      campaign.targetSystem)
@@ -532,9 +591,14 @@ proc generateCampaignOrder(
           bestDistance = dist
 
   if bestFleet.isNone:
-    logDebug(LogCategory.lcAI,
-             &"{controller.houseId} Campaign: No available fleet for " &
-             &"{campaign.targetSystem}")
+    if needsMarines:
+      logDebug(LogCategory.lcAI,
+               &"{controller.houseId} Campaign: No available fleet with loaded " &
+               &"marines for invasion of {campaign.targetSystem}")
+    else:
+      logDebug(LogCategory.lcAI,
+               &"{controller.houseId} Campaign: No available fleet for " &
+               &"{campaign.targetSystem}")
     return none(FleetOrder)
 
   let fleet = bestFleet.get()

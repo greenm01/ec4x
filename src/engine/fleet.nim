@@ -83,8 +83,49 @@ proc isEmpty*(f: Fleet): bool =
   ## Check if the fleet has no squadrons
   f.squadrons.len == 0
 
+proc hasIntelSquadrons*(f: Fleet): bool =
+  ## Check if fleet has any Intel squadrons (Scouts)
+  for sq in f.squadrons:
+    if sq.squadronType == SquadronType.Intel:
+      return true
+  return false
+
+proc hasNonIntelSquadrons*(f: Fleet): bool =
+  ## Check if fleet has any non-Intel squadrons
+  for sq in f.squadrons:
+    if sq.squadronType != SquadronType.Intel:
+      return true
+  return false
+
+proc canAddSquadron*(f: Fleet, squadron: Squadron): tuple[canAdd: bool, reason: string] =
+  ## Check if a squadron can be added to this fleet
+  ## RULE: Intel squadrons cannot be mixed with other squadron types
+
+  if f.squadrons.len == 0:
+    # Empty fleet - any squadron type can be added
+    return (canAdd: true, reason: "")
+
+  let isIntelSquadron = squadron.squadronType == SquadronType.Intel
+  let fleetHasIntel = f.hasIntelSquadrons()
+  let fleetHasNonIntel = f.hasNonIntelSquadrons()
+
+  if isIntelSquadron and fleetHasNonIntel:
+    return (canAdd: false, reason: "Cannot add Intel squadron to fleet with non-Intel squadrons")
+
+  if not isIntelSquadron and fleetHasIntel:
+    return (canAdd: false, reason: "Cannot add non-Intel squadron to Intel-only fleet")
+
+  return (canAdd: true, reason: "")
+
 proc add*(f: var Fleet, squadron: Squadron) =
   ## Add a squadron to the fleet
+  ## Validates that Intel squadrons are not mixed with other types
+  let validation = f.canAddSquadron(squadron)
+  if not validation.canAdd:
+    raise newException(ValueError,
+      "Fleet composition violation: " & validation.reason &
+      " (fleet: " & f.id & ", squadron: " & $squadron.flagship.shipClass & ")")
+
   f.squadrons.add(squadron)
 
 proc remove*(f: var Fleet, index: int) =
@@ -195,30 +236,21 @@ proc hasCombatSquadrons*(f: Fleet): bool =
 
 proc canMergeWith*(f1: Fleet, f2: Fleet): tuple[canMerge: bool, reason: string] =
   ## Check if two fleets can merge (validates Intel/combat mixing)
+  ## RULE: Intel squadrons cannot be mixed with other squadron types
   ## Intel fleets NEVER mix with anything (pure intelligence operations)
   ## Combat, Auxiliary, and Expansion can mix (combat escorts for transports)
   ## Fighters stay at colonies and don't join fleets
 
-  # Check if fleets contain Intel squadrons
-  var f1HasIntel = false
-  var f2HasIntel = false
+  let f1HasIntel = f1.hasIntelSquadrons()
+  let f2HasIntel = f2.hasIntelSquadrons()
+  let f1HasNonIntel = f1.hasNonIntelSquadrons()
+  let f2HasNonIntel = f2.hasNonIntelSquadrons()
 
-  for sq in f1.squadrons:
-    if sq.squadronType == SquadronType.Intel:
-      f1HasIntel = true
-      break
+  # Intel squadrons cannot mix with non-Intel squadrons
+  if (f1HasIntel and f2HasNonIntel) or (f1HasNonIntel and f2HasIntel):
+    return (false, "Intel squadrons cannot be mixed with other squadron types")
 
-  for sq in f2.squadrons:
-    if sq.squadronType == SquadronType.Intel:
-      f2HasIntel = true
-      break
-
-  # Intel fleets NEVER mix with anything
-  if f1HasIntel or f2HasIntel:
-    if f1HasIntel != f2HasIntel:  # One has intel, other doesn't
-      return (false, "Intel fleets cannot mix with non-intel fleets")
-    # Both are pure intel fleets - OK to merge
-
+  # Both fleets are compatible (either both Intel-only or both have no Intel)
   return (true, "")
 
 proc combatSquadrons*(f: Fleet): seq[Squadron] =
