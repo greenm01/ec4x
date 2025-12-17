@@ -12,9 +12,13 @@ import squadron, spacelift
 import ../common/types/[core, combat]
 import std/[algorithm, strutils, options]
 
+# Import getShipStats for migration
+from squadron import getShipStats
+
 export FleetId, SystemId, HouseId, LaneType, FleetMissionState
-export Squadron, EnhancedShip, ShipClass  # Export for fleet users
+export Squadron, Ship, ShipClass  # Export for fleet users (Ship renamed from Ship)
 export SpaceLiftShip, SpaceLiftCargo, CargoType  # Export spacelift types
+export SquadronType, ShipCargo  # Export new squadron classification types
 
 type
   FleetStatus* {.pure.} = enum
@@ -193,19 +197,30 @@ proc hasCombatSquadrons*(f: Fleet): bool =
   return false
 
 proc canMergeWith*(f1: Fleet, f2: Fleet): tuple[canMerge: bool, reason: string] =
-  ## Check if two fleets can merge (validates scout/combat mixing)
-  ## Only scouts are intelligence-only and cannot mix with combat fleets
-  ## ETACs and Troop Transports CAN join combat fleets (they need escorts)
-  let f1HasScouts = f1.hasScouts()
-  let f2HasScouts = f2.hasScouts()
-  let f1HasCombat = f1.hasCombatSquadrons()
-  let f2HasCombat = f2.hasCombatSquadrons()
+  ## Check if two fleets can merge (validates Intel/combat mixing)
+  ## Intel fleets NEVER mix with anything (pure intelligence operations)
+  ## Combat, Auxiliary, and Expansion can mix (combat escorts for transports)
+  ## Fighters stay at colonies and don't join fleets
 
-  # Prevent scout-only fleets from joining combat fleets
-  if f1HasScouts and not f1HasCombat and f2HasCombat:
-    return (false, "Cannot merge scout-only fleet with combat fleet")
-  if f2HasScouts and not f2HasCombat and f1HasCombat:
-    return (false, "Cannot merge combat fleet with scout-only fleet")
+  # Check if fleets contain Intel squadrons
+  var f1HasIntel = false
+  var f2HasIntel = false
+
+  for sq in f1.squadrons:
+    if sq.squadronType == SquadronType.Intel:
+      f1HasIntel = true
+      break
+
+  for sq in f2.squadrons:
+    if sq.squadronType == SquadronType.Intel:
+      f2HasIntel = true
+      break
+
+  # Intel fleets NEVER mix with anything
+  if f1HasIntel or f2HasIntel:
+    if f1HasIntel != f2HasIntel:  # One has intel, other doesn't
+      return (false, "Intel fleets cannot mix with non-intel fleets")
+    # Both are pure intel fleets - OK to merge
 
   return (true, "")
 
@@ -298,7 +313,7 @@ proc balanceSquadrons*(f: var Fleet) =
     return  # Already balanced enough, skip expensive sort
 
   # Step 1: Extract all escorts from all squadrons
-  var allEscorts: seq[EnhancedShip] = @[]
+  var allEscorts: seq[Ship] = @[]
   for i in 0..<f.squadrons.len:
     allEscorts.add(f.squadrons[i].ships)
     f.squadrons[i].ships = @[]  # Clear escorts (keep flagship)
@@ -308,7 +323,7 @@ proc balanceSquadrons*(f: var Fleet) =
 
   # Step 2: Sort escorts by command cost (descending) for better bin packing
   # Larger ships first = better capacity utilization
-  allEscorts.sort do (a, b: EnhancedShip) -> int:
+  allEscorts.sort do (a, b: Ship) -> int:
     result = cmp(b.stats.commandCost, a.stats.commandCost)
 
   # Step 3: Redistribute escorts using greedy algorithm
@@ -349,10 +364,10 @@ proc balanceSquadrons*(f: var Fleet) =
 # Fleet Management Command Support (for administrative ship reorganization)
 # ============================================================================
 
-proc convertSpaceLiftToEnhanced(ship: SpaceLiftShip): EnhancedShip =
-  ## Convert SpaceLiftShip to EnhancedShip for unified ship listing
+proc convertSpaceLiftToEnhanced(ship: SpaceLiftShip): Ship =
+  ## Convert SpaceLiftShip to Ship for unified ship listing
   ## Used by getAllShips() to present flat list to player
-  result = EnhancedShip(
+  result = Ship(
     shipClass: ship.shipClass,
     shipType: ShipType.Spacelift,
     stats: getShipStats(ship.shipClass),  # Get stats from ship class
@@ -360,7 +375,7 @@ proc convertSpaceLiftToEnhanced(ship: SpaceLiftShip): EnhancedShip =
     name: ship.id  # Use ship ID as name
   )
 
-proc getAllShips*(f: Fleet): seq[EnhancedShip] =
+proc getAllShips*(f: Fleet): seq[Ship] =
   ## Get flat list of all ships in fleet for player UI
   ## Order: squadron flagships + escorts, then spacelift ships
   ## Used by FleetManagementCommand to present ships to player
@@ -373,7 +388,7 @@ proc getAllShips*(f: Fleet): seq[EnhancedShip] =
     for ship in sq.ships:
       result.add(ship)
 
-  # Add spacelift ships (converted to EnhancedShip)
+  # Add spacelift ships (converted to Ship)
   for ship in f.spaceLiftShips:
     result.add(convertSpaceLiftToEnhanced(ship))
 

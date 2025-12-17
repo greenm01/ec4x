@@ -131,21 +131,30 @@ proc validateOrderAtExecution(
         )
 
   of FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase:
-    # Check fleet is still scout-only (no combat ships added)
-    for squadron in fleet.squadrons:
-      if squadron.flagship.shipClass != ShipClass.Scout:
-        return ExecutionValidationResult(
-          valid: false,
-          shouldAbort: false,
-          reason: "Fleet no longer scout-only (spy missions require pure scout fleets)"
-        )
+    # Check fleet is still Intel-only (no combat/other squadrons added)
+    let hasIntel = fleet.squadrons.anyIt(it.squadronType == SquadronType.Intel)
+    let hasNonIntel = fleet.squadrons.anyIt(it.squadronType != SquadronType.Intel)
+
+    if not hasIntel:
+      return ExecutionValidationResult(
+        valid: false,
+        shouldAbort: false,
+        reason: "Fleet has no Intel squadrons (spy missions require Intel squadrons)"
+      )
+
+    if hasNonIntel:
+      return ExecutionValidationResult(
+        valid: false,
+        shouldAbort: false,
+        reason: "Fleet has non-Intel squadrons (spy missions require pure Intel fleets)"
+      )
 
     # Check no spacelift ships
     if fleet.spaceLiftShips.len > 0:
       return ExecutionValidationResult(
         valid: false,
         shouldAbort: false,
-        reason: "Fleet has spacelift ships (spy missions require scout-only)"
+        reason: "Fleet has spacelift ships (spy missions require Intel-only)"
       )
 
   of FleetOrderType.Patrol:

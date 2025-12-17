@@ -210,13 +210,13 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
              &"{issuingHouse} Colonize order VALID: {order.fleetId} → {targetId}")
 
   of FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz:
-    # Check fleet has no scouts (scouts are intelligence-only, not combat units)
+    # Check fleet has no Intel squadrons (Intel squadrons are intelligence-only, not combat units)
     for squadron in fleet.squadrons:
-      if squadron.flagship.shipClass == ShipClass.Scout:
+      if squadron.squadronType == SquadronType.Intel:
         logWarn(LogCategory.lcOrders,
                 &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-                &"combat orders cannot include scouts (scouts are intelligence-only)")
-        return ValidationResult(valid: false, error: "Combat orders cannot include scouts")
+                &"combat orders cannot include Intel squadrons (intelligence-only)")
+        return ValidationResult(valid: false, error: "Combat orders cannot include Intel squadrons")
 
     # Check fleet has combat squadrons
     var hasMilitary = false
@@ -242,28 +242,32 @@ proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: Hous
              &"{order.targetSystem.get()}")
 
   of FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase:
-    # Spy missions require scout-only fleets (no combat ships or spacelift)
-    # Multiple scouts can merge for mesh network ELI bonuses
+    # Spy missions require pure Intel fleets (no combat, auxiliary, or expansion squadrons)
+    # Multiple Intel squadrons can merge for mesh network ELI bonuses
     if fleet.squadrons.len == 0:
       logWarn(LogCategory.lcOrders,
               &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-              &"requires at least one Scout squadron")
-      return ValidationResult(valid: false, error: "Spy missions require at least one Scout squadron")
+              &"requires at least one Intel squadron")
+      return ValidationResult(valid: false, error: "Spy missions require at least one Intel squadron")
 
-    # Check all squadrons are scouts (no combat ships)
+    # Check fleet is pure Intel (all squadrons must be Intel type)
+    var hasIntel = false
+    var hasNonIntel = false
+
     for squadron in fleet.squadrons:
-      if squadron.flagship.shipClass != ShipClass.Scout:
+      if squadron.squadronType == SquadronType.Intel:
+        hasIntel = true
+      else:
+        hasNonIntel = true
         logWarn(LogCategory.lcOrders,
                 &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-                &"spy missions require scout-only fleet (found {squadron.flagship.shipClass})")
-        return ValidationResult(valid: false, error: "Spy missions require scout-only fleet (no combat ships)")
+                &"spy missions require pure Intel fleet (found {squadron.squadronType} squadron)")
 
-    # Check no spacelift ships
-    if fleet.spaceLiftShips.len > 0:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-              &"spy missions cannot include spacelift ships")
-      return ValidationResult(valid: false, error: "Spy missions require scout-only fleet (no spacelift)")
+    if not hasIntel:
+      return ValidationResult(valid: false, error: "Spy missions require at least one Intel squadron")
+
+    if hasNonIntel:
+      return ValidationResult(valid: false, error: "Spy missions require pure Intel fleet (no combat/auxiliary/expansion)")
 
     if order.targetSystem.isNone:
       logWarn(LogCategory.lcOrders,

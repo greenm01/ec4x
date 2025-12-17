@@ -850,6 +850,10 @@ req_ebp_disinformation = 6              # For disinformation ops
 req_ebp_economic_manipulation = 6       # For economic manipulation
 req_ebp_cyber_attack = 5                # For cyber attacks
 req_ebp_assassination = 10              # For assassination (luxury op)
+req_ebp_intel_gathering = 3             # For SpyOnPlanet missions (basic recon)
+
+# Intel freshness thresholds
+intel_freshness_threshold = 5           # Max age (turns) for intel to be fresh
 
 # Operation cost estimates (PP)
 cost_sabotage = 50                      # Sabotage operation cost
@@ -859,6 +863,7 @@ cost_economic_manipulation = 35         # Economic manipulation cost
 cost_cyber_attack = 30                  # Cyber attack cost
 cost_assassination = 60                 # Assassination cost (expensive)
 cost_counter_intel_sweep = 4            # Counter-intel sweep cost
+cost_spy_mission = 0                    # SpyOnPlanet mission cost (scouts only, no PP)
 
 # Personality thresholds for requirements
 aggression_secondary_sabotage = 0.6     # For secondary sabotage target

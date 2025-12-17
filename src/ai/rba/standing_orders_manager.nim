@@ -54,15 +54,17 @@ proc assessFleetRole*(fleet: Fleet, filtered: FilteredGameState,
     if squadron.flagship.isCrippled:
       crippledCount += 1
 
-    case squadron.flagship.shipClass
-    of ShipClass.Scout:
+    case squadron.squadronType
+    of SquadronType.Intel:
       scoutCount += 1
-    of ShipClass.ETAC:
+    of SquadronType.Expansion:
       etacCount += 1
-    of ShipClass.TroopTransport:
+    of SquadronType.Auxiliary:
       discard  # Transports handled separately
-    else:
+    of SquadronType.Combat:
       militaryCount += 1
+    of SquadronType.Fighter:
+      discard  # Fighters stay at colonies
 
     # Count wingmen
     for ship in squadron.ships:

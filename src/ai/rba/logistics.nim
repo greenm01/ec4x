@@ -828,15 +828,15 @@ proc identifyMothballCandidates*(controller: AIController, inventory: AssetInven
     if hasETAC:
       continue  # Never mothball ETAC fleets
 
-    # NEVER mothball Scouts - intelligence assets for Drungarius reconnaissance
-    # Scouts must remain idle/active for deployment on espionage missions
-    var hasScouts = false
+    # NEVER mothball Intel squadrons - intelligence assets for Drungarius reconnaissance
+    # Intel squadrons must remain idle/active for deployment on espionage missions
+    var hasIntel = false
     for squadron in fleet.squadrons:
-      if squadron.flagship.shipClass == ShipClass.Scout:
-        hasScouts = true
+      if squadron.squadronType == SquadronType.Intel:
+        hasIntel = true
         break
-    if hasScouts:
-      continue  # Never mothball scout fleets
+    if hasIntel:
+      continue  # Never mothball Intel fleets
 
     # Check if this system has redundant fleets (multiple fleets at same colony)
     var fleetsAtThisSystem = 0
@@ -934,13 +934,13 @@ proc identifySalvageCandidates*(controller: AIController, inventory: AssetInvent
     if hasETAC:
       continue  # Never salvage ETAC fleets
 
-    var hasScouts = false
+    var hasIntel = false
     for squadron in fleet.squadrons:
-      if squadron.flagship.shipClass == ShipClass.Scout:
-        hasScouts = true
+      if squadron.squadronType == SquadronType.Intel:
+        hasIntel = true
         break
-    if hasScouts:
-      continue  # Never salvage scout fleets
+    if hasIntel:
+      continue  # Never salvage Intel fleets
 
     # Calculate fleet tech level and damage
     var totalTechLevel = 0

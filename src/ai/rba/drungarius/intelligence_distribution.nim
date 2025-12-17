@@ -271,7 +271,7 @@ proc generateIntelligenceReport*(
     if filtered.ownHouse.intelligence.colonyReports.hasKey(visibleColony.systemId):
       let report = filtered.ownHouse.intelligence.colonyReports[visibleColony.systemId]
       let turnsSince = filtered.turn - report.gatheredTurn
-      if turnsSince <= 10:
+      if turnsSince <= controller.rbaConfig.intelligence.colony_intel_stale_threshold:
         needsIntel = false  # Fresh intel, no need to spy again yet
 
     if needsIntel:
