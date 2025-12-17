@@ -6,9 +6,9 @@
 ## Follows Eparch/ETAC pattern: Intelligence advisor owns scout pipeline
 ## (identify needs → build scouts → deploy scouts)
 
-import std/[logging, strformat, options, sequtils, tables]
+import std/[strformat, options, sequtils, tables]
 import ../../../../common/types/[core, units]
-import ../../../../engine/[gamestate, fog_of_war]
+import ../../../../engine/[gamestate, fog_of_war, logger]
 import ../../../../engine/economy/config_accessors
 import ../../../common/types as ai_common_types
 import ../../[controller_types, config]
@@ -61,13 +61,20 @@ proc assessScoutGaps*(
     let scoutCost = getShipConstructionCost(ShipClass.Scout)
     let needed = targetScouts - scoutCount
 
-    # Priority based on intelligence gap severity
-    let priority = if staleIntelSystems.len > 5:
-      RequirementPriority.High
+    # Priority escalates as game progresses
+    # Act 1: Medium priority (exploratory recon, not urgent yet)
+    # Act 2+: High priority when enemies detected or many stale systems
+    # All acts: High priority when enemies are known (actionable intelligence)
+    let priority = if enemyHouses > 0:
+      RequirementPriority.High  # Enemy detected - intelligence is actionable
+    elif currentAct == Act1_LandGrab:
+      RequirementPriority.Medium  # Act 1 exploration phase
+    elif staleIntelSystems.len > 5:
+      RequirementPriority.High  # Act 2+ with severe intel gaps
     elif staleIntelSystems.len > 2:
-      RequirementPriority.Medium
+      RequirementPriority.Medium  # Act 2+ with growing intel gaps
     else:
-      RequirementPriority.Low
+      RequirementPriority.Low  # Minimal gaps
 
     result.add(BuildRequirement(
       requirementType: RequirementType.ReconnaissanceGap,
@@ -81,8 +88,9 @@ proc assessScoutGaps*(
               &"{enemyHouses} enemy houses)"
     ))
 
-    info &"{controller.houseId} Drungarius: Scout requirement - " &
-         &"need {needed}x Scout ({scoutCost * needed}PP), " &
-         &"priority={priority}, " &
-         &"reason: {staleIntelSystems.len} stale systems, " &
-         &"{enemyHouses} enemies"
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Drungarius: Scout requirement - " &
+            &"need {needed}x Scout ({scoutCost * needed}PP), " &
+            &"priority={priority}, " &
+            &"reason: {staleIntelSystems.len} stale systems, " &
+            &"{enemyHouses} enemies")
