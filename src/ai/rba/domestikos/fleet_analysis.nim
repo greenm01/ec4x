@@ -181,42 +181,25 @@ proc requestFleetForOperation*(
     if requireCombatShips and not analysis.hasCombatShips:
       continue
 
-    # CRITICAL: Skip if marines required but fleet doesn't have FULLY loaded transports
-    # ONLY block if fleet is at a friendly colony (can easily reload)
-    # If already deployed elsewhere, allow them to be useful (bombard, patrol, etc.)
+    # CRITICAL: If marines are required, the fleet MUST have loaded marines.
     if requireMarines:
-      var transportCapacity = 0
-      var loadedMarines = 0
-      var isAtFriendlyColony = false
-
-      # Get transport carry capacity from config
-      let transportCarryLimit = getShipStats(ShipClass.TroopTransport).carryLimit
-
-      # Look up actual fleet to check cargo and location
+      var hasLoadedMarines = false
+      # Look up the actual fleet to check its cargo
       for actualFleet in filtered.ownFleets:
         if actualFleet.id == analysis.fleetId:
-          # Check if at a friendly colony
-          for colony in filtered.ownColonies:
-            if colony.systemId == actualFleet.location:
-              isAtFriendlyColony = true
-              break
-
-          # Check transport cargo status - require FULL capacity
           for squadron in actualFleet.squadrons:
-            if squadron.squadronType == SquadronType.Auxiliary:
-              if squadron.flagship.shipClass == ShipClass.TroopTransport:
-                transportCapacity += transportCarryLimit
-                if squadron.flagship.cargo.isSome:
-                  let cargo = squadron.flagship.cargo.get()
-                  if cargo.cargoType == CargoType.Marines:
-                    loadedMarines += cargo.quantity
-          break
-
-      # Only block if: has transports + not fully loaded + at home
-      # Require FULL capacity - no partial loads (waste transport space)
-      # Allow if: already deployed elsewhere (make them useful for bombard/patrol)
-      if transportCapacity > 0 and loadedMarines < transportCapacity and isAtFriendlyColony:
-        continue  # Skip transports not at full capacity at home colonies
+            if squadron.squadronType == SquadronType.Auxiliary and
+               squadron.flagship.shipClass == ShipClass.TroopTransport and
+               squadron.flagship.cargo.isSome:
+              let cargo = squadron.flagship.cargo.get()
+              if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+                hasLoadedMarines = true
+                break
+          if hasLoadedMarines:
+            break
+      
+      if not hasLoadedMarines:
+        continue # Skip this fleet, it does not have marines for the invasion.
 
     # Score fleet based on utilization (higher = more available)
     var score = case analysis.utilization
