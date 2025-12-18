@@ -16,7 +16,7 @@
 [population]
 # BALANCE VARIABLES - Tunable growth rates
 # ACCELERATION: Increased for 30-turn multi-generational timeline
-natural_growth_rate = 0.05         # 5% natural birth rate per turn (was 2%)
+natural_growth_rate = 0.30         # 30% natural birth rate per turn (accelerated)
 growth_rate_per_starbase = 0.10    # +10% per starbase (was 5%, max 3 starbases)
 max_starbase_bonus = 0.30          # Maximum 30% bonus (was 15%, 3 starbases)
 ptu_growth_rate = 0.04             # 4% per turn under normal conditions (was 1.5%)
@@ -295,9 +295,8 @@ extreme_pp_per_ptu = 15
 
 [industrial_growth]
 # IU passive growth formula: max(min_growth, floor(PU / divisor))
-# RESOLVED: Use 100.0 for 2x rate (30-turn accelerated games)
-# Previous conflict: income.nim used 100.0, industrial_investment.nim used 200.0
-passive_growth_divisor = 100.0     # Divisor for PU to IU conversion
+# ACCELERATED: Use 50.0 for faster industrialization
+passive_growth_divisor = 50.0      # Divisor for PU to IU conversion (PU/50)
 passive_growth_minimum = 2.0       # Minimum 2 IU growth per turn
 applies_modifiers = true            # Apply tax + starbase bonuses
 

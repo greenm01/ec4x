@@ -218,10 +218,9 @@ proc applyPopulationGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: fl
   let mapScaleMultiplier = population_growth_multiplier.getPopulationGrowthMultiplier()
   let effectiveGrowthRate = baseGrowthRate * taxMultiplier * (1.0 + starbaseBonus) * mapScaleMultiplier
 
-  # Apply logistic growth: dP = r × P × (1 - P/K)
-  # Limiting factor prevents growth beyond capacity
-  let limitingFactor = 1.0 - (currentPU / capacity)
-  let growth = currentPU * effectiveGrowthRate * max(0.0, limitingFactor)
+  # Apply simplified growth: PU_growth = max(2, floor(PU * rate * modifiers))
+  # No logistic limiting - capped at planet capacity instead
+  let growth = max(2.0, floor(currentPU * effectiveGrowthRate))
 
   # Calculate new population (ensure non-negative and within capacity)
   let newPU = int(min(currentPU + growth, capacity))
