@@ -18,6 +18,7 @@ import ../../../engine/[gamestate, fog_of_war, logger, order_types, fleet, starm
 import ../../../engine/economy/config_accessors  # For centralized cost accessors
 import ../../../engine/economy/types as econ_types  # For ConstructionType
 import ../../../engine/intelligence/types as intel_types  # For CombatOutcome
+import ../goap/core/types as goap_types  # For GOAP goal types
 import ../../common/types as ai_common_types  # For BuildObjective
 import ../goap/integration/plan_tracking # For PlanStatus, activePlans, etc.
 import ../goap/core/types # For GoalType
@@ -833,11 +834,21 @@ proc assessStrategicAssets*(
   # Total marines (loaded + on colonies)
   let totalMarines = marineCount + loadedMarineCount
 
-  # Determine if house wants invasion capability
-  # Marines are purely offensive - built only for conquest operations
-  let wantsInvasionCapability = personality.aggression > 0.4 or currentAct >= GameAct.Act2_RisingTensions
+  # Check if GOAP has active invasion plans or goals
+  # Marines/transports are built in response to GOAP strategic planning
+  var hasInvasionPlans = false
+  if controller.goapEnabled:
+    for trackedPlan in controller.goapPlanTracker.activePlans:
+      if trackedPlan.plan.goal.goalType == goap_types.GoalType.InvadeColony or
+         trackedPlan.plan.goal.goalType == goap_types.GoalType.CreateInvasionForce:
+        hasInvasionPlans = true
+        break
 
-  if wantsInvasionCapability:
+  # Fallback: If GOAP disabled, use personality/act heuristic
+  if not controller.goapEnabled:
+    hasInvasionPlans = personality.aggression > 0.6 or currentAct >= GameAct.Act2_RisingTensions
+
+  if hasInvasionPlans:
     # STEP 1: Build marines for offensive operations
     # Marines are ONLY for conquest - they exist to fill transports for invasions
     # No defensive garrison - that's what armies are for
@@ -871,10 +882,10 @@ proc assessStrategicAssets*(
       let emptyCapacity = transportCapacity - loadedMarineCount
       let marinePriority = if transportCount > 0 and emptyCapacity > 0:
                             RequirementPriority.Critical  # Transports waiting = CRITICAL
-                          elif wantsInvasionCapability:
-                            RequirementPriority.High  # All invasion-capable houses = High
+                          elif hasInvasionPlans:
+                            RequirementPriority.High  # GOAP invasion plans active = High
                           else:
-                            RequirementPriority.Medium  # Defensive only = Medium
+                            RequirementPriority.Medium  # No invasion plans = Medium
 
       let marineReq = BuildRequirement(
         requirementType: RequirementType.StrategicAsset,
@@ -932,10 +943,10 @@ proc assessStrategicAssets*(
         result.add(marineReq)
 
     # STEP 2: Build transports once we have marines
-    # Any house that wants invasion capability should get transports (aligned with marine logic)
+    # Build transports when GOAP plans invasions (aligned with marine logic)
     if cstLevel >= 2:  # Reduced from CST 3 to CST 2 (basic military infrastructure)
-      # Use same threshold as marines: aggression > 0.4 OR Act2+
-      if wantsInvasionCapability:
+      # Build transports when GOAP has active invasion plans
+      if hasInvasionPlans:
         # Target: 1 transport per (transportCarryLimit * 3) marines to allow multiple simultaneous invasions
         # Example: With 3 marines/transport, target 1 transport per 9 marines (want reserves)
         let marinesPerTransport = transportCarryLimit * 3
