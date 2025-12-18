@@ -8,7 +8,7 @@
 
 import std/[math, strformat, tables, options]
 import ./types
-import ../../../engine/[gamestate, logger, order_types]
+import ../../../engine/[gamestate, logger, order_types, orders]
 import ../../../engine/config/military_config
 import ../../../engine/economy/capacity/capital_squadrons
 import ../../../common/types/[core, units]
