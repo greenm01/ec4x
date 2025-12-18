@@ -844,8 +844,9 @@ proc assessStrategicAssets*(
         hasInvasionPlans = true
         break
 
-  # Fallback: If GOAP disabled, use personality/act heuristic
-  if not controller.goapEnabled:
+  # Fallback: If GOAP disabled OR not planning invasions, use personality/act heuristic
+  # This ensures marine/transport building continues even if GOAP isn't active
+  if not controller.goapEnabled or not hasInvasionPlans:
     hasInvasionPlans = personality.aggression > 0.6 or currentAct >= GameAct.Act2_RisingTensions
 
   if hasInvasionPlans:

@@ -264,14 +264,16 @@ proc loadAppropriateCargo(
           hasEmptyTransport = true
           break
 
-  if hasEmptyTransport and colony.marines >= 3:
-    # Load marines (need minimum for defense)
+  # Lower threshold from 3 to 1 to ensure marines actually get loaded
+  # Marines at colonies are useless - they need to be on transports for invasions
+  if hasEmptyTransport and colony.marines >= 1:
+    # Load marines (minimum 1 marine to make loading worthwhile)
     result.add(ZeroTurnCommand(
       houseId: controller.houseId,
       commandType: ZeroTurnCommandType.LoadCargo,
       sourceFleetId: some(fleet.id),
       cargoType: some(CargoType.Marines),
-      cargoQuantity: none(int)  # Load all available
+      cargoQuantity: none(int)  # Load all available at this colony
     ))
     logInfo(LogCategory.lcAI,
       &"Loading marines onto invasion fleet {fleet.id} at {colony.systemId}")
