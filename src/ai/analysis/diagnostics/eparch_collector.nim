@@ -13,7 +13,8 @@ import ../../../engine/economy/types as econ_types
 import ../../../common/types/core
 
 proc collectEparchMetrics*(state: GameState, houseId: HouseId,
-                           prevMetrics: DiagnosticMetrics): DiagnosticMetrics =
+                           prevMetrics: DiagnosticMetrics,
+                           report: TurnResolutionReport): DiagnosticMetrics =
   ## Collect economy & infrastructure metrics
   result = initDiagnosticMetrics(state.turn, houseId)
 
@@ -71,15 +72,14 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
     result.zeroSpendTurns = prevMetrics.zeroSpendTurns
 
   # Economic Health indicators
-  # TODO: Track actual maintenance cost from turn resolution
-  result.treasuryDeficit = false  # Will be set by turn resolution
-  result.maintenanceCostDeficit = 0
+  result.treasuryDeficit = report.treasuryDeficit
+  result.maintenanceCostDeficit = report.maintenanceCostDeficit
 
-  # TODO: Track infrastructure damage from bombardment/sabotage
-  result.infrastructureDamageTotal = 0
+  # Track infrastructure damage from bombardment/sabotage
+  result.infrastructureDamageTotal = prevMetrics.infrastructureDamageTotal + report.infrastructureDamage
 
-  # TODO: Track salvage value recovered from ship destruction
-  result.salvageValueRecovered = 0
+  # Track salvage value recovered from ship destruction
+  result.salvageValueRecovered = prevMetrics.salvageValueRecovered + report.salvageValueRecovered
 
   # Tax rate analysis (6-turn rolling average)
   # TODO: Calculate true 6-turn average from history
@@ -108,11 +108,10 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
       thisHouseTransfers += 1
   result.populationTransfersActive = thisHouseTransfers
 
-  # TODO: Filter to only this house's transfers
-  # TODO: Track from turn resolution
-  result.populationTransfersCompleted = 0
-  result.populationTransfersLost = 0
-  result.ptuTransferredTotal = 0
+  # Track from turn resolution
+  result.populationTransfersCompleted = report.popTransfersCompleted
+  result.populationTransfersLost = report.popTransfersLost
+  result.ptuTransferredTotal = prevMetrics.ptuTransferredTotal + report.ptuTransferredTotal
 
   # ================================================================
   # COLONY COUNTS
@@ -203,9 +202,9 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
   result.buildingsUnderConstruction = buildingsUnderConstruction
 
   # Commissioning tracking
-  result.shipsCommissionedThisTurn = 0
-  result.etacCommissionedThisTurn = 0
-  result.squadronsCommissionedThisTurn = 0
+  result.shipsCommissionedThisTurn = report.shipsCommissioned
+  result.etacCommissionedThisTurn = report.etacsCommissioned
+  result.squadronsCommissionedThisTurn = report.squadronsCommissioned
 
   # Orders tracking (set by orchestrator when processing OrderPackets)
   result.fleetOrdersSubmitted = 0
