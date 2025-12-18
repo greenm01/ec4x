@@ -198,6 +198,32 @@ import ../../../../engine/[fog_of_war, order_types, fleet, squadron]
 import ../../shared/intelligence_types
 import ../../domestikos/fleet_analysis
 
+proc hasSufficientMarinesForInvasion*(
+  fleetId: FleetId,
+  filtered: FilteredGameState
+): bool =
+  ## Check if a fleet has fully loaded transports for an invasion.
+  ## Returns true if all transports in the fleet are fully loaded with marines.
+  var transportCapacity = 0
+  var loadedMarines = 0
+  let transportCarryLimit = getShipStats(ShipClass.TroopTransport).carryLimit
+
+  # Look up actual fleet from filtered state
+  for actualFleet in filtered.ownFleets:
+    if actualFleet.id == fleetId:
+      for squadron in actualFleet.squadrons:
+        if squadron.squadronType == SquadronType.Auxiliary:
+          if squadron.flagship.shipClass == ShipClass.TroopTransport:
+            transportCapacity += transportCarryLimit
+            if squadron.flagship.cargo.isSome:
+              let cargo = squadron.flagship.cargo.get()
+              if cargo.cargoType == CargoType.Marines:
+                loadedMarines += cargo.quantity
+      break
+
+  # Invasion requires at least one transport, and all transports must be full.
+  return transportCapacity > 0 and loadedMarines >= transportCapacity
+
 proc convertGOAPActionToRBAOrder*(
   action: Action,
   filtered: FilteredGameState,
@@ -262,26 +288,7 @@ proc convertGOAPActionToRBAOrder*(
     ))
 
   of ActionType.BlitzPlanet:
-    # CRITICAL: Check for FULLY loaded marines before allowing ground assault
-    # Require full capacity - no partial loads (waste transport space)
-    var transportCapacity = 0
-    var loadedMarines = 0
-    let transportCarryLimit = getShipStats(ShipClass.TroopTransport).carryLimit
-
-    # Look up actual fleet from filtered state (fleet is FleetAnalysis, not Fleet)
-    for actualFleet in filtered.ownFleets:
-      if actualFleet.id == fleet.fleetId:
-        for squadron in actualFleet.squadrons:
-          if squadron.squadronType == SquadronType.Auxiliary:
-            if squadron.flagship.shipClass == ShipClass.TroopTransport:
-              transportCapacity += transportCarryLimit
-              if squadron.flagship.cargo.isSome:
-                let cargo = squadron.flagship.cargo.get()
-                if cargo.cargoType == CargoType.Marines:
-                  loadedMarines += cargo.quantity
-        break
-
-    if transportCapacity == 0 or loadedMarines < transportCapacity:
+    if not hasSufficientMarinesForInvasion(fleet.fleetId, filtered):
       # Not enough loaded marines for a blitz.
       # Return none to signal that the action cannot be executed this turn.
       # The plan will be re-evaluated next turn.
@@ -296,26 +303,7 @@ proc convertGOAPActionToRBAOrder*(
     ))
 
   of ActionType.InvadePlanet:
-    # CRITICAL: Check for FULLY loaded marines before allowing ground assault
-    # Require full capacity - no partial loads (waste transport space)
-    var transportCapacity = 0
-    var loadedMarines = 0
-    let transportCarryLimit = getShipStats(ShipClass.TroopTransport).carryLimit
-
-    # Look up actual fleet from filtered state (fleet is FleetAnalysis, not Fleet)
-    for actualFleet in filtered.ownFleets:
-      if actualFleet.id == fleet.fleetId:
-        for squadron in actualFleet.squadrons:
-          if squadron.squadronType == SquadronType.Auxiliary:
-            if squadron.flagship.shipClass == ShipClass.TroopTransport:
-              transportCapacity += transportCarryLimit
-              if squadron.flagship.cargo.isSome:
-                let cargo = squadron.flagship.cargo.get()
-                if cargo.cargoType == CargoType.Marines:
-                  loadedMarines += cargo.quantity
-        break
-
-    if transportCapacity == 0 or loadedMarines < transportCapacity:
+    if not hasSufficientMarinesForInvasion(fleet.fleetId, filtered):
       # Not enough loaded marines for an invasion.
       # Return none to signal that the action cannot be executed this turn.
       # The plan will be re-evaluated next turn.
