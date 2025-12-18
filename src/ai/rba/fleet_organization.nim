@@ -10,7 +10,7 @@
 
 import std/[tables, options, strformat, sequtils]
 import ../../common/types/core
-import ../../engine/[gamestate, fleet, squadron, orders, fog_of_war, logger]
+import ../../engine/[gamestate, fleet, squadron, orders, fog_of_war, logger, starmap]
 import ../../engine/commands/zero_turn_commands
 import ./controller
 
@@ -393,3 +393,144 @@ proc organizeFleets*(
   if result.len > 0:
     logInfo(LogCategory.lcAI,
       &"{controller.houseId}: Generated {result.len} fleet organization commands")
+
+# =============================================================================
+# ETAC Detachment for Salvage (100% Colonization)
+# =============================================================================
+
+proc detachAndSalvageETACs*(
+  controller: AIController,
+  filtered: FilteredGameState
+): tuple[commands: seq[ZeroTurnCommand], orders: seq[FleetOrder]] =
+  ## Detach ETACs from mixed fleets and generate salvage orders when 100% colonization reached
+  ##
+  ## **Purpose:** After map is fully colonized, ETACs are obsolete. This function:
+  ## 1. Detaches ETACs from mixed fleets (combat ships + ETACs) via DetachShips
+  ## 2. Generates Salvage orders for the newly-created ETAC-only fleets
+  ## 3. Generates Move orders for ETAC fleets NOT at colonies
+  ##
+  ## **Returns:**
+  ## - commands: DetachShips zero-turn commands (execute immediately)
+  ## - orders: Salvage/Move fleet orders (execute normally)
+
+  result.commands = @[]
+  result.orders = @[]
+
+  # Check if 100% colonization reached
+  let totalSystems = filtered.starMap.systems.len
+  var totalColonized = 0
+  for houseId, colonyCount in filtered.houseColonies:
+    totalColonized += colonyCount
+
+  if totalColonized < totalSystems:
+    return  # Not fully colonized yet
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId}: 100% colonization reached - processing ETAC salvage")
+
+  # Process all fleets with ETACs
+  for fleet in filtered.ownFleets:
+    # Skip if fleet has no ETACs
+    var etacSquadronIndices: seq[int] = @[]
+    var etacCount = 0
+    for i, squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Expansion and
+         squadron.flagship.shipClass == ShipClass.ETAC:
+        etacSquadronIndices.add(i)
+        etacCount += 1
+
+    if etacCount == 0:
+      continue  # No ETACs in this fleet
+
+    # Check if fleet is at a friendly colony
+    var atOwnColony = false
+    for colony in filtered.ownColonies:
+      if colony.systemId == fleet.location:
+        atOwnColony = true
+        break
+
+    if not atOwnColony:
+      # ETAC fleet NOT at colony: Issue Move order to nearest colony
+      # Salvage will happen next turn after arrival
+      var nearestColony: Option[SystemId] = none(SystemId)
+      var shortestDistance = int.high
+
+      let dummyFleet = Fleet(
+        id: FleetId("salvage_dummy"),
+        owner: filtered.viewingHouse,
+        location: fleet.location,
+        squadrons: @[]
+      )
+
+      for colony in filtered.ownColonies:
+        let pathResult = filtered.starMap.findPath(fleet.location, colony.systemId, dummyFleet)
+        if pathResult.found:
+          let distance = pathResult.path.len - 1
+          if distance < shortestDistance:
+            shortestDistance = distance
+            nearestColony = some(colony.systemId)
+
+      if nearestColony.isSome:
+        result.orders.add(FleetOrder(
+          fleetId: fleet.id,
+          orderType: FleetOrderType.Move,
+          targetSystem: nearestColony,
+          priority: 50
+        ))
+        logInfo(LogCategory.lcAI,
+                &"  Moving ETAC fleet {fleet.id} to colony {nearestColony.get()} for salvage")
+      continue  # Can't detach until at colony
+
+    # Fleet IS at colony: Check if mixed or pure
+    let nonETACCount = fleet.squadrons.len - etacCount
+
+    if nonETACCount == 0:
+      # Pure ETAC fleet: Issue Salvage order directly (no detachment needed)
+      result.orders.add(FleetOrder(
+        fleetId: fleet.id,
+        orderType: FleetOrderType.Salvage,
+        targetSystem: some(fleet.location),  # Current colony
+        priority: 50
+      ))
+      logInfo(LogCategory.lcAI,
+              &"  Salvaging pure ETAC fleet {fleet.id} at colony {fleet.location}")
+
+    else:
+      # Mixed fleet: Detach ETACs first, then salvage the new ETAC-only fleet
+
+      # Skip if fleet has active non-salvage orders (don't disrupt missions)
+      # BUT: Allow detachment if fleet has Salvage order (that's the whole point!)
+      if fleet.id in filtered.ownFleetOrders:
+        let order = filtered.ownFleetOrders[fleet.id]
+        if order.orderType != FleetOrderType.Salvage:
+          logDebug(LogCategory.lcAI,
+                  &"  Skipping ETAC detachment for {fleet.id} (has active {order.orderType} order)")
+          continue
+
+      # Pre-generate fleet ID for new ETAC-only fleet
+      let newFleetId = controller.houseId & "_etac_salvage_" & $fleet.location & "_" & $filtered.turn
+
+      # Generate DetachShips command
+      result.commands.add(ZeroTurnCommand(
+        houseId: controller.houseId,
+        commandType: ZeroTurnCommandType.DetachShips,
+        sourceFleetId: some(fleet.id),
+        shipIndices: etacSquadronIndices,
+        newFleetId: some(newFleetId)
+      ))
+
+      # Generate Salvage order for the new ETAC-only fleet
+      result.orders.add(FleetOrder(
+        fleetId: newFleetId,
+        orderType: FleetOrderType.Salvage,
+        targetSystem: some(fleet.location),  # Current colony
+        priority: 50
+      ))
+
+      logInfo(LogCategory.lcAI,
+              &"  Detaching {etacCount} ETACs from mixed fleet {fleet.id} → {newFleetId}, then salvaging")
+
+  if result.commands.len > 0 or result.orders.len > 0:
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId}: Generated {result.commands.len} detachment commands + " &
+            &"{result.orders.len} salvage/move orders for ETACs")

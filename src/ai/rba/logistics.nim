@@ -1520,50 +1520,18 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
   # Step 7: Fleet lifecycle management (Reserve/Mothball/Salvage/Reactivate)
   result.fleetOrders = result.fleetOrders  # Keep existing orders from Step 6
 
-  # Act 2 transition: Salvage all ETAC fleets (obsolete after land grab phase)
-  # ETACs are single-purpose colonizers with no combat/strategic value in Act 2+
-  # Salvaging them converts PP back to treasury for military buildup
-  if currentAct >= ai_types.GameAct.Act2_RisingTensions:
-    for fleet in filtered.ownFleets:
-      # Check if fleet contains ANY ETACs
-      var hasETACs = false
-      var etacCount = 0
-      for squadron in fleet.squadrons:
-        if squadron.flagship.shipClass == ShipClass.ETAC:
-          hasETACs = true
-          etacCount += 1
-        for ship in squadron.ships:
-          if ship.shipClass == ShipClass.ETAC:
-            hasETACs = true
-            etacCount += 1
-
-      if hasETACs:
-        result.fleetOrders.add(FleetOrder(
-          fleetId: fleet.id,
-          orderType: FleetOrderType.Salvage,
-          targetSystem: none(SystemId),
-          targetFleet: none(FleetId),
-          priority: 100  # High priority - Act transition cleanup
-        ))
-        logInfo(LogCategory.lcAI,
-                &"{controller.houseId} SALVAGING fleet {fleet.id} with {etacCount} ETACs " &
-                &"(Act 2 - ETACs obsolete)")
+  # REMOVED: Act transition ETAC salvage
+  # Rationale: Too broad - salvages entire fleets just because they have ETACs
+  # New approach: expansion.nim handles ETAC salvage after 100% colonization
+  # Fleet organization detaches ETACs from mixed fleets, then salvages ETAC-only fleets
 
   # Fleet lifecycle management based on treasury health
   # NOTE: Functions have their own internal checks, we just call them based on general conditions
 
-  if inventory.totalTreasury < 100:
-    # CRITICAL treasury - salvage obsolete fleets for emergency PP
-    let salvageCandidates = identifySalvageCandidates(controller, inventory, filtered)
-    for fleetId in salvageCandidates:
-      result.fleetOrders.add(FleetOrder(
-        fleetId: fleetId,
-        orderType: FleetOrderType.Salvage,
-        targetSystem: none(SystemId),
-        targetFleet: none(FleetId),
-        priority: 200  # Highest priority - emergency funds
-      ))
-      logInfo(LogCategory.lcAI, &"{controller.houseId} SALVAGING fleet {fleetId} for emergency PP (treasury critical)")
+  # REMOVED: Emergency salvage (treasury < 100 PP)
+  # Rationale: Salvage is too drastic (permanent destruction for 50% PP)
+  # Better to mothball fleets (0% maintenance, reversible) or deploy them strategically
+  # Salvage should only be used for ships no longer needed (ETACs post-colonization)
 
   # Check for mothball candidates (handles both financial + obsolescence paths)
   let mothballCandidates = identifyMothballCandidates(controller, inventory, filtered)

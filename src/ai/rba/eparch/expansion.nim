@@ -748,7 +748,7 @@ proc planETACSalvage(
   filtered: FilteredGameState,
   houseId: HouseId
 ): seq[FleetOrder] =
-  ## Generate salvage orders for ALL ETACs (map is 100% colonized)
+  ## Generate salvage/movement orders for ALL ETACs (map is 100% colonized)
   ##
   ## **Precondition:** Map must be 100% colonized (checked by caller)
   ##
@@ -757,46 +757,67 @@ proc planETACSalvage(
   ## - Clear out obsolete ETAC fleets after colonization complete
   ##
   ## **Algorithm:**
-  ## 1. For each ETAC, find nearest friendly colony
-  ## 2. Generate Salvage order to that colony
-  ## 3. Engine will recover salvage value when ETAC reaches colony
+  ## 1. For each ETAC fleet, check if at friendly colony:
+  ##    - If at colony: Issue Salvage order (executes same turn via arrivedFleets)
+  ##    - If NOT at colony: Issue Move order to nearest colony (salvage next turn)
+  ## 2. Engine will detach ETACs from mixed fleets (fleet_organization.nim)
+  ## 3. Engine will recover salvage value when fleet arrives at colony
   ##
-  ## Returns: Sequence of Salvage orders for all ETACs
+  ## Returns: Sequence of Salvage/Move orders for all ETAC fleets
   result = @[]
 
   logInfo(LogCategory.lcAI,
-          &"Eparch: Salvaging {etacs.len} ETACs for {houseId} " &
+          &"Eparch: Processing {etacs.len} ETAC fleets for salvage " &
           &"(map 100% colonized)")
 
   for (fleetId, etacId, location) in etacs:
-    # Find nearest friendly colony
-    let nearestColony = findNearestColony(location, filtered)
+    # Check if ETAC fleet is already at a friendly colony
+    var atOwnColony = false
+    for colony in filtered.ownColonies:
+      if colony.systemId == location:
+        atOwnColony = true
+        break
 
-    if nearestColony.isNone:
-      logWarn(LogCategory.lcAI,
-              &"Eparch: Cannot salvage ETAC {etacId} (fleet {fleetId}) - " &
-              &"no friendly colonies available")
-      continue
+    if atOwnColony:
+      # Fleet is at colony: Issue Salvage order with current location as target
+      # Engine will mark fleet as "arrived" (location == target) and salvage in Income Phase
+      let order = FleetOrder(
+        fleetId: fleetId,
+        orderType: FleetOrderType.Salvage,
+        targetSystem: some(location),  # Current colony
+        priority: 50
+      )
+      result.add(order)
+      logInfo(LogCategory.lcAI,
+              &"Eparch: Salvaging ETAC fleet {fleetId} at colony {location}")
 
-    let targetColony = nearestColony.get()
+    else:
+      # Fleet is NOT at colony: Move to nearest colony first, salvage next turn
+      let nearestColony = findNearestColony(location, filtered)
 
-    # Generate Salvage order
-    let order = FleetOrder(
-      fleetId: fleetId,
-      orderType: FleetOrderType.Salvage,
-      targetSystem: some(targetColony),
-      priority: 1
-    )
+      if nearestColony.isNone:
+        logWarn(LogCategory.lcAI,
+                &"Eparch: Cannot salvage ETAC fleet {fleetId} - " &
+                &"no friendly colonies available")
+        continue
 
-    result.add(order)
+      let targetColony = nearestColony.get()
 
-    logInfo(LogCategory.lcAI,
-            &"Eparch: Salvaging idle ETAC {etacId} (fleet {fleetId}) at " &
-            &"nearest colony {targetColony}")
+      # Issue Move order to nearest colony
+      let order = FleetOrder(
+        fleetId: fleetId,
+        orderType: FleetOrderType.Move,
+        targetSystem: some(targetColony),
+        priority: 50
+      )
+      result.add(order)
+      logInfo(LogCategory.lcAI,
+              &"Eparch: Moving ETAC fleet {fleetId} to colony {targetColony} " &
+              &"for salvage (currently at {location})")
 
   if result.len > 0:
     logInfo(LogCategory.lcAI,
-            &"Eparch: Generated {result.len} ETAC salvage orders " &
+            &"Eparch: Generated {result.len} ETAC salvage/movement orders " &
             &"(map fully colonized, recovering idle ETACs)")
 
 # ============================================================================
@@ -844,22 +865,12 @@ proc planExpansionOperations*(
   let mapFullyColonized = (totalColonizedByAll >= totalSystemsOnMap)
 
   if mapFullyColonized:
-    # Map 100% colonized - salvage ALL ETACs (including those with stale orders)
+    # Map 100% colonized - ETAC salvage now handled by fleet_organization.nim
+    # (detachAndSalvageETACs function detaches from mixed fleets and issues salvage orders)
     logInfo(LogCategory.lcAI,
             &"Eparch: Map 100% colonized ({totalColonizedByAll}/{totalSystemsOnMap}), " &
-            &"salvaging all ETACs for {controller.houseId}")
-
-    # Get ALL ETACs (don't filter by orders)
-    var allETACs: seq[tuple[fleetId: FleetId, etacId: string,
-                             location: SystemId]] = @[]
-    for fleet in filtered.ownFleets:
-      for squadron in fleet.squadrons:
-        if squadron.squadronType == SquadronType.Expansion:
-          if squadron.flagship.shipClass == ShipClass.ETAC:
-            allETACs.add((fleet.id, squadron.id, fleet.location))
-
-    let salvageOrders = planETACSalvage(allETACs, filtered, controller.houseId)
-    result.colonizationOrders = salvageOrders
+            &"ETAC salvage handled by fleet organization")
+    result.colonizationOrders = @[]
     return
 
   # Map not fully colonized - normal colonization logic
