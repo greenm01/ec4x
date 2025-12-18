@@ -205,7 +205,11 @@ proc executePhase15_GOAP*(
 
   # Extract goals (Fleet only for MVP - Build domain merged with Fleet)
   var allGoals: seq[Goal] = @[]
-  allGoals.add(fleet_bridge.extractFleetGoalsFromState(worldState))
+  allGoals.add(fleet_bridge.extractFleetGoalsFromState(
+    worldState,
+    filtered.starMap,
+    config
+  ))
   # TODO: Build domain merged with Fleet in MVP - separate later
   # allGoals.add(build_bridge.extractBuildGoalsFromState(worldState))
 

@@ -11,6 +11,7 @@ import std/[tables, options]
 import ../../core/[types, conditions]
 import ../../state/effects
 import ../../../../../common/types/[core, units, tech]
+import ../../../../../engine/intelligence/types as intel_types  # For IntelQuality
 
 # =============================================================================
 # Fleet Action Constructors
@@ -130,7 +131,8 @@ proc createConductScoutMissionAction*(
 ): Action =
   ## Create action to scout system for intelligence
   ##
-  ## Updates intelligence database with current information
+  ## Improves intel to Scan quality (Phase 5: GOAP Intelligence Integration)
+  ## Duration: 1 turn, Cost: 0 PP (scouts already built)
 
   result = Action(
     actionType: ActionType.ConductScoutMission,
@@ -144,8 +146,39 @@ proc createConductScoutMissionAction*(
     preconditions: @[
       createPrecondition(ConditionKind.HasFleet, initTable[string, int]())
     ],
-    effects: @[],  # Intelligence updates handled by game engine
+    effects: @[
+      improveIntelQuality(systemId, intel_types.IntelQuality.Scan)
+    ],
     description: "Scout system " & $systemId
+  )
+
+proc createSpyOnColonyAction*(
+  systemId: SystemId,
+  targetHouse: HouseId
+): Action =
+  ## Create action to spy on enemy colony for detailed intelligence
+  ##
+  ## Improves intel to Spy quality (Phase 5: GOAP Intelligence Integration)
+  ## Duration: 1 turn, Cost: 40 PP (EBP - Espionage Budget Points)
+  ## Requires: Available EBP (represented as budget precondition)
+
+  result = Action(
+    actionType: ActionType.SpyOnPlanet,
+    cost: 40,  # EBP cost for espionage operation
+    duration: 1,
+    target: some(systemId),
+    targetHouse: some(targetHouse),
+    shipClass: none(ShipClass),
+    quantity: 0,
+    techField: none(TechField),
+    preconditions: @[
+      hasMinBudget(40)  # Requires 40 PP worth of EBP
+    ],
+    effects: @[
+      spendTreasury(40),  # Deduct EBP cost
+      improveIntelQuality(systemId, intel_types.IntelQuality.Spy)
+    ],
+    description: "Spy on colony at system " & $systemId
   )
 
 # =============================================================================

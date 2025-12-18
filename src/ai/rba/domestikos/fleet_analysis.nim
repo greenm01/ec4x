@@ -145,3 +145,50 @@ proc findNearestColonyForDefense*(
     return some(bestColony.get().systemId)
   else:
     return none(SystemId)
+# =============================================================================
+# GOAP Fleet Requisitioning
+# =============================================================================
+
+proc requestFleetForOperation*(
+  analyses: seq[FleetAnalysis],
+  targetSystem: SystemId,
+  requireCombatShips: bool = true,
+  requireMarines: bool = false
+): Option[FleetAnalysis] =
+  ## Request a fleet for GOAP strategic operation
+  ##
+  ## Respects priority:
+  ## 1. Idle fleets (no assignment)
+  ## 2. UnderUtilized fleets (low-priority standing orders like Patrol)
+  ## 3. None (don't interrupt critical operations)
+  ##
+  ## Filters:
+  ## - Skips ETAC fleets (Eparch domain, CRITICAL priority)
+  ## - Skips Intel-only fleets (Drungarius domain)
+  ## - Respects requireCombatShips flag
+  
+  var bestFleet: Option[FleetAnalysis] = none(FleetAnalysis)
+  var bestScore = 0
+  
+  for analysis in analyses:
+    # Skip ETAC fleets - Eparch domain, CRITICAL priority in Act 1
+    if analysis.hasETACs:
+      continue
+    
+    # Skip if combat ships required but fleet doesn't have them
+    if requireCombatShips and not analysis.hasCombatShips:
+      continue
+    
+    # Score fleet based on utilization (higher = more available)
+    var score = case analysis.utilization
+      of FleetUtilization.Idle: 100  # Best - no assignment
+      of FleetUtilization.UnderUtilized: 50  # Good - low-priority standing order
+      of FleetUtilization.Optimal: 0  # Don't interrupt
+      of FleetUtilization.OverUtilized: 0  # Don't interrupt
+      of FleetUtilization.Tactical: 0  # Don't interrupt active operations
+    
+    if score > bestScore:
+      bestScore = score
+      bestFleet = some(analysis)
+  
+  return bestFleet

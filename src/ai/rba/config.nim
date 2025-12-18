@@ -616,6 +616,62 @@ type
 # ==============================================================================
 
 
+# ==============================================================================
+# GOAP Campaign Classification
+# ==============================================================================
+
+type
+  CampaignType* {.pure.} = enum
+    ## Campaign classification for intelligence-driven invasion planning
+    Speculative  # No intel, proximity-based, high risk
+    Raid         # Weak target, Scan intel, quick strike
+    Assault      # Moderate target, Spy intel, planned operation
+    Deliberate   # Fortified target, Perfect intel, major campaign
+
+# ==============================================================================
+# GOAP Intelligence Thresholds
+# ==============================================================================
+
+type
+  GOAPIntelligenceThresholdsConfig* = object
+    ## Intelligence requirements for campaign classification
+    ## Enables GOAP to assess intel quality and plan prerequisite gathering
+
+    # Speculative campaign parameters (proximity-based, no intel)
+    speculative_max_distance*: int
+    speculative_confidence_base*: float
+    speculative_early_game_turns*: int
+    speculative_proximity_bonus*: float
+    speculative_max_confidence*: float
+
+    # Campaign classification thresholds
+    raid_vulnerability_threshold*: float
+    assault_vulnerability_threshold*: float
+    deliberate_vulnerability_threshold*: float
+    raid_max_defense_strength*: int
+    assault_max_defense_strength*: int
+
+    # Intel quality requirements per campaign type
+    speculative_min_intel_quality*: string  # "Visual"
+    raid_min_intel_quality*: string         # "Scan"
+    assault_min_intel_quality*: string      # "Spy"
+    deliberate_min_intel_quality*: string   # "Perfect"
+
+    # Intel freshness requirements (turns)
+    speculative_max_intel_age*: int  # 999 = any age
+    raid_max_intel_age*: int
+    assault_max_intel_age*: int
+    deliberate_max_intel_age*: int
+
+    # Confidence multipliers by intel quality
+    intel_quality_perfect*: float    # 1.0
+    intel_quality_spy*: float        # 0.9
+    intel_quality_scan*: float       # 0.7
+    intel_quality_visual*: float     # 0.5
+
+# ==============================================================================
+# GOAP Configuration
+# ==============================================================================
 
 type
   GOAPConfig* = object
@@ -641,6 +697,8 @@ type
     # Phase 3: Campaign Coordination
     disable_rba_campaigns_with_goap*: bool # Disable Phase 2 RBA campaigns when GOAP handles invasions
 
+    # Intelligence thresholds (populated from RBAConfig.goap_intelligence_thresholds)
+    intelligence_thresholds*: GOAPIntelligenceThresholdsConfig
 
 type
   FeedbackSystemConfig* = object
@@ -919,6 +977,8 @@ type
     logothete_tech_allocations_war_economy*: TechFieldAllocation
     logothete_tech_allocations_balanced_default*: TechFieldAllocation
     goap*: GOAPConfig # New GOAP configuration section
+    # GOAP sub-configurations (flattened for toml_serialization)
+    goap_intelligence_thresholds*: GOAPIntelligenceThresholdsConfig
 
 # ==============================================================================
 # Config Validation
@@ -1350,6 +1410,9 @@ proc loadRBAConfig*(configPath: string = "config/rba.toml"): RBAConfig =
 
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, RBAConfig)
+
+  # Copy flattened intelligence thresholds into GOAP config for easier access
+  result.goap.intelligence_thresholds = result.goap_intelligence_thresholds
 
   # Validate configuration after loading
   validateRBAConfig(result)

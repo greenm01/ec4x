@@ -1173,6 +1173,45 @@ invasion_priority_boost = 0.2           # Priority boost for invasion goals
 disable_rba_campaigns_with_goap = false # Set true to disable Phase 2 RBA campaigns when GOAP handles invasions
 
 # ==============================================================================
+# GOAP INTELLIGENCE THRESHOLDS
+# ==============================================================================
+# Intelligence-driven campaign classification and prerequisite planning
+# Enables GOAP to assess intelligence quality and plan intel gathering
+
+[goap_intelligence_thresholds]
+# Campaign classification thresholds
+speculative_max_distance = 3              # Max hexes from owned colony
+speculative_confidence_base = 0.4         # Base success probability (no intel)
+raid_vulnerability_threshold = 0.7        # Target vulnerability for raids
+assault_vulnerability_threshold = 0.4     # Target vulnerability for assaults
+deliberate_vulnerability_threshold = 0.0  # All other targets (fortified)
+raid_max_defense_strength = 20            # Max defenses for raid classification
+assault_max_defense_strength = 50         # Max defenses for assault classification
+
+# Intel quality requirements (Perfect/Spy/Scan/Visual)
+speculative_min_intel_quality = "Visual"  # No intel required
+raid_min_intel_quality = "Scan"           # Basic reconnaissance sufficient
+assault_min_intel_quality = "Spy"         # Espionage required
+deliberate_min_intel_quality = "Perfect"  # Complete intelligence required
+
+# Intel freshness (turns) - 999 = any age
+speculative_max_intel_age = 999           # No freshness requirement
+raid_max_intel_age = 10                   # Can use 10-turn-old intel
+assault_max_intel_age = 5                 # Need recent (5 turns) intel
+deliberate_max_intel_age = 3              # Need very fresh (3 turns) intel
+
+# Risk assessment for speculative campaigns
+speculative_early_game_turns = 10         # Turns where defenses assumed weak
+speculative_proximity_bonus = 0.2         # Confidence boost per adjacent colony
+speculative_max_confidence = 0.6          # Cap on speculative confidence (risky)
+
+# Confidence multipliers (0.0-1.0)
+intel_quality_perfect = 1.0               # Perfect intel = 100% confidence
+intel_quality_spy = 0.9                   # Spy intel = 90% confidence
+intel_quality_scan = 0.7                  # Scan intel = 70% confidence
+intel_quality_visual = 0.5                # Visual intel = 50% confidence
+
+# ==============================================================================
 # ACT TRANSITIONS
 # ==============================================================================
 # Configurable thresholds for game Act transitions

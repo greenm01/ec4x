@@ -158,6 +158,23 @@ proc createWorldStateSnapshot*(
   # Store the full intelligence snapshot
   result.intelSnapshot = intel
 
+  # --- Intelligence quality/age tracking (Phase 3: GOAP Intelligence Integration) ---
+  result.systemIntelQuality = initTable[SystemId, IntelQuality]()
+  result.systemIntelAge = initTable[SystemId, int]()
+
+  # Populate from vulnerable targets (invasion opportunities)
+  for target in intel.military.vulnerableTargets:
+    result.systemIntelQuality[target.systemId] = target.intelQuality
+    result.systemIntelAge[target.systemId] = filtered.turn - target.lastIntelTurn
+
+  # Also populate from known enemy colonies (may have different intel quality)
+  for (systemId, owner) in intel.knownEnemyColonies:
+    # Only add if not already present (vulnerableTargets takes priority)
+    if systemId notin result.systemIntelQuality:
+      # For known enemy colonies without vulnerability data, assume Visual quality
+      result.systemIntelQuality[systemId] = IntelQuality.Visual
+      result.systemIntelAge[systemId] = 0  # Unknown age, assume current
+
   # --- Diplomatic relations ---
   result.diplomaticRelations = initTable[HouseId, DiplomaticState]()
   # Extract diplomatic relations for this house

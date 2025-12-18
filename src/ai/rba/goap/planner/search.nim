@@ -2,11 +2,13 @@
 ##
 ## Core planning algorithm: finds optimal action sequence to achieve goal
 
-import std/[tables, options, heapqueue, sequtils]
-import ../../../../common/types/units  # For ShipClass
+import std/[tables, options, heapqueue, sequtils, strutils]
+import ../../../../common/types/[units, core]  # For ShipClass, SystemId, HouseId
+import ../../../../engine/intelligence/types as intel_types  # For IntelQuality
 import node
 import ../core/[types, conditions, heuristics]
 import ../state/[snapshot, effects]
+import ../domains/fleet/actions  # For scout/spy action constructors
 import ../../config  # For GOAPConfig
 
 # =============================================================================
@@ -76,7 +78,7 @@ proc getAvailableActionsForGoal(state: WorldStateSnapshot, goal: Goal): seq[Acti
         description: "Move invasion force"
       ))
       result.add(Action(
-        actionType: ActionType.AttackColony,
+        actionType: ActionType.InvadePlanet,  # Changed from AttackColony
         cost: 50,
         duration: 1,
         target: goal.target,
@@ -117,6 +119,114 @@ proc getAvailableActionsForGoal(state: WorldStateSnapshot, goal: Goal): seq[Acti
     discard
 
 # =============================================================================
+# Prerequisite Action Generation (Phase 7: Intelligence Integration)
+# =============================================================================
+
+proc findPrerequisiteActions*(
+  state: WorldStateSnapshot,
+  unmetPrecondition: PreconditionRef,
+  config: GOAPConfig
+): seq[Action] =
+  ## Find actions that can satisfy an unmet precondition
+  ##
+  ## Phase 7: Enables automatic intelligence gathering prerequisite planning
+  ## Returns actions (Scout, Spy) that improve intel quality/freshness
+
+  result = @[]
+
+  let kind = parseEnum[ConditionKind](unmetPrecondition.conditionId)
+
+  case kind
+  of HasIntelQuality:
+    # Need to improve intel quality for a system
+    let systemId = SystemId(unmetPrecondition.params["systemId"])
+    let minQuality = unmetPrecondition.params["minQuality"]
+    let currentQuality = state.systemIntelQuality.getOrDefault(
+      systemId,
+      intel_types.IntelQuality.Visual
+    )
+
+    # If current quality insufficient, add scout action
+    if int(currentQuality) < minQuality:
+      # Scout improves to Scan (quality=2)
+      if minQuality <= int(intel_types.IntelQuality.Scan):
+        result.add(createConductScoutMissionAction(systemId))
+      # Spy improves to Spy (quality=3) - requires scout first if no intel
+      elif minQuality >= int(intel_types.IntelQuality.Spy):
+        # Add scout first if we have no intel
+        if currentQuality == intel_types.IntelQuality.Visual:
+          result.add(createConductScoutMissionAction(systemId))
+        # Then add spy action (requires target house, use placeholder)
+        result.add(createSpyOnColonyAction(systemId, HouseId("unknown")))
+
+  of HasFreshIntel:
+    # Need fresh intel for a system
+    let systemId = SystemId(unmetPrecondition.params["systemId"])
+    # Scout mission refreshes intel
+    result.add(createConductScoutMissionAction(systemId))
+
+  of MeetsSpeculativeRequirements:
+    # Speculative campaigns don't need intel prerequisites
+    # These are proximity-based high-risk operations
+    discard
+
+  of MeetsRaidRequirements:
+    # Raid requires Scan+ quality and ≤10 turn age
+    let systemId = SystemId(unmetPrecondition.params["systemId"])
+    let currentQuality = state.systemIntelQuality.getOrDefault(
+      systemId,
+      intel_types.IntelQuality.Visual
+    )
+    let currentAge = state.systemIntelAge.getOrDefault(systemId, 999)
+
+    # If quality insufficient, scout
+    if int(currentQuality) < int(intel_types.IntelQuality.Scan):
+      result.add(createConductScoutMissionAction(systemId))
+    # If too stale, refresh with scout
+    elif currentAge > config.intelligence_thresholds.raid_max_intel_age:
+      result.add(createConductScoutMissionAction(systemId))
+
+  of MeetsAssaultRequirements:
+    # Assault requires Spy+ quality and ≤5 turn age
+    let systemId = SystemId(unmetPrecondition.params["systemId"])
+    let currentQuality = state.systemIntelQuality.getOrDefault(
+      systemId,
+      intel_types.IntelQuality.Visual
+    )
+    let currentAge = state.systemIntelAge.getOrDefault(systemId, 999)
+
+    # If quality insufficient, spy (may need scout first)
+    if int(currentQuality) < int(intel_types.IntelQuality.Spy):
+      if currentQuality == intel_types.IntelQuality.Visual:
+        result.add(createConductScoutMissionAction(systemId))
+      result.add(createSpyOnColonyAction(systemId, HouseId("unknown")))
+    # If too stale, refresh
+    elif currentAge > config.intelligence_thresholds.assault_max_intel_age:
+      result.add(createSpyOnColonyAction(systemId, HouseId("unknown")))
+
+  of MeetsDeliberateRequirements:
+    # Deliberate requires Perfect quality and ≤3 turn age
+    let systemId = SystemId(unmetPrecondition.params["systemId"])
+    let currentQuality = state.systemIntelQuality.getOrDefault(
+      systemId,
+      intel_types.IntelQuality.Visual
+    )
+
+    # Perfect intel typically requires multiple spy missions
+    if int(currentQuality) < int(intel_types.IntelQuality.Perfect):
+      # Build intel chain: Scout → Spy → Perfect
+      if currentQuality == intel_types.IntelQuality.Visual:
+        result.add(createConductScoutMissionAction(systemId))
+      if int(currentQuality) < int(intel_types.IntelQuality.Spy):
+        result.add(createSpyOnColonyAction(systemId, HouseId("unknown")))
+      # Additional spy for Perfect quality
+      result.add(createSpyOnColonyAction(systemId, HouseId("unknown")))
+
+  else:
+    # Other conditions don't have intelligence prerequisites
+    discard
+
+# =============================================================================
 # A* Search
 # =============================================================================
 
@@ -124,10 +234,12 @@ proc planActions*(
   startState: WorldStateSnapshot,
   goal: Goal,
   availableActions: seq[Action],
+  config: GOAPConfig,
   maxIterations: int = 1000
 ): Option[GOAPlan] =
   ## Find optimal action sequence using A* search
   ##
+  ## Phase 7: Generates prerequisite intelligence actions when needed
   ## Returns none if no plan found within iteration limit
 
   # Initialize open set (priority queue)
@@ -176,6 +288,40 @@ proc planActions*(
     for action in availableActions:
       # Check if action is applicable (preconditions met)
       if not allPreconditionsMet(current.state, action.preconditions):
+        # Phase 7: Try to find prerequisite actions to satisfy unmet preconditions
+        for precond in action.preconditions:
+          if not checkPrecondition(current.state, precond):
+            let prereqActions = findPrerequisiteActions(current.state, precond, config)
+
+            # Add prerequisite actions as expansion nodes
+            for prereqAction in prereqActions:
+              # Apply prerequisite action to state
+              var prereqState = current.state
+              for effect in prereqAction.effects:
+                applyEffect(prereqState, effect)
+
+              # Calculate costs for prerequisite
+              let prereqCost = estimateActionCost(current.state, prereqAction)
+              let prereqTotalCost = current.totalCost + prereqCost
+              let prereqEstimatedRemaining = estimateRemainingCost(
+                prereqState,
+                goal,
+                current.actionsExecuted & @[prereqAction]
+              )
+
+              # Create prerequisite node
+              let prereqNode = newPlanNode(
+                prereqState,
+                actionsExecuted = current.actionsExecuted & @[prereqAction],
+                totalCost = prereqTotalCost,
+                estimatedRemaining = prereqEstimatedRemaining,
+                parent = some(current)
+              )
+
+              # Add to open set for exploration
+              openSet.push(prereqNode)
+
+        # Skip this action for now (prerequisites will be explored first)
         continue
 
       # Apply action to get successor state
@@ -229,7 +375,7 @@ proc planForGoal*(
     
   # Run A* search to find plan, using planning_depth * 100 as search node limit
   let maxSearchNodes = config.planning_depth * 100  # e.g., 10 turns * 100 = 1000 nodes
-  let maybePlan = planActions(state, goal, availableActions, maxIterations = maxSearchNodes)
+  let maybePlan = planActions(state, goal, availableActions, config, maxIterations = maxSearchNodes)
     
   if maybePlan.isSome:
     # Add confidence score to plan
