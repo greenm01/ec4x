@@ -158,7 +158,7 @@ Industrial Units (IU) represent manufacturing capacity - factories, shipyards, s
 Colonies naturally develop industrial infrastructure as populations grow and economies mature:
 
 ```
-IU Growth per Turn = max(1, floor(PU / 200)) × tax multiplier × (1 + starbase bonus)
+IU Growth per Turn = max(2, floor(PU / 50)) × tax multiplier × (1 + starbase bonus)
 ```
 
 Where:
@@ -187,12 +187,12 @@ Young colonies benefit most from IU investment—the multiplier effect on GCO is
 Population naturally increases each turn via birthrate, modified by tax policy and infrastructure:
 
 ```
-PU Growth per Turn = max(1, floor(PU × 0.02 × tax_multiplier × (1 + starbase_bonus)))
+PU Growth per Turn = max(2, floor(PU × 0.30 × tax_multiplier × (1 + starbase_bonus)))
 ```
 
 Where:
 
-- Base birthrate = 2% per turn
+- Base birthrate = 30% per turn
 - Tax multiplier from [Section 3.2.2](#322-low-tax-incentives-the-carrot)
 - Starbase bonus = 0.05 per operational starbase, max 0.15 (3 starbases)
 
