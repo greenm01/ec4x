@@ -6,7 +6,7 @@
 ## REFACTORED: 2025-12-06 - Extracted from diagnostics.nim
 ## (lines 373-404, 476-550 from collectEconomyMetrics + 890-933 from collectDefenseMetrics)
 
-import std/tables
+import std/[tables, options]
 import ./types
 import ../../../engine/[gamestate, fleet]
 import ../../../engine/economy/types as econ_types
@@ -104,7 +104,7 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
   # Population transfers (from Space Guild transfers)
   var thisHouseTransfers = 0
   for transfer in state.populationInTransit:
-    if transfer.owner == houseId:
+    if transfer.id == houseId:
       thisHouseTransfers += 1
   result.populationTransfersActive = thisHouseTransfers
 
@@ -175,7 +175,7 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
 
   for systemId, colony in state.colonies:
     if colony.owner == houseId:
-      if colony.underConstruction.isSome:
+      if colony.underConstruction.isSome():
         totalBuildQueueDepth += 1
       totalBuildQueueDepth += colony.constructionQueue.len
 
