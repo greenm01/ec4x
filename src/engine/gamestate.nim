@@ -266,6 +266,11 @@ type
     taxPolicy*: econ_types.TaxPolicy  # Current tax rate and 6-turn history
     consecutiveShortfallTurns*: int  # Consecutive turns of missed maintenance payment (economy.md:3.11)
 
+    # Tracked for research breakthroughs
+    lastTurnResearchERP*: int
+    lastTurnResearchSRP*: int
+    lastTurnResearchTRP*: int
+
     # Planet-Breaker tracking (assets.md:2.4.8)
     planetBreakerCount*: int  # Current PB count (max = current colony count)
 

@@ -86,10 +86,6 @@ type
     # Invasions
     totalInvasions*: int
 
-proc initTurnResolutionReport*(): TurnResolutionReport =
-  ## Initialize an empty report with default zero values.
-  result = TurnResolutionReport()
-
   DiagnosticMetrics* = object
     ## Metrics collected per house, per turn
     gameId*: string        # Unique game identifier (from seed)
@@ -404,6 +400,10 @@ proc initTurnResolutionReport*(): TurnResolutionReport =
     mapSize*: int
     turnLimit*: int
     metrics*: seq[DiagnosticMetrics]  # All collected metrics
+
+proc initTurnResolutionReport*(): TurnResolutionReport =
+  ## Initialize an empty report with default zero values.
+  result = TurnResolutionReport()
 
 proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
                            strategy: AIStrategy = AIStrategy.Balanced,
