@@ -2,7 +2,7 @@
 ##
 ## Execute advisor requirements using allocated budgets
 
-import std/[strformat, options, random, tables]
+import std/[strformat, strutils, sequtils, options, random, tables]
 import ../../../common/types/units
 import ../../../engine/[fog_of_war, logger, orders]
 import ../../../engine/research/types as res_types
@@ -158,6 +158,94 @@ proc executeFacilityOrders*(
 
   logInfo(LogCategory.lcAI,
           &"{controller.houseId} Facility orders: {result.len} facilities queued")
+
+proc executePopulationTransferOrders*(
+  controller: AIController,
+  filtered: FilteredGameState,
+  allocation: MultiAdvisorAllocation
+): seq[PopulationTransferOrder] =
+  ## Execute Eparch population transfer requirements (Space Guild)
+  ## Converts fulfilled EconomicRequirements into PopulationTransferOrders
+  ##
+  ## Design: Source colony in targetColony, destination encoded in facilityType
+  ## Format: facilityType = "TRANSFER_TO:systemId"
+
+  result = @[]
+
+  let eparchBudget = allocation.budgets.getOrDefault(AdvisorType.Eparch, 0)
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} === EXECUTING POPULATION TRANSFER ORDERS ===")
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Eparch budget: {eparchBudget}PP")
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Fulfilled requirements count: " &
+          &"{allocation.eparchFeedback.fulfilledRequirements.len}")
+
+  # Get fulfilled requirements from Eparch feedback
+  for econReq in allocation.eparchFeedback.fulfilledRequirements:
+    # Only process PopulationTransfer requirements
+    if econReq.requirementType != EconomicRequirementType.PopulationTransfer:
+      continue
+
+    # Extract destination from facilityType encoding
+    if econReq.facilityType.isNone:
+      logWarn(LogCategory.lcAI,
+              &"{controller.houseId} PopulationTransfer requirement missing " &
+              &"destination encoding!")
+      continue
+
+    let encodedDest = econReq.facilityType.get()
+    if not encodedDest.startsWith("TRANSFER_TO:"):
+      logWarn(LogCategory.lcAI,
+              &"{controller.houseId} Invalid destination encoding: {encodedDest}")
+      continue
+
+    # Parse destination SystemId
+    let destStr = encodedDest[12..^1]  # Skip "TRANSFER_TO:" prefix
+    var destSystemId: SystemId
+    try:
+      destSystemId = SystemId(parseInt(destStr))
+    except ValueError:
+      logWarn(LogCategory.lcAI,
+              &"{controller.houseId} Failed to parse destination: {destStr}")
+      continue
+
+    # Validate source and destination colonies exist and are owned
+    let sourceColony = filtered.ownColonies.filterIt(it.systemId == econReq.targetColony)
+    let destColony = filtered.ownColonies.filterIt(it.systemId == destSystemId)
+
+    if sourceColony.len == 0:
+      logWarn(LogCategory.lcAI,
+              &"{controller.houseId} Source colony {econReq.targetColony} not found!")
+      continue
+
+    if destColony.len == 0:
+      logWarn(LogCategory.lcAI,
+              &"{controller.houseId} Destination colony {destSystemId} not found!")
+      continue
+
+    # Validate source has population to transfer
+    if sourceColony[0].population <= 1:
+      logInfo(LogCategory.lcAI,
+              &"{controller.houseId} Source colony {econReq.targetColony} has " &
+              &"insufficient population for transfer")
+      continue
+
+    # Create PopulationTransferOrder
+    let order = PopulationTransferOrder(
+      sourceColony: econReq.targetColony,
+      destColony: destSystemId,
+      ptuAmount: 1  # Always 1 PTU per transfer (from opportunity evaluation)
+    )
+    result.add(order)
+
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} *** POPULATION TRANSFER ORDER CREATED: " &
+            &"{econReq.targetColony} → {destSystemId} (1 PTU, 1 PP) ***")
+
+  logInfo(LogCategory.lcAI,
+          &"{controller.houseId} Population transfer orders: {result.len} transfers queued")
 
 proc executeDiplomaticActions*(
   controller: AIController,

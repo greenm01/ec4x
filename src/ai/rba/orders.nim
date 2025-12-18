@@ -486,8 +486,9 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
                   &"{controller.houseId} ETAC {fleet.id} at colony unloading {totalPTU} PTU " &
                   &"(order: {order.orderType}, colonization: {totalColonized}/{totalSystems})")
 
-  # Population transfers still use OrderPacket (not deprecated)
-  result.orderPacket.populationTransfers = logisticsOrders.population
+  # Population transfers now use Eparch requirements with Treasurer mediation
+  result.orderPacket.populationTransfers =
+    phase3_execution.executePopulationTransferOrders(controller, filtered, allocation)
 
   # Remove tactical orders for fleets that logistics is managing
   var logisticsControlledFleets: HashSet[FleetId]
