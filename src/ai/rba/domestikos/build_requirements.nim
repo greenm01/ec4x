@@ -925,11 +925,11 @@ proc assessStrategicAssets*(
         logInfo(LogCategory.lcAI, &"Domestikos requests: {marineReq.quantity}x Marine at {colony.systemId} ({marineReq.estimatedCost}PP) - {marineReq.reason}")
         result.add(marineReq)
 
-    # STEP 2: Build transports once we have marines (only if CST 3+)
-    if cstLevel >= 3:
-      # Only aggressive houses in Act2+ get transports
-      let wantsTransports = personality.aggression > 0.6 and currentAct >= GameAct.Act2_RisingTensions
-      if wantsTransports:
+    # STEP 2: Build transports once we have marines
+    # Any house that wants invasion capability should get transports (aligned with marine logic)
+    if cstLevel >= 2:  # Reduced from CST 3 to CST 2 (basic military infrastructure)
+      # Use same threshold as marines: aggression > 0.4 OR Act2+
+      if wantsInvasionCapability:
         # Target: 1 transport per (transportCarryLimit * 3) marines to allow multiple simultaneous invasions
         # Example: With 3 marines/transport, target 1 transport per 9 marines (want reserves)
         let marinesPerTransport = transportCarryLimit * 3
