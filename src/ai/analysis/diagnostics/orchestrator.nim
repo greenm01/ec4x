@@ -93,7 +93,6 @@ proc buildReasoningLog(state: GameState, houseId: HouseId,
 
 proc collectDiagnostics*(state: GameState, houseId: HouseId,
                         strategy: AIStrategy,
-                        report: TurnResolutionReport,
                         prevMetrics: Option[DiagnosticMetrics] = none(DiagnosticMetrics),
                         orders: Option[OrderPacket] = none(OrderPacket),
                         gameId: string = "",
@@ -122,12 +121,12 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   # PHASE A: Call all 6 advisor collectors (Byzantine hierarchy)
   # ================================================================
 
-  let domestikos = collectDomestikosMetrics(state, houseId, prev, orders, report)
-  let logothete = collectLogotheteMetrics(state, houseId, prev, report)
-  let drungarius = collectDrungariusMetrics(state, houseId, prev, report)
-  let eparch = collectEparchMetrics(state, houseId, prev, report)
-  let protostrator = collectProtostratorMetrics(state, houseId, prev, report)
-  let basileus = collectBasileusMetrics(state, houseId, prev, report)
+  let domestikos = collectDomestikosMetrics(state, houseId, prev, orders)
+  let logothete = collectLogotheteMetrics(state, houseId, prev)
+  let drungarius = collectDrungariusMetrics(state, houseId, prev)
+  let eparch = collectEparchMetrics(state, houseId, prev)
+  let protostrator = collectProtostratorMetrics(state, houseId, prev)
+  let basileus = collectBasileusMetrics(state, houseId, prev)
 
   # ================================================================
   # PHASE B: Merge all advisor metrics
