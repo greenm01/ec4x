@@ -8,8 +8,9 @@
 ## - Single source of truth for cost calculations
 ## - Reused by A* planner in planner/search.nim
 
-import std/[math, options]
+import std/[math, options, tables]
 import types
+import ../../../../engine/intelligence/types as intel_types  # For IntelQuality
 
 # =============================================================================
 # Heuristic Cost Estimation (A* Admissibility)
@@ -285,6 +286,47 @@ proc estimatePlanConfidence*(state: WorldStateSnapshot, plan: GOAPlan): float =
   # Dependency risk: Plans with dependencies are more fragile
   if plan.dependencies.len > 0:
     confidence *= pow(0.9, plan.dependencies.len.float)
+
+  # Phase 8: Intelligence quality and freshness scoring
+  # Only apply to goals with target systems (invasions, reconnaissance, etc.)
+  if plan.goal.target.isSome:
+    let systemId = plan.goal.target.get()
+
+    # Check if we have intelligence on this system
+    if state.systemIntelQuality.hasKey(systemId):
+      let intelQuality = state.systemIntelQuality[systemId]
+      let intelAge = state.systemIntelAge.getOrDefault(systemId, 999)
+
+      # Apply intel quality multiplier
+      let qualityMultiplier = case intelQuality
+        of IntelQuality.Perfect:
+          1.0  # Perfect intel = 100% confidence in assessment
+        of IntelQuality.Spy:
+          0.9  # Spy intel = 90% confidence
+        of IntelQuality.Scan:
+          0.7  # Scan intel = 70% confidence
+        of IntelQuality.Visual:
+          0.5  # Visual intel = 50% confidence
+
+      confidence *= qualityMultiplier
+
+      # Apply intel freshness multiplier
+      let freshnessMultiplier =
+        if intelAge <= 3:
+          1.0  # Very fresh (≤3 turns)
+        elif intelAge <= 5:
+          0.9  # Fresh (≤5 turns)
+        elif intelAge <= 10:
+          0.7  # Moderately stale (≤10 turns)
+        else:
+          0.5  # Very stale (>10 turns)
+
+      confidence *= freshnessMultiplier
+    else:
+      # No intel at all - speculative operation (proximity-based)
+      # Use base speculative confidence (40-60% range)
+      # This is already factored into goal priority, don't double-penalize
+      confidence *= 0.5  # 50% confidence for no-intel operations
 
   return min(1.0, max(0.0, confidence))
 

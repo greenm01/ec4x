@@ -9,7 +9,8 @@ import std/[tables, options, sequtils]
 import ../../core/[types, conditions]
 import goals, actions
 import ../../../../../common/types/[core]
-import ../../../controller_types
+import ../../../../../engine/starmap
+import ../../../[controller_types, config]
 
 # =============================================================================
 # RBA → GOAP Conversion (Phase 2: Placeholder)
@@ -17,7 +18,11 @@ import ../../../controller_types
 # Phase 2 Note: Full requirements → goals conversion will be implemented in Phase 4
 # For now, we use direct state analysis from goals.nim
 
-proc extractFleetGoalsFromState*(state: WorldStateSnapshot): seq[Goal] =
+proc extractFleetGoalsFromState*(
+  state: WorldStateSnapshot,
+  starMap: StarMap,
+  config: GOAPConfig
+): seq[Goal] =
   ## Extract fleet goals directly from world state analysis
   ##
   ## Uses state analysis functions from goals.nim
@@ -31,7 +36,7 @@ proc extractFleetGoalsFromState*(state: WorldStateSnapshot): seq[Goal] =
     result.add(goal)
 
   # Analyze offensive opportunities
-  let offenseGoals = analyzeOffensiveOpportunities(state)
+  let offenseGoals = analyzeOffensiveOpportunities(state, starMap, config)
   for goal in offenseGoals:
     result.add(goal)
 

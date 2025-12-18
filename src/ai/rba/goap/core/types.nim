@@ -62,8 +62,12 @@ type
     # Intelligence gaps
     staleIntelSystems*: seq[SystemId]       ## Need reconnaissance
     espionageTargets*: seq[HouseId]         ## High-value spy targets
-    
+
     intelSnapshot*: IntelligenceSnapshot    ## Full intelligence snapshot from Drungarius (Phase 0)
+
+    # Intelligence quality tracking (Phase 3: GOAP Intelligence Integration)
+    systemIntelQuality*: Table[SystemId, IntelQuality]  ## Intel quality per system (Visual/Scan/Spy/Perfect)
+    systemIntelAge*: Table[SystemId, int]               ## Intel age in turns (currentTurn - lastIntelTurn)
 
 # =============================================================================
 # Goal System (What to Achieve)

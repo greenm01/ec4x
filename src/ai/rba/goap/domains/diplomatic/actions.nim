@@ -5,6 +5,8 @@ import ../../state/effects
 import ../../../../../common/types/[core, tech, units]
 
 proc createProposeAllianceAction*(targetHouse: HouseId): Action =
+  ## NOTE: Alliances are not implemented in the game
+  ## This action exists for API compatibility but has no effects
   result = Action(
     actionType: ActionType.ProposeAlliance,
     cost: 0,
@@ -15,6 +17,6 @@ proc createProposeAllianceAction*(targetHouse: HouseId): Action =
     quantity: 0,
     techField: none(TechField),
     preconditions: @[],
-    effects: @[formAllianceWith(targetHouse)],
+    effects: @[],  # No effects - alliances not implemented
     description: "Propose alliance with " & targetHouse
   )

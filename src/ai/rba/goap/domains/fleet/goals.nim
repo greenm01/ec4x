@@ -8,12 +8,15 @@
 ## - EstablishFleetPresence: Position fleet for strategic control
 ## - ConductReconnaissance: Scout system for intelligence
 
-import std/[tables, options, math, strformat]
+import std/[tables, options, math, strformat, sets, strutils]
 import ../../core/[types, conditions, heuristics]
 import ../../state/effects
+import ../../../config  # For GOAPConfig
 import ../../../../../engine/intelligence/types as intel_types
-import ../../../../../engine/logger
+import ../../../../../engine/[logger, starmap]
 import ../../../../../common/types/[core, tech]
+import ../../../shared/intelligence_types  # For InvasionOpportunity
+import campaign_classifier  # Phase 6: Campaign classification
 
 # =============================================================================
 # Fleet Goal Constructors
@@ -192,58 +195,170 @@ proc analyzeDefenseNeeds*(state: WorldStateSnapshot): seq[Goal] =
       let goal = createDefendColonyGoal(systemId, priority = 1.0)
       result.add(goal)
 
-proc analyzeOffensiveOpportunities*(state: WorldStateSnapshot): seq[Goal] =
-  ## Analyze invasion opportunities
+proc analyzeOffensiveOpportunities*(
+  state: WorldStateSnapshot,
+  starMap: StarMap,
+  config: GOAPConfig
+): seq[Goal] =
+  ## Analyze invasion opportunities with campaign classification
   ##
-  ## Returns goals for weak enemy colonies
-  ## Phase 3.4: Applies intel quality and staleness weighting
+  ## Phase 6: GOAP Intelligence Integration
+  ## - Classifies targets (Speculative/Raid/Assault/Deliberate)
+  ## - Checks intelligence requirements
+  ## - Generates goals even without sufficient intel (A* plans prerequisites)
+  ## - Analyzes unexplored adjacent systems for speculative opportunities
 
   result = @[]
+
+  # Convert ownedColonies seq to HashSet for efficient lookup
+  var ownedColoniesSet = initHashSet[SystemId]()
+  for colony in state.ownedColonies:
+    ownedColoniesSet.incl(colony)
 
   # DEBUG: Log vulnerable targets count
   logDebug(LogCategory.lcAI,
     &"GOAP analyzeOffensive: {state.intelSnapshot.military.vulnerableTargets.len} vulnerable targets found")
 
-  # Use detailed vulnerable targets from intelligence snapshot
+  # Step 1: Analyze known targets from intelligence snapshot
   for target in state.intelSnapshot.military.vulnerableTargets:
     logDebug(LogCategory.lcAI,
       &"GOAP: Analyzing target system {target.systemId} (owner={target.owner}, vuln={target.vulnerability:.2f})")
-    # Base priority from vulnerability score (0.0-1.0 → 0.5-0.9 priority range)
-    var priority = 0.5 + (target.vulnerability * 0.4)
 
-    # Phase 3.4: Apply intel quality multiplier
-    let qualityMultiplier = case target.intelQuality
-      of intel_types.IntelQuality.Perfect:
-        1.2  # High confidence in assessment
-      of intel_types.IntelQuality.Spy:
-        1.0  # Good intelligence
-      of intel_types.IntelQuality.Scan:
-        0.7  # Basic scan data
-      of intel_types.IntelQuality.Visual:
-        0.5  # Visual sighting only, low confidence
-      else:
-        0.8  # Unknown quality, moderate confidence
+    # Classify campaign type
+    let campaignType = classifyCampaign(
+      target,
+      ownedColoniesSet,
+      starMap,
+      state.turn,
+      config.intelligence_thresholds
+    )
 
-    priority *= qualityMultiplier
+    # Check intelligence requirements
+    let intelCheck = checkIntelligenceRequirements(
+      target,
+      state.turn,
+      campaignType,
+      config.intelligence_thresholds
+    )
 
-    # Phase 3.4: Apply staleness penalty (intel >5 turns old)
-    let intelAge = state.turn - target.lastIntelTurn
-    if intelAge > 5:
-      # Decay priority by 10% per turn over 5 turns, minimum 50%
-      let stalenessPenalty = max(0.5, 1.0 - (float(intelAge - 5) * 0.1))
-      priority *= stalenessPenalty
+    # Calculate priority based on campaign type and intel status
+    var priority = case campaignType
+      of CampaignType.Speculative:
+        # Speculative: Base on proximity confidence (40-60% range)
+        assessSpeculativeConfidence(
+          target.systemId,
+          ownedColoniesSet,
+          starMap,
+          state.turn,
+          config.intelligence_thresholds
+        )
+      of CampaignType.Raid:
+        # Raid: High vulnerability + good intel = high priority
+        0.5 + (target.vulnerability * 0.4)
+      of CampaignType.Assault:
+        # Assault: Moderate priority (planned operation)
+        0.4 + (target.vulnerability * 0.3)
+      of CampaignType.Deliberate:
+        # Deliberate: Lower priority (fortified target, long campaign)
+        0.3 + (target.vulnerability * 0.2)
 
     # Clamp priority to valid range [0.0, 1.0]
     priority = clamp(priority, 0.0, 1.0)
 
-    let goal = createInvadeColonyGoal(
+    # Create goal with campaign-specific preconditions
+    var goal = createInvadeColonyGoal(
       target.systemId,
       target.owner,
       priority = priority
     )
+
+    # Add campaign-specific intelligence preconditions
+    case campaignType
+    of CampaignType.Speculative:
+      goal.preconditions.add(
+        createPrecondition(
+          ConditionKind.MeetsSpeculativeRequirements,
+          {"systemId": int(target.systemId)}.toTable
+        )
+      )
+    of CampaignType.Raid:
+      goal.preconditions.add(
+        createPrecondition(
+          ConditionKind.MeetsRaidRequirements,
+          {"systemId": int(target.systemId)}.toTable
+        )
+      )
+    of CampaignType.Assault:
+      goal.preconditions.add(
+        createPrecondition(
+          ConditionKind.MeetsAssaultRequirements,
+          {"systemId": int(target.systemId)}.toTable
+        )
+      )
+    of CampaignType.Deliberate:
+      goal.preconditions.add(
+        createPrecondition(
+          ConditionKind.MeetsDeliberateRequirements,
+          {"systemId": int(target.systemId)}.toTable
+        )
+      )
+
+    # Add goal regardless of intel sufficiency - A* will plan prerequisites
     result.add(goal)
-    logDebug(LogCategory.lcAI,
-      &"GOAP: Created InvadeColony goal for system {target.systemId} (priority={priority:.2f})")
+
+    if intelCheck.met:
+      logDebug(LogCategory.lcAI,
+        &"GOAP: Created {campaignType} InvadeColony goal for system {target.systemId} (priority={priority:.2f}, intel=sufficient)")
+    else:
+      logDebug(LogCategory.lcAI,
+        &"GOAP: Created {campaignType} InvadeColony goal for system {target.systemId} (priority={priority:.2f}, intel=insufficient: {intelCheck.gaps.join(\", \")})")
+
+  # Step 2: Analyze unexplored adjacent systems for speculative opportunities
+  # (Systems not in vulnerableTargets but adjacent to owned colonies)
+  for ownedColony in state.ownedColonies:
+    # Get adjacent system IDs
+    let adjacentIds = getAdjacentSystems(starMap, ownedColony.uint)
+
+    for adjacentId in adjacentIds:
+      let adjacentSystemId = SystemId(adjacentId)
+
+      # Skip if already analyzed above
+      var alreadyAnalyzed = false
+      for target in state.intelSnapshot.military.vulnerableTargets:
+        if target.systemId == adjacentSystemId:
+          alreadyAnalyzed = true
+          break
+
+      if alreadyAnalyzed:
+        continue
+
+      # Check if truly unexplored (no intel at all)
+      if adjacentSystemId notin state.systemIntelQuality:
+        # Generate speculative invasion goal
+        let speculativeConfidence = assessSpeculativeConfidence(
+          adjacentSystemId,
+          ownedColoniesSet,
+          starMap,
+          state.turn,
+          config.intelligence_thresholds
+        )
+
+        # Only create goal if confidence meets minimum threshold
+        if speculativeConfidence >= 0.4:
+          var goal = createInvadeColonyGoal(
+            adjacentSystemId,
+            HouseId("unknown"),  # Don't know owner yet
+            priority = speculativeConfidence
+          )
+          goal.preconditions.add(
+            createPrecondition(
+              ConditionKind.MeetsSpeculativeRequirements,
+              {"systemId": int(adjacentSystemId)}.toTable
+            )
+          )
+          result.add(goal)
+          logDebug(LogCategory.lcAI,
+            &"GOAP: Created Speculative InvadeColony goal for unexplored system {adjacentSystemId} (priority={speculativeConfidence:.2f})")
 
 proc analyzeReconnaissanceNeeds*(state: WorldStateSnapshot): seq[Goal] =
   ## Analyze which systems need intelligence updates

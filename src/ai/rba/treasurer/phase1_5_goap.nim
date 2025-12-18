@@ -47,7 +47,7 @@ proc extractStrategicGoals*(
   let worldState = createWorldStateSnapshot(filtered, intel)
   # TODO: Integrate RBA requirements into GOAP goals more explicitly
   # For now, GOAP's own goal extraction from world state is primary
-  result = extractAllGoalsFromState(worldState)
+  result = extractAllGoalsFromState(worldState, filtered.starMap, controller.goapConfig)
 
   # For debugging, log extracted goals
   if controller.goapConfig.debugLogging:

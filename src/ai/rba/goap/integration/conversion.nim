@@ -14,12 +14,18 @@ import ../domains/diplomatic/[goals as diplomatic_goals, bridge as diplomatic_br
 import ../domains/espionage/[goals as espionage_goals, bridge as espionage_bridge]
 import ../domains/economic/[goals as economic_goals, bridge as economic_bridge]
 import ../../../../common/types/core
+import ../../../../engine/starmap
+import ../../config
 
 # =============================================================================
 # State → Goals Conversion (All Domains)
 # =============================================================================
 
-proc extractAllGoalsFromState*(state: WorldStateSnapshot): seq[Goal] =
+proc extractAllGoalsFromState*(
+  state: WorldStateSnapshot,
+  starMap: StarMap,
+  config: GOAPConfig
+): seq[Goal] =
   ## Extract all strategic goals from current world state
   ##
   ## This is the main entry point for GOAP in RBA Phase 1.5
@@ -28,7 +34,7 @@ proc extractAllGoalsFromState*(state: WorldStateSnapshot): seq[Goal] =
   result = @[]
 
   # Fleet domain goals (Domestikos)
-  let fleetGoals = fleet_bridge.extractFleetGoalsFromState(state)
+  let fleetGoals = fleet_bridge.extractFleetGoalsFromState(state, starMap, config)
   result.add(fleetGoals)
 
   # Build domain goals (Domestikos) - TODO: Merged with Fleet in MVP
@@ -207,18 +213,25 @@ proc convertGOAPActionToRBAOrder*(
 
   let targetSystem = action.target.get()
 
-  # Find best available fleet for this action
-  var bestFleet: Option[FleetAnalysis] = none(FleetAnalysis)
-  
-  for analysis in analyses:
-    if analysis.utilization in {FleetUtilization.Idle, FleetUtilization.UnderUtilized}:
-      bestFleet = some(analysis)
-      break
+  # Request fleet from Domestikos (respects ETAC/Intel priorities)
+  let requireCombat = action.actionType in {
+    ActionType.InvadePlanet,
+    ActionType.BlitzPlanet,
+    ActionType.BombardPlanet,
+    ActionType.AttackColony
+  }
 
-  if bestFleet.isNone:
+  let fleetOpt = fleet_analysis.requestFleetForOperation(
+    analyses,
+    targetSystem,
+    requireCombatShips = requireCombat,
+    requireMarines = false  # TODO: Check marine requirements
+  )
+
+  if fleetOpt.isNone:
     return none(FleetOrder)
 
-  let fleet = bestFleet.get()
+  let fleet = fleetOpt.get()
 
   # Convert action type to fleet order
   case action.actionType

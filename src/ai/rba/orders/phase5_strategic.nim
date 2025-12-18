@@ -169,8 +169,9 @@ proc executeReplanning*(
     logInfo(LogCategory.lcAI,
             &"{controller.houseId} Phase 5: Opportunistic replanning")
 
+    let config = defaultGOAPConfig()
     let worldState = createWorldStateSnapshot(state, intel)
-    let currentGoals = extractAllGoalsFromState(worldState)
+    let currentGoals = extractAllGoalsFromState(worldState, state.starMap, config)
     let newOpportunities = detectNewOpportunities(currentGoals, worldState)
 
     if newOpportunities.len > 0:
@@ -178,7 +179,6 @@ proc executeReplanning*(
               &"{controller.houseId} Phase 5: Found {newOpportunities.len} new opportunities")
 
       # Generate plans for new opportunities
-      let config = defaultGOAPConfig()
       result = executePhase15_GOAP(state, intel, config)
     else:
       # No new opportunities, keep existing plans

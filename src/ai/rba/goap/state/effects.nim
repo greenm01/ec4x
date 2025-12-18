@@ -6,6 +6,7 @@
 import std/[tables, options, strutils]
 import ../core/types
 import ../../../../common/types/[core, tech]
+import ../../../../engine/intelligence/types as intel_types  # For IntelQuality
 
 # =============================================================================
 # Effect Type Registry (DRY: Centralized Definitions)
@@ -34,7 +35,8 @@ type
     # Diplomatic Effects
     ImproveRelations,         ## Change diplomatic state
     DeclareWar,               ## Set enemy status
-    FormAlliance              ## Set ally status
+    # Intelligence Effects (Phase 3: GOAP Intelligence Integration)
+    ImproveIntelQuality       ## Upgrade intel quality for system
 
 # =============================================================================
 # Effect Application (Core Logic)
@@ -126,9 +128,14 @@ proc applyEffect*(state: var WorldStateSnapshot, effect: EffectRef) =
     # TODO: Proper ID mapping needed for production
     discard
 
-  of FormAlliance:
-    # TODO: Proper ID mapping needed for production
-    discard
+  # Intelligence (Phase 3: GOAP Intelligence Integration)
+  of ImproveIntelQuality:
+    let systemId = SystemId(effect.params.getOrDefault("systemId", 0))
+    let newQuality = effect.params.getOrDefault("quality", 0)
+    # Update intel quality in snapshot
+    state.systemIntelQuality[systemId] = intel_types.IntelQuality(newQuality)
+    # Reset intel age to 0 (fresh intel)
+    state.systemIntelAge[systemId] = 0
 
 proc applyAllEffects*(state: var WorldStateSnapshot, effects: seq[EffectRef]) =
   ## Apply multiple effects in sequence
@@ -174,12 +181,17 @@ proc addResearchPoints*(field: TechField, rp: int): EffectRef =
   ## Research: Add RP to field
   createEffect(AddResearchProgress, {"techField": int(field), "rpDelta": rp}.toTable)
 
-proc formAllianceWith*(houseId: HouseId): EffectRef =
-  ## Diplomatic: Form alliance (Phase 1: placeholder)
-  # TODO: Proper ID mapping in Phase 2
-  createEffect(FormAlliance, initTable[string, int]())
-
 proc declareWarOn*(houseId: HouseId): EffectRef =
   ## Diplomatic: Declare war (Phase 1: placeholder)
   # TODO: Proper ID mapping in Phase 2
   createEffect(DeclareWar, initTable[string, int]())
+
+proc improveIntelQuality*(
+  systemId: SystemId,
+  quality: intel_types.IntelQuality
+): EffectRef =
+  ## Intelligence: Upgrade intel quality for system (Phase 3: GOAP Integration)
+  createEffect(
+    ImproveIntelQuality,
+    {"systemId": int(systemId), "quality": int(quality)}.toTable
+  )
