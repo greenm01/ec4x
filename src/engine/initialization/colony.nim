@@ -5,7 +5,9 @@
 
 import std/options
 import ../gamestate
-import ../config/[game_setup_config, facilities_config]
+import ../config/[
+  game_setup_config, facilities_config, population_config, economy_config
+]
 import ../prestige/effects as prestige_effects
 import ../research/effects as research_effects
 import ../../common/types/[core, planets]
@@ -31,7 +33,8 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
     infrastructure: homeworldCfg.colony_level,
     industrial: econ_types.IndustrialUnits(
       units: homeworldCfg.industrial_units,
-      investmentCost: econ_types.BASE_IU_COST
+      investmentCost:
+        economy_config.globalEconomyConfig.industrial_investment.base_cost
     ),
     planetClass: planetClass,
     resources: resources,
@@ -109,18 +112,30 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
 
 proc createETACColony*(systemId: SystemId, owner: HouseId,
                       planetClass: PlanetClass,
-                      resources: ResourceRating): Colony =
-  ## Create a new ETAC-colonized system with 1 PTU (50k souls)
+                      resources: ResourceRating,
+                      ptuCount: int = 3): Colony =
+  ## Create a new ETAC-colonized system with specified PTU
+  ## Default: 3 PTU (150k souls) for standard ETAC colonization
+  ## PTU size loaded from config/population.toml
+  let totalSouls = ptuCount * population_config.soulsPerPtu()
+
   result = Colony(
     systemId: systemId,
     owner: owner,
-    population: 0,  # 50k souls = 0.05M, truncates to 0 in display
-    souls: 50_000,  # Exactly 1 PTU worth of colonists
-    populationUnits: 1,  # 1 PU for economic calculations (1 PTU = 1 PU)
-    populationTransferUnits: 1,  # 1 PTU from ETAC colonization
-    infrastructure: 0,  # No infrastructure yet
+    population: totalSouls div 1_000_000,  # Display population in millions
+    souls: totalSouls,  # Actual souls from PTU deposit
+    populationUnits: ptuCount,  # Economic PU (starts at ptuCount)
+    populationTransferUnits: ptuCount,  # PTU from ETAC colonization
+    infrastructure:
+      economy_config.globalEconomyConfig.colonization.
+        starting_infrastructure_level,
     industrial: econ_types.IndustrialUnits(
-      units: 0, investmentCost: econ_types.BASE_IU_COST),
+      units: (ptuCount *
+        economy_config.globalEconomyConfig.colonization.starting_iu_percent
+      ) div 100,
+      investmentCost:
+        economy_config.globalEconomyConfig.industrial_investment.base_cost
+    ),
     planetClass: planetClass,
     resources: resources,
     buildings: @[],  # No buildings yet

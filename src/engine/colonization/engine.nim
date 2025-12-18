@@ -11,7 +11,8 @@
 import std/[options]
 import ../../common/types/[core, planets]
 import ../prestige
-import ../config/[prestige_config, prestige_multiplier]
+import ../config/[prestige_config, prestige_multiplier, economy_config,
+                  population_config]
 import ../economy/types as econ_types
 import ../gamestate  # For unified Colony type
 
@@ -55,13 +56,21 @@ proc initNewColony*(systemId: SystemId, owner: HouseId,
 
     # Population (multiple representations)
     population: startingPTU,  # Display field in millions
-    souls: startingPTU * 50_000,  # Exact count (~50k per PTU)
+    souls: startingPTU * population_config.soulsPerPtu(),  # From config
     populationUnits: startingPTU,  # PU for economic calculations
     populationTransferUnits: startingPTU,  # PTU used for colonization
 
     # Infrastructure
-    infrastructure: 1,  # New colonies start at Level I
-    industrial: econ_types.IndustrialUnits(units: 0, investmentCost: econ_types.BASE_IU_COST),
+    infrastructure:
+      economy_config.globalEconomyConfig.colonization.
+        starting_infrastructure_level,
+    industrial: econ_types.IndustrialUnits(
+      units: (startingPTU *
+        economy_config.globalEconomyConfig.colonization.starting_iu_percent
+      ) div 100,
+      investmentCost:
+        economy_config.globalEconomyConfig.industrial_investment.base_cost
+    ),
 
     # Planet characteristics
     planetClass: planetClass,

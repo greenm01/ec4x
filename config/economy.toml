@@ -272,6 +272,13 @@ tier_5_pp = 8  # Was 13 → 40% reduction (base_cost * 2.5, rounded)
 # ============================================================================
 
 [colonization]
+# New colony starting values
+starting_infrastructure_level = 1  # Infrastructure level (0-10 scale)
+starting_iu_percent = 50  # 50% of PU converted to starting IU
+
+# Homeworlds start with 50% of PU as IU (840 PU → 420 IU)
+# New colonies follow same pattern: 3 PU × 0.5 = 1.5 IU (rounds to 1-2)
+
 # PP per PTU by planet class
 eden_pp_per_ptu = 4
 lush_pp_per_ptu = 5

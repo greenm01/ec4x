@@ -18,6 +18,7 @@ import types
 import ../../common/types/units
 import ../gamestate  # For Colony type (IU cost calculations)
 import config_accessors  # DoD refactoring: macro-generated config accessors
+import ../config/economy_config  # For IU base cost
 
 export types.ConstructionProject, types.CompletedProject, types.ConstructionType
 export config_accessors.getShipConstructionCost, config_accessors.getShipBaseBuildTime
@@ -66,7 +67,9 @@ proc getIndustrialUnitCost*(colony: Colony): int =
   else:
     2.5
 
-  return int(float(BASE_IU_COST) * multiplier)
+  return int(
+    float(globalEconomyConfig.industrial_investment.base_cost) * multiplier
+  )
 
 ## Construction Project Factory Functions
 

@@ -538,8 +538,9 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
 
   logInfo(LogCategory.lcColonization, &"Fleet {order.fleetId} colonizing {planetClass} world with {resources} resources at {targetId} (depositing {ptuToDeposit} PTU)")
 
-  # Create ETAC colony (foundation colony with 3 PU starter population)
-  let colony = createETACColony(targetId, houseId, planetClass, resources)
+  # Create ETAC colony (foundation colony with ptuToDeposit starter population)
+  let colony = createETACColony(targetId, houseId, planetClass, resources,
+                                ptuToDeposit)
 
   # Use colonization engine to establish with prestige
   let result = col_engine.establishColony(
