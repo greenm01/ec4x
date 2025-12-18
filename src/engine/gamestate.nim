@@ -64,6 +64,7 @@ import fleet, starmap, squadron
 import order_types  # Fleet order types (avoid circular dependency)
 import config/[military_config, economy_config] # Removed unused prestige_config, tech_config, game_setup_config, facilities_config, prestige_multiplier
 import ../ai/rba/config  # For ActProgressionConfig
+import diagnostics_data
 import diplomacy/types as dip_types
 import diplomacy/proposals as dip_proposals
 import espionage/types as esp_types
@@ -266,90 +267,6 @@ type
     taxPolicy*: econ_types.TaxPolicy  # Current tax rate and 6-turn history
     consecutiveShortfallTurns*: int  # Consecutive turns of missed maintenance payment (economy.md:3.11)
 
-    # Tracked for research breakthroughs
-    lastTurnResearchERP*: int
-    lastTurnResearchSRP*: int
-    lastTurnResearchTRP*: int
-    lastTurnResearchBreakthroughs*: int
-
-    # Maintenance tracking (for diagnostics)
-    lastTurnMaintenanceCost*: int
-    lastTurnTreasuryDeficit*: bool
-    lastTurnMaintenanceCostDeficit*: int
-
-    # Espionage tracking (for diagnostics)
-    lastTurnEspionageAttempts*: int
-    lastTurnEspionageSuccess*: int
-    lastTurnEspionageDetected*: int
-    lastTurnTechThefts*: int
-    lastTurnSabotage*: int
-    lastTurnAssassinations*: int
-    lastTurnCyberAttacks*: int
-    lastTurnEBPSpent*: int
-    lastTurnCIPSpent*: int
-    lastTurnCounterIntelSuccesses*: int
-
-    # Combat tracking (for diagnostics)
-    lastTurnSpaceCombatWins*: int
-    lastTurnSpaceCombatLosses*: int
-    lastTurnSpaceCombatTotal*: int
-    lastTurnRaiderAmbushSuccess*: int
-    lastTurnRaiderAmbushAttempts*: int
-    lastTurnOrbitalFailures*: int
-    lastTurnOrbitalTotal*: int
-    lastTurnCombatCERAverage*: int
-    lastTurnBombardmentRounds*: int
-    lastTurnGroundCombatVictories*: int
-    lastTurnRetreatsExecuted*: int
-    lastTurnCriticalHitsDealt*: int
-    lastTurnCriticalHitsReceived*: int
-    lastTurnCloakedAmbushSuccess*: int
-    lastTurnShieldsActivated*: int
-
-    # Detection tracking (for diagnostics)
-    lastTurnRaidersDetected*: int
-    lastTurnRaidersStealthSuccess*: int
-    lastTurnEliDetectionAttempts*: int
-    lastTurnEliRollsSum*: int
-    lastTurnClkRollsSum*: int
-    lastTurnScoutsDetected*: int
-    lastTurnScoutsDetectedBy*: int
-
-    # Fleet Activity
-    lastTurnFleetsMoved*: int
-    lastTurnFleetsWithOrders*: int
-    lastTurnStuckFleets*: int
-
-    # Colonization
-    lastTurnSystemsColonized*: int
-    lastTurnFailedColonizations*: int
-
-    # Diplomacy
-    lastTurnPactFormations*: int
-    lastTurnPactBreaks*: int
-    lastTurnHostilityDeclarations*: int
-    lastTurnWarDeclarations*: int
-
-    # Economy
-    lastTurnInfrastructureDamage*: int
-    lastTurnSalvageValueRecovered*: int
-
-    # Population
-    lastTurnPopTransfersCompleted*: int
-    lastTurnPopTransfersLost*: int
-    lastTurnPtuTransferredTotal*: int
-
-    # Construction & Commissioning
-    lastTurnShipsCommissioned*: int
-    lastTurnEtacsCommissioned*: int
-    lastTurnSquadronsCommissioned*: int
-
-    # Logistics
-    lastTurnFightersDisbanded*: int
-
-    # Invasions
-    lastTurnTotalInvasions*: int
-
     # Planet-Breaker tracking (assets.md:2.4.8)
     planetBreakerCount*: int  # Current PB count (max = current colony count)
 
@@ -393,6 +310,7 @@ type
     phase*: GamePhase
     starMap*: StarMap
     houses*: Table[HouseId, House]
+    lastTurnReports*: Table[HouseId, TurnResolutionReport] # Transient data for diagnostics
     homeworlds*: Table[HouseId, SystemId]  # Track homeworld system per house
     colonies*: Table[SystemId, Colony]
     fleets*: Table[FleetId, Fleet]
