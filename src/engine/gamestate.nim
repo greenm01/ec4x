@@ -275,39 +275,6 @@ type
     # Economic reports (for intelligence gathering)
     latestIncomeReport*: Option[econ_types.HouseIncomeReport]  # Last turn's income report
 
-    # Research tracking (for diagnostics)
-    lastTurnResearchERP*: int  # Economic RP earned last turn
-    lastTurnResearchSRP*: int  # Science RP earned last turn
-    lastTurnResearchTRP*: int  # Total Technology RP earned last turn (sum of all fields)
-
-    # Maintenance tracking (for diagnostics)
-    lastTurnMaintenanceCost*: int  # Total maintenance paid last turn
-
-    # Espionage tracking (for diagnostics)
-    lastTurnEspionageAttempts*: int  # Total espionage attempts last turn
-    lastTurnEspionageSuccess*: int   # Successful operations
-    lastTurnEspionageDetected*: int  # Detected by counter-intel
-    lastTurnTechThefts*: int         # Tech theft operations
-    lastTurnSabotage*: int           # Sabotage operations (low + high)
-    lastTurnAssassinations*: int     # Assassination attempts
-    lastTurnCyberAttacks*: int       # Cyber attacks on starbases
-    lastTurnEBPSpent*: int           # EBP spent on operations
-    lastTurnCIPSpent*: int           # CIP spent on counter-intel
-
-    # Combat tracking (for diagnostics)
-    lastTurnSpaceCombatWins*: int    # Space battles won
-    lastTurnSpaceCombatLosses*: int  # Space battles lost
-    lastTurnSpaceCombatTotal*: int   # Total space combat engagements
-
-    # Detection tracking (for diagnostics)
-    lastTurnRaidersDetected*: int        # Raiders detected by ELI
-    lastTurnRaidersStealthSuccess*: int  # Raiders evaded ELI detection
-    lastTurnEliDetectionAttempts*: int   # Total ELI detection rolls
-    lastTurnEliRollsSum*: int            # Sum of ELI rolls (for average)
-    lastTurnClkRollsSum*: int            # Sum of CLK rolls (for average)
-    lastTurnScoutsDetected*: int         # Enemy scouts detected (observer)
-    lastTurnScoutsDetectedBy*: int       # Own scouts detected by enemy (target)
-
     # Safe retreat routes (automatic seek-home behavior)
     fallbackRoutes*: seq[FallbackRoute]  # Pre-planned retreat destinations
     autoRetreatPolicy*: AutoRetreatPolicy  # Player's auto-retreat preference

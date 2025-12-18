@@ -16,7 +16,8 @@ import ../../common/types
 
 proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
                                prevMetrics: DiagnosticMetrics,
-                               orders: Option[OrderPacket]): DiagnosticMetrics =
+                               orders: Option[OrderPacket],
+                               report: TurnResolutionReport): DiagnosticMetrics =
   ## Collect military commander metrics: combat, assets, capacity
   result = initDiagnosticMetrics(state.turn, houseId)
 
@@ -27,46 +28,45 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   # ================================================================
 
   # Space combat statistics
-  result.spaceCombatWins = 0
-  result.spaceCombatLosses = 0
-  result.spaceCombatTotal = 0
+  result.spaceCombatWins = report.spaceCombatWins
+  result.spaceCombatLosses = report.spaceCombatLosses
+  result.spaceCombatTotal = report.spaceCombatTotal
 
   # Combat performance metrics (tracked during resolution)
-  # TODO: Implement these during turn resolution
-  result.orbitalFailures = 0
-  result.orbitalTotal = 0
-  result.raiderAmbushSuccess = 0
-  result.raiderAmbushAttempts = 0
+  result.orbitalFailures = report.orbitalFailures
+  result.orbitalTotal = report.orbitalTotal
+  result.raiderAmbushSuccess = report.raiderAmbushSuccess
+  result.raiderAmbushAttempts = report.raiderAmbushAttempts
 
   # Detection metrics (tracked from events)
-  result.raiderDetectedCount = house.lastTurnRaidersDetected
-  result.raiderStealthSuccessCount = house.lastTurnRaidersStealthSuccess
-  result.eliDetectionAttempts = house.lastTurnEliDetectionAttempts
+  result.raiderDetectedCount = report.raidersDetected
+  result.raiderStealthSuccessCount = report.raidersStealthSuccess
+  result.eliDetectionAttempts = report.eliDetectionAttempts
   # Calculate averages (avoid division by zero)
-  if house.lastTurnEliDetectionAttempts > 0:
-    result.avgEliRoll = float(house.lastTurnEliRollsSum) /
-      float(house.lastTurnEliDetectionAttempts)
+  if report.eliDetectionAttempts > 0:
+    result.avgEliRoll = float(report.eliRollsSum) /
+      float(report.eliDetectionAttempts)
   else:
     result.avgEliRoll = 0.0
-  let totalClkRolls = house.lastTurnRaidersDetected +
-    house.lastTurnRaidersStealthSuccess
+  let totalClkRolls = report.raidersDetected +
+    report.raidersStealthSuccess
   if totalClkRolls > 0:
-    result.avgClkRoll = float(house.lastTurnClkRollsSum) / float(totalClkRolls)
+    result.avgClkRoll = float(report.clkRollsSum) / float(totalClkRolls)
   else:
     result.avgClkRoll = 0.0
 
   # Scout detection metrics (reconnaissance)
-  result.scoutsDetected = house.lastTurnScoutsDetected
-  result.scoutsDetectedBy = house.lastTurnScoutsDetectedBy
+  result.scoutsDetected = report.scoutsDetected
+  result.scoutsDetectedBy = report.scoutsDetectedBy
 
-  result.combatCERAverage = 0
-  result.bombardmentRoundsTotal = 0
-  result.groundCombatVictories = 0
-  result.retreatsExecuted = 0
-  result.criticalHitsDealt = 0
-  result.criticalHitsReceived = 0
-  result.cloakedAmbushSuccess = 0
-  result.shieldsActivatedCount = 0
+  result.combatCERAverage = report.combatCERAverage
+  result.bombardmentRoundsTotal = report.bombardmentRounds
+  result.groundCombatVictories = report.groundCombatVictories
+  result.retreatsExecuted = report.retreatsExecuted
+  result.criticalHitsDealt = report.criticalHitsDealt
+  result.criticalHitsReceived = report.criticalHitsReceived
+  result.cloakedAmbushSuccess = report.cloakedAmbushSuccess
+  result.shieldsActivatedCount = report.shieldsActivated
 
   # Phase 1: Invasion order tracking (populated during order generation)
   result.invasionOrders_generated = 0
@@ -325,13 +325,12 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   # FLEET ACTIVITY & ETAC TRACKING
   # ================================================================
 
-  # TODO: Implement fleet movement tracking
-  # These fields are defined in DiagnosticMetrics but not yet implemented
-  result.fleetsMoved = 0
-  result.systemsColonized = 0
-  result.failedColonizationAttempts = 0
-  result.fleetsWithOrders = 0
-  result.stuckFleets = 0
+  # Fleet movement tracking from last turn's resolution
+  result.fleetsMoved = report.fleetsMoved
+  result.systemsColonized = report.systemsColonized
+  result.failedColonizationAttempts = report.failedColonizations
+  result.fleetsWithOrders = report.fleetsWithOrders
+  result.stuckFleets = report.stuckFleets
 
   # ETAC specific tracking
   result.totalETACs = etacShips
@@ -362,5 +361,4 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   # COMBAT LOGISTICS
   # ================================================================
 
-  # TODO: Track fighters disbanded due to capacity violations
-  result.fightersDisbanded = 0
+  result.fightersDisbanded = report.fightersDisbanded

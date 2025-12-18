@@ -12,7 +12,8 @@ import ../../../engine/gamestate
 import ../../../common/types/core
 
 proc collectBasileusMetrics*(state: GameState, houseId: HouseId,
-                             prevMetrics: DiagnosticMetrics): DiagnosticMetrics =
+                             prevMetrics: DiagnosticMetrics,
+                             report: TurnResolutionReport): DiagnosticMetrics =
   ## Collect house coordination, victory, and status metrics
   result = initDiagnosticMetrics(state.turn, houseId)
 
@@ -40,7 +41,7 @@ proc collectBasileusMetrics*(state: GameState, houseId: HouseId,
   # ================================================================
 
   # Track actual maintenance cost from turn resolution
-  result.maintenanceCostTotal = 0
+  result.maintenanceCostTotal = report.maintenanceCostTotal
   result.maintenanceShortfallTurns = house.consecutiveShortfallTurns
 
   # ================================================================
