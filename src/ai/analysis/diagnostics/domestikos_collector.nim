@@ -16,8 +16,7 @@ import ../../common/types
 
 proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
                                prevMetrics: DiagnosticMetrics,
-                               orders: Option[OrderPacket],
-                               report: TurnResolutionReport): DiagnosticMetrics =
+                               orders: Option[OrderPacket]): DiagnosticMetrics =
   ## Collect military commander metrics: combat, assets, capacity
   result = initDiagnosticMetrics(state.turn, houseId)
 
@@ -28,45 +27,45 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   # ================================================================
 
   # Space combat statistics
-  result.spaceCombatWins = report.spaceCombatWins
-  result.spaceCombatLosses = report.spaceCombatLosses
-  result.spaceCombatTotal = report.spaceCombatTotal
+  result.spaceCombatWins = house.lastTurnSpaceCombatWins
+  result.spaceCombatLosses = house.lastTurnSpaceCombatLosses
+  result.spaceCombatTotal = house.lastTurnSpaceCombatTotal
 
   # Combat performance metrics (tracked during resolution)
-  result.orbitalFailures = report.orbitalFailures
-  result.orbitalTotal = report.orbitalTotal
-  result.raiderAmbushSuccess = report.raiderAmbushSuccess
-  result.raiderAmbushAttempts = report.raiderAmbushAttempts
+  result.orbitalFailures = house.lastTurnOrbitalFailures
+  result.orbitalTotal = house.lastTurnOrbitalTotal
+  result.raiderAmbushSuccess = house.lastTurnRaiderAmbushSuccess
+  result.raiderAmbushAttempts = house.lastTurnRaiderAmbushAttempts
 
   # Detection metrics (tracked from events)
-  result.raiderDetectedCount = report.raidersDetected
-  result.raiderStealthSuccessCount = report.raidersStealthSuccess
-  result.eliDetectionAttempts = report.eliDetectionAttempts
+  result.raiderDetectedCount = house.lastTurnRaidersDetected
+  result.raiderStealthSuccessCount = house.lastTurnRaidersStealthSuccess
+  result.eliDetectionAttempts = house.lastTurnEliDetectionAttempts
   # Calculate averages (avoid division by zero)
-  if report.eliDetectionAttempts > 0:
-    result.avgEliRoll = float(report.eliRollsSum) /
-      float(report.eliDetectionAttempts)
+  if house.lastTurnEliDetectionAttempts > 0:
+    result.avgEliRoll = float(house.lastTurnEliRollsSum) /
+      float(house.lastTurnEliDetectionAttempts)
   else:
     result.avgEliRoll = 0.0
-  let totalClkRolls = report.raidersDetected +
-    report.raidersStealthSuccess
+  let totalClkRolls = house.lastTurnRaidersDetected +
+    house.lastTurnRaidersStealthSuccess
   if totalClkRolls > 0:
-    result.avgClkRoll = float(report.clkRollsSum) / float(totalClkRolls)
+    result.avgClkRoll = float(house.lastTurnClkRollsSum) / float(totalClkRolls)
   else:
     result.avgClkRoll = 0.0
 
   # Scout detection metrics (reconnaissance)
-  result.scoutsDetected = report.scoutsDetected
-  result.scoutsDetectedBy = report.scoutsDetectedBy
+  result.scoutsDetected = house.lastTurnScoutsDetected
+  result.scoutsDetectedBy = house.lastTurnScoutsDetectedBy
 
-  result.combatCERAverage = report.combatCERAverage
-  result.bombardmentRoundsTotal = report.bombardmentRounds
-  result.groundCombatVictories = report.groundCombatVictories
-  result.retreatsExecuted = report.retreatsExecuted
-  result.criticalHitsDealt = report.criticalHitsDealt
-  result.criticalHitsReceived = report.criticalHitsReceived
-  result.cloakedAmbushSuccess = report.cloakedAmbushSuccess
-  result.shieldsActivatedCount = report.shieldsActivated
+  result.combatCERAverage = house.lastTurnCombatCERAverage
+  result.bombardmentRoundsTotal = house.lastTurnBombardmentRounds
+  result.groundCombatVictories = house.lastTurnGroundCombatVictories
+  result.retreatsExecuted = house.lastTurnRetreatsExecuted
+  result.criticalHitsDealt = house.lastTurnCriticalHitsDealt
+  result.criticalHitsReceived = house.lastTurnCriticalHitsReceived
+  result.cloakedAmbushSuccess = house.lastTurnCloakedAmbushSuccess
+  result.shieldsActivatedCount = house.lastTurnShieldsActivated
 
   # Phase 1: Invasion order tracking (populated during order generation)
   result.invasionOrders_generated = 0
@@ -326,11 +325,11 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   # ================================================================
 
   # Fleet movement tracking from last turn's resolution
-  result.fleetsMoved = report.fleetsMoved
-  result.systemsColonized = report.systemsColonized
-  result.failedColonizationAttempts = report.failedColonizations
-  result.fleetsWithOrders = report.fleetsWithOrders
-  result.stuckFleets = report.stuckFleets
+  result.fleetsMoved = house.lastTurnFleetsMoved
+  result.systemsColonized = house.lastTurnSystemsColonized
+  result.failedColonizationAttempts = house.lastTurnFailedColonizations
+  result.fleetsWithOrders = house.lastTurnFleetsWithOrders
+  result.stuckFleets = house.lastTurnStuckFleets
 
   # ETAC specific tracking
   result.totalETACs = etacShips
@@ -361,4 +360,4 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   # COMBAT LOGISTICS
   # ================================================================
 
-  result.fightersDisbanded = report.fightersDisbanded
+  result.fightersDisbanded = house.lastTurnFightersDisbanded

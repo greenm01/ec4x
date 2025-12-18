@@ -11,8 +11,7 @@ import ../../../engine/gamestate
 import ../../../common/types/core
 
 proc collectLogotheteMetrics*(state: GameState, houseId: HouseId,
-                              prevMetrics: DiagnosticMetrics,
-                              report: TurnResolutionReport): DiagnosticMetrics =
+                              prevMetrics: DiagnosticMetrics): DiagnosticMetrics =
   ## Collect research & technology metrics
   result = initDiagnosticMetrics(state.turn, houseId)
 
@@ -38,11 +37,11 @@ proc collectLogotheteMetrics*(state: GameState, houseId: HouseId,
   # RESEARCH POINTS (tracked from turn resolution)
   # ================================================================
 
-  result.researchERP = report.researchERP
-  result.researchSRP = report.researchSRP
-  result.researchTRP = report.researchTRP
+  result.researchERP = house.lastTurnResearchERP
+  result.researchSRP = house.lastTurnResearchSRP
+  result.researchTRP = house.lastTurnResearchTRP
 
-  result.researchBreakthroughs = prevMetrics.researchBreakthroughs + report.researchBreakthroughs
+  result.researchBreakthroughs = prevMetrics.researchBreakthroughs + house.lastTurnResearchBreakthroughs
 
   # ================================================================
   # RESEARCH WASTE TRACKING (Tech Level Caps)

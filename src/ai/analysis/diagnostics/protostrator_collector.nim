@@ -11,7 +11,7 @@ import ../../../engine/gamestate
 import ../../../engine/diplomacy/types as dip_types
 import ../../../common/types/diplomacy
 
-proc collectProtostratorMetrics*(state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics, report: TurnResolutionReport): DiagnosticMetrics =
+proc collectProtostratorMetrics*(state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics): DiagnosticMetrics =
   ## Collect diplomacy & foreign affairs metrics
   result = initDiagnosticMetrics(state.turn, houseId)
 
@@ -58,10 +58,10 @@ proc collectProtostratorMetrics*(state: GameState, houseId: HouseId, prevMetrics
   # TREATY ACTIVITY METRICS (cumulative counts)
   # ================================================================
 
-  result.pactFormationsTotal = prevMetrics.pactFormationsTotal + report.pactFormations
-  result.pactBreaksTotal = prevMetrics.pactBreaksTotal + report.pactBreaks
-  result.hostilityDeclarationsTotal = prevMetrics.hostilityDeclarationsTotal + report.hostilityDeclarations
-  result.warDeclarationsTotal = prevMetrics.warDeclarationsTotal + report.warDeclarations
+  result.pactFormationsTotal = prevMetrics.pactFormationsTotal + house.lastTurnPactFormations
+  result.pactBreaksTotal = prevMetrics.pactBreaksTotal + house.lastTurnPactBreaks
+  result.hostilityDeclarationsTotal = prevMetrics.hostilityDeclarationsTotal + house.lastTurnHostilityDeclarations
+  result.warDeclarationsTotal = prevMetrics.warDeclarationsTotal + house.lastTurnWarDeclarations
 
   # ================================================================
   # BILATERAL RELATIONS (dynamic for any number of houses)
