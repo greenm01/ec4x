@@ -156,6 +156,8 @@ type
     tier_5_pp*: int
 
   ColonizationConfig* = object
+    starting_infrastructure_level*: int  # Infrastructure level for new colonies
+    starting_iu_percent*: int  # Percentage of PU converted to starting IU
     eden_pp_per_ptu*: int
     lush_pp_per_ptu*: int
     benign_pp_per_ptu*: int

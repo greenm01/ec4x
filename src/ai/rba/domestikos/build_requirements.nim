@@ -810,65 +810,141 @@ proc assessStrategicAssets*(
   # Count existing marines and transports
   var transportCount = 0
   var marineCount = 0
+  var loadedMarineCount = 0  # Marines already on transports
+  var transportCapacity = 0   # Total marine capacity across all transports
+
+  # Get transport carry capacity from config (3 marines per transport)
+  let transportCarryLimit = getShipStats(ShipClass.TroopTransport).carryLimit
 
   for fleet in filtered.ownFleets:
     for squadron in fleet.squadrons:
       if squadron.squadronType == SquadronType.Auxiliary:
         if squadron.flagship.shipClass == ShipClass.TroopTransport:
           transportCount += 1
+          transportCapacity += transportCarryLimit
+          # Check for loaded marines
+          if squadron.flagship.cargo.isSome:
+            let cargo = squadron.flagship.cargo.get()
+            if cargo.cargoType == CargoType.Marines:
+              loadedMarineCount += cargo.quantity
   for colony in filtered.ownColonies:
     marineCount += colony.marines
+
+  # Total marines (loaded + on colonies)
+  let totalMarines = marineCount + loadedMarineCount
 
   # Determine if house wants invasion capability
   # Lower threshold than transports - marines are useful for defense too
   let wantsInvasionCapability = personality.aggression > 0.4 or currentAct >= GameAct.Act2_RisingTensions
 
   if wantsInvasionCapability:
-    # STEP 1: Build marines first (need cargo before transports)
+    # STEP 1: Build marines for offensive operations
     let marineCost = getMarineBuildCost()
+    let colonyCount = filtered.ownColonies.len
 
-    # Target marines based on colonies owned (1 MD per colony minimum for invasion readiness)
-    # Plus extra for aggressive personalities
-    let baseMarineTarget = filtered.ownColonies.len
-    let aggressionBonus = if personality.aggression > 0.7: filtered.ownColonies.len else: 0
-    let targetMarines = baseMarineTarget + aggressionBonus
+    # Target marines based on offensive capability (from config)
+    # - Base: config-defined marines per colony
+    # - Aggressive bonus: multiply by config-defined multiplier if aggression > 0.5
+    # - Transport capacity: If transports exist, ensure they can be FULLY loaded
+    let baseMult = globalRBAConfig.domestikos.base_marines_per_colony
+    var targetMarines = colonyCount * baseMult
 
-    if marineCount < targetMarines:
-      let neededMarines = targetMarines - marineCount
+    # Aggressive personalities need more marines for multi-front operations
+    if personality.aggression > 0.5:
+      let aggrMult = globalRBAConfig.domestikos.aggressive_marine_multiplier
+      targetMarines = int(float(targetMarines) * aggrMult)
+
+    # CRITICAL: Ensure transports can be fully loaded (3 marines per transport from config)
+    # If we have transports, we MUST have enough marines to fill them completely
+    if transportCapacity > targetMarines:
+      targetMarines = transportCapacity
+
+    if totalMarines < targetMarines:
+      let neededMarines = targetMarines - totalMarines
+      # Higher priority for aggressive houses or when transports are under-loaded
+      let emptyCapacity = transportCapacity - loadedMarineCount
+      let marinePriority = if personality.aggression > 0.6 or (transportCount > 0 and emptyCapacity >= transportCarryLimit):
+                            RequirementPriority.High  # Aggressive or empty transports = urgent
+                          else:
+                            RequirementPriority.Medium
+
       let marineReq = BuildRequirement(
         requirementType: RequirementType.StrategicAsset,
-        priority: RequirementPriority.Medium,  # Marines before transports
+        priority: marinePriority,
         itemId: some("Marine"),  # Must match config section name [marine_division]
         shipClass: none(ShipClass),
         quantity: neededMarines,
         buildObjective: BuildObjective.Military,
         targetSystem: none(SystemId),
         estimatedCost: marineCost * neededMarines,
-        reason: &"Marine garrisons for invasion prep (have {marineCount}/{targetMarines})"
+        reason: &"Offensive marines (have {totalMarines}/{targetMarines}, {transportCount} transports w/ {transportCapacity} capacity)"
       )
       logInfo(LogCategory.lcAI, &"Domestikos requests: {marineReq.quantity}x Marine ({marineReq.estimatedCost}PP) - {marineReq.reason}")
       result.add(marineReq)
+
+    # STEP 1.5: Colony-specific marine requests for empty transports stationed there
+    # Build marines WHERE the transports are, not just house-wide
+    for colony in filtered.ownColonies:
+      var emptyTransportsAtColony = 0
+      var emptyCapacityAtColony = 0
+
+      # Check for transport fleets at this colony
+      for fleet in filtered.ownFleets:
+        if fleet.location == colony.systemId:
+          for squadron in fleet.squadrons:
+            if squadron.squadronType == SquadronType.Auxiliary:
+              if squadron.flagship.shipClass == ShipClass.TroopTransport:
+                # Check if transport has empty capacity
+                var currentLoad = 0
+                if squadron.flagship.cargo.isSome:
+                  let cargo = squadron.flagship.cargo.get()
+                  if cargo.cargoType == CargoType.Marines:
+                    currentLoad = cargo.quantity
+
+                let emptySpace = transportCarryLimit - currentLoad
+                if emptySpace > 0:
+                  emptyTransportsAtColony += 1
+                  emptyCapacityAtColony += emptySpace
+
+      # If transports need filling at this colony, request marines HERE
+      if emptyCapacityAtColony > 0 and colony.marines < emptyCapacityAtColony:
+        let neededAtColony = emptyCapacityAtColony - colony.marines
+        let marineReq = BuildRequirement(
+          requirementType: RequirementType.StrategicAsset,
+          priority: RequirementPriority.High,  # Fill transports = urgent
+          itemId: some("Marine"),
+          shipClass: none(ShipClass),
+          quantity: neededAtColony,
+          buildObjective: BuildObjective.Military,
+          targetSystem: some(colony.systemId),  # Build at THIS colony
+          estimatedCost: marineCost * neededAtColony,
+          reason: &"Fill {emptyTransportsAtColony} transports at {colony.systemId} ({emptyCapacityAtColony} capacity)"
+        )
+        logInfo(LogCategory.lcAI, &"Domestikos requests: {marineReq.quantity}x Marine at {colony.systemId} ({marineReq.estimatedCost}PP) - {marineReq.reason}")
+        result.add(marineReq)
 
     # STEP 2: Build transports once we have marines (only if CST 3+)
     if cstLevel >= 3:
       # Only aggressive houses in Act2+ get transports
       let wantsTransports = personality.aggression > 0.6 and currentAct >= GameAct.Act2_RisingTensions
       if wantsTransports:
-        # Target: 1 transport per 2 marines (each transport carries 1 MD, want reserves)
-        let targetTransports = marineCount div 2
+        # Target: 1 transport per (transportCarryLimit * 3) marines to allow multiple simultaneous invasions
+        # Example: With 3 marines/transport, target 1 transport per 9 marines (want reserves)
+        let marinesPerTransport = transportCarryLimit * 3
+        let targetTransports = max(2, totalMarines div marinesPerTransport)  # Min 2 for basic capability
 
         if transportCount < targetTransports:
           let transportCost = getShipConstructionCost(ShipClass.TroopTransport)
           let neededTransports = targetTransports - transportCount
           let req = BuildRequirement(
             requirementType: RequirementType.StrategicAsset,
-            priority: RequirementPriority.Low,  # After marines
+            priority: RequirementPriority.Medium,  # After marines (changed from Low)
             shipClass: some(ShipClass.TroopTransport),
             quantity: neededTransports,
             buildObjective: BuildObjective.SpecialUnits,
             targetSystem: none(SystemId),
             estimatedCost: transportCost * neededTransports,
-            reason: &"Invasion transports (have {transportCount}/{targetTransports} for {marineCount} marines)"
+            reason: &"Invasion transports (have {transportCount}/{targetTransports} for {totalMarines} marines, {transportCarryLimit}/transport)"
           )
           logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x TroopTransport ({req.estimatedCost}PP) - {req.reason}")
           result.add(req)
@@ -1007,32 +1083,19 @@ proc assessStrategicAssets*(
               &"treasury={filtered.ownHouse.treasury}PP, max_spend={int(0.15 * float(filtered.ownHouse.treasury))}PP in {currentAct})")
 
   # =============================================================================
-  # GROUND UNITS (armies, marines, shields, batteries)
+  # GROUND UNITS (armies, shields, batteries)
   # =============================================================================
+  # NOTE: Marine counting and building now handled in lines 810-907 (MARINES & TRANSPORTS section)
   # Count existing ground forces
   var totalArmies = 0
-  var totalMarines = 0  # Marines at colonies (not loaded on transports)
   var totalGroundBatteries = 0
   var shieldedColonies = 0
 
   for colony in filtered.ownColonies:
     totalArmies += colony.armies
-    totalMarines += colony.marines  # Colony-based marines
     totalGroundBatteries += colony.groundBatteries
     if colony.planetaryShieldLevel > 0:
       shieldedColonies += 1
-
-  # Count loaded marines on transports
-  var loadedMarines = 0
-  for fleet in filtered.ownFleets:
-    for squadron in fleet.squadrons:
-      if squadron.squadronType == SquadronType.Auxiliary:
-        if squadron.flagship.cargo.isSome:
-          let cargo = squadron.flagship.cargo.get()
-          if cargo.cargoType == CargoType.Marines:
-            loadedMarines += cargo.quantity
-
-  let totalMarinesAll = totalMarines + loadedMarines  # Total marines (colony + loaded)
 
   # Planetary shields for high-value colonies (homeworld + major systems)
   let highValueColonies = filtered.ownColonies.filterIt(
@@ -1287,32 +1350,9 @@ proc assessStrategicAssets*(
                      &"Domestikos: Planetary Shield at {colony.systemId} deferred " &
                      &"(cost={shieldCost}PP, treasury={filtered.ownHouse.treasury}PP < 3x threshold={shieldCost * 3}PP)")
 
-  # Marines for offensive operations (if aggressive and have transports)
-  if personality.aggression > 0.6 and currentAct >= GameAct.Act2_RisingTensions:
-    # Count transports
-    var transportCount = 0
-    for fleet in filtered.ownFleets:
-      for squadron in fleet.squadrons:
-        if squadron.squadronType == SquadronType.Auxiliary:
-          if squadron.flagship.shipClass == ShipClass.TroopTransport:
-            transportCount += 1
-
-    if transportCount > 0:
-      let targetMarines = transportCount * 1  # 1 MD per transport (full capacity)
-      if totalMarinesAll < targetMarines:
-        let marineCost = getMarineBuildCost()
-        let req = BuildRequirement(
-          requirementType: RequirementType.OffensivePrep,
-          priority: RequirementPriority.Low,
-          shipClass: none(ShipClass),
-          quantity: targetMarines - totalMarinesAll,
-          buildObjective: BuildObjective.Military,
-          targetSystem: none(SystemId),
-          estimatedCost: marineCost * (targetMarines - totalMarinesAll),
-          reason: &"Marines for invasion operations (have {totalMarinesAll}/{targetMarines})"
-        )
-        logInfo(LogCategory.lcAI, &"Domestikos requests: {req.quantity}x Marines ({req.estimatedCost}PP) - {req.reason}")
-        result.add(req)
+  # Marines for offensive operations - REMOVED (handled in lines 810-907)
+  # Redundant section removed to avoid duplicate marine requests and variable conflicts
+  # New logic correctly uses transport carry_limit from config (3 marines/transport)
 
   # =============================================================================
   # RAIDERS (for harassment)
@@ -1555,8 +1595,9 @@ proc generateBuildRequirements*(
   let treasury = filtered.ownHouse.treasury
   let affordableFillerCount = availableDocks
 
-  # Calculate total filler budget (informational only, not used for filtering)
-  let fillerBudgetEstimate = treasury
+  # Calculate total filler budget (reserve budget for high-priority non-dock items first)
+  # High-priority items like Marines don't use docks but need budget allocation
+  let fillerBudgetEstimate = max(0, treasury - highPriorityCost)
 
   logDebug(LogCategory.lcAI,
            &"Capacity fillers: treasury={filtered.ownHouse.treasury}PP, " &
