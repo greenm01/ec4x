@@ -270,6 +270,85 @@ type
     lastTurnResearchERP*: int
     lastTurnResearchSRP*: int
     lastTurnResearchTRP*: int
+    lastTurnResearchBreakthroughs*: int
+
+    # Maintenance tracking (for diagnostics)
+    lastTurnMaintenanceCost*: int
+    lastTurnTreasuryDeficit*: bool
+    lastTurnMaintenanceCostDeficit*: int
+
+    # Espionage tracking (for diagnostics)
+    lastTurnEspionageAttempts*: int
+    lastTurnEspionageSuccess*: int
+    lastTurnEspionageDetected*: int
+    lastTurnTechThefts*: int
+    lastTurnSabotage*: int
+    lastTurnAssassinations*: int
+    lastTurnCyberAttacks*: int
+    lastTurnEBPSpent*: int
+    lastTurnCIPSpent*: int
+    lastTurnCounterIntelSuccesses*: int
+
+    # Combat tracking (for diagnostics)
+    lastTurnSpaceCombatWins*: int
+    lastTurnSpaceCombatLosses*: int
+    lastTurnSpaceCombatTotal*: int
+    lastTurnRaiderAmbushSuccess*: int
+    lastTurnRaiderAmbushAttempts*: int
+    lastTurnOrbitalFailures*: int
+    lastTurnOrbitalTotal*: int
+    lastTurnCombatCERAverage*: int
+    lastTurnBombardmentRounds*: int
+    lastTurnGroundCombatVictories*: int
+    lastTurnRetreatsExecuted*: int
+    lastTurnCriticalHitsDealt*: int
+    lastTurnCriticalHitsReceived*: int
+    lastTurnCloakedAmbushSuccess*: int
+    lastTurnShieldsActivated*: int
+
+    # Detection tracking (for diagnostics)
+    lastTurnRaidersDetected*: int
+    lastTurnRaidersStealthSuccess*: int
+    lastTurnEliDetectionAttempts*: int
+    lastTurnEliRollsSum*: int
+    lastTurnClkRollsSum*: int
+    lastTurnScoutsDetected*: int
+    lastTurnScoutsDetectedBy*: int
+
+    # Fleet Activity
+    lastTurnFleetsMoved*: int
+    lastTurnFleetsWithOrders*: int
+    lastTurnStuckFleets*: int
+
+    # Colonization
+    lastTurnSystemsColonized*: int
+    lastTurnFailedColonizations*: int
+
+    # Diplomacy
+    lastTurnPactFormations*: int
+    lastTurnPactBreaks*: int
+    lastTurnHostilityDeclarations*: int
+    lastTurnWarDeclarations*: int
+
+    # Economy
+    lastTurnInfrastructureDamage*: int
+    lastTurnSalvageValueRecovered*: int
+
+    # Population
+    lastTurnPopTransfersCompleted*: int
+    lastTurnPopTransfersLost*: int
+    lastTurnPtuTransferredTotal*: int
+
+    # Construction & Commissioning
+    lastTurnShipsCommissioned*: int
+    lastTurnEtacsCommissioned*: int
+    lastTurnSquadronsCommissioned*: int
+
+    # Logistics
+    lastTurnFightersDisbanded*: int
+
+    # Invasions
+    lastTurnTotalInvasions*: int
 
     # Planet-Breaker tracking (assets.md:2.4.8)
     planetBreakerCount*: int  # Current PB count (max = current colony count)
