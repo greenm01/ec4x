@@ -11,7 +11,7 @@ import ./types
 import ../../../engine/gamestate
 import ../../../common/types/[core, units]
 
-proc collectDrungariusMetrics*(state: GameState, houseId: HouseId): DiagnosticMetrics =
+proc collectDrungariusMetrics*(state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics): DiagnosticMetrics =
   ## Collect intelligence & espionage metrics
   result = initDiagnosticMetrics(state.turn, houseId)
 
@@ -60,8 +60,7 @@ proc collectDrungariusMetrics*(state: GameState, houseId: HouseId): DiagnosticMe
   result.cipPointsSpent = house.lastTurnCIPSpent
 
   # Counter-intelligence successes
-  # TODO: Track when enemy espionage detected
-  result.counterIntelSuccesses = 0
+  result.counterIntelSuccesses = house.lastTurnCounterIntelSuccesses
 
   # ================================================================
   # ESPIONAGE MISSION TRACKING (from orders, set by orchestrator)
@@ -77,8 +76,8 @@ proc collectDrungariusMetrics*(state: GameState, houseId: HouseId): DiagnosticMe
   # INVASIONS (Military intel support)
   # ================================================================
 
-  # TODO: Track total invasions (useful for strategy analysis)
-  result.totalInvasions = 0
+  # Track total invasions (useful for strategy analysis)
+  result.totalInvasions = prevMetrics.totalInvasions + house.lastTurnTotalInvasions
 
   # Phase 1: Invasion planning metrics
   # NOTE: vulnerableTargets_count populated during intelligence analysis

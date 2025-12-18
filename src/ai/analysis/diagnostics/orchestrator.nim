@@ -121,11 +121,11 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   # PHASE A: Call all 6 advisor collectors (Byzantine hierarchy)
   # ================================================================
 
-  let domestikos = collectDomestikosMetrics(state, houseId, prev)
+  let domestikos = collectDomestikosMetrics(state, houseId, prev, orders)
   let logothete = collectLogotheteMetrics(state, houseId, prev)
-  let drungarius = collectDrungariusMetrics(state, houseId)
+  let drungarius = collectDrungariusMetrics(state, houseId, prev)
   let eparch = collectEparchMetrics(state, houseId, prev)
-  let protostrator = collectProtostratorMetrics(state, houseId)
+  let protostrator = collectProtostratorMetrics(state, houseId, prev)
   let basileus = collectBasileusMetrics(state, houseId, prev)
 
   # ================================================================
