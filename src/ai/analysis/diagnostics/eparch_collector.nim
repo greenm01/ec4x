@@ -9,6 +9,7 @@
 import std/tables
 import ./types
 import ../../../engine/[gamestate, fleet]
+import ../../../engine/economy/types as econ_types
 import ../../../common/types/core
 
 proc collectEparchMetrics*(state: GameState, houseId: HouseId,
@@ -70,15 +71,14 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
     result.zeroSpendTurns = prevMetrics.zeroSpendTurns
 
   # Economic Health indicators
-  # TODO: Track actual maintenance cost from turn resolution
-  result.treasuryDeficit = false  # Will be set by turn resolution
-  result.maintenanceCostDeficit = 0
+  result.treasuryDeficit = house.lastTurnTreasuryDeficit
+  result.maintenanceCostDeficit = house.lastTurnMaintenanceCostDeficit
 
-  # TODO: Track infrastructure damage from bombardment/sabotage
-  result.infrastructureDamageTotal = 0
+  # Track infrastructure damage from bombardment/sabotage
+  result.infrastructureDamageTotal = prevMetrics.infrastructureDamageTotal + house.lastTurnInfrastructureDamage
 
-  # TODO: Track salvage value recovered from ship destruction
-  result.salvageValueRecovered = 0
+  # Track salvage value recovered from ship destruction
+  result.salvageValueRecovered = prevMetrics.salvageValueRecovered + house.lastTurnSalvageValueRecovered
 
   # Tax rate analysis (6-turn rolling average)
   # TODO: Calculate true 6-turn average from history
@@ -101,14 +101,16 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
   result.blockadeTurnsCumulative = blockadeTurns
 
   # Population transfers (from Space Guild transfers)
-  # Total transfers in transit (not filtered by house)
-  result.populationTransfersActive = state.populationInTransit.len
+  var thisHouseTransfers = 0
+  for transfer in state.populationInTransit:
+    if transfer.owner == houseId:
+      thisHouseTransfers += 1
+  result.populationTransfersActive = thisHouseTransfers
 
-  # TODO: Filter to only this house's transfers
-  # TODO: Track from turn resolution
-  result.populationTransfersCompleted = 0
-  result.populationTransfersLost = 0
-  result.ptuTransferredTotal = 0
+  # Track from turn resolution
+  result.populationTransfersCompleted = house.lastTurnPopTransfersCompleted
+  result.populationTransfersLost = house.lastTurnPopTransfersLost
+  result.ptuTransferredTotal = prevMetrics.ptuTransferredTotal + house.lastTurnPtuTransferredTotal
 
   # ================================================================
   # COLONY COUNTS
@@ -161,19 +163,47 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
   result.mothballedFleetsUsed = 0
 
   # ================================================================
-  # CONSTRUCTION PIPELINES (TODO - Not yet implemented)
+  # CONSTRUCTION PIPELINES
   # ================================================================
 
   # Build Queue tracking
-  result.totalBuildQueueDepth = 0
-  result.etacInConstruction = 0
-  result.shipsUnderConstruction = 0
-  result.buildingsUnderConstruction = 0
+  var totalBuildQueueDepth = 0
+  var etacInConstruction = 0
+  var shipsUnderConstruction = 0
+  var buildingsUnderConstruction = 0
+
+  for systemId, colony in state.colonies:
+    if colony.owner == houseId:
+      if colony.underConstruction.isSome:
+        totalBuildQueueDepth += 1
+      totalBuildQueueDepth += colony.constructionQueue.len
+
+      if colony.underConstruction.isSome:
+        let project = colony.underConstruction.get()
+        if project.projectType == econ_types.ConstructionType.Ship:
+          shipsUnderConstruction += 1
+          if project.itemId == "ETAC":
+            etacInConstruction += 1
+        else:
+          buildingsUnderConstruction += 1
+      
+      for project in colony.constructionQueue:
+        if project.projectType == econ_types.ConstructionType.Ship:
+          shipsUnderConstruction += 1
+          if project.itemId == "ETAC":
+            etacInConstruction += 1
+        else:
+          buildingsUnderConstruction += 1
+  
+  result.totalBuildQueueDepth = totalBuildQueueDepth
+  result.etacInConstruction = etacInConstruction
+  result.shipsUnderConstruction = shipsUnderConstruction
+  result.buildingsUnderConstruction = buildingsUnderConstruction
 
   # Commissioning tracking
-  result.shipsCommissionedThisTurn = 0
-  result.etacCommissionedThisTurn = 0
-  result.squadronsCommissionedThisTurn = 0
+  result.shipsCommissionedThisTurn = house.lastTurnShipsCommissioned
+  result.etacCommissionedThisTurn = house.lastTurnEtacsCommissioned
+  result.squadronsCommissionedThisTurn = house.lastTurnSquadronsCommissioned
 
   # Orders tracking (set by orchestrator when processing OrderPackets)
   result.fleetOrdersSubmitted = 0
