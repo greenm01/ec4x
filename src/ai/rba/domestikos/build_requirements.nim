@@ -861,10 +861,12 @@ proc assessStrategicAssets*(
 
     if totalMarines < targetMarines:
       let neededMarines = targetMarines - totalMarines
-      # Higher priority for aggressive houses or when transports are under-loaded
+      # Priority based on transport utilization and personality
       let emptyCapacity = transportCapacity - loadedMarineCount
-      let marinePriority = if personality.aggression > 0.6 or (transportCount > 0 and emptyCapacity >= transportCarryLimit):
-                            RequirementPriority.High  # Aggressive or empty transports = urgent
+      let marinePriority = if transportCount > 0 and emptyCapacity > 0:
+                            RequirementPriority.Critical  # Transports waiting = CRITICAL
+                          elif personality.aggression > 0.6:
+                            RequirementPriority.High  # Aggressive = High
                           else:
                             RequirementPriority.Medium
 
