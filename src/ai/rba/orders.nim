@@ -430,6 +430,12 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   let fleetOrgCommands = fleet_organization.organizeFleets(controller, filtered)
   result.zeroTurnCommands.add(fleetOrgCommands)
 
+  # ETAC detachment and salvage after 100% colonization
+  # Detaches ETACs from mixed fleets, generates salvage/move orders
+  let (etacDetachCmds, etacSalvageOrders) = fleet_organization.detachAndSalvageETACs(controller, filtered)
+  result.zeroTurnCommands.add(etacDetachCmds)
+  result.orderPacket.fleetOrders.add(etacSalvageOrders)
+
   # Unload cargo from ETACs at colonies (before salvage or after arriving)
   # Two cases:
   # 1. ETAC at colony with Salvage order → unload then salvage
