@@ -27,15 +27,16 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   # ================================================================
 
   # Space combat statistics
-  result.spaceCombatWins = house.lastTurnSpaceCombatWins
-  result.spaceCombatLosses = house.lastTurnSpaceCombatLosses
-  result.spaceCombatTotal = house.lastTurnSpaceCombatTotal
+  result.spaceCombatWins = 0
+  result.spaceCombatLosses = 0
+  result.spaceCombatTotal = 0
 
   # Combat performance metrics (tracked during resolution)
-  result.orbitalFailures = house.lastTurnOrbitalFailures
-  result.orbitalTotal = house.lastTurnOrbitalTotal
-  result.raiderAmbushSuccess = house.lastTurnRaiderAmbushSuccess
-  result.raiderAmbushAttempts = house.lastTurnRaiderAmbushAttempts
+  # TODO: Implement these during turn resolution
+  result.orbitalFailures = 0
+  result.orbitalTotal = 0
+  result.raiderAmbushSuccess = 0
+  result.raiderAmbushAttempts = 0
 
   # Detection metrics (tracked from events)
   result.raiderDetectedCount = house.lastTurnRaidersDetected
@@ -58,14 +59,14 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   result.scoutsDetected = house.lastTurnScoutsDetected
   result.scoutsDetectedBy = house.lastTurnScoutsDetectedBy
 
-  result.combatCERAverage = house.lastTurnCombatCERAverage
-  result.bombardmentRoundsTotal = house.lastTurnBombardmentRounds
-  result.groundCombatVictories = house.lastTurnGroundCombatVictories
-  result.retreatsExecuted = house.lastTurnRetreatsExecuted
-  result.criticalHitsDealt = house.lastTurnCriticalHitsDealt
-  result.criticalHitsReceived = house.lastTurnCriticalHitsReceived
-  result.cloakedAmbushSuccess = house.lastTurnCloakedAmbushSuccess
-  result.shieldsActivatedCount = house.lastTurnShieldsActivated
+  result.combatCERAverage = 0
+  result.bombardmentRoundsTotal = 0
+  result.groundCombatVictories = 0
+  result.retreatsExecuted = 0
+  result.criticalHitsDealt = 0
+  result.criticalHitsReceived = 0
+  result.cloakedAmbushSuccess = 0
+  result.shieldsActivatedCount = 0
 
   # Phase 1: Invasion order tracking (populated during order generation)
   result.invasionOrders_generated = 0
@@ -324,12 +325,13 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   # FLEET ACTIVITY & ETAC TRACKING
   # ================================================================
 
-  # Fleet movement tracking from last turn's resolution
-  result.fleetsMoved = house.lastTurnFleetsMoved
-  result.systemsColonized = house.lastTurnSystemsColonized
-  result.failedColonizationAttempts = house.lastTurnFailedColonizations
-  result.fleetsWithOrders = house.lastTurnFleetsWithOrders
-  result.stuckFleets = house.lastTurnStuckFleets
+  # TODO: Implement fleet movement tracking
+  # These fields are defined in DiagnosticMetrics but not yet implemented
+  result.fleetsMoved = 0
+  result.systemsColonized = 0
+  result.failedColonizationAttempts = 0
+  result.fleetsWithOrders = 0
+  result.stuckFleets = 0
 
   # ETAC specific tracking
   result.totalETACs = etacShips
@@ -360,4 +362,5 @@ proc collectDomestikosMetrics*(state: GameState, houseId: HouseId,
   # COMBAT LOGISTICS
   # ================================================================
 
-  result.fightersDisbanded = house.lastTurnFightersDisbanded
+  # TODO: Track fighters disbanded due to capacity violations
+  result.fightersDisbanded = 0
