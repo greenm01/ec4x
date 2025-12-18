@@ -495,114 +495,6 @@ proc generateCargoOrders*(controller: AIController, inventory: AssetInventory,
       discard  # Keep Marines loaded
 
 ## =============================================================================
-## POPULATION TRANSFER OPTIMIZATION
-## =============================================================================
-
-proc generatePopulationTransfers*(controller: AIController, inventory: AssetInventory,
-                                 filtered: FilteredGameState): seq[PopulationTransferOrder] =
-  ## Optimize PTU distribution using Space Guild instant transfers
-  ##
-  ## Cost: 1 PP per PTU transferred (economy.md Section 3.7)
-  ## Benefit: Accelerate new colony growth, boost frontier defenses
-  ##
-  ## Transfer Strategy:
-  ## - FROM: Mature core colonies (>100 IU, excess population)
-  ## - TO: New frontier colonies (<50 IU, high growth potential)
-  ## - AVOID: Transferring from threatened colonies (need population for defense)
-
-  result = @[]
-
-  # Only do transfers if treasury is healthy (>500 PP)
-  if inventory.totalTreasury < 500:
-    return @[]
-
-  let myColonies = filtered.ownColonies
-
-  # Identify donors (mature, safe colonies with excess population)
-  var donors: seq[tuple[colony: Colony, score: float]] = @[]
-  for colony in myColonies:
-    # Check if mature (infrastructure >= 5)
-    if colony.infrastructure < 5:
-      continue
-
-    # Check if has excess population (pop > 5)
-    if colony.population <= 5:
-      continue
-
-    # Check if safe (no enemy fleets in intel reports nearby)
-    var threatLevel = 0.0
-    if controller.intelligenceSnapshot.isSome:
-      let snap = controller.intelligenceSnapshot.get()
-      # Count known enemy colonies as threat indicator
-      for (enemySystemId, owner) in snap.knownEnemyColonies:
-        if owner != controller.houseId:
-          # Enemy colony detected - calculate threat
-          threatLevel += 0.5
-
-    # Safe colonies have low threat
-    if threatLevel > 2.0:
-      continue  # Too dangerous to transfer population away
-
-    # Calculate donor score (higher = better donor)
-    let donorScore = float(colony.infrastructure) + float(colony.population) - threatLevel
-    donors.add((colony, donorScore))
-
-    logInfo(LogCategory.lcAI, &"{controller.houseId} Donor candidate: {colony.systemId} (score: {donorScore:.1f})")
-
-  # Identify recipients (new colonies with growth potential)
-  var recipients: seq[tuple[colony: Colony, score: float]] = @[]
-  for colony in myColonies:
-    # Check if new (infrastructure < 5)
-    if colony.infrastructure >= 5:
-      continue
-
-    # Check resource rating (VeryRich/Rich preferred)
-    let resourceBonus = case colony.resources
-      of ResourceRating.VeryRich: 3.0
-      of ResourceRating.Rich: 2.0
-      of ResourceRating.Abundant: 1.0
-      else: 0.5
-
-    # Check if frontier (has unexplored adjacent systems in intel)
-    # TODO: Frontier detection needs proper implementation using adjacent system checks
-    # For now, assume all recipient colonies could benefit (removed deprecated intel check)
-    var frontierBonus = 0.5  # Default small bonus
-
-    # Calculate recipient score (higher = better recipient)
-    let recipientScore = resourceBonus + frontierBonus + (10.0 - float(colony.infrastructure))
-    recipients.add((colony, recipientScore))
-
-    logInfo(LogCategory.lcAI, &"{controller.houseId} Recipient candidate: {colony.systemId} (score: {recipientScore:.1f})")
-
-  # Sort by score (best first)
-  donors.sort(proc(a, b: auto): int =
-    if a.score > b.score: -1 elif a.score < b.score: 1 else: 0)
-  recipients.sort(proc(a, b: auto): int =
-    if a.score > b.score: -1 elif a.score < b.score: 1 else: 0)
-
-  # Generate transfers (match best donors with best recipients)
-  let maxTransfers = min(min(donors.len, recipients.len), 3)  # Max 3 transfers per turn
-  var ppBudget = inventory.totalTreasury div 10  # Use 10% of treasury for transfers
-
-  for i in 0..<maxTransfers:
-    if ppBudget <= 0:
-      break
-
-    let donor = donors[i].colony
-    let recipient = recipients[i].colony
-
-    # Transfer 1 PTU (costs 1 PP)
-    if ppBudget >= 1:
-      result.add(PopulationTransferOrder(
-        sourceColony: donor.systemId,
-        destColony: recipient.systemId,
-        ptuAmount: 1
-      ))
-      ppBudget -= 1
-
-      logInfo(LogCategory.lcAI, &"{controller.houseId} PTU transfer: {donor.systemId} → {recipient.systemId} (1 PTU, 1 PP)")
-
-## =============================================================================
 ## FLEET LIFECYCLE: RESERVE / MOTHBALL / SALVAGE / REACTIVATE
 ## =============================================================================
 
@@ -1464,8 +1356,8 @@ proc generateLogisticsOrders*(controller: AIController, filtered: FilteredGameSt
   # Step 3: Generate cargo orders (highest priority - combat/expansion critical)
   result.cargo = generateCargoOrders(controller, inventory, filtered)
 
-  # Step 4: Generate population transfers (optimize growth)
-  result.population = generatePopulationTransfers(controller, inventory, filtered)
+  # Population transfers now handled by Eparch (moved to economic requirements)
+  result.population = @[]
 
   # Step 5: Optimize fleet compositions for operations
   result.squadrons = recommendFleetRebalancing(controller, inventory, filtered)

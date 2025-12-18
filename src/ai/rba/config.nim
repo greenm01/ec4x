@@ -129,6 +129,26 @@ type
     max_iterations*: int
     expensive_requirement_ratio*: float
 
+  EparchPopulationTransfersConfig* = object
+    ## Space Guild population transfer parameters
+    ## Economic evaluation of donor/recipient colonies
+    max_transfers_per_turn*: int
+    treasury_threshold*: int
+    homeworld_donor_bonus_act1*: float
+    min_donor_infrastructure*: int
+    min_donor_population*: int
+    donor_drain_protection*: float
+    max_threat_level_for_donor*: float
+    min_recipient_infrastructure_exclusive*: int
+    resource_bonus_very_rich*: float
+    resource_bonus_rich*: float
+    resource_bonus_abundant*: float
+    resource_bonus_default*: float
+    frontier_bonus*: float
+    infrastructure_gap_multiplier*: float
+    transfers_per_colony_ratio*: float
+    budget_allocation_percent*: int
+
   EparchConfig* = object
     ## Eparch (economic administration) parameters
     ## Colony management, auto-repair thresholds, tax rates
@@ -196,7 +216,8 @@ type
 
 type
   LogisticsConfig* = object
-    ## Logistics parameters (mothballing thresholds)
+    ## Logistics parameters (fleet lifecycle management)
+    # Fleet lifecycle
     mothballing_treasury_threshold_pp*: int
     mothballing_maintenance_ratio_threshold*: float
     mothballing_min_fleet_count*: int
@@ -351,8 +372,9 @@ type
     max_scouts_act1*: int
     etacs_per_uncolonized_system*: float
     max_etacs_queued*: int
+    base_marines_per_colony*: int
+    aggressive_marine_multiplier*: float
     aggressive_transport_ratio*: float
-    aggressive_marine_per_transport*: int
     reactive_invasion_multiplier*: float
     fighter_threat_threshold_low*: float
     fighter_threat_threshold_high*: float
@@ -941,6 +963,7 @@ type
     eparch_terraforming*: EparchTerraformingConfig
     eparch_economic_pressure*: EparchEconomicPressureConfig
     eparch_reprioritization*: EparchReprioritizationConfig
+    eparch_population_transfers*: EparchPopulationTransfersConfig
     # Intelligence integration (Phase B+)
     intelligence*: IntelligenceConfig
     # Intelligence sub-configurations (Phase D+)

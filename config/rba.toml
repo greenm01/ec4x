@@ -229,6 +229,7 @@ espionage_investment_percent = 0.03  # Espionage budget (% of original treasury)
 # Mothballing and fleet management thresholds
 
 [logistics]
+# Fleet lifecycle parameters
 mothballing_treasury_threshold_pp = 900      # Treasury level triggering mothballing consideration
 mothballing_maintenance_ratio_threshold = 0.10  # Maintenance/production ratio triggering mothballing
 mothballing_min_fleet_count = 3              # Minimum fleets before considering mothballing
@@ -310,9 +311,12 @@ etacs_per_uncolonized_system = 2.0         # 2.0 ETACs per uncolonized system
 max_etacs_queued = 16                      # Cap ETAC production at 16
 
 # Offensive building (personality-modulated)
+base_marines_per_colony = 10               # Base target: 10 marines per colony for offensive capability
+aggressive_marine_multiplier = 1.5         # Aggressive AI (>0.5): multiply base target by 1.5x
 aggressive_transport_ratio = 0.33          # Aggressive AI: 1 transport per 3 colonies
-aggressive_marine_per_transport = 1        # 1 marine division per transport
 reactive_invasion_multiplier = 1.5         # Defensive AI: 1.5x enemy defenses for invasion
+
+# Note: Marine capacity per transport is defined in ships.toml [troop_transport] carry_limit = 3
 
 # Phase 2: Invasion Campaign Management
 max_concurrent_campaigns = 3               # Maximum simultaneous invasion campaigns
@@ -593,6 +597,32 @@ boost_shipyard_disadvantage = 1.3         # 30% boost for shipyard disadvantage
 # Reprioritization logic parameters (extends global reprioritization config)
 max_iterations = 3                        # Maximum reprioritization iterations
 expensive_requirement_ratio = 0.3         # >30% of treasury = expensive
+
+[eparch_population_transfers]
+# Space Guild population transfer economic evaluation
+# Generates transfer opportunities that compete for budget through Treasurer
+
+# Transfer limits
+max_transfers_per_turn = 5                # Hard cap on transfers per turn
+treasury_threshold = 300                  # Minimum treasury to consider transfers
+transfers_per_colony_ratio = 0.5          # 1 transfer per 2 colonies (scaling)
+budget_allocation_percent = 10            # Use 10% of treasury for transfers
+
+# Donor evaluation criteria
+min_donor_infrastructure = 5              # Mature colonies (infrastructure ≥5)
+min_donor_population = 5                  # Excess population required
+donor_drain_protection = 0.5              # Don't drain below 50% population
+max_threat_level_for_donor = 2.0          # Safe colonies only (threat <2.0)
+homeworld_donor_bonus_act1 = 10.0         # Act 1 homeworld prioritization
+
+# Recipient evaluation criteria
+min_recipient_infrastructure_exclusive = 5  # New colonies only (infrastructure <5)
+resource_bonus_very_rich = 3.0            # VeryRich colony score bonus
+resource_bonus_rich = 2.0                 # Rich colony score bonus
+resource_bonus_abundant = 1.0             # Abundant colony score bonus
+resource_bonus_default = 0.5              # Default resource score
+frontier_bonus = 0.5                      # Frontier detection bonus
+infrastructure_gap_multiplier = 1.0       # Weight for infrastructure gap
 
 # ==============================================================================
 # INTELLIGENCE INTEGRATION (Phase B+)

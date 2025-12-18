@@ -15,6 +15,7 @@ import ../config
 import ./industrial_investment
 import ./terraforming
 import ./expansion  # ETAC expansion operations
+import ./population_transfers  # Space Guild population transfers
 
 # ============================================================================
 # FACILITY REQUIREMENTS GENERATION
@@ -423,6 +424,46 @@ proc generateEconomicRequirements*(
             &"{controller.houseId} Eparch: FACILITY REQUIREMENT GENERATED at {facility.targetColony}: " &
             &"{facility.facilityType.get()} for {facility.estimatedCost} PP " &
             &"(priority {facility.priority}, reason: {facility.reason})")
+
+  # Generate population transfer opportunities (Space Guild)
+  # MEDIUM priority: Accelerates colony growth but not critical
+  let treasury = filtered.ownHouse.treasury
+  let transferOpps = generatePopulationTransferOpportunities(
+    controller, filtered, intelSnapshot, currentAct, treasury
+  )
+
+  for opp in transferOpps:
+    # Convert combined score to priority enum
+    # High scores (20+) = High priority
+    # Medium scores (10-20) = Medium priority
+    # Low scores (<10) = Low priority
+    let priorityEnum = if opp.priority >= 20.0:
+                         RequirementPriority.High
+                       elif opp.priority >= 10.0:
+                         RequirementPriority.Medium
+                       else:
+                         RequirementPriority.Low
+
+    # Encode destination in facilityType field (design decision from plan)
+    # Format: "TRANSFER_TO:systemId"
+    let encodedDest = "TRANSFER_TO:" & $opp.recipientColony
+
+    requirements.add(EconomicRequirement(
+      requirementType: EconomicRequirementType.PopulationTransfer,
+      priority: priorityEnum,
+      targetColony: opp.donorColony,  # Source colony
+      facilityType: some(encodedDest),  # Destination encoded here
+      terraformTarget: none(PlanetClass),  # Not terraforming
+      estimatedCost: opp.estimatedCost,
+      reason: opp.reason
+    ))
+    totalCost += opp.estimatedCost
+
+    logInfo(LogCategory.lcAI,
+            &"{controller.houseId} Eparch: Population transfer opportunity: " &
+            &"{opp.donorColony} → {opp.recipientColony} " &
+            &"({opp.ptuAmount} PTU for {opp.estimatedCost} PP, " &
+            &"priority {priorityEnum}, combined score {opp.priority:.1f})")
 
   # Generate ETAC expansion requirements (construction + colonization)
   # Note: No cleanup needed - fleetOrders in GameState are automatically
