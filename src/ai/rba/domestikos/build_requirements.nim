@@ -834,30 +834,36 @@ proc assessStrategicAssets*(
   let totalMarines = marineCount + loadedMarineCount
 
   # Determine if house wants invasion capability
-  # Lower threshold than transports - marines are useful for defense too
+  # Marines are purely offensive - built only for conquest operations
   let wantsInvasionCapability = personality.aggression > 0.4 or currentAct >= GameAct.Act2_RisingTensions
 
   if wantsInvasionCapability:
     # STEP 1: Build marines for offensive operations
+    # Marines are ONLY for conquest - they exist to fill transports for invasions
+    # No defensive garrison - that's what armies are for
     let marineCost = getMarineBuildCost()
-    let colonyCount = filtered.ownColonies.len
 
-    # Target marines based on offensive capability (from config)
-    # - Base: config-defined marines per colony
-    # - Aggressive bonus: multiply by config-defined multiplier if aggression > 0.5
-    # - Transport capacity: If transports exist, ensure they can be FULLY loaded
-    let baseMult = globalRBAConfig.domestikos.base_marines_per_colony
-    var targetMarines = colonyCount * baseMult
+    # Transport-centric approach: Build marines to fill available transport capacity
+    # Start at 0 - only build marines if we have transports or invasion opportunities
+    var targetMarines = 0
 
-    # Aggressive personalities need more marines for multi-front operations
-    if personality.aggression > 0.5:
-      let aggrMult = globalRBAConfig.domestikos.aggressive_marine_multiplier
-      targetMarines = int(float(targetMarines) * aggrMult)
-
-    # CRITICAL: Ensure transports can be fully loaded (3 marines per transport from config)
-    # If we have transports, we MUST have enough marines to fill them completely
-    if transportCapacity > targetMarines:
+    # PRIMARY: Fill existing transports (3 marines per transport from config)
+    if transportCount > 0:
       targetMarines = transportCapacity
+
+    # SECONDARY: Intelligence-driven expansion for aggressive houses
+    # Build extra marines for follow-up invasion waves if opportunities exist
+    if personality.aggression > 0.6 and controller.intelligenceSnapshot.isSome:
+      let intel = controller.intelligenceSnapshot.get()
+      # Count invasion opportunities (known enemy colonies)
+      var invasionOpportunities = 0
+      for (systemId, owner) in intel.knownEnemyColonies:
+        if owner != controller.houseId:
+          invasionOpportunities += 1
+
+      # Build 3 marines per opportunity (one invasion attempt)
+      if invasionOpportunities > 0:
+        targetMarines += invasionOpportunities * transportCarryLimit
 
     if totalMarines < targetMarines:
       let neededMarines = targetMarines - totalMarines
