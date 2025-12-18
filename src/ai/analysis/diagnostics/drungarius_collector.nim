@@ -60,7 +60,8 @@ proc collectDrungariusMetrics*(state: GameState, houseId: HouseId, prevMetrics: 
   result.cipPointsSpent = house.lastTurnCIPSpent
 
   # Counter-intelligence successes
-  result.counterIntelSuccesses = house.lastTurnCounterIntelSuccesses
+  # TODO: Track when enemy espionage detected
+  result.counterIntelSuccesses = 0
 
   # ================================================================
   # ESPIONAGE MISSION TRACKING (from orders, set by orchestrator)
@@ -77,7 +78,7 @@ proc collectDrungariusMetrics*(state: GameState, houseId: HouseId, prevMetrics: 
   # ================================================================
 
   # Track total invasions (useful for strategy analysis)
-  result.totalInvasions = prevMetrics.totalInvasions + house.lastTurnTotalInvasions
+  result.totalInvasions = 0
 
   # Phase 1: Invasion planning metrics
   # NOTE: vulnerableTargets_count populated during intelligence analysis

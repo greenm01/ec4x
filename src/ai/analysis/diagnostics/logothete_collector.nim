@@ -41,7 +41,8 @@ proc collectLogotheteMetrics*(state: GameState, houseId: HouseId,
   result.researchSRP = house.lastTurnResearchSRP
   result.researchTRP = house.lastTurnResearchTRP
 
-  result.researchBreakthroughs = prevMetrics.researchBreakthroughs + house.lastTurnResearchBreakthroughs
+  # TODO: Track breakthroughs when tech advancement implemented
+  result.researchBreakthroughs = 0
 
   # ================================================================
   # RESEARCH WASTE TRACKING (Tech Level Caps)

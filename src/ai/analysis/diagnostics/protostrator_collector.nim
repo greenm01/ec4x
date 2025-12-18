@@ -58,11 +58,12 @@ proc collectProtostratorMetrics*(state: GameState, houseId: HouseId, prevMetrics
   # TREATY ACTIVITY METRICS (cumulative counts)
   # ================================================================
 
-  # Track historical diplomatic events from last turn's data
-  result.pactFormationsTotal = prevMetrics.pactFormationsTotal + house.lastTurnPactFormations
-  result.pactBreaksTotal = prevMetrics.pactBreaksTotal + house.lastTurnPactBreaks
-  result.hostilityDeclarationsTotal = prevMetrics.hostilityDeclarationsTotal + house.lastTurnHostilityDeclarations
-  result.warDeclarationsTotal = prevMetrics.warDeclarationsTotal + house.lastTurnWarDeclarations
+  # TODO: Implement historical tracking of diplomatic events
+  # For now, these remain at 0 as we don't track historical formations/breaks
+  result.pactFormationsTotal = 0
+  result.pactBreaksTotal = 0
+  result.hostilityDeclarationsTotal = 0
+  result.warDeclarationsTotal = 0
 
   # ================================================================
   # BILATERAL RELATIONS (dynamic for any number of houses)

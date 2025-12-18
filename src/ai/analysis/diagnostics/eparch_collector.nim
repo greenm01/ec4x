@@ -71,14 +71,15 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
     result.zeroSpendTurns = prevMetrics.zeroSpendTurns
 
   # Economic Health indicators
-  result.treasuryDeficit = house.lastTurnTreasuryDeficit
-  result.maintenanceCostDeficit = house.lastTurnMaintenanceCostDeficit
+  # TODO: Track actual maintenance cost from turn resolution
+  result.treasuryDeficit = false  # Will be set by turn resolution
+  result.maintenanceCostDeficit = 0
 
-  # Track infrastructure damage from bombardment/sabotage
-  result.infrastructureDamageTotal = prevMetrics.infrastructureDamageTotal + house.lastTurnInfrastructureDamage
+  # TODO: Track infrastructure damage from bombardment/sabotage
+  result.infrastructureDamageTotal = 0
 
-  # Track salvage value recovered from ship destruction
-  result.salvageValueRecovered = prevMetrics.salvageValueRecovered + house.lastTurnSalvageValueRecovered
+  # TODO: Track salvage value recovered from ship destruction
+  result.salvageValueRecovered = 0
 
   # Tax rate analysis (6-turn rolling average)
   # TODO: Calculate true 6-turn average from history
@@ -107,10 +108,11 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
       thisHouseTransfers += 1
   result.populationTransfersActive = thisHouseTransfers
 
-  # Track from turn resolution
-  result.populationTransfersCompleted = house.lastTurnPopTransfersCompleted
-  result.populationTransfersLost = house.lastTurnPopTransfersLost
-  result.ptuTransferredTotal = prevMetrics.ptuTransferredTotal + house.lastTurnPtuTransferredTotal
+  # TODO: Filter to only this house's transfers
+  # TODO: Track from turn resolution
+  result.populationTransfersCompleted = 0
+  result.populationTransfersLost = 0
+  result.ptuTransferredTotal = 0
 
   # ================================================================
   # COLONY COUNTS
@@ -201,9 +203,9 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
   result.buildingsUnderConstruction = buildingsUnderConstruction
 
   # Commissioning tracking
-  result.shipsCommissionedThisTurn = house.lastTurnShipsCommissioned
-  result.etacCommissionedThisTurn = house.lastTurnEtacsCommissioned
-  result.squadronsCommissionedThisTurn = house.lastTurnSquadronsCommissioned
+  result.shipsCommissionedThisTurn = 0
+  result.etacCommissionedThisTurn = 0
+  result.squadronsCommissionedThisTurn = 0
 
   # Orders tracking (set by orchestrator when processing OrderPackets)
   result.fleetOrdersSubmitted = 0
