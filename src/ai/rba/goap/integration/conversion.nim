@@ -282,14 +282,10 @@ proc convertGOAPActionToRBAOrder*(
         break
 
     if transportCapacity == 0 or loadedMarines < transportCapacity:
-      # No loaded marines - downgrade to Bombard
-      return some(FleetOrder(
-        fleetId: fleet.fleetId,
-        orderType: FleetOrderType.Bombard,
-        targetSystem: some(targetSystem),
-        priority: 95,  # High priority but not invasion
-        roe: some(8)   # Bombardment only
-      ))
+      # Not enough loaded marines for a blitz.
+      # Return none to signal that the action cannot be executed this turn.
+      # The plan will be re-evaluated next turn.
+      return none(FleetOrder)
 
     return some(FleetOrder(
       fleetId: fleet.fleetId,
@@ -320,14 +316,10 @@ proc convertGOAPActionToRBAOrder*(
         break
 
     if transportCapacity == 0 or loadedMarines < transportCapacity:
-      # No loaded marines - downgrade to Bombard
-      return some(FleetOrder(
-        fleetId: fleet.fleetId,
-        orderType: FleetOrderType.Bombard,
-        targetSystem: some(targetSystem),
-        priority: 95,  # High priority but not invasion
-        roe: some(8)   # Bombardment only
-      ))
+      # Not enough loaded marines for an invasion.
+      # Return none to signal that the action cannot be executed this turn.
+      # The plan will be re-evaluated next turn.
+      return none(FleetOrder)
 
     return some(FleetOrder(
       fleetId: fleet.fleetId,
