@@ -9,6 +9,7 @@
 
 import std/[options, algorithm, strformat, tables, strutils]
 import ./types
+import ../../../engine/diagnostics_data
 import ./domestikos_collector  # Military commander
 import ./logothete_collector   # Research & technology
 import ./drungarius_collector  # Intelligence & espionage
@@ -121,12 +122,15 @@ proc collectDiagnostics*(state: GameState, houseId: HouseId,
   # PHASE A: Call all 6 advisor collectors (Byzantine hierarchy)
   # ================================================================
 
-  let domestikos = collectDomestikosMetrics(state, houseId, prev, orders)
-  let logothete = collectLogotheteMetrics(state, houseId, prev)
-  let drungarius = collectDrungariusMetrics(state, houseId, prev)
-  let eparch = collectEparchMetrics(state, houseId, prev)
-  let protostrator = collectProtostratorMetrics(state, houseId, prev)
-  let basileus = collectBasileusMetrics(state, houseId, prev)
+  # Get the resolution report for this house from the game state
+  let report = state.lastTurnReports.getOrDefault(houseId, initTurnResolutionReport())
+
+  let domestikos = collectDomestikosMetrics(state, houseId, prev, orders, report)
+  let logothete = collectLogotheteMetrics(state, houseId, prev, report)
+  let drungarius = collectDrungariusMetrics(state, houseId, prev, report)
+  let eparch = collectEparchMetrics(state, houseId, prev, report)
+  let protostrator = collectProtostratorMetrics(state, houseId, prev, report)
+  let basileus = collectBasileusMetrics(state, houseId, prev, report)
 
   # ================================================================
   # PHASE B: Merge all advisor metrics

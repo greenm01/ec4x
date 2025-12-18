@@ -9,9 +9,10 @@
 import std/tables
 import ./types
 import ../../../engine/gamestate
+import ../../../engine/diagnostics_data
 import ../../../common/types/[core, units]
 
-proc collectDrungariusMetrics*(state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics): DiagnosticMetrics =
+proc collectDrungariusMetrics*(state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics, report: TurnResolutionReport): DiagnosticMetrics =
   ## Collect intelligence & espionage metrics
   result = initDiagnosticMetrics(state.turn, houseId)
 
@@ -42,25 +43,25 @@ proc collectDrungariusMetrics*(state: GameState, houseId: HouseId, prevMetrics: 
   # ================================================================
 
   # Success/failure/detected counts
-  result.espionageSuccessCount = house.lastTurnEspionageSuccess
+  result.espionageSuccessCount = report.espionageSuccess
   result.espionageFailureCount =
-    max(0, house.lastTurnEspionageAttempts -
-           house.lastTurnEspionageSuccess -
-           house.lastTurnEspionageDetected)
-  result.espionageDetectedCount = house.lastTurnEspionageDetected
+    max(0, report.espionageAttempts -
+           report.espionageSuccess -
+           report.espionageDetected)
+  result.espionageDetectedCount = report.espionageDetected
 
   # Operation types
-  result.techTheftsSuccessful = house.lastTurnTechThefts
-  result.sabotageOperations = house.lastTurnSabotage
-  result.assassinationAttempts = house.lastTurnAssassinations
-  result.cyberAttacksLaunched = house.lastTurnCyberAttacks
+  result.techTheftsSuccessful = report.techThefts
+  result.sabotageOperations = report.sabotage
+  result.assassinationAttempts = report.assassinations
+  result.cyberAttacksLaunched = report.cyberAttacks
 
   # Budget spent
-  result.ebpPointsSpent = house.lastTurnEBPSpent
-  result.cipPointsSpent = house.lastTurnCIPSpent
+  result.ebpPointsSpent = report.ebpSpent
+  result.cipPointsSpent = report.cipSpent
 
   # Counter-intelligence successes
-  result.counterIntelSuccesses = house.lastTurnCounterIntelSuccesses
+  result.counterIntelSuccesses = report.counterIntelSuccesses
 
   # ================================================================
   # ESPIONAGE MISSION TRACKING (from orders, set by orchestrator)
@@ -77,7 +78,7 @@ proc collectDrungariusMetrics*(state: GameState, houseId: HouseId, prevMetrics: 
   # ================================================================
 
   # Track total invasions (useful for strategy analysis)
-  result.totalInvasions = prevMetrics.totalInvasions + house.lastTurnTotalInvasions
+  result.totalInvasions = prevMetrics.totalInvasions + report.totalInvasions
 
   # Phase 1: Invasion planning metrics
   # NOTE: vulnerableTargets_count populated during intelligence analysis
