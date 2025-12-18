@@ -17,7 +17,7 @@
 
 import std/[tables, options, strformat]
 import ../../../common/types/core
-import ../../../engine/[gamestate, fog_of_war, fleet, logger]
+import ../../../engine/[gamestate, fog_of_war, fleet, logger, starmap, order_types]
 import ../controller_types
 import ../../../engine/commands/zero_turn_commands
 import ../../common/types as ai_types
@@ -457,3 +457,158 @@ proc generateFleetManagementCommands*(
             &"{houseId} Domestikos: Generated {result.len} fleet management commands " &
             &"({transferCommands.len} transfers, {mergeCommands.len} merges, " &
             &"{result.len - transferCommands.len - mergeCommands.len} detachments)")
+
+## =============================================================================
+## TRANSPORT RELOADING - Send empty transports home to reload marines
+## =============================================================================
+
+type
+  TransportReloadPlan* = object
+    ## Plan to detach empty transports and send them home to reload marines
+    sourceFleetId*: FleetId
+    transportIndices*: seq[int]      # Which transports to detach
+    escortIndices*: seq[int]         # Escort ships to accompany
+    homeColony*: SystemId            # Home colony to reload at
+    currentLocation*: SystemId       # Where fleet currently is
+
+proc identifyEmptyTransportsForReload*(
+  filtered: FilteredGameState,
+  houseId: HouseId
+): seq[TransportReloadPlan] =
+  ## Identify fleets AWAY FROM HOME with empty transports that should return to reload
+  ##
+  ## Strategy:
+  ## - Find fleets NOT at friendly colonies (deployed away from home)
+  ## - Detach empty transports from combat fleets
+  ## - Include 1-2 escort ships for protection
+  ## - Send back to nearest home colony to reload marines
+  ## - Zero-turn operation: detach immediately, Move order next turn
+
+  result = @[]
+
+  for fleet in filtered.ownFleets:
+    # Skip if fleet has fewer than 4 squadrons (need combat ships + transports + escort)
+    if fleet.squadrons.len < 4:
+      continue
+
+    # CRITICAL: Only process fleets AWAY FROM HOME
+    # If at home, they should load marines before leaving (handled elsewhere)
+    var isAtFriendlyColony = false
+    for colony in filtered.ownColonies:
+      if colony.systemId == fleet.location:
+        isAtFriendlyColony = true
+        break
+
+    if isAtFriendlyColony:
+      continue  # Skip fleets at home - they can load marines locally
+
+    # Identify empty transports and available escorts
+    var emptyTransportIndices: seq[int] = @[]
+    var escortIndices: seq[int] = @[]
+    var combatShipCount = 0
+
+    for i, squadron in fleet.squadrons:
+      if squadron.squadronType == SquadronType.Auxiliary:
+        if squadron.flagship.shipClass == ShipClass.TroopTransport:
+          # Check if transport is empty
+          var isEmpty = true
+          if squadron.flagship.cargo.isSome:
+            let cargo = squadron.flagship.cargo.get()
+            if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+              isEmpty = false
+
+          if isEmpty:
+            emptyTransportIndices.add(i)
+
+      elif squadron.squadronType == SquadronType.Combat:
+        # Check ship class - escorts and cruisers can accompany transports
+        if squadron.flagship.shipClass in {ShipClass.Corvette, ShipClass.Frigate, ShipClass.Destroyer,
+                                            ShipClass.Cruiser, ShipClass.LightCruiser, ShipClass.HeavyCruiser}:
+          escortIndices.add(i)
+        else:
+          # Heavy capital ships stay with main fleet
+          combatShipCount += 1
+
+    # Only proceed if:
+    # - At least 1 empty transport
+    # - At least 1 available escort
+    # - Fleet retains at least 2 combat ships (don't gut combat capability)
+    if emptyTransportIndices.len == 0:
+      continue
+
+    if escortIndices.len == 0:
+      continue
+
+    if combatShipCount < 3:  # Need to leave at least 2 combat ships
+      continue
+
+    # Find nearest home colony
+    var nearestHome: Option[SystemId] = none(SystemId)
+    var minDistance = 999
+
+    for colony in filtered.ownColonies:
+      # TODO: Could add check for marine production capacity
+      let pathResult = filtered.starMap.findPath(fleet.location, colony.systemId, fleet)
+      if pathResult.found:
+        let distance = pathResult.path.len
+        if distance < minDistance:
+          minDistance = distance
+          nearestHome = some(colony.systemId)
+
+    if nearestHome.isNone:
+      continue
+
+    # Take 1-2 escorts (prefer smaller ships)
+    let escortsToTake = if escortIndices.len >= 2: escortIndices[0..1] else: @[escortIndices[0]]
+
+    # Create reload plan
+    result.add(TransportReloadPlan(
+      sourceFleetId: fleet.id,
+      transportIndices: emptyTransportIndices,
+      escortIndices: escortsToTake,
+      homeColony: nearestHome.get(),
+      currentLocation: fleet.location
+    ))
+
+    logInfo(LogCategory.lcAI,
+            &"{houseId} Domestikos: Identified {emptyTransportIndices.len} empty transports " &
+            &"at {fleet.location} - will send home to {nearestHome.get()} with {escortsToTake.len} escorts")
+
+proc generateTransportReloadCommands*(
+  filtered: FilteredGameState,
+  houseId: HouseId
+): tuple[commands: seq[ZeroTurnCommand], orders: seq[FleetOrder]] =
+  ## Generate commands to detach empty transports and send them home
+  ##
+  ## Returns:
+  ## - commands: ZeroTurnCommands to detach ships (execute immediately)
+  ## - orders: FleetOrders to move new fleets home (execute next turn)
+
+  result.commands = @[]
+  result.orders = @[]
+
+  let reloadPlans = identifyEmptyTransportsForReload(filtered, houseId)
+
+  for plan in reloadPlans:
+    # Combine transport and escort indices for detachment
+    var allIndicesToDetach = plan.transportIndices & plan.escortIndices
+
+    # Create DetachShips command (zero-turn, executes immediately)
+    let detachCmd = ZeroTurnCommand(
+      houseId: houseId,
+      commandType: ZeroTurnCommandType.DetachShips,
+      sourceFleetId: some(plan.sourceFleetId),
+      shipIndices: allIndicesToDetach,
+      colonySystem: some(plan.currentLocation)
+      # newFleetId will be assigned by engine
+    )
+
+    result.commands.add(detachCmd)
+
+    # NOTE: Cannot issue Move order yet because we don't know the new fleet ID
+    # Engine will assign fleet ID during detachment execution
+    # AI will need to identify the new fleet next turn and issue Move orders then
+
+    logInfo(LogCategory.lcAI,
+            &"{houseId} Domestikos: Detaching {allIndicesToDetach.len} ships from {plan.sourceFleetId} " &
+            &"(transports + escorts) to reload at {plan.homeColony}")

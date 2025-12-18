@@ -194,7 +194,7 @@ proc allocateBudgetToGoals*(
 # Phase 3: GOAP Action → RBA FleetOrder Conversion (CRITICAL)
 # =============================================================================
 
-import ../../../../engine/[fog_of_war, order_types, fleet]
+import ../../../../engine/[fog_of_war, order_types, fleet, squadron]
 import ../../shared/intelligence_types
 import ../../domestikos/fleet_analysis
 
@@ -221,11 +221,19 @@ proc convertGOAPActionToRBAOrder*(
     ActionType.AttackColony
   }
 
+  # CRITICAL: Require marines for invasion/blitz operations
+  # Empty transports are useless for offensive operations
+  let requireMarines = action.actionType in {
+    ActionType.InvadePlanet,
+    ActionType.BlitzPlanet
+  }
+
   let fleetOpt = fleet_analysis.requestFleetForOperation(
     analyses,
     targetSystem,
     requireCombatShips = requireCombat,
-    requireMarines = false  # TODO: Check marine requirements
+    requireMarines = requireMarines,
+    filtered = filtered
   )
 
   if fleetOpt.isNone:
@@ -254,6 +262,35 @@ proc convertGOAPActionToRBAOrder*(
     ))
 
   of ActionType.BlitzPlanet:
+    # CRITICAL: Check for FULLY loaded marines before allowing ground assault
+    # Require full capacity - no partial loads (waste transport space)
+    var transportCapacity = 0
+    var loadedMarines = 0
+    let transportCarryLimit = getShipStats(ShipClass.TroopTransport).carryLimit
+
+    # Look up actual fleet from filtered state (fleet is FleetAnalysis, not Fleet)
+    for actualFleet in filtered.ownFleets:
+      if actualFleet.id == fleet.fleetId:
+        for squadron in actualFleet.squadrons:
+          if squadron.squadronType == SquadronType.Auxiliary:
+            if squadron.flagship.shipClass == ShipClass.TroopTransport:
+              transportCapacity += transportCarryLimit
+              if squadron.flagship.cargo.isSome:
+                let cargo = squadron.flagship.cargo.get()
+                if cargo.cargoType == CargoType.Marines:
+                  loadedMarines += cargo.quantity
+        break
+
+    if transportCapacity == 0 or loadedMarines < transportCapacity:
+      # No loaded marines - downgrade to Bombard
+      return some(FleetOrder(
+        fleetId: fleet.fleetId,
+        orderType: FleetOrderType.Bombard,
+        targetSystem: some(targetSystem),
+        priority: 95,  # High priority but not invasion
+        roe: some(8)   # Bombardment only
+      ))
+
     return some(FleetOrder(
       fleetId: fleet.fleetId,
       orderType: FleetOrderType.Blitz,
@@ -263,6 +300,35 @@ proc convertGOAPActionToRBAOrder*(
     ))
 
   of ActionType.InvadePlanet:
+    # CRITICAL: Check for FULLY loaded marines before allowing ground assault
+    # Require full capacity - no partial loads (waste transport space)
+    var transportCapacity = 0
+    var loadedMarines = 0
+    let transportCarryLimit = getShipStats(ShipClass.TroopTransport).carryLimit
+
+    # Look up actual fleet from filtered state (fleet is FleetAnalysis, not Fleet)
+    for actualFleet in filtered.ownFleets:
+      if actualFleet.id == fleet.fleetId:
+        for squadron in actualFleet.squadrons:
+          if squadron.squadronType == SquadronType.Auxiliary:
+            if squadron.flagship.shipClass == ShipClass.TroopTransport:
+              transportCapacity += transportCarryLimit
+              if squadron.flagship.cargo.isSome:
+                let cargo = squadron.flagship.cargo.get()
+                if cargo.cargoType == CargoType.Marines:
+                  loadedMarines += cargo.quantity
+        break
+
+    if transportCapacity == 0 or loadedMarines < transportCapacity:
+      # No loaded marines - downgrade to Bombard
+      return some(FleetOrder(
+        fleetId: fleet.fleetId,
+        orderType: FleetOrderType.Bombard,
+        targetSystem: some(targetSystem),
+        priority: 95,  # High priority but not invasion
+        roe: some(8)   # Bombardment only
+      ))
+
     return some(FleetOrder(
       fleetId: fleet.fleetId,
       orderType: FleetOrderType.Invade,
