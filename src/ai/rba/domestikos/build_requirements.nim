@@ -861,14 +861,14 @@ proc assessStrategicAssets*(
 
     if totalMarines < targetMarines:
       let neededMarines = targetMarines - totalMarines
-      # Priority based on transport utilization and personality
+      # Priority based on transport utilization and invasion readiness
       let emptyCapacity = transportCapacity - loadedMarineCount
       let marinePriority = if transportCount > 0 and emptyCapacity > 0:
                             RequirementPriority.Critical  # Transports waiting = CRITICAL
-                          elif personality.aggression > 0.6:
-                            RequirementPriority.High  # Aggressive = High
+                          elif wantsInvasionCapability:
+                            RequirementPriority.High  # All invasion-capable houses = High
                           else:
-                            RequirementPriority.Medium
+                            RequirementPriority.Medium  # Defensive only = Medium
 
       let marineReq = BuildRequirement(
         requirementType: RequirementType.StrategicAsset,
