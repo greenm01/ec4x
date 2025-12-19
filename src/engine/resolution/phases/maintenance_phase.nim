@@ -590,24 +590,19 @@ proc resolveMaintenancePhase*(state: var GameState,
   if advancement.isBreakthroughTurn(state.turn):
     logDebug(LogCategory.lcResearch, &"[RESEARCH BREAKTHROUGHS] Turn {state.turn} - rolling for breakthroughs")
     for houseId in state.houses.keys:
-      # Calculate total RP invested in last 5 turns
-      # NOTE: This is a simplified approximation - proper implementation would track historical RP
-      let investedRP = state.houses[houseId].lastTurnResearchERP +
-                       state.houses[houseId].lastTurnResearchSRP +
-                       state.houses[houseId].lastTurnResearchTRP
 
       # Roll for breakthrough
       var rng = initRand(hash(state.turn) xor hash(houseId))
-      let breakthroughOpt = advancement.rollBreakthrough(investedRP * 5, rng)  # Approximate 5-turn total
+      let breakthroughOpt = advancement.rollBreakthrough(rng)  # Approximate 5-turn total
 
       if breakthroughOpt.isSome:
         let breakthrough = breakthroughOpt.get
         logInfo(LogCategory.lcResearch, &"{houseId} BREAKTHROUGH: {breakthrough}")
 
-        # Apply breakthrough effects
+        # Apply breakthrough effects. 50-50 for economic or science breakthrough
         let allocation = res_types.ResearchAllocation(
-          economic: state.houses[houseId].lastTurnResearchERP,
-          science: state.houses[houseId].lastTurnResearchSRP,
+          economic: rng.rand(1..10),
+          science: rng.rand(1..10),
           technology: initTable[TechField, int]()
         )
         let event = advancement.applyBreakthrough(

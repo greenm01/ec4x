@@ -167,18 +167,6 @@ proc processEspionageActions*(
   ## This handles EBP-based espionage actions (TechTheft, Assassination, etc.)
   ## separate from fleet-based espionage orders
 
-  # Initialize espionage tracking for all houses this turn
-  for houseId in state.houses.keys:
-    state.houses[houseId].lastTurnEspionageAttempts = 0
-    state.houses[houseId].lastTurnEspionageSuccess = 0
-    state.houses[houseId].lastTurnEspionageDetected = 0
-    state.houses[houseId].lastTurnTechThefts = 0
-    state.houses[houseId].lastTurnSabotage = 0
-    state.houses[houseId].lastTurnAssassinations = 0
-    state.houses[houseId].lastTurnCyberAttacks = 0
-    state.houses[houseId].lastTurnEBPSpent = 0
-    state.houses[houseId].lastTurnCIPSpent = 0
-
   for houseId in state.houses.keys:
     if houseId notin orders:
       continue
@@ -195,8 +183,6 @@ proc processEspionageActions*(
     if packet.cipInvestment > 0:
       let cipPurchased = esp_engine.purchaseCIP(state.houses[houseId].espionageBudget, packet.cipInvestment)
       state.houses[houseId].treasury -= packet.cipInvestment
-      # Track CIP spending for diagnostics
-      state.houses[houseId].lastTurnCIPSpent += packet.cipInvestment
       logInfo(LogCategory.lcEconomy, &"{houseId} purchased {cipPurchased} CIP for {packet.cipInvestment} PP")
 
     # Step 2: Execute espionage action if present
@@ -221,23 +207,6 @@ proc processEspionageActions*(
     if not esp_engine.spendEBP(state.houses[houseId].espionageBudget, attempt.action):
       logDebug(LogCategory.lcAI, &"{houseId} failed to spend EBP for {attempt.action}")
       continue
-
-    # Track espionage attempt and EBP spent
-    state.houses[houseId].lastTurnEspionageAttempts += 1
-    state.houses[houseId].lastTurnEBPSpent += actionCost
-
-    # Track operation type
-    case attempt.action
-    of esp_types.EspionageAction.TechTheft:
-      state.houses[houseId].lastTurnTechThefts += 1
-    of esp_types.EspionageAction.SabotageLow, esp_types.EspionageAction.SabotageHigh:
-      state.houses[houseId].lastTurnSabotage += 1
-    of esp_types.EspionageAction.Assassination:
-      state.houses[houseId].lastTurnAssassinations += 1
-    of esp_types.EspionageAction.CyberAttack:
-      state.houses[houseId].lastTurnCyberAttacks += 1
-    else:
-      discard  # Other operations not tracked separately
 
     logInfo(LogCategory.lcAI, &"{houseId} executing {attempt.action} against {attempt.target} (cost: {actionCost} EBP)")
 
@@ -265,8 +234,6 @@ proc processEspionageActions*(
 
     # Apply results
     if result.success:
-      # Track success for diagnostics
-      state.houses[houseId].lastTurnEspionageSuccess += 1
       logInfo(LogCategory.lcAI, &"  SUCCESS: {result.description}")
 
       # Apply prestige changes
@@ -355,8 +322,6 @@ proc processEspionageActions*(
           state.houses[attempt.attacker].techTree.accumulated.science += result.srpStolen
           logInfo(LogCategory.lcAI, &"    Stole {result.srpStolen} SRP from {attempt.target}")
     else:
-      # Track detection for diagnostics
-      state.houses[houseId].lastTurnEspionageDetected += 1
       logInfo(LogCategory.lcAI, &"  DETECTED by {attempt.target}")
       # Apply detection prestige penalties
       for prestigeEvent in result.attackerPrestigeEvents:

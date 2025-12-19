@@ -105,7 +105,7 @@ proc collectEparchMetrics*(state: GameState, houseId: HouseId,
   # Population transfers (from Space Guild transfers)
   var thisHouseTransfers = 0
   for transfer in state.populationInTransit:
-    if transfer.owner == houseId:
+    if transfer.houseId == houseId:
       thisHouseTransfers += 1
   result.populationTransfersActive = thisHouseTransfers
 

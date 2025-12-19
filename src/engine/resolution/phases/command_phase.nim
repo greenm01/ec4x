@@ -220,13 +220,9 @@ proc resolveCommandPhase*(state: var GameState,
           state.houses[houseId].techTree.accumulated.technology[field] = 0
         state.houses[houseId].techTree.accumulated.technology[field] += trp
 
-      # Save earned RP to House state for diagnostics tracking
-      state.houses[houseId].lastTurnResearchERP = earnedRP.economic
-      state.houses[houseId].lastTurnResearchSRP = earnedRP.science
       var totalTRP = 0
       for field, trp in earnedRP.technology:
         totalTRP += trp
-      state.houses[houseId].lastTurnResearchTRP = totalTRP
 
       # Log allocations (use SCALED allocation for accurate reporting)
       if scaledAllocation.economic > 0:

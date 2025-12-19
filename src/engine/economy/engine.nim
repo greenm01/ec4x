@@ -157,7 +157,6 @@ proc calculateAndDeductMaintenanceUpkeep*(
     # Deduct maintenance (treasury may have salvage added by cascade)
     state.withHouse(houseId):
       house.treasury -= totalUpkeep
-      house.lastTurnMaintenanceCost = totalUpkeep  # For diagnostics
 
     # Generate MaintenancePaid event
     events.add(resolution_types.GameEvent(
@@ -167,72 +166,6 @@ proc calculateAndDeductMaintenanceUpkeep*(
       description: "Maintenance upkeep paid: " & $totalUpkeep & " PP",
       details: some("MaintenanceUpkeep")
     ))
-
-## Maintenance Phase Resolution (gameplay.md:1.3.4)
-
-proc resolveMaintenancePhase*(colonies: var seq[Colony],
-                             houseFleetData: Table[HouseId, seq[(ShipClass, bool)]],
-                             houseTreasuries: var Table[HouseId, int]): MaintenanceReport =
-  ## Resolve maintenance phase
-  ##
-  ## NOTE: This is a simplified interface that doesn't support full shortfall cascade.
-  ## For full spec compliance, use resolveMaintenancePhaseWithState() which takes GameState.
-  ##
-  ## Steps:
-  ## 1. Advance construction projects
-  ## 2. Calculate fleet/building upkeep
-  ## 3. Deduct from treasuries
-  ## 4. Apply repairs (if treasury allows)
-  ##
-  ## Args:
-  ##   colonies: All colonies (modified for construction)
-  ##   houseFleetData: Fleet composition per house (ship class, is crippled)
-  ##   houseTreasuries: House treasuries (modified for upkeep)
-
-  result = MaintenanceReport(
-    turn: 0,  # NOTE: Legacy interface - turn tracking in GameState version
-    completedProjects: @[],
-    houseUpkeep: initTable[HouseId, int](),
-    repairsApplied: @[]
-  )
-
-  # Calculate upkeep per house
-  for houseId, fleetData in houseFleetData:
-    let fleetUpkeep = calculateFleetMaintenance(fleetData)
-
-    # NOTE: Building maintenance not included in this legacy interface
-    # Use resolveMaintenancePhaseWithState() for full colony upkeep
-    let totalUpkeep = fleetUpkeep
-
-    result.houseUpkeep[houseId] = totalUpkeep
-
-    # Deduct from treasury
-    if houseId in houseTreasuries:
-      # Check for shortfall BEFORE deduction (economy.md:3.11)
-      let treasury = houseTreasuries[houseId]
-      if treasury < totalUpkeep:
-        # Insufficient funds - just zero treasury (full cascade needs GameState)
-        # This path taken when called from simplified interface
-        houseTreasuries[houseId] = 0
-        # WARNING: Proper shortfall cascade (fleet disbanding, prestige penalty)
-        # requires full GameState. This simplified version only zeroes treasury.
-      else:
-        # Full payment - deduct normally
-        houseTreasuries[houseId] -= totalUpkeep
-
-  # Advance construction (upfront payment model - no PP allocation needed)
-  for colony in colonies.mitems:
-    if colony.underConstruction.isSome:
-      # Construction advances one turn per maintenance phase
-      # Payment was already made upfront when construction started
-      let completed = advanceConstruction(colony)
-      if completed.isSome:
-        result.completedProjects.add(completed.get())
-
-  # NOTE: Infrastructure repairs not implemented in this legacy interface
-  # Repair system requires full GameState for damage tracking and PP allocation
-
-  return result
 
 proc tickConstructionAndRepair*(
   state: var GameState,
