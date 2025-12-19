@@ -154,13 +154,13 @@ Explicit orders that execute until completed or overridden:
 | 02  | Seek home               | None                                     |
 | 03  | Patrol a System         | None                                     |
 | 04  | Guard a Starbase        | Combat ship(s)                           |
-| 05  | Guard a Planet          | Combat ship(s)                           |
-| 06  | Blockade a Planet       | Combat ship(s)                           |
-| 07  | Bombard a Planet        | Combat ship(s)                           |
-| 08  | Invade a Planet         | Combat ship(s) & loaded Troop Transports |
-| 09  | Blitz a Planet          | Loaded Troop Transports                  |
+| 05  | Guard a Colony          | Combat ship(s)                           |
+| 06  | Blockade a Colony       | Combat ship(s)                           |
+| 07  | Bombard a Colony        | Combat ship(s)                           |
+| 08  | Invade a Colony         | Combat ship(s) & loaded Troop Transports |
+| 09  | Blitz a Colony          | Loaded Troop Transports                  |
 | 10  | Colonize a Planet       | One ETAC                                 |
-| 11  | Spy on a Planet         | Scout-only fleet (1+ scout squadrons)    |
+| 11  | Spy on a Colony         | Scout-only fleet (1+ scout squadrons)    |
 | 12  | Spy on a System         | Scout-only fleet (1+ scout squadrons)    |
 | 13  | Hack a Starbase         | Scout-only fleet (1+ scout squadrons)    |
 | 14  | Join another Fleet      | None                                     |
@@ -169,7 +169,7 @@ Explicit orders that execute until completed or overridden:
 | 17  | Place on Reserve        | At friendly colony                       |
 | 18  | Mothball Fleet          | At friendly colony with Spaceport        |
 | 19  | Reactivate Fleet        | Reserve or Mothballed fleet              |
-| 20  | View a World            | Any ship type                            |
+| 20  | View a Planet           | Any ship type                            |
 
 ### 6.3.2 Hold Position (00)
 
@@ -216,23 +216,23 @@ Station your fleet at an orbiting starbase for defensive operations. Your fleet 
 - Create fortified defensive positions
 - Support starbase fire during orbital combat
 
-### 6.3.7 Guard Planet (05)
+### 6.3.7 Guard Colony (05)
 
-Deploy your fleet to defend a friendly planet. Your fleet maintains low orbit, participating in orbital combat to protect the colony.
+Deploy your fleet to defend a friendly colony. Your fleet maintains low orbit, participating in orbital combat to protect the colony.
 
 **Use Guard Planet to:**
 - Defend high-value colonies from bombardment
 - Support ground forces during invasion attempts
 
-### 6.3.8 Blockade a Planet (06)
+### 6.3.8 Blockade a Colony (06)
 
 Deploy your fleet to blockade an enemy planet. Your fleet maintains low orbit, participating in orbital combat and engaging in economic warfare.
 
 **Use Blockade to:**
-- Establish orbital blockades cutting enemy production
+- Establish orbital blockades cutting enemy colony production
 - Prevent enemy reinforcements from landing
 
-### 6.3.9 Bombard a Planet (07)
+### 6.3.9 Bombard a Colony (07)
 
 Order devastating orbital bombardment of enemy colonies. Your fleet systematically destroys infrastructure, reducing the colony's industrial capacity and effectiveness.
 
@@ -298,7 +298,7 @@ Order ETACs (Enhanced Terrestrial Administrative Carriers) with Population Trans
   - Ship is removed from game (one-time consumable)
   - Build new ETACs at established colonies to continue expansion
 
-### 6.3.13 Spy on a Planet (11)
+### 6.3.13 Spy on a Colony (11)
 
 Deploy a Scout fleet on a one-way mission to gather detailed intelligence on an enemy colony. All Scouts in the fleet are consumed in the attempt, regardless of outcome.
 
@@ -451,9 +451,9 @@ Reactivate Reserve or Mothballed fleets to Active status. Your fleet returns to 
 - Respond to emerging threats
 - Return mothballed fleets to operational status
 
-### 6.3.22 View a World (20)
+### 6.3.22 View a Planet (20)
 
-Send a fleet to perform long-range reconnaissance from the edge of a solar system. This is a primary, non-consumable mission for Scouts, allowing them to gather basic intelligence without being detected or destroyed.
+Send a fleet to perform long-range reconnaissance on a planet from the edge of a solar system. This is a primary, non-consumable mission for Scouts, allowing them to gather basic intelligence without being detected or destroyed.
 
 **Intelligence Gathered:**
 - **Planet Owner**: Which house controls the colony (if colonized).

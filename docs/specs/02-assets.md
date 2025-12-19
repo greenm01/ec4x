@@ -2,9 +2,9 @@
 
 ## 2.1 Star Map
 
-The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedurally generated jump lanes. The map is sized by rings around the center hub: one ring per player plus the center hub system at ring 0. For example, a 4-player game has 4 rings (rings 1-4) plus the center hub at ring 0. The center hub is guaranteed to have six lanes of travel.
+The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedurally generated jump lanes. The map is sized by rings around the center hub: one ring per player plus the center hub system. The center hub is guaranteed to have six lanes of travel.
 
-Solar systems have special traits and are procedurally generated. They are filled with planets, moons, and gas giants that are variable in their suitability for colonization and production.
+Solar systems have special traits and are procedurally generated. They each contain a single planet that is suitable for colonization.
 
 **Jump Lane Classes**
 
@@ -30,7 +30,7 @@ The hub is guaranteed to have six jump lanes connecting it to the first ring, ma
 
 <!-- HOMEWORLD_PLACEMENT_START -->
 
-Player homeworlds are placed throughout the map using distance maximization algorithms. The generator ensures each homeworld is as far as strategically possible from rival home systems, creating balanced starting positions while introducing natural asymmetry in the tactical landscape. Unlike traditional hex-ring maps where homeworlds are predictably on the outer edge, this system allows homeworlds on any ring for unpredictable, varied starting scenarios.
+Player homeworlds are placed throughout the map using distance maximization algorithms. The generator ensures each homeworld is as far as strategically possible from rival home systems, creating balanced starting positions while introducing natural asymmetry in the tactical landscape. This distribution allows homeworlds on any ring for unpredictable, varied starting scenarios.
 
 Each homeworld is guaranteed to have exactly 3 **Major lanes** connecting it to adjacent systems, ensuring reliable colonization paths and fleet movement from the start.
 
@@ -238,9 +238,9 @@ Each FS contributes:
 
 Fighters are fragile but cost-effective. A mature colony can field dozens of squadrons, making direct assault prohibitively expensive.
 
-### 2.4.2 Spy Scouts
+### 2.4.2 Scouts
 
-Scouts are specialized auxiliary ships for espionage and reconnaissance. They are non-combat units that operate in **Scout-only fleets**. This allows you to move them to strategic locations and group them together before a mission.
+Scouts are autonmous auxiliary ships that specialize in espionage and reconnaissance. They are non-combat units that operate in **Scout-only fleets**. This allows you to move them to strategic locations and group them together before a mission.
 
 They have two primary functions:
 1.  **Reconnaissance (Non-Consumable)**: Using the `View a World` order, a Scout can gather basic intelligence on a system from a safe distance without being consumed.
