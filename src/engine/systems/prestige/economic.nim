@@ -2,10 +2,10 @@
 ##
 ## Prestige modifiers from taxation and blockades
 
-import types
+import ../../types/prestige as types
 import sources
 import events
-import ../config/prestige_multiplier
+import ../../config/prestige_multiplier
 
 proc applyTaxPrestige*(houseId: HouseId, colonyCount: int, taxRate: int): PrestigeEvent =
   ## Apply prestige bonus from low tax rate

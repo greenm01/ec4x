@@ -5,9 +5,9 @@
 ## DoD Principle: Pure functions operating on GameState data
 
 import std/tables
-import ../../../common/types/core
-import ../../gamestate
-import ../../starmap
+import ../../../../common/types/core
+import ../../../gamestate
+import ../../../starmap
 
 proc hasFleetInSystem*(
   state: GameState,

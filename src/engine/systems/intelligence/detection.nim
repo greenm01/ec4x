@@ -9,8 +9,8 @@
 ## - Reduced from 357 lines → 259 lines (27% reduction)
 
 import std/[math, random, sequtils, options, strutils]
-import ../squadron
-import ../config/espionage_config
+import ../../squadron
+import ../../config/espionage_config
 
 export Option
 

@@ -14,11 +14,11 @@
 ## - economy/facility_queue.nim: "Queue management" (advancement, completion)
 
 import math
-import types
-import ../../common/types/units
-import ../gamestate  # For Colony type (IU cost calculations)
+import ../../types/economy as types
+import ../../../common/types/units
+import ../../gamestate  # For Colony type (IU cost calculations)
 import config_accessors  # DoD refactoring: macro-generated config accessors
-import ../config/economy_config  # For IU base cost
+import ../../config/economy_config  # For IU base cost
 
 export types.ConstructionProject, types.CompletedProject, types.ConstructionType
 export config_accessors.getShipConstructionCost, config_accessors.getShipBaseBuildTime

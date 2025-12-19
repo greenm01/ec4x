@@ -9,7 +9,8 @@
 ## - This module now only handles detection and re-exports
 
 import std/random
-import types, action_descriptors, executor
+import ../../types/espionage as types
+import action_descriptors, executor
 
 export types, action_descriptors, executor
 

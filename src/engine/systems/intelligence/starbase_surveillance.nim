@@ -10,12 +10,12 @@
 ## - Crippled starbases: No surveillance capability
 
 import std/[tables, options, strutils, random, hashes]
-import types as intel_types
+import ../../types/intelligence as intel_types
 import corruption
-import ../gamestate, ../fleet, ../squadron
-import ../espionage/types as esp_types
-import ../resolution/[types as res_types]
-import ../resolution/event_factory/[intelligence as event_factory]
+import ../../gamestate, ../../fleet, ../../squadron
+import ../../types/espionage as esp_types
+import ../../types/resolution as res_types
+import ../events/event_factory/intelligence as event_factory
 
 proc performStealthCheck*(
   stealthLevel: int,

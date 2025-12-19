@@ -3,9 +3,9 @@
 ## Evaluate victory conditions and determine game winner
 
 import std/[tables, algorithm, options]
-import types
-import ../gamestate
-import ../../common/types/core
+import ../../types/victory as types
+import ../../gamestate
+import ../../../common/types/core
 
 export types
 

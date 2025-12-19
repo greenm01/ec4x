@@ -5,9 +5,9 @@
 ## DoD Principle: Data (events/state) inspected by visibility rules
 
 import std/options
-import ../../../common/types/core
-import ../../resolution/types as res_types
-import ../../gamestate
+import ../../../../common/types/core
+import ../../../types/resolution as res_types
+import ../../../gamestate
 import ./helpers
 
 proc shouldHouseSeeEvent*(

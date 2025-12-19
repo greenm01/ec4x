@@ -4,11 +4,11 @@
 ## Per espionage PlantDisinformation action - corrupts intel with 20-40% variance
 
 import std/[random, options]
-import ../../common/types/core
-import ../espionage/types as esp_types
-import ../diplomacy/types as dip_types
-import ../config/diplomacy_config
-import types as intel_types
+import ../../../common/types/core
+import ../../types/espionage as esp_types
+import ../../types/diplomacy as dip_types
+import ../../config/diplomacy_config
+import ../../types/intelligence as intel_types
 
 ## Corruption Detection
 

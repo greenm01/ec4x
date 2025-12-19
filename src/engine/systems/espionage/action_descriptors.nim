@@ -3,8 +3,8 @@
 ## Data-oriented design: Extract action-specific data from execution logic
 ## This eliminates 93% code duplication in engine.nim (448 lines → ~30 lines)
 
-import types
-import ../config/[prestige_config, espionage_config]
+import ../../types/espionage as types
+import ../../config/[prestige_config, espionage_config]
 
 export types
 

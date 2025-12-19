@@ -2,7 +2,7 @@
 ## Created to avoid circular dependencies between gamestate and orders modules
 
 import std/options
-import ../common/types/[core, planets]
+import ../../common/types/[core, planets]
 
 type
   FleetOrderType* {.pure.} = enum
