@@ -6,11 +6,11 @@
 ## Based on EC4X specifications Section 7.0 Combat (operations.md)
 
 import std/[options, sequtils]
-import ../../types/combat as types
-import cer, targeting, damage
-import ../../../common/types/[core, units, combat as commonCombat]
-import ../../../common/logger
-import ../../squadron
+import ../../../types/combat as types
+import ./cer, ./targeting, ./damage
+import ../../../../common/types/[core, units, combat as commonCombat]
+import ../../../../common/logger
+import ../../../squadron
 
 export CombatSquadron, TaskForce
 

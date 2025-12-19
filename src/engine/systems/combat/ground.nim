@@ -9,12 +9,12 @@
 ## - Section 2.4.8: Planet-Breaker shield penetration
 
 import std/[options, sequtils, math]
-import ../../types/combat as types
-import cer
-import ../../../common/types/[core, units, combat as commonCombat]
-import ../../squadron
-import ../../config/combat_config
-import ../../config/ground_units_config
+import ../../../types/combat as types
+import ./cer
+import ../../../../common/types/[core, units, combat as commonCombat]
+import ../../../squadron
+import ../../../config/combat_config
+import ../../../config/ground_units_config
 
 export CombatState
 

@@ -5,7 +5,7 @@
 ## (Section 7.3.4, 7.3.5)
 
 import std/[algorithm, strutils, options]
-import ../../types/combat as types
+import ../../../types/combat as types
 
 export RetreatEvaluation
 

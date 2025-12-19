@@ -12,10 +12,10 @@
 ## - Requires shipyard with available docks
 
 import std/[tables, options, sequtils]
-import ../common/types/[core, units]
-import squadron, fleet, gamestate
-import economy/types as econ_types
-import config/[military_config, construction_config, ships_config, facilities_config]
+import ../../common/types/[core, units]
+import ../squadron, ../fleet, ../gamestate
+import ../types/economy as econ_types
+import ../config/[military_config, construction_config, ships_config, facilities_config]
 
 export HouseId, SystemId, FleetId, ShipClass
 

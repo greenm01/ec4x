@@ -8,16 +8,16 @@
 ##   import resolution/event_factory
 ##   events.add(event_factory.shipCommissioned(houseId, shipClass, systemId))
 
-import commissioning
-import military
-import economic
-import orders
-import intelligence
-import victory
-import prestige
-import diplomatic
-import alerts
-import fleet_ops
+import ./commissioning
+import ./military
+import ./economic
+import ./orders
+import ./intelligence
+import ./victory
+import ./prestige
+import ./diplomatic
+import ./alerts
+import ./fleet_ops
 
 export commissioning
 export military

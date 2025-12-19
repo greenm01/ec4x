@@ -8,19 +8,21 @@
 ## - Retreat processing and automated Seek Home
 
 import std/[tables, options, sequtils, hashes, math, random, strformat]
-import ../../common/[types/core, types/combat, types/units, logger as common_logger]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../logger
-import ../index_maintenance
-import ../combat/[engine as combat_engine, types as combat_types, ground]
-import ../economy/[types as econ_types, facility_damage]
-import ../prestige
+import ../../common/[logger as common_logger, types/core, types/combat,
+                    types/units]
+import ../gamestate, ../index_maintenance, ../logger, ../orders, ../fleet,
+       ../squadron
+import ../systems/combat/[engine as combat_engine, types as combat_types, ground]
+import ../systems/economy/[types as econ_types, facility_damage]
+import ../systems/prestige/main as prestige
 import ../config/[prestige_multiplier, prestige_config, facilities_config]
-import ../diplomacy/[types as dip_types, engine as dip_engine]
-import ../intelligence/diplomatic_intel
-import ./types  # Common resolution types
-import ./fleet_orders  # For findClosestOwnedColony, resolveMovementOrder
-import ./event_factory/init as event_factory
-import ../intelligence/[types as intel_types, combat_intel]
+import ../types/diplomacy as dip_types
+import ../systems/diplomacy/engine as dip_engine
+import ../systems/intelligence/diplomatic_intel
+import ./types # Common resolution types
+import ./fleet_orders # For findClosestOwnedColony, resolveMovementOrder
+import ../systems/events/event_factory/init as event_factory
+import ../systems/intelligence/[types as intel_types, combat_intel]
 
 proc applySpaceLiftScreeningLosses(
   state: var GameState,

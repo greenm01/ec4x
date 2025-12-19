@@ -4,7 +4,7 @@
 ## destruction protection rules for EC4X combat (Section 7.3.3)
 
 import std/options
-import ../../types/combat as types
+import ../../../types/combat as types
 
 export CombatState, StateChange
 

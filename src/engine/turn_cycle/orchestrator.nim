@@ -93,22 +93,26 @@
 ## - Auto-repair and new builds see accurate available capacity
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
-import ../common/types/core
-import ../common/logger as common_logger
-import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders, logger
-import index_maintenance
-import espionage/[types as esp_types, engine as esp_engine]
-import diplomacy/[types as dip_types] # Renamed to avoid conflict with gamestate.diplomacy
-import research/[types as res_types_research]
-import commands/[executor]
-import intelligence/[spy_resolution]
-import intelligence/event_processor/init as event_processor
-import economy/repair_queue
+import ../../common/types/core
+import ../../common/logger as common_logger
+import ../gamestate, ../orders, ../fleet, ../squadron, ../ai_special_modes,
+       ../standing_orders, ../logger, ../index_maintenance
+import ../types/espionage as esp_types
+import ../systems/espionage/engine as esp_engine
+import ../types/diplomacy as dip_types # Renamed to avoid conflict with gamestate.diplomacy
+import ../types/research as res_types_research
+import ../systems/orders/executor
+import ../systems/intelligence/spy_resolution
+import ../systems/intelligence/event_processor/init as event_processor
+import ../systems/economy/repair_queue
 # Import resolution modules
-import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_espionage, commissioning, automation, construction]
-import resolution/phases/[conflict_phase, income_phase, command_phase, maintenance_phase]
-import prestige as prestige_types
-import prestige/application as prestige_app
+import ../resolution/[types as res_types, fleet_orders, economy_resolution,
+                     diplomatic_resolution, combat_resolution, simultaneous,
+                     simultaneous_planetary, simultaneous_espionage,
+                     commissioning, automation, construction]
+import ./[conflict_phase, income_phase, command_phase, maintenance_phase]
+import ../systems/prestige/types as prestige_types
+import ../systems/prestige/application as prestige_app
 import ../ai/rba/config as rba_config  # For act progression config
 
 # Import debug-only modules
