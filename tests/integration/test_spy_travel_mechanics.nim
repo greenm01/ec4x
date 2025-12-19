@@ -79,7 +79,7 @@ suite "Spy Scout Travel Mechanics":
 
   test "Scout travels through jump lanes (not instant teleport)":
     # Create a fleet with one Scout at system 0
-    let scout = newEnhancedShip(ShipClass.Scout, techLevel = 1)
+    let scout = newShip(ShipClass.Scout, techLevel = 1)
     var squadron = newSquadron(scout, "sq1", "house1", 0u)
     var fleet = newFleet(squadrons = @[squadron], id = "fleet1", owner = "house1", location = 0u)
     state.fleets["fleet1"] = fleet
@@ -124,13 +124,13 @@ suite "Spy Scout Travel Mechanics":
   test "Scout merging provides mesh network ELI bonuses":
     # Create three separate scout fleets at system 0
     for i in 0..2:
-      let scout = newEnhancedShip(ShipClass.Scout, techLevel = 2)
+      let scout = newShip(ShipClass.Scout, techLevel = 2)
       var squadron = newSquadron(scout, "sq" & $i, "house1", 0u)
       var fleet = newFleet(squadrons = @[squadron], id = "fleet" & $i, owner = "house1", location = 0u)
       state.fleets["fleet" & $i] = fleet
 
     # Create a capital ship fleet to merge with
-    let capital = newEnhancedShip(ShipClass.Battleship, techLevel = 2)
+    let capital = newShip(ShipClass.Battleship, techLevel = 2)
     var capSquad = newSquadron(capital, "capsq", "house1", 0u)
     var capFleet = newFleet(squadrons = @[capSquad], id = "capfleet", owner = "house1", location = 0u)
     state.fleets["capfleet"] = capFleet
@@ -369,7 +369,7 @@ suite "Spy Scout Travel Mechanics":
     )
 
     # Create hostile house2 fleet at system 2 (should NOT fight spy scout)
-    let capital = newEnhancedShip(ShipClass.Battleship, techLevel = 3)
+    let capital = newShip(ShipClass.Battleship, techLevel = 3)
     var squadron = newSquadron(capital, "sq1", "house2", 2u)
     var fleet = newFleet(squadrons = @[squadron], id = "fleet2", owner = "house2", location = 2u)
     state.fleets["fleet2"] = fleet

@@ -15,7 +15,7 @@ proc testBasicBombardment*() =
   # Create attacking fleet: 3 Battleships (AS=20 each)
   var attackingFleet: seq[CombatSquadron] = @[]
   for i in 1..3:
-    let battleship = newEnhancedShip(ShipClass.Battleship, techLevel = 1)
+    let battleship = newShip(ShipClass.Battleship, techLevel = 1)
     let squadron = newSquadron(battleship, id = fmt"sq-att-{i}", owner = "house-alpha", location = 1)
     attackingFleet.add(CombatSquadron(
       squadron: squadron,
@@ -64,7 +64,7 @@ proc testBombardmentWithShields*() =
   # Create attacking fleet: 2 Cruisers (AS=8 each)
   var attackingFleet: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-att-{i}", owner = "house-alpha", location = 1)
     attackingFleet.add(CombatSquadron(
       squadron: squadron,
@@ -104,7 +104,7 @@ proc testPlanetBreakerShieldBypass*() =
   # Create mixed fleet: 1 Planet-Breaker + 1 Battleship
   var attackingFleet: seq[CombatSquadron] = @[]
 
-  let pb = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 10)
+  let pb = newShip(ShipClass.PlanetBreaker, techLevel = 10)
   let pbSquadron = newSquadron(pb, id = "sq-pb", owner = "house-alpha", location = 1)
   attackingFleet.add(CombatSquadron(
     squadron: pbSquadron,
@@ -115,7 +115,7 @@ proc testPlanetBreakerShieldBypass*() =
     targetWeight: 1.0
   ))
 
-  let bs = newEnhancedShip(ShipClass.Battleship, techLevel = 1)
+  let bs = newShip(ShipClass.Battleship, techLevel = 1)
   let bsSquadron = newSquadron(bs, id = "sq-bs", owner = "house-alpha", location = 1)
   attackingFleet.add(CombatSquadron(
     squadron: bsSquadron,
@@ -192,7 +192,7 @@ proc testPlanetaryBlitz*() =
 
   # Create fleet with Marines
   var attackingFleet: seq[CombatSquadron] = @[]
-  let destroyer = newEnhancedShip(ShipClass.Destroyer, techLevel = 1)
+  let destroyer = newShip(ShipClass.Destroyer, techLevel = 1)
   let squadron = newSquadron(destroyer, id = "sq-att-1", owner = "house-alpha", location = 1)
   attackingFleet.add(CombatSquadron(
     squadron: squadron,

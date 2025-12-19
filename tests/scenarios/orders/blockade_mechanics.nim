@@ -110,7 +110,7 @@ proc scenario_BlockadeEngagementRules*() =
 
   var blockaderA: seq[CombatSquadron] = @[]
   for i in 1..3:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-alpha-blockade-{i}", owner = "house-alpha", location = 1)
     blockaderA.add(CombatSquadron(
       squadron: squadron,
@@ -123,7 +123,7 @@ proc scenario_BlockadeEngagementRules*() =
 
   var blockaderB: seq[CombatSquadron] = @[]
   for i in 1..3:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-beta-blockade-{i}", owner = "house-beta", location = 1)
     blockaderB.add(CombatSquadron(
       squadron: squadron,

@@ -4,7 +4,7 @@
 ## cargo management, and squadron management
 
 import std/[unittest, tables, options, strutils]
-import ../../src/engine/[gamestate, orders, fleet, squadron, ship, spacelift]
+import ../../src/engine/[gamestate, orders, fleet, squadron, spacelift]
 import ../../src/engine/commands/zero_turn_commands
 import ../../src/engine/economy/types as econ_types
 import ../../src/engine/research/types as res_types
@@ -104,8 +104,8 @@ suite "Zero-Turn Commands: Fleet Operations":
     )
 
     # Create a fleet with 2 ships
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
-    let destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
+    let destroyer2 = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer1, id = "S1", owner = "H1", location = 1)
     discard sq1.addShip(destroyer2)
 
@@ -147,7 +147,7 @@ suite "Zero-Turn Commands: Fleet Operations":
     var state = createFleetTestState()
 
     # Create second fleet
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq2 = newSquadron(cruiser, id = "S2", owner = "H1", location = 1)
 
     state.fleets["F2"] = Fleet(
@@ -303,13 +303,13 @@ suite "Zero-Turn Commands: TransferShips":
     )
 
     # Create source fleet with 2 squadrons (total 4 ships)
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
-    let destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
+    let destroyer2 = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer1, id = "S1", owner = "H1", location = 1)
     discard sq1.addShip(destroyer2)
 
-    let cruiser1 = newEnhancedShip(ShipClass.Cruiser)
-    let cruiser2 = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser1 = newShip(ShipClass.Cruiser)
+    let cruiser2 = newShip(ShipClass.Cruiser)
     var sq2 = newSquadron(cruiser1, id = "S2", owner = "H1", location = 1)
     discard sq2.addShip(cruiser2)
 
@@ -453,7 +453,7 @@ suite "Zero-Turn Commands: Edge Cases":
       shipyards: @[]
     )
 
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer1, id = "S1", owner = "H1", location = 1)
 
     result.fleets["F1"] = Fleet(
@@ -472,7 +472,7 @@ suite "Zero-Turn Commands: Edge Cases":
     var state = createEdgeCaseState()
 
     # Create enemy fleet
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq2 = newSquadron(cruiser, id = "S2", owner = "H2", location = 1)
 
     state.fleets["F2"] = Fleet(
@@ -500,7 +500,7 @@ suite "Zero-Turn Commands: Edge Cases":
     var state = createEdgeCaseState()
 
     # Create second fleet
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq2 = newSquadron(cruiser, id = "S2", owner = "H1", location = 1)
 
     state.fleets["F2"] = Fleet(

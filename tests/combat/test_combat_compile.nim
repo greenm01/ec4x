@@ -11,7 +11,7 @@ import combat_generator
 echo "Testing imports..."
 
 # Test basic type creation
-let flagship = newEnhancedShip(ShipClass.Battleship, techLevel = 1, name = "Test Ship")
+let flagship = newShip(ShipClass.Battleship, techLevel = 1, name = "Test Ship")
 echo "Created ship: ", flagship
 
 let sq = newSquadron(flagship, id = "sq-1", owner = "house-test", location = 0)

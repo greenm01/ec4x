@@ -20,7 +20,7 @@
 import std/[tables, strutils, algorithm, options, math]
 import ./types
 import ../../gamestate
-import ../../squadron  # For newEnhancedShip
+import ../../squadron  # For newShip
 import ../../config/military_config  # For capital_ship_cr_threshold
 import ../types as econ_types  # For ConstructionType, ConstructionProject
 import ../../../common/types/core
@@ -80,7 +80,7 @@ proc isCapitalShip*(shipClass: ShipClass): bool =
   ## Determined by ship_role field in config/ships.toml
 
   # Get ship stats from global ship data
-  let ship = squadron.newEnhancedShip(shipClass, techLevel = 1)
+  let ship = squadron.newShip(shipClass, techLevel = 1)
 
   return ship.stats.role == ShipRole.Capital
 
@@ -197,7 +197,7 @@ proc prioritizeSquadronsForRemoval(state: GameState, houseId: core.HouseId): seq
 proc calculateSalvageValue*(shipClass: ShipClass): int =
   ## Calculate salvage value for a ship (50% of build cost)
   ## Space Guilds pay fair market value for excess capital ships
-  let ship = squadron.newEnhancedShip(shipClass, techLevel = 1)
+  let ship = squadron.newShip(shipClass, techLevel = 1)
   let salvageMultiplier = military_config.globalMilitaryConfig.salvage.salvage_value_multiplier
   return int(float(ship.stats.buildCost) * salvageMultiplier)
 

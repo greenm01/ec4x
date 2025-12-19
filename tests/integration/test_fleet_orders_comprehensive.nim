@@ -4,7 +4,7 @@
 ## This file provides validation, integration, and mechanics testing for all fleet orders
 
 import std/[unittest, tables, options, strformat, strutils]
-import ../../src/engine/[gamestate, starmap, fleet, ship, squadron, orders, resolve]
+import ../../src/engine/[gamestate, starmap, fleet, squadron, orders, resolve]
 import ../../src/engine/commands/executor
 import ../../src/common/types/[core, units, combat]
 import ../../src/common/[hex, system]
@@ -119,7 +119,7 @@ suite "Fleet Orders: Complete Integration Tests":
     var state = createTestGameState()
 
     # Create test fleet
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -150,7 +150,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 01: Move - basic movement":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -180,7 +180,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 02: SeekHome - finds closest friendly colony":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -211,7 +211,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 03: Patrol - sets patrol status":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -242,7 +242,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 04: GuardStarbase - requires combat ships":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -273,7 +273,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 05: GuardPlanet - defends colony":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -300,7 +300,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 05: BlockadePlanet - blockades enemy colony":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -331,7 +331,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 06: Bombard - requires combat ships":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -362,7 +362,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 07: Invade - requires combat ships and transports":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
 
     # Add troop transport as spacelift ship
@@ -448,7 +448,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 09: SpyPlanet - requires scout squadron":
     var state = createTestGameState()
 
-    let scout = newEnhancedShip(ShipClass.Scout)
+    let scout = newShip(ShipClass.Scout)
     var sq = newSquadron(scout)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -481,7 +481,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 10: HackStarbase - requires scout squadron":
     var state = createTestGameState()
 
-    let scout = newEnhancedShip(ShipClass.Scout)
+    let scout = newShip(ShipClass.Scout)
     var sq = newSquadron(scout)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -514,7 +514,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 11: SpySystem - requires scout squadron":
     var state = createTestGameState()
 
-    let scout = newEnhancedShip(ShipClass.Scout)
+    let scout = newShip(ShipClass.Scout)
     var sq = newSquadron(scout)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -588,7 +588,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 13: JoinFleet - merges fleets at same location":
     var state = createTestGameState()
 
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer1)
     let fleet1 = Fleet(
       id: "fleet-1",
@@ -599,7 +599,7 @@ suite "Fleet Orders: Complete Integration Tests":
       status: FleetStatus.Active
     )
 
-    let destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer2 = newShip(ShipClass.Destroyer)
     var sq2 = newSquadron(destroyer2)
     let fleet2 = Fleet(
       id: "fleet-2",
@@ -632,7 +632,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 14: Rendezvous - coordinates fleet movement":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -662,7 +662,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 15: Salvage - recovers 50% PC at friendly colony":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -693,7 +693,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 16: Reserve - places fleet on reserve status":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -721,7 +721,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 16: Reserve - auto-seeks friendly colony when not at one":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -754,7 +754,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 17: Mothball - requires spaceport":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -786,7 +786,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 18: Reactivate - returns reserve fleet to active":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     var testFleet = Fleet(
       id: "fleet-1",
@@ -813,7 +813,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Order 18: Reactivate - returns mothballed fleet to active":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     var testFleet = Fleet(
       id: "fleet-1",
@@ -844,7 +844,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Reserve fleet cannot move":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     var testFleet = Fleet(
       id: "fleet-1",
@@ -871,7 +871,7 @@ suite "Fleet Orders: Complete Integration Tests":
   test "Mothballed fleet cannot move":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     var testFleet = Fleet(
       id: "fleet-1",

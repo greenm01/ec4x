@@ -7,7 +7,7 @@ import ../src/common/types/[core, units, combat]
 # Recreate exact scenario from roe_retreat.nim scenario 1
 var smallFleet: seq[CombatSquadron] = @[]
 for i in 1..2:
-  let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+  let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
   let squadron = newSquadron(cruiser, id = fmt"sq-small-{i}", owner = "house-defender", location = 1)
   smallFleet.add(CombatSquadron(
     squadron: squadron,
@@ -20,7 +20,7 @@ for i in 1..2:
 
 var largeFleet: seq[CombatSquadron] = @[]
 for i in 1..6:
-  let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+  let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
   let squadron = newSquadron(cruiser, id = fmt"sq-large-{i}", owner = "house-attacker", location = 1)
   largeFleet.add(CombatSquadron(
     squadron: squadron,

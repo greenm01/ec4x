@@ -13,9 +13,6 @@ import squadron
 import ../common/types/[core, combat]
 import std/[algorithm, strutils, options]
 
-# Import getShipStats for migration
-from squadron import getShipStats
-
 export FleetId, SystemId, HouseId, LaneType, FleetMissionState
 export Squadron, Ship, ShipClass  # Export for fleet users
 export SquadronType, ShipCargo, CargoType  # Export squadron classification and cargo types

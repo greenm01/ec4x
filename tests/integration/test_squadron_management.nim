@@ -31,13 +31,13 @@ suite "Squadron Management (ZeroTurnCommand)":
     )
 
     # Create squadrons
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer1, id = "sq1", owner = "house1", location = 1)
 
-    let destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer2 = newShip(ShipClass.Destroyer)
     var sq2 = newSquadron(destroyer2, id = "sq2", owner = "house1", location = 1)
 
-    let cruiser1 = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser1 = newShip(ShipClass.Cruiser)
     var sq3 = newSquadron(cruiser1, id = "sq3", owner = "house1", location = 1)
 
     result.colonies[1] = Colony(
@@ -106,7 +106,7 @@ suite "Squadron Management (ZeroTurnCommand)":
     var state = createTestState()
 
     # Create an existing fleet with sq1
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq1 = state.colonies[1].unassignedSquadrons[0]
 
     state.fleets["fleet1"] = Fleet(
@@ -173,14 +173,14 @@ suite "Squadron Management (ZeroTurnCommand)":
     )
 
     # Create two fleets with squadrons
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
     var sourceSquad = newSquadron(destroyer1, id = "source-sq", owner = "house1", location = 1)
 
     # Add an extra ship to source squadron
-    let destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer2 = newShip(ShipClass.Destroyer)
     discard sourceSquad.addShip(destroyer2)
 
-    let cruiser1 = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser1 = newShip(ShipClass.Cruiser)
     var targetSquad = newSquadron(cruiser1, id = "target-sq", owner = "house1", location = 1)
 
     state.fleets["fleet1"] = Fleet(
@@ -234,13 +234,13 @@ suite "Fleet Organization":
     )
 
     # Create multiple squadrons
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer1, id = "sq1", owner = "house1", location = 1)
 
-    let destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer2 = newShip(ShipClass.Destroyer)
     var sq2 = newSquadron(destroyer2, id = "sq2", owner = "house1", location = 1)
 
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq3 = newSquadron(cruiser, id = "sq3", owner = "house1", location = 1)
 
     # Create fleet with all squadrons
@@ -269,10 +269,10 @@ suite "Fleet Organization":
       techTree: res_types.initTechTree(),  # Initialize with all tech at level 1
     )
 
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer1, id = "sq1", owner = "house1", location = 1)
 
-    let destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer2 = newShip(ShipClass.Destroyer)
     var sq2 = newSquadron(destroyer2, id = "sq2", owner = "house1", location = 1)
 
     state.fleets["fleet1"] = Fleet(
@@ -349,7 +349,7 @@ suite "Auto-Assignment System":
     )
 
     # Create unassigned squadrons with auto-assign enabled
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer, id = "sq1", owner = "house1", location = 1)
 
     state.colonies[1] = Colony(

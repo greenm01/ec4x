@@ -43,7 +43,7 @@ proc createTestGameState(houseId: HouseId, colonyCount: int, pbsInFleets: int = 
   if pbsInFleets > 0:
     for i in 1..pbsInFleets:
       let fleetId = FleetId($houseId & "_fleet" & $i)
-      let pbShip = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 1)
+      let pbShip = newShip(ShipClass.PlanetBreaker, techLevel = 1)
       let squadron = newSquadron(pbShip, $houseId & "_sq" & $i, houseId, SystemId(1))
 
       state.fleets[fleetId] = Fleet(
@@ -75,8 +75,8 @@ suite "Planet-Breaker Capacity Calculation":
 
     # Add fleet with 2 planet-breakers
     let fleetId = FleetId("house-test_fleet1")
-    let pb1 = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 1)
-    let pb2 = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 1)
+    let pb1 = newShip(ShipClass.PlanetBreaker, techLevel = 1)
+    let pb2 = newShip(ShipClass.PlanetBreaker, techLevel = 1)
     let sq1 = newSquadron(pb1, "house-test_sq1", "house-test", SystemId(1))
     let sq2 = newSquadron(pb2, "house-test_sq2", "house-test", SystemId(1))
 
@@ -98,7 +98,7 @@ suite "Planet-Breaker Capacity Calculation":
 
     # Add planet-breaker for different house
     let fleetId = FleetId("house-other_fleet1")
-    let pbShip = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 1)
+    let pbShip = newShip(ShipClass.PlanetBreaker, techLevel = 1)
     let squadron = newSquadron(pbShip, "house-other_sq1", "house-other", SystemId(1))
 
     state.fleets[fleetId] = Fleet(
@@ -168,7 +168,7 @@ suite "Check Violations Batch":
 
     for i in 1..2:
       let fleetId = FleetId("house1_fleet" & $i)
-      let pbShip = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 1)
+      let pbShip = newShip(ShipClass.PlanetBreaker, techLevel = 1)
       let squadron = newSquadron(pbShip, "house1_sq" & $i, "house1", SystemId(1))
       state.fleets[fleetId] = Fleet(
         id: fleetId, owner: "house1", location: SystemId(1),
@@ -183,7 +183,7 @@ suite "Check Violations Batch":
 
     for i in 1..5:
       let fleetId = FleetId("house2_fleet" & $i)
-      let pbShip = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 1)
+      let pbShip = newShip(ShipClass.PlanetBreaker, techLevel = 1)
       let squadron = newSquadron(pbShip, "house2_sq" & $i, "house2", SystemId(10))
       state.fleets[fleetId] = Fleet(
         id: fleetId, owner: "house2", location: SystemId(10),
@@ -221,9 +221,9 @@ suite "Enforcement Planning":
 
     # Add 3 planet-breakers with specific IDs
     let fleetId = FleetId("house-test_fleet1")
-    let pb1 = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 1)
-    let pb2 = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 1)
-    let pb3 = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 1)
+    let pb1 = newShip(ShipClass.PlanetBreaker, techLevel = 1)
+    let pb2 = newShip(ShipClass.PlanetBreaker, techLevel = 1)
+    let pb3 = newShip(ShipClass.PlanetBreaker, techLevel = 1)
 
     let sq1 = newSquadron(pb1, "house-test_sq_001", "house-test", SystemId(1))
     let sq2 = newSquadron(pb2, "house-test_sq_003", "house-test", SystemId(1))
@@ -267,7 +267,7 @@ suite "Enforcement Application":
     # Add 3 PBs across 2 fleets
     for i in 1..2:
       let fleetId = FleetId("house-test_fleet" & $i)
-      let pbShip = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 1)
+      let pbShip = newShip(ShipClass.PlanetBreaker, techLevel = 1)
       let squadron = newSquadron(pbShip, "house-test_sq_" & $i, "house-test", SystemId(1))
 
       state.fleets[fleetId] = Fleet(
@@ -281,7 +281,7 @@ suite "Enforcement Application":
       )
 
     let fleetId3 = FleetId("house-test_fleet3")
-    let pbShip3 = newEnhancedShip(ShipClass.PlanetBreaker, techLevel = 1)
+    let pbShip3 = newShip(ShipClass.PlanetBreaker, techLevel = 1)
     let squadron3 = newSquadron(pbShip3, "house-test_sq_3", "house-test", SystemId(1))
     state.fleets[fleetId3] = Fleet(
       id: fleetId3,

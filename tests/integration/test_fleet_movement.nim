@@ -4,7 +4,7 @@
 ## Per operations.md:6.1 and 6.2
 
 import std/[unittest, tables, options, strformat]
-import ../../src/engine/[gamestate, starmap, fleet, ship, squadron, orders, resolve]
+import ../../src/engine/[gamestate, starmap, fleet, squadron, orders, resolve]
 import ../../src/engine/resolution/fleet_orders
 import ../../src/common/types/[core, units, combat]
 import ../../src/common/[hex, system]
@@ -91,7 +91,7 @@ suite "Fleet Movement Integration":
     var state = createTestGameState()
 
     # Create fleet at system 1
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = newFleet(
       squadrons = @[sq],
@@ -120,7 +120,7 @@ suite "Fleet Movement Integration":
     var state = createTestGameState()
 
     # Create fleet at system 1
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = newFleet(
       squadrons = @[sq],
@@ -149,7 +149,7 @@ suite "Fleet Movement Integration":
     var state = createTestGameState()
 
     # Create fleet at system 3 (Alpha's border)
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = newFleet(
       squadrons = @[sq],
@@ -177,7 +177,7 @@ suite "Fleet Movement Integration":
   test "Fleet already at destination":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = newFleet(
       squadrons = @[sq],
@@ -225,7 +225,7 @@ suite "Fleet Movement Integration":
     state.starMap.adjacency[3] = @[2u]
 
     # Create fleet with spacelift ship at system 2
-    let troopTransport = newEnhancedShip(ShipClass.TroopTransport)
+    let troopTransport = newShip(ShipClass.TroopTransport)
     var sq = newSquadron(troopTransport)
     let testFleet = newFleet(
       squadrons = @[sq],
@@ -254,7 +254,7 @@ suite "Fleet Movement Integration":
     var state = createTestGameState()
 
     # Create Alpha fleet at system 1
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer1)
     let fleet1 = newFleet(
       squadrons = @[sq1],
@@ -265,7 +265,7 @@ suite "Fleet Movement Integration":
     state.fleets["fleet-alpha"] = fleet1
 
     # Create Beta fleet at system 2
-    let destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer2 = newShip(ShipClass.Destroyer)
     var sq2 = newSquadron(destroyer2)
     let fleet2 = newFleet(
       squadrons = @[sq2],

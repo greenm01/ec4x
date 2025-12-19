@@ -60,7 +60,7 @@ proc createTestGame(): GameState =
   )
 
   # Create test fleet
-  let flagship = newEnhancedShip(ShipClass.Destroyer, techLevel = 1, name = "DD-1")
+  let flagship = newShip(ShipClass.Destroyer, techLevel = 1, name = "DD-1")
   let squadron = Squadron(
     id: "sq1",
     flagship: flagship,

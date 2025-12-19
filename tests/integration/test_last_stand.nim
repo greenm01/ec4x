@@ -307,7 +307,7 @@ suite "Last-Stand Blitz Operations":
     )
 
     # Attack fleet with combat ships and marines
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     let squadron = newSquadron(
       flagship = destroyer,
       id = "sq1",

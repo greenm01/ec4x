@@ -214,7 +214,7 @@ suite "Resolution: Auto-Assignment to Fleets":
     var state = createTestGameState()
 
     # Manually add an unassigned squadron
-    let flagship = newEnhancedShip(ShipClass.Scout, techLevel = 1, name = "test-scout")
+    let flagship = newShip(ShipClass.Scout, techLevel = 1, name = "test-scout")
     let squadron = Squadron(
       id: "test-sq",
       flagship: flagship,
@@ -263,7 +263,7 @@ suite "Resolution: Auto-Assignment to Fleets":
 
     # Add 3 unassigned squadrons
     for i in 1..3:
-      let flagship = newEnhancedShip(ShipClass.Frigate, techLevel = 1, name = "fg-" & $i)
+      let flagship = newShip(ShipClass.Frigate, techLevel = 1, name = "fg-" & $i)
       let squadron = Squadron(
         id: "sq-" & $i,
         flagship: flagship,
@@ -309,7 +309,7 @@ suite "Resolution: Fleet Active Orders":
     var state = createTestGameState()
 
     # Create fleet with squadron
-    let flagship = newEnhancedShip(ShipClass.Destroyer, techLevel = 1, name = "dd1")
+    let flagship = newShip(ShipClass.Destroyer, techLevel = 1, name = "dd1")
     let squadron = Squadron(
       id: "sq1",
       flagship: flagship,
@@ -362,7 +362,7 @@ suite "Resolution: Fleet Active Orders":
     var state = createTestGameState()
 
     # Create fleet
-    let flagship = newEnhancedShip(ShipClass.Cruiser, techLevel = 1, name = "cl1")
+    let flagship = newShip(ShipClass.Cruiser, techLevel = 1, name = "cl1")
     let squadron = Squadron(
       id: "sq1",
       flagship: flagship,
@@ -414,7 +414,7 @@ suite "Resolution: Fleet Active Orders":
     var state = createTestGameState()
 
     # Create fleet
-    let flagship = newEnhancedShip(ShipClass.Battleship, techLevel = 1, name = "bb1")
+    let flagship = newShip(ShipClass.Battleship, techLevel = 1, name = "bb1")
     let squadron = Squadron(
       id: "sq1",
       flagship: flagship,
@@ -466,7 +466,7 @@ suite "Resolution: Fleet Active Orders":
     var state = createTestGameState()
 
     # Create Reserve fleet
-    let flagship = newEnhancedShip(ShipClass.Dreadnought, techLevel = 1, name = "dn1")
+    let flagship = newShip(ShipClass.Dreadnought, techLevel = 1, name = "dn1")
     let squadron = Squadron(
       id: "sq1",
       flagship: flagship,
@@ -522,7 +522,7 @@ suite "Resolution: Fleet Composition":
     # Create fleet with 3 squadrons
     var squadrons: seq[Squadron] = @[]
     for i in 1..3:
-      let flagship = newEnhancedShip(ShipClass.Frigate, techLevel = 1, name = "fg" & $i)
+      let flagship = newShip(ShipClass.Frigate, techLevel = 1, name = "fg" & $i)
       let squadron = Squadron(
         id: "sq" & $i,
         flagship: flagship,
@@ -549,10 +549,10 @@ suite "Resolution: Fleet Composition":
     var state = createTestGameState()
 
     # Create fleet with 2 squadrons
-    let fg1 = newEnhancedShip(ShipClass.Frigate, techLevel = 1, name = "fg1")
+    let fg1 = newShip(ShipClass.Frigate, techLevel = 1, name = "fg1")
     let sq1 = Squadron(id: "sq1", flagship: fg1, ships: @[], owner: "house1", location: 1, embarkedFighters: @[])
 
-    let fg2 = newEnhancedShip(ShipClass.Frigate, techLevel = 1, name = "fg2")
+    let fg2 = newShip(ShipClass.Frigate, techLevel = 1, name = "fg2")
     let sq2 = Squadron(id: "sq2", flagship: fg2, ships: @[], owner: "house1", location: 1, embarkedFighters: @[])
 
     state.fleets["fleet1"] = Fleet(
@@ -699,7 +699,7 @@ suite "Resolution: Prohibited Operations (Unknown-Unknowns)":
     var state = createTestGameState()
 
     # Create a mothballed fleet
-    let flagship = newEnhancedShip(ShipClass.Scout, techLevel = 1, name = "test-scout")
+    let flagship = newShip(ShipClass.Scout, techLevel = 1, name = "test-scout")
     let squadron = Squadron(
       id: "sq1",
       flagship: flagship,
@@ -756,7 +756,7 @@ suite "Resolution: Prohibited Operations (Unknown-Unknowns)":
     var state = createTestGameState()
 
     # Create a reserve fleet
-    let flagship = newEnhancedShip(ShipClass.Destroyer, techLevel = 1, name = "test-dd")
+    let flagship = newShip(ShipClass.Destroyer, techLevel = 1, name = "test-dd")
     let squadron = Squadron(
       id: "sq1",
       flagship: flagship,
@@ -812,9 +812,9 @@ suite "Resolution: Prohibited Operations (Unknown-Unknowns)":
     var state = createTestGameState()
 
     # Create a multi-ship squadron (flagship + 2 escorts)
-    let flagship = newEnhancedShip(ShipClass.Scout, techLevel = 1, name = "test-scout-1")
-    let escort1 = newEnhancedShip(ShipClass.Scout, techLevel = 1, name = "test-scout-2")
-    let escort2 = newEnhancedShip(ShipClass.Scout, techLevel = 1, name = "test-scout-3")
+    let flagship = newShip(ShipClass.Scout, techLevel = 1, name = "test-scout-1")
+    let escort1 = newShip(ShipClass.Scout, techLevel = 1, name = "test-scout-2")
+    let escort2 = newShip(ShipClass.Scout, techLevel = 1, name = "test-scout-3")
     let squadron = Squadron(
       id: "sq1",
       flagship: flagship,
@@ -872,7 +872,7 @@ suite "Resolution: Prohibited Operations (Unknown-Unknowns)":
     var state = createTestGameState()
 
     # Create a mothballed fleet at colony
-    let mothballedFlagship = newEnhancedShip(ShipClass.Destroyer, techLevel = 1, name = "mothballed-dd")
+    let mothballedFlagship = newShip(ShipClass.Destroyer, techLevel = 1, name = "mothballed-dd")
     let mothballedSquadron = Squadron(
       id: "mothballed-sq",
       flagship: mothballedFlagship,
@@ -909,7 +909,7 @@ suite "Resolution: Prohibited Operations (Unknown-Unknowns)":
     var state = createTestGameState()
 
     # Create a Reserve fleet at colony
-    let flagship = newEnhancedShip(ShipClass.Destroyer, techLevel = 1, name = "dd-1")
+    let flagship = newShip(ShipClass.Destroyer, techLevel = 1, name = "dd-1")
     let squadron = Squadron(
       id: "sq1",
       flagship: flagship,
@@ -930,7 +930,7 @@ suite "Resolution: Prohibited Operations (Unknown-Unknowns)":
     )
 
     # Create an unassigned squadron at colony
-    let newFlagship = newEnhancedShip(ShipClass.Scout, techLevel = 1, name = "scout-1")
+    let newFlagship = newShip(ShipClass.Scout, techLevel = 1, name = "scout-1")
     let newSquadron = Squadron(
       id: "sq2",
       flagship: newFlagship,
@@ -980,7 +980,7 @@ suite "Resolution: Prohibited Operations (Unknown-Unknowns)":
     var state = createTestGameState()
 
     # Create a fleet with PatrolRoute standing order
-    let patrolFlagship = newEnhancedShip(ShipClass.Destroyer, techLevel = 1, name = "patrol-dd")
+    let patrolFlagship = newShip(ShipClass.Destroyer, techLevel = 1, name = "patrol-dd")
     let patrolSquadron = Squadron(
       id: "patrol-sq",
       flagship: patrolFlagship,
@@ -1016,7 +1016,7 @@ suite "Resolution: Prohibited Operations (Unknown-Unknowns)":
     )
 
     # Create an unassigned squadron at colony
-    let newFlagship = newEnhancedShip(ShipClass.Destroyer, techLevel = 1, name = "new-dd")
+    let newFlagship = newShip(ShipClass.Destroyer, techLevel = 1, name = "new-dd")
     let newSquadron = Squadron(
       id: "new-patrol-sq",
       flagship: newFlagship,
@@ -1069,7 +1069,7 @@ suite "Resolution: Prohibited Operations (Unknown-Unknowns)":
     var state = createTestGameState()
 
     # Create a fleet with DefendSystem standing order
-    let defenderFlagship = newEnhancedShip(ShipClass.Cruiser, techLevel = 1, name = "defender-ca")
+    let defenderFlagship = newShip(ShipClass.Cruiser, techLevel = 1, name = "defender-ca")
     let defenderSquadron = Squadron(
       id: "defender-sq",
       flagship: defenderFlagship,
@@ -1105,7 +1105,7 @@ suite "Resolution: Prohibited Operations (Unknown-Unknowns)":
     )
 
     # Create an unassigned squadron at colony
-    let newFlagship = newEnhancedShip(ShipClass.Cruiser, techLevel = 1, name = "new-ca")
+    let newFlagship = newShip(ShipClass.Cruiser, techLevel = 1, name = "new-ca")
     let newSquadron = Squadron(
       id: "new-defender-sq",
       flagship: newFlagship,

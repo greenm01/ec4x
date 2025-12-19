@@ -7,7 +7,7 @@
 ## - Carrier hangar capacity (CV/CX with ACO tech)
 
 import std/[unittest, tables, options]
-import ../../src/engine/[gamestate, starmap, fleet, ship, squadron]
+import ../../src/engine/[gamestate, starmap, fleet, squadron]
 import ../../src/engine/config/military_config
 import ../../src/common/types/[core, planets, tech, combat, units]
 import ../../src/common/[hex, system]
@@ -150,10 +150,10 @@ suite "Game Limits: Anti-Spam/Anti-Cheese Caps":
     )
 
     # Create squadrons with capital-ship flagships
-    let dreadnought = newEnhancedShip(ShipClass.Dreadnought)
+    let dreadnought = newShip(ShipClass.Dreadnought)
     var sq1 = newSquadron(dreadnought)
 
-    let battleship = newEnhancedShip(ShipClass.Battleship)
+    let battleship = newShip(ShipClass.Battleship)
     var sq2 = newSquadron(battleship)
 
     state.fleets["fleet-1"] = Fleet(
@@ -178,10 +178,10 @@ suite "Game Limits: Anti-Spam/Anti-Cheese Caps":
     )
 
     # Create scout squadrons
-    let scout1 = newEnhancedShip(ShipClass.Scout)
+    let scout1 = newShip(ShipClass.Scout)
     var sq1 = newSquadron(scout1)
 
-    let scout2 = newEnhancedShip(ShipClass.Scout)
+    let scout2 = newShip(ShipClass.Scout)
     var sq2 = newSquadron(scout2)
 
     state.fleets["fleet-1"] = Fleet(
@@ -230,7 +230,7 @@ suite "Game Limits: Anti-Spam/Anti-Cheese Caps":
 
     # Create 10 squadrons (over limit of 8)
     for i in 1..10:
-      let destroyer = newEnhancedShip(ShipClass.Destroyer)
+      let destroyer = newShip(ShipClass.Destroyer)
       var sq = newSquadron(destroyer)
       state.fleets["fleet-" & $i] = Fleet(
         id: "fleet-" & $i,
@@ -355,7 +355,7 @@ suite "Game Limits: Anti-Spam/Anti-Cheese Caps":
   # ==========================================================================
 
   test "Carrier capacity: CV progression with ACO tech":
-    let cv = newEnhancedShip(ShipClass.Carrier)
+    let cv = newShip(ShipClass.Carrier)
     var sq = newSquadron(cv)
 
     # ACO I: 3 FS
@@ -368,7 +368,7 @@ suite "Game Limits: Anti-Spam/Anti-Cheese Caps":
     check getCarrierCapacity(sq, acoLevel = 3) == 5
 
   test "Carrier capacity: CX progression with ACO tech":
-    let cx = newEnhancedShip(ShipClass.SuperCarrier)
+    let cx = newShip(ShipClass.SuperCarrier)
     var sq = newSquadron(cx)
 
     # ACO I: 5 FS
