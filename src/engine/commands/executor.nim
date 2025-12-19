@@ -707,6 +707,7 @@ proc executeSpyPlanetOrder(
   # Set fleet mission state
   var updatedFleet = fleet
   updatedFleet.missionState = FleetMissionState.Traveling
+  updatedFleet.missionType = some(ord(SpyMissionType.SpyOnPlanet))
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)
@@ -829,6 +830,7 @@ proc executeHackStarbaseOrder(
   # Set fleet mission state
   var updatedFleet = fleet
   updatedFleet.missionState = FleetMissionState.Traveling
+  updatedFleet.missionType = some(ord(SpyMissionType.HackStarbase))
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)
@@ -931,6 +933,7 @@ proc executeSpySystemOrder(
   # Set fleet mission state
   var updatedFleet = fleet
   updatedFleet.missionState = FleetMissionState.Traveling
+  updatedFleet.missionType = some(ord(SpyMissionType.SpyOnSystem))
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)

@@ -308,6 +308,108 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
 
 
   # ===================================================================
+  # STEP 6a.5: PERSISTENT SPY MISSION DETECTION
+  # ===================================================================
+  # Check active spy missions for detection each turn
+  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6a.5] Persistent spy mission detection...")
+  var missionsToRemove: seq[FleetId] = @[]
+  var detectionRng = initRand(state.turn + 98765)  # Unique seed for detection
+
+  for fleetId, mission in state.activeSpyMissions.pairs:
+    # Skip if fleet no longer exists
+    if fleetId notin state.fleets:
+      missionsToRemove.add(fleetId)
+      continue
+
+    let fleet = state.fleets[fleetId]
+    let targetSystem = mission.targetSystem
+
+    # Skip if no defender at target
+    if targetSystem notin state.colonies:
+      continue
+
+    let colony = state.colonies[targetSystem]
+    let defender = colony.owner
+
+    # Run detection check
+    let detectionResult = spy_resolution.resolveSpyScoutDetection(
+      state,
+      mission.scoutCount,
+      defender,
+      targetSystem,
+      detectionRng
+    )
+
+    if detectionResult.detected:
+      # DETECTED: Scouts destroyed immediately
+      logInfo(LogCategory.lcOrders, &"Spy mission {fleetId} DETECTED at {targetSystem} (roll={detectionResult.roll}, target={detectionResult.target})")
+
+      # Generate scout detection event
+      events.add(res_types.GameEvent(
+        eventType: res_types.GameEventType.ScoutDetected,
+        turn: state.turn,
+        houseId: some(mission.ownerHouse),
+        systemId: some(targetSystem),
+        details: some(&"Spy mission detected! {mission.scoutCount} scouts destroyed at {targetSystem}")
+      ))
+
+      # Diplomatic escalation
+      state.scoutLossEvents.add(intel_types.ScoutLossEvent(
+        turn: state.turn,
+        scoutId: $fleetId,  # Use fleet ID as scout identifier
+        owner: mission.ownerHouse,
+        location: targetSystem,
+        detectorHouse: defender,
+        eventType: intel_types.DetectionEventType.CombatLoss  # Detected spy mission
+      ))
+
+      # Mark fleet for deletion
+      if fleetId in state.fleets:
+        let fleet = state.fleets[fleetId]
+        state.removeFleetFromIndices(fleetId, fleet.owner, fleet.location)
+        state.fleets.del(fleetId)
+      missionsToRemove.add(fleetId)
+
+      logInfo(LogCategory.lcOrders, &"Fleet {fleetId} destroyed after detection")
+    else:
+      # UNDETECTED: Continue gathering intel (generate intelligence this turn)
+      logDebug(LogCategory.lcOrders, &"Spy mission {fleetId} UNDETECTED at {targetSystem} (roll={detectionResult.roll}, target={detectionResult.target})")
+
+      # Generate intelligence based on mission type
+      case mission.missionType
+      of SpyMissionType.SpyOnPlanet:
+        let intelReport = generator.generateColonyIntelReport(state, mission.ownerHouse, targetSystem, intel_types.IntelQuality.Perfect)
+        if intelReport.isSome:
+          var house = state.houses[mission.ownerHouse]
+          house.intelligence.addColonyReport(intelReport.get())
+          state.houses[mission.ownerHouse] = house
+          logInfo(LogCategory.lcOrders, &"Generated Perfect colony intel for {mission.ownerHouse} at {targetSystem}")
+
+      of SpyMissionType.SpyOnSystem:
+        let systemIntel = generator.generateSystemIntelReport(state, mission.ownerHouse, targetSystem, intel_types.IntelQuality.Perfect)
+        if systemIntel.isSome:
+          var house = state.houses[mission.ownerHouse]
+          house.intelligence.addSystemReport(systemIntel.get())
+          state.houses[mission.ownerHouse] = house
+          logInfo(LogCategory.lcOrders, &"Generated Perfect system intel for {mission.ownerHouse} at {targetSystem}")
+
+      of SpyMissionType.HackStarbase:
+        # For hack starbase, generate perfect colony intel (includes starbase details)
+        let intelReport = generator.generateColonyIntelReport(state, mission.ownerHouse, targetSystem, intel_types.IntelQuality.Perfect)
+        if intelReport.isSome:
+          var house = state.houses[mission.ownerHouse]
+          house.intelligence.addColonyReport(intelReport.get())
+          state.houses[mission.ownerHouse] = house
+          logInfo(LogCategory.lcOrders, &"Generated Perfect starbase intel for {mission.ownerHouse} at {targetSystem}")
+
+  # Remove detected/completed missions
+  for fleetId in missionsToRemove:
+    state.activeSpyMissions.del(fleetId)
+
+  logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 6a.5] Persistent detection complete ({missionsToRemove.len} missions detected/removed)")
+
+
+  # ===================================================================
   # STEP 6b: SPACE GUILD ESPIONAGE (EBP-based)
   # ===================================================================
   # Process OrderPacket.espionageAction (EBP-based espionage)
