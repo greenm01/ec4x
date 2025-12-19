@@ -10,12 +10,12 @@
 ## 5. Apply population growth
 
 import std/[math, strformat]
-import types, production
-import ../prestige
+import ../../types/economy as types, ./production
+import ../prestige/main as prestige
 import ../gamestate  # For unified Colony type
-import ../config/economy_config
-import ../config/population_growth_multiplier
-import ../logger
+import ../../config/economy_config
+import ../../config/population_growth_multiplier
+import ../../logger
 
 export types.ColonyIncomeReport, types.HouseIncomeReport, types.IncomePhaseReport
 

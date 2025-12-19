@@ -4,10 +4,10 @@
 ## Per economy.md:5.0: "Ships under construction in docks can be destroyed during
 ## the Conflict Phase if the shipyard/spaceport is destroyed or crippled"
 
-import std/[strformat, options, sequtils]
-import ../gamestate
-import types as econ_types
-import ../../common/logger
+import std/[options, sequtils, strformat]
+import ../../gamestate
+import ../../types/economy as econ_types
+import ../../../common/logger
 
 proc clearFacilityQueues*(colony: var Colony, facilityType: econ_types.FacilityType) =
   ## Clear construction and repair queues for a specific facility type

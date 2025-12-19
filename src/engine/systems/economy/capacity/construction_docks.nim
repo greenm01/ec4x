@@ -20,13 +20,13 @@
 ##
 ## Data-oriented design: Calculate violations (pure), report status (no enforcement needed - hard limit)
 
-import std/[tables, strutils, algorithm, options, math]
+import std/[algorithm, math, options, strutils, tables]
 import ../../../types/capacity as types
-import ../../../../gamestate
+import ../../../gamestate
 import ../../../types/economy as econ_types
-import ../../../../../common/types/core
-import ../../../../../common/types/units
-import ../../../../../common/logger
+import ../../../../common/types/core
+import ../../../../common/types/units
+import ../../../../common/logger
 
 export types.CapacityViolation, types.ViolationSeverity
 

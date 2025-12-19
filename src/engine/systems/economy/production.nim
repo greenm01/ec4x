@@ -13,11 +13,11 @@
 ## - PROD_GROWTH: Productivity growth from tax policy
 ## - STARBASE_BONUS: Operational starbases boost IU output (+5% per SB, max +15%)
 
-import std/math
-import types
-import ../../common/types/planets
-import ../config/economy_config
-import ../gamestate  # For unified Colony type
+import std/[math]
+import ../../types/economy as types
+import ../../../common/types/planets
+import ../../config/economy_config
+import ../../gamestate  # For unified Colony type
 
 export types.ProductionOutput
 

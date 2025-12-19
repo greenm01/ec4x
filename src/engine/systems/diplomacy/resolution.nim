@@ -6,8 +6,9 @@
 ## - Enemy/Neutral declarations
 
 import std/[tables, options]
-import ../../../common/[types/core, logger]
-import ../../gamestate, ../orders/main as orders
+import ../../../common/types/[core, logger]
+import ../../gamestate
+import ../../orders
 import ../../types/diplomacy as dip_types
 import ./engine as dip_engine
 import ./proposals as dip_proposals

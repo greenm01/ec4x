@@ -10,14 +10,14 @@
 ## - Drydocks are repair-only facilities (10 docks each)
 ## - Shipyards are construction-only facilities (clean separation of concerns)
 
-import std/[tables, options, strformat]
-import ../gamestate
-import ../index_maintenance
-import ../fleet
-import ../squadron
-import ../logger
-import types as econ_types
-import ../../common/types/[core, units]
+import std/[options, strformat, tables]
+import ../../gamestate
+import ../../index_maintenance
+import ../../fleet
+import ../../squadron
+import ../../logger
+import ../../types/economy as econ_types
+import ../../../common/types/[core, units]
 
 export econ_types.RepairProject, econ_types.FacilityType, econ_types.RepairTargetType
 

@@ -12,17 +12,17 @@
 ## Data-oriented design: Calculate what WOULD happen (pure function),
 ## then apply changes (explicit mutations).
 
-import std/[tables, algorithm, options, sequtils]
-import ../gamestate
-import ../index_maintenance
-import ../state_helpers
-import ../iterators
-import ../prestige
-import ../config/ground_units_config
-import ../resolution/types as resolution_types  # For GameEvent
-import ../../common/types/core
-import ../../common/logger
-import config_accessors  # For getShipConstructionCost
+import std/[algorithm, options, sequtils, tables]
+import ../../gamestate
+import ../../index_maintenance
+import ../../state_helpers
+import ../../iterators
+import ../prestige/main as prestige
+import ../../config/ground_units_config
+import ../../types/resolution as resolution_types # For GameEvent
+import ../../../common/types/core
+import ../../../common/logger
+import ./config_accessors  # For getShipConstructionCost
 
 type
   AssetType* {.pure.} = enum

@@ -12,13 +12,13 @@
 ##
 ## Data-oriented design: Calculate violations (pure), apply enforcement (explicit mutations)
 
-import std/[tables, strutils, algorithm, options]
-import ./types
-import ../../gamestate
-import ../types as econ_types  # For ConstructionType, ConstructionProject
-import ../../../common/types/core
-import ../../../common/types/units  # For ShipClass
-import ../../../common/logger
+import std/[algorithm, options, strutils, tables]
+import ../../../types/capacity as types
+import ../../../gamestate
+import ../../../types/economy as econ_types # For ConstructionType, ConstructionProject
+import ../../../../common/types/core
+import ../../../../common/types/units # For ShipClass
+import ../../../../common/logger
 
 export types.CapacityViolation, types.EnforcementAction, types.ViolationSeverity
 

@@ -17,14 +17,14 @@
 ## Data-oriented design: Calculate capacity (pure), check violations (pure),
 ## enforce at load time (explicit mutations)
 
-import std/[tables, strutils, options, math]
+import std/[math, options, strutils, tables]
 import ../../../types/capacity as types
-import ../../../../gamestate
-import ../../../../squadron
+import ../../../gamestate
+import ../../../squadron
 import ../../../types/economy as econ_types
-import ../../../../../common/types/core
-import ../../../../../common/types/units
-import ../../../../../common/logger
+import ../../../../common/types/core
+import ../../../../common/types/units
+import ../../../../common/logger
 
 export types.CapacityViolation, types.EnforcementAction, types.ViolationSeverity
 

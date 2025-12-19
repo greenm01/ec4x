@@ -24,12 +24,12 @@
 ## Ships built at spaceports cost 2x PP (applied at order submission time)
 ## Exception: Shipyard/Starbase buildings (orbital construction, no penalty)
 
-import std/[options, tables, algorithm, strutils]
-import types
-import ../gamestate
+import std/[algorithm, options, strutils, tables]
+import ../../types/economy as types
+import ../../gamestate
 import ../economy/types as econ_types
-import ../../common/types/core
-import ../../common/logger
+import ../../../common/types/core
+import ../../../common/logger
 
 export types.CompletedProject
 
