@@ -10,12 +10,14 @@
 import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
 import ../../common/types/core
 import ../../common/logger as common_logger
-import ../gamestate, ../orders, ../fleet, ../squadron, ../logger, ../order_types
-import ../diplomacy/[types as dip_types]
-import ../commands/[executor]
+import ../gamestate, ../fleet, ../logger, ../orders, ../squadron
 import ../standing_orders
-import ./[types as res_types, fleet_orders, combat_resolution, simultaneous]
-import ./event_factory/init as event_factory
+import ../types/diplomacy as dip_types
+import ../types/orders as order_types
+import ../types/resolution as res_types
+import ../systems/orders/executor
+import ./[fleet_orders, combat_resolution, simultaneous]
+import ../systems/events/event_factory/init as event_factory
 
 type
   OrderCategoryFilter* = proc(orderType: FleetOrderType): bool
