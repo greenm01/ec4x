@@ -65,8 +65,8 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
     # Skip orders that execute in other phases:
     # - Movement orders (Move, Patrol, etc.): Execute in Maintenance Phase
     # - Salvage: Executes in Income Phase
-    if fleetOrder.orderType.isMovementOrder() or
-       fleetOrder.orderType == FleetOrderType.Salvage:
+    if isMovementOrder(fleetOrder.orderType) or
+       fleetOrder.orderType == orders.FleetOrderType.Salvage:
       continue
 
     # Find fleet owner
