@@ -17,7 +17,7 @@
 ##     house.prestige -= 5
 ##   # Automatic write-back happens here
 
-import gamestate
+import ./gamestate
 import ../common/types/core
 
 template withHouse*(state: var GameState, houseId: HouseId, body: untyped): untyped =

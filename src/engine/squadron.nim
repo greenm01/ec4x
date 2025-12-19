@@ -7,7 +7,7 @@
 ## Fleet Hierarchy: Fleet → Squadron → Ship
 
 import std/[sequtils, strutils, options, math, strformat]
-import ship
+import ./ship
 import ../common/types/[core, units]
 
 export HouseId, FleetId, SystemId, SquadronId

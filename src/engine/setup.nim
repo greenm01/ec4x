@@ -15,7 +15,7 @@
 ## - Reusable: Works for any entry point
 
 import std/[strformat]
-import starmap  # For validateMapRings domain validation
+import ./starmap  # For validateMapRings domain validation
 
 type
   GameSetupParams* = object

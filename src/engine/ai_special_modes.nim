@@ -6,11 +6,11 @@
 import std/[tables, options]
 import ../common/types/core
 import ../common/logger
-import gamestate
-import fleet
-import starmap
-import order_types
-import diplomacy/types as dip_types
+import ./gamestate
+import ./fleet
+import ./starmap
+import ./types/orders as order_types
+import ./types/diplomacy as dip_types
 
 export core.HouseId, core.SystemId, core.FleetId
 

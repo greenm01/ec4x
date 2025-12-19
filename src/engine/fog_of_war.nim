@@ -5,8 +5,9 @@
 
 import std/[tables, options, sets, strformat]
 import ../common/types/[core, planets]
-import gamestate, fleet, squadron, starmap, order_types, logger
-import intelligence/types as intel_types
+import ./gamestate, ./fleet, ./squadron, ./starmap, ./logger
+import ./types/orders as order_types
+import ./types/intelligence as intel_types
 
 type
   VisibilityLevel* {.pure.} = enum

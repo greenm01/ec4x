@@ -8,10 +8,10 @@ import ../gamestate
 import ../config/[
   game_setup_config, facilities_config, population_config, economy_config
 ]
-import ../prestige/effects as prestige_effects
-import ../research/effects as research_effects
+import ../systems/prestige/effects as prestige_effects
+import ../systems/research/effects as research_effects
 import ../../common/types/[core, planets]
-import ../economy/types as econ_types
+import ../types/economy as econ_types
 
 proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
   ## Create a starting homeworld colony per gameplay.md:1.2

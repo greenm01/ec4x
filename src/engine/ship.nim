@@ -8,8 +8,8 @@
 
 import std/[options, math, strformat]
 import ../common/types/units
-import config/ships_config
-import config  # For parseShipRole
+import ./config/ships_config
+import ./config  # For parseShipRole
 
 export ShipClass, ShipType, ShipStats, ShipRole
 

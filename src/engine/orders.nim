@@ -2,16 +2,16 @@
 
 import std/[options, tables, strformat, sequtils]
 import ../common/types/[core, units]
-import gamestate, fleet, starmap, logger
-import order_types  # Import and re-export fleet order types
-import espionage/types as esp_types
-import research/types as res_types
-import economy/projects  # For cost calculation
-import economy/config_accessors  # For CST requirement checking
-import economy/capacity/fighter # For colony fighter squadron limits
-import economy/capacity/capital_squadrons  # For capital squadron capacity enforcement
-import economy/capacity/total_squadrons  # For total squadron capacity (prevents escort spam)
-import economy/types as econ_types  # For FacilityType in cost calculation
+import ./gamestate, ./fleet, ./starmap, ./logger
+import ./types/orders as order_types  # Import and re-export fleet order types
+import ./types/espionage as esp_types
+import ./types/research as res_types
+import ./systems/economy/projects  # For cost calculation
+import ./systems/economy/config_accessors  # For CST requirement checking
+import ./systems/economy/capacity/fighter # For colony fighter squadron limits
+import ./systems/economy/capacity/capital_squadrons  # For capital squadron capacity enforcement
+import ./systems/economy/capacity/total_squadrons  # For total squadron capacity (prevents escort spam)
+import ./types/economy as econ_types  # For FacilityType in cost calculation
 
 # Re-export order types
 export order_types.FleetOrderType, order_types.FleetOrder

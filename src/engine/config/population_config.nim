@@ -99,7 +99,7 @@ proc reloadPopulationConfig*() =
 ## Initialize legacy global config (population/types.nim)
 ## TODO: Refactor to use new config structure throughout codebase
 
-import ../population/types as pop_types
+import ../types/population as pop_types
 
 pop_types.globalPopulationConfig = pop_types.PopulationTransferConfig(
   soulsPerPtu: config.ptu_definition.souls_per_ptu,

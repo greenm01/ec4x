@@ -11,13 +11,18 @@
 import std/[tables, strutils]
 import ../gamestate
 import ../starmap
-import ../order_types
+import ../types/orders as order_types
 import ../fleet as fleet_mod
 import ../index_maintenance
 import ../config/prestige_multiplier
 import ../config/population_growth_multiplier
 import ../config/game_setup_config
 import ../../common/types/[core, units]
+import ../types/research as res_types
+import ../types/diplomacy as dip_types
+import ../types/espionage as esp_types
+import ../types/economy as econ_types
+import ../types/intelligence as intel_types
 import ./[house, colony, fleet as init_fleet, validation]
 
 proc initializeHousesAndHomeworlds*(state: var GameState) =

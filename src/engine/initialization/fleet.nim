@@ -6,7 +6,7 @@
 import std/[options, tables, strutils]
 import ../fleet
 import ../squadron
-import ../order_types
+import ../types/orders as order_types
 import ../config/game_setup_config
 import ../../common/types/[core, units]
 

@@ -6,11 +6,11 @@
 import std/[strutils, options]
 import ../gamestate
 import ../config/[prestige_config, tech_config, game_setup_config]
-import ../research/types as res_types
-import ../diplomacy/types as dip_types
-import ../espionage/types as esp_types
-import ../economy/types as econ_types
-import ../intelligence/types as intel_types
+import ../types/research as res_types
+import ../types/diplomacy as dip_types
+import ../types/espionage as esp_types
+import ../types/economy as econ_types
+import ../types/intelligence as intel_types
 import ../../common/types/core
 import ./validation
 

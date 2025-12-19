@@ -9,7 +9,7 @@
 ## - Auxiliary squadrons (TroopTransport) handle invasion support
 ## - All ships use unified Squadron structure with squadronType classification
 
-import squadron
+import ./squadron
 import ../common/types/[core, combat]
 import std/[algorithm, strutils, options]
 

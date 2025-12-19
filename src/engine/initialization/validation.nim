@@ -5,7 +5,7 @@
 ##
 ## Part of the game initialization refactoring (Phase 2).
 
-import ../research/types as res_types
+import ../types/research as res_types
 
 proc validateTechTree*(techTree: res_types.TechTree) =
   ## Validate that technology levels are within valid ranges

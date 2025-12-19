@@ -10,8 +10,8 @@
 ## - Single source of truth for validation rules
 
 import std/[tables, options]
-import gamestate
-import iterators
+import ./gamestate
+import ./iterators
 import ../common/types/core
 
 type

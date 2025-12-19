@@ -16,7 +16,8 @@
 ## NOTE: These are read-only iterators. For mutations, use state_helpers.
 
 import std/tables
-import gamestate, fleet, order_types
+import ./gamestate, ./fleet
+import ./types/orders as order_types
 import ../common/types/core
 
 # House-based iterators (entities owned by a house)
