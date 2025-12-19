@@ -14,6 +14,7 @@
 
 import std/[tables, algorithm, options, sequtils]
 import ../gamestate
+import ../index_maintenance
 import ../state_helpers
 import ../iterators
 import ../prestige
@@ -370,15 +371,23 @@ proc applyShortfallCascade*(state: var GameState, cascade: ShortfallCascade,
 
   # Step 3: Disband fleets
   for fleetId in cascade.fleetsDisbanded:
-    # Get fleet location before deletion for event
+    # Get fleet info before deletion for event and index maintenance
     let fleetLocation = if fleetId in state.fleets:
       state.fleets[fleetId].location
     else:
       SystemId(0)  # Unknown/invalid system
 
+    let fleetOwner = if fleetId in state.fleets:
+      state.fleets[fleetId].owner
+    else:
+      HouseId("")
+
     # Calculate salvage for this fleet
     let fleetSalvage = calculateFleetSalvageValue(state, fleetId)
 
+    # Remove from indices before deleting
+    if fleetId in state.fleets:
+      state.removeFleetFromIndices(fleetId, fleetOwner, fleetLocation)
     state.fleets.del(fleetId)
     # Also remove fleet orders if they exist
     if fleetId in state.fleetOrders:

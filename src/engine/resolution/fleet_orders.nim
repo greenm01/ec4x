@@ -9,6 +9,7 @@
 import std/[tables, options, sequtils, strformat]
 import ../../common/types/[core, combat, units]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap, ../logger
+import ../index_maintenance
 import ../state_helpers
 import ../initialization/colony
 import ../colonization/engine as col_engine
@@ -318,6 +319,7 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
 
   # Update fleet location
   fleet.location = newLocation
+  state.updateFleetLocation(order.fleetId, startId, newLocation)
   state.fleets[order.fleetId] = fleet
 
   # Generate OrderCompleted event for fleet movement

@@ -13,6 +13,7 @@ import ../gamestate
 import ../starmap
 import ../order_types
 import ../fleet as fleet_mod
+import ../index_maintenance
 import ../config/prestige_multiplier
 import ../config/population_growth_multiplier
 import ../config/game_setup_config
@@ -147,6 +148,9 @@ proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
   # Create houses and homeworld colonies
   result.initializeHousesAndHomeworlds()
 
+  # Initialize reverse indices for O(1) lookups
+  result.initializeGameIndices()
+
 proc newGameState*(gameId: string, playerCount: int,
                   starMap: StarMap): GameState =
   ## Create initial game state with an existing starMap
@@ -198,3 +202,6 @@ proc newGameState*(gameId: string, playerCount: int,
 
   # Create houses and homeworld colonies
   result.initializeHousesAndHomeworlds()
+
+  # Initialize reverse indices for O(1) lookups
+  result.initializeGameIndices()

@@ -328,6 +328,11 @@ type
     gracePeriodTimers*: Table[HouseId, GracePeriodTracker]  # Grace period tracking for capacity enforcement
     actProgression*: ActProgressionState  # Dynamic game act progression (global, public info)
 
+    # Persistent reverse indices (DoD optimization for O(1) lookups)
+    fleetsByLocation*: Table[SystemId, seq[FleetId]]
+    fleetsByOwner*: Table[HouseId, seq[FleetId]]
+    coloniesByOwner*: Table[HouseId, seq[SystemId]]
+
 # Initialization
 # NOTE: Game initialization moved to src/engine/initialization/game.nim
 # Import initialization/game and use:

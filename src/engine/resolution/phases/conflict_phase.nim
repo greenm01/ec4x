@@ -23,6 +23,7 @@ import std/[tables, options, random, sequtils, strformat]
 import ../../../common/types/core
 import ../../../common/logger as common_logger
 import ../../gamestate, ../../orders, ../../order_types, ../../fleet, ../../squadron, ../../logger, ../../state_helpers
+import ../../index_maintenance
 import ../../espionage/[types as esp_types, engine as esp_engine]
 import ../../diplomacy/[types as dip_types]
 import ../../research/[types as res_types_research]
@@ -358,6 +359,8 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
 
       # Mark fleet for deletion
       if fleetId in state.fleets:
+        let fleet = state.fleets[fleetId]
+        state.removeFleetFromIndices(fleetId, fleet.owner, fleet.location)
         state.fleets.del(fleetId)
       missionsToRemove.add(fleetId)
 

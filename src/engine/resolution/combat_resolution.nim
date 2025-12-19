@@ -10,6 +10,7 @@
 import std/[tables, options, sequtils, hashes, math, random, strformat]
 import ../../common/[types/core, types/combat, types/units, logger as common_logger]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../logger
+import ../index_maintenance
 import ../combat/[engine as combat_engine, types as combat_types, ground]
 import ../economy/[types as econ_types, facility_damage]
 import ../prestige
@@ -945,6 +946,7 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
       )
     else:
       # Fleet destroyed - remove fleet and clean up orders
+      state.removeFleetFromIndices(fleetId, fleet.owner, fleet.location)
       state.fleets.del(fleetId)
       if fleetId in state.fleetOrders:
         state.fleetOrders.del(fleetId)

@@ -96,6 +96,7 @@ import std/[tables, algorithm, options, random, sequtils, hashes, sets, strforma
 import ../common/types/core
 import ../common/logger as common_logger
 import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders, logger
+import index_maintenance
 import espionage/[types as esp_types, engine as esp_engine]
 import diplomacy/[types as dip_types] # Renamed to avoid conflict with gamestate.diplomacy
 import research/[types as res_types_research]
@@ -248,6 +249,15 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
     result.newState.turn
   )
   logInfo(LogCategory.lcOrders, &"Intelligence event processing complete ({result.events.len} events)")
+
+  # Validate index consistency in debug builds
+  when defined(debug) or defined(validateIndices):
+    let indexErrors = result.newState.validateIndices()
+    if indexErrors.len > 0:
+      logError("Resolve", "Index validation failed at end of turn", "errors=", $indexErrors.len)
+      for err in indexErrors:
+        logError("Resolve", "  " & err)
+      raise newException(ValueError, "Index inconsistency detected: " & indexErrors[0])
 
   # Advance to next turn
   result.newState.turn += 1

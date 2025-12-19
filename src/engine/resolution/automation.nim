@@ -37,6 +37,7 @@
 import std/[tables, options, strformat, sequtils]
 import ../../common/types/[core, units]
 import ../gamestate, ../fleet, ../squadron, ../logger, ../orders, ../order_types
+import ../index_maintenance
 import ../economy/repair_queue
 import ../economy/capacity/carrier_hangar
 import ./types as res_types
@@ -351,6 +352,7 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
         status: FleetStatus.Active,
         autoBalanceSquadrons: not isIntel  # Intel fleets: false, others: true
       )
+      state.addFleetToIndices(newFleetId, colony.owner, systemId)
       if isIntel:
         logInfo(LogCategory.lcFleet, &"Created Intel-only fleet {newFleetId} with squadron {squadron.id} (autoBalance=false)")
       else:
@@ -413,6 +415,7 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
         status: FleetStatus.Active,
         autoBalanceSquadrons: false  # Intel fleets never auto-balance
       )
+      state.addFleetToIndices(newFleetId, colony.owner, systemId)
       logInfo(LogCategory.lcFleet, &"Created new Intel-only fleet {newFleetId} with squadron {squadron.id}")
 
   # Distribute non-Intel squadrons to non-Intel fleets only
@@ -438,6 +441,7 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
         status: FleetStatus.Active,
         autoBalanceSquadrons: true
       )
+      state.addFleetToIndices(newFleetId, colony.owner, systemId)
       logInfo(LogCategory.lcFleet, &"Created new fleet {newFleetId} with {squadron.squadronType} squadron {squadron.id}")
 
   # All squadrons assigned
