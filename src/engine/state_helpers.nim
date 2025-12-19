@@ -18,6 +18,7 @@
 ##   # Automatic write-back happens here
 
 import ./gamestate
+import ./types/colony
 import ../common/types/core
 
 template withHouse*(state: var GameState, houseId: HouseId, body: untyped): untyped =

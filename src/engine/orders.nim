@@ -3,6 +3,7 @@
 import std/[options, tables, strformat, sequtils]
 import ../common/types/[core, units]
 import ./gamestate, ./fleet, ./starmap, ./logger
+import ./types/colony
 import ./types/orders as order_types  # Import and re-export fleet order types
 import ./types/espionage as esp_types
 import ./types/research as res_types

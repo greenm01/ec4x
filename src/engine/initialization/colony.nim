@@ -4,7 +4,7 @@
 ## Extracted from gamestate.nim as part of initialization refactoring.
 
 import std/options
-import ../gamestate
+import ../types/colony
 import ../config/[
   game_setup_config, facilities_config, population_config, economy_config
 ]

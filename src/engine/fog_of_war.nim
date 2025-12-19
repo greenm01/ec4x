@@ -5,6 +5,7 @@
 
 import std/[tables, options, sets, strformat]
 import ../common/types/[core, planets]
+import ./types/colony
 import ./gamestate, ./fleet, ./squadron, ./starmap, ./logger
 import ./types/orders as order_types
 import ./types/intelligence as intel_types

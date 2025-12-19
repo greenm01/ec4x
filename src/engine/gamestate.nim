@@ -73,6 +73,7 @@ import research/effects  # CST dock capacity calculations
 import economy/types as econ_types
 import population/types as pop_types
 import intelligence/types as intel_types
+import ./types/colony
 
 # Re-export common types
 export core.HouseId, core.SystemId, core.FleetId
