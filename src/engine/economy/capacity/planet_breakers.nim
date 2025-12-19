@@ -30,12 +30,15 @@ proc calculateMaxPlanetBreakers*(colonyCount: int): int =
 
 proc countPlanetBreakersInFleets*(state: GameState, houseId: core.HouseId): int =
   ## Count planet-breakers currently in fleets for a house
+  ## (O(1) lookup via fleetsByOwner index)
   result = 0
-  for fleetId, fleet in state.fleets:
-    if fleet.owner == houseId:
-      for squadron in fleet.squadrons:
-        if squadron.flagship.shipClass == ShipClass.PlanetBreaker:
-          result += 1
+  if houseId in state.fleetsByOwner:
+    for fleetId in state.fleetsByOwner[houseId]:
+      if fleetId in state.fleets:
+        let fleet = state.fleets[fleetId]
+        for squadron in fleet.squadrons:
+          if squadron.flagship.shipClass == ShipClass.PlanetBreaker:
+            result += 1
 
 proc countPlanetBreakersUnderConstruction*(state: GameState, houseId: core.HouseId): int =
   ## Count planet-breakers currently under construction house-wide

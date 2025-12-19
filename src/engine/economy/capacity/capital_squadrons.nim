@@ -86,12 +86,15 @@ proc isCapitalShip*(shipClass: ShipClass): bool =
 
 proc countCapitalSquadronsInFleets*(state: GameState, houseId: core.HouseId): int =
   ## Count capital squadrons currently in fleets for a house
+  ## (O(1) lookup via fleetsByOwner index)
   result = 0
-  for fleetId, fleet in state.fleets:
-    if fleet.owner == houseId:
-      for squadron in fleet.squadrons:
-        if isCapitalShip(squadron.flagship.shipClass):
-          result += 1
+  if houseId in state.fleetsByOwner:
+    for fleetId in state.fleetsByOwner[houseId]:
+      if fleetId in state.fleets:
+        let fleet = state.fleets[fleetId]
+        for squadron in fleet.squadrons:
+          if isCapitalShip(squadron.flagship.shipClass):
+            result += 1
 
 proc countCapitalSquadronsUnderConstruction*(state: GameState, houseId: core.HouseId): int =
   ## Count capital ships currently under construction house-wide
