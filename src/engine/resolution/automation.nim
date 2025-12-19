@@ -77,35 +77,41 @@ proc autoLoadFightersToCarriers*(state: var GameState, colony: var Colony,
   let acoLevel = house.techTree.levels.advancedCarrierOps
 
   # Find Active carriers at colony with available capacity
+  # Use fleetsByLocation index for O(1) lookup instead of O(n) scan
   var candidateCarriers: seq[tuple[fleetId: FleetId, squadronIdx: int]] = @[]
 
-  for fleetId, fleet in state.fleets:
-    if fleet.owner == colony.owner and fleet.location == systemId:
-      if fleet.status != FleetStatus.Active:
-        continue
+  if systemId in state.fleetsByLocation:
+    for fleetId in state.fleetsByLocation[systemId]:
+      if fleetId notin state.fleets:
+        continue  # Skip stale index entry
 
-      # Check if fleet is stationary (Hold/Guard or no orders)
-      var isStationary = true
-      if colony.owner in orders:
-        for order in orders[colony.owner].fleetOrders:
-          if order.fleetId == fleetId:
-            # Moving orders: skip this fleet
-            if order.orderType in [FleetOrderType.Move, FleetOrderType.Colonize,
-                                   FleetOrderType.Patrol, FleetOrderType.SeekHome]:
-              isStationary = false
-            break
+      let fleet = state.fleets[fleetId]
+      if fleet.owner == colony.owner:
+        if fleet.status != FleetStatus.Active:
+          continue
 
-      if not isStationary:
-        continue
+        # Check if fleet is stationary (Hold/Guard or no orders)
+        var isStationary = true
+        if colony.owner in orders:
+          for order in orders[colony.owner].fleetOrders:
+            if order.fleetId == fleetId:
+              # Moving orders: skip this fleet
+              if order.orderType in [FleetOrderType.Move, FleetOrderType.Colonize,
+                                     FleetOrderType.Patrol, FleetOrderType.SeekHome]:
+                isStationary = false
+              break
 
-      # Find carriers with available hangar space
-      for idx, squadron in fleet.squadrons:
-        if carrier_hangar.isCarrier(squadron.flagship.shipClass):
-          let availableSpace = carrier_hangar.getAvailableHangarSpace(state, fleetId, idx)
-          if availableSpace > 0:
-            candidateCarriers.add((fleetId, idx))
-            logDebug(LogCategory.lcFleet,
-              &"Found carrier {squadron.id} at {systemId} with {availableSpace} hangar space")
+        if not isStationary:
+          continue
+
+        # Find carriers with available hangar space
+        for idx, squadron in fleet.squadrons:
+          if carrier_hangar.isCarrier(squadron.flagship.shipClass):
+            let availableSpace = carrier_hangar.getAvailableHangarSpace(state, fleetId, idx)
+            if availableSpace > 0:
+              candidateCarriers.add((fleetId, idx))
+              logDebug(LogCategory.lcFleet,
+                &"Found carrier {squadron.id} at {systemId} with {availableSpace} hangar space")
 
   if candidateCarriers.len == 0:
     logDebug(LogCategory.lcFleet, &"No available carriers at {systemId} for auto-loading")
@@ -184,47 +190,61 @@ proc autoLoadColonistsToETACs*(
   if colony.population <= 1:
     return  # Preserve minimum population
 
-  # DoD: Single pass through fleets
+  # DoD: Single pass through fleets at this location
+  # Use fleetsByLocation index for O(1) lookup instead of O(n) scan
   var loadedCount = 0
 
-  for fleetId, fleet in state.fleets.mpairs:
-    # Early exit: fleet not at this colony
-    if fleet.location != systemId or fleet.owner != colony.owner:
-      continue
+  if systemId in state.fleetsByLocation:
+    for fleetId in state.fleetsByLocation[systemId]:
+      if fleetId notin state.fleets:
+        continue  # Skip stale index entry
 
-    # Load PTUs onto ETACs with available capacity (Expansion squadrons)
-    for squadron in fleet.squadrons.mitems:
-      if squadron.squadronType != SquadronType.Expansion:
-        continue
-      if squadron.flagship.shipClass != ShipClass.ETAC:
+      var fleet = state.fleets[fleetId]
+      # Early exit: fleet not owned by this colony
+      if fleet.owner != colony.owner:
         continue
 
-      # Check available capacity
-      var cargo = squadron.flagship.cargo.get(ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: squadron.flagship.stats.carryLimit))
-      let availableCapacity = cargo.capacity - cargo.quantity
-      if availableCapacity <= 0:
-        continue
+      # Track if we modified this fleet
+      var fleetModified = false
 
-      # Calculate transfer amount
-      let needed = availableCapacity
-      let available = colony.population - 1  # Preserve 1 PU minimum
-      if available <= 0:
-        continue
+      # Load PTUs onto ETACs with available capacity (Expansion squadrons)
+      for squadron in fleet.squadrons.mitems:
+        if squadron.squadronType != SquadronType.Expansion:
+          continue
+        if squadron.flagship.shipClass != ShipClass.ETAC:
+          continue
 
-      let transferAmount = min(needed, available)
+        # Check available capacity
+        var cargo = squadron.flagship.cargo.get(ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: squadron.flagship.stats.carryLimit))
+        let availableCapacity = cargo.capacity - cargo.quantity
+        if availableCapacity <= 0:
+          continue
 
-      # Direct transfer (no extraction cost)
-      cargo.quantity += transferAmount
-      cargo.cargoType = CargoType.Colonists
-      squadron.flagship.cargo = some(cargo)
-      state.colonies[systemId].population -= transferAmount
+        # Calculate transfer amount
+        let needed = availableCapacity
+        let available = colony.population - 1  # Preserve 1 PU minimum
+        if available <= 0:
+          continue
 
-      loadedCount += transferAmount
+        let transferAmount = min(needed, available)
 
-      logDebug(LogCategory.lcEconomy,
-        &"Loaded {transferAmount} PTU onto ETAC {squadron.id} at {systemId} " &
-        &"({cargo.quantity}/{cargo.capacity} capacity, " &
-        &"colony pop: {state.colonies[systemId].population})")
+        # Direct transfer (no extraction cost)
+        cargo.quantity += transferAmount
+        cargo.cargoType = CargoType.Colonists
+        squadron.flagship.cargo = some(cargo)
+        state.colonies[systemId].population -= transferAmount
+        fleetModified = true
+
+        loadedCount += transferAmount
+
+        logDebug(LogCategory.lcEconomy,
+          &"Loaded {transferAmount} PTU onto ETAC {squadron.id} at {systemId} " &
+          &"({cargo.quantity}/{cargo.capacity} capacity, " &
+          &"colony pop: {state.colonies[systemId].population})")
+
+      # Write modified fleet back if we changed it
+      if fleetModified:
+        state.fleets[fleetId] = fleet
 
   if loadedCount > 0:
     logInfo(LogCategory.lcEconomy,
@@ -296,45 +316,51 @@ proc autoBalanceSquadronsToFleets*(state: var GameState, colony: var Colony,
     return
 
   # Find Active stationary fleets at this colony
+  # Use fleetsByLocation index for O(1) lookup instead of O(n) scan
   var candidateFleets: seq[FleetId] = @[]
 
-  for fleetId, fleet in state.fleets:
-    if fleet.owner == colony.owner and fleet.location == systemId:
-      if fleet.status != FleetStatus.Active:
-        continue
+  if systemId in state.fleetsByLocation:
+    for fleetId in state.fleetsByLocation[systemId]:
+      if fleetId notin state.fleets:
+        continue  # Skip stale index entry
 
-      # CRITICAL: Respect autoBalanceSquadrons flag
-      # Scouts and other specialized fleets set this to false to prevent mixing
-      if not fleet.autoBalanceSquadrons:
-        logDebug(LogCategory.lcFleet,
-          &"Fleet {fleetId} excluded from auto-balance (autoBalanceSquadrons=false)")
-        continue
+      let fleet = state.fleets[fleetId]
+      if fleet.owner == colony.owner:
+        if fleet.status != FleetStatus.Active:
+          continue
 
-      # Check if fleet is stationary (Hold/Guard or no orders)
-      var isStationary = true
+        # CRITICAL: Respect autoBalanceSquadrons flag
+        # Scouts and other specialized fleets set this to false to prevent mixing
+        if not fleet.autoBalanceSquadrons:
+          logDebug(LogCategory.lcFleet,
+            &"Fleet {fleetId} excluded from auto-balance (autoBalanceSquadrons=false)")
+          continue
 
-      # Check fleet orders (immediate movement orders)
-      if colony.owner in orders:
-        for order in orders[colony.owner].fleetOrders:
-          if order.fleetId == fleetId:
-            # Moving orders: skip this fleet
-            if order.orderType in [FleetOrderType.Move, FleetOrderType.Colonize,
-                                   FleetOrderType.Patrol, FleetOrderType.SeekHome]:
-              isStationary = false
-            break
+        # Check if fleet is stationary (Hold/Guard or no orders)
+        var isStationary = true
 
-      # Check standing orders (persistent movement behaviors)
-      if fleetId in state.standingOrders:
-        let standingOrder = state.standingOrders[fleetId]
-        # Movement-based standing orders: skip this fleet
-        if standingOrder.orderType in [StandingOrderType.PatrolRoute,
-                                       StandingOrderType.AutoReinforce,
-                                       StandingOrderType.AutoRepair,
-                                       StandingOrderType.BlockadeTarget]:
-          isStationary = false
+        # Check fleet orders (immediate movement orders)
+        if colony.owner in orders:
+          for order in orders[colony.owner].fleetOrders:
+            if order.fleetId == fleetId:
+              # Moving orders: skip this fleet
+              if order.orderType in [FleetOrderType.Move, FleetOrderType.Colonize,
+                                     FleetOrderType.Patrol, FleetOrderType.SeekHome]:
+                isStationary = false
+              break
 
-      if isStationary:
-        candidateFleets.add(fleetId)
+        # Check standing orders (persistent movement behaviors)
+        if fleetId in state.standingOrders:
+          let standingOrder = state.standingOrders[fleetId]
+          # Movement-based standing orders: skip this fleet
+          if standingOrder.orderType in [StandingOrderType.PatrolRoute,
+                                         StandingOrderType.AutoReinforce,
+                                         StandingOrderType.AutoRepair,
+                                         StandingOrderType.BlockadeTarget]:
+            isStationary = false
+
+        if isStationary:
+          candidateFleets.add(fleetId)
 
   # Case 1: No candidate fleets - create new fleet for each squadron
   # Intel squadrons get dedicated fleets with autoBalanceSquadrons=false

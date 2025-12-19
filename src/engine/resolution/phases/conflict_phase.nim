@@ -106,10 +106,15 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
 
   for systemId, system in state.starMap.systems:
     # Get all houses with active fleets or colonies at this system.
+    # Use fleetsByLocation index for O(1) lookup instead of O(F) scan
     var housesPresent: seq[HouseId] = @[]
-    for fleet in state.fleets.values:
-      if fleet.location == systemId and fleet.owner notin housesPresent:
-        housesPresent.add(fleet.owner)
+    if systemId in state.fleetsByLocation:
+      for fleetId in state.fleetsByLocation[systemId]:
+        if fleetId notin state.fleets:
+          continue  # Skip stale index entry
+        let fleet = state.fleets[fleetId]
+        if fleet.owner notin housesPresent:
+          housesPresent.add(fleet.owner)
     if systemId in state.colonies and state.colonies[systemId].owner notin housesPresent:
       housesPresent.add(state.colonies[systemId].owner)
 

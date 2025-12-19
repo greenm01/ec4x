@@ -645,13 +645,17 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
   let systemOwner = if systemId in state.colonies: some(state.colonies[systemId].owner) else: none(HouseId)
 
   # 2. Gather all fleets at this system and classify by role
+  # Use fleetsByLocation index for O(1) lookup instead of O(F) scan
   var fleetsAtSystem: seq[(FleetId, Fleet)] = @[]
   var orbitalDefenders: seq[(FleetId, Fleet)] = @[]  # Guard/Reserve/Mothballed (orbital defense only)
   var attackingFleets: seq[(FleetId, Fleet)] = @[]   # Non-owner fleets (must fight through)
   var mobileDefenders: seq[(FleetId, Fleet)] = @[]   # Owner's mobile fleets (space combat)
 
-  for fleetId, fleet in state.fleets:
-    if fleet.location == systemId:
+  if systemId in state.fleetsByLocation:
+    for fleetId in state.fleetsByLocation[systemId]:
+      if fleetId notin state.fleets:
+        continue  # Skip stale index entry
+      let fleet = state.fleets[fleetId]
       fleetsAtSystem.add((fleetId, fleet))
 
       # Intel-only fleets are invisible to combat fleets and never participate in combat
@@ -1152,44 +1156,49 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
 
     for houseId in outcome.retreated:
       # Find all fleets belonging to this house at the battle location
-      for fleetId, fleet in state.fleets:
-        if fleet.owner == houseId and fleet.location == systemId:
-          # Find closest owned colony for retreat destination
-          let safeDestination = findClosestOwnedColony(state, fleet.location, fleet.owner)
+      # Use fleetsByOwner index for O(1) lookup instead of O(F) scan
+      if houseId in state.fleetsByOwner:
+        for fleetId in state.fleetsByOwner[houseId]:
+          if fleetId notin state.fleets:
+            continue  # Skip stale index entry
+          let fleet = state.fleets[fleetId]
+          if fleet.location == systemId:
+            # Find closest owned colony for retreat destination
+            let safeDestination = findClosestOwnedColony(state, fleet.location, fleet.owner)
 
-          if safeDestination.isSome:
-            logDebug("Combat", "Fleet retreated - auto-assigning Seek Home",
-                     "fleetId=", $fleetId, " houseId=", $houseId,
-                     " destination=", $safeDestination.get())
+            if safeDestination.isSome:
+              logDebug("Combat", "Fleet retreated - auto-assigning Seek Home",
+                       "fleetId=", $fleetId, " houseId=", $houseId,
+                       " destination=", $safeDestination.get())
 
-            # Create Seek Home order for this fleet
-            # NOTE: This creates an "in-flight" movement that will be processed immediately
-            # The fleet will begin its retreat movement in the same turn
-            let seekHomeOrder = FleetOrder(
-              fleetId: fleetId,
-              orderType: FleetOrderType.SeekHome,
-              targetSystem: safeDestination,
-              targetFleet: none(FleetId),
-              priority: 0
-            )
+              # Create Seek Home order for this fleet
+              # NOTE: This creates an "in-flight" movement that will be processed immediately
+              # The fleet will begin its retreat movement in the same turn
+              let seekHomeOrder = FleetOrder(
+                fleetId: fleetId,
+                orderType: FleetOrderType.SeekHome,
+                targetSystem: safeDestination,
+                targetFleet: none(FleetId),
+                priority: 0
+              )
 
-            # Execute the seek home movement immediately (fleet retreats in same turn)
-            resolveMovementOrder(state, houseId, seekHomeOrder, events)
+              # Execute the seek home movement immediately (fleet retreats in same turn)
+              resolveMovementOrder(state, houseId, seekHomeOrder, events)
 
-            events.add(event_factory.battle(
-              houseId,
-              systemId,
-              "Fleet " & fleetId & " retreated from combat - seeking nearest friendly system " & $safeDestination.get()
-            ))
-          else:
-            logWarn("Combat", "Fleet retreated but has no safe destination - holding position",
-                    "fleetId=", $fleetId, " houseId=", $houseId)
-            # No safe colonies - fleet holds at retreat location (will be resolved by movement system)
-            events.add(event_factory.battle(
-              houseId,
-              systemId,
-              "Fleet " & fleetId & " retreated from combat but has no friendly colonies - holding position"
-            ))
+              events.add(event_factory.battle(
+                houseId,
+                systemId,
+                "Fleet " & fleetId & " retreated from combat - seeking nearest friendly system " & $safeDestination.get()
+              ))
+            else:
+              logWarn("Combat", "Fleet retreated but has no safe destination - holding position",
+                      "fleetId=", $fleetId, " houseId=", $houseId)
+              # No safe colonies - fleet holds at retreat location (will be resolved by movement system)
+              events.add(event_factory.battle(
+                houseId,
+                systemId,
+                "Fleet " & fleetId & " retreated from combat but has no friendly colonies - holding position"
+              ))
 
   # 6. Determine attacker and defender houses for reporting
   var attackerHouses: seq[HouseId] = @[]

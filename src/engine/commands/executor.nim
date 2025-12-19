@@ -187,10 +187,10 @@ proc executeSeekHomeOrder(
   ## If that colony is conquered, find next closest
 
   # Find all friendly colonies
+  # Use coloniesByOwner index for O(1) lookup instead of O(c) scan
   var friendlyColonies: seq[SystemId] = @[]
-  for colonyId, colony in state.colonies:
-    if colony.owner == fleet.owner:
-      friendlyColonies.add(colonyId)
+  if fleet.owner in state.coloniesByOwner:
+    friendlyColonies = state.coloniesByOwner[fleet.owner]
 
   if friendlyColonies.len == 0:
     # No friendly colonies - abort mission
@@ -1237,20 +1237,25 @@ proc executeRendezvousOrder(
   let targetSystem = order.targetSystem.get()
 
   # Check if rendezvous point has hostile forces (enemy/neutral fleets)
+  # Use fleetsByLocation index for O(1) lookup instead of O(F) scan
   let house = state.houses[fleet.owner]
-  for otherFleet in state.fleets.values:
-    if otherFleet.location == targetSystem and otherFleet.owner != fleet.owner:
-      let relation = dip_types.getDiplomaticState(house.diplomaticRelations, otherFleet.owner)
-      if relation == dip_types.DiplomaticState.Enemy or relation == dip_types.DiplomaticState.Hostile:
-        # Hostile forces at rendezvous - abort
-        events.add(event_factory.orderAborted(
-          fleet.owner,
-          fleet.id,
-          "Rendezvous",
-          reason = "hostile forces present at rendezvous point",
-          systemId = some(fleet.location)
-        ))
-        return OrderOutcome.Aborted
+  if targetSystem in state.fleetsByLocation:
+    for otherFleetId in state.fleetsByLocation[targetSystem]:
+      if otherFleetId notin state.fleets:
+        continue  # Skip stale index entry
+      let otherFleet = state.fleets[otherFleetId]
+      if otherFleet.owner != fleet.owner:
+        let relation = dip_types.getDiplomaticState(house.diplomaticRelations, otherFleet.owner)
+        if relation == dip_types.DiplomaticState.Enemy or relation == dip_types.DiplomaticState.Hostile:
+          # Hostile forces at rendezvous - abort
+          events.add(event_factory.orderAborted(
+            fleet.owner,
+            fleet.id,
+            "Rendezvous",
+            reason = "hostile forces present at rendezvous point",
+            systemId = some(fleet.location)
+          ))
+          return OrderOutcome.Aborted
 
   # Check if rendezvous point colony is enemy-controlled (additional check)
   if targetSystem in state.colonies:
@@ -1274,23 +1279,28 @@ proc executeRendezvousOrder(
     return OrderOutcome.Success
 
   # Find other fleets at rendezvous with same order at same location
+  # Use fleetsByLocation index for O(1) lookup instead of O(F) scan
   var rendezvousFleets: seq[Fleet] = @[]
   rendezvousFleets.add(fleet)
 
   # Collect all fleets with Rendezvous orders at this system
-  for fleetId, otherFleet in state.fleets:
-    if fleetId == fleet.id:
-      continue  # Skip self
+  if targetSystem in state.fleetsByLocation:
+    for fleetId in state.fleetsByLocation[targetSystem]:
+      if fleetId == fleet.id:
+        continue  # Skip self
+      if fleetId notin state.fleets:
+        continue  # Skip stale index entry
 
-    # Check if at same location and owned by same house
-    if otherFleet.location == targetSystem and otherFleet.owner == fleet.owner:
-      # Check if has Rendezvous order to same system
-      if fleetId in state.fleetOrders:
-        let otherOrder = state.fleetOrders[fleetId]
-        if otherOrder.orderType == FleetOrderType.Rendezvous and
-           otherOrder.targetSystem.isSome and
-           otherOrder.targetSystem.get() == targetSystem:
-          rendezvousFleets.add(otherFleet)
+      let otherFleet = state.fleets[fleetId]
+      # Check if owned by same house
+      if otherFleet.owner == fleet.owner:
+        # Check if has Rendezvous order to same system
+        if fleetId in state.fleetOrders:
+          let otherOrder = state.fleetOrders[fleetId]
+          if otherOrder.orderType == FleetOrderType.Rendezvous and
+             otherOrder.targetSystem.isSome and
+             otherOrder.targetSystem.get() == targetSystem:
+            rendezvousFleets.add(otherFleet)
 
   # If only this fleet, wait for others
   if rendezvousFleets.len == 1:
@@ -1377,15 +1387,18 @@ proc executeSalvageOrder(
   # If not at suitable colony, search all owned colonies for one with facilities
   # Note: For simplicity, we take the first colony with facilities found
   # A more sophisticated implementation would use pathfinding to find truly closest
+  # Use coloniesByOwner index for O(1) lookup instead of O(c) scan
   if closestColony.isNone:
-    for colonyId, colony in state.colonies:
-      if colony.owner == fleet.owner:
-        # Check if colony has salvage facilities
-        let hasFacilities = colony.spaceports.len > 0 or colony.shipyards.len > 0
+    if fleet.owner in state.coloniesByOwner:
+      for colonyId in state.coloniesByOwner[fleet.owner]:
+        if colonyId in state.colonies:
+          let colony = state.colonies[colonyId]
+          # Check if colony has salvage facilities
+          let hasFacilities = colony.spaceports.len > 0 or colony.shipyards.len > 0
 
-        if hasFacilities:
-          closestColony = some(colonyId)
-          break
+          if hasFacilities:
+            closestColony = some(colonyId)
+            break
 
   if closestColony.isNone:
     events.add(event_factory.orderFailed(
