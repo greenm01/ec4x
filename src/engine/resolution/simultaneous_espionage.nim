@@ -19,6 +19,7 @@ import ../espionage/types as esp_types
 import ../config/espionage_config
 import ../../common/types/core
 import ../prestige
+import ./event_factory/orders 
 import ./event_factory/intelligence as intelligence_events
 import ./types as res_types
 import ../intelligence/generator as intel_generator
@@ -385,7 +386,7 @@ proc processScoutIntelligence*(
     state.fleets[result.fleetId] = fleet
     logInfo(LogCategory.lcOrders, &"Spy mission started for fleet {result.fleetId} at {targetSystem}")
 
-    events.add(event_factory.orderCompleted(
+    events.add(orderCompleted(
       fleet.owner,
       result.fleetId,
       "SpyMissionStarted",
