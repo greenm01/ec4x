@@ -115,6 +115,11 @@ proc manageStrategicReserves*(controller: var AIController, filtered: FilteredGa
   ## Assign fleets as strategic reserves for important colonies
   let importantSystems = controller.identifyImportantColonies(filtered)
 
+  # Build Set of reserved fleet IDs for O(1) membership check
+  var reservedFleets = initHashSet[FleetId]()
+  for reserve in controller.reserves:
+    reservedFleets.incl(reserve.fleetId)
+
   for systemId in importantSystems:
     if controller.getReserveForSystem(systemId).isSome:
       continue
@@ -127,13 +132,8 @@ proc manageStrategicReserves*(controller: var AIController, filtered: FilteredGa
       if fleet.owner != controller.houseId or fleet.combatStrength() == 0:
         continue
 
-      var isReserve = false
-      for reserve in controller.reserves:
-        if reserve.fleetId == fleet.id:
-          isReserve = true
-          break
-
-      if isReserve:
+      # O(1) check if fleet is already reserved
+      if fleet.id in reservedFleets:
         continue
 
       let fleetCoords = filtered.starMap.systems[fleet.location].coords
@@ -153,6 +153,11 @@ proc respondToThreats*(controller: var AIController, filtered: FilteredGameState
   ## Check for enemy fleets near protected systems
   ## NOW WITH TRAVEL TIME AWARENESS: Only dispatches reserves that can respond in time
   result = @[]
+
+  # Build FleetId → Fleet lookup table for O(1) access
+  var fleetMap = initTable[FleetId, Fleet]()
+  for fleet in filtered.ownFleets:
+    fleetMap[fleet.id] = fleet
 
   for reserve in controller.reserves:
     if reserve.assignedTo.isNone:
@@ -181,10 +186,9 @@ proc respondToThreats*(controller: var AIController, filtered: FilteredGameState
 
       if dist <= reserve.responseRadius and dist < minDist:
         minDist = dist
-        # Calculate reserve's ETA to threat location
-        let reserveFleetOpt = filtered.ownFleets.filterIt(it.id == reserve.fleetId)
-        if reserveFleetOpt.len > 0:
-          let reserveFleet = reserveFleetOpt[0]
+        # Calculate reserve's ETA to threat location (O(1) lookup)
+        if reserve.fleetId in fleetMap:
+          let reserveFleet = fleetMap[reserve.fleetId]
           let etaOpt = calculateETA(filtered.starMap, reserveFleet.location, visFleet.location, reserveFleet)
           if etaOpt.isSome:
             let threat: tuple[location: SystemId, distance: int, eta: int] = (visFleet.location, dist, etaOpt.get())
@@ -211,6 +215,9 @@ proc updateFallbackRoutes*(controller: var AIController, filtered: FilteredGameS
   let myColonies = getOwnedColonies(filtered, controller.houseId)
   if myColonies.len == 0:
     return
+
+  # Path cache: avoid recalculating same paths within this turn
+  var pathCache = initTable[(SystemId, SystemId), tuple[path: seq[uint], len: int, valid: bool]]()
 
   # Clear stale routes
   controller.fallbackRoutes = controller.fallbackRoutes.filterIt(
@@ -245,20 +252,26 @@ proc updateFallbackRoutes*(controller: var AIController, filtered: FilteredGameS
       if not isSafe:
         continue
 
-      let dummyFleet = Fleet(
-        id: "temp",
-        owner: controller.houseId,
-        location: colony.systemId,
-        squadrons: @[],
-        status: FleetStatus.Active
-      )
+      # Check path cache first (avoids expensive pathfinding)
+      let cacheKey = (colony.systemId, otherColony.systemId)
+      if cacheKey notin pathCache:
+        let dummyFleet = Fleet(
+          id: "temp",
+          owner: controller.houseId,
+          location: colony.systemId,
+          squadrons: @[],
+          status: FleetStatus.Active
+        )
+        let pathResult = filtered.starMap.findPath(colony.systemId, otherColony.systemId, dummyFleet)
+        pathCache[cacheKey] = (path: pathResult.path, len: pathResult.path.len, valid: pathResult.path.len > 0)
 
-      let pathResult = filtered.starMap.findPath(colony.systemId, otherColony.systemId, dummyFleet)
-      if pathResult.path.len == 0:
+      let cachedPath = pathCache[cacheKey]
+      if not cachedPath.valid:
         continue
+      let pathResult = cachedPath.path
 
       var pathIsSafe = true
-      for pathSystemId in pathResult.path:
+      for pathSystemId in pathResult:
         if pathSystemId != colony.systemId and isSystemColonized(filtered, pathSystemId):
           let pathColonyOpt = getColony(filtered, pathSystemId)
           if pathColonyOpt.isSome:
@@ -272,7 +285,7 @@ proc updateFallbackRoutes*(controller: var AIController, filtered: FilteredGameS
       if not pathIsSafe:
         continue
 
-      let dist = pathResult.path.len - 1
+      let dist = pathResult.len - 1
 
       if dist < minDist:
         minDist = dist
@@ -324,23 +337,21 @@ proc identifyInvasionOpportunities*(controller: var AIController, filtered: Filt
   # 1. Currently visible colonies (fog-of-war)
   # 2. Intelligence reports from scouts, spies, combat encounters, starbase surveillance
   var knownEnemyColonies: seq[tuple[systemId: SystemId, owner: HouseId]] = @[]
+  var knownEnemySet = initHashSet[SystemId]()  # O(1) duplicate tracking
 
   # Add currently visible colonies
   for visCol in filtered.visibleColonies:
     if visCol.owner != controller.houseId:
       knownEnemyColonies.add((visCol.systemId, visCol.owner))
+      knownEnemySet.incl(visCol.systemId)
 
   # Add colonies from intelligence database (even if not currently visible)
   for systemId, report in filtered.ownHouse.intelligence.colonyReports:
     if report.targetOwner != controller.houseId:
-      # Check if not already in list
-      var alreadyKnown = false
-      for known in knownEnemyColonies:
-        if known.systemId == systemId:
-          alreadyKnown = true
-          break
-      if not alreadyKnown:
+      # O(1) duplicate check with HashSet
+      if systemId notin knownEnemySet:
         knownEnemyColonies.add((systemId, report.targetOwner))
+        knownEnemySet.incl(systemId)
 
   logDebug(LogCategory.lcAI, &"{controller.houseId} found {vulnerableTargets.len} vulnerable targets, {filtered.visibleColonies.len} visible colonies, {knownEnemyColonies.len} known enemy colonies from intel")
 

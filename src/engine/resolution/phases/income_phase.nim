@@ -406,12 +406,20 @@ proc resolveIncomePhase*(
   logInfo(LogCategory.lcGeneral, &"[INCOME STEP 8a] Checking elimination conditions...")
 
   let gameplayConfig = globalGameplayConfig
+  let defensiveCollapseThreshold = gameplayConfig.elimination.defensive_collapse_threshold
+  let defensiveCollapseTurns = gameplayConfig.elimination.defensive_collapse_turns
   var eliminatedCount = 0
 
   for houseId, house in state.houses:
     # Standard elimination: no colonies and no invasion capability
-    let colonies = state.getHouseColonies(houseId)
-    let fleets = state.getHouseFleets(houseId)
+    # Use indices for O(1) lookup instead of O(c) and O(f) scans
+    let colonies = if houseId in state.coloniesByOwner: state.coloniesByOwner[houseId] else: @[]
+
+    var fleets: seq[Fleet] = @[]
+    if houseId in state.fleetsByOwner:
+      for fleetId in state.fleetsByOwner[houseId]:
+        if fleetId in state.fleets:
+          fleets.add(state.fleets[fleetId])
 
     if colonies.len == 0:
       # No colonies - check if house has invasion capability
@@ -454,17 +462,15 @@ proc resolveIncomePhase*(
     # CRITICAL: Get house once, modify elimination/counter, write back
     var houseToUpdate = state.houses[houseId]
 
-    if house.prestige <
-       gameplayConfig.elimination.defensive_collapse_threshold:
+    if house.prestige < defensiveCollapseThreshold:
       houseToUpdate.negativePrestigeTurns += 1
       logWarn(LogCategory.lcGeneral,
         &"{house.name} at risk: prestige {house.prestige} " &
         &"({houseToUpdate.negativePrestigeTurns}/" &
-        &"{gameplayConfig.elimination.defensive_collapse_turns} turns " &
+        &"{defensiveCollapseTurns} turns " &
         &"until elimination)")
 
-      if houseToUpdate.negativePrestigeTurns >=
-         gameplayConfig.elimination.defensive_collapse_turns:
+      if houseToUpdate.negativePrestigeTurns >= defensiveCollapseTurns:
         houseToUpdate.eliminated = true
         houseToUpdate.status = HouseStatus.DefensiveCollapse
         eliminatedCount += 1

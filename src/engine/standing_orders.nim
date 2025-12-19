@@ -61,12 +61,9 @@ proc getKnownSystems*(state: GameState, houseId: HouseId): HashSet[SystemId] =
   for colonyId, colony in state.colonies:
     if colony.owner == houseId:
       result.incl(colonyId)
-      # Add adjacent systems (hex visibility from owned colonies)
-      for lane in state.starMap.lanes:
-        if lane.source == colonyId:
-          result.incl(lane.destination)
-        elif lane.destination == colonyId:
-          result.incl(lane.source)
+      # Add adjacent systems (hex visibility from owned colonies) - O(1) lookup
+      for adjacentId in state.starMap.getAdjacentSystems(colonyId):
+        result.incl(adjacentId)
 
   # 2. Systems with intelligence reports (scouted)
   for systemId in intel.systemReports.keys:
