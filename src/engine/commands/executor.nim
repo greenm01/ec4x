@@ -707,7 +707,6 @@ proc executeSpyPlanetOrder(
   # Set fleet mission state
   var updatedFleet = fleet
   updatedFleet.missionState = FleetMissionState.Traveling
-  updatedFleet.missionType = some(ord(SpyMissionType.SpyOnPlanet))
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)
@@ -749,15 +748,6 @@ proc executeSpyPlanetOrder(
     updatedFleet.missionState = FleetMissionState.OnSpyMission
     updatedFleet.missionStartTurn = state.turn
 
-    # Register active mission
-    state.activeSpyMissions[fleet.id] = ActiveSpyMission(
-      fleetId: fleet.id,
-      missionType: SpyMissionType.SpyOnPlanet,
-      targetSystem: targetSystem,
-      scoutCount: scoutCount,
-      startTurn: state.turn,
-      ownerHouse: fleet.owner
-    )
 
     # Update fleet in state
     state.fleets[fleet.id] = updatedFleet
@@ -839,7 +829,6 @@ proc executeHackStarbaseOrder(
   # Set fleet mission state
   var updatedFleet = fleet
   updatedFleet.missionState = FleetMissionState.Traveling
-  updatedFleet.missionType = some(ord(SpyMissionType.HackStarbase))
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)
@@ -881,15 +870,6 @@ proc executeHackStarbaseOrder(
     updatedFleet.missionState = FleetMissionState.OnSpyMission
     updatedFleet.missionStartTurn = state.turn
 
-    # Register active mission
-    state.activeSpyMissions[fleet.id] = ActiveSpyMission(
-      fleetId: fleet.id,
-      missionType: SpyMissionType.HackStarbase,
-      targetSystem: targetSystem,
-      scoutCount: scoutCount,
-      startTurn: state.turn,
-      ownerHouse: fleet.owner
-    )
 
     # Update fleet in state
     state.fleets[fleet.id] = updatedFleet
@@ -951,7 +931,6 @@ proc executeSpySystemOrder(
   # Set fleet mission state
   var updatedFleet = fleet
   updatedFleet.missionState = FleetMissionState.Traveling
-  updatedFleet.missionType = some(ord(SpyMissionType.SpyOnSystem))
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)
@@ -993,15 +972,6 @@ proc executeSpySystemOrder(
     updatedFleet.missionState = FleetMissionState.OnSpyMission
     updatedFleet.missionStartTurn = state.turn
 
-    # Register active mission
-    state.activeSpyMissions[fleet.id] = ActiveSpyMission(
-      fleetId: fleet.id,
-      missionType: SpyMissionType.SpyOnSystem,
-      targetSystem: targetSystem,
-      scoutCount: scoutCount,
-      startTurn: state.turn,
-      ownerHouse: fleet.owner
-    )
 
     # Update fleet in state
     state.fleets[fleet.id] = updatedFleet

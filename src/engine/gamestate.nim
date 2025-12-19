@@ -213,23 +213,6 @@ type
   # Re-export proper TechTree from research module
   TechTree* = res_types.TechTree
 
-  SpyMissionType* {.pure.} = enum
-    ## Types of spy scout missions (operations.md:6.2.9-6.2.11)
-    SpyOnPlanet     # Order 09: Gather planet intelligence
-    HackStarbase    # Order 10: Infiltrate starbase network
-    SpyOnSystem     # Order 11: System reconnaissance
-
-  ActiveSpyMission* = object
-    ## Active spy mission tracked in fleet-based system
-    ## Replaces SpyScout entity for persistent mission tracking
-    fleetId*: FleetId
-    missionType*: SpyMissionType
-    targetSystem*: SystemId
-    scoutCount*: int        # Number of scouts on the mission
-    startTurn*: int         # Turn mission began
-    ownerHouse*: HouseId
-
-
   FallbackRoute* = object
     ## Designated safe retreat route for a region
     ## Planned retreat destinations updated by AI strategy or automatic safety checks
@@ -315,7 +298,6 @@ type
     colonies*: Table[SystemId, Colony]
     fleets*: Table[FleetId, Fleet]
     fleetOrders*: Table[FleetId, FleetOrder]  # Persistent fleet orders (continue until completed)
-    activeSpyMissions*: Table[FleetId, ActiveSpyMission]  # Active spy missions (fleet-based system)
     arrivedFleets*: Table[FleetId, SystemId]  # Fleets that arrived at order targets (checked in Conflict/Income phase)
     standingOrders*: Table[FleetId, StandingOrder]  # Standing orders (execute when no explicit order)
     turnDeadline*: int64          # Unix timestamp
