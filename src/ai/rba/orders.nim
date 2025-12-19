@@ -104,15 +104,13 @@ proc generateAIOrders*(controller: var AIController, filtered: FilteredGameState
   if controller.goapEnabled:
     logInfo(LogCategory.lcAI, &"{controller.houseId} === Phase 1.5: GOAP Planning ===")
 
-    # CRITICAL: Regenerate intelligence snapshot AFTER Phase 1 advisor analysis
-    # Phase 1 Drungarius populates vulnerableTargets via colony analysis
-    # GOAP needs this fresh data for offensive goal extraction
-    let freshIntelSnapshot = generateIntelligenceSnapshot(filtered, controller)
-
+    # OPTIMIZATION: Reuse intelligence snapshot from Phase 0
+    # Controller state (vulnerableTargets) is updated during Phase 1,
+    # but snapshot is derived from FilteredGameState which hasn't changed
     let phase15Result = phase1_5_goap.executePhase15_GOAP(
       controller,
       filtered,
-      freshIntelSnapshot,  # Use fresh snapshot with updated vulnerableTargets
+      intelSnapshot,  # Reuse snapshot from Phase 0
       controller.goapConfig
     )
 

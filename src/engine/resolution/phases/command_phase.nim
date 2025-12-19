@@ -200,10 +200,12 @@ proc resolveCommandPhase*(state: var GameState,
           &"(treasury: {state.houses[houseId].treasury + totalResearchCost} → {state.houses[houseId].treasury})")
 
       # Calculate GHO for this house
+      # Use coloniesByOwner index for O(1) lookup instead of O(c) scan
       var gho = 0
-      for colony in state.colonies.values:
-        if colony.owner == houseId:
-          gho += colony.production
+      if houseId in state.coloniesByOwner:
+        for colonyId in state.coloniesByOwner[houseId]:
+          if colonyId in state.colonies:
+            gho += state.colonies[colonyId].production
 
       # Get current tech levels
       let currentSL = state.houses[houseId].techTree.levels.scienceLevel  # Science Level

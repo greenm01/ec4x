@@ -10,7 +10,7 @@
 import fleet
 import ../common/[hex, system, types/combat]
 import config/starmap_config
-import std/[tables, sequtils, random, math, algorithm, hashes, sets, strutils]
+import std/[tables, sequtils, random, math, algorithm, hashes, sets, strutils, heapqueue]
 import std/options
 
 type
@@ -19,6 +19,8 @@ type
   StarMap* = object
     systems*: Table[uint, System]
     lanes*: seq[JumpLane]
+    laneMap*: Table[(uint, uint), LaneType]  # Bidirectional lane type cache
+    distanceMatrix*: Table[(uint, uint), uint32]  # Pre-computed hex distances
     adjacency*: Table[uint, seq[uint]]
     playerCount*: int
     numRings*: uint32
@@ -107,6 +109,10 @@ proc addLane(starMap: var StarMap, lane: JumpLane) =
       return  # Lane already exists
 
   starMap.lanes.add(lane)
+
+  # Cache lane type for O(1) lookup (bidirectional)
+  starMap.laneMap[(lane.source, lane.destination)] = lane.laneType
+  starMap.laneMap[(lane.destination, lane.source)] = lane.laneType
 
   # Update adjacency (bidirectional)
   if lane.source notin starMap.adjacency:
@@ -428,23 +434,21 @@ proc findPath*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): PathRes
   if start notin starMap.systems or goal notin starMap.systems:
     return PathResult(path: @[], totalCost: 0, found: false)
 
-  var openSet = @[(0'u32, start)]
+  var openSet = initHeapQueue[(uint32, uint)]()
+  var openSetNodes = initHashSet[uint]()  # O(1) membership tracking
   var cameFrom = initTable[uint, uint]()
   var gScore = initTable[uint, uint32]()
   var fScore = initTable[uint, uint32]()
 
   gScore[start] = 0
-  fScore[start] = distance(starMap.systems[start].coords, starMap.systems[goal].coords)
+  fScore[start] = starMap.distanceMatrix.getOrDefault((start, goal), 0)
+  openSet.push((fScore[start], start))
+  openSetNodes.incl(start)
 
   while openSet.len > 0:
-    # Find node with lowest fScore
-    var currentIdx = 0
-    for i in 1..<openSet.len:
-      if openSet[i][0] < openSet[currentIdx][0]:
-        currentIdx = i
-
-    let current = openSet[currentIdx][1]
-    openSet.del(currentIdx)
+    # Pop node with lowest fScore (O(log n) with heapqueue)
+    let (currentF, current) = openSet.pop()
+    openSetNodes.excl(current)
 
     if current == goal:
       # Reconstruct path
@@ -458,13 +462,8 @@ proc findPath*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): PathRes
 
     # Explore neighbors
     for neighbor in starMap.getAdjacentSystems(current):
-      # Find lane type between current and neighbor
-      var laneType = LaneType.Major  # Default
-      for lane in starMap.lanes:
-        if (lane.source == current and lane.destination == neighbor) or
-           (lane.source == neighbor and lane.destination == current):
-          laneType = lane.laneType
-          break
+      # O(1) lane type lookup using cache
+      let laneType = starMap.laneMap.getOrDefault((current, neighbor), LaneType.Major)
 
       # Check if fleet can traverse this lane
       if not canFleetTraverseLane(fleet, laneType):
@@ -475,19 +474,23 @@ proc findPath*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): PathRes
       if tentativeGScore < gScore.getOrDefault(neighbor, uint32.high):
         cameFrom[neighbor] = current
         gScore[neighbor] = tentativeGScore
-        fScore[neighbor] = tentativeGScore + distance(starMap.systems[neighbor].coords, starMap.systems[goal].coords)
+        fScore[neighbor] = tentativeGScore + starMap.distanceMatrix.getOrDefault((neighbor, goal), 0)
 
-        # Add to open set if not present
-        var inOpenSet = false
-        for item in openSet:
-          if item[1] == neighbor:
-            inOpenSet = true
-            break
-
-        if not inOpenSet:
-          openSet.add((fScore[neighbor], neighbor))
+        # Add to open set if not present (O(1) check with HashSet)
+        if neighbor notin openSetNodes:
+          openSet.push((fScore[neighbor], neighbor))
+          openSetNodes.incl(neighbor)
 
   return PathResult(path: @[], totalCost: 0, found: false)
+
+proc buildDistanceMatrix(starMap: var StarMap) =
+  ## Pre-compute all pairwise hex distances for O(1) heuristic lookup
+  for id1 in starMap.systems.keys:
+    for id2 in starMap.systems.keys:
+      if id1 != id2:
+        let hex1 = starMap.systems[id1].coords
+        let hex2 = starMap.systems[id2].coords
+        starMap.distanceMatrix[(id1, id2)] = distance(hex1, hex2)
 
 proc populate*(starMap: var StarMap) =
   ## Main population function - generates complete starmap
@@ -495,6 +498,7 @@ proc populate*(starMap: var StarMap) =
     starMap.generateHexGrid()
     starMap.assignPlayerHomeworlds()
     starMap.generateLanes()
+    starMap.buildDistanceMatrix()  # Pre-compute hex distances for pathfinding
 
     # Validate result
     if not starMap.validateConnectivity():
