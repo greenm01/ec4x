@@ -167,24 +167,16 @@ proc resolveIncomePhase*(
   for systemId, colony in state.colonies:
     coloniesSeqIncome.add(colony)
 
-  # Build house tax policies from House state
+  # Build house data tables in single pass (optimization: 4 loops → 1 loop)
   var houseTaxPolicies = initTable[HouseId, econ_types.TaxPolicy]()
+  var houseTechLevels = initTable[HouseId, int]()
+  var houseCSTTechLevels = initTable[HouseId, int]()
+  var houseTreasuries = initTable[HouseId, int]()
+
   for houseId, house in state.houses:
     houseTaxPolicies[houseId] = house.taxPolicy
-
-  # Build house tech levels (Economic Level = economicLevel field)
-  var houseTechLevels = initTable[HouseId, int]()
-  for houseId, house in state.houses:
     houseTechLevels[houseId] = house.techTree.levels.economicLevel  # EL = economicLevel (confusing naming)
-
-  # Build house CST tech levels (Construction = constructionTech field)
-  var houseCSTTechLevels = initTable[HouseId, int]()
-  for houseId, house in state.houses:
     houseCSTTechLevels[houseId] = house.techTree.levels.constructionTech
-
-  # Build house treasuries
-  var houseTreasuries = initTable[HouseId, int]()
-  for houseId, house in state.houses:
     houseTreasuries[houseId] = house.treasury
 
   # Call economy engine with natural growth rate from config

@@ -367,18 +367,20 @@ proc getActiveHouses*(state: GameState): seq[House] =
       result.add(house)
 
 proc getHouseColonies*(state: GameState, houseId: HouseId): seq[Colony] =
-  ## Get all colonies owned by a house
+  ## Get all colonies owned by a house (O(1) lookup via coloniesByOwner index)
   result = @[]
-  for colony in state.colonies.values:
-    if colony.owner == houseId:
-      result.add(colony)
+  if houseId in state.coloniesByOwner:
+    for systemId in state.coloniesByOwner[houseId]:
+      if systemId in state.colonies:
+        result.add(state.colonies[systemId])
 
 proc getHouseFleets*(state: GameState, houseId: HouseId): seq[Fleet] =
-  ## Get all fleets owned by a house
+  ## Get all fleets owned by a house (O(1) lookup via fleetsByOwner index)
   result = @[]
-  for fleet in state.fleets.values:
-    if fleet.owner == houseId:
-      result.add(fleet)
+  if houseId in state.fleetsByOwner:
+    for fleetId in state.fleetsByOwner[houseId]:
+      if fleetId in state.fleets:
+        result.add(state.fleets[fleetId])
 
 # Squadron and military limits
 

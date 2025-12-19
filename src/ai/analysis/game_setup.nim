@@ -4,7 +4,7 @@
 ## Uses existing engine initialization functions
 
 import std/[tables, strformat, sequtils, strutils, algorithm, options]
-import ../../engine/[gamestate, starmap, fleet, squadron, orders, standing_orders]
+import ../../engine/[gamestate, starmap, fleet, squadron, orders, standing_orders, index_maintenance]
 import ../../engine/initialization/[house, colony]
 import ../../engine/config/[prestige_multiplier, population_growth_multiplier, house_themes, gameplay_config]
 import ../../common/types/[core, units, planets, tech, diplomacy]
@@ -280,6 +280,10 @@ proc createBalancedGame*(numHouses: int, mapSize: int, seed: int64 = 42): GameSt
         sinceTurn: result.turn
       )
       result.houses[house2Id] = house2 # Store modified house2 back
+
+  # Initialize reverse indices for O(1) entity lookups
+  # CRITICAL: Must be called after houses, colonies, and fleets are created
+  result.initializeGameIndices()
 
 proc printGameSetup*(game: GameState) =
   ## Print game setup summary for debugging

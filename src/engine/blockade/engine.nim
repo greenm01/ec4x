@@ -17,6 +17,7 @@ proc isSystemBlockaded*(
 ): (bool, seq[HouseId]) =
   ## Check if a system is currently blockaded by hostile forces
   ## Returns (isBlockaded, blockadingHouses)
+  ## (O(1) lookup via fleetsByLocation index)
   ##
   ## Per operations.md:6.2.6:
   ## "Fleets are ordered to blockade an enemy planet and do not engage
@@ -28,9 +29,17 @@ proc isSystemBlockaded*(
 
   var blockadingHouses: seq[HouseId] = @[]
 
-  # Check all fleets at this system
-  for fleet in state.fleets.values:
-    if fleet.location == systemId and fleet.owner != colonyOwner:
+  # Use location index instead of scanning all fleets
+  if systemId notin state.fleetsByLocation:
+    return (false, @[])
+
+  # Check only fleets at this system
+  for fleetId in state.fleetsByLocation[systemId]:
+    if fleetId notin state.fleets:
+      continue  # Skip stale index entry
+
+    let fleet = state.fleets[fleetId]
+    if fleet.owner != colonyOwner:
       # Check diplomatic status - only Enemy status can blockade
       # TODO: Add diplomatic status check when diplomacy system integrated
       # For now, any non-owner fleet with combat capability can blockade
@@ -113,6 +122,7 @@ proc getBlockadePenalty*(colony: Colony): float =
 
 proc calculateBlockadePrestigePenalty*(state: GameState, houseId: HouseId): int =
   ## Calculate prestige penalty for colonies under blockade
+  ## (O(1) lookup via coloniesByOwner index)
   ## Per operations.md:6.2.6: "House Prestige is reduced by 2 points
   ## for each turn if the colony begins the income phase under blockade"
   ##
@@ -120,9 +130,12 @@ proc calculateBlockadePrestigePenalty*(state: GameState, houseId: HouseId): int 
 
   var penalty = 0
 
-  for colony in state.colonies.values:
-    if colony.owner == houseId and colony.blockaded:
-      penalty -= 2  # -2 prestige per blockaded colony
+  if houseId in state.coloniesByOwner:
+    for systemId in state.coloniesByOwner[houseId]:
+      if systemId in state.colonies:
+        let colony = state.colonies[systemId]
+        if colony.blockaded:
+          penalty -= 2  # -2 prestige per blockaded colony
 
   return penalty
 
@@ -132,11 +145,15 @@ proc calculateBlockadePrestigePenalty*(state: GameState, houseId: HouseId): int 
 
 proc getBlockadedColonies*(state: GameState, houseId: HouseId): seq[Colony] =
   ## Get all colonies owned by a house that are currently blockaded
+  ## (O(1) lookup via coloniesByOwner index)
   result = @[]
 
-  for colony in state.colonies.values:
-    if colony.owner == houseId and colony.blockaded:
-      result.add(colony)
+  if houseId in state.coloniesByOwner:
+    for systemId in state.coloniesByOwner[houseId]:
+      if systemId in state.colonies:
+        let colony = state.colonies[systemId]
+        if colony.blockaded:
+          result.add(colony)
 
 proc getBlockadingFleets*(state: GameState, systemId: SystemId): seq[Fleet] =
   ## Get all fleets that are blockading a system
