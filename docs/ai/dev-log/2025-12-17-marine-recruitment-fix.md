@@ -535,3 +535,66 @@ Before continuing invasion work:
 **Status:** Marine recruitment fixed, GOAP planning investigation next
 **Blocking Issue:** No multi-turn invasion campaigns generated
 **Next Step:** Add GOAP diagnostic logging to trace goal/plan generation
+
+ROOT CAUSE:
+
+Analysis: The Root Cause of Missing Invasions
+
+The problem is a logical flaw in how the AI selects a fleet for an invasion and what it does
+when that fleet is unsuitable. The system correctly generates an InvadeColony goal and
+attempts to execute it, but it consistently picks a fleet that cannot perform an invasion
+(because it lacks loaded marines). Instead of failing and trying again with a different fleet,
+the system "gracefully fails" by downgrading the Invade order to a Bombard order.
+
+Here is a step-by-step trace of the failure:
+
+ 1 GOAP Creates an Invasion Plan (Correct):
+    • In src/ai/rba/goap/domains/fleet/goals.nim, the analyzeOffensiveOpportunities procedure
+      correctly identifies vulnerable enemy colonies from the intelligence snapshot and
+      creates InvadeColony goals. This part works as expected.
+ 2 The Plan Execution Begins (Correct):
+    • In src/ai/rba/orders.nim, the main generateAIOrders loop reaches Phase 6.5 and correctly
+      calls plan_tracking.executeAllPlans to execute the GOAP plan.
+    • executeAllPlans then calls executePlanStep, which retrieves the InvadePlanet or
+      BlitzPlanet action from the plan. This is also correct.
+ 3 The Flaw: Action-to-Order Conversion (Incorrect):
+    • The problem occurs inside src/ai/rba/goap/integration/conversion.nim within the
+      convertGOAPActionToRBAOrder procedure. This procedure is responsible for turning the
+      abstract InvadePlanet action into a concrete FleetOrder.
+ 4 Flaw Part A: Incorrect Fleet Selection:
+    • convertGOAPActionToRBAOrder calls fleet_analysis.requestFleetForOperation in
+      src/ai/rba/domestikos/fleet_analysis.nim to find a suitable fleet.
+    • When an invasion action is requested, requireMarines is set to true.
+    • However, requestFleetForOperation does not correctly filter for fleets that have
+      marines. It only has logic to filter out fleets that are at a home colony and not fully
+      loaded.
+    • An idle combat fleet with zero transports or marines will pass this check and be
+      selected for the invasion, even though it is incapable of performing one.
+ 5 Flaw Part B: Order Downgrading:
+    • The unsuitable fleet (without marines) is returned to convertGOAPActionToRBAOrder.
+    • Inside this function, there is a check for loaded marines before creating the Invade or
+      Blitz order:
+
+      // Inside convertGOAPActionToRBAOrder for ActionType.InvadePlanet
+      if transportCapacity == 0 or loadedMarines < transportCapacity:
+        // No loaded marines - downgrade to Bombard
+        return some(FleetOrder(
+          orderType: FleetOrderType.Bombard,
+          //...
+        ))
+
+    • Because the selected fleet has no marines (loadedMarines is 0), this condition is met.
+    • Instead of returning none (which would signal that the action could not be executed this
+      turn), the code downgrades the InvadePlanet action to a Bombard order.
+
+Summary of the Problem Flow
+
+GOAP Planner -> "Let's invade planet X!" -> Plan Execution -> "Find me a fleet for this
+invasion." -> Fleet Selection -> "Here's an idle combat fleet. It has no marines, but it's
+available." -> Order Conversion -> "This fleet has no marines. I can't issue an Invade order,
+so I'll issue a Bombard order instead."
+
+This sequence of events perfectly explains the behavior described in your dev log: the AI has
+the capability to invade, it generates invasion plans, but only Bombard orders are ever seen.
+The system is designed to avoid failure by falling back to a lesser action, which in this case
+prevents the primary goal from ever being achieved.

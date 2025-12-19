@@ -105,7 +105,7 @@ import intelligence/event_processor/init as event_processor
 import economy/repair_queue
 # Import resolution modules
 import resolution/[types as res_types, fleet_orders, economy_resolution, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_espionage, commissioning, automation, construction]
-import resolution/phases/[command_phase, conflict_phase]
+import resolution/phases/[conflict_phase, income_phase, command_phase, maintenance_phase]
 import prestige as prestige_types
 import prestige/application as prestige_app
 import ../ai/rba/config as rba_config  # For act progression config
@@ -214,86 +214,14 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   # Phase 1: Conflict (combat, infrastructure damage, espionage)
   conflict_phase.resolveConflictPhase(result.newState, effectiveOrders, result.combatReports, result.events, rng)
 
-  # Update combat statistics from combat reports (for diagnostics)
-  for report in result.combatReports:
-    if report.victor.isSome:
-      let victorId = report.victor.get()
-      # Victor gets a win
-      result.newState.houses[victorId].lastTurnSpaceCombatWins += 1
-      result.newState.houses[victorId].lastTurnSpaceCombatTotal += 1
-
-      # Losers get losses
-      for attackerId in report.attackers:
-        if attackerId != victorId:
-          result.newState.houses[attackerId].lastTurnSpaceCombatLosses += 1
-          result.newState.houses[attackerId].lastTurnSpaceCombatTotal += 1
-      for defenderId in report.defenders:
-        if defenderId != victorId:
-          result.newState.houses[defenderId].lastTurnSpaceCombatLosses += 1
-          result.newState.houses[defenderId].lastTurnSpaceCombatTotal += 1
-    else:
-      # No victor - all participants get combat counted but no win/loss
-      for houseId in report.attackers:
-        result.newState.houses[houseId].lastTurnSpaceCombatTotal += 1
-      for houseId in report.defenders:
-        result.newState.houses[houseId].lastTurnSpaceCombatTotal += 1
-
-  # Update detection statistics from events (for diagnostics)
-  for event in result.events:
-    case event.eventType
-    of GameEventType.RaiderDetected:
-      # Detector successfully detected raiders
-      if event.detectorHouse.isSome:
-        let detectorId = event.detectorHouse.get()
-        result.newState.houses[detectorId].lastTurnRaidersDetected += 1
-        result.newState.houses[detectorId].lastTurnEliDetectionAttempts += 1
-        if event.eliRoll.isSome:
-          result.newState.houses[detectorId].lastTurnEliRollsSum +=
-            event.eliRoll.get()
-      # Track CLK roll for raider
-      if event.sourceHouseId.isSome and event.clkRoll.isSome:
-        let raiderId = event.sourceHouseId.get()
-        result.newState.houses[raiderId].lastTurnClkRollsSum +=
-          event.clkRoll.get()
-
-    of GameEventType.RaiderStealthSuccess:
-      # Raider evaded detection
-      if event.houseId.isSome:
-        let raiderId = event.houseId.get()
-        result.newState.houses[raiderId].lastTurnRaidersStealthSuccess += 1
-        if event.stealthClkRoll.isSome:
-          result.newState.houses[raiderId].lastTurnClkRollsSum +=
-            event.stealthClkRoll.get()
-      # Track attempted ELI roll for detector
-      if event.attemptedDetectorHouse.isSome:
-        let detectorId = event.attemptedDetectorHouse.get()
-        result.newState.houses[detectorId].lastTurnEliDetectionAttempts += 1
-        if event.stealthEliRoll.isSome:
-          result.newState.houses[detectorId].lastTurnEliRollsSum +=
-            event.stealthEliRoll.get()
-
-    of GameEventType.ScoutDetected:
-      # Scout-on-scout detection (reconnaissance)
-      # Observer detected enemy scout
-      if event.sourceHouseId.isSome:
-        let observerId = event.sourceHouseId.get()
-        result.newState.houses[observerId].lastTurnScoutsDetected += 1
-      # Target scout was detected
-      if event.targetHouseId.isSome:
-        let targetId = event.targetHouseId.get()
-        result.newState.houses[targetId].lastTurnScoutsDetectedBy += 1
-
-    else:
-      discard  # Ignore other event types
-
   # Phase 2: Income (resource collection + capacity enforcement after IU loss)
-  resolveIncomePhase(result.newState, effectiveOrders, result.events)
+  income_phase.resolveIncomePhase(result.newState, effectiveOrders, result.events)
 
   # Phase 3: Command (ship commissioning → automation → build orders → fleet orders → diplomatic actions)
   command_phase.resolveCommandPhase(result.newState, effectiveOrders, result.combatReports, result.events, rng)
 
   # Phase 4: Maintenance (fleet movement → construction advancement → planetary defense commissioning → diplomatic actions)
-  let completedShips = resolveMaintenancePhase(result.newState, result.events, effectiveOrders, rng)
+  let completedShips = maintenance_phase.resolveMaintenancePhase(result.newState, result.events, effectiveOrders, rng)
 
   # Store completed ships for next turn's commissioning
   # (Planetary defense already commissioned in Maintenance Phase Step 2b)

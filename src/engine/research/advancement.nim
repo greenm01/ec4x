@@ -76,27 +76,18 @@ proc isBreakthroughTurn*(turn: int): bool =
 
 ## Research Breakthroughs (economy.md:4.1.1)
 
-proc rollBreakthrough*(investedRP: int, rng: var Rand): Option[BreakthroughType] =
+proc rollBreakthrough*(rng: var Rand): Option[BreakthroughType] =
   ## Roll for research breakthrough
   ## Per economy.md:4.1.1
   ##
   ## Base chance: 5% (1 on d20)
-  ## +1% per 100 RP invested (last 5 turns)
-  ## Maximum 15% (capped)
-
-  # Validate input - negative RP should not provide bonus
-  let validRP = max(0, investedRP)
-
-  # Calculate bonus and total chance
-  let bonusPercent = float(validRP div 100)
-  let totalPercent = min(5.0 + bonusPercent, 15.0)  # Cap at 15%
 
   # Roll d20 (1-20)
   let roll = rng.rand(1..20)
 
   # Convert percentage to number of successful rolls on d20
   # 5% = 1 success (roll 1), 10% = 2 successes (rolls 1-2), 15% = 3 successes (rolls 1-3)
-  let successfulRolls = int(totalPercent / 5.0)  # Each 5% = 1 roll on d20
+  let successfulRolls = 1
 
   if roll <= successfulRolls:
     # Success! Roll d20 for breakthrough type
