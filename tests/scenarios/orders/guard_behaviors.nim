@@ -88,7 +88,7 @@ proc scenario_GuardPreservesCloaking*() =
 
   var raiders: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let raider = newEnhancedShip(ShipClass.Raider, techLevel = 1)
+    let raider = newShip(ShipClass.Raider, techLevel = 1)
     let squadron = newSquadron(raider, id = fmt"sq-raider-{i}", owner = "house-defender", location = 1)
     raiders.add(CombatSquadron(
       squadron: squadron,
@@ -101,7 +101,7 @@ proc scenario_GuardPreservesCloaking*() =
 
   var attackers: seq[CombatSquadron] = @[]
   for i in 1..3:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-attacker-{i}", owner = "house-attacker", location = 1)
     attackers.add(CombatSquadron(
       squadron: squadron,

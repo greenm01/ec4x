@@ -368,7 +368,7 @@ suite "Automated Seek Home - Guard Orders":
     )
 
     # Guard fleet stranded at system 2 (now enemy territory)
-    let cruiser = newEnhancedShip(ShipClass.LightCruiser)
+    let cruiser = newShip(ShipClass.LightCruiser)
     let squadron = newSquadron(
       flagship = cruiser,
       id = "sq1",
@@ -538,7 +538,7 @@ suite "Automated Seek Home - Blockade Orders":
     )
 
     # Blockade fleet now stranded
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     let squadron = newSquadron(
       flagship = destroyer,
       id = "sq1",
@@ -677,7 +677,7 @@ suite "Automated Seek Home - Patrol Orders":
     )
 
     # Patrol fleet
-    let scout = newEnhancedShip(ShipClass.Scout)
+    let scout = newShip(ShipClass.Scout)
     let squadron = newSquadron(
       flagship = scout,
       id = "sq1",
@@ -786,7 +786,7 @@ suite "Automated Seek Home - No Safe Destination":
     )
 
     # Stranded fleet with no home
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     let squadron = newSquadron(
       flagship = destroyer,
       id = "sq1",
@@ -920,7 +920,7 @@ suite "Automated Seek Home - Multiple Fleets":
     )
 
     # Fleet 1 - Guard duty
-    let cruiser1 = newEnhancedShip(ShipClass.LightCruiser)
+    let cruiser1 = newShip(ShipClass.LightCruiser)
     let sq1 = newSquadron(cruiser1, "sq1", "house1", 2)
     state.fleets["fleet1"] = Fleet(
       id: "fleet1",
@@ -932,7 +932,7 @@ suite "Automated Seek Home - Multiple Fleets":
     )
 
     # Fleet 2 - Blockade duty
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     let sq2 = newSquadron(destroyer, "sq2", "house1", 2)
     state.fleets["fleet2"] = Fleet(
       id: "fleet2",
@@ -944,7 +944,7 @@ suite "Automated Seek Home - Multiple Fleets":
     )
 
     # Fleet 3 - Patrol duty
-    let scout = newEnhancedShip(ShipClass.Scout)
+    let scout = newShip(ShipClass.Scout)
     let sq3 = newSquadron(scout, "sq3", "house1", 2)
     state.fleets["fleet3"] = Fleet(
       id: "fleet3",

@@ -11,7 +11,7 @@
 ## - Fleet transit across multiple systems with location verification
 
 import std/[unittest, tables, options, strformat]
-import ../../src/engine/[gamestate, starmap, fleet, ship, squadron, orders, resolve]
+import ../../src/engine/[gamestate, starmap, fleet, squadron, orders, resolve]
 import ../../src/engine/research/types as res_types
 import ../../src/engine/resolution/[fleet_orders, combat_resolution]
 import ../../src/engine/diplomacy/types as dip_types
@@ -129,7 +129,7 @@ suite "Persistent Fleet Orders":
     var state = createTestGameState()
 
     # Create fleet at system 1
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -186,7 +186,7 @@ suite "Persistent Fleet Orders":
   test "Fleet auto-assigned Hold after completing Move to adjacent system":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -223,7 +223,7 @@ suite "Persistent Fleet Orders":
     var state = createTestGameState()
 
     # Create fleet at system 1 (house1 territory)
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -283,7 +283,7 @@ suite "Persistent Fleet Orders":
     var state = createTestGameState()
 
     # Create fleet at system 3 (enemy territory)
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -350,7 +350,7 @@ suite "Persistent Fleet Orders":
     # Actual retreat behavior tested via combat resolution integration tests
 
     # Create fleets at system 3 for potential combat
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
 
     let testFleet = Fleet(
@@ -364,7 +364,7 @@ suite "Persistent Fleet Orders":
     state.fleets["fleet-1"] = testFleet
 
     # Create enemy fleet at system 3
-    let enemyDestroyer = newEnhancedShip(ShipClass.Destroyer)
+    let enemyDestroyer = newShip(ShipClass.Destroyer)
     var enemySq = newSquadron(enemyDestroyer)
     let enemyFleet = Fleet(
       id: "fleet-enemy",
@@ -401,7 +401,7 @@ suite "Persistent Fleet Orders":
   test "Reserve fleet assigned permanent GuardPlanet order (locked)":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -449,7 +449,7 @@ suite "Persistent Fleet Orders":
   test "Reserve fleet cannot accept Move order (order locked)":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     var testFleet = Fleet(
       id: "fleet-1",
@@ -493,7 +493,7 @@ suite "Persistent Fleet Orders":
   test "Mothballed fleet assigned permanent Hold order (locked)":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -545,7 +545,7 @@ suite "Persistent Fleet Orders":
   test "Fleet does NOT auto-seek-home after Hold order in neutral space":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",
@@ -578,7 +578,7 @@ suite "Persistent Fleet Orders":
   test "New order overrides persistent order during transit":
     var state = createTestGameState()
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let testFleet = Fleet(
       id: "fleet-1",

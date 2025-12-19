@@ -63,7 +63,7 @@ suite "Carrier Hangar Capacity - Squadron Analysis":
   test "getCurrentHangarLoad counts embarked fighters":
     var squadron = Squadron(
       id: "SQ-001",
-      flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+      flagship: newShip(ShipClass.Carrier, techLevel = 1),
       ships: @[],
       embarkedFighters: @[
         CarrierFighter(id: "FS-001", commissionedTurn: 1),
@@ -76,7 +76,7 @@ suite "Carrier Hangar Capacity - Squadron Analysis":
   test "Empty carrier has zero load":
     var squadron = Squadron(
       id: "SQ-002",
-      flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+      flagship: newShip(ShipClass.Carrier, techLevel = 1),
       ships: @[],
       embarkedFighters: @[]
     )
@@ -115,7 +115,7 @@ suite "Carrier Hangar Capacity - Violation Detection":
           squadrons = @[
             Squadron(
               id: "SQ-001",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-001", commissionedTurn: 1),
@@ -165,7 +165,7 @@ suite "Carrier Hangar Capacity - Violation Detection":
           squadrons = @[
             Squadron(
               id: "SQ-001",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-001", commissionedTurn: 1),
@@ -220,7 +220,7 @@ suite "Carrier Hangar Capacity - Violation Detection":
           squadrons = @[
             Squadron(
               id: "SQ-CX-001",
-              flagship: newEnhancedShip(ShipClass.SuperCarrier, techLevel = 1),
+              flagship: newShip(ShipClass.SuperCarrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-001", commissionedTurn: 1),
@@ -275,7 +275,7 @@ suite "Carrier Hangar Capacity - Violation Detection":
           squadrons = @[
             Squadron(
               id: "SQ-BB-001",
-              flagship: newEnhancedShip(ShipClass.Battleship, techLevel = 1),
+              flagship: newShip(ShipClass.Battleship, techLevel = 1),
               ships: @[],
               embarkedFighters: @[]
             )
@@ -322,7 +322,7 @@ suite "Carrier Hangar Capacity - Loading Operations":
           squadrons = @[
             Squadron(
               id: "SQ-001",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[]
             )
@@ -369,7 +369,7 @@ suite "Carrier Hangar Capacity - Loading Operations":
           squadrons = @[
             Squadron(
               id: "SQ-001",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-001", commissionedTurn: 1)
@@ -418,7 +418,7 @@ suite "Carrier Hangar Capacity - Loading Operations":
           squadrons = @[
             Squadron(
               id: "SQ-001",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-001", commissionedTurn: 1),
@@ -468,7 +468,7 @@ suite "Carrier Hangar Capacity - Loading Operations":
           squadrons = @[
             Squadron(
               id: "SQ-DD-001",
-              flagship: newEnhancedShip(ShipClass.Destroyer, techLevel = 1),
+              flagship: newShip(ShipClass.Destroyer, techLevel = 1),
               ships: @[],
               embarkedFighters: @[]
             )
@@ -516,7 +516,7 @@ suite "Carrier Hangar Capacity - ACO Tech Effects":
           squadrons = @[
             Squadron(
               id: "SQ-001",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-001", commissionedTurn: 1),
@@ -576,7 +576,7 @@ suite "Carrier Hangar Capacity - ACO Tech Effects":
           squadrons = @[
             Squadron(
               id: "SQ-001",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-001", commissionedTurn: 1),
@@ -641,7 +641,7 @@ suite "Carrier Hangar Capacity - Multi-Carrier Scenarios":
           squadrons = @[
             Squadron(
               id: "SQ-CV1",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-001", commissionedTurn: 1),
@@ -650,7 +650,7 @@ suite "Carrier Hangar Capacity - Multi-Carrier Scenarios":
             ),
             Squadron(
               id: "SQ-CV2",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-003", commissionedTurn: 1),
@@ -705,7 +705,7 @@ suite "Carrier Hangar Capacity - Multi-Carrier Scenarios":
           squadrons = @[
             Squadron(
               id: "SQ-CV",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-001", commissionedTurn: 1),
@@ -714,7 +714,7 @@ suite "Carrier Hangar Capacity - Multi-Carrier Scenarios":
             ),
             Squadron(
               id: "SQ-CX",
-              flagship: newEnhancedShip(ShipClass.SuperCarrier, techLevel = 1),
+              flagship: newShip(ShipClass.SuperCarrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-003", commissionedTurn: 1),
@@ -769,7 +769,7 @@ suite "Carrier Hangar Capacity - Multi-Carrier Scenarios":
           squadrons: @[
             Squadron(
               id: "SQ-CV1",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-001", commissionedTurn: 1),
@@ -787,7 +787,7 @@ suite "Carrier Hangar Capacity - Multi-Carrier Scenarios":
           squadrons = @[
             Squadron(
               id: "SQ-CV2",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-005", commissionedTurn: 1),
@@ -819,7 +819,7 @@ suite "Carrier Hangar Capacity - Helper Functions":
           squadrons = @[
             Squadron(
               id: "SQ-001",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[]
             )
@@ -879,7 +879,7 @@ suite "Carrier Hangar Capacity - Helper Functions":
           squadrons = @[
             Squadron(
               id: "SQ-CV-TEST",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[
                 CarrierFighter(id: "FS-001", commissionedTurn: 1)
@@ -926,7 +926,7 @@ suite "Carrier Hangar Capacity - Helper Functions":
           squadrons = @[
             Squadron(
               id: "SQ-CV-TEST",
-              flagship: newEnhancedShip(ShipClass.Carrier, techLevel = 1),
+              flagship: newShip(ShipClass.Carrier, techLevel = 1),
               ships: @[],
               embarkedFighters: @[]
             )

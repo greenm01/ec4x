@@ -83,7 +83,7 @@ proc generateRandomSquadron*(
 
   # Pick random flagship class
   let flagshipClass = rng.sample(config.allowedShipClasses)
-  let flagship = newEnhancedShip(flagshipClass, config.techLevel)
+  let flagship = newShip(flagshipClass, config.techLevel)
 
   result = newSquadron(flagship, squadronId, houseId)
 
@@ -92,7 +92,7 @@ proc generateRandomSquadron*(
 
   for i in 0..<numShips:
     let shipClass = rng.sample(config.allowedShipClasses)
-    let ship = newEnhancedShip(shipClass, config.techLevel)
+    let ship = newShip(shipClass, config.techLevel)
 
     # Try to add - may fail if CR exceeded
     discard result.addShip(ship)

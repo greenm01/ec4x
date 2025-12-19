@@ -15,11 +15,11 @@ block test_undetected_raiders:
   echo "\n[Test 1] Undetected Raiders (no ELI) - should ambush"
 
   # Create raider fleet (cloaked)
-  let raider = newEnhancedShip(ShipClass.Raider, techLevel = 1)
+  let raider = newShip(ShipClass.Raider, techLevel = 1)
   let raiderSquadron = newSquadron(raider, id = "raider-sq", owner = "house-raider", location = 100)
 
   # Create defender fleet (no scouts)
-  let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+  let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
   let defenderSquadron = newSquadron(cruiser, id = "defender-sq", owner = "house-defender", location = 100)
 
   # Initialize task forces (default ELI1, CLK1)
@@ -57,12 +57,12 @@ block test_detected_raiders:
   echo "\n[Test 2] Raiders vs Scouts (ELI5 vs CLK1) - high detection chance"
 
   # Create raider fleet
-  let raider = newEnhancedShip(ShipClass.Raider, techLevel = 1)
+  let raider = newShip(ShipClass.Raider, techLevel = 1)
   let raiderSquadron = newSquadron(raider, id = "raider-sq", owner = "house-raider", location = 100)
 
   # Create defender fleet with scouts
-  let scout = newEnhancedShip(ShipClass.Scout, techLevel = 1)
-  let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+  let scout = newShip(ShipClass.Scout, techLevel = 1)
+  let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
   let scoutSquadron = newSquadron(scout, id = "scout-sq", owner = "house-defender", location = 100)
   let cruiserSquadron = newSquadron(cruiser, id = "cruiser-sq", owner = "house-defender", location = 100)
 
@@ -110,11 +110,11 @@ block test_starbase_detection:
   echo "\n[Test 3] Starbase with ELI+2 bonus - enhanced detection"
 
   # Create raider fleet
-  let raider = newEnhancedShip(ShipClass.Raider, techLevel = 1)
+  let raider = newShip(ShipClass.Raider, techLevel = 1)
   let raiderSquadron = newSquadron(raider, id = "raider-sq", owner = "house-raider", location = 100)
 
   # Create starbase defender (gets +2 ELI bonus)
-  let starbase = newEnhancedShip(ShipClass.Starbase, techLevel = 1)
+  let starbase = newShip(ShipClass.Starbase, techLevel = 1)
   let starbaseSquadron = newSquadron(starbase, id = "starbase-sq", owner = "house-defender", location = 100)
 
   # Initialize task forces with house tech levels (Starbase ELI3+2=ELI5 vs CLK2)
@@ -158,13 +158,13 @@ block test_mesh_network:
   echo "\n[Test 4] Multiple scouts with mesh network - enhanced detection"
 
   # Create raider fleet
-  let raider = newEnhancedShip(ShipClass.Raider, techLevel = 1)
+  let raider = newShip(ShipClass.Raider, techLevel = 1)
   let raiderSquadron = newSquadron(raider, id = "raider-sq", owner = "house-raider", location = 100)
 
   # Create fleet with 3 scouts (gets +1 mesh bonus for 2-3 scouts)
-  let scout1 = newEnhancedShip(ShipClass.Scout, techLevel = 1)
-  let scout2 = newEnhancedShip(ShipClass.Scout, techLevel = 1)
-  let scout3 = newEnhancedShip(ShipClass.Scout, techLevel = 1)
+  let scout1 = newShip(ShipClass.Scout, techLevel = 1)
+  let scout2 = newShip(ShipClass.Scout, techLevel = 1)
+  let scout3 = newShip(ShipClass.Scout, techLevel = 1)
   let scoutSq1 = newSquadron(scout1, id = "scout-1", owner = "house-defender", location = 100)
   let scoutSq2 = newSquadron(scout2, id = "scout-2", owner = "house-defender", location = 100)
   let scoutSq3 = newSquadron(scout3, id = "scout-3", owner = "house-defender", location = 100)

@@ -90,11 +90,11 @@ proc createTestGameState(): GameState =
 
 proc createTestFleet(owner: HouseId, location: SystemId, fleetId: string, hasScout: bool = false): Fleet =
   ## Create test fleet with basic squadrons
-  let destroyer = newEnhancedShip(ShipClass.Destroyer)
+  let destroyer = newShip(ShipClass.Destroyer)
   var sq = newSquadron(destroyer)
 
   if hasScout:
-    let scout = newEnhancedShip(ShipClass.Scout)
+    let scout = newShip(ShipClass.Scout)
     discard sq.addShip(scout)
 
   result = Fleet(
@@ -407,7 +407,7 @@ suite "Order 06-08: Combat Orders":
     var state = createTestGameState()
 
     # Create fleet with destroyer and loaded troop transport
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var transport = SpaceLiftShip(
       id: "transport1",
       shipClass: ShipClass.TroopTransport,
@@ -501,7 +501,7 @@ suite "Order 09-11: Spy Orders":
 
   test "Hack starbase requires at least one scout":
     var state = createTestGameState()
-    let scout = newEnhancedShip(ShipClass.Scout)
+    let scout = newShip(ShipClass.Scout)
     var sq = newSquadron(scout)
 
     # Add starbase to colony at system 2
@@ -530,7 +530,7 @@ suite "Order 09-11: Spy Orders":
 
   test "Spy system requires at least one scout":
     var state = createTestGameState()
-    let scout = newEnhancedShip(ShipClass.Scout)
+    let scout = newShip(ShipClass.Scout)
     var sq = newSquadron(scout)
 
     let fleet = Fleet(
@@ -809,7 +809,7 @@ suite "Order Validation":
     var state = createTestGameState()
 
     # Create unarmed transport fleet
-    let transport = newEnhancedShip(ShipClass.ETAC)
+    let transport = newShip(ShipClass.ETAC)
     var sq = newSquadron(transport)
 
     let fleet = Fleet(

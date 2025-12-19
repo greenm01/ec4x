@@ -60,7 +60,7 @@ proc createTestGameState(): GameState =
 
 proc createTestFleet(id: string, owner: string, location: SystemId): Fleet =
   ## Create a simple test fleet with one squadron
-  let flagship = newEnhancedShip(ShipClass.Destroyer, techLevel = 1)
+  let flagship = newShip(ShipClass.Destroyer, techLevel = 1)
   let squadron = newSquadron(flagship, id = id & "_sq1", owner = owner, location = location)
 
   result = newFleet(

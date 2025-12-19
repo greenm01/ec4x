@@ -21,7 +21,7 @@ proc test_StarbaseDetectionInSpaceCombat*() =
   echo "         Starbase cannot be targeted or damaged in space combat"
 
   # Attacker: 1 Cloaked Raider
-  let raider = newEnhancedShip(ShipClass.Raider, techLevel = 1)
+  let raider = newShip(ShipClass.Raider, techLevel = 1)
   let raiderSquadron = newSquadron(raider, id = "raider-1", owner = "house-attacker", location = 1)
   let attackerFleet = @[CombatSquadron(
     squadron: raiderSquadron,
@@ -33,7 +33,7 @@ proc test_StarbaseDetectionInSpaceCombat*() =
   )]
 
   # Defender: 1 Destroyer (mobile) + 1 Starbase
-  let destroyer = newEnhancedShip(ShipClass.Destroyer, techLevel = 1)
+  let destroyer = newShip(ShipClass.Destroyer, techLevel = 1)
   let destroyerSquadron = newSquadron(destroyer, id = "destroyer-1", owner = "house-defender", location = 1)
   let starbase = createStarbaseCombatSquadron("starbase-1", "house-defender", 1, techLevel = 1)
 
@@ -95,12 +95,12 @@ proc test_StarbaseCombatInOrbitalDefense*() =
   # Attacker: 2 Battleships
   let attackerFleet = @[
     (proc(): CombatSquadron =
-      let bs = newEnhancedShip(ShipClass.Battleship, techLevel = 1)
+      let bs = newShip(ShipClass.Battleship, techLevel = 1)
       let sq = newSquadron(bs, id = "bs-1", owner = "house-attacker", location = 1)
       CombatSquadron(squadron: sq, state: CombatState.Undamaged, damageThisTurn: 0, crippleRound: 0, bucket: TargetBucket.Capital, targetWeight: 1.0)
     )(),
     (proc(): CombatSquadron =
-      let bs = newEnhancedShip(ShipClass.Battleship, techLevel = 1)
+      let bs = newShip(ShipClass.Battleship, techLevel = 1)
       let sq = newSquadron(bs, id = "bs-2", owner = "house-attacker", location = 1)
       CombatSquadron(squadron: sq, state: CombatState.Undamaged, damageThisTurn: 0, crippleRound: 0, bucket: TargetBucket.Capital, targetWeight: 1.0)
     )()
@@ -148,7 +148,7 @@ proc test_DetectionPersistence*() =
   echo "Expected: Raider remains detected in orbital (no re-surprise)"
 
   # Attacker: 1 Raider (initially cloaked)
-  let raider = newEnhancedShip(ShipClass.Raider, techLevel = 1)
+  let raider = newShip(ShipClass.Raider, techLevel = 1)
   let raiderSquadron = newSquadron(raider, id = "raider-1", owner = "house-attacker", location = 1)
   let attackerFleet = @[CombatSquadron(
     squadron: raiderSquadron,
@@ -221,7 +221,7 @@ proc test_StarbaseScreeningInSpace*() =
 
   # Create mock squadrons for targeting test
   let attacker = CombatSquadron(
-    squadron: newSquadron(newEnhancedShip(ShipClass.Battleship, techLevel = 1), id = "bs-1", owner = "house-attacker", location = 1),
+    squadron: newSquadron(newShip(ShipClass.Battleship, techLevel = 1), id = "bs-1", owner = "house-attacker", location = 1),
     state: CombatState.Undamaged,
     damageThisTurn: 0,
     crippleRound: 0,
@@ -230,7 +230,7 @@ proc test_StarbaseScreeningInSpace*() =
   )
 
   let destroyer = CombatSquadron(
-    squadron: newSquadron(newEnhancedShip(ShipClass.Destroyer, techLevel = 1), id = "dd-1", owner = "house-defender", location = 1),
+    squadron: newSquadron(newShip(ShipClass.Destroyer, techLevel = 1), id = "dd-1", owner = "house-defender", location = 1),
     state: CombatState.Undamaged,
     damageThisTurn: 0,
     crippleRound: 0,

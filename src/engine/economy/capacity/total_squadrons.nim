@@ -56,7 +56,7 @@ proc isMilitarySquadron*(shipClass: ShipClass): bool =
   ## Check if a ship class counts toward total squadron limits
   ## Excludes: Auxiliary ships (ETAC, TT) - they're logistics, not combat squadrons
   ## Includes: All combat ships (escorts, capitals, special weapons)
-  let ship = squadron.newEnhancedShip(shipClass, techLevel = 1)
+  let ship = squadron.newShip(shipClass, techLevel = 1)
   return ship.stats.role != ShipRole.Auxiliary
 
 proc countTotalSquadronsInFleets*(state: GameState, houseId: core.HouseId): int =

@@ -237,8 +237,8 @@ suite "Squadron/Fleet ELI Helpers":
   test "getScoutELILevels - extracts ELI from scouts":
     # Note: Scouts have CR=0 so can't add other ships to squadron
     # Use getFleetELILevels with multiple scout squadrons instead
-    let scout1 = newEnhancedShip(ShipClass.Scout)
-    let scout2 = newEnhancedShip(ShipClass.Scout)
+    let scout1 = newShip(ShipClass.Scout)
+    let scout2 = newShip(ShipClass.Scout)
 
     let sq1 = newSquadron(scout1)
     let sq2 = newSquadron(scout2)
@@ -247,8 +247,8 @@ suite "Squadron/Fleet ELI Helpers":
     check eliLevels.len == 2
 
   test "getScoutELILevels - ignores non-scouts":
-    let scout = newEnhancedShip(ShipClass.Scout)
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let scout = newShip(ShipClass.Scout)
+    let cruiser = newShip(ShipClass.Cruiser)
 
     var squadron = newSquadron(scout)
     discard squadron.addShip(cruiser)
@@ -259,8 +259,8 @@ suite "Squadron/Fleet ELI Helpers":
   test "getFleetCloakLevel - finds highest CLK":
     # Note: CLK level would be tracked at game state level
     # This test verifies raiders are detected
-    let raider1 = newEnhancedShip(ShipClass.Raider)
-    let raider2 = newEnhancedShip(ShipClass.Raider)
+    let raider1 = newShip(ShipClass.Raider)
+    let raider2 = newShip(ShipClass.Raider)
 
     let sq1 = newSquadron(raider1)
     let sq2 = newSquadron(raider2)
@@ -270,14 +270,14 @@ suite "Squadron/Fleet ELI Helpers":
     check cloakLevel > 0
 
   test "getFleetCloakLevel - returns 0 if no raiders":
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 3)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 3)
     let squadron = newSquadron(cruiser)
 
     let cloakLevel = getFleetCloakLevel(@[squadron])
     check cloakLevel == 0
 
   test "getFleetCloakLevel - ignores crippled raiders":
-    var raider = newEnhancedShip(ShipClass.Raider, techLevel = 3)
+    var raider = newShip(ShipClass.Raider, techLevel = 3)
     raider.isCrippled = true
 
     let squadron = newSquadron(raider)
@@ -285,20 +285,20 @@ suite "Squadron/Fleet ELI Helpers":
     check cloakLevel == 0
 
   test "hasELICapability - detects scouts":
-    let scout = newEnhancedShip(ShipClass.Scout, techLevel = 2)
+    let scout = newShip(ShipClass.Scout, techLevel = 2)
     let squadron = newSquadron(scout)
 
     check hasELICapability(@[squadron]) == true
 
   test "hasELICapability - returns false without scouts":
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 2)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 2)
     let squadron = newSquadron(cruiser)
 
     check hasELICapability(@[squadron]) == false
 
   test "createELIUnit - from fleet":
-    let scout1 = newEnhancedShip(ShipClass.Scout, techLevel = 2)
-    let scout2 = newEnhancedShip(ShipClass.Scout, techLevel = 4)
+    let scout1 = newShip(ShipClass.Scout, techLevel = 2)
+    let scout2 = newShip(ShipClass.Scout, techLevel = 4)
 
     let sq1 = newSquadron(scout1)
     let sq2 = newSquadron(scout2)

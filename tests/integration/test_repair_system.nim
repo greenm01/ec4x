@@ -65,8 +65,8 @@ suite "Ship Repair System":
     var state = createTestState()
 
     # Create fleet with crippled escort
-    var destroyer1 = newEnhancedShip(ShipClass.Destroyer)
-    var destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    var destroyer1 = newShip(ShipClass.Destroyer)
+    var destroyer2 = newShip(ShipClass.Destroyer)
     destroyer2.isCrippled = true  # Mark second destroyer as crippled
 
     var squadron = newSquadron(destroyer1)
@@ -102,11 +102,11 @@ suite "Ship Repair System":
     var state = createTestState()
 
     # Create squadron with crippled flagship and escorts
-    var destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var destroyer = newShip(ShipClass.Destroyer)
     destroyer.isCrippled = true  # Crippled flagship
 
-    var cruiser = newEnhancedShip(ShipClass.Cruiser)  # Stronger escort
-    var scout = newEnhancedShip(ShipClass.Scout)      # Weaker escort
+    var cruiser = newShip(ShipClass.Cruiser)  # Stronger escort
+    var scout = newShip(ShipClass.Scout)      # Weaker escort
 
     var squadron = newSquadron(destroyer)
     squadron.ships.add(cruiser)
@@ -138,7 +138,7 @@ suite "Ship Repair System":
     var state = createTestState()
 
     # Create squadron with only crippled flagship (no escorts)
-    var destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var destroyer = newShip(ShipClass.Destroyer)
     destroyer.isCrippled = true
 
     var squadron = newSquadron(destroyer)
@@ -166,7 +166,7 @@ suite "Ship Repair System":
     var state = createTestState()
 
     # Create fleet with single crippled squadron
-    var destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var destroyer = newShip(ShipClass.Destroyer)
     destroyer.isCrippled = true
 
     var squadron = newSquadron(destroyer)
@@ -192,7 +192,7 @@ suite "Ship Repair System":
     var state = createTestState()
 
     # Create fleet with crippled squadron AND spacelift ship
-    var destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var destroyer = newShip(ShipClass.Destroyer)
     destroyer.isCrippled = true
 
     var squadron = newSquadron(destroyer)
@@ -239,7 +239,7 @@ suite "Ship Repair System":
     ]
 
     # Create fleet with crippled ship
-    var destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var destroyer = newShip(ShipClass.Destroyer)
     destroyer.isCrippled = true
 
     var squadron = newSquadron(destroyer)
@@ -269,10 +269,10 @@ suite "Ship Repair System":
     ]
 
     # Create fleet with 2 crippled escorts
-    var destroyer1 = newEnhancedShip(ShipClass.Destroyer)
-    var destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    var destroyer1 = newShip(ShipClass.Destroyer)
+    var destroyer2 = newShip(ShipClass.Destroyer)
     destroyer2.isCrippled = true
-    var destroyer3 = newEnhancedShip(ShipClass.Destroyer)
+    var destroyer3 = newShip(ShipClass.Destroyer)
     destroyer3.isCrippled = true
 
     var squadron = newSquadron(destroyer1)
@@ -299,8 +299,8 @@ suite "Ship Repair System":
     var state = createTestState()
 
     # Create fleet with crippled escort
-    var destroyer1 = newEnhancedShip(ShipClass.Destroyer)
-    var destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    var destroyer1 = newShip(ShipClass.Destroyer)
+    var destroyer2 = newShip(ShipClass.Destroyer)
     destroyer2.isCrippled = true
 
     var squadron = newSquadron(destroyer1)
@@ -503,7 +503,7 @@ suite "Repair Priority System":
     var state = createTestStateForPriority()
 
     # Create fleet with crippled ship
-    var destroyer = newEnhancedShip(ShipClass.Destroyer)
+    var destroyer = newShip(ShipClass.Destroyer)
     destroyer.isCrippled = true
 
     var squadron = newSquadron(destroyer)

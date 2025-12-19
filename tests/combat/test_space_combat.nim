@@ -12,7 +12,7 @@ import ../../src/common/types/[core, units, combat, diplomacy]
 proc createFleet(house: HouseId, location: SystemId, ships: seq[(ShipClass, int)]): seq[CombatSquadron] =
   result = @[]
   for i, (shipClass, count) in ships:
-    let flagship = newEnhancedShip(shipClass, techLevel = 1)
+    let flagship = newShip(shipClass, techLevel = 1)
     let squadron = newSquadron(flagship, id = fmt"sq-{house}-{i}", owner = house, location = location)
     var combatSq = CombatSquadron(
       squadron: squadron,

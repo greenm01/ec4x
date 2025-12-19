@@ -17,7 +17,7 @@
 
 import std/[unittest, tables, options, sequtils, random]
 import ../../src/engine/combat/[types, cer, damage, targeting, retreat, resolution, engine]
-import ../../src/engine/[squadron, ship, fleet]
+import ../../src/engine/[squadron, fleet]
 import ../../src/common/types/[core, units, combat as commonCombat, diplomacy]
 
 # Helper for edge case testing with custom stats
@@ -262,7 +262,7 @@ suite "Combat Engine: Damage Application":
 
   proc createTestSquadron(shipClass: ShipClass): CombatSquadron =
     ## Helper to create test squadron with default stats
-    let flagship = newEnhancedShip(shipClass, techLevel = 1, name = "test-ship-1")
+    let flagship = newShip(shipClass, techLevel = 1, name = "test-ship-1")
 
     let sq = Squadron(
       id: "test-sq-1",
@@ -412,7 +412,7 @@ suite "Combat Engine: Damage Application":
 suite "Combat Engine: Combat Squadron Helpers":
 
   proc createTestSquadronWithState(state: CombatState): CombatSquadron =
-    let flagship = newEnhancedShip(ShipClass.Destroyer, techLevel = 1, name = "test-ship")
+    let flagship = newShip(ShipClass.Destroyer, techLevel = 1, name = "test-ship")
 
     let sq = Squadron(
       id: "test-sq",
@@ -500,37 +500,37 @@ suite "Combat Engine: Combat Squadron Helpers":
 suite "Combat Engine: Target Bucket Classification":
 
   test "classifyBucket: Raiders":
-    let flagship = newEnhancedShip(ShipClass.Raider, techLevel = 1, name = "raider")
+    let flagship = newShip(ShipClass.Raider, techLevel = 1, name = "raider")
 
     let sq = Squadron(id: "sq1", flagship: flagship, ships: @[], owner: "", location: 0, embarkedFighters: @[])
 
     check classifyBucket(sq) == TargetBucket.Raider
 
   test "classifyBucket: Capital ships":
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1, name = "cruiser")
-    let carrier = newEnhancedShip(ShipClass.Carrier, techLevel = 1, name = "carrier")
-    let dreadnought = newEnhancedShip(ShipClass.Dreadnought, techLevel = 1, name = "dread")
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1, name = "cruiser")
+    let carrier = newShip(ShipClass.Carrier, techLevel = 1, name = "carrier")
+    let dreadnought = newShip(ShipClass.Dreadnought, techLevel = 1, name = "dread")
 
     check classifyBucket(Squadron(id: "sq1", flagship: cruiser, ships: @[], owner: "", location: 0, embarkedFighters: @[])) == TargetBucket.Capital
     check classifyBucket(Squadron(id: "sq2", flagship: carrier, ships: @[], owner: "", location: 0, embarkedFighters: @[])) == TargetBucket.Capital
     check classifyBucket(Squadron(id: "sq3", flagship: dreadnought, ships: @[], owner: "", location: 0, embarkedFighters: @[])) == TargetBucket.Capital
 
   test "classifyBucket: Destroyers":
-    let destroyer = newEnhancedShip(ShipClass.Destroyer, techLevel = 1, name = "destroyer")
+    let destroyer = newShip(ShipClass.Destroyer, techLevel = 1, name = "destroyer")
 
     let sq = Squadron(id: "sq1", flagship: destroyer, ships: @[], owner: "", location: 0, embarkedFighters: @[])
 
     check classifyBucket(sq) == TargetBucket.Destroyer
 
   test "classifyBucket: Fighters":
-    let fighter = newEnhancedShip(ShipClass.Fighter, techLevel = 1, name = "fighter")
+    let fighter = newShip(ShipClass.Fighter, techLevel = 1, name = "fighter")
 
     let sq = Squadron(id: "sq1", flagship: fighter, ships: @[], owner: "", location: 0, embarkedFighters: @[])
 
     check classifyBucket(sq) == TargetBucket.Fighter
 
   test "classifyBucket: Starbases":
-    let starbase = newEnhancedShip(ShipClass.Starbase, techLevel = 1, name = "starbase")
+    let starbase = newShip(ShipClass.Starbase, techLevel = 1, name = "starbase")
 
     let sq = Squadron(id: "sq1", flagship: starbase, ships: @[], owner: "", location: 0, embarkedFighters: @[])
 
@@ -545,7 +545,7 @@ suite "Combat Engine: Target Bucket Classification":
     check baseWeight(TargetBucket.Starbase) == 5.0
 
   test "calculateTargetWeight: crippled modifier":
-    let flagship = newEnhancedShip(ShipClass.Destroyer, techLevel = 1, name = "ship1")
+    let flagship = newShip(ShipClass.Destroyer, techLevel = 1, name = "ship1")
     let undamagedSq = CombatSquadron(
       squadron: Squadron(
         id: "sq1",
@@ -576,7 +576,7 @@ suite "Combat Engine: Task Force Operations":
     var squadrons: seq[CombatSquadron] = @[]
 
     for i in 1..squadronCount:
-      let flagship = newEnhancedShip(ShipClass.Destroyer, techLevel = 1, name = "ship-" & $i)
+      let flagship = newShip(ShipClass.Destroyer, techLevel = 1, name = "ship-" & $i)
 
       let sq = Squadron(
         id: "sq-" & $i,

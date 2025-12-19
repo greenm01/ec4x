@@ -556,7 +556,7 @@ proc commissionShips*(
             # Scouts commissioned at same colony join same fleet for mesh network bonuses
             # (2-3 scouts = +1 ELI, 4-5 = +2, 6+ = +3 ELI)
             let techLevel = state.houses[owner].techTree.levels.weaponsTech
-            let ship = newEnhancedShip(shipClass, techLevel)
+            let ship = newShip(shipClass, techLevel)
 
             # Create squadron with single scout
             let squadronId = $owner & "_scout_sq_" & $completed.colonyId & "_" & $state.turn
@@ -725,7 +725,7 @@ proc commissionShips*(
           let techLevel = state.houses[owner].techTree.levels.weaponsTech
 
           # Create the ship
-          let ship = newEnhancedShip(shipClass, techLevel)
+          let ship = newShip(shipClass, techLevel)
 
           # Capital ships (CR >= 7) always create new squadrons as flagship
           # Escorts try to join existing squadrons first

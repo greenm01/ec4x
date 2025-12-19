@@ -72,7 +72,7 @@ suite "Ship Construction Mechanics":
 suite "Squadron Formation":
 
   test "Create squadron with flagship":
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     let sq = newSquadron(destroyer, id = "sq1", owner = "house1", location = 1)
 
     check sq.id == "sq1"
@@ -82,11 +82,11 @@ suite "Squadron Formation":
     check sq.ships.len == 0  # No additional ships yet
 
   test "Add ship to squadron":
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq = newSquadron(cruiser, id = "sq1", owner = "house1", location = 1)
 
     # Add a destroyer to the squadron
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     let success = sq.addShip(destroyer)
 
     check success == true
@@ -94,11 +94,11 @@ suite "Squadron Formation":
     check sq.ships[0].shipClass == ShipClass.Destroyer
 
   test "Remove ship from squadron":
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq = newSquadron(cruiser, id = "sq1", owner = "house1", location = 1)
 
     # Add and then remove a ship
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     discard sq.addShip(destroyer)
     check sq.ships.len == 1
 
@@ -108,13 +108,13 @@ suite "Squadron Formation":
     check sq.ships.len == 0
 
   test "Squadron total AS calculation":
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq = newSquadron(cruiser, id = "sq1", owner = "house1", location = 1)
 
     let flagshipAS = sq.flagship.stats.attackStrength
 
     # Add another ship
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     let destroyerAS = destroyer.stats.attackStrength
     discard sq.addShip(destroyer)
 
@@ -123,12 +123,12 @@ suite "Squadron Formation":
     check totalAS == (flagshipAS + destroyerAS)
 
   test "Squadron total DS calculation":
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq = newSquadron(cruiser, id = "sq1", owner = "house1", location = 1)
 
     let flagshipDS = sq.flagship.stats.defenseStrength
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     let destroyerDS = destroyer.stats.defenseStrength
     discard sq.addShip(destroyer)
 
@@ -154,10 +154,10 @@ suite "Fleet Organization":
     check fleet.status == FleetStatus.Active
 
   test "Create fleet with squadrons":
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer, id = "sq1", owner = "house1", location = 1)
 
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq2 = newSquadron(cruiser, id = "sq2", owner = "house1", location = 1)
 
     let fleet = newFleet(
@@ -200,13 +200,13 @@ suite "Fleet Organization":
     check mothballedFleet.status == FleetStatus.Mothballed
 
   test "Multiple squadrons of different types in fleet":
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer, id = "dd1", owner = "house1", location = 1)
 
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq2 = newSquadron(cruiser, id = "ca1", owner = "house1", location = 1)
 
-    let battleship = newEnhancedShip(ShipClass.Battleship)
+    let battleship = newShip(ShipClass.Battleship)
     var sq3 = newSquadron(battleship, id = "bb1", owner = "house1", location = 1)
 
     let fleet = newFleet(

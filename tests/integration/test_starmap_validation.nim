@@ -217,18 +217,18 @@ suite "EC4X Game Specification Validation":
     # Test different fleet types according to game rules
 
     # Normal combat fleet
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
     var normalSq = newSquadron(destroyer1)
     let normalFleet = newFleet(squadrons = @[normalSq])
 
     # Crippled fleet
-    var crippledDestroyer = newEnhancedShip(ShipClass.Destroyer)
+    var crippledDestroyer = newShip(ShipClass.Destroyer)
     crippledDestroyer.isCrippled = true
     var crippledSq = newSquadron(crippledDestroyer)
     let crippledFleet = newFleet(squadrons = @[crippledSq])
 
     # Spacelift fleet (TroopTransport can't traverse restricted)
-    let troopTransport = newEnhancedShip(ShipClass.TroopTransport)
+    let troopTransport = newShip(ShipClass.TroopTransport)
     var spaceliftSq = newSquadron(troopTransport)
     let spaceliftFleet = newFleet(squadrons = @[spaceliftSq])
 
@@ -265,7 +265,7 @@ suite "EC4X Game Specification Validation":
 
       # Test reachability from hub to all systems
       let hubId = starMap.hubId
-      let destroyer = newEnhancedShip(ShipClass.Destroyer)
+      let destroyer = newShip(ShipClass.Destroyer)
       var sq = newSquadron(destroyer)
       let normalFleet = newFleet(squadrons = @[sq])
 

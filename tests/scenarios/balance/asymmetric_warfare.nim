@@ -18,7 +18,7 @@ proc scenario_FighterColonyDefense*() =
   # Attacking capital fleet: 2 Cruisers (AS=8 each)
   var attackers: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-ca-{i}", owner = "house-invader", location = 1)
     attackers.add(CombatSquadron(
       squadron: squadron,
@@ -32,7 +32,7 @@ proc scenario_FighterColonyDefense*() =
   # Defending fighter swarm: 6 Fighter squadrons (AS=2 each, but HOME DEFENSE)
   var defenders: seq[CombatSquadron] = @[]
   for i in 1..6:
-    let fighter = newEnhancedShip(ShipClass.Fighter, techLevel = 1)
+    let fighter = newShip(ShipClass.Fighter, techLevel = 1)
     let squadron = newSquadron(fighter, id = fmt"sq-ff-{i}", owner = "house-defender", location = 1)
     defenders.add(CombatSquadron(
       squadron: squadron,
@@ -90,7 +90,7 @@ proc scenario_RaiderAmbush*() =
   # Patrolling fleet: 2 Destroyers (AS=4, DS=10)
   var patrol: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let destroyer = newEnhancedShip(ShipClass.Destroyer, techLevel = 1)
+    let destroyer = newShip(ShipClass.Destroyer, techLevel = 1)
     let squadron = newSquadron(destroyer, id = fmt"sq-dd-{i}", owner = "house-patrol", location = 1)
     patrol.add(CombatSquadron(
       squadron: squadron,
@@ -104,7 +104,7 @@ proc scenario_RaiderAmbush*() =
   # Raider fleet: 3 Raiders (AS=3, DS=5, but CLOAKED)
   var raiders: seq[CombatSquadron] = @[]
   for i in 1..3:
-    let raider = newEnhancedShip(ShipClass.Raider, techLevel = 1)
+    let raider = newShip(ShipClass.Raider, techLevel = 1)
     let squadron = newSquadron(raider, id = fmt"sq-rr-{i}", owner = "house-raiders", location = 1)
     raiders.add(CombatSquadron(
       squadron: squadron,
@@ -162,7 +162,7 @@ proc scenario_ScoutDetection*() =
   # Raider attackers: 3 Raiders (cloaked)
   var raiders: seq[CombatSquadron] = @[]
   for i in 1..3:
-    let raider = newEnhancedShip(ShipClass.Raider, techLevel = 1)
+    let raider = newShip(ShipClass.Raider, techLevel = 1)
     let squadron = newSquadron(raider, id = fmt"sq-rr-{i}", owner = "house-raiders", location = 1)
     raiders.add(CombatSquadron(
       squadron: squadron,
@@ -176,7 +176,7 @@ proc scenario_ScoutDetection*() =
   # Defender with scout: 1 Scout + 2 Destroyers
   var defenders: seq[CombatSquadron] = @[]
 
-  let scoutShip = newEnhancedShip(ShipClass.Scout, techLevel = 1)
+  let scoutShip = newShip(ShipClass.Scout, techLevel = 1)
   let scoutSquadron = newSquadron(scoutShip, id = "sq-scout-1", owner = "house-defender", location = 1)
   defenders.add(CombatSquadron(
     squadron: scoutSquadron,
@@ -188,7 +188,7 @@ proc scenario_ScoutDetection*() =
   ))
 
   for i in 1..2:
-    let destroyer = newEnhancedShip(ShipClass.Destroyer, techLevel = 1)
+    let destroyer = newShip(ShipClass.Destroyer, techLevel = 1)
     let squadron = newSquadron(destroyer, id = fmt"sq-dd-{i}", owner = "house-defender", location = 1)
     defenders.add(CombatSquadron(
       squadron: squadron,

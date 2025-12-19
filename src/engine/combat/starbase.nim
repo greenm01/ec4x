@@ -59,7 +59,7 @@ proc createStarbaseCombatSquadron*(
   ## ✅ Applies WEP tech modifiers via getShipStats()
   ## ✅ Handles damage persistence via starbase.isCrippled field
 
-  let starbase = newEnhancedShip(
+  let starbase = newShip(
     ShipClass.Starbase,
     techLevel = techLevel,
     name = "Starbase"

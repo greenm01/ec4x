@@ -23,7 +23,7 @@ proc scenario_ConservativeROERetreat*() =
   # Small fleet with ROE=4 (conservative)
   var smallFleet: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-small-{i}", owner = "house-defender", location = 1)
     smallFleet.add(CombatSquadron(
       squadron: squadron,
@@ -37,7 +37,7 @@ proc scenario_ConservativeROERetreat*() =
   # Large fleet (3:1 advantage)
   var largeFleet: seq[CombatSquadron] = @[]
   for i in 1..6:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-large-{i}", owner = "house-attacker", location = 1)
     largeFleet.add(CombatSquadron(
       squadron: squadron,
@@ -112,7 +112,7 @@ proc scenario_AggressiveROEFightsOn*() =
   # Small fleet with ROE=10 (suicidal aggression)
   var smallFleet: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-aggressive-{i}", owner = "house-fanatic", location = 1)
     smallFleet.add(CombatSquadron(
       squadron: squadron,
@@ -126,7 +126,7 @@ proc scenario_AggressiveROEFightsOn*() =
   # Large fleet
   var largeFleet: seq[CombatSquadron] = @[]
   for i in 1..8:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-overwhelming-{i}", owner = "house-crusher", location = 1)
     largeFleet.add(CombatSquadron(
       squadron: squadron,
@@ -197,7 +197,7 @@ proc scenario_BorderlineROEThreshold*() =
   # 2 Battleships (AS=10 each = 20 total)
   var smallFleet: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let battleship = newEnhancedShip(ShipClass.Battleship, techLevel = 1)
+    let battleship = newShip(ShipClass.Battleship, techLevel = 1)
     let squadron = newSquadron(battleship, id = fmt"sq-bb-{i}", owner = "house-cautious", location = 1)
     smallFleet.add(CombatSquadron(
       squadron: squadron,
@@ -211,7 +211,7 @@ proc scenario_BorderlineROEThreshold*() =
   # 3 Battleships (AS=10 each = 30 total, 3:2 advantage)
   var largeFleet: seq[CombatSquadron] = @[]
   for i in 1..3:
-    let battleship = newEnhancedShip(ShipClass.Battleship, techLevel = 1)
+    let battleship = newShip(ShipClass.Battleship, techLevel = 1)
     let squadron = newSquadron(battleship, id = fmt"sq-bb-large-{i}", owner = "house-aggressor", location = 1)
     largeFleet.add(CombatSquadron(
       squadron: squadron,
@@ -281,7 +281,7 @@ proc scenario_HomeworldDefenseNoRetreat*() =
   # Defenders with low ROE but homeworld defense
   var defenders: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-home-{i}", owner = "house-homeland", location = 1)
     defenders.add(CombatSquadron(
       squadron: squadron,
@@ -295,7 +295,7 @@ proc scenario_HomeworldDefenseNoRetreat*() =
   # Attackers with numerical superiority
   var attackers: seq[CombatSquadron] = @[]
   for i in 1..6:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-invader-{i}", owner = "house-invader", location = 1)
     attackers.add(CombatSquadron(
       squadron: squadron,

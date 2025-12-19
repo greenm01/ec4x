@@ -23,7 +23,7 @@ proc scenario_EnemyAutoEngage*() =
   # Fleet A: Moving through system (order 01)
   var fleetA: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-alpha-{i}", owner = "house-alpha", location = 1)
     fleetA.add(CombatSquadron(
       squadron: squadron,
@@ -37,7 +37,7 @@ proc scenario_EnemyAutoEngage*() =
   # Fleet B: Also moving (order 01)
   var fleetB: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-beta-{i}", owner = "house-beta", location = 1)
     fleetB.add(CombatSquadron(
       squadron: squadron,
@@ -162,7 +162,7 @@ proc scenario_MultiHouseMixedDiplomacy*() =
   # Fleet A (Enemy to B, NAP to C)
   var fleetA: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-alpha-{i}", owner = "house-alpha", location = 1)
     fleetA.add(CombatSquadron(
       squadron: squadron,
@@ -176,7 +176,7 @@ proc scenario_MultiHouseMixedDiplomacy*() =
   # Fleet B (Enemy to A, NAP to C)
   var fleetB: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+    let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
     let squadron = newSquadron(cruiser, id = fmt"sq-beta-{i}", owner = "house-beta", location = 1)
     fleetB.add(CombatSquadron(
       squadron: squadron,
@@ -189,7 +189,7 @@ proc scenario_MultiHouseMixedDiplomacy*() =
 
   # Fleet C (NAP to both A and B)
   var fleetC: seq[CombatSquadron] = @[]
-  let cruiser = newEnhancedShip(ShipClass.Cruiser, techLevel = 1)
+  let cruiser = newShip(ShipClass.Cruiser, techLevel = 1)
   let squadron = newSquadron(cruiser, id = "sq-gamma-1", owner = "house-gamma", location = 1)
   fleetC.add(CombatSquadron(
     squadron: squadron,

@@ -164,18 +164,18 @@ suite "Robust Starmap Tests":
     # Create different fleet types using the new squadron system
 
     # Normal combat fleet
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var normalSq = newSquadron(destroyer)
     let normalFleet = newFleet(squadrons = @[normalSq])
 
     # Crippled fleet
-    var crippledDestroyer = newEnhancedShip(ShipClass.Destroyer)
+    var crippledDestroyer = newShip(ShipClass.Destroyer)
     crippledDestroyer.isCrippled = true
     var crippledSq = newSquadron(crippledDestroyer)
     let crippledFleet = newFleet(squadrons = @[crippledSq])
 
     # Spacelift fleet (using TroopTransport which can't traverse restricted)
-    let troopTransport = newEnhancedShip(ShipClass.TroopTransport)
+    let troopTransport = newShip(ShipClass.TroopTransport)
     var spaceliftSq = newSquadron(troopTransport)
     let spaceliftFleet = newFleet(squadrons = @[spaceliftSq])
 
@@ -204,7 +204,7 @@ suite "Robust Starmap Tests":
       let goal = playerSystems[1]
 
       # Normal fleet should find path
-      let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+      let destroyer1 = newShip(ShipClass.Destroyer)
       var normalSq1 = newSquadron(destroyer1)
       let normalFleet = newFleet(squadrons = @[normalSq1])
       let normalPath = findPath(starMap, start, goal, normalFleet)
@@ -214,7 +214,7 @@ suite "Robust Starmap Tests":
       check normalPath.path[^1] == goal
 
       # Crippled fleet path might be different (avoiding restricted lanes)
-      var crippledDestroyer = newEnhancedShip(ShipClass.Destroyer)
+      var crippledDestroyer = newShip(ShipClass.Destroyer)
       crippledDestroyer.isCrippled = true
       var crippledSq = newSquadron(crippledDestroyer)
       let crippledFleet = newFleet(squadrons = @[crippledSq])
@@ -297,7 +297,7 @@ suite "Robust Starmap Tests":
 
   test "pathfinding performance":
     let starMap = starMap(8)
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let fleet = newFleet(squadrons = @[sq])
 
@@ -324,7 +324,7 @@ suite "Robust Starmap Tests":
   test "error handling":
     # Test invalid pathfinding requests
     let starMap = starMap(4)
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     let fleet = newFleet(squadrons = @[sq])
 

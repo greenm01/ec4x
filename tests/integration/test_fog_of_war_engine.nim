@@ -68,7 +68,7 @@ suite "Fog of War - Core Visibility Levels":
     # Create fleet at a different system (hub or adjacent)
     let destSystem = map.hubId  # Move to central hub
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var destSq = newSquadron(destroyer)
     destSq.owner = house1
     destSq.location = destSystem
@@ -214,7 +214,7 @@ suite "Fog of War - Multi-House Scenarios":
     let hub = map.hubId
 
     # House 1 fleet
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer1)
     sq1.owner = "house-1".HouseId
     sq1.location = hub
@@ -228,7 +228,7 @@ suite "Fog of War - Multi-House Scenarios":
     state.fleets["fleet-1".FleetId] = fleet1
 
     # House 2 fleet
-    let cruiser2 = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser2 = newShip(ShipClass.Cruiser)
     var sq2 = newSquadron(cruiser2)
     sq2.owner = "house-2".HouseId
     sq2.location = hub
@@ -265,7 +265,7 @@ suite "Fog of War - Multi-House Scenarios":
     state.colonies[targetSystem] = colony2
 
     # House 1 sends fleet to that system
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     sq.owner = "house-1".HouseId
     sq.location = targetSystem
@@ -445,12 +445,12 @@ suite "Fog of War - Fleet Detection & Visibility":
     let meetingPoint = map.hubId
 
     # House 2 creates diverse fleet
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var cruiserSq = newSquadron(cruiser)
     cruiserSq.owner = house2
     cruiserSq.location = meetingPoint
 
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var destroyerSq = newSquadron(destroyer)
     destroyerSq.owner = house2
     destroyerSq.location = meetingPoint
@@ -472,7 +472,7 @@ suite "Fog of War - Fleet Detection & Visibility":
     state.fleets["fleet-2".FleetId] = fleet2
 
     # House 1 sends scout to meeting point
-    let scout = newEnhancedShip(ShipClass.Scout)
+    let scout = newShip(ShipClass.Scout)
     var scoutSq = newSquadron(scout)
     scoutSq.owner = house1
     scoutSq.location = meetingPoint
@@ -504,7 +504,7 @@ suite "Fog of War - Fleet Detection & Visibility":
     let house2Home = map.playerSystemIds[1]
 
     # House 2 has fleet at home (hidden from house 1)
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     sq.owner = house2
     sq.location = house2Home
@@ -576,7 +576,7 @@ suite "Fog of War - Edge Cases & Transitions":
     check filtered.visibleSystems[targetSystem].visibility == VisibilityLevel.Adjacent
 
     # Stage 2: Send fleet -> Occupied
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     sq.owner = house1
     sq.location = targetSystem
@@ -603,7 +603,7 @@ suite "Fog of War - Edge Cases & Transitions":
 
     # Create 3 fleets at home
     for i in 1..3:
-      let destroyer = newEnhancedShip(ShipClass.Destroyer)
+      let destroyer = newShip(ShipClass.Destroyer)
       var sq = newSquadron(destroyer)
       sq.owner = house1
       sq.location = house1Home
@@ -713,7 +713,7 @@ suite "Fog of War - Advanced Edge Cases":
     state.houses[house1] = house1Data
 
     # House 1 sends fleet to target system (current visibility)
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     sq.owner = house1
     sq.location = targetSystem
@@ -739,7 +739,7 @@ suite "Fog of War - Advanced Edge Cases":
     # All 4 houses send fleets to hub
     for i in 0..<4:
       let houseId = ("house-" & $(i+1)).HouseId
-      let destroyer = newEnhancedShip(ShipClass.Destroyer)
+      let destroyer = newShip(ShipClass.Destroyer)
       var sq = newSquadron(destroyer)
       sq.owner = houseId
       sq.location = hub
@@ -776,7 +776,7 @@ suite "Fog of War - Advanced Edge Cases":
     check emptySystem notin state.colonies
 
     # House 1 sends fleet to empty system
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     sq.owner = house1
     sq.location = emptySystem
@@ -884,7 +884,7 @@ suite "Fog of War - Advanced Edge Cases":
     let targetSystem = map.hubId
 
     # House 1 fleet at hub
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     sq.owner = house1
     sq.location = targetSystem
@@ -1017,7 +1017,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     let sourceSystem = map.hubId
 
     # House 1 fleet at hub
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     sq.owner = house1
     sq.location = sourceSystem
@@ -1031,7 +1031,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     state.fleets["fleet-1".FleetId] = fleet1
 
     # House 2 also at hub
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq2 = newSquadron(cruiser)
     sq2.owner = house2
     sq2.location = sourceSystem
@@ -1062,7 +1062,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     let targetSystem = map.hubId
 
     # Fleet starts at home
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     sq.owner = house1
     sq.location = house1Home
@@ -1104,7 +1104,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     let house2Home = map.playerSystemIds[1]
 
     # House 1 sends fleet to house 2's home
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     sq.owner = house1
     sq.location = house2Home
@@ -1144,7 +1144,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     # All 3 houses send fleets to hub
     for i in 0..<3:
       let houseId = ("house-" & $(i+1)).HouseId
-      let destroyer = newEnhancedShip(ShipClass.Destroyer)
+      let destroyer = newShip(ShipClass.Destroyer)
       var sq = newSquadron(destroyer)
       sq.owner = houseId
       sq.location = hub
@@ -1175,7 +1175,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     let targetSystem = map.hubId
 
     # Create fleet 1 at home
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer1)
     sq1.owner = house1
     sq1.location = house1Home
@@ -1189,7 +1189,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     state.fleets["fleet-1".FleetId] = fleet1
 
     # Create fleet 2 at hub (split from fleet 1)
-    let destroyer2 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer2 = newShip(ShipClass.Destroyer)
     var sq2 = newSquadron(destroyer2)
     sq2.owner = house1
     sq2.location = targetSystem
@@ -1222,7 +1222,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     let retreatSystem = map.playerSystemIds[0]
 
     # Both fleets start at battleground
-    let destroyer1 = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer1 = newShip(ShipClass.Destroyer)
     var sq1 = newSquadron(destroyer1)
     sq1.owner = house1
     sq1.location = battleground
@@ -1235,7 +1235,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     )
     state.fleets["fleet-1".FleetId] = fleet1
 
-    let cruiser = newEnhancedShip(ShipClass.Cruiser)
+    let cruiser = newShip(ShipClass.Cruiser)
     var sq2 = newSquadron(cruiser)
     sq2.owner = house2
     sq2.location = battleground
@@ -1271,7 +1271,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     let transitSystem = map.hubId
 
     # House 1 has scout at transit system
-    let scout = newEnhancedShip(ShipClass.Scout)
+    let scout = newShip(ShipClass.Scout)
     var scoutSq = newSquadron(scout)
     scoutSq.owner = house1
     scoutSq.location = transitSystem
@@ -1285,7 +1285,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     state.fleets["scout-fleet".FleetId] = scoutFleet
 
     # House 2 fleet "passes through" (at system, not in transit)
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var destSq = newSquadron(destroyer)
     destSq.owner = house2
     destSq.location = transitSystem
@@ -1315,7 +1315,7 @@ suite "Fog of War - Fleet Movement Scenarios":
     let adjacentSystem = adjacentSystems[0]
 
     # House 2 fleet at adjacent system
-    let destroyer = newEnhancedShip(ShipClass.Destroyer)
+    let destroyer = newShip(ShipClass.Destroyer)
     var sq = newSquadron(destroyer)
     sq.owner = house2
     sq.location = adjacentSystem

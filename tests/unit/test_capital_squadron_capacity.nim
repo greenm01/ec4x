@@ -49,7 +49,7 @@ proc createTestGameState(houseId: HouseId, coloniesWithIU: seq[int], capitalShip
   if capitalShips.len > 0:
     for i, shipClass in capitalShips:
       let fleetId = FleetId($houseId & "_fleet" & $(i + 1))
-      let ship = newEnhancedShip(shipClass, techLevel = 1)
+      let ship = newShip(shipClass, techLevel = 1)
       let squadron = newSquadron(ship, $houseId & "_sq" & $(i + 1), houseId, SystemId(1))
 
       state.fleets[fleetId] = Fleet(
@@ -179,7 +179,7 @@ suite "Count Capital Squadrons in Fleets":
 
     # Add capital ship for different house
     let fleetId = FleetId("house-other_fleet1")
-    let ship = newEnhancedShip(ShipClass.Dreadnought, techLevel = 1)
+    let ship = newShip(ShipClass.Dreadnought, techLevel = 1)
     let squadron = newSquadron(ship, "house-other_sq1", "house-other", SystemId(1))
 
     state.fleets[fleetId] = Fleet(
@@ -263,7 +263,7 @@ suite "Check Violations Batch":
 
     for i in 1..5:
       let fleetId = FleetId("house1_fleet" & $i)
-      let ship = newEnhancedShip(ShipClass.Battleship, techLevel = 1)
+      let ship = newShip(ShipClass.Battleship, techLevel = 1)
       let squadron = newSquadron(ship, "house1_sq" & $i, "house1", SystemId(1))
       state.fleets[fleetId] = Fleet(
         id: fleetId, owner: "house1", location: SystemId(1),
@@ -280,7 +280,7 @@ suite "Check Violations Batch":
 
     for i in 1..12:
       let fleetId = FleetId("house2_fleet" & $i)
-      let ship = newEnhancedShip(ShipClass.HeavyCruiser, techLevel = 1)
+      let ship = newShip(ShipClass.HeavyCruiser, techLevel = 1)
       let squadron = newSquadron(ship, "house2_sq" & $i, "house2", SystemId(10))
       state.fleets[fleetId] = Fleet(
         id: fleetId, owner: "house2", location: SystemId(10),
@@ -422,7 +422,7 @@ suite "Enforcement Application":
     # Add 6 ships across 6 fleets
     for i in 1..6:
       let fleetId = FleetId("house-test_fleet" & $i)
-      let ship = newEnhancedShip(ShipClass.HeavyCruiser, techLevel = 1)
+      let ship = newShip(ShipClass.HeavyCruiser, techLevel = 1)
       let squadron = newSquadron(ship, "house-test_sq" & $i, "house-test", SystemId(1))
 
       state.fleets[fleetId] = Fleet(
@@ -502,7 +502,7 @@ suite "Fleet Safety":
     # Add 6 ships, each in its own fleet
     for i in 1..6:
       let fleetId = FleetId("house-test_fleet" & $i)
-      let ship = newEnhancedShip(ShipClass.HeavyCruiser, techLevel = 1)
+      let ship = newShip(ShipClass.HeavyCruiser, techLevel = 1)
       let squadron = newSquadron(ship, "house-test_sq" & $i, "house-test", SystemId(1))
 
       state.fleets[fleetId] = Fleet(

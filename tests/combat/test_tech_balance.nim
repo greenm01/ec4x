@@ -16,7 +16,7 @@ proc testTechBalance*() =
   # Tech 3 fleet: 2 Battleships
   var tech3Fleet: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let ship = newEnhancedShip(ShipClass.Battleship, techLevel = 3, name = "BB-Tech3")
+    let ship = newShip(ShipClass.Battleship, techLevel = 3, name = "BB-Tech3")
     let squadron = newSquadron(ship, id = fmt"sq-t3-{i}", owner = "house-advanced", location = 1)
     tech3Fleet.add(CombatSquadron(
       squadron: squadron,
@@ -30,7 +30,7 @@ proc testTechBalance*() =
   # Tech 1 fleet: 2 Battleships (same ship type, lower tech)
   var tech1Fleet: seq[CombatSquadron] = @[]
   for i in 1..2:
-    let ship = newEnhancedShip(ShipClass.Battleship, techLevel = 1, name = "BB-Tech1")
+    let ship = newShip(ShipClass.Battleship, techLevel = 1, name = "BB-Tech1")
     let squadron = newSquadron(ship, id = fmt"sq-t1-{i}", owner = "house-starting", location = 1)
     tech1Fleet.add(CombatSquadron(
       squadron: squadron,
@@ -67,7 +67,7 @@ proc testTechBalance*() =
     # Create fresh fleets for each test
     var tech3FleetCopy: seq[CombatSquadron] = @[]
     for i in 1..2:
-      let ship = newEnhancedShip(ShipClass.Battleship, techLevel = 3)
+      let ship = newShip(ShipClass.Battleship, techLevel = 3)
       let squadron = newSquadron(ship, id = fmt"sq-t3-{i}", owner = "house-advanced", location = 1)
       tech3FleetCopy.add(CombatSquadron(
         squadron: squadron,
@@ -80,7 +80,7 @@ proc testTechBalance*() =
 
     var tech1FleetCopy: seq[CombatSquadron] = @[]
     for i in 1..2:
-      let ship = newEnhancedShip(ShipClass.Battleship, techLevel = 1)
+      let ship = newShip(ShipClass.Battleship, techLevel = 1)
       let squadron = newSquadron(ship, id = fmt"sq-t1-{i}", owner = "house-starting", location = 1)
       tech1FleetCopy.add(CombatSquadron(
         squadron: squadron,
