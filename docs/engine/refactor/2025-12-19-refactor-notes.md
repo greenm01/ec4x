@@ -98,3 +98,34 @@ To minimize disruption, I recommend a phased approach:
 3.  **Phase 3: System Decomposition.** Refactor one monolithic module at a time, starting with `combat_resolution.nim`, followed by `executor.nim`/`fleet_orders.nim`, and finally `zero_turn_commands.nim`.
 
 This iterative approach will allow for testing at each stage and ensure the engine remains functional throughout the refactoring process.
+
+## 5. Alignment with Game Specifications
+
+A review of the game specification documents confirms that this refactoring proposal is strongly aligned with the intended game architecture, particularly the `ec4x_canonical_turn_cycle.md` and `06-operations.md` specs.
+
+### `turn_cycle/` and Canonical Turn Cycle
+
+The proposed `src/engine/turn_cycle/` directory structure, with modules for each of the four phases, is a direct implementation of the architecture described in `ec4x_canonical_turn_cycle.md`. This will make the high-level orchestration of the game loop much easier to understand and map to the documentation.
+
+### `systems/` and Domain-Driven Specs
+
+The specs are organized by domain (Economy, Combat, Operations, etc.). The proposed `src/engine/systems/` directory mirrors this structure. This alignment provides several benefits:
+-   Logic for a specific domain (e.g., all combat mechanics from `07-combat.md`) will be consolidated in one place (`systems/combat/`).
+-   It will be easier for developers to find the code corresponding to a specific section of the specification.
+
+### Order Execution (`06-operations.md`)
+
+`06-operations.md` provides a clear separation between **Active Fleet Orders** (Section 6.3) and **Zero-Turn Administrative Commands** (Section 6.4). The proposal to break down `executor.nim` and `zero_turn_commands.nim` reflects this perfectly.
+
+-   **Fleet Orders**: The plan to create a dispatcher (`fleet_order_executor.nim`) and separate modules for order execution under `systems/orders/execution/` is well-supported. A more detailed breakdown could look like this:
+    -   `movement.nim`: Handles Hold, Move, SeekHome, Patrol.
+    -   `combat.nim`: Handles Guard*, Blockade, Bombard, Invade, Blitz.
+    -   `economic.nim`: Handles Colonize, Salvage.
+    -   `espionage.nim`: Handles Spy*, Hack*.
+    -   `fleet_management.nim`: Handles JoinFleet, Rendezvous.
+    -   `state.nim`: Handles Reserve, Mothball, Reactivate.
+    -   `recon.nim`: Handles ViewWorld.
+
+-   **Administrative Commands**: The plan to break down `zero_turn_commands.nim` into modules under `systems/orders/admin/` is also directly aligned with the spec's categories (Fleet Reorganization, Cargo Operations, Squadron Management).
+
+This structure will make the order execution logic significantly more manageable and easier to map to the 20+ distinct fleet orders described in the specification.
