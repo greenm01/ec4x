@@ -2,8 +2,8 @@
 ##
 ## Maps prestige sources to configured point values
 
-import types
-import ../config/prestige_config
+import ../../types/prestige as types
+import ../../config/prestige_config
 
 proc getPrestigeValue*(source: PrestigeSource): int =
   ## Get prestige value from configuration for given source

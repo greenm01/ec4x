@@ -14,7 +14,7 @@
 ## counts
 
 import std/[tables, sequtils, algorithm]
-import gamestate
+import ./gamestate
 import ../common/types/core
 
 # ===========================================================================

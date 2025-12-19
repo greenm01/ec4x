@@ -3,10 +3,10 @@
 ## Prestige for colonies and tech advancement
 
 import std/options
-import types
+import ../../types/prestige as types
 import sources
 import events
-import ../config/prestige_multiplier
+import ../../config/prestige_multiplier
 
 type
   ColonyPrestigeResult* = object

@@ -2,7 +2,7 @@
 ##
 ## Functions for creating and aggregating prestige events
 
-import types
+import ../../types/prestige as types
 
 proc createPrestigeEvent*(
   source: PrestigeSource,

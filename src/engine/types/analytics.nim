@@ -4,7 +4,7 @@
 ## Separated to avoid circular dependencies between modules.
 
 import std/tables
-import ../../common/types/core
+import ../../../common/types/core
 
 type
   ExportFormat* {.pure.} = enum

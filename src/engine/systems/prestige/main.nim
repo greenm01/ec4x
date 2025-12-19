@@ -19,7 +19,7 @@
 ## - Maintenance shortfalls
 ## - Military defeats
 
-import ./[types, sources, events, combat, economic, advancement, effects,
-                application]
+import ./[sources, events, combat, economic, advancement, effects, application]
+import ../../types/prestige as types
 
 export types, sources, events, combat, economic, advancement, effects, application

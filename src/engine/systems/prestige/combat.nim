@@ -5,10 +5,10 @@
 ## Per operations.md:7.3.3 - Combat is competitive: winner gains prestige,
 ## loser loses equal amount
 
-import types
+import ../../types/prestige as types
 import sources
 import events
-import ../config/prestige_multiplier
+import ../../config/prestige_multiplier
 
 type
   CombatPrestigeResult* = object
