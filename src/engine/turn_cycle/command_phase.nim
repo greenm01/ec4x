@@ -32,15 +32,18 @@ import std/[tables, algorithm, options, random, sequtils, hashes, sets,
             strformat]
 import ../../../common/types/core
 import ../../../common/logger as common_logger
-import ../../gamestate, ../../orders, ../../fleet, ../../squadron, ../../logger, ../../order_types
-import ../../diplomacy/[types as dip_types]
-import ../../commands/[executor]
-import ../[types as res_types, fleet_orders, economy_resolution,
-           diplomatic_resolution, combat_resolution, simultaneous,
-           commissioning, automation, construction, order_cleanup]
-import ../event_factory/[init as event_factory]
-import ../../research/[costs as res_costs]
-import ../../standing_orders
+import ../gamestate
+import ../logger
+import ../standing_orders
+import ../types/[diplomacy as dip_types, orders, research as res_types,
+                resolution as res_types]
+import ../systems/automation
+import ../systems/commissioning
+import ../systems/construction
+import ../systems/economy/engine as economy_resolution
+import ../systems/events/event_factory/init as event_factory
+import ../systems/orders/[cleanup as order_cleanup, executor]
+import ../systems/research/costs as res_costs
 
 proc resolveCommandPhase*(state: var GameState,
                           orders: Table[HouseId, OrderPacket],
@@ -250,7 +253,7 @@ proc resolveCommandPhase*(state: var GameState,
     if houseId in orders:
       for order in orders[houseId].fleetOrders:
         # Execute administrative orders immediately (zero-turn)
-        if isAdministrativeOrder(order.orderType):
+        if orders.isAdministrativeOrder(order.orderType):
           let outcome = executor.executeFleetOrder(state, houseId, order, events)
           if outcome == OrderOutcome.Success:
             adminExecuted += 1

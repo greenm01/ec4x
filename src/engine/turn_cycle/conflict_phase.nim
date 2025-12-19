@@ -19,19 +19,23 @@
 ##   6b. Space Guild Espionage
 ##   6c. Starbase Surveillance
 
-import std/[tables, options, random, sequtils, strformat]
+import std/[options, random, sequtils, strformat, tables]
 import ../../../common/types/core
 import ../../../common/logger as common_logger
-import ../../gamestate, ../../orders, ../../order_types, ../../fleet, ../../squadron, ../../logger, ../../state_helpers
-import ../../index_maintenance
-import ../../espionage/[types as esp_types, engine as esp_engine]
-import ../../diplomacy/[types as dip_types]
-import ../../research/[types as res_types_research]
-import ../../intelligence/[spy_resolution, espionage_intel, starbase_surveillance, types as intel_types, generator]
-import ../[types as res_types, combat_resolution]
-import ../[simultaneous_blockade, simultaneous_planetary, simultaneous_espionage, simultaneous_types, simultaneous]
-import ../../prestige as prestige_types
-import ../../prestige/application as prestige_app
+import ../gamestate
+import ../index_maintenance, ../logger, ../state_helpers
+import ../types/[diplomacy as dip_types, espionage as esp_types,
+                intelligence as intel_types, orders, research as res_types_research,
+                resolution as res_types, simultaneous as simultaneous_types]
+import ../systems/blockade/simultaneous_blockade
+import ../systems/combat/resolution as combat_resolution
+import ../systems/combat/simultaneous_planetary
+import ../systems/espionage/simultaneous_espionage
+import ../systems/intelligence/[espionage_intel, generator, spy_resolution,
+                                starbase_surveillance]
+import ../systems/prestige/application as prestige_app
+import ../systems/prestige/types as prestige_types
+import ../systems/shared/simultaneous
 
 proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPacket],
                           combatReports: var seq[res_types.CombatReport],
@@ -150,7 +154,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
               for order in effectiveOrders[h].fleetOrders:
                 # Check if the fleet for this order is actually in the current system
                 if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId:
-                  if order.orderType.isThreateningFleetOrder() or order.orderType.isNonThreateningButProvocativeFleetOrder():
+                  if isThreateningFleetOrder(order.orderType) or isNonThreateningButProvocativeFleetOrder(order.orderType):
                     foundProvocativeOrder = true
                     break
               if foundProvocativeOrder:
@@ -172,13 +176,13 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
           # Check effective orders (includes queued orders)
           if house1 in effectiveOrders and systemOwner.isSome and systemOwner.get() == house2:
             for order in effectiveOrders[house1].fleetOrders:
-              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and order.orderType.isThreateningFleetOrder():
+              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and isThreateningFleetOrder(order.orderType):
                 house1ThreateningHouse2 = true
                 break
 
           if house2 in effectiveOrders and systemOwner.isSome and systemOwner.get() == house1:
             for order in effectiveOrders[house2].fleetOrders:
-              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and order.orderType.isThreateningFleetOrder():
+              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and isThreateningFleetOrder(order.orderType):
                 house2ThreateningHouse1 = true
                 break
 
@@ -212,10 +216,10 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
     var filteredFleetOrders: seq[FleetOrder] = @[]
     for order in arrivedOrders[houseId].fleetOrders:
       # Check if order requires arrival
-      const arrivalRequired = [
-        FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz,
-        FleetOrderType.Colonize,
-        FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase
+      const arrivalRequired = [orders.FleetOrderType.Bombard,
+        orders.FleetOrderType.Invade, orders.FleetOrderType.Blitz,
+        orders.FleetOrderType.Colonize, orders.FleetOrderType.SpyPlanet,
+        orders.FleetOrderType.SpySystem, orders.FleetOrderType.HackStarbase
       ]
       if order.orderType in arrivalRequired:
         if order.fleetId in state.arrivedFleets:
@@ -346,7 +350,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
 
       # Generate scout detection event
       events.add(res_types.GameEvent(
-        eventType: res_types.GameEventType.ScoutDetected,
+        eventType: res_types.GameEventType.SpyMissionDetected,
         turn: state.turn,
         houseId: some(mission.ownerHouse),
         systemId: some(targetSystem),
@@ -377,23 +381,23 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
 
       # Generate intelligence based on mission type
       case mission.missionType
-      of SpyMissionType.SpyOnPlanet:
+      of orders.SpyMissionType.SpyOnPlanet:
         let intelReport = generator.generateColonyIntelReport(state, mission.ownerHouse, targetSystem, intel_types.IntelQuality.Perfect)
         if intelReport.isSome:
           var house = state.houses[mission.ownerHouse]
           house.intelligence.addColonyReport(intelReport.get())
           state.houses[mission.ownerHouse] = house
           logInfo(LogCategory.lcOrders, &"Generated Perfect colony intel for {mission.ownerHouse} at {targetSystem}")
-
-      of SpyMissionType.SpyOnSystem:
+      
+      of orders.SpyMissionType.SpyOnSystem:
         let systemIntel = generator.generateSystemIntelReport(state, mission.ownerHouse, targetSystem, intel_types.IntelQuality.Perfect)
         if systemIntel.isSome:
           var house = state.houses[mission.ownerHouse]
           house.intelligence.addSystemReport(systemIntel.get())
           state.houses[mission.ownerHouse] = house
           logInfo(LogCategory.lcOrders, &"Generated Perfect system intel for {mission.ownerHouse} at {targetSystem}")
-
-      of SpyMissionType.HackStarbase:
+      
+      of orders.SpyMissionType.HackStarbase:
         # For hack starbase, generate perfect colony intel (includes starbase details)
         let intelReport = generator.generateColonyIntelReport(state, mission.ownerHouse, targetSystem, intel_types.IntelQuality.Perfect)
         if intelReport.isSome:
