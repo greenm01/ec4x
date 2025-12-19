@@ -19,10 +19,10 @@
 ##   exportDiagnostics("output.md", diagnostics, filter)
 
 import std/[tables, strformat, strutils, streams, algorithm, os, sequtils]
-import ../gamestate
-import ../iterators
-import ../../common/types/core
-import types
+import ../../gamestate
+import ../../iterators
+import ../../../common/types/core
+import ../../types/analytics as types
 
 export types  # Re-export types for users of this module
 

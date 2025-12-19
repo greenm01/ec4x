@@ -4,9 +4,9 @@
 ## 3-state system: Neutral → Hostile → Enemy
 
 import std/options
-import types
-import ../../common/types/[core, diplomacy]
-import ../prestige
+import ../../types/diplomacy as types
+import ../../../common/types/[core, diplomacy]
+import ../prestige/main as prestige
 
 export types
 

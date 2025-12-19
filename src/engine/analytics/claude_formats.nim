@@ -17,7 +17,7 @@
 ## - Summary:   2 KB, 500 tokens (99.99% reduction)
 
 import std/[tables, strformat, strutils, streams, algorithm, math, json, sequtils]
-import types
+import ../../types/analytics as types
 
 export types  # Re-export types for users of this module
 

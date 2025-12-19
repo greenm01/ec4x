@@ -9,12 +9,12 @@
 ## - Awards +5 prestige for establishing colony
 
 import std/[options]
-import ../../common/types/[core, planets]
-import ../prestige
-import ../config/[prestige_config, prestige_multiplier, economy_config,
+import ../../../common/types/[core, planets]
+import ../prestige/main as prestige
+import ../../config/[prestige_config, prestige_multiplier, economy_config,
                   population_config]
-import ../economy/types as econ_types
-import ../gamestate  # For unified Colony type
+import ../../types/economy as econ_types
+import ../../gamestate  # For unified Colony type
 
 export core.HouseId, core.SystemId
 export prestige.PrestigeEvent

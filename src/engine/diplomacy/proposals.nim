@@ -4,8 +4,8 @@
 ## Per docs/architecture/diplomacy_proposals.md
 
 import std/options
-import ../../common/types/core
-import types as dip_types
+import ../../../common/types/core
+import ../../types/diplomacy as dip_types
 
 export dip_types
 

@@ -18,13 +18,13 @@
 ## enforce at load time (explicit mutations)
 
 import std/[tables, strutils, options, math]
-import ./types
-import ../../gamestate
-import ../../squadron
-import ../types as econ_types
-import ../../../common/types/core
-import ../../../common/types/units
-import ../../../common/logger
+import ../../../types/capacity as types
+import ../../../../gamestate
+import ../../../../squadron
+import ../../../types/economy as econ_types
+import ../../../../../common/types/core
+import ../../../../../common/types/units
+import ../../../../../common/logger
 
 export types.CapacityViolation, types.EnforcementAction, types.ViolationSeverity
 

@@ -6,15 +6,17 @@
 ## - Enemy/Neutral declarations
 
 import std/[tables, options]
-import ../../common/[types/core, logger]
-import ../gamestate, ../orders
-import ../diplomacy/[types as dip_types, engine as dip_engine, proposals as dip_proposals]
-import ../config/diplomacy_config
-import ../prestige
+import ../../../common/[types/core, logger]
+import ../../gamestate, ../orders/main as orders
+import ../../types/diplomacy as dip_types
+import ./engine as dip_engine
+import ./proposals as dip_proposals
+import ../../config/diplomacy_config
+import ../prestige/main as prestige
 import ../intelligence/diplomatic_intel
-import ../intelligence/types as intel_types  # For DetectionEventType
-import types as res_types  # For GameEvent
-import event_factory/init as event_factory
+import ../../types/intelligence as intel_types  # For DetectionEventType
+import ../../types/resolution as res_types  # For GameEvent
+import ../events/init as event_factory
 
 proc resolveDiplomaticActions*(state: var GameState,
                                 orders: Table[HouseId, OrderPacket],

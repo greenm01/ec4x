@@ -2,15 +2,16 @@
 ## Implements all 16 fleet order types from operations.md Section 6.2
 
 import std/[options, tables, strformat]
-import ../../common/types/[core, units]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../state_helpers, ../logger, ../starmap
-import ../index_maintenance
+import ../../../common/types/[core, units]
+import ../../gamestate, ./main as orders, ../../fleet, ../../squadron, ../../state_helpers, ../../logger, ../../starmap
+import ../../index_maintenance
 import ../intelligence/detection
-import ../combat/[types as combat_types]
-import ../diplomacy/[types as dip_types]
-import ../resolution/[types as resolution_types, fleet_orders]
-import ../resolution/event_factory/init as event_factory
-import ../standing_orders
+import ../../types/combat as combat_types
+import ../../types/diplomacy as dip_types
+import ../../types/resolution as resolution_types
+import ./fleet_orders
+import ../events/init as event_factory
+import ../../standing_orders
 
 type
   OrderOutcome* {.pure.} = enum

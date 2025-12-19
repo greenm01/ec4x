@@ -15,12 +15,13 @@
 ##   let result = submitZeroTurnCommand(state, cmd)
 ##   if result.success: echo "Success!"
 
-import ../[gamestate, fleet, squadron, logger]
-import ../index_maintenance
-import ../../common/types/core
-import ../config/population_config  # For population config (soulsPerPtu, ptuSizeMillions)
+import ../../[gamestate, fleet, squadron, logger]
+import ../../index_maintenance
+import ../../../common/types/core
+import ../../config/population_config  # For population config (soulsPerPtu, ptuSizeMillions)
 import ../economy/capacity/carrier_hangar  # For carrier capacity checks
-import ../resolution/[event_factory/init as event_factory, types as resolution_types]
+import ../../types/resolution as resolution_types
+import ../events/init as event_factory
 import std/[options, algorithm, tables, strformat, sequtils]
 
 # ============================================================================
