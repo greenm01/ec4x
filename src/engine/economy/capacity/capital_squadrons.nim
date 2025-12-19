@@ -18,16 +18,16 @@
 ## Data-oriented design: Calculate violations (pure), apply enforcement (explicit mutations)
 
 import std/[tables, strutils, algorithm, options, math]
-import ./types
-import ../../gamestate
-import ../../squadron  # For newShip
-import ../../config/military_config  # For capital_ship_cr_threshold
-import ../types as econ_types  # For ConstructionType, ConstructionProject
-import ../../../common/types/core
-import ../../../common/types/units  # For ShipClass, Ship
-import ../../../common/logger
-import ../../resolution/types as resolution_types  # For GameEvent
-import ../../resolution/event_factory/fleet_ops  # For squadronScrapped
+import ../../../types/capacity as types
+import ../../../gamestate
+import ../../../squadron  # For newShip
+import ../../../config/military_config  # For capital_ship_cr_threshold
+import ../../../types/economy as econ_types  # For ConstructionType, ConstructionProject
+import ../../../../common/types/core
+import ../../../../common/types/units  # For ShipClass, Ship
+import ../../../../common/logger
+import ../../../types/resolution as resolution_types  # For GameEvent
+import ../../events/fleet_ops  # For squadronScrapped
 
 export types.CapacityViolation, types.EnforcementAction, types.ViolationSeverity
 
