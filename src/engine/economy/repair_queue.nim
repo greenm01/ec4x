@@ -12,6 +12,7 @@
 
 import std/[tables, options, strformat]
 import ../gamestate
+import ../index_maintenance
 import ../fleet
 import ../squadron
 import ../logger
@@ -121,6 +122,7 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
       # If removing this squadron leaves the fleet empty (no squadrons remaining),
       # delete the fleet entirely along with its associated orders.
       if fleet.isEmpty():
+        state.removeFleetFromIndices(fleetId, fleet.owner, fleet.location)
         state.fleets.del(fleetId)
         # Clean up associated orders to prevent orphaned data
         if fleetId in state.fleetOrders:

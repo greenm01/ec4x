@@ -22,90 +22,102 @@ import ../common/types/core
 # House-based iterators (entities owned by a house)
 
 iterator coloniesOwned*(state: GameState, houseId: HouseId): Colony =
-  ## Iterate all colonies owned by a house
+  ## Iterate all colonies owned by a house (O(1) lookup via index)
   ##
   ## Example:
   ##   var totalProduction = 0
   ##   for colony in state.coloniesOwned(houseId):
   ##     totalProduction += colony.production
-  for systemId, colony in state.colonies:
-    if colony.owner == houseId:
-      yield colony
+  if houseId in state.coloniesByOwner:
+    for systemId in state.coloniesByOwner[houseId]:
+      if systemId in state.colonies:
+        yield state.colonies[systemId]
 
 iterator coloniesOwnedWithId*(state: GameState, houseId: HouseId): tuple[id: SystemId, colony: Colony] =
-  ## Iterate colonies with system IDs (for mutations)
+  ## Iterate colonies with system IDs (for mutations, O(1) lookup via index)
   ##
   ## Example:
   ##   for (systemId, colony) in state.coloniesOwnedWithId(houseId):
   ##     state.withColony(systemId):
   ##       colony.production = calculateProduction(colony)
-  for systemId, colony in state.colonies:
-    if colony.owner == houseId:
-      yield (systemId, colony)
+  if houseId in state.coloniesByOwner:
+    for systemId in state.coloniesByOwner[houseId]:
+      if systemId in state.colonies:
+        yield (systemId, state.colonies[systemId])
 
 iterator fleetsOwned*(state: GameState, houseId: HouseId): Fleet =
-  ## Iterate all fleets owned by a house
+  ## Iterate all fleets owned by a house (O(1) lookup via index)
   ##
   ## Example:
   ##   var totalMaintenance = 0
   ##   for fleet in state.fleetsOwned(houseId):
   ##     totalMaintenance += fleet.maintenanceCost
-  for fleetId, fleet in state.fleets:
-    if fleet.owner == houseId:
-      yield fleet
+  if houseId in state.fleetsByOwner:
+    for fleetId in state.fleetsByOwner[houseId]:
+      if fleetId in state.fleets:
+        yield state.fleets[fleetId]
 
 iterator fleetsOwnedWithId*(state: GameState, houseId: HouseId): tuple[id: FleetId, fleet: Fleet] =
-  ## Iterate fleets with IDs (for mutations)
+  ## Iterate fleets with IDs (for mutations, O(1) lookup via index)
   ##
   ## Example:
   ##   for (fleetId, fleet) in state.fleetsOwnedWithId(houseId):
   ##     state.withFleet(fleetId):
   ##       fleet.status = FleetStatus.Reserve
-  for fleetId, fleet in state.fleets:
-    if fleet.owner == houseId:
-      yield (fleetId, fleet)
+  if houseId in state.fleetsByOwner:
+    for fleetId in state.fleetsByOwner[houseId]:
+      if fleetId in state.fleets:
+        yield (fleetId, state.fleets[fleetId])
 
 # Location-based iterators (entities at a location)
 
 iterator fleetsAtSystem*(state: GameState, systemId: SystemId): Fleet =
-  ## Iterate all fleets at a system
+  ## Iterate all fleets at a system (O(1) lookup via index)
   ##
   ## Example:
   ##   var fleetsPresent: seq[Fleet] = @[]
   ##   for fleet in state.fleetsAtSystem(systemId):
   ##     fleetsPresent.add(fleet)
-  for fleetId, fleet in state.fleets:
-    if fleet.location == systemId:
-      yield fleet
+  if systemId in state.fleetsByLocation:
+    for fleetId in state.fleetsByLocation[systemId]:
+      if fleetId in state.fleets:
+        yield state.fleets[fleetId]
 
 iterator fleetsAtSystemWithId*(state: GameState, systemId: SystemId): tuple[id: FleetId, fleet: Fleet] =
-  ## Iterate fleets at system with IDs (for mutations)
+  ## Iterate fleets at system with IDs (for mutations, O(1) lookup via index)
   ##
   ## Example:
   ##   for (fleetId, fleet) in state.fleetsAtSystemWithId(systemId):
   ##     if shouldRetreat(fleet):
   ##       state.withFleet(fleetId):
   ##         fleet.retreating = true
-  for fleetId, fleet in state.fleets:
-    if fleet.location == systemId:
-      yield (fleetId, fleet)
+  if systemId in state.fleetsByLocation:
+    for fleetId in state.fleetsByLocation[systemId]:
+      if fleetId in state.fleets:
+        yield (fleetId, state.fleets[fleetId])
 
 iterator fleetsAtSystemForHouse*(state: GameState, systemId: SystemId, houseId: HouseId): Fleet =
-  ## Iterate fleets of a specific house at a system
+  ## Iterate fleets of a specific house at a system (O(1) lookup via index)
   ##
   ## Example:
   ##   var myFleetsHere: seq[Fleet] = @[]
   ##   for fleet in state.fleetsAtSystemForHouse(systemId, myHouseId):
   ##     myFleetsHere.add(fleet)
-  for fleetId, fleet in state.fleets:
-    if fleet.location == systemId and fleet.owner == houseId:
-      yield fleet
+  if systemId in state.fleetsByLocation:
+    for fleetId in state.fleetsByLocation[systemId]:
+      if fleetId in state.fleets:
+        let fleet = state.fleets[fleetId]
+        if fleet.owner == houseId:
+          yield fleet
 
 iterator fleetsAtSystemForHouseWithId*(state: GameState, systemId: SystemId, houseId: HouseId): tuple[id: FleetId, fleet: Fleet] =
-  ## Iterate house fleets at system with IDs (for mutations)
-  for fleetId, fleet in state.fleets:
-    if fleet.location == systemId and fleet.owner == houseId:
-      yield (fleetId, fleet)
+  ## Iterate house fleets at system with IDs (for mutations, O(1) lookup via index)
+  if systemId in state.fleetsByLocation:
+    for fleetId in state.fleetsByLocation[systemId]:
+      if fleetId in state.fleets:
+        let fleet = state.fleets[fleetId]
+        if fleet.owner == houseId:
+          yield (fleetId, fleet)
 
 # Condition-based iterators (entities matching criteria)
 

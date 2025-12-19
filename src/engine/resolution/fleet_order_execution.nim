@@ -350,14 +350,17 @@ proc performOrderMaintenance*(
           # Check if hostile forces are present
           var hasHostileForces = false
 
-          # Check for enemy/neutral fleets
-          for otherFleet in state.fleets.values:
-            if otherFleet.location == targetSystem and otherFleet.owner != houseId:
-              let relation = state.houses[houseId].diplomaticRelations.getDiplomaticState(otherFleet.owner)
-              if relation == dip_types.DiplomaticState.Enemy or
-                 relation == dip_types.DiplomaticState.Neutral:
-                hasHostileForces = true
-                break
+          # Check for enemy/neutral fleets (O(1) lookup via index)
+          if targetSystem in state.fleetsByLocation:
+            for otherFleetId in state.fleetsByLocation[targetSystem]:
+              if otherFleetId in state.fleets:
+                let otherFleet = state.fleets[otherFleetId]
+                if otherFleet.owner != houseId:
+                  let relation = state.houses[houseId].diplomaticRelations.getDiplomaticState(otherFleet.owner)
+                  if relation == dip_types.DiplomaticState.Enemy or
+                     relation == dip_types.DiplomaticState.Neutral:
+                    hasHostileForces = true
+                    break
 
           # Check for starbases
           if targetSystem in state.colonies:

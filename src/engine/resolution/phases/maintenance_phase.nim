@@ -31,6 +31,7 @@
 import std/[tables, options, strformat, strutils, algorithm, sequtils, random, sets, hashes]
 import ../../../common/[types/core, types/units, types/tech, types/combat]
 import ../../gamestate, ../../orders, ../../logger, ../../starmap
+import ../../index_maintenance
 import ../../order_types
 import ../fleet_order_execution  # For movement order execution
 import ../../economy/[types as econ_types, engine as econ_engine, facility_queue]
@@ -365,6 +366,8 @@ proc resolveMaintenancePhase*(state: var GameState,
     let newLocation = pathResult.path[jumpsToMove]
 
     # Update fleet location
+    let oldLocation = fleet.location
+    state.updateFleetLocation(fleetId, oldLocation, newLocation)
     state.fleets[fleetId].location = newLocation
     fleetsMovedCount += 1
 
@@ -428,17 +431,10 @@ proc resolveMaintenancePhase*(state: var GameState,
   logDebug(LogCategory.lcOrders,
     "[MAINTENANCE STEP 1e] Checking for scout-on-scout encounters...")
 
-  # Group fleets by location for efficient detection checks
-  var fleetsByLocation = initTable[SystemId, seq[FleetId]]()
-  for fleetId, fleet in state.fleets:
-    if fleet.location notin fleetsByLocation:
-      fleetsByLocation[fleet.location] = @[]
-    fleetsByLocation[fleet.location].add(fleetId)
-
   var scoutDetectionCount = 0
 
-  # Check each location for scout encounters
-  for systemId, fleetIds in fleetsByLocation:
+  # Check each location for scout encounters (using persistent index)
+  for systemId, fleetIds in state.fleetsByLocation:
     # Need at least 2 fleets for detection
     if fleetIds.len < 2:
       continue
@@ -446,6 +442,8 @@ proc resolveMaintenancePhase*(state: var GameState,
     # Filter for scout-only fleets
     var scoutFleets: seq[tuple[id: FleetId, owner: HouseId]] = @[]
     for fleetId in fleetIds:
+      if fleetId notin state.fleets:
+        continue  # Skip stale index entry
       let fleet = state.fleets[fleetId]
       if fleet.isScoutOnly():
         scoutFleets.add((id: fleetId, owner: fleet.owner))
@@ -462,6 +460,10 @@ proc resolveMaintenancePhase*(state: var GameState,
 
         # Skip if same house (can't detect own scouts)
         if observer.owner == target.owner:
+          continue
+
+        # Double-check fleets still exist (defensive programming)
+        if observer.id notin state.fleets or target.id notin state.fleets:
           continue
 
         let observerFleet = state.fleets[observer.id]

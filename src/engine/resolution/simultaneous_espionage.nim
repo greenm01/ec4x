@@ -8,6 +8,7 @@ import ../intelligence/spy_resolution
 import simultaneous_types
 import simultaneous_resolver
 import ../gamestate
+import ../index_maintenance
 import ../orders
 import ../order_types
 import ../logger
@@ -351,6 +352,9 @@ proc processScoutIntelligence*(
   for result in results:
     # Consume scout fleet, regardless of outcome
     if result.fleetId in state.fleets:
+      let fleet = state.fleets[result.fleetId]
+      state.removeFleetFromIndices(result.fleetId, fleet.owner,
+                                   fleet.location)
       state.fleets.del(result.fleetId)
       if result.fleetId in state.fleetOrders:
         state.fleetOrders.del(result.fleetId)

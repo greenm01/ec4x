@@ -4,6 +4,7 @@
 import std/[options, tables, strformat]
 import ../../common/types/[core, units]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../state_helpers, ../logger, ../starmap
+import ../index_maintenance
 import ../intelligence/detection
 import ../combat/[types as combat_types]
 import ../diplomacy/[types as dip_types]
@@ -1181,6 +1182,7 @@ proc executeJoinFleetOrder(
   state.fleets[targetFleetId] = updatedTargetFleet
 
   # Remove source fleet and clean up orders
+  state.removeFleetFromIndices(fleet.id, fleet.owner, fleet.location)
   state.fleets.del(fleet.id)
   if fleet.id in state.fleetOrders:
     state.fleetOrders.del(fleet.id)
@@ -1315,6 +1317,7 @@ proc executeRendezvousOrder(
       hostFleet.squadrons.add(squadron)
 
     # Remove merged fleet and clean up orders
+    state.removeFleetFromIndices(f.id, f.owner, f.location)
     state.fleets.del(f.id)
     if f.id in state.fleetOrders:
       state.fleetOrders.del(f.id)
@@ -1415,6 +1418,7 @@ proc executeSalvageOrder(
     "after transit to " & $targetSystem
 
   # Remove fleet from game state
+  state.removeFleetFromIndices(fleet.id, fleet.owner, fleet.location)
   state.fleets.del(fleet.id)
   if fleet.id in state.fleetOrders:
     state.fleetOrders.del(fleet.id)

@@ -7,6 +7,7 @@ import std/[tables, options, random, sequtils, algorithm, strformat]
 import simultaneous_types
 import simultaneous_resolver
 import ../gamestate
+import ../index_maintenance
 import ../orders
 import ../order_types
 import ../squadron
@@ -208,6 +209,7 @@ proc establishColony(
   # Empty fleets should be automatically cleaned up to avoid maintenance waste
   if fleet.squadrons.len == 0:
     # Fleet is empty - remove it and cleanup associated orders
+    state.removeFleetFromIndices(fleetId, fleet.owner, fleet.location)
     state.fleets.del(fleetId)
     if fleetId in state.fleetOrders:
       state.fleetOrders.del(fleetId)

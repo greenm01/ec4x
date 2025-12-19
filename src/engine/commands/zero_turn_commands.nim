@@ -16,6 +16,7 @@
 ##   if result.success: echo "Success!"
 
 import ../[gamestate, fleet, squadron, logger]
+import ../index_maintenance
 import ../../common/types/core
 import ../config/population_config  # For population config (soulsPerPtu, ptuSizeMillions)
 import ../economy/capacity/carrier_hangar  # For carrier capacity checks
@@ -369,6 +370,8 @@ proc cleanupEmptyFleet*(state: var GameState, fleetId: FleetId) =
   ## Used by TransferShips, MergeFleets, AssignSquadronToFleet, DetachShips
   ## NOTE: Caller must ensure fleet should be deleted (this doesn't check isEmpty)
   if fleetId in state.fleets:
+    let fleet = state.fleets[fleetId]
+    state.removeFleetFromIndices(fleetId, fleet.owner, fleet.location)
     state.fleets.del(fleetId)
     if fleetId in state.fleetOrders:
       state.fleetOrders.del(fleetId)
@@ -531,13 +534,16 @@ proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand, events: var
   state.fleets[targetFleetId] = targetFleet
 
   # Delete source fleet from state table
-  state.fleets.del(cmd.sourceFleetId.get())
+  let sourceFleetId = cmd.sourceFleetId.get()
+  state.removeFleetFromIndices(sourceFleetId, sourceFleet.owner,
+                               sourceFleet.location)
+  state.fleets.del(sourceFleetId)
 
   # Cleanup associated orders
-  if cmd.sourceFleetId.get() in state.fleetOrders:
-    state.fleetOrders.del(cmd.sourceFleetId.get())
-  if cmd.sourceFleetId.get() in state.standingOrders:
-    state.standingOrders.del(cmd.sourceFleetId.get())
+  if sourceFleetId in state.fleetOrders:
+    state.fleetOrders.del(sourceFleetId)
+  if sourceFleetId in state.standingOrders:
+    state.standingOrders.del(sourceFleetId)
 
   logInfo(LogCategory.lcFleet, &"MergeFleets: Merged {sourceFleet.squadrons.len} squadrons from {cmd.sourceFleetId.get()} into {targetFleetId}")
 
