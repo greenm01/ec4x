@@ -564,19 +564,24 @@ proc commissionShips*(
             scoutSquadron.squadronType = getSquadronType(shipClass)  # Intel type
 
             # Find existing scout fleet at this location, or create new one
+            # Use fleetsByLocation index for O(1) lookup instead of O(F) scan
             var scoutFleetId = ""
-            for fleetId, fleet in state.fleets:
-              if fleet.owner == owner and fleet.location == completed.colonyId:
-                # Check if this is a pure scout fleet (only scout squadrons)
-                var isPureScoutFleet = fleet.squadrons.len > 0
-                for squadron in fleet.squadrons:
-                  if squadron.flagship.shipClass != ShipClass.Scout:
-                    isPureScoutFleet = false
-                    break
+            if completed.colonyId in state.fleetsByLocation:
+              for fleetId in state.fleetsByLocation[completed.colonyId]:
+                if fleetId notin state.fleets:
+                  continue  # Skip stale index entry
+                let fleet = state.fleets[fleetId]
+                if fleet.owner == owner:
+                  # Check if this is a pure scout fleet (only scout squadrons)
+                  var isPureScoutFleet = fleet.squadrons.len > 0
+                  for squadron in fleet.squadrons:
+                    if squadron.flagship.shipClass != ShipClass.Scout:
+                      isPureScoutFleet = false
+                      break
 
-                if isPureScoutFleet:
-                  scoutFleetId = fleetId
-                  break
+                  if isPureScoutFleet:
+                    scoutFleetId = fleetId
+                    break
 
             if scoutFleetId != "":
               # Add to existing scout fleet (mesh network bonus)
@@ -688,10 +693,15 @@ proc commissionShips*(
                     &"Commissioned ETAC Expansion squadron in new independent fleet {targetFleetId}")
                 else:
                   # TroopTransports: Find existing fleet or create new one
-                  for fleetId, fleet in state.fleets:
-                    if fleet.location == completed.colonyId and fleet.owner == owner:
-                      targetFleetId = fleetId
-                      break
+                  # Use fleetsByLocation index for O(1) lookup instead of O(F) scan
+                  if completed.colonyId in state.fleetsByLocation:
+                    for fleetId in state.fleetsByLocation[completed.colonyId]:
+                      if fleetId notin state.fleets:
+                        continue  # Skip stale index entry
+                      let fleet = state.fleets[fleetId]
+                      if fleet.owner == owner:
+                        targetFleetId = fleetId
+                        break
 
                   if targetFleetId == "":
                     # Create new fleet for squadron
@@ -737,31 +747,36 @@ proc commissionShips*(
           if not isCapitalShip:
             # Escorts: try to join existing squadrons
             # IMPORTANT: Skip specialized squadrons (ETAC/Scout/Fighter)
-            for fleetId, fleet in state.fleets:
-              if fleet.owner == owner and fleet.location == completed.colonyId:
-                for squadron in fleet.squadrons:
-                  squadronsChecked += 1
+            # Use fleetsByLocation index for O(1) lookup instead of O(F) scan
+            if completed.colonyId in state.fleetsByLocation:
+              for fleetId in state.fleetsByLocation[completed.colonyId]:
+                if fleetId notin state.fleets:
+                  continue  # Skip stale index entry
+                let fleet = state.fleets[fleetId]
+                if fleet.owner == owner:
+                  for squadron in fleet.squadrons:
+                    squadronsChecked += 1
 
-                  # Skip ETAC squadrons - combat ships should not join colonization fleets
-                  if squadron.squadronType == SquadronType.Expansion and
-                     squadron.flagship.shipClass == ShipClass.ETAC:
-                    continue
+                    # Skip ETAC squadrons - combat ships should not join colonization fleets
+                    if squadron.squadronType == SquadronType.Expansion and
+                       squadron.flagship.shipClass == ShipClass.ETAC:
+                      continue
 
-                  # Skip Scout squadrons - scouts operate independently for reconnaissance
-                  if squadron.flagship.shipClass == ShipClass.Scout:
-                    continue
+                    # Skip Scout squadrons - scouts operate independently for reconnaissance
+                    if squadron.flagship.shipClass == ShipClass.Scout:
+                      continue
 
-                  # Skip Fighter squadrons - fighters are carrier-based, not fleet escorts
-                  if squadron.flagship.shipClass == ShipClass.Fighter:
-                    continue
+                    # Skip Fighter squadrons - fighters are carrier-based, not fleet escorts
+                    if squadron.flagship.shipClass == ShipClass.Fighter:
+                      continue
 
-                  if canAddShip(squadron, ship):
-                    # Found a squadron with capacity
-                    assignedSquadron = squadron.id
-                    logDebug(LogCategory.lcFleet, &"Ship {shipClass} can join squadron {squadron.id} (CR={squadron.flagship.stats.commandRating}, avail={squadron.availableCommandCapacity()})")
+                    if canAddShip(squadron, ship):
+                      # Found a squadron with capacity
+                      assignedSquadron = squadron.id
+                      logDebug(LogCategory.lcFleet, &"Ship {shipClass} can join squadron {squadron.id} (CR={squadron.flagship.stats.commandRating}, avail={squadron.availableCommandCapacity()})")
+                      break
+                  if assignedSquadron != "":
                     break
-                if assignedSquadron != "":
-                  break
 
           # Add ship to existing squadron or create new one
           if assignedSquadron != "":
@@ -779,35 +794,42 @@ proc commissionShips*(
             logInfo(LogCategory.lcFleet, &"No existing squadron can fit {shipClass} (checked {squadronsChecked} squadrons), creating new squadron")
             # Create new squadron with this ship as flagship
             # Use total squadron count across all fleets to ensure unique IDs
+            # Use fleetsByOwner index for O(1) lookup instead of O(F) scan
             var totalSquadrons = 0
-            for fleetId, fleet in state.fleets:
-              if fleet.owner == owner:
-                totalSquadrons += fleet.squadrons.len
+            if owner in state.fleetsByOwner:
+              for fleetId in state.fleetsByOwner[owner]:
+                if fleetId in state.fleets:
+                  totalSquadrons += state.fleets[fleetId].squadrons.len
             let newSquadronId = $owner & "_sq_" & $totalSquadrons & "_" & $state.turn
             var newSq = newSquadron(ship, newSquadronId, owner, completed.colonyId)
             newSq.squadronType = getSquadronType(shipClass)  # Set appropriate type
 
             # Find or create fleet at this location
             # IMPORTANT: Skip specialized fleets (ETAC/Scout) - keep them pure for their missions
+            # Use fleetsByLocation index for O(1) lookup instead of O(F) scan
             var targetFleetId = ""
-            for fleetId, fleet in state.fleets:
-              if fleet.owner == owner and fleet.location == completed.colonyId:
-                # Check if this fleet contains ETACs or Scouts - if so, skip it
-                var hasSpecializedShips = false
-                for squadron in fleet.squadrons:
-                  # Skip ETAC fleets (colonization missions)
-                  if squadron.squadronType == SquadronType.Expansion and
-                     squadron.flagship.shipClass == ShipClass.ETAC:
-                    hasSpecializedShips = true
-                    break
-                  # Skip Scout fleets (reconnaissance missions)
-                  if squadron.flagship.shipClass == ShipClass.Scout:
-                    hasSpecializedShips = true
-                    break
+            if completed.colonyId in state.fleetsByLocation:
+              for fleetId in state.fleetsByLocation[completed.colonyId]:
+                if fleetId notin state.fleets:
+                  continue  # Skip stale index entry
+                let fleet = state.fleets[fleetId]
+                if fleet.owner == owner:
+                  # Check if this fleet contains ETACs or Scouts - if so, skip it
+                  var hasSpecializedShips = false
+                  for squadron in fleet.squadrons:
+                    # Skip ETAC fleets (colonization missions)
+                    if squadron.squadronType == SquadronType.Expansion and
+                       squadron.flagship.shipClass == ShipClass.ETAC:
+                      hasSpecializedShips = true
+                      break
+                    # Skip Scout fleets (reconnaissance missions)
+                    if squadron.flagship.shipClass == ShipClass.Scout:
+                      hasSpecializedShips = true
+                      break
 
-                if not hasSpecializedShips:
-                  targetFleetId = fleetId
-                  break
+                  if not hasSpecializedShips:
+                    targetFleetId = fleetId
+                    break
 
             if targetFleetId == "":
               # Create new fleet at colony
