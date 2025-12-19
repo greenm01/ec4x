@@ -4,26 +4,26 @@
 ## to prevent first-mover advantages in intelligence operations.
 
 import std/[tables, options, random, strformat, algorithm]
-import ../intelligence/spy_resolution
-import simultaneous_types
-import simultaneous_resolver
+import ../systems/intelligence/spy_resolution
+import ../types/simultaneous as simultaneous_types
+import ../systems/shared/simultaneous_resolver
 import ../gamestate
 import ../index_maintenance
 import ../orders
-import ../order_types
+import ../types/orders as order_types
 import ../logger
 import ../squadron
-import ../espionage/engine as esp_engine
-import ../espionage/executor as esp_executor
-import ../espionage/types as esp_types
+import ../systems/espionage/engine as esp_engine
+import ../systems/espionage/executor as esp_executor
+import ../types/espionage as esp_types
 import ../config/espionage_config
 import ../../common/types/core
-import ../prestige
-import ./event_factory/orders 
-import ./event_factory/intelligence as intelligence_events
-import ./types as res_types
-import ../intelligence/generator as intel_generator
-import ../intelligence/types as intel_types
+import ../systems/prestige/main as prestige
+import ../systems/events/event_factory/orders
+import ../systems/events/event_factory/intelligence as intelligence_events
+import ../types/resolution as res_types
+import ../systems/intelligence/generator as intel_generator
+import ../types/intelligence as intel_types
 
 proc collectEspionageIntents*(
   state: GameState,
@@ -369,9 +369,9 @@ proc processScoutIntelligence*(
     # Register active mission
     let scoutCount = fleet.squadrons.len
     let missionType = case order.orderType
-      of FleetOrderType.SpyPlanet: SpyMissionType.SpyOnPlanet
-      of FleetOrderType.HackStarbase: SpyMissionType.HackStarbase
-      of FleetOrderType.SpySystem: SpyMissionType.SpyOnSystem
+      of order_types.FleetOrderType.SpyPlanet: order_types.SpyMissionType.SpyOnPlanet
+      of order_types.FleetOrderType.HackStarbase: order_types.SpyMissionType.HackStarbase
+      of order_types.FleetOrderType.SpySystem: order_types.SpyMissionType.SpyOnSystem
       else: continue
 
     state.activeSpyMissions[result.fleetId] = ActiveSpyMission(

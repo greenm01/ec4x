@@ -4,15 +4,15 @@
 ## to prevent first-mover advantages in planetary assaults.
 
 import std/[tables, options, random, strformat]
-import simultaneous_types
-import simultaneous_resolver
+import ../types/simultaneous as simultaneous_types
+import ../systems/shared/simultaneous_resolver
 import ../gamestate
 import ../orders
-import ../order_types
+import ../types/orders as order_types
 import ../logger
 import ../squadron
 import ../../common/types/core
-import ./types as res_types
+import ../types/resolution as res_types
 import ./combat_resolution
 
 proc collectPlanetaryCombatIntents*(

@@ -4,26 +4,26 @@
 ## Implements collection, conflict detection, resolution, and fallback logic.
 
 import std/[tables, options, random, sequtils, algorithm, strformat]
-import simultaneous_types
-import simultaneous_resolver
+import ../types/simultaneous as simultaneous_types
+import ../systems/shared/simultaneous_resolver
 import ../gamestate
 import ../index_maintenance
 import ../orders
-import ../order_types
+import ../types/orders as order_types
 import ../squadron
 import ../fleet
 import ../logger
 import ../state_helpers
 import ../starmap
 import ../initialization/colony
-import ../colonization/engine as col_engine
+import ../systems/colonization/engine as col_engine
 import ../standing_orders
-import types as res_types
-import event_factory/init as event_factory
+import ../types/resolution as res_types
+import ../systems/events/event_factory/init as event_factory
 import ../../common/types/core
 import ../../common/types/planets
-import ../prestige as prestige_types
-import ../prestige/application as prestige_app
+import ../systems/prestige/types as prestige_types
+import ../systems/prestige/application as prestige_app
 
 proc collectColonizationIntents*(
   state: GameState,
@@ -53,8 +53,8 @@ proc collectColonizationIntents*(
       for squadron in fleet.squadrons:
         if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
           if squadron.flagship.cargo.isSome:
-            let cargo = squadron.flagship.cargo.get()
-            if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+            var cargo = squadron.flagship.cargo.get()
+            if cargo.cargoType == fleet.CargoType.Colonists and cargo.quantity > 0:
               hasColonists = true
               break
       if not hasColonists:
@@ -141,7 +141,7 @@ proc establishColony(
     if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
       if squadron.flagship.cargo.isSome:
         let cargo = squadron.flagship.cargo.get()
-        if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+        if cargo.cargoType == fleet.CargoType.Colonists and cargo.quantity > 0:
           hasColonists = true
           colonistSquadronIdx = idx
           break
@@ -185,8 +185,8 @@ proc establishColony(
   # Unload ALL PTU from ETAC flagship (one-time consumable)
   var etacSquadron = fleet.squadrons[colonistSquadronIdx]
   let transferredPTU = ptuToDeposit
-  etacSquadron.flagship.cargo = some(ShipCargo(
-    cargoType: CargoType.None,
+  etacSquadron.flagship.cargo = some(fleet.ShipCargo(
+    cargoType: fleet.CargoType.None,
     quantity: 0,
     capacity: cargo.capacity
   ))
