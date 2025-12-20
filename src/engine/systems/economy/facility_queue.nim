@@ -284,6 +284,61 @@ proc advanceAllQueues*(state: var GameState): tuple[projects: seq[econ_types.Com
           " completed_projects=", $result.projects.len,
           " completed_repairs=", $result.repairs.len)
 
+# Construction queue helpers
+
+proc getConstructionDockCapacity*(colony: gamestate.Colony): int =
+  ## Calculate total construction dock capacity
+  ## Uses pre-calculated effectiveDocks (includes CST scaling)
+  result = 0
+  for spaceport in colony.spaceports:
+    result += spaceport.effectiveDocks
+  for shipyard in colony.shipyards:
+    if not shipyard.isCrippled:
+      result += shipyard.effectiveDocks
+
+proc getActiveConstructionProjects*(colony: gamestate.Colony): int =
+  ## Count how many projects are currently active (underConstruction + queue)
+  result = colony.constructionQueue.len
+  if colony.underConstruction.isSome:
+    result += 1
+
+proc getActiveRepairProjects*(colony: gamestate.Colony): int =
+  ## Count how many repair projects are currently active
+  result = colony.repairQueue.len
+
+proc getTotalActiveProjects*(colony: gamestate.Colony): int =
+  ## Count total active projects (construction + repair)
+  result = colony.getActiveConstructionProjects() + colony.getActiveRepairProjects()
+
+proc getActiveProjectsByFacility*(colony: gamestate.Colony,
+                                  facilityType: econ_types.FacilityType): int =
+  ## Count active projects using a specific facility type
+  ## With facility specialization:
+  ## - Spaceports: Construction only (up to docks limit)
+  ## - Shipyards: Construction only (up to docks limit)
+  ## - Drydocks: Repair only (up to docks limit)
+  result = 0
+
+  case facilityType
+  of econ_types.FacilityType.Spaceport:
+    # Count construction projects at spaceports
+    for spaceport in colony.spaceports:
+      result += spaceport.activeConstructions.len
+  of econ_types.FacilityType.Shipyard:
+    # Count construction projects at shipyards
+    for shipyard in colony.shipyards:
+      result += shipyard.activeConstructions.len
+  of econ_types.FacilityType.Drydock:
+    # Count repair projects at drydocks
+    for drydock in colony.drydocks:
+      result += drydock.activeRepairs.len
+
+proc canAcceptMoreProjects*(colony: gamestate.Colony): bool =
+  ## Check if colony has dock capacity for more construction projects
+  let capacity = colony.getConstructionDockCapacity()
+  let active = colony.getTotalActiveProjects()  # Now includes repairs
+  result = active < capacity
+
 ## ==============================================================================
 ## Colony Queue Management (Legacy System)
 ## ==============================================================================

@@ -1,1 +1,0 @@
-## Placeholder for fleet order execution engine. Content moved to `src/engine/systems/orders/fleet_order_executor.nim` and `src/engine/systems/orders/execution/` modules.

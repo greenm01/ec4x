@@ -15,8 +15,8 @@ import ../standing_orders
 import ../types/diplomacy as dip_types
 import ../types/orders as order_types
 import ../types/resolution as res_types
-import ../systems/orders/executor
-import ./[fleet_orders, simultaneous]
+import ../systems/orders/execution/seek_patrol
+import ./simultaneous
 import ../systems/events/event_factory/init as event_factory
 
 type

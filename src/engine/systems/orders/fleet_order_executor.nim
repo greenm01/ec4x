@@ -16,14 +16,28 @@ import ../../standing_orders
 import ../../events/init as event_factory
 
 # Import individual order execution modules
-import ./execution/hold_move
-import ./execution/seek_patrol
-import ./execution/guard_blockade
+import ./execution/hold
+import ./execution/move
+import ./execution/seek_home
+import ./execution/patrol # Add this import as well, as patrol.nim will be created
+import ./execution/guard_starbase
+import ./execution/guard_colony
+import ./execution/blockade_colony
 import ./execution/combat_assault
 import ./execution/espionage
 import ./execution/economic_fleet_management
 import ./execution/state_change
 import ./execution/recon # For Recon orders
+import ./execution/colonize
+import ./execution/join_fleet
+import ./execution/rendezvous
+import ./execution/salvage
+import ./execution/bombard
+import ./execution/invade
+import ./execution/blitz
+import ./execution/spy_colony
+import ./execution/hack_starbase
+import ./execution/spy_system
 # TODO: Remove this placeholder comment when all imports are added
 
 type
@@ -37,60 +51,45 @@ type
 # =============================================================================
 
 # Movement orders
-proc executeHoldOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return hold_move.executeHoldOrder(state, fleet, order, events)
+proc executeHoldOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return hold.executeHoldOrder(state, fleet, order, events)
+proc executeMoveOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return move.executeMoveOrder(state, fleet, order, events)
+proc executeSeekHomeOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return seek_home.executeSeekHomeOrder(state, fleet, order, events)
 
-proc executeMoveOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return hold_move.executeMoveOrder(state, fleet, order, events)
-
-proc executeSeekHomeOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return seek_patrol.executeSeekHomeOrder(state, fleet, order, events)
-
-proc executePatrolOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return seek_patrol.executePatrolOrder(state, fleet, order, events)
+proc executePatrolOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return patrol.executePatrolOrder(state, fleet, order, events)
 
 # Combat orders
-proc executeGuardStarbaseOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return guard_blockade.executeGuardStarbaseOrder(state, fleet, order, events)
-
-proc executeGuardPlanetOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return guard_blockade.executeGuardPlanetOrder(state, fleet, order, events)
-
-proc executeBlockadeOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return guard_blockade.executeBlockadeOrder(state, fleet, order, events)
-
-proc executeBombardOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return combat_assault.executeBombardOrder(state, fleet, order, events)
-
-proc executeInvadeOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return combat_assault.executeInvadeOrder(state, fleet, order, events)
-
-proc executeBlitzOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return combat_assault.executeBlitzOrder(state, fleet, order, events)
-
+proc executeGuardStarbaseOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return guard_starbase.executeGuardStarbaseOrder(state, fleet, order, events)
+proc executeGuardPlanetOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return guard_colony.executeGuardColonyOrder(state, fleet, order, events)
+proc executeBlockadeOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return blockade_colony.executeBlockadeColonyOrder(state, fleet, order, events)
+proc executeBombardOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return bombard.executeBombardOrder(state, fleet, order, events)
+proc executeInvadeOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return invade.executeInvadeOrder(state, fleet, order, events)
+proc executeBlitzOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return blitz.executeBlitzOrder(state, fleet, order, events)
 # Espionage orders
-proc executeSpyPlanetOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return espionage.executeSpyPlanetOrder(state, fleet, order, events)
-
-proc executeHackStarbaseOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return espionage.executeHackStarbaseOrder(state, fleet, order, events)
-
-proc executeSpySystemOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return espionage.executeSpySystemOrder(state, fleet, order, events)
-
+proc executeSpyPlanetOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return spy_colony.executeSpyColonyOrder(state, fleet, order, events)
+proc executeHackStarbaseOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return hack_starbase.executeHackStarbaseOrder(state, fleet, order, events)
+proc executeSpySystemOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return spy_system.executeSpySystemOrder(state, fleet, order, events)
 # Economic/Fleet Management orders
-proc executeColonizeOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return economic_fleet_management.executeColonizeOrder(state, fleet, order, events)
-
-proc executeJoinFleetOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return economic_fleet_management.executeJoinFleetOrder(state, fleet, order, events)
-
-proc executeRendezvousOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return economic_fleet_management.executeRendezvousOrder(state, fleet, order, events)
-
-proc executeSalvageOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
-  return economic_fleet_management.executeSalvageOrder(state, fleet, order, events)
-
+proc executeColonizeOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return colonize.executeColonizeOrder(state, fleet, order, events)
+proc executeJoinFleetOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return join_fleet.executeJoinFleetOrder(state, fleet, order, events)
+proc executeRendezvousOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return rendezvous.executeRendezvousOrder(state, fleet, order, events)
+proc executeSalvageOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome =
+  return salvage.executeSalvageOrder(state, fleet, order, events)
 # State Change orders
 proc executeReserveOrder*(state: var GameState, fleet: Fleet, order: orders.FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome = 
   return state_change.executeReserveOrder(state, fleet, order, events)

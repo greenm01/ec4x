@@ -30,14 +30,16 @@ proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
   ## - Population: Initial population count
   ## - Infrastructure: Initial facilities (Spaceport, Shipyard, Starbase, etc.)
   ##
+  logInfo("Initialization", "Creating homeworld colony at system ", systemId,
+          " for house ", owner)
+  # TODO: Implement actual homeworld colony creation logic.
+  # This will involve reading from game_setup_config, initializing
+  # population, infrastructure (facilities), and ground units.
 
-  # Placeholder for homeworld colony creation logic
-  # TODO: Load homeworld details from config based on owner and game setup
-  discard
-  Colony(
-    systemId = systemId,
-    owner = owner
-    # ... other fields initialized to defaults
+  result = Colony(
+    systemId: systemId,
+    owner: owner
+    # ... other fields initialized based on config
   )
 
 proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetClass,
@@ -45,13 +47,17 @@ proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetCl
   ## Create a colony for a given owner in a specified system with given planet class and resources
   ## Used for ETAC colonization and potentially for AI expansion starting points
 
-  # Placeholder for ETAC colony creation logic
-  # TODO: Implement actual ETAC colony setup
-  discard
-  Colony(
-    systemId = systemId,
-    owner = owner,
-    planetClass = planetClass,
-    resources = resources
-    # ... other fields initialized to defaults
+  logInfo("Initialization", "Creating ETAC colony at system ", systemId,
+          " for house ", owner, " with planet class ", planetClass, " and resources ",
+          resources)
+  # TODO: Implement actual ETAC colony setup.
+  # This will involve initializing a basic colony with minimal population and infrastructure,
+  # potentially consuming an ETAC squadron.
+
+  result = Colony(
+    systemId: systemId,
+    owner: owner,
+    planetClass: planetClass,
+    resources: resources
+    # ... other fields initialized to defaults for an ETAC colony
   )

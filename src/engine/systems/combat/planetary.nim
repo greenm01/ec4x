@@ -9,7 +9,8 @@
 ## - Section 2.4.8: Planet-Breaker shield penetration
 
 import std/[options, sequtils, math, hashes, random, strformat]
-import ../../../types/combat as types
+import ../../types/military/ground_unit_types
+import ../../types/combat as combat_types
 import ../../cer
 import ../../../../common/types/[core, units, combat as commonCombat]
 import ../../../squadron
@@ -20,59 +21,6 @@ export CombatState
 
 ## Ground Combat Types
 
-type
-  GroundUnitType* {.pure.} = enum
-    ## Types of ground forces
-    Army,           # Garrison forces (defense)
-    Marine,         # Invasion forces (offense)
-    GroundBattery,  # Planetary defense weapons
-    Spacelift       # Transport squadrons (Blitz only)
-
-  GroundUnit* = object
-    ## Individual ground combat unit
-    unitType*: GroundUnitType
-    id*: string
-    owner*: HouseId
-    attackStrength*: int
-    defenseStrength*: int
-    state*: CombatState  # Undamaged, Crippled, Destroyed
-
-  PlanetaryDefense* = object
-    ## Complete planetary defense setup
-    shields*: Option[ShieldLevel]  # SLD1-SLD6
-    groundBatteries*: seq[GroundUnit]
-    groundForces*: seq[GroundUnit]  # Armies and Marines
-    spaceport*: bool  # Destroyed during invasion
-
-  ShieldLevel* = object
-    ## Planetary shield information (per reference.md Section 9.3)
-    level*: int  # 1-6 (SLD1-SLD6)
-    blockChance*: float  # Probability shield blocks damage
-    blockPercentage*: float  # % of hits blocked if successful
-
-  BombardmentResult* = object
-    ## Result of one bombardment round
-    attackerHits*: int
-    defenderHits*: int
-    shieldBlocked*: int  # Hits blocked by shields
-    batteriesDestroyed*: int
-    batteriesCrippled*: int
-    squadronsDestroyed*: int
-    squadronsCrippled*: int
-    infrastructureDamage*: int  # IU lost
-    populationDamage*: int  # PU lost
-    roundsCompleted*: int  # 1-3 max per turn
-
-  InvasionResult* = object
-    ## Result of planetary invasion or blitz
-    success*: bool
-    attacker*: HouseId
-    defender*: HouseId
-    attackerCasualties*: seq[GroundUnit]
-    defenderCasualties*: seq[GroundUnit]
-    infrastructureDestroyed*: int  # IU lost (50% on invasion success)
-    assetsSeized*: bool  # True for blitz, false for invasion
-    batteriesDestroyed*: int  # Ground batteries destroyed (blitz Phase 1 bombardment)
 
 ## Bombardment CER Table (Section 7.5.1)
 
@@ -619,6 +567,23 @@ proc conductBlitz*(
 
 ## Ground Unit Management
 
+proc hasPlanetaryShield*(colony: Colony): bool =
+  ## Check if colony has an active planetary shield
+  return colony.planetaryShieldLevel > 0
+
+proc getShieldBlockChance*(shieldLevel: int): float =
+  ## Get shield block chance from config
+  ## Uses getShieldData which pulls from combat.toml planetary_shields
+  if shieldLevel < 1 or shieldLevel > 6:
+    return 0.0
+  let (_, blockPct) = getShieldData(shieldLevel)
+  return blockPct
+
+proc getTotalGroundDefense*(colony: Colony): int =
+  ## Calculate total ground defense strength
+  ## Ground batteries + armies + marines
+  return colony.groundBatteries + colony.armies + colony.marines
+
 proc createGroundBattery*(
   id: string,
   owner: HouseId,
@@ -730,7 +695,20 @@ proc assembleAttackingForces*(
       id = systemId & "_AM_" & $i,  # AM = Attacking Marine
       owner = owner
     )
-    result.add(marine)
+  return result.add(marine)
+
+# Planet-Breaker management (assets.md:2.4.8)
+
+proc getPlanetBreakerLimit*(state: GameState, houseId: HouseId): int =
+  ## Get maximum Planet-Breakers allowed for house
+  ## Limit = current colony count (homeworld counts)
+  return state.getHouseColonies(houseId).len
+
+proc canBuildPlanetBreaker*(state: GameState, houseId: HouseId): bool =
+  ## Check if house can build another Planet-Breaker
+  let current = state.houses[houseId].planetBreakerCount
+  let limit = state.getPlanetBreakerLimit(houseId)
+  return current < limit
 
 ## Notes for Future Implementation
 ##
