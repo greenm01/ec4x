@@ -7,7 +7,7 @@
 ## It implements complete gameplay for local/hotseat multiplayer.
 ## Network transport (Nostr) wraps around this core without modifying it.
 
-import common/[hex, system]
+import ../../engine/map/types
 import engine/[ship, squadron, fleet, starmap, gamestate, orders, resolve]
 import engine/resolution/event_factory/init as event_factory
 

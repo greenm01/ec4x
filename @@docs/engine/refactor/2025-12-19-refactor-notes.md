@@ -31,7 +31,7 @@ src/engine/
 │   │   ├── maintenance.nim
 │   │   └── capacity/
 │   │       ├── industrial.nim
-│   │       └── squadron.nim
++│   │       └── squadron.nim
 │   ├── orders/
 │   │   ├── fleet_order_executor.nim
 │   │   └── admin_command_executor.nim
