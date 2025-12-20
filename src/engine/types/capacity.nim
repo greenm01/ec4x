@@ -3,6 +3,7 @@
 ## This module defines common types used across all capacity limit systems in EC4X.
 ## All capacity systems follow the Check → Track → Enforce pattern with these types.
 
+import std/tables
 import ./core
 
 type
@@ -46,4 +47,8 @@ type
     actionType*: string
     affectedUnitIds*: seq[string]  # Could be SquadronId, ShipId, etc. depending on context
     description*: string
+
+  GracePeriodTracker* = object
+    totalSquadronsExpiry*: int32
+    fighterCapacityExpiry*: Table[SystemId, int32]
 

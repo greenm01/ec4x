@@ -1,7 +1,18 @@
 import std/[tables, options]
-import ./core
+import ./[core, fleet, production, tech, diplomacy, colony, espionage]
 
 type
+  StandingCommand* = object
+    orderType*: StandingOrderType
+    params*: StandingOrderParams
+    turnsUntilActivation*: int32
+    activationDelayTurns*: int32
+
+  ColonyManagementCommand* = object
+    colonyId*: ColonyId
+    autoRepair*: bool
+    autoReloadETACs*: bool
+    taxRate*: Option[int32]
   CommandPacket* = object
     houseId*: HouseId
     turn*: int32

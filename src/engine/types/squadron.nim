@@ -3,10 +3,8 @@
 ## This module contains the type definitions for squadrons, which are tactical
 ## groupings of ships under a flagship's command.
 
-import std/[sequtils]
-import ../../../common/types/[core, units]
-import ./ship_types
-import ../../../common/types/core
+import std/[sequtils, tables]
+import ./[core, ship]
 
 export HouseId, FleetId, SystemId, SquadronId
 export Ship, ShipClass, ShipStats, CargoType, ShipCargo
@@ -34,3 +32,9 @@ type
 
     # Carrier fighter operations (assets.md:2.4.1.1)
     embarkedFighters*: seq[Squadron]  # Embarked fighter squadrons (Squadron.Fighter type)
+
+  Squadrons* = object
+    data: seq[Squadron]
+    index: Table[SquadronId, int]
+    byFleet: Table[FleetId, seq[SquadronId]]
+    nextId: uint32

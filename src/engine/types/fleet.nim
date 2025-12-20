@@ -2,7 +2,7 @@
 ##
 ## This module contains the type definitions for fleets, which are collections
 ## of squadrons that can move together and engage in combat as a unit.
-import std/[options, sequtils]
+import std/[options, sequtils, tables]
 import ./core
 
 type
@@ -67,6 +67,19 @@ type
     Traveling,      # En route to spy mission target
     OnSpyMission,   # Active spy mission (locked, gathering intel)
     Detected        # Detected during spy mission (destroyed next phase)
+
+  StandingOrderType* {.pure.} = enum
+    None, PatrolRoute, DefendSystem, GuardColony,
+    AutoReinforce, AutoRepair, BlockadeTarget
+
+  StandingOrderParams* = object
+    patrolSystems*: seq[SystemId]
+    patrolIndex*: int32
+    defendSystem*: Option[SystemId]
+    guardColony*: Option[ColonyId]
+    blockadeTargetColony*: Option[ColonyId]
+    reinforceTarget*: Option[FleetId]
+    repairThreshold*: float32
 
   ActivationResult* = object
     ## Result of standing order activation attempt

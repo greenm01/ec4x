@@ -1,11 +1,17 @@
 import std/tables
-import ./economy as econ_types
-import ./core 
+import ./[core, production] 
 
 type
 
   FacilityType* {.pure.} = enum
     Shipyard, Spaceport, Drydock
+
+  FacilityStats* = object
+    facilityType*: FacilityType
+    buildCost*: int32
+    upkeepCost*: int32
+    baseDocks*: int32
+    techRequirement*: int32
 
   Starbase* = object
     id*: StarbaseId
@@ -25,8 +31,8 @@ type
     commissionedTurn*: int32
     baseDocks*: int32
     effectiveDocks*: int32
-    constructionQueue*: seq[econ_types.ConstructionProject]
-    activeConstructions*: seq[econ_types.ConstructionProject]
+    constructionQueue*: seq[ConstructionProject]
+    activeConstructions*: seq[ConstructionProject]
 
   Spaceports* = object
     data: seq[Spaceport]
@@ -41,8 +47,8 @@ type
     baseDocks*: int32
     effectiveDocks*: int32
     isCrippled*: bool
-    constructionQueue*: seq[econ_types.ConstructionProject]
-    activeConstructions*: seq[econ_types.ConstructionProject]
+    constructionQueue*: seq[ConstructionProject]
+    activeConstructions*: seq[ConstructionProject]
 
   Shipyards* = object
     data: seq[Shipyard]
@@ -57,8 +63,8 @@ type
     baseDocks*: int32
     effectiveDocks*: int32
     isCrippled*: bool
-    repairQueue*: seq[econ_types.RepairProject]
-    activeRepairs*: seq[econ_types.RepairProject]
+    repairQueue*: seq[RepairProject]
+    activeRepairs*: seq[RepairProject]
 
   Drydocks* = object
     data: seq[Drydock]

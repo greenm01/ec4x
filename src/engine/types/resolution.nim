@@ -1,7 +1,7 @@
 ## Common types for resolution modules
 
 import std/[tables, options]
-import ./[core, espionage, tech, diplomacy]
+import ./[core, espionage, tech, diplomacy, ship]
 
 type
   # Base event data (common to all events)
@@ -155,3 +155,9 @@ type
   TurnReport* = object
     turn*: int32
     events*: GameEvents
+
+  TurnResolutionReport* = object
+    ## Summary of turn resolution for reporting
+    turn*: int32
+    events*: seq[string]
+    errors*: seq[string]

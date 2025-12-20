@@ -1,7 +1,11 @@
 import std/[tables, options]
-import ./core
+import ./[core, starmap, production, capacity, ground_unit]
 
 type
+  IndustrialUnits* = object
+    units*: int32
+    investmentCost*: int32
+
   Colony* = object
     id*: ColonyId
     systemId*: SystemId
@@ -11,7 +15,7 @@ type
     populationUnits*: int32
     populationTransferUnits*: int32
     infrastructure*: int32
-    industrial*: econ_types.IndustrialUnits
+    industrial*: IndustrialUnits
     production*: int32
     grossOutput*: int32
     taxRate*: int32
@@ -26,8 +30,8 @@ type
     unassignedSquadronIds*: seq[SquadronId]
     fighterSquadronIds*: seq[SquadronId]
     capacityViolation*: CapacityViolation
-    planetClass*: planets.PlanetClass
-    resources*: planets.ResourceRating
+    planetClass*: PlanetClass
+    resources*: ResourceRating
     planetaryShieldLevel*: int32
     groundBatteryIds*: seq[GroundUnitId]
     armyIds*: seq[GroundUnitId]

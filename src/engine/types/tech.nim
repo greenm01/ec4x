@@ -9,7 +9,7 @@
 ## - TRP (Technology Research Points): For specific technologies
 ## - Breakthroughs: Random research events (bi-annual)
 import std/[tables, options]
-import ./core
+import ./[core, prestige]
 
 type
   TechField* {.pure.} = enum

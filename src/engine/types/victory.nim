@@ -2,9 +2,9 @@
 ##
 ## Victory condition tracking and evaluation per specifications
 
-import ../../common/types/core
+import ./core
 
-export core.HouseId
+export HouseId
 
 type
   VictoryType* {.pure.} = enum

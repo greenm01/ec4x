@@ -3,7 +3,7 @@
 ## Morale affects tax efficiency, combat effectiveness, and production
 ## Based on prestige and recent events
 
-import ../core
+import ./core
 
 type
   MoraleLevel* {.pure.} = enum

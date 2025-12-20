@@ -3,13 +3,23 @@
 ## This module contains the type definitions for ground units, planetary defenses,
 ## and other related combat types for ground and orbital combat.
 
-import std/[options]
-import ../core
+import std/[options, tables]
+import ./core
 
 type
 
+  CombatState* {.pure.} = enum
+    Undamaged, Crippled, Destroyed
+
   GroundUnitType* {.pure.} = enum
     Army, Marine, GroundBattery, Spacelift
+
+  GroundUnitStats* = object
+    unitType*: GroundUnitType
+    attackStrength*: int32
+    defenseStrength*: int32
+    buildCost*: int32
+    upkeepCost*: int32
 
   GroundUnit* = object
     ## Individual ground combat unit

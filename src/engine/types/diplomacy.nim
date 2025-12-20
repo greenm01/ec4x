@@ -2,7 +2,7 @@
 ##
 ## Type definitions for diplomatic relations per diplomacy.md:8.1
 import std/[tables, options]
-import ./core
+import ./[core, prestige]
 
 type
   DiplomaticState* {.pure.} = enum
@@ -10,6 +10,21 @@ type
 
   DiplomaticActionType* {.pure.} = enum
     DeclareHostile, DeclareEnemy, SetNeutral
+
+  ProposalType* {.pure.} = enum
+    TradeAgreement, MilitaryAlliance, TechnologySharing
+
+  ProposalStatus* {.pure.} = enum
+    Pending, Accepted, Rejected, Expired, Withdrawn
+
+  PendingProposal* = object
+    id*: string
+    proposer*: HouseId
+    target*: HouseId
+    proposalType*: ProposalType
+    submittedTurn*: int32
+    status*: ProposalStatus
+    expiresOnTurn*: int32
 
   DiplomaticRelation* = object
     sourceHouse*: HouseId

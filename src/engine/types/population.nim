@@ -2,7 +2,7 @@
 ## Tracks Space Guild civilian transport between colonies
 ## Source: docs/specs/economy.md Section 3.7, config/population.toml
 import std/[tables, hashes]
-import ../core
+import ./core
 
 type
   TransferStatus* {.pure.} = enum

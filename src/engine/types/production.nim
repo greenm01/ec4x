@@ -1,5 +1,5 @@
 import std/[tables, options, hashes]
-import ./core
+import ./[core, ship]
 
 type
   ProductionOutput* = object
@@ -73,7 +73,7 @@ type
 
   CompletedProject* = object
     colonyId*: ColonyId
-    projectType*: ConstructionType
+    projectType*: BuildType
     itemId*: string
 
   ## Reports

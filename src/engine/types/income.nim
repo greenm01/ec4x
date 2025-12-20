@@ -1,5 +1,5 @@
 import std/[tables, hashes]
-import ./core
+import ./[core, colony, prestige]
 
 type
   TaxPolicy* = object

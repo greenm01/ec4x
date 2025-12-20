@@ -8,7 +8,7 @@
 ## - 7 espionage actions with varying costs and effects
 ## - Detection system with CIC levels
 import std/[tables, options]
-import ./core
+import ./[core, prestige]
 
 type
   EspionageAction* {.pure.} = enum
@@ -16,8 +16,19 @@ type
     CyberAttack, EconomicManipulation, PsyopsCampaign,
     CounterIntelSweep, IntelligenceTheft, PlantDisinformation
 
+  SpyMissionType* {.pure.} = enum
+    SpyOnPlanet, HackStarbase, SpyOnSystem
+
   CICLevel* {.pure.} = enum
     CIC0, CIC1, CIC2, CIC3, CIC4, CIC5
+
+  ActiveSpyMission* = object
+    fleetId*: FleetId
+    missionType*: SpyMissionType
+    targetSystem*: SystemId
+    scoutCount*: int32
+    startTurn*: int32
+    ownerHouse*: HouseId
 
   EspionageBudget* = object
     houseId*: HouseId  # Back-reference
