@@ -39,7 +39,7 @@ Your industrial might produces warships and spacelift vessels. Ships move from t
 
 ### 6.2.1 The Commissioning Pipeline
 
-**Stage One: Build Orders**
+**Stage One: Build Commands**
 
 Allocate treasury (production points) to construction projects at your colonies. Each project requires available dock capacity at either spaceports or shipyards:
 
@@ -74,7 +74,7 @@ Allocate treasury (production points) to construction projects at your colonies.
 - Repair time: 1 turn
 - **Important:** Starbase repairs do NOT consume dock capacity (separate repair queue from ships)
 
-**Build Order Mechanics:**
+**Build Command Mechanics:**
 - **Upfront payment**: Full construction cost (including spaceport penalties) deducted immediately from treasury
 - **Construction time**: 1+ turns based on ship class and technology level
 - **Simultaneous projects**: Limited only by available dock capacity across all facilities
@@ -139,11 +139,11 @@ Design your fleets for their mission profile:
 
 ---
 
-## 6.3 Fleet Orders
+## 6.3 Fleet Commands
 
 Command your fleets with 20 distinct mission types—from peaceful exploration to devastating orbital bombardment. Issue orders once; your fleets execute them persistently across turns until mission completion or your new orders override them.
 
-### 6.3.1 Active Fleet Orders
+### 6.3.1 Active Fleet Commands
 
 Explicit orders that execute until completed or overridden:
 
@@ -191,7 +191,7 @@ Move your fleet to a new solar system and hold position. Your fleet travels to t
 
 ### 6.3.4 Seek Home (02)
 
-Order your fleet to return to the nearest friendly colony with drydock facilities. Your damaged forces automatically navigate to safe harbor for repairs and resupply.
+Command your fleet to return to the nearest friendly colony with drydock facilities. Your damaged forces automatically navigate to safe harbor for repairs and resupply.
 
 **Use Seek Home to:**
 - Evacuate damaged fleets from combat zones
@@ -234,7 +234,7 @@ Deploy your fleet to blockade an enemy planet. Your fleet maintains low orbit, p
 
 ### 6.3.9 Bombard a Colony (07)
 
-Order devastating orbital bombardment of enemy colonies. Your fleet systematically destroys infrastructure, reducing the colony's industrial capacity and effectiveness.
+Command devastating orbital bombardment of enemy colonies. Your fleet systematically destroys infrastructure, reducing the colony's industrial capacity and effectiveness.
 
 **Destruction Effects:**
 - Infrastructure damage accumulates per turn
@@ -282,7 +282,7 @@ Execute rapid planetary assault combining orbital bombardment with immediate gro
 
 ### 6.3.12 Colonize a Planet (10)
 
-Order ETACs (Enhanced Terrestrial Administrative Carriers) with Population Transfer Units to establish new colonies. Your fleet travels to the target system, deploys the PTUs, and establishes colonial infrastructure.
+Command ETACs (Enhanced Terrestrial Administrative Carriers) with Population Transfer Units to establish new colonies. Your fleet travels to the target system, deploys the PTUs, and establishes colonial infrastructure.
 
 **Requirements:**
 - Fleet must contain at least one ETAC ship
@@ -332,7 +332,7 @@ Deploy a Scout fleet on a one-way mission to gather intelligence on all fleet ac
 **Requirements:**
 - Fleet must contain **only Scout auxiliary ships**.
 
-**Detection & Mission Success**: See Order 11 (Spy on Planet) for detection mechanics.
+**Detection & Mission Success**: See Command 11 (Spy on Planet) for detection mechanics.
 
 **Intelligence Gathered:**
 - All fleets present in system
@@ -354,7 +354,7 @@ Conduct a cyber warfare operation against an enemy starbase. All Scouts in the f
 - Fleet must contain **only Scout auxiliary ships**.
 - Target system must have an enemy starbase.
 
-**Detection & Mission Success**: See Order 11 (Spy on Planet) for detection mechanics.
+**Detection & Mission Success**: See Command 11 (Spy on Planet) for detection mechanics.
 
 **Intelligence Gathered:**
 - Research progress
@@ -380,7 +380,7 @@ Transfer your fleet to merge with another fleet at the same location. Consolidat
 
 ### 6.3.17 Rendezvous at System (15)
 
-Order your fleet to travel to a designated system and await further instructions. Coordinate multi-fleet operations by designating rendezvous points. Multiple fleets with Rendezvous orders to the same system automatically merge when they arrive, with all forces consolidating into the fleet with the lowest ID.
+Command your fleet to travel to a designated system and await further instructions. Coordinate multi-fleet operations by designating rendezvous points. Multiple fleets with Rendezvous orders to the same system automatically merge when they arrive, with all forces consolidating into the fleet with the lowest ID.
 
 **Use Rendezvous to:**
 - Coordinate multi-fleet invasions.
@@ -477,7 +477,7 @@ Send a fleet to perform long-range reconnaissance on a planet from the edge of a
 
 Reorganize your forces instantly during order submission. Zero-turn administrative commands execute immediately—before turn resolution begins—enabling you to prepare forces precisely for the upcoming turn without consuming time.
 
-### 6.4.1 Concept: Administrative vs Operational Orders
+### 6.4.1 Concept: Administrative vs Operational Commands
 
 **Administrative Commands (0 turns):**
 - Fleet reorganization (detach ships, transfer squadrons, merge fleets)
@@ -486,7 +486,7 @@ Reorganize your forces instantly during order submission. Zero-turn administrati
 - Execute **immediately** during order submission
 - No turn cost—prepare forces and execute strategy in the same turn
 
-**Operational Orders (1+ turns):**
+**Operational Commands (1+ turns):**
 - Fleet movement, combat, espionage, colonization
 - Execute during turn resolution
 - Consume turns based on action complexity
@@ -582,9 +582,9 @@ Load marines or colonists from colony onto fleet spacelift ships.
 - Skips crippled ships (cannot carry cargo while damaged)
 - Colony retains minimum population threshold (cannot load last colonist)
 
-**Strategic Value:** Load invasion forces and execute Order 07 (Invade) in same turn—immediate operational readiness.
+**Strategic Value:** Load invasion forces and execute Command 07 (Invade) in same turn—immediate operational readiness.
 
-**Example:** Prepare invasion of enemy colony. Load 10 marine divisions onto 5 Troop Transports, attach escorts, issue Order 07 (Invade target system) → invasion launches immediately. Total: 1 turn.
+**Example:** Prepare invasion of enemy colony. Load 10 marine divisions onto 5 Troop Transports, attach escorts, issue Command 07 (Invade target system) → invasion launches immediately. Total: 1 turn.
 
 #### UnloadCargo
 
@@ -659,7 +659,7 @@ Execute complex operations in a single turn by combining zero-turn commands with
 
 Turn N submission:
 1. **LoadCargo** marines onto transports (0 turns)
-2. **Order 07: Invade Planet** (1 turn for transit + combat)
+2. **Command 07: Invade Planet** (1 turn for transit + combat)
 
 Turn N resolution: Fleet moves and invades. Total: 1 turn.
 
@@ -671,9 +671,9 @@ Launching 3-fleet offensive. Turn submission:
 2. **DetachShips** - Split off scout squadron for recon
 3. **LoadCargo** - Load 15 marine divisions
 4. **AssignSquadronToFleet** - Add fresh dreadnought squadrons
-5. **Issue Orders**:
-   - Battle fleet: Order 07 (Invade)
-   - Scout fleet: Order 11 (Spy on System)
+5. **Issue Commands**:
+   - Battle fleet: Command 07 (Invade)
+   - Scout fleet: Command 11 (Spy on System)
 
 All preparation complete, offensive launches immediately. Total: 1 turn.
 
@@ -689,7 +689,7 @@ All preparation complete, offensive launches immediately. Total: 1 turn.
 - Cannot reorganize while under siege or blockade
 - Damaged ships (crippled) cannot load cargo
 
-**Order Precedence:**
+**Command Precedence:**
 - Zero-turn commands execute before operational orders
 - Administrative commands processed in submission order
 - Auto-assignment runs after manual squadron assignments
@@ -701,27 +701,27 @@ All preparation complete, offensive launches immediately. Total: 1 turn.
 
 ---
 
-## 6.5 Standing Orders
+## 6.5 Standing Commands
 
 Establish persistent fleet behaviors that execute automatically when no explicit order is given. Standing orders reduce micromanagement by codifying routine behaviors—your fleets patrol routes, defend systems, and reinforce damaged units without constant supervision.
 
-### 6.5.1 Standing Order Types
+### 6.5.1 Standing Command Types
 
 Persistent behaviors that execute when fleet has no active mission. Standing orders generate active fleet orders automatically.
 
-| Standing Order Type | Active Order Generated    | Purpose                                                                           |
-| ------------------- | ------------------------- | --------------------------------------------------------------------------------- |
-| None                | None (00)                 | Hold position. Standby for orders.                                                |
-| PatrolRoute         | Move Fleet (01)           | Move to target waypoint2, turn around and move back to waypoint1. Repeat in loop. |
-| DefendSystem        | Patrol a System (03)      | Patrol system. Remain on station until ordered otherwise (persist).               |
-| GuardColony         | Patrol a System (03)      | Guard colony/planet. Remain on station until ordered otherwise (persist).         |
-| AutoReinforce       | Join another Fleet (14)   | Seek target fleet and join.                                                       |
-| AutoRepair          | Move Fleet (01)           | Move to nearest house controlled shipyard for repair.                             |
-| BlockadeTarget      | Blockade a Planet (06)    | Blockade enemy colony/planet in designated system.                                |
+| Standing Command Type | Active Command Generated  | Purpose                                                                           |
+| --------------------- | ------------------------- | --------------------------------------------------------------------------------- |
+| None                  | None (00)                 | Hold position. Standby for orders.                                                |
+| PatrolRoute           | Move Fleet (01)           | Move to target waypoint2, turn around and move back to waypoint1. Repeat in loop. |
+| DefendSystem          | Patrol a System (03)      | Patrol system. Remain on station until ordered otherwise (persist).               |
+| GuardColony           | Guard a Colony (03)       | Guard colony/planet. Remain on station until ordered otherwise (persist).         |
+| AutoReinforce         | Join another Fleet (14)   | Seek target fleet and join.                                                       |
+| AutoRepair            | Move Fleet (01)           | Move to nearest house controlled shipyard for repair.                             |
+| BlockadeTarget        | Blockade a Colony (06)    | Blockade enemy colony/planet in designated system.                                |
 
 **Note:** Active order codes reference table 6.2.1. All fleet orders (except Hold) include automatic travel to target.
 
-### 6.5.2 Standing Order Execution
+### 6.5.2 Standing Command Execution
 
 **Standing orders are persistent**: Once assigned, your fleet executes the standing order every turn unless you issue an explicit order.
 
@@ -739,13 +739,13 @@ Standing orders include multiple layers of control to prevent unwanted automatio
 - Default: `true` (standing orders enabled)
 - Use when you want complete manual control of all fleets
 
-**2. Per-Fleet Enable/Disable** (`StandingOrder.enabled` flag)
+**2. Per-Fleet Enable/Disable** (`StandingCommand.enabled` flag)
 - **Individual fleet control**: Enable/disable standing order for each fleet independently
 - Default controlled by `activation.enabled_by_default` (false by default)
 - New fleets do NOT auto-execute standing orders unless explicitly enabled
 - Use to selectively automate specific fleets while maintaining manual control of others
 
-**3. Activation Delay Grace Period** (`StandingOrder.activationDelayTurns`)
+**3. Activation Delay Grace Period** (`StandingCommand.activationDelayTurns`)
 - **Strategic breathing room**: Grace period (in turns) after mission completion before standing order activates
 - Default: `activation.default_activation_delay_turns` (1 turn)
 - Configurable per-fleet
@@ -766,7 +766,7 @@ Turn N+1: Standing order activates → generates new fleet order (e.g., Move to 
 - **Preserves player agency**: You maintain strategic control, automation serves you
 - **Supports evolving strategies**: Disable standing orders globally during war, re-enable during expansion phases
 
-### 6.5.4 Patrol Route Standing Order
+### 6.5.4 Patrol Route Standing Command
 
 Establish indefinite patrol routes through multiple systems. Your fleet automatically travels the route system-by-system, engaging hostiles per ROE, providing continuous defensive coverage.
 
@@ -786,7 +786,7 @@ Establish indefinite patrol routes through multiple systems. Your fleet automati
 - Maintain continuous presence in contested zones
 - Automate routine security operations
 
-### 6.5.5 Defend System Standing Order
+### 6.5.5 Defend System Standing Command
 
 Station your fleet for permanent system defense. Your fleet remains at the system, engages hostiles per ROE, and protects colonies without requiring repeated orders.
 
@@ -805,7 +805,7 @@ Station your fleet for permanent system defense. Your fleet remains at the syste
 - Protect strategic colonies
 - Maintain defensive presence without micromanagement
 
-### 6.5.6 Guard Colony Standing Order
+### 6.5.6 Guard Colony Standing Command
 
 Defend a specific colony within a system. Functionally identical to Defend System but explicitly designates which colony to prioritize during combat.
 
@@ -814,9 +814,9 @@ Defend a specific colony within a system. Functionally identical to Defend Syste
 - Designate which infrastructure to protect
 - Create colony-specific defensive postures
 
-### 6.5.7 Auto-Reinforce Standing Order
+### 6.5.7 Auto-Reinforce Standing Command
 
-Order your fleet to automatically reinforce the nearest damaged friendly fleet. Your fleet identifies allies in need, travels to their location, and transfers squadrons to restore combat effectiveness.
+Command your fleet to automatically reinforce the nearest damaged friendly fleet. Your fleet identifies allies in need, travels to their location, and transfers squadrons to restore combat effectiveness.
 
 **Behavior:**
 - Fleet scans for damaged friendly fleets
@@ -830,9 +830,9 @@ Order your fleet to automatically reinforce the nearest damaged friendly fleet. 
 - Automate battle damage replacement
 - Create mobile reinforcement fleets
 
-### 6.5.8 Auto-Repair Standing Order
+### 6.5.8 Auto-Repair Standing Command
 
-Order damaged fleets to automatically return to drydocks when crippled. Your fleet recognizes critical damage, calculates nearest repair facility, and travels there automatically.
+Command damaged fleets to automatically return to drydocks when crippled. Your fleet recognizes critical damage, calculates nearest repair facility, and travels there automatically.
 
 **Behavior:**
 - Fleet monitors squadron damage status
@@ -847,7 +847,7 @@ Order damaged fleets to automatically return to drydocks when crippled. Your fle
 - Reduce fleet management micromanagement
 - Ensure damaged forces return to operational status
 
-### 6.5.9 Blockade Target Standing Order
+### 6.5.9 Blockade Target Standing Command
 
 Maintain continuous blockade of enemy colony. Your fleet establishes orbital blockade and maintains it indefinitely, strangling enemy economy.
 
