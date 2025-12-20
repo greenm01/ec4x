@@ -12,6 +12,9 @@ export HouseId, FleetId, SystemId, SquadronId
 export Ship, ShipClass, ShipStats, CargoType, ShipCargo
 
 type
+
+  SquadronId* = distinct uint32
+  
   SquadronType* {.pure.} = enum
     ## Strategic role classification for squadrons
     ## Determines fleet composition rules and combat participation

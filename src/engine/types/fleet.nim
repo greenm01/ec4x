@@ -1,38 +1,35 @@
-## Fleet Type Definitions for EC4X
+## fleet type definitions for ec4x
 ##
 ## This module contains the type definitions for fleets, which are collections
 ## of squadrons that can move together and engage in combat as a unit.
-
 import std/[options, sequtils]
-import ../../../common/types/[core, combat]
-import ./squadron_types
-import ../../../common/types/core
+import ./core
 
 type
 
-  FleetId* = distinct int32      ## Unique identifier for a fleet
-
   FleetStatus* {.pure.} = enum
-    ## Fleet operational status per economy.md:3.9
-    Active,      # Normal active duty (100% maintenance)
-    Reserve,     # Reserve status (50% maintenance, half AS/DS, can't move)
-    Mothballed   # Mothballed (0% maintenance, offline, screened in combat)
+    Active, Reserve, Mothballed
 
   Fleet* = object
     ## A collection of squadrons that move together
     id*: FleetId                       # Unique fleet identifier
-    squadrons*: seq[Squadron]          # All squadron types (Combat, Intel, Expansion, Auxiliary)
+    squadrons*: seq[SquadronId]        # All squadron types (Combat, Intel, Expansion, Auxiliary)
     owner*: HouseId                    # House that owns this fleet
     location*: SystemId                # Current system location
     status*: FleetStatus               # Operational status (active/reserve/mothballed)
+    command*: Option[FleetCommand]
     autoBalanceSquadrons*: bool        # Auto-optimize squadron composition (default: true)
-
     # Spy mission state (for Scout-only fleets)
-    missionState*: FleetMissionState      # Spy mission state
-    missionType*: Option[int]             # Type of active mission (SpyMissionType)
-    missionTarget*: Option[SystemId]      # Target system for mission
-    missionStartTurn*: int                # Turn mission began (for duration tracking)
+    missionState*: FleetMissionState   # Spy mission state
+    missionType*: Option[int32]        # Type of active mission (SpyMissionType)
+    missionTarget*: Option[SystemId]   # Target system for mission
+    missionStartTurn*: int32           # Turn mission began (for duration tracking)
 
+  Fleets* = object
+    data: seq[Fleet]
+    index: Table[FleetId, int]
+    nextId: uint32
+    
   FleetCommandType* {.pure.} = enum
     Hold              # Hold position, do nothing
     Move              # Navigate to target system
@@ -58,12 +55,11 @@ type
 
   FleetCommand* = object
     ## Persistent fleet order that continues until completed or overridden
-    fleetId*: FleetId
     orderType*: FleetCommandType
     targetSystem*: Option[SystemId]
     targetFleet*: Option[FleetId]
-    priority*: int  # Execution order within turn
-    roe*: Option[int]  # Mission-specific retreat threshold (overrides standing order)
+    priority*: int32  # Execution order within turn
+    roe*: Option[int32]  # Mission-specific retreat threshold (overrides standing order)
 
   FleetMissionState* {.pure.} = enum
     ## State machine for fleet spy missions

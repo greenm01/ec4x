@@ -1,47 +1,90 @@
-## Core Game State Management for EC4X
+## Core Type Definitions for EC4X
 ##
-## This module provides the central GameState type and game initialization functions.
-## It manages all game entities (houses, colonies, fleets) and their relationships.
+## This module defines all entity ID types used throughout the game engine.
+## All IDs are distinct uint32 types for type safety and efficient storage.
 ##
-
+## ## Design Rationale
 ##
-## ## Architecture Notes
+## **Centralized ID Definitions:**
+## - Single source of truth for all entity identifiers
+## - Prevents circular dependencies between type modules
+## - Enables any module to reference any entity type
 ##
-## **Data-Oriented Design (DoD):**
-## - All entities stored in flat `Table[Id, Entity]` structures
-## - No deep nesting or pointer chasing
-## - Efficient iteration and cache-friendly layout
+## **Type Safety:**
+## - Distinct types prevent ID confusion (can't use FleetId where ColonyId expected)
+## - Compile-time enforcement of correct ID usage
+## - Zero runtime overhead (compiles to uint32)
 ##
-## **Entity Management:**
-## - Houses: Player factions with resources and technology
-## - Colonies: Planetary settlements with production and infrastructure
-## - Fleets: Mobile ship groups with squadrons
-## - Squadrons: Ship formations within fleets
-##
-## **Separation of Concerns:**
-## - This module: Core state and initialization
-## - Resolution modules: Turn processing and game logic
-## - Economy modules: Production and resource management
-## - Combat modules: Battle resolution
-## - Diplomacy modules: Inter-house relations
+## **Data-Oriented Design:**
+## - Fixed-size IDs (4 bytes) enable efficient table lookups
+## - Hash/equality procs enable use as Table/HashSet keys
+## - Sequential allocation supports cache-friendly iteration
 
-import std/[tables, options, math, algorithm, logging]
-import ../common/types/[core, planets, tech, diplomacy]
-import ./types/military/fleet_types
-import ./types/military/squadron_types
-import ./types/map/starmap_definition
-import ./types/map/types as map_types
-import ./types/core # Import all new types from core.nim
-import ./systems/economy/facilities_queries
-import ./victory/conditions
-import ./systems/economy/facility_queue
+import std/hashes
 
+type
+  # Player and House IDs
+  PlayerId* = distinct uint32
+  HouseId* = distinct uint32
+  
+  # Map IDs
+  SystemId* = distinct uint32
+  
+  # Colony and Facility IDs
+  ColonyId* = distinct uint32
+  StarbaseId* = distinct uint32
+  SpaceportId* = distinct uint32
+  ShipyardId* = distinct uint32
+  DrydockId* = distinct uint32
+  
+  # Military IDs
+  FleetId* = distinct uint32
+  SquadronId* = distinct uint32
+  ShipId* = distinct uint32
+  GroundUnitId* = distinct uint32
 
+  # Production
+  ConstructionProjectId* = distinct uint32
+  RepairProjectId* = distinct uint32
 
-# Squadron and military limits
+# Hash and equality procs for all ID types
+proc `==`*(a, b: PlayerId): bool {.borrow.}
+proc hash*(id: PlayerId): Hash {.borrow.}
 
+proc `==`*(a, b: HouseId): bool {.borrow.}
+proc hash*(id: HouseId): Hash {.borrow.}
 
+proc `==`*(a, b: SystemId): bool {.borrow.}
+proc hash*(id: SystemId): Hash {.borrow.}
 
-proc getCurrentFighterCount*(colony: Colony): int =
-  ## Get current number of fighter squadrons at colony
-  return colony.fighterSquadrons.len
+proc `==`*(a, b: ColonyId): bool {.borrow.}
+proc hash*(id: ColonyId): Hash {.borrow.}
+
+proc `==`*(a, b: StarbaseId): bool {.borrow.}
+proc hash*(id: StarbaseId): Hash {.borrow.}
+
+proc `==`*(a, b: SpaceportId): bool {.borrow.}
+proc hash*(id: SpaceportId): Hash {.borrow.}
+
+proc `==`*(a, b: ShipyardId): bool {.borrow.}
+proc hash*(id: ShipyardId): Hash {.borrow.}
+
+proc `==`*(a, b: DrydockId): bool {.borrow.}
+proc hash*(id: DrydockId): Hash {.borrow.}
+
+proc `==`*(a, b: FleetId): bool {.borrow.}
+proc hash*(id: FleetId): Hash {.borrow.}
+
+proc `==`*(a, b: SquadronId): bool {.borrow.}
+proc hash*(id: SquadronId): Hash {.borrow.}
+
+proc `==`*(a, b: ShipId): bool {.borrow.}
+proc hash*(id: ShipId): Hash {.borrow.}
+
+proc `==`*(a, b: GroundUnitId): bool {.borrow.}
+proc hash*(id: GroundUnitId): Hash {.borrow.}
+
+proc `==`*(a, b: ConstructionProjectId): bool {.borrow.}
+proc hash*(id: ConstructionProjectId): Hash {.borrow.}
+proc `==`*(a, b: RepairProjectId): bool {.borrow.}
+proc hash*(id: RepairProjectId): Hash {.borrow.}

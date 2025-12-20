@@ -122,7 +122,7 @@ Each turn comprises four phases:
 1. Conflict Phase
 2. Income Phase
 3. Command Phase
-4. Maintenance Phase
+4. Production Phase
 
 ### 1.3.1 Conflict Phase
 
@@ -152,9 +152,9 @@ Build orders may fail if shipyards were destroyed in the conflict phase. You iss
 
 You submit your turn orders to the game server. Once all players submit (or the turn deadline expires), the server processes the next turn cycle.
 
-### 1.3.4 Maintenance Phase
+### 1.3.4 Production Phase
 
-In the maintenance phase, the game server advances construction projects, applies repairs to damaged facilities, and processes upkeep costs. Fleet maintenance is deducted from your house treasury.
+In the production phase, the game server advances construction projects, applies repairs to damaged facilities, and processes upkeep costs. Fleet maintenance is deducted from your house treasury.
 
 New construction orders process, along with investments in R&D, terraforming, Space Guild services, and industry.
 
