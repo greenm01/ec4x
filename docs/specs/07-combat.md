@@ -384,8 +384,8 @@ Squadrons target enemies using priority buckets—categories determining which e
 | Bucket            | Unit Type                                 | Base Weight | Priority |
 |-------------------|-------------------------------------------|-------------|----------|
 | **1 – Raider**    | Squadron with Raider flagship             | 1.0         | Highest  |
-| **2 – Capital**   | Squadron with Cruiser or Carrier flagship | 2.0         | High     |
-| **3 – Destroyer** | Squadron with Destroyer flagship          | 3.0         | Medium   |
+| **2 – Capital**   | Squadron with capital flagship            | 2.0         | High     |
+| **3 – Escort**    | Squadron with escort flagship             | 3.0         | Medium   |
 | **4 – Fighter**   | Fighter squadron (no capital flagship)    | 4.0         | Low      |
 | **5 – Starbase**  | Orbital installation                      | 5.0         | Lowest   |
 
@@ -393,7 +393,7 @@ Squadrons target enemies using priority buckets—categories determining which e
 - Lower bucket numbers = higher targeting priority
 - Fighter squadrons consist entirely of fighter craft (no capital ship flagship)
 - Starbases are orbital installations, not squadrons
-- Targeting walks buckets in order: Raider → Capital → Destroyer → Fighter → Starbase
+- Targeting walks buckets in order: Raider → Capital → Escort → Fighter → Starbase
 
 **Special Rule: Fighter Squadron Targeting**
 

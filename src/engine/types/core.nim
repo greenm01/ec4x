@@ -47,6 +47,9 @@ type
   ConstructionProjectId* = distinct uint32
   RepairProjectId* = distinct uint32
 
+  # Population transfers (Guild Services)
+  PopulationTransferId* = distinct uint32
+
 # Hash and equality procs for all ID types
 proc `==`*(a, b: PlayerId): bool {.borrow.}
 proc hash*(id: PlayerId): Hash {.borrow.}
@@ -88,3 +91,6 @@ proc `==`*(a, b: ConstructionProjectId): bool {.borrow.}
 proc hash*(id: ConstructionProjectId): Hash {.borrow.}
 proc `==`*(a, b: RepairProjectId): bool {.borrow.}
 proc hash*(id: RepairProjectId): Hash {.borrow.}
+
+proc `==`*(a, b: PopulationTransferId): bool {.borrow.}
+proc hash*(id: PopulationTransferId): Hash {.borrow.}

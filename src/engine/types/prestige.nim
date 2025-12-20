@@ -2,36 +2,23 @@
 ##
 ## Core types for prestige tracking and victory conditions
 
-import ../../common/types/core
-
-export core.HouseId
+import ./core
 
 type
   PrestigeSource* {.pure.} = enum
-    ## Sources of prestige gain/loss
-    CombatVictory,          # Win space battle
-    TaskForceDestroyed,     # Destroy enemy task force
-    FleetRetreated,         # Force enemy retreat
-    SquadronDestroyed,      # Destroy individual squadron
-    ColonySeized,           # Capture colony via invasion
-    ColonyEstablished,      # Establish new colony
-    TechAdvancement,        # Advance tech level
-    LowTaxBonus,            # Low tax rate bonus (per colony)
-    HighTaxPenalty,         # High tax average penalty
-    BlockadePenalty,        # Colony under blockade
-    MaintenanceShortfall,   # Failed to pay maintenance
-    PactViolation,          # Violated non-aggression pact
-    Eliminated,             # House eliminated from game
+    CombatVictory, TaskForceDestroyed, FleetRetreated, SquadronDestroyed,
+    ColonySeized, ColonyEstablished, TechAdvancement, LowTaxBonus,
+    HighTaxPenalty, BlockadePenalty, MaintenanceShortfall,
+    PactViolation, Eliminated
 
   PrestigeEvent* = object
-    ## Single prestige gain/loss event
     source*: PrestigeSource
-    amount*: int            # Positive = gain, negative = loss
-    description*: string    # Event description for reports
+    amount*: int32
+    description*: string
 
   PrestigeReport* = object
-    ## Prestige changes for a turn
     houseId*: HouseId
-    startingPrestige*: int
+    turn*: int32
+    startingPrestige*: int32
     events*: seq[PrestigeEvent]
-    endingPrestige*: int
+    endingPrestige*: int32

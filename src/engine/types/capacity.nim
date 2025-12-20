@@ -3,11 +3,10 @@
 ## This module defines common types used across all capacity limit systems in EC4X.
 ## All capacity systems follow the Check → Track → Enforce pattern with these types.
 
-import ../../../common/types/core
+import ./core
 
 type
   CapacityType* {.pure.} = enum
-    ## Type of capacity being limited
     FighterSquadron    # Per-colony fighter squadron limits (IU-based)
     CapitalSquadron    # Per-house capital ship + carrier limits (PU-based)
     TotalSquadron      # Per-house total squadron limit (IU-based, prevents escort spam)
@@ -16,29 +15,35 @@ type
     CarrierHangar      # Per-ship carrier hangar capacity (CV & CX)
 
   ViolationSeverity* {.pure.} = enum
-    ## Severity level of capacity violation
     None        # No violation - within limits
     Warning     # Near limit (80%+), no enforcement yet
     Violation   # Over limit, grace period active
     Critical    # Grace period expired, enforcement needed
 
+  EntityIdUnion* = object
+    ## Tagged union for different entity ID types
+    case kind*: CapacityType
+    of FighterSquadron, ConstructionDock:
+      colonyId*: ColonyId
+    of CapitalSquadron, TotalSquadron, PlanetBreaker:
+      houseId*: HouseId
+    of CarrierHangar:
+      shipId*: ShipId
+
   CapacityViolation* = object
-    ## Status of a capacity check for an entity
     capacityType*: CapacityType
-    entityId*: string              # Colony ID, House ID, or Ship ID
-    current*: int                  # Current count
-    maximum*: int                  # Maximum allowed
-    excess*: int                   # Amount over limit (0 if within)
+    entity*: EntityIdUnion         # Typed entity reference
+    current*: int32
+    maximum*: int32
+    excess*: int32
     severity*: ViolationSeverity
-    graceTurnsRemaining*: int      # Turns until enforcement (0 = enforce now)
-    violationTurn*: int            # Turn when violation started
+    graceTurnsRemaining*: int32
+    violationTurn*: int32
 
   EnforcementAction* = object
-    ## Action taken to enforce a capacity limit
     capacityType*: CapacityType
-    entityId*: string              # Colony ID, House ID, or Ship ID
-    actionType*: string            # "disband", "block_commission", "auto_scrap", etc.
-    affectedUnits*: seq[string]    # IDs of units affected
-    description*: string           # Human-readable description for logging/events
+    entity*: EntityIdUnion         # Typed entity reference
+    actionType*: string
+    affectedUnitIds*: seq[string]  # Could be SquadronId, ShipId, etc. depending on context
+    description*: string
 
-export core.SystemId, core.HouseId

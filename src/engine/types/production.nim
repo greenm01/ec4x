@@ -12,16 +12,24 @@ type
     units*: int32
     investmentCost*: int32
 
-  ConstructionType* {.pure.} = enum
+  BuildType* {.pure.} = enum
     Ship, Facility, Ground, Industrial, Infrastructure
 
   FacilityType* {.pure.} = enum
     Spaceport, Shipyard, Drydock
 
+  BuildCommand* = object
+    colonyId*: ColonyId           # Use ColonyId, not SystemId
+    buildType*: BuildType
+    quantity*: int32
+    shipClass*: Option[ShipClass]
+    buildingType*: Option[string]
+    industrialUnits*: int32
+
   ConstructionProject* = object
     id*: ConstructionProjectId
     colonyId*: ColonyId
-    projectType*: ConstructionType
+    projectType*: BuildType
     itemId*: string
     costTotal*: int32
     costPaid*: int32

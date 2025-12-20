@@ -14,7 +14,7 @@ type
     ## A collection of squadrons that move together
     id*: FleetId                       # Unique fleet identifier
     squadrons*: seq[SquadronId]        # All squadron types (Combat, Intel, Expansion, Auxiliary)
-    owner*: HouseId                    # House that owns this fleet
+    houseId*: HouseId                  # House that owns this fleet
     location*: SystemId                # Current system location
     status*: FleetStatus               # Operational status (active/reserve/mothballed)
     command*: Option[FleetCommand]
@@ -67,3 +67,11 @@ type
     Traveling,      # En route to spy mission target
     OnSpyMission,   # Active spy mission (locked, gathering intel)
     Detected        # Detected during spy mission (destroyed next phase)
+
+  ActivationResult* = object
+    ## Result of standing order activation attempt
+    success*: bool
+    action*: string               # Description of action taken
+    error*: string                # Error message if failed
+    updatedParams*: Option[StandingOrderParams]  # Updated params (e.g., patrol index)
+

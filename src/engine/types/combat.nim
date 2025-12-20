@@ -1,315 +1,127 @@
 ## Core combat system types for EC4X
 ##
 ## Pure data types for combat resolution.
-## No I/O, no JSON - just game logic types.
-##
 ## Based on EC4X specifications Section 7.0 Combat
 
-import std/[options, tables]
-import ../../common/types/[core, units, combat as commonCombat, diplomacy]
-import ../squadron, ../fleet
-
-export HouseId, SystemId, FleetId, SquadronId
-export Squadron, Ship, ShipClass
-export commonCombat.CombatState  # Use existing CombatState from common
-export diplomacy.DiplomaticState
-export fleet.FleetStatus
-# CombatFacility, CombatTargetId, CombatTargetKind exported after type section
+import std/[tables, options]
+import ./core
 
 type
-  ## Tactical Combat Phases (Section 7.3.1)
-  ## Used for both Space Combat and Orbital Combat
-  CombatPhase* {.pure.} = enum
-    PreCombat,      # Detection rolls, Task Force formation
-    Ambush,         # Phase 1: Undetected Raiders
-    Intercept,      # Phase 2: Fighter Squadrons
-    MainEngagement, # Phase 3: Capital Ships
-    PostCombat      # Retreat evaluation, cleanup
+  CombatState* {.pure.} = enum
+    Undamaged, Crippled, Destroyed
 
-  ## Combat Effectiveness Rating (Section 7.3.3)
+  CombatPhase* {.pure.} = enum
+    PreCombat, Ambush, Intercept, MainEngagement, PostCombat
+
   CERModifier* {.pure.} = enum
-    Scouts,    # +1 (max, for all scouts in TF)
-    Morale,    # -1 to +2 (per turn morale check)
-    Surprise,  # +3 (first round only)
-    Ambush     # +4 (first round only, Phase 1)
+    Scouts, Morale, Surprise, Ambush
 
   CERRoll* = object
-    ## Result of rolling for Combat Effectiveness Rating
-    naturalRoll*: int        # 1-10 (natural die roll before modifiers)
-    modifiers*: int          # Sum of all applicable modifiers
-    finalRoll*: int          # naturalRoll + modifiers
-    effectiveness*: float    # 0.25, 0.5, 0.75, or 1.0
-    isCriticalHit*: bool     # Natural 9 before modifiers
+    naturalRoll*: int32
+    modifiers*: int32
+    finalRoll*: int32
+    effectiveness*: float32
+    isCriticalHit*: bool
 
-  ## Target Priority Buckets (Section 7.3.2.2)
   TargetBucket* {.pure.} = enum
-    Raider = 1,     # Squadron with Raider flagship
-    Capital = 2,    # Squadron with Cruiser/Carrier flagship
-    Destroyer = 3,  # Squadron with Destroyer flagship
-    Fighter = 4,    # Fighter squadron (no capital flagship)
-    Starbase = 5    # Orbital installation
+    Raider = 1, Capital = 2, Escort = 3, Fighter = 4, Starbase = 5
 
-  ## Combat Target Identifier (squadron or facility)
   CombatTargetKind* {.pure.} = enum
-    Squadron,       # Target is a squadron
-    Facility        # Target is a facility (starbase, etc)
+    Squadron, Facility
 
   CombatTargetId* = object
-    ## Unified identifier for combat targets (squadrons and facilities)
     case kind*: CombatTargetKind
-    of CombatTargetKind.Squadron:
+    of Squadron:
       squadronId*: SquadronId
-    of CombatTargetKind.Facility:
-      facilityId*: string
+    of Facility:
+      facilityId*: StarbaseId  # Use typed ID, not string
 
-  ## Squadron in combat context
-  ## Note: CombatState is imported from common/types/combat.nim
   CombatSquadron* = object
-    squadron*: Squadron
+    squadronId*: SquadronId  # Reference, not embedded object
     state*: CombatState
-    fleetStatus*: FleetStatus  # Fleet operational status (Active/Reserve/Mothballed)
-    damageThisTurn*: int     # Track damage for destruction protection
-    crippleRound*: int       # Round when crippled (for destruction protection)
+    fleetStatus*: FleetStatus
+    damageThisTurn*: int32
+    crippleRound*: int32
     bucket*: TargetBucket
-    targetWeight*: float     # Base weight × crippled modifier
+    targetWeight*: float32
 
-  ## Facility in combat context (starbases, future defensive structures)
-  ## Facilities participate in combat but are not squadrons
   CombatFacility* = object
-    facilityId*: string      # ID from colony.starbases
-    systemId*: SystemId      # Location
-    owner*: HouseId          # Owning house
-    attackStrength*: int     # AS from facilities.toml + WEP
-    defenseStrength*: int    # DS from facilities.toml + WEP
-    state*: CombatState      # Undamaged/Crippled/Destroyed
-    damageThisTurn*: int     # Track damage for destruction protection
-    crippleRound*: int       # Round when crippled
-    bucket*: TargetBucket    # Always TargetBucket.Starbase
-    targetWeight*: float     # Base weight × crippled modifier
+    facilityId*: StarbaseId
+    systemId*: SystemId
+    owner*: HouseId
+    attackStrength*: int32
+    defenseStrength*: int32
+    state*: CombatState
+    damageThisTurn*: int32
+    crippleRound*: int32
+    bucket*: TargetBucket
+    targetWeight*: float32
 
-  ## Task Force (Section 7.2)
   TaskForce* = object
-    house*: HouseId
-    squadrons*: seq[CombatSquadron]
-    facilities*: seq[CombatFacility]  # Defensive facilities (starbases, etc)
-    roe*: int                # Rules of Engagement (0-10)
-    isCloaked*: bool         # All Raiders, none detected
-    moraleModifier*: int     # -1 to +2 from prestige
-    isDefendingHomeworld*: bool  # Never retreat
-    eliLevel*: int           # House ELI tech level for detection
-    clkLevel*: int           # House CLK tech level for cloaking
-
-  ## Combat Round Result
-  RoundResult* = object
-    phase*: CombatPhase
-    roundNumber*: int
-    attacks*: seq[AttackResult]
-    stateChanges*: seq[StateChange]
+    houseId*: HouseId
+    squadronIds*: seq[SquadronId]  # Store IDs, not objects
+    facilityIds*: seq[StarbaseId]
+    roe*: int32
+    isCloaked*: bool
+    moraleModifier*: int32
+    isDefendingHomeworld*: bool
+    eliLevel*: int32
+    clkLevel*: int32
 
   AttackResult* = object
     attackerId*: SquadronId
-    targetId*: SquadronId
+    targetId*: CombatTargetId  # Can be squadron or facility
     cerRoll*: CERRoll
-    damageDealt*: int
+    damageDealt*: int32
     targetStateBefore*: CombatState
     targetStateAfter*: CombatState
 
   StateChange* = object
-    squadronId*: SquadronId
+    targetId*: CombatTargetId
     fromState*: CombatState
     toState*: CombatState
     destructionProtectionApplied*: bool
 
-  ## Retreat Decision
+  RoundResult* = object
+    phase*: CombatPhase
+    roundNumber*: int32
+    attacks*: seq[AttackResult]
+    stateChanges*: seq[StateChange]
+
   RetreatEvaluation* = object
-    taskForce*: HouseId
+    taskForceHouse*: HouseId
     wantsToRetreat*: bool
-    effectiveROE*: int       # Base ROE + morale modifier
-    ourStrength*: int
-    enemyStrength*: int
-    strengthRatio*: float
+    effectiveROE*: int32
+    ourStrength*: int32
+    enemyStrength*: int32
+    strengthRatio*: float32
     reason*: string
 
-  ## Complete Combat Result
   CombatResult* = object
     systemId*: SystemId
-    rounds*: seq[seq[RoundResult]]  # Each round has multiple phases
+    rounds*: seq[seq[RoundResult]]
     survivors*: seq[TaskForce]
     retreated*: seq[HouseId]
     eliminated*: seq[HouseId]
     victor*: Option[HouseId]
-    totalRounds*: int
+    totalRounds*: int32
     wasStalemate*: bool
 
-  ## Battle Context (input to combat resolution)
   BattleContext* = object
     systemId*: SystemId
     taskForces*: seq[TaskForce]
-    seed*: int64              # For deterministic PRNG
-    maxRounds*: int           # Default 20 (stalemate)
-    allowAmbush*: bool        # If true, undetected Raiders get +4 CER ambush bonus
-    allowStarbaseCombat*: bool  # If true, starbases can fight; if false, they only detect
-    preDetectedHouses*: seq[HouseId]  # Houses already detected in previous combat phase
-    diplomaticRelations*: Table[tuple[a, b: HouseId], DiplomaticState]  # Diplomatic relations for combat logic
-    systemOwner*: Option[HouseId]  # Owner of the system for defensive context
+    seed*: int64
+    maxRounds*: int32
+    allowAmbush*: bool
+    allowStarbaseCombat*: bool
+    preDetectedHouses*: seq[HouseId]
+    diplomaticRelations*: Table[(HouseId, HouseId), DiplomaticState]
+    systemOwner*: Option[HouseId]
 
-# Export types that were declared after initial exports
-export CombatFacility, CombatTargetId, CombatTargetKind
-
-## Helper procs for combat squadrons
-
-proc getCurrentAS*(cs: CombatSquadron): int =
-  ## Get current attack strength (reduced if crippled or reserve status)
-  ## Per economy.md:3.9 - Reserve fleets have AS reduced by half
-  var baseAS: int
-  if cs.state == CombatState.Crippled:
-    baseAS = cs.squadron.combatStrength() div 2
-  elif cs.state == CombatState.Destroyed:
-    return 0
-  else:
-    baseAS = cs.squadron.combatStrength()
-
-  # Apply reserve status penalty (half AS/DS)
-  if cs.fleetStatus == FleetStatus.Reserve:
-    return baseAS div 2
-  else:
-    return baseAS
-
-proc getCurrentDS*(cs: CombatSquadron): int =
-  ## Get defense strength (doesn't change when crippled, but reduced if reserve)
-  ## Per economy.md:3.9 - Reserve fleets have DS reduced by half
-  let baseDS = cs.squadron.defenseStrength()
-
-  # Apply reserve status penalty (half AS/DS)
-  if cs.fleetStatus == FleetStatus.Reserve:
-    return baseDS div 2
-  else:
-    return baseDS
-
-proc isAlive*(cs: CombatSquadron): bool =
-  ## Check if squadron can still fight
-  cs.state != CombatState.Destroyed
-
-proc canBeTargeted*(cs: CombatSquadron): bool =
-  ## Check if squadron is valid target
-  cs.state != CombatState.Destroyed
-
-## CombatFacility helpers
-
-proc getCurrentAS*(cf: CombatFacility): int =
-  ## Get current attack strength (reduced if crippled)
-  if cf.state == CombatState.Crippled:
-    return cf.attackStrength div 2
-  elif cf.state == CombatState.Destroyed:
-    return 0
-  else:
-    return cf.attackStrength
-
-proc getCurrentDS*(cf: CombatFacility): int =
-  ## Get defense strength (doesn't change when crippled)
-  if cf.state == CombatState.Destroyed:
-    return 0
-  else:
-    return cf.defenseStrength
-
-proc isAlive*(cf: CombatFacility): bool =
-  ## Check if facility can still fight
-  cf.state != CombatState.Destroyed
-
-proc canBeTargeted*(cf: CombatFacility): bool =
-  ## Check if facility is valid target
-  cf.state != CombatState.Destroyed
-
-## Task Force helpers
-
-proc totalAS*(tf: TaskForce): int =
-  ## Calculate total attack strength of Task Force (squadrons + facilities)
-  result = 0
-  for sq in tf.squadrons:
-    result += sq.getCurrentAS()
-  for fac in tf.facilities:
-    result += fac.getCurrentAS()
-
-proc aliveSquadrons*(tf: TaskForce): seq[CombatSquadron] =
-  ## Get all non-destroyed squadrons
-  result = @[]
-  for sq in tf.squadrons:
-    if sq.isAlive():
-      result.add(sq)
-
-proc aliveFacilities*(tf: TaskForce): seq[CombatFacility] =
-  ## Get all non-destroyed facilities
-  result = @[]
-  for fac in tf.facilities:
-    if fac.isAlive():
-      result.add(fac)
-
-proc isEliminated*(tf: TaskForce): bool =
-  ## Check if Task Force has no surviving squadrons or facilities
-  # Check squadrons
-  for sq in tf.squadrons:
-    if sq.isAlive():
-      return false
-  # Check facilities
-  for fac in tf.facilities:
-    if fac.isAlive():
-      return false
-  return true
-
-## CER Table lookup (Section 7.3.3)
-
-proc lookupCER*(modifiedRoll: int): float =
-  ## Convert modified die roll to effectiveness multiplier
-  ## Based on CER Table from Section 7.3.3
-  if modifiedRoll <= 2:
-    return 0.25
-  elif modifiedRoll <= 4:
-    return 0.50
-  elif modifiedRoll <= 6:
-    return 0.75
-  else:
-    return 1.0
-
-proc isCritical*(naturalRoll: int): bool =
-  ## Check if natural roll (before modifiers) is critical hit
-  ## Natural 9 = critical hit (Section 7.3.3)
-  naturalRoll == 9
-
-## Target bucket classification (Section 7.3.2.2)
-
-proc classifyBucket*(sq: Squadron): TargetBucket =
-  ## Determine target priority bucket for squadron
-  case sq.flagship.shipClass
-  of ShipClass.Raider:
-    return TargetBucket.Raider
-  of ShipClass.Cruiser, ShipClass.LightCruiser, ShipClass.HeavyCruiser,
-     ShipClass.Battlecruiser, ShipClass.Battleship,
-     ShipClass.Dreadnought, ShipClass.SuperDreadnought,
-     ShipClass.Carrier, ShipClass.SuperCarrier:
-    return TargetBucket.Capital
-  of ShipClass.Destroyer:
-    return TargetBucket.Destroyer
-  of ShipClass.Fighter:
-    return TargetBucket.Fighter
-  else:
-    # Default to capital for unknown types
-    # Note: Starbases (TargetBucket.Starbase) assigned separately via colony facilities
-    return TargetBucket.Capital
-
-proc baseWeight*(bucket: TargetBucket): float =
-  ## Get base targeting weight for bucket (Section 7.3.2.2)
-  case bucket
-  of TargetBucket.Raider: 1.0
-  of TargetBucket.Capital: 2.0
-  of TargetBucket.Destroyer: 3.0
-  of TargetBucket.Fighter: 4.0
-  of TargetBucket.Starbase: 5.0
-
-proc calculateTargetWeight*(cs: CombatSquadron): float =
-  ## Calculate weighted random selection weight
-  ## Crippled units get 2x weight (Section 7.3.2.5)
-  let base = cs.bucket.baseWeight()
-  if cs.state == CombatState.Crippled:
-    return base * 2.0
-  else:
-    return base
+  CombatReport* = object
+    systemId*: SystemId
+    attackers*: seq[HouseId]
+    defenders*: seq[HouseId]
+    attackerLosses*: int32
+    defenderLosses*: int32
+    victor*: Option[HouseId]

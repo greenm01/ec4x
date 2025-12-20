@@ -24,6 +24,10 @@ proc advanceTurn*(state: var GameState) =
   ## Advance to next strategic cycle
   state.turn += 1
 
+proc initTurnResolutionReport*(): TurnResolutionReport =
+  ## Initialize an empty report with default zero values.
+  result = TurnResolutionReport()
+
 proc getCurrentGameAct*(state: var GameState, config: ActProgressionConfig): GameAct =
   ## Determine and update current game act based on dynamic gates
   ##

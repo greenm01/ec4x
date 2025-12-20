@@ -2,78 +2,55 @@
 ##
 ## This module contains the type definitions for individual ships, including their
 ## stats, cargo, and operational capabilities.
-
-import std/[options]
-import ../../../common/types/units
-
-export ShipClass, ShipType, ShipStats, ShipRole
+import std/[tables, options, hashes]
+import ./core
 
 type
-
-  Ship* = object
-    ## Ship representation with full combat and operational stats
-    ## Used for all ship types: combat, intel, expansion, auxiliary,
-    ## fighter
-    shipClass*: ShipClass
-    shipRole*: ShipRole      # Military or Spacelift (transport)
-    stats*: ShipStats
-    isCrippled*: bool
-    name*: string            # Optional ship name
-    cargo*: Option[ShipCargo]  # Cargo for ETAC/TT (Some), None for
-
   ShipClass* {.pure.} = enum
-    ## 18 ship types total 
-    Fighter
-    Corvette
-    Frigate
-    Scout
-    Raider
-    Destroyer
-    Cruiser
-    LightCruiser
-    HeavyCruiser
-    Battlecruiser
-    Battleship
-    Dreadnought
-    SuperDreadnought
-    Carrier
-    SuperCarrier
-    ETAC
-    TroopTransport
-    PlanetBreaker
+    Fighter, Corvette, Frigate, Scout, Raider,
+    Destroyer, Cruiser, LightCruiser, HeavyCruiser,
+    Battlecruiser, Battleship, Dreadnought, SuperDreadnought,
+    Carrier, SuperCarrier, ETAC, TroopTransport, PlanetBreaker
 
   ShipRole* {.pure.} = enum
-    ## Ship operational role classification
-    ## Determines capacity limits and strategic usage
-    Escort         # Combat-capable, CR < 7, not capacity-limited
-    Capital        # Flagship-capable, CR >= 7, subject to capital squadron limits
-    Auxiliary      # Non-combat support (ETAC, TroopTransport)
-    SpecialWeapon  # Unique strategic units (PlanetBreaker)
-    Fighter        # Embarked strike craft, special capacity rules
+    Escort, Capital, Auxiliary, SpecialWeapon, Fighter
 
-  ShipStats* = object
-    ## Combat and operational statistics for a ship
-    name*: string
-    class*: string
-    role*: ShipRole          # Operational role classification
-    attackStrength*: int     # AS - offensive firepower
-    defenseStrength*: int    # DS - defensive shielding
-    commandCost*: int        # CC - cost to assign to squadron
-    commandRating*: int      # CR - for flagships, capacity to lead
-    techLevel*: int          # Minimum tech level to build
-    buildCost*: int          # Production cost to construct
-    upkeepCost*: int         # Per-turn maintenance cost
-    specialCapability*: string  # ELI, CLK, or empty
-    carryLimit*: int         # For carriers, transports (0 if N/A)
-                               # combat ships
   CargoType* {.pure.} = enum
-    ## Type of cargo loaded on transport ships
-    None,
-    Marines,      # Marine Division (MD) - TroopTransport
-    Colonists     # Population Transfer Unit (PTU) - ETAC
+    None, Marines, Colonists
 
   ShipCargo* = object
-    ## Cargo loaded on transport ships (ETAC/TT)
     cargoType*: CargoType
-    quantity*: int          # Number of units loaded (0 = empty)
-    capacity*: int          # Maximum capacity (CL = Carry Limit)
+    quantity*: int32
+    capacity*: int32
+
+  ShipStats* = object
+    name*: string
+    class*: string
+    role*: ShipRole
+    attackStrength*: int32
+    defenseStrength*: int32
+    commandCost*: int32
+    commandRating*: int32
+    techLevel*: int32
+    buildCost*: int32
+    upkeepCost*: int32
+    specialCapability*: string
+    carryLimit*: int32
+
+  Ship* = object
+    id*: ShipId
+    squadronId*: SquadronId  # Which squadron owns this ship
+    shipClass*: ShipClass
+    shipRole*: ShipRole
+    stats*: ShipStats
+    isCrippled*: bool
+    name*: string
+    cargo*: Option[ShipCargo]
+
+  Ships* = object
+    data: seq[Ship]
+    index: Table[ShipId, int]
+    bySquadron: Table[SquadronId, seq[ShipId]]
+    nextId: uint32
+
+# Note: ShipStats could be moved to a separate config/template file if the stats are loaded from config rather than computed per-ship.

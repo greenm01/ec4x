@@ -15,16 +15,16 @@ type
 
   VictoryCondition* = object
     ## Victory condition configuration
-    prestigeThreshold*: int     # Default: 5000
-    turnLimit*: int             # Optional turn limit (0 = no limit)
+    prestigeThreshold*: int32     # Default: 5000
+    turnLimit*: int32             # Optional turn limit (0 = no limit)
     enableDefensiveCollapse*: bool  # Allow elimination via negative prestige
 
   VictoryStatus* = object
     ## Current victory status
     victoryAchieved*: bool
-    victor*: HouseId
+    houseId*: HouseId
     victoryType*: VictoryType
-    achievedOnTurn*: int
+    achievedOnTurn*: int32
     description*: string
 
   VictoryCheck* = object
@@ -32,18 +32,19 @@ type
     victoryOccurred*: bool
     status*: VictoryStatus
 
-## Constants
+  ## Leaderboard
 
-const
-  DEFAULT_PRESTIGE_THRESHOLD* = 5000
-  DEFAULT_COLLAPSE_TURNS* = 3  # Consecutive turns with negative prestige
+  HouseRanking* = object
+    houseId*: HouseId
+    houseName*: string
+    prestige*: int32
+    colonies*: int32
+    eliminated*: bool
+    rank*: int32
 
-## Initialization
+  Leaderboard* = object
+    ## Public leaderboard showing house rankings and game state
+    rankings*: seq[HouseRanking]
+    totalSystems*: int32  # Total colonizable systems in the game
+    totalColonized*: int32  # Total systems currently colonized
 
-proc initVictoryCondition*(): VictoryCondition =
-  ## Create default victory conditions
-  result = VictoryCondition(
-    prestigeThreshold: DEFAULT_PRESTIGE_THRESHOLD,
-    turnLimit: 0,  # No turn limit by default
-    enableDefensiveCollapse: true
-  )

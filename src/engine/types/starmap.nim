@@ -6,6 +6,7 @@ import std/[tables, options]
 import ./core
 
 type
+
   Hex* = object
     q*: int32
     r*: int32
@@ -22,7 +23,14 @@ type
     data: seq[System]
     index: Table[SystemId, int]
     nextId: uint32
-  
+
+  LaneType* {.pure.} = enum
+    ## Jump lane classifications
+    ## Determines movement restrictions per game specs
+    Major        ## Standard lanes, 2 jumps/turn if owned
+    Minor        ## 1 jump/turn
+    Restricted   ## 1 jump/turn, no crippled/transport ships
+
   JumpLane* = object
     source*: SystemId
     destination*: SystemId

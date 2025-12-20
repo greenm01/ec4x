@@ -9,7 +9,13 @@ import ../../../common/types/core
 
 export types
 
-## Victory Checking
+proc initVictoryCondition*(): VictoryCondition =
+  ## Create default victory conditions
+  result = VictoryCondition(
+    prestigeThreshold: DEFAULT_PRESTIGE_THRESHOLD,
+    turnLimit: 0,  # No turn limit by default
+    enableDefensiveCollapse: true
+  )
 
 proc checkPrestigeVictory*(houses: Table[HouseId, House],
                            condition: VictoryCondition,
@@ -105,23 +111,6 @@ proc checkVictoryConditions*(state: GameState,
 
   # No victory yet
   return VictoryCheck(victoryOccurred: false)
-
-## Leaderboard
-
-type
-  HouseRanking* = object
-    houseId*: HouseId
-    houseName*: string
-    prestige*: int
-    colonies*: int
-    eliminated*: bool
-    rank*: int
-
-  Leaderboard* = object
-    ## Public leaderboard showing house rankings and game state
-    rankings*: seq[HouseRanking]
-    totalSystems*: int  # Total colonizable systems in the game
-    totalColonized*: int  # Total systems currently colonized
 
 proc generateLeaderboard*(state: GameState): Leaderboard =
   ## Generate ranked leaderboard of all houses with game metadata

@@ -4,30 +4,22 @@
 ## Separated to avoid circular dependencies between modules.
 
 import std/tables
-import ../../../common/types/core
+import ./core
 
 type
   ExportFormat* {.pure.} = enum
-    ## Output format for exported data
-    CSV           ## Full CSV (Excel/LibreOffice compatible)
-    Markdown      ## Markdown tables (Claude-native format)
-    JSON          ## Compact JSON (aggregated statistics)
-    Summary       ## High-level summary (< 1K tokens)
-
-  ExportFilter* = object
-    ## Configuration for selective data export
-    houseIds*: seq[HouseId]      ## Empty = all houses
-    turnRange*: Slice[int]       ## e.g., 10..20 (inclusive)
-    metrics*: seq[string]        ## Empty = all metrics
-    format*: ExportFormat        ## Output format
-
-  DiagnosticRow* = object
-    ## Lightweight row representation for export
-    ## Maps to DiagnosticMetrics from tests/balance/diagnostics.nim
-    turn*: int
-    houseId*: string
-    values*: Table[string, string]  ## Metric name → value
+    CSV, Markdown, JSON, Summary
 
   AggregationType* {.pure.} = enum
-    ## Statistical aggregation methods
     Mean, Median, Min, Max, StdDev, Count
+
+  ExportFilter* = object
+    houseIds*: seq[HouseId]
+    turnRange*: Slice[int32]
+    metrics*: seq[string]
+    format*: ExportFormat
+
+  DiagnosticRow* = object
+    turn*: int32
+    houseId*: HouseId  # Use typed ID, not string
+    values*: Table[string, string]

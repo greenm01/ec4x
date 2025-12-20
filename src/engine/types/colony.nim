@@ -1,24 +1,11 @@
 import std/[tables, options]
-import ./core/[ColonyId, SquadronId, StrabaseId]
+import ./core
 
 type
-  CapacityViolation* = object
-    active*: bool
-    violationType*: string
-    turnsRemaining*: int32
-    violationTurn*: int32
-
-  TerraformProject* = object
-    startTurn*: int32
-    turnsRemaining*: int32
-    targetClass*: int32
-    ppCost*: int32
-    ppPaid*: int32
-
   Colony* = object
     id*: ColonyId
     systemId*: SystemId
-    owner*: HouseId
+    houseId*: HouseId
     population*: int32
     souls*: int32
     populationUnits*: int32
@@ -60,4 +47,35 @@ type
     bySystem: Table[SystemId, ColonyId]
     byOwner: Table[HouseId, seq[ColonyId]]
     nextId: uint32
+
+  TerraformProject* = object
+    startTurn*: int32
+    turnsRemaining*: int32
+    targetClass*: int32
+    ppCost*: int32
+    ppPaid*: int32
+
+  TerraformCommand* = object
+    houseId*: HouseId
+    colonyId*: ColonyId          
+    startTurn*: int32
+    turnsRemaining*: int32
+    ppCost*: int32
+    targetClass*: int32
+
+  PopulationTransferCommand* = object
+    houseId*: HouseId
+    sourceColony*: ColonyId  
+    destColony*: ColonyId
+    ptuAmount*: int32
+
+  ColonyIncomeReport* = object
+    colonyId*: ColonyId
+    houseId*: HouseId
+    populationUnits*: int32
+    grossOutput*: int32
+    taxRate*: int32
+    netValue*: int32
+    populationGrowth*: float32
+    prestigeBonus*: int32
 

@@ -4,12 +4,10 @@
 ## and other related combat types for ground and orbital combat.
 
 import std/[options]
-import ../../../common/types/[core, units, combat as commonCombat]
+import ../core
 
 type
 
-  GroundUnitId* = distinct uint32
-  
   GroundUnitType* {.pure.} = enum
     Army, Marine, GroundBattery, Spacelift
 
@@ -62,7 +60,3 @@ type
     infrastructureDestroyed*: int32  # IU lost (50% on invasion success)
     assetsSeized*: bool  # True for blitz, false for invasion
     batteriesDestroyed*: int32  # Ground batteries destroyed (blitz Phase 1 bombardment)
-
-# For ground units (types/military/ground_unit.nim)
-proc `==`*(a, b: GroundUnitId): bool {.borrow.}
-proc hash*(id: GroundUnitId): Hash {.borrow.}

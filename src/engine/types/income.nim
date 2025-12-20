@@ -15,16 +15,6 @@ type
     amount*: int32
     category*: TransactionCategory
 
-  ColonyIncomeReport* = object
-    colonyId*: ColonyId
-    owner*: HouseId
-    populationUnits*: int32
-    grossOutput*: int32
-    taxRate*: int32
-    netValue*: int32
-    populationGrowth*: float32
-    prestigeBonus*: int32
-
   HouseIncomeReport* = object
     houseId*: HouseId
     colonies*: seq[ColonyIncomeReport]

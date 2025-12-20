@@ -60,3 +60,46 @@ proc setHostile*(relations: var DiplomaticRelations, otherHouse: HouseId,
     prestigeEvents: @[]
   )
 
+## Helper Procs
+
+proc initDiplomaticRelations*(): DiplomaticRelations =
+  ## Initialize empty diplomatic relations
+  result = DiplomaticRelations(
+    relations: initTable[HouseId, DiplomaticRelation]()
+  )
+
+proc initViolationHistory*(): ViolationHistory =
+  ## Initialize empty violation history
+  result = ViolationHistory(
+    violations: @[]
+  )
+
+proc getDiplomaticState*(relations: DiplomaticRelations, otherHouse: HouseId): DiplomaticState =
+  ## Get diplomatic state with another house (defaults to Neutral)
+  if otherHouse in relations.relations:
+    return relations.relations[otherHouse].state
+  return DiplomaticState.Neutral
+
+proc setDiplomaticState*(relations: var DiplomaticRelations, otherHouse: HouseId,
+                        state: DiplomaticState, turn: int) =
+  ## Set diplomatic state with another house
+  relations.relations[otherHouse] = DiplomaticRelation(
+    state: state,
+    sinceTurn: turn
+  )
+
+# isInPact is removed as there are no "pacts" in the new 3-state system.
+# proc isInPact*(relations: DiplomaticRelations, otherHouse: HouseId): bool = ...
+
+proc isEnemy*(relations: DiplomaticRelations, otherHouse: HouseId): bool =
+  ## Check if house is enemy (open war)
+  return getDiplomaticState(relations, otherHouse) == DiplomaticState.Enemy
+
+proc isHostile*(relations: DiplomaticRelations, otherHouse: HouseId): bool =
+  ## Check if house is hostile (tensions escalated)
+  return getDiplomaticState(relations, otherHouse) == DiplomaticState.Hostile
+
+proc isHostileOrEnemy*(relations: DiplomaticRelations, otherHouse: HouseId): bool =
+  ## Check if house is hostile or enemy (any combat allowed)
+  let state = getDiplomaticState(relations, otherHouse)
+  return state in {DiplomaticState.Hostile, DiplomaticState.Enemy}

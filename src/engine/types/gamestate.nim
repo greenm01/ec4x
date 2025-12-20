@@ -1,36 +1,63 @@
-import military/[fleet]
+import std/[tables, options]
+import ./core
 
 type
+  GamePhase* {.pure.} = enum
+    Conflict, Income, Command, Production
+
   GameState* = object
-      gameId*: int32
-      turn*: int
-      phase*: GamePhase
-      starMap*: StarMap
-      houses*: Table[HouseId, House]
-      lastTurnReports*: Table[HouseId, TurnResolutionReport] # Transient data for diagnostics
-      homeworlds*: Table[HouseId, SystemId]  # Track homeworld system per house
-      colonies*: Table[SystemId, Colony]
-      fleets*: Table[FleetId, Fleet]
-      fleetOrders*: Table[FleetId, FleetOrder]  # Persistent fleet orders (continue until completed)
-      activeSpyMissions*: Table[FleetId, ActiveSpyMission]  # Active spy missions (fleet-based system)
-      arrivedFleets*: Table[FleetId, SystemId]  # Fleets that arrived at order targets (checked in Conflict/Income phase)
-      standingOrders*: Table[FleetId, StandingOrder]  # Standing orders (execute when no explicit order)
-      turnDeadline*: int64          # Unix timestamp
-      ongoingEffects*: seq[esp_types.OngoingEffect]  # Active espionage effects
-      scoutLossEvents*: seq[intel_types.ScoutLossEvent]  # Scout losses for diplomatic processing
-      populationInTransit*: seq[pop_types.PopulationInTransit]  # Space Guild population transfers in progress
-      pendingProposals*: seq[dip_proposals.PendingProposal]  # Pending diplomatic proposals
-      pendingMilitaryCommissions*: seq[econ_types.CompletedProject]  # Military units awaiting commissioning in next Command Phase
-      pendingPlanetaryCommissions*: seq[econ_types.CompletedProject]  # Unused - planetary assets commission immediately in Maintenance Phase
-      gracePeriodTimers*: Table[HouseId, GracePeriodTracker]  # Grace period tracking for capacity enforcement
-      actProgression*: ActProgressionState  # Dynamic game act progression (global, public info)
+    gameId*: int32
+    turn*: int32
+    phase*: GamePhase
+    seed*: int64
+    turnDeadline*: int64
+    
+    # Entity collections (DoD)
+    houses*: Houses
+    systems*: Systems
+    colonies*: Colonies
+    fleets*: Fleets
+    squadrons*: Squadrons
+    ships*: Ships
+    groundUnits*: GroundUnits
 
-      # Persistent reverse indices (DoD optimization for O(1) lookups)
-      fleetsByLocation*: Table[SystemId, seq[FleetId]]
-      fleetsByOwner*: Table[HouseId, seq[FleetId]]
-      coloniesByOwner*: Table[HouseId, seq[SystemId]]
+    # Intelligence databases - one per house
+    intelligence*: Table[HouseId, IntelligenceDatabase]
 
-      # ID generators
-      nextFleetId: int32
-      nextSystemId: int32
-      nextHouseId: int32
+    # Diplomacy
+    diplomaticRelation*: Table[(HouseId, HouseId), DiplomaticRelation]
+    diplomaticViolation*: Table[HouseId, ViolationHistory]
+     
+    # Facilities
+    starbases*: Starbases
+    spaceports*: Spaceports
+    shipyards*: Shipyards
+    drydocks*: Drydocks
+    
+    # Production
+    constructionProjects*: ConstructionProjects
+    repairProjects*: RepairProjects
+    
+    # Map
+    starMap*: StarMap
+    
+    # Phase-specific state
+    arrivedFleets*: Table[FleetId, SystemId]
+    activeSpyMissions*: Table[FleetId, ActiveSpyMission]
+    ongoingEffects*: seq[OngoingEffect]
+    pendingProposals*: seq[PendingProposal]
+    populationInTransit*: seq[PopulationInTransit]
+    
+    # Commissioning queues
+    pendingCommissions*: seq[CompletedProject]
+    gracePeriodTimers*: Table[HouseId, GracePeriodTracker]
+    
+    # Game progression
+    actProgression*: ActProgressionState
+    
+    # Reports (transient, cleared each turn)
+    lastTurnReports*: Table[HouseId, TurnResolutionReport]
+    scoutLossEvents*: seq[ScoutLossEvent]
+
+    # Population Transfers
+    populationTransfers*: PopulationTransfers
