@@ -15,11 +15,11 @@ import ./systems/economy/capacity/total_squadrons  # For total squadron capacity
 import ./types/economy as econ_types  # For FacilityType in cost calculation
 
 # Re-export order types
-export order_types.FleetOrderType, order_types.FleetOrder
+export order_types.FleetCommandType, order_types.FleetCommand
 
 type
-  TerraformOrder* = object
-    ## Order to terraform a planet to next class
+  TerraformCommand* = object
+    ## Terraform a planet to the next class
     ## Per economy.md Section 4.7
     colonySystem*: SystemId
     startTurn*: int           # Turn when terraforming started
@@ -27,25 +27,25 @@ type
     ppCost*: int              # Total PP cost for upgrade
     targetClass*: int         # Target planet class (current + 1)
 
-  OrderPacket* = object
+  CommandPacket* = object
     houseId*: HouseId
     turn*: int
     treasury*: int                                           # Treasury at order generation time (for budget validation)
-    fleetOrders*: seq[FleetOrder]
-    buildOrders*: seq[BuildOrder]
+    fleetCommands*: seq[FleetCommand]
+    buildCommands*: seq[BuildCommand]
     researchAllocation*: res_types.ResearchAllocation  # PP allocation to ERP/SRP/TRP
     diplomaticActions*: seq[DiplomaticAction]
-    populationTransfers*: seq[PopulationTransferOrder]  # Space Guild transfers
-    terraformOrders*: seq[TerraformOrder]                # Terraforming projects
-    colonyManagement*: seq[ColonyManagementOrder]        # Colony-level management (tax rates, auto-repair, etc.)
-    standingOrders*: Table[FleetId, StandingOrder]       # Persistent fleet behaviors (AutoColonize, DefendSystem, etc.)
+    populationTransfers*: seq[PopulationTransferCommand]  # Space Guild transfers
+    terraformCommands*: seq[TerraformCommand]                # Terraforming projects
+    colonyManagement*: seq[ColonyManagementCommand]        # Colony-level management (tax rates, auto-repair, etc.)
+    standingCommands*: Table[FleetId, StandingCommand]       # Persistent fleet behaviors (AutoColonize, DefendSystem, etc.)
 
     # Espionage budget allocation (diplomacy.md:8.2)
     espionageAction*: Option[esp_types.EspionageAttempt]  # Max 1 per turn
     ebpInvestment*: int      # EBP points to purchase (40 PP each)
     cipInvestment*: int      # CIP points to purchase (40 PP each)
 
-  BuildOrder* = object
+  BuildCommand* = object
     colonySystem*: SystemId
     buildType*: BuildType
     quantity*: int
@@ -69,7 +69,7 @@ type
     DeclareEnemy,              # Escalate to Enemy (open war, planetary attacks)
     SetNeutral                 # De-escalate to Neutral (peace)
 
-  PopulationTransferOrder* = object
+  PopulationTransferCommand* = object
     ## Space Guild population transfer between colonies
     ## Source: economy.md:3.7, config/population.toml
     sourceColony*: SystemId
@@ -80,14 +80,14 @@ type
     valid*: bool
     error*: string
 
-  OrderValidationContext* = object
+  CommandValidationContext* = object
     ## Budget tracking context for validating orders
     ## Prevents overspending by tracking running total of committed costs
     availableTreasury*: int      # Total treasury available at order submission
     committedSpending*: int      # Running total of validated order costs
-    rejectedOrders*: int         # Count of orders rejected due to budget
+    rejectedCommands*: int         # Count of orders rejected due to budget
 
-  OrderCostSummary* = object
+  CommandCostSummary* = object
     ## Summary of order costs for preview/validation
     buildCosts*: int
     researchCosts*: int
@@ -97,247 +97,7 @@ type
     errors*: seq[string]
     warnings*: seq[string]
 
-# Order validation
-
-proc validateFleetOrder*(order: FleetOrder, state: GameState, issuingHouse: HouseId): ValidationResult =
-  ## Validate a fleet order against current game state
-  ## Checks:
-  ## - Fleet exists
-  ## - Fleet ownership (prevents controlling enemy fleets)
-  ## - Fleet mission state (locked if OnSpyMission)
-  ## - Target validity (system exists, path exists)
-  ## - Required capabilities (transport, combat, scout)
-  ## Creates GameEvent when orders are rejected
-  result = ValidationResult(valid: true, error: "")
-
-  # Check fleet exists
-  let fleetOpt = state.getFleet(order.fleetId)
-  if fleetOpt.isNone:
-    logWarn(LogCategory.lcOrders,
-            &"{issuingHouse} Fleet Validation FAILED: {order.fleetId} does not exist")
-    return ValidationResult(valid: false, error: "Fleet does not exist")
-
-  let fleet = fleetOpt.get()
-
-  # CRITICAL: Validate fleet ownership (prevent controlling enemy fleets)
-  if fleet.owner != issuingHouse:
-    logWarn(LogCategory.lcOrders,
-            &"SECURITY VIOLATION: {issuingHouse} attempted to control {order.fleetId} " &
-            &"(owned by {fleet.owner})")
-    return ValidationResult(valid: false,
-                           error: &"Fleet {order.fleetId} is not owned by {issuingHouse}")
-
-  # Check if fleet is locked on active spy mission
-  # Scouts on active missions (OnSpyMission state) cannot accept new orders
-  # Scouts traveling to mission (Traveling state) can change orders (cancel mission)
-  if fleet.missionState == FleetMissionState.OnSpyMission:
-    logWarn(LogCategory.lcOrders,
-            &"{issuingHouse} Order REJECTED: {order.fleetId} is on active spy mission " &
-            &"(cannot issue new orders while mission active)")
-    return ValidationResult(valid: false,
-                           error: "Fleet locked on active spy mission (scouts consumed)")
-
-  logDebug(LogCategory.lcOrders,
-           &"{issuingHouse} Validating {order.orderType} order for {order.fleetId} " &
-           &"at {fleet.location}")
-
-  # Validate based on order type
-  case order.orderType
-  of FleetOrderType.Hold:
-    # Always valid
-    discard
-
-  of FleetOrderType.Move:
-    if order.targetSystem.isNone:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} Move order REJECTED: {order.fleetId} - no target system specified")
-      return ValidationResult(valid: false, error: "Move order requires target system")
-
-    let targetId = order.targetSystem.get()
-    if not state.starMap.systems.hasKey(targetId):
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} Move order REJECTED: {order.fleetId} → {targetId} " &
-              &"(target system does not exist)")
-      return ValidationResult(valid: false, error: "Target system does not exist")
-
-    # Check pathfinding - can fleet reach target?
-    let pathResult = state.starMap.findPath(fleet.location, targetId, fleet)
-    if not pathResult.found:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} Move order REJECTED: {order.fleetId} → {targetId} " &
-              &"(no valid path from {fleet.location})")
-      return ValidationResult(valid: false, error: "No valid path to target system")
-
-    logDebug(LogCategory.lcOrders,
-             &"{issuingHouse} Move order VALID: {order.fleetId} → {targetId} " &
-             &"({pathResult.path.len - 1} jumps via {fleet.location})")
-
-  of FleetOrderType.Colonize:
-    # Check fleet has operational ETAC (Expansion squadron)
-    logDebug(LogCategory.lcOrders,
-            &"{issuingHouse} Validating Colonize order for {order.fleetId} at " &
-            &"{fleet.location} ({fleet.squadrons.len} squadrons)")
-    var hasETAC = false
-    for squadron in fleet.squadrons:
-      if squadron.squadronType == SquadronType.Expansion:
-        logDebug(LogCategory.lcOrders,
-                &"  Squadron {squadron.id}: class={squadron.flagship.shipClass}, " &
-                &"crippled={squadron.flagship.isCrippled}, " &
-                &"cargo={squadron.flagship.cargo}")
-        if squadron.flagship.shipClass == ShipClass.ETAC:
-          if not squadron.flagship.isCrippled:
-            hasETAC = true
-            break
-
-    if not hasETAC:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} Colonize order REJECTED: {order.fleetId} - " &
-              &"no functional ETAC")
-      return ValidationResult(valid: false, error: "Colonize requires functional ETAC")
-
-    if order.targetSystem.isNone:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} Colonize order REJECTED: {order.fleetId} - no target system specified")
-      return ValidationResult(valid: false, error: "Colonize order requires target system")
-
-    # Check if system already colonized
-    let targetId = order.targetSystem.get()
-    if targetId in state.colonies:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} Colonize order REJECTED: {order.fleetId} → {targetId} " &
-              &"(already colonized by {state.colonies[targetId].owner})")
-      return ValidationResult(valid: false, error: "Target system is already colonized")
-
-    logDebug(LogCategory.lcOrders,
-             &"{issuingHouse} Colonize order VALID: {order.fleetId} → {targetId}")
-
-  of FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz:
-    # Check fleet has no Intel squadrons (Intel squadrons are intelligence-only, not combat units)
-    for squadron in fleet.squadrons:
-      if squadron.squadronType == SquadronType.Intel:
-        logWarn(LogCategory.lcOrders,
-                &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-                &"combat orders cannot include Intel squadrons (intelligence-only)")
-        return ValidationResult(valid: false, error: "Combat orders cannot include Intel squadrons")
-
-    # Check fleet has combat squadrons
-    var hasMilitary = false
-    for squadron in fleet.squadrons:
-      if squadron.flagship.stats.attackStrength > 0:
-        hasMilitary = true
-        break
-
-    if not hasMilitary:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-              &"no combat-capable squadrons")
-      return ValidationResult(valid: false, error: "Combat order requires combat-capable squadrons")
-
-    if order.targetSystem.isNone:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-              &"no target system specified")
-      return ValidationResult(valid: false, error: "Combat order requires target system")
-
-    logDebug(LogCategory.lcOrders,
-             &"{issuingHouse} {order.orderType} order VALID: {order.fleetId} → " &
-             &"{order.targetSystem.get()}")
-
-  of FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase:
-    # Spy missions require pure Intel fleets (no combat, auxiliary, or expansion squadrons)
-    # Multiple Intel squadrons can merge for mesh network ELI bonuses
-    if fleet.squadrons.len == 0:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-              &"requires at least one Intel squadron")
-      return ValidationResult(valid: false, error: "Spy missions require at least one Intel squadron")
-
-    # Check fleet is pure Intel (all squadrons must be Intel type)
-    var hasIntel = false
-    var hasNonIntel = false
-
-    for squadron in fleet.squadrons:
-      if squadron.squadronType == SquadronType.Intel:
-        hasIntel = true
-      else:
-        hasNonIntel = true
-        logWarn(LogCategory.lcOrders,
-                &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-                &"spy missions require pure Intel fleet (found {squadron.squadronType} squadron)")
-
-    if not hasIntel:
-      return ValidationResult(valid: false, error: "Spy missions require at least one Intel squadron")
-
-    if hasNonIntel:
-      return ValidationResult(valid: false, error: "Spy missions require pure Intel fleet (no combat/auxiliary/expansion)")
-
-    if order.targetSystem.isNone:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} {order.orderType} order REJECTED: {order.fleetId} - " &
-              &"no target system specified")
-      return ValidationResult(valid: false, error: "Spy mission requires target system")
-
-    logDebug(LogCategory.lcOrders,
-             &"{issuingHouse} {order.orderType} order VALID: {order.fleetId} → " &
-             &"{order.targetSystem.get()}")
-
-  of FleetOrderType.JoinFleet:
-    if order.targetFleet.isNone:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} JoinFleet order REJECTED: {order.fleetId} - " &
-              &"no target fleet specified")
-      return ValidationResult(valid: false, error: "Join order requires target fleet")
-
-    let targetFleetId = order.targetFleet.get()
-    let targetFleetOpt = state.getFleet(targetFleetId)
-    if targetFleetOpt.isNone:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} JoinFleet order REJECTED: {order.fleetId} → {targetFleetId} " &
-              &"(target fleet does not exist)")
-      return ValidationResult(valid: false, error: "Target fleet does not exist")
-
-    # Check fleets are in same location
-    let targetFleet = targetFleetOpt.get()
-    if fleet.location != targetFleet.location:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} JoinFleet order REJECTED: {order.fleetId} → {targetFleetId} " &
-              &"(fleets at different systems: {fleet.location} vs {targetFleet.location})")
-      return ValidationResult(valid: false, error: "Fleets must be in same system to join")
-
-    # Check scout/combat fleet mixing
-    let mergeCheck = fleet.canMergeWith(targetFleet)
-    if not mergeCheck.canMerge:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} JoinFleet order REJECTED: {order.fleetId} → {targetFleetId} - " &
-              &"{mergeCheck.reason}")
-      return ValidationResult(valid: false, error: mergeCheck.reason)
-
-    logDebug(LogCategory.lcOrders,
-             &"{issuingHouse} JoinFleet order VALID: {order.fleetId} → {targetFleetId} " &
-             &"at {fleet.location}")
-
-  of FleetOrderType.Rendezvous:
-    if order.targetSystem.isNone:
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} Rendezvous order REJECTED: {order.fleetId} - " &
-              &"no target system specified")
-      return ValidationResult(valid: false, error: "Rendezvous order requires target system")
-
-    let targetId = order.targetSystem.get()
-    if not state.starMap.systems.hasKey(targetId):
-      logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} Rendezvous order REJECTED: {order.fleetId} → {targetId} " &
-              &"(target system does not exist)")
-      return ValidationResult(valid: false, error: "Target system does not exist")
-
-    logDebug(LogCategory.lcOrders,
-             &"{issuingHouse} Rendezvous order VALID: {order.fleetId} → {targetId}")
-
-  else:
-    # Other order types - basic validation only for now
-    discard
-
-proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResult =
+proc validateCommandPacket*(packet: CommandPacket, state: GameState): ValidationResult =
   ## Validate entire order packet for a house
   ## Performs comprehensive validation including:
   ## - Fleet ownership (prevents controlling enemy fleets)
@@ -348,46 +108,46 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
 
   # Check house exists
   if packet.houseId notin state.houses:
-    logWarn(LogCategory.lcOrders,
-            &"Order packet REJECTED: {packet.houseId} does not exist")
+    logWarn(LogCategory.lcCommands,
+            &"Command packet REJECTED: {packet.houseId} does not exist")
     return ValidationResult(valid: false, error: "House does not exist")
 
   # Check turn number matches
   if packet.turn != state.turn:
-    logWarn(LogCategory.lcOrders,
-            &"{packet.houseId} Order packet REJECTED: wrong turn " &
+    logWarn(LogCategory.lcCommands,
+            &"{packet.houseId} Command packet REJECTED: wrong turn " &
             &"(packet={packet.turn}, current={state.turn})")
-    return ValidationResult(valid: false, error: "Order packet for wrong turn")
+    return ValidationResult(valid: false, error: "Command packet for wrong turn")
 
-  logInfo(LogCategory.lcOrders,
-          &"{packet.houseId} Validating order packet: {packet.fleetOrders.len} fleet orders, " &
-          &"{packet.buildOrders.len} build orders")
+  logInfo(LogCategory.lcCommands,
+          &"{packet.houseId} Validating order packet: {packet.fleetCommands.len} fleet orders, " &
+          &"{packet.buildCommands.len} build orders")
 
   # Validate each fleet order with ownership check
-  var validFleetOrders = 0
-  for order in packet.fleetOrders:
-    let orderResult = validateFleetOrder(order, state, packet.houseId)
+  var validFleetCommands = 0
+  for order in packet.fleetCommands:
+    let orderResult = validateFleetCommand(order, state, packet.houseId)
     if not orderResult.valid:
       return orderResult
-    validFleetOrders += 1
+    validFleetCommands += 1
 
-  if packet.fleetOrders.len > 0:
-    logInfo(LogCategory.lcOrders,
-            &"{packet.houseId} Fleet orders: {validFleetOrders}/{packet.fleetOrders.len} valid")
+  if packet.fleetCommands.len > 0:
+    logInfo(LogCategory.lcCommands,
+            &"{packet.houseId} Fleet orders: {validFleetCommands}/{packet.fleetCommands.len} valid")
 
   # Validate build orders (check colony ownership, production capacity)
-  var validBuildOrders = 0
-  for order in packet.buildOrders:
+  var validBuildCommands = 0
+  for order in packet.buildCommands:
     # Check colony exists and is owned by house
     if order.colonySystem notin state.colonies:
-      logWarn(LogCategory.lcOrders,
+      logWarn(LogCategory.lcCommands,
               &"{packet.houseId} Build order REJECTED: colony at {order.colonySystem} " &
               &"does not exist")
       return ValidationResult(valid: false, error: "Build order: Colony does not exist at system " & $order.colonySystem)
 
     let colony = state.colonies[order.colonySystem]
     if colony.owner != packet.houseId:
-      logWarn(LogCategory.lcOrders,
+      logWarn(LogCategory.lcCommands,
               &"SECURITY VIOLATION: {packet.houseId} attempted to build at {order.colonySystem} " &
               &"(owned by {colony.owner})")
       return ValidationResult(valid: false, error: "Build order: House does not own colony at system " & $order.colonySystem)
@@ -403,7 +163,7 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
         let house_cst = house.techTree.levels.constructionTech
 
         if house_cst < required_cst:
-          logWarn(LogCategory.lcOrders,
+          logWarn(LogCategory.lcCommands,
                   &"{packet.houseId} Build order REJECTED: {shipClass} requires CST{required_cst}, " &
                   &"house has CST{house_cst}")
           return ValidationResult(valid: false,
@@ -420,7 +180,7 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
         let house_cst = house.techTree.levels.constructionTech
 
         if house_cst < required_cst:
-          logWarn(LogCategory.lcOrders,
+          logWarn(LogCategory.lcCommands,
                   &"{packet.houseId} Build order REJECTED: {buildingType} requires CST{required_cst}, " &
                   &"house has CST{house_cst}")
           return ValidationResult(valid: false,
@@ -429,23 +189,23 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
       # Check shipyard prerequisite (e.g., Starbase requires shipyard)
       if requiresShipyard(buildingType):
         if not hasOperationalShipyard(colony):
-          logWarn(LogCategory.lcOrders,
+          logWarn(LogCategory.lcCommands,
                   &"{packet.houseId} Build order REJECTED: {buildingType} requires operational shipyard at {order.colonySystem}")
           return ValidationResult(valid: false,
                                  error: &"Build order: {buildingType} requires operational shipyard")
 
     # NOTE: Multiple build orders per colony per turn are supported (queue system)
     # Dock capacity is validated during resolution (economy_resolution.nim:102-108)
-    # Orders beyond capacity remain queued for future turns
+    # Commands beyond capacity remain queued for future turns
     # This allows unlimited PP spending per turn (limited by treasury + dock capacity)
 
-    validBuildOrders += 1
-    logDebug(LogCategory.lcOrders,
+    validBuildCommands += 1
+    logDebug(LogCategory.lcCommands,
              &"{packet.houseId} Build order VALID: {order.buildType} at {order.colonySystem}")
 
-  if packet.buildOrders.len > 0:
-    logInfo(LogCategory.lcOrders,
-            &"{packet.houseId} Build orders: {validBuildOrders}/{packet.buildOrders.len} valid")
+  if packet.buildCommands.len > 0:
+    logInfo(LogCategory.lcCommands,
+            &"{packet.houseId} Build orders: {validBuildCommands}/{packet.buildCommands.len} valid")
 
   # Validate research allocation (check total points available)
   # Note: Actual PP availability check happens during resolution (after income phase)
@@ -493,90 +253,48 @@ proc validateOrderPacket*(packet: OrderPacket, state: GameState): ValidationResu
       discard
 
   # All validations passed
-  logInfo(LogCategory.lcOrders,
-          &"{packet.houseId} Order packet VALIDATED: All orders valid and authorized")
+  logInfo(LogCategory.lcCommands,
+          &"{packet.houseId} Command packet VALIDATED: All orders valid and authorized")
   result = ValidationResult(valid: true, error: "")
 
-# Order creation helpers
+# Command packet creation
 
-proc createMoveOrder*(fleetId: FleetId, targetSystem: SystemId, priority: int = 0): FleetOrder =
-  ## Create a movement order
-  result = FleetOrder(
-    fleetId: fleetId,
-    orderType: FleetOrderType.Move,
-    targetSystem: some(targetSystem),
-    targetFleet: none(FleetId),
-    priority: priority
-  )
-
-proc createColonizeOrder*(fleetId: FleetId, targetSystem: SystemId, priority: int = 0): FleetOrder =
-  ## Create a colonization order
-  result = FleetOrder(
-    fleetId: fleetId,
-    orderType: FleetOrderType.Colonize,
-    targetSystem: some(targetSystem),
-    targetFleet: none(FleetId),
-    priority: priority
-  )
-
-proc createAttackOrder*(fleetId: FleetId, targetSystem: SystemId, attackType: FleetOrderType, priority: int = 0): FleetOrder =
-  ## Create an attack order (bombard, invade, or blitz)
-  result = FleetOrder(
-    fleetId: fleetId,
-    orderType: attackType,
-    targetSystem: some(targetSystem),
-    targetFleet: none(FleetId),
-    priority: priority
-  )
-
-proc createHoldOrder*(fleetId: FleetId, priority: int = 0): FleetOrder =
-  ## Create a hold position order
-  result = FleetOrder(
-    fleetId: fleetId,
-    orderType: FleetOrderType.Hold,
-    targetSystem: none(SystemId),
-    targetFleet: none(FleetId),
-    priority: priority
-  )
-
-# Order packet creation
-
-proc newOrderPacket*(houseId: HouseId, turn: int, treasury: int = 0): OrderPacket =
+proc newCommandPacket*(houseId: HouseId, turn: int, treasury: int = 0): CommandPacket =
   ## Create empty order packet for a house
   ## treasury: Treasury at order generation time (defaults to 0 for test harnesses)
-  result = OrderPacket(
+  result = CommandPacket(
     houseId: houseId,
     turn: turn,
     treasury: treasury,
-    fleetOrders: @[],
-    buildOrders: @[],
+    fleetCommands: @[],
+    buildCommands: @[],
     researchAllocation: res_types.initResearchAllocation(),
     diplomaticActions: @[]
   )
 
-proc addFleetOrder*(packet: var OrderPacket, order: FleetOrder) =
+proc addFleetCommand*(packet: var CommandPacket, order: FleetCommand) =
   ## Add a fleet order to packet
-  packet.fleetOrders.add(order)
+  packet.fleetCommands.add(order)
 
-proc addBuildOrder*(packet: var OrderPacket, order: BuildOrder) =
+proc addBuildCommand*(packet: var CommandPacket, order: BuildCommand) =
   ## Add a build order to packet
-  packet.buildOrders.add(order)
+  packet.buildCommands.add(order)
 
 # Budget tracking and validation
 
-proc initOrderValidationContext*(treasury: int): OrderValidationContext =
+proc initCommandValidationContext*(treasury: int): CommandValidationContext =
   ## Create new validation context for order packet
-  result = OrderValidationContext(
+  result = CommandValidationContext(
     availableTreasury: treasury,
     committedSpending: 0,
-    rejectedOrders: 0
+    rejectedCommands: 0
   )
 
-proc getRemainingBudget*(ctx: OrderValidationContext): int =
+proc getRemainingBudget*(ctx: CommandValidationContext): int =
   ## Get remaining budget after committed spending
   result = ctx.availableTreasury - ctx.committedSpending
 
-proc calculateBuildOrderCost*(order: BuildOrder, state: GameState, assignedFacilityType: Option[econ_types.FacilityType] = none(econ_types.FacilityType)): int =
+proc calculateBuildCommandCost*(order: BuildCommand, state: GameState, assignedFacilityType: Option[econ_types.FacilityType] = none(econ_types.FacilityType)): int =
   ## Calculate the PP cost of a build order
   ## Returns 0 if cost cannot be determined
   ##
@@ -638,9 +356,9 @@ proc calculateBuildOrderCost*(order: BuildOrder, state: GameState, assignedFacil
       let colony = state.colonies[order.colonySystem]
       result = projects.getIndustrialUnitCost(colony) * order.industrialUnits
 
-proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
+proc validateBuildCommandWithBudget*(order: BuildCommand, state: GameState,
                                    houseId: HouseId,
-                                   ctx: var OrderValidationContext): ValidationResult =
+                                   ctx: var CommandValidationContext): ValidationResult =
   ## Validate build order including budget check and tech requirements
   ## Updates context with committed spending if valid
 
@@ -662,7 +380,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
       let house_cst = house.techTree.levels.constructionTech
 
       if house_cst < required_cst:
-        ctx.rejectedOrders += 1
+        ctx.rejectedCommands += 1
         logWarn(LogCategory.lcEconomy,
                 &"{houseId} Build order REJECTED: {shipClass} requires CST{required_cst}, " &
                 &"house has CST{house_cst}")
@@ -680,7 +398,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
       let house_cst = house.techTree.levels.constructionTech
 
       if house_cst < required_cst:
-        ctx.rejectedOrders += 1
+        ctx.rejectedCommands += 1
         logWarn(LogCategory.lcEconomy,
                 &"{houseId} Build order REJECTED: {buildingType} requires CST{required_cst}, " &
                 &"house has CST{house_cst}")
@@ -690,7 +408,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
     # Check shipyard prerequisite (e.g., Starbase requires shipyard)
     if requiresShipyard(buildingType):
       if not hasOperationalShipyard(colony):
-        ctx.rejectedOrders += 1
+        ctx.rejectedCommands += 1
         logWarn(LogCategory.lcEconomy,
                 &"{houseId} Build order REJECTED: {buildingType} requires operational shipyard at {order.colonySystem}")
         return ValidationResult(valid: false,
@@ -705,7 +423,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
       if houseId in state.houses:
         let house = state.houses[houseId]
         if canCommissionFighter(state, colony) == false:
-          ctx.rejectedOrders += 1
+          ctx.rejectedCommands += 1
           return ValidationResult(valid: false,
             error: &"Fighter capacity limit exceeded by {house.name}")
 
@@ -718,7 +436,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
           let violation = capital_squadrons.analyzeCapacity(state, houseId)
           let underConstruction = capital_squadrons.countCapitalSquadronsUnderConstruction(state, houseId)
 
-          ctx.rejectedOrders += 1
+          ctx.rejectedCommands += 1
           logWarn(LogCategory.lcEconomy,
                   &"{houseId} Build order REJECTED: Capital squadron limit exceeded " &
                   &"(current={violation.current}, queued={underConstruction}, max={violation.maximum})")
@@ -731,7 +449,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
         let violation = total_squadrons.analyzeCapacity(state, houseId)
         let underConstruction = total_squadrons.countTotalSquadronsUnderConstruction(state, houseId)
 
-        ctx.rejectedOrders += 1
+        ctx.rejectedCommands += 1
         logWarn(LogCategory.lcEconomy,
                 &"{houseId} Build order REJECTED: Total squadron limit exceeded " &
                 &"(commissioned={violation.current}, queued={underConstruction}, " &
@@ -758,7 +476,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
           ).len
 
       if currentPBs + pbsUnderConstruction + 1 > maxPBs:
-        ctx.rejectedOrders += 1
+        ctx.rejectedCommands += 1
         logWarn(LogCategory.lcEconomy,
                 &"{houseId} Build order REJECTED: Planet-breaker limit exceeded " &
                 &"(current={currentPBs}, queued={pbsUnderConstruction}, max={maxPBs} [1 per colony])")
@@ -766,7 +484,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
                                error: &"Planet-breaker limit exceeded ({currentPBs}+{pbsUnderConstruction}/{maxPBs}, limited to 1 per colony)")
 
   # Calculate cost
-  let cost = calculateBuildOrderCost(order, state)
+  let cost = calculateBuildCommandCost(order, state)
   if cost <= 0:
     return ValidationResult(valid: false,
                            error: &"Build order: Invalid cost calculation ({cost} PP)")
@@ -774,7 +492,7 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
   # Check budget
   let remaining = ctx.getRemainingBudget()
   if cost > remaining:
-    ctx.rejectedOrders += 1
+    ctx.rejectedCommands += 1
     logInfo(LogCategory.lcEconomy,
             &"Build order rejected: need {cost} PP, have {remaining} PP remaining " &
             &"(treasury={ctx.availableTreasury}, committed={ctx.committedSpending})")
@@ -788,10 +506,10 @@ proc validateBuildOrderWithBudget*(order: BuildOrder, state: GameState,
 
   return ValidationResult(valid: true, error: "")
 
-proc previewOrderPacketCost*(packet: OrderPacket, state: GameState): OrderCostSummary =
+proc previewCommandPacketCost*(packet: CommandPacket, state: GameState): CommandCostSummary =
   ## Calculate total costs for an order packet without committing
   ## Useful for UI preview before submission
-  result = OrderCostSummary(
+  result = CommandCostSummary(
     buildCosts: 0,
     researchCosts: 0,
     espionageCosts: 0,
@@ -802,8 +520,8 @@ proc previewOrderPacketCost*(packet: OrderPacket, state: GameState): OrderCostSu
   )
 
   # Calculate build costs
-  for order in packet.buildOrders:
-    let cost = calculateBuildOrderCost(order, state)
+  for order in packet.buildCommands:
+    let cost = calculateBuildCommandCost(order, state)
     if cost > 0:
       result.buildCosts += cost
     else:
@@ -836,6 +554,6 @@ proc previewOrderPacketCost*(packet: OrderPacket, state: GameState): OrderCostSu
     result.errors.add(&"House {packet.houseId} not found")
 
   logInfo(LogCategory.lcEconomy,
-          &"{packet.houseId} Order Cost Preview: Build={result.buildCosts}PP, " &
+          &"{packet.houseId} Command Cost Preview: Build={result.buildCosts}PP, " &
           &"Research={result.researchCosts}PP, Espionage={result.espionageCosts}PP, " &
           &"Total={result.totalCost}PP, CanAfford={result.canAfford}")

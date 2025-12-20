@@ -8,7 +8,8 @@
 ## Network transport (Nostr) wraps around this core without modifying it.
 
 import ../../engine/map/types
-import engine/[ship, squadron, fleet, starmap, gamestate, orders, resolve]
+import engine/[ship, squadron, fleet, starmap, orders, resolve]
+import engine/types/core as gamestate
 import engine/resolution/event_factory/init as event_factory
 
 # Re-export all public types and procedures
