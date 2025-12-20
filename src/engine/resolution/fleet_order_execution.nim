@@ -16,7 +16,7 @@ import ../types/diplomacy as dip_types
 import ../types/orders as order_types
 import ../types/resolution as res_types
 import ../systems/orders/executor
-import ./[fleet_orders, combat_resolution, simultaneous]
+import ./[fleet_orders, simultaneous]
 import ../systems/events/event_factory/init as event_factory
 
 type
@@ -376,7 +376,7 @@ proc performOrderMaintenance*(
           # If hostile forces present, trigger battle first
           if hasHostileForces:
             logInfo(LogCategory.lcCombat, &"Fleet {actualOrder.fleetId} engaging defenders before {actualOrder.orderType}")
-            resolveBattle(state, targetSystem, orders, combatReports, events, rng)
+            space.resolveBattle(state, targetSystem, orders, combatReports, events, rng)
 
             # Check if fleet survived combat
             if actualOrder.fleetId notin state.fleets:
@@ -386,11 +386,11 @@ proc performOrderMaintenance*(
           # Execute planetary assault
           case actualOrder.orderType
           of FleetOrderType.Bombard:
-            resolveBombardment(state, houseId, actualOrder, events)
+            planetary.resolveBombardment(state, houseId, actualOrder, events)
           of FleetOrderType.Invade:
-            resolveInvasion(state, houseId, actualOrder, events)
+            planetary.resolveInvasion(state, houseId, actualOrder, events)
           of FleetOrderType.Blitz:
-            resolveBlitz(state, houseId, actualOrder, events)
+            planetary.resolveBlitz(state, houseId, actualOrder, events)
           else:
             discard
     elif outcome == OrderOutcome.Failed:

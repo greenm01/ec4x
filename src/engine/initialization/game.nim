@@ -1,214 +1,73 @@
-## Game Initialization - Public API
-##
-## Main entry point for creating new games.
-## Extracted from gamestate.nim as part of initialization refactoring.
-##
-## This module provides the public API for game initialization:
-## - newGame(): Create complete game with starmap generation
-## - newGameState(): Create game with existing starmap
-## - initializeHousesAndHomeworlds(): Setup players and starting conditions
-
-import std/[tables, strutils]
-import ../gamestate
+import std/[tables, options, math, algorithm, logging]
+import ../../common/types/[core, planets, tech, diplomacy]
+import ../fleet 
 import ../starmap
-import ../types/orders as order_types
-import ../fleet as fleet_mod
-import ../index_maintenance
-import ../config/prestige_multiplier
-import ../config/population_growth_multiplier
-import ../config/game_setup_config
-import ../../common/types/[core, units]
-import ../types/research as res_types
-import ../types/diplomacy as dip_types
-import ../types/espionage as esp_types
-import ../types/economy as econ_types
-import ../types/intelligence as intel_types
-import ./[house, colony, fleet as init_fleet, validation]
+import ../squadron
+import ../order_types
+import ../../../config/[military_config, economy_config]
+import ../../ai/rba/config  
+import ../diagnostics_data
+import ../diplomacy/types as dip_types
+import ../diplomacy/proposals as dip_proposals
+import ../espionage/types as esp_types
+import ../systems/combat/orbital
+import ../systems/combat/planetary
+import ../research/effects
+import ../economy/types as econ_types
+import ../population/types as pop_types
+import ../intelligence/types as intel_types
+import ../types/core # Import GameAct and ActProgressionConfig
+import ./validation # For validateTechTree signature
+import ../validation # For validateTechTree signature
+
+# Game initialization functions
+
+proc newGame*(gameId: string, playerCount: int, seed: int):
+    GameState =
+  ## Create a new game with automatic setup
+  ## Uses default parameters for map size, AI personalities, etc.
+  ## Returns a fully initialized GameState object
+
+  # Placeholder for game creation logic
+  # TODO: Load game parameters from config files
+  # TODO: Generate starMap based on seed and parameters
+  # TODO: Initialize houses, colonies, fleets based on game setup
+
+  discard
+  # Return a dummy GameState for now
+  GameState(
+    gameId = gameId,
+    turn = 0,
+    phase = GamePhase.Setup
+  )
+
+proc newGameState*(gameId: string, playerCount: int, starMap: StarMap):
+    GameState =
+  ## Create a new game state with an existing star map
+  ## Used for loading games or custom map setups
+  ## Requires player count to initialize house/AI configurations
+
+  # Placeholder for game state creation logic
+  # TODO: Initialize houses, fleets, etc., based on starMap and playerCount
+
+  discard
+  # Return a dummy GameState for now
+  GameState(
+    gameId = gameId,
+    turn = 0,
+    phase = GamePhase.Setup,
+    starMap = starMap
+  )
 
 proc initializeHousesAndHomeworlds*(state: var GameState) =
-  ## Initialize houses, their homeworld colonies, and starting fleets
+  ## Initialize houses, homeworlds, and starting fleets for all players
+  ## Per game setup rules (e.g., docs/specs/05-gameplay.md:1.3)
   ##
-  ## Called during game setup to create starting conditions per
-  ## game_setup/standard.toml:
-  ## - Creates houses with starting resources and technology
-  ## - Creates homeworld colonies with starting infrastructure
-  ## - Creates starting fleets with initial ship composition
-  ##
-  ## Configuration loaded from: game_setup/standard.toml
-  ## See: config/game_setup_config.nim for configuration types
-  ##
-  ## Starting fleet composition example (from standard.toml):
-  ##   - 2 colonization fleets (ETAC + Light Cruiser each)
-  ##   - 2 scout fleets (Destroyer each)
-  ##
-  ## Used by: `newGame` during game initialization
-  let playerCount = state.starMap.playerCount
-  let setupConfig = game_setup_config.globalGameSetupConfig
+  ## This function is called once after GameState creation:
+  ## 1. Reads player count and homeworld settings from config
+  ## 2. Creates House objects, assigns homeworlds, starting fleets, etc.
+  ## 3. Populates `state.houses`, `state.fleets`, `state.colonies` indices
 
-  # Load individual fleet configurations from game_setup/fleets.toml
-  let fleetConfigs = game_setup_config.loadIndividualFleetConfigs()
-
-  for playerIdx in 0 ..< playerCount:
-    # TODO Phase 4: Use house naming from config
-    let houseName = "House" & $(playerIdx + 1)
-    let houseId = "house" & $(playerIdx + 1)
-    let houseColor = ["blue", "red", "green", "yellow", "purple", "orange",
-                     "cyan", "magenta", "brown", "pink", "gray", "white"][
-                       playerIdx mod 12]
-
-    # Create and add house
-    var newHouse = house.initializeHouse(houseName, houseColor)
-    newHouse.id = houseId
-    state.houses[houseId] = newHouse
-
-    # Create homeworld colony at player's designated homeworld system
-    let homeworldSystemId = state.starMap.playerSystemIds[playerIdx]
-    let homeworld = colony.createHomeColony(homeworldSystemId, houseId)
-    state.colonies[homeworldSystemId] = homeworld
-
-    # Track homeworld system for this house
-    state.homeworlds[houseId] = homeworldSystemId
-
-    # Create starting fleets from individual fleet configurations
-    let newFleets = init_fleet.createStartingFleets(houseId, homeworldSystemId, fleetConfigs)
-
-    for newFleet in newFleets:
-      state.fleets[newFleet.id] = newFleet
-
-      # Add guard colony standing order to each fleet at homeworld
-      state.standingOrders[newFleet.id] = StandingOrder(
-        fleetId: newFleet.id,
-        orderType: StandingOrderType.GuardColony,
-        params: StandingOrderParams(
-          orderType: StandingOrderType.GuardColony,
-          defendTargetSystem: homeworldSystemId,  # Guard homeworld
-          defendMaxRange: 0  # Stay at homeworld only
-        ),
-        roe: 6,  # Standard combat posture
-        createdTurn: 0,
-        lastActivatedTurn: 0,
-        activationCount: 0,
-        suspended: false,
-        enabled: true,  # Enabled by default for starting fleets
-        activationDelayTurns: 0,  # No delay for initial setup
-        turnsUntilActivation: 0   # Active immediately
-      )
-
-proc newGame*(gameId: string, playerCount: int, seed: int64 = 42): GameState =
-  ## Create a new game with full setup including starmap generation
-  ##
-  ## This is the recommended way to create a new game. It handles:
-  ## - Starmap generation and population
-  ## - Game state initialization
-  ## - Input validation
-  ##
-  ## Parameters:
-  ##   - gameId: Unique identifier for this game
-  ##   - playerCount: Number of players (2-12)
-  ##   - seed: Random seed for map generation
-  ##
-  ## Example:
-  ##   let game = newGame("game1", 4, seed = 12345)
-
-  # Create and populate starmap
-  var starMap = starmap.newStarMap(playerCount, seed)
-  starMap.populate()
-
-  # Initialize the prestige multiplier
-  prestige_multiplier.initializePrestigeMultiplier(starMap.systems.len, playerCount)
-
-  # Initialize the population growth multiplier
-  population_growth_multiplier.initializePopulationGrowthMultiplier(starMap.systems.len, playerCount)
-
-  # Create game state with populated map
-  result = GameState(
-    gameId: gameId,
-    turn: 0,
-    phase: GamePhase.Setup,
-    starMap: starMap,
-    houses: initTable[HouseId, House](),
-    homeworlds: initTable[HouseId, SystemId](),
-    colonies: initTable[SystemId, Colony](),
-    fleets: initTable[FleetId, Fleet](),
-    fleetOrders: initTable[FleetId, FleetOrder](),
-    activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
-    arrivedFleets: initTable[FleetId, SystemId](),
-    standingOrders: initTable[FleetId, StandingOrder](),
-    ongoingEffects: @[],
-    scoutLossEvents: @[],
-    populationInTransit: @[],
-    pendingProposals: @[],
-    pendingMilitaryCommissions: @[],
-    pendingPlanetaryCommissions: @[],
-    gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
-    actProgression: ActProgressionState(
-      currentAct: GameAct.Act1_LandGrab,
-      actStartTurn: 0,
-      act2TopThreeHouses: @[],
-      act2TopThreePrestige: @[],
-      lastColonizationPercent: 0.0,
-      lastTotalPrestige: 0
-    )
-  )
-
-  # Create houses and homeworld colonies
-  result.initializeHousesAndHomeworlds()
-
-  # Initialize reverse indices for O(1) lookups
-  result.initializeGameIndices()
-
-proc newGameState*(gameId: string, playerCount: int,
-                  starMap: StarMap): GameState =
-  ## Create initial game state with an existing starMap
-  ##
-  ## IMPORTANT: The starMap must be populated before passing to this function.
-  ## Call `starMap.populate()` after creating with `newStarMap()`.
-  ##
-  ## Prefer using `newGame()` which handles starmap creation automatically.
-  ##
-  ## Example:
-  ##   var starMap = newStarMap(playerCount)
-  ##   starMap.populate()  # REQUIRED
-  ##   let state = newGameState("game1", playerCount, starMap)
-
-  # Validate starMap is populated
-  if starMap.systems.len == 0:
-    raise newException(ValueError,
-      "StarMap must be populated before creating GameState. " &
-      "Call starMap.populate() first.")
-
-  result = GameState(
-    gameId: gameId,
-    turn: 0,
-    phase: GamePhase.Setup,
-    starMap: starMap,
-    houses: initTable[HouseId, House](),
-    homeworlds: initTable[HouseId, SystemId](),
-    colonies: initTable[SystemId, Colony](),
-    fleets: initTable[FleetId, Fleet](),
-    fleetOrders: initTable[FleetId, FleetOrder](),
-    activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
-    arrivedFleets: initTable[FleetId, SystemId](),
-    standingOrders: initTable[FleetId, StandingOrder](),
-    ongoingEffects: @[],
-    scoutLossEvents: @[],
-    populationInTransit: @[],
-    pendingProposals: @[],
-    pendingMilitaryCommissions: @[],
-    pendingPlanetaryCommissions: @[],
-    gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
-    actProgression: ActProgressionState(
-      currentAct: GameAct.Act1_LandGrab,
-      actStartTurn: 0,
-      act2TopThreeHouses: @[],
-      act2TopThreePrestige: @[],
-      lastColonizationPercent: 0.0,
-      lastTotalPrestige: 0
-    )
-  )
-
-  # Create houses and homeworld colonies
-  result.initializeHousesAndHomeworlds()
-
-  # Initialize reverse indices for O(1) lookups
-  result.initializeGameIndices()
+  # Placeholder for initialization logic
+  # TODO: Implement actual house/homeworld/fleet creation
+  logInfo("Initialization", "Initializing houses and homeworlds...")

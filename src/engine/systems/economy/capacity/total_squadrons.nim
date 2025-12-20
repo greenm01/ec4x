@@ -25,20 +25,22 @@
 
 import std/[tables, algorithm, options, strformat, strutils]
 import ./types
-import ../../gamestate
-import ../../squadron
+import ../gamestate # Keep for type hints if GameState is still relevant here
+import ../squadron
 import ../types as econ_types
 import ../../../common/types/core
 import ../../../common/types/units
-import ../../../common/logger
-import ../../config/military_config
-import ../../resolution/types as resolution_types  # For GameEvent
-import ../../resolution/event_factory/fleet_ops  # For squadronDisbanded
+import ../../common/logger
+import ../config/military_config
+import ../resolution/types as resolution_types  # For GameEvent
+import ../resolution/event_factory/fleet_ops  # For squadronDisbanded
+import ./capital_squadrons
+
+# Import necessary helpers from other modules
+import ../state_helpers # For getHouseColonies
+import ./industrial # For getTotalHouseIndustrialUnits
 
 export types.CapacityViolation, types.EnforcementAction, types.ViolationSeverity
-
-# Re-use map size helpers from capital_squadrons
-import ./capital_squadrons
 
 proc calculateMaxTotalSquadrons*(industrialUnits: int, mapRings: int = 3, numPlayers: int = 4): int =
   ## Pure calculation of maximum total squadron capacity
@@ -342,7 +344,7 @@ proc applyEnforcement*(state: var GameState, action: types.EnforcementAction,
             "house=", $houseId,
             " disbanded=", $action.affectedUnits.len)
 
-proc processCapacityEnforcement*(state: var GameState,
+proc processCapacityEnforcement*(state: GameState,
                                 events: var seq[resolution_types.GameEvent]): seq[types.EnforcementAction] =
   ## Main entry point - batch process all total squadron capacity violations
   ## Called during Income Phase (after IU loss from blockades/combat)
@@ -440,8 +442,7 @@ proc canBuildSquadron*(state: GameState, houseId: core.HouseId, shipClass: ShipC
 ## **Relationship to Capital Squadron Limits:**
 ## - Total limit is OUTER bound, capital limit is INNER bound
 ## - Example: 1000 IU → 20 capitals max, 40 total max
-## - Could have: 20 capitals + 20 escorts = 40 total
-## - Could NOT have: 25 capitals (violates capital limit)
+## - Could have: 25 capitals + 15 escorts = 40 total
 ## - Could NOT have: 10 capitals + 35 escorts = 45 total (violates total limit)
 ##
 ## **Strategic Implications:**

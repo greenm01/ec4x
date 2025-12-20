@@ -31,8 +31,9 @@ task buildPreCommit, "Build main binaries (for pre-commit hook)":
 task buildAll, "Build all binaries":
   echo "Building EC4X binaries..."
   mkDir "bin"
-  exec "nim c --hints:off --warnings:off -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
-  exec "nim c --hints:off --warnings:off -d:release --opt:speed -o:bin/ec4x src/cli/ec4x.nim"
+  #exec "nim c --hints:off --warnings:off -d:release --opt:speed -o:bin/run_simulation src/ai/analysis/run_simulation.nim"
+  #exec "nim c --hints:off --warnings:off -d:release --opt:speed -o:bin/ec4x src/cli/ec4x.nim"
+  exec "nim c --hints:off --warnings:off -d:release --opt:speed -o:bin/moderator src/main/moderator.nim"
   echo "Build completed successfully!"
 
 task buildDebug, "Build with debug information":

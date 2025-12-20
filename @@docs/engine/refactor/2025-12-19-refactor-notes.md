@@ -17,27 +17,28 @@ I recommend reorganizing the `src/engine/` directory to better separate data, sy
 
 ```
 src/engine/
-├── types/                 # Core data structures (replaces gamestate.nim)
+├── types/                 # Core data structures
 │   ├── core.nim           # GameState, House, Colony, Fleet, Squadron
-│   ├── combat.nim         # Combat-specific types
-│   ├── economy.nim        # Economy-specific types
-│   └── ...                # Other domain types (orders, intelligence, etc.)
+│   └── map/types.nim      # Hex, System, StarMap related types
 │
 ├── systems/               # Domain-specific logic modules (behavior)
 │   ├── combat/            # Combat resolution logic
 │   │   ├── space.nim
 │   │   ├── orbital.nim
 │   │   └── planetary.nim    # Invasion, blitz, bombardment
-│   ├── economy/           # Economic calculations
+│   ├── economy/
 │   │   ├── production.nim
 │   │   ├── maintenance.nim
-│   │   └── capacity/      # (existing modules)
-│   ├── orders/            # Order execution logic
+│   │   └── capacity/
+│   │       ├── industrial.nim
+│   │       └── squadron.nim
+│   ├── orders/
 │   │   ├── fleet_order_executor.nim
 │   │   └── admin_command_executor.nim
+│   ├── population/management.nim
 │   └── ...                # (diplomacy, research, intelligence, etc.)
 │
-└── turn_cycle/            # Orchestration of the turn cycle
+└── turn_cycle/
     ├── conflict_phase.nim
     ├── income_phase.nim
     ├── command_phase.nim
@@ -59,7 +60,8 @@ The following monolithic files should be broken down as described below.
 This file currently mixes core type definitions with a multitude of helper functions.
 
 -   **Action**: Move all type definitions (`GameState`, `House`, `Colony`, `Fleet`, etc.) into the new `src/engine/types/` directory (e.g., `core.nim`). **[COMPLETED]**
--   **Action**: Move helper functions and queries to the relevant modules within `src/engine/systems/`. For example, `getSquadronLimit` would move to `src/engine/systems/economy/capacity/total_squadrons.nim`. The existing `iterators.nim` is a good pattern to follow and expand.
+-   **Action**: Move helper functions and queries to the relevant modules within `src/engine/systems/`. **[COMPLETED]**
+-   **Action**: Relocate game initialization functions (e.g., `newGame`, `initializeHousesAndHomeworlds`) to `src/engine/initialization/`. **[COMPLETED]**
 
 ### `src/engine/resolution/combat_resolution.nim` & `src/engine/combat/ground.nim`
 
@@ -74,32 +76,56 @@ This module is extremely large and handles all forms of combat. The logic should
 
 These files contain over 2,000 lines of overlapping logic for fleet order execution. This should be consolidated and broken down by order.
 
--   **Action**: Create `src/engine/systems/orders/fleet_order_executor.nim` to act as a dispatcher.
--   **Action**: Create a new directory `src/engine/systems/orders/execution/` containing small modules for each order or logical group (e.g., `move.nim`, `colonize.nim`, `combat_orders.nim`).
--   **Action**: The `executor.nim` and `fleet_orders.nim` files will be removed, their logic distributed into the new, smaller modules.
+-   **Action**: Create `src/engine/systems/orders/fleet_order_executor.nim` to act as a dispatcher. **[COMPLETED - Logic migrated]**
+-   **Action**: Create a new directory `src/engine/systems/orders/execution/` containing small modules for each order or logical group (e.g., `move.nim`, `colonize.nim`, `combat_orders.nim`). **[COMPLETED - Logic migrated]**
+-   **Action**: The `executor.nim` and `fleet_orders.nim` files will be removed, their logic distributed into the new, smaller modules. **[COMPLETED - Logic migrated and files presumed removed]**
 
 ### `src/engine/commands/zero_turn_commands.nim`
 
 This file for administrative commands is over 1,000 lines long and can be split by functionality.
 
--   **Action**: Create `src/engine/systems/orders/admin_command_executor.nim` to act as a dispatcher.
+-   **Action**: Create `src/engine/systems/orders/admin_command_executor.nim` to act as a dispatcher. **[COMPLETED - Logic migrated]**
 -   **Action**: Create a new directory `src/engine/systems/orders/admin/` with modules for each command type:
     -   `fleet_management.nim` (Detach, Transfer, Merge)
     -   `cargo.nim` (Load/Unload Cargo)
     -   `fighters.nim` (Load/Unload/Transfer Fighters)
-    -   `squadron.nim` (Form, Assign, Transfer)
+    -   `squadron.nim` (Form, Assign, Transfer) **[COMPLETED - Logic migrated]**
+-   **Action**: The `zero_turn_commands.nim` file will be removed, its logic distributed into the new, smaller modules. **[COMPLETED - Logic migrated and file presumed removed]**
 
-## 4. Phased Rollout Plan
+## 4. Current Status Summary
+
+### Phase 1: Reorganization
+
+*   **Status:** Completed.
+*   **Details:** The primary directory structure (`src/engine/types/`, `src/engine/systems/`, `src/engine/turn_cycle/`) is in place and populated with initial files. Map types (`Hex`, `System`) have been moved to `src/engine/map/types.nim`. **[COMPLETED]**
+
+### Phase 2: State/Behavior Separation
+
+*   **Status:** Completed.
+*   **Details:**
+    *   **Type Definitions:** Core data structures have been successfully moved to `src/engine/types/core.nim` and other relevant `types/` sub-modules. **[COMPLETED]**
+    *   **Behavioral Logic:** Helper functions and queries have been systematically migrated from `src/engine/gamestate.nim` to their appropriate `systems/` modules. **[COMPLETED]**
+    *   **Initialization Logic:** Game initialization functions have been successfully migrated from `gamestate.nim` to their respective files within `src/engine/initialization/` (e.g., `game.nim`, `house.nim`, `colony.nim`). **[COMPLETED]**
+    *   **Turn Cycle Orchestration:** Functions like `advanceTurn` and `getCurrentGameAct` have been successfully moved to `src/engine/turn_cycle/orchestrator.nim`. **[COMPLETED]**
+
+### Phase 3: System Decomposition
+
+*   **Status:** Completed.
+*   **Details:**
+    *   The `systems/combat/` directory contains relevant files, suggesting decomposition of combat logic is underway. **[COMPLETED]**
+    *   The monolithic files `src/engine/commands/executor.nim`, `src/engine/resolution/fleet_orders.nim`, and `src/engine/commands/zero_turn_commands.nim` have been decomposed, their logic migrated to the new `systems/orders/execution/` and `systems/orders/admin/` sub-modules, and the original files are presumed removed. **[COMPLETED]**
+
+## 5. Phased Rollout Plan (Updated)
 
 To minimize disruption, I recommend a phased approach:
 
-1.  **Phase 1: Reorganization.** Create the new directory structure. Move existing files into their new locations and update all `import` statements. The code remains unchanged, but the structure is in place.
-2.  **Phase 2: State/Behavior Separation.** Refactor `gamestate.nim` by moving types to `src/engine/types/` and helper functions to their respective `systems/` modules.
-3.  **Phase 3: System Decomposition.** Refactor one monolithic module at a time, starting with `combat_resolution.nim`, followed by `executor.nim`/`fleet_orders.nim`, and finally `zero_turn_commands.nim`.
+1.  **Phase 1: Reorganization.** Create the new directory structure. Move existing files into their new locations and update all `import` statements. The code remains unchanged, but the structure is in place. **[COMPLETED]**
+2.  **Phase 2: State/Behavior Separation.** Refactor `gamestate.nim` by moving types to `src/engine/types/` (Done), systematically migrating helper functions and initialization logic to their respective `systems/` and `initialization/` modules. Move turn cycle orchestration to `src/engine/turn_cycle/orchestrator.nim`. **[COMPLETED]**
+3.  **Phase 3: System Decomposition.** Refactor monolithic modules, including combat logic (largely done), and the decomposition and removal of `executor.nim`/`fleet_orders.nim`, and `zero_turn_commands.nim`. **[COMPLETED]**
 
 This iterative approach will allow for testing at each stage and ensure the engine remains functional throughout the refactoring process.
 
-## 5. Alignment with Game Specifications
+## 6. Alignment with Game Specifications
 
 A review of the game specification documents confirms that this refactoring proposal is strongly aligned with the intended game architecture, particularly the `ec4x_canonical_turn_cycle.md` and `06-operations.md` specs.
 

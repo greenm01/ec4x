@@ -13,7 +13,7 @@ import ../logger
 import ../squadron
 import ../../common/types/core
 import ../types/resolution as res_types
-import ./combat_resolution
+
 
 proc collectPlanetaryCombatIntents*(
   state: GameState,
@@ -172,11 +172,11 @@ proc resolvePlanetaryCombat*(
                 # Execute the planetary assault
                 case order.orderType
                 of FleetOrderType.Bombard:
-                  resolveBombardment(state, winnerHouse, order, events)
+                  planetary.resolveBombardment(state, winnerHouse, order, events)
                 of FleetOrderType.Invade:
-                  resolveInvasion(state, winnerHouse, order, events)
+                  planetary.resolveInvasion(state, winnerHouse, order, events)
                 of FleetOrderType.Blitz:
-                  resolveBlitz(state, winnerHouse, order, events)
+                  planetary.resolveBlitz(state, winnerHouse, order, events)
                 else:
                   discard
                 break  # Found and executed the order
