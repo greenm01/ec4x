@@ -35,12 +35,12 @@ type
     laneType*: LaneType
 
   JumpLanes* = object
-    data: seq[JumpLane]
+    data*: seq[JumpLane]
     # Fast adjacency lookup: SystemId -> List of neighboring SystemIds
-    neighbors: Table[SystemId, seq[SystemId]]
+    neighbors*: Table[SystemId, seq[SystemId]]
     # Fast lookup for lane properties between two points
     # (source, dest) -> LaneType
-    connectionInfo: Table[(SystemId, SystemId), LaneType]
+    connectionInfo*: Table[(SystemId, SystemId), LaneType]
   
   PathResult* = object
     path*: seq[SystemId]

@@ -3,7 +3,7 @@
 ## Filters game state to create player-specific views with limited visibility.
 
 import std/[tables, options]
-import ./[core, house, colony, fleet, starmap, diplomacy, progression]
+import ./[core, starmap, diplomacy, progression]
 
 type
   VisibilityLevel* {.pure.} = enum
