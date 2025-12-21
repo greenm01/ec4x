@@ -14,9 +14,9 @@ EC4X uses a four-phase turn structure that separates combat resolution, economic
 1. **Conflict Phase** - Resolve all combat and espionage (orders from Turn N-1)
 2. **Income Phase** - Calculate economics, enforce capacity limits, check victory. End of turn.
 3. **Command Phase** - Server commissioning, player submission, order validation. Start turn.
-4. **Maintenance Phase** - Server processing (movement, construction, diplomacy)
+4. **Production Phase** - Server processing (movement, construction, diplomacy)
 
-**Key Timing Principle:** Combat orders submitted Turn N execute Turn N+1 Conflict Phase. Movement orders submitted Turn N execute Turn N Maintenance Phase.
+**Key Timing Principle:** Combat orders submitted Turn N execute Turn N+1 Conflict Phase. Movement orders submitted Turn N execute Turn N Production Phase.
 
 ---
 
@@ -36,12 +36,12 @@ EC4X uses precise terminology for the three stages of order processing. **This a
 - Standing order configs validated (conditions, targets, parameters)
 - Phase: Command Phase Part C
 
-### Activate (Maintenance Phase Step 1a)
+### Activate (Production Phase Step 1a)
 - **Active orders:** Order becomes active, fleet starts moving toward target
 - **Standing orders:** System checks conditions and generates fleet orders
 - **Both:** Fleets begin traveling, orders written to state
 - Events: `StandingOrderActivated`, `StandingOrderSuspended`
-- Phase: Maintenance Phase Step 1a
+- Phase: Production Phase Step 1a
 
 ### Execute (Conflict/Income Phase)
 - **Both order types:** Fleet orders conduct their missions at target locations
@@ -50,14 +50,14 @@ EC4X uses precise terminology for the three stages of order processing. **This a
 - Phase: Depends on order type (Conflict for combat, Income for trade)
 
 **Key Insight:** Active and standing orders follow the SAME four-tier lifecycle:
-- Active order: Initiate (Command B) → Validate (Command C) → Activate (Maintenance 1a) → Execute (Conflict/Income)
-- Standing order: Initiate (Command B) → Validate (Command C) → Activate (Maintenance 1a) → Execute (Conflict/Income)
+- Active order: Initiate (Command B) → Validate (Command C) → Activate (Production 1a) → Execute (Conflict/Income)
+- Standing order: Initiate (Command B) → Validate (Command C) → Activate (Production 1a) → Execute (Conflict/Income)
 
 ---
 
 ## Phase 1: Conflict Phase
 
-**Purpose:** Resolve all combat and espionage operations submitted previous turn.
+**Purpose:** Resolve all combat, colonization, scout, and espionage operations submitted previous turn.
 
 **Timing:** Orders submitted Turn N-1 execute Turn N.
 
@@ -70,17 +70,17 @@ EC4X uses precise terminology for the three stages of order processing. **This a
 - Iterate all orders in `state.fleetOrders` table
 - Filter for Conflict Phase orders (skip orders executing in other phases):
   - **Include:** Bombard, Invade, Blitz, Colonize, SpyPlanet, SpySystem, HackStarbase, GuardPlanet
-  - **Exclude:** Move, Patrol, SeekHome (Maintenance Phase), Salvage (Income Phase)
+  - **Exclude:** Move, Patrol, SeekHome (Production Phase), Salvage (Income Phase)
 - Verify fleet exists and is alive
-- Check fleet arrival using `state.arrivedFleets` table (from Maintenance Step 1d)
+- Check fleet arrival using `state.arrivedFleets` table (from Production Step 1d)
 - Merge arrived orders into `effectiveOrders` by house
 - Result: All combat/espionage orders ready for execution this turn
 
 **Note:** Universal order lifecycle ensures consistency:
 - Command Phase Part C: Orders validated and stored in `state.fleetOrders`
-- Maintenance Phase Step 1a: Orders activated (standing orders generated)
-- Maintenance Phase Step 1c: Fleets move toward targets
-- Maintenance Phase Step 1d: Arrivals detected, `state.arrivedFleets` populated
+- Production Phase Step 1a: Orders activated (standing orders generated)
+- Production Phase Step 1c: Fleets move toward targets
+- Production Phase Step 1d: Arrivals detected, `state.arrivedFleets` populated
 - **Conflict Phase Step 0:** Orders merged for execution ← YOU ARE HERE
 - Conflict Phase Steps 1-6: Orders execute
 
@@ -337,19 +337,19 @@ On victory:
 - Remove completed orders from `state.fleetOrders`
 - Remove failed orders (fleet destroyed, target lost)
 - Remove aborted orders (conditions no longer valid)
-- **Critical:** Runs BEFORE Part A to allow standing orders to activate in Maintenance Phase
+- **Critical:** Runs BEFORE Part A to allow standing orders to activate in Production Phase
 - Result: Clean slate for new turn's orders
 
 ### Part A: Server Processing (BEFORE Player Window)
 
 **1. Starport & Shipyard Commissioning**
-- Commission ships completed in previous turn's Maintenance Phase
+- Commission ships completed in previous turn's Production Phase
 - **Ship units only:** Escort, Capital, Special Weapon, Spacelift (ETAC, TroopTransport) ships
 - Frees dock space at shipyards/spaceports
 - Auto-create squadrons, auto-assign to fleets
 - Auto-load PTU onto ETAC ships
 - Fighters are an exception, as they are commissioned planetside.
-- **Note:** Planetary defense (facilities, fighters, ground units) and facilities are already commissioned in Maintenance Phase
+- **Note:** Planetary defense (facilities, fighters, ground units) and facilities are already commissioned in Production Phase
 
 **2. Colony Automation**
 - Auto-load fighters to carriers (uses newly-freed hangar capacity)
@@ -378,7 +378,7 @@ Players can immediately interact with newly-commissioned ships and colonies.
 
 ### Part C: Order Validation & Storage (AFTER Player Window)
 
-**Universal Order Lifecycle:** Initiate (Part B) → Validate (Part C) → Activate (Maintenance Phase) → Execute (Conflict/Income Phase)
+**Universal Order Lifecycle:** Initiate (Part B) → Validate (Part C) → Activate (Production Phase) → Execute (Conflict/Income Phase)
 
 **Order Processing:**
 1. **Administrative orders** (zero-turn): Execute immediately
@@ -389,7 +389,7 @@ Players can immediately interact with newly-commissioned ships and colonies.
    - Simultaneous orders (Colonize, SpyPlanet, SpySystem, HackStarbase)
    - Income orders (Salvage)
 3. **Standing order configs**: Validated and stored in `state.standingOrders`
-   - Activate in Maintenance Phase Step 1a (only if no active order exists)
+   - Activate in Production Phase Step 1a (only if no active order exists)
 4. **Build orders**: Add to construction queues
 5. **Tech research allocation** (detailed processing):
    - Calculate total PP cost for research allocation (ERP + SRP + TRP)
@@ -408,12 +408,12 @@ Players can immediately interact with newly-commissioned ships and colonies.
      - `accumulated.science += earnedRP.science`
      - `accumulated.technology[field] += earnedRP.technology[field]`
    - Save earned RP to `house.lastTurnResearch*` for diagnostics
-   - **Note:** RP accumulation happens here in Command Phase, advancement happens in Maintenance Phase Step 7
+   - **Note:** RP accumulation happens here in Command Phase, advancement happens in Production Phase Step 7
 
 **Key Principles:**
 - All non-admin orders follow same path: stored → activated → executed
 - No separate queues or special handling (DRY design)
-- Maintenance Phase moves fleets toward targets (all order types)
+- Production Phase moves fleets toward targets (all order types)
 - Appropriate phase executes mission when fleet arrives
 
 ### Key Properties
@@ -425,7 +425,7 @@ Players can immediately interact with newly-commissioned ships and colonies.
 
 ---
 
-## Phase 4: Maintenance Phase
+## Phase 4: Production Phase
 
 **Purpose:** Server batch processing (movement, construction, diplomatic actions).
 
@@ -497,7 +497,7 @@ Completed projects split into two commissioning paths:
 - **Ground Forces:** Marines, Armies
 - **Fighters:** Built planetside, commission with planetary defense
 - **Strategic Rationale:** Defenders need immediate defenses against threats arriving next turn
-- **Timing:** Commission immediately in Maintenance Phase Step 2b
+- **Timing:** Commission immediately in Production Phase Step 2b
 - **Result:** Available for defense in NEXT turn's Conflict Phase ✓
 
 *Military Units (Commission Next Turn):*
@@ -571,7 +571,7 @@ Process tech advancements using accumulated RP from Command Phase. Per economy.m
 - Multiple fields can advance in same turn
 - CST affects ship build costs, WEP affects attack strength, etc.
 
-**Result:** Houses advance tech levels using accumulated RP. Research accumulation happens in Command Phase Part C, advancement happens here in Maintenance Phase.
+**Result:** Houses advance tech levels using accumulated RP. Research accumulation happens in Command Phase Part C, advancement happens here in Production Phase.
 
 ### Key Properties
 - Server processing time (no player interaction)
@@ -579,7 +579,7 @@ Process tech advancements using accumulated RP from Command Phase. Per economy.m
 - Construction and repair advance in parallel
 - Completed construction commissioned next turn in Command Phase Part A
 - Completed repairs immediately operational (no commissioning)
-- Turn boundary: After Maintenance, increment turn counter -> Conflict Phase
+- Turn boundary: After Production, increment turn counter -> Conflict Phase
 
 ---
 
@@ -590,9 +590,9 @@ Process tech advancements using accumulated RP from Command Phase. Per economy.m
 | Order | Order Name            | Execution Phase   | Notes                                        |
 |-------|-----------------------|-------------------|----------------------------------------------|
 | 00    | Hold                  | N/A               | Defensive posture, affects combat behavior   |
-| 01    | Move                  | Maintenance Phase | Fleet movement (Step 1)                      |
-| 02    | Seek Home             | Maintenance Phase | Variant of Move (return to home colony)      |
-| 03    | Patrol System         | Maintenance Phase | Variant of Move (patrol specific system)     |
+| 01    | Move                  | Production Phase | Fleet movement (Step 1)                      |
+| 02    | Seek Home             | Production Phase | Variant of Move (return to home colony)      |
+| 03    | Patrol System         | Production Phase | Variant of Move (patrol specific system)     |
 | 04    | Guard Starbase        | N/A               | Defensive posture, affects combat screening  |
 | 05    | Guard/Blockade Planet | Conflict Phase    | Blockade: Step 3, Guard: defensive posture   |
 | 06    | Bombard Planet        | Conflict Phase    | Planetary Combat (Step 4)                    |
@@ -602,13 +602,13 @@ Process tech advancements using accumulated RP from Command Phase. Per economy.m
 | 10    | Hack Starbase         | Conflict Phase    | Fleet-Based Espionage (Step 6a)              |
 | 11    | Spy on System         | Conflict Phase    | Fleet-Based Espionage (Step 6a)              |
 | 12    | Colonize Planet       | Conflict Phase    | Colonization (Step 5)                        |
-| 13    | Join Another Fleet    | Maintenance Phase | Fleet merging after movement                 |
-| 14    | Rendezvous at System  | Maintenance Phase | Movement + auto-merge on arrival             |
+| 13    | Join Another Fleet    | Production Phase | Fleet merging after movement                 |
+| 14    | Rendezvous at System  | Production Phase | Movement + auto-merge on arrival             |
 | 15    | Salvage               | Income Phase      | Resource recovery (Step 4)                   |
-| 16    | Place on Reserve      | Maintenance Phase | Fleet status change                          |
-| 17    | Mothball Fleet        | Maintenance Phase | Fleet status change                          |
-| 18    | Reactivate Fleet      | Maintenance Phase | Fleet status change                          |
-| 19    | View a World          | Maintenance Phase | Movement + reconnaissance                    |
+| 16    | Place on Reserve      | Production Phase | Fleet status change                          |
+| 17    | Mothball Fleet        | Production Phase | Fleet status change                          |
+| 18    | Reactivate Fleet      | Production Phase | Fleet status change                          |
+| 19    | View a World          | Production Phase | Movement + reconnaissance                    |
 
 ### Zero-Turn Administrative Commands (7 types)
 
@@ -631,16 +631,16 @@ Execute immediately during Command Phase Part B player window:
 | Standing Order | Behavior                             | Generated Order Execution            |
 |----------------|--------------------------------------|--------------------------------------|
 | None           | No standing order (default)          | N/A                                  |
-| PatrolRoute    | Follow patrol path indefinitely      | Move orders -> Maintenance Phase     |
+| PatrolRoute    | Follow patrol path indefinitely      | Move orders -> Production Phase     |
 | DefendSystem   | Guard system, engage per ROE         | Defensive posture (affects combat)   |
 | GuardColony    | Defend specific colony               | Defensive posture (affects combat)   |
 | AutoColonize   | ETACs auto-colonize nearest system   | Colonize orders -> Conflict Phase    |
-| AutoReinforce  | Join nearest damaged friendly fleet  | Move/Join orders -> Maintenance      |
-| AutoRepair     | Return to shipyard when crippled     | Move orders -> Maintenance Phase     |
-| AutoEvade      | Retreat if outnumbered per ROE       | Move orders -> Maintenance Phase     |
+| AutoReinforce  | Join nearest damaged friendly fleet  | Move/Join orders -> Production      |
+| AutoRepair     | Return to shipyard when crippled     | Move orders -> Production Phase     |
+| AutoEvade      | Retreat if outnumbered per ROE       | Move orders -> Production Phase     |
 | BlockadeTarget | Maintain blockade on enemy colony    | Blockade orders -> Conflict Phase    |
 
-**Generation Timing:** Standing orders are CONFIGURED in Command Phase Part C (validated, stored in `state.standingOrders`). They GENERATE actual fleet orders during Maintenance Phase Step 1a (only if fleet has no active order). Generated orders then follow universal lifecycle: activate (move) → execute (at arrival).
+**Generation Timing:** Standing orders are CONFIGURED in Command Phase Part C (validated, stored in `state.standingOrders`). They GENERATE actual fleet orders during Production Phase Step 1a (only if fleet has no active order). Generated orders then follow universal lifecycle: activate (move) → execute (at arrival).
 
 ---
 
@@ -650,11 +650,11 @@ Execute immediately during Command Phase Part B player window:
    - Bombard, Invade, Blitz, Spy, Hack, Colonize, Blockade orders
    - One full turn delay between submission and execution
 
-2. **Movement orders submitted Turn N execute Turn N Maintenance Phase**
+2. **Movement orders submitted Turn N execute Turn N Production Phase**
    - Move, SeekHome, Patrol, Join, Rendezvous orders
    - Execute same turn as submission (at midnight server processing)
 
-3. **Fleets move in Maintenance Phase, position for next Conflict Phase**
+3. **Fleets move in Production Phase, position for next Conflict Phase**
    - Fleet locations updated during Maintenance
    - Combat uses these new positions in next Conflict Phase
 
@@ -685,7 +685,7 @@ Execute immediately during Command Phase Part B player window:
    - Capacity calculated with reduced IU in Step 5
 
 10. **Split Commissioning System (2025-12-09)**
-    - **Planetary Defense:** Commission same turn in Maintenance Phase Step 2b
+    - **Planetary Defense:** Commission same turn in Production Phase Step 2b
       - Facilities, ground units, fighters available for next turn's defense
     - **Military Units:** Commission next turn in Command Phase Part A
       - Ships verified docks survived combat before commissioning
@@ -697,13 +697,13 @@ Execute immediately during Command Phase Part B player window:
 
 ### Scenario 1: Fleet Movement -> Combat Sequence
 1. Turn N Command: Submit Move order to enemy system
-2. Turn N Maintenance: Fleet moves to enemy system
+2. Turn N Production: Fleet moves to enemy system
 3. Turn N+1 Conflict: Fleet participates in space combat at new location
 4. **Validates:** Movement timing, combat positioning
 
 ### Scenario 2: Planetary Assault Sequence
 1. Turn N Command: Submit Bombard order against enemy colony
-2. Turn N Maintenance: Fleet remains in position
+2. Turn N Production: Fleet remains in position
 3. Turn N+1 Conflict: Bombard executes after space/orbital combat
 4. Turn N+1 Income: Production calculated with damaged infrastructure
 5. **Validates:** Combat order timing, economic impact propagation
@@ -725,11 +725,11 @@ Execute immediately during Command Phase Part B player window:
 7. **Validates:** Capacity enforcement timing, grace periods
 
 ### Scenario 5: Construction -> Commissioning Sequence
-1. Turn N-1 Maintenance: Construction completes, marked complete
+1. Turn N-1 Production: Construction completes, marked complete
 2. Turn N Command Part A: Completed project commissioned
 3. Turn N Command Part B: Player sees commissioned ship, can reorganize
 4. Turn N Command Part B: Player submits orders for new ship
-5. Turn N Maintenance: New ship movement orders execute
+5. Turn N Production: New ship movement orders execute
 6. **Validates:** Commissioning timing, no perception delay
 
 ---
@@ -740,7 +740,7 @@ Execute immediately during Command Phase Part B player window:
 - **Conflict Phase:** Pure combat resolution (no economic calculations)
 - **Income Phase:** Pure economic state (no combat, no movement)
 - **Command Phase:** Pure player interaction (no server processing in Part B)
-- **Maintenance Phase:** Pure server processing (no player interaction)
+- **Production Phase:** Pure server processing (no player interaction)
 
 ### Deterministic Execution
 - All phases execute in strict order
@@ -753,7 +753,7 @@ Execute immediately during Command Phase Part B player window:
 Conflict Phase -> Combat results
 Income Phase -> Economic state, treasury levels
 Command Phase -> Validated orders, build queues
-Maintenance Phase -> New positions, completed construction
+Production Phase -> New positions, completed construction
 -> Next Conflict Phase
 ```
 
@@ -940,9 +940,9 @@ Maintenance Phase -> New positions, completed construction
 ║  ║   • TransferShipBetweenSquadrons                      ║ ║
 ║  ║                                                       ║ ║
 ║  ║  Order Submission (Execute Later):                    ║ ║
-║  ║   • Fleet orders -> Conflict/Maintenance Phase        ║ ║
+║  ║   • Fleet orders -> Conflict/Production Phase        ║ ║
 ║  ║   • Build orders -> Construction queues               ║ ║
-║  ║   • Diplomatic actions -> Maintenance Phase           ║ ║
+║  ║   • Diplomatic actions -> Production Phase           ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
@@ -952,7 +952,7 @@ Maintenance Phase -> New positions, completed construction
 ║  ║   • Process build orders (add to queues)              ║ ║
 ║  ║   • Start tech research (allocate RP)                 ║ ║
 ║  ║   • Queue combat orders for Turn N+1 Conflict         ║ ║
-║  ║   • Store movement orders for Maintenance activation  ║ ║
+║  ║   • Store movement orders for Production activation  ║ ║
 ║  ║   • Note: Standing orders validated, not activated    ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                                                            ║
@@ -961,31 +961,31 @@ Maintenance Phase -> New positions, completed construction
 ╚════════════════════════════════════════════════════════════╝
 ```
 
-### Phase 4: Maintenance Phase
+### Phase 4: Production Phase
 
 ```
 ╔════════════════════════════════════════════════════════════╗
-║                  MAINTENANCE PHASE (Turn N)                ║
+║                  Production PHASE (Turn N)                 ║
 ║              Server Batch Processing (Midnight)            ║
 ╠════════════════════════════════════════════════════════════╣
 ║                                                            ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 1: Fleet Movement & Order Activation            ║ ║
+║  ║ Step 1: Fleet Movement & Order Activation             ║ ║
 ║  ║                                                       ║ ║
-║  ║  1a. Order Activation (active + standing)            ║ ║
-║  ║   • Active orders: validated → active (ready)        ║ ║
-║  ║   • Standing orders: check conditions → generate     ║ ║
-║  ║   • GameEvents: StandingOrderActivated               ║ ║
+║  ║  1a. Order Activation (active + standing)             ║ ║
+║  ║   • Active orders: validated -> active (ready)        ║ ║
+║  ║   • Standing orders: check conditions -> generate     ║ ║
+║  ║   • GameEvents: StandingOrderActivated                ║ ║
 ║  ║                                                       ║ ║
-║  ║  1b. Order Maintenance (lifecycle management)        ║ ║
-║  ║   • Check completions, validate conditions           ║ ║
-║  ║   • Process order state transitions                  ║ ║
+║  ║  1b. Order Maintenance (lifecycle management)         ║ ║
+║  ║   • Check completions, validate conditions            ║ ║
+║  ║   • Process order state transitions                   ║ ║
 ║  ║                                                       ║ ║
-║  ║  1c. Fleet Movement (fleets move to targets)         ║ ║
-║  ║   • Process Move, SeekHome, Patrol orders            ║ ║
-║  ║   • Validate paths (fog-of-war, jump lanes)          ║ ║
-║  ║   • Update fleet locations (1-2 jumps/turn)          ║ ║
-║  ║   • GameEvents: FleetMoved, FleetArrived             ║ ║
+║  ║  1c. Fleet Movement (fleets move to targets)          ║ ║
+║  ║   • Process Move, SeekHome, Patrol orders             ║ ║
+║  ║   • Validate paths (fog-of-war, jump lanes)           ║ ║
+║  ║   • Update fleet locations (1-2 jumps/turn)           ║ ║
+║  ║   • GameEvents: FleetMoved, FleetArrived              ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
@@ -1068,7 +1068,7 @@ Maintenance Phase -> New positions, completed construction
                         ║ Validated Orders
                         ↓
      ╔══════════════════════════════════════════════════╗
-     ║        PHASE 4: MAINTENANCE (Turn N)             ║
+     ║        PHASE 4: Production (Turn N)              ║
      ║    Server processing at midnight                 ║
      ║    • Movement -> Construction -> Diplomacy       ║
      ║    • Increment turn counter                      ║
