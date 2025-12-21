@@ -26,9 +26,7 @@ type
     missionStartTurn*: int32           # Turn mission began (for duration tracking)
 
   Fleets* = object
-    data: seq[Fleet]
-    index: Table[FleetId, int]
-    nextId: uint32
+    entities*: EntityManager[FleetId, Fleet]
     
   FleetCommandType* {.pure.} = enum
     Hold              # Hold position, do nothing

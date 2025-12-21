@@ -20,10 +20,8 @@ type
     isCrippled*: bool
 
   Starbases* = object
-    data: seq[Starbase]
-    index: Table[StarbaseId, int]
+    entities*: EntityManager[StarbaseId, Starbase]
     byColony: Table[ColonyId, seq[StarbaseId]]
-    nextId: uint32
 
   Spaceport* = object
     id*: SpaceportId
@@ -35,10 +33,8 @@ type
     activeConstructions*: seq[ConstructionProject]
 
   Spaceports* = object
-    data: seq[Spaceport]
-    index: Table[SpaceportId, int]
+    entities*: EntityManager[SpaceportId, Spaceport]
     byColony: Table[ColonyId, seq[SpaceportId]]
-    nextId: uint32
 
   Shipyard* = object
     id*: ShipyardId
@@ -51,10 +47,8 @@ type
     activeConstructions*: seq[ConstructionProject]
 
   Shipyards* = object
-    data: seq[Shipyard]
-    index: Table[ShipyardId, int]
+    entities*: EntityManager[ShipyardId, Shipyard]
     byColony: Table[ColonyId, seq[ShipyardId]]
-    nextId: uint32
 
   Drydock* = object
     id*: DrydockId
@@ -67,7 +61,5 @@ type
     activeRepairs*: seq[RepairProject]
 
   Drydocks* = object
-    data: seq[Drydock]
-    index: Table[DrydockId, int]
+    entities*: EntityManager[DrydockId, DryDock]
     byColony: Table[ColonyId, seq[DrydockId]]
-    nextId: uint32

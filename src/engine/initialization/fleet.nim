@@ -2,13 +2,9 @@
 ##
 ## Creates starting fleets with specified compositions.
 ## Extracted from gamestate.nim as part of initialization refactoring.
-
 import std/[options, tables, strutils]
-import ../fleet
-import ../squadron
-import ../types/orders as order_types
+import ../types/[fleet, squadron]
 import ../config/game_setup_config
-import ../../common/types/[core, units]
 
 proc createStartingFleets*(owner: HouseId, location: SystemId,
                           fleetConfigs: Table[int, game_setup_config.FleetConfig]): seq[Fleet] =

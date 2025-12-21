@@ -20,9 +20,7 @@ type
     resourceRating*: ResourceRating
   
   Systems* = object
-    data: seq[System]
-    index: Table[SystemId, int]
-    nextId: uint32
+    entities*: EntityManager[SystemId, System]
 
   LaneType* {.pure.} = enum
     ## Jump lane classifications
@@ -35,12 +33,14 @@ type
     source*: SystemId
     destination*: SystemId
     laneType*: LaneType
-  
+
   JumpLanes* = object
     data: seq[JumpLane]
-    # Lookup tables for pathfinding
-    adjacency: Table[SystemId, seq[SystemId]]
-    laneTypes: Table[(SystemId, SystemId), LaneType]
+    # Fast adjacency lookup: SystemId -> List of neighboring SystemIds
+    neighbors: Table[SystemId, seq[SystemId]]
+    # Fast lookup for lane properties between two points
+    # (source, dest) -> LaneType
+    connectionInfo: Table[(SystemId, SystemId), LaneType]
   
   PathResult* = object
     path*: seq[SystemId]

@@ -6,7 +6,7 @@
 import std/[os, strutils, options, tables]
 import toml_serialization
 import ../../common/logger
-import ../../common/types/planets
+import ../types/starmap
 
 type
   GameInfoConfig* = object

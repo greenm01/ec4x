@@ -20,7 +20,7 @@
 ## - Hash/equality procs enable use as Table/HashSet keys
 ## - Sequential allocation supports cache-friendly iteration
 
-import std/hashes
+import std/[hashes, tables]
 
 type
   # Player and House IDs
@@ -49,6 +49,11 @@ type
 
   # Population transfers (Guild Services)
   PopulationTransferId* = distinct uint32
+
+  # Reusable game entity manager for all game assets
+  EntityManager*[ID, T] = object
+    data*: seq[T]
+    index*: Table[ID, int] # Maps ID to the index in the 'data' sequence
 
 # Hash and equality procs for all ID types
 proc `==`*(a, b: PlayerId): bool {.borrow.}
@@ -94,3 +99,15 @@ proc hash*(id: RepairProjectId): Hash {.borrow.}
 
 proc `==`*(a, b: PopulationTransferId): bool {.borrow.}
 proc hash*(id: PopulationTransferId): Hash {.borrow.}
+
+proc `$`*(id: SystemId): string {.borrow.}
+proc `$`*(id: ColonyId): string {.borrow.}
+proc `$`*(id: FleetId): string {.borrow.}
+proc `$`*(id: HouseId): string {.borrow.}
+proc `$`*(id: PlayerId): string {.borrow.}
+proc `$`*(id: SquadronId): string {.borrow.}
+proc `$`*(id: ShipId): string {.borrow.}
+proc `$`*(id: GroundUnitId): string {.borrow.}
+proc `$`*(id: ConstructionProjectId): string {.borrow.}
+proc `$`*(id: RepairProjectId): string {.borrow.}
+proc `$`*(id: PopulationTransferId): string {.borrow.}

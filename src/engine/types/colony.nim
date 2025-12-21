@@ -1,5 +1,5 @@
 import std/[tables, options]
-import ./[core, starmap, production, capacity, ground_unit]
+import ./[core, starmap, production, capacity]
 
 type
   IndustrialUnits* = object
@@ -9,7 +9,7 @@ type
   Colony* = object
     id*: ColonyId
     systemId*: SystemId
-    houseId*: HouseId
+    owner*: HouseId
     population*: int32
     souls*: int32
     populationUnits*: int32
@@ -46,11 +46,9 @@ type
     blockadeTurns*: int32
 
   Colonies* = object
-    data: seq[Colony]
-    index: Table[ColonyId, int]
+    entities*: EntityManager[ColonyId, Colony]
     bySystem: Table[SystemId, ColonyId]
     byOwner: Table[HouseId, seq[ColonyId]]
-    nextId: uint32
 
   TerraformProject* = object
     startTurn*: int32

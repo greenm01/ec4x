@@ -34,7 +34,5 @@ type
     embarkedFighters*: seq[Squadron]  # Embarked fighter squadrons (Squadron.Fighter type)
 
   Squadrons* = object
-    data: seq[Squadron]
-    index: Table[SquadronId, int]
+    entities*: EntityManager[SquadronId, Squadron]
     byFleet: Table[FleetId, seq[SquadronId]]
-    nextId: uint32

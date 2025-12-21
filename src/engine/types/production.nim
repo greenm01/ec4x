@@ -1,4 +1,4 @@
-import std/[tables, options, hashes]
+import std/[tables, options]
 import ./[core, ship]
 
 type
@@ -38,11 +38,9 @@ type
     facilityType*: Option[FacilityType]
 
   ConstructionProjects* = object
-    data: seq[ConstructionProject]
-    index: Table[ConstructionProjectId, int]
+    entities*: EntityManager[ConstructionProjectId, ConstructionProject]  # Core storage
     byColony: Table[ColonyId, seq[ConstructionProjectId]]
     byFacility: Table[(FacilityType, uint32), seq[ConstructionProjectId]]
-    nextId: uint32
 
   RepairTargetType* {.pure.} = enum
     Ship, Starbase
@@ -65,11 +63,9 @@ type
     priority*: int32
 
   RepairProjects* = object
-    data: seq[RepairProject]
-    index: Table[RepairProjectId, int]
+    entities*: EntityManager[RepairProjectId, RepairProject]  # Core storage
     byColony: Table[ColonyId, seq[RepairProjectId]]
     byFacility: Table[(FacilityType, uint32), seq[RepairProjectId]]
-    nextId: uint32
 
   CompletedProject* = object
     colonyId*: ColonyId

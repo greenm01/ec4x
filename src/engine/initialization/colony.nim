@@ -1,22 +1,5 @@
-import std/[tables, options, math, algorithm, logging]
-import ../../common/types/[core, planets, tech, diplomacy]
-import ../fleet 
-import ../starmap
-import ../squadron
-import ../order_types
-import ../../../config/[military_config, economy_config]
-import ../../ai/rba/config  
-import ../diagnostics_data
-import ../diplomacy/types as dip_types
-import ../diplomacy/proposals as dip_proposals
-import ../espionage/types as esp_types
-import ../systems/combat/orbital
-import ../systems/combat/planetary
-import ../research/effects
-import ../economy/types as econ_types
-import ../population/types as pop_types
-import ../intelligence/types as intel_types
-import ../types/core # Import GameAct and ActProgressionConfig
+import ../../common/logger
+import ../types/[core, colony, starmap] 
 
 # Colony initialization functions
 

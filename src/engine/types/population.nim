@@ -19,11 +19,9 @@ type
     status*: TransferStatus
 
   PopulationTransfers* = object
-    data: seq[PopulationInTransit]
-    index: Table[PopulationTransferId, int]
+    entities*: EntityManager[PopulationTransferId, PopulationInTransit]  # Core storage
     byHouse: Table[HouseId, seq[PopulationTransferId]]
     inTransit: seq[PopulationTransferId]  # Quick filter for active transfers
-    nextId: uint32
 
   PopulationTransferConfig* = object
     # PTU definition

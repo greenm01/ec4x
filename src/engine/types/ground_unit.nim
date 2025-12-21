@@ -12,7 +12,7 @@ type
     Undamaged, Crippled, Destroyed
 
   GroundUnitType* {.pure.} = enum
-    Army, Marine, GroundBattery, Spacelift
+    Army, Marine, GroundBattery, PlanetaryShield
 
   GroundUnitStats* = object
     unitType*: GroundUnitType
@@ -31,9 +31,7 @@ type
     state*: CombatState  # Undamaged, Crippled, Destroyed
 
   GroundUnits* = object
-    data: seq[GroundUnit]
-    index: Table[GroundUnitId, int]
-    nextId: uint32
+    entities*: EntityManager[GroundUnitId, GroundUnit]  # Core storage
 
   PlanetaryDefense* = object
     shields*: Option[ShieldLevel]

@@ -14,6 +14,4 @@ type
     eliminatedTurn*: int32
 
   Houses* = object
-    data: seq[House]
-    index: Table[HouseId, int]
-    nextId: uint32
+    entities*: EntityManager[HouseId, House]  # Core storage

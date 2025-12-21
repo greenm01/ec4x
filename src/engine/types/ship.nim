@@ -2,7 +2,7 @@
 ##
 ## This module contains the type definitions for individual ships, including their
 ## stats, cargo, and operational capabilities.
-import std/[tables, options, hashes]
+import std/[tables, options]
 import ./core
 
 type
@@ -24,8 +24,6 @@ type
     capacity*: int32
 
   ShipStats* = object
-    name*: string
-    class*: string
     role*: ShipRole
     attackStrength*: int32
     defenseStrength*: int32
@@ -34,7 +32,6 @@ type
     techLevel*: int32
     buildCost*: int32
     upkeepCost*: int32
-    specialCapability*: string
     carryLimit*: int32
 
   Ship* = object
@@ -48,9 +45,7 @@ type
     cargo*: Option[ShipCargo]
 
   Ships* = object
-    data: seq[Ship]
-    index: Table[ShipId, int]
+    entities*: EntityManager[ShipId, Ship]  # Core storage
     bySquadron: Table[SquadronId, seq[ShipId]]
-    nextId: uint32
 
 # Note: ShipStats could be moved to a separate config/template file if the stats are loaded from config rather than computed per-ship.
