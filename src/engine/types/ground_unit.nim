@@ -3,7 +3,7 @@
 ## This module contains the type definitions for ground units, planetary defenses,
 ## and other related combat types for ground and orbital combat.
 
-import std/[options, tables]
+import std/options
 import ./core
 
 type

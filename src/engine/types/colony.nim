@@ -47,8 +47,8 @@ type
 
   Colonies* = object
     entities*: EntityManager[ColonyId, Colony]
-    bySystem: Table[SystemId, ColonyId]
-    byOwner: Table[HouseId, seq[ColonyId]]
+    bySystem*: Table[SystemId, ColonyId]
+    byOwner*: Table[HouseId, seq[ColonyId]]
 
   TerraformProject* = object
     startTurn*: int32

@@ -2,7 +2,7 @@
 ##
 ## This module contains the type definitions for fleets, which are collections
 ## of squadrons that can move together and engage in combat as a unit.
-import std/[options, sequtils, tables]
+import std/[options, tables]
 import ./core
 
 type

@@ -3,7 +3,7 @@
 ## This module contains the type definitions for squadrons, which are tactical
 ## groupings of ships under a flagship's command.
 
-import std/[sequtils, tables]
+import std/tables
 import ./[core, ship]
 
 export HouseId, FleetId, SystemId, SquadronId

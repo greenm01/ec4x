@@ -92,16 +92,3 @@ proc getIntel*(state: GameState, id: HouseId): Option[IntelligenceDatabase] =
   if state.intelligence.contains(id):
     return some(state.intelligence[id])
   return none(IntelligenceDatabase)
-
-iterator allShips*(state: GameState): Ship =
-  for ship in state.ships.entities.data:
-    yield ship
-
-iterator allHouses*(state: GameState): House =
-  for house in state.houses.entities.data:
-    yield house
-
-# Mutable iterator for when you need to update values (AS, DS, combat state)
-iterator mAllShips*(state: var GameState): var Ship =
-  for ship in mitems(state.ships.entities.data):
-    yield ship

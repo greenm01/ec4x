@@ -1,7 +1,7 @@
 ## Intelligence Report Types
 ##
 ## Defines intelligence data structures for spy scout missions
-import std/[tables, options, hashes]
+import std/[tables, options]
 import ./[core, tech]
 
 type

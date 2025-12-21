@@ -1,6 +1,6 @@
 ## Common types for resolution modules
 
-import std/[tables, options]
+import std/options
 import ./[core, espionage, tech, diplomacy, ship]
 
 type

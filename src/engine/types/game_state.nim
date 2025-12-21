@@ -1,8 +1,8 @@
-import std/[tables, options]
+import std/tables
 import ./[
   core, house, starmap, colony, fleet, squadron, ship, ground_unit,
   intelligence, diplomacy, facilities, production, espionage,
-  prestige, population, capacity, resolution, progression
+  population, resolution
 ]
 
 type

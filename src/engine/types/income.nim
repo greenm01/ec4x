@@ -1,4 +1,4 @@
-import std/[tables, hashes]
+import std/tables
 import ./[core, colony, prestige]
 
 type

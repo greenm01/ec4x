@@ -7,7 +7,7 @@
 ## - CIP (Counter-Intelligence Points): Cost 40 PP each
 ## - 7 espionage actions with varying costs and effects
 ## - Detection system with CIC levels
-import std/[tables, options]
+import std/options
 import ./[core, prestige]
 
 type
