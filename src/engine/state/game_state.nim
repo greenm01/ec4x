@@ -4,7 +4,7 @@
 #    ├── id_gen.nim      # Counter logic
 #    └── queries.nim     # Spatial/Complex Iterators (shipsInSystem, enemiesNear)
 
-import std/[macros, tables, options]
+import std/[tables, options]
 import ./entity_manager
 import ../types/[
   core, game_state, fleet, ship, squadron, ground_unit, house, colony, facilities,
