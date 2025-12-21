@@ -13,56 +13,56 @@ type
     ## Game metadata
     name*: string
     description*: string
-    recommended_players*: int
+    recommended_players*: int32
     estimated_duration*: string
 
   VictoryConditionsConfig* = object
     ## Victory conditions
     primary_condition*: string
     secondary_condition*: string
-    prestige_threshold*: int
-    turn_limit*: int  # NEW: Turn limit for turn_limit victory mode
+    prestige_threshold*: int32
+    turn_limit*: int32  # NEW: Turn limit for turn_limit victory mode
 
   MapConfig* = object
     ## Map generation settings
     size*: string
-    systems*: int
+    systems*: int32
     jump_lane_density*: string
     starting_distance*: string
 
   StartingResourcesConfig* = object
     ## Starting economic resources
-    treasury*: int
-    starting_prestige*: int
-    default_tax_rate*: float
+    treasury*: int32
+    starting_prestige*: int32
+    default_tax_rate*: float32
 
   StartingTechConfig* = object
     ## Initial technology levels per gameplay.md:1.2
-    economic_level*: int
-    science_level*: int
-    construction_tech*: int
-    weapons_tech*: int
-    terraforming_tech*: int
-    electronic_intelligence*: int
-    cloaking_tech*: int
-    shield_tech*: int
-    counter_intelligence*: int
-    fighter_doctrine*: int
-    advanced_carrier_ops*: int
+    economic_level*: int32
+    science_level*: int32
+    construction_tech*: int32
+    weapons_tech*: int32
+    terraforming_tech*: int32
+    electronic_intelligence*: int32
+    cloaking_tech*: int32
+    shield_tech*: int32
+    counter_intelligence*: int32
+    fighter_doctrine*: int32
+    advanced_carrier_ops*: int32
 
   StartingFleetConfig* = object
     ## Initial fleet composition
-    fleet_count*: int           # Number of individual fleets to create
+    fleet_count*: int32           # Number of individual fleets to create
     # Fallback aggregated counts (used if individual fleet sections not available)
-    etac*: int
-    light_cruiser*: int
-    destroyer*: int
-    scout*: int
+    etac*: int32
+    light_cruiser*: int32
+    destroyer*: int32
+    scout*: int32
 
   FleetConfig* = object
     ## Individual fleet configuration (new per-fleet format)
     ships*: seq[string]         # Ship class names (e.g., ["ETAC", "LightCruiser"])
-    cargo_ptu*: Option[int]     # Optional PTU cargo override for ETACs
+    cargo_ptu*: Option[int32]     # Optional PTU cargo override for ETACs
 
   HouseNamingConfig* = object
     ## House naming configuration
@@ -71,24 +71,24 @@ type
 
   StartingFacilitiesConfig* = object
     ## Homeworld starting facilities
-    spaceports*: int
-    shipyards*: int
-    starbases*: int
-    ground_batteries*: int
-    planetary_shields*: int
+    spaceports*: int32
+    shipyards*: int32
+    starbases*: int32
+    ground_batteries*: int32
+    planetary_shields*: int32
 
   StartingGroundForcesConfig* = object
     ## Homeworld starting ground forces
-    armies*: int
-    marines*: int
+    armies*: int32
+    marines*: int32
 
   HomeworldConfig* = object
     ## Homeworld characteristics
     planet_class*: string      # "Eden"
     raw_quality*: string        # "Abundant"
-    colony_level*: int          # Infrastructure level (5 = Level V)
-    population_units*: int      # Starting population in PU (840)
-    industrial_units*: int
+    colony_level*: int32          # Infrastructure level (5 = Level V)
+    population_units*: int32      # Starting population in PU (840)
+    industrial_units*: int32
 
   GameSetupConfig* = object
     ## Complete game setup configuration
@@ -198,7 +198,7 @@ proc parseFleetConfigSection*(configContent: string, fleetIdx: int): Option[Flee
             ships.add(cleaned)
 
   # Parse optional cargo_ptu
-  var cargoPtu: Option[int] = none(int)
+  var cargoPtu: Option[int32] = none(int32)
   let cargoPattern = "cargo_ptu"
   let cargoStart = sectionContent.find(cargoPattern)
   if cargoStart >= 0:
@@ -214,10 +214,10 @@ proc parseFleetConfigSection*(configContent: string, fleetIdx: int): Option[Flee
           break
       if numStr.len > 0:
         try:
-          cargoPtu = some(parseInt(numStr))
+          cargoPtu = some(parseInt(numStr).int32)
         except ValueError:
           discard
-
+          
   if ships.len > 0:
     return some(FleetConfig(ships: ships, cargoPtu: cargoPtu))
   else:

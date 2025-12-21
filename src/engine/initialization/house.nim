@@ -31,11 +31,11 @@ proc initHouse*(houseId: HouseId, name: string): House =
         fighterDoctrine: startingTech.fighter_doctrine,
         advancedCarrierOps: startingTech.advanced_carrier_ops
       ),
-      accumulated: ResearchPoints(economic: 0, science: 0, technology: initTable[TechField, int32]()),
+      accumulated: ResearchPoints(economic: 0'i32, science: 0'i32, technology: initTable[TechField, int32]()),
       breakthroughBonus: initTable[TechField, float32]()
     ),
     espionageBudget: EspionageBudget(houseId: houseId),
-    taxPolicy: TaxPolicy(currentRate: 50, history: @[50]),
+    taxPolicy: TaxPolicy(currentRate:50'i32, history: @[50'i32]),
     isEliminated: false,
-    eliminatedTurn: 0
+    eliminatedTurn: 0'i32
   )

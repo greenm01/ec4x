@@ -1,28 +1,13 @@
-import std/[tables, options, math, algorithm, logging]
-import ../../common/types/[core, planets, tech, diplomacy]
-import ../fleet 
-import ../starmap
-import ../squadron
-import ../order_types
-import ../../../config/[military_config, economy_config]
-import ../../ai/rba/config  
-import ../diagnostics_data
-import ../diplomacy/types as dip_types
-import ../diplomacy/proposals as dip_proposals
-import ../espionage/types as esp_types
-import ../systems/combat/orbital
-import ../systems/combat/planetary
-import ../research/effects
-import ../economy/types as econ_types
-import ../population/types as pop_types
-import ../intelligence/types as intel_types
-import ../types/core # Import GameAct and ActProgressionConfig
-import ./validation # For validateTechTree signature
-import ../validation # For validateTechTree signature
+import std/[tables]
+import ../../common/logger
+import ../types/[
+  core, game_state, squadron, intelligence,
+  diplomacy, espionage, resolution, starmap
+]
 
 # Game initialization functions
 
-proc newGame*(gameId: string, playerCount: int, seed: int): GameState =
+proc newGame*(gameId: int32, playerCount: int32, seed: int32): GameState =
   ## Create a new game with automatic setup
   ## Uses default parameters for map size, AI personalities, etc.
   ## Returns a fully initialized GameState object
@@ -36,10 +21,40 @@ proc newGame*(gameId: string, playerCount: int, seed: int): GameState =
   logInfo("Initialization", "Creating new game with ID ", gameId, ", players ",
           playerCount, ", seed ", seed)
 
-  # Placeholder for now, actual implementation will use the above steps
-  result = GameState(gameId: gameId, turn: 0, phase: GamePhase.Setup)
+  # Initialize the ref object
+  result = GameState(
+    gameId: gameId,
+    seed: seed,
+    turn: 1,
+    # Start IDs at 1 so 0 can be used as a "None/Null" value if needed
+    counters: IdCounters(
+      nextPlayerId: 1,
+      nextHouseId: 1,
+      nextSystemId: 1,
+      nextColonyId: 1,
+      nextStarbaseId: 1,
+      nextSpaceportId: 1,
+      nextShipyardId: 1,
+      nextDrydockId: 1,
+      nextFleetId: 1,
+      nextSquadronId: 1,
+      nextShipId: 1,
+      nextGroundUnitId: 1,
+      nextConstructionProjectId: 1,
+      nextRepairProjectId: 1,
+      nextPopulationTransferId: 1
+    ),
+    # Initialize Tables (Sequences initialize to @[] automatically)
+    intelligence: initTable[HouseId, IntelligenceDatabase](),
+    diplomaticRelation: initTable[(HouseId, HouseId), DiplomaticRelation](),
+    diplomaticViolation: initTable[HouseId, ViolationHistory](),
+    arrivedFleets: initTable[FleetId, SystemId](),
+    activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
+    gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
+    lastTurnReports: initTable[HouseId, TurnResolutionReport](),
+  )
 
-proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameState =
+proc newGameState*(gameId, seed, playerCount: int32, starMap: StarMap): GameState =
   ## Create a new game state with an existing star map
   ## Used for loading games or custom map setups
   ## Requires player count to initialize house/AI configurations
@@ -52,17 +67,39 @@ proc newGameState*(gameId: string, playerCount: int, starMap: StarMap): GameStat
   logInfo("Initialization", "Creating new game state for game ID ", gameId,
           " with ", playerCount, " players.")
 
+  let turn: int32 = 1
+  
   result = GameState(
     gameId: gameId,
-    turn: 0,
-    phase: GamePhase.Setup,
+    seed: seed,
+    turn: turn,
     starMap: starMap,
-    houses: initTable[HouseId, House](),
-    fleets: initTable[FleetId, Fleet](),
-    colonies: initTable[SystemId, Colony](),
-    fleetsByOwner: initTable[HouseId, seq[FleetId]](),
-    fleetsByLocation: initTable[SystemId, seq[FleetId]](),
-    coloniesByOwner: initTable[HouseId, seq[SystemId]](),
+    # Start IDs at 1 so 0 can be used as a "None/Null" value if needed
+    counters: IdCounters(
+      nextPlayerId: 1,
+      nextHouseId: 1,
+      nextSystemId: 1,
+      nextColonyId: 1,
+      nextStarbaseId: 1,
+      nextSpaceportId: 1,
+      nextShipyardId: 1,
+      nextDrydockId: 1,
+      nextFleetId: 1,
+      nextSquadronId: 1,
+      nextShipId: 1,
+      nextGroundUnitId: 1,
+      nextConstructionProjectId: 1,
+      nextRepairProjectId: 1,
+      nextPopulationTransferId: 1
+    ),
+    # Initialize Tables (Sequences initialize to @[] automatically)
+    intelligence: initTable[HouseId, IntelligenceDatabase](),
+    diplomaticRelation: initTable[(HouseId, HouseId), DiplomaticRelation](),
+    diplomaticViolation: initTable[HouseId, ViolationHistory](),
+    arrivedFleets: initTable[FleetId, SystemId](),
+    activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
+    gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
+    lastTurnReports: initTable[HouseId, TurnResolutionReport](),
     # ... other default initializations for a blank state
   )
 

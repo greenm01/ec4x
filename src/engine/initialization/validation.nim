@@ -5,9 +5,9 @@
 ##
 ## Part of the game initialization refactoring (Phase 2).
 
-import ../types/research as res_types
+import ../types/tech
 
-proc validateTechTree*(techTree: res_types.TechTree) =
+proc validateTechTree*(techTree: TechTree) =
   ## Validate that technology levels are within valid ranges
   ## Per economy.md:4.0: "ALL technology levels start at level 1, never 0"
   ##

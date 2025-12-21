@@ -10,141 +10,141 @@ import ../../common/logger
 type
   VictoryConfig* = object
     ## Victory config (prestige_victory removed - now in game_setup/*.toml)
-    starting_prestige*: int
-    defeat_threshold*: int
-    defeat_consecutive_turns*: int
+    starting_prestige*: int32
+    defeat_threshold*: int32
+    defeat_consecutive_turns*: int32
 
   DynamicScalingConfig* = object
     enabled*: bool
-    base_multiplier*: float
-    baseline_turns*: int
-    baseline_systems_per_player*: int
-    turn_scaling_factor*: float
-    min_multiplier*: float
-    max_multiplier*: float
+    base_multiplier*: float32
+    baseline_turns*: int32
+    baseline_systems_per_player*: int32
+    turn_scaling_factor*: float32
+    min_multiplier*: float32
+    max_multiplier*: float32
 
   MoraleConfig* = object
-    crisis_max*: int
-    low_max*: int
-    average_max*: int
-    good_max*: int
-    high_max*: int
+    crisis_max*: int32
+    low_max*: int32
+    average_max*: int32
+    good_max*: int32
+    high_max*: int32
 
   EconomicPrestigeConfig* = object
-    tech_advancement*: int
-    establish_colony*: int
-    max_population*: int
-    iu_milestone_50*: int
-    iu_milestone_75*: int
-    iu_milestone_100*: int
-    iu_milestone_150*: int
-    terraform_planet*: int
+    tech_advancement*: int32
+    establish_colony*: int32
+    max_population*: int32
+    iu_milestone_50*: int32
+    iu_milestone_75*: int32
+    iu_milestone_100*: int32
+    iu_milestone_150*: int32
+    terraform_planet*: int32
 
   MilitaryPrestigeConfig* = object
-    destroy_squadron*: int
-    destroy_starbase*: int
-    fleet_victory*: int
-    invade_planet*: int
-    eliminate_house*: int
-    system_capture*: int
-    lose_planet*: int
-    lose_starbase*: int
-    ambushed_by_cloak*: int
-    force_retreat*: int
-    forced_to_retreat*: int  # NEW: Penalty for being forced to retreat (counterpart to force_retreat)
-    scout_destroyed*: int
-    undefended_colony_penalty_multiplier*: float  # Phase F: Penalty multiplier for losing undefended colonies
+    destroy_squadron*: int32
+    destroy_starbase*: int32
+    fleet_victory*: int32
+    invade_planet*: int32
+    eliminate_house*: int32
+    system_capture*: int32
+    lose_planet*: int32
+    lose_starbase*: int32
+    ambushed_by_cloak*: int32
+    force_retreat*: int32
+    forced_to_retreat*: int32  # NEW: Penalty for being forced to retreat (counterpart to force_retreat)
+    scout_destroyed*: int32
+    undefended_colony_penalty_multiplier*: float32  # Phase F: Penalty multiplier for losing undefended colonies
 
   EspionagePrestigeConfig* = object
-    tech_theft*: int
-    low_impact_sabotage*: int
-    high_impact_sabotage*: int
-    assassination*: int
-    cyber_attack*: int
-    economic_manipulation*: int
-    psyops_campaign*: int
-    counter_intel_sweep*: int
-    intelligence_theft*: int
-    plant_disinformation*: int
-    failed_espionage*: int
+    tech_theft*: int32
+    low_impact_sabotage*: int32
+    high_impact_sabotage*: int32
+    assassination*: int32
+    cyber_attack*: int32
+    economic_manipulation*: int32
+    psyops_campaign*: int32
+    counter_intel_sweep*: int32
+    intelligence_theft*: int32
+    plant_disinformation*: int32
+    failed_espionage*: int32
 
   EspionageVictimPrestigeConfig* = object
-    tech_theft_victim*: int
-    low_impact_sabotage_victim*: int
-    high_impact_sabotage_victim*: int
-    assassination_victim*: int
-    cyber_attack_victim*: int
-    economic_manipulation_victim*: int
-    psyops_campaign_victim*: int
-    counter_intel_sweep_victim*: int
-    intelligence_theft_victim*: int
-    plant_disinformation_victim*: int
+    tech_theft_victim*: int32
+    low_impact_sabotage_victim*: int32
+    high_impact_sabotage_victim*: int32
+    assassination_victim*: int32
+    cyber_attack_victim*: int32
+    economic_manipulation_victim*: int32
+    psyops_campaign_victim*: int32
+    counter_intel_sweep_victim*: int32
+    intelligence_theft_victim*: int32
+    plant_disinformation_victim*: int32
 
   ScoutPrestigeConfig* = object
-    spy_on_planet*: int
-    hack_starbase*: int
-    spy_on_system*: int
+    spy_on_planet*: int32
+    hack_starbase*: int32
+    spy_on_system*: int32
 
   DiplomacyPrestigeConfig* = object
-    diplomatic_pact_formation*: int
-    pact_violation*: int
-    repeat_violation*: int
-    dishonored_bonus*: int
-    declare_war*: int
-    make_peace*: int
+    diplomatic_pact_formation*: int32
+    pact_violation*: int32
+    repeat_violation*: int32
+    dishonored_bonus*: int32
+    declare_war*: int32
+    make_peace*: int32
 
   VictoryAchievementConfig* = object
-    victory_achieved*: int
+    victory_achieved*: int32
 
   PenaltiesPrestigeConfig* = object
-    high_tax_threshold*: int
-    high_tax_penalty*: int
-    high_tax_frequency*: int
-    very_high_tax_threshold*: int
-    very_high_tax_penalty*: int
-    very_high_tax_frequency*: int
-    maintenance_shortfall_base*: int
-    maintenance_shortfall_increment*: int
-    blockade_penalty*: int
-    over_invest_espionage*: int
-    over_invest_counter_intel*: int
+    high_tax_threshold*: int32
+    high_tax_penalty*: int32
+    high_tax_frequency*: int32
+    very_high_tax_threshold*: int32
+    very_high_tax_penalty*: int32
+    very_high_tax_frequency*: int32
+    maintenance_shortfall_base*: int32
+    maintenance_shortfall_increment*: int32
+    blockade_penalty*: int32
+    over_invest_espionage*: int32
+    over_invest_counter_intel*: int32
 
   TaxPenaltiesTier* = object
-    tier_1_min*: int
-    tier_1_max*: int
-    tier_1_penalty*: int
-    tier_2_min*: int
-    tier_2_max*: int
-    tier_2_penalty*: int
-    tier_3_min*: int
-    tier_3_max*: int
-    tier_3_penalty*: int
-    tier_4_min*: int
-    tier_4_max*: int
-    tier_4_penalty*: int
-    tier_5_min*: int
-    tier_5_max*: int
-    tier_5_penalty*: int
-    tier_6_min*: int
-    tier_6_max*: int
-    tier_6_penalty*: int
+    tier_1_min*: int32
+    tier_1_max*: int32
+    tier_1_penalty*: int32
+    tier_2_min*: int32
+    tier_2_max*: int32
+    tier_2_penalty*: int32
+    tier_3_min*: int32
+    tier_3_max*: int32
+    tier_3_penalty*: int32
+    tier_4_min*: int32
+    tier_4_max*: int32
+    tier_4_penalty*: int32
+    tier_5_min*: int32
+    tier_5_max*: int32
+    tier_5_penalty*: int32
+    tier_6_min*: int32
+    tier_6_max*: int32
+    tier_6_penalty*: int32
 
   TaxIncentivesTier* = object
-    tier_1_min*: int
-    tier_1_max*: int
-    tier_1_prestige*: int
-    tier_2_min*: int
-    tier_2_max*: int
-    tier_2_prestige*: int
-    tier_3_min*: int
-    tier_3_max*: int
-    tier_3_prestige*: int
-    tier_4_min*: int
-    tier_4_max*: int
-    tier_4_prestige*: int
-    tier_5_min*: int
-    tier_5_max*: int
-    tier_5_prestige*: int
+    tier_1_min*: int32
+    tier_1_max*: int32
+    tier_1_prestige*: int32
+    tier_2_min*: int32
+    tier_2_max*: int32
+    tier_2_prestige*: int32
+    tier_3_min*: int32
+    tier_3_max*: int32
+    tier_3_prestige*: int32
+    tier_4_min*: int32
+    tier_4_max*: int32
+    tier_4_prestige*: int32
+    tier_5_min*: int32
+    tier_5_max*: int32
+    tier_5_prestige*: int32
 
   PrestigeConfig* = object
     ## Complete prestige configuration loaded from TOML
@@ -186,7 +186,7 @@ proc reloadPrestigeConfig*() =
 
 ## Dynamic Prestige Multiplier Calculation
 
-proc calculateDynamicMultiplier*(numSystems: int, numPlayers: int): float =
+proc calculateDynamicMultiplier*(numSystems: int32, numPlayers: int32): float32 =
   ## Calculate dynamic prestige multiplier based on map size and player count
   ##
   ## Formula:
@@ -207,14 +207,14 @@ proc calculateDynamicMultiplier*(numSystems: int, numPlayers: int): float =
     return config.base_multiplier
 
   # Calculate systems per player
-  let systemsPerPlayer = float(numSystems) / float(numPlayers)
+  let systemsPerPlayer = float32(numSystems) / float32(numPlayers)
 
   # Calculate target turns based on map density
-  let systemDiff = systemsPerPlayer - float(config.baseline_systems_per_player)
-  let targetTurns = float(config.baseline_turns) + (systemDiff * config.turn_scaling_factor)
+  let systemDiff = systemsPerPlayer - float32(config.baseline_systems_per_player)
+  let targetTurns = float32(config.baseline_turns) + (systemDiff * config.turn_scaling_factor)
 
   # Calculate multiplier (inverse relationship: more turns = lower multiplier)
-  let multiplier = config.base_multiplier * (float(config.baseline_turns) / targetTurns)
+  let multiplier = config.base_multiplier * (float32(config.baseline_turns) / targetTurns)
 
   # Clamp to reasonable bounds
   result = max(config.min_multiplier, min(config.max_multiplier, multiplier))

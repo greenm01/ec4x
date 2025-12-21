@@ -6,220 +6,220 @@
 import std/[os]
 import toml_serialization
 import ../../common/logger
-import ../../common/types/tech
+import ../types/tech
 
 type
   StartingTechConfig* = object
     ## Starting tech levels per economy.md:4.0
     ## CRITICAL: ALL tech starts at level 1, not 0!
-    economic_level*: int            # EL1
-    science_level*: int             # SL1
-    construction_tech*: int         # CST1
-    weapons_tech*: int              # WEP1
-    terraforming_tech*: int         # TER1
-    electronic_intelligence*: int   # ELI1
-    cloaking_tech*: int             # CLK1
-    shield_tech*: int               # SLD1 (Planetary Shields)
-    counter_intelligence*: int      # CIC1
-    fighter_doctrine*: int          # FD I (starts at 1)
-    advanced_carrier_ops*: int      # ACO I (starts at 1)
+    economic_level*: int32          # EL1
+    science_level*: int32             # SL1
+    construction_tech*: int32         # CST1
+    weapons_tech*: int32              # WEP1
+    terraforming_tech*: int32         # TER1
+    electronic_intelligence*: int32   # ELI1
+    cloaking_tech*: int32             # CLK1
+    shield_tech*: int32               # SLD1 (Planetary Shields)
+    counter_intelligence*: int32      # CIC1
+    fighter_doctrine*: int32          # FD I (starts at 1)
+    advanced_carrier_ops*: int32      # ACO I (starts at 1)
 
   ## Level-specific tech configurations loaded from config/tech.toml
   ## Each tech field has explicit level definitions for type safety
 
   EconomicLevelConfig* = object
     ## Economic Level advancement costs (11 levels, uses ERP)
-    level_1_erp*: int
-    level_1_mod*: float
-    level_2_erp*: int
-    level_2_mod*: float
-    level_3_erp*: int
-    level_3_mod*: float
-    level_4_erp*: int
-    level_4_mod*: float
-    level_5_erp*: int
-    level_5_mod*: float
-    level_6_erp*: int
-    level_6_mod*: float
-    level_7_erp*: int
-    level_7_mod*: float
-    level_8_erp*: int
-    level_8_mod*: float
-    level_9_erp*: int
-    level_9_mod*: float
-    level_10_erp*: int
-    level_10_mod*: float
-    level_11_erp*: int
-    level_11_mod*: float
+    level_1_erp*: int32
+    level_1_mod*: float32
+    level_2_erp*: int32
+    level_2_mod*: float32
+    level_3_erp*: int32
+    level_3_mod*: float32
+    level_4_erp*: int32
+    level_4_mod*: float32
+    level_5_erp*: int32
+    level_5_mod*: float32
+    level_6_erp*: int32
+    level_6_mod*: float32
+    level_7_erp*: int32
+    level_7_mod*: float32
+    level_8_erp*: int32
+    level_8_mod*: float32
+    level_9_erp*: int32
+    level_9_mod*: float32
+    level_10_erp*: int32
+    level_10_mod*: float32
+    level_11_erp*: int32
+    level_11_mod*: float32
 
   ScienceLevelConfig* = object
     ## Science Level advancement costs (8 levels, uses SRP)
-    level_1_srp*: int
-    level_2_srp*: int
-    level_3_srp*: int
-    level_4_srp*: int
-    level_5_srp*: int
-    level_6_srp*: int
-    level_7_srp*: int
-    level_8_srp*: int
+    level_1_srp*: int32
+    level_2_srp*: int32
+    level_3_srp*: int32
+    level_4_srp*: int32
+    level_5_srp*: int32
+    level_6_srp*: int32
+    level_7_srp*: int32
+    level_8_srp*: int32
 
   StandardTechLevelConfig* = object
     ## Standard tech fields (15 levels, uses TRP)
     ## Used by: CST, ELI, CLK, SLD, CIC
-    capacity_multiplier_per_level*: Option[float]  # Optional: for CST dock capacity scaling
-    level_1_sl*: int
-    level_1_trp*: int
-    level_2_sl*: int
-    level_2_trp*: int
-    level_3_sl*: int
-    level_3_trp*: int
-    level_4_sl*: int
-    level_4_trp*: int
-    level_5_sl*: int
-    level_5_trp*: int
-    level_6_sl*: int
-    level_6_trp*: int
-    level_7_sl*: int
-    level_7_trp*: int
-    level_8_sl*: int
-    level_8_trp*: int
-    level_9_sl*: int
-    level_9_trp*: int
-    level_10_sl*: int
-    level_10_trp*: int
-    level_11_sl*: int
-    level_11_trp*: int
-    level_12_sl*: int
-    level_12_trp*: int
-    level_13_sl*: int
-    level_13_trp*: int
-    level_14_sl*: int
-    level_14_trp*: int
-    level_15_sl*: int
-    level_15_trp*: int
+    capacity_multiplier_per_level*: Option[float32]  # Optional: for CST dock capacity scaling
+    level_1_sl*: int32
+    level_1_trp*: int32
+    level_2_sl*: int32
+    level_2_trp*: int32
+    level_3_sl*: int32
+    level_3_trp*: int32
+    level_4_sl*: int32
+    level_4_trp*: int32
+    level_5_sl*: int32
+    level_5_trp*: int32
+    level_6_sl*: int32
+    level_6_trp*: int32
+    level_7_sl*: int32
+    level_7_trp*: int32
+    level_8_sl*: int32
+    level_8_trp*: int32
+    level_9_sl*: int32
+    level_9_trp*: int32
+    level_10_sl*: int32
+    level_10_trp*: int32
+    level_11_sl*: int32
+    level_11_trp*: int32
+    level_12_sl*: int32
+    level_12_trp*: int32
+    level_13_sl*: int32
+    level_13_trp*: int32
+    level_14_sl*: int32
+    level_14_trp*: int32
+    level_15_sl*: int32
+    level_15_trp*: int32
 
   WeaponsTechConfig* = object
     ## Weapons tech with stat/cost modifiers (15 levels, uses TRP)
-    weapons_stat_increase_per_level*: float
-    weapons_cost_increase_per_level*: float
-    level_1_sl*: int
-    level_1_trp*: int
-    level_2_sl*: int
-    level_2_trp*: int
-    level_3_sl*: int
-    level_3_trp*: int
-    level_4_sl*: int
-    level_4_trp*: int
-    level_5_sl*: int
-    level_5_trp*: int
-    level_6_sl*: int
-    level_6_trp*: int
-    level_7_sl*: int
-    level_7_trp*: int
-    level_8_sl*: int
-    level_8_trp*: int
-    level_9_sl*: int
-    level_9_trp*: int
-    level_10_sl*: int
-    level_10_trp*: int
-    level_11_sl*: int
-    level_11_trp*: int
-    level_12_sl*: int
-    level_12_trp*: int
-    level_13_sl*: int
-    level_13_trp*: int
-    level_14_sl*: int
-    level_14_trp*: int
-    level_15_sl*: int
-    level_15_trp*: int
+    weapons_stat_increase_per_level*: float32
+    weapons_cost_increase_per_level*: float32
+    level_1_sl*: int32
+    level_1_trp*: int32
+    level_2_sl*: int32
+    level_2_trp*: int32
+    level_3_sl*: int32
+    level_3_trp*: int32
+    level_4_sl*: int32
+    level_4_trp*: int32
+    level_5_sl*: int32
+    level_5_trp*: int32
+    level_6_sl*: int32
+    level_6_trp*: int32
+    level_7_sl*: int32
+    level_7_trp*: int32
+    level_8_sl*: int32
+    level_8_trp*: int32
+    level_9_sl*: int32
+    level_9_trp*: int32
+    level_10_sl*: int32
+    level_10_trp*: int32
+    level_11_sl*: int32
+    level_11_trp*: int32
+    level_12_sl*: int32
+    level_12_trp*: int32
+    level_13_sl*: int32
+    level_13_trp*: int32
+    level_14_sl*: int32
+    level_14_trp*: int32
+    level_15_sl*: int32
+    level_15_trp*: int32
 
   TerraformingTechConfig* = object
     ## Terraforming tech with planet class requirements (7 levels, uses TRP)
-    level_1_sl*: int
-    level_1_trp*: int
+    level_1_sl*: int32
+    level_1_trp*: int32
     level_1_planet_class*: string
-    level_2_sl*: int
-    level_2_trp*: int
+    level_2_sl*: int32
+    level_2_trp*: int32
     level_2_planet_class*: string
-    level_3_sl*: int
-    level_3_trp*: int
+    level_3_sl*: int32
+    level_3_trp*: int32
     level_3_planet_class*: string
-    level_4_sl*: int
-    level_4_trp*: int
+    level_4_sl*: int32
+    level_4_trp*: int32
     level_4_planet_class*: string
-    level_5_sl*: int
-    level_5_trp*: int
+    level_5_sl*: int32
+    level_5_trp*: int32
     level_5_planet_class*: string
-    level_6_sl*: int
-    level_6_trp*: int
+    level_6_sl*: int32
+    level_6_trp*: int32
     level_6_planet_class*: string
-    level_7_sl*: int
-    level_7_trp*: int
+    level_7_sl*: int32
+    level_7_trp*: int32
     level_7_planet_class*: string
 
   FighterDoctrineConfig* = object
     ## Fighter Doctrine with capacity multipliers (3 levels, uses TRP)
-    level_1_sl*: int
-    level_1_trp*: int
-    level_1_capacity_multiplier*: float
+    level_1_sl*: int32
+    level_1_trp*: int32
+    level_1_capacity_multiplier*: float32
     level_1_description*: string
-    level_2_sl*: int
-    level_2_trp*: int
-    level_2_capacity_multiplier*: float
+    level_2_sl*: int32
+    level_2_trp*: int32
+    level_2_capacity_multiplier*: float32
     level_2_description*: string
-    level_3_sl*: int
-    level_3_trp*: int
-    level_3_capacity_multiplier*: float
+    level_3_sl*: int32
+    level_3_trp*: int32
+    level_3_capacity_multiplier*: float32
     level_3_description*: string
 
   AdvancedCarrierOpsConfig* = object
     ## Advanced Carrier Ops with carrier capacities (3 levels, uses TRP)
-    level_1_sl*: int
-    level_1_trp*: int
-    level_1_cv_capacity*: int
-    level_1_cx_capacity*: int
+    level_1_sl*: int32
+    level_1_trp*: int32
+    level_1_cv_capacity*: int32
+    level_1_cx_capacity*: int32
     level_1_description*: string
-    level_2_sl*: int
-    level_2_trp*: int
-    level_2_cv_capacity*: int
-    level_2_cx_capacity*: int
+    level_2_sl*: int32
+    level_2_trp*: int32
+    level_2_cv_capacity*: int32
+    level_2_cx_capacity*: int32
     level_2_description*: string
-    level_3_sl*: int
-    level_3_trp*: int
-    level_3_cv_capacity*: int
-    level_3_cx_capacity*: int
+    level_3_sl*: int32
+    level_3_trp*: int32
+    level_3_cv_capacity*: int32
+    level_3_cx_capacity*: int32
     level_3_description*: string
 
   TerraformingUpgradeCostsConfig* = object
     ## Terraforming upgrade costs for planet classes
-    extreme_ter*: int
-    extreme_pu_min*: int
-    extreme_pu_max*: int
-    extreme_pp*: int
-    desolate_ter*: int
-    desolate_pu_min*: int
-    desolate_pu_max*: int
-    desolate_pp*: int
-    hostile_ter*: int
-    hostile_pu_min*: int
-    hostile_pu_max*: int
-    hostile_pp*: int
-    harsh_ter*: int
-    harsh_pu_min*: int
-    harsh_pu_max*: int
-    harsh_pp*: int
-    benign_ter*: int
-    benign_pu_min*: int
-    benign_pu_max*: int
-    benign_pp*: int
-    lush_ter*: int
-    lush_pu_min*: int
-    lush_pu_max*: int
-    lush_pp*: int
-    eden_ter*: int
-    eden_pu_min*: int
-    eden_pu_max*: int
-    eden_pp*: int
+    extreme_ter*: int32
+    extreme_pu_min*: int32
+    extreme_pu_max*: int32
+    extreme_pp*: int32
+    desolate_ter*: int32
+    desolate_pu_min*: int32
+    desolate_pu_max*: int32
+    desolate_pp*: int32
+    hostile_ter*: int32
+    hostile_pu_min*: int32
+    hostile_pu_max*: int32
+    hostile_pp*: int32
+    harsh_ter*: int32
+    harsh_pu_min*: int32
+    harsh_pu_max*: int32
+    harsh_pp*: int32
+    benign_ter*: int32
+    benign_pu_min*: int32
+    benign_pu_max*: int32
+    benign_pp*: int32
+    lush_ter*: int32
+    lush_pu_min*: int32
+    lush_pu_max*: int32
+    lush_pp*: int32
+    eden_ter*: int32
+    eden_pu_min*: int32
+    eden_pu_max*: int32
+    eden_pp*: int32
 
   TechConfig* = object
     ## Technology configuration from tech.toml
@@ -265,7 +265,7 @@ proc reloadTechConfig*() =
 ## These functions provide runtime access to tech advancement costs from config
 ## Used by src/engine/research/costs.nim for tech progression
 
-proc getELUpgradeCostFromConfig*(level: int): int =
+proc getELUpgradeCostFromConfig*(level: int32): int32 =
   ## Get ERP cost for advancing from level N to N+1
   ## Uses loaded config data from tech.toml
   let cfg = globalTechConfig.economic_level
@@ -285,7 +285,7 @@ proc getELUpgradeCostFromConfig*(level: int): int =
   else:
     raise newException(ValueError, "Invalid EL level: " & $level & " (max is 11)")
 
-proc getSLUpgradeCostFromConfig*(level: int): int =
+proc getSLUpgradeCostFromConfig*(level: int32): int32 =
   ## Get SRP cost for advancing from level N to N+1
   let cfg = globalTechConfig.science_level
 
@@ -301,7 +301,7 @@ proc getSLUpgradeCostFromConfig*(level: int): int =
   else:
     raise newException(ValueError, "Invalid SL level: " & $level & " (max is 8)")
 
-proc getTechUpgradeCostFromConfig*(techField: TechField, level: int): int =
+proc getTechUpgradeCostFromConfig*(techField: TechField, level: int32): int32 =
   ## Get TRP cost for advancing from level N to N+1
   ## Looks up cost from globalTechConfig based on field and level
 

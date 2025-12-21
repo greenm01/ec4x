@@ -5,7 +5,7 @@
 
 import std/[strutils, tables]
 import ../config/game_setup_config
-import ../../common/types/units
+import ../types/ship
 
 proc parseShipClassName*(name: string): ShipClass =
   ## Parse ship class name from config string

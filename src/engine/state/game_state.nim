@@ -7,47 +7,9 @@
 import std/[tables, options]
 import ./entity_manager
 import ../types/[
-  core, game_state, fleet, ship, squadron, ground_unit, house, colony, facilities,
-  facilities, production, intelligence, diplomacy, espionage, resolution, starmap,
-  population
+  core, game_state, fleet, ship, squadron, ground_unit, house, colony,
+  facilities, production, intelligence, starmap, population
 ]
-
-proc initGameState*(): GameState =
-  # Initialize the ref object
-  result = GameState(
-    # Start IDs at 1 so 0 can be used as a "None/Null" value if needed
-    counters: IdCounters(
-      nextPlayerId: 1,
-      nextHouseId: 1,
-      nextSystemId: 1,
-      nextColonyId: 1,
-      nextStarbaseId: 1,
-      nextSpaceportId: 1,
-      nextShipyardId: 1,
-      nextDrydockId: 1,
-      nextFleetId: 1,
-      nextSquadronId: 1,
-      nextShipId: 1,
-      nextGroundUnitId: 1,
-      nextConstructionProjectId: 1,
-      nextRepairProjectId: 1,
-      nextPopulationTransferId: 1
-    ),
-    turn: 1,
-    phase: Command, 
-    # Initialize Tables (Sequences initialize to @[] automatically)
-    intelligence: initTable[HouseId, IntelligenceDatabase](),
-    diplomaticRelation: initTable[(HouseId, HouseId), DiplomaticRelation](),
-    diplomaticViolation: initTable[HouseId, ViolationHistory](),
-    arrivedFleets: initTable[FleetId, SystemId](),
-    activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
-    gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
-    lastTurnReports: initTable[HouseId, TurnResolutionReport](),
-  )
-
-# Usage within GameState convenience methods
-# proc getPlayerState*(state: GameState, id: HouseId): Option[PlayerState] =
-#  state.houses.getEntity(id)
 
 proc getHouse*(state: GameState, id: HouseId): Option[House] =
   state.houses.entities.getEntity(id)

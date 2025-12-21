@@ -3,10 +3,10 @@
 ## Creates starting fleets with specified compositions, compatible with the new DoD type system.
 
 import std/[options, tables, strutils]
-import ../types/[core, fleet, squadron, ship]
-import ../state/[game_state, id_gen, entity_manager]
+import ../types/[core, game_state, fleet, squadron, ship]
+import ../state/[game_state as gs_helper, id_gen, entity_manager]
 import ../config/game_setup_config
-import ../entities/[fleet_ops, squadron_ops, ship_ops]
+import ../entities/fleet_ops
 
 proc createStartingFleets*(
   state: var GameState,
