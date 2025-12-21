@@ -4,8 +4,12 @@
 #    ├── id_gen.nim      # Counter logic
 #    └── queries.nim     # Spatial/Complex Iterators (shipsInSystem, enemiesNear)
 
-import std/macros
-import ../types/[core, game_state, player_state, fleet, ship, squadron, ground_unit, facilities, production]
+import std/[macros, tables, options]
+import ./entity_manager
+import ../types/[
+  core, game_state, fleet, ship, squadron, ground_unit, house, colony, facilities,
+  facilities, production, intelligence, diplomacy, espionage, resolution, starmap
+]
 
 proc initGameState*(): GameState =
   # Initialize the ref object
@@ -37,90 +41,67 @@ proc initGameState*(): GameState =
     arrivedFleets: initTable[FleetId, SystemId](),
     activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
     gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
-    lastTurnReportsd: initTable[HouseId, TurnResolutionReport](),
+    lastTurnReports: initTable[HouseId, TurnResolutionReport](),
   )
 
-# Generic getter that works for any collection using our EntityManager pattern
-proc getEntity*[ID, T](collection: EntityManager[ID, T], id: ID): Option[T] =
-  if collection.index.contains(id):
-    let idx = collection.index[id]
-    return some(collection.data[idx])
-  return none(T)
-
-# Generic adder that works for any collection using our EntityManager pattern
-proc addEntity*[ID, T](collection: var EntityManager[ID, T], id: ID, entity: T) =
-  collection.data.add(entity)
-  collection.index[id] = collection.data.high # Store the index of the last element
-
-proc removeEntity*[ID, T](collection: var EntityManager[ID, T], id: ID) =
-  if not collection.index.contains(id): return
-
-  let idxToRemove = collection.index[id]
-  let lastIdx = collection.data.high
-  let lastEntityId = collection.data[lastIdx].id # Assumes entity has an .id field
-
-  # 1. Swap the element to delete with the very last element in the seq
-  collection.data[idxToRemove] = collection.data[lastIdx]
-  
-  # 2. Update the index for the element that just moved
-  collection.index[lastEntityId] = idxToRemove
-  
-  # 3. Remove the last element and the old index
-  collection.data.setLen(lastIdx)
-  collection.index.del(id)
-
 # Usage within GameState convenience methods
-proc getPlayerState*(state: GameState, id: HouseId): Option[PlayerState] =
-  state.houses.getEntity(id)
+# proc getPlayerState*(state: GameState, id: HouseId): Option[PlayerState] =
+#  state.houses.getEntity(id)
 
 proc getHouse*(state: GameState, id: HouseId): Option[House] =
-  state.houses.getEntity(id)
+  state.houses.entities.getEntity(id)
 
 proc getSystem*(state: GameState, id: SystemId): Option[System] =
-  state.systems.getEntity(id)
+  state.systems.entities.getEntity(id)
 
 proc getColony*(state: GameState, id: ColonyId): Option[Colony] =
-  state.colonies.getEntity(id)
+  state.colonies.entities.getEntity(id)
 
 proc getFleet*(state: GameState, id: FleetId): Option[Fleet] =
-  state.fleets.getEntity(id)
+  state.fleets.entities.getEntity(id)
 
 proc getShip*(state: GameState, id: ShipId): Option[Ship] =
-  state.ships.getEntity(id)
+  state.ships.entities.getEntity(id)
 
 proc getSquadrons*(state: GameState, id: SquadronId): Option[Squadron] =
-  state.squadrons.getEntity(id)
+  state.squadrons.entities.getEntity(id)
 
 proc getGroundUnit*(state: GameState, id: GroundUnitId): Option[GroundUnit] =
-  state.groundUnits.getEntity(id)
+  state.groundUnits.entities.getEntity(id)
   
 proc getStarBase*(state: GameState, id: StarbaseId): Option[Starbase] =
-  state.starBases.getEntity(id)
+  state.starBases.entities.getEntity(id)
   
 proc getSpacePort*(state: GameState, id: SpaceportId): Option[Spaceport] =
-  state.spacePorts.getEntity(id)
+  state.spacePorts.entities.getEntity(id)
   
 proc getShipYard*(state: GameState, id: ShipyardId): Option[Shipyard] =
-  state.shipYards.getEntity(id)
+  state.shipYards.entities.getEntity(id)
   
-proc getDryDock*(state: GameState, id: DrydockId): Option[Drypock] =
-  state.dryDocks.getEntity(id)
+proc getDryDock*(state: GameState, id: DrydockId): Option[Drydock] =
+  state.dryDocks.entities.getEntity(id)
   
-proc getConstructionProject*(state: GameState, id: GroundUnitId): Option[ConstructionProject] =
-  state.constructionProjects.getEntity(id)
+proc getConstructionProject*(state: GameState, id: ConstructionProjectId): Option[ConstructionProject] =
+  state.constructionProjects.entities.getEntity(id)
   
-proc getRepairProject*(state: GameState, id: GroundUnitId): Option[RepairProject] =
-  state.repairProjects.getEntity(id)
+proc getRepairProject*(state: GameState, id: RepairProjectId): Option[RepairProject] =
+  state.repairProjects.entities.getEntity(id)
+
+proc getIntel*(state: GameState, id: HouseId): Option[IntelligenceDatabase] =
+  ## Direct table lookup for intelligence memory
+  if state.intelligence.contains(id):
+    return some(state.intelligence[id])
+  return none(IntelligenceDatabase)
 
 iterator allShips*(state: GameState): Ship =
-  for ship in state.ships.data:
+  for ship in state.ships.entities.data:
     yield ship
 
 iterator allHouses*(state: GameState): House =
-  for house in state.houses.data:
+  for house in state.houses.entities.data:
     yield house
 
 # Mutable iterator for when you need to update values (AS, DS, combat state)
 iterator mAllShips*(state: var GameState): var Ship =
-  for ship in mitems(state.ships.data):
+  for ship in mitems(state.ships.entities.data):
     yield ship

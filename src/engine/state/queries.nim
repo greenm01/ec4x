@@ -2,13 +2,15 @@
 import ./game_state
 import ../types/core
 
-# itterator to look through all squadrons in a system
-iterator squadronsInSystem*(state: GameState, sysId: SystemId): Squadron =
-  # 1. Direct lookup of only the fleets in THIS system
+# src/engine/state/queries.nim
+iterator fleetsInSystem*(state: GameState, sysId: SystemId): Fleet =
   if state.fleets.bySystem.contains(sysId):
-    for fleetId in state.fleets.bySystem[sysId]:
-      let fleet = state.getFleet(fleetId).get()
-      # 2. Loop through squadrons in those specific fleets
-      for squadronId in fleet.squadronIds:
-        let sq = state.getSquadron(squadronId)
-        if sq.isSome: yield sq.get()
+    for fId in state.fleets.bySystem[sysId]:
+      let fOpt = state.getFleet(fId)
+      if fOpt.isSome: yield fOpt.get()
+
+iterator squadronsInSystem*(state: GameState, sysId: SystemId): Squadron =
+  for fleet in state.fleetsInSystem(sysId):
+    for sqId in fleet.squadronIds:
+      let sqOpt = state.getSquadron(sqId)
+      if sqOpt.isSome: yield sqOpt.get()

@@ -1,6 +1,28 @@
 ## EC4X Game Engine
 ## Public API for game initialization, turn processing, and state queries
 
+# src/
+# └── engine/
+#     ├── types/                 <-- THE "DATA SHAPES" (No logic here)
+#     │   ├── core.nim           # EntityManager[ID, T], IdCounters, Basic IDs
+#     │   ├── game_state.nim     # The main GameState object definition
+#     │   ├── ship.nim           # Ship and Ships object definitions
+#     │   ├── fleet.nim          # Fleet and Fleets object definitions
+#     │   └── ...                # colony.nim, system.nim, etc.
+#     │
+#     ├── state/                 <-- THE "PLUMBING" (Generic logic)
+#     │   ├── entity_manager.nim  # Generic: addEntity, removeEntity, updateEntity
+#     │   ├── id_gen.nim          # Counter logic: generateShipId, etc.
+#     │   ├── game_state.nim      # initGameState and global convenience procs
+#     │   ├── queries.nim         # Iterators: allShips, fleetsInSystem
+#     │   ├── fog_of_war.nim      # LOGIC: calculates sensor range and visibility
+#     │   └── player_view_gen.nim # LOGIC: generates a PlayerView from GameState + Intel
+#     │
+#     └── entities/              <-- THE "RULES" (Gameplay logic)
+#         ├── ship_manager.nim   # spawnShip (uses id_gen + bySquadron index)
+#         ├── fleet_manager.nim  # moveFleet (updates bySystem index)
+#         └── ...
+
 import types/[game_state, command]
 import turn_cycle/turn_executor
 import services/persistence/[save, load]
