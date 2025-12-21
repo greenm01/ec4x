@@ -1,3 +1,9 @@
+# src/engine/
+# └── state/
+#    ├── game_state.nim  # Data structure + Core Iterators (allShips, allFleets)
+#    ├── id_gen.nim      # Counter logic
+#    └── queries.nim     # Spatial/Complex Iterators (shipsInSystem, enemiesNear)
+
 import std/macros
 import ../types/[core, game_state, player_state, fleet, ship, squadron, ground_unit, facilities, production]
 
@@ -88,16 +94,16 @@ proc getSquadrons*(state: GameState, id: SquadronId): Option[Squadron] =
 proc getGroundUnit*(state: GameState, id: GroundUnitId): Option[GroundUnit] =
   state.groundUnits.getEntity(id)
   
-proc getStarBase*(state: GameState, id: GroundUnitId): Option[StarBase] =
+proc getStarBase*(state: GameState, id: StarbaseId): Option[Starbase] =
   state.starBases.getEntity(id)
   
-proc getSpacePort*(state: GameState, id: GroundUnitId): Option[SpacePort] =
+proc getSpacePort*(state: GameState, id: SpaceportId): Option[Spaceport] =
   state.spacePorts.getEntity(id)
   
-proc getShipYard*(state: GameState, id: GroundUnitId): Option[ShipYard] =
+proc getShipYard*(state: GameState, id: ShipyardId): Option[Shipyard] =
   state.shipYards.getEntity(id)
   
-proc getDryDock*(state: GameState, id: GroundUnitId): Option[DryDock] =
+proc getDryDock*(state: GameState, id: DrydockId): Option[Drypock] =
   state.dryDocks.getEntity(id)
   
 proc getConstructionProject*(state: GameState, id: GroundUnitId): Option[ConstructionProject] =
@@ -106,9 +112,15 @@ proc getConstructionProject*(state: GameState, id: GroundUnitId): Option[Constru
 proc getRepairProject*(state: GameState, id: GroundUnitId): Option[RepairProject] =
   state.repairProjects.getEntity(id)
 
-proc spawnShip*(state: var GameState, owner: HouseId, shipClass: ShipClass) =
-  let newId = state.generateShipId()
-  # TODO: generate shipstats
-  let ship = Ship(id: newId, owner: owner, shipClass: shipClass)
-    # One line to add to both the sequence and the index
-  state.ships.addEntity(newId, ship)
+iterator allShips*(state: GameState): Ship =
+  for ship in state.ships.data:
+    yield ship
+
+iterator allHouses*(state: GameState): House =
+  for house in state.houses.data:
+    yield house
+
+# Mutable iterator for when you need to update values (AS, DS, combat state)
+iterator mAllShips*(state: var GameState): var Ship =
+  for ship in mitems(state.ships.data):
+    yield ship

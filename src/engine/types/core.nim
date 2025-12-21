@@ -55,6 +55,24 @@ type
     data*: seq[T]
     index*: Table[ID, int] # Maps ID to the index in the 'data' sequence
 
+  # Counters for DoD collections
+  IdCounters* = object
+    nextPlayerId*: uint32
+    nextHouseId*: uint32
+    nextSystemId*: uint32
+    nextColonyId*: uint32
+    nextStarbaseId*: uint32
+    nextSpaceportId*: uint32
+    nextShipyardId*: uint32
+    nextDrydockId*: uint32
+    nextFleetId*: uint32
+    nextSquadronId*: uint32
+    nextShipId*: uint32
+    nextGroundUnitId*: uint32
+    nextConstructionProjectId*: uint32
+    nextRepairProjectId*: uint32
+    nextPopulationTransferId*: uint32
+
 # Hash and equality procs for all ID types
 proc `==`*(a, b: PlayerId): bool {.borrow.}
 proc hash*(id: PlayerId): Hash {.borrow.}

@@ -1,6 +1,13 @@
 import ../types/[core, ship]
 import std/[tables, options]
 
+proc spawnShip*(state: var GameState, owner: HouseId, shipClass: ShipClass) =
+  let newId = state.generateShipId()
+  # TODO: generate shipstats
+  let ship = Ship(id: newId, owner: owner, shipClass: shipClass)
+    # One line to add to both the sequence and the index
+  state.ships.addEntity(newId, ship)
+
 proc add*(collection: var Ships, ship: Ship) =
   ## Adds a ship and updates all internal indices
   let idx = collection.data.len

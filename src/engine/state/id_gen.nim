@@ -6,7 +6,7 @@ template defineIdHelpers(IdType: typedesc, counterField: untyped) =
     result = IdType(state.counters.counterField)
     inc state.counters.counterField
 
-# Group all your calls here
+# This becomes generateFleetID(), etc....
 defineIdHelpers(PlayerId, nextPlayerId)
 defineIdHelpers(HouseId, nextHouseId)
 defineIdHelpers(SystemId, nextSystemId)

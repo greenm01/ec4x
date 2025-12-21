@@ -27,7 +27,8 @@ type
 
   Fleets* = object
     entities*: EntityManager[FleetId, Fleet]
-    
+    bySystem*: Table[SystemId, seq[FleetId]]
+
   FleetCommandType* {.pure.} = enum
     Hold              # Hold position, do nothing
     Move              # Navigate to target system
