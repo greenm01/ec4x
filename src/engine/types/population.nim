@@ -20,8 +20,8 @@ type
 
   PopulationTransfers* = object
     entities*: EntityManager[PopulationTransferId, PopulationInTransit]  # Core storage
-    byHouse: Table[HouseId, seq[PopulationTransferId]]
-    inTransit: seq[PopulationTransferId]  # Quick filter for active transfers
+    byHouse*: Table[HouseId, seq[PopulationTransferId]]
+    inTransit*: seq[PopulationTransferId]  # Quick filter for active transfers
 
   PopulationTransferConfig* = object
     # PTU definition

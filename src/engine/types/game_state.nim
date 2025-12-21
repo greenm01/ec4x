@@ -27,7 +27,7 @@ type
     systems*: Systems
     colonies*: Colonies
     fleets*: Fleets
-    squadrons*: Squadrons
+    squadrons*: ref Squadrons
     ships*: Ships
     groundUnits*: GroundUnits
 

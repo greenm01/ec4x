@@ -1,5 +1,5 @@
 import std/[tables, options]
-import ./[core, ship]
+import ./[core, ship, facilities]
 
 type
   ProductionOutput* = object
@@ -14,9 +14,6 @@ type
 
   BuildType* {.pure.} = enum
     Ship, Facility, Ground, Industrial, Infrastructure
-
-  FacilityType* {.pure.} = enum
-    Spaceport, Shipyard, Drydock
 
   BuildCommand* = object
     colonyId*: ColonyId           # Use ColonyId, not SystemId
@@ -39,8 +36,8 @@ type
 
   ConstructionProjects* = object
     entities*: EntityManager[ConstructionProjectId, ConstructionProject]  # Core storage
-    byColony: Table[ColonyId, seq[ConstructionProjectId]]
-    byFacility: Table[(FacilityType, uint32), seq[ConstructionProjectId]]
+    byColony*: Table[ColonyId, seq[ConstructionProjectId]]
+    byFacility*: Table[(FacilityType, uint32), seq[ConstructionProjectId]]
 
   RepairTargetType* {.pure.} = enum
     Ship, Starbase
@@ -64,8 +61,8 @@ type
 
   RepairProjects* = object
     entities*: EntityManager[RepairProjectId, RepairProject]  # Core storage
-    byColony: Table[ColonyId, seq[RepairProjectId]]
-    byFacility: Table[(FacilityType, uint32), seq[RepairProjectId]]
+    byColony*: Table[ColonyId, seq[RepairProjectId]]
+    byFacility*: Table[(FacilityType, uint32), seq[RepairProjectId]]
 
   CompletedProject* = object
     colonyId*: ColonyId

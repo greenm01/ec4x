@@ -2,10 +2,6 @@ import std/[tables, options]
 import ./[core, starmap, production, capacity]
 
 type
-  IndustrialUnits* = object
-    units*: int32
-    investmentCost*: int32
-
   Colony* = object
     id*: ColonyId
     systemId*: SystemId
@@ -20,9 +16,9 @@ type
     grossOutput*: int32
     taxRate*: int32
     infrastructureDamage*: float32
-    underConstruction*: Option[ConstructionProject]
-    constructionQueue*: seq[ConstructionProject]
-    repairQueue*: seq[RepairProject]
+    underConstruction*: Option[ConstructionProjectId]
+    constructionQueue*: seq[ConstructionProjectId]
+    repairQueue*: seq[RepairProjectId]
     autoRepairEnabled*: bool
     autoLoadingEnabled*: bool
     autoReloadETACs*: bool

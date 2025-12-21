@@ -8,7 +8,8 @@ import std/[tables, options]
 import ./entity_manager
 import ../types/[
   core, game_state, fleet, ship, squadron, ground_unit, house, colony, facilities,
-  facilities, production, intelligence, diplomacy, espionage, resolution, starmap
+  facilities, production, intelligence, diplomacy, espionage, resolution, starmap,
+  population
 ]
 
 proc initGameState*(): GameState =
@@ -69,23 +70,26 @@ proc getSquadrons*(state: GameState, id: SquadronId): Option[Squadron] =
 proc getGroundUnit*(state: GameState, id: GroundUnitId): Option[GroundUnit] =
   state.groundUnits.entities.getEntity(id)
   
-proc getStarBase*(state: GameState, id: StarbaseId): Option[Starbase] =
-  state.starBases.entities.getEntity(id)
-  
-proc getSpacePort*(state: GameState, id: SpaceportId): Option[Spaceport] =
-  state.spacePorts.entities.getEntity(id)
-  
-proc getShipYard*(state: GameState, id: ShipyardId): Option[Shipyard] =
-  state.shipYards.entities.getEntity(id)
-  
-proc getDryDock*(state: GameState, id: DrydockId): Option[Drydock] =
-  state.dryDocks.entities.getEntity(id)
+proc getStarbase*(state: GameState, id: StarbaseId): Option[Starbase] =
+  state.starbases.entities.getEntity(id)
+
+proc getSpaceport*(state: GameState, id: SpaceportId): Option[Spaceport] =
+  state.spaceports.entities.getEntity(id)
+
+proc getShipyard*(state: GameState, id: ShipyardId): Option[Shipyard] =
+  state.shipyards.entities.getEntity(id)
+
+proc getDrydock*(state: GameState, id: DrydockId): Option[Drydock] =
+  state.drydocks.entities.getEntity(id)
   
 proc getConstructionProject*(state: GameState, id: ConstructionProjectId): Option[ConstructionProject] =
   state.constructionProjects.entities.getEntity(id)
   
 proc getRepairProject*(state: GameState, id: RepairProjectId): Option[RepairProject] =
   state.repairProjects.entities.getEntity(id)
+
+proc getPopulationTransfer*(state: GameState, id: PopulationTransferId): Option[PopulationInTransit] =
+  state.populationTransfers.entities.getEntity(id)
 
 proc getIntel*(state: GameState, id: HouseId): Option[IntelligenceDatabase] =
   ## Direct table lookup for intelligence memory

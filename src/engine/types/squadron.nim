@@ -33,6 +33,7 @@ type
     # Carrier fighter operations (assets.md:2.4.1.1)
     embarkedFighters*: seq[Squadron]  # Embarked fighter squadrons (Squadron.Fighter type)
 
-  Squadrons* = object
+type
+  Squadrons* = ref object
     entities*: EntityManager[SquadronId, Squadron]
-    byFleet: Table[FleetId, seq[SquadronId]]
+    byFleet*: Table[FleetId, seq[SquadronId]]

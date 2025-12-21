@@ -1,10 +1,10 @@
 import std/tables
-import ./[core, production] 
+import ./core
 
 type
 
   FacilityType* {.pure.} = enum
-    Shipyard, Spaceport, Drydock
+    Shipyard, Spaceport, Drydock, Starbase
 
   FacilityStats* = object
     facilityType*: FacilityType
@@ -21,7 +21,7 @@ type
 
   Starbases* = object
     entities*: EntityManager[StarbaseId, Starbase]
-    byColony: Table[ColonyId, seq[StarbaseId]]
+    byColony*: Table[ColonyId, seq[StarbaseId]]
 
   Spaceport* = object
     id*: SpaceportId
@@ -29,12 +29,12 @@ type
     commissionedTurn*: int32
     baseDocks*: int32
     effectiveDocks*: int32
-    constructionQueue*: seq[ConstructionProject]
-    activeConstructions*: seq[ConstructionProject]
+    constructionQueue*: seq[ConstructionProjectId]
+    activeConstructions*: seq[ConstructionProjectId]
 
   Spaceports* = object
     entities*: EntityManager[SpaceportId, Spaceport]
-    byColony: Table[ColonyId, seq[SpaceportId]]
+    byColony*: Table[ColonyId, seq[SpaceportId]]
 
   Shipyard* = object
     id*: ShipyardId
@@ -43,12 +43,12 @@ type
     baseDocks*: int32
     effectiveDocks*: int32
     isCrippled*: bool
-    constructionQueue*: seq[ConstructionProject]
-    activeConstructions*: seq[ConstructionProject]
+    constructionQueue*: seq[ConstructionProjectId]
+    activeConstructions*: seq[ConstructionProjectId]
 
   Shipyards* = object
     entities*: EntityManager[ShipyardId, Shipyard]
-    byColony: Table[ColonyId, seq[ShipyardId]]
+    byColony*: Table[ColonyId, seq[ShipyardId]]
 
   Drydock* = object
     id*: DrydockId
@@ -57,9 +57,9 @@ type
     baseDocks*: int32
     effectiveDocks*: int32
     isCrippled*: bool
-    repairQueue*: seq[RepairProject]
-    activeRepairs*: seq[RepairProject]
+    repairQueue*: seq[RepairProjectId]
+    activeRepairs*: seq[RepairProjectId]
 
   Drydocks* = object
-    entities*: EntityManager[DrydockId, DryDock]
-    byColony: Table[ColonyId, seq[DrydockId]]
+    entities*: EntityManager[DrydockId, Drydock]
+    byColony*: Table[ColonyId, seq[DrydockId]]

@@ -1,46 +1,88 @@
-import ../../common/logger
-import ../types/[core, colony, starmap] 
+## @initialization/colony.nim
+##
+## Initializes new Colony objects based on the new DoD type system.
 
-# Colony initialization functions
+import std/options
+import ../types/[core, colony, starmap, production, capacity]
+import ../config/[economy_config, population_config]
 
-proc createHomeColony*(systemId: SystemId, owner: HouseId): Colony =
-  ## Create a starting homeworld colony for a given house
-  ## Uses planet class and resource ratings from game setup configuration
-  ##
-  ## ## Configuration:
-  ## - Planet Class: Loaded from `game_setup/standard.toml` (e.g., Terran)
-  ## - Resources: Loaded from `game_setup/standard.toml` (e.g., high Population, moderate Industry)
-  ## - Population: Initial population count
-  ## - Infrastructure: Initial facilities (Spaceport, Shipyard, Starbase, etc.)
-  ##
-  logInfo("Initialization", "Creating homeworld colony at system ", systemId,
-          " for house ", owner)
-  # TODO: Implement actual homeworld colony creation logic.
-  # This will involve reading from game_setup_config, initializing
-  # population, infrastructure (facilities), and ground units.
-
-  result = Colony(
-    systemId: systemId,
-    owner: owner
-    # ... other fields initialized based on config
-  )
-
-proc createETACColony*(systemId: SystemId, owner: HouseId, planetClass: PlanetClass,
-                        resources: ResourceRating): Colony =
-  ## Create a colony for a given owner in a specified system with given planet class and resources
-  ## Used for ETAC colonization and potentially for AI expansion starting points
-
-  logInfo("Initialization", "Creating ETAC colony at system ", systemId,
-          " for house ", owner, " with planet class ", planetClass, " and resources ",
-          resources)
-  # TODO: Implement actual ETAC colony setup.
-  # This will involve initializing a basic colony with minimal population and infrastructure,
-  # potentially consuming an ETAC squadron.
+proc initColony*(
+  colonyId: ColonyId,
+  systemId: SystemId,
+  owner: HouseId,
+  planetClass: PlanetClass,
+  resources: ResourceRating,
+  startingPTU: int32
+): Colony =
+  ## Initialize a new colony with all required fields from the new type system.
+  
+  let startingIU = (startingPTU *
+    economy_config.globalEconomyConfig.colonization.starting_iu_percent
+  ) div 100
 
   result = Colony(
+    id: colonyId,
     systemId: systemId,
     owner: owner,
+
+    # Population
+    population: startingPTU,
+    souls: (startingPTU * population_config.soulsPerPtu()).int32,
+    populationUnits: startingPTU,
+    populationTransferUnits: startingPTU,
+
+    # Infrastructure & Economy
+    infrastructure: economy_config.globalEconomyConfig.colonization.
+      starting_infrastructure_level.int32,
+    industrial: IndustrialUnits(
+      units: startingIU.int32,
+      investmentCost: economy_config.globalEconomyConfig.
+        industrial_investment.base_cost.int32
+    ),
+    production: 0,
+    grossOutput: 0,
+    taxRate: 50,
+    infrastructureDamage: 0.0'f32,
+
+    # Planet characteristics
     planetClass: planetClass,
-    resources: resources
-    # ... other fields initialized to defaults for an ETAC colony
+    resources: resources,
+
+    # Queues and Projects
+    underConstruction: none(ConstructionProjectId),
+    constructionQueue: @[],
+    repairQueue: @[],
+    activeTerraforming: none(TerraformProject),
+
+    # Toggles
+    autoRepairEnabled: false,
+    autoLoadingEnabled: true,
+    autoReloadETACs: true,
+
+    # Military asset IDs (all empty for new colony)
+    unassignedSquadronIds: @[],
+    fighterSquadronIds: @[],
+    groundBatteryIds: @[],
+    armyIds: @[],
+    marineIds: @[],
+    starbaseIds: @[],
+    spaceportIds: @[],
+    shipyardIds: @[],
+    drydockIds: @[],
+    
+    # Status
+    capacityViolation: CapacityViolation(
+      capacityType: CapacityType.FighterSquadron,
+      entity: EntityIdUnion(kind: CapacityType.FighterSquadron, colonyId: colonyId),
+      current: 0,
+      maximum: 0,
+      excess: 0,
+      severity: ViolationSeverity.None,
+      graceTurnsRemaining: 0,
+      violationTurn: 0
+    ),
+    planetaryShieldLevel: 0,
+    blockaded: false,
+    blockadedBy: @[],
+    blockadeTurns: 0
   )
