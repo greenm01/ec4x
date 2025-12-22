@@ -102,7 +102,7 @@ type
     CargoLoaded,          # Marines/colonists loaded onto spacelift ships
     CargoUnloaded         # Marines/colonists unloaded from spacelift ships
 
-  GameEvent* = ref object of RootObj
+  GameEvent* = object
     ## Base type for all game events.
     ## Uses a 'case' statement on `eventType` to hold specific event data.
     turn*: int # Added turn field

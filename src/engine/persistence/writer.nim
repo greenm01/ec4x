@@ -303,7 +303,7 @@ proc insertDiagnosticRow*(db: DbConn, gameId: int64,
     $metrics.goapActionsExecuted, $metrics.goapActionsFailed
   )
 
-proc insertGameEvent*(db: DbConn, gameId: int64, turn: int32,
+proc insertGameEvent*(db: DbConn, gameId: int64,
                       event: GameEvent) =
   ## Insert game event (DRY - factory for all event types)
   ## Maps GameEvent to flat database row
@@ -342,7 +342,7 @@ proc insertGameEvent*(db: DbConn, gameId: int64, turn: int32,
       order_type, description, reason, event_data
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   """,
-    $gameId, $turn, $event.eventType,
+    $gameId, $event.turn, $event.eventType,
     houseIdStr, fleetIdStr, systemIdVal,
     orderTypeStr, event.description, reasonStr, eventDataJson
   )

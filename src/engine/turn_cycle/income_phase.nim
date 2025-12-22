@@ -29,7 +29,7 @@
 ## - Victory checks happen AFTER elimination processing (Step 8a)
 
 import std/[tables, options, random, sequtils, hashes, math, strutils, strformat]
-import ../../../common/[hex, types/core, types/tech, types/units]
+import ../../../common/logger as common_logger
 import ../gamestate, ../logger, ../orders, ../starmap
 import ../types/[diplomacy as dip_types, economy as econ_types,
                 espionage as esp_types, intelligence as intel_types,
@@ -37,22 +37,22 @@ import ../types/[diplomacy as dip_types, economy as econ_types,
                 resolution as res_game_types]
 import ../config/[construction_config, economy_config, espionage_config,
                   gameplay_config]
-import ../systems/blockade/engine as blockade_engine
-import ../systems/diplomacy/proposals as dip_proposals
-import ../systems/economy/[engine as econ_engine, facility_queue, projects]
-import ../systems/economy/capacity/[capital_squadrons as capital_squadron_capacity,
+import ../../systems/blockade/engine as blockade_engine
+import ../../systems/diplomacy/proposals as dip_proposals
+import ../../systems/economy/[engine as econ_engine, facility_queue, projects]
+import ../../systems/economy/capacity/[capital_squadrons as capital_squadron_capacity,
                                    fighter as fighter_capacity,
                                    planet_breakers as planet_breaker_capacity,
                                    total_squadrons as total_squadron_capacity]
-import ../systems/events/event_factory/init as event_factory
-import ../systems/intelligence/[
+import ../../event_factory/init as event_factory
+import ../../systems/intelligence/[
   detection, types as intel_types, generator as intel_gen,
   starbase_surveillance, scout_intel
 ]
-import ../systems/orders/executor as cmd_executor # For salvage order execution
-import ../systems/prestige/[application as prestige_app, events as prestige_events,
+import ../../systems/orders/executor as cmd_executor # For salvage order execution
+import ../../systems/prestige/[application as prestige_app, events as prestige_events,
                             types as prestige_types]
-import ../systems/research/[advancement, costs as res_costs]
+import ../../systems/research/[advancement, costs as res_costs]
 
 proc resolveIncomePhase*(
   state: var GameState,
