@@ -5,6 +5,7 @@
 
 import std/options
 import ../../types/[telemetry, core, game_state, event, colony, population]
+import ../../state/interators
 
 proc collectPopulationMetrics*(
   state: GameState,
@@ -20,15 +21,14 @@ proc collectPopulationMetrics*(
   var blockadedCount: int32 = 0
   var blockadeTurns: int32 = 0
 
-  for colony in state.colonies.entities.data:
-    if colony.owner == houseId:
-      totalPU += colony.populationUnits
-      totalPTU += colony.populationTransferUnits
+  for colony in state.coloniesOwned(houseId):
+    totalPU += colony.populationUnits
+    totalPTU += colony.populationTransferUnits
 
-      # Blockade tracking
-      if colony.blockaded:
-        blockadedCount += 1
-        blockadeTurns += colony.blockadeTurns
+    # Blockade tracking
+    if colony.blockaded:
+      blockadedCount += 1
+      blockadeTurns += colony.blockadeTurns
 
   result.totalPopulationUnits = totalPU
   result.totalPopulationPTU = totalPTU

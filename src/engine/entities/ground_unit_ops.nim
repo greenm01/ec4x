@@ -4,7 +4,7 @@
 ## Ensures consistency between the main `GroundUnits` collection and the
 ## ID lists within each `Colony` object.
 import std/[options, sequtils]
-import ../state/[game_state as gs_helpers, id_gen, entity_manager]
+import ../state/[game_state as gs_helpers, id_gen, entity_manager, iterators]
 import ../types/[game_state, core, ground_unit, colony]
 
 proc createGroundUnit*(state: var GameState, owner: HouseId, colonyId: ColonyId, unitType: GroundUnitType): GroundUnit =
@@ -36,7 +36,7 @@ proc destroyGroundUnit*(state: var GameState, unitId: GroundUnitId) =
   let unit = unitOpt.get()
 
   var ownerColonyId: ColonyId
-  for col in state.colonies.entities.data:
+  for col in state.allColonies():
     case unit.unitType:
       of GroundUnitType.Army:
         if unitId in col.armyIds: ownerColonyId = col.id

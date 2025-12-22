@@ -5,7 +5,7 @@
 
 import std/[options, math]
 import ../../types/[telemetry, core, game_state, event, squadron, house]
-import ../../state/entity_manager
+import ../../state/[entity_manager, interators]
 
 proc collectEspionageMetrics*(
   state: GameState,
@@ -28,8 +28,8 @@ proc collectEspionageMetrics*(
   let hasCLK: bool = house.techTree.levels.cloakingTech > 1
   var hasRaiders: bool = false
 
-  for squadron in state.squadrons.entities.data:
-    if squadron.houseId == houseId and not squadron.destroyed:
+  for squadron in state.squadronsOwned(houseId):
+    if not squadron.destroyed:
       if squadron.flagship.shipClass == ShipClass.Raider:
         hasRaiders = true
         break

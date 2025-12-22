@@ -8,7 +8,7 @@ import ../../types/[
   telemetry, core, game_state, colony, squadron, house, capacity
 ]
 import ../../config/military_config
-import ../../state/[interators, entity_manager]
+import ../../state/[iterators, entity_manager]
 
 proc collectCapacityMetrics*(
   state: GameState,

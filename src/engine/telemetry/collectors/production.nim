@@ -5,7 +5,7 @@
 
 import std/options
 import ../../types/[telemetry, core, game_state, event, production, colony]
-import ../../state/entity_manager
+import ../../state/[entity_manager, interators]
 
 proc collectProductionMetrics*(
   state: GameState,
@@ -49,36 +49,35 @@ proc collectProductionMetrics*(
   var buildingsUnderConstruction: int32 = 0
 
   # Count construction projects from colonies (owner determines house)
-  for colony in state.colonies.entities.data:
-    if colony.owner == houseId:
-      if colony.underConstruction.isSome:
-        totalBuildQueueDepth += 1
-        # Get the actual project to determine type
-        let constructionId = colony.underConstruction.get()
-        let projectOpt = state.constructionProjects.entities.getEntity(
-          constructionId
-        )
-        if projectOpt.isSome:
-          let project = projectOpt.get()
-          if project.projectType == BuildType.Ship:
-            shipsUnderConstruction += 1
-            if project.itemId == "ETAC":
-              etacInConstruction += 1
-          else:
-            buildingsUnderConstruction += 1
+  for colony in state.coloniesOwned(houseId):
+    if colony.underConstruction.isSome:
+      totalBuildQueueDepth += 1
+      # Get the actual project to determine type
+      let constructionId = colony.underConstruction.get()
+      let projectOpt = state.constructionProjects.entities.getEntity(
+        constructionId
+      )
+      if projectOpt.isSome:
+        let project = projectOpt.get()
+        if project.projectType == BuildType.Ship:
+          shipsUnderConstruction += 1
+          if project.itemId == "ETAC":
+            etacInConstruction += 1
+        else:
+          buildingsUnderConstruction += 1
 
-      # Add queued projects
-      totalBuildQueueDepth += colony.constructionQueue.len.int32
-      for projectId in colony.constructionQueue:
-        let projectOpt = state.constructionProjects.entities.getEntity(projectId)
-        if projectOpt.isSome:
-          let project = projectOpt.get()
-          if project.projectType == BuildType.Ship:
-            shipsUnderConstruction += 1
-            if project.itemId == "ETAC":
-              etacInConstruction += 1
-          else:
-            buildingsUnderConstruction += 1
+    # Add queued projects
+    totalBuildQueueDepth += colony.constructionQueue.len.int32
+    for projectId in colony.constructionQueue:
+      let projectOpt = state.constructionProjects.entities.getEntity(projectId)
+      if projectOpt.isSome:
+        let project = projectOpt.get()
+        if project.projectType == BuildType.Ship:
+          shipsUnderConstruction += 1
+          if project.itemId == "ETAC":
+            etacInConstruction += 1
+        else:
+          buildingsUnderConstruction += 1
 
   result.totalBuildQueueDepth = totalBuildQueueDepth
   result.etacInConstruction = etacInConstruction

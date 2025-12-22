@@ -9,6 +9,7 @@ src/engine/
     │   └── *.nim           #   - Loaded by `@initialization/config_resolver.nim`.
     │
     ├── @types/             # [DATA SCHEMA] Defines ALL pure data structures (Fleet, Ship, GameState).
+    │   ├── capacity.nim    #   - Defines types for the capacity system.
     │   └── *.nim           #   - Universal data types for the entire engine.
     │
     ├── @initialization/    # [GAME SETUP & BOOTSTRAP]
@@ -29,9 +30,11 @@ src/engine/
     ├── @state/               # [STATE MANAGEMENT CORE - The "Database"]     ▼
     │   │                     # Provides generic, low-level mechanics for storing and accessing data.
     │   ├── entity_manager.nim#   - Implements the generic DoD storage pattern (data: seq, index: Table).
-    │   ├── game_state.nim    #   - `initGameState` constructor and simple direct getters (`getFleet`, etc.).
+    │   ├── game_state.nim    #   - `initGameState` constructor, simple getters, and trackers (e.g., `GracePeriodTracker`).
     │   ├── id_gen.nim        #   - Logic for generating new, unique entity IDs.
-    │   ├── interators.nim    #   - The PRIMARY READ-ONLY API for the engine (e.g., `fleetsInSystem`, `coloniesOwned`).
+    │   ├── iterators.nim     #   - The PRIMARY READ-ONLY API for the engine (e.g., `fleetsInSystem`, `coloniesOwned`).
+    │   │                     #   - ALWAYS use iterators instead of `.entities.data` with manual filtering.
+    │   │                     #   - Provides O(1) indexed lookups via `byHouse`, `byOwner`, `bySystem` tables.
     │   └── fog_of_war.nim    #   - A complex READ-ONLY query system that transforms `GameState` into a `PlayerView`.
     │
     │                                     (WRITE/MUTATION ACCESS)
@@ -57,7 +60,8 @@ src/engine/
     │   ├── economy/          #   - Logic for calculating income, production, maintenance.
     │   ├── combat/           #   - Logic for resolving space and ground battles.
     │   ├── research/         #   - Logic for tech tree advancement.
-    │   └── ...etc            #   - Each module takes `GameState`, performs reads via `@state/interators`,
+    │   ├── capacity/         #   - Logic for enforcing squadron and ship capacity limits.
+    │   └── ...etc            #   - Each module takes `GameState`, performs reads via `@state/iterators`,
     │                         #     and writes changes via the `@entities` managers.
     │
     │

@@ -5,6 +5,7 @@
 
 import std/[options, strformat, tables, strutils]
 import ../../types/[telemetry, core, game_state, event, diplomacy, house]
+import ../../state/interators
 
 proc collectDiplomacyMetrics*(
   state: GameState,
@@ -25,7 +26,7 @@ proc collectDiplomacyMetrics*(
   var enemyCount: int32 = 0
   var neutralCount: int32 = 0
 
-  for otherHouse in state.houses.entities.data:
+  for otherHouse in state.allHouses():
     if otherHouse.id == houseId or otherHouse.isEliminated:
       continue
 
@@ -114,7 +115,7 @@ proc collectDiplomacyMetrics*(
   # State codes: N=Neutral, H=Hostile, E=Enemy
   var relations: seq[string] = @[]
 
-  for otherHouse in state.houses.entities.data:
+  for otherHouse in state.allHouses():
     if otherHouse.id == houseId or otherHouse.isEliminated:
       continue
 

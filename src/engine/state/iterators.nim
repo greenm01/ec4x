@@ -16,7 +16,7 @@
 ## NOTE: These are read-only iterators. For mutations, use state_helpers.
 import std/tables, std/options
 import ../types/[
-  colony, core, fleet, game_state, house, ship, squadron, facilities
+  colony, core, fleet, game_state, house, ship, squadron, facilities, starmap
 ]
 
 # src/engine/state/queries.nim
@@ -305,6 +305,70 @@ iterator drydocksOwned*(state: GameState, houseId: HouseId): Drydock =
       for drydockId in state.drydocks.byColony[colony.id]:
         if state.drydocks.entities.index.contains(drydockId):
           yield state.drydocks.entities.data[state.drydocks.entities.index[drydockId]]
+
+# ============================================================================
+# All-Entity Iterators (Added 2025-12-22)
+# ============================================================================
+
+iterator allColonies*(state: GameState): Colony =
+  ## Iterate all colonies (read-only)
+  ## O(n) where n = total colonies
+  ## Use when you need to process ALL colonies regardless of owner
+  for colony in state.colonies.entities.data:
+    yield colony
+
+iterator allFleets*(state: GameState): Fleet =
+  ## Iterate all fleets (read-only)
+  ## O(n) where n = total fleets
+  ## Use when you need to process ALL fleets regardless of owner
+  for fleet in state.fleets.entities.data:
+    yield fleet
+
+iterator allSquadrons*(state: GameState): Squadron =
+  ## Iterate all squadrons (read-only)
+  ## O(n) where n = total squadrons
+  ## Use when you need to process ALL squadrons regardless of owner
+  for squadron in state.squadrons.entities.data:
+    yield squadron
+
+iterator allSystems*(state: GameState): System =
+  ## Iterate all star systems (read-only)
+  ## O(n) where n = total systems
+  ## Use when you need to process ALL systems
+  for system in state.systems.entities.data:
+    yield system
+
+iterator allSquadronsWithId*(state: GameState): tuple[id: SquadronId,
+                                                       squadron: Squadron] =
+  ## Iterate all squadrons with IDs (for mutations)
+  ## O(n) where n = total squadrons
+  ## Use when you need to mutate squadrons or need their IDs
+  for squadron in state.squadrons.entities.data:
+    yield (squadron.id, squadron)
+
+iterator squadronsOwnedWithId*(state: GameState,
+                                houseId: HouseId): tuple[id: SquadronId,
+                                                         squadron: Squadron] =
+  ## Iterate squadrons owned by house with IDs (for mutations)
+  ## O(1) lookup via byHouse index
+  ## Use when you need to mutate house-owned squadrons
+  if state.squadrons.byHouse.contains(houseId):
+    for squadronId in state.squadrons.byHouse[houseId]:
+      if state.squadrons.entities.index.contains(squadronId):
+        let squadron = state.squadrons.entities.data[
+            state.squadrons.entities.index[squadronId]]
+        yield (squadronId, squadron)
+
+iterator shipsOwnedWithId*(state: GameState,
+                           houseId: HouseId): tuple[id: ShipId, ship: Ship] =
+  ## Iterate ships owned by house with IDs (for mutations)
+  ## O(1) lookup via byHouse index
+  ## Use when you need to mutate house-owned ships
+  if state.ships.byHouse.contains(houseId):
+    for shipId in state.ships.byHouse[houseId]:
+      if state.ships.entities.index.contains(shipId):
+        let ship = state.ships.entities.data[state.ships.entities.index[shipId]]
+        yield (shipId, ship)
 
 ## Design Notes:
 ##

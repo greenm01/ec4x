@@ -4,6 +4,7 @@
 import std/[tables, options, sets]
 import ../types/intelligence as intel_types
 import ../types/[colony, core, diplomacy, fleet, game_state, house, player_view, starmap]
+import ./iterators
 
 proc getOwnedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   ## Get all systems where this house has a colony
@@ -17,9 +18,8 @@ proc getOwnedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
 proc getOccupiedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   ## Get all systems where this house has fleet(s)
   result = initHashSet[SystemId]()
-  for fleet in state.fleets.entities.data:
-    if fleet.houseId == houseId:
-      result.incl(fleet.location)
+  for fleet in state.fleetsOwned(houseId):
+    result.incl(fleet.location)
 
 proc getAdjacentSystems(state: GameState, knownSystems: HashSet[SystemId]): HashSet[SystemId] =
   ## Get all systems one jump away from known systems
@@ -40,7 +40,7 @@ proc getScoutedSystems(state: GameState, houseId: HouseId,
   let intel = state.intelligence[houseId]
 
   var colonyIdToSystemId = initTable[ColonyId, SystemId]()
-  for colony in state.colonies.entities.data:
+  for colony in state.allColonies():
     colonyIdToSystemId[colony.id] = colony.systemId
 
   # Systems with colony intel
@@ -116,12 +116,10 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
   let scoutedSystems = state.getScoutedSystems(houseId, ownedSystems, occupiedSystems)
   let adjacentSystems = state.getAdjacentSystems(ownedSystems + occupiedSystems)
 
-  for colony in state.colonies.entities.data:
-    if colony.owner == houseId:
-      result.ownColonyIds.add(colony.id)
-  for fleet in state.fleets.entities.data:
-    if fleet.houseId == houseId:
-      result.ownFleetIds.add(fleet.id)
+  for colony in state.coloniesOwned(houseId):
+    result.ownColonyIds.add(colony.id)
+  for fleet in state.fleetsOwned(houseId):
+    result.ownFleetIds.add(fleet.id)
 
   result.visibleSystems = initTable[SystemId, VisibleSystem]()
 
@@ -164,7 +162,7 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
       )
 
   # Universal map awareness
-  for system in state.systems.entities.data:
+  for system in state.allSystems():
     if system.id notin result.visibleSystems:
       let coords = (q: system.coords.q, r: system.coords.r)
       result.visibleSystems[system.id] = VisibleSystem(
@@ -174,7 +172,7 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
       )
 
   # Visible colonies
-  for colony in state.colonies.entities.data:
+  for colony in state.allColonies():
     if colony.owner != houseId:
       let systemId = colony.systemId
       var isVisible = false
@@ -188,7 +186,7 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
         result.visibleColonies.add(createVisibleColony(colony, false, intelReport))
 
   # Visible fleets
-  for fleet in state.fleets.entities.data:
+  for fleet in state.allFleets():
     if fleet.houseId != houseId:
       let isVisible = fleet.location in ownedSystems or fleet.location in occupiedSystems
       if isVisible:
@@ -200,10 +198,10 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
   # Public information
   result.actProgression = state.actProgression
   var colonyCounts = initTable[HouseId, int32]()
-  for colony in state.colonies.entities.data:
+  for colony in state.allColonies():
     colonyCounts[colony.owner] = colonyCounts.getOrDefault(colony.owner) + 1
 
-  for house in state.houses.entities.data:
+  for house in state.allHouses():
     result.housePrestige[house.id] = house.prestige
     result.houseColonyCounts[house.id] = colonyCounts.getOrDefault(house.id)
     if house.isEliminated:

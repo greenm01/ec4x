@@ -5,7 +5,7 @@
 
 import std/[options]
 import ../../types/[telemetry, core, game_state, event, house, colony]
-import ../../state/[entity_manager]
+import ../../state/[entity_manager, iterators]
 
 proc collectIncomeMetrics*(
   state: GameState,
@@ -28,11 +28,10 @@ proc collectIncomeMetrics*(
   var totalIU: int32 = 0
   var grossColonyOutput: int32 = 0
 
-  for colony in state.colonies.entities.data:
-    if colony.owner == houseId:
-      totalProduction += colony.production
-      totalIU += colony.infrastructure
-      grossColonyOutput += colony.grossOutput
+  for colony in state.coloniesOwned(houseId):
+    totalProduction += colony.production
+    totalIU += colony.infrastructure
+    grossColonyOutput += colony.grossOutput
 
   result.productionPerTurn = totalProduction
   result.totalIndustrialUnits = totalIU

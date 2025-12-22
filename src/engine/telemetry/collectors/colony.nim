@@ -5,6 +5,7 @@
 
 import std/options
 import ../../types/[telemetry, core, game_state, event, colony]
+import ../../state/interators
 
 proc collectColonyMetrics*(
   state: GameState,
@@ -41,18 +42,17 @@ proc collectColonyMetrics*(
   var totalColonies: int32 = 0
   var undefendedColonies: int32 = 0
 
-  for colony in state.colonies.entities.data:
-    if colony.owner == houseId:
-      totalColonies += 1
+  for colony in state.coloniesOwned(houseId):
+    totalColonies += 1
 
-      # Check if colony has ground defense
-      # NOTE: Planetary shields don't count (passive only)
-      # NOTE: Starbases and fleets are orbital defense, not ground defense
-      let hasGroundDefense = (colony.armyIds.len > 0 or
-                               colony.marineIds.len > 0 or
-                               colony.groundBatteryIds.len > 0)
-      if not hasGroundDefense:
-        undefendedColonies += 1
+    # Check if colony has ground defense
+    # NOTE: Planetary shields don't count (passive only)
+    # NOTE: Starbases and fleets are orbital defense, not ground defense
+    let hasGroundDefense = (colony.armyIds.len > 0 or
+                             colony.marineIds.len > 0 or
+                             colony.groundBatteryIds.len > 0)
+    if not hasGroundDefense:
+      undefendedColonies += 1
 
   result.coloniesGained = coloniesGained
   result.coloniesGainedViaColonization = coloniesGainedViaColonization

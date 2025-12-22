@@ -5,7 +5,7 @@
 
 import std/[tables, options]
 import ../../types/[telemetry, core, game_state, ship, squadron, colony]
-import ../../state/entity_manager
+import ../../state/[entity_manager, iterators]
 
 proc collectMilitaryMetrics*(
   state: GameState,
@@ -45,9 +45,8 @@ proc collectMilitaryMetrics*(
   var planetBreakerShips = 0i32
 
   # Count colony-based fighters
-  for colony in state.colonies.entities.data:
-    if colony.owner == houseId:
-      fighterShips += colony.fighterSquadronIds.len.int32
+  for colony in state.coloniesOwned(houseId):
+    fighterShips += colony.fighterSquadronIds.len.int32
 
   # Planet-breakers tracked at house level
   planetBreakerShips = house.planetBreakerCount
@@ -56,8 +55,8 @@ proc collectMilitaryMetrics*(
   var idleCarrierCount = 0i32
   var totalCarrierCount = 0i32
 
-  for squadron in state.squadrons.entities.data:
-    if squadron.houseId == houseId and not squadron.destroyed:
+  for squadron in state.squadronsOwned(houseId):
+    if not squadron.destroyed:
       case squadron.flagship.shipClass:
       of ShipClass.Fighter: fighterShips += 1
       of ShipClass.Corvette: corvetteShips += 1
@@ -130,20 +129,15 @@ proc collectMilitaryMetrics*(
   var marinesOnTransports = 0i32
 
   # Count ground units at colonies
-  for colony in state.colonies.entities.data:
-    # We no longer need systemId here as it's not used. We only need the colony object to access its fields.
-    # If systemId were needed, we'd adjust the iterator or access pattern accordingly.
+  for colony in state.coloniesOwned(houseId):
+    if colony.planetaryShieldLevel > 0:
+      planetaryShieldUnits += 1
+    groundBatteryUnits += colony.groundBatteryIds.len.int32
+    armyUnits += colony.armyIds.len.int32
+    marinesAtColonies += colony.marineIds.len.int32
 
-    if colony.owner == houseId:
-      if colony.planetaryShieldLevel > 0:
-        planetaryShieldUnits += 1
-      groundBatteryUnits += colony.groundBatteryIds.len.int32
-      armyUnits += colony.armyIds.len.int32
-      marinesAtColonies += colony.marineIds.len.int32
-
-  for squadron in state.squadrons.entities.data:
-    if squadron.houseId == houseId and
-       squadron.squadronType == SquadronType.Troops:
+  for squadron in state.squadronsOwned(houseId):
+    if squadron.squadronType == SquadronType.Troops:
       if squadron.flagship.cargo.isSome:
         let cargo = squadron.flagship.cargo.get()
         if cargo.cargoType == CargoType.Marines:
@@ -163,8 +157,8 @@ proc collectMilitaryMetrics*(
   var scoutCount = 0i32
 
   # Count scouts in squadrons
-  for squadron in state.squadrons.entities.data:
-    if squadron.houseId == houseId and not squadron.destroyed:
+  for squadron in state.squadronsOwned(houseId):
+    if not squadron.destroyed:
       if squadron.flagship.shipClass == ShipClass.Scout:
         scoutCount += 1
       # Count additional scout ships in squadron

@@ -5,6 +5,7 @@
 
 import std/options
 import ../../types/[telemetry, core, game_state, event, squadron]
+import ../../state/interators
 
 proc collectFleetMetrics*(
   state: GameState,
@@ -48,8 +49,8 @@ proc collectFleetMetrics*(
   var etacsInTransit: int32 = 0
 
   # Count ETACs from squadrons
-  for squadron in state.squadrons.entities.data:
-    if squadron.houseId == houseId and not squadron.destroyed:
+  for squadron in state.squadronsOwned(houseId):
+    if not squadron.destroyed:
       if squadron.flagship.shipClass == ShipClass.ETAC:
         totalETACs += 1
         # TODO: Check if ETAC has orders or is in transit
