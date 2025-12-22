@@ -9,7 +9,7 @@ import ./collectors/[
   population, income, tech, espionage, diplomacy, house
 ]
 
-proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
+proc initDiagnosticMetrics*(turn: int32, houseId: HouseId,
                            strategy: string = "Balanced",
                            gameId: string = ""): DiagnosticMetrics =
   ## Initialize empty diagnostic metrics for a house at a turn

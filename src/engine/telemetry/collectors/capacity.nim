@@ -3,7 +3,7 @@
 ## Collect capacity violation metrics from GameState.
 ## Covers: squadron limits, fighter capacity, grace periods.
 
-import std/[math, tables, options]
+import std/[math, options]
 import ../../types/[
   telemetry, core, game_state, colony, squadron, house, capacity
 ]

@@ -5,7 +5,7 @@
 
 import std/options
 import ../../types/[telemetry, core, game_state, event, production, colony]
-import ../../state/interators
+import ../../state/entity_manager
 
 proc collectProductionMetrics*(
   state: GameState,
@@ -49,7 +49,7 @@ proc collectProductionMetrics*(
   var buildingsUnderConstruction: int32 = 0
 
   # Count construction projects from colonies (owner determines house)
-  for colonyId, colony in state.colonies.entities.pairs:
+  for colony in state.colonies.entities.data:
     if colony.owner == houseId:
       if colony.underConstruction.isSome:
         totalBuildQueueDepth += 1
@@ -68,7 +68,7 @@ proc collectProductionMetrics*(
             buildingsUnderConstruction += 1
 
       # Add queued projects
-      totalBuildQueueDepth += colony.constructionQueue.len
+      totalBuildQueueDepth += colony.constructionQueue.len.int32
       for projectId in colony.constructionQueue:
         let projectOpt = state.constructionProjects.entities.getEntity(projectId)
         if projectOpt.isSome:

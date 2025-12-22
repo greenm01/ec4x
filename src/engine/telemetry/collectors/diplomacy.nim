@@ -5,7 +5,6 @@
 
 import std/[options, strformat, tables, strutils]
 import ../../types/[telemetry, core, game_state, event, diplomacy, house]
-import ../../state/entity_manager
 
 proc collectDiplomacyMetrics*(
   state: GameState,
@@ -15,10 +14,8 @@ proc collectDiplomacyMetrics*(
   ## Collect diplomacy metrics from events and GameState
   result = prevMetrics  # Start with previous metrics
 
-  let houseOpt = state.houses.entities.getEntity(houseId)
-  if houseOpt.isNone:
-    return result
-  let house = houseOpt.get()
+  # The 'house' variable is not directly used in this collector after the check for houseOpt.isNone. 
+  # Its purpose was primarily to ensure the house exists before proceeding, which is now handled by the early return.
 
   # ================================================================
   # DIPLOMATIC STATUS (3-level system: Neutral, Hostile, Enemy)

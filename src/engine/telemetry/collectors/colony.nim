@@ -5,7 +5,6 @@
 
 import std/options
 import ../../types/[telemetry, core, game_state, event, colony]
-import ../../state/interators
 
 proc collectColonyMetrics*(
   state: GameState,
@@ -42,7 +41,7 @@ proc collectColonyMetrics*(
   var totalColonies: int32 = 0
   var undefendedColonies: int32 = 0
 
-  for systemId, colony in state.colonies.entities.pairs:
+  for colony in state.colonies.entities.data:
     if colony.owner == houseId:
       totalColonies += 1
 
