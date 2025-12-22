@@ -5,8 +5,7 @@
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
 import std/[options, strformat]
-import ../types/core
-import ../types/event as event_types
+import ../types/[core, event as event_types]
 
 # Export event_types alias for GameEvent types
 export event_types
