@@ -8,18 +8,22 @@ import ./collectors/[
   combat, military, fleet, facilities, colony, production, capacity,
   population, income, tech, espionage, diplomacy, house
 ]
+import ../persistence/telemetry_db
 
 proc initDiagnosticMetrics*(turn: int32, houseId: HouseId,
-                           strategy: string = "Balanced",
                            gameId: string = ""): DiagnosticMetrics =
   ## Initialize empty diagnostic metrics for a house at a turn
+  # Ensure telemetry database and table exist
+  var db = openTelemetryDb()
+  defer: closeTelemetryDb(db)
+  createDiagnosticMetricsTable(db)
+
   result = DiagnosticMetrics(
     gameId: gameId,
     turn: turn,
     act: 1'i32,  # Default to Act 1, will be calculated in collectDiagnostics
     rank: 0'i32,  # Default to 0, will be calculated in collectDiagnostics
     houseId: houseId,
-    strategy: strategy,
     totalSystemsOnMap: 0'i32,  # Will be set in collectDiagnostics
 
     # Economy
@@ -243,9 +247,6 @@ proc initDiagnosticMetrics*(turn: int32, houseId: HouseId,
     # Bilateral Diplomatic Relations
     bilateralRelations: "",
 
-    # Advisor Reasoning
-    advisorReasoning: "",
-
     # Event Counts
     eventsOrderCompleted: 0'i32,
     eventsOrderFailed: 0'i32,
@@ -256,24 +257,12 @@ proc initDiagnosticMetrics*(turn: int32, houseId: HouseId,
     eventsEspionageTotal: 0'i32,
     eventsDiplomaticTotal: 0'i32,
     eventsResearchTotal: 0'i32,
-    eventsColonyTotal: 0'i32,
-
-    # GOAP Metrics
-    goapEnabled: false,
-    goapPlansActive: 0'i32,
-    goapPlansCompleted: 0'i32,
-    goapGoalsExtracted: 0'i32,
-    goapPlanningTimeMs: 0'f32,
-    goapInvasionGoals: 0'i32,
-    goapInvasionPlans: 0'i32,
-    goapActionsExecuted: 0'i32,
-    goapActionsFailed: 0'i32
+    eventsColonyTotal: 0'i32
   )
     
 proc collectDiagnostics*(
   state: GameState,
   houseId: HouseId,
-  strategy: string = "",
   gameId: string = "",
   act: int32 = 0'i32,
   rank: int32 = 0'i32
@@ -291,7 +280,6 @@ proc collectDiagnostics*(
   ## Args:
   ##   state: Current game state with lastTurnEvents populated
   ##   houseId: House to collect metrics for
-  ##   strategy: AI strategy name (optional)
   ##   gameId: Game identifier (optional)
   ##   act: Current act/chapter (optional)
   ##   rank: House rank/position (optional)
@@ -300,7 +288,7 @@ proc collectDiagnostics*(
   ##   Complete DiagnosticMetrics for the house
 
   # Initialize metrics with metadata
-  var metrics = initDiagnosticMetrics(state.turn, houseId, strategy, gameId)
+  var metrics = initDiagnosticMetrics(state.turn, houseId, gameId)
   metrics.act = act
   metrics.rank = rank
 
@@ -319,5 +307,10 @@ proc collectDiagnostics*(
   metrics = collectEspionageMetrics(state, houseId, metrics)
   metrics = collectDiplomacyMetrics(state, houseId, metrics)
   metrics = collectHouseMetrics(state, houseId, metrics)
+
+  # Save metrics to database
+  var db = openTelemetryDb()
+  defer: closeTelemetryDb(db)
+  saveDiagnosticMetrics(db, metrics)
 
   return metrics

@@ -14,7 +14,6 @@ type
     act*: int32                # Game act/phase (1-4) for phase-based analysis
     rank*: int32               # Current rank by prestige (1=winning, 4=losing)
     houseId*: HouseId
-    strategy*: string          # AI strategy/personality archetype (converted from AIStrategy enum)
     totalSystemsOnMap*: int32  # Total systems on the starmap (constant, same for all houses)
 
     # Economy (Core)
@@ -286,9 +285,6 @@ type
     # Bilateral Diplomatic Relations (semicolon-separated: houseId:state)
     bilateralRelations*: string   # e.g., "house-harkonnen:Hostile;house-ordos:Neutral"
 
-    # Advisor Reasoning
-    advisorReasoning*: string       # Structured log of advisor decision rationales
-
     # Event Counts (track event generation for balance testing)
     eventsOrderCompleted*: int32    # OrderCompleted events this turn
     eventsOrderFailed*: int32       # OrderFailed events this turn
@@ -301,17 +297,24 @@ type
     eventsResearchTotal*: int32     # Research/TechAdvance events this turn
     eventsColonyTotal*: int32       # Colony-related events this turn
 
-    # GOAP Metrics (MVP: Fleet + Build domains)
-    goapEnabled*: bool                  # Is GOAP strategic planning enabled?
-    goapPlansActive*: int32             # Active plans in GOAP tracker
-    goapPlansCompleted*: int32          # Completed plans (cumulative)
-    goapGoalsExtracted*: int32          # Strategic goals extracted this turn
-    goapPlanningTimeMs*: float32        # Phase 1.5 planning overhead (ms)
-    # Phase 3: GOAP Invasion Metrics
-    goapInvasionGoals*: int32           # Invasion goals generated this turn
-    goapInvasionPlans*: int32           # Active invasion plans (subset of plansActive)
-    goapActionsExecuted*: int32         # GOAP actions converted to orders this turn
-    goapActionsFailed*: int32           # GOAP actions that couldn't be executed
+    # Economic Efficiency & Health
+    upkeepAsPercentageOfIncome*: float32
+    gcoPerPopulationUnit*: float32
+    constructionSpendingAsPercentageOfIncome*: float32
+
+    # Military Effectiveness & Doctrine
+    forceProjection*: int32
+    fleetReadiness*: float32
+    economicDamageEfficiency*: float32
+    capitalShipRatio*: float32
+
+    # Diplomatic Strategy
+    averageWarDuration*: int32
+    relationshipVolatility*: int32
+
+    # Expansion and Empire Stability
+    averageColonyDevelopment*: float32
+    borderFriction*: int32
 
   DiagnosticSession* = object
     ## Collection of all diagnostics for a game session

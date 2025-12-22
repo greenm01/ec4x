@@ -24,6 +24,7 @@
             
             # 3. System Tools
             sqlite
+            pkg-config
             git
             
             # 4. Critical for Polars/Nim binaries

@@ -1,11 +1,12 @@
 import std/[tables, options, math, algorithm, logging]
-import turn_cycle/[conflict_phase, income_phase, command_phase, production_phase]
+import /[conflict_phase, income_phase, command_phase, production_phase]
+import ../types/[core, game_state]
 
 proc executeTurnCycle*(state: var GameState, commands: Table[HouseId, CommandPacket]): TurnReport =
   # Canonical turn cycle
   conflict_phase.execute(state)
   income_phase.execute(state)
-  state.turn += 1
+  advanceTurn(state)
   command_phase.execute(state, commands)
   production_phase.execute(state)
   
