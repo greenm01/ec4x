@@ -15,30 +15,30 @@ proc collectCombatMetrics*(
   result = prevMetrics  # Start with previous metrics
 
   # Initialize combat counters for this turn
-  var spaceCombatWins = 0
-  var spaceCombatLosses = 0
-  var spaceCombatTotal = 0
-  var orbitalFailures = 0
-  var orbitalTotal = 0
-  var raiderAmbushSuccess = 0
-  var raiderAmbushAttempts = 0
-  var raidersDetected = 0
-  var raidersStealthSuccess = 0
-  var eliDetectionAttempts = 0
-  var eliRollsSum = 0
-  var clkRollsSum = 0
-  var scoutsDetected = 0
-  var scoutsDetectedBy = 0
-  var combatCERSum = 0
-  var combatCERCount = 0
-  var bombardmentRounds = 0
-  var groundCombatVictories = 0
-  var retreatsExecuted = 0
-  var criticalHitsDealt = 0
-  var criticalHitsReceived = 0
-  var cloakedAmbushSuccess = 0
-  var shieldsActivated = 0
-  var totalInvasions = 0
+  var spaceCombatWins = 0'i32
+  var spaceCombatLosses = 0'i32
+  var spaceCombatTotal = 0'i32
+  var orbitalFailures = 0'i32
+  var orbitalTotal = 0'i32
+  var raiderAmbushSuccess = 0'i32
+  var raiderAmbushAttempts = 0'i32
+  var raidersDetected = 0'i32
+  var raidersStealthSuccess = 0'i32
+  var eliDetectionAttempts = 0'i32
+  var eliRollsSum = 0'i32
+  var clkRollsSum = 0'i32
+  var scoutsDetected = 0'i32
+  var scoutsDetectedBy = 0'i32
+  var combatCERSum = 0'i32
+  var combatCERCount = 0'i32
+  var bombardmentRounds = 0'i32
+  var groundCombatVictories = 0'i32
+  var retreatsExecuted = 0'i32
+  var criticalHitsDealt = 0'i32
+  var criticalHitsReceived = 0'i32
+  var cloakedAmbushSuccess = 0'i32
+  var shieldsActivated = 0'i32
+  var totalInvasions = 0'i32
 
   # Process events from state.lastTurnEvents
   for event in state.lastTurnEvents:

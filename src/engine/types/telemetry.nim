@@ -4,582 +4,320 @@
 ## Moved from ai/analysis/diagnostics to establish telemetry as first-class engine concern.
 ##
 ## Pure event-driven architecture - collectors process GameEvent stream.
-
 import ./core
 
 type
   DiagnosticMetrics* = object
     ## Metrics collected per house, per turn
-    gameId*: string        # Unique game identifier (from seed)
-    turn*: int
-    act*: int              # Game act/phase (1-4) for phase-based analysis
-    rank*: int             # Current rank by prestige (1=winning, 4=losing)
+    gameId*: string            # Unique game identifier (from seed)
+    turn*: int32
+    act*: int32                # Game act/phase (1-4) for phase-based analysis
+    rank*: int32               # Current rank by prestige (1=winning, 4=losing)
     houseId*: HouseId
-    strategy*: string  # AI strategy/personality archetype (converted from AIStrategy enum)
-    totalSystemsOnMap*: int  # Total systems on the starmap (constant, same for all houses)
+    strategy*: string          # AI strategy/personality archetype (converted from AIStrategy enum)
+    totalSystemsOnMap*: int32  # Total systems on the starmap (constant, same for all houses)
 
     # Economy (Core)
-    treasuryBalance*: int
-    productionPerTurn*: int
-    puGrowth*: int              # Change in PU from last turn
-    zeroSpendTurns*: int        # Cumulative turns with 0 treasury spending
-    grossColonyOutput*: int     # GCO = sum of all colony production (before tax)
-    netHouseValue*: int         # NHV = GCO × tax rate
-    taxRate*: int               # Current tax rate (0-100%)
-    totalIndustrialUnits*: int  # Total IU across all colonies
-    totalPopulationUnits*: int  # Total PU across all colonies (economic measure)
-    totalPopulationPTU*: int    # Total PTU (people measure, exponential from PU)
-    populationGrowthRate*: int  # % growth rate (base 2% + tax modifiers)
+    treasuryBalance*: int32
+    productionPerTurn*: int32
+    puGrowth*: int32              # Change in PU from last turn
+    zeroSpendTurns*: int32        # Cumulative turns with 0 treasury spending
+    grossColonyOutput*: int32     # GCO = sum of all colony production (before tax)
+    netHouseValue*: int32         # NHV = GCO × tax rate
+    taxRate*: int32               # Current tax rate (0-100%)
+    totalIndustrialUnits*: int32  # Total IU across all colonies
+    totalPopulationUnits*: int32  # Total PU across all colonies (economic measure)
+    totalPopulationPTU*: int32    # Total PTU (people measure, exponential from PU)
+    populationGrowthRate*: int32  # % growth rate (base 2% + tax modifiers)
 
     # Tech Levels (All 11 technology types)
-    techCST*: int               # Construction Tech (1-10, enables Planet-Breakers at 10!)
-    techWEP*: int               # Weapons Tech (1-10, +10% AS/DS per level)
-    techEL*: int                # Economic Level (1-10+, +5% GCO per level)
-    techSL*: int                # Science Level (1-8+, enables other tech)
-    techTER*: int               # Terraforming (1-7, planet class upgrades)
-    techELI*: int               # Electronic Intelligence (1-5, scout detection)
-    techCLK*: int               # Cloaking (1-5, raider stealth)
-    techSLD*: int               # Shield Tech (1-5, planetary shields)
-    techCIC*: int               # Counter-Intelligence (1-5, anti-espionage)
-    techFD*: int                # Fighter Doctrine (1-3, capacity multiplier)
-    techACO*: int               # Advanced Carrier Operations (1-3, carrier capacity)
+    techCST*: int32               # Construction Tech (1-10, enables Planet-Breakers at 10!)
+    techWEP*: int32               # Weapons Tech (1-10, +10% AS/DS per level)
+    techEL*: int32                # Economic Level (1-10+, +5% GCO per level)
+    techSL*: int32                # Science Level (1-8+, enables other tech)
+    techTER*: int32               # Terraforming (1-7, planet class upgrades)
+    techELI*: int32               # Electronic Intelligence (1-5, scout detection)
+    techCLK*: int32               # Cloaking (1-5, raider stealth)
+    techSLD*: int32               # Shield Tech (1-5, planetary shields)
+    techCIC*: int32               # Counter-Intelligence (1-5, anti-espionage)
+    techFD*: int32                # Fighter Doctrine (1-3, capacity multiplier)
+    techACO*: int32               # Advanced Carrier Operations (1-3, carrier capacity)
 
     # Research Points (Accumulated this turn)
-    researchERP*: int           # Economic Research Points invested
-    researchSRP*: int           # Science Research Points invested
-    researchTRP*: int           # Technology Research Points invested
-    researchBreakthroughs*: int # Count of breakthroughs this turn (bi-annual rolls)
+    researchERP*: int32           # Economic Research Points invested
+    researchSRP*: int32           # Science Research Points invested
+    researchTRP*: int32           # Technology Research Points invested
+    researchBreakthroughs*: int32 # Count of breakthroughs this turn (bi-annual rolls)
 
     # Research Waste Tracking (Tech Level Caps)
-    researchWastedERP*: int     # ERP wasted on maxed EL (EL >= 11)
-    researchWastedSRP*: int     # SRP wasted on maxed SL (SL >= 8)
-    turnsAtMaxEL*: int          # Consecutive turns with EL at maximum (11)
-    turnsAtMaxSL*: int          # Consecutive turns with SL at maximum (8)
+    researchWastedERP*: int32     # ERP wasted on maxed EL (EL >= 11)
+    researchWastedSRP*: int32     # SRP wasted on maxed SL (SL >= 8)
+    turnsAtMaxEL*: int32          # Consecutive turns with EL at maximum (11)
+    turnsAtMaxSL*: int32          # Consecutive turns with SL at maximum (8)
 
     # Maintenance & Prestige
-    maintenanceCostTotal*: int  # Total maintenance paid this turn
-    maintenanceShortfallTurns*: int  # Consecutive turns with maintenance shortfall
-    prestigeCurrent*: int       # Current prestige score
-    prestigeChange*: int        # Prestige gained/lost this turn
-    prestigeVictoryProgress*: int  # Turns at prestige >= 1500 (victory at 3 turns)
+    maintenanceCostTotal*: int32       # Total maintenance paid this turn
+    maintenanceShortfallTurns*: int32  # Consecutive turns with maintenance shortfall
+    prestigeCurrent*: int32            # Current prestige score
+    prestigeChange*: int32             # Prestige gained/lost this turn
+    prestigeVictoryProgress*: int32    # Turns at prestige >= 1500 (victory at 3 turns)
 
     # Combat Performance (from combat.toml)
-    combatCERAverage*: int           # Average CER in space combat (×100 for precision)
-    bombardmentRoundsTotal*: int     # Total bombardment rounds executed
-    groundCombatVictories*: int      # Successful invasions/blitz
-    retreatsExecuted*: int           # Times fleets retreated from combat
-    criticalHitsDealt*: int          # Critical hits scored (nat 9 on 1d10)
-    criticalHitsReceived*: int       # Critical hits taken
-    cloakedAmbushSuccess*: int       # Successful cloaked raider ambushes
-    shieldsActivatedCount*: int      # Times planetary shields blocked hits
+    combatCERAverage*: int32           # Average CER in space combat (×100 for precision)
+    bombardmentRoundsTotal*: int32     # Total bombardment rounds executed
+    groundCombatVictories*: int32      # Successful invasions/blitz
+    retreatsExecuted*: int32           # Times fleets retreated from combat
+    criticalHitsDealt*: int32          # Critical hits scored (nat 9 on 1d10)
+    criticalHitsReceived*: int32       # Critical hits taken
+    cloakedAmbushSuccess*: int32       # Successful cloaked raider ambushes
+    shieldsActivatedCount*: int32      # Times planetary shields blocked hits
 
     # Diplomatic Status (4-level system: Neutral, Ally, Hostile, Enemy)
-    allyStatusCount*: int            # Houses at Ally status (formal pacts)
-    hostileStatusCount*: int         # Houses at Hostile status (deep space combat)
-    enemyStatusCount*: int           # Houses at Enemy status (open war)
-    neutralStatusCount*: int         # Houses at Neutral status (default)
-    pactViolationsTotal*: int        # Cumulative pact violations (lifetime)
-    dishonoredStatusActive*: bool    # Currently dishonored?
-    diplomaticIsolationTurns*: int   # Turns remaining in isolation
+    allyStatusCount*: int32            # Houses at Ally status (formal pacts)
+    hostileStatusCount*: int32         # Houses at Hostile status (deep space combat)
+    enemyStatusCount*: int32           # Houses at Enemy status (open war)
+    neutralStatusCount*: int32         # Houses at Neutral status (default)
+    pactViolationsTotal*: int32        # Cumulative pact violations (lifetime)
+    dishonoredStatusActive*: bool      # Currently dishonored?
+    diplomaticIsolationTurns*: int32   # Turns remaining in isolation
 
     # Treaty Activity Metrics
-    pactFormationsTotal*: int        # Cumulative pacts formed (lifetime)
-    pactBreaksTotal*: int            # Cumulative pacts broken (lifetime)
-    hostilityDeclarationsTotal*: int # Cumulative escalations to Hostile (lifetime)
-    warDeclarationsTotal*: int       # Cumulative escalations to Enemy (lifetime)
+    pactFormationsTotal*: int32        # Cumulative pacts formed (lifetime)
+    pactBreaksTotal*: int32            # Cumulative pacts broken (lifetime)
+    hostilityDeclarationsTotal*: int32 # Cumulative escalations to Hostile (lifetime)
+    warDeclarationsTotal*: int32       # Cumulative escalations to Enemy (lifetime)
 
     # Espionage Activity (from espionage.toml)
-    espionageSuccessCount*: int      # Successful espionage operations
-    espionageFailureCount*: int      # Failed espionage operations
-    espionageDetectedCount*: int     # Times caught by counter-intel
-    techTheftsSuccessful*: int       # Successful tech theft operations
-    sabotageOperations*: int         # Sabotage attempts (low + high)
-    assassinationAttempts*: int      # Assassination missions
-    cyberAttacksLaunched*: int       # Cyber attacks on starbases
-    ebpPointsSpent*: int             # EBP spent this turn
-    cipPointsSpent*: int             # CIP spent this turn
-    counterIntelSuccesses*: int      # Enemy espionage detected
+    espionageSuccessCount*: int32      # Successful espionage operations
+    espionageFailureCount*: int32      # Failed espionage operations
+    espionageDetectedCount*: int32     # Times caught by counter-intel
+    techTheftsSuccessful*: int32       # Successful tech theft operations
+    sabotageOperations*: int32         # Sabotage attempts (low + high)
+    assassinationAttempts*: int32      # Assassination missions
+    cyberAttacksLaunched*: int32       # Cyber attacks on starbases
+    ebpPointsSpent*: int32             # EBP spent this turn
+    cipPointsSpent*: int32             # CIP spent this turn
+    counterIntelSuccesses*: int32      # Enemy espionage detected
 
     # Population & Colony Management (from population.toml)
-    populationTransfersActive*: int  # Ongoing Space Guild transfers
-    populationTransfersCompleted*: int  # Completed transfers (cumulative)
-    populationTransfersLost*: int    # Transfers lost to conquest/blockade
-    ptuTransferredTotal*: int        # Total PTUs moved via Guild (cumulative)
-    coloniesBlockadedCount*: int     # Current colonies under blockade
-    blockadeTurnsCumulative*: int    # Total colony-turns spent blockaded
+    populationTransfersActive*: int32     # Ongoing Space Guild transfers
+    populationTransfersCompleted*: int32  # Completed transfers (cumulative)
+    populationTransfersLost*: int32       # Transfers lost to conquest/blockade
+    ptuTransferredTotal*: int32           # Total PTUs moved via Guild (cumulative)
+    coloniesBlockadedCount*: int32        # Current colonies under blockade
+    blockadeTurnsCumulative*: int32       # Total colony-turns spent blockaded
 
     # Economic Health (from economy.toml)
-    treasuryDeficit*: bool           # Treasury < maintenance cost?
-    infrastructureDamageTotal*: int  # Total IU lost to bombardment/sabotage (cumulative)
-    salvageValueRecovered*: int      # PP recovered from salvaging ships (cumulative)
-    maintenanceCostDeficit*: int     # Shortfall amount if treasury insufficient
-    taxPenaltyActive*: bool          # High tax prestige penalty active?
-    avgTaxRate6Turn*: int            # Rolling 6-turn average tax rate
+    treasuryDeficit*: bool             # Treasury < maintenance cost?
+    infrastructureDamageTotal*: int32  # Total IU lost to bombardment/sabotage (cumulative)
+    salvageValueRecovered*: int32      # PP recovered from salvaging ships (cumulative)
+    maintenanceCostDeficit*: int32     # Shortfall amount if treasury insufficient
+    taxPenaltyActive*: bool            # High tax prestige penalty active?
+    avgTaxRate6Turn*: int32            # Rolling 6-turn average tax rate
 
     # Squadron Capacity & Violations (from military.toml)
-    fighterCapacityMax*: int         # Max FS allowed (sum per colony: floor(Colony_IU/fighter_capacity_iu_divisor) × FD multiplier)
-    fighterCapacityUsed*: int        # Actual FS count (current)
-    fighterCapacityViolation*: bool  # Over capacity?
-    squadronLimitMax*: int           # Max capital squadrons allowed (floor(Total_IU/squadron_limit_iu_divisor) × 2)
-    squadronLimitUsed*: int          # Actual capital squadron count
-    squadronLimitViolation*: bool    # Over squadron limit?
-    starbasesActual*: int            # Actual starbase facility count
+    fighterCapacityMax*: int32         # Max FS allowed (sum per colony: floor(Colony_IU/fighter_capacity_iu_divisor) × FD multiplier)
+    fighterCapacityUsed*: int32        # Actual FS count (current)
+    fighterCapacityViolation*: bool    # Over capacity?
+    squadronLimitMax*: int32           # Max capital squadrons allowed (floor(Total_IU/squadron_limit_iu_divisor) × 2)
+    squadronLimitUsed*: int32          # Actual capital squadron count
+    squadronLimitViolation*: bool      # Over squadron limit?
+    starbasesActual*: int32            # Actual starbase facility count
 
     # House Status (from gameplay.toml)
-    autopilotActive*: bool           # Currently in MIA Autopilot mode
-    defensiveCollapseActive*: bool   # Currently in Defensive Collapse
-    turnsUntilElimination*: int      # If negative prestige, turns until elimination
-    missedOrderTurns*: int           # Consecutive turns without orders (MIA risk)
+    autopilotActive*: bool             # Currently in MIA Autopilot mode
+    defensiveCollapseActive*: bool     # Currently in Defensive Collapse
+    turnsUntilElimination*: int32      # If negative prestige, turns until elimination
+    missedOrderTurns*: int32           # Consecutive turns without orders (MIA risk)
 
     # Military
-    spaceCombatWins*: int
-    spaceCombatLosses*: int
-    spaceCombatTotal*: int
-    orbitalFailures*: int       # Lost orbital phase despite winning space
-    orbitalTotal*: int
-    raiderAmbushSuccess*: int   # Successful Raider ambushes
-    raiderAmbushAttempts*: int
-    raiderDetectedCount*: int        # Times raiders were detected by ELI
-    raiderStealthSuccessCount*: int  # Times raiders evaded ELI detection
-    eliDetectionAttempts*: int       # Total ELI detection attempts
-    avgEliRoll*: float               # Average ELI roll value
-    avgClkRoll*: float               # Average CLK roll value
-    scoutsDetected*: int             # Enemy scouts detected (observer)
-    scoutsDetectedBy*: int           # Own scouts detected by enemy (target)
+    spaceCombatWins*: int32
+    spaceCombatLosses*: int32
+    spaceCombatTotal*: int32
+    orbitalFailures*: int32       # Lost orbital phase despite winning space
+    orbitalTotal*: int32
+    raiderAmbushSuccess*: int32   # Successful Raider ambushes
+    raiderAmbushAttempts*: int32
+    raiderDetectedCount*: int32        # Times raiders were detected by ELI
+    raiderStealthSuccessCount*: int32  # Times raiders evaded ELI detection
+    eliDetectionAttempts*: int32       # Total ELI detection attempts
+    avgEliRoll*: float32               # Average ELI roll value
+    avgClkRoll*: float32               # Average CLK roll value
+    scoutsDetected*: int32             # Enemy scouts detected (observer)
+    scoutsDetectedBy*: int32           # Own scouts detected by enemy (target)
 
     # Logistics
-    capacityViolationsActive*: int    # Current active capacity violations
-    fightersDisbanded*: int           # Cumulative fighters lost to capacity
-    totalFighters*: int               # Current fighter count
-    idleCarriers*: int                # Carriers with 0 fighters loaded
-    totalCarriers*: int               # Total carrier count
-    totalTransports*: int             # Total troop transport count
+    capacityViolationsActive*: int32    # Current active capacity violations
+    fightersDisbanded*: int32           # Cumulative fighters lost to capacity
+    totalFighters*: int32               # Current fighter count
+    idleCarriers*: int32                # Carriers with 0 fighters loaded
+    totalCarriers*: int32               # Total carrier count
+    totalTransports*: int32             # Total troop transport count
 
     # Ship Counts by Class (all 19 ship types)
-    fighterShips*: int                # Fighter squadrons
-    corvetteShips*: int               # CT Corvette
-    frigateShips*: int                # FG Frigate
-    scoutShips*: int                  # SC Scout
-    raiderShips*: int                 # RR Raider
-    destroyerShips*: int              # DD Destroyer
-    cruiserShips*: int                # Cruiser (generic)
-    lightCruiserShips*: int           # CL Light Cruiser
-    heavyCruiserShips*: int           # CA Heavy Cruiser
-    battlecruiserShips*: int          # BC Battle Cruiser
-    battleshipShips*: int             # BB Battleship
-    dreadnoughtShips*: int            # DN Dreadnought
-    superDreadnoughtShips*: int       # SD Super Dreadnought
-    carrierShips*: int                # CV Carrier
-    superCarrierShips*: int           # CX Super Carrier
-    etacShips*: int                   # ETAC-class ships
-    troopTransportShips*: int         # Troop Transport
-    planetBreakerShips*: int          # PB Planet-Breaker (CST 10)
-    totalShips*: int                  # Sum of all 18 ship types (starbases are facilities)
+    fighterShips*: int32                # Fighter squadrons
+    corvetteShips*: int32               # CT Corvette
+    frigateShips*: int32                # FG Frigate
+    scoutShips*: int32                  # SC Scout
+    raiderShips*: int32                 # RR Raider
+    destroyerShips*: int32              # DD Destroyer
+    cruiserShips*: int32                # Cruiser (generic)
+    lightCruiserShips*: int32           # CL Light Cruiser
+    heavyCruiserShips*: int32           # CA Heavy Cruiser
+    battlecruiserShips*: int32          # BC Battle Cruiser
+    battleshipShips*: int32             # BB Battleship
+    dreadnoughtShips*: int32            # DN Dreadnought
+    superDreadnoughtShips*: int32       # SD Super Dreadnought
+    carrierShips*: int32                # CV Carrier
+    superCarrierShips*: int32           # CX Super Carrier
+    etacShips*: int32                   # ETAC-class ships
+    troopTransportShips*: int32         # Troop Transport
+    planetBreakerShips*: int32          # PB Planet-Breaker (CST 10)
+    totalShips*: int32                  # Sum of all 18 ship types (starbases are facilities)
 
     # Ground Unit Counts (all 4 ground unit types)
-    planetaryShieldUnits*: int        # PS Planetary Shield (CST 5)
-    groundBatteryUnits*: int          # GB Ground Batteries
-    armyUnits*: int                   # AA Armies
-    marinesAtColonies*: int           # MD Space Marines at colonies (unloaded)
-    marinesOnTransports*: int         # MD Space Marines loaded on transports
-    marineDivisionUnits*: int         # MD Space Marines (total = colonies + transports)
+    planetaryShieldUnits*: int32        # PS Planetary Shield (CST 5)
+    groundBatteryUnits*: int32          # GB Ground Batteries
+    armyUnits*: int32                   # AA Armies
+    marinesAtColonies*: int32           # MD Space Marines at colonies (unloaded)
+    marinesOnTransports*: int32         # MD Space Marines loaded on transports
+    marineDivisionUnits*: int32         # MD Space Marines (total = colonies + transports)
 
     # Facilities
-    totalSpaceports*: int             # Spaceport count across all colonies
-    totalShipyards*: int              # Shipyard count across all colonies
-    totalDrydocks*: int               # Drydock count across all colonies (repair-only facilities)
+    totalSpaceports*: int32             # Spaceport count across all colonies
+    totalShipyards*: int32              # Shipyard count across all colonies
+    totalDrydocks*: int32               # Drydock count across all colonies (repair-only facilities)
 
     # Intel / Tech
-    totalInvasions*: int                # Phase F: Track total invasions (useful for strategy analysis)
-    vulnerableTargets_count*: int       # Phase 1: Count from intelligence snapshot
-    invasionOrders_generated*: int      # Phase 1: Total invasion orders created this turn
-    invasionOrders_bombard*: int        # Phase 1: Bombardment orders created
-    invasionOrders_invade*: int         # Phase 1: Invasion orders created
-    invasionOrders_blitz*: int          # Phase 1: Blitz orders created
-    invasionOrders_canceled*: int       # Phase 1: Orders rejected/canceled
+    totalInvasions*: int32                # Phase F: Track total invasions (useful for strategy analysis)
+    vulnerableTargets_count*: int32       # Phase 1: Count from intelligence snapshot
+    invasionOrders_generated*: int32      # Phase 1: Total invasion orders created this turn
+    invasionOrders_bombard*: int32        # Phase 1: Bombardment orders created
+    invasionOrders_invade*: int32         # Phase 1: Invasion orders created
+    invasionOrders_blitz*: int32          # Phase 1: Blitz orders created
+    invasionOrders_canceled*: int32       # Phase 1: Orders rejected/canceled
     # Phase 2: Multi-turn invasion campaign tracking
-    activeCampaigns_total*: int         # Total active campaigns this turn
-    activeCampaigns_scouting*: int      # Campaigns in Scouting phase
-    activeCampaigns_bombardment*: int   # Campaigns in Bombardment phase
-    activeCampaigns_invasion*: int      # Campaigns in Invasion phase
-    campaigns_completed_success*: int   # Campaigns completed successfully (cumulative)
-    campaigns_abandoned_stalled*: int   # Campaigns abandoned due to stall (cumulative)
-    campaigns_abandoned_captured*: int  # Campaigns abandoned - target taken by other (cumulative)
-    campaigns_abandoned_timeout*: int   # Campaigns abandoned due to timeout (cumulative)
+    activeCampaigns_total*: int32         # Total active campaigns this turn
+    activeCampaigns_scouting*: int32      # Campaigns in Scouting phase
+    activeCampaigns_bombardment*: int32   # Campaigns in Bombardment phase
+    activeCampaigns_invasion*: int32      # Campaigns in Invasion phase
+    campaigns_completed_success*: int32   # Campaigns completed successfully (cumulative)
+    campaigns_abandoned_stalled*: int32   # Campaigns abandoned due to stall (cumulative)
+    campaigns_abandoned_captured*: int32  # Campaigns abandoned - target taken by other (cumulative)
+    campaigns_abandoned_timeout*: int32   # Campaigns abandoned due to timeout (cumulative)
 
     # Invasion attempt tracking (comprehensive - from game events)
-    invasionAttemptsTotal*: int          # InvasionBegan + BlitzBegan events
-    invasionAttemptsSuccessful*: int     # ColonyCaptured events
-    invasionAttemptsFailed*: int         # InvasionRepelled events (combat loss)
-    invasionOrdersRejected*: int         # OrderFailed for invasion/blitz
-    blitzAttemptsTotal*: int             # BlitzBegan events only
-    blitzAttemptsSuccessful*: int        # ColonyCaptured with method="Blitz"
-    blitzAttemptsFailed*: int            # InvasionRepelled from blitz
-    bombardmentAttemptsTotal*: int       # BombardmentRoundCompleted events
-    bombardmentOrdersFailed*: int        # OrderFailed for bombardment
-    invasionMarinesKilled*: int          # Marines lost in failed invasions
-    invasionDefendersKilled*: int        # Defenders killed in invasions
+    invasionAttemptsTotal*: int32          # InvasionBegan + BlitzBegan events
+    invasionAttemptsSuccessful*: int32     # ColonyCaptured events
+    invasionAttemptsFailed*: int32         # InvasionRepelled events (combat loss)
+    invasionOrdersRejected*: int32         # OrderFailed for invasion/blitz
+    blitzAttemptsTotal*: int32             # BlitzBegan events only
+    blitzAttemptsSuccessful*: int32        # ColonyCaptured with method="Blitz"
+    blitzAttemptsFailed*: int32            # InvasionRepelled from blitz
+    bombardmentAttemptsTotal*: int32       # BombardmentRoundCompleted events
+    bombardmentOrdersFailed*: int32        # OrderFailed for bombardment
+    invasionMarinesKilled*: int32          # Marines lost in failed invasions
+    invasionDefendersKilled*: int32        # Defenders killed in invasions
 
     clkResearchedNoRaiders*: bool       # Has CLK but no Raiders built
-    scoutCount*: int                    # Phase 2c: Current scout count for ELI mesh tracking
-    spyPlanetMissions*: int             # Cumulative SpyOnPlanet missions
-    hackStarbaseMissions*: int          # Cumulative HackStarbase missions
-    totalEspionageMissions*: int        # All espionage missions
+    scoutCount*: int32                    # Phase 2c: Current scout count for ELI mesh tracking
+    spyPlanetMissions*: int32             # Cumulative SpyOnPlanet missions
+    hackStarbaseMissions*: int32          # Cumulative HackStarbase missions
+    totalEspionageMissions*: int32        # All espionage missions
 
     # Defense
-    coloniesWithoutDefense*: int  # Colonies with no fleet/starbase defense
-    totalColonies*: int
-    mothballedFleetsUsed*: int    # Times mothballed fleets activated
-    mothballedFleetsTotal*: int   # Current mothballed fleet count
+    coloniesWithoutDefense*: int32  # Colonies with no fleet/starbase defense
+    totalColonies*: int32
+    mothballedFleetsUsed*: int32    # Times mothballed fleets activated
+    mothballedFleetsTotal*: int32   # Current mothballed fleet count
 
     # Orders (ENHANCED for unknown-unknowns detection)
-    invalidOrders*: int           # Cumulative invalid/rejected orders
-    totalOrders*: int             # Cumulative valid orders issued
-    fleetOrdersSubmitted*: int    # Fleet movement orders this turn
-    buildOrdersSubmitted*: int    # Construction orders this turn
-    colonizeOrdersSubmitted*: int # Colonization attempts this turn
+    invalidOrders*: int32           # Cumulative invalid/rejected orders
+    totalOrders*: int32             # Cumulative valid orders issued
+    fleetOrdersSubmitted*: int32    # Fleet movement orders this turn
+    buildOrdersSubmitted*: int32    # Construction orders this turn
+    colonizeOrdersSubmitted*: int32 # Colonization attempts this turn
 
     # Budget Allocation (Treasurer → Advisor Flow - DRY Fix Verification)
-    domestikosBudgetAllocated*: int       # PP allocated to Domestikos by Treasurer
-    logotheteBudgetAllocated*: int        # PP allocated to Logothete by Treasurer
-    drungariusBudgetAllocated*: int       # PP allocated to Drungarius by Treasurer
-    eparchBudgetAllocated*: int           # PP allocated to Eparch by Treasurer
-    buildOrdersGenerated*: int            # Build orders created by Domestikos
-    ppSpentConstruction*: int             # Actual PP spent on construction
-    domestikosRequirementsTotal*: int     # Total requirements from Domestikos
-    domestikosRequirementsFulfilled*: int # Requirements fulfilled by Treasurer mediation
-    domestikosRequirementsUnfulfilled*: int # Requirements not affordable
-    domestikosRequirementsDeferred*: int  # Low-priority requirements deferred
+    domestikosBudgetAllocated*: int32         # PP allocated to Domestikos by Treasurer
+    logotheteBudgetAllocated*: int32          # PP allocated to Logothete by Treasurer
+    drungariusBudgetAllocated*: int32         # PP allocated to Drungarius by Treasurer
+    eparchBudgetAllocated*: int32             # PP allocated to Eparch by Treasurer
+    buildOrdersGenerated*: int32              # Build orders created by Domestikos
+    ppSpentConstruction*: int32               # Actual PP spent on construction
+    domestikosRequirementsTotal*: int32       # Total requirements from Domestikos
+    domestikosRequirementsFulfilled*: int32   # Requirements fulfilled by Treasurer mediation
+    domestikosRequirementsUnfulfilled*: int32 # Requirements not affordable
+    domestikosRequirementsDeferred*: int32    # Low-priority requirements deferred
 
     # Build Queue (NEW - track construction pipeline)
-    totalBuildQueueDepth*: int    # Sum of all colony queue depths
-    etacInConstruction*: int      # ETACs currently being built
-    shipsUnderConstruction*: int  # Ship squadrons in construction
-    buildingsUnderConstruction*: int  # Starbases/facilities building
+    totalBuildQueueDepth*: int32        # Sum of all colony queue depths
+    etacInConstruction*: int32          # ETACs currently being built
+    shipsUnderConstruction*: int32      # Ship squadrons in construction
+    buildingsUnderConstruction*: int32  # Starbases/facilities building
 
     # Commissioning (NEW - track ship output)
-    shipsCommissionedThisTurn*: int
-    etacCommissionedThisTurn*: int
-    squadronsCommissionedThisTurn*: int
+    shipsCommissionedThisTurn*: int32
+    etacCommissionedThisTurn*: int32
+    squadronsCommissionedThisTurn*: int32
 
     # Fleet Activity (NEW - detect stuck fleets)
-    fleetsMoved*: int             # Fleets that changed systems this turn
-    systemsColonized*: int        # Successful colonizations this turn
-    failedColonizationAttempts*: int  # Colonization orders rejected
-    fleetsWithOrders*: int        # Fleets with active orders
-    stuckFleets*: int             # Fleets with orders but didn't move (pathfinding fail?)
+    fleetsMoved*: int32                 # Fleets that changed systems this turn
+    systemsColonized*: int32            # Successful colonizations this turn
+    failedColonizationAttempts*: int32  # Colonization orders rejected
+    fleetsWithOrders*: int32            # Fleets with active orders
+    stuckFleets*: int32                 # Fleets with orders but didn't move (pathfinding fail?)
 
     # ETAC Specific (NEW - critical for colonization)
-    totalETACs*: int              # Current ETAC count
-    etacsWithoutOrders*: int      # ETACs sitting idle (not colonizing)
-    etacsInTransit*: int          # ETACs moving to targets
+    totalETACs*: int32              # Current ETAC count
+    etacsWithoutOrders*: int32      # ETACs sitting idle (not colonizing)
+    etacsInTransit*: int32          # ETACs moving to targets
 
     # Change Deltas (NEW - track turn-over-turn losses/gains)
-    coloniesLost*: int            # Colonies lost this turn (conquest/rebellion)
-    coloniesGained*: int          # Colonies gained this turn (colonization/conquest)
-    coloniesGainedViaColonization*: int  # Colonies gained via ETAC colonization
-    coloniesGainedViaConquest*: int      # Colonies gained via invasion/blitz
-    shipsLost*: int               # Ships destroyed this turn (all types)
-    shipsGained*: int             # Ships commissioned this turn (all types)
-    fightersLost*: int            # Fighter squadrons lost this turn
-    fightersGained*: int          # Fighter squadrons gained this turn
+    coloniesLost*: int32                   # Colonies lost this turn (conquest/rebellion)
+    coloniesGained*: int32                 # Colonies gained this turn (colonization/conquest)
+    coloniesGainedViaColonization*: int32  # Colonies gained via ETAC colonization
+    coloniesGainedViaConquest*: int32      # Colonies gained via invasion/blitz
+    shipsLost*: int32                      # Ships destroyed this turn (all types)
+    shipsGained*: int32                    # Ships commissioned this turn (all types)
+    fightersLost*: int32                   # Fighter squadrons lost this turn
+    fightersGained*: int32                 # Fighter squadrons gained this turn
 
     # Bilateral Diplomatic Relations (semicolon-separated: houseId:state)
     bilateralRelations*: string   # e.g., "house-harkonnen:Hostile;house-ordos:Neutral"
 
     # Advisor Reasoning
-    advisorReasoning*: string     # Structured log of advisor decision rationales
+    advisorReasoning*: string       # Structured log of advisor decision rationales
 
     # Event Counts (track event generation for balance testing)
-    eventsOrderCompleted*: int    # OrderCompleted events this turn
-    eventsOrderFailed*: int       # OrderFailed events this turn
-    eventsOrderRejected*: int     # OrderRejected events this turn
-    eventsCombatTotal*: int       # Total combat events (Battle, SystemCaptured, etc.)
-    eventsBombardment*: int       # Bombardment events this turn
-    eventsColonyCaptured*: int    # ColonyCaptured events this turn
-    eventsEspionageTotal*: int    # Total espionage events this turn
-    eventsDiplomaticTotal*: int   # Total diplomatic events this turn
-    eventsResearchTotal*: int     # Research/TechAdvance events this turn
-    eventsColonyTotal*: int       # Colony-related events this turn
+    eventsOrderCompleted*: int32    # OrderCompleted events this turn
+    eventsOrderFailed*: int32       # OrderFailed events this turn
+    eventsOrderRejected*: int32     # OrderRejected events this turn
+    eventsCombatTotal*: int32       # Total combat events (Battle, SystemCaptured, etc.)
+    eventsBombardment*: int32       # Bombardment events this turn
+    eventsColonyCaptured*: int32    # ColonyCaptured events this turn
+    eventsEspionageTotal*: int32    # Total espionage events this turn
+    eventsDiplomaticTotal*: int32   # Total diplomatic events this turn
+    eventsResearchTotal*: int32     # Research/TechAdvance events this turn
+    eventsColonyTotal*: int32       # Colony-related events this turn
 
     # GOAP Metrics (MVP: Fleet + Build domains)
-    goapEnabled*: bool                # Is GOAP strategic planning enabled?
-    goapPlansActive*: int             # Active plans in GOAP tracker
-    goapPlansCompleted*: int          # Completed plans (cumulative)
-    goapGoalsExtracted*: int          # Strategic goals extracted this turn
-    goapPlanningTimeMs*: float        # Phase 1.5 planning overhead (ms)
+    goapEnabled*: bool                  # Is GOAP strategic planning enabled?
+    goapPlansActive*: int32             # Active plans in GOAP tracker
+    goapPlansCompleted*: int32          # Completed plans (cumulative)
+    goapGoalsExtracted*: int32          # Strategic goals extracted this turn
+    goapPlanningTimeMs*: float32        # Phase 1.5 planning overhead (ms)
     # Phase 3: GOAP Invasion Metrics
-    goapInvasionGoals*: int           # Invasion goals generated this turn
-    goapInvasionPlans*: int           # Active invasion plans (subset of plansActive)
-    goapActionsExecuted*: int         # GOAP actions converted to orders this turn
-    goapActionsFailed*: int           # GOAP actions that couldn't be executed
+    goapInvasionGoals*: int32           # Invasion goals generated this turn
+    goapInvasionPlans*: int32           # Active invasion plans (subset of plansActive)
+    goapActionsExecuted*: int32         # GOAP actions converted to orders this turn
+    goapActionsFailed*: int32           # GOAP actions that couldn't be executed
 
   DiagnosticSession* = object
     ## Collection of all diagnostics for a game session
     gameId*: string
     seed*: int64
-    numHouses*: int
-    mapSize*: int
-    turnLimit*: int
+    numHouses*: int32
+    mapSize*: int32
+    turnLimit*: int32
     metrics*: seq[DiagnosticMetrics]  # All collected metrics
-
-proc initDiagnosticMetrics*(turn: int, houseId: HouseId,
-                           strategy: string = "Balanced",
-                           gameId: string = ""): DiagnosticMetrics =
-  ## Initialize empty diagnostic metrics for a house at a turn
-  result = DiagnosticMetrics(
-    gameId: gameId,
-    turn: turn,
-    act: 1,  # Default to Act 1, will be calculated in collectDiagnostics
-    rank: 0,  # Default to 0, will be calculated in collectDiagnostics
-    houseId: houseId,
-    strategy: strategy,
-    totalSystemsOnMap: 0,  # Will be set in collectDiagnostics
-
-    # Economy
-    treasuryBalance: 0,
-    productionPerTurn: 0,
-    puGrowth: 0,
-    zeroSpendTurns: 0,
-    grossColonyOutput: 0,
-    netHouseValue: 0,
-    taxRate: 0,
-    totalIndustrialUnits: 0,
-    totalPopulationUnits: 0,
-    totalPopulationPTU: 0,
-    populationGrowthRate: 0,
-
-    # Tech Levels
-    techCST: 1, techWEP: 1, techEL: 1, techSL: 1, techTER: 1,
-    techELI: 1, techCLK: 1, techSLD: 1, techCIC: 1, techFD: 1, techACO: 1,
-
-    # Research Points
-    researchERP: 0, researchSRP: 0, researchTRP: 0, researchBreakthroughs: 0,
-
-    # Research Waste Tracking
-    researchWastedERP: 0, researchWastedSRP: 0,
-    turnsAtMaxEL: 0, turnsAtMaxSL: 0,
-
-    # Maintenance & Prestige
-    maintenanceCostTotal: 0, maintenanceShortfallTurns: 0,
-    prestigeCurrent: 0, prestigeChange: 0, prestigeVictoryProgress: 0,
-
-    # Combat Performance
-    combatCERAverage: 0, bombardmentRoundsTotal: 0, groundCombatVictories: 0,
-    retreatsExecuted: 0, criticalHitsDealt: 0, criticalHitsReceived: 0,
-    cloakedAmbushSuccess: 0, shieldsActivatedCount: 0,
-
-    # Diplomatic Status
-    allyStatusCount: 0, hostileStatusCount: 0, enemyStatusCount: 0,
-    neutralStatusCount: 0,
-    pactViolationsTotal: 0, dishonoredStatusActive: false,
-    diplomaticIsolationTurns: 0,
-
-    # Treaty Activity Metrics
-    pactFormationsTotal: 0, pactBreaksTotal: 0,
-    hostilityDeclarationsTotal: 0, warDeclarationsTotal: 0,
-
-    # Espionage Activity
-    espionageSuccessCount: 0, espionageFailureCount: 0,
-    espionageDetectedCount: 0,
-    techTheftsSuccessful: 0, sabotageOperations: 0, assassinationAttempts: 0,
-    cyberAttacksLaunched: 0, ebpPointsSpent: 0, cipPointsSpent: 0,
-    counterIntelSuccesses: 0,
-
-    # Population & Colony Management
-    populationTransfersActive: 0, populationTransfersCompleted: 0,
-    populationTransfersLost: 0, ptuTransferredTotal: 0,
-    coloniesBlockadedCount: 0, blockadeTurnsCumulative: 0,
-
-    # Economic Health
-    treasuryDeficit: false, infrastructureDamageTotal: 0,
-    salvageValueRecovered: 0, maintenanceCostDeficit: 0,
-    taxPenaltyActive: false, avgTaxRate6Turn: 0,
-
-    # Squadron Capacity & Violations
-    fighterCapacityMax: 0, fighterCapacityUsed: 0, fighterCapacityViolation: false,
-    squadronLimitMax: 0, squadronLimitUsed: 0, squadronLimitViolation: false,
-    starbasesActual: 0,
-
-    # House Status
-    autopilotActive: false, defensiveCollapseActive: false,
-    turnsUntilElimination: 0, missedOrderTurns: 0,
-
-    # Military
-    spaceCombatWins: 0,
-    spaceCombatLosses: 0,
-    spaceCombatTotal: 0,
-    orbitalFailures: 0,
-    orbitalTotal: 0,
-    raiderAmbushSuccess: 0,
-    raiderAmbushAttempts: 0,
-    raiderDetectedCount: 0,
-    raiderStealthSuccessCount: 0,
-    eliDetectionAttempts: 0,
-    avgEliRoll: 0.0,
-    avgClkRoll: 0.0,
-    scoutsDetected: 0,
-    scoutsDetectedBy: 0,
-
-    # Logistics
-    capacityViolationsActive: 0,
-    fightersDisbanded: 0,
-    totalFighters: 0,
-    idleCarriers: 0,
-    totalCarriers: 0,
-    totalTransports: 0,
-
-    # Ship Counts (all 19 ship types)
-    fighterShips: 0,
-    corvetteShips: 0,
-    frigateShips: 0,
-    scoutShips: 0,
-    raiderShips: 0,
-    destroyerShips: 0,
-    cruiserShips: 0,
-    lightCruiserShips: 0,
-    heavyCruiserShips: 0,
-    battlecruiserShips: 0,
-    battleshipShips: 0,
-    dreadnoughtShips: 0,
-    superDreadnoughtShips: 0,
-    carrierShips: 0,
-    superCarrierShips: 0,
-    etacShips: 0,
-    troopTransportShips: 0,
-    planetBreakerShips: 0,
-    totalShips: 0,
-
-    # Ground Unit Counts (all 4 ground unit types)
-    planetaryShieldUnits: 0,
-    groundBatteryUnits: 0,
-    armyUnits: 0,
-    marinesAtColonies: 0,
-    marinesOnTransports: 0,
-    marineDivisionUnits: 0,
-
-    # Facilities
-    totalSpaceports: 0,
-    totalShipyards: 0,
-    totalDrydocks: 0,
-
-    # Intel
-    totalInvasions: 0,
-    vulnerableTargets_count: 0,
-    invasionOrders_generated: 0,
-    invasionOrders_bombard: 0,
-    invasionOrders_invade: 0,
-    invasionOrders_blitz: 0,
-    invasionOrders_canceled: 0,
-    activeCampaigns_total: 0,
-    activeCampaigns_scouting: 0,
-    activeCampaigns_bombardment: 0,
-    activeCampaigns_invasion: 0,
-    campaigns_completed_success: 0,
-    campaigns_abandoned_stalled: 0,
-    campaigns_abandoned_captured: 0,
-    campaigns_abandoned_timeout: 0,
-    invasionAttemptsTotal: 0,
-    invasionAttemptsSuccessful: 0,
-    invasionAttemptsFailed: 0,
-    invasionOrdersRejected: 0,
-    blitzAttemptsTotal: 0,
-    blitzAttemptsSuccessful: 0,
-    blitzAttemptsFailed: 0,
-    bombardmentAttemptsTotal: 0,
-    bombardmentOrdersFailed: 0,
-    invasionMarinesKilled: 0,
-    invasionDefendersKilled: 0,
-    clkResearchedNoRaiders: false,
-    scoutCount: 0,
-    spyPlanetMissions: 0,
-    hackStarbaseMissions: 0,
-    totalEspionageMissions: 0,
-
-    # Defense
-    coloniesWithoutDefense: 0,
-    totalColonies: 0,
-    mothballedFleetsUsed: 0,
-    mothballedFleetsTotal: 0,
-
-    # Orders
-    invalidOrders: 0,
-    totalOrders: 0,
-    fleetOrdersSubmitted: 0,
-    buildOrdersSubmitted: 0,
-    colonizeOrdersSubmitted: 0,
-
-    # Budget Allocation
-    domestikosBudgetAllocated: 0,
-    logotheteBudgetAllocated: 0,
-    drungariusBudgetAllocated: 0,
-    eparchBudgetAllocated: 0,
-    buildOrdersGenerated: 0,
-    ppSpentConstruction: 0,
-    domestikosRequirementsTotal: 0,
-    domestikosRequirementsFulfilled: 0,
-    domestikosRequirementsUnfulfilled: 0,
-    domestikosRequirementsDeferred: 0,
-
-    # Build Queue
-    totalBuildQueueDepth: 0,
-    etacInConstruction: 0,
-    shipsUnderConstruction: 0,
-    buildingsUnderConstruction: 0,
-
-    # Commissioning
-    shipsCommissionedThisTurn: 0,
-    etacCommissionedThisTurn: 0,
-    squadronsCommissionedThisTurn: 0,
-
-    # Fleet Activity
-    fleetsMoved: 0,
-    systemsColonized: 0,
-    failedColonizationAttempts: 0,
-    fleetsWithOrders: 0,
-    stuckFleets: 0,
-
-    # ETAC Specific
-    totalETACs: 0,
-    etacsWithoutOrders: 0,
-    etacsInTransit: 0,
-
-    # Change Deltas (will be calculated from prevMetrics)
-    coloniesLost: 0,
-    coloniesGained: 0,
-    coloniesGainedViaColonization: 0,
-    coloniesGainedViaConquest: 0,
-    shipsLost: 0,
-    shipsGained: 0,
-    fightersLost: 0,
-    fightersGained: 0,
-
-    # Bilateral Diplomatic Relations
-    bilateralRelations: "",
-
-    # Advisor Reasoning
-    advisorReasoning: "",
-
-    # Event Counts
-    eventsOrderCompleted: 0,
-    eventsOrderFailed: 0,
-    eventsOrderRejected: 0,
-    eventsCombatTotal: 0,
-    eventsBombardment: 0,
-    eventsColonyCaptured: 0,
-    eventsEspionageTotal: 0,
-    eventsDiplomaticTotal: 0,
-    eventsResearchTotal: 0,
-    eventsColonyTotal: 0,
-
-    # GOAP Metrics
-    goapEnabled: false,
-    goapPlansActive: 0,
-    goapPlansCompleted: 0,
-    goapGoalsExtracted: 0,
-    goapPlanningTimeMs: 0.0,
-    goapInvasionGoals: 0,
-    goapInvasionPlans: 0,
-    goapActionsExecuted: 0,
-    goapActionsFailed: 0
-  )

@@ -4,7 +4,7 @@
 ## Covers: fleet movement, orders, ETAC colonization activity.
 
 import std/options
-import ../../types/[telemetry, core, game_state, event, fleet, squadron]
+import ../../types/[telemetry, core, game_state, event, squadron]
 
 proc collectFleetMetrics*(
   state: GameState,
@@ -48,7 +48,7 @@ proc collectFleetMetrics*(
   var etacsInTransit: int32 = 0
 
   # Count ETACs from squadrons
-  for squadronId, squadron in state.squadrons.entities.pairs:
+  for squadron in state.squadrons.entities.data:
     if squadron.houseId == houseId and not squadron.destroyed:
       if squadron.flagship.shipClass == ShipClass.ETAC:
         totalETACs += 1

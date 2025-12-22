@@ -3,8 +3,9 @@
 ## Collect house status metrics from GameState.
 ## Covers: prestige, victory progress, autopilot status, house metadata.
 
-import std/options
-import ../../types/[telemetry, core, game_state, event, house, prestige, progression]
+import std/[options]
+import ../../types/[telemetry, core, game_state, event, house]
+import ../../state/entity_manager
 
 proc collectHouseMetrics*(
   state: GameState,
@@ -14,7 +15,10 @@ proc collectHouseMetrics*(
   ## Collect house status metrics from GameState
   result = prevMetrics  # Start with previous metrics
 
-  let house = state.houses.entities.getOrDefault(houseId)
+  let houseOpt = state.houses.entities.getEntity(houseId)
+  if houseOpt.isNone:
+    return result
+  let house = houseOpt.get()
 
   # ================================================================
   # PRESTIGE & VICTORY

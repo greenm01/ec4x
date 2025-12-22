@@ -5,7 +5,7 @@
 
 import std/[math, tables, options]
 import ../../types/[
-  telemetry, core, game_state, event, colony, squadron, house, capacity
+  telemetry, core, game_state, colony, squadron, house, capacity
 ]
 import ../../config/military_config
 import ../../state/[interators, entity_manager]
@@ -47,7 +47,7 @@ proc collectCapacityMetrics*(
       fdMultiplier
     )
     totalFighterCapacity += colonyCapacity
-    totalFighters += colony.fighterSquadronIds.len
+    totalFighters += colony.fighterSquadronIds.len.int32
     if colony.capacityViolation.severity != ViolationSeverity.None:
       capacityViolationCount += 1
 

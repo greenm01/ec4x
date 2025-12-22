@@ -2,9 +2,7 @@
 ##
 ## Collect facilities metrics from GameState.
 ## Covers: starbases, spaceports, shipyards, drydocks.
-
-import std/tables
-import ../../types/[telemetry, core, game_state, event, colony, facilities]
+import ../../types/[telemetry, core, game_state]
 import ../../state/interators
 
 proc collectFacilitiesMetrics*(

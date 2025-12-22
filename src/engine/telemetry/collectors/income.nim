@@ -3,9 +3,9 @@
 ## Collect economic income metrics from GameState.
 ## Covers: treasury, tax income, maintenance costs, deficits.
 
-import std/options
+import std/[options]
 import ../../types/[telemetry, core, game_state, event, house, colony]
-import ../../state/interators
+import ../../state/[entity_manager]
 
 proc collectIncomeMetrics*(
   state: GameState,
@@ -15,7 +15,10 @@ proc collectIncomeMetrics*(
   ## Collect income metrics from GameState
   result = prevMetrics  # Start with previous metrics
 
-  let house = state.houses.entities.getOrDefault(houseId)
+  let houseOpt = state.houses.entities.getEntity(houseId)
+  if houseOpt.isNone:
+    return result
+  let house = houseOpt.get()
 
   # Core economy
   result.treasuryBalance = house.treasury
@@ -25,7 +28,7 @@ proc collectIncomeMetrics*(
   var totalIU: int32 = 0
   var grossColonyOutput: int32 = 0
 
-  for systemId, colony in state.colonies.entities.pairs:
+  for colony in state.colonies.entities.data:
     if colony.owner == houseId:
       totalProduction += colony.production
       totalIU += colony.infrastructure

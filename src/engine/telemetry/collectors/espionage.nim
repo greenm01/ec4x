@@ -4,7 +4,8 @@
 ## Covers: intelligence operations, counter-intelligence, spy missions.
 
 import std/[options, math]
-import ../../types/[telemetry, core, game_state, event, espionage, squadron, fleet, house]
+import ../../types/[telemetry, core, game_state, event, squadron, house]
+import ../../state/entity_manager
 
 proc collectEspionageMetrics*(
   state: GameState,
@@ -14,7 +15,10 @@ proc collectEspionageMetrics*(
   ## Collect espionage metrics from events and GameState
   result = prevMetrics  # Start with previous metrics
 
-  let house = state.houses.entities.getOrDefault(houseId)
+  let houseOpt = state.houses.entities.getEntity(houseId)
+  if houseOpt.isNone:
+    return result
+  let house = houseOpt.get()
 
   # ================================================================
   # INTELLIGENCE ASSETS
@@ -24,7 +28,7 @@ proc collectEspionageMetrics*(
   let hasCLK: bool = house.techTree.levels.cloakingTech > 1
   var hasRaiders: bool = false
 
-  for squadronId, squadron in state.squadrons.entities.pairs:
+  for squadron in state.squadrons.entities.data:
     if squadron.houseId == houseId and not squadron.destroyed:
       if squadron.flagship.shipClass == ShipClass.Raider:
         hasRaiders = true

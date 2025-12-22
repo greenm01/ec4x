@@ -20,7 +20,7 @@ proc collectPopulationMetrics*(
   var blockadedCount: int32 = 0
   var blockadeTurns: int32 = 0
 
-  for systemId, colony in state.colonies.entities.pairs:
+  for colony in state.colonies.entities.data:
     if colony.owner == houseId:
       totalPU += colony.populationUnits
       totalPTU += colony.populationTransferUnits

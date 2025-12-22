@@ -5,6 +5,7 @@
 
 import std/[options, strformat, tables, strutils]
 import ../../types/[telemetry, core, game_state, event, diplomacy, house]
+import ../../state/entity_manager
 
 proc collectDiplomacyMetrics*(
   state: GameState,
@@ -14,7 +15,10 @@ proc collectDiplomacyMetrics*(
   ## Collect diplomacy metrics from events and GameState
   result = prevMetrics  # Start with previous metrics
 
-  let house = state.houses.entities.getOrDefault(houseId)
+  let houseOpt = state.houses.entities.getEntity(houseId)
+  if houseOpt.isNone:
+    return result
+  let house = houseOpt.get()
 
   # ================================================================
   # DIPLOMATIC STATUS (3-level system: Neutral, Hostile, Enemy)
@@ -24,14 +28,13 @@ proc collectDiplomacyMetrics*(
   var enemyCount: int32 = 0
   var neutralCount: int32 = 0
 
-  # Query diplomatic relations from GameState (centralized storage)
-  for otherHouseId, otherHouse in state.houses.entities.pairs:
-    if otherHouseId == houseId or otherHouse.isEliminated:
+  for otherHouse in state.houses.entities.data:
+    if otherHouse.id == houseId or otherHouse.isEliminated:
       continue
 
-    # Check both directions (houseId, otherHouseId) and (otherHouseId, houseId)
-    let key1 = (houseId, otherHouseId)
-    let key2 = (otherHouseId, houseId)
+    # Check both directions (houseId, otherHouse.id) and (otherHouse.id, houseId)
+    let key1 = (houseId, otherHouse.id)
+    let key2 = (otherHouse.id, houseId)
 
     if state.diplomaticRelation.hasKey(key1):
       let relation = state.diplomaticRelation[key1]
@@ -65,7 +68,7 @@ proc collectDiplomacyMetrics*(
 
   # Query violation history from GameState (centralized storage)
   if state.diplomaticViolation.hasKey(houseId):
-    result.pactViolationsTotal = state.diplomaticViolation[houseId].violations.len
+    result.pactViolationsTotal = state.diplomaticViolation[houseId].violations.len.int32
   else:
     result.pactViolationsTotal = 0
 
@@ -114,13 +117,13 @@ proc collectDiplomacyMetrics*(
   # State codes: N=Neutral, H=Hostile, E=Enemy
   var relations: seq[string] = @[]
 
-  for otherHouseId, otherHouse in state.houses.entities.pairs:
-    if otherHouseId == houseId or otherHouse.isEliminated:
+  for otherHouse in state.houses.entities.data:
+    if otherHouse.id == houseId or otherHouse.isEliminated:
       continue
 
     # Check both directions for relation
-    let key1 = (houseId, otherHouseId)
-    let key2 = (otherHouseId, houseId)
+    let key1 = (houseId, otherHouse.id)
+    let key2 = (otherHouse.id, houseId)
 
     var dipState = DiplomaticState.Neutral  # Default
     if state.diplomaticRelation.hasKey(key1):
@@ -133,6 +136,6 @@ proc collectDiplomacyMetrics*(
       of DiplomaticState.Hostile: "H"
       of DiplomaticState.Enemy: "E"
 
-    relations.add(&"{otherHouseId}:{stateStr}")
+    relations.add(&"{otherHouse.id}:{stateStr}")
 
   result.bilateralRelations = relations.join(";")
