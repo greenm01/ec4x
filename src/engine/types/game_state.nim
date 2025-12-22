@@ -2,7 +2,7 @@ import std/tables
 import ./[
   core, house, starmap, colony, fleet, squadron, ship, ground_unit,
   intelligence, diplomacy, facilities, production, espionage,
-  population, resolution, progression
+  population, resolution, progression, event
 ]
 
 type
@@ -69,6 +69,7 @@ type
     
     # Reports (transient, cleared each turn)
     lastTurnReports*: Table[HouseId, TurnResolutionReport]
+    lastTurnEvents*: seq[GameEvent]  # Event stream for telemetry
     scoutLossEvents*: seq[ScoutLossEvent]
 
     # Population Transfers

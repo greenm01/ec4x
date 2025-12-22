@@ -37,3 +37,4 @@ type
   Squadrons* = ref object
     entities*: EntityManager[SquadronId, Squadron]
     byFleet*: Table[FleetId, seq[SquadronId]]
+    byHouse*: Table[HouseId, seq[SquadronId]]  # O(1) lookup for house queries

@@ -47,5 +47,6 @@ type
   Ships* = object
     entities*: EntityManager[ShipId, Ship]  # Core storage
     bySquadron*: Table[SquadronId, seq[ShipId]]
+    byHouse*: Table[HouseId, seq[ShipId]]  # O(1) lookup for house queries
 
 # Note: ShipStats could be moved to a separate config/template file if the stats are loaded from config rather than computed per-ship.

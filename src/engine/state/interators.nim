@@ -15,7 +15,9 @@
 ##
 ## NOTE: These are read-only iterators. For mutations, use state_helpers.
 import std/tables, std/options
-import ../types/[colony, core, fleet, game_state, house, ship, squadron]
+import ../types/[
+  colony, core, fleet, game_state, house, ship, squadron, facilities
+]
 
 # src/engine/state/queries.nim
 iterator fleetsInSystem*(state: GameState, sysId: SystemId): Fleet =
@@ -233,6 +235,76 @@ iterator allHousesWithId*(state: GameState): tuple[id: HouseId, house: House] =
   ##       house.turnsWithoutOrders += 1
   for house in state.houses.entities.data:
     yield (house.id, house)
+
+# Military asset iterators (O(1) lookups via byHouse index)
+
+iterator squadronsOwned*(state: GameState, houseId: HouseId): Squadron =
+  ## Iterate all squadrons owned by a house (O(1) lookup via byHouse index)
+  ##
+  ## Example:
+  ##   var totalSquadrons = 0
+  ##   for squadron in state.squadronsOwned(houseId):
+  ##     totalSquadrons += 1
+  if state.squadrons.byHouse.contains(houseId):
+    for squadronId in state.squadrons.byHouse[houseId]:
+      if state.squadrons.entities.index.contains(squadronId):
+        yield state.squadrons.entities.data[state.squadrons.entities.index[squadronId]]
+
+iterator shipsOwned*(state: GameState, houseId: HouseId): Ship =
+  ## Iterate all ships owned by a house (O(1) lookup via byHouse index)
+  ##
+  ## Example:
+  ##   var crippledShips = 0
+  ##   for ship in state.shipsOwned(houseId):
+  ##     if ship.isCrippled:
+  ##       crippledShips += 1
+  if state.ships.byHouse.contains(houseId):
+    for shipId in state.ships.byHouse[houseId]:
+      if state.ships.entities.index.contains(shipId):
+        yield state.ships.entities.data[state.ships.entities.index[shipId]]
+
+# Facility iterators (O(colonies_owned * facilities_per_colony) via byColony index)
+
+iterator starbasesOwned*(state: GameState, houseId: HouseId): Starbase =
+  ## Iterate all starbases owned by a house
+  ## O(colonies_owned * starbases_per_colony) via coloniesOwned + byColony index
+  ##
+  ## Example:
+  ##   var totalStarbases = 0
+  ##   for starbase in state.starbasesOwned(houseId):
+  ##     totalStarbases += 1
+  for colony in state.coloniesOwned(houseId):
+    if state.starbases.byColony.contains(colony.id):
+      for starbaseId in state.starbases.byColony[colony.id]:
+        if state.starbases.entities.index.contains(starbaseId):
+          yield state.starbases.entities.data[state.starbases.entities.index[starbaseId]]
+
+iterator spaceportsOwned*(state: GameState, houseId: HouseId): Spaceport =
+  ## Iterate all spaceports owned by a house
+  ## O(colonies_owned * spaceports_per_colony) via coloniesOwned + byColony index
+  for colony in state.coloniesOwned(houseId):
+    if state.spaceports.byColony.contains(colony.id):
+      for spaceportId in state.spaceports.byColony[colony.id]:
+        if state.spaceports.entities.index.contains(spaceportId):
+          yield state.spaceports.entities.data[state.spaceports.entities.index[spaceportId]]
+
+iterator shipyardsOwned*(state: GameState, houseId: HouseId): Shipyard =
+  ## Iterate all shipyards owned by a house
+  ## O(colonies_owned * shipyards_per_colony) via coloniesOwned + byColony index
+  for colony in state.coloniesOwned(houseId):
+    if state.shipyards.byColony.contains(colony.id):
+      for shipyardId in state.shipyards.byColony[colony.id]:
+        if state.shipyards.entities.index.contains(shipyardId):
+          yield state.shipyards.entities.data[state.shipyards.entities.index[shipyardId]]
+
+iterator drydocksOwned*(state: GameState, houseId: HouseId): Drydock =
+  ## Iterate all drydocks owned by a house
+  ## O(colonies_owned * drydocks_per_colony) via coloniesOwned + byColony index
+  for colony in state.coloniesOwned(houseId):
+    if state.drydocks.byColony.contains(colony.id):
+      for drydockId in state.drydocks.byColony[colony.id]:
+        if state.drydocks.entities.index.contains(drydockId):
+          yield state.drydocks.entities.data[state.drydocks.entities.index[drydockId]]
 
 ## Design Notes:
 ##

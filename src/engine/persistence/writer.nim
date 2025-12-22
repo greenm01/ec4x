@@ -5,7 +5,7 @@
 
 import std/[json, times, strformat, logging, options, strutils]
 import db_connector/db_sqlite
-import ../../ai/analysis/diagnostics/types  # DiagnosticMetrics
+import ../types/telemetry  # DiagnosticMetrics
 import ../types/[game_state, event]
 
 const ENGINE_VERSION = "0.1.0"  # TODO: Get from build system
