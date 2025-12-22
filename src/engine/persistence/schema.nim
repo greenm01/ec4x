@@ -5,6 +5,7 @@
 
 import std/logging
 import db_connector/db_sqlite
+import ../types/database
 
 const SchemaVersion* = 1
 
@@ -407,6 +408,21 @@ CREATE INDEX IF NOT EXISTS idx_states_game
   ON game_states(game_id);
 """
 
+proc defaultDBConfig*(dbPath: string): DBConfig =
+  ## Create default database configuration
+  ## Most games won't need full state snapshots initially
+  DBConfig(
+    dbPath: dbPath,
+    enableGameStates: false,     # Disabled by default (saves space)
+    snapshotInterval: 5,         # Every 5 turns if enabled
+    pragmas: @[
+      "PRAGMA journal_mode=WAL",      # Write-Ahead Logging (faster)
+      "PRAGMA synchronous=NORMAL",    # Balance safety/performance
+      "PRAGMA cache_size=-64000",     # 64MB cache
+      "PRAGMA temp_store=MEMORY"      # Temp tables in memory
+    ]
+  )
+    
 proc initializeDatabase*(db: DbConn): bool =
   ## Initialize database schema (idempotent)
   ## Returns true on success, false on failure

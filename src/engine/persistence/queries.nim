@@ -3,7 +3,7 @@
 ## Reusable SQL query functions for debugging and analysis.
 ## Designed for colonization bug diagnosis and fleet tracking.
 
-import std/[tables, strformat, logging]
+import std/[tables, strformat, logging, strutils]
 import db_connector/db_sqlite
 
 proc getColonizationFailures*(db: DbConn, gameId: int64): seq[Row] =
