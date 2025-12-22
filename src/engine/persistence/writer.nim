@@ -5,15 +5,13 @@
 
 import std/[json, times, strformat, logging, options, strutils]
 import db_connector/db_sqlite
-import ./types, ./schema
 import ../../ai/analysis/diagnostics/types  # DiagnosticMetrics
-import ../gamestate  # For GameState, Fleet, FleetOrder
-import ../resolution/types  # For GameEvent, GameEventType
+import ../types/[game_state, event]
 
 const ENGINE_VERSION = "0.1.0"  # TODO: Get from build system
 
 proc insertGame*(db: DbConn, seed: int64, numPlayers, maxTurns,
-                 mapRings: int, strategies: seq[string]): int64 =
+                 mapRings: int32, strategies: seq[string]): int64 =
   ## Insert game metadata (DRY - factory function)
   ## Returns game_id
   let strategiesJson = $(%strategies)  # JSON encode array
@@ -29,7 +27,7 @@ proc insertGame*(db: DbConn, seed: int64, numPlayers, maxTurns,
   debug &"Inserted game metadata for seed {seed}"
   return seed
 
-proc updateGameResult*(db: DbConn, gameId: int64, actualTurns: int,
+proc updateGameResult*(db: DbConn, gameId: int64, actualTurns: int32,
                        victor: string = "", victoryType: string = "") =
   ## Update game metadata at completion
   db.exec(sql"""
@@ -305,7 +303,7 @@ proc insertDiagnosticRow*(db: DbConn, gameId: int64,
     $metrics.goapActionsExecuted, $metrics.goapActionsFailed
   )
 
-proc insertGameEvent*(db: DbConn, gameId: int64, turn: int,
+proc insertGameEvent*(db: DbConn, gameId: int64, turn: int32,
                       event: GameEvent) =
   ## Insert game event (DRY - factory for all event types)
   ## Maps GameEvent to flat database row
@@ -349,15 +347,15 @@ proc insertGameEvent*(db: DbConn, gameId: int64, turn: int,
     orderTypeStr, event.description, reasonStr, eventDataJson
   )
 
-proc insertFleetSnapshot*(db: DbConn, gameId: int64, turn: int,
+proc insertFleetSnapshot*(db: DbConn, gameId: int64, turn: int32,
                          fleetId: string, houseId: string,
-                         locationSystem: int,
-                         orderType: string, orderTarget: int,
+                         locationSystem: int32,
+                         orderType: string, orderTarget: int32,
                          hasArrived: bool,
                          shipsTotal, etacCount, scoutCount,
                          combatShips, transportCount,
                          idleTurnsCombat, idleTurnsScout,
-                         idleTurnsEtac, idleTurnsTransport: int) =
+                         idleTurnsEtac, idleTurnsTransport: int32) =
   ## Insert fleet tracking snapshot (DoD - direct field mapping)
   ## Called per-turn for each fleet in the game
   let arrivedInt = if hasArrived: "1" else: "0"
@@ -383,7 +381,7 @@ proc insertFleetSnapshot*(db: DbConn, gameId: int64, turn: int,
     $idleTurnsTransport
   )
 
-proc insertGameState*(db: DbConn, gameId: int64, turn: int,
+proc insertGameState*(db: DbConn, gameId: int64, turn: int32,
                       stateJson: string) =
   ## Insert full GameState snapshot as JSON (optional)
   ## Only used if DBConfig.enableGameStates is true
