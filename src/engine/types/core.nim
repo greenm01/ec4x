@@ -129,3 +129,7 @@ proc `$`*(id: GroundUnitId): string {.borrow.}
 proc `$`*(id: ConstructionProjectId): string {.borrow.}
 proc `$`*(id: RepairProjectId): string {.borrow.}
 proc `$`*(id: PopulationTransferId): string {.borrow.}
+proc `$`*(id: StarbaseId): string {.borrow.}
+proc `$`*(id: SpaceportId): string {.borrow.}
+proc `$`*(id: ShipyardId): string {.borrow.}
+proc `$`*(id: DrydockId): string {.borrow.}

@@ -14,12 +14,14 @@
 ## - STARBASE_BONUS: Operational starbases boost IU output (+5% per SB, max +15%)
 
 import std/math
-import types
-import ../../common/types/planets
-import ../config/economy_config
-import ../gamestate  # For unified Colony type
+import ../../types/production
+import ../../types/colony
+import ../../types/starmap
+import ../../types/game_state
+import ../../config/economy_config
 
-export types.ProductionOutput
+export production.ProductionOutput
+export starmap.PlanetClass, starmap.ResourceRating
 
 ## RAW INDEX Table (economy.md:3.1)
 
@@ -103,6 +105,13 @@ proc getProductivityGrowth*(taxRate: int): float =
   ## Formula: PROD_GROWTH = (50 - taxRate) / 500
   result = (50.0 - float(taxRate)) / 500.0
 
+proc getStarbaseGrowthBonus*(colony: Colony): float =
+  ## TODO: DoD refactoring needed
+  ## This function needs GameState to count operational starbases via entity manager
+  ## For now, return 0.0 (no bonus)
+  ## Proper implementation should call commissioning.getStarbaseGrowthBonus(state, colonyId)
+  return 0.0
+
 proc calculateGrossOutput*(colony: Colony, elTechLevel: int, cstTechLevel: int = 1): int =
   ## Calculate GCO (Gross Colony Output) for colony
   ## Per economy.md:3.1 and 4.5
@@ -159,10 +168,10 @@ proc calculateProductionOutput*(colony: Colony, elTechLevel: int, cstTechLevel: 
   let indProd = int(float(colony.industrial.units) * elMod * cstMod * (1.0 + prodGrowth + starbaseBonus))
 
   result = ProductionOutput(
-    grossOutput: gco,
-    netValue: ncv,
-    populationProduction: popProd,
-    industrialProduction: indProd
+    grossOutput: int32(gco),
+    netValue: int32(ncv),
+    populationProduction: int32(popProd),
+    industrialProduction: int32(indProd)
   )
 
 proc applyInfrastructureDamage*(colony: var Colony) =
@@ -172,4 +181,4 @@ proc applyInfrastructureDamage*(colony: var Colony) =
   ## Damage reduces both population and industrial production
   if colony.infrastructureDamage > 0.0:
     # Reduce cached GCO by damage percentage
-    colony.grossOutput = int(float(colony.grossOutput) * (1.0 - colony.infrastructureDamage))
+    colony.grossOutput = int32(float(colony.grossOutput) * (1.0 - colony.infrastructureDamage))
