@@ -28,6 +28,7 @@ type
   Fleets* = object
     entities*: EntityManager[FleetId, Fleet]
     bySystem*: Table[SystemId, seq[FleetId]]
+    byOwner*: Table[HouseId, seq[FleetId]]
 
   FleetCommandType* {.pure.} = enum
     Hold              # Hold position, do nothing

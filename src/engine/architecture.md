@@ -42,10 +42,16 @@ src/engine/
     │                         │                                              │
     ├── @entities/            # [ENTITY-SPECIFIC MUTATORS - The "Write API"] ▼
     │   │                     # Handles complex state changes for specific entities, ensuring data consistency.
-    │   ├── fleet_ops.nim #   - `moveFleet` -> updates fleet's location AND the `bySystem` spatial index.
-    │   ├── ship_ops.nim  #   - `add/remove` -> updates ship list AND the `bySquadron` secondary index.
-    │   ├── colony_ops.nim
-    │   ├── squadron_ops.nim
+    │   │                     # **KEY PRINCIPLE**: Index-aware mutations only. NO business logic.
+    │   │
+    │   ├── fleet_ops.nim     #   - `createFleet`, `destroyFleet`, `moveFleet`, `changeFleetOwner`
+    │   │                     #   - Maintains `bySystem` (spatial) and `byOwner` (ownership) indexes
+    │   │
+    │   ├── ship_ops.nim      #   - `add/remove` -> updates ship list AND `bySquadron` index
+    │   ├── colony_ops.nim    #   - `establishColony`, `destroyColony`, `changeColonyOwner`
+    │   │                     #   - Maintains `bySystem` and `byOwner` indexes
+    │   ├── squadron_ops.nim  #   - `createSquadron`, `destroySquadron`, `transferSquadron`
+    │   │                     #   - Maintains `byFleet` index
     │   ├── ground_unit_ops.nim
     │   ├── facility_ops.nim
     │   ├── project_ops.nim
@@ -57,12 +63,34 @@ src/engine/
     │                         │                                              │
     ├── @systems/             # [GAME LOGIC IMPLEMENTATION - The "Domain Experts"]
     │   │                     # Contains all the detailed algorithms for game features.
-    │   ├── economy/          #   - Logic for calculating income, production, maintenance.
-    │   ├── combat/           #   - Logic for resolving space and ground battles.
-    │   ├── research/         #   - Logic for tech tree advancement.
-    │   ├── capacity/         #   - Logic for enforcing squadron and ship capacity limits.
+    │   │                     # **KEY PRINCIPLE**: Business logic, validation, algorithms. NO index manipulation.
+    │   │
+    │   ├── colony/           #   - Colony domain logic
+    │   │   ├── engine.nim    #     - High-level API: `establishColony` (validation + prestige)
+    │   │   ├── conflicts.nim #     - Simultaneous colonization resolution
+    │   │   └── ...           #     - Other colony-specific systems
+    │   │
+    │   ├── fleet/            #   - Fleet domain logic
+    │   │   ├── engine.nim    #     - High-level API: `createFleetCoordinated`, `mergeFleets`, `splitFleet`
+    │   │   ├── entity.nim    #     - Fleet business logic: `canMergeWith`, `combatStrength`, `balanceSquadrons`
+    │   │   └── ...           #     - Other fleet-specific systems
+    │   │
+    │   ├── squadron/         #   - Squadron domain logic
+    │   │   ├── engine.nim    #     - High-level API (stub for future)
+    │   │   ├── entity.nim    #     - Squadron business logic
+    │   │   └── ...           #     - Other squadron-specific systems
+    │   │
+    │   ├── ship/             #   - Ship domain logic
+    │   │   ├── engine.nim    #     - High-level API (stub for future)
+    │   │   ├── entity.nim    #     - Ship business logic
+    │   │   └── ...           #     - Other ship-specific systems
+    │   │
+    │   ├── economy/          #   - Logic for calculating income, production, maintenance
+    │   ├── combat/           #   - Logic for resolving space and ground battles
+    │   ├── research/         #   - Logic for tech tree advancement
+    │   ├── capacity/         #   - Logic for enforcing squadron and ship capacity limits
     │   └── ...etc            #   - Each module takes `GameState`, performs reads via `@state/iterators`,
-    │                         #     and writes changes via the `@entities` managers.
+    │                         #     and writes changes via the `@entities` managers
     │
     │
     │                         (Orchestrates @systems)
