@@ -8,11 +8,10 @@
 ## - TRP: Varies by tech field
 
 import std/[math, tables]
-import types
-import ../../common/types/tech
-import ../config/tech_config
+import ../../types/tech
+import ../../config/tech_config
 
-export types.ResearchAllocation
+export tech.ResearchAllocation
 
 ## Economic Research Points (economy.md:4.2)
 
