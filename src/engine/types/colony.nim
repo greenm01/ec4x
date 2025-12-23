@@ -1,5 +1,5 @@
 import std/[tables, options]
-import ./[core, starmap, production, capacity]
+import ./[core, starmap, production, capacity, prestige]
 
 type
   Colony* = object
@@ -77,3 +77,16 @@ type
     populationGrowth*: float32
     prestigeBonus*: int32
 
+  ColonizationAttempt* = object
+    ## Attempt to colonize a planet
+    houseId*: HouseId
+    systemId*: SystemId
+    fleetId*: FleetId
+    ptuUsed*: int
+
+  ColonizationResult* = object
+    ## Result of colonization attempt
+    success*: bool
+    reason*: string
+    newColony*: Option[Colony]  # Now uses unified Colony from gamestate
+    prestigeEvent*: Option[PrestigeEvent]
