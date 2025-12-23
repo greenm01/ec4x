@@ -7,13 +7,13 @@
 ## - Buildings have upkeep (construction.toml, facilities.toml)
 ## - Damaged infrastructure requires repair (construction.toml)
 
-import types
-import ../../common/types/units
-import ../config/[construction_config, facilities_config, ground_units_config, combat_config]
-import ../squadron, ../gamestate, ../fleet, ../iterators
+import ./types
+import ../../types/[game_state, units, fleet]
+import ../../config/[construction_config, facilities_config, ground_units_config, combat_config]
+import ../../state/iterators
 
 export types.MaintenanceReport
-# NOTE: Don't export Colony to avoid ambiguity - importers should use gamestate directly
+# NOTE: Don't export Colony to avoid ambiguity - importers should use game_state directly
 export fleet.FleetStatus
 
 ## Ship Maintenance Costs (economy.md:3.9)
@@ -145,15 +145,32 @@ proc calculateHouseMaintenanceCost*(state: GameState, houseId: HouseId): int =
   ## Used by AI to reserve maintenance budget before allocating to construction
   result = 0
 
-  # Fleet maintenance
+  # Fleet maintenance using entity managers
   for fleet in state.fleetsOwned(houseId):
     var fleetData: seq[(ShipClass, bool)] = @[]
-    for squadron in fleet.squadrons:
+
+    # Iterate over squadron IDs
+    for squadronId in fleet.squadrons:
+      if squadronId notin state.squadrons.entities.index:
+        continue
+
+      let squadronIdx = state.squadrons.entities.index[squadronId]
+      let squadron = state.squadrons.entities.data[squadronIdx]
+
       # Add flagship
-      fleetData.add((squadron.flagship.shipClass, squadron.flagship.isCrippled))
-      # Add squadron ships (non-flagship escorts)
-      for ship in squadron.ships:
+      if squadron.flagshipId in state.ships.entities.index:
+        let flagshipIdx = state.ships.entities.index[squadron.flagshipId]
+        let flagship = state.ships.entities.data[flagshipIdx]
+        fleetData.add((flagship.shipClass, flagship.isCrippled))
+
+      # Add escort ships
+      for shipId in squadron.ships:
+        if shipId notin state.ships.entities.index:
+          continue
+        let shipIdx = state.ships.entities.index[shipId]
+        let ship = state.ships.entities.data[shipIdx]
         fleetData.add((ship.shipClass, ship.isCrippled))
+
     result += calculateFleetMaintenance(fleetData)
 
   # Colony maintenance (facilities, ground forces)

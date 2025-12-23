@@ -9,13 +9,11 @@
 ## 4. Deposit NHV to treasury
 ## 5. Apply population growth
 
-import std/[math, strformat]
-import types, production
-import ../prestige
-import ../gamestate  # For unified Colony type
-import ../config/economy_config
-import ../config/population_growth_multiplier
-import ../logger
+import std/[math, strformat, logging]
+import ./[types, production]
+import ../../types/game_state
+import ../prestige/events as prestige_events
+import ../../config/[economy_config, population_growth_multiplier]
 
 export types.ColonyIncomeReport, types.HouseIncomeReport, types.IncomePhaseReport
 
@@ -151,7 +149,7 @@ proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
   # Generate prestige events from tax policy
   # Low tax bonus (using configured thresholds and values)
   if result.totalPrestigeBonus > 0:
-    result.prestigeEvents.add(createPrestigeEvent(
+    result.prestigeEvents.add(prestige_events.createPrestigeEvent(
       PrestigeSource.LowTaxBonus,
       result.totalPrestigeBonus,
       "Low tax bonus (rate: " & $taxPolicy.currentRate & "%, " & $colonies.len & " colonies)"
@@ -159,7 +157,7 @@ proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
 
   # High tax penalty (using configured thresholds and values)
   if result.taxPenalty < 0:
-    result.prestigeEvents.add(createPrestigeEvent(
+    result.prestigeEvents.add(prestige_events.createPrestigeEvent(
       PrestigeSource.HighTaxPenalty,
       result.taxPenalty,
       "High tax penalty (avg: " & $result.taxAverage6Turn & "%)"

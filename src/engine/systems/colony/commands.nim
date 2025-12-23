@@ -1,11 +1,12 @@
-## Colony Management Order Processing
+## Colony Management Command Processing
 ##
-## Handles colony-specific configuration orders:
+## Handles colony-specific configuration commands:
 ## - Tax rate adjustments (per-colony override of house tax rate)
 ## - Auto-repair facility toggles (for infrastructure damage repair)
+## - Auto-reload ETAC toggles (automatic cargo loading)
 ##
 ## Per architecture.md: Colony system owns colony operations,
-## called from turn_cycle/income_phase.nim during order resolution
+## called from turn_cycle/command_phase.nim during command resolution
 
 import std/[options, strformat, logging]
 import ../../types/[game_state, command]

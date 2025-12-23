@@ -7,17 +7,14 @@
 ## Infrastructure damage from combat affects production
 
 import std/[tables, options]
-import types, income, projects, maintenance, maintenance_shortfall, facility_queue
-import capacity/carrier_hangar  # For carrier hangar capacity enforcement
-import ../resolution/types as resolution_types  # For GameEvent
-import ../../common/types/[core, units]
-import ../gamestate  # For unified Colony type
-import ../state_helpers  # For withHouse macro
-import ../iterators  # For activeHousesWithId, fleetsOwned
+import ./[types, income, projects, maintenance, maintenance_shortfall, facility_queue]
+import ./capacity/carrier_hangar  # For carrier hangar capacity enforcement
+import ../../types/[game_state, core, units, event]
+import ../../state/[state_helpers, iterators]
 
 export types.IncomePhaseReport, types.HouseIncomeReport, types.ColonyIncomeReport
 export types.MaintenanceReport, types.CompletedProject
-# NOTE: Don't export gamestate.Colony to avoid ambiguity
+# NOTE: Don't export game_state.Colony to avoid ambiguity
 
 ## Income Phase Resolution (gameplay.md:1.3.2)
 
@@ -102,7 +99,7 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
 
 proc calculateAndDeductMaintenanceUpkeep*(
   state: var GameState,
-  events: var seq[resolution_types.GameEvent]
+  events: var seq[event.GameEvent]
 ): Table[HouseId, int] =
   ## Calculate and deduct maintenance upkeep costs from house treasuries
   ## This implements Income Phase Step 3 (after Conflict Phase, before resource collection)
@@ -123,13 +120,29 @@ proc calculateAndDeductMaintenanceUpkeep*(
 
     # Fleet maintenance (surviving ships after Conflict Phase)
     for fleet in state.fleetsOwned(houseId):
-      # Calculate maintenance for this fleet
+      # Calculate maintenance for this fleet using entity managers
       var fleetData: seq[(ShipClass, bool)] = @[]
-      for squadron in fleet.squadrons:
+
+      # Iterate over squadron IDs
+      for squadronId in fleet.squadrons:
+        if squadronId notin state.squadrons.entities.index:
+          continue
+
+        let squadronIdx = state.squadrons.entities.index[squadronId]
+        let squadron = state.squadrons.entities.data[squadronIdx]
+
         # Add flagship
-        fleetData.add((squadron.flagship.shipClass, squadron.flagship.isCrippled))
-        # Add squadron ships (non-flagship escorts)
-        for ship in squadron.ships:
+        if squadron.flagshipId in state.ships.entities.index:
+          let flagshipIdx = state.ships.entities.index[squadron.flagshipId]
+          let flagship = state.ships.entities.data[flagshipIdx]
+          fleetData.add((flagship.shipClass, flagship.isCrippled))
+
+        # Add escort ships
+        for shipId in squadron.ships:
+          if shipId notin state.ships.entities.index:
+            continue
+          let shipIdx = state.ships.entities.index[shipId]
+          let ship = state.ships.entities.data[shipIdx]
           fleetData.add((ship.shipClass, ship.isCrippled))
 
       totalUpkeep += calculateFleetMaintenance(fleetData)
@@ -159,8 +172,8 @@ proc calculateAndDeductMaintenanceUpkeep*(
       house.treasury -= totalUpkeep
 
     # Generate MaintenancePaid event
-    events.add(resolution_types.GameEvent(
-      eventType: resolution_types.GameEventType.Economy,
+    events.add(event.GameEvent(
+      eventType: event.GameEventType.Economy,
       turn: state.turn,
       houseId: some(houseId),
       description: "Maintenance upkeep paid: " & $totalUpkeep & " PP",
@@ -169,7 +182,7 @@ proc calculateAndDeductMaintenanceUpkeep*(
 
 proc tickConstructionAndRepair*(
   state: var GameState,
-  events: var seq[resolution_types.GameEvent]
+  events: var seq[event.GameEvent]
 ): MaintenanceReport =
   ## Advance construction and repair queues
   ## This is called during Maintenance Phase (Phase 4)
@@ -190,7 +203,7 @@ proc tickConstructionAndRepair*(
   # 1. Facility queues: Capital ships + repairs (per-facility dock capacity)
   # 2. Colony queue: Fighters, buildings, ground units, IU investment (planet-side)
 
-  for (systemId, colony) in state.colonies.mpairs:
+  for systemId, colony in state.colonies.entities.data.mpairs:
     # Advance facility queues (capital ships in spaceports/shipyards + repairs in shipyards)
     let facilityResults = facility_queue.advanceColonyQueues(colony)
     result.completedProjects.add(facilityResults.completedProjects)
@@ -201,8 +214,7 @@ proc tickConstructionAndRepair*(
       let completed = advanceConstruction(colony)
       if completed.isSome:
         result.completedProjects.add(completed.get())
-      # CRITICAL FIX: Write modified colony back to state (Nim Table copy semantics!)
-      state.colonies[systemId] = colony
+      # Colony is already mutated in place via mpairs
 
   # Infrastructure repairs handled by repair_queue.nim during Construction Phase
   # Damaged infrastructure tracked in colony.infrastructureDamage

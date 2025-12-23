@@ -34,7 +34,7 @@ import ../../common/logger as common_logger
 import ../types/core
 import ../types/game_state
 import ../types/[diplomacy as dip_types, command, tech as tech_types]
-import ../systems/command/standing_commands
+import ../systems/command/[standing_commands, commands]
 import ../systems/automation
 import ../systems/commissioning
 import ../systems/construction
@@ -42,6 +42,8 @@ import ../systems/production/engine as production_resolution
 import ../systems/events/event_factory/init as event_factory
 import ../systems/command/engine as command_engine
 import ../systems/research/costs as res_costs
+import ../systems/colony/[commands as colony_commands, terraforming]
+import ../systems/population/transfers as pop_transfers
 
 proc resolveCommandPhase*(state: var GameState,
                           orders: Table[HouseId, CommandPacket],
@@ -92,12 +94,12 @@ proc resolveCommandPhase*(state: var GameState,
   # Process colony management orders (tax rates, auto-repair toggles)
   for houseId in state.houses.keys:
     if houseId in orders:
-      economy_resolution.resolveColonyManagementOrders(state, orders[houseId])
+      colony_commands.resolveColonyManagementOrders(state, orders[houseId])
 
   # Process Space Guild population transfers
   for houseId in state.houses.keys:
     if houseId in orders:
-      economy_resolution.resolvePopulationTransfers(state, orders[houseId], events)
+      pop_transfers.resolvePopulationTransfers(state, orders[houseId], events)
 
 
   # NOTE: Squadron management and cargo management are now handled by
@@ -110,7 +112,7 @@ proc resolveCommandPhase*(state: var GameState,
   # Process terraforming orders
   for houseId in state.houses.keys:
     if houseId in orders:
-      resolveTerraformOrders(state, orders[houseId], events)
+      terraforming.resolveTerraformOrders(state, orders[houseId], events)
 
   logInfo(LogCategory.lcOrders, "[COMMAND PART B] Completed player submissions")
 
@@ -249,45 +251,45 @@ proc resolveCommandPhase*(state: var GameState,
   # Collect and categorize orders from all houses
   for houseId in state.houses.keys:
     if houseId in orders:
-      for order in orders[houseId].fleetOrders:
+      for cmd in orders[houseId].fleetCommands:
         # Execute administrative orders immediately (zero-turn)
-        if orders.isAdministrativeOrder(order.orderType):
-          let outcome = executor.executeFleetOrder(state, houseId, order, events)
-          if outcome == OrderOutcome.Success:
+        if commands.isAdministrativeCommand(cmd.commandType):
+          let outcome = executor.executeFleetCommand(state, houseId, cmd, events)
+          if outcome == CommandOutcome.Success:
             adminExecuted += 1
-            logDebug(LogCategory.lcOrders, &"  [ADMIN] Fleet {order.fleetId}: {order.orderType} executed")
+            logDebug(LogCategory.lcOrders, &"  [ADMIN] Fleet {cmd.fleetId}: {cmd.commandType} executed")
           else:
-            logDebug(LogCategory.lcOrders, &"  [ADMIN FAILED] Fleet {order.fleetId}: {order.orderType}")
+            logDebug(LogCategory.lcOrders, &"  [ADMIN FAILED] Fleet {cmd.fleetId}: {cmd.commandType}")
 
         # All other orders: VALIDATE then store for movement and execution
         # Universal lifecycle: Initiate (here) → Activate (Maintenance) → Execute (Conflict/Income)
         else:
-          # CRITICAL: Validate order before storing (prevents NULL target Move orders)
-          let validation = validateFleetOrder(order, state, houseId)
+          # CRITICAL: Validate command before storing (prevents NULL target Move commands)
+          let validation = validateFleetCommand(cmd, state, houseId)
           if validation.valid:
-            state.fleetOrders[order.fleetId] = order
+            state.fleetOrders[cmd.fleetId] = cmd
             ordersStored += 1
-            logDebug(LogCategory.lcOrders, &"  [STORED] Fleet {order.fleetId}: {order.orderType}")
+            logDebug(LogCategory.lcOrders, &"  [STORED] Fleet {cmd.fleetId}: {cmd.commandType}")
           else:
             logWarn(LogCategory.lcOrders,
-                    &"  [REJECTED] Fleet {order.fleetId}: {order.orderType} - {validation.error}")
+                    &"  [REJECTED] Fleet {cmd.fleetId}: {cmd.commandType} - {validation.error}")
             # Generate rejection event
             events.add(event_factory.orderRejected(
-              houseId, $order.orderType, validation.error,
-              fleetId = some(order.fleetId)
+              houseId, $cmd.commandType, validation.error,
+              fleetId = some(cmd.fleetId)
             ))
 
-      # Process standing orders (persistent fleet behaviors)
-      for fleetId, standingOrder in orders[houseId].standingOrders:
+      # Process standing commands (persistent fleet behaviors)
+      for fleetId, standingCmd in orders[houseId].standingCommands:
         # Validate that fleet exists and belongs to this house
         if fleetId in state.fleets and state.fleets[fleetId].owner == houseId:
-          state.standingOrders[fleetId] = standingOrder
+          state.standingOrders[fleetId] = standingCmd
           standingOrdersProcessed += 1
           logDebug(LogCategory.lcOrders,
-                   &"  [STANDING ORDER] {fleetId}: {standingOrder.orderType} assigned")
+                   &"  [STANDING COMMAND] {fleetId}: {standingCmd.commandType} assigned")
         else:
           logWarn(LogCategory.lcOrders,
-                  &"  [REJECTED] {fleetId}: Standing order rejected (fleet not found or wrong owner)")
+                  &"  [REJECTED] {fleetId}: Standing command rejected (fleet not found or wrong owner)")
 
   logInfo(LogCategory.lcOrders,
           &"[COMMAND PART C] Completed ({ordersStored} orders stored, " &

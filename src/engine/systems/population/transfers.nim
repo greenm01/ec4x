@@ -10,16 +10,15 @@
 ## - Concurrent transfer limit (5 per house)
 ##
 ## Data-oriented design: Pure functions for calculations, batch processing in maintenance phase.
+##
+## Per architecture.md: Population system owns population operations,
+## called from turn_cycle/command_phase.nim and production_phase.nim
 
-import std/[tables, sequtils, algorithm, options]
-import ../gamestate
-import ../state_helpers
-import ../iterators
-import ../starmap
-import ../fleet
-import ../../common/types/[core, planets]
-import ../../common/logger
-import types as pop_types
+import std/[tables, sequtils, algorithm, options, logging, strformat, math]
+import ../../types/[game_state, core, command, event, population as pop_types]
+import ../../config/population_config
+import ../../engine/starmap
+import ../../event_factory/init as event_factory
 
 type
   TransferResult* {.pure.} = enum
@@ -312,3 +311,306 @@ proc processTransfers*(state: var GameState): seq[TransferCompletion] =
 ## - Add order type for initiating transfers
 ## - Integration tests for all scenarios
 ## - AI strategy for population balancing
+
+## ============================================================================
+## Order Processing Functions (called from turn_cycle/command_phase.nim)
+## ============================================================================
+
+proc calculateTransitTime*(state: GameState, sourceSystem: SystemId,
+                          destSystem: SystemId, houseId: HouseId):
+                          tuple[turns: int, jumps: int] =
+  ## Calculate Space Guild transit time and jump distance
+  ## Per config/population.toml: turns_per_jump = 1, minimum_turns = 1
+  ## Uses pathfinding to calculate actual jump lane distance
+  ## Returns (turns: -1, jumps: 0) if path crosses enemy territory (Guild cannot complete transfer)
+
+  import ../../state/entity_manager
+
+  if sourceSystem == destSystem:
+    return (turns: 1, jumps: 0)  # Minimum 1 turn even for same system, 0 jumps
+
+  # Space Guild civilian transports can use all lanes (not restricted by fleet composition)
+  # Create a dummy fleet that can traverse all lanes
+  let dummyFleet = Fleet(
+    id: "transit_calc",
+    owner: "GUILD".HouseId,
+    location: sourceSystem,
+    squadrons: @[]
+  )
+
+  # Use starmap pathfinding to get actual jump distance
+  let pathResult = state.starMap.findPath(sourceSystem, destSystem, dummyFleet)
+
+  if pathResult.found:
+    # Check if path crosses enemy territory (implemented below)
+    # Path length - 1 = number of jumps (e.g., [A, B, C] = 2 jumps)
+    # 1 turn per jump per config/population.toml
+    let jumps = pathResult.path.len - 1
+    return (turns: max(1, jumps), jumps: jumps)
+  else:
+    # No valid path found (shouldn't happen on a connected map, but handle gracefully)
+    # Fall back to hex distance as approximation
+    if sourceSystem in state.starMap.systems and destSystem in state.starMap.systems:
+      let source = state.starMap.systems[sourceSystem]
+      let dest = state.starMap.systems[destSystem]
+      let hexDist = distance(source.coords, dest.coords)
+      let jumps = hexDist.int
+      return (turns: max(1, jumps), jumps: jumps)
+    else:
+      return (turns: 1, jumps: 0)  # Ultimate fallback
+
+proc canGuildTraversePath*(state: GameState, path: seq[SystemId],
+                          transferringHouse: HouseId): bool =
+  ## Check if Space Guild can traverse a path for a given house
+  ## Guild validates path using the house's known intel (fog of war)
+  ## Returns false if:
+  ## - Path crosses system the house has no visibility on (intel leak prevention)
+  ## - Path crosses enemy-controlled system (blockade)
+
+  import ../../state/fog_of_war
+
+  for systemId in path:
+    # Player must have visibility on this system (prevents intel leak exploit)
+    if not hasVisibilityOn(state, systemId, transferringHouse):
+      return false
+
+    # If system has a colony, it must be friendly (not enemy-controlled)
+    let colonyOpt = state.colonies.entities.getEntity(systemId)
+    if colonyOpt.isSome:
+      let colony = colonyOpt.get()
+      if colony.owner != transferringHouse:
+        # Enemy-controlled system - Guild cannot pass through
+        return false
+
+  return true
+
+proc resolvePopulationTransfers*(state: var GameState, packet: CommandPacket,
+                                 events: var seq[GameEvent]) =
+  ## Process Space Guild population transfer orders
+  ## Source: docs/specs/economy.md Section 3.7, config/population.toml
+
+  import ../../state/entity_manager
+
+  debug "Processing population transfers for ", packet.houseId
+
+  for transfer in packet.populationTransfers:
+    # Validate source colony exists and is owned by house
+    let sourceColonyOpt = state.colonies.entities.getEntity(transfer.sourceColony)
+    if sourceColonyOpt.isNone:
+      error "Transfer failed: source colony ", transfer.sourceColony, " not found"
+      continue
+
+    var sourceColony = sourceColonyOpt.get()
+    if sourceColony.owner != packet.houseId:
+      error "Transfer failed: source colony ", transfer.sourceColony, " not owned by ", packet.houseId
+      continue
+
+    # Validate destination colony exists and is owned by house
+    let destColonyOpt = state.colonies.entities.getEntity(transfer.destColony)
+    if destColonyOpt.isNone:
+      error "Transfer failed: destination colony ", transfer.destColony, " not found"
+      continue
+
+    var destColony = destColonyOpt.get()
+    if destColony.owner != packet.houseId:
+      error "Transfer failed: destination colony ", transfer.destColony, " not owned by ", packet.houseId
+      continue
+
+    # Critical validation: Destination must have ≥1 PTU (50k souls) to be a functional colony
+    if destColony.souls < soulsPerPtu():
+      error "Transfer failed: destination colony ", transfer.destColony, " has only ", destColony.souls,
+            " souls (needs ≥", soulsPerPtu(), " to accept transfers)"
+      continue
+
+    # Convert PTU amount to souls for exact transfer
+    let soulsToTransfer = transfer.ptuAmount * soulsPerPtu()
+
+    # Validate source has enough souls (can transfer any amount, even fractional PTU)
+    if sourceColony.souls < soulsToTransfer:
+      error "Transfer failed: source colony ", transfer.sourceColony, " has only ", sourceColony.souls,
+            " souls (needs ", soulsToTransfer, " for ", transfer.ptuAmount, " PTU)"
+      continue
+
+    # Check concurrent transfer limit (max 5 per house per config/population.toml)
+    let activeTransfers = state.populationInTransit.filterIt(it.houseId == packet.houseId)
+    if activeTransfers.len >= globalPopulationConfig.max_concurrent_transfers:
+      warn "Transfer rejected: Maximum ", globalPopulationConfig.max_concurrent_transfers,
+           " concurrent transfers reached (house has ", activeTransfers.len, " active)"
+      continue
+
+    # Calculate transit time and jump distance
+    let (transitTime, jumps) = calculateTransitTime(state, transfer.sourceColony, transfer.destColony, packet.houseId)
+
+    # Check if Guild can complete the transfer (path must be known and not blocked)
+    if transitTime < 0:
+      error "Transfer failed: No safe Guild route between ", transfer.sourceColony, " and ", transfer.destColony,
+            " (requires scouted path through friendly/neutral territory)"
+      continue
+
+    let arrivalTurn = state.turn + transitTime
+
+    # Calculate transfer cost based on destination planet class and jump distance
+    # Per config/population.toml and docs/specs/economy.md Section 3.7
+    let cost = calculateTransferCost(destColony.planetClass, transfer.ptuAmount, jumps)
+
+    # Check house treasury and deduct cost
+    let houseOpt = state.houses.entities.getEntity(packet.houseId)
+    if houseOpt.isNone:
+      error "Transfer failed: House ", packet.houseId, " not found"
+      continue
+
+    var house = houseOpt.get()
+    if house.treasury < cost:
+      error "Transfer failed: Insufficient funds (need ", cost, " PP, have ", house.treasury, " PP)"
+      continue
+
+    # Deduct cost from treasury
+    house.treasury -= cost
+    state.houses.entities.updateEntity(packet.houseId, house)
+
+    # Deduct souls from source colony immediately (they've departed)
+    sourceColony.souls -= soulsToTransfer
+    sourceColony.population = sourceColony.souls div 1_000_000
+    state.colonies.entities.updateEntity(transfer.sourceColony, sourceColony)
+
+    # Create in-transit entry
+    let transferId = $packet.houseId & "_" & $transfer.sourceColony & "_" & $transfer.destColony & "_" & $state.turn
+    let inTransit = pop_types.PopulationInTransit(
+      id: transferId,
+      houseId: packet.houseId,
+      sourceSystem: transfer.sourceColony,
+      destSystem: transfer.destColony,
+      ptuAmount: transfer.ptuAmount,
+      costPaid: cost,
+      arrivalTurn: arrivalTurn
+    )
+    state.populationInTransit.add(inTransit)
+
+    info "Space Guild transporting ", transfer.ptuAmount, " PTU (", soulsToTransfer, " souls) from ",
+         transfer.sourceColony, " to ", transfer.destColony, " (arrives turn ", arrivalTurn, ", cost: ", cost, " PP)"
+
+    events.add(event_factory.populationTransfer(
+      packet.houseId,
+      transfer.ptuAmount,
+      transfer.sourceColony,
+      transfer.destColony,
+      true,
+      &"Space Guild transport initiated (ETA: turn {arrivalTurn}, cost: {cost} PP)"
+    ))
+
+proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]) =
+  ## Process Space Guild population transfers that arrive this turn
+  ## Implements risk handling per config/population.toml [transfer_risks]
+  ## Per config: dest_blockaded_behavior = "closest_owned"
+  ## Per config: dest_collapsed_behavior = "closest_owned"
+
+  import ../../state/entity_manager
+
+  debug "[Processing Space Guild Arrivals]"
+
+  var arrivedTransfers: seq[int] = @[]  # Indices to remove after processing
+
+  for idx, transfer in state.populationInTransit:
+    if transfer.arrivalTurn != state.turn:
+      continue  # Not arriving this turn
+
+    let soulsToDeliver = transfer.ptuAmount * soulsPerPtu()
+
+    # Check destination status using entity_manager
+    let destColonyOpt = state.colonies.entities.getEntity(transfer.destSystem)
+    if destColonyOpt.isNone:
+      # Destination colony no longer exists
+      warn "Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination colony destroyed"
+      arrivedTransfers.add(idx)
+      events.add(event_factory.populationTransfer(
+        transfer.houseId,
+        transfer.ptuAmount,
+        transfer.sourceSystem,
+        transfer.destSystem,
+        false,
+        "destination destroyed"
+      ))
+      continue
+
+    var destColony = destColonyOpt.get()
+
+    # Check if destination requires alternative delivery
+    # Space Guild makes best-faith effort to deliver somewhere safe
+    # Per config/population.toml: dest_blockaded_behavior = "closest_owned"
+    # Per config/population.toml: dest_collapsed_behavior = "closest_owned"
+    # Per config/population.toml: dest_conquered_behavior = "closest_owned" (NEW)
+    var needsAlternativeDestination = false
+    var alternativeReason = ""
+
+    if destColony.owner != transfer.houseId:
+      # Destination conquered - Guild tries to find alternative colony
+      needsAlternativeDestination = true
+      alternativeReason = "conquered by " & $destColony.owner
+    elif destColony.blockaded:
+      needsAlternativeDestination = true
+      alternativeReason = "blockaded"
+    elif destColony.souls < soulsPerPtu():
+      needsAlternativeDestination = true
+      alternativeReason = "collapsed below minimum viable population"
+
+    if needsAlternativeDestination:
+      # Space Guild attempts to deliver to closest owned colony
+      let alternativeDest = findNearestOwnedColony(state, transfer.destSystem, transfer.houseId)
+
+      if alternativeDest.isSome:
+        # Deliver to alternative colony
+        let altSystemId = alternativeDest.get()
+        let altColonyOpt = state.colonies.entities.getEntity(altSystemId)
+        if altColonyOpt.isSome:
+          var altColony = altColonyOpt.get()
+          altColony.souls += soulsToDeliver
+          altColony.population = altColony.souls div 1_000_000
+          state.colonies.entities.updateEntity(altSystemId, altColony)
+
+          warn "Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU redirected to ", altSystemId,
+               " - original destination ", transfer.destSystem, " ", alternativeReason
+          events.add(event_factory.populationTransfer(
+            transfer.houseId,
+            transfer.ptuAmount,
+            transfer.sourceSystem,
+            altSystemId,
+            true,
+            &"redirected from {transfer.destSystem} ({alternativeReason})"
+          ))
+      else:
+        # No owned colonies - colonists are lost
+        warn "Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU LOST - destination ", alternativeReason,
+             ", no owned colonies available"
+        events.add(event_factory.populationTransfer(
+          transfer.houseId,
+          transfer.ptuAmount,
+          transfer.sourceSystem,
+          transfer.destSystem,
+          false,
+          &"{alternativeReason}, no owned colonies for delivery"
+        ))
+
+      arrivedTransfers.add(idx)
+      continue
+
+    # Successful delivery!
+    destColony.souls += soulsToDeliver
+    destColony.population = destColony.souls div 1_000_000
+    state.colonies.entities.updateEntity(transfer.destSystem, destColony)
+
+    info "Transfer ", transfer.id, ": ", transfer.ptuAmount, " PTU arrived at ", transfer.destSystem,
+         " (", soulsToDeliver, " souls)"
+    events.add(event_factory.populationTransfer(
+      transfer.houseId,
+      transfer.ptuAmount,
+      transfer.sourceSystem,
+      transfer.destSystem,
+      true,
+      ""
+    ))
+
+    arrivedTransfers.add(idx)
+
+  # Remove processed transfers (in reverse order to preserve indices)
+  for idx in countdown(arrivedTransfers.len - 1, 0):
+    state.populationInTransit.del(arrivedTransfers[idx])

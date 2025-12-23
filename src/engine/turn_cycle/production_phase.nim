@@ -49,177 +49,8 @@ import ../../prestige
 import ../../standing_orders  # For standing order activation
 import ../../fleet  # For scout detection helpers
 import ../../intelligence/[types as intel_types, generator]  # For intel generation
-
-# Forward declaration for helper procs
-proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent])
-proc processTerraformingProjects(state: var GameState,events: var seq[GameEvent])
-
-proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]) =
-  ## Process Space Guild population transfers that arrive this turn
-  ## Implements risk handling per config/population.toml [transfer_risks]
-  ## Per config: dest_blockaded_behavior = "closest_owned"
-  ## Per config: dest_collapsed_behavior = "closest_owned"
-  logDebug(LogCategory.lcGeneral, &"[Processing Space Guild Arrivals]")
-
-  var arrivedTransfers: seq[int] = @[]  # Indices to remove after processing
-
-  for idx, transfer in state.populationInTransit:
-    if transfer.arrivalTurn != state.turn:
-      continue  # Not arriving this turn
-
-    let soulsToDeliver = transfer.ptuAmount * soulsPerPtu()
-
-    # Check destination status
-    if transfer.destSystem notin state.colonies:
-      # Destination colony no longer exists
-      logWarn(LogCategory.lcEconomy,
-        &"Transfer {transfer.id}: {transfer.ptuAmount} PTU LOST - " &
-        &"destination colony destroyed")
-      arrivedTransfers.add(idx)
-      events.add(event_factory.populationTransfer(
-        transfer.houseId,
-        transfer.ptuAmount,
-        transfer.sourceSystem,
-        transfer.destSystem,
-        false,
-        "destination destroyed"
-      ))
-      continue
-
-    var destColony = state.colonies[transfer.destSystem]
-
-    # Check if destination requires alternative delivery
-    # Space Guild makes best-faith effort to deliver somewhere safe
-    # Per config/population.toml: dest_blockaded_behavior = "closest_owned"
-    # Per config/population.toml: dest_collapsed_behavior = "closest_owned"
-    # Per config/population.toml: dest_conquered_behavior = "closest_owned"
-    var needsAlternativeDestination = false
-    var alternativeReason = ""
-
-    if destColony.owner != transfer.houseId:
-      # Destination conquered - Guild tries to find alternative colony
-      needsAlternativeDestination = true
-      alternativeReason = "conquered by " & $destColony.owner
-    elif destColony.blockaded:
-      needsAlternativeDestination = true
-      alternativeReason = "blockaded"
-    elif destColony.souls < soulsPerPtu():
-      needsAlternativeDestination = true
-      alternativeReason = "collapsed below minimum viable population"
-
-    if needsAlternativeDestination:
-      # Space Guild attempts to deliver to closest owned colony
-      let alternativeDest = findClosestOwnedColony(state, transfer.destSystem,
-                                                   transfer.houseId)
-
-      if alternativeDest.isSome:
-        # Deliver to alternative colony
-        let altSystemId = alternativeDest.get()
-        var altColony = state.colonies[altSystemId]
-        altColony.souls += soulsToDeliver
-        altColony.population = altColony.souls div 1_000_000
-        state.colonies[altSystemId] = altColony
-
-        logWarn(LogCategory.lcEconomy,
-          &"Transfer {transfer.id}: {transfer.ptuAmount} PTU redirected to " &
-          &"{altSystemId} - original destination {transfer.destSystem} " &
-          &"{alternativeReason}")
-        events.add(event_factory.populationTransfer(
-          transfer.houseId,
-          transfer.ptuAmount,
-          transfer.sourceSystem,
-          altSystemId,
-          true,
-          &"redirected from {transfer.destSystem} ({alternativeReason})"
-        ))
-      else:
-        # No owned colonies - colonists are lost
-        logWarn(LogCategory.lcEconomy,
-          &"Transfer {transfer.id}: {transfer.ptuAmount} PTU LOST - " &
-          &"destination {alternativeReason}, no owned colonies available")
-        events.add(event_factory.populationTransfer(
-          transfer.houseId,
-          transfer.ptuAmount,
-          transfer.sourceSystem,
-          transfer.destSystem,
-          false,
-          &"{alternativeReason}, no owned colonies for delivery"
-        ))
-
-      arrivedTransfers.add(idx)
-      continue
-
-    # Successful delivery!
-    destColony.souls += soulsToDeliver
-    destColony.population = destColony.souls div 1_000_000
-    state.colonies[transfer.destSystem] = destColony
-
-    logInfo(LogCategory.lcEconomy,
-      &"Transfer {transfer.id}: {transfer.ptuAmount} PTU arrived at " &
-      &"{transfer.destSystem} ({soulsToDeliver} souls)")
-    events.add(event_factory.populationTransfer(
-      transfer.houseId,
-      transfer.ptuAmount,
-      transfer.sourceSystem,
-      transfer.destSystem,
-      true,
-      ""
-    ))
-
-    arrivedTransfers.add(idx)
-
-  # Remove processed transfers (in reverse order to preserve indices)
-  for idx in countdown(arrivedTransfers.len - 1, 0):
-    state.populationInTransit.del(arrivedTransfers[idx])
-
-proc processTerraformingProjects(state: var GameState,
-                                  events: var seq[GameEvent]) =
-  ## Process active terraforming projects for all houses
-  ## Per economy.md Section 4.7
-
-  for colonyId, colony in state.colonies.mpairs:
-    if colony.activeTerraforming.isNone:
-      continue
-
-    let houseId = colony.owner
-    if houseId notin state.houses:
-      continue
-
-    let house = state.houses[houseId]
-    var project = colony.activeTerraforming.get()
-    project.turnsRemaining -= 1
-
-    if project.turnsRemaining <= 0:
-      # Terraforming complete!
-      # Convert int class number (1-7) back to PlanetClass enum (0-6)
-      colony.planetClass = PlanetClass(project.targetClass - 1)
-      colony.activeTerraforming = none(TerraformProject)
-
-      let className = case project.targetClass
-        of 1: "Extreme"
-        of 2: "Desolate"
-        of 3: "Hostile"
-        of 4: "Harsh"
-        of 5: "Benign"
-        of 6: "Lush"
-        of 7: "Eden"
-        else: "Unknown"
-
-      logInfo(LogCategory.lcEconomy,
-        &"{house.name} completed terraforming of {colonyId} to {className} " &
-        &"(class {project.targetClass})")
-
-      events.add(event_factory.terraformComplete(
-        houseId,
-        colonyId,
-        className
-      ))
-    else:
-      logDebug(LogCategory.lcEconomy,
-        &"{house.name} terraforming {colonyId}: {project.turnsRemaining} " &
-        &"turn(s) remaining")
-      # Update project
-      colony.activeTerraforming = some(project)
+import ../../colony/terraforming  # For processTerraformingProjects
+import ../../population/transfers as pop_transfers  # For resolvePopulationArrivals
 
 proc resolveMaintenancePhase*(state: var GameState,
                               events: var seq[GameEvent],
@@ -558,14 +389,14 @@ proc resolveMaintenancePhase*(state: var GameState,
   # STEP 4: POPULATION TRANSFERS
   # ===================================================================
   logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 4] Processing population transfers...")
-  resolvePopulationArrivals(state, events)
+  pop_transfers.resolvePopulationArrivals(state, events)
   logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 4] Completed population transfers")
 
   # ===================================================================
   # STEP 5: TERRAFORMING
   # ===================================================================
   logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 5] Processing terraforming projects...")
-  processTerraformingProjects(state, events)
+  terraforming.processTerraformingProjects(state, events)
   logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 5] Completed terraforming projects")
 
   # ===================================================================

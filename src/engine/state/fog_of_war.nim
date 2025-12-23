@@ -209,3 +209,26 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
 
   for key, relation in state.diplomaticRelation:
     result.diplomaticRelations[key] = relation.state
+
+proc hasVisibilityOn*(state: GameState, systemId: SystemId, houseId: HouseId): bool =
+  ## Check if a house has visibility on a system (fog of war)
+  ## A house can see a system if:
+  ## - They own a colony there
+  ## - They have a fleet present
+  ## - They have a spy scout present
+  ##
+  ## Used by Space Guild for transfer path validation
+
+  # Check if house owns colony in this system using entity_manager
+  let colonyOpt = state.colonies.entities.getEntity(systemId)
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
+    if colony.owner == houseId:
+      return true
+
+  # Check if house has any fleets in this system using iterator
+  for fleet in state.fleetsInSystem(systemId):
+    if fleet.owner == houseId:
+      return true
+
+  return false
