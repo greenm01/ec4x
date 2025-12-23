@@ -4,12 +4,10 @@
 ## Per economy.md:5.0: "Ships under construction in docks can be destroyed during
 ## the Conflict Phase if the shipyard/spaceport is destroyed or crippled"
 
-import std/[strformat, options, sequtils]
-import ../gamestate
-import types as econ_types
-import ../../common/logger
+import std/[strformat, options, sequtils, logging]
+import ../../types/[game_state, economy]
 
-proc clearFacilityQueues*(colony: var Colony, facilityType: econ_types.FacilityType) =
+proc clearFacilityQueues*(colony: var Colony, facilityType: economy.FacilityType) =
   ## Clear construction and repair queues for a specific facility type
   ## Called when a facility is destroyed or crippled
   ## Per economy.md:5.0, ships under construction/repair are lost with no salvage
@@ -17,14 +15,12 @@ proc clearFacilityQueues*(colony: var Colony, facilityType: econ_types.FacilityT
   var destroyedRepairs = 0
 
   # Clear facility-specific repairs
-  var survivingRepairs: seq[econ_types.RepairProject] = @[]
+  var survivingRepairs: seq[economy.RepairProject] = @[]
   for repair in colony.repairQueue:
     if repair.facilityType == facilityType:
       destroyedRepairs += 1
       let className = if repair.shipClass.isSome: $repair.shipClass.get() else: "Unknown"
-      logWarn("Economy",
-              &"{facilityType} destroyed at system-{colony.systemId}: Repair project for {className} lost",
-              &"Cost: {repair.cost} PP")
+      warn facilityType, " destroyed at system-", colony.systemId, ": Repair project for ", className, " lost, Cost: ", repair.cost, " PP"
     else:
       survivingRepairs.add(repair)
   colony.repairQueue = survivingRepairs
@@ -33,9 +29,7 @@ proc clearFacilityQueues*(colony: var Colony, facilityType: econ_types.FacilityT
   # This is handled separately in clearAllConstructionQueues()
 
   if destroyedRepairs > 0:
-    logInfo("Economy",
-            &"{facilityType} destruction at system-{colony.systemId}",
-            &"{destroyedRepairs} repair projects lost")
+    info facilityType, " destruction at system-", colony.systemId, ": ", destroyedRepairs, " repair projects lost"
 
 proc clearAllConstructionQueues*(colony: var Colony) =
   ## Clear ALL construction queues when colony has no remaining shipyards or spaceports
@@ -45,24 +39,18 @@ proc clearAllConstructionQueues*(colony: var Colony) =
   if colony.underConstruction.isSome:
     destroyedProjects += 1
     let project = colony.underConstruction.get()
-    logWarn("Economy",
-            &"All facilities destroyed at system-{colony.systemId}: Construction project {project.itemId} lost",
-            &"Investment: {project.costPaid}/{project.costTotal} PP")
+    warn "All facilities destroyed at system-", colony.systemId, ": Construction project ", project.itemId, " lost, Investment: ", project.costPaid, "/", project.costTotal, " PP"
 
   for project in colony.constructionQueue:
-    logWarn("Economy",
-            &"All facilities destroyed at system-{colony.systemId}: Construction project {project.itemId} lost",
-            &"Investment: {project.costPaid}/{project.costTotal} PP")
+    warn "All facilities destroyed at system-", colony.systemId, ": Construction project ", project.itemId, " lost, Investment: ", project.costPaid, "/", project.costTotal, " PP"
 
   colony.constructionQueue = @[]
-  colony.underConstruction = none(econ_types.ConstructionProject)
+  colony.underConstruction = none(economy.ConstructionProject)
 
   if destroyedProjects > 0:
-    logInfo("Economy",
-            &"All facilities destroyed at system-{colony.systemId}",
-            &"{destroyedProjects} construction projects lost")
+    info "All facilities destroyed at system-", colony.systemId, ": ", destroyedProjects, " construction projects lost"
 
-proc handleFacilityDestruction*(colony: var Colony, facilityType: econ_types.FacilityType) =
+proc handleFacilityDestruction*(colony: var Colony, facilityType: economy.FacilityType) =
   ## Handle facility destruction: clear queues and check if any facilities remain
   ##
   ## **Design:**

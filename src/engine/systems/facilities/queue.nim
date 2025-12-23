@@ -24,23 +24,19 @@
 ## Ships built at spaceports cost 2x PP (applied at order submission time)
 ## Exception: Shipyard/Starbase buildings (orbital construction, no penalty)
 
-import std/[options, tables, algorithm, strutils]
-import types
-import ../gamestate
-import ../economy/types as econ_types
-import ../../common/types/core
-import ../../common/logger
+import std/[options, tables, algorithm, strutils, logging]
+import ../../types/[core, game_state, economy]
 
-export types.CompletedProject
+export economy.CompletedProject
 
 type
   QueueAdvancementResult* = object
     ## Results from advancing a facility's queues
-    completedProjects*: seq[econ_types.CompletedProject]
-    completedRepairs*: seq[econ_types.RepairProject]
+    completedProjects*: seq[economy.CompletedProject]
+    completedRepairs*: seq[economy.RepairProject]
 
-proc advanceSpaceportQueue*(spaceport: var gamestate.Spaceport,
-                             colonyId: core.SystemId): QueueAdvancementResult =
+proc advanceSpaceportQueue*(spaceport: var game_state.Spaceport,
+                             colonyId: SystemId): QueueAdvancementResult =
   ## Advance spaceport construction queue (FIFO)
   ## Spaceports handle multiple simultaneous construction (up to effective docks limit with CST scaling)
   result = QueueAdvancementResult(
@@ -56,15 +52,13 @@ proc advanceSpaceportQueue*(spaceport: var gamestate.Spaceport,
 
     if projectCopy.turnsRemaining <= 0:
       # Construction complete
-      result.completedProjects.add(econ_types.CompletedProject(
+      result.completedProjects.add(economy.CompletedProject(
         colonyId: colonyId,
         projectType: projectCopy.projectType,
         itemId: projectCopy.itemId
       ))
       completedIndices.add(idx)
-      logEconomy("Spaceport construction complete",
-                "facility=", spaceport.id,
-                " project=", projectCopy.itemId)
+      debug "Spaceport construction complete: facility=", spaceport.id, ", project=", projectCopy.itemId
     else:
       # Still in progress - update in place
       spaceport.activeConstructions[idx] = projectCopy
@@ -87,7 +81,7 @@ proc advanceSpaceportQueue*(spaceport: var gamestate.Spaceport,
 
     if nextProject.turnsRemaining <= 0:
       # Project completes immediately (0-turn projects)
-      result.completedProjects.add(econ_types.CompletedProject(
+      result.completedProjects.add(economy.CompletedProject(
         colonyId: colonyId,
         projectType: nextProject.projectType,
         itemId: nextProject.itemId
@@ -105,8 +99,8 @@ proc advanceSpaceportQueue*(spaceport: var gamestate.Spaceport,
                 " project=", nextProject.itemId)
       pulled += 1
 
-proc advanceDrydockQueue*(drydock: var gamestate.Drydock,
-                          colonyId: core.SystemId): QueueAdvancementResult =
+proc advanceDrydockQueue*(drydock: var game_state.Drydock,
+                          colonyId: SystemId): QueueAdvancementResult =
   ## Advance drydock repair queue (repair-only facility)
   ## Drydocks handle repairs only (effective docks with CST scaling, no construction)
   result = QueueAdvancementResult(
@@ -153,8 +147,8 @@ proc advanceDrydockQueue*(drydock: var gamestate.Drydock,
               " target=", $nextRepair.targetType)
     pulled += 1
 
-proc advanceShipyardQueue*(shipyard: var gamestate.Shipyard,
-                           colonyId: core.SystemId): QueueAdvancementResult =
+proc advanceShipyardQueue*(shipyard: var game_state.Shipyard,
+                           colonyId: SystemId): QueueAdvancementResult =
   ## Advance shipyard construction queue (construction-only facility)
   ## Shipyards handle multiple simultaneous construction (effective docks with CST scaling)
   result = QueueAdvancementResult(
@@ -174,7 +168,7 @@ proc advanceShipyardQueue*(shipyard: var gamestate.Shipyard,
 
     if projectCopy.turnsRemaining <= 0:
       # Construction complete
-      result.completedProjects.add(econ_types.CompletedProject(
+      result.completedProjects.add(economy.CompletedProject(
         colonyId: colonyId,
         projectType: projectCopy.projectType,
         itemId: projectCopy.itemId
@@ -205,7 +199,7 @@ proc advanceShipyardQueue*(shipyard: var gamestate.Shipyard,
 
     if nextProject.turnsRemaining <= 0:
       # Project completes immediately (0-turn projects)
-      result.completedProjects.add(econ_types.CompletedProject(
+      result.completedProjects.add(economy.CompletedProject(
         colonyId: colonyId,
         projectType: nextProject.projectType,
         itemId: nextProject.itemId
@@ -223,7 +217,7 @@ proc advanceShipyardQueue*(shipyard: var gamestate.Shipyard,
                 " project=", nextProject.itemId)
       pulled += 1
 
-proc advanceColonyQueues*(colony: var gamestate.Colony): QueueAdvancementResult =
+proc advanceColonyQueues*(colony: var game_state.Colony): QueueAdvancementResult =
   ## Advance all facility queues at colony
   ## Returns combined results from all facilities
   ## NOTE: Uses pre-calculated effectiveDocks (updated on CST tech upgrade)
@@ -250,39 +244,36 @@ proc advanceColonyQueues*(colony: var gamestate.Colony): QueueAdvancementResult 
     result.completedProjects.add(drydockResult.completedProjects)
     result.completedRepairs.add(drydockResult.completedRepairs)
 
-proc isPlanetaryDefense*(project: econ_types.CompletedProject): bool =
+proc isPlanetaryDefense*(project: economy.CompletedProject): bool =
   ## Returns true if project should commission in Maintenance Phase
   ## Planetary assets: Facilities, ground forces, fighters (planetside)
   ## Military assets: Ships built in docks (Command Phase after combat)
 
-  if project.projectType == econ_types.ConstructionType.Building:
+  if project.projectType == economy.ConstructionType.Building:
     return project.itemId in [
       "Starbase", "Spaceport", "Shipyard", "Drydock",
       "GroundBattery", "Marine", "marine_division", "Army", "army"
     ] or project.itemId.startsWith("PlanetaryShield")
 
   # Fighters are planetside, commission with planetary defense
-  if project.projectType == econ_types.ConstructionType.Ship:
+  if project.projectType == economy.ConstructionType.Ship:
     return project.itemId == "Fighter"
 
   return false
 
-proc advanceAllQueues*(state: var GameState): tuple[projects: seq[econ_types.CompletedProject], repairs: seq[econ_types.RepairProject]] =
+proc advanceAllQueues*(state: var GameState): tuple[projects: seq[economy.CompletedProject], repairs: seq[economy.RepairProject]] =
   ## Advance all facility queues across all colonies
   ## Called during Maintenance phase
   ## Returns all completed projects and repairs
   ## NOTE: Uses pre-calculated effectiveDocks (updated on CST tech upgrade)
   result = (projects: @[], repairs: @[])
 
-  for colonyId, colony in state.colonies.mpairs:
+  for colonyId, colony in state.colonies.entities.data.mpairs:
     let colonyResult = advanceColonyQueues(colony)
     result.projects.add(colonyResult.completedProjects)
     result.repairs.add(colonyResult.completedRepairs)
 
-  logDebug("Economy",
-          "Queue advancement complete",
-          " completed_projects=", $result.projects.len,
-          " completed_repairs=", $result.repairs.len)
+  debug "Queue advancement complete: completed_projects=", result.projects.len, ", completed_repairs=", result.repairs.len
 
 ## ==============================================================================
 ## Colony Queue Management (Legacy System)
@@ -296,7 +287,7 @@ proc advanceAllQueues*(state: var GameState): tuple[projects: seq[econ_types.Com
 ##
 ## Capital ships (non-fighters) use the facility queue system above.
 
-proc startConstruction*(colony: var gamestate.Colony, project: econ_types.ConstructionProject): bool =
+proc startConstruction*(colony: var game_state.Colony, project: economy.ConstructionProject): bool =
   ## Start new construction project at colony
   ## Returns true if started successfully
   ##
@@ -311,13 +302,13 @@ proc startConstruction*(colony: var gamestate.Colony, project: econ_types.Constr
   # Always return true - actual capacity checking happens in resolution layer
   return true
 
-proc advanceConstruction*(colony: var gamestate.Colony): Option[econ_types.CompletedProject] =
+proc advanceConstruction*(colony: var game_state.Colony): Option[economy.CompletedProject] =
   ## Advance colony construction by one turn (upfront payment model)
   ## Returns completed project if finished
   ## Per economy.md:5.0 - full cost paid upfront, construction tracks turns
 
   if colony.underConstruction.isNone:
-    return none(econ_types.CompletedProject)
+    return none(economy.CompletedProject)
 
   var project = colony.underConstruction.get()
 
@@ -326,14 +317,14 @@ proc advanceConstruction*(colony: var gamestate.Colony): Option[econ_types.Compl
 
   # Check if complete
   if project.turnsRemaining <= 0:
-    let completed = econ_types.CompletedProject(
+    let completed = economy.CompletedProject(
       colonyId: colony.systemId,
       projectType: project.projectType,
       itemId: project.itemId
     )
 
     # Clear construction slot
-    colony.underConstruction = none(econ_types.ConstructionProject)
+    colony.underConstruction = none(economy.ConstructionProject)
 
     # Pull next project from queue if available
     if colony.constructionQueue.len > 0:
@@ -345,7 +336,7 @@ proc advanceConstruction*(colony: var gamestate.Colony): Option[econ_types.Compl
   # Update progress
   colony.underConstruction = some(project)
 
-  return none(econ_types.CompletedProject)
+  return none(economy.CompletedProject)
 
 ## ==============================================================================
 ## Design Notes
