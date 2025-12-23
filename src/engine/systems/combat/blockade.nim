@@ -1,9 +1,9 @@
 ## Blockade System Engine
 ## Implements blockade mechanics from operations.md Section 6.2.6
 
-import std/[tables]
-import ../../types/core
-import ../gamestate, ../fleet
+import std/[tables, options]
+import ../../types/[core, game_state, fleet, colony, squadron, ship]
+import ../../state/[entity_manager, iterators]
 import ../intelligence/blockade_intel
 
 # =============================================================================
@@ -29,30 +29,32 @@ proc isSystemBlockaded*(
 
   var blockadingHouses: seq[HouseId] = @[]
 
-  # Use location index instead of scanning all fleets
-  if systemId notin state.fleetsByLocation:
-    return (false, @[])
-
-  # Check only fleets at this system
-  for fleetId in state.fleetsByLocation[systemId]:
-    if fleetId notin state.fleets:
-      continue  # Skip stale index entry
-
-    let fleet = state.fleets[fleetId]
-    if fleet.owner != colonyOwner:
+  # Use iterator for O(1) indexed lookup
+  for fleet in state.fleetsInSystem(systemId):
+    if fleet.houseId != colonyOwner:
       # Check diplomatic status - only Enemy status can blockade
       # TODO: Add diplomatic status check when diplomacy system integrated
       # For now, any non-owner fleet with combat capability can blockade
 
       # Check if fleet has combat ships
       var hasCombatShips = false
-      for squadron in fleet.squadrons:
-        if squadron.flagship.stats.attackStrength > 0:
-          hasCombatShips = true
-          break
+      for sqId in fleet.squadrons:
+        let sqOpt = state.squadrons.entities.getEntity(sqId)
+        if sqOpt.isSome:
+          let squadron = sqOpt.get()
+          # Check if squadron has combat capability
+          for shipId in squadron.ships:
+            let shipOpt = state.ships.entities.getEntity(shipId)
+            if shipOpt.isSome:
+              let ship = shipOpt.get()
+              if ship.attackStrength > 0:
+                hasCombatShips = true
+                break
+          if hasCombatShips:
+            break
 
-      if hasCombatShips and fleet.owner notin blockadingHouses:
-        blockadingHouses.add(fleet.owner)
+      if hasCombatShips and fleet.houseId notin blockadingHouses:
+        blockadingHouses.add(fleet.houseId)
 
   return (blockadingHouses.len > 0, blockadingHouses)
 
@@ -66,15 +68,19 @@ proc applyBlockades*(state: var GameState) =
   ## Per operations.md:6.2.6: "Blockades established during the Conflict Phase
   ## reduce GCO for that same turn's Income Phase calculation"
 
-  for systemId, colony in state.colonies.mpairs:
+  for (systemId, colony) in state.allColoniesWithId():
     let (isBlockaded, blockaders) = isSystemBlockaded(state, systemId, colony.owner)
+    var updatedColony = colony
+
+    var needsUpdate = false
 
     if isBlockaded:
       if not colony.blockaded:
         # Blockade just established - generate intelligence reports
-        colony.blockaded = true
-        colony.blockadedBy = blockaders
-        colony.blockadeTurns = 1
+        updatedColony.blockaded = true
+        updatedColony.blockadedBy = blockaders
+        updatedColony.blockadeTurns = 1
+        needsUpdate = true
 
         # Both defender and blockaders receive intelligence
         blockade_intel.generateBlockadeEstablishedIntel(
@@ -86,15 +92,17 @@ proc applyBlockades*(state: var GameState) =
         )
       else:
         # Blockade continues (update blockading houses list)
-        colony.blockadedBy = blockaders
-        colony.blockadeTurns += 1
+        updatedColony.blockadedBy = blockaders
+        updatedColony.blockadeTurns += 1
+        needsUpdate = true
     else:
       if colony.blockaded:
         # Blockade lifted - generate intelligence reports
         let previousBlockaders = colony.blockadedBy
-        colony.blockaded = false
-        colony.blockadedBy = @[]
-        colony.blockadeTurns = 0
+        updatedColony.blockaded = false
+        updatedColony.blockadedBy = @[]
+        updatedColony.blockadeTurns = 0
+        needsUpdate = true
 
         # Both defender and former blockaders receive intelligence
         blockade_intel.generateBlockadeLiftedIntel(
@@ -104,6 +112,10 @@ proc applyBlockades*(state: var GameState) =
           previousBlockaders,
           state.turn
         )
+
+    # Write back if changed
+    if needsUpdate:
+      state.colonies.entities.updateEntity(systemId, updatedColony)
 
 # =============================================================================
 # Blockade Effects
@@ -122,7 +134,7 @@ proc getBlockadePenalty*(colony: Colony): float =
 
 proc calculateBlockadePrestigePenalty*(state: GameState, houseId: HouseId): int =
   ## Calculate prestige penalty for colonies under blockade
-  ## (O(1) lookup via coloniesByOwner index)
+  ## (O(1) lookup via coloniesOwned iterator)
   ## Per operations.md:6.2.6: "House Prestige is reduced by 2 points
   ## for each turn if the colony begins the income phase under blockade"
   ##
@@ -130,12 +142,9 @@ proc calculateBlockadePrestigePenalty*(state: GameState, houseId: HouseId): int 
 
   var penalty = 0
 
-  if houseId in state.coloniesByOwner:
-    for systemId in state.coloniesByOwner[houseId]:
-      if systemId in state.colonies:
-        let colony = state.colonies[systemId]
-        if colony.blockaded:
-          penalty -= 2  # -2 prestige per blockaded colony
+  for colony in state.coloniesOwned(houseId):
+    if colony.blockaded:
+      penalty -= 2  # -2 prestige per blockaded colony
 
   return penalty
 
@@ -145,33 +154,42 @@ proc calculateBlockadePrestigePenalty*(state: GameState, houseId: HouseId): int 
 
 proc getBlockadedColonies*(state: GameState, houseId: HouseId): seq[Colony] =
   ## Get all colonies owned by a house that are currently blockaded
-  ## (O(1) lookup via coloniesByOwner index)
+  ## (O(1) lookup via coloniesOwned iterator)
   result = @[]
 
-  if houseId in state.coloniesByOwner:
-    for systemId in state.coloniesByOwner[houseId]:
-      if systemId in state.colonies:
-        let colony = state.colonies[systemId]
-        if colony.blockaded:
-          result.add(colony)
+  for colony in state.coloniesOwned(houseId):
+    if colony.blockaded:
+      result.add(colony)
 
 proc getBlockadingFleets*(state: GameState, systemId: SystemId): seq[Fleet] =
   ## Get all fleets that are blockading a system
   result = @[]
 
-  if systemId notin state.colonies:
+  # Get colony using entity_manager
+  let colonyOpt = state.colonies.entities.getEntity(systemId)
+  if colonyOpt.isNone:
     return result
 
-  let colony = state.colonies[systemId]
+  let colony = colonyOpt.get()
 
-  for fleet in state.fleets.values:
-    if fleet.location == systemId and fleet.owner != colony.owner:
+  # Use iterator for fleets at system
+  for fleet in state.fleetsInSystem(systemId):
+    if fleet.houseId != colony.owner:
       # Check if fleet has combat capability
       var hasCombatShips = false
-      for squadron in fleet.squadrons:
-        if squadron.flagship.stats.attackStrength > 0:
-          hasCombatShips = true
-          break
+      for sqId in fleet.squadrons:
+        let sqOpt = state.squadrons.entities.getEntity(sqId)
+        if sqOpt.isSome:
+          let squadron = sqOpt.get()
+          for shipId in squadron.ships:
+            let shipOpt = state.ships.entities.getEntity(shipId)
+            if shipOpt.isSome:
+              let ship = shipOpt.get()
+              if ship.attackStrength > 0:
+                hasCombatShips = true
+                break
+          if hasCombatShips:
+            break
 
       if hasCombatShips:
         result.add(fleet)
@@ -199,14 +217,26 @@ proc canBreakBlockade*(
   # Calculate combined strength
   var blockaderStrength = 0
   for fleet in blockaders:
-    for squadron in fleet.squadrons:
-      if squadron.flagship.stats.attackStrength > 0:
-        blockaderStrength += squadron.flagship.stats.attackStrength
+    for sqId in fleet.squadrons:
+      let sqOpt = state.squadrons.entities.getEntity(sqId)
+      if sqOpt.isSome:
+        let squadron = sqOpt.get()
+        for shipId in squadron.ships:
+          let shipOpt = state.ships.entities.getEntity(shipId)
+          if shipOpt.isSome:
+            let ship = shipOpt.get()
+            blockaderStrength += ship.attackStrength
 
   var reliefStrength = 0
-  for squadron in reliefFleet.squadrons:
-    if squadron.flagship.stats.attackStrength > 0:
-      reliefStrength += squadron.flagship.stats.attackStrength
+  for sqId in reliefFleet.squadrons:
+    let sqOpt = state.squadrons.entities.getEntity(sqId)
+    if sqOpt.isSome:
+      let squadron = sqOpt.get()
+      for shipId in squadron.ships:
+        let shipOpt = state.ships.entities.getEntity(shipId)
+        if shipOpt.isSome:
+          let ship = shipOpt.get()
+          reliefStrength += ship.attackStrength
 
   # Simple strength comparison
   # TODO: Integrate with full combat resolution
