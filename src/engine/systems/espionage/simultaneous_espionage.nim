@@ -4,25 +4,25 @@
 ## to prevent first-mover advantages in intelligence operations.
 
 import std/[tables, options, random, strformat, algorithm]
-import ../intelligence/spy_resolution
-import simultaneous_types
-import simultaneous_resolver
-import ../gamestate
-import ../index_maintenance
-import ../orders
-import ../order_types
-import ../logger
-import ../squadron
-import ../espionage/engine as esp_engine
-import ../espionage/executor as esp_executor
-import ../espionage/types as esp_types
-import ../config/espionage_config
-import ../../common/types/core
-import ../prestige
-import ./event_factory/intelligence as intelligence_events
-import ./types as res_types
-import ../intelligence/generator as intel_generator
-import ../intelligence/types as intel_types
+import ../../intelligence/spy_resolution
+import ../../types/simultaneous as simultaneous_types
+import ../combat/simultaneous_resolver
+import ../../gamestate
+import ../../index_maintenance
+import ../../orders
+import ../../order_types
+import ../../logger
+import ../../squadron
+import ./engine as esp_engine
+import ./executor as esp_executor
+import ../../types/espionage as esp_types
+import ../../config/espionage_config
+import ../../types/core
+import ../../prestige
+import ../../event_factory/intelligence as intelligence_events
+import ../../types/resolution as res_types
+import ../../intelligence/generator as intel_generator
+import ../../intelligence/types as intel_types
 
 proc collectEspionageIntents*(
   state: GameState,

@@ -4,14 +4,13 @@
 ## to prevent first-mover advantages in planetary assaults.
 
 import std/[tables, options, random, strformat]
-import simultaneous_types
+import ../../types/simultaneous as simultaneous_types
 import simultaneous_resolver
-import ../gamestate
-import ../orders
-import ../order_types
-import ../logger
-import ../squadron
-import ../../common/types/core
+import ../../types/game_state
+import ../command/orders
+import ../../../common/logger
+import ../squadron/entity
+import ../../types/core
 import ./types as res_types
 import ./combat_resolution
 

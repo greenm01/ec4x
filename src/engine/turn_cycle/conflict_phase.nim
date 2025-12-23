@@ -20,14 +20,13 @@
 ##   6c. Starbase Surveillance
 
 import std/[options, random, sequtils, strformat, tables]
-import ../../../common/types/core
-import ../../../common/logger as common_logger
-import ../gamestate
-import ../index_maintenance, ../logger, ../state_helpers
+import ../types/core
+import ../../common/logger as common_logger
+import ../types/game_state
 import ../types/[diplomacy as dip_types, espionage as esp_types,
-                intelligence as intel_types, orders, research as res_types_research,
+                intelligence as intel_types, fleet, research as res_types_research,
                 resolution as res_types, simultaneous as simultaneous_types]
-import ../systems/blockade/simultaneous_blockade
+import ../systems/combat/simultaneous_blockade
 import ../systems/combat/resolution as combat_resolution
 import ../systems/combat/simultaneous_planetary
 import ../systems/espionage/simultaneous_espionage
@@ -35,7 +34,7 @@ import ../systems/intelligence/[espionage_intel, generator, spy_resolution,
                                 starbase_surveillance]
 import ../systems/prestige/application as prestige_app
 import ../systems/prestige/types as prestige_types
-import ../systems/shared/simultaneous
+import ../systems/colony/simultaneous
 
 proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPacket],
                           combatReports: var seq[res_types.CombatReport],
@@ -66,7 +65,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
     # - Movement orders (Move, Patrol, etc.): Execute in Maintenance Phase
     # - Salvage: Executes in Income Phase
     if isMovementOrder(fleetOrder.orderType) or
-       fleetOrder.orderType == orders.FleetOrderType.Salvage:
+       fleetOrder.orderType == FleetCommandType.Salvage:
       continue
 
     # Find fleet owner
@@ -216,10 +215,10 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
     var filteredFleetOrders: seq[FleetOrder] = @[]
     for order in arrivedOrders[houseId].fleetOrders:
       # Check if order requires arrival
-      const arrivalRequired = [orders.FleetOrderType.Bombard,
-        orders.FleetOrderType.Invade, orders.FleetOrderType.Blitz,
-        orders.FleetOrderType.Colonize, orders.FleetOrderType.SpyPlanet,
-        orders.FleetOrderType.SpySystem, orders.FleetOrderType.HackStarbase
+      const arrivalRequired = [FleetCommandType.Bombard,
+        FleetCommandType.Invade, FleetCommandType.Blitz,
+        FleetCommandType.Colonize, FleetCommandType.SpyColony,
+        FleetCommandType.SpySystem, FleetCommandType.HackStarbase
       ]
       if order.orderType in arrivalRequired:
         if order.fleetId in state.arrivedFleets:

@@ -23,15 +23,15 @@ type
   Squadron* = object
     ## A tactical unit of ships under flagship command
     id*: SquadronId
-    flagship*: Ship  # Renamed from Ship
-    ships*: seq[Ship]  # Ships under flagship command (excludes flagship)
+    flagshipId*: ShipId  # DoD: Reference to flagship ship
+    ships*: seq[ShipId]  # DoD: References to ships under flagship command (excludes flagship)
     houseId*: HouseId
     location*: SystemId
     destroyed*: bool = false  # Set to true when squadron is destroyed in combat
-    squadronType*: SquadronType  # Strategic role classification (NEW)
+    squadronType*: SquadronType  # Strategic role classification
 
     # Carrier fighter operations (assets.md:2.4.1.1)
-    embarkedFighters*: seq[Squadron]  # Embarked fighter squadrons (Squadron.Fighter type)
+    embarkedFighters*: seq[SquadronId]  # DoD: Embarked fighter squadron IDs
 
 type
   Squadrons* = ref object

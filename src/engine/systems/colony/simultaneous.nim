@@ -4,26 +4,26 @@
 ## Implements collection, conflict detection, resolution, and fallback logic.
 
 import std/[tables, options, random, sequtils, algorithm, strformat]
-import simultaneous_types
-import simultaneous_resolver
-import ../gamestate
-import ../index_maintenance
-import ../orders
-import ../order_types
-import ../squadron
-import ../fleet
-import ../logger
-import ../state_helpers
-import ../starmap
-import ../initialization/colony
+import ../../types/simultaneous as simultaneous_types
+import ../combat/simultaneous_resolver
+import ../../gamestate
+import ../../index_maintenance
+import ../../orders
+import ../../order_types
+import ../../squadron
+import ../../fleet
+import ../../logger
+import ../../state_helpers
+import ../../starmap
+import ../../initialization/colony
 import ../colonization/engine as col_engine
-import ../standing_orders
-import types as res_types
-import event_factory/init as event_factory
-import ../../common/types/core
-import ../../common/types/planets
-import ../prestige as prestige_types
-import ../prestige/application as prestige_app
+import ../../standing_orders
+import ../../types/resolution as res_types
+import ../../event_factory/init as event_factory
+import ../../types/core
+import ../../types/planets
+import ../../prestige as prestige_types
+import ../../prestige/application as prestige_app
 
 proc collectColonizationIntents*(
   state: GameState,

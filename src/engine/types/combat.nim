@@ -5,6 +5,8 @@
 
 import std/[tables, options]
 import ./core
+import ./fleet  # For FleetStatus
+import ./diplomacy  # For DiplomaticState
 
 type
   CombatState* {.pure.} = enum

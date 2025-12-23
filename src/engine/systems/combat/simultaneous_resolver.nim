@@ -4,8 +4,8 @@
 ## Uses fleet strength + deterministic random tiebreaker.
 
 import std/[algorithm, random, hashes]
-import simultaneous_types
-import ../../common/types/core
+import ../../types/simultaneous as simultaneous_types
+import ../../types/core
 
 proc resolveConflictByStrength*[IntentType](
   intents: seq[IntentType],
