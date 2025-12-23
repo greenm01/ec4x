@@ -6,13 +6,13 @@ src/engine/
     │                       #   - Drives the main turn cycle via `@turn_cycle/turn_executor.nim`.
     │
     ├── @config/            # [GAME DATA CONFIGURATION] All static game rules and values.
-    │   └── *.nim           #   - Loaded by `@initialization/config_resolver.nim`.
+    │   └── *.nim           #   - Loaded by `@init/config_resolver.nim`.
     │
     ├── @types/             # [DATA SCHEMA] Defines ALL pure data structures (Fleet, Ship, GameState).
     │   ├── capacity.nim    #   - Defines types for the capacity system.
     │   └── *.nim           #   - Universal data types for the entire engine.
     │
-    ├── @initialization/    # [GAME SETUP & BOOTSTRAP]
+    ├── @init/              # [GAME SETUP & BOOTSTRAP]
     │   ├── config_resolver.nim # - Loads config files.
     │   ├── game.nim        #   - Entry for new game creation.
     │   ├── *.nim           #   - Factories/initializers for core entities during setup.
