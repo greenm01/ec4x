@@ -7,9 +7,8 @@
 ## - Implements actual game rules for lane traversal
 ## - Provides fast, reliable starmap generation and pathfinding
 
-import fleet
-import ../common/[hex, system, types/combat]
-import config/starmap_config
+import types/[fleet, hex, system, combat, game_state]
+import ../config/starmap_config
 import std/[tables, sequtils, random, math, algorithm, hashes, sets, strutils, heapqueue]
 import std/options
 
@@ -388,7 +387,9 @@ proc validateHomeworldLanes*(starMap: StarMap): seq[string] =
 
   return errors
 
-proc canFleetTraverseLane*(fleet: Fleet, laneType: LaneType): bool =
+proc canFleetTraverseLane*(fleet: Fleet, laneType: LaneType,
+                           squadrons: game_state.Squadrons,
+                           ships: game_state.Ships): bool =
   ## Check if fleet can traverse a specific lane type
   ##
   ## Lane Restrictions (simplified):
@@ -400,8 +401,18 @@ proc canFleetTraverseLane*(fleet: Fleet, laneType: LaneType): bool =
     return true  # All ships can traverse major and minor lanes
   of LaneType.Restricted:
     # Restricted lanes block crippled ships only
-    for squadron in fleet.squadrons:
-      if squadron.flagship.isCrippled:
+    for squadronId in fleet.squadrons:
+      if squadronId notin squadrons.entities.index:
+        continue
+      let squadronIdx = squadrons.entities.index[squadronId]
+      let squadron = squadrons.entities.data[squadronIdx]
+
+      if squadron.flagshipId notin ships.entities.index:
+        continue
+      let shipIdx = ships.entities.index[squadron.flagshipId]
+      let flagship = ships.entities.data[shipIdx]
+
+      if flagship.isCrippled:
         return false
     return true
 
@@ -426,7 +437,8 @@ proc getLaneType*(starMap: StarMap, fromSystem: SystemId,
       return some(lane.laneType)
   return none(LaneType)
 
-proc findPath*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): PathResult =
+proc findPath*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet,
+               squadrons: game_state.Squadrons, ships: game_state.Ships): PathResult =
   ## Robust A* pathfinding with game rule compliance
   if start == goal:
     return PathResult(path: @[start], totalCost: 0, found: true)
@@ -466,7 +478,7 @@ proc findPath*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): PathRes
       let laneType = starMap.laneMap.getOrDefault((current, neighbor), LaneType.Major)
 
       # Check if fleet can traverse this lane
-      if not canFleetTraverseLane(fleet, laneType):
+      if not canFleetTraverseLane(fleet, laneType, squadrons, ships):
         continue
 
       let tentativeGScore = gScore.getOrDefault(current, uint32.high) + laneType.weight
@@ -568,9 +580,10 @@ proc verifyGameRules*(starMap: StarMap): bool =
     return false
 
 # Additional convenience functions for compatibility
-proc isReachable*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet): bool =
+proc isReachable*(starMap: StarMap, start: uint, goal: uint, fleet: Fleet,
+                  squadrons: game_state.Squadrons, ships: game_state.Ships): bool =
   ## Check if goal is reachable from start with given fleet
-  let path = findPath(starMap, start, goal, fleet)
+  let path = findPath(starMap, start, goal, fleet, squadrons, ships)
   return path.found
 
 proc findPathsInRange*(starMap: StarMap, start: uint, maxCost: uint32, fleet: Fleet): seq[uint] =
@@ -602,7 +615,8 @@ proc findPathsInRange*(starMap: StarMap, start: uint, maxCost: uint32, fleet: Fl
 
   return visited.toSeq()
 
-proc getPathCost*(starMap: StarMap, path: seq[uint], fleet: Fleet): uint32 =
+proc getPathCost*(starMap: StarMap, path: seq[uint], fleet: Fleet,
+                  squadrons: game_state.Squadrons, ships: game_state.Ships): uint32 =
   ## Calculate the total cost of a path for a given fleet
   var totalCost: uint32 = 0
   for i in 0..<(path.len - 1):
@@ -613,7 +627,7 @@ proc getPathCost*(starMap: StarMap, path: seq[uint], fleet: Fleet): uint32 =
     for lane in starMap.lanes:
       if (lane.source == fromId and lane.destination == toId) or
          (lane.source == toId and lane.destination == fromId):
-        if canFleetTraverseLane(fleet, lane.laneType):
+        if canFleetTraverseLane(fleet, lane.laneType, squadrons, ships):
           totalCost += lane.laneType.weight
         else:
           return uint32.high  # Cannot traverse this lane
@@ -634,7 +648,8 @@ proc playerSystems*(starMap: StarMap, playerId: uint): seq[System] =
 # =============================================================================
 
 proc calculateETA*(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId,
-                   fleet: Fleet): Option[int] =
+                   fleet: Fleet, squadrons: game_state.Squadrons,
+                   ships: game_state.Ships): Option[int] =
   ## Calculate estimated turns for fleet to reach target system
   ## Returns none if target is unreachable
   ##
@@ -646,7 +661,7 @@ proc calculateETA*(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId,
   if fromSystem == toSystem:
     return some(0)  # Already there
 
-  let path = findPath(starMap, fromSystem, toSystem, fleet)
+  let path = findPath(starMap, fromSystem, toSystem, fleet, squadrons, ships)
   if not path.found:
     return none(int)  # Unreachable
 
@@ -662,7 +677,8 @@ proc calculateETA*(starMap: StarMap, fromSystem: SystemId, toSystem: SystemId,
   return some(estimatedTurns)
 
 proc calculateMultiFleetETA*(starMap: StarMap, assemblyPoint: SystemId,
-                              fleets: seq[Fleet]): Option[int] =
+                              fleets: seq[Fleet], squadrons: game_state.Squadrons,
+                              ships: game_state.Ships): Option[int] =
   ## Calculate when all fleets can reach assembly point
   ## Returns the maximum ETA (when the slowest fleet arrives)
   ## Returns none if any fleet cannot reach the assembly point
@@ -671,7 +687,8 @@ proc calculateMultiFleetETA*(starMap: StarMap, assemblyPoint: SystemId,
 
   var maxETA = 0
   for fleet in fleets:
-    let eta = calculateETA(starMap, fleet.location, assemblyPoint, fleet)
+    let eta = calculateETA(starMap, fleet.location, assemblyPoint, fleet,
+                          squadrons, ships)
     if eta.isNone:
       return none(int)  # At least one fleet can't reach assembly
     maxETA = max(maxETA, eta.get())
