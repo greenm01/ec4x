@@ -4,20 +4,18 @@ import std/[options, tables, strformat, sequtils]
 import ../../types/core
 import ../../types/game_state
 import ../fleet/entity
-import ../../state/starmap
+import ../../types/starmap
 import ../../../common/logger
-import ../../types/order_types  # Import and re-export fleet order types
+import ../../types/fleet  # Fleet commands and orders
 import ../../types/espionage as esp_types
-import ../../types/research as res_types
-import ../economy/projects  # For cost calculation
-import ../economy/config_accessors  # For CST requirement checking
-import ../economy/capacity/fighter # For colony fighter squadron limits
-import ../economy/capacity/capital_squadrons  # For capital squadron capacity enforcement
-import ../economy/capacity/total_squadrons  # For total squadron capacity (prevents escort spam)
-import ../../types/economy as econ_types  # For FacilityType in cost calculation
+import ../../types/tech as tech_types  # ResearchAllocation
+import ../production/projects  # For cost calculation
+import ../capacity/capital_squadrons  # For capital squadron capacity enforcement
+import ../capacity/total_squadrons  # For total squadron capacity (prevents escort spam)
+import ../../types/facilities  # For FacilityType in cost calculation
 
-# Re-export order types
-export order_types.FleetOrderType, order_types.FleetOrder
+# Re-export fleet command types
+export fleet.FleetCommandType, fleet.FleetCommand
 
 type
   TerraformOrder* = object

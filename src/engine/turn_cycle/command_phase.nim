@@ -30,24 +30,22 @@
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets,
             strformat]
-import ../../../common/types/core
-import ../../../common/logger as common_logger
-import ../gamestate
-import ../logger
-import ../standing_orders
-import ../types/[diplomacy as dip_types, orders, research as res_types,
-                resolution as res_types]
+import ../../common/logger as common_logger
+import ../types/core
+import ../types/game_state
+import ../types/[diplomacy as dip_types, command, tech as tech_types]
+import ../systems/command/standing_commands
 import ../systems/automation
 import ../systems/commissioning
 import ../systems/construction
-import ../systems/economy/engine as economy_resolution
+import ../systems/production/engine as production_resolution
 import ../systems/events/event_factory/init as event_factory
-import ../systems/orders/[cleanup as order_cleanup, executor]
+import ../systems/command/engine as command_engine
 import ../systems/research/costs as res_costs
 
 proc resolveCommandPhase*(state: var GameState,
-                          orders: Table[HouseId, OrderPacket],
-                          combatReports: var seq[res_types.CombatReport],
+                          orders: Table[HouseId, CommandPacket],
+                          combatReports: var seq[CombatReport],
                           events: var seq[res_types.GameEvent],
                           rng: var Rand) =
   ## Phase 3: Execute orders
