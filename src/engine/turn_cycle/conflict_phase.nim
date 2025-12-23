@@ -28,7 +28,7 @@ import ../types/[diplomacy as dip_types, espionage as esp_types,
                 resolution as res_types, simultaneous as simultaneous_types]
 import ../systems/combat/simultaneous_blockade
 import ../systems/combat/resolution as combat_resolution
-import ../systems/combat/simultaneous_planetary
+import ../systems/combat/planetary
 import ../systems/espionage/simultaneous_espionage
 import ../systems/intelligence/[espionage_intel, generator, spy_resolution,
                                 starbase_surveillance]
@@ -260,7 +260,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # ===================================================================
   # Resolve all planetary combat (bombard/invade/blitz) simultaneously
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 4] Resolving planetary combat...")
-  let planetaryCombatResults = simultaneous_planetary.resolvePlanetaryCombat(
+  let planetaryCombatResults = planetary.resolvePlanetaryCombat(
     state, arrivedOrders, rng, events)
   logInfo(LogCategory.lcOrders, &"[CONFLICT STEP 4] Completed ({planetaryCombatResults.len} planetary combat attempts)")
 

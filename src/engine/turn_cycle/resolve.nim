@@ -105,7 +105,7 @@ import intelligence/[spy_resolution]
 import intelligence/event_processor/init as event_processor
 import economy/repair_queue
 # Import resolution modules
-import resolution/[types as res_types, fleet_orders, diplomatic_resolution, combat_resolution, simultaneous, simultaneous_planetary, simultaneous_espionage, commissioning, automation, construction]
+import resolution/[types as res_types, fleet_orders, diplomatic_resolution, combat_resolution, simultaneous, planetary, simultaneous_espionage, commissioning, automation, construction]
 import resolution/phases/[conflict_phase, income_phase, command_phase, maintenance_phase]
 import prestige as prestige_types
 import prestige/application as prestige_app

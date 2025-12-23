@@ -1,7 +1,10 @@
-## Simultaneous Planetary Combat Resolution
+## Planetary Combat Simultaneous Resolution
 ##
 ## Handles simultaneous resolution of Bombard, Invade, and Blitz orders
 ## to prevent first-mover advantages in planetary assaults.
+##
+## Per architecture.md: Simultaneous resolution ensures fair multi-house
+## combat where all attacking fleets are evaluated before outcomes are applied.
 
 import std/[tables, options, random, strformat]
 import ../../types/simultaneous as simultaneous_types
