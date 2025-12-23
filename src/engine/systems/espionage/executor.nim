@@ -4,11 +4,11 @@
 ## Replaces 10 nearly-identical functions with 1 data-driven function
 
 import std/[random, options]
-import types, action_descriptors
-import ../../common/types/core
-import ../prestige
+import ../../types/[core, espionage, prestige]
+import ../../prestige/events as prestige_events
+import action_descriptors
 
-export types, action_descriptors
+export espionage, action_descriptors
 
 ## Generic Execution
 
@@ -54,7 +54,7 @@ proc executeEspionageAction*(
   # Detected = failed (except CounterIntelSweep which is opposite)
   if detected:
     if descriptor.failedPrestigeReason != "":  # Some actions don't penalize detection
-      result.attackerPrestigeEvents.add(createPrestigeEvent(
+      result.attackerPrestigeEvents.add(prestige_events.createPrestigeEvent(
         PrestigeSource.Eliminated,
         FAILED_ESPIONAGE_PENALTY,
         descriptor.failedPrestigeReason
@@ -63,14 +63,14 @@ proc executeEspionageAction*(
     # Success - apply action-specific effects
 
     # Prestige for attacker (ZERO-SUM: attacker gains, target loses equal amount)
-    result.attackerPrestigeEvents.add(createPrestigeEvent(
+    result.attackerPrestigeEvents.add(prestige_events.createPrestigeEvent(
       PrestigeSource.CombatVictory,  # Generic success source
       descriptor.attackerSuccessPrestige,
       descriptor.successPrestigeReason
     ))
 
     # Prestige penalty for target (ZERO-SUM: equal and opposite to attacker gain)
-    result.targetPrestigeEvents.add(createPrestigeEvent(
+    result.targetPrestigeEvents.add(prestige_events.createPrestigeEvent(
       PrestigeSource.Eliminated,
       -descriptor.attackerSuccessPrestige,  # Negative of attacker gain
       if descriptor.targetSuccessReason != "": descriptor.targetSuccessReason

@@ -3,35 +3,24 @@
 ## Handles simultaneous resolution of SpyPlanet, SpySystem, and HackStarbase orders
 ## to prevent first-mover advantages in intelligence operations.
 
-import std/[tables, options, random, strformat, algorithm]
-import ../../intelligence/spy_resolution
-import ../../types/simultaneous as simultaneous_types
+import std/[tables, options, random, strformat, algorithm, logging]
+import ../../types/[core, game_state, simultaneous, orders, espionage, intelligence, event]
+import ../../entities/fleet_ops
+import ../intelligence/[spy_resolution, generator as intel_generator]
 import ../combat/simultaneous_resolver
-import ../../gamestate
-import ../../index_maintenance
-import ../../orders
-import ../../order_types
-import ../../logger
-import ../../squadron
-import ./engine as esp_engine
-import ./executor as esp_executor
-import ../../types/espionage as esp_types
+import ../event/factory/intelligence as intelligence_events
+import ../prestige/engine as prestige
 import ../../config/espionage_config
-import ../../types/core
-import ../../prestige
-import ../../event_factory/intelligence as intelligence_events
-import ../../types/resolution as res_types
-import ../../intelligence/generator as intel_generator
-import ../../intelligence/types as intel_types
+import ./[engine as esp_engine, executor as esp_executor]
 
 proc collectEspionageIntents*(
   state: GameState,
   orders: Table[HouseId, OrderPacket]
-): seq[EspionageIntent] =
+): seq[simultaneous.EspionageIntent] =
   ## Collect all espionage attempts
   result = @[]
 
-  for houseId in state.houses.keys:
+  for houseId, house in state.houses.entities.data:
     if houseId notin orders:
       continue
 
@@ -40,12 +29,12 @@ proc collectEspionageIntents*(
         continue
 
       # Validate: fleet exists
-      if order.fleetId notin state.fleets:
+      if order.fleetId notin state.fleets.entities.index:
         continue
 
       # Calculate espionage strength using house prestige
       # Higher prestige = better intelligence operations
-      let espionageStrength = state.houses[houseId].prestige
+      let espionageStrength = house.prestige
 
       # Get target from order
       if order.targetSystem.isNone:
@@ -54,11 +43,12 @@ proc collectEspionageIntents*(
       let targetSystem = order.targetSystem.get()
 
       # Log if fleet not at target (will attempt movement in Maintenance Phase)
-      let fleet = state.fleets[order.fleetId]
+      let fleetIdx = state.fleets.entities.index[order.fleetId]
+      let fleet = state.fleets.entities.data[fleetIdx]
       if fleet.location != targetSystem:
-        logDebug(LogCategory.lcOrders, &"Espionage order queued: {order.fleetId} will move from {fleet.location} to {targetSystem}")
+        debug "Espionage order queued: ", order.fleetId, " will move from ", fleet.location, " to ", targetSystem
 
-      result.add(EspionageIntent(
+      result.add(simultaneous.EspionageIntent(
         houseId: houseId,
         fleetId: order.fleetId,
         targetSystem: targetSystem,
@@ -67,10 +57,10 @@ proc collectEspionageIntents*(
       ))
 
 proc detectEspionageConflicts*(
-  intents: seq[EspionageIntent]
-): seq[EspionageConflict] =
+  intents: seq[simultaneous.EspionageIntent]
+): seq[simultaneous.EspionageConflict] =
   ## Group espionage intents by target system
-  var targetSystems = initTable[SystemId, seq[EspionageIntent]]()
+  var targetSystems = initTable[SystemId, seq[simultaneous.EspionageIntent]]()
 
   for intent in intents:
     if intent.targetSystem notin targetSystems:
@@ -79,17 +69,17 @@ proc detectEspionageConflicts*(
 
   result = @[]
   for systemId, conflictingIntents in targetSystems:
-    result.add(EspionageConflict(
+    result.add(simultaneous.EspionageConflict(
       targetSystem: systemId,
       intents: conflictingIntents
     ))
 
 proc resolveEspionageConflict*(
   state: var GameState,
-  conflict: EspionageConflict,
+  conflict: simultaneous.EspionageConflict,
   rng: var Rand,
-  events: var seq[res_types.GameEvent]
-): seq[simultaneous_types.EspionageResult] =
+  events: var seq[event.GameEvent]
+): seq[simultaneous.EspionageResult] =
   ## Resolve espionage conflict by performing detection checks for each intent.
   result = @[]
 
@@ -105,11 +95,12 @@ proc resolveEspionageConflict*(
       rng
     )
 
-    var outcome: ResolutionOutcome
+    var outcome: simultaneous.ResolutionOutcome
     if detected:
-      outcome = ResolutionOutcome.ConflictLost
-      if intent.targetSystem in state.colonies:
-        let defender = state.colonies[intent.targetSystem].owner
+      outcome = simultaneous.ResolutionOutcome.ConflictLost
+      if intent.targetSystem in state.colonies.entities.index:
+        let colonyIdx = state.colonies.entities.index[intent.targetSystem]
+        let defender = state.colonies.entities.data[colonyIdx].owner
         events.add(intelligence_events.scoutDetected(
           intent.houseId,
           defender,
@@ -117,14 +108,14 @@ proc resolveEspionageConflict*(
           "Spy Scout"
         ))
     else:
-      outcome = ResolutionOutcome.Success
+      outcome = simultaneous.ResolutionOutcome.Success
 
-    result.add(simultaneous_types.EspionageResult(
+    result.add(simultaneous.EspionageResult(
       houseId: intent.houseId,
       fleetId: intent.fleetId,
       originalTarget: intent.targetSystem,
       outcome: outcome,
-      actualTarget: if outcome == ResolutionOutcome.Success: some(intent.targetSystem) else: none(SystemId),
+      actualTarget: if outcome == simultaneous.ResolutionOutcome.Success: some(intent.targetSystem) else: none(SystemId),
       prestigeAwarded: 0  # Prestige handled elsewhere
     ))
 
@@ -132,8 +123,8 @@ proc resolveEspionage*(
   state: var GameState,
   orders: Table[HouseId, OrderPacket],
   rng: var Rand,
-  events: var seq[res_types.GameEvent]
-): seq[simultaneous_types.EspionageResult] =
+  events: var seq[event.GameEvent]
+): seq[simultaneous.EspionageResult] =
   ## Main entry point: Resolve all espionage orders simultaneously
   result = @[]
 
@@ -148,7 +139,7 @@ proc resolveEspionage*(
     result.add(conflictResults)
 
 proc wasEspionageHandled*(
-  results: seq[simultaneous_types.EspionageResult],
+  results: seq[simultaneous.EspionageResult],
   houseId: HouseId,
   fleetId: FleetId
 ): bool =
@@ -162,13 +153,13 @@ proc processEspionageActions*(
   state: var GameState,
   orders: Table[HouseId, OrderPacket],
   rng: var Rand,
-  events: var seq[res_types.GameEvent]
+  events: var seq[event.GameEvent]
 ) =
   ## Process OrderPacket.espionageAction for all houses
   ## This handles EBP-based espionage actions (TechTheft, Assassination, etc.)
   ## separate from fleet-based espionage orders
 
-  for houseId in state.houses.keys:
+  for houseId, house in state.houses.entities.data.mpairs:
     if houseId notin orders:
       continue
 
@@ -176,15 +167,15 @@ proc processEspionageActions*(
 
     # Step 1: Process EBP/CIP investments (purchase points with PP)
     if packet.ebpInvestment > 0:
-      let ebpPurchased = esp_engine.purchaseEBP(state.houses[houseId].espionageBudget, packet.ebpInvestment)
+      let ebpPurchased = esp_engine.purchaseEBP(house.espionageBudget, packet.ebpInvestment)
       # Deduct PP from treasury (already projected in AI, but need to deduct actual cost)
-      state.houses[houseId].treasury -= packet.ebpInvestment
-      logInfo(LogCategory.lcEconomy, &"{houseId} purchased {ebpPurchased} EBP for {packet.ebpInvestment} PP")
+      house.treasury -= packet.ebpInvestment
+      info houseId, " purchased ", ebpPurchased, " EBP for ", packet.ebpInvestment, " PP"
 
     if packet.cipInvestment > 0:
-      let cipPurchased = esp_engine.purchaseCIP(state.houses[houseId].espionageBudget, packet.cipInvestment)
-      state.houses[houseId].treasury -= packet.cipInvestment
-      logInfo(LogCategory.lcEconomy, &"{houseId} purchased {cipPurchased} CIP for {packet.cipInvestment} PP")
+      let cipPurchased = esp_engine.purchaseCIP(house.espionageBudget, packet.cipInvestment)
+      house.treasury -= packet.cipInvestment
+      info houseId, " purchased ", cipPurchased, " CIP for ", packet.cipInvestment, " PP"
 
     # Step 2: Execute espionage action if present
     if packet.espionageAction.isNone:
@@ -193,37 +184,37 @@ proc processEspionageActions*(
     let attempt = packet.espionageAction.get()
 
     # Validate target house is not eliminated (leaderboard is public info)
-    if attempt.target in state.houses:
-      if state.houses[attempt.target].eliminated:
-        logDebug(LogCategory.lcAI, &"{houseId} cannot target eliminated house {attempt.target}")
+    if attempt.target in state.houses.entities.index:
+      let targetIdx = state.houses.entities.index[attempt.target]
+      if state.houses.entities.data[targetIdx].isEliminated:
+        debug houseId, " cannot target eliminated house ", attempt.target
         continue
 
     # Check if attacker has sufficient EBP
     let actionCost = esp_engine.getActionCost(attempt.action)
-    if not esp_engine.canAffordAction(state.houses[houseId].espionageBudget, attempt.action):
-      logDebug(LogCategory.lcAI, &"{houseId} cannot afford {attempt.action} (cost: {actionCost} EBP, has: {state.houses[houseId].espionageBudget.ebpPoints})")
+    if not esp_engine.canAffordAction(house.espionageBudget, attempt.action):
+      debug houseId, " cannot afford ", attempt.action, " (cost: ", actionCost, " EBP, has: ", house.espionageBudget.ebpPoints, ")"
       continue
 
     # Spend EBP
-    if not esp_engine.spendEBP(state.houses[houseId].espionageBudget, attempt.action):
-      logDebug(LogCategory.lcAI, &"{houseId} failed to spend EBP for {attempt.action}")
+    if not esp_engine.spendEBP(house.espionageBudget, attempt.action):
+      debug houseId, " failed to spend EBP for ", attempt.action
       continue
 
-    logInfo(LogCategory.lcAI, &"{houseId} executing {attempt.action} against {attempt.target} (cost: {actionCost} EBP)")
+    info houseId, " executing ", attempt.action, " against ", attempt.target, " (cost: ", actionCost, " EBP)"
 
     # Get target's CIC level from tech tree
-    let targetCICLevel = case state.houses[attempt.target].techTree.levels.counterIntelligence
-      of 1: esp_types.CICLevel.CIC1
-      of 2: esp_types.CICLevel.CIC2
-      of 3: esp_types.CICLevel.CIC3
-      of 4: esp_types.CICLevel.CIC4
-      of 5: esp_types.CICLevel.CIC5
-      else: esp_types.CICLevel.CIC1
+    let targetIdx = state.houses.entities.index[attempt.target]
+    let targetHouse = state.houses.entities.data[targetIdx]
+    let targetCICLevel = case targetHouse.techTree.levels.counterIntelligence
+      of 1: espionage.CICLevel.CIC1
+      of 2: espionage.CICLevel.CIC2
+      of 3: espionage.CICLevel.CIC3
+      of 4: espionage.CICLevel.CIC4
+      of 5: espionage.CICLevel.CIC5
+      else: espionage.CICLevel.CIC1
 
-    let targetCIP = if attempt.target in state.houses:
-                      state.houses[attempt.target].espionageBudget.cipPoints
-                    else:
-                      0
+    let targetCIP = targetHouse.espionageBudget.cipPoints
 
     # Execute espionage action with detection roll
     let result = esp_executor.executeEspionage(
@@ -235,17 +226,17 @@ proc processEspionageActions*(
 
     # Apply results
     if result.success:
-      logInfo(LogCategory.lcAI, &"  SUCCESS: {result.description}")
+      info "  SUCCESS: ", result.description
 
       # Apply prestige changes
       for prestigeEvent in result.attackerPrestigeEvents:
-        applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
+        prestige.applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
       for prestigeEvent in result.targetPrestigeEvents:
-        applyPrestigeEvent(state, attempt.target, prestigeEvent)
+        prestige.applyPrestigeEvent(state, attempt.target, prestigeEvent)
 
       # Create espionage event based on action type
       case attempt.action
-      of esp_types.EspionageAction.SabotageLow:
+      of espionage.EspionageAction.SabotageLow:
         if attempt.targetSystem.isSome:
           events.add(intelligence_events.sabotageConducted(
             attempt.attacker,
@@ -254,7 +245,7 @@ proc processEspionageActions*(
             result.iuDamage,
             "Low"
           ))
-      of esp_types.EspionageAction.SabotageHigh:
+      of espionage.EspionageAction.SabotageHigh:
         if attempt.targetSystem.isSome:
           events.add(intelligence_events.sabotageConducted(
             attempt.attacker,
@@ -263,48 +254,48 @@ proc processEspionageActions*(
             result.iuDamage,
             "High"
           ))
-      of esp_types.EspionageAction.TechTheft:
+      of espionage.EspionageAction.TechTheft:
         events.add(intelligence_events.techTheftExecuted(
           attempt.attacker,
           attempt.target,
           result.srpStolen
         ))
-      of esp_types.EspionageAction.Assassination:
+      of espionage.EspionageAction.Assassination:
         events.add(intelligence_events.assassinationAttempted(
           attempt.attacker,
           attempt.target,
           globalEspionageConfig.effects.assassination_srp_reduction
         ))
-      of esp_types.EspionageAction.EconomicManipulation:
+      of espionage.EspionageAction.EconomicManipulation:
         events.add(intelligence_events.economicManipulationExecuted(
           attempt.attacker,
           attempt.target,
           globalEspionageConfig.effects.economic_ncv_reduction
         ))
-      of esp_types.EspionageAction.CyberAttack:
+      of espionage.EspionageAction.CyberAttack:
         if attempt.targetSystem.isSome:
           events.add(intelligence_events.cyberAttackConducted(
             attempt.attacker,
             attempt.target,
             attempt.targetSystem.get()
           ))
-      of esp_types.EspionageAction.PsyopsCampaign:
+      of espionage.EspionageAction.PsyopsCampaign:
         events.add(intelligence_events.psyopsCampaignLaunched(
           attempt.attacker,
           attempt.target,
           globalEspionageConfig.effects.psyops_tax_reduction
         ))
-      of esp_types.EspionageAction.IntelligenceTheft:
+      of espionage.EspionageAction.IntelligenceTheft:
         events.add(intelligence_events.intelligenceTheftExecuted(
           attempt.attacker,
           attempt.target
         ))
-      of esp_types.EspionageAction.PlantDisinformation:
+      of espionage.EspionageAction.PlantDisinformation:
         events.add(intelligence_events.disinformationPlanted(
           attempt.attacker,
           attempt.target
         ))
-      of esp_types.EspionageAction.CounterIntelSweep:
+      of espionage.EspionageAction.CounterIntelSweep:
         if attempt.targetSystem.isSome:
           events.add(intelligence_events.counterIntelSweepExecuted(
             attempt.attacker,
@@ -317,16 +308,18 @@ proc processEspionageActions*(
 
       # Apply immediate effects (SRP theft, IU damage, etc.)
       if result.srpStolen > 0:
-        if attempt.target in state.houses:
-          state.houses[attempt.target].techTree.accumulated.science =
-            max(0, state.houses[attempt.target].techTree.accumulated.science - result.srpStolen)
-          state.houses[attempt.attacker].techTree.accumulated.science += result.srpStolen
-          logInfo(LogCategory.lcAI, &"    Stole {result.srpStolen} SRP from {attempt.target}")
+        if attempt.target in state.houses.entities.index:
+          let targetIdx2 = state.houses.entities.index[attempt.target]
+          let attackerIdx = state.houses.entities.index[attempt.attacker]
+          state.houses.entities.data[targetIdx2].techTree.accumulated.science =
+            max(0, state.houses.entities.data[targetIdx2].techTree.accumulated.science - result.srpStolen)
+          state.houses.entities.data[attackerIdx].techTree.accumulated.science += result.srpStolen
+          info "    Stole ", result.srpStolen, " SRP from ", attempt.target
     else:
-      logInfo(LogCategory.lcAI, &"  DETECTED by {attempt.target}")
+      info "  DETECTED by ", attempt.target
       # Apply detection prestige penalties
       for prestigeEvent in result.attackerPrestigeEvents:
-        applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
+        prestige.applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
 
       # Create detection event
       if attempt.targetSystem.isSome:
@@ -339,10 +332,10 @@ proc processEspionageActions*(
 
 proc processScoutIntelligence*(
   state: var GameState,
-  results: seq[simultaneous_types.EspionageResult],
+  results: seq[simultaneous.EspionageResult],
   orders: Table[HouseId, OrderPacket],
   rng: var Rand,
-  events: var seq[res_types.GameEvent]
+  events: var seq[event.GameEvent]
 ) =
   ## Process successful scout-based espionage results and generate intelligence reports
   ## This is the missing step that actually gathers colony/system/starbase intelligence
@@ -351,17 +344,12 @@ proc processScoutIntelligence*(
 
   for result in results:
     # Consume scout fleet, regardless of outcome
-    if result.fleetId in state.fleets:
-      let fleet = state.fleets[result.fleetId]
-      state.removeFleetFromIndices(result.fleetId, fleet.owner,
-                                   fleet.location)
-      state.fleets.del(result.fleetId)
-      if result.fleetId in state.fleetOrders:
-        state.fleetOrders.del(result.fleetId)
-      logInfo(LogCategory.lcOrders, &"Spy Scout fleet {result.fleetId} consumed on mission.")
+    if result.fleetId in state.fleets.entities.index:
+      fleet_ops.destroyFleet(state, result.fleetId)
+      info "Spy Scout fleet ", result.fleetId, " consumed on mission."
 
     # Only process successful espionage for intelligence gathering
-    if result.outcome != ResolutionOutcome.Success:
+    if result.outcome != simultaneous.ResolutionOutcome.Success:
       continue
 
     if result.actualTarget.isNone:
@@ -395,13 +383,12 @@ proc processScoutIntelligence*(
     of FleetOrderType.SpyPlanet:
       # Generate colony intelligence report
       let intelReport = intel_generator.generateColonyIntelReport(
-        state, houseId, targetSystem, intel_types.IntelQuality.Spy)
+        state, houseId, targetSystem, intelligence.IntelQuality.Spy)
 
       if intelReport.isSome:
         let report = intelReport.get()
-        var house = state.houses[houseId]
-        house.intelligence.addColonyReport(report)
-        state.houses[houseId] = house
+        let houseIdx = state.houses.entities.index[houseId]
+        state.houses.entities.data[houseIdx].intelligence.addColonyReport(report)
 
         # Calculate economic value for event
         let grossOutput = report.grossOutput.get(0)
@@ -422,21 +409,20 @@ proc processScoutIntelligence*(
           $report.quality
         ))
 
-        # Log success (matches existing pattern from fleet_orders.nim:386)
-        logInfo(LogCategory.lcFleet,
-          &"Fleet {result.fleetId} ({houseId}) SpyPlanet success at {targetSystem} " &
-          &"- intelligence DB now has {house.intelligence.colonyReports.len} colony reports")
+        # Log success
+        let reportCount = state.houses.entities.data[houseIdx].intelligence.colonyReports.len
+        info "Fleet ", result.fleetId, " (", houseId, ") SpyPlanet success at ", targetSystem,
+             " - intelligence DB now has ", reportCount, " colony reports"
 
     of FleetOrderType.SpySystem:
       # Generate system intelligence report (fleet composition)
       let intelReport = intel_generator.generateSystemIntelReport(
-        state, houseId, targetSystem, intel_types.IntelQuality.Spy)
+        state, houseId, targetSystem, intelligence.IntelQuality.Spy)
 
       if intelReport.isSome:
         let report = intelReport.get()
-        var house = state.houses[houseId]
-        house.intelligence.addSystemReport(report)
-        state.houses[houseId] = house
+        let houseIdx = state.houses.entities.index[houseId]
+        state.houses.entities.data[houseIdx].intelligence.addSystemReport(report)
 
         # Count detected fleets and ships
         let fleetsDetected = report.detectedFleets.len
@@ -460,27 +446,26 @@ proc processScoutIntelligence*(
           $report.quality
         ))
 
-        logInfo(LogCategory.lcFleet,
-          &"Fleet {result.fleetId} ({houseId}) SpySystem success at {targetSystem} " &
-          &"- gathered fleet intelligence")
+        info "Fleet ", result.fleetId, " (", houseId, ") SpySystem success at ", targetSystem,
+             " - gathered fleet intelligence"
 
     of FleetOrderType.HackStarbase:
       # Generate starbase intelligence report (economic/R&D data)
       let intelReport = intel_generator.generateStarbaseIntelReport(
-        state, houseId, targetSystem, intel_types.IntelQuality.Spy)
+        state, houseId, targetSystem, intelligence.IntelQuality.Spy)
 
       if intelReport.isSome:
         let report = intelReport.get()
-        var house = state.houses[houseId]
-        house.intelligence.addStarbaseReport(report)
-        state.houses[houseId] = house
+        let houseIdx = state.houses.entities.index[houseId]
+        state.houses.entities.data[houseIdx].intelligence.addStarbaseReport(report)
 
         # Check if economic data was acquired (based on quality)
-        let hasEconomicData = report.quality == intel_types.IntelQuality.Spy or
-                              report.quality == intel_types.IntelQuality.Perfect
+        let hasEconomicData = report.quality == intelligence.IntelQuality.Spy or
+                              report.quality == intelligence.IntelQuality.Perfect
 
         # Get facility data from colony (visible since hack succeeded)
-        let colony = state.colonies[targetSystem]
+        let colonyIdx = state.colonies.entities.index[targetSystem]
+        let colony = state.colonies.entities.data[colonyIdx]
         let starbaseCount = colony.starbases.len
         let spaceportCount = colony.spaceports.len
         let shipyardCount = colony.shipyards.len
@@ -518,9 +503,8 @@ proc processScoutIntelligence*(
           $report.quality
         ))
 
-        logInfo(LogCategory.lcFleet,
-          &"Fleet {result.fleetId} ({houseId}) HackStarbase success at {targetSystem} " &
-          &"- gathered economic/R&D intelligence")
+        info "Fleet ", result.fleetId, " (", houseId, ") HackStarbase success at ", targetSystem,
+             " - gathered economic/R&D intelligence"
 
     else:
       # Ignore non-espionage orders
