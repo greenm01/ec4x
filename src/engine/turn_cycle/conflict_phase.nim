@@ -27,7 +27,7 @@ import ../types/[diplomacy as dip_types, espionage as esp_types,
                 intelligence as intel_types, fleet, research as res_types_research,
                 resolution as res_types, simultaneous as simultaneous_types]
 import ../systems/combat/simultaneous_blockade
-import ../systems/combat/resolution as combat_resolution
+import ../systems/combat/battles  # Space/orbital combat (resolveBattle)
 import ../systems/combat/planetary
 import ../systems/espionage/simultaneous_espionage
 import ../systems/intelligence/[espionage_intel, generator, spy_resolution,

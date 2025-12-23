@@ -15,7 +15,7 @@ import ../../../common/logger
 import ../squadron/entity
 import ../../types/core
 import ./types as res_types
-import ./combat_resolution
+import ../colony/planetary_combat  # Planetary combat (resolveBombardment, resolveInvasion, resolveBlitz)
 
 proc collectPlanetaryCombatIntents*(
   state: GameState,

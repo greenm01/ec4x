@@ -14,7 +14,9 @@ import ../gamestate, ../orders, ../fleet, ../squadron, ../logger, ../order_types
 import ../diplomacy/[types as dip_types]
 import ../commands/[executor]
 import ../standing_orders
-import ./[types as res_types, fleet_orders, combat_resolution, simultaneous]
+import ./[types as res_types, fleet_orders, simultaneous]
+import ../combat/battles  # Space/orbital combat (resolveBattle)
+import ../colony/planetary_combat  # Planetary combat (resolveBombardment, resolveInvasion, resolveBlitz)
 import ./event_factory/init as event_factory
 
 type
