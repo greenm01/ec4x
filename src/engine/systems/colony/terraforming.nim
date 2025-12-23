@@ -13,8 +13,8 @@ import ../../state/entity_manager
 import ../tech/[costs as res_costs, effects as res_effects]
 import ../../event_factory/init as event_factory
 
-proc resolveTerraformOrders*(state: var GameState, packet: CommandPacket, events: var seq[GameEvent]) =
-  ## Process terraforming orders - initiate new terraforming projects
+proc resolveTerraformCommands*(state: var GameState, packet: CommandPacket, events: var seq[GameEvent]) =
+  ## Process terraforming commands - initiate new terraforming projects
   ## Per economy.md Section 4.7
   for order in packet.terraformCommands:
     # Validate colony exists and is owned by house using entity_manager

@@ -12,8 +12,8 @@ import std/[options, strformat, logging]
 import ../../types/[game_state, command]
 import ../../state/entity_manager
 
-proc resolveColonyManagementOrders*(state: var GameState, packet: CommandPacket) =
-  ## Process colony management orders - tax rates, auto-repair toggles, etc.
+proc resolveColonyManagementCommands*(state: var GameState, packet: CommandPacket) =
+  ## Process colony management commands - tax rates, auto-repair toggles, etc.
   for order in packet.colonyManagement:
     # Validate colony exists and is owned using entity_manager accessor
     let colonyOpt = state.colonies.entities.getEntity(order.colonyId)

@@ -91,10 +91,10 @@ proc resolveCommandPhase*(state: var GameState,
   # In AI mode, orders are pre-computed and passed to this function
   logInfo(LogCategory.lcOrders, "[COMMAND PART B] Processing player submissions...")
 
-  # Process colony management orders (tax rates, auto-repair toggles)
+  # Process colony management commands (tax rates, auto-repair toggles)
   for houseId in state.houses.keys:
     if houseId in orders:
-      colony_commands.resolveColonyManagementOrders(state, orders[houseId])
+      colony_commands.resolveColonyManagementCommands(state, orders[houseId])
 
   # Process Space Guild population transfers
   for houseId in state.houses.keys:
@@ -109,10 +109,10 @@ proc resolveCommandPhase*(state: var GameState,
   # Auto-load cargo at colonies (if no manual cargo order exists)
   autoLoadCargo(state, orders, events)
 
-  # Process terraforming orders
+  # Process terraforming commands
   for houseId in state.houses.keys:
     if houseId in orders:
-      terraforming.resolveTerraformOrders(state, orders[houseId], events)
+      terraforming.resolveTerraformCommands(state, orders[houseId], events)
 
   logInfo(LogCategory.lcOrders, "[COMMAND PART B] Completed player submissions")
 
