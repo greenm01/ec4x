@@ -9,12 +9,13 @@
 
 import std/[tables, options, sequtils, hashes, math, random, strformat]
 import ../../common/[types/core, types/combat, types/units, logger as common_logger]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../logger
+import ../../types/[game_state, command, fleet, squadron, ship, colony, house]
+import ../../state/[entity_manager, iterators]
 import ../index_maintenance
-import ../combat/[engine as combat_engine, types as combat_types, ground]
+import ./[engine as combat_engine, types as combat_types, ground]
 import ../economy/[types as econ_types, facility_damage]
 import ../prestige
-import ../config/[prestige_multiplier, prestige_config, facilities_config]
+import ../../config/[prestige_multiplier, prestige_config, facilities_config]
 import ../diplomacy/[types as dip_types, engine as dip_engine]
 import ../intelligence/diplomatic_intel
 import ./types  # Common resolution types
@@ -56,10 +57,15 @@ proc applySpaceLiftScreeningLosses(
 
     # Count Expansion/Auxiliary squadrons after
     var spaceliftSquadronsAfter = 0
-    if fleetId in state.fleets:
-      for squadron in state.fleets[fleetId].squadrons:
-        if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
-          spaceliftSquadronsAfter += 1
+    let fleetOpt = state.fleets.entities.getEntity(fleetId)
+    if fleetOpt.isSome:
+      let fleet = fleetOpt.get()
+      for sqId in fleet.squadrons:
+        let sqOpt = state.squadrons.entities.getEntity(sqId)
+        if sqOpt.isSome:
+          let squadron = sqOpt.get()
+          if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+            spaceliftSquadronsAfter += 1
 
     # Track losses
     let spaceliftLosses = spaceliftSquadronsBefore - spaceliftSquadronsAfter
@@ -651,12 +657,8 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
   var attackingFleets: seq[(FleetId, Fleet)] = @[]   # Non-owner fleets (must fight through)
   var mobileDefenders: seq[(FleetId, Fleet)] = @[]   # Owner's mobile fleets (space combat)
 
-  if systemId in state.fleetsByLocation:
-    for fleetId in state.fleetsByLocation[systemId]:
-      if fleetId notin state.fleets:
-        continue  # Skip stale index entry
-      let fleet = state.fleets[fleetId]
-      fleetsAtSystem.add((fleetId, fleet))
+  for (fleetId, fleet) in state.fleetsAtSystemWithId(systemId):
+    fleetsAtSystem.add((fleetId, fleet))
 
       # Intel-only fleets are invisible to combat fleets and never participate in combat
       # They operate independently for intelligence gathering (per 02-assets.md:2.4.2)
