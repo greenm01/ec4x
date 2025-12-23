@@ -13,14 +13,17 @@
 ## - resolution/construction.nim: "How orders work" (validation, routing, treasury)
 ## - economy/facility_queue.nim: "Queue management" (advancement, completion)
 
+import std/options
 import math
-import types
-import ../../common/types/units
-import ../gamestate  # For Colony type (IU cost calculations)
-import config_accessors  # DoD refactoring: macro-generated config accessors
-import ../config/economy_config  # For IU base cost
+import ../../types/core
+import ../../types/production
+import ../../types/ship
+import ../../types/colony
+import ../../types/facilities
+import ../../config/economy_config  # For IU base cost
+import ../../config/config_accessors
 
-export types.ConstructionProject, types.CompletedProject, types.ConstructionType
+export production.ConstructionProject, production.CompletedProject, production.BuildType
 export config_accessors.getShipConstructionCost, config_accessors.getShipBaseBuildTime
 export config_accessors.getBuildingCost, config_accessors.getBuildingTime
 export config_accessors.requiresSpaceport
@@ -77,41 +80,53 @@ proc createShipProject*(shipClass: ShipClass, cstLevel: int = 1): ConstructionPr
   ## Create ship construction project with upfront payment model
   ## Requires CST level to calculate actual build time
   ## Per economy.md:5.0 - full cost must be paid upfront
-  let cost = getShipConstructionCost(shipClass)
-  let turns = getShipBuildTime(shipClass, cstLevel)
+  let cost = int32(getShipConstructionCost(shipClass))
+  let turns = int32(getShipBuildTime(shipClass, cstLevel))
 
   result = ConstructionProject(
-    projectType: ConstructionType.Ship,
+    id: ConstructionProjectId(0),  # ID assigned by entity manager
+    colonyId: ColonyId(0),  # Assigned when added to queue
+    projectType: BuildType.Ship,
     itemId: $shipClass,
     costTotal: cost,
     costPaid: cost,  # Full upfront payment
-    turnsRemaining: turns
+    turnsRemaining: turns,
+    facilityId: none(uint32),
+    facilityType: none(FacilityType)
   )
 
 proc createBuildingProject*(buildingType: string): ConstructionProject =
   ## Create building construction project with upfront payment
   ## Per economy.md:5.0 - full cost must be paid upfront
-  let cost = getBuildingCost(buildingType)
-  let turns = getBuildingTime(buildingType)
+  let cost = int32(getBuildingCost(buildingType))
+  let turns = int32(getBuildingTime(buildingType))
 
   result = ConstructionProject(
-    projectType: ConstructionType.Building,
+    id: ConstructionProjectId(0),  # ID assigned by entity manager
+    colonyId: ColonyId(0),  # Assigned when added to queue
+    projectType: BuildType.Facility,
     itemId: buildingType,
     costTotal: cost,
     costPaid: cost,  # Full upfront payment
-    turnsRemaining: turns
+    turnsRemaining: turns,
+    facilityId: none(uint32),
+    facilityType: none(FacilityType)
   )
 
 proc createIndustrialProject*(colony: Colony, units: int): ConstructionProject =
   ## Create IU investment project with upfront payment
   ## Per economy.md:5.0 - full cost must be paid upfront
   let costPerUnit = getIndustrialUnitCost(colony)
-  let totalCost = costPerUnit * units
+  let totalCost = int32(costPerUnit * units)
 
   result = ConstructionProject(
-    projectType: ConstructionType.Industrial,
+    id: ConstructionProjectId(0),  # ID assigned by entity manager
+    colonyId: ColonyId(0),  # Assigned when added to queue
+    projectType: BuildType.Industrial,
     itemId: $units & " IU",
     costTotal: totalCost,
     costPaid: totalCost,  # Full upfront payment
-    turnsRemaining: 1  # IU investment completes in 1 turn
+    turnsRemaining: 1,  # IU investment completes in 1 turn
+    facilityId: none(uint32),
+    facilityType: none(FacilityType)
   )

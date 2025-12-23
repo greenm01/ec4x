@@ -7,8 +7,8 @@
 ## After: 2 macro calls
 
 import std/macros
-import ../../common/types/units
-import ../config/[ships_config, construction_config, facilities_config, ground_units_config]
+import ../types/ship
+import ./[ships_config, construction_config, facilities_config, ground_units_config]
 
 ## Ship Config Accessor Macro
 
