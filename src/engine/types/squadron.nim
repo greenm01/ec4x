@@ -16,7 +16,7 @@ type
     ## Determines fleet composition rules and combat participation
     Combat      # Combat squadrons (capital ships + escorts)
     Intel       # Intelligence squadrons (scouts, future intel assets)
-    Troops      # Troop Transports (planetary invasions)
+    Auxiliary   # Auxiliary squadrons (TroopTransport - planetary invasions)
     Expansion   # Expansion operations (ETAC - colonization)
     Fighter     # Fighter squadrons (planetary defense, carrier-based)
 
@@ -38,3 +38,5 @@ type
     entities*: EntityManager[SquadronId, Squadron]
     byFleet*: Table[FleetId, seq[SquadronId]]
     byHouse*: Table[HouseId, seq[SquadronId]]  # O(1) lookup for house queries
+
+export SquadronType, Squadron, Squadrons

@@ -45,6 +45,7 @@ import ../gamestate, ../fleet, ../squadron, ../logger
 import ../economy/types as econ_types
 import ./types as res_types
 import ./event_factory/init as event_factory
+import ../ship/entity as ship_entity  # Ship construction and helpers
 
 # Import config access
 import ../config/ground_units_config
@@ -135,14 +136,10 @@ proc commissionPlanetaryDefense*(
         var colony = getColony(completed.colonyId)
         let house = state.houses[colony.owner]
 
-        # Create fighter ship
-        let fighterShip = Ship(
-          shipClass: ShipClass.Fighter,
-          shipType: ShipType.Military,
-          stats: getShipStats(ShipClass.Fighter, house.techTree.levels.weaponsTech),
-          isCrippled: false,
-          name: "",
-          cargo: none(ShipCargo)
+        # Create fighter ship using new DoD pattern
+        let fighterShip = ship_entity.newShip(
+          ShipClass.Fighter,
+          house.techTree.levels.weaponsTech
         )
 
         # Find incomplete squadron (< 12 fighters) or create new squadron
@@ -618,38 +615,25 @@ proc commissionShips*(
             # Commission spacelift ship as single-ship squadron
             # ETAC → SquadronType.Expansion, TroopTransport → SquadronType.Auxiliary
             let techLevel = state.houses[owner].techTree.levels.weaponsTech
-            let stats = getShipStats(shipClass, techLevel)
-            let cargoCapacity = stats.carryLimit
 
-            # Set up cargo (ETAC: full colonists, TroopTransport: empty)
-            var cargo = none(ShipCargo)
+            # Create the ship using new DoD pattern
+            var ship = ship_entity.newShip(shipClass, techLevel)
+
+            # Get cargo capacity from config via helper function
+            let cargoCapacity = ship.baseCarryLimit()
+
+            # Initialize cargo hold and set initial cargo
+            # ETAC: full colonists, TroopTransport: empty
             if shipClass == ShipClass.ETAC:
               # ETACs commission with full cargo (3 PTU) at no extraction cost
               # Lore: Self-sufficient generation ships with cryostasis colonists
-              cargo = some(ShipCargo(
-                cargoType: CargoType.Colonists,
-                quantity: cargoCapacity,  # Full capacity
-                capacity: cargoCapacity
-              ))
+              ship.initCargo(CargoType.Colonists, cargoCapacity)
+              discard ship.loadCargo(cargoCapacity)  # Fill to capacity
               logInfo(LogCategory.lcEconomy,
                 &"Commissioned ETAC with {cargoCapacity} PTU (cryostasis generation ship)")
             elif shipClass == ShipClass.TroopTransport:
               # TroopTransports start empty (marines loaded later)
-              cargo = some(ShipCargo(
-                cargoType: CargoType.None,
-                quantity: 0,
-                capacity: cargoCapacity
-              ))
-
-            # Create the ship
-            let ship = Ship(
-              shipClass: shipClass,
-              shipType: ShipType.Spacelift,
-              stats: stats,
-              isCrippled: false,
-              name: "",
-              cargo: cargo
-            )
+              ship.initCargo(CargoType.Marines, cargoCapacity)
 
             # Create single-ship squadron (flagship only, no escorts)
             let squadronId = $owner & "_" & $shipClass & "_" & $completed.colonyId & "_" & $state.turn
@@ -735,11 +719,11 @@ proc commissionShips*(
           let techLevel = state.houses[owner].techTree.levels.weaponsTech
 
           # Create the ship
-          let ship = newShip(shipClass, techLevel)
+          let ship = ship_entity.newShip(shipClass, techLevel)
 
           # Capital ships (CR >= 7) always create new squadrons as flagship
           # Escorts try to join existing squadrons first
-          let isCapitalShip = ship.stats.commandRating >= globalMilitaryConfig.squadron_limits.capital_ship_cr_threshold
+          let isCapitalShip = ship.commandRating() >= globalMilitaryConfig.squadron_limits.capital_ship_cr_threshold
 
           var assignedSquadron: SquadronId = ""
           var squadronsChecked = 0
@@ -773,7 +757,7 @@ proc commissionShips*(
                     if canAddShip(squadron, ship):
                       # Found a squadron with capacity
                       assignedSquadron = squadron.id
-                      logDebug(LogCategory.lcFleet, &"Ship {shipClass} can join squadron {squadron.id} (CR={squadron.flagship.stats.commandRating}, avail={squadron.availableCommandCapacity()})")
+                      logDebug(LogCategory.lcFleet, &"Ship {shipClass} can join squadron {squadron.id} (CR={squadron.flagship.commandRating()}, avail={squadron.availableCommandCapacity()})")
                       break
                   if assignedSquadron != "":
                     break

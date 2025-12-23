@@ -15,6 +15,7 @@ import ../gamestate
 import ../index_maintenance
 import ../fleet
 import ../squadron
+import ../ship/entity as ship_entity  # Ship helper functions
 import ../logger
 import types as econ_types
 import ../../common/types/[core, units]
@@ -23,9 +24,9 @@ export econ_types.RepairProject, econ_types.FacilityType, econ_types.RepairTarge
 
 proc calculateRepairCost*(shipClass: ShipClass): int =
   ## Calculate repair cost for a ship
-  ## Per economy.md:5.4 - All repairs require shipyards, cost is 25% of build cost
-  let stats = getShipStats(shipClass)
-  result = (stats.buildCost.float * 0.25).int
+  ## Per economy.md:5.4 - All repairs require drydocks, cost is 25% of build cost
+  let ship = ship_entity.newShip(shipClass)
+  result = (ship.buildCost().float * 0.25).int
 
 proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
                          squadronIdx: int, shipIdx: int): Option[RepairProject] =

@@ -10,36 +10,13 @@
 ## - All ships use unified Squadron structure with squadronType classification
 
 import ../squadron/entity as squadron
-import ../common/types/[core, combat]
+import ../ship/entity as ship_entity  # Ship helper functions
+import ../types/[core, fleet, ship, squadron, combat, starmap]
 import std/[algorithm, strutils, options]
 
 export FleetId, SystemId, HouseId, LaneType, FleetMissionState
 export Squadron, Ship, ShipClass  # Export for fleet users
 export SquadronType, ShipCargo, CargoType  # Export squadron classification and cargo types
-
-type
-  FleetStatus* {.pure.} = enum
-    ## Fleet operational status per economy.md:3.9
-    Active,      # Normal active duty (100% maintenance)
-    Reserve,     # Reserve status (50% maintenance, half AS/DS, can't move)
-    Mothballed   # Mothballed (0% maintenance, offline, screened in combat)
-
-  Fleet* = object
-    ## A collection of squadrons that move together
-    ## All squadron types: Combat, Intel, Expansion, Auxiliary, Fighter
-    id*: FleetId                       # Unique fleet identifier
-    squadrons*: seq[Squadron]          # All squadron types (Combat, Intel, Expansion, Auxiliary)
-    owner*: HouseId                    # House that owns this fleet
-    location*: SystemId                # Current system location
-    status*: FleetStatus               # Operational status (active/reserve/mothballed)
-    autoBalanceSquadrons*: bool        # Auto-optimize squadron composition (default: true)
-    # NOTE: currentOrder stored in GameState.fleetOrders table to avoid circular dependency
-
-    # Spy mission state (for Scout-only fleets)
-    missionState*: FleetMissionState      # Spy mission state
-    missionType*: Option[int]             # Type of active mission (SpyMissionType)
-    missionTarget*: Option[SystemId]      # Target system for mission
-    missionStartTurn*: int                # Turn mission began (for duration tracking)
 
 proc newFleet*(squadrons: seq[Squadron] = @[],
                id: FleetId = "", owner: HouseId = "", location: SystemId = 0,
@@ -358,7 +335,7 @@ proc balanceSquadrons*(f: var Fleet) =
   # Step 2: Sort escorts by command cost (descending) for better bin packing
   # Larger ships first = better capacity utilization
   allEscorts.sort do (a, b: Ship) -> int:
-    result = cmp(b.stats.commandCost, a.stats.commandCost)
+    result = cmp(b.commandCost(), a.commandCost())
 
   # Step 3: Redistribute escorts using greedy algorithm
   # Try to fill squadrons evenly, prioritizing those with most available space
@@ -371,7 +348,7 @@ proc balanceSquadrons*(f: var Fleet) =
       let availableCapacity = f.squadrons[i].availableCommandCapacity()
 
       # Can this squadron fit this escort?
-      if availableCapacity >= escort.stats.commandCost:
+      if availableCapacity >= escort.commandCost():
         # Is this the squadron with most available capacity?
         if availableCapacity > bestCapacity:
           bestCapacity = availableCapacity

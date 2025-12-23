@@ -6,43 +6,9 @@
 ##
 ## Fleet Hierarchy: Fleet → Squadron → Ship
 
-import std/[sequtils, strutils, options, math, strformat]
-import ship
-import ../common/types/[core, units]
-
-export HouseId, FleetId, SystemId, SquadronId
-export ship  # Re-export Ship, ShipClass, ShipStats, CargoType, ShipCargo
-
-type
-  SquadronType* {.pure.} = enum
-    ## Strategic role classification for squadrons
-    ## Determines fleet composition rules and combat participation
-    Combat      # Combat squadrons (capital ships + escorts)
-    Intel       # Intelligence squadrons (scouts, future intel assets)
-    Auxiliary   # Combat support (TT - planetary invasions)
-    Expansion   # Expansion operations (ETAC - colonization)
-    Fighter     # Fighter squadrons (planetary defense, carrier-based)
-
-  Squadron* = object
-    ## A tactical unit of ships under flagship command
-    id*: SquadronId
-    flagship*: Ship  # Renamed from Ship
-    ships*: seq[Ship]  # Ships under flagship command (excludes flagship)
-    owner*: HouseId
-    location*: SystemId
-    destroyed*: bool = false  # Set to true when squadron is destroyed in combat
-    squadronType*: SquadronType  # Strategic role classification (NEW)
-
-    # Carrier fighter operations (assets.md:2.4.1.1)
-    embarkedFighters*: seq[Squadron]  # Embarked fighter squadrons (Squadron.Fighter type)
-
-  SquadronFormation* {.pure.} = enum
-    ## Formation roles for squadrons in fleet
-    Vanguard,   # Front line, first to engage
-    MainLine,   # Main battle line
-    Reserve,    # Held in reserve
-    Screen,     # Screening/picket duty
-    RearGuard   # Rear guard, last to engage
+import std/[options, math, sequtils]
+import ../../types/[core, ship, squadron]
+import ../ship/entity as ship_entity  # Ship helper functions
 
 proc getSquadronType*(shipClass: ShipClass): SquadronType =
   ## Determine squadron type from ship class
@@ -61,15 +27,19 @@ proc getSquadronType*(shipClass: ShipClass): SquadronType =
 
 ## Squadron construction
 
-proc newSquadron*(flagship: Ship, id: SquadronId = "",
-                  owner: HouseId = "", location: SystemId = 0): Squadron =
+proc newSquadron*(flagship: Ship, id: SquadronId = SquadronId(0),
+                  owner: HouseId = HouseId(0), location: SystemId = SystemId(0)): Squadron =
   ## Create a new squadron with flagship
+  ## Squadron type is determined from flagship ship class
+  let squadronType = getSquadronType(flagship.shipClass)
+
   Squadron(
     id: id,
     flagship: flagship,
     ships: @[],
-    owner: owner,
+    houseId: owner,
     location: location,
+    squadronType: squadronType,
     embarkedFighters: @[]
   )
 
@@ -84,16 +54,16 @@ proc totalCommandCost*(sq: Squadron): int =
   ## Calculate total command cost of ships in squadron (excluding flagship)
   result = 0
   for ship in sq.ships:
-    result += ship.stats.commandCost
+    result += ship.commandCost()
 
 proc availableCommandCapacity*(sq: Squadron): int =
   ## Calculate remaining command capacity
-  sq.flagship.stats.commandRating - sq.totalCommandCost()
+  sq.flagship.commandRating() - sq.totalCommandCost()
 
 proc canAddShip*(sq: Squadron, ship: Ship): bool =
   ## Check if ship can be added to squadron
   ## Ship's CC must not exceed available CR
-  if ship.stats.commandCost > sq.availableCommandCapacity():
+  if ship.commandCost() > sq.availableCommandCapacity():
     return false
   return true
 
@@ -122,19 +92,16 @@ proc allShips*(sq: Squadron): seq[Ship] =
 
 proc combatStrength*(sq: Squadron): int =
   ## Calculate total attack strength of squadron
-  ## Crippled ships have AS reduced by half
+  ## Uses effectiveAttackStrength which handles crippled ships (AS halved)
   result = 0
   for ship in sq.allShips():
-    if ship.isCrippled:
-      result += ship.stats.attackStrength div 2
-    else:
-      result += ship.stats.attackStrength
+    result += ship.effectiveAttackStrength()
 
 proc defenseStrength*(sq: Squadron): int =
   ## Calculate total defense strength of squadron
   result = 0
   for ship in sq.allShips():
-    result += ship.stats.defenseStrength
+    result += ship.effectiveDefenseStrength()
 
 proc isEmpty*(sq: Squadron): bool =
   ## Check if squadron has only flagship (no other ships)
@@ -178,12 +145,12 @@ proc crippleShip*(sq: var Squadron, index: int): bool =
 ## Squadron queries
 
 proc militaryShips*(sq: Squadron): seq[Ship] =
-  ## Get all military ships in squadron
-  sq.allShips().filterIt(it.shipType == ShipType.Military)
+  ## Get all military ships in squadron (non-transport ships)
+  sq.allShips().filterIt(not it.isTransport())
 
 proc spaceliftShips*(sq: Squadron): seq[Ship] =
-  ## Get all transport ships in squadron (legacy name for backward compatibility)
-  sq.allShips().filterIt(it.shipType == ShipType.Spacelift)
+  ## Get all transport ships in squadron (ETAC/TroopTransport)
+  sq.allShips().filterIt(it.isTransport())
 
 proc crippledShips*(sq: Squadron): seq[Ship] =
   ## Get all crippled ships in squadron
@@ -194,16 +161,16 @@ proc effectiveShips*(sq: Squadron): seq[Ship] =
   sq.allShips().filterIt(not it.isCrippled)
 
 proc scoutShips*(sq: Squadron): seq[Ship] =
-  ## Get all ships with ELI capability
-  sq.allShips().filterIt(it.stats.specialCapability.startsWith("ELI"))
+  ## Get all ships with scout capability (ELI tech)
+  sq.allShips().filterIt(it.isScout())
 
 proc hasScouts*(sq: Squadron): bool =
   ## Check if squadron has any operational scouts
   sq.scoutShips().filterIt(not it.isCrippled).len > 0
 
 proc raiderShips*(sq: Squadron): seq[Ship] =
-  ## Get all ships with cloaking capability
-  sq.allShips().filterIt(it.stats.specialCapability.startsWith("CLK"))
+  ## Get all ships with cloaking capability (CLK tech)
+  sq.allShips().filterIt(it.isRaider())
 
 proc isCloaked*(sq: Squadron): bool =
   ## Check if squadron has cloaking capability
@@ -224,33 +191,22 @@ proc isCloaked*(sq: Squadron): bool =
 proc createSquadron*(
   shipClass: ShipClass,
   techLevel: int = 1,
-  id: SquadronId = "",
-  owner: HouseId = "",
-  location: SystemId = 0,
+  id: SquadronId = SquadronId(0),
+  owner: HouseId = HouseId(0),
+  location: SystemId = SystemId(0),
   isCrippled: bool = false
 ): Squadron =
   ## Create a squadron with one ship (flagship only)
   ## This is the standard way to create squadrons for fleets
-  let shipType = case shipClass
-    of ShipClass.ETAC, ShipClass.TroopTransport:
-      ShipType.Spacelift
-    else:
-      ShipType.Military
-
-  let flagship = Ship(
-    shipClass: shipClass,
-    shipType: shipType,
-    stats: getShipStats(shipClass, techLevel),
-    isCrippled: isCrippled,
-    name: ""
-  )
+  var flagship = ship_entity.newShip(shipClass, int32(techLevel), "", ShipId(0), SquadronId(0))
+  flagship.isCrippled = isCrippled
   newSquadron(flagship, id, owner, location)
 
 proc createFleetSquadrons*(
   ships: openArray[(ShipClass, int)],
   techLevel: int = 1,
-  owner: HouseId = "",
-  location: SystemId = 0
+  owner: HouseId = HouseId(0),
+  location: SystemId = SystemId(0)
 ): seq[Squadron] =
   ## Create multiple squadrons for a fleet
   ## ships: seq of (ShipClass, count) tuples
@@ -264,13 +220,13 @@ proc createFleetSquadrons*(
   ##     location = 100
   ##   )
   result = @[]
-  var counter = 0
+  var counter: uint32 = 0
   for (shipClass, count) in ships:
     for i in 0..<count:
       let sq = createSquadron(
         shipClass,
         techLevel,
-        id = &"{owner}-sq-{counter}",
+        id = SquadronId(counter),
         owner,
         location
       )

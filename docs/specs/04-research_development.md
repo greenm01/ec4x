@@ -2,6 +2,64 @@
 
 R&D investment drives your technological advancement across economic, social, and military domains. You allocate Production Points to three distinct research pools each turn, accumulating progress toward specific technology thresholds.
 
+## 4.0.1 Technology Architecture
+
+Technologies in EC4X fall into three categories based on how they're applied:
+
+### House-Level Technologies
+
+These are checked at runtime from `house.techTree.levels` and apply to all applicable units immediately:
+
+| Tech | Full Name                  | Application                                    | Apply Method |
+|:----:| -------------------------- | ---------------------------------------------- |:------------:|
+| CST  | Construction Tech          | Gates which ship classes can be built          | Build-time   |
+| ELI  | Electronic Intelligence    | Detection capability (all fleets/colonies)     | Runtime      |
+| CLK  | Cloaking Tech              | Cloaking effectiveness for Raiders             | Runtime      |
+| ACO  | Advanced Carrier Ops       | Carrier capacity (CV/CX hangar size)           | Runtime      |
+| STL  | Strategic Lift             | Transport capacity (ETAC/TT carry limit)       | Runtime      |
+| CMD  | Command Tech               | Command Rating bonus for capital ships         | Runtime      |
+| FD   | Fighter Doctrine           | Fighter squadron capacity multiplier           | Runtime      |
+| EL   | Economic Level             | Production multiplier (all colonies)           | Runtime      |
+| SL   | Science Level              | Gates tech research                            | Build-time   |
+| TER  | Terraforming               | Enables planet upgrades                        | Build-time   |
+| SLD  | Shields                    | Shield construction capability                 | Build-time   |
+
+**Runtime**: Tech level queried from house when needed (detection, capacity checks, calculations)
+**Build-time**: Tech level checked once during construction/research, then no longer referenced
+
+### Ship-Level Technologies
+
+Only one technology is stored on individual ships:
+
+| Tech | Full Name          | Storage Location      | Why Stored on Ship                               |
+|:----:| ------------------ |:--------------------- | ------------------------------------------------ |
+| WEP  | Weapons Technology | `ShipStats.techLevel` | Ships built at different WEP levels coexist      |
+|      |                    |                       | AS/DS values calculated once at construction     |
+|      |                    |                       | No retrofitting system (must salvage & rebuild)  |
+
+**Example:** Your fleet can contain WEP II Destroyers (AS=5×1.1=5) alongside WEP IV Cruisers (AS=8×1.33=10) simultaneously.
+
+### Facility Tech Interactions
+
+Facilities are built at colonies and modified by house tech levels:
+
+| Facility  | Tech Applied | Effect                                      | Application                |
+|:--------- |:------------:| ------------------------------------------- | -------------------------- |
+| Starbase  | WEP          | AS/DS scale with WEP (+10% per level)       | Construction (permanent)   |
+| Starbase  | ELI          | Provides +2 ELI bonus for detection         | Runtime (detection checks) |
+| Shipyard  | CST          | Dock capacity = 10 × CST multiplier         | Runtime (capacity checks)  |
+| Spaceport | CST          | Dock capacity = 5 × CST multiplier          | Runtime (capacity checks)  |
+| Shield    | SLD          | Absorption % and DS based on SLD level      | Construction (permanent)   |
+
+**Notes:**
+- **Starbases:** WEP-modified at construction (like ships), provide +2 ELI bonus for system detection
+- **Shipyards/Spaceports:** Dock capacity scales dynamically with house CST level
+- **Shields:** Built at researched SLD level, stats permanent until upgraded
+
+### Key Architectural Principle
+
+**Most tech is house-level and queried at runtime.** Only WEP is stored on individual ships because fleets can contain ships built at different WEP levels over time. All other capabilities (ELI, CLK, ACO, etc.) are derived from ship class + current house tech level.
+
 ## 4.1 Science Level (SL)
 
 Science Level represents your House's overall technological sophistication and research infrastructure. SL gates access to advanced technologies—you cannot research a technology whose SL requirement exceeds your current Science Level.
@@ -74,51 +132,50 @@ EL research provides exponential returns when combined with high IU counts. If y
 
 ## 4.3 Weapons Technology (WEP)
 
-Weapons technology improves ship combat statistics across all hull classes. Each WEP tier increases Attack Strength (AS), Defense Strength (DS), and modifies ship costs.
+Weapons technology improves ship combat statistics across all hull classes. Each WEP tier increases Attack Strength (AS) and Defense Strength (DS) by 10% per level.
 
 **Research Progression:**
 
 <!-- WEP_TABLE_START -->
 
-| Tech Level | Prerequisites | TRP Cost | SL Required |
-|:----------:| ------------- |:--------:|:-----------:|
-| WEP I      | None          | N/A      | 1           |
-| WEP II     | WEP I         | 10       | 2           |
-| WEP III    | WEP II        | 12       | 3           |
-| WEP IV     | WEP III       | 15       | 4           |
-| WEP V      | WEP IV        | 19       | 5           |
-| WEP VI     | WEP V         | 24       | 6           |
-| WEP VII    | WEP VI        | 31       | 7           |
-| WEP VIII   | WEP VII       | 40       | 8           |
-| WEP IX     | WEP VIII      | 52       | 9           |
-| WEP X      | WEP IX        | 68       | 10          |
+| Tech Level | Prerequisites | TRP Cost | SL Required | AS/DS Modifier |
+|:----------:| ------------- |:--------:|:-----------:|:--------------:|
+| WEP I      | None          | N/A      | 1           | +0% (base)     |
+| WEP II     | WEP I         | 10       | 2           | +10%           |
+| WEP III    | WEP II        | 12       | 3           | +21%           |
+| WEP IV     | WEP III       | 15       | 4           | +33%           |
+| WEP V      | WEP IV        | 19       | 5           | +46%           |
+| WEP VI     | WEP V         | 24       | 6           | +61%           |
+| WEP VII    | WEP VI        | 31       | 7           | +77%           |
+| WEP VIII   | WEP VII       | 40       | 8           | +95%           |
+| WEP IX     | WEP VIII      | 52       | 9           | +114%          |
+| WEP X      | WEP IX        | 68       | 10          | +136%          |
+
+*Formula: stat × (1.10 ^ (WEP_level - 1)), rounded down*
 
 *Source: config/tech.toml [weapons_technology] section*
 
 <!-- WEP_TABLE_END -->
 
-**Application:**
+**How WEP Works:**
 
-WEP affects all newly constructed ships and retrofitting existing ships:
-
-**New Construction:**
-
-- Ships are built with current House WEP level
-- AS/DS values use WEP-modified statistics
+**Ship Construction:**
+- Ships are permanently built with your current House WEP level
+- The WEP level is baked into the ship's stats and never changes
+- AS/DS values are calculated once at construction: `base_stat × (1.10 ^ (WEP - 1))`
 - Construction costs reflect current WEP tier
 
-**Retrofitting Existing Ships:**
-
-- Costs 50% of the ship's current WEP-tier construction cost
-- Requires 1 turn at a Shipyard
-- Ship is unavailable during retrofit (cannot move or fight)
-- After retrofit, ship uses new WEP tier statistics
+**Important:** There is **no retrofitting system**. Ships built at WEP III remain WEP III forever. To upgrade your fleet, you must:
+1. Salvage old ships (50% of build cost refunded)
+2. Build replacement ships at your new WEP level
 
 For complete ship statistics by WEP level, see [Section 10.0](10-reference.md#100-unit-reference-tables).
 
 **Strategic Considerations:**
 
-WEP research is essential for maintaining military competitiveness. Houses that fall behind in WEP face catastrophic combat disadvantages—a WEP III fleet cannot trade effectively against WEP V opponents. However, retrofitting large fleets is expensive and time-consuming, creating windows of vulnerability during technological transitions.
+WEP research is essential for maintaining military competitiveness. Houses that fall behind in WEP face catastrophic combat disadvantages—a WEP III fleet cannot trade effectively against WEP V opponents.
+
+**Fleet Replacement Strategy:** When you advance WEP tech, gradually replace your oldest ships rather than salvaging your entire fleet at once. Focus on replacing crippled ships first, then lowest-tier vessels. This maintains fleet strength while modernizing over several turns.
 
 ## 4.4 Shields (SLD)
 
@@ -162,9 +219,11 @@ For complete bombardment rules, see [Section 7.5](07-combat.md#75-planetary-bomb
 
 High-tier shields make your colonies nearly impervious to bombardment, forcing attackers to commit overwhelming fleets or conduct protracted sieges. However, shields are expensive to upgrade and provide no benefit against ground invasion—Marines bypass shields entirely. Late-game Planet-Breaker weapons completely ignore shields, making SLD VI potentially obsolete against advanced adversaries.
 
-## 4.5 Construction (CST)
+## 4.5 Construction Technology (CST)
 
-Construction technology increases shipyard and spaceport capacity, enables advanced hull classes, and improves industrial efficiency.
+Construction technology gates access to advanced hull classes, increases shipyard and spaceport capacity, and improves industrial efficiency.
+
+**Key Distinction:** CST unlocks which ship classes can be built (checked at construction time), while WEP modifies combat stats of ships already built. CST is a house-level gate; WEP is baked into individual ships.
 
 **Research Progression:**
 
@@ -423,9 +482,9 @@ Example: A Battleship (BB) has Base CR 9. At CMD III, Effective CR = 9 + 2 = 11.
 
 Higher CR allows flagships to command more ships within their squadron, as each ship consumes Command Cost (CC) based on its class. For squadron composition rules and CC values, see [Section 2.3.3](02-assets.md#233-squadrons).
 
-**Retrofitting:**
+**Immediate Application:**
 
-Unlike WEP technology, CMD bonuses apply automatically to existing flagships without requiring retrofits. The moment CMD research completes, all capital ships in the House fleet can immediately reorganize squadrons to take advantage of increased CR.
+CMD bonuses are house-level tech that applies automatically to all capital ships. The moment CMD research completes, all capital ships can immediately reorganize squadrons to take advantage of increased CR. No ship modifications needed—it's a pure tactical doctrine upgrade.
 
 **Strategic Considerations:**
 

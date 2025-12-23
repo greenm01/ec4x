@@ -24,22 +24,17 @@ type
     capacity*: int32
 
   ShipStats* = object
-    role*: ShipRole
-    attackStrength*: int32
-    defenseStrength*: int32
-    commandCost*: int32
-    commandRating*: int32
-    techLevel*: int32
-    buildCost*: int32
-    upkeepCost*: int32
-    carryLimit*: int32
+    ## Instance-specific ship stats (WEP-modified at construction)
+    ## All other stats (role, costs, CC, CR) looked up from config via shipClass
+    attackStrength*: int32      # WEP-modified AS at construction
+    defenseStrength*: int32     # WEP-modified DS at construction
+    weaponsTech*: int32         # WEP level at construction (permanent)
 
   Ship* = object
     id*: ShipId
     squadronId*: SquadronId  # Which squadron owns this ship
     shipClass*: ShipClass
-    shipRole*: ShipRole
-    stats*: ShipStats
+    stats*: ShipStats        # Contains role, AS, DS, WEP level, etc.
     isCrippled*: bool
     name*: string
     cargo*: Option[ShipCargo]

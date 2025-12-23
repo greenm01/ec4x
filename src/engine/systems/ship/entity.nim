@@ -1,138 +1,124 @@
-## Ship types and operations for EC4X
+## Ship Entity - Business logic for individual ships
 ##
 ## Individual ships with stats, cargo, and operational capabilities.
-## Ships are organized into Squadrons (see squadron.nim).
+## Ships are organized into Squadrons (see ../squadron/entity.nim).
 ##
-## This module defines ship types, cargo handling, and ship construction
-## with technology-modified stats from config/ships.toml.
+## This module provides ship business logic including:
+## - Config-based stat loading with tech modifiers
+## - Ship construction and initialization
+## - Cargo management for transport ships (ETAC/TroopTransport)
+## - Ship capability queries
+##
+## ARCHITECTURE:
+## - Pure business logic (no index management)
+## - Reads from config/ships.toml via globalShipsConfig
+## - Used by squadron/entity and production/commissioning
 
-import std/[options, math, strformat]
-import ../common/types/units
-import config/ships_config
-import config  # For parseShipRole
+import std/[options, math, strutils]
+import ../../types/[core, ship]
+import ../../config/ships_config
 
-export ShipClass, ShipType, ShipStats, ShipRole
+export ShipClass, ShipRole, ShipStats, Ship, ShipCargo, CargoType, ShipId
 
-type
-  CargoType* {.pure.} = enum
-    ## Type of cargo loaded on transport ships
-    None,
-    Marines,      # Marine Division (MD) - TroopTransport
-    Colonists,    # Population Transfer Unit (PTU) - ETAC
-    Supplies      # Generic cargo (future use)
+## Ship Statistics and Configuration
 
-  ShipCargo* = object
-    ## Cargo loaded on transport ships (ETAC/TT)
-    cargoType*: CargoType
-    quantity*: int          # Number of units loaded (0 = empty)
-    capacity*: int          # Maximum capacity (CL = Carry Limit)
+proc parseShipRole(roleStr: string): ShipRole =
+  ## Convert config role string to ShipRole enum
+  case roleStr.toLowerAscii()
+  of "escort": ShipRole.Escort
+  of "capital": ShipRole.Capital
+  of "auxiliary": ShipRole.Auxiliary
+  of "specialweapon": ShipRole.SpecialWeapon
+  of "fighter": ShipRole.Fighter
+  else: ShipRole.Escort  # Default
 
-  Ship* = object
-    ## Ship representation with full combat and operational stats
-    ## Used for all ship types: combat, intel, expansion, auxiliary,
-    ## fighter
-    shipClass*: ShipClass
-    shipType*: ShipType      # Military or Spacelift (transport)
-    stats*: ShipStats
-    isCrippled*: bool
-    name*: string            # Optional ship name
-    cargo*: Option[ShipCargo]  # Cargo for ETAC/TT (Some), None for
-                               # combat ships
+## Config Data Access (non-WEP stats)
 
-## Ship class statistics
-## Based on EC4X specifications
-
-proc getShipStatsFromConfig(shipClass: ShipClass): ShipStats =
-  ## Get base ship stats from config/ships.toml
-  ## Uses globalShipsConfig loaded at module initialization
-
+proc getShipConfigStats(shipClass: ShipClass): ShipStatsConfig =
+  ## Get full config stats for a ship class from config/ships.toml
+  ## Used for looking up non-WEP stats (role, costs, CC, CR, carry limit)
   let cfg = globalShipsConfig
 
-  # Map ShipClass enum to config struct field
-  # Note: Starbases are facilities (not in ShipClass, use facilities.toml)
-  let configStats = case shipClass
-    of ShipClass.Fighter: cfg.fighter
-    of ShipClass.Corvette: cfg.corvette
-    of ShipClass.Frigate: cfg.frigate
-    of ShipClass.Scout: cfg.scout
-    of ShipClass.Raider: cfg.raider
-    of ShipClass.Destroyer: cfg.destroyer
-    of ShipClass.Cruiser: cfg.cruiser
-    of ShipClass.LightCruiser: cfg.light_cruiser
-    of ShipClass.HeavyCruiser: cfg.heavy_cruiser
-    of ShipClass.Battlecruiser: cfg.battlecruiser
-    of ShipClass.Battleship: cfg.battleship
-    of ShipClass.Dreadnought: cfg.dreadnought
-    of ShipClass.SuperDreadnought: cfg.super_dreadnought
-    of ShipClass.Carrier: cfg.carrier
-    of ShipClass.SuperCarrier: cfg.supercarrier
-    of ShipClass.ETAC: cfg.etac
-    of ShipClass.TroopTransport: cfg.troop_transport
-    of ShipClass.PlanetBreaker: cfg.planetbreaker
+  case shipClass
+  of ShipClass.Fighter: cfg.fighter
+  of ShipClass.Corvette: cfg.corvette
+  of ShipClass.Frigate: cfg.frigate
+  of ShipClass.Scout: cfg.scout
+  of ShipClass.Raider: cfg.raider
+  of ShipClass.Destroyer: cfg.destroyer
+  of ShipClass.Cruiser: cfg.cruiser
+  of ShipClass.LightCruiser: cfg.light_cruiser
+  of ShipClass.HeavyCruiser: cfg.heavy_cruiser
+  of ShipClass.Battlecruiser: cfg.battlecruiser
+  of ShipClass.Battleship: cfg.battleship
+  of ShipClass.Dreadnought: cfg.dreadnought
+  of ShipClass.SuperDreadnought: cfg.super_dreadnought
+  of ShipClass.Carrier: cfg.carrier
+  of ShipClass.SuperCarrier: cfg.supercarrier
+  of ShipClass.ETAC: cfg.etac
+  of ShipClass.TroopTransport: cfg.troop_transport
+  of ShipClass.PlanetBreaker: cfg.planetbreaker
 
-  # Convert config format to ShipStats format
-  result = ShipStats(
-    name: configStats.name,
-    class: configStats.class,
-    role: parseShipRole(configStats.ship_role),
-    attackStrength: configStats.attack_strength,
-    defenseStrength: configStats.defense_strength,
-    commandCost: configStats.command_cost,
-    commandRating: configStats.command_rating,
-    techLevel: configStats.tech_level,
-    buildCost: configStats.build_cost,
-    upkeepCost: configStats.upkeep_cost,
-    specialCapability: configStats.special_capability,
-    carryLimit:
-      if configStats.carry_limit.isSome:
-        configStats.carry_limit.get
-      else:
-        0
+proc getShipStats*(shipClass: ShipClass, weaponsTech: int32 = 1): ShipStats =
+  ## Calculate WEP-modified stats for a ship class
+  ## Returns instance-specific stats (AS, DS, WEP level)
+  ## All other stats looked up via getShipConfigStats()
+  ##
+  ## Per docs/specs/04-research_development.md Section 4.3:
+  ## "Each WEP tier increases AS and DS by 10% per level"
+  ## Formula: stat × (1.10 ^ (WEP_level - 1)), rounded down
+  ##
+  ## WEP I (level 1) = base stats (no multiplier)
+  ## WEP II (level 2) = +10%
+  ## WEP III (level 3) = +21% (compound)
+  ## etc.
+
+  let configStats = getShipConfigStats(shipClass)
+  let baseAS = int32(configStats.attack_strength)
+  let baseDS = int32(configStats.defense_strength)
+
+  # Apply WEP multiplier (compound 10% per level above WEP I)
+  let modifiedAS = if weaponsTech > 1:
+    int32(float(baseAS) * pow(1.10, float(weaponsTech - 1)))
+  else:
+    baseAS
+
+  let modifiedDS = if weaponsTech > 1:
+    int32(float(baseDS) * pow(1.10, float(weaponsTech - 1)))
+  else:
+    baseDS
+
+  ShipStats(
+    attackStrength: modifiedAS,
+    defenseStrength: modifiedDS,
+    weaponsTech: weaponsTech
   )
 
-proc getShipStats*(shipClass: ShipClass, techLevel: int = 0,
-                   configPath: string = ""): ShipStats =
-  ## Get stats for a ship class from config
-  ## Stats may be modified by tech level (WEP)
+## Ship Construction
+
+proc newShip*(
+  shipClass: ShipClass,
+  weaponsTech: int32 = 1,
+  name: string = "",
+  id: ShipId = ShipId(0),
+  squadronId: SquadronId = SquadronId(0)
+): Ship =
+  ## Create a new ship with WEP-modified stats
+  ## weaponsTech defaults to 1 (WEP I - starting level per gameplay.md:1.2)
   ##
-  ## Uses config/ships.toml loaded at module initialization
-  ## configPath parameter ignored (kept for API compatibility)
-  ##
-  ## Per economy.md Section 4.6: "Upgrades improve the Attack Strength
-  ## (AS) and Defense Strength (DS) of combat ships by 10% for each
-  ## Weapons level (rounded down)."
-
-  # Get base stats from config
-  result = getShipStatsFromConfig(shipClass)
-
-  # Apply WEP tech level modifiers (AS and DS only)
-  # Base tech is WEP1 (techLevel = 1), each upgrade adds 10%
-  # Formula: stat × (1.10 ^ (techLevel - 1)), rounded down
-  if techLevel > 1:
-    let weaponsMultiplier = pow(1.10, float(techLevel - 1))
-    result.attackStrength =
-      int(float(result.attackStrength) * weaponsMultiplier)
-    result.defenseStrength =
-      int(float(result.defenseStrength) * weaponsMultiplier)
-
-## Ship construction
-
-proc newShip*(shipClass: ShipClass, techLevel: int = 0,
-              name: string = ""): Ship =
-  ## Create a new ship with stats
-  let stats = getShipStats(shipClass, techLevel)
-  let shipType = case shipClass
-    of ShipClass.ETAC, ShipClass.TroopTransport:
-      ShipType.Spacelift
-    else:
-      ShipType.Military
+  ## Stats (AS, DS, WEP) are calculated once at construction and never change
+  ## Config values (role, costs, CC, CR) looked up via shipClass
+  ## Cargo is initialized as None (use initCargo to add cargo)
+  let stats = getShipStats(shipClass, weaponsTech)
 
   Ship(
+    id: id,
+    squadronId: squadronId,
     shipClass: shipClass,
-    shipType: shipType,
     stats: stats,
     isCrippled: false,
-    name: name
+    name: name,
+    cargo: none(ShipCargo)
   )
 
 proc `$`*(ship: Ship): string =
@@ -140,3 +126,148 @@ proc `$`*(ship: Ship): string =
   let status = if ship.isCrippled: " (crippled)" else: ""
   let name = if ship.name.len > 0: " \"" & ship.name & "\"" else: ""
   $ship.shipClass & name & status
+
+## Config Lookups (non-WEP stats from config/ships.toml)
+
+proc role*(ship: Ship): ShipRole =
+  ## Get ship's role from config (Escort, Capital, Auxiliary, etc.)
+  parseShipRole(getShipConfigStats(ship.shipClass).ship_role)
+
+proc commandCost*(ship: Ship): int32 =
+  ## Get command cost (CC) from config
+  int32(getShipConfigStats(ship.shipClass).command_cost)
+
+proc commandRating*(ship: Ship): int32 =
+  ## Get command rating (CR) from config
+  int32(getShipConfigStats(ship.shipClass).command_rating)
+
+proc buildCost*(ship: Ship): int32 =
+  ## Get build cost (PC) from config
+  int32(getShipConfigStats(ship.shipClass).build_cost)
+
+proc upkeepCost*(ship: Ship): int32 =
+  ## Get maintenance cost (MC) from config
+  int32(getShipConfigStats(ship.shipClass).upkeep_cost)
+
+proc baseCarryLimit*(ship: Ship): int32 =
+  ## Get base carry limit from config (for carriers/transports)
+  ## Modified at runtime by ACO/STL tech levels
+  let config = getShipConfigStats(ship.shipClass)
+  if config.carry_limit.isSome:
+    int32(config.carry_limit.get)
+  else:
+    0'i32
+
+## Ship Capability Queries
+
+proc isTransport*(ship: Ship): bool =
+  ## Check if ship is a transport (Expansion/Auxiliary squadron type)
+  ## Per unified architecture: ETAC = Expansion, TroopTransport = Auxiliary
+  ship.shipClass in {ShipClass.ETAC, ShipClass.TroopTransport}
+
+proc isCombatShip*(ship: Ship): bool =
+  ## Check if ship has combat capability (non-zero attack strength)
+  ship.stats.attackStrength > 0 and not ship.isCrippled
+
+proc isScout*(ship: Ship): bool =
+  ## Check if ship can leverage ELI (Electronic Intelligence) tech
+  ## Scouts provide intelligence gathering capabilities scaled by house ELI level
+  ship.shipClass == ShipClass.Scout
+
+proc isRaider*(ship: Ship): bool =
+  ## Check if ship can leverage CLK (Cloaking) tech
+  ## Raiders provide fleet cloaking scaled by house CLK level
+  ship.shipClass == ShipClass.Raider
+
+proc isFighter*(ship: Ship): bool =
+  ## Check if ship is a fighter (carried by carriers)
+  ship.shipClass == ShipClass.Fighter
+
+proc isCarrier*(ship: Ship): bool =
+  ## Check if ship is a carrier (CV or CX)
+  ship.shipClass in {ShipClass.Carrier, ShipClass.SuperCarrier}
+
+proc canCommand*(ship: Ship): bool =
+  ## Check if ship can serve as squadron flagship (has command rating)
+  ship.commandRating() > 0
+
+proc effectiveAttackStrength*(ship: Ship): int32 =
+  ## Get effective attack strength (halved if crippled)
+  ## Per combat rules: crippled ships have AS reduced by half
+  if ship.isCrippled:
+    ship.stats.attackStrength div 2
+  else:
+    ship.stats.attackStrength
+
+proc effectiveDefenseStrength*(ship: Ship): int32 =
+  ## Get effective defense strength (unchanged when crippled)
+  ship.stats.defenseStrength
+
+## Cargo Management for Transport Ships
+
+proc initCargo*(ship: var Ship, cargoType: CargoType, capacity: int32) =
+  ## Initialize cargo hold for transport ships
+  ## Used for ETAC (colonists) and TroopTransport (marines)
+  if not ship.isTransport():
+    raise newException(ValueError,
+      "Cannot init cargo on non-transport ship: " & $ship.shipClass)
+
+  ship.cargo = some(ShipCargo(
+    cargoType: cargoType,
+    quantity: 0,
+    capacity: capacity
+  ))
+
+proc loadCargo*(ship: var Ship, amount: int32): bool =
+  ## Load cargo into transport ship
+  ## Returns true if successful, false if capacity exceeded
+  if ship.cargo.isNone:
+    return false
+
+  var cargo = ship.cargo.get
+  if cargo.quantity + amount > cargo.capacity:
+    return false
+
+  cargo.quantity += amount
+  ship.cargo = some(cargo)
+  return true
+
+proc unloadCargo*(ship: var Ship, amount: int32): bool =
+  ## Unload cargo from transport ship
+  ## Returns true if successful, false if insufficient cargo
+  if ship.cargo.isNone:
+    return false
+
+  var cargo = ship.cargo.get
+  if cargo.quantity < amount:
+    return false
+
+  cargo.quantity -= amount
+  ship.cargo = some(cargo)
+  return true
+
+proc availableCargoCapacity*(ship: Ship): int32 =
+  ## Get available cargo capacity
+  ## Returns 0 if ship has no cargo hold
+  if ship.cargo.isNone:
+    return 0'i32
+
+  let cargo = ship.cargo.get
+  return cargo.capacity - cargo.quantity
+
+proc isCargoEmpty*(ship: Ship): bool =
+  ## Check if cargo hold is empty
+  ## Returns true if no cargo hold or quantity is 0
+  if ship.cargo.isNone:
+    return true
+
+  return ship.cargo.get.quantity == 0
+
+proc isCargoFull*(ship: Ship): bool =
+  ## Check if cargo hold is full
+  ## Returns false if no cargo hold
+  if ship.cargo.isNone:
+    return false
+
+  let cargo = ship.cargo.get
+  return cargo.quantity >= cargo.capacity

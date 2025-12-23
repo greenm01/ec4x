@@ -9,6 +9,7 @@
 import std/[tables, options, sequtils, strformat]
 import ../../common/types/[core, combat, units]
 import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap, ../logger
+import ../ship/entity as ship_entity  # Ship helper functions
 import ../index_maintenance
 import ../state_helpers
 import ../initialization/colony
@@ -759,7 +760,7 @@ proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], e
         of ShipClass.TroopTransport:
           # Auto-load marines if available (capacity from config)
           if colony.marines > 0:
-            let capacity = squadron.flagship.stats.carryLimit
+            let capacity = squadron.flagship.baseCarryLimit()
             let loadAmount = min(capacity, colony.marines)
             squadron.flagship.cargo = some(ShipCargo(
               cargoType: CargoType.Marines,
@@ -776,7 +777,7 @@ proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], e
           # Per config/population.toml [transfer_limits] min_source_pu_remaining = 1
           let minSoulsToKeep = 1_000_000  # 1 PU minimum
           if colony.souls > minSoulsToKeep + soulsPerPtu():
-            let capacity = squadron.flagship.stats.carryLimit
+            let capacity = squadron.flagship.baseCarryLimit()
             squadron.flagship.cargo = some(ShipCargo(
               cargoType: CargoType.Colonists,
               quantity: 1,
