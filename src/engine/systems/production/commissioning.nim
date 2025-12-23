@@ -49,12 +49,14 @@ import ../../types/game_state
 import ../../types/production
 import ../../types/facilities
 import ../../types/event
+import ../../types/ground_unit
 import ../../state/game_state as gs_helpers
 import ../../state/entity_manager
 import ../../state/id_gen
 import ../../event_factory/init as event_factory
 import ../../../common/logger
 import ../ship/entity as ship_entity  # Ship construction and helpers
+import ../squadron/entity as squadron_entity  # Squadron construction
 
 # Import config access
 import ../../config/ground_units_config
@@ -144,19 +146,63 @@ proc commissionPlanetaryDefense*(
   for completed in completedProjects:
     logInfo("Economy", &"Commissioning planetary defense: {completed.projectType} itemId={completed.itemId} at system-{completed.colonyId}")
 
-    # TODO: Fighter squadron commissioning needs DoD refactoring
-    # Fighter squadrons are no longer embedded in Colony, they use entity managers
-    # This section needs to be rewritten to:
-    # 1. Use state.squadrons entity manager
-    # 2. Link squadrons to colonies via indexes
-    # 3. Manage ships through ship entity manager
-    # For now, fighter construction is disabled.
+    # Special handling for Fighters (planetary defense squadrons)
     if (completed.projectType == BuildType.Facility and
         completed.itemId == "FighterSquadron") or
        (completed.projectType == BuildType.Ship and
         completed.itemId == "Fighter"):
-      logWarn("Economy", "Fighter commissioning not yet implemented in DoD refactor")
-      discard  # Skip for now
+      if completed.colonyId in state.colonies.entities.index:
+        let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
+        if colonyOpt.isNone:
+          continue
+        var colony = colonyOpt.get()
+
+        # Get house tech level
+        let houseOpt = gs_helpers.getHouse(state, colony.owner)
+        if houseOpt.isNone:
+          continue
+        let house = houseOpt.get()
+        let techLevel = house.techTree.levels.weaponsTech
+
+        # Create 12 fighter ships (squadron strength)
+        var fighterShipIds: seq[ShipId] = @[]
+        for i in 0 ..< 12:
+          let shipId = generateShipId(state)
+          let ship = ship_entity.newShip(ShipClass.Fighter, techLevel, "", shipId, SquadronId(0))
+          state.ships.entities.addEntity(shipId, ship)
+          fighterShipIds.add(shipId)
+
+        # Create fighter squadron (use first fighter as "flagship" reference)
+        let squadronId = generateSquadronId(state)
+        let squadron = squadron_entity.newSquadron(
+          fighterShipIds[0],
+          ShipClass.Fighter,
+          squadronId,
+          colony.owner,
+          colony.systemId
+        )
+        state.squadrons.entities.addEntity(squadronId, squadron)
+
+        # Update all fighter ships with squadronId
+        for shipId in fighterShipIds:
+          var ship = state.ships.entities.getEntity(shipId).get()
+          ship.squadronId = squadronId
+          state.ships.entities.updateEntity(shipId, ship)
+
+        # Link squadron to colony
+        colony.fighterSquadronIds.add(squadronId)
+        state.colonies.entities.updateEntity(completed.colonyId, colony)
+
+        logInfo("Economy",
+          &"Commissioned Fighter Squadron {squadronId} at {completed.colonyId} " &
+          &"(12 fighters, planetary defense)")
+
+        # Generate event
+        events.add(event_factory.buildingCompleted(
+          colony.owner,
+          "Fighter Squadron",
+          colony.systemId
+        ))
 
     # Special handling for starbases
     elif completed.projectType == BuildType.Facility and
@@ -357,14 +403,40 @@ proc commissionPlanetaryDefense*(
           colony.systemId
         ))
 
-    # TODO: Ground battery commissioning needs DoD refactoring
-    # Ground batteries are no longer embedded in Colony (colony.groundBatteries doesn't exist)
-    # Ground defenses now use entity managers or colony fields managed via updateEntity
-    # For now, ground battery construction is disabled.
+    # Special handling for ground batteries
     elif completed.projectType == BuildType.Facility and
          completed.itemId == "GroundBattery":
-      logWarn("Economy", "Ground battery construction not yet implemented in DoD refactor")
-      discard  # Skip for now
+      if completed.colonyId in state.colonies.entities.index:
+        let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
+        if colonyOpt.isNone:
+          continue
+        var colony = colonyOpt.get()
+
+        # Create ground battery
+        let unitId = generateGroundUnitId(state)
+        let battery = GroundUnit(
+          id: unitId,
+          unitType: GroundUnitType.GroundBattery,
+          owner: colony.owner,
+          attackStrength: int32(globalGroundUnitsConfig.ground_battery.attack_strength),
+          defenseStrength: int32(globalGroundUnitsConfig.ground_battery.defense_strength),
+          state: CombatState.Undamaged
+        )
+        state.groundUnits.entities.addEntity(unitId, battery)
+
+        # Link to colony
+        colony.groundBatteryIds.add(unitId)
+        state.colonies.entities.updateEntity(completed.colonyId, colony)
+
+        logInfo("Economy",
+          &"Deployed ground battery at {completed.colonyId} " &
+          &"(Total ground defenses: {colony.groundBatteryIds.len} batteries)")
+
+        events.add(event_factory.buildingCompleted(
+          colony.owner,
+          "Ground Battery",
+          colony.systemId
+        ))
 
     # Special handling for planetary shields (replacement, not upgrade)
     elif completed.projectType == BuildType.Facility and
@@ -391,26 +463,111 @@ proc commissionPlanetaryDefense*(
           colony.systemId
         ))
 
-    # TODO: Marine recruitment needs DoD refactoring
-    # Marines are no longer embedded in Colony (colony.marines doesn't exist)
-    # Ground units now use entity managers:
-    # - Create Marine via state.groundUnits entity manager
-    # - Link to colony via indexes
-    # - Deduct souls from colony and update via updateEntity
-    # For now, marine recruitment is disabled.
+    # Special handling for Marines (MD)
     elif completed.projectType == BuildType.Facility and
          (completed.itemId == "Marine" or completed.itemId == "marine_division"):
-      logWarn("Economy", "Marine recruitment not yet implemented in DoD refactor")
-      discard  # Skip for now
+      if completed.colonyId in state.colonies.entities.index:
+        let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
+        if colonyOpt.isNone:
+          continue
+        var colony = colonyOpt.get()
 
-    # TODO: Army recruitment needs DoD refactoring
-    # Armies are no longer embedded in Colony (colony.armies doesn't exist)
-    # Ground units now use entity managers - same pattern as Marines above.
-    # For now, army recruitment is disabled.
+        # Get population cost from config
+        let marinePopCost = globalGroundUnitsConfig.marine_division.population_cost
+        let minViablePop = population_config.minViablePopulation()
+
+        if colony.souls < marinePopCost:
+          logWarn("Economy",
+            &"Colony {completed.colonyId} lacks population to recruit Marines " &
+            &"({colony.souls} souls < {marinePopCost})")
+        elif colony.souls - marinePopCost < minViablePop:
+          logWarn("Economy",
+            &"Colony {completed.colonyId} cannot recruit Marines - would leave colony below minimum viable size " &
+            &"({colony.souls - marinePopCost} < {minViablePop} souls)")
+        else:
+          # Create marine ground unit
+          let unitId = generateGroundUnitId(state)
+          let marine = GroundUnit(
+            id: unitId,
+            unitType: GroundUnitType.Marine,
+            owner: colony.owner,
+            attackStrength: int32(globalGroundUnitsConfig.marine_division.attack_strength),
+            defenseStrength: int32(globalGroundUnitsConfig.marine_division.defense_strength),
+            state: CombatState.Undamaged
+          )
+          state.groundUnits.entities.addEntity(unitId, marine)
+
+          # Link to colony
+          colony.marineIds.add(unitId)
+
+          # Deduct recruited souls
+          colony.souls -= int32(marinePopCost)
+          colony.population = colony.souls div 1_000_000
+          state.colonies.entities.updateEntity(completed.colonyId, colony)
+
+          logInfo("Economy",
+            &"Recruited Marine Division at {completed.colonyId} " &
+            &"(Total Marines: {colony.marineIds.len} MD, {colony.souls} souls remaining)")
+
+          events.add(event_factory.unitRecruited(
+            colony.owner,
+            "Marine Division",
+            colony.systemId,
+            1
+          ))
+
+    # Special handling for Armies (AA)
     elif completed.projectType == BuildType.Facility and
          (completed.itemId == "Army" or completed.itemId == "army"):
-      logWarn("Economy", "Army recruitment not yet implemented in DoD refactor")
-      discard  # Skip for now
+      if completed.colonyId in state.colonies.entities.index:
+        let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
+        if colonyOpt.isNone:
+          continue
+        var colony = colonyOpt.get()
+
+        # Get population cost from config
+        let armyPopCost = globalGroundUnitsConfig.army.population_cost
+        let minViablePop = population_config.minViablePopulation()
+
+        if colony.souls < armyPopCost:
+          logWarn("Economy",
+            &"Colony {completed.colonyId} lacks population to muster Army " &
+            &"({colony.souls} souls < {armyPopCost})")
+        elif colony.souls - armyPopCost < minViablePop:
+          logWarn("Economy",
+            &"Colony {completed.colonyId} cannot muster Army - would leave colony below minimum viable size " &
+            &"({colony.souls - armyPopCost} < {minViablePop} souls)")
+        else:
+          # Create army ground unit
+          let unitId = generateGroundUnitId(state)
+          let army = GroundUnit(
+            id: unitId,
+            unitType: GroundUnitType.Army,
+            owner: colony.owner,
+            attackStrength: int32(globalGroundUnitsConfig.army.attack_strength),
+            defenseStrength: int32(globalGroundUnitsConfig.army.defense_strength),
+            state: CombatState.Undamaged
+          )
+          state.groundUnits.entities.addEntity(unitId, army)
+
+          # Link to colony
+          colony.armyIds.add(unitId)
+
+          # Deduct recruited souls
+          colony.souls -= int32(armyPopCost)
+          colony.population = colony.souls div 1_000_000
+          state.colonies.entities.updateEntity(completed.colonyId, colony)
+
+          logInfo("Economy",
+            &"Mustered Army Division at {completed.colonyId} " &
+            &"(Total Armies: {colony.armyIds.len} AA, {colony.souls} souls remaining)")
+
+          events.add(event_factory.unitRecruited(
+            colony.owner,
+            "Army Division",
+            colony.systemId,
+            1
+          ))
 
   # Write all modified colonies back to state
   # This ensures multiple units completing at same colony see accumulated changes
@@ -422,6 +579,253 @@ proc commissionPlanetaryDefense*(
   # TODO: Auto-loading fighters onto carriers disabled pending DoD refactor
   # This section needs to be rewritten to use squadron and ship entity managers
   discard
+
+proc commissionScout(
+  state: var GameState,
+  owner: HouseId,
+  systemId: SystemId,
+  techLevel: int32,
+  events: var seq[GameEvent]
+) =
+  ## Commission a Scout ship in a dedicated scout fleet
+  ## Scouts at the same system join the same fleet for mesh network bonuses
+
+  # 1. Create the scout ship
+  let shipId = generateShipId(state)
+  let ship = ship_entity.newShip(ShipClass.Scout, techLevel, "", shipId, SquadronId(0))
+  state.ships.entities.addEntity(shipId, ship)
+
+  # 2. Create squadron with scout as flagship
+  let squadronId = generateSquadronId(state)
+  let squadron = squadron_entity.newSquadron(shipId, ShipClass.Scout, squadronId, owner, systemId)
+  state.squadrons.entities.addEntity(squadronId, squadron)
+
+  # Update ship with correct squadronId
+  var updatedShip = ship
+  updatedShip.squadronId = squadronId
+  state.ships.entities.updateEntity(shipId, updatedShip)
+
+  # 3. Find existing scout fleet at this location, or create new one
+  var scoutFleetId: FleetId = FleetId(0)
+
+  if systemId in state.fleets.bySystem:
+    for fleetId in state.fleets.bySystem[systemId]:
+      let fleetOpt = gs_helpers.getFleet(state, fleetId)
+      if fleetOpt.isNone:
+        continue
+      let fleet = fleetOpt.get()
+
+      if fleet.houseId != owner:
+        continue
+
+      # Check if this is a pure scout fleet (only scout squadrons)
+      var isPureScoutFleet = fleet.squadrons.len > 0
+      for sqId in fleet.squadrons:
+        let sqOpt = gs_helpers.getSquadrons(state, sqId)
+        if sqOpt.isNone:
+          isPureScoutFleet = false
+          break
+        let sq = sqOpt.get()
+        if sq.squadronType != SquadronType.Intel:
+          isPureScoutFleet = false
+          break
+
+      if isPureScoutFleet:
+        scoutFleetId = fleetId
+        break
+
+  # 4. Add squadron to fleet (existing or new)
+  if scoutFleetId != FleetId(0):
+    # Add to existing scout fleet
+    var fleet = gs_helpers.getFleet(state, scoutFleetId).get()
+    fleet.squadrons.add(squadronId)
+    state.fleets.entities.updateEntity(scoutFleetId, fleet)
+
+    logInfo("Fleet", &"Commissioned Scout in existing fleet {scoutFleetId} at {systemId} " &
+                     &"({fleet.squadrons.len} scouts, mesh network bonus)")
+  else:
+    # Create new scout fleet
+    scoutFleetId = generateFleetId(state)
+    let fleet = Fleet(
+      id: scoutFleetId,
+      houseId: owner,
+      location: systemId,
+      squadrons: @[squadronId]
+    )
+    state.fleets.entities.addEntity(scoutFleetId, fleet)
+    state.fleets.bySystem.mgetOrPut(systemId, @[]).add(scoutFleetId)
+    state.fleets.byOwner.mgetOrPut(owner, @[]).add(scoutFleetId)
+
+    logInfo("Fleet", &"Commissioned Scout in new dedicated fleet {scoutFleetId} at {systemId}")
+
+  # 5. Update squadron.byFleet index
+  state.squadrons.byFleet.mgetOrPut(scoutFleetId, @[]).add(squadronId)
+
+  # 6. Generate event
+  events.add(event_factory.shipCommissioned(owner, ShipClass.Scout, systemId))
+
+proc commissionSpaceLift(
+  state: var GameState,
+  owner: HouseId,
+  systemId: SystemId,
+  shipClass: ShipClass,
+  techLevel: int32,
+  events: var seq[GameEvent]
+) =
+  ## Commission a spacelift ship (ETAC or TroopTransport)
+  ## These form single-ship squadrons in dedicated fleets
+
+  # 1. Create the ship
+  let shipId = generateShipId(state)
+  var ship = ship_entity.newShip(shipClass, techLevel, "", shipId, SquadronId(0))
+
+  # Initialize cargo for spacelift ships
+  if shipClass == ShipClass.ETAC:
+    # ETACs commission with full cargo (cryostasis colonists)
+    let cargoCapacity = ship.baseCarryLimit()
+    ship.initCargo(CargoType.Colonists, cargoCapacity)
+    discard ship.loadCargo(cargoCapacity)
+    logInfo("Economy", &"Commissioned ETAC with {cargoCapacity} PTU (cryostasis generation ship)")
+  elif shipClass == ShipClass.TroopTransport:
+    # TroopTransports start empty (marines loaded later)
+    let cargoCapacity = ship.baseCarryLimit()
+    ship.initCargo(CargoType.Marines, cargoCapacity)
+
+  state.ships.entities.addEntity(shipId, ship)
+
+  # 2. Create squadron with spacelift ship as flagship
+  let squadronId = generateSquadronId(state)
+  let squadron = squadron_entity.newSquadron(shipId, shipClass, squadronId, owner, systemId)
+  state.squadrons.entities.addEntity(squadronId, squadron)
+
+  # Update ship with correct squadronId
+  var updatedShip = ship
+  updatedShip.squadronId = squadronId
+  state.ships.entities.updateEntity(shipId, updatedShip)
+
+  # 3. Create new fleet for this spacelift ship
+  let fleetId = generateFleetId(state)
+  let fleet = Fleet(
+    id: fleetId,
+    houseId: owner,
+    location: systemId,
+    squadrons: @[squadronId]
+  )
+  state.fleets.entities.addEntity(fleetId, fleet)
+  state.fleets.bySystem.mgetOrPut(systemId, @[]).add(fleetId)
+  state.fleets.byOwner.mgetOrPut(owner, @[]).add(fleetId)
+
+  # 4. Update squadron.byFleet index
+  state.squadrons.byFleet.mgetOrPut(fleetId, @[]).add(squadronId)
+
+  logInfo("Fleet", &"Commissioned {shipClass} in new fleet {fleetId} at {systemId}")
+
+  # 5. Generate event
+  events.add(event_factory.shipCommissioned(owner, shipClass, systemId))
+
+proc commissionCapitalShip(
+  state: var GameState,
+  owner: HouseId,
+  systemId: SystemId,
+  shipClass: ShipClass,
+  techLevel: int32,
+  events: var seq[GameEvent]
+) =
+  ## Commission a capital ship (Corvette, Frigate, Destroyer, Cruiser, etc.)
+  ## Capital ships join existing combat fleets or form new fleets
+
+  # 1. Create the capital ship
+  let shipId = generateShipId(state)
+  let ship = ship_entity.newShip(
+    shipClass,
+    techLevel,
+    "",
+    shipId,
+    SquadronId(0)
+  )
+  state.ships.entities.addEntity(shipId, ship)
+
+  # 2. Create squadron with capital ship as flagship
+  let squadronId = generateSquadronId(state)
+  let squadron = squadron_entity.newSquadron(
+    shipId,
+    shipClass,
+    squadronId,
+    owner,
+    systemId
+  )
+  state.squadrons.entities.addEntity(squadronId, squadron)
+
+  # Update ship with correct squadronId
+  var updatedShip = ship
+  updatedShip.squadronId = squadronId
+  state.ships.entities.updateEntity(shipId, updatedShip)
+
+  # 3. Find existing combat fleet at this location, or create new one
+  var combatFleetId: FleetId = FleetId(0)
+
+  if systemId in state.fleets.bySystem:
+    for fleetId in state.fleets.bySystem[systemId]:
+      let fleetOpt = gs_helpers.getFleet(state, fleetId)
+      if fleetOpt.isNone:
+        continue
+      let fleet = fleetOpt.get()
+
+      if fleet.houseId != owner:
+        continue
+
+      # Check if this is a combat fleet (not pure scout/spacelift)
+      # Combat fleets contain capital ships and/or fighters
+      var isCombatFleet = false
+      for sqId in fleet.squadrons:
+        let sqOpt = gs_helpers.getSquadrons(state, sqId)
+        if sqOpt.isNone:
+          continue
+        let sq = sqOpt.get()
+
+        # Combat fleet types: Combat (capital ships), Fighter
+        if sq.squadronType in [
+          SquadronType.Combat,
+          SquadronType.Fighter
+        ]:
+          isCombatFleet = true
+          break
+
+      if isCombatFleet:
+        combatFleetId = fleetId
+        break
+
+  # 4. Add squadron to fleet (existing or new)
+  if combatFleetId != FleetId(0):
+    # Add to existing combat fleet
+    var fleet = gs_helpers.getFleet(state, combatFleetId).get()
+    fleet.squadrons.add(squadronId)
+    state.fleets.entities.updateEntity(combatFleetId, fleet)
+
+    logInfo("Fleet",
+      &"Commissioned {shipClass} in existing fleet {combatFleetId} " &
+      &"at {systemId} ({fleet.squadrons.len} squadrons)")
+  else:
+    # Create new combat fleet
+    combatFleetId = generateFleetId(state)
+    let fleet = Fleet(
+      id: combatFleetId,
+      houseId: owner,
+      location: systemId,
+      squadrons: @[squadronId]
+    )
+    state.fleets.entities.addEntity(combatFleetId, fleet)
+    state.fleets.bySystem.mgetOrPut(systemId, @[]).add(combatFleetId)
+    state.fleets.byOwner.mgetOrPut(owner, @[]).add(combatFleetId)
+
+    logInfo("Fleet",
+      &"Commissioned {shipClass} in new fleet {combatFleetId} at {systemId}")
+
+  # 5. Update squadron.byFleet index
+  state.squadrons.byFleet.mgetOrPut(combatFleetId, @[]).add(squadronId)
+
+  # 6. Generate event
+  events.add(event_factory.shipCommissioned(owner, shipClass, systemId))
 
 proc commissionShips*(
   state: var GameState,
@@ -442,26 +846,48 @@ proc commissionShips*(
   ## **Called After:** Conflict Phase (combat resolution)
   ## **Called Before:** resolveBuildOrders() (new construction)
 
-  # TODO: Ship commissioning needs complete DoD refactoring
-  # This 367-line proc extensively accesses embedded objects that don't exist in DoD:
-  # - fleet.squadrons (should use Fleet.squadronIds + entity manager lookups)
-  # - squadron.flagship (should use Squadron.flagshipId + entity manager lookups)
-  # - squadron.ships (should use Squadron.ships: seq[ShipId] + entity manager lookups)
-  # - state.fleets[id] (should use state.fleets.entities.getEntity(id))
-  #
-  # Required refactoring:
-  # 1. Scout commissioning (lines 538-599) - create Ship via entity manager,
-  #    create Squadron via entity manager with ShipId reference, create/update
-  #    Fleet via entity manager with SquadronId references
-  # 2. Spacelift (ETAC/TroopTransport) commissioning (lines 601-720) - same pattern
-  # 3. Capital ship commissioning (lines 722+) - same pattern with auto-assignment logic
-  # 4. Fleet auto-balancing logic - needs to work with entity managers and ID references
-  # 5. Fighter squadron loading to carriers - needs DoD refactor (separate task)
-  #
-  # For now, ship construction is disabled. Facilities (starbases, spaceports, etc.)
-  # still commission correctly via commissionPlanetaryDefense proc.
-  logWarn("Economy", "Ship commissioning not yet implemented in DoD refactor")
-  discard  # Skip all ship commissioning for now
+  # Process each completed ship construction project
+  for completed in completedProjects:
+    if completed.projectType != BuildType.Ship:
+      continue  # Only handle ship construction here
 
-  # Original code disabled - full refactoring needed
+    logInfo("Economy", &"Commissioning ship: {completed.itemId} at system-{completed.colonyId}")
+
+    # Get colony and owner
+    let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
+    if colonyOpt.isNone:
+      logWarn("Economy", &"Cannot commission ship - colony {completed.colonyId} not found")
+      continue
+    let colony = colonyOpt.get()
+    let owner = colony.owner
+
+    # Parse ship class from itemId
+    try:
+      let shipClass = parseEnum[ShipClass](completed.itemId)
+
+      # Get house tech level for ship stats
+      let houseOpt = gs_helpers.getHouse(state, owner)
+      if houseOpt.isNone:
+        logWarn("Economy", &"Cannot commission ship - house {owner} not found")
+        continue
+      let house = houseOpt.get()
+      let techLevel = house.techTree.levels.weaponsTech
+
+      # Commission ship based on type
+      case shipClass
+      of ShipClass.Scout:
+        # Scouts form dedicated single-ship fleets
+        # Multiple scouts at same colony join same fleet for mesh network bonuses
+        commissionScout(state, owner, colony.systemId, techLevel, events)
+
+      of ShipClass.ETAC, ShipClass.TroopTransport:
+        # Spacelift ships form single-ship squadrons
+        commissionSpaceLift(state, owner, colony.systemId, shipClass, techLevel, events)
+
+      else:
+        # Capital ships and other combat vessels
+        commissionCapitalShip(state, owner, colony.systemId, shipClass, techLevel, events)
+
+    except ValueError:
+      logError("Economy", &"Invalid ship class: {completed.itemId}")
 

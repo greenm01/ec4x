@@ -6,7 +6,8 @@
 
 import std/[tables, strformat, options, random, sequtils, algorithm, strutils]
 import std/isolation  # For GC operations in FFI
-import ../engine/[gamestate, fog_of_war, resolve, orders]
+import ../engine/state/game_state
+import ../engine/[fog_of_war, resolve, orders]
 import ../engine/commands/zero_turn_commands
 import ../engine/config/[
   starmap_config, tech_config, prestige_config,
