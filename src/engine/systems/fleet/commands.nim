@@ -12,6 +12,7 @@ import ../../common/types/core
 import ../../common/logger as common_logger
 import ../gamestate, ../orders, ../fleet, ../squadron, ../logger, ../order_types
 import ../diplomacy/[types as dip_types]
+import ../../state/[entity_manager, iterators]
 import ../commands/[executor]
 import ../standing_orders
 import ./[types as res_types, fleet_orders, simultaneous]
@@ -35,15 +36,16 @@ proc validateOrderAtExecution(
   ## Fail-safe validation at execution time
   ## Checks if conditions have changed since submission
 
-  # Check fleet still exists (may have been destroyed in combat)
-  if order.fleetId notin state.fleets:
+  # Check fleet still exists (may have been destroyed in combat) - using entity_manager
+  let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+  if fleetOpt.isNone:
     return ExecutionValidationResult(
       valid: false,
       shouldAbort: false,
       reason: "Fleet no longer exists"
     )
 
-  let fleet = state.fleets[order.fleetId]
+  let fleet = fleetOpt.get()
 
   # Verify fleet ownership (should never fail, but safety check)
   if fleet.owner != houseId:
@@ -73,10 +75,11 @@ proc validateOrderAtExecution(
         reason: "Lost ETAC (ships crippled/destroyed)"
       )
 
-    # Check target not already colonized
+    # Check target not already colonized (using entity_manager)
     if order.targetSystem.isSome:
       let targetId = order.targetSystem.get()
-      if targetId in state.colonies:
+      let colonyOpt = state.colonies.entities.getEntity(targetId)
+      if colonyOpt.isSome:
         return ExecutionValidationResult(
           valid: false,
           shouldAbort: true,
@@ -98,12 +101,13 @@ proc validateOrderAtExecution(
         reason: "Lost combat capability (ships crippled/destroyed)"
       )
 
-    # Check if target is NOW FRIENDLY (abort - someone else captured it)
+    # Check if target is NOW FRIENDLY (abort - someone else captured it) - using entity_manager
     # Allow attacks on enemies, neutral, or uncolonized systems
     if order.targetSystem.isSome:
       let targetId = order.targetSystem.get()
-      if targetId in state.colonies:
-        let colony = state.colonies[targetId]
+      let colonyOpt = state.colonies.entities.getEntity(targetId)
+      if colonyOpt.isSome:
+        let colony = colonyOpt.get()
         if colony.owner == houseId:
           # Target is now OUR colony - abort attack
           return ExecutionValidationResult(
@@ -114,10 +118,11 @@ proc validateOrderAtExecution(
         # NOTE: If target is enemy/neutral, allow attack to proceed
 
   of FleetOrderType.JoinFleet:
-    # Check target fleet still exists
+    # Check target fleet still exists (using entity_manager)
     if order.targetFleet.isSome:
       let targetFleetId = order.targetFleet.get()
-      if targetFleetId notin state.fleets:
+      let targetFleetOpt = state.fleets.entities.getEntity(targetFleetId)
+      if targetFleetOpt.isNone:
         return ExecutionValidationResult(
           valid: false,
           shouldAbort: false,
@@ -125,7 +130,7 @@ proc validateOrderAtExecution(
         )
 
       # Check fleets still in same location
-      let targetFleet = state.fleets[targetFleetId]
+      let targetFleet = targetFleetOpt.get()
       if fleet.location != targetFleet.location:
         return ExecutionValidationResult(
           valid: false,
@@ -184,18 +189,21 @@ proc validateOrderAtExecution(
         )
 
   of FleetOrderType.Patrol:
-    # Check if patrol system is now hostile (lost to enemy)
+    # Check if patrol system is now hostile (lost to enemy) - using entity_manager
     if order.targetSystem.isSome:
       let targetId = order.targetSystem.get()
-      if targetId in state.colonies:
-        let colony = state.colonies[targetId]
+      let colonyOpt = state.colonies.entities.getEntity(targetId)
+      if colonyOpt.isSome:
+        let colony = colonyOpt.get()
         if colony.owner != houseId:
-          let relation = state.houses[houseId].diplomaticRelations.getDiplomaticState(colony.owner)
-          if relation == dip_types.DiplomaticState.Enemy:
-            return ExecutionValidationResult(
-              valid: false, shouldAbort: true,
-              reason: "Patrol system captured by enemy"
-            )
+          let houseOpt = state.houses.entities.getEntity(houseId)
+          if houseOpt.isSome:
+            let relation = houseOpt.get().diplomaticRelations.getDiplomaticState(colony.owner)
+            if relation == dip_types.DiplomaticState.Enemy:
+              return ExecutionValidationResult(
+                valid: false, shouldAbort: true,
+                reason: "Patrol system captured by enemy"
+              )
 
   else:
     discard
@@ -229,9 +237,10 @@ proc performOrderMaintenance*(
         if not categoryFilter(order.orderType):
           continue
 
-        # Check if this fleet has a locked permanent order (Reserve/Mothball)
-        if order.fleetId in state.fleets:
-          let fleet = state.fleets[order.fleetId]
+        # Check if this fleet has a locked permanent order (Reserve/Mothball) - using entity_manager
+        let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+        if fleetOpt.isSome:
+          let fleet = fleetOpt.get()
           if fleet.status == FleetStatus.Reserve or fleet.status == FleetStatus.Mothballed:
             if order.orderType != FleetOrderType.Reactivate:
               logDebug(LogCategory.lcOrders, &"  [LOCKED] Fleet {order.fleetId} has locked permanent order")
@@ -249,19 +258,20 @@ proc performOrderMaintenance*(
           systemId = order.targetSystem
         ))
 
-  # Step 2: Add PERSISTENT orders from previous turns (not overridden)
+  # Step 2: Add PERSISTENT orders from previous turns (not overridden) - using entity_manager
   for fleetId, persistentOrder in state.fleetOrders:
     if fleetId in newOrdersThisTurn:
       continue  # Overridden by new order
 
-    if fleetId notin state.fleets:
+    let fleetOpt = state.fleets.entities.getEntity(fleetId)
+    if fleetOpt.isNone:
       continue  # Fleet no longer exists
 
     # Only process orders matching the category filter
     if not categoryFilter(persistentOrder.orderType):
       continue
 
-    let fleet = state.fleets[fleetId]
+    let fleet = fleetOpt.get()
     allFleetOrders.add((fleet.owner, persistentOrder))
 
   # Sort by priority
@@ -291,9 +301,10 @@ proc performOrderMaintenance*(
         &"  [EXECUTION VALIDATION FAILED] Fleet {order.fleetId}: {validation.reason}")
 
       if validation.shouldAbort:
-        # Order should abort - convert to SeekHome/Hold
-        if order.fleetId in state.fleets:
-          let fleet = state.fleets[order.fleetId]
+        # Order should abort - convert to SeekHome/Hold (using entity_manager)
+        let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+        if fleetOpt.isSome:
+          let fleet = fleetOpt.get()
           let safeDestination = findClosestOwnedColony(state, fleet.location, houseId)
 
           # Generate OrderAborted event
@@ -343,43 +354,45 @@ proc performOrderMaintenance*(
       logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.orderType} executed")
       # Events already added via mutable parameter
 
-      # Handle combat orders that trigger battles
+      # Handle combat orders that trigger battles (using entity_manager and iterators)
       if actualOrder.orderType in {FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz}:
-        if actualOrder.fleetId in state.fleets and actualOrder.targetSystem.isSome:
-          let fleet = state.fleets[actualOrder.fleetId]
+        let fleetOpt = state.fleets.entities.getEntity(actualOrder.fleetId)
+        if fleetOpt.isSome and actualOrder.targetSystem.isSome:
+          let fleet = fleetOpt.get()
           let targetSystem = actualOrder.targetSystem.get()
 
           # Check if hostile forces are present
           var hasHostileForces = false
 
-          # Check for enemy/neutral fleets (O(1) lookup via index)
-          if targetSystem in state.fleetsByLocation:
-            for otherFleetId in state.fleetsByLocation[targetSystem]:
-              if otherFleetId in state.fleets:
-                let otherFleet = state.fleets[otherFleetId]
-                if otherFleet.owner != houseId:
-                  let relation = state.houses[houseId].diplomaticRelations.getDiplomaticState(otherFleet.owner)
-                  if relation == dip_types.DiplomaticState.Enemy or
-                     relation == dip_types.DiplomaticState.Neutral:
-                    hasHostileForces = true
-                    break
+          # Check for enemy/neutral fleets (using fleetsInSystem iterator)
+          let houseOpt = state.houses.entities.getEntity(houseId)
+          if houseOpt.isSome:
+            for otherFleet in state.fleetsInSystem(targetSystem):
+              if otherFleet.owner != houseId:
+                let relation = houseOpt.get().diplomaticRelations.getDiplomaticState(otherFleet.owner)
+                if relation == dip_types.DiplomaticState.Enemy or
+                   relation == dip_types.DiplomaticState.Neutral:
+                  hasHostileForces = true
+                  break
 
-          # Check for starbases
-          if targetSystem in state.colonies:
-            let colony = state.colonies[targetSystem]
+          # Check for starbases (using entity_manager)
+          let colonyOpt = state.colonies.entities.getEntity(targetSystem)
+          if colonyOpt.isSome:
+            let colony = colonyOpt.get()
             if colony.owner != houseId and colony.starbases.len > 0:
-              let relation = state.houses[houseId].diplomaticRelations.getDiplomaticState(colony.owner)
-              if relation == dip_types.DiplomaticState.Enemy or
-                 relation == dip_types.DiplomaticState.Neutral:
-                hasHostileForces = true
+              if houseOpt.isSome:
+                let relation = houseOpt.get().diplomaticRelations.getDiplomaticState(colony.owner)
+                if relation == dip_types.DiplomaticState.Enemy or
+                   relation == dip_types.DiplomaticState.Neutral:
+                  hasHostileForces = true
 
           # If hostile forces present, trigger battle first
           if hasHostileForces:
             logInfo(LogCategory.lcCombat, &"Fleet {actualOrder.fleetId} engaging defenders before {actualOrder.orderType}")
             resolveBattle(state, targetSystem, orders, combatReports, events, rng)
 
-            # Check if fleet survived combat
-            if actualOrder.fleetId notin state.fleets:
+            # Check if fleet survived combat (using entity_manager)
+            if state.fleets.entities.getEntity(actualOrder.fleetId).isNone:
               logInfo(LogCategory.lcCombat, &"Fleet {actualOrder.fleetId} destroyed in combat")
               continue
 
