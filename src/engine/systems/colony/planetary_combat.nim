@@ -115,7 +115,12 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
     combatSquadrons.add(combatSq)
 
   # Get colony's planetary defense
-  let colony = state.colonies[targetId]
+  let colonyOpt = state.colonies.entities.getEntity(targetId)
+  if colonyOpt.isNone:
+    logWarn("Combat", "Bombardment failed - colony disappeared during validation",
+            "systemId=", $targetId)
+    return
+  let colony = colonyOpt.get()
 
   # Build full PlanetaryDefense from colony data
   var defense = PlanetaryDefense()
@@ -133,7 +138,11 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
 
   # Ground Batteries: Create GroundUnit objects from colony count
   defense.groundBatteries = @[]
-  let ownerCSTLevel = state.houses[colony.owner].techTree.levels.constructionTech
+  let houseOpt = state.houses.entities.getEntity(colony.owner)
+  if houseOpt.isNone:
+    logWarn("Combat", "Bombardment failed - house not found", "houseId=", $colony.owner)
+    return
+  let ownerCSTLevel = houseOpt.get().techTree.levels.constructionTech
   for i in 0 ..< colony.groundBatteries:
     let battery = createGroundBattery(
       id = $targetId & "_GB" & $i,
@@ -209,7 +218,7 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
         logCombat("Ship under construction destroyed in bombardment (spaceport dock)",
                   "systemId=", $targetId)
 
-  state.colonies[targetId] = updatedColony
+  state.colonies.entities.updateEntity(targetId, updatedColony)
 
   logCombat("Bombardment complete",
             "systemId=", $targetId,
@@ -339,7 +348,12 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
     return
 
-  let colony = state.colonies[targetId]
+  let colonyOpt = state.colonies.entities.getEntity(targetId)
+  if colonyOpt.isNone:
+    logWarn("Combat", "Invasion failed - colony disappeared",
+            "systemId=", $targetId)
+    return
+  let colony = colonyOpt.get()
 
   # Check if colony belongs to attacker (can't invade your own colony)
   if colony.owner == houseId:
@@ -402,7 +416,11 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
 
   # Ground Batteries (must be destroyed for invasion to proceed)
-  let ownerCSTLevel = state.houses[colony.owner].techTree.levels.constructionTech
+  let houseOpt = state.houses.entities.getEntity(colony.owner)
+  if houseOpt.isNone:
+    logWarn("Combat", "Invasion failed - house not found", "houseId=", $colony.owner)
+    return
+  let ownerCSTLevel = houseOpt.get().techTree.levels.constructionTech
   for i in 0 ..< colony.groundBatteries:
     let battery = createGroundBattery(
       id = $targetId & "_GB" & $i,
@@ -473,19 +491,21 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     updatedColony.armies = 0  # Defender armies all destroyed/disbanded
 
     # Unload marines from spacelift squadrons (they've landed)
-    var updatedFleet = state.fleets[order.fleetId]
-    for squadron in updatedFleet.squadrons.mitems:
-      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
-        if squadron.flagship.cargo.isSome:
-          let cargo = squadron.flagship.cargo.get()
-          if cargo.cargoType == CargoType.Marines:
-            # Clear the cargo
-            squadron.flagship.cargo = some(ShipCargo(
-              cargoType: CargoType.None,
-              quantity: 0,
-              capacity: cargo.capacity
-            ))
-    state.fleets[order.fleetId] = updatedFleet
+    let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+    if fleetOpt.isSome:
+      var updatedFleet = fleetOpt.get()
+      for squadron in updatedFleet.squadrons.mitems:
+        if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+          if squadron.flagship.cargo.isSome:
+            let cargo = squadron.flagship.cargo.get()
+            if cargo.cargoType == CargoType.Marines:
+              # Clear the cargo
+              squadron.flagship.cargo = some(ShipCargo(
+                cargoType: CargoType.None,
+                quantity: 0,
+                capacity: cargo.capacity
+              ))
+      state.fleets.entities.updateEntity(order.fleetId, updatedFleet)
 
     # Check if colony was undefended (BEFORE taking ownership)
     let wasUndefended = isColonyUndefended(colony)
@@ -557,19 +577,21 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
     # All attacker marines destroyed - unload ALL marines from spacelift squadrons
     # Marines cannot retreat once they've landed on the planet
-    var updatedFleet = state.fleets[order.fleetId]
-    for squadron in updatedFleet.squadrons.mitems:
-      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
-        if squadron.flagship.cargo.isSome:
-          let cargo = squadron.flagship.cargo.get()
-          if cargo.cargoType == CargoType.Marines:
-            # Clear the cargo (marines destroyed)
-            squadron.flagship.cargo = some(ShipCargo(
-              cargoType: CargoType.None,
-              quantity: 0,
-              capacity: cargo.capacity
-            ))
-    state.fleets[order.fleetId] = updatedFleet
+    let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+    if fleetOpt.isSome:
+      var updatedFleet = fleetOpt.get()
+      for squadron in updatedFleet.squadrons.mitems:
+        if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+          if squadron.flagship.cargo.isSome:
+            let cargo = squadron.flagship.cargo.get()
+            if cargo.cargoType == CargoType.Marines:
+              # Clear the cargo (marines destroyed)
+              squadron.flagship.cargo = some(ShipCargo(
+                cargoType: CargoType.None,
+                quantity: 0,
+                capacity: cargo.capacity
+              ))
+      state.fleets.entities.updateEntity(order.fleetId, updatedFleet)
 
     # Generate event
     events.add(event_factory.invasionRepelled(
@@ -587,7 +609,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
       systemId = some(targetId)
     ))
 
-  state.colonies[targetId] = updatedColony
+  state.colonies.entities.updateEntity(targetId, updatedColony)
 
   # INTELLIGENCE: Generate invasion reports for both houses (after state updates)
   combat_intel.generateInvasionIntelligence(
@@ -660,7 +682,12 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
     return
 
-  let colony = state.colonies[targetId]
+  let colonyOpt = state.colonies.entities.getEntity(targetId)
+  if colonyOpt.isNone:
+    logWarn("Combat", "Blitz failed - colony disappeared",
+            "systemId=", $targetId)
+    return
+  let colony = colonyOpt.get()
 
   # Check if colony belongs to attacker
   if colony.owner == houseId:
@@ -737,7 +764,11 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
 
   # Ground Batteries (blitz fights through them unlike invasion)
-  let ownerCSTLevel = state.houses[colony.owner].techTree.levels.constructionTech
+  let houseOpt = state.houses.entities.getEntity(colony.owner)
+  if houseOpt.isNone:
+    logWarn("Combat", "Blitz failed - house not found", "houseId=", $colony.owner)
+    return
+  let ownerCSTLevel = houseOpt.get().techTree.levels.constructionTech
   for i in 0 ..< colony.groundBatteries:
     let battery = createGroundBattery(
       id = $targetId & "_GB" & $i,
@@ -791,19 +822,21 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     updatedColony.armies = 0
 
     # Unload marines from auxiliary squadrons
-    var updatedFleet = state.fleets[order.fleetId]
-    for squadron in updatedFleet.squadrons.mitems:
-      if squadron.squadronType == SquadronType.Auxiliary:
-        if squadron.flagship.cargo.isSome:
-          let cargo = squadron.flagship.cargo.get()
-          if cargo.cargoType == CargoType.Marines:
-            # Clear marines cargo
-            squadron.flagship.cargo = some(ShipCargo(
-              cargoType: CargoType.None,
-              quantity: 0,
-              capacity: cargo.capacity
-            ))
-    state.fleets[order.fleetId] = updatedFleet
+    let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+    if fleetOpt.isSome:
+      var updatedFleet = fleetOpt.get()
+      for squadron in updatedFleet.squadrons.mitems:
+        if squadron.squadronType == SquadronType.Auxiliary:
+          if squadron.flagship.cargo.isSome:
+            let cargo = squadron.flagship.cargo.get()
+            if cargo.cargoType == CargoType.Marines:
+              # Clear marines cargo
+              squadron.flagship.cargo = some(ShipCargo(
+                cargoType: CargoType.None,
+                quantity: 0,
+                capacity: cargo.capacity
+              ))
+      state.fleets.entities.updateEntity(order.fleetId, updatedFleet)
 
     # Check if colony was undefended (BEFORE taking ownership)
     let wasUndefended = isColonyUndefended(colony)
@@ -879,19 +912,21 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
     # All attacker marines destroyed - unload ALL marines from spacelift squadrons
     # Marines cannot retreat once they've landed on the planet
-    var updatedFleet = state.fleets[order.fleetId]
-    for squadron in updatedFleet.squadrons.mitems:
-      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
-        if squadron.flagship.cargo.isSome:
-          let cargo = squadron.flagship.cargo.get()
-          if cargo.cargoType == CargoType.Marines:
-            # Clear the cargo (marines destroyed)
-            squadron.flagship.cargo = some(ShipCargo(
-              cargoType: CargoType.None,
-              quantity: 0,
-              capacity: cargo.capacity
-            ))
-    state.fleets[order.fleetId] = updatedFleet
+    let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+    if fleetOpt.isSome:
+      var updatedFleet = fleetOpt.get()
+      for squadron in updatedFleet.squadrons.mitems:
+        if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+          if squadron.flagship.cargo.isSome:
+            let cargo = squadron.flagship.cargo.get()
+            if cargo.cargoType == CargoType.Marines:
+              # Clear the cargo (marines destroyed)
+              squadron.flagship.cargo = some(ShipCargo(
+                cargoType: CargoType.None,
+                quantity: 0,
+                capacity: cargo.capacity
+              ))
+      state.fleets.entities.updateEntity(order.fleetId, updatedFleet)
 
     # Generate event
     events.add(event_factory.invasionRepelled(
@@ -909,7 +944,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
       systemId = some(targetId)
     ))
 
-  state.colonies[targetId] = updatedColony
+  state.colonies.entities.updateEntity(targetId, updatedColony)
 
   # INTELLIGENCE: Generate blitz reports for both houses (after state updates)
   combat_intel.generateBlitzIntelligence(
