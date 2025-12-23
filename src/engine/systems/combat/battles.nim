@@ -1194,45 +1194,39 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
 
     for houseId in outcome.retreated:
       # Find all fleets belonging to this house at the battle location
-      # Use fleetsByOwner index for O(1) lookup instead of O(F) scan (using entity_manager)
-      if houseId in state.fleetsByOwner:
-        for fleetId in state.fleetsByOwner[houseId]:
-          let fleetOpt = state.fleets.entities.getEntity(fleetId)
-          if fleetOpt.isNone:
-            continue  # Skip stale index entry
-          let fleet = fleetOpt.get()
-          if fleet.location == systemId:
-            # Find closest owned colony for retreat destination
-            let safeDestination = findClosestOwnedColony(state, fleet.location, fleet.owner)
+      # Use fleetsAtSystemForHouseWithId iterator (using iterators)
+      for (fleetId, fleet) in state.fleetsAtSystemForHouseWithId(systemId, houseId):
+        # Find closest owned colony for retreat destination
+        let safeDestination = findClosestOwnedColony(state, fleet.location, fleet.owner)
 
-            if safeDestination.isSome:
-              logDebug("Combat", "Fleet retreated - auto-assigning Seek Home",
-                       "fleetId=", $fleetId, " houseId=", $houseId,
-                       " destination=", $safeDestination.get())
+        if safeDestination.isSome:
+          logDebug("Combat", "Fleet retreated - auto-assigning Seek Home",
+                   "fleetId=", $fleetId, " houseId=", $houseId,
+                   " destination=", $safeDestination.get())
 
-              # Create Seek Home order for this fleet
-              # NOTE: This creates an "in-flight" movement that will be processed immediately
-              # The fleet will begin its retreat movement in the same turn
-              let seekHomeOrder = FleetOrder(
-                fleetId: fleetId,
-                orderType: FleetOrderType.SeekHome,
-                targetSystem: safeDestination,
-                targetFleet: none(FleetId),
-                priority: 0
-              )
+          # Create Seek Home order for this fleet
+          # NOTE: This creates an "in-flight" movement that will be processed immediately
+          # The fleet will begin its retreat movement in the same turn
+          let seekHomeOrder = FleetOrder(
+            fleetId: fleetId,
+            orderType: FleetOrderType.SeekHome,
+            targetSystem: safeDestination,
+            targetFleet: none(FleetId),
+            priority: 0
+          )
 
-              # Execute the seek home movement immediately (fleet retreats in same turn)
-              resolveMovementOrder(state, houseId, seekHomeOrder, events)
+          # Execute the seek home movement immediately (fleet retreats in same turn)
+          resolveMovementOrder(state, houseId, seekHomeOrder, events)
 
-              events.add(event_factory.battle(
-                houseId,
-                systemId,
-                "Fleet " & fleetId & " retreated from combat - seeking nearest friendly system " & $safeDestination.get()
-              ))
-            else:
-              logWarn("Combat", "Fleet retreated but has no safe destination - holding position",
-                      "fleetId=", $fleetId, " houseId=", $houseId)
-              # No safe colonies - fleet holds at retreat location (will be resolved by movement system)
+          events.add(event_factory.battle(
+            houseId,
+            systemId,
+            "Fleet " & fleetId & " retreated from combat - seeking nearest friendly system " & $safeDestination.get()
+          ))
+        else:
+          logWarn("Combat", "Fleet retreated but has no safe destination - holding position",
+                  "fleetId=", $fleetId, " houseId=", $houseId)
+          # No safe colonies - fleet holds at retreat location (will be resolved by movement system)
               events.add(event_factory.battle(
                 houseId,
                 systemId,

@@ -11,6 +11,7 @@ import ../command/commands
 import ../../../common/logger
 import ../squadron/entity
 import ../../types/core
+import ../../state/entity_manager
 
 proc collectBlockadeIntents*(
   state: GameState,
@@ -19,7 +20,7 @@ proc collectBlockadeIntents*(
   ## Collect all blockade attempts
   result = @[]
 
-  for houseId in state.houses.keys:
+  for houseId in state.houses.entities.keys:
     if houseId notin orders:
       continue
 
@@ -27,11 +28,12 @@ proc collectBlockadeIntents*(
       if order.orderType != FleetOrderType.BlockadePlanet:
         continue
 
-      # Validate: fleet exists
-      if order.fleetId notin state.fleets:
+      # Validate: fleet exists - using entity_manager
+      let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+      if fleetOpt.isNone:
         continue
 
-      let fleet = state.fleets[order.fleetId]
+      let fleet = fleetOpt.get()
 
       # Calculate blockade strength (total AS)
       var blockadeStrength = 0

@@ -16,6 +16,7 @@ import ../squadron/entity
 import ../../types/core
 import ./types as res_types
 import ../colony/planetary_combat  # Planetary combat (resolveBombardment, resolveInvasion, resolveBlitz)
+import ../../state/entity_manager
 
 proc collectPlanetaryCombatIntents*(
   state: GameState,
@@ -24,7 +25,7 @@ proc collectPlanetaryCombatIntents*(
   ## Collect all planetary combat attempts (Bombard, Invade, Blitz)
   result = @[]
 
-  for houseId in state.houses.keys:
+  for houseId in state.houses.entities.keys:
     if houseId notin orders:
       continue
 
@@ -33,11 +34,12 @@ proc collectPlanetaryCombatIntents*(
       if order.orderType notin [FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz]:
         continue
 
-      # Validate: fleet exists
-      if order.fleetId notin state.fleets:
+      # Validate: fleet exists - using entity_manager
+      let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+      if fleetOpt.isNone:
         continue
 
-      let fleet = state.fleets[order.fleetId]
+      let fleet = fleetOpt.get()
 
       # Calculate attack strength (use total AS for all types)
       var attackStrength = 0
@@ -158,9 +160,10 @@ proc resolvePlanetaryCombat*(
   # Execute invasions/bombardments for winners WHO ARE AT THE TARGET
   for res in result:
     if res.outcome == ResolutionOutcome.Success and res.actualTarget.isSome:
-      # Verify fleet is at target location before executing
-      if res.fleetId in state.fleets:
-        let fleet = state.fleets[res.fleetId]
+      # Verify fleet is at target location before executing - using entity_manager
+      let fleetOpt = state.fleets.entities.getEntity(res.fleetId)
+      if fleetOpt.isSome:
+        let fleet = fleetOpt.get()
         let targetSystem = res.actualTarget.get()
 
         if fleet.location == targetSystem:
