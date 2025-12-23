@@ -4,33 +4,9 @@
 ## Per docs/architecture/diplomacy_proposals.md
 
 import std/options
-import ../../common/types/core
-import types as dip_types
+import ../../types/[core, diplomacy]
 
-export dip_types
-
-type
-  ProposalType* {.pure.} = enum
-    TradeAgreement       # Future: resource trading
-    MilitaryAlliance     # Future: joint operations
-    TechnologySharing    # Future: research cooperation
-
-  ProposalStatus* {.pure.} = enum
-    Pending    # Awaiting response
-    Accepted   # Target accepted
-    Rejected   # Target rejected
-    Expired    # Timed out without response
-    Withdrawn  # Proposer cancelled
-
-  PendingProposal* = object
-    id*: string              # Unique proposal ID
-    proposer*: HouseId
-    target*: HouseId
-    proposalType*: ProposalType
-    submittedTurn*: int      # When proposal was made
-    expiresIn*: int          # Turns until auto-reject
-    status*: ProposalStatus
-    message*: string         # Optional diplomatic message
+export diplomacy.ProposalType, diplomacy.ProposalStatus, diplomacy.PendingProposal
 
 proc generateProposalId*(turn: int, proposer: HouseId, target: HouseId): string =
   ## Generate unique proposal ID

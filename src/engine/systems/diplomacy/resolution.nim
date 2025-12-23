@@ -5,54 +5,50 @@
 ## - Pact breaking with violation penalties
 ## - Enemy/Neutral declarations
 
-import std/[tables, options]
-import ../../common/[types/core, logger]
-import ../gamestate, ../orders
-import ../diplomacy/[types as dip_types, engine as dip_engine, proposals as dip_proposals]
-import ../config/diplomacy_config
-import ../prestige
+import std/[tables, options, logging]
+import ../../types/[core, game_state, diplomacy, orders]
+import ./[engine as dip_engine, proposals as dip_proposals]
+import ../../config/diplomacy_config
+import ../prestige/engine as prestige
 import ../intelligence/diplomatic_intel
 import ../intelligence/types as intel_types  # For DetectionEventType
-import types as res_types  # For GameEvent
-import event_factory/init as event_factory
+import ../event/types as event_types  # For GameEvent
+import ../event/factory/init as event_factory
 
 proc resolveDiplomaticActions*(state: var GameState,
                                 orders: Table[HouseId, OrderPacket],
-                                events: var seq[res_types.GameEvent]) =
+                                events: var seq[event_types.GameEvent]) =
   ## Process diplomatic actions (per gameplay.md:1.3.3 - Command Phase)
-  for houseId in state.houses.keys:
+  for houseId, house in state.houses.entities.data:
     if houseId in orders:
       let packet = orders[houseId]
 
       for action in packet.diplomaticActions:
         case action.actionType
         of DiplomaticActionType.DeclareHostile:
-          logResolve("Declared Hostile",
-                     "declarer=", $houseId, " target=", $action.targetHouse)
+          info "Declared Hostile: declarer=", $houseId, " target=", $action.targetHouse
 
           # Get old state before change
-          let oldState = dip_engine.getDiplomaticState(
-            state.houses[houseId].diplomaticRelations,
-            action.targetHouse
-          )
+          let key = (houseId, action.targetHouse)
+          let oldState = if key in state.diplomaticRelation:
+            state.diplomaticRelation[key].state
+          else:
+            DiplomaticState.Neutral
 
-          # Get mutable copy of house to modify diplomatic relations
-          var house = state.houses[houseId]
-          dip_engine.setDiplomaticState(
-            house.diplomaticRelations,
+          # Update diplomatic state via engine
+          let diplomaticEvent = dip_engine.setHostile(
+            state,
+            houseId,
             action.targetHouse,
-            dip_types.DiplomaticState.Hostile,
             state.turn
           )
-          # Write back modified house to persist changes
-          state.houses[houseId] = house
 
           # Emit DiplomaticRelationChanged event (Phase 7d)
           events.add(event_factory.diplomaticRelationChanged(
             houseId,
             action.targetHouse,
             oldState,
-            dip_types.DiplomaticState.Hostile,
+            DiplomaticState.Hostile,
             "Hostility declared"
           ))
 
@@ -65,19 +61,15 @@ proc resolveDiplomaticActions*(state: var GameState,
           )
 
         of DiplomaticActionType.DeclareEnemy:
-          logResolve("Declared Enemy",
-                     "declarer=", $houseId, " target=", $action.targetHouse)
+          info "Declared Enemy: declarer=", $houseId, " target=", $action.targetHouse
 
-          # Get mutable copy of house to modify diplomatic relations
-          var house = state.houses[houseId]
-          dip_engine.setDiplomaticState(
-            house.diplomaticRelations,
+          # Update diplomatic state via engine
+          let diplomaticEvent = dip_engine.declareWar(
+            state,
+            houseId,
             action.targetHouse,
-            dip_types.DiplomaticState.Enemy,
             state.turn
           )
-          # Write back modified house to persist changes
-          state.houses[houseId] = house
 
           # Emit WarDeclared event (Phase 7d)
           events.add(event_factory.warDeclared(houseId, action.targetHouse))
@@ -91,19 +83,15 @@ proc resolveDiplomaticActions*(state: var GameState,
           )
 
         of DiplomaticActionType.SetNeutral:
-          logResolve("Set to Neutral",
-                     "house=", $houseId, " target=", $action.targetHouse)
+          info "Set to Neutral: house=", $houseId, " target=", $action.targetHouse
 
-          # Get mutable copy of house to modify diplomatic relations
-          var house = state.houses[houseId]
-          dip_engine.setDiplomaticState(
-            house.diplomaticRelations,
+          # Update diplomatic state via engine
+          let diplomaticEvent = dip_engine.setNeutral(
+            state,
+            houseId,
             action.targetHouse,
-            dip_types.DiplomaticState.Neutral,
             state.turn
           )
-          # Write back modified house to persist changes
-          state.houses[houseId] = house
 
           # Emit PeaceSigned event (Phase 7d)
           events.add(event_factory.peaceSigned(houseId, action.targetHouse))
@@ -117,7 +105,7 @@ proc resolveDiplomaticActions*(state: var GameState,
           )
 
 proc resolveScoutDetectionEscalations*(state: var GameState,
-                                        events: var seq[res_types.GameEvent]) =
+                                        events: var seq[event_types.GameEvent]) =
   ## Process scout loss events and trigger appropriate diplomatic escalations
   ## NOTE: After Scout System Unification, only CombatLoss and TravelIntercepted remain
   ## Neither triggers escalation, so this function currently skips all events
@@ -129,44 +117,46 @@ proc resolveScoutDetectionEscalations*(state: var GameState,
     continue
 
     # Skip if either house is eliminated
-    if event.owner notin state.houses or event.detectorHouse notin state.houses:
+    if event.owner notin state.houses.entities.index or
+       event.detectorHouse notin state.houses.entities.index:
       continue
-    if state.houses[event.owner].eliminated or state.houses[event.detectorHouse].eliminated:
+
+    let ownerIdx = state.houses.entities.index[event.owner]
+    let detectorIdx = state.houses.entities.index[event.detectorHouse]
+    if state.houses.entities.data[ownerIdx].isEliminated or
+       state.houses.entities.data[detectorIdx].isEliminated:
       continue
 
     # Get current diplomatic state
-    let currentState = dip_engine.getDiplomaticState(
-      state.houses[event.detectorHouse].diplomaticRelations,
-      event.owner
-    )
+    let key = (event.detectorHouse, event.owner)
+    let currentState = if key in state.diplomaticRelation:
+      state.diplomaticRelation[key].state
+    else:
+      DiplomaticState.Neutral
 
     # Spy scout detection triggers Hostile escalation
     # Only escalate if currently Neutral (don't downgrade Enemy)
-    if currentState == dip_types.DiplomaticState.Neutral:
+    if currentState == DiplomaticState.Neutral:
       # Escalate to Hostile
-      var detectorHouse = state.houses[event.detectorHouse]
-      dip_engine.setDiplomaticState(
-        detectorHouse.diplomaticRelations,
+      let diplomaticEvent = dip_engine.setHostile(
+        state,
+        event.detectorHouse,
         event.owner,
-        dip_types.DiplomaticState.Hostile,
         state.turn
       )
-      state.houses[event.detectorHouse] = detectorHouse
 
       # Emit DiplomaticRelationChanged event (Phase 7d)
       events.add(event_factory.diplomaticRelationChanged(
         event.detectorHouse,
         event.owner,
         currentState,
-        dip_types.DiplomaticState.Hostile,
+        DiplomaticState.Hostile,
         "Spy scout detected"
       ))
 
-      logInfo("Diplomacy", "Spy detection escalation",
-             "detector=", $event.detectorHouse,
-             "spy_owner=", $event.owner,
-             "escalated=", "Neutral → Hostile",
-             "reason=", "spy scout detected")
+      info "Spy detection escalation: detector=", $event.detectorHouse,
+           " spy_owner=", $event.owner, " escalated=Neutral → Hostile",
+           " reason=spy scout detected"
 
       # Generate diplomatic intelligence about the escalation
       diplomatic_intel.generateHostilityDeclarationIntel(
