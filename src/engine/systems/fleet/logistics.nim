@@ -887,13 +887,23 @@ proc executeFormSquadron*(state: var GameState, cmd: ZeroTurnCommand, events: va
   ## before auto-assignment runs during turn resolution
 
   let colonySystem = cmd.colonySystem.get()
-  var colony = state.colonies[colonySystem]
+
+  # Get colony via bySystem index
+  if not state.colonies.bySystem.hasKey(colonySystem):
+    return ZeroTurnResult(success: false, error: "Colony not found", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  let colonyId = state.colonies.bySystem[colonySystem]
+  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  if colonyOpt.isNone:
+    return ZeroTurnResult(success: false, error: "Colony not found", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  var colony = colonyOpt.get()
 
   # Validate ships exist in unassigned pool
-  if cmd.shipIndices.len > colony.unassignedSquadrons.len:
+  if cmd.shipIndices.len > colony.unassignedSquadronIds.len:
     return ZeroTurnResult(
       success: false,
-      error: &"Only {colony.unassignedSquadrons.len} unassigned squadrons available at colony",
+      error: &"Only {colony.unassignedSquadronIds.len} unassigned squadrons available at colony",
       newFleetId: none(FleetId),
       newSquadronId: none(string),
       cargoLoaded: 0,
@@ -903,16 +913,16 @@ proc executeFormSquadron*(state: var GameState, cmd: ZeroTurnCommand, events: va
 
   # For now, FormSquadron simply selects existing squadrons from unassigned pool
   # In the future, this could be extended to create squadrons from individual ships
-  var selectedSquadrons: seq[Squadron] = @[]
-  var remainingSquadrons: seq[Squadron] = @[]
+  var selectedSquadronIds: seq[SquadronId] = @[]
+  var remainingSquadronIds: seq[SquadronId] = @[]
 
-  for i, squad in colony.unassignedSquadrons:
+  for i, squadronId in colony.unassignedSquadronIds:
     if i in cmd.shipIndices:
-      selectedSquadrons.add(squad)
+      selectedSquadronIds.add(squadronId)
     else:
-      remainingSquadrons.add(squad)
+      remainingSquadronIds.add(squadronId)
 
-  if selectedSquadrons.len == 0:
+  if selectedSquadronIds.len == 0:
     return ZeroTurnResult(
       success: false,
       error: "No squadrons selected from unassigned pool",
@@ -924,16 +934,16 @@ proc executeFormSquadron*(state: var GameState, cmd: ZeroTurnCommand, events: va
     )
 
   # Update colony's unassigned squadrons
-  colony.unassignedSquadrons = remainingSquadrons
-  state.colonies[colonySystem] = colony
+  colony.unassignedSquadronIds = remainingSquadronIds
+  state.colonies.entities.updateEntity(colonyId, colony)
 
   # Generate squadron IDs (if not custom provided)
   let newSquadronId = if cmd.newSquadronId.isSome:
     cmd.newSquadronId.get()
   else:
-    selectedSquadrons[0].id  # Use first selected squadron's ID as representative
+    selectedSquadronIds[0]  # Use first selected squadron's ID as representative
 
-  logInfo(LogCategory.lcFleet, &"FormSquadron: Selected {selectedSquadrons.len} squadrons from unassigned pool at {colonySystem}")
+  logInfo(LogCategory.lcFleet, &"FormSquadron: Selected {selectedSquadronIds.len} squadrons from unassigned pool at {colonySystem}")
 
   # Note: Squadrons remain in unassigned pool but are now "formed" (tracked)
   # Player can then use AssignSquadronToFleet to assign to a fleet
@@ -945,7 +955,7 @@ proc executeFormSquadron*(state: var GameState, cmd: ZeroTurnCommand, events: va
     newSquadronId: some(newSquadronId),
     cargoLoaded: 0,
     cargoUnloaded: 0,
-    warnings: @[&"Selected {selectedSquadrons.len} squadrons, use AssignSquadronToFleet to assign to fleet"]
+    warnings: @[&"Selected {selectedSquadronIds.len} squadrons, use AssignSquadronToFleet to assign to fleet"]
   )
 
 proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
@@ -953,28 +963,35 @@ proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCom
   ## Source: economy_resolution.nim:216-291
 
   let colonySystem = cmd.colonySystem.get()
+  let sourceSquadronId = cmd.sourceSquadronId.get()
+  let targetSquadronId = cmd.targetSquadronId.get()
+  let shipIndex = cmd.shipIndex.get()
 
   # Find source and target squadrons in fleets at this colony
+  # Use entity manager to access fleets
   var sourceFleetId: Option[FleetId] = none(FleetId)
   var targetFleetId: Option[FleetId] = none(FleetId)
-  var sourceSquadIndex: int = -1
-  var targetSquadIndex: int = -1
 
-  # Locate source squadron
-  for fleetId, fleet in state.fleets:
-    if fleet.location == colonySystem and fleet.owner == cmd.houseId:
-      for i, squad in fleet.squadrons:
-        if squad.id == cmd.sourceSquadronId.get():
-          sourceFleetId = some(fleetId)
-          sourceSquadIndex = i
-          break
-      if sourceFleetId.isSome:
+  # Locate source squadron by searching fleets at this colony
+  if state.fleets.bySystem.hasKey(colonySystem):
+    for fleetId in state.fleets.bySystem[colonySystem]:
+      let fleetOpt = state.fleets.entities.getEntity(fleetId)
+      if fleetOpt.isNone:
+        continue
+
+      let fleet = fleetOpt.get()
+      if fleet.houseId != cmd.houseId:
+        continue
+
+      # Check if this fleet has the source squadron
+      if sourceSquadronId in fleet.squadrons:
+        sourceFleetId = some(fleetId)
         break
 
   if sourceFleetId.isNone:
     return ZeroTurnResult(
       success: false,
-      error: &"Source squadron {cmd.sourceSquadronId.get()} not found at colony",
+      error: &"Source squadron {sourceSquadronId} not found at colony",
       newFleetId: none(FleetId),
       newSquadronId: none(string),
       cargoLoaded: 0,
@@ -983,20 +1000,25 @@ proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCom
     )
 
   # Locate target squadron
-  for fleetId, fleet in state.fleets:
-    if fleet.location == colonySystem and fleet.owner == cmd.houseId:
-      for i, squad in fleet.squadrons:
-        if squad.id == cmd.targetSquadronId.get():
-          targetFleetId = some(fleetId)
-          targetSquadIndex = i
-          break
-      if targetFleetId.isSome:
+  if state.fleets.bySystem.hasKey(colonySystem):
+    for fleetId in state.fleets.bySystem[colonySystem]:
+      let fleetOpt = state.fleets.entities.getEntity(fleetId)
+      if fleetOpt.isNone:
+        continue
+
+      let fleet = fleetOpt.get()
+      if fleet.houseId != cmd.houseId:
+        continue
+
+      # Check if this fleet has the target squadron
+      if targetSquadronId in fleet.squadrons:
+        targetFleetId = some(fleetId)
         break
 
   if targetFleetId.isNone:
     return ZeroTurnResult(
       success: false,
-      error: &"Target squadron {cmd.targetSquadronId.get()} not found at colony",
+      error: &"Target squadron {targetSquadronId} not found at colony",
       newFleetId: none(FleetId),
       newSquadronId: none(string),
       cargoLoaded: 0,
@@ -1004,11 +1026,22 @@ proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCom
       warnings: @[]
     )
 
-  # Remove ship from source squadron
-  let shipIndex = cmd.shipIndex.get()
-  var sourceFleet = state.fleets[sourceFleetId.get()]
-  var sourceSquad = sourceFleet.squadrons[sourceSquadIndex]
+  # Get source squadron via entity manager
+  let sourceSquadOpt = state.squadrons[].entities.getEntity(sourceSquadronId)
+  if sourceSquadOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: &"Source squadron {sourceSquadronId} not found in entity manager",
+      newFleetId: none(FleetId),
+      newSquadronId: none(string),
+      cargoLoaded: 0,
+      cargoUnloaded: 0,
+      warnings: @[]
+    )
 
+  var sourceSquad = sourceSquadOpt.get()
+
+  # Validate ship index
   if shipIndex < 0 or shipIndex >= sourceSquad.ships.len:
     return ZeroTurnResult(
       success: false,
@@ -1020,8 +1053,9 @@ proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCom
       warnings: @[]
     )
 
-  let shipOpt = sourceSquad.removeShip(shipIndex)
-  if shipOpt.isNone:
+  # Remove ship from source squadron using squadron_entity helper
+  let shipIdOpt = squadron_entity.removeShip(sourceSquad, shipIndex)
+  if shipIdOpt.isNone:
     return ZeroTurnResult(
       success: false,
       error: "Could not remove ship from source squadron",
@@ -1032,17 +1066,31 @@ proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCom
       warnings: @[]
     )
 
-  let ship = shipOpt.get()
+  let shipId = shipIdOpt.get()
 
-  # Add ship to target squadron
-  var targetFleet = state.fleets[targetFleetId.get()]
-  var targetSquad = targetFleet.squadrons[targetSquadIndex]
-
-  if not targetSquad.addShip(ship):
+  # Get target squadron via entity manager
+  let targetSquadOpt = state.squadrons[].entities.getEntity(targetSquadronId)
+  if targetSquadOpt.isNone:
     # ROLLBACK: Put ship back in source squadron
-    discard sourceSquad.addShip(ship)
-    sourceFleet.squadrons[sourceSquadIndex] = sourceSquad
-    state.fleets[sourceFleetId.get()] = sourceFleet
+    discard squadron_entity.addShip(sourceSquad, shipId, state.ships)
+    state.squadrons[].entities.updateEntity(sourceSquadronId, sourceSquad)
+    return ZeroTurnResult(
+      success: false,
+      error: &"Target squadron {targetSquadronId} not found in entity manager",
+      newFleetId: none(FleetId),
+      newSquadronId: none(string),
+      cargoLoaded: 0,
+      cargoUnloaded: 0,
+      warnings: @[]
+    )
+
+  var targetSquad = targetSquadOpt.get()
+
+  # Try to add ship to target squadron using squadron_entity helper
+  if not squadron_entity.addShip(targetSquad, shipId, state.ships):
+    # ROLLBACK: Put ship back in source squadron
+    discard squadron_entity.addShip(sourceSquad, shipId, state.ships)
+    state.squadrons[].entities.updateEntity(sourceSquadronId, sourceSquad)
     return ZeroTurnResult(
       success: false,
       error: "Could not add ship to target squadron (may be full or incompatible)",
@@ -1053,13 +1101,11 @@ proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCom
       warnings: @[]
     )
 
-  # Update both squadrons in state
-  sourceFleet.squadrons[sourceSquadIndex] = sourceSquad
-  targetFleet.squadrons[targetSquadIndex] = targetSquad
-  state.fleets[sourceFleetId.get()] = sourceFleet
-  state.fleets[targetFleetId.get()] = targetFleet
+  # Update both squadrons in entity manager
+  state.squadrons[].entities.updateEntity(sourceSquadronId, sourceSquad)
+  state.squadrons[].entities.updateEntity(targetSquadronId, targetSquad)
 
-  logInfo(LogCategory.lcFleet, &"TransferShipBetweenSquadrons: Transferred ship from {cmd.sourceSquadronId.get()} to {cmd.targetSquadronId.get()}")
+  logInfo(LogCategory.lcFleet, &"TransferShipBetweenSquadrons: Transferred ship from {sourceSquadronId} to {targetSquadronId}")
 
   return ZeroTurnResult(
     success: true,
@@ -1076,40 +1122,13 @@ proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, e
   ## Source: economy_resolution.nim:293-382
 
   let colonySystem = cmd.colonySystem.get()
-  var colony = state.colonies[colonySystem]
+  let squadronId = cmd.squadronId.get()
 
-  # Find squadron in existing fleets at this colony
-  var foundSquadron: Option[Squadron] = none(Squadron)
-  var sourceFleetId: Option[FleetId] = none(FleetId)
-
-  for fleetId, fleet in state.fleets:
-    if fleet.location == colonySystem and fleet.owner == cmd.houseId:
-      for i, squad in fleet.squadrons:
-        if squad.id == cmd.squadronId.get():
-          foundSquadron = some(squad)
-          sourceFleetId = some(fleetId)
-          break
-      if foundSquadron.isSome:
-        break
-
-  # If not found in fleets, check unassigned squadrons at colony
-  if foundSquadron.isNone:
-    for i, squad in colony.unassignedSquadrons:
-      if squad.id == cmd.squadronId.get():
-        foundSquadron = some(squad)
-        # Remove from unassigned list
-        var newUnassigned: seq[Squadron] = @[]
-        for j, s in colony.unassignedSquadrons:
-          if j != i:
-            newUnassigned.add(s)
-        colony.unassignedSquadrons = newUnassigned
-        state.colonies[colonySystem] = colony
-        break
-
-  if foundSquadron.isNone:
+  # Get colony via bySystem index
+  if not state.colonies.bySystem.hasKey(colonySystem):
     return ZeroTurnResult(
       success: false,
-      error: &"Squadron {cmd.squadronId.get()} not found at colony {colonySystem}",
+      error: &"Colony not found at system {colonySystem}",
       newFleetId: none(FleetId),
       newSquadronId: none(string),
       cargoLoaded: 0,
@@ -1117,73 +1136,97 @@ proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, e
       warnings: @[]
     )
 
-  let squadron = foundSquadron.get()
+  let colonyId = state.colonies.bySystem[colonySystem]
+  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  if colonyOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: "Colony entity not found",
+      newFleetId: none(FleetId),
+      newSquadronId: none(string),
+      cargoLoaded: 0,
+      cargoUnloaded: 0,
+      warnings: @[]
+    )
 
-  # Remove squadron from source fleet
+  var colony = colonyOpt.get()
+
+  # Find squadron in existing fleets at this colony or in unassigned pool
+  var foundInFleet = false
+  var sourceFleetId: Option[FleetId] = none(FleetId)
+
+  # Search fleets at colony using bySystem index
+  if state.fleets.bySystem.hasKey(colonySystem):
+    for fleetId in state.fleets.bySystem[colonySystem]:
+      let fleetOpt = state.fleets.entities.getEntity(fleetId)
+      if fleetOpt.isNone:
+        continue
+
+      let fleet = fleetOpt.get()
+      if fleet.houseId != cmd.houseId:
+        continue
+
+      # Check if squadron is in this fleet
+      if squadronId in fleet.squadrons:
+        foundInFleet = true
+        sourceFleetId = some(fleetId)
+        break
+
+  # If not found in fleets, check unassigned squadrons at colony
+  var foundInUnassigned = false
+  if not foundInFleet:
+    if squadronId in colony.unassignedSquadronIds:
+      foundInUnassigned = true
+      # Remove from unassigned list
+      colony.unassignedSquadronIds = colony.unassignedSquadronIds.filterIt(it != squadronId)
+      state.colonies.entities.updateEntity(colonyId, colony)
+
+  if not foundInFleet and not foundInUnassigned:
+    return ZeroTurnResult(
+      success: false,
+      error: &"Squadron {squadronId} not found at colony {colonySystem}",
+      newFleetId: none(FleetId),
+      newSquadronId: none(string),
+      cargoLoaded: 0,
+      cargoUnloaded: 0,
+      warnings: @[]
+    )
+
+  # Get squadron entity to check its type
+  let squadronOpt = state.squadrons[].entities.getEntity(squadronId)
+  if squadronOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: &"Squadron {squadronId} entity not found",
+      newFleetId: none(FleetId),
+      newSquadronId: none(string),
+      cargoLoaded: 0,
+      cargoUnloaded: 0,
+      warnings: @[]
+    )
+
+  let squadron = squadronOpt.get()
+
+  # Remove squadron from source fleet if it was in one
   if sourceFleetId.isSome:
-    var srcFleet = state.fleets[sourceFleetId.get()]
-    var newSquadrons: seq[Squadron] = @[]
-    for squad in srcFleet.squadrons:
-      if squad.id != cmd.squadronId.get():
-        newSquadrons.add(squad)
-    srcFleet.squadrons = newSquadrons
-    state.fleets[sourceFleetId.get()] = srcFleet
+    let srcFleetOpt = state.fleets.entities.getEntity(sourceFleetId.get())
+    if srcFleetOpt.isSome:
+      var srcFleet = srcFleetOpt.get()
+      srcFleet.squadrons = srcFleet.squadrons.filterIt(it != squadronId)
+      state.fleets.entities.updateEntity(sourceFleetId.get(), srcFleet)
 
-    # If source fleet is now empty, remove it and clean up orders (DRY helper)
-    if newSquadrons.len == 0:
-      cleanupEmptyFleet(state, sourceFleetId.get())
+      # If source fleet is now empty, remove it and clean up orders (DRY helper)
+      if srcFleet.squadrons.len == 0:
+        cleanupEmptyFleet(state, sourceFleetId.get())
 
   # Add squadron to target fleet or create new one
   var resultFleetId: FleetId
   if cmd.targetFleetId.isSome:
     # Assign to existing fleet
     let targetId = cmd.targetFleetId.get()
-    if targetId in state.fleets:
-      var targetFleet = state.fleets[targetId]
-      # Only allow assignment to Active fleets (exclude Reserve and Mothballed)
-      if targetFleet.status != FleetStatus.Active:
-        return ZeroTurnResult(
-          success: false,
-          error: &"Cannot assign squadrons to {targetFleet.status} fleets (only Active fleets allowed)",
-          newFleetId: none(FleetId),
-          newSquadronId: none(string),
-          cargoLoaded: 0,
-          cargoUnloaded: 0,
-          warnings: @[]
-        )
+    let targetFleetOpt = state.fleets.entities.getEntity(targetId)
 
-      # CRITICAL: Validate squadron type compatibility (Intel never mixes)
-      let squadronIsIntel = squadron.squadronType == SquadronType.Intel
-      let fleetHasIntel = targetFleet.squadrons.anyIt(it.squadronType == SquadronType.Intel)
-      let fleetHasNonIntel = targetFleet.squadrons.anyIt(it.squadronType != SquadronType.Intel)
-
-      if squadronIsIntel and fleetHasNonIntel:
-        return ZeroTurnResult(
-          success: false,
-          error: "Cannot assign Intel squadron to fleet with non-Intel squadrons (Intel operations require dedicated fleets)",
-          newFleetId: none(FleetId),
-          newSquadronId: none(string),
-          cargoLoaded: 0,
-          cargoUnloaded: 0,
-          warnings: @[]
-        )
-
-      if not squadronIsIntel and fleetHasIntel:
-        return ZeroTurnResult(
-          success: false,
-          error: "Cannot assign non-Intel squadron to Intel-only fleet (Intel operations require dedicated fleets)",
-          newFleetId: none(FleetId),
-          newSquadronId: none(string),
-          cargoLoaded: 0,
-          cargoUnloaded: 0,
-          warnings: @[]
-        )
-
-      targetFleet.squadrons.add(squadron)
-      state.fleets[targetId] = targetFleet
-      resultFleetId = targetId
-      logInfo(LogCategory.lcFleet, &"AssignSquadronToFleet: Assigned squadron {squadron.id} to existing fleet {targetId}")
-    else:
+    if targetFleetOpt.isNone:
       return ZeroTurnResult(
         success: false,
         error: &"Target fleet {targetId} does not exist",
@@ -1193,23 +1236,89 @@ proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, e
         cargoUnloaded: 0,
         warnings: @[]
       )
+
+    var targetFleet = targetFleetOpt.get()
+
+    # Only allow assignment to Active fleets (exclude Reserve and Mothballed)
+    if targetFleet.status != FleetStatus.Active:
+      return ZeroTurnResult(
+        success: false,
+        error: &"Cannot assign squadrons to {targetFleet.status} fleets (only Active fleets allowed)",
+        newFleetId: none(FleetId),
+        newSquadronId: none(string),
+        cargoLoaded: 0,
+        cargoUnloaded: 0,
+        warnings: @[]
+      )
+
+    # CRITICAL: Validate squadron type compatibility (Intel never mixes)
+    let squadronIsIntel = squadron.squadronType == SquadronType.Intel
+    var fleetHasIntel = false
+    var fleetHasNonIntel = false
+
+    # Check existing squadrons in fleet
+    for existingSquadronId in targetFleet.squadrons:
+      let existingSquadOpt = state.squadrons[].entities.getEntity(existingSquadronId)
+      if existingSquadOpt.isSome:
+        let existingSquad = existingSquadOpt.get()
+        if existingSquad.squadronType == SquadronType.Intel:
+          fleetHasIntel = true
+        else:
+          fleetHasNonIntel = true
+
+    if squadronIsIntel and fleetHasNonIntel:
+      return ZeroTurnResult(
+        success: false,
+        error: "Cannot assign Intel squadron to fleet with non-Intel squadrons (Intel operations require dedicated fleets)",
+        newFleetId: none(FleetId),
+        newSquadronId: none(string),
+        cargoLoaded: 0,
+        cargoUnloaded: 0,
+        warnings: @[]
+      )
+
+    if not squadronIsIntel and fleetHasIntel:
+      return ZeroTurnResult(
+        success: false,
+        error: "Cannot assign non-Intel squadron to Intel-only fleet (Intel operations require dedicated fleets)",
+        newFleetId: none(FleetId),
+        newSquadronId: none(string),
+        cargoLoaded: 0,
+        cargoUnloaded: 0,
+        warnings: @[]
+      )
+
+    targetFleet.squadrons.add(squadronId)
+    state.fleets.entities.updateEntity(targetId, targetFleet)
+    resultFleetId = targetId
+    logInfo(LogCategory.lcFleet, &"AssignSquadronToFleet: Assigned squadron {squadronId} to existing fleet {targetId}")
   else:
     # Create new fleet
     let newFleetId = if cmd.newFleetId.isSome:
       cmd.newFleetId.get()
     else:
-      cmd.houseId & "_fleet_" & $colonySystem & "_" & $state.turn
+      state.generateFleetId()
 
-    state.fleets[newFleetId] = Fleet(
+    var newFleet = Fleet(
       id: newFleetId,
-      owner: cmd.houseId,
+      houseId: cmd.houseId,
       location: colonySystem,
-      squadrons: @[squadron],
+      squadrons: @[squadronId],
       status: FleetStatus.Active,
-      autoBalanceSquadrons: true
+      autoBalanceSquadrons: true,
+      missionState: FleetMissionState.None,
+      missionType: none(int32),
+      missionTarget: none(SystemId),
+      missionStartTurn: 0
     )
+
+    # Add to entity manager and update indexes
+    state.fleets.entities.addEntity(newFleetId, newFleet)
+    state.fleets.bySystem.mgetOrPut(colonySystem, @[]).add(newFleetId)
+    state.fleets.byOwner.mgetOrPut(cmd.houseId, @[]).add(newFleetId)
+
     resultFleetId = newFleetId
-    logInfo(LogCategory.lcFleet, &"AssignSquadronToFleet: Created new fleet {newFleetId} with squadron {squadron.id}")
+    logInfo(LogCategory.lcFleet, &"AssignSquadronToFleet: Created new fleet {newFleetId} with squadron {squadronId}")
 
   return ZeroTurnResult(
     success: true,
