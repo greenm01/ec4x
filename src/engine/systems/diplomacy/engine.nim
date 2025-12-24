@@ -14,10 +14,12 @@ proc declareWar*(state: var GameState, sourceHouse: HouseId,
                 targetHouse: HouseId, turn: int32): DiplomaticEvent =
   ## Declare war on another house
   let key = (sourceHouse, targetHouse)
-  let oldState = if key in state.diplomaticRelation:
-    state.diplomaticRelation[key].state
-  else:
-    DiplomaticState.Neutral
+  let oldState: DiplomaticState =
+    if state.diplomaticRelation.hasKey(key):
+      let relation = state.diplomaticRelation[key]
+      relation.state
+    else:
+      DiplomaticState.Neutral
 
   # Update diplomatic relation
   state.diplomaticRelation[key] = DiplomaticRelation(
@@ -41,10 +43,12 @@ proc setNeutral*(state: var GameState, sourceHouse: HouseId,
                 targetHouse: HouseId, turn: int32): DiplomaticEvent =
   ## Set diplomatic state to neutral (peace/ceasefire)
   let key = (sourceHouse, targetHouse)
-  let oldState = if key in state.diplomaticRelation:
-    state.diplomaticRelation[key].state
-  else:
-    DiplomaticState.Neutral
+  let oldState: DiplomaticState =
+    if state.diplomaticRelation.hasKey(key):
+      let relation = state.diplomaticRelation[key]
+      relation.state
+    else:
+      DiplomaticState.Neutral
 
   # Update diplomatic relation
   state.diplomaticRelation[key] = DiplomaticRelation(
@@ -68,10 +72,12 @@ proc setHostile*(state: var GameState, sourceHouse: HouseId,
                 targetHouse: HouseId, turn: int32): DiplomaticEvent =
   ## Set diplomatic state to hostile
   let key = (sourceHouse, targetHouse)
-  let oldState = if key in state.diplomaticRelation:
-    state.diplomaticRelation[key].state
-  else:
-    DiplomaticState.Neutral
+  let oldState: DiplomaticState =
+    if state.diplomaticRelation.hasKey(key):
+      let relation = state.diplomaticRelation[key]
+      relation.state
+    else:
+      DiplomaticState.Neutral
 
   # Update diplomatic relation
   state.diplomaticRelation[key] = DiplomaticRelation(
