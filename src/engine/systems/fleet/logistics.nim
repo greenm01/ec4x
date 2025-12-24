@@ -15,8 +15,8 @@
 ##   let result = submitZeroTurnCommand(state, cmd)
 ##   if result.success: echo "Success!"
 
-import ../../types/[core, game_state, fleet, squadron, ship, colony]
-import ../../state/[entity_manager, iterators, game_state as state_access]
+import ../../types/[core, game_state, fleet, squadron, ship, colony, event]
+import ../../state/[entity_manager, iterators, game_state as state_access, id_gen]
 import ../../entities/[fleet_ops, squadron_ops, colony_ops]
 import ../fleet/entity as fleet_entity
 import ../squadron/entity as squadron_entity
@@ -245,7 +245,7 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
 
     # DetachShips specific: cannot detach transport-only fleet (except ETACs)
     if cmd.commandType == ZeroTurnCommandType.DetachShips:
-      let squadronIndices = fleet_entity.translateShipIndicesToSquadrons(fleet, state.squadrons[], state.ships, cmd.shipIndices)
+      let squadronIndices = fleet_entity.translateShipIndicesToSquadrons(fleet, state.squadrons[], cmd.shipIndices)
 
       # Check if only Expansion squadrons (ETACs) are being detached
       # ETACs don't need combat escorts, but transports do
@@ -411,13 +411,13 @@ proc cleanupEmptyFleet*(state: var GameState, fleetId: FleetId) =
   if fleetId in state.standingCommands:
     state.standingCommands.del(fleetId)
 
-  logInfo(LogCategory.lcFleet, &"Removed fleet {fleetId} and associated orders")
+  logFleet( &"Removed fleet {fleetId} and associated orders")
 
 # ============================================================================
 # Execution - Fleet Operations (from fleet_commands.nim)
 # ============================================================================
 
-proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]): ZeroTurnResult =
   ## Split ships from source fleet to create new fleet
   ## Both fleets remain at same location
 
@@ -430,7 +430,7 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var
   let systemId = sourceFleet.location
 
   # Translate ship indices to squadron indices
-  let squadronIndices = fleet_entity.translateShipIndicesToSquadrons(sourceFleet, state.squadrons[], state.ships, cmd.shipIndices)
+  let squadronIndices = fleet_entity.translateShipIndicesToSquadrons(sourceFleet, state.squadrons[], cmd.shipIndices)
 
   # Split squadrons (existing proc)
   let splitResult = fleet_entity.split(sourceFleet, squadronIndices)
@@ -439,7 +439,7 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var
   let newFleetId = if cmd.newFleetId.isSome:
     cmd.newFleetId.get()
   else:
-    state.generateFleetId()
+    generateFleetId(state)
 
   # Create new fleet structure
   var newFleet = Fleet(
@@ -463,11 +463,11 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var
   if fleet_entity.isEmpty(sourceFleet):
     # Delete empty source fleet and cleanup orders
     cleanupEmptyFleet(state, cmd.sourceFleetId.get())
-    logInfo(LogCategory.lcFleet, &"DetachShips: Detached all ships from {cmd.sourceFleetId.get()}, deleted source fleet, created new fleet {newFleetId}")
+    logFleet( &"DetachShips: Detached all ships from {cmd.sourceFleetId.get()}, deleted source fleet, created new fleet {newFleetId}")
   else:
     # Write back modified source fleet via entity manager
     state.fleets.entities.updateEntity(cmd.sourceFleetId.get(), sourceFleet)
-    logInfo(LogCategory.lcFleet, &"DetachShips: Created fleet {newFleetId} with {newFleet.squadrons.len} squadrons")
+    logFleet( &"DetachShips: Created fleet {newFleetId} with {newFleet.squadrons.len} squadrons")
 
   # Add new fleet to state via entity manager
   state.fleets.entities.addEntity(newFleetId, newFleet)
@@ -494,7 +494,7 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var
     warnings: @[]
   )
 
-proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]): ZeroTurnResult =
   ## Move ships from source fleet to target fleet
   ## If source becomes empty, it's deleted
 
@@ -514,7 +514,7 @@ proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand, events: v
   let systemId = sourceFleet.location
 
   # Translate ship indices to squadron indices
-  let squadronIndices = fleet_entity.translateShipIndicesToSquadrons(sourceFleet, state.squadrons[], state.ships, cmd.shipIndices)
+  let squadronIndices = fleet_entity.translateShipIndicesToSquadrons(sourceFleet, state.squadrons[], cmd.shipIndices)
   let squadronsTransferred = squadronIndices.len
 
   # Transfer squadrons
@@ -531,11 +531,11 @@ proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand, events: v
     # Delete empty fleet and cleanup orders (DRY helper)
     # NOTE: We don't write sourceFleet back since we're deleting it
     cleanupEmptyFleet(state, cmd.sourceFleetId.get())
-    logInfo(LogCategory.lcFleet, &"TransferShips: Merged all ships from {cmd.sourceFleetId.get()} into {targetFleetId}, deleted source fleet")
+    logFleet( &"TransferShips: Merged all ships from {cmd.sourceFleetId.get()} into {targetFleetId}, deleted source fleet")
   else:
     # Write back modified source fleet via entity manager
     state.fleets.entities.updateEntity(cmd.sourceFleetId.get(), sourceFleet)
-    logInfo(LogCategory.lcFleet, &"TransferShips: Transferred {squadronIndices.len} squadrons from {cmd.sourceFleetId.get()} to {targetFleetId}")
+    logFleet( &"TransferShips: Transferred {squadronIndices.len} squadrons from {cmd.sourceFleetId.get()} to {targetFleetId}")
 
   # Emit FleetTransfer event (Phase 7b)
   events.add(event_factory.fleetTransfer(
@@ -556,7 +556,7 @@ proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand, events: v
     warnings: @[]
   )
 
-proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]): ZeroTurnResult =
   ## Merge entire source fleet into target fleet (0 turns, at colony)
   ## Source fleet is deleted, all ships transferred to target
   ##
@@ -592,7 +592,7 @@ proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand, events: var
   # Delete source fleet using DRY helper (handles indexes and commands)
   cleanupEmptyFleet(state, cmd.sourceFleetId.get())
 
-  logInfo(LogCategory.lcFleet, &"MergeFleets: Merged {squadronsMerged} squadrons from {cmd.sourceFleetId.get()} into {targetFleetId}")
+  logFleet( &"MergeFleets: Merged {squadronsMerged} squadrons from {cmd.sourceFleetId.get()} into {targetFleetId}")
 
   # Emit FleetMerged event (Phase 7b)
   events.add(event_factory.fleetMerged(
@@ -617,7 +617,7 @@ proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand, events: var
 # Execution - Cargo Operations (from economy_resolution.nim)
 # ============================================================================
 
-proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]): ZeroTurnResult =
   ## Load marines or colonists onto transport squadrons at colony
   ## Source: economy_resolution.nim:409-501
 
@@ -647,7 +647,7 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
 
   # Check colony inventory based on cargo type
   var availableUnits = case cargoType
-    of CargoType.Marines: colony.marines
+    of CargoType.Marines: colony.marineIds.len
     of CargoType.Colonists:
       # Calculate how many complete PTUs can be loaded from exact population
       # Using souls field for accurate counting (no float rounding errors)
@@ -730,13 +730,17 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
 
       totalLoaded += loadAmount
       remainingToLoad -= loadAmount
-      logDebug(LogCategory.lcEconomy, &"Loaded {loadAmount} {cargoType} onto {flagship.shipClass} squadron {squadronId}")
+      logDebug("Economy", &"Loaded {loadAmount} {cargoType} onto {flagship.shipClass} squadron {squadronId}")
 
   # Update colony inventory
   if totalLoaded > 0:
     case cargoType
     of CargoType.Marines:
-      colony.marines -= totalLoaded
+      # Remove loaded marines from colony (reduce marineIds list length)
+      # Note: Actual implementation would need to track which specific marine IDs were loaded
+      # For now, we reduce the list length by removing from the end
+      if totalLoaded <= colony.marineIds.len:
+        colony.marineIds = colony.marineIds[0 ..< (colony.marineIds.len - totalLoaded)]
     of CargoType.Colonists:
       # Colonists come from population: 1 PTU = 50k souls
       # Use souls field for exact counting (no rounding errors)
@@ -744,13 +748,13 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
       colony.souls -= soulsToLoad
       # Update display field (population in millions)
       colony.population = colony.souls div 1_000_000
-      logDebug(LogCategory.lcEconomy, &"Removed {totalLoaded} PTU ({soulsToLoad} souls, {totalLoaded.float * ptuSizeMillions()}M) from colony")
+      logDebug("Economy", &"Removed {totalLoaded} PTU ({soulsToLoad} souls, {totalLoaded.float * ptuSizeMillions()}M) from colony")
     else:
       discard
 
     # Write back modified colony via entity manager
     state.colonies.entities.updateEntity(colonyId, colony)
-    logInfo(LogCategory.lcEconomy, &"LoadCargo: Successfully loaded {totalLoaded} {cargoType} onto fleet {fleetId} at system {colonySystem}")
+    logEconomy( &"LoadCargo: Successfully loaded {totalLoaded} {cargoType} onto fleet {fleetId} at system {colonySystem}")
 
     # Emit CargoLoaded event (Phase 7b)
     events.add(event_factory.cargoLoaded(
@@ -771,7 +775,7 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
     warnings: if remainingToLoad > 0: @[&"Only loaded {totalLoaded} of {requestedQty} requested (capacity or availability limit)"] else: @[]
   )
 
-proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]): ZeroTurnResult =
   ## Unload cargo from transport squadrons at colony
   ## Source: economy_resolution.nim:503-547
 
@@ -835,7 +839,7 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var
     case cargoType
     of CargoType.Marines:
       colony.marines += quantity
-      logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} Marines from squadron {squadronId} to colony")
+      logDebug("Economy", &"Unloaded {quantity} Marines from squadron {squadronId} to colony")
     of CargoType.Colonists:
       # Colonists are delivered to population: 1 PTU = 50k souls
       # Use souls field for exact counting (no rounding errors)
@@ -843,7 +847,7 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var
       colony.souls += soulsToUnload
       # Update display field (population in millions)
       colony.population = colony.souls div 1_000_000
-      logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} PTU ({soulsToUnload} souls, {quantity.float * ptuSizeMillions()}M) from squadron {squadronId} to colony")
+      logDebug("Economy", &"Unloaded {quantity} PTU ({soulsToUnload} souls, {quantity.float * ptuSizeMillions()}M) from squadron {squadronId} to colony")
     else:
       discard
 
@@ -856,7 +860,7 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var
   # Write back modified colony
   if totalUnloaded > 0:
     state.colonies.entities.updateEntity(colonyId, colony)
-    logInfo(LogCategory.lcEconomy, &"UnloadCargo: Successfully unloaded {totalUnloaded} {unloadedType} from fleet {fleetId} at system {colonySystem}")
+    logEconomy( &"UnloadCargo: Successfully unloaded {totalUnloaded} {unloadedType} from fleet {fleetId} at system {colonySystem}")
 
     # Emit CargoUnloaded event (Phase 7b)
     events.add(event_factory.cargoUnloaded(
@@ -881,7 +885,7 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var
 # Execution - Squadron Operations (from economy_resolution.nim)
 # ============================================================================
 
-proc executeFormSquadron*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+proc executeFormSquadron*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]): ZeroTurnResult =
   ## Create new squadron from colony's commissioned ships pool
   ## NEW: Not in current implementation - gives players manual control
   ## before auto-assignment runs during turn resolution
@@ -943,7 +947,7 @@ proc executeFormSquadron*(state: var GameState, cmd: ZeroTurnCommand, events: va
   else:
     selectedSquadronIds[0]  # Use first selected squadron's ID as representative
 
-  logInfo(LogCategory.lcFleet, &"FormSquadron: Selected {selectedSquadronIds.len} squadrons from unassigned pool at {colonySystem}")
+  logFleet( &"FormSquadron: Selected {selectedSquadronIds.len} squadrons from unassigned pool at {colonySystem}")
 
   # Note: Squadrons remain in unassigned pool but are now "formed" (tracked)
   # Player can then use AssignSquadronToFleet to assign to a fleet
@@ -958,7 +962,7 @@ proc executeFormSquadron*(state: var GameState, cmd: ZeroTurnCommand, events: va
     warnings: @[&"Selected {selectedSquadronIds.len} squadrons, use AssignSquadronToFleet to assign to fleet"]
   )
 
-proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]): ZeroTurnResult =
   ## Transfer ship between squadrons at this colony
   ## Source: economy_resolution.nim:216-291
 
@@ -1105,7 +1109,7 @@ proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCom
   state.squadrons[].entities.updateEntity(sourceSquadronId, sourceSquad)
   state.squadrons[].entities.updateEntity(targetSquadronId, targetSquad)
 
-  logInfo(LogCategory.lcFleet, &"TransferShipBetweenSquadrons: Transferred ship from {sourceSquadronId} to {targetSquadronId}")
+  logFleet( &"TransferShipBetweenSquadrons: Transferred ship from {sourceSquadronId} to {targetSquadronId}")
 
   return ZeroTurnResult(
     success: true,
@@ -1117,7 +1121,7 @@ proc executeTransferShipBetweenSquadrons*(state: var GameState, cmd: ZeroTurnCom
     warnings: @[]
   )
 
-proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]): ZeroTurnResult =
   ## Assign existing squadron to fleet (move between fleets or create new fleet)
   ## Source: economy_resolution.nim:293-382
 
@@ -1291,13 +1295,13 @@ proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, e
     targetFleet.squadrons.add(squadronId)
     state.fleets.entities.updateEntity(targetId, targetFleet)
     resultFleetId = targetId
-    logInfo(LogCategory.lcFleet, &"AssignSquadronToFleet: Assigned squadron {squadronId} to existing fleet {targetId}")
+    logFleet( &"AssignSquadronToFleet: Assigned squadron {squadronId} to existing fleet {targetId}")
   else:
     # Create new fleet
     let newFleetId = if cmd.newFleetId.isSome:
       cmd.newFleetId.get()
     else:
-      state.generateFleetId()
+      generateFleetId(state)
 
     var newFleet = Fleet(
       id: newFleetId,
@@ -1318,7 +1322,7 @@ proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, e
     state.fleets.byOwner.mgetOrPut(cmd.houseId, @[]).add(newFleetId)
 
     resultFleetId = newFleetId
-    logInfo(LogCategory.lcFleet, &"AssignSquadronToFleet: Created new fleet {newFleetId} with squadron {squadronId}")
+    logFleet( &"AssignSquadronToFleet: Created new fleet {newFleetId} with squadron {squadronId}")
 
   return ZeroTurnResult(
     success: true,
@@ -1334,51 +1338,74 @@ proc executeAssignSquadronToFleet*(state: var GameState, cmd: ZeroTurnCommand, e
 # Execution - Fighter Operations
 # ============================================================================
 
-proc executeLoadFighters*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+proc executeLoadFighters*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]): ZeroTurnResult =
   ## Load fighter squadrons from colony onto carrier
   ## Requires: Fleet at friendly colony, carrier with available hangar space
 
   let sourceFleetId = cmd.sourceFleetId.get()
-  var sourceFleet = state.fleets[sourceFleetId]
-  let systemId = sourceFleet.location
   let carrierSquadronId = cmd.carrierSquadronId.get()
 
-  # Find carrier squadron in fleet
-  var carrierSquadronIdx = -1
-  for i, sq in sourceFleet.squadrons:
-    if sq.id == carrierSquadronId:
-      carrierSquadronIdx = i
-      break
+  # Get fleet via entity manager
+  let fleetOpt = state.fleets.entities.getEntity(sourceFleetId)
+  if fleetOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: "Fleet not found",
+      warnings: @[]
+    )
 
-  if carrierSquadronIdx < 0:
+  let fleet = fleetOpt.get()
+  let systemId = fleet.location
+
+  # Check if carrier squadron is in fleet
+  if carrierSquadronId notin fleet.squadrons:
     return ZeroTurnResult(
       success: false,
       error: "Carrier squadron not found in fleet",
       warnings: @[]
     )
 
-  # Validate carrier
-  let carrierSquadron = sourceFleet.squadrons[carrierSquadronIdx]
-  if not carrierSquadron.isCarrier():
+  # Get carrier squadron via entity manager
+  let carrierSquadOpt = state.squadrons[].entities.getEntity(carrierSquadronId)
+  if carrierSquadOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: "Carrier squadron entity not found",
+      warnings: @[]
+    )
+
+  var carrierSquadron = carrierSquadOpt.get()
+
+  # Validate carrier using squadron_entity helper
+  if not squadron_entity.isCarrier(carrierSquadron, state.ships):
     return ZeroTurnResult(
       success: false,
       error: "Squadron is not a carrier (CV/CX required)",
       warnings: @[]
     )
 
-  # Get colony
-  if systemId notin state.colonies:
+  # Get colony via bySystem index
+  if not state.colonies.bySystem.hasKey(systemId):
     return ZeroTurnResult(
       success: false,
       error: "No colony at fleet location",
       warnings: @[]
     )
 
-  var colony = state.colonies[systemId]
+  let colonyId = state.colonies.bySystem[systemId]
+  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  if colonyOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: "Colony entity not found",
+      warnings: @[]
+    )
+
+  var colony = colonyOpt.get()
 
   # Get ACO tech level for capacity calculation
   let acoLevel = state.houses[cmd.houseId].techTree.levels.advancedCarrierOps
-  let maxCapacity = carrierSquadron.getCarrierCapacity(acoLevel)
+  let maxCapacity = squadron_entity.getCarrierCapacity(carrierSquadron, state.ships, acoLevel)
   let currentLoad = carrierSquadron.embarkedFighters.len
 
   # Load fighters one at a time until capacity full or all requested loaded
@@ -1392,24 +1419,37 @@ proc executeLoadFighters*(state: var GameState, cmd: ZeroTurnCommand, events: va
       break
 
     # Validate fighter index
-    if fighterIdx < 0 or fighterIdx >= colony.fighterSquadrons.len:
+    if fighterIdx < 0 or fighterIdx >= colony.fighterSquadronIds.len:
       warnings.add(&"Invalid fighter squadron index {fighterIdx}, skipping")
       continue
 
-    # Load fighter
-    let fighterSquadron = colony.fighterSquadrons[fighterIdx]
-    sourceFleet.squadrons[carrierSquadronIdx].embarkedFighters.add(fighterSquadron)
-    colony.fighterSquadrons.delete(fighterIdx)
+    # Get fighter squadron ID
+    let fighterSquadronId = colony.fighterSquadronIds[fighterIdx]
+
+    # Get fighter squadron entity for logging
+    let fighterSquadOpt = state.squadrons[].entities.getEntity(fighterSquadronId)
+    if fighterSquadOpt.isNone:
+      warnings.add(&"Fighter squadron {fighterSquadronId} not found, skipping")
+      continue
+
+    let fighterSquadron = fighterSquadOpt.get()
+
+    # Load fighter (add ID to carrier's embarkedFighters)
+    carrierSquadron.embarkedFighters.add(fighterSquadronId)
+    # Remove from colony's fighter pool
+    colony.fighterSquadronIds.delete(fighterIdx)
     loadedCount += 1
 
     let totalFighters = 1 + fighterSquadron.ships.len
-    logInfo(LogCategory.lcFleet,
-      &"Loaded Fighter squadron {fighterSquadron.id} ({totalFighters}/12) " &
+    logFleet(
+      &"Loaded Fighter squadron {fighterSquadronId} ({totalFighters}/12) " &
       &"onto carrier {carrierSquadronId} ({currentLoad + loadedCount}/{maxCapacity})")
 
-  # Write back
-  state.fleets[sourceFleetId] = sourceFleet
-  state.colonies[systemId] = colony
+  # Update carrier squadron in entity manager
+  state.squadrons[].entities.updateEntity(carrierSquadronId, carrierSquadron)
+
+  # Update colony in entity manager
+  state.colonies.entities.updateEntity(colonyId, colony)
 
   return ZeroTurnResult(
     success: true,
@@ -1418,38 +1458,62 @@ proc executeLoadFighters*(state: var GameState, cmd: ZeroTurnCommand, events: va
     warnings: warnings
   )
 
-proc executeUnloadFighters*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+proc executeUnloadFighters*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]): ZeroTurnResult =
   ## Unload fighter squadrons from carrier to colony
   ## Requires: Fleet at friendly colony
 
   let sourceFleetId = cmd.sourceFleetId.get()
-  var sourceFleet = state.fleets[sourceFleetId]
-  let systemId = sourceFleet.location
   let carrierSquadronId = cmd.carrierSquadronId.get()
 
-  # Find carrier squadron in fleet
-  var carrierSquadronIdx = -1
-  for i, sq in sourceFleet.squadrons:
-    if sq.id == carrierSquadronId:
-      carrierSquadronIdx = i
-      break
+  # Get fleet via entity manager
+  let fleetOpt = state.fleets.entities.getEntity(sourceFleetId)
+  if fleetOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: "Fleet not found",
+      warnings: @[]
+    )
 
-  if carrierSquadronIdx < 0:
+  let fleet = fleetOpt.get()
+  let systemId = fleet.location
+
+  # Check if carrier squadron is in fleet
+  if carrierSquadronId notin fleet.squadrons:
     return ZeroTurnResult(
       success: false,
       error: "Carrier squadron not found in fleet",
       warnings: @[]
     )
 
-  # Get colony
-  if systemId notin state.colonies:
+  # Get carrier squadron via entity manager
+  let carrierSquadOpt = state.squadrons[].entities.getEntity(carrierSquadronId)
+  if carrierSquadOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: "Carrier squadron entity not found",
+      warnings: @[]
+    )
+
+  var carrierSquadron = carrierSquadOpt.get()
+
+  # Get colony via bySystem index
+  if not state.colonies.bySystem.hasKey(systemId):
     return ZeroTurnResult(
       success: false,
       error: "No colony at fleet location",
       warnings: @[]
     )
 
-  var colony = state.colonies[systemId]
+  let colonyId = state.colonies.bySystem[systemId]
+  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  if colonyOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: "Colony entity not found",
+      warnings: @[]
+    )
+
+  var colony = colonyOpt.get()
 
   # Unload fighters (reverse order to avoid index issues)
   var unloadedCount = 0
@@ -1459,24 +1523,32 @@ proc executeUnloadFighters*(state: var GameState, cmd: ZeroTurnCommand, events: 
 
   for fighterIdx in sortedIndices:
     # Validate fighter index
-    if fighterIdx < 0 or fighterIdx >= sourceFleet.squadrons[carrierSquadronIdx].embarkedFighters.len:
+    if fighterIdx < 0 or fighterIdx >= carrierSquadron.embarkedFighters.len:
       warnings.add(&"Invalid embarked fighter index {fighterIdx}, skipping")
       continue
 
-    # Unload fighter
-    let fighterSquadron = sourceFleet.squadrons[carrierSquadronIdx].embarkedFighters[fighterIdx]
-    colony.fighterSquadrons.add(fighterSquadron)
-    sourceFleet.squadrons[carrierSquadronIdx].embarkedFighters.delete(fighterIdx)
+    # Get fighter squadron ID
+    let fighterSquadronId = carrierSquadron.embarkedFighters[fighterIdx]
+
+    # Get fighter squadron entity for logging
+    let fighterSquadOpt = state.squadrons[].entities.getEntity(fighterSquadronId)
+    if fighterSquadOpt.isSome:
+      let fighterSquadron = fighterSquadOpt.get()
+      let totalFighters = 1 + fighterSquadron.ships.len
+      logFleet(
+        &"Unloaded Fighter squadron {fighterSquadronId} ({totalFighters}/12) " &
+        &"from carrier {carrierSquadronId} to colony {systemId}")
+
+    # Unload fighter (move ID from carrier to colony)
+    colony.fighterSquadronIds.add(fighterSquadronId)
+    carrierSquadron.embarkedFighters.delete(fighterIdx)
     unloadedCount += 1
 
-    let totalFighters = 1 + fighterSquadron.ships.len
-    logInfo(LogCategory.lcFleet,
-      &"Unloaded Fighter squadron {fighterSquadron.id} ({totalFighters}/12) " &
-      &"from carrier {carrierSquadronId} to colony {systemId}")
+  # Update carrier squadron in entity manager
+  state.squadrons[].entities.updateEntity(carrierSquadronId, carrierSquadron)
 
-  # Write back
-  state.fleets[sourceFleetId] = sourceFleet
-  state.colonies[systemId] = colony
+  # Update colony in entity manager
+  state.colonies.entities.updateEntity(colonyId, colony)
 
   return ZeroTurnResult(
     success: true,
@@ -1485,7 +1557,7 @@ proc executeUnloadFighters*(state: var GameState, cmd: ZeroTurnCommand, events: 
     warnings: warnings
   )
 
-proc executeTransferFighters*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[resolution_types.GameEvent]): ZeroTurnResult =
+proc executeTransferFighters*(state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]): ZeroTurnResult =
   ## Transfer fighter squadrons between carriers (mobile operations)
   ## Can happen anywhere - both carriers must be in same fleet or adjacent fleets at same location
 
@@ -1493,65 +1565,90 @@ proc executeTransferFighters*(state: var GameState, cmd: ZeroTurnCommand, events
   let sourceCarrierSquadronId = cmd.sourceCarrierSquadronId.get()
   let targetCarrierSquadronId = cmd.targetCarrierSquadronId.get()
 
-  # Find source carrier
-  var sourceFleet = state.fleets[sourceFleetId]
-  var sourceCarrierIdx = -1
-  for i, sq in sourceFleet.squadrons:
-    if sq.id == sourceCarrierSquadronId:
-      sourceCarrierIdx = i
-      break
-
-  if sourceCarrierIdx < 0:
+  # Get source fleet via entity manager
+  let sourceFleetOpt = state.fleets.entities.getEntity(sourceFleetId)
+  if sourceFleetOpt.isNone:
     return ZeroTurnResult(
       success: false,
-      error: "Source carrier squadron not found",
+      error: "Source fleet not found",
       warnings: @[]
     )
 
-  # Find target carrier (could be in same fleet or different fleet at same location)
-  var targetFleet: Fleet
-  var targetFleetId: FleetId
-  var targetCarrierIdx = -1
-  var targetInSameFleet = false
+  let sourceFleet = sourceFleetOpt.get()
+  let sourceLocation = sourceFleet.location
 
-  # Check same fleet first
-  for i, sq in sourceFleet.squadrons:
-    if sq.id == targetCarrierSquadronId:
-      targetCarrierIdx = i
-      targetInSameFleet = true
-      targetFleet = sourceFleet
-      targetFleetId = sourceFleetId
-      break
-
-  # Check other fleets at same location
-  if targetCarrierIdx < 0:
-    for fid, fleet in state.fleets.mpairs:
-      if fleet.location == sourceFleet.location and fleet.owner == cmd.houseId:
-        for i, sq in fleet.squadrons:
-          if sq.id == targetCarrierSquadronId:
-            targetCarrierIdx = i
-            targetFleet = fleet
-            targetFleetId = fid
-            break
-        if targetCarrierIdx >= 0:
-          break
-
-  if targetCarrierIdx < 0:
+  # Check if source carrier is in source fleet
+  if sourceCarrierSquadronId notin sourceFleet.squadrons:
     return ZeroTurnResult(
       success: false,
-      error: "Target carrier squadron not found at same location",
+      error: "Source carrier squadron not found in fleet",
       warnings: @[]
     )
 
-  # Validate both are carriers
-  if not sourceFleet.squadrons[sourceCarrierIdx].isCarrier():
+  # Get source carrier squadron via entity manager
+  let sourceCarrierOpt = state.squadrons[].entities.getEntity(sourceCarrierSquadronId)
+  if sourceCarrierOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: "Source carrier squadron entity not found",
+      warnings: @[]
+    )
+
+  var sourceCarrier = sourceCarrierOpt.get()
+
+  # Validate source is a carrier
+  if not squadron_entity.isCarrier(sourceCarrier, state.ships):
     return ZeroTurnResult(
       success: false,
       error: "Source squadron is not a carrier",
       warnings: @[]
     )
 
-  if not targetFleet.squadrons[targetCarrierIdx].isCarrier():
+  # Find target carrier (could be in same fleet or different fleet at same location)
+  var targetFleetId: Option[FleetId] = none(FleetId)
+
+  # Check if target is in same fleet first
+  if targetCarrierSquadronId in sourceFleet.squadrons:
+    targetFleetId = some(sourceFleetId)
+  else:
+    # Search other fleets at same location using bySystem index
+    if state.fleets.bySystem.hasKey(sourceLocation):
+      for fleetId in state.fleets.bySystem[sourceLocation]:
+        if fleetId == sourceFleetId:
+          continue  # Already checked
+
+        let fleetOpt = state.fleets.entities.getEntity(fleetId)
+        if fleetOpt.isNone:
+          continue
+
+        let fleet = fleetOpt.get()
+        if fleet.houseId != cmd.houseId:
+          continue
+
+        if targetCarrierSquadronId in fleet.squadrons:
+          targetFleetId = some(fleetId)
+          break
+
+  if targetFleetId.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: "Target carrier squadron not found at same location",
+      warnings: @[]
+    )
+
+  # Get target carrier squadron via entity manager
+  let targetCarrierOpt = state.squadrons[].entities.getEntity(targetCarrierSquadronId)
+  if targetCarrierOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: "Target carrier squadron entity not found",
+      warnings: @[]
+    )
+
+  var targetCarrier = targetCarrierOpt.get()
+
+  # Validate target is a carrier
+  if not squadron_entity.isCarrier(targetCarrier, state.ships):
     return ZeroTurnResult(
       success: false,
       error: "Target squadron is not a carrier",
@@ -1560,8 +1657,8 @@ proc executeTransferFighters*(state: var GameState, cmd: ZeroTurnCommand, events
 
   # Get ACO tech level for capacity calculation
   let acoLevel = state.houses[cmd.houseId].techTree.levels.advancedCarrierOps
-  let targetMaxCapacity = targetFleet.squadrons[targetCarrierIdx].getCarrierCapacity(acoLevel)
-  let targetCurrentLoad = targetFleet.squadrons[targetCarrierIdx].embarkedFighters.len
+  let targetMaxCapacity = squadron_entity.getCarrierCapacity(targetCarrier, state.ships, acoLevel)
+  let targetCurrentLoad = targetCarrier.embarkedFighters.len
 
   # Transfer fighters (reverse order to avoid index issues)
   var transferredCount = 0
@@ -1576,33 +1673,30 @@ proc executeTransferFighters*(state: var GameState, cmd: ZeroTurnCommand, events
       break
 
     # Validate fighter index
-    if fighterIdx < 0 or fighterIdx >= sourceFleet.squadrons[sourceCarrierIdx].embarkedFighters.len:
+    if fighterIdx < 0 or fighterIdx >= sourceCarrier.embarkedFighters.len:
       warnings.add(&"Invalid embarked fighter index {fighterIdx}, skipping")
       continue
 
-    # Transfer fighter
-    let fighterSquadron = sourceFleet.squadrons[sourceCarrierIdx].embarkedFighters[fighterIdx]
+    # Get fighter squadron ID
+    let fighterSquadronId = sourceCarrier.embarkedFighters[fighterIdx]
 
-    if targetInSameFleet:
-      # Same fleet - direct transfer
-      sourceFleet.squadrons[targetCarrierIdx].embarkedFighters.add(fighterSquadron)
-      sourceFleet.squadrons[sourceCarrierIdx].embarkedFighters.delete(fighterIdx)
-    else:
-      # Different fleet - need to modify both
-      targetFleet.squadrons[targetCarrierIdx].embarkedFighters.add(fighterSquadron)
-      sourceFleet.squadrons[sourceCarrierIdx].embarkedFighters.delete(fighterIdx)
+    # Get fighter squadron entity for logging
+    let fighterSquadOpt = state.squadrons[].entities.getEntity(fighterSquadronId)
+    if fighterSquadOpt.isSome:
+      let fighterSquadron = fighterSquadOpt.get()
+      let totalFighters = 1 + fighterSquadron.ships.len
+      logFleet(
+        &"Transferred Fighter squadron {fighterSquadronId} ({totalFighters}/12) " &
+        &"from carrier {sourceCarrierSquadronId} to {targetCarrierSquadronId}")
 
+    # Transfer fighter (move ID from source to target)
+    targetCarrier.embarkedFighters.add(fighterSquadronId)
+    sourceCarrier.embarkedFighters.delete(fighterIdx)
     transferredCount += 1
 
-    let totalFighters = 1 + fighterSquadron.ships.len
-    logInfo(LogCategory.lcFleet,
-      &"Transferred Fighter squadron {fighterSquadron.id} ({totalFighters}/12) " &
-      &"from carrier {sourceCarrierSquadronId} to {targetCarrierSquadronId}")
-
-  # Write back
-  state.fleets[sourceFleetId] = sourceFleet
-  if not targetInSameFleet:
-    state.fleets[targetFleetId] = targetFleet
+  # Update both carrier squadrons in entity manager
+  state.squadrons[].entities.updateEntity(sourceCarrierSquadronId, sourceCarrier)
+  state.squadrons[].entities.updateEntity(targetCarrierSquadronId, targetCarrier)
 
   return ZeroTurnResult(
     success: true,
@@ -1618,7 +1712,7 @@ proc executeTransferFighters*(state: var GameState, cmd: ZeroTurnCommand, events
 proc submitZeroTurnCommand*(
   state: var GameState,
   cmd: ZeroTurnCommand,
-  events: var seq[resolution_types.GameEvent]
+  events: var seq[GameEvent]
 ): ZeroTurnResult =
   ## Main entry point for zero-turn administrative commands
   ## Validates and executes command immediately (0 turns)
