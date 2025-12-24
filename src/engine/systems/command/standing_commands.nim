@@ -874,7 +874,7 @@ proc activateStandingOrder*(state: var GameState, fleetId: FleetId,
   ## Execute a single standing order
   ## Called during Command Phase for fleets without explicit orders
 
-  case standingOrder.orderType
+  case standingOrder.commandType
   of StandingOrderType.None:
     return ActivationResult(success: true, action: "No standing order")
 
@@ -929,7 +929,7 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
     if fleetId in state.fleetOrders:
       let explicitOrder = state.fleetOrders[fleetId]
       logDebug(LogCategory.lcOrders,
-               &"{fleetId} has explicit order ({explicitOrder.orderType}), " &
+               &"{fleetId} has explicit order ({explicitOrder.commandType}), " &
                &"skipping standing order")
       skippedCount += 1
 
@@ -943,7 +943,7 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
         events.add(event_factory.standingOrderSuspended(
           fleet.owner,
           fleetId,
-          $standingOrder.orderType,
+          $standingOrder.commandType,
           "explicit order issued",
           fleet.location
         ))
@@ -989,11 +989,11 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
     if result.success:
       activatedCount += 1
       logInfo(LogCategory.lcOrders,
-              &"{fleetId} activated {standingOrder.orderType}: {result.action}")
+              &"{fleetId} activated {standingOrder.commandType}: {result.action}")
 
       # Get generated fleet order type
       let generatedOrderType = if fleetId in state.fleetOrders:
-        $state.fleetOrders[fleetId].orderType
+        $state.fleetOrders[fleetId].commandType
       else:
         "None"
 
@@ -1001,7 +1001,7 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
       events.add(event_factory.standingOrderActivated(
         fleet.owner,
         fleetId,
-        $standingOrder.orderType,
+        $standingOrder.commandType,
         generatedOrderType,
         result.action,
         fleet.location
@@ -1024,12 +1024,12 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
     elif result.error == "Not yet implemented":
       notImplementedCount += 1
       logDebug(LogCategory.lcOrders,
-               &"{fleetId} {standingOrder.orderType} not yet implemented")
+               &"{fleetId} {standingOrder.commandType} not yet implemented")
 
     else:
       failedCount += 1
       logWarn(LogCategory.lcOrders,
-              &"{fleetId} {standingOrder.orderType} failed: {result.error}")
+              &"{fleetId} {standingOrder.commandType} failed: {result.error}")
 
   # Summary logging
   let totalAttempted = activatedCount + failedCount + notImplementedCount

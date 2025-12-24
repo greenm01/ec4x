@@ -235,7 +235,7 @@ proc resolveIncomePhase*(
   for houseId in state.houses.keys:
     if houseId in orders:
       for order in orders[houseId].fleetOrders:
-        if order.orderType == FleetOrderType.Salvage:
+        if order.commandType == FleetOrderType.Salvage:
           # Check if fleet still exists (survived Conflict Phase)
           if order.fleetId in state.fleets:
             let fleet = state.fleets[order.fleetId]

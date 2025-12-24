@@ -701,8 +701,8 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
         if fleet.owner in orders:
           for order in orders[fleet.owner].fleetOrders:
             if order.fleetId == fleetId and
-               (order.orderType == FleetOrderType.GuardStarbase or
-                order.orderType == FleetOrderType.GuardPlanet):
+               (order.commandType == FleetOrderType.GuardStarbase or
+                order.commandType == FleetOrderType.GuardPlanet):
               isOrbitalOnly = true
               break
 

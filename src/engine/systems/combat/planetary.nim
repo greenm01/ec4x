@@ -31,7 +31,7 @@ proc collectPlanetaryCombatIntents*(
 
     for order in orders[houseId].fleetOrders:
       # Skip non-planetary combat orders
-      if order.orderType notin [FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz]:
+      if order.commandType notin [FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz]:
         continue
 
       # Validate: fleet exists - using entity_manager
@@ -57,7 +57,7 @@ proc collectPlanetaryCombatIntents*(
         houseId: houseId,
         fleetId: order.fleetId,
         targetColony: targetSystem,
-        orderType: $order.orderType,
+        orderType: $order.commandType,
         attackStrength: attackStrength
       ))
 
@@ -173,9 +173,9 @@ proc resolvePlanetaryCombat*(
           if winnerHouse in orders:
             for order in orders[winnerHouse].fleetOrders:
               if order.fleetId == res.fleetId and
-                 order.orderType in [FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz]:
+                 order.commandType in [FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz]:
                 # Execute the planetary assault
-                case order.orderType
+                case order.commandType
                 of FleetOrderType.Bombard:
                   resolveBombardment(state, winnerHouse, order, events)
                 of FleetOrderType.Invade:

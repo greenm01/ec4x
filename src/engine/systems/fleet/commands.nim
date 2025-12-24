@@ -56,7 +56,7 @@ proc validateOrderAtExecution(
     )
 
   # Order-specific validation
-  case order.orderType
+  case order.commandType
   of FleetOrderType.Colonize:
     # Check fleet still has ETAC
     # ETACs are in Expansion squadrons
@@ -234,7 +234,7 @@ proc performOrderMaintenance*(
     if houseId in orders:
       for order in orders[houseId].fleetOrders:
         # Only process orders matching the category filter
-        if not categoryFilter(order.orderType):
+        if not categoryFilter(order.commandType):
           continue
 
         # Check if this fleet has a locked permanent order (Reserve/Mothball) - using entity_manager
@@ -242,7 +242,7 @@ proc performOrderMaintenance*(
         if fleetOpt.isSome:
           let fleet = fleetOpt.get()
           if fleet.status == FleetStatus.Reserve or fleet.status == FleetStatus.Mothballed:
-            if order.orderType != FleetOrderType.Reactivate:
+            if order.commandType != FleetOrderType.Reactivate:
               logDebug(LogCategory.lcOrders, &"  [LOCKED] Fleet {order.fleetId} has locked permanent order")
               continue
 
@@ -254,7 +254,7 @@ proc performOrderMaintenance*(
         events.add(event_factory.orderIssued(
           houseId,
           order.fleetId,
-          $order.orderType,
+          $order.commandType,
           systemId = order.targetSystem
         ))
 
@@ -268,7 +268,7 @@ proc performOrderMaintenance*(
       continue  # Fleet no longer exists
 
     # Only process orders matching the category filter
-    if not categoryFilter(persistentOrder.orderType):
+    if not categoryFilter(persistentOrder.commandType):
       continue
 
     let fleet = fleetOpt.get()
@@ -311,7 +311,7 @@ proc performOrderMaintenance*(
           events.add(event_factory.orderAborted(
             houseId,
             order.fleetId,
-            $order.orderType,
+            $order.commandType,
             reason = validation.reason,
             systemId = some(fleet.location)
           ))
@@ -351,11 +351,11 @@ proc performOrderMaintenance*(
     let outcome = executor.executeFleetOrder(state, houseId, actualOrder, events)
 
     if outcome == OrderOutcome.Success:
-      logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.orderType} executed")
+      logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} executed")
       # Events already added via mutable parameter
 
       # Handle combat orders that trigger battles (using entity_manager and iterators)
-      if actualOrder.orderType in {FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz}:
+      if actualOrder.commandType in {FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz}:
         let fleetOpt = state.fleets.entities.getEntity(actualOrder.fleetId)
         if fleetOpt.isSome and actualOrder.targetSystem.isSome:
           let fleet = fleetOpt.get()
@@ -388,7 +388,7 @@ proc performOrderMaintenance*(
 
           # If hostile forces present, trigger battle first
           if hasHostileForces:
-            logInfo(LogCategory.lcCombat, &"Fleet {actualOrder.fleetId} engaging defenders before {actualOrder.orderType}")
+            logInfo(LogCategory.lcCombat, &"Fleet {actualOrder.fleetId} engaging defenders before {actualOrder.commandType}")
             resolveBattle(state, targetSystem, orders, combatReports, events, rng)
 
             # Check if fleet survived combat (using entity_manager)
@@ -397,7 +397,7 @@ proc performOrderMaintenance*(
               continue
 
           # Execute planetary assault
-          case actualOrder.orderType
+          case actualOrder.commandType
           of FleetOrderType.Bombard:
             resolveBombardment(state, houseId, actualOrder, events)
           of FleetOrderType.Invade:
@@ -408,9 +408,9 @@ proc performOrderMaintenance*(
             discard
     elif outcome == OrderOutcome.Failed:
       # Order failed validation - event generated, cleanup handled by Command Phase
-      logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.orderType} failed validation")
+      logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} failed validation")
     elif outcome == OrderOutcome.Aborted:
       # Order aborted - event generated, cleanup handled by Command Phase
-      logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.orderType} aborted")
+      logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} aborted")
 
   logDebug(LogCategory.lcOrders, &"[{phaseDescription}] Completed fleet order execution")

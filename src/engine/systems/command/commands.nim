@@ -70,11 +70,11 @@ proc validateFleetCommand*(cmd: FleetCommand, state: GameState, issuingHouse: Ho
                            error: "Fleet locked on active spy mission (scouts consumed)")
 
   logDebug(LogCategory.lcOrders,
-           &"{issuingHouse} Validating {cmd.orderType} command for {cmd.fleetId} " &
+           &"{issuingHouse} Validating {cmd.commandType} command for {cmd.fleetId} " &
            &"at {fleet.location}")
 
   # Validate based on command type
-  case cmd.orderType
+  case cmd.commandType
   of FleetCommandType.Hold:
     # Always valid
     discard
@@ -153,7 +153,7 @@ proc validateFleetCommand*(cmd: FleetCommand, state: GameState, issuingHouse: Ho
       let sq = state.squadrons.entities.getEntity(squadronId).get
       if sq.squadronType == SquadronType.Intel:
         logWarn(LogCategory.lcOrders,
-                &"{issuingHouse} {cmd.orderType} command REJECTED: {cmd.fleetId} - " &
+                &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
                 &"combat commands cannot include Intel squadrons (intelligence-only)")
         return ValidationResult(valid: false, error: "Combat commands cannot include Intel squadrons")
 
@@ -168,18 +168,18 @@ proc validateFleetCommand*(cmd: FleetCommand, state: GameState, issuingHouse: Ho
 
     if not hasMilitary:
       logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} {cmd.orderType} command REJECTED: {cmd.fleetId} - " &
+              &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
               &"no combat-capable squadrons")
       return ValidationResult(valid: false, error: "Combat command requires combat-capable squadrons")
 
     if cmd.targetSystem.isNone:
       logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} {cmd.orderType} command REJECTED: {cmd.fleetId} - " &
+              &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
               &"no target system specified")
       return ValidationResult(valid: false, error: "Combat command requires target system")
 
     logDebug(LogCategory.lcOrders,
-             &"{issuingHouse} {cmd.orderType} command VALID: {cmd.fleetId} → " &
+             &"{issuingHouse} {cmd.commandType} command VALID: {cmd.fleetId} → " &
              &"{cmd.targetSystem.get()}")
 
   of FleetCommandType.SpyColony, FleetCommandType.SpySystem, FleetCommandType.HackStarbase:
@@ -187,7 +187,7 @@ proc validateFleetCommand*(cmd: FleetCommand, state: GameState, issuingHouse: Ho
     # Multiple Intel squadrons can merge for mesh network ELI bonuses
     if fleet.squadrons.len == 0:
       logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} {cmd.orderType} command REJECTED: {cmd.fleetId} - " &
+              &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
               &"requires at least one Intel squadron")
       return ValidationResult(valid: false, error: "Spy missions require at least one Intel squadron")
 
@@ -202,7 +202,7 @@ proc validateFleetCommand*(cmd: FleetCommand, state: GameState, issuingHouse: Ho
       else:
         hasNonIntel = true
         logWarn(LogCategory.lcOrders,
-                &"{issuingHouse} {cmd.orderType} command REJECTED: {cmd.fleetId} - " &
+                &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
                 &"spy missions require pure Intel fleet (found {sq.squadronType} squadron)")
 
     if not hasIntel:
@@ -213,12 +213,12 @@ proc validateFleetCommand*(cmd: FleetCommand, state: GameState, issuingHouse: Ho
 
     if cmd.targetSystem.isNone:
       logWarn(LogCategory.lcOrders,
-              &"{issuingHouse} {cmd.orderType} command REJECTED: {cmd.fleetId} - " &
+              &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
               &"no target system specified")
       return ValidationResult(valid: false, error: "Spy mission requires target system")
 
     logDebug(LogCategory.lcOrders,
-             &"{issuingHouse} {cmd.orderType} command VALID: {cmd.fleetId} → " &
+             &"{issuingHouse} {cmd.commandType} command VALID: {cmd.fleetId} → " &
              &"{cmd.targetSystem.get()}")
 
   of FleetCommandType.JoinFleet:

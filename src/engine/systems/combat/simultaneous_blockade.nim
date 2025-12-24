@@ -25,7 +25,7 @@ proc collectBlockadeIntents*(
       continue
 
     for order in orders[houseId].fleetOrders:
-      if order.orderType != FleetOrderType.BlockadePlanet:
+      if order.commandType != FleetOrderType.BlockadePlanet:
         continue
 
       # Validate: fleet exists - using entity_manager

@@ -64,8 +64,8 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
     # Skip orders that execute in other phases:
     # - Movement orders (Move, Patrol, etc.): Execute in Maintenance Phase
     # - Salvage: Executes in Income Phase
-    if isMovementOrder(fleetOrder.orderType) or
-       fleetOrder.orderType == FleetCommandType.Salvage:
+    if isMovementOrder(fleetOrder.commandType) or
+       fleetOrder.commandType == FleetCommandType.Salvage:
       continue
 
     # Find fleet owner
@@ -96,7 +96,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
     effectiveOrders[fleetOwner].fleetOrders.add(fleetOrder)
     mergedFleetOrderCount += 1
     logDebug(LogCategory.lcOrders,
-             &"  [MERGE] {fleetOrder.orderType} from fleet {fleetId} " &
+             &"  [MERGE] {fleetOrder.commandType} from fleet {fleetId} " &
              &"(owner: {fleetOwner})")
 
   logInfo(LogCategory.lcOrders,
@@ -153,7 +153,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
               for order in effectiveOrders[h].fleetOrders:
                 # Check if the fleet for this order is actually in the current system
                 if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId:
-                  if isThreateningFleetOrder(order.orderType) or isNonThreateningButProvocativeFleetOrder(order.orderType):
+                  if isThreateningFleetOrder(order.commandType) or isNonThreateningButProvocativeFleetOrder(order.commandType):
                     foundProvocativeOrder = true
                     break
               if foundProvocativeOrder:
@@ -175,13 +175,13 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
           # Check effective orders (includes queued orders)
           if house1 in effectiveOrders and systemOwner.isSome and systemOwner.get() == house2:
             for order in effectiveOrders[house1].fleetOrders:
-              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and isThreateningFleetOrder(order.orderType):
+              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and isThreateningFleetOrder(order.commandType):
                 house1ThreateningHouse2 = true
                 break
 
           if house2 in effectiveOrders and systemOwner.isSome and systemOwner.get() == house1:
             for order in effectiveOrders[house2].fleetOrders:
-              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and isThreateningFleetOrder(order.orderType):
+              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and isThreateningFleetOrder(order.commandType):
                 house2ThreateningHouse1 = true
                 break
 
@@ -220,11 +220,11 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
         FleetCommandType.Colonize, FleetCommandType.SpyColony,
         FleetCommandType.SpySystem, FleetCommandType.HackStarbase
       ]
-      if order.orderType in arrivalRequired:
+      if order.commandType in arrivalRequired:
         if order.fleetId in state.arrivedFleets:
           filteredFleetOrders.add(order)
         else:
-          logDebug(LogCategory.lcOrders, &"  [SKIP] Fleet {order.fleetId} has not arrived for {order.orderType} order")
+          logDebug(LogCategory.lcOrders, &"  [SKIP] Fleet {order.fleetId} has not arrived for {order.commandType} order")
       else:
         # Keep orders that don't require arrival checking
         filteredFleetOrders.add(order)

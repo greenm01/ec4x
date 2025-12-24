@@ -135,7 +135,7 @@ proc resolveMaintenancePhase*(state: var GameState,
       continue
 
     # Filter 2: Skip Hold orders (explicit "stay here")
-    if persistentOrder.orderType == FleetOrderType.Hold:
+    if persistentOrder.commandType == FleetOrderType.Hold:
       continue
 
     let targetSystem = persistentOrder.targetSystem.get()
@@ -150,7 +150,7 @@ proc resolveMaintenancePhase*(state: var GameState,
       logDebug(LogCategory.lcOrders, &"  {fleetId} already at target {targetSystem}")
       continue
 
-    logDebug(LogCategory.lcOrders, &"  Moving {fleetId} toward {targetSystem} for {persistentOrder.orderType} order")
+    logDebug(LogCategory.lcOrders, &"  Moving {fleetId} toward {targetSystem} for {persistentOrder.commandType} order")
 
     # Pathfinding: Find route from current location to target
     # CRITICAL: findPath() respects lane restrictions based on fleet composition:
@@ -235,7 +235,7 @@ proc resolveMaintenancePhase*(state: var GameState,
       events.add(event_factory.fleetArrived(
         fleet.owner,
         fleetId,
-        $order.orderType,  # Convert enum to string
+        $order.commandType,  # Convert enum to string
         targetSystem
       ))
 
@@ -244,7 +244,7 @@ proc resolveMaintenancePhase*(state: var GameState,
       arrivedFleetCount += 1
 
       logDebug(LogCategory.lcOrders,
-        &"  Fleet {fleetId} arrived at {targetSystem} (order: {order.orderType})")
+        &"  Fleet {fleetId} arrived at {targetSystem} (order: {order.commandType})")
 
   logInfo(LogCategory.lcOrders,
     &"[MAINTENANCE STEP 1d] Completed ({arrivedFleetCount} fleets arrived at targets)")

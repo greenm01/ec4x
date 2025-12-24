@@ -6,7 +6,7 @@
 ##   logDebug("Combat", "Resolving space combat in system", systemId)
 ##   logInfo("Economy", "Income phase complete", income = 1500)
 ##   logWarn("Fleet", "Fleet has no destination", fleetId)
-##   logError("Resolve", "Invalid order", error = errorMsg)
+##   logError("Resolve", "Invalid command", error = errorMsg)
 ##
 ## Compile with log level control:
 ##   nim c -d:logLevel=DEBUG   # Show all logs

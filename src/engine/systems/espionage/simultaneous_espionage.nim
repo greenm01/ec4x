@@ -25,7 +25,7 @@ proc collectEspionageIntents*(
       continue
 
     for order in orders[houseId].fleetOrders:
-      if order.orderType notin [FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase]:
+      if order.commandType notin [FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase]:
         continue
 
       # Validate: fleet exists
@@ -52,7 +52,7 @@ proc collectEspionageIntents*(
         houseId: houseId,
         fleetId: order.fleetId,
         targetSystem: targetSystem,
-        orderType: $order.orderType,
+        orderType: $order.commandType,
         espionageStrength: espionageStrength
       ))
 
@@ -371,7 +371,7 @@ proc processScoutIntelligence*(
       if order.fleetId == result.fleetId and
          order.targetSystem.isSome and
          order.targetSystem.get() == targetSystem:
-        orderType = order.orderType
+        orderType = order.commandType
         found = true
         break
 

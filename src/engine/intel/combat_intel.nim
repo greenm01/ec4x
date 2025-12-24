@@ -34,7 +34,7 @@ proc createFleetComposition*(
   if fleetId in state.fleetOrders:
     let order = state.fleetOrders[fleetId]
     orderIntel = some(intel_types.FleetOrderIntel(
-      orderType: $order.orderType,
+      orderType: $order.commandType,
       targetSystem: order.targetSystem
     ))
 

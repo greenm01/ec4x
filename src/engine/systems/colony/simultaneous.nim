@@ -39,7 +39,7 @@ proc collectColonizationIntents*(
       continue
 
     for order in orders[houseId].fleetOrders:
-      if order.orderType != FleetOrderType.Colonize:
+      if order.commandType != FleetOrderType.Colonize:
         continue
 
       # Validate: fleet exists

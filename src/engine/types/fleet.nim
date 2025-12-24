@@ -54,12 +54,12 @@ type
     View              # Long-range reconnaissance 
 
   FleetCommand* = object
-    ## Persistent fleet order that continues until completed or overridden
-    orderType*: FleetCommandType
+    ## Persistent fleet command that continues until completed or overridden
+    commandType*: FleetCommandType
     targetSystem*: Option[SystemId]
     targetFleet*: Option[FleetId]
     priority*: int32  # Execution order within turn
-    roe*: Option[int32]  # Mission-specific retreat threshold (overrides standing order)
+    roe*: Option[int32]  # Mission-specific retreat threshold (overrides standing command)
 
   FleetMissionState* {.pure.} = enum
     ## State machine for fleet spy missions

@@ -160,7 +160,7 @@ proc shouldAutoSeekHome*(state: GameState, fleet: Fleet, order: FleetOrder): boo
 
   # Check if fleet is executing an order that becomes invalid due to hostility
   # (MissionsOnly and higher policies)
-  case order.orderType
+  case order.commandType
   of FleetOrderType.Colonize:
     # ETAC missions abort if destination becomes enemy-controlled
     if order.targetSystem.isSome:

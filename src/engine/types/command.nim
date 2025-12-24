@@ -3,7 +3,7 @@ import ./[core, fleet, production, tech, diplomacy, colony, espionage]
 
 type
   StandingCommand* = object
-    orderType*: StandingOrderType
+    commandType*: StandingOrderType
     params*: StandingOrderParams
     turnsUntilActivation*: int32
     activationDelayTurns*: int32

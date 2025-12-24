@@ -319,7 +319,7 @@ proc insertGameEvent*(db: DbConn, gameId: int64,
     of GameEventType.OrderIssued, GameEventType.OrderCompleted,
        GameEventType.OrderRejected, GameEventType.OrderFailed,
        GameEventType.OrderAborted, GameEventType.FleetArrived:
-      if event.orderType.isSome: event.orderType.get else: ""
+      if event.commandType.isSome: event.commandType.get else: ""
     else:
       ""
 

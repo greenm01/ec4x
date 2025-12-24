@@ -63,7 +63,7 @@ proc executeFleetOrder*(
     events.add(event_factory.orderFailed(
       houseId = houseId,
       fleetId = order.fleetId,
-      orderType = $order.orderType,
+      orderType = $order.commandType,
       reason = "fleet not found",
       systemId = none(SystemId)
     ))
@@ -76,14 +76,14 @@ proc executeFleetOrder*(
     events.add(event_factory.orderFailed(
       houseId = houseId,
       fleetId = order.fleetId,
-      orderType = $order.orderType,
+      orderType = $order.commandType,
       reason = "fleet not owned by house",
       systemId = some(fleet.location)
     ))
     return OrderOutcome.Failed
 
   # Route to order type handler
-  case order.orderType
+  case order.commandType
   of FleetOrderType.Hold:
     return executeHoldOrder(state, fleet, order, events)
   of FleetOrderType.Move:
@@ -1297,7 +1297,7 @@ proc executeRendezvousOrder(
         # Check if has Rendezvous order to same system
         if fleetId in state.fleetOrders:
           let otherOrder = state.fleetOrders[fleetId]
-          if otherOrder.orderType == FleetOrderType.Rendezvous and
+          if otherOrder.commandType == FleetOrderType.Rendezvous and
              otherOrder.targetSystem.isSome and
              otherOrder.targetSystem.get() == targetSystem:
             rendezvousFleets.add(otherFleet)
