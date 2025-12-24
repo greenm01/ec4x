@@ -116,7 +116,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
       project = projects.createShipProject(shipClass)
       projectDesc = "Ship construction: " & $shipClass
 
-    of BuildType.Building:
+    of BuildType.Facility:
       # Building construction
       if command.buildingType.isNone:
         logError(LogCategory.lcEconomy, &"Building construction failed: no building type specified")
