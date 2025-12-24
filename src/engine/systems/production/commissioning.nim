@@ -48,6 +48,7 @@ import ../../config/[military_config, population_config]
 import ../../../common/logger
 import ../ship/entity as ship_entity
 import ../squadron/entity as squadron_entity
+import ../capacity/carrier_hangar
 import ../../event_factory/init as event_factory
 
 # Temporary inline version until research/effects is fixed
@@ -89,6 +90,154 @@ proc getShieldBlockChance*(shieldLevel: int): float =
 
 # Note: getTotalGroundDefense removed - groundBatteries is still a simple counter on Colony
 # getTotalConstructionDocks and hasSpaceport moved to DoD versions above
+
+proc autoLoadFightersToCarriers(
+  state: var GameState,
+  modifiedColonies: Table[ColonyId, Colony],
+  events: var seq[GameEvent]
+) =
+  ## Auto-load newly commissioned fighters onto carriers with available hangar
+  ## space. Only processes colonies with autoLoadingEnabled = true.
+  ##
+  ## **Design:**
+  ## - Follows DoD pattern: uses entity managers for all state access
+  ## - Uses carrier_hangar capacity functions for space checks
+  ## - Loads fighters FIFO (oldest commissioned first)
+  ## - Logs all loading operations for debugging
+  ##
+  ## **Integration:**
+  ## - Called after all units commissioned and colonies updated
+  ## - Runs before new build orders processed
+  ## - Per commissioning.nim:22-24 phase ordering
+
+  logDebug("Economy", "Starting auto-load fighters to carriers")
+
+  for colonyId in modifiedColonies.keys:
+    # Re-fetch colony from state to get current fighterSquadronIds
+    # (they may have been modified by previous auto-loading operations)
+    let colonyOpt = state.colonies.entities.getEntity(colonyId)
+    if colonyOpt.isNone:
+      continue
+
+    let colony = colonyOpt.get()
+
+    # Skip colonies without auto-loading enabled
+    if not colony.autoLoadingEnabled:
+      continue
+
+    # Skip colonies with no fighters
+    if colony.fighterSquadronIds.len == 0:
+      continue
+
+    let systemId = colony.systemId
+
+    # Find fleets at this system
+    if systemId notin state.fleets.bySystem:
+      continue
+
+    # Get all carrier squadrons in fleets at this system
+    var carriersWithSpace: seq[tuple[squadronId: SquadronId,
+      availableSpace: int]] = @[]
+
+    for fleetId in state.fleets.bySystem[systemId]:
+      let fleetOpt = gs_helpers.getFleet(state, fleetId)
+      if fleetOpt.isNone:
+        continue
+
+      let fleet = fleetOpt.get()
+
+      # Only load onto friendly fleets
+      if fleet.houseId != colony.owner:
+        continue
+
+      # Check each squadron in fleet for carriers
+      for squadronId in fleet.squadrons:
+        let squadronOpt = gs_helpers.getSquadrons(state, squadronId)
+        if squadronOpt.isNone:
+          continue
+
+        let squadron = squadronOpt.get()
+
+        # Check if carrier using entity manager for flagship
+        let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+        if flagshipOpt.isNone:
+          continue
+
+        let flagship = flagshipOpt.get()
+        if not isCarrier(flagship.shipClass):
+          continue
+
+        # Check available hangar space
+        let availableSpace = getAvailableHangarSpace(state, squadronId)
+        if availableSpace > 0:
+          carriersWithSpace.add((squadronId, availableSpace))
+
+    # Skip if no carriers with space
+    if carriersWithSpace.len == 0:
+      continue
+
+    # Load fighters onto carriers (FIFO - oldest fighters first)
+    var fightersToLoad = colony.fighterSquadronIds
+    var carrierIdx = 0
+    var loadedCount = 0
+
+    while fightersToLoad.len > 0 and carrierIdx < carriersWithSpace.len:
+      let (carrierSquadronId, availableSpace) = carriersWithSpace[carrierIdx]
+
+      # Load as many fighters as fit in this carrier
+      var loadedToThisCarrier = 0
+      while loadedToThisCarrier < availableSpace and fightersToLoad.len > 0:
+        let fighterSquadronId = fightersToLoad[0]
+        fightersToLoad.delete(0)
+
+        # Get carrier squadron for updating
+        let carrierSquadronOpt =
+          state.squadrons[].entities.getEntity(carrierSquadronId)
+        if carrierSquadronOpt.isNone:
+          break
+
+        var carrierSquadron = carrierSquadronOpt.get()
+
+        # Add fighter to carrier's embarked fighters
+        carrierSquadron.embarkedFighters.add(fighterSquadronId)
+        state.squadrons.entities.updateEntity(carrierSquadronId,
+          carrierSquadron)
+
+        # Remove fighter from colony
+        # Note: We need to re-fetch colony from state since it may have been
+        # updated by previous iterations
+        let colonyOpt = state.colonies.entities.getEntity(colonyId)
+        if colonyOpt.isSome:
+          var updatedColony = colonyOpt.get()
+          # Filter out the loaded fighter squadron
+          var newFighterIds: seq[SquadronId] = @[]
+          for fId in updatedColony.fighterSquadronIds:
+            if fId != fighterSquadronId:
+              newFighterIds.add(fId)
+          updatedColony.fighterSquadronIds = newFighterIds
+          state.colonies.entities.updateEntity(colonyId, updatedColony)
+
+        loadedToThisCarrier += 1
+        loadedCount += 1
+
+        logDebug("Economy",
+          &"Auto-loaded fighter {fighterSquadronId} to carrier " &
+          &"{carrierSquadronId} at {systemId}")
+
+      # Move to next carrier
+      carrierIdx += 1
+
+    if loadedCount > 0:
+      logInfo("Economy",
+        &"Auto-loaded {loadedCount} fighter squadron(s) at {systemId}")
+
+      # Emit event for tracking
+      events.add(event_factory.unitRecruited(
+        colony.owner,
+        "Fighter Squadron (auto-loaded)",
+        systemId,
+        loadedCount
+      ))
 
 proc commissionPlanetaryDefense*(
   state: var GameState,
@@ -562,9 +711,10 @@ proc commissionPlanetaryDefense*(
     state.colonies.entities.updateEntity(colonyId, colony)
     logDebug("Economy", &"  Colony {colonyId} updated")
 
-  # TODO: Auto-loading fighters onto carriers disabled pending DoD refactor
-  # This section needs to be rewritten to use squadron and ship entity managers
-  discard
+  # Auto-load fighters onto carriers with available hangar space
+  # Per phase ordering (commissioning.nim:22-24), this happens after
+  # commissioning but before new build orders
+  autoLoadFightersToCarriers(state, modifiedColonies, events)
 
 proc commissionScout(
   state: var GameState,
