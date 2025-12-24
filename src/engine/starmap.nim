@@ -7,8 +7,8 @@
 ## - Implements actual game rules for lane traversal
 ## - Provides fast, reliable starmap generation and pathfinding
 
-import types/[fleet, hex, system, combat, game_state]
-import ../config/starmap_config
+import types/[fleet, starmap, combat, game_state]
+import config/starmap_config
 import std/[tables, sequtils, random, math, algorithm, hashes, sets, strutils, heapqueue]
 import std/options
 
