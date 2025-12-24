@@ -74,7 +74,7 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       requiresSystem: true,
       hasEffect: false,
       damagesIU: true,
-      damageDice: SABOTAGE_LOW_DICE
+      damageDice: espConfig.effects.sabotage_low_dice
     )
 
   of EspionageAction.SabotageHigh:
@@ -90,7 +90,7 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       requiresSystem: true,
       hasEffect: false,
       damagesIU: true,
-      damageDice: SABOTAGE_HIGH_DICE
+      damageDice: espConfig.effects.sabotage_high_dice
     )
 
   of EspionageAction.Assassination:
@@ -106,8 +106,8 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       requiresSystem: false,
       hasEffect: true,
       effectType: EffectType.SRPReduction,
-      effectTurns: EFFECT_DURATION,
-      effectMagnitude: ASSASSINATION_REDUCTION
+      effectTurns: espConfig.effects.effect_duration_turns,
+      effectMagnitude: float(espConfig.effects.assassination_srp_reduction)
     )
 
   of EspionageAction.CyberAttack:
@@ -123,7 +123,7 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       requiresSystem: true,
       hasEffect: true,
       effectType: EffectType.StarbaseCrippled,
-      effectTurns: EFFECT_DURATION,
+      effectTurns: espConfig.effects.effect_duration_turns,
       effectMagnitude: 1.0
     )
 
@@ -140,8 +140,8 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       requiresSystem: false,
       hasEffect: true,
       effectType: EffectType.NCVReduction,
-      effectTurns: EFFECT_DURATION,
-      effectMagnitude: ECONOMIC_REDUCTION
+      effectTurns: espConfig.effects.effect_duration_turns,
+      effectMagnitude: float(espConfig.effects.economic_ncv_reduction)
     )
 
   of EspionageAction.PsyopsCampaign:
@@ -157,8 +157,8 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       requiresSystem: false,
       hasEffect: true,
       effectType: EffectType.TaxReduction,
-      effectTurns: EFFECT_DURATION,
-      effectMagnitude: PSYOPS_REDUCTION
+      effectTurns: espConfig.effects.effect_duration_turns,
+      effectMagnitude: float(espConfig.effects.psyops_tax_reduction)
     )
 
   of EspionageAction.CounterIntelSweep:

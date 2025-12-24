@@ -6,6 +6,7 @@
 import std/[random, options]
 import ../../types/[core, espionage, prestige]
 import ../../prestige/events as prestige_events
+import ../../config/[prestige_config, espionage_config]
 import action_descriptors
 
 export espionage, action_descriptors
@@ -56,7 +57,7 @@ proc executeEspionageAction*(
     if descriptor.failedPrestigeReason != "":  # Some actions don't penalize detection
       result.attackerPrestigeEvents.add(prestige_events.createPrestigeEvent(
         PrestigeSource.Eliminated,
-        FAILED_ESPIONAGE_PENALTY,
+        globalPrestigeConfig.espionage.failed_espionage,
         descriptor.failedPrestigeReason
       ))
   else:
@@ -65,28 +66,28 @@ proc executeEspionageAction*(
     # Prestige for attacker (ZERO-SUM: attacker gains, target loses equal amount)
     result.attackerPrestigeEvents.add(prestige_events.createPrestigeEvent(
       PrestigeSource.CombatVictory,  # Generic success source
-      descriptor.attackerSuccessPrestige,
+      int32(descriptor.attackerSuccessPrestige),
       descriptor.successPrestigeReason
     ))
 
     # Prestige penalty for target (ZERO-SUM: equal and opposite to attacker gain)
     result.targetPrestigeEvents.add(prestige_events.createPrestigeEvent(
       PrestigeSource.Eliminated,
-      -descriptor.attackerSuccessPrestige,  # Negative of attacker gain
+      int32(-descriptor.attackerSuccessPrestige),  # Negative of attacker gain
       if descriptor.targetSuccessReason != "": descriptor.targetSuccessReason
       else: "Victim of espionage"
     ))
 
     # SRP theft
     if descriptor.stealsSRP:
-      result.srpStolen = descriptor.srpAmount
+      result.srpStolen = int32(descriptor.srpAmount)
 
     # IU damage
     if descriptor.damagesIU:
-      result.iuDamage = rng.rand(1..descriptor.damageDice)
+      result.iuDamage = int32(rng.rand(1..descriptor.damageDice))
       # Update description with damage amount
       result.description = descriptor.successPrestigeReason & " (" & $result.iuDamage & " IU " &
-                          (if descriptor.damageDice == SABOTAGE_LOW_DICE: "damaged" else: "destroyed") & ")"
+                          (if descriptor.damageDice == globalEspionageConfig.effects.sabotage_low_dice: "damaged" else: "destroyed") & ")"
       # Update target prestige description
       if result.targetPrestigeEvents.len > 0:
         result.targetPrestigeEvents[0].description = descriptor.targetSuccessReason & " (" & $result.iuDamage & " IU lost)"
@@ -104,7 +105,7 @@ proc executeEspionageAction*(
         effectType: descriptor.effectType,
         targetHouse: effectTarget,
         targetSystem: effectSystem,
-        turnsRemaining: descriptor.effectTurns,
+        turnsRemaining: int32(descriptor.effectTurns),
         magnitude: descriptor.effectMagnitude
       ))
 
