@@ -33,7 +33,7 @@ proc isHostile*(
   # Check threatening orders in controlled territory
   if attackerControlsSystem:
     if targetOrders in [
-      FleetCommandType.GuardBlockade,
+      FleetCommandType.Blockade,
       FleetCommandType.Bombard,
       FleetCommandType.Invade,
       FleetCommandType.Blitz
@@ -64,16 +64,16 @@ proc filterHostileSquadrons*(
 
   for tf in allTaskForces:
     # Skip own Task Force
-    if tf.house == attacker.house:
+    if tf.houseId == attacker.houseId:
       continue
 
     # Check if hostile (simplified - would need fleet orders in real impl)
-    let attackerControlsSystem = systemOwner.isSome and systemOwner.get() == attacker.house
+    let attackerControlsSystem = systemOwner.isSome and systemOwner.get() == attacker.houseId
     let isHostileHouse = isHostile(
-      attacker.house,
-      tf.house,
+      attacker.houseId,
+      tf.houseId,
       diplomaticRelations,
-      FleetOrder.Patrol,  # Placeholder - real impl would track per fleet
+      FleetCommandType.Patrol,  # Placeholder - real impl would track per fleet
       attackerControlsSystem
     )
 
@@ -82,7 +82,8 @@ proc filterHostileSquadrons*(
         # Note: Starbases moved to facility system (not in squadrons anymore)
         # Starbase screening handled separately via colony facilities and TargetBucket.Starbase
 
-        if sq.canBeTargeted():
+        # Can target if not destroyed
+        if sq.state != CombatState.Destroyed:
           result.add(sq)
 
 ## Bucket-Based Target Selection (Section 7.3.2.4)
@@ -111,11 +112,11 @@ proc buildCandidatePool*(
       return enemyFighters
     # If no enemy fighters, fall through to standard targeting
 
-  # Standard bucket command: Raider → Capital → Destroyer → Fighter → Starbase
+  # Standard bucket command: Raider → Capital → Escort → Fighter → Starbase
   const bucketOrder = [
     TargetBucket.Raider,
     TargetBucket.Capital,
-    TargetBucket.Destroyer,
+    TargetBucket.Escort,
     TargetBucket.Fighter,
     TargetBucket.Starbase
   ]
@@ -142,7 +143,7 @@ proc selectTarget*(
     return none(SquadronId)
 
   if candidates.len == 1:
-    return some(candidates[0].squadron.id)
+    return some(candidates[0].squadronId)
 
   # Calculate total weight
   var totalWeight = 0.0
@@ -157,10 +158,10 @@ proc selectTarget*(
   for sq in candidates:
     cumulative += sq.targetWeight
     if randomValue <= cumulative:
-      return some(sq.squadron.id)
+      return some(sq.squadronId)
 
   # Fallback (shouldn't reach here)
-  return some(candidates[^1].squadron.id)
+  return some(candidates[^1].squadronId)
 
 ## High-level targeting interface
 
@@ -206,7 +207,7 @@ proc getCandidateInfo*(candidates: seq[CombatSquadron]): string =
   result = "Candidates: " & $candidates.len & " ["
   for i, sq in candidates:
     if i > 0: result.add(", ")
-    result.add($sq.bucket & ":" & $sq.squadron.id)
+    result.add($sq.bucket & ":" & $sq.squadronId)
     if sq.state == CombatState.Crippled:
       result.add("(CRIP)")
   result.add("]")

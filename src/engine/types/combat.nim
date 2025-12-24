@@ -61,8 +61,8 @@ type
 
   TaskForce* = object
     houseId*: HouseId
-    squadronIds*: seq[SquadronId]  # Store IDs, not objects
-    facilityIds*: seq[StarbaseId]
+    squadrons*: seq[CombatSquadron]  # Combat state for squadrons in this TF
+    facilities*: seq[CombatFacility]  # Combat state for facilities in this TF
     roe*: int32
     isCloaked*: bool
     moraleModifier*: int32

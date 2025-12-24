@@ -2,9 +2,11 @@
 ## Implements blockade mechanics from operations.md Section 6.2.6
 
 import std/[tables, options]
-import ../../types/[core, game_state, fleet, colony, squadron, ship]
+import ../../types/[core, fleet, colony, squadron, ship]
+import ../../types/game_state as game_state_types
 import ../../state/[entity_manager, iterators]
-import ../intelligence/blockade_intel
+import ../../state/game_state
+# import ../intelligence/blockade_intel  # TODO: Module doesn't exist yet
 
 # =============================================================================
 # Blockade Detection
@@ -47,7 +49,7 @@ proc isSystemBlockaded*(
             let shipOpt = state.ships.entities.getEntity(shipId)
             if shipOpt.isSome:
               let ship = shipOpt.get()
-              if ship.attackStrength > 0:
+              if ship.stats.attackStrength > 0:
                 hasCombatShips = true
                 break
           if hasCombatShips:
@@ -82,14 +84,14 @@ proc applyBlockades*(state: var GameState) =
         updatedColony.blockadeTurns = 1
         needsUpdate = true
 
-        # Both defender and blockaders receive intelligence
-        blockade_intel.generateBlockadeEstablishedIntel(
-          state,
-          systemId,
-          colony.owner,
-          blockaders,
-          state.turn
-        )
+        # TODO: Generate intelligence reports when blockade_intel module exists
+        # blockade_intel.generateBlockadeEstablishedIntel(
+        #   state,
+        #   systemId,
+        #   colony.owner,
+        #   blockaders,
+        #   state.turn
+        # )
       else:
         # Blockade continues (update blockading houses list)
         updatedColony.blockadedBy = blockaders
@@ -98,24 +100,24 @@ proc applyBlockades*(state: var GameState) =
     else:
       if colony.blockaded:
         # Blockade lifted - generate intelligence reports
-        let previousBlockaders = colony.blockadedBy
         updatedColony.blockaded = false
         updatedColony.blockadedBy = @[]
         updatedColony.blockadeTurns = 0
         needsUpdate = true
 
-        # Both defender and former blockaders receive intelligence
-        blockade_intel.generateBlockadeLiftedIntel(
-          state,
-          systemId,
-          colony.owner,
-          previousBlockaders,
-          state.turn
-        )
+        # TODO: Generate intelligence reports when blockade_intel module exists
+        # let previousBlockaders = colony.blockadedBy
+        # blockade_intel.generateBlockadeLiftedIntel(
+        #   state,
+        #   systemId,
+        #   colony.owner,
+        #   previousBlockaders,
+        #   state.turn
+        # )
 
     # Write back if changed
     if needsUpdate:
-      state.colonies.entities.updateEntity(systemId, updatedColony)
+      state.colonies.entities.updateEntity(ColonyId(systemId), updatedColony)
 
 # =============================================================================
 # Blockade Effects
@@ -165,8 +167,8 @@ proc getBlockadingFleets*(state: GameState, systemId: SystemId): seq[Fleet] =
   ## Get all fleets that are blockading a system
   result = @[]
 
-  # Get colony using entity_manager
-  let colonyOpt = state.colonies.entities.getEntity(systemId)
+  # Get colony using state helper (convert SystemId to ColonyId)
+  let colonyOpt = getColony(state, ColonyId(systemId))
   if colonyOpt.isNone:
     return result
 
@@ -185,7 +187,7 @@ proc getBlockadingFleets*(state: GameState, systemId: SystemId): seq[Fleet] =
             let shipOpt = state.ships.entities.getEntity(shipId)
             if shipOpt.isSome:
               let ship = shipOpt.get()
-              if ship.attackStrength > 0:
+              if ship.stats.attackStrength > 0:
                 hasCombatShips = true
                 break
           if hasCombatShips:
@@ -225,7 +227,7 @@ proc canBreakBlockade*(
           let shipOpt = state.ships.entities.getEntity(shipId)
           if shipOpt.isSome:
             let ship = shipOpt.get()
-            blockaderStrength += ship.attackStrength
+            blockaderStrength += ship.stats.attackStrength
 
   var reliefStrength = 0
   for sqId in reliefFleet.squadrons:
@@ -236,7 +238,7 @@ proc canBreakBlockade*(
         let shipOpt = state.ships.entities.getEntity(shipId)
         if shipOpt.isSome:
           let ship = shipOpt.get()
-          reliefStrength += ship.attackStrength
+          reliefStrength += ship.stats.attackStrength
 
   # Simple strength comparison
   # TODO: Integrate with full combat resolution
