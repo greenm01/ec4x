@@ -24,7 +24,7 @@
 
 import std/[sequtils, algorithm, math, tables, strutils, options]
 import ../../types/[
-  capacity, game_state, squadron, ship, core, production, event, colony, house
+  capacity, core, game_state, squadron, ship, production, event, colony, house
 ]
 import ../../state/[entity_manager, game_state as gs_helpers, iterators]
 import ../../entities/squadron_ops

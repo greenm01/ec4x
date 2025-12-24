@@ -7,8 +7,7 @@ import std/[tables, options, random, strformat]
 import ../../types/simultaneous as simultaneous_types
 import simultaneous_resolver
 import ../../types/game_state
-import ../command/commands
-import ../../../common/logger
+import ../../../../common/logger
 import ../squadron/entity
 import ../../types/core
 import ../../state/entity_manager

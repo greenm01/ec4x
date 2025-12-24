@@ -3,27 +3,16 @@
 ## Handles simultaneous resolution of colonization orders to prevent first-mover advantages.
 ## Implements collection, conflict detection, resolution, and fallback logic.
 
-import std/[tables, options, random, sequtils, algorithm, strformat]
-import ../../types/simultaneous as simultaneous_types
+import std/[tables, options, random, sequtils, algorithm, strformat, hashes]
+import ../../types/[core, game_state, command, event, starmap, prestige]
+import ../../state/[entity_manager, iterators]
 import ../combat/simultaneous_resolver
-import ../../gamestate
-import ../../index_maintenance
-import ../../orders
-import ../../order_types
-import ../../squadron
-import ../../fleet
-import ../../logger
-import ../../state_helpers
-import ../../starmap
-import ../../initialization/colony
-import ../colonization/engine as col_engine
-import ../../standing_orders
-import ../../types/resolution as res_types
+import ./[engine as col_engine, conflicts]
+import ../../entities/colony_ops
 import ../../event_factory/init as event_factory
-import ../../types/core
-import ../../types/planets
-import ../../prestige as prestige_types
-import ../../prestige/application as prestige_app
+import ../../prestige
+import ../../config/prestige_config
+import ../../../common/logger
 
 proc collectColonizationIntents*(
   state: GameState,
@@ -34,19 +23,21 @@ proc collectColonizationIntents*(
   ## Returns: Sequence of validated colonization intents
   result = @[]
 
-  for houseId in state.houses.keys:
+  for houseId, house in state.houses.entities.pairs:
     if houseId notin orders:
       continue
 
-    for command in orders[houseId].fleetCommands:
-      if command.commandType != FleetCommandType.Colonize:
+    let orderPacket = orders[houseId]
+    for command in orderPacket.fleetOrders:
+      if command.orderType != FleetOrderType.Colonize:
         continue
 
       # Validate: fleet exists
-      if command.fleetId notin state.fleets:
+      let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
+      if fleetOpt.isNone:
         continue
 
-      let fleet = state.fleets[command.fleetId]
+      let fleet = fleetOpt.get()
 
       # Validate: fleet has colonists (PTUs) in Expansion/Auxiliary squadron cargo
       var hasColonists = false

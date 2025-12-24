@@ -7,21 +7,21 @@
 ## - Helper functions for path finding and hostility detection
 
 import std/[tables, options, sequtils, strformat]
-import ../../common/types/[core, combat, units]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../starmap, ../logger
+import ../../../common/types/[core, combat, units]
+import ../../types/[game_state, command, fleet, squadron, event]
+import ../../state/[game_state as state_module, iterators]
+import ../../starmap
 import ../ship/entity as ship_entity  # Ship helper functions
-import ../index_maintenance
-import ../state_helpers
-import ../initialization/colony
+import ../../entities/colony_ops
 import ../colonization/engine as col_engine
 import ../diplomacy/[types as dip_types]
-import ../config/population_config
+import ../../config/population_config
 import ../prestige
-import ./types  # Common resolution types
-import ./event_factory/init as event_factory
-import ../intelligence/generator
-import ../intelligence/types as intel_types
-import ../standing_orders
+import ../../event_factory/init as event_factory
+import ../../intel/generator
+import ../../intel/types as intel_types
+import ./standing
+import ../../../common/logger
 
 proc completeFleetCommand*(
   state: var GameState, fleetId: FleetId, orderType: string,

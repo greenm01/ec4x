@@ -7,15 +7,11 @@
 ## combat where all attacking fleets are evaluated before outcomes are applied.
 
 import std/[tables, options, random, strformat]
-import ../../types/simultaneous as simultaneous_types
+import ../../types/[simultaneous, game_state, core]
 import simultaneous_resolver
-import ../../types/game_state
-import ../command/commands
-import ../../../common/logger
+import ../../../../common/logger
 import ../squadron/entity
-import ../../types/core
-import ./types as res_types
-import ../colony/planetary_combat  # Planetary combat (resolveBombardment, resolveInvasion, resolveBlitz)
+import ../colony/planetary_combat
 import ../../state/entity_manager
 
 proc collectPlanetaryCombatIntents*(

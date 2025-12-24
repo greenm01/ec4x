@@ -3,15 +3,16 @@
 ## Routes commands to appropriate handlers based on command type
 
 import std/[options, tables, strformat]
-import ../../common/types/[core, units]
-import ../gamestate, ../orders, ../fleet, ../squadron, ../state_helpers, ../logger, ../starmap
-import ../index_maintenance
-import ../intelligence/detection
+import ../../types/[core, fleet, squadron, game_state, event, command, combat]
+import ../../state/[game_state as state_module, iterators]
+import ../../entities/[fleet_ops, squadron_ops]
+import ../../intel/detection
+import ../../event_factory/init as event_factory
+import ../../starmap
 import ../combat/[types as combat_types]
 import ../diplomacy/[types as dip_types]
-import ../resolution/[types as resolution_types, fleet_orders]
-import ../resolution/event_factory/init as event_factory
-import ../standing_orders
+import ./standing
+import ../../../common/logger
 
 type
   OrderOutcome* {.pure.} = enum

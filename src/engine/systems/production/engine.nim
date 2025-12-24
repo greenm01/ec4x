@@ -14,11 +14,9 @@
 ## - STARBASE_BONUS: Operational starbases boost IU output (+5% per SB, max +15%)
 
 import std/math
-import ../../types/production
-import ../../types/colony
-import ../../types/starmap
-import ../../types/game_state
+import ../../types/[production, colony, starmap, game_state]
 import ../../config/economy_config
+import ../../../common/logger
 
 export production.ProductionOutput
 export starmap.PlanetClass, starmap.ResourceRating

@@ -6,9 +6,9 @@
 ## Uses deterministic PRNG for reproducible tests
 
 import std/[hashes, strutils]
-import types
+import ../../types/combat as combat_types
 
-export CERRoll, CERModifier
+export combat_types
 
 ## Deterministic PRNG (LCG - Linear Congruential Generator)
 ## Simple but sufficient for game dice rolls
@@ -55,6 +55,30 @@ proc roll1d20*(rng: var CombatRNG): int =
   rng.rollDie(20)
 
 ## CER Calculation (Section 7.3.3)
+
+proc isCritical*(naturalRoll: int): bool =
+  ## Check if a natural roll is a critical hit
+  ## Natural 9 (on 0-9 scale) is a critical
+  naturalRoll == 9
+
+proc lookupCER*(finalRoll: int): float32 =
+  ## Look up Combat Effectiveness Rating from CER table
+  ## Based on EC4X specs Section 7.3.3
+  ## Returns effectiveness multiplier (0.0 to 2.0+)
+  if finalRoll <= 0: 0.0
+  elif finalRoll == 1: 0.1
+  elif finalRoll == 2: 0.2
+  elif finalRoll == 3: 0.3
+  elif finalRoll == 4: 0.4
+  elif finalRoll == 5: 0.5
+  elif finalRoll == 6: 0.6
+  elif finalRoll == 7: 0.8
+  elif finalRoll == 8: 1.0
+  elif finalRoll == 9: 1.2
+  elif finalRoll == 10: 1.4
+  elif finalRoll == 11: 1.6
+  elif finalRoll == 12: 1.8
+  else: 2.0  # 13+
 
 proc calculateModifiers*(
   phase: CombatPhase,
@@ -109,9 +133,9 @@ proc rollCER*(
   let effectiveness = lookupCER(finalRoll)
 
   result = CERRoll(
-    naturalRoll: naturalRoll,
-    modifiers: modifiers,
-    finalRoll: finalRoll,
+    naturalRoll: int32(naturalRoll),
+    modifiers: int32(modifiers),
+    finalRoll: int32(finalRoll),
     effectiveness: effectiveness,
     isCriticalHit: isCrit
   )

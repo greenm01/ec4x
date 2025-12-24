@@ -4,10 +4,11 @@
 ## Per economy.md:5.0: "Ships under construction in docks can be destroyed during
 ## the Conflict Phase if the shipyard/spaceport is destroyed or crippled"
 
-import std/[strformat, options, sequtils, logging]
-import ../../types/[game_state, economy]
+import std/[strformat, options, sequtils]
+import ../../types/[game_state, production, facilities]
+import ../../../common/logger
 
-proc clearFacilityQueues*(colony: var Colony, facilityType: economy.FacilityType) =
+proc clearFacilityQueues*(colony: var Colony, facilityType: facilities.FacilityType) =
   ## Clear construction and repair queues for a specific facility type
   ## Called when a facility is destroyed or crippled
   ## Per economy.md:5.0, ships under construction/repair are lost with no salvage
@@ -15,12 +16,14 @@ proc clearFacilityQueues*(colony: var Colony, facilityType: economy.FacilityType
   var destroyedRepairs = 0
 
   # Clear facility-specific repairs
-  var survivingRepairs: seq[economy.RepairProject] = @[]
+  var survivingRepairs: seq[production.RepairProject] = @[]
   for repair in colony.repairQueue:
     if repair.facilityType == facilityType:
       destroyedRepairs += 1
       let className = if repair.shipClass.isSome: $repair.shipClass.get() else: "Unknown"
-      warn facilityType, " destroyed at system-", colony.systemId, ": Repair project for ", className, " lost, Cost: ", repair.cost, " PP"
+      logWarn("Facilities", "Facility destroyed: repair project lost",
+              facilityType = facilityType, systemId = colony.systemId,
+              className = className, cost = repair.cost)
     else:
       survivingRepairs.add(repair)
   colony.repairQueue = survivingRepairs
@@ -29,7 +32,9 @@ proc clearFacilityQueues*(colony: var Colony, facilityType: economy.FacilityType
   # This is handled separately in clearAllConstructionQueues()
 
   if destroyedRepairs > 0:
-    info facilityType, " destruction at system-", colony.systemId, ": ", destroyedRepairs, " repair projects lost"
+    logInfo("Facilities", "Facility destruction: repair projects lost",
+            facilityType = facilityType, systemId = colony.systemId,
+            count = destroyedRepairs)
 
 proc clearAllConstructionQueues*(colony: var Colony) =
   ## Clear ALL construction queues when colony has no remaining shipyards or spaceports
@@ -39,18 +44,23 @@ proc clearAllConstructionQueues*(colony: var Colony) =
   if colony.underConstruction.isSome:
     destroyedProjects += 1
     let project = colony.underConstruction.get()
-    warn "All facilities destroyed at system-", colony.systemId, ": Construction project ", project.itemId, " lost, Investment: ", project.costPaid, "/", project.costTotal, " PP"
+    logWarn("Facilities", "All facilities destroyed: construction project lost",
+            systemId = colony.systemId, itemId = project.itemId,
+            investment = project.costPaid, total = project.costTotal)
 
   for project in colony.constructionQueue:
-    warn "All facilities destroyed at system-", colony.systemId, ": Construction project ", project.itemId, " lost, Investment: ", project.costPaid, "/", project.costTotal, " PP"
+    logWarn("Facilities", "All facilities destroyed: construction project lost",
+            systemId = colony.systemId, itemId = project.itemId,
+            investment = project.costPaid, total = project.costTotal)
 
   colony.constructionQueue = @[]
-  colony.underConstruction = none(economy.ConstructionProject)
+  colony.underConstruction = none(production.ConstructionProject)
 
   if destroyedProjects > 0:
-    info "All facilities destroyed at system-", colony.systemId, ": ", destroyedProjects, " construction projects lost"
+    logInfo("Facilities", "All facilities destroyed: construction projects lost",
+            systemId = colony.systemId, count = destroyedProjects)
 
-proc handleFacilityDestruction*(colony: var Colony, facilityType: economy.FacilityType) =
+proc handleFacilityDestruction*(colony: var Colony, facilityType: facilities.FacilityType) =
   ## Handle facility destruction: clear queues and check if any facilities remain
   ##
   ## **Design:**

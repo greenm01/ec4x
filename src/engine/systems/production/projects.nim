@@ -15,13 +15,9 @@
 
 import std/options
 import math
-import ../../types/core
-import ../../types/production
-import ../../types/ship
-import ../../types/colony
-import ../../types/facilities
-import ../../config/economy_config  # For IU base cost
-import ../../config/config_accessors
+import ../../types/[core, production, ship, colony, facilities]
+import ../../config/[economy_config, config_accessors]
+import ../../../common/logger
 
 export production.ConstructionProject, production.CompletedProject, production.BuildType
 export config_accessors.getShipConstructionCost, config_accessors.getShipBaseBuildTime

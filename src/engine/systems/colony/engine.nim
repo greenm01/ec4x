@@ -7,7 +7,7 @@
 ## Per operations.md:6.2.13 - Colony establishment rules
 
 import std/[options, tables]
-import ../../types/[core, game_state, colony, starmap, prestige]
+import ../../types/[core, game_state, starmap, prestige]
 import ../../entities/colony_ops
 import ../../config/[prestige_config, prestige_multiplier]
 

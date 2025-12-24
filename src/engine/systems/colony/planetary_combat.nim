@@ -11,20 +11,16 @@
 ## - Blitz: Fast insertion variant (marines land under fire)
 
 import std/[tables, options, sequtils, hashes, math, random, strformat]
-import ../../common/[types/core, types/combat, types/units, logger as common_logger]
-import ../../types/[game_state, command, fleet, colony, squadron, ship, house]
+import ../../types/[core, game_state, command, ground_unit]
 import ../../state/[entity_manager, iterators]
-import ../index_maintenance
-import ../combat/ground  # Combat mechanics (conductBombardment, conductInvasion, conductBlitz)
-import ../economy/[types as econ_types, facility_damage]
-import ../prestige
-import ../../config/[prestige_multiplier, prestige_config, facilities_config]
-import ../diplomacy/[types as dip_types, engine as dip_engine]
-import ../intelligence/diplomatic_intel
-import ../combat/types  # Common resolution types
-import ../fleet/mechanics  # For findClosestOwnedColony, resolveMovementCommand
+import ../combat/[ground, types as combat_types]
+import ../economy/facility_damage
+import ../prestige/[engine as prestige_engine, types as prestige_types]
+import ../../config/[prestige_config, facilities_config]
+import ../diplomacy/engine as dip_engine
+import ../intelligence/[combat_intel, diplomatic_intel]
+import ../fleet/mechanics
 import ../../event_factory/init as event_factory
-import ../intelligence/[types as intel_types, combat_intel]
 
 # ============================================================================
 # HELPER FUNCTIONS - Combat Support

@@ -9,7 +9,7 @@
 ## called from turn_cycle/command_phase.nim during command resolution
 
 import std/[options, strformat, logging]
-import ../../types/[game_state, command]
+import ../../types/[core, game_state, command]
 import ../../state/entity_manager
 
 proc resolveColonyManagementCommands*(state: var GameState, packet: CommandPacket) =

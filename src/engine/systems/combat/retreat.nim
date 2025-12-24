@@ -5,9 +5,9 @@
 ## (Section 7.3.4, 7.3.5)
 
 import std/[algorithm, strutils, options]
-import types
+import ../../types/combat as combat_types
 
-export RetreatEvaluation
+export combat_types
 
 ## ROE Evaluation (Section 7.1.1 and 7.3.4)
 

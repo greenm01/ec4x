@@ -22,7 +22,7 @@
 
 import std/[tables, strutils, algorithm, options, math]
 import ../../types/[
-  capacity, game_state, ship, core, production, facilities, colony
+  capacity, core, game_state, ship, production, facilities, colony
 ]
 import ../../state/[game_state as gs_helpers, iterators]
 import ../../../common/logger

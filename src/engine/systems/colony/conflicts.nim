@@ -6,7 +6,8 @@
 ## Called by @systems/conflict/simultaneous.nim during conflict phase
 
 import std/[tables, options, random]
-import ../../types/[core, game_state, colony, starmap]
+import ../../types/[core, game_state, starmap]
+import ../../state/entity_manager
 import ./engine as colony_engine
 
 type

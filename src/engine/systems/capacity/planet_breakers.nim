@@ -14,7 +14,7 @@
 
 import std/[strutils, algorithm, options]
 import ../../types/[
-  capacity, game_state, squadron, ship, core, production, event, colony, house
+  capacity, core, game_state, squadron, ship, production, event, colony, house
 ]
 import ../../state/[game_state as gs_helpers, iterators]
 import ../../entities/squadron_ops

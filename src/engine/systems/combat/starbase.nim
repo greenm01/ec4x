@@ -6,12 +6,12 @@
 ## Based on EC4X specifications Section 7.0 Combat (operations.md)
 
 import std/[options, sequtils]
-import types, cer, targeting, damage
-import ../../common/types/[core, units, combat as commonCombat]
-import ../../common/logger
-import ../squadron
+import ../../types/combat as combat_types
+import cer, targeting, damage
+import ../../../../common/[types/core, types/units, types/combat as commonCombat, logger]
+import ../squadron/entity
 
-export CombatSquadron, TaskForce
+export combat_types
 
 ## Starbase Detection (Section 7.2.4)
 ##

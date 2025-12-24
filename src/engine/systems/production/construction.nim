@@ -22,13 +22,11 @@
 ## - economy/facility_queue.nim: "Queue management" (advancement)
 
 import std/[tables, options, strutils, strformat]
-import ../../common/[hex, types/core, types/units, types/tech]
-import ../gamestate, ../orders, ../logger
-import ../order_types
-import ../economy/[types as econ_types, projects, facility_queue]
-import ../economy/capacity/construction_docks as dock_capacity
-import ./types as res_types
-import ./event_factory/init as event_factory
+import ../../types/[core, game_state, production, command]
+import ../../types/[ship, colony, fleet, squadron]
+import ../../state/[game_state as gs_helpers, entity_manager, id_gen]
+import ../../config/[economy_config, config_accessors]
+import ../../../common/logger
 
 proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var seq[res_types.GameEvent]) =
   ## Process construction orders for a house with budget validation

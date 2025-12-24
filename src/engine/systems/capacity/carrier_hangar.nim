@@ -18,9 +18,7 @@
 ## enforce at load time (explicit mutations)
 
 import std/[options, math]
-import ../../types/[
-  capacity, game_state, squadron, ship, core
-]
+import ../../types/[capacity, core, game_state, squadron, ship]
 import ../../state/[game_state as gs_helpers, iterators]
 import ../../../common/logger
 

@@ -10,12 +10,13 @@
 ## - Drydocks are repair-only facilities (10 docks each)
 ## - Shipyards are construction-only facilities (clean separation of concerns)
 
-import std/[tables, options, strformat, logging, sequtils]
-import ../../types/[game_state, core, units, economy]
+import std/[tables, options, strformat, sequtils]
+import ../../types/[game_state, core, ship, production, facilities]
 import ../../systems/ship/entity as ship_entity  # Ship helper functions
-import ../../entities/fleet_ops
+import ../../entities/[fleet_ops, colony_ops]
+import ../../../common/logger
 
-export economy.RepairProject, economy.FacilityType, economy.RepairTargetType
+export production.RepairProject, facilities.FacilityType, production.RepairTargetType
 
 proc calculateRepairCost*(shipClass: ShipClass): int =
   ## Calculate repair cost for a ship
@@ -24,7 +25,7 @@ proc calculateRepairCost*(shipClass: ShipClass): int =
   result = (ship.buildCost().float * 0.25).int
 
 proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
-                         squadronId: SquadronId, shipId: ShipId): Option[RepairProject] =
+                         squadronId: SquadronId, shipId: ShipId): Option[production.RepairProject] =
   ## Extract a crippled ship from a fleet squadron and create repair project
   ## Works with entity IDs for DoD compliance
   ## Returns None if extraction fails
@@ -111,7 +112,8 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
       # Write back modified squadron
       state.squadrons.entities.data[state.squadrons.entities.index[squadronId]] = squadron
 
-      info "Promoted escort to flagship in squad-", squadron.id, " (old flagship sent for repair)"
+      logInfo("Repair", "Promoted escort to flagship (old flagship sent for repair)",
+              "squadronId=", squadron.id)
     else:
       # -----------------------------------------------------------------------
       # CASE 2: SQUADRON HAS NO ESCORTS - DISSOLVE SQUADRON
@@ -130,12 +132,14 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
       # If removing this squadron leaves the fleet empty (no squadrons remaining),
       # delete the fleet entirely using fleet_ops.
       if fleet.squadrons.len == 0:
-        fleet_ops.destroyFleet(state, fleetId)
-        info "Dissolved squadron ", squadron.id, " and removed empty fleet-", fleetId, " (flagship sent for repair)"
+        destroyFleet(state, fleetId)
+        logInfo("Repair", "Dissolved squadron and removed empty fleet (flagship sent for repair)",
+                "squadronId=", squadron.id, " fleetId=", fleetId)
       else:
         # Write back modified fleet
         state.fleets.entities.data[fleetIdx] = fleet
-        info "Dissolved squadron ", squadron.id, " from fleet-", fleetId, " (flagship sent for repair)"
+        logInfo("Repair", "Dissolved squadron from fleet (flagship sent for repair)",
+                "squadronId=", squadron.id, " fleetId=", fleetId)
   else:
     # Escort extraction
     if shipId notin squadron.ships:
@@ -150,24 +154,23 @@ proc extractCrippledShip*(state: var GameState, fleetId: FleetId,
   # Create repair project (drydocks only)
   let cost = calculateRepairCost(shipClass)
 
-  # NOTE: RepairProject still uses indices instead of IDs
-  # This should be refactored to store squadronId/shipId for proper DoD
-  # For now, storing None since indices are not available with DoD model
-  let repair = RepairProject(
-    targetType: economy.RepairTargetType.Ship,
-    facilityType: economy.FacilityType.Drydock,  # Drydocks only
+  # Create repair project
+  let repair = production.RepairProject(
+    targetType: production.RepairTargetType.Ship,
+    facilityType: facilities.FacilityType.Drydock,  # Drydocks only
     fleetId: some(fleetId),
-    squadronIdx: none(int),  # TODO: Should store squadronId instead
-    shipIdx: none(int),      # TODO: Should store shipId instead
-    starbaseIdx: none(int),
+    squadronId: some(squadronId),
+    shipId: some(shipId),
+    starbaseId: none(StarbaseId),
     shipClass: some(shipClass),
-    cost: cost,
+    cost: cost.int32,
     turnsRemaining: 1,
     priority: 1  # Ship repairs = priority 1 (construction = 0, starbase = 2)
   )
 
-  info "Extracted crippled ", shipClass, " from fleet-", fleetId, " squad-", squadronId,
-       " for repair (cost: ", cost, " PP, drydock only)"
+  logInfo("Repair", "Extracted crippled ship for repair",
+          "shipClass=", shipClass, " fleetId=", fleetId, " squadronId=", squadronId,
+          " cost=", cost, " facilityType=Drydock")
 
   return some(repair)
 
@@ -176,10 +179,14 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
   ## Starbases use spaceport facilities and do NOT consume dock space
   ## Per architecture: Starbases are facilities that require Spaceports
 
-  if systemId notin state.colonies.entities.index:
+  if systemId notin state.colonies.bySystem:
     return
 
-  let colonyIdx = state.colonies.entities.index[systemId]
+  let colonyId = state.colonies.bySystem[systemId]
+  if colonyId notin state.colonies.entities.index:
+    return
+
+  let colonyIdx = state.colonies.entities.index[colonyId]
   var colony = state.colonies.entities.data[colonyIdx]
 
   # Check if colony has spaceport (starbases require spaceport for repair)
@@ -189,20 +196,20 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
 
   # Submit repairs for crippled starbases
   # Note: Starbases do NOT consume dock capacity (they are facilities, not ships)
-  for idx, starbase in colony.starbases:
+  for starbase in colony.starbases:
     if starbase.isCrippled:
       # Calculate repair cost (25% of starbase build cost)
       # TODO: Get actual starbase build cost from config (for now use estimate)
       let starbaseBuildCost = 300  # From facilities.toml
       let repairCost = (starbaseBuildCost.float * 0.25).int
 
-      let repair = RepairProject(
-        targetType: economy.RepairTargetType.Starbase,
-        facilityType: economy.FacilityType.Spaceport,  # Use Spaceport, not Shipyard
+      let repair = production.RepairProject(
+        targetType: production.RepairTargetType.Starbase,
+        facilityType: facilities.FacilityType.Spaceport,  # Use Spaceport, not Shipyard
         fleetId: none(FleetId),
-        squadronIdx: none(int),
-        shipIdx: none(int),
-        starbaseIdx: some(idx),
+        squadronId: none(SquadronId),
+        shipId: none(ShipId),
+        starbaseId: some(starbase.id),
         shipClass: none(ShipClass),
         cost: repairCost,
         turnsRemaining: 1,
@@ -210,8 +217,9 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
       )
 
       colony.repairQueue.add(repair)
-      info "Submitted repair for starbase-", starbase.id, " at colony-", systemId,
-           " (cost: ", repairCost, " PP, spaceport, no dock space)"
+      logInfo("Repair", "Submitted repair for starbase",
+              "starbaseId=", starbase.id, " systemId=", systemId,
+              " cost=", repairCost, " facilityType=Spaceport")
 
   # Write back modified colony
   state.colonies.entities.data[colonyIdx] = colony
@@ -221,10 +229,14 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
   ## Ship repairs require drydocks (spaceports and shipyards cannot repair)
   ## Called during turn resolution after fleet movements
 
-  if systemId notin state.colonies.entities.index:
+  if systemId notin state.colonies.bySystem:
     return
 
-  let colonyIdx = state.colonies.entities.index[systemId]
+  let colonyId = state.colonies.bySystem[systemId]
+  if colonyId notin state.colonies.entities.index:
+    return
+
+  let colonyIdx = state.colonies.entities.index[colonyId]
   var colony = state.colonies.entities.data[colonyIdx]
 
   # Check if colony has drydock (required for all ship repairs)
@@ -267,7 +279,7 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
         let flagship = state.ships.entities.data[flagshipIdx]
         if flagship.isCrippled:
           # Check drydock capacity
-          let drydockProjects = colony.getActiveProjectsByFacility(economy.FacilityType.Drydock)
+          let drydockProjects = colony.getActiveProjectsByFacility(facilities.FacilityType.Drydock)
           let drydockCapacity = colony.getDrydockDockCapacity()
 
           if drydockProjects < drydockCapacity:
@@ -275,11 +287,11 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
             let repairOpt = state.extractCrippledShip(fleetId, squadronId, squadron.flagshipId)
             if repairOpt.isSome:
               colony.repairQueue.add(repairOpt.get())
-              info "Submitted repair for ", flagship.shipClass, " flagship from fleet-", fleetId,
-                   " to colony-", systemId, " drydock"
+              logInfo("Repair", "Submitted repair for flagship",
+                      shipClass = flagship.shipClass, fleetId = fleetId, systemId = systemId)
           else:
-            debug "Colony-", systemId, " has no drydock capacity for repair (",
-                  drydockProjects, "/", drydockCapacity, " docks used)"
+            logDebug("Repair", "Colony has no drydock capacity",
+                    systemId = systemId, used = drydockProjects, capacity = drydockCapacity)
 
       # Check escorts
       for shipId in squadron.ships:
@@ -291,7 +303,7 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
 
         if ship.isCrippled:
           # Check drydock capacity
-          let drydockProjects = colony.getActiveProjectsByFacility(economy.FacilityType.Drydock)
+          let drydockProjects = colony.getActiveProjectsByFacility(facilities.FacilityType.Drydock)
           let drydockCapacity = colony.getDrydockDockCapacity()
 
           if drydockProjects < drydockCapacity:
@@ -299,11 +311,11 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
             let repairOpt = state.extractCrippledShip(fleetId, squadronId, shipId)
             if repairOpt.isSome:
               colony.repairQueue.add(repairOpt.get())
-              info "Submitted repair for ", ship.shipClass, " from fleet-", fleetId,
-                   " to colony-", systemId, " drydock"
+              logInfo("Repair", "Submitted repair for escort",
+                      shipClass = ship.shipClass, fleetId = fleetId, systemId = systemId)
           else:
-            debug "Colony-", systemId, " has no drydock capacity for repair (",
-                  drydockProjects, "/", drydockCapacity, " docks used)"
+            logDebug("Repair", "Colony has no drydock capacity",
+                    systemId = systemId, used = drydockProjects, capacity = drydockCapacity)
 
   # Write back modified colony
   state.colonies.entities.data[colonyIdx] = colony

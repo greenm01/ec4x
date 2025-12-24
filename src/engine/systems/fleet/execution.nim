@@ -8,17 +8,16 @@
 ## - Special commands: Various phases (colonize, salvage, espionage)
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
-import ../../common/types/core
-import ../../common/logger as common_logger
-import ../gamestate, ../orders, ../fleet, ../squadron, ../logger, ../order_types
-import ../diplomacy/[types as dip_types]
+import ../../types/[core, game_state, command, fleet, squadron]
+import ../../../common/logger as common_logger
 import ../../state/[entity_manager, iterators]
 import ../commands/[executor]
-import ../standing_orders
-import ./[types as res_types, fleet_orders, simultaneous]
+import ./standing
+import ../resolution/[types as res_types, fleet_orders, simultaneous]
 import ../combat/battles  # Space/orbital combat (resolveBattle)
 import ../colony/planetary_combat  # Planetary combat (resolveBombardment, resolveInvasion, resolveBlitz)
-import ./event_factory/init as event_factory
+import ../../event_factory/init as event_factory
+import ../diplomacy/[types as dip_types]
 
 type
   OrderCategoryFilter* = proc(orderType: FleetCommandType): bool

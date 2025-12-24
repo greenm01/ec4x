@@ -8,8 +8,10 @@
 ## - TRP: Varies by tech field
 
 import std/[math, tables]
-import ../../types/tech
+import ../../types/[core, game_state, tech, command]
+import ../../state/[game_state, iterators]
 import ../../config/tech_config
+import ../../../common/logger
 
 export tech.ResearchAllocation
 

@@ -6,10 +6,12 @@
 ## Pure game logic - no I/O, works with typed data
 
 import std/[options, tables, sequtils, strutils, random]
-import types, cer, resolution, retreat, damage, ../squadron
+import ../../types/combat as combat_types
+import cer, resolution, retreat, damage
+import ../squadron/entity
 import ../intelligence/detection
 
-export BattleContext, CombatResult, TaskForce, CombatSquadron
+export combat_types
 
 ## Main Combat Resolution
 

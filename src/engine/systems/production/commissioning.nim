@@ -40,29 +40,15 @@
 ## - Construction queue advancement (happens in Maintenance Phase)
 
 import std/[tables, options, strformat, strutils]
-import ../../types/core
-import ../../types/ship
-import ../../types/colony
-import ../../types/fleet
-import ../../types/squadron
-import ../../types/game_state
-import ../../types/production
-import ../../types/facilities
-import ../../types/event
-import ../../types/ground_unit
-import ../../state/game_state as gs_helpers
-import ../../state/entity_manager
-import ../../state/id_gen
-import ../../event_factory/init as event_factory
+import ../../types/[core, game_state, production, event, ground_unit]
+import ../../types/[ship, colony, fleet, squadron, facilities]
+import ../../state/[game_state as gs_helpers, entity_manager, id_gen]
+import ../../config/[ground_units_config, facilities_config]
+import ../../config/[military_config, population_config]
 import ../../../common/logger
-import ../ship/entity as ship_entity  # Ship construction and helpers
-import ../squadron/entity as squadron_entity  # Squadron construction
-
-# Import config access
-import ../../config/ground_units_config
-import ../../config/facilities_config
-import ../../config/military_config
-import ../../config/population_config  # For minViablePopulation
+import ../ship/entity as ship_entity
+import ../squadron/entity as squadron_entity
+import ../../event_factory/init as event_factory
 
 # Temporary inline version until research/effects is fixed
 proc calculateEffectiveDocks(baseDocks: int, cstLevel: int): int =

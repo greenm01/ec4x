@@ -10,11 +10,20 @@ import ../state/entity_manager
 import ../state/game_state as gs_helpers
 import ../types/[core, squadron, fleet, ship]
 
-proc createSquadron*(state: var GameState, owner: HouseId, fleetId: FleetId, flagship: Ship): Squadron =
+proc createSquadron*(state: var GameState, owner: HouseId, fleetId: FleetId, flagshipId: ShipId, squadronType: SquadronType): Squadron =
   ## Creates a new squadron, adds it to a fleet, and updates all indexes.
   let squadronId = state.generateSquadronId()
   let fleetLocation = gs_helpers.getFleet(state, fleetId).get().location
-  let newSquadron = Squadron(id: squadronId, flagship: flagship, houseId: owner, location: fleetLocation)
+  let newSquadron = Squadron(
+    id: squadronId,
+    flagshipId: flagshipId,
+    ships: @[],
+    houseId: owner,
+    location: fleetLocation,
+    squadronType: squadronType,
+    destroyed: false,
+    embarkedFighters: @[]
+  )
   
   state[].squadrons[].entities.addEntity(squadronId, newSquadron)
   

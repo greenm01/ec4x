@@ -5,7 +5,7 @@
 
 import std/[tables, strutils, os]
 import toml_serialization
-import ../../common/logger
+import ../../../common/logger
 
 type
   ThemeEntry* = object

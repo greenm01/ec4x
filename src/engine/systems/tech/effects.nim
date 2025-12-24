@@ -17,8 +17,10 @@
 ## - FD: Fighter capacity multiplier (economy/fighter_capacity.nim)
 ## - ACO: Carrier capacity (implemented here)
 
-import ../../types/tech
+import ../../types/[core, game_state, tech, command]
+import ../../state/[game_state, iterators]
 import ../../config/tech_config
+import ../../../common/logger
 import std/options
 
 export tech.TechLevel

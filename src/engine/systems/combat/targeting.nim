@@ -5,30 +5,16 @@
 ## (Section 7.3.2)
 
 import std/[options, tables]
-import types, cer
+import ../../types/[combat as combat_types, core, diplomacy, fleet]
+import cer
 
-export TargetBucket, DiplomaticState
-
-## Diplomatic Filtering (Section 7.3.2.1)
-
-type
-  FleetCommand* {.pure.} = enum
-    Hold = 0,
-    Move = 1,
-    SeekHome = 2,
-    Patrol = 3,
-    GuardStarbase = 4,
-    GuardBlockade = 5,
-    Bombard = 6,
-    Invade = 7,
-    Blitz = 8,
-    # ... others not relevant to targeting
+export combat_types
 
 proc isHostile*(
   attacker: HouseId,
   target: HouseId,
   diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
-  targetOrders: FleetOrder,
+  targetOrders: FleetCommandType,
   attackerControlsSystem: bool
 ): bool =
   ## Determine if target Task Force is hostile per Section 7.3.2.1
@@ -47,15 +33,15 @@ proc isHostile*(
   # Check threatening orders in controlled territory
   if attackerControlsSystem:
     if targetOrders in [
-      FleetOrder.GuardBlockade,
-      FleetOrder.Bombard,
-      FleetOrder.Invade,
-      FleetOrder.Blitz
+      FleetCommandType.GuardBlockade,
+      FleetCommandType.Bombard,
+      FleetCommandType.Invade,
+      FleetCommandType.Blitz
     ]:
       return true
 
   # Patrol in controlled territory by hostile/enemy forces
-  if attackerControlsSystem and targetOrders == FleetOrder.Patrol:
+  if attackerControlsSystem and targetOrders == FleetCommandType.Patrol:
     if relation in {DiplomaticState.Hostile, DiplomaticState.Enemy}:
       return true
 

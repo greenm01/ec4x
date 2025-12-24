@@ -8,19 +8,19 @@
 ## See colony/planetary_combat.nim for Theater 3 (planetary operations)
 
 import std/[tables, options, sequtils, hashes, math, random, strformat]
-import ../../common/[types/core, types/combat as combat_types, types/units, logger as common_logger]
+import ../../../../common/[types/core, types/combat as common_combat_types, types/units, logger]
 import ../../types/[game_state, command, fleet, squadron, ship, colony, house]
 import ../../state/[entity_manager, iterators]
 import ../index_maintenance
 import ./[engine as combat_engine, ground]
-import ../economy/[types as econ_types, facility_damage]
-import ../prestige
+import ../economy/[entity as econ_entity, facility_damage]
+import ../prestige/engine
 import ../../config/[prestige_multiplier, prestige_config, facilities_config]
-import ../diplomacy/[types as dip_types, engine as dip_engine]
+import ../diplomacy/[entity as dip_entity, engine as dip_engine]
 import ../intelligence/diplomatic_intel
-import ../fleet/mechanics  # For findClosestOwnedColony, resolveMovementCommand
-import ./event_factory/init as event_factory
-import ../intelligence/[types as intel_types, combat_intel]
+import ../fleet/mechanics
+import ../../event_factory/init as event_factory
+import ../intelligence/[entity as intel_entity, combat_intel]
 
 proc applySpaceLiftScreeningLosses(
   state: var GameState,
@@ -684,39 +684,39 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
   for (fleetId, fleet) in state.fleetsAtSystemWithId(systemId):
     fleetsAtSystem.add((fleetId, fleet))
 
-      # Intel-only fleets are invisible to combat fleets and never participate in combat
-      # They operate independently for intelligence gathering (per 02-assets.md:2.4.2)
-      if isIntelOnlyFleet(fleet):
-        logDebug("Combat", "Intel-only fleet excluded from combat", "fleetId=", $fleetId)
-        continue
+    # Intel-only fleets are invisible to combat fleets and never participate in combat
+    # They operate independently for intelligence gathering (per 02-assets.md:2.4.2)
+    if isIntelOnlyFleet(fleet):
+      logDebug("Combat", "Intel-only fleet excluded from combat", "fleetId=", $fleetId)
+      continue
 
-      # Classify fleet based on ownership and orders
-      let isDefender = systemOwner.isSome and systemOwner.get() == fleet.owner
+    # Classify fleet based on ownership and orders
+    let isDefender = systemOwner.isSome and systemOwner.get() == fleet.owner
 
-      if isDefender:
-        # Defender fleet classification
-        var isOrbitalOnly = false
+    if isDefender:
+      # Defender fleet classification
+      var isOrbitalOnly = false
 
-        # Check for guard orders
-        if fleet.owner in orders:
-          for command in orders[fleet.owner].fleetCommands:
-            if command.fleetId == fleetId and
-               (command.commandType == FleetCommandType.GuardStarbase or
-                command.commandType == FleetCommandType.GuardPlanet):
-              isOrbitalOnly = true
-              break
+      # Check for guard orders
+      if fleet.owner in orders:
+        for command in orders[fleet.owner].fleetCommands:
+          if command.fleetId == fleetId and
+             (command.commandType == FleetCommandType.GuardStarbase or
+              command.commandType == FleetCommandType.GuardPlanet):
+            isOrbitalOnly = true
+            break
 
-        # Reserve and mothballed fleets only defend in orbital combat
-        if fleet.status == FleetStatus.Reserve or fleet.status == FleetStatus.Mothballed:
-          isOrbitalOnly = true
+      # Reserve and mothballed fleets only defend in orbital combat
+      if fleet.status == FleetStatus.Reserve or fleet.status == FleetStatus.Mothballed:
+        isOrbitalOnly = true
 
-        if isOrbitalOnly:
-          orbitalDefenders.add((fleetId, fleet))
-        else:
-          mobileDefenders.add((fleetId, fleet))
+      if isOrbitalOnly:
+        orbitalDefenders.add((fleetId, fleet))
       else:
-        # All non-owner fleets are attackers (must fight through space combat first)
-        attackingFleets.add((fleetId, fleet))
+        mobileDefenders.add((fleetId, fleet))
+    else:
+      # All non-owner fleets are attackers (must fight through space combat first)
+      attackingFleets.add((fleetId, fleet))
 
   if fleetsAtSystem.len < 2:
     # Need at least 2 fleets for combat
@@ -1227,11 +1227,11 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
           logWarn("Combat", "Fleet retreated but has no safe destination - holding position",
                   "fleetId=", $fleetId, " houseId=", $houseId)
           # No safe colonies - fleet holds at retreat location (will be resolved by movement system)
-              events.add(event_factory.battle(
-                houseId,
-                systemId,
-                "Fleet " & fleetId & " retreated from combat but has no friendly colonies - holding position"
-              ))
+          events.add(event_factory.battle(
+            houseId,
+            systemId,
+            "Fleet " & fleetId & " retreated from combat but has no friendly colonies - holding position"
+          ))
 
   # 6. Determine attacker and defender houses for reporting
   var attackerHouses: seq[HouseId] = @[]

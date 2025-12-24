@@ -12,10 +12,9 @@
 ## - Requires shipyard with available docks
 
 import std/[tables, options, sequtils]
-import ../common/types/[core, units]
-import squadron, fleet, gamestate
-import economy/types as econ_types
-import config/[military_config, construction_config, ships_config, facilities_config]
+import ../../types/[core, game_state, fleet, squadron, ship]
+import ../economy/types as econ_types
+import ../../config/[engine as config_engine, military_config, construction_config, ships_config, facilities_config]
 
 export HouseId, SystemId, FleetId, ShipClass
 
@@ -71,7 +70,7 @@ proc getSalvageValue*(shipClass: ShipClass, salvageType: SalvageType): int =
   ## - Normal salvage: 50% of build cost (at own colonies)
   ## - Emergency salvage: 25% of build cost (in combat zones)
 
-  let stats = getShipStats(shipClass)
+  let stats = config_engine.getShipStats(shipClass)
   let buildCost = stats.buildCost
 
   let multiplier = case salvageType
@@ -113,7 +112,7 @@ proc getShipRepairCost*(shipClass: ShipClass): int =
   ## Calculate repair cost for crippled ship
   ## Per construction.toml: 25% of build cost
 
-  let stats = getShipStats(shipClass)
+  let stats = config_engine.getShipStats(shipClass)
   let buildCost = stats.buildCost
   let multiplier = globalConstructionConfig.repair.ship_repair_cost_multiplier
 

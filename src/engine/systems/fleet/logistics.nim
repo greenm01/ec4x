@@ -15,13 +15,13 @@
 ##   let result = submitZeroTurnCommand(state, cmd)
 ##   if result.success: echo "Success!"
 
-import ../[gamestate, fleet, squadron, logger]
-import ../index_maintenance
-import ../../common/types/core
-import ../config/population_config  # For population config (soulsPerPtu, ptuSizeMillions)
-import ../economy/capacity/carrier_hangar  # For carrier capacity checks
-import ../resolution/[event_factory/init as event_factory, types as resolution_types]
+import ../../types/[core, game_state, fleet, squadron, ship]
+import ../../state/[entity_manager, iterators]
+import ../../entities/[fleet_ops, squadron_ops]
+import ../../config/population_config  # For population config (soulsPerPtu, ptuSizeMillions)
+import ../../event_factory/init as event_factory
 import std/[options, algorithm, tables, strformat, sequtils]
+import ../../../common/logger
 
 # ============================================================================
 # Type Definitions
@@ -112,7 +112,7 @@ type
 
 proc validateOwnership*(state: GameState, houseId: HouseId): ValidationResult =
   ## DRY: Validate house exists
-  if houseId notin state.houses:
+  if state.houses.entities.getEntity(houseId).isNone:
     return ValidationResult(valid: false, error: "House does not exist")
   return ValidationResult(valid: true, error: "")
 
@@ -121,29 +121,23 @@ proc validateFleetAtFriendlyColony*(state: GameState, fleetId: FleetId, houseId:
   ## CRITICAL: All zero-turn fleet/cargo operations require friendly colony
 
   # 1. Check fleet exists
-  if not state.fleets.hasKey(fleetId):
+  let fleetOpt = state.fleets.entities.getEntity(fleetId)
+  if fleetOpt.isNone:
     return ValidationResult(valid: false, error: "Fleet not found")
 
-  let fleet = state.fleets[fleetId]
+  let fleet = fleetOpt.get()
 
   # 2. Check ownership
-  if fleet.owner != houseId:
+  if fleet.houseId != houseId:
     return ValidationResult(valid: false, error: "Fleet not owned by house")
 
   # 3. CRITICAL: Fleet must be at friendly colony
-  var colonyFound = false
-  var colonyOwner: HouseId = ""
-
-  for colony in state.colonies.values:
-    if colony.systemId == fleet.location:
-      colonyFound = true
-      colonyOwner = colony.owner
-      break
-
-  if not colonyFound:
+  let colonyOpt = state.colonies.entities.getEntity(fleet.location)
+  if colonyOpt.isNone:
     return ValidationResult(valid: false, error: "Fleet must be at a colony for zero-turn operations")
 
-  if colonyOwner != houseId:
+  let colony = colonyOpt.get()
+  if colony.houseId != houseId:
     return ValidationResult(valid: false, error: "Fleet must be at a friendly colony for zero-turn operations")
 
   return ValidationResult(valid: true, error: "")
@@ -151,11 +145,12 @@ proc validateFleetAtFriendlyColony*(state: GameState, fleetId: FleetId, houseId:
 proc validateColonyOwnership*(state: GameState, systemId: SystemId, houseId: HouseId): ValidationResult =
   ## DRY: Validate colony exists and is owned by house
 
-  if systemId notin state.colonies:
+  let colonyOpt = state.colonies.entities.getEntity(systemId)
+  if colonyOpt.isNone:
     return ValidationResult(valid: false, error: "Colony not found")
 
-  let colony = state.colonies[systemId]
-  if colony.owner != houseId:
+  let colony = colonyOpt.get()
+  if colony.houseId != houseId:
     return ValidationResult(valid: false, error: "Colony not owned by house")
 
   return ValidationResult(valid: true, error: "")

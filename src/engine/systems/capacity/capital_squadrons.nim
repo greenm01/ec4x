@@ -19,7 +19,7 @@
 
 import std/[tables, strutils, algorithm, options, math]
 import ../../types/[
-  capacity, game_state, squadron, ship, core, production, event, colony,
+  capacity, core, game_state, squadron, ship, production, event, colony,
   house, facilities
 ]
 import ../../state/[entity_manager, game_state as gs_helpers, iterators]
