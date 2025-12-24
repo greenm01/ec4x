@@ -4,7 +4,7 @@
 ## destruction protection rules for EC4X combat (Section 7.3.3)
 
 import std/options
-import ../../types/combat as combat_types
+import ../../types/[core, combat as combat_types]
 
 export combat_types
 
@@ -12,8 +12,9 @@ export combat_types
 
 proc applyDamageToSquadron*(
   squadron: var CombatSquadron,
-  damage: int,
-  roundNumber: int,
+  damage: int32,
+  defenseStrength: int32,
+  roundNumber: int32,
   isCriticalHit: bool
 ): StateChange =
   ## Apply damage to a squadron and handle state transitions
@@ -22,6 +23,9 @@ proc applyDamageToSquadron*(
   ## Destruction Protection (Section 7.3.3):
   ## - Squadron cannot go Undamaged → Crippled → Destroyed in same round
   ## - Critical hits bypass this protection
+  ##
+  ## Parameters:
+  ## - defenseStrength: Current DS of the squadron (from Squadron entity)
 
   let initialState = squadron.state
   var newState = initialState
@@ -29,7 +33,7 @@ proc applyDamageToSquadron*(
   # Already destroyed - no further damage
   if squadron.state == CombatState.Destroyed:
     return StateChange(
-      squadronId: squadron.squadron.id,
+      targetId: CombatTargetId(kind: CombatTargetKind.Squadron, squadronId: squadron.squadronId),
       fromState: initialState,
       toState: initialState,
       destructionProtectionApplied: false
@@ -38,7 +42,7 @@ proc applyDamageToSquadron*(
   # Track damage this turn for destruction protection
   squadron.damageThisTurn += damage
   let totalDamage = squadron.damageThisTurn
-  let ds = squadron.getCurrentDS()
+  let ds = defenseStrength
 
   case squadron.state
   of CombatState.Undamaged:
@@ -59,7 +63,7 @@ proc applyDamageToSquadron*(
         else:
           # Destruction protection applies - stays crippled
           return StateChange(
-            squadronId: squadron.squadron.id,
+            targetId: CombatTargetId(kind: CombatTargetKind.Squadron, squadronId: squadron.squadronId),
             fromState: initialState,
             toState: CombatState.Crippled,
             destructionProtectionApplied: true
@@ -76,7 +80,7 @@ proc applyDamageToSquadron*(
     discard
 
   return StateChange(
-    squadronId: squadron.squadron.id,
+    targetId: CombatTargetId(kind: CombatTargetKind.Squadron, squadronId: squadron.squadronId),
     fromState: initialState,
     toState: newState,
     destructionProtectionApplied: false
@@ -86,14 +90,15 @@ proc applyDamageToSquadron*(
 
 proc applyDamageToFacility*(
   facility: var CombatFacility,
-  damage: int,
-  roundNumber: int,
+  damage: int32,
+  roundNumber: int32,
   isCriticalHit: bool
 ): StateChange =
   ## Apply damage to a facility and handle state transitions
   ## Returns StateChange describing what happened
   ##
   ## Facilities use same destruction protection rules as squadrons
+  ## Defense strength comes from facility.defenseStrength field
 
   let initialState = facility.state
   var newState = initialState
@@ -101,7 +106,7 @@ proc applyDamageToFacility*(
   # Already destroyed - no further damage
   if facility.state == CombatState.Destroyed:
     return StateChange(
-      squadronId: facility.facilityId,  # Reuse squadronId field
+      targetId: CombatTargetId(kind: CombatTargetKind.Facility, facilityId: facility.facilityId),
       fromState: initialState,
       toState: initialState,
       destructionProtectionApplied: false
@@ -110,7 +115,7 @@ proc applyDamageToFacility*(
   # Track damage this turn for destruction protection
   facility.damageThisTurn += damage
   let totalDamage = facility.damageThisTurn
-  let ds = facility.getCurrentDS()
+  let ds = facility.defenseStrength  # Use stored DS
 
   case facility.state
   of CombatState.Undamaged:
@@ -131,7 +136,7 @@ proc applyDamageToFacility*(
         else:
           # Destruction protection applies - stays crippled
           return StateChange(
-            squadronId: facility.facilityId,  # Reuse squadronId field
+            targetId: CombatTargetId(kind: CombatTargetKind.Facility, facilityId: facility.facilityId),
             fromState: initialState,
             toState: CombatState.Crippled,
             destructionProtectionApplied: true
@@ -148,7 +153,7 @@ proc applyDamageToFacility*(
     discard
 
   return StateChange(
-    squadronId: facility.facilityId,  # Reuse squadronId field
+    targetId: CombatTargetId(kind: CombatTargetKind.Facility, facilityId: facility.facilityId),
     fromState: initialState,
     toState: newState,
     destructionProtectionApplied: false
@@ -168,131 +173,50 @@ proc resetRoundDamage*(facility: var CombatFacility) =
 
 ## Critical Hit Special Rules (Section 7.3.3)
 
-proc findWeakestSquadron*(taskForce: TaskForce): Option[SquadronId] =
-  ## Find squadron with lowest current DS in Task Force
-  ## Used for Force Reduction when critical hit can't reduce selected target
+# NOTE: These functions need redesign for ID-based TaskForce structure
+# TaskForce now stores squadronIds: seq[SquadronId], not embedded CombatSquadron objects
+# Combat state is tracked separately during combat resolution
+# These functions will be implemented in the combat engine that has access to
+# both the combat state and the entity data
 
-  var weakest: Option[CombatSquadron] = none(CombatSquadron)
-  var lowestDS = int.high
+when false:  # Disabled until combat engine integration is complete
+  proc findWeakestSquadron*(taskForce: TaskForce): Option[SquadronId] =
+    ## Find squadron with lowest current DS in Task Force
+    ## Used for Force Reduction when critical hit can't reduce selected target
+    ##
+    ## TODO: Redesign to work with ID-based structure
+    ## Needs access to Squadron entities for DS values
+    discard
 
-  for sq in taskForce.squadrons:
-    if not sq.isAlive():
-      continue
-
-    let ds = sq.getCurrentDS()
-    if ds < lowestDS:
-      lowestDS = ds
-      weakest = some(sq)
-
-  if weakest.isSome():
-    return some(weakest.get().squadron.id)
-  else:
-    return none(SquadronId)
-
-proc applyForceReduction*(
-  taskForce: var TaskForce,
-  targetId: SquadronId,
-  damage: int,
-  roundNumber: int
-): StateChange =
-  ## Apply Force Reduction rule for critical hits (Section 7.3.3)
-  ## If insufficient damage to reduce target, reduce weakest unit instead
-
-  # Find target squadron
-  var targetSquadron: Option[int] = none(int)
-  for i, sq in taskForce.squadrons:
-    if sq.squadron.id == targetId:
-      targetSquadron = some(i)
-      break
-
-  if targetSquadron.isNone():
-    # Target not found - shouldn't happen
-    return StateChange(
-      squadronId: targetId,
-      fromState: CombatState.Destroyed,
-      toState: CombatState.Destroyed,
-      destructionProtectionApplied: false
-    )
-
-  let targetIdx = targetSquadron.get()
-  var target = taskForce.squadrons[targetIdx]
-  let targetDS = target.getCurrentDS()
-
-  # Check if damage is sufficient to reduce target
-  if damage >= targetDS:
-    # Sufficient - apply to target with critical hit flag
-    let change = applyDamageToSquadron(target, damage, roundNumber, isCriticalHit = true)
-    taskForce.squadrons[targetIdx] = target
-    return change
-
-  # Insufficient - find and reduce weakest squadron
-  let weakestId = findWeakestSquadron(taskForce)
-  if weakestId.isNone():
-    # No valid target - shouldn't happen
-    return StateChange(
-      squadronId: targetId,
-      fromState: target.state,
-      toState: target.state,
-      destructionProtectionApplied: false
-    )
-
-  # Find weakest and reduce it
-  for i, sq in taskForce.squadrons.mpairs:
-    if sq.squadron.id == weakestId.get():
-      # Apply damage equal to its DS to guarantee reduction
-      let change = applyDamageToSquadron(sq, sq.getCurrentDS(), roundNumber, isCriticalHit = true)
-      return change
-
-  # Fallback - shouldn't reach here
-  return StateChange(
-    squadronId: targetId,
-    fromState: target.state,
-    toState: target.state,
-    destructionProtectionApplied: false
-  )
+when false:  # Disabled until combat engine integration is complete
+  proc applyForceReduction*(
+    taskForce: var TaskForce,
+    targetId: SquadronId,
+    damage: int32,
+    defenseStrength: int32,
+    roundNumber: int32
+  ): StateChange =
+    ## Apply Force Reduction rule for critical hits (Section 7.3.3)
+    ## If insufficient damage to reduce target, reduce weakest unit instead
+    ##
+    ## TODO: Redesign to work with ID-based structure and CombatSquadron tracking
+    discard
 
 ## Batch Damage Operations
 
-proc applySimultaneousDamage*(
-  taskForce: var TaskForce,
-  damageMap: seq[tuple[squadronId: SquadronId, damage: int, isCritical: bool]],
-  roundNumber: int
-): seq[StateChange] =
-  ## Apply damage from multiple attackers simultaneously
-  ## Handles overkill and destruction protection correctly
-  ##
-  ## Section 7.3.3: All damage applied simultaneously, then state transitions evaluated
-
-  result = @[]
-
-  # Group damage by squadron
-  var squadronDamage: seq[tuple[squadronId: SquadronId, totalDamage: int, hasCritical: bool]] = @[]
-
-  for entry in damageMap:
-    var found = false
-    for i in 0..<squadronDamage.len:
-      if squadronDamage[i].squadronId == entry.squadronId:
-        squadronDamage[i].totalDamage += entry.damage
-        if entry.isCritical:
-          squadronDamage[i].hasCritical = true
-        found = true
-        break
-
-    if not found:
-      squadronDamage.add((entry.squadronId, entry.damage, entry.isCritical))
-
-  # Apply accumulated damage to each squadron
-  for entry in squadronDamage:
-    for i in 0..<taskForce.squadrons.len:
-      if taskForce.squadrons[i].squadron.id == entry.squadronId:
-        let change = applyDamageToSquadron(
-          taskForce.squadrons[i],
-          entry.totalDamage,
-          roundNumber,
-          entry.hasCritical
-        )
-        result.add(change)
-        break
+when false:  # Disabled until combat engine integration is complete
+  proc applySimultaneousDamage*(
+    taskForce: var TaskForce,
+    damageMap: seq[tuple[squadronId: SquadronId, damage: int32, isCritical: bool]],
+    roundNumber: int32
+  ): seq[StateChange] =
+    ## Apply damage from multiple attackers simultaneously
+    ## Handles overkill and destruction protection correctly
+    ##
+    ## Section 7.3.3: All damage applied simultaneously, then state transitions evaluated
+    ##
+    ## TODO: Redesign to work with ID-based structure and separate CombatSquadron tracking
+    discard
 
 ## Query functions
 
@@ -304,25 +228,26 @@ proc isCrippled*(squadron: CombatSquadron): bool =
   ## Check if squadron is crippled
   squadron.state == CombatState.Crippled
 
-proc getAliveSquadrons*(taskForce: TaskForce): seq[CombatSquadron] =
-  ## Get all non-destroyed squadrons
-  result = @[]
-  for sq in taskForce.squadrons:
-    if not sq.isDestroyed():
-      result.add(sq)
+when false:  # Disabled until combat engine integration is complete
+  proc getAliveSquadrons*(taskForce: TaskForce): seq[CombatSquadron] =
+    ## Get all non-destroyed squadrons
+    ## TODO: Redesign - TaskForce now has squadronIds, not embedded CombatSquadron objects
+    discard
 
-proc countAlive*(taskForce: TaskForce): int =
-  ## Count non-destroyed squadrons
-  result = 0
-  for sq in taskForce.squadrons:
-    if not sq.isDestroyed():
-      result += 1
+  proc countAlive*(taskForce: TaskForce): int32 =
+    ## Count non-destroyed squadrons
+    ## TODO: Redesign - needs access to combat state tracking
+    discard
 
 ## String formatting for logs
 
 proc `$`*(change: StateChange): string =
   ## Pretty print state change for logs
-  result = "Squadron " & change.squadronId & ": "
+  case change.targetId.kind
+  of CombatTargetKind.Squadron:
+    result = "Squadron " & $change.targetId.squadronId & ": "
+  of CombatTargetKind.Facility:
+    result = "Facility " & $change.targetId.facilityId & ": "
   result &= $change.fromState & " → " & $change.toState
   if change.destructionProtectionApplied:
     result &= " (destruction protection applied)"
