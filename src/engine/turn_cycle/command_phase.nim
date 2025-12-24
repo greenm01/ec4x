@@ -16,8 +16,8 @@
 ##
 ## **Part C: Order Validation & Storage (AFTER Player Window)**
 ## - Administrative orders execute
-## - All other orders: Validate and store in state.fleetOrders
-## - Standing order configs: Validated and stored in state.standingOrders
+## - All other orders: Validate and store in state.fleetCommands
+## - Standing order configs: Validated and stored in state.standingCommands
 ## - Build orders: Add to construction queues
 ## - Tech research: Allocate RP
 ##
@@ -127,12 +127,12 @@ proc resolveCommandPhase*(state: var GameState,
   #
   # Universal order processing (DRY design):
   # - Administrative orders: Validate & execute immediately (zero-turn)
-  # - All other orders: Validate & store in state.fleetOrders
+  # - All other orders: Validate & store in state.fleetCommands
   #   * Move, Patrol, SeekHome, Hold
   #   * Bombard, Invade, Blitz, Guard*
   #   * Colonize, SpyPlanet, SpySystem, HackStarbase
   #   * Salvage
-  # - Standing order configs: Validate & store in state.standingOrders
+  # - Standing order configs: Validate & store in state.standingCommands
   #
   # Key principle: All non-admin orders follow same path → No special cases
 
@@ -267,7 +267,7 @@ proc resolveCommandPhase*(state: var GameState,
           # CRITICAL: Validate command before storing (prevents NULL target Move commands)
           let validation = validateFleetCommand(cmd, state, houseId)
           if validation.valid:
-            state.fleetOrders[cmd.fleetId] = cmd
+            state.fleetCommands[cmd.fleetId] = cmd
             ordersStored += 1
             logDebug(LogCategory.lcOrders, &"  [STORED] Fleet {cmd.fleetId}: {cmd.commandType}")
           else:
@@ -283,7 +283,7 @@ proc resolveCommandPhase*(state: var GameState,
       for fleetId, standingCmd in orders[houseId].standingCommands:
         # Validate that fleet exists and belongs to this house
         if fleetId in state.fleets and state.fleets[fleetId].owner == houseId:
-          state.standingOrders[fleetId] = standingCmd
+          state.standingCommands[fleetId] = standingCmd
           standingOrdersProcessed += 1
           logDebug(LogCategory.lcOrders,
                    &"  [STANDING COMMAND] {fleetId}: {standingCmd.commandType} assigned")

@@ -211,10 +211,10 @@ proc establishColony(
     # Fleet is empty - remove it and cleanup associated orders
     state.removeFleetFromIndices(fleetId, fleet.owner, fleet.location)
     state.fleets.del(fleetId)
-    if fleetId in state.fleetOrders:
-      state.fleetOrders.del(fleetId)
-    if fleetId in state.standingOrders:
-      state.standingOrders.del(fleetId)
+    if fleetId in state.fleetCommands:
+      state.fleetCommands.del(fleetId)
+    if fleetId in state.standingCommands:
+      state.standingCommands.del(fleetId)
     logInfo(LogCategory.lcFleet,
             &"Removed empty fleet {fleetId} after ETAC colonization (auto-cleanup)")
   else:

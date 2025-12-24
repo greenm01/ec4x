@@ -984,10 +984,10 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
       # Fleet destroyed - remove fleet and clean up orders
       state.removeFleetFromIndices(fleetId, fleet.owner, fleet.location)
       state.fleets.del(fleetId)
-      if fleetId in state.fleetOrders:
-        state.fleetOrders.del(fleetId)
-      if fleetId in state.standingOrders:
-        state.standingOrders.del(fleetId)
+      if fleetId in state.fleetCommands:
+        state.fleetCommands.del(fleetId)
+      if fleetId in state.standingCommands:
+        state.standingCommands.del(fleetId)
       logInfo(LogCategory.lcCombat, "Removed empty fleet " & $fleetId & " after combat (all squadrons destroyed)")
 
   # Apply spacelift ship screening losses (proportional to task force casualties)

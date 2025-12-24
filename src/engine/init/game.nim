@@ -2,7 +2,7 @@ import std/[tables]
 import ../../common/logger
 import ../types/[
   core, game_state, squadron, intelligence,
-  diplomacy, espionage, resolution, starmap
+  diplomacy, espionage, resolution, starmap, command, fleet
 ]
 
 # Game initialization functions
@@ -48,6 +48,8 @@ proc newGame*(gameId: int32, playerCount: int32, seed: int32): GameState =
     intelligence: initTable[HouseId, IntelligenceDatabase](),
     diplomaticRelation: initTable[(HouseId, HouseId), DiplomaticRelation](),
     diplomaticViolation: initTable[HouseId, ViolationHistory](),
+    fleetCommands: initTable[FleetId, FleetCommand](),
+    standingCommands: initTable[FleetId, StandingCommand](),
     arrivedFleets: initTable[FleetId, SystemId](),
     activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
     gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
@@ -96,6 +98,8 @@ proc newGameState*(gameId, seed, playerCount: int32, starMap: StarMap): GameStat
     intelligence: initTable[HouseId, IntelligenceDatabase](),
     diplomaticRelation: initTable[(HouseId, HouseId), DiplomaticRelation](),
     diplomaticViolation: initTable[HouseId, ViolationHistory](),
+    fleetCommands: initTable[FleetId, FleetCommand](),
+    standingCommands: initTable[FleetId, StandingCommand](),
     arrivedFleets: initTable[FleetId, SystemId](),
     activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
     gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),

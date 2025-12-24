@@ -172,7 +172,7 @@ proc activatePatrolRoute(state: var GameState, fleetId: FleetId,
   newParams.patrolIndex = (currentIndex + 1) mod params.patrolSystems.len
 
   # Store order for execution
-  state.fleetOrders[fleetId] = moveOrder
+  state.fleetCommands[fleetId] = moveOrder
 
   logInfo(LogCategory.lcOrders,
           &"{fleetId} PatrolRoute: {fleet.location} → system-{nextSystem} " &
@@ -216,7 +216,7 @@ proc activateDefendSystem(state: var GameState, fleetId: FleetId,
       targetSystem: some(targetSystem),
       priority: 100
     )
-    state.fleetOrders[fleetId] = guardOrder
+    state.fleetCommands[fleetId] = guardOrder
 
     logInfo(LogCategory.lcOrders,
             &"{fleetId} DefendSystem: At target system-{targetSystem}, patrolling")
@@ -243,7 +243,7 @@ proc activateDefendSystem(state: var GameState, fleetId: FleetId,
       targetSystem: some(targetSystem),
       priority: 100
     )
-    state.fleetOrders[fleetId] = moveOrder
+    state.fleetCommands[fleetId] = moveOrder
 
     logInfo(LogCategory.lcOrders,
             &"{fleetId} DefendSystem: {distance} jumps from target, returning to system-{targetSystem}")
@@ -258,7 +258,7 @@ proc activateDefendSystem(state: var GameState, fleetId: FleetId,
     targetSystem: none(SystemId),
     priority: 100
   )
-  state.fleetOrders[fleetId] = holdOrder
+  state.fleetCommands[fleetId] = holdOrder
 
   logInfo(LogCategory.lcOrders,
           &"{fleetId} DefendSystem: {distance} jumps from target (within range {maxRange}), holding position")
@@ -539,7 +539,7 @@ proc activateAutoRepair(state: var GameState, fleetId: FleetId,
       targetSystem: none(SystemId),
       priority: 100
     )
-    state.fleetOrders[fleetId] = holdOrder
+    state.fleetCommands[fleetId] = holdOrder
 
     return ActivationResult(success: true,
                           action: "Hold (fleet healthy)")
@@ -600,7 +600,7 @@ proc activateAutoRepair(state: var GameState, fleetId: FleetId,
       targetSystem: none(SystemId),
       priority: 100
     )
-    state.fleetOrders[fleetId] = holdOrder
+    state.fleetCommands[fleetId] = holdOrder
 
     return ActivationResult(success: true,
                           action: &"Hold at shipyard (repairing)")
@@ -616,7 +616,7 @@ proc activateAutoRepair(state: var GameState, fleetId: FleetId,
     targetSystem: some(targetSystem),
     priority: 100
   )
-  state.fleetOrders[fleetId] = moveOrder
+  state.fleetCommands[fleetId] = moveOrder
 
   return ActivationResult(success: true,
                         action: &"Return to shipyard at system-{targetSystem}")
@@ -723,7 +723,7 @@ proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
       targetSystem: none(SystemId),
       priority: 100
     )
-    state.fleetOrders[fleetId] = holdOrder
+    state.fleetCommands[fleetId] = holdOrder
 
     return ActivationResult(success: true,
                           action: "Hold (no damaged fleets)")
@@ -741,7 +741,7 @@ proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
       targetFleet: some(targetId),
       priority: 100
     )
-    state.fleetOrders[fleetId] = joinOrder
+    state.fleetCommands[fleetId] = joinOrder
 
     return ActivationResult(success: true,
                           action: &"Join fleet {targetId}")
@@ -757,7 +757,7 @@ proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
     targetSystem: some(targetFleetLocation),
     priority: 100
   )
-  state.fleetOrders[fleetId] = moveOrder
+  state.fleetCommands[fleetId] = moveOrder
 
   return ActivationResult(success: true,
                         action: &"Move to reinforce {targetId}")
@@ -819,7 +819,7 @@ proc activateBlockadeTarget(state: var GameState, fleetId: FleetId,
       targetSystem: some(targetColony),
       priority: 100
     )
-    state.fleetOrders[fleetId] = blockadeOrder
+    state.fleetCommands[fleetId] = blockadeOrder
 
     return ActivationResult(success: true,
                           action: &"Blockade colony at system-{targetColony}")
@@ -844,7 +844,7 @@ proc activateBlockadeTarget(state: var GameState, fleetId: FleetId,
     targetSystem: some(targetColony),
     priority: 100
   )
-  state.fleetOrders[fleetId] = moveOrder
+  state.fleetCommands[fleetId] = moveOrder
 
   return ActivationResult(success: true,
                         action: &"Move to blockade target at system-{targetColony}")
@@ -856,11 +856,11 @@ proc activateBlockadeTarget(state: var GameState, fleetId: FleetId,
 proc resetStandingOrderGracePeriod*(state: var GameState, fleetId: FleetId) =
   ## Reset activation delay countdown when explicit order completes
   ## Gives player time to issue new orders before standing order reactivates
-  ## Called after every order completion (via state.fleetOrders.del)
-  if fleetId in state.standingOrders:
-    var standingOrder = state.standingOrders[fleetId]
+  ## Called after every order completion (via state.fleetCommands.del)
+  if fleetId in state.standingCommands:
+    var standingOrder = state.standingCommands[fleetId]
     standingOrder.turnsUntilActivation = standingOrder.activationDelayTurns
-    state.standingOrders[fleetId] = standingOrder
+    state.standingCommands[fleetId] = standingOrder
     logDebug(LogCategory.lcOrders,
       &"Fleet {fleetId} standing order grace period reset to " &
       &"{standingOrder.activationDelayTurns} turn(s)")
@@ -926,18 +926,18 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
 
   for fleetId, fleet in state.fleets:
     # Skip if fleet has explicit order this turn
-    if fleetId in state.fleetOrders:
-      let explicitOrder = state.fleetOrders[fleetId]
+    if fleetId in state.fleetCommands:
+      let explicitOrder = state.fleetCommands[fleetId]
       logDebug(LogCategory.lcOrders,
                &"{fleetId} has explicit order ({explicitOrder.commandType}), " &
                &"skipping standing order")
       skippedCount += 1
 
       # Reset activation countdown when explicit order exists
-      if fleetId in state.standingOrders:
-        var standingOrder = state.standingOrders[fleetId]
+      if fleetId in state.standingCommands:
+        var standingOrder = state.standingCommands[fleetId]
         standingOrder.turnsUntilActivation = standingOrder.activationDelayTurns
-        state.standingOrders[fleetId] = standingOrder
+        state.standingCommands[fleetId] = standingOrder
 
         # Emit StandingOrderSuspended event (suspended by explicit order)
         events.add(event_factory.standingOrderSuspended(
@@ -951,13 +951,13 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
       continue
 
     # Check for standing order
-    if fleetId notin state.standingOrders:
+    if fleetId notin state.standingCommands:
       logDebug(LogCategory.lcOrders,
                &"{fleetId} (owner: {fleet.owner}) has no standing order assigned, skipping")
       noStandingOrderCount += 1
       continue
 
-    var standingOrder = state.standingOrders[fleetId]
+    var standingOrder = state.standingCommands[fleetId]
 
     # Skip if suspended
     if standingOrder.suspended:
@@ -977,7 +977,7 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
     if standingOrder.turnsUntilActivation > 0:
       # Decrement countdown
       standingOrder.turnsUntilActivation -= 1
-      state.standingOrders[fleetId] = standingOrder
+      state.standingCommands[fleetId] = standingOrder
       logDebug(LogCategory.lcOrders,
                &"{fleetId} standing order waiting {standingOrder.turnsUntilActivation} more turn(s)")
       skippedCount += 1
@@ -992,8 +992,8 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
               &"{fleetId} activated {standingOrder.commandType}: {result.action}")
 
       # Get generated fleet order type
-      let generatedOrderType = if fleetId in state.fleetOrders:
-        $state.fleetOrders[fleetId].commandType
+      let generatedOrderType = if fleetId in state.fleetCommands:
+        $state.fleetCommands[fleetId].commandType
       else:
         "None"
 
@@ -1019,7 +1019,7 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
       if result.updatedParams.isSome:
         updatedOrder.params = result.updatedParams.get()
 
-      state.standingOrders[fleetId] = updatedOrder
+      state.standingCommands[fleetId] = updatedOrder
 
     elif result.error == "Not yet implemented":
       notImplementedCount += 1

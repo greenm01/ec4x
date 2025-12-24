@@ -31,8 +31,8 @@ proc createFleetComposition*(
 
   # Get fleet's standing orders (if any)
   var orderIntel: Option[intel_types.FleetOrderIntel] = none(intel_types.FleetOrderIntel)
-  if fleetId in state.fleetOrders:
-    let order = state.fleetOrders[fleetId]
+  if fleetId in state.fleetCommands:
+    let order = state.fleetCommands[fleetId]
     orderIntel = some(intel_types.FleetOrderIntel(
       orderType: $order.commandType,
       targetSystem: order.targetSystem

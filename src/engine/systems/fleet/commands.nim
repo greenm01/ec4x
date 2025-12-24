@@ -248,7 +248,7 @@ proc performOrderMaintenance*(
 
         allFleetOrders.add((houseId, order))
         newOrdersThisTurn.incl(order.fleetId)
-        state.fleetOrders[order.fleetId] = order
+        state.fleetCommands[order.fleetId] = order
 
         # Generate OrderIssued event for new order
         events.add(event_factory.orderIssued(
@@ -259,7 +259,7 @@ proc performOrderMaintenance*(
         ))
 
   # Step 2: Add PERSISTENT orders from previous turns (not overridden) - using entity_manager
-  for fleetId, persistentOrder in state.fleetOrders:
+  for fleetId, persistentOrder in state.fleetCommands:
     if fleetId in newOrdersThisTurn:
       continue  # Overridden by new order
 
@@ -324,7 +324,7 @@ proc performOrderMaintenance*(
               targetFleet: none(FleetId),
               priority: order.priority
             )
-            state.fleetOrders[order.fleetId] = actualOrder
+            state.fleetCommands[order.fleetId] = actualOrder
             logInfo(LogCategory.lcFleet,
               &"Fleet {order.fleetId} mission aborted - seeking home ({validation.reason})")
           else:
@@ -335,7 +335,7 @@ proc performOrderMaintenance*(
               targetFleet: none(FleetId),
               priority: order.priority
             )
-            state.fleetOrders[order.fleetId] = actualOrder
+            state.fleetCommands[order.fleetId] = actualOrder
             logWarn(LogCategory.lcFleet,
               &"Fleet {order.fleetId} mission aborted - holding position ({validation.reason})")
         else:

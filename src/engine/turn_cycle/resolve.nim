@@ -10,7 +10,7 @@
 ## **TURN RESOLUTION PHASES:**
 ##
 ## **PHASE 1: CONFLICT PHASE** [resolution/phases/conflict_phase.nim]
-##   Step 0: Merge Active Fleet Orders (from state.fleetOrders)
+##   Step 0: Merge Active Fleet Orders (from state.fleetCommands)
 ##   Step 1: Space Combat (simultaneous resolution)
 ##   Step 2: Orbital Combat (simultaneous resolution)
 ##   Step 3: Blockade Resolution (simultaneous)

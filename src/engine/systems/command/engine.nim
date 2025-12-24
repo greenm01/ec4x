@@ -731,7 +731,7 @@ proc executeSpyPlanetOrder(
       orderType: FleetOrderType.Move,
       targetSystem: some(targetSystem)
     )
-    state.fleetOrders[fleet.id] = travelOrder
+    state.fleetCommands[fleet.id] = travelOrder
 
     # Update fleet in state
     state.fleets[fleet.id] = updatedFleet
@@ -863,7 +863,7 @@ proc executeHackStarbaseOrder(
       orderType: FleetOrderType.Move,
       targetSystem: some(targetSystem)
     )
-    state.fleetOrders[fleet.id] = travelOrder
+    state.fleetCommands[fleet.id] = travelOrder
 
     # Update fleet in state
     state.fleets[fleet.id] = updatedFleet
@@ -975,7 +975,7 @@ proc executeSpySystemOrder(
       orderType: FleetOrderType.Move,
       targetSystem: some(targetSystem)
     )
-    state.fleetOrders[fleet.id] = travelOrder
+    state.fleetCommands[fleet.id] = travelOrder
 
     # Update fleet in state
     state.fleets[fleet.id] = updatedFleet
@@ -1096,8 +1096,8 @@ proc executeJoinFleetOrder(
   if targetFleetOpt.isNone:
     # Target fleet destroyed or deleted - clear the order and fall back to standing orders
     # Standing orders will be used automatically by the order resolution system
-    if fleet.id in state.fleetOrders:
-      state.fleetOrders.del(fleet.id)
+    if fleet.id in state.fleetCommands:
+      state.fleetCommands.del(fleet.id)
       standing_orders.resetStandingOrderGracePeriod(state, fleet.id)
 
     events.add(event_factory.orderAborted(
@@ -1151,8 +1151,8 @@ proc executeJoinFleetOrder(
     if movedFleet.location == fleet.location:
       # Fleet didn't move - no path found to target
       # Cancel order and fall back to standing orders
-      if fleet.id in state.fleetOrders:
-        state.fleetOrders.del(fleet.id)
+      if fleet.id in state.fleetCommands:
+        state.fleetCommands.del(fleet.id)
         standing_orders.resetStandingOrderGracePeriod(state, fleet.id)
 
       events.add(event_factory.orderAborted(
@@ -1184,10 +1184,10 @@ proc executeJoinFleetOrder(
   # Remove source fleet and clean up orders
   state.removeFleetFromIndices(fleet.id, fleet.owner, fleet.location)
   state.fleets.del(fleet.id)
-  if fleet.id in state.fleetOrders:
-    state.fleetOrders.del(fleet.id)
-  if fleet.id in state.standingOrders:
-    state.standingOrders.del(fleet.id)
+  if fleet.id in state.fleetCommands:
+    state.fleetCommands.del(fleet.id)
+  if fleet.id in state.standingCommands:
+    state.standingCommands.del(fleet.id)
 
   logInfo(LogCategory.lcFleet, "Fleet " & $fleet.id & " merged into fleet " & $targetFleetId & " (source fleet removed)")
 
@@ -1295,8 +1295,8 @@ proc executeRendezvousOrder(
       # Check if owned by same house
       if otherFleet.owner == fleet.owner:
         # Check if has Rendezvous order to same system
-        if fleetId in state.fleetOrders:
-          let otherOrder = state.fleetOrders[fleetId]
+        if fleetId in state.fleetCommands:
+          let otherOrder = state.fleetCommands[fleetId]
           if otherOrder.commandType == FleetOrderType.Rendezvous and
              otherOrder.targetSystem.isSome and
              otherOrder.targetSystem.get() == targetSystem:
@@ -1329,10 +1329,10 @@ proc executeRendezvousOrder(
     # Remove merged fleet and clean up orders
     state.removeFleetFromIndices(f.id, f.owner, f.location)
     state.fleets.del(f.id)
-    if f.id in state.fleetOrders:
-      state.fleetOrders.del(f.id)
-    if f.id in state.standingOrders:
-      state.standingOrders.del(f.id)
+    if f.id in state.fleetCommands:
+      state.fleetCommands.del(f.id)
+    if f.id in state.standingCommands:
+      state.standingCommands.del(f.id)
 
     mergedCount += 1
     logInfo(LogCategory.lcFleet, "Fleet " & $f.id & " merged into rendezvous host " & $lowestId & " (source fleet removed)")
@@ -1433,10 +1433,10 @@ proc executeSalvageOrder(
   # Remove fleet from game state
   state.removeFleetFromIndices(fleet.id, fleet.owner, fleet.location)
   state.fleets.del(fleet.id)
-  if fleet.id in state.fleetOrders:
-    state.fleetOrders.del(fleet.id)
-  if fleet.id in state.standingOrders:
-    state.standingOrders.del(fleet.id)
+  if fleet.id in state.fleetCommands:
+    state.fleetCommands.del(fleet.id)
+  if fleet.id in state.standingCommands:
+    state.standingCommands.del(fleet.id)
 
   # Generate OrderCompleted event for salvage operation
   events.add(event_factory.orderCompleted(

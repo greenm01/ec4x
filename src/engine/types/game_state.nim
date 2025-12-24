@@ -2,7 +2,7 @@ import std/tables
 import ./[
   core, house, starmap, colony, fleet, squadron, ship, ground_unit,
   intelligence, diplomacy, facilities, production, espionage,
-  population, resolution, progression, event
+  population, resolution, progression, event, command
 ]
 
 type
@@ -53,6 +53,10 @@ type
     # Map
     starMap*: StarMap
     
+    # Command tracking
+    fleetCommands*: Table[FleetId, FleetCommand]
+    standingCommands*: Table[FleetId, StandingCommand]
+
     # Phase-specific state
     arrivedFleets*: Table[FleetId, SystemId]
     activeSpyMissions*: Table[FleetId, ActiveSpyMission]

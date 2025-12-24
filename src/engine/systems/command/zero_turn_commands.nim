@@ -373,10 +373,10 @@ proc cleanupEmptyFleet*(state: var GameState, fleetId: FleetId) =
     let fleet = state.fleets[fleetId]
     state.removeFleetFromIndices(fleetId, fleet.owner, fleet.location)
     state.fleets.del(fleetId)
-    if fleetId in state.fleetOrders:
-      state.fleetOrders.del(fleetId)
-    if fleetId in state.standingOrders:
-      state.standingOrders.del(fleetId)
+    if fleetId in state.fleetCommands:
+      state.fleetCommands.del(fleetId)
+    if fleetId in state.standingCommands:
+      state.standingCommands.del(fleetId)
     logInfo(LogCategory.lcFleet, &"Removed fleet {fleetId} and associated orders")
 
 # ============================================================================
@@ -540,10 +540,10 @@ proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand, events: var
   state.fleets.del(sourceFleetId)
 
   # Cleanup associated orders
-  if sourceFleetId in state.fleetOrders:
-    state.fleetOrders.del(sourceFleetId)
-  if sourceFleetId in state.standingOrders:
-    state.standingOrders.del(sourceFleetId)
+  if sourceFleetId in state.fleetCommands:
+    state.fleetCommands.del(sourceFleetId)
+  if sourceFleetId in state.standingCommands:
+    state.standingCommands.del(sourceFleetId)
 
   logInfo(LogCategory.lcFleet, &"MergeFleets: Merged {sourceFleet.squadrons.len} squadrons from {cmd.sourceFleetId.get()} into {targetFleetId}")
 
