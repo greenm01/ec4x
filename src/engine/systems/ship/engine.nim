@@ -189,7 +189,7 @@ proc transferCargoToColony*(
   ## - Marines: Transferred to colony.marines
   ## - Colonists: Used for colonization (ship is cannibalized)
   ##
-  ## **Note:** Colonization handled by fleet/orders.nim:resolveColonizationOrder()
+  ## **Note:** Colonization handled by fleet/orders.nim:resolveColonizationCommand()
 
   # This is a placeholder for future implementation
   # For now, cargo operations are handled directly in fleet/orders.nim

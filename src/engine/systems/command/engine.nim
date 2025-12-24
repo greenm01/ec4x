@@ -154,7 +154,7 @@ proc executeMoveOrder(
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 01: Move to new system and hold position
-  ## Calls resolveMovementOrder to execute actual movement with pathfinding
+  ## Calls resolveMovementCommand to execute actual movement with pathfinding
 
   # Per economy.md:3.9 - Reserve and Mothballed fleets cannot move
   if fleet.status == FleetStatus.Reserve:
@@ -169,7 +169,7 @@ proc executeMoveOrder(
   # Execute actual movement using centralized movement arbiter
   # Events are handled by the calling context (fleet_order_execution.nim)
   var events: seq[resolution_types.GameEvent] = @[]
-  fleet_orders.resolveMovementOrder(state, fleet.owner, order, events)
+  fleet_orders.resolveMovementCommand(state, fleet.owner, order, events)
 
   return OrderOutcome.Success
 
@@ -235,9 +235,9 @@ proc executeSeekHomeOrder(
     priority: order.priority
   )
 
-  # Execute movement (delegated to fleet_orders.resolveMovementOrder)
+  # Execute movement (delegated to fleet_orders.resolveMovementCommand)
   var moveEvents: seq[resolution_types.GameEvent] = @[]
-  fleet_orders.resolveMovementOrder(state, fleet.owner, moveOrder, moveEvents)
+  fleet_orders.resolveMovementCommand(state, fleet.owner, moveOrder, moveEvents)
   events.add(moveEvents)
 
   return OrderOutcome.Success
@@ -1029,7 +1029,7 @@ proc executeColonizeOrder(
 ): OrderOutcome =
   ## Order 12: Establish colony with ETAC
   ## Reserved for ETAC under fleet escort per operations.md:6.2.13
-  ## Calls resolveColonizationOrder to execute actual colonization
+  ## Calls resolveColonizationCommand to execute actual colonization
 
   if order.targetSystem.isNone:
     return OrderOutcome.Failed
@@ -1050,7 +1050,7 @@ proc executeColonizeOrder(
 
   # Execute actual colonization using centralized colonization logic
   var colonizationEvents: seq[resolution_types.GameEvent] = @[]
-  fleet_orders.resolveColonizationOrder(state, fleet.owner, order,
+  fleet_orders.resolveColonizationCommand(state, fleet.owner, order,
                                         colonizationEvents)
   events.add(colonizationEvents)
 
@@ -1138,7 +1138,7 @@ proc executeJoinFleetOrder(
     # Use the centralized movement arbiter (handles all lane logic, pathfinding, etc.)
     # This respects DoD principles - movement logic in ONE place
     var events: seq[resolution_types.GameEvent] = @[]
-    resolveMovementOrder(state, fleet.owner, movementOrder, events)
+    resolveMovementCommand(state, fleet.owner, movementOrder, events)
 
     # Check if movement succeeded by comparing fleet location
     let updatedFleetOpt = state.getFleet(fleet.id)
@@ -1506,7 +1506,7 @@ proc executeReserveOrder(
 
       # Use centralized movement arbiter
       var events: seq[resolution_types.GameEvent] = @[]
-      resolveMovementOrder(state, fleet.owner, moveOrder, events)
+      resolveMovementCommand(state, fleet.owner, moveOrder, events)
 
       # Check if fleet moved
       let updatedFleetOpt = state.getFleet(fleet.id)
@@ -1600,7 +1600,7 @@ proc executeMothballOrder(
 
       # Use centralized movement arbiter
       var events: seq[resolution_types.GameEvent] = @[]
-      resolveMovementOrder(state, fleet.owner, moveOrder, events)
+      resolveMovementCommand(state, fleet.owner, moveOrder, events)
 
       # Check if fleet moved
       let updatedFleetOpt = state.getFleet(fleet.id)
@@ -1687,7 +1687,7 @@ proc executeViewWorldOrder(
 ): OrderOutcome =
   ## Order 19: Perform long-range scan of planet from system edge
   ## Gathers: planet owner (if colonized) + planet class (production potential)
-  ## Resolution logic handled by resolveViewWorldOrder in fleet_orders.nim
+  ## Resolution logic handled by resolveViewWorldCommand in fleet_orders.nim
 
   if order.targetSystem.isNone:
     events.add(event_factory.orderFailed(

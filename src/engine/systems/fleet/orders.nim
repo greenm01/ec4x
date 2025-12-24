@@ -23,7 +23,7 @@ import ../intelligence/generator
 import ../intelligence/types as intel_types
 import ../standing_orders
 
-proc completeFleetOrder*(
+proc completeFleetCommand*(
   state: var GameState, fleetId: FleetId, orderType: string,
   details: string = "", systemId: Option[SystemId] = none(SystemId),
   events: var seq[GameEvent]
@@ -214,7 +214,7 @@ var movementCallDepth {.global.} = 0
 # Movement Resolution
 # =============================================================================
 
-proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
+proc resolveMovementCommand*(state: var GameState, houseId: HouseId, order: FleetOrder,
                          events: var seq[GameEvent]) =
   ## Execute a fleet movement order with pathfinding and lane traversal rules
   ## Per operations.md:6.1 - Lane traversal rules:
@@ -226,7 +226,7 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
   # Detect infinite recursion
   movementCallDepth += 1
   if movementCallDepth > 100:
-    logFatal(LogCategory.lcFleet, "resolveMovementOrder recursion depth > 100! Infinite loop detected!")
+    logFatal(LogCategory.lcFleet, "resolveMovementCommand recursion depth > 100! Infinite loop detected!")
     quit(1)
 
   defer:
@@ -441,7 +441,7 @@ proc resolveMovementOrder*(state: var GameState, houseId: HouseId, order: FleetO
     # Combat will be resolved in conflict phase next turn
     # This just logs the encounter
 
-proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
+proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, order: FleetOrder,
                               events: var seq[GameEvent]) =
   ## Establish a new colony with prestige rewards
   if order.targetSystem.isNone:
@@ -494,9 +494,9 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
       targetFleet: none(FleetId),
       priority: order.priority
     )
-    logDebug(LogCategory.lcColonization, &"Calling resolveMovementOrder for fleet {order.fleetId}")
-    resolveMovementOrder(state, houseId, moveOrder, events)
-    logDebug(LogCategory.lcColonization, &"resolveMovementOrder returned for fleet {order.fleetId}")
+    logDebug(LogCategory.lcColonization, &"Calling resolveMovementCommand for fleet {order.fleetId}")
+    resolveMovementCommand(state, houseId, moveOrder, events)
+    logDebug(LogCategory.lcColonization, &"resolveMovementCommand returned for fleet {order.fleetId}")
 
     # Reload fleet after movement
     let movedFleetOpt = state.getFleet(order.fleetId)
@@ -639,7 +639,7 @@ proc resolveColonizationOrder*(state: var GameState, houseId: HouseId, order: Fl
   logDebug(LogCategory.lcColonization,
     &"Fleet {order.fleetId} colonization complete, cleanup deferred to Command Phase")
 
-proc resolveViewWorldOrder*(state: var GameState, houseId: HouseId, order: FleetOrder,
+proc resolveViewWorldCommand*(state: var GameState, houseId: HouseId, order: FleetOrder,
                             events: var seq[GameEvent]) =
   ## Perform long-range planetary reconnaissance (Order 19)
   ## Ship approaches system edge, scans planet, retreats to deep space
