@@ -1,5 +1,6 @@
-## Fleet Order Execution Engine
-## Implements all 16 fleet order types from operations.md Section 6.2
+## Fleet Command Execution Dispatcher
+## Implements all fleet command types from operations.md Section 6.2
+## Routes commands to appropriate handlers based on command type
 
 import std/[options, tables, strformat]
 import ../../common/types/[core, units]

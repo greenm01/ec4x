@@ -1,11 +1,11 @@
-## Shared Fleet Order Execution Logic
+## Shared Fleet Command Execution Logic
 ##
-## This module provides fleet order execution that can be called from different
-## phases with category filters per FINAL_TURN_SEQUENCE.md:
-## - Movement orders: Maintenance Phase
-## - Combat orders: Conflict Phase (queued Turn N, executed Turn N+1)
-## - Administrative orders: Command Phase
-## - Special orders: Various phases (colonize, salvage, espionage)
+## This module provides fleet command execution orchestration that can be called
+## from different phases with category filters per FINAL_TURN_SEQUENCE.md:
+## - Movement commands: Maintenance Phase
+## - Combat commands: Conflict Phase (queued Turn N, executed Turn N+1)
+## - Administrative commands: Command Phase
+## - Special commands: Various phases (colonize, salvage, espionage)
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
 import ../../common/types/core

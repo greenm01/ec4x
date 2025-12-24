@@ -1,8 +1,8 @@
 ## Fleet movement, colonization, and seek home operations
 ##
-## This module handles all fleet order resolution including:
+## This module handles all fleet command resolution including:
 ## - Fleet movement with pathfinding and lane traversal rules
-## - Colonization orders and new colony establishment
+## - Colonization commands and new colony establishment
 ## - Automated Seek Home behavior for stranded fleets
 ## - Helper functions for path finding and hostility detection
 

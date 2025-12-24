@@ -1,7 +1,7 @@
-## Order Event Factory
-## Events for order validation and rejection
+## Command Event Factory
+## Events for fleet command execution, validation, and rejection
 ##
-## DRY Principle: Single source of truth for order event creation
+## DRY Principle: Single source of truth for command event creation
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
 import std/[options, strformat]

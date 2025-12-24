@@ -1,16 +1,16 @@
-## Standing Orders Activation System
+## Standing Commands Activation System
 ##
 ## Implements persistent fleet behaviors that activate automatically when
-## no explicit order is given for a turn. Reduces micromanagement and provides
+## no explicit command is given for a turn. Reduces micromanagement and provides
 ## quality-of-life improvements for both players and AI.
 ##
-## Three-tier order lifecycle (applies to both active and standing commands):
+## Three-tier command lifecycle (applies to both active and standing commands):
 ## - Initiate (Command Phase Part B): Player configures standing command rules
 ## - Validate (Command Phase Part C): Engine validates configuration
-## - Activate (Maintenance Phase Step 1a): Check conditions, generate fleet orders
-## - Execute (Conflict/Income Phase): Missions happen at targets
+## - Activate (Maintenance Phase Step 1a): Check conditions, generate fleet commands
+## - Execute (Conflict/Income Phase): Commands execute at targets
 ##
-## See docs/architecture/standing-orders.md for complete design.
+## See docs/architecture/standing-commands.md for complete design.
 
 import std/[tables, options, strformat, algorithm, sets, sequtils]
 import gamestate, orders, fleet, starmap, logger, fog_of_war

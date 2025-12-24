@@ -1,12 +1,12 @@
-## Zero-Turn Command System for EC4X
+## Zero-Turn Fleet Logistics System
 ##
 ## Unified administrative command system for fleet/cargo/squadron operations
-## Execute immediately during order submission (0 turns, at friendly colonies)
+## Execute immediately during command submission (0 turns, at friendly colonies)
 ##
 ## Architecture:
-## - Consolidates FleetManagementCommand, CargoManagementOrder, SquadronManagementOrder
-## - Separate from OrderPacket system (NOT queued for turn resolution)
-## - Execute synchronously during order submission phase
+## - Immediate fleet logistics operations (detach, merge, transfer, etc.)
+## - Separate from CommandPacket system (NOT queued for turn resolution)
+## - Execute synchronously during command submission phase
 ## - Only available at friendly colonies (logistics infrastructure requirement)
 ## - Follows DRY principles with shared validation and cleanup helpers
 ##
