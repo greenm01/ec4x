@@ -25,7 +25,8 @@
 ## Exception: Shipyard/Starbase buildings (orbital construction, no penalty)
 
 import std/[options, tables, algorithm, strutils]
-import ../../types/[core, game_state, production, facilities]
+import ../../types/[core, game_state, production, facilities, colony]
+import ../../state/game_state as gs_helpers
 import ../../../common/logger
 
 export production.CompletedProject
@@ -212,8 +213,8 @@ proc advanceShipyardQueue*(shipyard: var facilities.Shipyard,
                 "facility=", shipyard.id, " project=", nextProject.itemId)
       pulled += 1
 
-proc advanceColonyQueues*(colony: var game_state.Colony): QueueAdvancementResult =
-  ## Advance all facility queues at colony
+proc advanceColonyQueues*(state: var GameState, colonyId: ColonyId): QueueAdvancementResult =
+  ## Advance all facility queues at colony using entity managers
   ## Returns combined results from all facilities
   ## NOTE: Uses pre-calculated effectiveDocks (updated on CST tech upgrade)
   result = QueueAdvancementResult(
@@ -221,37 +222,60 @@ proc advanceColonyQueues*(colony: var game_state.Colony): QueueAdvancementResult
     completedRepairs: @[]
   )
 
+  # Get colony to access facility IDs
+  let colonyOpt = gs_helpers.getColony(state, colonyId)
+  if colonyOpt.isNone:
+    return result
+
+  let colony = colonyOpt.get()
+  let systemId = colony.systemId
+
   # Advance all spaceports
-  for spaceport in colony.spaceports.mitems:
-    let spaceportResult = advanceSpaceportQueue(spaceport, colony.systemId)
-    result.completedProjects.add(spaceportResult.completedProjects)
-    result.completedRepairs.add(spaceportResult.completedRepairs)
+  for spaceportId in colony.spaceportIds:
+    let spaceportOpt = gs_helpers.getSpaceport(state, spaceportId)
+    if spaceportOpt.isSome:
+      var spaceport = spaceportOpt.get()
+      let spaceportResult = advanceSpaceportQueue(spaceport, systemId)
+      result.completedProjects.add(spaceportResult.completedProjects)
+      result.completedRepairs.add(spaceportResult.completedRepairs)
+      # Update facility back to state
+      state.spaceports.entities.updateEntity(spaceportId, spaceport)
 
   # Advance all shipyards
-  for shipyard in colony.shipyards.mitems:
-    let shipyardResult = advanceShipyardQueue(shipyard, colony.systemId)
-    result.completedProjects.add(shipyardResult.completedProjects)
-    result.completedRepairs.add(shipyardResult.completedRepairs)
+  for shipyardId in colony.shipyardIds:
+    let shipyardOpt = gs_helpers.getShipyard(state, shipyardId)
+    if shipyardOpt.isSome:
+      var shipyard = shipyardOpt.get()
+      let shipyardResult = advanceShipyardQueue(shipyard, systemId)
+      result.completedProjects.add(shipyardResult.completedProjects)
+      result.completedRepairs.add(shipyardResult.completedRepairs)
+      # Update facility back to state
+      state.shipyards.entities.updateEntity(shipyardId, shipyard)
 
   # Advance all drydocks
-  for drydock in colony.drydocks.mitems:
-    let drydockResult = advanceDrydockQueue(drydock, colony.systemId)
-    result.completedProjects.add(drydockResult.completedProjects)
-    result.completedRepairs.add(drydockResult.completedRepairs)
+  for drydockId in colony.drydockIds:
+    let drydockOpt = gs_helpers.getDrydock(state, drydockId)
+    if drydockOpt.isSome:
+      var drydock = drydockOpt.get()
+      let drydockResult = advanceDrydockQueue(drydock, systemId)
+      result.completedProjects.add(drydockResult.completedProjects)
+      result.completedRepairs.add(drydockResult.completedRepairs)
+      # Update facility back to state
+      state.drydocks.entities.updateEntity(drydockId, drydock)
 
-proc isPlanetaryDefense*(project: economy.CompletedProject): bool =
+proc isPlanetaryDefense*(project: production.CompletedProject): bool =
   ## Returns true if project should commission in Maintenance Phase
   ## Planetary assets: Facilities, ground forces, fighters (planetside)
   ## Military assets: Ships built in docks (Command Phase after combat)
 
-  if project.projectType == economy.ConstructionType.Building:
+  if project.projectType == production.ConstructionType.Facility:
     return project.itemId in [
       "Starbase", "Spaceport", "Shipyard", "Drydock",
       "GroundBattery", "Marine", "marine_division", "Army", "army"
     ] or project.itemId.startsWith("PlanetaryShield")
 
   # Fighters are planetside, commission with planetary defense
-  if project.projectType == economy.ConstructionType.Ship:
+  if project.projectType == production.ConstructionType.Ship:
     return project.itemId == "Fighter"
 
   return false
@@ -263,8 +287,8 @@ proc advanceAllQueues*(state: var GameState): tuple[projects: seq[production.Com
   ## NOTE: Uses pre-calculated effectiveDocks (updated on CST tech upgrade)
   result = (projects: @[], repairs: @[])
 
-  for colonyId, colony in state.colonies.entities.data.mpairs:
-    let colonyResult = advanceColonyQueues(colony)
+  for colonyId in state.colonies.entities.data.keys:
+    let colonyResult = advanceColonyQueues(state, colonyId)
     result.projects.add(colonyResult.completedProjects)
     result.repairs.add(colonyResult.completedRepairs)
 
@@ -282,6 +306,12 @@ proc advanceAllQueues*(state: var GameState): tuple[projects: seq[production.Com
 ## - Industrial Unit (IU) investment
 ##
 ## Capital ships (non-fighters) use the facility queue system above.
+##
+## TODO: These functions need refactoring to use entity managers:
+## - Colony.underConstruction stores ConstructionProjectId, not ConstructionProject
+## - Colony.constructionQueue stores seq[ConstructionProjectId]
+## - Functions need to look up projects using GameState.constructionProjects entity manager
+## - Currently BROKEN due to type mismatch
 
 proc startConstruction*(colony: var game_state.Colony, project: production.ConstructionProject): bool =
   ## Start new construction project at colony
