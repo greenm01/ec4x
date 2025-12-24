@@ -3,7 +3,7 @@
 ## Diplomatic operations and state changes per diplomacy.md:8.1
 ## 3-state system: Neutral → Hostile → Enemy
 
-import std/options
+import std/[options, tables]
 import ../../types/[core, diplomacy, prestige, game_state]
 
 export diplomacy.DiplomaticRelation, diplomacy.DiplomaticEvent, diplomacy.DiplomaticState
