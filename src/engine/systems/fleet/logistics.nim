@@ -15,9 +15,12 @@
 ##   let result = submitZeroTurnCommand(state, cmd)
 ##   if result.success: echo "Success!"
 
-import ../../types/[core, game_state, fleet, squadron, ship]
-import ../../state/[entity_manager, iterators]
-import ../../entities/[fleet_ops, squadron_ops]
+import ../../types/[core, game_state, fleet, squadron, ship, colony]
+import ../../state/[entity_manager, iterators, game_state as state_access]
+import ../../entities/[fleet_ops, squadron_ops, colony_ops]
+import ../fleet/entity as fleet_entity
+import ../squadron/entity as squadron_entity
+import ../ship/entity as ship_entity
 import ../../config/population_config  # For population config (soulsPerPtu, ptuSizeMillions)
 import ../../event_factory/init as event_factory
 import std/[options, algorithm, tables, strformat, sequtils]
@@ -132,12 +135,17 @@ proc validateFleetAtFriendlyColony*(state: GameState, fleetId: FleetId, houseId:
     return ValidationResult(valid: false, error: "Fleet not owned by house")
 
   # 3. CRITICAL: Fleet must be at friendly colony
-  let colonyOpt = state.colonies.entities.getEntity(fleet.location)
-  if colonyOpt.isNone:
+  # Use bySystem index to map SystemId → ColonyId
+  if not state.colonies.bySystem.hasKey(fleet.location):
     return ValidationResult(valid: false, error: "Fleet must be at a colony for zero-turn operations")
 
+  let colonyId = state.colonies.bySystem[fleet.location]
+  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  if colonyOpt.isNone:
+    return ValidationResult(valid: false, error: "Colony not found")
+
   let colony = colonyOpt.get()
-  if colony.houseId != houseId:
+  if colony.owner != houseId:
     return ValidationResult(valid: false, error: "Fleet must be at a friendly colony for zero-turn operations")
 
   return ValidationResult(valid: true, error: "")
@@ -145,20 +153,25 @@ proc validateFleetAtFriendlyColony*(state: GameState, fleetId: FleetId, houseId:
 proc validateColonyOwnership*(state: GameState, systemId: SystemId, houseId: HouseId): ValidationResult =
   ## DRY: Validate colony exists and is owned by house
 
-  let colonyOpt = state.colonies.entities.getEntity(systemId)
+  # Use bySystem index to map SystemId → ColonyId
+  if not state.colonies.bySystem.hasKey(systemId):
+    return ValidationResult(valid: false, error: "Colony not found")
+
+  let colonyId = state.colonies.bySystem[systemId]
+  let colonyOpt = state.colonies.entities.getEntity(colonyId)
   if colonyOpt.isNone:
     return ValidationResult(valid: false, error: "Colony not found")
 
   let colony = colonyOpt.get()
-  if colony.houseId != houseId:
+  if colony.owner != houseId:
     return ValidationResult(valid: false, error: "Colony not owned by house")
 
   return ValidationResult(valid: true, error: "")
 
-proc validateShipIndices*(fleet: Fleet, indices: seq[int]): ValidationResult =
+proc validateShipIndices*(fleet: Fleet, squadrons: Squadrons, ships: Ships, indices: seq[int]): ValidationResult =
   ## DRY: Validate ship indices are valid and not selecting all ships
 
-  let allShips = fleet.getAllShips()
+  let allShips = fleet_entity.getAllShips(fleet, squadrons, ships)
 
   # Must select at least one ship
   if indices.len == 0:
@@ -221,14 +234,18 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
   case cmd.commandType
   of ZeroTurnCommandType.DetachShips, ZeroTurnCommandType.TransferShips:
     # Validate ship indices
-    let fleet = state.fleets[cmd.sourceFleetId.get()]
-    result = validateShipIndices(fleet, cmd.shipIndices)
+    let fleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+    if fleetOpt.isNone:
+      return ValidationResult(valid: false, error: "Source fleet not found")
+    let fleet = fleetOpt.get()
+
+    result = validateShipIndices(fleet, state.squadrons[], state.ships, cmd.shipIndices)
     if not result.valid:
       return result
 
     # DetachShips specific: cannot detach transport-only fleet (except ETACs)
     if cmd.commandType == ZeroTurnCommandType.DetachShips:
-      let squadronIndices = fleet.translateShipIndicesToSquadrons(cmd.shipIndices)
+      let squadronIndices = fleet_entity.translateShipIndicesToSquadrons(fleet, state.squadrons[], state.ships, cmd.shipIndices)
 
       # Check if only Expansion squadrons (ETACs) are being detached
       # ETACs don't need combat escorts, but transports do
@@ -237,11 +254,23 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
         var hasNonETAC = false
 
         for idx in squadronIndices:
-          let squadron = fleet.squadrons[idx]
+          if idx < 0 or idx >= fleet.squadrons.len:
+            continue
+          let squadronId = fleet.squadrons[idx]
+          let squadronOpt = state.squadrons.entities.getEntity(squadronId)
+          if squadronOpt.isNone:
+            continue
+          let squadron = squadronOpt.get()
+
           if squadron.squadronType != SquadronType.Expansion:
             onlyExpansion = false
-          elif squadron.flagship.shipClass != ShipClass.ETAC:
-            hasNonETAC = true
+          else:
+            # Check flagship ship class
+            let flagshipOpt = state.ships.entities.getEntity(squadron.flagshipId)
+            if flagshipOpt.isSome:
+              let flagship = flagshipOpt.get()
+              if flagship.shipClass != ShipClass.ETAC:
+                hasNonETAC = true
 
         if onlyExpansion and hasNonETAC:
           # Only detaching Expansion squadrons, but some are non-ETAC transports
@@ -254,21 +283,21 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
         return ValidationResult(valid: false, error: "Target fleet ID required for transfer")
 
       let targetFleetId = cmd.targetFleetId.get()
-      if not state.fleets.hasKey(targetFleetId):
+      let targetFleetOpt = state.fleets.entities.getEntity(targetFleetId)
+      if targetFleetOpt.isNone:
         return ValidationResult(valid: false, error: "Target fleet not found")
 
-      let targetFleet = state.fleets[targetFleetId]
-      if targetFleet.owner != cmd.houseId:
+      let targetFleet = targetFleetOpt.get()
+      if targetFleet.houseId != cmd.houseId:
         return ValidationResult(valid: false, error: "Target fleet not owned by house")
 
-      let sourceFleet = state.fleets[cmd.sourceFleetId.get()]
-      if targetFleet.location != sourceFleet.location:
+      if targetFleet.location != fleet.location:
         return ValidationResult(valid: false, error: "Both fleets must be at same location")
 
       # Check scout/combat fleet mixing (validate after transfer would occur)
       # TODO: This is a simplified check - ideally we'd simulate the transfer
       # and check if the result would mix scouts with combat ships
-      let mergeCheck = sourceFleet.canMergeWith(targetFleet)
+      let mergeCheck = fleet_entity.canMergeWith(fleet, targetFleet, state.squadrons[])
       if not mergeCheck.canMerge:
         return ValidationResult(valid: false, error: mergeCheck.reason)
 
@@ -278,14 +307,19 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
       return ValidationResult(valid: false, error: "Target fleet ID required for merge")
 
     let targetFleetId = cmd.targetFleetId.get()
-    if not state.fleets.hasKey(targetFleetId):
+    let targetFleetOpt = state.fleets.entities.getEntity(targetFleetId)
+    if targetFleetOpt.isNone:
       return ValidationResult(valid: false, error: "Target fleet not found")
 
-    let targetFleet = state.fleets[targetFleetId]
-    if targetFleet.owner != cmd.houseId:
+    let targetFleet = targetFleetOpt.get()
+    if targetFleet.houseId != cmd.houseId:
       return ValidationResult(valid: false, error: "Target fleet not owned by house")
 
-    let sourceFleet = state.fleets[cmd.sourceFleetId.get()]
+    let sourceFleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+    if sourceFleetOpt.isNone:
+      return ValidationResult(valid: false, error: "Source fleet not found")
+    let sourceFleet = sourceFleetOpt.get()
+
     if targetFleet.location != sourceFleet.location:
       return ValidationResult(valid: false, error: "Both fleets must be at same location")
 
@@ -294,7 +328,7 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
       return ValidationResult(valid: false, error: "Cannot merge fleet into itself")
 
     # Check scout/combat fleet mixing
-    let mergeCheck = sourceFleet.canMergeWith(targetFleet)
+    let mergeCheck = fleet_entity.canMergeWith(sourceFleet, targetFleet, state.squadrons[])
     if not mergeCheck.canMerge:
       return ValidationResult(valid: false, error: mergeCheck.reason)
 
@@ -335,7 +369,10 @@ proc validateZeroTurnCommand*(state: GameState, cmd: ZeroTurnCommand): Validatio
     # Validate both carriers exist and are at same location
     if cmd.sourceFleetId.isNone:
       return ValidationResult(valid: false, error: "Source fleet ID required")
-    let sourceFleet = state.fleets[cmd.sourceFleetId.get()]
+    let sourceFleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+    if sourceFleetOpt.isNone:
+      return ValidationResult(valid: false, error: "Source fleet not found")
+    let sourceFleet = sourceFleetOpt.get()
     # Find both carriers and ensure they're in same fleet or adjacent fleets at same location
     # (detailed validation in execute function)
 
@@ -364,15 +401,17 @@ proc cleanupEmptyFleet*(state: var GameState, fleetId: FleetId) =
   ## DRY: Remove fleet and cleanup all associated orders
   ## Used by TransferShips, MergeFleets, AssignSquadronToFleet, DetachShips
   ## NOTE: Caller must ensure fleet should be deleted (this doesn't check isEmpty)
-  if fleetId in state.fleets:
-    let fleet = state.fleets[fleetId]
-    state.removeFleetFromIndices(fleetId, fleet.owner, fleet.location)
-    state.fleets.del(fleetId)
-    if fleetId in state.fleetCommands:
-      state.fleetCommands.del(fleetId)
-    if fleetId in state.standingCommands:
-      state.standingCommands.del(fleetId)
-    logInfo(LogCategory.lcFleet, &"Removed fleet {fleetId} and associated orders")
+
+  # Use fleet_ops to properly destroy fleet (maintains indexes, destroys squadrons)
+  fleet_ops.destroyFleet(state, fleetId)
+
+  # Cleanup associated commands
+  if fleetId in state.fleetCommands:
+    state.fleetCommands.del(fleetId)
+  if fleetId in state.standingCommands:
+    state.standingCommands.del(fleetId)
+
+  logInfo(LogCategory.lcFleet, &"Removed fleet {fleetId} and associated orders")
 
 # ============================================================================
 # Execution - Fleet Operations (from fleet_commands.nim)
