@@ -29,6 +29,7 @@ import ../../types/[
 import ../../state/[entity_manager, game_state as gs_helpers, iterators]
 import ../../entities/squadron_ops
 import ../../event_factory/fleet_ops
+import ../../config/[military_config, tech_config]
 import ../../../common/logger
 
 export capacity.CapacityViolation, capacity.EnforcementAction,
@@ -36,20 +37,22 @@ export capacity.CapacityViolation, capacity.EnforcementAction,
 
 proc getFighterDoctrineMultiplier(fdLevel: int): float =
   ## Get Fighter Doctrine tech multiplier per assets.md:2.4.1
-  # TODO: Load these multipliers from TOML config files
+  ## Reads from globalTechConfig.fighter_doctrine
+  let cfg = globalTechConfig.fighter_doctrine
   case fdLevel
-  of 1: return 1.0   # FD I (base)
-  of 2: return 1.5   # FD II
-  of 3: return 2.0   # FD III
-  else: return 1.0   # Default to base
+  of 1: return cfg.level_1_capacity_multiplier.float
+  of 2: return cfg.level_2_capacity_multiplier.float
+  of 3: return cfg.level_3_capacity_multiplier.float
+  else: return cfg.level_1_capacity_multiplier.float  # Default to base
 
 proc calculateMaxFighterCapacity*(industrialUnits: int, fdLevel: int): int =
   ## Pure calculation of maximum fighter squadron capacity
-  ## Formula: Max FS = floor(IU / 100) × FD Tech Multiplier
+  ## Formula: Max FS = floor(IU / divisor) × FD Tech Multiplier
   ## Per assets.md:2.4.1 and economy.md:3.10
-  # TODO: Load fighter_capacity_iu_divisor from TOML config, no hard coded variables
+  ## Reads divisor from globalMilitaryConfig.fighter_mechanics
   let fdMult = getFighterDoctrineMultiplier(fdLevel)
-  return int(floor(float(industrialUnits) / 100.0) * fdMult)
+  let divisor = globalMilitaryConfig.fighter_mechanics.fighter_capacity_iu_divisor.float
+  return int(floor(float(industrialUnits) / divisor) * fdMult)
 
 proc analyzeCapacity*(state: GameState, colony: Colony, houseId: HouseId): capacity.CapacityViolation =
   ## Pure function - analyze colony's fighter capacity status

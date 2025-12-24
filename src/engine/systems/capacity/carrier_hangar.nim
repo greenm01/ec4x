@@ -20,6 +20,7 @@
 import std/[options, math]
 import ../../types/[capacity, core, game_state, squadron, ship]
 import ../../state/[game_state as gs_helpers, iterators]
+import ../../config/tech_config
 import ../../../common/logger
 
 export capacity.CapacityViolation, capacity.EnforcementAction,
@@ -34,26 +35,22 @@ proc getCarrierMaxCapacity*(shipClass: ShipClass, acoLevel: int): int =
   ## Get max hangar capacity for carrier based on ACO tech level
   ## Returns 0 for non-carrier ships
   ##
-  ## Capacity Table (from economy.md:4.13 and assets.md:2.4.1):
-  ## - CV at ACO I: 3 FS
-  ## - CV at ACO II: 4 FS
-  ## - CV at ACO III: 5 FS
-  ## - CX at ACO I: 5 FS
-  ## - CX at ACO II: 6 FS
-  ## - CX at ACO III: 8 FS
+  ## Reads capacity from globalTechConfig.advanced_carrier_operations
+  let cfg = globalTechConfig.advanced_carrier_operations
+
   case shipClass
   of ShipClass.Carrier:
     case acoLevel
-    of 1: return 3
-    of 2: return 4
-    of 3: return 5
-    else: return 3  # Default to ACO I if invalid level
+    of 1: return cfg.level_1_cv_capacity.int
+    of 2: return cfg.level_2_cv_capacity.int
+    of 3: return cfg.level_3_cv_capacity.int
+    else: return cfg.level_1_cv_capacity.int  # Default to ACO I
   of ShipClass.SuperCarrier:
     case acoLevel
-    of 1: return 5
-    of 2: return 6
-    of 3: return 8
-    else: return 5  # Default to ACO I if invalid level
+    of 1: return cfg.level_1_cx_capacity.int
+    of 2: return cfg.level_2_cx_capacity.int
+    of 3: return cfg.level_3_cx_capacity.int
+    else: return cfg.level_1_cx_capacity.int  # Default to ACO I
   else:
     return 0  # Non-carriers have no hangar capacity
 
@@ -80,8 +77,15 @@ proc analyzeCarrierCapacity*(state: GameState,
 
   let squadron = squadronOpt.get()
 
+  # Get flagship ship to check if carrier
+  let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+  if flagshipOpt.isNone:
+    return none(capacity.CapacityViolation)
+
+  let flagship = flagshipOpt.get()
+
   # Only check carriers
-  if not isCarrier(squadron.flagship.shipClass):
+  if not isCarrier(flagship.shipClass):
     return none(capacity.CapacityViolation)
 
   # Get house's ACO tech level
@@ -90,7 +94,7 @@ proc analyzeCarrierCapacity*(state: GameState,
     return none(capacity.CapacityViolation)
 
   let acoLevel = houseOpt.get().techTree.levels.advancedCarrierOps
-  let maximum = getCarrierMaxCapacity(squadron.flagship.shipClass, acoLevel)
+  let maximum = getCarrierMaxCapacity(flagship.shipClass, acoLevel)
   let current = getCurrentHangarLoad(squadron)
   let excess = max(0, current - maximum)
 
@@ -106,7 +110,7 @@ proc analyzeCarrierCapacity*(state: GameState,
   result = some(capacity.CapacityViolation(
     capacityType: capacity.CapacityType.CarrierHangar,
     entity: capacity.EntityIdUnion(kind: capacity.CapacityType.CarrierHangar,
-                                    shipId: squadron.flagship.id),
+                                    shipId: flagship.id),
     current: int32(current),
     maximum: int32(maximum),
     excess: int32(excess),
@@ -123,10 +127,14 @@ proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
   # Iterate through all active houses and their squadrons
   for house in state.activeHouses():
     for squadron in state.squadronsOwned(house.id):
-      if isCarrier(squadron.flagship.shipClass):
-        let violation = analyzeCarrierCapacity(state, squadron.id)
-        if violation.isSome:
-          result.add(violation.get())
+      # Get flagship to check if carrier
+      let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+      if flagshipOpt.isSome:
+        let flagship = flagshipOpt.get()
+        if isCarrier(flagship.shipClass):
+          let violation = analyzeCarrierCapacity(state, squadron.id)
+          if violation.isSome:
+            result.add(violation.get())
 
 proc getAvailableHangarSpace*(state: GameState,
                               squadronId: SquadronId): int =
@@ -142,8 +150,15 @@ proc getAvailableHangarSpace*(state: GameState,
 
   let squadron = squadronOpt.get()
 
+  # Get flagship ship to check if carrier
+  let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+  if flagshipOpt.isNone:
+    return 0
+
+  let flagship = flagshipOpt.get()
+
   # Only carriers have hangar space
-  if not isCarrier(squadron.flagship.shipClass):
+  if not isCarrier(flagship.shipClass):
     return 0
 
   # Get house's ACO tech level
@@ -152,7 +167,7 @@ proc getAvailableHangarSpace*(state: GameState,
     return 0
 
   let acoLevel = houseOpt.get().techTree.levels.advancedCarrierOps
-  let maximum = getCarrierMaxCapacity(squadron.flagship.shipClass, acoLevel)
+  let maximum = getCarrierMaxCapacity(flagship.shipClass, acoLevel)
   let current = getCurrentHangarLoad(squadron)
 
   return max(0, maximum - current)
