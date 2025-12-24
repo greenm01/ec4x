@@ -15,6 +15,7 @@ import ../../types/starmap
 import ../../types/espionage as esp_types
 import ../../types/tech as tech_types
 import ../../types/facilities
+import ../../state/game_state as state_helpers
 import ../../../common/logger
 import ../fleet/entity
 import ../production/projects
@@ -43,7 +44,7 @@ proc validateFleetCommand*(cmd: FleetCommand, state: GameState, issuingHouse: Ho
   result = ValidationResult(valid: true, error: "")
 
   # Check fleet exists
-  let fleetOpt = state.getFleet(cmd.fleetId)
+  let fleetOpt = state_helpers.getFleet(state, cmd.fleetId)
   if fleetOpt.isNone:
     logWarn(LogCategory.lcOrders,
             &"{issuingHouse} Fleet Validation FAILED: {cmd.fleetId} does not exist")
@@ -229,7 +230,7 @@ proc validateFleetCommand*(cmd: FleetCommand, state: GameState, issuingHouse: Ho
       return ValidationResult(valid: false, error: "Join command requires target fleet")
 
     let targetFleetId = cmd.targetFleet.get()
-    let targetFleetOpt = state.getFleet(targetFleetId)
+    let targetFleetOpt = state_helpers.getFleet(state, targetFleetId)
     if targetFleetOpt.isNone:
       logWarn(LogCategory.lcOrders,
               &"{issuingHouse} JoinFleet command REJECTED: {cmd.fleetId} → {targetFleetId} " &
@@ -693,7 +694,7 @@ proc validateBuildCommandWithBudget*(cmd: BuildCommand, state: GameState,
     # Check planet-breaker limit (1 per colony owned, assets.md:2.4.8)
     if shipClass == ShipClass.PlanetBreaker:
       let currentPBs = state.houses[houseId].planetBreakerCount
-      let maxPBs = state.getPlanetBreakerLimit(houseId)
+      let maxPBs = state_helpers.getPlanetBreakerLimit(state, houseId)
 
       # Count planet-breakers under construction house-wide
       var pbsUnderConstruction = 0

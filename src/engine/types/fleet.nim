@@ -55,6 +55,7 @@ type
 
   FleetCommand* = object
     ## Persistent fleet command that continues until completed or overridden
+    fleetId*: FleetId  # The fleet receiving this command
     commandType*: FleetCommandType
     targetSystem*: Option[SystemId]
     targetFleet*: Option[FleetId]
