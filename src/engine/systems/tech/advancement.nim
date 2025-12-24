@@ -17,7 +17,8 @@
 import std/[random, tables, options]
 import costs, effects
 import ../../types/[core, game_state, tech, command, prestige]
-import ../../state/[game_state, iterators]
+import ../../state/iterators
+import ../../state/game_state as state_helpers
 import ../../config/[tech_config, prestige_multiplier, prestige_config]
 import ../../../common/logger
 
@@ -51,7 +52,7 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
   ## DoD compliant: Uses getHouse, iterates colony IDs, updates facilities via entity managers
 
   # Get house's CST level
-  let houseOpt = game_state.getHouse(state, houseId)
+  let houseOpt = state_helpers.getHouse(state, houseId)
   if houseOpt.isNone:
     return
   let house = houseOpt.get()
@@ -62,14 +63,14 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
     return
 
   for colonyId in state.colonies.byOwner[houseId]:
-    let colonyOpt = game_state.getColony(state, colonyId)
+    let colonyOpt = state_helpers.getColony(state, colonyId)
     if colonyOpt.isNone:
       continue
     let colony = colonyOpt.get()
 
     # Update spaceport capacities
     for spaceportId in colony.spaceportIds:
-      let spaceportOpt = game_state.getSpaceport(state, spaceportId)
+      let spaceportOpt = state_helpers.getSpaceport(state, spaceportId)
       if spaceportOpt.isNone:
         continue
       let spaceport = spaceportOpt.get()
@@ -78,7 +79,7 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
 
     # Update shipyard capacities
     for shipyardId in colony.shipyardIds:
-      let shipyardOpt = game_state.getShipyard(state, shipyardId)
+      let shipyardOpt = state_helpers.getShipyard(state, shipyardId)
       if shipyardOpt.isNone:
         continue
       let shipyard = shipyardOpt.get()
@@ -87,7 +88,7 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
 
     # Update drydock capacities
     for drydockId in colony.drydockIds:
-      let drydockOpt = game_state.getDrydock(state, drydockId)
+      let drydockOpt = state_helpers.getDrydock(state, drydockId)
       if drydockOpt.isNone:
         continue
       let drydock = drydockOpt.get()
@@ -208,7 +209,7 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[ResearchA
   if currentEL >= maxEconomicLevel:
     return none(ResearchAdvancement)
 
-  let cost = getELUpgradeCost(currentEL)
+  let cost = getELUpgradeCost(int32(currentEL))
 
   if tree.accumulated.economic >= int32(cost):
     # Spend RP
@@ -245,7 +246,7 @@ proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[ResearchA
   if currentSL >= maxScienceLevel:
     return none(ResearchAdvancement)
 
-  let cost = getSLUpgradeCost(currentSL)
+  let cost = getSLUpgradeCost(int32(currentSL))
 
   if tree.accumulated.science >= int32(cost):
     # Spend SRP
