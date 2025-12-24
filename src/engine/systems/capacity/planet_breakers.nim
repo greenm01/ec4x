@@ -35,8 +35,12 @@ proc countPlanetBreakersInFleets*(state: GameState, houseId: HouseId): int =
   ## (O(1) lookup via squadronsOwned iterator)
   result = 0
   for squadron in state.squadronsOwned(houseId):
-    if squadron.flagship.shipClass == ShipClass.PlanetBreaker:
-      result += 1
+    # Get flagship ship using entity manager
+    let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+    if flagshipOpt.isSome:
+      let flagship = flagshipOpt.get()
+      if flagship.shipClass == ShipClass.PlanetBreaker:
+        result += 1
 
 proc countPlanetBreakersUnderConstruction*(state: GameState, houseId: HouseId): int =
   ## Count planet-breakers currently under construction house-wide
@@ -122,8 +126,12 @@ proc planEnforcement*(state: GameState, violation: capacity.CapacityViolation): 
   var squadronIds: seq[string] = @[]
 
   for squadron in state.squadronsOwned(houseId):
-    if squadron.flagship.shipClass == ShipClass.PlanetBreaker:
-      squadronIds.add($squadron.id)
+    # Get flagship ship using entity manager
+    let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+    if flagshipOpt.isSome:
+      let flagship = flagshipOpt.get()
+      if flagship.shipClass == ShipClass.PlanetBreaker:
+        squadronIds.add($squadron.id)
 
   # Sort by squadron ID (alphabetical/numerical order gives deterministic "oldest first" behavior)
   squadronIds.sort()

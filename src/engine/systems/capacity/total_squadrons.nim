@@ -86,8 +86,12 @@ proc countTotalSquadronsInFleets*(state: GameState, houseId: HouseId): int =
   ## (O(1) lookup via squadronsOwned iterator)
   result = 0
   for squadron in state.squadronsOwned(houseId):
-    if isMilitarySquadron(squadron.flagship.shipClass):
-      result += 1
+    # Get flagship ship using entity manager
+    let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+    if flagshipOpt.isSome:
+      let flagship = flagshipOpt.get()
+      if isMilitarySquadron(flagship.shipClass):
+        result += 1
 
 proc countTotalSquadronsUnderConstruction*(state: GameState,
                                             houseId: HouseId): int =
@@ -227,13 +231,17 @@ proc prioritizeSquadronsForRemoval(state: GameState, houseId: HouseId): seq[Squa
   result = @[]
 
   for squadron in state.squadronsOwned(houseId):
-    if isMilitarySquadron(squadron.flagship.shipClass):
-      result.add(SquadronPriority(
-        squadronId: $squadron.id,
-        isCrippled: squadron.flagship.isCrippled,
-        attackStrength: squadron.flagship.stats.attackStrength,
-        isCapital: capital_squadrons.isCapitalShip(squadron.flagship.shipClass)
-      ))
+    # Get flagship ship using entity manager
+    let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+    if flagshipOpt.isSome:
+      let flagship = flagshipOpt.get()
+      if isMilitarySquadron(flagship.shipClass):
+        result.add(SquadronPriority(
+          squadronId: $squadron.id,
+          isCrippled: flagship.isCrippled,
+          attackStrength: flagship.stats.attackStrength,
+          isCapital: capital_squadrons.isCapitalShip(flagship.shipClass)
+        ))
 
   # Sort: non-capitals first, then crippled, then by lowest AS
   result.sort do (a, b: SquadronPriority) -> int:
@@ -301,15 +309,22 @@ proc applyEnforcement*(state: var GameState, action: capacity.EnforcementAction,
     if squadronOpt.isSome:
       let squadron = squadronOpt.get()
 
+      # Get flagship ship using entity manager
+      let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+      if flagshipOpt.isNone:
+        continue
+
+      let flagship = flagshipOpt.get()
+
       logger.logDebug("Military", "Squadron auto-disbanded - total capacity exceeded",
                 " squadronId=", squadronIdStr,
-                " class=", $squadron.flagship.shipClass)
+                " class=", $flagship.shipClass)
 
       # Emit SquadronDisbanded event
       events.add(fleet_ops.squadronDisbanded(
         houseId = houseId,
         squadronId = squadronIdStr,
-        shipClass = squadron.flagship.shipClass,
+        shipClass = flagship.shipClass,
         reason = "Total squadron capacity exceeded (IU loss)",
         systemId = squadron.location
       ))

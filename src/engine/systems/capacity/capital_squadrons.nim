@@ -108,8 +108,12 @@ proc countCapitalSquadronsInFleets*(state: GameState, houseId: HouseId): int =
   ## (O(1) lookup via byHouse index)
   result = 0
   for squadron in state.squadronsOwned(houseId):
-    if isCapitalShip(squadron.flagship.shipClass):
-      result += 1
+    # Get flagship ship using entity manager
+    let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+    if flagshipOpt.isSome:
+      let flagship = flagshipOpt.get()
+      if isCapitalShip(flagship.shipClass):
+        result += 1
 
 proc countCapitalSquadronsUnderConstruction*(state: GameState,
                                               houseId: HouseId): int =
@@ -206,12 +210,16 @@ proc prioritizeSquadronsForRemoval(state: GameState, houseId: HouseId): seq[Squa
   result = @[]
 
   for squadron in state.squadronsOwned(houseId):
-    if isCapitalShip(squadron.flagship.shipClass):
-      result.add(SquadronPriority(
-        squadronId: $squadron.id,
-        isCrippled: squadron.flagship.isCrippled,
-        attackStrength: squadron.flagship.stats.attackStrength
-      ))
+    # Get flagship ship using entity manager
+    let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+    if flagshipOpt.isSome:
+      let flagship = flagshipOpt.get()
+      if isCapitalShip(flagship.shipClass):
+        result.add(SquadronPriority(
+          squadronId: $squadron.id,
+          isCrippled: flagship.isCrippled,
+          attackStrength: flagship.stats.attackStrength
+        ))
 
   # Sort: crippled first, then by lowest AS
   result.sort do (a, b: SquadronPriority) -> int:
@@ -280,19 +288,26 @@ proc applyEnforcement*(state: var GameState, action: capacity.EnforcementAction,
   for squadron in state.squadronsOwned(houseId):
     if $squadron.id in action.affectedUnitIds:
       squadronsToRemove.add(squadron.id)
-      let salvage = calculateSalvageValue(squadron.flagship.shipClass)
+
+      # Get flagship ship using entity manager
+      let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+      if flagshipOpt.isNone:
+        continue
+
+      let flagship = flagshipOpt.get()
+      let salvage = calculateSalvageValue(flagship.shipClass)
       totalSalvage += salvage
 
       logger.logDebug("Military", "Capital squadron auto-scrapped - IU loss",
             " squadronId=", $squadron.id,
-            " class=", $squadron.flagship.shipClass,
+            " class=", $flagship.shipClass,
             " salvage=", $salvage)
 
       # Emit SquadronScrapped event for tracking
       events.add(fleet_ops.squadronScrapped(
         houseId = houseId,
         squadronId = $squadron.id,
-        shipClass = squadron.flagship.shipClass,
+        shipClass = flagship.shipClass,
         reason = "Capital squadron capacity exceeded (IU loss)",
         salvageValue = salvage,
         systemId = squadron.location
