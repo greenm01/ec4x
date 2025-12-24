@@ -94,7 +94,7 @@ proc resolveMaintenancePhase*(state: var GameState,
   # This is NOT execution - just lifecycle management
   logInfo(LogCategory.lcOrders, "[MAINTENANCE STEP 1b] Performing order maintenance...")
   var combatReports: seq[res_types_common.CombatReport] = @[]
-  fleet_order_execution.performOrderMaintenance(
+  fleet_order_execution.performCommandMaintenance(
     state,
     orders,
     events,

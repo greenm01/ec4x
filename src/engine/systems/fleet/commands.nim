@@ -28,7 +28,7 @@ type
     shouldAbort*: bool  # True if order should be converted to SeekHome/Hold
     reason*: string
 
-proc validateOrderAtExecution(
+proc validateCommandAtExecution(
   state: GameState,
   order: FleetOrder,
   houseId: HouseId
@@ -211,7 +211,7 @@ proc validateOrderAtExecution(
   # Order is valid at execution time
   return ExecutionValidationResult(valid: true, shouldAbort: false, reason: "")
 
-proc performOrderMaintenance*(
+proc performCommandMaintenance*(
   state: var GameState,
   orders: Table[HouseId, OrderPacket],
   events: var seq[res_types.GameEvent],
@@ -293,7 +293,7 @@ proc performOrderMaintenance*(
     fleetsProcessed.incl(order.fleetId)
 
     # EXECUTION-TIME VALIDATION: Fail-safe check if conditions changed since submission
-    let validation = validateOrderAtExecution(state, order, houseId)
+    let validation = validateCommandAtExecution(state, order, houseId)
 
     var actualOrder = order
     if not validation.valid:
