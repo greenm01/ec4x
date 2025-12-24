@@ -1,5 +1,5 @@
 ## Fleet Operations Event Factory
-## Events for standing orders, fleet encounters, reorganization, and scout operations
+## Events for standing commands, fleet encounters, reorganization, and scout operations
 ##
 ## DRY Principle: Single source of truth for fleet operations event creation
 ## DoD Principle: Data (GameEvent) separated from creation logic
@@ -22,11 +22,11 @@ proc standingOrderSet*(
   activationDelay: int,
   systemId: SystemId
 ): event_types.GameEvent =
-  ## Create event for standing order configuration
+  ## Create event for standing command configuration
   event_types.GameEvent(
     eventType: event_types.GameEventType.StandingOrderSet,
     houseId: some(houseId),
-    description: &"Fleet {fleetId} standing order set: {orderType} " &
+    description: &"Fleet {fleetId} standing command set: {orderType} " &
                  &"(enabled={enabled}, delay={activationDelay} turns)",
     systemId: some(systemId),
     fleetId: some(fleetId),
@@ -43,11 +43,11 @@ proc standingOrderActivated*(
   triggerReason: string,
   systemId: SystemId
 ): event_types.GameEvent =
-  ## Create event for standing order activation
+  ## Create event for standing command activation
   event_types.GameEvent(
     eventType: event_types.GameEventType.StandingOrderActivated,
     houseId: some(houseId),
-    description: &"Fleet {fleetId} standing order activated: {standingOrderType} " &
+    description: &"Fleet {fleetId} standing command activated: {standingOrderType} " &
                  &"generated {generatedOrderType} ({triggerReason})",
     systemId: some(systemId),
     fleetId: some(fleetId),
@@ -63,11 +63,11 @@ proc standingOrderSuspended*(
   reason: string,
   systemId: SystemId
 ): event_types.GameEvent =
-  ## Create event for standing order suspension
+  ## Create event for standing command suspension
   event_types.GameEvent(
     eventType: event_types.GameEventType.StandingOrderSuspended,
     houseId: some(houseId),
-    description: &"Fleet {fleetId} standing order suspended: {orderType} ({reason})",
+    description: &"Fleet {fleetId} standing command suspended: {orderType} ({reason})",
     systemId: some(systemId),
     fleetId: some(fleetId),
     suspendedOrderType: some(orderType),

@@ -4,8 +4,8 @@
 ## no explicit order is given for a turn. Reduces micromanagement and provides
 ## quality-of-life improvements for both players and AI.
 ##
-## Three-tier order lifecycle (applies to both active and standing orders):
-## - Initiate (Command Phase Part B): Player configures standing order rules
+## Three-tier order lifecycle (applies to both active and standing commands):
+## - Initiate (Command Phase Part B): Player configures standing command rules
 ## - Validate (Command Phase Part C): Engine validates configuration
 ## - Activate (Maintenance Phase Step 1a): Check conditions, generate fleet orders
 ## - Execute (Conflict/Income Phase): Missions happen at targets
@@ -21,15 +21,15 @@ import resolution/[event_factory/init as event_factory, types as resolution_type
 import intelligence/types as intel_types
 import population/transfers  # For findNearestOwnedColony
 
-export StandingOrderType, StandingOrder, StandingOrderParams
+export StandingCommandType, StandingOrder, StandingCommandParams
 
 type
   ActivationResult* = object
-    ## Result of standing order activation attempt
+    ## Result of standing command activation attempt
     success*: bool
     action*: string               # Description of action taken
     error*: string                # Error message if failed
-    updatedParams*: Option[StandingOrderParams]  # Updated params (e.g., patrol index)
+    updatedParams*: Option[StandingCommandParams]  # Updated params (e.g., patrol index)
 
 # =============================================================================
 # Fog-of-War Helpers (DRY Principle)
@@ -37,7 +37,7 @@ type
 
 proc getKnownSystems*(state: GameState, houseId: HouseId): HashSet[SystemId] =
   ## Returns all systems the house knows about through fog-of-war
-  ## Used by standing orders to avoid omniscient decisions
+  ## Used by standing commands to avoid omniscient decisions
   ##
   ## **BUG FIX:** In early-mid game, scouts have visited ALL systems but
   ## systemReports only exist for systems with enemy fleets. This prevented
@@ -93,7 +93,7 @@ proc hasColonyIntel*(state: GameState, houseId: HouseId, systemId: SystemId): bo
 proc getKnownEnemyFleetsInSystem*(state: GameState, houseId: HouseId,
                                    systemId: SystemId): seq[Fleet] =
   ## Returns enemy fleets at system that house has intel on
-  ## Used by defensive standing orders
+  ## Used by defensive standing commands
   ##
   ## **Detection sources:**
   ## - Fleet movement history (detected by scouts/surveillance)
@@ -141,7 +141,7 @@ proc getKnownEnemyFleetsInSystem*(state: GameState, houseId: HouseId,
 # =============================================================================
 
 proc activatePatrolRoute(state: var GameState, fleetId: FleetId,
-                       params: StandingOrderParams): ActivationResult =
+                       params: StandingCommandParams): ActivationResult =
   ## Execute patrol route - move to next system in path
   ## Loops continuously through patrol path
   let fleet = state.fleets[fleetId]
@@ -164,7 +164,7 @@ proc activatePatrolRoute(state: var GameState, fleetId: FleetId,
     fleetId: fleetId,
     orderType: FleetOrderType.Move,
     targetSystem: some(nextSystem),
-    priority: 100  # Standing orders have lower priority than explicit orders
+    priority: 100  # Standing commands have lower priority than explicit orders
   )
 
   # Advance patrol index (loop back to start when reaching end)
@@ -185,7 +185,7 @@ proc activatePatrolRoute(state: var GameState, fleetId: FleetId,
   )
 
 proc activateDefendSystem(state: var GameState, fleetId: FleetId,
-                        params: StandingOrderParams): ActivationResult =
+                        params: StandingCommandParams): ActivationResult =
   ## Execute defend system - stay at target or return if moved away
   let fleet = state.fleets[fleetId]
   let targetSystem = params.defendTargetSystem
@@ -496,7 +496,7 @@ proc findColonizationTargetFiltered*(filtered: FilteredGameState, fleet: Fleet,
   return some(best.systemId)
 
 proc activateAutoRepair(state: var GameState, fleetId: FleetId,
-                      params: StandingOrderParams): ActivationResult =
+                      params: StandingCommandParams): ActivationResult =
   ## Execute auto-repair - return to nearest shipyard when ships are crippled
   ## Triggers when crippled ship percentage exceeds threshold
   let fleet = state.fleets[fleetId]
@@ -622,7 +622,7 @@ proc activateAutoRepair(state: var GameState, fleetId: FleetId,
                         action: &"Return to shipyard at system-{targetSystem}")
 
 proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
-                         params: StandingOrderParams): ActivationResult =
+                         params: StandingCommandParams): ActivationResult =
   ## Execute auto-reinforce - join damaged friendly fleet
   ## Finds nearest damaged fleet and moves to join it
   let fleet = state.fleets[fleetId]
@@ -773,7 +773,7 @@ proc calculateFleetStrength(fleet: Fleet): int =
 
 
 proc activateBlockadeTarget(state: var GameState, fleetId: FleetId,
-                          params: StandingOrderParams): ActivationResult =
+                          params: StandingCommandParams): ActivationResult =
   ## Execute blockade target - maintain blockade on enemy colony
   ## Moves to target colony and issues BlockadePlanet order
   let fleet = state.fleets[fleetId]
@@ -853,53 +853,53 @@ proc activateBlockadeTarget(state: var GameState, fleetId: FleetId,
 # Grace Period Management
 # =============================================================================
 
-proc resetStandingOrderGracePeriod*(state: var GameState, fleetId: FleetId) =
+proc resetStandingCommandGracePeriod*(state: var GameState, fleetId: FleetId) =
   ## Reset activation delay countdown when explicit order completes
-  ## Gives player time to issue new orders before standing order reactivates
+  ## Gives player time to issue new orders before standing command reactivates
   ## Called after every order completion (via state.fleetCommands.del)
   if fleetId in state.standingCommands:
     var standingOrder = state.standingCommands[fleetId]
     standingOrder.turnsUntilActivation = standingOrder.activationDelayTurns
     state.standingCommands[fleetId] = standingOrder
     logDebug(LogCategory.lcOrders,
-      &"Fleet {fleetId} standing order grace period reset to " &
+      &"Fleet {fleetId} standing command grace period reset to " &
       &"{standingOrder.activationDelayTurns} turn(s)")
 
 # =============================================================================
 # Main Activation Function
 # =============================================================================
 
-proc activateStandingOrder*(state: var GameState, fleetId: FleetId,
+proc activateStandingCommand*(state: var GameState, fleetId: FleetId,
                           standingOrder: StandingOrder, turn: int): ActivationResult =
-  ## Execute a single standing order
+  ## Execute a single standing command
   ## Called during Command Phase for fleets without explicit orders
 
   case standingOrder.commandType
-  of StandingOrderType.None:
-    return ActivationResult(success: true, action: "No standing order")
+  of StandingCommandType.None:
+    return ActivationResult(success: true, action: "No standing command")
 
-  of StandingOrderType.PatrolRoute:
+  of StandingCommandType.PatrolRoute:
     return activatePatrolRoute(state, fleetId, standingOrder.params)
 
-  of StandingOrderType.DefendSystem, StandingOrderType.GuardColony:
+  of StandingCommandType.DefendSystem, StandingCommandType.GuardColony:
     return activateDefendSystem(state, fleetId, standingOrder.params)
 
-  of StandingOrderType.AutoReinforce:
+  of StandingCommandType.AutoReinforce:
     return activateAutoReinforce(state, fleetId, standingOrder.params)
 
-  of StandingOrderType.AutoRepair:
+  of StandingCommandType.AutoRepair:
     return activateAutoRepair(state, fleetId, standingOrder.params)
 
-  of StandingOrderType.BlockadeTarget:
+  of StandingCommandType.BlockadeTarget:
     return activateBlockadeTarget(state, fleetId, standingOrder.params)
 
-proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[resolution_types.GameEvent]) =
-  ## Activate standing orders for all fleets without explicit orders
+proc activateStandingCommands*(state: var GameState, turn: int, events: var seq[resolution_types.GameEvent]) =
+  ## Activate standing commands for all fleets without explicit orders
   ## Called during Maintenance Phase Step 1a
   ##
   ## Three-tier order lifecycle:
-  ## - Initiate (Command Phase): Player configures standing order rules
-  ## - Activate (Maintenance Phase): Standing orders generate fleet orders ← THIS PROC
+  ## - Initiate (Command Phase): Player configures standing command rules
+  ## - Activate (Maintenance Phase): Standing commands generate fleet orders ← THIS PROC
   ## - Execute (Conflict/Income Phase): Missions happen at targets
   ##
   ## COMPREHENSIVE LOGGING:
@@ -915,14 +915,14 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
   # Check global master switch
   if not globalStandingOrdersConfig.activation.global_enabled:
     logInfo(LogCategory.lcOrders,
-            "Standing orders globally disabled in config - skipping all activation")
+            "Standing commands globally disabled in config - skipping all activation")
     return
 
   var activatedCount = 0
   var skippedCount = 0
   var failedCount = 0
   var notImplementedCount = 0
-  var noStandingOrderCount = 0  # Fleets without standing orders assigned
+  var noStandingOrderCount = 0  # Fleets without standing commands assigned
 
   for fleetId, fleet in state.fleets:
     # Skip if fleet has explicit order this turn
@@ -930,7 +930,7 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
       let explicitOrder = state.fleetCommands[fleetId]
       logDebug(LogCategory.lcOrders,
                &"{fleetId} has explicit order ({explicitOrder.commandType}), " &
-               &"skipping standing order")
+               &"skipping standing command")
       skippedCount += 1
 
       # Reset activation countdown when explicit order exists
@@ -950,10 +950,10 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
 
       continue
 
-    # Check for standing order
+    # Check for standing command
     if fleetId notin state.standingCommands:
       logDebug(LogCategory.lcOrders,
-               &"{fleetId} (owner: {fleet.owner}) has no standing order assigned, skipping")
+               &"{fleetId} (owner: {fleet.owner}) has no standing command assigned, skipping")
       noStandingOrderCount += 1
       continue
 
@@ -962,14 +962,14 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
     # Skip if suspended
     if standingOrder.suspended:
       logDebug(LogCategory.lcOrders,
-               &"{fleetId} standing order suspended, skipping")
+               &"{fleetId} standing command suspended, skipping")
       skippedCount += 1
       continue
 
     # Skip if not enabled (player control)
     if not standingOrder.enabled:
       logDebug(LogCategory.lcOrders,
-               &"{fleetId} standing order disabled by player, skipping")
+               &"{fleetId} standing command disabled by player, skipping")
       skippedCount += 1
       continue
 
@@ -979,11 +979,11 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
       standingOrder.turnsUntilActivation -= 1
       state.standingCommands[fleetId] = standingOrder
       logDebug(LogCategory.lcOrders,
-               &"{fleetId} standing order waiting {standingOrder.turnsUntilActivation} more turn(s)")
+               &"{fleetId} standing command waiting {standingOrder.turnsUntilActivation} more turn(s)")
       skippedCount += 1
       continue
 
-    # Activate standing order
+    # Activate standing command
     let result = activateStandingOrder(state, fleetId, standingOrder, turn)
 
     if result.success:
@@ -1012,7 +1012,7 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
       updatedOrder.lastActivatedTurn = turn
       updatedOrder.activationCount += 1
 
-      # Reset activation countdown (standing order generated a new fleet order)
+      # Reset activation countdown (standing command generated a new fleet order)
       updatedOrder.turnsUntilActivation = updatedOrder.activationDelayTurns
 
       # Update params if returned (e.g., patrol index advanced)
@@ -1036,7 +1036,7 @@ proc activateStandingOrders*(state: var GameState, turn: int, events: var seq[re
   let totalFleets = state.fleets.len
   logInfo(LogCategory.lcOrders,
           &"Standing Orders Summary: {totalFleets} total fleets, " &
-          &"{noStandingOrderCount} without standing orders, " &
+          &"{noStandingOrderCount} without standing commands, " &
           &"{skippedCount} skipped (explicit orders/suspended/disabled/delay), " &
           &"{activatedCount}/{totalAttempted} activated, " &
           &"{failedCount} failed, {notImplementedCount} not implemented")

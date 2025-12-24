@@ -1094,11 +1094,11 @@ proc executeJoinFleetCommand(
   let targetFleetOpt = state.getFleet(targetFleetId)
 
   if targetFleetOpt.isNone:
-    # Target fleet destroyed or deleted - clear the order and fall back to standing orders
-    # Standing orders will be used automatically by the order resolution system
+    # Target fleet destroyed or deleted - clear the order and fall back to standing commands
+    # Standing commands will be used automatically by the order resolution system
     if fleet.id in state.fleetCommands:
       state.fleetCommands.del(fleet.id)
-      standing_orders.resetStandingOrderGracePeriod(state, fleet.id)
+      standing_orders.resetStandingCommandGracePeriod(state, fleet.id)
 
     events.add(event_factory.commandAborted(
         houseId = fleet.owner,
@@ -1150,10 +1150,10 @@ proc executeJoinFleetCommand(
     # Check if fleet actually moved (pathfinding succeeded)
     if movedFleet.location == fleet.location:
       # Fleet didn't move - no path found to target
-      # Cancel order and fall back to standing orders
+      # Cancel order and fall back to standing commands
       if fleet.id in state.fleetCommands:
         state.fleetCommands.del(fleet.id)
-        standing_orders.resetStandingOrderGracePeriod(state, fleet.id)
+        standing_orders.resetStandingCommandGracePeriod(state, fleet.id)
 
       events.add(event_factory.commandAborted(
           houseId = fleet.owner,

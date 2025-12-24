@@ -17,7 +17,7 @@
 ## **Part C: Order Validation & Storage (AFTER Player Window)**
 ## - Administrative orders execute
 ## - All other orders: Validate and store in state.fleetCommands
-## - Standing order configs: Validated and stored in state.standingCommands
+## - Standing command configs: Validated and stored in state.standingCommands
 ## - Build orders: Add to construction queues
 ## - Tech research: Allocate RP
 ##
@@ -58,7 +58,7 @@ proc resolveCommandPhase*(state: var GameState,
   # STEP 0: ORDER CLEANUP FROM PREVIOUS TURN
   # ===================================================================
   # Clean up completed/failed/aborted orders based on events from previous turn
-  # This runs BEFORE Part A to ensure standing orders can activate in Maintenance Phase
+  # This runs BEFORE Part A to ensure standing commands can activate in Maintenance Phase
   # Per canonical turn cycle: Step 0 runs before commissioning/automation
   logInfo(LogCategory.lcOrders, "[COMMAND STEP 0] Cleaning up orders from previous turn...")
   order_cleanup.cleanFleetOrders(state, events)
@@ -132,7 +132,7 @@ proc resolveCommandPhase*(state: var GameState,
   #   * Bombard, Invade, Blitz, Guard*
   #   * Colonize, SpyPlanet, SpySystem, HackStarbase
   #   * Salvage
-  # - Standing order configs: Validate & store in state.standingCommands
+  # - Standing command configs: Validate & store in state.standingCommands
   #
   # Key principle: All non-admin orders follow same path → No special cases
 
@@ -293,5 +293,5 @@ proc resolveCommandPhase*(state: var GameState,
 
   logInfo(LogCategory.lcOrders,
           &"[COMMAND PART C] Completed ({ordersStored} orders stored, " &
-          &"{standingOrdersProcessed} standing orders assigned, {adminExecuted} admin executed)")
+          &"{standingOrdersProcessed} standing commands assigned, {adminExecuted} admin executed)")
 

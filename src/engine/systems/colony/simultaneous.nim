@@ -65,7 +65,7 @@ proc collectColonizationIntents*(
       for squadron in fleet.squadrons:
         fleetStrength += squadron.combatStrength()
 
-      # AutoColonize standing orders removed - manual orders only
+      # AutoColonize standing commands removed - manual orders only
       let hasStandingOrders = false
 
       # Get target system from order
@@ -304,7 +304,7 @@ proc collectFallbackIntents(
   originalTargets: Table[FleetId, SystemId]
 ): seq[ColonizationIntent] =
   ## Collect fallback colonization intents from losers
-  ## NOTE: AutoColonize standing orders removed - this now returns empty
+  ## NOTE: AutoColonize standing commands removed - this now returns empty
   ## Fallback behavior no longer supported (manual orders only)
   ##
   ## Returns: Empty sequence (no fallback intents)

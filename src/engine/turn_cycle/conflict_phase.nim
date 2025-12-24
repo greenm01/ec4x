@@ -274,7 +274,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   # STEP 5: COLONIZATION
   # ===================================================================
   # ETACs establish colonies, resolve conflicts (winner-takes-all)
-  # Fallback logic for losers with AutoColonize standing orders
+  # Fallback logic for losers with AutoColonize standing commands
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 5] Resolving colonization attempts...")
   let colonizationResults = simultaneous.resolveColonization(
     state, arrivedOrders, rng, events)

@@ -36,7 +36,7 @@ proc determineWinner*(
   ## Determine winner from competing intents
   ##
   ## Priority rules:
-  ## 1. Manual orders beat standing orders
+  ## 1. Manual orders beat standing commands
   ## 2. Stronger fleet wins
   ## 3. Random tiebreaker
 
@@ -46,7 +46,7 @@ proc determineWinner*(
   if conflict.intents.len == 1:
     return conflict.intents[0]
 
-  # Separate manual vs standing orders
+  # Separate manual vs standing commands
   var manualIntents: seq[ColonizationIntent] = @[]
   var standingIntents: seq[ColonizationIntent] = @[]
 

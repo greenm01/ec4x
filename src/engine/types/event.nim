@@ -92,9 +92,9 @@ type
     GroundCombatRound,    # Ground combat round (marines vs ground forces)
     StarbaseCombat,       # Starbase participated in orbital combat
     # Fleet Operations Events (Phase 7b)
-    StandingOrderSet,     # Standing order configured on fleet
-    StandingOrderActivated, # Standing order triggered and generated fleet order
-    StandingOrderSuspended, # Standing order disabled or overridden
+    StandingOrderSet,     # Standing command configured on fleet
+    StandingOrderActivated, # Standing command triggered and generated fleet order
+    StandingOrderSuspended, # Standing command disabled or overridden
     FleetEncounter,       # Fleet encountered enemy fleet before combat
     FleetMerged,          # Squadrons transferred between fleets (merge)
     FleetDetachment,      # Squadrons split off to new fleet
@@ -334,12 +334,12 @@ type
       activationDelay*: Option[int] # Turns until activation
 
     of StandingOrderActivated:
-      activatedOrderType*: Option[string] # Standing order that activated
+      activatedOrderType*: Option[string] # Standing command that activated
       generatedFleetOrderType*: Option[string] # Fleet order it generated (e.g., "Move", "Colonize")
       triggerReason*: Option[string] # Why it activated
 
     of StandingOrderSuspended:
-      suspendedOrderType*: Option[string] # Standing order that was suspended
+      suspendedOrderType*: Option[string] # Standing command that was suspended
       suspendReason*: Option[string] # "ExplicitOrderIssued", "Disabled", "GlobalToggle"
 
     of FleetEncounter:

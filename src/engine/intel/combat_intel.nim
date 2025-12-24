@@ -14,7 +14,7 @@ proc createFleetComposition*(
   fleetId: FleetId
 ): intel_types.CombatFleetComposition =
   ## Create detailed fleet composition intel from combat encounter
-  ## This captures squadron composition and standing orders
+  ## This captures squadron composition and standing commands
 
   var squadronDetails: seq[intel_types.SquadronIntel] = @[]
 
@@ -29,7 +29,7 @@ proc createFleetComposition*(
     )
     squadronDetails.add(squadIntel)
 
-  # Get fleet's standing orders (if any)
+  # Get fleet's standing commands (if any)
   var orderIntel: Option[intel_types.FleetOrderIntel] = none(intel_types.FleetOrderIntel)
   if fleetId in state.fleetCommands:
     let order = state.fleetCommands[fleetId]

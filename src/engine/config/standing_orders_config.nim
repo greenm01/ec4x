@@ -1,5 +1,5 @@
 ## Standing Orders Configuration Loader
-## Loads standing order behavior settings from config/standing_orders.toml
+## Loads standing command behavior settings from config/standing_orders.toml
 
 import std/[os]
 import toml_serialization
@@ -20,22 +20,22 @@ type
     warn_turns_before*: int
 
   StandingOrdersConfig* = object
-    ## Complete standing orders configuration loaded from TOML
+    ## Complete standing commands configuration loaded from TOML
     activation*: ActivationConfig
     behavior*: BehaviorConfig
     ui_hints*: UIHintsConfig
 
 proc loadStandingOrdersConfig*(configPath: string = "config/standing_orders.toml"): StandingOrdersConfig =
-  ## Load standing orders configuration from TOML file
+  ## Load standing commands configuration from TOML file
   ## Uses toml_serialization for type-safe parsing
 
   if not fileExists(configPath):
-    raise newException(IOError, "Standing orders config not found: " & configPath)
+    raise newException(IOError, "Standing commands config not found: " & configPath)
 
   let configContent = readFile(configPath)
   result = Toml.decode(configContent, StandingOrdersConfig)
 
-  logInfo("Config", "Loaded standing orders configuration", "path=", configPath)
+  logInfo("Config", "Loaded standing commands configuration", "path=", configPath)
 
 ## Global configuration instance
 

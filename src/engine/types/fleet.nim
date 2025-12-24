@@ -68,11 +68,11 @@ type
     OnSpyMission,   # Active spy mission (locked, gathering intel)
     Detected        # Detected during spy mission (destroyed next phase)
 
-  StandingOrderType* {.pure.} = enum
+  StandingCommandType* {.pure.} = enum
     None, PatrolRoute, DefendSystem, GuardColony,
     AutoReinforce, AutoRepair, BlockadeTarget
 
-  StandingOrderParams* = object
+  StandingCommandParams* = object
     patrolSystems*: seq[SystemId]
     patrolIndex*: int32
     defendSystem*: Option[SystemId]
@@ -82,9 +82,9 @@ type
     repairThreshold*: float32
 
   ActivationResult* = object
-    ## Result of standing order activation attempt
+    ## Result of standing command activation attempt
     success*: bool
     action*: string               # Description of action taken
     error*: string                # Error message if failed
-    updatedParams*: Option[StandingOrderParams]  # Updated params (e.g., patrol index)
+    updatedParams*: Option[StandingCommandParams]  # Updated params (e.g., patrol index)
 

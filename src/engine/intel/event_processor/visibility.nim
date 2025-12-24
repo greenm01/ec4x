@@ -151,7 +151,7 @@ proc shouldHouseSeeEvent*(
      res_types.GameEventType.OrderFailed,
      res_types.GameEventType.OrderAborted,
      res_types.GameEventType.FleetArrived,
-     # Phase 7b: Standing order events
+     # Phase 7b: Standing command events
      res_types.GameEventType.StandingOrderSet,
      res_types.GameEventType.StandingOrderActivated,
      res_types.GameEventType.StandingOrderSuspended,

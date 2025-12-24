@@ -62,7 +62,7 @@
 ##
 ## **PHASE 4: MAINTENANCE PHASE** [resolution/phases/maintenance_phase.nim]
 ##   Step 1: Fleet Movement & Order Activation
-##     1a: Order Activation (activate orders, generate standing orders)
+##     1a: Order Activation (activate orders, generate standing commands)
 ##     1b: Order Maintenance (lifecycle management)
 ##     1c: Fleet Movement (fleets move toward targets)
 ##     1d: Fleet Arrival Detection (populate state.arrivedFleets for Conflict/Income execution)
