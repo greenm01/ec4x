@@ -48,7 +48,7 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
   ## Attacks planetary shields, ground batteries, and infrastructure
 
   if order.targetSystem.isNone:
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Bombard",
@@ -64,7 +64,7 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
   if fleetOpt.isNone:
     logWarn("Combat", "Bombardment failed - fleet not found",
             "fleetId=", $order.fleetId)
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Bombard",
@@ -78,7 +78,7 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
     logWarn("Combat", "Bombardment failed - fleet not at target system",
             "fleetId=", $order.fleetId, " location=", $fleet.location,
             " target=", $targetId)
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Bombard",
@@ -91,7 +91,7 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
   if targetId notin state.colonies:
     logWarn("Combat", "Bombardment failed - no colony at target",
             "systemId=", $targetId)
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Bombard",
@@ -263,7 +263,7 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
   ))
 
   # Generate OrderCompleted event
-  events.add(event_factory.orderCompleted(
+  events.add(event_factory.commandCompleted(
     houseId,
     order.fleetId,
     "Bombard",
@@ -296,7 +296,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
   ## Marines attack ground forces to capture colony
 
   if order.targetSystem.isNone:
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Invade",
@@ -312,7 +312,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
   if fleetOpt.isNone:
     logWarn("Combat", "Invasion failed - fleet not found",
             "fleetId=", $order.fleetId)
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Invade",
@@ -326,7 +326,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     logWarn("Combat", "Invasion failed - fleet not at target system",
             "fleetId=", $order.fleetId, " location=", $fleet.location,
             " target=", $targetId)
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Invade",
@@ -339,7 +339,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
   if targetId notin state.colonies:
     logWarn("Combat", "Invasion failed - no colony at target",
             "systemId=", $targetId)
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Invade",
@@ -359,7 +359,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
   if colony.owner == houseId:
     logWarn("Combat", "Invasion failed - cannot invade your own colony",
             "houseId=", $houseId, " systemId=", $targetId)
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Invade",
@@ -551,7 +551,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
 
     # Generate OrderCompleted event for successful invasion
-    events.add(event_factory.orderCompleted(
+    events.add(event_factory.commandCompleted(
       houseId,
       order.fleetId,
       "Invade",
@@ -601,7 +601,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
 
     # Generate OrderFailed event for failed invasion
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Invade",
@@ -630,7 +630,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
   ## Transports vulnerable to ground batteries during insertion
 
   if order.targetSystem.isNone:
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Blitz",
@@ -646,7 +646,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
   if fleetOpt.isNone:
     logWarn("Combat", "Blitz failed - fleet not found",
             "fleetId=", $order.fleetId)
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Blitz",
@@ -660,7 +660,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     logWarn("Combat", "Blitz failed - fleet not at target system",
             "fleetId=", $order.fleetId, " location=", $fleet.location,
             " target=", $targetId)
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Blitz",
@@ -673,7 +673,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
   if targetId notin state.colonies:
     logWarn("Combat", "Blitz failed - no colony at target",
             "systemId=", $targetId)
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Blitz",
@@ -693,7 +693,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
   if colony.owner == houseId:
     logWarn("Combat", "Blitz failed - cannot blitz your own colony",
             "houseId=", $houseId, " systemId=", $targetId)
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Blitz",
@@ -882,7 +882,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
 
     # Generate OrderCompleted event for successful blitz
-    events.add(event_factory.orderCompleted(
+    events.add(event_factory.commandCompleted(
       houseId,
       order.fleetId,
       "Blitz",
@@ -936,7 +936,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     ))
 
     # Generate OrderFailed event for failed blitz
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       houseId,
       order.fleetId,
       "Blitz",

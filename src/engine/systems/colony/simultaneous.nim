@@ -238,7 +238,7 @@ proc establishColony(
 
   # Generate OrderCompleted event for successful colonization
   # Cleanup handled by Command Phase
-  events.add(event_factory.orderCompleted(
+  events.add(event_factory.commandCompleted(
     houseId, fleetId, "Colonize",
     details = &"established colony at {systemId}",
     systemId = some(systemId)
@@ -399,7 +399,7 @@ proc resolveColonizationConflict*(
     ))
 
     # Generate OrderFailed event for colonization conflict loss
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       loser.houseId,
       loser.fleetId,
       "Colonize",
@@ -465,7 +465,7 @@ proc resolveColonization*(
         ))
 
         # Generate OrderFailed event for no viable colonization target
-        events.add(event_factory.orderFailed(
+        events.add(event_factory.commandFailed(
           loser.houseId,
           loser.fleetId,
           "Colonize",
@@ -510,7 +510,7 @@ proc resolveColonization*(
     ))
 
     # Generate OrderFailed event for exhausted fallback attempts
-    events.add(event_factory.orderFailed(
+    events.add(event_factory.commandFailed(
       loser.houseId,
       loser.fleetId,
       "Colonize",

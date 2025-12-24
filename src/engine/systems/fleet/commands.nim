@@ -251,7 +251,7 @@ proc performCommandMaintenance*(
         state.fleetCommands[order.fleetId] = order
 
         # Generate OrderIssued event for new order
-        events.add(event_factory.orderIssued(
+        events.add(event_factory.commandIssued(
           houseId,
           order.fleetId,
           $order.commandType,
@@ -308,7 +308,7 @@ proc performCommandMaintenance*(
           let safeDestination = findClosestOwnedColony(state, fleet.location, houseId)
 
           # Generate OrderAborted event
-          events.add(event_factory.orderAborted(
+          events.add(event_factory.commandAborted(
             houseId,
             order.fleetId,
             $order.commandType,

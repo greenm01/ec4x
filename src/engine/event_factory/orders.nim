@@ -28,7 +28,7 @@ proc orderRejected*(
     reason: some(reason)
   )
 
-proc orderFailed*(
+proc commandFailed*(
   houseId: HouseId,
   fleetId: FleetId,
   orderType: string, # This should be FleetOrderType
@@ -46,7 +46,7 @@ proc orderFailed*(
     reason: some(reason)
   )
 
-proc orderAborted*(
+proc commandAborted*(
   houseId: HouseId,
   fleetId: FleetId,
   orderType: string, # This should be FleetOrderType
@@ -64,7 +64,7 @@ proc orderAborted*(
     reason: some(reason)
   )
 
-proc orderIssued*(
+proc commandIssued*(
   houseId: HouseId,
   fleetId: FleetId,
   orderType: string, # This should be FleetOrderType
@@ -80,7 +80,7 @@ proc orderIssued*(
     orderType: some(orderType)
   )
 
-proc orderCompleted*(
+proc commandCompleted*(
   houseId: HouseId,
   fleetId: FleetId,
   orderType: string, # This should be FleetOrderType

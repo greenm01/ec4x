@@ -33,7 +33,7 @@ proc completeFleetCommand*(
   if fleetId notin state.fleets: return
   let houseId = state.fleets[fleetId].owner
 
-  events.add(event_factory.orderCompleted(
+  events.add(event_factory.commandCompleted(
     houseId, fleetId, orderType, details, systemId))
 
   logInfo(LogCategory.lcOrders, &"Fleet {fleetId} {orderType} order completed")
@@ -256,7 +256,7 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, order: Flee
   if startId == targetId:
     logDebug(LogCategory.lcFleet, &"Fleet {order.fleetId} arrived at destination, order complete")
     # Generate OrderCompleted event - cleanup handled by Command Phase
-    events.add(event_factory.orderCompleted(
+    events.add(event_factory.commandCompleted(
       houseId,
       order.fleetId,
       "Move",
@@ -329,7 +329,7 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, order: Flee
   else:
     &"moved from {startId} to {newLocation} ({actualJumps} jump(s))"
 
-  events.add(event_factory.orderCompleted(
+  events.add(event_factory.commandCompleted(
     houseId,
     order.fleetId,
     "Move",
@@ -369,7 +369,7 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, order: Flee
         of SpyMissionType.HackStarbase: "starbase hack"
         of SpyMissionType.SpyOnSystem: "system reconnaissance"
 
-      events.add(event_factory.orderCompleted(
+      events.add(event_factory.commandCompleted(
         houseId,
         order.fleetId,
         "SpyMissionStarted",
@@ -630,7 +630,7 @@ proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, order: 
 
   # Generate OrderCompleted event for successful colonization
   # Cleanup handled by Command Phase
-  events.add(event_factory.orderCompleted(
+  events.add(event_factory.commandCompleted(
     houseId, order.fleetId, "Colonize",
     details = &"established colony at {targetId}",
     systemId = some(targetId)
@@ -711,7 +711,7 @@ proc resolveViewWorldCommand*(state: var GameState, houseId: HouseId, order: Fle
   else:
     &"scanned uncolonized system {targetId}"
 
-  events.add(event_factory.orderCompleted(
+  events.add(event_factory.commandCompleted(
     houseId,
     order.fleetId,
     "ViewWorld",
