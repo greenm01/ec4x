@@ -247,7 +247,7 @@ proc resolveIncomePhase*(
                 continue
 
               # Execute salvage order (returns PP added to treasury, events added directly)
-              let outcome = cmd_executor.executeFleetOrder(state, houseId, order, events)
+              let outcome = cmd_executor.executeFleetCommand(state, houseId, order, events)
               if outcome == OrderOutcome.Success:
                 logInfo(LogCategory.lcEconomy,
                   &"[SALVAGE] {houseId} Fleet-{order.fleetId} salvaged ships")

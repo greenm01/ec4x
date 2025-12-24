@@ -348,7 +348,7 @@ proc performOrderMaintenance*(
         continue
 
     # Execute the validated order (events added directly via mutable parameter)
-    let outcome = executor.executeFleetOrder(state, houseId, actualOrder, events)
+    let outcome = executor.executeFleetCommand(state, houseId, actualOrder, events)
 
     if outcome == OrderOutcome.Success:
       logDebug(LogCategory.lcFleet, &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} executed")

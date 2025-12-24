@@ -22,33 +22,33 @@ type
 # Forward Declarations
 # =============================================================================
 
-proc executeHoldOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeMoveOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSeekHomeOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executePatrolOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeGuardStarbaseOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeGuardPlanetOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeBlockadeOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeBombardOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeInvadeOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeBlitzOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSpyPlanetOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeHackStarbaseOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSpySystemOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeColonizeOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeJoinFleetOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeRendezvousOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSalvageOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeReserveOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeMothballOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeReactivateOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeViewWorldOrder(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeHoldCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeMoveCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeSeekHomeCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executePatrolCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeGuardStarbaseCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeGuardPlanetCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeBlockadeCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeBombardCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeInvadeCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeBlitzCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeSpyPlanetCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeHackStarbaseCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeSpySystemCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeColonizeCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeJoinFleetCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeRendezvousCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeSalvageCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeReserveCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeMothballCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeReactivateCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeViewWorldCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
 
 # =============================================================================
 # Order Execution Dispatcher
 # =============================================================================
 
-proc executeFleetOrder*(
+proc executeFleetCommand*(
   state: var GameState,
   houseId: HouseId,
   order: FleetOrder,
@@ -85,9 +85,9 @@ proc executeFleetOrder*(
   # Route to order type handler
   case order.commandType
   of FleetOrderType.Hold:
-    return executeHoldOrder(state, fleet, order, events)
+    return executeHoldCommand(state, fleet, order, events)
   of FleetOrderType.Move:
-    return executeMoveOrder(state, fleet, order, events)
+    return executeMoveCommand(state, fleet, order, events)
   of FleetOrderType.SeekHome:
     return executeSeekHomeOrder(state, fleet, order, events)
   of FleetOrderType.Patrol:
@@ -111,7 +111,7 @@ proc executeFleetOrder*(
   of FleetOrderType.SpySystem:
     return executeSpySystemOrder(state, fleet, order, events)
   of FleetOrderType.Colonize:
-    return executeColonizeOrder(state, fleet, order, events)
+    return executeColonizeCommand(state, fleet, order, events)
   of FleetOrderType.JoinFleet:
     return executeJoinFleetOrder(state, fleet, order, events)
   of FleetOrderType.Rendezvous:
@@ -131,7 +131,7 @@ proc executeFleetOrder*(
 # Order 00: Hold Position
 # =============================================================================
 
-proc executeHoldOrder(
+proc executeHoldCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -147,7 +147,7 @@ proc executeHoldOrder(
 # Order 01: Move Fleet
 # =============================================================================
 
-proc executeMoveOrder(
+proc executeMoveCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -177,7 +177,7 @@ proc executeMoveOrder(
 # Order 02: Seek Home
 # =============================================================================
 
-proc executeSeekHomeOrder(
+proc executeSeekHomeCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -246,7 +246,7 @@ proc executeSeekHomeOrder(
 # Order 03: Patrol System
 # =============================================================================
 
-proc executePatrolOrder(
+proc executePatrolCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -289,7 +289,7 @@ proc executePatrolOrder(
 # Order 04: Guard Starbase
 # =============================================================================
 
-proc executeGuardStarbaseOrder(
+proc executeGuardStarbaseCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -367,7 +367,7 @@ proc executeGuardStarbaseOrder(
 # Order 05: Guard/Blockade Planet
 # =============================================================================
 
-proc executeGuardPlanetOrder(
+proc executeGuardPlanetCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -422,7 +422,7 @@ proc executeGuardPlanetOrder(
   # Persistent order - stays active, silent re-execution
   return OrderOutcome.Success
 
-proc executeBlockadeOrder(
+proc executeBlockadeCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -509,7 +509,7 @@ proc executeBlockadeOrder(
 # Order 06: Bombard Planet
 # =============================================================================
 
-proc executeBombardOrder(
+proc executeBombardCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -553,7 +553,7 @@ proc executeBombardOrder(
 # Order 07: Invade Planet
 # =============================================================================
 
-proc executeInvadeOrder(
+proc executeInvadeCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -614,7 +614,7 @@ proc executeInvadeOrder(
 # Order 08: Blitz Planet
 # =============================================================================
 
-proc executeBlitzOrder(
+proc executeBlitzCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -665,7 +665,7 @@ proc executeBlitzOrder(
 # Order 09: Spy on Planet
 # =============================================================================
 
-proc executeSpyPlanetOrder(
+proc executeSpyPlanetCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -777,7 +777,7 @@ proc executeSpyPlanetOrder(
 # Order 10: Hack Starbase
 # =============================================================================
 
-proc executeHackStarbaseOrder(
+proc executeHackStarbaseCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -909,7 +909,7 @@ proc executeHackStarbaseOrder(
 # Order 11: Spy on System
 # =============================================================================
 
-proc executeSpySystemOrder(
+proc executeSpySystemCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -1021,7 +1021,7 @@ proc executeSpySystemOrder(
 # Order 12: Colonize Planet
 # =============================================================================
 
-proc executeColonizeOrder(
+proc executeColonizeCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -1060,7 +1060,7 @@ proc executeColonizeOrder(
 # Order 13: Join Fleet
 # =============================================================================
 
-proc executeJoinFleetOrder(
+proc executeJoinFleetCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -1206,7 +1206,7 @@ proc executeJoinFleetOrder(
 # Order 14: Rendezvous
 # =============================================================================
 
-proc executeRendezvousOrder(
+proc executeRendezvousCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -1359,7 +1359,7 @@ proc executeRendezvousOrder(
 # Order 15: Salvage
 # =============================================================================
 
-proc executeSalvageOrder(
+proc executeSalvageCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -1453,7 +1453,7 @@ proc executeSalvageOrder(
 # Reserve / Mothball / Reactivate Orders
 # =============================================================================
 
-proc executeReserveOrder(
+proc executeReserveCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -1547,7 +1547,7 @@ proc executeReserveOrder(
 
   return OrderOutcome.Success
 
-proc executeMothballOrder(
+proc executeMothballCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -1641,7 +1641,7 @@ proc executeMothballOrder(
 
   return OrderOutcome.Success
 
-proc executeReactivateOrder(
+proc executeReactivateCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
@@ -1679,7 +1679,7 @@ proc executeReactivateOrder(
 # Order 19: View World (Long-Range Planetary Reconnaissance)
 # =============================================================================
 
-proc executeViewWorldOrder(
+proc executeViewWorldCommand(
   state: var GameState,
   fleet: Fleet,
   order: FleetOrder,
