@@ -164,11 +164,11 @@ proc transferCargoFromColony*(
   ## - Colonists: Transferred from colony.souls to ETAC (1 PTU = soulsPerPtu())
   ##
   ## **Note:** This is for manual cargo operations.
-  ## Auto-loading handled by fleet/orders.nim:autoLoadCargo()
+  ## Auto-loading handled by fleet/mechanics.nim:autoLoadCargo()
 
   # This is a placeholder for future implementation
-  # For now, cargo operations are handled directly in fleet/orders.nim
-  # and command/zero_turn_commands.nim
+  # For now, cargo operations are handled directly in fleet/mechanics.nim
+  # and command/logistics.nim
 
   return CargoTransferResult(
     success: false,
@@ -189,10 +189,10 @@ proc transferCargoToColony*(
   ## - Marines: Transferred to colony.marines
   ## - Colonists: Used for colonization (ship is cannibalized)
   ##
-  ## **Note:** Colonization handled by fleet/orders.nim:resolveColonizationCommand()
+  ## **Note:** Colonization handled by fleet/mechanics.nim:resolveColonizationCommand()
 
   # This is a placeholder for future implementation
-  # For now, cargo operations are handled directly in fleet/orders.nim
+  # For now, cargo operations are handled directly in fleet/mechanics.nim
   # and conflict/simultaneous.nim for colonization
 
   return CargoTransferResult(

@@ -18,7 +18,7 @@ import ../prestige
 import ../../config/[prestige_multiplier, prestige_config, facilities_config]
 import ../diplomacy/[types as dip_types, engine as dip_engine]
 import ../intelligence/diplomatic_intel
-import ../fleet/orders  # For findClosestOwnedColony, resolveMovementCommand
+import ../fleet/mechanics  # For findClosestOwnedColony, resolveMovementCommand
 import ./event_factory/init as event_factory
 import ../intelligence/[types as intel_types, combat_intel]
 

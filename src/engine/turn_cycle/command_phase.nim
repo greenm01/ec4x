@@ -34,13 +34,13 @@ import ../../common/logger as common_logger
 import ../types/core
 import ../types/game_state
 import ../types/[diplomacy as dip_types, command, tech as tech_types]
-import ../systems/command/[standing_commands, commands]
+import ../systems/fleet/[standing, commands]
 import ../systems/automation
 import ../systems/commissioning
 import ../systems/construction
 import ../systems/production/engine as production_resolution
 import ../systems/events/event_factory/init as event_factory
-import ../systems/command/engine as command_engine
+import ../systems/fleet/dispatcher as command_engine
 import ../systems/research/costs as res_costs
 import ../systems/colony/[commands as colony_commands, terraforming]
 import ../systems/population/transfers as pop_transfers
@@ -103,7 +103,7 @@ proc resolveCommandPhase*(state: var GameState,
 
 
   # NOTE: Squadron management and cargo management are now handled by
-  # zero-turn commands (src/engine/commands/zero_turn_commands.nim)
+  # zero-turn commands (src/engine/commands/logistics.nim)
   # These execute immediately during order submission, not turn resolution
 
   # Auto-load cargo at colonies (if no manual cargo order exists)
