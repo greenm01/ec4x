@@ -45,18 +45,18 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
           &"{packet.houseId} Build Order Validation: {packet.buildOrders.len} orders, " &
           &"{house.treasury} PP available (current treasury after income/maintenance)")
 
-  for order in packet.buildOrders:
+  for command in packet.buildOrders:
     # Validate colony exists
-    if order.colonySystem notin state.colonies:
-      let errorMsg = &"Colony not found at system {order.colonySystem}"
+    if command.colonySystem notin state.colonies:
+      let errorMsg = &"Colony not found at system {command.colonySystem}"
       logError(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}")
       # TODO: Add to GameEvent for AI/player feedback when GameEvent system is integrated
       continue
 
     # Validate colony ownership
-    let colony = state.colonies[order.colonySystem]
+    let colony = state.colonies[command.colonySystem]
     if colony.owner != packet.houseId:
-      let errorMsg = &"Colony at system {order.colonySystem} not owned by {packet.houseId} (owned by {colony.owner})"
+      let errorMsg = &"Colony at system {command.colonySystem} not owned by {packet.houseId} (owned by {colony.owner})"
       logError(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}")
       # TODO: Add to GameEvent for AI/player feedback when GameEvent system is integrated
       continue
@@ -64,20 +64,20 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
     # Determine if this construction requires dock capacity
     # DOCK CONSTRUCTION: Capital ships (non-fighters) built at spaceport/shipyard facilities
     # COLONY CONSTRUCTION: Fighters, ground units, buildings, IU investment (planet-side)
-    let requiresDock = (order.buildType == BuildType.Ship and
-                        order.shipClass.isSome and
-                        dock_capacity.shipRequiresDock(order.shipClass.get()))
+    let requiresDock = (command.buildType == BuildType.Ship and
+                        command.shipClass.isSome and
+                        dock_capacity.shipRequiresDock(command.shipClass.get()))
 
     # For dock construction, check facility capacity and assign facility
     var assignedFacility: Option[tuple[facilityId: string, facilityType: econ_types.FacilityType]] = none(tuple[facilityId: string, facilityType: econ_types.FacilityType])
 
     if requiresDock:
       # Try to assign to available facility
-      assignedFacility = dock_capacity.assignFacility(state, order.colonySystem, econ_types.ConstructionType.Ship, "")
+      assignedFacility = dock_capacity.assignFacility(state, command.colonySystem, econ_types.ConstructionType.Ship, "")
       if assignedFacility.isNone:
         # No facility capacity available
-        let (current, maximum) = dock_capacity.getColonyTotalCapacity(state, order.colonySystem)
-        let errorMsg = &"System {order.colonySystem} at capacity ({current}/{maximum} docks used) - cannot accept more projects"
+        let (current, maximum) = dock_capacity.getColonyTotalCapacity(state, command.colonySystem)
+        let errorMsg = &"System {command.colonySystem} at capacity ({current}/{maximum} docks used) - cannot accept more projects"
         logWarn(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}")
         continue
 
@@ -85,7 +85,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
     let validationResult = orders.validateBuildOrderWithBudget(order, state, packet.houseId, budgetContext)
     if not validationResult.valid:
       let errorMsg = validationResult.error
-      logWarn(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId} at system {order.colonySystem}: {errorMsg}")
+      logWarn(LogCategory.lcEconomy, &"[BUILD ORDER REJECTED] {packet.houseId} at system {command.colonySystem}: {errorMsg}")
       # TODO: Add to GameEvent for AI/player feedback when GameEvent system is integrated
       continue
 
@@ -97,10 +97,10 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
     var project: econ_types.ConstructionProject
     var projectDesc: string
 
-    case order.buildType
+    case command.buildType
     of BuildType.Infrastructure:
       # Infrastructure investment (IU expansion)
-      let units = order.industrialUnits
+      let units = command.industrialUnits
       if units <= 0:
         logError(LogCategory.lcEconomy, &"Infrastructure order failed: invalid unit count {units}")
         continue
@@ -110,28 +110,28 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
 
     of BuildType.Ship:
       # Ship construction
-      if order.shipClass.isNone:
+      if command.shipClass.isNone:
         logError(LogCategory.lcEconomy, &"Ship construction failed: no ship class specified")
         continue
 
-      let shipClass = order.shipClass.get()
+      let shipClass = command.shipClass.get()
       project = projects.createShipProject(shipClass)
       projectDesc = "Ship construction: " & $shipClass
 
     of BuildType.Building:
       # Building construction
-      if order.buildingType.isNone:
+      if command.buildingType.isNone:
         logError(LogCategory.lcEconomy, &"Building construction failed: no building type specified")
         continue
 
-      let buildingType = order.buildingType.get()
+      let buildingType = command.buildingType.get()
 
       # Phase F: Check planetary shield limit (max 1 per colony)
       # Shields can be rebuilt if destroyed (planetaryShieldLevel == 0)
       if buildingType.startsWith("PlanetaryShield"):
         if colony.planetaryShieldLevel > 0:
           logWarn(LogCategory.lcEconomy,
-                  &"[BUILD ORDER REJECTED] {packet.houseId}: System {order.colonySystem} already has " &
+                  &"[BUILD ORDER REJECTED] {packet.houseId}: System {command.colonySystem} already has " &
                   &"planetary shield (level {colony.planetaryShieldLevel}), max 1 per colony")
           continue
 
@@ -144,7 +144,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
 
     if requiresDock and assignedFacility.isSome:
       # DOCK CONSTRUCTION: Add to facility queue
-      success = dock_capacity.assignAndQueueProject(state, order.colonySystem, project)
+      success = dock_capacity.assignAndQueueProject(state, command.colonySystem, project)
       if success:
         let (facilityId, _) = assignedFacility.get()
         queueLocation = &"facility {facilityId}"
@@ -157,7 +157,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
         # Only add to queue if construction slot was already occupied
         if wasOccupied:
           mutableColony.constructionQueue.add(project)
-        state.colonies[order.colonySystem] = mutableColony
+        state.colonies[command.colonySystem] = mutableColony
         success = true
         queueLocation = "colony queue"
 
@@ -177,7 +177,7 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
         state.houses[packet.houseId] = house
 
         logInfo(LogCategory.lcEconomy,
-          &"Started construction at system-{order.colonySystem}: {projectDesc} " &
+          &"Started construction at system-{command.colonySystem}: {projectDesc} " &
           &"(Cost: {project.costTotal} PP, Est. {project.turnsRemaining} turns, " &
           &"Location: {queueLocation}, Treasury: {oldTreasury} → {house.treasury} PP)")
 
@@ -185,29 +185,29 @@ proc resolveBuildOrders*(state: var GameState, packet: OrderPacket, events: var 
         events.add(event_factory.constructionStarted(
           packet.houseId,
           projectDesc,
-          order.colonySystem,
+          command.colonySystem,
           project.costTotal
         ))
       else:
         # Treasury insufficient (race condition: spent between validation and deduction)
         # Cancel construction and log error
         logError(LogCategory.lcEconomy,
-          &"{packet.houseId} Construction CANCELLED at system-{order.colonySystem}: {projectDesc} " &
+          &"{packet.houseId} Construction CANCELLED at system-{command.colonySystem}: {projectDesc} " &
           &"- Insufficient treasury (need {project.costTotal} PP, have {house.treasury} PP, " &
           &"was {oldTreasury} PP at validation)")
 
         # Remove from construction queue if it was added
         if queueLocation == "colony queue":
-          var mutableColony = state.colonies[order.colonySystem]
+          var mutableColony = state.colonies[command.colonySystem]
           # Remove last added project (the one we just added)
           if mutableColony.constructionQueue.len > 0:
             discard mutableColony.constructionQueue.pop()
-          state.colonies[order.colonySystem] = mutableColony
+          state.colonies[command.colonySystem] = mutableColony
 
         # Increment rejected orders counter for logging
         budgetContext.rejectedOrders += 1
     else:
-      logError(LogCategory.lcEconomy, &"Construction start failed at system-{order.colonySystem}")
+      logError(LogCategory.lcEconomy, &"Construction start failed at system-{command.colonySystem}")
 
   # Log budget validation summary
   let successfulOrders = packet.buildOrders.len - budgetContext.rejectedOrders

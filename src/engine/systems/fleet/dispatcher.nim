@@ -22,27 +22,27 @@ type
 # Forward Declarations
 # =============================================================================
 
-proc executeHoldCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeMoveCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSeekHomeCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executePatrolCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeGuardStarbaseCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeGuardPlanetCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeBlockadeCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeBombardCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeInvadeCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeBlitzCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSpyPlanetCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeHackStarbaseCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSpySystemCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeColonizeCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeJoinFleetCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeRendezvousCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSalvageCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeReserveCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeMothballCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeReactivateCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeViewWorldCommand(state: var GameState, fleet: Fleet, order: FleetOrder, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeHoldCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeMoveCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeSeekHomeCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executePatrolCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeGuardStarbaseCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeGuardPlanetCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeBlockadeCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeBombardCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeInvadeCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeBlitzCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeSpyPlanetCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeHackStarbaseCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeSpySystemCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeColonizeCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeJoinFleetCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeRendezvousCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeSalvageCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeReserveCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeMothballCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeReactivateCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeViewWorldCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
 
 # =============================================================================
 # Order Execution Dispatcher
@@ -51,19 +51,19 @@ proc executeViewWorldCommand(state: var GameState, fleet: Fleet, order: FleetOrd
 proc executeFleetCommand*(
   state: var GameState,
   houseId: HouseId,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Main dispatcher for fleet order execution
   ## Routes to appropriate handler based on order type
 
   # Validate fleet exists
-  let fleetOpt = state.getFleet(order.fleetId)
+  let fleetOpt = state.getFleet(command.fleetId)
   if fleetOpt.isNone:
     events.add(event_factory.commandFailed(
       houseId = houseId,
-      fleetId = order.fleetId,
-      orderType = $order.commandType,
+      fleetId = command.fleetId,
+      orderType = $command.commandType,
       reason = "fleet not found",
       systemId = none(SystemId)
     ))
@@ -75,56 +75,56 @@ proc executeFleetCommand*(
   if fleet.owner != houseId:
     events.add(event_factory.commandFailed(
       houseId = houseId,
-      fleetId = order.fleetId,
-      orderType = $order.commandType,
+      fleetId = command.fleetId,
+      orderType = $command.commandType,
       reason = "fleet not owned by house",
       systemId = some(fleet.location)
     ))
     return OrderOutcome.Failed
 
   # Route to order type handler
-  case order.commandType
-  of FleetOrderType.Hold:
+  case command.commandType
+  of FleetCommandType.Hold:
     return executeHoldCommand(state, fleet, order, events)
-  of FleetOrderType.Move:
+  of FleetCommandType.Move:
     return executeMoveCommand(state, fleet, order, events)
-  of FleetOrderType.SeekHome:
+  of FleetCommandType.SeekHome:
     return executeSeekHomeOrder(state, fleet, order, events)
-  of FleetOrderType.Patrol:
+  of FleetCommandType.Patrol:
     return executePatrolOrder(state, fleet, order, events)
-  of FleetOrderType.GuardStarbase:
+  of FleetCommandType.GuardStarbase:
     return executeGuardStarbaseOrder(state, fleet, order, events)
-  of FleetOrderType.GuardPlanet:
+  of FleetCommandType.GuardPlanet:
     return executeGuardPlanetOrder(state, fleet, order, events)
-  of FleetOrderType.BlockadePlanet:
+  of FleetCommandType.BlockadePlanet:
     return executeBlockadeOrder(state, fleet, order, events)
-  of FleetOrderType.Bombard:
+  of FleetCommandType.Bombard:
     return executeBombardOrder(state, fleet, order, events)
-  of FleetOrderType.Invade:
+  of FleetCommandType.Invade:
     return executeInvadeOrder(state, fleet, order, events)
-  of FleetOrderType.Blitz:
+  of FleetCommandType.Blitz:
     return executeBlitzOrder(state, fleet, order, events)
-  of FleetOrderType.SpyPlanet:
+  of FleetCommandType.SpyPlanet:
     return executeSpyPlanetOrder(state, fleet, order, events)
-  of FleetOrderType.HackStarbase:
+  of FleetCommandType.HackStarbase:
     return executeHackStarbaseOrder(state, fleet, order, events)
-  of FleetOrderType.SpySystem:
+  of FleetCommandType.SpySystem:
     return executeSpySystemOrder(state, fleet, order, events)
-  of FleetOrderType.Colonize:
+  of FleetCommandType.Colonize:
     return executeColonizeCommand(state, fleet, order, events)
-  of FleetOrderType.JoinFleet:
+  of FleetCommandType.JoinFleet:
     return executeJoinFleetOrder(state, fleet, order, events)
-  of FleetOrderType.Rendezvous:
+  of FleetCommandType.Rendezvous:
     return executeRendezvousOrder(state, fleet, order, events)
-  of FleetOrderType.Salvage:
+  of FleetCommandType.Salvage:
     return executeSalvageOrder(state, fleet, order, events)
-  of FleetOrderType.Reserve:
+  of FleetCommandType.Reserve:
     return executeReserveOrder(state, fleet, order, events)
-  of FleetOrderType.Mothball:
+  of FleetCommandType.Mothball:
     return executeMothballOrder(state, fleet, order, events)
-  of FleetOrderType.Reactivate:
+  of FleetCommandType.Reactivate:
     return executeReactivateOrder(state, fleet, order, events)
-  of FleetOrderType.ViewWorld:
+  of FleetCommandType.ViewWorld:
     return executeViewWorldOrder(state, fleet, order, events)
 
 # =============================================================================
@@ -134,7 +134,7 @@ proc executeFleetCommand*(
 proc executeHoldCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 00: Hold position and standby
@@ -150,7 +150,7 @@ proc executeHoldCommand(
 proc executeMoveCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 01: Move to new system and hold position
@@ -163,7 +163,7 @@ proc executeMoveCommand(
   if fleet.status == FleetStatus.Mothballed:
     return OrderOutcome.Failed
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     return OrderOutcome.Failed
 
   # Execute actual movement using centralized movement arbiter
@@ -180,7 +180,7 @@ proc executeMoveCommand(
 proc executeSeekHomeCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 02: Find closest friendly colony and move there
@@ -229,10 +229,10 @@ proc executeSeekHomeCommand(
   # Create movement order to closest colony
   let moveOrder = FleetOrder(
     fleetId: fleet.id,
-    orderType: FleetOrderType.Move,
+    orderType: FleetCommandType.Move,
     targetSystem: some(closestColony),
     targetFleet: none(FleetId),
-    priority: order.priority
+    priority: command.priority
   )
 
   # Execute movement (delegated to fleet_orders.resolveMovementCommand)
@@ -249,14 +249,14 @@ proc executeSeekHomeCommand(
 proc executePatrolCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 03: Actively patrol system, engaging hostile forces
   ## Engagement rules per operations.md:6.2.4
   ## Persistent order - silent re-execution (only generates event on first execution)
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       fleet.owner,
       fleet.id,
@@ -266,7 +266,7 @@ proc executePatrolCommand(
     ))
     return OrderOutcome.Failed
 
-  let targetSystem = order.targetSystem.get()
+  let targetSystem = command.targetSystem.get()
 
   # Check if target system lost (conquered by enemy)
   if targetSystem in state.colonies:
@@ -292,14 +292,14 @@ proc executePatrolCommand(
 proc executeGuardStarbaseCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 04: Protect starbase, join Task Force when confronted
   ## Requires combat ships
   ## Persistent order - silent re-execution
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       fleet.owner,
       fleet.id,
@@ -326,7 +326,7 @@ proc executeGuardStarbaseCommand(
     ))
     return OrderOutcome.Failed
 
-  let targetSystem = order.targetSystem.get()
+  let targetSystem = command.targetSystem.get()
 
   # Validate starbase presence and ownership
   if targetSystem notin state.colonies:
@@ -370,14 +370,14 @@ proc executeGuardStarbaseCommand(
 proc executeGuardPlanetCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 05 (Guard): Protect friendly colony, rear guard position
   ## Does not auto-join starbase Task Force (allows Raiders)
   ## Persistent order - silent re-execution
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       fleet.owner,
       fleet.id,
@@ -387,7 +387,7 @@ proc executeGuardPlanetCommand(
     ))
     return OrderOutcome.Failed
 
-  let targetSystem = order.targetSystem.get()
+  let targetSystem = command.targetSystem.get()
 
   # Check for combat capability
   var hasCombatShips = false
@@ -425,7 +425,7 @@ proc executeGuardPlanetCommand(
 proc executeBlockadeCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 05 (Blockade): Block enemy planet, reduce GCO by 60%
@@ -433,7 +433,7 @@ proc executeBlockadeCommand(
   ## Prestige penalty: -2 per turn if colony under blockade
   ## Persistent order - silent re-execution
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       fleet.owner,
       fleet.id,
@@ -443,7 +443,7 @@ proc executeBlockadeCommand(
     ))
     return OrderOutcome.Failed
 
-  let targetSystem = order.targetSystem.get()
+  let targetSystem = command.targetSystem.get()
 
   # Check for combat capability
   var hasCombatShips = false
@@ -512,16 +512,16 @@ proc executeBlockadeCommand(
 proc executeBombardCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 06: Orbital bombardment of planet
   ## Resolved in Conflict Phase - this marks intent
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     return OrderOutcome.Failed
 
-  let targetSystem = order.targetSystem.get()
+  let targetSystem = command.targetSystem.get()
 
   # Check target colony exists
   if targetSystem notin state.colonies:
@@ -556,7 +556,7 @@ proc executeBombardCommand(
 proc executeInvadeCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 07: Three-round planetary invasion
@@ -564,10 +564,10 @@ proc executeInvadeCommand(
   ## 2) Pound population/ground troops
   ## 3) Land Marines (if batteries destroyed)
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     return OrderOutcome.Failed
 
-  let targetSystem = order.targetSystem.get()
+  let targetSystem = command.targetSystem.get()
 
   # Check target colony exists
   if targetSystem notin state.colonies:
@@ -617,17 +617,17 @@ proc executeInvadeCommand(
 proc executeBlitzCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 08: Fast assault - dodge batteries, drop Marines
   ## Less planet damage, but requires 2:1 Marine superiority
   ## Per operations.md:6.2.9
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     return OrderOutcome.Failed
 
-  let targetSystem = order.targetSystem.get()
+  let targetSystem = command.targetSystem.get()
 
   # Check target colony exists
   if targetSystem notin state.colonies:
@@ -668,13 +668,13 @@ proc executeBlitzCommand(
 proc executeSpyPlanetCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 09: Deploy scout to gather planet intelligence
   ## Reserved for solo Scout operations per operations.md:6.2.10
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       fleet.owner,
       fleet.id,
@@ -684,7 +684,7 @@ proc executeSpyPlanetCommand(
     ))
     return OrderOutcome.Failed
 
-  let targetSystem = order.targetSystem.get()
+  let targetSystem = command.targetSystem.get()
 
   # Validate target house is not eliminated (leaderboard is public info)
   if targetSystem in state.colonies:
@@ -728,7 +728,7 @@ proc executeSpyPlanetCommand(
     # Create movement order
     let travelOrder = FleetOrder(
       fleetId: fleet.id,
-      orderType: FleetOrderType.Move,
+      orderType: FleetCommandType.Move,
       targetSystem: some(targetSystem)
     )
     state.fleetCommands[fleet.id] = travelOrder
@@ -780,13 +780,13 @@ proc executeSpyPlanetCommand(
 proc executeHackStarbaseCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 10: Electronic warfare against starbase
   ## Reserved for Scout operations per operations.md:6.2.11
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       fleet.owner,
       fleet.id,
@@ -796,7 +796,7 @@ proc executeHackStarbaseCommand(
     ))
     return OrderOutcome.Failed
 
-  let targetSystem = order.targetSystem.get()
+  let targetSystem = command.targetSystem.get()
 
   # Validate starbase presence at target
   if targetSystem notin state.colonies:
@@ -860,7 +860,7 @@ proc executeHackStarbaseCommand(
     # Create movement order
     let travelOrder = FleetOrder(
       fleetId: fleet.id,
-      orderType: FleetOrderType.Move,
+      orderType: FleetCommandType.Move,
       targetSystem: some(targetSystem)
     )
     state.fleetCommands[fleet.id] = travelOrder
@@ -912,13 +912,13 @@ proc executeHackStarbaseCommand(
 proc executeSpySystemCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 11: Deploy scout for system reconnaissance
   ## Reserved for solo Scout operations per operations.md:6.2.12
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       fleet.owner,
       fleet.id,
@@ -928,7 +928,7 @@ proc executeSpySystemCommand(
     ))
     return OrderOutcome.Failed
 
-  let targetSystem = order.targetSystem.get()
+  let targetSystem = command.targetSystem.get()
 
   # Validate target house is not eliminated (leaderboard is public info)
   if targetSystem in state.colonies:
@@ -972,7 +972,7 @@ proc executeSpySystemCommand(
     # Create movement order
     let travelOrder = FleetOrder(
       fleetId: fleet.id,
-      orderType: FleetOrderType.Move,
+      orderType: FleetCommandType.Move,
       targetSystem: some(targetSystem)
     )
     state.fleetCommands[fleet.id] = travelOrder
@@ -1024,14 +1024,14 @@ proc executeSpySystemCommand(
 proc executeColonizeCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 12: Establish colony with ETAC
   ## Reserved for ETAC under fleet escort per operations.md:6.2.13
   ## Calls resolveColonizationCommand to execute actual colonization
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     return OrderOutcome.Failed
 
   # Check fleet has ETAC with loaded colonists (Expansion squadrons)
@@ -1063,7 +1063,7 @@ proc executeColonizeCommand(
 proc executeJoinFleetCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 13: Seek and merge with another fleet
@@ -1078,7 +1078,7 @@ proc executeJoinFleetCommand(
   ## These bonuses apply to detection, counter-intelligence, and spy missions.
   ## See assets.md:2.4.2 for mesh network modifier table.
 
-  if order.targetFleet.isNone:
+  if command.targetFleet.isNone:
     events.add(event_factory.commandFailed(
       fleet.owner,
       fleet.id,
@@ -1088,7 +1088,7 @@ proc executeJoinFleetCommand(
     ))
     return OrderOutcome.Failed
 
-  let targetFleetId = order.targetFleet.get()
+  let targetFleetId = command.targetFleet.get()
 
   # Target is a normal fleet
   let targetFleetOpt = state.getFleet(targetFleetId)
@@ -1129,10 +1129,10 @@ proc executeJoinFleetCommand(
     # Create a movement order to target's current location
     let movementOrder = FleetOrder(
       fleetId: fleet.id,
-      orderType: FleetOrderType.Move,
+      orderType: FleetCommandType.Move,
       targetSystem: some(targetFleet.location),
       targetFleet: none(FleetId),
-      priority: order.priority
+      priority: command.priority
     )
 
     # Use the centralized movement arbiter (handles all lane logic, pathfinding, etc.)
@@ -1168,7 +1168,7 @@ proc executeJoinFleetCommand(
     # If still not at target location, keep order persistent
     if movedFleet.location != targetFleet.location:
       # Keep the Join Fleet order active so it continues pursuit next turn
-      # Order remains in fleetOrders table
+      # Order remains in fleetCommands table
       # Silent - ongoing pursuit
       return OrderOutcome.Success
 
@@ -1209,7 +1209,7 @@ proc executeJoinFleetCommand(
 proc executeRendezvousCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 14: Move to system and merge with other rendezvous fleets
@@ -1224,7 +1224,7 @@ proc executeRendezvousCommand(
   ## All squadrons (including scouts) from all rendezvous fleets are merged into the host fleet.
   ## See assets.md:2.4.2 for mesh network modifier table.
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       fleet.owner,
       fleet.id,
@@ -1234,7 +1234,7 @@ proc executeRendezvousCommand(
     ))
     return OrderOutcome.Failed
 
-  let targetSystem = order.targetSystem.get()
+  let targetSystem = command.targetSystem.get()
 
   # Check if rendezvous point has hostile forces (enemy/neutral fleets)
   # Use fleetsByLocation index for O(1) lookup instead of O(F) scan
@@ -1297,7 +1297,7 @@ proc executeRendezvousCommand(
         # Check if has Rendezvous order to same system
         if fleetId in state.fleetCommands:
           let otherOrder = state.fleetCommands[fleetId]
-          if otherOrder.commandType == FleetOrderType.Rendezvous and
+          if otherOrder.commandType == FleetCommandType.Rendezvous and
              otherOrder.targetSystem.isSome and
              otherOrder.targetSystem.get() == targetSystem:
             rendezvousFleets.add(otherFleet)
@@ -1362,7 +1362,7 @@ proc executeRendezvousCommand(
 proc executeSalvageCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 15: Salvage fleet at closest friendly colony with spaceport or shipyard
@@ -1456,7 +1456,7 @@ proc executeSalvageCommand(
 proc executeReserveCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Place fleet on Reserve status (50% maintenance, half AS/DS, can't move)
@@ -1498,10 +1498,10 @@ proc executeReserveCommand(
       # Create movement order to target colony
       let moveOrder = FleetOrder(
         fleetId: fleet.id,
-        orderType: FleetOrderType.Move,
+        orderType: FleetCommandType.Move,
         targetSystem: some(closestColony),
         targetFleet: none(FleetId),
-        priority: order.priority
+        priority: command.priority
       )
 
       # Use centralized movement arbiter
@@ -1550,7 +1550,7 @@ proc executeReserveCommand(
 proc executeMothballCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Mothball fleet (0% maintenance, offline, screened in combat)
@@ -1592,10 +1592,10 @@ proc executeMothballCommand(
       # Create movement order to target colony
       let moveOrder = FleetOrder(
         fleetId: fleet.id,
-        orderType: FleetOrderType.Move,
+        orderType: FleetCommandType.Move,
         targetSystem: some(closestColony),
         targetFleet: none(FleetId),
-        priority: order.priority
+        priority: command.priority
       )
 
       # Use centralized movement arbiter
@@ -1644,7 +1644,7 @@ proc executeMothballCommand(
 proc executeReactivateCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Return reserve or mothballed fleet to active duty
@@ -1682,14 +1682,14 @@ proc executeReactivateCommand(
 proc executeViewWorldCommand(
   state: var GameState,
   fleet: Fleet,
-  order: FleetOrder,
+  command: FleetCommand,
   events: var seq[resolution_types.GameEvent]
 ): OrderOutcome =
   ## Order 19: Perform long-range scan of planet from system edge
   ## Gathers: planet owner (if colonized) + planet class (production potential)
   ## Resolution logic handled by resolveViewWorldCommand in fleet_orders.nim
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       fleet.owner,
       fleet.id,

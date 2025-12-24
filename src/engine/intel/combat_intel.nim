@@ -32,10 +32,10 @@ proc createFleetComposition*(
   # Get fleet's standing commands (if any)
   var orderIntel: Option[intel_types.FleetOrderIntel] = none(intel_types.FleetOrderIntel)
   if fleetId in state.fleetCommands:
-    let order = state.fleetCommands[fleetId]
+    let command = state.fleetCommands[fleetId]
     orderIntel = some(intel_types.FleetOrderIntel(
-      orderType: $order.commandType,
-      targetSystem: order.targetSystem
+      orderType: $command.commandType,
+      targetSystem: command.targetSystem
     ))
 
   # Capture Expansion/Auxiliary squadron cargo details (CRITICAL for invasion threat assessment)

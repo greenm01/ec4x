@@ -12,7 +12,7 @@ export event_types
 
 proc orderRejected*(
   houseId: HouseId,
-  orderType: string, # This should be FleetOrderType, but matching existing for now
+  orderType: string, # This should be FleetCommandType, but matching existing for now
   reason: string,
   systemId: Option[SystemId] = none(SystemId),
   fleetId: Option[FleetId] = none(FleetId) # Added fleetId
@@ -31,7 +31,7 @@ proc orderRejected*(
 proc commandFailed*(
   houseId: HouseId,
   fleetId: FleetId,
-  orderType: string, # This should be FleetOrderType
+  orderType: string, # This should be FleetCommandType
   reason: string,
   systemId: Option[SystemId] = none(SystemId)
 ): event_types.GameEvent =
@@ -49,7 +49,7 @@ proc commandFailed*(
 proc commandAborted*(
   houseId: HouseId,
   fleetId: FleetId,
-  orderType: string, # This should be FleetOrderType
+  orderType: string, # This should be FleetCommandType
   reason: string,
   systemId: Option[SystemId] = none(SystemId)
 ): event_types.GameEvent =
@@ -67,7 +67,7 @@ proc commandAborted*(
 proc commandIssued*(
   houseId: HouseId,
   fleetId: FleetId,
-  orderType: string, # This should be FleetOrderType
+  orderType: string, # This should be FleetCommandType
   systemId: Option[SystemId] = none(SystemId)
 ): event_types.GameEvent =
   ## Order submitted and added to fleet orders queue
@@ -83,7 +83,7 @@ proc commandIssued*(
 proc commandCompleted*(
   houseId: HouseId,
   fleetId: FleetId,
-  orderType: string, # This should be FleetOrderType
+  orderType: string, # This should be FleetCommandType
   details: string = "",
   systemId: Option[SystemId] = none(SystemId)
 ): event_types.GameEvent =

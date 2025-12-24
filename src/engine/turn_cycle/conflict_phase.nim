@@ -59,13 +59,13 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
           &"({state.fleetCommands.len} total orders in state)...")
 
   var mergedFleetOrderCount = 0
-  for fleetId, fleetOrder in state.fleetCommands:
+  for fleetId, fleetCommand in state.fleetCommands:
     # Only merge orders that execute in Conflict Phase
     # Skip orders that execute in other phases:
     # - Movement orders (Move, Patrol, etc.): Execute in Maintenance Phase
     # - Salvage: Executes in Income Phase
-    if isMovementOrder(fleetOrder.commandType) or
-       fleetOrder.commandType == FleetCommandType.Salvage:
+    if isMovementOrder(fleetCommand.commandType) or
+       fleetCommand.commandType == FleetCommandType.Salvage:
       continue
 
     # Find fleet owner
@@ -81,7 +81,7 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
       effectiveOrders[fleetOwner] = OrderPacket(
         houseId: fleetOwner,
         turn: state.turn,
-        fleetOrders: @[],
+        fleetCommands: @[],
         buildOrders: @[],
         researchAllocation: res_types_research.initResearchAllocation(),
         diplomaticActions: @[],
@@ -93,10 +93,10 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
       )
 
     # Add fleet order to owner's orders
-    effectiveOrders[fleetOwner].fleetOrders.add(fleetOrder)
+    effectiveOrders[fleetOwner].fleetCommands.add(fleetCommand)
     mergedFleetOrderCount += 1
     logDebug(LogCategory.lcOrders,
-             &"  [MERGE] {fleetOrder.commandType} from fleet {fleetId} " &
+             &"  [MERGE] {fleetCommand.commandType} from fleet {fleetId} " &
              &"(owner: {fleetOwner})")
 
   logInfo(LogCategory.lcOrders,
@@ -150,10 +150,10 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
           for h in @[house1, house2]:
             # Check effective orders (includes queued orders)
             if h in effectiveOrders:
-              for order in effectiveOrders[h].fleetOrders:
+              for command in effectiveOrders[h].fleetCommands:
                 # Check if the fleet for this order is actually in the current system
-                if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId:
-                  if isThreateningFleetOrder(order.commandType) or isNonThreateningButProvocativeFleetOrder(order.commandType):
+                if command.fleetId in state.fleets and state.fleets[command.fleetId].location == systemId:
+                  if isThreateningFleetOrder(command.commandType) or isNonThreateningButProvocativeFleetOrder(command.commandType):
                     foundProvocativeOrder = true
                     break
               if foundProvocativeOrder:
@@ -174,14 +174,14 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
 
           # Check effective orders (includes queued orders)
           if house1 in effectiveOrders and systemOwner.isSome and systemOwner.get() == house2:
-            for order in effectiveOrders[house1].fleetOrders:
-              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and isThreateningFleetOrder(order.commandType):
+            for command in effectiveOrders[house1].fleetCommands:
+              if command.fleetId in state.fleets and state.fleets[command.fleetId].location == systemId and isThreateningFleetOrder(command.commandType):
                 house1ThreateningHouse2 = true
                 break
 
           if house2 in effectiveOrders and systemOwner.isSome and systemOwner.get() == house1:
-            for order in effectiveOrders[house2].fleetOrders:
-              if order.fleetId in state.fleets and state.fleets[order.fleetId].location == systemId and isThreateningFleetOrder(order.commandType):
+            for command in effectiveOrders[house2].fleetCommands:
+              if command.fleetId in state.fleets and state.fleets[command.fleetId].location == systemId and isThreateningFleetOrder(command.commandType):
                 house2ThreateningHouse1 = true
                 break
 
@@ -213,22 +213,22 @@ proc resolveConflictPhase*(state: var GameState, orders: Table[HouseId, OrderPac
   var arrivedOrders = effectiveOrders
   for houseId in arrivedOrders.keys:
     var filteredFleetOrders: seq[FleetOrder] = @[]
-    for order in arrivedOrders[houseId].fleetOrders:
+    for command in arrivedOrders[houseId].fleetCommands:
       # Check if order requires arrival
       const arrivalRequired = [FleetCommandType.Bombard,
         FleetCommandType.Invade, FleetCommandType.Blitz,
         FleetCommandType.Colonize, FleetCommandType.SpyColony,
         FleetCommandType.SpySystem, FleetCommandType.HackStarbase
       ]
-      if order.commandType in arrivalRequired:
-        if order.fleetId in state.arrivedFleets:
-          filteredFleetOrders.add(order)
+      if command.commandType in arrivalRequired:
+        if command.fleetId in state.arrivedFleets:
+          filteredFleetOrders.add(command)
         else:
-          logDebug(LogCategory.lcOrders, &"  [SKIP] Fleet {order.fleetId} has not arrived for {order.commandType} order")
+          logDebug(LogCategory.lcOrders, &"  [SKIP] Fleet {command.fleetId} has not arrived for {command.commandType} order")
       else:
         # Keep orders that don't require arrival checking
-        filteredFleetOrders.add(order)
-    arrivedOrders[houseId].fleetOrders = filteredFleetOrders
+        filteredFleetOrders.add(command)
+    arrivedOrders[houseId].fleetCommands = filteredFleetOrders
 
   # ===================================================================
   # STEP 3: BLOCKADE RESOLUTION

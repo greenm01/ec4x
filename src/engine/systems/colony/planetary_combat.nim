@@ -41,32 +41,32 @@ proc getTargetBucket(shipClass: ShipClass): TargetBucket =
 # BOMBARDMENT RESOLUTION
 # ============================================================================
 
-proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrder,
+proc resolveBombardment*(state: var GameState, houseId: HouseId, command: FleetOrder,
                        events: var seq[GameEvent]) =
   ## Process planetary bombardment order (operations.md:7.5)
   ## Phase 2 of planetary combat - requires orbital supremacy
   ## Attacks planetary shields, ground batteries, and infrastructure
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Bombard",
       reason = "no target system specified",
       systemId = none(SystemId)
     ))
     return
 
-  let targetId = order.targetSystem.get()
+  let targetId = command.targetSystem.get()
 
   # Validate fleet exists and is at target
-  let fleetOpt = state.getFleet(order.fleetId)
+  let fleetOpt = state.getFleet(command.fleetId)
   if fleetOpt.isNone:
     logWarn("Combat", "Bombardment failed - fleet not found",
-            "fleetId=", $order.fleetId)
+            "fleetId=", $command.fleetId)
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Bombard",
       reason = "fleet destroyed",
       systemId = some(targetId)
@@ -76,11 +76,11 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
   let fleet = fleetOpt.get()
   if fleet.location != targetId:
     logWarn("Combat", "Bombardment failed - fleet not at target system",
-            "fleetId=", $order.fleetId, " location=", $fleet.location,
+            "fleetId=", $command.fleetId, " location=", $fleet.location,
             " target=", $targetId)
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Bombard",
       reason = "fleet not at target system",
       systemId = some(targetId)
@@ -93,7 +93,7 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
             "systemId=", $targetId)
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Bombard",
       reason = "target colony no longer exists",
       systemId = some(targetId)
@@ -232,7 +232,7 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
     state,
     targetId,
     houseId,  # Attacking house
-    order.fleetId,
+    command.fleetId,
     colony.owner,  # Defending house
     infrastructureLoss,
     result.infrastructureDamage,  # IU damage
@@ -265,7 +265,7 @@ proc resolveBombardment*(state: var GameState, houseId: HouseId, order: FleetOrd
   # Generate OrderCompleted event
   events.add(event_factory.commandCompleted(
     houseId,
-    order.fleetId,
+    command.fleetId,
     "Bombard",
     details = &"destroyed {infrastructureLoss} infrastructure at {targetId}",
     systemId = some(targetId)
@@ -289,32 +289,32 @@ proc isColonyUndefended(colony: Colony): bool =
 # INVASION RESOLUTION
 # ============================================================================
 
-proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
+proc resolveInvasion*(state: var GameState, houseId: HouseId, command: FleetOrder,
                     events: var seq[GameEvent]) =
   ## Process planetary invasion order (operations.md:7.6)
   ## Phase 3 of planetary combat - requires all ground batteries destroyed
   ## Marines attack ground forces to capture colony
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Invade",
       reason = "no target system specified",
       systemId = none(SystemId)
     ))
     return
 
-  let targetId = order.targetSystem.get()
+  let targetId = command.targetSystem.get()
 
   # Validate fleet exists and is at target
-  let fleetOpt = state.getFleet(order.fleetId)
+  let fleetOpt = state.getFleet(command.fleetId)
   if fleetOpt.isNone:
     logWarn("Combat", "Invasion failed - fleet not found",
-            "fleetId=", $order.fleetId)
+            "fleetId=", $command.fleetId)
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Invade",
       reason = "fleet destroyed",
       systemId = some(targetId)
@@ -324,11 +324,11 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
   let fleet = fleetOpt.get()
   if fleet.location != targetId:
     logWarn("Combat", "Invasion failed - fleet not at target system",
-            "fleetId=", $order.fleetId, " location=", $fleet.location,
+            "fleetId=", $command.fleetId, " location=", $fleet.location,
             " target=", $targetId)
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Invade",
       reason = "fleet not at target system",
       systemId = some(targetId)
@@ -341,7 +341,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
             "systemId=", $targetId)
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Invade",
       reason = "target colony no longer exists",
       systemId = some(targetId)
@@ -361,7 +361,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
             "houseId=", $houseId, " systemId=", $targetId)
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Invade",
       reason = "target is now friendly (cannot invade own colony)",
       systemId = some(targetId)
@@ -384,7 +384,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
   if attackingForces.len == 0:
     logWarn("Combat", "Invasion failed - no marines in fleet",
-            "fleetId=", $order.fleetId)
+            "fleetId=", $command.fleetId)
     return
 
   # Build defending ground forces
@@ -447,7 +447,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
   # Generate InvasionBegan event (Phase 7a)
   events.add(event_factory.invasionBegan(
-    fleetId = order.fleetId,
+    fleetId = command.fleetId,
     attackingHouse = houseId,
     defendingHouse = colony.owner,
     systemId = targetId,
@@ -491,7 +491,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     updatedColony.armies = 0  # Defender armies all destroyed/disbanded
 
     # Unload marines from spacelift squadrons (they've landed)
-    let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+    let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
@@ -505,7 +505,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
                 quantity: 0,
                 capacity: cargo.capacity
               ))
-      state.fleets.entities.updateEntity(order.fleetId, updatedFleet)
+      state.fleets.entities.updateEntity(command.fleetId, updatedFleet)
 
     # Check if colony was undefended (BEFORE taking ownership)
     let wasUndefended = isColonyUndefended(colony)
@@ -553,7 +553,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     # Generate OrderCompleted event for successful invasion
     events.add(event_factory.commandCompleted(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Invade",
       details = &"captured system {targetId}",
       systemId = some(targetId)
@@ -577,7 +577,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
     # All attacker marines destroyed - unload ALL marines from spacelift squadrons
     # Marines cannot retreat once they've landed on the planet
-    let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+    let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
@@ -591,7 +591,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
                 quantity: 0,
                 capacity: cargo.capacity
               ))
-      state.fleets.entities.updateEntity(order.fleetId, updatedFleet)
+      state.fleets.entities.updateEntity(command.fleetId, updatedFleet)
 
     # Generate event
     events.add(event_factory.invasionRepelled(
@@ -603,7 +603,7 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     # Generate OrderFailed event for failed invasion
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Invade",
       reason = "invasion repelled - all marines destroyed",
       systemId = some(targetId)
@@ -623,32 +623,32 @@ proc resolveInvasion*(state: var GameState, houseId: HouseId, order: FleetOrder,
     result.infrastructureDestroyed
   )
 
-proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
+proc resolveBlitz*(state: var GameState, houseId: HouseId, command: FleetOrder,
                  events: var seq[GameEvent]) =
   ## Process planetary blitz order (operations.md:7.6.2)
   ## Fast insertion variant - seizes assets intact but marines get 0.5x AS penalty
   ## Transports vulnerable to ground batteries during insertion
 
-  if order.targetSystem.isNone:
+  if command.targetSystem.isNone:
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Blitz",
       reason = "no target system specified",
       systemId = none(SystemId)
     ))
     return
 
-  let targetId = order.targetSystem.get()
+  let targetId = command.targetSystem.get()
 
   # Validate fleet exists and is at target
-  let fleetOpt = state.getFleet(order.fleetId)
+  let fleetOpt = state.getFleet(command.fleetId)
   if fleetOpt.isNone:
     logWarn("Combat", "Blitz failed - fleet not found",
-            "fleetId=", $order.fleetId)
+            "fleetId=", $command.fleetId)
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Blitz",
       reason = "fleet destroyed",
       systemId = some(targetId)
@@ -658,11 +658,11 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
   let fleet = fleetOpt.get()
   if fleet.location != targetId:
     logWarn("Combat", "Blitz failed - fleet not at target system",
-            "fleetId=", $order.fleetId, " location=", $fleet.location,
+            "fleetId=", $command.fleetId, " location=", $fleet.location,
             " target=", $targetId)
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Blitz",
       reason = "fleet not at target system",
       systemId = some(targetId)
@@ -675,7 +675,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
             "systemId=", $targetId)
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Blitz",
       reason = "target colony no longer exists",
       systemId = some(targetId)
@@ -695,7 +695,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
             "houseId=", $houseId, " systemId=", $targetId)
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Blitz",
       reason = "target is now friendly (cannot blitz own colony)",
       systemId = some(targetId)
@@ -732,7 +732,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
   if attackingForces.len == 0:
     logWarn("Combat", "Blitz failed - no marines in fleet",
-            "fleetId=", $order.fleetId)
+            "fleetId=", $command.fleetId)
     return
 
   # Build defending ground forces
@@ -789,7 +789,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
   # Generate BlitzBegan event (Phase 7a)
   # Blitz: marines get 0.5x AS penalty, transports vulnerable during insertion
   events.add(event_factory.blitzBegan(
-    fleetId = order.fleetId,
+    fleetId = command.fleetId,
     attackingHouse = houseId,
     defendingHouse = colony.owner,
     systemId = targetId,
@@ -822,7 +822,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     updatedColony.armies = 0
 
     # Unload marines from auxiliary squadrons
-    let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+    let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
@@ -836,7 +836,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
                 quantity: 0,
                 capacity: cargo.capacity
               ))
-      state.fleets.entities.updateEntity(order.fleetId, updatedFleet)
+      state.fleets.entities.updateEntity(command.fleetId, updatedFleet)
 
     # Check if colony was undefended (BEFORE taking ownership)
     let wasUndefended = isColonyUndefended(colony)
@@ -884,7 +884,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     # Generate OrderCompleted event for successful blitz
     events.add(event_factory.commandCompleted(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Blitz",
       details = &"captured system {targetId} via blitz",
       systemId = some(targetId)
@@ -912,7 +912,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
 
     # All attacker marines destroyed - unload ALL marines from spacelift squadrons
     # Marines cannot retreat once they've landed on the planet
-    let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+    let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
@@ -926,7 +926,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
                 quantity: 0,
                 capacity: cargo.capacity
               ))
-      state.fleets.entities.updateEntity(order.fleetId, updatedFleet)
+      state.fleets.entities.updateEntity(command.fleetId, updatedFleet)
 
     # Generate event
     events.add(event_factory.invasionRepelled(
@@ -938,7 +938,7 @@ proc resolveBlitz*(state: var GameState, houseId: HouseId, order: FleetOrder,
     # Generate OrderFailed event for failed blitz
     events.add(event_factory.commandFailed(
       houseId,
-      order.fleetId,
+      command.fleetId,
       "Blitz",
       reason = "blitz repelled - all marines destroyed",
       systemId = some(targetId)

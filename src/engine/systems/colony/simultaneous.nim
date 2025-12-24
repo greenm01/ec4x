@@ -38,15 +38,15 @@ proc collectColonizationIntents*(
     if houseId notin orders:
       continue
 
-    for order in orders[houseId].fleetOrders:
-      if order.commandType != FleetOrderType.Colonize:
+    for command in orders[houseId].fleetCommands:
+      if command.commandType != FleetCommandType.Colonize:
         continue
 
       # Validate: fleet exists
-      if order.fleetId notin state.fleets:
+      if command.fleetId notin state.fleets:
         continue
 
-      let fleet = state.fleets[order.fleetId]
+      let fleet = state.fleets[command.fleetId]
 
       # Validate: fleet has colonists (PTUs) in Expansion/Auxiliary squadron cargo
       var hasColonists = false
@@ -69,15 +69,15 @@ proc collectColonizationIntents*(
       let hasStandingOrders = false
 
       # Get target system from order
-      if order.targetSystem.isNone:
+      if command.targetSystem.isNone:
         continue
 
-      let targetSystem = order.targetSystem.get()
+      let targetSystem = command.targetSystem.get()
 
       # Add validated intent
       result.add(ColonizationIntent(
         houseId: houseId,
-        fleetId: order.fleetId,
+        fleetId: command.fleetId,
         targetSystem: targetSystem,
         fleetStrength: fleetStrength,
         hasStandingOrders: hasStandingOrders

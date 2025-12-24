@@ -135,7 +135,7 @@ proc resolveMaintenancePhase*(state: var GameState,
       continue
 
     # Filter 2: Skip Hold orders (explicit "stay here")
-    if persistentOrder.commandType == FleetOrderType.Hold:
+    if persistentOrder.commandType == FleetCommandType.Hold:
       continue
 
     let targetSystem = persistentOrder.targetSystem.get()
@@ -224,10 +224,10 @@ proc resolveMaintenancePhase*(state: var GameState,
     let fleet = state.fleets[fleetId]
 
     # Skip if order has no target system
-    if order.targetSystem.isNone:
+    if command.targetSystem.isNone:
       continue
 
-    let targetSystem = order.targetSystem.get()
+    let targetSystem = command.targetSystem.get()
 
     # Check if fleet is at target system
     if fleet.location == targetSystem:
@@ -235,7 +235,7 @@ proc resolveMaintenancePhase*(state: var GameState,
       events.add(event_factory.fleetArrived(
         fleet.owner,
         fleetId,
-        $order.commandType,  # Convert enum to string
+        $command.commandType,  # Convert enum to string
         targetSystem
       ))
 
@@ -244,7 +244,7 @@ proc resolveMaintenancePhase*(state: var GameState,
       arrivedFleetCount += 1
 
       logDebug(LogCategory.lcOrders,
-        &"  Fleet {fleetId} arrived at {targetSystem} (order: {order.commandType})")
+        &"  Fleet {fleetId} arrived at {targetSystem} (command: {command.commandType})")
 
   logInfo(LogCategory.lcOrders,
     &"[MAINTENANCE STEP 1d] Completed ({arrivedFleetCount} fleets arrived at targets)")

@@ -335,7 +335,7 @@ type
 
     of StandingOrderActivated:
       activatedOrderType*: Option[string] # Standing command that activated
-      generatedFleetOrderType*: Option[string] # Fleet order it generated (e.g., "Move", "Colonize")
+      generatedFleetCommandType*: Option[string] # Fleet order it generated (e.g., "Move", "Colonize")
       triggerReason*: Option[string] # Why it activated
 
     of StandingOrderSuspended:

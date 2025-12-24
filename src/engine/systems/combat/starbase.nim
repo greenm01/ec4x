@@ -102,7 +102,7 @@ proc shouldStarbaseJoinCombat*(
   if not defenderHasStarbase:
     return false
 
-  for order in attackerOrders:
+  for command in attackerOrders:
     if order in [5, 6, 7, 8]:  # Attack, Raid, Invade, Blitz
       return true
 

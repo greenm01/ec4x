@@ -699,10 +699,10 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
 
         # Check for guard orders
         if fleet.owner in orders:
-          for order in orders[fleet.owner].fleetOrders:
-            if order.fleetId == fleetId and
-               (order.commandType == FleetOrderType.GuardStarbase or
-                order.commandType == FleetOrderType.GuardPlanet):
+          for command in orders[fleet.owner].fleetCommands:
+            if command.fleetId == fleetId and
+               (command.commandType == FleetCommandType.GuardStarbase or
+                command.commandType == FleetCommandType.GuardPlanet):
               isOrbitalOnly = true
               break
 
@@ -1209,7 +1209,7 @@ proc resolveBattle*(state: var GameState, systemId: SystemId,
           # The fleet will begin its retreat movement in the same turn
           let seekHomeOrder = FleetOrder(
             fleetId: fleetId,
-            orderType: FleetOrderType.SeekHome,
+            orderType: FleetCommandType.SeekHome,
             targetSystem: safeDestination,
             targetFleet: none(FleetId),
             priority: 0

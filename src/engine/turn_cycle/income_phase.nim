@@ -234,31 +234,31 @@ proc resolveIncomePhase*(
 
   for houseId in state.houses.keys:
     if houseId in orders:
-      for order in orders[houseId].fleetOrders:
-        if order.commandType == FleetOrderType.Salvage:
+      for command in orders[houseId].fleetCommands:
+        if command.commandType == FleetCommandType.Salvage:
           # Check if fleet still exists (survived Conflict Phase)
-          if order.fleetId in state.fleets:
-            let fleet = state.fleets[order.fleetId]
+          if command.fleetId in state.fleets:
+            let fleet = state.fleets[command.fleetId]
             if fleet.owner == houseId:
               # Check if fleet has arrived at target
-              if order.fleetId notin state.arrivedFleets:
+              if command.fleetId notin state.arrivedFleets:
                 logDebug(LogCategory.lcEconomy,
-                  &"[SALVAGE] Fleet {order.fleetId} has not arrived at target, skipping")
+                  &"[SALVAGE] Fleet {command.fleetId} has not arrived at target, skipping")
                 continue
 
               # Execute salvage order (returns PP added to treasury, events added directly)
               let outcome = cmd_executor.executeFleetCommand(state, houseId, order, events)
               if outcome == OrderOutcome.Success:
                 logInfo(LogCategory.lcEconomy,
-                  &"[SALVAGE] {houseId} Fleet-{order.fleetId} salvaged ships")
+                  &"[SALVAGE] {houseId} Fleet-{command.fleetId} salvaged ships")
                 # PP already added to treasury by executeSalvageOrder
                 # Clear arrival status
-                if order.fleetId in state.arrivedFleets:
-                  state.arrivedFleets.del(order.fleetId)
-                  logDebug(LogCategory.lcEconomy, &"  Cleared arrival status for fleet {order.fleetId}")
+                if command.fleetId in state.arrivedFleets:
+                  state.arrivedFleets.del(command.fleetId)
+                  logDebug(LogCategory.lcEconomy, &"  Cleared arrival status for fleet {command.fleetId}")
               else:
                 logDebug(LogCategory.lcEconomy,
-                  &"[SALVAGE] {houseId} Fleet-{order.fleetId} failed")
+                  &"[SALVAGE] {houseId} Fleet-{command.fleetId} failed")
 
   logInfo(LogCategory.lcEconomy, "[INCOME STEP 4] Completed salvage orders")
 

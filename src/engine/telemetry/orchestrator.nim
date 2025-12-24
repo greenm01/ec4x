@@ -195,7 +195,7 @@ proc initDiagnosticMetrics*(turn: int32, houseId: HouseId,
     # Orders
     invalidOrders: 0'i32,
     totalOrders: 0'i32,
-    fleetOrdersSubmitted: 0'i32,
+    fleetCommandsSubmitted: 0'i32,
     buildOrdersSubmitted: 0'i32,
     colonizeOrdersSubmitted: 0'i32,
 

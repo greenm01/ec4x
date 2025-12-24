@@ -29,13 +29,13 @@ proc collectPlanetaryCombatIntents*(
     if houseId notin orders:
       continue
 
-    for order in orders[houseId].fleetOrders:
+    for command in orders[houseId].fleetCommands:
       # Skip non-planetary combat orders
-      if order.commandType notin [FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz]:
+      if command.commandType notin [FleetCommandType.Bombard, FleetCommandType.Invade, FleetCommandType.Blitz]:
         continue
 
       # Validate: fleet exists - using entity_manager
-      let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+      let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
       if fleetOpt.isNone:
         continue
 
@@ -47,17 +47,17 @@ proc collectPlanetaryCombatIntents*(
         attackStrength += squadron.combatStrength()
 
       # Get target from order
-      if order.targetSystem.isNone:
+      if command.targetSystem.isNone:
         continue
 
-      let targetSystem = order.targetSystem.get()
+      let targetSystem = command.targetSystem.get()
 
       # Add validated intent
       result.add(PlanetaryCombatIntent(
         houseId: houseId,
-        fleetId: order.fleetId,
+        fleetId: command.fleetId,
         targetColony: targetSystem,
-        orderType: $order.commandType,
+        orderType: $command.commandType,
         attackStrength: attackStrength
       ))
 
@@ -171,16 +171,16 @@ proc resolvePlanetaryCombat*(
           logInfo(LogCategory.lcCombat, &"Executing planetary assault: {res.fleetId} at {targetSystem}")
           let winnerHouse = res.houseId
           if winnerHouse in orders:
-            for order in orders[winnerHouse].fleetOrders:
-              if order.fleetId == res.fleetId and
-                 order.commandType in [FleetOrderType.Bombard, FleetOrderType.Invade, FleetOrderType.Blitz]:
+            for command in orders[winnerHouse].fleetCommands:
+              if command.fleetId == res.fleetId and
+                 command.commandType in [FleetCommandType.Bombard, FleetCommandType.Invade, FleetCommandType.Blitz]:
                 # Execute the planetary assault
-                case order.commandType
-                of FleetOrderType.Bombard:
+                case command.commandType
+                of FleetCommandType.Bombard:
                   resolveBombardment(state, winnerHouse, order, events)
-                of FleetOrderType.Invade:
+                of FleetCommandType.Invade:
                   resolveInvasion(state, winnerHouse, order, events)
-                of FleetOrderType.Blitz:
+                of FleetCommandType.Blitz:
                   resolveBlitz(state, winnerHouse, order, events)
                 else:
                   discard

@@ -163,11 +163,11 @@ iterator blockadedColoniesWithId*(state: GameState): tuple[id: SystemId, colony:
     if colony.blockaded:
       yield (colony.systemId, colony)
 
-iterator fleetsWithOrders*(state: GameState): tuple[id: FleetId, fleet: Fleet, order: FleetCommand] =
+iterator fleetsWithOrders*(state: GameState): tuple[id: FleetId, fleet: Fleet, command: FleetCommand] =
   ## Iterate fleets that have persistent orders
   ##
   ## Example:
-  ##   for (fleetId, fleet, order) in state.fleetsWithOrders():
+  ##   for (fleetId, fleet, command) in state.fleetsWithOrders():
   ##     # Execute fleet order
   for fleet in state.fleets.entities.data:
     if fleet.command.isSome():

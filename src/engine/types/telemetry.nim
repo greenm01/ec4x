@@ -233,7 +233,7 @@ type
     # Orders (ENHANCED for unknown-unknowns detection)
     invalidOrders*: int32           # Cumulative invalid/rejected orders
     totalOrders*: int32             # Cumulative valid orders issued
-    fleetOrdersSubmitted*: int32    # Fleet movement orders this turn
+    fleetCommandsSubmitted*: int32    # Fleet movement orders this turn
     buildOrdersSubmitted*: int32    # Construction orders this turn
     colonizeOrdersSubmitted*: int32 # Colonization attempts this turn
 

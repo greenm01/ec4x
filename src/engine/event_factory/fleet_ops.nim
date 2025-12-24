@@ -52,7 +52,7 @@ proc standingOrderActivated*(
     systemId: some(systemId),
     fleetId: some(fleetId),
     activatedOrderType: some(standingOrderType),
-    generatedFleetOrderType: some(generatedOrderType),
+    generatedFleetCommandType: some(generatedOrderType),
     triggerReason: some(triggerReason)
   )
 

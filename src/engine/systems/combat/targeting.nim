@@ -12,7 +12,7 @@ export TargetBucket, DiplomaticState
 ## Diplomatic Filtering (Section 7.3.2.1)
 
 type
-  FleetOrder* {.pure.} = enum
+  FleetCommand* {.pure.} = enum
     Hold = 0,
     Move = 1,
     SeekHome = 2,
@@ -125,7 +125,7 @@ proc buildCandidatePool*(
       return enemyFighters
     # If no enemy fighters, fall through to standard targeting
 
-  # Standard bucket order: Raider → Capital → Destroyer → Fighter → Starbase
+  # Standard bucket command: Raider → Capital → Destroyer → Fighter → Starbase
   const bucketOrder = [
     TargetBucket.Raider,
     TargetBucket.Capital,

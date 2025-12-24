@@ -162,7 +162,7 @@ proc activatePatrolRoute(state: var GameState, fleetId: FleetId,
   # Generate move order to next patrol point
   let moveOrder = FleetOrder(
     fleetId: fleetId,
-    orderType: FleetOrderType.Move,
+    orderType: FleetCommandType.Move,
     targetSystem: some(nextSystem),
     priority: 100  # Standing commands have lower priority than explicit orders
   )
@@ -212,7 +212,7 @@ proc activateDefendSystem(state: var GameState, fleetId: FleetId,
   if fleet.location == targetSystem:
     let guardOrder = FleetOrder(
       fleetId: fleetId,
-      orderType: FleetOrderType.Patrol,
+      orderType: FleetCommandType.Patrol,
       targetSystem: some(targetSystem),
       priority: 100
     )
@@ -239,7 +239,7 @@ proc activateDefendSystem(state: var GameState, fleetId: FleetId,
     # Too far from target - return to defensive position
     let moveOrder = FleetOrder(
       fleetId: fleetId,
-      orderType: FleetOrderType.Move,
+      orderType: FleetCommandType.Move,
       targetSystem: some(targetSystem),
       priority: 100
     )
@@ -254,7 +254,7 @@ proc activateDefendSystem(state: var GameState, fleetId: FleetId,
   # Within range but not at target - hold position
   let holdOrder = FleetOrder(
     fleetId: fleetId,
-    orderType: FleetOrderType.Hold,
+    orderType: FleetCommandType.Hold,
     targetSystem: none(SystemId),
     priority: 100
   )
@@ -535,7 +535,7 @@ proc activateAutoRepair(state: var GameState, fleetId: FleetId,
 
     let holdOrder = FleetOrder(
       fleetId: fleetId,
-      orderType: FleetOrderType.Hold,
+      orderType: FleetCommandType.Hold,
       targetSystem: none(SystemId),
       priority: 100
     )
@@ -596,7 +596,7 @@ proc activateAutoRepair(state: var GameState, fleetId: FleetId,
 
     let holdOrder = FleetOrder(
       fleetId: fleetId,
-      orderType: FleetOrderType.Hold,
+      orderType: FleetCommandType.Hold,
       targetSystem: none(SystemId),
       priority: 100
     )
@@ -612,7 +612,7 @@ proc activateAutoRepair(state: var GameState, fleetId: FleetId,
 
   let moveOrder = FleetOrder(
     fleetId: fleetId,
-    orderType: FleetOrderType.Move,
+    orderType: FleetCommandType.Move,
     targetSystem: some(targetSystem),
     priority: 100
   )
@@ -719,7 +719,7 @@ proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
 
     let holdOrder = FleetOrder(
       fleetId: fleetId,
-      orderType: FleetOrderType.Hold,
+      orderType: FleetCommandType.Hold,
       targetSystem: none(SystemId),
       priority: 100
     )
@@ -737,7 +737,7 @@ proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
 
     let joinOrder = FleetOrder(
       fleetId: fleetId,
-      orderType: FleetOrderType.JoinFleet,
+      orderType: FleetCommandType.JoinFleet,
       targetFleet: some(targetId),
       priority: 100
     )
@@ -753,7 +753,7 @@ proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
 
   let moveOrder = FleetOrder(
     fleetId: fleetId,
-    orderType: FleetOrderType.Move,
+    orderType: FleetCommandType.Move,
     targetSystem: some(targetFleetLocation),
     priority: 100
   )
@@ -815,7 +815,7 @@ proc activateBlockadeTarget(state: var GameState, fleetId: FleetId,
 
     let blockadeOrder = FleetOrder(
       fleetId: fleetId,
-      orderType: FleetOrderType.BlockadePlanet,
+      orderType: FleetCommandType.BlockadePlanet,
       targetSystem: some(targetColony),
       priority: 100
     )
@@ -840,7 +840,7 @@ proc activateBlockadeTarget(state: var GameState, fleetId: FleetId,
 
   let moveOrder = FleetOrder(
     fleetId: fleetId,
-    orderType: FleetOrderType.Move,
+    orderType: FleetCommandType.Move,
     targetSystem: some(targetColony),
     priority: 100
   )

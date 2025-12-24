@@ -86,7 +86,7 @@ proc checkTurnLimitVictory*(houses: Table[HouseId, House],
 proc checkVictoryConditions*(state: GameState,
                              condition: VictoryCondition): VictoryCheck =
   ## Check all victory conditions and return result
-  ## Checks in priority order: Prestige → Last Standing → Turn Limit
+  ## Checks in priority command: Prestige → Last Standing → Turn Limit
 
   # 1. Prestige victory (highest priority)
   let prestigeCheck = checkPrestigeVictory(state.houses, condition, state.turn)

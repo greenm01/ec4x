@@ -502,7 +502,7 @@ proc saveDiagnosticMetrics*(db: DbConn, metrics: DiagnosticMetrics) =
     metrics.invasionMarinesKilled, metrics.invasionDefendersKilled,
     metrics.clkResearchedNoRaiders.int, metrics.scoutCount, metrics.spyPlanetMissions, metrics.hackStarbaseMissions, metrics.totalEspionageMissions,
     metrics.coloniesWithoutDefense, metrics.totalColonies, metrics.mothballedFleetsUsed, metrics.mothballedFleetsTotal,
-    metrics.invalidOrders, metrics.totalOrders, metrics.fleetOrdersSubmitted, metrics.buildOrdersSubmitted, metrics.colonizeOrdersSubmitted,
+    metrics.invalidOrders, metrics.totalOrders, metrics.fleetCommandsSubmitted, metrics.buildOrdersSubmitted, metrics.colonizeOrdersSubmitted,
     metrics.domestikosBudgetAllocated, metrics.logotheteBudgetAllocated, metrics.drungariusBudgetAllocated, metrics.eparchBudgetAllocated,
     metrics.buildOrdersGenerated, metrics.ppSpentConstruction,
     metrics.domestikosRequirementsTotal, metrics.domestikosRequirementsFulfilled, metrics.domestikosRequirementsUnfulfilled, metrics.domestikosRequirementsDeferred,

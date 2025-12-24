@@ -16,21 +16,21 @@ import ../../event_factory/init as event_factory
 proc resolveTerraformCommands*(state: var GameState, packet: CommandPacket, events: var seq[GameEvent]) =
   ## Process terraforming commands - initiate new terraforming projects
   ## Per economy.md Section 4.7
-  for order in packet.terraformCommands:
+  for command in packet.terraformCommands:
     # Validate colony exists and is owned by house using entity_manager
-    let colonyOpt = state.colonies.entities.getEntity(order.colonyId)
+    let colonyOpt = state.colonies.entities.getEntity(command.colonyId)
     if colonyOpt.isNone:
-      error "Terraforming failed: System-", order.colonyId, " has no colony"
+      error "Terraforming failed: System-", command.colonyId, " has no colony"
       continue
 
     var colony = colonyOpt.get()
     if colony.owner != packet.houseId:
-      error "Terraforming failed: ", packet.houseId, " does not own system-", order.colonyId
+      error "Terraforming failed: ", packet.houseId, " does not own system-", command.colonyId
       continue
 
     # Check if already terraforming
     if colony.activeTerraforming.isSome:
-      error "Terraforming failed: System-", order.colonyId, " already has active terraforming project"
+      error "Terraforming failed: System-", command.colonyId, " already has active terraforming project"
       continue
 
     # Get house tech level using entity_manager
@@ -74,7 +74,7 @@ proc resolveTerraformCommands*(state: var GameState, packet: CommandPacket, even
     )
 
     colony.activeTerraforming = some(project)
-    state.colonies.entities.updateEntity(order.colonyId, colony)
+    state.colonies.entities.updateEntity(command.colonyId, colony)
 
     let className = case targetClass
       of 1: "Extreme"
@@ -86,13 +86,13 @@ proc resolveTerraformCommands*(state: var GameState, packet: CommandPacket, even
       of 7: "Eden"
       else: "Unknown"
 
-    info house.name, " initiated terraforming of system-", order.colonyId, " to ", className, " (class ", targetClass, ") - Cost: ", ppCost, " PP, Duration: ", turnsRequired, " turns"
+    info house.name, " initiated terraforming of system-", command.colonyId, " to ", className, " (class ", targetClass, ") - Cost: ", ppCost, " PP, Duration: ", turnsRequired, " turns"
 
     # Note: This was using TerraformComplete incorrectly for "initiated" - should be constructionStarted
     events.add(event_factory.constructionStarted(
       packet.houseId,
       &"Terraforming to {className}",
-      order.colonyId,
+      command.colonyId,
       ppCost
     ))
 

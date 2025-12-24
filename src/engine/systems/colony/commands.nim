@@ -14,31 +14,31 @@ import ../../state/entity_manager
 
 proc resolveColonyManagementCommands*(state: var GameState, packet: CommandPacket) =
   ## Process colony management commands - tax rates, auto-repair toggles, etc.
-  for order in packet.colonyManagement:
+  for command in packet.colonyManagement:
     # Validate colony exists and is owned using entity_manager accessor
-    let colonyOpt = state.colonies.entities.getEntity(order.colonyId)
+    let colonyOpt = state.colonies.entities.getEntity(command.colonyId)
     if colonyOpt.isNone:
-      error &"Colony management failed: System-{$order.colonyId} has no colony"
+      error &"Colony management failed: System-{$command.colonyId} has no colony"
       continue
 
     var colony = colonyOpt.get()
     if colony.owner != packet.houseId:
-      error &"Colony management failed: {$packet.houseId} does not own system-{$order.colonyId}"
+      error &"Colony management failed: {$packet.houseId} does not own system-{$command.colonyId}"
       continue
 
     # Apply colony settings from command
-    colony.autoRepairEnabled = order.autoRepair
-    colony.autoReloadETACs = order.autoReloadETACs
+    colony.autoRepairEnabled = command.autoRepair
+    colony.autoReloadETACs = command.autoReloadETACs
 
-    if order.taxRate.isSome:
-      colony.taxRate = order.taxRate.get()
-      info &"Colony-{$order.colonyId} tax rate set to {order.taxRate.get()}%"
+    if command.taxRate.isSome:
+      colony.taxRate = command.taxRate.get()
+      info &"Colony-{$command.colonyId} tax rate set to {command.taxRate.get()}%"
 
-    let repairStatus = if order.autoRepair: "enabled" else: "disabled"
-    info &"Colony-{$order.colonyId} auto-repair {repairStatus}"
+    let repairStatus = if command.autoRepair: "enabled" else: "disabled"
+    info &"Colony-{$command.colonyId} auto-repair {repairStatus}"
 
-    let etacStatus = if order.autoReloadETACs: "enabled" else: "disabled"
-    info &"Colony-{$order.colonyId} auto-reload ETACs {etacStatus}"
+    let etacStatus = if command.autoReloadETACs: "enabled" else: "disabled"
+    info &"Colony-{$command.colonyId} auto-reload ETACs {etacStatus}"
 
     # Write back using entity_manager accessor
-    state.colonies.entities.updateEntity(order.colonyId, colony)
+    state.colonies.entities.updateEntity(command.colonyId, colony)

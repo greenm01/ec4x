@@ -24,12 +24,12 @@ proc collectBlockadeIntents*(
     if houseId notin orders:
       continue
 
-    for order in orders[houseId].fleetOrders:
-      if order.commandType != FleetOrderType.BlockadePlanet:
+    for command in orders[houseId].fleetCommands:
+      if command.commandType != FleetCommandType.BlockadePlanet:
         continue
 
       # Validate: fleet exists - using entity_manager
-      let fleetOpt = state.fleets.entities.getEntity(order.fleetId)
+      let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
       if fleetOpt.isNone:
         continue
 
@@ -41,14 +41,14 @@ proc collectBlockadeIntents*(
         blockadeStrength += squadron.combatStrength()
 
       # Get target from order
-      if order.targetSystem.isNone:
+      if command.targetSystem.isNone:
         continue
 
-      let targetSystem = order.targetSystem.get()
+      let targetSystem = command.targetSystem.get()
 
       result.add(BlockadeIntent(
         houseId: houseId,
-        fleetId: order.fleetId,
+        fleetId: command.fleetId,
         targetColony: targetSystem,
         blockadeStrength: blockadeStrength
       ))

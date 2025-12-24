@@ -164,7 +164,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
       var collapsePacket = OrderPacket(
         houseId: houseId,
         turn: state.turn,
-        fleetOrders: @[],
+        fleetCommands: @[],
         buildOrders: @[],
         researchAllocation: res_types_research.initResearchAllocation(),
         diplomaticActions: @[],
@@ -176,8 +176,8 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
       )
 
       # Add defensive fleet orders
-      for (fleetId, order) in defensiveOrders:
-        collapsePacket.fleetOrders.add(order)
+      for (fleetId, command) in defensiveOrders:
+        collapsePacket.fleetCommands.add(command)
 
       effectiveOrders[houseId] = collapsePacket
       logInfo("Resolve", "Defensive Collapse mode active", house.name, " orders=", $defensiveOrders.len)
@@ -190,7 +190,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
       var autopilotPacket = OrderPacket(
         houseId: houseId,
         turn: state.turn,
-        fleetOrders: @[],
+        fleetCommands: @[],
         buildOrders: @[],
         researchAllocation: res_types_research.initResearchAllocation(),
         diplomaticActions: @[],
@@ -202,8 +202,8 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
       )
 
       # Add autopilot fleet orders
-      for (fleetId, order) in autopilotOrders:
-        autopilotPacket.fleetOrders.add(order)
+      for (fleetId, command) in autopilotOrders:
+        autopilotPacket.fleetCommands.add(command)
 
       effectiveOrders[houseId] = autopilotPacket
       logInfo("Resolve", "Autopilot mode active", house.name, " orders=", $autopilotOrders.len)

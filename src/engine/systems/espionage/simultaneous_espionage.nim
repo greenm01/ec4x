@@ -24,12 +24,12 @@ proc collectEspionageIntents*(
     if houseId notin orders:
       continue
 
-    for order in orders[houseId].fleetOrders:
-      if order.commandType notin [FleetOrderType.SpyPlanet, FleetOrderType.SpySystem, FleetOrderType.HackStarbase]:
+    for command in orders[houseId].fleetCommands:
+      if command.commandType notin [FleetCommandType.SpyPlanet, FleetCommandType.SpySystem, FleetCommandType.HackStarbase]:
         continue
 
       # Validate: fleet exists
-      if order.fleetId notin state.fleets.entities.index:
+      if command.fleetId notin state.fleets.entities.index:
         continue
 
       # Calculate espionage strength using house prestige
@@ -37,22 +37,22 @@ proc collectEspionageIntents*(
       let espionageStrength = house.prestige
 
       # Get target from order
-      if order.targetSystem.isNone:
+      if command.targetSystem.isNone:
         continue
 
-      let targetSystem = order.targetSystem.get()
+      let targetSystem = command.targetSystem.get()
 
       # Log if fleet not at target (will attempt movement in Maintenance Phase)
-      let fleetIdx = state.fleets.entities.index[order.fleetId]
+      let fleetIdx = state.fleets.entities.index[command.fleetId]
       let fleet = state.fleets.entities.data[fleetIdx]
       if fleet.location != targetSystem:
-        debug "Espionage order queued: ", order.fleetId, " will move from ", fleet.location, " to ", targetSystem
+        debug "Espionage order queued: ", command.fleetId, " will move from ", fleet.location, " to ", targetSystem
 
       result.add(simultaneous.EspionageIntent(
         houseId: houseId,
-        fleetId: order.fleetId,
+        fleetId: command.fleetId,
         targetSystem: targetSystem,
-        orderType: $order.commandType,
+        orderType: $command.commandType,
         espionageStrength: espionageStrength
       ))
 
@@ -363,15 +363,15 @@ proc processScoutIntelligence*(
       continue
 
     let packet = orders[houseId]
-    var orderType: FleetOrderType
+    var orderType: FleetCommandType
 
     # Find matching fleet order
     var found = false
-    for order in packet.fleetOrders:
-      if order.fleetId == result.fleetId and
-         order.targetSystem.isSome and
-         order.targetSystem.get() == targetSystem:
-        orderType = order.commandType
+    for command in packet.fleetCommands:
+      if command.fleetId == result.fleetId and
+         command.targetSystem.isSome and
+         command.targetSystem.get() == targetSystem:
+        orderType = command.commandType
         found = true
         break
 
@@ -380,7 +380,7 @@ proc processScoutIntelligence*(
 
     # Generate appropriate intelligence based on order type
     case orderType
-    of FleetOrderType.SpyPlanet:
+    of FleetCommandType.SpyPlanet:
       # Generate colony intelligence report
       let intelReport = intel_generator.generateColonyIntelReport(
         state, houseId, targetSystem, intelligence.IntelQuality.Spy)
@@ -414,7 +414,7 @@ proc processScoutIntelligence*(
         info "Fleet ", result.fleetId, " (", houseId, ") SpyPlanet success at ", targetSystem,
              " - intelligence DB now has ", reportCount, " colony reports"
 
-    of FleetOrderType.SpySystem:
+    of FleetCommandType.SpySystem:
       # Generate system intelligence report (fleet composition)
       let intelReport = intel_generator.generateSystemIntelReport(
         state, houseId, targetSystem, intelligence.IntelQuality.Spy)
@@ -449,7 +449,7 @@ proc processScoutIntelligence*(
         info "Fleet ", result.fleetId, " (", houseId, ") SpySystem success at ", targetSystem,
              " - gathered fleet intelligence"
 
-    of FleetOrderType.HackStarbase:
+    of FleetCommandType.HackStarbase:
       # Generate starbase intelligence report (economic/R&D data)
       let intelReport = intel_generator.generateStarbaseIntelReport(
         state, houseId, targetSystem, intelligence.IntelQuality.Spy)
