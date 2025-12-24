@@ -16,9 +16,9 @@
 
 import std/[random, tables, options]
 import costs, effects
-import ../../types/[core, game_state, tech, command]
+import ../../types/[core, game_state, tech, command, prestige]
 import ../../state/[game_state, iterators]
-import ../../config/tech_config
+import ../../config/[tech_config, prestige_multiplier, prestige_config]
 import ../../../common/logger
 
 export tech.ResearchAdvancement, tech.AdvancementType, tech.BreakthroughEvent, tech.TechTree
