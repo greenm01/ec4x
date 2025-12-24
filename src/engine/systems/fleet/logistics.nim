@@ -421,50 +421,59 @@ proc executeDetachShips*(state: var GameState, cmd: ZeroTurnCommand, events: var
   ## Split ships from source fleet to create new fleet
   ## Both fleets remain at same location
 
-  # Get source fleet (CRITICAL: Table copy semantics - get-modify-write)
-  var sourceFleet = state.fleets[cmd.sourceFleetId.get()]
+  # Get source fleet via entity manager
+  let sourceFleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+  if sourceFleetOpt.isNone:
+    return ZeroTurnResult(success: false, error: "Source fleet not found", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  var sourceFleet = sourceFleetOpt.get()
   let systemId = sourceFleet.location
 
   # Translate ship indices to squadron indices
-  let squadronIndices = sourceFleet.translateShipIndicesToSquadrons(cmd.shipIndices)
+  let squadronIndices = fleet_entity.translateShipIndicesToSquadrons(sourceFleet, state.squadrons[], state.ships, cmd.shipIndices)
 
   # Split squadrons (existing proc)
-  let splitResult = sourceFleet.split(squadronIndices)
+  let splitResult = fleet_entity.split(sourceFleet, squadronIndices)
 
   # Generate new fleet ID if not provided
   let newFleetId = if cmd.newFleetId.isSome:
     cmd.newFleetId.get()
   else:
-    cmd.houseId & "_fleet_" & $state.turn & "_" & $state.fleets.len
+    state.generateFleetId()
 
-  # Create new fleet
+  # Create new fleet structure
   var newFleet = Fleet(
     id: newFleetId,
     squadrons: splitResult.squadrons,
-    owner: cmd.houseId,
+    houseId: cmd.houseId,
     location: sourceFleet.location,
     status: FleetStatus.Active,
-    autoBalanceSquadrons: true
+    autoBalanceSquadrons: true,
+    missionState: FleetMissionState.None,
+    missionType: none(int32),
+    missionTarget: none(SystemId),
+    missionStartTurn: 0
   )
 
   let squadronsDetached = newFleet.squadrons.len
 
-  # Balance squadrons in BOTH fleets
-  sourceFleet.balanceSquadrons()
-  newFleet.balanceSquadrons()
+  # Note: balanceSquadrons() is deprecated, removed calls
 
   # Check if source fleet is now empty after detaching
-  if sourceFleet.isEmpty():
+  if fleet_entity.isEmpty(sourceFleet):
     # Delete empty source fleet and cleanup orders
     cleanupEmptyFleet(state, cmd.sourceFleetId.get())
     logInfo(LogCategory.lcFleet, &"DetachShips: Detached all ships from {cmd.sourceFleetId.get()}, deleted source fleet, created new fleet {newFleetId}")
   else:
-    # Write back modified source fleet
-    state.fleets[cmd.sourceFleetId.get()] = sourceFleet
+    # Write back modified source fleet via entity manager
+    state.fleets.entities.updateEntity(cmd.sourceFleetId.get(), sourceFleet)
     logInfo(LogCategory.lcFleet, &"DetachShips: Created fleet {newFleetId} with {newFleet.squadrons.len} squadrons")
 
-  # Write new fleet to state
-  state.fleets[newFleetId] = newFleet
+  # Add new fleet to state via entity manager
+  state.fleets.entities.addEntity(newFleetId, newFleet)
+  # Update indexes
+  state.fleets.bySystem.mgetOrPut(newFleet.location, @[]).add(newFleetId)
+  state.fleets.byOwner.mgetOrPut(newFleet.houseId, @[]).add(newFleetId)
 
   # Emit FleetDetachment event (Phase 7b)
   events.add(event_factory.fleetDetachment(
@@ -491,35 +500,41 @@ proc executeTransferShips*(state: var GameState, cmd: ZeroTurnCommand, events: v
 
   let targetFleetId = cmd.targetFleetId.get()
 
-  # Get both fleets (CRITICAL: Table copy semantics)
-  var sourceFleet = state.fleets[cmd.sourceFleetId.get()]
-  var targetFleet = state.fleets[targetFleetId]
+  # Get both fleets via entity manager
+  let sourceFleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+  if sourceFleetOpt.isNone:
+    return ZeroTurnResult(success: false, error: "Source fleet not found", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  let targetFleetOpt = state.fleets.entities.getEntity(targetFleetId)
+  if targetFleetOpt.isNone:
+    return ZeroTurnResult(success: false, error: "Target fleet not found", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  var sourceFleet = sourceFleetOpt.get()
+  var targetFleet = targetFleetOpt.get()
   let systemId = sourceFleet.location
 
   # Translate ship indices to squadron indices
-  let squadronIndices = sourceFleet.translateShipIndicesToSquadrons(cmd.shipIndices)
+  let squadronIndices = fleet_entity.translateShipIndicesToSquadrons(sourceFleet, state.squadrons[], state.ships, cmd.shipIndices)
   let squadronsTransferred = squadronIndices.len
 
   # Transfer squadrons
-  let transferredFleet = sourceFleet.split(squadronIndices)
-  targetFleet.merge(transferredFleet)
+  let transferredFleet = fleet_entity.split(sourceFleet, squadronIndices)
+  fleet_entity.merge(targetFleet, transferredFleet)
 
-  # Balance both fleets
-  sourceFleet.balanceSquadrons()
-  targetFleet.balanceSquadrons()
+  # Note: balanceSquadrons() is deprecated, removed calls
 
-  # Write back modified target fleet first
-  state.fleets[targetFleetId] = targetFleet
+  # Write back modified target fleet via entity manager
+  state.fleets.entities.updateEntity(targetFleetId, targetFleet)
 
   # Check if source fleet is now empty
-  if sourceFleet.isEmpty():
+  if fleet_entity.isEmpty(sourceFleet):
     # Delete empty fleet and cleanup orders (DRY helper)
     # NOTE: We don't write sourceFleet back since we're deleting it
     cleanupEmptyFleet(state, cmd.sourceFleetId.get())
     logInfo(LogCategory.lcFleet, &"TransferShips: Merged all ships from {cmd.sourceFleetId.get()} into {targetFleetId}, deleted source fleet")
   else:
-    # Write back modified source fleet
-    state.fleets[cmd.sourceFleetId.get()] = sourceFleet
+    # Write back modified source fleet via entity manager
+    state.fleets.entities.updateEntity(cmd.sourceFleetId.get(), sourceFleet)
     logInfo(LogCategory.lcFleet, &"TransferShips: Transferred {squadronIndices.len} squadrons from {cmd.sourceFleetId.get()} to {targetFleetId}")
 
   # Emit FleetTransfer event (Phase 7b)
@@ -551,35 +566,33 @@ proc executeMergeFleets*(state: var GameState, cmd: ZeroTurnCommand, events: var
 
   let targetFleetId = cmd.targetFleetId.get()
 
-  # Get both fleets (CRITICAL: Table copy semantics)
-  let sourceFleet = state.fleets[cmd.sourceFleetId.get()]
-  var targetFleet = state.fleets[targetFleetId]
+  # Get both fleets via entity manager
+  let sourceFleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+  if sourceFleetOpt.isNone:
+    return ZeroTurnResult(success: false, error: "Source fleet not found", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  let targetFleetOpt = state.fleets.entities.getEntity(targetFleetId)
+  if targetFleetOpt.isNone:
+    return ZeroTurnResult(success: false, error: "Target fleet not found", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  let sourceFleet = sourceFleetOpt.get()
+  var targetFleet = targetFleetOpt.get()
 
   let squadronsMerged = sourceFleet.squadrons.len
   let systemId = sourceFleet.location
 
   # Merge all squadrons
-  targetFleet.merge(sourceFleet)
+  fleet_entity.merge(targetFleet, sourceFleet)
 
-  # Balance target fleet after merge
-  targetFleet.balanceSquadrons()
+  # Note: balanceSquadrons() is deprecated, removed call
 
-  # Write back modified target fleet
-  state.fleets[targetFleetId] = targetFleet
+  # Write back modified target fleet via entity manager
+  state.fleets.entities.updateEntity(targetFleetId, targetFleet)
 
-  # Delete source fleet from state table
-  let sourceFleetId = cmd.sourceFleetId.get()
-  state.removeFleetFromIndices(sourceFleetId, sourceFleet.owner,
-                               sourceFleet.location)
-  state.fleets.del(sourceFleetId)
+  # Delete source fleet using DRY helper (handles indexes and commands)
+  cleanupEmptyFleet(state, cmd.sourceFleetId.get())
 
-  # Cleanup associated orders
-  if sourceFleetId in state.fleetCommands:
-    state.fleetCommands.del(sourceFleetId)
-  if sourceFleetId in state.standingCommands:
-    state.standingCommands.del(sourceFleetId)
-
-  logInfo(LogCategory.lcFleet, &"MergeFleets: Merged {sourceFleet.squadrons.len} squadrons from {cmd.sourceFleetId.get()} into {targetFleetId}")
+  logInfo(LogCategory.lcFleet, &"MergeFleets: Merged {squadronsMerged} squadrons from {cmd.sourceFleetId.get()} into {targetFleetId}")
 
   # Emit FleetMerged event (Phase 7b)
   events.add(event_factory.fleetMerged(
