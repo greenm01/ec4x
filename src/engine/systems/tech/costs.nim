@@ -8,10 +8,8 @@
 ## - TRP: Varies by tech field
 
 import std/[math, tables]
-import ../../types/[core, game_state, tech, command]
-import ../../state/[game_state, iterators]
+import ../../types/tech
 import ../../config/tech_config
-import ../../../common/logger
 
 export tech.ResearchAllocation
 
@@ -22,23 +20,39 @@ proc calculateERPCost*(gho: int): float =
   ## Formula: 1 ERP = (5 + log(GHO)) PP
   result = 5.0 + log10(float(gho))
 
-proc convertPPToERP*(pp: int, gho: int): int =
+proc convertPPToERP*(pp: int32, gho: int32): int32 =
   ## Convert PP to ERP
-  let costPerERP = calculateERPCost(gho)
-  result = int(float(pp) / costPerERP)
+  let costPerERP = calculateERPCost(gho.int)
+  result = int32(float(pp) / costPerERP)
 
-proc getELUpgradeCost*(currentLevel: int): int =
+proc getELUpgradeCost*(currentLevel: int32): int32 =
   ## Get ERP cost to advance Economic Level
   ## Per economy.md:4.2 and config/tech.toml
   ##
   ## Loads from globalTechConfig instead of hardcoded formula
   return getELUpgradeCostFromConfig(currentLevel)
 
-proc getELModifier*(level: int): float =
+proc getELModifier*(level: int32): float32 =
   ## Get EL economic modifier (as multiplier)
   ## Per economy.md:4.2: +5% per level, capped at 50%
   ## Returns 1.0 + bonus (e.g., 1.05 for EL1, 1.50 for EL10+)
-  result = 1.0 + min(float(level) * EL_MODIFIER_PER_LEVEL, EL_MAX_MODIFIER)
+  ##
+  ## Reads from globalTechConfig
+  let cfg = globalTechConfig.economic_level
+
+  case level
+  of 1: return cfg.level_1_mod
+  of 2: return cfg.level_2_mod
+  of 3: return cfg.level_3_mod
+  of 4: return cfg.level_4_mod
+  of 5: return cfg.level_5_mod
+  of 6: return cfg.level_6_mod
+  of 7: return cfg.level_7_mod
+  of 8: return cfg.level_8_mod
+  of 9: return cfg.level_9_mod
+  of 10: return cfg.level_10_mod
+  of 11: return cfg.level_11_mod
+  else: return cfg.level_11_mod  # Cap at level 11
 
 ## Science Research Points (economy.md:4.3)
 
@@ -47,12 +61,12 @@ proc calculateSRPCost*(currentSL: int): float =
   ## Formula per economy.md:4.3: 1 SRP = 2 + SL(0.5) PP
   result = 2.0 + float(currentSL) * 0.5
 
-proc convertPPToSRP*(pp: int, currentSL: int): int =
+proc convertPPToSRP*(pp: int32, currentSL: int32): int32 =
   ## Convert PP to SRP
-  let costPerSRP = calculateSRPCost(currentSL)
-  result = int(float(pp) / costPerSRP)
+  let costPerSRP = calculateSRPCost(currentSL.int)
+  result = int32(float(pp) / costPerSRP)
 
-proc getSLUpgradeCost*(currentLevel: int): int =
+proc getSLUpgradeCost*(currentLevel: int32): int32 =
   ## Get SRP cost to advance Science Level
   ## Per economy.md:4.3 and config/tech.toml
   ##
@@ -81,12 +95,12 @@ proc getTRPCost*(techField: TechField, slLevel: int, gho: int): float =
   ##   gho: Gross House Output
   result = (5.0 + 4.0 * float(slLevel)) / 10.0 + log10(float(gho)) * 0.5
 
-proc convertPPToTRP*(pp: int, techField: TechField, slLevel: int, gho: int): int =
+proc convertPPToTRP*(pp: int32, techField: TechField, slLevel: int32, gho: int32): int32 =
   ## Convert PP to TRP for specific tech field
-  let costPerTRP = getTRPCost(techField, slLevel, gho)
-  result = int(float(pp) / costPerTRP)
+  let costPerTRP = getTRPCost(techField, slLevel.int, gho.int)
+  result = int32(float(pp) / costPerTRP)
 
-proc getTechUpgradeCost*(techField: TechField, currentLevel: int): int =
+proc getTechUpgradeCost*(techField: TechField, currentLevel: int32): int32 =
   ## Get TRP cost to advance tech level
   ## Per economy.md:4.4-4.12 and config/tech.toml
   ##
@@ -96,7 +110,7 @@ proc getTechUpgradeCost*(techField: TechField, currentLevel: int): int =
 ## Research Allocation
 
 proc allocateResearch*(allocation: ResearchAllocation,
-                      gho: int, slLevel: int): ResearchPoints =
+                      gho: int32, slLevel: int32): ResearchPoints =
   ## Convert PP allocations to RP
   ##
   ## Args:
@@ -107,7 +121,7 @@ proc allocateResearch*(allocation: ResearchAllocation,
   result = ResearchPoints(
     economic: 0,
     science: 0,
-    technology: initTable[TechField, int]()
+    technology: initTable[TechField, int32]()
   )
 
   # Convert economic allocation
