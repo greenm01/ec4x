@@ -31,20 +31,16 @@ import ../../../common/logger
 
 export production.CompletedProject
 
-type
-  QueueAdvancementResult* = object
-    ## Results from advancing a facility's queues
-    completedProjects*: seq[production.CompletedProject]
-    completedRepairs*: seq[production.RepairProject]
+type QueueAdvancementResult* = object ## Results from advancing a facility's queues
+  completedProjects*: seq[production.CompletedProject]
+  completedRepairs*: seq[production.RepairProject]
 
-proc advanceSpaceportQueue*(spaceport: var facilities.Spaceport,
-                             colonyId: SystemId): QueueAdvancementResult =
+proc advanceSpaceportQueue*(
+    spaceport: var facilities.Spaceport, colonyId: SystemId
+): QueueAdvancementResult =
   ## Advance spaceport construction queue (FIFO)
   ## Spaceports handle multiple simultaneous construction (up to effective docks limit with CST scaling)
-  result = QueueAdvancementResult(
-    completedProjects: @[],
-    completedRepairs: @[]
-  )
+  result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
 
   # Step 1: Advance all active construction projects
   var completedIndices: seq[int] = @[]
@@ -54,14 +50,20 @@ proc advanceSpaceportQueue*(spaceport: var facilities.Spaceport,
 
     if projectCopy.turnsRemaining <= 0:
       # Construction complete
-      result.completedProjects.add(production.CompletedProject(
-        colonyId: colonyId,
-        projectType: projectCopy.projectType,
-        itemId: projectCopy.itemId
-      ))
+      result.completedProjects.add(
+        production.CompletedProject(
+          colonyId: colonyId,
+          projectType: projectCopy.projectType,
+          itemId: projectCopy.itemId,
+        )
+      )
       completedIndices.add(idx)
-      logDebug("Facilities", "Spaceport construction complete",
-               facilityId = spaceport.id, projectId = projectCopy.itemId)
+      logDebug(
+        "Facilities",
+        "Spaceport construction complete",
+        facilityId = spaceport.id,
+        projectId = projectCopy.itemId,
+      )
     else:
       # Still in progress - update in place
       spaceport.activeConstructions[idx] = projectCopy
@@ -84,30 +86,34 @@ proc advanceSpaceportQueue*(spaceport: var facilities.Spaceport,
 
     if nextProject.turnsRemaining <= 0:
       # Project completes immediately (0-turn projects)
-      result.completedProjects.add(production.CompletedProject(
-        colonyId: colonyId,
-        projectType: nextProject.projectType,
-        itemId: nextProject.itemId
-      ))
-      logEconomy("Spaceport construction complete (instant)",
-                "facility=", spaceport.id, " project=", nextProject.itemId)
+      result.completedProjects.add(
+        production.CompletedProject(
+          colonyId: colonyId,
+          projectType: nextProject.projectType,
+          itemId: nextProject.itemId,
+        )
+      )
+      logEconomy(
+        "Spaceport construction complete (instant)", "facility=", spaceport.id,
+        " project=", nextProject.itemId,
+      )
       # Don't add to activeConstructions - dock remains free
       pulled += 1
     else:
       # Project still needs more turns
       spaceport.activeConstructions.add(nextProject)
-      logEconomy("Spaceport started new construction",
-                "facility=", spaceport.id, " project=", nextProject.itemId)
+      logEconomy(
+        "Spaceport started new construction", "facility=", spaceport.id, " project=",
+        nextProject.itemId,
+      )
       pulled += 1
 
-proc advanceDrydockQueue*(drydock: var facilities.Drydock,
-                          colonyId: SystemId): QueueAdvancementResult =
+proc advanceDrydockQueue*(
+    drydock: var facilities.Drydock, colonyId: SystemId
+): QueueAdvancementResult =
   ## Advance drydock repair queue (repair-only facility)
   ## Drydocks handle repairs only (effective docks with CST scaling, no construction)
-  result = QueueAdvancementResult(
-    completedProjects: @[],
-    completedRepairs: @[]
-  )
+  result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
 
   # Crippled drydocks can't work
   if drydock.isCrippled:
@@ -123,8 +129,13 @@ proc advanceDrydockQueue*(drydock: var facilities.Drydock,
       # Repair complete
       result.completedRepairs.add(repairCopy)
       completedRepairIndices.add(idx)
-      logEconomy("Drydock repair complete",
-                "facility=", drydock.id, " target=", $repairCopy.targetType)
+      logEconomy(
+        "Drydock repair complete",
+        "facility=",
+        drydock.id,
+        " target=",
+        $repairCopy.targetType,
+      )
     else:
       # Still in progress - update in place
       drydock.activeRepairs[idx] = repairCopy
@@ -142,18 +153,21 @@ proc advanceDrydockQueue*(drydock: var facilities.Drydock,
     let nextRepair = drydock.repairQueue[0]
     drydock.repairQueue.delete(0)
     drydock.activeRepairs.add(nextRepair)
-    logEconomy("Drydock started new repair",
-              "facility=", drydock.id, " target=", $nextRepair.targetType)
+    logEconomy(
+      "Drydock started new repair",
+      "facility=",
+      drydock.id,
+      " target=",
+      $nextRepair.targetType,
+    )
     pulled += 1
 
-proc advanceShipyardQueue*(shipyard: var facilities.Shipyard,
-                           colonyId: SystemId): QueueAdvancementResult =
+proc advanceShipyardQueue*(
+    shipyard: var facilities.Shipyard, colonyId: SystemId
+): QueueAdvancementResult =
   ## Advance shipyard construction queue (construction-only facility)
   ## Shipyards handle multiple simultaneous construction (effective docks with CST scaling)
-  result = QueueAdvancementResult(
-    completedProjects: @[],
-    completedRepairs: @[]
-  )
+  result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
 
   # Crippled shipyards can't work
   if shipyard.isCrippled:
@@ -167,14 +181,18 @@ proc advanceShipyardQueue*(shipyard: var facilities.Shipyard,
 
     if projectCopy.turnsRemaining <= 0:
       # Construction complete
-      result.completedProjects.add(production.CompletedProject(
-        colonyId: colonyId,
-        projectType: projectCopy.projectType,
-        itemId: projectCopy.itemId
-      ))
+      result.completedProjects.add(
+        production.CompletedProject(
+          colonyId: colonyId,
+          projectType: projectCopy.projectType,
+          itemId: projectCopy.itemId,
+        )
+      )
       completedIndices.add(idx)
-      logEconomy("Shipyard construction complete",
-                "facility=", shipyard.id, " project=", projectCopy.itemId)
+      logEconomy(
+        "Shipyard construction complete", "facility=", shipyard.id, " project=",
+        projectCopy.itemId,
+      )
     else:
       # Still in progress - update in place
       shipyard.activeConstructions[idx] = projectCopy
@@ -197,30 +215,35 @@ proc advanceShipyardQueue*(shipyard: var facilities.Shipyard,
 
     if nextProject.turnsRemaining <= 0:
       # Project completes immediately (0-turn projects)
-      result.completedProjects.add(production.CompletedProject(
-        colonyId: colonyId,
-        projectType: nextProject.projectType,
-        itemId: nextProject.itemId
-      ))
-      logEconomy("Shipyard construction complete (instant)",
-                "facility=", shipyard.id, " project=", nextProject.itemId)
+      result.completedProjects.add(
+        production.CompletedProject(
+          colonyId: colonyId,
+          projectType: nextProject.projectType,
+          itemId: nextProject.itemId,
+        )
+      )
+      logEconomy(
+        "Shipyard construction complete (instant)", "facility=", shipyard.id,
+        " project=", nextProject.itemId,
+      )
       # Don't add to activeConstructions - dock remains free
       pulled += 1
     else:
       # Project still needs more turns
       shipyard.activeConstructions.add(nextProject)
-      logEconomy("Shipyard started new construction",
-                "facility=", shipyard.id, " project=", nextProject.itemId)
+      logEconomy(
+        "Shipyard started new construction", "facility=", shipyard.id, " project=",
+        nextProject.itemId,
+      )
       pulled += 1
 
-proc advanceColonyQueues*(state: var GameState, colonyId: ColonyId): QueueAdvancementResult =
+proc advanceColonyQueues*(
+    state: var GameState, colonyId: ColonyId
+): QueueAdvancementResult =
   ## Advance all facility queues at colony using entity managers
   ## Returns combined results from all facilities
   ## NOTE: Uses pre-calculated effectiveDocks (updated on CST tech upgrade)
-  result = QueueAdvancementResult(
-    completedProjects: @[],
-    completedRepairs: @[]
-  )
+  result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
 
   # Get colony to access facility IDs
   let colonyOpt = gs_helpers.getColony(state, colonyId)
@@ -269,10 +292,11 @@ proc isPlanetaryDefense*(project: production.CompletedProject): bool =
   ## Military assets: Ships built in docks (Command Phase after combat)
 
   if project.projectType == production.ConstructionType.Facility:
-    return project.itemId in [
-      "Starbase", "Spaceport", "Shipyard", "Drydock",
-      "GroundBattery", "Marine", "marine_division", "Army", "army"
-    ] or project.itemId.startsWith("PlanetaryShield")
+    return
+      project.itemId in [
+        "Starbase", "Spaceport", "Shipyard", "Drydock", "GroundBattery", "Marine",
+        "marine_division", "Army", "army",
+      ] or project.itemId.startsWith("PlanetaryShield")
 
   # Fighters are planetside, commission with planetary defense
   if project.projectType == production.ConstructionType.Ship:
@@ -280,7 +304,11 @@ proc isPlanetaryDefense*(project: production.CompletedProject): bool =
 
   return false
 
-proc advanceAllQueues*(state: var GameState): tuple[projects: seq[production.CompletedProject], repairs: seq[production.RepairProject]] =
+proc advanceAllQueues*(
+    state: var GameState
+): tuple[
+  projects: seq[production.CompletedProject], repairs: seq[production.RepairProject]
+] =
   ## Advance all facility queues across all colonies
   ## Called during Maintenance phase
   ## Returns all completed projects and repairs
@@ -292,8 +320,10 @@ proc advanceAllQueues*(state: var GameState): tuple[projects: seq[production.Com
     result.projects.add(colonyResult.completedProjects)
     result.repairs.add(colonyResult.completedRepairs)
 
-  logDebug("Facilities", "Queue advancement complete",
-           "completed_projects=", result.projects.len, " completed_repairs=", result.repairs.len)
+  logDebug(
+    "Facilities", "Queue advancement complete", "completed_projects=",
+    result.projects.len, " completed_repairs=", result.repairs.len,
+  )
 
 ## ==============================================================================
 ## Colony Queue Management (Legacy System)
@@ -313,7 +343,9 @@ proc advanceAllQueues*(state: var GameState): tuple[projects: seq[production.Com
 ## - Functions need to look up projects using GameState.constructionProjects entity manager
 ## - Currently BROKEN due to type mismatch
 
-proc startConstruction*(colony: var game_state.Colony, project: production.ConstructionProject): bool =
+proc startConstruction*(
+    colony: var game_state.Colony, project: production.ConstructionProject
+): bool =
   ## Start new construction project at colony
   ## Returns true if started successfully
   ##
@@ -328,7 +360,9 @@ proc startConstruction*(colony: var game_state.Colony, project: production.Const
   # Always return true - actual capacity checking happens in resolution layer
   return true
 
-proc advanceConstruction*(colony: var game_state.Colony): Option[production.CompletedProject] =
+proc advanceConstruction*(
+    colony: var game_state.Colony
+): Option[production.CompletedProject] =
   ## Advance colony construction by one turn (upfront payment model)
   ## Returns completed project if finished
   ## Per economy.md:5.0 - full cost paid upfront, construction tracks turns
@@ -346,7 +380,7 @@ proc advanceConstruction*(colony: var game_state.Colony): Option[production.Comp
     let completed = production.CompletedProject(
       colonyId: colony.systemId,
       projectType: project.projectType,
-      itemId: project.itemId
+      itemId: project.itemId,
     )
 
     # Clear construction slot

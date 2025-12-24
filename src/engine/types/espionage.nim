@@ -12,15 +12,29 @@ import ./[core, prestige]
 
 type
   EspionageAction* {.pure.} = enum
-    TechTheft, SabotageLow, SabotageHigh, Assassination,
-    CyberAttack, EconomicManipulation, PsyopsCampaign,
-    CounterIntelSweep, IntelligenceTheft, PlantDisinformation
+    TechTheft
+    SabotageLow
+    SabotageHigh
+    Assassination
+    CyberAttack
+    EconomicManipulation
+    PsyopsCampaign
+    CounterIntelSweep
+    IntelligenceTheft
+    PlantDisinformation
 
   SpyMissionType* {.pure.} = enum
-    SpyOnPlanet, HackStarbase, SpyOnSystem
+    SpyOnPlanet
+    HackStarbase
+    SpyOnSystem
 
   CICLevel* {.pure.} = enum
-    CIC0, CIC1, CIC2, CIC3, CIC4, CIC5
+    CIC0
+    CIC1
+    CIC2
+    CIC3
+    CIC4
+    CIC5
 
   ActiveSpyMission* = object
     fleetId*: FleetId
@@ -31,7 +45,7 @@ type
     ownerHouse*: HouseId
 
   EspionageBudget* = object
-    houseId*: HouseId  # Back-reference
+    houseId*: HouseId # Back-reference
     ebpPoints*: int32
     cipPoints*: int32
     ebpInvested*: int32
@@ -45,8 +59,12 @@ type
     targetSystem*: Option[SystemId]
 
   EffectType* {.pure.} = enum
-    SRPReduction, NCVReduction, TaxReduction,
-    StarbaseCrippled, IntelBlocked, IntelCorrupted
+    SRPReduction
+    NCVReduction
+    TaxReduction
+    StarbaseCrippled
+    IntelBlocked
+    IntelCorrupted
 
   OngoingEffect* = object
     effectType*: EffectType

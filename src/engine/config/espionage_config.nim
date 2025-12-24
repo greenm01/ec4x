@@ -63,15 +63,16 @@ type
     dominant_tech_threshold*: float
     max_eli_level*: int
 
-  EspionageConfig* = object
-    ## Complete espionage configuration loaded from TOML
+  EspionageConfig* = object ## Complete espionage configuration loaded from TOML
     costs*: EspionageCostsConfig
     investment*: EspionageInvestmentConfig
     detection*: EspionageDetectionConfig
     effects*: EspionageEffectsConfig
     scout_detection*: ScoutDetectionConfig
 
-proc loadEspionageConfig*(configPath: string = "config/espionage.toml"): EspionageConfig =
+proc loadEspionageConfig*(
+    configPath: string = "config/espionage.toml"
+): EspionageConfig =
   ## Load espionage configuration from TOML file
   ## Uses toml_serialization for type-safe parsing
 

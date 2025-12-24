@@ -2,7 +2,9 @@ import ./[core, tech, espionage, income]
 
 type
   HouseStatus* {.pure.} = enum
-    Active, Autopilot, DefensiveCollapse
+    Active
+    Autopilot
+    DefensiveCollapse
 
   House* = object
     id*: HouseId
@@ -23,4 +25,4 @@ type
     planetBreakerCount*: int32
 
   Houses* = object
-    entities*: EntityManager[HouseId, House]  # Core storage
+    entities*: EntityManager[HouseId, House] # Core storage

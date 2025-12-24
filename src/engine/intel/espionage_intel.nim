@@ -9,9 +9,7 @@ import ../gamestate
 import ../espionage/types as esp_types
 
 proc generateEspionageIntelligence*(
-  state: var GameState,
-  result: esp_types.EspionageResult,
-  turn: int
+    state: var GameState, result: esp_types.EspionageResult, turn: int
 ) =
   ## Generate intelligence reports for espionage operations
   ## Both attacker and target receive reports (if detected)
@@ -24,7 +22,8 @@ proc generateEspionageIntelligence*(
   ## - Economic Manipulation: Economy disrupted
   ## - Psyops Campaign: Morale damaged
 
-  let actionName = case result.action
+  let actionName =
+    case result.action
     of esp_types.EspionageAction.TechTheft: "Tech Theft"
     of esp_types.EspionageAction.SabotageLow: "Low-Impact Sabotage"
     of esp_types.EspionageAction.SabotageHigh: "High-Impact Sabotage"
@@ -38,7 +37,8 @@ proc generateEspionageIntelligence*(
 
   if result.success:
     # Successful espionage - attacker receives intelligence on success
-    let attackerDescription = case result.action
+    let attackerDescription =
+      case result.action
       of esp_types.EspionageAction.TechTheft:
         &"ESPIONAGE SUCCESS: Tech theft from {result.target} - stole {result.srpStolen} SRP"
       of esp_types.EspionageAction.SabotageLow, esp_types.EspionageAction.SabotageHigh:
@@ -62,14 +62,15 @@ proc generateEspionageIntelligence*(
       reportId: &"{result.attacker}-espionage-success-{turn}-{result.target}",
       scoutId: "intelligence-operative",
       turn: turn,
-      systemId: 0.SystemId,  # Not system-specific (except sabotage/cyber)
-      encounterType: intel_types.ScoutEncounterType.DiplomaticActivity,  # Covert operations
+      systemId: 0.SystemId, # Not system-specific (except sabotage/cyber)
+      encounterType: intel_types.ScoutEncounterType.DiplomaticActivity,
+        # Covert operations
       observedHouses: @[result.target],
       fleetDetails: @[],
       colonyDetails: none(intel_types.ColonyIntelReport),
       fleetMovements: @[],
       description: attackerDescription,
-      significance: 8  # Successful espionage is highly significant
+      significance: 8, # Successful espionage is highly significant
     )
 
     # CRITICAL: Get, modify, write back to persist
@@ -82,12 +83,13 @@ proc generateEspionageIntelligence*(
 
   if result.detected:
     # Failed/detected espionage - target receives intelligence on the attempt
-    let targetDescription = if result.success:
-      # Detected but successful (rare - target knows they were hit)
-      &"ESPIONAGE DETECTED: {result.attacker} conducted {actionName} against your house. Operation succeeded despite detection."
-    else:
-      # Detected and failed (common)
-      &"ESPIONAGE DETECTED: {result.attacker} attempted {actionName} against your house. Operation thwarted by counter-intelligence."
+    let targetDescription =
+      if result.success:
+        # Detected but successful (rare - target knows they were hit)
+        &"ESPIONAGE DETECTED: {result.attacker} conducted {actionName} against your house. Operation succeeded despite detection."
+      else:
+        # Detected and failed (common)
+        &"ESPIONAGE DETECTED: {result.attacker} attempted {actionName} against your house. Operation thwarted by counter-intelligence."
 
     let targetReport = intel_types.ScoutEncounterReport(
       reportId: &"{result.target}-espionage-detected-{turn}-{result.attacker}",
@@ -100,7 +102,8 @@ proc generateEspionageIntelligence*(
       colonyDetails: none(intel_types.ColonyIntelReport),
       fleetMovements: @[],
       description: targetDescription,
-      significance: if result.success: 9 else: 7  # Higher if they succeeded despite detection
+      significance: if result.success: 9 else: 7,
+        # Higher if they succeeded despite detection
     )
 
     # Add to espionage activity log (per intel.md:types.nim EspionageActivityReport)
@@ -108,12 +111,14 @@ proc generateEspionageIntelligence*(
       turn: turn,
       perpetrator: result.attacker,
       action: actionName,
-      targetSystem: none(SystemId),  # Future: Track system for sabotage/cyber attacks when implemented
+      targetSystem: none(SystemId),
+        # Future: Track system for sabotage/cyber attacks when implemented
       detected: true,
-      description: if result.success:
-        &"{result.attacker} successfully conducted {actionName} (detected)"
-      else:
-        &"{result.attacker} failed {actionName} attempt (detected and blocked)"
+      description:
+        if result.success:
+          &"{result.attacker} successfully conducted {actionName} (detected)"
+        else:
+          &"{result.attacker} failed {actionName} attempt (detected and blocked)",
     )
 
     # CRITICAL: Get target house once, add both reports, write back to persist
@@ -134,8 +139,9 @@ proc generateEspionageIntelligence*(
         fleetDetails: @[],
         colonyDetails: none(intel_types.ColonyIntelReport),
         fleetMovements: @[],
-        description: &"ESPIONAGE FAILED: {actionName} against {result.target} was detected and blocked by counter-intelligence.",
-        significance: 6  # Failed espionage is moderately significant (prestige loss)
+        description:
+          &"ESPIONAGE FAILED: {actionName} against {result.target} was detected and blocked by counter-intelligence.",
+        significance: 6, # Failed espionage is moderately significant (prestige loss)
       )
 
       # CRITICAL: Get, modify, write back to persist

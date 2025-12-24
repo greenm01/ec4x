@@ -51,9 +51,11 @@ type
     lose_starbase*: int32
     ambushed_by_cloak*: int32
     force_retreat*: int32
-    forced_to_retreat*: int32  # NEW: Penalty for being forced to retreat (counterpart to force_retreat)
+    forced_to_retreat*: int32
+      # NEW: Penalty for being forced to retreat (counterpart to force_retreat)
     scout_destroyed*: int32
-    undefended_colony_penalty_multiplier*: float32  # Phase F: Penalty multiplier for losing undefended colonies
+    undefended_colony_penalty_multiplier*: float32
+      # Phase F: Penalty multiplier for losing undefended colonies
 
   EspionagePrestigeConfig* = object
     tech_theft*: int32
@@ -146,8 +148,7 @@ type
     tier_5_max*: int32
     tier_5_prestige*: int32
 
-  PrestigeConfig* = object
-    ## Complete prestige configuration loaded from TOML
+  PrestigeConfig* = object ## Complete prestige configuration loaded from TOML
     victory*: VictoryConfig
     dynamic_scaling*: DynamicScalingConfig
     morale*: MoraleConfig
@@ -211,10 +212,12 @@ proc calculateDynamicMultiplier*(numSystems: int32, numPlayers: int32): float32 
 
   # Calculate target turns based on map density
   let systemDiff = systemsPerPlayer - float32(config.baseline_systems_per_player)
-  let targetTurns = float32(config.baseline_turns) + (systemDiff * config.turn_scaling_factor)
+  let targetTurns =
+    float32(config.baseline_turns) + (systemDiff * config.turn_scaling_factor)
 
   # Calculate multiplier (inverse relationship: more turns = lower multiplier)
-  let multiplier = config.base_multiplier * (float32(config.baseline_turns) / targetTurns)
+  let multiplier =
+    config.base_multiplier * (float32(config.baseline_turns) / targetTurns)
 
   # Clamp to reasonable bounds
   result = max(config.min_multiplier, min(config.max_multiplier, multiplier))

@@ -36,49 +36,84 @@ proc getRawIndex*(planetClass: PlanetClass, resources: ResourceRating): float =
   case resources
   of ResourceRating.VeryPoor:
     case planetClass
-    of PlanetClass.Extreme: return cfg.very_poor_extreme
-    of PlanetClass.Desolate: return cfg.very_poor_desolate
-    of PlanetClass.Hostile: return cfg.very_poor_hostile
-    of PlanetClass.Harsh: return cfg.very_poor_harsh
-    of PlanetClass.Benign: return cfg.very_poor_benign
-    of PlanetClass.Lush: return cfg.very_poor_lush
-    of PlanetClass.Eden: return cfg.very_poor_eden
+    of PlanetClass.Extreme:
+      return cfg.very_poor_extreme
+    of PlanetClass.Desolate:
+      return cfg.very_poor_desolate
+    of PlanetClass.Hostile:
+      return cfg.very_poor_hostile
+    of PlanetClass.Harsh:
+      return cfg.very_poor_harsh
+    of PlanetClass.Benign:
+      return cfg.very_poor_benign
+    of PlanetClass.Lush:
+      return cfg.very_poor_lush
+    of PlanetClass.Eden:
+      return cfg.very_poor_eden
   of ResourceRating.Poor:
     case planetClass
-    of PlanetClass.Extreme: return cfg.poor_extreme
-    of PlanetClass.Desolate: return cfg.poor_desolate
-    of PlanetClass.Hostile: return cfg.poor_hostile
-    of PlanetClass.Harsh: return cfg.poor_harsh
-    of PlanetClass.Benign: return cfg.poor_benign
-    of PlanetClass.Lush: return cfg.poor_lush
-    of PlanetClass.Eden: return cfg.poor_eden
+    of PlanetClass.Extreme:
+      return cfg.poor_extreme
+    of PlanetClass.Desolate:
+      return cfg.poor_desolate
+    of PlanetClass.Hostile:
+      return cfg.poor_hostile
+    of PlanetClass.Harsh:
+      return cfg.poor_harsh
+    of PlanetClass.Benign:
+      return cfg.poor_benign
+    of PlanetClass.Lush:
+      return cfg.poor_lush
+    of PlanetClass.Eden:
+      return cfg.poor_eden
   of ResourceRating.Abundant:
     case planetClass
-    of PlanetClass.Extreme: return cfg.abundant_extreme
-    of PlanetClass.Desolate: return cfg.abundant_desolate
-    of PlanetClass.Hostile: return cfg.abundant_hostile
-    of PlanetClass.Harsh: return cfg.abundant_harsh
-    of PlanetClass.Benign: return cfg.abundant_benign
-    of PlanetClass.Lush: return cfg.abundant_lush
-    of PlanetClass.Eden: return cfg.abundant_eden
+    of PlanetClass.Extreme:
+      return cfg.abundant_extreme
+    of PlanetClass.Desolate:
+      return cfg.abundant_desolate
+    of PlanetClass.Hostile:
+      return cfg.abundant_hostile
+    of PlanetClass.Harsh:
+      return cfg.abundant_harsh
+    of PlanetClass.Benign:
+      return cfg.abundant_benign
+    of PlanetClass.Lush:
+      return cfg.abundant_lush
+    of PlanetClass.Eden:
+      return cfg.abundant_eden
   of ResourceRating.Rich:
     case planetClass
-    of PlanetClass.Extreme: return cfg.rich_extreme
-    of PlanetClass.Desolate: return cfg.rich_desolate
-    of PlanetClass.Hostile: return cfg.rich_hostile
-    of PlanetClass.Harsh: return cfg.rich_harsh
-    of PlanetClass.Benign: return cfg.rich_benign
-    of PlanetClass.Lush: return cfg.rich_lush
-    of PlanetClass.Eden: return cfg.rich_eden
+    of PlanetClass.Extreme:
+      return cfg.rich_extreme
+    of PlanetClass.Desolate:
+      return cfg.rich_desolate
+    of PlanetClass.Hostile:
+      return cfg.rich_hostile
+    of PlanetClass.Harsh:
+      return cfg.rich_harsh
+    of PlanetClass.Benign:
+      return cfg.rich_benign
+    of PlanetClass.Lush:
+      return cfg.rich_lush
+    of PlanetClass.Eden:
+      return cfg.rich_eden
   of ResourceRating.VeryRich:
     case planetClass
-    of PlanetClass.Extreme: return cfg.very_rich_extreme
-    of PlanetClass.Desolate: return cfg.very_rich_desolate
-    of PlanetClass.Hostile: return cfg.very_rich_hostile
-    of PlanetClass.Harsh: return cfg.very_rich_harsh
-    of PlanetClass.Benign: return cfg.very_rich_benign
-    of PlanetClass.Lush: return cfg.very_rich_lush
-    of PlanetClass.Eden: return cfg.very_rich_eden
+    of PlanetClass.Extreme:
+      return cfg.very_rich_extreme
+    of PlanetClass.Desolate:
+      return cfg.very_rich_desolate
+    of PlanetClass.Hostile:
+      return cfg.very_rich_hostile
+    of PlanetClass.Harsh:
+      return cfg.very_rich_harsh
+    of PlanetClass.Benign:
+      return cfg.very_rich_benign
+    of PlanetClass.Lush:
+      return cfg.very_rich_lush
+    of PlanetClass.Eden:
+      return cfg.very_rich_eden
 
 proc getEconomicLevelModifier*(techLevel: int): float =
   ## Get EL_MOD from tech level
@@ -110,7 +145,9 @@ proc getStarbaseGrowthBonus*(colony: Colony): float =
   ## Proper implementation should call commissioning.getStarbaseGrowthBonus(state, colonyId)
   return 0.0
 
-proc calculateGrossOutput*(colony: Colony, elTechLevel: int, cstTechLevel: int = 1): int =
+proc calculateGrossOutput*(
+    colony: Colony, elTechLevel: int, cstTechLevel: int = 1
+): int =
   ## Calculate GCO (Gross Colony Output) for colony
   ## Per economy.md:3.1 and 4.5
   ##
@@ -127,10 +164,12 @@ proc calculateGrossOutput*(colony: Colony, elTechLevel: int, cstTechLevel: int =
 
   # Industrial production component
   let elMod = getEconomicLevelModifier(elTechLevel)
-  let cstMod = 1.0 + (float(cstTechLevel - 1) * 0.10)  # CST capacity bonus
+  let cstMod = 1.0 + (float(cstTechLevel - 1) * 0.10) # CST capacity bonus
   let prodGrowth = getProductivityGrowth(colony.taxRate)
-  let starbaseBonus = getStarbaseGrowthBonus(colony)  # 5% per operational starbase, max 15%
-  let industrialProd = float(validIndustrialUnits) * elMod * cstMod * (1.0 + prodGrowth + starbaseBonus)
+  let starbaseBonus = getStarbaseGrowthBonus(colony)
+    # 5% per operational starbase, max 15%
+  let industrialProd =
+    float(validIndustrialUnits) * elMod * cstMod * (1.0 + prodGrowth + starbaseBonus)
 
   # Total GCO (guaranteed non-negative)
   var totalGCO = populationProd + industrialProd
@@ -150,7 +189,9 @@ proc calculateNetValue*(grossOutput: int, taxRate: int): int =
   ## Use ceil() to round up per specification
   result = int(ceil(float(grossOutput) * (float(taxRate) / 100.0)))
 
-proc calculateProductionOutput*(colony: Colony, elTechLevel: int, cstTechLevel: int = 1): ProductionOutput =
+proc calculateProductionOutput*(
+    colony: Colony, elTechLevel: int, cstTechLevel: int = 1
+): ProductionOutput =
   ## Calculate full production output for colony
   let gco = calculateGrossOutput(colony, elTechLevel, cstTechLevel)
   let ncv = calculateNetValue(gco, colony.taxRate)
@@ -160,16 +201,19 @@ proc calculateProductionOutput*(colony: Colony, elTechLevel: int, cstTechLevel: 
   let popProd = int(float(colony.populationUnits) * rawIndex)
 
   let elMod = getEconomicLevelModifier(elTechLevel)
-  let cstMod = 1.0 + (float(cstTechLevel - 1) * 0.10)  # CST capacity bonus
+  let cstMod = 1.0 + (float(cstTechLevel - 1) * 0.10) # CST capacity bonus
   let prodGrowth = getProductivityGrowth(colony.taxRate)
-  let starbaseBonus = getStarbaseGrowthBonus(colony)  # 5% per operational starbase, max 15%
-  let indProd = int(float(colony.industrial.units) * elMod * cstMod * (1.0 + prodGrowth + starbaseBonus))
+  let starbaseBonus = getStarbaseGrowthBonus(colony)
+    # 5% per operational starbase, max 15%
+  let indProd = int(
+    float(colony.industrial.units) * elMod * cstMod * (1.0 + prodGrowth + starbaseBonus)
+  )
 
   result = ProductionOutput(
     grossOutput: int32(gco),
     netValue: int32(ncv),
     populationProduction: int32(popProd),
-    industrialProduction: int32(indProd)
+    industrialProduction: int32(indProd),
   )
 
 proc applyInfrastructureDamage*(colony: var Colony) =
@@ -179,4 +223,5 @@ proc applyInfrastructureDamage*(colony: var Colony) =
   ## Damage reduces both population and industrial production
   if colony.infrastructureDamage > 0.0:
     # Reduce cached GCO by damage percentage
-    colony.grossOutput = int32(float(colony.grossOutput) * (1.0 - colony.infrastructureDamage))
+    colony.grossOutput =
+      int32(float(colony.grossOutput) * (1.0 - colony.infrastructureDamage))

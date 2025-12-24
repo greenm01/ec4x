@@ -26,17 +26,17 @@ type
   # Player and House IDs
   PlayerId* = distinct uint32
   HouseId* = distinct uint32
-  
+
   # Map IDs
   SystemId* = distinct uint32
-  
+
   # Colony and Facility IDs
   ColonyId* = distinct uint32
   StarbaseId* = distinct uint32
   SpaceportId* = distinct uint32
   ShipyardId* = distinct uint32
   DrydockId* = distinct uint32
-  
+
   # Military IDs
   FleetId* = distinct uint32
   SquadronId* = distinct uint32

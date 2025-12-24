@@ -12,7 +12,9 @@ import ./[ships_config, construction_config, facilities_config, ground_units_con
 
 ## Ship Config Accessor Macro
 
-macro getShipField*(shipClass: ShipClass, fieldName: untyped, config: untyped): untyped =
+macro getShipField*(
+    shipClass: ShipClass, fieldName: untyped, config: untyped
+): untyped =
   ## Generate case statement to access any ship config field
   ## Eliminates 18-branch case duplication across multiple procs
   ##
@@ -42,7 +44,7 @@ macro getShipField*(shipClass: ShipClass, fieldName: untyped, config: untyped): 
     "TroopTransport": "troop_transport",
     "ETAC": "etac",
     "Scout": "scout",
-    "PlanetBreaker": "planetbreaker"
+    "PlanetBreaker": "planetbreaker",
   }
 
   # Generate case branches
@@ -51,12 +53,9 @@ macro getShipField*(shipClass: ShipClass, fieldName: untyped, config: untyped): 
       nnkDotExpr.newTree(ident("ShipClass"), ident(enumName)),
       nnkStmtList.newTree(
         nnkReturnStmt.newTree(
-          nnkDotExpr.newTree(
-            nnkDotExpr.newTree(config, ident(configName)),
-            fieldName
-          )
+          nnkDotExpr.newTree(nnkDotExpr.newTree(config, ident(configName)), fieldName)
         )
-      )
+      ),
     )
     result.add(ofBranch)
 
@@ -93,7 +92,7 @@ macro getConstructionTimeField*(shipClass: ShipClass, config: untyped): untyped 
     "TroopTransport": "troop_transport_base_time",
     "ETAC": "etac_base_time",
     "Scout": "scout_base_time",
-    "PlanetBreaker": "planetbreaker_base_time"
+    "PlanetBreaker": "planetbreaker_base_time",
   }
 
   # Generate case branches
@@ -101,10 +100,8 @@ macro getConstructionTimeField*(shipClass: ShipClass, config: untyped): untyped 
     let ofBranch = nnkOfBranch.newTree(
       nnkDotExpr.newTree(ident("ShipClass"), ident(enumName)),
       nnkStmtList.newTree(
-        nnkReturnStmt.newTree(
-          nnkDotExpr.newTree(config, ident(fieldName))
-        )
-      )
+        nnkReturnStmt.newTree(nnkDotExpr.newTree(config, ident(fieldName)))
+      ),
     )
     result.add(ofBranch)
 
@@ -147,7 +144,7 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
       time: facilitiesConfig.shipyard.build_time,
       requiresSpaceport: facilitiesConfig.shipyard.requires_spaceport,
       requiresShipyard: false,
-      cstRequirement: 0  # No CST requirement
+      cstRequirement: 0, # No CST requirement
     )
   of "Spaceport":
     BuildingConfig(
@@ -155,7 +152,7 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
       time: facilitiesConfig.spaceport.build_time,
       requiresSpaceport: false,
       requiresShipyard: false,
-      cstRequirement: 0
+      cstRequirement: 0,
     )
   of "Starbase":
     BuildingConfig(
@@ -163,7 +160,7 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
       time: constructionTimes.starbase_turns,
       requiresSpaceport: false,
       requiresShipyard: constructionTimes.starbase_requires_shipyard,
-      cstRequirement: globalShipsConfig.starbase.tech_level  # CST3 from ships.toml
+      cstRequirement: globalShipsConfig.starbase.tech_level, # CST3 from ships.toml
     )
   of "GroundBattery":
     BuildingConfig(
@@ -171,7 +168,7 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
       time: constructionTimes.ground_battery_turns,
       requiresSpaceport: false,
       requiresShipyard: false,
-      cstRequirement: 0
+      cstRequirement: 0,
     )
   of "FighterSquadron":
     BuildingConfig(
@@ -179,7 +176,7 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
       time: 1,
       requiresSpaceport: false,
       requiresShipyard: false,
-      cstRequirement: 0
+      cstRequirement: 0,
     )
   of "Army", "army":
     BuildingConfig(
@@ -187,7 +184,7 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
       time: 1,
       requiresSpaceport: false,
       requiresShipyard: false,
-      cstRequirement: 0
+      cstRequirement: 0,
     )
   of "Marine", "marine_division":
     BuildingConfig(
@@ -195,10 +192,16 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
       time: 1,
       requiresSpaceport: false,
       requiresShipyard: false,
-      cstRequirement: 0
+      cstRequirement: 0,
     )
   else:
-    BuildingConfig(cost: 50, time: 1, requiresSpaceport: false, requiresShipyard: false, cstRequirement: 0)
+    BuildingConfig(
+      cost: 50,
+      time: 1,
+      requiresSpaceport: false,
+      requiresShipyard: false,
+      cstRequirement: 0,
+    )
 
 proc getBuildingCost*(buildingType: string): int =
   ## Get construction cost for building type from config
@@ -209,7 +212,7 @@ proc getBuildingTime*(buildingType: string): int =
   ## Building construction completes instantly (1 turn)
   ## Per new time narrative: turns represent variable time periods (1-15 years)
   ## Multi-turn construction would cause severe balance issues across map sizes
-  return 1  # Always instant
+  return 1 # Always instant
 
 proc requiresSpaceport*(buildingType: string): bool =
   ## Check if building requires a spaceport
@@ -261,5 +264,7 @@ proc getMarineBuildCost*(): int =
 
 ## Export for use in construction.nim
 export getShipConstructionCost, getShipBaseBuildTime, getShipCSTRequirement
-export getBuildingCost, getBuildingTime, requiresSpaceport, requiresShipyard, getBuildingCSTRequirement
+export
+  getBuildingCost, getBuildingTime, requiresSpaceport, requiresShipyard,
+  getBuildingCSTRequirement
 export getPlanetaryShieldCost, getArmyBuildCost, getMarineBuildCost

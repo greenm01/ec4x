@@ -8,12 +8,10 @@ import ../../types/[telemetry, core, game_state, event, squadron]
 import ../../state/interators
 
 proc collectFleetMetrics*(
-  state: GameState,
-  houseId: HouseId,
-  prevMetrics: DiagnosticMetrics
+    state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
 ): DiagnosticMetrics =
   ## Collect fleet activity metrics from events and GameState
-  result = prevMetrics  # Start with previous metrics
+  result = prevMetrics # Start with previous metrics
 
   # Initialize counters for this turn
   var fleetsMoved: int32 = 0
@@ -24,9 +22,10 @@ proc collectFleetMetrics*(
 
   # Process events from state.lastTurnEvents
   for event in state.lastTurnEvents:
-    if event.houseId != some(houseId): continue
+    if event.houseId != some(houseId):
+      continue
 
-    case event.eventType:
+    case event.eventType
     of FleetArrived:
       fleetsMoved += 1
     of ColonyEstablished:

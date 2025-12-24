@@ -13,10 +13,14 @@ type
     investmentCost*: int32
 
   BuildType* {.pure.} = enum
-    Ship, Facility, Ground, Industrial, Infrastructure
+    Ship
+    Facility
+    Ground
+    Industrial
+    Infrastructure
 
   BuildCommand* = object
-    colonyId*: ColonyId           # Use ColonyId, not SystemId
+    colonyId*: ColonyId # Use ColonyId, not SystemId
     buildType*: BuildType
     quantity*: int32
     shipClass*: Option[ShipClass]
@@ -35,12 +39,13 @@ type
     facilityType*: Option[FacilityType]
 
   ConstructionProjects* = object
-    entities*: EntityManager[ConstructionProjectId, ConstructionProject]  # Core storage
+    entities*: EntityManager[ConstructionProjectId, ConstructionProject] # Core storage
     byColony*: Table[ColonyId, seq[ConstructionProjectId]]
     byFacility*: Table[(FacilityType, uint32), seq[ConstructionProjectId]]
 
   RepairTargetType* {.pure.} = enum
-    Ship, Starbase
+    Ship
+    Starbase
 
   RepairProject* = object
     id*: RepairProjectId
@@ -60,7 +65,7 @@ type
     priority*: int32
 
   RepairProjects* = object
-    entities*: EntityManager[RepairProjectId, RepairProject]  # Core storage
+    entities*: EntityManager[RepairProjectId, RepairProject] # Core storage
     byColony*: Table[ColonyId, seq[RepairProjectId]]
     byFacility*: Table[(FacilityType, uint32), seq[RepairProjectId]]
 
@@ -70,7 +75,6 @@ type
     itemId*: string
 
   ## Reports
-  
   ProductionReport* = object
     turn*: int32
     completedProjects*: seq[CompletedProject]

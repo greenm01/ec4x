@@ -55,7 +55,7 @@ type
 
   TerraformCommand* = object
     houseId*: HouseId
-    colonyId*: ColonyId          
+    colonyId*: ColonyId
     startTurn*: int32
     turnsRemaining*: int32
     ppCost*: int32
@@ -63,7 +63,7 @@ type
 
   PopulationTransferCommand* = object
     houseId*: HouseId
-    sourceColony*: ColonyId  
+    sourceColony*: ColonyId
     destColony*: ColonyId
     ptuAmount*: int32
 
@@ -77,16 +77,14 @@ type
     populationGrowth*: float32
     prestigeBonus*: int32
 
-  ColonizationAttempt* = object
-    ## Attempt to colonize a planet
+  ColonizationAttempt* = object ## Attempt to colonize a planet
     houseId*: HouseId
     systemId*: SystemId
     fleetId*: FleetId
     ptuUsed*: int
 
-  ColonizationResult* = object
-    ## Result of colonization attempt
+  ColonizationResult* = object ## Result of colonization attempt
     success*: bool
     reason*: string
-    newColony*: Option[Colony]  # Now uses unified Colony from gamestate
+    newColony*: Option[Colony] # Now uses unified Colony from gamestate
     prestigeEvent*: Option[PrestigeEvent]

@@ -9,31 +9,21 @@ import ../../../common/types/core
 import ../../gamestate
 import ../../starmap
 
-proc hasFleetInSystem*(
-  state: GameState,
-  houseId: HouseId,
-  systemId: SystemId
-): bool =
+proc hasFleetInSystem*(state: GameState, houseId: HouseId, systemId: SystemId): bool =
   ## Check if house has any fleet in system
   for fleetId, fleet in state.fleets:
     if fleet.owner == houseId and fleet.location == systemId:
       return true
   return false
 
-proc hasColonyInSystem*(
-  state: GameState,
-  houseId: HouseId,
-  systemId: SystemId
-): bool =
+proc hasColonyInSystem*(state: GameState, houseId: HouseId, systemId: SystemId): bool =
   ## Check if house owns colony in system
   if state.colonies.hasKey(systemId):
     return state.colonies[systemId].owner == houseId
   return false
 
 proc hasStarbaseSurveillance*(
-  state: GameState,
-  houseId: HouseId,
-  systemId: SystemId
+    state: GameState, houseId: HouseId, systemId: SystemId
 ): bool =
   ## Check if house has starbase that can see this system
   ## Starbases provide surveillance of their system + adjacent systems
@@ -54,12 +44,11 @@ proc hasStarbaseSurveillance*(
   return false
 
 proc hasPresenceInSystem*(
-  state: GameState,
-  houseId: HouseId,
-  systemId: SystemId
+    state: GameState, houseId: HouseId, systemId: SystemId
 ): bool =
   ## Check if house has any presence (fleet, colony, or surveillance) in system
   ## Used to determine combat event visibility
-  return hasFleetInSystem(state, houseId, systemId) or
-         hasColonyInSystem(state, houseId, systemId) or
-         hasStarbaseSurveillance(state, houseId, systemId)
+  return
+    hasFleetInSystem(state, houseId, systemId) or
+    hasColonyInSystem(state, houseId, systemId) or
+    hasStarbaseSurveillance(state, houseId, systemId)

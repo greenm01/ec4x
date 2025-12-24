@@ -8,12 +8,10 @@ import ../../types/[telemetry, core, game_state, event, diplomacy, house]
 import ../../state/interators
 
 proc collectDiplomacyMetrics*(
-  state: GameState,
-  houseId: HouseId,
-  prevMetrics: DiagnosticMetrics
+    state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
 ): DiagnosticMetrics =
   ## Collect diplomacy metrics from events and GameState
-  result = prevMetrics  # Start with previous metrics
+  result = prevMetrics # Start with previous metrics
 
   # The 'house' variable is not directly used in this collector after the check for houseOpt.isNone. 
   # Its purpose was primarily to ensure the house exists before proceeding, which is now handled by the early return.
@@ -36,7 +34,7 @@ proc collectDiplomacyMetrics*(
 
     if state.diplomaticRelation.hasKey(key1):
       let relation = state.diplomaticRelation[key1]
-      case relation.state:
+      case relation.state
       of DiplomaticState.Neutral:
         neutralCount += 1
       of DiplomaticState.Hostile:
@@ -45,7 +43,7 @@ proc collectDiplomacyMetrics*(
         enemyCount += 1
     elif state.diplomaticRelation.hasKey(key2):
       let relation = state.diplomaticRelation[key2]
-      case relation.state:
+      case relation.state
       of DiplomaticState.Neutral:
         neutralCount += 1
       of DiplomaticState.Hostile:
@@ -81,12 +79,11 @@ proc collectDiplomacyMetrics*(
 
   for event in state.lastTurnEvents:
     # Check if this house is involved in the diplomatic event
-    if event.houseId != some(houseId) and
-       event.sourceHouseId != some(houseId) and
-       event.targetHouseId != some(houseId):
+    if event.houseId != some(houseId) and event.sourceHouseId != some(houseId) and
+        event.targetHouseId != some(houseId):
       continue
 
-    case event.eventType:
+    case event.eventType
     of TreatyAccepted:
       pactFormations += 1
     of TreatyBroken:
@@ -102,10 +99,9 @@ proc collectDiplomacyMetrics*(
 
   result.pactFormationsTotal = prevMetrics.pactFormationsTotal + pactFormations
   result.pactBreaksTotal = prevMetrics.pactBreaksTotal + pactBreaks
-  result.hostilityDeclarationsTotal = prevMetrics.hostilityDeclarationsTotal +
-    hostilityDeclarations
-  result.warDeclarationsTotal = prevMetrics.warDeclarationsTotal +
-    warDeclarations
+  result.hostilityDeclarationsTotal =
+    prevMetrics.hostilityDeclarationsTotal + hostilityDeclarations
+  result.warDeclarationsTotal = prevMetrics.warDeclarationsTotal + warDeclarations
 
   # ================================================================
   # BILATERAL RELATIONS (dynamic for any number of houses)
@@ -123,13 +119,14 @@ proc collectDiplomacyMetrics*(
     let key1 = (houseId, otherHouse.id)
     let key2 = (otherHouse.id, houseId)
 
-    var dipState = DiplomaticState.Neutral  # Default
+    var dipState = DiplomaticState.Neutral # Default
     if state.diplomaticRelation.hasKey(key1):
       dipState = state.diplomaticRelation[key1].state
     elif state.diplomaticRelation.hasKey(key2):
       dipState = state.diplomaticRelation[key2].state
 
-    let stateStr = case dipState:
+    let stateStr =
+      case dipState
       of DiplomaticState.Neutral: "N"
       of DiplomaticState.Hostile: "H"
       of DiplomaticState.Enemy: "E"

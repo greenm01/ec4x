@@ -2,14 +2,16 @@ import std/[tables, options, math, algorithm, logging]
 import /[conflict_phase, income_phase, command_phase, production_phase]
 import ../types/[core, game_state]
 
-proc executeTurnCycle*(state: var GameState, commands: Table[HouseId, CommandPacket]): TurnReport =
+proc executeTurnCycle*(
+    state: var GameState, commands: Table[HouseId, CommandPacket]
+): TurnReport =
   # Canonical turn cycle
   conflict_phase.execute(state)
   income_phase.execute(state)
   advanceTurn(state)
   command_phase.execute(state, commands)
   production_phase.execute(state)
-  
+
   generateTurnReport(state)
 
 proc advanceTurn*(state: var GameState) =
@@ -38,10 +40,11 @@ proc getCurrentGameAct*(state: var GameState, config: ActProgressionConfig): Gam
   # Calculate current metrics
   let totalSystems = state.starMap.systems.len
   let colonizedSystems = state.colonies.len
-  let colonizationPercent = if totalSystems > 0:
-    colonizedSystems.float / totalSystems.float
-  else:
-    0.0
+  let colonizationPercent =
+    if totalSystems > 0:
+      colonizedSystems.float / totalSystems.float
+    else:
+      0.0
 
   # Count total prestige across all active (non-eliminated) houses
   var totalPrestige = 0
@@ -66,7 +69,10 @@ proc getCurrentGameAct*(state: var GameState, config: ActProgressionConfig): Gam
           sortedHouses.add((houseId, house.prestige))
 
       # Sort by prestige descending
-      sortedHouses.sort(proc (a, b: auto): int = cmp(b.prestige, a.prestige))
+      sortedHouses.sort(
+        proc(a, b: auto): int =
+          cmp(b.prestige, a.prestige)
+      )
 
       # Capture top 3 (or fewer if less than 3 houses remain)
       let top3Count = min(3, sortedHouses.len)
@@ -80,11 +86,12 @@ proc getCurrentGameAct*(state: var GameState, config: ActProgressionConfig): Gam
       state.actProgression.currentAct = GameAct.Act2_RisingTensions
       state.actProgression.actStartTurn = state.turn
 
-      info "Act progression: Transitioned to Act 2 (Rising Tensions) at turn ", state.turn,
-           " (colonization: ", int(colonizationPercent * 100), "%)"
-      debug "Act 2 top 3 powers: ", $state.actProgression.act2TopThreeHouses,
-            " with prestige ", $state.actProgression.act2TopThreePrestige
-
+      info "Act progression: Transitioned to Act 2 (Rising Tensions) at turn ",
+        state.turn, " (colonization: ", int(colonizationPercent * 100), "%)"
+      debug "Act 2 top 3 powers: ",
+        $state.actProgression.act2TopThreeHouses,
+        " with prestige ",
+        $state.actProgression.act2TopThreePrestige
   of GameAct.Act2_RisingTensions:
     # Act 2 → Act 3 Gate: Major power eliminated (any top-3 house from Act 2 start)
     for houseId in state.actProgression.act2TopThreeHouses:
@@ -93,10 +100,9 @@ proc getCurrentGameAct*(state: var GameState, config: ActProgressionConfig): Gam
         state.actProgression.currentAct = GameAct.Act3_TotalWar
         state.actProgression.actStartTurn = state.turn
 
-        info "Act progression: Transitioned to Act 3 (Total War) at turn ", state.turn,
-             " (major power eliminated: House ", houseId, ")"
+        info "Act progression: Transitioned to Act 3 (Total War) at turn ",
+          state.turn, " (major power eliminated: House ", houseId, ")"
         break
-
   of GameAct.Act3_TotalWar:
     # Act 3 → Act 4 Gate: Prestige dominance (>50% of total prestige)
     if totalPrestige > 0:
@@ -106,10 +112,13 @@ proc getCurrentGameAct*(state: var GameState, config: ActProgressionConfig): Gam
         state.actProgression.currentAct = GameAct.Act4_Endgame
         state.actProgression.actStartTurn = state.turn
 
-        info "Act progression: Transitioned to Act 4 (Endgame) at turn ", state.turn,
-             " (House ", maxPrestigeHouse, " controls ", int(prestigePercent * 100),
-             "% of total prestige)"
-
+        info "Act progression: Transitioned to Act 4 (Endgame) at turn ",
+          state.turn,
+          " (House ",
+          maxPrestigeHouse,
+          " controls ",
+          int(prestigePercent * 100),
+          "% of total prestige)"
   of GameAct.Act4_Endgame:
     # Already in final act, no further transitions
     discard

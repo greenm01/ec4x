@@ -11,16 +11,16 @@
 import std/[math, strformat, logging]
 
 type
-  ValidationError* = object of CatchableError
-    ## Exception raised when validation fails
+  ValidationError* = object of CatchableError ## Exception raised when validation fails
 
   ValidationSeverity* {.pure.} = enum
     ## Severity level for validation failures
-    vWarning  ## Log warning but continue execution
-    vError    ## Raise exception and halt
+    vWarning ## Log warning but continue execution
+    vError ## Raise exception and halt
 
-proc validateRange*(value: int, min, max: int, fieldName: string,
-                    severity = ValidationSeverity.vError) =
+proc validateRange*(
+    value: int, min, max: int, fieldName: string, severity = ValidationSeverity.vError
+) =
   ## Validates that a value is within the specified range [min, max]
   ##
   ## Example:
@@ -34,8 +34,12 @@ proc validateRange*(value: int, min, max: int, fieldName: string,
     of ValidationSeverity.vError:
       raise newException(ValidationError, msg)
 
-proc validateRange*(value: float, min, max: float, fieldName: string,
-                    severity = ValidationSeverity.vError) =
+proc validateRange*(
+    value: float,
+    min, max: float,
+    fieldName: string,
+    severity = ValidationSeverity.vError,
+) =
   ## Validates that a float value is within the specified range [min, max]
   if value < min or value > max:
     let msg = &"{fieldName} must be between {min} and {max}, got {value}"
@@ -52,14 +56,12 @@ proc validatePositive*(value: int, fieldName: string) =
   ##   validatePositive(10, "build_cost")     # OK
   ##   validatePositive(0, "build_cost")      # Raises ValidationError
   if value <= 0:
-    raise newException(ValidationError,
-      &"{fieldName} must be positive, got {value}")
+    raise newException(ValidationError, &"{fieldName} must be positive, got {value}")
 
 proc validatePositive*(value: float, fieldName: string) =
   ## Validates that a float value is strictly positive (> 0)
   if value <= 0.0:
-    raise newException(ValidationError,
-      &"{fieldName} must be positive, got {value}")
+    raise newException(ValidationError, &"{fieldName} must be positive, got {value}")
 
 proc validateNonNegative*(value: int, fieldName: string) =
   ## Validates that a value is non-negative (>= 0)
@@ -68,16 +70,18 @@ proc validateNonNegative*(value: int, fieldName: string) =
   ##   validateNonNegative(0, "upkeep_cost")   # OK
   ##   validateNonNegative(-5, "upkeep_cost")  # Raises ValidationError
   if value < 0:
-    raise newException(ValidationError,
-      &"{fieldName} must be non-negative, got {value}")
+    raise
+      newException(ValidationError, &"{fieldName} must be non-negative, got {value}")
 
 proc validateNonNegative*(value: float, fieldName: string) =
   ## Validates that a float value is non-negative (>= 0)
   if value < 0.0:
-    raise newException(ValidationError,
-      &"{fieldName} must be non-negative, got {value}")
+    raise
+      newException(ValidationError, &"{fieldName} must be non-negative, got {value}")
 
-proc validateRatio*(value: float, fieldName: string, severity = ValidationSeverity.vError) =
+proc validateRatio*(
+    value: float, fieldName: string, severity = ValidationSeverity.vError
+) =
   ## Validates that a value is a valid ratio between 0.0 and 1.0
   ##
   ## Example:
@@ -91,8 +95,12 @@ proc validateRatio*(value: float, fieldName: string, severity = ValidationSeveri
     of ValidationSeverity.vError:
       raise newException(ValidationError, msg)
 
-proc validateSumToOne*(values: openArray[float], tolerance = 0.01,
-                       context: string, severity = ValidationSeverity.vError) =
+proc validateSumToOne*(
+    values: openArray[float],
+    tolerance = 0.01,
+    context: string,
+    severity = ValidationSeverity.vError,
+) =
   ## Validates that a set of values sum to approximately 1.0
   ## Allows for small floating-point rounding errors via tolerance
   ##
@@ -118,18 +126,21 @@ proc validateMinLessThanMax*(min, max: int, fieldName: string) =
   ##   validateMinLessThanMax(1, 10, "pu_range")    # OK
   ##   validateMinLessThanMax(10, 5, "pu_range")    # Raises ValidationError
   if min >= max:
-    raise newException(ValidationError,
-      &"{fieldName}: min ({min}) must be less than max ({max})")
+    raise newException(
+      ValidationError, &"{fieldName}: min ({min}) must be less than max ({max})"
+    )
 
 proc validateMinLessThanMax*(min, max: float, fieldName: string) =
   ## Validates that min < max for a float range definition
   if min >= max:
-    raise newException(ValidationError,
-      &"{fieldName}: min ({min}) must be less than max ({max})")
+    raise newException(
+      ValidationError, &"{fieldName}: min ({min}) must be less than max ({max})"
+    )
 
 proc validatePercentage*(value: float, fieldName: string) =
   ## Validates that a value is a valid percentage (0.0 to 100.0)
   ## Note: For ratios (0.0 to 1.0), use validateRatio instead
   if value < 0.0 or value > 100.0:
-    raise newException(ValidationError,
-      &"{fieldName} must be between 0.0 and 100.0, got {value}")
+    raise newException(
+      ValidationError, &"{fieldName} must be between 0.0 and 100.0, got {value}"
+    )

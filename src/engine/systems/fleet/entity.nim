@@ -10,29 +10,38 @@
 ## - All ships use unified Squadron structure with squadronType classification
 
 import ../squadron/entity as squadron
-import ../ship/entity as ship_entity  # Ship helper functions
+import ../ship/entity as ship_entity # Ship helper functions
 import ../../types/[core, fleet, ship, squadron as squadron_types, combat, starmap]
-import ../../state/entity_manager  # For getEntity()
+import ../../state/entity_manager # For getEntity()
 import std/[algorithm, strutils, options]
 
 export FleetId, SystemId, HouseId, LaneType, FleetMissionState
-export Squadron, Ship, ShipClass  # Export for fleet users
-export SquadronType, ShipCargo, CargoType  # Export squadron classification and cargo types
+export Squadron, Ship, ShipClass # Export for fleet users
+export
+  SquadronType, ShipCargo, CargoType # Export squadron classification and cargo types
 
-proc newFleet*(squadronIds: seq[SquadronId] = @[],
-               id: FleetId = FleetId(0), owner: HouseId = HouseId(0),
-               location: SystemId = SystemId(0),
-               status: FleetStatus = FleetStatus.Active,
-               autoBalanceSquadrons: bool = true): Fleet =
+proc newFleet*(
+    squadronIds: seq[SquadronId] = @[],
+    id: FleetId = FleetId(0),
+    owner: HouseId = HouseId(0),
+    location: SystemId = SystemId(0),
+    status: FleetStatus = FleetStatus.Active,
+    autoBalanceSquadrons: bool = true,
+): Fleet =
   ## Create a new fleet with the given squadron IDs
   ## Supports all squadron types: Combat, Intel, Expansion, Auxiliary, Fighter
-  Fleet(id: id, squadrons: squadronIds,
-        houseId: owner, location: location, status: status,
-        autoBalanceSquadrons: autoBalanceSquadrons,
-        missionState: FleetMissionState.None,
-        missionType: none(int32),
-        missionTarget: none(SystemId),
-        missionStartTurn: 0)
+  Fleet(
+    id: id,
+    squadrons: squadronIds,
+    houseId: owner,
+    location: location,
+    status: status,
+    autoBalanceSquadrons: autoBalanceSquadrons,
+    missionState: FleetMissionState.None,
+    missionType: none(int32),
+    missionTarget: none(SystemId),
+    missionStartTurn: 0,
+  )
 
 proc `$`*(f: Fleet, squadrons: Squadrons, ships: Ships): string =
   ## String representation of a fleet
@@ -44,7 +53,8 @@ proc `$`*(f: Fleet, squadrons: Squadrons, ships: Ships): string =
       let sq = squadrons.entities.getEntity(sqId).get
       let flagship = ships.entities.getEntity(sq.flagshipId).get
       let status = if flagship.isCrippled: "*" else: ""
-      let typeTag = case sq.squadronType
+      let typeTag =
+        case sq.squadronType
         of SquadronType.Expansion: "[E]"
         of SquadronType.Auxiliary: "[A]"
         of SquadronType.Intel: "[I]"
@@ -77,7 +87,9 @@ proc hasNonIntelSquadrons*(f: Fleet, squadrons: Squadrons): bool =
       return true
   return false
 
-proc canAddSquadron*(f: Fleet, squadron: Squadron, squadrons: Squadrons): tuple[canAdd: bool, reason: string] =
+proc canAddSquadron*(
+    f: Fleet, squadron: Squadron, squadrons: Squadrons
+): tuple[canAdd: bool, reason: string] =
   ## Check if a squadron can be added to this fleet
   ## RULE: Intel squadrons cannot be mixed with other squadron types
 
@@ -90,7 +102,10 @@ proc canAddSquadron*(f: Fleet, squadron: Squadron, squadrons: Squadrons): tuple[
   let fleetHasNonIntel = f.hasNonIntelSquadrons(squadrons)
 
   if isIntelSquadron and fleetHasNonIntel:
-    return (canAdd: false, reason: "Cannot add Intel squadron to fleet with non-Intel squadrons")
+    return (
+      canAdd: false,
+      reason: "Cannot add Intel squadron to fleet with non-Intel squadrons",
+    )
 
   if not isIntelSquadron and fleetHasIntel:
     return (canAdd: false, reason: "Cannot add non-Intel squadron to Intel-only fleet")
@@ -102,9 +117,11 @@ proc add*(f: var Fleet, squadron: Squadron, squadrons: Squadrons) =
   ## Validates that Intel squadrons are not mixed with other types
   let validation = f.canAddSquadron(squadron, squadrons)
   if not validation.canAdd:
-    raise newException(ValueError,
-      "Fleet composition violation: " & validation.reason &
-      " (fleet: " & $f.id & ", squadron: " & $squadron.id & ")")
+    raise newException(
+      ValueError,
+      "Fleet composition violation: " & validation.reason & " (fleet: " & $f.id &
+        ", squadron: " & $squadron.id & ")",
+    )
 
   f.squadrons.add(squadron.id)
 
@@ -117,7 +134,9 @@ proc clear*(f: var Fleet) =
   ## Remove all squadrons from the fleet
   f.squadrons.setLen(0)
 
-proc canTraverse*(f: Fleet, laneType: LaneType, squadrons: Squadrons, ships: Ships): bool =
+proc canTraverse*(
+    f: Fleet, laneType: LaneType, squadrons: Squadrons, ships: Ships
+): bool =
   ## Check if the fleet can traverse a specific type of jump lane
   ## Per operations.md:9 "Fleets containing crippled ships or Expansion/Auxiliary squadrons can not jump across restricted lanes"
   case laneType
@@ -133,7 +152,7 @@ proc canTraverse*(f: Fleet, laneType: LaneType, squadrons: Squadrons, ships: Shi
     for sqId in f.squadrons:
       let sq = squadrons.entities.getEntity(sqId).get
       if sq.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
-        return false  # Cannot cross restricted lanes with Expansion/Auxiliary squadrons
+        return false # Cannot cross restricted lanes with Expansion/Auxiliary squadrons
 
     return true
   else:
@@ -161,7 +180,7 @@ proc isCloaked*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
     for raiderId in raiderIds:
       let raider = ships.entities.getEntity(raiderId).get
       if not raider.isCrippled:
-        return true  # Fleet is cloaked if it has ANY operational raider
+        return true # Fleet is cloaked if it has ANY operational raider
 
   return false
 
@@ -233,7 +252,9 @@ proc hasCombatSquadrons*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
       return true
   return false
 
-proc canMergeWith*(f1: Fleet, f2: Fleet, squadrons: Squadrons): tuple[canMerge: bool, reason: string] =
+proc canMergeWith*(
+    f1: Fleet, f2: Fleet, squadrons: Squadrons
+): tuple[canMerge: bool, reason: string] =
   ## Check if two fleets can merge (validates Intel/combat mixing)
   ## RULE: Intel squadrons cannot be mixed with other squadron types
   ## Intel fleets NEVER mix with anything (pure intelligence operations)
@@ -285,7 +306,9 @@ proc crippledSquadrons*(f: Fleet, squadrons: Squadrons, ships: Ships): seq[Squad
     if flagship.isCrippled:
       result.add(sqId)
 
-proc effectiveSquadrons*(f: Fleet, squadrons: Squadrons, ships: Ships): seq[SquadronId] =
+proc effectiveSquadrons*(
+    f: Fleet, squadrons: Squadrons, ships: Ships
+): seq[SquadronId] =
   ## Get all squadron IDs with non-crippled flagships
   result = @[]
   for sqId in f.squadrons:
@@ -353,7 +376,9 @@ proc getAllShips*(f: Fleet, squadrons: Squadrons, ships: Ships): seq[Ship] =
       let ship = ships.entities.getEntity(shipId).get
       result.add(ship)
 
-proc translateShipIndicesToSquadrons*(f: Fleet, squadrons: Squadrons, indices: seq[int]): seq[int] =
+proc translateShipIndicesToSquadrons*(
+    f: Fleet, squadrons: Squadrons, indices: seq[int]
+): seq[int] =
   ## Convert flat ship indices (from getAllShips()) to squadron indices
   ## Player selects ships by index, this translates to backend structure
   ##
@@ -362,15 +387,15 @@ proc translateShipIndicesToSquadrons*(f: Fleet, squadrons: Squadrons, indices: s
   ##
   ## Returns: Which squadrons to remove (by squadron index)
 
-  var shipIndexToSquadron: seq[int] = @[]  # Maps ship index → squadron index
+  var shipIndexToSquadron: seq[int] = @[] # Maps ship index → squadron index
 
   # Build mapping: ship index → squadron index
-  for sqIdx in 0..<f.squadrons.len:
+  for sqIdx in 0 ..< f.squadrons.len:
     let sqId = f.squadrons[sqIdx]
     let sq = squadrons.entities.getEntity(sqId).get
-    shipIndexToSquadron.add(sqIdx)  # Flagship
+    shipIndexToSquadron.add(sqIdx) # Flagship
     for _ in sq.ships:
-      shipIndexToSquadron.add(sqIdx)  # Each escort
+      shipIndexToSquadron.add(sqIdx) # Each escort
 
   # Track which squadrons have ANY ship selected
   var squadronsToRemove: seq[bool] = newSeq[bool](f.squadrons.len)
@@ -384,6 +409,6 @@ proc translateShipIndicesToSquadrons*(f: Fleet, squadrons: Squadrons, indices: s
 
   # Build final squadron indices list
   result = @[]
-  for sqIdx in 0..<f.squadrons.len:
+  for sqIdx in 0 ..< f.squadrons.len:
     if squadronsToRemove[sqIdx]:
       result.add(sqIdx)

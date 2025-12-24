@@ -2,9 +2,11 @@ import std/tables
 import ./core
 
 type
-
   FacilityType* {.pure.} = enum
-    Shipyard, Spaceport, Drydock, Starbase
+    Shipyard
+    Spaceport
+    Drydock
+    Starbase
 
   FacilityStats* = object
     facilityType*: FacilityType

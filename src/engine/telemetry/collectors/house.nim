@@ -8,12 +8,10 @@ import ../../types/[telemetry, core, game_state, event, house]
 import ../../state/entity_manager
 
 proc collectHouseMetrics*(
-  state: GameState,
-  houseId: HouseId,
-  prevMetrics: DiagnosticMetrics
+    state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
 ): DiagnosticMetrics =
   ## Collect house status metrics from GameState
-  result = prevMetrics  # Start with previous metrics
+  result = prevMetrics # Start with previous metrics
 
   let houseOpt = state.houses.entities.getEntity(houseId)
   if houseOpt.isNone:
@@ -41,9 +39,10 @@ proc collectHouseMetrics*(
   var prestigeLost: int32 = 0
 
   for event in state.lastTurnEvents:
-    if event.houseId != some(houseId): continue
+    if event.houseId != some(houseId):
+      continue
 
-    case event.eventType:
+    case event.eventType
     of PrestigeGained:
       # TODO: Extract amount from event details
       prestigeGained += 1

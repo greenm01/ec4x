@@ -13,11 +13,11 @@ export combat_types
 ## Damage Application
 
 proc applyDamageToSquadron*(
-  squadron: var CombatSquadron,
-  damage: int32,
-  defenseStrength: int32,
-  roundNumber: int32,
-  isCriticalHit: bool
+    squadron: var CombatSquadron,
+    damage: int32,
+    defenseStrength: int32,
+    roundNumber: int32,
+    isCriticalHit: bool,
 ): StateChange =
   ## Apply damage to a squadron and handle state transitions
   ## Returns StateChange describing what happened
@@ -35,10 +35,11 @@ proc applyDamageToSquadron*(
   # Already destroyed - no further damage
   if squadron.state == CombatState.Destroyed:
     return StateChange(
-      targetId: CombatTargetId(kind: CombatTargetKind.Squadron, squadronId: squadron.squadronId),
+      targetId:
+        CombatTargetId(kind: CombatTargetKind.Squadron, squadronId: squadron.squadronId),
       fromState: initialState,
       toState: initialState,
-      destructionProtectionApplied: false
+      destructionProtectionApplied: false,
     )
 
   # Track damage this turn for destruction protection
@@ -65,36 +66,34 @@ proc applyDamageToSquadron*(
         else:
           # Destruction protection applies - stays crippled
           return StateChange(
-            targetId: CombatTargetId(kind: CombatTargetKind.Squadron, squadronId: squadron.squadronId),
+            targetId: CombatTargetId(
+              kind: CombatTargetKind.Squadron, squadronId: squadron.squadronId
+            ),
             fromState: initialState,
             toState: CombatState.Crippled,
-            destructionProtectionApplied: true
+            destructionProtectionApplied: true,
           )
-
   of CombatState.Crippled:
     # Already crippled, check for destruction
     if totalDamage >= ds:
       newState = CombatState.Destroyed
       squadron.state = CombatState.Destroyed
-
   of CombatState.Destroyed:
     # Already handled above
     discard
 
   return StateChange(
-    targetId: CombatTargetId(kind: CombatTargetKind.Squadron, squadronId: squadron.squadronId),
+    targetId:
+      CombatTargetId(kind: CombatTargetKind.Squadron, squadronId: squadron.squadronId),
     fromState: initialState,
     toState: newState,
-    destructionProtectionApplied: false
+    destructionProtectionApplied: false,
   )
 
 ## Damage Application - Facilities
 
 proc applyDamageToFacility*(
-  facility: var CombatFacility,
-  damage: int32,
-  roundNumber: int32,
-  isCriticalHit: bool
+    facility: var CombatFacility, damage: int32, roundNumber: int32, isCriticalHit: bool
 ): StateChange =
   ## Apply damage to a facility and handle state transitions
   ## Returns StateChange describing what happened
@@ -108,16 +107,17 @@ proc applyDamageToFacility*(
   # Already destroyed - no further damage
   if facility.state == CombatState.Destroyed:
     return StateChange(
-      targetId: CombatTargetId(kind: CombatTargetKind.Facility, facilityId: facility.facilityId),
+      targetId:
+        CombatTargetId(kind: CombatTargetKind.Facility, facilityId: facility.facilityId),
       fromState: initialState,
       toState: initialState,
-      destructionProtectionApplied: false
+      destructionProtectionApplied: false,
     )
 
   # Track damage this turn for destruction protection
   facility.damageThisTurn += damage
   let totalDamage = facility.damageThisTurn
-  let ds = facility.defenseStrength  # Use stored DS
+  let ds = facility.defenseStrength # Use stored DS
 
   case facility.state
   of CombatState.Undamaged:
@@ -138,27 +138,28 @@ proc applyDamageToFacility*(
         else:
           # Destruction protection applies - stays crippled
           return StateChange(
-            targetId: CombatTargetId(kind: CombatTargetKind.Facility, facilityId: facility.facilityId),
+            targetId: CombatTargetId(
+              kind: CombatTargetKind.Facility, facilityId: facility.facilityId
+            ),
             fromState: initialState,
             toState: CombatState.Crippled,
-            destructionProtectionApplied: true
+            destructionProtectionApplied: true,
           )
-
   of CombatState.Crippled:
     # Already crippled, check for destruction
     if totalDamage >= ds:
       newState = CombatState.Destroyed
       facility.state = CombatState.Destroyed
-
   of CombatState.Destroyed:
     # Already handled above
     discard
 
   return StateChange(
-    targetId: CombatTargetId(kind: CombatTargetKind.Facility, facilityId: facility.facilityId),
+    targetId:
+      CombatTargetId(kind: CombatTargetKind.Facility, facilityId: facility.facilityId),
     fromState: initialState,
     toState: newState,
-    destructionProtectionApplied: false
+    destructionProtectionApplied: false,
   )
 
 ## Damage Reset (between rounds)
@@ -176,9 +177,7 @@ proc resetRoundDamage*(facility: var CombatFacility) =
 ## Critical Hit Special Rules (Section 7.3.3)
 
 proc findWeakestSquadron*(
-  combatSquadrons: seq[CombatSquadron],
-  squadrons: Squadrons,
-  ships: Ships
+    combatSquadrons: seq[CombatSquadron], squadrons: Squadrons, ships: Ships
 ): Option[SquadronId] =
   ## Find squadron with lowest current DS in combat squadrons list
   ## Used for Force Reduction when critical hit can't reduce selected target
@@ -214,13 +213,13 @@ proc findWeakestSquadron*(
   return weakestId
 
 proc applyForceReduction*(
-  combatSquadrons: var seq[CombatSquadron],
-  targetId: SquadronId,
-  damage: int32,
-  defenseStrength: int32,
-  roundNumber: int32,
-  squadrons: Squadrons,
-  ships: Ships
+    combatSquadrons: var seq[CombatSquadron],
+    targetId: SquadronId,
+    damage: int32,
+    defenseStrength: int32,
+    roundNumber: int32,
+    squadrons: Squadrons,
+    ships: Ships,
 ): StateChange =
   ## Apply Force Reduction rule for critical hits (Section 7.3.3)
   ## If insufficient damage to reduce target, reduce weakest unit instead
@@ -243,7 +242,7 @@ proc applyForceReduction*(
       targetId: CombatTargetId(kind: CombatTargetKind.Squadron, squadronId: targetId),
       fromState: CombatState.Undamaged,
       toState: CombatState.Undamaged,
-      destructionProtectionApplied: false
+      destructionProtectionApplied: false,
     )
 
   # Try to apply damage to target
@@ -253,7 +252,7 @@ proc applyForceReduction*(
     damage,
     defenseStrength,
     roundNumber,
-    isCriticalHit = true  # Force Reduction is from critical hit
+    isCriticalHit = true, # Force Reduction is from critical hit
   )
 
   # If target was reduced (state changed), apply damage and return
@@ -290,11 +289,7 @@ proc applyForceReduction*(
   # Apply damage to weakest squadron
   var weakestCombatSq = combatSquadrons[weakestIdx]
   let weakestChange = applyDamageToSquadron(
-    weakestCombatSq,
-    damage,
-    weakestDS,
-    roundNumber,
-    isCriticalHit = true
+    weakestCombatSq, damage, weakestDS, roundNumber, isCriticalHit = true
   )
 
   combatSquadrons[weakestIdx] = weakestCombatSq
@@ -303,9 +298,13 @@ proc applyForceReduction*(
 ## Batch Damage Operations
 
 proc applySimultaneousDamage*(
-  combatSquadrons: var seq[CombatSquadron],
-  damageMap: seq[tuple[squadronId: SquadronId, damage: int32, defenseStrength: int32, isCritical: bool]],
-  roundNumber: int32
+    combatSquadrons: var seq[CombatSquadron],
+    damageMap: seq[
+      tuple[
+        squadronId: SquadronId, damage: int32, defenseStrength: int32, isCritical: bool
+      ]
+    ],
+    roundNumber: int32,
 ): seq[StateChange] =
   ## Apply damage from multiple attackers simultaneously
   ## Handles overkill and destruction protection correctly
@@ -328,7 +327,7 @@ proc applySimultaneousDamage*(
   for entry in damageMap:
     let idx = squadronIndices.getOrDefault(entry.squadronId, -1)
     if idx < 0:
-      continue  # Squadron not found
+      continue # Squadron not found
 
     var combatSq = combatSquadrons[idx]
 
@@ -351,10 +350,10 @@ proc applySimultaneousDamage*(
     # Apply state transitions based on accumulated damage
     let change = applyDamageToSquadron(
       combatSq,
-      damage = 0,  # Damage already accumulated above
+      damage = 0, # Damage already accumulated above
       defenseStrength = entry.defenseStrength,
       roundNumber = roundNumber,
-      isCriticalHit = entry.isCritical
+      isCriticalHit = entry.isCritical,
     )
 
     combatSquadrons[idx] = combatSq

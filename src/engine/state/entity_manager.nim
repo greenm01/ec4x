@@ -15,20 +15,22 @@ proc addEntity*[ID, T](collection: var EntityManager[ID, T], id: ID, entity: T) 
 
 proc updateEntity*[ID, T](mgr: var EntityManager[ID, T], id: ID, newEntity: T) =
   ## Updates an existing entity in the entity manager.
-  if not mgr.index.contains(id): return
+  if not mgr.index.contains(id):
+    return
   let idx = mgr.index[id]
   mgr.data[idx] = newEntity
 
 proc removeEntity*[ID, T](mgr: var EntityManager[ID, T], id: ID) =
-  if not mgr.index.contains(id): return
+  if not mgr.index.contains(id):
+    return
 
   let idxToRemove = mgr.index[id]
   let lastIdx = mgr.data.len - 1
-  
+
   if idxToRemove != lastIdx:
     let lastEntity = mgr.data[lastIdx]
     mgr.data[idxToRemove] = lastEntity
-    mgr.index[lastEntity.id] = idxToRemove 
+    mgr.index[lastEntity.id] = idxToRemove
 
   mgr.data.setLen(lastIdx)
   mgr.index.del(id)

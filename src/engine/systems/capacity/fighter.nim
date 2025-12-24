@@ -23,27 +23,31 @@
 ## Data-oriented design: Calculate violations (pure), apply enforcement (explicit mutations)
 
 import std/[sequtils, algorithm, math, tables, strutils, options]
-import ../../types/[
-  capacity, core, game_state, squadron, ship, production, event, colony, house
-]
+import
+  ../../types/
+    [capacity, core, game_state, squadron, ship, production, event, colony, house]
 import ../../state/[entity_manager, game_state as gs_helpers, iterators]
 import ../../entities/squadron_ops
 import ../../event_factory/fleet_ops
 import ../../config/[military_config, tech_config]
 import ../../../common/logger
 
-export capacity.CapacityViolation, capacity.EnforcementAction,
-       capacity.ViolationSeverity
+export
+  capacity.CapacityViolation, capacity.EnforcementAction, capacity.ViolationSeverity
 
 proc getFighterDoctrineMultiplier(fdLevel: int): float =
   ## Get Fighter Doctrine tech multiplier per assets.md:2.4.1
   ## Reads from globalTechConfig.fighter_doctrine
   let cfg = globalTechConfig.fighter_doctrine
   case fdLevel
-  of 1: return cfg.level_1_capacity_multiplier.float
-  of 2: return cfg.level_2_capacity_multiplier.float
-  of 3: return cfg.level_3_capacity_multiplier.float
-  else: return cfg.level_1_capacity_multiplier.float  # Default to base
+  of 1:
+    return cfg.level_1_capacity_multiplier.float
+  of 2:
+    return cfg.level_2_capacity_multiplier.float
+  of 3:
+    return cfg.level_3_capacity_multiplier.float
+  else:
+    return cfg.level_1_capacity_multiplier.float # Default to base
 
 proc calculateMaxFighterCapacity*(industrialUnits: int, fdLevel: int): int =
   ## Pure calculation of maximum fighter squadron capacity
@@ -54,16 +58,19 @@ proc calculateMaxFighterCapacity*(industrialUnits: int, fdLevel: int): int =
   let divisor = globalMilitaryConfig.fighter_mechanics.fighter_capacity_iu_divisor.float
   return int(floor(float(industrialUnits) / divisor) * fdMult)
 
-proc analyzeCapacity*(state: GameState, colony: Colony, houseId: HouseId): capacity.CapacityViolation =
+proc analyzeCapacity*(
+    state: GameState, colony: Colony, houseId: HouseId
+): capacity.CapacityViolation =
   ## Pure function - analyze colony's fighter capacity status
   ## Returns capacity analysis without mutating state
 
   # Get Fighter Doctrine level from house tech tree
   let houseOpt = gs_helpers.getHouse(state, houseId)
-  let fdLevel = if houseOpt.isSome:
-                  houseOpt.get().techTree.levels.fighterDoctrine
-                else:
-                  1  # Default to base level
+  let fdLevel =
+    if houseOpt.isSome:
+      houseOpt.get().techTree.levels.fighterDoctrine
+    else:
+      1 # Default to base level
 
   # Count current fighters (only those actually commissioned, referenced by colony)
   var current = colony.fighterSquadronIds.len
@@ -93,32 +100,37 @@ proc analyzeCapacity*(state: GameState, colony: Colony, houseId: HouseId): capac
 
   # Determine severity based on existing violation tracking
   # Use colony.capacityViolation for grace period tracking
-  let severity = if excess == 0:
-                   capacity.ViolationSeverity.None
-                 elif colony.capacityViolation.severity != capacity.ViolationSeverity.None:
-                   # Existing violation - check grace period
-                   if colony.capacityViolation.graceTurnsRemaining <= 0:
-                     capacity.ViolationSeverity.Critical
-                   else:
-                     capacity.ViolationSeverity.Violation
-                 else:
-                   capacity.ViolationSeverity.Violation  # New violation
+  let severity =
+    if excess == 0:
+      capacity.ViolationSeverity.None
+    elif colony.capacityViolation.severity != capacity.ViolationSeverity.None:
+      # Existing violation - check grace period
+      if colony.capacityViolation.graceTurnsRemaining <= 0:
+        capacity.ViolationSeverity.Critical
+      else:
+        capacity.ViolationSeverity.Violation
+    else:
+      capacity.ViolationSeverity.Violation # New violation
 
   result = capacity.CapacityViolation(
     capacityType: capacity.CapacityType.FighterSquadron,
-    entity: capacity.EntityIdUnion(kind: capacity.CapacityType.FighterSquadron, colonyId: colony.id),
+    entity: capacity.EntityIdUnion(
+      kind: capacity.CapacityType.FighterSquadron, colonyId: colony.id
+    ),
     current: int32(current),
     maximum: int32(maximum),
     excess: int32(excess),
     severity: severity,
-    graceTurnsRemaining: if colony.capacityViolation.severity != capacity.ViolationSeverity.None:
-                           colony.capacityViolation.graceTurnsRemaining
-                         else:
-                           2'i32,
-    violationTurn: if colony.capacityViolation.severity != capacity.ViolationSeverity.None:
-                     colony.capacityViolation.violationTurn
-                   else:
-                     int32(state.turn)
+    graceTurnsRemaining:
+      if colony.capacityViolation.severity != capacity.ViolationSeverity.None:
+        colony.capacityViolation.graceTurnsRemaining
+      else:
+        2'i32,
+    violationTurn:
+      if colony.capacityViolation.severity != capacity.ViolationSeverity.None:
+        colony.capacityViolation.violationTurn
+      else:
+        int32(state.turn),
   )
 
 proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
@@ -137,7 +149,9 @@ proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
       if status.severity != capacity.ViolationSeverity.None:
         result.add(status)
 
-proc updateViolationTracking*(state: var GameState, violation: capacity.CapacityViolation) =
+proc updateViolationTracking*(
+    state: var GameState, violation: capacity.CapacityViolation
+) =
   ## Update violation tracking for a colony
   ## Explicit mutation - applies tracking state changes
 
@@ -154,19 +168,29 @@ proc updateViolationTracking*(state: var GameState, violation: capacity.Capacity
       # New violation - start grace period
       colony.capacityViolation = capacity.CapacityViolation(
         capacityType: capacity.CapacityType.FighterSquadron,
-        entity: capacity.EntityIdUnion(kind: capacity.CapacityType.FighterSquadron, colonyId: colonyId),
+        entity: capacity.EntityIdUnion(
+          kind: capacity.CapacityType.FighterSquadron, colonyId: colonyId
+        ),
         current: violation.current,
         maximum: violation.maximum,
         excess: violation.excess,
         severity: capacity.ViolationSeverity.Violation,
         graceTurnsRemaining: 2'i32,
-        violationTurn: int32(state.turn)
+        violationTurn: int32(state.turn),
       )
 
-      logger.logWarn("Military", "Fighter capacity violation - new",
-              " colony=", $colonyId, " type=industrial",
-              " excess=", $violation.excess, " gracePeriod=2turns",
-              " currentIU=", $colony.industrial.units)
+      logger.logWarn(
+        "Military",
+        "Fighter capacity violation - new",
+        " colony=",
+        $colonyId,
+        " type=industrial",
+        " excess=",
+        $violation.excess,
+        " gracePeriod=2turns",
+        " currentIU=",
+        $colony.industrial.units,
+      )
     else:
       # Existing violation - decrement grace period
       colony.capacityViolation.graceTurnsRemaining -= 1
@@ -174,29 +198,40 @@ proc updateViolationTracking*(state: var GameState, violation: capacity.Capacity
       colony.capacityViolation.maximum = violation.maximum
       colony.capacityViolation.excess = violation.excess
 
-      logger.logWarn("Military", "Fighter capacity violation - continuing",
-              " colony=", $colonyId, " type=industrial",
-              " graceRemaining=", $colony.capacityViolation.graceTurnsRemaining)
+      logger.logWarn(
+        "Military",
+        "Fighter capacity violation - continuing",
+        " colony=",
+        $colonyId,
+        " type=industrial",
+        " graceRemaining=",
+        $colony.capacityViolation.graceTurnsRemaining,
+      )
   else:
     # No violation - clear tracking
     if colony.capacityViolation.severity != capacity.ViolationSeverity.None:
-      logger.logDebug("Military", "Fighter capacity violation resolved",
-              " colony=", $colonyId)
+      logger.logDebug(
+        "Military", "Fighter capacity violation resolved", " colony=", $colonyId
+      )
       colony.capacityViolation = capacity.CapacityViolation(
         capacityType: capacity.CapacityType.FighterSquadron,
-        entity: capacity.EntityIdUnion(kind: capacity.CapacityType.FighterSquadron, colonyId: colonyId),
+        entity: capacity.EntityIdUnion(
+          kind: capacity.CapacityType.FighterSquadron, colonyId: colonyId
+        ),
         current: 0,
         maximum: 0,
         excess: 0,
         severity: capacity.ViolationSeverity.None,
         graceTurnsRemaining: 0,
-        violationTurn: 0
+        violationTurn: 0,
       )
 
   # Update colony in state
   state.colonies.entities.updateEntity(colonyId, colony)
 
-proc planEnforcement*(state: GameState, violation: capacity.CapacityViolation): capacity.EnforcementAction =
+proc planEnforcement*(
+    state: GameState, violation: capacity.CapacityViolation
+): capacity.EnforcementAction =
   ## Plan enforcement actions for expired violations
   ## Pure function - returns enforcement plan without mutations
 
@@ -205,7 +240,7 @@ proc planEnforcement*(state: GameState, violation: capacity.CapacityViolation): 
     entity: violation.entity,
     actionType: "",
     affectedUnitIds: @[],
-    description: ""
+    description: "",
   )
 
   # Check if enforcement needed
@@ -229,7 +264,7 @@ proc planEnforcement*(state: GameState, violation: capacity.CapacityViolation): 
       sortedFighters.add(squadronId)
 
   # Sort by ID (oldest first - lowest IDs were created first)
-  sortedFighters.sort do (a, b: SquadronId) -> int:
+  sortedFighters.sort do(a, b: SquadronId) -> int:
     cmp(uint32(a), uint32(b))
 
   # Select excess fighters for disbanding
@@ -238,11 +273,13 @@ proc planEnforcement*(state: GameState, violation: capacity.CapacityViolation): 
   for i in 0 ..< toDisbandCount:
     result.affectedUnitIds.add($sortedFighters[i])
 
-  result.description = $toDisbandCount & " fighter squadron(s) auto-disbanded at colony-" &
-                      $violation.entity.colonyId & " (capacity violation)"
+  result.description =
+    $toDisbandCount & " fighter squadron(s) auto-disbanded at colony-" &
+    $violation.entity.colonyId & " (capacity violation)"
 
-proc applyEnforcement*(state: var GameState, action: capacity.EnforcementAction,
-                       events: var seq[GameEvent]) =
+proc applyEnforcement*(
+    state: var GameState, action: capacity.EnforcementAction, events: var seq[GameEvent]
+) =
   ## Apply enforcement actions
   ## Explicit mutation - disbands fighters and clears violation
   ## Emits SquadronDisbanded events for tracking
@@ -267,19 +304,26 @@ proc applyEnforcement*(state: var GameState, action: capacity.EnforcementAction,
       let squadron = squadronOpt.get()
 
       # Emit SquadronDisbanded event (fighters use ShipClass.Fighter)
-      events.add(fleet_ops.squadronDisbanded(
-        houseId = colony.owner,
-        squadronId = fighterIdStr,
-        shipClass = ShipClass.Fighter,
-        reason = "Fighter squadron capacity exceeded (IU loss)",
-        systemId = colony.systemId
-      ))
+      events.add(
+        fleet_ops.squadronDisbanded(
+          houseId = colony.owner,
+          squadronId = fighterIdStr,
+          shipClass = ShipClass.Fighter,
+          reason = "Fighter squadron capacity exceeded (IU loss)",
+          systemId = colony.systemId,
+        )
+      )
 
-      logger.logDebug("Military", "Fighter squadron disbanded - capacity violation",
-                " squadronId=", fighterIdStr, " salvage=none")
+      logger.logDebug(
+        "Military", "Fighter squadron disbanded - capacity violation", " squadronId=",
+        fighterIdStr, " salvage=none",
+      )
 
     # Remove from colony's fighter squadron list
-    colony.fighterSquadronIds.keepIf(proc(id: SquadronId): bool = id != fighterId)
+    colony.fighterSquadronIds.keepIf(
+      proc(id: SquadronId): bool =
+        id != fighterId
+    )
 
     # Destroy squadron from state.squadrons EntityManager
     squadron_ops.destroySquadron(state, fighterId)
@@ -287,24 +331,32 @@ proc applyEnforcement*(state: var GameState, action: capacity.EnforcementAction,
   # Clear violation tracking
   colony.capacityViolation = capacity.CapacityViolation(
     capacityType: capacity.CapacityType.FighterSquadron,
-    entity: capacity.EntityIdUnion(kind: capacity.CapacityType.FighterSquadron, colonyId: colonyId),
+    entity: capacity.EntityIdUnion(
+      kind: capacity.CapacityType.FighterSquadron, colonyId: colonyId
+    ),
     current: 0,
     maximum: 0,
     excess: 0,
     severity: capacity.ViolationSeverity.None,
     graceTurnsRemaining: 0,
-    violationTurn: 0
+    violationTurn: 0,
   )
 
   # Update colony in state
   state.colonies.entities.updateEntity(colonyId, colony)
 
-  logger.logDebug("Military", "Capacity enforcement complete",
-            " colony=", $colonyId,
-            " disbanded=", $action.affectedUnitIds.len)
+  logger.logDebug(
+    "Military",
+    "Capacity enforcement complete",
+    " colony=",
+    $colonyId,
+    " disbanded=",
+    $action.affectedUnitIds.len,
+  )
 
-proc processCapacityEnforcement*(state: var GameState,
-                                events: var seq[GameEvent]): seq[capacity.EnforcementAction] =
+proc processCapacityEnforcement*(
+    state: var GameState, events: var seq[GameEvent]
+): seq[capacity.EnforcementAction] =
   ## Main entry point - batch process all capacity violations
   ## Called during Maintenance phase
   ## Data-oriented: analyze all → plan enforcement → apply enforcement
@@ -330,13 +382,15 @@ proc processCapacityEnforcement*(state: var GameState,
           var mutColony = colony
           mutColony.capacityViolation = capacity.CapacityViolation(
             capacityType: capacity.CapacityType.FighterSquadron,
-            entity: capacity.EntityIdUnion(kind: capacity.CapacityType.FighterSquadron, colonyId: colony.id),
+            entity: capacity.EntityIdUnion(
+              kind: capacity.CapacityType.FighterSquadron, colonyId: colony.id
+            ),
             current: 0,
             maximum: 0,
             excess: 0,
             severity: capacity.ViolationSeverity.None,
             graceTurnsRemaining: 0,
-            violationTurn: 0
+            violationTurn: 0,
           )
           state.colonies.entities.updateEntity(colony.id, mutColony)
     return
@@ -359,11 +413,15 @@ proc processCapacityEnforcement*(state: var GameState,
 
   # Step 4: Apply enforcement (mutations)
   if enforcementActions.len > 0:
-    logger.logDebug("Military", "Enforcing expired capacity violations",
-              " count=", $enforcementActions.len)
+    logger.logDebug(
+      "Military",
+      "Enforcing expired capacity violations",
+      " count=",
+      $enforcementActions.len,
+    )
     for action in enforcementActions:
       applyEnforcement(state, action, events)
-      result.add(action)  # Track which actions were applied
+      result.add(action) # Track which actions were applied
   else:
     logger.logDebug("Military", "No violations requiring immediate enforcement")
 
@@ -376,8 +434,9 @@ proc canCommissionFighter*(state: GameState, colony: Colony): bool =
     return false
 
   let violation = analyzeCapacity(state, colony, colony.owner)
-  return violation.severity == capacity.ViolationSeverity.None and
-         violation.current < violation.maximum
+  return
+    violation.severity == capacity.ViolationSeverity.None and
+    violation.current < violation.maximum
 
 ## Design Notes:
 ##

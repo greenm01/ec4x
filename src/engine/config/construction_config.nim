@@ -53,15 +53,16 @@ type
     ground_battery_upkeep*: int
     planetary_shield_upkeep*: int
 
-  ConstructionConfig* = object
-    ## Complete construction configuration loaded from TOML
+  ConstructionConfig* = object ## Complete construction configuration loaded from TOML
     construction*: ConstructionTimesConfig
     repair*: RepairConfig
     modifiers*: ModifiersConfig
     costs*: CostsConfig
     upkeep*: UpkeepConfig
 
-proc loadConstructionConfig*(configPath: string = "config/construction.toml"): ConstructionConfig =
+proc loadConstructionConfig*(
+    configPath: string = "config/construction.toml"
+): ConstructionConfig =
   ## Load construction configuration from TOML file
   ## Uses toml_serialization for type-safe parsing
 

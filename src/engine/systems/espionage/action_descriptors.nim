@@ -10,30 +10,28 @@ export espionage
 
 ## Action-Specific Data
 
-type
-  ActionDescriptor* = object
-    ## Data describing an espionage action's effects
-    action*: EspionageAction
-    detectedDesc*: string
-    successDesc*: string
-    failedPrestigeReason*: string
-    successPrestigeReason*: string
-    attackerSuccessPrestige*: int  # From config
-    targetSuccessPrestige*: int     # Usually negative
-    targetSuccessReason*: string
-    requiresSystem*: bool           # Whether targetSystem is required
-    # Effect generation (if any)
-    hasEffect*: bool
-    effectType*: EffectType
-    effectTurns*: int
-    effectMagnitude*: float
-    effectTargetsSelf*: bool  # For defensive actions like CounterIntelSweep
-    # Special mechanics
-    stealsSRP*: bool
-    srpAmount*: int
-    damagesIU*: bool
-    damageDice*: int  # d6 or d20
-    stealsIntel*: bool
+type ActionDescriptor* = object ## Data describing an espionage action's effects
+  action*: EspionageAction
+  detectedDesc*: string
+  successDesc*: string
+  failedPrestigeReason*: string
+  successPrestigeReason*: string
+  attackerSuccessPrestige*: int # From config
+  targetSuccessPrestige*: int # Usually negative
+  targetSuccessReason*: string
+  requiresSystem*: bool # Whether targetSystem is required
+  # Effect generation (if any)
+  hasEffect*: bool
+  effectType*: EffectType
+  effectTurns*: int
+  effectMagnitude*: float
+  effectTargetsSelf*: bool # For defensive actions like CounterIntelSweep
+  # Special mechanics
+  stealsSRP*: bool
+  srpAmount*: int
+  damagesIU*: bool
+  damageDice*: int # d6 or d20
+  stealsIntel*: bool
 
 ## Action Descriptor Table
 
@@ -58,9 +56,8 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       requiresSystem: false,
       hasEffect: false,
       stealsSRP: true,
-      srpAmount: espConfig.effects.tech_theft_srp
+      srpAmount: espConfig.effects.tech_theft_srp,
     )
-
   of EspionageAction.SabotageLow:
     ActionDescriptor(
       action: action,
@@ -74,9 +71,8 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       requiresSystem: true,
       hasEffect: false,
       damagesIU: true,
-      damageDice: espConfig.effects.sabotage_low_dice
+      damageDice: espConfig.effects.sabotage_low_dice,
     )
-
   of EspionageAction.SabotageHigh:
     ActionDescriptor(
       action: action,
@@ -90,9 +86,8 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       requiresSystem: true,
       hasEffect: false,
       damagesIU: true,
-      damageDice: espConfig.effects.sabotage_high_dice
+      damageDice: espConfig.effects.sabotage_high_dice,
     )
-
   of EspionageAction.Assassination:
     ActionDescriptor(
       action: action,
@@ -107,9 +102,8 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       hasEffect: true,
       effectType: EffectType.SRPReduction,
       effectTurns: espConfig.effects.effect_duration_turns,
-      effectMagnitude: float(espConfig.effects.assassination_srp_reduction)
+      effectMagnitude: float(espConfig.effects.assassination_srp_reduction),
     )
-
   of EspionageAction.CyberAttack:
     ActionDescriptor(
       action: action,
@@ -124,9 +118,8 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       hasEffect: true,
       effectType: EffectType.StarbaseCrippled,
       effectTurns: espConfig.effects.effect_duration_turns,
-      effectMagnitude: 1.0
+      effectMagnitude: 1.0,
     )
-
   of EspionageAction.EconomicManipulation:
     ActionDescriptor(
       action: action,
@@ -141,9 +134,8 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       hasEffect: true,
       effectType: EffectType.NCVReduction,
       effectTurns: espConfig.effects.effect_duration_turns,
-      effectMagnitude: float(espConfig.effects.economic_ncv_reduction)
+      effectMagnitude: float(espConfig.effects.economic_ncv_reduction),
     )
-
   of EspionageAction.PsyopsCampaign:
     ActionDescriptor(
       action: action,
@@ -158,27 +150,25 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       hasEffect: true,
       effectType: EffectType.TaxReduction,
       effectTurns: espConfig.effects.effect_duration_turns,
-      effectMagnitude: float(espConfig.effects.psyops_tax_reduction)
+      effectMagnitude: float(espConfig.effects.psyops_tax_reduction),
     )
-
   of EspionageAction.CounterIntelSweep:
     ActionDescriptor(
       action: action,
       detectedDesc: "Counter-intel sweep detected by enemy operatives",
       successDesc: "Counter-intel sweep successful - intelligence secured",
-      failedPrestigeReason: "",  # Not used for defensive action
+      failedPrestigeReason: "", # Not used for defensive action
       successPrestigeReason: "Counter-intelligence sweep successful",
       attackerSuccessPrestige: 1,
-      targetSuccessPrestige: 0,  # No target prestige change
+      targetSuccessPrestige: 0, # No target prestige change
       targetSuccessReason: "",
       requiresSystem: false,
       hasEffect: true,
       effectType: EffectType.IntelBlocked,
       effectTurns: espConfig.effects.intel_block_duration,
       effectMagnitude: 1.0,
-      effectTargetsSelf: true  # Defensive action
+      effectTargetsSelf: true, # Defensive action
     )
-
   of EspionageAction.IntelligenceTheft:
     ActionDescriptor(
       action: action,
@@ -191,12 +181,14 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       targetSuccessReason: "Intelligence database compromised",
       requiresSystem: false,
       hasEffect: false,
-      stealsIntel: true
+      stealsIntel: true,
     )
-
   of EspionageAction.PlantDisinformation:
-    let avgVariance = (espConfig.effects.disinformation_min_variance +
-                       espConfig.effects.disinformation_max_variance) / 2.0
+    let avgVariance =
+      (
+        espConfig.effects.disinformation_min_variance +
+        espConfig.effects.disinformation_max_variance
+      ) / 2.0
     ActionDescriptor(
       action: action,
       detectedDesc: "Disinformation campaign detected and purged",
@@ -204,11 +196,11 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       failedPrestigeReason: "Failed disinformation campaign",
       successPrestigeReason: "Disinformation campaign successful",
       attackerSuccessPrestige: 2,
-      targetSuccessPrestige: 0,  # No prestige change for target
+      targetSuccessPrestige: 0, # No prestige change for target
       targetSuccessReason: "",
       requiresSystem: false,
       hasEffect: true,
       effectType: EffectType.IntelCorrupted,
       effectTurns: espConfig.effects.disinformation_duration,
-      effectMagnitude: avgVariance
+      effectMagnitude: avgVariance,
     )

@@ -1,11 +1,14 @@
 ## Initializes a new homeworld colony at game startup.
 
 import std/[options, tables]
-import ../types/[core, colony, production, capacity, facilities, ground_unit, game_state]
+import
+  ../types/[core, colony, production, capacity, facilities, ground_unit, game_state]
 import ../state/[id_gen, entity_manager]
 import ../config/[economy_config, facilities_config, game_setup_config]
 
-proc createHomeWorld*(state: var GameState, systemId: SystemId, owner: HouseId): ColonyId =
+proc createHomeWorld*(
+    state: var GameState, systemId: SystemId, owner: HouseId
+): ColonyId =
   ## Create a starting homeworld colony per gameplay.md:1.2
   ## Loads configuration from game_setup/standard.toml
   let setupConfig = game_setup_config.globalGameSetupConfig
@@ -27,12 +30,15 @@ proc createHomeWorld*(state: var GameState, systemId: SystemId, owner: HouseId):
   # Create Starbases
   for i in 0 ..< setupConfig.starting_facilities.starbases:
     let starbaseId = state.generateStarbaseId()
-    let starbase = Starbase(id: starbaseId, colonyId: colonyId, commissionedTurn: 0, isCrippled: false)
+    let starbase = Starbase(
+      id: starbaseId, colonyId: colonyId, commissionedTurn: 0, isCrippled: false
+    )
     state.starbases.entities.addEntity(starbaseId, starbase)
     starbaseIds.add(starbaseId)
 
   # Create Spaceports
-  let baseSpaceportDocks = facilities_config.globalFacilitiesConfig.spaceport.docks.int32
+  let baseSpaceportDocks =
+    facilities_config.globalFacilitiesConfig.spaceport.docks.int32
   # TODO: Revisit research_effects for effectiveDocks. For now, use baseDocks.
   let effectiveSpaceportDocks = baseSpaceportDocks
   for i in 0 ..< setupConfig.starting_facilities.spaceports:
@@ -44,7 +50,7 @@ proc createHomeWorld*(state: var GameState, systemId: SystemId, owner: HouseId):
       baseDocks: baseSpaceportDocks,
       effectiveDocks: effectiveSpaceportDocks,
       constructionQueue: @[],
-      activeConstructions: @[]
+      activeConstructions: @[],
     )
     state.spaceports.entities.addEntity(spaceportId, spaceport)
     spaceportIds.add(spaceportId)
@@ -62,7 +68,7 @@ proc createHomeWorld*(state: var GameState, systemId: SystemId, owner: HouseId):
       effectiveDocks: effectiveShipyardDocks,
       isCrippled: false,
       constructionQueue: @[],
-      activeConstructions: @[]
+      activeConstructions: @[],
     )
     state.shipyards.entities.addEntity(shipyardId, shipyard)
     shipyardIds.add(shipyardId)
@@ -77,7 +83,7 @@ proc createHomeWorld*(state: var GameState, systemId: SystemId, owner: HouseId):
       owner: owner,
       attackStrength: 1, # Placeholder
       defenseStrength: 1, # Placeholder
-      state: CombatState.Undamaged
+      state: CombatState.Undamaged,
     )
     state.groundUnits.entities.addEntity(groundUnitId, groundBattery)
     groundBatteryIds.add(groundUnitId)
@@ -91,7 +97,7 @@ proc createHomeWorld*(state: var GameState, systemId: SystemId, owner: HouseId):
       owner: owner,
       attackStrength: 1, # Placeholder
       defenseStrength: 1, # Placeholder
-      state: CombatState.Undamaged
+      state: CombatState.Undamaged,
     )
     state.groundUnits.entities.addEntity(groundUnitId, army)
     armyIds.add(groundUnitId)
@@ -105,7 +111,7 @@ proc createHomeWorld*(state: var GameState, systemId: SystemId, owner: HouseId):
       owner: owner,
       attackStrength: 1, # Placeholder
       defenseStrength: 1, # Placeholder
-      state: CombatState.Undamaged
+      state: CombatState.Undamaged,
     )
     state.groundUnits.entities.addEntity(groundUnitId, marine)
     marineIds.add(groundUnitId)
@@ -121,7 +127,8 @@ proc createHomeWorld*(state: var GameState, systemId: SystemId, owner: HouseId):
     infrastructure: homeworldCfg.colony_level,
     industrial: IndustrialUnits(
       units: homeworldCfg.industrial_units,
-      investmentCost: economy_config.globalEconomyConfig.industrial_investment.base_cost.int32
+      investmentCost:
+        economy_config.globalEconomyConfig.industrial_investment.base_cost.int32,
     ),
     planetClass: planetClass,
     resources: resources,
@@ -146,7 +153,7 @@ proc createHomeWorld*(state: var GameState, systemId: SystemId, owner: HouseId):
       entity: EntityIdUnion(kind: CapacityType.FighterSquadron, colonyId: colonyId),
       current: 0,
       maximum: 0,
-      excess: 0
+      excess: 0,
     ),
     planetaryShieldLevel: setupConfig.starting_facilities.planetary_shields,
     groundBatteryIds: groundBatteryIds,
@@ -158,7 +165,7 @@ proc createHomeWorld*(state: var GameState, systemId: SystemId, owner: HouseId):
     drydockIds: @[],
     blockaded: false,
     blockadedBy: @[],
-    blockadeTurns: 0
+    blockadeTurns: 0,
   )
 
   state.colonies.entities.addEntity(colonyId, newColony)

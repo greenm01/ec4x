@@ -33,14 +33,18 @@ proc getSectionValueInt(config: Config, section, key: string, default: int = 0):
   except ValueError:
     raise newException(ConfigError, "Invalid integer value for " & section & "." & key)
 
-proc getSectionValueFloat(config: Config, section, key: string, default: float = 0.0): float =
+proc getSectionValueFloat(
+    config: Config, section, key: string, default: float = 0.0
+): float =
   ## Get float value from config section, with default fallback
   try:
     result = config.getSectionValue(section, key, $default).parseFloat()
   except ValueError:
     raise newException(ConfigError, "Invalid float value for " & section & "." & key)
 
-proc getSectionValueBool(config: Config, section, key: string, default: bool = false): bool =
+proc getSectionValueBool(
+    config: Config, section, key: string, default: bool = false
+): bool =
   ## Get boolean value from config section, with default fallback
   let val = config.getSectionValue(section, key, $default).toLowerAscii()
   result = val in ["true", "yes", "1"]
@@ -73,12 +77,18 @@ proc shipClassToConfigKey(shipClass: ShipClass): string =
 proc parseShipRole*(roleStr: string): ShipRole =
   ## Parse ship role string from config
   case roleStr.toLowerAscii()
-  of "escort": ShipRole.Escort
-  of "capital": ShipRole.Capital
-  of "auxiliary": ShipRole.Auxiliary
-  of "specialweapon": ShipRole.SpecialWeapon
-  of "fighter": ShipRole.Fighter
-  else: raise newException(ConfigError, "Invalid ship role: " & roleStr)
+  of "escort":
+    ShipRole.Escort
+  of "capital":
+    ShipRole.Capital
+  of "auxiliary":
+    ShipRole.Auxiliary
+  of "specialweapon":
+    ShipRole.SpecialWeapon
+  of "fighter":
+    ShipRole.Fighter
+  else:
+    raise newException(ConfigError, "Invalid ship role: " & roleStr)
 
 proc loadShipStats(config: Config, shipClass: ShipClass): ShipStats =
   ## Load stats for a single ship class from config
@@ -103,7 +113,8 @@ proc validateShipStats(shipClass: ShipClass, stats: ShipStats) =
     raise newException(ConfigError, $shipClass & ": attack_strength cannot be negative")
 
   if stats.defenseStrength < 0:
-    raise newException(ConfigError, $shipClass & ": defense_strength cannot be negative")
+    raise
+      newException(ConfigError, $shipClass & ": defense_strength cannot be negative")
 
   if stats.buildCost <= 0:
     raise newException(ConfigError, $shipClass & ": build_cost must be > 0")
@@ -234,9 +245,12 @@ proc loadCombatConfig(configPath: string): CombatConfig =
   let config = loadConfig(configPath)
 
   result.criticalHitRoll = config.getSectionValueInt("combat", "critical_hit_roll", 9)
-  result.retreatAfterRound = config.getSectionValueInt("combat", "retreat_after_round", 1)
-  result.starbaseCriticalReroll = config.getSectionValueBool("combat", "starbase_critical_reroll", true)
-  result.starbaseDieModifier = config.getSectionValueInt("combat", "starbase_die_modifier", 2)
+  result.retreatAfterRound =
+    config.getSectionValueInt("combat", "retreat_after_round", 1)
+  result.starbaseCriticalReroll =
+    config.getSectionValueBool("combat", "starbase_critical_reroll", true)
+  result.starbaseDieModifier =
+    config.getSectionValueInt("combat", "starbase_die_modifier", 2)
 
 # Economy config loading
 
@@ -247,14 +261,22 @@ proc loadEconomyConfig(configPath: string): EconomyConfig =
 
   let config = loadConfig(configPath)
 
-  result.startingTreasury = config.getSectionValueInt("starting_resources", "treasury", 1000)
-  result.startingPopulation = config.getSectionValueInt("starting_resources", "starting_population", 5)
-  result.startingInfrastructure = config.getSectionValueInt("starting_resources", "starting_infrastructure", 3)
-  result.naturalGrowthRate = config.getSectionValueFloat("population", "natural_growth_rate", 0.02)
-  result.researchCostBase = config.getSectionValueInt("research", "research_cost_base", 1000)
-  result.researchCostExponent = config.getSectionValueInt("research", "research_cost_exponent", 2)
-  result.ebpCostPerPoint = config.getSectionValueInt("espionage", "ebp_cost_per_point", 40)
-  result.cipCostPerPoint = config.getSectionValueInt("espionage", "cip_cost_per_point", 40)
+  result.startingTreasury =
+    config.getSectionValueInt("starting_resources", "treasury", 1000)
+  result.startingPopulation =
+    config.getSectionValueInt("starting_resources", "starting_population", 5)
+  result.startingInfrastructure =
+    config.getSectionValueInt("starting_resources", "starting_infrastructure", 3)
+  result.naturalGrowthRate =
+    config.getSectionValueFloat("population", "natural_growth_rate", 0.02)
+  result.researchCostBase =
+    config.getSectionValueInt("research", "research_cost_base", 1000)
+  result.researchCostExponent =
+    config.getSectionValueInt("research", "research_cost_exponent", 2)
+  result.ebpCostPerPoint =
+    config.getSectionValueInt("espionage", "ebp_cost_per_point", 40)
+  result.cipCostPerPoint =
+    config.getSectionValueInt("espionage", "cip_cost_per_point", 40)
 
 # Prestige config loading
 
@@ -265,10 +287,14 @@ proc loadPrestigeConfig(configPath: string): PrestigeConfig =
 
   let config = loadConfig(configPath)
 
-  result.startingPrestige = config.getSectionValueInt("game_rules", "starting_prestige", 50)
-  result.victoryThreshold = config.getSectionValueInt("game_rules", "victory_prestige", 5000)
-  result.defeatThreshold = config.getSectionValueInt("game_rules", "defeat_threshold", 0)
-  result.defeatConsecutiveTurns = config.getSectionValueInt("game_rules", "defeat_consecutive_turns", 3)
+  result.startingPrestige =
+    config.getSectionValueInt("game_rules", "starting_prestige", 50)
+  result.victoryThreshold =
+    config.getSectionValueInt("game_rules", "victory_prestige", 5000)
+  result.defeatThreshold =
+    config.getSectionValueInt("game_rules", "defeat_threshold", 0)
+  result.defeatConsecutiveTurns =
+    config.getSectionValueInt("game_rules", "defeat_consecutive_turns", 3)
 
 # Convenience accessors
 
@@ -276,7 +302,9 @@ proc getShipStats*(config: GameConfig, shipClass: ShipClass): ShipStats =
   ## Get ship stats by class, raises KeyError if not found
   result = config.ships[shipClass]
 
-proc getGroundUnitStats*(config: GameConfig, unitType: GroundUnitType): GroundUnitStats =
+proc getGroundUnitStats*(
+    config: GameConfig, unitType: GroundUnitType
+): GroundUnitStats =
   ## Get ground unit stats by type, raises KeyError if not found
   result = config.groundUnits[unitType]
 

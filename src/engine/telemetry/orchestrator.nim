@@ -4,27 +4,30 @@
 ## collectors using event-driven architecture.
 
 import ../types/[telemetry, core, game_state]
-import ./collectors/[
-  combat, military, fleet, facilities, colony, production, capacity,
-  population, income, tech, espionage, diplomacy, house
-]
+import
+  ./collectors/[
+    combat, military, fleet, facilities, colony, production, capacity, population,
+    income, tech, espionage, diplomacy, house,
+  ]
 import ../persistence/telemetry_db
 
-proc initDiagnosticMetrics*(turn: int32, houseId: HouseId,
-                           gameId: string = ""): DiagnosticMetrics =
+proc initDiagnosticMetrics*(
+    turn: int32, houseId: HouseId, gameId: string = ""
+): DiagnosticMetrics =
   ## Initialize empty diagnostic metrics for a house at a turn
   # Ensure telemetry database and table exist
   var db = openTelemetryDb()
-  defer: closeTelemetryDb(db)
+  defer:
+    closeTelemetryDb(db)
   createDiagnosticMetricsTable(db)
 
   result = DiagnosticMetrics(
     gameId: gameId,
     turn: turn,
-    act: 1'i32,  # Default to Act 1, will be calculated in collectDiagnostics
-    rank: 0'i32,  # Default to 0, will be calculated in collectDiagnostics
+    act: 1'i32, # Default to Act 1, will be calculated in collectDiagnostics
+    rank: 0'i32, # Default to 0, will be calculated in collectDiagnostics
     houseId: houseId,
-    totalSystemsOnMap: 0'i32,  # Will be set in collectDiagnostics
+    totalSystemsOnMap: 0'i32, # Will be set in collectDiagnostics
 
     # Economy
     treasuryBalance: 0'i32,
@@ -40,60 +43,104 @@ proc initDiagnosticMetrics*(turn: int32, houseId: HouseId,
     populationGrowthRate: 0'i32,
 
     # Tech Levels
-    techCST: 1'i32, techWEP: 1'i32, techEL: 1'i32, techSL: 1'i32, techTER: 1'i32,
-    techELI: 1'i32, techCLK: 1'i32, techSLD: 1'i32, techCIC: 1'i32, techFD: 1'i32, techACO: 1'i32,
+    techCST: 1'i32,
+    techWEP: 1'i32,
+    techEL: 1'i32,
+    techSL: 1'i32,
+    techTER: 1'i32,
+    techELI: 1'i32,
+    techCLK: 1'i32,
+    techSLD: 1'i32,
+    techCIC: 1'i32,
+    techFD: 1'i32,
+    techACO: 1'i32,
 
     # Research Points
-    researchERP: 0'i32, researchSRP: 0'i32, researchTRP: 0'i32, researchBreakthroughs: 0'i32,
+    researchERP: 0'i32,
+    researchSRP: 0'i32,
+    researchTRP: 0'i32,
+    researchBreakthroughs: 0'i32,
 
     # Research Waste Tracking
-    researchWastedERP: 0'i32, researchWastedSRP: 0'i32,
-    turnsAtMaxEL: 0'i32, turnsAtMaxSL: 0'i32,
+    researchWastedERP: 0'i32,
+    researchWastedSRP: 0'i32,
+    turnsAtMaxEL: 0'i32,
+    turnsAtMaxSL: 0'i32,
 
     # Maintenance & Prestige
-    maintenanceCostTotal: 0'i32, maintenanceShortfallTurns: 0'i32,
-    prestigeCurrent: 0'i32, prestigeChange: 0'i32, prestigeVictoryProgress: 0'i32,
+    maintenanceCostTotal: 0'i32,
+    maintenanceShortfallTurns: 0'i32,
+    prestigeCurrent: 0'i32,
+    prestigeChange: 0'i32,
+    prestigeVictoryProgress: 0'i32,
 
     # Combat Performance
-    combatCERAverage: 0'i32, bombardmentRoundsTotal: 0'i32, groundCombatVictories: 0'i32,
-    retreatsExecuted: 0'i32, criticalHitsDealt: 0'i32, criticalHitsReceived: 0'i32,
-    cloakedAmbushSuccess: 0'i32, shieldsActivatedCount: 0'i32,
+    combatCERAverage: 0'i32,
+    bombardmentRoundsTotal: 0'i32,
+    groundCombatVictories: 0'i32,
+    retreatsExecuted: 0'i32,
+    criticalHitsDealt: 0'i32,
+    criticalHitsReceived: 0'i32,
+    cloakedAmbushSuccess: 0'i32,
+    shieldsActivatedCount: 0'i32,
 
     # Diplomatic Status
-    allyStatusCount: 0'i32, hostileStatusCount: 0'i32, enemyStatusCount: 0'i32,
+    allyStatusCount: 0'i32,
+    hostileStatusCount: 0'i32,
+    enemyStatusCount: 0'i32,
     neutralStatusCount: 0'i32,
-    pactViolationsTotal: 0'i32, dishonoredStatusActive: false,
+    pactViolationsTotal: 0'i32,
+    dishonoredStatusActive: false,
     diplomaticIsolationTurns: 0'i32,
 
     # Treaty Activity Metrics
-    pactFormationsTotal: 0'i32, pactBreaksTotal: 0'i32,
-    hostilityDeclarationsTotal: 0'i32, warDeclarationsTotal: 0'i32,
+    pactFormationsTotal: 0'i32,
+    pactBreaksTotal: 0'i32,
+    hostilityDeclarationsTotal: 0'i32,
+    warDeclarationsTotal: 0'i32,
 
     # Espionage Activity
-    espionageSuccessCount: 0'i32, espionageFailureCount: 0'i32,
+    espionageSuccessCount: 0'i32,
+    espionageFailureCount: 0'i32,
     espionageDetectedCount: 0'i32,
-    techTheftsSuccessful: 0'i32, sabotageOperations: 0'i32, assassinationAttempts: 0'i32,
-    cyberAttacksLaunched: 0'i32, ebpPointsSpent: 0'i32, cipPointsSpent: 0'i32,
+    techTheftsSuccessful: 0'i32,
+    sabotageOperations: 0'i32,
+    assassinationAttempts: 0'i32,
+    cyberAttacksLaunched: 0'i32,
+    ebpPointsSpent: 0'i32,
+    cipPointsSpent: 0'i32,
     counterIntelSuccesses: 0'i32,
 
     # Population & Colony Management
-    populationTransfersActive: 0'i32, populationTransfersCompleted: 0'i32,
-    populationTransfersLost: 0'i32, ptuTransferredTotal: 0'i32,
-    coloniesBlockadedCount: 0'i32, blockadeTurnsCumulative: 0'i32,
+    populationTransfersActive: 0'i32,
+    populationTransfersCompleted: 0'i32,
+    populationTransfersLost: 0'i32,
+    ptuTransferredTotal: 0'i32,
+    coloniesBlockadedCount: 0'i32,
+    blockadeTurnsCumulative: 0'i32,
 
     # Economic Health
-    treasuryDeficit: false, infrastructureDamageTotal: 0'i32,
-    salvageValueRecovered: 0'i32, maintenanceCostDeficit: 0'i32,
-    taxPenaltyActive: false, avgTaxRate6Turn: 0'i32,
+    treasuryDeficit: false,
+    infrastructureDamageTotal: 0'i32,
+    salvageValueRecovered: 0'i32,
+    maintenanceCostDeficit: 0'i32,
+    taxPenaltyActive: false,
+    avgTaxRate6Turn: 0'i32,
 
     # Squadron Capacity & Violations
-    fighterCapacityMax: 0'i32, fighterCapacityUsed: 0'i32, fighterCapacityViolation: false,
-    squadronLimitMax: 0'i32, squadronLimitUsed: 0'i32, squadronLimitViolation: false,
+    fighterCapacityMax: 0'i32,
+    fighterCapacityUsed: 0'i32,
+    fighterCapacityViolation: false,
+    squadronLimitMax: 0'i32,
+    squadronLimitUsed: 0'i32,
+    squadronLimitViolation: false,
     starbasesActual: 0'i32,
 
     # House Status
-    autopilotActive: false, defensiveCollapseActive: false,
-    turnsUntilElimination: 0'i32, missedOrderTurns: 0'i32,
+    autopilotActive: false,
+    defensiveCollapseActive: false,
+    turnsUntilElimination: 0'i32,
+    missedOrderTurns: 0'i32,
 
     # Military
     spaceCombatWins: 0'i32,
@@ -257,15 +304,15 @@ proc initDiagnosticMetrics*(turn: int32, houseId: HouseId,
     eventsEspionageTotal: 0'i32,
     eventsDiplomaticTotal: 0'i32,
     eventsResearchTotal: 0'i32,
-    eventsColonyTotal: 0'i32
+    eventsColonyTotal: 0'i32,
   )
-    
+
 proc collectDiagnostics*(
-  state: GameState,
-  houseId: HouseId,
-  gameId: string = "",
-  act: int32 = 0'i32,
-  rank: int32 = 0'i32
+    state: GameState,
+    houseId: HouseId,
+    gameId: string = "",
+    act: int32 = 0'i32,
+    rank: int32 = 0'i32,
 ): DiagnosticMetrics =
   ## Collect comprehensive diagnostics for a house using all domain collectors.
   ##
@@ -310,7 +357,8 @@ proc collectDiagnostics*(
 
   # Save metrics to database
   var db = openTelemetryDb()
-  defer: closeTelemetryDb(db)
+  defer:
+    closeTelemetryDb(db)
   saveDiagnosticMetrics(db, metrics)
 
   return metrics

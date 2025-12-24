@@ -8,24 +8,20 @@ import toml_serialization
 import ../../common/logger
 
 type
-  LaneWeightsConfig* = object
-    ## Jump lane type distribution weights
+  LaneWeightsConfig* = object ## Jump lane type distribution weights
     major_weight*: float
     minor_weight*: float
     restricted_weight*: float
 
-  GenerationConfig* = object
-    ## Map generation parameters
+  GenerationConfig* = object ## Map generation parameters
     use_distance_maximization*: bool
     prefer_vertex_positions*: bool
     hub_uses_mixed_lanes*: bool
 
-  HomeworldPlacementConfig* = object
-    ## Homeworld placement parameters
-    homeworld_lane_count*: int  # Number of lanes per homeworld (default: 3)
+  HomeworldPlacementConfig* = object ## Homeworld placement parameters
+    homeworld_lane_count*: int # Number of lanes per homeworld (default: 3)
 
-  StarmapConfig* = object
-    ## Complete starmap configuration loaded from TOML
+  StarmapConfig* = object ## Complete starmap configuration loaded from TOML
     lane_weights*: LaneWeightsConfig
     generation*: GenerationConfig
     homeworld_placement*: HomeworldPlacementConfig

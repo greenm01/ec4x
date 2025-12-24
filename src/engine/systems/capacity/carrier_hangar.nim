@@ -23,8 +23,8 @@ import ../../state/[game_state as gs_helpers, iterators]
 import ../../config/tech_config
 import ../../../common/logger
 
-export capacity.CapacityViolation, capacity.EnforcementAction,
-       capacity.ViolationSeverity
+export
+  capacity.CapacityViolation, capacity.EnforcementAction, capacity.ViolationSeverity
 
 proc isCarrier*(shipClass: ShipClass): bool =
   ## Check if ship class is a carrier
@@ -41,26 +41,35 @@ proc getCarrierMaxCapacity*(shipClass: ShipClass, acoLevel: int): int =
   case shipClass
   of ShipClass.Carrier:
     case acoLevel
-    of 1: return cfg.level_1_cv_capacity.int
-    of 2: return cfg.level_2_cv_capacity.int
-    of 3: return cfg.level_3_cv_capacity.int
-    else: return cfg.level_1_cv_capacity.int  # Default to ACO I
+    of 1:
+      return cfg.level_1_cv_capacity.int
+    of 2:
+      return cfg.level_2_cv_capacity.int
+    of 3:
+      return cfg.level_3_cv_capacity.int
+    else:
+      return cfg.level_1_cv_capacity.int # Default to ACO I
   of ShipClass.SuperCarrier:
     case acoLevel
-    of 1: return cfg.level_1_cx_capacity.int
-    of 2: return cfg.level_2_cx_capacity.int
-    of 3: return cfg.level_3_cx_capacity.int
-    else: return cfg.level_1_cx_capacity.int  # Default to ACO I
+    of 1:
+      return cfg.level_1_cx_capacity.int
+    of 2:
+      return cfg.level_2_cx_capacity.int
+    of 3:
+      return cfg.level_3_cx_capacity.int
+    else:
+      return cfg.level_1_cx_capacity.int # Default to ACO I
   else:
-    return 0  # Non-carriers have no hangar capacity
+    return 0 # Non-carriers have no hangar capacity
 
 proc getCurrentHangarLoad*(squadron: Squadron): int =
   ## Get current number of fighters embarked on carrier
   ## Pure function - just counts embarkedFighters
   return squadron.embarkedFighters.len
 
-proc analyzeCarrierCapacity*(state: GameState,
-                             squadronId: SquadronId): Option[capacity.CapacityViolation] =
+proc analyzeCarrierCapacity*(
+    state: GameState, squadronId: SquadronId
+): Option[capacity.CapacityViolation] =
   ## Analyze single carrier's hangar capacity
   ## Returns violation if carrier exceeds capacity, none otherwise
   ##
@@ -99,25 +108,29 @@ proc analyzeCarrierCapacity*(state: GameState,
   let excess = max(0, current - maximum)
 
   # Carrier hangar has no grace period - immediate critical if over
-  let severity = if excess == 0:
-                   capacity.ViolationSeverity.None
-                 else:
-                   capacity.ViolationSeverity.Critical
+  let severity =
+    if excess == 0:
+      capacity.ViolationSeverity.None
+    else:
+      capacity.ViolationSeverity.Critical
 
   if severity == capacity.ViolationSeverity.None:
     return none(capacity.CapacityViolation)
 
-  result = some(capacity.CapacityViolation(
-    capacityType: capacity.CapacityType.CarrierHangar,
-    entity: capacity.EntityIdUnion(kind: capacity.CapacityType.CarrierHangar,
-                                    shipId: flagship.id),
-    current: int32(current),
-    maximum: int32(maximum),
-    excess: int32(excess),
-    severity: severity,
-    graceTurnsRemaining: 0,  # No grace period
-    violationTurn: int32(state.turn)
-  ))
+  result = some(
+    capacity.CapacityViolation(
+      capacityType: capacity.CapacityType.CarrierHangar,
+      entity: capacity.EntityIdUnion(
+        kind: capacity.CapacityType.CarrierHangar, shipId: flagship.id
+      ),
+      current: int32(current),
+      maximum: int32(maximum),
+      excess: int32(excess),
+      severity: severity,
+      graceTurnsRemaining: 0, # No grace period
+      violationTurn: int32(state.turn),
+    )
+  )
 
 proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
   ## Batch check all carriers across all fleets for hangar capacity violations
@@ -136,8 +149,7 @@ proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
           if violation.isSome:
             result.add(violation.get())
 
-proc getAvailableHangarSpace*(state: GameState,
-                              squadronId: SquadronId): int =
+proc getAvailableHangarSpace*(state: GameState, squadronId: SquadronId): int =
   ## Get remaining hangar capacity for carrier
   ## Returns: maximum - current
   ## Returns 0 if carrier doesn't exist or is not a carrier
@@ -172,8 +184,9 @@ proc getAvailableHangarSpace*(state: GameState,
 
   return max(0, maximum - current)
 
-proc canLoadFighters*(state: GameState, squadronId: SquadronId,
-                      fightersToLoad: int): bool =
+proc canLoadFighters*(
+    state: GameState, squadronId: SquadronId, fightersToLoad: int
+): bool =
   ## Check if carrier has hangar space available to load fighters
   ## Returns true if carrier can accommodate fightersToLoad additional fighters
   ##
@@ -188,8 +201,9 @@ proc canLoadFighters*(state: GameState, squadronId: SquadronId,
   let availableSpace = getAvailableHangarSpace(state, squadronId)
   return availableSpace >= fightersToLoad
 
-
-proc processCapacityEnforcement*(state: var GameState): seq[capacity.EnforcementAction] =
+proc processCapacityEnforcement*(
+    state: var GameState
+): seq[capacity.EnforcementAction] =
   ## Main entry point - check all carriers for hangar capacity violations
   ## Called during Maintenance phase
   ##
@@ -208,8 +222,7 @@ proc processCapacityEnforcement*(state: var GameState): seq[capacity.Enforcement
   # Check all carriers for violations (should find none)
   let violations = checkViolations(state)
 
-  logger.logDebug("Military", "Carrier check complete",
-                  " violations=", $violations.len)
+  logger.logDebug("Military", "Carrier check complete", " violations=", $violations.len)
 
   if violations.len == 0:
     logger.logDebug("Military", "All carriers within hangar capacity limits")
@@ -217,15 +230,21 @@ proc processCapacityEnforcement*(state: var GameState): seq[capacity.Enforcement
 
   # Violations should NEVER happen - loading is blocked at capacity
   # If we find violations, log as warnings for debugging
-  logger.logWarn("Military", "Carrier hangar violations found (BUG!)",
-                 " count=", $violations.len)
+  logger.logWarn(
+    "Military", "Carrier hangar violations found (BUG!)", " count=", $violations.len
+  )
 
   for violation in violations:
-    logger.logWarn("Military",
-                   "Carrier over hangar capacity",
-                   " current=", $violation.current,
-                   " max=", $violation.maximum,
-                   " excess=", $violation.excess)
+    logger.logWarn(
+      "Military",
+      "Carrier over hangar capacity",
+      " current=",
+      $violation.current,
+      " max=",
+      $violation.maximum,
+      " excess=",
+      $violation.excess,
+    )
 
   # No enforcement actions - violations should be prevented at load time
   # We just log them for debugging purposes

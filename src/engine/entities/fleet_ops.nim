@@ -10,7 +10,10 @@ proc registerFleetLocation(state: var GameState, fleetId: FleetId, sysId: System
 proc unregisterFleetLocation(state: var GameState, fleetId: FleetId, sysId: SystemId) =
   ## Internal helper to remove a fleet from the system index
   if state.fleets.bySystem.contains(sysId):
-    state.fleets.bySystem[sysId].keepIf(proc(id: FleetId): bool = id != fleetId)
+    state.fleets.bySystem[sysId].keepIf(
+      proc(id: FleetId): bool =
+        id != fleetId
+    )
 
 proc registerFleetOwner(state: var GameState, fleetId: FleetId, owner: HouseId) =
   ## Internal helper to add a fleet to the owner index
@@ -19,7 +22,10 @@ proc registerFleetOwner(state: var GameState, fleetId: FleetId, owner: HouseId) 
 proc unregisterFleetOwner(state: var GameState, fleetId: FleetId, owner: HouseId) =
   ## Internal helper to remove a fleet from the owner index
   if state.fleets.byOwner.contains(owner):
-    state.fleets.byOwner[owner].keepIf(proc(id: FleetId): bool = id != fleetId)
+    state.fleets.byOwner[owner].keepIf(
+      proc(id: FleetId): bool =
+        id != fleetId
+    )
 
 proc createFleet*(state: var GameState, owner: HouseId, location: SystemId): Fleet =
   ## Creates a new, empty fleet and adds it to the game state.
@@ -40,7 +46,8 @@ proc createFleet*(state: var GameState, owner: HouseId, location: SystemId): Fle
 proc destroyFleet*(state: var GameState, fleetId: FleetId) =
   ## Destroys a fleet and all squadrons within it.
   let fleetOpt = state.getFleet(fleetId)
-  if fleetOpt.isNone: return
+  if fleetOpt.isNone:
+    return
   let fleet = fleetOpt.get()
 
   # 1. Destroy all squadrons in the fleet
@@ -60,12 +67,14 @@ proc destroyFleet*(state: var GameState, fleetId: FleetId) =
 proc moveFleet*(state: var GameState, fleetId: FleetId, destId: SystemId) =
   ## Moves a fleet to a new system, updating the spatial index.
   let fleetOpt = state.getFleet(fleetId)
-  if fleetOpt.isNone: return
+  if fleetOpt.isNone:
+    return
 
   var fleet = fleetOpt.get()
   let oldId = fleet.location
 
-  if oldId == destId: return
+  if oldId == destId:
+    return
 
   # 1. Update Index: Remove from old, add to new
   state.unregisterFleetLocation(fleetId, oldId)
@@ -75,15 +84,16 @@ proc moveFleet*(state: var GameState, fleetId: FleetId, destId: SystemId) =
   fleet.location = destId
   state.fleets.entities.updateEntity(fleetId, fleet)
 
-proc changeFleetOwner*(state: var GameState, fleetId: FleetId,
-                       newOwner: HouseId) =
+proc changeFleetOwner*(state: var GameState, fleetId: FleetId, newOwner: HouseId) =
   ## Transfers ownership of a fleet, updating the byOwner index
   let fleetOpt = state.getFleet(fleetId)
-  if fleetOpt.isNone: return
+  if fleetOpt.isNone:
+    return
   var fleet = fleetOpt.get()
 
   let oldOwner = fleet.houseId
-  if oldOwner == newOwner: return
+  if oldOwner == newOwner:
+    return
 
   # 1. Remove from old owner's index
   state.unregisterFleetOwner(fleetId, oldOwner)

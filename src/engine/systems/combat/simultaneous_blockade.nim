@@ -13,8 +13,7 @@ import ../../types/core
 import ../../state/entity_manager
 
 proc collectBlockadeIntents*(
-  state: GameState,
-  orders: Table[HouseId, OrderPacket]
+    state: GameState, orders: Table[HouseId, OrderPacket]
 ): seq[BlockadeIntent] =
   ## Collect all blockade attempts
   result = @[]
@@ -45,16 +44,16 @@ proc collectBlockadeIntents*(
 
       let targetSystem = command.targetSystem.get()
 
-      result.add(BlockadeIntent(
-        houseId: houseId,
-        fleetId: command.fleetId,
-        targetColony: targetSystem,
-        blockadeStrength: blockadeStrength
-      ))
+      result.add(
+        BlockadeIntent(
+          houseId: houseId,
+          fleetId: command.fleetId,
+          targetColony: targetSystem,
+          blockadeStrength: blockadeStrength,
+        )
+      )
 
-proc detectBlockadeConflicts*(
-  intents: seq[BlockadeIntent]
-): seq[BlockadeConflict] =
+proc detectBlockadeConflicts*(intents: seq[BlockadeIntent]): seq[BlockadeConflict] =
   ## Group blockade intents by target colony
   var targetColonies = initTable[SystemId, seq[BlockadeIntent]]()
 
@@ -65,15 +64,10 @@ proc detectBlockadeConflicts*(
 
   result = @[]
   for colonyId, conflictingIntents in targetColonies:
-    result.add(BlockadeConflict(
-      targetColony: colonyId,
-      intents: conflictingIntents
-    ))
+    result.add(BlockadeConflict(targetColony: colonyId, intents: conflictingIntents))
 
 proc resolveBlockadeConflict*(
-  state: var GameState,
-  conflict: BlockadeConflict,
-  rng: var Rand
+    state: var GameState, conflict: BlockadeConflict, rng: var Rand
 ): seq[BlockadeResult] =
   ## Resolve blockade conflict - strongest blockader wins (like colonization)
   result = @[]
@@ -84,54 +78,55 @@ proc resolveBlockadeConflict*(
   # Single intent = no conflict, just blockade
   if conflict.intents.len == 1:
     let intent = conflict.intents[0]
-    result.add(BlockadeResult(
-      houseId: intent.houseId,
-      fleetId: intent.fleetId,
-      originalTarget: intent.targetColony,
-      outcome: ResolutionOutcome.Success,
-      actualTarget: some(intent.targetColony),
-      prestigeAwarded: 0
-    ))
+    result.add(
+      BlockadeResult(
+        houseId: intent.houseId,
+        fleetId: intent.fleetId,
+        originalTarget: intent.targetColony,
+        outcome: ResolutionOutcome.Success,
+        actualTarget: some(intent.targetColony),
+        prestigeAwarded: 0,
+      )
+    )
     return
 
   # Multiple intents = conflict, strongest wins
   let seed = tiebreakerSeed(state.turn, conflict.targetColony)
-  let winner = resolveConflictByStrength(
-    conflict.intents,
-    blockadeStrength,
-    seed,
-    rng
+  let winner = resolveConflictByStrength(conflict.intents, blockadeStrength, seed, rng)
+
+  logInfo(
+    LogCategory.lcCombat,
+    &"Blockade conflict at {conflict.targetColony}: {conflict.intents.len} houses competing, {winner.houseId} wins",
   )
 
-  logInfo(LogCategory.lcCombat,
-          &"Blockade conflict at {conflict.targetColony}: {conflict.intents.len} houses competing, {winner.houseId} wins")
-
   # Winner blockades
-  result.add(BlockadeResult(
-    houseId: winner.houseId,
-    fleetId: winner.fleetId,
-    originalTarget: winner.targetColony,
-    outcome: ResolutionOutcome.Success,
-    actualTarget: some(winner.targetColony),
-    prestigeAwarded: 0
-  ))
+  result.add(
+    BlockadeResult(
+      houseId: winner.houseId,
+      fleetId: winner.fleetId,
+      originalTarget: winner.targetColony,
+      outcome: ResolutionOutcome.Success,
+      actualTarget: some(winner.targetColony),
+      prestigeAwarded: 0,
+    )
+  )
 
   # All others lose the conflict
   for loser in conflict.intents:
     if loser.houseId != winner.houseId or loser.fleetId != winner.fleetId:
-      result.add(BlockadeResult(
-        houseId: loser.houseId,
-        fleetId: loser.fleetId,
-        originalTarget: loser.targetColony,
-        outcome: ResolutionOutcome.ConflictLost,
-        actualTarget: none(SystemId),
-        prestigeAwarded: 0
-      ))
+      result.add(
+        BlockadeResult(
+          houseId: loser.houseId,
+          fleetId: loser.fleetId,
+          originalTarget: loser.targetColony,
+          outcome: ResolutionOutcome.ConflictLost,
+          actualTarget: none(SystemId),
+          prestigeAwarded: 0,
+        )
+      )
 
 proc resolveBlockades*(
-  state: var GameState,
-  orders: Table[HouseId, OrderPacket],
-  rng: var Rand
+    state: var GameState, orders: Table[HouseId, OrderPacket], rng: var Rand
 ): seq[BlockadeResult] =
   ## Main entry point: Resolve all blockade orders simultaneously
   result = @[]
@@ -147,9 +142,7 @@ proc resolveBlockades*(
     result.add(conflictResults)
 
 proc wasBlockadeHandled*(
-  results: seq[BlockadeResult],
-  houseId: HouseId,
-  fleetId: FleetId
+    results: seq[BlockadeResult], houseId: HouseId, fleetId: FleetId
 ): bool =
   ## Check if a blockade order was already handled
   for result in results:

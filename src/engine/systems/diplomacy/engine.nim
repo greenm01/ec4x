@@ -6,12 +6,14 @@
 import std/[options, tables]
 import ../../types/[core, diplomacy, prestige, game_state]
 
-export diplomacy.DiplomaticRelation, diplomacy.DiplomaticEvent, diplomacy.DiplomaticState
+export
+  diplomacy.DiplomaticRelation, diplomacy.DiplomaticEvent, diplomacy.DiplomaticState
 
 ## Diplomatic State Changes
 
-proc declareWar*(state: var GameState, sourceHouse: HouseId,
-                targetHouse: HouseId, turn: int32): DiplomaticEvent =
+proc declareWar*(
+    state: var GameState, sourceHouse: HouseId, targetHouse: HouseId, turn: int32
+): DiplomaticEvent =
   ## Declare war on another house
   let key = (sourceHouse, targetHouse)
   let oldState: DiplomaticState =
@@ -26,7 +28,7 @@ proc declareWar*(state: var GameState, sourceHouse: HouseId,
     sourceHouse: sourceHouse,
     targetHouse: targetHouse,
     state: DiplomaticState.Enemy,
-    sinceTurn: turn
+    sinceTurn: turn,
   )
 
   return DiplomaticEvent(
@@ -36,11 +38,12 @@ proc declareWar*(state: var GameState, sourceHouse: HouseId,
     newState: DiplomaticState.Enemy,
     turn: turn,
     reason: "War declared",
-    prestigeEvents: @[]
+    prestigeEvents: @[],
   )
 
-proc setNeutral*(state: var GameState, sourceHouse: HouseId,
-                targetHouse: HouseId, turn: int32): DiplomaticEvent =
+proc setNeutral*(
+    state: var GameState, sourceHouse: HouseId, targetHouse: HouseId, turn: int32
+): DiplomaticEvent =
   ## Set diplomatic state to neutral (peace/ceasefire)
   let key = (sourceHouse, targetHouse)
   let oldState: DiplomaticState =
@@ -55,7 +58,7 @@ proc setNeutral*(state: var GameState, sourceHouse: HouseId,
     sourceHouse: sourceHouse,
     targetHouse: targetHouse,
     state: DiplomaticState.Neutral,
-    sinceTurn: turn
+    sinceTurn: turn,
   )
 
   return DiplomaticEvent(
@@ -65,11 +68,12 @@ proc setNeutral*(state: var GameState, sourceHouse: HouseId,
     newState: DiplomaticState.Neutral,
     turn: turn,
     reason: "Diplomatic status set to Neutral",
-    prestigeEvents: @[]
+    prestigeEvents: @[],
   )
 
-proc setHostile*(state: var GameState, sourceHouse: HouseId,
-                targetHouse: HouseId, turn: int32): DiplomaticEvent =
+proc setHostile*(
+    state: var GameState, sourceHouse: HouseId, targetHouse: HouseId, turn: int32
+): DiplomaticEvent =
   ## Set diplomatic state to hostile
   let key = (sourceHouse, targetHouse)
   let oldState: DiplomaticState =
@@ -84,7 +88,7 @@ proc setHostile*(state: var GameState, sourceHouse: HouseId,
     sourceHouse: sourceHouse,
     targetHouse: targetHouse,
     state: DiplomaticState.Hostile,
-    sinceTurn: turn
+    sinceTurn: turn,
   )
 
   return DiplomaticEvent(
@@ -94,5 +98,5 @@ proc setHostile*(state: var GameState, sourceHouse: HouseId,
     newState: DiplomaticState.Hostile,
     turn: turn,
     reason: "Diplomatic status set to Hostile",
-    prestigeEvents: @[]
+    prestigeEvents: @[],
   )

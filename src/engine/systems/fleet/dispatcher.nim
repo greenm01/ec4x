@@ -14,47 +14,171 @@ import ../diplomacy/[types as dip_types]
 import ./standing
 import ../../../common/logger
 
-type
-  OrderOutcome* {.pure.} = enum
-    Success,  # Order executed successfully, continue if persistent
-    Failed,   # Order failed validation/execution, remove from queue
-    Aborted   # Order cancelled (conditions changed), remove from queue
+type OrderOutcome* {.pure.} = enum
+  Success # Order executed successfully, continue if persistent
+  Failed # Order failed validation/execution, remove from queue
+  Aborted # Order cancelled (conditions changed), remove from queue
 
 # =============================================================================
 # Forward Declarations
 # =============================================================================
 
-proc executeHoldCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeMoveCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSeekHomeCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executePatrolCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeGuardStarbaseCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeGuardPlanetCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeBlockadeCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeBombardCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeInvadeCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeBlitzCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSpyPlanetCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeHackStarbaseCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSpySystemCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeColonizeCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeJoinFleetCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeRendezvousCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeSalvageCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeReserveCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeMothballCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeReactivateCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
-proc executeViewWorldCommand(state: var GameState, fleet: Fleet, command: FleetCommand, events: var seq[resolution_types.GameEvent]): OrderOutcome
+proc executeHoldCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeMoveCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeSeekHomeCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executePatrolCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeGuardStarbaseCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeGuardPlanetCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeBlockadeCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeBombardCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeInvadeCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeBlitzCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeSpyPlanetCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeHackStarbaseCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeSpySystemCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeColonizeCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeJoinFleetCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeRendezvousCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeSalvageCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeReserveCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeMothballCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeReactivateCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
+
+proc executeViewWorldCommand(
+  state: var GameState,
+  fleet: Fleet,
+  command: FleetCommand,
+  events: var seq[resolution_types.GameEvent],
+): OrderOutcome
 
 # =============================================================================
 # Order Execution Dispatcher
 # =============================================================================
 
 proc executeFleetCommand*(
-  state: var GameState,
-  houseId: HouseId,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    houseId: HouseId,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Main dispatcher for fleet order execution
   ## Routes to appropriate handler based on order type
@@ -62,26 +186,30 @@ proc executeFleetCommand*(
   # Validate fleet exists
   let fleetOpt = state.getFleet(command.fleetId)
   if fleetOpt.isNone:
-    events.add(event_factory.commandFailed(
-      houseId = houseId,
-      fleetId = command.fleetId,
-      orderType = $command.commandType,
-      reason = "fleet not found",
-      systemId = none(SystemId)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        houseId = houseId,
+        fleetId = command.fleetId,
+        orderType = $command.commandType,
+        reason = "fleet not found",
+        systemId = none(SystemId),
+      )
+    )
     return OrderOutcome.Failed
 
   let fleet = fleetOpt.get()
 
   # Validate fleet ownership
   if fleet.owner != houseId:
-    events.add(event_factory.commandFailed(
-      houseId = houseId,
-      fleetId = command.fleetId,
-      orderType = $command.commandType,
-      reason = "fleet not owned by house",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        houseId = houseId,
+        fleetId = command.fleetId,
+        orderType = $command.commandType,
+        reason = "fleet not owned by house",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   # Route to order type handler
@@ -134,10 +262,10 @@ proc executeFleetCommand*(
 # =============================================================================
 
 proc executeHoldCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 00: Hold position and standby
   ## Always succeeds - fleet does nothing this turn
@@ -150,10 +278,10 @@ proc executeHoldCommand(
 # =============================================================================
 
 proc executeMoveCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 01: Move to new system and hold position
   ## Calls resolveMovementCommand to execute actual movement with pathfinding
@@ -180,10 +308,10 @@ proc executeMoveCommand(
 # =============================================================================
 
 proc executeSeekHomeCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 02: Find closest friendly colony and move there
   ## If that colony is conquered, find next closest
@@ -196,13 +324,15 @@ proc executeSeekHomeCommand(
 
   if friendlyColonies.len == 0:
     # No friendly colonies - abort mission
-    events.add(event_factory.commandAborted(
-      fleet.owner,
-      fleet.id,
-      "SeekHome",
-      reason = "no friendly colonies available",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandAborted(
+        fleet.owner,
+        fleet.id,
+        "SeekHome",
+        reason = "no friendly colonies available",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Aborted
 
   # Find closest colony using pathfinding
@@ -219,13 +349,15 @@ proc executeSeekHomeCommand(
 
   # Check if already at closest colony - mission complete
   if fleet.location == closestColony:
-    events.add(event_factory.commandCompleted(
-      fleet.owner,
-      fleet.id,
-      "SeekHome",
-      details = &"reached home at {closestColony}",
-      systemId = some(closestColony)
-    ))
+    events.add(
+      event_factory.commandCompleted(
+        fleet.owner,
+        fleet.id,
+        "SeekHome",
+        details = &"reached home at {closestColony}",
+        systemId = some(closestColony),
+      )
+    )
     return OrderOutcome.Success
 
   # Create movement order to closest colony
@@ -234,7 +366,7 @@ proc executeSeekHomeCommand(
     orderType: FleetCommandType.Move,
     targetSystem: some(closestColony),
     targetFleet: none(FleetId),
-    priority: command.priority
+    priority: command.priority,
   )
 
   # Execute movement (delegated to fleet_orders.resolveMovementCommand)
@@ -249,23 +381,25 @@ proc executeSeekHomeCommand(
 # =============================================================================
 
 proc executePatrolCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 03: Actively patrol system, engaging hostile forces
   ## Engagement rules per operations.md:6.2.4
   ## Persistent order - silent re-execution (only generates event on first execution)
 
   if command.targetSystem.isNone:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "Patrol",
-      reason = "no target system specified",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "Patrol",
+        reason = "no target system specified",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   let targetSystem = command.targetSystem.get()
@@ -274,13 +408,15 @@ proc executePatrolCommand(
   if targetSystem in state.colonies:
     let colony = state.colonies[targetSystem]
     if colony.owner != fleet.owner:
-      events.add(event_factory.commandAborted(
-        fleet.owner,
-        fleet.id,
-        "Patrol",
-        reason = "target system no longer friendly",
-        systemId = some(targetSystem)
-      ))
+      events.add(
+        event_factory.commandAborted(
+          fleet.owner,
+          fleet.id,
+          "Patrol",
+          reason = "target system no longer friendly",
+          systemId = some(targetSystem),
+        )
+      )
       return OrderOutcome.Aborted
 
   # Persistent order - stays active, combat happens in Conflict Phase
@@ -292,23 +428,25 @@ proc executePatrolCommand(
 # =============================================================================
 
 proc executeGuardStarbaseCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 04: Protect starbase, join Task Force when confronted
   ## Requires combat ships
   ## Persistent order - silent re-execution
 
   if command.targetSystem.isNone:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "GuardStarbase",
-      reason = "no target system specified",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "GuardStarbase",
+        reason = "no target system specified",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   # Check for combat capability
@@ -319,47 +457,55 @@ proc executeGuardStarbaseCommand(
       break
 
   if not hasCombatShips:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "GuardStarbase",
-      reason = "no combat-capable ships",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "GuardStarbase",
+        reason = "no combat-capable ships",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   let targetSystem = command.targetSystem.get()
 
   # Validate starbase presence and ownership
   if targetSystem notin state.colonies:
-    events.add(event_factory.commandAborted(
-      fleet.owner,
-      fleet.id,
-      "GuardStarbase",
-      reason = "target system has no colony",
-      systemId = some(targetSystem)
-    ))
+    events.add(
+      event_factory.commandAborted(
+        fleet.owner,
+        fleet.id,
+        "GuardStarbase",
+        reason = "target system has no colony",
+        systemId = some(targetSystem),
+      )
+    )
     return OrderOutcome.Aborted
 
   let colony = state.colonies[targetSystem]
   if colony.owner != fleet.owner:
-    events.add(event_factory.commandAborted(
-      fleet.owner,
-      fleet.id,
-      "GuardStarbase",
-      reason = "colony no longer friendly",
-      systemId = some(targetSystem)
-    ))
+    events.add(
+      event_factory.commandAborted(
+        fleet.owner,
+        fleet.id,
+        "GuardStarbase",
+        reason = "colony no longer friendly",
+        systemId = some(targetSystem),
+      )
+    )
     return OrderOutcome.Aborted
 
   if colony.starbases.len == 0:
-    events.add(event_factory.commandAborted(
-      fleet.owner,
-      fleet.id,
-      "GuardStarbase",
-      reason = "starbase destroyed",
-      systemId = some(targetSystem)
-    ))
+    events.add(
+      event_factory.commandAborted(
+        fleet.owner,
+        fleet.id,
+        "GuardStarbase",
+        reason = "starbase destroyed",
+        systemId = some(targetSystem),
+      )
+    )
     return OrderOutcome.Aborted
 
   # Persistent order - stays active, silent re-execution
@@ -370,23 +516,25 @@ proc executeGuardStarbaseCommand(
 # =============================================================================
 
 proc executeGuardPlanetCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 05 (Guard): Protect friendly colony, rear guard position
   ## Does not auto-join starbase Task Force (allows Raiders)
   ## Persistent order - silent re-execution
 
   if command.targetSystem.isNone:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "GuardPlanet",
-      reason = "no target system specified",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "GuardPlanet",
+        reason = "no target system specified",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   let targetSystem = command.targetSystem.get()
@@ -399,36 +547,40 @@ proc executeGuardPlanetCommand(
       break
 
   if not hasCombatShips:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "GuardPlanet",
-      reason = "no combat-capable ships",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "GuardPlanet",
+        reason = "no combat-capable ships",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   # Check target colony still exists and is friendly
   if targetSystem in state.colonies:
     let colony = state.colonies[targetSystem]
     if colony.owner != fleet.owner:
-      events.add(event_factory.commandAborted(
-        fleet.owner,
-        fleet.id,
-        "GuardPlanet",
-        reason = "colony no longer friendly",
-        systemId = some(targetSystem)
-      ))
+      events.add(
+        event_factory.commandAborted(
+          fleet.owner,
+          fleet.id,
+          "GuardPlanet",
+          reason = "colony no longer friendly",
+          systemId = some(targetSystem),
+        )
+      )
       return OrderOutcome.Aborted
 
   # Persistent order - stays active, silent re-execution
   return OrderOutcome.Success
 
 proc executeBlockadeCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 05 (Blockade): Block enemy planet, reduce GCO by 60%
   ## Per operations.md:6.2.6 - Immediate effect during Income Phase
@@ -436,13 +588,15 @@ proc executeBlockadeCommand(
   ## Persistent order - silent re-execution
 
   if command.targetSystem.isNone:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "BlockadePlanet",
-      reason = "no target system specified",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "BlockadePlanet",
+        reason = "no target system specified",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   let targetSystem = command.targetSystem.get()
@@ -455,48 +609,56 @@ proc executeBlockadeCommand(
       break
 
   if not hasCombatShips:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "BlockadePlanet",
-      reason = "no combat-capable ships",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "BlockadePlanet",
+        reason = "no combat-capable ships",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   # Check target colony exists and is hostile
   if targetSystem notin state.colonies:
-    events.add(event_factory.commandAborted(
-      fleet.owner,
-      fleet.id,
-      "BlockadePlanet",
-      reason = "target system has no colony",
-      systemId = some(targetSystem)
-    ))
+    events.add(
+      event_factory.commandAborted(
+        fleet.owner,
+        fleet.id,
+        "BlockadePlanet",
+        reason = "target system has no colony",
+        systemId = some(targetSystem),
+      )
+    )
     return OrderOutcome.Aborted
 
   let colony = state.colonies[targetSystem]
   if colony.owner == fleet.owner:
-    events.add(event_factory.commandAborted(
-      fleet.owner,
-      fleet.id,
-      "BlockadePlanet",
-      reason = "cannot blockade own colony",
-      systemId = some(targetSystem)
-    ))
+    events.add(
+      event_factory.commandAborted(
+        fleet.owner,
+        fleet.id,
+        "BlockadePlanet",
+        reason = "cannot blockade own colony",
+        systemId = some(targetSystem),
+      )
+    )
     return OrderOutcome.Aborted
 
   # Validate target house is not eliminated (leaderboard is public info)
   if colony.owner in state.houses:
     let targetHouse = state.houses[colony.owner]
     if targetHouse.eliminated:
-      events.add(event_factory.commandAborted(
-        fleet.owner,
-        fleet.id,
-        "BlockadePlanet",
-        reason = "target house eliminated",
-        systemId = some(targetSystem)
-      ))
+      events.add(
+        event_factory.commandAborted(
+          fleet.owner,
+          fleet.id,
+          "BlockadePlanet",
+          reason = "target house eliminated",
+          systemId = some(targetSystem),
+        )
+      )
       return OrderOutcome.Aborted
 
   # NOTE: Blockade tracking not yet implemented in Colony type
@@ -512,10 +674,10 @@ proc executeBlockadeCommand(
 # =============================================================================
 
 proc executeBombardCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 06: Orbital bombardment of planet
   ## Resolved in Conflict Phase - this marks intent
@@ -556,10 +718,10 @@ proc executeBombardCommand(
 # =============================================================================
 
 proc executeInvadeCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 07: Three-round planetary invasion
   ## 1) Destroy ground batteries
@@ -599,8 +761,7 @@ proc executeInvadeCommand(
       if squadron.flagship.cargo.isSome:
         let cargo = squadron.flagship.cargo.get()
         if squadron.flagship.shipClass == ShipClass.TroopTransport and
-           cargo.cargoType == CargoType.Marines and
-           cargo.quantity > 0:
+            cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
           hasLoadedTransports = true
           break
 
@@ -617,10 +778,10 @@ proc executeInvadeCommand(
 # =============================================================================
 
 proc executeBlitzCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 08: Fast assault - dodge batteries, drop Marines
   ## Less planet damage, but requires 2:1 Marine superiority
@@ -668,22 +829,24 @@ proc executeBlitzCommand(
 # =============================================================================
 
 proc executeSpyPlanetCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 09: Deploy scout to gather planet intelligence
   ## Reserved for solo Scout operations per operations.md:6.2.10
 
   if command.targetSystem.isNone:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "SpyPlanet",
-      reason = "no target system specified",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "SpyPlanet",
+        reason = "no target system specified",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   let targetSystem = command.targetSystem.get()
@@ -694,13 +857,15 @@ proc executeSpyPlanetCommand(
     if colony.owner in state.houses:
       let targetHouse = state.houses[colony.owner]
       if targetHouse.eliminated:
-        events.add(event_factory.commandFailed(
-          fleet.owner,
-          fleet.id,
-          "SpyPlanet",
-          reason = "target house eliminated",
-          systemId = some(fleet.location)
-        ))
+        events.add(
+          event_factory.commandFailed(
+            fleet.owner,
+            fleet.id,
+            "SpyPlanet",
+            reason = "target house eliminated",
+            systemId = some(fleet.location),
+          )
+        )
         return OrderOutcome.Failed
 
   # Count scouts for mesh network bonus (validation already confirmed scout-only fleet)
@@ -718,20 +883,22 @@ proc executeSpyPlanetCommand(
     let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
 
     if path.path.len == 0:
-      events.add(event_factory.commandFailed(
-        fleet.owner,
-        fleet.id,
-        "SpyPlanet",
-        reason = "no path to target system",
-        systemId = some(fleet.location)
-      ))
+      events.add(
+        event_factory.commandFailed(
+          fleet.owner,
+          fleet.id,
+          "SpyPlanet",
+          reason = "no path to target system",
+          systemId = some(fleet.location),
+        )
+      )
       return OrderOutcome.Failed
 
     # Create movement order
     let travelOrder = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetCommandType.Move,
-      targetSystem: some(targetSystem)
+      targetSystem: some(targetSystem),
     )
     state.fleetCommands[fleet.id] = travelOrder
 
@@ -739,13 +906,16 @@ proc executeSpyPlanetCommand(
     state.fleets[fleet.id] = updatedFleet
 
     # Generate order accepted event
-    events.add(event_factory.commandCompleted(
-      fleet.owner,
-      fleet.id,
-      "SpyPlanet",
-      details = &"scout fleet traveling to {targetSystem} for spy mission ({scoutCount} scouts)",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandCompleted(
+        fleet.owner,
+        fleet.id,
+        "SpyPlanet",
+        details =
+          &"scout fleet traveling to {targetSystem} for spy mission ({scoutCount} scouts)",
+        systemId = some(fleet.location),
+      )
+    )
   else:
     # Already at target - start mission immediately
     updatedFleet.missionState = FleetMissionState.OnSpyMission
@@ -758,20 +928,22 @@ proc executeSpyPlanetCommand(
       targetSystem: targetSystem,
       scoutCount: scoutCount,
       startTurn: state.turn,
-      ownerHouse: fleet.owner
+      ownerHouse: fleet.owner,
     )
 
     # Update fleet in state
     state.fleets[fleet.id] = updatedFleet
 
     # Generate mission start event
-    events.add(event_factory.commandCompleted(
-      fleet.owner,
-      fleet.id,
-      "SpyPlanet",
-      details = &"spy mission started at {targetSystem} ({scoutCount} scouts)",
-      systemId = some(targetSystem)
-    ))
+    events.add(
+      event_factory.commandCompleted(
+        fleet.owner,
+        fleet.id,
+        "SpyPlanet",
+        details = &"spy mission started at {targetSystem} ({scoutCount} scouts)",
+        systemId = some(targetSystem),
+      )
+    )
 
   return OrderOutcome.Success
 
@@ -780,59 +952,67 @@ proc executeSpyPlanetCommand(
 # =============================================================================
 
 proc executeHackStarbaseCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 10: Electronic warfare against starbase
   ## Reserved for Scout operations per operations.md:6.2.11
 
   if command.targetSystem.isNone:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "HackStarbase",
-      reason = "no target system specified",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "HackStarbase",
+        reason = "no target system specified",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   let targetSystem = command.targetSystem.get()
 
   # Validate starbase presence at target
   if targetSystem notin state.colonies:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "HackStarbase",
-      reason = "target system has no colony",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "HackStarbase",
+        reason = "target system has no colony",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   let colony = state.colonies[targetSystem]
   if colony.starbases.len == 0:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "HackStarbase",
-      reason = "target colony has no starbase",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "HackStarbase",
+        reason = "target colony has no starbase",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   # Validate target house is not eliminated (leaderboard is public info)
   if colony.owner in state.houses:
     let targetHouse = state.houses[colony.owner]
     if targetHouse.eliminated:
-      events.add(event_factory.commandFailed(
-        fleet.owner,
-        fleet.id,
-        "HackStarbase",
-        reason = "target house eliminated",
-        systemId = some(fleet.location)
-      ))
+      events.add(
+        event_factory.commandFailed(
+          fleet.owner,
+          fleet.id,
+          "HackStarbase",
+          reason = "target house eliminated",
+          systemId = some(fleet.location),
+        )
+      )
       return OrderOutcome.Failed
 
   # Count scouts for mission (validation already confirmed scout-only fleet)
@@ -850,20 +1030,22 @@ proc executeHackStarbaseCommand(
     let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
 
     if path.path.len == 0:
-      events.add(event_factory.commandFailed(
-        fleet.owner,
-        fleet.id,
-        "HackStarbase",
-        reason = "no path to target system",
-        systemId = some(fleet.location)
-      ))
+      events.add(
+        event_factory.commandFailed(
+          fleet.owner,
+          fleet.id,
+          "HackStarbase",
+          reason = "no path to target system",
+          systemId = some(fleet.location),
+        )
+      )
       return OrderOutcome.Failed
 
     # Create movement order
     let travelOrder = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetCommandType.Move,
-      targetSystem: some(targetSystem)
+      targetSystem: some(targetSystem),
     )
     state.fleetCommands[fleet.id] = travelOrder
 
@@ -871,13 +1053,16 @@ proc executeHackStarbaseCommand(
     state.fleets[fleet.id] = updatedFleet
 
     # Generate order accepted event
-    events.add(event_factory.commandCompleted(
-      fleet.owner,
-      fleet.id,
-      "HackStarbase",
-      details = &"scout fleet traveling to {targetSystem} to hack starbase ({scoutCount} scouts)",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandCompleted(
+        fleet.owner,
+        fleet.id,
+        "HackStarbase",
+        details =
+          &"scout fleet traveling to {targetSystem} to hack starbase ({scoutCount} scouts)",
+        systemId = some(fleet.location),
+      )
+    )
   else:
     # Already at target - start mission immediately
     updatedFleet.missionState = FleetMissionState.OnSpyMission
@@ -890,20 +1075,23 @@ proc executeHackStarbaseCommand(
       targetSystem: targetSystem,
       scoutCount: scoutCount,
       startTurn: state.turn,
-      ownerHouse: fleet.owner
+      ownerHouse: fleet.owner,
     )
 
     # Update fleet in state
     state.fleets[fleet.id] = updatedFleet
 
     # Generate mission start event
-    events.add(event_factory.commandCompleted(
-      fleet.owner,
-      fleet.id,
-      "HackStarbase",
-      details = &"starbase hack mission started at {targetSystem} ({scoutCount} scouts)",
-      systemId = some(targetSystem)
-    ))
+    events.add(
+      event_factory.commandCompleted(
+        fleet.owner,
+        fleet.id,
+        "HackStarbase",
+        details =
+          &"starbase hack mission started at {targetSystem} ({scoutCount} scouts)",
+        systemId = some(targetSystem),
+      )
+    )
 
   return OrderOutcome.Success
 
@@ -912,22 +1100,24 @@ proc executeHackStarbaseCommand(
 # =============================================================================
 
 proc executeSpySystemCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 11: Deploy scout for system reconnaissance
   ## Reserved for solo Scout operations per operations.md:6.2.12
 
   if command.targetSystem.isNone:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "SpySystem",
-      reason = "no target system specified",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "SpySystem",
+        reason = "no target system specified",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   let targetSystem = command.targetSystem.get()
@@ -938,13 +1128,15 @@ proc executeSpySystemCommand(
     if colony.owner in state.houses:
       let targetHouse = state.houses[colony.owner]
       if targetHouse.eliminated:
-        events.add(event_factory.commandFailed(
-          fleet.owner,
-          fleet.id,
-          "SpySystem",
-          reason = "target house eliminated",
-          systemId = some(fleet.location)
-        ))
+        events.add(
+          event_factory.commandFailed(
+            fleet.owner,
+            fleet.id,
+            "SpySystem",
+            reason = "target house eliminated",
+            systemId = some(fleet.location),
+          )
+        )
         return OrderOutcome.Failed
 
   # Count scouts for mission (validation already confirmed scout-only fleet)
@@ -962,20 +1154,22 @@ proc executeSpySystemCommand(
     let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
 
     if path.path.len == 0:
-      events.add(event_factory.commandFailed(
-        fleet.owner,
-        fleet.id,
-        "SpySystem",
-        reason = "no path to target system",
-        systemId = some(fleet.location)
-      ))
+      events.add(
+        event_factory.commandFailed(
+          fleet.owner,
+          fleet.id,
+          "SpySystem",
+          reason = "no path to target system",
+          systemId = some(fleet.location),
+        )
+      )
       return OrderOutcome.Failed
 
     # Create movement order
     let travelOrder = FleetOrder(
       fleetId: fleet.id,
       orderType: FleetCommandType.Move,
-      targetSystem: some(targetSystem)
+      targetSystem: some(targetSystem),
     )
     state.fleetCommands[fleet.id] = travelOrder
 
@@ -983,13 +1177,16 @@ proc executeSpySystemCommand(
     state.fleets[fleet.id] = updatedFleet
 
     # Generate order accepted event
-    events.add(event_factory.commandCompleted(
-      fleet.owner,
-      fleet.id,
-      "SpySystem",
-      details = &"scout fleet traveling to {targetSystem} for system reconnaissance ({scoutCount} scouts)",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandCompleted(
+        fleet.owner,
+        fleet.id,
+        "SpySystem",
+        details =
+          &"scout fleet traveling to {targetSystem} for system reconnaissance ({scoutCount} scouts)",
+        systemId = some(fleet.location),
+      )
+    )
   else:
     # Already at target - start mission immediately
     updatedFleet.missionState = FleetMissionState.OnSpyMission
@@ -1002,20 +1199,23 @@ proc executeSpySystemCommand(
       targetSystem: targetSystem,
       scoutCount: scoutCount,
       startTurn: state.turn,
-      ownerHouse: fleet.owner
+      ownerHouse: fleet.owner,
     )
 
     # Update fleet in state
     state.fleets[fleet.id] = updatedFleet
 
     # Generate mission start event
-    events.add(event_factory.commandCompleted(
-      fleet.owner,
-      fleet.id,
-      "SpySystem",
-      details = &"system reconnaissance mission started at {targetSystem} ({scoutCount} scouts)",
-      systemId = some(targetSystem)
-    ))
+    events.add(
+      event_factory.commandCompleted(
+        fleet.owner,
+        fleet.id,
+        "SpySystem",
+        details =
+          &"system reconnaissance mission started at {targetSystem} ({scoutCount} scouts)",
+        systemId = some(targetSystem),
+      )
+    )
 
   return OrderOutcome.Success
 
@@ -1024,10 +1224,10 @@ proc executeSpySystemCommand(
 # =============================================================================
 
 proc executeColonizeCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 12: Establish colony with ETAC
   ## Reserved for ETAC under fleet escort per operations.md:6.2.13
@@ -1052,8 +1252,7 @@ proc executeColonizeCommand(
 
   # Execute actual colonization using centralized colonization logic
   var colonizationEvents: seq[resolution_types.GameEvent] = @[]
-  fleet_orders.resolveColonizationCommand(state, fleet.owner, order,
-                                        colonizationEvents)
+  fleet_orders.resolveColonizationCommand(state, fleet.owner, order, colonizationEvents)
   events.add(colonizationEvents)
 
   return OrderOutcome.Success
@@ -1063,10 +1262,10 @@ proc executeColonizeCommand(
 # =============================================================================
 
 proc executeJoinFleetCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 13: Seek and merge with another fleet
   ## Old fleet disbands, squadrons join target
@@ -1081,13 +1280,15 @@ proc executeJoinFleetCommand(
   ## See assets.md:2.4.2 for mesh network modifier table.
 
   if command.targetFleet.isNone:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "JoinFleet",
-      reason = "no target fleet specified",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "JoinFleet",
+        reason = "no target fleet specified",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   let targetFleetId = command.targetFleet.get()
@@ -1102,13 +1303,15 @@ proc executeJoinFleetCommand(
       state.fleetCommands.del(fleet.id)
       standing_orders.resetStandingCommandGracePeriod(state, fleet.id)
 
-    events.add(event_factory.commandAborted(
+    events.add(
+      event_factory.commandAborted(
         houseId = fleet.owner,
         fleetId = fleet.id,
         orderType = "JoinFleet",
         reason = "target fleet no longer exists",
-        systemId = some(fleet.location)
-      ))
+        systemId = some(fleet.location),
+      )
+    )
 
     return OrderOutcome.Failed
 
@@ -1116,13 +1319,15 @@ proc executeJoinFleetCommand(
 
   # Check same owner
   if targetFleet.owner != fleet.owner:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "JoinFleet",
-      reason = "target fleet is not owned by same house",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "JoinFleet",
+        reason = "target fleet is not owned by same house",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   # Check if at same location - if not, move toward target
@@ -1134,7 +1339,7 @@ proc executeJoinFleetCommand(
       orderType: FleetCommandType.Move,
       targetSystem: some(targetFleet.location),
       targetFleet: none(FleetId),
-      priority: command.priority
+      priority: command.priority,
     )
 
     # Use the centralized movement arbiter (handles all lane logic, pathfinding, etc.)
@@ -1157,13 +1362,15 @@ proc executeJoinFleetCommand(
         state.fleetCommands.del(fleet.id)
         standing_orders.resetStandingCommandGracePeriod(state, fleet.id)
 
-      events.add(event_factory.commandAborted(
+      events.add(
+        event_factory.commandAborted(
           houseId = fleet.owner,
           fleetId = fleet.id,
           orderType = "JoinFleet",
           reason = "cannot reach target",
-          systemId = some(fleet.location)
-        ))
+          systemId = some(fleet.location),
+        )
+      )
 
       return OrderOutcome.Failed
 
@@ -1191,16 +1398,22 @@ proc executeJoinFleetCommand(
   if fleet.id in state.standingCommands:
     state.standingCommands.del(fleet.id)
 
-  logInfo(LogCategory.lcFleet, "Fleet " & $fleet.id & " merged into fleet " & $targetFleetId & " (source fleet removed)")
+  logInfo(
+    LogCategory.lcFleet,
+    "Fleet " & $fleet.id & " merged into fleet " & $targetFleetId &
+      " (source fleet removed)",
+  )
 
   # Generate OrderCompleted event for successful fleet merge
-  events.add(event_factory.commandCompleted(
-    fleet.owner,
-    fleet.id,
-    "JoinFleet",
-    details = &"merged into fleet {targetFleetId}",
-    systemId = some(fleet.location)
-  ))
+  events.add(
+    event_factory.commandCompleted(
+      fleet.owner,
+      fleet.id,
+      "JoinFleet",
+      details = &"merged into fleet {targetFleetId}",
+      systemId = some(fleet.location),
+    )
+  )
 
   return OrderOutcome.Success
 
@@ -1209,10 +1422,10 @@ proc executeJoinFleetCommand(
 # =============================================================================
 
 proc executeRendezvousCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 14: Move to system and merge with other rendezvous fleets
   ## Lowest fleet ID becomes host
@@ -1227,13 +1440,15 @@ proc executeRendezvousCommand(
   ## See assets.md:2.4.2 for mesh network modifier table.
 
   if command.targetSystem.isNone:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "Rendezvous",
-      reason = "no target system specified",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "Rendezvous",
+        reason = "no target system specified",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   let targetSystem = command.targetSystem.get()
@@ -1244,35 +1459,42 @@ proc executeRendezvousCommand(
   if targetSystem in state.fleetsByLocation:
     for otherFleetId in state.fleetsByLocation[targetSystem]:
       if otherFleetId notin state.fleets:
-        continue  # Skip stale index entry
+        continue # Skip stale index entry
       let otherFleet = state.fleets[otherFleetId]
       if otherFleet.owner != fleet.owner:
-        let relation = dip_types.getDiplomaticState(house.diplomaticRelations, otherFleet.owner)
-        if relation == dip_types.DiplomaticState.Enemy or relation == dip_types.DiplomaticState.Hostile:
+        let relation =
+          dip_types.getDiplomaticState(house.diplomaticRelations, otherFleet.owner)
+        if relation == dip_types.DiplomaticState.Enemy or
+            relation == dip_types.DiplomaticState.Hostile:
           # Hostile forces at rendezvous - abort
-          events.add(event_factory.commandAborted(
-            fleet.owner,
-            fleet.id,
-            "Rendezvous",
-            reason = "hostile forces present at rendezvous point",
-            systemId = some(fleet.location)
-          ))
+          events.add(
+            event_factory.commandAborted(
+              fleet.owner,
+              fleet.id,
+              "Rendezvous",
+              reason = "hostile forces present at rendezvous point",
+              systemId = some(fleet.location),
+            )
+          )
           return OrderOutcome.Aborted
 
   # Check if rendezvous point colony is enemy-controlled (additional check)
   if targetSystem in state.colonies:
     let colony = state.colonies[targetSystem]
     if colony.owner != fleet.owner:
-      let relation = dip_types.getDiplomaticState(house.diplomaticRelations, colony.owner)
+      let relation =
+        dip_types.getDiplomaticState(house.diplomaticRelations, colony.owner)
       if relation == dip_types.DiplomaticState.Enemy:
         # Rendezvous point is enemy territory - abort
-        events.add(event_factory.commandAborted(
-          fleet.owner,
-          fleet.id,
-          "Rendezvous",
-          reason = "rendezvous point is enemy-controlled",
-          systemId = some(fleet.location)
-        ))
+        events.add(
+          event_factory.commandAborted(
+            fleet.owner,
+            fleet.id,
+            "Rendezvous",
+            reason = "rendezvous point is enemy-controlled",
+            systemId = some(fleet.location),
+          )
+        )
         return OrderOutcome.Aborted
 
   # Check if fleet is at rendezvous point
@@ -1289,9 +1511,9 @@ proc executeRendezvousCommand(
   if targetSystem in state.fleetsByLocation:
     for fleetId in state.fleetsByLocation[targetSystem]:
       if fleetId == fleet.id:
-        continue  # Skip self
+        continue # Skip self
       if fleetId notin state.fleets:
-        continue  # Skip stale index entry
+        continue # Skip stale index entry
 
       let otherFleet = state.fleets[fleetId]
       # Check if owned by same house
@@ -1300,8 +1522,8 @@ proc executeRendezvousCommand(
         if fleetId in state.fleetCommands:
           let otherOrder = state.fleetCommands[fleetId]
           if otherOrder.commandType == FleetCommandType.Rendezvous and
-             otherOrder.targetSystem.isSome and
-             otherOrder.targetSystem.get() == targetSystem:
+              otherOrder.targetSystem.isSome and
+              otherOrder.targetSystem.get() == targetSystem:
             rendezvousFleets.add(otherFleet)
 
   # If only this fleet, wait for others
@@ -1322,7 +1544,7 @@ proc executeRendezvousCommand(
   var mergedCount = 0
   for f in rendezvousFleets:
     if f.id == lowestId:
-      continue  # Skip host
+      continue # Skip host
 
     # Merge squadrons (all squadron types)
     for squadron in f.squadrons:
@@ -1337,23 +1559,31 @@ proc executeRendezvousCommand(
       state.standingCommands.del(f.id)
 
     mergedCount += 1
-    logInfo(LogCategory.lcFleet, "Fleet " & $f.id & " merged into rendezvous host " & $lowestId & " (source fleet removed)")
+    logInfo(
+      LogCategory.lcFleet,
+      "Fleet " & $f.id & " merged into rendezvous host " & $lowestId &
+        " (source fleet removed)",
+    )
 
   # Update host fleet
   state.fleets[lowestId] = hostFleet
 
-  var message = "Rendezvous complete at " & $targetSystem & ": " & $mergedCount & " fleets merged into " & $lowestId
+  var message =
+    "Rendezvous complete at " & $targetSystem & ": " & $mergedCount &
+    " fleets merged into " & $lowestId
 
   # Generate OrderCompleted event for successful rendezvous
   var details = &"{mergedCount} fleet(s) merged"
 
-  events.add(event_factory.commandCompleted(
-    fleet.owner,
-    lowestId,
-    "Rendezvous",
-    details = details,
-    systemId = some(targetSystem)
-  ))
+  events.add(
+    event_factory.commandCompleted(
+      fleet.owner,
+      lowestId,
+      "Rendezvous",
+      details = details,
+      systemId = some(targetSystem),
+    )
+  )
 
   return OrderOutcome.Success
 
@@ -1362,10 +1592,10 @@ proc executeRendezvousCommand(
 # =============================================================================
 
 proc executeSalvageCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 15: Salvage fleet at closest friendly colony with spaceport or shipyard
   ## Fleet disbands, ships salvaged for 50% PC
@@ -1403,13 +1633,15 @@ proc executeSalvageCommand(
             break
 
   if closestColony.isNone:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "Salvage",
-      reason = "no friendly colonies with salvage facilities (spaceport or shipyard)",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "Salvage",
+        reason = "no friendly colonies with salvage facilities (spaceport or shipyard)",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   # Calculate salvage value (50% of ship PC per operations.md:6.2.16)
@@ -1427,10 +1659,11 @@ proc executeSalvageCommand(
 
   # Generate event
   let targetSystem = closestColony.get()
-  let transitMessage = if fleet.location == targetSystem:
-    "at colony"
-  else:
-    "after transit to " & $targetSystem
+  let transitMessage =
+    if fleet.location == targetSystem:
+      "at colony"
+    else:
+      "after transit to " & $targetSystem
 
   # Remove fleet from game state
   state.removeFleetFromIndices(fleet.id, fleet.owner, fleet.location)
@@ -1441,13 +1674,15 @@ proc executeSalvageCommand(
     state.standingCommands.del(fleet.id)
 
   # Generate OrderCompleted event for salvage operation
-  events.add(event_factory.commandCompleted(
-    fleet.owner,
-    fleet.id,
-    "Salvage",
-    details = &"recovered {salvageValue} PP from {fleet.squadrons.len} squadron(s)",
-    systemId = some(targetSystem)
-  ))
+  events.add(
+    event_factory.commandCompleted(
+      fleet.owner,
+      fleet.id,
+      "Salvage",
+      details = &"recovered {salvageValue} PP from {fleet.squadrons.len} squadron(s)",
+      systemId = some(targetSystem),
+    )
+  )
 
   return OrderOutcome.Success
 
@@ -1456,10 +1691,10 @@ proc executeSalvageCommand(
 # =============================================================================
 
 proc executeReserveCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Place fleet on Reserve status (50% maintenance, half AS/DS, can't move)
   ## Per economy.md:3.9
@@ -1503,7 +1738,7 @@ proc executeReserveCommand(
         orderType: FleetCommandType.Move,
         targetSystem: some(closestColony),
         targetFleet: none(FleetId),
-        priority: command.priority
+        priority: command.priority,
       )
 
       # Use centralized movement arbiter
@@ -1520,13 +1755,15 @@ proc executeReserveCommand(
       # Check if actually moved (pathfinding succeeded)
       if movedFleet.location == fleet.location:
         # Fleet didn't move - no path found
-        events.add(event_factory.commandFailed(
-          houseId = fleet.owner,
-          fleetId = fleet.id,
-          orderType = "Reserve",
-          reason = "cannot reach colony",
-          systemId = some(fleet.location)
-        ))
+        events.add(
+          event_factory.commandFailed(
+            houseId = fleet.owner,
+            fleetId = fleet.id,
+            orderType = "Reserve",
+            reason = "cannot reach colony",
+            systemId = some(fleet.location),
+          )
+        )
         return OrderOutcome.Failed
 
       # Keep order persistent - will execute when fleet arrives
@@ -1539,21 +1776,23 @@ proc executeReserveCommand(
   state.fleets[fleet.id] = updatedFleet
 
   # Generate OrderCompleted event for state change
-  events.add(event_factory.commandCompleted(
-    fleet.owner,
-    fleet.id,
-    "Reserve",
-    details = "placed on reserve status",
-    systemId = some(fleet.location)
-  ))
+  events.add(
+    event_factory.commandCompleted(
+      fleet.owner,
+      fleet.id,
+      "Reserve",
+      details = "placed on reserve status",
+      systemId = some(fleet.location),
+    )
+  )
 
   return OrderOutcome.Success
 
 proc executeMothballCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Mothball fleet (0% maintenance, offline, screened in combat)
   ## Per economy.md:3.9
@@ -1597,7 +1836,7 @@ proc executeMothballCommand(
         orderType: FleetCommandType.Move,
         targetSystem: some(closestColony),
         targetFleet: none(FleetId),
-        priority: command.priority
+        priority: command.priority,
       )
 
       # Use centralized movement arbiter
@@ -1614,13 +1853,15 @@ proc executeMothballCommand(
       # Check if actually moved (pathfinding succeeded)
       if movedFleet.location == fleet.location:
         # Fleet didn't move - no path found
-        events.add(event_factory.commandFailed(
-          houseId = fleet.owner,
-          fleetId = fleet.id,
-          orderType = "Mothball",
-          reason = "cannot reach colony",
-          systemId = some(fleet.location)
-        ))
+        events.add(
+          event_factory.commandFailed(
+            houseId = fleet.owner,
+            fleetId = fleet.id,
+            orderType = "Mothball",
+            reason = "cannot reach colony",
+            systemId = some(fleet.location),
+          )
+        )
         return OrderOutcome.Failed
 
       # Keep order persistent - will execute when fleet arrives
@@ -1633,32 +1874,36 @@ proc executeMothballCommand(
   state.fleets[fleet.id] = updatedFleet
 
   # Generate OrderCompleted event for state change
-  events.add(event_factory.commandCompleted(
-    fleet.owner,
-    fleet.id,
-    "Mothball",
-    details = "mothballed",
-    systemId = some(fleet.location)
-  ))
+  events.add(
+    event_factory.commandCompleted(
+      fleet.owner,
+      fleet.id,
+      "Mothball",
+      details = "mothballed",
+      systemId = some(fleet.location),
+    )
+  )
 
   return OrderOutcome.Success
 
 proc executeReactivateCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Return reserve or mothballed fleet to active duty
 
   if fleet.status == FleetStatus.Active:
-    events.add(event_factory.commandFailed(
-      houseId = fleet.owner,
-      fleetId = fleet.id,
-      orderType = "Reactivate",
-      reason = "fleet already active",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        houseId = fleet.owner,
+        fleetId = fleet.id,
+        orderType = "Reactivate",
+        reason = "fleet already active",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   # Change status to Active
@@ -1667,13 +1912,15 @@ proc executeReactivateCommand(
   state.fleets[fleet.id] = updatedFleet
 
   # Generate OrderCompleted event for state change
-  events.add(event_factory.commandCompleted(
-    fleet.owner,
-    fleet.id,
-    "Reactivate",
-    details = "reactivated",
-    systemId = some(fleet.location)
-  ))
+  events.add(
+    event_factory.commandCompleted(
+      fleet.owner,
+      fleet.id,
+      "Reactivate",
+      details = "reactivated",
+      systemId = some(fleet.location),
+    )
+  )
 
   return OrderOutcome.Success
 
@@ -1682,23 +1929,25 @@ proc executeReactivateCommand(
 # =============================================================================
 
 proc executeViewWorldCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[resolution_types.GameEvent]
+    state: var GameState,
+    fleet: Fleet,
+    command: FleetCommand,
+    events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 19: Perform long-range scan of planet from system edge
   ## Gathers: planet owner (if colonized) + planet class (production potential)
   ## Resolution logic handled by resolveViewWorldCommand in fleet_orders.nim
 
   if command.targetSystem.isNone:
-    events.add(event_factory.commandFailed(
-      fleet.owner,
-      fleet.id,
-      "ViewWorld",
-      reason = "no target system specified",
-      systemId = some(fleet.location)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        fleet.owner,
+        fleet.id,
+        "ViewWorld",
+        reason = "no target system specified",
+        systemId = some(fleet.location),
+      )
+    )
     return OrderOutcome.Failed
 
   return OrderOutcome.Success

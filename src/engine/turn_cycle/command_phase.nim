@@ -28,8 +28,7 @@
 ## - Admin orders execute immediately; all others stored for Maintenance Phase
 ## - Four-tier lifecycle: Initiate (Part B) → Validate (Part C) → Activate (Maintenance) → Execute (Conflict/Income)
 
-import std/[tables, algorithm, options, random, sequtils, hashes, sets,
-            strformat]
+import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
 import ../../common/logger as common_logger
 import ../types/core
 import ../types/game_state
@@ -45,11 +44,13 @@ import ../systems/research/costs as res_costs
 import ../systems/colony/[commands as colony_commands, terraforming]
 import ../systems/population/transfers as pop_transfers
 
-proc resolveCommandPhase*(state: var GameState,
-                          orders: Table[HouseId, CommandPacket],
-                          combatReports: var seq[CombatReport],
-                          events: var seq[res_types.GameEvent],
-                          rng: var Rand) =
+proc resolveCommandPhase*(
+    state: var GameState,
+    orders: Table[HouseId, CommandPacket],
+    combatReports: var seq[CombatReport],
+    events: var seq[res_types.GameEvent],
+    rng: var Rand,
+) =
   ## Phase 3: Execute orders
   ## Commissioning happens FIRST to free up dock capacity before new builds
   logInfo(LogCategory.lcOrders, &"=== Command Phase === (turn={state.turn})")
@@ -60,7 +61,9 @@ proc resolveCommandPhase*(state: var GameState,
   # Clean up completed/failed/aborted orders based on events from previous turn
   # This runs BEFORE Part A to ensure standing commands can activate in Maintenance Phase
   # Per canonical turn cycle: Step 0 runs before commissioning/automation
-  logInfo(LogCategory.lcOrders, "[COMMAND STEP 0] Cleaning up orders from previous turn...")
+  logInfo(
+    LogCategory.lcOrders, "[COMMAND STEP 0] Cleaning up orders from previous turn..."
+  )
   order_cleanup.cleanFleetOrders(state, events)
 
   # ===================================================================
@@ -71,10 +74,12 @@ proc resolveCommandPhase*(state: var GameState,
   # (Planetary defense commissioned in Maintenance Phase Step 2b)
   logInfo(LogCategory.lcOrders, "[COMMAND PART A] Ship commissioning & automation...")
   if state.pendingMilitaryCommissions.len > 0:
-    logInfo(LogCategory.lcEconomy, &"[COMMISSIONING] Processing {state.pendingMilitaryCommissions.len} ships")
-    commissioning.commissionShips(state, state.pendingMilitaryCommissions,
-                                   events)
-    state.pendingMilitaryCommissions = @[]  # Clear after commissioning
+    logInfo(
+      LogCategory.lcEconomy,
+      &"[COMMISSIONING] Processing {state.pendingMilitaryCommissions.len} ships",
+    )
+    commissioning.commissionShips(state, state.pendingMilitaryCommissions, events)
+    state.pendingMilitaryCommissions = @[] # Clear after commissioning
   else:
     logInfo(LogCategory.lcEconomy, "[COMMISSIONING] No ships to commission this turn")
 
@@ -82,7 +87,9 @@ proc resolveCommandPhase*(state: var GameState,
   # Uses newly-freed dock capacity and commissioned units
   logInfo(LogCategory.lcEconomy, "[AUTOMATION] Processing colony automation...")
   automation.processColonyAutomation(state, orders)
-  logInfo(LogCategory.lcOrders, "[COMMAND PART A] Completed ship commissioning & automation")
+  logInfo(
+    LogCategory.lcOrders, "[COMMAND PART A] Completed ship commissioning & automation"
+  )
 
   # ===================================================================
   # PART B: PLAYER SUBMISSION WINDOW (simulated by AI)
@@ -100,7 +107,6 @@ proc resolveCommandPhase*(state: var GameState,
   for houseId in state.houses.keys:
     if houseId in orders:
       pop_transfers.resolvePopulationTransfers(state, orders[houseId], events)
-
 
   # NOTE: Squadron management and cargo management are now handled by
   # zero-turn commands (src/engine/commands/logistics.nim)
@@ -136,7 +142,9 @@ proc resolveCommandPhase*(state: var GameState,
   #
   # Key principle: All non-admin orders follow same path → No special cases
 
-  logInfo(LogCategory.lcOrders, "[COMMAND PART C] Validating and storing fleet orders...")
+  logInfo(
+    LogCategory.lcOrders, "[COMMAND PART C] Validating and storing fleet orders..."
+  )
 
   # Process build orders (new construction using freed capacity)
   logInfo(LogCategory.lcEconomy, "[BUILD ORDERS] Processing construction orders...")
@@ -170,12 +178,14 @@ proc resolveCommandPhase*(state: var GameState,
         scaledAllocation.technology = initTable[TechField, int]()
         totalResearchCost = 0
 
-        logWarn(LogCategory.lcResearch,
-          &"{houseId} research cancelled - negative treasury ({state.houses[houseId].treasury} PP)")
-
+        logWarn(
+          LogCategory.lcResearch,
+          &"{houseId} research cancelled - negative treasury ({state.houses[houseId].treasury} PP)",
+        )
       elif totalResearchCost > state.houses[houseId].treasury:
         # Calculate scaling factor (how much we can actually afford)
-        let affordablePercent = float(state.houses[houseId].treasury) / float(totalResearchCost)
+        let affordablePercent =
+          float(state.houses[houseId].treasury) / float(totalResearchCost)
 
         # Scale all allocations proportionally
         scaledAllocation.economic = int(float(allocation.economic) * affordablePercent)
@@ -191,16 +201,20 @@ proc resolveCommandPhase*(state: var GameState,
         for field, pp in scaledAllocation.technology:
           totalResearchCost += pp
 
-        logWarn(LogCategory.lcResearch,
-          &"{houseId} research budget scaled down by {int(affordablePercent * 100)}% due to treasury constraints")
+        logWarn(
+          LogCategory.lcResearch,
+          &"{houseId} research budget scaled down by {int(affordablePercent * 100)}% due to treasury constraints",
+        )
 
       # Deduct research cost from treasury (CRITICAL FIX)
       # Research competes with builds for treasury resources
       if totalResearchCost > 0:
         state.houses[houseId].treasury -= totalResearchCost
-        logInfo(LogCategory.lcResearch,
+        logInfo(
+          LogCategory.lcResearch,
           &"{houseId} spent {totalResearchCost} PP on research " &
-          &"(treasury: {state.houses[houseId].treasury + totalResearchCost} → {state.houses[houseId].treasury})")
+            &"(treasury: {state.houses[houseId].treasury + totalResearchCost} → {state.houses[houseId].treasury})",
+        )
 
       # Calculate GHO for this house
       # Use coloniesByOwner index for O(1) lookup instead of O(c) scan
@@ -211,7 +225,7 @@ proc resolveCommandPhase*(state: var GameState,
             gho += state.colonies[colonyId].production
 
       # Get current tech levels
-      let currentSL = state.houses[houseId].techTree.levels.scienceLevel  # Science Level
+      let currentSL = state.houses[houseId].techTree.levels.scienceLevel # Science Level
 
       # Convert PP allocations to RP (use SCALED allocation, not original)
       let earnedRP = res_costs.allocateResearch(scaledAllocation, gho, currentSL)
@@ -231,18 +245,25 @@ proc resolveCommandPhase*(state: var GameState,
 
       # Log allocations (use SCALED allocation for accurate reporting)
       if scaledAllocation.economic > 0:
-        logDebug(LogCategory.lcResearch,
+        logDebug(
+          LogCategory.lcResearch,
           &"{houseId} allocated {scaledAllocation.economic} PP → {earnedRP.economic} ERP " &
-          &"(total: {state.houses[houseId].techTree.accumulated.economic} ERP)")
+            &"(total: {state.houses[houseId].techTree.accumulated.economic} ERP)",
+        )
       if scaledAllocation.science > 0:
-        logDebug(LogCategory.lcResearch,
+        logDebug(
+          LogCategory.lcResearch,
           &"{houseId} allocated {scaledAllocation.science} PP → {earnedRP.science} SRP " &
-          &"(total: {state.houses[houseId].techTree.accumulated.science} SRP)")
+            &"(total: {state.houses[houseId].techTree.accumulated.science} SRP)",
+        )
       for field, pp in scaledAllocation.technology:
         if pp > 0 and field in earnedRP.technology:
-          let totalTRP = state.houses[houseId].techTree.accumulated.technology.getOrDefault(field, 0)
-          logDebug(LogCategory.lcResearch,
-            &"{houseId} allocated {pp} PP → {earnedRP.technology[field]} TRP ({field}) (total: {totalTRP} TRP)")
+          let totalTRP =
+            state.houses[houseId].techTree.accumulated.technology.getOrDefault(field, 0)
+          logDebug(
+            LogCategory.lcResearch,
+            &"{houseId} allocated {pp} PP → {earnedRP.technology[field]} TRP ({field}) (total: {totalTRP} TRP)",
+          )
 
   var ordersStored = 0
   var adminExecuted = 0
@@ -257,9 +278,15 @@ proc resolveCommandPhase*(state: var GameState,
           let outcome = executor.executeFleetCommand(state, houseId, cmd, events)
           if outcome == CommandOutcome.Success:
             adminExecuted += 1
-            logDebug(LogCategory.lcOrders, &"  [ADMIN] Fleet {cmd.fleetId}: {cmd.commandType} executed")
+            logDebug(
+              LogCategory.lcOrders,
+              &"  [ADMIN] Fleet {cmd.fleetId}: {cmd.commandType} executed",
+            )
           else:
-            logDebug(LogCategory.lcOrders, &"  [ADMIN FAILED] Fleet {cmd.fleetId}: {cmd.commandType}")
+            logDebug(
+              LogCategory.lcOrders,
+              &"  [ADMIN FAILED] Fleet {cmd.fleetId}: {cmd.commandType}",
+            )
 
         # All other orders: VALIDATE then store for movement and execution
         # Universal lifecycle: Initiate (here) → Activate (Maintenance) → Execute (Conflict/Income)
@@ -269,15 +296,20 @@ proc resolveCommandPhase*(state: var GameState,
           if validation.valid:
             state.fleetCommands[cmd.fleetId] = cmd
             ordersStored += 1
-            logDebug(LogCategory.lcOrders, &"  [STORED] Fleet {cmd.fleetId}: {cmd.commandType}")
+            logDebug(
+              LogCategory.lcOrders, &"  [STORED] Fleet {cmd.fleetId}: {cmd.commandType}"
+            )
           else:
-            logWarn(LogCategory.lcOrders,
-                    &"  [REJECTED] Fleet {cmd.fleetId}: {cmd.commandType} - {validation.error}")
+            logWarn(
+              LogCategory.lcOrders,
+              &"  [REJECTED] Fleet {cmd.fleetId}: {cmd.commandType} - {validation.error}",
+            )
             # Generate rejection event
-            events.add(event_factory.orderRejected(
-              houseId, $cmd.commandType, validation.error,
-              fleetId = some(cmd.fleetId)
-            ))
+            events.add(
+              event_factory.orderRejected(
+                houseId, $cmd.commandType, validation.error, fleetId = some(cmd.fleetId)
+              )
+            )
 
       # Process standing commands (persistent fleet behaviors)
       for fleetId, standingCmd in orders[houseId].standingCommands:
@@ -285,13 +317,18 @@ proc resolveCommandPhase*(state: var GameState,
         if fleetId in state.fleets and state.fleets[fleetId].owner == houseId:
           state.standingCommands[fleetId] = standingCmd
           standingOrdersProcessed += 1
-          logDebug(LogCategory.lcOrders,
-                   &"  [STANDING COMMAND] {fleetId}: {standingCmd.commandType} assigned")
+          logDebug(
+            LogCategory.lcOrders,
+            &"  [STANDING COMMAND] {fleetId}: {standingCmd.commandType} assigned",
+          )
         else:
-          logWarn(LogCategory.lcOrders,
-                  &"  [REJECTED] {fleetId}: Standing command rejected (fleet not found or wrong owner)")
+          logWarn(
+            LogCategory.lcOrders,
+            &"  [REJECTED] {fleetId}: Standing command rejected (fleet not found or wrong owner)",
+          )
 
-  logInfo(LogCategory.lcOrders,
-          &"[COMMAND PART C] Completed ({ordersStored} orders stored, " &
-          &"{standingOrdersProcessed} standing commands assigned, {adminExecuted} admin executed)")
-
+  logInfo(
+    LogCategory.lcOrders,
+    &"[COMMAND PART C] Completed ({ordersStored} orders stored, " &
+      &"{standingOrdersProcessed} standing commands assigned, {adminExecuted} admin executed)",
+  )

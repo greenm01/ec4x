@@ -10,9 +10,7 @@ import ../../state/[game_state as state_helpers]
 import ../../../common/logger
 
 proc clearFacilityQueues*(
-  colony: var Colony,
-  facilityType: facilities.FacilityType,
-  state: GameState
+    colony: var Colony, facilityType: facilities.FacilityType, state: GameState
 ) =
   ## Clear construction and repair queues for a specific facility type
   ## Called when a facility is destroyed or crippled
@@ -35,9 +33,16 @@ proc clearFacilityQueues*(
     let repair = repairOpt.get()
     if repair.facilityType == facilityType:
       destroyedRepairs += 1
-      let className = if repair.shipClass.isSome: $repair.shipClass.get() else: "Unknown"
-      logWarn("Facilities", "Facility destroyed: repair project lost",
-              &"type={facilityType} system={colony.systemId} class={className} cost={repair.cost}")
+      let className =
+        if repair.shipClass.isSome:
+          $repair.shipClass.get()
+        else:
+          "Unknown"
+      logWarn(
+        "Facilities",
+        "Facility destroyed: repair project lost",
+        &"type={facilityType} system={colony.systemId} class={className} cost={repair.cost}",
+      )
     else:
       survivingRepairs.add(repairId)
   colony.repairQueue = survivingRepairs
@@ -46,8 +51,11 @@ proc clearFacilityQueues*(
   # This is handled separately in clearAllConstructionQueues()
 
   if destroyedRepairs > 0:
-    logInfo("Facilities", "Facility destruction: repair projects lost",
-            &"type={facilityType} system={colony.systemId} count={destroyedRepairs}")
+    logInfo(
+      "Facilities",
+      "Facility destruction: repair projects lost",
+      &"type={facilityType} system={colony.systemId} count={destroyedRepairs}",
+    )
 
 proc clearAllConstructionQueues*(colony: var Colony, state: GameState) =
   ## Clear ALL construction queues when colony has no remaining shipyards or spaceports
@@ -65,27 +73,34 @@ proc clearAllConstructionQueues*(colony: var Colony, state: GameState) =
     let projectOpt = state_helpers.getConstructionProject(state, projectId)
     if projectOpt.isSome:
       let project = projectOpt.get()
-      logWarn("Facilities", "All facilities destroyed: construction project lost",
-              &"system={colony.systemId} item={project.itemId} paid={project.costPaid} total={project.costTotal}")
+      logWarn(
+        "Facilities",
+        "All facilities destroyed: construction project lost",
+        &"system={colony.systemId} item={project.itemId} paid={project.costPaid} total={project.costTotal}",
+      )
 
   for projectId in colony.constructionQueue:
     let projectOpt = state_helpers.getConstructionProject(state, projectId)
     if projectOpt.isSome:
       let project = projectOpt.get()
-      logWarn("Facilities", "All facilities destroyed: construction project lost",
-              &"system={colony.systemId} item={project.itemId} paid={project.costPaid} total={project.costTotal}")
+      logWarn(
+        "Facilities",
+        "All facilities destroyed: construction project lost",
+        &"system={colony.systemId} item={project.itemId} paid={project.costPaid} total={project.costTotal}",
+      )
 
   colony.constructionQueue = @[]
   colony.underConstruction = none(ConstructionProjectId)
 
   if destroyedProjects > 0:
-    logInfo("Facilities", "All facilities destroyed: construction projects lost",
-            &"system={colony.systemId} count={destroyedProjects}")
+    logInfo(
+      "Facilities",
+      "All facilities destroyed: construction projects lost",
+      &"system={colony.systemId} count={destroyedProjects}",
+    )
 
 proc handleFacilityDestruction*(
-  colony: var Colony,
-  facilityType: facilities.FacilityType,
-  state: GameState
+    colony: var Colony, facilityType: facilities.FacilityType, state: GameState
 ) =
   ## Handle facility destruction: clear queues and check if any facilities remain
   ##

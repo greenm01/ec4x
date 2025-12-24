@@ -14,11 +14,9 @@ import gamestate
 import iterators
 import ../common/types/core
 
-type
-  ValidationResult* = object
-    ## Result of a validation check
-    valid*: bool
-    errorMessage*: string
+type ValidationResult* = object ## Result of a validation check
+  valid*: bool
+  errorMessage*: string
 
 proc success*(): ValidationResult =
   ## Create a successful validation result
@@ -46,15 +44,19 @@ proc validateHouseActive*(state: GameState, houseId: HouseId): ValidationResult 
     return failure("House " & $houseId & " has been eliminated")
   return success()
 
-proc validateHouseTreasury*(state: GameState, houseId: HouseId, requiredAmount: int): ValidationResult =
+proc validateHouseTreasury*(
+    state: GameState, houseId: HouseId, requiredAmount: int
+): ValidationResult =
   ## Validate that a house has sufficient treasury funds
   let activeCheck = validateHouseActive(state, houseId)
   if not activeCheck.valid:
     return activeCheck
 
   if state.houses[houseId].treasury < requiredAmount:
-    return failure("Insufficient funds: " & $requiredAmount & " PP required, " &
-                   $state.houses[houseId].treasury & " PP available")
+    return failure(
+      "Insufficient funds: " & $requiredAmount & " PP required, " &
+        $state.houses[houseId].treasury & " PP available"
+    )
   return success()
 
 ## Colony Validation
@@ -65,7 +67,9 @@ proc validateColonyExists*(state: GameState, systemId: SystemId): ValidationResu
     return failure("No colony exists at system " & $systemId)
   return success()
 
-proc validateColonyOwnership*(state: GameState, systemId: SystemId, houseId: HouseId): ValidationResult =
+proc validateColonyOwnership*(
+    state: GameState, systemId: SystemId, houseId: HouseId
+): ValidationResult =
   ## Validate that a colony exists and is owned by the specified house
   let existsCheck = validateColonyExists(state, systemId)
   if not existsCheck.valid:
@@ -75,7 +79,9 @@ proc validateColonyOwnership*(state: GameState, systemId: SystemId, houseId: Hou
     return failure("Colony at " & $systemId & " is not owned by " & $houseId)
   return success()
 
-proc validateColonyNotBlockaded*(state: GameState, systemId: SystemId): ValidationResult =
+proc validateColonyNotBlockaded*(
+    state: GameState, systemId: SystemId
+): ValidationResult =
   ## Validate that a colony is not currently blockaded
   let existsCheck = validateColonyExists(state, systemId)
   if not existsCheck.valid:
@@ -85,7 +91,9 @@ proc validateColonyNotBlockaded*(state: GameState, systemId: SystemId): Validati
     return failure("Colony at " & $systemId & " is blockaded")
   return success()
 
-proc validateColonyPopulation*(state: GameState, systemId: SystemId, minPopulation: int): ValidationResult =
+proc validateColonyPopulation*(
+    state: GameState, systemId: SystemId, minPopulation: int
+): ValidationResult =
   ## Validate that a colony has sufficient population
   let existsCheck = validateColonyExists(state, systemId)
   if not existsCheck.valid:
@@ -93,8 +101,10 @@ proc validateColonyPopulation*(state: GameState, systemId: SystemId, minPopulati
 
   let colony = state.colonies[systemId]
   if colony.populationUnits < minPopulation:
-    return failure("Insufficient population at " & $systemId & ": " &
-                   $minPopulation & " PU required, " & $colony.populationUnits & " PU available")
+    return failure(
+      "Insufficient population at " & $systemId & ": " & $minPopulation &
+        " PU required, " & $colony.populationUnits & " PU available"
+    )
   return success()
 
 ## Fleet Validation
@@ -105,7 +115,9 @@ proc validateFleetExists*(state: GameState, fleetId: FleetId): ValidationResult 
     return failure("Fleet " & $fleetId & " does not exist")
   return success()
 
-proc validateFleetOwnership*(state: GameState, fleetId: FleetId, houseId: HouseId): ValidationResult =
+proc validateFleetOwnership*(
+    state: GameState, fleetId: FleetId, houseId: HouseId
+): ValidationResult =
   ## Validate that a fleet exists and is owned by the specified house
   let existsCheck = validateFleetExists(state, fleetId)
   if not existsCheck.valid:
@@ -115,7 +127,9 @@ proc validateFleetOwnership*(state: GameState, fleetId: FleetId, houseId: HouseI
     return failure("Fleet " & $fleetId & " is not owned by " & $houseId)
   return success()
 
-proc validateFleetAtSystem*(state: GameState, fleetId: FleetId, systemId: SystemId): ValidationResult =
+proc validateFleetAtSystem*(
+    state: GameState, fleetId: FleetId, systemId: SystemId
+): ValidationResult =
   ## Validate that a fleet is at the specified system
   let existsCheck = validateFleetExists(state, fleetId)
   if not existsCheck.valid:
@@ -133,7 +147,9 @@ proc validateSystemExists*(state: GameState, systemId: SystemId): ValidationResu
     return failure("System " & $systemId & " does not exist")
   return success()
 
-proc validatePathExists*(state: GameState, fromSystem: SystemId, toSystem: SystemId): ValidationResult =
+proc validatePathExists*(
+    state: GameState, fromSystem: SystemId, toSystem: SystemId
+): ValidationResult =
   ## Validate that a path exists between two systems
   ## Note: Requires a dummy fleet for pathfinding
   let fromCheck = validateSystemExists(state, fromSystem)
@@ -148,7 +164,7 @@ proc validatePathExists*(state: GameState, fromSystem: SystemId, toSystem: Syste
   # In real usage, caller should provide actual fleet or use findPath directly
   # This is a simplified check
   if fromSystem == toSystem:
-    return success()  # Same system is always reachable
+    return success() # Same system is always reachable
 
   # For general validation, assume path exists if both systems exist
   # Actual pathfinding validation should be done with real fleet data
@@ -156,7 +172,9 @@ proc validatePathExists*(state: GameState, fromSystem: SystemId, toSystem: Syste
 
 ## Resource Validation
 
-proc validateConstructionQueue*(state: GameState, systemId: SystemId, maxQueueSize: int): ValidationResult =
+proc validateConstructionQueue*(
+    state: GameState, systemId: SystemId, maxQueueSize: int
+): ValidationResult =
   ## Validate that a colony's construction queue is not full
   let existsCheck = validateColonyExists(state, systemId)
   if not existsCheck.valid:
@@ -164,11 +182,15 @@ proc validateConstructionQueue*(state: GameState, systemId: SystemId, maxQueueSi
 
   let colony = state.colonies[systemId]
   if colony.constructionQueue.len >= maxQueueSize:
-    return failure("Construction queue at " & $systemId & " is full (" &
-                   $maxQueueSize & " projects maximum)")
+    return failure(
+      "Construction queue at " & $systemId & " is full (" & $maxQueueSize &
+        " projects maximum)"
+    )
   return success()
 
-proc validateIndustrialCapacity*(state: GameState, systemId: SystemId, requiredIU: int): ValidationResult =
+proc validateIndustrialCapacity*(
+    state: GameState, systemId: SystemId, requiredIU: int
+): ValidationResult =
   ## Validate that a colony has sufficient industrial units
   let existsCheck = validateColonyExists(state, systemId)
   if not existsCheck.valid:
@@ -176,18 +198,17 @@ proc validateIndustrialCapacity*(state: GameState, systemId: SystemId, requiredI
 
   let colony = state.colonies[systemId]
   if colony.industrial.units < requiredIU:
-    return failure("Insufficient industrial capacity at " & $systemId & ": " &
-                   $requiredIU & " IU required, " & $colony.industrial.units & " IU available")
+    return failure(
+      "Insufficient industrial capacity at " & $systemId & ": " & $requiredIU &
+        " IU required, " & $colony.industrial.units & " IU available"
+    )
   return success()
 
 ## Composite Validations
 ## These combine multiple checks for common scenarios
 
 proc validateCanBuildAtColony*(
-  state: GameState,
-  houseId: HouseId,
-  systemId: SystemId,
-  cost: int
+    state: GameState, houseId: HouseId, systemId: SystemId, cost: int
 ): ValidationResult =
   ## Validate that a house can build at a colony
   ## Checks: house active, colony ownership, sufficient funds
@@ -207,12 +228,12 @@ proc validateCanBuildAtColony*(
   return success()
 
 proc validateCanTransferPopulation*(
-  state: GameState,
-  houseId: HouseId,
-  sourceSystem: SystemId,
-  destSystem: SystemId,
-  ptuAmount: int,
-  minRetainedPU: int = 1
+    state: GameState,
+    houseId: HouseId,
+    sourceSystem: SystemId,
+    destSystem: SystemId,
+    ptuAmount: int,
+    minRetainedPU: int = 1,
 ): ValidationResult =
   ## Validate that a house can transfer population between systems
   ## Checks: house active, source ownership, destination exists, sufficient population
@@ -237,10 +258,7 @@ proc validateCanTransferPopulation*(
   return success()
 
 proc validateCanMoveFleet*(
-  state: GameState,
-  houseId: HouseId,
-  fleetId: FleetId,
-  targetSystem: SystemId
+    state: GameState, houseId: HouseId, fleetId: FleetId, targetSystem: SystemId
 ): ValidationResult =
   ## Validate that a fleet can be moved to a target system
   ## Checks: house active, fleet ownership, target system exists

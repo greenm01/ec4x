@@ -8,12 +8,10 @@ import ../../types/[telemetry, core, game_state, event, colony]
 import ../../state/interators
 
 proc collectColonyMetrics*(
-  state: GameState,
-  houseId: HouseId,
-  prevMetrics: DiagnosticMetrics
+    state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
 ): DiagnosticMetrics =
   ## Collect colony metrics from events and GameState
-  result = prevMetrics  # Start with previous metrics
+  result = prevMetrics # Start with previous metrics
 
   # Initialize counters for this turn
   var coloniesGained: int32 = 0
@@ -23,7 +21,7 @@ proc collectColonyMetrics*(
 
   # Process events from state.lastTurnEvents
   for event in state.lastTurnEvents:
-    case event.eventType:
+    case event.eventType
     of ColonyEstablished:
       if event.houseId == some(houseId):
         coloniesGained += 1
@@ -48,9 +46,10 @@ proc collectColonyMetrics*(
     # Check if colony has ground defense
     # NOTE: Planetary shields don't count (passive only)
     # NOTE: Starbases and fleets are orbital defense, not ground defense
-    let hasGroundDefense = (colony.armyIds.len > 0 or
-                             colony.marineIds.len > 0 or
-                             colony.groundBatteryIds.len > 0)
+    let hasGroundDefense = (
+      colony.armyIds.len > 0 or colony.marineIds.len > 0 or
+      colony.groundBatteryIds.len > 0
+    )
     if not hasGroundDefense:
       undefendedColonies += 1
 

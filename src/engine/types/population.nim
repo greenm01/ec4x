@@ -6,12 +6,15 @@ import ./core
 
 type
   TransferStatus* {.pure.} = enum
-    InTransit, Arrived, Lost, Returned
+    InTransit
+    Arrived
+    Lost
+    Returned
 
   PopulationInTransit* = object
     id*: PopulationTransferId
     houseId*: HouseId
-    sourceColony*: ColonyId  # Use ColonyId, not SystemId
+    sourceColony*: ColonyId # Use ColonyId, not SystemId
     destColony*: ColonyId
     ptuAmount*: int32
     costPaid*: int32
@@ -19,15 +22,14 @@ type
     status*: TransferStatus
 
   PopulationTransfers* = object
-    entities*: EntityManager[PopulationTransferId, PopulationInTransit]  # Core storage
+    entities*: EntityManager[PopulationTransferId, PopulationInTransit] # Core storage
     byHouse*: Table[HouseId, seq[PopulationTransferId]]
-    inTransit*: seq[PopulationTransferId]  # Quick filter for active transfers
+    inTransit*: seq[PopulationTransferId] # Quick filter for active transfers
 
-  PopulationTransferConfig* = object
-    # PTU definition
+  PopulationTransferConfig* = object # PTU definition
     soulsPerPtu*: int32
     ptuSizeMillions*: float32
-    
+
     # Transfer costs by planet class (PP per PTU)
     edenCost*: int32
     lushCost*: int32
@@ -36,24 +38,24 @@ type
     hostileCost*: int32
     desolateCost*: int32
     extremeCost*: int32
-    
+
     # Transfer time
     turnsPerJump*: int32
     minimumTurns*: int32
-    
+
     # Distance cost modifier
     costIncreasePerJump*: float32
-    
+
     # Transfer limits
     minPtuTransfer*: int32
     minSourcePuRemaining*: int32
     maxConcurrentTransfers*: int32
-    
+
     # Risk behaviors
     sourceConqueredBehavior*: string
     destConqueredBehavior*: string
     destBlockadedBehavior*: string
-    
+
     # AI strategy parameters
     minTreasuryForTransfer*: int32
     minSourcePopulation*: int32

@@ -7,7 +7,15 @@ import std/[options, tables, sequtils]
 import ../state/[game_state as gs_helpers, id_gen, entity_manager]
 import ../types/[game_state, core, population, colony]
 
-proc startTransfer*(state: var GameState, houseId: HouseId, sourceColonyId: ColonyId, destColonyId: ColonyId, ptuAmount: int32, cost: int32, arrivalTurn: int32): PopulationInTransit =
+proc startTransfer*(
+    state: var GameState,
+    houseId: HouseId,
+    sourceColonyId: ColonyId,
+    destColonyId: ColonyId,
+    ptuAmount: int32,
+    cost: int32,
+    arrivalTurn: int32,
+): PopulationInTransit =
   ## Starts a new population transfer, adding it to all relevant collections and indexes.
   let transferId = state.generatePopulationTransferId()
   let newTransfer = PopulationInTransit(
@@ -18,7 +26,7 @@ proc startTransfer*(state: var GameState, houseId: HouseId, sourceColonyId: Colo
     ptuAmount: ptuAmount,
     costPaid: cost,
     arrivalTurn: arrivalTurn,
-    status: TransferStatus.InTransit
+    status: TransferStatus.InTransit,
   )
 
   state.populationTransfers.entities.addEntity(transferId, newTransfer)
@@ -39,7 +47,8 @@ proc startTransfer*(state: var GameState, houseId: HouseId, sourceColonyId: Colo
 proc completeTransfer*(state: var GameState, transferId: PopulationTransferId) =
   ## Completes a population transfer, removing it from active lists and indexes.
   let transferOpt = gs_helpers.getPopulationTransfer(state, transferId)
-  if transferOpt.isNone: return
+  if transferOpt.isNone:
+    return
   let transfer = transferOpt.get()
 
   var destColony = gs_helpers.getColony(state, transfer.destColony).get()
@@ -47,9 +56,15 @@ proc completeTransfer*(state: var GameState, transferId: PopulationTransferId) =
   destColony.souls += transfer.ptuAmount * 50000
   state.colonies.entities.updateEntity(transfer.destColony, destColony)
 
-  state.populationTransfers.inTransit.keepIf(proc(id: PopulationTransferId): bool = id != transferId)
-  
+  state.populationTransfers.inTransit.keepIf(
+    proc(id: PopulationTransferId): bool =
+      id != transferId
+  )
+
   if state.populationTransfers.byHouse.contains(transfer.houseId):
-    state.populationTransfers.byHouse[transfer.houseId].keepIf(proc(id: PopulationTransferId): bool = id != transferId)
+    state.populationTransfers.byHouse[transfer.houseId].keepIf(
+      proc(id: PopulationTransferId): bool =
+        id != transferId
+    )
 
   state.populationTransfers.entities.removeEntity(transferId)

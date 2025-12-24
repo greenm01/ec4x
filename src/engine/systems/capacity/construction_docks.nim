@@ -21,24 +21,20 @@
 ## Data-oriented design: Calculate violations (pure), report status (no enforcement needed - hard limit)
 
 import std/[tables, strutils, algorithm, options, math]
-import ../../types/[
-  capacity, core, game_state, ship, production, facilities, colony
-]
+import ../../types/[capacity, core, game_state, ship, production, facilities, colony]
 import ../../state/[game_state as gs_helpers, iterators]
 import ../../../common/logger
 
 export capacity.CapacityViolation, capacity.ViolationSeverity
 
-type
-  FacilityCapacity* = object
-    ## Capacity status for a single facility
-    facilityId*: string
-    facilityType*: FacilityType
-    maxDocks*: int
-    usedDocks*: int
-    isCrippled*: bool
-    constructionProjects*: int  # Active construction count
-    repairProjects*: int        # Active repair count
+type FacilityCapacity* = object ## Capacity status for a single facility
+  facilityId*: string
+  facilityType*: FacilityType
+  maxDocks*: int
+  usedDocks*: int
+  isCrippled*: bool
+  constructionProjects*: int # Active construction count
+  repairProjects*: int # Active repair count
 
 proc getFacilityCapacity*(spaceport: Spaceport): FacilityCapacity =
   ## Get capacity status for a spaceport (uses pre-calculated effectiveDocks)
@@ -49,9 +45,9 @@ proc getFacilityCapacity*(spaceport: Spaceport): FacilityCapacity =
     facilityType: FacilityType.Spaceport,
     maxDocks: spaceport.effectiveDocks,
     usedDocks: used,
-    isCrippled: false,  # Spaceports don't get crippled
+    isCrippled: false, # Spaceports don't get crippled
     constructionProjects: used,
-    repairProjects: 0  # Spaceports don't repair
+    repairProjects: 0, # Spaceports don't repair
   )
 
 proc getFacilityCapacity*(shipyard: Shipyard): FacilityCapacity =
@@ -65,7 +61,7 @@ proc getFacilityCapacity*(shipyard: Shipyard): FacilityCapacity =
     usedDocks: used,
     isCrippled: shipyard.isCrippled,
     constructionProjects: used,
-    repairProjects: 0  # Shipyards don't repair (drydocks handle repairs)
+    repairProjects: 0, # Shipyards don't repair (drydocks handle repairs)
   )
 
 proc getFacilityCapacity*(drydock: Drydock): FacilityCapacity =
@@ -78,12 +74,13 @@ proc getFacilityCapacity*(drydock: Drydock): FacilityCapacity =
     maxDocks: drydock.effectiveDocks,
     usedDocks: used,
     isCrippled: drydock.isCrippled,
-    constructionProjects: 0,  # Drydocks cannot construct
-    repairProjects: drydock.activeRepairs.len
+    constructionProjects: 0, # Drydocks cannot construct
+    repairProjects: drydock.activeRepairs.len,
   )
 
-proc analyzeColonyCapacity*(state: GameState,
-                            colonyId: ColonyId): seq[FacilityCapacity] =
+proc analyzeColonyCapacity*(
+    state: GameState, colonyId: ColonyId
+): seq[FacilityCapacity] =
   ## Analyze all facility capacities for a colony
   ## Returns capacity status for each facility
   result = @[]
@@ -112,8 +109,9 @@ proc analyzeColonyCapacity*(state: GameState,
     if drydockOpt.isSome:
       result.add(getFacilityCapacity(drydockOpt.get()))
 
-proc checkColonyViolation*(state: GameState,
-                           colonyId: ColonyId): Option[capacity.CapacityViolation] =
+proc checkColonyViolation*(
+    state: GameState, colonyId: ColonyId
+): Option[capacity.CapacityViolation] =
   ## Check if colony has any facilities exceeding capacity
   ## This should NEVER happen (hard limit at build time) but we track it
 
@@ -134,16 +132,20 @@ proc checkColonyViolation*(state: GameState,
       hasViolation = true
 
   if hasViolation:
-    return some(capacity.CapacityViolation(
-      capacityType: capacity.CapacityType.ConstructionDock,
-      entity: capacity.EntityIdUnion(kind: capacity.CapacityType.ConstructionDock, colonyId: colonyId),
-      current: int32(totalCurrent),
-      maximum: int32(totalMaximum),
-      excess: int32(max(0, totalCurrent - totalMaximum)),
-      severity: capacity.ViolationSeverity.Critical,
-      graceTurnsRemaining: 0'i32,
-      violationTurn: int32(state.turn)
-    ))
+    return some(
+      capacity.CapacityViolation(
+        capacityType: capacity.CapacityType.ConstructionDock,
+        entity: capacity.EntityIdUnion(
+          kind: capacity.CapacityType.ConstructionDock, colonyId: colonyId
+        ),
+        current: int32(totalCurrent),
+        maximum: int32(totalMaximum),
+        excess: int32(max(0, totalCurrent - totalMaximum)),
+        severity: capacity.ViolationSeverity.Critical,
+        graceTurnsRemaining: 0'i32,
+        violationTurn: int32(state.turn),
+      )
+    )
   else:
     return none(capacity.CapacityViolation)
 
@@ -158,10 +160,9 @@ proc checkAllViolations*(state: GameState): seq[capacity.CapacityViolation] =
       if violation.isSome:
         result.add(violation.get())
 
-proc getAvailableFacilities*(state: GameState, colonyId: ColonyId,
-                              projectType: BuildType): seq[tuple[
-                                facilityId: string, facilityType:
-                                FacilityType, availableDocks: int]] =
+proc getAvailableFacilities*(
+    state: GameState, colonyId: ColonyId, projectType: BuildType
+): seq[tuple[facilityId: string, facilityType: FacilityType, availableDocks: int]] =
   ## Get list of facilities with available dock capacity at colony
   ## Returns facilities sorted by priority: shipyards first, then by available
   ## capacity (descending)
@@ -192,20 +193,23 @@ proc getAvailableFacilities*(state: GameState, colonyId: ColonyId,
       result.add((facility.facilityId, facility.facilityType, available))
 
   # Sort: Shipyards first, then by available docks (descending)
-  result.sort do (a, b: tuple[facilityId: string, facilityType: FacilityType, availableDocks: int]) -> int:
+  result.sort do(
+    a, b: tuple[facilityId: string, facilityType: FacilityType, availableDocks: int]
+  ) -> int:
     # Shipyards have priority
-    if a.facilityType == FacilityType.Shipyard and b.facilityType == FacilityType.Spaceport:
+    if a.facilityType == FacilityType.Shipyard and
+        b.facilityType == FacilityType.Spaceport:
       return -1
-    elif a.facilityType == FacilityType.Spaceport and b.facilityType == FacilityType.Shipyard:
+    elif a.facilityType == FacilityType.Spaceport and
+        b.facilityType == FacilityType.Shipyard:
       return 1
     else:
       # Among same type, prefer more available docks (even distribution)
       return cmp(b.availableDocks, a.availableDocks)
 
-proc assignFacility*(state: GameState, colonyId: ColonyId,
-                     projectType: BuildType,
-                     itemId: string): Option[tuple[facilityId: uint32,
-                                                    facilityType: FacilityType]] =
+proc assignFacility*(
+    state: GameState, colonyId: ColonyId, projectType: BuildType, itemId: string
+): Option[tuple[facilityId: uint32, facilityType: FacilityType]] =
   ## Assign a construction project to the best available facility
   ##
   ## Assignment algorithm:
@@ -241,8 +245,7 @@ proc assignFacility*(state: GameState, colonyId: ColonyId,
 
   # Return first (highest priority) facility
   # Convert string ID back to uint32
-  return some((uint32(parseUInt(available[0].facilityId)),
-               available[0].facilityType))
+  return some((uint32(parseUInt(available[0].facilityId)), available[0].facilityType))
 
 proc processCapacityReporting*(state: GameState): seq[capacity.CapacityViolation] =
   ## Main entry point - report capacity violations (should never happen)
@@ -256,10 +259,16 @@ proc processCapacityReporting*(state: GameState): seq[capacity.CapacityViolation
   else:
     # This should NEVER happen - capacity enforced at build time
     for violation in result:
-      logger.logWarn("Economy",
-              "Colony " & $violation.entity.colonyId & " OVER dock capacity (BUG!)",
-              " usage=", $violation.current, "/", $violation.maximum,
-              " excess=", $violation.excess)
+      logger.logWarn(
+        "Economy",
+        "Colony " & $violation.entity.colonyId & " OVER dock capacity (BUG!)",
+        " usage=",
+        $violation.current,
+        "/",
+        $violation.maximum,
+        " excess=",
+        $violation.excess,
+      )
 
 proc shipRequiresDock*(shipClass: ShipClass): bool =
   ## Check if a ship class requires dock construction capacity
@@ -267,9 +276,9 @@ proc shipRequiresDock*(shipClass: ShipClass): bool =
   ## All other ships require dock space at spaceport or shipyard
   return shipClass != ShipClass.Fighter
 
-proc getColonyTotalCapacity*(state: GameState,
-                              colonyId: ColonyId): tuple[current: int,
-                                                         maximum: int] =
+proc getColonyTotalCapacity*(
+    state: GameState, colonyId: ColonyId
+): tuple[current: int, maximum: int] =
   ## Get total dock capacity for colony (sum of all facilities)
   ## Used for display/reporting purposes
   result = (current: 0, maximum: 0)
@@ -280,8 +289,9 @@ proc getColonyTotalCapacity*(state: GameState,
     if not facility.isCrippled:
       result.maximum += facility.maxDocks
 
-proc assignAndQueueProject*(state: var GameState, colonyId: ColonyId,
-                             project: ConstructionProject): bool =
+proc assignAndQueueProject*(
+    state: var GameState, colonyId: ColonyId, project: ConstructionProject
+): bool =
   ## Assign project to best available facility and add to its queue
   ## Returns true if successful, false if no capacity
   ##
@@ -293,8 +303,7 @@ proc assignAndQueueProject*(state: var GameState, colonyId: ColonyId,
     return false
 
   # Assign facility
-  let assignment = assignFacility(state, colonyId, project.projectType,
-                                  project.itemId)
+  let assignment = assignFacility(state, colonyId, project.projectType, project.itemId)
   if assignment.isNone:
     # No available facility capacity
     return false
@@ -312,38 +321,45 @@ proc assignAndQueueProject*(state: var GameState, colonyId: ColonyId,
     let spaceportId = SpaceportId(facilityId)
     let spaceportOpt = gs_helpers.getSpaceport(state, spaceportId)
     if spaceportOpt.isNone:
-      logger.logWarn("Economy", "Failed to find spaceport", " facility=",
-                     $facilityId)
+      logger.logWarn("Economy", "Failed to find spaceport", " facility=", $facilityId)
       return false
 
     var spaceport = spaceportOpt.get()
     spaceport.constructionQueue.add(assignedProject.id)
-    state.spaceports.entities.data[state.spaceports.entities.index[
-        spaceportId]] = spaceport
 
-    logger.logDebug("Economy",
-            "Project queued to spaceport",
-            " facility=", $facilityId,
-            " project=", project.itemId)
+    state.spaceports.entities.data[state.spaceports.entities.index[spaceportId]] =
+      spaceport
+
+    logger.logDebug(
+      "Economy",
+      "Project queued to spaceport",
+      " facility=",
+      $facilityId,
+      " project=",
+      project.itemId,
+    )
     return true
   else:
     # Update shipyard
     let shipyardId = ShipyardId(facilityId)
     let shipyardOpt = gs_helpers.getShipyard(state, shipyardId)
     if shipyardOpt.isNone:
-      logger.logWarn("Economy", "Failed to find shipyard", " facility=",
-                     $facilityId)
+      logger.logWarn("Economy", "Failed to find shipyard", " facility=", $facilityId)
       return false
 
     var shipyard = shipyardOpt.get()
     shipyard.constructionQueue.add(assignedProject.id)
-    state.shipyards.entities.data[state.shipyards.entities.index[
-        shipyardId]] = shipyard
 
-    logger.logDebug("Economy",
-            "Project queued to shipyard",
-            " facility=", $facilityId,
-            " project=", project.itemId)
+    state.shipyards.entities.data[state.shipyards.entities.index[shipyardId]] = shipyard
+
+    logger.logDebug(
+      "Economy",
+      "Project queued to shipyard",
+      " facility=",
+      $facilityId,
+      " project=",
+      project.itemId,
+    )
     return true
 
 ## Design Notes:

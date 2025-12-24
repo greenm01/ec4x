@@ -76,8 +76,7 @@ type
     invasion_iu_loss*: float
     blitz_iu_loss*: float
 
-  CombatConfig* = object
-    ## Complete combat configuration loaded from TOML
+  CombatConfig* = object ## Complete combat configuration loaded from TOML
     combat*: CombatMechanicsConfig
     cer_modifiers*: CerModifiersConfig
     cer_table*: CerTableConfig

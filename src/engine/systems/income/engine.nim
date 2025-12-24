@@ -9,8 +9,10 @@
 import std/[tables, options]
 import ./[income, maintenance]
 import ../facilities/queue as facility_queue
-import ../capacity/carrier_hangar  # For carrier hangar capacity enforcement
-import ../../types/[game_state, core, units, event, income as income_types, colony, production]
+import ../capacity/carrier_hangar # For carrier hangar capacity enforcement
+import
+  ../../types/
+    [game_state, core, units, event, income as income_types, colony, production]
 import ../../state/[state_helpers, iterators]
 
 export income_types.IncomePhaseReport, income_types.HouseIncomeReport
@@ -20,12 +22,14 @@ export production.MaintenanceReport, production.CompletedProject
 
 ## Income Phase Resolution (gameplay.md:1.3.2)
 
-proc resolveIncomePhase*(colonies: var seq[Colony],
-                        houseTaxPolicies: Table[HouseId, TaxPolicy],
-                        houseTechLevels: Table[HouseId, int],
-                        houseCSTTechLevels: Table[HouseId, int],
-                        houseTreasuries: var Table[HouseId, int],
-                        baseGrowthRate: float = 0.015): IncomePhaseReport =
+proc resolveIncomePhase*(
+    colonies: var seq[Colony],
+    houseTaxPolicies: Table[HouseId, TaxPolicy],
+    houseTechLevels: Table[HouseId, int],
+    houseCSTTechLevels: Table[HouseId, int],
+    houseTreasuries: var Table[HouseId, int],
+    baseGrowthRate: float = 0.015,
+): IncomePhaseReport =
   ## Resolve income phase for all houses
   ##
   ## Steps:
@@ -47,8 +51,8 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
   ##   Complete income phase report
 
   result = IncomePhaseReport(
-    turn: 0,  # NOTE: Legacy interface - turn tracking in GameState version
-    houseReports: initTable[HouseId, HouseIncomeReport]()
+    turn: 0, # NOTE: Legacy interface - turn tracking in GameState version
+    houseReports: initTable[HouseId, HouseIncomeReport](),
   )
 
   # Group colonies by owner
@@ -61,28 +65,33 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
   # Process each house
   for houseId, houseColonyList in houseColonies:
     # Get house parameters
-    let taxPolicy = if houseId in houseTaxPolicies:
-      houseTaxPolicies[houseId]
-    else:
-      TaxPolicy(currentRate: 50, history: @[50])  # Default
+    let taxPolicy =
+      if houseId in houseTaxPolicies:
+        houseTaxPolicies[houseId]
+      else:
+        TaxPolicy(currentRate: 50, history: @[50]) # Default
 
-    let elTech = if houseId in houseTechLevels:
-      houseTechLevels[houseId]
-    else:
-      1  # Default EL1
+    let elTech =
+      if houseId in houseTechLevels:
+        houseTechLevels[houseId]
+      else:
+        1 # Default EL1
 
-    let cstTech = if houseId in houseCSTTechLevels:
-      houseCSTTechLevels[houseId]
-    else:
-      1  # Default CST1
+    let cstTech =
+      if houseId in houseCSTTechLevels:
+        houseCSTTechLevels[houseId]
+      else:
+        1 # Default CST1
 
-    let treasury = if houseId in houseTreasuries:
-      houseTreasuries[houseId]
-    else:
-      0
+    let treasury =
+      if houseId in houseTreasuries:
+        houseTreasuries[houseId]
+      else:
+        0
 
     # Calculate house income
-    let houseReport = calculateHouseIncome(houseColonyList, elTech, cstTech, taxPolicy, treasury)
+    let houseReport =
+      calculateHouseIncome(houseColonyList, elTech, cstTech, taxPolicy, treasury)
 
     # Update treasury
     houseTreasuries[houseId] = houseReport.treasuryAfter
@@ -100,8 +109,7 @@ proc resolveIncomePhase*(colonies: var seq[Colony],
 ## Income Phase Step 3: Maintenance Upkeep Deduction (ec4x_canonical_turn_cycle.md:156-160)
 
 proc calculateAndDeductMaintenanceUpkeep*(
-  state: var GameState,
-  events: var seq[event.GameEvent]
+    state: var GameState, events: var seq[event.GameEvent]
 ): Table[HouseId, int] =
   ## Calculate and deduct maintenance upkeep costs from house treasuries
   ## This implements Income Phase Step 3 (after Conflict Phase, before resource collection)
@@ -178,17 +186,18 @@ proc calculateAndDeductMaintenanceUpkeep*(
       house.treasury -= totalUpkeep
 
     # Generate MaintenancePaid event
-    events.add(event.GameEvent(
-      eventType: event.GameEventType.Economy,
-      turn: state.turn,
-      houseId: some(houseId),
-      description: "Maintenance upkeep paid: " & $totalUpkeep & " PP",
-      details: some("MaintenanceUpkeep")
-    ))
+    events.add(
+      event.GameEvent(
+        eventType: event.GameEventType.Economy,
+        turn: state.turn,
+        houseId: some(houseId),
+        description: "Maintenance upkeep paid: " & $totalUpkeep & " PP",
+        details: some("MaintenanceUpkeep"),
+      )
+    )
 
 proc tickConstructionAndRepair*(
-  state: var GameState,
-  events: var seq[event.GameEvent]
+    state: var GameState, events: var seq[event.GameEvent]
 ): MaintenanceReport =
   ## Advance construction and repair queues
   ## This is called during Maintenance Phase (Phase 4)
@@ -200,8 +209,9 @@ proc tickConstructionAndRepair*(
   result = MaintenanceReport(
     turn: state.turn,
     completedProjects: @[],
-    houseUpkeep: initTable[HouseId, int](),  # Empty - maintenance handled in Income Phase
-    repairsApplied: @[]
+    houseUpkeep: initTable[HouseId, int](),
+      # Empty - maintenance handled in Income Phase
+    repairsApplied: @[],
   )
 
   # Advance construction projects

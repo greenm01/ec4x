@@ -11,20 +11,34 @@ proc parseShipClassName*(name: string): ShipClass =
   ## Parse ship class name from config string
   ## Handles various naming formats (CamelCase, snake_case, etc.)
   case name.toLower()
-  of "etac": ShipClass.ETAC
-  of "scout": ShipClass.Scout
-  of "destroyer": ShipClass.Destroyer
-  of "lightcruiser", "light_cruiser": ShipClass.LightCruiser
-  of "cruiser": ShipClass.Cruiser
-  of "heavycruiser", "heavy_cruiser": ShipClass.HeavyCruiser
-  of "battlecruiser", "battle_cruiser": ShipClass.BattleCruiser
-  of "battleship": ShipClass.Battleship
-  of "dreadnought": ShipClass.Dreadnought
-  of "superdreadnought", "super_dreadnought": ShipClass.SuperDreadnought
-  of "carrier": ShipClass.Carrier
-  of "supercarrier", "super_carrier": ShipClass.SuperCarrier
-  of "raider": ShipClass.Raider
-  of "planetbreaker", "planet_breaker": ShipClass.PlanetBreaker
+  of "etac":
+    ShipClass.ETAC
+  of "scout":
+    ShipClass.Scout
+  of "destroyer":
+    ShipClass.Destroyer
+  of "lightcruiser", "light_cruiser":
+    ShipClass.LightCruiser
+  of "cruiser":
+    ShipClass.Cruiser
+  of "heavycruiser", "heavy_cruiser":
+    ShipClass.HeavyCruiser
+  of "battlecruiser", "battle_cruiser":
+    ShipClass.BattleCruiser
+  of "battleship":
+    ShipClass.Battleship
+  of "dreadnought":
+    ShipClass.Dreadnought
+  of "superdreadnought", "super_dreadnought":
+    ShipClass.SuperDreadnought
+  of "carrier":
+    ShipClass.Carrier
+  of "supercarrier", "super_carrier":
+    ShipClass.SuperCarrier
+  of "raider":
+    ShipClass.Raider
+  of "planetbreaker", "planet_breaker":
+    ShipClass.PlanetBreaker
   else:
     raise newException(ValueError, "Unknown ship class: " & name)
 
@@ -45,7 +59,7 @@ proc resolveFleetConfiguration*(config: GameSetupConfig): seq[seq[ShipClass]] =
 
     if individualFleets.len > 0:
       # Use individual fleet configurations
-      for fleetIdx in 1..fleetConfig.fleet_count:
+      for fleetIdx in 1 .. fleetConfig.fleet_count:
         if individualFleets.hasKey(fleetIdx):
           let fleet = individualFleets[fleetIdx]
           var shipClasses: seq[ShipClass] = @[]
@@ -68,15 +82,15 @@ proc resolveFleetConfiguration*(config: GameSetupConfig): seq[seq[ShipClass]] =
 
   if etacCount > 0 and cruiserCount > 0:
     let pairs = min(etacCount, cruiserCount)
-    for i in 0..<pairs:
+    for i in 0 ..< pairs:
       result.add(@[ShipClass.ETAC, ShipClass.LightCruiser])
 
   # Create destroyer scout fleets
-  for i in 0..<fleetConfig.destroyer:
+  for i in 0 ..< fleetConfig.destroyer:
     result.add(@[ShipClass.Destroyer])
 
   # Create scout fleets
-  for i in 0..<fleetConfig.scout:
+  for i in 0 ..< fleetConfig.scout:
     result.add(@[ShipClass.Scout])
 
 proc getStartingTreasury*(config: GameSetupConfig): int =

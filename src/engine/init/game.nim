@@ -1,9 +1,10 @@
 import std/[tables]
 import ../../common/logger
-import ../types/[
-  core, game_state, squadron, intelligence,
-  diplomacy, espionage, resolution, starmap, command, fleet
-]
+import
+  ../types/[
+    core, game_state, squadron, intelligence, diplomacy, espionage, resolution, starmap,
+    command, fleet,
+  ]
 
 # Game initialization functions
 
@@ -18,8 +19,10 @@ proc newGame*(gameId: int32, playerCount: int32, seed: int32): GameState =
   # 3. Call newGameState to create the initial state with the generated starmap
   # 4. Call initializeHousesAndHomeworlds to populate houses, colonies, fleets
 
-  logInfo("Initialization", "Creating new game with ID ", gameId, ", players ",
-          playerCount, ", seed ", seed)
+  logInfo(
+    "Initialization", "Creating new game with ID ", gameId, ", players ", playerCount,
+    ", seed ", seed,
+  )
 
   # Initialize the ref object
   result = GameState(
@@ -42,7 +45,7 @@ proc newGame*(gameId: int32, playerCount: int32, seed: int32): GameState =
       nextGroundUnitId: 1,
       nextConstructionProjectId: 1,
       nextRepairProjectId: 1,
-      nextPopulationTransferId: 1
+      nextPopulationTransferId: 1,
     ),
     # Initialize Tables (Sequences initialize to @[] automatically)
     intelligence: initTable[HouseId, IntelligenceDatabase](),
@@ -66,11 +69,13 @@ proc newGameState*(gameId, seed, playerCount: int32, starMap: StarMap): GameStat
   # but do NOT initialize houses/colonies/fleets here directly.
   # That will be handled by initializeHousesAndHomeworlds.
 
-  logInfo("Initialization", "Creating new game state for game ID ", gameId,
-          " with ", playerCount, " players.")
+  logInfo(
+    "Initialization", "Creating new game state for game ID ", gameId, " with ",
+    playerCount, " players.",
+  )
 
   let turn: int32 = 1
-  
+
   result = GameState(
     gameId: gameId,
     seed: seed,
@@ -92,7 +97,7 @@ proc newGameState*(gameId, seed, playerCount: int32, starMap: StarMap): GameStat
       nextGroundUnitId: 1,
       nextConstructionProjectId: 1,
       nextRepairProjectId: 1,
-      nextPopulationTransferId: 1
+      nextPopulationTransferId: 1,
     ),
     # Initialize Tables (Sequences initialize to @[] automatically)
     intelligence: initTable[HouseId, IntelligenceDatabase](),
@@ -104,7 +109,7 @@ proc newGameState*(gameId, seed, playerCount: int32, starMap: StarMap): GameStat
     activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
     gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
     lastTurnReports: initTable[HouseId, TurnResolutionReport](),
-    # ... other default initializations for a blank state
+      # ... other default initializations for a blank state
   )
 
 proc initializeHousesAndHomeworlds*(state: var GameState) =

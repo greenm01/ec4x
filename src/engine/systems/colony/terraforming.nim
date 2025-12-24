@@ -13,7 +13,9 @@ import ../../state/entity_manager
 import ../tech/[costs as res_costs, effects as res_effects]
 import ../../event_factory/init as event_factory
 
-proc resolveTerraformCommands*(state: var GameState, packet: CommandPacket, events: var seq[GameEvent]) =
+proc resolveTerraformCommands*(
+    state: var GameState, packet: CommandPacket, events: var seq[GameEvent]
+) =
   ## Process terraforming commands - initiate new terraforming projects
   ## Per economy.md Section 4.7
   for command in packet.terraformCommands:
@@ -25,12 +27,14 @@ proc resolveTerraformCommands*(state: var GameState, packet: CommandPacket, even
 
     var colony = colonyOpt.get()
     if colony.owner != packet.houseId:
-      error "Terraforming failed: ", packet.houseId, " does not own system-", command.colonyId
+      error "Terraforming failed: ",
+        packet.houseId, " does not own system-", command.colonyId
       continue
 
     # Check if already terraforming
     if colony.activeTerraforming.isSome:
-      error "Terraforming failed: System-", command.colonyId, " already has active terraforming project"
+      error "Terraforming failed: System-",
+        command.colonyId, " already has active terraforming project"
       continue
 
     # Get house tech level using entity_manager
@@ -43,10 +47,12 @@ proc resolveTerraformCommands*(state: var GameState, packet: CommandPacket, even
     let terLevel = house.techTree.levels.terraformingTech
 
     # Validate TER level requirement
-    let currentClass = ord(colony.planetClass) + 1  # Convert enum to class number (1-7)
+    let currentClass = ord(colony.planetClass) + 1 # Convert enum to class number (1-7)
     if not res_effects.canTerraform(currentClass, terLevel):
       let targetClass = currentClass + 1
-      error "Terraforming failed: TER level ", terLevel, " insufficient for class ", currentClass, " → ", targetClass, " (requires TER ", targetClass, ")"
+      error "Terraforming failed: TER level ",
+        terLevel, " insufficient for class ", currentClass, " → ", targetClass,
+        " (requires TER ", targetClass, ")"
       continue
 
     # Calculate costs and duration
@@ -56,7 +62,8 @@ proc resolveTerraformCommands*(state: var GameState, packet: CommandPacket, even
 
     # Check house treasury has sufficient PP
     if house.treasury < ppCost:
-      error "Terraforming failed: Insufficient PP (need ", ppCost, ", have ", house.treasury, ")"
+      error "Terraforming failed: Insufficient PP (need ",
+        ppCost, ", have ", house.treasury, ")"
       continue
 
     # Deduct PP cost from house treasury using entity_manager
@@ -70,13 +77,14 @@ proc resolveTerraformCommands*(state: var GameState, packet: CommandPacket, even
       turnsRemaining: turnsRequired,
       targetClass: targetClass,
       ppCost: ppCost,
-      ppPaid: ppCost
+      ppPaid: ppCost,
     )
 
     colony.activeTerraforming = some(project)
     state.colonies.entities.updateEntity(command.colonyId, colony)
 
-    let className = case targetClass
+    let className =
+      case targetClass
       of 1: "Extreme"
       of 2: "Desolate"
       of 3: "Hostile"
@@ -86,15 +94,17 @@ proc resolveTerraformCommands*(state: var GameState, packet: CommandPacket, even
       of 7: "Eden"
       else: "Unknown"
 
-    info house.name, " initiated terraforming of system-", command.colonyId, " to ", className, " (class ", targetClass, ") - Cost: ", ppCost, " PP, Duration: ", turnsRequired, " turns"
+    info house.name,
+      " initiated terraforming of system-", command.colonyId, " to ", className,
+      " (class ", targetClass, ") - Cost: ", ppCost, " PP, Duration: ", turnsRequired,
+      " turns"
 
     # Note: This was using TerraformComplete incorrectly for "initiated" - should be constructionStarted
-    events.add(event_factory.constructionStarted(
-      packet.houseId,
-      &"Terraforming to {className}",
-      command.colonyId,
-      ppCost
-    ))
+    events.add(
+      event_factory.constructionStarted(
+        packet.houseId, &"Terraforming to {className}", command.colonyId, ppCost
+      )
+    )
 
 proc processTerraformingProjects*(state: var GameState, events: var seq[GameEvent]) =
   ## Process active terraforming projects for all houses
@@ -127,7 +137,8 @@ proc processTerraformingProjects*(state: var GameState, events: var seq[GameEven
       colonyMut.planetClass = PlanetClass(project.targetClass - 1)
       colonyMut.activeTerraforming = none(TerraformProject)
 
-      let className = case project.targetClass
+      let className =
+        case project.targetClass
         of 1: "Extreme"
         of 2: "Desolate"
         of 3: "Hostile"
@@ -137,15 +148,14 @@ proc processTerraformingProjects*(state: var GameState, events: var seq[GameEven
         of 7: "Eden"
         else: "Unknown"
 
-      info house.name, " completed terraforming of ", colonyId, " to ", className, " (class ", project.targetClass, ")"
+      info house.name,
+        " completed terraforming of ", colonyId, " to ", className, " (class ",
+        project.targetClass, ")"
 
-      events.add(event_factory.terraformComplete(
-        houseId,
-        colonyId,
-        className
-      ))
+      events.add(event_factory.terraformComplete(houseId, colonyId, className))
     else:
-      debug house.name, " terraforming ", colonyId, ": ", project.turnsRemaining, " turn(s) remaining"
+      debug house.name,
+        " terraforming ", colonyId, ": ", project.turnsRemaining, " turn(s) remaining"
       # Update project
       colonyMut.activeTerraforming = some(project)
 

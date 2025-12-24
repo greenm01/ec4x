@@ -77,14 +77,16 @@ proc calculateRollingTaxAverage*(history: seq[int]): int =
 
   var sum = 0
   let count = min(history.len, 6)
-  for i in 0..<count:
-    sum += history[history.len - 1 - i]  # Last 6 entries
+  for i in 0 ..< count:
+    sum += history[history.len - 1 - i] # Last 6 entries
 
   return int(float(sum) / float(count))
 
 ## Colony Income Calculation
 
-proc calculateColonyIncome*(colony: Colony, houseELTech: int, houseCSTTech: int, houseTaxRate: int): ColonyIncomeReport =
+proc calculateColonyIncome*(
+    colony: Colony, houseELTech: int, houseCSTTech: int, houseTaxRate: int
+): ColonyIncomeReport =
   ## Calculate income for single colony
   ##
   ## Args:
@@ -93,8 +95,13 @@ proc calculateColonyIncome*(colony: Colony, houseELTech: int, houseCSTTech: int,
   ##   houseCSTTech: House Construction tech (affects capacity)
   ##   houseTaxRate: House-wide tax rate (colony can override)
 
-  let taxRate = if colony.taxRate > 0: int(colony.taxRate) else: houseTaxRate
-  let output = production_engine.calculateProductionOutput(colony, houseELTech, houseCSTTech)
+  let taxRate =
+    if colony.taxRate > 0:
+      int(colony.taxRate)
+    else:
+      houseTaxRate
+  let output =
+    production_engine.calculateProductionOutput(colony, houseELTech, houseCSTTech)
 
   result = ColonyIncomeReport(
     colonyId: ColonyId(colony.systemId),
@@ -103,14 +110,19 @@ proc calculateColonyIncome*(colony: Colony, houseELTech: int, houseCSTTech: int,
     grossOutput: output.grossOutput,
     taxRate: int32(taxRate),
     netValue: output.netValue,
-    populationGrowth: 0.0,  # Calculated later
-    prestigeBonus: 0        # Calculated at house level
+    populationGrowth: 0.0, # Calculated later
+    prestigeBonus: 0, # Calculated at house level
   )
 
 ## House Income Calculation
 
-proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
-                          houseCSTTech: int, taxPolicy: TaxPolicy, treasury: int): HouseIncomeReport =
+proc calculateHouseIncome*(
+    colonies: seq[Colony],
+    houseELTech: int,
+    houseCSTTech: int,
+    taxPolicy: TaxPolicy,
+    treasury: int,
+): HouseIncomeReport =
   ## Calculate total income for house
   ##
   ## Args:
@@ -121,7 +133,11 @@ proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
   ##   treasury: Current treasury balance
 
   result = HouseIncomeReport(
-    houseId: if colonies.len > 0: colonies[0].owner else: "",
+    houseId:
+      if colonies.len > 0:
+        colonies[0].owner
+      else:
+        "",
     colonies: @[],
     totalGross: 0,
     totalNet: 0,
@@ -132,12 +148,13 @@ proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
     treasuryBefore: treasury,
     treasuryAfter: treasury,
     transactions: @[],
-    prestigeEvents: @[]
+    prestigeEvents: @[],
   )
 
   # Calculate each colony's income
   for colony in colonies:
-    let colonyReport = calculateColonyIncome(colony, houseELTech, houseCSTTech, taxPolicy.currentRate)
+    let colonyReport =
+      calculateColonyIncome(colony, houseELTech, houseCSTTech, taxPolicy.currentRate)
     result.colonies.add(colonyReport)
     result.totalGross += colonyReport.grossOutput
     result.totalNet += colonyReport.netValue
@@ -150,29 +167,36 @@ proc calculateHouseIncome*(colonies: seq[Colony], houseELTech: int,
   # Generate prestige events from tax policy
   # Low tax bonus (using configured thresholds and values)
   if result.totalPrestigeBonus > 0:
-    result.prestigeEvents.add(prestige_events.createPrestigeEvent(
-      PrestigeSource.LowTaxBonus,
-      result.totalPrestigeBonus,
-      "Low tax bonus (rate: " & $taxPolicy.currentRate & "%, " & $colonies.len & " colonies)"
-    ))
+    result.prestigeEvents.add(
+      prestige_events.createPrestigeEvent(
+        PrestigeSource.LowTaxBonus,
+        result.totalPrestigeBonus,
+        "Low tax bonus (rate: " & $taxPolicy.currentRate & "%, " & $colonies.len &
+          " colonies)",
+      )
+    )
 
   # High tax penalty (using configured thresholds and values)
   if result.taxPenalty < 0:
-    result.prestigeEvents.add(prestige_events.createPrestigeEvent(
-      PrestigeSource.HighTaxPenalty,
-      result.taxPenalty,
-      "High tax penalty (avg: " & $result.taxAverage6Turn & "%)"
-    ))
+    result.prestigeEvents.add(
+      prestige_events.createPrestigeEvent(
+        PrestigeSource.HighTaxPenalty,
+        result.taxPenalty,
+        "High tax penalty (avg: " & $result.taxAverage6Turn & "%)",
+      )
+    )
 
   # Apply to treasury
   result.treasuryAfter = treasury + result.totalNet
 
   # Record transactions
-  result.transactions.add(TreasuryTransaction(
-    source: "Tax Collection",
-    amount: result.totalNet,
-    category: TransactionCategory.TaxIncome
-  ))
+  result.transactions.add(
+    TreasuryTransaction(
+      source: "Tax Collection",
+      amount: result.totalNet,
+      category: TransactionCategory.TaxIncome,
+    )
+  )
 
 ## Population Growth
 
@@ -188,7 +212,9 @@ proc getPlanetCapacity*(planetClass: PlanetClass): int =
   of PlanetClass.Lush: 2000
   of PlanetClass.Eden: 5000
 
-proc applyPopulationGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: float): float =
+proc applyPopulationGrowth*(
+    colony: var Colony, taxRate: int, baseGrowthRate: float
+): float =
   ## Apply logistic population growth to colony
   ## Returns growth percentage for reporting
   ##
@@ -213,9 +239,11 @@ proc applyPopulationGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: fl
 
   # Calculate effective growth rate with tax modifier, starbase bonus, and map scaling
   let taxMultiplier = getPopulationGrowthMultiplier(taxRate)
-  let starbaseBonus = getStarbaseGrowthBonus(colony)  # 5% per operational starbase, max 15%
+  let starbaseBonus = getStarbaseGrowthBonus(colony)
+    # 5% per operational starbase, max 15%
   let mapScaleMultiplier = population_growth_multiplier.getPopulationGrowthMultiplier()
-  let effectiveGrowthRate = baseGrowthRate * taxMultiplier * (1.0 + starbaseBonus) * mapScaleMultiplier
+  let effectiveGrowthRate =
+    baseGrowthRate * taxMultiplier * (1.0 + starbaseBonus) * mapScaleMultiplier
 
   # Apply simplified growth: PU_growth = max(2, floor(PU * rate * modifiers))
   # No logistic limiting - capped at planet capacity instead
@@ -223,7 +251,7 @@ proc applyPopulationGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: fl
 
   # Calculate new population (ensure non-negative and within capacity)
   let newPU = int(min(currentPU + growth, capacity))
-  colony.populationUnits = max(1, newPU)  # Minimum 1 PU (colony doesn't die from growth)
+  colony.populationUnits = max(1, newPU) # Minimum 1 PU (colony doesn't die from growth)
 
   # Update PTU
   colony.populationTransferUnits = calculatePTU(colony.populationUnits)
@@ -234,7 +262,9 @@ proc applyPopulationGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: fl
   else:
     return 0.0
 
-proc applyIndustrialGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: float): float =
+proc applyIndustrialGrowth*(
+    colony: var Colony, taxRate: int, baseGrowthRate: float
+): float =
   ## Apply passive industrial growth to colony
   ## IU grows naturally as colonies develop infrastructure
   ## Returns growth amount for reporting
@@ -259,8 +289,10 @@ proc applyIndustrialGrowth*(colony: var Colony, taxRate: int, baseGrowthRate: fl
   # Base growth scales with population size (2x accelerated for 30-45 turn games)
   # Larger populations naturally build more infrastructure
   let growthConfig = economy_config.globalEconomyConfig.industrial_growth
-  let baseIndustrialGrowth = max(growthConfig.passive_growth_minimum,
-                                 floor(currentPU / growthConfig.passive_growth_divisor))
+  let baseIndustrialGrowth = max(
+    growthConfig.passive_growth_minimum,
+    floor(currentPU / growthConfig.passive_growth_divisor),
+  )
 
   # Apply same tax and starbase modifiers as population
   # Low taxes → more economic freedom → faster industrialization

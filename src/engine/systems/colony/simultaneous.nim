@@ -4,7 +4,9 @@
 ## Implements collection, conflict detection, resolution, and fallback logic.
 
 import std/[tables, options, random, sequtils, algorithm, strformat, hashes]
-import ../../types/[core, game_state, command, event, starmap, prestige, fleet, squadron, ship]
+import
+  ../../types/
+    [core, game_state, command, event, starmap, prestige, fleet, squadron, ship]
 import ../../state/[entity_manager, iterators]
 import ../combat/simultaneous_resolver
 import ./[engine as col_engine, conflicts]
@@ -16,8 +18,7 @@ import ../../config/prestige_config
 import ../../../common/logger
 
 proc collectColonizationIntents*(
-  state: GameState,
-  orders: Table[HouseId, CommandPacket]
+    state: GameState, orders: Table[HouseId, CommandPacket]
 ): seq[ColonizationIntent] =
   ## Collect all colonization attempts from all houses before executing any
   ##
@@ -79,16 +80,18 @@ proc collectColonizationIntents*(
     let targetSystem = command.targetSystem.get()
 
     # Add validated intent
-    result.add(ColonizationIntent(
-      houseId: houseId,
-      fleetId: fleetId,
-      targetSystem: targetSystem,
-      fleetStrength: fleetStrength,
-      hasStandingOrders: hasStandingOrders
-    ))
+    result.add(
+      ColonizationIntent(
+        houseId: houseId,
+        fleetId: fleetId,
+        targetSystem: targetSystem,
+        fleetStrength: fleetStrength,
+        hasStandingOrders: hasStandingOrders,
+      )
+    )
 
 proc detectColonizationConflicts*(
-  intents: seq[ColonizationIntent]
+    intents: seq[ColonizationIntent]
 ): seq[ColonizationConflict] =
   ## Group colonization intents by target system to detect conflicts
   ##
@@ -104,17 +107,16 @@ proc detectColonizationConflicts*(
   # Create conflict objects
   result = @[]
   for systemId, conflictingIntents in systemTargets:
-    result.add(ColonizationConflict(
-      targetSystem: systemId,
-      intents: conflictingIntents
-    ))
+    result.add(
+      ColonizationConflict(targetSystem: systemId, intents: conflictingIntents)
+    )
 
 proc establishColony(
-  state: var GameState,
-  houseId: HouseId,
-  fleetId: FleetId,
-  systemId: SystemId,
-  events: var seq[GameEvent]
+    state: var GameState,
+    houseId: HouseId,
+    fleetId: FleetId,
+    systemId: SystemId,
+    events: var seq[GameEvent],
 ): tuple[success: bool, prestigeAwarded: int] =
   ## Establish a colony at the target system for the given fleet
   ##
@@ -173,8 +175,10 @@ proc establishColony(
   let planetClass = system.planetClass
   let resources = system.resourceRating
 
-  logInfo(LogCategory.lcColonization,
-          &"Fleet {fleetId} colonizing {planetClass} world with {resources} resources at {systemId}")
+  logInfo(
+    LogCategory.lcColonization,
+    &"Fleet {fleetId} colonizing {planetClass} world with {resources} resources at {systemId}",
+  )
 
   # Get PTU quantity from ETAC cargo (one-time consumable: deposits all PTU)
   let squadronOpt = state.squadrons.entities.getEntity(colonistSquadronId)
@@ -201,7 +205,7 @@ proc establishColony(
     systemId,
     colony.planetClass,
     colony.resources,
-    ptuToDeposit  # Deposit all PTU (3 PTU = 3 PU foundation colony)
+    ptuToDeposit, # Deposit all PTU (3 PTU = 3 PU foundation colony)
   )
 
   if not colResult.success:
@@ -215,24 +219,25 @@ proc establishColony(
 
   # Update flagship cargo by getting ship, modifying it, and updating via entity manager
   var updatedFlagship = flagship
-  updatedFlagship.cargo = some(ShipCargo(
-    cargoType: CargoType.None,
-    quantity: 0,
-    capacity: cargo.capacity
-  ))
+  updatedFlagship.cargo =
+    some(ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: cargo.capacity))
   # Update ship in entity manager
   state.ships.entities.updateEntity(squadron.flagshipId, updatedFlagship)
 
-  logDebug(LogCategory.lcColonization,
+  logDebug(
+    LogCategory.lcColonization,
     &"ETAC squadron {squadron.id} transferred {transferredPTU} PTU to establish colony at {systemId} " &
-    &"(0 PTU remaining)")
+      &"(0 PTU remaining)",
+  )
 
   # ETAC cannibalized - remove squadron from fleet, structure becomes colony infrastructure
   if flagship.shipClass == ShipClass.ETAC:
     # Remove the squadron via squadron_ops (handles fleet cleanup)
     squadron_ops.destroySquadron(state, colonistSquadronId)
-    logInfo(LogCategory.lcEconomy,
-      &"ETAC squadron {squadron.id} cannibalized - structure became colony infrastructure at {systemId}")
+    logInfo(
+      LogCategory.lcEconomy,
+      &"ETAC squadron {squadron.id} cannibalized - structure became colony infrastructure at {systemId}",
+    )
 
     # Check if fleet is now empty (refresh fleet data)
     let updatedFleetOpt = state.fleets.entities.getEntity(fleetId)
@@ -246,8 +251,10 @@ proc establishColony(
           state.fleetCommands.del(fleetId)
         if fleetId in state.standingCommands:
           state.standingCommands.del(fleetId)
-        logInfo(LogCategory.lcFleet,
-                &"Removed empty fleet {fleetId} after ETAC colonization (auto-cleanup)")
+        logInfo(
+          LogCategory.lcFleet,
+          &"Removed empty fleet {fleetId} after ETAC colonization (auto-cleanup)",
+        )
 
   # Apply prestige award
   if colResult.prestigeEvent.isSome:
@@ -259,35 +266,39 @@ proc establishColony(
     let houseOpt = state.houses.entities.getEntity(houseId)
     if houseOpt.isSome:
       let houseName = houseOpt.get().name
-      logInfo(LogCategory.lcColonization,
-              &"{houseName} colonized {systemId} (+{prestigeEvent.amount} prestige)")
+      logInfo(
+        LogCategory.lcColonization,
+        &"{houseName} colonized {systemId} (+{prestigeEvent.amount} prestige)",
+      )
 
   # Generate ColonyEstablished event for diagnostics
-  events.add(event_factory.colonyEstablished(
-    houseId,
-    systemId,
-    result.prestigeAwarded
-  ))
+  events.add(event_factory.colonyEstablished(houseId, systemId, result.prestigeAwarded))
 
   # Generate OrderCompleted event for successful colonization
   # Cleanup handled by Command Phase
-  events.add(event_factory.commandCompleted(
-    houseId, fleetId, "Colonize",
-    details = &"established colony at {systemId}",
-    systemId = some(systemId)
-  ))
+  events.add(
+    event_factory.commandCompleted(
+      houseId,
+      fleetId,
+      "Colonize",
+      details = &"established colony at {systemId}",
+      systemId = some(systemId),
+    )
+  )
 
-  logDebug(LogCategory.lcColonization,
-    &"Fleet {fleetId} colonization complete, cleanup deferred to Command Phase")
+  logDebug(
+    LogCategory.lcColonization,
+    &"Fleet {fleetId} colonization complete, cleanup deferred to Command Phase",
+  )
 
   result.success = true
 
 proc findBestColonizationTarget(
-  state: GameState,
-  fleet: Fleet,
-  currentLocation: SystemId,
-  maxRange: int,
-  preferredClasses: seq[PlanetClass]
+    state: GameState,
+    fleet: Fleet,
+    currentLocation: SystemId,
+    maxRange: int,
+    preferredClasses: seq[PlanetClass],
 ): Option[SystemId] =
   ## Find best uncolonized system for colonization
   ## Returns nearest system with preferred planet class
@@ -321,9 +332,9 @@ proc findBestColonizationTarget(
       let bPreferred = preferredClasses.len == 0 or b[2] in preferredClasses
 
       if aPreferred and not bPreferred:
-        return -1  # a wins
+        return -1 # a wins
       elif bPreferred and not aPreferred:
-        return 1   # b wins
+        return 1 # b wins
       else:
         # Both preferred or both not preferred - use distance
         return cmp(a[1], b[1])
@@ -332,9 +343,9 @@ proc findBestColonizationTarget(
   return some(candidates[0][0])
 
 proc collectFallbackIntents(
-  state: GameState,
-  losers: seq[ColonizationIntent],
-  originalTargets: Table[FleetId, SystemId]
+    state: GameState,
+    losers: seq[ColonizationIntent],
+    originalTargets: Table[FleetId, SystemId],
 ): seq[ColonizationIntent] =
   ## Collect fallback colonization intents from losers
   ## NOTE: AutoColonize standing commands removed - this now returns empty
@@ -344,11 +355,13 @@ proc collectFallbackIntents(
   result = @[]
 
 proc resolveColonizationConflict*(
-  state: var GameState,
-  conflict: ColonizationConflict,
-  rng: var Rand,
-  events: var seq[GameEvent]
-): tuple[results: seq[simultaneous_types.ColonizationResult], losers: seq[ColonizationIntent]] =
+    state: var GameState,
+    conflict: ColonizationConflict,
+    rng: var Rand,
+    events: var seq[GameEvent],
+): tuple[
+  results: seq[simultaneous_types.ColonizationResult], losers: seq[ColonizationIntent]
+] =
   ## Resolve a single colonization conflict using fleet strength + random tiebreaker
   ##
   ## Returns: Results for winners and list of losers for fallback processing
@@ -362,22 +375,20 @@ proc resolveColonizationConflict*(
   if conflict.intents.len == 1:
     let intent = conflict.intents[0]
     let (success, prestige) = establishColony(
-      state,
-      intent.houseId,
-      intent.fleetId,
-      intent.targetSystem,
-      events
+      state, intent.houseId, intent.fleetId, intent.targetSystem, events
     )
 
     if success:
-      result.results.add(simultaneous_types.ColonizationResult(
-        houseId: intent.houseId,
-        fleetId: intent.fleetId,
-        originalTarget: intent.targetSystem,
-        outcome: ResolutionOutcome.Success,
-        actualTarget: some(intent.targetSystem),
-        prestigeAwarded: prestige
-      ))
+      result.results.add(
+        simultaneous_types.ColonizationResult(
+          houseId: intent.houseId,
+          fleetId: intent.fleetId,
+          originalTarget: intent.targetSystem,
+          outcome: ResolutionOutcome.Success,
+          actualTarget: some(intent.targetSystem),
+          prestigeAwarded: prestige,
+        )
+      )
     else:
       # Single intent failed - treat as loser for fallback
       result.losers.add(intent)
@@ -386,65 +397,66 @@ proc resolveColonizationConflict*(
   # Multiple intents = conflict
   # Use generic resolver to find winner
   let seed = tiebreakerSeed(state.turn, conflict.targetSystem)
-  let winner = resolveConflictByStrength(
-    conflict.intents,
-    colonizationStrength,
-    seed,
-    rng
-  )
+  let winner =
+    resolveConflictByStrength(conflict.intents, colonizationStrength, seed, rng)
 
-  logInfo(LogCategory.lcColonization,
-          &"Colonization conflict at {conflict.targetSystem}: {conflict.intents.len} houses competing")
+  logInfo(
+    LogCategory.lcColonization,
+    &"Colonization conflict at {conflict.targetSystem}: {conflict.intents.len} houses competing",
+  )
 
   # Establish colony for winner
-  let (success, prestige) = establishColony(
-    state,
-    winner.houseId,
-    winner.fleetId,
-    winner.targetSystem,
-    events
-  )
+  let (success, prestige) =
+    establishColony(state, winner.houseId, winner.fleetId, winner.targetSystem, events)
 
   if success:
-    result.results.add(simultaneous_types.ColonizationResult(
-      houseId: winner.houseId,
-      fleetId: winner.fleetId,
-      originalTarget: winner.targetSystem,
-      outcome: ResolutionOutcome.Success,
-      actualTarget: some(winner.targetSystem),
-      prestigeAwarded: prestige
-    ))
+    result.results.add(
+      simultaneous_types.ColonizationResult(
+        houseId: winner.houseId,
+        fleetId: winner.fleetId,
+        originalTarget: winner.targetSystem,
+        outcome: ResolutionOutcome.Success,
+        actualTarget: some(winner.targetSystem),
+        prestigeAwarded: prestige,
+      )
+    )
   else:
     # Winner failed - add to losers
     result.losers.add(winner)
 
   # Collect all losers for fallback processing
-  let conflictLosers = conflict.intents.filterIt(it.houseId != winner.houseId or it.fleetId != winner.fleetId)
+  let conflictLosers = conflict.intents.filterIt(
+    it.houseId != winner.houseId or it.fleetId != winner.fleetId
+  )
   for loser in conflictLosers:
     result.losers.add(loser)
-    result.results.add(simultaneous_types.ColonizationResult(
-      houseId: loser.houseId,
-      fleetId: loser.fleetId,
-      originalTarget: loser.targetSystem,
-      outcome: ResolutionOutcome.ConflictLost,
-      actualTarget: none(SystemId),
-      prestigeAwarded: 0
-    ))
+    result.results.add(
+      simultaneous_types.ColonizationResult(
+        houseId: loser.houseId,
+        fleetId: loser.fleetId,
+        originalTarget: loser.targetSystem,
+        outcome: ResolutionOutcome.ConflictLost,
+        actualTarget: none(SystemId),
+        prestigeAwarded: 0,
+      )
+    )
 
     # Generate OrderFailed event for colonization conflict loss
-    events.add(event_factory.commandFailed(
-      loser.houseId,
-      loser.fleetId,
-      "Colonize",
-      reason = "lost colonization race to another house",
-      systemId = some(loser.targetSystem)
-    ))
+    events.add(
+      event_factory.commandFailed(
+        loser.houseId,
+        loser.fleetId,
+        "Colonize",
+        reason = "lost colonization race to another house",
+        systemId = some(loser.targetSystem),
+      )
+    )
 
 proc resolveColonization*(
-  state: var GameState,
-  orders: Table[HouseId, CommandPacket],
-  rng: var Rand,
-  events: var seq[GameEvent]
+    state: var GameState,
+    orders: Table[HouseId, CommandPacket],
+    rng: var Rand,
+    events: var seq[GameEvent],
 ): seq[simultaneous_types.ColonizationResult] =
   ## Main entry point: Resolve all colonization orders simultaneously
   ##
@@ -455,7 +467,7 @@ proc resolveColonization*(
   let intents = collectColonizationIntents(state, orders)
 
   if intents.len == 0:
-    return  # No colonization orders this turn
+    return # No colonization orders this turn
 
   # Phase 2: Detect conflicts
   let conflicts = detectColonizationConflicts(intents)
@@ -465,7 +477,8 @@ proc resolveColonization*(
   var originalTargets = initTable[FleetId, SystemId]()
 
   for conflict in conflicts:
-    let (conflictResults, losers) = resolveColonizationConflict(state, conflict, rng, events)
+    let (conflictResults, losers) =
+      resolveColonizationConflict(state, conflict, rng, events)
     result.add(conflictResults)
 
     # Track losers and their original targets
@@ -479,8 +492,10 @@ proc resolveColonization*(
 
   while allLosers.len > 0 and fallbackRound < maxFallbackRounds:
     fallbackRound += 1
-    logDebug(LogCategory.lcColonization,
-             &"Fallback round {fallbackRound}: {allLosers.len} fleets seeking alternatives")
+    logDebug(
+      LogCategory.lcColonization,
+      &"Fallback round {fallbackRound}: {allLosers.len} fleets seeking alternatives",
+    )
 
     # Collect fallback intents
     let fallbackIntents = collectFallbackIntents(state, allLosers, originalTargets)
@@ -488,23 +503,27 @@ proc resolveColonization*(
     if fallbackIntents.len == 0:
       # No viable fallback targets found
       for loser in allLosers:
-        result.add(simultaneous_types.ColonizationResult(
-          houseId: loser.houseId,
-          fleetId: loser.fleetId,
-          originalTarget: originalTargets[loser.fleetId],
-          outcome: ResolutionOutcome.NoViableTarget,
-          actualTarget: none(SystemId),
-          prestigeAwarded: 0
-        ))
+        result.add(
+          simultaneous_types.ColonizationResult(
+            houseId: loser.houseId,
+            fleetId: loser.fleetId,
+            originalTarget: originalTargets[loser.fleetId],
+            outcome: ResolutionOutcome.NoViableTarget,
+            actualTarget: none(SystemId),
+            prestigeAwarded: 0,
+          )
+        )
 
         # Generate OrderFailed event for no viable colonization target
-        events.add(event_factory.commandFailed(
-          loser.houseId,
-          loser.fleetId,
-          "Colonize",
-          reason = "no viable fallback colonization target found",
-          systemId = some(originalTargets[loser.fleetId])
-        ))
+        events.add(
+          event_factory.commandFailed(
+            loser.houseId,
+            loser.fleetId,
+            "Colonize",
+            reason = "no viable fallback colonization target found",
+            systemId = some(originalTargets[loser.fleetId]),
+          )
+        )
       break
 
     # Detect conflicts on fallback targets
@@ -514,7 +533,8 @@ proc resolveColonization*(
     var nextRoundLosers: seq[ColonizationIntent] = @[]
 
     for conflict in fallbackConflicts:
-      let (conflictResults, losers) = resolveColonizationConflict(state, conflict, rng, events)
+      let (conflictResults, losers) =
+        resolveColonizationConflict(state, conflict, rng, events)
 
       # Update results: mark successful fallbacks appropriately
       for res in conflictResults:
@@ -522,8 +542,10 @@ proc resolveColonization*(
         if res.outcome == ResolutionOutcome.Success:
           updatedRes.outcome = ResolutionOutcome.FallbackSuccess
           updatedRes.originalTarget = originalTargets[res.fleetId]
-          logInfo(LogCategory.lcColonization,
-                  &"House {res.houseId} fallback colonization succeeded at {res.actualTarget.get()}")
+          logInfo(
+            LogCategory.lcColonization,
+            &"House {res.houseId} fallback colonization succeeded at {res.actualTarget.get()}",
+          )
           # Cleanup handled by Command Phase (OrderCompleted event generated by establishColony)
         result.add(updatedRes)
 
@@ -533,28 +555,32 @@ proc resolveColonization*(
 
   # Any remaining losers have no viable targets
   for loser in allLosers:
-    result.add(simultaneous_types.ColonizationResult(
-      houseId: loser.houseId,
-      fleetId: loser.fleetId,
-      originalTarget: originalTargets[loser.fleetId],
-      outcome: ResolutionOutcome.NoViableTarget,
-      actualTarget: none(SystemId),
-      prestigeAwarded: 0
-    ))
+    result.add(
+      simultaneous_types.ColonizationResult(
+        houseId: loser.houseId,
+        fleetId: loser.fleetId,
+        originalTarget: originalTargets[loser.fleetId],
+        outcome: ResolutionOutcome.NoViableTarget,
+        actualTarget: none(SystemId),
+        prestigeAwarded: 0,
+      )
+    )
 
     # Generate OrderFailed event for exhausted fallback attempts
-    events.add(event_factory.commandFailed(
-      loser.houseId,
-      loser.fleetId,
-      "Colonize",
-      reason = "exhausted all fallback colonization attempts",
-      systemId = some(originalTargets[loser.fleetId])
-    ))
+    events.add(
+      event_factory.commandFailed(
+        loser.houseId,
+        loser.fleetId,
+        "Colonize",
+        reason = "exhausted all fallback colonization attempts",
+        systemId = some(originalTargets[loser.fleetId]),
+      )
+    )
 
 proc wasColonizationHandled*(
-  results: seq[simultaneous_types.ColonizationResult],
-  houseId: HouseId,
-  fleetId: FleetId
+    results: seq[simultaneous_types.ColonizationResult],
+    houseId: HouseId,
+    fleetId: FleetId,
 ): bool =
   ## Check if a colonization order was already handled in simultaneous phase
   ##

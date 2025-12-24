@@ -16,15 +16,15 @@ export combat_types
 ## Phase Resolution
 
 proc resolvePhase1_Ambush*(
-  taskForces: var seq[TaskForce],
-  squadronMap: Table[SquadronId, tuple[tfIdx: int, sqIdx: int]],
-  roundNumber: int,
-  diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
-  systemOwner: Option[HouseId],
-  rng: var CombatRNG,
-  desperationBonus: int = 0,
-  allowAmbush: bool = true,
-  allowStarbaseTargeting: bool = true
+    taskForces: var seq[TaskForce],
+    squadronMap: Table[SquadronId, tuple[tfIdx: int, sqIdx: int]],
+    roundNumber: int,
+    diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
+    systemOwner: Option[HouseId],
+    rng: var CombatRNG,
+    desperationBonus: int = 0,
+    allowAmbush: bool = true,
+    allowStarbaseTargeting: bool = true,
 ): RoundResult =
   ## Phase 1: Undetected Raiders attack with ambush bonus
   ## Section 7.3.1.1
@@ -36,10 +36,7 @@ proc resolvePhase1_Ambush*(
   ## - allowStarbaseTargeting: If false, starbases are screened and cannot be targeted
 
   result = RoundResult(
-    phase: CombatPhase.Ambush,
-    roundNumber: roundNumber,
-    attacks: @[],
-    stateChanges: @[]
+    phase: CombatPhase.Ambush, roundNumber: roundNumber, attacks: @[], stateChanges: @[]
   )
 
   # Find all undetected cloaked squadrons
@@ -56,7 +53,15 @@ proc resolvePhase1_Ambush*(
     return result
 
   # All ambushers select targets simultaneously
-  var attacks: seq[tuple[attackerTfIdx: int, attackerSqIdx: int, targetId: SquadronId, damage: int, cerRoll: CERRoll]] = @[]
+  var attacks: seq[
+    tuple[
+      attackerTfIdx: int,
+      attackerSqIdx: int,
+      targetId: SquadronId,
+      damage: int,
+      cerRoll: CERRoll,
+    ]
+  ] = @[]
 
   for amb in ambushers:
     let tfIdx = amb.tfIdx
@@ -71,7 +76,7 @@ proc resolvePhase1_Ambush*(
       diplomaticRelations,
       systemOwner,
       rng,
-      allowStarbaseTargeting
+      allowStarbaseTargeting,
     )
 
     if targetId.isNone():
@@ -85,8 +90,8 @@ proc resolvePhase1_Ambush*(
       roundNumber,
       moraleModifier = taskForces[tfIdx].moraleModifier,
       isSurprise = (roundNumber == 1),
-      isAmbush = allowAmbush,  # +4 bonus only in space combat
-      desperationBonus = desperationBonus
+      isAmbush = allowAmbush, # +4 bonus only in space combat
+      desperationBonus = desperationBonus,
     )
 
     # Calculate damage
@@ -104,30 +109,33 @@ proc resolvePhase1_Ambush*(
       taskForces[tfIdx].squadrons[sqIdx],
       attack.damage,
       roundNumber,
-      attack.cerRoll.isCriticalHit
+      attack.cerRoll.isCriticalHit,
     )
 
-    result.attacks.add(AttackResult(
-      attackerId: taskForces[attack.attackerTfIdx].squadrons[attack.attackerSqIdx].squadron.id,
-      targetId: attack.targetId,
-      cerRoll: attack.cerRoll,
-      damageDealt: attack.damage,
-      targetStateBefore: targetStateBefore,
-      targetStateAfter: change.toState
-    ))
+    result.attacks.add(
+      AttackResult(
+        attackerId:
+          taskForces[attack.attackerTfIdx].squadrons[attack.attackerSqIdx].squadron.id,
+        targetId: attack.targetId,
+        cerRoll: attack.cerRoll,
+        damageDealt: attack.damage,
+        targetStateBefore: targetStateBefore,
+        targetStateAfter: change.toState,
+      )
+    )
 
     if change.fromState != change.toState:
       result.stateChanges.add(change)
 
 proc resolvePhase2_Fighters*(
-  taskForces: var seq[TaskForce],
-  squadronMap: Table[SquadronId, tuple[tfIdx: int, sqIdx: int]],
-  roundNumber: int,
-  diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
-  systemOwner: Option[HouseId],
-  rng: var CombatRNG,
-  desperationBonus: int = 0,  # Not used by fighters (no CER), but kept for consistency
-  allowStarbaseTargeting: bool = true
+    taskForces: var seq[TaskForce],
+    squadronMap: Table[SquadronId, tuple[tfIdx: int, sqIdx: int]],
+    roundNumber: int,
+    diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
+    systemOwner: Option[HouseId],
+    rng: var CombatRNG,
+    desperationBonus: int = 0, # Not used by fighters (no CER), but kept for consistency
+    allowStarbaseTargeting: bool = true,
 ): RoundResult =
   ## Phase 2: All fighter squadrons attack simultaneously
   ## Section 7.3.1.2
@@ -142,7 +150,7 @@ proc resolvePhase2_Fighters*(
     phase: CombatPhase.Intercept,
     roundNumber: roundNumber,
     attacks: @[],
-    stateChanges: @[]
+    stateChanges: @[],
   )
 
   # Find all fighter squadrons
@@ -156,7 +164,9 @@ proc resolvePhase2_Fighters*(
     return result
 
   # All fighters select targets and attack simultaneously
-  var attacks: seq[tuple[attackerTfIdx: int, attackerSqIdx: int, targetId: SquadronId, damage: int]] = @[]
+  var attacks: seq[
+    tuple[attackerTfIdx: int, attackerSqIdx: int, targetId: SquadronId, damage: int]
+  ] = @[]
 
   for ftr in fighters:
     let tfIdx = ftr.tfIdx
@@ -171,7 +181,7 @@ proc resolvePhase2_Fighters*(
       diplomaticRelations,
       systemOwner,
       rng,
-      allowStarbaseTargeting
+      allowStarbaseTargeting,
     )
 
     if targetId.isNone():
@@ -192,17 +202,20 @@ proc resolvePhase2_Fighters*(
       taskForces[tfIdx].squadrons[sqIdx],
       attack.damage,
       roundNumber,
-      isCriticalHit = false  # Fighters don't crit
+      isCriticalHit = false, # Fighters don't crit
     )
 
-    result.attacks.add(AttackResult(
-      attackerId: taskForces[attack.attackerTfIdx].squadrons[attack.attackerSqIdx].squadron.id,
-      targetId: attack.targetId,
-      cerRoll: CERRoll(effectiveness: 1.0, isCriticalHit: false),  # Placeholder
-      damageDealt: attack.damage,
-      targetStateBefore: targetStateBefore,
-      targetStateAfter: change.toState
-    ))
+    result.attacks.add(
+      AttackResult(
+        attackerId:
+          taskForces[attack.attackerTfIdx].squadrons[attack.attackerSqIdx].squadron.id,
+        targetId: attack.targetId,
+        cerRoll: CERRoll(effectiveness: 1.0, isCriticalHit: false), # Placeholder
+        damageDealt: attack.damage,
+        targetStateBefore: targetStateBefore,
+        targetStateAfter: change.toState,
+      )
+    )
 
     if change.fromState != change.toState:
       result.stateChanges.add(change)
@@ -216,18 +229,18 @@ proc resolveCRTier(
   systemOwner: Option[HouseId],
   rng: var CombatRNG,
   desperationBonus: int = 0,
-  allowStarbaseTargeting: bool = true
+  allowStarbaseTargeting: bool = true,
 ): RoundResult
 
 proc resolvePhase3_CapitalShips*(
-  taskForces: var seq[TaskForce],
-  squadronMap: Table[SquadronId, tuple[tfIdx: int, sqIdx: int]],
-  roundNumber: int,
-  diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
-  systemOwner: Option[HouseId],
-  rng: var CombatRNG,
-  desperationBonus: int = 0,
-  allowStarbaseCombat: bool = true
+    taskForces: var seq[TaskForce],
+    squadronMap: Table[SquadronId, tuple[tfIdx: int, sqIdx: int]],
+    roundNumber: int,
+    diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
+    systemOwner: Option[HouseId],
+    rng: var CombatRNG,
+    desperationBonus: int = 0,
+    allowStarbaseCombat: bool = true,
 ): RoundResult =
   ## Phase 3: Capital ships attack by CR order
   ## Section 7.3.1.3
@@ -241,7 +254,7 @@ proc resolvePhase3_CapitalShips*(
     phase: CombatPhase.MainEngagement,
     roundNumber: roundNumber,
     attacks: @[],
-    stateChanges: @[]
+    stateChanges: @[],
   )
 
   # Collect all non-fighter, alive squadrons with their CR
@@ -262,7 +275,10 @@ proc resolvePhase3_CapitalShips*(
     return result
 
   # Sort by CR descending (highest CR attacks first)
-  capitals.sort(proc(a, b: CapitalEntry): int = cmp(b.cr, a.cr))
+  capitals.sort(
+    proc(a, b: CapitalEntry): int =
+      cmp(b.cr, a.cr)
+  )
 
   # Group by CR tier and resolve each tier simultaneously
   var currentCR = -1
@@ -272,7 +288,10 @@ proc resolvePhase3_CapitalShips*(
     if cap.cr != currentCR:
       # New CR tier - resolve previous tier first
       if crTier.len > 0:
-        let tierResult = resolveCRTier(crTier, taskForces, squadronMap, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus, allowStarbaseCombat)
+        let tierResult = resolveCRTier(
+          crTier, taskForces, squadronMap, roundNumber, diplomaticRelations,
+          systemOwner, rng, desperationBonus, allowStarbaseCombat,
+        )
         result.attacks.add(tierResult.attacks)
         result.stateChanges.add(tierResult.stateChanges)
 
@@ -284,20 +303,23 @@ proc resolvePhase3_CapitalShips*(
 
   # Resolve final tier
   if crTier.len > 0:
-    let tierResult = resolveCRTier(crTier, taskForces, squadronMap, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus, allowStarbaseCombat)
+    let tierResult = resolveCRTier(
+      crTier, taskForces, squadronMap, roundNumber, diplomaticRelations, systemOwner,
+      rng, desperationBonus, allowStarbaseCombat,
+    )
     result.attacks.add(tierResult.attacks)
     result.stateChanges.add(tierResult.stateChanges)
 
 proc resolveCRTier(
-  tier: seq[tuple[tfIdx: int, sqIdx: int, cr: int]],
-  taskForces: var seq[TaskForce],
-  squadronMap: Table[SquadronId, tuple[tfIdx: int, sqIdx: int]],
-  roundNumber: int,
-  diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
-  systemOwner: Option[HouseId],
-  rng: var CombatRNG,
-  desperationBonus: int = 0,
-  allowStarbaseTargeting: bool = true
+    tier: seq[tuple[tfIdx: int, sqIdx: int, cr: int]],
+    taskForces: var seq[TaskForce],
+    squadronMap: Table[SquadronId, tuple[tfIdx: int, sqIdx: int]],
+    roundNumber: int,
+    diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
+    systemOwner: Option[HouseId],
+    rng: var CombatRNG,
+    desperationBonus: int = 0,
+    allowStarbaseTargeting: bool = true,
 ): RoundResult =
   ## Resolve all attacks for squadrons with same CR
   ## All attacks in tier are simultaneous
@@ -307,11 +329,19 @@ proc resolveCRTier(
     phase: CombatPhase.MainEngagement,
     roundNumber: roundNumber,
     attacks: @[],
-    stateChanges: @[]
+    stateChanges: @[],
   )
 
   # All squadrons in tier select targets and roll CER
-  var attacks: seq[tuple[attackerTfIdx: int, attackerSqIdx: int, targetId: SquadronId, damage: int, cerRoll: CERRoll]] = @[]
+  var attacks: seq[
+    tuple[
+      attackerTfIdx: int,
+      attackerSqIdx: int,
+      targetId: SquadronId,
+      damage: int,
+      cerRoll: CERRoll,
+    ]
+  ] = @[]
 
   for entry in tier:
     let tfIdx = entry.tfIdx
@@ -326,7 +356,7 @@ proc resolveCRTier(
       diplomaticRelations,
       systemOwner,
       rng,
-      allowStarbaseTargeting
+      allowStarbaseTargeting,
     )
 
     if targetId.isNone():
@@ -339,7 +369,7 @@ proc resolveCRTier(
       roundNumber,
       moraleModifier = taskForces[tfIdx].moraleModifier,
       isSurprise = (roundNumber == 1),
-      desperationBonus = desperationBonus
+      desperationBonus = desperationBonus,
     )
 
     # Calculate damage
@@ -357,17 +387,20 @@ proc resolveCRTier(
       taskForces[tfIdx].squadrons[sqIdx],
       attack.damage,
       roundNumber,
-      attack.cerRoll.isCriticalHit
+      attack.cerRoll.isCriticalHit,
     )
 
-    result.attacks.add(AttackResult(
-      attackerId: taskForces[attack.attackerTfIdx].squadrons[attack.attackerSqIdx].squadron.id,
-      targetId: attack.targetId,
-      cerRoll: attack.cerRoll,
-      damageDealt: attack.damage,
-      targetStateBefore: targetStateBefore,
-      targetStateAfter: change.toState
-    ))
+    result.attacks.add(
+      AttackResult(
+        attackerId:
+          taskForces[attack.attackerTfIdx].squadrons[attack.attackerSqIdx].squadron.id,
+        targetId: attack.targetId,
+        cerRoll: attack.cerRoll,
+        damageDealt: attack.damage,
+        targetStateBefore: targetStateBefore,
+        targetStateAfter: change.toState,
+      )
+    )
 
     if change.fromState != change.toState:
       result.stateChanges.add(change)
@@ -375,14 +408,14 @@ proc resolveCRTier(
 ## Round Resolution
 
 proc resolveRound*(
-  taskForces: var seq[TaskForce],
-  roundNumber: int,
-  diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
-  systemOwner: Option[HouseId],
-  rng: var CombatRNG,
-  desperationBonus: int = 0,  # Bonus CER modifier for desperation rounds
-  allowAmbush: bool = true,   # If false, Raiders get initiative but NO +4 ambush bonus
-  allowStarbaseCombat: bool = true  # If false, starbases detect but don't fight
+    taskForces: var seq[TaskForce],
+    roundNumber: int,
+    diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
+    systemOwner: Option[HouseId],
+    rng: var CombatRNG,
+    desperationBonus: int = 0, # Bonus CER modifier for desperation rounds
+    allowAmbush: bool = true, # If false, Raiders get initiative but NO +4 ambush bonus
+    allowStarbaseCombat: bool = true, # If false, starbases detect but don't fight
 ): seq[RoundResult] =
   ## Resolve complete combat round (all 3 phases)
   ## Returns results from each phase
@@ -397,22 +430,31 @@ proc resolveRound*(
   # Build squadron lookup table once per round for O(1) target lookups
   # This eliminates O(n²) bottleneck in damage application (Phase 8 optimization)
   var squadronMap = initTable[SquadronId, tuple[tfIdx: int, sqIdx: int]]()
-  for tfIdx in 0..<taskForces.len:
-    for sqIdx in 0..<taskForces[tfIdx].squadrons.len:
+  for tfIdx in 0 ..< taskForces.len:
+    for sqIdx in 0 ..< taskForces[tfIdx].squadrons.len:
       squadronMap[taskForces[tfIdx].squadrons[sqIdx].squadron.id] = (tfIdx, sqIdx)
 
   # Phase 1: Undetected Raiders (Ambush)
-  let phase1 = resolvePhase1_Ambush(taskForces, squadronMap, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus, allowAmbush, allowStarbaseCombat)
+  let phase1 = resolvePhase1_Ambush(
+    taskForces, squadronMap, roundNumber, diplomaticRelations, systemOwner, rng,
+    desperationBonus, allowAmbush, allowStarbaseCombat,
+  )
   if phase1.attacks.len > 0:
     result.add(phase1)
 
   # Phase 2: Fighter Squadrons (Intercept)
-  let phase2 = resolvePhase2_Fighters(taskForces, squadronMap, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus, allowStarbaseCombat)
+  let phase2 = resolvePhase2_Fighters(
+    taskForces, squadronMap, roundNumber, diplomaticRelations, systemOwner, rng,
+    desperationBonus, allowStarbaseCombat,
+  )
   if phase2.attacks.len > 0:
     result.add(phase2)
 
   # Phase 3: Capital Ships (Main Engagement)
-  let phase3 = resolvePhase3_CapitalShips(taskForces, squadronMap, roundNumber, diplomaticRelations, systemOwner, rng, desperationBonus, allowStarbaseCombat)
+  let phase3 = resolvePhase3_CapitalShips(
+    taskForces, squadronMap, roundNumber, diplomaticRelations, systemOwner, rng,
+    desperationBonus, allowStarbaseCombat,
+  )
   if phase3.attacks.len > 0:
     result.add(phase3)
 

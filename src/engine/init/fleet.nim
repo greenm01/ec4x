@@ -9,15 +9,16 @@ import ../config/game_setup_config
 import ../entities/fleet_ops
 
 proc createStartingFleets*(
-  state: var GameState,
-  owner: HouseId,
-  location: SystemId,
-  fleetConfigs: Table[int, game_setup_config.FleetConfig]
+    state: var GameState,
+    owner: HouseId,
+    location: SystemId,
+    fleetConfigs: Table[int, game_setup_config.FleetConfig],
 ) =
   ## Creates starting fleets and all their child entities (squadrons, ships).
 
-  for fleetIdx in 1..fleetConfigs.len:
-    if not fleetConfigs.hasKey(fleetIdx): continue
+  for fleetIdx in 1 .. fleetConfigs.len:
+    if not fleetConfigs.hasKey(fleetIdx):
+      continue
 
     let config = fleetConfigs[fleetIdx]
 
@@ -26,12 +27,11 @@ proc createStartingFleets*(
 
     # 2. Create Squadrons and Ships for the Fleet
     for shipName in config.ships:
-      let shipClass = try:
-        parseEnum[ShipClass](
-          shipName.replace("-", "").replace("_", "")
-        )
-      except:
-        continue
+      let shipClass =
+        try:
+          parseEnum[ShipClass](shipName.replace("-", "").replace("_", ""))
+        except:
+          continue
 
       # Generate squadronId first to avoid circular dependency
       let squadronId = state.generateSquadronId()
@@ -42,11 +42,11 @@ proc createStartingFleets*(
         id: shipId,
         squadronId: squadronId,
         shipClass: shipClass,
-        shipRole: ShipRole.Escort,  # Will be set properly by config later
-        stats: ShipStats(),  # Default stats, will be populated from config
+        shipRole: ShipRole.Escort, # Will be set properly by config later
+        stats: ShipStats(), # Default stats, will be populated from config
         isCrippled: false,
         name: "",
-        cargo: none(ShipCargo)
+        cargo: none(ShipCargo),
       )
 
       # Add flagship to ship entity manager and index
@@ -57,18 +57,16 @@ proc createStartingFleets*(
       let newSquadron = Squadron(
         id: squadronId,
         flagship: flagship,
-        ships: @[],  # No additional ships yet
+        ships: @[], # No additional ships yet
         houseId: owner,
         location: location,
         destroyed: false,
-        squadronType: SquadronType.Combat  # Default, adjust as needed
+        squadronType: SquadronType.Combat, # Default, adjust as needed
       )
 
       # Add squadron to entity manager and indices
       state[].squadrons[].entities.addEntity(squadronId, newSquadron)
-      state[].squadrons[].byFleet.mgetOrPut(newFleet.id, @[]).add(
-        squadronId
-      )
+      state[].squadrons[].byFleet.mgetOrPut(newFleet.id, @[]).add(squadronId)
 
       # Add squadron to fleet's squadron list
       var updatedFleet = state.getFleet(newFleet.id).get()

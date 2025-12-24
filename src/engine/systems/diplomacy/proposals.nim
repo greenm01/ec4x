@@ -12,7 +12,9 @@ proc generateProposalId*(turn: int, proposer: HouseId, target: HouseId): string 
   ## Generate unique proposal ID
   result = "PROP_T" & $turn & "_" & $proposer & "_" & $target
 
-proc findProposal*(proposals: seq[PendingProposal], proposalId: string): Option[PendingProposal] =
+proc findProposal*(
+    proposals: seq[PendingProposal], proposalId: string
+): Option[PendingProposal] =
   ## Find pending proposal by ID
   for proposal in proposals:
     if proposal.id == proposalId:

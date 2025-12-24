@@ -8,12 +8,10 @@ import ../../types/[telemetry, core, game_state, event, house]
 import ../../state/entity_manager
 
 proc collectTechMetrics*(
-  state: GameState,
-  houseId: HouseId,
-  prevMetrics: DiagnosticMetrics
+    state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
 ): DiagnosticMetrics =
   ## Collect technology metrics from GameState
-  result = prevMetrics  # Start with previous metrics
+  result = prevMetrics # Start with previous metrics
 
   let houseOpt = state.houses.entities.getEntity(houseId)
   if houseOpt.isNone:
@@ -46,9 +44,10 @@ proc collectTechMetrics*(
   var researchBreakthroughs: int32 = 0
 
   for event in state.lastTurnEvents:
-    if event.houseId != some(houseId): continue
+    if event.houseId != some(houseId):
+      continue
 
-    case event.eventType:
+    case event.eventType
     of Research, TechAdvance:
       # TODO: Extract research points from event details
       # researchERP += extractERP(event)
@@ -61,8 +60,8 @@ proc collectTechMetrics*(
   result.researchERP = researchERP
   result.researchSRP = researchSRP
   result.researchTRP = researchTRP
-  result.researchBreakthroughs = prevMetrics.researchBreakthroughs +
-    researchBreakthroughs
+  result.researchBreakthroughs =
+    prevMetrics.researchBreakthroughs + researchBreakthroughs
 
   # ================================================================
   # RESEARCH WASTE TRACKING (Tech Level Caps)

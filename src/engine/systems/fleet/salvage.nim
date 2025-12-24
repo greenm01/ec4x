@@ -14,30 +14,32 @@
 import std/[tables, options, sequtils]
 import ../../types/[core, game_state, fleet, squadron, ship]
 import ../economy/types as econ_types
-import ../../config/[engine as config_engine, military_config, construction_config, ships_config, facilities_config]
+import
+  ../../config/[
+    engine as config_engine, military_config, construction_config, ships_config,
+    facilities_config,
+  ]
 
 export HouseId, SystemId, FleetId, ShipClass
 
 type
   SalvageType* {.pure.} = enum
-    Normal      # Planned salvage at friendly colony (50% value)
-    Emergency   # Combat/field salvage (25% value)
+    Normal # Planned salvage at friendly colony (50% value)
+    Emergency # Combat/field salvage (25% value)
 
-  SalvageResult* = object
-    ## Result of salvaging destroyed ships
+  SalvageResult* = object ## Result of salvaging destroyed ships
     shipClass*: ShipClass
     salvageType*: SalvageType
     resourcesRecovered*: int
     success*: bool
     message*: string
 
-  RepairProject* = object
-    ## Ship or starbase repair project
+  RepairProject* = object ## Ship or starbase repair project
     targetType*: RepairTargetType
-    fleetId*: Option[FleetId]      # For ship repairs
-    squadronIndex*: int            # Index within fleet
-    colonyId*: Option[SystemId]    # For starbase repairs
-    starbaseIndex*: int            # Index within colony
+    fleetId*: Option[FleetId] # For ship repairs
+    squadronIndex*: int # Index within fleet
+    colonyId*: Option[SystemId] # For starbase repairs
+    starbaseIndex*: int # Index within colony
     cost*: int
     turnsRemaining*: int
 
@@ -45,15 +47,13 @@ type
     Ship
     Starbase
 
-  RepairRequest* = object
-    ## Request to repair a ship or starbase
+  RepairRequest* = object ## Request to repair a ship or starbase
     targetType*: RepairTargetType
-    shipClass*: Option[ShipClass]  # For cost calculation
-    systemId*: SystemId            # Where repair happens
+    shipClass*: Option[ShipClass] # For cost calculation
+    systemId*: SystemId # Where repair happens
     requestingHouse*: HouseId
 
-  RepairValidation* = object
-    ## Validation result for repair request
+  RepairValidation* = object ## Validation result for repair request
     valid*: bool
     message*: string
     cost*: int
@@ -73,7 +73,8 @@ proc getSalvageValue*(shipClass: ShipClass, salvageType: SalvageType): int =
   let stats = config_engine.getShipStats(shipClass)
   let buildCost = stats.buildCost
 
-  let multiplier = case salvageType
+  let multiplier =
+    case salvageType
     of SalvageType.Normal:
       globalMilitaryConfig.salvage.salvage_value_multiplier
     of SalvageType.Emergency:
@@ -92,12 +93,11 @@ proc salvageShip*(shipClass: ShipClass, salvageType: SalvageType): SalvageResult
     salvageType: salvageType,
     resourcesRecovered: resourcesRecovered,
     success: true,
-    message: $shipClass & " salvaged for " & $resourcesRecovered & " PP"
+    message: $shipClass & " salvaged for " & $resourcesRecovered & " PP",
   )
 
 proc salvageDestroyedShips*(
-  destroyedShips: seq[ShipClass],
-  salvageType: SalvageType
+    destroyedShips: seq[ShipClass], salvageType: SalvageType
 ): seq[SalvageResult] =
   ## Salvage multiple destroyed ships
   ## Returns sequence of salvage results
@@ -133,7 +133,9 @@ proc getRepairTurns*(): int =
 
   return globalConstructionConfig.repair.ship_repair_turns
 
-proc validateRepairRequest*(request: RepairRequest, state: GameState): RepairValidation =
+proc validateRepairRequest*(
+    request: RepairRequest, state: GameState
+): RepairValidation =
   ## Validate a repair request
   ## Checks:
   ## - Colony exists and is owned by requesting house
@@ -174,7 +176,6 @@ proc validateRepairRequest*(request: RepairRequest, state: GameState): RepairVal
     if not hasOperationalShipyard:
       result.message = "No operational shipyard available (all crippled)"
       return
-
   of RepairTargetType.Starbase:
     # Starbase repairs require Spaceports (not Shipyards)
     if colony.spaceports.len == 0:
@@ -185,7 +186,8 @@ proc validateRepairRequest*(request: RepairRequest, state: GameState): RepairVal
     # Starbases do NOT check dock capacity (facilities don't consume docks)
 
   # Calculate repair cost
-  let cost = case request.targetType
+  let cost =
+    case request.targetType
     of RepairTargetType.Ship:
       if request.shipClass.isNone:
         result.message = "Ship class required for cost calculation"
@@ -201,16 +203,19 @@ proc validateRepairRequest*(request: RepairRequest, state: GameState): RepairVal
 
   let house = state.houses[request.requestingHouse]
   if house.treasury < cost:
-    result.message = "Insufficient funds (need " & $cost & " PP, have " & $house.treasury & " PP)"
+    result.message =
+      "Insufficient funds (need " & $cost & " PP, have " & $house.treasury & " PP)"
     return
 
   # Check dock capacity for Ship repairs only (Starbases don't consume docks)
   if request.targetType == RepairTargetType.Ship:
-    let activeProjects = colony.getActiveProjectsByFacility(econ_types.FacilityType.Shipyard)
+    let activeProjects =
+      colony.getActiveProjectsByFacility(econ_types.FacilityType.Shipyard)
     let capacity = colony.getShipyardDockCapacity()
 
     if activeProjects >= capacity:
-      result.message = "All shipyard docks occupied (" & $activeProjects & "/" & $capacity & " in use)"
+      result.message =
+        "All shipyard docks occupied (" & $activeProjects & "/" & $capacity & " in use)"
       return
 
   result.valid = true
@@ -243,7 +248,7 @@ proc repairShip*(state: var GameState, fleetId: FleetId, squadronIndex: int): bo
     targetType: RepairTargetType.Ship,
     shipClass: some(squadron.flagship.shipClass),
     systemId: fleet.location,
-    requestingHouse: fleet.owner
+    requestingHouse: fleet.owner,
   )
 
   let validation = validateRepairRequest(request, state)
@@ -260,7 +265,9 @@ proc repairShip*(state: var GameState, fleetId: FleetId, squadronIndex: int): bo
 
   return true
 
-proc repairStarbase*(state: var GameState, systemId: SystemId, starbaseIndex: int): bool =
+proc repairStarbase*(
+    state: var GameState, systemId: SystemId, starbaseIndex: int
+): bool =
   ## Immediately repair a crippled starbase at colony shipyard
   ## Deducts repair cost from house treasury
   ## Returns true if repair successful
@@ -286,7 +293,7 @@ proc repairStarbase*(state: var GameState, systemId: SystemId, starbaseIndex: in
     targetType: RepairTargetType.Starbase,
     shipClass: none(ShipClass),
     systemId: systemId,
-    requestingHouse: colony.owner
+    requestingHouse: colony.owner,
   )
 
   let validation = validateRepairRequest(request, state)

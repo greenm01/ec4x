@@ -4,11 +4,16 @@ import ./[core, colony, prestige]
 type
   TaxPolicy* = object
     currentRate*: int32
-    history*: seq[int32]  # Last 6 turns
+    history*: seq[int32] # Last 6 turns
 
   TransactionCategory* {.pure.} = enum
-    TaxIncome, Construction, Maintenance, Research,
-    IndustrialInvestment, Terraforming, Prestige
+    TaxIncome
+    Construction
+    Maintenance
+    Research
+    IndustrialInvestment
+    Terraforming
+    Prestige
 
   TreasuryTransaction* = object
     source*: string
@@ -27,7 +32,7 @@ type
     treasuryBefore*: int32
     treasuryAfter*: int32
     transactions*: seq[TreasuryTransaction]
-    prestigeEvents*: seq[PrestigeEvent]  # Assuming defined elsewhere
+    prestigeEvents*: seq[PrestigeEvent] # Assuming defined elsewhere
 
   IncomePhaseReport* = object
     turn*: int32

@@ -12,13 +12,14 @@ import types as intel_types
 
 ## Corruption Detection
 
-proc hasIntelCorruption*(effects: seq[esp_types.OngoingEffect], targetHouse: HouseId): Option[esp_types.OngoingEffect] =
+proc hasIntelCorruption*(
+    effects: seq[esp_types.OngoingEffect], targetHouse: HouseId
+): Option[esp_types.OngoingEffect] =
   ## Check if a house has active intelligence corruption
   ## Returns the corruption effect if active
   for effect in effects:
     if effect.effectType == esp_types.EffectType.IntelCorrupted and
-       effect.targetHouse == targetHouse and
-       effect.turnsRemaining > 0:
+        effect.targetHouse == targetHouse and effect.turnsRemaining > 0:
       return some(effect)
   return none(esp_types.OngoingEffect)
 
@@ -32,11 +33,13 @@ proc corruptInt*(value: int, magnitude: float, rng: var Rand): int =
     return 0
 
   # Random variance: -magnitude to +magnitude
-  let variance = rng.rand(-magnitude..magnitude)
+  let variance = rng.rand(-magnitude .. magnitude)
   let corrupted = float(value) * (1.0 + variance)
-  return max(0, int(corrupted))  # Never go negative
+  return max(0, int(corrupted)) # Never go negative
 
-proc corruptIntOption*(value: Option[int], magnitude: float, rng: var Rand): Option[int] =
+proc corruptIntOption*(
+    value: Option[int], magnitude: float, rng: var Rand
+): Option[int] =
   ## Corrupt an optional integer value
   if value.isSome:
     return some(corruptInt(value.get(), magnitude, rng))
@@ -44,7 +47,9 @@ proc corruptIntOption*(value: Option[int], magnitude: float, rng: var Rand): Opt
 
 ## Fleet Intelligence Corruption
 
-proc corruptFleetIntel*(fleet: intel_types.FleetIntel, magnitude: float, rng: var Rand): intel_types.FleetIntel =
+proc corruptFleetIntel*(
+    fleet: intel_types.FleetIntel, magnitude: float, rng: var Rand
+): intel_types.FleetIntel =
   ## Corrupt fleet intelligence data
   result = fleet
 
@@ -58,13 +63,16 @@ proc corruptFleetIntel*(fleet: intel_types.FleetIntel, magnitude: float, rng: va
       var corruptedSquad = squadron
       corruptedSquad.shipCount = corruptInt(squadron.shipCount, magnitude, rng)
       corruptedSquad.techLevel = corruptInt(squadron.techLevel, magnitude, rng)
-      corruptedSquad.hullIntegrity = corruptIntOption(squadron.hullIntegrity, magnitude, rng)
+      corruptedSquad.hullIntegrity =
+        corruptIntOption(squadron.hullIntegrity, magnitude, rng)
       corruptedSquadrons.add(corruptedSquad)
     result.squadronDetails = some(corruptedSquadrons)
 
 ## Colony Intelligence Corruption
 
-proc corruptColonyIntel*(colony: intel_types.ColonyIntelReport, magnitude: float, rng: var Rand): intel_types.ColonyIntelReport =
+proc corruptColonyIntel*(
+    colony: intel_types.ColonyIntelReport, magnitude: float, rng: var Rand
+): intel_types.ColonyIntelReport =
   ## Corrupt colony intelligence data
   result = colony
 
@@ -79,7 +87,8 @@ proc corruptColonyIntel*(colony: intel_types.ColonyIntelReport, magnitude: float
   result.taxRevenue = corruptIntOption(colony.taxRevenue, magnitude, rng)
 
   # Corrupt orbital defenses
-  result.unassignedSquadronCount = corruptInt(colony.unassignedSquadronCount, magnitude, rng)
+  result.unassignedSquadronCount =
+    corruptInt(colony.unassignedSquadronCount, magnitude, rng)
   result.reserveFleetCount = corruptInt(colony.reserveFleetCount, magnitude, rng)
   result.mothballedFleetCount = corruptInt(colony.mothballedFleetCount, magnitude, rng)
   result.shipyardCount = corruptInt(colony.shipyardCount, magnitude, rng)
@@ -88,7 +97,9 @@ proc corruptColonyIntel*(colony: intel_types.ColonyIntelReport, magnitude: float
 
 ## Starbase Intelligence Corruption
 
-proc corruptStarbaseIntel*(starbase: intel_types.StarbaseIntelReport, magnitude: float, rng: var Rand): intel_types.StarbaseIntelReport =
+proc corruptStarbaseIntel*(
+    starbase: intel_types.StarbaseIntelReport, magnitude: float, rng: var Rand
+): intel_types.StarbaseIntelReport =
   ## Corrupt starbase intelligence data (economic/R&D intel)
   result = starbase
 
@@ -101,17 +112,21 @@ proc corruptStarbaseIntel*(starbase: intel_types.StarbaseIntelReport, magnitude:
   # Corrupt R&D intelligence
   if starbase.researchAllocations.isSome:
     let alloc = starbase.researchAllocations.get()
-    result.researchAllocations = some((
-      erp: corruptInt(alloc.erp, magnitude, rng),
-      srp: corruptInt(alloc.srp, magnitude, rng),
-      trp: corruptInt(alloc.trp, magnitude, rng)
-    ))
+    result.researchAllocations = some(
+      (
+        erp: corruptInt(alloc.erp, magnitude, rng),
+        srp: corruptInt(alloc.srp, magnitude, rng),
+        trp: corruptInt(alloc.trp, magnitude, rng),
+      )
+    )
 
   # Tech levels NOT corrupted - these are discrete breakthrough levels, not measured quantities
 
 ## System Intelligence Corruption
 
-proc corruptSystemIntel*(system: intel_types.SystemIntelReport, magnitude: float, rng: var Rand): intel_types.SystemIntelReport =
+proc corruptSystemIntel*(
+    system: intel_types.SystemIntelReport, magnitude: float, rng: var Rand
+): intel_types.SystemIntelReport =
   ## Corrupt system intelligence data (fleet sightings)
   result = system
 
@@ -123,7 +138,9 @@ proc corruptSystemIntel*(system: intel_types.SystemIntelReport, magnitude: float
 
 ## Scout Encounter Report Corruption
 
-proc corruptScoutEncounter*(report: intel_types.ScoutEncounterReport, magnitude: float, rng: var Rand): intel_types.ScoutEncounterReport =
+proc corruptScoutEncounter*(
+    report: intel_types.ScoutEncounterReport, magnitude: float, rng: var Rand
+): intel_types.ScoutEncounterReport =
   ## Corrupt scout encounter report
   result = report
 
@@ -136,6 +153,7 @@ proc corruptScoutEncounter*(report: intel_types.ScoutEncounterReport, magnitude:
 
   # Corrupt colony details if present
   if report.colonyDetails.isSome:
-    result.colonyDetails = some(corruptColonyIntel(report.colonyDetails.get(), magnitude, rng))
+    result.colonyDetails =
+      some(corruptColonyIntel(report.colonyDetails.get(), magnitude, rng))
 
   # NOTE: fleetMovements, description, significance NOT corrupted

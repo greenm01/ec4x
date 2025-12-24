@@ -25,7 +25,9 @@ type
     behavior*: BehaviorConfig
     ui_hints*: UIHintsConfig
 
-proc loadStandingOrdersConfig*(configPath: string = "config/standing_orders.toml"): StandingOrdersConfig =
+proc loadStandingOrdersConfig*(
+    configPath: string = "config/standing_orders.toml"
+): StandingOrdersConfig =
   ## Load standing commands configuration from TOML file
   ## Uses toml_serialization for type-safe parsing
 

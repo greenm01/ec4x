@@ -21,21 +21,17 @@
 import std/[options, strformat]
 import ../../types/[core, ship, game_state]
 import ../../../common/logger
-import ./entity as ship_entity  # Ship business logic
+import ./entity as ship_entity # Ship business logic
 
 # Cargo Operations
 
-type
-  CargoTransferResult* = object
-    ## Result of cargo transfer operation
-    success*: bool
-    error*: string
-    amountTransferred*: int32
+type CargoTransferResult* = object ## Result of cargo transfer operation
+  success*: bool
+  error*: string
+  amountTransferred*: int32
 
 proc loadShipCargo*(
-  ship: var Ship,
-  cargoType: CargoType,
-  amount: int32
+    ship: var Ship, cargoType: CargoType, amount: int32
 ): CargoTransferResult =
   ## Load cargo onto ship (marines or colonists)
   ## Validates ship type and capacity constraints
@@ -52,25 +48,22 @@ proc loadShipCargo*(
     return CargoTransferResult(
       success: false,
       error: "Ship is not a transport (ETAC/TroopTransport)",
-      amountTransferred: 0
+      amountTransferred: 0,
     )
 
   # Check if cargo hold initialized
   if ship.cargo.isNone:
     return CargoTransferResult(
-      success: false,
-      error: "Ship cargo hold not initialized",
-      amountTransferred: 0
+      success: false, error: "Ship cargo hold not initialized", amountTransferred: 0
     )
 
   # Validate cargo type matches ship type
   let currentCargo = ship.cargo.get()
-  if currentCargo.cargoType != CargoType.None and
-     currentCargo.cargoType != cargoType:
+  if currentCargo.cargoType != CargoType.None and currentCargo.cargoType != cargoType:
     return CargoTransferResult(
       success: false,
       error: &"Ship already carrying {currentCargo.cargoType}, cannot load {cargoType}",
-      amountTransferred: 0
+      amountTransferred: 0,
     )
 
   # Calculate how much can actually be loaded
@@ -79,29 +72,21 @@ proc loadShipCargo*(
 
   if amountToLoad <= 0:
     return CargoTransferResult(
-      success: false,
-      error: "Ship cargo hold is full",
-      amountTransferred: 0
+      success: false, error: "Ship cargo hold is full", amountTransferred: 0
     )
 
   # Load cargo using entity function
   if ship.loadCargo(amountToLoad):
-    return CargoTransferResult(
-      success: true,
-      error: "",
-      amountTransferred: amountToLoad
-    )
+    return
+      CargoTransferResult(success: true, error: "", amountTransferred: amountToLoad)
   else:
     return CargoTransferResult(
       success: false,
       error: "Failed to load cargo (capacity exceeded)",
-      amountTransferred: 0
+      amountTransferred: 0,
     )
 
-proc unloadShipCargo*(
-  ship: var Ship,
-  amount: int32
-): CargoTransferResult =
+proc unloadShipCargo*(ship: var Ship, amount: int32): CargoTransferResult =
   ## Unload cargo from ship
   ## Use amount=0 to unload all cargo
   ##
@@ -115,46 +100,40 @@ proc unloadShipCargo*(
   # Check if cargo hold exists
   if ship.cargo.isNone:
     return CargoTransferResult(
-      success: false,
-      error: "Ship has no cargo hold",
-      amountTransferred: 0
+      success: false, error: "Ship has no cargo hold", amountTransferred: 0
     )
 
   # Check if cargo is empty
   if ship.isCargoEmpty():
     return CargoTransferResult(
-      success: false,
-      error: "Ship cargo hold is already empty",
-      amountTransferred: 0
+      success: false, error: "Ship cargo hold is already empty", amountTransferred: 0
     )
 
   # Determine amount to unload (0 = all)
   let currentCargo = ship.cargo.get()
-  let amountToUnload = if amount <= 0:
-    currentCargo.quantity
-  else:
-    min(amount, currentCargo.quantity)
+  let amountToUnload =
+    if amount <= 0:
+      currentCargo.quantity
+    else:
+      min(amount, currentCargo.quantity)
 
   # Unload cargo using entity function
   if ship.unloadCargo(amountToUnload):
-    return CargoTransferResult(
-      success: true,
-      error: "",
-      amountTransferred: amountToUnload
-    )
+    return
+      CargoTransferResult(success: true, error: "", amountTransferred: amountToUnload)
   else:
     return CargoTransferResult(
       success: false,
       error: &"Failed to unload cargo (insufficient cargo: {currentCargo.quantity})",
-      amountTransferred: 0
+      amountTransferred: 0,
     )
 
 proc transferCargoFromColony*(
-  state: var GameState,
-  shipId: ShipId,
-  colonyId: SystemId,
-  cargoType: CargoType,
-  amount: int32
+    state: var GameState,
+    shipId: ShipId,
+    colonyId: SystemId,
+    cargoType: CargoType,
+    amount: int32,
 ): CargoTransferResult =
   ## Transfer cargo from colony to ship
   ## Validates colony has cargo available and ship has capacity
@@ -173,14 +152,11 @@ proc transferCargoFromColony*(
   return CargoTransferResult(
     success: false,
     error: "Manual cargo transfers not yet implemented - use zero-turn commands",
-    amountTransferred: 0
+    amountTransferred: 0,
   )
 
 proc transferCargoToColony*(
-  state: var GameState,
-  shipId: ShipId,
-  colonyId: SystemId,
-  amount: int32
+    state: var GameState, shipId: ShipId, colonyId: SystemId, amount: int32
 ): CargoTransferResult =
   ## Transfer cargo from ship to colony
   ## Amount=0 unloads all cargo
@@ -198,23 +174,19 @@ proc transferCargoToColony*(
   return CargoTransferResult(
     success: false,
     error: "Manual cargo transfers not yet implemented - use zero-turn commands",
-    amountTransferred: 0
+    amountTransferred: 0,
   )
 
 # Repair Operations
 
-type
-  RepairResult* = object
-    ## Result of ship repair operation
-    success*: bool
-    error*: string
-    repairCost*: int32
-    turnsRequired*: int32
+type RepairResult* = object ## Result of ship repair operation
+  success*: bool
+  error*: string
+  repairCost*: int32
+  turnsRequired*: int32
 
 proc repairShip*(
-  state: var GameState,
-  shipId: ShipId,
-  colonyId: SystemId
+    state: var GameState, shipId: ShipId, colonyId: SystemId
 ): RepairResult =
   ## Coordinate ship repair via drydock at colony
   ##
@@ -235,13 +207,11 @@ proc repairShip*(
     success: false,
     error: "Manual ship repairs not yet implemented - automatic via drydock queue",
     repairCost: 0,
-    turnsRequired: 0
+    turnsRequired: 0,
   )
 
 proc upgradeShipWEP*(
-  state: var GameState,
-  shipId: ShipId,
-  newWEPLevel: int32
+    state: var GameState, shipId: ShipId, newWEPLevel: int32
 ): RepairResult =
   ## Upgrade ship to new WEP tech level
   ##
@@ -256,5 +226,5 @@ proc upgradeShipWEP*(
     success: false,
     error: "Ship retrofitting not supported - must salvage and rebuild",
     repairCost: 0,
-    turnsRequired: 0
+    turnsRequired: 0,
   )

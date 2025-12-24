@@ -9,7 +9,8 @@ import ../types/database
 
 const SchemaVersion* = 1
 
-const CreateGamesTable* = """
+const CreateGamesTable* =
+  """
 CREATE TABLE IF NOT EXISTS games (
   game_id INTEGER PRIMARY KEY,
   timestamp TEXT NOT NULL,
@@ -24,7 +25,8 @@ CREATE TABLE IF NOT EXISTS games (
 );
 """
 
-const CreateDiagnosticsTable* = """
+const CreateDiagnosticsTable* =
+  """
 CREATE TABLE IF NOT EXISTS diagnostics (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   game_id INTEGER NOT NULL REFERENCES games(game_id),
@@ -323,7 +325,8 @@ CREATE TABLE IF NOT EXISTS diagnostics (
 );
 """
 
-const CreateDiagnosticsIndexes* = """
+const CreateDiagnosticsIndexes* =
+  """
 CREATE INDEX IF NOT EXISTS idx_diagnostics_game
   ON diagnostics(game_id);
 CREATE INDEX IF NOT EXISTS idx_diagnostics_house
@@ -332,7 +335,8 @@ CREATE INDEX IF NOT EXISTS idx_diagnostics_turn
   ON diagnostics(game_id, turn);
 """
 
-const CreateGameEventsTable* = """
+const CreateGameEventsTable* =
+  """
 CREATE TABLE IF NOT EXISTS game_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   game_id INTEGER NOT NULL REFERENCES games(game_id),
@@ -348,7 +352,8 @@ CREATE TABLE IF NOT EXISTS game_events (
 );
 """
 
-const CreateGameEventsIndexes* = """
+const CreateGameEventsIndexes* =
+  """
 CREATE INDEX IF NOT EXISTS idx_events_game
   ON game_events(game_id);
 CREATE INDEX IF NOT EXISTS idx_events_fleet
@@ -359,7 +364,8 @@ CREATE INDEX IF NOT EXISTS idx_events_turn
   ON game_events(game_id, turn);
 """
 
-const CreateFleetTrackingTable* = """
+const CreateFleetTrackingTable* =
+  """
 CREATE TABLE IF NOT EXISTS fleet_tracking (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   game_id INTEGER NOT NULL REFERENCES games(game_id),
@@ -384,7 +390,8 @@ CREATE TABLE IF NOT EXISTS fleet_tracking (
 );
 """
 
-const CreateFleetTrackingIndexes* = """
+const CreateFleetTrackingIndexes* =
+  """
 CREATE INDEX IF NOT EXISTS idx_fleet_tracking_game
   ON fleet_tracking(game_id);
 CREATE INDEX IF NOT EXISTS idx_fleet_tracking_fleet
@@ -393,7 +400,8 @@ CREATE INDEX IF NOT EXISTS idx_fleet_tracking_turn
   ON fleet_tracking(game_id, turn);
 """
 
-const CreateGameStatesTable* = """
+const CreateGameStatesTable* =
+  """
 CREATE TABLE IF NOT EXISTS game_states (
   game_id INTEGER NOT NULL REFERENCES games(game_id),
   turn INTEGER NOT NULL,
@@ -403,7 +411,8 @@ CREATE TABLE IF NOT EXISTS game_states (
 );
 """
 
-const CreateGameStatesIndexes* = """
+const CreateGameStatesIndexes* =
+  """
 CREATE INDEX IF NOT EXISTS idx_states_game
   ON game_states(game_id);
 """
@@ -413,16 +422,17 @@ proc defaultDBConfig*(dbPath: string): DBConfig =
   ## Most games won't need full state snapshots initially
   DBConfig(
     dbPath: dbPath,
-    enableGameStates: false,     # Disabled by default (saves space)
-    snapshotInterval: 5,         # Every 5 turns if enabled
-    pragmas: @[
-      "PRAGMA journal_mode=WAL",      # Write-Ahead Logging (faster)
-      "PRAGMA synchronous=NORMAL",    # Balance safety/performance
-      "PRAGMA cache_size=-64000",     # 64MB cache
-      "PRAGMA temp_store=MEMORY"      # Temp tables in memory
-    ]
+    enableGameStates: false, # Disabled by default (saves space)
+    snapshotInterval: 5, # Every 5 turns if enabled
+    pragmas:
+      @[
+        "PRAGMA journal_mode=WAL", # Write-Ahead Logging (faster)
+        "PRAGMA synchronous=NORMAL", # Balance safety/performance
+        "PRAGMA cache_size=-64000", # 64MB cache
+        "PRAGMA temp_store=MEMORY", # Temp tables in memory
+      ],
   )
-    
+
 proc initializeDatabase*(db: DbConn): bool =
   ## Initialize database schema (idempotent)
   ## Returns true on success, false on failure

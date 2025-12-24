@@ -13,6 +13,7 @@ type
     autoRepair*: bool
     autoReloadETACs*: bool
     taxRate*: Option[int32]
+
   CommandPacket* = object
     houseId*: HouseId
     turn*: int32
@@ -46,5 +47,3 @@ type
     canAfford*: bool
     errors*: seq[string]
     warnings*: seq[string]
-
-

@@ -8,10 +8,18 @@ import ./core
 
 type
   ExportFormat* {.pure.} = enum
-    CSV, Markdown, JSON, Summary
+    CSV
+    Markdown
+    JSON
+    Summary
 
   AggregationType* {.pure.} = enum
-    Mean, Median, Min, Max, StdDev, Count
+    Mean
+    Median
+    Min
+    Max
+    StdDev
+    Count
 
   ExportFilter* = object
     houseIds*: seq[HouseId]
@@ -21,5 +29,5 @@ type
 
   DiagnosticRow* = object
     turn*: int32
-    houseId*: HouseId  # Use typed ID, not string
+    houseId*: HouseId # Use typed ID, not string
     values*: Table[string, string]

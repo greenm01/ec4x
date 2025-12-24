@@ -19,20 +19,25 @@ proc validateTechTree*(techTree: TechTree) =
   ## Fix: Always include `techTree: res_types.initTechTree()` in House
   ## constructors
   if techTree.levels.economicLevel < 1:
-    raise newException(ValueError,
+    raise newException(
+      ValueError,
       "EL (Economics Level) cannot be less than 1. Found: " &
-      $techTree.levels.economicLevel &
-      ". Use initTechTree() to create valid tech tree.")
+        $techTree.levels.economicLevel &
+        ". Use initTechTree() to create valid tech tree.",
+    )
   if techTree.levels.scienceLevel < 1:
-    raise newException(ValueError,
-      "SL (Science Level) cannot be less than 1. Found: " &
-      $techTree.levels.scienceLevel &
-      ". Use initTechTree() to create valid tech tree.")
+    raise newException(
+      ValueError,
+      "SL (Science Level) cannot be less than 1. Found: " & $techTree.levels.scienceLevel &
+        ". Use initTechTree() to create valid tech tree.",
+    )
   if techTree.levels.economicLevel > 11:
-    raise newException(ValueError,
-      "EL (Economics Level) cannot exceed 11. Found: " &
-      $techTree.levels.economicLevel)
+    raise newException(
+      ValueError,
+      "EL (Economics Level) cannot exceed 11. Found: " & $techTree.levels.economicLevel,
+    )
   if techTree.levels.scienceLevel > 11:
-    raise newException(ValueError,
-      "SL (Science Level) cannot exceed 11. Found: " &
-      $techTree.levels.scienceLevel)
+    raise newException(
+      ValueError,
+      "SL (Science Level) cannot exceed 11. Found: " & $techTree.levels.scienceLevel,
+    )

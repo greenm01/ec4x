@@ -7,10 +7,14 @@ import ../state/[id_gen, entity_manager, game_state as gs_helpers]
 import ../types/[game_state, core, colony, starmap, production, capacity]
 import ../config/[economy_config, population_config]
 
-proc establishColony*(state: var GameState, systemId: SystemId,
-                      owner: HouseId, planetClass: PlanetClass,
-                      resources: ResourceRating,
-                      ptuCount: int32 = 3): ColonyId =
+proc establishColony*(
+    state: var GameState,
+    systemId: SystemId,
+    owner: HouseId,
+    planetClass: PlanetClass,
+    resources: ResourceRating,
+    ptuCount: int32 = 3,
+): ColonyId =
   ## Create a new ETAC-colonized system with specified PTU
   ## Default: 3 PTU (150k souls) for standard ETAC colonization
   ## PTU size loaded from config/population.toml
@@ -26,29 +30,28 @@ proc establishColony*(state: var GameState, systemId: SystemId,
     populationUnits: ptuCount,
     populationTransferUnits: ptuCount,
     infrastructure:
-      economy_config.globalEconomyConfig.colonization.
-        starting_infrastructure_level.int32,
+      economy_config.globalEconomyConfig.colonization.starting_infrastructure_level.int32,
     industrial: IndustrialUnits(
-      units: (ptuCount *
-        economy_config.globalEconomyConfig.colonization.
-          starting_iu_percent.int32
-      ) div 100,
+      units:
+        (
+          ptuCount *
+          economy_config.globalEconomyConfig.colonization.starting_iu_percent.int32
+        ) div 100,
       investmentCost:
-        economy_config.globalEconomyConfig.industrial_investment.
-          base_cost.int32
+        economy_config.globalEconomyConfig.industrial_investment.base_cost.int32,
     ),
     planetClass: planetClass,
     resources: resources,
     production: 0,
     grossOutput: 0,
-    taxRate: 50,  # Default 50% tax rate
+    taxRate: 50, # Default 50% tax rate
     infrastructureDamage: 0.0,
     underConstruction: none(ConstructionProjectId),
     constructionQueue: @[],
     repairQueue: @[],
-    autoRepairEnabled: false,  # Default OFF
-    autoLoadingEnabled: true,  # Default ON
-    autoReloadETACs: true,     # Default ON
+    autoRepairEnabled: false, # Default OFF
+    autoLoadingEnabled: true, # Default ON
+    autoReloadETACs: true, # Default ON
     activeTerraforming: none(TerraformProject),
     unassignedSquadronIds: @[],
     fighterSquadronIds: @[],
@@ -57,11 +60,10 @@ proc establishColony*(state: var GameState, systemId: SystemId,
       graceTurnsRemaining: 0,
       violationTurn: 0,
       capacityType: CapacityType.FighterSquadron,
-      entity: EntityIdUnion(kind: CapacityType.FighterSquadron,
-                            colonyId: colonyId),
+      entity: EntityIdUnion(kind: CapacityType.FighterSquadron, colonyId: colonyId),
       current: 0,
       maximum: 0,
-      excess: 0
+      excess: 0,
     ),
     starbaseIds: @[],
     spaceportIds: @[],
@@ -73,7 +75,7 @@ proc establishColony*(state: var GameState, systemId: SystemId,
     marineIds: @[],
     blockaded: false,
     blockadedBy: @[],
-    blockadeTurns: 0
+    blockadeTurns: 0,
   )
 
   # Add to entity manager and update indices
@@ -88,12 +90,16 @@ proc establishColony*(state: var GameState, systemId: SystemId,
 proc destroyColony*(state: var GameState, colonyId: ColonyId) =
   ## Destroys a colony, removing it from the entity manager and all indexes.
   let colonyOpt = gs_helpers.getColony(state, colonyId)
-  if colonyOpt.isNone: return
+  if colonyOpt.isNone:
+    return
   let colony = colonyOpt.get()
 
   if state.colonies.byOwner.contains(colony.owner):
     var ownerColonies = state.colonies.byOwner[colony.owner]
-    ownerColonies.keepIf(proc(id: ColonyId): bool = id != colonyId)
+    ownerColonies.keepIf(
+      proc(id: ColonyId): bool =
+        id != colonyId
+    )
     state.colonies.byOwner[colony.owner] = ownerColonies
 
   if state.colonies.bySystem.contains(colony.systemId):
@@ -101,20 +107,23 @@ proc destroyColony*(state: var GameState, colonyId: ColonyId) =
 
   state.colonies.entities.removeEntity(colonyId)
 
-
-proc changeColonyOwner*(state: var GameState, colonyId: ColonyId,
-                        newOwner: HouseId) =
+proc changeColonyOwner*(state: var GameState, colonyId: ColonyId, newOwner: HouseId) =
   ## Transfers ownership of a colony, updating the `byOwner` index.
   let colonyOpt = gs_helpers.getColony(state, colonyId)
-  if colonyOpt.isNone: return
+  if colonyOpt.isNone:
+    return
   var colony = colonyOpt.get()
 
   let oldOwner = colony.owner
-  if oldOwner == newOwner: return
+  if oldOwner == newOwner:
+    return
 
   if state.colonies.byOwner.contains(oldOwner):
     var oldOwnerColonies = state.colonies.byOwner[oldOwner]
-    oldOwnerColonies.keepIf(proc(id: ColonyId): bool = id != colonyId)
+    oldOwnerColonies.keepIf(
+      proc(id: ColonyId): bool =
+        id != colonyId
+    )
     state.colonies.byOwner[oldOwner] = oldOwnerColonies
 
   var newOwnerColonies = state.colonies.byOwner.getOrDefault(newOwner, @[])

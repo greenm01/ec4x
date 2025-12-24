@@ -30,7 +30,8 @@ proc parseShipRole(roleStr: string): ShipRole =
   of "auxiliary": ShipRole.Auxiliary
   of "specialweapon": ShipRole.SpecialWeapon
   of "fighter": ShipRole.Fighter
-  else: ShipRole.Escort  # Default
+  else: ShipRole.Escort
+    # Default
 
 ## Config Data Access (non-WEP stats)
 
@@ -78,30 +79,30 @@ proc getShipStats*(shipClass: ShipClass, weaponsTech: int32 = 1): ShipStats =
   let baseDS = int32(configStats.defense_strength)
 
   # Apply WEP multiplier (compound 10% per level above WEP I)
-  let modifiedAS = if weaponsTech > 1:
-    int32(float(baseAS) * pow(1.10, float(weaponsTech - 1)))
-  else:
-    baseAS
+  let modifiedAS =
+    if weaponsTech > 1:
+      int32(float(baseAS) * pow(1.10, float(weaponsTech - 1)))
+    else:
+      baseAS
 
-  let modifiedDS = if weaponsTech > 1:
-    int32(float(baseDS) * pow(1.10, float(weaponsTech - 1)))
-  else:
-    baseDS
+  let modifiedDS =
+    if weaponsTech > 1:
+      int32(float(baseDS) * pow(1.10, float(weaponsTech - 1)))
+    else:
+      baseDS
 
   ShipStats(
-    attackStrength: modifiedAS,
-    defenseStrength: modifiedDS,
-    weaponsTech: weaponsTech
+    attackStrength: modifiedAS, defenseStrength: modifiedDS, weaponsTech: weaponsTech
   )
 
 ## Ship Construction
 
 proc newShip*(
-  shipClass: ShipClass,
-  weaponsTech: int32 = 1,
-  name: string = "",
-  id: ShipId = ShipId(0),
-  squadronId: SquadronId = SquadronId(0)
+    shipClass: ShipClass,
+    weaponsTech: int32 = 1,
+    name: string = "",
+    id: ShipId = ShipId(0),
+    squadronId: SquadronId = SquadronId(0),
 ): Ship =
   ## Create a new ship with WEP-modified stats
   ## weaponsTech defaults to 1 (WEP I - starting level per gameplay.md:1.2)
@@ -118,13 +119,17 @@ proc newShip*(
     stats: stats,
     isCrippled: false,
     name: name,
-    cargo: none(ShipCargo)
+    cargo: none(ShipCargo),
   )
 
 proc `$`*(ship: Ship): string =
   ## String representation of ship
   let status = if ship.isCrippled: " (crippled)" else: ""
-  let name = if ship.name.len > 0: " \"" & ship.name & "\"" else: ""
+  let name =
+    if ship.name.len > 0:
+      " \"" & ship.name & "\""
+    else:
+      ""
   $ship.shipClass & name & status
 
 ## Config Lookups (non-WEP stats from config/ships.toml)
@@ -209,14 +214,11 @@ proc initCargo*(ship: var Ship, cargoType: CargoType, capacity: int32) =
   ## Initialize cargo hold for transport ships
   ## Used for ETAC (colonists) and TroopTransport (marines)
   if not ship.isTransport():
-    raise newException(ValueError,
-      "Cannot init cargo on non-transport ship: " & $ship.shipClass)
+    raise newException(
+      ValueError, "Cannot init cargo on non-transport ship: " & $ship.shipClass
+    )
 
-  ship.cargo = some(ShipCargo(
-    cargoType: cargoType,
-    quantity: 0,
-    capacity: capacity
-  ))
+  ship.cargo = some(ShipCargo(cargoType: cargoType, quantity: 0, capacity: capacity))
 
 proc loadCargo*(ship: var Ship, amount: int32): bool =
   ## Load cargo into transport ship

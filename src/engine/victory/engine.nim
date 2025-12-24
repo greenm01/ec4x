@@ -11,9 +11,9 @@ export types
 
 ## Victory Checking
 
-proc checkPrestigeVictory*(houses: Table[HouseId, House],
-                           condition: VictoryCondition,
-                           currentTurn: int): VictoryCheck =
+proc checkPrestigeVictory*(
+    houses: Table[HouseId, House], condition: VictoryCondition, currentTurn: int
+): VictoryCheck =
   ## Check if any house has reached prestige threshold
   ## If threshold is 0, prestige victory is disabled
   result = VictoryCheck(victoryOccurred: false)
@@ -30,13 +30,15 @@ proc checkPrestigeVictory*(houses: Table[HouseId, House],
         victor: houseId,
         victoryType: VictoryType.PrestigeVictory,
         achievedOnTurn: currentTurn,
-        description: house.name & " achieved " & $house.prestige &
-                    " prestige (threshold: " & $condition.prestigeThreshold & ")"
+        description:
+          house.name & " achieved " & $house.prestige & " prestige (threshold: " &
+          $condition.prestigeThreshold & ")",
       )
       return
 
-proc checkLastHouseStanding*(houses: Table[HouseId, House],
-                             currentTurn: int): VictoryCheck =
+proc checkLastHouseStanding*(
+    houses: Table[HouseId, House], currentTurn: int
+): VictoryCheck =
   ## Check if only one house remains
   result = VictoryCheck(victoryOccurred: false)
 
@@ -53,12 +55,12 @@ proc checkLastHouseStanding*(houses: Table[HouseId, House],
       victor: victorId,
       victoryType: VictoryType.LastHouseStanding,
       achievedOnTurn: currentTurn,
-      description: victorHouse.name & " is the last house standing!"
+      description: victorHouse.name & " is the last house standing!",
     )
 
-proc checkTurnLimitVictory*(houses: Table[HouseId, House],
-                            condition: VictoryCondition,
-                            currentTurn: int): VictoryCheck =
+proc checkTurnLimitVictory*(
+    houses: Table[HouseId, House], condition: VictoryCondition, currentTurn: int
+): VictoryCheck =
   ## Check if turn limit reached, award victory to highest prestige
   result = VictoryCheck(victoryOccurred: false)
 
@@ -79,12 +81,14 @@ proc checkTurnLimitVictory*(houses: Table[HouseId, House],
         victor: victorId,
         victoryType: VictoryType.TurnLimit,
         achievedOnTurn: currentTurn,
-        description: victorHouse.name & " wins with highest prestige (" &
-                    $prestige & ") at turn limit"
+        description:
+          victorHouse.name & " wins with highest prestige (" & $prestige &
+          ") at turn limit",
       )
 
-proc checkVictoryConditions*(state: GameState,
-                             condition: VictoryCondition): VictoryCheck =
+proc checkVictoryConditions*(
+    state: GameState, condition: VictoryCondition
+): VictoryCheck =
   ## Check all victory conditions and return result
   ## Checks in priority command: Prestige → Last Standing → Turn Limit
 
@@ -117,11 +121,10 @@ type
     eliminated*: bool
     rank*: int
 
-  Leaderboard* = object
-    ## Public leaderboard showing house rankings and game state
+  Leaderboard* = object ## Public leaderboard showing house rankings and game state
     rankings*: seq[HouseRanking]
-    totalSystems*: int  # Total colonizable systems in the game
-    totalColonized*: int  # Total systems currently colonized
+    totalSystems*: int # Total colonizable systems in the game
+    totalColonized*: int # Total systems currently colonized
 
 proc generateLeaderboard*(state: GameState): Leaderboard =
   ## Generate ranked leaderboard of all houses with game metadata
@@ -130,21 +133,23 @@ proc generateLeaderboard*(state: GameState): Leaderboard =
   for houseId, house in state.houses:
     let colonyCount = state.getHouseColonies(houseId).len
 
-    rankings.add(HouseRanking(
-      houseId: houseId,
-      houseName: house.name,
-      prestige: house.prestige,
-      colonies: colonyCount,
-      eliminated: house.eliminated,
-      rank: 0  # Will be set after sorting
-    ))
+    rankings.add(
+      HouseRanking(
+        houseId: houseId,
+        houseName: house.name,
+        prestige: house.prestige,
+        colonies: colonyCount,
+        eliminated: house.eliminated,
+        rank: 0, # Will be set after sorting
+      )
+    )
 
   # Sort by prestige (descending), then by colonies
-  rankings.sort do (a, b: HouseRanking) -> int:
+  rankings.sort do(a, b: HouseRanking) -> int:
     if a.eliminated != b.eliminated:
       return if a.eliminated: 1 else: -1
     if a.prestige != b.prestige:
-      return cmp(b.prestige, a.prestige)  # Higher is better
+      return cmp(b.prestige, a.prestige) # Higher is better
     return cmp(b.colonies, a.colonies)
 
   # Assign ranks
@@ -159,5 +164,5 @@ proc generateLeaderboard*(state: GameState): Leaderboard =
   return Leaderboard(
     rankings: rankings,
     totalSystems: state.starMap.systems.len,
-    totalColonized: totalColonized
+    totalColonized: totalColonized,
   )

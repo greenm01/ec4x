@@ -8,12 +8,10 @@ import ../../types/[telemetry, core, game_state, event, house, colony]
 import ../../state/[entity_manager, iterators]
 
 proc collectIncomeMetrics*(
-  state: GameState,
-  houseId: HouseId,
-  prevMetrics: DiagnosticMetrics
+    state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
 ): DiagnosticMetrics =
   ## Collect income metrics from GameState
-  result = prevMetrics  # Start with previous metrics
+  result = prevMetrics # Start with previous metrics
 
   let houseOpt = state.houses.entities.getEntity(houseId)
   if houseOpt.isNone:
@@ -59,7 +57,8 @@ proc collectIncomeMetrics*(
   var salvageValueRecovered: int32 = 0
 
   for event in state.lastTurnEvents:
-    if event.houseId != some(houseId): continue
+    if event.houseId != some(houseId):
+      continue
     # TODO: Add InfrastructureDamage, SalvageRecovered events
     # case event.eventType:
     # of InfrastructureDamage:
@@ -69,11 +68,11 @@ proc collectIncomeMetrics*(
     # else:
     #   discard
 
-  result.infrastructureDamageTotal = prevMetrics.infrastructureDamageTotal +
-    infrastructureDamage
-  result.salvageValueRecovered = prevMetrics.salvageValueRecovered +
-    salvageValueRecovered
+  result.infrastructureDamageTotal =
+    prevMetrics.infrastructureDamageTotal + infrastructureDamage
+  result.salvageValueRecovered =
+    prevMetrics.salvageValueRecovered + salvageValueRecovered
 
   # Tax rate analysis
-  result.avgTaxRate6Turn = result.taxRate  # TODO: Calculate 6-turn average
+  result.avgTaxRate6Turn = result.taxRate # TODO: Calculate 6-turn average
   result.taxPenaltyActive = result.taxRate > 50

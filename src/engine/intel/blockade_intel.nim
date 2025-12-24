@@ -8,11 +8,11 @@ import types as intel_types
 import ../gamestate
 
 proc generateBlockadeEstablishedIntel*(
-  state: var GameState,
-  systemId: SystemId,
-  defendingHouse: HouseId,
-  blockadingHouses: seq[HouseId],
-  turn: int
+    state: var GameState,
+    systemId: SystemId,
+    defendingHouse: HouseId,
+    blockadingHouses: seq[HouseId],
+    turn: int,
 ) =
   ## Generate intelligence reports when a blockade is established
   ## Both defenders and blockaders receive reports
@@ -26,16 +26,17 @@ proc generateBlockadeEstablishedIntel*(
 
   let defenderReport = intel_types.ScoutEncounterReport(
     reportId: &"{defendingHouse}-blockade-established-{turn}-{systemId}",
-    scoutId: "starbase-sensors",  # Detected by starbase/colony sensors
+    scoutId: "starbase-sensors", # Detected by starbase/colony sensors
     turn: turn,
     systemId: systemId,
     encounterType: intel_types.ScoutEncounterType.Blockade,
     observedHouses: blockadingHouses,
-    fleetDetails: @[],  # Future enhancement: Could add fleet composition if scouted
+    fleetDetails: @[], # Future enhancement: Could add fleet composition if scouted
     colonyDetails: none(intel_types.ColonyIntelReport),
     fleetMovements: @[],
-    description: &"BLOCKADE ESTABLISHED: System {systemId} is under blockade by {blockadersList}. GCO reduced by 60%.",
-    significance: 9  # Blockade is critical threat
+    description:
+      &"BLOCKADE ESTABLISHED: System {systemId} is under blockade by {blockadersList}. GCO reduced by 60%.",
+    significance: 9, # Blockade is critical threat
   )
 
   # CRITICAL: Get, modify, write back to persist
@@ -55,8 +56,9 @@ proc generateBlockadeEstablishedIntel*(
       fleetDetails: @[],
       colonyDetails: none(intel_types.ColonyIntelReport),
       fleetMovements: @[],
-      description: &"Blockade established at {systemId} against {defendingHouse}. Target economy disrupted (60% GCO reduction).",
-      significance: 8
+      description:
+        &"Blockade established at {systemId} against {defendingHouse}. Target economy disrupted (60% GCO reduction).",
+      significance: 8,
     )
 
     # CRITICAL: Get, modify, write back to persist
@@ -65,11 +67,11 @@ proc generateBlockadeEstablishedIntel*(
     state.houses[blockader] = blockaderHouse
 
 proc generateBlockadeLiftedIntel*(
-  state: var GameState,
-  systemId: SystemId,
-  defendingHouse: HouseId,
-  previousBlockaders: seq[HouseId],
-  turn: int
+    state: var GameState,
+    systemId: SystemId,
+    defendingHouse: HouseId,
+    previousBlockaders: seq[HouseId],
+    turn: int,
 ) =
   ## Generate intelligence reports when a blockade is lifted
   ## Both defenders and former blockaders receive reports
@@ -85,8 +87,9 @@ proc generateBlockadeLiftedIntel*(
     fleetDetails: @[],
     colonyDetails: none(intel_types.ColonyIntelReport),
     fleetMovements: @[],
-    description: &"BLOCKADE LIFTED: System {systemId} is no longer under blockade. Economy restored to normal operation.",
-    significance: 7  # Important but less urgent than establishment
+    description:
+      &"BLOCKADE LIFTED: System {systemId} is no longer under blockade. Economy restored to normal operation.",
+    significance: 7, # Important but less urgent than establishment
   )
 
   # CRITICAL: Get, modify, write back to persist
@@ -106,8 +109,9 @@ proc generateBlockadeLiftedIntel*(
       fleetDetails: @[],
       colonyDetails: none(intel_types.ColonyIntelReport),
       fleetMovements: @[],
-      description: &"Blockade at {systemId} has ended. Target {defendingHouse} economy no longer disrupted.",
-      significance: 6
+      description:
+        &"Blockade at {systemId} has ended. Target {defendingHouse} economy no longer disrupted.",
+      significance: 6,
     )
 
     # CRITICAL: Get, modify, write back to persist

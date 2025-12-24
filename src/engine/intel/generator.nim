@@ -6,10 +6,15 @@
 import std/[tables, options, random, hashes, sequtils]
 import types as intel_types
 import corruption
-import ../gamestate, ../fleet  # Need FleetStatus from fleet module
+import ../gamestate, ../fleet # Need FleetStatus from fleet module
 import ../espionage/types as esp_types
 
-proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSystem: SystemId, quality: intel_types.IntelQuality): Option[intel_types.ColonyIntelReport] =
+proc generateColonyIntelReport*(
+    state: GameState,
+    scoutOwner: HouseId,
+    targetSystem: SystemId,
+    quality: intel_types.IntelQuality,
+): Option[intel_types.ColonyIntelReport] =
   ## Generate colony intelligence report from SpyOnPlanet mission
   ## Per intel.md:107-121
 
@@ -38,8 +43,9 @@ proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
     gatheredTurn: state.turn,
     quality: quality,
     population: colony.population,
-    industry: colony.infrastructure,  # Infrastructure level (0-10)
-    defenses: colony.armies + colony.marines + colony.groundBatteries,  # Total ground defenses
+    industry: colony.infrastructure, # Infrastructure level (0-10)
+    defenses: colony.armies + colony.marines + colony.groundBatteries,
+      # Total ground defenses
     starbaseLevel: colony.starbases.len,
     constructionQueue: @[],
     grossOutput: none(int),
@@ -48,11 +54,12 @@ proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
     unassignedSquadronCount: colony.unassignedSquadrons.len,
     reserveFleetCount: reserveFleets,
     mothballedFleetCount: mothballedFleets,
-    shipyardCount: colony.shipyards.len  # Space-based construction only, NOT spaceports
+    shipyardCount: colony.shipyards.len, # Space-based construction only, NOT spaceports
   )
 
   # Economic intelligence visible if spy quality is high enough
-  if quality == intel_types.IntelQuality.Spy or quality == intel_types.IntelQuality.Perfect:
+  if quality == intel_types.IntelQuality.Spy or
+      quality == intel_types.IntelQuality.Perfect:
     # Get colony economic data from latest income report
     let targetHouse = state.houses[colony.owner]
     if targetHouse.latestIncomeReport.isSome:
@@ -65,7 +72,8 @@ proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
           break
 
   # Construction queue visible if spy quality is high enough
-  if quality == intel_types.IntelQuality.Spy or quality == intel_types.IntelQuality.Perfect:
+  if quality == intel_types.IntelQuality.Spy or
+      quality == intel_types.IntelQuality.Perfect:
     # Add all construction projects in queue (NEW multi-project system)
     for project in colony.constructionQueue:
       report.constructionQueue.add(project.itemId)
@@ -86,7 +94,12 @@ proc generateColonyIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
 
   return some(report)
 
-proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSystem: SystemId, quality: intel_types.IntelQuality): Option[intel_types.SystemIntelReport] =
+proc generateSystemIntelReport*(
+    state: GameState,
+    scoutOwner: HouseId,
+    targetSystem: SystemId,
+    quality: intel_types.IntelQuality,
+): Option[intel_types.SystemIntelReport] =
   ## Generate system intelligence report from SpyOnSystem mission
   ## Per intel.md:96-105
 
@@ -100,8 +113,9 @@ proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
         owner: fleet.owner,
         location: targetSystem,
         shipCount: fleet.squadrons.len,
-        standingOrders: none(string),  # Future enhancement: Report fleet standing commands if detected
-        spaceLiftShipCount: none(int)
+        standingOrders: none(string),
+          # Future enhancement: Report fleet standing commands if detected
+        spaceLiftShipCount: none(int),
       )
 
       # Visual quality: Can see ship types and squadron sizes, but NOT tech levels or damage
@@ -111,12 +125,19 @@ proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
         let squadIntel = intel_types.SquadronIntel(
           squadronId: squadron.id,
           shipClass: $squadron.flagship.shipClass,
-          shipCount: 1 + squadron.ships.len,  # Flagship + other ships
+          shipCount: 1 + squadron.ships.len, # Flagship + other ships
           # Tech level and hull integrity only for Spy+ quality
-          techLevel: if quality >= intel_types.IntelQuality.Spy: squadron.flagship.stats.techLevel else: 0,
-          hullIntegrity: if quality >= intel_types.IntelQuality.Spy:
-                          (if squadron.flagship.isCrippled: some(50) else: some(100))
-                         else: none(int)
+          techLevel:
+            if quality >= intel_types.IntelQuality.Spy:
+              squadron.flagship.stats.techLevel
+            else:
+              0,
+          hullIntegrity:
+            if quality >= intel_types.IntelQuality.Spy:
+              (if squadron.flagship.isCrippled: some(50)
+              else: some(100))
+            else:
+              none(int),
         )
         squadDetails.add(squadIntel)
       fleetIntel.squadronDetails = some(squadDetails)
@@ -138,7 +159,7 @@ proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
     systemId: targetSystem,
     gatheredTurn: state.turn,
     quality: quality,
-    detectedFleets: fleetIntels
+    detectedFleets: fleetIntels,
   )
 
   # Apply corruption if scout owner's intelligence is compromised (disinformation)
@@ -151,7 +172,12 @@ proc generateSystemIntelReport*(state: GameState, scoutOwner: HouseId, targetSys
 
   return some(report)
 
-proc generateStarbaseIntelReport*(state: GameState, scoutOwner: HouseId, targetSystem: SystemId, quality: intel_types.IntelQuality): Option[intel_types.StarbaseIntelReport] =
+proc generateStarbaseIntelReport*(
+    state: GameState,
+    scoutOwner: HouseId,
+    targetSystem: SystemId,
+    quality: intel_types.IntelQuality,
+): Option[intel_types.StarbaseIntelReport] =
   ## Generate starbase intelligence report from HackStarbase mission
   ## Per intel.md and operations.md:6.2.11 - "economic and R&D intelligence"
 
@@ -175,7 +201,7 @@ proc generateStarbaseIntelReport*(state: GameState, scoutOwner: HouseId, targetS
     systemId: targetSystem,
     targetOwner: colony.owner,
     gatheredTurn: state.turn,
-    quality: quality
+    quality: quality,
   )
 
   # Economic intelligence - always available from starbase hack
@@ -200,18 +226,21 @@ proc generateStarbaseIntelReport*(state: GameState, scoutOwner: HouseId, targetS
   for field, points in targetHouse.techTree.accumulated.technology:
     totalTRP += points
 
-  report.researchAllocations = some((
-    erp: targetHouse.techTree.accumulated.economic,
-    srp: targetHouse.techTree.accumulated.science,
-    trp: totalTRP
-  ))
+  report.researchAllocations = some(
+    (
+      erp: targetHouse.techTree.accumulated.economic,
+      srp: targetHouse.techTree.accumulated.science,
+      trp: totalTRP,
+    )
+  )
 
   # Current research focus (most accumulated type)
-  let maxAccum = max([
-    targetHouse.techTree.accumulated.economic,
-    targetHouse.techTree.accumulated.science,
-    totalTRP
-  ])
+  let maxAccum = max(
+    [
+      targetHouse.techTree.accumulated.economic,
+      targetHouse.techTree.accumulated.science, totalTRP,
+    ]
+  )
 
   if maxAccum == targetHouse.techTree.accumulated.economic:
     report.currentResearch = some("Economic")

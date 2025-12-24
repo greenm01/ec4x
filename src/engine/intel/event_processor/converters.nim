@@ -10,9 +10,7 @@ import ../types as intel_types
 import ../../resolution/types as res_types
 
 proc convertCombatEvent*(
-  event: res_types.GameEvent,
-  observingHouse: HouseId,
-  turn: int
+    event: res_types.GameEvent, observingHouse: HouseId, turn: int
 ): Option[intel_types.ScoutEncounterReport] =
   ## Convert combat GameEvent into ScoutEncounterReport
   ## Combat events (Battle, SystemCaptured, etc.) generate observations
@@ -22,40 +20,44 @@ proc convertCombatEvent*(
   let systemId = event.systemId.get()
   let report = intel_types.ScoutEncounterReport(
     reportId: &"combat_{systemId}_{turn}_{event.houseId}",
-    scoutId: "observation",  # Not actual scout, but observed event
+    scoutId: "observation", # Not actual scout, but observed event
     turn: turn,
     systemId: systemId,
     encounterType: intel_types.ScoutEncounterType.Combat,
-    observedHouses: if event.houseId.isSome: @[event.houseId.get()] else: @[],
-    fleetDetails: @[],  # Simplified - no detailed composition
+    observedHouses:
+      if event.houseId.isSome:
+        @[event.houseId.get()]
+      else:
+        @[],
+    fleetDetails: @[], # Simplified - no detailed composition
     description: event.description,
-    significance: 8  # Combat is high-priority
+    significance: 8, # Combat is high-priority
   )
 
   return some(report)
 
 proc convertEspionageEvent*(
-  event: res_types.GameEvent,
-  observingHouse: HouseId,
-  turn: int
+    event: res_types.GameEvent, observingHouse: HouseId, turn: int
 ): Option[intel_types.EspionageActivityReport] =
   ## Convert espionage GameEvent into EspionageActivityReport
   ## Records successful or detected espionage operations
   let report = intel_types.EspionageActivityReport(
     turn: turn,
-    perpetrator: if event.houseId.isSome: event.houseId.get() else: "",
+    perpetrator:
+      if event.houseId.isSome:
+        event.houseId.get()
+      else:
+        "",
     action: $event.eventType,
     targetSystem: event.systemId,
     detected: (event.eventType == res_types.GameEventType.SpyMissionDetected),
-    description: event.description
+    description: event.description,
   )
 
   return some(report)
 
 proc convertColonizationEvent*(
-  event: res_types.GameEvent,
-  observingHouse: HouseId,
-  turn: int
+    event: res_types.GameEvent, observingHouse: HouseId, turn: int
 ): Option[intel_types.ScoutEncounterReport] =
   ## Convert colonization GameEvent into ScoutEncounterReport
   ## Observing enemy colonization provides intelligence
@@ -69,18 +71,20 @@ proc convertColonizationEvent*(
     turn: turn,
     systemId: systemId,
     encounterType: intel_types.ScoutEncounterType.ColonyDiscovered,
-    observedHouses: if event.houseId.isSome: @[event.houseId.get()] else: @[],
+    observedHouses:
+      if event.houseId.isSome:
+        @[event.houseId.get()]
+      else:
+        @[],
     fleetDetails: @[],
     description: event.description,
-    significance: 7  # Colonization is important
+    significance: 7, # Colonization is important
   )
 
   return some(report)
 
 proc convertScoutDetectionEvent*(
-  event: res_types.GameEvent,
-  observingHouse: HouseId,
-  turn: int
+    event: res_types.GameEvent, observingHouse: HouseId, turn: int
 ): Option[intel_types.ScoutEncounterReport] =
   ## Convert scout detection GameEvent into ScoutEncounterReport
   ## Records enemy scout activity in your territory
@@ -94,10 +98,14 @@ proc convertScoutDetectionEvent*(
     turn: turn,
     systemId: systemId,
     encounterType: intel_types.ScoutEncounterType.FleetSighting,
-    observedHouses: if event.houseId.isSome: @[event.houseId.get()] else: @[],
+    observedHouses:
+      if event.houseId.isSome:
+        @[event.houseId.get()]
+      else:
+        @[],
     fleetDetails: @[],
     description: event.description,
-    significance: 6  # Scout detection is moderately important
+    significance: 6, # Scout detection is moderately important
   )
 
   return some(report)

@@ -14,12 +14,12 @@ export espionage, action_descriptors
 ## Generic Execution
 
 proc executeEspionageAction*(
-  descriptor: ActionDescriptor,
-  attacker: HouseId,
-  target: HouseId,
-  targetSystem: Option[SystemId],
-  detected: bool,
-  rng: var Rand
+    descriptor: ActionDescriptor,
+    attacker: HouseId,
+    target: HouseId,
+    targetSystem: Option[SystemId],
+    detected: bool,
+    rng: var Rand,
 ): EspionageResult =
   ## Generic executor for all espionage actions
   ## Pure calculation - builds result from action descriptor
@@ -49,34 +49,41 @@ proc executeEspionageAction*(
     srpStolen: 0,
     iuDamage: 0,
     effect: none(OngoingEffect),
-    intelTheftSuccess: false
+    intelTheftSuccess: false,
   )
 
   # Detected = failed (except CounterIntelSweep which is opposite)
   if detected:
-    if descriptor.failedPrestigeReason != "":  # Some actions don't penalize detection
-      result.attackerPrestigeEvents.add(prestige_events.createPrestigeEvent(
-        PrestigeSource.Eliminated,
-        globalPrestigeConfig.espionage.failed_espionage,
-        descriptor.failedPrestigeReason
-      ))
+    if descriptor.failedPrestigeReason != "": # Some actions don't penalize detection
+      result.attackerPrestigeEvents.add(
+        prestige_events.createPrestigeEvent(
+          PrestigeSource.Eliminated, globalPrestigeConfig.espionage.failed_espionage,
+          descriptor.failedPrestigeReason,
+        )
+      )
   else:
     # Success - apply action-specific effects
 
     # Prestige for attacker (ZERO-SUM: attacker gains, target loses equal amount)
-    result.attackerPrestigeEvents.add(prestige_events.createPrestigeEvent(
-      PrestigeSource.CombatVictory,  # Generic success source
-      int32(descriptor.attackerSuccessPrestige),
-      descriptor.successPrestigeReason
-    ))
+    result.attackerPrestigeEvents.add(
+      prestige_events.createPrestigeEvent(
+        PrestigeSource.CombatVictory, # Generic success source
+        int32(descriptor.attackerSuccessPrestige),
+        descriptor.successPrestigeReason,
+      )
+    )
 
     # Prestige penalty for target (ZERO-SUM: equal and opposite to attacker gain)
-    result.targetPrestigeEvents.add(prestige_events.createPrestigeEvent(
-      PrestigeSource.Eliminated,
-      int32(-descriptor.attackerSuccessPrestige),  # Negative of attacker gain
-      if descriptor.targetSuccessReason != "": descriptor.targetSuccessReason
-      else: "Victim of espionage"
-    ))
+    result.targetPrestigeEvents.add(
+      prestige_events.createPrestigeEvent(
+        PrestigeSource.Eliminated,
+        int32(-descriptor.attackerSuccessPrestige), # Negative of attacker gain
+        if descriptor.targetSuccessReason != "":
+          descriptor.targetSuccessReason
+        else:
+          "Victim of espionage",
+      )
+    )
 
     # SRP theft
     if descriptor.stealsSRP:
@@ -84,13 +91,18 @@ proc executeEspionageAction*(
 
     # IU damage
     if descriptor.damagesIU:
-      result.iuDamage = int32(rng.rand(1..descriptor.damageDice))
+      result.iuDamage = int32(rng.rand(1 .. descriptor.damageDice))
       # Update description with damage amount
-      result.description = descriptor.successPrestigeReason & " (" & $result.iuDamage & " IU " &
-                          (if descriptor.damageDice == globalEspionageConfig.effects.sabotage_low_dice: "damaged" else: "destroyed") & ")"
+      result.description =
+        descriptor.successPrestigeReason & " (" & $result.iuDamage & " IU " & (
+          if descriptor.damageDice == globalEspionageConfig.effects.sabotage_low_dice:
+          "damaged"
+          else: "destroyed"
+        ) & ")"
       # Update target prestige description
       if result.targetPrestigeEvents.len > 0:
-        result.targetPrestigeEvents[0].description = descriptor.targetSuccessReason & " (" & $result.iuDamage & " IU lost)"
+        result.targetPrestigeEvents[0].description =
+          descriptor.targetSuccessReason & " (" & $result.iuDamage & " IU lost)"
 
     # Intelligence theft
     if descriptor.stealsIntel:
@@ -99,15 +111,21 @@ proc executeEspionageAction*(
     # Ongoing effects
     if descriptor.hasEffect:
       let effectTarget = if descriptor.effectTargetsSelf: attacker else: target
-      let effectSystem = if descriptor.requiresSystem: targetSystem else: none(SystemId)
+      let effectSystem =
+        if descriptor.requiresSystem:
+          targetSystem
+        else:
+          none(SystemId)
 
-      result.effect = some(OngoingEffect(
-        effectType: descriptor.effectType,
-        targetHouse: effectTarget,
-        targetSystem: effectSystem,
-        turnsRemaining: int32(descriptor.effectTurns),
-        magnitude: descriptor.effectMagnitude
-      ))
+      result.effect = some(
+        OngoingEffect(
+          effectType: descriptor.effectType,
+          targetHouse: effectTarget,
+          targetSystem: effectSystem,
+          turnsRemaining: int32(descriptor.effectTurns),
+          magnitude: descriptor.effectMagnitude,
+        )
+      )
 
 ## Detection Helpers (exported for use in engine.nim)
 
@@ -142,10 +160,10 @@ proc getCIPModifier*(cipPoints: int): int =
 ## Main Entry Point
 
 proc executeEspionage*(
-  attempt: EspionageAttempt,
-  defenderCICLevel: CICLevel,
-  defenderCIPPoints: int,
-  rng: var Rand
+    attempt: EspionageAttempt,
+    defenderCICLevel: CICLevel,
+    defenderCIPPoints: int,
+    rng: var Rand,
 ): EspionageResult =
   ## Execute espionage attempt with detection
   ## Per diplomacy.md:8.2 and 8.3
@@ -161,15 +179,10 @@ proc executeEspionage*(
   if defenderCICLevel != CICLevel.CIC0:
     let threshold = getDetectionThreshold(defenderCICLevel)
     let modifier = getCIPModifier(defenderCIPPoints)
-    let roll = rng.rand(1..20)
+    let roll = rng.rand(1 .. 20)
     detected = (roll + modifier) >= threshold
 
   # Execute action using generic executor
   return executeEspionageAction(
-    descriptor,
-    attempt.attacker,
-    attempt.target,
-    attempt.targetSystem,
-    detected,
-    rng
+    descriptor, attempt.attacker, attempt.target, attempt.targetSystem, detected, rng
   )

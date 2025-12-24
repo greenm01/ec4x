@@ -6,11 +6,15 @@ import std/[tables, sequtils, options]
 import ../state/[game_state as gs_helper, id_gen, entity_manager]
 import ../types/[core, game_state, ship, squadron]
 
-proc createShip*(state: var GameState, owner: HouseId, squadronId: SquadronId, shipClass: ShipClass): Ship =
+proc createShip*(
+    state: var GameState, owner: HouseId, squadronId: SquadronId, shipClass: ShipClass
+): Ship =
   ## Creates a new ship, adds it to a squadron, and updates all indexes.
   let shipId = state.generateShipId()
   # In a real implementation, stats would come from config based on tech, etc.
-  let newShip = Ship(id: shipId, squadronId: squadronId, shipClass: shipClass, shipRole: ShipRole.Escort) # Simplified role
+  let newShip = Ship(
+    id: shipId, squadronId: squadronId, shipClass: shipClass, shipRole: ShipRole.Escort
+  ) # Simplified role
 
   # 1. Add to entity manager
   state.ships.entities.addEntity(shipId, newShip)
@@ -28,17 +32,24 @@ proc createShip*(state: var GameState, owner: HouseId, squadronId: SquadronId, s
 proc destroyShip*(state: var GameState, shipId: ShipId) =
   ## Destroys a ship, removing it from all collections and indexes.
   let shipOpt = state.getShip(shipId)
-  if shipOpt.isNone: return
+  if shipOpt.isNone:
+    return
   let ship = shipOpt.get()
   let squadronId = ship.squadronId
 
   # 1. Remove from bySquadron index
   if state.ships.bySquadron.contains(squadronId):
-    state.ships.bySquadron[squadronId].keepIf(proc(id: ShipId): bool = id != shipId)
+    state.ships.bySquadron[squadronId].keepIf(
+      proc(id: ShipId): bool =
+        id != shipId
+    )
 
   # 2. Remove from squadron's ship list
   var squadron = state.getSquadrons(squadronId).get()
-  squadron.ships.keepIf(proc(s: Ship): bool = s.id != shipId)
+  squadron.ships.keepIf(
+    proc(s: Ship): bool =
+      s.id != shipId
+  )
   state.squadrons.entities.updateEntity(squadronId, squadron)
 
   # 3. Remove from entity manager
@@ -47,18 +58,26 @@ proc destroyShip*(state: var GameState, shipId: ShipId) =
 proc transferShip*(state: var GameState, shipId: ShipId, newSquadronId: SquadronId) =
   ## Moves a ship from one squadron to another.
   let shipOpt = state.getShip(shipId)
-  if shipOpt.isNone: return
+  if shipOpt.isNone:
+    return
   var ship = shipOpt.get()
-  
+
   let oldSquadronId = ship.squadronId
-  if oldSquadronId == newSquadronId: return
+  if oldSquadronId == newSquadronId:
+    return
 
   # 1. Remove from old squadron's bySquadron index and ship list
   if state.ships.bySquadron.contains(oldSquadronId):
-    state.ships.bySquadron[oldSquadronId].keepIf(proc(id: ShipId): bool = id != shipId)
-  
+    state.ships.bySquadron[oldSquadronId].keepIf(
+      proc(id: ShipId): bool =
+        id != shipId
+    )
+
   var oldSquadron = state.getSquadrons(oldSquadronId).get()
-  oldSquadron.ships.keepIf(proc(s: Ship): bool = s.id != shipId)
+  oldSquadron.ships.keepIf(
+    proc(s: Ship): bool =
+      s.id != shipId
+  )
   state.squadrons.entities.updateEntity(oldSquadronId, oldSquadron)
 
   # 2. Add to new squadron's bySquadron index and ship list

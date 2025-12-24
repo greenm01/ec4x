@@ -11,41 +11,33 @@ import ../types/[core, event as event_types]
 export event_types
 
 proc resourceWarning*(
-  houseId: HouseId,
-  resourceType: string,
-  currentAmount: int,
-  warningThreshold: int
+    houseId: HouseId, resourceType: string, currentAmount: int, warningThreshold: int
 ): event_types.GameEvent =
   ## Create event for low resource warning
   event_types.GameEvent(
     eventType: event_types.GameEventType.ResourceWarning, # Specific event type
     houseId: some(houseId),
-    description: &"Low {resourceType}: {currentAmount} (threshold: " &
-                  &"{warningThreshold})",
+    description:
+      &"Low {resourceType}: {currentAmount} (threshold: " & &"{warningThreshold})",
     systemId: none(SystemId),
-    message: &"Resource Warning: Low {resourceType} ({currentAmount}/{warningThreshold})"
+    message:
+      &"Resource Warning: Low {resourceType} ({currentAmount}/{warningThreshold})",
   )
 
 proc threatDetected*(
-  houseId: HouseId,
-  threatType: string,
-  threatSource: HouseId,
-  systemId: SystemId
+    houseId: HouseId, threatType: string, threatSource: HouseId, systemId: SystemId
 ): event_types.GameEvent =
   ## Create event for detected threat (enemy fleet, spy, etc.)
   event_types.GameEvent(
     eventType: event_types.GameEventType.ThreatDetected, # Specific event type
     houseId: some(houseId),
-    description: &"{threatType} detected from {threatSource} at system " &
-                  &"{systemId}",
+    description: &"{threatType} detected from {threatSource} at system " & &"{systemId}",
     systemId: some(systemId),
-    message: &"Threat Detected: {threatType} from {threatSource} at {systemId}"
+    message: &"Threat Detected: {threatType} from {threatSource} at {systemId}",
   )
 
 proc automationCompleted*(
-  houseId: HouseId,
-  actionType: string,
-  systemId: SystemId
+    houseId: HouseId, actionType: string, systemId: SystemId
 ): event_types.GameEvent =
   ## Create event for completed automation (auto-repair, auto-load, etc.)
   event_types.GameEvent(
@@ -53,5 +45,5 @@ proc automationCompleted*(
     houseId: some(houseId),
     description: &"Automation completed: {actionType} at system {systemId}",
     systemId: some(systemId),
-    message: &"Automation Completed: {actionType} at {systemId}"
+    message: &"Automation Completed: {actionType} at {systemId}",
   )

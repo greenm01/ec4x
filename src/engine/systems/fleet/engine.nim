@@ -12,15 +12,14 @@ import ../../types/[core, game_state, fleet, squadron]
 import ../../entities/fleet_ops
 import ../../state/[game_state as gs_helpers, entity_manager]
 
-type
-  FleetOperationResult* = object
-    ## Result of a fleet operation
-    success*: bool
-    reason*: string
-    fleetId*: Option[FleetId]
+type FleetOperationResult* = object ## Result of a fleet operation
+  success*: bool
+  reason*: string
+  fleetId*: Option[FleetId]
 
-proc canCreateFleet*(state: GameState, houseId: HouseId,
-                     location: SystemId): tuple[can: bool, reason: string] =
+proc canCreateFleet*(
+    state: GameState, houseId: HouseId, location: SystemId
+): tuple[can: bool, reason: string] =
   ## Validate if a fleet can be created
   ## Check: system exists, house is active
 
@@ -40,8 +39,9 @@ proc canCreateFleet*(state: GameState, houseId: HouseId,
 
   return (true, "")
 
-proc createFleetCoordinated*(state: var GameState, houseId: HouseId,
-                             location: SystemId): FleetOperationResult =
+proc createFleetCoordinated*(
+    state: var GameState, houseId: HouseId, location: SystemId
+): FleetOperationResult =
   ## High-level fleet creation with validation
   ##
   ## Coordinates:
@@ -54,22 +54,19 @@ proc createFleetCoordinated*(state: var GameState, houseId: HouseId,
   let validation = canCreateFleet(state, houseId, location)
   if not validation.can:
     return FleetOperationResult(
-      success: false,
-      reason: validation.reason,
-      fleetId: none(FleetId)
+      success: false, reason: validation.reason, fleetId: none(FleetId)
     )
 
   # Create fleet via entities layer (low-level state mutation)
   let fleet = fleet_ops.createFleet(state, houseId, location)
 
   return FleetOperationResult(
-    success: true,
-    reason: "Fleet created successfully",
-    fleetId: some(fleet.id)
+    success: true, reason: "Fleet created successfully", fleetId: some(fleet.id)
   )
 
-proc canMergeFleets*(state: GameState, sourceId: FleetId,
-                     targetId: FleetId): tuple[can: bool, reason: string] =
+proc canMergeFleets*(
+    state: GameState, sourceId: FleetId, targetId: FleetId
+): tuple[can: bool, reason: string] =
   ## Validate if two fleets can be merged
   ## Check: both exist, same owner, same location, compatible squadron types
 
@@ -115,14 +112,14 @@ proc canMergeFleets*(state: GameState, sourceId: FleetId,
       else:
         targetHasNonIntel = true
 
-  if (sourceHasIntel and targetHasNonIntel) or
-     (sourceHasNonIntel and targetHasIntel):
+  if (sourceHasIntel and targetHasNonIntel) or (sourceHasNonIntel and targetHasIntel):
     return (false, "Intel squadrons cannot be mixed with other squadron types")
 
   return (true, "")
 
-proc mergeFleets*(state: var GameState, sourceId: FleetId,
-                  targetId: FleetId): FleetOperationResult =
+proc mergeFleets*(
+    state: var GameState, sourceId: FleetId, targetId: FleetId
+): FleetOperationResult =
   ## High-level fleet merge with validation
   ##
   ## Coordinates:
@@ -136,9 +133,7 @@ proc mergeFleets*(state: var GameState, sourceId: FleetId,
   let validation = canMergeFleets(state, sourceId, targetId)
   if not validation.can:
     return FleetOperationResult(
-      success: false,
-      reason: validation.reason,
-      fleetId: none(FleetId)
+      success: false, reason: validation.reason, fleetId: none(FleetId)
     )
 
   let sourceOpt = gs_helpers.getFleet(state, sourceId)
@@ -147,9 +142,7 @@ proc mergeFleets*(state: var GameState, sourceId: FleetId,
   # Should always succeed after validation, but check anyway
   if sourceOpt.isNone or targetOpt.isNone:
     return FleetOperationResult(
-      success: false,
-      reason: "Fleet not found",
-      fleetId: none(FleetId)
+      success: false, reason: "Fleet not found", fleetId: none(FleetId)
     )
 
   var source = sourceOpt.get()
@@ -163,14 +156,12 @@ proc mergeFleets*(state: var GameState, sourceId: FleetId,
   fleet_ops.destroyFleet(state, sourceId)
 
   return FleetOperationResult(
-    success: true,
-    reason: "Fleets merged successfully",
-    fleetId: some(targetId)
+    success: true, reason: "Fleets merged successfully", fleetId: some(targetId)
   )
 
-proc canSplitFleet*(state: GameState, fleetId: FleetId,
-                    squadronIndices: seq[int]): tuple[can: bool,
-                                                      reason: string] =
+proc canSplitFleet*(
+    state: GameState, fleetId: FleetId, squadronIndices: seq[int]
+): tuple[can: bool, reason: string] =
   ## Validate if a fleet can be split
   ## Check: fleet exists, indices valid, wouldn't leave fleet empty
 
@@ -195,8 +186,9 @@ proc canSplitFleet*(state: GameState, fleetId: FleetId,
 
   return (true, "")
 
-proc splitFleet*(state: var GameState, fleetId: FleetId,
-                 squadronIndices: seq[int]): FleetOperationResult =
+proc splitFleet*(
+    state: var GameState, fleetId: FleetId, squadronIndices: seq[int]
+): FleetOperationResult =
   ## High-level fleet split with validation
   ##
   ## Coordinates:
@@ -210,17 +202,13 @@ proc splitFleet*(state: var GameState, fleetId: FleetId,
   let validation = canSplitFleet(state, fleetId, squadronIndices)
   if not validation.can:
     return FleetOperationResult(
-      success: false,
-      reason: validation.reason,
-      fleetId: none(FleetId)
+      success: false, reason: validation.reason, fleetId: none(FleetId)
     )
 
   let fleetOpt = gs_helpers.getFleet(state, fleetId)
   if fleetOpt.isNone:
     return FleetOperationResult(
-      success: false,
-      reason: "Fleet not found",
-      fleetId: none(FleetId)
+      success: false, reason: "Fleet not found", fleetId: none(FleetId)
     )
 
   var fleet = fleetOpt.get()
@@ -235,7 +223,10 @@ proc splitFleet*(state: var GameState, fleetId: FleetId,
 
   # Remove squadrons from original fleet (in reverse order to maintain indices)
   var sortedIndices = squadronIndices
-  sortedIndices.sort(proc(a, b: int): int = cmp(b, a))  # Descending order
+  sortedIndices.sort(
+    proc(a, b: int): int =
+      cmp(b, a)
+  ) # Descending order
   for idx in sortedIndices:
     fleet.squadrons.delete(idx)
 
@@ -247,7 +238,5 @@ proc splitFleet*(state: var GameState, fleetId: FleetId,
   state.fleets.entities.updateEntity(newFleet.id, updatedNewFleet)
 
   return FleetOperationResult(
-    success: true,
-    reason: "Fleet split successfully",
-    fleetId: some(newFleet.id)
+    success: true, reason: "Fleet split successfully", fleetId: some(newFleet.id)
   )

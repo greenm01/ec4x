@@ -7,7 +7,11 @@ import ./[core, starmap, diplomacy, progression]
 
 type
   VisibilityLevel* {.pure.} = enum
-    None, Adjacent, Scouted, Occupied, Owned
+    None
+    Adjacent
+    Scouted
+    Occupied
+    Owned
 
   VisibleColony* = object
     colonyId*: ColonyId
@@ -36,7 +40,7 @@ type
     owner*: HouseId
     location*: SystemId
     # Full details (if owned)
-    isOwned*: bool  # If true, lookup full Fleet from game state
+    isOwned*: bool # If true, lookup full Fleet from game state
     # Limited intel (if enemy)
     intelTurn*: Option[int32]
     estimatedShipCount*: Option[int32]
@@ -54,18 +58,18 @@ type
     ## This is what the AI/player "sees" - enforces fog of war
     viewingHouse*: HouseId
     turn*: int32
-    
+
     # Own asset IDs (lookup full details from GameState)
     ownColonyIds*: seq[ColonyId]
     ownFleetIds*: seq[FleetId]
-    
+
     # Visible systems
     visibleSystems*: Table[SystemId, VisibleSystem]
-    
+
     # Visible enemy assets (filtered intel)
     visibleColonies*: seq[VisibleColony]
     visibleFleets*: seq[VisibleFleet]
-    
+
     # Public information
     housePrestige*: Table[HouseId, int32]
     houseColonyCounts*: Table[HouseId, int32]

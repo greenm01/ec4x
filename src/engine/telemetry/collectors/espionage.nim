@@ -8,12 +8,10 @@ import ../../types/[telemetry, core, game_state, event, squadron, house]
 import ../../state/[entity_manager, interators]
 
 proc collectEspionageMetrics*(
-  state: GameState,
-  houseId: HouseId,
-  prevMetrics: DiagnosticMetrics
+    state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
 ): DiagnosticMetrics =
   ## Collect espionage metrics from events and GameState
-  result = prevMetrics  # Start with previous metrics
+  result = prevMetrics # Start with previous metrics
 
   let houseOpt = state.houses.entities.getEntity(houseId)
   if houseOpt.isNone:
@@ -52,9 +50,10 @@ proc collectEspionageMetrics*(
   var counterIntelSuccesses: int32 = 0
 
   for event in state.lastTurnEvents:
-    if event.houseId != some(houseId): continue
+    if event.houseId != some(houseId):
+      continue
 
-    case event.eventType:
+    case event.eventType
     of SpyMissionSucceeded:
       espionageAttempts += 1
       espionageSuccess += 1
@@ -74,9 +73,8 @@ proc collectEspionageMetrics*(
       discard
 
   result.espionageSuccessCount = espionageSuccess
-  result.espionageFailureCount = max(
-    0, espionageAttempts - espionageSuccess - espionageDetected
-  )
+  result.espionageFailureCount =
+    max(0, espionageAttempts - espionageSuccess - espionageDetected)
   result.espionageDetectedCount = espionageDetected
   result.techTheftsSuccessful = techThefts
   result.sabotageOperations = sabotage
@@ -101,7 +99,8 @@ proc collectEspionageMetrics*(
 
   var totalInvasions: int32 = 0
   for event in state.lastTurnEvents:
-    if event.houseId != some(houseId): continue
+    if event.houseId != some(houseId):
+      continue
     if event.eventType == InvasionBegan:
       totalInvasions += 1
 

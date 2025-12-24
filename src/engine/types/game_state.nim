@@ -1,19 +1,23 @@
 import std/tables
-import ./[
-  core, house, starmap, colony, fleet, squadron, ship, ground_unit,
-  intelligence, diplomacy, facilities, production, espionage,
-  population, resolution, progression, event, command
-]
+import
+  ./[
+    core, house, starmap, colony, fleet, squadron, ship, ground_unit, intelligence,
+    diplomacy, facilities, production, espionage, population, resolution, progression,
+    event, command,
+  ]
 
 type
   GamePhase* {.pure.} = enum
-    Conflict, Income, Command, Production
+    Conflict
+    Income
+    Command
+    Production
 
   GracePeriodTracker* = object
     ## Tracks grace periods for capacity enforcement
     ## Per FINAL_TURN_SEQUENCE.md Income Phase Step 5
-    totalSquadronsExpiry*: int32  # Turn when total squadron grace expires
-    fighterCapacityExpiry*: Table[SystemId, int]  # Per-colony fighter grace
+    totalSquadronsExpiry*: int32 # Turn when total squadron grace expires
+    fighterCapacityExpiry*: Table[SystemId, int] # Per-colony fighter grace
 
   GameState* = ref object
     gameId*: int32
@@ -21,7 +25,7 @@ type
     phase*: GamePhase
     seed*: int64
     turnDeadline*: int64
-    
+
     # Entity collections (DoD)
     houses*: Houses
     systems*: Systems
@@ -37,22 +41,22 @@ type
     # Diplomacy
     diplomaticRelation*: Table[(HouseId, HouseId), DiplomaticRelation]
     diplomaticViolation*: Table[HouseId, ViolationHistory]
-     
+
     # Facilities
     starbases*: Starbases
     spaceports*: Spaceports
     shipyards*: Shipyards
     drydocks*: Drydocks
-    
+
     # Production
     constructionProjects*: ConstructionProjects
     repairProjects*: RepairProjects
 
     counters*: IdCounters
-        
+
     # Map
     starMap*: StarMap
-    
+
     # Command tracking
     fleetCommands*: Table[FleetId, FleetCommand]
     standingCommands*: Table[FleetId, StandingCommand]
@@ -63,17 +67,17 @@ type
     ongoingEffects*: seq[OngoingEffect]
     pendingProposals*: seq[PendingProposal]
     populationInTransit*: seq[PopulationInTransit]
-    
+
     # Commissioning queues
     pendingCommissions*: seq[CompletedProject]
     gracePeriodTimers*: Table[HouseId, GracePeriodTracker]
-    
+
     # Game progression
     actProgression*: ActProgressionState
-    
+
     # Reports (transient, cleared each turn)
     lastTurnReports*: Table[HouseId, TurnResolutionReport]
-    lastTurnEvents*: seq[GameEvent]  # Event stream for telemetry
+    lastTurnEvents*: seq[GameEvent] # Event stream for telemetry
     scoutLossEvents*: seq[ScoutLossEvent]
 
     # Population Transfers

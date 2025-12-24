@@ -8,12 +8,10 @@ import ../../types/[telemetry, core, game_state, event, production, colony]
 import ../../state/[entity_manager, interators]
 
 proc collectProductionMetrics*(
-  state: GameState,
-  houseId: HouseId,
-  prevMetrics: DiagnosticMetrics
+    state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
 ): DiagnosticMetrics =
   ## Collect production metrics from events and GameState
-  result = prevMetrics  # Start with previous metrics
+  result = prevMetrics # Start with previous metrics
 
   # Initialize counters for commissioning (event-driven)
   var shipsCommissionedThisTurn: int32 = 0
@@ -22,9 +20,10 @@ proc collectProductionMetrics*(
 
   # Process events from state.lastTurnEvents
   for event in state.lastTurnEvents:
-    if event.houseId != some(houseId): continue
+    if event.houseId != some(houseId):
+      continue
 
-    case event.eventType:
+    case event.eventType
     of ShipCommissioned:
       shipsCommissionedThisTurn += 1
       # TODO: Detect ETAC from event details
@@ -54,9 +53,7 @@ proc collectProductionMetrics*(
       totalBuildQueueDepth += 1
       # Get the actual project to determine type
       let constructionId = colony.underConstruction.get()
-      let projectOpt = state.constructionProjects.entities.getEntity(
-        constructionId
-      )
+      let projectOpt = state.constructionProjects.entities.getEntity(constructionId)
       if projectOpt.isSome:
         let project = projectOpt.get()
         if project.projectType == BuildType.Ship:

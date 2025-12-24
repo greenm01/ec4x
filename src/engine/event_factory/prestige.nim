@@ -11,10 +11,10 @@ import ../types/[core, event as event_types]
 export event_types
 
 proc prestigeGained*(
-  houseId: HouseId,
-  amount: int,
-  reason: string,
-  systemId: Option[SystemId] = none(SystemId)
+    houseId: HouseId,
+    amount: int,
+    reason: string,
+    systemId: Option[SystemId] = none(SystemId),
 ): event_types.GameEvent =
   ## Create event for prestige gain
   event_types.GameEvent(
@@ -24,14 +24,14 @@ proc prestigeGained*(
     systemId: systemId,
     sourceHouseId: some(houseId),
     changeAmount: some(amount),
-    details: some(reason)
+    details: some(reason),
   )
 
 proc prestigeLost*(
-  houseId: HouseId,
-  amount: int,
-  reason: string,
-  systemId: Option[SystemId] = none(SystemId)
+    houseId: HouseId,
+    amount: int,
+    reason: string,
+    systemId: Option[SystemId] = none(SystemId),
 ): event_types.GameEvent =
   ## Create event for prestige loss
   event_types.GameEvent(
@@ -41,5 +41,5 @@ proc prestigeLost*(
     systemId: systemId,
     sourceHouseId: some(houseId),
     changeAmount: some(-amount), # Negative amount for loss
-    details: some(reason)
+    details: some(reason),
   )

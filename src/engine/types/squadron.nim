@@ -10,33 +10,31 @@ export HouseId, FleetId, SystemId, SquadronId
 export Ship, ShipClass, ShipStats, CargoType, ShipCargo
 
 type
-
   SquadronType* {.pure.} = enum
     ## Strategic role classification for squadrons
     ## Determines fleet composition rules and combat participation
-    Combat      # Combat squadrons (capital ships + escorts)
-    Intel       # Intelligence squadrons (scouts, future intel assets)
-    Auxiliary   # Auxiliary squadrons (TroopTransport - planetary invasions)
-    Expansion   # Expansion operations (ETAC - colonization)
-    Fighter     # Fighter squadrons (planetary defense, carrier-based)
+    Combat # Combat squadrons (capital ships + escorts)
+    Intel # Intelligence squadrons (scouts, future intel assets)
+    Auxiliary # Auxiliary squadrons (TroopTransport - planetary invasions)
+    Expansion # Expansion operations (ETAC - colonization)
+    Fighter # Fighter squadrons (planetary defense, carrier-based)
 
-  Squadron* = object
-    ## A tactical unit of ships under flagship command
+  Squadron* = object ## A tactical unit of ships under flagship command
     id*: SquadronId
-    flagshipId*: ShipId  # DoD: Reference to flagship ship
-    ships*: seq[ShipId]  # DoD: References to ships under flagship command (excludes flagship)
+    flagshipId*: ShipId # DoD: Reference to flagship ship
+    ships*: seq[ShipId]
+      # DoD: References to ships under flagship command (excludes flagship)
     houseId*: HouseId
     location*: SystemId
-    destroyed*: bool = false  # Set to true when squadron is destroyed in combat
-    squadronType*: SquadronType  # Strategic role classification
+    destroyed*: bool = false # Set to true when squadron is destroyed in combat
+    squadronType*: SquadronType # Strategic role classification
 
     # Carrier fighter operations (assets.md:2.4.1.1)
-    embarkedFighters*: seq[SquadronId]  # DoD: Embarked fighter squadron IDs
+    embarkedFighters*: seq[SquadronId] # DoD: Embarked fighter squadron IDs
 
-type
-  Squadrons* = ref object
-    entities*: EntityManager[SquadronId, Squadron]
-    byFleet*: Table[FleetId, seq[SquadronId]]
-    byHouse*: Table[HouseId, seq[SquadronId]]  # O(1) lookup for house queries
+type Squadrons* = ref object
+  entities*: EntityManager[SquadronId, Squadron]
+  byFleet*: Table[FleetId, seq[SquadronId]]
+  byHouse*: Table[HouseId, seq[SquadronId]] # O(1) lookup for house queries
 
 export SquadronType, Squadron, Squadrons

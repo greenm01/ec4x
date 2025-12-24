@@ -13,16 +13,16 @@
 ## Data-oriented design: Calculate violations (pure), apply enforcement (explicit mutations)
 
 import std/[strutils, algorithm, options]
-import ../../types/[
-  capacity, core, game_state, squadron, ship, production, event, colony, house
-]
+import
+  ../../types/
+    [capacity, core, game_state, squadron, ship, production, event, colony, house]
 import ../../state/[game_state as gs_helpers, iterators]
 import ../../entities/squadron_ops
 import ../../event_factory/fleet_ops
 import ../../../common/logger
 
-export capacity.CapacityViolation, capacity.EnforcementAction,
-       capacity.ViolationSeverity
+export
+  capacity.CapacityViolation, capacity.EnforcementAction, capacity.ViolationSeverity
 
 proc calculateMaxPlanetBreakers*(colonyCount: int): int =
   ## Pure calculation of maximum planet-breaker capacity
@@ -77,20 +77,23 @@ proc analyzeCapacity*(state: GameState, houseId: HouseId): capacity.CapacityViol
   let excess = max(0, current - maximum)
 
   # Planet-breakers have no grace period - immediate enforcement
-  let severity = if excess == 0:
-                   capacity.ViolationSeverity.None
-                 else:
-                   capacity.ViolationSeverity.Critical
+  let severity =
+    if excess == 0:
+      capacity.ViolationSeverity.None
+    else:
+      capacity.ViolationSeverity.Critical
 
   result = capacity.CapacityViolation(
     capacityType: capacity.CapacityType.PlanetBreaker,
-    entity: capacity.EntityIdUnion(kind: capacity.CapacityType.PlanetBreaker, houseId: houseId),
+    entity: capacity.EntityIdUnion(
+      kind: capacity.CapacityType.PlanetBreaker, houseId: houseId
+    ),
     current: int32(current),
     maximum: int32(maximum),
     excess: int32(excess),
     severity: severity,
-    graceTurnsRemaining: 0'i32,  # No grace period
-    violationTurn: int32(state.turn)
+    graceTurnsRemaining: 0'i32, # No grace period
+    violationTurn: int32(state.turn),
   )
 
 proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
@@ -103,7 +106,9 @@ proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
     if status.severity != capacity.ViolationSeverity.None:
       result.add(status)
 
-proc planEnforcement*(state: GameState, violation: capacity.CapacityViolation): capacity.EnforcementAction =
+proc planEnforcement*(
+    state: GameState, violation: capacity.CapacityViolation
+): capacity.EnforcementAction =
   ## Plan enforcement actions for violations
   ## Pure function - returns enforcement plan without mutations
   ## Planet-breakers: Auto-scrap oldest units immediately (no grace period)
@@ -113,7 +118,7 @@ proc planEnforcement*(state: GameState, violation: capacity.CapacityViolation): 
     entity: violation.entity,
     actionType: "",
     affectedUnitIds: @[],
-    description: ""
+    description: "",
   )
 
   if violation.severity != capacity.ViolationSeverity.Critical:
@@ -142,11 +147,13 @@ proc planEnforcement*(state: GameState, violation: capacity.CapacityViolation): 
   for i in 0 ..< toScrapCount:
     result.affectedUnitIds.add(squadronIds[i])
 
-  result.description = $toScrapCount & " planet-breaker(s) auto-scrapped for house-" &
-                      $violation.entity.houseId & " (colony loss, no salvage)"
+  result.description =
+    $toScrapCount & " planet-breaker(s) auto-scrapped for house-" &
+    $violation.entity.houseId & " (colony loss, no salvage)"
 
-proc applyEnforcement*(state: var GameState, action: capacity.EnforcementAction,
-                       events: var seq[GameEvent]) =
+proc applyEnforcement*(
+    state: var GameState, action: capacity.EnforcementAction, events: var seq[GameEvent]
+) =
   ## Apply enforcement actions
   ## Explicit mutation - scraps planet-breakers (no salvage value)
   ## Emits SquadronScrapped events for tracking
@@ -166,27 +173,37 @@ proc applyEnforcement*(state: var GameState, action: capacity.EnforcementAction,
       let squadron = squadronOpt.get()
 
       # Emit SquadronScrapped event
-      events.add(fleet_ops.squadronScrapped(
-        houseId = houseId,
-        squadronId = squadronIdStr,
-        shipClass = ShipClass.PlanetBreaker,
-        reason = "Planet-breaker capacity exceeded (colony loss)",
-        salvageValue = 0,  # No salvage for planet-breakers
-        systemId = squadron.location
-      ))
+      events.add(
+        fleet_ops.squadronScrapped(
+          houseId = houseId,
+          squadronId = squadronIdStr,
+          shipClass = ShipClass.PlanetBreaker,
+          reason = "Planet-breaker capacity exceeded (colony loss)",
+          salvageValue = 0, # No salvage for planet-breakers
+          systemId = squadron.location,
+        )
+      )
 
-      logger.logDebug("Military", "Planet-breaker auto-scrapped - colony loss",
-                " squadronId=", squadronIdStr, " salvage=none")
+      logger.logDebug(
+        "Military", "Planet-breaker auto-scrapped - colony loss", " squadronId=",
+        squadronIdStr, " salvage=none",
+      )
 
     # Destroy squadron from state.squadrons EntityManager
     squadron_ops.destroySquadron(state, squadronId)
 
-  logger.logDebug("Military", "Planet-breaker capacity enforcement complete",
-            " house=", $houseId,
-            " scrapped=", $action.affectedUnitIds.len)
+  logger.logDebug(
+    "Military",
+    "Planet-breaker capacity enforcement complete",
+    " house=",
+    $houseId,
+    " scrapped=",
+    $action.affectedUnitIds.len,
+  )
 
-proc processCapacityEnforcement*(state: var GameState,
-                                events: var seq[GameEvent]): seq[capacity.EnforcementAction] =
+proc processCapacityEnforcement*(
+    state: var GameState, events: var seq[GameEvent]
+): seq[capacity.EnforcementAction] =
   ## Main entry point - batch process all planet-breaker capacity violations
   ## Called during Maintenance phase
   ## Data-oriented: analyze all → plan enforcement → apply enforcement
@@ -203,7 +220,9 @@ proc processCapacityEnforcement*(state: var GameState,
     logger.logDebug("Military", "All houses within planet-breaker capacity limits")
     return
 
-  logger.logDebug("Military", "Planet-breaker violations found, count=", $violations.len)
+  logger.logDebug(
+    "Military", "Planet-breaker violations found, count=", $violations.len
+  )
 
   # Step 2: Plan enforcement (no tracking needed - immediate enforcement)
   var enforcementActions: seq[capacity.EnforcementAction] = @[]
@@ -214,11 +233,15 @@ proc processCapacityEnforcement*(state: var GameState,
 
   # Step 3: Apply enforcement (mutations)
   if enforcementActions.len > 0:
-    logger.logDebug("Military", "Enforcing planet-breaker capacity violations",
-              " count=", $enforcementActions.len)
+    logger.logDebug(
+      "Military",
+      "Enforcing planet-breaker capacity violations",
+      " count=",
+      $enforcementActions.len,
+    )
     for action in enforcementActions:
       applyEnforcement(state, action, events)
-      result.add(action)  # Track which actions were applied
+      result.add(action) # Track which actions were applied
   else:
     logger.logDebug("Military", "No planet-breaker violations requiring enforcement")
 

@@ -52,8 +52,7 @@ type
     min_economic_focus*: float
     min_expansion_drive*: float
 
-  PopulationConfig* = object
-    ## Complete population configuration loaded from TOML
+  PopulationConfig* = object ## Complete population configuration loaded from TOML
     ptu_definition*: PtuDefinitionConfig
     transfer_costs*: TransferCostsConfig
     transfer_time*: TransferTimeConfig
@@ -63,7 +62,9 @@ type
     recruitment*: RecruitmentConfig
     ai_strategy*: AiStrategyConfig
 
-proc loadPopulationConfig*(configPath: string = "config/population.toml"): PopulationConfig =
+proc loadPopulationConfig*(
+    configPath: string = "config/population.toml"
+): PopulationConfig =
   ## Load population configuration from TOML file
   ## Uses toml_serialization for type-safe parsing
 
@@ -126,5 +127,5 @@ pop_types.globalPopulationConfig = pop_types.PopulationTransferConfig(
   recentColonyAgeTurns: config.ai_strategy.recent_colony_age_turns.int32,
   ptuPerTransfer: config.ai_strategy.ptu_per_transfer.int32,
   minEconomicFocus: config.ai_strategy.min_economic_focus.float32,
-  minExpansionDrive: config.ai_strategy.min_expansion_drive.float32
+  minExpansionDrive: config.ai_strategy.min_expansion_drive.float32,
 )

@@ -21,18 +21,16 @@ import ../../config/standing_orders_config
 import ../../event_factory/init as event_factory
 import ../resolution/types as resolution_types
 import ../../intel/types as intel_types
-import ../population/transfers  # For findNearestOwnedColony
+import ../population/transfers # For findNearestOwnedColony
 import ../../../common/logger
 
 export StandingCommandType, StandingOrder, StandingCommandParams
 
-type
-  ActivationResult* = object
-    ## Result of standing command activation attempt
-    success*: bool
-    action*: string               # Description of action taken
-    error*: string                # Error message if failed
-    updatedParams*: Option[StandingCommandParams]  # Updated params (e.g., patrol index)
+type ActivationResult* = object ## Result of standing command activation attempt
+  success*: bool
+  action*: string # Description of action taken
+  error*: string # Error message if failed
+  updatedParams*: Option[StandingCommandParams] # Updated params (e.g., patrol index)
 
 # =============================================================================
 # Fog-of-War Helpers (DRY Principle)
@@ -93,8 +91,9 @@ proc hasColonyIntel*(state: GameState, houseId: HouseId, systemId: SystemId): bo
 
   return false
 
-proc getKnownEnemyFleetsInSystem*(state: GameState, houseId: HouseId,
-                                   systemId: SystemId): seq[Fleet] =
+proc getKnownEnemyFleetsInSystem*(
+    state: GameState, houseId: HouseId, systemId: SystemId
+): seq[Fleet] =
   ## Returns enemy fleets at system that house has intel on
   ## Used by defensive standing commands
   ##
@@ -108,10 +107,11 @@ proc getKnownEnemyFleetsInSystem*(state: GameState, houseId: HouseId,
   let intel = house.intelligence
 
   # Check system intel report for fleet presence
-  let systemIntel = if systemId in intel.systemReports:
-                      some(intel.systemReports[systemId])
-                    else:
-                      none(intel_types.SystemIntelReport)
+  let systemIntel =
+    if systemId in intel.systemReports:
+      some(intel.systemReports[systemId])
+    else:
+      none(intel_types.SystemIntelReport)
   if systemIntel.isSome:
     # We have recent intel on fleets in this system
     let report = systemIntel.get()
@@ -125,11 +125,11 @@ proc getKnownEnemyFleetsInSystem*(state: GameState, houseId: HouseId,
   # Check fleet movement history for fleets detected at this location
   for fleetId, history in intel.fleetMovementHistory:
     if history.owner == houseId:
-      continue  # Skip own fleets
+      continue # Skip own fleets
 
     # Check if this fleet was last seen at this system
     if history.sightings.len > 0:
-      let lastSighting = history.sightings[^1]  # Most recent sighting
+      let lastSighting = history.sightings[^1] # Most recent sighting
       if lastSighting.systemId == systemId:
         # Verify fleet still exists and is at this location
         if fleetId in state.fleets:
@@ -143,31 +143,37 @@ proc getKnownEnemyFleetsInSystem*(state: GameState, houseId: HouseId,
 # Activation Logic - Per Order Type
 # =============================================================================
 
-proc activatePatrolRoute(state: var GameState, fleetId: FleetId,
-                       params: StandingCommandParams): ActivationResult =
+proc activatePatrolRoute(
+    state: var GameState, fleetId: FleetId, params: StandingCommandParams
+): ActivationResult =
   ## Execute patrol route - move to next system in path
   ## Loops continuously through patrol path
   let fleet = state.fleets[fleetId]
   let currentIndex = params.patrolIndex
   let nextSystem = params.patrolSystems[currentIndex]
 
-  logDebug(LogCategory.lcOrders,
-           &"{fleetId} PatrolRoute: Current position {currentIndex + 1}/" &
-           &"{params.patrolSystems.len} in patrol path")
+  logDebug(
+    LogCategory.lcOrders,
+    &"{fleetId} PatrolRoute: Current position {currentIndex + 1}/" &
+      &"{params.patrolSystems.len} in patrol path",
+  )
 
   # Verify target system exists and is reachable
   if nextSystem notin state.starMap.systems:
-    logWarn(LogCategory.lcOrders,
-            &"{fleetId} PatrolRoute failed: Target system {nextSystem} does not exist")
-    return ActivationResult(success: false,
-                          error: &"Target system {nextSystem} does not exist")
+    logWarn(
+      LogCategory.lcOrders,
+      &"{fleetId} PatrolRoute failed: Target system {nextSystem} does not exist",
+    )
+    return ActivationResult(
+      success: false, error: &"Target system {nextSystem} does not exist"
+    )
 
   # Generate move order to next patrol point
   let moveOrder = FleetOrder(
     fleetId: fleetId,
     orderType: FleetCommandType.Move,
     targetSystem: some(nextSystem),
-    priority: 100  # Standing commands have lower priority than explicit orders
+    priority: 100, # Standing commands have lower priority than explicit orders
   )
 
   # Advance patrol index (loop back to start when reaching end)
@@ -177,39 +183,47 @@ proc activatePatrolRoute(state: var GameState, fleetId: FleetId,
   # Store order for execution
   state.fleetCommands[fleetId] = moveOrder
 
-  logInfo(LogCategory.lcOrders,
-          &"{fleetId} PatrolRoute: {fleet.location} → system-{nextSystem} " &
-          &"(step {currentIndex + 1}/{params.patrolSystems.len})")
+  logInfo(
+    LogCategory.lcOrders,
+    &"{fleetId} PatrolRoute: {fleet.location} → system-{nextSystem} " &
+      &"(step {currentIndex + 1}/{params.patrolSystems.len})",
+  )
 
   return ActivationResult(
     success: true,
     action: &"Move to system-{nextSystem}",
-    updatedParams: some(newParams)
+    updatedParams: some(newParams),
   )
 
-proc activateDefendSystem(state: var GameState, fleetId: FleetId,
-                        params: StandingCommandParams): ActivationResult =
+proc activateDefendSystem(
+    state: var GameState, fleetId: FleetId, params: StandingCommandParams
+): ActivationResult =
   ## Execute defend system - stay at target or return if moved away
   let fleet = state.fleets[fleetId]
   let targetSystem = params.defendTargetSystem
 
   # CRITICAL: Validate target system
   if targetSystem == SystemId(0):
-    logError(LogCategory.lcOrders,
-             &"[ENGINE ACTIVATION] {fleetId} DefendSystem: BUG - defendTargetSystem is SystemId(0)!")
-    return ActivationResult(success: false,
-                          error: "Invalid defend target (SystemId 0)")
+    logError(
+      LogCategory.lcOrders,
+      &"[ENGINE ACTIVATION] {fleetId} DefendSystem: BUG - defendTargetSystem is SystemId(0)!",
+    )
+    return ActivationResult(success: false, error: "Invalid defend target (SystemId 0)")
 
   if not state.starMap.systems.hasKey(targetSystem):
-    logWarn(LogCategory.lcOrders,
-            &"[ENGINE ACTIVATION] {fleetId} DefendSystem: Target system {targetSystem} does not exist")
-    return ActivationResult(success: false,
-                          error: "Defend target system does not exist")
+    logWarn(
+      LogCategory.lcOrders,
+      &"[ENGINE ACTIVATION] {fleetId} DefendSystem: Target system {targetSystem} does not exist",
+    )
+    return
+      ActivationResult(success: false, error: "Defend target system does not exist")
   let maxRange = params.defendMaxRange
 
-  logDebug(LogCategory.lcOrders,
-           &"{fleetId} DefendSystem: Target=system-{targetSystem}, " &
-           &"Current=system-{fleet.location}, MaxRange={maxRange}")
+  logDebug(
+    LogCategory.lcOrders,
+    &"{fleetId} DefendSystem: Target=system-{targetSystem}, " &
+      &"Current=system-{fleet.location}, MaxRange={maxRange}",
+  )
 
   # If already at target system, patrol/guard in place
   if fleet.location == targetSystem:
@@ -217,26 +231,28 @@ proc activateDefendSystem(state: var GameState, fleetId: FleetId,
       fleetId: fleetId,
       orderType: FleetCommandType.Patrol,
       targetSystem: some(targetSystem),
-      priority: 100
+      priority: 100,
     )
     state.fleetCommands[fleetId] = guardOrder
 
-    logInfo(LogCategory.lcOrders,
-            &"{fleetId} DefendSystem: At target system-{targetSystem}, patrolling")
+    logInfo(
+      LogCategory.lcOrders,
+      &"{fleetId} DefendSystem: At target system-{targetSystem}, patrolling",
+    )
 
-    return ActivationResult(success: true,
-                          action: &"Patrol system-{targetSystem}")
+    return ActivationResult(success: true, action: &"Patrol system-{targetSystem}")
 
   # Check distance from target (via jump lanes, not as the crow flies)
   let pathResult = state.starMap.findPath(fleet.location, targetSystem, fleet)
   if not pathResult.found:
     # Can't reach target - suspended order, log warning
-    logWarn(LogCategory.lcOrders,
-            &"{fleetId} DefendSystem: Cannot reach target system-{targetSystem}, no valid path")
-    return ActivationResult(success: false,
-                          error: "No path to target system")
+    logWarn(
+      LogCategory.lcOrders,
+      &"{fleetId} DefendSystem: Cannot reach target system-{targetSystem}, no valid path",
+    )
+    return ActivationResult(success: false, error: "No path to target system")
 
-  let distance = pathResult.path.len - 1  # Path includes start, so subtract 1
+  let distance = pathResult.path.len - 1 # Path includes start, so subtract 1
 
   if distance > maxRange:
     # Too far from target - return to defensive position
@@ -244,38 +260,40 @@ proc activateDefendSystem(state: var GameState, fleetId: FleetId,
       fleetId: fleetId,
       orderType: FleetCommandType.Move,
       targetSystem: some(targetSystem),
-      priority: 100
+      priority: 100,
     )
     state.fleetCommands[fleetId] = moveOrder
 
-    logInfo(LogCategory.lcOrders,
-            &"{fleetId} DefendSystem: {distance} jumps from target, returning to system-{targetSystem}")
+    logInfo(
+      LogCategory.lcOrders,
+      &"{fleetId} DefendSystem: {distance} jumps from target, returning to system-{targetSystem}",
+    )
 
-    return ActivationResult(success: true,
-                          action: &"Return to system-{targetSystem}")
+    return ActivationResult(success: true, action: &"Return to system-{targetSystem}")
 
   # Within range but not at target - hold position
   let holdOrder = FleetOrder(
     fleetId: fleetId,
     orderType: FleetCommandType.Hold,
     targetSystem: none(SystemId),
-    priority: 100
+    priority: 100,
   )
   state.fleetCommands[fleetId] = holdOrder
 
-  logInfo(LogCategory.lcOrders,
-          &"{fleetId} DefendSystem: {distance} jumps from target (within range {maxRange}), holding position")
+  logInfo(
+    LogCategory.lcOrders,
+    &"{fleetId} DefendSystem: {distance} jumps from target (within range {maxRange}), holding position",
+  )
 
-  return ActivationResult(success: true,
-                        action: "Hold position within defensive range")
+  return ActivationResult(success: true, action: "Hold position within defensive range")
 
 proc scoreColonizationCandidate*(
-  turn: int,
-  distance: int,
-  planetClass: PlanetClass,
-  proximityBonus: float = 0.0,
-  proximityWeightAct1: float = 0.3,
-  proximityWeightAct4: float = 0.9
+    turn: int,
+    distance: int,
+    planetClass: PlanetClass,
+    proximityBonus: float = 0.0,
+    proximityWeightAct1: float = 0.3,
+    proximityWeightAct4: float = 0.9,
 ): float =
   ## Calculate colonization score using Act-aware frontier expansion algorithm
   ##
@@ -287,13 +305,19 @@ proc scoreColonizationCandidate*(
 
   # Calculate current Act from turn number (heuristic for colonization scoring)
   # Aligned with colonization-based Act transitions (Act 1 ~15 turns, Act 2 ~22, Act 3 ~35)
-  let currentAct = if turn <= 15: 1
-                   elif turn <= 22: 2
-                   elif turn <= 35: 3
-                   else: 4
+  let currentAct =
+    if turn <= 15:
+      1
+    elif turn <= 22:
+      2
+    elif turn <= 35:
+      3
+    else:
+      4
 
   # Calculate planet quality score (0-100)
-  let qualityScore = case planetClass
+  let qualityScore =
+    case planetClass
     of PlanetClass.Eden: 100.0
     of PlanetClass.Lush: 80.0
     of PlanetClass.Benign: 60.0
@@ -307,24 +331,30 @@ proc scoreColonizationCandidate*(
   let distanceScore = 100.0 / (1.0 + float(distance) * float(distance))
 
   # Calculate Act-aware proximity weight
-  let proximityWeight = if currentAct <= 2:
-    proximityWeightAct1  # Low weight in Act 1-2 (frontier expansion)
-  else:
-    proximityWeightAct4  # High weight in Act 3-4 (consolidation)
+  let proximityWeight =
+    if currentAct <= 2:
+      proximityWeightAct1 # Low weight in Act 1-2 (frontier expansion)
+    else:
+      proximityWeightAct4 # High weight in Act 3-4 (consolidation)
 
   # Act-aware weighting with proximity bonus
-  result = if currentAct <= 2:
-    # Act 1-2: FRONTIER EXPANSION (Distance 10x more important than quality)
-    (distanceScore * 10.0) + (qualityScore * 1.0) + (proximityBonus * proximityWeight)
-  else:
-    # Act 3-4: QUALITY CONSOLIDATION (Quality 3x more important than distance)
-    (qualityScore * 3.0) + (distanceScore * 1.0) + (proximityBonus * proximityWeight)
+  result =
+    if currentAct <= 2:
+      # Act 1-2: FRONTIER EXPANSION (Distance 10x more important than quality)
+      (distanceScore * 10.0) + (qualityScore * 1.0) + (proximityBonus * proximityWeight)
+    else:
+      # Act 3-4: QUALITY CONSOLIDATION (Quality 3x more important than distance)
+      (qualityScore * 3.0) + (distanceScore * 1.0) + (proximityBonus * proximityWeight)
 
-proc findColonizationTarget*(state: GameState, houseId: HouseId, fleet: Fleet,
-                            currentLocation: SystemId,
-                            maxRange: int,
-                            alreadyTargeted: HashSet[SystemId],
-                            preferredClasses: seq[PlanetClass] = @[]): Option[SystemId] =
+proc findColonizationTarget*(
+    state: GameState,
+    houseId: HouseId,
+    fleet: Fleet,
+    currentLocation: SystemId,
+    maxRange: int,
+    alreadyTargeted: HashSet[SystemId],
+    preferredClasses: seq[PlanetClass] = @[],
+): Option[SystemId] =
   ## Engine-provided colonization target selection with Act-aware scoring
   ##
   ## **Frontier Expansion Algorithm (Act 1-2):**
@@ -343,10 +373,15 @@ proc findColonizationTarget*(state: GameState, houseId: HouseId, fleet: Fleet,
 
   # Calculate current Act from turn number (heuristic for colonization scoring)
   # Aligned with colonization-based Act transitions (Act 1 ~15 turns, Act 2 ~22, Act 3 ~35)
-  let currentAct = if state.turn <= 15: 1
-                   elif state.turn <= 22: 2
-                   elif state.turn <= 35: 3
-                   else: 4
+  let currentAct =
+    if state.turn <= 15:
+      1
+    elif state.turn <= 22:
+      2
+    elif state.turn <= 35:
+      3
+    else:
+      4
 
   # Get known systems (fog-of-war compliant)
   let knownSystems = getKnownSystems(state, houseId)
@@ -365,9 +400,9 @@ proc findColonizationTarget*(state: GameState, houseId: HouseId, fleet: Fleet,
     # Check distance via jump lanes
     let pathResult = state.starMap.findPath(currentLocation, systemId, fleet)
     if not pathResult.found:
-      continue  # Can't reach this system
+      continue # Can't reach this system
 
-    let distance = pathResult.path.len - 1  # Path includes start, so subtract 1
+    let distance = pathResult.path.len - 1 # Path includes start, so subtract 1
     if distance > maxRange:
       continue
 
@@ -376,12 +411,16 @@ proc findColonizationTarget*(state: GameState, houseId: HouseId, fleet: Fleet,
     candidates.add((systemId, distance, planetClass))
 
   if candidates.len == 0:
-    logDebug(LogCategory.lcOrders,
-             &"findColonizationTarget: No candidates found, returning None")
+    logDebug(
+      LogCategory.lcOrders,
+      &"findColonizationTarget: No candidates found, returning None",
+    )
     return none(SystemId)
 
   # Score candidates using shared frontier expansion algorithm
-  type ScoredCandidate = tuple[systemId: SystemId, score: float, distance: int, planetClass: PlanetClass]
+  type ScoredCandidate =
+    tuple[systemId: SystemId, score: float, distance: int, planetClass: PlanetClass]
+
   var scoredCandidates: seq[ScoredCandidate] = @[]
 
   for (systemId, distance, planetClass) in candidates:
@@ -389,31 +428,42 @@ proc findColonizationTarget*(state: GameState, houseId: HouseId, fleet: Fleet,
     scoredCandidates.add((systemId, score, distance, planetClass))
 
   # Sort by score (highest first)
-  scoredCandidates.sort(proc(a, b: ScoredCandidate): int =
-    if a.score > b.score: -1
-    elif a.score < b.score: 1
-    else: 0
+  scoredCandidates.sort(
+    proc(a, b: ScoredCandidate): int =
+      if a.score > b.score:
+        -1
+      elif a.score < b.score:
+        1
+      else:
+        0
   )
 
   let best = scoredCandidates[0]
-  logDebug(LogCategory.lcOrders,
-           &"findColonizationTarget: Found target system {best.systemId} " &
-           &"(Act {currentAct}, {best.planetClass}, {best.distance} jumps, score={best.score:.1f})")
+  logDebug(
+    LogCategory.lcOrders,
+    &"findColonizationTarget: Found target system {best.systemId} " &
+      &"(Act {currentAct}, {best.planetClass}, {best.distance} jumps, score={best.score:.1f})",
+  )
 
   # CRITICAL VALIDATION: Ensure we never return SystemId(0)
   if best.systemId == SystemId(0):
-    logError(LogCategory.lcOrders,
-             &"findColonizationTarget: BUG - best candidate is SystemId(0)! " &
-             &"Candidates: {candidates.len}, returning None")
+    logError(
+      LogCategory.lcOrders,
+      &"findColonizationTarget: BUG - best candidate is SystemId(0)! " &
+        &"Candidates: {candidates.len}, returning None",
+    )
     return none(SystemId)
 
   return some(best.systemId)
 
-proc findColonizationTargetFiltered*(filtered: FilteredGameState, fleet: Fleet,
-                                     currentLocation: SystemId,
-                                     maxRange: int,
-                                     alreadyTargeted: HashSet[SystemId],
-                                     preferredClasses: seq[PlanetClass] = @[]): Option[SystemId] =
+proc findColonizationTargetFiltered*(
+    filtered: FilteredGameState,
+    fleet: Fleet,
+    currentLocation: SystemId,
+    maxRange: int,
+    alreadyTargeted: HashSet[SystemId],
+    preferredClasses: seq[PlanetClass] = @[],
+): Option[SystemId] =
   ## AI-optimized wrapper that works with pre-filtered game state
   ## Avoids redundant fog-of-war filtering when AI already has FilteredGameState
   ##
@@ -422,10 +472,15 @@ proc findColonizationTargetFiltered*(filtered: FilteredGameState, fleet: Fleet,
 
   # Calculate current Act from turn number (heuristic for colonization scoring)
   # Aligned with colonization-based Act transitions (Act 1 ~15 turns, Act 2 ~22, Act 3 ~35)
-  let currentAct = if filtered.turn <= 15: 1
-                   elif filtered.turn <= 22: 2
-                   elif filtered.turn <= 35: 3
-                   else: 4
+  let currentAct =
+    if filtered.turn <= 15:
+      1
+    elif filtered.turn <= 22:
+      2
+    elif filtered.turn <= 35:
+      3
+    else:
+      4
 
   # Scan visible systems within range
   # Fog-of-war: Only visible systems are in this table (respects all players' visibility)
@@ -451,26 +506,30 @@ proc findColonizationTargetFiltered*(filtered: FilteredGameState, fleet: Fleet,
     # Check distance via jump lanes (proper pathfinding)
     let pathResult = filtered.starMap.findPath(currentLocation, systemId, fleet)
     if not pathResult.found:
-      continue  # Can't reach this system
+      continue # Can't reach this system
 
-    let distance = pathResult.path.len - 1  # Path includes start, so subtract 1
+    let distance = pathResult.path.len - 1 # Path includes start, so subtract 1
     if distance > maxRange:
       continue
 
     # Get planet class from star map (VisibleSystem doesn't include planet details)
     if systemId notin filtered.starMap.systems:
-      continue  # System not in star map (shouldn't happen but be safe)
+      continue # System not in star map (shouldn't happen but be safe)
     let system = filtered.starMap.systems[systemId]
     let planetClass = system.planetClass
     candidates.add((systemId, distance, planetClass))
 
   if candidates.len == 0:
-    logDebug(LogCategory.lcOrders,
-             &"findColonizationTargetFiltered: No candidates found, returning None")
+    logDebug(
+      LogCategory.lcOrders,
+      &"findColonizationTargetFiltered: No candidates found, returning None",
+    )
     return none(SystemId)
 
   # Score candidates using shared scoring function
-  type ScoredCandidate = tuple[systemId: SystemId, score: float, distance: int, planetClass: PlanetClass]
+  type ScoredCandidate =
+    tuple[systemId: SystemId, score: float, distance: int, planetClass: PlanetClass]
+
   var scoredCandidates: seq[ScoredCandidate] = @[]
 
   for (systemId, distance, planetClass) in candidates:
@@ -478,28 +537,37 @@ proc findColonizationTargetFiltered*(filtered: FilteredGameState, fleet: Fleet,
     scoredCandidates.add((systemId, score, distance, planetClass))
 
   # Sort by score (highest first)
-  scoredCandidates.sort(proc(a, b: ScoredCandidate): int =
-    if a.score > b.score: -1
-    elif a.score < b.score: 1
-    else: 0
+  scoredCandidates.sort(
+    proc(a, b: ScoredCandidate): int =
+      if a.score > b.score:
+        -1
+      elif a.score < b.score:
+        1
+      else:
+        0
   )
 
   let best = scoredCandidates[0]
-  logDebug(LogCategory.lcOrders,
-           &"findColonizationTargetFiltered: Found target system {best.systemId} " &
-           &"(Act {currentAct}, {best.planetClass}, ~{best.distance} hex, score={best.score:.1f})")
+  logDebug(
+    LogCategory.lcOrders,
+    &"findColonizationTargetFiltered: Found target system {best.systemId} " &
+      &"(Act {currentAct}, {best.planetClass}, ~{best.distance} hex, score={best.score:.1f})",
+  )
 
   # CRITICAL VALIDATION: Ensure we never return SystemId(0)
   if best.systemId == SystemId(0):
-    logError(LogCategory.lcOrders,
-             &"findColonizationTargetFiltered: BUG - best candidate is SystemId(0)! " &
-             &"Candidates: {candidates.len}, returning None")
+    logError(
+      LogCategory.lcOrders,
+      &"findColonizationTargetFiltered: BUG - best candidate is SystemId(0)! " &
+        &"Candidates: {candidates.len}, returning None",
+    )
     return none(SystemId)
 
   return some(best.systemId)
 
-proc activateAutoRepair(state: var GameState, fleetId: FleetId,
-                      params: StandingCommandParams): ActivationResult =
+proc activateAutoRepair(
+    state: var GameState, fleetId: FleetId, params: StandingCommandParams
+): ActivationResult =
   ## Execute auto-repair - return to nearest shipyard when ships are crippled
   ## Triggers when crippled ship percentage exceeds threshold
   let fleet = state.fleets[fleetId]
@@ -525,27 +593,30 @@ proc activateAutoRepair(state: var GameState, fleetId: FleetId,
 
   let crippledPercent = crippledShips.float / totalShips.float
 
-  logDebug(LogCategory.lcOrders,
-           &"{fleetId} AutoRepair: Fleet {crippledShips}/{totalShips} ships crippled " &
-           &"({(crippledPercent * 100).int}%), " &
-           &"Threshold {(params.repairDamageThreshold * 100).int}%")
+  logDebug(
+    LogCategory.lcOrders,
+    &"{fleetId} AutoRepair: Fleet {crippledShips}/{totalShips} ships crippled " &
+      &"({(crippledPercent * 100).int}%), " &
+      &"Threshold {(params.repairDamageThreshold * 100).int}%",
+  )
 
   # Check if damage threshold triggered
   if crippledPercent < params.repairDamageThreshold:
     # Fleet healthy, no repair needed
-    logDebug(LogCategory.lcOrders,
-             &"{fleetId} AutoRepair: Fleet above damage threshold, holding position")
+    logDebug(
+      LogCategory.lcOrders,
+      &"{fleetId} AutoRepair: Fleet above damage threshold, holding position",
+    )
 
     let holdOrder = FleetOrder(
       fleetId: fleetId,
       orderType: FleetCommandType.Hold,
       targetSystem: none(SystemId),
-      priority: 100
+      priority: 100,
     )
     state.fleetCommands[fleetId] = holdOrder
 
-    return ActivationResult(success: true,
-                          action: "Hold (fleet healthy)")
+    return ActivationResult(success: true, action: "Hold (fleet healthy)")
 
   # Fleet damaged - find nearest shipyard
   var nearestShipyard: Option[SystemId] = none(SystemId)
@@ -583,55 +654,63 @@ proc activateAutoRepair(state: var GameState, fleetId: FleetId,
 
   if nearestShipyard.isNone:
     # No shipyard available
-    logWarn(LogCategory.lcOrders,
-            &"{fleetId} AutoRepair failed: No accessible shipyard found " &
-            &"({crippledShips}/{totalShips} ships crippled)")
-    return ActivationResult(success: false,
-                          error: "No accessible shipyard")
+    logWarn(
+      LogCategory.lcOrders,
+      &"{fleetId} AutoRepair failed: No accessible shipyard found " &
+        &"({crippledShips}/{totalShips} ships crippled)",
+    )
+    return ActivationResult(success: false, error: "No accessible shipyard")
 
   let targetSystem = nearestShipyard.get()
 
   # If already at shipyard, hold for repairs
   if fleet.location == targetSystem:
-    logInfo(LogCategory.lcOrders,
-            &"{fleetId} AutoRepair: At shipyard system-{targetSystem}, " &
-            &"holding for repairs ({crippledShips}/{totalShips} ships crippled)")
+    logInfo(
+      LogCategory.lcOrders,
+      &"{fleetId} AutoRepair: At shipyard system-{targetSystem}, " &
+        &"holding for repairs ({crippledShips}/{totalShips} ships crippled)",
+    )
 
     let holdOrder = FleetOrder(
       fleetId: fleetId,
       orderType: FleetCommandType.Hold,
       targetSystem: none(SystemId),
-      priority: 100
+      priority: 100,
     )
     state.fleetCommands[fleetId] = holdOrder
 
-    return ActivationResult(success: true,
-                          action: &"Hold at shipyard (repairing)")
+    return ActivationResult(success: true, action: &"Hold at shipyard (repairing)")
 
   # Move to shipyard
-  logInfo(LogCategory.lcOrders,
-          &"{fleetId} AutoRepair: Damaged ({crippledShips}/{totalShips} ships crippled), " &
-          &"returning to shipyard at system-{targetSystem} ({minDistance} jumps)")
+  logInfo(
+    LogCategory.lcOrders,
+    &"{fleetId} AutoRepair: Damaged ({crippledShips}/{totalShips} ships crippled), " &
+      &"returning to shipyard at system-{targetSystem} ({minDistance} jumps)",
+  )
 
   let moveOrder = FleetOrder(
     fleetId: fleetId,
     orderType: FleetCommandType.Move,
     targetSystem: some(targetSystem),
-    priority: 100
+    priority: 100,
   )
   state.fleetCommands[fleetId] = moveOrder
 
-  return ActivationResult(success: true,
-                        action: &"Return to shipyard at system-{targetSystem}")
+  return ActivationResult(
+    success: true, action: &"Return to shipyard at system-{targetSystem}"
+  )
 
-proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
-                         params: StandingCommandParams): ActivationResult =
+proc activateAutoReinforce(
+    state: var GameState, fleetId: FleetId, params: StandingCommandParams
+): ActivationResult =
   ## Execute auto-reinforce - join damaged friendly fleet
   ## Finds nearest damaged fleet and moves to join it
   let fleet = state.fleets[fleetId]
 
-  logDebug(LogCategory.lcOrders,
-           &"{fleetId} AutoReinforce: Searching for damaged friendly fleets")
+  logDebug(
+    LogCategory.lcOrders,
+    &"{fleetId} AutoReinforce: Searching for damaged friendly fleets",
+  )
 
   # Find target fleet (specific or nearest damaged)
   var targetFleetId: Option[FleetId] = none(FleetId)
@@ -658,16 +737,19 @@ proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
             if ship.isCrippled:
               targetCrippledShips += 1
 
-        let targetCrippledPercent = if targetTotalShips > 0:
-                                       targetCrippledShips.float / targetTotalShips.float
-                                     else: 0.0
+        let targetCrippledPercent =
+          if targetTotalShips > 0:
+            targetCrippledShips.float / targetTotalShips.float
+          else:
+            0.0
 
         # Check if target is damaged above threshold
         if targetCrippledPercent >= params.reinforceDamageThreshold:
           targetFleetId = some(specificTarget)
           targetFleetLocation = targetFleet.location
 
-          let pathResult = state.starMap.findPath(fleet.location, targetFleet.location, fleet)
+          let pathResult =
+            state.starMap.findPath(fleet.location, targetFleet.location, fleet)
           if pathResult.found:
             minDistance = pathResult.path.len - 1
 
@@ -704,7 +786,8 @@ proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
         continue
 
       # Calculate distance via jump lanes
-      let pathResult = state.starMap.findPath(fleet.location, otherFleet.location, fleet)
+      let pathResult =
+        state.starMap.findPath(fleet.location, otherFleet.location, fleet)
       if not pathResult.found:
         continue
 
@@ -716,54 +799,57 @@ proc activateAutoReinforce(state: var GameState, fleetId: FleetId,
 
   if targetFleetId.isNone:
     # No damaged fleets found
-    logDebug(LogCategory.lcOrders,
-             &"{fleetId} AutoReinforce: No damaged friendly fleets found " &
-             &"(threshold {(params.reinforceDamageThreshold * 100).int}%)")
+    logDebug(
+      LogCategory.lcOrders,
+      &"{fleetId} AutoReinforce: No damaged friendly fleets found " &
+        &"(threshold {(params.reinforceDamageThreshold * 100).int}%)",
+    )
 
     let holdOrder = FleetOrder(
       fleetId: fleetId,
       orderType: FleetCommandType.Hold,
       targetSystem: none(SystemId),
-      priority: 100
+      priority: 100,
     )
     state.fleetCommands[fleetId] = holdOrder
 
-    return ActivationResult(success: true,
-                          action: "Hold (no damaged fleets)")
+    return ActivationResult(success: true, action: "Hold (no damaged fleets)")
 
   let targetId = targetFleetId.get()
 
   # If already at target location, issue JoinFleet order
   if fleet.location == targetFleetLocation:
-    logInfo(LogCategory.lcOrders,
-            &"{fleetId} AutoReinforce: At location with {targetId}, joining fleet")
+    logInfo(
+      LogCategory.lcOrders,
+      &"{fleetId} AutoReinforce: At location with {targetId}, joining fleet",
+    )
 
     let joinOrder = FleetOrder(
       fleetId: fleetId,
       orderType: FleetCommandType.JoinFleet,
       targetFleet: some(targetId),
-      priority: 100
+      priority: 100,
     )
     state.fleetCommands[fleetId] = joinOrder
 
-    return ActivationResult(success: true,
-                          action: &"Join fleet {targetId}")
+    return ActivationResult(success: true, action: &"Join fleet {targetId}")
 
   # Move to target fleet
-  logInfo(LogCategory.lcOrders,
-          &"{fleetId} AutoReinforce: Moving to reinforce {targetId} " &
-          &"at system-{targetFleetLocation} ({minDistance} jumps)")
+  logInfo(
+    LogCategory.lcOrders,
+    &"{fleetId} AutoReinforce: Moving to reinforce {targetId} " &
+      &"at system-{targetFleetLocation} ({minDistance} jumps)",
+  )
 
   let moveOrder = FleetOrder(
     fleetId: fleetId,
     orderType: FleetCommandType.Move,
     targetSystem: some(targetFleetLocation),
-    priority: 100
+    priority: 100,
   )
   state.fleetCommands[fleetId] = moveOrder
 
-  return ActivationResult(success: true,
-                        action: &"Move to reinforce {targetId}")
+  return ActivationResult(success: true, action: &"Move to reinforce {targetId}")
 
 proc calculateFleetStrength(fleet: Fleet): int =
   ## Calculate raw combat strength of fleet
@@ -774,83 +860,95 @@ proc calculateFleetStrength(fleet: Fleet): int =
     for ship in squadron.ships:
       result += ship.stats.attackStrength
 
-
-proc activateBlockadeTarget(state: var GameState, fleetId: FleetId,
-                          params: StandingCommandParams): ActivationResult =
+proc activateBlockadeTarget(
+    state: var GameState, fleetId: FleetId, params: StandingCommandParams
+): ActivationResult =
   ## Execute blockade target - maintain blockade on enemy colony
   ## Moves to target colony and issues BlockadePlanet order
   let fleet = state.fleets[fleetId]
   let targetColony = params.blockadeTargetColony
 
-  logDebug(LogCategory.lcOrders,
-           &"{fleetId} BlockadeTarget: Target=system-{targetColony}, " &
-           &"Current=system-{fleet.location}")
+  logDebug(
+    LogCategory.lcOrders,
+    &"{fleetId} BlockadeTarget: Target=system-{targetColony}, " &
+      &"Current=system-{fleet.location}",
+  )
 
   # Verify we have intel on target colony (fog-of-war compliant)
   if not hasColonyIntel(state, fleet.owner, targetColony):
-    logWarn(LogCategory.lcOrders,
-            &"{fleetId} BlockadeTarget failed: No intel on colony at system-{targetColony}")
-    return ActivationResult(success: false,
-                          error: "No intel on target colony")
+    logWarn(
+      LogCategory.lcOrders,
+      &"{fleetId} BlockadeTarget failed: No intel on colony at system-{targetColony}",
+    )
+    return ActivationResult(success: false, error: "No intel on target colony")
 
   # Verify target exists and is enemy colony
   if targetColony notin state.colonies:
-    logWarn(LogCategory.lcOrders,
-            &"{fleetId} BlockadeTarget failed: Colony at system-{targetColony} no longer exists " &
-            &"(intel may be stale)")
-    return ActivationResult(success: false,
-                          error: "Target colony no longer exists")
+    logWarn(
+      LogCategory.lcOrders,
+      &"{fleetId} BlockadeTarget failed: Colony at system-{targetColony} no longer exists " &
+        &"(intel may be stale)",
+    )
+    return ActivationResult(success: false, error: "Target colony no longer exists")
 
   let colony = state.colonies[targetColony]
 
   # Verify target is not owned by same house
   if colony.owner == fleet.owner:
-    logWarn(LogCategory.lcOrders,
-            &"{fleetId} BlockadeTarget failed: Cannot blockade own colony at system-{targetColony}")
-    return ActivationResult(success: false,
-                          error: "Cannot blockade own colony")
+    logWarn(
+      LogCategory.lcOrders,
+      &"{fleetId} BlockadeTarget failed: Cannot blockade own colony at system-{targetColony}",
+    )
+    return ActivationResult(success: false, error: "Cannot blockade own colony")
 
   # If already at target, issue blockade order
   if fleet.location == targetColony:
-    logInfo(LogCategory.lcOrders,
-            &"{fleetId} BlockadeTarget: At target system-{targetColony}, " &
-            &"maintaining blockade (colony owner: {colony.owner})")
+    logInfo(
+      LogCategory.lcOrders,
+      &"{fleetId} BlockadeTarget: At target system-{targetColony}, " &
+        &"maintaining blockade (colony owner: {colony.owner})",
+    )
 
     let blockadeOrder = FleetOrder(
       fleetId: fleetId,
       orderType: FleetCommandType.BlockadePlanet,
       targetSystem: some(targetColony),
-      priority: 100
+      priority: 100,
     )
     state.fleetCommands[fleetId] = blockadeOrder
 
-    return ActivationResult(success: true,
-                          action: &"Blockade colony at system-{targetColony}")
+    return ActivationResult(
+      success: true, action: &"Blockade colony at system-{targetColony}"
+    )
 
   # Move to target colony
   let pathResult = state.starMap.findPath(fleet.location, targetColony, fleet)
   if not pathResult.found:
-    logWarn(LogCategory.lcOrders,
-            &"{fleetId} BlockadeTarget failed: Cannot reach target system-{targetColony}")
-    return ActivationResult(success: false,
-                          error: "Cannot reach target colony")
+    logWarn(
+      LogCategory.lcOrders,
+      &"{fleetId} BlockadeTarget failed: Cannot reach target system-{targetColony}",
+    )
+    return ActivationResult(success: false, error: "Cannot reach target colony")
 
   let distance = pathResult.path.len - 1
 
-  logInfo(LogCategory.lcOrders,
-          &"{fleetId} BlockadeTarget: Moving to blockade {colony.owner} colony " &
-          &"at system-{targetColony} ({distance} jumps)")
+  logInfo(
+    LogCategory.lcOrders,
+    &"{fleetId} BlockadeTarget: Moving to blockade {colony.owner} colony " &
+      &"at system-{targetColony} ({distance} jumps)",
+  )
 
   let moveOrder = FleetOrder(
     fleetId: fleetId,
     orderType: FleetCommandType.Move,
     targetSystem: some(targetColony),
-    priority: 100
+    priority: 100,
   )
   state.fleetCommands[fleetId] = moveOrder
 
-  return ActivationResult(success: true,
-                        action: &"Move to blockade target at system-{targetColony}")
+  return ActivationResult(
+    success: true, action: &"Move to blockade target at system-{targetColony}"
+  )
 
 # =============================================================================
 # Grace Period Management
@@ -864,39 +962,39 @@ proc resetStandingCommandGracePeriod*(state: var GameState, fleetId: FleetId) =
     var standingOrder = state.standingCommands[fleetId]
     standingOrder.turnsUntilActivation = standingOrder.activationDelayTurns
     state.standingCommands[fleetId] = standingOrder
-    logDebug(LogCategory.lcOrders,
+    logDebug(
+      LogCategory.lcOrders,
       &"Fleet {fleetId} standing command grace period reset to " &
-      &"{standingOrder.activationDelayTurns} turn(s)")
+        &"{standingOrder.activationDelayTurns} turn(s)",
+    )
 
 # =============================================================================
 # Main Activation Function
 # =============================================================================
 
-proc activateStandingCommand*(state: var GameState, fleetId: FleetId,
-                          standingOrder: StandingOrder, turn: int): ActivationResult =
+proc activateStandingCommand*(
+    state: var GameState, fleetId: FleetId, standingOrder: StandingOrder, turn: int
+): ActivationResult =
   ## Execute a single standing command
   ## Called during Command Phase for fleets without explicit orders
 
   case standingOrder.commandType
   of StandingCommandType.None:
     return ActivationResult(success: true, action: "No standing command")
-
   of StandingCommandType.PatrolRoute:
     return activatePatrolRoute(state, fleetId, standingOrder.params)
-
   of StandingCommandType.DefendSystem, StandingCommandType.GuardColony:
     return activateDefendSystem(state, fleetId, standingOrder.params)
-
   of StandingCommandType.AutoReinforce:
     return activateAutoReinforce(state, fleetId, standingOrder.params)
-
   of StandingCommandType.AutoRepair:
     return activateAutoRepair(state, fleetId, standingOrder.params)
-
   of StandingCommandType.BlockadeTarget:
     return activateBlockadeTarget(state, fleetId, standingOrder.params)
 
-proc activateStandingCommands*(state: var GameState, turn: int, events: var seq[resolution_types.GameEvent]) =
+proc activateStandingCommands*(
+    state: var GameState, turn: int, events: var seq[resolution_types.GameEvent]
+) =
   ## Activate standing commands for all fleets without explicit orders
   ## Called during Maintenance Phase Step 1a
   ##
@@ -912,28 +1010,31 @@ proc activateStandingCommands*(state: var GameState, turn: int, events: var seq[
   ##
   ## Phase 7b: Emits StandingOrderActivated events when orders activate
 
-  logInfo(LogCategory.lcOrders,
-          &"=== Standing Order Activation: Turn {turn} ===")
+  logInfo(LogCategory.lcOrders, &"=== Standing Order Activation: Turn {turn} ===")
 
   # Check global master switch
   if not globalStandingOrdersConfig.activation.global_enabled:
-    logInfo(LogCategory.lcOrders,
-            "Standing commands globally disabled in config - skipping all activation")
+    logInfo(
+      LogCategory.lcOrders,
+      "Standing commands globally disabled in config - skipping all activation",
+    )
     return
 
   var activatedCount = 0
   var skippedCount = 0
   var failedCount = 0
   var notImplementedCount = 0
-  var noStandingOrderCount = 0  # Fleets without standing commands assigned
+  var noStandingOrderCount = 0 # Fleets without standing commands assigned
 
   for fleetId, fleet in state.fleets:
     # Skip if fleet has explicit order this turn
     if fleetId in state.fleetCommands:
       let explicitOrder = state.fleetCommands[fleetId]
-      logDebug(LogCategory.lcOrders,
-               &"{fleetId} has explicit order ({explicitOrder.commandType}), " &
-               &"skipping standing command")
+      logDebug(
+        LogCategory.lcOrders,
+        &"{fleetId} has explicit order ({explicitOrder.commandType}), " &
+          &"skipping standing command",
+      )
       skippedCount += 1
 
       # Reset activation countdown when explicit order exists
@@ -943,20 +1044,24 @@ proc activateStandingCommands*(state: var GameState, turn: int, events: var seq[
         state.standingCommands[fleetId] = standingOrder
 
         # Emit StandingOrderSuspended event (suspended by explicit order)
-        events.add(event_factory.standingOrderSuspended(
-          fleet.owner,
-          fleetId,
-          $standingOrder.commandType,
-          "explicit order issued",
-          fleet.location
-        ))
+        events.add(
+          event_factory.standingOrderSuspended(
+            fleet.owner,
+            fleetId,
+            $standingOrder.commandType,
+            "explicit order issued",
+            fleet.location,
+          )
+        )
 
       continue
 
     # Check for standing command
     if fleetId notin state.standingCommands:
-      logDebug(LogCategory.lcOrders,
-               &"{fleetId} (owner: {fleet.owner}) has no standing command assigned, skipping")
+      logDebug(
+        LogCategory.lcOrders,
+        &"{fleetId} (owner: {fleet.owner}) has no standing command assigned, skipping",
+      )
       noStandingOrderCount += 1
       continue
 
@@ -964,15 +1069,15 @@ proc activateStandingCommands*(state: var GameState, turn: int, events: var seq[
 
     # Skip if suspended
     if standingOrder.suspended:
-      logDebug(LogCategory.lcOrders,
-               &"{fleetId} standing command suspended, skipping")
+      logDebug(LogCategory.lcOrders, &"{fleetId} standing command suspended, skipping")
       skippedCount += 1
       continue
 
     # Skip if not enabled (player control)
     if not standingOrder.enabled:
-      logDebug(LogCategory.lcOrders,
-               &"{fleetId} standing command disabled by player, skipping")
+      logDebug(
+        LogCategory.lcOrders, &"{fleetId} standing command disabled by player, skipping"
+      )
       skippedCount += 1
       continue
 
@@ -981,8 +1086,10 @@ proc activateStandingCommands*(state: var GameState, turn: int, events: var seq[
       # Decrement countdown
       standingOrder.turnsUntilActivation -= 1
       state.standingCommands[fleetId] = standingOrder
-      logDebug(LogCategory.lcOrders,
-               &"{fleetId} standing command waiting {standingOrder.turnsUntilActivation} more turn(s)")
+      logDebug(
+        LogCategory.lcOrders,
+        &"{fleetId} standing command waiting {standingOrder.turnsUntilActivation} more turn(s)",
+      )
       skippedCount += 1
       continue
 
@@ -991,24 +1098,29 @@ proc activateStandingCommands*(state: var GameState, turn: int, events: var seq[
 
     if result.success:
       activatedCount += 1
-      logInfo(LogCategory.lcOrders,
-              &"{fleetId} activated {standingOrder.commandType}: {result.action}")
+      logInfo(
+        LogCategory.lcOrders,
+        &"{fleetId} activated {standingOrder.commandType}: {result.action}",
+      )
 
       # Get generated fleet order type
-      let generatedOrderType = if fleetId in state.fleetCommands:
-        $state.fleetCommands[fleetId].commandType
-      else:
-        "None"
+      let generatedOrderType =
+        if fleetId in state.fleetCommands:
+          $state.fleetCommands[fleetId].commandType
+        else:
+          "None"
 
       # Emit StandingOrderActivated event (Phase 7b)
-      events.add(event_factory.standingOrderActivated(
-        fleet.owner,
-        fleetId,
-        $standingOrder.commandType,
-        generatedOrderType,
-        result.action,
-        fleet.location
-      ))
+      events.add(
+        event_factory.standingOrderActivated(
+          fleet.owner,
+          fleetId,
+          $standingOrder.commandType,
+          generatedOrderType,
+          result.action,
+          fleet.location,
+        )
+      )
 
       # Update activation tracking and params
       var updatedOrder = standingOrder
@@ -1023,23 +1135,27 @@ proc activateStandingCommands*(state: var GameState, turn: int, events: var seq[
         updatedOrder.params = result.updatedParams.get()
 
       state.standingCommands[fleetId] = updatedOrder
-
     elif result.error == "Not yet implemented":
       notImplementedCount += 1
-      logDebug(LogCategory.lcOrders,
-               &"{fleetId} {standingOrder.commandType} not yet implemented")
-
+      logDebug(
+        LogCategory.lcOrders,
+        &"{fleetId} {standingOrder.commandType} not yet implemented",
+      )
     else:
       failedCount += 1
-      logWarn(LogCategory.lcOrders,
-              &"{fleetId} {standingOrder.commandType} failed: {result.error}")
+      logWarn(
+        LogCategory.lcOrders,
+        &"{fleetId} {standingOrder.commandType} failed: {result.error}",
+      )
 
   # Summary logging
   let totalAttempted = activatedCount + failedCount + notImplementedCount
   let totalFleets = state.fleets.len
-  logInfo(LogCategory.lcOrders,
-          &"Standing Orders Summary: {totalFleets} total fleets, " &
-          &"{noStandingOrderCount} without standing commands, " &
-          &"{skippedCount} skipped (explicit orders/suspended/disabled/delay), " &
-          &"{activatedCount}/{totalAttempted} activated, " &
-          &"{failedCount} failed, {notImplementedCount} not implemented")
+  logInfo(
+    LogCategory.lcOrders,
+    &"Standing Orders Summary: {totalFleets} total fleets, " &
+      &"{noStandingOrderCount} without standing commands, " &
+      &"{skippedCount} skipped (explicit orders/suspended/disabled/delay), " &
+      &"{activatedCount}/{totalAttempted} activated, " &
+      &"{failedCount} failed, {notImplementedCount} not implemented",
+  )

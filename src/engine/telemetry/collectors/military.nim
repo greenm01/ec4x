@@ -8,12 +8,10 @@ import ../../types/[telemetry, core, game_state, ship, squadron, colony]
 import ../../state/[entity_manager, iterators]
 
 proc collectMilitaryMetrics*(
-  state: GameState,
-  houseId: HouseId,
-  prevMetrics: DiagnosticMetrics
+    state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
 ): DiagnosticMetrics =
   ## Collect military asset counts from GameState
-  result = prevMetrics  # Start with previous metrics
+  result = prevMetrics # Start with previous metrics
 
   let houseOption = state.houses.entities.getEntity(houseId)
   if houseOption.isNone:
@@ -57,20 +55,33 @@ proc collectMilitaryMetrics*(
 
   for squadron in state.squadronsOwned(houseId):
     if not squadron.destroyed:
-      case squadron.flagship.shipClass:
-      of ShipClass.Fighter: fighterShips += 1
-      of ShipClass.Corvette: corvetteShips += 1
-      of ShipClass.Frigate: frigateShips += 1
-      of ShipClass.Scout: scoutShips += 1
-      of ShipClass.Raider: raiderShips += 1
-      of ShipClass.Destroyer: destroyerShips += 1
-      of ShipClass.Cruiser: cruiserShips += 1
-      of ShipClass.LightCruiser: lightCruiserShips += 1
-      of ShipClass.HeavyCruiser: heavyCruiserShips += 1
-      of ShipClass.Battlecruiser: battlecruiserShips += 1
-      of ShipClass.Battleship: battleshipShips += 1
-      of ShipClass.Dreadnought: dreadnoughtShips += 1
-      of ShipClass.SuperDreadnought: superDreadnoughtShips += 1
+      case squadron.flagship.shipClass
+      of ShipClass.Fighter:
+        fighterShips += 1
+      of ShipClass.Corvette:
+        corvetteShips += 1
+      of ShipClass.Frigate:
+        frigateShips += 1
+      of ShipClass.Scout:
+        scoutShips += 1
+      of ShipClass.Raider:
+        raiderShips += 1
+      of ShipClass.Destroyer:
+        destroyerShips += 1
+      of ShipClass.Cruiser:
+        cruiserShips += 1
+      of ShipClass.LightCruiser:
+        lightCruiserShips += 1
+      of ShipClass.HeavyCruiser:
+        heavyCruiserShips += 1
+      of ShipClass.Battlecruiser:
+        battlecruiserShips += 1
+      of ShipClass.Battleship:
+        battleshipShips += 1
+      of ShipClass.Dreadnought:
+        dreadnoughtShips += 1
+      of ShipClass.SuperDreadnought:
+        superDreadnoughtShips += 1
       of ShipClass.Carrier:
         carrierShips += 1
         totalCarrierCount += 1
@@ -80,9 +91,12 @@ proc collectMilitaryMetrics*(
       of ShipClass.SuperCarrier:
         superCarrierShips += 1
         totalCarrierCount += 1
-      of ShipClass.PlanetBreaker: planetBreakerShips += 1
-      of ShipClass.ETAC: etacShips += 1
-      of ShipClass.TroopTransport: troopTransportShips += 1
+      of ShipClass.PlanetBreaker:
+        planetBreakerShips += 1
+      of ShipClass.ETAC:
+        etacShips += 1
+      of ShipClass.TroopTransport:
+        troopTransportShips += 1
 
   # Assign ship counts
   result.fighterShips = fighterShips
@@ -105,13 +119,12 @@ proc collectMilitaryMetrics*(
   result.planetBreakerShips = planetBreakerShips
 
   # Calculate total ships (18 ship classes, starbases are facilities)
-  result.totalShips = fighterShips + corvetteShips + frigateShips +
-                      scoutShips + raiderShips + destroyerShips +
-                      cruiserShips + lightCruiserShips + heavyCruiserShips +
-                      battlecruiserShips + battleshipShips +
-                      dreadnoughtShips + superDreadnoughtShips +
-                      carrierShips + superCarrierShips +
-                      etacShips + troopTransportShips + planetBreakerShips
+  result.totalShips =
+    fighterShips + corvetteShips + frigateShips + scoutShips + raiderShips +
+    destroyerShips + cruiserShips + lightCruiserShips + heavyCruiserShips +
+    battlecruiserShips + battleshipShips + dreadnoughtShips + superDreadnoughtShips +
+    carrierShips + superCarrierShips + etacShips + troopTransportShips +
+    planetBreakerShips
 
   # Logistics
   result.totalCarriers = totalCarrierCount

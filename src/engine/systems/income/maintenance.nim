@@ -8,7 +8,9 @@
 ## - Damaged infrastructure requires repair (construction.toml)
 
 import ../../types/[game_state, units, fleet, production]
-import ../../config/[construction_config, facilities_config, ground_units_config, combat_config]
+import
+  ../../config/
+    [construction_config, facilities_config, ground_units_config, combat_config]
 import ../../state/iterators
 
 export production.MaintenanceReport
@@ -17,7 +19,11 @@ export fleet.FleetStatus
 
 ## Ship Maintenance Costs (economy.md:3.9)
 
-proc getShipMaintenanceCost*(shipClass: ShipClass, isCrippled: bool, fleetStatus: FleetStatus = FleetStatus.Active): int =
+proc getShipMaintenanceCost*(
+    shipClass: ShipClass,
+    isCrippled: bool,
+    fleetStatus: FleetStatus = FleetStatus.Active,
+): int =
   ## Get maintenance cost for ship per turn
   ## Per economy.md:3.9 and ships.toml upkeep_cost field
   ##
@@ -42,7 +48,9 @@ proc getShipMaintenanceCost*(shipClass: ShipClass, isCrippled: bool, fleetStatus
   # Active ships: full cost unless crippled
   if isCrippled:
     # Per combat.toml: crippled_maintenance_multiplier = 0.5
-    return int(float(baseCost) * globalCombatConfig.damage_rules.crippled_maintenance_multiplier)
+    return int(
+      float(baseCost) * globalCombatConfig.damage_rules.crippled_maintenance_multiplier
+    )
   else:
     return baseCost
 
@@ -217,5 +225,5 @@ proc applyMaintenanceShortfall*(colony: var Colony, shortfall: int) =
   ## Full shortfall cascade system in maintenance_shortfall.nim
 
   if shortfall > 0:
-    let damageAmount = float(shortfall) / 1000.0  # 1% damage per 10 PP shortfall
+    let damageAmount = float(shortfall) / 1000.0 # 1% damage per 10 PP shortfall
     colony.infrastructureDamage = min(1.0, colony.infrastructureDamage + damageAmount)

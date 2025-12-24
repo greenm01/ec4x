@@ -11,7 +11,7 @@ import ../../../common/types/[core, combat, units]
 import ../../types/[game_state, command, fleet, squadron, event]
 import ../../state/[game_state as state_module, iterators]
 import ../../starmap
-import ../ship/entity as ship_entity  # Ship helper functions
+import ../ship/entity as ship_entity # Ship helper functions
 import ../../entities/colony_ops
 import ../colonization/engine as col_engine
 import ../diplomacy/[types as dip_types]
@@ -24,17 +24,22 @@ import ./standing
 import ../../../common/logger
 
 proc completeFleetCommand*(
-  state: var GameState, fleetId: FleetId, orderType: string,
-  details: string = "", systemId: Option[SystemId] = none(SystemId),
-  events: var seq[GameEvent]
+    state: var GameState,
+    fleetId: FleetId,
+    orderType: string,
+    details: string = "",
+    systemId: Option[SystemId] = none(SystemId),
+    events: var seq[GameEvent],
 ) =
   ## Standard completion handler: generates OrderCompleted event
   ## Cleanup handled by event-driven order_cleanup module in Command Phase
-  if fleetId notin state.fleets: return
+  if fleetId notin state.fleets:
+    return
   let houseId = state.fleets[fleetId].owner
 
-  events.add(event_factory.commandCompleted(
-    houseId, fleetId, orderType, details, systemId))
+  events.add(
+    event_factory.commandCompleted(houseId, fleetId, orderType, details, systemId)
+  )
 
   logInfo(LogCategory.lcOrders, &"Fleet {fleetId} {orderType} order completed")
 
@@ -59,7 +64,8 @@ proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): b
   # Check intelligence database for known enemy colonies
   if systemId in house.intelligence.colonyReports:
     let colonyIntel = house.intelligence.colonyReports[systemId]
-    if colonyIntel.targetOwner != houseId and house.diplomaticRelations.isEnemy(colonyIntel.targetOwner):
+    if colonyIntel.targetOwner != houseId and
+        house.diplomaticRelations.isEnemy(colonyIntel.targetOwner):
       return true
 
   # Check for enemy fleets at system (visible or from intel)
@@ -77,7 +83,7 @@ proc estimatePathRisk*(state: GameState, path: seq[SystemId], houseId: HouseId):
 
   for systemId in path:
     if isSystemHostile(state, systemId, houseId):
-      result += 10  # Known enemy system - high risk
+      result += 10 # Known enemy system - high risk
     elif systemId in state.colonies:
       let colony = state.colonies[systemId]
       if colony.owner != houseId:
@@ -87,7 +93,9 @@ proc estimatePathRisk*(state: GameState, path: seq[SystemId], houseId: HouseId):
       # Unexplored or empty - low risk
       result += 1
 
-proc findClosestOwnedColony*(state: GameState, fromSystem: SystemId, houseId: HouseId): Option[SystemId] =
+proc findClosestOwnedColony*(
+    state: GameState, fromSystem: SystemId, houseId: HouseId
+): Option[SystemId] =
   ## Find the closest owned colony for a house, excluding the fromSystem
   ## Returns None if house has no colonies
   ## Used by Space Guild to find alternative delivery destination
@@ -103,13 +111,13 @@ proc findClosestOwnedColony*(state: GameState, fromSystem: SystemId, houseId: Ho
       if route.region == fromSystem and state.turn - route.lastUpdated < 20:
         # Verify fallback system still exists and is owned
         if route.fallbackSystem in state.colonies and
-           state.colonies[route.fallbackSystem].owner == houseId:
+            state.colonies[route.fallbackSystem].owner == houseId:
           return some(route.fallbackSystem)
 
   # Fallback: Calculate best retreat route balancing distance and risk
   # IMPORTANT: Uses fog-of-war information only (player's knowledge)
   var bestColony: Option[SystemId] = none(SystemId)
-  var bestScore = int.high  # Lower is better (combines distance and risk)
+  var bestScore = int.high # Lower is better (combines distance and risk)
 
   # Iterate through all colonies owned by this house
   for systemId, colony in state.colonies:
@@ -121,12 +129,12 @@ proc findClosestOwnedColony*(state: GameState, fromSystem: SystemId, houseId: Ho
         owner: houseId,
         location: fromSystem,
         squadrons: @[],
-        status: FleetStatus.Active
+        status: FleetStatus.Active,
       )
 
       let pathResult = state.starMap.findPath(fromSystem, systemId, dummyFleet)
       if pathResult.path.len > 0:
-        let distance = pathResult.path.len - 1  # Number of jumps
+        let distance = pathResult.path.len - 1 # Number of jumps
 
         # Calculate path risk using fog-of-war intel
         let risk = estimatePathRisk(state, pathResult.path, houseId)
@@ -167,8 +175,8 @@ proc shouldAutoSeekHome*(state: GameState, fleet: Fleet, command: FleetCommand):
       let targetId = command.targetSystem.get()
       if isSystemHostile(state, targetId, fleet.owner):
         return true
-
-  of FleetCommandType.GuardStarbase, FleetCommandType.GuardPlanet, FleetCommandType.BlockadePlanet:
+  of FleetCommandType.GuardStarbase, FleetCommandType.GuardPlanet,
+      FleetCommandType.BlockadePlanet:
     # Guard/blockade orders abort if system lost to enemy
     if command.targetSystem.isSome:
       let targetId = command.targetSystem.get()
@@ -182,7 +190,6 @@ proc shouldAutoSeekHome*(state: GameState, fleet: Fleet, command: FleetCommand):
       else:
         # Colony destroyed - abort
         return true
-
   of FleetCommandType.Patrol:
     # Patrols abort if their patrol zone becomes enemy territory
     # Check if current location is hostile
@@ -198,7 +205,6 @@ proc shouldAutoSeekHome*(state: GameState, fleet: Fleet, command: FleetCommand):
       let targetId = command.targetSystem.get()
       if isSystemHostile(state, targetId, fleet.owner):
         return true
-
   else:
     discard
 
@@ -214,8 +220,12 @@ var movementCallDepth {.global.} = 0
 # Movement Resolution
 # =============================================================================
 
-proc resolveMovementCommand*(state: var GameState, houseId: HouseId, command: FleetCommand,
-                         events: var seq[GameEvent]) =
+proc resolveMovementCommand*(
+    state: var GameState,
+    houseId: HouseId,
+    command: FleetCommand,
+    events: var seq[GameEvent],
+) =
   ## Execute a fleet movement order with pathfinding and lane traversal rules
   ## Per operations.md:6.1 - Lane traversal rules:
   ##   - Major lanes: 2 jumps per turn if all systems owned by player
@@ -226,7 +236,10 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, command: Fl
   # Detect infinite recursion
   movementCallDepth += 1
   if movementCallDepth > 100:
-    logFatal(LogCategory.lcFleet, "resolveMovementCommand recursion depth > 100! Infinite loop detected!")
+    logFatal(
+      LogCategory.lcFleet,
+      "resolveMovementCommand recursion depth > 100! Infinite loop detected!",
+    )
     quit(1)
 
   defer:
@@ -246,7 +259,10 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, command: Fl
   # - Reserve: 50% maintenance, reduced combat, can fight in orbital defense
   # - Mothballed: 0% maintenance, must be screened, risks destruction in combat
   if fleet.status == FleetStatus.Reserve or fleet.status == FleetStatus.Mothballed:
-    logWarn(LogCategory.lcFleet, &"Fleet {command.fleetId} cannot move - status: {fleet.status} (permanently stationed)")
+    logWarn(
+      LogCategory.lcFleet,
+      &"Fleet {command.fleetId} cannot move - status: {fleet.status} (permanently stationed)",
+    )
     return
 
   let targetId = command.targetSystem.get()
@@ -254,24 +270,34 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, command: Fl
 
   # Already at destination - clear order (arrival complete)
   if startId == targetId:
-    logDebug(LogCategory.lcFleet, &"Fleet {command.fleetId} arrived at destination, order complete")
+    logDebug(
+      LogCategory.lcFleet,
+      &"Fleet {command.fleetId} arrived at destination, order complete",
+    )
     # Generate OrderCompleted event - cleanup handled by Command Phase
-    events.add(event_factory.commandCompleted(
-      houseId,
-      command.fleetId,
-      "Move",
-      details = &"arrived at {targetId}",
-      systemId = some(targetId)
-    ))
+    events.add(
+      event_factory.commandCompleted(
+        houseId,
+        command.fleetId,
+        "Move",
+        details = &"arrived at {targetId}",
+        systemId = some(targetId),
+      )
+    )
     return
 
-  logDebug(LogCategory.lcFleet, &"Fleet {command.fleetId} moving from {startId} to {targetId}")
+  logDebug(
+    LogCategory.lcFleet, &"Fleet {command.fleetId} moving from {startId} to {targetId}"
+  )
 
   # Find path to destination (operations.md:6.1)
   let pathResult = state.starMap.findPath(startId, targetId, fleet)
 
   if not pathResult.found:
-    logWarn(LogCategory.lcFleet, &"Fleet {command.fleetId}: No valid path found (blocked by restricted lanes or terrain)")
+    logWarn(
+      LogCategory.lcFleet,
+      &"Fleet {command.fleetId}: No valid path found (blocked by restricted lanes or terrain)",
+    )
     return
 
   if pathResult.path.len < 2:
@@ -279,7 +305,7 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, command: Fl
     return
 
   # Determine how many jumps the fleet can make this turn
-  var jumpsAllowed = 1  # Default: 1 jump per turn
+  var jumpsAllowed = 1 # Default: 1 jump per turn
 
   # Check if we can do 2 major lane jumps (operations.md:6.1)
   if pathResult.path.len >= 3:
@@ -293,7 +319,7 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, command: Fl
     # Check if next two jumps are both major lanes
     var nextTwoAreMajor = true
     if allSystemsOwned:
-      for i in 0..<min(2, pathResult.path.len - 1):
+      for i in 0 ..< min(2, pathResult.path.len - 1):
         let fromSys = pathResult.path[i]
         let toSys = pathResult.path[i + 1]
 
@@ -301,7 +327,7 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, command: Fl
         var laneIsMajor = false
         for lane in state.starMap.lanes:
           if (lane.source == fromSys and lane.destination == toSys) or
-             (lane.source == toSys and lane.destination == fromSys):
+              (lane.source == toSys and lane.destination == fromSys):
             if lane.laneType == LaneType.Major:
               laneIsMajor = true
             break
@@ -324,23 +350,29 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, command: Fl
   state.fleets[command.fleetId] = fleet
 
   # Generate OrderCompleted event for fleet movement
-  let moveDetails = if newLocation == targetId:
-    &"arrived at {targetId}"
-  else:
-    &"moved from {startId} to {newLocation} ({actualJumps} jump(s))"
+  let moveDetails =
+    if newLocation == targetId:
+      &"arrived at {targetId}"
+    else:
+      &"moved from {startId} to {newLocation} ({actualJumps} jump(s))"
 
-  events.add(event_factory.commandCompleted(
-    houseId,
-    command.fleetId,
-    "Move",
-    details = moveDetails,
-    systemId = some(newLocation)
-  ))
+  events.add(
+    event_factory.commandCompleted(
+      houseId,
+      command.fleetId,
+      "Move",
+      details = moveDetails,
+      systemId = some(newLocation),
+    )
+  )
 
   # Check if we've arrived at final destination (N+1 behavior)
   # Event generated above, cleanup handled by Command Phase
   if newLocation == targetId:
-    logInfo(LogCategory.lcFleet, &"Fleet {command.fleetId} arrived at destination {targetId}, order complete")
+    logInfo(
+      LogCategory.lcFleet,
+      &"Fleet {command.fleetId} arrived at destination {targetId}, order complete",
+    )
 
     # Check if this fleet is on a spy mission and start mission on arrival
     if fleet.missionState == FleetMissionState.Traveling:
@@ -357,30 +389,38 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, command: Fl
         targetSystem: updatedFleet.location,
         scoutCount: scoutCount,
         startTurn: state.turn,
-        ownerHouse: updatedFleet.owner
+        ownerHouse: updatedFleet.owner,
       )
 
       # Update fleet in state
       state.fleets[command.fleetId] = updatedFleet
 
       # Generate mission start event
-      let missionName = case SpyMissionType(updatedFleet.missionType.get())
+      let missionName =
+        case SpyMissionType(updatedFleet.missionType.get())
         of SpyMissionType.SpyOnPlanet: "spy mission"
         of SpyMissionType.HackStarbase: "starbase hack"
         of SpyMissionType.SpyOnSystem: "system reconnaissance"
 
-      events.add(event_factory.commandCompleted(
-        houseId,
-        command.fleetId,
-        "SpyMissionStarted",
-        details = &"{missionName} started at {targetId} ({scoutCount} scouts)",
-        systemId = some(targetId)
-      ))
+      events.add(
+        event_factory.commandCompleted(
+          houseId,
+          command.fleetId,
+          "SpyMissionStarted",
+          details = &"{missionName} started at {targetId} ({scoutCount} scouts)",
+          systemId = some(targetId),
+        )
+      )
 
-      logInfo(LogCategory.lcFleet, &"Fleet {command.fleetId} spy mission started at {targetId}")
-
+      logInfo(
+        LogCategory.lcFleet,
+        &"Fleet {command.fleetId} spy mission started at {targetId}",
+      )
   else:
-    logInfo(LogCategory.lcFleet, &"Fleet {command.fleetId} moved {actualJumps} jump(s) to system {newLocation}")
+    logInfo(
+      LogCategory.lcFleet,
+      &"Fleet {command.fleetId} moved {actualJumps} jump(s) to system {newLocation}",
+    )
 
   # Automatic intelligence gathering when arriving at system
   # ANY fleet presence reveals enemy colonies (passive reconnaissance)
@@ -388,15 +428,23 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, command: Fl
     let colony = state.colonies[newLocation]
     if colony.owner != houseId:
       # Generate basic intelligence report on enemy colony
-      let intelReport = generateColonyIntelReport(state, houseId, newLocation, intel_types.IntelQuality.Visual)
+      let intelReport = generateColonyIntelReport(
+        state, houseId, newLocation, intel_types.IntelQuality.Visual
+      )
       if intelReport.isSome:
         # Use withHouse template to ensure proper write-back
         var h = state.houses[houseId]
         h.intelligence.addColonyReport(intelReport.get())
         state.houses[houseId] = h
-        logInfo(LogCategory.lcFleet, &"Fleet {command.fleetId} ({houseId}) gathered intelligence on enemy colony at {newLocation} (owner: {colony.owner}) - DB now has {h.intelligence.colonyReports.len} reports")
+        logInfo(
+          LogCategory.lcFleet,
+          &"Fleet {command.fleetId} ({houseId}) gathered intelligence on enemy colony at {newLocation} (owner: {colony.owner}) - DB now has {h.intelligence.colonyReports.len} reports",
+        )
       else:
-        logWarn(LogCategory.lcFleet, &"Fleet {command.fleetId} ({houseId}) failed to generate intel report for enemy colony at {newLocation}")
+        logWarn(
+          LogCategory.lcFleet,
+          &"Fleet {command.fleetId} ({houseId}) failed to generate intel report for enemy colony at {newLocation}",
+        )
 
   # Check for fleet encounters at destination with STEALTH DETECTION
   # Per assets.md:2.4.3 - Cloaked fleets can only be detected by scouts or starbases
@@ -410,39 +458,54 @@ proc resolveMovementCommand*(state: var GameState, houseId: HouseId, command: Fl
       if otherFleet.owner != houseId:
         # STEALTH CHECK: Cloaked fleets only detected by scouts
         if otherFleet.isCloaked() and not hasScouts:
-          logDebug(LogCategory.lcFleet, &"Fleet {command.fleetId} failed to detect cloaked fleet {otherFleetId} at {newLocation} (no scouts)")
-          continue  # Cloaked fleet remains undetected
+          logDebug(
+            LogCategory.lcFleet,
+            &"Fleet {command.fleetId} failed to detect cloaked fleet {otherFleetId} at {newLocation} (no scouts)",
+          )
+          continue # Cloaked fleet remains undetected
 
-        logInfo(LogCategory.lcFleet, &"Fleet {command.fleetId} encountered fleet {otherFleetId} ({otherFleet.owner}) at {newLocation}")
+        logInfo(
+          LogCategory.lcFleet,
+          &"Fleet {command.fleetId} encountered fleet {otherFleetId} ({otherFleet.owner}) at {newLocation}",
+        )
         enemyFleetsAtLocation.add((otherFleetId, otherFleet))
 
     # Generate fleet encounter event (Phase 7b)
     if enemyFleetsAtLocation.len > 0:
       let encounteredIds = enemyFleetsAtLocation.mapIt(it.fleetId)
-      let relation = state.houses[houseId].diplomaticRelations.getDiplomaticState(enemyFleetsAtLocation[0].fleet.owner)
+      let relation = state.houses[houseId].diplomaticRelations.getDiplomaticState(
+        enemyFleetsAtLocation[0].fleet.owner
+      )
       let diplomaticStatus = $relation
 
-      events.add(event_factory.fleetEncounter(
-        houseId,
-        command.fleetId,
-        encounteredIds,
-        diplomaticStatus,
-        newLocation
-      ))
+      events.add(
+        event_factory.fleetEncounter(
+          houseId, command.fleetId, encounteredIds, diplomaticStatus, newLocation
+        )
+      )
 
     # Automatic fleet intelligence gathering - detected enemy fleets
     if enemyFleetsAtLocation.len > 0:
-      let systemIntelReport = generateSystemIntelReport(state, houseId, newLocation, intel_types.IntelQuality.Visual)
+      let systemIntelReport = generateSystemIntelReport(
+        state, houseId, newLocation, intel_types.IntelQuality.Visual
+      )
       if systemIntelReport.isSome:
         state.withHouse(houseId):
           house.intelligence.addSystemReport(systemIntelReport.get())
-        logDebug(LogCategory.lcFleet, &"Fleet {command.fleetId} gathered intelligence on {enemyFleetsAtLocation.len} enemy fleet(s) at {newLocation}")
+        logDebug(
+          LogCategory.lcFleet,
+          &"Fleet {command.fleetId} gathered intelligence on {enemyFleetsAtLocation.len} enemy fleet(s) at {newLocation}",
+        )
 
     # Combat will be resolved in conflict phase next turn
     # This just logs the encounter
 
-proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, command: FleetCommand,
-                              events: var seq[GameEvent]) =
+proc resolveColonizationCommand*(
+    state: var GameState,
+    houseId: HouseId,
+    command: FleetCommand,
+    events: var seq[GameEvent],
+) =
   ## Establish a new colony with prestige rewards
   if command.targetSystem.isNone:
     return
@@ -457,19 +520,29 @@ proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, command
     # Fleet approaching colony for colonization/guard/blockade gets close enough to see orbital defenses
     if colony.owner != houseId:
       # Generate detailed colony intel including orbital defenses
-      let colonyIntel = generateColonyIntelReport(state, houseId, targetId, intel_types.IntelQuality.Visual)
+      let colonyIntel = generateColonyIntelReport(
+        state, houseId, targetId, intel_types.IntelQuality.Visual
+      )
       if colonyIntel.isSome:
         state.withHouse(houseId):
           house.intelligence.addColonyReport(colonyIntel.get())
-        logDebug(LogCategory.lcFleet, &"Fleet {command.fleetId} gathered orbital intelligence on enemy colony at {targetId}")
+        logDebug(
+          LogCategory.lcFleet,
+          &"Fleet {command.fleetId} gathered orbital intelligence on enemy colony at {targetId}",
+        )
 
       # Also gather system intel on any fleets present (including guard/reserve fleets)
-      let systemIntel = generateSystemIntelReport(state, houseId, targetId, intel_types.IntelQuality.Visual)
+      let systemIntel = generateSystemIntelReport(
+        state, houseId, targetId, intel_types.IntelQuality.Visual
+      )
       if systemIntel.isSome:
         state.withHouse(houseId):
           house.intelligence.addSystemReport(systemIntel.get())
 
-    logWarn(LogCategory.lcColonization, &"Fleet {command.fleetId}: System {targetId} already colonized by {colony.owner}")
+    logWarn(
+      LogCategory.lcColonization,
+      &"Fleet {command.fleetId}: System {targetId} already colonized by {colony.owner}",
+    )
     return
 
   let fleetOpt = state.getFleet(command.fleetId)
@@ -478,25 +551,37 @@ proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, command
 
   # Check system exists
   if targetId notin state.starMap.systems:
-    logError(LogCategory.lcColonization, &"Fleet {command.fleetId}: System {targetId} not found in starMap")
+    logError(
+      LogCategory.lcColonization,
+      &"Fleet {command.fleetId}: System {targetId} not found in starMap",
+    )
     return
 
   var fleet = fleetOpt.get()
 
   # If fleet not at target, move there first
   if fleet.location != targetId:
-    logDebug(LogCategory.lcColonization, &"Fleet {command.fleetId} not at target - moving from {fleet.location} to {targetId}")
+    logDebug(
+      LogCategory.lcColonization,
+      &"Fleet {command.fleetId} not at target - moving from {fleet.location} to {targetId}",
+    )
     # Create temporary movement order to get fleet to destination
     let moveOrder = FleetOrder(
       fleetId: command.fleetId,
       orderType: FleetCommandType.Move,
       targetSystem: some(targetId),
       targetFleet: none(FleetId),
-      priority: command.priority
+      priority: command.priority,
     )
-    logDebug(LogCategory.lcColonization, &"Calling resolveMovementCommand for fleet {command.fleetId}")
+    logDebug(
+      LogCategory.lcColonization,
+      &"Calling resolveMovementCommand for fleet {command.fleetId}",
+    )
     resolveMovementCommand(state, houseId, moveOrder, events)
-    logDebug(LogCategory.lcColonization, &"resolveMovementCommand returned for fleet {command.fleetId}")
+    logDebug(
+      LogCategory.lcColonization,
+      &"resolveMovementCommand returned for fleet {command.fleetId}",
+    )
 
     # Reload fleet after movement
     let movedFleetOpt = state.getFleet(command.fleetId)
@@ -506,7 +591,10 @@ proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, command
 
     # Check if fleet reached destination (might be multiple jumps away)
     if fleet.location != targetId:
-      logWarn(LogCategory.lcColonization, &"Fleet {command.fleetId} still not at target after movement (too far)")
+      logWarn(
+        LogCategory.lcColonization,
+        &"Fleet {command.fleetId} still not at target after movement (too far)",
+      )
       return
 
   # Check fleet has colonists (in Expansion squadrons)
@@ -520,7 +608,10 @@ proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, command
           break
 
   if not hasColonists:
-    logError(LogCategory.lcColonization, &"Fleet {command.fleetId} has no colonists (PTU) - colonization failed")
+    logError(
+      LogCategory.lcColonization,
+      &"Fleet {command.fleetId} has no colonists (PTU) - colonization failed",
+    )
     return
 
   # Establish colony using system's actual planet properties
@@ -539,11 +630,13 @@ proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, command
           ptuToDeposit = cargo.quantity
           break
 
-  logInfo(LogCategory.lcColonization, &"Fleet {command.fleetId} colonizing {planetClass} world with {resources} resources at {targetId} (depositing {ptuToDeposit} PTU)")
+  logInfo(
+    LogCategory.lcColonization,
+    &"Fleet {command.fleetId} colonizing {planetClass} world with {resources} resources at {targetId} (depositing {ptuToDeposit} PTU)",
+  )
 
   # Create ETAC colony (foundation colony with ptuToDeposit starter population)
-  let colony = createETACColony(targetId, houseId, planetClass, resources,
-                                ptuToDeposit)
+  let colony = createETACColony(targetId, houseId, planetClass, resources, ptuToDeposit)
 
   # Use colonization engine to establish with prestige
   let result = col_engine.establishColony(
@@ -551,7 +644,7 @@ proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, command
     targetId,
     colony.planetClass,
     colony.resources,
-    ptuToDeposit  # Deposit all cargo (3 PTU = 3 PU foundation colony)
+    ptuToDeposit, # Deposit all cargo (3 PTU = 3 PU foundation colony)
   )
 
   if not result.success:
@@ -566,28 +659,40 @@ proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, command
       if squadron.flagship.cargo.isSome:
         var cargo = squadron.flagship.cargo.get()
         if cargo.cargoType == CargoType.Colonists:
-          logInfo(LogCategory.lcColonization,
-            &"⚠️  PRE-UNLOAD: {squadron.flagship.shipClass} {squadron.id} has {cargo.quantity} PTU")
+          logInfo(
+            LogCategory.lcColonization,
+            &"⚠️  PRE-UNLOAD: {squadron.flagship.shipClass} {squadron.id} has {cargo.quantity} PTU",
+          )
           # Unload cargo
           cargo.quantity = 0
           cargo.cargoType = CargoType.None
           squadron.flagship.cargo = some(cargo)
-          logInfo(LogCategory.lcColonization,
-            &"⚠️  POST-UNLOAD: {squadron.flagship.shipClass} {squadron.id} has {cargo.quantity} PTU")
+          logInfo(
+            LogCategory.lcColonization,
+            &"⚠️  POST-UNLOAD: {squadron.flagship.shipClass} {squadron.id} has {cargo.quantity} PTU",
+          )
 
   # ETAC cannibalized - remove from game, structure becomes colony infrastructure
-  logInfo(LogCategory.lcColonization,
+  logInfo(
+    LogCategory.lcColonization,
     &"⚠️  CANNIBALIZATION CHECK: Fleet {command.fleetId} has " &
-    &"{fleet.squadrons.len} squadrons")
+      &"{fleet.squadrons.len} squadrons",
+  )
 
   var cannibalized_count = 0
   for i in countdown(fleet.squadrons.high, 0):
     let squadron = fleet.squadrons[i]
     if squadron.squadronType == SquadronType.Expansion:
       let cargo = squadron.flagship.cargo
-      let cargoQty = if cargo.isSome: cargo.get().quantity else: 0
-      logInfo(LogCategory.lcColonization,
-        &"⚠️  Squadron {i}: class={squadron.flagship.shipClass}, cargoQty={cargoQty}")
+      let cargoQty =
+        if cargo.isSome:
+          cargo.get().quantity
+        else:
+          0
+      logInfo(
+        LogCategory.lcColonization,
+        &"⚠️  Squadron {i}: class={squadron.flagship.shipClass}, cargoQty={cargoQty}",
+      )
 
       if squadron.flagship.shipClass == ShipClass.ETAC and cargoQty == 0:
         # ETAC cannibalized - ship structure becomes starting IU
@@ -595,21 +700,28 @@ proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, command
         cannibalized_count += 1
 
         # Fire GameEvent for colonization success
-        events.add(GameEvent(
-          eventType: GameEventType.ColonyEstablished,
-          turn: state.turn,
-          houseId: some(houseId),
-          systemId: some(targetId),
-          description: &"ETAC {squadron.id} cannibalized establishing colony infrastructure",
-          colonyEventType: some("Established")
-        ))
+        events.add(
+          GameEvent(
+            eventType: GameEventType.ColonyEstablished,
+            turn: state.turn,
+            houseId: some(houseId),
+            systemId: some(targetId),
+            description:
+              &"ETAC {squadron.id} cannibalized establishing colony infrastructure",
+            colonyEventType: some("Established"),
+          )
+        )
 
-        logInfo(LogCategory.lcColonization,
-          &"⚠️  ✅ CANNIBALIZED ETAC {squadron.id} at {targetId}")
+        logInfo(
+          LogCategory.lcColonization,
+          &"⚠️  ✅ CANNIBALIZED ETAC {squadron.id} at {targetId}",
+        )
 
-  logInfo(LogCategory.lcColonization,
+  logInfo(
+    LogCategory.lcColonization,
     &"⚠️  CANNIBALIZATION RESULT: {cannibalized_count} ETACs removed, " &
-    &"{fleet.squadrons.len} squadrons remain")
+      &"{fleet.squadrons.len} squadrons remain",
+  )
 
   state.fleets[command.fleetId] = fleet
 
@@ -619,28 +731,37 @@ proc resolveColonizationCommand*(state: var GameState, houseId: HouseId, command
     let prestigeEvent = result.prestigeEvent.get()
     prestigeAwarded = prestigeEvent.amount
     applyPrestigeEvent(state, houseId, prestigeEvent)
-    logInfo(LogCategory.lcColonization, &"{state.houses[houseId].name} colonized system {targetId} (+{prestigeEvent.amount} prestige)")
+    logInfo(
+      LogCategory.lcColonization,
+      &"{state.houses[houseId].name} colonized system {targetId} (+{prestigeEvent.amount} prestige)",
+    )
 
   # Generate event
-  events.add(event_factory.colonyEstablished(
-    houseId,
-    targetId,
-    prestigeAwarded
-  ))
+  events.add(event_factory.colonyEstablished(houseId, targetId, prestigeAwarded))
 
   # Generate OrderCompleted event for successful colonization
   # Cleanup handled by Command Phase
-  events.add(event_factory.commandCompleted(
-    houseId, command.fleetId, "Colonize",
-    details = &"established colony at {targetId}",
-    systemId = some(targetId)
-  ))
+  events.add(
+    event_factory.commandCompleted(
+      houseId,
+      command.fleetId,
+      "Colonize",
+      details = &"established colony at {targetId}",
+      systemId = some(targetId),
+    )
+  )
 
-  logDebug(LogCategory.lcColonization,
-    &"Fleet {command.fleetId} colonization complete, cleanup deferred to Command Phase")
+  logDebug(
+    LogCategory.lcColonization,
+    &"Fleet {command.fleetId} colonization complete, cleanup deferred to Command Phase",
+  )
 
-proc resolveViewWorldCommand*(state: var GameState, houseId: HouseId, command: FleetCommand,
-                            events: var seq[GameEvent]) =
+proc resolveViewWorldCommand*(
+    state: var GameState,
+    houseId: HouseId,
+    command: FleetCommand,
+    events: var seq[GameEvent],
+) =
   ## Perform long-range planetary reconnaissance (Order 19)
   ## Ship approaches system edge, scans planet, retreats to deep space
   ## Gathers: planet owner (if colonized) and planet class (production potential)
@@ -667,13 +788,13 @@ proc resolveViewWorldCommand*(state: var GameState, houseId: HouseId, command: F
       colonyId: targetId,
       targetOwner: colony.owner,
       gatheredTurn: state.turn,
-      quality: intel_types.IntelQuality.Scan,  # Long-range scan quality
+      quality: intel_types.IntelQuality.Scan, # Long-range scan quality
       # Colony stats: minimal info from long-range scan
-      population: 0,               # Unknown from long range
-      industry: 0,                 # Unknown from long range
-      defenses: 0,                 # Unknown from long range
-      starbaseLevel: 0,            # Unknown from long range
-      constructionQueue: @[],      # Unknown from long range
+      population: 0, # Unknown from long range
+      industry: 0, # Unknown from long range
+      defenses: 0, # Unknown from long range
+      starbaseLevel: 0, # Unknown from long range
+      constructionQueue: @[], # Unknown from long range
       # Economic intel: not available from long-range scan
       grossOutput: none(int),
       taxRevenue: none(int),
@@ -681,49 +802,61 @@ proc resolveViewWorldCommand*(state: var GameState, houseId: HouseId, command: F
       unassignedSquadronCount: 0,
       reserveFleetCount: 0,
       mothballedFleetCount: 0,
-      shipyardCount: 0
+      shipyardCount: 0,
     )
 
     house.intelligence.colonyReports[targetId] = intelReport
-    logInfo(LogCategory.lcFleet,
-            &"{house.name} viewed world at {targetId}: Owner={colony.owner}, Class={colony.planetClass}")
+    logInfo(
+      LogCategory.lcFleet,
+      &"{house.name} viewed world at {targetId}: Owner={colony.owner}, Class={colony.planetClass}",
+    )
   else:
     # Uncolonized system - no intel report needed
     # Just log that we found an uncolonized system
     if targetId in state.starMap.systems:
-      logInfo(LogCategory.lcFleet,
-              &"{house.name} viewed uncolonized system at {targetId}")
+      logInfo(
+        LogCategory.lcFleet, &"{house.name} viewed uncolonized system at {targetId}"
+      )
 
   state.houses[houseId] = house
 
   # Generate event
-  events.add(event_factory.intelGathered(
-    houseId,
-    HouseId("neutral"),  # ViewWorld doesn't target a specific house
-    targetId,
-    "long-range planetary scan"
-  ))
+  events.add(
+    event_factory.intelGathered(
+      houseId,
+      HouseId("neutral"), # ViewWorld doesn't target a specific house
+      targetId,
+      "long-range planetary scan",
+    )
+  )
 
   # Generate OrderCompleted event for successful scan
-  var scanDetails = if targetId in state.colonies:
-    let colony = state.colonies[targetId]
-    &"scanned {targetId} (owner: {colony.owner})"
-  else:
-    &"scanned uncolonized system {targetId}"
+  var scanDetails =
+    if targetId in state.colonies:
+      let colony = state.colonies[targetId]
+      &"scanned {targetId} (owner: {colony.owner})"
+    else:
+      &"scanned uncolonized system {targetId}"
 
-  events.add(event_factory.commandCompleted(
-    houseId,
-    command.fleetId,
-    "ViewWorld",
-    details = scanDetails,
-    systemId = some(targetId)
-  ))
+  events.add(
+    event_factory.commandCompleted(
+      houseId,
+      command.fleetId,
+      "ViewWorld",
+      details = scanDetails,
+      systemId = some(targetId),
+    )
+  )
 
   # Order completes - fleet remains at system (player must issue new orders)
   # NOTE: Fleet is in deep space, not orbit, so no orbital combat triggered
   # Cleanup handled by Command Phase
 
-proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], events: var seq[GameEvent]) =
+proc autoLoadCargo*(
+    state: var GameState,
+    orders: Table[HouseId, OrderPacket],
+    events: var seq[GameEvent],
+) =
   ## Automatically load available marines/colonists onto empty transports at colonies
   ## NOTE: Manual cargo operations now use zero-turn commands (executed before turn resolution)
   ## This auto-load only processes fleets that weren't manually managed
@@ -762,34 +895,36 @@ proc autoLoadCargo*(state: var GameState, orders: Table[HouseId, OrderPacket], e
           if colony.marines > 0:
             let capacity = squadron.flagship.baseCarryLimit()
             let loadAmount = min(capacity, colony.marines)
-            squadron.flagship.cargo = some(ShipCargo(
-              cargoType: CargoType.Marines,
-              quantity: loadAmount,
-              capacity: capacity
-            ))
+            squadron.flagship.cargo = some(
+              ShipCargo(
+                cargoType: CargoType.Marines, quantity: loadAmount, capacity: capacity
+              )
+            )
             colony.marines -= loadAmount
             modified = true
-            logInfo(LogCategory.lcFleet, &"Auto-loaded {loadAmount} Marines onto {squadron.id} at {systemId}")
-
+            logInfo(
+              LogCategory.lcFleet,
+              &"Auto-loaded {loadAmount} Marines onto {squadron.id} at {systemId}",
+            )
         of ShipClass.ETAC:
           # Auto-load colonists if available (1 PTU commitment)
           # ETACs carry exactly 1 PTU for colonization missions
           # Per config/population.toml [transfer_limits] min_source_pu_remaining = 1
-          let minSoulsToKeep = 1_000_000  # 1 PU minimum
+          let minSoulsToKeep = 1_000_000 # 1 PU minimum
           if colony.souls > minSoulsToKeep + soulsPerPtu():
             let capacity = squadron.flagship.baseCarryLimit()
-            squadron.flagship.cargo = some(ShipCargo(
-              cargoType: CargoType.Colonists,
-              quantity: 1,
-              capacity: capacity
-            ))
+            squadron.flagship.cargo = some(
+              ShipCargo(cargoType: CargoType.Colonists, quantity: 1, capacity: capacity)
+            )
             colony.souls -= soulsPerPtu()
             colony.population = colony.souls div 1_000_000
             modified = true
-            logInfo(LogCategory.lcColonization, &"Auto-loaded 1 PTU onto {squadron.id} at {systemId}")
-
+            logInfo(
+              LogCategory.lcColonization,
+              &"Auto-loaded 1 PTU onto {squadron.id} at {systemId}",
+            )
         else:
-          discard  # Other ship classes don't have spacelift capability
+          discard # Other ship classes don't have spacelift capability
 
       # Write back modified state if any cargo was loaded
       if modified:

@@ -8,7 +8,8 @@
 import std/[options, sequtils]
 import ../../types/combat as combat_types
 import cer, targeting, damage
-import ../../../../common/[types/core, types/units, types/combat as commonCombat, logger]
+import
+  ../../../../common/[types/core, types/units, types/combat as commonCombat, logger]
 import ../squadron/entity
 
 export combat_types
@@ -30,7 +31,7 @@ proc getStarbaseDetectionBonus*(taskForce: TaskForce): int =
   ## Get detection bonus from starbases in task force
   ## Per reference.md:9.1, Starbases have ELI+2 capability
   if hasStarbaseDetection(taskForce):
-    return 2  # ELI+2 modifier
+    return 2 # ELI+2 modifier
   return 0
 
 ## Starbase Combat Integration
@@ -45,10 +46,7 @@ proc getStarbaseDetectionBonus*(taskForce: TaskForce): int =
 ##   AS: 45, DS: 50, Tech: 3, Cost: 300 PP
 
 proc createStarbaseCombatSquadron*(
-  starbaseId: SquadronId,
-  owner: HouseId,
-  location: SystemId,
-  techLevel: int = 3
+    starbaseId: SquadronId, owner: HouseId, location: SystemId, techLevel: int = 3
 ): CombatSquadron =
   ## Create a combat squadron for a starbase
   ## Starbases are always solo units (one per squadron)
@@ -59,26 +57,18 @@ proc createStarbaseCombatSquadron*(
   ## ✅ Applies WEP tech modifiers via getShipStats()
   ## ✅ Handles damage persistence via starbase.isCrippled field
 
-  let starbase = newShip(
-    ShipClass.Starbase,
-    techLevel = techLevel,
-    name = "Starbase"
-  )
+  let starbase = newShip(ShipClass.Starbase, techLevel = techLevel, name = "Starbase")
 
-  let squadron = newSquadron(
-    starbase,
-    id = starbaseId,
-    owner = owner,
-    location = location
-  )
+  let squadron =
+    newSquadron(starbase, id = starbaseId, owner = owner, location = location)
 
   result = CombatSquadron(
     squadron: squadron,
     state: CombatState.Undamaged,
     damageThisTurn: 0,
     crippleRound: 0,
-    bucket: TargetBucket.Capital,  # Starbases are in capital bucket
-    targetWeight: 1.0
+    bucket: TargetBucket.Capital, # Starbases are in capital bucket
+    targetWeight: 1.0,
   )
 
 ## Starbase Guard Orders (Section 6.2.5)
@@ -87,8 +77,8 @@ proc createStarbaseCombatSquadron*(
 ## confronted by hostile ships with orders 05-08 (Attack, Raid, Invade, Blitz)
 
 proc shouldStarbaseJoinCombat*(
-  attackerOrders: seq[int],  # Fleet orders from attacking forces
-  defenderHasStarbase: bool
+    attackerOrders: seq[int], # Fleet orders from attacking forces
+    defenderHasStarbase: bool,
 ): bool =
   ## Determine if starbase should join combat based on attacker orders
   ## Per operations.md:6.2.5 - Starbases only engage against orders 05-08
@@ -103,7 +93,7 @@ proc shouldStarbaseJoinCombat*(
     return false
 
   for command in attackerOrders:
-    if order in [5, 6, 7, 8]:  # Attack, Raid, Invade, Blitz
+    if order in [5, 6, 7, 8]: # Attack, Raid, Invade, Blitz
       return true
 
   return false

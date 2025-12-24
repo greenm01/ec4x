@@ -22,15 +22,14 @@
 
 # Import types module for PrestigeEvent
 import types
-import ../../common/types/core  # For HouseId
+import ../../common/types/core # For HouseId
 
 # Forward declare GameState to avoid circular dependency
 # The actual import happens in modules that call these procs
-type
-  GameState = object  # Placeholder - will be the real type from gamestate.nim (NOT exported to avoid ambiguity)
+type GameState = object
+  # Placeholder - will be the real type from gamestate.nim (NOT exported to avoid ambiguity)
 
-proc applyPrestigeEvent*[T](state: var T, houseId: HouseId,
-                            event: PrestigeEvent) =
+proc applyPrestigeEvent*[T](state: var T, houseId: HouseId, event: PrestigeEvent) =
   ## Apply a single prestige event to a house
   ##
   ## This is the ONLY function that should mutate house.prestige
@@ -52,8 +51,9 @@ proc applyPrestigeEvent*[T](state: var T, houseId: HouseId,
   # Apply prestige change
   state.houses[houseId].prestige += event.amount
 
-proc applyPrestigeEvents*[T](state: var T, houseId: HouseId,
-                             events: seq[PrestigeEvent]) =
+proc applyPrestigeEvents*[T](
+    state: var T, houseId: HouseId, events: seq[PrestigeEvent]
+) =
   ## Apply multiple prestige events to a house
   ##
   ## Convenience function for applying a batch of events

@@ -7,12 +7,10 @@ import std/[options, math]
 import ../../types/[telemetry, core, game_state, event]
 
 proc collectCombatMetrics*(
-  state: GameState,
-  houseId: HouseId,
-  prevMetrics: DiagnosticMetrics
+    state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
 ): DiagnosticMetrics =
   ## Collect combat metrics from events and GameState
-  result = prevMetrics  # Start with previous metrics
+  result = prevMetrics # Start with previous metrics
 
   # Initialize combat counters for this turn
   var spaceCombatWins = 0'i32
@@ -53,9 +51,9 @@ proc collectCombatMetrics*(
       elif event.defendingHouseId == some(houseId):
         spaceCombatTotal += 1
         if event.outcome == some("Defeat"):
-          spaceCombatWins += 1  # Defender wins if attacker loses
+          spaceCombatWins += 1 # Defender wins if attacker loses
         elif event.outcome == some("Victory"):
-          spaceCombatLosses += 1  # Defender loses if attacker wins
+          spaceCombatLosses += 1 # Defender loses if attacker wins
 
     # Raider detection events
     elif event.eventType == RaiderDetected:
@@ -63,7 +61,6 @@ proc collectCombatMetrics*(
         # This house's raiders were detected
         raidersDetected += 1
       # TODO: Extract CLK rolls from event details if available
-
     elif event.eventType == RaiderStealthSuccess:
       if event.houseId == some(houseId):
         raidersStealthSuccess += 1
@@ -105,7 +102,6 @@ proc collectCombatMetrics*(
     elif event.eventType == InvasionBegan:
       if event.houseId == some(houseId):
         totalInvasions += 1
-
     elif event.eventType == ColonyCaptured:
       if event.newOwner == some(houseId):
         # Successful invasion by this house

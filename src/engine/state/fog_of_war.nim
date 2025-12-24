@@ -3,7 +3,8 @@
 ## Filters game state to create player-specific views with limited visibility.
 import std/[tables, options, sets]
 import ../types/intelligence as intel_types
-import ../types/[colony, core, diplomacy, fleet, game_state, house, player_view, starmap]
+import
+  ../types/[colony, core, diplomacy, fleet, game_state, house, player_view, starmap]
 import ./iterators
 
 proc getOwnedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
@@ -12,7 +13,8 @@ proc getOwnedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   if state.colonies.byOwner.contains(houseId):
     for colonyId in state.colonies.byOwner[houseId]:
       if state.colonies.entities.index.contains(colonyId):
-        let colony = state.colonies.entities.data[state.colonies.entities.index[colonyId]]
+        let colony =
+          state.colonies.entities.data[state.colonies.entities.index[colonyId]]
         result.incl(colony.systemId)
 
 proc getOccupiedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
@@ -21,7 +23,9 @@ proc getOccupiedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   for fleet in state.fleetsOwned(houseId):
     result.incl(fleet.location)
 
-proc getAdjacentSystems(state: GameState, knownSystems: HashSet[SystemId]): HashSet[SystemId] =
+proc getAdjacentSystems(
+    state: GameState, knownSystems: HashSet[SystemId]
+): HashSet[SystemId] =
   ## Get all systems one jump away from known systems
   result = initHashSet[SystemId]()
   for systemId in knownSystems:
@@ -30,12 +34,14 @@ proc getAdjacentSystems(state: GameState, knownSystems: HashSet[SystemId]): Hash
         if adjId notin knownSystems:
           result.incl(adjId)
 
-proc getScoutedSystems(state: GameState, houseId: HouseId,
-                      ownedSystems, occupiedSystems: HashSet[SystemId]): HashSet[SystemId] =
+proc getScoutedSystems(
+    state: GameState, houseId: HouseId, ownedSystems, occupiedSystems: HashSet[SystemId]
+): HashSet[SystemId] =
   ## Get systems with stale intel from intelligence database
   result = initHashSet[SystemId]()
 
-  if not state.intelligence.contains(houseId): return
+  if not state.intelligence.contains(houseId):
+    return
 
   let intel = state.intelligence[houseId]
 
@@ -55,8 +61,9 @@ proc getScoutedSystems(state: GameState, houseId: HouseId,
     if systemId notin ownedSystems and systemId notin occupiedSystems:
       result.incl(systemId)
 
-proc createVisibleColony(colony: Colony, isOwned: bool,
-                        intelReport: Option[intel_types.ColonyIntelReport]): VisibleColony =
+proc createVisibleColony(
+    colony: Colony, isOwned: bool, intelReport: Option[intel_types.ColonyIntelReport]
+): VisibleColony =
   ## Create a visible colony view
   result.colonyId = colony.id
   result.systemId = colony.systemId
@@ -89,9 +96,14 @@ proc countShips(state: GameState, fleet: Fleet): int32 =
       let squadron = state.squadrons.entities.data[state.squadrons.entities.index[sqId]]
       result += 1 + int32(squadron.ships.len)
 
-proc createVisibleFleet(state: GameState, fleet: Fleet, isOwned: bool, location: SystemId,
-                       intelReport: Option[intel_types.SystemIntelReport],
-                       currentTurn: int32): VisibleFleet =
+proc createVisibleFleet(
+    state: GameState,
+    fleet: Fleet,
+    isOwned: bool,
+    location: SystemId,
+    intelReport: Option[intel_types.SystemIntelReport],
+    currentTurn: int32,
+): VisibleFleet =
   ## Create a visible fleet view
   result.fleetId = fleet.id
   result.owner = fleet.houseId
@@ -129,9 +141,11 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
       let system = state.systems.entities.data[state.systems.entities.index[systemId]]
       let coords = (q: system.coords.q, r: system.coords.r)
       result.visibleSystems[systemId] = VisibleSystem(
-        systemId: systemId, visibility: VisibilityLevel.Owned,
-        lastScoutedTurn: some(state.turn), coordinates: some(coords),
-        jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId)
+        systemId: systemId,
+        visibility: VisibilityLevel.Owned,
+        lastScoutedTurn: some(state.turn),
+        coordinates: some(coords),
+        jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId),
       )
 
   # Occupied systems
@@ -141,9 +155,11 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
         let system = state.systems.entities.data[state.systems.entities.index[systemId]]
         let coords = (q: system.coords.q, r: system.coords.r)
         result.visibleSystems[systemId] = VisibleSystem(
-          systemId: systemId, visibility: VisibilityLevel.Occupied,
-          lastScoutedTurn: some(state.turn), coordinates: some(coords),
-          jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId)
+          systemId: systemId,
+          visibility: VisibilityLevel.Occupied,
+          lastScoutedTurn: some(state.turn),
+          coordinates: some(coords),
+          jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId),
         )
 
   # Scouted systems
@@ -156,9 +172,11 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
       if intel.systemReports.contains(systemId):
         lastTurn = max(lastTurn, intel.systemReports[systemId].gatheredTurn)
       result.visibleSystems[systemId] = VisibleSystem(
-        systemId: systemId, visibility: VisibilityLevel.Scouted,
-        lastScoutedTurn: some(lastTurn), coordinates: some(coords),
-        jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId)
+        systemId: systemId,
+        visibility: VisibilityLevel.Scouted,
+        lastScoutedTurn: some(lastTurn),
+        coordinates: some(coords),
+        jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId),
       )
 
   # Universal map awareness
@@ -166,9 +184,11 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
     if system.id notin result.visibleSystems:
       let coords = (q: system.coords.q, r: system.coords.r)
       result.visibleSystems[system.id] = VisibleSystem(
-        systemId: system.id, visibility: VisibilityLevel.Adjacent,
-        lastScoutedTurn: none(int32), coordinates: some(coords),
-        jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(system.id)
+        systemId: system.id,
+        visibility: VisibilityLevel.Adjacent,
+        lastScoutedTurn: none(int32),
+        coordinates: some(coords),
+        jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(system.id),
       )
 
   # Visible colonies
@@ -188,12 +208,17 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
   # Visible fleets
   for fleet in state.allFleets():
     if fleet.houseId != houseId:
-      let isVisible = fleet.location in ownedSystems or fleet.location in occupiedSystems
+      let isVisible =
+        fleet.location in ownedSystems or fleet.location in occupiedSystems
       if isVisible:
         var systemIntel: Option[intel_types.SystemIntelReport]
         if intel.systemReports.contains(fleet.location):
           systemIntel = some(intel.systemReports[fleet.location])
-        result.visibleFleets.add(createVisibleFleet(state, fleet, false, fleet.location, systemIntel, state.turn))
+        result.visibleFleets.add(
+          createVisibleFleet(
+            state, fleet, false, fleet.location, systemIntel, state.turn
+          )
+        )
 
   # Public information
   result.actProgression = state.actProgression

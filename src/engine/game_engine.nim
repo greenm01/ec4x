@@ -47,10 +47,12 @@ proc saveGame*(state: GameState) =
   save.saveGameState(state)
 
 # Turn execution
-proc processTurn*(state: var GameState, commands: Table[HouseId, CommandPacket]): TurnReport =
+proc processTurn*(
+    state: var GameState, commands: Table[HouseId, CommandPacket]
+): TurnReport =
   ## Execute complete turn cycle and return results
   result = turn_executor.executeTurnCycle(state, commands)
-  saveGame(state)  # Auto-save after each turn
+  saveGame(state) # Auto-save after each turn
 
 # Player views
 proc getPlayerView*(state: GameState, houseId: HouseId): PlayerView =

@@ -18,13 +18,11 @@ export Option
 var globalRNG* = initRand()
 
 type
-  ELIUnit* = object
-    ## A unit capable of ELI detection (fleet with scouts or starbase)
-    eliLevels*: seq[int]  ## ELI tech levels of all scouts in unit
-    isStarbase*: bool     ## True if this is a starbase (gets +2 ELI bonus vs spies)
+  ELIUnit* = object ## A unit capable of ELI detection (fleet with scouts or starbase)
+    eliLevels*: seq[int] ## ELI tech levels of all scouts in unit
+    isStarbase*: bool ## True if this is a starbase (gets +2 ELI bonus vs spies)
 
-  DetectionResult* = object
-    ## Result of a detection attempt
+  DetectionResult* = object ## Result of a detection attempt
     detected*: bool
     effectiveELI*: int
     threshold*: int
@@ -80,10 +78,7 @@ proc calculateEffectiveELI*(eliLevels: seq[int], isStarbase: bool = false): int 
 ## Spy Scout Detection
 
 proc detectSpyScouts*(
-  numScouts: int,
-  defenderELI: int,
-  starbaseBonus: int,
-  rng: var Rand
+    numScouts: int, defenderELI: int, starbaseBonus: int, rng: var Rand
 ): DetectionResult =
   ## Detect spy scouts using simplified formula from assets.md:2.4.2
   ## Formula: Target = 15 - numScouts + (defenderELI + starbaseBonus)
@@ -92,20 +87,18 @@ proc detectSpyScouts*(
   ## Returns detection result with roll details
 
   let targetNumber = 15 - numScouts + (defenderELI + starbaseBonus)
-  let roll = rng.rand(1..20)
+  let roll = rng.rand(1 .. 20)
   let detected = roll >= targetNumber
 
   result = DetectionResult(
     detected: detected,
     effectiveELI: defenderELI + starbaseBonus,
     threshold: targetNumber,
-    roll: roll
+    roll: roll,
   )
 
 proc detectSpyScouts*(
-  numScouts: int,
-  defenderELI: int,
-  starbaseBonus: int = 0
+    numScouts: int, defenderELI: int, starbaseBonus: int = 0
 ): DetectionResult =
   ## Wrapper using global RNG
   detectSpyScouts(numScouts, defenderELI, starbaseBonus, globalRNG)
@@ -113,10 +106,7 @@ proc detectSpyScouts*(
 ## Raider Detection
 
 proc detectRaider*(
-  attackerCLK: int,
-  defenderELI: int,
-  starbaseBonus: int,
-  rng: var Rand
+    attackerCLK: int, defenderELI: int, starbaseBonus: int, rng: var Rand
 ): DetectionResult =
   ## Detect cloaked raiders using opposed roll from assets.md:2.4.3
   ## Formula: Attacker rolls 1d10 + CLK vs Defender rolls 1d10 + ELI + starbaseBonus
@@ -124,21 +114,19 @@ proc detectRaider*(
   ##
   ## Returns detection result with roll details
 
-  let attackerRoll = rng.rand(1..10) + attackerCLK
-  let defenderRoll = rng.rand(1..10) + defenderELI + starbaseBonus
+  let attackerRoll = rng.rand(1 .. 10) + attackerCLK
+  let defenderRoll = rng.rand(1 .. 10) + defenderELI + starbaseBonus
   let detected = defenderRoll >= attackerRoll
 
   result = DetectionResult(
     detected: detected,
-    effectiveELI: defenderRoll,  # Defender's total roll
-    threshold: attackerRoll,     # Attacker's total roll (used as "threshold" to beat)
-    roll: defenderRoll           # Defender's roll (same as effectiveELI)
+    effectiveELI: defenderRoll, # Defender's total roll
+    threshold: attackerRoll, # Attacker's total roll (used as "threshold" to beat)
+    roll: defenderRoll, # Defender's roll (same as effectiveELI)
   )
 
 proc detectRaider*(
-  attackerCLK: int,
-  defenderELI: int,
-  starbaseBonus: int = 0
+    attackerCLK: int, defenderELI: int, starbaseBonus: int = 0
 ): DetectionResult =
   ## Wrapper using global RNG
   detectRaider(attackerCLK, defenderELI, starbaseBonus, globalRNG)

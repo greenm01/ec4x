@@ -72,7 +72,7 @@ proc getDockCapacityMultiplier*(cstLevel: int): float =
     if globalTechConfig.construction_tech.capacity_multiplier_per_level.isSome:
       globalTechConfig.construction_tech.capacity_multiplier_per_level.get()
     else:
-      0.10  # Default fallback
+      0.10 # Default fallback
   result = 1.0 + (float(cstLevel - 1) * multiplierPerLevel)
 
 proc calculateEffectiveDocks*(baseDocks: int, cstLevel: int): int =
@@ -88,7 +88,7 @@ proc calculateEffectiveDocks*(baseDocks: int, cstLevel: int): int =
 proc getELICounterCloakBonus*(eliLevel: int): int =
   ## Get bonus to detect cloaked raiders
   ## Used for quick calculations where full detection system not needed
-  result = eliLevel div 2  # +1 per 2 levels
+  result = eliLevel div 2 # +1 per 2 levels
 
 ## Terraforming Effects (economy.md:4.7)
 
@@ -104,26 +104,39 @@ proc getTerraformingBaseCost*(currentClass: int): int =
   ## Benign (5) -> Lush (6): 1500 PP
   ## Lush (6) -> Eden (7): 2000 PP
   case currentClass
-  of 1: 60    # Extreme -> Desolate
-  of 2: 180   # Desolate -> Hostile
-  of 3: 500   # Hostile -> Harsh
-  of 4: 1000  # Harsh -> Benign
-  of 5: 1500  # Benign -> Lush
-  of 6: 2000  # Lush -> Eden
-  else: 0     # Already Eden or invalid
+  of 1:
+    60
+  # Extreme -> Desolate
+  of 2:
+    180
+  # Desolate -> Hostile
+  of 3:
+    500
+  # Hostile -> Harsh
+  of 4:
+    1000
+  # Harsh -> Benign
+  of 5:
+    1500
+  # Benign -> Lush
+  of 6:
+    2000
+  # Lush -> Eden
+  else:
+    0 # Already Eden or invalid
 
 proc getTerraformingSpeed*(terLevel: int): int =
   ## Terraforming completes instantly (1 turn)
   ## Per new time narrative: turns represent variable time periods (1-15 years)
   ## TER level affects cost only, not duration
-  result = 1  # Always instant
+  result = 1 # Always instant
 
 proc canTerraform*(currentClass: int, terLevel: int): bool =
   ## Check if colony can be terraformed with current TER level
   ## Must have TER level equal to target class
   let targetClass = currentClass + 1
   if targetClass > 7:
-    return false  # Already Eden
+    return false # Already Eden
   return terLevel >= targetClass
 
 ## Cloaking Effects (economy.md:4.9)
@@ -156,14 +169,24 @@ proc getCarrierCapacityCV*(acoLevel: int): int =
   ## Get Carrier (CV) fighter capacity for ACO tech level
   ## Per economy.md:4.13
   case acoLevel
-  of 1: 3   # ACO I
-  of 2: 4   # ACO II
-  else: 5   # ACO III+
+  of 1:
+    3
+  # ACO I
+  of 2:
+    4
+  # ACO II
+  else:
+    5 # ACO III+
 
 proc getCarrierCapacityCX*(acoLevel: int): int =
   ## Get Super Carrier (CX) fighter capacity for ACO tech level
   ## Per economy.md:4.13
   case acoLevel
-  of 1: 5   # ACO I
-  of 2: 6   # ACO II
-  else: 8   # ACO III+
+  of 1:
+    5
+  # ACO I
+  of 2:
+    6
+  # ACO II
+  else:
+    8 # ACO III+

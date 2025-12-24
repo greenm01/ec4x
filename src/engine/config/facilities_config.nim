@@ -74,15 +74,16 @@ type
     multiple_docks_allowed*: bool
     squadron_commission_location*: string
 
-  FacilitiesConfig* = object
-    ## Complete facilities configuration loaded from TOML
+  FacilitiesConfig* = object ## Complete facilities configuration loaded from TOML
     spaceport*: SpaceportConfig
     shipyard*: ShipyardConfig
     drydock*: DrydockConfig
     starbase*: StarbaseConfig
     construction*: ConstructionConfig
 
-proc loadFacilitiesConfig*(configPath: string = "config/facilities.toml"): FacilitiesConfig =
+proc loadFacilitiesConfig*(
+    configPath: string = "config/facilities.toml"
+): FacilitiesConfig =
   ## Load facilities configuration from TOML file
   ## Uses toml_serialization for type-safe parsing
 

@@ -22,8 +22,7 @@ type
     production_split_production*: float
     production_split_research*: float
 
-  InfrastructureConfig* = object
-    # TODO: Add infrastructure modifiers when defined
+  InfrastructureConfig* = object # TODO: Add infrastructure modifiers when defined
 
   PlanetClassesConfig* = object
     extreme_pu_min*: int
@@ -156,8 +155,8 @@ type
     tier_5_pp*: int
 
   ColonizationConfig* = object
-    starting_infrastructure_level*: int  # Infrastructure level for new colonies
-    starting_iu_percent*: int  # Percentage of PU converted to starting IU
+    starting_infrastructure_level*: int # Infrastructure level for new colonies
+    starting_iu_percent*: int # Percentage of PU converted to starting IU
     eden_pp_per_ptu*: int
     lush_pp_per_ptu*: int
     benign_pp_per_ptu*: int
@@ -166,34 +165,29 @@ type
     desolate_pp_per_ptu*: int
     extreme_pp_per_ptu*: int
 
-  IndustrialGrowthConfig* = object
-    ## IU passive growth configuration
+  IndustrialGrowthConfig* = object ## IU passive growth configuration
     passive_growth_divisor*: float
     passive_growth_minimum*: float
     applies_modifiers*: bool
 
-  StarbaseBonusesConfig* = object
-    ## Starbase economic bonuses
+  StarbaseBonusesConfig* = object ## Starbase economic bonuses
     growth_bonus_per_starbase*: float
     max_starbases_for_bonus*: int
     eli_bonus_per_starbase*: int
 
-  SquadronCapacityConfig* = object
-    ## Capital squadron capacity limits
+  SquadronCapacityConfig* = object ## Capital squadron capacity limits
     capital_squadron_iu_divisor*: int
     capital_squadron_multiplier*: int
     capital_squadron_minimum*: int
 
-  ProductionModifiersConfig* = object
-    ## Production calculation modifiers
+  ProductionModifiersConfig* = object ## Production calculation modifiers
     el_bonus_per_level*: float
     cst_bonus_per_level*: float
     blockade_penalty*: float
     prod_growth_numerator*: float
     prod_growth_denominator*: float
 
-  EconomyConfig* = object
-    ## Complete economy configuration loaded from TOML
+  EconomyConfig* = object ## Complete economy configuration loaded from TOML
     population*: PopulationConfig
     production*: ProductionConfig
     infrastructure*: InfrastructureConfig

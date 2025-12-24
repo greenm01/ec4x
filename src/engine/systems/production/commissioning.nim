@@ -76,12 +76,11 @@ proc getStarbaseGrowthBonus*(state: GameState, colonyId: ColonyId): float =
   ## Calculate growth bonus from operational starbases
   ## Per specs: Each operational starbase provides growth bonus
   let operationalCount = getOperationalStarbaseCount(state, colonyId)
-  result = operationalCount.float * 0.05  # 5% per starbase
+  result = operationalCount.float * 0.05 # 5% per starbase
 
 proc hasSpaceport*(state: GameState, colonyId: ColonyId): bool =
   ## Check if colony has at least one spaceport using DoD
-  colonyId in state.spaceports.byColony and
-    state.spaceports.byColony[colonyId].len > 0
+  colonyId in state.spaceports.byColony and state.spaceports.byColony[colonyId].len > 0
 
 proc getShieldBlockChance*(shieldLevel: int): float =
   ## Calculate block chance for planetary shield level
@@ -92,9 +91,9 @@ proc getShieldBlockChance*(shieldLevel: int): float =
 # getTotalConstructionDocks and hasSpaceport moved to DoD versions above
 
 proc autoLoadFightersToCarriers(
-  state: var GameState,
-  modifiedColonies: Table[ColonyId, Colony],
-  events: var seq[GameEvent]
+    state: var GameState,
+    modifiedColonies: Table[ColonyId, Colony],
+    events: var seq[GameEvent],
 ) =
   ## Auto-load newly commissioned fighters onto carriers with available hangar
   ## space. Only processes colonies with autoLoadingEnabled = true.
@@ -136,8 +135,7 @@ proc autoLoadFightersToCarriers(
       continue
 
     # Get all carrier squadrons in fleets at this system
-    var carriersWithSpace: seq[tuple[squadronId: SquadronId,
-      availableSpace: int]] = @[]
+    var carriersWithSpace: seq[tuple[squadronId: SquadronId, availableSpace: int]] = @[]
 
     for fleetId in state.fleets.bySystem[systemId]:
       let fleetOpt = gs_helpers.getFleet(state, fleetId)
@@ -191,8 +189,7 @@ proc autoLoadFightersToCarriers(
         fightersToLoad.delete(0)
 
         # Get carrier squadron for updating
-        let carrierSquadronOpt =
-          state.squadrons[].entities.getEntity(carrierSquadronId)
+        let carrierSquadronOpt = state.squadrons[].entities.getEntity(carrierSquadronId)
         if carrierSquadronOpt.isNone:
           break
 
@@ -200,8 +197,7 @@ proc autoLoadFightersToCarriers(
 
         # Add fighter to carrier's embarked fighters
         carrierSquadron.embarkedFighters.add(fighterSquadronId)
-        state.squadrons.entities.updateEntity(carrierSquadronId,
-          carrierSquadron)
+        state.squadrons.entities.updateEntity(carrierSquadronId, carrierSquadron)
 
         # Remove fighter from colony
         # Note: We need to re-fetch colony from state since it may have been
@@ -220,29 +216,29 @@ proc autoLoadFightersToCarriers(
         loadedToThisCarrier += 1
         loadedCount += 1
 
-        logDebug("Economy",
+        logDebug(
+          "Economy",
           &"Auto-loaded fighter {fighterSquadronId} to carrier " &
-          &"{carrierSquadronId} at {systemId}")
+            &"{carrierSquadronId} at {systemId}",
+        )
 
       # Move to next carrier
       carrierIdx += 1
 
     if loadedCount > 0:
-      logInfo("Economy",
-        &"Auto-loaded {loadedCount} fighter squadron(s) at {systemId}")
+      logInfo("Economy", &"Auto-loaded {loadedCount} fighter squadron(s) at {systemId}")
 
       # Emit event for tracking
-      events.add(event_factory.unitRecruited(
-        colony.owner,
-        "Fighter Squadron (auto-loaded)",
-        systemId,
-        loadedCount
-      ))
+      events.add(
+        event_factory.unitRecruited(
+          colony.owner, "Fighter Squadron (auto-loaded)", systemId, loadedCount
+        )
+      )
 
 proc commissionPlanetaryDefense*(
-  state: var GameState,
-  completedProjects: seq[CompletedProject],
-  events: var seq[GameEvent]
+    state: var GameState,
+    completedProjects: seq[CompletedProject],
+    events: var seq[GameEvent],
 ) =
   ## Commission planetary defense assets in Maintenance Phase (same turn)
   ##
@@ -279,13 +275,16 @@ proc commissionPlanetaryDefense*(
     modifiedColonies[colId] = col
 
   for completed in completedProjects:
-    logInfo("Economy", &"Commissioning planetary defense: {completed.projectType} itemId={completed.itemId} at system-{completed.colonyId}")
+    logInfo(
+      "Economy",
+      &"Commissioning planetary defense: {completed.projectType} itemId={completed.itemId} at system-{completed.colonyId}",
+    )
 
     # Special handling for Fighters (planetary defense squadrons)
-    if (completed.projectType == BuildType.Facility and
-        completed.itemId == "FighterSquadron") or
-       (completed.projectType == BuildType.Ship and
-        completed.itemId == "Fighter"):
+    if (
+      completed.projectType == BuildType.Facility and
+      completed.itemId == "FighterSquadron"
+    ) or (completed.projectType == BuildType.Ship and completed.itemId == "Fighter"):
       if completed.colonyId in state.colonies.entities.index:
         let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
         if colonyOpt.isNone:
@@ -303,7 +302,8 @@ proc commissionPlanetaryDefense*(
         var fighterShipIds: seq[ShipId] = @[]
         for i in 0 ..< 12:
           let shipId = generateShipId(state)
-          let ship = ship_entity.newShip(ShipClass.Fighter, techLevel, "", shipId, SquadronId(0))
+          let ship =
+            ship_entity.newShip(ShipClass.Fighter, techLevel, "", shipId, SquadronId(0))
           state.ships.entities.addEntity(shipId, ship)
           fighterShipIds.add(shipId)
 
@@ -314,7 +314,7 @@ proc commissionPlanetaryDefense*(
           ShipClass.Fighter,
           squadronId,
           colony.owner,
-          colony.systemId
+          colony.systemId,
         )
         state.squadrons.entities.addEntity(squadronId, squadron)
 
@@ -328,20 +328,21 @@ proc commissionPlanetaryDefense*(
         colony.fighterSquadronIds.add(squadronId)
         state.colonies.entities.updateEntity(completed.colonyId, colony)
 
-        logInfo("Economy",
+        logInfo(
+          "Economy",
           &"Commissioned Fighter Squadron {squadronId} at {completed.colonyId} " &
-          &"(12 fighters, planetary defense)")
+            &"(12 fighters, planetary defense)",
+        )
 
         # Generate event
-        events.add(event_factory.buildingCompleted(
-          colony.owner,
-          "Fighter Squadron",
-          colony.systemId
-        ))
+        events.add(
+          event_factory.buildingCompleted(
+            colony.owner, "Fighter Squadron", colony.systemId
+          )
+        )
 
     # Special handling for starbases
-    elif completed.projectType == BuildType.Facility and
-         completed.itemId == "Starbase":
+    elif completed.projectType == BuildType.Facility and completed.itemId == "Starbase":
       # Commission starbase at colony using DoD
       if completed.colonyId in state.colonies.entities.index:
         let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
@@ -355,7 +356,7 @@ proc commissionPlanetaryDefense*(
           id: starbaseId,
           colonyId: completed.colonyId,
           commissionedTurn: state.turn,
-          isCrippled: false
+          isCrippled: false,
         )
 
         # Add to entity manager and update indexes
@@ -367,21 +368,20 @@ proc commissionPlanetaryDefense*(
         updatedColony.starbaseIds.add(starbaseId)
         state.colonies.entities.updateEntity(completed.colonyId, updatedColony)
 
-        logInfo("Economy",
+        logInfo(
+          "Economy",
           &"Commissioned starbase {starbaseId} at {completed.colonyId} " &
-          &"(Total operational: {getOperationalStarbaseCount(state, completed.colonyId)}, " &
-          &"Growth bonus: {int(getStarbaseGrowthBonus(state, completed.colonyId) * 100.0)}%)")
+            &"(Total operational: {getOperationalStarbaseCount(state, completed.colonyId)}, " &
+            &"Growth bonus: {int(getStarbaseGrowthBonus(state, completed.colonyId) * 100.0)}%)",
+        )
 
         # Generate event
-        events.add(event_factory.buildingCompleted(
-          colony.owner,
-          "Starbase",
-          colony.systemId
-        ))
+        events.add(
+          event_factory.buildingCompleted(colony.owner, "Starbase", colony.systemId)
+        )
 
     # Special handling for spaceports
-    elif completed.projectType == BuildType.Facility and
-         completed.itemId == "Spaceport":
+    elif completed.projectType == BuildType.Facility and completed.itemId == "Spaceport":
       if completed.colonyId in state.colonies.entities.index:
         let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
         if colonyOpt.isNone:
@@ -406,7 +406,7 @@ proc commissionPlanetaryDefense*(
           baseDocks: int32(baseDocks),
           effectiveDocks: int32(effectiveDocks),
           constructionQueue: @[],
-          activeConstructions: @[]
+          activeConstructions: @[],
         )
 
         # Add to entity manager and update indexes
@@ -418,18 +418,16 @@ proc commissionPlanetaryDefense*(
         updatedColony.spaceportIds.add(spaceportId)
         state.colonies.entities.updateEntity(completed.colonyId, updatedColony)
 
-        logInfo("Economy",
-          &"Commissioned spaceport {spaceportId} at {completed.colonyId}")
+        logInfo(
+          "Economy", &"Commissioned spaceport {spaceportId} at {completed.colonyId}"
+        )
 
-        events.add(event_factory.buildingCompleted(
-          colony.owner,
-          "Spaceport",
-          colony.systemId
-        ))
+        events.add(
+          event_factory.buildingCompleted(colony.owner, "Spaceport", colony.systemId)
+        )
 
     # Special handling for shipyards
-    elif completed.projectType == BuildType.Facility and
-         completed.itemId == "Shipyard":
+    elif completed.projectType == BuildType.Facility and completed.itemId == "Shipyard":
       if completed.colonyId in state.colonies.entities.index:
         let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
         if colonyOpt.isNone:
@@ -438,7 +436,10 @@ proc commissionPlanetaryDefense*(
 
         # Validate spaceport prerequisite
         if not hasSpaceport(state, completed.colonyId):
-          logError("Economy", &"Shipyard construction failed - no spaceport at {completed.colonyId}")
+          logError(
+            "Economy",
+            &"Shipyard construction failed - no spaceport at {completed.colonyId}",
+          )
           # This shouldn't happen if build validation worked correctly
           continue
 
@@ -461,7 +462,7 @@ proc commissionPlanetaryDefense*(
           effectiveDocks: int32(effectiveDocks),
           isCrippled: false,
           constructionQueue: @[],
-          activeConstructions: @[]
+          activeConstructions: @[],
         )
 
         # Add to entity manager and update indexes
@@ -473,18 +474,16 @@ proc commissionPlanetaryDefense*(
         updatedColony.shipyardIds.add(shipyardId)
         state.colonies.entities.updateEntity(completed.colonyId, updatedColony)
 
-        logInfo("Economy",
-          &"Commissioned shipyard {shipyardId} at {completed.colonyId}")
+        logInfo(
+          "Economy", &"Commissioned shipyard {shipyardId} at {completed.colonyId}"
+        )
 
-        events.add(event_factory.buildingCompleted(
-          colony.owner,
-          "Shipyard",
-          colony.systemId
-        ))
+        events.add(
+          event_factory.buildingCompleted(colony.owner, "Shipyard", colony.systemId)
+        )
 
     # Special handling for drydocks
-    elif completed.projectType == BuildType.Facility and
-         completed.itemId == "Drydock":
+    elif completed.projectType == BuildType.Facility and completed.itemId == "Drydock":
       if completed.colonyId in state.colonies.entities.index:
         let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
         if colonyOpt.isNone:
@@ -493,8 +492,10 @@ proc commissionPlanetaryDefense*(
 
         # Validate spaceport prerequisite
         if not hasSpaceport(state, completed.colonyId):
-          logError("Economy",
-                  &"Drydock construction failed - no spaceport at {completed.colonyId}")
+          logError(
+            "Economy",
+            &"Drydock construction failed - no spaceport at {completed.colonyId}",
+          )
           # This shouldn't happen if build validation worked correctly
           continue
 
@@ -517,7 +518,7 @@ proc commissionPlanetaryDefense*(
           effectiveDocks: int32(effectiveDocks),
           isCrippled: false,
           repairQueue: @[],
-          activeRepairs: @[]
+          activeRepairs: @[],
         )
 
         # Add to entity manager and update indexes
@@ -529,18 +530,15 @@ proc commissionPlanetaryDefense*(
         updatedColony.drydockIds.add(drydockId)
         state.colonies.entities.updateEntity(completed.colonyId, updatedColony)
 
-        logInfo("Economy",
-          &"Commissioned drydock {drydockId} at {completed.colonyId}")
+        logInfo("Economy", &"Commissioned drydock {drydockId} at {completed.colonyId}")
 
-        events.add(event_factory.buildingCompleted(
-          colony.owner,
-          "Drydock",
-          colony.systemId
-        ))
+        events.add(
+          event_factory.buildingCompleted(colony.owner, "Drydock", colony.systemId)
+        )
 
     # Special handling for ground batteries
     elif completed.projectType == BuildType.Facility and
-         completed.itemId == "GroundBattery":
+        completed.itemId == "GroundBattery":
       if completed.colonyId in state.colonies.entities.index:
         let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
         if colonyOpt.isNone:
@@ -554,8 +552,9 @@ proc commissionPlanetaryDefense*(
           unitType: GroundUnitType.GroundBattery,
           owner: colony.owner,
           attackStrength: int32(globalGroundUnitsConfig.ground_battery.attack_strength),
-          defenseStrength: int32(globalGroundUnitsConfig.ground_battery.defense_strength),
-          state: CombatState.Undamaged
+          defenseStrength:
+            int32(globalGroundUnitsConfig.ground_battery.defense_strength),
+          state: CombatState.Undamaged,
         )
         state.groundUnits.entities.addEntity(unitId, battery)
 
@@ -563,19 +562,21 @@ proc commissionPlanetaryDefense*(
         colony.groundBatteryIds.add(unitId)
         state.colonies.entities.updateEntity(completed.colonyId, colony)
 
-        logInfo("Economy",
+        logInfo(
+          "Economy",
           &"Deployed ground battery at {completed.colonyId} " &
-          &"(Total ground defenses: {colony.groundBatteryIds.len} batteries)")
+            &"(Total ground defenses: {colony.groundBatteryIds.len} batteries)",
+        )
 
-        events.add(event_factory.buildingCompleted(
-          colony.owner,
-          "Ground Battery",
-          colony.systemId
-        ))
+        events.add(
+          event_factory.buildingCompleted(
+            colony.owner, "Ground Battery", colony.systemId
+          )
+        )
 
     # Special handling for planetary shields (replacement, not upgrade)
     elif completed.projectType == BuildType.Facility and
-         completed.itemId.startsWith("PlanetaryShield"):
+        completed.itemId.startsWith("PlanetaryShield"):
       if completed.colonyId in state.colonies.entities.index:
         let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
         if colonyOpt.isNone:
@@ -585,22 +586,26 @@ proc commissionPlanetaryDefense*(
         # Extract shield level from itemId (e.g., "PlanetaryShield-3" -> 3)
         # For now, assume sequential upgrades
         let newLevel = colony.planetaryShieldLevel + 1
-        colony.planetaryShieldLevel = min(newLevel, 6)  # Max SLD6
+        colony.planetaryShieldLevel = min(newLevel, 6) # Max SLD6
         saveColony(completed.colonyId, colony)
 
-        logInfo("Economy",
+        logInfo(
+          "Economy",
           &"Deployed planetary shield SLD{colony.planetaryShieldLevel} at {completed.colonyId} " &
-          &"(Block chance: {int(getShieldBlockChance(colony.planetaryShieldLevel) * 100.0)}%)")
+            &"(Block chance: {int(getShieldBlockChance(colony.planetaryShieldLevel) * 100.0)}%)",
+        )
 
-        events.add(event_factory.buildingCompleted(
-          colony.owner,
-          &"Planetary Shield SLD{colony.planetaryShieldLevel}",
-          colony.systemId
-        ))
+        events.add(
+          event_factory.buildingCompleted(
+            colony.owner,
+            &"Planetary Shield SLD{colony.planetaryShieldLevel}",
+            colony.systemId,
+          )
+        )
 
     # Special handling for Marines (MD)
     elif completed.projectType == BuildType.Facility and
-         (completed.itemId == "Marine" or completed.itemId == "marine_division"):
+        (completed.itemId == "Marine" or completed.itemId == "marine_division"):
       if completed.colonyId in state.colonies.entities.index:
         let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
         if colonyOpt.isNone:
@@ -612,13 +617,17 @@ proc commissionPlanetaryDefense*(
         let minViablePop = population_config.minViablePopulation()
 
         if colony.souls < marinePopCost:
-          logWarn("Economy",
+          logWarn(
+            "Economy",
             &"Colony {completed.colonyId} lacks population to recruit Marines " &
-            &"({colony.souls} souls < {marinePopCost})")
+              &"({colony.souls} souls < {marinePopCost})",
+          )
         elif colony.souls - marinePopCost < minViablePop:
-          logWarn("Economy",
+          logWarn(
+            "Economy",
             &"Colony {completed.colonyId} cannot recruit Marines - would leave colony below minimum viable size " &
-            &"({colony.souls - marinePopCost} < {minViablePop} souls)")
+              &"({colony.souls - marinePopCost} < {minViablePop} souls)",
+          )
         else:
           # Create marine ground unit
           let unitId = generateGroundUnitId(state)
@@ -626,9 +635,11 @@ proc commissionPlanetaryDefense*(
             id: unitId,
             unitType: GroundUnitType.Marine,
             owner: colony.owner,
-            attackStrength: int32(globalGroundUnitsConfig.marine_division.attack_strength),
-            defenseStrength: int32(globalGroundUnitsConfig.marine_division.defense_strength),
-            state: CombatState.Undamaged
+            attackStrength:
+              int32(globalGroundUnitsConfig.marine_division.attack_strength),
+            defenseStrength:
+              int32(globalGroundUnitsConfig.marine_division.defense_strength),
+            state: CombatState.Undamaged,
           )
           state.groundUnits.entities.addEntity(unitId, marine)
 
@@ -640,20 +651,21 @@ proc commissionPlanetaryDefense*(
           colony.population = colony.souls div 1_000_000
           state.colonies.entities.updateEntity(completed.colonyId, colony)
 
-          logInfo("Economy",
+          logInfo(
+            "Economy",
             &"Recruited Marine Division at {completed.colonyId} " &
-            &"(Total Marines: {colony.marineIds.len} MD, {colony.souls} souls remaining)")
+              &"(Total Marines: {colony.marineIds.len} MD, {colony.souls} souls remaining)",
+          )
 
-          events.add(event_factory.unitRecruited(
-            colony.owner,
-            "Marine Division",
-            colony.systemId,
-            1
-          ))
+          events.add(
+            event_factory.unitRecruited(
+              colony.owner, "Marine Division", colony.systemId, 1
+            )
+          )
 
     # Special handling for Armies (AA)
     elif completed.projectType == BuildType.Facility and
-         (completed.itemId == "Army" or completed.itemId == "army"):
+        (completed.itemId == "Army" or completed.itemId == "army"):
       if completed.colonyId in state.colonies.entities.index:
         let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
         if colonyOpt.isNone:
@@ -665,13 +677,17 @@ proc commissionPlanetaryDefense*(
         let minViablePop = population_config.minViablePopulation()
 
         if colony.souls < armyPopCost:
-          logWarn("Economy",
+          logWarn(
+            "Economy",
             &"Colony {completed.colonyId} lacks population to muster Army " &
-            &"({colony.souls} souls < {armyPopCost})")
+              &"({colony.souls} souls < {armyPopCost})",
+          )
         elif colony.souls - armyPopCost < minViablePop:
-          logWarn("Economy",
+          logWarn(
+            "Economy",
             &"Colony {completed.colonyId} cannot muster Army - would leave colony below minimum viable size " &
-            &"({colony.souls - armyPopCost} < {minViablePop} souls)")
+              &"({colony.souls - armyPopCost} < {minViablePop} souls)",
+          )
         else:
           # Create army ground unit
           let unitId = generateGroundUnitId(state)
@@ -681,7 +697,7 @@ proc commissionPlanetaryDefense*(
             owner: colony.owner,
             attackStrength: int32(globalGroundUnitsConfig.army.attack_strength),
             defenseStrength: int32(globalGroundUnitsConfig.army.defense_strength),
-            state: CombatState.Undamaged
+            state: CombatState.Undamaged,
           )
           state.groundUnits.entities.addEntity(unitId, army)
 
@@ -693,16 +709,17 @@ proc commissionPlanetaryDefense*(
           colony.population = colony.souls div 1_000_000
           state.colonies.entities.updateEntity(completed.colonyId, colony)
 
-          logInfo("Economy",
+          logInfo(
+            "Economy",
             &"Mustered Army Division at {completed.colonyId} " &
-            &"(Total Armies: {colony.armyIds.len} AA, {colony.souls} souls remaining)")
+              &"(Total Armies: {colony.armyIds.len} AA, {colony.souls} souls remaining)",
+          )
 
-          events.add(event_factory.unitRecruited(
-            colony.owner,
-            "Army Division",
-            colony.systemId,
-            1
-          ))
+          events.add(
+            event_factory.unitRecruited(
+              colony.owner, "Army Division", colony.systemId, 1
+            )
+          )
 
   # Write all modified colonies back to state
   # This ensures multiple units completing at same colony see accumulated changes
@@ -717,11 +734,11 @@ proc commissionPlanetaryDefense*(
   autoLoadFightersToCarriers(state, modifiedColonies, events)
 
 proc commissionScout(
-  state: var GameState,
-  owner: HouseId,
-  systemId: SystemId,
-  techLevel: int32,
-  events: var seq[GameEvent]
+    state: var GameState,
+    owner: HouseId,
+    systemId: SystemId,
+    techLevel: int32,
+    events: var seq[GameEvent],
 ) =
   ## Commission a Scout ship in a dedicated scout fleet
   ## Scouts at the same system join the same fleet for mesh network bonuses
@@ -733,7 +750,8 @@ proc commissionScout(
 
   # 2. Create squadron with scout as flagship
   let squadronId = generateSquadronId(state)
-  let squadron = squadron_entity.newSquadron(shipId, ShipClass.Scout, squadronId, owner, systemId)
+  let squadron =
+    squadron_entity.newSquadron(shipId, ShipClass.Scout, squadronId, owner, systemId)
   state.squadrons.entities.addEntity(squadronId, squadron)
 
   # Update ship with correct squadronId
@@ -777,22 +795,24 @@ proc commissionScout(
     fleet.squadrons.add(squadronId)
     state.fleets.entities.updateEntity(scoutFleetId, fleet)
 
-    logInfo("Fleet", &"Commissioned Scout in existing fleet {scoutFleetId} at {systemId} " &
-                     &"({fleet.squadrons.len} scouts, mesh network bonus)")
+    logInfo(
+      "Fleet",
+      &"Commissioned Scout in existing fleet {scoutFleetId} at {systemId} " &
+        &"({fleet.squadrons.len} scouts, mesh network bonus)",
+    )
   else:
     # Create new scout fleet
     scoutFleetId = generateFleetId(state)
     let fleet = Fleet(
-      id: scoutFleetId,
-      houseId: owner,
-      location: systemId,
-      squadrons: @[squadronId]
+      id: scoutFleetId, houseId: owner, location: systemId, squadrons: @[squadronId]
     )
     state.fleets.entities.addEntity(scoutFleetId, fleet)
     state.fleets.bySystem.mgetOrPut(systemId, @[]).add(scoutFleetId)
     state.fleets.byOwner.mgetOrPut(owner, @[]).add(scoutFleetId)
 
-    logInfo("Fleet", &"Commissioned Scout in new dedicated fleet {scoutFleetId} at {systemId}")
+    logInfo(
+      "Fleet", &"Commissioned Scout in new dedicated fleet {scoutFleetId} at {systemId}"
+    )
 
   # 5. Update squadron.byFleet index
   state.squadrons.byFleet.mgetOrPut(scoutFleetId, @[]).add(squadronId)
@@ -801,12 +821,12 @@ proc commissionScout(
   events.add(event_factory.shipCommissioned(owner, ShipClass.Scout, systemId))
 
 proc commissionSpaceLift(
-  state: var GameState,
-  owner: HouseId,
-  systemId: SystemId,
-  shipClass: ShipClass,
-  techLevel: int32,
-  events: var seq[GameEvent]
+    state: var GameState,
+    owner: HouseId,
+    systemId: SystemId,
+    shipClass: ShipClass,
+    techLevel: int32,
+    events: var seq[GameEvent],
 ) =
   ## Commission a spacelift ship (ETAC or TroopTransport)
   ## These form single-ship squadrons in dedicated fleets
@@ -821,7 +841,10 @@ proc commissionSpaceLift(
     let cargoCapacity = ship.baseCarryLimit()
     ship.initCargo(CargoType.Colonists, cargoCapacity)
     discard ship.loadCargo(cargoCapacity)
-    logInfo("Economy", &"Commissioned ETAC with {cargoCapacity} PTU (cryostasis generation ship)")
+    logInfo(
+      "Economy",
+      &"Commissioned ETAC with {cargoCapacity} PTU (cryostasis generation ship)",
+    )
   elif shipClass == ShipClass.TroopTransport:
     # TroopTransports start empty (marines loaded later)
     let cargoCapacity = ship.baseCarryLimit()
@@ -831,7 +854,8 @@ proc commissionSpaceLift(
 
   # 2. Create squadron with spacelift ship as flagship
   let squadronId = generateSquadronId(state)
-  let squadron = squadron_entity.newSquadron(shipId, shipClass, squadronId, owner, systemId)
+  let squadron =
+    squadron_entity.newSquadron(shipId, shipClass, squadronId, owner, systemId)
   state.squadrons.entities.addEntity(squadronId, squadron)
 
   # Update ship with correct squadronId
@@ -841,12 +865,8 @@ proc commissionSpaceLift(
 
   # 3. Create new fleet for this spacelift ship
   let fleetId = generateFleetId(state)
-  let fleet = Fleet(
-    id: fleetId,
-    houseId: owner,
-    location: systemId,
-    squadrons: @[squadronId]
-  )
+  let fleet =
+    Fleet(id: fleetId, houseId: owner, location: systemId, squadrons: @[squadronId])
   state.fleets.entities.addEntity(fleetId, fleet)
   state.fleets.bySystem.mgetOrPut(systemId, @[]).add(fleetId)
   state.fleets.byOwner.mgetOrPut(owner, @[]).add(fleetId)
@@ -860,36 +880,25 @@ proc commissionSpaceLift(
   events.add(event_factory.shipCommissioned(owner, shipClass, systemId))
 
 proc commissionCapitalShip(
-  state: var GameState,
-  owner: HouseId,
-  systemId: SystemId,
-  shipClass: ShipClass,
-  techLevel: int32,
-  events: var seq[GameEvent]
+    state: var GameState,
+    owner: HouseId,
+    systemId: SystemId,
+    shipClass: ShipClass,
+    techLevel: int32,
+    events: var seq[GameEvent],
 ) =
   ## Commission a capital ship (Corvette, Frigate, Destroyer, Cruiser, etc.)
   ## Capital ships join existing combat fleets or form new fleets
 
   # 1. Create the capital ship
   let shipId = generateShipId(state)
-  let ship = ship_entity.newShip(
-    shipClass,
-    techLevel,
-    "",
-    shipId,
-    SquadronId(0)
-  )
+  let ship = ship_entity.newShip(shipClass, techLevel, "", shipId, SquadronId(0))
   state.ships.entities.addEntity(shipId, ship)
 
   # 2. Create squadron with capital ship as flagship
   let squadronId = generateSquadronId(state)
-  let squadron = squadron_entity.newSquadron(
-    shipId,
-    shipClass,
-    squadronId,
-    owner,
-    systemId
-  )
+  let squadron =
+    squadron_entity.newSquadron(shipId, shipClass, squadronId, owner, systemId)
   state.squadrons.entities.addEntity(squadronId, squadron)
 
   # Update ship with correct squadronId
@@ -920,10 +929,7 @@ proc commissionCapitalShip(
         let sq = sqOpt.get()
 
         # Combat fleet types: Combat (capital ships), Fighter
-        if sq.squadronType in [
-          SquadronType.Combat,
-          SquadronType.Fighter
-        ]:
+        if sq.squadronType in [SquadronType.Combat, SquadronType.Fighter]:
           isCombatFleet = true
           break
 
@@ -938,24 +944,24 @@ proc commissionCapitalShip(
     fleet.squadrons.add(squadronId)
     state.fleets.entities.updateEntity(combatFleetId, fleet)
 
-    logInfo("Fleet",
+    logInfo(
+      "Fleet",
       &"Commissioned {shipClass} in existing fleet {combatFleetId} " &
-      &"at {systemId} ({fleet.squadrons.len} squadrons)")
+        &"at {systemId} ({fleet.squadrons.len} squadrons)",
+    )
   else:
     # Create new combat fleet
     combatFleetId = generateFleetId(state)
     let fleet = Fleet(
-      id: combatFleetId,
-      houseId: owner,
-      location: systemId,
-      squadrons: @[squadronId]
+      id: combatFleetId, houseId: owner, location: systemId, squadrons: @[squadronId]
     )
     state.fleets.entities.addEntity(combatFleetId, fleet)
     state.fleets.bySystem.mgetOrPut(systemId, @[]).add(combatFleetId)
     state.fleets.byOwner.mgetOrPut(owner, @[]).add(combatFleetId)
 
-    logInfo("Fleet",
-      &"Commissioned {shipClass} in new fleet {combatFleetId} at {systemId}")
+    logInfo(
+      "Fleet", &"Commissioned {shipClass} in new fleet {combatFleetId} at {systemId}"
+    )
 
   # 5. Update squadron.byFleet index
   state.squadrons.byFleet.mgetOrPut(combatFleetId, @[]).add(squadronId)
@@ -964,9 +970,9 @@ proc commissionCapitalShip(
   events.add(event_factory.shipCommissioned(owner, shipClass, systemId))
 
 proc commissionShips*(
-  state: var GameState,
-  completedProjects: seq[CompletedProject],
-  events: var seq[GameEvent]
+    state: var GameState,
+    completedProjects: seq[CompletedProject],
+    events: var seq[GameEvent],
 ) =
   ## Commission ships in Command Phase (next turn)
   ##
@@ -985,14 +991,19 @@ proc commissionShips*(
   # Process each completed ship construction project
   for completed in completedProjects:
     if completed.projectType != BuildType.Ship:
-      continue  # Only handle ship construction here
+      continue # Only handle ship construction here
 
-    logInfo("Economy", &"Commissioning ship: {completed.itemId} at system-{completed.colonyId}")
+    logInfo(
+      "Economy",
+      &"Commissioning ship: {completed.itemId} at system-{completed.colonyId}",
+    )
 
     # Get colony and owner
     let colonyOpt = gs_helpers.getColony(state, completed.colonyId)
     if colonyOpt.isNone:
-      logWarn("Economy", &"Cannot commission ship - colony {completed.colonyId} not found")
+      logWarn(
+        "Economy", &"Cannot commission ship - colony {completed.colonyId} not found"
+      )
       continue
     let colony = colonyOpt.get()
     let owner = colony.owner
@@ -1015,15 +1026,13 @@ proc commissionShips*(
         # Scouts form dedicated single-ship fleets
         # Multiple scouts at same colony join same fleet for mesh network bonuses
         commissionScout(state, owner, colony.systemId, techLevel, events)
-
       of ShipClass.ETAC, ShipClass.TroopTransport:
         # Spacelift ships form single-ship squadrons
         commissionSpaceLift(state, owner, colony.systemId, shipClass, techLevel, events)
-
       else:
         # Capital ships and other combat vessels
-        commissionCapitalShip(state, owner, colony.systemId, shipClass, techLevel, events)
-
+        commissionCapitalShip(
+          state, owner, colony.systemId, shipClass, techLevel, events
+        )
     except ValueError:
       logError("Economy", &"Invalid ship class: {completed.itemId}")
-

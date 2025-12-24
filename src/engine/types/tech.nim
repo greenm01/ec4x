@@ -13,9 +13,15 @@ import ./[core, prestige]
 
 type
   TechField* {.pure.} = enum
-    ConstructionTech, WeaponsTech, TerraformingTech,
-    ElectronicIntelligence, CloakingTech, ShieldTech,
-    CounterIntelligence, FighterDoctrine, AdvancedCarrierOps
+    ConstructionTech
+    WeaponsTech
+    TerraformingTech
+    ElectronicIntelligence
+    CloakingTech
+    ShieldTech
+    CounterIntelligence
+    FighterDoctrine
+    AdvancedCarrierOps
 
   TechLevel* = object
     economicLevel*: int32
@@ -36,20 +42,27 @@ type
     technology*: Table[TechField, int32]
 
   TechTree* = object
-    houseId*: HouseId  # Add back-reference
+    houseId*: HouseId # Add back-reference
     levels*: TechLevel
     accumulated*: ResearchPoints
     breakthroughBonus*: Table[TechField, float32]
 
   BreakthroughType* {.pure.} = enum
-    Minor, Moderate, Major, Revolutionary
+    Minor
+    Moderate
+    Major
+    Revolutionary
 
   RevolutionaryTech* {.pure.} = enum
-    QuantumComputing, AdvancedStealth,
-    TerraformingNexus, ExperimentalPropulsion
+    QuantumComputing
+    AdvancedStealth
+    TerraformingNexus
+    ExperimentalPropulsion
 
   ResearchCategory* {.pure.} = enum
-    Economic, Science, Technology
+    Economic
+    Science
+    Technology
 
   BreakthroughEvent* = object
     houseId*: HouseId
@@ -67,7 +80,9 @@ type
     technology*: Table[TechField, int32]
 
   AdvancementType* {.pure.} = enum
-    EconomicLevel, ScienceLevel, Technology
+    EconomicLevel
+    ScienceLevel
+    Technology
 
   ResearchAdvancement* = object
     case advancementType*: AdvancementType

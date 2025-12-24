@@ -8,12 +8,10 @@ import ../../types/[telemetry, core, game_state, event, colony, population]
 import ../../state/interators
 
 proc collectPopulationMetrics*(
-  state: GameState,
-  houseId: HouseId,
-  prevMetrics: DiagnosticMetrics
+    state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
 ): DiagnosticMetrics =
   ## Collect population metrics from GameState
-  result = prevMetrics  # Start with previous metrics
+  result = prevMetrics # Start with previous metrics
 
   # Query GameState for population totals
   var totalPU: int32 = 0
@@ -48,7 +46,8 @@ proc collectPopulationMetrics*(
   var ptuTransferredTotal: int32 = 0
 
   for event in state.lastTurnEvents:
-    if event.houseId != some(houseId): continue
+    if event.houseId != some(houseId):
+      continue
     # TODO: Add PopulationTransferCompleted, PopulationTransferLost events
     # case event.eventType:
     # of PopulationTransferCompleted:
@@ -60,5 +59,4 @@ proc collectPopulationMetrics*(
 
   result.populationTransfersCompleted = popTransfersCompleted
   result.populationTransfersLost = popTransfersLost
-  result.ptuTransferredTotal = prevMetrics.ptuTransferredTotal +
-    ptuTransferredTotal
+  result.ptuTransferredTotal = prevMetrics.ptuTransferredTotal + ptuTransferredTotal

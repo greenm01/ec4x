@@ -5,40 +5,64 @@
 
 import std/[json, times, strformat, logging, options, strutils]
 import db_connector/db_sqlite
-import ../types/telemetry  # DiagnosticMetrics
+import ../types/telemetry # DiagnosticMetrics
 import ../types/[game_state, event]
 
-const ENGINE_VERSION = "0.1.0"  # TODO: Get from build system
+const ENGINE_VERSION = "0.1.0" # TODO: Get from build system
 
-proc insertGame*(db: DbConn, seed: int64, numPlayers, maxTurns,
-                 mapRings: int32, strategies: seq[string]): int64 =
+proc insertGame*(
+    db: DbConn,
+    seed: int64,
+    numPlayers, maxTurns, mapRings: int32,
+    strategies: seq[string],
+): int64 =
   ## Insert game metadata (DRY - factory function)
   ## Returns game_id
-  let strategiesJson = $(%strategies)  # JSON encode array
-  db.exec(sql"""
+  let strategiesJson = $(%strategies) # JSON encode array
+  db.exec(
+    sql"""
     INSERT INTO games (
       game_id, timestamp, num_players, max_turns,
       actual_turns, map_rings, strategies, victor,
       victory_type, engine_version
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  """, $seed, $now(), $numPlayers, $maxTurns,
-       "0",  # Updated after game complete
-       $mapRings, strategiesJson, "", "", ENGINE_VERSION)
+  """,
+    $seed,
+    $now(),
+    $numPlayers,
+    $maxTurns,
+    "0", # Updated after game complete
+    $mapRings,
+    strategiesJson,
+    "",
+    "",
+    ENGINE_VERSION,
+  )
   debug &"Inserted game metadata for seed {seed}"
   return seed
 
-proc updateGameResult*(db: DbConn, gameId: int64, actualTurns: int32,
-                       victor: string = "", victoryType: string = "") =
+proc updateGameResult*(
+    db: DbConn,
+    gameId: int64,
+    actualTurns: int32,
+    victor: string = "",
+    victoryType: string = "",
+) =
   ## Update game metadata at completion
-  db.exec(sql"""
+  db.exec(
+    sql"""
     UPDATE games
     SET actual_turns = ?, victor = ?, victory_type = ?
     WHERE game_id = ?
-  """, $actualTurns, victor, victoryType, $gameId)
+  """,
+    $actualTurns,
+    victor,
+    victoryType,
+    $gameId,
+  )
   debug &"Updated game {gameId} result: {actualTurns} turns, victor={victor}"
 
-proc insertDiagnosticRow*(db: DbConn, gameId: int64,
-                          metrics: DiagnosticMetrics) =
+proc insertDiagnosticRow*(db: DbConn, gameId: int64, metrics: DiagnosticMetrics) =
   ## Insert diagnostics row (DRY - mirrors csv_writer column order)
   ## Maps DiagnosticMetrics fields to database columns
 
@@ -56,7 +80,8 @@ proc insertDiagnosticRow*(db: DbConn, gameId: int64,
   # Convert strategy enum to string
   let strategyStr = $metrics.strategy
 
-  db.exec(sql"""
+  db.exec(
+    sql"""
     INSERT INTO diagnostics (
       game_id, turn, act, rank, house_id, strategy,
       total_systems_on_map, treasury, production, pu_growth,
@@ -183,142 +208,250 @@ proc insertDiagnosticRow*(db: DbConn, gameId: int64,
       ?, ?, ?
     )
   """,
-    $gameId, $metrics.turn, $metrics.act, $metrics.rank,
-    $metrics.houseId, strategyStr,
-    $metrics.totalSystemsOnMap, $metrics.treasuryBalance,
-    $metrics.productionPerTurn, $metrics.puGrowth,
-    $metrics.zeroSpendTurns, $metrics.grossColonyOutput,
-    $metrics.netHouseValue, $metrics.taxRate,
-    $metrics.totalIndustrialUnits, $metrics.totalPopulationUnits,
-    $metrics.totalPopulationPTU, $metrics.populationGrowthRate,
-    $metrics.techCST, $metrics.techWEP, $metrics.techEL, $metrics.techSL,
-    $metrics.techTER, $metrics.techELI, $metrics.techCLK, $metrics.techSLD,
-    $metrics.techCIC, $metrics.techFD, $metrics.techACO,
-    $metrics.researchERP, $metrics.researchSRP, $metrics.researchTRP,
+    $gameId,
+    $metrics.turn,
+    $metrics.act,
+    $metrics.rank,
+    $metrics.houseId,
+    strategyStr,
+    $metrics.totalSystemsOnMap,
+    $metrics.treasuryBalance,
+    $metrics.productionPerTurn,
+    $metrics.puGrowth,
+    $metrics.zeroSpendTurns,
+    $metrics.grossColonyOutput,
+    $metrics.netHouseValue,
+    $metrics.taxRate,
+    $metrics.totalIndustrialUnits,
+    $metrics.totalPopulationUnits,
+    $metrics.totalPopulationPTU,
+    $metrics.populationGrowthRate,
+    $metrics.techCST,
+    $metrics.techWEP,
+    $metrics.techEL,
+    $metrics.techSL,
+    $metrics.techTER,
+    $metrics.techELI,
+    $metrics.techCLK,
+    $metrics.techSLD,
+    $metrics.techCIC,
+    $metrics.techFD,
+    $metrics.techACO,
+    $metrics.researchERP,
+    $metrics.researchSRP,
+    $metrics.researchTRP,
     $metrics.researchBreakthroughs,
-    $metrics.researchWastedERP, $metrics.researchWastedSRP,
-    $metrics.turnsAtMaxEL, $metrics.turnsAtMaxSL,
-    $metrics.maintenanceCostTotal, $metrics.maintenanceShortfallTurns,
-    $metrics.prestigeCurrent, $metrics.prestigeChange,
+    $metrics.researchWastedERP,
+    $metrics.researchWastedSRP,
+    $metrics.turnsAtMaxEL,
+    $metrics.turnsAtMaxSL,
+    $metrics.maintenanceCostTotal,
+    $metrics.maintenanceShortfallTurns,
+    $metrics.prestigeCurrent,
+    $metrics.prestigeChange,
     $metrics.prestigeVictoryProgress,
-    $metrics.combatCERAverage, $metrics.bombardmentRoundsTotal,
-    $metrics.groundCombatVictories, $metrics.retreatsExecuted,
-    $metrics.criticalHitsDealt, $metrics.criticalHitsReceived,
-    $metrics.cloakedAmbushSuccess, $metrics.shieldsActivatedCount,
-    $metrics.allyStatusCount, $metrics.hostileStatusCount,
-    $metrics.enemyStatusCount, $metrics.neutralStatusCount,
-    $metrics.pactViolationsTotal, dishonoredInt,
+    $metrics.combatCERAverage,
+    $metrics.bombardmentRoundsTotal,
+    $metrics.groundCombatVictories,
+    $metrics.retreatsExecuted,
+    $metrics.criticalHitsDealt,
+    $metrics.criticalHitsReceived,
+    $metrics.cloakedAmbushSuccess,
+    $metrics.shieldsActivatedCount,
+    $metrics.allyStatusCount,
+    $metrics.hostileStatusCount,
+    $metrics.enemyStatusCount,
+    $metrics.neutralStatusCount,
+    $metrics.pactViolationsTotal,
+    dishonoredInt,
     $metrics.diplomaticIsolationTurns,
-    $metrics.pactFormationsTotal, $metrics.pactBreaksTotal,
-    $metrics.hostilityDeclarationsTotal, $metrics.warDeclarationsTotal,
-    $metrics.espionageSuccessCount, $metrics.espionageFailureCount,
+    $metrics.pactFormationsTotal,
+    $metrics.pactBreaksTotal,
+    $metrics.hostilityDeclarationsTotal,
+    $metrics.warDeclarationsTotal,
+    $metrics.espionageSuccessCount,
+    $metrics.espionageFailureCount,
     $metrics.espionageDetectedCount,
-    $metrics.techTheftsSuccessful, $metrics.sabotageOperations,
-    $metrics.assassinationAttempts, $metrics.cyberAttacksLaunched,
-    $metrics.ebpPointsSpent, $metrics.cipPointsSpent,
+    $metrics.techTheftsSuccessful,
+    $metrics.sabotageOperations,
+    $metrics.assassinationAttempts,
+    $metrics.cyberAttacksLaunched,
+    $metrics.ebpPointsSpent,
+    $metrics.cipPointsSpent,
     $metrics.counterIntelSuccesses,
-    $metrics.populationTransfersActive, $metrics.populationTransfersCompleted,
+    $metrics.populationTransfersActive,
+    $metrics.populationTransfersCompleted,
     $metrics.populationTransfersLost,
-    $metrics.ptuTransferredTotal, $metrics.coloniesBlockadedCount,
+    $metrics.ptuTransferredTotal,
+    $metrics.coloniesBlockadedCount,
     $metrics.blockadeTurnsCumulative,
-    treasuryDeficitInt, $metrics.infrastructureDamageTotal,
+    treasuryDeficitInt,
+    $metrics.infrastructureDamageTotal,
     $metrics.salvageValueRecovered,
-    $metrics.maintenanceCostDeficit, taxPenaltyInt, $metrics.avgTaxRate6Turn,
-    $metrics.fighterCapacityMax, $metrics.fighterCapacityUsed,
+    $metrics.maintenanceCostDeficit,
+    taxPenaltyInt,
+    $metrics.avgTaxRate6Turn,
+    $metrics.fighterCapacityMax,
+    $metrics.fighterCapacityUsed,
     fighterViolationInt,
-    $metrics.squadronLimitMax, $metrics.squadronLimitUsed,
+    $metrics.squadronLimitMax,
+    $metrics.squadronLimitUsed,
     squadronViolationInt,
-    $metrics.starbasesActual, autopilotInt, defCollapseInt,
-    $metrics.turnsUntilElimination, $metrics.missedOrderTurns,
-    $metrics.spaceCombatWins, $metrics.spaceCombatLosses,
+    $metrics.starbasesActual,
+    autopilotInt,
+    defCollapseInt,
+    $metrics.turnsUntilElimination,
+    $metrics.missedOrderTurns,
+    $metrics.spaceCombatWins,
+    $metrics.spaceCombatLosses,
     $metrics.spaceCombatTotal,
-    $metrics.orbitalFailures, $metrics.orbitalTotal,
-    $metrics.raiderAmbushSuccess, $metrics.raiderAmbushAttempts,
+    $metrics.orbitalFailures,
+    $metrics.orbitalTotal,
+    $metrics.raiderAmbushSuccess,
+    $metrics.raiderAmbushAttempts,
     $metrics.raiderDetectedCount,
     $metrics.raiderStealthSuccessCount,
-    $metrics.eliDetectionAttempts, $metrics.avgEliRoll, $metrics.avgClkRoll,
-    $metrics.scoutsDetected, $metrics.scoutsDetectedBy,
-    $metrics.capacityViolationsActive, $metrics.fightersDisbanded,
-    $metrics.totalFighters, $metrics.idleCarriers, $metrics.totalCarriers,
+    $metrics.eliDetectionAttempts,
+    $metrics.avgEliRoll,
+    $metrics.avgClkRoll,
+    $metrics.scoutsDetected,
+    $metrics.scoutsDetectedBy,
+    $metrics.capacityViolationsActive,
+    $metrics.fightersDisbanded,
+    $metrics.totalFighters,
+    $metrics.idleCarriers,
+    $metrics.totalCarriers,
     $metrics.totalTransports,
-    $metrics.fighterShips, $metrics.corvetteShips, $metrics.frigateShips,
+    $metrics.fighterShips,
+    $metrics.corvetteShips,
+    $metrics.frigateShips,
     $metrics.scoutShips,
-    $metrics.raiderShips, $metrics.destroyerShips, $metrics.cruiserShips,
+    $metrics.raiderShips,
+    $metrics.destroyerShips,
+    $metrics.cruiserShips,
     $metrics.lightCruiserShips,
-    $metrics.heavyCruiserShips, $metrics.battlecruiserShips,
+    $metrics.heavyCruiserShips,
+    $metrics.battlecruiserShips,
     $metrics.battleshipShips,
-    $metrics.dreadnoughtShips, $metrics.superDreadnoughtShips,
-    $metrics.carrierShips, $metrics.superCarrierShips,
-    $metrics.etacShips, $metrics.troopTransportShips,
+    $metrics.dreadnoughtShips,
+    $metrics.superDreadnoughtShips,
+    $metrics.carrierShips,
+    $metrics.superCarrierShips,
+    $metrics.etacShips,
+    $metrics.troopTransportShips,
     $metrics.planetBreakerShips,
     $metrics.totalShips,
-    $metrics.planetaryShieldUnits, $metrics.groundBatteryUnits,
+    $metrics.planetaryShieldUnits,
+    $metrics.groundBatteryUnits,
     $metrics.armyUnits,
-    $metrics.marinesAtColonies, $metrics.marinesOnTransports,
+    $metrics.marinesAtColonies,
+    $metrics.marinesOnTransports,
     $metrics.marineDivisionUnits,
-    $metrics.totalSpaceports, $metrics.totalShipyards, $metrics.totalDrydocks,
-    $metrics.totalInvasions, $metrics.vulnerableTargets_count,
-    $metrics.invasionOrders_generated, $metrics.invasionOrders_bombard,
-    $metrics.invasionOrders_invade, $metrics.invasionOrders_blitz,
+    $metrics.totalSpaceports,
+    $metrics.totalShipyards,
+    $metrics.totalDrydocks,
+    $metrics.totalInvasions,
+    $metrics.vulnerableTargets_count,
+    $metrics.invasionOrders_generated,
+    $metrics.invasionOrders_bombard,
+    $metrics.invasionOrders_invade,
+    $metrics.invasionOrders_blitz,
     $metrics.invasionOrders_canceled,
-    $metrics.invasionAttemptsTotal, $metrics.invasionAttemptsSuccessful,
-    $metrics.invasionAttemptsFailed, $metrics.invasionOrdersRejected,
-    $metrics.blitzAttemptsTotal, $metrics.blitzAttemptsSuccessful,
+    $metrics.invasionAttemptsTotal,
+    $metrics.invasionAttemptsSuccessful,
+    $metrics.invasionAttemptsFailed,
+    $metrics.invasionOrdersRejected,
+    $metrics.blitzAttemptsTotal,
+    $metrics.blitzAttemptsSuccessful,
     $metrics.blitzAttemptsFailed,
-    $metrics.bombardmentAttemptsTotal, $metrics.bombardmentOrdersFailed,
-    $metrics.invasionMarinesKilled, $metrics.invasionDefendersKilled,
+    $metrics.bombardmentAttemptsTotal,
+    $metrics.bombardmentOrdersFailed,
+    $metrics.invasionMarinesKilled,
+    $metrics.invasionDefendersKilled,
     $metrics.colonizeOrdersSubmitted,
-    $metrics.activeCampaigns_total, $metrics.activeCampaigns_scouting,
-    $metrics.activeCampaigns_bombardment, $metrics.activeCampaigns_invasion,
-    $metrics.campaigns_completed_success, $metrics.campaigns_abandoned_stalled,
-    $metrics.campaigns_abandoned_captured, $metrics.campaigns_abandoned_timeout,
-    clkNoRaidersInt, $metrics.scoutCount,
-    $metrics.spyPlanetMissions, $metrics.hackStarbaseMissions,
+    $metrics.activeCampaigns_total,
+    $metrics.activeCampaigns_scouting,
+    $metrics.activeCampaigns_bombardment,
+    $metrics.activeCampaigns_invasion,
+    $metrics.campaigns_completed_success,
+    $metrics.campaigns_abandoned_stalled,
+    $metrics.campaigns_abandoned_captured,
+    $metrics.campaigns_abandoned_timeout,
+    clkNoRaidersInt,
+    $metrics.scoutCount,
+    $metrics.spyPlanetMissions,
+    $metrics.hackStarbaseMissions,
     $metrics.totalEspionageMissions,
-    $metrics.coloniesWithoutDefense, $metrics.totalColonies,
-    $metrics.mothballedFleetsUsed, $metrics.mothballedFleetsTotal,
-    $metrics.invalidOrders, $metrics.totalOrders,
-    $metrics.domestikosBudgetAllocated, $metrics.logotheteBudgetAllocated,
-    $metrics.drungariusBudgetAllocated, $metrics.eparchBudgetAllocated,
-    $metrics.buildOrdersGenerated, $metrics.ppSpentConstruction,
+    $metrics.coloniesWithoutDefense,
+    $metrics.totalColonies,
+    $metrics.mothballedFleetsUsed,
+    $metrics.mothballedFleetsTotal,
+    $metrics.invalidOrders,
+    $metrics.totalOrders,
+    $metrics.domestikosBudgetAllocated,
+    $metrics.logotheteBudgetAllocated,
+    $metrics.drungariusBudgetAllocated,
+    $metrics.eparchBudgetAllocated,
+    $metrics.buildOrdersGenerated,
+    $metrics.ppSpentConstruction,
     $metrics.domestikosRequirementsTotal,
     $metrics.domestikosRequirementsFulfilled,
     $metrics.domestikosRequirementsUnfulfilled,
     $metrics.domestikosRequirementsDeferred,
-    $metrics.coloniesLost, $metrics.coloniesGained,
-    $metrics.coloniesGainedViaColonization, $metrics.coloniesGainedViaConquest,
-    $metrics.shipsLost, $metrics.shipsGained,
-    $metrics.fightersLost, $metrics.fightersGained,
+    $metrics.coloniesLost,
+    $metrics.coloniesGained,
+    $metrics.coloniesGainedViaColonization,
+    $metrics.coloniesGainedViaConquest,
+    $metrics.shipsLost,
+    $metrics.shipsGained,
+    $metrics.fightersLost,
+    $metrics.fightersGained,
     $metrics.bilateralRelations,
-    $metrics.eventsOrderCompleted, $metrics.eventsOrderFailed,
+    $metrics.eventsOrderCompleted,
+    $metrics.eventsOrderFailed,
     $metrics.eventsOrderRejected,
-    $metrics.eventsCombatTotal, $metrics.eventsBombardment,
+    $metrics.eventsCombatTotal,
+    $metrics.eventsBombardment,
     $metrics.eventsColonyCaptured,
-    $metrics.eventsEspionageTotal, $metrics.eventsDiplomaticTotal,
-    $metrics.eventsResearchTotal, $metrics.eventsColonyTotal,
+    $metrics.eventsEspionageTotal,
+    $metrics.eventsDiplomaticTotal,
+    $metrics.eventsResearchTotal,
+    $metrics.eventsColonyTotal,
     metrics.advisorReasoning,
-    goapEnabledInt, $metrics.goapPlansActive, $metrics.goapPlansCompleted,
-    $metrics.goapGoalsExtracted, $metrics.goapPlanningTimeMs,
-    $metrics.goapInvasionGoals, $metrics.goapInvasionPlans,
-    $metrics.goapActionsExecuted, $metrics.goapActionsFailed
+    goapEnabledInt,
+    $metrics.goapPlansActive,
+    $metrics.goapPlansCompleted,
+    $metrics.goapGoalsExtracted,
+    $metrics.goapPlanningTimeMs,
+    $metrics.goapInvasionGoals,
+    $metrics.goapInvasionPlans,
+    $metrics.goapActionsExecuted,
+    $metrics.goapActionsFailed,
   )
 
-proc insertGameEvent*(db: DbConn, gameId: int64,
-                      event: GameEvent) =
+proc insertGameEvent*(db: DbConn, gameId: int64, event: GameEvent) =
   ## Insert game event (DRY - factory for all event types)
   ## Maps GameEvent to flat database row
 
   # Extract optional fields
-  let houseIdStr = if event.houseId.isSome: $event.houseId.get else: ""
+  let houseIdStr =
+    if event.houseId.isSome:
+      $event.houseId.get
+    else:
+      ""
   let fleetIdStr = if event.fleetId.isSome: event.fleetId.get else: ""
-  let systemIdVal = if event.systemId.isSome: $event.systemId.get else: "0"
+  let systemIdVal =
+    if event.systemId.isSome:
+      $event.systemId.get
+    else:
+      "0"
 
   # orderType only exists for order-related events (case object variant)
   let orderTypeStr =
     case event.eventType
     of GameEventType.OrderIssued, GameEventType.OrderCompleted,
-       GameEventType.OrderRejected, GameEventType.OrderFailed,
-       GameEventType.OrderAborted, GameEventType.FleetArrived:
+        GameEventType.OrderRejected, GameEventType.OrderFailed,
+        GameEventType.OrderAborted, GameEventType.FleetArrived:
       if event.commandType.isSome: event.commandType.get else: ""
     else:
       ""
@@ -327,43 +460,60 @@ proc insertGameEvent*(db: DbConn, gameId: int64,
   let reasonStr =
     case event.eventType
     of GameEventType.OrderIssued, GameEventType.OrderCompleted,
-       GameEventType.OrderRejected, GameEventType.OrderFailed,
-       GameEventType.OrderAborted, GameEventType.FleetArrived:
+        GameEventType.OrderRejected, GameEventType.OrderFailed,
+        GameEventType.OrderAborted, GameEventType.FleetArrived:
       if event.reason.isSome: event.reason.get else: ""
     else:
       ""
 
   # Serialize event-specific data as JSON (if needed)
-  let eventDataJson = "{}"  # TODO: Implement serializeEventData()
+  let eventDataJson = "{}" # TODO: Implement serializeEventData()
 
-  db.exec(sql"""
+  db.exec(
+    sql"""
     INSERT INTO game_events (
       game_id, turn, event_type, house_id, fleet_id, system_id,
       order_type, description, reason, event_data
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   """,
-    $gameId, $event.turn, $event.eventType,
-    houseIdStr, fleetIdStr, systemIdVal,
-    orderTypeStr, event.description, reasonStr, eventDataJson
+    $gameId,
+    $event.turn,
+    $event.eventType,
+    houseIdStr,
+    fleetIdStr,
+    systemIdVal,
+    orderTypeStr,
+    event.description,
+    reasonStr,
+    eventDataJson,
   )
 
-proc insertFleetSnapshot*(db: DbConn, gameId: int64, turn: int32,
-                         fleetId: string, houseId: string,
-                         locationSystem: int32,
-                         orderType: string, orderTarget: int32,
-                         hasArrived: bool,
-                         shipsTotal, etacCount, scoutCount,
-                         combatShips, transportCount,
-                         idleTurnsCombat, idleTurnsScout,
-                         idleTurnsEtac, idleTurnsTransport: int32) =
+proc insertFleetSnapshot*(
+    db: DbConn,
+    gameId: int64,
+    turn: int32,
+    fleetId: string,
+    houseId: string,
+    locationSystem: int32,
+    orderType: string,
+    orderTarget: int32,
+    hasArrived: bool,
+    shipsTotal, etacCount, scoutCount, combatShips, transportCount, idleTurnsCombat,
+      idleTurnsScout, idleTurnsEtac, idleTurnsTransport: int32,
+) =
   ## Insert fleet tracking snapshot (DoD - direct field mapping)
   ## Called per-turn for each fleet in the game
   let arrivedInt = if hasArrived: "1" else: "0"
   let orderTypeVal = if orderType == "": "" else: orderType
   # 0 or negative = no target (NULL in database)
-  let orderTargetVal = if orderTarget <= 0: "" else: $orderTarget
+  let orderTargetVal =
+    if orderTarget <= 0:
+      ""
+    else:
+      $orderTarget
 
-  db.exec(sql"""
+  db.exec(
+    sql"""
     INSERT INTO fleet_tracking (
       game_id, turn, fleet_id, house_id, location_system_id,
       active_order_type, order_target_system_id, has_arrived,
@@ -373,20 +523,35 @@ proc insertFleetSnapshot*(db: DbConn, gameId: int64, turn: int32,
       idle_turns_transport
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   """,
-    $gameId, $turn, fleetId, houseId, $locationSystem,
-    orderTypeVal, orderTargetVal, arrivedInt,
-    $shipsTotal, $etacCount, $scoutCount, $combatShips,
+    $gameId,
+    $turn,
+    fleetId,
+    houseId,
+    $locationSystem,
+    orderTypeVal,
+    orderTargetVal,
+    arrivedInt,
+    $shipsTotal,
+    $etacCount,
+    $scoutCount,
+    $combatShips,
     $transportCount,
-    $idleTurnsCombat, $idleTurnsScout, $idleTurnsEtac,
-    $idleTurnsTransport
+    $idleTurnsCombat,
+    $idleTurnsScout,
+    $idleTurnsEtac,
+    $idleTurnsTransport,
   )
 
-proc insertGameState*(db: DbConn, gameId: int64, turn: int32,
-                      stateJson: string) =
+proc insertGameState*(db: DbConn, gameId: int64, turn: int32, stateJson: string) =
   ## Insert full GameState snapshot as JSON (optional)
   ## Only used if DBConfig.enableGameStates is true
-  db.exec(sql"""
+  db.exec(
+    sql"""
     INSERT INTO game_states (game_id, turn, state_json)
     VALUES (?, ?, ?)
-  """, $gameId, $turn, stateJson)
+  """,
+    $gameId,
+    $turn,
+    stateJson,
+  )
   debug &"Inserted GameState snapshot for turn {turn}"

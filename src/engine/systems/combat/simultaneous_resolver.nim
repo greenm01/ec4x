@@ -8,10 +8,10 @@ import ../../types/simultaneous as simultaneous_types
 import ../../types/core
 
 proc resolveConflictByStrength*[IntentType](
-  intents: seq[IntentType],
-  strengthGetter: proc(intent: IntentType): int,
-  tiebreakerSeed: int64,
-  rng: var Rand
+    intents: seq[IntentType],
+    strengthGetter: proc(intent: IntentType): int,
+    tiebreakerSeed: int64,
+    rng: var Rand,
 ): IntentType =
   ## Generic conflict resolver using strength + deterministic random tiebreaker
   ##
@@ -30,8 +30,8 @@ proc resolveConflictByStrength*[IntentType](
 
   # Sort by strength (descending)
   var sorted = intents
-  sorted.sort do (a, b: IntentType) -> int:
-    cmp(strengthGetter(b), strengthGetter(a))  # Descending order
+  sorted.sort do(a, b: IntentType) -> int:
+    cmp(strengthGetter(b), strengthGetter(a)) # Descending order
 
   # Find all intents tied at max strength
   let maxStrength = strengthGetter(sorted[0])
@@ -41,7 +41,7 @@ proc resolveConflictByStrength*[IntentType](
     if strengthGetter(intent) == maxStrength:
       topContenders.add(intent)
     else:
-      break  # Sorted, so we can stop at first lower strength
+      break # Sorted, so we can stop at first lower strength
 
   # If only one at max strength, return it
   if topContenders.len == 1:

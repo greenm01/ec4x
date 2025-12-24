@@ -11,23 +11,25 @@ import ../../types/[core, game_state, starmap, prestige]
 import ../../entities/colony_ops
 import ../../config/[prestige_config, prestige_multiplier]
 
-type
-  ColonizationResult* = object
-    ## Result of a colonization attempt
-    success*: bool
-    reason*: string
-    colonyId*: Option[ColonyId]
-    prestigeEvent*: Option[PrestigeEvent]
+type ColonizationResult* = object ## Result of a colonization attempt
+  success*: bool
+  reason*: string
+  colonyId*: Option[ColonyId]
+  prestigeEvent*: Option[PrestigeEvent]
 
 proc canColonize*(state: GameState, systemId: SystemId): bool =
   ## Check if a system can be colonized (no existing colony)
   ## Per operations.md:6.2.13
   not state.colonies.bySystem.hasKey(systemId)
 
-proc establishColony*(state: var GameState, houseId: HouseId,
-                      systemId: SystemId, planetClass: PlanetClass,
-                      resources: ResourceRating,
-                      ptuCount: int32 = 3): ColonizationResult =
+proc establishColony*(
+    state: var GameState,
+    houseId: HouseId,
+    systemId: SystemId,
+    planetClass: PlanetClass,
+    resources: ResourceRating,
+    ptuCount: int32 = 3,
+): ColonizationResult =
   ## High-level colony establishment with prestige award
   ##
   ## Coordinates:
@@ -43,7 +45,7 @@ proc establishColony*(state: var GameState, houseId: HouseId,
       success: false,
       reason: "System already colonized",
       colonyId: none(ColonyId),
-      prestigeEvent: none(PrestigeEvent)
+      prestigeEvent: none(PrestigeEvent),
     )
 
   # Validate: Must have PTU
@@ -52,7 +54,7 @@ proc establishColony*(state: var GameState, houseId: HouseId,
       success: false,
       reason: "Insufficient PTU (need at least 1)",
       colonyId: none(ColonyId),
-      prestigeEvent: none(PrestigeEvent)
+      prestigeEvent: none(PrestigeEvent),
     )
 
   # Create colony via entities layer (low-level state mutation)
@@ -66,12 +68,12 @@ proc establishColony*(state: var GameState, houseId: HouseId,
   let prestigeEvent = PrestigeEvent(
     source: PrestigeSource.ColonyEstablished,
     amount: prestigeAmount.int32,
-    description: "Established colony at system " & $systemId
+    description: "Established colony at system " & $systemId,
   )
 
   return ColonizationResult(
     success: true,
     reason: "Colony established successfully",
     colonyId: some(colonyId),
-    prestigeEvent: some(prestigeEvent)
+    prestigeEvent: some(prestigeEvent),
   )

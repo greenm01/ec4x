@@ -11,11 +11,11 @@ import cer
 export combat_types
 
 proc isHostile*(
-  attacker: HouseId,
-  target: HouseId,
-  diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
-  targetOrders: FleetCommandType,
-  attackerControlsSystem: bool
+    attacker: HouseId,
+    target: HouseId,
+    diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
+    targetOrders: FleetCommandType,
+    attackerControlsSystem: bool,
 ): bool =
   ## Determine if target Task Force is hostile per Section 7.3.2.1
   ##
@@ -26,17 +26,16 @@ proc isHostile*(
   ## 4. Target engaged attacker in previous rounds
 
   # Check Enemy status
-  let relation = diplomaticRelations.getOrDefault((attacker, target), DiplomaticState.Neutral)
+  let relation =
+    diplomaticRelations.getOrDefault((attacker, target), DiplomaticState.Neutral)
   if relation == DiplomaticState.Enemy:
     return true
 
   # Check threatening orders in controlled territory
   if attackerControlsSystem:
     if targetOrders in [
-      FleetCommandType.Blockade,
-      FleetCommandType.Bombard,
-      FleetCommandType.Invade,
-      FleetCommandType.Blitz
+      FleetCommandType.Blockade, FleetCommandType.Bombard, FleetCommandType.Invade,
+      FleetCommandType.Blitz,
     ]:
       return true
 
@@ -51,11 +50,11 @@ proc isHostile*(
 ## Target Candidate Pool Building
 
 proc filterHostileSquadrons*(
-  attacker: TaskForce,
-  allTaskForces: seq[TaskForce],
-  diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
-  systemOwner: Option[HouseId],
-  allowStarbaseTargeting: bool = true
+    attacker: TaskForce,
+    allTaskForces: seq[TaskForce],
+    diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
+    systemOwner: Option[HouseId],
+    allowStarbaseTargeting: bool = true,
 ): seq[CombatSquadron] =
   ## Get all squadrons from hostile Task Forces
   ## Filters out destroyed squadrons and friendly forces
@@ -68,13 +67,14 @@ proc filterHostileSquadrons*(
       continue
 
     # Check if hostile (simplified - would need fleet orders in real impl)
-    let attackerControlsSystem = systemOwner.isSome and systemOwner.get() == attacker.houseId
+    let attackerControlsSystem =
+      systemOwner.isSome and systemOwner.get() == attacker.houseId
     let isHostileHouse = isHostile(
       attacker.houseId,
       tf.houseId,
       diplomaticRelations,
-      FleetCommandType.Patrol,  # Placeholder - real impl would track per fleet
-      attackerControlsSystem
+      FleetCommandType.Patrol, # Placeholder - real impl would track per fleet
+      attackerControlsSystem,
     )
 
     if isHostileHouse:
@@ -89,8 +89,7 @@ proc filterHostileSquadrons*(
 ## Bucket-Based Target Selection (Section 7.3.2.4)
 
 proc getCandidatesByBucket*(
-  hostileSquadrons: seq[CombatSquadron],
-  bucket: TargetBucket
+    hostileSquadrons: seq[CombatSquadron], bucket: TargetBucket
 ): seq[CombatSquadron] =
   ## Get all squadrons in a specific bucket
   result = @[]
@@ -99,8 +98,7 @@ proc getCandidatesByBucket*(
       result.add(sq)
 
 proc buildCandidatePool*(
-  hostileSquadrons: seq[CombatSquadron],
-  attackerBucket: TargetBucket
+    hostileSquadrons: seq[CombatSquadron], attackerBucket: TargetBucket
 ): seq[CombatSquadron] =
   ## Build target candidate pool using bucket priority
   ## Section 7.3.2.4: Walk buckets in order, return first non-empty
@@ -114,11 +112,8 @@ proc buildCandidatePool*(
 
   # Standard bucket command: Raider → Capital → Escort → Fighter → Starbase
   const bucketOrder = [
-    TargetBucket.Raider,
-    TargetBucket.Capital,
-    TargetBucket.Escort,
-    TargetBucket.Fighter,
-    TargetBucket.Starbase
+    TargetBucket.Raider, TargetBucket.Capital, TargetBucket.Escort,
+    TargetBucket.Fighter, TargetBucket.Starbase,
   ]
 
   for bucket in bucketOrder:
@@ -132,8 +127,7 @@ proc buildCandidatePool*(
 ## Weighted Random Selection (Section 7.3.2.5)
 
 proc selectTarget*(
-  candidates: seq[CombatSquadron],
-  rng: var CombatRNG
+    candidates: seq[CombatSquadron], rng: var CombatRNG
 ): Option[SquadronId] =
   ## Select target using weighted random selection
   ## Weights = Base_Weight × Crippled_Modifier
@@ -166,13 +160,13 @@ proc selectTarget*(
 ## High-level targeting interface
 
 proc selectTargetForAttack*(
-  attacker: CombatSquadron,
-  attackerTF: TaskForce,
-  allTaskForces: seq[TaskForce],
-  diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
-  systemOwner: Option[HouseId],
-  rng: var CombatRNG,
-  allowStarbaseTargeting: bool = true
+    attacker: CombatSquadron,
+    attackerTF: TaskForce,
+    allTaskForces: seq[TaskForce],
+    diplomaticRelations: Table[tuple[a, b: HouseId], DiplomaticState],
+    systemOwner: Option[HouseId],
+    rng: var CombatRNG,
+    allowStarbaseTargeting: bool = true,
 ): Option[SquadronId] =
   ## Complete target selection process for one attacking squadron
   ##
@@ -181,11 +175,7 @@ proc selectTargetForAttack*(
 
   # Step 1: Diplomatic filtering
   let hostileSquadrons = filterHostileSquadrons(
-    attackerTF,
-    allTaskForces,
-    diplomaticRelations,
-    systemOwner,
-    allowStarbaseTargeting
+    attackerTF, allTaskForces, diplomaticRelations, systemOwner, allowStarbaseTargeting
   )
 
   if hostileSquadrons.len == 0:
@@ -206,7 +196,8 @@ proc getCandidateInfo*(candidates: seq[CombatSquadron]): string =
   ## Format candidate pool for logging
   result = "Candidates: " & $candidates.len & " ["
   for i, sq in candidates:
-    if i > 0: result.add(", ")
+    if i > 0:
+      result.add(", ")
     result.add($sq.bucket & ":" & $sq.squadronId)
     if sq.state == CombatState.Crippled:
       result.add("(CRIP)")

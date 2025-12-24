@@ -41,8 +41,7 @@ type
     autopilot_can_win*: bool
     final_conflict_auto_enemy*: bool
 
-  GameplayConfig* = object
-    ## Complete gameplay configuration loaded from TOML
+  GameplayConfig* = object ## Complete gameplay configuration loaded from TOML
     theme*: ThemeConfig
     elimination*: EliminationConfig
     autopilot*: AutopilotConfig

@@ -98,18 +98,25 @@ import ../common/logger as common_logger
 import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders, logger
 import index_maintenance
 import espionage/[types as esp_types, engine as esp_engine]
-import diplomacy/[types as dip_types] # Renamed to avoid conflict with gamestate.diplomacy
+import
+  diplomacy/[types as dip_types] # Renamed to avoid conflict with gamestate.diplomacy
 import research/[types as res_types_research]
 import commands/[executor]
 import intelligence/[spy_resolution]
 import intelligence/event_processor/init as event_processor
 import economy/repair_queue
 # Import resolution modules
-import resolution/[types as res_types, fleet_orders, diplomatic_resolution, combat_resolution, simultaneous, planetary, simultaneous_espionage, commissioning, automation, construction]
-import resolution/phases/[conflict_phase, income_phase, command_phase, maintenance_phase]
+import
+  resolution/[
+    types as res_types, fleet_orders, diplomatic_resolution, combat_resolution,
+    simultaneous, planetary, simultaneous_espionage, commissioning, automation,
+    construction,
+  ]
+import
+  resolution/phases/[conflict_phase, income_phase, command_phase, maintenance_phase]
 import prestige as prestige_types
 import prestige/application as prestige_app
-import ../ai/rba/config as rba_config  # For act progression config
+import ../ai/rba/config as rba_config # For act progression config
 
 # Import debug-only modules
 when not defined(release):
@@ -118,11 +125,10 @@ when not defined(release):
 # Re-export resolution types for backward compatibility
 export res_types.GameEvent, res_types.GameEventType, res_types.CombatReport
 
-type
-  TurnResult* = object
-    newState*: GameState
-    events*: seq[res_types.GameEvent]
-    combatReports*: seq[res_types.CombatReport]
+type TurnResult* = object
+  newState*: GameState
+  events*: seq[res_types.GameEvent]
+  combatReports*: seq[res_types.CombatReport]
 
 # Phase functions imported from resolution/phases/
 # - resolveConflictPhase from conflict_phase.nim
@@ -136,14 +142,20 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
 
   logResolve("Turn resolution starting", "turn=", $state.turn)
 
-  result.newState = state  # Start with current state
+  result.newState = state # Start with current state
   result.events = @[]
   result.combatReports = @[]
 
   # Initialize RNG for this turn (use turn number as seed for reproducibility)
   # Using turn number as seed ensures deterministic replay for debugging
   var rng = initRand(state.turn)
-  logRNG("RNG initialized for stochastic resolution", "turn=", $state.turn, " seed=", $state.turn)
+  logRNG(
+    "RNG initialized for stochastic resolution",
+    "turn=",
+    $state.turn,
+    " seed=",
+    $state.turn,
+  )
 
   # Update act progression (checks gates and transitions if needed)
   discard getCurrentGameAct(result.newState, rba_config.globalRBAConfig.act_progression)
@@ -152,7 +164,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
 
   # Generate AI orders for special modes (Defensive Collapse & MIA Autopilot)
   # These override player/AI orders for affected houses
-  var effectiveOrders = orders  # Start with submitted orders
+  var effectiveOrders = orders # Start with submitted orders
 
   for houseId, house in result.newState.houses:
     case house.status
@@ -172,7 +184,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         terraformOrders: @[],
         espionageAction: none(esp_types.EspionageAttempt),
         ebpInvestment: 0,
-        cipInvestment: 0
+        cipInvestment: 0,
       )
 
       # Add defensive fleet orders
@@ -180,8 +192,13 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         collapsePacket.fleetCommands.add(command)
 
       effectiveOrders[houseId] = collapsePacket
-      logInfo("Resolve", "Defensive Collapse mode active", house.name, " orders=", $defensiveOrders.len)
-
+      logInfo(
+        "Resolve",
+        "Defensive Collapse mode active",
+        house.name,
+        " orders=",
+        $defensiveOrders.len,
+      )
     of HouseStatus.Autopilot:
       # Generate autopilot AI orders
       let autopilotOrders = getAutopilotOrders(result.newState, houseId)
@@ -198,7 +215,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         terraformOrders: @[],
         espionageAction: none(esp_types.EspionageAttempt),
         ebpInvestment: 0,
-        cipInvestment: 0
+        cipInvestment: 0,
       )
 
       # Add autopilot fleet orders
@@ -206,55 +223,84 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         autopilotPacket.fleetCommands.add(command)
 
       effectiveOrders[houseId] = autopilotPacket
-      logInfo("Resolve", "Autopilot mode active", house.name, " orders=", $autopilotOrders.len)
-
+      logInfo(
+        "Resolve", "Autopilot mode active", house.name, " orders=", $autopilotOrders.len
+      )
     of HouseStatus.Active:
       # Normal play - use submitted orders
       discard
 
   # Phase 1: Conflict (combat, infrastructure damage, espionage)
-  conflict_phase.resolveConflictPhase(result.newState, effectiveOrders, result.combatReports, result.events, rng)
+  conflict_phase.resolveConflictPhase(
+    result.newState, effectiveOrders, result.combatReports, result.events, rng
+  )
 
   # Phase 2: Income (resource collection + capacity enforcement after IU loss)
   income_phase.resolveIncomePhase(result.newState, effectiveOrders, result.events)
 
   # Phase 3: Command (ship commissioning → automation → build orders → fleet orders → diplomatic actions)
-  command_phase.resolveCommandPhase(result.newState, effectiveOrders, result.combatReports, result.events, rng)
+  command_phase.resolveCommandPhase(
+    result.newState, effectiveOrders, result.combatReports, result.events, rng
+  )
 
   # Phase 4: Maintenance (fleet movement → construction advancement → planetary defense commissioning → diplomatic actions)
-  let completedShips = maintenance_phase.resolveMaintenancePhase(result.newState, result.events, effectiveOrders, rng)
+  let completedShips = maintenance_phase.resolveMaintenancePhase(
+    result.newState, result.events, effectiveOrders, rng
+  )
 
   # Store completed ships for next turn's commissioning
   # (Planetary defense already commissioned in Maintenance Phase Step 2b)
   # Ships will be commissioned at start of next turn's Command Phase Part A
   result.newState.pendingMilitaryCommissions = completedShips
-  logDebug(LogCategory.lcEconomy, &"Stored {completedShips.len} ships for next turn commissioning")
+  logDebug(
+    LogCategory.lcEconomy,
+    &"Stored {completedShips.len} ships for next turn commissioning",
+  )
 
   # Validate all commissioning pools are empty before advancing turn
   # All commissioned units should be auto-assigned to fleets/colonies
   # Fighter squadrons are OK to remain at colonies (they're not "unassigned")
   for systemId, colony in result.newState.colonies:
     if colony.unassignedSquadrons.len > 0:
-      logError("Resolve", "Turn ending with unassigned squadrons", "colony=", $systemId, " count=", $colony.unassignedSquadrons.len)
+      logError(
+        "Resolve",
+        "Turn ending with unassigned squadrons",
+        "colony=",
+        $systemId,
+        " count=",
+        $colony.unassignedSquadrons.len,
+      )
       # This should never happen - indicates auto-assignment bug
-      raise newException(ValueError, "Colony " & $systemId & " has " & $colony.unassignedSquadrons.len & " unassigned squadrons at turn end")
+      raise newException(
+        ValueError,
+        "Colony " & $systemId & " has " & $colony.unassignedSquadrons.len &
+          " unassigned squadrons at turn end",
+      )
 
-  logDebug("Resolve", "Turn validation passed - all commissioned units assigned", "turn=", $result.newState.turn)
+  logDebug(
+    "Resolve",
+    "Turn validation passed - all commissioned units assigned",
+    "turn=",
+    $result.newState.turn,
+  )
 
   # Process events for intelligence generation (fog-of-war filtered)
   # Converts GameEvents into per-house intelligence reports
   event_processor.processEventsForIntelligence(
-    result.newState,
-    result.events,
-    result.newState.turn
+    result.newState, result.events, result.newState.turn
   )
-  logInfo(LogCategory.lcOrders, &"Intelligence event processing complete ({result.events.len} events)")
+  logInfo(
+    LogCategory.lcOrders,
+    &"Intelligence event processing complete ({result.events.len} events)",
+  )
 
   # Validate index consistency in debug builds
   when defined(debug) or defined(validateIndices):
     let indexErrors = result.newState.validateIndices()
     if indexErrors.len > 0:
-      logError("Resolve", "Index validation failed at end of turn", "errors=", $indexErrors.len)
+      logError(
+        "Resolve", "Index validation failed at end of turn", "errors=", $indexErrors.len
+      )
       for err in indexErrors:
         logError("Resolve", "  " & err)
       raise newException(ValueError, "Index inconsistency detected: " & indexErrors[0])

@@ -6,10 +6,11 @@ import ./[core, tech]
 
 type
   DetectionEventType* {.pure.} = enum
-    CombatLoss, TravelIntercepted
+    CombatLoss
+    TravelIntercepted
 
   ScoutLossEvent* = object
-    scoutFleetId*: FleetId  # Use FleetId, not string
+    scoutFleetId*: FleetId # Use FleetId, not string
     owner*: HouseId
     location*: SystemId
     detectorHouse*: HouseId
@@ -24,10 +25,13 @@ type
     threshold*: int32
 
   IntelQuality* {.pure.} = enum
-    Visual, Scan, Spy, Perfect
+    Visual
+    Scan
+    Spy
+    Perfect
 
   ColonyIntelReport* = object
-    colonyId*: ColonyId  # Use ColonyId, not SystemId
+    colonyId*: ColonyId # Use ColonyId, not SystemId
     targetOwner*: HouseId
     gatheredTurn*: int32
     quality*: IntelQuality
@@ -50,10 +54,10 @@ type
     shipCount*: int32
     standingOrders*: Option[string]
     spaceLiftShipCount*: Option[int32]
-    squadronIds*: seq[SquadronId]  # Store IDs, not details
+    squadronIds*: seq[SquadronId] # Store IDs, not details
 
   SquadronIntel* = object
-    squadronId*: SquadronId  # Use typed ID
+    squadronId*: SquadronId # Use typed ID
     shipClass*: string
     shipCount*: int32
     techLevel*: int32
@@ -63,10 +67,10 @@ type
     systemId*: SystemId
     gatheredTurn*: int32
     quality*: IntelQuality
-    detectedFleetIds*: seq[FleetId]  # Store IDs, lookup details from FleetIntel
+    detectedFleetIds*: seq[FleetId] # Store IDs, lookup details from FleetIntel
 
   StarbaseIntelReport* = object
-    starbaseId*: StarbaseId  # Use typed ID
+    starbaseId*: StarbaseId # Use typed ID
     targetOwner*: HouseId
     gatheredTurn*: int32
     quality*: IntelQuality
@@ -87,17 +91,23 @@ type
     description*: string
 
   CombatPhase* {.pure.} = enum
-    Space, Orbital, Planetary
+    Space
+    Orbital
+    Planetary
 
   CombatOutcome* {.pure.} = enum
-    Victory, Defeat, Retreat, MutualRetreat, Ongoing
+    Victory
+    Defeat
+    Retreat
+    MutualRetreat
+    Ongoing
 
   FleetOrderIntel* = object
     orderType*: string
     targetSystem*: Option[SystemId]
 
   SpaceLiftCargoIntel* = object
-    squadronId*: SquadronId  # Use typed ID
+    squadronId*: SquadronId # Use typed ID
     shipClass*: string
     cargoType*: string
     quantity*: int32
@@ -107,7 +117,7 @@ type
     fleetId*: FleetId
     owner*: HouseId
     standingOrders*: Option[FleetOrderIntel]
-    squadronIds*: seq[SquadronId]  # Store IDs
+    squadronIds*: seq[SquadronId] # Store IDs
     spaceLiftSquadronIds*: seq[SquadronId]
     isCloaked*: bool
 
@@ -121,26 +131,37 @@ type
     enemyFleetIds*: seq[FleetId]
     outcome*: CombatOutcome
     alliedLosses*: seq[SquadronId]
-    enemyLosses*: seq[string]  # Ship classes
+    enemyLosses*: seq[string] # Ship classes
     retreatedAllies*: seq[FleetId]
     retreatedEnemies*: seq[FleetId]
     survived*: bool
 
   ScoutEncounterType* {.pure.} = enum
-    FleetSighting, ColonyDiscovered, Bombardment, Blockade,
-    Combat, Construction, FleetMovement, DiplomaticActivity
+    FleetSighting
+    ColonyDiscovered
+    Bombardment
+    Blockade
+    Combat
+    Construction
+    FleetMovement
+    DiplomaticActivity
 
   SensorQuality* {.pure.} = enum
-    None, Visual, Scan, Perfect
+    None
+    Visual
+    Scan
+    Perfect
 
   StarbaseSurveillanceReport* = object
     starbaseId*: StarbaseId
     systemId*: SystemId
     owner*: HouseId
     turn*: int32
-    detectedFleets*: seq[tuple[fleetId: FleetId, location: SystemId, owner: HouseId, shipCount: int32]]
+    detectedFleets*:
+      seq[tuple[fleetId: FleetId, location: SystemId, owner: HouseId, shipCount: int32]]
     undetectedFleets*: seq[FleetId]
-    transitingFleets*: seq[tuple[fleetId: FleetId, fromSystem: SystemId, toSystem: SystemId]]
+    transitingFleets*:
+      seq[tuple[fleetId: FleetId, fromSystem: SystemId, toSystem: SystemId]]
     combatDetected*: seq[SystemId]
     bombardmentDetected*: seq[SystemId]
     significantActivity*: bool
@@ -155,7 +176,9 @@ type
     observedHouses*: seq[HouseId]
     observedFleetIds*: seq[FleetId]
     colonyId*: Option[ColonyId]
-    fleetMovements*: seq[tuple[fleetId: FleetId, fromSystem: Option[SystemId], toSystem: Option[SystemId]]]
+    fleetMovements*: seq[
+      tuple[fleetId: FleetId, fromSystem: Option[SystemId], toSystem: Option[SystemId]]
+    ]
     description*: string
     significance*: int32
 
@@ -179,7 +202,11 @@ type
     completedSinceLastVisit*: seq[string]
 
   PopulationTransferStatus* {.pure.} = enum
-    Initiated, InTransit, Delivered, Redirected, Failed
+    Initiated
+    InTransit
+    Delivered
+    Redirected
+    Failed
 
   PopulationTransferStatusReport* = object
     transferId*: PopulationTransferId
@@ -197,7 +224,7 @@ type
     currentLocation*: Option[SystemId]
 
   IntelligenceDatabase* = object
-    houseId*: HouseId  # Back-reference
+    houseId*: HouseId # Back-reference
     colonyReports*: Table[ColonyId, ColonyIntelReport]
     systemReports*: Table[SystemId, SystemIntelReport]
     starbaseReports*: Table[StarbaseId, StarbaseIntelReport]
@@ -207,4 +234,5 @@ type
     fleetMovementHistory*: Table[FleetId, FleetMovementHistory]
     constructionActivity*: Table[ColonyId, ConstructionActivityReport]
     starbaseSurveillance*: seq[StarbaseSurveillanceReport]
-    populationTransferStatus*: Table[PopulationTransferId, PopulationTransferStatusReport]
+    populationTransferStatus*:
+      Table[PopulationTransferId, PopulationTransferStatusReport]

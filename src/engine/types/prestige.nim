@@ -6,10 +6,19 @@ import ./core
 
 type
   PrestigeSource* {.pure.} = enum
-    CombatVictory, TaskForceDestroyed, FleetRetreated, SquadronDestroyed,
-    ColonySeized, ColonyEstablished, TechAdvancement, LowTaxBonus,
-    HighTaxPenalty, BlockadePenalty, MaintenanceShortfall,
-    PactViolation, Eliminated
+    CombatVictory
+    TaskForceDestroyed
+    FleetRetreated
+    SquadronDestroyed
+    ColonySeized
+    ColonyEstablished
+    TechAdvancement
+    LowTaxBonus
+    HighTaxPenalty
+    BlockadePenalty
+    MaintenanceShortfall
+    PactViolation
+    Eliminated
 
   PrestigeEvent* = object
     source*: PrestigeSource

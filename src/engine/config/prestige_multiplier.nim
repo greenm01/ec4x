@@ -13,8 +13,16 @@ proc initializePrestigeMultiplier*(numSystems: int32, numPlayers: int32) =
   ## Initialize the prestige multiplier for the current game
   ## Call this once during game initialization
   currentMultiplier = calculateDynamicMultiplier(numSystems, numPlayers)
-  logInfo("Prestige", "Dynamic multiplier initialized",
-          "multiplier=", $currentMultiplier, " systems=", $numSystems, " players=", $numPlayers)
+  logInfo(
+    "Prestige",
+    "Dynamic multiplier initialized",
+    "multiplier=",
+    $currentMultiplier,
+    " systems=",
+    $numSystems,
+    " players=",
+    $numPlayers,
+  )
 
 proc setPrestigeMultiplierForTesting*(multiplier: float32) =
   ## Set the prestige multiplier directly for testing
@@ -25,8 +33,12 @@ proc getPrestigeMultiplier*(): float32 =
   ## Get the current prestige multiplier
   ## Returns the base multiplier if not initialized
   if currentMultiplier == 0.0:
-    logError("Prestige", "Multiplier uninitialized! Using base value",
-             "base=", $globalPrestigeConfig.dynamic_scaling.base_multiplier)
+    logError(
+      "Prestige",
+      "Multiplier uninitialized! Using base value",
+      "base=",
+      $globalPrestigeConfig.dynamic_scaling.base_multiplier,
+    )
     return globalPrestigeConfig.dynamic_scaling.base_multiplier
   return currentMultiplier
 

@@ -22,27 +22,25 @@ const roeThresholds* = [
   (roe: 7, threshold: 0.67, description: "Engage even if outgunned 3:2"),
   (roe: 8, threshold: 0.5, description: "Engage even if outgunned 2:1"),
   (roe: 9, threshold: 0.33, description: "Engage even if outgunned 3:1"),
-  (roe: 10, threshold: 0.0, description: "Engage regardless of size")
+  (roe: 10, threshold: 0.0, description: "Engage regardless of size"),
 ]
 
 proc getMoraleROEModifier*(prestige: int): int =
   ## Get ROE modifier based on House prestige/morale
   ## Section 7.3.4: Morale ROE Modifier table
   if prestige <= 0:
-    return -2  # Crisis: retreat much more readily
+    return -2 # Crisis: retreat much more readily
   elif prestige <= 20:
-    return -1  # Low: retreat more readily
+    return -1 # Low: retreat more readily
   elif prestige <= 60:
-    return 0   # Average/Good: no modification
+    return 0 # Average/Good: no modification
   elif prestige <= 80:
-    return +1  # High: fight more aggressively
+    return +1 # High: fight more aggressively
   else:
-    return +2  # Elite (81+): fight much more aggressively
+    return +2 # Elite (81+): fight much more aggressively
 
 proc evaluateRetreat*(
-  taskForce: TaskForce,
-  allTaskForces: seq[TaskForce],
-  prestige: int
+    taskForce: TaskForce, allTaskForces: seq[TaskForce], prestige: int
 ): RetreatEvaluation =
   ## Evaluate whether Task Force wants to retreat
   ## Section 7.3.4: Multi-Faction Retreat Evaluation
@@ -56,7 +54,7 @@ proc evaluateRetreat*(
     ourStrength: 0,
     enemyStrength: 0,
     strengthRatio: 0.0,
-    reason: ""
+    reason: "",
   )
 
   # Homeworld defense exception - NEVER retreat
@@ -100,17 +98,13 @@ proc evaluateRetreat*(
   # Decide whether to retreat
   if result.strengthRatio < threshold:
     result.wantsToRetreat = true
-    result.reason = "Strength ratio $# below ROE $# threshold $#" % [
-      $result.strengthRatio,
-      $result.effectiveROE,
-      $threshold
-    ]
+    result.reason =
+      "Strength ratio $# below ROE $# threshold $#" %
+      [$result.strengthRatio, $result.effectiveROE, $threshold]
   else:
-    result.reason = "Strength ratio $# meets ROE $# threshold $#" % [
-      $result.strengthRatio,
-      $result.effectiveROE,
-      $threshold
-    ]
+    result.reason =
+      "Strength ratio $# meets ROE $# threshold $#" %
+      [$result.strengthRatio, $result.effectiveROE, $threshold]
 
 ## Multi-House Retreat Priority (Section 7.3.4)
 
@@ -125,11 +119,12 @@ proc getRetreatPriority*(taskForces: seq[TaskForce]): seq[HouseId] =
     strengths.add((tf.house, tf.totalAS()))
 
   # Sort by strength ascending (weakest first), then by house ID
-  strengths.sort(proc(a, b: TFStrength): int =
-    if a.strength != b.strength:
-      return cmp(a.strength, b.strength)
-    else:
-      return cmp(a.house, b.house)
+  strengths.sort(
+    proc(a, b: TFStrength): int =
+      if a.strength != b.strength:
+        return cmp(a.strength, b.strength)
+      else:
+        return cmp(a.house, b.house)
   )
 
   result = @[]
@@ -139,8 +134,7 @@ proc getRetreatPriority*(taskForces: seq[TaskForce]): seq[HouseId] =
 ## Combat Termination Check (Section 7.3.4)
 
 proc checkCombatTermination*(
-  taskForces: seq[TaskForce],
-  consecutiveRoundsNoChange: int
+    taskForces: seq[TaskForce], consecutiveRoundsNoChange: int
 ): tuple[shouldEnd: bool, reason: string, victor: Option[HouseId]] =
   ## Check if combat should end
   ## Returns (shouldEnd, reason, victor)
@@ -210,10 +204,11 @@ proc `$`*(eval: RetreatEvaluation): string =
     result &= "RETREAT"
   else:
     result &= "FIGHT"
-  result &= " (ROE=$#, AS=$#, Enemy=$#, Ratio=$#) - $#" % [
-    $eval.effectiveROE,
-    $eval.ourStrength,
-    $eval.enemyStrength,
-    formatFloat(eval.strengthRatio, precision = 2),
-    eval.reason
-  ]
+  result &=
+    " (ROE=$#, AS=$#, Enemy=$#, Ratio=$#) - $#" % [
+      $eval.effectiveROE,
+      $eval.ourStrength,
+      $eval.enemyStrength,
+      formatFloat(eval.strengthRatio, precision = 2),
+      eval.reason,
+    ]

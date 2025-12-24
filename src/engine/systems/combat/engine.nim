@@ -29,7 +29,7 @@ proc resolveCombat*(context: BattleContext): CombatResult =
     eliminated: @[],
     victor: none(HouseId),
     totalRounds: 0,
-    wasStalemate: false
+    wasStalemate: false,
   )
 
   # Initialize RNG
@@ -84,7 +84,7 @@ proc resolveCombat*(context: BattleContext): CombatResult =
 
       # Check for starbase presence (provides +2 detection bonus)
       # TODO: Starbases moved to facility system - need colony data to determine presence
-      let starbaseBonus = 0  # Placeholder until colony integration
+      let starbaseBonus = 0 # Placeholder until colony integration
 
       # Use target's house CLK level
       let targetCloakLevel = targetTF.clkLevel
@@ -92,18 +92,31 @@ proc resolveCombat*(context: BattleContext): CombatResult =
       if targetCloakLevel > 0 and hasScouts:
         # Attempt detection with opposed rolls
         let detectionResult = detectRaider(
-          targetCloakLevel,      # Attacker's CLK
-          detectorTF.eliLevel,   # Defender's ELI
-          starbaseBonus,         # +2 if starbase present, else 0
-          detectionRng
+          targetCloakLevel, # Attacker's CLK
+          detectorTF.eliLevel, # Defender's ELI
+          starbaseBonus, # +2 if starbase present, else 0
+          detectionRng,
         )
 
         when defined(debugDetection):
-          logDebug("Detection", "Raider detection attempt (opposed rolls)",
-                  "detector=", $detectorTF.house, " defenderELI=", $detectorTF.eliLevel,
-                  " target=", $targetTF.house, " attackerCLK=", $targetCloakLevel,
-                  " defenderRoll=", $detectionResult.roll, " attackerRoll=", $detectionResult.threshold,
-                  " detected=", $detectionResult.detected)
+          logDebug(
+            "Detection",
+            "Raider detection attempt (opposed rolls)",
+            "detector=",
+            $detectorTF.house,
+            " defenderELI=",
+            $detectorTF.eliLevel,
+            " target=",
+            $targetTF.house,
+            " attackerCLK=",
+            $targetCloakLevel,
+            " defenderRoll=",
+            $detectionResult.roll,
+            " attackerRoll=",
+            $detectionResult.threshold,
+            " detected=",
+            $detectionResult.detected,
+          )
 
         if detectionResult.detected:
           # Raiders detected! Remove ambush advantage
@@ -113,7 +126,7 @@ proc resolveCombat*(context: BattleContext): CombatResult =
   var consecutiveRoundsNoChange = 0
 
   # Combat loop
-  for roundNum in 1..context.maxRounds:
+  for roundNum in 1 .. context.maxRounds:
     result.totalRounds = roundNum
 
     # Check combat termination before round
@@ -133,7 +146,7 @@ proc resolveCombat*(context: BattleContext): CombatResult =
       rng,
       desperationBonus = 0,
       allowAmbush = context.allowAmbush,
-      allowStarbaseCombat = context.allowStarbaseCombat
+      allowStarbaseCombat = context.allowStarbaseCombat,
     )
 
     result.rounds.add(roundResults)
@@ -155,13 +168,13 @@ proc resolveCombat*(context: BattleContext): CombatResult =
       # Desperation round: both sides get +2 CER bonus
       let desperationResults = resolveRound(
         taskForces,
-        roundNum + 1,  # Desperation is a bonus "round"
+        roundNum + 1, # Desperation is a bonus "round"
         context.diplomaticRelations,
         context.systemOwner,
         rng,
-        desperationBonus = 2,  # +2 CER to all attacks
+        desperationBonus = 2, # +2 CER to all attacks
         allowAmbush = context.allowAmbush,
-        allowStarbaseCombat = context.allowStarbaseCombat
+        allowStarbaseCombat = context.allowStarbaseCombat,
       )
 
       result.rounds.add(desperationResults)
@@ -256,20 +269,20 @@ proc initializeCombatSquadron*(squadron: Squadron): CombatSquadron =
     damageThisTurn: 0,
     crippleRound: 0,
     bucket: classifyBucket(squadron),
-    targetWeight: 0.0
+    targetWeight: 0.0,
   )
 
   # Calculate initial target weight
   result.targetWeight = calculateTargetWeight(result)
 
 proc initializeTaskForce*(
-  house: HouseId,
-  squadrons: seq[Squadron],
-  roe: int,
-  prestige: int = 50,
-  isHomeworld: bool = false,
-  eliLevel: int = 1,
-  clkLevel: int = 1
+    house: HouseId,
+    squadrons: seq[Squadron],
+    roe: int,
+    prestige: int = 50,
+    isHomeworld: bool = false,
+    eliLevel: int = 1,
+    clkLevel: int = 1,
 ): TaskForce =
   ## Create Task Force from squadrons
   ##
@@ -290,7 +303,7 @@ proc initializeTaskForce*(
     moraleModifier: 0,
     isDefendingHomeworld: isHomeworld,
     eliLevel: eliLevel,
-    clkLevel: clkLevel
+    clkLevel: clkLevel,
   )
 
   # Convert squadrons
@@ -316,17 +329,14 @@ proc initializeTaskForce*(
 ## Quick Battle Helper
 
 proc quickBattle*(
-  attacker: TaskForce,
-  defender: TaskForce,
-  systemId: SystemId = 0,
-  seed: int64 = 12345
+    attacker: TaskForce,
+    defender: TaskForce,
+    systemId: SystemId = 0,
+    seed: int64 = 12345,
 ): CombatResult =
   ## Convenience function for simple 1v1 battles
   let context = BattleContext(
-    systemId: systemId,
-    taskForces: @[attacker, defender],
-    seed: seed,
-    maxRounds: 20
+    systemId: systemId, taskForces: @[attacker, defender], seed: seed, maxRounds: 20
   )
 
   return resolveCombat(context)

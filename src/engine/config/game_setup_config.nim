@@ -9,35 +9,30 @@ import ../../common/logger
 import ../types/starmap
 
 type
-  GameInfoConfig* = object
-    ## Game metadata
+  GameInfoConfig* = object ## Game metadata
     name*: string
     description*: string
     recommended_players*: int32
     estimated_duration*: string
 
-  VictoryConditionsConfig* = object
-    ## Victory conditions
+  VictoryConditionsConfig* = object ## Victory conditions
     primary_condition*: string
     secondary_condition*: string
     prestige_threshold*: int32
-    turn_limit*: int32  # NEW: Turn limit for turn_limit victory mode
+    turn_limit*: int32 # NEW: Turn limit for turn_limit victory mode
 
-  MapConfig* = object
-    ## Map generation settings
+  MapConfig* = object ## Map generation settings
     size*: string
     systems*: int32
     jump_lane_density*: string
     starting_distance*: string
 
-  StartingResourcesConfig* = object
-    ## Starting economic resources
+  StartingResourcesConfig* = object ## Starting economic resources
     treasury*: int32
     starting_prestige*: int32
     default_tax_rate*: float32
 
-  StartingTechConfig* = object
-    ## Initial technology levels per gameplay.md:1.2
+  StartingTechConfig* = object ## Initial technology levels per gameplay.md:1.2
     economic_level*: int32
     science_level*: int32
     construction_tech*: int32
@@ -50,48 +45,41 @@ type
     fighter_doctrine*: int32
     advanced_carrier_ops*: int32
 
-  StartingFleetConfig* = object
-    ## Initial fleet composition
-    fleet_count*: int32           # Number of individual fleets to create
+  StartingFleetConfig* = object ## Initial fleet composition
+    fleet_count*: int32 # Number of individual fleets to create
     # Fallback aggregated counts (used if individual fleet sections not available)
     etac*: int32
     light_cruiser*: int32
     destroyer*: int32
     scout*: int32
 
-  FleetConfig* = object
-    ## Individual fleet configuration (new per-fleet format)
-    ships*: seq[string]         # Ship class names (e.g., ["ETAC", "LightCruiser"])
-    cargo_ptu*: Option[int32]     # Optional PTU cargo override for ETACs
+  FleetConfig* = object ## Individual fleet configuration (new per-fleet format)
+    ships*: seq[string] # Ship class names (e.g., ["ETAC", "LightCruiser"])
+    cargo_ptu*: Option[int32] # Optional PTU cargo override for ETACs
 
-  HouseNamingConfig* = object
-    ## House naming configuration
-    name_pattern*: string       # Pattern with {index} placeholder
-    use_theme_names*: bool      # Whether to use house_themes.toml
+  HouseNamingConfig* = object ## House naming configuration
+    name_pattern*: string # Pattern with {index} placeholder
+    use_theme_names*: bool # Whether to use house_themes.toml
 
-  StartingFacilitiesConfig* = object
-    ## Homeworld starting facilities
+  StartingFacilitiesConfig* = object ## Homeworld starting facilities
     spaceports*: int32
     shipyards*: int32
     starbases*: int32
     ground_batteries*: int32
     planetary_shields*: int32
 
-  StartingGroundForcesConfig* = object
-    ## Homeworld starting ground forces
+  StartingGroundForcesConfig* = object ## Homeworld starting ground forces
     armies*: int32
     marines*: int32
 
-  HomeworldConfig* = object
-    ## Homeworld characteristics
-    planet_class*: string      # "Eden"
-    raw_quality*: string        # "Abundant"
-    colony_level*: int32          # Infrastructure level (5 = Level V)
-    population_units*: int32      # Starting population in PU (840)
+  HomeworldConfig* = object ## Homeworld characteristics
+    planet_class*: string # "Eden"
+    raw_quality*: string # "Abundant"
+    colony_level*: int32 # Infrastructure level (5 = Level V)
+    population_units*: int32 # Starting population in PU (840)
     industrial_units*: int32
 
-  GameSetupConfig* = object
-    ## Complete game setup configuration
+  GameSetupConfig* = object ## Complete game setup configuration
     game_info*: GameInfoConfig
     victory_conditions*: VictoryConditionsConfig
     map*: MapConfig
@@ -101,9 +89,11 @@ type
     starting_facilities*: StartingFacilitiesConfig
     starting_ground_forces*: StartingGroundForcesConfig
     homeworld*: HomeworldConfig
-    house_naming*: Option[HouseNamingConfig]  # Optional, defaults if not present
+    house_naming*: Option[HouseNamingConfig] # Optional, defaults if not present
 
-proc loadGameSetupConfig*(configPath: string = "game_setup/standard.toml"): GameSetupConfig =
+proc loadGameSetupConfig*(
+    configPath: string = "game_setup/standard.toml"
+): GameSetupConfig =
   ## Load game setup configuration from TOML file
   ## Uses toml_serialization for type-safe parsing
 
@@ -118,28 +108,42 @@ proc loadGameSetupConfig*(configPath: string = "game_setup/standard.toml"): Game
 proc parsePlanetClass*(className: string): PlanetClass =
   ## Parse planet class string from config
   case className.toLower()
-  of "extreme": PlanetClass.Extreme
-  of "desolate": PlanetClass.Desolate
-  of "hostile": PlanetClass.Hostile
-  of "harsh": PlanetClass.Harsh
-  of "benign": PlanetClass.Benign
-  of "lush": PlanetClass.Lush
-  of "eden": PlanetClass.Eden
+  of "extreme":
+    PlanetClass.Extreme
+  of "desolate":
+    PlanetClass.Desolate
+  of "hostile":
+    PlanetClass.Hostile
+  of "harsh":
+    PlanetClass.Harsh
+  of "benign":
+    PlanetClass.Benign
+  of "lush":
+    PlanetClass.Lush
+  of "eden":
+    PlanetClass.Eden
   else:
     raise newException(ValueError, "Invalid planet class: " & className)
 
 proc parseResourceRating*(ratingName: string): ResourceRating =
   ## Parse resource rating string from config
   case ratingName.toLower()
-  of "verypoor", "very_poor": ResourceRating.VeryPoor
-  of "poor": ResourceRating.Poor
-  of "abundant": ResourceRating.Abundant
-  of "rich": ResourceRating.Rich
-  of "veryrich", "very_rich": ResourceRating.VeryRich
+  of "verypoor", "very_poor":
+    ResourceRating.VeryPoor
+  of "poor":
+    ResourceRating.Poor
+  of "abundant":
+    ResourceRating.Abundant
+  of "rich":
+    ResourceRating.Rich
+  of "veryrich", "very_rich":
+    ResourceRating.VeryRich
   else:
     raise newException(ValueError, "Invalid resource rating: " & ratingName)
 
-proc parseFleetConfigSection*(configContent: string, fleetIdx: int): Option[FleetConfig] =
+proc parseFleetConfigSection*(
+    configContent: string, fleetIdx: int
+): Option[FleetConfig] =
   ## Parse a single [fleetN] section from TOML content
   ## Returns Some(FleetConfig) if section exists and is valid, None otherwise
   let sectionName = "[fleet" & $fleetIdx & "]"
@@ -152,7 +156,7 @@ proc parseFleetConfigSection*(configContent: string, fleetIdx: int): Option[Flee
   var contentStart = sectionStart + sectionName.len
   while contentStart < configContent.len and configContent[contentStart] != '\n':
     contentStart += 1
-  contentStart += 1  # Skip the newline
+  contentStart += 1 # Skip the newline
 
   # Find the end of this section (next [section] header at start of line, or end of file)
   var sectionEnd = configContent.len
@@ -208,7 +212,7 @@ proc parseFleetConfigSection*(configContent: string, fleetIdx: int): Option[Flee
       var numStr = ""
       for i in (eqPos + 1) ..< sectionContent.len:
         let c = sectionContent[i]
-        if c in '0'..'9':
+        if c in '0' .. '9':
           numStr.add(c)
         elif numStr.len > 0:
           break
@@ -217,13 +221,15 @@ proc parseFleetConfigSection*(configContent: string, fleetIdx: int): Option[Flee
           cargoPtu = some(parseInt(numStr).int32)
         except ValueError:
           discard
-          
+
   if ships.len > 0:
     return some(FleetConfig(ships: ships, cargoPtu: cargoPtu))
   else:
     return none(FleetConfig)
 
-proc loadIndividualFleetConfigs*(configPath: string = "game_setup/fleets.toml"): Table[int, FleetConfig] =
+proc loadIndividualFleetConfigs*(
+    configPath: string = "game_setup/fleets.toml"
+): Table[int, FleetConfig] =
   ## Load individual fleet configurations from TOML file
   ## Parses [fleet1], [fleet2], ... [fleetN] sections
   ## Returns table mapping fleet index to FleetConfig
@@ -238,7 +244,14 @@ proc loadIndividualFleetConfigs*(configPath: string = "game_setup/fleets.toml"):
     return
 
   let configContent = readFile(configPath)
-  logDebug("Config", "Loaded fleet config file", "path=", configPath, "size=", $configContent.len)
+  logDebug(
+    "Config",
+    "Loaded fleet config file",
+    "path=",
+    configPath,
+    "size=",
+    $configContent.len,
+  )
 
   # Parse individual [fleetN] sections (1-indexed)
   var fleetIdx = 1
@@ -248,8 +261,14 @@ proc loadIndividualFleetConfigs*(configPath: string = "game_setup/fleets.toml"):
       break
 
     result[fleetIdx] = fleetConfig.get()
-    logDebug("Config", "Loaded fleet config",
-             "fleet=", $fleetIdx, "ships=", $fleetConfig.get().ships.len)
+    logDebug(
+      "Config",
+      "Loaded fleet config",
+      "fleet=",
+      $fleetIdx,
+      "ships=",
+      $fleetConfig.get().ships.len,
+    )
     fleetIdx += 1
 
   logInfo("Config", "Loaded individual fleet configs", "count=", $(fleetIdx - 1))
@@ -259,14 +278,14 @@ proc getHouseNamePattern*(config: GameSetupConfig): string =
   if config.house_naming.isSome:
     return config.house_naming.get().name_pattern
   else:
-    return "House{index}"  # Default pattern
+    return "House{index}" # Default pattern
 
 proc useThemeNames*(config: GameSetupConfig): bool =
   ## Check if config specifies using theme names from house_themes.toml
   if config.house_naming.isSome:
     return config.house_naming.get().use_theme_names
   else:
-    return false  # Default: don't use theme names
+    return false # Default: don't use theme names
 
 ## Global configuration instance
 

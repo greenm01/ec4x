@@ -18,18 +18,19 @@
 ## Data-oriented design: Calculate violations (pure), apply enforcement (explicit mutations)
 
 import std/[tables, strutils, algorithm, options, math]
-import ../../types/[
-  capacity, core, game_state, squadron, ship, production, event, colony,
-  house, facilities
-]
+import
+  ../../types/[
+    capacity, core, game_state, squadron, ship, production, event, colony, house,
+    facilities,
+  ]
 import ../../state/[entity_manager, game_state as gs_helpers, iterators]
 import ../../entities/squadron_ops
 import ../../config/[military_config, ships_config]
 import ../../event_factory/fleet_ops
 import ../../../common/logger
 
-export capacity.CapacityViolation, capacity.EnforcementAction,
-       capacity.ViolationSeverity
+export
+  capacity.CapacityViolation, capacity.EnforcementAction, capacity.ViolationSeverity
 
 proc getCapitalShipCRThreshold*(): int =
   ## Get the CR threshold for capital ships from config
@@ -55,15 +56,17 @@ proc getMapSizeMultiplier*(mapRings: int, numPlayers: int): float =
   let systemsPerPlayer = totalSystems div max(1, numPlayers)
 
   if systemsPerPlayer < 8:
-    return 0.8  # Small maps: encourage concentration
+    return 0.8 # Small maps: encourage concentration
   elif systemsPerPlayer <= 12:
-    return 1.0  # Medium maps: baseline
+    return 1.0 # Medium maps: baseline
   elif systemsPerPlayer <= 16:
-    return 1.3  # Large maps: +30% capacity
+    return 1.3 # Large maps: +30% capacity
   else:
-    return 1.6  # Huge maps: +60% capacity
+    return 1.6 # Huge maps: +60% capacity
 
-proc calculateMaxCapitalSquadrons*(industrialUnits: int, mapRings: int = 3, numPlayers: int = 4): int =
+proc calculateMaxCapitalSquadrons*(
+    industrialUnits: int, mapRings: int = 3, numPlayers: int = 4
+): int =
   ## Pure calculation of maximum capital squadron capacity
   ## Formula: max(8, floor(Total_House_IU ÷ 100) × 2) × mapMultiplier
   ## Minimum: 8 squadrons regardless of IU
@@ -76,24 +79,42 @@ proc calculateMaxCapitalSquadrons*(industrialUnits: int, mapRings: int = 3, numP
 proc getShipConfig(shipClass: ShipClass): ships_config.ShipStatsConfig =
   ## Get ship configuration from global config
   case shipClass
-  of ShipClass.Corvette: return ships_config.globalShipsConfig.corvette
-  of ShipClass.Frigate: return ships_config.globalShipsConfig.frigate
-  of ShipClass.Destroyer: return ships_config.globalShipsConfig.destroyer
-  of ShipClass.Cruiser: return ships_config.globalShipsConfig.cruiser
-  of ShipClass.LightCruiser: return ships_config.globalShipsConfig.light_cruiser
-  of ShipClass.HeavyCruiser: return ships_config.globalShipsConfig.heavy_cruiser
-  of ShipClass.Battlecruiser: return ships_config.globalShipsConfig.battlecruiser
-  of ShipClass.Battleship: return ships_config.globalShipsConfig.battleship
-  of ShipClass.Dreadnought: return ships_config.globalShipsConfig.dreadnought
-  of ShipClass.SuperDreadnought: return ships_config.globalShipsConfig.super_dreadnought
-  of ShipClass.Carrier: return ships_config.globalShipsConfig.carrier
-  of ShipClass.SuperCarrier: return ships_config.globalShipsConfig.supercarrier
-  of ShipClass.Fighter: return ships_config.globalShipsConfig.fighter
-  of ShipClass.Raider: return ships_config.globalShipsConfig.raider
-  of ShipClass.Scout: return ships_config.globalShipsConfig.scout
-  of ShipClass.ETAC: return ships_config.globalShipsConfig.etac
-  of ShipClass.TroopTransport: return ships_config.globalShipsConfig.troop_transport
-  of ShipClass.PlanetBreaker: return ships_config.globalShipsConfig.planetbreaker
+  of ShipClass.Corvette:
+    return ships_config.globalShipsConfig.corvette
+  of ShipClass.Frigate:
+    return ships_config.globalShipsConfig.frigate
+  of ShipClass.Destroyer:
+    return ships_config.globalShipsConfig.destroyer
+  of ShipClass.Cruiser:
+    return ships_config.globalShipsConfig.cruiser
+  of ShipClass.LightCruiser:
+    return ships_config.globalShipsConfig.light_cruiser
+  of ShipClass.HeavyCruiser:
+    return ships_config.globalShipsConfig.heavy_cruiser
+  of ShipClass.Battlecruiser:
+    return ships_config.globalShipsConfig.battlecruiser
+  of ShipClass.Battleship:
+    return ships_config.globalShipsConfig.battleship
+  of ShipClass.Dreadnought:
+    return ships_config.globalShipsConfig.dreadnought
+  of ShipClass.SuperDreadnought:
+    return ships_config.globalShipsConfig.super_dreadnought
+  of ShipClass.Carrier:
+    return ships_config.globalShipsConfig.carrier
+  of ShipClass.SuperCarrier:
+    return ships_config.globalShipsConfig.supercarrier
+  of ShipClass.Fighter:
+    return ships_config.globalShipsConfig.fighter
+  of ShipClass.Raider:
+    return ships_config.globalShipsConfig.raider
+  of ShipClass.Scout:
+    return ships_config.globalShipsConfig.scout
+  of ShipClass.ETAC:
+    return ships_config.globalShipsConfig.etac
+  of ShipClass.TroopTransport:
+    return ships_config.globalShipsConfig.troop_transport
+  of ShipClass.PlanetBreaker:
+    return ships_config.globalShipsConfig.planetbreaker
 
 proc isCapitalShip*(shipClass: ShipClass): bool =
   ## Check if a ship class is a capital ship (role-based)
@@ -115,18 +136,17 @@ proc countCapitalSquadronsInFleets*(state: GameState, houseId: HouseId): int =
       if isCapitalShip(flagship.shipClass):
         result += 1
 
-proc countCapitalSquadronsUnderConstruction*(state: GameState,
-                                              houseId: HouseId): int =
+proc countCapitalSquadronsUnderConstruction*(state: GameState, houseId: HouseId): int =
   ## Count capital ships currently under construction house-wide
   ## Note: Uses role-based classification via isCapitalShip()
   result = 0
 
   # Check spaceport construction queues
   for spaceport in state.spaceportsOwned(houseId):
-    for projectId in spaceport.activeConstructions &
-                     spaceport.constructionQueue:
+    for projectId in spaceport.activeConstructions & spaceport.constructionQueue:
       let projectOpt = gs_helpers.getConstructionProject(state, projectId)
-      if projectOpt.isNone: continue
+      if projectOpt.isNone:
+        continue
       let project = projectOpt.get()
 
       if project.projectType == BuildType.Ship:
@@ -135,14 +155,14 @@ proc countCapitalSquadronsUnderConstruction*(state: GameState,
           if isCapitalShip(shipClass):
             result += 1
         except ValueError:
-          discard  # Invalid ship class, skip
+          discard # Invalid ship class, skip
 
   # Check shipyard construction queues
   for shipyard in state.shipyardsOwned(houseId):
-    for projectId in shipyard.activeConstructions &
-                     shipyard.constructionQueue:
+    for projectId in shipyard.activeConstructions & shipyard.constructionQueue:
       let projectOpt = gs_helpers.getConstructionProject(state, projectId)
-      if projectOpt.isNone: continue
+      if projectOpt.isNone:
+        continue
       let project = projectOpt.get()
 
       if project.projectType == BuildType.Ship:
@@ -151,7 +171,7 @@ proc countCapitalSquadronsUnderConstruction*(state: GameState,
           if isCapitalShip(shipClass):
             result += 1
         except ValueError:
-          discard  # Invalid ship class, skip
+          discard # Invalid ship class, skip
 
 proc analyzeCapacity*(state: GameState, houseId: HouseId): capacity.CapacityViolation =
   ## Pure function - analyze house's capital squadron capacity status
@@ -169,21 +189,23 @@ proc analyzeCapacity*(state: GameState, houseId: HouseId): capacity.CapacityViol
   let excess = max(0, current - maximum)
 
   # Capital squadrons have no grace period - immediate enforcement
-  let severity = if excess == 0:
-                   capacity.ViolationSeverity.None
-                 else:
-                   capacity.ViolationSeverity.Critical
+  let severity =
+    if excess == 0:
+      capacity.ViolationSeverity.None
+    else:
+      capacity.ViolationSeverity.Critical
 
   result = capacity.CapacityViolation(
     capacityType: capacity.CapacityType.CapitalSquadron,
-    entity: capacity.EntityIdUnion(kind: capacity.CapacityType.CapitalSquadron,
-houseId: houseId),
+    entity: capacity.EntityIdUnion(
+      kind: capacity.CapacityType.CapitalSquadron, houseId: houseId
+    ),
     current: int32(current),
     maximum: int32(maximum),
     excess: int32(excess),
     severity: severity,
-    graceTurnsRemaining: 0'i32,  # No grace period
-    violationTurn: int32(state.turn)
+    graceTurnsRemaining: 0'i32, # No grace period
+    violationTurn: int32(state.turn),
   )
 
 proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
@@ -196,14 +218,14 @@ proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
     if status.severity != capacity.ViolationSeverity.None:
       result.add(status)
 
-type
-  SquadronPriority = object
-    ## Helper type for prioritizing squadrons for removal
-    squadronId: string
-    isCrippled: bool
-    attackStrength: int
+type SquadronPriority = object ## Helper type for prioritizing squadrons for removal
+  squadronId: string
+  isCrippled: bool
+  attackStrength: int
 
-proc prioritizeSquadronsForRemoval(state: GameState, houseId: HouseId): seq[SquadronPriority] =
+proc prioritizeSquadronsForRemoval(
+    state: GameState, houseId: HouseId
+): seq[SquadronPriority] =
   ## Determine priority order for removing squadrons
   ## Priority: 1) Crippled flagships first, 2) Lowest AS second
   ## Returns sorted list (highest priority first = first to remove)
@@ -215,14 +237,16 @@ proc prioritizeSquadronsForRemoval(state: GameState, houseId: HouseId): seq[Squa
     if flagshipOpt.isSome:
       let flagship = flagshipOpt.get()
       if isCapitalShip(flagship.shipClass):
-        result.add(SquadronPriority(
-          squadronId: $squadron.id,
-          isCrippled: flagship.isCrippled,
-          attackStrength: flagship.stats.attackStrength
-        ))
+        result.add(
+          SquadronPriority(
+            squadronId: $squadron.id,
+            isCrippled: flagship.isCrippled,
+            attackStrength: flagship.stats.attackStrength,
+          )
+        )
 
   # Sort: crippled first, then by lowest AS
-  result.sort do (a, b: SquadronPriority) -> int:
+  result.sort do(a, b: SquadronPriority) -> int:
     # Crippled ships have higher priority (removed first)
     if a.isCrippled and not b.isCrippled:
       return -1
@@ -236,10 +260,13 @@ proc calculateSalvageValue*(shipClass: ShipClass): int =
   ## Calculate salvage value for a ship (50% of build cost)
   ## Space Guilds pay fair market value for excess capital ships
   let config = getShipConfig(shipClass)
-  let salvageMultiplier = military_config.globalMilitaryConfig.salvage.salvage_value_multiplier
+  let salvageMultiplier =
+    military_config.globalMilitaryConfig.salvage.salvage_value_multiplier
   return int(float(config.build_cost) * salvageMultiplier)
 
-proc planEnforcement*(state: GameState, violation: capacity.CapacityViolation): capacity.EnforcementAction =
+proc planEnforcement*(
+    state: GameState, violation: capacity.CapacityViolation
+): capacity.EnforcementAction =
   ## Plan enforcement actions for violations
   ## Pure function - returns enforcement plan without mutations
   ## Capital squadrons: Auto-scrap excess units with 50% salvage
@@ -249,7 +276,7 @@ proc planEnforcement*(state: GameState, violation: capacity.CapacityViolation): 
     entity: violation.entity,
     actionType: "",
     affectedUnitIds: @[],
-    description: ""
+    description: "",
   )
 
   if violation.severity != capacity.ViolationSeverity.Critical:
@@ -266,11 +293,13 @@ proc planEnforcement*(state: GameState, violation: capacity.CapacityViolation): 
   for i in 0 ..< toScrapCount:
     result.affectedUnitIds.add(priorities[i].squadronId)
 
-  result.description = $toScrapCount & " capital squadron(s) auto-scrapped for " &
-                      $violation.entity.houseId & " (IU loss, 50% salvage paid)"
+  result.description =
+    $toScrapCount & " capital squadron(s) auto-scrapped for " & $violation.entity.houseId &
+    " (IU loss, 50% salvage paid)"
 
-proc applyEnforcement*(state: var GameState, action: capacity.EnforcementAction,
-                       events: var seq[GameEvent]) =
+proc applyEnforcement*(
+    state: var GameState, action: capacity.EnforcementAction, events: var seq[GameEvent]
+) =
   ## Apply enforcement actions
   ## Explicit mutation - scraps capital squadrons and credits salvage value
   ## Emits SquadronScrapped events for tracking
@@ -298,20 +327,28 @@ proc applyEnforcement*(state: var GameState, action: capacity.EnforcementAction,
       let salvage = calculateSalvageValue(flagship.shipClass)
       totalSalvage += salvage
 
-      logger.logDebug("Military", "Capital squadron auto-scrapped - IU loss",
-            " squadronId=", $squadron.id,
-            " class=", $flagship.shipClass,
-            " salvage=", $salvage)
+      logger.logDebug(
+        "Military",
+        "Capital squadron auto-scrapped - IU loss",
+        " squadronId=",
+        $squadron.id,
+        " class=",
+        $flagship.shipClass,
+        " salvage=",
+        $salvage,
+      )
 
       # Emit SquadronScrapped event for tracking
-      events.add(fleet_ops.squadronScrapped(
-        houseId = houseId,
-        squadronId = $squadron.id,
-        shipClass = flagship.shipClass,
-        reason = "Capital squadron capacity exceeded (IU loss)",
-        salvageValue = salvage,
-        systemId = squadron.location
-      ))
+      events.add(
+        fleet_ops.squadronScrapped(
+          houseId = houseId,
+          squadronId = $squadron.id,
+          shipClass = flagship.shipClass,
+          reason = "Capital squadron capacity exceeded (IU loss)",
+          salvageValue = salvage,
+          systemId = squadron.location,
+        )
+      )
 
   # Second pass: actually destroy the squadrons
   for squadronId in squadronsToRemove:
@@ -324,17 +361,29 @@ proc applyEnforcement*(state: var GameState, action: capacity.EnforcementAction,
       var house = houseOpt.get()
       house.treasury += int32(totalSalvage)
       state.houses.entities.updateEntity(houseId, house)
-      logger.logDebug("Military", "Salvage credited to house treasury",
-            " house=", $houseId,
-            " amount=", $totalSalvage)
+      logger.logDebug(
+        "Military",
+        "Salvage credited to house treasury",
+        " house=",
+        $houseId,
+        " amount=",
+        $totalSalvage,
+      )
 
-  logger.logDebug("Military", "Capital squadron capacity enforcement complete",
-        " house=", $houseId,
-        " scrapped=", $action.affectedUnitIds.len,
-        " salvage=", $totalSalvage)
+  logger.logDebug(
+    "Military",
+    "Capital squadron capacity enforcement complete",
+    " house=",
+    $houseId,
+    " scrapped=",
+    $action.affectedUnitIds.len,
+    " salvage=",
+    $totalSalvage,
+  )
 
-proc processCapacityEnforcement*(state: var GameState,
-                                events: var seq[GameEvent]): seq[capacity.EnforcementAction] =
+proc processCapacityEnforcement*(
+    state: var GameState, events: var seq[GameEvent]
+): seq[capacity.EnforcementAction] =
   ## Main entry point - batch process all capital squadron capacity violations
   ## Called during Maintenance phase
   ## Data-oriented: analyze all → plan enforcement → apply enforcement
@@ -351,7 +400,9 @@ proc processCapacityEnforcement*(state: var GameState,
     logger.logDebug("Military", "All houses within capital squadron capacity limits")
     return
 
-  logger.logDebug("Military", "Capital squadron violations found, count=", $violations.len)
+  logger.logDebug(
+    "Military", "Capital squadron violations found, count=", $violations.len
+  )
 
   # Step 2: Plan enforcement (no tracking needed - immediate enforcement)
   var enforcementActions: seq[capacity.EnforcementAction] = @[]
@@ -362,10 +413,14 @@ proc processCapacityEnforcement*(state: var GameState,
 
   # Step 3: Apply enforcement (mutations)
   if enforcementActions.len > 0:
-    logger.logDebug("Military", "Enforcing capital squadron capacity violations, count=", $enforcementActions.len)
+    logger.logDebug(
+      "Military",
+      "Enforcing capital squadron capacity violations, count=",
+      $enforcementActions.len,
+    )
     for action in enforcementActions:
       applyEnforcement(state, action, events)
-      result.add(action)  # Track which actions were applied
+      result.add(action) # Track which actions were applied
   else:
     logger.logDebug("Military", "No capital squadron violations requiring enforcement")
 

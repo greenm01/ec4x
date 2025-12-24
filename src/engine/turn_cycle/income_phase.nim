@@ -31,33 +31,47 @@
 import std/[tables, options, random, sequtils, hashes, math, strutils, strformat]
 import ../../../common/logger as common_logger
 import ../gamestate, ../logger, ../orders, ../starmap
-import ../types/[diplomacy as dip_types, economy as econ_types,
-                espionage as esp_types, intelligence as intel_types,
-                orders as order_types, research as res_types,
-                resolution as res_game_types]
-import ../config/[construction_config, economy_config, espionage_config,
-                  gameplay_config]
+import
+  ../types/[
+    diplomacy as dip_types,
+    economy as econ_types,
+    espionage as esp_types,
+    intelligence as intel_types,
+    orders as order_types,
+    research as res_types,
+    resolution as res_game_types,
+  ]
+import
+  ../config/[construction_config, economy_config, espionage_config, gameplay_config]
 import ../../systems/blockade/engine as blockade_engine
 import ../../systems/diplomacy/proposals as dip_proposals
 import ../../systems/economy/[engine as econ_engine, facility_queue, projects]
-import ../../systems/economy/capacity/[capital_squadrons as capital_squadron_capacity,
-                                   fighter as fighter_capacity,
-                                   planet_breakers as planet_breaker_capacity,
-                                   total_squadrons as total_squadron_capacity]
+import
+  ../../systems/economy/capacity/[
+    capital_squadrons as capital_squadron_capacity,
+    fighter as fighter_capacity,
+    planet_breakers as planet_breaker_capacity,
+    total_squadrons as total_squadron_capacity,
+  ]
 import ../../event_factory/init as event_factory
-import ../../systems/intelligence/[
-  detection, types as intel_types, generator as intel_gen,
-  starbase_surveillance, scout_intel
-]
+import
+  ../../systems/intelligence/[
+    detection,
+    types as intel_types,
+    generator as intel_gen,
+    starbase_surveillance,
+    scout_intel,
+  ]
 import ../../systems/orders/executor as cmd_executor # For salvage order execution
-import ../../systems/prestige/[application as prestige_app, events as prestige_events,
-                            types as prestige_types]
+import
+  ../../systems/prestige/
+    [application as prestige_app, events as prestige_events, types as prestige_types]
 import ../../systems/research/[advancement, costs as res_costs]
 
 proc resolveIncomePhase*(
-  state: var GameState,
-  orders: Table[HouseId, OrderPacket],
-  events: var seq[GameEvent]
+    state: var GameState,
+    orders: Table[HouseId, OrderPacket],
+    events: var seq[GameEvent],
 ) =
   ## Phase 2: Collect income and allocate resources
   ## Production is calculated AFTER conflict, so damaged infrastructure produces less
@@ -68,7 +82,9 @@ proc resolveIncomePhase*(
   # STEP 0: APPLY ONGOING ESPIONAGE EFFECTS
   # ===================================================================
   # Per diplomacy.md:8.2 - Active espionage effects modify production/intel
-  logInfo(LogCategory.lcGeneral, "[INCOME STEP 0] Applying ongoing espionage effects...")
+  logInfo(
+    LogCategory.lcGeneral, "[INCOME STEP 0] Applying ongoing espionage effects..."
+  )
 
   # Apply ongoing espionage effects to houses
   var activeEffects: seq[esp_types.OngoingEffect] = @[]
@@ -78,14 +94,20 @@ proc resolveIncomePhase*(
 
       case effect.effectType
       of esp_types.EffectType.SRPReduction:
-        logDebug(LogCategory.lcGeneral,
-          &"{effect.targetHouse} affected by SRP reduction (-{int(effect.magnitude * 100)}%)")
+        logDebug(
+          LogCategory.lcGeneral,
+          &"{effect.targetHouse} affected by SRP reduction (-{int(effect.magnitude * 100)}%)",
+        )
       of esp_types.EffectType.NCVReduction:
-        logDebug(LogCategory.lcGeneral,
-          &"{effect.targetHouse} affected by NCV reduction (-{int(effect.magnitude * 100)}%)")
+        logDebug(
+          LogCategory.lcGeneral,
+          &"{effect.targetHouse} affected by NCV reduction (-{int(effect.magnitude * 100)}%)",
+        )
       of esp_types.EffectType.TaxReduction:
-        logDebug(LogCategory.lcGeneral,
-          &"{effect.targetHouse} affected by tax reduction (-{int(effect.magnitude * 100)}%)")
+        logDebug(
+          LogCategory.lcGeneral,
+          &"{effect.targetHouse} affected by tax reduction (-{int(effect.magnitude * 100)}%)",
+        )
       of esp_types.EffectType.StarbaseCrippled:
         if effect.targetSystem.isSome:
           let systemId = effect.targetSystem.get()
@@ -98,13 +120,21 @@ proc resolveIncomePhase*(
               for starbase in colony.starbases.mitems:
                 if not starbase.isCrippled:
                   starbase.isCrippled = true
-                  logDebug(LogCategory.lcGeneral, &"Applied crippled state to starbase {starbase.id}")
+                  logDebug(
+                    LogCategory.lcGeneral,
+                    &"Applied crippled state to starbase {starbase.id}",
+                  )
               state.colonies[systemId] = colony
       of esp_types.EffectType.IntelBlocked:
-        logDebug(LogCategory.lcGeneral, &"{effect.targetHouse} protected by counter-intelligence sweep")
+        logDebug(
+          LogCategory.lcGeneral,
+          &"{effect.targetHouse} protected by counter-intelligence sweep",
+        )
       of esp_types.EffectType.IntelCorrupted:
-        logDebug(LogCategory.lcGeneral,
-          &"{effect.targetHouse}'s intelligence corrupted by disinformation (+/-{int(effect.magnitude * 100)}% variance)")
+        logDebug(
+          LogCategory.lcGeneral,
+          &"{effect.targetHouse}'s intelligence corrupted by disinformation (+/-{int(effect.magnitude * 100)}% variance)",
+        )
 
   state.ongoingEffects = activeEffects
 
@@ -135,8 +165,10 @@ proc resolveIncomePhase*(
           state.houses[houseId].espionageBudget.ebpInvested = ebpCost
           state.houses[houseId].espionageBudget.cipInvested = cipCost
 
-          logInfo(LogCategory.lcEconomy,
-            &"{houseId} purchased {packet.ebpInvestment} EBP, {packet.cipInvestment} CIP ({totalCost} PP)")
+          logInfo(
+            LogCategory.lcEconomy,
+            &"{houseId} purchased {packet.ebpInvestment} EBP, {packet.cipInvestment} CIP ({totalCost} PP)",
+          )
 
           # Check for over-investment penalty (configurable threshold from espionage.toml)
           let turnBudget = state.houses[houseId].espionageBudget.turnBudget
@@ -146,17 +178,23 @@ proc resolveIncomePhase*(
             let threshold = globalEspionageConfig.investment.threshold_percentage
 
             if investmentPercent > threshold:
-              let prestigePenalty = -(investmentPercent - threshold) * globalEspionageConfig.investment.penalty_per_percent
+              let prestigePenalty =
+                -(investmentPercent - threshold) *
+                globalEspionageConfig.investment.penalty_per_percent
               let prestigeEvent = prestige_events.createPrestigeEvent(
                 prestige_types.PrestigeSource.HighTaxPenalty,
                 prestigePenalty,
-                &"Over-investment penalty: -{int(prestigePenalty * -1)} (investment {investmentPercent}% exceeds {threshold}% threshold)"
+                &"Over-investment penalty: -{int(prestigePenalty * -1)} (investment {investmentPercent}% exceeds {threshold}% threshold)",
               )
               prestige_app.applyPrestigeEvent(state, houseId, prestigeEvent)
-              logWarn(LogCategory.lcEconomy, &"Over-investment penalty: {prestigePenalty} prestige")
+              logWarn(
+                LogCategory.lcEconomy,
+                &"Over-investment penalty: {prestigePenalty} prestige",
+              )
         else:
-          logError(LogCategory.lcEconomy, &"{houseId} insufficient funds for EBP/CIP purchase")
-
+          logError(
+            LogCategory.lcEconomy, &"{houseId} insufficient funds for EBP/CIP purchase"
+          )
 
   # ===================================================================
   # STEP 1: CALCULATE BASE PRODUCTION
@@ -177,7 +215,8 @@ proc resolveIncomePhase*(
 
   for houseId, house in state.houses:
     houseTaxPolicies[houseId] = house.taxPolicy
-    houseTechLevels[houseId] = house.techTree.levels.economicLevel  # EL = economicLevel (confusing naming)
+    houseTechLevels[houseId] = house.techTree.levels.economicLevel
+      # EL = economicLevel (confusing naming)
     houseCSTTechLevels[houseId] = house.techTree.levels.constructionTech
     houseTreasuries[houseId] = house.treasury
 
@@ -188,7 +227,7 @@ proc resolveIncomePhase*(
     houseTechLevels,
     houseCSTTechLevels,
     houseTreasuries,
-    baseGrowthRate = globalEconomyConfig.population.natural_growth_rate
+    baseGrowthRate = globalEconomyConfig.population.natural_growth_rate,
   )
 
   logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Production calculation completed")
@@ -205,7 +244,10 @@ proc resolveIncomePhase*(
   for systemId, colony in state.colonies:
     if colony.blockaded:
       blockadeCount += 1
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 2] Completed ({blockadeCount} colonies blockaded)")
+  logInfo(
+    LogCategory.lcEconomy,
+    &"[INCOME STEP 2] Completed ({blockadeCount} colonies blockaded)",
+  )
 
   # ===================================================================
   # STEP 3: CALCULATE AND DEDUCT MAINTENANCE UPKEEP
@@ -214,7 +256,8 @@ proc resolveIncomePhase*(
   # after Conflict Phase, deduct from treasuries before collecting resources
   logInfo(LogCategory.lcEconomy, &"[INCOME STEP 3] Calculating maintenance upkeep...")
 
-  let maintenanceUpkeepByHouse = econ_engine.calculateAndDeductMaintenanceUpkeep(state, events)
+  let maintenanceUpkeepByHouse =
+    econ_engine.calculateAndDeductMaintenanceUpkeep(state, events)
 
   # Log maintenance costs for diagnostics
   for houseId, upkeepCost in maintenanceUpkeepByHouse:
@@ -242,23 +285,33 @@ proc resolveIncomePhase*(
             if fleet.owner == houseId:
               # Check if fleet has arrived at target
               if command.fleetId notin state.arrivedFleets:
-                logDebug(LogCategory.lcEconomy,
-                  &"[SALVAGE] Fleet {command.fleetId} has not arrived at target, skipping")
+                logDebug(
+                  LogCategory.lcEconomy,
+                  &"[SALVAGE] Fleet {command.fleetId} has not arrived at target, skipping",
+                )
                 continue
 
               # Execute salvage order (returns PP added to treasury, events added directly)
-              let outcome = cmd_executor.executeFleetCommand(state, houseId, order, events)
+              let outcome =
+                cmd_executor.executeFleetCommand(state, houseId, order, events)
               if outcome == OrderOutcome.Success:
-                logInfo(LogCategory.lcEconomy,
-                  &"[SALVAGE] {houseId} Fleet-{command.fleetId} salvaged ships")
+                logInfo(
+                  LogCategory.lcEconomy,
+                  &"[SALVAGE] {houseId} Fleet-{command.fleetId} salvaged ships",
+                )
                 # PP already added to treasury by executeSalvageOrder
                 # Clear arrival status
                 if command.fleetId in state.arrivedFleets:
                   state.arrivedFleets.del(command.fleetId)
-                  logDebug(LogCategory.lcEconomy, &"  Cleared arrival status for fleet {command.fleetId}")
+                  logDebug(
+                    LogCategory.lcEconomy,
+                    &"  Cleared arrival status for fleet {command.fleetId}",
+                  )
               else:
-                logDebug(LogCategory.lcEconomy,
-                  &"[SALVAGE] {houseId} Fleet-{command.fleetId} failed")
+                logDebug(
+                  LogCategory.lcEconomy,
+                  &"[SALVAGE] {houseId} Fleet-{command.fleetId} failed",
+                )
 
   logInfo(LogCategory.lcEconomy, "[INCOME STEP 4] Completed salvage orders")
 
@@ -269,83 +322,78 @@ proc resolveIncomePhase*(
   # Enforce capacity limits AFTER IU loss from blockades/combat
   # Order: Capital squadrons (immediate) → Total squadrons (2-turn grace) →
   #        Fighters (2-turn grace) → Planet-breakers (immediate)
-  logInfo(LogCategory.lcEconomy,
-          "[INCOME STEP 5] Checking capacity violations after IU loss...")
+  logInfo(
+    LogCategory.lcEconomy,
+    "[INCOME STEP 5] Checking capacity violations after IU loss...",
+  )
 
   # Check fighter squadron capacity violations (assets.md:2.4.1)
   # Uses unified capacity management system (economy/capacity/fighter.nim)
   # 2-turn grace period per colony
-  logDebug(LogCategory.lcEconomy,
-          "[CAPACITY] Checking fighter squadron capacity...")
+  logDebug(LogCategory.lcEconomy, "[CAPACITY] Checking fighter squadron capacity...")
   let fighterEnforcement = fighter_capacity.processCapacityEnforcement(state, events)
   for action in fighterEnforcement:
     if action.affectedUnits.len > 0:
       let colonyId = SystemId(parseInt(action.entityId))
       if colonyId in state.colonies:
         let houseId = state.colonies[colonyId].owner
-        events.add(event_factory.unitDisbanded(
-          houseId,
-          "Fighter Squadron",
-          action.description,
-          some(colonyId)
-        ))
+        events.add(
+          event_factory.unitDisbanded(
+            houseId, "Fighter Squadron", action.description, some(colonyId)
+          )
+        )
 
   # Check planet-breaker capacity violations (assets.md:2.4.8)
   # Immediate enforcement (no grace period)
-  logDebug(LogCategory.lcEconomy,
-          "[CAPACITY] Checking planet-breaker capacity...")
-  let pbEnforcement =
-    planet_breaker_capacity.processCapacityEnforcement(state)
+  logDebug(LogCategory.lcEconomy, "[CAPACITY] Checking planet-breaker capacity...")
+  let pbEnforcement = planet_breaker_capacity.processCapacityEnforcement(state)
   for action in pbEnforcement:
     if action.affectedUnits.len > 0:
       let houseId = HouseId(action.entityId)
-      events.add(event_factory.unitDisbanded(
-        houseId,
-        "Planet-Breaker",
-        action.description,
-        none(SystemId)
-      ))
+      events.add(
+        event_factory.unitDisbanded(
+          houseId, "Planet-Breaker", action.description, none(SystemId)
+        )
+      )
 
   # Check capital squadron capacity violations (reference.md Table 10.5)
   # Immediate Space Guild seizure (no grace period)
-  logDebug(LogCategory.lcEconomy,
-          "[CAPACITY] Checking capital squadron capacity...")
+  logDebug(LogCategory.lcEconomy, "[CAPACITY] Checking capital squadron capacity...")
   let capitalEnforcement =
     capital_squadron_capacity.processCapacityEnforcement(state, events)
   for action in capitalEnforcement:
     if action.affectedUnits.len > 0:
       let houseId = HouseId(action.entityId)
-      events.add(event_factory.unitDisbanded(
-        houseId,
-        "Capital Squadron",
-        action.description,
-        none(SystemId)
-      ))
+      events.add(
+        event_factory.unitDisbanded(
+          houseId, "Capital Squadron", action.description, none(SystemId)
+        )
+      )
 
   # Check total squadron capacity (prevents escort spam)
   # 2-turn grace period (house-wide)
   # Runs AFTER capital squadron enforcement
-  logDebug(LogCategory.lcEconomy,
-          "[CAPACITY] Checking total squadron capacity...")
+  logDebug(LogCategory.lcEconomy, "[CAPACITY] Checking total squadron capacity...")
   let totalEnforcement =
     total_squadron_capacity.processCapacityEnforcement(state, events)
   for action in totalEnforcement:
     if action.affectedUnits.len > 0:
       let houseId = HouseId(action.entityId)
-      events.add(event_factory.unitDisbanded(
-        houseId,
-        "Squadron",
-        action.description,
-        none(SystemId)
-      ))
+      events.add(
+        event_factory.unitDisbanded(
+          houseId, "Squadron", action.description, none(SystemId)
+        )
+      )
 
-  logInfo(LogCategory.lcEconomy,
-          "[INCOME STEP 5] Completed capacity enforcement")
+  logInfo(LogCategory.lcEconomy, "[INCOME STEP 5] Completed capacity enforcement")
 
   # ===================================================================
   # STEP 6: COLLECT RESOURCES
   # ===================================================================
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 6] Collecting resources and applying to treasuries...")
+  logInfo(
+    LogCategory.lcEconomy,
+    &"[INCOME STEP 6] Collecting resources and applying to treasuries...",
+  )
 
   # Write back modified colonies (population growth was applied in-place)
   # CRITICAL: Colonies were copied to seq, modified via mpairs, must write back to persist
@@ -359,8 +407,10 @@ proc resolveIncomePhase*(
     house.treasury = houseTreasuries[houseId]
     # Store income report for intelligence gathering (HackStarbase missions)
     house.latestIncomeReport = some(houseReport)
-    logInfo(LogCategory.lcEconomy,
-      &"{house.name}: +{houseReport.totalNet} PP (Gross: {houseReport.totalGross})")
+    logInfo(
+      LogCategory.lcEconomy,
+      &"{house.name}: +{houseReport.totalNet} PP (Gross: {houseReport.totalGross})",
+    )
 
     # Update colony production fields from income reports
     for colonyReport in houseReport.colonies:
@@ -377,27 +427,35 @@ proc resolveIncomePhase*(
     for event in houseReport.prestigeEvents:
       prestige_app.applyPrestigeEvent(state, houseId, event)
       let sign = if event.amount > 0: "+" else: ""
-      logDebug(LogCategory.lcEconomy,
-        &"Prestige: {sign}{event.amount} ({event.description}) → {state.houses[houseId].prestige}")
+      logDebug(
+        LogCategory.lcEconomy,
+        &"Prestige: {sign}{event.amount} ({event.description}) → {state.houses[houseId].prestige}",
+      )
 
     # Write back modified house
     state.houses[houseId] = house
 
     # Apply blockade prestige penalties
     # Per operations.md:6.2.6: "-2 prestige per colony under blockade"
-    let blockadePenalty = blockade_engine.calculateBlockadePrestigePenalty(state, houseId)
+    let blockadePenalty =
+      blockade_engine.calculateBlockadePrestigePenalty(state, houseId)
     if blockadePenalty < 0:
       let blockadedCount = blockade_engine.getBlockadedColonies(state, houseId).len
       let blockadePenaltyEvent = prestige_events.createPrestigeEvent(
         prestige_types.PrestigeSource.BlockadePenalty,
         blockadePenalty,
-        &"{blockadedCount} colonies under blockade ({blockadePenalty} prestige per colony)"
+        &"{blockadedCount} colonies under blockade ({blockadePenalty} prestige per colony)",
       )
       prestige_app.applyPrestigeEvent(state, houseId, blockadePenaltyEvent)
-      logWarn(LogCategory.lcEconomy,
-        &"Prestige: {blockadePenalty} ({blockadedCount} colonies under blockade) → {state.houses[houseId].prestige}")
+      logWarn(
+        LogCategory.lcEconomy,
+        &"Prestige: {blockadePenalty} ({blockadedCount} colonies under blockade) → {state.houses[houseId].prestige}",
+      )
 
-  logInfo(LogCategory.lcEconomy, &"[INCOME STEP 6 & 7] Resources collected, prestige calculated")
+  logInfo(
+    LogCategory.lcEconomy,
+    &"[INCOME STEP 6 & 7] Resources collected, prestige calculated",
+  )
 
   # ===================================================================
   # STEP 8: CHECK ELIMINATION & VICTORY CONDITIONS
@@ -408,14 +466,19 @@ proc resolveIncomePhase*(
   logInfo(LogCategory.lcGeneral, &"[INCOME STEP 8a] Checking elimination conditions...")
 
   let gameplayConfig = globalGameplayConfig
-  let defensiveCollapseThreshold = gameplayConfig.elimination.defensive_collapse_threshold
+  let defensiveCollapseThreshold =
+    gameplayConfig.elimination.defensive_collapse_threshold
   let defensiveCollapseTurns = gameplayConfig.elimination.defensive_collapse_turns
   var eliminatedCount = 0
 
   for houseId, house in state.houses:
     # Standard elimination: no colonies and no invasion capability
     # Use indices for O(1) lookup instead of O(c) and O(f) scans
-    let colonies = if houseId in state.coloniesByOwner: state.coloniesByOwner[houseId] else: @[]
+    let colonies =
+      if houseId in state.coloniesByOwner:
+        state.coloniesByOwner[houseId]
+      else:
+        @[]
 
     var fleets: seq[Fleet] = @[]
     if houseId in state.fleetsByOwner:
@@ -447,17 +510,16 @@ proc resolveIncomePhase*(
         state.houses[houseId] = houseToUpdate
         eliminatedCount += 1
 
-        let reason = if fleets.len == 0:
-          "no remaining forces"
-        else:
-          "no marines for reconquest"
+        let reason =
+          if fleets.len == 0: "no remaining forces" else: "no marines for reconquest"
 
-        events.add(event_factory.houseEliminated(
-          houseId,
-          HouseId("unknown")  # No specific eliminator for standard elimination
-        ))
-        logInfo(LogCategory.lcGeneral,
-          &"{house.name} eliminated! ({reason})")
+        events.add(
+          event_factory.houseEliminated(
+            houseId,
+            HouseId("unknown"), # No specific eliminator for standard elimination
+          )
+        )
+        logInfo(LogCategory.lcGeneral, &"{house.name} eliminated! ({reason})")
         continue
 
     # Defensive collapse: prestige < threshold for consecutive turns
@@ -466,22 +528,26 @@ proc resolveIncomePhase*(
 
     if house.prestige < defensiveCollapseThreshold:
       houseToUpdate.negativePrestigeTurns += 1
-      logWarn(LogCategory.lcGeneral,
+      logWarn(
+        LogCategory.lcGeneral,
         &"{house.name} at risk: prestige {house.prestige} " &
-        &"({houseToUpdate.negativePrestigeTurns}/" &
-        &"{defensiveCollapseTurns} turns " &
-        &"until elimination)")
+          &"({houseToUpdate.negativePrestigeTurns}/" & &"{defensiveCollapseTurns} turns " &
+          &"until elimination)",
+      )
 
       if houseToUpdate.negativePrestigeTurns >= defensiveCollapseTurns:
         houseToUpdate.eliminated = true
         houseToUpdate.status = HouseStatus.DefensiveCollapse
         eliminatedCount += 1
-        events.add(event_factory.houseEliminated(
-          houseId,
-          HouseId("defensive_collapse")  # Self-elimination from negative prestige
-        ))
-        logInfo(LogCategory.lcGeneral,
-          &"{house.name} eliminated by defensive collapse!")
+        events.add(
+          event_factory.houseEliminated(
+            houseId,
+            HouseId("defensive_collapse"), # Self-elimination from negative prestige
+          )
+        )
+        logInfo(
+          LogCategory.lcGeneral, &"{house.name} eliminated by defensive collapse!"
+        )
     else:
       # Reset counter when prestige recovers
       houseToUpdate.negativePrestigeTurns = 0
@@ -489,7 +555,10 @@ proc resolveIncomePhase*(
     # Write back modified house
     state.houses[houseId] = houseToUpdate
 
-  logInfo(LogCategory.lcGeneral, &"[INCOME STEP 8a] Elimination checks completed ({eliminatedCount} houses eliminated)")
+  logInfo(
+    LogCategory.lcGeneral,
+    &"[INCOME STEP 8a] Elimination checks completed ({eliminatedCount} houses eliminated)",
+  )
 
   # Step 8b: Check victory conditions (after eliminations are processed)
   logInfo(LogCategory.lcGeneral, &"[INCOME STEP 8b] Checking victory conditions...")
@@ -504,8 +573,7 @@ proc resolveIncomePhase*(
         victorName = house.name
         break
 
-    logInfo(LogCategory.lcGeneral,
-      &"*** {victorName} has won the game! ***")
+    logInfo(LogCategory.lcGeneral, &"*** {victorName} has won the game! ***")
 
   # ===================================================================
   # STEP 9: ADVANCE TIMERS
@@ -520,12 +588,15 @@ proc resolveIncomePhase*(
 
     if updatedEffect.turnsRemaining > 0:
       remainingEffects.add(updatedEffect)
-      logDebug(LogCategory.lcGeneral,
+      logDebug(
+        LogCategory.lcGeneral,
         &"Effect on {updatedEffect.targetHouse} expires in " &
-        &"{updatedEffect.turnsRemaining} turn(s)")
+          &"{updatedEffect.turnsRemaining} turn(s)",
+      )
     else:
-      logDebug(LogCategory.lcGeneral,
-        &"Effect on {updatedEffect.targetHouse} has expired")
+      logDebug(
+        LogCategory.lcGeneral, &"Effect on {updatedEffect.targetHouse} has expired"
+      )
 
   state.ongoingEffects = remainingEffects
 
@@ -536,15 +607,18 @@ proc resolveIncomePhase*(
 
       if proposal.expiresIn <= 0:
         proposal.status = dip_proposals.ProposalStatus.Expired
-        logDebug(LogCategory.lcGeneral,
+        logDebug(
+          LogCategory.lcGeneral,
           &"Proposal {proposal.id} expired ({proposal.proposer} → " &
-          &"{proposal.target})")
+            &"{proposal.target})",
+        )
 
   # Clean up old proposals (keep 10 turn history)
   let currentTurn = state.turn
-  state.pendingProposals.keepIf(proc(p: dip_proposals.PendingProposal): bool =
-    p.status == dip_proposals.ProposalStatus.Pending or
-    (currentTurn - p.submittedTurn) < 10
+  state.pendingProposals.keepIf(
+    proc(p: dip_proposals.PendingProposal): bool =
+      p.status == dip_proposals.ProposalStatus.Pending or
+        (currentTurn - p.submittedTurn) < 10
   )
 
   logInfo(LogCategory.lcOrders, "[INCOME STEP 9] Completed advancing timers")

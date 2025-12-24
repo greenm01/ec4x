@@ -11,28 +11,25 @@ import ../../state/entity_manager
 import ./engine as colony_engine
 
 type
-  ColonizationIntent* = object
-    ## Intent to colonize a system
+  ColonizationIntent* = object ## Intent to colonize a system
     houseId*: HouseId
     fleetId*: FleetId
     targetSystem*: SystemId
-    fleetStrength*: int32        # For priority determination
-    hasStandingOrders*: bool     # Manual orders take priority
+    fleetStrength*: int32 # For priority determination
+    hasStandingOrders*: bool # Manual orders take priority
 
   ColonizationConflict* = object
     ## Multiple houses attempting to colonize the same system
     targetSystem*: SystemId
     intents*: seq[ColonizationIntent]
 
-  ConflictResolution* = object
-    ## Result of resolving a colonization conflict
+  ConflictResolution* = object ## Result of resolving a colonization conflict
     winner*: Option[ColonizationIntent]
     losers*: seq[ColonizationIntent]
     colonyId*: Option[ColonyId]
 
 proc determineWinner*(
-  conflict: ColonizationConflict,
-  rng: var Rand
+    conflict: ColonizationConflict, rng: var Rand
 ): ColonizationIntent =
   ## Determine winner from competing intents
   ##
@@ -58,8 +55,7 @@ proc determineWinner*(
       manualIntents.add(intent)
 
   # Manual orders take priority
-  let candidates = if manualIntents.len > 0: manualIntents
-                   else: standingIntents
+  let candidates = if manualIntents.len > 0: manualIntents else: standingIntents
 
   # Find strongest fleet(s)
   var maxStrength: int32 = 0
@@ -80,12 +76,12 @@ proc determineWinner*(
     return strongest[idx]
 
 proc resolveConflict*(
-  state: var GameState,
-  conflict: ColonizationConflict,
-  planetClass: PlanetClass,
-  resources: ResourceRating,
-  ptuCount: int32,
-  rng: var Rand
+    state: var GameState,
+    conflict: ColonizationConflict,
+    planetClass: PlanetClass,
+    resources: ResourceRating,
+    ptuCount: int32,
+    rng: var Rand,
 ): ConflictResolution =
   ## Resolve a colonization conflict
   ##
@@ -93,9 +89,7 @@ proc resolveConflict*(
 
   if conflict.intents.len == 0:
     return ConflictResolution(
-      winner: none(ColonizationIntent),
-      losers: @[],
-      colonyId: none(ColonyId)
+      winner: none(ColonizationIntent), losers: @[], colonyId: none(ColonyId)
     )
 
   # Determine winner
@@ -103,12 +97,7 @@ proc resolveConflict*(
 
   # Attempt colonization for winner
   let result = colony_engine.establishColony(
-    state,
-    winner.houseId,
-    winner.targetSystem,
-    planetClass,
-    resources,
-    ptuCount
+    state, winner.houseId, winner.targetSystem, planetClass, resources, ptuCount
   )
 
   # Collect losers
@@ -117,15 +106,10 @@ proc resolveConflict*(
     if intent.fleetId != winner.fleetId:
       losers.add(intent)
 
-  return ConflictResolution(
-    winner: some(winner),
-    losers: losers,
-    colonyId: result.colonyId
-  )
+  return
+    ConflictResolution(winner: some(winner), losers: losers, colonyId: result.colonyId)
 
-proc detectConflicts*(
-  intents: seq[ColonizationIntent]
-): seq[ColonizationConflict] =
+proc detectConflicts*(intents: seq[ColonizationIntent]): seq[ColonizationConflict] =
   ## Group colonization intents by target system to detect conflicts
   ##
   ## Returns sequence of conflicts (one per contested system)
@@ -140,7 +124,6 @@ proc detectConflicts*(
   # Create conflict objects for contested systems
   result = @[]
   for systemId, conflictingIntents in systemTargets:
-    result.add(ColonizationConflict(
-      targetSystem: systemId,
-      intents: conflictingIntents
-    ))
+    result.add(
+      ColonizationConflict(targetSystem: systemId, intents: conflictingIntents)
+    )

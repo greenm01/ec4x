@@ -23,19 +23,14 @@ proc attemptDetection*(attempt: DetectionAttempt, rng: var Rand): DetectionResul
 
   # CIC0 = no counter-intelligence, auto-fail detection
   if attempt.cicLevel == CICLevel.CIC0:
-    return DetectionResult(
-      detected: false,
-      roll: 0,
-      threshold: 21,
-      modifier: 0
-    )
+    return DetectionResult(detected: false, roll: 0, threshold: 21, modifier: 0)
 
   # Get threshold and modifier
   let threshold = getDetectionThreshold(attempt.cicLevel)
   let modifier = getCIPModifier(attempt.cipPoints)
 
   # Roll d20
-  let roll = rng.rand(1..20)
+  let roll = rng.rand(1 .. 20)
 
   # Check if detected (roll + modifier >= threshold)
   let detected = (roll + modifier) >= threshold
@@ -44,7 +39,7 @@ proc attemptDetection*(attempt: DetectionAttempt, rng: var Rand): DetectionResul
     detected: detected,
     roll: int32(roll),
     threshold: int32(threshold),
-    modifier: int32(modifier)
+    modifier: int32(modifier),
   )
 
 ## Detection and execution now handled by executor.nim
@@ -101,10 +96,8 @@ proc spendEBP*(budget: var EspionageBudget, action: EspionageAction): bool =
 proc spendCIP*(budget: var EspionageBudget, amount: int = 0): bool =
   ## Spend CIP on detection attempt (uses config default if amount=0)
   ## Returns true if successful
-  let actualAmount = if amount == 0:
-    globalEspionageConfig.detection.cip_per_roll
-  else:
-    amount
+  let actualAmount =
+    if amount == 0: globalEspionageConfig.detection.cip_per_roll else: amount
   if budget.cipPoints >= int32(actualAmount):
     budget.cipPoints -= int32(actualAmount)
     return true

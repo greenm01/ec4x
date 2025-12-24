@@ -41,18 +41,30 @@ proc getELModifier*(level: int32): float32 =
   let cfg = globalTechConfig.economic_level
 
   case level
-  of 1: return cfg.level_1_mod
-  of 2: return cfg.level_2_mod
-  of 3: return cfg.level_3_mod
-  of 4: return cfg.level_4_mod
-  of 5: return cfg.level_5_mod
-  of 6: return cfg.level_6_mod
-  of 7: return cfg.level_7_mod
-  of 8: return cfg.level_8_mod
-  of 9: return cfg.level_9_mod
-  of 10: return cfg.level_10_mod
-  of 11: return cfg.level_11_mod
-  else: return cfg.level_11_mod  # Cap at level 11
+  of 1:
+    return cfg.level_1_mod
+  of 2:
+    return cfg.level_2_mod
+  of 3:
+    return cfg.level_3_mod
+  of 4:
+    return cfg.level_4_mod
+  of 5:
+    return cfg.level_5_mod
+  of 6:
+    return cfg.level_6_mod
+  of 7:
+    return cfg.level_7_mod
+  of 8:
+    return cfg.level_8_mod
+  of 9:
+    return cfg.level_9_mod
+  of 10:
+    return cfg.level_10_mod
+  of 11:
+    return cfg.level_11_mod
+  else:
+    return cfg.level_11_mod # Cap at level 11
 
 ## Science Research Points (economy.md:4.3)
 
@@ -95,7 +107,9 @@ proc getTRPCost*(techField: TechField, slLevel: int, gho: int): float =
   ##   gho: Gross House Output
   result = (5.0 + 4.0 * float(slLevel)) / 10.0 + log10(float(gho)) * 0.5
 
-proc convertPPToTRP*(pp: int32, techField: TechField, slLevel: int32, gho: int32): int32 =
+proc convertPPToTRP*(
+    pp: int32, techField: TechField, slLevel: int32, gho: int32
+): int32 =
   ## Convert PP to TRP for specific tech field
   let costPerTRP = getTRPCost(techField, slLevel.int, gho.int)
   result = int32(float(pp) / costPerTRP)
@@ -109,8 +123,9 @@ proc getTechUpgradeCost*(techField: TechField, currentLevel: int32): int32 =
 
 ## Research Allocation
 
-proc allocateResearch*(allocation: ResearchAllocation,
-                      gho: int32, slLevel: int32): ResearchPoints =
+proc allocateResearch*(
+    allocation: ResearchAllocation, gho: int32, slLevel: int32
+): ResearchPoints =
   ## Convert PP allocations to RP
   ##
   ## Args:
@@ -118,11 +133,8 @@ proc allocateResearch*(allocation: ResearchAllocation,
   ##   gho: Gross House Output (for RP conversion)
   ##   slLevel: Science Level (affects TRP costs)
 
-  result = ResearchPoints(
-    economic: 0,
-    science: 0,
-    technology: initTable[TechField, int32]()
-  )
+  result =
+    ResearchPoints(economic: 0, science: 0, technology: initTable[TechField, int32]())
 
   # Convert economic allocation
   if allocation.economic > 0:

@@ -7,7 +7,9 @@ import sources
 import events
 import ../config/prestige_multiplier
 
-proc applyTaxPrestige*(houseId: HouseId, colonyCount: int, taxRate: int): PrestigeEvent =
+proc applyTaxPrestige*(
+    houseId: HouseId, colonyCount: int, taxRate: int
+): PrestigeEvent =
   ## Apply prestige bonus from low tax rate
   ## Per economy.md:3.2.2
   var bonusPerColony = 0
@@ -28,7 +30,7 @@ proc applyTaxPrestige*(houseId: HouseId, colonyCount: int, taxRate: int): Presti
   return createPrestigeEvent(
     PrestigeSource.LowTaxBonus,
     totalBonus,
-    $houseId & " low tax bonus (rate: " & $taxRate & "%)"
+    $houseId & " low tax bonus (rate: " & $taxRate & "%)",
   )
 
 proc applyHighTaxPenalty*(houseId: HouseId, avgTaxRate: int): PrestigeEvent =
@@ -52,16 +54,17 @@ proc applyHighTaxPenalty*(houseId: HouseId, avgTaxRate: int): PrestigeEvent =
   return createPrestigeEvent(
     PrestigeSource.HighTaxPenalty,
     penalty,
-    $houseId & " high tax penalty (avg: " & $avgTaxRate & "%)"
+    $houseId & " high tax penalty (avg: " & $avgTaxRate & "%)",
   )
 
 proc applyBlockadePenalty*(houseId: HouseId, blockadedColonies: int): PrestigeEvent =
   ## Apply prestige penalty for blockaded colonies
   ## Per operations.md:6.2.6: -2 prestige per blockaded colony per turn
-  let penalty = applyMultiplier(getPrestigeValue(PrestigeSource.BlockadePenalty)) * blockadedColonies
+  let penalty =
+    applyMultiplier(getPrestigeValue(PrestigeSource.BlockadePenalty)) * blockadedColonies
 
   return createPrestigeEvent(
     PrestigeSource.BlockadePenalty,
     penalty,
-    $houseId & " has " & $blockadedColonies & " blockaded colonies"
+    $houseId & " has " & $blockadedColonies & " blockaded colonies",
   )

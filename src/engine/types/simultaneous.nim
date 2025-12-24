@@ -6,8 +6,12 @@ import ./core
 
 type
   ResolutionOutcome* {.pure.} = enum
-    Success, ConflictLost, FallbackSuccess, 
-    NoViableTarget, TargetDestroyed, InsufficientForce
+    Success
+    ConflictLost
+    FallbackSuccess
+    NoViableTarget
+    TargetDestroyed
+    InsufficientForce
 
   OrderResult*[T] = object
     houseId*: HouseId
@@ -35,7 +39,7 @@ type
   PlanetaryCombatIntent* = object
     houseId*: HouseId
     fleetId*: FleetId
-    targetColony*: ColonyId  # Use ColonyId, not SystemId
+    targetColony*: ColonyId # Use ColonyId, not SystemId
     orderType*: string
     attackStrength*: int32
 

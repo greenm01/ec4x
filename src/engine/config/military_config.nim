@@ -14,9 +14,9 @@ type
     capacity_violation_grace_period*: int
 
   SquadronLimitsConfig* = object
-    squadron_limit_iu_divisor*: int  # IU divisor for capital squadron limit calculation
+    squadron_limit_iu_divisor*: int # IU divisor for capital squadron limit calculation
     squadron_limit_minimum*: int
-    total_squadron_iu_divisor*: int  # IU divisor for total squadron limit calculation
+    total_squadron_iu_divisor*: int # IU divisor for total squadron limit calculation
     total_squadron_minimum*: int
     capital_ship_cr_threshold*: int
 
@@ -25,11 +25,10 @@ type
     emergency_salvage_multiplier*: float
 
   SpaceLiftCapacityConfig* = object
-    troop_transport_capacity*: int  # Marine Divisions per TroopTransport
-    etac_capacity*: int             # Population Transfer Units per ETAC
+    troop_transport_capacity*: int # Marine Divisions per TroopTransport
+    etac_capacity*: int # Population Transfer Units per ETAC
 
-  MilitaryConfig* = object
-    ## Complete military configuration loaded from TOML
+  MilitaryConfig* = object ## Complete military configuration loaded from TOML
     fighter_mechanics*: FighterMechanicsConfig
     squadron_limits*: SquadronLimitsConfig
     salvage*: SalvageConfig

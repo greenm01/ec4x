@@ -6,16 +6,26 @@ import ./[core, prestige]
 
 type
   DiplomaticState* {.pure.} = enum
-    Neutral, Hostile, Enemy
+    Neutral
+    Hostile
+    Enemy
 
   DiplomaticActionType* {.pure.} = enum
-    DeclareHostile, DeclareEnemy, SetNeutral
+    DeclareHostile
+    DeclareEnemy
+    SetNeutral
 
   ProposalType* {.pure.} = enum
-    TradeAgreement, MilitaryAlliance, TechnologySharing
+    TradeAgreement
+    MilitaryAlliance
+    TechnologySharing
 
   ProposalStatus* {.pure.} = enum
-    Pending, Accepted, Rejected, Expired, Withdrawn
+    Pending
+    Accepted
+    Rejected
+    Expired
+    Withdrawn
 
   PendingProposal* = object
     id*: string
@@ -46,7 +56,7 @@ type
     description*: string
 
   ViolationHistory* = object
-    houseId*: HouseId  # House with violations
+    houseId*: HouseId # House with violations
     violations*: seq[ViolationRecord]
 
   DiplomaticEvent* = object

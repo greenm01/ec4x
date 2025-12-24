@@ -26,7 +26,7 @@ proc calculatePopulationGrowthMultiplier*(numSystems: int, numPlayers: int): flo
   ##   4 players, 37 systems (9.25 sys/player), baseline 7 sys/player
   ##   multiplier = sqrt(9.25 / 7) = sqrt(1.32) ≈ 1.15 (15% faster growth)
 
-  const baselineSystemsPerPlayer = 7.0  # Standard map density
+  const baselineSystemsPerPlayer = 7.0 # Standard map density
 
   # Calculate systems per player
   let systemsPerPlayer = float(numSystems) / float(numPlayers)
@@ -41,8 +41,16 @@ proc initializePopulationGrowthMultiplier*(numSystems: int, numPlayers: int) =
   ## Initialize the population growth multiplier for the current game
   ## Call this once during game initialization alongside prestige multiplier
   currentGrowthMultiplier = calculatePopulationGrowthMultiplier(numSystems, numPlayers)
-  logInfo("Economy", "Population growth multiplier initialized",
-          "multiplier=", $currentGrowthMultiplier, " systems=", $numSystems, " players=", $numPlayers)
+  logInfo(
+    "Economy",
+    "Population growth multiplier initialized",
+    "multiplier=",
+    $currentGrowthMultiplier,
+    " systems=",
+    $numSystems,
+    " players=",
+    $numPlayers,
+  )
 
 proc setPopulationGrowthMultiplierForTesting*(multiplier: float) =
   ## Set the population growth multiplier directly for testing
@@ -53,7 +61,10 @@ proc getPopulationGrowthMultiplier*(): float =
   ## Get the current population growth multiplier
   ## Returns 1.0 if not initialized (standard growth)
   if currentGrowthMultiplier == 0.0:
-    logWarn("Economy", "Population growth multiplier uninitialized! Using 1.0 (standard growth)")
+    logWarn(
+      "Economy",
+      "Population growth multiplier uninitialized! Using 1.0 (standard growth)",
+    )
     return 1.0
   return currentGrowthMultiplier
 

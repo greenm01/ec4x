@@ -18,9 +18,7 @@ import ./helpers
 export visibility, converters, helpers
 
 proc processEventsForIntelligence*(
-  state: var GameState,
-  events: seq[res_types.GameEvent],
-  turn: int
+    state: var GameState, events: seq[res_types.GameEvent], turn: int
 ) =
   ## Main entry point: Convert all events to intelligence reports
   ## Distributes to houses based on fog-of-war visibility
@@ -40,61 +38,42 @@ proc processEventsForIntelligence*(
         case event.eventType
 
         # Combat events → ScoutEncounterReport
-        of res_types.GameEventType.Battle,
-           res_types.GameEventType.BattleOccurred,
-           res_types.GameEventType.SystemCaptured,
-           res_types.GameEventType.ColonyCaptured,
-           res_types.GameEventType.InvasionRepelled,
-           res_types.GameEventType.FleetDestroyed,
-           res_types.GameEventType.Bombardment:
-          let combatReport = converters.convertCombatEvent(
-            event, houseId, turn
-          )
+        of res_types.GameEventType.Battle, res_types.GameEventType.BattleOccurred,
+            res_types.GameEventType.SystemCaptured,
+            res_types.GameEventType.ColonyCaptured,
+            res_types.GameEventType.InvasionRepelled,
+            res_types.GameEventType.FleetDestroyed, res_types.GameEventType.Bombardment:
+          let combatReport = converters.convertCombatEvent(event, houseId, turn)
           if combatReport.isSome:
-            state.houses[houseId].intelligence.addScoutEncounter(
-              combatReport.get()
-            )
+            state.houses[houseId].intelligence.addScoutEncounter(combatReport.get())
 
         # Espionage events → EspionageActivityReport
         of res_types.GameEventType.SpyMissionSucceeded,
-           res_types.GameEventType.SabotageConducted,
-           res_types.GameEventType.TechTheftExecuted,
-           res_types.GameEventType.AssassinationAttempted,
-           res_types.GameEventType.EconomicManipulationExecuted,
-           res_types.GameEventType.CyberAttackConducted,
-           res_types.GameEventType.PsyopsCampaignLaunched,
-           res_types.GameEventType.IntelligenceTheftExecuted,
-           res_types.GameEventType.DisinformationPlanted,
-           res_types.GameEventType.CounterIntelSweepExecuted,
-           res_types.GameEventType.SpyMissionDetected:
-          let espReport = converters.convertEspionageEvent(
-            event, houseId, turn
-          )
+            res_types.GameEventType.SabotageConducted,
+            res_types.GameEventType.TechTheftExecuted,
+            res_types.GameEventType.AssassinationAttempted,
+            res_types.GameEventType.EconomicManipulationExecuted,
+            res_types.GameEventType.CyberAttackConducted,
+            res_types.GameEventType.PsyopsCampaignLaunched,
+            res_types.GameEventType.IntelligenceTheftExecuted,
+            res_types.GameEventType.DisinformationPlanted,
+            res_types.GameEventType.CounterIntelSweepExecuted,
+            res_types.GameEventType.SpyMissionDetected:
+          let espReport = converters.convertEspionageEvent(event, houseId, turn)
           if espReport.isSome:
-            state.houses[houseId].intelligence.addEspionageActivity(
-              espReport.get()
-            )
+            state.houses[houseId].intelligence.addEspionageActivity(espReport.get())
 
         # Colonization events → ScoutEncounterReport
         of res_types.GameEventType.ColonyEstablished:
-          let colReport = converters.convertColonizationEvent(
-            event, houseId, turn
-          )
+          let colReport = converters.convertColonizationEvent(event, houseId, turn)
           if colReport.isSome:
-            state.houses[houseId].intelligence.addScoutEncounter(
-              colReport.get()
-            )
+            state.houses[houseId].intelligence.addScoutEncounter(colReport.get())
 
         # Scout detection events → ScoutEncounterReport
-        of res_types.GameEventType.ScoutDetected,
-           res_types.GameEventType.ScoutDestroyed:
-          let scoutReport = converters.convertScoutDetectionEvent(
-            event, houseId, turn
-          )
+        of res_types.GameEventType.ScoutDetected, res_types.GameEventType.ScoutDestroyed:
+          let scoutReport = converters.convertScoutDetectionEvent(event, houseId, turn)
           if scoutReport.isSome:
-            state.houses[houseId].intelligence.addScoutEncounter(
-              scoutReport.get()
-            )
+            state.houses[houseId].intelligence.addScoutEncounter(scoutReport.get())
 
         # Other event types not converted to intelligence
         # (Economic, prestige, order rejections are house-private)

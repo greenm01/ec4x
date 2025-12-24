@@ -46,7 +46,7 @@ type
     description*: string
     build_time*: int
     max_per_planet*: int
-    population_cost*: int  # Souls recruited per division
+    population_cost*: int # Souls recruited per division
 
   MarineDivisionConfig* = object
     name*: string
@@ -61,16 +61,17 @@ type
     build_time*: int
     max_per_planet*: int
     requires_transport*: bool
-    population_cost*: int  # Souls recruited per division
+    population_cost*: int # Souls recruited per division
 
-  GroundUnitsConfig* = object
-    ## Complete ground units configuration loaded from TOML
+  GroundUnitsConfig* = object ## Complete ground units configuration loaded from TOML
     planetary_shield*: PlanetaryShieldConfig
     ground_battery*: GroundBatteryConfig
     army*: ArmyConfig
     marine_division*: MarineDivisionConfig
 
-proc loadGroundUnitsConfig*(configPath: string = "config/ground_units.toml"): GroundUnitsConfig =
+proc loadGroundUnitsConfig*(
+    configPath: string = "config/ground_units.toml"
+): GroundUnitsConfig =
   ## Load ground units configuration from TOML file
   ## Uses toml_serialization for type-safe parsing
 

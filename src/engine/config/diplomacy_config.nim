@@ -34,13 +34,14 @@ type
   DetectionConfig* = object
     failed_espionage_prestige_loss*: int
 
-  DiplomacyConfig* = object
-    ## Complete diplomacy configuration loaded from TOML
+  DiplomacyConfig* = object ## Complete diplomacy configuration loaded from TOML
     pact_violations*: PactViolationsConfig
     espionage_effects*: EspionageEffectsConfig
     detection*: DetectionConfig
 
-proc loadDiplomacyConfig*(configPath: string = "config/diplomacy.toml"): DiplomacyConfig =
+proc loadDiplomacyConfig*(
+    configPath: string = "config/diplomacy.toml"
+): DiplomacyConfig =
   ## Load diplomacy configuration from TOML file
   ## Uses toml_serialization for type-safe parsing
 

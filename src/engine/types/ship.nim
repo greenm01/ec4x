@@ -7,16 +7,36 @@ import ./core
 
 type
   ShipClass* {.pure.} = enum
-    Fighter, Corvette, Frigate, Scout, Raider,
-    Destroyer, Cruiser, LightCruiser, HeavyCruiser,
-    Battlecruiser, Battleship, Dreadnought, SuperDreadnought,
-    Carrier, SuperCarrier, ETAC, TroopTransport, PlanetBreaker
+    Fighter
+    Corvette
+    Frigate
+    Scout
+    Raider
+    Destroyer
+    Cruiser
+    LightCruiser
+    HeavyCruiser
+    Battlecruiser
+    Battleship
+    Dreadnought
+    SuperDreadnought
+    Carrier
+    SuperCarrier
+    ETAC
+    TroopTransport
+    PlanetBreaker
 
   ShipRole* {.pure.} = enum
-    Escort, Capital, Auxiliary, SpecialWeapon, Fighter
+    Escort
+    Capital
+    Auxiliary
+    SpecialWeapon
+    Fighter
 
   CargoType* {.pure.} = enum
-    None, Marines, Colonists
+    None
+    Marines
+    Colonists
 
   ShipCargo* = object
     cargoType*: CargoType
@@ -26,22 +46,22 @@ type
   ShipStats* = object
     ## Instance-specific ship stats (WEP-modified at construction)
     ## All other stats (role, costs, CC, CR) looked up from config via shipClass
-    attackStrength*: int32      # WEP-modified AS at construction
-    defenseStrength*: int32     # WEP-modified DS at construction
-    weaponsTech*: int32         # WEP level at construction (permanent)
+    attackStrength*: int32 # WEP-modified AS at construction
+    defenseStrength*: int32 # WEP-modified DS at construction
+    weaponsTech*: int32 # WEP level at construction (permanent)
 
   Ship* = object
     id*: ShipId
-    squadronId*: SquadronId  # Which squadron owns this ship
+    squadronId*: SquadronId # Which squadron owns this ship
     shipClass*: ShipClass
-    stats*: ShipStats        # Contains role, AS, DS, WEP level, etc.
+    stats*: ShipStats # Contains role, AS, DS, WEP level, etc.
     isCrippled*: bool
     name*: string
     cargo*: Option[ShipCargo]
 
   Ships* = object
-    entities*: EntityManager[ShipId, Ship]  # Core storage
+    entities*: EntityManager[ShipId, Ship] # Core storage
     bySquadron*: Table[SquadronId, seq[ShipId]]
-    byHouse*: Table[HouseId, seq[ShipId]]  # O(1) lookup for house queries
+    byHouse*: Table[HouseId, seq[ShipId]] # O(1) lookup for house queries
 
 # Note: ShipStats could be moved to a separate config/template file if the stats are loaded from config rather than computed per-ship.

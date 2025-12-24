@@ -8,28 +8,28 @@
 
 import std/[options, math, sequtils]
 import ../../types/[core, ship, squadron]
-import ../../state/entity_manager  # For getEntity()
-import ../ship/entity as ship_entity  # Ship helper functions
+import ../../state/entity_manager # For getEntity()
+import ../ship/entity as ship_entity # Ship helper functions
 
 proc getSquadronType*(shipClass: ShipClass): SquadronType =
   ## Determine squadron type from ship class
   ## Used during commissioning and migration
   case shipClass
-  of ShipClass.Scout:
-    Intel
-  of ShipClass.ETAC:
-    Expansion
-  of ShipClass.TroopTransport:
-    Auxiliary
-  of ShipClass.Fighter:
-    Fighter
-  else:
-    Combat
+  of ShipClass.Scout: Intel
+  of ShipClass.ETAC: Expansion
+  of ShipClass.TroopTransport: Auxiliary
+  of ShipClass.Fighter: Fighter
+  else: Combat
 
 ## Squadron construction
 
-proc newSquadron*(flagshipId: ShipId, flagshipClass: ShipClass, id: SquadronId = SquadronId(0),
-                  owner: HouseId = HouseId(0), location: SystemId = SystemId(0)): Squadron =
+proc newSquadron*(
+    flagshipId: ShipId,
+    flagshipClass: ShipClass,
+    id: SquadronId = SquadronId(0),
+    owner: HouseId = HouseId(0),
+    location: SystemId = SystemId(0),
+): Squadron =
   ## Create a new squadron with flagship
   ## DoD: Takes ShipId reference and ship class for squadron type determination
   let squadronType = getSquadronType(flagshipClass)
@@ -41,7 +41,7 @@ proc newSquadron*(flagshipId: ShipId, flagshipClass: ShipClass, id: SquadronId =
     houseId: owner,
     location: location,
     squadronType: squadronType,
-    embarkedFighters: @[]
+    embarkedFighters: @[],
   )
 
 ## Squadron operations
@@ -153,45 +153,32 @@ proc crippleShip*(sq: var Squadron, index: int, ships: var Ships): bool =
 
 proc militaryShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all military ship IDs in squadron (non-transport ships)
-  sq.allShipIds().filterIt(
-    not ships.entities.getEntity(it).get.isTransport()
-  )
+  sq.allShipIds().filterIt(not ships.entities.getEntity(it).get.isTransport())
 
 proc spaceliftShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all transport ship IDs in squadron (ETAC/TroopTransport)
-  sq.allShipIds().filterIt(
-    ships.entities.getEntity(it).get.isTransport()
-  )
+  sq.allShipIds().filterIt(ships.entities.getEntity(it).get.isTransport())
 
 proc crippledShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all crippled ship IDs in squadron
-  sq.allShipIds().filterIt(
-    ships.entities.getEntity(it).get.isCrippled
-  )
+  sq.allShipIds().filterIt(ships.entities.getEntity(it).get.isCrippled)
 
 proc effectiveShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all non-crippled ship IDs in squadron
-  sq.allShipIds().filterIt(
-    not ships.entities.getEntity(it).get.isCrippled
-  )
+  sq.allShipIds().filterIt(not ships.entities.getEntity(it).get.isCrippled)
 
 proc scoutShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all ship IDs with scout capability (ELI tech)
-  sq.allShipIds().filterIt(
-    ships.entities.getEntity(it).get.isScout()
-  )
+  sq.allShipIds().filterIt(ships.entities.getEntity(it).get.isScout())
 
 proc hasScouts*(sq: Squadron, ships: Ships): bool =
   ## Check if squadron has any operational scouts
-  sq.scoutShips(ships).filterIt(
-    not ships.entities.getEntity(it).get.isCrippled
-  ).len > 0
+
+  sq.scoutShips(ships).filterIt(not ships.entities.getEntity(it).get.isCrippled).len > 0
 
 proc raiderShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all ship IDs with cloaking capability (CLK tech)
-  sq.allShipIds().filterIt(
-    ships.entities.getEntity(it).get.isRaider()
-  )
+  sq.allShipIds().filterIt(ships.entities.getEntity(it).get.isRaider())
 
 proc isCloaked*(sq: Squadron, ships: Ships): bool =
   ## Check if squadron has cloaking capability
@@ -262,15 +249,25 @@ proc getCarrierCapacity*(sq: Squadron, ships: Ships, acoLevel: int): int =
     # Per economy.md tech tables: ACO I (starting level) = 3FS, ACO II = 4FS, ACO III = 5FS
     # CRITICAL: ACO starts at level 1 (ACO I), not 0! (gameplay.md:1.2)
     case acoLevel
-    of 1: 3     # ACO I (base level, ships start here)
-    of 2: 4     # ACO II
-    else: 5     # ACO III+
+    of 1:
+      3
+    # ACO I (base level, ships start here)
+    of 2:
+      4
+    # ACO II
+    else:
+      5 # ACO III+
   of ShipClass.SuperCarrier:
     # Per economy.md tech tables: ACO I = 5FS, ACO II = 6FS, ACO III = 8FS
     case acoLevel
-    of 1: 5     # ACO I (base level, ships start here)
-    of 2: 6     # ACO II
-    else: 8     # ACO III+
+    of 1:
+      5
+    # ACO I (base level, ships start here)
+    of 2:
+      6
+    # ACO II
+    else:
+      8 # ACO III+
   else:
     0
 

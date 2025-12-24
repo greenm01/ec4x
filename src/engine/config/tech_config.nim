@@ -12,21 +12,20 @@ type
   StartingTechConfig* = object
     ## Starting tech levels per economy.md:4.0
     ## CRITICAL: ALL tech starts at level 1, not 0!
-    economic_level*: int32          # EL1
-    science_level*: int32             # SL1
-    construction_tech*: int32         # CST1
-    weapons_tech*: int32              # WEP1
-    terraforming_tech*: int32         # TER1
-    electronic_intelligence*: int32   # ELI1
-    cloaking_tech*: int32             # CLK1
-    shield_tech*: int32               # SLD1 (Planetary Shields)
-    counter_intelligence*: int32      # CIC1
-    fighter_doctrine*: int32          # FD I (starts at 1)
-    advanced_carrier_ops*: int32      # ACO I (starts at 1)
+    economic_level*: int32 # EL1
+    science_level*: int32 # SL1
+    construction_tech*: int32 # CST1
+    weapons_tech*: int32 # WEP1
+    terraforming_tech*: int32 # TER1
+    electronic_intelligence*: int32 # ELI1
+    cloaking_tech*: int32 # CLK1
+    shield_tech*: int32 # SLD1 (Planetary Shields)
+    counter_intelligence*: int32 # CIC1
+    fighter_doctrine*: int32 # FD I (starts at 1)
+    advanced_carrier_ops*: int32 # ACO I (starts at 1)
 
   ## Level-specific tech configurations loaded from config/tech.toml
   ## Each tech field has explicit level definitions for type safety
-
   EconomicLevelConfig* = object
     ## Economic Level advancement costs (11 levels, uses ERP)
     level_1_erp*: int32
@@ -52,8 +51,7 @@ type
     level_11_erp*: int32
     level_11_mod*: float32
 
-  ScienceLevelConfig* = object
-    ## Science Level advancement costs (8 levels, uses SRP)
+  ScienceLevelConfig* = object ## Science Level advancement costs (8 levels, uses SRP)
     level_1_srp*: int32
     level_2_srp*: int32
     level_3_srp*: int32
@@ -66,7 +64,8 @@ type
   StandardTechLevelConfig* = object
     ## Standard tech fields (15 levels, uses TRP)
     ## Used by: CST, ELI, CLK, SLD, CIC
-    capacity_multiplier_per_level*: Option[float32]  # Optional: for CST dock capacity scaling
+    capacity_multiplier_per_level*: Option[float32]
+      # Optional: for CST dock capacity scaling
     level_1_sl*: int32
     level_1_trp*: int32
     level_2_sl*: int32
@@ -221,8 +220,7 @@ type
     eden_pu_max*: int32
     eden_pp*: int32
 
-  TechConfig* = object
-    ## Technology configuration from tech.toml
+  TechConfig* = object ## Technology configuration from tech.toml
     starting_tech*: StartingTechConfig
     economic_level*: EconomicLevelConfig
     science_level*: ScienceLevelConfig
@@ -271,17 +269,28 @@ proc getELUpgradeCostFromConfig*(level: int32): int32 =
   let cfg = globalTechConfig.economic_level
 
   case level
-  of 1: return cfg.level_1_erp
-  of 2: return cfg.level_2_erp
-  of 3: return cfg.level_3_erp
-  of 4: return cfg.level_4_erp
-  of 5: return cfg.level_5_erp
-  of 6: return cfg.level_6_erp
-  of 7: return cfg.level_7_erp
-  of 8: return cfg.level_8_erp
-  of 9: return cfg.level_9_erp
-  of 10: return cfg.level_10_erp
-  of 11: return cfg.level_11_erp
+  of 1:
+    return cfg.level_1_erp
+  of 2:
+    return cfg.level_2_erp
+  of 3:
+    return cfg.level_3_erp
+  of 4:
+    return cfg.level_4_erp
+  of 5:
+    return cfg.level_5_erp
+  of 6:
+    return cfg.level_6_erp
+  of 7:
+    return cfg.level_7_erp
+  of 8:
+    return cfg.level_8_erp
+  of 9:
+    return cfg.level_9_erp
+  of 10:
+    return cfg.level_10_erp
+  of 11:
+    return cfg.level_11_erp
   else:
     raise newException(ValueError, "Invalid EL level: " & $level & " (max is 11)")
 
@@ -290,14 +299,22 @@ proc getSLUpgradeCostFromConfig*(level: int32): int32 =
   let cfg = globalTechConfig.science_level
 
   case level
-  of 1: return cfg.level_1_srp
-  of 2: return cfg.level_2_srp
-  of 3: return cfg.level_3_srp
-  of 4: return cfg.level_4_srp
-  of 5: return cfg.level_5_srp
-  of 6: return cfg.level_6_srp
-  of 7: return cfg.level_7_srp
-  of 8: return cfg.level_8_srp
+  of 1:
+    return cfg.level_1_srp
+  of 2:
+    return cfg.level_2_srp
+  of 3:
+    return cfg.level_3_srp
+  of 4:
+    return cfg.level_4_srp
+  of 5:
+    return cfg.level_5_srp
+  of 6:
+    return cfg.level_6_srp
+  of 7:
+    return cfg.level_7_srp
+  of 8:
+    return cfg.level_8_srp
   else:
     raise newException(ValueError, "Invalid SL level: " & $level & " (max is 8)")
 
@@ -309,161 +326,251 @@ proc getTechUpgradeCostFromConfig*(techField: TechField, level: int32): int32 =
   of TechField.ConstructionTech:
     let cfg = globalTechConfig.construction_tech
     case level
-    of 1: return cfg.level_1_trp
-    of 2: return cfg.level_2_trp
-    of 3: return cfg.level_3_trp
-    of 4: return cfg.level_4_trp
-    of 5: return cfg.level_5_trp
-    of 6: return cfg.level_6_trp
-    of 7: return cfg.level_7_trp
-    of 8: return cfg.level_8_trp
-    of 9: return cfg.level_9_trp
-    of 10: return cfg.level_10_trp
-    of 11: return cfg.level_11_trp
-    of 12: return cfg.level_12_trp
-    of 13: return cfg.level_13_trp
-    of 14: return cfg.level_14_trp
-    of 15: return cfg.level_15_trp
+    of 1:
+      return cfg.level_1_trp
+    of 2:
+      return cfg.level_2_trp
+    of 3:
+      return cfg.level_3_trp
+    of 4:
+      return cfg.level_4_trp
+    of 5:
+      return cfg.level_5_trp
+    of 6:
+      return cfg.level_6_trp
+    of 7:
+      return cfg.level_7_trp
+    of 8:
+      return cfg.level_8_trp
+    of 9:
+      return cfg.level_9_trp
+    of 10:
+      return cfg.level_10_trp
+    of 11:
+      return cfg.level_11_trp
+    of 12:
+      return cfg.level_12_trp
+    of 13:
+      return cfg.level_13_trp
+    of 14:
+      return cfg.level_14_trp
+    of 15:
+      return cfg.level_15_trp
     else:
-      raise newException(ValueError,
-        "Invalid CST level: " & $level & " (max is 15)")
-
+      raise newException(ValueError, "Invalid CST level: " & $level & " (max is 15)")
   of TechField.WeaponsTech:
     let cfg = globalTechConfig.weapons_tech
     case level
-    of 1: return cfg.level_1_trp
-    of 2: return cfg.level_2_trp
-    of 3: return cfg.level_3_trp
-    of 4: return cfg.level_4_trp
-    of 5: return cfg.level_5_trp
-    of 6: return cfg.level_6_trp
-    of 7: return cfg.level_7_trp
-    of 8: return cfg.level_8_trp
-    of 9: return cfg.level_9_trp
-    of 10: return cfg.level_10_trp
-    of 11: return cfg.level_11_trp
-    of 12: return cfg.level_12_trp
-    of 13: return cfg.level_13_trp
-    of 14: return cfg.level_14_trp
-    of 15: return cfg.level_15_trp
+    of 1:
+      return cfg.level_1_trp
+    of 2:
+      return cfg.level_2_trp
+    of 3:
+      return cfg.level_3_trp
+    of 4:
+      return cfg.level_4_trp
+    of 5:
+      return cfg.level_5_trp
+    of 6:
+      return cfg.level_6_trp
+    of 7:
+      return cfg.level_7_trp
+    of 8:
+      return cfg.level_8_trp
+    of 9:
+      return cfg.level_9_trp
+    of 10:
+      return cfg.level_10_trp
+    of 11:
+      return cfg.level_11_trp
+    of 12:
+      return cfg.level_12_trp
+    of 13:
+      return cfg.level_13_trp
+    of 14:
+      return cfg.level_14_trp
+    of 15:
+      return cfg.level_15_trp
     else:
-      raise newException(ValueError,
-        "Invalid WEP level: " & $level & " (max is 15)")
-
+      raise newException(ValueError, "Invalid WEP level: " & $level & " (max is 15)")
   of TechField.TerraformingTech:
     let cfg = globalTechConfig.terraforming_tech
     case level
-    of 1: return cfg.level_1_trp
-    of 2: return cfg.level_2_trp
-    of 3: return cfg.level_3_trp
-    of 4: return cfg.level_4_trp
-    of 5: return cfg.level_5_trp
-    of 6: return cfg.level_6_trp
-    of 7: return cfg.level_7_trp
-    else: return 30 + (level - 7) * 5  # Level 8+
-
+    of 1:
+      return cfg.level_1_trp
+    of 2:
+      return cfg.level_2_trp
+    of 3:
+      return cfg.level_3_trp
+    of 4:
+      return cfg.level_4_trp
+    of 5:
+      return cfg.level_5_trp
+    of 6:
+      return cfg.level_6_trp
+    of 7:
+      return cfg.level_7_trp
+    else:
+      return 30 + (level - 7) * 5 # Level 8+
   of TechField.ElectronicIntelligence:
     let cfg = globalTechConfig.electronic_intelligence
     case level
-    of 1: return cfg.level_1_trp
-    of 2: return cfg.level_2_trp
-    of 3: return cfg.level_3_trp
-    of 4: return cfg.level_4_trp
-    of 5: return cfg.level_5_trp
-    of 6: return cfg.level_6_trp
-    of 7: return cfg.level_7_trp
-    of 8: return cfg.level_8_trp
-    of 9: return cfg.level_9_trp
-    of 10: return cfg.level_10_trp
-    of 11: return cfg.level_11_trp
-    of 12: return cfg.level_12_trp
-    of 13: return cfg.level_13_trp
-    of 14: return cfg.level_14_trp
-    of 15: return cfg.level_15_trp
+    of 1:
+      return cfg.level_1_trp
+    of 2:
+      return cfg.level_2_trp
+    of 3:
+      return cfg.level_3_trp
+    of 4:
+      return cfg.level_4_trp
+    of 5:
+      return cfg.level_5_trp
+    of 6:
+      return cfg.level_6_trp
+    of 7:
+      return cfg.level_7_trp
+    of 8:
+      return cfg.level_8_trp
+    of 9:
+      return cfg.level_9_trp
+    of 10:
+      return cfg.level_10_trp
+    of 11:
+      return cfg.level_11_trp
+    of 12:
+      return cfg.level_12_trp
+    of 13:
+      return cfg.level_13_trp
+    of 14:
+      return cfg.level_14_trp
+    of 15:
+      return cfg.level_15_trp
     else:
-      raise newException(ValueError,
-        "Invalid ELI level: " & $level & " (max is 15)")
-
+      raise newException(ValueError, "Invalid ELI level: " & $level & " (max is 15)")
   of TechField.CloakingTech:
     let cfg = globalTechConfig.cloaking_tech
     case level
-    of 1: return cfg.level_1_trp
-    of 2: return cfg.level_2_trp
-    of 3: return cfg.level_3_trp
-    of 4: return cfg.level_4_trp
-    of 5: return cfg.level_5_trp
-    of 6: return cfg.level_6_trp
-    of 7: return cfg.level_7_trp
-    of 8: return cfg.level_8_trp
-    of 9: return cfg.level_9_trp
-    of 10: return cfg.level_10_trp
-    of 11: return cfg.level_11_trp
-    of 12: return cfg.level_12_trp
-    of 13: return cfg.level_13_trp
-    of 14: return cfg.level_14_trp
-    of 15: return cfg.level_15_trp
+    of 1:
+      return cfg.level_1_trp
+    of 2:
+      return cfg.level_2_trp
+    of 3:
+      return cfg.level_3_trp
+    of 4:
+      return cfg.level_4_trp
+    of 5:
+      return cfg.level_5_trp
+    of 6:
+      return cfg.level_6_trp
+    of 7:
+      return cfg.level_7_trp
+    of 8:
+      return cfg.level_8_trp
+    of 9:
+      return cfg.level_9_trp
+    of 10:
+      return cfg.level_10_trp
+    of 11:
+      return cfg.level_11_trp
+    of 12:
+      return cfg.level_12_trp
+    of 13:
+      return cfg.level_13_trp
+    of 14:
+      return cfg.level_14_trp
+    of 15:
+      return cfg.level_15_trp
     else:
-      raise newException(ValueError,
-        "Invalid CLK level: " & $level & " (max is 15)")
-
+      raise newException(ValueError, "Invalid CLK level: " & $level & " (max is 15)")
   of TechField.ShieldTech:
     let cfg = globalTechConfig.shield_tech
     case level
-    of 1: return cfg.level_1_trp
-    of 2: return cfg.level_2_trp
-    of 3: return cfg.level_3_trp
-    of 4: return cfg.level_4_trp
-    of 5: return cfg.level_5_trp
-    of 6: return cfg.level_6_trp
-    of 7: return cfg.level_7_trp
-    of 8: return cfg.level_8_trp
-    of 9: return cfg.level_9_trp
-    of 10: return cfg.level_10_trp
-    of 11: return cfg.level_11_trp
-    of 12: return cfg.level_12_trp
-    of 13: return cfg.level_13_trp
-    of 14: return cfg.level_14_trp
-    of 15: return cfg.level_15_trp
+    of 1:
+      return cfg.level_1_trp
+    of 2:
+      return cfg.level_2_trp
+    of 3:
+      return cfg.level_3_trp
+    of 4:
+      return cfg.level_4_trp
+    of 5:
+      return cfg.level_5_trp
+    of 6:
+      return cfg.level_6_trp
+    of 7:
+      return cfg.level_7_trp
+    of 8:
+      return cfg.level_8_trp
+    of 9:
+      return cfg.level_9_trp
+    of 10:
+      return cfg.level_10_trp
+    of 11:
+      return cfg.level_11_trp
+    of 12:
+      return cfg.level_12_trp
+    of 13:
+      return cfg.level_13_trp
+    of 14:
+      return cfg.level_14_trp
+    of 15:
+      return cfg.level_15_trp
     else:
-      raise newException(ValueError,
-        "Invalid SLD level: " & $level & " (max is 15)")
-
+      raise newException(ValueError, "Invalid SLD level: " & $level & " (max is 15)")
   of TechField.CounterIntelligence:
     let cfg = globalTechConfig.counter_intelligence_tech
     case level
-    of 1: return cfg.level_1_trp
-    of 2: return cfg.level_2_trp
-    of 3: return cfg.level_3_trp
-    of 4: return cfg.level_4_trp
-    of 5: return cfg.level_5_trp
-    of 6: return cfg.level_6_trp
-    of 7: return cfg.level_7_trp
-    of 8: return cfg.level_8_trp
-    of 9: return cfg.level_9_trp
-    of 10: return cfg.level_10_trp
-    of 11: return cfg.level_11_trp
-    of 12: return cfg.level_12_trp
-    of 13: return cfg.level_13_trp
-    of 14: return cfg.level_14_trp
-    of 15: return cfg.level_15_trp
+    of 1:
+      return cfg.level_1_trp
+    of 2:
+      return cfg.level_2_trp
+    of 3:
+      return cfg.level_3_trp
+    of 4:
+      return cfg.level_4_trp
+    of 5:
+      return cfg.level_5_trp
+    of 6:
+      return cfg.level_6_trp
+    of 7:
+      return cfg.level_7_trp
+    of 8:
+      return cfg.level_8_trp
+    of 9:
+      return cfg.level_9_trp
+    of 10:
+      return cfg.level_10_trp
+    of 11:
+      return cfg.level_11_trp
+    of 12:
+      return cfg.level_12_trp
+    of 13:
+      return cfg.level_13_trp
+    of 14:
+      return cfg.level_14_trp
+    of 15:
+      return cfg.level_15_trp
     else:
-      raise newException(ValueError,
-        "Invalid CIC level: " & $level & " (max is 15)")
-
+      raise newException(ValueError, "Invalid CIC level: " & $level & " (max is 15)")
   of TechField.FighterDoctrine:
     let cfg = globalTechConfig.fighter_doctrine
     case level
-    of 1: return cfg.level_1_trp
-    of 2: return cfg.level_2_trp
-    of 3: return cfg.level_3_trp
+    of 1:
+      return cfg.level_1_trp
+    of 2:
+      return cfg.level_2_trp
+    of 3:
+      return cfg.level_3_trp
     else:
       raise newException(ValueError, "Invalid FD level: " & $level & " (max is 3)")
-
   of TechField.AdvancedCarrierOps:
     let cfg = globalTechConfig.advanced_carrier_operations
     case level
-    of 1: return cfg.level_1_trp
-    of 2: return cfg.level_2_trp
-    of 3: return cfg.level_3_trp
+    of 1:
+      return cfg.level_1_trp
+    of 2:
+      return cfg.level_2_trp
+    of 3:
+      return cfg.level_3_trp
     else:
       raise newException(ValueError, "Invalid ACO level: " & $level & " (max is 3)")

@@ -22,23 +22,30 @@ import ../../state/game_state as state_helpers
 import ../../config/[tech_config, prestige_multiplier, prestige_config]
 import ../../../common/logger
 
-export tech.ResearchAdvancement, tech.AdvancementType, tech.BreakthroughEvent, tech.TechTree
+export
+  tech.ResearchAdvancement, tech.AdvancementType, tech.BreakthroughEvent, tech.TechTree
 
 ## CST Tech Upgrade Helpers
 
-proc updateSpaceportDocks(state: var GameState, spaceportId: SpaceportId, effectiveDocks: int32) =
+proc updateSpaceportDocks(
+    state: var GameState, spaceportId: SpaceportId, effectiveDocks: int32
+) =
   ## Helper to update spaceport effective docks (works around Nim var field access limitations)
   if spaceportId in state.spaceports.entities.index:
     let idx = state.spaceports.entities.index[spaceportId]
     state.spaceports.entities.data[idx].effectiveDocks = effectiveDocks
 
-proc updateShipyardDocks(state: var GameState, shipyardId: ShipyardId, effectiveDocks: int32) =
+proc updateShipyardDocks(
+    state: var GameState, shipyardId: ShipyardId, effectiveDocks: int32
+) =
   ## Helper to update shipyard effective docks
   if shipyardId in state.shipyards.entities.index:
     let idx = state.shipyards.entities.index[shipyardId]
     state.shipyards.entities.data[idx].effectiveDocks = effectiveDocks
 
-proc updateDrydockDocks(state: var GameState, drydockId: DrydockId, effectiveDocks: int32) =
+proc updateDrydockDocks(
+    state: var GameState, drydockId: DrydockId, effectiveDocks: int32
+) =
   ## Helper to update drydock effective docks
   if drydockId in state.drydocks.entities.index:
     let idx = state.drydocks.entities.index[drydockId]
@@ -74,7 +81,8 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
       if spaceportOpt.isNone:
         continue
       let spaceport = spaceportOpt.get()
-      let newDocks = int32(effects.calculateEffectiveDocks(spaceport.baseDocks, cstLevel))
+      let newDocks =
+        int32(effects.calculateEffectiveDocks(spaceport.baseDocks, cstLevel))
       updateSpaceportDocks(state, spaceportId, newDocks)
 
     # Update shipyard capacities
@@ -83,7 +91,8 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
       if shipyardOpt.isNone:
         continue
       let shipyard = shipyardOpt.get()
-      let newDocks = int32(effects.calculateEffectiveDocks(shipyard.baseDocks, cstLevel))
+      let newDocks =
+        int32(effects.calculateEffectiveDocks(shipyard.baseDocks, cstLevel))
       updateShipyardDocks(state, shipyardId, newDocks)
 
     # Update drydock capacities
@@ -99,17 +108,17 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
 ## Caps prevent wasteful investment once maximum research levels reached
 
 const
-  maxEconomicLevel* = 11      # EL caps at 11 per economy.md:4.2
-  maxScienceLevel* = 8        # SL caps at 8 per economy.md:4.3
-  maxConstructionTech* = 15   # CST extended for long games
-  maxWeaponsTech* = 15        # WEP extended for long games
-  maxTerraformingTech* = 7    # TER limited to planet classes
-  maxElectronicIntelligence* = 15  # ELI extended
-  maxCloakingTech* = 15       # CLK extended
-  maxShieldTech* = 15         # SLD extended
-  maxCounterIntelligence* = 15  # CIC extended
-  maxFighterDoctrine* = 3     # FD limited to 3 doctrines
-  maxAdvancedCarrierOps* = 3  # ACO limited to 3 levels
+  maxEconomicLevel* = 11 # EL caps at 11 per economy.md:4.2
+  maxScienceLevel* = 8 # SL caps at 8 per economy.md:4.3
+  maxConstructionTech* = 15 # CST extended for long games
+  maxWeaponsTech* = 15 # WEP extended for long games
+  maxTerraformingTech* = 7 # TER limited to planet classes
+  maxElectronicIntelligence* = 15 # ELI extended
+  maxCloakingTech* = 15 # CLK extended
+  maxShieldTech* = 15 # SLD extended
+  maxCounterIntelligence* = 15 # CIC extended
+  maxFighterDoctrine* = 3 # FD limited to 3 doctrines
+  maxAdvancedCarrierOps* = 3 # ACO limited to 3 levels
 
 ## Breakthrough Cycles (economy.md:4.1.1)
 
@@ -128,7 +137,7 @@ proc rollBreakthrough*(rng: var Rand): Option[BreakthroughType] =
   ## Base chance: 5% (1 on d20)
 
   # Roll d20 (1-20)
-  let roll = rng.rand(1..20)
+  let roll = rng.rand(1 .. 20)
 
   # Convert percentage to number of successful rolls on d20
   # 5% = 1 success (roll 1), 10% = 2 successes (rolls 1-2), 15% = 3 successes (rolls 1-3)
@@ -136,33 +145,34 @@ proc rollBreakthrough*(rng: var Rand): Option[BreakthroughType] =
 
   if roll <= successfulRolls:
     # Success! Roll d20 for breakthrough type
-    let typeRoll = rng.rand(1..20)
+    let typeRoll = rng.rand(1 .. 20)
 
     if typeRoll <= 10:
-      return some(BreakthroughType.Minor)        # 1-10: Minor (50%)
+      return some(BreakthroughType.Minor) # 1-10: Minor (50%)
     elif typeRoll <= 15:
-      return some(BreakthroughType.Moderate)     # 11-15: Moderate (25%)
+      return some(BreakthroughType.Moderate) # 11-15: Moderate (25%)
     elif typeRoll <= 18:
-      return some(BreakthroughType.Major)        # 16-18: Major (15%)
+      return some(BreakthroughType.Major) # 16-18: Major (15%)
     else:
       return some(BreakthroughType.Revolutionary) # 19-20: Revolutionary (10%)
 
   return none(BreakthroughType)
 
-proc applyBreakthrough*(tree: var TechTree, breakthrough: BreakthroughType,
-                       allocation: ResearchAllocation): BreakthroughEvent =
+proc applyBreakthrough*(
+    tree: var TechTree, breakthrough: BreakthroughType, allocation: ResearchAllocation
+): BreakthroughEvent =
   ## Apply breakthrough effect to tech tree
   ## Returns event for reporting
 
   result = BreakthroughEvent(
-    houseId: HouseId(0),  # Set by caller
-    turn: int32(0),       # Set by caller
+    houseId: HouseId(0), # Set by caller
+    turn: int32(0), # Set by caller
     breakthroughType: breakthrough,
-    category: ResearchCategory.Economic,  # Default, may vary
+    category: ResearchCategory.Economic, # Default, may vary
     amount: int32(0),
     costReduction: float32(1.0),
     autoAdvance: false,
-    revolutionary: none(RevolutionaryTech)
+    revolutionary: none(RevolutionaryTech),
   )
 
   case breakthrough
@@ -175,13 +185,11 @@ proc applyBreakthrough*(tree: var TechTree, breakthrough: BreakthroughType,
       tree.accumulated.science += 10
       result.category = ResearchCategory.Science
     result.amount = 10
-
   of BreakthroughType.Moderate:
     # 20% cost reduction for next tech upgrade
     # Applied via breakthrough.costReduction field (tracked in ResearchBreakthrough)
     # Caller applies this discount to next tech purchase
     result.costReduction = 0.8
-
   of BreakthroughType.Major:
     # Auto-advance EL or SL
     if allocation.economic > allocation.science:
@@ -191,7 +199,6 @@ proc applyBreakthrough*(tree: var TechTree, breakthrough: BreakthroughType,
       tree.levels.scienceLevel += 1
       result.category = ResearchCategory.Science
     result.autoAdvance = true
-
   of BreakthroughType.Revolutionary:
     # Roll for revolutionary tech
     # NOTE: Revolutionary techs are rare, game-changing discoveries
@@ -201,7 +208,9 @@ proc applyBreakthrough*(tree: var TechTree, breakthrough: BreakthroughType,
 
 ## Tech Level Advancement
 
-proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[ResearchAdvancement] =
+proc attemptELAdvancement*(
+    tree: var TechTree, currentEL: int
+): Option[ResearchAdvancement] =
   ## Attempt to advance Economic Level
   ## Returns advancement if successful
 
@@ -224,21 +233,25 @@ proc attemptELAdvancement*(tree: var TechTree, currentEL: int): Option[ResearchA
     let prestigeEvent = PrestigeEvent(
       source: PrestigeSource.TechAdvancement,
       amount: int32(prestigeAmount),
-      description: "Economic Level " & $currentEL & " → " & $(currentEL + 1)
+      description: "Economic Level " & $currentEL & " → " & $(currentEL + 1),
     )
 
-    return some(ResearchAdvancement(
-      advancementType: AdvancementType.EconomicLevel,
-      elFromLevel: int32(currentEL),
-      elToLevel: int32(currentEL + 1),
-      elCost: int32(cost),
-      houseId: HouseId(0),  # Set by caller
-      prestigeEvent: some(prestigeEvent)
-    ))
+    return some(
+      ResearchAdvancement(
+        advancementType: AdvancementType.EconomicLevel,
+        elFromLevel: int32(currentEL),
+        elToLevel: int32(currentEL + 1),
+        elCost: int32(cost),
+        houseId: HouseId(0), # Set by caller
+        prestigeEvent: some(prestigeEvent),
+      )
+    )
 
   return none(ResearchAdvancement)
 
-proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[ResearchAdvancement] =
+proc attemptSLAdvancement*(
+    tree: var TechTree, currentSL: int
+): Option[ResearchAdvancement] =
   ## Attempt to advance Science Level
   ## Returns advancement if successful
 
@@ -261,47 +274,44 @@ proc attemptSLAdvancement*(tree: var TechTree, currentSL: int): Option[ResearchA
     let prestigeEvent = PrestigeEvent(
       source: PrestigeSource.TechAdvancement,
       amount: int32(prestigeAmount),
-      description: "Science Level " & $currentSL & " → " & $(currentSL + 1)
+      description: "Science Level " & $currentSL & " → " & $(currentSL + 1),
     )
 
-    return some(ResearchAdvancement(
-      advancementType: AdvancementType.ScienceLevel,
-      slFromLevel: int32(currentSL),
-      slToLevel: int32(currentSL + 1),
-      slCost: int32(cost),
-      houseId: HouseId(0),  # Set by caller
-      prestigeEvent: some(prestigeEvent)
-    ))
+    return some(
+      ResearchAdvancement(
+        advancementType: AdvancementType.ScienceLevel,
+        slFromLevel: int32(currentSL),
+        slToLevel: int32(currentSL + 1),
+        slCost: int32(cost),
+        houseId: HouseId(0), # Set by caller
+        prestigeEvent: some(prestigeEvent),
+      )
+    )
 
   return none(ResearchAdvancement)
 
-proc attemptTechAdvancement*(state: var GameState, houseId: HouseId, tree: var TechTree, field: TechField): Option[ResearchAdvancement] =
+proc attemptTechAdvancement*(
+    state: var GameState, houseId: HouseId, tree: var TechTree, field: TechField
+): Option[ResearchAdvancement] =
   ## Attempt to advance specific tech field
   ## Returns advancement if successful
   ## Note: EL and SL use separate attemptELAdvancement/attemptSLAdvancement functions
 
-  let currentLevel = case field
-    of TechField.ConstructionTech:
-      tree.levels.constructionTech
-    of TechField.WeaponsTech:
-      tree.levels.weaponsTech
-    of TechField.TerraformingTech:
-      tree.levels.terraformingTech
-    of TechField.ElectronicIntelligence:
-      tree.levels.electronicIntelligence
-    of TechField.CloakingTech:
-      tree.levels.cloakingTech
-    of TechField.ShieldTech:
-      tree.levels.shieldTech
-    of TechField.CounterIntelligence:
-      tree.levels.counterIntelligence
-    of TechField.FighterDoctrine:
-      tree.levels.fighterDoctrine
-    of TechField.AdvancedCarrierOps:
-      tree.levels.advancedCarrierOps
+  let currentLevel =
+    case field
+    of TechField.ConstructionTech: tree.levels.constructionTech
+    of TechField.WeaponsTech: tree.levels.weaponsTech
+    of TechField.TerraformingTech: tree.levels.terraformingTech
+    of TechField.ElectronicIntelligence: tree.levels.electronicIntelligence
+    of TechField.CloakingTech: tree.levels.cloakingTech
+    of TechField.ShieldTech: tree.levels.shieldTech
+    of TechField.CounterIntelligence: tree.levels.counterIntelligence
+    of TechField.FighterDoctrine: tree.levels.fighterDoctrine
+    of TechField.AdvancedCarrierOps: tree.levels.advancedCarrierOps
 
   # Check if already at max level
-  let maxLevel = case field
+  let maxLevel =
+    case field
     of TechField.ConstructionTech: maxConstructionTech
     of TechField.WeaponsTech: maxWeaponsTech
     of TechField.TerraformingTech: maxTerraformingTech
@@ -318,7 +328,8 @@ proc attemptTechAdvancement*(state: var GameState, houseId: HouseId, tree: var T
   let cost = getTechUpgradeCost(field, currentLevel)
 
   # Check if enough TRP accumulated
-  if field notin tree.accumulated.technology or tree.accumulated.technology[field] < int32(cost):
+  if field notin tree.accumulated.technology or
+      tree.accumulated.technology[field] < int32(cost):
     return none(ResearchAdvancement)
 
   # Spend TRP
@@ -354,15 +365,17 @@ proc attemptTechAdvancement*(state: var GameState, houseId: HouseId, tree: var T
   let prestigeEvent = PrestigeEvent(
     source: PrestigeSource.TechAdvancement,
     amount: int32(prestigeAmount),
-    description: fieldName & " " & $currentLevel & " → " & $(currentLevel + 1)
+    description: fieldName & " " & $currentLevel & " → " & $(currentLevel + 1),
   )
 
-  return some(ResearchAdvancement(
-    advancementType: AdvancementType.Technology,
-    techField: field,
-    techFromLevel: int32(currentLevel),
-    techToLevel: int32(currentLevel + 1),
-    techCost: int32(cost),
-    houseId: HouseId(0),  # Set by caller
-    prestigeEvent: some(prestigeEvent)
-  ))
+  return some(
+    ResearchAdvancement(
+      advancementType: AdvancementType.Technology,
+      techField: field,
+      techFromLevel: int32(currentLevel),
+      techToLevel: int32(currentLevel + 1),
+      techCost: int32(cost),
+      houseId: HouseId(0), # Set by caller
+      prestigeEvent: some(prestigeEvent),
+    )
+  )

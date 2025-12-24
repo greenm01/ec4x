@@ -13,9 +13,7 @@ import ../../state/game_state
 # =============================================================================
 
 proc isSystemBlockaded*(
-  state: GameState,
-  systemId: SystemId,
-  colonyOwner: HouseId
+    state: GameState, systemId: SystemId, colonyOwner: HouseId
 ): (bool, seq[HouseId]) =
   ## Check if a system is currently blockaded by hostile forces
   ## Returns (isBlockaded, blockadingHouses)
@@ -130,9 +128,9 @@ proc getBlockadePenalty*(colony: Colony): float =
   ## Returns multiplier (0.4 = 60% reduction)
 
   if colony.blockaded:
-    return 0.4  # 60% reduction
+    return 0.4 # 60% reduction
   else:
-    return 1.0  # No reduction
+    return 1.0 # No reduction
 
 proc calculateBlockadePrestigePenalty*(state: GameState, houseId: HouseId): int =
   ## Calculate prestige penalty for colonies under blockade
@@ -146,7 +144,7 @@ proc calculateBlockadePrestigePenalty*(state: GameState, houseId: HouseId): int 
 
   for colony in state.coloniesOwned(houseId):
     if colony.blockaded:
-      penalty -= 2  # -2 prestige per blockaded colony
+      penalty -= 2 # -2 prestige per blockaded colony
 
   return penalty
 
@@ -200,11 +198,7 @@ proc getBlockadingFleets*(state: GameState, systemId: SystemId): seq[Fleet] =
 # Blockade Breaking
 # =============================================================================
 
-proc canBreakBlockade*(
-  state: GameState,
-  systemId: SystemId,
-  reliefFleet: Fleet
-): bool =
+proc canBreakBlockade*(state: GameState, systemId: SystemId, reliefFleet: Fleet): bool =
   ## Check if a relief fleet can break a blockade
   ## Per operations.md:6.2.6: Blockading fleets engage relief forces
   ## under order 05 (Guard/Blockade)
@@ -214,7 +208,7 @@ proc canBreakBlockade*(
   let blockaders = getBlockadingFleets(state, systemId)
 
   if blockaders.len == 0:
-    return true  # No blockade to break
+    return true # No blockade to break
 
   # Calculate combined strength
   var blockaderStrength = 0

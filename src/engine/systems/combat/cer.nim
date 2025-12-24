@@ -13,9 +13,8 @@ export combat_types
 ## Deterministic PRNG (LCG - Linear Congruential Generator)
 ## Simple but sufficient for game dice rolls
 
-type
-  CombatRNG* = object
-    state*: uint64
+type CombatRNG* = object
+  state*: uint64
 
 proc initRNG*(seed: int64): CombatRNG =
   ## Initialize RNG with seed
@@ -47,7 +46,7 @@ proc roll1d10*(rng: var CombatRNG): int =
   ## Roll a standard 1D10 die for CER
   ## Returns 1-10 (but we treat as 0-9 internally per spec)
   ## Spec uses "natural 9" for critical, which is roll result 9
-  rng.rollDie(10) - 1  # Convert to 0-9 range
+  rng.rollDie(10) - 1 # Convert to 0-9 range
 
 proc roll1d20*(rng: var CombatRNG): int =
   ## Roll a standard 1D20 die for ground combat and shield rolls
@@ -65,27 +64,41 @@ proc lookupCER*(finalRoll: int): float32 =
   ## Look up Combat Effectiveness Rating from CER table
   ## Based on EC4X specs Section 7.3.3
   ## Returns effectiveness multiplier (0.0 to 2.0+)
-  if finalRoll <= 0: 0.0
-  elif finalRoll == 1: 0.1
-  elif finalRoll == 2: 0.2
-  elif finalRoll == 3: 0.3
-  elif finalRoll == 4: 0.4
-  elif finalRoll == 5: 0.5
-  elif finalRoll == 6: 0.6
-  elif finalRoll == 7: 0.8
-  elif finalRoll == 8: 1.0
-  elif finalRoll == 9: 1.2
-  elif finalRoll == 10: 1.4
-  elif finalRoll == 11: 1.6
-  elif finalRoll == 12: 1.8
-  else: 2.0  # 13+
+  if finalRoll <= 0:
+    0.0
+  elif finalRoll == 1:
+    0.1
+  elif finalRoll == 2:
+    0.2
+  elif finalRoll == 3:
+    0.3
+  elif finalRoll == 4:
+    0.4
+  elif finalRoll == 5:
+    0.5
+  elif finalRoll == 6:
+    0.6
+  elif finalRoll == 7:
+    0.8
+  elif finalRoll == 8:
+    1.0
+  elif finalRoll == 9:
+    1.2
+  elif finalRoll == 10:
+    1.4
+  elif finalRoll == 11:
+    1.6
+  elif finalRoll == 12:
+    1.8
+  else:
+    2.0 # 13+
 
 proc calculateModifiers*(
-  phase: CombatPhase,
-  roundNumber: int,
-  moraleModifier: int,
-  isSurprise: bool,
-  isAmbush: bool
+    phase: CombatPhase,
+    roundNumber: int,
+    moraleModifier: int,
+    isSurprise: bool,
+    isAmbush: bool,
 ): int =
   ## Calculate total CER modifiers for an attack
   ## Returns sum of all applicable modifiers
@@ -105,24 +118,22 @@ proc calculateModifiers*(
       result += 4
 
 proc rollCER*(
-  rng: var CombatRNG,
-  phase: CombatPhase,
-  roundNumber: int,
-  moraleModifier: int,
-  isSurprise: bool = false,
-  isAmbush: bool = false,
-  desperationBonus: int = 0  # Bonus for desperation rounds
+    rng: var CombatRNG,
+    phase: CombatPhase,
+    roundNumber: int,
+    moraleModifier: int,
+    isSurprise: bool = false,
+    isAmbush: bool = false,
+    desperationBonus: int = 0, # Bonus for desperation rounds
 ): CERRoll =
   ## Roll for Combat Effectiveness Rating
   ## Returns CERRoll with all details
   ##
   ## desperationBonus: Additional modifier when combat stalls (both sides fight desperately)
 
-  let naturalRoll = rng.roll1d10()  # 0-9
-  let baseModifiers = calculateModifiers(
-    phase, roundNumber, moraleModifier,
-    isSurprise, isAmbush
-  )
+  let naturalRoll = rng.roll1d10() # 0-9
+  let baseModifiers =
+    calculateModifiers(phase, roundNumber, moraleModifier, isSurprise, isAmbush)
   let modifiers = baseModifiers + desperationBonus
   let finalRoll = naturalRoll + modifiers
 
@@ -137,14 +148,14 @@ proc rollCER*(
     modifiers: int32(modifiers),
     finalRoll: int32(finalRoll),
     effectiveness: effectiveness,
-    isCriticalHit: isCrit
+    isCriticalHit: isCrit,
   )
 
 proc applyDamage*(damage: int, effectiveness: float): int =
   ## Calculate actual damage: damage * CER
   ## Round up (Section 7.3.3)
   let exactDamage = float(damage) * effectiveness
-  return int(exactDamage + 0.5)  # Round to nearest (0.5+ rounds up)
+  return int(exactDamage + 0.5) # Round to nearest (0.5+ rounds up)
 
 proc calculateHits*(squadronAS: int, cerRoll: CERRoll): int =
   ## Calculate total hits from squadron attack
@@ -156,14 +167,15 @@ proc calculateHits*(squadronAS: int, cerRoll: CERRoll): int =
 proc `$`*(cer: CERRoll): string =
   ## Pretty print CER roll for logs
   let critMark = if cer.isCriticalHit: " CRITICAL!" else: ""
-  result = "CER: d10=$# $#=$# → $#x$#" % [
-    $cer.naturalRoll,
-    (if cer.modifiers >= 0: "+" else: ""),
-    $cer.modifiers,
-    $cer.finalRoll,
-    formatFloat(cer.effectiveness, precision = 2),
-    critMark
-  ]
+  result =
+    "CER: d10=$# $#=$# → $#x$#" % [
+      $cer.naturalRoll,
+      (if cer.modifiers >= 0: "+" else: ""),
+      $cer.modifiers,
+      $cer.finalRoll,
+      formatFloat(cer.effectiveness, precision = 2),
+      critMark,
+    ]
 
 ## Testing helpers
 
@@ -178,5 +190,5 @@ proc simulateRolls*(seed: int64, count: int): seq[int] =
   ## Returns sequence of natural rolls (0-9)
   var rng = initRNG(seed)
   result = @[]
-  for i in 0..<count:
+  for i in 0 ..< count:
     result.add(rng.roll1d10())

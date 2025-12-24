@@ -13,7 +13,12 @@ type
 
   # Order events
   OrderEventKind* {.pure.} = enum
-    Issued, Completed, Rejected, Failed, Aborted, Arrived
+    Issued
+    Completed
+    Rejected
+    Failed
+    Aborted
+    Arrived
 
   OrderEvent* = object
     base*: BaseEvent
@@ -24,7 +29,10 @@ type
 
   # Combat events
   CombatOutcome* {.pure.} = enum
-    Victory, Defeat, Draw, MutualAnnihilation
+    Victory
+    Defeat
+    Draw
+    MutualAnnihilation
 
   CombatEvent* = object
     base*: BaseEvent
@@ -69,7 +77,12 @@ type
 
   # Fleet events
   FleetEventKind* {.pure.} = enum
-    Created, Destroyed, Disbanded, Retreated, Merged, Detached
+    Created
+    Destroyed
+    Disbanded
+    Retreated
+    Merged
+    Detached
 
   FleetEvent* = object
     base*: BaseEvent
@@ -81,7 +94,11 @@ type
 
   # Squadron events
   SquadronEventKind* {.pure.} = enum
-    Commissioned, Destroyed, Damaged, Disbanded, Scrapped
+    Commissioned
+    Destroyed
+    Damaged
+    Disbanded
+    Scrapped
 
   SquadronEvent* = object
     base*: BaseEvent
@@ -93,7 +110,10 @@ type
 
   # Colony events
   ColonyEventKind* {.pure.} = enum
-    Established, Captured, Bombarded, TerraformComplete
+    Established
+    Captured
+    Bombarded
+    TerraformComplete
 
   ColonyEvent* = object
     base*: BaseEvent
@@ -156,8 +176,7 @@ type
     turn*: int32
     events*: GameEvents
 
-  TurnResolutionReport* = object
-    ## Summary of turn resolution for reporting
+  TurnResolutionReport* = object ## Summary of turn resolution for reporting
     turn*: int32
     events*: seq[string]
     errors*: seq[string]

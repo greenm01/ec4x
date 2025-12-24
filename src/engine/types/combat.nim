@@ -5,18 +5,27 @@
 
 import std/[tables, options]
 import ./core
-import ./fleet  # For FleetStatus
-import ./diplomacy  # For DiplomaticState
+import ./fleet # For FleetStatus
+import ./diplomacy # For DiplomaticState
 
 type
   CombatState* {.pure.} = enum
-    Undamaged, Crippled, Destroyed
+    Undamaged
+    Crippled
+    Destroyed
 
   CombatPhase* {.pure.} = enum
-    PreCombat, Ambush, Intercept, MainEngagement, PostCombat
+    PreCombat
+    Ambush
+    Intercept
+    MainEngagement
+    PostCombat
 
   CERModifier* {.pure.} = enum
-    Scouts, Morale, Surprise, Ambush
+    Scouts
+    Morale
+    Surprise
+    Ambush
 
   CERRoll* = object
     naturalRoll*: int32
@@ -26,20 +35,25 @@ type
     isCriticalHit*: bool
 
   TargetBucket* {.pure.} = enum
-    Raider = 1, Capital = 2, Escort = 3, Fighter = 4, Starbase = 5
+    Raider = 1
+    Capital = 2
+    Escort = 3
+    Fighter = 4
+    Starbase = 5
 
   CombatTargetKind* {.pure.} = enum
-    Squadron, Facility
+    Squadron
+    Facility
 
   CombatTargetId* = object
     case kind*: CombatTargetKind
     of Squadron:
       squadronId*: SquadronId
     of Facility:
-      facilityId*: StarbaseId  # Use typed ID, not string
+      facilityId*: StarbaseId # Use typed ID, not string
 
   CombatSquadron* = object
-    squadronId*: SquadronId  # Reference, not embedded object
+    squadronId*: SquadronId # Reference, not embedded object
     state*: CombatState
     fleetStatus*: FleetStatus
     damageThisTurn*: int32
@@ -61,8 +75,8 @@ type
 
   TaskForce* = object
     houseId*: HouseId
-    squadrons*: seq[CombatSquadron]  # Combat state for squadrons in this TF
-    facilities*: seq[CombatFacility]  # Combat state for facilities in this TF
+    squadrons*: seq[CombatSquadron] # Combat state for squadrons in this TF
+    facilities*: seq[CombatFacility] # Combat state for facilities in this TF
     roe*: int32
     isCloaked*: bool
     moraleModifier*: int32
@@ -72,7 +86,7 @@ type
 
   AttackResult* = object
     attackerId*: SquadronId
-    targetId*: CombatTargetId  # Can be squadron or facility
+    targetId*: CombatTargetId # Can be squadron or facility
     cerRoll*: CERRoll
     damageDealt*: int32
     targetStateBefore*: CombatState
