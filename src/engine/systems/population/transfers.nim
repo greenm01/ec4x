@@ -15,9 +15,9 @@
 ## called from turn_cycle/command_phase.nim and production_phase.nim
 
 import std/[tables, sequtils, algorithm, options, logging, strformat, math]
-import ../../types/[game_state, core, command, event, population as pop_types]
+import ../../types/[game_state, core, command, event, population as pop_types, starmap]
 import ../../config/population_config
-import ../../engine/starmap
+import ../../starmap as starmap_module
 import ../../event_factory/init as event_factory
 
 type
