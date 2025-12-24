@@ -625,13 +625,24 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
   let fleetId = cmd.sourceFleetId.get()
   var requestedQty = if cmd.cargoQuantity.isSome: cmd.cargoQuantity.get() else: 0  # 0 = all available
 
-  # Get fleet location to find colony
-  let fleet = state.fleets[fleetId]
+  # Get fleet via entity manager
+  let fleetOpt = state.fleets.entities.getEntity(fleetId)
+  if fleetOpt.isNone:
+    return ZeroTurnResult(success: false, error: "Fleet not found", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  let fleet = fleetOpt.get()
   let colonySystem = fleet.location
 
-  # Get mutable colony and fleet
-  var colony = state.colonies[colonySystem]
-  var mutableFleet = fleet
+  # Get colony via bySystem index
+  if not state.colonies.bySystem.hasKey(colonySystem):
+    return ZeroTurnResult(success: false, error: "Fleet not at colony", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  let colonyId = state.colonies.bySystem[colonySystem]
+  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  if colonyOpt.isNone:
+    return ZeroTurnResult(success: false, error: "Colony not found", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  var colony = colonyOpt.get()
   var totalLoaded = 0
 
   # Check colony inventory based on cargo type
@@ -669,19 +680,34 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
   # Load cargo onto compatible transport squadrons (Expansion/Auxiliary flagships)
   var remainingToLoad = min(requestedQty, availableUnits)
 
-  for squadron in mutableFleet.squadrons.mitems:
+  # Iterate over squadron IDs, get entities via entity manager
+  for squadronId in fleet.squadrons:
     if remainingToLoad <= 0:
       break
+
+    # Get squadron entity
+    let squadronOpt = state.squadrons[].entities.getEntity(squadronId)
+    if squadronOpt.isNone:
+      continue
+
+    let squadron = squadronOpt.get()
 
     # Only Expansion and Auxiliary squadrons carry cargo
     if squadron.squadronType notin {SquadronType.Expansion, SquadronType.Auxiliary}:
       continue
 
-    if squadron.flagship.isCrippled:
+    # Get flagship ship entity
+    let flagshipOpt = state.ships.entities.getEntity(squadron.flagshipId)
+    if flagshipOpt.isNone:
+      continue
+
+    var flagship = flagshipOpt.get()
+
+    if flagship.isCrippled:
       continue
 
     # Determine ship capacity and compatible cargo type
-    let shipCargoType = case squadron.flagship.shipClass
+    let shipCargoType = case flagship.shipClass
       of ShipClass.TroopTransport: CargoType.Marines
       of ShipClass.ETAC: CargoType.Colonists
       else: CargoType.None
@@ -690,18 +716,21 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
       continue  # Ship can't carry this cargo type
 
     # Try to load cargo onto this flagship
-    let currentCargo = if squadron.flagship.cargo.isSome: squadron.flagship.cargo.get() else: ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: 0)
+    let currentCargo = if flagship.cargo.isSome: flagship.cargo.get() else: ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: 0)
     let loadAmount = min(remainingToLoad, currentCargo.capacity - currentCargo.quantity)
 
     if loadAmount > 0:
       var newCargo = currentCargo
       newCargo.cargoType = cargoType
       newCargo.quantity += loadAmount
-      squadron.flagship.cargo = some(newCargo)
+      flagship.cargo = some(newCargo)
+
+      # Update ship entity
+      state.ships.entities.updateEntity(squadron.flagshipId, flagship)
 
       totalLoaded += loadAmount
       remainingToLoad -= loadAmount
-      logDebug(LogCategory.lcEconomy, &"Loaded {loadAmount} {cargoType} onto {squadron.flagship.shipClass} squadron {squadron.id}")
+      logDebug(LogCategory.lcEconomy, &"Loaded {loadAmount} {cargoType} onto {flagship.shipClass} squadron {squadronId}")
 
   # Update colony inventory
   if totalLoaded > 0:
@@ -719,9 +748,8 @@ proc executeLoadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var s
     else:
       discard
 
-    # Write back modified state
-    state.fleets[fleetId] = mutableFleet
-    state.colonies[colonySystem] = colony
+    # Write back modified colony via entity manager
+    state.colonies.entities.updateEntity(colonyId, colony)
     logInfo(LogCategory.lcEconomy, &"LoadCargo: Successfully loaded {totalLoaded} {cargoType} onto fleet {fleetId} at system {colonySystem}")
 
     # Emit CargoLoaded event (Phase 7b)
@@ -749,26 +777,52 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var
 
   let fleetId = cmd.sourceFleetId.get()
 
-  # Get fleet location to find colony
-  let fleet = state.fleets[fleetId]
+  # Get fleet via entity manager
+  let fleetOpt = state.fleets.entities.getEntity(fleetId)
+  if fleetOpt.isNone:
+    return ZeroTurnResult(success: false, error: "Fleet not found", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  let fleet = fleetOpt.get()
   let colonySystem = fleet.location
 
-  # Get mutable colony and fleet
-  var colony = state.colonies[colonySystem]
-  var mutableFleet = fleet
+  # Get colony via bySystem index
+  if not state.colonies.bySystem.hasKey(colonySystem):
+    return ZeroTurnResult(success: false, error: "Fleet not at colony", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  let colonyId = state.colonies.bySystem[colonySystem]
+  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  if colonyOpt.isNone:
+    return ZeroTurnResult(success: false, error: "Colony not found", newFleetId: none(FleetId), newSquadronId: none(string), cargoLoaded: 0, cargoUnloaded: 0, warnings: @[])
+
+  var colony = colonyOpt.get()
   var totalUnloaded = 0
   var unloadedType = CargoType.None
 
   # Unload cargo from transport squadrons (Expansion/Auxiliary flagships)
-  for squadron in mutableFleet.squadrons.mitems:
+  # Iterate over squadron IDs, get entities via entity manager
+  for squadronId in fleet.squadrons:
+    # Get squadron entity
+    let squadronOpt = state.squadrons[].entities.getEntity(squadronId)
+    if squadronOpt.isNone:
+      continue
+
+    let squadron = squadronOpt.get()
+
     # Only Expansion and Auxiliary squadrons carry cargo
     if squadron.squadronType notin {SquadronType.Expansion, SquadronType.Auxiliary}:
       continue
 
-    if squadron.flagship.cargo.isNone:
+    # Get flagship ship entity
+    let flagshipOpt = state.ships.entities.getEntity(squadron.flagshipId)
+    if flagshipOpt.isNone:
+      continue
+
+    var flagship = flagshipOpt.get()
+
+    if flagship.cargo.isNone:
       continue  # No cargo to unload
 
-    let cargo = squadron.flagship.cargo.get()
+    let cargo = flagship.cargo.get()
     if cargo.cargoType == CargoType.None or cargo.quantity == 0:
       continue  # Empty cargo
 
@@ -781,7 +835,7 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var
     case cargoType
     of CargoType.Marines:
       colony.marines += quantity
-      logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} Marines from squadron {squadron.id} to colony")
+      logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} Marines from squadron {squadronId} to colony")
     of CargoType.Colonists:
       # Colonists are delivered to population: 1 PTU = 50k souls
       # Use souls field for exact counting (no rounding errors)
@@ -789,17 +843,19 @@ proc executeUnloadCargo*(state: var GameState, cmd: ZeroTurnCommand, events: var
       colony.souls += soulsToUnload
       # Update display field (population in millions)
       colony.population = colony.souls div 1_000_000
-      logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} PTU ({soulsToUnload} souls, {quantity.float * ptuSizeMillions()}M) from squadron {squadron.id} to colony")
+      logDebug(LogCategory.lcEconomy, &"Unloaded {quantity} PTU ({soulsToUnload} souls, {quantity.float * ptuSizeMillions()}M) from squadron {squadronId} to colony")
     else:
       discard
 
     # Clear cargo from flagship
-    squadron.flagship.cargo = some(ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: cargo.capacity))
+    flagship.cargo = some(ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: cargo.capacity))
 
-  # Write back modified state
+    # Update ship entity
+    state.ships.entities.updateEntity(squadron.flagshipId, flagship)
+
+  # Write back modified colony
   if totalUnloaded > 0:
-    state.fleets[fleetId] = mutableFleet
-    state.colonies[colonySystem] = colony
+    state.colonies.entities.updateEntity(colonyId, colony)
     logInfo(LogCategory.lcEconomy, &"UnloadCargo: Successfully unloaded {totalUnloaded} {unloadedType} from fleet {fleetId} at system {colonySystem}")
 
     # Emit CargoUnloaded event (Phase 7b)
