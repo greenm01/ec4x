@@ -7,13 +7,15 @@
 ## Infrastructure damage from combat affects production
 
 import std/[tables, options]
-import ./[types, income, projects, maintenance, maintenance_shortfall, facility_queue]
-import ./capacity/carrier_hangar  # For carrier hangar capacity enforcement
-import ../../types/[game_state, core, units, event]
+import ./[income, maintenance]
+import ../facilities/queue as facility_queue
+import ../capacity/carrier_hangar  # For carrier hangar capacity enforcement
+import ../../types/[game_state, core, units, event, income as income_types, colony, production]
 import ../../state/[state_helpers, iterators]
 
-export types.IncomePhaseReport, types.HouseIncomeReport, types.ColonyIncomeReport
-export types.MaintenanceReport, types.CompletedProject
+export income_types.IncomePhaseReport, income_types.HouseIncomeReport
+export colony.ColonyIncomeReport
+export production.MaintenanceReport, production.CompletedProject
 # NOTE: Don't export game_state.Colony to avoid ambiguity
 
 ## Income Phase Resolution (gameplay.md:1.3.2)
@@ -157,11 +159,15 @@ proc calculateAndDeductMaintenanceUpkeep*(
     if house.treasury < totalUpkeep:
       let shortfall = totalUpkeep - house.treasury
 
-      # Execute maintenance shortfall cascade
-      let cascade = processShortfall(state, houseId, shortfall)
-      applyShortfallCascade(state, cascade, events)
-      # Cascade: zeroes treasury, adds salvage, increments consecutiveShortfallTurns
-      # Events emitted for fleet disbanding
+      # TODO: Execute maintenance shortfall cascade (not implemented yet)
+      # let cascade = processShortfall(state, houseId, shortfall)
+      # applyShortfallCascade(state, cascade, events)
+      # Cascade should: zero treasury, add salvage, increment consecutiveShortfallTurns
+      # Events should be emitted for fleet disbanding
+
+      # Temporary: Just increment shortfall counter
+      state.withHouse(houseId):
+        house.consecutiveShortfallTurns += 1
     else:
       # Full payment - reset shortfall counter
       state.withHouse(houseId):

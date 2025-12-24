@@ -7,12 +7,11 @@
 ## - Buildings have upkeep (construction.toml, facilities.toml)
 ## - Damaged infrastructure requires repair (construction.toml)
 
-import ./types
-import ../../types/[game_state, units, fleet]
+import ../../types/[game_state, units, fleet, production]
 import ../../config/[construction_config, facilities_config, ground_units_config, combat_config]
 import ../../state/iterators
 
-export types.MaintenanceReport
+export production.MaintenanceReport
 # NOTE: Don't export Colony to avoid ambiguity - importers should use game_state directly
 export fleet.FleetStatus
 

@@ -10,12 +10,13 @@
 ## 5. Apply population growth
 
 import std/[math, strformat, logging]
-import ./[types, production]
-import ../../types/game_state
-import ../prestige/events as prestige_events
+import ../../types/[game_state, colony, income, production as production_types]
+import ../../prestige/events as prestige_events
 import ../../config/[economy_config, population_growth_multiplier]
+import ../production/engine as production_engine
 
-export types.ColonyIncomeReport, types.HouseIncomeReport, types.IncomePhaseReport
+export colony.ColonyIncomeReport
+export income.HouseIncomeReport, income.IncomePhaseReport
 
 ## Tax Policy Prestige Effects (economy.md:3.2)
 
@@ -92,15 +93,15 @@ proc calculateColonyIncome*(colony: Colony, houseELTech: int, houseCSTTech: int,
   ##   houseCSTTech: House Construction tech (affects capacity)
   ##   houseTaxRate: House-wide tax rate (colony can override)
 
-  let taxRate = if colony.taxRate > 0: colony.taxRate else: houseTaxRate
-  let output = calculateProductionOutput(colony, houseELTech, houseCSTTech)
+  let taxRate = if colony.taxRate > 0: int(colony.taxRate) else: houseTaxRate
+  let output = production_engine.calculateProductionOutput(colony, houseELTech, houseCSTTech)
 
   result = ColonyIncomeReport(
-    colonyId: colony.systemId,
-    owner: colony.owner,
+    colonyId: ColonyId(colony.systemId),
+    houseId: colony.owner,
     populationUnits: colony.populationUnits,
     grossOutput: output.grossOutput,
-    taxRate: taxRate,
+    taxRate: int32(taxRate),
     netValue: output.netValue,
     populationGrowth: 0.0,  # Calculated later
     prestigeBonus: 0        # Calculated at house level

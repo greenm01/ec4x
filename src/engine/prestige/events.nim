@@ -2,11 +2,11 @@
 ##
 ## Functions for creating and aggregating prestige events
 
-import ../types/prestige
+import ../types/[prestige, core]
 
 proc createPrestigeEvent*(
   source: PrestigeSource,
-  amount: int,
+  amount: int32,
   description: string
 ): PrestigeEvent =
   ## Create prestige event
@@ -16,7 +16,7 @@ proc createPrestigeEvent*(
     description: description
   )
 
-proc calculatePrestigeChange*(events: seq[PrestigeEvent]): int =
+proc calculatePrestigeChange*(events: seq[PrestigeEvent]): int32 =
   ## Calculate net prestige change from events
   result = 0
   for event in events:
@@ -24,7 +24,7 @@ proc calculatePrestigeChange*(events: seq[PrestigeEvent]): int =
 
 proc createPrestigeReport*(
   houseId: HouseId,
-  startingPrestige: int,
+  startingPrestige: int32,
   events: seq[PrestigeEvent]
 ): PrestigeReport =
   ## Create prestige report for house
@@ -32,6 +32,7 @@ proc createPrestigeReport*(
 
   result = PrestigeReport(
     houseId: houseId,
+    turn: 0,  # Set by caller
     startingPrestige: startingPrestige,
     events: events,
     endingPrestige: startingPrestige + change
