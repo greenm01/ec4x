@@ -10,6 +10,7 @@
 
 import std/random
 import ../../types/espionage
+import ../../config/espionage_config
 import action_descriptors, executor
 
 export espionage, action_descriptors, executor
@@ -41,49 +42,70 @@ proc attemptDetection*(attempt: DetectionAttempt, rng: var Rand): DetectionResul
 
   return DetectionResult(
     detected: detected,
-    roll: roll,
-    threshold: threshold,
-    modifier: modifier
+    roll: int32(roll),
+    threshold: int32(threshold),
+    modifier: int32(modifier)
   )
 
 ## Detection and execution now handled by executor.nim
 ## (All duplicate execute* functions eliminated - 448 lines removed!)
 
+## Action Cost Lookup
+
+proc getActionCost*(action: EspionageAction): int =
+  ## Get EBP cost for action from config
+  let config = globalEspionageConfig.costs
+  case action
+  of EspionageAction.TechTheft: config.tech_theft_ebp
+  of EspionageAction.SabotageLow: config.sabotage_low_ebp
+  of EspionageAction.SabotageHigh: config.sabotage_high_ebp
+  of EspionageAction.Assassination: config.assassination_ebp
+  of EspionageAction.CyberAttack: config.cyber_attack_ebp
+  of EspionageAction.EconomicManipulation: config.economic_manipulation_ebp
+  of EspionageAction.PsyopsCampaign: config.psyops_campaign_ebp
+  of EspionageAction.CounterIntelSweep: config.counter_intel_sweep_ebp
+  of EspionageAction.IntelligenceTheft: config.intelligence_theft_ebp
+  of EspionageAction.PlantDisinformation: config.plant_disinformation_ebp
+
 ## Budget Management
 
 proc purchaseEBP*(budget: var EspionageBudget, ppSpent: int): int =
-  ## Purchase EBP with PP
+  ## Purchase EBP with PP from config
   ## Returns number of EBP purchased
-  let ebpPurchased = ppSpent div EBP_COST_PP
-  budget.ebpPoints += ebpPurchased
-  budget.ebpInvested += ppSpent
+  let ebpPurchased = ppSpent div globalEspionageConfig.costs.ebp_cost_pp
+  budget.ebpPoints += int32(ebpPurchased)
+  budget.ebpInvested += int32(ppSpent)
   return ebpPurchased
 
 proc purchaseCIP*(budget: var EspionageBudget, ppSpent: int): int =
-  ## Purchase CIP with PP
+  ## Purchase CIP with PP from config
   ## Returns number of CIP purchased
-  let cipPurchased = ppSpent div CIP_COST_PP
-  budget.cipPoints += cipPurchased
-  budget.cipInvested += ppSpent
+  let cipPurchased = ppSpent div globalEspionageConfig.costs.cip_cost_pp
+  budget.cipPoints += int32(cipPurchased)
+  budget.cipInvested += int32(ppSpent)
   return cipPurchased
 
 proc canAffordAction*(budget: EspionageBudget, action: EspionageAction): bool =
   ## Check if have enough EBP for action
-  return budget.ebpPoints >= getActionCost(action)
+  return budget.ebpPoints >= int32(getActionCost(action))
 
 proc spendEBP*(budget: var EspionageBudget, action: EspionageAction): bool =
   ## Spend EBP on action
   ## Returns true if successful
   let cost = getActionCost(action)
-  if budget.ebpPoints >= cost:
-    budget.ebpPoints -= cost
+  if budget.ebpPoints >= int32(cost):
+    budget.ebpPoints -= int32(cost)
     return true
   return false
 
-proc spendCIP*(budget: var EspionageBudget, amount: int = CIP_DEDUCTION_PER_ROLL): bool =
-  ## Spend CIP on detection attempt
+proc spendCIP*(budget: var EspionageBudget, amount: int = 0): bool =
+  ## Spend CIP on detection attempt (uses config default if amount=0)
   ## Returns true if successful
-  if budget.cipPoints >= amount:
-    budget.cipPoints -= amount
+  let actualAmount = if amount == 0:
+    globalEspionageConfig.detection.cip_per_roll
+  else:
+    amount
+  if budget.cipPoints >= int32(actualAmount):
+    budget.cipPoints -= int32(actualAmount)
     return true
   return false

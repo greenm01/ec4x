@@ -109,24 +109,35 @@ proc executeEspionageAction*(
         magnitude: descriptor.effectMagnitude
       ))
 
-## Detection Helpers
+## Detection Helpers (exported for use in engine.nim)
 
-proc getDetectionThreshold(cicLevel: CICLevel): int =
-  ## Get detection threshold for CIC level
-  ## TODO: Load from espionage config instead of hardcoded values
+proc getDetectionThreshold*(cicLevel: CICLevel): int =
+  ## Get detection threshold for CIC level from config
+  let config = globalEspionageConfig.detection
   case cicLevel
-  of CICLevel.CIC0: 20  # No counter-intel, very hard to detect
-  of CICLevel.CIC1: 18
-  of CICLevel.CIC2: 16
-  of CICLevel.CIC3: 14
-  of CICLevel.CIC4: 12
-  of CICLevel.CIC5: 10  # Maximum counter-intel, easier to detect
+  of CICLevel.CIC0: config.cic0_threshold
+  of CICLevel.CIC1: config.cic1_threshold
+  of CICLevel.CIC2: config.cic2_threshold
+  of CICLevel.CIC3: config.cic3_threshold
+  of CICLevel.CIC4: config.cic4_threshold
+  of CICLevel.CIC5: config.cic5_threshold
 
-proc getCIPModifier(cipPoints: int): int =
+proc getCIPModifier*(cipPoints: int): int =
   ## Convert CIP (Counter-Intelligence Points) to detection roll modifier
-  ## TODO: Implement proper CIP scaling from espionage config
-  ## For now: +1 per 10 CIP points (rough estimate)
-  result = cipPoints div 10
+  ## Uses tiered modifiers from espionage config
+  let config = globalEspionageConfig.detection
+  if cipPoints == 0:
+    config.cip_0_modifier
+  elif cipPoints <= 5:
+    config.cip_1_5_modifier
+  elif cipPoints <= 10:
+    config.cip_6_10_modifier
+  elif cipPoints <= 15:
+    config.cip_11_15_modifier
+  elif cipPoints <= 20:
+    config.cip_16_20_modifier
+  else:
+    config.cip_21_plus_modifier
 
 ## Main Entry Point
 
