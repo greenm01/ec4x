@@ -108,6 +108,25 @@ proc executeEspionageAction*(
         magnitude: descriptor.effectMagnitude
       ))
 
+## Detection Helpers
+
+proc getDetectionThreshold(cicLevel: CICLevel): int =
+  ## Get detection threshold for CIC level
+  ## TODO: Load from espionage config instead of hardcoded values
+  case cicLevel
+  of CICLevel.CIC0: 20  # No counter-intel, very hard to detect
+  of CICLevel.CIC1: 18
+  of CICLevel.CIC2: 16
+  of CICLevel.CIC3: 14
+  of CICLevel.CIC4: 12
+  of CICLevel.CIC5: 10  # Maximum counter-intel, easier to detect
+
+proc getCIPModifier(cipPoints: int): int =
+  ## Convert CIP (Counter-Intelligence Points) to detection roll modifier
+  ## TODO: Implement proper CIP scaling from espionage config
+  ## For now: +1 per 10 CIP points (rough estimate)
+  result = cipPoints div 10
+
 ## Main Entry Point
 
 proc executeEspionage*(
