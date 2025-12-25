@@ -1,6 +1,6 @@
 ## Unit tests for Scout/Raider detection mechanics
 ##
-## Tests detection probability calculations from config/espionage.toml
+## Tests detection probability calculations from config/espionage.kdl
 ## Validates mesh network modifiers, starbase bonuses, and tech penalties
 
 import std/[unittest, tables]

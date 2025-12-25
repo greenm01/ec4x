@@ -21,9 +21,9 @@ suite "Economy System: Comprehensive Tests":
 
   # Load all economy-related configs at suite start
   setup:
-    discard loadEconomyConfig("config/economy.toml")
-    discard loadPopulationConfig("config/population.toml")
-    discard loadFacilitiesConfig("config/facilities.toml")
+    discard loadEconomyConfig("config/economy.kdl")
+    discard loadPopulationConfig("config/population.kdl")
+    discard loadFacilitiesConfig("config/facilities.kdl")
 
   # ==========================================================================
   # GCO (Gross Colony Output) Tests - economy.md:3.1

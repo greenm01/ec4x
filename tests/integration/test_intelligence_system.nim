@@ -260,7 +260,7 @@ suite "Intelligence Configuration Integration":
   test "espionage config loads disinformation parameters correctly":
     let config = globalEspionageConfig
 
-    # Verify disinformation config from espionage.toml
+    # Verify disinformation config from espionage.kdl
     check config.effects.disinformation_duration == 2
     check config.effects.disinformation_min_variance == 0.2
     check config.effects.disinformation_max_variance == 0.4
@@ -269,7 +269,7 @@ suite "Intelligence Configuration Integration":
   test "diplomacy config loads dishonor parameters correctly":
     let config = globalDiplomacyConfig
 
-    # Verify dishonor config from diplomacy.toml
+    # Verify dishonor config from diplomacy.kdl
     check config.pact_violations.dishonored_status_turns == 3
     check config.pact_violations.dishonor_corruption_magnitude == 0.5
 

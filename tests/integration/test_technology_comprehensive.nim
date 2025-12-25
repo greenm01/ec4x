@@ -109,7 +109,7 @@ suite "Technology System: Comprehensive Tests":
     check getELUpgradeCost(6) == 52   # EL6 -> EL7: 52 ERP
 
   test "EL upgrade costs: EL6+ scaling":
-    # Per config/tech.toml actual values
+    # Per config/tech.kdl actual values
     check getELUpgradeCost(6) == 52  # EL6 -> EL7: 52 ERP
     check getELUpgradeCost(7) == 60  # EL7 -> EL8: 60 ERP
     check getELUpgradeCost(8) == 67  # EL8 -> EL9: 67 ERP
@@ -151,7 +151,7 @@ suite "Technology System: Comprehensive Tests":
   # ==========================================================================
 
   test "SL upgrade costs: actual config values":
-    # Per config/tech.toml [science_level] section
+    # Per config/tech.kdl scienceLevel section
     check getSLUpgradeCost(1) == 12   # SL1 -> SL2: 12 SRP
     check getSLUpgradeCost(2) == 15   # SL2 -> SL3: 15 SRP
     check getSLUpgradeCost(3) == 17   # SL3 -> SL4: 17 SRP

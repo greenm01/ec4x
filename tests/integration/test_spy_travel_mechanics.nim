@@ -164,7 +164,7 @@ suite "Spy Scout Travel Mechanics":
         scoutCount += 1
 
     check scoutCount == 3
-    # With 3 scouts, mesh network bonus = +1 ELI (per espionage.toml: 2-3 scouts = +1)
+    # With 3 scouts, mesh network bonus = +1 ELI (per espionage.kdl: 2-3 scouts = +1)
 
   test "Spy-vs-spy encounter with mutual detection":
     # Deploy spy scout from house1 at system 2
@@ -397,7 +397,7 @@ suite "Spy Scout Travel Mechanics":
 suite "Spy Scout Mesh Network Bonuses":
 
   test "2-3 scouts provide +1 ELI bonus":
-    # Per espionage.toml: mesh_2_3_scouts = 1
+    # Per espionage.kdl: mesh_2_3_scouts = 1
     let scoutCount = 3
     let expectedBonus = 1
 
@@ -405,7 +405,7 @@ suite "Spy Scout Mesh Network Bonuses":
     check expectedBonus == 1
 
   test "4-5 scouts provide +2 ELI bonus":
-    # Per espionage.toml: mesh_4_5_scouts = 2
+    # Per espionage.kdl: mesh_4_5_scouts = 2
     let scoutCount = 5
     let expectedBonus = 2
 
@@ -413,7 +413,7 @@ suite "Spy Scout Mesh Network Bonuses":
     check expectedBonus == 2
 
   test "6+ scouts provide +3 ELI bonus (maximum)":
-    # Per espionage.toml: mesh_6_plus_scouts = 3
+    # Per espionage.kdl: mesh_6_plus_scouts = 3
     let scoutCount = 10
     let expectedBonus = 3  # Maximum
 

@@ -284,29 +284,29 @@ suite "Repair Operations":
 
 suite "Upkeep Calculations":
   test "ship upkeep costs from config":
-    # Test that upkeep comes from ships.toml
+    # Test that upkeep comes from ships.kdl
     let fighterUpkeep = getShipMaintenanceCost(ShipClass.Fighter, false)
-    check fighterUpkeep == 1  # Per ships.toml
+    check fighterUpkeep == 1  # Per ships.kdl
 
     let cruiserUpkeep = getShipMaintenanceCost(ShipClass.Cruiser, false)
-    check cruiserUpkeep == 2  # Per ships.toml
+    check cruiserUpkeep == 2  # Per ships.kdl
 
     let dreadnoughtUpkeep = getShipMaintenanceCost(ShipClass.Dreadnought, false)
-    check dreadnoughtUpkeep == 10  # Per ships.toml
+    check dreadnoughtUpkeep == 10  # Per ships.kdl
 
   test "crippled ship upkeep decrease":
     let normalUpkeep = getShipMaintenanceCost(ShipClass.Destroyer, false)
     let crippledUpkeep = getShipMaintenanceCost(ShipClass.Destroyer, true)
 
-    # Crippled ships cost 50% (half cost) per combat.toml
+    # Crippled ships cost 50% (half cost) per combat.kdl
     check crippledUpkeep == normalUpkeep div 2
 
   test "facility upkeep costs":
-    check getSpaceportUpkeep() == 5    # Per facilities.toml
-    check getShipyardUpkeep() == 5     # Per facilities.toml
-    check getStarbaseUpkeep() == 75    # Per construction.toml
-    check getGroundBatteryUpkeep() == 5  # Per construction.toml
-    check getPlanetaryShieldUpkeep() == 50  # Per construction.toml
+    check getSpaceportUpkeep() == 5    # Per facilities.kdl
+    check getShipyardUpkeep() == 5     # Per facilities.kdl
+    check getStarbaseUpkeep() == 75    # Per construction.kdl
+    check getGroundBatteryUpkeep() == 5  # Per construction.kdl
+    check getPlanetaryShieldUpkeep() == 50  # Per construction.kdl
 
   test "ground unit upkeep costs":
     check getArmyUpkeep() == 1  # Per ground_units.toml

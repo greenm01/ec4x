@@ -20,9 +20,9 @@ import std/[unittest, parsecfg, strutils, tables, os]
 # Expected values from reference.md Section 10.1, 10.2, 10.3
 const
   CONFIG_DIR = "config"
-  SHIPS_CONFIG = CONFIG_DIR / "ships.toml"
-  GROUND_UNITS_CONFIG = CONFIG_DIR / "ground_units.toml"
-  FACILITIES_CONFIG = CONFIG_DIR / "facilities.toml"
+  SHIPS_CONFIG = CONFIG_DIR / "ships.kdl"
+  GROUND_UNITS_CONFIG = CONFIG_DIR / "ground_units.kdl"
+  FACILITIES_CONFIG = CONFIG_DIR / "facilities.kdl"
 
 type
   ShipSpec = object

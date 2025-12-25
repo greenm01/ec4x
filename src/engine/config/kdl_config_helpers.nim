@@ -104,9 +104,9 @@ proc requireFloat*(node: KdlNode, childName: string, ctx: KdlConfigContext): flo
   
   let val = valOpt.get
   case val.kind
-  of KValKind.KFloat:
+  of KValKind.KFloat, KValKind.KFloat32, KValKind.KFloat64:
     val.getFloat()
-  of KValKind.KInt:
+  of KValKind.KInt, KValKind.KInt32, KValKind.KInt64:
     val.getInt().float
   else:
     let path = ctx.nodePath.join(".")
