@@ -1,249 +1,527 @@
 ## Technology Configuration Loader
 ##
-## Loads technology research costs and effects from config/tech.toml
+## Loads technology research costs and effects from config/tech.kdl
 ## Allows runtime configuration for all tech trees
 
-import std/[os]
-import toml_serialization
+import kdl
+import kdl_config_helpers
 import ../../common/logger
 import ../types/tech
 
 type
   StartingTechConfig* = object
-    ## Starting tech levels per economy.md:4.0
-    ## CRITICAL: ALL tech starts at level 1, not 0!
-    economic_level*: int32 # EL1
-    science_level*: int32 # SL1
-    construction_tech*: int32 # CST1
-    weapons_tech*: int32 # WEP1
-    terraforming_tech*: int32 # TER1
-    electronic_intelligence*: int32 # ELI1
-    cloaking_tech*: int32 # CLK1
-    shield_tech*: int32 # SLD1 (Planetary Shields)
-    counter_intelligence*: int32 # CIC1
-    fighter_doctrine*: int32 # FD I (starts at 1)
-    advanced_carrier_ops*: int32 # ACO I (starts at 1)
+    economicLevel*: int32
+    scienceLevel*: int32
+    constructionTech*: int32
+    weaponsTech*: int32
+    terraformingTech*: int32
+    electronicIntelligence*: int32
+    cloakingTech*: int32
+    shieldTech*: int32
+    counterIntelligence*: int32
+    fighterDoctrine*: int32
+    advancedCarrierOps*: int32
 
-  ## Level-specific tech configurations loaded from config/tech.toml
-  ## Each tech field has explicit level definitions for type safety
   EconomicLevelConfig* = object
-    ## Economic Level advancement costs (11 levels, uses ERP)
-    level_1_erp*: int32
-    level_1_mod*: float32
-    level_2_erp*: int32
-    level_2_mod*: float32
-    level_3_erp*: int32
-    level_3_mod*: float32
-    level_4_erp*: int32
-    level_4_mod*: float32
-    level_5_erp*: int32
-    level_5_mod*: float32
-    level_6_erp*: int32
-    level_6_mod*: float32
-    level_7_erp*: int32
-    level_7_mod*: float32
-    level_8_erp*: int32
-    level_8_mod*: float32
-    level_9_erp*: int32
-    level_9_mod*: float32
-    level_10_erp*: int32
-    level_10_mod*: float32
-    level_11_erp*: int32
-    level_11_mod*: float32
+    level1Erp*: int32
+    level1Mod*: float32
+    level2Erp*: int32
+    level2Mod*: float32
+    level3Erp*: int32
+    level3Mod*: float32
+    level4Erp*: int32
+    level4Mod*: float32
+    level5Erp*: int32
+    level5Mod*: float32
+    level6Erp*: int32
+    level6Mod*: float32
+    level7Erp*: int32
+    level7Mod*: float32
+    level8Erp*: int32
+    level8Mod*: float32
+    level9Erp*: int32
+    level9Mod*: float32
+    level10Erp*: int32
+    level10Mod*: float32
+    level11Erp*: int32
+    level11Mod*: float32
 
-  ScienceLevelConfig* = object ## Science Level advancement costs (8 levels, uses SRP)
-    level_1_srp*: int32
-    level_2_srp*: int32
-    level_3_srp*: int32
-    level_4_srp*: int32
-    level_5_srp*: int32
-    level_6_srp*: int32
-    level_7_srp*: int32
-    level_8_srp*: int32
+  ScienceLevelConfig* = object
+    level1Srp*: int32
+    level2Srp*: int32
+    level3Srp*: int32
+    level4Srp*: int32
+    level5Srp*: int32
+    level6Srp*: int32
+    level7Srp*: int32
+    level8Srp*: int32
 
   StandardTechLevelConfig* = object
-    ## Standard tech fields (15 levels, uses TRP)
-    ## Used by: CST, ELI, CLK, SLD, CIC
-    capacity_multiplier_per_level*: Option[float32]
-      # Optional: for CST dock capacity scaling
-    level_1_sl*: int32
-    level_1_trp*: int32
-    level_2_sl*: int32
-    level_2_trp*: int32
-    level_3_sl*: int32
-    level_3_trp*: int32
-    level_4_sl*: int32
-    level_4_trp*: int32
-    level_5_sl*: int32
-    level_5_trp*: int32
-    level_6_sl*: int32
-    level_6_trp*: int32
-    level_7_sl*: int32
-    level_7_trp*: int32
-    level_8_sl*: int32
-    level_8_trp*: int32
-    level_9_sl*: int32
-    level_9_trp*: int32
-    level_10_sl*: int32
-    level_10_trp*: int32
-    level_11_sl*: int32
-    level_11_trp*: int32
-    level_12_sl*: int32
-    level_12_trp*: int32
-    level_13_sl*: int32
-    level_13_trp*: int32
-    level_14_sl*: int32
-    level_14_trp*: int32
-    level_15_sl*: int32
-    level_15_trp*: int32
+    capacityMultiplierPerLevel*: float32
+    level1Sl*: int32
+    level1Trp*: int32
+    level2Sl*: int32
+    level2Trp*: int32
+    level3Sl*: int32
+    level3Trp*: int32
+    level4Sl*: int32
+    level4Trp*: int32
+    level5Sl*: int32
+    level5Trp*: int32
+    level6Sl*: int32
+    level6Trp*: int32
+    level7Sl*: int32
+    level7Trp*: int32
+    level8Sl*: int32
+    level8Trp*: int32
+    level9Sl*: int32
+    level9Trp*: int32
+    level10Sl*: int32
+    level10Trp*: int32
+    level11Sl*: int32
+    level11Trp*: int32
+    level12Sl*: int32
+    level12Trp*: int32
+    level13Sl*: int32
+    level13Trp*: int32
+    level14Sl*: int32
+    level14Trp*: int32
+    level15Sl*: int32
+    level15Trp*: int32
 
   WeaponsTechConfig* = object
-    ## Weapons tech with stat/cost modifiers (15 levels, uses TRP)
-    weapons_stat_increase_per_level*: float32
-    weapons_cost_increase_per_level*: float32
-    level_1_sl*: int32
-    level_1_trp*: int32
-    level_2_sl*: int32
-    level_2_trp*: int32
-    level_3_sl*: int32
-    level_3_trp*: int32
-    level_4_sl*: int32
-    level_4_trp*: int32
-    level_5_sl*: int32
-    level_5_trp*: int32
-    level_6_sl*: int32
-    level_6_trp*: int32
-    level_7_sl*: int32
-    level_7_trp*: int32
-    level_8_sl*: int32
-    level_8_trp*: int32
-    level_9_sl*: int32
-    level_9_trp*: int32
-    level_10_sl*: int32
-    level_10_trp*: int32
-    level_11_sl*: int32
-    level_11_trp*: int32
-    level_12_sl*: int32
-    level_12_trp*: int32
-    level_13_sl*: int32
-    level_13_trp*: int32
-    level_14_sl*: int32
-    level_14_trp*: int32
-    level_15_sl*: int32
-    level_15_trp*: int32
+    weaponsStatIncreasePerLevel*: float32
+    weaponsCostIncreasePerLevel*: float32
+    level1Sl*: int32
+    level1Trp*: int32
+    level2Sl*: int32
+    level2Trp*: int32
+    level3Sl*: int32
+    level3Trp*: int32
+    level4Sl*: int32
+    level4Trp*: int32
+    level5Sl*: int32
+    level5Trp*: int32
+    level6Sl*: int32
+    level6Trp*: int32
+    level7Sl*: int32
+    level7Trp*: int32
+    level8Sl*: int32
+    level8Trp*: int32
+    level9Sl*: int32
+    level9Trp*: int32
+    level10Sl*: int32
+    level10Trp*: int32
+    level11Sl*: int32
+    level11Trp*: int32
+    level12Sl*: int32
+    level12Trp*: int32
+    level13Sl*: int32
+    level13Trp*: int32
+    level14Sl*: int32
+    level14Trp*: int32
+    level15Sl*: int32
+    level15Trp*: int32
 
   TerraformingTechConfig* = object
-    ## Terraforming tech with planet class requirements (7 levels, uses TRP)
-    level_1_sl*: int32
-    level_1_trp*: int32
-    level_1_planet_class*: string
-    level_2_sl*: int32
-    level_2_trp*: int32
-    level_2_planet_class*: string
-    level_3_sl*: int32
-    level_3_trp*: int32
-    level_3_planet_class*: string
-    level_4_sl*: int32
-    level_4_trp*: int32
-    level_4_planet_class*: string
-    level_5_sl*: int32
-    level_5_trp*: int32
-    level_5_planet_class*: string
-    level_6_sl*: int32
-    level_6_trp*: int32
-    level_6_planet_class*: string
-    level_7_sl*: int32
-    level_7_trp*: int32
-    level_7_planet_class*: string
+    level1Sl*: int32
+    level1Trp*: int32
+    level1PlanetClass*: string
+    level2Sl*: int32
+    level2Trp*: int32
+    level2PlanetClass*: string
+    level3Sl*: int32
+    level3Trp*: int32
+    level3PlanetClass*: string
+    level4Sl*: int32
+    level4Trp*: int32
+    level4PlanetClass*: string
+    level5Sl*: int32
+    level5Trp*: int32
+    level5PlanetClass*: string
+    level6Sl*: int32
+    level6Trp*: int32
+    level6PlanetClass*: string
+    level7Sl*: int32
+    level7Trp*: int32
+    level7PlanetClass*: string
 
   FighterDoctrineConfig* = object
-    ## Fighter Doctrine with capacity multipliers (3 levels, uses TRP)
-    level_1_sl*: int32
-    level_1_trp*: int32
-    level_1_capacity_multiplier*: float32
-    level_1_description*: string
-    level_2_sl*: int32
-    level_2_trp*: int32
-    level_2_capacity_multiplier*: float32
-    level_2_description*: string
-    level_3_sl*: int32
-    level_3_trp*: int32
-    level_3_capacity_multiplier*: float32
-    level_3_description*: string
+    level1Sl*: int32
+    level1Trp*: int32
+    level1CapacityMultiplier*: float32
+    level1Description*: string
+    level2Sl*: int32
+    level2Trp*: int32
+    level2CapacityMultiplier*: float32
+    level2Description*: string
+    level3Sl*: int32
+    level3Trp*: int32
+    level3CapacityMultiplier*: float32
+    level3Description*: string
 
   AdvancedCarrierOpsConfig* = object
-    ## Advanced Carrier Ops with carrier capacities (3 levels, uses TRP)
-    level_1_sl*: int32
-    level_1_trp*: int32
-    level_1_cv_capacity*: int32
-    level_1_cx_capacity*: int32
-    level_1_description*: string
-    level_2_sl*: int32
-    level_2_trp*: int32
-    level_2_cv_capacity*: int32
-    level_2_cx_capacity*: int32
-    level_2_description*: string
-    level_3_sl*: int32
-    level_3_trp*: int32
-    level_3_cv_capacity*: int32
-    level_3_cx_capacity*: int32
-    level_3_description*: string
+    capacityMultiplierPerLevel*: float32
+    level1Sl*: int32
+    level1Trp*: int32
+    level1CvCapacity*: int32
+    level1CxCapacity*: int32
+    level1Description*: string
+    level2Sl*: int32
+    level2Trp*: int32
+    level2CvCapacity*: int32
+    level2CxCapacity*: int32
+    level2Description*: string
+    level3Sl*: int32
+    level3Trp*: int32
+    level3CvCapacity*: int32
+    level3CxCapacity*: int32
+    level3Description*: string
 
   TerraformingUpgradeCostsConfig* = object
-    ## Terraforming upgrade costs for planet classes
-    extreme_ter*: int32
-    extreme_pu_min*: int32
-    extreme_pu_max*: int32
-    extreme_pp*: int32
-    desolate_ter*: int32
-    desolate_pu_min*: int32
-    desolate_pu_max*: int32
-    desolate_pp*: int32
-    hostile_ter*: int32
-    hostile_pu_min*: int32
-    hostile_pu_max*: int32
-    hostile_pp*: int32
-    harsh_ter*: int32
-    harsh_pu_min*: int32
-    harsh_pu_max*: int32
-    harsh_pp*: int32
-    benign_ter*: int32
-    benign_pu_min*: int32
-    benign_pu_max*: int32
-    benign_pp*: int32
-    lush_ter*: int32
-    lush_pu_min*: int32
-    lush_pu_max*: int32
-    lush_pp*: int32
-    eden_ter*: int32
-    eden_pu_min*: int32
-    eden_pu_max*: int32
-    eden_pp*: int32
+    extremeTer*: int32
+    extremePuMin*: int32
+    extremePuMax*: int32
+    extremePp*: int32
+    desolateTer*: int32
+    desolatePuMin*: int32
+    desolatePuMax*: int32
+    desolatePp*: int32
+    hostileTer*: int32
+    hostilePuMin*: int32
+    hostilePuMax*: int32
+    hostilePp*: int32
+    harshTer*: int32
+    harshPuMin*: int32
+    harshPuMax*: int32
+    harshPp*: int32
+    benignTer*: int32
+    benignPuMin*: int32
+    benignPuMax*: int32
+    benignPp*: int32
+    lushTer*: int32
+    lushPuMin*: int32
+    lushPuMax*: int32
+    lushPp*: int32
+    edenTer*: int32
+    edenPuMin*: int32
+    edenPuMax*: int32
+    edenPp*: int32
 
-  TechConfig* = object ## Technology configuration from tech.toml
-    starting_tech*: StartingTechConfig
-    economic_level*: EconomicLevelConfig
-    science_level*: ScienceLevelConfig
-    construction_tech*: StandardTechLevelConfig
-    weapons_tech*: WeaponsTechConfig
-    terraforming_tech*: TerraformingTechConfig
-    terraforming_upgrade_costs*: TerraformingUpgradeCostsConfig
-    electronic_intelligence*: StandardTechLevelConfig
-    cloaking_tech*: StandardTechLevelConfig
-    shield_tech*: StandardTechLevelConfig
-    counter_intelligence_tech*: StandardTechLevelConfig
-    fighter_doctrine*: FighterDoctrineConfig
-    advanced_carrier_operations*: AdvancedCarrierOpsConfig
+  TechConfig* = object ## Complete technology configuration loaded from KDL
+    startingTech*: StartingTechConfig
+    economicLevel*: EconomicLevelConfig
+    scienceLevel*: ScienceLevelConfig
+    constructionTech*: StandardTechLevelConfig
+    weaponsTech*: WeaponsTechConfig
+    terraformingTech*: TerraformingTechConfig
+    terraformingUpgradeCosts*: TerraformingUpgradeCostsConfig
+    electronicIntelligence*: StandardTechLevelConfig
+    cloakingTech*: StandardTechLevelConfig
+    shieldTech*: StandardTechLevelConfig
+    counterIntelligenceTech*: StandardTechLevelConfig
+    fighterDoctrine*: FighterDoctrineConfig
+    advancedCarrierOperations*: AdvancedCarrierOpsConfig
 
-proc loadTechConfig*(configPath: string = "config/tech.toml"): TechConfig =
-  ## Load technology configuration from TOML file
-  ## Uses toml_serialization for type-safe parsing
+proc parseStartingTech(node: KdlNode, ctx: var KdlConfigContext): StartingTechConfig =
+  result = StartingTechConfig(
+    economicLevel: node.requireInt("economicLevel", ctx).int32,
+    scienceLevel: node.requireInt("scienceLevel", ctx).int32,
+    constructionTech: node.requireInt("constructionTech", ctx).int32,
+    weaponsTech: node.requireInt("weaponsTech", ctx).int32,
+    terraformingTech: node.requireInt("terraformingTech", ctx).int32,
+    electronicIntelligence: node.requireInt("electronicIntelligence", ctx).int32,
+    cloakingTech: node.requireInt("cloakingTech", ctx).int32,
+    shieldTech: node.requireInt("shieldTech", ctx).int32,
+    counterIntelligence: node.requireInt("counterIntelligence", ctx).int32,
+    fighterDoctrine: node.requireInt("fighterDoctrine", ctx).int32,
+    advancedCarrierOps: node.requireInt("advancedCarrierOps", ctx).int32
+  )
 
-  if not fileExists(configPath):
-    raise newException(IOError, "Tech config not found: " & configPath)
+proc parseEconomicLevel(node: KdlNode, ctx: var KdlConfigContext): EconomicLevelConfig =
+  result = EconomicLevelConfig(
+    level1Erp: node.requireInt("level1Erp", ctx).int32,
+    level1Mod: node.requireFloat("level1Mod", ctx).float32,
+    level2Erp: node.requireInt("level2Erp", ctx).int32,
+    level2Mod: node.requireFloat("level2Mod", ctx).float32,
+    level3Erp: node.requireInt("level3Erp", ctx).int32,
+    level3Mod: node.requireFloat("level3Mod", ctx).float32,
+    level4Erp: node.requireInt("level4Erp", ctx).int32,
+    level4Mod: node.requireFloat("level4Mod", ctx).float32,
+    level5Erp: node.requireInt("level5Erp", ctx).int32,
+    level5Mod: node.requireFloat("level5Mod", ctx).float32,
+    level6Erp: node.requireInt("level6Erp", ctx).int32,
+    level6Mod: node.requireFloat("level6Mod", ctx).float32,
+    level7Erp: node.requireInt("level7Erp", ctx).int32,
+    level7Mod: node.requireFloat("level7Mod", ctx).float32,
+    level8Erp: node.requireInt("level8Erp", ctx).int32,
+    level8Mod: node.requireFloat("level8Mod", ctx).float32,
+    level9Erp: node.requireInt("level9Erp", ctx).int32,
+    level9Mod: node.requireFloat("level9Mod", ctx).float32,
+    level10Erp: node.requireInt("level10Erp", ctx).int32,
+    level10Mod: node.requireFloat("level10Mod", ctx).float32,
+    level11Erp: node.requireInt("level11Erp", ctx).int32,
+    level11Mod: node.requireFloat("level11Mod", ctx).float32
+  )
 
-  let configContent = readFile(configPath)
-  result = Toml.decode(configContent, TechConfig)
+proc parseScienceLevel(node: KdlNode, ctx: var KdlConfigContext): ScienceLevelConfig =
+  result = ScienceLevelConfig(
+    level1Srp: node.requireInt("level1Srp", ctx).int32,
+    level2Srp: node.requireInt("level2Srp", ctx).int32,
+    level3Srp: node.requireInt("level3Srp", ctx).int32,
+    level4Srp: node.requireInt("level4Srp", ctx).int32,
+    level5Srp: node.requireInt("level5Srp", ctx).int32,
+    level6Srp: node.requireInt("level6Srp", ctx).int32,
+    level7Srp: node.requireInt("level7Srp", ctx).int32,
+    level8Srp: node.requireInt("level8Srp", ctx).int32
+  )
+
+proc parseStandardTechLevel(
+  node: KdlNode,
+  ctx: var KdlConfigContext,
+  hasCapacityMultiplier: bool = false
+): StandardTechLevelConfig =
+  result = StandardTechLevelConfig(
+    capacityMultiplierPerLevel:
+      if hasCapacityMultiplier:
+        node.requireFloat("capacityMultiplierPerLevel", ctx).float32
+      else: 0.0'f32,
+    level1Sl: node.requireInt("level1Sl", ctx).int32,
+    level1Trp: node.requireInt("level1Trp", ctx).int32,
+    level2Sl: node.requireInt("level2Sl", ctx).int32,
+    level2Trp: node.requireInt("level2Trp", ctx).int32,
+    level3Sl: node.requireInt("level3Sl", ctx).int32,
+    level3Trp: node.requireInt("level3Trp", ctx).int32,
+    level4Sl: node.requireInt("level4Sl", ctx).int32,
+    level4Trp: node.requireInt("level4Trp", ctx).int32,
+    level5Sl: node.requireInt("level5Sl", ctx).int32,
+    level5Trp: node.requireInt("level5Trp", ctx).int32,
+    level6Sl: node.requireInt("level6Sl", ctx).int32,
+    level6Trp: node.requireInt("level6Trp", ctx).int32,
+    level7Sl: node.requireInt("level7Sl", ctx).int32,
+    level7Trp: node.requireInt("level7Trp", ctx).int32,
+    level8Sl: node.requireInt("level8Sl", ctx).int32,
+    level8Trp: node.requireInt("level8Trp", ctx).int32,
+    level9Sl: node.requireInt("level9Sl", ctx).int32,
+    level9Trp: node.requireInt("level9Trp", ctx).int32,
+    level10Sl: node.requireInt("level10Sl", ctx).int32,
+    level10Trp: node.requireInt("level10Trp", ctx).int32,
+    level11Sl: node.requireInt("level11Sl", ctx).int32,
+    level11Trp: node.requireInt("level11Trp", ctx).int32,
+    level12Sl: node.requireInt("level12Sl", ctx).int32,
+    level12Trp: node.requireInt("level12Trp", ctx).int32,
+    level13Sl: node.requireInt("level13Sl", ctx).int32,
+    level13Trp: node.requireInt("level13Trp", ctx).int32,
+    level14Sl: node.requireInt("level14Sl", ctx).int32,
+    level14Trp: node.requireInt("level14Trp", ctx).int32,
+    level15Sl: node.requireInt("level15Sl", ctx).int32,
+    level15Trp: node.requireInt("level15Trp", ctx).int32
+  )
+
+proc parseWeaponsTech(node: KdlNode, ctx: var KdlConfigContext): WeaponsTechConfig =
+  result = WeaponsTechConfig(
+    weaponsStatIncreasePerLevel:
+      node.requireFloat("weaponsStatIncreasePerLevel", ctx).float32,
+    weaponsCostIncreasePerLevel:
+      node.requireFloat("weaponsCostIncreasePerLevel", ctx).float32,
+    level1Sl: node.requireInt("level1Sl", ctx).int32,
+    level1Trp: node.requireInt("level1Trp", ctx).int32,
+    level2Sl: node.requireInt("level2Sl", ctx).int32,
+    level2Trp: node.requireInt("level2Trp", ctx).int32,
+    level3Sl: node.requireInt("level3Sl", ctx).int32,
+    level3Trp: node.requireInt("level3Trp", ctx).int32,
+    level4Sl: node.requireInt("level4Sl", ctx).int32,
+    level4Trp: node.requireInt("level4Trp", ctx).int32,
+    level5Sl: node.requireInt("level5Sl", ctx).int32,
+    level5Trp: node.requireInt("level5Trp", ctx).int32,
+    level6Sl: node.requireInt("level6Sl", ctx).int32,
+    level6Trp: node.requireInt("level6Trp", ctx).int32,
+    level7Sl: node.requireInt("level7Sl", ctx).int32,
+    level7Trp: node.requireInt("level7Trp", ctx).int32,
+    level8Sl: node.requireInt("level8Sl", ctx).int32,
+    level8Trp: node.requireInt("level8Trp", ctx).int32,
+    level9Sl: node.requireInt("level9Sl", ctx).int32,
+    level9Trp: node.requireInt("level9Trp", ctx).int32,
+    level10Sl: node.requireInt("level10Sl", ctx).int32,
+    level10Trp: node.requireInt("level10Trp", ctx).int32,
+    level11Sl: node.requireInt("level11Sl", ctx).int32,
+    level11Trp: node.requireInt("level11Trp", ctx).int32,
+    level12Sl: node.requireInt("level12Sl", ctx).int32,
+    level12Trp: node.requireInt("level12Trp", ctx).int32,
+    level13Sl: node.requireInt("level13Sl", ctx).int32,
+    level13Trp: node.requireInt("level13Trp", ctx).int32,
+    level14Sl: node.requireInt("level14Sl", ctx).int32,
+    level14Trp: node.requireInt("level14Trp", ctx).int32,
+    level15Sl: node.requireInt("level15Sl", ctx).int32,
+    level15Trp: node.requireInt("level15Trp", ctx).int32
+  )
+
+proc parseTerraformingTech(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): TerraformingTechConfig =
+  result = TerraformingTechConfig(
+    level1Sl: node.requireInt("level1Sl", ctx).int32,
+    level1Trp: node.requireInt("level1Trp", ctx).int32,
+    level1PlanetClass: node.requireString("level1PlanetClass", ctx),
+    level2Sl: node.requireInt("level2Sl", ctx).int32,
+    level2Trp: node.requireInt("level2Trp", ctx).int32,
+    level2PlanetClass: node.requireString("level2PlanetClass", ctx),
+    level3Sl: node.requireInt("level3Sl", ctx).int32,
+    level3Trp: node.requireInt("level3Trp", ctx).int32,
+    level3PlanetClass: node.requireString("level3PlanetClass", ctx),
+    level4Sl: node.requireInt("level4Sl", ctx).int32,
+    level4Trp: node.requireInt("level4Trp", ctx).int32,
+    level4PlanetClass: node.requireString("level4PlanetClass", ctx),
+    level5Sl: node.requireInt("level5Sl", ctx).int32,
+    level5Trp: node.requireInt("level5Trp", ctx).int32,
+    level5PlanetClass: node.requireString("level5PlanetClass", ctx),
+    level6Sl: node.requireInt("level6Sl", ctx).int32,
+    level6Trp: node.requireInt("level6Trp", ctx).int32,
+    level6PlanetClass: node.requireString("level6PlanetClass", ctx),
+    level7Sl: node.requireInt("level7Sl", ctx).int32,
+    level7Trp: node.requireInt("level7Trp", ctx).int32,
+    level7PlanetClass: node.requireString("level7PlanetClass", ctx)
+  )
+
+proc parseTerraformingUpgradeCosts(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): TerraformingUpgradeCostsConfig =
+  result = TerraformingUpgradeCostsConfig(
+    extremeTer: node.requireInt("extremeTer", ctx).int32,
+    extremePuMin: node.requireInt("extremePuMin", ctx).int32,
+    extremePuMax: node.requireInt("extremePuMax", ctx).int32,
+    extremePp: node.requireInt("extremePp", ctx).int32,
+    desolateTer: node.requireInt("desolateTer", ctx).int32,
+    desolatePuMin: node.requireInt("desolatePuMin", ctx).int32,
+    desolatePuMax: node.requireInt("desolatePuMax", ctx).int32,
+    desolatePp: node.requireInt("desolatePp", ctx).int32,
+    hostileTer: node.requireInt("hostileTer", ctx).int32,
+    hostilePuMin: node.requireInt("hostilePuMin", ctx).int32,
+    hostilePuMax: node.requireInt("hostilePuMax", ctx).int32,
+    hostilePp: node.requireInt("hostilePp", ctx).int32,
+    harshTer: node.requireInt("harshTer", ctx).int32,
+    harshPuMin: node.requireInt("harshPuMin", ctx).int32,
+    harshPuMax: node.requireInt("harshPuMax", ctx).int32,
+    harshPp: node.requireInt("harshPp", ctx).int32,
+    benignTer: node.requireInt("benignTer", ctx).int32,
+    benignPuMin: node.requireInt("benignPuMin", ctx).int32,
+    benignPuMax: node.requireInt("benignPuMax", ctx).int32,
+    benignPp: node.requireInt("benignPp", ctx).int32,
+    lushTer: node.requireInt("lushTer", ctx).int32,
+    lushPuMin: node.requireInt("lushPuMin", ctx).int32,
+    lushPuMax: node.requireInt("lushPuMax", ctx).int32,
+    lushPp: node.requireInt("lushPp", ctx).int32,
+    edenTer: node.requireInt("edenTer", ctx).int32,
+    edenPuMin: node.requireInt("edenPuMin", ctx).int32,
+    edenPuMax: node.requireInt("edenPuMax", ctx).int32,
+    edenPp: node.requireInt("edenPp", ctx).int32
+  )
+
+proc parseFighterDoctrine(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): FighterDoctrineConfig =
+  result = FighterDoctrineConfig(
+    level1Sl: node.requireInt("level1Sl", ctx).int32,
+    level1Trp: node.requireInt("level1Trp", ctx).int32,
+    level1CapacityMultiplier:
+      node.requireFloat("level1CapacityMultiplier", ctx).float32,
+    level1Description: node.requireString("level1Description", ctx),
+    level2Sl: node.requireInt("level2Sl", ctx).int32,
+    level2Trp: node.requireInt("level2Trp", ctx).int32,
+    level2CapacityMultiplier:
+      node.requireFloat("level2CapacityMultiplier", ctx).float32,
+    level2Description: node.requireString("level2Description", ctx),
+    level3Sl: node.requireInt("level3Sl", ctx).int32,
+    level3Trp: node.requireInt("level3Trp", ctx).int32,
+    level3CapacityMultiplier:
+      node.requireFloat("level3CapacityMultiplier", ctx).float32,
+    level3Description: node.requireString("level3Description", ctx)
+  )
+
+proc parseAdvancedCarrierOps(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): AdvancedCarrierOpsConfig =
+  result = AdvancedCarrierOpsConfig(
+    capacityMultiplierPerLevel:
+      node.requireFloat("capacityMultiplierPerLevel", ctx).float32,
+    level1Sl: node.requireInt("level1Sl", ctx).int32,
+    level1Trp: node.requireInt("level1Trp", ctx).int32,
+    level1CvCapacity: node.requireInt("level1CvCapacity", ctx).int32,
+    level1CxCapacity: node.requireInt("level1CxCapacity", ctx).int32,
+    level1Description: node.requireString("level1Description", ctx),
+    level2Sl: node.requireInt("level2Sl", ctx).int32,
+    level2Trp: node.requireInt("level2Trp", ctx).int32,
+    level2CvCapacity: node.requireInt("level2CvCapacity", ctx).int32,
+    level2CxCapacity: node.requireInt("level2CxCapacity", ctx).int32,
+    level2Description: node.requireString("level2Description", ctx),
+    level3Sl: node.requireInt("level3Sl", ctx).int32,
+    level3Trp: node.requireInt("level3Trp", ctx).int32,
+    level3CvCapacity: node.requireInt("level3CvCapacity", ctx).int32,
+    level3CxCapacity: node.requireInt("level3CxCapacity", ctx).int32,
+    level3Description: node.requireString("level3Description", ctx)
+  )
+
+proc loadTechConfig*(configPath: string = "config/tech.kdl"): TechConfig =
+  ## Load technology configuration from KDL file
+  ## Uses kdl_config_helpers for type-safe parsing
+  let doc = loadKdlConfig(configPath)
+  var ctx = newContext(configPath)
+
+  ctx.withNode("startingTech"):
+    let node = doc.requireNode("startingTech", ctx)
+    result.startingTech = parseStartingTech(node, ctx)
+
+  ctx.withNode("economicLevel"):
+    let node = doc.requireNode("economicLevel", ctx)
+    result.economicLevel = parseEconomicLevel(node, ctx)
+
+  ctx.withNode("scienceLevel"):
+    let node = doc.requireNode("scienceLevel", ctx)
+    result.scienceLevel = parseScienceLevel(node, ctx)
+
+  ctx.withNode("constructionTech"):
+    let node = doc.requireNode("constructionTech", ctx)
+    result.constructionTech = parseStandardTechLevel(node, ctx, true)
+
+  ctx.withNode("weaponsTech"):
+    let node = doc.requireNode("weaponsTech", ctx)
+    result.weaponsTech = parseWeaponsTech(node, ctx)
+
+  ctx.withNode("terraformingTech"):
+    let node = doc.requireNode("terraformingTech", ctx)
+    result.terraformingTech = parseTerraformingTech(node, ctx)
+
+  ctx.withNode("terraformingUpgradeCosts"):
+    let node = doc.requireNode("terraformingUpgradeCosts", ctx)
+    result.terraformingUpgradeCosts = parseTerraformingUpgradeCosts(node, ctx)
+
+  ctx.withNode("electronicIntelligence"):
+    let node = doc.requireNode("electronicIntelligence", ctx)
+    result.electronicIntelligence = parseStandardTechLevel(node, ctx, false)
+
+  ctx.withNode("cloakingTech"):
+    let node = doc.requireNode("cloakingTech", ctx)
+    result.cloakingTech = parseStandardTechLevel(node, ctx, false)
+
+  ctx.withNode("shieldTech"):
+    let node = doc.requireNode("shieldTech", ctx)
+    result.shieldTech = parseStandardTechLevel(node, ctx, false)
+
+  ctx.withNode("counterIntelligenceTech"):
+    let node = doc.requireNode("counterIntelligenceTech", ctx)
+    result.counterIntelligenceTech = parseStandardTechLevel(node, ctx, false)
+
+  ctx.withNode("fighterDoctrine"):
+    let node = doc.requireNode("fighterDoctrine", ctx)
+    result.fighterDoctrine = parseFighterDoctrine(node, ctx)
+
+  ctx.withNode("advancedCarrierOperations"):
+    let node = doc.requireNode("advancedCarrierOperations", ctx)
+    result.advancedCarrierOperations = parseAdvancedCarrierOps(node, ctx)
 
   logInfo("Config", "Loaded technology configuration", "path=", configPath)
 
@@ -265,58 +543,45 @@ proc reloadTechConfig*() =
 
 proc getELUpgradeCostFromConfig*(level: int32): int32 =
   ## Get ERP cost for advancing from level N to N+1
-  ## Uses loaded config data from tech.toml
-  let cfg = globalTechConfig.economic_level
+  ## Uses loaded config data from tech.kdl
+  let cfg = globalTechConfig.economicLevel
 
   case level
-  of 1:
-    return cfg.level_1_erp
-  of 2:
-    return cfg.level_2_erp
-  of 3:
-    return cfg.level_3_erp
-  of 4:
-    return cfg.level_4_erp
-  of 5:
-    return cfg.level_5_erp
-  of 6:
-    return cfg.level_6_erp
-  of 7:
-    return cfg.level_7_erp
-  of 8:
-    return cfg.level_8_erp
-  of 9:
-    return cfg.level_9_erp
-  of 10:
-    return cfg.level_10_erp
-  of 11:
-    return cfg.level_11_erp
+  of 1: return cfg.level1Erp
+  of 2: return cfg.level2Erp
+  of 3: return cfg.level3Erp
+  of 4: return cfg.level4Erp
+  of 5: return cfg.level5Erp
+  of 6: return cfg.level6Erp
+  of 7: return cfg.level7Erp
+  of 8: return cfg.level8Erp
+  of 9: return cfg.level9Erp
+  of 10: return cfg.level10Erp
+  of 11: return cfg.level11Erp
   else:
-    raise newException(ValueError, "Invalid EL level: " & $level & " (max is 11)")
+    raise newException(
+      ValueError,
+      "Invalid EL level: " & $level & " (max is 11)"
+    )
 
 proc getSLUpgradeCostFromConfig*(level: int32): int32 =
   ## Get SRP cost for advancing from level N to N+1
-  let cfg = globalTechConfig.science_level
+  let cfg = globalTechConfig.scienceLevel
 
   case level
-  of 1:
-    return cfg.level_1_srp
-  of 2:
-    return cfg.level_2_srp
-  of 3:
-    return cfg.level_3_srp
-  of 4:
-    return cfg.level_4_srp
-  of 5:
-    return cfg.level_5_srp
-  of 6:
-    return cfg.level_6_srp
-  of 7:
-    return cfg.level_7_srp
-  of 8:
-    return cfg.level_8_srp
+  of 1: return cfg.level1Srp
+  of 2: return cfg.level2Srp
+  of 3: return cfg.level3Srp
+  of 4: return cfg.level4Srp
+  of 5: return cfg.level5Srp
+  of 6: return cfg.level6Srp
+  of 7: return cfg.level7Srp
+  of 8: return cfg.level8Srp
   else:
-    raise newException(ValueError, "Invalid SL level: " & $level & " (max is 8)")
+    raise newException(
+      ValueError,
+      "Invalid SL level: " & $level & " (max is 8)"
+    )
 
 proc getTechUpgradeCostFromConfig*(techField: TechField, level: int32): int32 =
   ## Get TRP cost for advancing from level N to N+1
@@ -324,253 +589,173 @@ proc getTechUpgradeCostFromConfig*(techField: TechField, level: int32): int32 =
 
   case techField
   of TechField.ConstructionTech:
-    let cfg = globalTechConfig.construction_tech
+    let cfg = globalTechConfig.constructionTech
     case level
-    of 1:
-      return cfg.level_1_trp
-    of 2:
-      return cfg.level_2_trp
-    of 3:
-      return cfg.level_3_trp
-    of 4:
-      return cfg.level_4_trp
-    of 5:
-      return cfg.level_5_trp
-    of 6:
-      return cfg.level_6_trp
-    of 7:
-      return cfg.level_7_trp
-    of 8:
-      return cfg.level_8_trp
-    of 9:
-      return cfg.level_9_trp
-    of 10:
-      return cfg.level_10_trp
-    of 11:
-      return cfg.level_11_trp
-    of 12:
-      return cfg.level_12_trp
-    of 13:
-      return cfg.level_13_trp
-    of 14:
-      return cfg.level_14_trp
-    of 15:
-      return cfg.level_15_trp
+    of 1: return cfg.level1Trp
+    of 2: return cfg.level2Trp
+    of 3: return cfg.level3Trp
+    of 4: return cfg.level4Trp
+    of 5: return cfg.level5Trp
+    of 6: return cfg.level6Trp
+    of 7: return cfg.level7Trp
+    of 8: return cfg.level8Trp
+    of 9: return cfg.level9Trp
+    of 10: return cfg.level10Trp
+    of 11: return cfg.level11Trp
+    of 12: return cfg.level12Trp
+    of 13: return cfg.level13Trp
+    of 14: return cfg.level14Trp
+    of 15: return cfg.level15Trp
     else:
-      raise newException(ValueError, "Invalid CST level: " & $level & " (max is 15)")
+      raise newException(
+        ValueError,
+        "Invalid CST level: " & $level & " (max is 15)"
+      )
   of TechField.WeaponsTech:
-    let cfg = globalTechConfig.weapons_tech
+    let cfg = globalTechConfig.weaponsTech
     case level
-    of 1:
-      return cfg.level_1_trp
-    of 2:
-      return cfg.level_2_trp
-    of 3:
-      return cfg.level_3_trp
-    of 4:
-      return cfg.level_4_trp
-    of 5:
-      return cfg.level_5_trp
-    of 6:
-      return cfg.level_6_trp
-    of 7:
-      return cfg.level_7_trp
-    of 8:
-      return cfg.level_8_trp
-    of 9:
-      return cfg.level_9_trp
-    of 10:
-      return cfg.level_10_trp
-    of 11:
-      return cfg.level_11_trp
-    of 12:
-      return cfg.level_12_trp
-    of 13:
-      return cfg.level_13_trp
-    of 14:
-      return cfg.level_14_trp
-    of 15:
-      return cfg.level_15_trp
+    of 1: return cfg.level1Trp
+    of 2: return cfg.level2Trp
+    of 3: return cfg.level3Trp
+    of 4: return cfg.level4Trp
+    of 5: return cfg.level5Trp
+    of 6: return cfg.level6Trp
+    of 7: return cfg.level7Trp
+    of 8: return cfg.level8Trp
+    of 9: return cfg.level9Trp
+    of 10: return cfg.level10Trp
+    of 11: return cfg.level11Trp
+    of 12: return cfg.level12Trp
+    of 13: return cfg.level13Trp
+    of 14: return cfg.level14Trp
+    of 15: return cfg.level15Trp
     else:
-      raise newException(ValueError, "Invalid WEP level: " & $level & " (max is 15)")
+      raise newException(
+        ValueError,
+        "Invalid WEP level: " & $level & " (max is 15)"
+      )
   of TechField.TerraformingTech:
-    let cfg = globalTechConfig.terraforming_tech
+    let cfg = globalTechConfig.terraformingTech
     case level
-    of 1:
-      return cfg.level_1_trp
-    of 2:
-      return cfg.level_2_trp
-    of 3:
-      return cfg.level_3_trp
-    of 4:
-      return cfg.level_4_trp
-    of 5:
-      return cfg.level_5_trp
-    of 6:
-      return cfg.level_6_trp
-    of 7:
-      return cfg.level_7_trp
-    else:
-      return 30 + (level - 7) * 5 # Level 8+
+    of 1: return cfg.level1Trp
+    of 2: return cfg.level2Trp
+    of 3: return cfg.level3Trp
+    of 4: return cfg.level4Trp
+    of 5: return cfg.level5Trp
+    of 6: return cfg.level6Trp
+    of 7: return cfg.level7Trp
+    else: return 30 + (level - 7) * 5 # Level 8+
   of TechField.ElectronicIntelligence:
-    let cfg = globalTechConfig.electronic_intelligence
+    let cfg = globalTechConfig.electronicIntelligence
     case level
-    of 1:
-      return cfg.level_1_trp
-    of 2:
-      return cfg.level_2_trp
-    of 3:
-      return cfg.level_3_trp
-    of 4:
-      return cfg.level_4_trp
-    of 5:
-      return cfg.level_5_trp
-    of 6:
-      return cfg.level_6_trp
-    of 7:
-      return cfg.level_7_trp
-    of 8:
-      return cfg.level_8_trp
-    of 9:
-      return cfg.level_9_trp
-    of 10:
-      return cfg.level_10_trp
-    of 11:
-      return cfg.level_11_trp
-    of 12:
-      return cfg.level_12_trp
-    of 13:
-      return cfg.level_13_trp
-    of 14:
-      return cfg.level_14_trp
-    of 15:
-      return cfg.level_15_trp
+    of 1: return cfg.level1Trp
+    of 2: return cfg.level2Trp
+    of 3: return cfg.level3Trp
+    of 4: return cfg.level4Trp
+    of 5: return cfg.level5Trp
+    of 6: return cfg.level6Trp
+    of 7: return cfg.level7Trp
+    of 8: return cfg.level8Trp
+    of 9: return cfg.level9Trp
+    of 10: return cfg.level10Trp
+    of 11: return cfg.level11Trp
+    of 12: return cfg.level12Trp
+    of 13: return cfg.level13Trp
+    of 14: return cfg.level14Trp
+    of 15: return cfg.level15Trp
     else:
-      raise newException(ValueError, "Invalid ELI level: " & $level & " (max is 15)")
+      raise newException(
+        ValueError,
+        "Invalid ELI level: " & $level & " (max is 15)"
+      )
   of TechField.CloakingTech:
-    let cfg = globalTechConfig.cloaking_tech
+    let cfg = globalTechConfig.cloakingTech
     case level
-    of 1:
-      return cfg.level_1_trp
-    of 2:
-      return cfg.level_2_trp
-    of 3:
-      return cfg.level_3_trp
-    of 4:
-      return cfg.level_4_trp
-    of 5:
-      return cfg.level_5_trp
-    of 6:
-      return cfg.level_6_trp
-    of 7:
-      return cfg.level_7_trp
-    of 8:
-      return cfg.level_8_trp
-    of 9:
-      return cfg.level_9_trp
-    of 10:
-      return cfg.level_10_trp
-    of 11:
-      return cfg.level_11_trp
-    of 12:
-      return cfg.level_12_trp
-    of 13:
-      return cfg.level_13_trp
-    of 14:
-      return cfg.level_14_trp
-    of 15:
-      return cfg.level_15_trp
+    of 1: return cfg.level1Trp
+    of 2: return cfg.level2Trp
+    of 3: return cfg.level3Trp
+    of 4: return cfg.level4Trp
+    of 5: return cfg.level5Trp
+    of 6: return cfg.level6Trp
+    of 7: return cfg.level7Trp
+    of 8: return cfg.level8Trp
+    of 9: return cfg.level9Trp
+    of 10: return cfg.level10Trp
+    of 11: return cfg.level11Trp
+    of 12: return cfg.level12Trp
+    of 13: return cfg.level13Trp
+    of 14: return cfg.level14Trp
+    of 15: return cfg.level15Trp
     else:
-      raise newException(ValueError, "Invalid CLK level: " & $level & " (max is 15)")
+      raise newException(
+        ValueError,
+        "Invalid CLK level: " & $level & " (max is 15)"
+      )
   of TechField.ShieldTech:
-    let cfg = globalTechConfig.shield_tech
+    let cfg = globalTechConfig.shieldTech
     case level
-    of 1:
-      return cfg.level_1_trp
-    of 2:
-      return cfg.level_2_trp
-    of 3:
-      return cfg.level_3_trp
-    of 4:
-      return cfg.level_4_trp
-    of 5:
-      return cfg.level_5_trp
-    of 6:
-      return cfg.level_6_trp
-    of 7:
-      return cfg.level_7_trp
-    of 8:
-      return cfg.level_8_trp
-    of 9:
-      return cfg.level_9_trp
-    of 10:
-      return cfg.level_10_trp
-    of 11:
-      return cfg.level_11_trp
-    of 12:
-      return cfg.level_12_trp
-    of 13:
-      return cfg.level_13_trp
-    of 14:
-      return cfg.level_14_trp
-    of 15:
-      return cfg.level_15_trp
+    of 1: return cfg.level1Trp
+    of 2: return cfg.level2Trp
+    of 3: return cfg.level3Trp
+    of 4: return cfg.level4Trp
+    of 5: return cfg.level5Trp
+    of 6: return cfg.level6Trp
+    of 7: return cfg.level7Trp
+    of 8: return cfg.level8Trp
+    of 9: return cfg.level9Trp
+    of 10: return cfg.level10Trp
+    of 11: return cfg.level11Trp
+    of 12: return cfg.level12Trp
+    of 13: return cfg.level13Trp
+    of 14: return cfg.level14Trp
+    of 15: return cfg.level15Trp
     else:
-      raise newException(ValueError, "Invalid SLD level: " & $level & " (max is 15)")
+      raise newException(
+        ValueError,
+        "Invalid SLD level: " & $level & " (max is 15)"
+      )
   of TechField.CounterIntelligence:
-    let cfg = globalTechConfig.counter_intelligence_tech
+    let cfg = globalTechConfig.counterIntelligenceTech
     case level
-    of 1:
-      return cfg.level_1_trp
-    of 2:
-      return cfg.level_2_trp
-    of 3:
-      return cfg.level_3_trp
-    of 4:
-      return cfg.level_4_trp
-    of 5:
-      return cfg.level_5_trp
-    of 6:
-      return cfg.level_6_trp
-    of 7:
-      return cfg.level_7_trp
-    of 8:
-      return cfg.level_8_trp
-    of 9:
-      return cfg.level_9_trp
-    of 10:
-      return cfg.level_10_trp
-    of 11:
-      return cfg.level_11_trp
-    of 12:
-      return cfg.level_12_trp
-    of 13:
-      return cfg.level_13_trp
-    of 14:
-      return cfg.level_14_trp
-    of 15:
-      return cfg.level_15_trp
+    of 1: return cfg.level1Trp
+    of 2: return cfg.level2Trp
+    of 3: return cfg.level3Trp
+    of 4: return cfg.level4Trp
+    of 5: return cfg.level5Trp
+    of 6: return cfg.level6Trp
+    of 7: return cfg.level7Trp
+    of 8: return cfg.level8Trp
+    of 9: return cfg.level9Trp
+    of 10: return cfg.level10Trp
+    of 11: return cfg.level11Trp
+    of 12: return cfg.level12Trp
+    of 13: return cfg.level13Trp
+    of 14: return cfg.level14Trp
+    of 15: return cfg.level15Trp
     else:
-      raise newException(ValueError, "Invalid CIC level: " & $level & " (max is 15)")
+      raise newException(
+        ValueError,
+        "Invalid CIC level: " & $level & " (max is 15)"
+      )
   of TechField.FighterDoctrine:
-    let cfg = globalTechConfig.fighter_doctrine
+    let cfg = globalTechConfig.fighterDoctrine
     case level
-    of 1:
-      return cfg.level_1_trp
-    of 2:
-      return cfg.level_2_trp
-    of 3:
-      return cfg.level_3_trp
+    of 1: return cfg.level1Trp
+    of 2: return cfg.level2Trp
+    of 3: return cfg.level3Trp
     else:
-      raise newException(ValueError, "Invalid FD level: " & $level & " (max is 3)")
+      raise newException(
+        ValueError,
+        "Invalid FD level: " & $level & " (max is 3)"
+      )
   of TechField.AdvancedCarrierOps:
-    let cfg = globalTechConfig.advanced_carrier_operations
+    let cfg = globalTechConfig.advancedCarrierOperations
     case level
-    of 1:
-      return cfg.level_1_trp
-    of 2:
-      return cfg.level_2_trp
-    of 3:
-      return cfg.level_3_trp
+    of 1: return cfg.level1Trp
+    of 2: return cfg.level2Trp
+    of 3: return cfg.level3Trp
     else:
-      raise newException(ValueError, "Invalid ACO level: " & $level & " (max is 3)")
+      raise newException(
+        ValueError,
+        "Invalid ACO level: " & $level & " (max is 3)"
+      )

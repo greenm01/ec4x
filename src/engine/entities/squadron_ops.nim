@@ -8,7 +8,7 @@ import ../types/game_state
 import ../state/id_gen
 import ../state/entity_manager
 import ../state/game_state as gs_helpers
-import ../types/[core, squadron, fleet, ship]
+import ../types/[core, squadron, fleet]
 
 proc createSquadron*(
     state: var GameState,

@@ -1,55 +1,74 @@
 ## Diplomacy Configuration Loader
 ##
-## Loads diplomacy values from config/diplomacy.toml using toml_serialization
+## Loads diplomacy values from config/diplomacy.kdl using nimkdl
 ## Allows runtime configuration for balance testing
 
-import std/[os]
-import toml_serialization
+import kdl
+import kdl_config_helpers
 import ../../common/logger
 
 type
-  PactViolationsConfig* = object
-    dishonored_status_turns*: int
-    dishonor_corruption_magnitude*: float
-    diplomatic_isolation_turns*: int
-    pact_reinstatement_cooldown*: int
-    repeat_violation_window*: int
-
   EspionageEffectsConfig* = object
-    tech_theft_srp_stolen*: int
-    low_sabotage_dice*: string
-    low_sabotage_iu_min*: int
-    low_sabotage_iu_max*: int
-    high_sabotage_dice*: string
-    high_sabotage_iu_min*: int
-    high_sabotage_iu_max*: int
-    assassination_srp_reduction*: float
-    assassination_duration_turns*: int
-    economic_disruption_ncv_reduction*: float
-    economic_disruption_duration_turns*: int
-    propaganda_tax_reduction*: float
-    propaganda_duration_turns*: int
-    cyber_attack_effect*: string
+    techTheftSrpStolen*: int
+    lowSabotageDice*: string
+    lowSabotageIuMin*: int
+    lowSabotageIuMax*: int
+    highSabotageDice*: string
+    highSabotageIuMin*: int
+    highSabotageIuMax*: int
+    assassinationSrpReduction*: float
+    assassinationDurationTurns*: int
+    economicDisruptionNcvReduction*: float
+    economicDisruptionDurationTurns*: int
+    propagandaTaxReduction*: float
+    propagandaDurationTurns*: int
+    cyberAttackEffect*: string
 
   DetectionConfig* = object
-    failed_espionage_prestige_loss*: int
+    failedEspionagePrestigeLoss*: int
 
-  DiplomacyConfig* = object ## Complete diplomacy configuration loaded from TOML
-    pact_violations*: PactViolationsConfig
-    espionage_effects*: EspionageEffectsConfig
+  DiplomacyConfig* = object ## Complete diplomacy configuration loaded from KDL
+    espionageEffects*: EspionageEffectsConfig
     detection*: DetectionConfig
 
+proc parseEspionageEffects(node: KdlNode, ctx: var KdlConfigContext): EspionageEffectsConfig =
+  result = EspionageEffectsConfig(
+    techTheftSrpStolen: node.requireInt("techTheftSrpStolen", ctx),
+    lowSabotageDice: node.requireString("lowSabotageDice", ctx),
+    lowSabotageIuMin: node.requireInt("lowSabotageIuMin", ctx),
+    lowSabotageIuMax: node.requireInt("lowSabotageIuMax", ctx),
+    highSabotageDice: node.requireString("highSabotageDice", ctx),
+    highSabotageIuMin: node.requireInt("highSabotageIuMin", ctx),
+    highSabotageIuMax: node.requireInt("highSabotageIuMax", ctx),
+    assassinationSrpReduction: node.requireFloat("assassinationSrpReduction", ctx),
+    assassinationDurationTurns: node.requireInt("assassinationDurationTurns", ctx),
+    economicDisruptionNcvReduction: node.requireFloat("economicDisruptionNcvReduction", ctx),
+    economicDisruptionDurationTurns: node.requireInt("economicDisruptionDurationTurns", ctx),
+    propagandaTaxReduction: node.requireFloat("propagandaTaxReduction", ctx),
+    propagandaDurationTurns: node.requireInt("propagandaDurationTurns", ctx),
+    cyberAttackEffect: node.requireString("cyberAttackEffect", ctx)
+  )
+
+proc parseDetection(node: KdlNode, ctx: var KdlConfigContext): DetectionConfig =
+  result = DetectionConfig(
+    failedEspionagePrestigeLoss: node.requireInt("failedEspionagePrestigeLoss", ctx)
+  )
+
 proc loadDiplomacyConfig*(
-    configPath: string = "config/diplomacy.toml"
+    configPath: string = "config/diplomacy.kdl"
 ): DiplomacyConfig =
-  ## Load diplomacy configuration from TOML file
-  ## Uses toml_serialization for type-safe parsing
+  ## Load diplomacy configuration from KDL file
+  ## Uses kdl_config_helpers for type-safe parsing
+  let doc = loadKdlConfig(configPath)
+  var ctx = newContext(configPath)
 
-  if not fileExists(configPath):
-    raise newException(IOError, "Diplomacy config not found: " & configPath)
+  ctx.withNode("espionageEffects"):
+    let espNode = doc.requireNode("espionageEffects", ctx)
+    result.espionageEffects = parseEspionageEffects(espNode, ctx)
 
-  let configContent = readFile(configPath)
-  result = Toml.decode(configContent, DiplomacyConfig)
+  ctx.withNode("detection"):
+    let detNode = doc.requireNode("detection", ctx)
+    result.detection = parseDetection(detNode, ctx)
 
   logInfo("Config", "Loaded diplomacy configuration", "path=", configPath)
 

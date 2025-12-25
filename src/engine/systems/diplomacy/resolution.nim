@@ -6,14 +6,15 @@
 ## - Enemy/Neutral declarations
 
 import std/[tables, options, logging]
-import ../../types/[core, game_state, diplomacy, orders]
-import ./[engine as dip_engine, proposals as dip_proposals]
-import ../../config/diplomacy_config
-import ../prestige/engine as prestige
-import ../intelligence/diplomatic_intel
-import ../intelligence/types as intel_types # For DetectionEventType
-import ../event/types as event_types # For GameEvent
-import ../event/factory/init as event_factory
+import engine/types/[core, game_state, diplomacy, orders]
+import engine/systems/diplomacy/[engine as dip_engine, proposals as dip_proposals]
+import engine/config/diplomacy_config
+import engine/prestige
+import engine/intelligence/diplomatic_intel
+import engine/intelligence/types as intel_types # For DetectionEventType
+import engine/event/types as event_types # For GameEvent
+import engine/event/factory/init as event_factory
+import engine/entities/diplomacy_ops
 
 proc resolveDiplomaticActions*(
     state: var GameState,

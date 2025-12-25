@@ -1,76 +1,147 @@
 ## Construction Configuration Loader
 ##
-## Loads construction times, costs, repair costs, and upkeep from config/construction.toml
+## Loads construction times, costs, repair costs, and upkeep from config/construction.kdl
 ## Allows runtime configuration for construction mechanics
 
-import std/[os]
-import toml_serialization
+import kdl
+import kdl_config_helpers
 import ../../common/logger
 
 type
   ConstructionTimesConfig* = object
-    spaceport_turns*: int
-    spaceport_docks*: int
-    shipyard_turns*: int
-    shipyard_docks*: int
-    shipyard_requires_spaceport*: bool
-    starbase_turns*: int
-    starbase_requires_shipyard*: bool
-    starbase_max_per_colony*: int
-    planetary_shield_turns*: int
-    planetary_shield_max*: int
-    planetary_shield_replace_on_upgrade*: bool
-    ground_battery_turns*: int
-    ground_battery_max*: int
-    fighter_squadron_planet_based*: bool
+    spaceportTurns*: int32
+    spaceportDocks*: int32
+    shipyardTurns*: int32
+    shipyardDocks*: int32
+    shipyardRequiresSpaceport*: bool
+    starbaseTurns*: int32
+    starbaseRequiresShipyard*: bool
+    starbaseMaxPerColony*: int32
+    planetaryShieldTurns*: int32
+    planetaryShieldMax*: int32
+    planetaryShieldReplaceOnUpgrade*: bool
+    groundBatteryTurns*: int32
+    groundBatteryMax*: int32
+    fighterSquadronPlanetBased*: bool
 
   RepairConfig* = object
-    ship_repair_turns*: int
-    ship_repair_cost_multiplier*: float
-    starbase_repair_cost_multiplier*: float
+    shipRepairTurns*: int32
+    shipRepairCostMultiplier*: float32
+    starbaseRepairCostMultiplier*: float32
 
   ModifiersConfig* = object
-    planetside_construction_cost_multiplier*: float
-    construction_capacity_increase_per_level*: float
+    planetsideConstructionCostMultiplier*: float32
+    constructionCapacityIncreasePerLevel*: float32
 
   CostsConfig* = object
-    spaceport_cost*: int
-    shipyard_cost*: int
-    starbase_cost*: int
-    ground_battery_cost*: int
-    fighter_squadron_cost*: int
-    planetary_shield_sld1_cost*: int
-    planetary_shield_sld2_cost*: int
-    planetary_shield_sld3_cost*: int
-    planetary_shield_sld4_cost*: int
-    planetary_shield_sld5_cost*: int
-    planetary_shield_sld6_cost*: int
+    spaceportCost*: int32
+    shipyardCost*: int32
+    starbaseCost*: int32
+    groundBatteryCost*: int32
+    fighterSquadronCost*: int32
+    planetaryShieldSld1Cost*: int32
+    planetaryShieldSld2Cost*: int32
+    planetaryShieldSld3Cost*: int32
+    planetaryShieldSld4Cost*: int32
+    planetaryShieldSld5Cost*: int32
+    planetaryShieldSld6Cost*: int32
 
   UpkeepConfig* = object
-    spaceport_upkeep*: int
-    shipyard_upkeep*: int
-    starbase_upkeep*: int
-    ground_battery_upkeep*: int
-    planetary_shield_upkeep*: int
+    spaceportUpkeep*: int32
+    shipyardUpkeep*: int32
+    starbaseUpkeep*: int32
+    groundBatteryUpkeep*: int32
+    planetaryShieldUpkeep*: int32
 
-  ConstructionConfig* = object ## Complete construction configuration loaded from TOML
+  ConstructionConfig* = object ## Complete construction configuration loaded from KDL
     construction*: ConstructionTimesConfig
     repair*: RepairConfig
     modifiers*: ModifiersConfig
     costs*: CostsConfig
     upkeep*: UpkeepConfig
 
+proc parseConstruction(node: KdlNode, ctx: var KdlConfigContext): ConstructionTimesConfig =
+  result = ConstructionTimesConfig(
+    spaceportTurns: node.requireInt("spaceportTurns", ctx).int32,
+    spaceportDocks: node.requireInt("spaceportDocks", ctx).int32,
+    shipyardTurns: node.requireInt("shipyardTurns", ctx).int32,
+    shipyardDocks: node.requireInt("shipyardDocks", ctx).int32,
+    shipyardRequiresSpaceport: node.requireBool("shipyardRequiresSpaceport", ctx),
+    starbaseTurns: node.requireInt("starbaseTurns", ctx).int32,
+    starbaseRequiresShipyard: node.requireBool("starbaseRequiresShipyard", ctx),
+    starbaseMaxPerColony: node.requireInt("starbaseMaxPerColony", ctx).int32,
+    planetaryShieldTurns: node.requireInt("planetaryShieldTurns", ctx).int32,
+    planetaryShieldMax: node.requireInt("planetaryShieldMax", ctx).int32,
+    planetaryShieldReplaceOnUpgrade: node.requireBool("planetaryShieldReplaceOnUpgrade", ctx),
+    groundBatteryTurns: node.requireInt("groundBatteryTurns", ctx).int32,
+    groundBatteryMax: node.requireInt("groundBatteryMax", ctx).int32,
+    fighterSquadronPlanetBased: node.requireBool("fighterSquadronPlanetBased", ctx)
+  )
+
+proc parseRepair(node: KdlNode, ctx: var KdlConfigContext): RepairConfig =
+  result = RepairConfig(
+    shipRepairTurns: node.requireInt("shipRepairTurns", ctx).int32,
+    shipRepairCostMultiplier: node.requireFloat("shipRepairCostMultiplier", ctx).float32,
+    starbaseRepairCostMultiplier: node.requireFloat("starbaseRepairCostMultiplier", ctx).float32
+  )
+
+proc parseModifiers(node: KdlNode, ctx: var KdlConfigContext): ModifiersConfig =
+  result = ModifiersConfig(
+    planetsideConstructionCostMultiplier: node.requireFloat("planetsideConstructionCostMultiplier", ctx).float32,
+    constructionCapacityIncreasePerLevel: node.requireFloat("constructionCapacityIncreasePerLevel", ctx).float32
+  )
+
+proc parseCosts(node: KdlNode, ctx: var KdlConfigContext): CostsConfig =
+  result = CostsConfig(
+    spaceportCost: node.requireInt("spaceportCost", ctx).int32,
+    shipyardCost: node.requireInt("shipyardCost", ctx).int32,
+    starbaseCost: node.requireInt("starbaseCost", ctx).int32,
+    groundBatteryCost: node.requireInt("groundBatteryCost", ctx).int32,
+    fighterSquadronCost: node.requireInt("fighterSquadronCost", ctx).int32,
+    planetaryShieldSld1Cost: node.requireInt("planetaryShieldSld1Cost", ctx).int32,
+    planetaryShieldSld2Cost: node.requireInt("planetaryShieldSld2Cost", ctx).int32,
+    planetaryShieldSld3Cost: node.requireInt("planetaryShieldSld3Cost", ctx).int32,
+    planetaryShieldSld4Cost: node.requireInt("planetaryShieldSld4Cost", ctx).int32,
+    planetaryShieldSld5Cost: node.requireInt("planetaryShieldSld5Cost", ctx).int32,
+    planetaryShieldSld6Cost: node.requireInt("planetaryShieldSld6Cost", ctx).int32
+  )
+
+proc parseUpkeep(node: KdlNode, ctx: var KdlConfigContext): UpkeepConfig =
+  result = UpkeepConfig(
+    spaceportUpkeep: node.requireInt("spaceportUpkeep", ctx).int32,
+    shipyardUpkeep: node.requireInt("shipyardUpkeep", ctx).int32,
+    starbaseUpkeep: node.requireInt("starbaseUpkeep", ctx).int32,
+    groundBatteryUpkeep: node.requireInt("groundBatteryUpkeep", ctx).int32,
+    planetaryShieldUpkeep: node.requireInt("planetaryShieldUpkeep", ctx).int32
+  )
+
 proc loadConstructionConfig*(
-    configPath: string = "config/construction.toml"
+    configPath: string = "config/construction.kdl"
 ): ConstructionConfig =
-  ## Load construction configuration from TOML file
-  ## Uses toml_serialization for type-safe parsing
+  ## Load construction configuration from KDL file
+  ## Uses kdl_config_helpers for type-safe parsing
+  let doc = loadKdlConfig(configPath)
+  var ctx = newContext(configPath)
 
-  if not fileExists(configPath):
-    raise newException(IOError, "Construction config not found: " & configPath)
+  ctx.withNode("construction"):
+    let node = doc.requireNode("construction", ctx)
+    result.construction = parseConstruction(node, ctx)
 
-  let configContent = readFile(configPath)
-  result = Toml.decode(configContent, ConstructionConfig)
+  ctx.withNode("repair"):
+    let node = doc.requireNode("repair", ctx)
+    result.repair = parseRepair(node, ctx)
+
+  ctx.withNode("modifiers"):
+    let node = doc.requireNode("modifiers", ctx)
+    result.modifiers = parseModifiers(node, ctx)
+
+  ctx.withNode("costs"):
+    let node = doc.requireNode("costs", ctx)
+    result.costs = parseCosts(node, ctx)
+
+  ctx.withNode("upkeep"):
+    let node = doc.requireNode("upkeep", ctx)
+    result.upkeep = parseUpkeep(node, ctx)
 
   logInfo("Config", "Loaded construction configuration", "path=", configPath)
 

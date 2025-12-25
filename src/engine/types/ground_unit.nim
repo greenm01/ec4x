@@ -3,15 +3,10 @@
 ## This module contains the type definitions for ground units, planetary defenses,
 ## and other related combat types for ground and orbital combat.
 
-import std/options
+import std/tables
 import ./core
 
 type
-  CombatState* {.pure.} = enum
-    Undamaged
-    Crippled
-    Destroyed
-
   GroundUnitType* {.pure.} = enum
     Army
     Marine
@@ -22,49 +17,25 @@ type
     unitType*: GroundUnitType
     attackStrength*: int32
     defenseStrength*: int32
-    buildCost*: int32
-    upkeepCost*: int32
+    
+  GroundUnitLocation* {.pure.} = enum
+    OnColony, OnTransport
 
-  GroundUnit* = object ## Individual ground combat unit
+  GroundUnitGarrison* = object
+    case locationType*: GroundUnitLocation
+    of OnColony:
+      colonyId*: ColonyId
+    of OnTransport:
+      shipId*: ShipId
+
+  GroundUnit* = object
     id*: GroundUnitId
-    unitType*: GroundUnitType
-    owner*: HouseId
-    attackStrength*: int32
-    defenseStrength*: int32
-    state*: CombatState # Undamaged, Crippled, Destroyed
+    houseId*: HouseId
+    stats*: GroundUnitStats
+    garrison*: GroundUnitGarrison
 
   GroundUnits* = object
-    entities*: EntityManager[GroundUnitId, GroundUnit] # Core storage
-
-  PlanetaryDefense* = object
-    shields*: Option[ShieldLevel]
-    groundBatteryIds*: seq[GroundUnitId] # Store IDs, not objects
-    groundForceIds*: seq[GroundUnitId]
-    spaceport*: bool
-
-  ShieldLevel* = object ## Planetary shield information (per reference.md Section 9.3)
-    level*: int32 # 1-6 (SLD1-SLD6)
-    blockChance*: float32 # Probability shield blocks damage
-    blockPercentage*: float32 # % of hits blocked if successful
-
-  BombardmentResult* = object ## Result of one bombardment round
-    attackerHits*: int32
-    defenderHits*: int32
-    shieldBlocked*: int32 # Hits blocked by shields
-    batteriesDestroyed*: int32
-    batteriesCrippled*: int32
-    squadronsDestroyed*: int32
-    squadronsCrippled*: int32
-    infrastructureDamage*: int32 # IU lost
-    populationDamage*: int32 # PU lost
-    roundsCompleted*: int32 # 1-3 max per turn
-
-  InvasionResult* = object ## Result of planetary invasion or blitz
-    success*: bool
-    attacker*: HouseId
-    defender*: HouseId
-    attackerCasualties*: seq[GroundUnitId]
-    defenderCasualties*: seq[GroundUnitId]
-    infrastructureDestroyed*: int32 # IU lost (50% on invasion success)
-    assetsSeized*: bool # True for blitz, false for invasion
-    batteriesDestroyed*: int32 # Ground batteries destroyed (blitz Phase 1 bombardment)
+    entities*: EntityManager[GroundUnitId, GroundUnit]
+    byHouse*: Table[HouseId, seq[GroundUnitId]]
+    byColony*: Table[ColonyId, seq[GroundUnitId]]
+    byTransport*: Table[ShipId, seq[GroundUnitId]]

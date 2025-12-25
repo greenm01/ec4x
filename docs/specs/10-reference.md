@@ -21,8 +21,8 @@ Combat-capable ships that can join squadrons as escorts. Count toward total squa
 |:-----:| ------------- |:---:|:--:|:---:|:--:|:--:|:--:|:--:|
 | CT    | Corvette      | 1   | 20 | 3%  | 2  | 3  | 1  | 2  |
 | FG    | Frigate       | 1   | 30 | 3%  | 3  | 4  | 2  | 3  |
-| DD    | Destroyer     | 1   | 40 | 5%  | 5  | 6  | 2  | 4  |
-| CL    | Light Cruiser | 1   | 60 | 3%  | 8  | 9  | 3  | 6  |
+| DD    | Destroyer     | 1   | 40 | 4%  | 5  | 6  | 2  | 4  |
+| CL    | Light Cruiser | 1   | 60 | 4%  | 8  | 9  | 3  | 6  |
 
 ### Capital Ships (CR >= 7)
 
@@ -31,31 +31,31 @@ Flagship-capable ships that lead squadrons. Subject to both capital squadron lim
 | Class | Name              | CST | PC  | MC  | AS | DS | CC | CR | CL |
 |:-----:| ----------------- |:---:|:---:|:---:|:--:|:--:|:--:|:--:|:--:|
 | CA    | Heavy Cruiser     | 2   | 80  | 5%  | 12 | 13 | 3  | 7  | —  |
-| BC    | Battle Cruiser    | 3   | 100 | 4%  | 16 | 18 | 3  | 8  | —  |
-| BB    | Battleship        | 4   | 150 | 4%  | 20 | 25 | 3  | 10 | —  |
+| BC    | Battle Cruiser    | 3   | 100 | 5%  | 16 | 18 | 3  | 8  | —  |
+| BB    | Battleship        | 4   | 150 | 5%  | 20 | 25 | 3  | 10 | —  |
 | DN    | Dreadnought       | 5   | 200 | 5%  | 28 | 30 | 4  | 12 | —  |
-| SD    | Super Dreadnought | 6   | 250 | 5%  | 35 | 40 | 5  | 14 | —  |
-| CV    | Carrier           | 3   | 120 | 3%  | 5  | 18 | 3  | 8  | 3  |
-| CX    | Super Carrier     | 5   | 200 | 5%  | 8  | 25 | 4  | 10 | 5  |
-| RR    | Raider            | 3   | 150 | 4%  | 12 | 10 | 2  | 8  | —  |
+| SD    | Super Dreadnought | 6   | 250 | 8%  | 35 | 40 | 5  | 14 | —  |
+| CV    | Carrier           | 3   | 120 | 5%  | 5  | 18 | 3  | 8  | 3  |
+| CX    | Super Carrier     | 6   | 225 | 7%  | 8  | 25 | 4  | 10 | 5  |
+| RR    | Raider            | 5   | 200 | 5%  | 20 | 25 | 2  | 6  | —  |
 
 ### Auxiliary Ships
 
 Non-combat support ships. Do not count toward squadron limits. Form Intel/Expansion/Auxiliary squadrons.
 
-| Class | Name  | CST | PC | MC  | AS | DS | Notes                                      |
-|:-----:| ----- |:---:|:--:|:---:|:--:|:--:| ------------------------------------------ |
-| SC    | Scout | 1   | 50 | 2%  | 1  | 2  | Intel operations, never joins combat       |
-| ET    | ETAC  | 1   | 25 | 3%  | —  | 10 | Colonization (CL=1), starts with 3 PTU     |
-| TT    | Troop | 1   | 30 | 3%  | —  | 15 | Planetary invasion (CL=1), carries marines |
+| Class | Name            | CST | PC | MC  | AS | DS | Notes                                      |
+|:-----:| --------------- |:---:|:--:|:---:|:--:|:--:| ------------------------------------------ |
+| SC    | Scout           | 1   | 25 | 1%  | -  | -  | Intel operations, never joins combat       |
+| ET    | ETAC            | 1   | 50 | 5%  | —  | -  | Colonization (CL=1), starts with 3 PTU     |
+| TT    | Troop Transport | 1   | 30 | 3%  | —  | -  | Planetary invasion (CL=1), carries marines |
 
 ### Fighter Squadrons
 
-Embarked strike craft with per-colony capacity limits. Cannot join fleets, stay at colonies or load on carriers.
+Embarked strike squadron craft with per-colony capacity limits. Cannot join fleets, based at colonies for system defense or loaded onto carriers for offensive operations.
 
-| Class | Name             | CST | PC | MC  | AS | DS | Notes                           |
-|:-----:| ---------------- |:---:|:--:|:---:|:--:|:--:| ------------------------------- |
-| FS    | Fighter Squadron | 1   | 20 | 5%  | 4  | 3  | Colony-based or carrier-embarked |
+| Class | Name    | CST | PC | MC  | AS | DS | CC |Notes                            |
+|:-----:| ------- |:---:|:--:|:---:|:--:|:--:|:--:| -------------------------------- |
+| FS    | Fighter | 1   | 25 | 3%  | 5  | 2  | 1  | Colony-based or carrier-embarked |
 
 ### Special Weapons
 
@@ -63,7 +63,7 @@ Unique strategic units with special capacity rules.
 
 | Class | Name           | CST | PC  | MC  | AS | DS | CC | CR | Notes                        |
 |:-----:| -------------- |:---:|:---:|:---:|:--:|:--:|:--:|:--:| ---------------------------- |
-| PB    | Planet-Breaker | 10  | 400 | 5%  | 50 | 20 | 6  | 6  | Max 1 per owned colony       |
+| PB    | Planet Breaker | 10  | 400 | 10% | 50 | 20 | 6  | 6  | Max 1 per owned colony       |
 
 *Source: config/ships.toml*
 

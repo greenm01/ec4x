@@ -1,48 +1,84 @@
 ## Military Configuration Loader
 ##
-## Loads military mechanics from config/military.toml using toml_serialization
+## Loads military mechanics from config/military.kdl using nimkdl
 ## Allows runtime configuration for squadron limits and salvage
 
-import std/[os]
-import toml_serialization
+import kdl
+import kdl_config_helpers
 import ../../common/logger
 
 type
   FighterMechanicsConfig* = object
-    fighter_capacity_iu_divisor*: int
-    starbase_per_fighter_squadrons*: int
-    capacity_violation_grace_period*: int
+    fighterCapacityIuDivisor*: int
+    capacityViolationGracePeriod*: int
 
   SquadronLimitsConfig* = object
-    squadron_limit_iu_divisor*: int # IU divisor for capital squadron limit calculation
-    squadron_limit_minimum*: int
-    total_squadron_iu_divisor*: int # IU divisor for total squadron limit calculation
-    total_squadron_minimum*: int
-    capital_ship_cr_threshold*: int
+    squadronLimitIuDivisor*: int # IU divisor for capital squadron limit calculation
+    squadronLimitMinimum*: int
+    totalSquadronIuDivisor*: int # IU divisor for total squadron limit calculation
+    totalSquadronMinimum*: int
+    capitalShipCrThreshold*: int
 
   SalvageConfig* = object
-    salvage_value_multiplier*: float
-    emergency_salvage_multiplier*: float
+    salvageValueMultiplier*: float
+    emergencySalvageMultiplier*: float
 
   SpaceLiftCapacityConfig* = object
-    troop_transport_capacity*: int # Marine Divisions per TroopTransport
-    etac_capacity*: int # Population Transfer Units per ETAC
+    etacCapacity*: int # Population Transfer Units per ETAC
 
-  MilitaryConfig* = object ## Complete military configuration loaded from TOML
-    fighter_mechanics*: FighterMechanicsConfig
-    squadron_limits*: SquadronLimitsConfig
+  MilitaryConfig* = object ## Complete military configuration loaded from KDL
+    fighterMechanics*: FighterMechanicsConfig
+    squadronLimits*: SquadronLimitsConfig
     salvage*: SalvageConfig
-    spacelift_capacity*: SpaceLiftCapacityConfig
+    spaceliftCapacity*: SpaceLiftCapacityConfig
 
-proc loadMilitaryConfig*(configPath: string = "config/military.toml"): MilitaryConfig =
-  ## Load military configuration from TOML file
-  ## Uses toml_serialization for type-safe parsing
+proc parseFighterMechanics(node: KdlNode, ctx: var KdlConfigContext): FighterMechanicsConfig =
+  result = FighterMechanicsConfig(
+    fighterCapacityIuDivisor: node.requireInt("fighterCapacityIuDivisor", ctx),
+    capacityViolationGracePeriod: node.requireInt("capacityViolationGracePeriod", ctx)
+  )
 
-  if not fileExists(configPath):
-    raise newException(IOError, "Military config not found: " & configPath)
+proc parseSquadronLimits(node: KdlNode, ctx: var KdlConfigContext): SquadronLimitsConfig =
+  result = SquadronLimitsConfig(
+    squadronLimitIuDivisor: node.requireInt("squadronLimitIuDivisor", ctx),
+    squadronLimitMinimum: node.requireInt("squadronLimitMinimum", ctx),
+    totalSquadronIuDivisor: node.requireInt("totalSquadronIuDivisor", ctx),
+    totalSquadronMinimum: node.requireInt("totalSquadronMinimum", ctx),
+    capitalShipCrThreshold: node.requireInt("capitalShipCrThreshold", ctx)
+  )
 
-  let configContent = readFile(configPath)
-  result = Toml.decode(configContent, MilitaryConfig)
+proc parseSalvage(node: KdlNode, ctx: var KdlConfigContext): SalvageConfig =
+  result = SalvageConfig(
+    salvageValueMultiplier: node.requireFloat("salvageValueMultiplier", ctx),
+    emergencySalvageMultiplier: node.requireFloat("emergencySalvageMultiplier", ctx)
+  )
+
+proc parseSpaceLiftCapacity(node: KdlNode, ctx: var KdlConfigContext): SpaceLiftCapacityConfig =
+  result = SpaceLiftCapacityConfig(
+    etacCapacity: node.requireInt("etacCapacity", ctx)
+  )
+
+proc loadMilitaryConfig*(configPath: string = "config/military.kdl"): MilitaryConfig =
+  ## Load military configuration from KDL file
+  ## Uses kdl_config_helpers for type-safe parsing
+  let doc = loadKdlConfig(configPath)
+  var ctx = newContext(configPath)
+
+  ctx.withNode("fighterMechanics"):
+    let fighterNode = doc.requireNode("fighterMechanics", ctx)
+    result.fighterMechanics = parseFighterMechanics(fighterNode, ctx)
+
+  ctx.withNode("squadronLimits"):
+    let squadronNode = doc.requireNode("squadronLimits", ctx)
+    result.squadronLimits = parseSquadronLimits(squadronNode, ctx)
+
+  ctx.withNode("salvage"):
+    let salvageNode = doc.requireNode("salvage", ctx)
+    result.salvage = parseSalvage(salvageNode, ctx)
+
+  ctx.withNode("spaceliftCapacity"):
+    let spaceliftNode = doc.requireNode("spaceliftCapacity", ctx)
+    result.spaceliftCapacity = parseSpaceLiftCapacity(spaceliftNode, ctx)
 
   logInfo("Config", "Loaded military configuration", "path=", configPath)
 

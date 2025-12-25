@@ -3,8 +3,9 @@
 ## Diplomatic operations and state changes per diplomacy.md:8.1
 ## 3-state system: Neutral → Hostile → Enemy
 
-import std/[options, tables]
-import ../../types/[core, diplomacy, prestige, game_state]
+import std/tables
+import ../../types/[core, diplomacy, game_state]
+import ../../entities/diplomacy_ops
 
 export
   diplomacy.DiplomaticRelation, diplomacy.DiplomaticEvent, diplomacy.DiplomaticState
@@ -24,11 +25,12 @@ proc declareWar*(
       DiplomaticState.Neutral
 
   # Update diplomatic relation
-  state.diplomaticRelation[key] = DiplomaticRelation(
-    sourceHouse: sourceHouse,
-    targetHouse: targetHouse,
-    state: DiplomaticState.Enemy,
-    sinceTurn: turn,
+  discard setDiplomaticRelation(
+    state,
+    sourceHouse,
+    targetHouse,
+    DiplomaticState.Enemy,
+    turn,
   )
 
   return DiplomaticEvent(
@@ -54,11 +56,12 @@ proc setNeutral*(
       DiplomaticState.Neutral
 
   # Update diplomatic relation
-  state.diplomaticRelation[key] = DiplomaticRelation(
-    sourceHouse: sourceHouse,
-    targetHouse: targetHouse,
-    state: DiplomaticState.Neutral,
-    sinceTurn: turn,
+  discard setDiplomaticRelation(
+    state,
+    sourceHouse,
+    targetHouse,
+    DiplomaticState.Neutral,
+    turn,
   )
 
   return DiplomaticEvent(
@@ -84,11 +87,12 @@ proc setHostile*(
       DiplomaticState.Neutral
 
   # Update diplomatic relation
-  state.diplomaticRelation[key] = DiplomaticRelation(
-    sourceHouse: sourceHouse,
-    targetHouse: targetHouse,
-    state: DiplomaticState.Hostile,
-    sinceTurn: turn,
+  discard setDiplomaticRelation(
+    state,
+    sourceHouse,
+    targetHouse,
+    DiplomaticState.Hostile,
+    turn,
   )
 
   return DiplomaticEvent(

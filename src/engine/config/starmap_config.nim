@@ -1,40 +1,67 @@
 ## Starmap Configuration Loader
 ##
-## Loads starmap generation parameters from config/starmap.toml using toml_serialization
+## Loads starmap generation parameters from config/starmap.kdl using nimkdl
 ## Allows runtime configuration for lane weights and map generation
 
-import std/[os]
-import toml_serialization
+import kdl
+import kdl_config_helpers
 import ../../common/logger
 
 type
   LaneWeightsConfig* = object ## Jump lane type distribution weights
-    major_weight*: float
-    minor_weight*: float
-    restricted_weight*: float
+    majorWeight*: float
+    minorWeight*: float
+    restrictedWeight*: float
 
   GenerationConfig* = object ## Map generation parameters
-    use_distance_maximization*: bool
-    prefer_vertex_positions*: bool
-    hub_uses_mixed_lanes*: bool
+    useDistanceMaximization*: bool
+    preferVertexPositions*: bool
+    hubUsesMixedLanes*: bool
 
   HomeworldPlacementConfig* = object ## Homeworld placement parameters
-    homeworld_lane_count*: int # Number of lanes per homeworld (default: 3)
+    homeworldLaneCount*: int # Number of lanes per homeworld (default: 3)
 
-  StarmapConfig* = object ## Complete starmap configuration loaded from TOML
-    lane_weights*: LaneWeightsConfig
+  StarmapConfig* = object ## Complete starmap configuration loaded from KDL
+    laneWeights*: LaneWeightsConfig
     generation*: GenerationConfig
-    homeworld_placement*: HomeworldPlacementConfig
+    homeworldPlacement*: HomeworldPlacementConfig
 
-proc loadStarmapConfig*(configPath: string = "config/starmap.toml"): StarmapConfig =
-  ## Load starmap configuration from TOML file
-  ## Uses toml_serialization for type-safe parsing
+proc parseLaneWeights(node: KdlNode, ctx: var KdlConfigContext): LaneWeightsConfig =
+  result = LaneWeightsConfig(
+    majorWeight: node.requireFloat("majorWeight", ctx),
+    minorWeight: node.requireFloat("minorWeight", ctx),
+    restrictedWeight: node.requireFloat("restrictedWeight", ctx)
+  )
 
-  if not fileExists(configPath):
-    raise newException(IOError, "Starmap config not found: " & configPath)
+proc parseGeneration(node: KdlNode, ctx: var KdlConfigContext): GenerationConfig =
+  result = GenerationConfig(
+    useDistanceMaximization: node.requireBool("useDistanceMaximization", ctx),
+    preferVertexPositions: node.requireBool("preferVertexPositions", ctx),
+    hubUsesMixedLanes: node.requireBool("hubUsesMixedLanes", ctx)
+  )
 
-  let configContent = readFile(configPath)
-  result = Toml.decode(configContent, StarmapConfig)
+proc parseHomeworldPlacement(node: KdlNode, ctx: var KdlConfigContext): HomeworldPlacementConfig =
+  result = HomeworldPlacementConfig(
+    homeworldLaneCount: node.requireInt("homeworldLaneCount", ctx)
+  )
+
+proc loadStarmapConfig*(configPath: string = "config/starmap.kdl"): StarmapConfig =
+  ## Load starmap configuration from KDL file
+  ## Uses kdl_config_helpers for type-safe parsing
+  let doc = loadKdlConfig(configPath)
+  var ctx = newContext(configPath)
+
+  ctx.withNode("laneWeights"):
+    let laneNode = doc.requireNode("laneWeights", ctx)
+    result.laneWeights = parseLaneWeights(laneNode, ctx)
+
+  ctx.withNode("generation"):
+    let genNode = doc.requireNode("generation", ctx)
+    result.generation = parseGeneration(genNode, ctx)
+
+  ctx.withNode("homeworldPlacement"):
+    let homeNode = doc.requireNode("homeworldPlacement", ctx)
+    result.homeworldPlacement = parseHomeworldPlacement(homeNode, ctx)
 
   logInfo("Config", "Loaded starmap configuration", "path=", configPath)
 

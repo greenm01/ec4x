@@ -11,27 +11,13 @@
 ## - Blitz: Fast insertion variant (marines land under fire)
 
 import std/[tables, options, sequtils, hashes, math, random, strformat]
-import ../../types/[core, game_state, command, ground_unit]
+import ../../types/[core, game_state, combat, command, ground_unit, ship, fleet]
 import ../../state/[entity_manager, iterators]
-import ../combat/[ground, types as combat_types]
-import ../economy/facility_damage
-import ../prestige/[engine as prestige_engine, types as prestige_types]
+import ../combat/ground
 import ../../config/[prestige_config, facilities_config]
 import ../diplomacy/engine as dip_engine
-import ../intelligence/[combat_intel, diplomatic_intel]
 import ../fleet/mechanics
 import ../../event_factory/init as event_factory
-
-# ============================================================================
-# HELPER FUNCTIONS - Combat Support
-# ============================================================================
-
-proc getTargetBucket(shipClass: ShipClass): TargetBucket =
-  ## Map ship class to targeting bucket for combat resolution
-  case shipClass
-  of ShipClass.Fighter, ShipClass.Interceptor: TargetBucket.Fighter
-  of ShipClass.Raider: TargetBucket.Raider
-  else: TargetBucket.Capital
 
 # ============================================================================
 # BOMBARDMENT RESOLUTION
@@ -40,7 +26,7 @@ proc getTargetBucket(shipClass: ShipClass): TargetBucket =
 proc resolveBombardment*(
     state: var GameState,
     houseId: HouseId,
-    command: FleetOrder,
+    command: FleetCommand,
     events: var seq[GameEvent],
 ) =
   ## Process planetary bombardment order (operations.md:7.5)
@@ -298,7 +284,7 @@ proc resolveBombardment*(
     )
   )
 
-  # Generate OrderCompleted event
+  # Generate CommandCompleted event
   events.add(
     event_factory.commandCompleted(
       houseId,
@@ -328,7 +314,7 @@ proc isColonyUndefended(colony: Colony): bool =
 proc resolveInvasion*(
     state: var GameState,
     houseId: HouseId,
-    command: FleetOrder,
+    command: FleetCommand,
     events: var seq[GameEvent],
 ) =
   ## Process planetary invasion order (operations.md:7.6)
@@ -631,7 +617,7 @@ proc resolveInvasion*(
       event_factory.colonyCaptured(houseId, colony.owner, targetId, "Invasion")
     )
 
-    # Generate OrderCompleted event for successful invasion
+    # Generate CommandCompleted event for successful invasion
     events.add(
       event_factory.commandCompleted(
         houseId,
@@ -684,7 +670,7 @@ proc resolveInvasion*(
     # Generate event
     events.add(event_factory.invasionRepelled(colony.owner, targetId, houseId))
 
-    # Generate OrderFailed event for failed invasion
+    # Generate CommandFailed event for failed invasion
     events.add(
       event_factory.commandFailed(
         houseId,
@@ -707,7 +693,7 @@ proc resolveInvasion*(
 proc resolveBlitz*(
     state: var GameState,
     houseId: HouseId,
-    command: FleetOrder,
+    command: FleetCommand,
     events: var seq[GameEvent],
 ) =
   ## Process planetary blitz order (operations.md:7.6.2)
@@ -1000,7 +986,7 @@ proc resolveBlitz*(
     # Generate event
     events.add(event_factory.colonyCaptured(houseId, colony.owner, targetId, "Blitz"))
 
-    # Generate OrderCompleted event for successful blitz
+    # Generate CommandCompleted event for successful blitz
     events.add(
       event_factory.commandCompleted(
         houseId,
@@ -1057,7 +1043,7 @@ proc resolveBlitz*(
     # Generate event
     events.add(event_factory.invasionRepelled(colony.owner, targetId, houseId))
 
-    # Generate OrderFailed event for failed blitz
+    # Generate CommandFailed event for failed blitz
     events.add(
       event_factory.commandFailed(
         houseId,

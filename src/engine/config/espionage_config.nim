@@ -1,86 +1,167 @@
 ## Espionage Configuration Loader
 ##
-## Loads espionage values from config/espionage.toml using toml_serialization
+## Loads espionage values from config/espionage.kdl using nimkdl
 ## Allows runtime configuration for balance testing
 
-import std/[os]
-import toml_serialization
+import kdl
+import kdl_config_helpers
 import ../../common/logger
 
 type
   EspionageCostsConfig* = object
-    ebp_cost_pp*: int
-    cip_cost_pp*: int
-    tech_theft_ebp*: int
-    sabotage_low_ebp*: int
-    sabotage_high_ebp*: int
-    assassination_ebp*: int
-    cyber_attack_ebp*: int
-    economic_manipulation_ebp*: int
-    psyops_campaign_ebp*: int
-    counter_intel_sweep_ebp*: int
-    intelligence_theft_ebp*: int
-    plant_disinformation_ebp*: int
+    ebpCostPp*: int
+    cipCostPp*: int
+    techTheftEbp*: int
+    sabotageLowEbp*: int
+    sabotageHighEbp*: int
+    assassinationEbp*: int
+    cyberAttackEbp*: int
+    economicManipulationEbp*: int
+    psyopsCampaignEbp*: int
+    counterIntelSweepEbp*: int
+    intelligenceTheftEbp*: int
+    plantDisinformationEbp*: int
 
   EspionageInvestmentConfig* = object
-    threshold_percentage*: int
-    penalty_per_percent*: int
+    thresholdPercentage*: int
+    penaltyPerPercent*: int
 
   EspionageDetectionConfig* = object
-    cip_per_roll*: int
-    cic0_threshold*: int
-    cic1_threshold*: int
-    cic2_threshold*: int
-    cic3_threshold*: int
-    cic4_threshold*: int
-    cic5_threshold*: int
-    cip_0_modifier*: int
-    cip_1_5_modifier*: int
-    cip_6_10_modifier*: int
-    cip_11_15_modifier*: int
-    cip_16_20_modifier*: int
-    cip_21_plus_modifier*: int
+    cipPerRoll*: int
+    cic0Threshold*: int
+    cic1Threshold*: int
+    cic2Threshold*: int
+    cic3Threshold*: int
+    cic4Threshold*: int
+    cic5Threshold*: int
+    cip0Modifier*: int
+    cip1To5Modifier*: int
+    cip6To10Modifier*: int
+    cip11To15Modifier*: int
+    cip16To20Modifier*: int
+    cip21PlusModifier*: int
 
   EspionageEffectsConfig* = object
-    tech_theft_srp*: int
-    sabotage_low_dice*: int
-    sabotage_high_dice*: int
-    assassination_srp_reduction*: int
-    economic_ncv_reduction*: int
-    psyops_tax_reduction*: int
-    effect_duration_turns*: int
-    failed_espionage_prestige*: int
-    intel_block_duration*: int
-    disinformation_duration*: int
-    disinformation_min_variance*: float
-    disinformation_max_variance*: float
+    techTheftSrp*: int
+    sabotageLowDice*: int
+    sabotageHighDice*: int
+    assassinationSrpReduction*: int
+    economicNcvReduction*: int
+    psyopsTaxReduction*: int
+    effectDurationTurns*: int
+    failedEspionagePrestige*: int
+    intelBlockDuration*: int
+    disinformationDuration*: int
+    disinformationMinVariance*: float
+    disinformationMaxVariance*: float
 
   ScoutDetectionConfig* = object
-    mesh_2_3_scouts*: int
-    mesh_4_5_scouts*: int
-    mesh_6_plus_scouts*: int
-    starbase_eli_bonus*: int
-    dominant_tech_threshold*: float
-    max_eli_level*: int
+    mesh2To3Scouts*: int
+    mesh4To5Scouts*: int
+    mesh6PlusScouts*: int
+    starbaseEliBonus*: int
+    dominantTechThreshold*: float
+    maxEliLevel*: int
 
-  EspionageConfig* = object ## Complete espionage configuration loaded from TOML
+  EspionageConfig* = object ## Complete espionage configuration loaded from KDL
     costs*: EspionageCostsConfig
     investment*: EspionageInvestmentConfig
     detection*: EspionageDetectionConfig
     effects*: EspionageEffectsConfig
-    scout_detection*: ScoutDetectionConfig
+    scoutDetection*: ScoutDetectionConfig
+
+proc parseCosts(node: KdlNode, ctx: var KdlConfigContext): EspionageCostsConfig =
+  result = EspionageCostsConfig(
+    ebpCostPp: node.requireInt("ebpCostPp", ctx),
+    cipCostPp: node.requireInt("cipCostPp", ctx),
+    techTheftEbp: node.requireInt("techTheftEbp", ctx),
+    sabotageLowEbp: node.requireInt("sabotageLowEbp", ctx),
+    sabotageHighEbp: node.requireInt("sabotageHighEbp", ctx),
+    assassinationEbp: node.requireInt("assassinationEbp", ctx),
+    cyberAttackEbp: node.requireInt("cyberAttackEbp", ctx),
+    economicManipulationEbp: node.requireInt("economicManipulationEbp", ctx),
+    psyopsCampaignEbp: node.requireInt("psyopsCampaignEbp", ctx),
+    counterIntelSweepEbp: node.requireInt("counterIntelSweepEbp", ctx),
+    intelligenceTheftEbp: node.requireInt("intelligenceTheftEbp", ctx),
+    plantDisinformationEbp: node.requireInt("plantDisinformationEbp", ctx)
+  )
+
+proc parseInvestment(node: KdlNode, ctx: var KdlConfigContext): EspionageInvestmentConfig =
+  result = EspionageInvestmentConfig(
+    thresholdPercentage: node.requireInt("thresholdPercentage", ctx),
+    penaltyPerPercent: node.requireInt("penaltyPerPercent", ctx)
+  )
+
+proc parseDetection(node: KdlNode, ctx: var KdlConfigContext): EspionageDetectionConfig =
+  result = EspionageDetectionConfig(
+    cipPerRoll: node.requireInt("cipPerRoll", ctx),
+    cic0Threshold: node.requireInt("cic0Threshold", ctx),
+    cic1Threshold: node.requireInt("cic1Threshold", ctx),
+    cic2Threshold: node.requireInt("cic2Threshold", ctx),
+    cic3Threshold: node.requireInt("cic3Threshold", ctx),
+    cic4Threshold: node.requireInt("cic4Threshold", ctx),
+    cic5Threshold: node.requireInt("cic5Threshold", ctx),
+    cip0Modifier: node.requireInt("cip0Modifier", ctx),
+    cip1To5Modifier: node.requireInt("cip1To5Modifier", ctx),
+    cip6To10Modifier: node.requireInt("cip6To10Modifier", ctx),
+    cip11To15Modifier: node.requireInt("cip11To15Modifier", ctx),
+    cip16To20Modifier: node.requireInt("cip16To20Modifier", ctx),
+    cip21PlusModifier: node.requireInt("cip21PlusModifier", ctx)
+  )
+
+proc parseEffects(node: KdlNode, ctx: var KdlConfigContext): EspionageEffectsConfig =
+  result = EspionageEffectsConfig(
+    techTheftSrp: node.requireInt("techTheftSrp", ctx),
+    sabotageLowDice: node.requireInt("sabotageLowDice", ctx),
+    sabotageHighDice: node.requireInt("sabotageHighDice", ctx),
+    assassinationSrpReduction: node.requireInt("assassinationSrpReduction", ctx),
+    economicNcvReduction: node.requireInt("economicNcvReduction", ctx),
+    psyopsTaxReduction: node.requireInt("psyopsTaxReduction", ctx),
+    effectDurationTurns: node.requireInt("effectDurationTurns", ctx),
+    failedEspionagePrestige: node.requireInt("failedEspionagePrestige", ctx),
+    intelBlockDuration: node.requireInt("intelBlockDuration", ctx),
+    disinformationDuration: node.requireInt("disinformationDuration", ctx),
+    disinformationMinVariance: node.requireFloat("disinformationMinVariance", ctx),
+    disinformationMaxVariance: node.requireFloat("disinformationMaxVariance", ctx)
+  )
+
+proc parseScoutDetection(node: KdlNode, ctx: var KdlConfigContext): ScoutDetectionConfig =
+  result = ScoutDetectionConfig(
+    mesh2To3Scouts: node.requireInt("mesh2To3Scouts", ctx),
+    mesh4To5Scouts: node.requireInt("mesh4To5Scouts", ctx),
+    mesh6PlusScouts: node.requireInt("mesh6PlusScouts", ctx),
+    starbaseEliBonus: node.requireInt("starbaseEliBonus", ctx),
+    dominantTechThreshold: node.requireFloat("dominantTechThreshold", ctx),
+    maxEliLevel: node.requireInt("maxEliLevel", ctx)
+  )
 
 proc loadEspionageConfig*(
-    configPath: string = "config/espionage.toml"
+    configPath: string = "config/espionage.kdl"
 ): EspionageConfig =
-  ## Load espionage configuration from TOML file
-  ## Uses toml_serialization for type-safe parsing
+  ## Load espionage configuration from KDL file
+  ## Uses kdl_config_helpers for type-safe parsing
+  let doc = loadKdlConfig(configPath)
+  var ctx = newContext(configPath)
 
-  if not fileExists(configPath):
-    raise newException(IOError, "Espionage config not found: " & configPath)
+  ctx.withNode("costs"):
+    let node = doc.requireNode("costs", ctx)
+    result.costs = parseCosts(node, ctx)
 
-  let configContent = readFile(configPath)
-  result = Toml.decode(configContent, EspionageConfig)
+  ctx.withNode("investment"):
+    let node = doc.requireNode("investment", ctx)
+    result.investment = parseInvestment(node, ctx)
+
+  ctx.withNode("detection"):
+    let node = doc.requireNode("detection", ctx)
+    result.detection = parseDetection(node, ctx)
+
+  ctx.withNode("effects"):
+    let node = doc.requireNode("effects", ctx)
+    result.effects = parseEffects(node, ctx)
+
+  ctx.withNode("scoutDetection"):
+    let node = doc.requireNode("scoutDetection", ctx)
+    result.scoutDetection = parseScoutDetection(node, ctx)
 
   logInfo("Config", "Loaded espionage configuration", "path=", configPath)
 

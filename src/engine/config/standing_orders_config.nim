@@ -1,41 +1,68 @@
 ## Standing Orders Configuration Loader
-## Loads standing command behavior settings from config/standing_orders.toml
+## Loads standing command behavior settings from config/standing_orders.kdl
 
-import std/[os]
-import toml_serialization
+import kdl
+import kdl_config_helpers
 import ../../common/logger
 
 type
   ActivationConfig* = object
-    global_enabled*: bool
-    default_activation_delay_turns*: int
-    enabled_by_default*: bool
+    globalEnabled*: bool
+    defaultActivationDelayTurns*: int
+    enabledByDefault*: bool
 
   BehaviorConfig* = object
-    auto_hold_on_completion*: bool
-    respect_diplomatic_changes*: bool
+    autoHoldOnCompletion*: bool
+    respectDiplomaticChanges*: bool
 
   UIHintsConfig* = object
-    warn_before_activation*: bool
-    warn_turns_before*: int
+    warnBeforeActivation*: bool
+    warnTurnsBefore*: int
 
   StandingOrdersConfig* = object
-    ## Complete standing commands configuration loaded from TOML
+    ## Complete standing commands configuration loaded from KDL
     activation*: ActivationConfig
     behavior*: BehaviorConfig
-    ui_hints*: UIHintsConfig
+    uiHints*: UIHintsConfig
+
+proc parseActivation(node: KdlNode, ctx: var KdlConfigContext): ActivationConfig =
+  result = ActivationConfig(
+    globalEnabled: node.requireBool("globalEnabled", ctx),
+    defaultActivationDelayTurns: node.requireInt("defaultActivationDelayTurns", ctx),
+    enabledByDefault: node.requireBool("enabledByDefault", ctx)
+  )
+
+proc parseBehavior(node: KdlNode, ctx: var KdlConfigContext): BehaviorConfig =
+  result = BehaviorConfig(
+    autoHoldOnCompletion: node.requireBool("autoHoldOnCompletion", ctx),
+    respectDiplomaticChanges: node.requireBool("respectDiplomaticChanges", ctx)
+  )
+
+proc parseUIHints(node: KdlNode, ctx: var KdlConfigContext): UIHintsConfig =
+  result = UIHintsConfig(
+    warnBeforeActivation: node.requireBool("warnBeforeActivation", ctx),
+    warnTurnsBefore: node.requireInt("warnTurnsBefore", ctx)
+  )
 
 proc loadStandingOrdersConfig*(
-    configPath: string = "config/standing_orders.toml"
+    configPath: string = "config/standing_orders.kdl"
 ): StandingOrdersConfig =
-  ## Load standing commands configuration from TOML file
-  ## Uses toml_serialization for type-safe parsing
+  ## Load standing commands configuration from KDL file
+  ## Uses kdl_config_helpers for type-safe parsing
+  let doc = loadKdlConfig(configPath)
+  var ctx = newContext(configPath)
 
-  if not fileExists(configPath):
-    raise newException(IOError, "Standing commands config not found: " & configPath)
+  ctx.withNode("activation"):
+    let activationNode = doc.requireNode("activation", ctx)
+    result.activation = parseActivation(activationNode, ctx)
 
-  let configContent = readFile(configPath)
-  result = Toml.decode(configContent, StandingOrdersConfig)
+  ctx.withNode("behavior"):
+    let behaviorNode = doc.requireNode("behavior", ctx)
+    result.behavior = parseBehavior(behaviorNode, ctx)
+
+  ctx.withNode("uiHints"):
+    let uiHintsNode = doc.requireNode("uiHints", ctx)
+    result.uiHints = parseUIHints(uiHintsNode, ctx)
 
   logInfo("Config", "Loaded standing commands configuration", "path=", configPath)
 

@@ -1,33 +1,31 @@
 ## House Theme Configuration Loader
 ##
-## Loads house themes from config/house_themes.toml
+## Loads house themes from config/house_themes.kdl
 ## Allows switching between different naming schemes (Dune, Generic, Classical)
 
-import std/[tables, strutils, os]
-import toml_serialization
+import std/[tables, strutils]
+import kdl
+import kdl_config_helpers
 import ../../../common/logger
 
 type
   ThemeEntry* = object
     name*: string
     description*: string
-    legal_warning*: string
+    legalWarning*: string
     # All 12 houses inline
-    house_0_name*, house_0_color*: string
-    house_1_name*, house_1_color*: string
-    house_2_name*, house_2_color*: string
-    house_3_name*, house_3_color*: string
-    house_4_name*, house_4_color*: string
-    house_5_name*, house_5_color*: string
-    house_6_name*, house_6_color*: string
-    house_7_name*, house_7_color*: string
-    house_8_name*, house_8_color*: string
-    house_9_name*, house_9_color*: string
-    house_10_name*, house_10_color*: string
-    house_11_name*, house_11_color*: string
-
-  ThemeFile* = object
-    theme*: seq[ThemeEntry]
+    house0Name*, house0Color*: string
+    house1Name*, house1Color*: string
+    house2Name*, house2Color*: string
+    house3Name*, house3Color*: string
+    house4Name*, house4Color*: string
+    house5Name*, house5Color*: string
+    house6Name*, house6Color*: string
+    house7Name*, house7Color*: string
+    house8Name*, house8Color*: string
+    house9Name*, house9Color*: string
+    house10Name*, house10Color*: string
+    house11Name*, house11Color*: string
 
   HouseTheme* = object
     name*: string
@@ -40,44 +38,82 @@ type
     activeTheme*: string
 
 proc toHouseTheme(entry: ThemeEntry): HouseTheme =
-  ## Convert TOML structure to internal HouseTheme representation
+  ## Convert KDL structure to internal HouseTheme representation
   result.name = entry.name
   result.description = entry.description
-  result.legalWarning = entry.legal_warning
+  result.legalWarning = entry.legalWarning
 
   # Extract house names and colors (positions 0-11)
   result.houses =
     @[
-      (entry.house_0_name, entry.house_0_color),
-      (entry.house_1_name, entry.house_1_color),
-      (entry.house_2_name, entry.house_2_color),
-      (entry.house_3_name, entry.house_3_color),
-      (entry.house_4_name, entry.house_4_color),
-      (entry.house_5_name, entry.house_5_color),
-      (entry.house_6_name, entry.house_6_color),
-      (entry.house_7_name, entry.house_7_color),
-      (entry.house_8_name, entry.house_8_color),
-      (entry.house_9_name, entry.house_9_color),
-      (entry.house_10_name, entry.house_10_color),
-      (entry.house_11_name, entry.house_11_color),
+      (entry.house0Name, entry.house0Color),
+      (entry.house1Name, entry.house1Color),
+      (entry.house2Name, entry.house2Color),
+      (entry.house3Name, entry.house3Color),
+      (entry.house4Name, entry.house4Color),
+      (entry.house5Name, entry.house5Color),
+      (entry.house6Name, entry.house6Color),
+      (entry.house7Name, entry.house7Color),
+      (entry.house8Name, entry.house8Color),
+      (entry.house9Name, entry.house9Color),
+      (entry.house10Name, entry.house10Color),
+      (entry.house11Name, entry.house11Color),
     ]
 
+proc parseThemeEntry(node: KdlNode, ctx: var KdlConfigContext): ThemeEntry =
+  ## Parse a single theme entry from KDL node
+  let nameAttr = node.getStringAttribute("name", ctx)
+  if nameAttr.isNone:
+    raise newException(
+      ConfigError,
+      "Theme node missing required 'name' attribute: " & ctx.nodePath,
+    )
+
+  result = ThemeEntry(
+    name: nameAttr.get(),
+    description: node.requireString("description", ctx),
+    legalWarning: node.requireString("legalWarning", ctx),
+    house0Name: node.requireString("house0Name", ctx),
+    house0Color: node.requireString("house0Color", ctx),
+    house1Name: node.requireString("house1Name", ctx),
+    house1Color: node.requireString("house1Color", ctx),
+    house2Name: node.requireString("house2Name", ctx),
+    house2Color: node.requireString("house2Color", ctx),
+    house3Name: node.requireString("house3Name", ctx),
+    house3Color: node.requireString("house3Color", ctx),
+    house4Name: node.requireString("house4Name", ctx),
+    house4Color: node.requireString("house4Color", ctx),
+    house5Name: node.requireString("house5Name", ctx),
+    house5Color: node.requireString("house5Color", ctx),
+    house6Name: node.requireString("house6Name", ctx),
+    house6Color: node.requireString("house6Color", ctx),
+    house7Name: node.requireString("house7Name", ctx),
+    house7Color: node.requireString("house7Color", ctx),
+    house8Name: node.requireString("house8Name", ctx),
+    house8Color: node.requireString("house8Color", ctx),
+    house9Name: node.requireString("house9Name", ctx),
+    house9Color: node.requireString("house9Color", ctx),
+    house10Name: node.requireString("house10Name", ctx),
+    house10Color: node.requireString("house10Color", ctx),
+    house11Name: node.requireString("house11Name", ctx),
+    house11Color: node.requireString("house11Color", ctx)
+  )
+
 proc loadThemeConfig*(
-    themeFile: string = "config/house_themes.toml", activeThemeName: string = "dune"
+    themeFile: string = "config/house_themes.kdl", activeThemeName: string = "dune"
 ): ThemeConfig =
-  ## Load theme configuration from TOML file
+  ## Load theme configuration from KDL file
   result.themes = initTable[string, HouseTheme]()
 
-  # Load house_themes.toml
-  if not fileExists(themeFile):
-    raise newException(IOError, "House themes config not found: " & themeFile)
+  let doc = loadKdlConfig(themeFile)
+  var ctx = newContext(themeFile)
 
-  let themeContent = readFile(themeFile)
-  let themeData = Toml.decode(themeContent, ThemeFile)
-
-  # Convert all themes to internal representation
-  for entry in themeData.theme:
-    result.themes[entry.name] = toHouseTheme(entry)
+  # Find all theme nodes
+  for node in doc:
+    if node.name == "theme":
+      ctx.withNode("theme"):
+        let entry = parseThemeEntry(node, ctx)
+        result.themes[entry.name] = toHouseTheme(entry)
 
   # Set active theme
   result.activeTheme = activeThemeName

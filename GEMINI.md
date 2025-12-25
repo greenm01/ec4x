@@ -11,6 +11,7 @@
 - **Line Length:** Max 80 characters.
 - **Naming:** Follow NEP-1 (camelCase for vars/procs, PascalCase for types).
 - **Operators:** Always use spaces around operators (e.g., `a + b`).
+- **Use nph:** Use nph for Nim code formatting.
 
 ## 3. Tech Stack Context
 - **Language:** Nim (targeting C/C++ backend).

@@ -13,6 +13,7 @@ bin           = @["cli/ec4x", "ai/analysis/run_simulation"]
 requires "nim >= 2.0.0"
 requires "cligen >= 1.7.0"
 requires "toml_serialization >= 0.2.0"
+requires "nimkdl >= 2.0.6"
 requires "datamancer >= 0.4.0"
 requires "terminaltables >= 0.1.0"
 requires "db_connector"

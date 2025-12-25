@@ -1,0 +1,421 @@
+## KDL Configuration Helpers
+##
+## Generic utilities for loading and validating KDL configuration files
+## Supports gradual migration from TOML to KDL format
+##
+## Design principles:
+## - Type-safe value extraction with clear error messages
+## - Automatic validation with configurable severity
+## - Support for optional fields with defaults
+## - Path-based error reporting for nested structures
+
+import std/[options, os, strformat, strutils, tables]
+import kdl
+
+type
+  ConfigError* = object of CatchableError
+    ## Exception raised when configuration is invalid or missing
+
+  KdlConfigContext* = object
+    ## Context for error reporting during config parsing
+    filepath*: string
+    nodePath*: seq[string]  # Track nested node path for errors
+
+# ============================================================================
+# Node Navigation Helpers
+# ============================================================================
+
+proc findNode*(doc: KdlDoc, name: string): Option[KdlNode] =
+  ## Find top-level node by name
+  for node in doc:
+    if node.name == name:
+      return some(node)
+  none(KdlNode)
+
+proc findChildNode*(parent: KdlNode, name: string): Option[KdlNode] =
+  ## Find child node by name
+  for child in parent.children:
+    if child.name == name:
+      return some(child)
+  none(KdlNode)
+
+proc getChild*(node: KdlNode, childName: string): Option[KdlVal] =
+  ## Get first argument value from child node
+  ## Example: ship { attackStrength 10 } → getChild("attackStrength") = 10
+  for child in node.children:
+    if child.name == childName and child.args.len > 0:
+      return some(child.args[0])
+  none(KdlVal)
+
+proc hasChild*(node: KdlNode, childName: string): bool =
+  ## Check if node has a child with given name
+  for child in node.children:
+    if child.name == childName:
+      return true
+  false
+
+# ============================================================================
+# Required Field Extraction (raises ConfigError if missing)
+# ============================================================================
+
+proc requireNode*(doc: KdlDoc, name: string, ctx: KdlConfigContext): KdlNode =
+  ## Get required top-level node, raise ConfigError if missing
+  let nodeOpt = doc.findNode(name)
+  if nodeOpt.isNone:
+    raise newException(ConfigError, 
+      &"Missing required node '{name}' in {ctx.filepath}")
+  nodeOpt.get
+
+proc requireChildNode*(parent: KdlNode, name: string, ctx: KdlConfigContext): KdlNode =
+  ## Get required child node, raise ConfigError if missing
+  let nodeOpt = parent.findChildNode(name)
+  if nodeOpt.isNone:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Missing required child '{name}' in {path} ({ctx.filepath})")
+  nodeOpt.get
+
+proc requireInt*(node: KdlNode, childName: string, ctx: KdlConfigContext): int =
+  ## Get required integer value from child node
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Missing required field '{childName}' in {path} ({ctx.filepath})")
+
+  let val = valOpt.get
+  case val.kind
+  of KValKind.KInt, KValKind.KInt8, KValKind.KInt16, KValKind.KInt32, KValKind.KInt64:
+    val.getInt().int
+  of KValKind.KUInt8, KValKind.KUInt16, KValKind.KUInt32, KValKind.KUInt64:
+    val.getInt().int
+  else:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Field '{childName}' in {path} must be integer, got {val.kind} ({ctx.filepath})")
+
+proc requireFloat*(node: KdlNode, childName: string, ctx: KdlConfigContext): float =
+  ## Get required float value from child node
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Missing required field '{childName}' in {path} ({ctx.filepath})")
+  
+  let val = valOpt.get
+  case val.kind
+  of KValKind.KFloat:
+    val.getFloat()
+  of KValKind.KInt:
+    val.getInt().float
+  else:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Field '{childName}' in {path} must be numeric, got {val.kind} ({ctx.filepath})")
+
+proc requireString*(node: KdlNode, childName: string, ctx: KdlConfigContext): string =
+  ## Get required string value from child node
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Missing required field '{childName}' in {path} ({ctx.filepath})")
+  
+  let val = valOpt.get
+  if val.kind != KValKind.KString:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Field '{childName}' in {path} must be string, got {val.kind} ({ctx.filepath})")
+  val.getString()
+
+proc requireBool*(node: KdlNode, childName: string, ctx: KdlConfigContext): bool =
+  ## Get required boolean value from child node
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Missing required field '{childName}' in {path} ({ctx.filepath})")
+  
+  let val = valOpt.get
+  if val.kind != KValKind.KBool:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Field '{childName}' in {path} must be boolean, got {val.kind} ({ctx.filepath})")
+  val.getBool()
+
+# ============================================================================
+# Optional Field Extraction (returns Option or default value)
+# ============================================================================
+
+proc getInt*(node: KdlNode, childName: string, default: int): int =
+  ## Get optional integer value with default
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    return default
+
+  let val = valOpt.get
+  case val.kind
+  of KValKind.KInt, KValKind.KInt8, KValKind.KInt16, KValKind.KInt32, KValKind.KInt64,
+     KValKind.KUInt8, KValKind.KUInt16, KValKind.KUInt32, KValKind.KUInt64:
+    val.getInt().int
+  else:
+    default
+
+proc getFloat*(node: KdlNode, childName: string, default: float): float =
+  ## Get optional float value with default
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    return default
+  
+  let val = valOpt.get
+  case val.kind
+  of KValKind.KFloat:
+    val.getFloat()
+  of KValKind.KInt:
+    val.getInt().float
+  else:
+    default
+
+proc getString*(node: KdlNode, childName: string, default: string): string =
+  ## Get optional string value with default
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    return default
+  
+  let val = valOpt.get
+  if val.kind == KValKind.KString:
+    val.getString()
+  else:
+    default
+
+proc getBool*(node: KdlNode, childName: string, default: bool): bool =
+  ## Get optional boolean value with default
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    return default
+  
+  let val = valOpt.get
+  if val.kind == KValKind.KBool:
+    val.getBool()
+  else:
+    default
+
+proc getIntOpt*(node: KdlNode, childName: string): Option[int] =
+  ## Get optional integer as Option[int]
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    return none(int)
+
+  let val = valOpt.get
+  case val.kind
+  of KValKind.KInt, KValKind.KInt8, KValKind.KInt16, KValKind.KInt32, KValKind.KInt64,
+     KValKind.KUInt8, KValKind.KUInt16, KValKind.KUInt32, KValKind.KUInt64:
+    some(val.getInt().int)
+  else:
+    none(int)
+
+proc getFloatOpt*(node: KdlNode, childName: string): Option[float] =
+  ## Get optional float as Option[float]
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    return none(float)
+  
+  let val = valOpt.get
+  case val.kind
+  of KValKind.KFloat:
+    some(val.getFloat())
+  of KValKind.KInt:
+    some(val.getInt().float)
+  else:
+    none(float)
+
+proc getStringOpt*(node: KdlNode, childName: string): Option[string] =
+  ## Get optional string as Option[string]
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    return none(string)
+  
+  let val = valOpt.get
+  if val.kind == KValKind.KString:
+    some(val.getString())
+  else:
+    none(string)
+
+# ============================================================================
+# Validated Field Extraction (combines extraction + validation)
+# ============================================================================
+
+proc requirePositiveInt*(node: KdlNode, childName: string, ctx: KdlConfigContext): int =
+  ## Get required integer that must be > 0
+  result = node.requireInt(childName, ctx)
+  if result <= 0:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Field '{childName}' in {path} must be positive, got {result} ({ctx.filepath})")
+
+proc requireNonNegativeInt*(node: KdlNode, childName: string, ctx: KdlConfigContext): int =
+  ## Get required integer that must be >= 0
+  result = node.requireInt(childName, ctx)
+  if result < 0:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Field '{childName}' in {path} must be non-negative, got {result} ({ctx.filepath})")
+
+proc requireRangeInt*(
+    node: KdlNode, 
+    childName: string, 
+    min, max: int, 
+    ctx: KdlConfigContext
+): int =
+  ## Get required integer within [min, max] range
+  result = node.requireInt(childName, ctx)
+  if result < min or result > max:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Field '{childName}' in {path} must be between {min} and {max}, got {result} ({ctx.filepath})")
+
+proc requireRatio*(node: KdlNode, childName: string, ctx: KdlConfigContext): float =
+  ## Get required float that must be in [0.0, 1.0]
+  result = node.requireFloat(childName, ctx)
+  if result < 0.0 or result > 1.0:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Field '{childName}' in {path} must be ratio [0.0-1.0], got {result} ({ctx.filepath})")
+
+proc requirePercentage*(node: KdlNode, childName: string, ctx: KdlConfigContext): float =
+  ## Get required float that must be in [0.0, 100.0]
+  result = node.requireFloat(childName, ctx)
+  if result < 0.0 or result > 100.0:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Field '{childName}' in {path} must be percentage [0.0-100.0], got {result} ({ctx.filepath})")
+
+# ============================================================================
+# Context Management
+# ============================================================================
+
+proc newContext*(filepath: string): KdlConfigContext =
+  ## Create new config context for error reporting
+  KdlConfigContext(filepath: filepath, nodePath: @[])
+
+proc pushNode*(ctx: var KdlConfigContext, nodeName: string) =
+  ## Add node to path for nested error reporting
+  ctx.nodePath.add(nodeName)
+
+proc popNode*(ctx: var KdlConfigContext) =
+  ## Remove last node from path
+  if ctx.nodePath.len > 0:
+    discard ctx.nodePath.pop()
+
+template withNode*(ctx: var KdlConfigContext, nodeName: string, body: untyped) =
+  ## Execute body with node added to context path
+  ctx.pushNode(nodeName)
+  try:
+    body
+  finally:
+    ctx.popNode()
+
+# ============================================================================
+# Collection Helpers
+# ============================================================================
+
+proc getAllChildren*(node: KdlNode): seq[KdlNode] =
+  ## Get all child nodes
+  result = @[]
+  for child in node.children:
+    result.add(child)
+
+proc getChildrenByName*(parent: KdlNode, name: string): seq[KdlNode] =
+  ## Get all children with given name
+  result = @[]
+  for child in parent.children:
+    if child.name == name:
+      result.add(child)
+
+proc childNames*(node: KdlNode): seq[string] =
+  ## Get names of all child nodes
+  result = @[]
+  for child in node.children:
+    if child.name notin result:
+      result.add(child.name)
+
+# ============================================================================
+# Enum Parsing Helpers
+# ============================================================================
+
+proc parseEnum*[T: enum](
+    node: KdlNode, 
+    childName: string, 
+    ctx: KdlConfigContext
+): T =
+  ## Parse enum value from string field
+  ## Automatically tries case-insensitive matching
+  let strVal = node.requireString(childName, ctx)
+  
+  try:
+    parseEnum[T](strVal)
+  except ValueError:
+    # Try case-insensitive match
+    for enumVal in T:
+      if ($enumVal).toLowerAscii() == strVal.toLowerAscii():
+        return enumVal
+    
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"Invalid enum value '{strVal}' for '{childName}' in {path} ({ctx.filepath})")
+
+# ============================================================================
+# Table Building Helpers
+# ============================================================================
+
+proc buildTable*[K, V](
+    doc: KdlDoc,
+    nodeName: string,
+    keyExtractor: proc(node: KdlNode): K,
+    valueBuilder: proc(node: KdlNode, ctx: var KdlConfigContext): V,
+    ctx: var KdlConfigContext
+): Table[K, V] =
+  ## Build table from KDL nodes
+  ## Each top-level node with matching name becomes a table entry
+  result = initTable[K, V]()
+  
+  for node in doc:
+    if node.name == nodeName:
+      ctx.withNode(node.name):
+        let key = keyExtractor(node)
+        let value = valueBuilder(node, ctx)
+        result[key] = value
+
+# ============================================================================
+# Validation Integration
+# ============================================================================
+
+proc validateWithContext*[T](
+    value: T,
+    validator: proc(val: T, fieldName: string),
+    fieldName: string,
+    ctx: KdlConfigContext
+) =
+  ## Run validator with config context for better error messages
+  try:
+    validator(value, fieldName)
+  except CatchableError as e:
+    let path = ctx.nodePath.join(".")
+    raise newException(ConfigError,
+      &"{e.msg} in {path} ({ctx.filepath})")
+
+# ============================================================================
+# File Loading
+# ============================================================================
+
+proc loadKdlConfig*(filepath: string): KdlDoc =
+  ## Load and parse KDL file, raise ConfigError if not found or invalid
+  if not fileExists(filepath):
+    raise newException(ConfigError, &"Config file not found: {filepath}")
+  
+  try:
+    let content = readFile(filepath)
+    parseKdl(content)
+  except CatchableError as e:
+    raise newException(ConfigError, 
+      &"Failed to parse KDL config '{filepath}': {e.msg}")

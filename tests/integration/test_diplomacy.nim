@@ -3,10 +3,11 @@
 ## Tests diplomatic relations and pact violations
 
 import std/[unittest, tables, options]
-import ../../src/engine/diplomacy/[types, engine]
 import ../../src/engine/prestige
 import ../../src/engine/config/[prestige_config, prestige_multiplier]
-import ../../src/common/types/[core, diplomacy]
+import ../../src/engine/systems/diplomacy/engine
+import ../../src/engine/entities/diplomacy_ops
+import ../../src/engine/types/[core, diplomacy, game_state]
 
 suite "Diplomacy System":
 

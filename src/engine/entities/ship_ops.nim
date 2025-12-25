@@ -6,27 +6,49 @@ import std/[tables, sequtils, options]
 import ../state/[game_state as gs_helper, id_gen, entity_manager]
 import ../types/[core, game_state, ship, squadron]
 
+proc role*(ship: Ship): ShipRole =
+  ## Get the role for this ship based on its class
+  ShipClassRoles[ship.shipClass]
+
 proc createShip*(
     state: var GameState, owner: HouseId, squadronId: SquadronId, shipClass: ShipClass
 ): Ship =
   ## Creates a new ship, adds it to a squadron, and updates all indexes.
-  let shipId = state.generateShipId()
-  # In a real implementation, stats would come from config based on tech, etc.
+  let shipId = state.ships.entities.nextId()
+  let config = getShipConfig(shipClass)
+  
+  # Get house's current WEP tech level
+  let house = state.houses.entities[owner]
+  let weaponsTech = house.techTree.levels.weaponsTech
+  
+  # Apply WEP modifiers: +10% AS/DS per level above 1
+  let wepMultiplier = 1.0 + (weaponsTech - 1).float * 0.10
+  let stats = ShipStats(
+    attackStrength: (config.attack_strength.float * wepMultiplier).int32,
+    defenseStrength: (config.defense_strength.float * wepMultiplier).int32,
+    weaponsTech: weaponsTech
+  )
+  
   let newShip = Ship(
-    id: shipId, squadronId: squadronId, shipClass: shipClass, shipRole: ShipRole.Escort
-  ) # Simplified role
-
+    id: shipId,
+    houseId: owner,
+    squadronId: squadronId,
+    shipClass: shipClass,
+    stats: stats,
+    isCrippled: false,
+    cargo: none(ShipCargo)
+  )
+  
   # 1. Add to entity manager
-  state.ships.entities.addEntity(shipId, newShip)
-
-  # 2. Update bySquadron index
+  state.ships.entities[shipId] = newShip
+  
+  # 2. Update indexes
   state.ships.bySquadron.mgetOrPut(squadronId, @[]).add(shipId)
-
+  state.ships.byHouse.mgetOrPut(owner, @[]).add(shipId)
+  
   # 3. Add to squadron's ship list
-  var squadron = state.getSquadrons(squadronId).get()
-  squadron.ships.add(newShip) # Assuming the full Ship object is stored here
-  state.squadrons.entities.updateEntity(squadronId, squadron)
-
+  state.squadrons.entities[squadronId].ships.add(shipId)
+  
   return newShip
 
 proc destroyShip*(state: var GameState, shipId: ShipId) =

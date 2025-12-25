@@ -7,13 +7,9 @@ import ./core
 
 type
   ShipClass* {.pure.} = enum
-    Fighter
     Corvette
     Frigate
-    Scout
-    Raider
     Destroyer
-    Cruiser
     LightCruiser
     HeavyCruiser
     Battlecruiser
@@ -22,16 +18,21 @@ type
     SuperDreadnought
     Carrier
     SuperCarrier
+    Raider
+    Scout
     ETAC
     TroopTransport
+    Fighter
     PlanetBreaker
 
+  # Generic roles for future ship expansion
   ShipRole* {.pure.} = enum
-    Escort
-    Capital
-    Auxiliary
-    SpecialWeapon
-    Fighter
+    Escort         # Default squadron escorts
+    Capital        # Default squadron flagships
+    SpecialWeapon  # Planet breaker
+    Fighter        # Fighter Squadrons
+    Auxiliary      # Screened during space/orbital combat
+    Intel          # Intelligence gathering (non-combat) 
 
   CargoType* {.pure.} = enum
     None
@@ -52,16 +53,35 @@ type
 
   Ship* = object
     id*: ShipId
-    squadronId*: SquadronId # Which squadron owns this ship
+    houseId*: HouseId
+    squadronId*: SquadronId
     shipClass*: ShipClass
-    stats*: ShipStats # Contains role, AS, DS, WEP level, etc.
+    stats*: ShipStats
     isCrippled*: bool
-    name*: string
     cargo*: Option[ShipCargo]
 
   Ships* = object
     entities*: EntityManager[ShipId, Ship] # Core storage
-    bySquadron*: Table[SquadronId, seq[ShipId]]
     byHouse*: Table[HouseId, seq[ShipId]] # O(1) lookup for house queries
+    bySquadron*: Table[SquadronId, seq[ShipId]]
 
-# Note: ShipStats could be moved to a separate config/template file if the stats are loaded from config rather than computed per-ship.
+const ShipClassRoles*: array[ShipClass, ShipRole] = [
+  Corvette: ShipRole.Escort,
+  Frigate: ShipRole.Escort,
+  Destroyer: ShipRole.Escort,
+  LightCruiser: ShipRole.Capital,
+  HeavyCruiser: ShipRole.Capital,
+  Battlecruiser: ShipRole.Capital,
+  Battleship: ShipRole.Capital,
+  Dreadnought: ShipRole.Capital,
+  SuperDreadnought: ShipRole.Capital,
+  Carrier: ShipRole.Capital,
+  SuperCarrier: ShipRole.Capital,
+  Raider: ShipRole.Capital,
+  Scout: ShipRole.Intel,
+  ETAC: ShipRole.Auxiliary,
+  TroopTransport: ShipRole.Auxiliary,
+  Fighter: ShipRole.Fighter,
+  PlanetBreaker: ShipRole.SpecialWeapon,
+]
+
