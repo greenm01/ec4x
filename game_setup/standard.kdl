@@ -1,0 +1,107 @@
+// EC4X Standard Scenario Configuration
+// This is the canonical game setup matching docs/specs/gameplay.md Section 1.2
+//
+// Moderators can create custom scenarios by copying this file and adjusting values.
+// The game engine loads: config/*.kdl (balance/mechanics) + game_setup/*.kdl (scenario)
+
+gameInfo {
+    name "Standard Game"
+    description "Canonical EC4X game matching official specification (gameplay.md:1.2)"
+    recommendedPlayers 4
+    estimatedDuration "Variable - depends on player strategy"
+}
+
+victoryConditions {
+    // Victory condition types per gameplay.md:1.4.3
+    // UPDATED: With accelerated game pacing (30-45 turn games), prestige victory removed
+    // Games end at turn limit or elimination, highest prestige wins
+    primaryCondition "turn_limit"    // Victory by turn limit (highest prestige wins)
+    secondaryCondition "elimination" // Victory by being last active player
+    turnLimit 35                     // Standard 3-ring game: 35 turns (was prestige 2500)
+    prestigeThreshold 0              // Disabled (was 2500, removed for accelerated pacing)
+    // NOTE: Defensive Collapse and Autopilot rules defined in config/gameplay.kdl
+}
+
+map {
+    // Map generation settings
+    size "medium"                     // small, medium, large, huge
+    systems 40                        // Number of solar systems
+    jumpLaneDensity "normal"        // sparse, normal, dense
+    startingDistance "balanced"      // close, balanced, far
+}
+
+startingResources {
+    // What each player starts with (gameplay.md:37)
+    // ACCELERATION: Boosted for 30-45 turn accelerated timeline
+    treasury 1200                     // Starting Production Points (PP) - was 1000, originally 420
+    startingPrestige 100             // Starting prestige points (gameplay.md:21)
+    defaultTaxRate 0.50             // Default tax rate (50%)
+}
+
+startingTech {
+    // Initial technology levels per gameplay.md:39
+    // ACCELERATION: Boosted critical expansion tech for Act 1
+    economicLevel 3                  // EL3 - 15% production bonus (was EL1 5%)
+    scienceLevel 2                   // SL2 - Better research (was SL1)
+    constructionTech 1               // CST1 - Standard ship building
+    weaponsTech 1                    // WEP1 - Keep at baseline
+    terraformingTech 1               // TER1
+    electronicIntelligence 1         // ELI1
+    cloakingTech 1                   // CLK1
+    shieldTech 1                     // SLD1 - Planetary shield technology
+    counterIntelligence 1            // CIC1
+    fighterDoctrine 1                // FD I (1.0x multiplier)
+    advancedCarrierOps 1            // ACO I (CV=3FS, CX=5FS)
+}
+
+
+// Initial fleet composition, per Esterian Conquest v1.5 - 4 fleets total:
+// - 2 colonization fleets (ETAC each with 1 PTU)
+// - 2 colonization fleets (Light Cruiser each)
+// - All fleets start with guard-blockade orders on homeworld
+
+startingFleet {
+    fleetCount 4  // Number of starting fleets to create
+
+    // NOTE: [fleet1-4] sections must be parsed manually due to toml_serialization
+    // limitations. The parser in game_setup_config.nim handles these via string parsing.
+    // Fleets are configured in fleets.kdl
+}
+
+startingFacilities {
+    // Homeworld starting facilities and defenses
+    spaceports 1                      // 1 Spaceport
+    shipyards 1                       // 1 Shipyard
+    starbases 1                       // 1 Starbase
+    groundBatteries 5                // 5 Ground Batteries
+    planetaryShields 0               // 0 Planetary Shields
+}
+
+startingGroundForces {
+    // Starting ground units for homeworld defense
+    armies 10                         // 10 Armies
+    marines 5                         // 5 Marines
+}
+
+homeworld {
+    // Homeworld characteristics per gameplay.md:37
+    planetClass "Eden"               // Abundant Eden planet
+    rawQuality "Abundant"            // Abundant quality
+    colonyLevel 5                    // Level V colony
+    populationUnits 840              // 840 PU
+    industrialUnits 420              // 50% of PU
+}
+
+houseNaming {
+    // House naming configuration (previously hardcoded in gamestate.nim)
+    namePattern "House{index}"       // Pattern for house names (use {index} placeholder)
+    useThemeNames false              // If true, load from house_themes.kdl
+}
+
+optionalBalanceOverrides {
+    // Moderator can override specific balance values for this scenario only
+    // Examples (commented out by default):
+    // naturalGrowthRate 0.03        // 3% instead of 2% for faster game
+    // researchBreakthroughBaseChance 0.15  // 15% instead of 10%
+    // blockadeProductionPenalty 0.80  // Harsher blockades (80% instead of 60%)
+}
