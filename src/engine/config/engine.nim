@@ -1,15 +1,21 @@
+import ../types/[config, ship]
+import ./[
+  ships_config, ground_units_config, facilities_config,
+  combat_config, economy_config, prestige_config
+]
+
 # Master config loading function
 
-proc loadGameConfig(dataDir: string = "data"): GameConfig =
+proc loadGameConfig(dataDir: string = "config"): GameConfig =
   ## Load and validate all game configuration files
   ## Raises ConfigError if any config file is missing or invalid
 
-  result.ships = loadShipConfig(dataDir / "ships_default.toml")
-  result.groundUnits = loadGroundUnitConfig(dataDir / "ground_units_default.toml")
-  result.facilities = loadFacilityConfig(dataDir / "facilities_default.toml")
-  result.combat = loadCombatConfig(dataDir / "combat_default.toml")
-  result.economy = loadEconomyConfig(dataDir / "economy_default.toml")
-  result.prestige = loadPrestigeConfig(dataDir / "prestige_default.toml")
+  result.ships = loadShipsConfig(dataDir / "ships.kdl")
+  result.groundUnits = loadGroundUnitsConfig(dataDir / "ground_units.kdl")
+  result.facilities = loadFacilitiesConfig(dataDir / "facilities.kdl")
+  result.combat = loadCombatConfig(dataDir / "combat.kdl")
+  result.economy = loadEconomyConfig(dataDir / "economy.kdl")
+  result.prestige = loadPrestigeConfig(dataDir / "prestige.kdl")
 
 proc loadShipConfig(configPath: string): Table[ShipClass, ShipStats] =
   ## Load and validate ship configuration from file

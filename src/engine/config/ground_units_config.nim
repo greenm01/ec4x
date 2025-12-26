@@ -6,60 +6,7 @@
 import kdl
 import kdl_config_helpers
 import ../../common/logger
-
-type
-  PlanetaryShieldConfig* = object
-    cstMin*: int
-    buildCost*: int
-    upkeepCost*: int
-    attackStrength*: int
-    defenseStrength*: int
-    description*: string
-    buildTime*: int
-    maxPerPlanet*: int
-    salvageRequired*: bool
-
-  GroundBatteryConfig* = object
-    cstMin*: int
-    buildCost*: int
-    upkeepCost*: int
-    maintenancePercent*: int
-    attackStrength*: int
-    defenseStrength*: int
-    description*: string
-    buildTime*: int
-    maxPerPlanet*: int
-
-  ArmyConfig* = object
-    cstMin*: int
-    buildCost*: int
-    upkeepCost*: int
-    maintenancePercent*: int
-    attackStrength*: int
-    defenseStrength*: int
-    description*: string
-    buildTime*: int
-    maxPerPlanet*: int
-    populationCost*: int # Souls recruited per division
-
-  MarineDivisionConfig* = object
-    cstMin*: int
-    buildCost*: int
-    upkeepCost*: int
-    maintenancePercent*: int
-    attackStrength*: int
-    defenseStrength*: int
-    description*: string
-    buildTime*: int
-    maxPerPlanet*: int
-    requiresTransport*: bool
-    populationCost*: int # Souls recruited per division
-
-  GroundUnitsConfig* = object ## Complete ground units configuration loaded from KDL
-    planetaryShield*: PlanetaryShieldConfig
-    groundBattery*: GroundBatteryConfig
-    army*: ArmyConfig
-    marineDivision*: MarineDivisionConfig
+import ../types/config
 
 proc parsePlanetaryShield(node: KdlNode, ctx: var KdlConfigContext): PlanetaryShieldConfig =
   result = PlanetaryShieldConfig(

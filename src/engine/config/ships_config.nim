@@ -9,38 +9,6 @@ import kdl_config_helpers
 import ../../common/logger
 import ../types/ship
 
-export ShipClass
-
-type
-  ShipStatsConfig* = object
-    attackStrength*: int32
-    defenseStrength*: int32
-    commandCost*: int32
-    commandRating*: int32
-    carryLimit*: int32
-    minCST*: int32
-    productionCost*: int32
-    maintenanceCost*: int32
-
-  ShipsConfig* = object
-    corvette*: ShipStatsConfig
-    frigate*: ShipStatsConfig
-    destroyer*: ShipStatsConfig
-    lightCruiser*: ShipStatsConfig
-    heavyCruiser*: ShipStatsConfig
-    battlecruiser*: ShipStatsConfig
-    battleship*: ShipStatsConfig
-    dreadnought*: ShipStatsConfig
-    superDreadnought*: ShipStatsConfig
-    planetbreaker*: ShipStatsConfig
-    carrier*: ShipStatsConfig
-    supercarrier*: ShipStatsConfig
-    fighter*: ShipStatsConfig
-    raider*: ShipStatsConfig
-    scout*: ShipStatsConfig
-    etac*: ShipStatsConfig
-    troopTransport*: ShipStatsConfig
-
 proc parseShipStats(node: KdlNode, ctx: var KdlConfigContext): ShipStatsConfig =
   ## Parse ship stats from KDL node with validation
   result = ShipStatsConfig(

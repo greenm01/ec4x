@@ -1,0 +1,53 @@
+// EC4X Gameplay Configuration
+// Core gameplay mechanics and thresholds
+// Source: docs/specs/gameplay.md Section 1.4
+// NOTE: Starting tech levels are defined in config/tech.kdl [starting_tech]
+
+theme {
+    // House theme selection (see config/house_themes.toml for available themes)
+    // Options: "dune", "generic", "classical"
+    activeTheme "dune"  // Which house theme to use (change to "generic" for distribution)
+}
+
+elimination {
+    // BALANCE: Player elimination thresholds
+    defensiveCollapseTurns 3        // Turns below 0 prestige before elimination (gameplay.md:23, 90)
+    defensiveCollapseThreshold 0    // Prestige threshold (below this = collapse risk)
+}
+
+autopilot {
+    // BALANCE: Autopilot (MIA) activation rules
+    miaTurnsThreshold 3             // Consecutive missed turns before autopilot (gameplay.md:105)
+}
+
+autopilotBehavior {
+    // MECHANIC: Autopilot AI behavior (not balance-tunable)
+    continueStandingOrders #true     // Fleets continue existing orders
+    patrolHomeSystems #true          // Idle fleets patrol/defend home
+    maintainEconomy #true             // Continue tax/R&D at current rates
+    defensiveConstruction #true       // Build defensive infrastructure
+    noOffensiveOps #true             // No new attacks or colonization
+    maintainDiplomacy #true           // Diplomatic stances unchanged
+}
+
+defensiveCollapseBehavior {
+    // MECHANIC: Defensive Collapse behavior (not balance-tunable)
+    retreatToHome #true              // All fleets return to controlled systems
+    defendOnly #true                  // Defend against Enemy-status houses
+    noConstruction #true              // No new build orders
+    noDiplomacyChanges #true         // Cannot change diplomatic status
+    economyCeases #true               // No income, R&D, or maintenance
+    permanentElimination #true        // Cannot rejoin game
+}
+
+victory {
+    // MECHANIC: Victory condition rules
+    prestigeVictoryEnabled #true     // Victory by prestige threshold
+    lastPlayerVictoryEnabled #true  // Victory by elimination
+    autopilotCanWin #true            // Autopilot players count as active
+    finalConflictAutoEnemy #true    // Final 2 players forced to Enemy status
+
+    // NOTE: Prestige victory threshold not specified in gameplay.md
+    // This would need to be set per-game scenario
+    // prestigeVictoryThreshold 1000  // Example: First to 1000 prestige wins
+}

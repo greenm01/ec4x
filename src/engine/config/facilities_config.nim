@@ -6,71 +6,7 @@
 import kdl
 import kdl_config_helpers
 import ../../common/logger
-
-type
-  SpaceportConfig* = object
-    cstMin*: int
-    buildCost*: int
-    upkeepCost*: int
-    defenseStrength*: int
-    carryLimit*: int
-    description*: string
-    buildTime*: int
-    docks*: int
-    maxPerPlanet*: int
-    requiredForShipyard*: bool
-
-  ShipyardConfig* = object
-    cstMin*: int
-    buildCost*: int
-    upkeepCost*: int
-    defenseStrength*: int
-    carryLimit*: int
-    description*: string
-    buildTime*: int
-    docks*: int
-    maxPerPlanet*: int
-    requiresSpaceport*: bool
-    fixedOrbit*: bool
-
-  DrydockConfig* = object
-    cstMin*: int
-    buildCost*: int
-    upkeepCost*: int
-    defenseStrength*: int
-    carryLimit*: int
-    description*: string
-    buildTime*: int
-    docks*: int
-    maxPerPlanet*: int
-    requiresSpaceport*: bool
-    fixedOrbit*: bool
-    repairOnly*: bool
-
-  StarbaseConfig* = object
-    cstMin*: int
-    buildCost*: int
-    upkeepCost*: int
-    defenseStrength*: int
-    attackStrength*: int
-    description*: string
-    buildTime*: int
-    maxPerPlanet*: int
-    requiresSpaceport*: bool
-    fixedOrbit*: bool
-    economicLiftBonus*: int
-    growthBonus*: float
-
-  ConstructionConfig* = object
-    repairRatePerTurn*: float
-    multipleDocksAllowed*: bool
-
-  FacilitiesConfig* = object ## Complete facilities configuration loaded from KDL
-    spaceport*: SpaceportConfig
-    shipyard*: ShipyardConfig
-    drydock*: DrydockConfig
-    starbase*: StarbaseConfig
-    construction*: ConstructionConfig
+import ../types/config
 
 proc parseSpaceport(node: KdlNode, ctx: var KdlConfigContext): SpaceportConfig =
   result = SpaceportConfig(

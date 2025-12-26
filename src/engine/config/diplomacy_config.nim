@@ -6,30 +6,7 @@
 import kdl
 import kdl_config_helpers
 import ../../common/logger
-
-type
-  EspionageEffectsConfig* = object
-    techTheftSrpStolen*: int
-    lowSabotageDice*: string
-    lowSabotageIuMin*: int
-    lowSabotageIuMax*: int
-    highSabotageDice*: string
-    highSabotageIuMin*: int
-    highSabotageIuMax*: int
-    assassinationSrpReduction*: float
-    assassinationDurationTurns*: int
-    economicDisruptionNcvReduction*: float
-    economicDisruptionDurationTurns*: int
-    propagandaTaxReduction*: float
-    propagandaDurationTurns*: int
-    cyberAttackEffect*: string
-
-  DetectionConfig* = object
-    failedEspionagePrestigeLoss*: int
-
-  DiplomacyConfig* = object ## Complete diplomacy configuration loaded from KDL
-    espionageEffects*: EspionageEffectsConfig
-    detection*: DetectionConfig
+import ../types/config
 
 proc parseEspionageEffects(node: KdlNode, ctx: var KdlConfigContext): EspionageEffectsConfig =
   result = EspionageEffectsConfig(

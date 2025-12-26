@@ -1,0 +1,345 @@
+// EC4X Technology Configuration
+// Source: docs/specs/economy.md Section 4.0 (Research & Development)
+// Edit this file to change tech costs
+// ACCELERATION: All research costs halved for 30-turn multi-generational timeline
+// CRITICAL: ALL tech levels start at 1, not 0! (economy.md section 4.0)
+
+startingTech {
+  economicLevel 1
+  scienceLevel 1
+  constructionTech 1
+  weaponsTech 1
+  terraformingTech 1
+  electronicIntelligence 1
+  cloakingTech 1
+  shieldTech 1
+  counterIntelligence 1
+  fighterDoctrine 1
+  advancedCarrierOps 1
+}
+
+economicLevel {
+  level1Erp 25
+  level1Mod 0.05
+  level2Erp 30
+  level2Mod 0.10
+  level3Erp 35
+  level3Mod 0.15
+  level4Erp 40
+  level4Mod 0.20
+  level5Erp 45
+  level5Mod 0.25
+  level6Erp 52
+  level6Mod 0.30
+  level7Erp 60
+  level7Mod 0.35
+  level8Erp 67
+  level8Mod 0.40
+  level9Erp 75
+  level9Mod 0.45
+  level10Erp 82
+  level10Mod 0.50
+  level11Erp 90
+  level11Mod 0.50
+}
+
+scienceLevel {
+  level1Srp 12
+  level2Srp 15
+  level3Srp 17
+  level4Srp 20
+  level5Srp 22
+  level6Srp 27
+  level7Srp 32
+  level8Srp 37
+}
+
+constructionTech {
+  capacityMultiplierPerLevel 0.10
+  level1Sl 1
+  level1Trp 24
+  level2Sl 2
+  level2Trp 30
+  level3Sl 3
+  level3Trp 34
+  level4Sl 4
+  level4Trp 40
+  level5Sl 5
+  level5Trp 44
+  level6Sl 6
+  level6Trp 50
+  level7Sl 7
+  level7Trp 54
+  level8Sl 8
+  level8Trp 60
+  level9Sl 9
+  level9Trp 64
+  level10Sl 10
+  level10Trp 70
+  level11Sl 11
+  level11Trp 80
+  level12Sl 12
+  level12Trp 90
+  level13Sl 13
+  level13Trp 100
+  level14Sl 14
+  level14Trp 110
+  level15Sl 15
+  level15Trp 120
+}
+
+weaponsTech {
+  weaponsStatIncreasePerLevel 0.10
+  weaponsCostIncreasePerLevel 0.10
+  level1Sl 1
+  level1Trp 12
+  level2Sl 2
+  level2Trp 15
+  level3Sl 3
+  level3Trp 17
+  level4Sl 4
+  level4Trp 20
+  level5Sl 5
+  level5Trp 22
+  level6Sl 6
+  level6Trp 25
+  level7Sl 7
+  level7Trp 27
+  level8Sl 8
+  level8Trp 30
+  level9Sl 9
+  level9Trp 32
+  level10Sl 10
+  level10Trp 35
+  level11Sl 11
+  level11Trp 40
+  level12Sl 12
+  level12Trp 45
+  level13Sl 13
+  level13Trp 50
+  level14Sl 14
+  level14Trp 55
+  level15Sl 15
+  level15Trp 60
+}
+
+terraformingTech {
+  level1Sl 1
+  level1Trp 12
+  level1PlanetClass "Extreme"
+  level2Sl 2
+  level2Trp 15
+  level2PlanetClass "Desolate"
+  level3Sl 3
+  level3Trp 17
+  level3PlanetClass "Hostile"
+  level4Sl 4
+  level4Trp 20
+  level4PlanetClass "Harsh"
+  level5Sl 5
+  level5Trp 22
+  level5PlanetClass "Benign"
+  level6Sl 6
+  level6Trp 25
+  level6PlanetClass "Lush"
+  level7Sl 7
+  level7Trp 27
+  level7PlanetClass "Eden"
+}
+
+terraformingUpgradeCosts {
+  extremeTer 1
+  extremePuMin 1
+  extremePuMax 20
+  extremePp 0
+  desolateTer 2
+  desolatePuMin 21
+  desolatePuMax 60
+  desolatePp 60
+  hostileTer 3
+  hostilePuMin 61
+  hostilePuMax 180
+  hostilePp 180
+  harshTer 4
+  harshPuMin 181
+  harshPuMax 500
+  harshPp 500
+  benignTer 5
+  benignPuMin 501
+  benignPuMax 1000
+  benignPp 1000
+  lushTer 6
+  lushPuMin 1001
+  lushPuMax 2000
+  lushPp 1500
+  edenTer 7
+  edenPuMin 2001
+  edenPuMax 999999
+  edenPp 2000
+}
+
+electronicIntelligence {
+  level1Sl 1
+  level1Trp 12
+  level2Sl 2
+  level2Trp 15
+  level3Sl 3
+  level3Trp 17
+  level4Sl 4
+  level4Trp 20
+  level5Sl 5
+  level5Trp 22
+  level6Sl 6
+  level6Trp 25
+  level7Sl 7
+  level7Trp 27
+  level8Sl 8
+  level8Trp 30
+  level9Sl 9
+  level9Trp 32
+  level10Sl 10
+  level10Trp 35
+  level11Sl 11
+  level11Trp 40
+  level12Sl 12
+  level12Trp 45
+  level13Sl 13
+  level13Trp 50
+  level14Sl 14
+  level14Trp 55
+  level15Sl 15
+  level15Trp 60
+}
+
+cloakingTech {
+  level1Sl 3
+  level1Trp 17
+  level2Sl 4
+  level2Trp 20
+  level3Sl 5
+  level3Trp 22
+  level4Sl 6
+  level4Trp 25
+  level5Sl 7
+  level5Trp 27
+  level6Sl 8
+  level6Trp 30
+  level7Sl 9
+  level7Trp 32
+  level8Sl 10
+  level8Trp 35
+  level9Sl 11
+  level9Trp 40
+  level10Sl 12
+  level10Trp 45
+  level11Sl 13
+  level11Trp 50
+  level12Sl 14
+  level12Trp 55
+  level13Sl 15
+  level13Trp 60
+  level14Sl 16
+  level14Trp 65
+  level15Sl 17
+  level15Trp 70
+}
+
+shieldTech {
+  level1Sl 3
+  level1Trp 17
+  level2Sl 4
+  level2Trp 20
+  level3Sl 5
+  level3Trp 22
+  level4Sl 6
+  level4Trp 25
+  level5Sl 7
+  level5Trp 27
+  level6Sl 8
+  level6Trp 30
+  level7Sl 9
+  level7Trp 32
+  level8Sl 10
+  level8Trp 35
+  level9Sl 11
+  level9Trp 40
+  level10Sl 12
+  level10Trp 45
+  level11Sl 13
+  level11Trp 50
+  level12Sl 14
+  level12Trp 55
+  level13Sl 15
+  level13Trp 60
+  level14Sl 16
+  level14Trp 65
+  level15Sl 17
+  level15Trp 70
+}
+
+counterIntelligenceTech {
+  level1Sl 1
+  level1Trp 12
+  level2Sl 2
+  level2Trp 15
+  level3Sl 3
+  level3Trp 17
+  level4Sl 4
+  level4Trp 20
+  level5Sl 5
+  level5Trp 22
+  level6Sl 6
+  level6Trp 25
+  level7Sl 7
+  level7Trp 27
+  level8Sl 8
+  level8Trp 30
+  level9Sl 9
+  level9Trp 32
+  level10Sl 10
+  level10Trp 35
+  level11Sl 11
+  level11Trp 40
+  level12Sl 12
+  level12Trp 45
+  level13Sl 13
+  level13Trp 50
+  level14Sl 14
+  level14Trp 55
+  level15Sl 15
+  level15Trp 60
+}
+
+fighterDoctrine {
+  level1Sl 1
+  level1Trp 0
+  level1CapacityMultiplier 1.0
+  level1Description "Basic Fighter Operations"
+  level2Sl 2
+  level2Trp 15
+  level2CapacityMultiplier 1.5
+  level2Description "Advanced Fighter Operations"
+  level3Sl 3
+  level3Trp 17
+  level3CapacityMultiplier 2.0
+  level3Description "Elite Fighter Operations"
+}
+
+advancedCarrierOperations {
+  capacityMultiplierPerLevel 0.10
+  level1Sl 1
+  level1Trp 0
+  level1CvCapacity 3
+  level1CxCapacity 5
+  level1Description "Standard Carrier Operations"
+  level2Sl 4
+  level2Trp 20
+  level2CvCapacity 4
+  level2CxCapacity 6
+  level2Description "Enhanced Carrier Operations"
+  level3Sl 5
+  level3Trp 22
+  level3CvCapacity 5
+  level3CxCapacity 8
+  level3Description "Advanced Carrier Operations"
+}

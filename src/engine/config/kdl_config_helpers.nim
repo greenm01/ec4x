@@ -1,7 +1,6 @@
 ## KDL Configuration Helpers
 ##
 ## Generic utilities for loading and validating KDL configuration files
-## Supports gradual migration from TOML to KDL format
 ##
 ## Design principles:
 ## - Type-safe value extraction with clear error messages
@@ -10,16 +9,8 @@
 ## - Path-based error reporting for nested structures
 
 import std/[options, os, strformat, strutils, tables]
+import ../types/config
 import kdl
-
-type
-  ConfigError* = object of CatchableError
-    ## Exception raised when configuration is invalid or missing
-
-  KdlConfigContext* = object
-    ## Context for error reporting during config parsing
-    filepath*: string
-    nodePath*: seq[string]  # Track nested node path for errors
 
 # ============================================================================
 # Node Navigation Helpers
@@ -75,7 +66,7 @@ proc requireChildNode*(parent: KdlNode, name: string, ctx: KdlConfigContext): Kd
       &"Missing required child '{name}' in {path} ({ctx.filepath})")
   nodeOpt.get
 
-proc requireInt*(node: KdlNode, childName: string, ctx: KdlConfigContext): int =
+proc requireInt32*(node: KdlNode, childName: string, ctx: KdlConfigContext): int32 =
   ## Get required integer value from child node
   let valOpt = node.getChild(childName)
   if valOpt.isNone:
@@ -86,15 +77,15 @@ proc requireInt*(node: KdlNode, childName: string, ctx: KdlConfigContext): int =
   let val = valOpt.get
   case val.kind
   of KValKind.KInt, KValKind.KInt8, KValKind.KInt16, KValKind.KInt32, KValKind.KInt64:
-    val.getInt().int
+    val.getInt().int32
   of KValKind.KUInt8, KValKind.KUInt16, KValKind.KUInt32, KValKind.KUInt64:
-    val.getInt().int
+    val.getInt().int32
   else:
     let path = ctx.nodePath.join(".")
     raise newException(ConfigError,
       &"Field '{childName}' in {path} must be integer, got {val.kind} ({ctx.filepath})")
 
-proc requireFloat*(node: KdlNode, childName: string, ctx: KdlConfigContext): float =
+proc requireFloat32*(node: KdlNode, childName: string, ctx: KdlConfigContext): float32 =
   ## Get required float value from child node
   let valOpt = node.getChild(childName)
   if valOpt.isNone:
@@ -105,9 +96,9 @@ proc requireFloat*(node: KdlNode, childName: string, ctx: KdlConfigContext): flo
   let val = valOpt.get
   case val.kind
   of KValKind.KFloat, KValKind.KFloat32, KValKind.KFloat64:
-    val.getFloat()
+    val.getFloat().float32
   of KValKind.KInt, KValKind.KInt32, KValKind.KInt64:
-    val.getInt().float
+    val.getInt().float32
   else:
     let path = ctx.nodePath.join(".")
     raise newException(ConfigError,
@@ -245,46 +236,46 @@ proc getStringOpt*(node: KdlNode, childName: string): Option[string] =
 # Validated Field Extraction (combines extraction + validation)
 # ============================================================================
 
-proc requirePositiveInt*(node: KdlNode, childName: string, ctx: KdlConfigContext): int =
+proc requirePositiveInt32*(node: KdlNode, childName: string, ctx: KdlConfigContext): int32 =
   ## Get required integer that must be > 0
-  result = node.requireInt(childName, ctx)
+  result = node.requireInt32(childName, ctx)
   if result <= 0:
     let path = ctx.nodePath.join(".")
     raise newException(ConfigError,
       &"Field '{childName}' in {path} must be positive, got {result} ({ctx.filepath})")
 
-proc requireNonNegativeInt*(node: KdlNode, childName: string, ctx: KdlConfigContext): int =
+proc requireNonNegativeInt32*(node: KdlNode, childName: string, ctx: KdlConfigContext): int32 =
   ## Get required integer that must be >= 0
-  result = node.requireInt(childName, ctx)
+  result = node.requireInt32(childName, ctx)
   if result < 0:
     let path = ctx.nodePath.join(".")
     raise newException(ConfigError,
       &"Field '{childName}' in {path} must be non-negative, got {result} ({ctx.filepath})")
 
-proc requireRangeInt*(
+proc requireRangeInt32*(
     node: KdlNode, 
     childName: string, 
     min, max: int, 
     ctx: KdlConfigContext
-): int =
+): int32 =
   ## Get required integer within [min, max] range
-  result = node.requireInt(childName, ctx)
+  result = node.requireInt32(childName, ctx)
   if result < min or result > max:
     let path = ctx.nodePath.join(".")
     raise newException(ConfigError,
       &"Field '{childName}' in {path} must be between {min} and {max}, got {result} ({ctx.filepath})")
 
-proc requireRatio*(node: KdlNode, childName: string, ctx: KdlConfigContext): float =
-  ## Get required float that must be in [0.0, 1.0]
-  result = node.requireFloat(childName, ctx)
+proc requireRatio*(node: KdlNode, childName: string, ctx: KdlConfigContext): float32 =
+  ## Get required float32 that must be in [0.0, 1.0]
+  result = node.requireFloat32(childName, ctx)
   if result < 0.0 or result > 1.0:
     let path = ctx.nodePath.join(".")
     raise newException(ConfigError,
       &"Field '{childName}' in {path} must be ratio [0.0-1.0], got {result} ({ctx.filepath})")
 
-proc requirePercentage*(node: KdlNode, childName: string, ctx: KdlConfigContext): float =
+proc requirePercentage*(node: KdlNode, childName: string, ctx: KdlConfigContext): float32 =
   ## Get required float that must be in [0.0, 100.0]
-  result = node.requireFloat(childName, ctx)
+  result = node.requireFloat32(childName, ctx)
   if result < 0.0 or result > 100.0:
     let path = ctx.nodePath.join(".")
     raise newException(ConfigError,

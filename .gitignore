@@ -11,7 +11,7 @@
 !*.md
 
 # Whitelist config and scripts
-!*.toml
+!*.kdl
 !*.yaml
 !*.yml
 !*.json

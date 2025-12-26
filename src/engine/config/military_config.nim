@@ -6,31 +6,7 @@
 import kdl
 import kdl_config_helpers
 import ../../common/logger
-
-type
-  FighterMechanicsConfig* = object
-    fighterCapacityIuDivisor*: int
-    capacityViolationGracePeriod*: int
-
-  SquadronLimitsConfig* = object
-    squadronLimitIuDivisor*: int # IU divisor for capital squadron limit calculation
-    squadronLimitMinimum*: int
-    totalSquadronIuDivisor*: int # IU divisor for total squadron limit calculation
-    totalSquadronMinimum*: int
-    capitalShipCrThreshold*: int
-
-  SalvageConfig* = object
-    salvageValueMultiplier*: float
-    emergencySalvageMultiplier*: float
-
-  SpaceLiftCapacityConfig* = object
-    etacCapacity*: int # Population Transfer Units per ETAC
-
-  MilitaryConfig* = object ## Complete military configuration loaded from KDL
-    fighterMechanics*: FighterMechanicsConfig
-    squadronLimits*: SquadronLimitsConfig
-    salvage*: SalvageConfig
-    spaceliftCapacity*: SpaceLiftCapacityConfig
+import ../types/config
 
 proc parseFighterMechanics(node: KdlNode, ctx: var KdlConfigContext): FighterMechanicsConfig =
   result = FighterMechanicsConfig(

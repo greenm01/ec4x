@@ -1,0 +1,55 @@
+// EC4X Diplomacy Configuration
+// Diplomatic mechanics, pact violations, espionage effects
+//
+// This file contains:
+// - BALANCE VARIABLES: Diplomatic durations, espionage effects
+// - CORE MECHANICS: Diplomatic state rules
+
+// ============================================================================
+// ESPIONAGE ACTION EFFECTS
+// Source: docs/specs/diplomacy.md Section 8.2.1
+// ============================================================================
+
+espionageEffects {
+    // BALANCE: Mechanical effects of successful espionage
+
+    // Tech Theft
+    techTheftSrpStolen 10         // Steals 10 SRP from target
+
+    // Sabotage
+    lowSabotageDice "1d6"          // Dice roll for IU damage
+    lowSabotageIuMin 1            // Minimum IU destroyed
+    lowSabotageIuMax 6            // Maximum IU destroyed
+
+    highSabotageDice "1d20"        // Dice roll for IU damage
+    highSabotageIuMin 1           // Minimum IU destroyed
+    highSabotageIuMax 20          // Maximum IU destroyed
+
+    // Assassination
+    assassinationSrpReduction 0.50  // Reduces target SRP gain by 50%
+    assassinationDurationTurns 1    // Effect lasts 1 turn
+
+    // Economic Disruption
+    economicDisruptionNcvReduction 0.50  // Halves Net Colony Value
+    economicDisruptionDurationTurns 1    // Effect lasts 1 turn
+
+    // Propaganda Campaign
+    propagandaTaxReduction 0.25    // Reduces tax revenue by 25%
+    propagandaDurationTurns 1      // Effect lasts 1 turn
+
+    // Cyber Attack
+    cyberAttackEffect "cripple_starbase"  // Cripples the target Starbase
+    // Note: Starbase crippled mechanics defined in combat system
+}
+
+// ============================================================================
+// COUNTER-INTELLIGENCE DETECTION
+// Source: docs/specs/diplomacy.md Section 8.3
+// ============================================================================
+
+detection {
+    // BALANCE: Detection failure prestige penalty
+    failedEspionagePrestigeLoss -2  // Attacker loses 2 prestige when detected
+
+    // Note: Detection modifiers, thresholds, and CIP costs are in espionage.kdl
+}

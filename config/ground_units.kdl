@@ -1,0 +1,53 @@
+// EC4X Ground Units Configuration
+// Based on EC4X specifications (Section 9.2)
+
+planetaryShield {
+    cstMin 5
+    buildCost 50  // Phase F: Further reduced from 67 to improve deployment rate (was 100 baseline)
+    upkeepCost 5
+    attackStrength 0
+    defenseStrength 100
+    description "Protects colonies from orbital bombardment"
+    buildTime 1  // turns
+    maxPerPlanet 1
+    salvageRequired #true  // Must salvage old shield before upgrading
+}
+
+groundBattery {
+    cstMin 1
+    buildCost 13  // Reduced 33% from 20 (Phase F balance)
+    upkeepCost 1  // Actual PP cost
+    maintenancePercent 3  // MC% as shown in spec
+    attackStrength 10
+    defenseStrength 8
+    description "Static defense units positioned on planet surface"
+    buildTime 1  // turns (instant)
+    maxPerPlanet -1  // unlimited
+}
+
+army {
+    cstMin 1
+    buildCost 10  // Reduced 33% from 15 (Phase F balance)
+    upkeepCost 1  // Actual PP cost
+    maintenancePercent 2  // MC% as shown in spec
+    attackStrength 3
+    defenseStrength 5
+    description "Garrison forces that defend colonies"
+    buildTime 1  // turns
+    maxPerPlanet -1  // unlimited
+    populationCost 15000  // souls recruited (realistic army division size)
+}
+
+marineDivision {
+    cstMin 1
+    buildCost 17  // Reduced 33% from 25 (Phase F balance)
+    upkeepCost 1  // Actual PP cost
+    maintenancePercent 2  // MC% as shown in spec
+    attackStrength 6
+    defenseStrength 6
+    description "Elite invasion forces that capture rival planets"
+    buildTime 1  // turns
+    maxPerPlanet -1  // unlimited
+    requiresTransport #true  // Must be loaded on Troop Transports
+    populationCost 18000  // souls recruited (realistic marine division size)
+}

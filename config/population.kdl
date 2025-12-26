@@ -1,0 +1,83 @@
+// Population Transfer via Space Guild
+// Source: docs/specs/economy.md Section 3.7
+//
+// The Space Guilds maintain civilian Starliners that transport colonists between
+// established colonies. This service is expensive and time-consuming, reflecting
+// the logistical complexity of moving thousands of people with equipment across
+// interstellar distances.
+
+ptuDefinition {
+    // Population Transfer Unit (PTU) definition
+    // One PTU is approximately 50k souls = 0.05 million people
+    // Used for both ETAC colonization and Space Guild transfers
+    soulsPerPtu 50000        // Number of people in 1 PTU
+    ptuSizeMillions 0.05     // PTU size in millions (for colony.population field)
+    minPopulationRemaining 0 // Minimum population after PTU transfer (0 = allow evacuation)
+}
+
+transferCosts {
+    // Base cost per PTU by planet class (PP per PTU)
+    // Lower cost = easier living conditions = less equipment needed
+    edenCost 4
+    lushCost 5
+    benignCost 6
+    harshCost 8
+    hostileCost 10
+    desolateCost 12
+    extremeCost 15
+}
+
+transferTime {
+    // Transit time calculation
+    turnsPerJump 1  // 1 turn per jump lane in path
+    minimumTurns 1   // Minimum 1 turn even for same system
+}
+
+transferModifiers {
+    // Distance cost modifier (reflects increased risk, fuel, supplies)
+    costIncreasePerJump 0.20  // +20% per jump beyond first
+    // Example: 3 jumps = base_cost × (1 + 2×0.20) = base_cost × 1.40
+}
+
+transferLimits {
+    // Constraints on population transfer
+    minPtuTransfer 1           // Minimum PTUs per transfer
+    minSourcePuRemaining 1    // Source colony must keep at least 1 PU
+    maxConcurrentTransfers 5   // Max active transfers per house (prevent spam)
+}
+
+transferRisks {
+    // What happens when colonies change hands mid-transfer
+    // The Space Guild is neutral and attempts to deliver colonists somewhere safe
+
+    // Source conquered: Transfer continues (already paid, Guild is neutral)
+    sourceConqueredBehavior "continue"
+
+    // Destination conquered: PTUs lost (refugees disperse, chaos)
+    destConqueredBehavior "lost"
+
+    // Destination blockaded at arrival: Deliver to closest owned colony
+    // If no owned colonies exist, colonists are lost
+    destBlockadedBehavior "closest_owned"
+
+    // Destination collapsed (< 1 PTU): Deliver to closest owned colony
+    // If no owned colonies exist, colonists are lost
+    destCollapsedBehavior "closest_owned"
+}
+
+recruitment {
+    // Ground unit recruitment constraints
+    minViablePopulation 5000       // Minimum souls required after recruiting ground units (armies/marines)
+                                   // Players can recruit down to this level (bare minimum for colony viability)
+}
+
+aiStrategy {
+    // AI decision making for population transfers
+    minTreasuryForTransfer 200    // Only transfer if treasury > this
+    minSourcePopulation 10         // Only transfer from colonies with PU > this
+    maxDestPopulation 5            // Only transfer to colonies with PU < this
+    recentColonyAgeTurns 20       // Consider colonies "new" if founded < this turns ago
+    ptuPerTransfer 2               // Default PTU amount to transfer
+    minEconomicFocus 0.5           // Only if AI economicFocus > this
+    minExpansionDrive 0.4          // Only if AI expansionDrive > this
+}

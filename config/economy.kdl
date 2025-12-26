@@ -1,0 +1,205 @@
+// EC4X Economy Configuration
+// Core economic mechanics: population, production, investment, taxation, colonization
+//
+// This file contains:
+// - BALANCE VARIABLES: Tunable gameplay parameters (adjust during playtesting)
+// - CORE MECHANICS: Fundamental game rules (mathematical formulas, type systems)
+//
+// Note: Starting resources and scenario setup are in game_setup/*.kdl files
+// Note: Construction costs/times are in construction.kdl
+// Note: Military squadron limits are in military.kdl
+
+population {
+  naturalGrowthRate 0.30
+  growthRatePerStarbase 0.10
+  maxStarbaseBonus 0.30
+  ptuGrowthRate 0.04
+  ptuToSouls 50000
+  puToPtuConversion 0.00657
+}
+
+production {
+  productionPer10Population 5
+  productionSplitCredits 0.33
+  productionSplitProduction 0.33
+  productionSplitResearch 0.33
+}
+
+infrastructure {
+  // TODO: Define infrastructure production modifiers
+}
+
+planetClasses {
+  extremePuMin 1
+  extremePuMax 20
+  desolatePuMin 21
+  desolatePuMax 60
+  hostilePuMin 61
+  hostilePuMax 180
+  harshPuMin 181
+  harshPuMax 500
+  benignPuMin 501
+  benignPuMax 1000
+  lushPuMin 1001
+  lushPuMax 2000
+  edenPuMin 2001
+}
+
+research {
+  researchCostBase 1000
+  researchCostExponent 2
+  researchBreakthroughBaseChance 0.10
+  researchBreakthroughRpPerPercent 50
+  minorBreakthroughBonus 10
+  moderateBreakthroughDiscount 0.20
+  revolutionaryQuantumComputingElModBonus 0.10
+  revolutionaryStealthDetectionBonus 2
+  revolutionaryTerraformingGrowthBonus 0.02
+  erpBaseCost 5
+  elEarlyBase 40
+  elEarlyIncrement 10
+  elLateIncrement 15
+  srpBaseCost 2
+  srpSlMultiplier 0.5
+  slEarlyBase 20
+  slEarlyIncrement 5
+  slLateIncrement 10
+  trpFirstLevelCost 25
+  trpLevelIncrement 5
+}
+
+espionage {
+  ebpCostPerPoint 40
+  cipCostPerPoint 40
+  maxActionsPerTurn 1
+  budgetThresholdPercent 5
+  prestigeLossPerPercentOver 1
+  techTheftCost 5
+  sabotageLowCost 2
+  sabotageHighCost 7
+  assassinationCost 10
+  cyberAttackCost 6
+  economicManipulationCost 6
+  psyopsCampaignCost 3
+  detectionRollCost 1
+}
+
+rawMaterialEfficiency {
+  veryPoorEden 0.60
+  veryPoorLush 0.60
+  veryPoorBenign 0.60
+  veryPoorHarsh 0.60
+  veryPoorHostile 0.60
+  veryPoorDesolate 0.60
+  veryPoorExtreme 0.60
+  poorEden 0.80
+  poorLush 0.75
+  poorBenign 0.70
+  poorHarsh 0.65
+  poorHostile 0.64
+  poorDesolate 0.63
+  poorExtreme 0.62
+  abundantEden 1.00
+  abundantLush 0.90
+  abundantBenign 0.80
+  abundantHarsh 0.70
+  abundantHostile 0.68
+  abundantDesolate 0.66
+  abundantExtreme 0.64
+  richEden 1.20
+  richLush 1.05
+  richBenign 0.90
+  richHarsh 0.75
+  richHostile 0.72
+  richDesolate 0.69
+  richExtreme 0.66
+  veryRichEden 1.40
+  veryRichLush 1.20
+  veryRichBenign 1.00
+  veryRichHarsh 0.80
+  veryRichHostile 0.76
+  veryRichDesolate 0.72
+  veryRichExtreme 0.68
+}
+
+taxMechanics {
+  taxAveragingWindowTurns 6
+}
+
+taxPopulationGrowth {
+  tier1Min 41
+  tier1Max 50
+  tier1PopMultiplier 1.0
+  tier2Min 31
+  tier2Max 40
+  tier2PopMultiplier 1.05
+  tier3Min 21
+  tier3Max 30
+  tier3PopMultiplier 1.10
+  tier4Min 11
+  tier4Max 20
+  tier4PopMultiplier 1.15
+  tier5Min 0
+  tier5Max 10
+  tier5PopMultiplier 1.20
+}
+
+industrialInvestment {
+  baseCost 3
+  tier1MaxPercent 50
+  tier1Multiplier 1.0
+  tier1Pp 3
+  tier2MinPercent 51
+  tier2MaxPercent 75
+  tier2Multiplier 1.2
+  tier2Pp 4
+  tier3MinPercent 76
+  tier3MaxPercent 100
+  tier3Multiplier 1.5
+  tier3Pp 5
+  tier4MinPercent 101
+  tier4MaxPercent 150
+  tier4Multiplier 2.0
+  tier4Pp 6
+  tier5MinPercent 151
+  tier5Multiplier 2.5
+  tier5Pp 8
+}
+
+colonization {
+  startingInfrastructureLevel 1
+  startingIuPercent 50
+  edenPpPerPtu 4
+  lushPpPerPtu 5
+  benignPpPerPtu 6
+  harshPpPerPtu 8
+  hostilePpPerPtu 10
+  desolatePpPerPtu 12
+  extremePpPerPtu 15
+}
+
+industrialGrowth {
+  passiveGrowthDivisor 50.0
+  passiveGrowthMinimum 2.0
+  appliesModifiers #true
+}
+
+starbaseBonuses {
+  growthBonusPerStarbase 0.05
+  maxStarbasesForBonus 3
+  eliBonusPerStarbase 2
+}
+
+squadronCapacity {
+  capitalSquadronIuDivisor 100
+  capitalSquadronMultiplier 2
+  capitalSquadronMinimum 8
+}
+
+productionModifiers {
+  elBonusPerLevel 0.05
+  cstBonusPerLevel 0.10
+  blockadePenalty 0.40
+  prodGrowthNumerator 50.0
+  prodGrowthDenominator 500.0
+}

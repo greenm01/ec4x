@@ -1,0 +1,92 @@
+// EC4X Facilities Configuration
+// Based on EC4X specifications (Section 9.3, 2.3.2)
+
+spaceport {
+    cstMin 1
+    buildCost 100
+    upkeepCost 5
+    defenseStrength 50
+    carryLimit 5
+    description "Ground-based facility that launches heavy-lift ships and equipment into orbit"
+    buildTime 1  // turns (one month)
+    docks 5  // Available for planet-side ship construction
+    maxPerPlanet -1  // unlimited
+    requiredForShipyard #true
+}
+
+shipyard {
+    cstMin 1
+    buildCost 150
+    upkeepCost 5
+    defenseStrength 70
+    carryLimit 10
+    description "Orbital base for ship construction and repair"
+    buildTime 2  // turns (two months)
+    docks 10  // Available for construction and repair
+    maxPerPlanet -1  // unlimited
+    requiresSpaceport #true
+    fixedOrbit #true  // Cannot move out of system
+}
+
+drydock {
+    cstMin 1
+    buildCost 150
+    upkeepCost 5
+    defenseStrength 70
+    carryLimit 10
+    description "Orbital facility dedicated to ship repair operations"
+    buildTime 2  // turns (two months)
+    docks 10  // Available for repair only
+    maxPerPlanet -1  // unlimited
+    requiresSpaceport #true
+    fixedOrbit #true  // Cannot move out of system
+    repairOnly #true  // Cannot build ships
+}
+
+starbase {
+    cstMin 3
+    buildCost 300
+    upkeepCost 15
+    defenseStrength 50
+    attackStrength 45
+    description "Immobile orbital defense platform providing economic and defensive bonuses"
+    buildTime 3  // turns (three months)
+    maxPerPlanet -1  // unlimited
+    requiresSpaceport #true  // Built using spaceport lift capacity
+    fixedOrbit #true  // Cannot move out of system
+    economicLiftBonus 2  // ELI+2 per operational starbase
+    growthBonus 0.05  // 5% population growth per operational starbase
+}
+
+construction {
+    // Construction rules
+    repairRatePerTurn 0.25  // 25% of DS restored per turn
+    multipleDocksAllowed #true  // Can build multiple ships simultaneously
+}
+
+// ==============================================================================
+// PLANETARY SHIELDS
+// Source: Previously hardcoded in gamestate.nim and commissioning.nim
+// ==============================================================================
+
+planetaryShields {
+    // Shield block chance by tech level
+    sld1BlockChance 0.30  // 30%
+    sld2BlockChance 0.40  // 40%
+    sld3BlockChance 0.50  // 50%
+    sld4BlockChance 0.60  // 60%
+    sld5BlockChance 0.70  // 70%
+    sld6BlockChance 0.80  // 80%
+
+    shieldDamageReduction 0.25     // 25% reduction from bombardment
+    shieldInvasionDifficulty 0.15  // +15% difficulty per SLD level
+}
+
+// ==============================================================================
+// GROUND DEFENSE
+// Source: Previously hardcoded in commissioning.nim
+// ==============================================================================
+
+groundDefense {
+    defensePerBattery 10  // 10 defense points per ground battery
+}

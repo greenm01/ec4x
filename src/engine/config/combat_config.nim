@@ -6,153 +6,73 @@
 import kdl
 import kdl_config_helpers
 import ../../common/logger
-
-type
-  CombatMechanicsConfig* = object
-    criticalHitRoll*: int
-    retreatAfterRound*: int
-    starbaseCriticalReroll*: bool
-    starbaseDieModifier*: int
-
-  CerModifiersConfig* = object
-    scouts*: int
-    surprise*: int
-    ambush*: int
-
-  CerTableConfig* = object
-    veryPoorMax*: int
-    poorMax*: int
-    averageMax*: int
-    goodMin*: int
-
-  BombardmentConfig* = object
-    maxRoundsPerTurn*: int
-    veryPoorMax*: int
-    poorMax*: int
-    goodMin*: int
-
-  GroundCombatConfig* = object
-    poorMax*: int
-    averageMax*: int
-    goodMax*: int
-    critical*: int
-
-  PlanetaryShieldsConfig* = object
-    sld1Chance*: int
-    sld1Roll*: int
-    sld1Block*: int
-    sld2Chance*: int
-    sld2Roll*: int
-    sld2Block*: int
-    sld3Chance*: int
-    sld3Roll*: int
-    sld3Block*: int
-    sld4Chance*: int
-    sld4Roll*: int
-    sld4Block*: int
-    sld5Chance*: int
-    sld5Roll*: int
-    sld5Block*: int
-    sld6Chance*: int
-    sld6Roll*: int
-    sld6Block*: int
-
-  DamageRulesConfig* = object
-    crippledAsMultiplier*: float
-    crippledMaintenanceMultiplier*: float
-    squadronFightsAsUnit*: bool
-    destroyAfterAllCrippled*: bool
-
-  RetreatRulesConfig* = object
-    fightersNeverRetreat*: bool
-    spaceliftDestroyedIfEscortLost*: bool
-    retreatToNearestFriendly*: bool
-
-  BlockadeConfig* = object
-    blockadeProductionPenalty*: float
-    blockadePrestigePenalty*: int
-
-  InvasionConfig* = object
-    invasionIuLoss*: float
-    blitzIuLoss*: float
-
-  CombatConfig* = object ## Complete combat configuration loaded from KDL
-    combat*: CombatMechanicsConfig
-    cerModifiers*: CerModifiersConfig
-    cerTable*: CerTableConfig
-    bombardment*: BombardmentConfig
-    groundCombat*: GroundCombatConfig
-    planetaryShields*: PlanetaryShieldsConfig
-    damageRules*: DamageRulesConfig
-    retreatRules*: RetreatRulesConfig
-    blockade*: BlockadeConfig
-    invasion*: InvasionConfig
+import ../types/config 
 
 proc parseCombatMechanics(node: KdlNode, ctx: var KdlConfigContext): CombatMechanicsConfig =
   result = CombatMechanicsConfig(
-    criticalHitRoll: node.requireInt("criticalHitRoll", ctx),
-    retreatAfterRound: node.requireInt("retreatAfterRound", ctx),
+    criticalHitRoll: node.requireInt32("criticalHitRoll", ctx),
+    retreatAfterRound: node.requireInt32("retreatAfterRound", ctx),
     starbaseCriticalReroll: node.requireBool("starbaseCriticalReroll", ctx),
-    starbaseDieModifier: node.requireInt("starbaseDieModifier", ctx)
+    starbaseDieModifier: node.requireInt32("starbaseDieModifier", ctx)
   )
 
 proc parseCerModifiers(node: KdlNode, ctx: var KdlConfigContext): CerModifiersConfig =
   result = CerModifiersConfig(
-    scouts: node.requireInt("scouts", ctx),
-    surprise: node.requireInt("surprise", ctx),
-    ambush: node.requireInt("ambush", ctx)
+    scouts: node.requireInt32("scouts", ctx),
+    surprise: node.requireInt32("surprise", ctx),
+    ambush: node.requireInt32("ambush", ctx)
   )
 
 proc parseCerTable(node: KdlNode, ctx: var KdlConfigContext): CerTableConfig =
   result = CerTableConfig(
-    veryPoorMax: node.requireInt("veryPoorMax", ctx),
-    poorMax: node.requireInt("poorMax", ctx),
-    averageMax: node.requireInt("averageMax", ctx),
-    goodMin: node.requireInt("goodMin", ctx)
+    veryPoorMax: node.requireInt32("veryPoorMax", ctx),
+    poorMax: node.requireInt32("poorMax", ctx),
+    averageMax: node.requireInt32("averageMax", ctx),
+    goodMin: node.requireInt32("goodMin", ctx)
   )
 
 proc parseBombardment(node: KdlNode, ctx: var KdlConfigContext): BombardmentConfig =
   result = BombardmentConfig(
-    maxRoundsPerTurn: node.requireInt("maxRoundsPerTurn", ctx),
-    veryPoorMax: node.requireInt("veryPoorMax", ctx),
-    poorMax: node.requireInt("poorMax", ctx),
-    goodMin: node.requireInt("goodMin", ctx)
+    maxRoundsPerTurn: node.requireInt32("maxRoundsPerTurn", ctx),
+    veryPoorMax: node.requireInt32("veryPoorMax", ctx),
+    poorMax: node.requireInt32("poorMax", ctx),
+    goodMin: node.requireInt32("goodMin", ctx)
   )
 
 proc parseGroundCombat(node: KdlNode, ctx: var KdlConfigContext): GroundCombatConfig =
   result = GroundCombatConfig(
-    poorMax: node.requireInt("poorMax", ctx),
-    averageMax: node.requireInt("averageMax", ctx),
-    goodMax: node.requireInt("goodMax", ctx),
-    critical: node.requireInt("critical", ctx)
+    poorMax: node.requireInt32("poorMax", ctx),
+    averageMax: node.requireInt32("averageMax", ctx),
+    goodMax: node.requireInt32("goodMax", ctx),
+    critical: node.requireInt32("critical", ctx)
   )
 
 proc parsePlanetaryShields(node: KdlNode, ctx: var KdlConfigContext): PlanetaryShieldsConfig =
   result = PlanetaryShieldsConfig(
-    sld1Chance: node.requireInt("sld1Chance", ctx),
-    sld1Roll: node.requireInt("sld1Roll", ctx),
-    sld1Block: node.requireInt("sld1Block", ctx),
-    sld2Chance: node.requireInt("sld2Chance", ctx),
-    sld2Roll: node.requireInt("sld2Roll", ctx),
-    sld2Block: node.requireInt("sld2Block", ctx),
-    sld3Chance: node.requireInt("sld3Chance", ctx),
-    sld3Roll: node.requireInt("sld3Roll", ctx),
-    sld3Block: node.requireInt("sld3Block", ctx),
-    sld4Chance: node.requireInt("sld4Chance", ctx),
-    sld4Roll: node.requireInt("sld4Roll", ctx),
-    sld4Block: node.requireInt("sld4Block", ctx),
-    sld5Chance: node.requireInt("sld5Chance", ctx),
-    sld5Roll: node.requireInt("sld5Roll", ctx),
-    sld5Block: node.requireInt("sld5Block", ctx),
-    sld6Chance: node.requireInt("sld6Chance", ctx),
-    sld6Roll: node.requireInt("sld6Roll", ctx),
-    sld6Block: node.requireInt("sld6Block", ctx)
+    sld1Chance: node.requireInt32("sld1Chance", ctx),
+    sld1Roll: node.requireInt32("sld1Roll", ctx),
+    sld1Block: node.requireInt32("sld1Block", ctx),
+    sld2Chance: node.requireInt32("sld2Chance", ctx),
+    sld2Roll: node.requireInt32("sld2Roll", ctx),
+    sld2Block: node.requireInt32("sld2Block", ctx),
+    sld3Chance: node.requireInt32("sld3Chance", ctx),
+    sld3Roll: node.requireInt32("sld3Roll", ctx),
+    sld3Block: node.requireInt32("sld3Block", ctx),
+    sld4Chance: node.requireInt32("sld4Chance", ctx),
+    sld4Roll: node.requireInt32("sld4Roll", ctx),
+    sld4Block: node.requireInt32("sld4Block", ctx),
+    sld5Chance: node.requireInt32("sld5Chance", ctx),
+    sld5Roll: node.requireInt32("sld5Roll", ctx),
+    sld5Block: node.requireInt32("sld5Block", ctx),
+    sld6Chance: node.requireInt32("sld6Chance", ctx),
+    sld6Roll: node.requireInt32("sld6Roll", ctx),
+    sld6Block: node.requireInt32("sld6Block", ctx)
   )
 
 proc parseDamageRules(node: KdlNode, ctx: var KdlConfigContext): DamageRulesConfig =
   result = DamageRulesConfig(
-    crippledAsMultiplier: node.requireFloat("crippledAsMultiplier", ctx),
-    crippledMaintenanceMultiplier: node.requireFloat("crippledMaintenanceMultiplier", ctx),
+    crippledAsMultiplier: node.requireFloat32("crippledAsMultiplier", ctx),
+    crippledMaintenanceMultiplier: node.requireFloat32("crippledMaintenanceMultiplier", ctx),
     squadronFightsAsUnit: node.requireBool("squadronFightsAsUnit", ctx),
     destroyAfterAllCrippled: node.requireBool("destroyAfterAllCrippled", ctx)
   )
@@ -166,14 +86,14 @@ proc parseRetreatRules(node: KdlNode, ctx: var KdlConfigContext): RetreatRulesCo
 
 proc parseBlockade(node: KdlNode, ctx: var KdlConfigContext): BlockadeConfig =
   result = BlockadeConfig(
-    blockadeProductionPenalty: node.requireFloat("blockadeProductionPenalty", ctx),
-    blockadePrestigePenalty: node.requireInt("blockadePrestigePenalty", ctx)
+    blockadeProductionPenalty: node.requireFloat32("blockadeProductionPenalty", ctx),
+    blockadePrestigePenalty: node.requireInt32("blockadePrestigePenalty", ctx)
   )
 
 proc parseInvasion(node: KdlNode, ctx: var KdlConfigContext): InvasionConfig =
   result = InvasionConfig(
-    invasionIuLoss: node.requireFloat("invasionIuLoss", ctx),
-    blitzIuLoss: node.requireFloat("blitzIuLoss", ctx)
+    invasionIuLoss: node.requireFloat32("invasionIuLoss", ctx),
+    blitzIuLoss: node.requireFloat32("blitzIuLoss", ctx)
   )
 
 proc loadCombatConfig*(configPath: string = "config/combat.kdl"): CombatConfig =

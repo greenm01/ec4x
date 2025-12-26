@@ -1,0 +1,214 @@
+// EC4X Default Ship Statistics (WEP1)
+// Source: docs/specs/10-reference.md Section 10.1
+//
+// Edit this file to change ship stats for all games
+// Game-specific overrides can be placed in game_directory/game_config.toml
+//
+// Note: WEP modifiers (+10% AS/DS per level) are applied by the engine
+// These are base stats at WEP1
+
+// CST = Minimum CST Level
+// PC = Production Cost
+// MC = Maintenance Cost (% of PC)
+// AS = Attack Strength
+// DS = Defensive Strength
+// CC= Command Cost
+// CR = Command Rating
+// CL = Carry Limit
+
+// Escort Ships
+
+corvette {
+    minCST 1
+    productionCost 20
+    maintenanceCost 3
+    attackStrength 2
+    defenseStrength 3
+    commandCost 1
+    commandRating 2
+    carryLimit 0
+}
+
+frigate {
+    minCST 1
+    productionCost 30
+    maintenanceCost 3
+    attackStrength 3
+    defenseStrength 4
+    commandCost 2
+    commandRating 3
+    carryLimit 0
+}
+
+destroyer {
+    minCST 1
+    productionCost 40
+    maintenanceCost 4
+    attackStrength 5
+    defenseStrength 6
+    commandCost 2
+    commandRating 4
+    carryLimit 0  
+}
+
+lightCruiser {
+    minCST 1
+    productionCost 60
+    maintenanceCost 4
+    attackStrength 8
+    defenseStrength 9
+    commandCost 3
+    commandRating 6
+    carryLimit 0
+}
+
+// Capital Ships
+
+heavyCruiser {
+    minCST 2
+    productionCost 80
+    maintenanceCost 5
+    attackStrength 12
+    defenseStrength 13
+    commandCost 3
+    commandRating 7
+    carryLimit 0
+}
+
+battlecruiser {
+    minCST 3
+    productionCost 100
+    maintenanceCost 5
+    attackStrength 16
+    defenseStrength 18
+    commandCost 3
+    commandRating 8
+    carryLimit 0
+}
+
+battleship {
+    minCST 4
+    productionCost 150
+    maintenanceCost 5
+    attackStrength 20
+    defenseStrength 25
+    commandCost 3
+    commandRating 10
+    carryLimit 0
+}
+
+dreadnought {
+    minCST 5
+    productionCost 200
+    maintenanceCost 5
+    attackStrength 28
+    defenseStrength 30
+    commandCost 3
+    commandRating 12
+    carryLimit 0
+}
+
+superDreadnought {
+    minCST 6
+    productionCost 250
+    maintenanceCost 8
+    attackStrength 35
+    defenseStrength 40
+    commandCost 5
+    commandRating 8
+    carryLimit 0
+}
+
+carrier {
+    minCST 3
+    productionCost 120
+    maintenanceCost 5
+    attackStrength 5
+    defenseStrength 18
+    commandCost 3
+    commandRating 8
+    carryLimit 3
+}
+
+supercarrier {
+    minCST 6
+    productionCost 225
+    maintenanceCost 7
+    attackStrength 8
+    defenseStrength 25
+    commandCost 4
+    commandRating 10
+    carryLimit 5
+}
+
+raider {
+    minCST 5
+    productionCost 200
+    maintenanceCost 5
+    attackStrength 20
+    defenseStrength 25
+    commandCost 2
+    commandRating 6
+    carryLimit 0
+}
+
+// Auxiliary (Screened during space/orbital combat)
+
+scout {
+    minCST 1
+    productionCost 50
+    maintenanceCost 1
+    attackStrength 0
+    defenseStrength 2
+    commandCost 0
+    commandRating 0
+    carryLimit 0
+}
+
+etac {
+    minCST 1
+    productionCost 50
+    maintenanceCost 5
+    attackStrength 0
+    defenseStrength 0
+    commandCost 0
+    commandRating 0
+    carryLimit 0
+}
+
+troopTransport {
+    minCST 1
+    productionCost 30
+    maintenanceCost 3
+    attackStrength 0
+    defenseStrength 0
+    commandCost 0
+    commandRating 0
+    carryLimit 0
+}
+
+// Fighter Squadrons
+
+fighter {
+    minCST 1
+    productionCost 25
+    maintenanceCost 3
+    attackStrength 5
+    defenseStrength 2
+    commandCost 1
+    commandRating 0
+    carryLimit 0
+}
+
+// Special Weapon
+
+planetbreaker {
+    minCST 10
+    productionCost 400
+    maintenanceCost 10
+    attackStrength 50
+    defenseStrength 20
+    commandCost 6
+    commandRating 6
+    carryLimit 0
+}
