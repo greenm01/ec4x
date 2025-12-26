@@ -5,12 +5,11 @@
 ## without passing the multiplier everywhere
 
 import std/math
-import economy_config
 import ../../common/logger
 
-var currentGrowthMultiplier* {.threadvar.}: float
+var growthMultiplier* {.threadvar.}: float32
 
-proc calculatePopulationGrowthMultiplier*(numSystems: int, numPlayers: int): float =
+proc calculatePopulationGrowthMultiplier*(numSystems: int32, numPlayers: int32): float32 =
   ## Calculate dynamic population growth multiplier based on map size
   ##
   ## Formula:
@@ -29,7 +28,7 @@ proc calculatePopulationGrowthMultiplier*(numSystems: int, numPlayers: int): flo
   const baselineSystemsPerPlayer = 7.0 # Standard map density
 
   # Calculate systems per player
-  let systemsPerPlayer = float(numSystems) / float(numPlayers)
+  let systemsPerPlayer = float32(numSystems) / float32(numPlayers)
 
   # Square root scaling prevents excessive growth on very large maps
   let multiplier = sqrt(systemsPerPlayer / baselineSystemsPerPlayer)
@@ -37,37 +36,37 @@ proc calculatePopulationGrowthMultiplier*(numSystems: int, numPlayers: int): flo
   # Clamp to reasonable bounds (50% to 200% of base growth)
   result = clamp(multiplier, 0.5, 2.0)
 
-proc initializePopulationGrowthMultiplier*(numSystems: int, numPlayers: int) =
+proc initializePopulationGrowthMultiplier*(numSystems: int32, numPlayers: int32) =
   ## Initialize the population growth multiplier for the current game
   ## Call this once during game initialization alongside prestige multiplier
-  currentGrowthMultiplier = calculatePopulationGrowthMultiplier(numSystems, numPlayers)
+  growthMultiplier = calculatePopulationGrowthMultiplier(numSystems, numPlayers)
   logInfo(
     "Economy",
     "Population growth multiplier initialized",
     "multiplier=",
-    $currentGrowthMultiplier,
+    $growthMultiplier,
     " systems=",
     $numSystems,
     " players=",
     $numPlayers,
   )
 
-proc setPopulationGrowthMultiplierForTesting*(multiplier: float) =
+proc setPopulationGrowthMultiplier*(multiplier: float32) =
   ## Set the population growth multiplier directly for testing
   ## Use 1.0 for standard growth rate in tests
-  currentGrowthMultiplier = multiplier
+  growthMultiplier = multiplier
 
-proc getPopulationGrowthMultiplier*(): float =
+proc getPopulationGrowthMultiplier*(): float32 =
   ## Get the current population growth multiplier
   ## Returns 1.0 if not initialized (standard growth)
-  if currentGrowthMultiplier == 0.0:
+  if growthMultiplier == 0.0:
     logWarn(
       "Economy",
       "Population growth multiplier uninitialized! Using 1.0 (standard growth)",
     )
     return 1.0
-  return currentGrowthMultiplier
+  return growthMultiplier
 
-proc applyGrowthMultiplier*(baseGrowthRate: float): float =
+proc applyGrowthMultiplier*(baseGrowthRate: float32): float32 =
   ## Apply the dynamic multiplier to a base growth rate
   result = baseGrowthRate * getPopulationGrowthMultiplier()

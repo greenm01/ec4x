@@ -7,19 +7,21 @@ import std/[options]
 import kdl
 import kdl_config_helpers
 import ../../common/logger
-import ../types/ship
+import ../types/[config, ship]
 
 proc parseShipStats(node: KdlNode, ctx: var KdlConfigContext): ShipStatsConfig =
   ## Parse ship stats from KDL node with validation
   result = ShipStatsConfig(
-    attackStrength: node.requireNonNegativeInt("attackStrength", ctx).int32,
-    defenseStrength: node.requireNonNegativeInt("defenseStrength", ctx).int32,
-    commandCost: node.requireNonNegativeInt("commandCost", ctx).int32,
-    commandRating: node.requireNonNegativeInt("commandRating", ctx).int32,
-    minCST: node.requireRangeInt("minCST", 1, 10, ctx).int32,
-    productionCost: node.requirePositiveInt("productionCost", ctx).int32,
-    maintenanceCost: node.requireNonNegativeInt("maintenanceCost", ctx).int32,
-    carryLimit: node.requireNonNegativeInt("carryLimit", ctx).int32
+    description: node.requireString("description", ctx),
+    minCST: node.requireRangeInt32("minCST", 1, 10, ctx),
+    productionCost: node.requirePositiveInt32("productionCost", ctx),
+    maintenanceCost: node.requireNonNegativeInt32("maintenanceCost", ctx),
+    attackStrength: node.requireNonNegativeInt32("attackStrength", ctx),
+    defenseStrength: node.requireNonNegativeInt32("defenseStrength", ctx),
+    commandCost: node.requireNonNegativeInt32("commandCost", ctx),
+    commandRating: node.requireNonNegativeInt32("commandRating", ctx),
+    carryLimit: node.requireNonNegativeInt32("carryLimit", ctx),
+    buildTime: node.requireNonNegativeInt32("buildTime", ctx)
   )
 
 proc loadShipsConfig*(configPath: string = "config/ships.kdl"): ShipsConfig =

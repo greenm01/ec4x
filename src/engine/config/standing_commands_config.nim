@@ -4,26 +4,7 @@
 import kdl
 import kdl_config_helpers
 import ../../common/logger
-
-type
-  ActivationConfig* = object
-    globalEnabled*: bool
-    defaultActivationDelayTurns*: int
-    enabledByDefault*: bool
-
-  BehaviorConfig* = object
-    autoHoldOnCompletion*: bool
-    respectDiplomaticChanges*: bool
-
-  UIHintsConfig* = object
-    warnBeforeActivation*: bool
-    warnTurnsBefore*: int
-
-  StandingOrdersConfig* = object
-    ## Complete standing commands configuration loaded from KDL
-    activation*: ActivationConfig
-    behavior*: BehaviorConfig
-    uiHints*: UIHintsConfig
+import ../types/config
 
 proc parseActivation(node: KdlNode, ctx: var KdlConfigContext): ActivationConfig =
   result = ActivationConfig(
@@ -45,7 +26,7 @@ proc parseUIHints(node: KdlNode, ctx: var KdlConfigContext): UIHintsConfig =
   )
 
 proc loadStandingOrdersConfig*(
-    configPath: string = "config/standing_orders.kdl"
+    configPath: string = "config/standing_commands.kdl"
 ): StandingOrdersConfig =
   ## Load standing commands configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing

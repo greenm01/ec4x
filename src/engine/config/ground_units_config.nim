@@ -10,57 +10,56 @@ import ../types/config
 
 proc parsePlanetaryShield(node: KdlNode, ctx: var KdlConfigContext): PlanetaryShieldConfig =
   result = PlanetaryShieldConfig(
-    cstMin: node.requireInt("cstMin", ctx),
-    buildCost: node.requireInt("buildCost", ctx),
-    upkeepCost: node.requireInt("upkeepCost", ctx),
-    attackStrength: node.requireInt("attackStrength", ctx),
-    defenseStrength: node.requireInt("defenseStrength", ctx),
     description: node.requireString("description", ctx),
-    buildTime: node.requireInt("buildTime", ctx),
-    maxPerPlanet: node.requireInt("maxPerPlanet", ctx),
-    salvageRequired: node.requireBool("salvageRequired", ctx)
+    minCST: node.requireInt32("minCST", ctx),
+    productionCost: node.requireInt32("buildCost", ctx),
+    maintenanceCost: node.requireInt32("upkeepCost", ctx),
+    defenseStrength: node.requireInt32("defenseStrength", ctx),
+    buildTime: node.requireInt32("buildTime", ctx),
+    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
+    sld1BlockChance: node.requireFloat32("sld1BlockChance", ctx),
+    sld2BlockChance: node.requireFloat32("sld2BlockChance", ctx),
+    sld3BlockChance: node.requireFloat32("sld3BlockChance", ctx),
+    sld4BlockChance: node.requireFloat32("sld4BlockChance", ctx),
+    sld5BlockChance: node.requireFloat32("sld5BlockChance", ctx),
+    sld6BlockChance: node.requireFloat32("sld6BlockChance", ctx),
+    shieldDamageReduction: node.requireFloat32("shieldDamageReduction", ctx),
+    shieldInvasionDifficulty: node.requireFloat32("shieldInvasionDifficulty", ctx)
   )
 
 proc parseGroundBattery(node: KdlNode, ctx: var KdlConfigContext): GroundBatteryConfig =
   result = GroundBatteryConfig(
-    cstMin: node.requireInt("cstMin", ctx),
-    buildCost: node.requireInt("buildCost", ctx),
-    upkeepCost: node.requireInt("upkeepCost", ctx),
-    maintenancePercent: node.requireInt("maintenancePercent", ctx),
-    attackStrength: node.requireInt("attackStrength", ctx),
-    defenseStrength: node.requireInt("defenseStrength", ctx),
     description: node.requireString("description", ctx),
-    buildTime: node.requireInt("buildTime", ctx),
-    maxPerPlanet: node.requireInt("maxPerPlanet", ctx)
+    minCST: node.requireInt32("minCST", ctx),
+    productionCost: node.requireInt32("buildCost", ctx),
+    maintenanceCost: node.requireInt32("upkeepCost", ctx),
+    defenseStrength: node.requireInt32("defenseStrength", ctx),
+    buildTime: node.requireInt32("buildTime", ctx),
+    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx)
   )
 
 proc parseArmy(node: KdlNode, ctx: var KdlConfigContext): ArmyConfig =
   result = ArmyConfig(
-    cstMin: node.requireInt("cstMin", ctx),
-    buildCost: node.requireInt("buildCost", ctx),
-    upkeepCost: node.requireInt("upkeepCost", ctx),
-    maintenancePercent: node.requireInt("maintenancePercent", ctx),
-    attackStrength: node.requireInt("attackStrength", ctx),
-    defenseStrength: node.requireInt("defenseStrength", ctx),
     description: node.requireString("description", ctx),
-    buildTime: node.requireInt("buildTime", ctx),
-    maxPerPlanet: node.requireInt("maxPerPlanet", ctx),
-    populationCost: node.requireInt("populationCost", ctx)
+    minCST: node.requireInt32("minCST", ctx),
+    productionCost: node.requireInt32("buildCost", ctx),
+    maintenanceCost: node.requireInt32("upkeepCost", ctx),
+    defenseStrength: node.requireInt32("defenseStrength", ctx),
+    buildTime: node.requireInt32("buildTime", ctx),
+    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
+    populationCost: node.requireInt32("populationCost", ctx)
   )
 
 proc parseMarineDivision(node: KdlNode, ctx: var KdlConfigContext): MarineDivisionConfig =
   result = MarineDivisionConfig(
-    cstMin: node.requireInt("cstMin", ctx),
-    buildCost: node.requireInt("buildCost", ctx),
-    upkeepCost: node.requireInt("upkeepCost", ctx),
-    maintenancePercent: node.requireInt("maintenancePercent", ctx),
-    attackStrength: node.requireInt("attackStrength", ctx),
-    defenseStrength: node.requireInt("defenseStrength", ctx),
     description: node.requireString("description", ctx),
-    buildTime: node.requireInt("buildTime", ctx),
-    maxPerPlanet: node.requireInt("maxPerPlanet", ctx),
-    requiresTransport: node.requireBool("requiresTransport", ctx),
-    populationCost: node.requireInt("populationCost", ctx)
+    minCST: node.requireInt32("minCST", ctx),
+    productionCost: node.requireInt32("buildCost", ctx),
+    maintenanceCost: node.requireInt32("upkeepCost", ctx),
+    defenseStrength: node.requireInt32("defenseStrength", ctx),
+    buildTime: node.requireInt32("buildTime", ctx),
+    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
+    populationCost: node.requireInt32("populationCost", ctx)
   )
 
 proc loadGroundUnitsConfig*(

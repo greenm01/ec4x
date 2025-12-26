@@ -2,10 +2,11 @@
 ##
 ## Tests loading the actual config/ships.kdl using the real engine config system
 
-import std/[os, options, strutils]
+import std/strutils
 
 # Import your actual engine config modules
 import ../../src/engine/config/ships_config
+import ../../src/engine/types/ship
 
 proc main() =
   echo "Testing KDL Ship Config Loader with actual config file..."

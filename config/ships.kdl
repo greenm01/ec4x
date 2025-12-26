@@ -19,6 +19,7 @@
 // Escort Ships
 
 corvette {
+    description "Smallest warship, fast and cheap screening and exploration unit"
     minCST 1
     productionCost 20
     maintenanceCost 3
@@ -27,9 +28,11 @@ corvette {
     commandCost 1
     commandRating 2
     carryLimit 0
+    buildTime 1  // turns
 }
 
 frigate {
+    description "Anti-fighter/missile defense, escort role"
     minCST 1
     productionCost 30
     maintenanceCost 3
@@ -38,9 +41,11 @@ frigate {
     commandCost 2
     commandRating 3
     carryLimit 0
+    buildTime 1  // turns
 }
 
 destroyer {
+    description "Balanced fast attack ship, torpedo/missile platform"
     minCST 1
     productionCost 40
     maintenanceCost 4
@@ -49,9 +54,11 @@ destroyer {
     commandCost 2
     commandRating 4
     carryLimit 0  
+    buildTime 1  // turns
 }
 
 lightCruiser {
+    description "Multi-role workhorse, moderate firepower and armor"
     minCST 1
     productionCost 60
     maintenanceCost 4
@@ -60,11 +67,13 @@ lightCruiser {
     commandCost 3
     commandRating 6
     carryLimit 0
+    buildTime 1  // turns
 }
 
 // Capital Ships
 
 heavyCruiser {
+    description "Heavy guns, strong armor, backbone of battle lines"
     minCST 2
     productionCost 80
     maintenanceCost 5
@@ -73,9 +82,11 @@ heavyCruiser {
     commandCost 3
     commandRating 7
     carryLimit 0
+    buildTime 1  // turns
 }
 
 battlecruiser {
+    description "Speed and firepower over armor, pursuit and raiding"
     minCST 3
     productionCost 100
     maintenanceCost 5
@@ -84,9 +95,11 @@ battlecruiser {
     commandCost 3
     commandRating 8
     carryLimit 0
+    buildTime 1  // turns
 }
 
 battleship {
+    description "Maximum conventional firepower and armor"
     minCST 4
     productionCost 150
     maintenanceCost 5
@@ -95,9 +108,11 @@ battleship {
     commandCost 3
     commandRating 10
     carryLimit 0
+    buildTime 1  // turns
 }
 
 dreadnought {
+    description "Super-heavy capital ship, fleet anchor"
     minCST 5
     productionCost 200
     maintenanceCost 5
@@ -106,9 +121,11 @@ dreadnought {
     commandCost 3
     commandRating 12
     carryLimit 0
+    buildTime 1  // turns
 }
 
 superDreadnought {
+    description "Ultimate capital ship, system control"
     minCST 6
     productionCost 250
     maintenanceCost 8
@@ -117,9 +134,11 @@ superDreadnought {
     commandCost 5
     commandRating 8
     carryLimit 0
+    buildTime 1  // turns
 }
 
 carrier {
+    description "Fighter deployment platform"
     minCST 3
     productionCost 120
     maintenanceCost 5
@@ -128,9 +147,11 @@ carrier {
     commandCost 3
     commandRating 8
     carryLimit 3
+    buildTime 1  // turns
 }
 
 supercarrier {
+    description "Massive fighter complement, fleet command hub"
     minCST 6
     productionCost 225
     maintenanceCost 7
@@ -139,9 +160,11 @@ supercarrier {
     commandCost 4
     commandRating 10
     carryLimit 5
+    buildTime 1  // turns
 }
 
 raider {
+    description "Provides surprise/ambush first strike advantage"
     minCST 5
     productionCost 200
     maintenanceCost 5
@@ -150,11 +173,13 @@ raider {
     commandCost 2
     commandRating 6
     carryLimit 0
+    buildTime 1  // turns
 }
 
 // Auxiliary (Screened during space/orbital combat)
 
 scout {
+    description "Autonomous Reconnaissance, sensor suite. No combat"
     minCST 1
     productionCost 50
     maintenanceCost 1
@@ -163,9 +188,11 @@ scout {
     commandCost 0
     commandRating 0
     carryLimit 0
+    buildTime 1  // turns
 }
 
 etac {
+    description "Environmental Terraforming and Colonization ship - establishes new colonies"
     minCST 1
     productionCost 50
     maintenanceCost 5
@@ -174,9 +201,11 @@ etac {
     commandCost 0
     commandRating 0
     carryLimit 0
+    buildTime 1  // turns
 }
 
 troopTransport {
+    description "Planetary invasion forces"
     minCST 1
     productionCost 30
     maintenanceCost 3
@@ -185,11 +214,13 @@ troopTransport {
     commandCost 0
     commandRating 0
     carryLimit 0
+    buildTime 1  // turns
 }
 
 // Fighter Squadrons
 
 fighter {
+    description "Glass cannon - extreme damage output, negligible defenses"
     minCST 1
     productionCost 25
     maintenanceCost 3
@@ -198,11 +229,13 @@ fighter {
     commandCost 1
     commandRating 0
     carryLimit 0
+    buildTime 0  // turns
 }
 
 // Special Weapon
 
 planetbreaker {
+    description "Apocalyptic weapon - orbital bombardment/planetary destruction"
     minCST 10
     productionCost 400
     maintenanceCost 10
@@ -211,4 +244,5 @@ planetbreaker {
     commandCost 6
     commandRating 6
     carryLimit 0
+    buildTime 3  // turns
 }

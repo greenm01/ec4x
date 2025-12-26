@@ -6,31 +6,13 @@
 import kdl
 import kdl_config_helpers
 import ../../common/logger
-
-type
-  LaneWeightsConfig* = object ## Jump lane type distribution weights
-    majorWeight*: float
-    minorWeight*: float
-    restrictedWeight*: float
-
-  GenerationConfig* = object ## Map generation parameters
-    useDistanceMaximization*: bool
-    preferVertexPositions*: bool
-    hubUsesMixedLanes*: bool
-
-  HomeworldPlacementConfig* = object ## Homeworld placement parameters
-    homeworldLaneCount*: int # Number of lanes per homeworld (default: 3)
-
-  StarmapConfig* = object ## Complete starmap configuration loaded from KDL
-    laneWeights*: LaneWeightsConfig
-    generation*: GenerationConfig
-    homeworldPlacement*: HomeworldPlacementConfig
+import ../types/config
 
 proc parseLaneWeights(node: KdlNode, ctx: var KdlConfigContext): LaneWeightsConfig =
   result = LaneWeightsConfig(
-    majorWeight: node.requireFloat("majorWeight", ctx),
-    minorWeight: node.requireFloat("minorWeight", ctx),
-    restrictedWeight: node.requireFloat("restrictedWeight", ctx)
+    majorWeight: node.requireFloat32("majorWeight", ctx),
+    minorWeight: node.requireFloat32("minorWeight", ctx),
+    restrictedWeight: node.requireFloat32("restrictedWeight", ctx)
   )
 
 proc parseGeneration(node: KdlNode, ctx: var KdlConfigContext): GenerationConfig =
@@ -42,7 +24,7 @@ proc parseGeneration(node: KdlNode, ctx: var KdlConfigContext): GenerationConfig
 
 proc parseHomeworldPlacement(node: KdlNode, ctx: var KdlConfigContext): HomeworldPlacementConfig =
   result = HomeworldPlacementConfig(
-    homeworldLaneCount: node.requireInt("homeworldLaneCount", ctx)
+    homeworldLaneCount: node.requireInt32("homeworldLaneCount", ctx)
   )
 
 proc loadStarmapConfig*(configPath: string = "config/starmap.kdl"): StarmapConfig =

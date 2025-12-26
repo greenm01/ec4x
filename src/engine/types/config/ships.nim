@@ -1,13 +1,15 @@
 type
   ShipStatsConfig* = object
+    description*: string
+    minCST*: int32
+    productionCost*: int32
+    maintenanceCost*: int32
     attackStrength*: int32
     defenseStrength*: int32
     commandCost*: int32
     commandRating*: int32
     carryLimit*: int32
-    minCST*: int32
-    productionCost*: int32
-    maintenanceCost*: int32
+    buildTime*: int32
 
   ShipsConfig* = object
     corvette*: ShipStatsConfig
