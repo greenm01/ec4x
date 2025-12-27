@@ -58,21 +58,6 @@ type
     trpFirstLevelCost*: int32
     trpLevelIncrement*: int32
 
-  EspionageConfig* = object
-    ebpCostPerPoint*: int32
-    cipCostPerPoint*: int32
-    maxActionsPerTurn*: int32
-    budgetThresholdPercent*: int32
-    prestigeLossPerPercentOver*: int32
-    techTheftCost*: int32
-    sabotageLowCost*: int32
-    sabotageHighCost*: int32
-    assassinationCost*: int32
-    cyberAttackCost*: int32
-    economicManipulationCost*: int32
-    psyopsCampaignCost*: int32
-    detectionRollCost*: int32
-
   RawMaterialEfficiencyConfig* = object
     veryPoorEden*: float32
     veryPoorLush*: float32
@@ -191,7 +176,6 @@ type
     infrastructure*: InfrastructureConfig
     planetClasses*: PlanetClassesConfig
     research*: ResearchConfig
-    espionage*: EspionageConfig
     rawMaterialEfficiency*: RawMaterialEfficiencyConfig
     taxMechanics*: TaxMechanicsConfig
     taxPopulationGrowth*: TaxPopulationGrowthConfig

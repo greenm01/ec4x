@@ -22,7 +22,7 @@ costs {
 investment {
     // Over-investment penalties
     thresholdPercentage 10  // 10% of turn budget (safe threshold for all game phases)
-    penaltyPerPercent -1  // -1 prestige per 1% over threshold
+    penaltyPerPercent -1    // -1 prestige per 1% over threshold
 }
 
 effects {

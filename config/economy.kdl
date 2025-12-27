@@ -78,22 +78,6 @@ research {
   trpLevelIncrement 5
 }
 
-espionage {
-  ebpCostPerPoint 40
-  cipCostPerPoint 40
-  maxActionsPerTurn 1
-  budgetThresholdPercent 5
-  prestigeLossPerPercentOver 1
-  techTheftCost 5
-  sabotageLowCost 2
-  sabotageHighCost 7
-  assassinationCost 10
-  cyberAttackCost 6
-  economicManipulationCost 6
-  psyopsCampaignCost 3
-  detectionRollCost 1
-}
-
 rawMaterialEfficiency {
   veryPoorEden 0.60
   veryPoorLush 0.60

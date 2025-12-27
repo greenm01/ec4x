@@ -96,26 +96,6 @@ proc parseResearch(node: KdlNode, ctx: var KdlConfigContext): ResearchConfig =
     trpLevelIncrement: node.requireInt32("trpLevelIncrement", ctx)
   )
 
-proc parseEspionage(node: KdlNode, ctx: var KdlConfigContext): EspionageConfig =
-  result = EspionageConfig(
-    ebpCostPerPoint: node.requireInt32("ebpCostPerPoint", ctx),
-    cipCostPerPoint: node.requireInt32("cipCostPerPoint", ctx),
-    maxActionsPerTurn: node.requireInt32("maxActionsPerTurn", ctx),
-    budgetThresholdPercent:
-      node.requireInt32("budgetThresholdPercent", ctx),
-    prestigeLossPerPercentOver:
-      node.requireInt32("prestigeLossPerPercentOver", ctx),
-    techTheftCost: node.requireInt32("techTheftCost", ctx),
-    sabotageLowCost: node.requireInt32("sabotageLowCost", ctx),
-    sabotageHighCost: node.requireInt32("sabotageHighCost", ctx),
-    assassinationCost: node.requireInt32("assassinationCost", ctx),
-    cyberAttackCost: node.requireInt32("cyberAttackCost", ctx),
-    economicManipulationCost:
-      node.requireInt32("economicManipulationCost", ctx),
-    psyopsCampaignCost: node.requireInt32("psyopsCampaignCost", ctx),
-    detectionRollCost: node.requireInt32("detectionRollCost", ctx)
-  )
-
 proc parseRawMaterialEfficiency(
   node: KdlNode,
   ctx: var KdlConfigContext
@@ -310,10 +290,6 @@ proc loadEconomyConfig*(configPath: string = "config/economy.kdl"): EconomyConfi
   ctx.withNode("research"):
     let node = doc.requireNode("research", ctx)
     result.research = parseResearch(node, ctx)
-
-  ctx.withNode("espionage"):
-    let node = doc.requireNode("espionage", ctx)
-    result.espionage = parseEspionage(node, ctx)
 
   ctx.withNode("rawMaterialEfficiency"):
     let node = doc.requireNode("rawMaterialEfficiency", ctx)

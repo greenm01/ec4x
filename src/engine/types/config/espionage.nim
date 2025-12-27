@@ -49,7 +49,5 @@ type
   EspionageConfig* = object ## Complete espionage configuration loaded from KDL
     costs*: EspionageCostsConfig
     investment*: EspionageInvestmentConfig
-    detection*: EspionageDetectionConfig
     effects*: EspionageEffectsConfig
-    scoutDetection*: ScoutDetectionConfig
-
+    detection*: EspionageDetectionConfig

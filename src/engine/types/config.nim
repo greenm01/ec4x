@@ -27,10 +27,6 @@ type
     construction*: ConstructionConfig
     guild*: GuildConfig
 
-    # Dynamic scaling multipliers
-    prestigeMultiplier*: float64
-    populationMultiplier*: float64
-
   ConfigError* = object of CatchableError
     ## Exception raised when configuration is invalid or missing
 
