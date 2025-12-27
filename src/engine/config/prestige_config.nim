@@ -4,7 +4,7 @@
 ## Allows runtime configuration for balance testing
 
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config
 
@@ -226,13 +226,3 @@ proc loadPrestigeConfig*(configPath: string = "config/prestige.kdl"): PrestigeCo
     result.taxIncentives = parseTaxIncentives(node, ctx)
 
   logInfo("Config", "Loaded prestige configuration", "path=", configPath)
-
-## Global configuration instance
-
-var globalPrestigeConfig* = loadPrestigeConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadPrestigeConfig*() =
-  ## Reload configuration from file
-  globalPrestigeConfig = loadPrestigeConfig()

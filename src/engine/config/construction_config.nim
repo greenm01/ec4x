@@ -4,63 +4,63 @@
 ## Allows runtime configuration for construction mechanics
 
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config
 
 proc parseConstruction(node: KdlNode, ctx: var KdlConfigContext): ConstructionTimesConfig =
   result = ConstructionTimesConfig(
-    spaceportTurns: node.requireInt("spaceportTurns", ctx).int32,
-    spaceportDocks: node.requireInt("spaceportDocks", ctx).int32,
-    shipyardTurns: node.requireInt("shipyardTurns", ctx).int32,
-    shipyardDocks: node.requireInt("shipyardDocks", ctx).int32,
+    spaceportTurns: node.requireInt32("spaceportTurns", ctx),
+    spaceportDocks: node.requireInt32("spaceportDocks", ctx),
+    shipyardTurns: node.requireInt32("shipyardTurns", ctx),
+    shipyardDocks: node.requireInt32("shipyardDocks", ctx),
     shipyardRequiresSpaceport: node.requireBool("shipyardRequiresSpaceport", ctx),
-    starbaseTurns: node.requireInt("starbaseTurns", ctx).int32,
+    starbaseTurns: node.requireInt32("starbaseTurns", ctx),
     starbaseRequiresShipyard: node.requireBool("starbaseRequiresShipyard", ctx),
-    starbaseMaxPerColony: node.requireInt("starbaseMaxPerColony", ctx).int32,
-    planetaryShieldTurns: node.requireInt("planetaryShieldTurns", ctx).int32,
-    planetaryShieldMax: node.requireInt("planetaryShieldMax", ctx).int32,
+    starbaseMaxPerColony: node.requireInt32("starbaseMaxPerColony", ctx),
+    planetaryShieldTurns: node.requireInt32("planetaryShieldTurns", ctx),
+    planetaryShieldMax: node.requireInt32("planetaryShieldMax", ctx),
     planetaryShieldReplaceOnUpgrade: node.requireBool("planetaryShieldReplaceOnUpgrade", ctx),
-    groundBatteryTurns: node.requireInt("groundBatteryTurns", ctx).int32,
-    groundBatteryMax: node.requireInt("groundBatteryMax", ctx).int32,
+    groundBatteryTurns: node.requireInt32("groundBatteryTurns", ctx),
+    groundBatteryMax: node.requireInt32("groundBatteryMax", ctx),
     fighterSquadronPlanetBased: node.requireBool("fighterSquadronPlanetBased", ctx)
   )
 
 proc parseRepair(node: KdlNode, ctx: var KdlConfigContext): RepairConfig =
   result = RepairConfig(
-    shipRepairTurns: node.requireInt("shipRepairTurns", ctx).int32,
-    shipRepairCostMultiplier: node.requireFloat("shipRepairCostMultiplier", ctx).float32,
-    starbaseRepairCostMultiplier: node.requireFloat("starbaseRepairCostMultiplier", ctx).float32
+    shipRepairTurns: node.requireInt32("shipRepairTurns", ctx),
+    shipRepairCostMultiplier: node.requireFloat32("shipRepairCostMultiplier", ctx),
+    starbaseRepairCostMultiplier: node.requireFloat32("starbaseRepairCostMultiplier", ctx)
   )
 
 proc parseModifiers(node: KdlNode, ctx: var KdlConfigContext): ModifiersConfig =
   result = ModifiersConfig(
-    planetsideConstructionCostMultiplier: node.requireFloat("planetsideConstructionCostMultiplier", ctx).float32,
-    constructionCapacityIncreasePerLevel: node.requireFloat("constructionCapacityIncreasePerLevel", ctx).float32
+    planetsideConstructionCostMultiplier: node.requireFloat32("planetsideConstructionCostMultiplier", ctx),
+    constructionCapacityIncreasePerLevel: node.requireFloat32("constructionCapacityIncreasePerLevel", ctx)
   )
 
 proc parseCosts(node: KdlNode, ctx: var KdlConfigContext): CostsConfig =
   result = CostsConfig(
-    spaceportCost: node.requireInt("spaceportCost", ctx).int32,
-    shipyardCost: node.requireInt("shipyardCost", ctx).int32,
-    starbaseCost: node.requireInt("starbaseCost", ctx).int32,
-    groundBatteryCost: node.requireInt("groundBatteryCost", ctx).int32,
-    fighterSquadronCost: node.requireInt("fighterSquadronCost", ctx).int32,
-    planetaryShieldSld1Cost: node.requireInt("planetaryShieldSld1Cost", ctx).int32,
-    planetaryShieldSld2Cost: node.requireInt("planetaryShieldSld2Cost", ctx).int32,
-    planetaryShieldSld3Cost: node.requireInt("planetaryShieldSld3Cost", ctx).int32,
-    planetaryShieldSld4Cost: node.requireInt("planetaryShieldSld4Cost", ctx).int32,
-    planetaryShieldSld5Cost: node.requireInt("planetaryShieldSld5Cost", ctx).int32,
-    planetaryShieldSld6Cost: node.requireInt("planetaryShieldSld6Cost", ctx).int32
+    spaceportCost: node.requireInt32("spaceportCost", ctx),
+    shipyardCost: node.requireInt32("shipyardCost", ctx),
+    starbaseCost: node.requireInt32("starbaseCost", ctx),
+    groundBatteryCost: node.requireInt32("groundBatteryCost", ctx),
+    fighterSquadronCost: node.requireInt32("fighterSquadronCost", ctx),
+    planetaryShieldSld1Cost: node.requireInt32("planetaryShieldSld1Cost", ctx),
+    planetaryShieldSld2Cost: node.requireInt32("planetaryShieldSld2Cost", ctx),
+    planetaryShieldSld3Cost: node.requireInt32("planetaryShieldSld3Cost", ctx),
+    planetaryShieldSld4Cost: node.requireInt32("planetaryShieldSld4Cost", ctx),
+    planetaryShieldSld5Cost: node.requireInt32("planetaryShieldSld5Cost", ctx),
+    planetaryShieldSld6Cost: node.requireInt32("planetaryShieldSld6Cost", ctx)
   )
 
 proc parseUpkeep(node: KdlNode, ctx: var KdlConfigContext): UpkeepConfig =
   result = UpkeepConfig(
-    spaceportUpkeep: node.requireInt("spaceportUpkeep", ctx).int32,
-    shipyardUpkeep: node.requireInt("shipyardUpkeep", ctx).int32,
-    starbaseUpkeep: node.requireInt("starbaseUpkeep", ctx).int32,
-    groundBatteryUpkeep: node.requireInt("groundBatteryUpkeep", ctx).int32,
-    planetaryShieldUpkeep: node.requireInt("planetaryShieldUpkeep", ctx).int32
+    spaceportUpkeep: node.requireInt32("spaceportUpkeep", ctx),
+    shipyardUpkeep: node.requireInt32("shipyardUpkeep", ctx),
+    starbaseUpkeep: node.requireInt32("starbaseUpkeep", ctx),
+    groundBatteryUpkeep: node.requireInt32("groundBatteryUpkeep", ctx),
+    planetaryShieldUpkeep: node.requireInt32("planetaryShieldUpkeep", ctx)
   )
 
 proc loadConstructionConfig*(
@@ -92,13 +92,3 @@ proc loadConstructionConfig*(
     result.upkeep = parseUpkeep(node, ctx)
 
   logInfo("Config", "Loaded construction configuration", "path=", configPath)
-
-## Global configuration instance
-
-var globalConstructionConfig* = loadConstructionConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadConstructionConfig*() =
-  ## Reload configuration from file
-  globalConstructionConfig = loadConstructionConfig()

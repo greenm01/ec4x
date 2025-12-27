@@ -1,9 +1,4 @@
 type
-  PtuDefinitionConfig* = object
-    soulsPerPtu*: int32
-    ptuSizeMillions*: float32
-    minPopulationRemaining*: int32
-
   TransferCostsConfig* = object
     edenCost*: int32
     lushCost*: int32
@@ -31,9 +26,6 @@ type
     destBlockadedBehavior*: string
     destCollapsedBehavior*: string
 
-  RecruitmentConfig* = object
-    minViablePopulation*: int32
-
   AiStrategyConfig* = object
     minTreasuryForTransfer*: int32
     minSourcePopulation*: int32
@@ -43,13 +35,11 @@ type
     minEconomicFocus*: float32
     minExpansionDrive*: float32
 
-  PopulationConfig* = object ## Complete population configuration loaded from KDL
-    ptuDefinition*: PtuDefinitionConfig
+  GuildConfig* = object ## Complete population configuration loaded from KDL
     transferCosts*: TransferCostsConfig
     transferTime*: TransferTimeConfig
     transferModifiers*: TransferModifiersConfig
     transferLimits*: TransferLimitsConfig
     transferRisks*: TransferRisksConfig
-    recruitment*: RecruitmentConfig
     aiStrategy*: AiStrategyConfig
 

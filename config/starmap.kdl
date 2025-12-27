@@ -10,7 +10,6 @@
 // ============================================================================
 
 laneWeights {
-    // BALANCE: Lane type distribution for procedural generation
     // Controls strategic gameplay by determining movement restrictions
     // - Major lanes: Allow all ship types (including crippled, ETAC, transports)
     // - Minor lanes: Block crippled ships only
@@ -28,7 +27,6 @@ laneWeights {
 // ============================================================================
 
 generation {
-    // BALANCE: Homeworld placement strategy
     // Distance maximization ensures fair starting positions
     useDistanceMaximization #true
     preferVertexPositions #true  // Place homeworlds on hex vertices when possible
@@ -43,11 +41,10 @@ generation {
 // ============================================================================
 
 homeworldPlacement {
-    // BALANCE: Homeworld placement flexibility
     // Homeworlds can be placed anywhere in the map using distance maximization
     // This removes the predictable "outer ring only" constraint for unpredictable,
-    // VBAM-style placement where homeworlds can appear on any ring
-    // Distance maximization ensures fair spacing regardless of ring location
+    // placement where homeworlds can appear on any ring Distance maximization 
+    // ensures fair spacing regardless of ring location
 
     // Number of jump lanes connecting each homeworld to adjacent systems
     // Default: 3 (game spec requirement)

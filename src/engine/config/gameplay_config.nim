@@ -5,7 +5,7 @@
 ## NOTE: Starting tech levels are in config/tech.kdl (see tech_config module)
 
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config
 
@@ -16,13 +16,13 @@ proc parseTheme(node: KdlNode, ctx: var KdlConfigContext): ThemeConfig =
 
 proc parseElimination(node: KdlNode, ctx: var KdlConfigContext): EliminationConfig =
   result = EliminationConfig(
-    defensiveCollapseTurns: node.requireInt("defensiveCollapseTurns", ctx),
-    defensiveCollapseThreshold: node.requireInt("defensiveCollapseThreshold", ctx)
+    defensiveCollapseTurns: node.requireInt32("defensiveCollapseTurns", ctx),
+    defensiveCollapseThreshold: node.requireInt32("defensiveCollapseThreshold", ctx)
   )
 
 proc parseAutopilot(node: KdlNode, ctx: var KdlConfigContext): AutopilotConfig =
   result = AutopilotConfig(
-    miaTurnsThreshold: node.requireInt("miaTurnsThreshold", ctx)
+    miaTurnsThreshold: node.requireInt32("miaTurnsThreshold", ctx)
   )
 
 proc parseAutopilotBehavior(node: KdlNode, ctx: var KdlConfigContext): AutopilotBehaviorConfig =
@@ -84,13 +84,3 @@ proc loadGameplayConfig*(configPath: string = "config/gameplay.kdl"): GameplayCo
     result.victory = parseVictory(victoryNode, ctx)
 
   logInfo("Config", "Loaded gameplay configuration", "path=", configPath)
-
-## Global configuration instance
-
-var globalGameplayConfig* = loadGameplayConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadGameplayConfig*() =
-  ## Reload configuration from file
-  globalGameplayConfig = loadGameplayConfig()

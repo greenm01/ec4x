@@ -10,16 +10,11 @@ type
     totalSquadronMinimum*: int32
     capitalShipCrThreshold*: int32
 
-  SalvageConfig* = object
-    salvageValueMultiplier*: float32
-    emergencySalvageMultiplier*: float32
-
   SpaceLiftCapacityConfig* = object
     etacCapacity*: int32 # Population Transfer Units per ETAC
 
   MilitaryConfig* = object ## Complete military configuration loaded from KDL
     fighterMechanics*: FighterMechanicsConfig
     squadronLimits*: SquadronLimitsConfig
-    salvage*: SalvageConfig
     spaceliftCapacity*: SpaceLiftCapacityConfig
 

@@ -4,7 +4,7 @@
 ## Allows runtime configuration for lane weights and map generation
 
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config
 
@@ -46,13 +46,3 @@ proc loadStarmapConfig*(configPath: string = "config/starmap.kdl"): StarmapConfi
     result.homeworldPlacement = parseHomeworldPlacement(homeNode, ctx)
 
   logInfo("Config", "Loaded starmap configuration", "path=", configPath)
-
-## Global configuration instance
-
-var globalStarmapConfig* = loadStarmapConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadStarmapConfig*() =
-  ## Reload configuration from file
-  globalStarmapConfig = loadStarmapConfig()

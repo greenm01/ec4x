@@ -4,7 +4,7 @@
 ## Allows runtime configuration for combat rules, CER tables, and special mechanics
 
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config 
 
@@ -144,13 +144,3 @@ proc loadCombatConfig*(configPath: string = "config/combat.kdl"): CombatConfig =
     result.invasion = parseInvasion(invasionNode, ctx)
 
   logInfo("Config", "Loaded combat configuration", "path=", configPath)
-
-## Global configuration instance
-
-var globalCombatConfig* = loadCombatConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadCombatConfig*() =
-  ## Reload configuration from file
-  globalCombatConfig = loadCombatConfig()

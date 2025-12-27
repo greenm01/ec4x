@@ -1,6 +1,6 @@
 # src/engine/
 # └── state/
-#    ├── game_state.nim  # Data structure + Core Iterators (allShips, allFleets)
+#    ├── engine.nim      # Game State accessors
 #    ├── id_gen.nim      # Counter logic
 #    └── queries.nim     # Spatial/Complex Iterators (shipsInSystem, enemiesNear)
 

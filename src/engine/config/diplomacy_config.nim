@@ -4,31 +4,31 @@
 ## Allows runtime configuration for balance testing
 
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config
 
 proc parseEspionageEffects(node: KdlNode, ctx: var KdlConfigContext): EspionageEffectsConfig =
   result = EspionageEffectsConfig(
-    techTheftSrpStolen: node.requireInt("techTheftSrpStolen", ctx),
+    techTheftSrpStolen: node.requireInt32("techTheftSrpStolen", ctx),
     lowSabotageDice: node.requireString("lowSabotageDice", ctx),
-    lowSabotageIuMin: node.requireInt("lowSabotageIuMin", ctx),
-    lowSabotageIuMax: node.requireInt("lowSabotageIuMax", ctx),
+    lowSabotageIuMin: node.requireInt32("lowSabotageIuMin", ctx),
+    lowSabotageIuMax: node.requireInt32("lowSabotageIuMax", ctx),
     highSabotageDice: node.requireString("highSabotageDice", ctx),
-    highSabotageIuMin: node.requireInt("highSabotageIuMin", ctx),
-    highSabotageIuMax: node.requireInt("highSabotageIuMax", ctx),
-    assassinationSrpReduction: node.requireFloat("assassinationSrpReduction", ctx),
-    assassinationDurationTurns: node.requireInt("assassinationDurationTurns", ctx),
-    economicDisruptionNcvReduction: node.requireFloat("economicDisruptionNcvReduction", ctx),
-    economicDisruptionDurationTurns: node.requireInt("economicDisruptionDurationTurns", ctx),
-    propagandaTaxReduction: node.requireFloat("propagandaTaxReduction", ctx),
-    propagandaDurationTurns: node.requireInt("propagandaDurationTurns", ctx),
+    highSabotageIuMin: node.requireInt32("highSabotageIuMin", ctx),
+    highSabotageIuMax: node.requireInt32("highSabotageIuMax", ctx),
+    assassinationSrpReduction: node.requireFloat32("assassinationSrpReduction", ctx),
+    assassinationDurationTurns: node.requireInt32("assassinationDurationTurns", ctx),
+    economicDisruptionNcvReduction: node.requireFloat32("economicDisruptionNcvReduction", ctx),
+    economicDisruptionDurationTurns: node.requireInt32("economicDisruptionDurationTurns", ctx),
+    propagandaTaxReduction: node.requireFloat32("propagandaTaxReduction", ctx),
+    propagandaDurationTurns: node.requireInt32("propagandaDurationTurns", ctx),
     cyberAttackEffect: node.requireString("cyberAttackEffect", ctx)
   )
 
 proc parseDetection(node: KdlNode, ctx: var KdlConfigContext): DetectionConfig =
   result = DetectionConfig(
-    failedEspionagePrestigeLoss: node.requireInt("failedEspionagePrestigeLoss", ctx)
+    failedEspionagePrestigeLoss: node.requireInt32("failedEspionagePrestigeLoss", ctx)
   )
 
 proc loadDiplomacyConfig*(
@@ -48,13 +48,3 @@ proc loadDiplomacyConfig*(
     result.detection = parseDetection(detNode, ctx)
 
   logInfo("Config", "Loaded diplomacy configuration", "path=", configPath)
-
-## Global configuration instance
-
-var globalDiplomacyConfig* = loadDiplomacyConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadDiplomacyConfig*() =
-  ## Reload configuration from file
-  globalDiplomacyConfig = loadDiplomacyConfig()

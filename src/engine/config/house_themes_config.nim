@@ -5,7 +5,7 @@
 
 import std/[tables, strutils]
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../../common/logger
 
 proc toHouseTheme(entry: ThemeEntry): HouseTheme =

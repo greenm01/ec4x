@@ -4,7 +4,7 @@
 ## Allows runtime configuration for spaceports and shipyards
 
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config
 
@@ -15,7 +15,6 @@ proc parseSpaceport(node: KdlNode, ctx: var KdlConfigContext): SpaceportConfig =
     productionCost: node.requireInt32("productionCost", ctx),
     maintenanceCost: node.requireInt32("maintenanceCost", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    carryLimit: node.requireInt32("carryLimit", ctx),
     buildTime: node.requireInt32("buildTime", ctx),
     docks: node.requireInt32("docks", ctx),
     maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
@@ -29,7 +28,6 @@ proc parseShipyard(node: KdlNode, ctx: var KdlConfigContext): ShipyardConfig =
     productionCost: node.requireInt32("productionCost", ctx),
     maintenanceCost: node.requireInt32("maintenanceCost", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    carryLimit: node.requireInt32("carryLimit", ctx),
     buildTime: node.requireInt32("buildTime", ctx),
     docks: node.requireInt32("docks", ctx),
     maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
@@ -43,7 +41,6 @@ proc parseDrydock(node: KdlNode, ctx: var KdlConfigContext): DrydockConfig =
     productionCost: node.requireInt32("productionCost", ctx),
     maintenanceCost: node.requireInt32("maintenanceCost", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    carryLimit: node.requireInt32("carryLimit", ctx),
     buildTime: node.requireInt32("buildTime", ctx),
     docks: node.requireInt32("docks", ctx),
     maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
@@ -57,9 +54,7 @@ proc parseStarbase(node: KdlNode, ctx: var KdlConfigContext): StarbaseConfig =
     productionCost: node.requireInt32("productionCost", ctx),
     maintenanceCost: node.requireInt32("maintenanceCost", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    carryLimit: node.requireInt32("carryLimit", ctx),
     buildTime: node.requireInt32("buildTime", ctx),
-    docks: node.requireInt32("docks", ctx),
     maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
     requiresSpaceport: node.requireBool("requiresSpaceport", ctx),
     economicLiftBonus: node.requireInt32("economicLiftBonus", ctx),
@@ -91,13 +86,3 @@ proc loadFacilitiesConfig*(
     result.starbase = parseStarbase(node, ctx)
 
   logInfo("Config", "Loaded facilities configuration", "path=", configPath)
-
-## Global configuration instance
-
-var globalFacilitiesConfig* = loadFacilitiesConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadFacilitiesConfig*() =
-  ## Reload configuration from file
-  globalFacilitiesConfig = loadFacilitiesConfig()

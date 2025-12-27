@@ -4,34 +4,28 @@
 ## Allows runtime configuration for squadron limits and salvage
 
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config
 
 proc parseFighterMechanics(node: KdlNode, ctx: var KdlConfigContext): FighterMechanicsConfig =
   result = FighterMechanicsConfig(
-    fighterCapacityIuDivisor: node.requireInt("fighterCapacityIuDivisor", ctx),
-    capacityViolationGracePeriod: node.requireInt("capacityViolationGracePeriod", ctx)
+    fighterCapacityIuDivisor: node.requireInt32("fighterCapacityIuDivisor", ctx),
+    capacityViolationGracePeriod: node.requireInt32("capacityViolationGracePeriod", ctx)
   )
 
 proc parseSquadronLimits(node: KdlNode, ctx: var KdlConfigContext): SquadronLimitsConfig =
   result = SquadronLimitsConfig(
-    squadronLimitIuDivisor: node.requireInt("squadronLimitIuDivisor", ctx),
-    squadronLimitMinimum: node.requireInt("squadronLimitMinimum", ctx),
-    totalSquadronIuDivisor: node.requireInt("totalSquadronIuDivisor", ctx),
-    totalSquadronMinimum: node.requireInt("totalSquadronMinimum", ctx),
-    capitalShipCrThreshold: node.requireInt("capitalShipCrThreshold", ctx)
-  )
-
-proc parseSalvage(node: KdlNode, ctx: var KdlConfigContext): SalvageConfig =
-  result = SalvageConfig(
-    salvageValueMultiplier: node.requireFloat("salvageValueMultiplier", ctx),
-    emergencySalvageMultiplier: node.requireFloat("emergencySalvageMultiplier", ctx)
+    squadronLimitIuDivisor: node.requireInt32("squadronLimitIuDivisor", ctx),
+    squadronLimitMinimum: node.requireInt32("squadronLimitMinimum", ctx),
+    totalSquadronIuDivisor: node.requireInt32("totalSquadronIuDivisor", ctx),
+    totalSquadronMinimum: node.requireInt32("totalSquadronMinimum", ctx),
+    capitalShipCrThreshold: node.requireInt32("capitalShipCrThreshold", ctx)
   )
 
 proc parseSpaceLiftCapacity(node: KdlNode, ctx: var KdlConfigContext): SpaceLiftCapacityConfig =
   result = SpaceLiftCapacityConfig(
-    etacCapacity: node.requireInt("etacCapacity", ctx)
+    etacCapacity: node.requireInt32("etacCapacity", ctx)
   )
 
 proc loadMilitaryConfig*(configPath: string = "config/military.kdl"): MilitaryConfig =
@@ -48,22 +42,8 @@ proc loadMilitaryConfig*(configPath: string = "config/military.kdl"): MilitaryCo
     let squadronNode = doc.requireNode("squadronLimits", ctx)
     result.squadronLimits = parseSquadronLimits(squadronNode, ctx)
 
-  ctx.withNode("salvage"):
-    let salvageNode = doc.requireNode("salvage", ctx)
-    result.salvage = parseSalvage(salvageNode, ctx)
-
   ctx.withNode("spaceliftCapacity"):
     let spaceliftNode = doc.requireNode("spaceliftCapacity", ctx)
     result.spaceliftCapacity = parseSpaceLiftCapacity(spaceliftNode, ctx)
 
   logInfo("Config", "Loaded military configuration", "path=", configPath)
-
-## Global configuration instance
-
-var globalMilitaryConfig* = loadMilitaryConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadMilitaryConfig*() =
-  ## Reload configuration from file
-  globalMilitaryConfig = loadMilitaryConfig()

@@ -1,29 +1,28 @@
 import ../types/[config, ship]
 import ./[
-  ships_config, ground_units_config, facilities_config,
-  combat_config, economy_config, prestige_config
+  game_setup_config, gameplay_config, house_themes_config, starmap_config,
+  ships_config, ground_units_config, facilities_config, combat_config,
+  economy_config, prestige_config, espionage_config, tech_config,
+  military_config, standing_commands_config, construction_config, guild_config
 ]
 
-# Master config loading function
-proc loadGameConfig(dataDir: string = "config"): GameConfig =
+proc loadGameConfig(configDir: string = "config"): GameConfig =
   ## Load and validate all game configuration files
   ## Raises ConfigError if any config file is missing or invalid
-
-  let gameSetupConfig = loadGameSetupConfig()
-  let gameplayConfig = loadGameplayConfig()
-  let houseThemesConfig = loadHouseThemesConfig()
-  let starmapConfig = loadStarmapConfig()
-  let shipsConfig = loadShipsConfig(dataDir / "ships.kdl")
-  let groundUnitsConfig = loadGroundUnitsConfig(dataDir / "ground_units.kdl")
-  let facilitiesConfig = loadFacilitiesConfig(dataDir / "facilities.kdl")
-  let combatConfig = loadCombatConfig(dataDir / "combat.kdl")
-  let economyConfig = loadEconomyConfig(dataDir / "economy.kdl")
-  let prestigeConfig = loadPrestigeConfig(dataDir / "prestige.kdl")
-  let espionageConfig = loadEspionageConfig()
-  let techConfig = loadTechConfig()
-  let militaryConfig = loadMilitaryConfig()
-  let standingCommandConfig = loadStandingCommandConfig()
-  let constructionConfig = loadConstructionConfig()
-  let populationConfig = loadPopulationCondfig()
-
-  result.prestigeMultiplier = prestigeMultiplier
+  result.gameSetup = loadGameSetupConfig("game_setup/standard.kdl")
+  result.gameplay = loadGameplayConfig(configDir / "gameplay.kdl")
+  result.houseThemes = loadHouseThemesConfig(configDir / "house_themes.kdl")
+  result.starmap = loadStarmapConfig(configDir / "starmap.kdl")
+  result.ships = loadShipsConfig(configDir / "ships.kdl")
+  result.groundUnits = loadGroundUnitsConfig(configDir / "ground_units.kdl")
+  result.facilities = loadFacilitiesConfig(configDir / "facilities.kdl")
+  result.combat = loadCombatConfig(configDir / "combat.kdl")
+  result.economy = loadEconomyConfig(configDir / "economy.kdl")
+  result.prestige = loadPrestigeConfig(configDir / "prestige.kdl")
+  result.espionage = loadEspionageConfig(configDir / "espionage.kdl")
+  result.tech = loadTechConfig(configDir / "tech.kdl")
+  result.military = loadMilitaryConfig(configDir / "military.kdl")
+  result.standingCommands = loadStandingCommandsConfig(configDir / "standing_commands.kdl")
+  result.construction = loadConstructionConfig(configDir / "construction.kdl")
+  result.guild = loadGuildCondfig(configDir / "guild.kdl")
+  result.prestigeMultiplier = loadPrestigeMultiplier(configDir / "prestige.kdl")

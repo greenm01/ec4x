@@ -11,6 +11,10 @@ type
     carryLimit*: int32
     buildTime*: int32
 
+  SalvageConfig* = object
+    salvageValueMultiplier*: float32
+    emergencySalvageMultiplier*: float32
+
   ShipsConfig* = object
     corvette*: ShipStatsConfig
     frigate*: ShipStatsConfig
@@ -29,4 +33,5 @@ type
     scout*: ShipStatsConfig
     etac*: ShipStatsConfig
     troopTransport*: ShipStatsConfig
+    salvage*: SalvageConfig
 

@@ -1,6 +1,6 @@
 import std/[tables]
 import ../../common/logger
-import ../starmap
+import ../[globals, starmap]
 import ../types/[
   core, game_state, squadron, intelligence, diplomacy, espionage, resolution, starmap,
   command, fleet,
@@ -74,59 +74,6 @@ proc newGame*(gameId: int32, playerCount: int32, seed: int64): GameState =
     activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
     gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
     lastTurnReports: initTable[HouseId, TurnResolutionReport](),
-  )
-
-proc newGameState*(gameId, seed, playerCount: int32, starMap: StarMap): GameState =
-  ## Create a new game state with an existing star map
-  ## Used for loading games or custom map setups
-  ## Requires player count to initialize house/AI configurations
-
-  # TODO: Implement game state creation logic:
-  # Initialize core GameState fields, set up initial indices,
-  # but do NOT initialize houses/colonies/fleets here directly.
-  # That will be handled by initializeHousesAndHomeworlds.
-
-  logInfo(
-    "Initialization", "Creating new game state for game ID ", gameId, " with ",
-    playerCount, " players.",
-  )
-
-  let turn: int32 = 1
-
-  result = GameState(
-    gameId: gameId,
-    seed: seed,
-    turn: turn,
-    starMap: starMap,
-    # Start IDs at 1 so 0 can be used as a "None/Null" value if needed
-    counters: IdCounters(
-      nextPlayerId: 1,
-      nextHouseId: 1,
-      nextSystemId: 1,
-      nextColonyId: 1,
-      nextStarbaseId: 1,
-      nextSpaceportId: 1,
-      nextShipyardId: 1,
-      nextDrydockId: 1,
-      nextFleetId: 1,
-      nextSquadronId: 1,
-      nextShipId: 1,
-      nextGroundUnitId: 1,
-      nextConstructionProjectId: 1,
-      nextRepairProjectId: 1,
-      nextPopulationTransferId: 1,
-    ),
-    # Initialize Tables (Sequences initialize to @[] automatically)
-    intelligence: initTable[HouseId, IntelligenceDatabase](),
-    diplomaticRelation: initTable[(HouseId, HouseId), DiplomaticRelation](),
-    diplomaticViolation: initTable[HouseId, ViolationHistory](),
-    fleetCommands: initTable[FleetId, FleetCommand](),
-    standingCommands: initTable[FleetId, StandingCommand](),
-    arrivedFleets: initTable[FleetId, SystemId](),
-    activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
-    gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
-    lastTurnReports: initTable[HouseId, TurnResolutionReport](),
-      # ... other default initializations for a blank state
   )
 
 proc initializeHousesAndHomeworlds*(state: var GameState) =

@@ -5,7 +5,7 @@
 
 import std/[os, strutils, options, tables]
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config
 
@@ -13,7 +13,7 @@ proc parseGameInfo(node: KdlNode, ctx: var KdlConfigContext): GameInfoConfig =
   result = GameInfoConfig(
     name: node.requireString("name", ctx),
     description: node.requireString("description", ctx),
-    recommendedPlayers: node.requireInt("recommendedPlayers", ctx).int32,
+    recommendedPlayers: node.requireInt32("recommendedPlayers", ctx),
     estimatedDuration: node.requireString("estimatedDuration", ctx)
   )
 
@@ -21,71 +21,71 @@ proc parseVictoryConditions(node: KdlNode, ctx: var KdlConfigContext): VictoryCo
   result = VictoryConditionsConfig(
     primaryCondition: node.requireString("primaryCondition", ctx),
     secondaryCondition: node.requireString("secondaryCondition", ctx),
-    prestigeThreshold: node.requireInt("prestigeThreshold", ctx).int32,
-    turnLimit: node.requireInt("turnLimit", ctx).int32
+    prestigeThreshold: node.requireInt32("prestigeThreshold", ctx),
+    turnLimit: node.requireInt32("turnLimit", ctx)
   )
 
 proc parseMap(node: KdlNode, ctx: var KdlConfigContext): MapConfig =
   result = MapConfig(
     size: node.requireString("size", ctx),
-    systems: node.requireInt("systems", ctx).int32,
+    systems: node.requireInt32("systems", ctx),
     jumpLaneDensity: node.requireString("jumpLaneDensity", ctx),
     startingDistance: node.requireString("startingDistance", ctx)
   )
 
 proc parseStartingResources(node: KdlNode, ctx: var KdlConfigContext): StartingResourcesConfig =
   result = StartingResourcesConfig(
-    treasury: node.requireInt("treasury", ctx).int32,
-    startingPrestige: node.requireInt("startingPrestige", ctx).int32,
-    defaultTaxRate: node.requireFloat("defaultTaxRate", ctx).float32
+    treasury: node.requireInt32("treasury", ctx),
+    startingPrestige: node.requireInt32("startingPrestige", ctx),
+    defaultTaxRate: node.requireFloat32("defaultTaxRate", ctx)
   )
 
 proc parseStartingTech(node: KdlNode, ctx: var KdlConfigContext): StartingTechConfig =
   result = StartingTechConfig(
-    economicLevel: node.requireInt("economicLevel", ctx).int32,
-    scienceLevel: node.requireInt("scienceLevel", ctx).int32,
-    constructionTech: node.requireInt("constructionTech", ctx).int32,
-    weaponsTech: node.requireInt("weaponsTech", ctx).int32,
-    terraformingTech: node.requireInt("terraformingTech", ctx).int32,
-    electronicIntelligence: node.requireInt("electronicIntelligence", ctx).int32,
-    cloakingTech: node.requireInt("cloakingTech", ctx).int32,
-    shieldTech: node.requireInt("shieldTech", ctx).int32,
-    counterIntelligence: node.requireInt("counterIntelligence", ctx).int32,
-    fighterDoctrine: node.requireInt("fighterDoctrine", ctx).int32,
-    advancedCarrierOps: node.requireInt("advancedCarrierOps", ctx).int32
+    economicLevel: node.requireInt32("economicLevel", ctx),
+    scienceLevel: node.requireInt32("scienceLevel", ctx),
+    constructionTech: node.requireInt32("constructionTech", ctx),
+    weaponsTech: node.requireInt32("weaponsTech", ctx),
+    terraformingTech: node.requireInt32("terraformingTech", ctx),
+    electronicIntelligence: node.requireInt32("electronicIntelligence", ctx),
+    cloakingTech: node.requireInt32("cloakingTech", ctx),
+    shieldTech: node.requireInt32("shieldTech", ctx),
+    counterIntelligence: node.requireInt32("counterIntelligence", ctx),
+    fighterDoctrine: node.requireInt32("fighterDoctrine", ctx),
+    advancedCarrierOps: node.requireInt32("advancedCarrierOps", ctx)
   )
 
 proc parseStartingFleet(node: KdlNode, ctx: var KdlConfigContext): StartingFleetConfig =
   result = StartingFleetConfig(
-    fleetCount: node.requireInt("fleetCount", ctx).int32,
-    etac: getIntOpt(node, "etac", 0).int32,
-    lightCruiser: getIntOpt(node, "lightCruiser", 0).int32,
-    destroyer: getIntOpt(node, "destroyer", 0).int32,
-    scout: getIntOpt(node, "scout", 0).int32
+    fleetCount: node.requireInt32("fleetCount", ctx),
+    etac: getInt32Opt(node, "etac", 0),
+    lightCruiser: getInt32Opt(node, "lightCruiser", 0),
+    destroyer: getInt32Opt(node, "destroyer", 0),
+    scout: getInt32Opt(node, "scout", 0)
   )
 
 proc parseStartingFacilities(node: KdlNode, ctx: var KdlConfigContext): StartingFacilitiesConfig =
   result = StartingFacilitiesConfig(
-    spaceports: node.requireInt("spaceports", ctx).int32,
-    shipyards: node.requireInt("shipyards", ctx).int32,
-    starbases: node.requireInt("starbases", ctx).int32,
-    groundBatteries: node.requireInt("groundBatteries", ctx).int32,
-    planetaryShields: node.requireInt("planetaryShields", ctx).int32
+    spaceports: node.requireInt32("spaceports", ctx),
+    shipyards: node.requireInt32("shipyards", ctx),
+    starbases: node.requireInt32("starbases", ctx),
+    groundBatteries: node.requireInt32("groundBatteries", ctx),
+    planetaryShields: node.requireInt32("planetaryShields", ctx)
   )
 
 proc parseStartingGroundForces(node: KdlNode, ctx: var KdlConfigContext): StartingGroundForcesConfig =
   result = StartingGroundForcesConfig(
-    armies: node.requireInt("armies", ctx).int32,
-    marines: node.requireInt("marines", ctx).int32
+    armies: node.requireInt32("armies", ctx),
+    marines: node.requireInt32("marines", ctx)
   )
 
 proc parseHomeworld(node: KdlNode, ctx: var KdlConfigContext): HomeworldConfig =
   result = HomeworldConfig(
     planetClass: node.requireString("planetClass", ctx),
     rawQuality: node.requireString("rawQuality", ctx),
-    colonyLevel: node.requireInt("colonyLevel", ctx).int32,
-    populationUnits: node.requireInt("populationUnits", ctx).int32,
-    industrialUnits: node.requireInt("industrialUnits", ctx).int32
+    colonyLevel: node.requireInt32("colonyLevel", ctx),
+    populationUnits: node.requireInt32("populationUnits", ctx),
+    industrialUnits: node.requireInt32("industrialUnits", ctx)
   )
 
 proc parseHouseNaming(node: KdlNode, ctx: var KdlConfigContext): HouseNamingConfig =
@@ -203,7 +203,7 @@ proc parseFleetConfig(node: KdlNode, ctx: var KdlConfigContext): FleetConfig =
   if cargoPtuOpt.isSome:
     let cargoPtuNode = cargoPtuOpt.get()
     if cargoPtuNode.args.len > 0:
-      cargoPtu = some(cargoPtuNode.args[0].getInt().int32)
+      cargoPtu = some(cargoPtuNode.args[0].getInt32())
 
   result = FleetConfig(ships: ships, cargoPtu: cargoPtu)
 
@@ -263,13 +263,3 @@ proc useThemeNames*(config: GameSetupConfig): bool =
     return config.houseNaming.get().useThemeNames
   else:
     return false # Default: don't use theme names
-
-## Global configuration instance
-
-var globalGameSetupConfig* = loadGameSetupConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadGameSetupConfig*() =
-  ## Reload configuration from file
-  globalGameSetupConfig = loadGameSetupConfig()

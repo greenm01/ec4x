@@ -1,11 +1,17 @@
 type
-  EconomyPopulationConfig* = object
+  PopulationConfig* = object
     naturalGrowthRate*: float32
     growthRatePerStarbase*: float32
     maxStarbaseBonus*: float32
     ptuGrowthRate*: float32
     ptuToSouls*: int32
     puToPtuConversion*: float32
+    minViableColonyPop*: int32
+
+  PtuDefinitionConfig* = object
+    soulsPerPtu*: int32
+    ptuSizeMillions*: float32
+    minPopulationRemaining*: int32
 
   ProductionConfig* = object
     productionPer10Population*: int32
@@ -179,7 +185,8 @@ type
     prodGrowthDenominator*: float32
 
   EconomyConfig* = object ## Complete economy configuration loaded from KDL
-    population*: EconomyPopulationConfig
+    population*: PopulationConfig
+    ptuDefinition*: PtuDefinitionConfig
     production*: ProductionConfig
     infrastructure*: InfrastructureConfig
     planetClasses*: PlanetClassesConfig

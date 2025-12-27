@@ -16,6 +16,16 @@ population {
   ptuGrowthRate 0.04
   ptuToSouls 50000
   puToPtuConversion 0.00657
+  minViableColonyPop 5000    // Minimum viable souls to sustain a colony 
+}
+
+ptuDefinition {
+    // Population Transfer Unit (PTU) definition
+    // One PTU is approximately 50k souls = 0.05 million people
+    // Used for both ETAC colonization and Space Guild transfers
+    soulsPerPtu 50000        // Number of souls in 1 PTU
+    ptuSizeMillions 0.05     // PTU size in millions (for colony.population field)
+    minPopulationRemaining 0 // Minimum population after PTU transfer (0 = allow evacuation)
 }
 
 production {

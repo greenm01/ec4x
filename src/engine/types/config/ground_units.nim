@@ -50,4 +50,3 @@ type
     groundBattery*: GroundBatteryConfig
     army*: ArmyConfig
     marineDivision*: MarineDivisionConfig
-

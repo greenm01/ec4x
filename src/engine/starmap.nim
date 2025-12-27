@@ -597,16 +597,6 @@ proc verifyGameRules*(starMap: StarMap): bool =
   except:
     return false
 
-# =============================================================================
-# TODO: Fleet pathfinding functions removed - require Fleet/Squadrons/Ships types
-# Will be restored once type import issues are resolved:
-# - isReachable()
-# - findPathsInRange()
-# - getPathCost()
-# - calculateETA()
-# - calculateMultiFleetETA()
-# =============================================================================
-
 proc playerSystems*(starMap: StarMap, playerId: PlayerId): seq[System] =
   ## Get all systems owned by a specific player
   var systems: seq[System] = @[]

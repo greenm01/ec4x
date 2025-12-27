@@ -1,24 +1,55 @@
 type
+  EspionageCostsConfig* = object
+    ebpCostPp*: int32
+    cipCostPp*: int32
+    techTheftEbp*: int32
+    sabotageLowEbp*: int32
+    sabotageHighEbp*: int32
+    assassinationEbp*: int32
+    cyberAttackEbp*: int32
+    economicManipulationEbp*: int32
+    psyopsCampaignEbp*: int32
+    counterIntelSweepEbp*: int32
+    intelligenceTheftEbp*: int32
+    plantDisinformationEbp*: int32
+
+  EspionageInvestmentConfig* = object
+    thresholdPercentage*: int32
+    penaltyPerPercent*: int32
+
   EspionageEffectsConfig* = object
-    techTheftSrpStolen*: int32
-    lowSabotageDice*: string
-    lowSabotageIuMin*: int32
-    lowSabotageIuMax*: int32
-    highSabotageDice*: string
-    highSabotageIuMin*: int32
-    highSabotageIuMax*: int32
-    assassinationSrpReduction*: float32
-    assassinationDurationTurns*: int32
-    economicDisruptionNcvReduction*: float32
-    economicDisruptionDurationTurns*: int32
-    propagandaTaxReduction*: float32
-    propagandaDurationTurns*: int32
-    cyberAttackEffect*: string
+    techTheftSrp*: int32
+    sabotageLowDice*: int32
+    sabotageHighDice*: int32
+    assassinationSrpReduction*: int32
+    economicNcvReduction*: int32
+    psyopsTaxReduction*: int32
+    effectDurationTurns*: int32
+    failedEspionagePrestige*: int32
+    intelBlockDuration*: int32
+    disinformationDuration*: int32
+    disinformationMinVariance*: float32
+    disinformationMaxVariance*: float32
 
-  DetectionConfig* = object
-    failedEspionagePrestigeLoss*: int32
+  EspionageDetectionConfig* = object
+    cipPerRoll*: int32
+    cic0Threshold*: int32
+    cic1Threshold*: int32
+    cic2Threshold*: int32
+    cic3Threshold*: int32
+    cic4Threshold*: int32
+    cic5Threshold*: int32
+    cip0Modifier*: int32
+    cip1To5Modifier*: int32
+    cip6To10Modifier*: int32
+    cip11To15Modifier*: int32
+    cip16To20Modifier*: int32
+    cip21PlusModifier*: int32
 
-  DiplomacyConfig* = object ## Complete diplomacy configuration loaded from KDL
-    espionageEffects*: EspionageEffectsConfig
-    detection*: DetectionConfig
+  EspionageConfig* = object ## Complete espionage configuration loaded from KDL
+    costs*: EspionageCostsConfig
+    investment*: EspionageInvestmentConfig
+    detection*: EspionageDetectionConfig
+    effects*: EspionageEffectsConfig
+    scoutDetection*: ScoutDetectionConfig
 

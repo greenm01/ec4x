@@ -1,11 +1,11 @@
 import ./config/[
   gameplay, ships, ground_units, facilities, combat, economy, prestige, espionage,
-  tech, military, standing_commands, construction, game_setup, house_themes, population,
+  tech, military, standing_commands, construction, game_setup, house_themes, guild,
   starmap
 ]
 
 export gameplay, ships, ground_units, facilities, combat, economy, prestige, espionage,
-  tech, military, standing_commands, construction, game_setup, house_themes, population,
+  tech, military, standing_commands, construction, game_setup, house_themes, guild,
   starmap
 
 type
@@ -25,7 +25,7 @@ type
     military*: MilitaryConfig
     standingCommands*: StandingCommandsConfig
     construction*: ConstructionConfig
-    population*: PopulationConfig
+    guild*: GuildConfig
 
     # Dynamic scaling multipliers
     prestigeMultiplier*: float64

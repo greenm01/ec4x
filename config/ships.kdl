@@ -16,7 +16,9 @@
 // CR = Command Rating
 // CL = Carry Limit
 
-// Escort Ships
+// ============================================================================
+// ESCORT SHIPS
+// ============================================================================
 
 corvette {
     description "Smallest warship, fast and cheap screening and exploration unit"
@@ -70,7 +72,9 @@ lightCruiser {
     buildTime 1  // turns
 }
 
-// Capital Ships
+// ============================================================================
+// CAPITAL SHIPS
+// ============================================================================
 
 heavyCruiser {
     description "Heavy guns, strong armor, backbone of battle lines"
@@ -176,7 +180,9 @@ raider {
     buildTime 1  // turns
 }
 
-// Auxiliary (Screened during space/orbital combat)
+// ============================================================================
+// AUXILIARY (Screened during space/orbital combat)
+// ============================================================================
 
 scout {
     description "Autonomous Reconnaissance, sensor suite. No combat"
@@ -217,7 +223,9 @@ troopTransport {
     buildTime 1  // turns
 }
 
-// Fighter Squadrons
+// ============================================================================
+// FIGHTER SQUADRONS
+// ============================================================================
 
 fighter {
     description "Glass cannon - extreme damage output, negligible defenses"
@@ -232,7 +240,9 @@ fighter {
     buildTime 0  // turns
 }
 
-// Special Weapon
+// ============================================================================
+// SPECIAL WEAPONS
+// ============================================================================
 
 planetbreaker {
     description "Apocalyptic weapon - orbital bombardment/planetary destruction"
@@ -245,4 +255,13 @@ planetbreaker {
     commandRating 6
     carryLimit 0
     buildTime 3  // turns
+}
+
+// ============================================================================
+// SALVAGE MECHANICS
+// ============================================================================
+
+salvage {
+    salvageValueMultiplier 0.5       // Salvaged ships return 50% of build cost
+    emergencySalvageMultiplier 0.25  // Emergency/combat salvage returns 25% of PC
 }

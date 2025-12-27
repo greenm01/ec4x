@@ -5,7 +5,7 @@
 
 import std/[options]
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/[config, ship]
 
@@ -22,6 +22,12 @@ proc parseShipStats(node: KdlNode, ctx: var KdlConfigContext): ShipStatsConfig =
     commandRating: node.requireNonNegativeInt32("commandRating", ctx),
     carryLimit: node.requireNonNegativeInt32("carryLimit", ctx),
     buildTime: node.requireNonNegativeInt32("buildTime", ctx)
+  )
+
+proc parseSalvage(node: KdlNode, ctx: var KdlConfigContext): SalvageConfig =
+  result = SalvageConfig(
+    salvageValueMultiplier: node.requireFloat32("salvageValueMultiplier", ctx),
+    emergencySalvageMultiplier: node.requireFloat32("emergencySalvageMultiplier", ctx)
   )
 
 proc loadShipsConfig*(configPath: string = "config/ships.kdl"): ShipsConfig =
@@ -54,6 +60,10 @@ proc loadShipsConfig*(configPath: string = "config/ships.kdl"): ShipsConfig =
   parseShip("fighter", fighter)
   parseShip("planetbreaker", planetbreaker)
   
+  ctx.withNode("salvage"):
+    let salvageNode = doc.requireNode("salvage", ctx)
+    result.salvage = parseSalvage(salvageNode, ctx)
+
   logInfo("Config", "Loaded ships configuration", "path=", configPath)
 
 ## Global configuration instance

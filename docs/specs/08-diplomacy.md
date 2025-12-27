@@ -60,18 +60,18 @@ If you invest more than 5% of your turn budget into EBP, you lose Prestige point
 - Maximum of One Espionage Action Per Turn.
 
 <!-- ESPIONAGE_PRESTIGE_TABLE_START -->
-| Espionage Action | Cost in EBPs | Description | Prestige Change for Player | Prestige Change for Target |
-|------------------|:------------:|-------------|----------------------------|----------------------------|
-| Tech Theft | 5 | Attempt to steal critical R&D tech. | +20 | -30 |
-| Sabotage (Low Impact) | 2 | Small-scale sabotage to a colony's industry. | +10 | -10 |
-| Sabotage (High Impact) | 7 | Major sabotage to a colony's industry. | +30 | -50 |
-| Assassination | 10 | Attempt to eliminate a key figures within the target House. | +50 | -70 |
-| Cyber Attack | 6 | Attempt to hack into a Starbase's systems to cause damage and chaos. | +20 | -30 |
-| Economic Manipulation | 6 | Influence markets to harm the target's economy | +30 | -7 |
-| Psyops Campaign | 3 | Launch a misinformation campaign or demoralization effort. | +10 | -3 |
-| Counter-Intelligence Sweep | 4 | Defensive operation to block enemy intelligence gathering. | +5 | +0 |
-| Intelligence Theft | 8 | Steal target's entire intelligence database. | +40 | -20 |
-| Plant Disinformation | 6 | Corrupt target's intelligence with false data. | +15 | -15 |
+| Espionage Action           | Cost in EBPs | Description                                                          | Prestige Change for Player | Prestige Change for Target |
+|----------------------------|:------------:|----------------------------------------------------------------------|----------------------------|----------------------------|
+| Tech Theft                 | 5            | Attempt to steal critical R&D tech.                                  | +20                        | -30                        |
+| Sabotage (Low Impact)      | 2            | Small-scale sabotage to a colony's industry.                         | +10                        | -10                        |
+| Sabotage (High Impact)     | 7            | Major sabotage to a colony's industry.                               | +30                        | -50                        |
+| Assassination              | 10           | Attempt to eliminate a key figures within the target House.          | +50                        | -70                        |
+| Cyber Attack               | 6            | Attempt to hack into a Starbase's systems to cause damage and chaos. | +20                        | -30                        |
+| Economic Manipulation      | 6            | Influence markets to harm the target's economy                       | +30                        | -7                         |
+| Psyops Campaign            | 3            | Launch a misinformation campaign or demoralization effort.           | +10                        | -3                         |
+| Counter-Intelligence Sweep | 4            | Defensive operation to block enemy intelligence gathering.           | +5                         | +0                         |
+| Intelligence Theft         | 8            | Steal target's entire intelligence database.                         | +40                        | -20                        |
+| Plant Disinformation       | 6            | Corrupt target's intelligence with false data.                       | +15                        | -15                        |
 
 *Source: config/prestige.toml [espionage] and [espionage_victim] sections; config/espionage.toml [costs]*
 <!-- ESPIONAGE_PRESTIGE_TABLE_END -->
@@ -80,18 +80,18 @@ If you invest more than 5% of your turn budget into EBP, you lose Prestige point
 
 Espionage actions allow you to disrupt your rivals' operations and gain tactical advantages through covert maneuvers. Below is a detailed overview of each available action, including its effects and thematic narrative.
 
-| Espionage Action              | Effect                                                     |
-| ----------------------------- | ---------------------------------------------------------- |
-| **Tech Theft**                | Steals **10 SRP** from the target's research pool          |
-| **Low Impact Sabotage**       | Reduces target's **1d6 Industrial Units (IU)**             |
-| **High Impact Sabotage**      | Reduces target's **1d20 Industrial Units (IU)**            |
-| **Assassination**             | Reduces target's **SRP gain by 50%** for one turn          |
-| **Economic Disruption**       | Halves target's **Net Colony Value (NCV)** for one turn    |
-| **Propaganda Campaign**       | Reduces target's **tax revenue by 25%** for one turn       |
-| **Cyber Attack**              | Cripples the target's **Starbase**                         |
-| **Counter-Intelligence Sweep** | Blocks enemy intelligence gathering for **1 turn**        |
-| **Intelligence Theft**        | Steals target's **entire intelligence database**           |
-| **Plant Disinformation**      | Corrupts target's intel with **20-40% variance for 2 turns** |
+| Espionage Action               | Effect                                                       |
+| ------------------------------ | ------------------------------------------------------------ |
+| **Tech Theft**                 | Steals **10 SRP** from the target's research pool            |
+| **Low Impact Sabotage**        | Reduces target's **1d6 Industrial Units (IU)**               |
+| **High Impact Sabotage**       | Reduces target's **1d20 Industrial Units (IU)**              |
+| **Assassination**              | Reduces target's **SRP gain by 50%** for one turn            |
+| **Economic Disruption**        | Halves target's **Net Colony Value (NCV)** for one turn      |
+| **Propaganda Campaign**        | Reduces target's **tax revenue by 25%** for one turn         |
+| **Cyber Attack**               | Cripples the target's **Starbase**                           |
+| **Counter-Intelligence Sweep** | Blocks enemy intelligence gathering for **1 turn**           |
+| **Intelligence Theft**         | Steals target's **entire intelligence database**             |
+| **Plant Disinformation**       | Corrupts target's intel with **20-40% variance for 2 turns** |
 
 **Tech Theft**:
 In the dead of night, a covert team of elite hackers infiltrates the rival House's research network, siphoning critical data and blueprints. By the time their intrusion is detected, valuable research progress has already been uploaded and integrated into your own laboratories, giving your scientists a sudden leap forward.
@@ -161,14 +161,14 @@ If you invest more than 5% of your turn budget into CIP, you lose Prestige point
 The modifier is determined based on the total **CIP points** held by the player when an espionage event occurs:
 
 <!-- CIC_MODIFIER_TABLE_START -->
-| Total CIP Points | Automatic Detection Modifier |
-|:----------------:|:----------------------------:|
-| 0 | 0 (espionage automatically succeeds) |
-| 1-5 | +1 |
-| 6-10 | +2 |
-| 11-15 | +3 |
-| 16-20 | +4 |
-| 21+ | +5 (maximum) |
+| Total CIP Points | Automatic Detection Modifier         |
+|:----------------:|:------------------------------------:|
+| 0                | 0 (espionage automatically succeeds) |
+| 1-5              | +1                                   |
+| 6-10             | +2                                   |
+| 11-15            | +3                                   |
+| 16-20            | +4                                   |
+| 21+              | +5 (maximum)                         |
 
 *Source: config/espionage.toml [detection] section*
 <!-- CIC_MODIFIER_TABLE_END -->
@@ -178,11 +178,11 @@ The modifier is determined based on the total **CIP points** held by the player 
 <!-- CIC_THRESHOLD_TABLE_START -->
 | CIC Level | Base 1D20 Roll | Detection Probability (with Automatic Modifier) |
 |:---------:|:--------------:|:-----------------------------------------------:|
-| CIC1 | > 15 | 25% → 30-50% |
-| CIC2 | > 12 | 40% → 45-65% |
-| CIC3 | > 10 | 55% → 60-80% |
-| CIC4 | > 7 | 65% → 70-90% |
-| CIC5 | > 4 | 80% → 85-95% |
+| CIC1      | > 15           | 25% → 30-50%                                    |
+| CIC2      | > 12           | 40% → 45-65%                                    |
+| CIC3      | > 10           | 55% → 60-80%                                    |
+| CIC4      | > 7            | 65% → 70-90%                                    |
+| CIC5      | > 4            | 80% → 85-95%                                    |
 
 *Source: config/espionage.toml [detection] section*
 <!-- CIC_THRESHOLD_TABLE_END -->

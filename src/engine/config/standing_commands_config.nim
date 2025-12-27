@@ -2,7 +2,7 @@
 ## Loads standing command behavior settings from config/standing_orders.kdl
 
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config
 
@@ -46,13 +46,3 @@ proc loadStandingOrdersConfig*(
     result.uiHints = parseUIHints(uiHintsNode, ctx)
 
   logInfo("Config", "Loaded standing commands configuration", "path=", configPath)
-
-## Global configuration instance
-
-var globalStandingOrdersConfig* = loadStandingOrdersConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadStandingOrdersConfig*() =
-  ## Reload configuration from file
-  globalStandingOrdersConfig = loadStandingOrdersConfig()

@@ -4,7 +4,7 @@
 ## Allows runtime configuration for planetary defenses and invasion forces
 
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config
 
@@ -87,13 +87,3 @@ proc loadGroundUnitsConfig*(
     result.marineDivision = parseMarineDivision(marineNode, ctx)
 
   logInfo("Config", "Loaded ground units configuration", "path=", configPath)
-
-## Global configuration instance
-
-var globalGroundUnitsConfig* = loadGroundUnitsConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadGroundUnitsConfig*() =
-  ## Reload configuration from file
-  globalGroundUnitsConfig = loadGroundUnitsConfig()

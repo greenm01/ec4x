@@ -25,27 +25,6 @@ investment {
     penaltyPerPercent -1  // -1 prestige per 1% over threshold
 }
 
-detection {
-    // CIP consumed per detection roll
-    cipPerRoll 1
-
-    // Detection thresholds (d20 roll must meet or exceed)
-    cic0Threshold 21  // Impossible (no counter-intelligence)
-    cic1Threshold 15  // 25% base detection
-    cic2Threshold 12  // 40% base detection
-    cic3Threshold 10  // 55% base detection
-    cic4Threshold 7   // 65% base detection
-    cic5Threshold 4   // 80% base detection
-
-    // CIP point modifiers
-    cip0Modifier 0
-    cip1To5Modifier 1
-    cip6To10Modifier 2
-    cip11To15Modifier 3
-    cip16To20Modifier 4
-    cip21PlusModifier 5
-}
-
 effects {
     // Action effects
     techTheftSrp 10            // SRP stolen
@@ -66,120 +45,23 @@ effects {
     failedEspionagePrestige -2  // When detected
 }
 
-// ============================================================================
-// SCOUT/RAIDER DETECTION MECHANICS
-// Source: docs/specs/assets.md Sections 2.4.2 (Scouts) and 2.4.3 (Raiders)
-// ============================================================================
+detection {
+    // CIP consumed per detection roll
+    cipPerRoll 1
 
-scoutDetection {
-    // BALANCE: Scout mesh network modifiers (assets.md line 347-352)
-    mesh2To3Scouts 1                // +1 modifier for 2-3 scouts
-    mesh4To5Scouts 2                // +2 modifier for 4-5 scouts
-    mesh6PlusScouts 3             // +3 modifier for 6+ scouts (maximum)
+    // Detection thresholds (d20 roll must meet or exceed)
+    cic0Threshold 21  // Impossible (no counter-intelligence)
+    cic1Threshold 15  // 25% base detection
+    cic2Threshold 12  // 40% base detection
+    cic3Threshold 10  // 55% base detection
+    cic4Threshold 7   // 65% base detection
+    cic5Threshold 4   // 80% base detection
 
-    // BALANCE: Starbase detection bonus (assets.md line 357)
-    starbaseEliBonus 2             // +2 ELI modifier vs spy scouts
-
-    // BALANCE: Tech level penalty threshold (assets.md line 392)
-    dominantTechThreshold 0.50     // If >50% scouts are lower tech, -1 ELI penalty
-
-    // MECHANIC: Maximum effective ELI level
-    maxEliLevel 5                  // ELI5 is maximum
-}
-
-raiderDetection {
-    // BALANCE: Random threshold dice
-    thresholdVarianceDice 3        // 1d3 roll for threshold selection within range
-
-    // BALANCE: ELI level difference thresholds for threshold selection
-    eliAdvantageMajor 2            // ELI 2+ levels higher = use lower bound
-    eliAdvantageMinor 1            // ELI equal or 1 higher = random threshold
-    // ELI lower = use upper bound (implicit)
-}
-
-// ============================================================================
-// SPY SCOUT DETECTION TABLE
-// Source: docs/specs/assets.md Section 2.4.2
-// Format: [detector_eli_level][spy_eli_level] = [min_threshold, max_threshold]
-// Roll 1d20, must exceed threshold. Roll 1d3 to pick value in range.
-// ============================================================================
-
-spyDetectionTable {
-    // Detector ELI1 (rows in table)
-    eli1VsSpyEli1 11 13
-    eli1VsSpyEli2 15 17
-    eli1VsSpyEli3 17 19
-    eli1VsSpyEli4 18 20
-    eli1VsSpyEli5 21 21  // NA - impossible
-
-    // Detector ELI2
-    eli2VsSpyEli1 6 8
-    eli2VsSpyEli2 11 13
-    eli2VsSpyEli3 15 17
-    eli2VsSpyEli4 17 19
-    eli2VsSpyEli5 18 20
-
-    // Detector ELI3
-    eli3VsSpyEli1 2 4
-    eli3VsSpyEli2 6 8
-    eli3VsSpyEli3 11 13
-    eli3VsSpyEli4 15 17
-    eli3VsSpyEli5 17 19
-
-    // Detector ELI4
-    eli4VsSpyEli1 0 2
-    eli4VsSpyEli2 2 4
-    eli4VsSpyEli3 6 8
-    eli4VsSpyEli4 11 13
-    eli4VsSpyEli5 15 17
-
-    // Detector ELI5
-    eli5VsSpyEli1 0 1
-    eli5VsSpyEli2 0 2
-    eli5VsSpyEli3 2 4
-    eli5VsSpyEli4 6 8
-    eli5VsSpyEli5 11 13
-}
-
-// ============================================================================
-// RAIDER DETECTION TABLE
-// Source: docs/specs/assets.md Section 2.4.3
-// Format: [detector_eli_level][raider_clk_level] = [min_threshold, max_threshold]
-// ============================================================================
-
-raiderDetectionTable {
-    // Detector ELI1
-    eli1VsClk1 14 16
-    eli1VsClk2 17 19
-    eli1VsClk3 21 21  // NA - impossible
-    eli1VsClk4 21 21  // NA - impossible
-    eli1VsClk5 21 21  // NA - impossible
-
-    // Detector ELI2
-    eli2VsClk1 10 12
-    eli2VsClk2 14 16
-    eli2VsClk3 17 19
-    eli2VsClk4 21 21  // NA - impossible
-    eli2VsClk5 21 21  // NA - impossible
-
-    // Detector ELI3
-    eli3VsClk1 6 8
-    eli3VsClk2 10 12
-    eli3VsClk3 14 16
-    eli3VsClk4 17 19
-    eli3VsClk5 21 21  // NA - impossible
-
-    // Detector ELI4
-    eli4VsClk1 3 5
-    eli4VsClk2 6 8
-    eli4VsClk3 10 12
-    eli4VsClk4 14 16
-    eli4VsClk5 17 19
-
-    // Detector ELI5
-    eli5VsClk1 1 3
-    eli5VsClk2 3 5
-    eli5VsClk3 6 8
-    eli5VsClk4 10 12
-    eli5VsClk5 14 16
+    // CIP point modifiers
+    cip0Modifier 0
+    cip1To5Modifier 1
+    cip6To10Modifier 2
+    cip11To15Modifier 3
+    cip16To20Modifier 4
+    cip21PlusModifier 5
 }

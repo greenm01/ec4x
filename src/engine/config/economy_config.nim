@@ -4,31 +4,39 @@
 ## Allows runtime configuration for population, production, research, taxation, colonization
 
 import kdl
-import kdl_config_helpers
+import kdl_helpers
 import ../../common/logger
 import ../types/config
 
 proc parsePopulation(node: KdlNode, ctx: var KdlConfigContext): PopulationConfig =
   result = PopulationConfig(
-    naturalGrowthRate: node.requireFloat("naturalGrowthRate", ctx).float32,
+    naturalGrowthRate: node.requireFloat32("naturalGrowthRate", ctx),
     growthRatePerStarbase:
-      node.requireFloat("growthRatePerStarbase", ctx).float32,
-    maxStarbaseBonus: node.requireFloat("maxStarbaseBonus", ctx).float32,
-    ptuGrowthRate: node.requireFloat("ptuGrowthRate", ctx).float32,
-    ptuToSouls: node.requireInt("ptuToSouls", ctx).int32,
-    puToPtuConversion: node.requireFloat("puToPtuConversion", ctx).float32
+      node.requireFloat32("growthRatePerStarbase", ctx),
+    maxStarbaseBonus: node.requireFloat32("maxStarbaseBonus", ctx),
+    ptuGrowthRate: node.requireFloat32("ptuGrowthRate", ctx),
+    ptuToSouls: node.requireInt32("ptuToSouls", ctx),
+    puToPtuConversion: node.requireFloat32("puToPtuConversion", ctx),
+    minViableColonyPop: node.requireInt32("minViableColonyPop", ctx)
+  )
+
+proc parsePtuDefinition(node: KdlNode, ctx: var KdlConfigContext): PtuDefinitionConfig =
+  result = PtuDefinitionConfig(
+    soulsPerPtu: node.requireInt32("soulsPerPtu", ctx),
+    ptuSizeMillions: node.requireFloat32("ptuSizeMillions", ctx),
+    minPopulationRemaining: node.requireInt32("minPopulationRemaining", ctx)
   )
 
 proc parseProduction(node: KdlNode, ctx: var KdlConfigContext): ProductionConfig =
   result = ProductionConfig(
     productionPer10Population:
-      node.requireInt("productionPer10Population", ctx).int32,
+      node.requireInt32("productionPer10Population", ctx),
     productionSplitCredits:
-      node.requireFloat("productionSplitCredits", ctx).float32,
+      node.requireFloat32("productionSplitCredits", ctx),
     productionSplitProduction:
-      node.requireFloat("productionSplitProduction", ctx).float32,
+      node.requireFloat32("productionSplitProduction", ctx),
     productionSplitResearch:
-      node.requireFloat("productionSplitResearch", ctx).float32
+      node.requireFloat32("productionSplitResearch", ctx)
   )
 
 proc parseInfrastructure(
@@ -42,70 +50,70 @@ proc parsePlanetClasses(
   ctx: var KdlConfigContext
 ): PlanetClassesConfig =
   result = PlanetClassesConfig(
-    extremePuMin: node.requireInt("extremePuMin", ctx).int32,
-    extremePuMax: node.requireInt("extremePuMax", ctx).int32,
-    desolatePuMin: node.requireInt("desolatePuMin", ctx).int32,
-    desolatePuMax: node.requireInt("desolatePuMax", ctx).int32,
-    hostilePuMin: node.requireInt("hostilePuMin", ctx).int32,
-    hostilePuMax: node.requireInt("hostilePuMax", ctx).int32,
-    harshPuMin: node.requireInt("harshPuMin", ctx).int32,
-    harshPuMax: node.requireInt("harshPuMax", ctx).int32,
-    benignPuMin: node.requireInt("benignPuMin", ctx).int32,
-    benignPuMax: node.requireInt("benignPuMax", ctx).int32,
-    lushPuMin: node.requireInt("lushPuMin", ctx).int32,
-    lushPuMax: node.requireInt("lushPuMax", ctx).int32,
-    edenPuMin: node.requireInt("edenPuMin", ctx).int32
+    extremePuMin: node.requireInt32("extremePuMin", ctx),
+    extremePuMax: node.requireInt32("extremePuMax", ctx),
+    desolatePuMin: node.requireInt32("desolatePuMin", ctx),
+    desolatePuMax: node.requireInt32("desolatePuMax", ctx),
+    hostilePuMin: node.requireInt32("hostilePuMin", ctx),
+    hostilePuMax: node.requireInt32("hostilePuMax", ctx),
+    harshPuMin: node.requireInt32("harshPuMin", ctx),
+    harshPuMax: node.requireInt32("harshPuMax", ctx),
+    benignPuMin: node.requireInt32("benignPuMin", ctx),
+    benignPuMax: node.requireInt32("benignPuMax", ctx),
+    lushPuMin: node.requireInt32("lushPuMin", ctx),
+    lushPuMax: node.requireInt32("lushPuMax", ctx),
+    edenPuMin: node.requireInt32("edenPuMin", ctx)
   )
 
 proc parseResearch(node: KdlNode, ctx: var KdlConfigContext): ResearchConfig =
   result = ResearchConfig(
-    researchCostBase: node.requireInt("researchCostBase", ctx).int32,
-    researchCostExponent: node.requireInt("researchCostExponent", ctx).int32,
+    researchCostBase: node.requireInt32("researchCostBase", ctx),
+    researchCostExponent: node.requireInt32("researchCostExponent", ctx),
     researchBreakthroughBaseChance:
-      node.requireFloat("researchBreakthroughBaseChance", ctx).float32,
+      node.requireFloat32("researchBreakthroughBaseChance", ctx),
     researchBreakthroughRpPerPercent:
-      node.requireInt("researchBreakthroughRpPerPercent", ctx).int32,
+      node.requireInt32("researchBreakthroughRpPerPercent", ctx),
     minorBreakthroughBonus:
-      node.requireInt("minorBreakthroughBonus", ctx).int32,
+      node.requireInt32("minorBreakthroughBonus", ctx),
     moderateBreakthroughDiscount:
-      node.requireFloat("moderateBreakthroughDiscount", ctx).float32,
+      node.requireFloat32("moderateBreakthroughDiscount", ctx),
     revolutionaryQuantumComputingElModBonus:
-      node.requireFloat("revolutionaryQuantumComputingElModBonus", ctx).float32,
+      node.requireFloat32("revolutionaryQuantumComputingElModBonus", ctx),
     revolutionaryStealthDetectionBonus:
-      node.requireInt("revolutionaryStealthDetectionBonus", ctx).int32,
+      node.requireInt32("revolutionaryStealthDetectionBonus", ctx),
     revolutionaryTerraformingGrowthBonus:
-      node.requireFloat("revolutionaryTerraformingGrowthBonus", ctx).float32,
-    erpBaseCost: node.requireInt("erpBaseCost", ctx).int32,
-    elEarlyBase: node.requireInt("elEarlyBase", ctx).int32,
-    elEarlyIncrement: node.requireInt("elEarlyIncrement", ctx).int32,
-    elLateIncrement: node.requireInt("elLateIncrement", ctx).int32,
-    srpBaseCost: node.requireInt("srpBaseCost", ctx).int32,
-    srpSlMultiplier: node.requireFloat("srpSlMultiplier", ctx).float32,
-    slEarlyBase: node.requireInt("slEarlyBase", ctx).int32,
-    slEarlyIncrement: node.requireInt("slEarlyIncrement", ctx).int32,
-    slLateIncrement: node.requireInt("slLateIncrement", ctx).int32,
-    trpFirstLevelCost: node.requireInt("trpFirstLevelCost", ctx).int32,
-    trpLevelIncrement: node.requireInt("trpLevelIncrement", ctx).int32
+      node.requireFloat32("revolutionaryTerraformingGrowthBonus", ctx),
+    erpBaseCost: node.requireInt32("erpBaseCost", ctx),
+    elEarlyBase: node.requireInt32("elEarlyBase", ctx),
+    elEarlyIncrement: node.requireInt32("elEarlyIncrement", ctx),
+    elLateIncrement: node.requireInt32("elLateIncrement", ctx),
+    srpBaseCost: node.requireInt32("srpBaseCost", ctx),
+    srpSlMultiplier: node.requireFloat32("srpSlMultiplier", ctx),
+    slEarlyBase: node.requireInt32("slEarlyBase", ctx),
+    slEarlyIncrement: node.requireInt32("slEarlyIncrement", ctx),
+    slLateIncrement: node.requireInt32("slLateIncrement", ctx),
+    trpFirstLevelCost: node.requireInt32("trpFirstLevelCost", ctx),
+    trpLevelIncrement: node.requireInt32("trpLevelIncrement", ctx)
   )
 
 proc parseEspionage(node: KdlNode, ctx: var KdlConfigContext): EspionageConfig =
   result = EspionageConfig(
-    ebpCostPerPoint: node.requireInt("ebpCostPerPoint", ctx).int32,
-    cipCostPerPoint: node.requireInt("cipCostPerPoint", ctx).int32,
-    maxActionsPerTurn: node.requireInt("maxActionsPerTurn", ctx).int32,
+    ebpCostPerPoint: node.requireInt32("ebpCostPerPoint", ctx),
+    cipCostPerPoint: node.requireInt32("cipCostPerPoint", ctx),
+    maxActionsPerTurn: node.requireInt32("maxActionsPerTurn", ctx),
     budgetThresholdPercent:
-      node.requireInt("budgetThresholdPercent", ctx).int32,
+      node.requireInt32("budgetThresholdPercent", ctx),
     prestigeLossPerPercentOver:
-      node.requireInt("prestigeLossPerPercentOver", ctx).int32,
-    techTheftCost: node.requireInt("techTheftCost", ctx).int32,
-    sabotageLowCost: node.requireInt("sabotageLowCost", ctx).int32,
-    sabotageHighCost: node.requireInt("sabotageHighCost", ctx).int32,
-    assassinationCost: node.requireInt("assassinationCost", ctx).int32,
-    cyberAttackCost: node.requireInt("cyberAttackCost", ctx).int32,
+      node.requireInt32("prestigeLossPerPercentOver", ctx),
+    techTheftCost: node.requireInt32("techTheftCost", ctx),
+    sabotageLowCost: node.requireInt32("sabotageLowCost", ctx),
+    sabotageHighCost: node.requireInt32("sabotageHighCost", ctx),
+    assassinationCost: node.requireInt32("assassinationCost", ctx),
+    cyberAttackCost: node.requireInt32("cyberAttackCost", ctx),
     economicManipulationCost:
-      node.requireInt("economicManipulationCost", ctx).int32,
-    psyopsCampaignCost: node.requireInt("psyopsCampaignCost", ctx).int32,
-    detectionRollCost: node.requireInt("detectionRollCost", ctx).int32
+      node.requireInt32("economicManipulationCost", ctx),
+    psyopsCampaignCost: node.requireInt32("psyopsCampaignCost", ctx),
+    detectionRollCost: node.requireInt32("detectionRollCost", ctx)
   )
 
 proc parseRawMaterialEfficiency(
@@ -113,41 +121,41 @@ proc parseRawMaterialEfficiency(
   ctx: var KdlConfigContext
 ): RawMaterialEfficiencyConfig =
   result = RawMaterialEfficiencyConfig(
-    veryPoorEden: node.requireFloat("veryPoorEden", ctx).float32,
-    veryPoorLush: node.requireFloat("veryPoorLush", ctx).float32,
-    veryPoorBenign: node.requireFloat("veryPoorBenign", ctx).float32,
-    veryPoorHarsh: node.requireFloat("veryPoorHarsh", ctx).float32,
-    veryPoorHostile: node.requireFloat("veryPoorHostile", ctx).float32,
-    veryPoorDesolate: node.requireFloat("veryPoorDesolate", ctx).float32,
-    veryPoorExtreme: node.requireFloat("veryPoorExtreme", ctx).float32,
-    poorEden: node.requireFloat("poorEden", ctx).float32,
-    poorLush: node.requireFloat("poorLush", ctx).float32,
-    poorBenign: node.requireFloat("poorBenign", ctx).float32,
-    poorHarsh: node.requireFloat("poorHarsh", ctx).float32,
-    poorHostile: node.requireFloat("poorHostile", ctx).float32,
-    poorDesolate: node.requireFloat("poorDesolate", ctx).float32,
-    poorExtreme: node.requireFloat("poorExtreme", ctx).float32,
-    abundantEden: node.requireFloat("abundantEden", ctx).float32,
-    abundantLush: node.requireFloat("abundantLush", ctx).float32,
-    abundantBenign: node.requireFloat("abundantBenign", ctx).float32,
-    abundantHarsh: node.requireFloat("abundantHarsh", ctx).float32,
-    abundantHostile: node.requireFloat("abundantHostile", ctx).float32,
-    abundantDesolate: node.requireFloat("abundantDesolate", ctx).float32,
-    abundantExtreme: node.requireFloat("abundantExtreme", ctx).float32,
-    richEden: node.requireFloat("richEden", ctx).float32,
-    richLush: node.requireFloat("richLush", ctx).float32,
-    richBenign: node.requireFloat("richBenign", ctx).float32,
-    richHarsh: node.requireFloat("richHarsh", ctx).float32,
-    richHostile: node.requireFloat("richHostile", ctx).float32,
-    richDesolate: node.requireFloat("richDesolate", ctx).float32,
-    richExtreme: node.requireFloat("richExtreme", ctx).float32,
-    veryRichEden: node.requireFloat("veryRichEden", ctx).float32,
-    veryRichLush: node.requireFloat("veryRichLush", ctx).float32,
-    veryRichBenign: node.requireFloat("veryRichBenign", ctx).float32,
-    veryRichHarsh: node.requireFloat("veryRichHarsh", ctx).float32,
-    veryRichHostile: node.requireFloat("veryRichHostile", ctx).float32,
-    veryRichDesolate: node.requireFloat("veryRichDesolate", ctx).float32,
-    veryRichExtreme: node.requireFloat("veryRichExtreme", ctx).float32
+    veryPoorEden: node.requireFloat32("veryPoorEden", ctx),
+    veryPoorLush: node.requireFloat32("veryPoorLush", ctx),
+    veryPoorBenign: node.requireFloat32("veryPoorBenign", ctx),
+    veryPoorHarsh: node.requireFloat32("veryPoorHarsh", ctx),
+    veryPoorHostile: node.requireFloat32("veryPoorHostile", ctx),
+    veryPoorDesolate: node.requireFloat32("veryPoorDesolate", ctx),
+    veryPoorExtreme: node.requireFloat32("veryPoorExtreme", ctx),
+    poorEden: node.requireFloat32("poorEden", ctx),
+    poorLush: node.requireFloat32("poorLush", ctx),
+    poorBenign: node.requireFloat32("poorBenign", ctx),
+    poorHarsh: node.requireFloat32("poorHarsh", ctx),
+    poorHostile: node.requireFloat32("poorHostile", ctx),
+    poorDesolate: node.requireFloat32("poorDesolate", ctx),
+    poorExtreme: node.requireFloat32("poorExtreme", ctx),
+    abundantEden: node.requireFloat32("abundantEden", ctx),
+    abundantLush: node.requireFloat32("abundantLush", ctx),
+    abundantBenign: node.requireFloat32("abundantBenign", ctx),
+    abundantHarsh: node.requireFloat32("abundantHarsh", ctx),
+    abundantHostile: node.requireFloat32("abundantHostile", ctx),
+    abundantDesolate: node.requireFloat32("abundantDesolate", ctx),
+    abundantExtreme: node.requireFloat32("abundantExtreme", ctx),
+    richEden: node.requireFloat32("richEden", ctx),
+    richLush: node.requireFloat32("richLush", ctx),
+    richBenign: node.requireFloat32("richBenign", ctx),
+    richHarsh: node.requireFloat32("richHarsh", ctx),
+    richHostile: node.requireFloat32("richHostile", ctx),
+    richDesolate: node.requireFloat32("richDesolate", ctx),
+    richExtreme: node.requireFloat32("richExtreme", ctx),
+    veryRichEden: node.requireFloat32("veryRichEden", ctx),
+    veryRichLush: node.requireFloat32("veryRichLush", ctx),
+    veryRichBenign: node.requireFloat32("veryRichBenign", ctx),
+    veryRichHarsh: node.requireFloat32("veryRichHarsh", ctx),
+    veryRichHostile: node.requireFloat32("veryRichHostile", ctx),
+    veryRichDesolate: node.requireFloat32("veryRichDesolate", ctx),
+    veryRichExtreme: node.requireFloat32("veryRichExtreme", ctx)
   )
 
 proc parseTaxMechanics(
@@ -156,7 +164,7 @@ proc parseTaxMechanics(
 ): TaxMechanicsConfig =
   result = TaxMechanicsConfig(
     taxAveragingWindowTurns:
-      node.requireInt("taxAveragingWindowTurns", ctx).int32
+      node.requireInt32("taxAveragingWindowTurns", ctx)
   )
 
 proc parseTaxPopulationGrowth(
@@ -164,21 +172,21 @@ proc parseTaxPopulationGrowth(
   ctx: var KdlConfigContext
 ): TaxPopulationGrowthConfig =
   result = TaxPopulationGrowthConfig(
-    tier1Min: node.requireInt("tier1Min", ctx).int32,
-    tier1Max: node.requireInt("tier1Max", ctx).int32,
-    tier1PopMultiplier: node.requireFloat("tier1PopMultiplier", ctx).float32,
-    tier2Min: node.requireInt("tier2Min", ctx).int32,
-    tier2Max: node.requireInt("tier2Max", ctx).int32,
-    tier2PopMultiplier: node.requireFloat("tier2PopMultiplier", ctx).float32,
-    tier3Min: node.requireInt("tier3Min", ctx).int32,
-    tier3Max: node.requireInt("tier3Max", ctx).int32,
-    tier3PopMultiplier: node.requireFloat("tier3PopMultiplier", ctx).float32,
-    tier4Min: node.requireInt("tier4Min", ctx).int32,
-    tier4Max: node.requireInt("tier4Max", ctx).int32,
-    tier4PopMultiplier: node.requireFloat("tier4PopMultiplier", ctx).float32,
-    tier5Min: node.requireInt("tier5Min", ctx).int32,
-    tier5Max: node.requireInt("tier5Max", ctx).int32,
-    tier5PopMultiplier: node.requireFloat("tier5PopMultiplier", ctx).float32
+    tier1Min: node.requireInt32("tier1Min", ctx),
+    tier1Max: node.requireInt32("tier1Max", ctx),
+    tier1PopMultiplier: node.requireFloat32("tier1PopMultiplier", ctx),
+    tier2Min: node.requireInt32("tier2Min", ctx),
+    tier2Max: node.requireInt32("tier2Max", ctx),
+    tier2PopMultiplier: node.requireFloat32("tier2PopMultiplier", ctx),
+    tier3Min: node.requireInt32("tier3Min", ctx),
+    tier3Max: node.requireInt32("tier3Max", ctx),
+    tier3PopMultiplier: node.requireFloat32("tier3PopMultiplier", ctx),
+    tier4Min: node.requireInt32("tier4Min", ctx),
+    tier4Max: node.requireInt32("tier4Max", ctx),
+    tier4PopMultiplier: node.requireFloat32("tier4PopMultiplier", ctx),
+    tier5Min: node.requireInt32("tier5Min", ctx),
+    tier5Max: node.requireInt32("tier5Max", ctx),
+    tier5PopMultiplier: node.requireFloat32("tier5PopMultiplier", ctx)
   )
 
 proc parseIndustrialInvestment(
@@ -186,25 +194,25 @@ proc parseIndustrialInvestment(
   ctx: var KdlConfigContext
 ): IndustrialInvestmentConfig =
   result = IndustrialInvestmentConfig(
-    baseCost: node.requireInt("baseCost", ctx).int32,
-    tier1MaxPercent: node.requireInt("tier1MaxPercent", ctx).int32,
-    tier1Multiplier: node.requireFloat("tier1Multiplier", ctx).float32,
-    tier1Pp: node.requireInt("tier1Pp", ctx).int32,
-    tier2MinPercent: node.requireInt("tier2MinPercent", ctx).int32,
-    tier2MaxPercent: node.requireInt("tier2MaxPercent", ctx).int32,
-    tier2Multiplier: node.requireFloat("tier2Multiplier", ctx).float32,
-    tier2Pp: node.requireInt("tier2Pp", ctx).int32,
-    tier3MinPercent: node.requireInt("tier3MinPercent", ctx).int32,
-    tier3MaxPercent: node.requireInt("tier3MaxPercent", ctx).int32,
-    tier3Multiplier: node.requireFloat("tier3Multiplier", ctx).float32,
-    tier3Pp: node.requireInt("tier3Pp", ctx).int32,
-    tier4MinPercent: node.requireInt("tier4MinPercent", ctx).int32,
-    tier4MaxPercent: node.requireInt("tier4MaxPercent", ctx).int32,
-    tier4Multiplier: node.requireFloat("tier4Multiplier", ctx).float32,
-    tier4Pp: node.requireInt("tier4Pp", ctx).int32,
-    tier5MinPercent: node.requireInt("tier5MinPercent", ctx).int32,
-    tier5Multiplier: node.requireFloat("tier5Multiplier", ctx).float32,
-    tier5Pp: node.requireInt("tier5Pp", ctx).int32
+    baseCost: node.requireInt32("baseCost", ctx),
+    tier1MaxPercent: node.requireInt32("tier1MaxPercent", ctx),
+    tier1Multiplier: node.requireFloat32("tier1Multiplier", ctx),
+    tier1Pp: node.requireInt32("tier1Pp", ctx),
+    tier2MinPercent: node.requireInt32("tier2MinPercent", ctx),
+    tier2MaxPercent: node.requireInt32("tier2MaxPercent", ctx),
+    tier2Multiplier: node.requireFloat32("tier2Multiplier", ctx),
+    tier2Pp: node.requireInt32("tier2Pp", ctx),
+    tier3MinPercent: node.requireInt32("tier3MinPercent", ctx),
+    tier3MaxPercent: node.requireInt32("tier3MaxPercent", ctx),
+    tier3Multiplier: node.requireFloat32("tier3Multiplier", ctx),
+    tier3Pp: node.requireInt32("tier3Pp", ctx),
+    tier4MinPercent: node.requireInt32("tier4MinPercent", ctx),
+    tier4MaxPercent: node.requireInt32("tier4MaxPercent", ctx),
+    tier4Multiplier: node.requireFloat32("tier4Multiplier", ctx),
+    tier4Pp: node.requireInt32("tier4Pp", ctx),
+    tier5MinPercent: node.requireInt32("tier5MinPercent", ctx),
+    tier5Multiplier: node.requireFloat32("tier5Multiplier", ctx),
+    tier5Pp: node.requireInt32("tier5Pp", ctx)
   )
 
 proc parseColonization(
@@ -213,15 +221,15 @@ proc parseColonization(
 ): ColonizationConfig =
   result = ColonizationConfig(
     startingInfrastructureLevel:
-      node.requireInt("startingInfrastructureLevel", ctx).int32,
-    startingIuPercent: node.requireInt("startingIuPercent", ctx).int32,
-    edenPpPerPtu: node.requireInt("edenPpPerPtu", ctx).int32,
-    lushPpPerPtu: node.requireInt("lushPpPerPtu", ctx).int32,
-    benignPpPerPtu: node.requireInt("benignPpPerPtu", ctx).int32,
-    harshPpPerPtu: node.requireInt("harshPpPerPtu", ctx).int32,
-    hostilePpPerPtu: node.requireInt("hostilePpPerPtu", ctx).int32,
-    desolatePpPerPtu: node.requireInt("desolatePpPerPtu", ctx).int32,
-    extremePpPerPtu: node.requireInt("extremePpPerPtu", ctx).int32
+      node.requireInt32("startingInfrastructureLevel", ctx),
+    startingIuPercent: node.requireInt32("startingIuPercent", ctx),
+    edenPpPerPtu: node.requireInt32("edenPpPerPtu", ctx),
+    lushPpPerPtu: node.requireInt32("lushPpPerPtu", ctx),
+    benignPpPerPtu: node.requireInt32("benignPpPerPtu", ctx),
+    harshPpPerPtu: node.requireInt32("harshPpPerPtu", ctx),
+    hostilePpPerPtu: node.requireInt32("hostilePpPerPtu", ctx),
+    desolatePpPerPtu: node.requireInt32("desolatePpPerPtu", ctx),
+    extremePpPerPtu: node.requireInt32("extremePpPerPtu", ctx)
   )
 
 proc parseIndustrialGrowth(
@@ -230,9 +238,9 @@ proc parseIndustrialGrowth(
 ): IndustrialGrowthConfig =
   result = IndustrialGrowthConfig(
     passiveGrowthDivisor:
-      node.requireFloat("passiveGrowthDivisor", ctx).float32,
+      node.requireFloat32("passiveGrowthDivisor", ctx),
     passiveGrowthMinimum:
-      node.requireFloat("passiveGrowthMinimum", ctx).float32,
+      node.requireFloat32("passiveGrowthMinimum", ctx),
     appliesModifiers: node.requireBool("appliesModifiers", ctx)
   )
 
@@ -242,9 +250,9 @@ proc parseStarbaseBonuses(
 ): StarbaseBonusesConfig =
   result = StarbaseBonusesConfig(
     growthBonusPerStarbase:
-      node.requireFloat("growthBonusPerStarbase", ctx).float32,
-    maxStarbasesForBonus: node.requireInt("maxStarbasesForBonus", ctx).int32,
-    eliBonusPerStarbase: node.requireInt("eliBonusPerStarbase", ctx).int32
+      node.requireFloat32("growthBonusPerStarbase", ctx),
+    maxStarbasesForBonus: node.requireInt32("maxStarbasesForBonus", ctx),
+    eliBonusPerStarbase: node.requireInt32("eliBonusPerStarbase", ctx)
   )
 
 proc parseSquadronCapacity(
@@ -253,11 +261,11 @@ proc parseSquadronCapacity(
 ): SquadronCapacityConfig =
   result = SquadronCapacityConfig(
     capitalSquadronIuDivisor:
-      node.requireInt("capitalSquadronIuDivisor", ctx).int32,
+      node.requireInt32("capitalSquadronIuDivisor", ctx),
     capitalSquadronMultiplier:
-      node.requireInt("capitalSquadronMultiplier", ctx).int32,
+      node.requireInt32("capitalSquadronMultiplier", ctx),
     capitalSquadronMinimum:
-      node.requireInt("capitalSquadronMinimum", ctx).int32
+      node.requireInt32("capitalSquadronMinimum", ctx)
   )
 
 proc parseProductionModifiers(
@@ -265,12 +273,12 @@ proc parseProductionModifiers(
   ctx: var KdlConfigContext
 ): ProductionModifiersConfig =
   result = ProductionModifiersConfig(
-    elBonusPerLevel: node.requireFloat("elBonusPerLevel", ctx).float32,
-    cstBonusPerLevel: node.requireFloat("cstBonusPerLevel", ctx).float32,
-    blockadePenalty: node.requireFloat("blockadePenalty", ctx).float32,
-    prodGrowthNumerator: node.requireFloat("prodGrowthNumerator", ctx).float32,
+    elBonusPerLevel: node.requireFloat32("elBonusPerLevel", ctx),
+    cstBonusPerLevel: node.requireFloat32("cstBonusPerLevel", ctx),
+    blockadePenalty: node.requireFloat32("blockadePenalty", ctx),
+    prodGrowthNumerator: node.requireFloat32("prodGrowthNumerator", ctx),
     prodGrowthDenominator:
-      node.requireFloat("prodGrowthDenominator", ctx).float32
+      node.requireFloat32("prodGrowthDenominator", ctx)
   )
 
 proc loadEconomyConfig*(configPath: string = "config/economy.kdl"): EconomyConfig =
@@ -282,6 +290,10 @@ proc loadEconomyConfig*(configPath: string = "config/economy.kdl"): EconomyConfi
   ctx.withNode("population"):
     let node = doc.requireNode("population", ctx)
     result.population = parsePopulation(node, ctx)
+
+  ctx.withNode("ptuDefinition"):
+    let node = doc.requireNode("ptuDefinition", ctx)
+    result.ptuDefinition = parsePtuDefinition(node, ctx)
 
   ctx.withNode("production"):
     let node = doc.requireNode("production", ctx)
@@ -340,13 +352,3 @@ proc loadEconomyConfig*(configPath: string = "config/economy.kdl"): EconomyConfi
     result.productionModifiers = parseProductionModifiers(node, ctx)
 
   logInfo("Config", "Loaded economy configuration", "path=", configPath)
-
-## Global configuration instance
-
-var globalEconomyConfig* = loadEconomyConfig()
-
-## Helper to reload configuration (for testing)
-
-proc reloadEconomyConfig*() =
-  ## Reload configuration from file
-  globalEconomyConfig = loadEconomyConfig()

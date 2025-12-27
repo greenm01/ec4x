@@ -42,13 +42,3 @@ spaceliftCapacity {
     // Tactical doctrine: Bombard → Invade (requires meaningful ground force)
     etacCapacity 1  // Population Transfer Units per ETAC
 }
-
-// ============================================================================
-// SALVAGE MECHANICS
-// ============================================================================
-
-salvage {
-    // BALANCE: Salvage value returns
-    salvageValueMultiplier 0.5     // Salvaged ships return 50% of build cost
-    emergencySalvageMultiplier 0.25  // Emergency/combat salvage returns 25% of PC
-}
