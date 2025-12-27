@@ -1,10 +1,9 @@
 import ../common/logger
 import ./types/config
-import ./config/engine
 
 # Global game config
-let gConfig* {.threadvar.}: GameConfig = loadGameConfig()
-
+var gameConfig* {.threadvar.}: GameConfig
+# Game scaling multipliers
 var prestigeMultiplier* {.threadvar.}: float64
 var popGrowthMultiplier* {.threadvar.}: float64
 
@@ -22,7 +21,7 @@ proc getPrestigeMultiplier*(): float32 =
       "Prestige",
       "Multiplier uninitialized! Using base value",
       "base=",
-      $globalPrestigeConfig.dynamic_scaling.base_multiplier,
+      $gameConfig.prestige.dynamicScaling.baseMultiplier
     )
     return gameConfig.prestige.dynamicScaling.baseMultiplier
   return prestigeMultiplier

@@ -9,11 +9,11 @@ import kdl_helpers
 import ../../common/logger
 import ../types/[config, starmap]
 
-proc parseGameInfo(node: KdlNode, ctx: var KdlConfigContext): GameInfoConfig =
-  result = GameInfoConfig(
-    name: node.requireString("name", ctx),
-    description: node.requireString("description", ctx),
-    numPlayers: node.requireInt32("numPlayers", ctx),
+proc parseGameParameters(node: KdlNode, ctx: var KdlConfigContext): GameParametersConfig =
+  result = GameParametersConfig(
+    gameId: node.requireString("gameId", ctx),
+    playerCount: node.requireInt32("numPlayers", ctx),
+    gameSeed: node.getInt64Opt("gameSeed"),
     theme: node.requireString("theme", ctx)
   )
 
@@ -99,15 +99,15 @@ proc parseHomeworld(node: KdlNode, ctx: var KdlConfigContext): HomeworldConfig =
 
 proc loadGameSetupConfig*(
     configPath: string = "game_setup/standard.kdl"
-): GameSetupConfig =
+): GameSetup =
   ## Load game setup configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)
   var ctx = newContext(configPath)
 
-  ctx.withNode("gameInfo"):
-    let node = doc.requireNode("gameInfo", ctx)
-    result.gameInfo = parseGameInfo(node, ctx)
+  ctx.withNode("gameParameters"):
+    let node = doc.requireNode("gameParameters", ctx)
+    result.gameparameters = parseGameParameters(node, ctx)
 
   ctx.withNode("victoryConditions"):
     let node = doc.requireNode("victoryConditions", ctx)
@@ -137,7 +137,7 @@ proc loadGameSetupConfig*(
     let node = doc.requireNode("homeworld", ctx)
     result.homeworld = parseHomeworld(node, ctx)
 
-  logInfo("Config", "Loaded game setup configuration", "path=", configPath)
+  logInfo("Config", "Loaded game setup", "path=", configPath)
 
 proc parsePlanetClass*(className: string): PlanetClass =
   ## Parse planet class string from config

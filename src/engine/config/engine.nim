@@ -10,7 +10,6 @@ import ./[
 proc loadGameConfig(configDir: string = "config"): GameConfig =
   ## Load and validate all game configuration files
   ## Raises ConfigError if any config file is missing or invalid
-  result.gameSetup = loadGameSetupConfig("game_setup/standard.kdl")
   result.gameplay = loadGameplayConfig(configDir / "gameplay.kdl")
   result.themes = loadThemesConfig(configDir / "house_themes.kdl")
   result.starmap = loadStarmapConfig(configDir / "starmap.kdl")
@@ -27,3 +26,7 @@ proc loadGameConfig(configDir: string = "config"): GameConfig =
   result.construction = loadConstructionConfig(configDir / "construction.kdl")
   result.guild = loadGuildConfig(configDir / "guild.kdl")
   result.prestige = loadPrestigeConfig(configDir / "prestige.kdl")
+
+proc loadGameSetup(setupDir: stiring = "game_setup"): GameSetup =
+  result = loadGameSetupConfig(setupDir / "standard.kdl")
+  

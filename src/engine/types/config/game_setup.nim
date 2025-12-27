@@ -1,8 +1,10 @@
+import std/options
+
 type
-  GameInfoConfig* = object ## Game metadata
-    name*: string
-    description*: string
-    numPlayers*: int32
+  GameParametersConfig* = object ## Game metadata
+    gameId*: string
+    playerCount*: int32
+    gameSeed*: Option[int64]
     theme*: string
 
   VictoryConditionsConfig* = object ## Victory conditions
@@ -51,13 +53,3 @@ type
     colonyLevel*: int32 # Infrastructure level (5 = Level V)
     populationUnits*: int32 # Starting population in PU (840)
     industrialUnits*: int32
-
-  GameSetupConfig* = object ## Complete game setup configuration
-    gameInfo*: GameInfoConfig
-    victoryConditions*: VictoryConditionsConfig
-    startingResources*: StartingResourcesConfig
-    startingTech*: StartingTechConfig
-    startingFleets*: StartingFleetsConfig
-    startingFacilities*: StartingFacilitiesConfig
-    startingGroundForces*: StartingGroundForcesConfig
-    homeworld*: HomeworldConfig

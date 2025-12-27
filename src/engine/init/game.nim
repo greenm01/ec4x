@@ -1,10 +1,12 @@
 import std/[tables]
+
 import ../../common/logger
-import ../[globals, starmap]
 import ../types/[
   core, game_state, squadron, intelligence, diplomacy, espionage, resolution, starmap,
   command, fleet,
 ]
+import ../[globals, starmap]
+import ../config/engine
 
 # Game initialization functions
 
@@ -24,11 +26,14 @@ proc initStarMap*(playerCount: int32, seed: int64 = 2001): StarMap =
   result = newStarMap(playerCount, seed)  # newStarMap validates playerCount
   result.populate()
   
-proc newGame*(gameId: int32, playerCount: int32, seed: int64): GameState =
-  ## Create a new game with automatic setup
-  ## Uses default parameters for map size, AI personalities, etc.
-  ## Returns a fully initialized GameState object
+proc newGame*(
+  setupDir: string,              # Where to read game_setup configs
+  dataDir: string,               # Where to write save data
+  configDir: string = "config",  # Base game rules (rarely changes)
+  seed: int64                    # Game seed (also game id)
+): GameState =
 
+  ## Create a new game with automatic setup
   # TODO: Implement game creation logic:
   # 1. Load game parameters from config files (e.g., game_setup/standard.toml)
   # 2. Generate starMap based on seed and parameters
@@ -40,6 +45,8 @@ proc newGame*(gameId: int32, playerCount: int32, seed: int64): GameState =
     ", seed ", seed,
   )
 
+  gameConfig = loadGameConfig()
+   
   # Initialize the ref object
   result = GameState(
     gameId: gameId,

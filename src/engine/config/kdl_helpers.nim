@@ -238,6 +238,20 @@ proc getInt32Opt*(node: KdlNode, childName: string): Option[int32] =
   else:
     none(int32)
 
+proc getInt64Opt*(node: KdlNode, childName: string): Option[int64] =
+  ## Get optional integer as Option[int64]
+  let valOpt = node.getChild(childName)
+  if valOpt.isNone:
+    return none(int64)
+
+  let val = valOpt.get
+  case val.kind
+  of KValKind.KInt, KValKind.KInt8, KValKind.KInt16, KValKind.KInt32, KValKind.KInt64,
+     KValKind.KUInt8, KValKind.KUInt16, KValKind.KUInt32, KValKind.KUInt64:
+    some(val.getInt().int64)
+  else:
+    none(int64)
+    
 proc getFloat32Opt*(node: KdlNode, childName: string): Option[float32] =
   ## Get optional float as Option[float32]
   let valOpt = node.getChild(childName)

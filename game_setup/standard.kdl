@@ -4,16 +4,16 @@
 // Moderators can create custom scenarios by copying this file and adjusting values.
 // The game engine loads: config/*.kdl (balance/mechanics) + game_setup/*.kdl (scenario)
 
-gameInfo {
-    name "Standard Game"
-    description "Canonical EC4X game matching"
-    numPlayers 4
-    theme "dune"                     // Change to "generic" for house1, house2, etc...
+gameParameters {
+    gameId "Standard 4-Player"
+    playerCount 4
+    theme "dune"                    // Themes defined in game configs
+    //gameSeed 99999                // Set a custom seed for reproducible game states
 }
 
 victoryConditions {
-    turnLimit 35                     // Standard 3-ring game: 35 turns (was prestige 2500)
-    prestigeLimit 10000              // Set to -1 for unlimited
+    turnLimit 35                     // Max number of game turns
+    prestigeLimit 10000              // Max prestige for victory
     finalConflictAutoEnemy #true     // Final 2 players forced to Enemy status
 }
 

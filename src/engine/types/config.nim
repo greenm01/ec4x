@@ -10,7 +10,6 @@ export gameplay, ships, ground_units, facilities, combat, economy, prestige, esp
 
 type
   GameConfig* = object
-    gameSetup*: GameSetupConfig
     gameplay*: GameplayConfig
     themes*: ThemesConfig
     starmap*: StarmapConfig
@@ -26,6 +25,16 @@ type
     construction*: ConstructionConfig
     guild*: GuildConfig
     prestige*: PrestigeConfig
+
+  GameSetup* = object
+    gameParameters*: GameParametersConfig
+    victoryConditions*: VictoryConditionsConfig
+    startingResources*: StartingResourcesConfig
+    startingTech*: StartingTechConfig
+    startingFleets*: StartingFleetsConfig
+    startingFacilities*: StartingFacilitiesConfig
+    startingGroundForces*: StartingGroundForcesConfig
+    homeworld*: HomeworldConfig
 
   ConfigError* = ref object of CatchableError
     ## Exception raised when configuration is invalid or missing
