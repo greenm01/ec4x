@@ -3,34 +3,25 @@
 ## Loads game setup parameters from game_setup/standard.kdl using nimkdl
 ## Defines starting conditions for players (homeworld, fleet, facilities, tech)
 
-import std/[os, strutils, options, tables]
+import std/[strutils, options]
 import kdl
 import kdl_helpers
 import ../../common/logger
-import ../types/config
+import ../types/[config, starmap]
 
 proc parseGameInfo(node: KdlNode, ctx: var KdlConfigContext): GameInfoConfig =
   result = GameInfoConfig(
     name: node.requireString("name", ctx),
     description: node.requireString("description", ctx),
-    recommendedPlayers: node.requireInt32("recommendedPlayers", ctx),
-    estimatedDuration: node.requireString("estimatedDuration", ctx)
+    numPlayers: node.requireInt32("numPlayers", ctx),
+    theme: node.requireString("theme", ctx)
   )
 
 proc parseVictoryConditions(node: KdlNode, ctx: var KdlConfigContext): VictoryConditionsConfig =
   result = VictoryConditionsConfig(
-    primaryCondition: node.requireString("primaryCondition", ctx),
-    secondaryCondition: node.requireString("secondaryCondition", ctx),
-    prestigeThreshold: node.requireInt32("prestigeThreshold", ctx),
-    turnLimit: node.requireInt32("turnLimit", ctx)
-  )
-
-proc parseMap(node: KdlNode, ctx: var KdlConfigContext): MapConfig =
-  result = MapConfig(
-    size: node.requireString("size", ctx),
-    systems: node.requireInt32("systems", ctx),
-    jumpLaneDensity: node.requireString("jumpLaneDensity", ctx),
-    startingDistance: node.requireString("startingDistance", ctx)
+    turnLimit: node.requireInt32("turnLimit", ctx),
+    prestigeLimit: node.requireInt32("prestigeThreshold", ctx),
+    finalConflictAutoEnemy: node.requireBool("finalConflictAutoEnemy", ctx)
   )
 
 proc parseStartingResources(node: KdlNode, ctx: var KdlConfigContext): StartingResourcesConfig =
@@ -55,28 +46,46 @@ proc parseStartingTech(node: KdlNode, ctx: var KdlConfigContext): StartingTechCo
     advancedCarrierOps: node.requireInt32("advancedCarrierOps", ctx)
   )
 
-proc parseStartingFleet(node: KdlNode, ctx: var KdlConfigContext): StartingFleetConfig =
-  result = StartingFleetConfig(
-    fleetCount: node.requireInt32("fleetCount", ctx),
-    etac: getInt32Opt(node, "etac", 0),
-    lightCruiser: getInt32Opt(node, "lightCruiser", 0),
-    destroyer: getInt32Opt(node, "destroyer", 0),
-    scout: getInt32Opt(node, "scout", 0)
-  )
+proc parseFleetConfig(node: KdlNode, ctx: var KdlConfigContext): FleetConfig =
+  ## Parse a single fleet node from KDL
+  var ships: seq[string] = @[]
+
+  # Get ships - KDL stores these as arguments to the "ships" child
+  let shipsOpt = node.findChildNode("ships")
+  if shipsOpt.isSome:
+    let shipsNode = shipsOpt.get()
+    # Ships are stored as string arguments
+    for arg in shipsNode.args:
+      if arg.kind == KValKind.KString:
+        ships.add(arg.getString())
+
+  result = FleetConfig(ships: ships)
+
+proc parseStartingFleets(node: KdlNode, ctx: var KdlConfigContext): StartingFleetsConfig =
+  ## Parse startingFleet node with child fleet nodes
+  var fleets: seq[FleetConfig] = @[]
+
+  # Get all "fleet" child nodes
+  for child in node.children:
+    if child.name == "fleet":
+      ctx.withNode("fleet"):
+        fleets.add(parseFleetConfig(child, ctx))
+
+  result = StartingFleetsConfig(fleets: fleets)
 
 proc parseStartingFacilities(node: KdlNode, ctx: var KdlConfigContext): StartingFacilitiesConfig =
   result = StartingFacilitiesConfig(
     spaceports: node.requireInt32("spaceports", ctx),
     shipyards: node.requireInt32("shipyards", ctx),
-    starbases: node.requireInt32("starbases", ctx),
-    groundBatteries: node.requireInt32("groundBatteries", ctx),
-    planetaryShields: node.requireInt32("planetaryShields", ctx)
+    starbases: node.requireInt32("starbases", ctx)
   )
 
 proc parseStartingGroundForces(node: KdlNode, ctx: var KdlConfigContext): StartingGroundForcesConfig =
   result = StartingGroundForcesConfig(
     armies: node.requireInt32("armies", ctx),
-    marines: node.requireInt32("marines", ctx)
+    marines: node.requireInt32("marines", ctx),
+    groundBatteries: node.requireInt32("groundBatteries", ctx),
+    planetaryShields: node.requireInt32("planetaryShields", ctx)
   )
 
 proc parseHomeworld(node: KdlNode, ctx: var KdlConfigContext): HomeworldConfig =
@@ -86,12 +95,6 @@ proc parseHomeworld(node: KdlNode, ctx: var KdlConfigContext): HomeworldConfig =
     colonyLevel: node.requireInt32("colonyLevel", ctx),
     populationUnits: node.requireInt32("populationUnits", ctx),
     industrialUnits: node.requireInt32("industrialUnits", ctx)
-  )
-
-proc parseHouseNaming(node: KdlNode, ctx: var KdlConfigContext): HouseNamingConfig =
-  result = HouseNamingConfig(
-    namePattern: node.requireString("namePattern", ctx),
-    useThemeNames: node.requireBool("useThemeNames", ctx)
   )
 
 proc loadGameSetupConfig*(
@@ -110,10 +113,6 @@ proc loadGameSetupConfig*(
     let node = doc.requireNode("victoryConditions", ctx)
     result.victoryConditions = parseVictoryConditions(node, ctx)
 
-  ctx.withNode("map"):
-    let node = doc.requireNode("map", ctx)
-    result.map = parseMap(node, ctx)
-
   ctx.withNode("startingResources"):
     let node = doc.requireNode("startingResources", ctx)
     result.startingResources = parseStartingResources(node, ctx)
@@ -122,9 +121,9 @@ proc loadGameSetupConfig*(
     let node = doc.requireNode("startingTech", ctx)
     result.startingTech = parseStartingTech(node, ctx)
 
-  ctx.withNode("startingFleet"):
-    let node = doc.requireNode("startingFleet", ctx)
-    result.startingFleet = parseStartingFleet(node, ctx)
+  ctx.withNode("startingFleets"):
+    let node = doc.requireNode("startingFleets", ctx)
+    result.startingFleets = parseStartingFleets(node, ctx)
 
   ctx.withNode("startingFacilities"):
     let node = doc.requireNode("startingFacilities", ctx)
@@ -137,14 +136,6 @@ proc loadGameSetupConfig*(
   ctx.withNode("homeworld"):
     let node = doc.requireNode("homeworld", ctx)
     result.homeworld = parseHomeworld(node, ctx)
-
-  # Optional house naming
-  let houseNamingNode = doc.getNode("houseNaming")
-  if houseNamingNode.isSome:
-    ctx.withNode("houseNaming"):
-      result.houseNaming = some(parseHouseNaming(houseNamingNode.get(), ctx))
-  else:
-    result.houseNaming = none(HouseNamingConfig)
 
   logInfo("Config", "Loaded game setup configuration", "path=", configPath)
 
@@ -183,83 +174,3 @@ proc parseResourceRating*(ratingName: string): ResourceRating =
     ResourceRating.VeryRich
   else:
     raise newException(ValueError, "Invalid resource rating: " & ratingName)
-
-proc parseFleetConfig(node: KdlNode, ctx: var KdlConfigContext): FleetConfig =
-  ## Parse a single fleet node from KDL
-  var ships: seq[string] = @[]
-
-  # Get ships - KDL stores these as arguments to the "ships" child
-  let shipsOpt = node.getChild("ships")
-  if shipsOpt.isSome:
-    let shipsNode = shipsOpt.get()
-    # Ships are stored as string arguments
-    for arg in shipsNode.args:
-      if arg.kind == KValKind.KString:
-        ships.add(arg.getString())
-
-  # Get optional cargoPtu
-  var cargoPtu: Option[int32] = none(int32)
-  let cargoPtuOpt = node.getChild("cargoPtu")
-  if cargoPtuOpt.isSome:
-    let cargoPtuNode = cargoPtuOpt.get()
-    if cargoPtuNode.args.len > 0:
-      cargoPtu = some(cargoPtuNode.args[0].getInt32())
-
-  result = FleetConfig(ships: ships, cargoPtu: cargoPtu)
-
-proc loadIndividualFleetConfigs*(
-    configPath: string = "game_setup/fleets.kdl"
-): Table[int, FleetConfig] =
-  ## Load individual fleet configurations from KDL file
-  ## Parses fleet1, fleet2, ... fleetN nodes
-  ## Returns table mapping fleet index to FleetConfig
-  ##
-  ## Note: Uses separate fleets.kdl file
-
-  result = initTable[int, FleetConfig]()
-
-  if not fileExists(configPath):
-    logWarn("Config", "Fleet config not found", "path=", configPath)
-    return
-
-  let doc = loadKdlConfig(configPath)
-  var ctx = newContext(configPath)
-
-  # Parse individual fleetN nodes (1-indexed)
-  var fleetIdx = 1
-  while true:
-    let fleetName = "fleet" & $fleetIdx
-    let fleetNodeOpt = doc.getNode(fleetName)
-
-    if fleetNodeOpt.isNone:
-      break
-
-    ctx.withNode(fleetName):
-      let fleetNode = fleetNodeOpt.get()
-      result[fleetIdx] = parseFleetConfig(fleetNode, ctx)
-      logDebug(
-        "Config",
-        "Loaded fleet config",
-        "fleet=",
-        $fleetIdx,
-        "ships=",
-        $result[fleetIdx].ships.len,
-      )
-
-    fleetIdx += 1
-
-  logInfo("Config", "Loaded individual fleet configs", "count=", $(fleetIdx - 1))
-
-proc getHouseNamePattern*(config: GameSetupConfig): string =
-  ## Get house naming pattern from config, with fallback default
-  if config.houseNaming.isSome:
-    return config.houseNaming.get().namePattern
-  else:
-    return "House{index}" # Default pattern
-
-proc useThemeNames*(config: GameSetupConfig): bool =
-  ## Check if config specifies using theme names from house_themes.kdl
-  if config.houseNaming.isSome:
-    return config.houseNaming.get().useThemeNames
-  else:
-    return false # Default: don't use theme names

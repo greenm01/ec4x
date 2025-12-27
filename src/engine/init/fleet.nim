@@ -12,15 +12,11 @@ proc createStartingFleets*(
     state: var GameState,
     owner: HouseId,
     location: SystemId,
-    fleetConfigs: Table[int, game_setup_config.FleetConfig],
+    fleetConfigs: seq[game_setup_config.FleetConfig],
 ) =
   ## Creates starting fleets and all their child entities (squadrons, ships).
 
-  for fleetIdx in 1 .. fleetConfigs.len:
-    if not fleetConfigs.hasKey(fleetIdx):
-      continue
-
-    let config = fleetConfigs[fleetIdx]
+  for config in fleetConfigs:
 
     # 1. Create the Fleet
     let newFleet = fleet_ops.createFleet(state, owner, location)
@@ -36,6 +32,17 @@ proc createStartingFleets*(
       # Generate squadronId first to avoid circular dependency
       let squadronId = state.generateSquadronId()
 
+      # Determine if this ship should have cargo (ETACs with cargoPtu specified)
+      var shipCargo: Option[ShipCargo] = none(ShipCargo)
+      if shipClass == ShipClass.ETAC and config.cargoPtu.isSome:
+        let ptu = config.cargoPtu.get()
+        if ptu > 0:
+          shipCargo = some(ShipCargo(
+            cargoType: CargoType.Colonists,
+            quantity: ptu,
+            capacity: ptu
+          ))
+
       # Create flagship ship with the pre-generated squadronId
       let shipId = state.generateShipId()
       let flagship = Ship(
@@ -46,7 +53,7 @@ proc createStartingFleets*(
         stats: ShipStats(), # Default stats, will be populated from config
         isCrippled: false,
         name: "",
-        cargo: none(ShipCargo),
+        cargo: shipCargo,
       )
 
       # Add flagship to ship entity manager and index

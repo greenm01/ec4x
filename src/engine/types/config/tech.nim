@@ -1,17 +1,4 @@
 type
-  StartingTechConfig* = object
-    economicLevel*: int32
-    scienceLevel*: int32
-    constructionTech*: int32
-    weaponsTech*: int32
-    terraformingTech*: int32
-    electronicIntelligence*: int32
-    cloakingTech*: int32
-    shieldTech*: int32
-    counterIntelligence*: int32
-    fighterDoctrine*: int32
-    advancedCarrierOps*: int32
-
   EconomicLevelConfig* = object
     level1Erp*: int32
     level1Mod*: float32
@@ -199,7 +186,6 @@ type
     edenPp*: int32
 
   TechConfig* = object ## Complete technology configuration loaded from KDL
-    startingTech*: StartingTechConfig
     economicLevel*: EconomicLevelConfig
     scienceLevel*: ScienceLevelConfig
     constructionTech*: StandardTechLevelConfig

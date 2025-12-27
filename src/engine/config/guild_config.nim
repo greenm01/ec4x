@@ -88,4 +88,4 @@ proc loadGuildConfig*(
     let node = doc.requireNode("aiStrategy", ctx)
     result.aiStrategy = parseAiStrategy(node, ctx)
 
-  logInfo("Config", "Loaded population configuration", "path=", configPath)
+  logInfo("Config", "Loaded guild configuration", "path=", configPath)

@@ -43,55 +43,22 @@ proc parseShipClassName*(name: string): ShipClass =
     raise newException(ValueError, "Unknown ship class: " & name)
 
 proc resolveFleetConfiguration*(config: GameSetupConfig): seq[seq[ShipClass]] =
-  ## Resolve fleet configuration from TOML setup
+  ## Resolve fleet configuration from game setup config
   ## Returns sequence of fleet compositions (each fleet is a seq[ShipClass])
-  ##
-  ## Priority:
-  ## 1. Try individual [fleet1], [fleet2], etc. sections (if uncommented)
-  ## 2. Fall back to aggregated counts (etac, light_cruiser, destroyer, scout)
 
   result = @[]
-  let fleetConfig = config.starting_fleet
 
-  # Try individual fleet configs first
-  if fleetConfig.fleet_count > 0:
-    let individualFleets = game_setup_config.loadIndividualFleetConfigs()
-
-    if individualFleets.len > 0:
-      # Use individual fleet configurations
-      for fleetIdx in 1 .. fleetConfig.fleet_count:
-        if individualFleets.hasKey(fleetIdx):
-          let fleet = individualFleets[fleetIdx]
-          var shipClasses: seq[ShipClass] = @[]
-          for shipName in fleet.ships:
-            try:
-              shipClasses.add(parseShipClassName(shipName))
-            except ValueError as e:
-              # Skip invalid ship names
-              discard
-          if shipClasses.len > 0:
-            result.add(shipClasses)
-
-      if result.len > 0:
-        return result
-
-  # Fallback: Use aggregated counts
-  # Create colonization fleets (ETAC + Light Cruiser pairs)
-  let etacCount = fleetConfig.etac
-  let cruiserCount = fleetConfig.light_cruiser
-
-  if etacCount > 0 and cruiserCount > 0:
-    let pairs = min(etacCount, cruiserCount)
-    for i in 0 ..< pairs:
-      result.add(@[ShipClass.ETAC, ShipClass.LightCruiser])
-
-  # Create destroyer scout fleets
-  for i in 0 ..< fleetConfig.destroyer:
-    result.add(@[ShipClass.Destroyer])
-
-  # Create scout fleets
-  for i in 0 ..< fleetConfig.scout:
-    result.add(@[ShipClass.Scout])
+  # Parse each fleet from the configuration
+  for fleet in config.startingFleet.fleets:
+    var shipClasses: seq[ShipClass] = @[]
+    for shipName in fleet.ships:
+      try:
+        shipClasses.add(parseShipClassName(shipName))
+      except ValueError as e:
+        # Skip invalid ship names with warning
+        discard
+    if shipClasses.len > 0:
+      result.add(shipClasses)
 
 proc getStartingTreasury*(config: GameSetupConfig): int =
   ## Get starting treasury from config

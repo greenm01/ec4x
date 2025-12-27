@@ -1,23 +1,14 @@
-import std/options
-
 type
   GameInfoConfig* = object ## Game metadata
     name*: string
     description*: string
-    recommendedPlayers*: int32
-    estimatedDuration*: string
+    numPlayers*: int32
+    theme*: string
 
   VictoryConditionsConfig* = object ## Victory conditions
-    primaryCondition*: string
-    secondaryCondition*: string
-    prestigeThreshold*: int32
-    turnLimit*: int32 # NEW: Turn limit for turn_limit victory mode
-
-  MapConfig* = object ## Map generation settings
-    size*: string
-    systems*: int32
-    jumpLaneDensity*: string
-    startingDistance*: string
+    turnLimit*: int32
+    prestigeLimit*: int32
+    finalConflictAutoEnemy*: bool
 
   StartingResourcesConfig* = object ## Starting economic resources
     treasury*: int32
@@ -37,32 +28,22 @@ type
     fighterDoctrine*: int32
     advancedCarrierOps*: int32
 
-  StartingFleetConfig* = object ## Initial fleet composition
-    fleetCount*: int32 # Number of individual fleets to create
-    # Fallback aggregated counts (used if individual fleet sections not available)
-    etac*: int32
-    lightCruiser*: int32
-    destroyer*: int32
-    scout*: int32
-
-  FleetConfig* = object ## Individual fleet configuration (new per-fleet format)
+  FleetConfig* = object ## Individual fleet configuration
     ships*: seq[string] # Ship class names (e.g., ["ETAC", "LightCruiser"])
-    cargoPtu*: Option[int32] # Optional PTU cargo override for ETACs
 
-  HouseNamingConfig* = object ## House naming configuration
-    namePattern*: string # Pattern with {index} placeholder
-    useThemeNames*: bool # Whether to use house_themes.kdl
+  StartingFleetsConfig* = object ## Initial fleet composition
+    fleets*: seq[FleetConfig] # List of starting fleets
 
   StartingFacilitiesConfig* = object ## Homeworld starting facilities
     spaceports*: int32
     shipyards*: int32
     starbases*: int32
-    groundBatteries*: int32
-    planetaryShields*: int32
 
   StartingGroundForcesConfig* = object ## Homeworld starting ground forces
     armies*: int32
     marines*: int32
+    groundBatteries*: int32
+    planetaryShields*: int32
 
   HomeworldConfig* = object ## Homeworld characteristics
     planetClass*: string # "Eden"
@@ -74,12 +55,9 @@ type
   GameSetupConfig* = object ## Complete game setup configuration
     gameInfo*: GameInfoConfig
     victoryConditions*: VictoryConditionsConfig
-    map*: MapConfig
     startingResources*: StartingResourcesConfig
     startingTech*: StartingTechConfig
-    startingFleet*: StartingFleetConfig
+    startingFleets*: StartingFleetsConfig
     startingFacilities*: StartingFacilitiesConfig
     startingGroundForces*: StartingGroundForcesConfig
     homeworld*: HomeworldConfig
-    houseNaming*: Option[HouseNamingConfig] # Optional, defaults if not present
-

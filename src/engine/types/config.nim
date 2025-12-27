@@ -12,22 +12,22 @@ type
   GameConfig* = object
     gameSetup*: GameSetupConfig
     gameplay*: GameplayConfig
-    houseThemes*: ThemeConfig
+    themes*: ThemesConfig
     starmap*: StarmapConfig
     ships*: ShipsConfig
     groundUnits*: GroundUnitsConfig
     facilities*: FacilitiesConfig
     combat*: CombatConfig
     economy*: EconomyConfig
-    prestige*: PrestigeConfig
     espionage*: EspionageConfig
     tech*: TechConfig
     military*: MilitaryConfig
     standingCommands*: StandingCommandsConfig
     construction*: ConstructionConfig
     guild*: GuildConfig
+    prestige*: PrestigeConfig
 
-  ConfigError* = object of CatchableError
+  ConfigError* = ref object of CatchableError
     ## Exception raised when configuration is invalid or missing
 
   KdlConfigContext* = object

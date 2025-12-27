@@ -1,7 +1,4 @@
 type
-  GameplayThemeConfig* = object
-    activeTheme*: string
-
   EliminationConfig* = object
     defensiveCollapseTurns*: int32
     defensiveCollapseThreshold*: int32
@@ -25,17 +22,8 @@ type
     economyCeases*: bool
     permanentElimination*: bool
 
-  VictoryConfig* = object
-    prestigeVictoryEnabled*: bool
-    lastPlayerVictoryEnabled*: bool
-    autopilotCanWin*: bool
-    finalConflictAutoEnemy*: bool
-
   GameplayConfig* = object ## Complete gameplay configuration loaded from KDL
-    theme*: GameplayThemeConfig
     elimination*: EliminationConfig
     autopilot*: AutopilotConfig
     autopilotBehavior*: AutopilotBehaviorConfig
     defensiveCollapseBehavior*: DefensiveCollapseBehaviorConfig
-    victory*: VictoryConfig
-

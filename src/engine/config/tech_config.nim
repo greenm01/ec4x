@@ -6,22 +6,7 @@
 import kdl
 import kdl_helpers
 import ../../common/logger
-import ../types/config
-
-proc parseStartingTech(node: KdlNode, ctx: var KdlConfigContext): StartingTechConfig =
-  result = StartingTechConfig(
-    economicLevel: node.requireInt32("economicLevel", ctx),
-    scienceLevel: node.requireInt32("scienceLevel", ctx),
-    constructionTech: node.requireInt32("constructionTech", ctx),
-    weaponsTech: node.requireInt32("weaponsTech", ctx),
-    terraformingTech: node.requireInt32("terraformingTech", ctx),
-    electronicIntelligence: node.requireInt32("electronicIntelligence", ctx),
-    cloakingTech: node.requireInt32("cloakingTech", ctx),
-    shieldTech: node.requireInt32("shieldTech", ctx),
-    counterIntelligence: node.requireInt32("counterIntelligence", ctx),
-    fighterDoctrine: node.requireInt32("fighterDoctrine", ctx),
-    advancedCarrierOps: node.requireInt32("advancedCarrierOps", ctx)
-  )
+import ../types/[config, tech]
 
 proc parseEconomicLevel(node: KdlNode, ctx: var KdlConfigContext): EconomicLevelConfig =
   result = EconomicLevelConfig(
@@ -255,10 +240,6 @@ proc loadTechConfig*(configPath: string = "config/tech.kdl"): TechConfig =
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)
   var ctx = newContext(configPath)
-
-  ctx.withNode("startingTech"):
-    let node = doc.requireNode("startingTech", ctx)
-    result.startingTech = parseStartingTech(node, ctx)
 
   ctx.withNode("economicLevel"):
     let node = doc.requireNode("economicLevel", ctx)

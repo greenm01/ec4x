@@ -9,7 +9,7 @@ import ../types/config
 proc parseActivation(node: KdlNode, ctx: var KdlConfigContext): ActivationConfig =
   result = ActivationConfig(
     globalEnabled: node.requireBool("globalEnabled", ctx),
-    defaultActivationDelayTurns: node.requireInt("defaultActivationDelayTurns", ctx),
+    defaultActivationDelayTurns: node.requireInt32("defaultActivationDelayTurns", ctx),
     enabledByDefault: node.requireBool("enabledByDefault", ctx)
   )
 
@@ -22,12 +22,12 @@ proc parseBehavior(node: KdlNode, ctx: var KdlConfigContext): BehaviorConfig =
 proc parseUIHints(node: KdlNode, ctx: var KdlConfigContext): UIHintsConfig =
   result = UIHintsConfig(
     warnBeforeActivation: node.requireBool("warnBeforeActivation", ctx),
-    warnTurnsBefore: node.requireInt("warnTurnsBefore", ctx)
+    warnTurnsBefore: node.requireInt32("warnTurnsBefore", ctx)
   )
 
-proc loadStandingOrdersConfig*(
+proc loadStandingCommandsConfig*(
     configPath: string = "config/standing_commands.kdl"
-): StandingOrdersConfig =
+): StandingCommandsConfig =
   ## Load standing commands configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

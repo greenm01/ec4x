@@ -25,7 +25,7 @@ type
     legalWarning*: string
     houses*: seq[tuple[name: string, color: string]] # Indexed by position 0-11
 
-  ThemeConfig* = object
+  ThemesConfig* = object
     themes*: Table[string, HouseTheme]
     activeTheme*: string
 

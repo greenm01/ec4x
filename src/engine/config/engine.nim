@@ -1,4 +1,5 @@
-import ../types/[config, ship]
+import std/os
+import ../types/config
 import ./[
   game_setup_config, gameplay_config, house_themes_config, starmap_config,
   ships_config, ground_units_config, facilities_config, combat_config,
@@ -11,7 +12,7 @@ proc loadGameConfig(configDir: string = "config"): GameConfig =
   ## Raises ConfigError if any config file is missing or invalid
   result.gameSetup = loadGameSetupConfig("game_setup/standard.kdl")
   result.gameplay = loadGameplayConfig(configDir / "gameplay.kdl")
-  result.houseThemes = loadHouseThemesConfig(configDir / "house_themes.kdl")
+  result.themes = loadThemesConfig(configDir / "house_themes.kdl")
   result.starmap = loadStarmapConfig(configDir / "starmap.kdl")
   result.ships = loadShipsConfig(configDir / "ships.kdl")
   result.groundUnits = loadGroundUnitsConfig(configDir / "ground_units.kdl")
@@ -24,5 +25,5 @@ proc loadGameConfig(configDir: string = "config"): GameConfig =
   result.military = loadMilitaryConfig(configDir / "military.kdl")
   result.standingCommands = loadStandingCommandsConfig(configDir / "standing_commands.kdl")
   result.construction = loadConstructionConfig(configDir / "construction.kdl")
-  result.guild = loadGuildCondfig(configDir / "guild.kdl")
-  result.prestigeMultiplier = loadPrestigeMultiplier(configDir / "prestige.kdl")
+  result.guild = loadGuildConfig(configDir / "guild.kdl")
+  result.prestige = loadPrestigeConfig(configDir / "prestige.kdl")

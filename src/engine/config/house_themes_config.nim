@@ -6,7 +6,8 @@
 import std/[tables, strutils]
 import kdl
 import kdl_helpers
-import ../../../common/logger
+import ../../common/logger
+import ../types/config
 
 proc toHouseTheme(entry: ThemeEntry): HouseTheme =
   ## Convert KDL structure to internal HouseTheme representation
@@ -35,9 +36,9 @@ proc parseThemeEntry(node: KdlNode, ctx: var KdlConfigContext): ThemeEntry =
   ## Parse a single theme entry from KDL node
   let nameAttr = node.getStringAttribute("name", ctx)
   if nameAttr.isNone:
-    raise newException(
-      ConfigError,
-      "Theme node missing required 'name' attribute: " & ctx.nodePath,
+    let path = ctx.nodePath.join(".")
+    raise newConfigError(
+      "Theme node missing required 'name' attribute in " & path
     )
 
   result = ThemeEntry(
@@ -70,14 +71,12 @@ proc parseThemeEntry(node: KdlNode, ctx: var KdlConfigContext): ThemeEntry =
     house11Color: node.requireString("house11Color", ctx)
   )
 
-proc loadThemeConfig*(
-    themeFile: string = "config/house_themes.kdl", activeThemeName: string = "dune"
-): ThemeConfig =
+proc loadThemesConfig*(configPath: string = "config/house_themes.kdl"): ThemesConfig =
   ## Load theme configuration from KDL file
   result.themes = initTable[string, HouseTheme]()
 
-  let doc = loadKdlConfig(themeFile)
-  var ctx = newContext(themeFile)
+  let doc = loadKdlConfig(configPath)
+  var ctx = newContext(configPath)
 
   # Find all theme nodes
   for node in doc:
@@ -86,84 +85,4 @@ proc loadThemeConfig*(
         let entry = parseThemeEntry(node, ctx)
         result.themes[entry.name] = toHouseTheme(entry)
 
-  # Set active theme
-  result.activeTheme = activeThemeName
-
-proc getActiveTheme*(config: ThemeConfig): HouseTheme =
-  ## Get the currently active theme
-  if config.activeTheme in config.themes:
-    return config.themes[config.activeTheme]
-  else:
-    # Fallback to "generic" theme if active theme not found
-    if "generic" in config.themes:
-      return config.themes["generic"]
-    else:
-      # Ultimate fallback - return first available theme
-      for theme in config.themes.values:
-        return theme
-      raise newException(ValueError, "No themes available in configuration")
-
-proc getHouseName*(theme: HouseTheme, position: int): string =
-  ## Get house name for given position (0-11)
-  if position < 0 or position >= theme.houses.len:
-    return "House" & $(position + 1) # Fallback naming
-  return theme.houses[position].name
-
-proc getHouseColor*(theme: HouseTheme, position: int): string =
-  ## Get house color for given position (0-11)
-  if position < 0 or position >= theme.houses.len:
-    return "white" # Fallback color
-  return theme.houses[position].color
-
-# Module initialization - load theme config at compile time or runtime
-var globalThemeConfig*: ThemeConfig
-
-proc initializeThemes*() =
-  ## Initialize global theme configuration
-  globalThemeConfig = loadThemeConfig()
-
-  # Log active theme
-  let theme = getActiveTheme(globalThemeConfig)
-  logInfo(
-    "Config", "House theme loaded", "name=", theme.name, " description=",
-    theme.description,
-  )
-  if theme.legalWarning != "none":
-    logWarn("Config", "Theme legal warning", "warning=", theme.legalWarning)
-
-when isMainModule:
-  # Test theme loading
-  logDebug("Test", "Testing House Theme Loader")
-  logDebug("Test", "==========================")
-
-  let config = loadThemeConfig()
-  logDebug("Test", "Available themes", "count=", $config.themes.len)
-  for themeName, theme in config.themes:
-    logDebug(
-      "Test", "Theme details", "name=", theme.name, " description=", theme.description,
-      " legalWarning=", theme.legalWarning,
-    )
-    logDebug("Test", "Theme houses:")
-    for i, house in theme.houses:
-      logDebug(
-        "Test", "House", "index=", $i, " name=", house.name, " color=", house.color
-      )
-
-  logDebug("Test", "Active theme", "name=", config.activeTheme)
-  let activeTheme = getActiveTheme(config)
-  logDebug(
-    "Test", "Active theme details", "name=", activeTheme.name, " description=",
-    activeTheme.description,
-  )
-  logDebug("Test", "First 4 houses:")
-  for i in 0 .. 3:
-    logDebug(
-      "Test",
-      "House",
-      "index=",
-      $i,
-      " name=",
-      getHouseName(activeTheme, i),
-      " color=",
-      getHouseColor(activeTheme, i),
-    )
+  logInfo("Config", "Loaded themes configuration", "path=", configPath)

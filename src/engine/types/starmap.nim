@@ -54,21 +54,21 @@ type
     distanceMatrix*: Table[(SystemId, SystemId), uint32]  # Pre-computed hex distances
     playerCount*: int32
     numRings*: uint32
-    hubId*: SystemId  # Changed from uint to SystemId
+    hubId*: SystemId                 # Changed from uint to SystemId
     playerSystemIds*: seq[SystemId]  # Changed from seq[uint] to seq[SystemId]
-    seed*: int64  # Seed for deterministic but varied generation
-    nextSystemId*: uint32  # Counter for generating SystemIds during map generation
+    seed*: int64                     # Seed for deterministic but varied generation
+    nextSystemId*: uint32            # Counter for generating SystemIds during map generation
 
   PlanetClass* {.pure.} = enum
     ## Planet habitability classifications
     ## Determines population and infrastructure limits
-    Extreme # Level I   - 1-20 PU
+    Extreme  # Level I   - 1-20 PU
     Desolate # Level II  - 21-60 PU
-    Hostile # Level III - 61-180 PU
-    Harsh # Level IV  - 181-500 PU
-    Benign # Level V   - 501-1000 PU
-    Lush # Level VI  - 1k-2k PU
-    Eden # Level VII - 2k+ PU
+    Hostile  # Level III - 61-180 PU
+    Harsh    # Level IV  - 181-500 PU
+    Benign   # Level V   - 501-1000 PU
+    Lush     # Level VI  - 1k-2k PU
+    Eden     # Level VII - 2k+ PU
 
   ResourceRating* {.pure.} = enum
     ## System resource availability

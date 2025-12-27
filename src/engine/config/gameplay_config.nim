@@ -9,11 +9,6 @@ import kdl_helpers
 import ../../common/logger
 import ../types/config
 
-proc parseTheme(node: KdlNode, ctx: var KdlConfigContext): ThemeConfig =
-  result = ThemeConfig(
-    activeTheme: node.requireString("activeTheme", ctx)
-  )
-
 proc parseElimination(node: KdlNode, ctx: var KdlConfigContext): EliminationConfig =
   result = EliminationConfig(
     defensiveCollapseTurns: node.requireInt32("defensiveCollapseTurns", ctx),
@@ -45,23 +40,11 @@ proc parseDefensiveCollapseBehavior(node: KdlNode, ctx: var KdlConfigContext): D
     permanentElimination: node.requireBool("permanentElimination", ctx)
   )
 
-proc parseVictory(node: KdlNode, ctx: var KdlConfigContext): VictoryConfig =
-  result = VictoryConfig(
-    prestigeVictoryEnabled: node.requireBool("prestigeVictoryEnabled", ctx),
-    lastPlayerVictoryEnabled: node.requireBool("lastPlayerVictoryEnabled", ctx),
-    autopilotCanWin: node.requireBool("autopilotCanWin", ctx),
-    finalConflictAutoEnemy: node.requireBool("finalConflictAutoEnemy", ctx)
-  )
-
 proc loadGameplayConfig*(configPath: string = "config/gameplay.kdl"): GameplayConfig =
   ## Load gameplay configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)
   var ctx = newContext(configPath)
-
-  ctx.withNode("theme"):
-    let themeNode = doc.requireNode("theme", ctx)
-    result.theme = parseTheme(themeNode, ctx)
 
   ctx.withNode("elimination"):
     let elimNode = doc.requireNode("elimination", ctx)
@@ -78,9 +61,5 @@ proc loadGameplayConfig*(configPath: string = "config/gameplay.kdl"): GameplayCo
   ctx.withNode("defensiveCollapseBehavior"):
     let defCollapseNode = doc.requireNode("defensiveCollapseBehavior", ctx)
     result.defensiveCollapseBehavior = parseDefensiveCollapseBehavior(defCollapseNode, ctx)
-
-  ctx.withNode("victory"):
-    let victoryNode = doc.requireNode("victory", ctx)
-    result.victory = parseVictory(victoryNode, ctx)
 
   logInfo("Config", "Loaded gameplay configuration", "path=", configPath)

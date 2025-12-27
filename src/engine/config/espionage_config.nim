@@ -6,6 +6,7 @@
 import kdl
 import kdl_helpers
 import ../../common/logger
+import ../types/config
 
 proc parseCosts(node: KdlNode, ctx: var KdlConfigContext): EspionageCostsConfig =
   result = EspionageCostsConfig(
@@ -85,9 +86,5 @@ proc loadEspionageConfig*(
   ctx.withNode("effects"):
     let node = doc.requireNode("effects", ctx)
     result.effects = parseEffects(node, ctx)
-
-  ctx.withNode("scoutDetection"):
-    let node = doc.requireNode("scoutDetection", ctx)
-    result.scoutDetection = parseScoutDetection(node, ctx)
 
   logInfo("Config", "Loaded espionage configuration", "path=", configPath)
