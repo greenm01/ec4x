@@ -1,5 +1,5 @@
 type
-  ThemeConfig* = object
+  GameplayThemeConfig* = object
     activeTheme*: string
 
   EliminationConfig* = object
@@ -32,7 +32,7 @@ type
     finalConflictAutoEnemy*: bool
 
   GameplayConfig* = object ## Complete gameplay configuration loaded from KDL
-    theme*: ThemeConfig
+    theme*: GameplayThemeConfig
     elimination*: EliminationConfig
     autopilot*: AutopilotConfig
     autopilotBehavior*: AutopilotBehaviorConfig

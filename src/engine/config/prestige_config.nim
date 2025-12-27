@@ -10,161 +10,161 @@ import ../types/config
 
 proc parseVictory(node: KdlNode, ctx: var KdlConfigContext): VictoryConfig =
   result = VictoryConfig(
-    startingPrestige: node.requireInt("startingPrestige", ctx).int32,
-    defeatThreshold: node.requireInt("defeatThreshold", ctx).int32,
-    defeatConsecutiveTurns: node.requireInt("defeatConsecutiveTurns", ctx).int32
+    startingPrestige: node.requireInt32("startingPrestige", ctx),
+    defeatThreshold: node.requireInt32("defeatThreshold", ctx),
+    defeatConsecutiveTurns: node.requireInt32("defeatConsecutiveTurns", ctx)
   )
 
-proc parseDynamicScaling(node: KdlNode, ctx: var KdlConfigContext): DynamicScalingConfig =
-  result = DynamicScalingConfig(
+proc parseDynamicScaling(node: KdlNode, ctx: var KdlConfigContext): DynamicPrestigeConfig =
+  result = DynamicPrestigeConfig(
     enabled: node.requireBool("enabled", ctx),
-    baseMultiplier: node.requireFloat("baseMultiplier", ctx).float32,
-    baselineTurns: node.requireInt("baselineTurns", ctx).int32,
-    baselineSystemsPerPlayer: node.requireInt("baselineSystemsPerPlayer", ctx).int32,
-    turnScalingFactor: node.requireFloat("turnScalingFactor", ctx).float32,
-    minMultiplier: node.requireFloat("minMultiplier", ctx).float32,
-    maxMultiplier: node.requireFloat("maxMultiplier", ctx).float32
+    baseMultiplier: node.requireFloat32("baseMultiplier", ctx),
+    baselineTurns: node.requireInt32("baselineTurns", ctx),
+    baselineSystemsPerPlayer: node.requireInt32("baselineSystemsPerPlayer", ctx),
+    turnScalingFactor: node.requireFloat32("turnScalingFactor", ctx),
+    minMultiplier: node.requireFloat32("minMultiplier", ctx),
+    maxMultiplier: node.requireFloat32("maxMultiplier", ctx)
   )
 
 proc parseMorale(node: KdlNode, ctx: var KdlConfigContext): MoraleConfig =
   result = MoraleConfig(
-    crisisMax: node.requireInt("crisisMax", ctx).int32,
-    lowMax: node.requireInt("lowMax", ctx).int32,
-    averageMax: node.requireInt("averageMax", ctx).int32,
-    goodMax: node.requireInt("goodMax", ctx).int32,
-    highMax: node.requireInt("highMax", ctx).int32
+    crisisMax: node.requireInt32("crisisMax", ctx),
+    lowMax: node.requireInt32("lowMax", ctx),
+    averageMax: node.requireInt32("averageMax", ctx),
+    goodMax: node.requireInt32("goodMax", ctx),
+    highMax: node.requireInt32("highMax", ctx)
   )
 
 proc parseEconomic(node: KdlNode, ctx: var KdlConfigContext): EconomicPrestigeConfig =
   result = EconomicPrestigeConfig(
-    techAdvancement: node.requireInt("techAdvancement", ctx).int32,
-    establishColony: node.requireInt("establishColony", ctx).int32,
-    maxPopulation: node.requireInt("maxPopulation", ctx).int32,
-    iuMilestone50: node.requireInt("iuMilestone50", ctx).int32,
-    iuMilestone75: node.requireInt("iuMilestone75", ctx).int32,
-    iuMilestone100: node.requireInt("iuMilestone100", ctx).int32,
-    iuMilestone150: node.requireInt("iuMilestone150", ctx).int32,
-    terraformPlanet: node.requireInt("terraformPlanet", ctx).int32
+    techAdvancement: node.requireInt32("techAdvancement", ctx),
+    establishColony: node.requireInt32("establishColony", ctx),
+    maxPopulation: node.requireInt32("maxPopulation", ctx),
+    iuMilestone50: node.requireInt32("iuMilestone50", ctx),
+    iuMilestone75: node.requireInt32("iuMilestone75", ctx),
+    iuMilestone100: node.requireInt32("iuMilestone100", ctx),
+    iuMilestone150: node.requireInt32("iuMilestone150", ctx),
+    terraformPlanet: node.requireInt32("terraformPlanet", ctx)
   )
 
 proc parseMilitary(node: KdlNode, ctx: var KdlConfigContext): MilitaryPrestigeConfig =
   result = MilitaryPrestigeConfig(
-    destroySquadron: node.requireInt("destroySquadron", ctx).int32,
-    destroyStarbase: node.requireInt("destroyStarbase", ctx).int32,
-    fleetVictory: node.requireInt("fleetVictory", ctx).int32,
-    invadePlanet: node.requireInt("invadePlanet", ctx).int32,
-    eliminateHouse: node.requireInt("eliminateHouse", ctx).int32,
-    systemCapture: node.requireInt("systemCapture", ctx).int32,
-    losePlanet: node.requireInt("losePlanet", ctx).int32,
-    loseStarbase: node.requireInt("loseStarbase", ctx).int32,
-    ambushedByCloak: node.requireInt("ambushedByCloak", ctx).int32,
-    forceRetreat: node.requireInt("forceRetreat", ctx).int32,
-    forcedToRetreat: node.requireInt("forcedToRetreat", ctx).int32,
-    scoutDestroyed: node.requireInt("scoutDestroyed", ctx).int32,
-    undefendedColonyPenaltyMultiplier: node.requireFloat("undefendedColonyPenaltyMultiplier", ctx).float32
+    destroySquadron: node.requireInt32("destroySquadron", ctx),
+    destroyStarbase: node.requireInt32("destroyStarbase", ctx),
+    fleetVictory: node.requireInt32("fleetVictory", ctx),
+    invadePlanet: node.requireInt32("invadePlanet", ctx),
+    eliminateHouse: node.requireInt32("eliminateHouse", ctx),
+    systemCapture: node.requireInt32("systemCapture", ctx),
+    losePlanet: node.requireInt32("losePlanet", ctx),
+    loseStarbase: node.requireInt32("loseStarbase", ctx),
+    ambushedByCloak: node.requireInt32("ambushedByCloak", ctx),
+    forceRetreat: node.requireInt32("forceRetreat", ctx),
+    forcedToRetreat: node.requireInt32("forcedToRetreat", ctx),
+    scoutDestroyed: node.requireInt32("scoutDestroyed", ctx),
+    undefendedColonyPenaltyMultiplier: node.requireFloat32("undefendedColonyPenaltyMultiplier", ctx)
   )
 
 proc parseEspionage(node: KdlNode, ctx: var KdlConfigContext): EspionagePrestigeConfig =
   result = EspionagePrestigeConfig(
-    techTheft: node.requireInt("techTheft", ctx).int32,
-    lowImpactSabotage: node.requireInt("lowImpactSabotage", ctx).int32,
-    highImpactSabotage: node.requireInt("highImpactSabotage", ctx).int32,
-    assassination: node.requireInt("assassination", ctx).int32,
-    cyberAttack: node.requireInt("cyberAttack", ctx).int32,
-    economicManipulation: node.requireInt("economicManipulation", ctx).int32,
-    psyopsCampaign: node.requireInt("psyopsCampaign", ctx).int32,
-    counterIntelSweep: node.requireInt("counterIntelSweep", ctx).int32,
-    intelligenceTheft: node.requireInt("intelligenceTheft", ctx).int32,
-    plantDisinformation: node.requireInt("plantDisinformation", ctx).int32,
-    failedEspionage: node.requireInt("failedEspionage", ctx).int32
+    techTheft: node.requireInt32("techTheft", ctx),
+    lowImpactSabotage: node.requireInt32("lowImpactSabotage", ctx),
+    highImpactSabotage: node.requireInt32("highImpactSabotage", ctx),
+    assassination: node.requireInt32("assassination", ctx),
+    cyberAttack: node.requireInt32("cyberAttack", ctx),
+    economicManipulation: node.requireInt32("economicManipulation", ctx),
+    psyopsCampaign: node.requireInt32("psyopsCampaign", ctx),
+    counterIntelSweep: node.requireInt32("counterIntelSweep", ctx),
+    intelligenceTheft: node.requireInt32("intelligenceTheft", ctx),
+    plantDisinformation: node.requireInt32("plantDisinformation", ctx),
+    failedEspionage: node.requireInt32("failedEspionage", ctx)
   )
 
 proc parseEspionageVictim(node: KdlNode, ctx: var KdlConfigContext): EspionageVictimPrestigeConfig =
   result = EspionageVictimPrestigeConfig(
-    techTheftVictim: node.requireInt("techTheftVictim", ctx).int32,
-    lowImpactSabotageVictim: node.requireInt("lowImpactSabotageVictim", ctx).int32,
-    highImpactSabotageVictim: node.requireInt("highImpactSabotageVictim", ctx).int32,
-    assassinationVictim: node.requireInt("assassinationVictim", ctx).int32,
-    cyberAttackVictim: node.requireInt("cyberAttackVictim", ctx).int32,
-    economicManipulationVictim: node.requireInt("economicManipulationVictim", ctx).int32,
-    psyopsCampaignVictim: node.requireInt("psyopsCampaignVictim", ctx).int32,
-    counterIntelSweepVictim: node.requireInt("counterIntelSweepVictim", ctx).int32,
-    intelligenceTheftVictim: node.requireInt("intelligenceTheftVictim", ctx).int32,
-    plantDisinformationVictim: node.requireInt("plantDisinformationVictim", ctx).int32
+    techTheftVictim: node.requireInt32("techTheftVictim", ctx),
+    lowImpactSabotageVictim: node.requireInt32("lowImpactSabotageVictim", ctx),
+    highImpactSabotageVictim: node.requireInt32("highImpactSabotageVictim", ctx),
+    assassinationVictim: node.requireInt32("assassinationVictim", ctx),
+    cyberAttackVictim: node.requireInt32("cyberAttackVictim", ctx),
+    economicManipulationVictim: node.requireInt32("economicManipulationVictim", ctx),
+    psyopsCampaignVictim: node.requireInt32("psyopsCampaignVictim", ctx),
+    counterIntelSweepVictim: node.requireInt32("counterIntelSweepVictim", ctx),
+    intelligenceTheftVictim: node.requireInt32("intelligenceTheftVictim", ctx),
+    plantDisinformationVictim: node.requireInt32("plantDisinformationVictim", ctx)
   )
 
 proc parseScout(node: KdlNode, ctx: var KdlConfigContext): ScoutPrestigeConfig =
   result = ScoutPrestigeConfig(
-    spyOnPlanet: node.requireInt("spyOnPlanet", ctx).int32,
-    hackStarbase: node.requireInt("hackStarbase", ctx).int32,
-    spyOnSystem: node.requireInt("spyOnSystem", ctx).int32
+    spyOnPlanet: node.requireInt32("spyOnPlanet", ctx),
+    hackStarbase: node.requireInt32("hackStarbase", ctx),
+    spyOnSystem: node.requireInt32("spyOnSystem", ctx)
   )
 
 proc parseDiplomacy(node: KdlNode, ctx: var KdlConfigContext): DiplomacyPrestigeConfig =
   result = DiplomacyPrestigeConfig(
-    declareWar: node.requireInt("declareWar", ctx).int32,
-    makePeace: node.requireInt("makePeace", ctx).int32
+    declareWar: node.requireInt32("declareWar", ctx),
+    makePeace: node.requireInt32("makePeace", ctx)
   )
 
 proc parseVictoryAchievement(node: KdlNode, ctx: var KdlConfigContext): VictoryAchievementConfig =
   result = VictoryAchievementConfig(
-    victoryAchieved: node.requireInt("victoryAchieved", ctx).int32
+    victoryAchieved: node.requireInt32("victoryAchieved", ctx)
   )
 
 proc parsePenalties(node: KdlNode, ctx: var KdlConfigContext): PenaltiesPrestigeConfig =
   result = PenaltiesPrestigeConfig(
-    highTaxThreshold: node.requireInt("highTaxThreshold", ctx).int32,
-    highTaxPenalty: node.requireInt("highTaxPenalty", ctx).int32,
-    highTaxFrequency: node.requireInt("highTaxFrequency", ctx).int32,
-    veryHighTaxThreshold: node.requireInt("veryHighTaxThreshold", ctx).int32,
-    veryHighTaxPenalty: node.requireInt("veryHighTaxPenalty", ctx).int32,
-    veryHighTaxFrequency: node.requireInt("veryHighTaxFrequency", ctx).int32,
-    maintenanceShortfallBase: node.requireInt("maintenanceShortfallBase", ctx).int32,
-    maintenanceShortfallIncrement: node.requireInt("maintenanceShortfallIncrement", ctx).int32,
-    blockadePenalty: node.requireInt("blockadePenalty", ctx).int32,
-    overInvestEspionage: node.requireInt("overInvestEspionage", ctx).int32,
-    overInvestCounterIntel: node.requireInt("overInvestCounterIntel", ctx).int32
+    highTaxThreshold: node.requireInt32("highTaxThreshold", ctx),
+    highTaxPenalty: node.requireInt32("highTaxPenalty", ctx),
+    highTaxFrequency: node.requireInt32("highTaxFrequency", ctx),
+    veryHighTaxThreshold: node.requireInt32("veryHighTaxThreshold", ctx),
+    veryHighTaxPenalty: node.requireInt32("veryHighTaxPenalty", ctx),
+    veryHighTaxFrequency: node.requireInt32("veryHighTaxFrequency", ctx),
+    maintenanceShortfallBase: node.requireInt32("maintenanceShortfallBase", ctx),
+    maintenanceShortfallIncrement: node.requireInt32("maintenanceShortfallIncrement", ctx),
+    blockadePenalty: node.requireInt32("blockadePenalty", ctx),
+    overInvestEspionage: node.requireInt32("overInvestEspionage", ctx),
+    overInvestCounterIntel: node.requireInt32("overInvestCounterIntel", ctx)
   )
 
 proc parseTaxPenalties(node: KdlNode, ctx: var KdlConfigContext): TaxPenaltiesTier =
   result = TaxPenaltiesTier(
-    tier1Min: node.requireInt("tier1Min", ctx).int32,
-    tier1Max: node.requireInt("tier1Max", ctx).int32,
-    tier1Penalty: node.requireInt("tier1Penalty", ctx).int32,
-    tier2Min: node.requireInt("tier2Min", ctx).int32,
-    tier2Max: node.requireInt("tier2Max", ctx).int32,
-    tier2Penalty: node.requireInt("tier2Penalty", ctx).int32,
-    tier3Min: node.requireInt("tier3Min", ctx).int32,
-    tier3Max: node.requireInt("tier3Max", ctx).int32,
-    tier3Penalty: node.requireInt("tier3Penalty", ctx).int32,
-    tier4Min: node.requireInt("tier4Min", ctx).int32,
-    tier4Max: node.requireInt("tier4Max", ctx).int32,
-    tier4Penalty: node.requireInt("tier4Penalty", ctx).int32,
-    tier5Min: node.requireInt("tier5Min", ctx).int32,
-    tier5Max: node.requireInt("tier5Max", ctx).int32,
-    tier5Penalty: node.requireInt("tier5Penalty", ctx).int32,
-    tier6Min: node.requireInt("tier6Min", ctx).int32,
-    tier6Max: node.requireInt("tier6Max", ctx).int32,
-    tier6Penalty: node.requireInt("tier6Penalty", ctx).int32
+    tier1Min: node.requireInt32("tier1Min", ctx),
+    tier1Max: node.requireInt32("tier1Max", ctx),
+    tier1Penalty: node.requireInt32("tier1Penalty", ctx),
+    tier2Min: node.requireInt32("tier2Min", ctx),
+    tier2Max: node.requireInt32("tier2Max", ctx),
+    tier2Penalty: node.requireInt32("tier2Penalty", ctx),
+    tier3Min: node.requireInt32("tier3Min", ctx),
+    tier3Max: node.requireInt32("tier3Max", ctx),
+    tier3Penalty: node.requireInt32("tier3Penalty", ctx),
+    tier4Min: node.requireInt32("tier4Min", ctx),
+    tier4Max: node.requireInt32("tier4Max", ctx),
+    tier4Penalty: node.requireInt32("tier4Penalty", ctx),
+    tier5Min: node.requireInt32("tier5Min", ctx),
+    tier5Max: node.requireInt32("tier5Max", ctx),
+    tier5Penalty: node.requireInt32("tier5Penalty", ctx),
+    tier6Min: node.requireInt32("tier6Min", ctx),
+    tier6Max: node.requireInt32("tier6Max", ctx),
+    tier6Penalty: node.requireInt32("tier6Penalty", ctx)
   )
 
 proc parseTaxIncentives(node: KdlNode, ctx: var KdlConfigContext): TaxIncentivesTier =
   result = TaxIncentivesTier(
-    tier1Min: node.requireInt("tier1Min", ctx).int32,
-    tier1Max: node.requireInt("tier1Max", ctx).int32,
-    tier1Prestige: node.requireInt("tier1Prestige", ctx).int32,
-    tier2Min: node.requireInt("tier2Min", ctx).int32,
-    tier2Max: node.requireInt("tier2Max", ctx).int32,
-    tier2Prestige: node.requireInt("tier2Prestige", ctx).int32,
-    tier3Min: node.requireInt("tier3Min", ctx).int32,
-    tier3Max: node.requireInt("tier3Max", ctx).int32,
-    tier3Prestige: node.requireInt("tier3Prestige", ctx).int32,
-    tier4Min: node.requireInt("tier4Min", ctx).int32,
-    tier4Max: node.requireInt("tier4Max", ctx).int32,
-    tier4Prestige: node.requireInt("tier4Prestige", ctx).int32,
-    tier5Min: node.requireInt("tier5Min", ctx).int32,
-    tier5Max: node.requireInt("tier5Max", ctx).int32,
-    tier5Prestige: node.requireInt("tier5Prestige", ctx).int32
+    tier1Min: node.requireInt32("tier1Min", ctx),
+    tier1Max: node.requireInt32("tier1Max", ctx),
+    tier1Prestige: node.requireInt32("tier1Prestige", ctx),
+    tier2Min: node.requireInt32("tier2Min", ctx),
+    tier2Max: node.requireInt32("tier2Max", ctx),
+    tier2Prestige: node.requireInt32("tier2Prestige", ctx),
+    tier3Min: node.requireInt32("tier3Min", ctx),
+    tier3Max: node.requireInt32("tier3Max", ctx),
+    tier3Prestige: node.requireInt32("tier3Prestige", ctx),
+    tier4Min: node.requireInt32("tier4Min", ctx),
+    tier4Max: node.requireInt32("tier4Max", ctx),
+    tier4Prestige: node.requireInt32("tier4Prestige", ctx),
+    tier5Min: node.requireInt32("tier5Min", ctx),
+    tier5Max: node.requireInt32("tier5Max", ctx),
+    tier5Prestige: node.requireInt32("tier5Prestige", ctx)
   )
 
 proc loadPrestigeConfig*(configPath: string = "config/prestige.kdl"): PrestigeConfig =
@@ -236,40 +236,3 @@ var globalPrestigeConfig* = loadPrestigeConfig()
 proc reloadPrestigeConfig*() =
   ## Reload configuration from file
   globalPrestigeConfig = loadPrestigeConfig()
-
-## Dynamic Prestige Multiplier Calculation
-
-proc calculateDynamicMultiplier*(numSystems: int32, numPlayers: int32): float32 =
-  ## Calculate dynamic prestige multiplier based on map size and player count
-  ##
-  ## Formula:
-  ##   systems_per_player = numSystems / numPlayers
-  ##   target_turns = baseline_turns + (systems_per_player - baseline_ratio) * turn_scaling_factor
-  ##   multiplier = base_multiplier * (baseline_turns / target_turns)
-  ##   multiplier = clamp(multiplier, min_multiplier, max_multiplier)
-  ##
-  ## This ensures:
-  ## - Small maps (few systems per player): Higher multiplier = faster games
-  ## - Large maps (many systems per player): Lower multiplier = longer games
-  ## - Victory threshold (5000 prestige) stays constant regardless of map size
-
-  let config = globalPrestigeConfig.dynamicScaling
-
-  # If dynamic scaling is disabled, return base multiplier
-  if not config.enabled:
-    return config.baseMultiplier
-
-  # Calculate systems per player
-  let systemsPerPlayer = float32(numSystems) / float32(numPlayers)
-
-  # Calculate target turns based on map density
-  let systemDiff = systemsPerPlayer - float32(config.baselineSystemsPerPlayer)
-  let targetTurns =
-    float32(config.baselineTurns) + (systemDiff * config.turnScalingFactor)
-
-  # Calculate multiplier (inverse relationship: more turns = lower multiplier)
-  let multiplier =
-    config.baseMultiplier * (float32(config.baselineTurns) / targetTurns)
-
-  # Clamp to reasonable bounds
-  result = max(config.minMultiplier, min(config.maxMultiplier, multiplier))

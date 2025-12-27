@@ -5,16 +5,25 @@ import ./[
 ]
 
 # Master config loading function
-
-let gameConfig* {.threadvar.}: GameConfig = loadGameConfig()
-
 proc loadGameConfig(dataDir: string = "config"): GameConfig =
   ## Load and validate all game configuration files
   ## Raises ConfigError if any config file is missing or invalid
 
-  result.ships = loadShipsConfig(dataDir / "ships.kdl")
-  result.groundUnits = loadGroundUnitsConfig(dataDir / "ground_units.kdl")
-  result.facilities = loadFacilitiesConfig(dataDir / "facilities.kdl")
-  result.combat = loadCombatConfig(dataDir / "combat.kdl")
-  result.economy = loadEconomyConfig(dataDir / "economy.kdl")
-  result.prestige = loadPrestigeConfig(dataDir / "prestige.kdl")
+  let gameSetupConfig = loadGameSetupConfig()
+  let gameplayConfig = loadGameplayConfig()
+  let houseThemesConfig = loadHouseThemesConfig()
+  let starmapConfig = loadStarmapConfig()
+  let shipsConfig = loadShipsConfig(dataDir / "ships.kdl")
+  let groundUnitsConfig = loadGroundUnitsConfig(dataDir / "ground_units.kdl")
+  let facilitiesConfig = loadFacilitiesConfig(dataDir / "facilities.kdl")
+  let combatConfig = loadCombatConfig(dataDir / "combat.kdl")
+  let economyConfig = loadEconomyConfig(dataDir / "economy.kdl")
+  let prestigeConfig = loadPrestigeConfig(dataDir / "prestige.kdl")
+  let espionageConfig = loadEspionageConfig()
+  let techConfig = loadTechConfig()
+  let militaryConfig = loadMilitaryConfig()
+  let standingCommandConfig = loadStandingCommandConfig()
+  let constructionConfig = loadConstructionConfig()
+  let populationConfig = loadPopulationCondfig()
+
+  result.prestigeMultiplier = prestigeMultiplier

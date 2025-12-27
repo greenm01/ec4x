@@ -5,7 +5,7 @@ type
     defeatThreshold*: int32
     defeatConsecutiveTurns*: int32
 
-  DynamicScalingConfig* = object
+  DynamicPrestigeConfig* = object
     enabled*: bool
     baseMultiplier*: float32
     baselineTurns*: int32
@@ -135,7 +135,7 @@ type
 
   PrestigeConfig* = object ## Complete prestige configuration loaded from KDL
     victory*: VictoryConfig
-    dynamicScaling*: DynamicScalingConfig
+    dynamicScaling*: DynamicPrestigeConfig
     morale*: MoraleConfig
     economic*: EconomicPrestigeConfig
     military*: MilitaryPrestigeConfig

@@ -65,6 +65,8 @@ type
     byHouse*: Table[HouseId, seq[ShipId]] # O(1) lookup for house queries
     bySquadron*: Table[SquadronId, seq[ShipId]]
 
+export Ships
+
 const ShipClassRoles*: array[ShipClass, ShipRole] = [
   Corvette: ShipRole.Escort,
   Frigate: ShipRole.Escort,

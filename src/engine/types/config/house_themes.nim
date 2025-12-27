@@ -1,3 +1,5 @@
+import std/tables
+
 type
   ThemeEntry* = object
     name*: string

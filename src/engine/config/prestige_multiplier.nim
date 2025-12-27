@@ -7,41 +7,4 @@
 import prestige_config
 import ../../common/logger
 
-var prestigeMultiplier* {.threadvar.}: float32
 
-proc initializePrestigeMultiplier*(numSystems: int32, numPlayers: int32) =
-  ## Initialize the prestige multiplier for the current game
-  ## Call this once during game initialization
-  prestigeMultiplier = calculateDynamicMultiplier(numSystems, numPlayers)
-  logInfo(
-    "Prestige",
-    "Dynamic multiplier initialized",
-    "multiplier=",
-    $prestigeMultiplier,
-    " systems=",
-    $numSystems,
-    " players=",
-    $numPlayers,
-  )
-
-proc setPrestigeMultiplier*(multiplier: float32) =
-  ## Set the prestige multiplier directly for testing
-  ## Use 1.0 to disable multiplier effects in tests
-  prestigeMultiplier = multiplier
-
-proc getPrestigeMultiplier*(): float32 =
-  ## Get the current prestige multiplier
-  ## Returns the base multiplier if not initialized
-  if prestigeMultiplier == 0.0:
-    logError(
-      "Prestige",
-      "Multiplier uninitialized! Using base value",
-      "base=",
-      $globalPrestigeConfig.dynamic_scaling.base_multiplier,
-    )
-    return globalPrestigeConfig.dynamic_scaling.base_multiplier
-  return prestigeMultiplier
-
-proc applyMultiplier*(baseValue: int32): int32 =
-  ## Apply the dynamic multiplier to a base prestige value
-  result = int32(float32(baseValue) * getPrestigeMultiplier())

@@ -6,45 +6,73 @@
 ## - Prioritizes correctness over complex optimizations
 ## - Implements actual game rules for lane traversal
 ## - Provides fast, reliable starmap generation and pathfinding
+import std/[
+  tables, sequtils, random, math, algorithm, hashes, sets,
+  strutils, heapqueue, options
+]
 
-import types/[fleet, starmap, combat, game_state]
+import types/[starmap, squadron, core]
 import config/starmap_config
-import
-  std/[tables, sequtils, random, math, algorithm, hashes, sets, strutils, heapqueue]
-import std/options
 
-type
-  StarMapError* = object of CatchableError
+# Hex coordinate utilities
+proc hex*(q, r: int32): Hex =
+  ## Create a hex coordinate
+  Hex(q: q, r: r)
 
-  StarMap* = object
-    systems*: Table[uint, System]
-    lanes*: seq[JumpLane]
-    laneMap*: Table[(uint, uint), LaneType] # Bidirectional lane type cache
-    distanceMatrix*: Table[(uint, uint), uint32] # Pre-computed hex distances
-    adjacency*: Table[uint, seq[uint]]
-    playerCount*: int
-    numRings*: uint32
-    hubId*: uint
-    playerSystemIds*: seq[uint]
-    seed*: int64 # Seed for deterministic but varied generation
+proc distance*(a, b: Hex): uint32 =
+  ## Calculate hex grid distance between two coordinates
+  let dq = abs(a.q - b.q)
+  let dr = abs(a.r - b.r)
+  let ds = abs(a.q + a.r - b.q - b.r)
+  return max(dq, max(dr, ds)).uint32
 
-  JumpLane* = object
-    source*: uint
-    destination*: uint
-    laneType*: LaneType
+const HexDirections = [
+  hex(1, 0), hex(1, -1), hex(0, -1),
+  hex(-1, 0), hex(-1, 1), hex(0, 1)
+]
 
-  PathResult* = object
-    path*: seq[uint]
-    totalCost*: uint32
-    found*: bool
+proc neighbor*(h: Hex, direction: int): Hex =
+  ## Get neighbor in given direction (0-5)
+  let dir = HexDirections[direction mod 6]
+  hex(h.q + dir.q, h.r + dir.r)
 
-# Constants for robust behavior
-const
-  minPlayers = 2
-  maxPlayers = 12
-  maxVertexPlayers = 4 # Hex grids only have 4 true vertices
+proc withinRadius*(center: Hex, radius: int32): seq[Hex] =
+  ## Get all hex coordinates within radius of center (inclusive)
+  result = @[]
+  for q in -radius .. radius:
+    let r1 = max(-radius, -q - radius)
+    let r2 = min(radius, -q + radius)
+    for r in r1 .. r2:
+      result.add(hex(center.q + q, center.r + r))
 
-proc validatePlayerCount(count: int) =
+proc findSystemByCoords(starMap: StarMap, coords: Hex): Option[SystemId] =
+  ## Find a system by its hex coordinates
+  ## Returns the SystemId if found, none if not found
+  for system in starMap.systems.entities.data:
+    if system.coords.q == coords.q and system.coords.r == coords.r:
+      return some(system.id)
+  return none(SystemId)
+
+# Total systems = 1 + 3 × n × (n + 1)
+# where n = number of rings (playerCount)
+# This gives you:
+
+# 2 players: 1 + 3(2)(3) = 19 systems (9.5 per player)
+# 3 players: 1 + 3(3)(4) = 37 systems (12.3 per player)
+# 4 players: 1 + 3(4)(5) = 61 systems (15.25 per player)
+# 6 players: 1 + 3(6)(7) = 127 systems (21.2 per player)
+# 12 players: 1 + 3(12)(13) = 469 systems (39.1 per player)
+
+# The formula is: 3n² + 3n + 1 where n = playerCount.
+#
+# Systems per player scales non-linearly - larger games give significantly
+# more strategic space per player. This matches 4X escalation patterns where
+# bigger maps allow more complex empire building.
+
+proc validatePlayerCount(count: int32) =
+  # Hardcoded
+  let minPlayers: int32 = 2
+  let maxPlayers: int32 = 12
   if count < minPlayers or count > maxPlayers:
     raise newException(
       StarMapError,
@@ -83,60 +111,104 @@ proc validateMapRings*(rings: int, playerCount: int = 0): seq[string] =
 
   return errors
 
-proc newStarMap*(playerCount: int, seed: int64 = 42): StarMap =
+proc systemsPerPlayer*(playerCount: int32): float32 =
+  ## Calculate average number of systems per player
+  ## Formula: (3n² + 3n + 1) / n where n = playerCount
+  ## Accounts for hub system at center
+  let n = playerCount.float32
+  let totalSystems = 3.0 * n * n + 3.0 * n + 1.0
+  return totalSystems / n
+
+proc totalSystems*(playerCount: int32): int32 =
+  ## Calculate total number of systems for given player count
+  ## Formula: 3n² + 3n + 1 where n = playerCount (numRings)
+  let n = playerCount
+  return 3 * n * n + 3 * n + 1
+
+proc newStarMap*(playerCount: int32, seed: int64 = 2001): StarMap =
   validatePlayerCount(playerCount)
 
   StarMap(
-    systems: initTable[uint, System](),
-    lanes: @[],
-    adjacency: initTable[uint, seq[uint]](),
+    systems: Systems(
+      entities: EntityManager[SystemId, System](
+        data: @[],
+        index: initTable[SystemId, int]()
+      )
+    ),
+    lanes: JumpLanes(
+      data: @[],
+      neighbors: initTable[SystemId, seq[SystemId]](),
+      connectionInfo: initTable[(SystemId, SystemId), LaneType]()
+    ),
+    distanceMatrix: initTable[(SystemId, SystemId), uint32](),
     playerCount: playerCount,
     numRings: playerCount.uint32,
-    hubId: 0,
+    hubId: 0.SystemId,
     playerSystemIds: @[],
     seed: seed,
+    nextSystemId: 0
+  )
+
+proc newSystem(starMap: var StarMap, coords: Hex, ring: uint32, player: Option[PlayerId]): System =
+  ## Create a new system with auto-generated ID
+  ## Uses StarMap's internal counter for ID generation
+  let id = SystemId(starMap.nextSystemId)
+  starMap.nextSystemId += 1
+
+  # TODO: Assign planetClass and resourceRating based on game rules
+  System(
+    id: id,
+    coords: coords,
+    ring: ring,
+    player: player,
+    planetClass: PlanetClass.Benign,  # Placeholder
+    resourceRating: ResourceRating.Abundant  # Placeholder
   )
 
 proc addSystem(starMap: var StarMap, system: System) =
-  starMap.systems[system.id] = system
+  starMap.systems.entities.data.add(system)
+  starMap.systems.entities.index[system.id] = starMap.systems.entities.data.len - 1
 
 proc addLane(starMap: var StarMap, lane: JumpLane) =
   # Validate lane endpoints exist
-  if lane.source notin starMap.systems or lane.destination notin starMap.systems:
+  if lane.source notin starMap.systems.entities.index or
+     lane.destination notin starMap.systems.entities.index:
     raise newException(StarMapError, "Lane endpoints must exist in starmap")
 
   # Prevent duplicate lanes
-  for existingLane in starMap.lanes:
+  for existingLane in starMap.lanes.data:
     if (
-      existingLane.source == lane.source and existingLane.destination == lane.destination
+      existingLane.source == lane.source and
+      existingLane.destination == lane.destination
     ) or (
-      existingLane.source == lane.destination and existingLane.destination == lane.source
+      existingLane.source == lane.destination and
+      existingLane.destination == lane.source
     ):
-      return # Lane already exists
+      return  # Lane already exists
 
-  starMap.lanes.add(lane)
+  starMap.lanes.data.add(lane)
 
   # Cache lane type for O(1) lookup (bidirectional)
-  starMap.laneMap[(lane.source, lane.destination)] = lane.laneType
-  starMap.laneMap[(lane.destination, lane.source)] = lane.laneType
+  starMap.lanes.connectionInfo[(lane.source, lane.destination)] = lane.laneType
+  starMap.lanes.connectionInfo[(lane.destination, lane.source)] = lane.laneType
 
   # Update adjacency (bidirectional)
-  if lane.source notin starMap.adjacency:
-    starMap.adjacency[lane.source] = @[]
-  if lane.destination notin starMap.adjacency:
-    starMap.adjacency[lane.destination] = @[]
+  if lane.source notin starMap.lanes.neighbors:
+    starMap.lanes.neighbors[lane.source] = @[]
+  if lane.destination notin starMap.lanes.neighbors:
+    starMap.lanes.neighbors[lane.destination] = @[]
 
-  starMap.adjacency[lane.source].add(lane.destination)
-  starMap.adjacency[lane.destination].add(lane.source)
+  starMap.lanes.neighbors[lane.source].add(lane.destination)
+  starMap.lanes.neighbors[lane.destination].add(lane.source)
 
 proc weightedSample[T](
-    items: openArray[T], weights: openArray[float], rng: var Rand
+    items: openArray[T], weights: openArray[float32], rng: var Rand
 ): T =
   ## Select a random item using weighted probabilities
   ## Weights should sum to 1.0, but will be normalized if not
   let totalWeight = weights.sum()
-  let r = rng.rand(1.0)
-  var cumulative = 0.0
+  let r = rng.rand(1.0'f32)
+  var cumulative = 0.0'f32
 
   for i, weight in weights:
     cumulative += weight / totalWeight
@@ -146,15 +218,14 @@ proc weightedSample[T](
   # Fallback (should never reach here with valid weights)
   return items[^1]
 
-proc getAdjacentSystems*(starMap: StarMap, systemId: uint): seq[uint] =
-  starMap.adjacency.getOrDefault(systemId, @[])
+proc getAdjacentSystems*(starMap: StarMap, systemId: SystemId): seq[SystemId] =
+  starMap.lanes.neighbors.getOrDefault(systemId, @[])
 
-proc countHexNeighbors*(starMap: StarMap, coords: Hex): int =
-  var count = 0
+proc countHexNeighbors*(starMap: StarMap, coords: Hex): int32 =
+  var count: int32 = 0
   for dir in 0 .. 5:
     let neighborCoord = coords.neighbor(dir)
-    let neighborId = neighborCoord.toId(starMap.numRings)
-    if neighborId in starMap.systems:
+    if starMap.findSystemByCoords(neighborCoord).isSome:
       count += 1
   return count
 
@@ -163,7 +234,7 @@ proc generateHexGrid(starMap: var StarMap) =
   let center = hex(0, 0)
 
   # Add hub system at center
-  let hub = newSystem(center, 0, starMap.numRings, none(uint))
+  let hub = starMap.newSystem(center, 0, none(PlayerId))
   starMap.hubId = hub.id
   starMap.addSystem(hub)
 
@@ -174,14 +245,15 @@ proc generateHexGrid(starMap: var StarMap) =
       continue
 
     let ring = distance(hexCoord, center)
-    let system = newSystem(hexCoord, ring, starMap.numRings, none(uint))
+    let system = starMap.newSystem(hexCoord, ring, none(PlayerId))
     starMap.addSystem(system)
 
 proc assignPlayerHomeworlds(starMap: var StarMap) =
   ## Assign player homeworlds following game specification
   ## Homeworlds can be placed on any ring (except hub ring 0) using distance maximization
+  let maxVertexPlayers: int32 = 4  # Hex grids only have 4 true vertices
   var allSystems: seq[System] = @[]
-  for system in starMap.systems.values:
+  for system in starMap.systems.entities.data:
     # Exclude hub (ring 0), allow all other rings
     if system.ring > 0:
       allSystems.add(system)
@@ -191,8 +263,8 @@ proc assignPlayerHomeworlds(starMap: var StarMap) =
 
   # Sort by angle for even distribution
   allSystems.sort do(a, b: System) -> int:
-    let angleA = arctan2(a.coords.r.float64, a.coords.q.float64)
-    let angleB = arctan2(b.coords.r.float64, b.coords.q.float64)
+    let angleA = arctan2(a.coords.r.float32, a.coords.q.float32)
+    let angleB = arctan2(b.coords.r.float32, b.coords.q.float32)
     cmp(angleA, angleB)
 
   # Player placement strategy based on game spec
@@ -212,20 +284,20 @@ proc assignPlayerHomeworlds(starMap: var StarMap) =
     var shuffledCandidates = candidateSystems
     rng.shuffle(shuffledCandidates)
 
-    selectedSystems = @[shuffledCandidates[0]] # Start with random first system
+    selectedSystems = @[shuffledCandidates[0]]  # Start with random first system
 
     for i in 1 ..< starMap.playerCount:
       var bestSystem = shuffledCandidates[1]
-      var maxMinDistance = 0.0
+      var maxMinDistance = 0.0'f32
 
       # Find system that maximizes minimum distance to existing players
       for candidate in shuffledCandidates:
         if candidate in selectedSystems:
           continue
 
-        var minDistance = float.high
+        var minDistance = float32.high
         for existing in selectedSystems:
-          let dist = distance(candidate.coords, existing.coords).float64
+          let dist = distance(candidate.coords, existing.coords).float32
           minDistance = min(minDistance, dist)
 
         if minDistance > maxMinDistance:
@@ -235,22 +307,25 @@ proc assignPlayerHomeworlds(starMap: var StarMap) =
       selectedSystems.add(bestSystem)
   else:
     # Even distribution for larger player counts
-    let step = allSystems.len.float64 / starMap.playerCount.float64
+    let step = allSystems.len.float32 / starMap.playerCount.float32
     for i in 0 ..< starMap.playerCount:
-      let index = int(i.float64 * step) mod allSystems.len
+      let index = int32(i.float32 * step) mod allSystems.len.int32
       selectedSystems.add(allSystems[index])
 
   # Assign players to selected systems
   for i, system in selectedSystems:
-    starMap.systems[system.id].player = some(i.uint)
+    # Update system using EntityManager
+    let idx = starMap.systems.entities.index[system.id]
+    starMap.systems.entities.data[idx].player = some(i.uint32.PlayerId)
     starMap.playerSystemIds.add(system.id)
 
 proc connectHub(starMap: var StarMap, rng: var Rand) =
   ## Connect hub with mixed lane types to first ring (prevents rush-to-center)
-  let hubSystem = starMap.systems[starMap.hubId]
+  let hubIdx = starMap.systems.entities.index[starMap.hubId]
+  let hubSystem = starMap.systems.entities.data[hubIdx]
 
-  var ring1Neighbors: seq[uint] = @[]
-  for system in starMap.systems.values:
+  var ring1Neighbors: seq[SystemId] = @[]
+  for system in starMap.systems.entities.data:
     if system.ring == 1 and distance(system.coords, hubSystem.coords) == 1:
       ring1Neighbors.add(system.id)
 
@@ -279,15 +354,16 @@ proc connectPlayerSystems(starMap: var StarMap, rng: var Rand) =
       laneCount, " players=", starMap.playerSystemIds.len
 
   for playerId in starMap.playerSystemIds:
-    let system = starMap.systems[playerId]
+    let sysIdx = starMap.systems.entities.index[playerId]
+    let system = starMap.systems.entities.data[sysIdx]
 
     # Find all potential neighbors
-    var neighbors: seq[uint] = @[]
+    var neighbors: seq[SystemId] = @[]
     for dir in 0 .. 5:
       let neighborCoord = system.coords.neighbor(dir)
-      let neighborId = neighborCoord.toId(starMap.numRings)
-      if neighborId in starMap.systems:
-        neighbors.add(neighborId)
+      let neighborIdOpt = starMap.findSystemByCoords(neighborCoord)
+      if neighborIdOpt.isSome:
+        neighbors.add(neighborIdOpt.get)
 
     # Remove already connected neighbors
     let existing = starMap.getAdjacentSystems(playerId)
@@ -309,17 +385,17 @@ proc connectPlayerSystems(starMap: var StarMap, rng: var Rand) =
 
 proc connectRemainingSystem(starMap: var StarMap, rng: var Rand) =
   ## Connect all remaining systems with random lane types
-  for system in starMap.systems.values:
+  for system in starMap.systems.entities.data:
     if system.ring == 0 or system.player.isSome:
-      continue # Skip hub and player systems
+      continue  # Skip hub and player systems
 
     # Find unconnected neighbors
-    var neighbors: seq[uint] = @[]
+    var neighbors: seq[SystemId] = @[]
     for dir in 0 .. 5:
       let neighborCoord = system.coords.neighbor(dir)
-      let neighborId = neighborCoord.toId(starMap.numRings)
-      if neighborId in starMap.systems:
-        neighbors.add(neighborId)
+      let neighborIdOpt = starMap.findSystemByCoords(neighborCoord)
+      if neighborIdOpt.isSome:
+        neighbors.add(neighborIdOpt.get)
 
     let existing = starMap.getAdjacentSystems(system.id)
     neighbors = neighbors.filterIt(it notin existing)
@@ -327,11 +403,12 @@ proc connectRemainingSystem(starMap: var StarMap, rng: var Rand) =
     # Connect to available neighbors with random lane types
     for neighborId in neighbors:
       # Check if neighbor is a player system that already has 3 connections
-      let neighborSystem = starMap.systems[neighborId]
+      let neighborIdx = starMap.systems.entities.index[neighborId]
+      let neighborSystem = starMap.systems.entities.data[neighborIdx]
       if neighborSystem.player.isSome:
         let neighborConnections = starMap.getAdjacentSystems(neighborId)
         if neighborConnections.len >= 3:
-          continue # Skip connecting to player systems that already have 3 connections
+          continue  # Skip connecting to player systems that already have 3 connections
 
       # Use weighted lane type selection for balanced gameplay
       let weights = globalStarmapConfig.lane_weights
@@ -362,10 +439,10 @@ proc generateLanes(starMap: var StarMap) =
 
 proc validateConnectivity*(starMap: StarMap): bool =
   ## Validate that all systems are reachable from hub
-  if starMap.systems.len == 0:
+  if starMap.systems.entities.data.len == 0:
     return false
 
-  var visited = initHashSet[uint]()
+  var visited = initHashSet[SystemId]()
   var queue = @[starMap.hubId]
   visited.incl(starMap.hubId)
 
@@ -376,7 +453,7 @@ proc validateConnectivity*(starMap: StarMap): bool =
         visited.incl(neighbor)
         queue.add(neighbor)
 
-  return visited.len == starMap.systems.len
+  return visited.len == starMap.systems.entities.data.len
 
 proc validateHomeworldLanes*(starMap: StarMap): seq[string] =
   ## Validate that each homeworld has exactly 3 Major lanes
@@ -385,10 +462,10 @@ proc validateHomeworldLanes*(starMap: StarMap): seq[string] =
 
   for playerId in starMap.playerSystemIds:
     # Count lanes connected to this homeworld
-    var majorLanes = 0
-    var totalLanes = 0
+    var majorLanes: int32 = 0
+    var totalLanes: int32 = 0
 
-    for lane in starMap.lanes:
+    for lane in starMap.lanes.data:
       if lane.source == playerId or lane.destination == playerId:
         totalLanes += 1
         if lane.laneType == LaneType.Major:
@@ -406,37 +483,8 @@ proc validateHomeworldLanes*(starMap: StarMap): seq[string] =
 
   return errors
 
-proc canFleetTraverseLane*(
-    fleet: Fleet,
-    laneType: LaneType,
-    squadrons: game_state.Squadrons,
-    ships: game_state.Ships,
-): bool =
-  ## Check if fleet can traverse a specific lane type
-  ##
-  ## Lane Restrictions (simplified):
-  ## - Major lanes: Allow all ships
-  ## - Minor lanes: Allow all ships (no crippled restriction)
-  ## - Restricted lanes: Block crippled ships only
-  case laneType
-  of LaneType.Major, LaneType.Minor:
-    return true # All ships can traverse major and minor lanes
-  of LaneType.Restricted:
-    # Restricted lanes block crippled ships only
-    for squadronId in fleet.squadrons:
-      if squadronId notin squadrons.entities.index:
-        continue
-      let squadronIdx = squadrons.entities.index[squadronId]
-      let squadron = squadrons.entities.data[squadronIdx]
-
-      if squadron.flagshipId notin ships.entities.index:
-        continue
-      let shipIdx = ships.entities.index[squadron.flagshipId]
-      let flagship = ships.entities.data[shipIdx]
-
-      if flagship.isCrippled:
-        return false
-    return true
+# TODO: Fleet traversal functions removed - require Squadrons/Ships types
+# Will be re-added once type import issues are resolved
 
 proc weight*(laneType: LaneType): uint32 =
   ## Get movement cost for lane type (for pathfinding)
@@ -454,85 +502,20 @@ proc getLaneType*(
   ## Efficient lane type lookup between two systems
   ## Returns None if no lane exists between the systems
   ## Used for fleet movement calculations in maintenance phase
-  for lane in starMap.lanes:
-    if (lane.source == fromSystem and lane.destination == toSystem) or
-        (lane.source == toSystem and lane.destination == fromSystem):
-      return some(lane.laneType)
+  ## Now O(1) via connectionInfo table instead of O(n) linear scan
+  if (fromSystem, toSystem) in starMap.lanes.connectionInfo:
+    return some(starMap.lanes.connectionInfo[(fromSystem, toSystem)])
   return none(LaneType)
 
-proc findPath*(
-    starMap: StarMap,
-    start: uint,
-    goal: uint,
-    fleet: Fleet,
-    squadrons: game_state.Squadrons,
-    ships: game_state.Ships,
-): PathResult =
-  ## Robust A* pathfinding with game rule compliance
-  if start == goal:
-    return PathResult(path: @[start], totalCost: 0, found: true)
-
-  if start notin starMap.systems or goal notin starMap.systems:
-    return PathResult(path: @[], totalCost: 0, found: false)
-
-  var openSet = initHeapQueue[(uint32, uint)]()
-  var openSetNodes = initHashSet[uint]() # O(1) membership tracking
-  var cameFrom = initTable[uint, uint]()
-  var gScore = initTable[uint, uint32]()
-  var fScore = initTable[uint, uint32]()
-
-  gScore[start] = 0
-  fScore[start] = starMap.distanceMatrix.getOrDefault((start, goal), 0)
-  openSet.push((fScore[start], start))
-  openSetNodes.incl(start)
-
-  while openSet.len > 0:
-    # Pop node with lowest fScore (O(log n) with heapqueue)
-    let (currentF, current) = openSet.pop()
-    openSetNodes.excl(current)
-
-    if current == goal:
-      # Reconstruct path
-      var path = @[current]
-      var node = current
-      while node in cameFrom:
-        node = cameFrom[node]
-        path.add(node)
-      path.reverse()
-      return PathResult(path: path, totalCost: gScore[current], found: true)
-
-    # Explore neighbors
-    for neighbor in starMap.getAdjacentSystems(current):
-      # O(1) lane type lookup using cache
-      let laneType = starMap.laneMap.getOrDefault((current, neighbor), LaneType.Major)
-
-      # Check if fleet can traverse this lane
-      if not canFleetTraverseLane(fleet, laneType, squadrons, ships):
-        continue
-
-      let tentativeGScore = gScore.getOrDefault(current, uint32.high) + laneType.weight
-
-      if tentativeGScore < gScore.getOrDefault(neighbor, uint32.high):
-        cameFrom[neighbor] = current
-        gScore[neighbor] = tentativeGScore
-        fScore[neighbor] =
-          tentativeGScore + starMap.distanceMatrix.getOrDefault((neighbor, goal), 0)
-
-        # Add to open set if not present (O(1) check with HashSet)
-        if neighbor notin openSetNodes:
-          openSet.push((fScore[neighbor], neighbor))
-          openSetNodes.incl(neighbor)
-
-  return PathResult(path: @[], totalCost: 0, found: false)
+# TODO: findPath and related fleet pathfinding functions removed
+# Will be re-added once Squadrons/Ships type import issues are resolved
 
 proc buildDistanceMatrix(starMap: var StarMap) =
   ## Pre-compute all pairwise hex distances for O(1) heuristic lookup
-  for id1 in starMap.systems.keys:
-    for id2 in starMap.systems.keys:
-      if id1 != id2:
-        let hex1 = starMap.systems[id1].coords
-        let hex2 = starMap.systems[id2].coords
-        starMap.distanceMatrix[(id1, id2)] = distance(hex1, hex2)
+  for sys1 in starMap.systems.entities.data:
+    for sys2 in starMap.systems.entities.data:
+      if sys1.id != sys2.id:
+        starMap.distanceMatrix[(sys1.id, sys2.id)] = distance(sys1.coords, sys2.coords)
 
 proc populate*(starMap: var StarMap) =
   ## Main population function - generates complete starmap
@@ -567,7 +550,7 @@ proc populate*(starMap: var StarMap) =
 
 proc starMap*(playerCount: int): StarMap =
   ## Create a complete, validated starmap
-  result = newStarMap(playerCount)
+  result = newStarMap(playerCount.int32)
   result.populate()
 
 # Debugging and analysis functions
@@ -576,12 +559,12 @@ proc getStarMapStats*(starMap: StarMap): string =
   var stats = "StarMap Statistics:\n"
   stats &= "  Players: " & $starMap.playerCount & "\n"
   stats &= "  Rings: " & $starMap.numRings & "\n"
-  stats &= "  Total Systems: " & $starMap.systems.len & "\n"
-  stats &= "  Total Lanes: " & $starMap.lanes.len & "\n"
+  stats &= "  Total Systems: " & $starMap.systems.entities.data.len & "\n"
+  stats &= "  Total Lanes: " & $starMap.lanes.data.len & "\n"
 
   # Count lane types
   var laneCount = [0, 0, 0] # Major, Minor, Restricted
-  for lane in starMap.lanes:
+  for lane in starMap.lanes.data:
     laneCount[ord(lane.laneType)] += 1
 
   stats &= "  Major Lanes: " & $laneCount[0] & "\n"
@@ -614,140 +597,20 @@ proc verifyGameRules*(starMap: StarMap): bool =
   except:
     return false
 
-# Additional convenience functions for compatibility
-proc isReachable*(
-    starMap: StarMap,
-    start: uint,
-    goal: uint,
-    fleet: Fleet,
-    squadrons: game_state.Squadrons,
-    ships: game_state.Ships,
-): bool =
-  ## Check if goal is reachable from start with given fleet
-  let path = findPath(starMap, start, goal, fleet, squadrons, ships)
-  return path.found
+# =============================================================================
+# TODO: Fleet pathfinding functions removed - require Fleet/Squadrons/Ships types
+# Will be restored once type import issues are resolved:
+# - isReachable()
+# - findPathsInRange()
+# - getPathCost()
+# - calculateETA()
+# - calculateMultiFleetETA()
+# =============================================================================
 
-proc findPathsInRange*(
-    starMap: StarMap, start: uint, maxCost: uint32, fleet: Fleet
-): seq[uint] =
-  ## Find all systems reachable within a given movement cost
-  var visited = initHashSet[uint]()
-  var queue = @[start]
-  var distances = initTable[uint, uint32]()
-  distances[start] = 0
-  visited.incl(start)
-
-  while queue.len > 0:
-    var nextQueue: seq[uint] = @[]
-    for current in queue:
-      let currentCost = distances[current]
-      if currentCost >= maxCost:
-        continue
-
-      for neighbor in starMap.getAdjacentSystems(current):
-        if neighbor notin visited:
-          let newCost = currentCost + 1 # Simplified cost calculation
-          if newCost <= maxCost:
-            distances[neighbor] = newCost
-            visited.incl(neighbor)
-            nextQueue.add(neighbor)
-
-    queue = nextQueue
-    if queue.len == 0:
-      break
-
-  return visited.toSeq()
-
-proc getPathCost*(
-    starMap: StarMap,
-    path: seq[uint],
-    fleet: Fleet,
-    squadrons: game_state.Squadrons,
-    ships: game_state.Ships,
-): uint32 =
-  ## Calculate the total cost of a path for a given fleet
-  var totalCost: uint32 = 0
-  for i in 0 ..< (path.len - 1):
-    let fromId = path[i]
-    let toId = path[i + 1]
-
-    # Find the lane between these systems
-    for lane in starMap.lanes:
-      if (lane.source == fromId and lane.destination == toId) or
-          (lane.source == toId and lane.destination == fromId):
-        if canFleetTraverseLane(fleet, lane.laneType, squadrons, ships):
-          totalCost += lane.laneType.weight
-        else:
-          return uint32.high # Cannot traverse this lane
-        break
-
-  return totalCost
-
-proc playerSystems*(starMap: StarMap, playerId: uint): seq[System] =
+proc playerSystems*(starMap: StarMap, playerId: PlayerId): seq[System] =
   ## Get all systems owned by a specific player
   var systems: seq[System] = @[]
-  for system in starMap.systems.values:
+  for system in starMap.systems.entities.data:
     if system.player.isSome and system.player.get == playerId:
       systems.add(system)
   return systems
-
-# =============================================================================
-# Travel Time & ETA Calculations
-# =============================================================================
-
-proc calculateETA*(
-    starMap: StarMap,
-    fromSystem: SystemId,
-    toSystem: SystemId,
-    fleet: Fleet,
-    squadrons: game_state.Squadrons,
-    ships: game_state.Ships,
-): Option[int] =
-  ## Calculate estimated turns for fleet to reach target system
-  ## Returns none if target is unreachable
-  ##
-  ## Uses conservative estimate: assumes 1 jump per turn (enemy/neutral territory)
-  ## Actual travel may be faster if using major lanes through friendly space
-  ##
-  ## Useful for both AI planning and UI feedback to human players
-
-  if fromSystem == toSystem:
-    return some(0) # Already there
-
-  let path = findPath(starMap, fromSystem, toSystem, fleet, squadrons, ships)
-  if not path.found:
-    return none(int) # Unreachable
-
-  # PathResult.totalCost is in movement points (lane weights)
-  # Major lanes: weight 1
-  # Minor lanes: weight 2
-  # Restricted lanes: weight 3
-  #
-  # Conservative estimate: 1 jump per turn minimum
-  # This accounts for enemy territory, unknown lane types, etc.
-  let estimatedTurns = max(1, int(path.totalCost))
-
-  return some(estimatedTurns)
-
-proc calculateMultiFleetETA*(
-    starMap: StarMap,
-    assemblyPoint: SystemId,
-    fleets: seq[Fleet],
-    squadrons: game_state.Squadrons,
-    ships: game_state.Ships,
-): Option[int] =
-  ## Calculate when all fleets can reach assembly point
-  ## Returns the maximum ETA (when the slowest fleet arrives)
-  ## Returns none if any fleet cannot reach the assembly point
-  ##
-  ## Useful for coordinating multi-fleet operations
-
-  var maxETA = 0
-  for fleet in fleets:
-    let eta =
-      calculateETA(starMap, fleet.location, assemblyPoint, fleet, squadrons, ships)
-    if eta.isNone:
-      return none(int) # At least one fleet can't reach assembly
-    maxETA = max(maxETA, eta.get())
-
-  return some(maxETA)

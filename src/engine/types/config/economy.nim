@@ -1,5 +1,5 @@
 type
-  PopulationConfig* = object
+  EconomyPopulationConfig* = object
     naturalGrowthRate*: float32
     growthRatePerStarbase*: float32
     maxStarbaseBonus*: float32
@@ -179,7 +179,7 @@ type
     prodGrowthDenominator*: float32
 
   EconomyConfig* = object ## Complete economy configuration loaded from KDL
-    population*: PopulationConfig
+    population*: EconomyPopulationConfig
     production*: ProductionConfig
     infrastructure*: InfrastructureConfig
     planetClasses*: PlanetClassesConfig

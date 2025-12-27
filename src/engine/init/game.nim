@@ -1,14 +1,30 @@
 import std/[tables]
 import ../../common/logger
-import
-  ../types/[
-    core, game_state, squadron, intelligence, diplomacy, espionage, resolution, starmap,
-    command, fleet,
-  ]
+import ../starmap
+import ../types/[
+  core, game_state, squadron, intelligence, diplomacy, espionage, resolution, starmap,
+  command, fleet,
+]
 
 # Game initialization functions
 
-proc newGame*(gameId: int32, playerCount: int32, seed: int32): GameState =
+proc initStarMap*(playerCount: int32, seed: int64 = 2001): StarMap =
+  ## Create and fully generate a validated starmap
+  ##
+  ## Args:
+  ##   playerCount: Number of players (2-12)
+  ##   seed: Random seed for deterministic generation
+  ##
+  ## Returns:
+  ##   Fully populated StarMap with systems, lanes, and homeworlds
+  ##
+  ## Raises:
+  ##   StarMapError: If validation fails or invalid player count
+
+  result = newStarMap(playerCount, seed)  # newStarMap validates playerCount
+  result.populate()
+  
+proc newGame*(gameId: int32, playerCount: int32, seed: int64): GameState =
   ## Create a new game with automatic setup
   ## Uses default parameters for map size, AI personalities, etc.
   ## Returns a fully initialized GameState object
@@ -28,6 +44,7 @@ proc newGame*(gameId: int32, playerCount: int32, seed: int32): GameState =
   result = GameState(
     gameId: gameId,
     seed: seed,
+    starMap: initStarMap(playerCount, seed),  
     turn: 1,
     # Start IDs at 1 so 0 can be used as a "None/Null" value if needed
     counters: IdCounters(

@@ -1,3 +1,5 @@
+import std/options
+
 type
   GameInfoConfig* = object ## Game metadata
     name*: string

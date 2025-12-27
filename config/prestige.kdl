@@ -17,7 +17,7 @@ victory {
     // prestige_victory removed - using turn limits or elimination only
     startingPrestige 100            // Increased from 50 to enable Act 1 espionage (threshold: 50)
     defeatThreshold 0               // Below 0 for consecutive turns = surrender
-    defeatConsecutiveTurns 3       // NOTE: Elimination mechanics in config/gameplay.kdl
+    defeatConsecutiveTurns 3        // NOTE: Elimination mechanics in config/gameplay.kdl
 }
 
 // ============================================================================
@@ -39,11 +39,11 @@ dynamicScaling {
     // Combined with 5x base value increases: 5x × 15x = 75x total acceleration
     // This ensures games complete in 30-45 turns for 4-player medium maps
 
-    enabled #true                     // Enable dynamic scaling (false = use base_multiplier for all maps)
+    enabled #true                   // Enable dynamic scaling (false = use base_multiplier for all maps)
     baseMultiplier 15.0             // Was 5.0 → 3x increase for accelerated pacing (CRITICAL)
     baselineTurns 35                // Was 30 → target for medium maps
-    baselineSystemsPerPlayer 10   // Was 8 → recalibrated for medium maps
-    turnScalingFactor 3.0          // Was 2.0 → steeper scaling for larger maps
+    baselineSystemsPerPlayer 10     // Was 8 → recalibrated for medium maps
+    turnScalingFactor 3.0           // Was 2.0 → steeper scaling for larger maps
     minMultiplier 5.0               // Was 1.5 → prevent too-slow games on large maps
     maxMultiplier 25.0              // Was 8.0 → allow tiny map acceleration
 }
