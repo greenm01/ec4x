@@ -6,7 +6,7 @@
 
 import std/[options, tables, sequtils]
 import ../types/game_state
-import ../state/game_state as gs_helpers
+import ../state/engine as gs_helpers
 import ../state/id_gen
 import ../state/entity_manager
 import ../types/[core, facilities, colony]

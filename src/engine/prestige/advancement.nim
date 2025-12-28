@@ -3,35 +3,28 @@
 ## Prestige for colonies and tech advancement
 
 import std/options
-import types
-import sources
-import events
-import ../config/prestige_multiplier
-
-type ColonyPrestigeResult* = object ## Result of colony prestige calculation
-  attackerEvent*: PrestigeEvent # Attacker gains (if seized)
-  defenderEvent*: Option[PrestigeEvent] # Defender loses (if seized, zero-sum)
+import ../types/[core, prestige, tech]
+import ./[engine, sources, events]
 
 proc awardColonyPrestige*(
-    attackerId: HouseId, colonyType: string, defenderId: Option[HouseId] = none(HouseId)
+    attackerId: HouseId, source: PrestigeSource, defenderId: Option[HouseId] = none(HouseId)
 ): ColonyPrestigeResult =
   ## Award prestige for colony actions
   ## - "established": New colony (absolute gain, no defender)
   ## - "seized": Invasion/blitz (zero-sum: attacker gains, defender loses)
 
-  let source =
-    if colonyType == "seized":
-      PrestigeSource.ColonySeized
-    else:
-      PrestigeSource.ColonyEstablished
+  const ValidSources = {PrestigeSource.ColonySeized, PrestigeSource.ColonyEstablished}
 
-  let amount = applyMultiplier(getPrestigeValue(source))
+  if source notin ValidSources:
+    raise newException(ValueError, "Not a colony event")
+    
+  let amount = applyPrestigeMultiplier(getPrestigeValue(source))
 
   result.attackerEvent =
-    createPrestigeEvent(source, amount, $attackerId & " " & colonyType & " colony")
+    createPrestigeEvent(source, amount, $attackerId & " " & $source & " colony")
 
   # Zero-sum for seized colonies
-  if colonyType == "seized" and defenderId.isSome:
+  if source == PrestigeSource.ColonySeized and defenderId.isSome:
     result.defenderEvent = some(
       createPrestigeEvent(
         PrestigeSource.ColonySeized,
@@ -43,13 +36,13 @@ proc awardColonyPrestige*(
     result.defenderEvent = none(PrestigeEvent)
 
 proc awardTechPrestige*(
-    houseId: HouseId, techField: string, level: int
+    houseId: HouseId, techField: TechField, level: int
 ): PrestigeEvent =
   ## Award prestige for tech advancement
-  let amount = applyMultiplier(getPrestigeValue(PrestigeSource.TechAdvancement))
+  let amount = applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.TechAdvancement))
 
   return createPrestigeEvent(
     PrestigeSource.TechAdvancement,
     amount,
-    $houseId & " advanced " & techField & " to level " & $level,
+    $houseId & " advanced " & $techField & " to level " & $level,
   )

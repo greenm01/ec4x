@@ -5,10 +5,8 @@
 ## Per operations.md:7.3.3 - Combat is competitive: winner gains prestige,
 ## loser loses equal amount
 
-import types
-import sources
-import events
-import ../config/prestige_multiplier
+import ../types/[core, prestige]
+import ./[engine, sources, events]
 
 type CombatPrestigeResult* = object ## Result of combat prestige calculation
   victorEvents*: seq[PrestigeEvent] # Prestige events for victor (positive)
@@ -26,7 +24,8 @@ proc awardCombatPrestige*(
   result.defeatedEvents = @[]
 
   # Combat victory (zero-sum)
-  let victoryPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.CombatVictory))
+  let victoryPrestige =
+    applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.CombatVictory))
   result.victorEvents.add(
     createPrestigeEvent(
       PrestigeSource.CombatVictory, victoryPrestige, $victor & " defeated " & $defeated
@@ -43,7 +42,7 @@ proc awardCombatPrestige*(
   # Task force destroyed (zero-sum)
   if taskForceDestroyed:
     let tfPrestige =
-      applyMultiplier(getPrestigeValue(PrestigeSource.TaskForceDestroyed))
+      applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.TaskForceDestroyed))
     result.victorEvents.add(
       createPrestigeEvent(
         PrestigeSource.TaskForceDestroyed,
@@ -62,8 +61,8 @@ proc awardCombatPrestige*(
   # Squadrons destroyed (zero-sum)
   if squadronsDestroyed > 0:
     let squadronPrestige =
-      applyMultiplier(getPrestigeValue(PrestigeSource.SquadronDestroyed)) *
-      squadronsDestroyed
+      applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.SquadronDestroyed)) *
+      int32(squadronsDestroyed)
     result.victorEvents.add(
       createPrestigeEvent(
         PrestigeSource.SquadronDestroyed,
@@ -82,7 +81,7 @@ proc awardCombatPrestige*(
   # Forced retreat (zero-sum)
   if forcedRetreat:
     let retreatPrestige =
-      applyMultiplier(getPrestigeValue(PrestigeSource.FleetRetreated))
+      applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.FleetRetreated))
     result.victorEvents.add(
       createPrestigeEvent(
         PrestigeSource.FleetRetreated,

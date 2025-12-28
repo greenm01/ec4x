@@ -6,6 +6,7 @@
 import std/math
 import ../../common/logger
 import ../globals
+import ../prestige/engine  # For prestigeMultiplier property
 
 proc initPrestigeMultiplier*(numSystems: int32, numPlayers: int32) =
   ## Calculate dynamic prestige multiplier based on map size and player count

@@ -1,7 +1,7 @@
 ## Prestige System Types
 ##
 ## Core types for prestige tracking and victory conditions
-
+import std/options
 import ./core
 
 type
@@ -17,7 +17,6 @@ type
     HighTaxPenalty
     BlockadePenalty
     MaintenanceShortfall
-    PactViolation
     Eliminated
 
   PrestigeEvent* = object
@@ -31,3 +30,8 @@ type
     startingPrestige*: int32
     events*: seq[PrestigeEvent]
     endingPrestige*: int32
+
+  ColonyPrestigeResult* = object ## Result of colony prestige calculation
+    attackerEvent*: PrestigeEvent # Attacker gains (if seized)
+    defenderEvent*: Option[PrestigeEvent] # Defender loses (if seized, zero-sum)
+

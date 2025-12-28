@@ -2,17 +2,15 @@
 ##
 ## Prestige modifiers from taxation and blockades
 
-import types
-import sources
-import events
-import ../config/prestige_multiplier
+import ../types/[core, prestige]
+import ./[engine, sources, events]
 
 proc applyTaxPrestige*(
     houseId: HouseId, colonyCount: int, taxRate: int
 ): PrestigeEvent =
   ## Apply prestige bonus from low tax rate
   ## Per economy.md:3.2.2
-  var bonusPerColony = 0
+  var bonusPerColony: int32 = 0
 
   if taxRate >= 41:
     bonusPerColony = 0
@@ -25,7 +23,7 @@ proc applyTaxPrestige*(
   else:
     bonusPerColony = 3
 
-  let totalBonus = bonusPerColony * colonyCount
+  let totalBonus = bonusPerColony * int32(colonyCount)
 
   return createPrestigeEvent(
     PrestigeSource.LowTaxBonus,
@@ -36,7 +34,7 @@ proc applyTaxPrestige*(
 proc applyHighTaxPenalty*(houseId: HouseId, avgTaxRate: int): PrestigeEvent =
   ## Apply prestige penalty from high rolling average tax
   ## Per economy.md:3.2.1
-  var penalty = 0
+  var penalty: int32 = 0
 
   if avgTaxRate <= 50:
     penalty = 0
@@ -61,7 +59,8 @@ proc applyBlockadePenalty*(houseId: HouseId, blockadedColonies: int): PrestigeEv
   ## Apply prestige penalty for blockaded colonies
   ## Per operations.md:6.2.6: -2 prestige per blockaded colony per turn
   let penalty =
-    applyMultiplier(getPrestigeValue(PrestigeSource.BlockadePenalty)) * blockadedColonies
+    applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.BlockadePenalty)) *
+    int32(blockadedColonies)
 
   return createPrestigeEvent(
     PrestigeSource.BlockadePenalty,

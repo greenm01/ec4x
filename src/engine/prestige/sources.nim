@@ -2,32 +2,32 @@
 ##
 ## Maps prestige sources to configured point values
 
-import types
-import ../config/prestige_config
+import ../types/prestige
+import ../globals
 
-proc getPrestigeValue*(source: PrestigeSource): int =
+proc getPrestigeValue*(source: PrestigeSource): int32 =
   ## Get prestige value from configuration for given source
   ## Maps PrestigeSource enum to config values
   case source
   of PrestigeSource.CombatVictory:
-    globalPrestigeConfig.military.fleet_victory
+    gameConfig.prestige.military.fleetVictory
   of PrestigeSource.TaskForceDestroyed:
     # Task force destruction uses fleet_victory prestige
-    globalPrestigeConfig.military.fleet_victory
+    gameConfig.prestige.military.fleetVictory
   of PrestigeSource.FleetRetreated:
-    globalPrestigeConfig.military.force_retreat
+    gameConfig.prestige.military.forceRetreat
   of PrestigeSource.SquadronDestroyed:
-    globalPrestigeConfig.military.destroy_squadron
+    gameConfig.prestige.military.destroySquadron
   of PrestigeSource.ColonySeized:
-    globalPrestigeConfig.military.invade_planet
+    gameConfig.prestige.military.invadePlanet
   of PrestigeSource.ColonyEstablished:
-    globalPrestigeConfig.economic.establish_colony
+    gameConfig.prestige.economic.establishColony
   of PrestigeSource.TechAdvancement:
-    globalPrestigeConfig.economic.tech_advancement
+    gameConfig.prestige.economic.techAdvancement
   of PrestigeSource.BlockadePenalty:
-    globalPrestigeConfig.penalties.blockade_penalty
+    gameConfig.prestige.penalties.blockadePenalty
   of PrestigeSource.Eliminated:
-    globalPrestigeConfig.military.eliminate_house
+    gameConfig.prestige.military.eliminateHouse
   of PrestigeSource.LowTaxBonus:
     # Low tax bonus calculated dynamically, not from this function
     0
@@ -37,6 +37,3 @@ proc getPrestigeValue*(source: PrestigeSource): int =
   of PrestigeSource.MaintenanceShortfall:
     # Maintenance shortfall calculated dynamically, not from this function
     0
-  of PrestigeSource.PactViolation:
-    # Pact violation prestige from diplomacy config
-    globalPrestigeConfig.diplomacy.pact_violation

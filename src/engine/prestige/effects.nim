@@ -2,8 +2,6 @@
 ##
 ## Victory conditions and morale modifiers based on prestige
 
-import ../config/prestige_config # Removed unused gameplay_config
-
 const prestigeVictoryThreshold* = 5000
 
 proc checkPrestigeVictory*(prestige: int): bool =

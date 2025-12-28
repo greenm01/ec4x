@@ -5,7 +5,7 @@
 ## as projects are queued, started, and completed.
 
 import std/[options, tables, sequtils]
-import ../state/[game_state as gs_helpers, id_gen, entity_manager]
+import ../state/[engine as gs_helpers, id_gen, entity_manager]
 import ../types/[core, game_state, production, facilities, colony]
 
 # --- Construction Projects ---
