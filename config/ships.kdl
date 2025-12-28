@@ -206,7 +206,7 @@ etac {
     defenseStrength 0
     commandCost 0
     commandRating 0
-    carryLimit 0
+    carryLimit 3
     buildTime 1  // turns
 }
 

@@ -15,7 +15,7 @@ type
     name*: string # Planet/system name from config
     coords*: Hex
     ring*: uint32
-    player*: Option[PlayerId]
+    house*: Option[HouseId]
     planetClass*: PlanetClass
     resourceRating*: ResourceRating
 
@@ -50,15 +50,11 @@ type
   StarMapError* = object of CatchableError
 
   StarMap* = object
-    systems*: Systems  # DoD: EntityManager pattern
     lanes*: JumpLanes  # DoD: Indexed collection with neighbors/connectionInfo
     distanceMatrix*: Table[(SystemId, SystemId), uint32]  # Pre-computed hex distances
-    playerCount*: int32
-    numRings*: uint32
-    hubId*: SystemId                 # Changed from uint to SystemId
-    playerSystemIds*: seq[SystemId]  # Changed from seq[uint] to seq[SystemId]
-    seed*: int64                     # Seed for deterministic but varied generation
-    nextSystemId*: uint32            # Counter for generating SystemIds during map generation
+    hubId*: SystemId
+    homeWorlds*: Table[SystemId, HouseId]
+    houseSystemIds*: seq[SystemId]                     
 
   PlanetClass* {.pure.} = enum
     ## Planet habitability classifications

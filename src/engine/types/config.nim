@@ -28,6 +28,7 @@ type
 
   GameSetup* = object
     gameParameters*: GameParametersConfig
+    mapGeneration*: MapGenerationConfig
     victoryConditions*: VictoryConditionsConfig
     startingResources*: StartingResourcesConfig
     startingTech*: StartingTechConfig

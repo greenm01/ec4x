@@ -3,9 +3,10 @@
 ## Write API for creating, destroying, and modifying Colony entities.
 ## Ensures that all secondary indexes (`bySystem`, `byOwner`) are kept consistent.
 import std/[tables, sequtils, options]
-import ../state/[id_gen, entity_manager, game_state as gs_helpers]
+import ../state/[id_gen, entity_manager, engine as gs_helpers]
 import ../types/[game_state, core, colony, starmap, production, capacity]
-import ../config/[economy_config, population_config]
+import ../globals
+import ../utils
 
 proc establishColony*(
     state: var GameState,
@@ -17,9 +18,9 @@ proc establishColony*(
 ): ColonyId =
   ## Create a new ETAC-colonized system with specified PTU
   ## Default: 3 PTU (150k souls) for standard ETAC colonization
-  ## PTU size loaded from config/population.toml
+  ## PTU size loaded from config/economy.toml
   let colonyId = state.generateColonyId()
-  let totalSouls = ptuCount * population_config.soulsPerPtu().int32
+  let totalSouls = ptuCount * soulsPerPtu()
 
   let newColony = Colony(
     id: colonyId,
@@ -29,16 +30,11 @@ proc establishColony*(
     souls: totalSouls,
     populationUnits: ptuCount,
     populationTransferUnits: ptuCount,
-    infrastructure:
-      economy_config.globalEconomyConfig.colonization.starting_infrastructure_level.int32,
+    infrastructure: gameConfig.economy.colonization.startingInfrastructureLevel,
     industrial: IndustrialUnits(
       units:
-        (
-          ptuCount *
-          economy_config.globalEconomyConfig.colonization.starting_iu_percent.int32
-        ) div 100,
-      investmentCost:
-        economy_config.globalEconomyConfig.industrial_investment.base_cost.int32,
+        (ptuCount * gameConfig.economy.colonization.startingIuPercent) div 100,
+      investmentCost: gameConfig.economy.industrialInvestment.baseCost,
     ),
     planetClass: planetClass,
     resources: resources,

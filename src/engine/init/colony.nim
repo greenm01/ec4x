@@ -4,19 +4,19 @@ import std/[options, tables]
 import
   ../types/[core, colony, production, capacity, facilities, ground_unit, game_state]
 import ../state/[id_gen, entity_manager]
-import ../config/[economy_config, facilities_config, game_setup_config]
+import ../globals
+import ../utils
 
 proc createHomeWorld*(
     state: var GameState, systemId: SystemId, owner: HouseId
 ): ColonyId =
   ## Create a starting homeworld colony per gameplay.md:1.2
-  ## Loads configuration from game_setup/standard.toml
-  let setupConfig = game_setup_config.globalGameSetupConfig
-  let homeworldCfg = setupConfig.homeworld
+  ## Loads configuration from game_setup/standard.kdl
+  let homeworldCfg = gameSetup.homeworld
 
   # Parse planet class and resources from config
-  let planetClass = game_setup_config.parsePlanetClass(homeworldCfg.planet_class)
-  let resources = game_setup_config.parseResourceRating(homeworldCfg.raw_quality)
+  let planetClass = parsePlanetClass(homeworldCfg.planetClass)
+  let resources = parseResourceRating(homeworldCfg.rawQuality)
 
   let colonyId = state.generateColonyId()
 
@@ -28,7 +28,7 @@ proc createHomeWorld*(
   var marineIds = newSeq[GroundUnitId]()
 
   # Create Starbases
-  for i in 0 ..< setupConfig.starting_facilities.starbases:
+  for i in 0 ..< gameSetup.startingFacilities.starbases:
     let starbaseId = state.generateStarbaseId()
     let starbase = Starbase(
       id: starbaseId, colonyId: colonyId, commissionedTurn: 0, isCrippled: false
@@ -37,11 +37,10 @@ proc createHomeWorld*(
     starbaseIds.add(starbaseId)
 
   # Create Spaceports
-  let baseSpaceportDocks =
-    facilities_config.globalFacilitiesConfig.spaceport.docks.int32
+  let baseSpaceportDocks = gameConfig.facilities.spaceport.docks
   # TODO: Revisit research_effects for effectiveDocks. For now, use baseDocks.
   let effectiveSpaceportDocks = baseSpaceportDocks
-  for i in 0 ..< setupConfig.starting_facilities.spaceports:
+  for i in 0 ..< gameSetup.startingFacilities.spaceports:
     let spaceportId = state.generateSpaceportId()
     let spaceport = Spaceport(
       id: spaceportId,
@@ -55,10 +54,10 @@ proc createHomeWorld*(
     state.spaceports.entities.addEntity(spaceportId, spaceport)
     spaceportIds.add(spaceportId)
 
-  let baseShipyardDocks = facilities_config.globalFacilitiesConfig.shipyard.docks.int32
+  let baseShipyardDocks = gameConfig.facilities.shipyard.docks
   # TODO: Revisit research_effects for effectiveDocks. For now, use baseDocks.
   let effectiveShipyardDocks = baseShipyardDocks
-  for i in 0 ..< setupConfig.starting_facilities.shipyards:
+  for i in 0 ..< gameSetup.startingFacilities.shipyards:
     let shipyardId = state.generateShipyardId()
     let shipyard = Shipyard(
       id: shipyardId,
@@ -74,44 +73,61 @@ proc createHomeWorld*(
     shipyardIds.add(shipyardId)
 
   # Create Ground Batteries
-  for i in 0 ..< setupConfig.starting_facilities.ground_batteries:
+  for i in 0 ..< gameSetup.startingGroundForces.groundBatteries:
     let groundUnitId = state.generateGroundUnitId()
-    # TODO: Load actual stats from config for ground units
+    let gbConfig = gameConfig.groundUnits.groundBattery
     let groundBattery = GroundUnit(
       id: groundUnitId,
-      unitType: GroundUnitType.GroundBattery,
-      owner: owner,
-      attackStrength: 1, # Placeholder
-      defenseStrength: 1, # Placeholder
-      state: CombatState.Undamaged,
+      houseId: owner,
+      stats: GroundUnitStats(
+        unitType: GroundUnitType.GroundBattery,
+        attackStrength: gbConfig.attackStrength,
+        defenseStrength: gbConfig.defenseStrength,
+      ),
+      garrison: GroundUnitGarrison(
+        locationType: GroundUnitLocation.OnColony,
+        colonyId: colonyId,
+      ),
     )
     state.groundUnits.entities.addEntity(groundUnitId, groundBattery)
     groundBatteryIds.add(groundUnitId)
 
   # Create Armies
-  for i in 0 ..< setupConfig.starting_ground_forces.armies:
+  for i in 0 ..< gameSetup.startingGroundForces.armies:
     let groundUnitId = state.generateGroundUnitId()
+    let armyConfig = gameConfig.groundUnits.army
     let army = GroundUnit(
       id: groundUnitId,
-      unitType: GroundUnitType.Army,
-      owner: owner,
-      attackStrength: 1, # Placeholder
-      defenseStrength: 1, # Placeholder
-      state: CombatState.Undamaged,
+      houseId: owner,
+      stats: GroundUnitStats(
+        unitType: GroundUnitType.Army,
+        attackStrength: armyConfig.attackStrength,
+        defenseStrength: armyConfig.defenseStrength,
+      ),
+      garrison: GroundUnitGarrison(
+        locationType: GroundUnitLocation.OnColony,
+        colonyId: colonyId,
+      ),
     )
     state.groundUnits.entities.addEntity(groundUnitId, army)
     armyIds.add(groundUnitId)
 
   # Create Marines
-  for i in 0 ..< setupConfig.starting_ground_forces.marines:
+  for i in 0 ..< gameSetup.startingGroundForces.marines:
     let groundUnitId = state.generateGroundUnitId()
+    let marineConfig = gameConfig.groundUnits.marineDivision
     let marine = GroundUnit(
       id: groundUnitId,
-      unitType: GroundUnitType.Marine,
-      owner: owner,
-      attackStrength: 1, # Placeholder
-      defenseStrength: 1, # Placeholder
-      state: CombatState.Undamaged,
+      houseId: owner,
+      stats: GroundUnitStats(
+        unitType: GroundUnitType.Marine,
+        attackStrength: marineConfig.attackStrength,
+        defenseStrength: marineConfig.defenseStrength,
+      ),
+      garrison: GroundUnitGarrison(
+        locationType: GroundUnitLocation.OnColony,
+        colonyId: colonyId,
+      ),
     )
     state.groundUnits.entities.addEntity(groundUnitId, marine)
     marineIds.add(groundUnitId)
@@ -120,15 +136,14 @@ proc createHomeWorld*(
     id: colonyId,
     systemId: systemId,
     owner: owner,
-    population: homeworldCfg.population_units,
-    souls: homeworldCfg.population_units * 1_000_000,
-    populationUnits: homeworldCfg.population_units,
-    populationTransferUnits: homeworldCfg.population_units,
-    infrastructure: homeworldCfg.colony_level,
+    population: homeworldCfg.populationUnits,
+    souls: homeworldCfg.populationUnits * 1_000_000,
+    populationUnits: homeworldCfg.populationUnits,
+    populationTransferUnits: homeworldCfg.populationUnits,
+    infrastructure: homeworldCfg.colonyLevel,
     industrial: IndustrialUnits(
-      units: homeworldCfg.industrial_units,
-      investmentCost:
-        economy_config.globalEconomyConfig.industrial_investment.base_cost.int32,
+      units: homeworldCfg.industrialUnits,
+      investmentCost: gameConfig.economy.industrialInvestment.baseCost,
     ),
     planetClass: planetClass,
     resources: resources,
@@ -155,7 +170,7 @@ proc createHomeWorld*(
       maximum: 0,
       excess: 0,
     ),
-    planetaryShieldLevel: setupConfig.starting_facilities.planetary_shields,
+    planetaryShieldLevel: gameSetup.startingGroundForces.planetaryShields,
     groundBatteryIds: groundBatteryIds,
     armyIds: armyIds,
     marineIds: marineIds,

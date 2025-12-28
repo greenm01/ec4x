@@ -2,9 +2,14 @@
 
 ## 2.1 Star Map
 
-The star-map consists of a 2D hexagonal grid, each a flat-top hex that contains a solar system, interconnected throughout by procedurally generated jump lanes. The map is sized by rings around the center hub: one ring per player plus the center hub system. The center hub is guaranteed to have six lanes of travel.
+The star-map consists of a 2D hexagonal grid, each a flat-top hex that
+contains a solar system, interconnected throughout by procedurally generated
+jump lanes. Map size is configurable via the `numRings` parameter (2-12
+rings), independent of player count, allowing flexible scenario design. The
+center hub is guaranteed to have six lanes of travel.
 
-Solar systems have special traits and are procedurally generated. They each contain a single planet that is suitable for colonization.
+Solar systems have special traits and are procedurally generated. They each
+contain a single planet that is suitable for colonization.
 
 **Jump Lane Classes**
 
@@ -35,6 +40,33 @@ Player homeworlds are placed throughout the map using distance maximization algo
 Each homeworld is guaranteed to have exactly 3 **Major lanes** connecting it to adjacent systems, ensuring reliable colonization paths and fleet movement from the start.
 
 <!-- HOMEWORLD_PLACEMENT_END -->
+
+### Variable Map Sizes
+
+The `numRings` parameter (2-12 range) controls map size independently of
+player count, providing flexible scenario design:
+
+- **Small maps (2-4 rings):** Quick games, limited strategic space
+- **Medium maps (5-8 rings):** Standard games, balanced expansion
+- **Large maps (9-12 rings):** Epic games, extensive strategic depth
+
+Total systems = 3n² + 3n + 1, where n = numRings. See
+`docs/guides/map-sizing-guide.md` for systems-per-player ratios and design
+guidance.
+
+Homeworld placement uses distance maximization to spread players across
+available systems, working effectively when systems-per-player > 5:
+
+| Rings | Players | Systems/Player | Effect                                |
+|-------|---------|----------------|---------------------------------------|
+| 2     | 4       | 4.8            | Too cramped - homeworlds will cluster |
+| 4     | 4       | 15.3           | Good spacing - algorithm works well   |
+| 6     | 12      | 10.6           | Decent spacing despite 12 players     |
+
+**Configuration**: Map size is set in `game_setup/*.kdl` files via the
+`mapGeneration` section. Game administrators are responsible for choosing an
+appropriate `numRings` value based on their intended player count and desired
+game length.
 
 ## 2.2 Solar Systems
 

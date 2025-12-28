@@ -47,6 +47,9 @@ type
     groundBatteries*: int32
     planetaryShields*: int32
 
+  MapGenerationConfig* = object ## Map size configuration
+    numRings*: int32 # Number of hex rings (2-12 absolute bounds)
+
   HomeworldConfig* = object ## Homeworld characteristics
     planetClass*: string # "Eden"
     rawQuality*: string # "Abundant"

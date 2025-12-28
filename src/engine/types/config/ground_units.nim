@@ -21,6 +21,7 @@ type
     minCST*: int32
     productionCost*: int32
     maintenanceCost*: int32
+    attackStrength*: int32
     defenseStrength*: int32
     buildTime*: int32
     maxPerPlanet*: int32
@@ -30,6 +31,7 @@ type
     minCST*: int32
     productionCost*: int32
     maintenanceCost*: int32
+    attackStrength*: int32
     defenseStrength*: int32
     buildTime*: int32
     maxPerPlanet*: int32
@@ -40,6 +42,7 @@ type
     minCST*: int32
     productionCost*: int32
     maintenanceCost*: int32
+    attackStrength*: int32
     defenseStrength*: int32
     buildTime*: int32
     maxPerPlanet*: int32

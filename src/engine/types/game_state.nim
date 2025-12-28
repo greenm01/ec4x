@@ -26,6 +26,9 @@ type
     seed*: int64
     turnDeadline*: int64
 
+    # Map
+    starMap*: StarMap
+
     # Entity collections (DoD)
     houses*: Houses
     systems*: Systems
@@ -53,9 +56,6 @@ type
     repairProjects*: RepairProjects
 
     counters*: IdCounters
-
-    # Map
-    starMap*: StarMap
 
     # Command tracking
     fleetCommands*: Table[FleetId, FleetCommand]

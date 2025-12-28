@@ -33,6 +33,7 @@ proc parseGroundBattery(node: KdlNode, ctx: var KdlConfigContext): GroundBattery
     minCST: node.requireInt32("minCST", ctx),
     productionCost: node.requireInt32("productionCost", ctx),
     maintenanceCost: node.requireInt32("maintenanceCost", ctx),
+    attackStrength: node.requireInt32("attackStrength", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
     buildTime: node.requireInt32("buildTime", ctx),
     maxPerPlanet: node.requireInt32("maxPerPlanet", ctx)
@@ -44,6 +45,7 @@ proc parseArmy(node: KdlNode, ctx: var KdlConfigContext): ArmyConfig =
     minCST: node.requireInt32("minCST", ctx),
     productionCost: node.requireInt32("productionCost", ctx),
     maintenanceCost: node.requireInt32("maintenanceCost", ctx),
+    attackStrength: node.requireInt32("attackStrength", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
     buildTime: node.requireInt32("buildTime", ctx),
     maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
@@ -56,6 +58,7 @@ proc parseMarineDivision(node: KdlNode, ctx: var KdlConfigContext): MarineDivisi
     minCST: node.requireInt32("minCST", ctx),
     productionCost: node.requireInt32("productionCost", ctx),
     maintenanceCost: node.requireInt32("maintenanceCost", ctx),
+    attackStrength: node.requireInt32("attackStrength", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
     buildTime: node.requireInt32("buildTime", ctx),
     maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),

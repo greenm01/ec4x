@@ -6,7 +6,6 @@ template defineIdHelpers(IdType: typedesc, counterField: untyped) =
     inc state.counters.counterField
 
 # This becomes generateFleetID(), etc....
-defineIdHelpers(PlayerId, nextPlayerId)
 defineIdHelpers(HouseId, nextHouseId)
 defineIdHelpers(SystemId, nextSystemId)
 defineIdHelpers(ColonyId, nextColonyId)

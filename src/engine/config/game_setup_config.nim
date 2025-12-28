@@ -88,6 +88,11 @@ proc parseStartingGroundForces(node: KdlNode, ctx: var KdlConfigContext): Starti
     planetaryShields: node.requireInt32("planetaryShields", ctx)
   )
 
+proc parseMapGeneration(node: KdlNode, ctx: var KdlConfigContext): MapGenerationConfig =
+  result = MapGenerationConfig(
+    numRings: node.requireInt32("numRings", ctx)
+  )
+
 proc parseHomeworld(node: KdlNode, ctx: var KdlConfigContext): HomeworldConfig =
   result = HomeworldConfig(
     planetClass: node.requireString("planetClass", ctx),
@@ -107,6 +112,10 @@ proc loadGameSetupConfig*(setupPath: string): GameSetup =
   ctx.withNode("gameParameters"):
     let node = doc.requireNode("gameParameters", ctx)
     result.gameparameters = parseGameParameters(node, ctx)
+
+  ctx.withNode("mapGeneration"):
+    let node = doc.requireNode("mapGeneration", ctx)
+    result.mapGeneration = parseMapGeneration(node, ctx)
 
   ctx.withNode("victoryConditions"):
     let node = doc.requireNode("victoryConditions", ctx)

@@ -23,8 +23,7 @@
 import std/[hashes, tables]
 
 type
-  # Player and House IDs
-  PlayerId* = distinct uint32
+  # House IDs
   HouseId* = distinct uint32
 
   # Map IDs
@@ -57,7 +56,6 @@ type
 
   # Counters for DoD collections
   IdCounters* = object
-    nextPlayerId*: uint32
     nextHouseId*: uint32
     nextSystemId*: uint32
     nextColonyId*: uint32
@@ -74,9 +72,6 @@ type
     nextPopulationTransferId*: uint32
 
 # Hash and equality procs for all ID types
-proc `==`*(a, b: PlayerId): bool {.borrow.}
-proc hash*(id: PlayerId): Hash {.borrow.}
-
 proc `==`*(a, b: HouseId): bool {.borrow.}
 proc hash*(id: HouseId): Hash {.borrow.}
 
@@ -122,7 +117,6 @@ proc `$`*(id: SystemId): string {.borrow.}
 proc `$`*(id: ColonyId): string {.borrow.}
 proc `$`*(id: FleetId): string {.borrow.}
 proc `$`*(id: HouseId): string {.borrow.}
-proc `$`*(id: PlayerId): string {.borrow.}
 proc `$`*(id: SquadronId): string {.borrow.}
 proc `$`*(id: ShipId): string {.borrow.}
 proc `$`*(id: GroundUnitId): string {.borrow.}

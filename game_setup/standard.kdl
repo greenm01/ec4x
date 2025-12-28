@@ -11,6 +11,13 @@ gameParameters {
     //gameSeed 99999                // Set a custom seed for reproducible game states
 }
 
+// Map generation parameters
+mapGeneration {
+    numRings 4                      // 2-12 valid (absolute bounds), determines map size
+                                     // 4 rings = 61 systems, ~15 systems per player for 4 players
+                                     // See docs/guides/map-sizing-guide.md for systems-per-player table
+}
+
 victoryConditions {
     turnLimit 35                     // Max number of game turns
     prestigeLimit 10000              // Max prestige for victory

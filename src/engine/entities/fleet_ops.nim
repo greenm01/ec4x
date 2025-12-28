@@ -1,6 +1,6 @@
 import std/[tables, sequtils, options]
 import ../types/[core, game_state, fleet, squadron]
-import ../state/[game_state, id_gen, entity_manager]
+import ../state/[engine, id_gen, entity_manager]
 import ./squadron_ops
 
 proc registerFleetLocation(state: var GameState, fleetId: FleetId, sysId: SystemId) =
