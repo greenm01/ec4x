@@ -1,7 +1,12 @@
+## Dynamic Multiplier Initialization
+##
+## Calculates dynamic prestige and population growth multipliers based on
+## map size and player count for balanced game pacing.
+
 import std/math
 import ../../common/logger
+import ../globals
 
-## Dynamic Prestige Multiplier Calculation
 proc initPrestigeMultiplier*(numSystems: int32, numPlayers: int32) =
   ## Calculate dynamic prestige multiplier based on map size and player count
   ##
@@ -16,11 +21,12 @@ proc initPrestigeMultiplier*(numSystems: int32, numPlayers: int32) =
   ## - Large maps (many systems per player): Lower multiplier = longer games
   ## - Victory threshold (5000 prestige) stays constant regardless of map size
 
-  let config = gConfig.prestige.dynamicScaling
+  let config = gameConfig.prestige.dynamicScaling
 
-  # If dynamic scaling is disabled, return base multiplier
+  # If dynamic scaling is disabled, use base multiplier
   if not config.enabled:
-    return config.baseMultiplier
+    prestigeMultiplier = config.baseMultiplier
+    return
 
   # Calculate systems per player
   let systemsPerPlayer = float32(numSystems) / float32(numPlayers)
@@ -34,6 +40,9 @@ proc initPrestigeMultiplier*(numSystems: int32, numPlayers: int32) =
   let multiplier =
     config.baseMultiplier * (float32(config.baselineTurns) / targetTurns)
 
+  # Clamp to reasonable bounds
+  prestigeMultiplier = max(config.minMultiplier, min(config.maxMultiplier, multiplier))
+
   logInfo(
     "Prestige",
     "Dynamic multiplier initialized",
@@ -44,9 +53,6 @@ proc initPrestigeMultiplier*(numSystems: int32, numPlayers: int32) =
     " players=",
     $numPlayers,
   )
-    
-  # Clamp to reasonable bounds
-  prestigeMultiplier = max(config.minMultiplier, min(config.maxMultiplier, multiplier))
 
 proc initPopulationGrowthMultiplier*(numSystems: int32, numPlayers: int32) =
   ## Calculate dynamic population growth multiplier based on map size
@@ -72,16 +78,16 @@ proc initPopulationGrowthMultiplier*(numSystems: int32, numPlayers: int32) =
   # Square root scaling prevents excessive growth on very large maps
   let multiplier = sqrt(systemsPerPlayer / baselineSystemsPerPlayer)
 
+  # Clamp to reasonable bounds (50% to 200% of base growth)
+  popGrowthMultiplier = clamp(multiplier, 0.5, 2.0)
+
   logInfo(
     "Economy",
     "Population growth multiplier initialized",
     "multiplier=",
-    $growthMultiplier,
+    $popGrowthMultiplier,
     " systems=",
     $numSystems,
     " players=",
     $numPlayers,
   )
-
-  # Clamp to reasonable bounds (50% to 200% of base growth)
-  popGrowthMultiplier = clamp(multiplier, 0.5, 2.0)

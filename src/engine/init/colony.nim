@@ -1,9 +1,13 @@
-## Initializes a new homeworld colony at game startup.
+## Homeworld Colony Initialization
+##
+## Creates homeworld colonies with starting facilities, ground forces,
+## and infrastructure based on game setup configuration.
 
 import std/[options, tables]
 import
   ../types/[core, colony, production, capacity, facilities, ground_unit, game_state]
 import ../state/[id_gen, entity_manager]
+import ../systems/tech/effects
 import ../globals
 import ../utils
 
@@ -37,9 +41,11 @@ proc createHomeWorld*(
     starbaseIds.add(starbaseId)
 
   # Create Spaceports
+  let house = state.houses.entities.getEntity(owner).get()
+  let cstLevel = house.techTree.levels.constructionTech
   let baseSpaceportDocks = gameConfig.facilities.spaceport.docks
-  # TODO: Revisit research_effects for effectiveDocks. For now, use baseDocks.
-  let effectiveSpaceportDocks = baseSpaceportDocks
+  let effectiveSpaceportDocks =
+    calculateEffectiveDocks(baseSpaceportDocks, cstLevel)
   for i in 0 ..< gameSetup.startingFacilities.spaceports:
     let spaceportId = state.generateSpaceportId()
     let spaceport = Spaceport(
@@ -55,8 +61,7 @@ proc createHomeWorld*(
     spaceportIds.add(spaceportId)
 
   let baseShipyardDocks = gameConfig.facilities.shipyard.docks
-  # TODO: Revisit research_effects for effectiveDocks. For now, use baseDocks.
-  let effectiveShipyardDocks = baseShipyardDocks
+  let effectiveShipyardDocks = calculateEffectiveDocks(baseShipyardDocks, cstLevel)
   for i in 0 ..< gameSetup.startingFacilities.shipyards:
     let shipyardId = state.generateShipyardId()
     let shipyard = Shipyard(

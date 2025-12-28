@@ -1,6 +1,6 @@
-## @initialization/fleet.nim
+## Starting Fleet Initialization
 ##
-## Creates starting fleets with specified compositions, compatible with the new DoD type system.
+## Creates starting fleets with specified compositions per game setup configuration.
 
 import std/[options, tables, strutils]
 import ../types/[core, game_state, fleet, squadron, ship]

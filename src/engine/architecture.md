@@ -6,16 +6,18 @@ src/engine/
     │                       #   - Drives the main turn cycle via `@turn_cycle/turn_executor.nim`.
     │
     ├── @config/            # [GAME DATA CONFIGURATION] All static game rules and values.
-    │   └── *.nim           #   - Loaded by `@init/config_resolver.nim`.
+    │   └── *.nim           #   - Loaded during game initialization.
     │
     ├── @types/             # [DATA SCHEMA] Defines ALL pure data structures (Fleet, Ship, GameState).
     │   ├── capacity.nim    #   - Defines types for the capacity system.
     │   └── *.nim           #   - Universal data types for the entire engine.
     │
     ├── @init/              # [GAME SETUP & BOOTSTRAP]
-    │   ├── config_resolver.nim # - Loads config files.
-    │   ├── game.nim        #   - Entry for new game creation.
-    │   ├── *.nim           #   - Factories/initializers for core entities during setup.
+    │   ├── engine.nim      #   - Entry for new game creation.
+    │   ├── house.nim       #   - House initialization with tech tree validation.
+    │   ├── colony.nim      #   - Homeworld colony creation with facilities.
+    │   ├── fleet.nim       #   - Starting fleet composition and creation.
+    │   ├── multipliers.nim #   - Dynamic prestige/population multipliers.
     │   └── validation.nim  #   - Validates initial game setup.
     │
     ├── @persistence/       # [SAVE/LOAD MANAGEMENT]

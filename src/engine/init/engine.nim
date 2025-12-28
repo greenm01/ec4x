@@ -1,3 +1,8 @@
+## Game Engine Initialization
+##
+## Main entry point for creating new games. Orchestrates house, colony,
+## and fleet initialization with proper starmap generation.
+
 import std/[tables, monotimes, options, strutils]
 
 import ../../common/logger
@@ -12,6 +17,7 @@ import ../types/[
 import ./house as house_init
 import ./colony
 import ./fleet
+import ./multipliers
 
 export globals # Export globals for external use
 
@@ -201,6 +207,11 @@ proc initGameState*(
   result.starMap = generateStarMap(result, playerCount, numRings.uint32)
 
   logInfo("Initialization", "Generated map with ", result.systems.entities.data.len, " systems")
+
+  # Initialize dynamic multipliers based on map size and player count
+  let numSystems = result.systems.entities.data.len.int32
+  initPrestigeMultiplier(numSystems, playerCount.int32)
+  initPopulationGrowthMultiplier(numSystems, playerCount.int32)
 
   # Initialize houses, homeworlds, and starting fleets
   initializeHousesAndHomeworlds(result)

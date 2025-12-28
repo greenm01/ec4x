@@ -2,8 +2,6 @@
 ##
 ## Validates game setup parameters before initialization.
 ## Ensures configuration values are within acceptable ranges.
-##
-## Part of the game initialization refactoring (Phase 2).
 
 import ../types/tech
 

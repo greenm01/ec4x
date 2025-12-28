@@ -1,11 +1,11 @@
-## @initialization/house.nim
+## House Initialization
 ##
-## Creates new House objects with starting resources and technology,
-## compatible with the new DoD type system.
+## Creates new House objects with starting resources and technology.
 
 import std/tables
 import ../globals
 import ../types/[core, house, tech, espionage, income]
+import ./validation
 
 proc initHouse*(houseId: HouseId, name: string): House =
   ## Creates a new House object with default starting values.
@@ -46,3 +46,6 @@ proc initHouse*(houseId: HouseId, name: string): House =
     negativePrestigeTurns: 0'i32,
     planetBreakerCount: 0'i32,
   )
+
+  # Validate tech tree levels are within acceptable ranges
+  validateTechTree(result.techTree)

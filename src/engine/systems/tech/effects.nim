@@ -17,11 +17,8 @@
 ## - FD: Fighter capacity multiplier (economy/fighter_capacity.nim)
 ## - ACO: Carrier capacity (implemented here)
 
-import ../../types/[core, game_state, tech, command]
-import ../../state/[game_state, iterators]
-import ../../config/tech_config
-import ../../../common/logger
-import std/options
+import ../../types/tech
+import ../../globals
 
 export tech.TechLevel
 
@@ -67,19 +64,15 @@ proc getDockCapacityMultiplier*(cstLevel: int): float =
   ## Get dock capacity multiplier from CST tech
   ## Per economy.md:4.5: +10% per level (dock count increases)
   ## Formula: effectiveDocks = baseDocks × (1.0 + (CST - 1) × multiplier)
-  ## Pulls multiplier from config/tech.toml
-  let multiplierPerLevel =
-    if globalTechConfig.construction_tech.capacity_multiplier_per_level.isSome:
-      globalTechConfig.construction_tech.capacity_multiplier_per_level.get()
-    else:
-      0.10 # Default fallback
+  ## Pulls multiplier from config/tech.kdl
+  let multiplierPerLevel = gameConfig.tech.constructionTech.capacityMultiplierPerLevel
   result = 1.0 + (float(cstLevel - 1) * multiplierPerLevel)
 
-proc calculateEffectiveDocks*(baseDocks: int, cstLevel: int): int =
+proc calculateEffectiveDocks*(baseDocks: int32, cstLevel: int32): int32 =
   ## Calculate effective dock capacity based on CST technology
   ## Per economy.md:4.5 - Dock Count = base_docks × CST_MULTIPLIER (rounded down)
-  let multiplier = getDockCapacityMultiplier(cstLevel)
-  result = int(float(baseDocks) * multiplier)
+  let multiplier = getDockCapacityMultiplier(cstLevel.int)
+  result = int32(float(baseDocks) * multiplier)
 
 ## Electronic Intelligence Effects (economy.md:4.8)
 ## NOTE: Full ELI detection system implemented in intelligence/detection.nim
@@ -94,7 +87,7 @@ proc getELICounterCloakBonus*(eliLevel: int): int =
 
 proc getTerraformingBaseCost*(currentClass: int): int =
   ## Get base PP cost for terraforming to next class
-  ## Per economy.md Section 4.7 and config/tech.toml
+  ## Per economy.md Section 4.7 and config/tech.kdl
   ##
   ## Costs by target class:
   ## Extreme (1) -> Desolate (2): 60 PP
