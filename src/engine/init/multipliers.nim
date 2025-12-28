@@ -25,7 +25,7 @@ proc initPrestigeMultiplier*(numSystems: int32, numPlayers: int32) =
 
   # If dynamic scaling is disabled, use base multiplier
   if not config.enabled:
-    prestigeMultiplier = config.baseMultiplier
+    `prestigeMultiplier=`(config.baseMultiplier)
     return
 
   # Calculate systems per player
@@ -41,13 +41,13 @@ proc initPrestigeMultiplier*(numSystems: int32, numPlayers: int32) =
     config.baseMultiplier * (float32(config.baselineTurns) / targetTurns)
 
   # Clamp to reasonable bounds
-  prestigeMultiplier = max(config.minMultiplier, min(config.maxMultiplier, multiplier))
+  `prestigeMultiplier=`(max(config.minMultiplier, min(config.maxMultiplier, multiplier)))
 
   logInfo(
     "Prestige",
     "Dynamic multiplier initialized",
     "multiplier=",
-    $prestigeMultiplier,
+    $prestigeMultiplier(),
     " systems=",
     $numSystems,
     " players=",
@@ -79,13 +79,13 @@ proc initPopulationGrowthMultiplier*(numSystems: int32, numPlayers: int32) =
   let multiplier = sqrt(systemsPerPlayer / baselineSystemsPerPlayer)
 
   # Clamp to reasonable bounds (50% to 200% of base growth)
-  popGrowthMultiplier = clamp(multiplier, 0.5, 2.0)
+  `popGrowthMultiplier=`(clamp(multiplier, 0.5, 2.0))
 
   logInfo(
     "Economy",
     "Population growth multiplier initialized",
     "multiplier=",
-    $popGrowthMultiplier,
+    $popGrowthMultiplier(),
     " systems=",
     $numSystems,
     " players=",

@@ -176,11 +176,11 @@ suite "Game Initialization - Complete Flow":
     var shipCount = 0
     for fleet in game.allFleets():
       for squadronId in fleet.squadrons:
-        let squadronOpt = state_helpers.getSquadrons(game, squadronId)
+        let squadronOpt = state_helpers.squadrons(game, squadronId)
         check squadronOpt.isSome
         if squadronOpt.isSome:
           let squadron = squadronOpt.get()
-          let shipOpt = state_helpers.getShip(game, squadron.flagshipId)
+          let shipOpt = state_helpers.ship(game, squadron.flagshipId)
           check shipOpt.isSome
           if shipOpt.isSome:
             let ship = shipOpt.get()

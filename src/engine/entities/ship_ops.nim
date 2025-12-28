@@ -16,10 +16,10 @@ proc createShip*(
 ): Ship =
   ## Creates a new ship, adds it to a squadron, and updates all indexes.
   let shipId = state.generateShipId()
-  let config = getShipConfig(shipClass)
+  let config = shipConfig(shipClass)
   
   # Get house's current WEP tech level
-  let house = gs_helper.getHouse(state, owner).get()
+  let house = gs_helper.house(state, owner).get()
   let weaponsTech = house.techTree.levels.weaponsTech
   
   # Apply WEP modifiers: +10% AS/DS per level above 1
@@ -48,7 +48,7 @@ proc createShip*(
   state.ships.byHouse.mgetOrPut(owner, @[]).add(shipId)
 
   # 3. Add to squadron's ship list
-  var squadron = gs_helper.getSquadrons(state, squadronId).get()
+  var squadron = gs_helper.squadrons(state, squadronId).get()
   squadron.ships.add(shipId)
   state.squadrons[].entities.updateEntity(squadronId, squadron)
   
@@ -56,7 +56,7 @@ proc createShip*(
 
 proc destroyShip*(state: var GameState, shipId: ShipId) =
   ## Destroys a ship, removing it from all collections and indexes.
-  let shipOpt = gs_helper.getShip(state, shipId)
+  let shipOpt = gs_helper.ship(state, shipId)
   if shipOpt.isNone:
     return
   let ship = shipOpt.get()
@@ -70,7 +70,7 @@ proc destroyShip*(state: var GameState, shipId: ShipId) =
     )
 
   # 2. Remove from squadron's ship list
-  var squadron = gs_helper.getSquadrons(state, squadronId).get()
+  var squadron = gs_helper.squadrons(state, squadronId).get()
   squadron.ships.keepIf(
     proc(id: ShipId): bool =
       id != shipId
@@ -82,7 +82,7 @@ proc destroyShip*(state: var GameState, shipId: ShipId) =
 
 proc transferShip*(state: var GameState, shipId: ShipId, newSquadronId: SquadronId) =
   ## Moves a ship from one squadron to another.
-  let shipOpt = gs_helper.getShip(state, shipId)
+  let shipOpt = gs_helper.ship(state, shipId)
   if shipOpt.isNone:
     return
   var ship = shipOpt.get()
@@ -98,7 +98,7 @@ proc transferShip*(state: var GameState, shipId: ShipId, newSquadronId: Squadron
         id != shipId
     )
 
-  var oldSquadron = gs_helper.getSquadrons(state, oldSquadronId).get()
+  var oldSquadron = gs_helper.squadrons(state, oldSquadronId).get()
   oldSquadron.ships.keepIf(
     proc(id: ShipId): bool =
       id != shipId
@@ -108,7 +108,7 @@ proc transferShip*(state: var GameState, shipId: ShipId, newSquadronId: Squadron
   # 2. Add to new squadron's bySquadron index and ship list
   state.ships.bySquadron.mgetOrPut(newSquadronId, @[]).add(shipId)
 
-  var newSquadron = gs_helper.getSquadrons(state, newSquadronId).get()
+  var newSquadron = gs_helper.squadrons(state, newSquadronId).get()
   newSquadron.ships.add(shipId)
   state.squadrons[].entities.updateEntity(newSquadronId, newSquadron)
 

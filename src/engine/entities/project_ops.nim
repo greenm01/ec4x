@@ -29,17 +29,17 @@ proc queueConstructionProject*(
     )
     case facilityType
     of FacilityType.Spaceport:
-      var spaceport = gs_helpers.getSpaceport(state, SpaceportId(facilityId)).get()
+      var spaceport = gs_helpers.spaceport(state, SpaceportId(facilityId)).get()
       spaceport.constructionQueue.add(projectId)
       state.spaceports.entities.updateEntity(SpaceportId(facilityId), spaceport)
     of FacilityType.Shipyard:
-      var shipyard = gs_helpers.getShipyard(state, ShipyardId(facilityId)).get()
+      var shipyard = gs_helpers.shipyard(state, ShipyardId(facilityId)).get()
       shipyard.constructionQueue.add(projectId)
       state.shipyards.entities.updateEntity(ShipyardId(facilityId), shipyard)
     else:
       discard
   else:
-    var colony = gs_helpers.getColony(state, colonyId).get()
+    var colony = gs_helpers.colony(state, colonyId).get()
     colony.constructionQueue.add(projectId)
     state.colonies.entities.updateEntity(colonyId, colony)
 
@@ -49,7 +49,7 @@ proc completeConstructionProject*(
     state: var GameState, projectId: ConstructionProjectId
 ) =
   ## Completes a construction project, removing it from active queues and indexes.
-  let projectOpt = gs_helpers.getConstructionProject(state, projectId)
+  let projectOpt = gs_helpers.constructionProject(state, projectId)
   if projectOpt.isNone:
     return
   let project = projectOpt.get()
@@ -72,14 +72,14 @@ proc completeConstructionProject*(
 
     case facilityType
     of FacilityType.Spaceport:
-      var spaceport = gs_helpers.getSpaceport(state, SpaceportId(facilityId)).get()
+      var spaceport = gs_helpers.spaceport(state, SpaceportId(facilityId)).get()
       spaceport.activeConstructions.keepIf(
         proc(id: ConstructionProjectId): bool =
           id != projectId
       )
       state.spaceports.entities.updateEntity(SpaceportId(facilityId), spaceport)
     of FacilityType.Shipyard:
-      var shipyard = gs_helpers.getShipyard(state, ShipyardId(facilityId)).get()
+      var shipyard = gs_helpers.shipyard(state, ShipyardId(facilityId)).get()
       shipyard.activeConstructions.keepIf(
         proc(id: ConstructionProjectId): bool =
           id != projectId
@@ -88,7 +88,7 @@ proc completeConstructionProject*(
     else:
       discard
   else:
-    var colony = gs_helpers.getColony(state, project.colonyId).get()
+    var colony = gs_helpers.colony(state, project.colonyId).get()
     if colony.underConstruction.isSome and colony.underConstruction.get() == projectId:
       colony.underConstruction = none(ConstructionProjectId)
       state.colonies.entities.updateEntity(colony.id, colony)
@@ -116,7 +116,7 @@ proc queueRepairProject*(
 
     case facilityType
     of FacilityType.Drydock:
-      var drydock = gs_helpers.getDrydock(state, DrydockId(facilityId)).get()
+      var drydock = gs_helpers.drydock(state, DrydockId(facilityId)).get()
       drydock.repairQueue.add(projectId)
       state.drydocks.entities.updateEntity(DrydockId(facilityId), drydock)
     else:
@@ -125,7 +125,7 @@ proc queueRepairProject*(
   return project
 
 proc completeRepairProject*(state: var GameState, projectId: RepairProjectId) =
-  let projectOpt = gs_helpers.getRepairProject(state, projectId)
+  let projectOpt = gs_helpers.repairProject(state, projectId)
   if projectOpt.isNone:
     return
   let project = projectOpt.get()
@@ -148,7 +148,7 @@ proc completeRepairProject*(state: var GameState, projectId: RepairProjectId) =
 
     case facilityType
     of FacilityType.Drydock:
-      var drydock = gs_helpers.getDrydock(state, DrydockId(facilityId)).get()
+      var drydock = gs_helpers.drydock(state, DrydockId(facilityId)).get()
       drydock.activeRepairs.keepIf(
         proc(id: RepairProjectId): bool =
           id != projectId

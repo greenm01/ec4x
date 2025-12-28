@@ -35,7 +35,7 @@ proc createStartingFleets*(
 
       # Create flagship ship with the pre-generated squadronId
       let shipId = state.generateShipId()
-      let shipConfig = getShipConfig(shipClass)
+      let shipConfig = shipConfig(shipClass)
 
       # ETACs start fully loaded with PTU at game init (capacity from config)
       var shipCargo: Option[ShipCargo] = none(ShipCargo)
@@ -85,6 +85,6 @@ proc createStartingFleets*(
       state.squadrons.byFleet.mgetOrPut(newFleet.id, @[]).add(squadronId)
 
       # Add squadron to fleet's squadron list
-      var updatedFleet = state.getFleet(newFleet.id).get()
+      var updatedFleet = state.fleet(newFleet.id).get()
       updatedFleet.squadrons.add(squadronId)
       state.fleets.entities.updateEntity(newFleet.id, updatedFleet)

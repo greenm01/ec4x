@@ -85,7 +85,7 @@ proc establishColony*(
 
 proc destroyColony*(state: var GameState, colonyId: ColonyId) =
   ## Destroys a colony, removing it from the entity manager and all indexes.
-  let colonyOpt = gs_helpers.getColony(state, colonyId)
+  let colonyOpt = gs_helpers.colony(state, colonyId)
   if colonyOpt.isNone:
     return
   let colony = colonyOpt.get()
@@ -105,7 +105,7 @@ proc destroyColony*(state: var GameState, colonyId: ColonyId) =
 
 proc changeColonyOwner*(state: var GameState, colonyId: ColonyId, newOwner: HouseId) =
   ## Transfers ownership of a colony, updating the `byOwner` index.
-  let colonyOpt = gs_helpers.getColony(state, colonyId)
+  let colonyOpt = gs_helpers.colony(state, colonyId)
   if colonyOpt.isNone:
     return
   var colony = colonyOpt.get()

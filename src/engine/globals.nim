@@ -5,20 +5,20 @@ import ./types/config
 var gameConfig* {.threadvar.}: GameConfig
 var gameSetup* {.threadvar.}: GameSetup
 
-# Game scaling multipliers
-var prestigeMultiplier* {.threadvar.}: float64
-var popGrowthMultiplier* {.threadvar.}: float64
+# Game scaling multipliers (private backing storage)
+var prestigeMultiplierImpl {.threadvar.}: float64
+var popGrowthMultiplierImpl {.threadvar.}: float64
 
-# Prestige growth multipliers
-proc setPrestigeMultiplier*(multiplier: float32) =
+# Prestige multiplier property
+proc `prestigeMultiplier=`*(multiplier: float32) =
   ## Set the prestige multiplier directly for testing
   ## Use 1.0 to disable multiplier effects in tests
-  prestigeMultiplier = multiplier
+  prestigeMultiplierImpl = multiplier
 
-proc getPrestigeMultiplier*(): float32 =
+proc prestigeMultiplier*(): float32 =
   ## Get the current prestige multiplier
   ## Returns the base multiplier if not initialized
-  if prestigeMultiplier == 0.0:
+  if prestigeMultiplierImpl == 0.0:
     logWarn(
       "Prestige",
       "Multiplier uninitialized! Using base value",
@@ -26,29 +26,29 @@ proc getPrestigeMultiplier*(): float32 =
       $gameConfig.prestige.dynamicScaling.baseMultiplier
     )
     return gameConfig.prestige.dynamicScaling.baseMultiplier
-  return prestigeMultiplier
+  return prestigeMultiplierImpl
 
 proc applyPrestigeMultiplier*(baseValue: int32): int32 =
   ## Apply the dynamic multiplier to a base prestige value
-  result = int32(float32(baseValue) * getPrestigeMultiplier())
+  result = int32(float32(baseValue) * prestigeMultiplier())
 
-# Population growth multipliers
-proc setPopulationGrowthMultiplier*(multiplier: float32) =
+# Population growth multiplier property
+proc `popGrowthMultiplier=`*(multiplier: float32) =
   ## Set the population growth multiplier directly for testing
   ## Use 1.0 for standard growth rate in tests
-  popGrowthMultiplier = multiplier
+  popGrowthMultiplierImpl = multiplier
 
-proc getPopulationGrowthMultiplier*(): float32 =
+proc popGrowthMultiplier*(): float32 =
   ## Get the current population growth multiplier
   ## Returns 1.0 if not initialized (standard growth)
-  if popGrowthMultiplier == 0.0:
+  if popGrowthMultiplierImpl == 0.0:
     logWarn(
       "Economy",
       "Population growth multiplier uninitialized! Using 1.0 (standard growth)",
     )
     return 1.0
-  return popGrowthMultiplier
+  return popGrowthMultiplierImpl
 
 proc applyGrowthMultiplier*(baseGrowthRate: float32): float32 =
   ## Apply the dynamic multiplier to a base growth rate
-  result = baseGrowthRate * getPopulationGrowthMultiplier()
+  result = baseGrowthRate * popGrowthMultiplier()

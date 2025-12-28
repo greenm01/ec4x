@@ -26,7 +26,7 @@ template createFacilityImpl(
   collection.entities.addEntity(facilityId, newFacility)
   collection.byColony.mgetOrPut(colonyId, @[]).add(facilityId)
 
-  var colony = gs_helpers.getColony(state, colonyId).get()
+  var colony = gs_helpers.colony(state, colonyId).get()
   colony.colonyList.add(facilityId)
   state.colonies.entities.updateEntity(colonyId, colony)
 
@@ -46,7 +46,7 @@ template destroyFacilityImpl(
     return
   let facility = facilityOpt.get()
 
-  var colony = gs_helpers.getColony(state, facility.colonyId).get()
+  var colony = gs_helpers.colony(state, facility.colonyId).get()
   colony.colonyList.keepIf(
     proc(id: idType): bool =
       id != typedId

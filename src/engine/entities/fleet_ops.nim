@@ -45,7 +45,7 @@ proc createFleet*(state: var GameState, owner: HouseId, location: SystemId): Fle
 
 proc destroyFleet*(state: var GameState, fleetId: FleetId) =
   ## Destroys a fleet and all squadrons within it.
-  let fleetOpt = state.getFleet(fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     return
   let fleet = fleetOpt.get()
@@ -66,7 +66,7 @@ proc destroyFleet*(state: var GameState, fleetId: FleetId) =
 
 proc moveFleet*(state: var GameState, fleetId: FleetId, destId: SystemId) =
   ## Moves a fleet to a new system, updating the spatial index.
-  let fleetOpt = state.getFleet(fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     return
 
@@ -86,7 +86,7 @@ proc moveFleet*(state: var GameState, fleetId: FleetId, destId: SystemId) =
 
 proc changeFleetOwner*(state: var GameState, fleetId: FleetId, newOwner: HouseId) =
   ## Transfers ownership of a fleet, updating the byOwner index
-  let fleetOpt = state.getFleet(fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     return
   var fleet = fleetOpt.get()

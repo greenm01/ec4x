@@ -33,12 +33,12 @@ proc startTransfer*(
   state.populationTransfers.byHouse.mgetOrPut(houseId, @[]).add(transferId)
   state.populationTransfers.inTransit.add(transferId)
 
-  var sourceColony = gs_helpers.getColony(state, sourceColonyId).get()
+  var sourceColony = gs_helpers.colony(state, sourceColonyId).get()
   sourceColony.population -= ptuAmount
   sourceColony.souls -= ptuAmount * 50000 # Example
   state.colonies.entities.updateEntity(sourceColonyId, sourceColony)
 
-  var house = gs_helpers.getHouse(state, houseId).get()
+  var house = gs_helpers.house(state, houseId).get()
   house.treasury -= cost
   state.houses.entities.updateEntity(houseId, house)
 
@@ -46,12 +46,12 @@ proc startTransfer*(
 
 proc completeTransfer*(state: var GameState, transferId: PopulationTransferId) =
   ## Completes a population transfer, removing it from active lists and indexes.
-  let transferOpt = gs_helpers.getPopulationTransfer(state, transferId)
+  let transferOpt = gs_helpers.populationTransfer(state, transferId)
   if transferOpt.isNone:
     return
   let transfer = transferOpt.get()
 
-  var destColony = gs_helpers.getColony(state, transfer.destColony).get()
+  var destColony = gs_helpers.colony(state, transfer.destColony).get()
   destColony.population += transfer.ptuAmount
   destColony.souls += transfer.ptuAmount * 50000
   state.colonies.entities.updateEntity(transfer.destColony, destColony)

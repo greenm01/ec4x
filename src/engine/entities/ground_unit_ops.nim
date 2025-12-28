@@ -24,7 +24,7 @@ proc createGroundUnit*(
 
   state.groundUnits.entities.addEntity(unitId, newUnit)
 
-  var colony = gs_helpers.getColony(state, colonyId).get()
+  var colony = gs_helpers.colony(state, colonyId).get()
   case unitType
   of GroundUnitType.Army:
     colony.armyIds.add(unitId)
@@ -40,7 +40,7 @@ proc createGroundUnit*(
 
 proc destroyGroundUnit*(state: var GameState, unitId: GroundUnitId) =
   ## Destroys a ground unit, removing it from all collections.
-  let unitOpt = gs_helpers.getGroundUnit(state, unitId)
+  let unitOpt = gs_helpers.groundUnit(state, unitId)
   if unitOpt.isNone:
     return
   let unit = unitOpt.get()
@@ -63,7 +63,7 @@ proc destroyGroundUnit*(state: var GameState, unitId: GroundUnitId) =
       break
 
   if ownerColonyId != 0'u32:
-    var colony = gs_helpers.getColony(state, ownerColonyId).get()
+    var colony = gs_helpers.colony(state, ownerColonyId).get()
     case unit.unitType
     of GroundUnitType.Army:
       colony.armyIds.keepIf(

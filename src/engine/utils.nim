@@ -52,7 +52,7 @@ proc parseResourceRating*(ratingName: string): ResourceRating =
   else:
     raise newException(ValueError, "Invalid resource rating: " & ratingName)
 
-proc getShipConfig*(shipClass: ShipClass): ShipStatsConfig =
+proc shipConfig*(shipClass: ShipClass): ShipStatsConfig =
   ## Get configuration for a ship class
   case shipClass
   of ShipClass.Fighter: gameConfig.ships.fighter
@@ -73,7 +73,7 @@ proc getShipConfig*(shipClass: ShipClass): ShipStatsConfig =
   of ShipClass.TroopTransport: gameConfig.ships.troopTransport
   of ShipClass.PlanetBreaker: gameConfig.ships.planetbreaker
 
-proc getELUpgradeCostFromConfig*(level: int32): int32 =
+proc elUpgradeCost*(level: int32): int32 =
   ## Get ERP cost for advancing from level N to N+1
   ## Uses loaded config data from tech.kdl
   let cfg = gameConfig.tech.economicLevel
@@ -96,7 +96,7 @@ proc getELUpgradeCostFromConfig*(level: int32): int32 =
       "Invalid EL level: " & $level & " (max is 11)"
     )
 
-proc getSLUpgradeCostFromConfig*(level: int32): int32 =
+proc slUpgradeCost*(level: int32): int32 =
   ## Get SRP cost for advancing from level N to N+1
   let cfg = gameConfig.tech.scienceLevel
 
@@ -115,7 +115,7 @@ proc getSLUpgradeCostFromConfig*(level: int32): int32 =
       "Invalid SL level: " & $level & " (max is 8)"
     )
 
-proc getTechUpgradeCostFromConfig*(techField: TechField, level: int32): int32 =
+proc techUpgradeCost*(techField: TechField, level: int32): int32 =
   ## Get TRP cost for advancing from level N to N+1
   ## Looks up cost from gameConfig.tech based on field and level
 

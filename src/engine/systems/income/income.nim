@@ -12,7 +12,8 @@
 import std/[math, strformat, logging]
 import ../../types/[game_state, colony, income, production as production_types]
 import ../../prestige/events as prestige_events
-import ../../config/[economy_config, population_growth_multiplier]
+import ../../config/economy_config
+import ../../globals
 import ../production/engine as production_engine
 
 export colony.ColonyIncomeReport
@@ -241,7 +242,7 @@ proc applyPopulationGrowth*(
   let taxMultiplier = getPopulationGrowthMultiplier(taxRate)
   let starbaseBonus = getStarbaseGrowthBonus(colony)
     # 5% per operational starbase, max 15%
-  let mapScaleMultiplier = population_growth_multiplier.getPopulationGrowthMultiplier()
+  let mapScaleMultiplier = popGrowthMultiplier()
   let effectiveGrowthRate =
     baseGrowthRate * taxMultiplier * (1.0 + starbaseBonus) * mapScaleMultiplier
 
