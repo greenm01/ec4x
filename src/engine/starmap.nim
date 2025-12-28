@@ -6,13 +6,14 @@
 ## - Prioritizes correctness over complex optimizations
 ## - Implements actual game rules for lane traversal
 ## - Provides fast, reliable starmap generation and pathfinding
+import ../common/logger
+import types/[starmap, squadron, core]
+import globals
+import utils
 import std/[
   tables, sequtils, random, math, algorithm, hashes, sets,
   strutils, heapqueue, options
 ]
-
-import types/[starmap, squadron, core]
-import config/starmap_config
 
 # Hex coordinate utilities
 proc hex*(q, r: int32): Hex =
@@ -125,7 +126,7 @@ proc totalSystems*(playerCount: int32): int32 =
   let n = playerCount
   return 3 * n * n + 3 * n + 1
 
-proc newStarMap*(playerCount: int32, seed: int64 = 2001): StarMap =
+proc newStarMap*(playerCount: int32, seed: int64): StarMap =
   validatePlayerCount(playerCount)
 
   StarMap(
@@ -149,20 +150,71 @@ proc newStarMap*(playerCount: int32, seed: int64 = 2001): StarMap =
     nextSystemId: 0
   )
 
-proc newSystem(starMap: var StarMap, coords: Hex, ring: uint32, player: Option[PlayerId]): System =
-  ## Create a new system with auto-generated ID
-  ## Uses StarMap's internal counter for ID generation
+proc pickWeighted*[T: enum](rng: var Rand, weights: openArray[float]): T =
+  let total = sum(weights)
+  var choice = rng.rand(total)
+  
+  for item in T:
+    let w = weights[item.ord]
+    if choice < w:
+      return item
+    choice -= w
+    
+  # If we reach here, there's a precision issue or weights sum to 0
+  assert false, "Weighted choice failed: choice=" & $choice & " total=" & $total
+  return T.high
+
+proc newSystem(
+    starMap: var StarMap, coords: Hex, ring: uint32, player: Option[PlayerId]
+): System =
   let id = SystemId(starMap.nextSystemId)
   starMap.nextSystemId += 1
 
-  # TODO: Assign planetClass and resourceRating based on game rules
+  # MIXING THE SEED:
+  # We use the map's master seed + the new ID to create a unique seed for this system.
+  # This ensures that if you regenerate the map with the same master seed, 
+  # System #5 will always be the same type of planet.
+  var rng = initRand(starMap.seed + id.int64)
+
+  # --- GAME SPEC BALANCED WEIGHTS, per 03-economy.md ---
+  
+  # PLANET CLASS WEIGHTS
+  # Logic: The 'Raw Index Table' shows a linear progression in efficiency.
+  # To force the "Population Transfer" mechanics (moving people from full worlds 
+  # to empty ones), bad planets must be common.
+  # Extreme/Desolate/Hostile (Low Cap) = ~60% of galaxy
+  # Benign/Lush (Mid Cap) = ~35% of galaxy
+  # Eden (High Cap) = ~5% "Gem" worlds
+  const PlanetWeights = [
+    0.25, # Extreme  (Level I)   - Most common, requires terraforming
+    0.20, # Desolate (Level II)
+    0.15, # Hostile  (Level III)
+    0.15, # Harsh    (Level IV)
+    0.15, # Benign   (Level V)   - The "Standard" habitable world
+    0.08, # Lush     (Level VI)  - High value target
+    0.02  # Eden     (Level VII) - Strategic objective (Very Rare)
+  ]
+
+  # RESOURCE WEIGHTS
+  # Logic: Based on 'RAW INDEX Table'.
+  # 'Abundant' is the baseline. 
+  # 'Very Rich' (140% bonus) must be rare to prevent runaway GCO inflation.
+  const ResourceWeights = [
+    0.20, # VeryPoor - 60% efficiency floor
+    0.25, # Poor
+    0.35, # Abundant - Standard (100% eff on Eden)
+    0.15, # Rich
+    0.05  # VeryRich - 140% efficiency ceiling
+  ]
+
   System(
     id: id,
+    name: "",
     coords: coords,
     ring: ring,
     player: player,
-    planetClass: PlanetClass.Benign,  # Placeholder
-    resourceRating: ResourceRating.Abundant  # Placeholder
+    planetClass: pickWeighted[PlanetClass](rng, PlanetWeights),
+    resourceRating: pickWeighted[ResourceRating](rng, ResourceWeights)
   )
 
 proc addSystem(starMap: var StarMap, system: System) =
@@ -312,11 +364,18 @@ proc assignPlayerHomeworlds(starMap: var StarMap) =
       let index = int32(i.float32 * step) mod allSystems.len.int32
       selectedSystems.add(allSystems[index])
 
-  # Assign players to selected systems
+  # Assign players to selected systems and apply homeworld characteristics
   for i, system in selectedSystems:
     # Update system using EntityManager
     let idx = starMap.systems.entities.index[system.id]
     starMap.systems.entities.data[idx].player = some(i.uint32.PlayerId)
+
+    # Override with configured homeworld characteristics
+    starMap.systems.entities.data[idx].planetClass =
+      parsePlanetClass(gameSetup.homeworld.planetClass)
+    starMap.systems.entities.data[idx].resourceRating =
+      parseResourceRating(gameSetup.homeworld.rawQuality)
+
     starMap.playerSystemIds.add(system.id)
 
 proc connectHub(starMap: var StarMap, rng: var Rand) =
@@ -333,11 +392,11 @@ proc connectHub(starMap: var StarMap, rng: var Rand) =
     raise newException(StarMapError, "Hub must have exactly 6 first-ring neighbors")
 
   # Connect with weighted lane types to avoid predictable convergence at center
-  let weights = globalStarmapConfig.lane_weights
+  let weights = gameConfig.starmap.laneWeights
   for neighborId in ring1Neighbors:
     let laneType = weightedSample(
       [LaneType.Major, LaneType.Minor, LaneType.Restricted],
-      [weights.major_weight, weights.minor_weight, weights.restricted_weight],
+      [weights.majorWeight, weights.minorWeight, weights.restrictedWeight],
       rng,
     )
     let lane =
@@ -346,12 +405,12 @@ proc connectHub(starMap: var StarMap, rng: var Rand) =
 
 proc connectPlayerSystems(starMap: var StarMap, rng: var Rand) =
   ## Connect player systems with configurable number of lanes (default: 3)
-  let laneCount = globalStarmapConfig.homeworld_placement.homeworld_lane_count
+  let laneCount = gameConfig.starmap.homeworldPlacement.homeworldLaneCount
 
   # Debug: Check config value
   when not defined(release):
-    echo "DEBUG: connectPlayerSystems laneCount=",
-      laneCount, " players=", starMap.playerSystemIds.len
+    logDebug("Starmap", "connectPlayerSystems laneCount=", laneCount, 
+             " players=", starMap.playerSystemIds.len)
 
   for playerId in starMap.playerSystemIds:
     let sysIdx = starMap.systems.entities.index[playerId]
@@ -411,10 +470,10 @@ proc connectRemainingSystem(starMap: var StarMap, rng: var Rand) =
           continue  # Skip connecting to player systems that already have 3 connections
 
       # Use weighted lane type selection for balanced gameplay
-      let weights = globalStarmapConfig.lane_weights
+      let weights = gameConfig.starmap.laneWeights
       let laneType = weightedSample(
         [LaneType.Major, LaneType.Minor, LaneType.Restricted],
-        [weights.major_weight, weights.minor_weight, weights.restricted_weight],
+        [weights.majorWeight, weights.minorWeight, weights.restrictedWeight],
         rng,
       )
       let lane =
@@ -517,10 +576,33 @@ proc buildDistanceMatrix(starMap: var StarMap) =
       if sys1.id != sys2.id:
         starMap.distanceMatrix[(sys1.id, sys2.id)] = distance(sys1.coords, sys2.coords)
 
+proc assignSystemNames*(starMap: var StarMap, namePool: seq[string]) =
+  ## Assign names to systems from the provided name pool
+  ## Names are drawn sequentially from the pool
+  ## If pool is exhausted, uses fallback pattern: "System-{id}"
+  if namePool.len == 0:
+    # Fallback to numeric names
+    for i in 0 ..< starMap.systems.entities.data.len:
+      starMap.systems.entities.data[i].name =
+        "System-" & $starMap.systems.entities.data[i].id
+    return
+
+  # Assign names from pool
+  var nameIdx = 0
+  for i in 0 ..< starMap.systems.entities.data.len:
+    if nameIdx < namePool.len:
+      starMap.systems.entities.data[i].name = namePool[nameIdx]
+      nameIdx += 1
+    else:
+      # Fallback if pool exhausted
+      starMap.systems.entities.data[i].name =
+        "System-" & $starMap.systems.entities.data[i].id
+
 proc populate*(starMap: var StarMap) =
   ## Main population function - generates complete starmap
   try:
     starMap.generateHexGrid()
+    starMap.assignSystemNames(gameConfig.starmap.planetNames.names)
     starMap.assignPlayerHomeworlds()
     starMap.generateLanes()
     starMap.buildDistanceMatrix() # Pre-compute hex distances for pathfinding
@@ -547,11 +629,6 @@ proc populate*(starMap: var StarMap) =
     raise newException(
       StarMapError, "Failed to populate starmap: " & getCurrentExceptionMsg()
     )
-
-proc starMap*(playerCount: int): StarMap =
-  ## Create a complete, validated starmap
-  result = newStarMap(playerCount.int32)
-  result.populate()
 
 # Debugging and analysis functions
 proc getStarMapStats*(starMap: StarMap): string =

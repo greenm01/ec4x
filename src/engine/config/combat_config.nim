@@ -96,7 +96,7 @@ proc parseInvasion(node: KdlNode, ctx: var KdlConfigContext): InvasionConfig =
     blitzIuLoss: node.requireFloat32("blitzIuLoss", ctx)
   )
 
-proc loadCombatConfig*(configPath: string = "config/combat.kdl"): CombatConfig =
+proc loadCombatConfig*(configPath: string): CombatConfig =
   ## Load combat configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

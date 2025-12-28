@@ -71,7 +71,7 @@ proc parseThemeEntry(node: KdlNode, ctx: var KdlConfigContext): ThemeEntry =
     house11Color: node.requireString("house11Color", ctx)
   )
 
-proc loadThemesConfig*(configPath: string = "config/house_themes.kdl"): ThemesConfig =
+proc loadThemesConfig*(configPath: string): ThemesConfig =
   ## Load theme configuration from KDL file
   result.themes = initTable[string, HouseTheme]()
 

@@ -47,7 +47,7 @@ proc saveGame*(state: GameState) =
   save.saveGameState(state)
 
 # Turn execution
-proc processTurn*(
+proc resolveTurn*(
     state: var GameState, commands: Table[HouseId, CommandPacket]
 ): TurnReport =
   ## Execute complete turn cycle and return results

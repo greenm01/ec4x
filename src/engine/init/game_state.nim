@@ -1,57 +1,54 @@
-import std/[tables]
+import std/[tables, monotimes, options]
 
 import ../../common/logger
-import ../types/[
-  core, game_state, squadron, intelligence, diplomacy, espionage, resolution, starmap,
-  command, fleet,
-]
 import ../[globals, starmap]
 import ../config/engine
+import ../types/[
+  core, game_state, squadron, intelligence, diplomacy,
+  espionage, resolution, starmap, command, fleet
+]
+
+export globals
 
 # Game initialization functions
 
-proc initStarMap*(playerCount: int32, seed: int64 = 2001): StarMap =
-  ## Create and fully generate a validated starmap
-  ##
-  ## Args:
-  ##   playerCount: Number of players (2-12)
-  ##   seed: Random seed for deterministic generation
-  ##
-  ## Returns:
-  ##   Fully populated StarMap with systems, lanes, and homeworlds
-  ##
-  ## Raises:
-  ##   StarMapError: If validation fails or invalid player count
+proc initGameSeed(configSeed: Option[int64]): int64 =
+  result = configSeed.get(getMonoTime().ticks)
 
-  result = newStarMap(playerCount, seed)  # newStarMap validates playerCount
+proc initStarMap*(playerCount: int32, seed: int64): StarMap =
+  ## Create a complete, validated starmap
+  result = newStarMap(playerCount, seed)
   result.populate()
-  
-proc newGame*(
-  setupDir: string,              # Where to read game_setup configs
-  dataDir: string,               # Where to write save data
+
+proc initGameState*(
+  setupPath: string = "game_setup/standard.kdl",              # Where to read game_setup configs
   configDir: string = "config",  # Base game rules (rarely changes)
-  seed: int64                    # Game seed (also game id)
+  dataDir: string = "data"               # Where to write save data
 ): GameState =
 
   ## Create a new game with automatic setup
   # TODO: Implement game creation logic:
-  # 1. Load game parameters from config files (e.g., game_setup/standard.toml)
-  # 2. Generate starMap based on seed and parameters
-  # 3. Call newGameState to create the initial state with the generated starmap
-  # 4. Call initializeHousesAndHomeworlds to populate houses, colonies, fleets
+  # 1. populate houses, colonies, fleets
+
+  gameConfig = loadGameConfig(configDir)
+  gameSetup = loadGameSetup(setupPath)
+
+  var params = gameSetup.gameParameters
+  var seed = params.gameSeed.get(initGameSeed(none(int64)))
+  var playerCount = params.playerCount
+  var gameId = params.gameId
+  var starMap = initStarMap(playerCount, seed) 
 
   logInfo(
     "Initialization", "Creating new game with ID ", gameId, ", players ", playerCount,
     ", seed ", seed,
   )
-
-  gameConfig = loadGameConfig()
-   
+         
   # Initialize the ref object
   result = GameState(
     gameId: gameId,
     seed: seed,
-    starMap: initStarMap(playerCount, seed),  
+    starMap: starMap,  
     turn: 1,
     # Start IDs at 1 so 0 can be used as a "None/Null" value if needed
     counters: IdCounters(

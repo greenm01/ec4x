@@ -7,12 +7,12 @@ import std/[strutils, options]
 import kdl
 import kdl_helpers
 import ../../common/logger
-import ../types/[config, starmap]
+import ../types/config
 
 proc parseGameParameters(node: KdlNode, ctx: var KdlConfigContext): GameParametersConfig =
   result = GameParametersConfig(
     gameId: node.requireString("gameId", ctx),
-    playerCount: node.requireInt32("numPlayers", ctx),
+    playerCount: node.requireInt32("playerCount", ctx),
     gameSeed: node.getInt64Opt("gameSeed"),
     theme: node.requireString("theme", ctx)
   )
@@ -20,7 +20,7 @@ proc parseGameParameters(node: KdlNode, ctx: var KdlConfigContext): GameParamete
 proc parseVictoryConditions(node: KdlNode, ctx: var KdlConfigContext): VictoryConditionsConfig =
   result = VictoryConditionsConfig(
     turnLimit: node.requireInt32("turnLimit", ctx),
-    prestigeLimit: node.requireInt32("prestigeThreshold", ctx),
+    prestigeLimit: node.requireInt32("prestigeLimit", ctx),
     finalConflictAutoEnemy: node.requireBool("finalConflictAutoEnemy", ctx)
   )
 
@@ -97,13 +97,12 @@ proc parseHomeworld(node: KdlNode, ctx: var KdlConfigContext): HomeworldConfig =
     industrialUnits: node.requireInt32("industrialUnits", ctx)
   )
 
-proc loadGameSetupConfig*(
-    configPath: string = "game_setup/standard.kdl"
-): GameSetup =
+proc loadGameSetupConfig*(setupPath: string): GameSetup =
   ## Load game setup configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
-  let doc = loadKdlConfig(configPath)
-  var ctx = newContext(configPath)
+
+  let doc = loadKdlConfig(setupPath)
+  var ctx = newContext(setupPath)
 
   ctx.withNode("gameParameters"):
     let node = doc.requireNode("gameParameters", ctx)
@@ -137,40 +136,4 @@ proc loadGameSetupConfig*(
     let node = doc.requireNode("homeworld", ctx)
     result.homeworld = parseHomeworld(node, ctx)
 
-  logInfo("Config", "Loaded game setup", "path=", configPath)
-
-proc parsePlanetClass*(className: string): PlanetClass =
-  ## Parse planet class string from config
-  case className.toLower()
-  of "extreme":
-    PlanetClass.Extreme
-  of "desolate":
-    PlanetClass.Desolate
-  of "hostile":
-    PlanetClass.Hostile
-  of "harsh":
-    PlanetClass.Harsh
-  of "benign":
-    PlanetClass.Benign
-  of "lush":
-    PlanetClass.Lush
-  of "eden":
-    PlanetClass.Eden
-  else:
-    raise newException(ValueError, "Invalid planet class: " & className)
-
-proc parseResourceRating*(ratingName: string): ResourceRating =
-  ## Parse resource rating string from config
-  case ratingName.toLower()
-  of "verypoor", "very_poor":
-    ResourceRating.VeryPoor
-  of "poor":
-    ResourceRating.Poor
-  of "abundant":
-    ResourceRating.Abundant
-  of "rich":
-    ResourceRating.Rich
-  of "veryrich", "very_rich":
-    ResourceRating.VeryRich
-  else:
-    raise newException(ValueError, "Invalid resource rating: " & ratingName)
+  logInfo("Game Setup", "Loaded game setup configuration", "path=", setupPath)

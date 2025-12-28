@@ -56,9 +56,7 @@ proc parseAiStrategy(node: KdlNode, ctx: var KdlConfigContext): AiStrategyConfig
     minExpansionDrive: node.requireFloat32("minExpansionDrive", ctx)
   )
 
-proc loadGuildConfig*(
-    configPath: string = "config/guild.kdl"
-): GuildConfig =
+proc loadGuildConfig*(configPath: string): GuildConfig =
   ## Load population configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

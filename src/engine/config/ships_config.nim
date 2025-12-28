@@ -7,7 +7,7 @@ import std/[options]
 import kdl
 import kdl_helpers
 import ../../common/logger
-import ../types/[config, ship]
+import ../types/config
 
 proc parseShipStats(node: KdlNode, ctx: var KdlConfigContext): ShipStatsConfig =
   ## Parse ship stats from KDL node with validation
@@ -30,7 +30,7 @@ proc parseSalvage(node: KdlNode, ctx: var KdlConfigContext): SalvageConfig =
     emergencySalvageMultiplier: node.requireFloat32("emergencySalvageMultiplier", ctx)
   )
 
-proc loadShipsConfig*(configPath: string = "config/ships.kdl"): ShipsConfig =
+proc loadShipsConfig*(configPath: string): ShipsConfig =
   ## Load ships configuration from KDL file with validation
   let doc = loadKdlConfig(configPath)
   var ctx = newContext(configPath)
@@ -65,31 +65,3 @@ proc loadShipsConfig*(configPath: string = "config/ships.kdl"): ShipsConfig =
     result.salvage = parseSalvage(salvageNode, ctx)
 
   logInfo("Config", "Loaded ships configuration", "path=", configPath)
-
-## Global configuration instance
-var globalShipsConfig* = loadShipsConfig()
-
-proc reloadShipsConfig*() =
-  ## Reload configuration from file
-  globalShipsConfig = loadShipsConfig()
-
-proc getShipConfig*(shipClass: ShipClass): ShipStatsConfig =
-  ## Get configuration for a ship class
-  case shipClass
-  of ShipClass.Fighter: globalShipsConfig.fighter
-  of ShipClass.Corvette: globalShipsConfig.corvette
-  of ShipClass.Frigate: globalShipsConfig.frigate
-  of ShipClass.Scout: globalShipsConfig.scout
-  of ShipClass.Raider: globalShipsConfig.raider
-  of ShipClass.Destroyer: globalShipsConfig.destroyer
-  of ShipClass.LightCruiser: globalShipsConfig.lightCruiser
-  of ShipClass.HeavyCruiser: globalShipsConfig.heavyCruiser
-  of ShipClass.Battlecruiser: globalShipsConfig.battlecruiser
-  of ShipClass.Battleship: globalShipsConfig.battleship
-  of ShipClass.Dreadnought: globalShipsConfig.dreadnought
-  of ShipClass.SuperDreadnought: globalShipsConfig.superDreadnought
-  of ShipClass.Carrier: globalShipsConfig.carrier
-  of ShipClass.SuperCarrier: globalShipsConfig.supercarrier
-  of ShipClass.ETAC: globalShipsConfig.etac
-  of ShipClass.TroopTransport: globalShipsConfig.troopTransport
-  of ShipClass.PlanetBreaker: globalShipsConfig.planetbreaker

@@ -25,9 +25,7 @@ proc parseUIHints(node: KdlNode, ctx: var KdlConfigContext): UIHintsConfig =
     warnTurnsBefore: node.requireInt32("warnTurnsBefore", ctx)
   )
 
-proc loadStandingCommandsConfig*(
-    configPath: string = "config/standing_commands.kdl"
-): StandingCommandsConfig =
+proc loadStandingCommandsConfig*(configPath: string): StandingCommandsConfig =
   ## Load standing commands configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

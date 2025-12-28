@@ -1,8 +1,10 @@
 import ../common/logger
 import ./types/config
 
-# Global game config
+# Global game configs and setup
 var gameConfig* {.threadvar.}: GameConfig
+var gameSetup* {.threadvar.}: GameSetup
+
 # Game scaling multipliers
 var prestigeMultiplier* {.threadvar.}: float64
 var popGrowthMultiplier* {.threadvar.}: float64

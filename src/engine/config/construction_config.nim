@@ -63,9 +63,7 @@ proc parseUpkeep(node: KdlNode, ctx: var KdlConfigContext): UpkeepConfig =
     planetaryShieldUpkeep: node.requireInt32("planetaryShieldUpkeep", ctx)
   )
 
-proc loadConstructionConfig*(
-    configPath: string = "config/construction.kdl"
-): ConstructionConfig =
+proc loadConstructionConfig*(configPath: string): ConstructionConfig =
   ## Load construction configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

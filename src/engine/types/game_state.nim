@@ -20,7 +20,7 @@ type
     fighterCapacityExpiry*: Table[SystemId, int] # Per-colony fighter grace
 
   GameState* = ref object
-    gameId*: int32
+    gameId*: string
     turn*: int32
     phase*: GamePhase
     seed*: int64

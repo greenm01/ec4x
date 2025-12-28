@@ -61,9 +61,7 @@ proc parseStarbase(node: KdlNode, ctx: var KdlConfigContext): StarbaseConfig =
     growthBonus: node.requireFloat32("growthBonus", ctx)
   )
 
-proc loadFacilitiesConfig*(
-    configPath: string = "config/facilities.kdl"
-): FacilitiesConfig =
+proc loadFacilitiesConfig*(configPath: string): FacilitiesConfig =
   ## Load facilities configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

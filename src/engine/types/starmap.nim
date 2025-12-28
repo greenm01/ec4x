@@ -12,6 +12,7 @@ type
 
   System* = object
     id*: SystemId
+    name*: string # Planet/system name from config
     coords*: Hex
     ring*: uint32
     player*: Option[PlayerId]

@@ -261,7 +261,7 @@ proc parseProductionModifiers(
       node.requireFloat32("prodGrowthDenominator", ctx)
   )
 
-proc loadEconomyConfig*(configPath: string = "config/economy.kdl"): EconomyConfig =
+proc loadEconomyConfig*(configPath: string): EconomyConfig =
   ## Load economy configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

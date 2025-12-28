@@ -12,8 +12,8 @@ proc parsePlanetaryShield(node: KdlNode, ctx: var KdlConfigContext): PlanetarySh
   result = PlanetaryShieldConfig(
     description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("buildCost", ctx),
-    maintenanceCost: node.requireInt32("upkeepCost", ctx),
+    productionCost: node.requireInt32("productionCost", ctx),
+    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
     buildTime: node.requireInt32("buildTime", ctx),
     maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
@@ -31,8 +31,8 @@ proc parseGroundBattery(node: KdlNode, ctx: var KdlConfigContext): GroundBattery
   result = GroundBatteryConfig(
     description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("buildCost", ctx),
-    maintenanceCost: node.requireInt32("upkeepCost", ctx),
+    productionCost: node.requireInt32("productionCost", ctx),
+    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
     buildTime: node.requireInt32("buildTime", ctx),
     maxPerPlanet: node.requireInt32("maxPerPlanet", ctx)
@@ -42,8 +42,8 @@ proc parseArmy(node: KdlNode, ctx: var KdlConfigContext): ArmyConfig =
   result = ArmyConfig(
     description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("buildCost", ctx),
-    maintenanceCost: node.requireInt32("upkeepCost", ctx),
+    productionCost: node.requireInt32("productionCost", ctx),
+    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
     buildTime: node.requireInt32("buildTime", ctx),
     maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
@@ -54,17 +54,15 @@ proc parseMarineDivision(node: KdlNode, ctx: var KdlConfigContext): MarineDivisi
   result = MarineDivisionConfig(
     description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("buildCost", ctx),
-    maintenanceCost: node.requireInt32("upkeepCost", ctx),
+    productionCost: node.requireInt32("productionCost", ctx),
+    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
     buildTime: node.requireInt32("buildTime", ctx),
     maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
     populationCost: node.requireInt32("populationCost", ctx)
   )
 
-proc loadGroundUnitsConfig*(
-    configPath: string = "config/ground_units.kdl"
-): GroundUnitsConfig =
+proc loadGroundUnitsConfig*(configPath: string): GroundUnitsConfig =
   ## Load ground units configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

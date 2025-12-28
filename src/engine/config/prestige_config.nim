@@ -167,7 +167,7 @@ proc parseTaxIncentives(node: KdlNode, ctx: var KdlConfigContext): TaxIncentives
     tier5Prestige: node.requireInt32("tier5Prestige", ctx)
   )
 
-proc loadPrestigeConfig*(configPath: string = "config/prestige.kdl"): PrestigeConfig =
+proc loadPrestigeConfig*(configPath: string): PrestigeConfig =
   ## Load prestige configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

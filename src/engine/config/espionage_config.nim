@@ -63,9 +63,7 @@ proc parseDetection(node: KdlNode, ctx: var KdlConfigContext): EspionageDetectio
     cip21PlusModifier: node.requireInt32("cip21PlusModifier", ctx)
   )
 
-proc loadEspionageConfig*(
-    configPath: string = "config/espionage.kdl"
-): EspionageConfig =
+proc loadEspionageConfig*(configPath: string): EspionageConfig =
   ## Load espionage configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

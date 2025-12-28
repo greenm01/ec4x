@@ -40,7 +40,7 @@ proc parseDefensiveCollapseBehavior(node: KdlNode, ctx: var KdlConfigContext): D
     permanentElimination: node.requireBool("permanentElimination", ctx)
   )
 
-proc loadGameplayConfig*(configPath: string = "config/gameplay.kdl"): GameplayConfig =
+proc loadGameplayConfig*(configPath: string): GameplayConfig =
   ## Load gameplay configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

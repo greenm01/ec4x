@@ -31,9 +31,7 @@ proc parseDetection(node: KdlNode, ctx: var KdlConfigContext): DetectionConfig =
     failedEspionagePrestigeLoss: node.requireInt32("failedEspionagePrestigeLoss", ctx)
   )
 
-proc loadDiplomacyConfig*(
-    configPath: string = "config/diplomacy.kdl"
-): DiplomacyConfig =
+proc loadDiplomacyConfig*(configPath: string): DiplomacyConfig =
   ## Load diplomacy configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

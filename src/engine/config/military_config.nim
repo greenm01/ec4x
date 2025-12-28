@@ -28,7 +28,7 @@ proc parseSpaceLiftCapacity(node: KdlNode, ctx: var KdlConfigContext): SpaceLift
     etacCapacity: node.requireInt32("etacCapacity", ctx)
   )
 
-proc loadMilitaryConfig*(configPath: string = "config/military.kdl"): MilitaryConfig =
+proc loadMilitaryConfig*(configPath: string): MilitaryConfig =
   ## Load military configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)

@@ -22,12 +22,28 @@ proc parseGeneration(node: KdlNode, ctx: var KdlConfigContext): GenerationConfig
     hubUsesMixedLanes: node.requireBool("hubUsesMixedLanes", ctx)
   )
 
-proc parseHomeworldPlacement(node: KdlNode, ctx: var KdlConfigContext): HomeworldPlacementConfig =
+proc parseHomeworldPlacement(
+    node: KdlNode, ctx: var KdlConfigContext
+): HomeworldPlacementConfig =
   result = HomeworldPlacementConfig(
     homeworldLaneCount: node.requireInt32("homeworldLaneCount", ctx)
   )
 
-proc loadStarmapConfig*(configPath: string = "config/starmap.kdl"): StarmapConfig =
+proc parsePlanetNames(node: KdlNode, ctx: var KdlConfigContext): PlanetNamesConfig =
+  ## Parse planetNames node with child 'name' entries
+  var names: seq[string] = @[]
+
+  # Iterate through all child nodes named "name"
+  for child in node.children:
+    if child.name == "name" and child.args.len > 0:
+      # Each name node has a string argument
+      let arg = child.args[0]
+      if arg.kind == KValKind.KString:
+        names.add(arg.getString())
+
+  result = PlanetNamesConfig(names: names)
+
+proc loadStarmapConfig*(configPath: string): StarmapConfig =
   ## Load starmap configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
   let doc = loadKdlConfig(configPath)
@@ -45,4 +61,18 @@ proc loadStarmapConfig*(configPath: string = "config/starmap.kdl"): StarmapConfi
     let homeNode = doc.requireNode("homeworldPlacement", ctx)
     result.homeworldPlacement = parseHomeworldPlacement(homeNode, ctx)
 
-  logInfo("Config", "Loaded starmap configuration", "path=", configPath)
+  # Load planet names from separate file
+  ctx.withNode("planetNames"):
+    let planetsDoc = loadKdlConfig("config/planets.kdl")
+    var planetsCtx = newContext("config/planets.kdl")
+    let namesNode = planetsDoc.requireNode("planetNames", planetsCtx)
+    result.planetNames = parsePlanetNames(namesNode, planetsCtx)
+
+  logInfo(
+    "Config",
+    "Loaded starmap configuration",
+    "path=",
+    configPath,
+    " planetNames=",
+    result.planetNames.names.len
+  )

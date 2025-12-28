@@ -7,7 +7,7 @@ import ./[
   military_config, standing_commands_config, construction_config, guild_config
 ]
 
-proc loadGameConfig(configDir: string = "config"): GameConfig =
+proc loadGameConfig*(configDir: string = "config"): GameConfig =
   ## Load and validate all game configuration files
   ## Raises ConfigError if any config file is missing or invalid
   result.gameplay = loadGameplayConfig(configDir / "gameplay.kdl")
@@ -22,11 +22,11 @@ proc loadGameConfig(configDir: string = "config"): GameConfig =
   result.espionage = loadEspionageConfig(configDir / "espionage.kdl")
   result.tech = loadTechConfig(configDir / "tech.kdl")
   result.military = loadMilitaryConfig(configDir / "military.kdl")
-  result.standingCommands = loadStandingCommandsConfig(configDir / "standing_commands.kdl")
+  result.standingCommands =
+    loadStandingCommandsConfig(configDir / "standing_commands.kdl")
   result.construction = loadConstructionConfig(configDir / "construction.kdl")
   result.guild = loadGuildConfig(configDir / "guild.kdl")
-  result.prestige = loadPrestigeConfig(configDir / "prestige.kdl")
 
-proc loadGameSetup(setupDir: stiring = "game_setup"): GameSetup =
-  result = loadGameSetupConfig(setupDir / "standard.kdl")
+proc loadGameSetup*(setupPath: string): GameSetup =
+  result = loadGameSetupConfig(setupPath)
   
