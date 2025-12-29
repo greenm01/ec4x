@@ -4,22 +4,25 @@
 ## DRY Principle: Single implementation for presence detection
 ## DoD Principle: Pure functions operating on GameState data
 
-import std/tables
-import ../../../common/types/core
-import ../../gamestate
-import ../../starmap
+import std/[options, tables]
+import ../../types/[core, game_state]
+import ../../state/[engine as state_helpers, iterators]
 
 proc hasFleetInSystem*(state: GameState, houseId: HouseId, systemId: SystemId): bool =
   ## Check if house has any fleet in system
-  for fleetId, fleet in state.fleets:
-    if fleet.owner == houseId and fleet.location == systemId:
+  ## Uses iterator for efficient lookup
+  for fleet in state.fleetsAtSystem(systemId):
+    if fleet.houseId == houseId:
       return true
   return false
 
 proc hasColonyInSystem*(state: GameState, houseId: HouseId, systemId: SystemId): bool =
   ## Check if house owns colony in system
-  if state.colonies.hasKey(systemId):
-    return state.colonies[systemId].owner == houseId
+  ## Uses safe accessor
+  let colonyOpt = state_helpers.colony(state, ColonyId(systemId))
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
+    return colony.owner == houseId
   return false
 
 proc hasStarbaseSurveillance*(
@@ -29,17 +32,21 @@ proc hasStarbaseSurveillance*(
   ## Starbases provide surveillance of their system + adjacent systems
 
   # Direct starbase in system
-  if state.colonies.hasKey(systemId):
-    let colony = state.colonies[systemId]
-    if colony.owner == houseId and colony.starbases.len > 0:
+  let colonyOpt = state_helpers.colony(state, ColonyId(systemId))
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
+    if colony.owner == houseId and colony.starbaseIds.len > 0:
       return true
 
   # Adjacent system starbase (surveillance range)
-  for adjSystemId in state.starMap.getAdjacentSystems(systemId):
-    if state.colonies.hasKey(adjSystemId):
-      let adjColony = state.colonies[adjSystemId]
-      if adjColony.owner == houseId and adjColony.starbases.len > 0:
-        return true
+  if state.starMap.lanes.neighbors.hasKey(systemId):
+    let adjacentSystems = state.starMap.lanes.neighbors[systemId]
+    for adjSystemId in adjacentSystems:
+      let adjColonyOpt = state_helpers.colony(state, ColonyId(adjSystemId))
+      if adjColonyOpt.isSome:
+        let adjColony = adjColonyOpt.get()
+        if adjColony.owner == houseId and adjColony.starbaseIds.len > 0:
+          return true
 
   return false
 
