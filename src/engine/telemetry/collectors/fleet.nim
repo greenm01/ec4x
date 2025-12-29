@@ -4,8 +4,8 @@
 ## Covers: fleet movement, orders, ETAC colonization activity.
 
 import std/options
-import ../../types/[telemetry, core, game_state, event, squadron]
-import ../../state/interators
+import ../../types/[telemetry, core, game_state, event, squadron, ship]
+import ../../state/[iterators, engine]
 
 proc collectFleetMetrics*(
     state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
@@ -50,10 +50,14 @@ proc collectFleetMetrics*(
   # Count ETACs from squadrons
   for squadron in state.squadronsOwned(houseId):
     if not squadron.destroyed:
-      if squadron.flagship.shipClass == ShipClass.ETAC:
-        totalETACs += 1
-        # TODO: Check if ETAC has orders or is in transit
-        # This requires checking fleet orders and fleet status
+      # Lookup flagship ship to check its class
+      let flagshipOpt = state.ship(squadron.flagshipId)
+      if flagshipOpt.isSome:
+        let flagship = flagshipOpt.get()
+        if flagship.shipClass == ShipClass.ETAC:
+          totalETACs += 1
+          # TODO: Check if ETAC has orders or is in transit
+          # This requires checking fleet orders and fleet status
 
   result.totalETACs = totalETACs
   result.etacsWithoutOrders = etacsWithoutOrders

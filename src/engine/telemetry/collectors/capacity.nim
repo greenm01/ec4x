@@ -4,9 +4,9 @@
 ## Covers: squadron limits, fighter capacity, grace periods.
 
 import std/[math, options]
-import ../../types/[telemetry, core, game_state, colony, squadron, house, capacity]
-import ../../config/military_config
-import ../../state/[iterators, entity_manager]
+import ../../types/[telemetry, core, game_state, colony, squadron, house, capacity, ship]
+import ../../globals
+import ../../state/[iterators, entity_manager, engine]
 
 proc collectCapacityMetrics*(
     state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
@@ -32,8 +32,7 @@ proc collectCapacityMetrics*(
     else: 1.0
 
   # Calculate fighter capacity and violations
-  let fighterIUDivisor: int32 =
-    int32(globalMilitaryConfig.fighter_mechanics.fighter_capacity_iu_divisor)
+  let fighterIUDivisor: int32 = gameConfig.military.fighterMechanics.fighterCapacityIuDivisor
   var totalFighterCapacity: int32 = 0
   var totalFighters: int32 = 0
   var capacityViolationCount: int32 = 0
@@ -60,23 +59,25 @@ proc collectCapacityMetrics*(
   for colony in state.coloniesOwned(houseId):
     totalIU += colony.industrial.units
 
-  let squadronIUDivisor: int32 =
-    int32(globalMilitaryConfig.squadron_limits.squadron_limit_iu_divisor)
-  let squadronMinimum: int32 =
-    int32(globalMilitaryConfig.squadron_limits.squadron_limit_minimum)
+  let squadronIUDivisor: int32 = gameConfig.military.squadronLimits.squadronLimitIuDivisor
+  let squadronMinimum: int32 = gameConfig.military.squadronLimits.squadronLimitMinimum
   result.squadronLimitMax = max(squadronMinimum, (totalIU div squadronIUDivisor) * 2)
 
   # Count actual capital squadrons
   var capitalSquadrons: int32 = 0
   for squadron in state.squadronsOwned(houseId):
     if not squadron.destroyed:
-      # TODO: Use isCapitalShip() helper when available
-      if squadron.flagship.shipClass in {
-        ShipClass.Cruiser, ShipClass.LightCruiser, ShipClass.HeavyCruiser,
-        ShipClass.Battlecruiser, ShipClass.Battleship, ShipClass.Dreadnought,
-        ShipClass.SuperDreadnought, ShipClass.Carrier, ShipClass.SuperCarrier,
-      }:
-        capitalSquadrons += 1
+      # Lookup flagship ship to check if it's a capital ship
+      let flagshipOpt = state.ship(squadron.flagshipId)
+      if flagshipOpt.isSome:
+        let flagship = flagshipOpt.get()
+        # TODO: Use isCapitalShip() helper when available
+        if flagship.shipClass in [
+          ShipClass.LightCruiser, ShipClass.HeavyCruiser,
+          ShipClass.Battlecruiser, ShipClass.Battleship, ShipClass.Dreadnought,
+          ShipClass.SuperDreadnought, ShipClass.Carrier, ShipClass.SuperCarrier,
+        ]:
+          capitalSquadrons += 1
 
   result.squadronLimitUsed = capitalSquadrons
   result.squadronLimitViolation = capitalSquadrons > result.squadronLimitMax

@@ -5,7 +5,7 @@
 
 import std/options
 import ../../types/[telemetry, core, game_state, event, colony, population]
-import ../../state/interators
+import ../../state/iterators
 
 proc collectPopulationMetrics*(
     state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics

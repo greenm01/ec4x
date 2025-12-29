@@ -4,8 +4,8 @@
 ## Covers: intelligence operations, counter-intelligence, spy missions.
 
 import std/[options, math]
-import ../../types/[telemetry, core, game_state, event, squadron, house]
-import ../../state/[entity_manager, interators]
+import ../../types/[telemetry, core, game_state, event, squadron, house, ship]
+import ../../state/[entity_manager, iterators, engine]
 
 proc collectEspionageMetrics*(
     state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
@@ -28,9 +28,13 @@ proc collectEspionageMetrics*(
 
   for squadron in state.squadronsOwned(houseId):
     if not squadron.destroyed:
-      if squadron.flagship.shipClass == ShipClass.Raider:
-        hasRaiders = true
-        break
+      # Lookup flagship ship to check its class
+      let flagshipOpt = state.ship(squadron.flagshipId)
+      if flagshipOpt.isSome:
+        let flagship = flagshipOpt.get()
+        if flagship.shipClass == ShipClass.Raider:
+          hasRaiders = true
+          break
 
   result.clkResearchedNoRaiders = hasCLK and not hasRaiders
 
