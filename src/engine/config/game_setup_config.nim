@@ -1,6 +1,6 @@
 ## Game Setup Configuration Loader
 ##
-## Loads game setup parameters from game_setup/standard.kdl using nimkdl
+## Loads game setup parameters from scenarios/*.kdl using nimkdl
 ## Defines starting conditions for players (homeworld, fleet, facilities, tech)
 
 import std/[strutils, options]
@@ -11,7 +11,8 @@ import ../types/config
 
 proc parseGameParameters(node: KdlNode, ctx: var KdlConfigContext): GameParametersConfig =
   result = GameParametersConfig(
-    gameId: node.requireString("gameId", ctx),
+    scenarioName: node.requireString("scenarioName", ctx),
+    scenarioDescription: node.getString("scenarioDescription", ""),
     playerCount: node.requireInt32("playerCount", ctx),
     gameSeed: node.getInt64Opt("gameSeed"),
     theme: node.requireString("theme", ctx)

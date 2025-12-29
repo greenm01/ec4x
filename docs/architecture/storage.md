@@ -10,6 +10,7 @@ EC4X uses **SQLite** as its single source of truth for all game state. This desi
 - **Transactions**: ACID guarantees for turn resolution
 - **Performance**: Indexed queries for fast lookups
 - **Universality**: Works for both localhost and Nostr modes
+- **Event Sourcing**: GameEvents as single source of truth (~5-10MB per 100 turns)
 
 ## Database Structure
 
@@ -18,30 +19,31 @@ EC4X uses **SQLite** as its single source of truth for all game state. This desi
 **EC4X uses separate SQLite files for each game:**
 
 ```
-/var/ec4x/games/
-├── game-uuid-1/
-│   ├── ec4x.db          # Game 1's database
-│   ├── houses/
-│   └── public/
-├── game-uuid-2/
-│   ├── ec4x.db          # Game 2's database
-│   ├── houses/
-│   └── public/
-└── game-uuid-3/
-    ├── ec4x.db          # Game 3's database
-    ├── houses/
-    └── public/
+data/games/
+├── 550e8400-e29b-41d4-a716-446655440000/
+│   └── ec4x.db          # Game 1's database
+├── 7c9e6679-7425-40de-944b-e07fc1f90ae7/
+│   └── ec4x.db          # Game 2's database
+└── 123e4567-e89b-12d3-a456-426614174000/
+    └── ec4x.db          # Game 3's database
 ```
+
+**Directory naming:** UUID v4 for technical identity (e.g., `550e8400-e29b-41d4-a716-446655440000`)
+
+**Human names:** Stored in `games.name` field within database (e.g., "Alpha Test Game")
 
 **Benefits:**
 - **Isolation**: Corruption in one game doesn't affect others
-- **Scalability**: No single large file (each game ~1-10 MB)
+- **Scalability**: No single large file (each game ~5-10 MB for 100 turns with event sourcing)
 - **Portability**: Copy game directory = copy entire game
 - **Backup**: Backup individual games independently
 - **Concurrency**: No write contention across games
 - **Archival**: Easy to archive/delete completed games
+- **Scenario Templates**: Reusable game setups separate from instance identity
 
-**Daemon Discovery**: Scan directories for `ec4x.db` files to find active games.
+**Daemon Discovery**: Scan `data/games/*/ec4x.db` to find active games.
+
+**Implementation:** Database initialized by `initPerGameDatabase()` in `src/engine/init/engine.nim`
 
 ## Core Schema
 
@@ -59,7 +61,9 @@ Master table for game instances (one row per database).
 
 ```sql
 CREATE TABLE games (
-    id TEXT PRIMARY KEY,              -- UUID v4
+    id TEXT PRIMARY KEY,              -- UUID v4 (auto-generated)
+    name TEXT NOT NULL,               -- Human-readable game name
+    description TEXT,                 -- Optional admin notes
     turn INTEGER NOT NULL DEFAULT 0,
     year INTEGER NOT NULL DEFAULT 2001,
     month INTEGER NOT NULL DEFAULT 1,
@@ -67,6 +71,8 @@ CREATE TABLE games (
     turn_deadline INTEGER,            -- Unix timestamp (NULL = no deadline)
     transport_mode TEXT NOT NULL,     -- 'localhost' or 'nostr'
     transport_config TEXT,            -- JSON: mode-specific config
+    game_setup_json TEXT NOT NULL,    -- Snapshot of GameSetup (scenario config)
+    game_config_json TEXT NOT NULL,   -- Snapshot of GameConfig (balance params)
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
@@ -75,24 +81,35 @@ CREATE INDEX idx_games_phase ON games(phase);
 CREATE INDEX idx_games_deadline ON games(turn_deadline) WHERE phase = 'Active';
 ```
 
+**New fields:**
+- `name`: Human-readable identifier (default: scenario name)
+- `description`: Optional admin notes for this instance
+- `game_setup_json`: Immutable snapshot of scenario configuration at game creation
+- `game_config_json`: Immutable snapshot of balance parameters at game creation
+
+**Scenario vs Instance:** Scenarios (`scenarios/*.kdl`) are reusable templates. Each game instance gets a unique UUID and can override the scenario name.
+
 **transport_config JSON examples:**
 
-Localhost:
+**Localhost mode:**
 ```json
 {
-  "game_dir": "/var/ec4x/game-123",
+  "data_dir": "data/games/550e8400-e29b-41d4-a716-446655440000",
   "poll_interval": 30
 }
 ```
 
-Nostr:
+**Nostr mode (primary multiplayer transport):**
 ```json
 {
   "relay": "wss://relay.damus.io",
   "moderator_pubkey": "npub1...",
-  "fallback_relays": ["wss://relay.nostr.band"]
+  "fallback_relays": ["wss://relay.nostr.band"],
+  "game_event_kind": 30000
 }
 ```
+
+Both modes use the same per-game database structure. Transport mode only affects how orders and state updates are communicated between players.
 
 ### houses
 
@@ -413,11 +430,94 @@ CREATE INDEX idx_intel_colonies_colony ON intel_colonies(colony_id);
 CREATE INDEX idx_intel_colonies_staleness ON intel_colonies(game_id, intel_turn);
 ```
 
-## Nostr Cache Schema (Optional)
+## Telemetry & Events Schema
+
+### game_events
+
+Event history using event-sourcing pattern. Single source of truth for all game occurrences.
+
+```sql
+CREATE TABLE game_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id TEXT NOT NULL,
+    turn INTEGER NOT NULL,
+    event_type TEXT NOT NULL,         -- GameEventType enum (e.g., 'Battle', 'OrderCompleted')
+    house_id TEXT,                    -- Primary actor (NULL for system events)
+    fleet_id TEXT,                    -- Related fleet (NULL if not fleet-related)
+    system_id TEXT,                   -- Related system (NULL if not location-specific)
+    order_type TEXT,                  -- Order type if order-related
+    description TEXT NOT NULL,        -- Human-readable event description
+    reason TEXT,                      -- Failure reason for rejected orders
+    event_data TEXT,                  -- JSON: event-specific data
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_events_game_turn ON game_events(game_id, turn);
+CREATE INDEX idx_events_house ON game_events(house_id) WHERE house_id IS NOT NULL;
+CREATE INDEX idx_events_type ON game_events(game_id, event_type);
+```
+
+**Event Sourcing Benefits:**
+- Single source of truth for all game occurrences
+- Can reconstruct game state from events
+- Enables replay and debugging
+- Dramatically smaller than full state snapshots (~5-10MB vs 500MB per 100 turns)
+
+**Visibility:** Events respect fog-of-war. Use `shouldHouseSeeEvent()` from `src/engine/intel/event_processor/visibility.nim` to filter.
+
+### diagnostic_metrics
+
+Comprehensive per-house per-turn metrics for balance testing and AI tuning.
+
+```sql
+CREATE TABLE diagnostic_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id TEXT NOT NULL,
+    turn INTEGER NOT NULL,
+    act INTEGER NOT NULL,             -- Game chapter/phase
+    rank INTEGER NOT NULL,            -- House ranking this turn
+    house_id TEXT NOT NULL,
+
+    -- 200+ metric columns covering:
+    -- - Economy (treasury, production, population, IU/PU/PTU)
+    -- - Technology (all tech levels, research points)
+    -- - Military (ship counts by type, combat performance)
+    -- - Diplomacy (relation counts, violations)
+    -- - Espionage (mission counts, detection)
+    -- - Capacity (fighter/squadron limits, violations)
+    -- - Production (build queue depth, commissioning)
+    -- - Fleet Activity (movement, colonization, stuck fleets)
+    -- - Event Counts (order outcomes, combat events)
+    -- - Computed Ratios (force projection, fleet readiness)
+
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+    UNIQUE(game_id, turn, house_id)
+);
+
+CREATE INDEX idx_diagnostics_game_turn ON diagnostic_metrics(game_id, turn);
+CREATE INDEX idx_diagnostics_house ON diagnostic_metrics(game_id, house_id);
+CREATE INDEX idx_diagnostics_act ON diagnostic_metrics(game_id, act);
+```
+
+**Usage:**
+- Balance testing: Run 100+ games, analyze with Python + polars
+- AI tuning: Genetic algorithms optimize RBA weights
+- Regression detection: Compare metrics across code changes
+- Performance analysis: Identify outlier games
+
+**Collection:** Orchestrated by `src/engine/telemetry/orchestrator.nim`, saved via `src/engine/persistence/writer.nim`
+
+**Full schema:** See `src/engine/persistence/schema.nim` for complete 200+ column definition.
+
+## Nostr Transport Schema
+
+The game operates on both localhost and Nostr protocols. These tables enable Nostr-based multiplayer.
 
 ### nostr_events
 
-Cache of received Nostr events.
+Cache of received Nostr events for asynchronous processing.
 
 ```sql
 CREATE TABLE nostr_events (
@@ -461,6 +561,8 @@ CREATE TABLE nostr_outbox (
 CREATE INDEX idx_nostr_outbox_unsent ON nostr_outbox(sent, game_id)
     WHERE sent = 0;
 ```
+
+**Note:** Nostr tables are included in the per-game database schema. Each game tracks its own Nostr events and outbox queue, enabling proper isolation for concurrent multiplayer games.
 
 ## State Deltas Schema
 
@@ -580,25 +682,76 @@ cp /backup/ec4x_20250116.db ec4x.db
 sqlite3 ec4x.db ".dump" | grep "game-123" > game-123.sql
 ```
 
+## Persistence Layer Implementation
+
+### Writer Module (`src/engine/persistence/writer.nim`)
+
+Unified persistence layer for per-game databases. All write operations go through this module.
+
+**Core API:**
+```nim
+proc updateGameMetadata*(state: GameState)
+proc saveDiagnosticMetrics*(state: GameState, metrics: DiagnosticMetrics)
+proc saveGameEvent*(state: GameState, event: GameEvent)
+proc saveGameEvents*(state: GameState, events: seq[GameEvent])
+```
+
+**Design principles:**
+- Uses `GameState.dbPath` for per-game isolation
+- No global database management
+- Schema creation handled by `initPerGameDatabase()`
+- Batch operations use transactions for atomicity
+
+### Fog-of-War Exports (`src/engine/intel/fog_of_war_export.nim`)
+
+Generate filtered game state views for AI opponents (Claude play-testing).
+
+**API:**
+```nim
+proc exportFogOfWarView*(state: GameState, houseId: HouseId): FogOfWarView
+proc exportFogOfWarViewToJson*(state: GameState, houseId: HouseId): JsonNode
+proc saveFogOfWarViewToFile*(state: GameState, houseId: HouseId, filePath: string)
+```
+
+**Exported data:**
+- Own entities (full visibility): colonies, fleets, house data
+- Intelligence reports: known systems, fleets, colonies
+- Diplomatic relations
+- Visible events (filtered by `shouldHouseSeeEvent()`)
+
+**Use case:** Generate per-house JSON files for Claude to analyze and submit orders.
+
 ## Performance Considerations
 
 ### Index Strategy
 - Primary keys on all ID columns
-- Composite indexes on (game_id, turn) for orders/deltas
+- Composite indexes on (game_id, turn) for orders/deltas/events
 - Partial indexes for active games and unprocessed records
+- Event type index for fast event filtering
 
 ### Query Optimization
 - Use prepared statements for repeated queries
-- Batch inserts in transactions
+- Batch inserts in transactions (especially for events)
 - VACUUM periodically to reclaim space
+- Event sourcing reduces storage by 100x vs full snapshots
 
 ### Write Patterns
 - Turn resolution in single transaction
-- Batch intel updates
-- Async Nostr event caching
+- Batch event writes (200+ events per turn)
+- Diagnostic metrics written once per house per turn
+- Intel updates batch-processed after turn resolution
+
+### Storage Growth
+- **With event sourcing:** ~50-100KB per turn (typical 4-player game)
+- **100-turn game:** ~5-10 MB total
+- **1000-turn game:** ~50-100 MB total
+- **No full state snapshots** = dramatic space savings
 
 ## Related Documentation
 
 - [Architecture Overview](./overview.md)
 - [Intel System](./intel.md)
 - [Transport Layer](./transport.md)
+- Schema implementation: `src/engine/persistence/schema.nim`
+- Writer implementation: `src/engine/persistence/writer.nim`
+- Fog-of-war exports: `src/engine/intel/fog_of_war_export.nim`

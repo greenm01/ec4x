@@ -22,11 +22,11 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 └─────────────────────────────────────┘
               ↓
 ┌─────────────────────────────────────┐
-│   Storage Layer (src/storage/)      │
+│ Storage Layer (src/persistence/)    │
 │  • SQLite (one db per game)         │
-│  • Full game state                  │
+│  • Event sourcing (~5-10MB/100 turns)│
 │  • Intel/fog of war tracking        │
-│  • Event history                    │
+│  • Diagnostic telemetry (200+ metrics)│
 └─────────────────────────────────────┘
          ↙                    ↘
 ┌─────────────┐          ┌─────────────┐

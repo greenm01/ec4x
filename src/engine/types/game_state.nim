@@ -26,6 +26,10 @@ type
     seed*: int64
     turnDeadline*: int64
 
+    # Persistence
+    dbPath*: string # Path to per-game SQLite database
+    dataDir*: string # Root data directory
+
     # Map
     starMap*: StarMap
 

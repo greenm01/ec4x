@@ -12,7 +12,7 @@ let playerCount: int32 = 4
 let seed: int64 = 99999
 
 gameConfig = loadGameConfig("config")
-gameSetup = loadGameSetup("game_setup/standard.kdl")
+gameSetup = loadGameSetup("scenarios/standard.kdl")
 
 suite "Planet Names Config Tests":
   test "load planet names from config":

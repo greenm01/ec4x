@@ -15,7 +15,7 @@ proc createHomeWorld*(
     state: var GameState, systemId: SystemId, owner: HouseId
 ): ColonyId =
   ## Create a starting homeworld colony per gameplay.md:1.2
-  ## Loads configuration from game_setup/standard.kdl
+  ## Loads configuration from scenarios/*.kdl
   let homeworldCfg = gameSetup.homeworld
 
   # Parse planet class and resources from config

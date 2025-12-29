@@ -1,72 +1,50 @@
-## Database writer implementation (DoD - behavior on data)
+## Per-Game Database Writer
 ##
-## Insert operations for all database tables.
-## Follows DRY principle with factory functions for each table.
+## Unified persistence layer for per-game databases.
+## Each game has its own database at data/games/{uuid}/ec4x.db
+##
+## Architecture:
+## - Schema created by initPerGameDatabase() in init/engine.nim
+## - This module only handles INSERT operations
+## - No table creation (schema.nim owns that)
+## - Uses GameState.dbPath for database location
+##
+## DRY Principle: Single implementation for each entity type
+## DoD Principle: Pure functions operating on GameState data
 
-import std/[json, times, strformat, logging, options, strutils]
+import std/[options, strutils]
 import db_connector/db_sqlite
-import ../types/telemetry # DiagnosticMetrics
-import ../types/[game_state, event]
+import ../../common/logger
+import ../types/[telemetry, event, game_state]
 
-const ENGINE_VERSION = "0.1.0" # TODO: Get from build system
+# ============================================================================
+# Core State Writers
+# ============================================================================
 
-proc insertGame*(
-    db: DbConn,
-    seed: int64,
-    numPlayers, maxTurns, mapRings: int32,
-    strategies: seq[string],
-): int64 =
-  ## Insert game metadata (DRY - factory function)
-  ## Returns game_id
-  let strategiesJson = $(%strategies) # JSON encode array
-  db.exec(
-    sql"""
-    INSERT INTO games (
-      game_id, timestamp, num_players, max_turns,
-      actual_turns, map_rings, strategies, victor,
-      victory_type, engine_version
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  """,
-    $seed,
-    $now(),
-    $numPlayers,
-    $maxTurns,
-    "0", # Updated after game complete
-    $mapRings,
-    strategiesJson,
-    "",
-    "",
-    ENGINE_VERSION,
-  )
-  debug &"Inserted game metadata for seed {seed}"
-  return seed
+proc updateGameMetadata*(state: GameState) =
+  ## Update games table with current turn/phase info
+  ## Called after each turn resolution
+  let db = open(state.dbPath, "", "", "")
+  defer: db.close()
 
-proc updateGameResult*(
-    db: DbConn,
-    gameId: int64,
-    actualTurns: int32,
-    victor: string = "",
-    victoryType: string = "",
-) =
-  ## Update game metadata at completion
   db.exec(
     sql"""
     UPDATE games
-    SET actual_turns = ?, victor = ?, victory_type = ?
-    WHERE game_id = ?
+    SET turn = ?, phase = ?, updated_at = unixepoch()
+    WHERE id = ?
   """,
-    $actualTurns,
-    victor,
-    victoryType,
-    $gameId,
+    $state.turn,
+    $state.phase,
+    state.gameId,
   )
-  debug &"Updated game {gameId} result: {actualTurns} turns, victor={victor}"
 
-proc insertDiagnosticRow*(db: DbConn, gameId: int64, metrics: DiagnosticMetrics) =
-  ## Insert diagnostics row (DRY - mirrors csv_writer column order)
-  ## Maps DiagnosticMetrics fields to database columns
+proc saveDiagnosticMetrics*(state: GameState, metrics: DiagnosticMetrics) =
+  ## Insert diagnostic metrics row for a house this turn
+  ## Called per-house per-turn during telemetry collection
+  let db = open(state.dbPath, "", "", "")
+  defer: db.close()
 
-  # Convert boolean fields to integers (SQLite doesn't have native boolean)
+  # Convert boolean fields to integers (SQLite convention)
   let dishonoredInt = if metrics.dishonoredStatusActive: 1 else: 0
   let treasuryDeficitInt = if metrics.treasuryDeficit: 1 else: 0
   let taxPenaltyInt = if metrics.taxPenaltyActive: 1 else: 0
@@ -75,15 +53,11 @@ proc insertDiagnosticRow*(db: DbConn, gameId: int64, metrics: DiagnosticMetrics)
   let fighterViolationInt = if metrics.fighterCapacityViolation: 1 else: 0
   let squadronViolationInt = if metrics.squadronLimitViolation: 1 else: 0
   let clkNoRaidersInt = if metrics.clkResearchedNoRaiders: 1 else: 0
-  let goapEnabledInt = if metrics.goapEnabled: 1 else: 0
-
-  # Convert strategy enum to string
-  let strategyStr = $metrics.strategy
 
   db.exec(
     sql"""
-    INSERT INTO diagnostics (
-      game_id, turn, act, rank, house_id, strategy,
+    INSERT INTO diagnostic_metrics (
+      game_id, turn, act, rank, house_id,
       total_systems_on_map, treasury, production, pu_growth,
       zero_spend_turns, gco, nhv, tax_rate,
       total_iu, total_pu, total_ptu, pop_growth_rate,
@@ -150,11 +124,17 @@ proc insertDiagnosticRow*(db: DbConn, gameId: int64, metrics: DiagnosticMetrics)
       undefended_colonies, total_colonies,
       mothball_used, mothball_total,
       invalid_orders, total_orders,
-      domestikos_budget_allocated, logothete_budget_allocated,
-      drungarius_budget_allocated, eparch_budget_allocated,
+      domestikos_budget, logothete_budget, drungarius_budget, eparch_budget,
       build_orders_generated, pp_spent_construction,
       domestikos_requirements_total, domestikos_requirements_fulfilled,
       domestikos_requirements_unfulfilled, domestikos_requirements_deferred,
+      total_build_queue_depth, etac_in_construction,
+      ships_under_construction, buildings_under_construction,
+      ships_commissioned_this_turn, etac_commissioned_this_turn,
+      squadrons_commissioned_this_turn,
+      fleets_moved, systems_colonized, failed_colonization_attempts,
+      fleets_with_orders, stuck_fleets,
+      total_etacs, etacs_without_orders, etacs_in_transit,
       colonies_lost, colonies_gained,
       colonies_gained_via_colonization, colonies_gained_via_conquest,
       ships_lost, ships_gained, fighters_lost, fighters_gained,
@@ -163,57 +143,48 @@ proc insertDiagnosticRow*(db: DbConn, gameId: int64, metrics: DiagnosticMetrics)
       events_combat_total, events_bombardment, events_colony_captured,
       events_espionage_total, events_diplomatic_total,
       events_research_total, events_colony_total,
-      advisor_reasoning,
-      goap_enabled, goap_plans_active, goap_plans_completed,
-      goap_goals_extracted, goap_planning_time_ms,
-      goap_invasion_goals, goap_invasion_plans,
-      goap_actions_executed, goap_actions_failed
+      upkeep_pct_income, gco_per_pu, construction_pct_income,
+      force_projection, fleet_readiness, econ_damage_efficiency,
+      capital_ship_ratio,
+      avg_war_duration, relationship_volatility,
+      avg_colony_development, border_friction
     ) VALUES (
+      ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?,
+      ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
+      ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
+      ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?,
+      ?, ?, ?, ?,
+      ?, ?,
+      ?, ?
     )
   """,
-    $gameId,
+    state.gameId,
     $metrics.turn,
     $metrics.act,
     $metrics.rank,
-    $metrics.houseId,
-    strategyStr,
+    $metrics.houseId.uint32,
     $metrics.totalSystemsOnMap,
     $metrics.treasuryBalance,
     $metrics.productionPerTurn,
@@ -398,6 +369,21 @@ proc insertDiagnosticRow*(db: DbConn, gameId: int64, metrics: DiagnosticMetrics)
     $metrics.domestikosRequirementsFulfilled,
     $metrics.domestikosRequirementsUnfulfilled,
     $metrics.domestikosRequirementsDeferred,
+    $metrics.totalBuildQueueDepth,
+    $metrics.etacInConstruction,
+    $metrics.shipsUnderConstruction,
+    $metrics.buildingsUnderConstruction,
+    $metrics.shipsCommissionedThisTurn,
+    $metrics.etacCommissionedThisTurn,
+    $metrics.squadronsCommissionedThisTurn,
+    $metrics.fleetsMoved,
+    $metrics.systemsColonized,
+    $metrics.failedColonizationAttempts,
+    $metrics.fleetsWithOrders,
+    $metrics.stuckFleets,
+    $metrics.totalETACs,
+    $metrics.etacsWithoutOrders,
+    $metrics.etacsInTransit,
     $metrics.coloniesLost,
     $metrics.coloniesGained,
     $metrics.coloniesGainedViaColonization,
@@ -406,7 +392,7 @@ proc insertDiagnosticRow*(db: DbConn, gameId: int64, metrics: DiagnosticMetrics)
     $metrics.shipsGained,
     $metrics.fightersLost,
     $metrics.fightersGained,
-    $metrics.bilateralRelations,
+    metrics.bilateralRelations,
     $metrics.eventsOrderCompleted,
     $metrics.eventsOrderFailed,
     $metrics.eventsOrderRejected,
@@ -417,57 +403,36 @@ proc insertDiagnosticRow*(db: DbConn, gameId: int64, metrics: DiagnosticMetrics)
     $metrics.eventsDiplomaticTotal,
     $metrics.eventsResearchTotal,
     $metrics.eventsColonyTotal,
-    metrics.advisorReasoning,
-    goapEnabledInt,
-    $metrics.goapPlansActive,
-    $metrics.goapPlansCompleted,
-    $metrics.goapGoalsExtracted,
-    $metrics.goapPlanningTimeMs,
-    $metrics.goapInvasionGoals,
-    $metrics.goapInvasionPlans,
-    $metrics.goapActionsExecuted,
-    $metrics.goapActionsFailed,
+    $metrics.upkeepAsPercentageOfIncome,
+    $metrics.gcoPerPopulationUnit,
+    $metrics.constructionSpendingAsPercentageOfIncome,
+    $metrics.forceProjection,
+    $metrics.fleetReadiness,
+    $metrics.economicDamageEfficiency,
+    $metrics.capitalShipRatio,
+    $metrics.averageWarDuration,
+    $metrics.relationshipVolatility,
+    $metrics.averageColonyDevelopment,
+    $metrics.borderFriction,
   )
 
-proc insertGameEvent*(db: DbConn, gameId: int64, event: GameEvent) =
-  ## Insert game event (DRY - factory for all event types)
-  ## Maps GameEvent to flat database row
+# ============================================================================
+# Event Writers
+# ============================================================================
+
+proc saveGameEvent*(state: GameState, event: GameEvent) =
+  ## Insert game event into per-game database
+  ## Called during event processing
+  let db = open(state.dbPath, "", "", "")
+  defer: db.close()
 
   # Extract optional fields
-  let houseIdStr =
-    if event.houseId.isSome:
-      $event.houseId.get
-    else:
-      ""
-  let fleetIdStr = if event.fleetId.isSome: event.fleetId.get else: ""
-  let systemIdVal =
-    if event.systemId.isSome:
-      $event.systemId.get
-    else:
-      "0"
+  let houseIdStr = if event.houseId.isSome: $event.houseId.get().uint32 else: ""
+  let fleetIdStr = if event.fleetId.isSome: $event.fleetId.get().uint32 else: ""
+  let systemIdStr = if event.systemId.isSome: $event.systemId.get().uint32 else: ""
 
-  # orderType only exists for order-related events (case object variant)
-  let orderTypeStr =
-    case event.eventType
-    of GameEventType.OrderIssued, GameEventType.OrderCompleted,
-        GameEventType.OrderRejected, GameEventType.OrderFailed,
-        GameEventType.OrderAborted, GameEventType.FleetArrived:
-      if event.commandType.isSome: event.commandType.get else: ""
-    else:
-      ""
-
-  # reason only exists for order-related events
-  let reasonStr =
-    case event.eventType
-    of GameEventType.OrderIssued, GameEventType.OrderCompleted,
-        GameEventType.OrderRejected, GameEventType.OrderFailed,
-        GameEventType.OrderAborted, GameEventType.FleetArrived:
-      if event.reason.isSome: event.reason.get else: ""
-    else:
-      ""
-
-  # Serialize event-specific data as JSON (if needed)
-  let eventDataJson = "{}" # TODO: Implement serializeEventData()
+  # Serialize event-specific data as JSON (placeholder for now)
+  let eventDataJson = "{}"
 
   db.exec(
     sql"""
@@ -476,82 +441,54 @@ proc insertGameEvent*(db: DbConn, gameId: int64, event: GameEvent) =
       order_type, description, reason, event_data
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   """,
-    $gameId,
+    state.gameId,
     $event.turn,
     $event.eventType,
     houseIdStr,
     fleetIdStr,
-    systemIdVal,
-    orderTypeStr,
+    systemIdStr,
+    "", # orderType (extract from event if needed)
     event.description,
-    reasonStr,
+    "", # reason (extract from event if needed)
     eventDataJson,
   )
 
-proc insertFleetSnapshot*(
-    db: DbConn,
-    gameId: int64,
-    turn: int32,
-    fleetId: string,
-    houseId: string,
-    locationSystem: int32,
-    orderType: string,
-    orderTarget: int32,
-    hasArrived: bool,
-    shipsTotal, etacCount, scoutCount, combatShips, transportCount, idleTurnsCombat,
-      idleTurnsScout, idleTurnsEtac, idleTurnsTransport: int32,
-) =
-  ## Insert fleet tracking snapshot (DoD - direct field mapping)
-  ## Called per-turn for each fleet in the game
-  let arrivedInt = if hasArrived: "1" else: "0"
-  let orderTypeVal = if orderType == "": "" else: orderType
-  # 0 or negative = no target (NULL in database)
-  let orderTargetVal =
-    if orderTarget <= 0:
-      ""
-    else:
-      $orderTarget
+proc saveGameEvents*(state: GameState, events: seq[GameEvent]) =
+  ## Batch insert game events (more efficient than individual inserts)
+  ## Called after turn resolution
+  if events.len == 0:
+    return
 
-  db.exec(
-    sql"""
-    INSERT INTO fleet_tracking (
-      game_id, turn, fleet_id, house_id, location_system_id,
-      active_order_type, order_target_system_id, has_arrived,
-      ships_total, etac_count, scout_count, combat_ships,
-      troop_transport_count,
-      idle_turns_combat, idle_turns_scout, idle_turns_etac,
-      idle_turns_transport
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  """,
-    $gameId,
-    $turn,
-    fleetId,
-    houseId,
-    $locationSystem,
-    orderTypeVal,
-    orderTargetVal,
-    arrivedInt,
-    $shipsTotal,
-    $etacCount,
-    $scoutCount,
-    $combatShips,
-    $transportCount,
-    $idleTurnsCombat,
-    $idleTurnsScout,
-    $idleTurnsEtac,
-    $idleTurnsTransport,
-  )
+  let db = open(state.dbPath, "", "", "")
+  defer: db.close()
 
-proc insertGameState*(db: DbConn, gameId: int64, turn: int32, stateJson: string) =
-  ## Insert full GameState snapshot as JSON (optional)
-  ## Only used if DBConfig.enableGameStates is true
-  db.exec(
-    sql"""
-    INSERT INTO game_states (game_id, turn, state_json)
-    VALUES (?, ?, ?)
-  """,
-    $gameId,
-    $turn,
-    stateJson,
+  db.exec(sql"BEGIN TRANSACTION")
+  for event in events:
+    let houseIdStr = if event.houseId.isSome: $event.houseId.get().uint32 else: ""
+    let fleetIdStr = if event.fleetId.isSome: $event.fleetId.get().uint32 else: ""
+    let systemIdStr = if event.systemId.isSome: $event.systemId.get().uint32 else: ""
+    let eventDataJson = "{}"
+
+    db.exec(
+      sql"""
+      INSERT INTO game_events (
+        game_id, turn, event_type, house_id, fleet_id, system_id,
+        order_type, description, reason, event_data
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """,
+      state.gameId,
+      $event.turn,
+      $event.eventType,
+      houseIdStr,
+      fleetIdStr,
+      systemIdStr,
+      "",
+      event.description,
+      "",
+      eventDataJson,
+    )
+  db.exec(sql"COMMIT")
+
+  logDebug(
+    "Persistence", "Saved game events", "count=", $events.len, " turn=", $state.turn
   )
-  debug &"Inserted GameState snapshot for turn {turn}"

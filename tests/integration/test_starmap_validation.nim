@@ -26,7 +26,7 @@ proc createTestGame(playerCount: int32, numRings: uint32 = 0): (
 
   # Load game configs (required for homeworld initialization)
   gameConfig = loadGameConfig("config")
-  gameSetup = loadGameSetupConfig("game_setup/standard.kdl")
+  gameSetup = loadGameSetupConfig("scenarios/standard.kdl")
 
   # Validate player count bounds (2-12)
   if playerCount < 2 or playerCount > 12:

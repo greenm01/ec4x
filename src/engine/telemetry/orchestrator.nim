@@ -9,18 +9,13 @@ import
     combat, military, fleet, facilities, colony, production, capacity, population,
     income, tech, espionage, diplomacy, house,
   ]
-import ../persistence/telemetry_db
+import ../persistence/writer
 
 proc initDiagnosticMetrics*(
     turn: int32, houseId: HouseId, gameId: string = ""
 ): DiagnosticMetrics =
   ## Initialize empty diagnostic metrics for a house at a turn
-  # Ensure telemetry database and table exist
-  var db = openTelemetryDb()
-  defer:
-    closeTelemetryDb(db)
-  createDiagnosticMetricsTable(db)
-
+  ## Note: Database schema is created by initPerGameDatabase() in init/engine.nim
   result = DiagnosticMetrics(
     gameId: gameId,
     turn: turn,
@@ -355,10 +350,7 @@ proc collectDiagnostics*(
   metrics = collectDiplomacyMetrics(state, houseId, metrics)
   metrics = collectHouseMetrics(state, houseId, metrics)
 
-  # Save metrics to database
-  var db = openTelemetryDb()
-  defer:
-    closeTelemetryDb(db)
-  saveDiagnosticMetrics(db, metrics)
+  # Save metrics to per-game database
+  saveDiagnosticMetrics(state, metrics)
 
   return metrics

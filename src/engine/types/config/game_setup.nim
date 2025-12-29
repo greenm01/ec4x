@@ -2,7 +2,8 @@ import std/options
 
 type
   GameParametersConfig* = object ## Game metadata
-    gameId*: string
+    scenarioName*: string ## Display name for this scenario
+    scenarioDescription*: string ## Description of this scenario
     playerCount*: int32
     gameSeed*: Option[int64]
     theme*: string

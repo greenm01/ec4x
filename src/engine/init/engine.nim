@@ -3,14 +3,16 @@
 ## Main entry point for creating new games. Orchestrates house, colony,
 ## and fleet initialization with proper starmap generation.
 
-import std/[tables, monotimes, options, strutils]
+import std/[tables, monotimes, options, strutils, os, random, json, jsonutils]
+import db_connector/db_sqlite
 
 import ../../common/logger
 import ../[globals, starmap]
 import ../config/engine
 import ../state/[id_gen, entity_manager]
+import ../persistence/schema
 import ../types/[
-  core, game_state, squadron, intelligence, diplomacy,
+  core, game_state, squadron, intel, diplomacy,
   espionage, resolution, starmap, command, fleet,
   house
 ]
@@ -25,6 +27,65 @@ export globals # Export globals for external use
 
 proc initGameSeed(configSeed: Option[int64]): int64 =
   result = configSeed.get(getMonoTime().ticks)
+
+proc generateGameId(): string =
+  ## Generate a UUID v4 for game identification
+  ## Format: 8-4-4-4-12 hex digits (e.g., "550e8400-e29b-41d4-a716-446655440000")
+  randomize()
+
+  proc hexByte(): string =
+    result = toHex(rand(255), 2).toLowerAscii()
+
+  proc hexBytes(n: int): string =
+    for i in 0 ..< n:
+      result.add hexByte()
+
+  # UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+  # where y is 8, 9, A, or B
+  result = hexBytes(4) & "-" & hexBytes(2) & "-4" & hexBytes(1)[1..1] &
+           hexBytes(1) & "-" & ["8", "9", "a", "b"][rand(3)] &
+           hexBytes(1)[1..1] & hexBytes(1) & "-" & hexBytes(6)
+
+proc initPerGameDatabase(
+    gameId: string,
+    gameName: string,
+    description: string,
+    setupJson: string,
+    configJson: string,
+    dataDir: string
+): string =
+  ## Create per-game database directory and initialize schema
+  ## Returns database path
+  let (dbPath, gameDir) = defaultDBConfig(gameId, dataDir)
+
+  # Create game directory
+  createDir(gameDir)
+  logInfo("Initialization", "Created game directory: ", gameDir)
+
+  # Open database connection
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  # Create all tables
+  createAllTables(db)
+
+  # Insert game metadata with configs
+  db.exec(sql"""
+    INSERT INTO games (
+      id, name, description, turn, year, month, phase, transport_mode,
+      game_setup_json, game_config_json,
+      created_at, updated_at
+    ) VALUES (
+      ?, ?, ?, 1, 2001, 1, 'Active', 'localhost',
+      ?, ?,
+      unixepoch(), unixepoch()
+    )
+  """, gameId, gameName, description, setupJson, configJson)
+
+  logInfo("Initialization", "Initialized database: ", dbPath)
+  logInfo("Initialization", "Game: ", gameName, " (", gameId, ")")
+
+  return dbPath
 
 proc initializeHousesAndHomeworlds*(state: var GameState) =
   ## Initialize houses, homeworlds, and starting fleets for all players
@@ -106,13 +167,21 @@ proc initializeHousesAndHomeworlds*(state: var GameState) =
   )
 
 proc initGameState*(
-  setupPath: string = "game_setup/standard.kdl",
+  setupPath: string = "scenarios/standard.kdl",
+  gameName: string = "",
+  gameDescription: string = "",
   configDir: string = "config",
   dataDir: string = "data"
 ): GameState =
   ## Create a new game - SINGLE ENTRY POINT
   ## All game parameters loaded from config files
-  ## No CLI overrides - ensures reproducibility from config alone
+  ##
+  ## Args:
+  ##   setupPath: Path to scenario KDL file (default: scenarios/standard.kdl)
+  ##   gameName: Human-readable game name (default: use scenarioName from config)
+  ##   gameDescription: Optional game description for admin notes
+  ##   configDir: Directory containing config/*.kdl files
+  ##   dataDir: Root directory for per-game databases
 
   # Load configs
   gameConfig = loadGameConfig(configDir)
@@ -122,8 +191,17 @@ proc initGameState*(
   var params = gameSetup.gameParameters
   var seed = params.gameSeed.get(initGameSeed(none(int64)))
   var playerCount = params.playerCount
-  var gameId = params.gameId
   var numRings = gameSetup.mapGeneration.numRings
+
+  # Generate UUID for game
+  var gameId = generateGameId()
+
+  # Use provided name or fall back to scenario name
+  var finalGameName = if gameName != "": gameName else: params.scenarioName
+  var finalGameDescription = if gameDescription != "":
+    gameDescription
+  else:
+    params.scenarioDescription
 
   # Validate map configuration (absolute bounds: 2-12 rings)
   if numRings < 2 or numRings > 12:
@@ -146,11 +224,24 @@ proc initGameState*(
     numRings, " rings, seed ", seed
   )
 
+  # Serialize configs to JSON for database storage
+  let setupJson = $toJson(gameSetup)
+  let configJson = $toJson(gameConfig)
+
+  # Initialize per-game database
+  let dbPath = initPerGameDatabase(
+    gameId, finalGameName, finalGameDescription,
+    setupJson, configJson,
+    dataDir
+  )
+
   # Initialize empty GameState
   result = GameState(
     gameId: gameId,
     seed: seed,
     turn: 1,
+    dbPath: dbPath,
+    dataDir: dataDir,
     counters: IdCounters(
       nextHouseId: 1,
       nextSystemId: 1,

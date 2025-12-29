@@ -7,9 +7,20 @@ export game_state.GameState
 export command.CommandPacket
 
 # Game lifecycle
-proc newGame*(): GameState =
+proc newGame*(
+  scenarioPath: string = "scenarios/standard.kdl",
+  gameName: string = "",
+  gameDescription: string = "",
+  dataDir: string = "data"
+): GameState =
   ## Initialize a new game
-  result = initGameState()
+  ##
+  ## Args:
+  ##   scenarioPath: Path to scenario KDL file (default: scenarios/standard.kdl)
+  ##   gameName: Human-readable game name (default: use scenarioName from config)
+  ##   gameDescription: Optional game description for admin notes
+  ##   dataDir: Root directory for per-game databases
+  result = initGameState(scenarioPath, gameName, gameDescription, "config", dataDir)
 
 #[
 proc loadGame*(gameId: int32): GameState =

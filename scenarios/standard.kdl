@@ -2,10 +2,11 @@
 // This is the canonical game setup matching docs/specs/gameplay.md Section 1.2
 //
 // Moderators can create custom scenarios by copying this file and adjusting values.
-// The game engine loads: config/*.kdl (balance/mechanics) + game_setup/*.kdl (scenario)
+// The game engine loads: config/*.kdl (balance/mechanics) + scenarios/*.kdl (scenario)
 
 gameParameters {
-    gameId "Standard 4-Player"
+    scenarioName "Standard 4-Player"
+    scenarioDescription "Classic balanced 4-player start with standard resources"
     playerCount 4
     theme "dune"                    // Themes defined in game configs
     //gameSeed 99999                // Set a custom seed for reproducible game states

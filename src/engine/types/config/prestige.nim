@@ -1,6 +1,6 @@
 type
   VictoryConfig* = object
-    ## Victory config (prestige_victory removed - now in game_setup/*.kdl)
+    ## Victory config (prestige_victory removed - now in scenarios/*.kdl)
     startingPrestige*: int32
     defeatThreshold*: int32
     defeatConsecutiveTurns*: int32
