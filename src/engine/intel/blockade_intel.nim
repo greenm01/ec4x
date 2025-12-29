@@ -1,120 +1,136 @@
 ## Blockade Intelligence Reporting
 ##
 ## Generates intelligence reports when blockades are established or lifted
-## Both blockaders and defenders receive detailed reports
+## Both blockaders and defenders receive the same reports
+##
+## **Architecture Role:** Business logic (like @systems modules)
+## - Reads from @state using safe accessors
+## - Writes using Table read-modify-write pattern
 
-import std/[tables, options, strformat]
-import types as intel_types
-import ../gamestate
+import std/[strformat, tables, options]
+import ../state/engine as state_helpers
+import ../types/[core, game_state, intel]
+import ../globals  # For gameConfig to get GCO reduction %
 
 proc generateBlockadeEstablishedIntel*(
     state: var GameState,
     systemId: SystemId,
-    defendingHouse: HouseId,
-    blockadingHouses: seq[HouseId],
-    turn: int,
+    blockadingFleetIds: seq[FleetId],
+    turn: int32,
 ) =
   ## Generate intelligence reports when a blockade is established
-  ## Both defenders and blockaders receive reports
+  ## Both defenders and blockaders receive the same report
+  ##
+  ## The colony under blockade detects this automatically - no fleet/starbase required
 
-  # Defender's report (colony is being blockaded)
-  var blockadersList = ""
-  for i, houseId in blockadingHouses:
-    if i > 0:
-      blockadersList &= ", "
-    blockadersList &= $houseId
+  # Look up colony to get defending house
+  # ColonyId and SystemId are same value (colony is identified by its system)
+  let colonyId = ColonyId(systemId)
+  let colonyOpt = state_helpers.colony(state, colonyId)
+  if colonyOpt.isNone:
+    return # No colony at this system
 
-  let defenderReport = intel_types.ScoutEncounterReport(
-    reportId: &"{defendingHouse}-blockade-established-{turn}-{systemId}",
-    scoutId: "starbase-sensors", # Detected by starbase/colony sensors
+  let colony = colonyOpt.get()
+  let defendingHouse = colony.owner
+
+  # Look up blockading fleets to get house IDs
+  var blockadingHouses: seq[HouseId] = @[]
+  for fleetId in blockadingFleetIds:
+    let fleetOpt = state_helpers.fleet(state, fleetId)
+    if fleetOpt.isSome:
+      let fleet = fleetOpt.get()
+      if fleet.houseId notin blockadingHouses:
+        blockadingHouses.add(fleet.houseId)
+
+  if blockadingHouses.len == 0:
+    return # No valid blockading fleets
+
+  # Get GCO reduction percentage from config
+  # blockadePenalty = 0.4 means operates at 40% → 60% reduction
+  let blockadePenalty = gameConfig.economy.productionModifiers.blockadePenalty
+  let gcoReduction = int32((1.0 - blockadePenalty) * 100)
+
+  # Create blockade report (same for defender and all blockaders)
+  let report = BlockadeReport(
+    reportId: &"blockade-{systemId}-{turn}",
     turn: turn,
     systemId: systemId,
-    encounterType: intel_types.ScoutEncounterType.Blockade,
-    observedHouses: blockadingHouses,
-    fleetDetails: @[], # Future enhancement: Could add fleet composition if scouted
-    colonyDetails: none(intel_types.ColonyIntelReport),
-    fleetMovements: @[],
-    description:
-      &"BLOCKADE ESTABLISHED: System {systemId} is under blockade by {blockadersList}. GCO reduced by 60%.",
-    significance: 9, # Blockade is critical threat
+    colonyId: colonyId,
+    status: BlockadeStatus.Established,
+    blockadingHouses: blockadingHouses,
+    blockadingFleetIds: blockadingFleetIds,
+    gcoReduction: gcoReduction,
   )
 
-  # CRITICAL: Get, modify, write back to persist
-  var defenderHouse = state.houses[defendingHouse]
-  defenderHouse.intelligence.addScoutEncounter(defenderReport)
-  state.houses[defendingHouse] = defenderHouse
+  # Add report to defender's intelligence database
+  if state.intelligence.contains(defendingHouse):
+    var intel = state.intelligence[defendingHouse]
+    intel.blockadeReports.add(report)
+    state.intelligence[defendingHouse] = intel
 
-  # Blockaders' reports (they know they established the blockade)
-  for blockader in blockadingHouses:
-    let blockaderReport = intel_types.ScoutEncounterReport(
-      reportId: &"{blockader}-blockade-success-{turn}-{systemId}",
-      scoutId: "fleet-commander",
-      turn: turn,
-      systemId: systemId,
-      encounterType: intel_types.ScoutEncounterType.Blockade,
-      observedHouses: @[defendingHouse],
-      fleetDetails: @[],
-      colonyDetails: none(intel_types.ColonyIntelReport),
-      fleetMovements: @[],
-      description:
-        &"Blockade established at {systemId} against {defendingHouse}. Target economy disrupted (60% GCO reduction).",
-      significance: 8,
-    )
-
-    # CRITICAL: Get, modify, write back to persist
-    var blockaderHouse = state.houses[blockader]
-    blockaderHouse.intelligence.addScoutEncounter(blockaderReport)
-    state.houses[blockader] = blockaderHouse
+  # Add same report to each blockader's intelligence database
+  for house in blockadingHouses:
+    if state.intelligence.contains(house):
+      var intel = state.intelligence[house]
+      intel.blockadeReports.add(report)
+      state.intelligence[house] = intel
 
 proc generateBlockadeLiftedIntel*(
     state: var GameState,
     systemId: SystemId,
-    defendingHouse: HouseId,
-    previousBlockaders: seq[HouseId],
-    turn: int,
+    previousBlockadingFleetIds: seq[FleetId],
+    turn: int32,
 ) =
   ## Generate intelligence reports when a blockade is lifted
-  ## Both defenders and former blockaders receive reports
+  ## Both defenders and former blockaders receive the same report
+  ##
+  ## The colony detects when blockade is lifted automatically
 
-  # Defender's report (blockade has been lifted)
-  let defenderReport = intel_types.ScoutEncounterReport(
-    reportId: &"{defendingHouse}-blockade-lifted-{turn}-{systemId}",
-    scoutId: "starbase-sensors",
+  # Look up colony to get defending house
+  # ColonyId and SystemId are same value (colony is identified by its system)
+  let colonyId = ColonyId(systemId)
+  let colonyOpt = state_helpers.colony(state, colonyId)
+  if colonyOpt.isNone:
+    return # No colony at this system
+
+  let colony = colonyOpt.get()
+  let defendingHouse = colony.owner
+
+  # Look up previous blockading fleets to get house IDs
+  var previousBlockaders: seq[HouseId] = @[]
+  for fleetId in previousBlockadingFleetIds:
+    let fleetOpt = state_helpers.fleet(state, fleetId)
+    if fleetOpt.isSome:
+      let fleet = fleetOpt.get()
+      if fleet.houseId notin previousBlockaders:
+        previousBlockaders.add(fleet.houseId)
+
+  # Get GCO reduction percentage from config (0 when lifted, but record original)
+  # blockadePenalty = 0.4 means operates at 40% → 60% reduction
+  let blockadePenalty = gameConfig.economy.productionModifiers.blockadePenalty
+  let gcoReduction = int32((1.0 - blockadePenalty) * 100)
+
+  # Create blockade lifted report (same for defender and all former blockaders)
+  let report = BlockadeReport(
+    reportId: &"blockade-{systemId}-{turn}",
     turn: turn,
     systemId: systemId,
-    encounterType: intel_types.ScoutEncounterType.Blockade,
-    observedHouses: previousBlockaders,
-    fleetDetails: @[],
-    colonyDetails: none(intel_types.ColonyIntelReport),
-    fleetMovements: @[],
-    description:
-      &"BLOCKADE LIFTED: System {systemId} is no longer under blockade. Economy restored to normal operation.",
-    significance: 7, # Important but less urgent than establishment
+    colonyId: colonyId,
+    status: BlockadeStatus.Lifted,
+    blockadingHouses: previousBlockaders,
+    blockadingFleetIds: previousBlockadingFleetIds,
+    gcoReduction: gcoReduction,
   )
 
-  # CRITICAL: Get, modify, write back to persist
-  var defenderHouse = state.houses[defendingHouse]
-  defenderHouse.intelligence.addScoutEncounter(defenderReport)
-  state.houses[defendingHouse] = defenderHouse
+  # Add report to defender's intelligence database
+  if state.intelligence.contains(defendingHouse):
+    var intel = state.intelligence[defendingHouse]
+    intel.blockadeReports.add(report)
+    state.intelligence[defendingHouse] = intel
 
-  # Former blockaders' reports (their blockade was broken/withdrawn)
-  for blockader in previousBlockaders:
-    let blockaderReport = intel_types.ScoutEncounterReport(
-      reportId: &"{blockader}-blockade-ended-{turn}-{systemId}",
-      scoutId: "fleet-commander",
-      turn: turn,
-      systemId: systemId,
-      encounterType: intel_types.ScoutEncounterType.Blockade,
-      observedHouses: @[defendingHouse],
-      fleetDetails: @[],
-      colonyDetails: none(intel_types.ColonyIntelReport),
-      fleetMovements: @[],
-      description:
-        &"Blockade at {systemId} has ended. Target {defendingHouse} economy no longer disrupted.",
-      significance: 6,
-    )
-
-    # CRITICAL: Get, modify, write back to persist
-    var blockaderHouse = state.houses[blockader]
-    blockaderHouse.intelligence.addScoutEncounter(blockaderReport)
-    state.houses[blockader] = blockaderHouse
+  # Add same report to each former blockader's intelligence database
+  for house in previousBlockaders:
+    if state.intelligence.contains(house):
+      var intel = state.intelligence[house]
+      intel.blockadeReports.add(report)
+      state.intelligence[house] = intel

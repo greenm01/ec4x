@@ -8,9 +8,9 @@
 ## - Global RNG versions now just wrap parameterized versions
 ## - Reduced from 357 lines → 259 lines (27% reduction)
 
-import std/[math, random, sequtils, options, strutils]
-import ../types/[squadron, ship]
-import ../config/espionage_config
+import std/[math, random, sequtils, options]
+import ../types/[core, game_state, squadron, ship]
+import ../state/engine as state_helpers
 
 export Option
 
@@ -57,11 +57,9 @@ proc applyDominantTechPenalty*(weightedAvg: int, eliLevels: seq[int]): int =
 proc calculateEffectiveELI*(eliLevels: seq[int], isStarbase: bool = false): int =
   ## Calculate final effective ELI level for detection
   ## Combines weighted average and dominant tech penalty
-  ## Starbases get +2 bonus against spy scouts
+  ## Starbases get +2 bonus against spy scouts (per assets.md:2.4.2)
   if eliLevels.len == 0:
     return 0
-
-  let cfg = globalEspionageConfig.scout_detection
 
   # Step 1: Weighted average
   let weightedAvg = calculateWeightedAverageELI(eliLevels)
@@ -69,11 +67,11 @@ proc calculateEffectiveELI*(eliLevels: seq[int], isStarbase: bool = false): int 
   # Step 2: Dominant tech penalty
   let afterPenalty = applyDominantTechPenalty(weightedAvg, eliLevels)
 
-  # Step 3: Starbase bonus (only against spy scouts)
-  let starbaseBonus = if isStarbase: cfg.starbase_eli_bonus else: 0
+  # Step 3: Starbase bonus (only against spy scouts) - hardcoded game rule
+  let starbaseBonus = if isStarbase: 2 else: 0
 
-  # Final ELI (capped at max level)
-  result = min(cfg.max_eli_level, afterPenalty + starbaseBonus)
+  # Final ELI (capped at max level 5)
+  result = min(5, afterPenalty + starbaseBonus)
 
 ## Spy Scout Detection
 
@@ -133,10 +131,29 @@ proc detectRaider*(
 
 ## Fleet ELI Capability Check
 
-proc hasELICapability*(squadrons: seq[Squadron]): bool =
+proc hasELICapability*(state: GameState, squadronIds: seq[SquadronId]): bool =
   ## Check if fleet has any ELI-capable units (scouts)
-  for squadron in squadrons:
-    for ship in squadron.allShips():
-      if ship.stats.specialCapability.startsWith("ELI"):
+  ## Uses safe accessors to look up squadron and ship entities
+  for squadronId in squadronIds:
+    let squadronOpt = state_helpers.squadrons(state, squadronId)
+    if squadronOpt.isNone:
+      continue
+
+    let squadron = squadronOpt.get()
+
+    # Check flagship
+    let flagshipOpt = state_helpers.ship(state, squadron.flagshipId)
+    if flagshipOpt.isSome:
+      let flagship = flagshipOpt.get()
+      if flagship.shipClass == ShipClass.Scout:
         return true
+
+    # Check other ships in squadron
+    for shipId in squadron.ships:
+      let shipOpt = state_helpers.ship(state, shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        if ship.shipClass == ShipClass.Scout:
+          return true
+
   return false

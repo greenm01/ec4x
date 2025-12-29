@@ -4,12 +4,10 @@
 ## Per diplomacy.md:8.2 and intel.md specifications
 
 import std/[tables, options, strformat]
-import types as intel_types
-import ../gamestate
-import ../espionage/types as esp_types
+import ../types/[core, game_state, intel, espionage]
 
 proc generateEspionageIntelligence*(
-    state: var GameState, result: esp_types.EspionageResult, turn: int
+    state: var GameState, result: EspionageResult, turn: int32
 ) =
   ## Generate intelligence reports for espionage operations
   ## Both attacker and target receive reports (if detected)
@@ -24,59 +22,61 @@ proc generateEspionageIntelligence*(
 
   let actionName =
     case result.action
-    of esp_types.EspionageAction.TechTheft: "Tech Theft"
-    of esp_types.EspionageAction.SabotageLow: "Low-Impact Sabotage"
-    of esp_types.EspionageAction.SabotageHigh: "High-Impact Sabotage"
-    of esp_types.EspionageAction.Assassination: "Assassination"
-    of esp_types.EspionageAction.CyberAttack: "Cyber Attack"
-    of esp_types.EspionageAction.EconomicManipulation: "Economic Manipulation"
-    of esp_types.EspionageAction.PsyopsCampaign: "Psyops Campaign"
-    of esp_types.EspionageAction.CounterIntelSweep: "Counter-Intelligence Sweep"
-    of esp_types.EspionageAction.IntelligenceTheft: "Intelligence Theft"
-    of esp_types.EspionageAction.PlantDisinformation: "Plant Disinformation"
+    of EspionageAction.TechTheft: "Tech Theft"
+    of EspionageAction.SabotageLow: "Low-Impact Sabotage"
+    of EspionageAction.SabotageHigh: "High-Impact Sabotage"
+    of EspionageAction.Assassination: "Assassination"
+    of EspionageAction.CyberAttack: "Cyber Attack"
+    of EspionageAction.EconomicManipulation: "Economic Manipulation"
+    of EspionageAction.PsyopsCampaign: "Psyops Campaign"
+    of EspionageAction.CounterIntelSweep: "Counter-Intelligence Sweep"
+    of EspionageAction.IntelligenceTheft: "Intelligence Theft"
+    of EspionageAction.PlantDisinformation: "Plant Disinformation"
 
   if result.success:
     # Successful espionage - attacker receives intelligence on success
     let attackerDescription =
       case result.action
-      of esp_types.EspionageAction.TechTheft:
+      of EspionageAction.TechTheft:
         &"ESPIONAGE SUCCESS: Tech theft from {result.target} - stole {result.srpStolen} SRP"
-      of esp_types.EspionageAction.SabotageLow, esp_types.EspionageAction.SabotageHigh:
+      of EspionageAction.SabotageLow, EspionageAction.SabotageHigh:
         &"ESPIONAGE SUCCESS: Sabotage of {result.target} - destroyed {result.iuDamage} IU"
-      of esp_types.EspionageAction.Assassination:
+      of EspionageAction.Assassination:
         &"ESPIONAGE SUCCESS: Assassination in {result.target} - key figure eliminated, -50% SRP gain for 1 turn"
-      of esp_types.EspionageAction.CyberAttack:
+      of EspionageAction.CyberAttack:
         &"ESPIONAGE SUCCESS: Cyber attack on {result.target} starbase - systems crippled"
-      of esp_types.EspionageAction.EconomicManipulation:
+      of EspionageAction.EconomicManipulation:
         &"ESPIONAGE SUCCESS: Economic manipulation of {result.target} - halved NCV for 1 turn"
-      of esp_types.EspionageAction.PsyopsCampaign:
+      of EspionageAction.PsyopsCampaign:
         &"ESPIONAGE SUCCESS: Psyops campaign against {result.target} - -25% tax revenue for 1 turn"
-      of esp_types.EspionageAction.CounterIntelSweep:
+      of EspionageAction.CounterIntelSweep:
         &"COUNTER-INTEL SUCCESS: Intelligence secured - enemy intel gathering blocked for 1 turn"
-      of esp_types.EspionageAction.IntelligenceTheft:
+      of EspionageAction.IntelligenceTheft:
         &"ESPIONAGE SUCCESS: Intelligence theft from {result.target} - entire database stolen"
-      of esp_types.EspionageAction.PlantDisinformation:
+      of EspionageAction.PlantDisinformation:
         &"ESPIONAGE SUCCESS: Disinformation planted in {result.target}'s intelligence - corruption lasts 2 turns"
 
-    let attackerReport = intel_types.ScoutEncounterReport(
+    let significance: int32 = 8 # Successful espionage is highly significant
+
+    let attackerReport = ScoutEncounterReport(
       reportId: &"{result.attacker}-espionage-success-{turn}-{result.target}",
-      scoutId: "intelligence-operative",
+      fleetId: FleetId(0), # Intelligence operative, not fleet-specific
       turn: turn,
-      systemId: 0.SystemId, # Not system-specific (except sabotage/cyber)
-      encounterType: intel_types.ScoutEncounterType.DiplomaticActivity,
-        # Covert operations
+      systemId: SystemId(0), # Not system-specific (except sabotage/cyber)
+      encounterType: ScoutEncounterType.DiplomaticActivity, # Covert operations
       observedHouses: @[result.target],
-      fleetDetails: @[],
-      colonyDetails: none(intel_types.ColonyIntelReport),
+      observedFleetIds: @[],
+      colonyId: none(ColonyId),
       fleetMovements: @[],
       description: attackerDescription,
-      significance: 8, # Successful espionage is highly significant
+      significance: significance,
     )
 
-    # CRITICAL: Get, modify, write back to persist
-    var attackerHouse = state.houses[result.attacker]
-    attackerHouse.intelligence.addScoutEncounter(attackerReport)
-    state.houses[result.attacker] = attackerHouse
+    # Write to intelligence database (Table read-modify-write)
+    if state.intelligence.contains(result.attacker):
+      var intel = state.intelligence[result.attacker]
+      intel.scoutEncounters.add(attackerReport)
+      state.intelligence[result.attacker] = intel
 
     # If NOT detected, target remains unaware (no intelligence report)
     # This is intentional - undetected espionage is covert
@@ -91,23 +91,25 @@ proc generateEspionageIntelligence*(
         # Detected and failed (common)
         &"ESPIONAGE DETECTED: {result.attacker} attempted {actionName} against your house. Operation thwarted by counter-intelligence."
 
-    let targetReport = intel_types.ScoutEncounterReport(
+    let targetSignificance: int32 = if result.success: 9 else: 7
+      # Higher if they succeeded despite detection
+
+    let targetReport = ScoutEncounterReport(
       reportId: &"{result.target}-espionage-detected-{turn}-{result.attacker}",
-      scoutId: "counter-intelligence",
+      fleetId: FleetId(0), # Counter-intelligence, not fleet-specific
       turn: turn,
-      systemId: 0.SystemId,
-      encounterType: intel_types.ScoutEncounterType.DiplomaticActivity,
+      systemId: SystemId(0),
+      encounterType: ScoutEncounterType.DiplomaticActivity,
       observedHouses: @[result.attacker],
-      fleetDetails: @[],
-      colonyDetails: none(intel_types.ColonyIntelReport),
+      observedFleetIds: @[],
+      colonyId: none(ColonyId),
       fleetMovements: @[],
       description: targetDescription,
-      significance: if result.success: 9 else: 7,
-        # Higher if they succeeded despite detection
+      significance: targetSignificance,
     )
 
     # Add to espionage activity log (per intel.md:types.nim EspionageActivityReport)
-    let activityReport = intel_types.EspionageActivityReport(
+    let activityReport = EspionageActivityReport(
       turn: turn,
       perpetrator: result.attacker,
       action: actionName,
@@ -121,30 +123,34 @@ proc generateEspionageIntelligence*(
           &"{result.attacker} failed {actionName} attempt (detected and blocked)",
     )
 
-    # CRITICAL: Get target house once, add both reports, write back to persist
-    var targetHouse = state.houses[result.target]
-    targetHouse.intelligence.addScoutEncounter(targetReport)
-    targetHouse.intelligence.addEspionageActivity(activityReport)
-    state.houses[result.target] = targetHouse
+    # Write to intelligence database (Table read-modify-write)
+    if state.intelligence.contains(result.target):
+      var intel = state.intelligence[result.target]
+      intel.scoutEncounters.add(targetReport)
+      intel.espionageActivity.add(activityReport)
+      state.intelligence[result.target] = intel
 
     # If espionage was detected, attacker also knows they were detected
     if not result.success:
-      let attackerFailureReport = intel_types.ScoutEncounterReport(
+      let failureSignificance: int32 = 6 # Failed espionage is moderately significant (prestige loss)
+
+      let attackerFailureReport = ScoutEncounterReport(
         reportId: &"{result.attacker}-espionage-failed-{turn}-{result.target}",
-        scoutId: "intelligence-operative",
+        fleetId: FleetId(0), # Intelligence operative, not fleet-specific
         turn: turn,
-        systemId: 0.SystemId,
-        encounterType: intel_types.ScoutEncounterType.DiplomaticActivity,
+        systemId: SystemId(0),
+        encounterType: ScoutEncounterType.DiplomaticActivity,
         observedHouses: @[result.target],
-        fleetDetails: @[],
-        colonyDetails: none(intel_types.ColonyIntelReport),
+        observedFleetIds: @[],
+        colonyId: none(ColonyId),
         fleetMovements: @[],
         description:
           &"ESPIONAGE FAILED: {actionName} against {result.target} was detected and blocked by counter-intelligence.",
-        significance: 6, # Failed espionage is moderately significant (prestige loss)
+        significance: failureSignificance,
       )
 
-      # CRITICAL: Get, modify, write back to persist
-      var attackerHouse = state.houses[result.attacker]
-      attackerHouse.intelligence.addScoutEncounter(attackerFailureReport)
-      state.houses[result.attacker] = attackerHouse
+      # Write to intelligence database (Table read-modify-write)
+      if state.intelligence.contains(result.attacker):
+        var intel = state.intelligence[result.attacker]
+        intel.scoutEncounters.add(attackerFailureReport)
+        state.intelligence[result.attacker] = intel

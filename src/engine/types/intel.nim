@@ -28,24 +28,42 @@ type
     Visual
     Scan
     Spy
-    Perfect
 
   ColonyIntelReport* = object
-    colonyId*: ColonyId # Use ColonyId, not SystemId
+    ## Ground/planetary intelligence + colony construction pipeline
+    ## Gathered from SpyOnPlanet mission
+    colonyId*: ColonyId
     targetOwner*: HouseId
     gatheredTurn*: int32
     quality*: IntelQuality
     population*: int32
-    industry*: int32
-    defenses*: int32
-    starbaseLevel*: int32
-    constructionQueue*: seq[string]
-    grossOutput*: Option[int32]
-    taxRevenue*: Option[int32]
-    unassignedSquadronCount*: int32
-    reserveFleetCount*: int32
-    mothballedFleetCount*: int32
-    shipyardCount*: int32
+    infrastructure*: int32 # Infrastructure level (0-10)
+    spaceportCount*: int32 # Ground-to-orbit facilities (colony pipeline)
+    armyCount*: int32 # Ground armies (colony pipeline)
+    marineCount*: int32 # Marine units (colony pipeline)
+    groundBatteryCount*: int32 # Planetary defense batteries (colony pipeline)
+    planetaryShieldLevel*: int32 # Planetary shield strength (colony pipeline)
+    colonyConstructionQueue*: seq[ConstructionProjectId] # Colony construction projects (Spy quality)
+    spaceportDockQueue*: seq[ConstructionProjectId] # Ships being built at spaceport docks (Spy quality)
+    grossOutput*: Option[int32] # Economic data (Spy quality)
+    taxRevenue*: Option[int32] # Economic data (Spy quality)
+
+  OrbitalIntelReport* = object
+    ## Orbital/space intelligence (assets deployed in orbit)
+    ## Gathered from approach/orbital missions
+    ## Note: Fighters built via colony pipeline but deployed as orbital assets
+    colonyId*: ColonyId
+    targetOwner*: HouseId
+    gatheredTurn*: int32
+    quality*: IntelQuality
+    starbaseCount*: int32 # Orbital stations
+    shipyardCount*: int32 # Orbital construction (dock pipeline)
+    drydockCount*: int32 # Orbital repair/refit (dock pipeline)
+    reserveFleetCount*: int32 # Fleets in reserve status at this system
+    mothballedFleetCount*: int32 # Fleets in mothballed status at this system
+    guardFleetIds*: seq[FleetId] # Fleets with Guard orders for this colony
+    blockadeFleetIds*: seq[FleetId] # Fleets with Blockade orders for this colony
+    fighterSquadronIds*: seq[SquadronId] # Fighter squadrons stationed at colony
 
   FleetIntel* = object
     fleetId*: FleetId
@@ -68,6 +86,13 @@ type
     gatheredTurn*: int32
     quality*: IntelQuality
     detectedFleetIds*: seq[FleetId] # Store IDs, lookup details from FleetIntel
+
+  SystemIntelPackage* = object
+    ## Complete intelligence package from system surveillance
+    ## Includes the system report plus detailed fleet/squadron intel
+    report*: SystemIntelReport
+    fleetIntel*: seq[tuple[fleetId: FleetId, intel: FleetIntel]]
+    squadronIntel*: seq[tuple[squadronId: SquadronId, intel: SquadronIntel]]
 
   StarbaseIntelReport* = object
     starbaseId*: StarbaseId # Use typed ID
@@ -136,6 +161,20 @@ type
     retreatedEnemies*: seq[FleetId]
     survived*: bool
 
+  BlockadeStatus* {.pure.} = enum
+    Established
+    Lifted
+
+  BlockadeReport* = object
+    reportId*: string
+    turn*: int32
+    systemId*: SystemId
+    colonyId*: ColonyId
+    status*: BlockadeStatus
+    blockadingHouses*: seq[HouseId]
+    blockadingFleetIds*: seq[FleetId]
+    gcoReduction*: int32 # Actual percentage from config (e.g., 60)
+
   ScoutEncounterType* {.pure.} = enum
     FleetSighting
     ColonyDiscovered
@@ -169,7 +208,7 @@ type
 
   ScoutEncounterReport* = object
     reportId*: string
-    scoutFleetId*: FleetId
+    fleetId*: FleetId
     turn*: int32
     systemId*: SystemId
     encounterType*: ScoutEncounterType
@@ -226,10 +265,14 @@ type
   IntelligenceDatabase* = object
     houseId*: HouseId # Back-reference
     colonyReports*: Table[ColonyId, ColonyIntelReport]
+    orbitalReports*: Table[ColonyId, OrbitalIntelReport]
     systemReports*: Table[SystemId, SystemIntelReport]
     starbaseReports*: Table[StarbaseId, StarbaseIntelReport]
+    fleetIntel*: Table[FleetId, FleetIntel] # Detailed fleet intelligence
+    squadronIntel*: Table[SquadronId, SquadronIntel] # Detailed squadron intelligence
     espionageActivity*: seq[EspionageActivityReport]
     combatReports*: seq[CombatEncounterReport]
+    blockadeReports*: seq[BlockadeReport]
     scoutEncounters*: seq[ScoutEncounterReport]
     fleetMovementHistory*: Table[FleetId, FleetMovementHistory]
     constructionActivity*: Table[ColonyId, ConstructionActivityReport]

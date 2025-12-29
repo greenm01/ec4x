@@ -9,7 +9,7 @@ import ./entity_manager
 import
   ../types/[
     core, game_state, fleet, ship, squadron, ground_unit, house, colony, facilities,
-    production, intelligence, starmap, population,
+    production, intel, starmap, population,
   ]
 
 proc house*(state: GameState, id: HouseId): Option[House] =

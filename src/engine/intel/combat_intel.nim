@@ -2,118 +2,76 @@
 ##
 ## Generates detailed intelligence reports from combat encounters
 ## Includes pre-combat composition and post-combat outcomes
+##
+## **Architecture Role:** Business logic (like @systems modules)
+## - Reads from @state using safe accessors
+## - Writes using Table read-modify-write pattern
 
 import std/[tables, options, sequtils, strformat]
-import types as intel_types
 import ../../common/logger
-import ../gamestate, ../fleet, ../squadron
+import ../state/engine as state_helpers
+import ../types/[core, game_state, intel, fleet, squadron]
 
 proc createFleetComposition*(
     state: GameState, fleet: Fleet, fleetId: FleetId
-): intel_types.CombatFleetComposition =
-  ## Create detailed fleet composition intel from combat encounter
-  ## This captures squadron composition and standing commands
+): CombatFleetComposition =
+  ## Create fleet composition intel from combat encounter
+  ## Stores squadron IDs, not full details (lookup separately via FleetIntel)
 
-  var squadronDetails: seq[intel_types.SquadronIntel] = @[]
+  # Collect squadron IDs
+  var squadronIds: seq[SquadronId] = fleet.squadrons
+  var spaceLiftSquadronIds: seq[SquadronId] = @[]
 
-  # Capture all squadrons in fleet
-  for squadron in fleet.squadrons:
-    let squadIntel = intel_types.SquadronIntel(
-      squadronId: squadron.id,
-      shipClass: $squadron.flagship.shipClass,
-      shipCount: 1 + squadron.ships.len, # Flagship + escorts
-      techLevel: squadron.flagship.stats.techLevel,
-      hullIntegrity:
-        if squadron.flagship.isCrippled:
-          some(50)
-        else:
-          some(100),
-    )
-    squadronDetails.add(squadIntel)
+  # Track space-lift capable squadrons separately
+  for squadronId in fleet.squadrons:
+    let squadronOpt = state_helpers.squadrons(state, squadronId)
+    if squadronOpt.isSome:
+      let squadron = squadronOpt.get()
+      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+        spaceLiftSquadronIds.add(squadronId)
 
   # Get fleet's standing commands (if any)
-  var orderIntel: Option[intel_types.FleetOrderIntel] =
-    none(intel_types.FleetOrderIntel)
-  if fleetId in state.fleetCommands:
-    let command = state.fleetCommands[fleetId]
+  var orderIntel: Option[FleetOrderIntel] = none(FleetOrderIntel)
+  if fleet.command.isSome:
+    let command = fleet.command.get()
     orderIntel = some(
-      intel_types.FleetOrderIntel(
-        orderType: $command.commandType, targetSystem: command.targetSystem
+      FleetOrderIntel(
+        orderType: $command.commandType,
+        targetSystem: command.targetSystem
       )
     )
 
-  # Capture Expansion/Auxiliary squadron cargo details (CRITICAL for invasion threat assessment)
-  var spaceLiftIntel: seq[intel_types.SpaceLiftCargoIntel] = @[]
-  for squadron in fleet.squadrons:
-    if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
-      let cargo = squadron.flagship.cargo
-      let cargoQty =
-        if cargo.isSome:
-          cargo.get().quantity
-        else:
-          0
-      let cargoTypeStr =
-        if cargoQty == 0:
-          "Empty"
-        else:
-          $cargo.get().cargoType
-
-      spaceLiftIntel.add(
-        intel_types.SpaceLiftCargoIntel(
-          shipClass: $squadron.flagship.shipClass,
-          cargoType: cargoTypeStr,
-          quantity: cargoQty,
-          isCrippled: squadron.flagship.isCrippled,
-        )
-      )
-
-  result = intel_types.CombatFleetComposition(
+  result = CombatFleetComposition(
     fleetId: fleetId,
-    owner: fleet.owner,
+    owner: fleet.houseId,
     standingOrders: orderIntel,
-    squadrons: squadronDetails,
-    spaceLiftShips: spaceLiftIntel,
-      # Note: field name unchanged (refers to transport squadrons)
-    isCloaked: fleet.isCloaked(),
+    squadronIds: squadronIds,
+    spaceLiftSquadronIds: spaceLiftSquadronIds,
+    isCloaked: false, # TODO: Implement cloaking detection logic
   )
 
 proc generatePreCombatReport*(
     state: GameState,
     systemId: SystemId,
-    phase: intel_types.CombatPhase,
+    phase: CombatPhase,
     reportingHouse: HouseId,
     alliedFleets: seq[FleetId],
     enemyFleets: seq[FleetId],
-): intel_types.CombatEncounterReport =
+): CombatEncounterReport =
   ## Generate pre-combat intelligence report
   ## Called when combat is about to begin - captures initial force composition
 
-  var alliedCompositions: seq[intel_types.CombatFleetComposition] = @[]
-  var enemyCompositions: seq[intel_types.CombatFleetComposition] = @[]
-
-  # Gather allied fleet compositions
-  for fleetId in alliedFleets:
-    if fleetId in state.fleets:
-      let fleet = state.fleets[fleetId]
-      alliedCompositions.add(createFleetComposition(state, fleet, fleetId))
-
-  # Gather enemy fleet compositions (detailed intel from combat encounter)
-  for fleetId in enemyFleets:
-    if fleetId in state.fleets:
-      let fleet = state.fleets[fleetId]
-      enemyCompositions.add(createFleetComposition(state, fleet, fleetId))
-
   let reportId = &"{reportingHouse}-combat-{state.turn}-{systemId}"
 
-  result = intel_types.CombatEncounterReport(
+  result = CombatEncounterReport(
     reportId: reportId,
     turn: state.turn,
     systemId: systemId,
     phase: phase,
     reportingHouse: reportingHouse,
-    alliedForces: alliedCompositions,
-    enemyForces: enemyCompositions,
-    outcome: intel_types.CombatOutcome.Ongoing,
+    alliedFleetIds: alliedFleets,
+    enemyFleetIds: enemyFleets,
+    outcome: CombatOutcome.Ongoing,
     alliedLosses: @[],
     enemyLosses: @[],
     retreatedAllies: @[],
@@ -122,9 +80,9 @@ proc generatePreCombatReport*(
   )
 
 proc updateCombatReportOutcome*(
-    report: var intel_types.CombatEncounterReport,
-    outcome: intel_types.CombatOutcome,
-    alliedLosses: seq[string],
+    report: var CombatEncounterReport,
+    outcome: CombatOutcome,
+    alliedLosses: seq[SquadronId],
     enemyLosses: seq[string],
     retreatedAllies: seq[FleetId],
     retreatedEnemies: seq[FleetId],
@@ -142,7 +100,7 @@ proc updateCombatReportOutcome*(
 proc updatePostCombatIntelligence*(
     state: var GameState,
     systemId: SystemId,
-    phase: intel_types.CombatPhase,
+    phase: CombatPhase,
     fleetsBeforeCombat: seq[(FleetId, Fleet)],
     fleetsAfterCombat: Table[FleetId, Fleet],
     retreatedHouses: seq[HouseId],
@@ -156,16 +114,22 @@ proc updatePostCombatIntelligence*(
   var houseFleetsBefore: Table[HouseId, seq[FleetId]] =
     initTable[HouseId, seq[FleetId]]()
   for (fleetId, fleet) in fleetsBeforeCombat:
-    if fleet.owner notin houseFleetsBefore:
-      houseFleetsBefore[fleet.owner] = @[]
-    houseFleetsBefore[fleet.owner].add(fleetId)
+    if fleet.houseId notin houseFleetsBefore:
+      houseFleetsBefore[fleet.houseId] = @[]
+    houseFleetsBefore[fleet.houseId].add(fleetId)
 
   # Update each house's latest combat report
   for houseId in houseFleetsBefore.keys:
+    # Get intelligence database (Table read-modify-write)
+    if not state.intelligence.contains(houseId):
+      continue # No intelligence database for this house
+
+    var intel = state.intelligence[houseId]
+
     # Find most recent combat report for this system/phase
     var reportIdx = -1
-    for i in countdown(state.houses[houseId].intelligence.combatReports.len - 1, 0):
-      let report = state.houses[houseId].intelligence.combatReports[i]
+    for i in countdown(intel.combatReports.len - 1, 0):
+      let report = intel.combatReports[i]
       if report.systemId == systemId and report.phase == phase:
         reportIdx = i
         break
@@ -173,29 +137,29 @@ proc updatePostCombatIntelligence*(
     if reportIdx < 0:
       continue # No report found (shouldn't happen)
 
-    var report = state.houses[houseId].intelligence.combatReports[reportIdx]
+    var report = intel.combatReports[reportIdx]
 
     # Determine outcome from this house's perspective
     let survived = houseId notin retreatedHouses
-    var outcome = intel_types.CombatOutcome.Ongoing
+    var outcome = CombatOutcome.Ongoing
 
     if victorHouse.isSome:
       if victorHouse.get() == houseId:
-        outcome = intel_types.CombatOutcome.Victory
+        outcome = CombatOutcome.Victory
       else:
         if houseId in retreatedHouses:
-          outcome = intel_types.CombatOutcome.Retreat
+          outcome = CombatOutcome.Retreat
         else:
-          outcome = intel_types.CombatOutcome.Defeat
+          outcome = CombatOutcome.Defeat
     elif houseId in retreatedHouses:
       # Check if all houses retreated
       if retreatedHouses.len == houseFleetsBefore.len:
-        outcome = intel_types.CombatOutcome.MutualRetreat
+        outcome = CombatOutcome.MutualRetreat
       else:
-        outcome = intel_types.CombatOutcome.Retreat
+        outcome = CombatOutcome.Retreat
 
-    # Calculate losses (squadrons that didn't survive)
-    var alliedLosses: seq[string] = @[]
+    # Calculate losses (SquadronIds for allies, ship classes for enemies)
+    var alliedLosses: seq[SquadronId] = @[]
     var enemyLosses: seq[string] = @[]
 
     for (fleetId, fleetBefore) in fleetsBeforeCombat:
@@ -207,18 +171,24 @@ proc updatePostCombatIntelligence*(
 
       let lossCount = squadronsBefore - squadronsAfter
       if lossCount > 0:
-        # Record losses as ship class names
-        for i in 0 ..< lossCount:
-          let lostShipClass =
-            if i < fleetBefore.squadrons.len:
-              $fleetBefore.squadrons[i].flagship.shipClass
-            else:
-              "Unknown"
-
-          if fleetBefore.owner == houseId:
-            alliedLosses.add(lostShipClass)
+        # Record losses - assume first squadrons in list were destroyed
+        for i in 0 ..< min(lossCount, fleetBefore.squadrons.len):
+          let lostSquadronId = fleetBefore.squadrons[i]
+          if fleetBefore.houseId == houseId:
+            # Allied loss: store squadron ID
+            alliedLosses.add(lostSquadronId)
           else:
-            enemyLosses.add(lostShipClass)
+            # Enemy loss: lookup squadron for ship class name
+            let squadronOpt = state_helpers.squadrons(state, lostSquadronId)
+            if squadronOpt.isSome:
+              let squadron = squadronOpt.get()
+              let shipOpt = state_helpers.ship(state, squadron.flagshipId)
+              if shipOpt.isSome:
+                enemyLosses.add($shipOpt.get().shipClass)
+              else:
+                enemyLosses.add("Unknown")
+            else:
+              enemyLosses.add("Unknown")
 
     # Determine which fleets retreated
     var retreatedAllies: seq[FleetId] = @[]
@@ -241,8 +211,9 @@ proc updatePostCombatIntelligence*(
     report.retreatedEnemies = retreatedEnemies
     report.survived = survived
 
-    # Save updated report
-    state.houses[houseId].intelligence.combatReports[reportIdx] = report
+    # Write back updated intelligence (Table mutation)
+    intel.combatReports[reportIdx] = report
+    state.intelligence[houseId] = intel
 
 proc generateBlitzIntelligence*(
     state: var GameState,
@@ -274,41 +245,42 @@ proc generateBlitzIntelligence*(
 
   # Get post-blitz colony state for asset reporting
   var assetInfo: seq[string] = @[]
-  if systemId in state.colonies:
-    let colony = state.colonies[systemId]
+  let colonyOpt = state_helpers.colony(state, ColonyId(systemId))
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
     if blitzSuccess:
       # Successful blitz - emphasize ALL assets seized INTACT
       assetInfo.add("--- Assets Seized INTACT ---")
       assetInfo.add(&"Infrastructure: {colony.infrastructure} levels (NO DAMAGE)")
       assetInfo.add(&"Industrial: {colony.industrial.units} IU (NO DAMAGE)")
       assetInfo.add(&"Population: {colony.population} PU")
-      assetInfo.add(&"Garrison: {colony.marines} Marines")
+      assetInfo.add(&"Garrison: {colony.marineIds.len} Marines")
       if colony.planetaryShieldLevel > 0:
         assetInfo.add(&"Shields: SLD{colony.planetaryShieldLevel} (INTACT)")
-      if colony.groundBatteries > 0:
-        assetInfo.add(&"Ground Batteries: {colony.groundBatteries} (INTACT)")
-      if colony.spaceports.len > 0:
-        assetInfo.add(&"Spaceports: {colony.spaceports.len} (INTACT)")
+      if colony.groundBatteryIds.len > 0:
+        assetInfo.add(&"Ground Batteries: {colony.groundBatteryIds.len} (INTACT)")
+      if colony.spaceportIds.len > 0:
+        assetInfo.add(&"Spaceports: {colony.spaceportIds.len} (INTACT)")
     else:
       # Failed blitz - defender shows surviving assets
       assetInfo.add("--- Surviving Assets ---")
       assetInfo.add(&"Infrastructure: {colony.infrastructure} levels")
       assetInfo.add(&"Industrial: {colony.industrial.units} IU")
       assetInfo.add(&"Population: {colony.population} PU")
-      assetInfo.add(&"Defense: {colony.armies} Armies, {colony.marines} Marines")
+      assetInfo.add(&"Defense: {colony.armyIds.len} Armies, {colony.marineIds.len} Marines")
       if batteriesDestroyed > 0:
         assetInfo.add(
-          &"Ground Batteries: {colony.groundBatteries} ({batteriesDestroyed} destroyed in bombardment)"
+          &"Ground Batteries: {colony.groundBatteryIds.len} ({batteriesDestroyed} destroyed in bombardment)"
         )
       else:
-        assetInfo.add(&"Ground Batteries: {colony.groundBatteries}")
+        assetInfo.add(&"Ground Batteries: {colony.groundBatteryIds.len}")
 
   # Attacker's blitz report
   let attackerOutcome =
     if blitzSuccess:
-      intel_types.CombatOutcome.Victory
+      CombatOutcome.Victory
     else:
-      intel_types.CombatOutcome.Defeat
+      CombatOutcome.Defeat
 
   var attackerInfo: seq[string] = @[]
   attackerInfo.add((0 ..< attackerCasualties).mapIt("Marine"))
@@ -316,16 +288,16 @@ proc generateBlitzIntelligence*(
     attackerInfo.add("Blitz successful - all assets seized intact")
   attackerInfo.add(assetInfo)
 
-  let attackerReport = intel_types.CombatEncounterReport(
+  let attackerReport = CombatEncounterReport(
     reportId: &"{attackingHouse}-blitz-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: intel_types.CombatPhase.Planetary,
+    phase: CombatPhase.Planetary,
     reportingHouse: attackingHouse,
-    alliedForces: @[], # Ground forces, not fleets
-    enemyForces: @[],
+    alliedFleetIds: @[], # Ground forces, not fleets
+    enemyFleetIds: @[],
     outcome: attackerOutcome,
-    alliedLosses: attackerInfo,
+    alliedLosses: @[], # No squadron losses in ground combat
     enemyLosses:
       (0 ..< defenderCasualties).mapIt(if it < defendingArmies: "Army" else: "Marine"),
     retreatedAllies: @[],
@@ -333,17 +305,18 @@ proc generateBlitzIntelligence*(
     survived: true, # Blitz fleet survives
   )
 
-  # CRITICAL: Get, modify, write back to persist
-  var attackerHouse = state.houses[attackingHouse]
-  attackerHouse.intelligence.addCombatReport(attackerReport)
-  state.houses[attackingHouse] = attackerHouse
+  # Write to intelligence database (Table read-modify-write)
+  if state.intelligence.contains(attackingHouse):
+    var intel = state.intelligence[attackingHouse]
+    intel.combatReports.add(attackerReport)
+    state.intelligence[attackingHouse] = intel
 
   # Defender's blitz report (mirror perspective)
   let defenderOutcome =
     if blitzSuccess:
-      intel_types.CombatOutcome.Defeat
+      CombatOutcome.Defeat
     else:
-      intel_types.CombatOutcome.Victory
+      CombatOutcome.Victory
 
   var defenderInfo: seq[string] = @[]
   defenderInfo.add(
@@ -355,26 +328,27 @@ proc generateBlitzIntelligence*(
     defenderInfo.add("Blitz repelled - all attacking marines destroyed")
   defenderInfo.add(assetInfo)
 
-  let defenderReport = intel_types.CombatEncounterReport(
+  let defenderReport = CombatEncounterReport(
     reportId: &"{defendingHouse}-defense-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: intel_types.CombatPhase.Planetary,
+    phase: CombatPhase.Planetary,
     reportingHouse: defendingHouse,
-    alliedForces: @[],
-    enemyForces: @[],
+    alliedFleetIds: @[],
+    enemyFleetIds: @[],
     outcome: defenderOutcome,
-    alliedLosses: defenderInfo,
+    alliedLosses: @[], # No squadron losses in ground combat
     enemyLosses: (0 ..< attackerCasualties).mapIt("Marine"),
     retreatedAllies: @[],
     retreatedEnemies: @[],
     survived: true, # Defending colony survives (may change hands)
   )
 
-  # CRITICAL: Get, modify, write back to persist
-  var defenderHouse = state.houses[defendingHouse]
-  defenderHouse.intelligence.addCombatReport(defenderReport)
-  state.houses[defendingHouse] = defenderHouse
+  # Write to intelligence database (Table read-modify-write)
+  if state.intelligence.contains(defendingHouse):
+    var intel = state.intelligence[defendingHouse]
+    intel.combatReports.add(defenderReport)
+    state.intelligence[defendingHouse] = intel
 
 proc generateInvasionIntelligence*(
     state: var GameState,
@@ -404,8 +378,9 @@ proc generateInvasionIntelligence*(
 
   # Get post-invasion colony state for asset reporting
   var assetInfo: seq[string] = @[]
-  if systemId in state.colonies:
-    let colony = state.colonies[systemId]
+  let colonyOpt = state_helpers.colony(state, ColonyId(systemId))
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
     if invasionSuccess:
       # Successful invasion - show captured assets
       assetInfo.add("--- Assets Seized ---")
@@ -414,7 +389,7 @@ proc generateInvasionIntelligence*(
         &"Industrial: {colony.industrial.units} IU ({industrialUnitsDestroyed} IU destroyed)"
       )
       assetInfo.add(&"Population: {colony.population} PU")
-      assetInfo.add(&"Garrison: {colony.marines} Marines")
+      assetInfo.add(&"Garrison: {colony.marineIds.len} Marines")
       if colony.planetaryShieldLevel > 0:
         assetInfo.add(&"Shields: SLD{colony.planetaryShieldLevel}")
     else:
@@ -423,15 +398,15 @@ proc generateInvasionIntelligence*(
       assetInfo.add(&"Infrastructure: {colony.infrastructure} levels")
       assetInfo.add(&"Industrial: {colony.industrial.units} IU")
       assetInfo.add(&"Population: {colony.population} PU")
-      assetInfo.add(&"Defense: {colony.armies} Armies, {colony.marines} Marines")
-      assetInfo.add(&"Ground Batteries: {colony.groundBatteries}")
+      assetInfo.add(&"Defense: {colony.armyIds.len} Armies, {colony.marineIds.len} Marines")
+      assetInfo.add(&"Ground Batteries: {colony.groundBatteryIds.len}")
 
   # Attacker's invasion report
   let attackerOutcome =
     if invasionSuccess:
-      intel_types.CombatOutcome.Victory
+      CombatOutcome.Victory
     else:
-      intel_types.CombatOutcome.Defeat
+      CombatOutcome.Defeat
 
   var attackerInfo: seq[string] = @[]
   attackerInfo.add((0 ..< attackerCasualties).mapIt("Marine"))
@@ -439,16 +414,16 @@ proc generateInvasionIntelligence*(
     attackerInfo.add(&"{industrialUnitsDestroyed} IU destroyed in fighting")
   attackerInfo.add(assetInfo)
 
-  let attackerReport = intel_types.CombatEncounterReport(
+  let attackerReport = CombatEncounterReport(
     reportId: &"{attackingHouse}-invasion-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: intel_types.CombatPhase.Planetary,
+    phase: CombatPhase.Planetary,
     reportingHouse: attackingHouse,
-    alliedForces: @[], # Ground forces, not fleets
-    enemyForces: @[],
+    alliedFleetIds: @[], # Ground forces, not fleets
+    enemyFleetIds: @[],
     outcome: attackerOutcome,
-    alliedLosses: attackerInfo,
+    alliedLosses: @[], # No squadron losses in ground combat
     enemyLosses:
       (0 ..< defenderCasualties).mapIt(if it < defendingArmies: "Army" else: "Marine"),
     retreatedAllies: @[],
@@ -456,17 +431,18 @@ proc generateInvasionIntelligence*(
     survived: true, # Invading fleet survives (marines may not)
   )
 
-  # CRITICAL: Get, modify, write back to persist
-  var attackerHouse = state.houses[attackingHouse]
-  attackerHouse.intelligence.addCombatReport(attackerReport)
-  state.houses[attackingHouse] = attackerHouse
+  # Write to intelligence database (Table read-modify-write)
+  if state.intelligence.contains(attackingHouse):
+    var intel = state.intelligence[attackingHouse]
+    intel.combatReports.add(attackerReport)
+    state.intelligence[attackingHouse] = intel
 
   # Defender's invasion report (mirror perspective)
   let defenderOutcome =
     if invasionSuccess:
-      intel_types.CombatOutcome.Defeat
+      CombatOutcome.Defeat
     else:
-      intel_types.CombatOutcome.Victory
+      CombatOutcome.Victory
 
   var defenderInfo: seq[string] = @[]
   defenderInfo.add(
@@ -478,26 +454,27 @@ proc generateInvasionIntelligence*(
     defenderInfo.add("Shields and spaceports destroyed")
   defenderInfo.add(assetInfo)
 
-  let defenderReport = intel_types.CombatEncounterReport(
+  let defenderReport = CombatEncounterReport(
     reportId: &"{defendingHouse}-defense-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: intel_types.CombatPhase.Planetary,
+    phase: CombatPhase.Planetary,
     reportingHouse: defendingHouse,
-    alliedForces: @[],
-    enemyForces: @[],
+    alliedFleetIds: @[],
+    enemyFleetIds: @[],
     outcome: defenderOutcome,
-    alliedLosses: defenderInfo,
+    alliedLosses: @[], # No squadron losses in ground combat
     enemyLosses: (0 ..< attackerCasualties).mapIt("Marine"),
     retreatedAllies: @[],
     retreatedEnemies: @[],
     survived: not invasionSuccess, # Defender survives if repelled invasion
   )
 
-  # CRITICAL: Get, modify, write back to persist
-  var defenderHouse = state.houses[defendingHouse]
-  defenderHouse.intelligence.addCombatReport(defenderReport)
-  state.houses[defendingHouse] = defenderHouse
+  # Write to intelligence database (Table read-modify-write)
+  if state.intelligence.contains(defendingHouse):
+    var intel = state.intelligence[defendingHouse]
+    intel.combatReports.add(defenderReport)
+    state.intelligence[defendingHouse] = intel
 
 proc generateBombardmentIntelligence*(
     state: var GameState,
@@ -525,22 +502,15 @@ proc generateBombardmentIntelligence*(
 
   let turn = state.turn
 
-  # Get attacking fleet composition for intel
-  var attackingFleetComposition: seq[intel_types.CombatFleetComposition] = @[]
-  if attackingFleetId in state.fleets:
-    let fleet = state.fleets[attackingFleetId]
-    attackingFleetComposition.add(
-      createFleetComposition(state, fleet, attackingFleetId)
-    )
-
   # Get post-bombardment colony state for surviving assets intel
   var survivingAssets: seq[string] = @[]
-  if systemId in state.colonies:
-    let colony = state.colonies[systemId]
+  let colonyOpt = state_helpers.colony(state, ColonyId(systemId))
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
     survivingAssets.add(&"Infrastructure: {colony.infrastructure} levels")
     survivingAssets.add(&"Industrial: {colony.industrial.units} IU")
     survivingAssets.add(&"Population: {colony.population} PU")
-    survivingAssets.add(&"Ground Batteries: {colony.groundBatteries}")
+    survivingAssets.add(&"Ground Batteries: {colony.groundBatteryIds.len}")
     if colony.planetaryShieldLevel > 0:
       survivingAssets.add(&"Shields: SLD{colony.planetaryShieldLevel}")
 
@@ -555,27 +525,28 @@ proc generateBombardmentIntelligence*(
     ]
   attackerEnemyLosses.add(survivingAssets)
 
-  let attackerReport = intel_types.CombatEncounterReport(
+  let attackerReport = CombatEncounterReport(
     reportId: &"{attackingHouse}-bombardment-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: intel_types.CombatPhase.Orbital,
+    phase: CombatPhase.Orbital,
     reportingHouse: attackingHouse,
-    alliedForces: attackingFleetComposition,
-    enemyForces: @[], # Can't see ground defenses from orbit (except what's destroyed)
-    outcome: intel_types.CombatOutcome.Victory,
+    alliedFleetIds: @[attackingFleetId],
+    enemyFleetIds: @[], # Can't see ground defenses from orbit
+    outcome: CombatOutcome.Victory,
       # Bombardment always "succeeds" if executed
-    alliedLosses: @[], # Bombardment doesn't lose ships
+    alliedLosses: @[], # Bombardment doesn't lose squadrons
     enemyLosses: attackerEnemyLosses,
     retreatedAllies: @[],
     retreatedEnemies: @[],
     survived: true,
   )
 
-  # CRITICAL: Get, modify, write back to persist
-  var attackerHouse = state.houses[attackingHouse]
-  attackerHouse.intelligence.addCombatReport(attackerReport)
-  state.houses[attackingHouse] = attackerHouse
+  # Write to intelligence database (Table read-modify-write)
+  if state.intelligence.contains(attackingHouse):
+    var intel = state.intelligence[attackingHouse]
+    intel.combatReports.add(attackerReport)
+    state.intelligence[attackingHouse] = intel
 
   # Defender's bombardment report (knows they're being bombarded)
   var defenderAlliedLosses =
@@ -588,26 +559,27 @@ proc generateBombardmentIntelligence*(
     ]
   defenderAlliedLosses.add(survivingAssets)
 
-  let defenderReport = intel_types.CombatEncounterReport(
+  let defenderReport = CombatEncounterReport(
     reportId: &"{defendingHouse}-bombardment-defense-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: intel_types.CombatPhase.Orbital,
+    phase: CombatPhase.Orbital,
     reportingHouse: defendingHouse,
-    alliedForces: @[], # Ground forces (no fleet composition for defenders)
-    enemyForces: attackingFleetComposition, # Defender can see attacking fleet
-    outcome: intel_types.CombatOutcome.Defeat, # Being bombarded
-    alliedLosses: defenderAlliedLosses,
+    alliedFleetIds: @[], # Ground forces (no fleet composition for defenders)
+    enemyFleetIds: @[attackingFleetId], # Defender can see attacking fleet
+    outcome: CombatOutcome.Defeat, # Being bombarded
+    alliedLosses: @[], # No squadron losses in bombardment
     enemyLosses: @[], # Bombardment doesn't damage attacking fleet
     retreatedAllies: @[],
     retreatedEnemies: @[],
     survived: infrastructureDamaged < 100, # Colony survives unless completely destroyed
   )
 
-  # CRITICAL: Get, modify, write back to persist
-  var defenderHouse = state.houses[defendingHouse]
-  defenderHouse.intelligence.addCombatReport(defenderReport)
-  state.houses[defendingHouse] = defenderHouse
+  # Write to intelligence database (Table read-modify-write)
+  if state.intelligence.contains(defendingHouse):
+    var intel = state.intelligence[defendingHouse]
+    intel.combatReports.add(defenderReport)
+    state.intelligence[defendingHouse] = intel
 
   # THREAT ASSESSMENT: If transport squadrons detected, invasion is imminent
   if spaceLiftShipsInvolved > 0:
