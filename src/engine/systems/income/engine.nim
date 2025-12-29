@@ -7,7 +7,7 @@
 ## Infrastructure damage from combat affects production
 
 import std/[tables, options]
-import ./[income, maintenance]
+import ./[income, maintenance, multipliers]
 import ../facilities/queue as facility_queue
 import ../capacity/carrier_hangar # For carrier hangar capacity enforcement
 import
@@ -18,6 +18,7 @@ import ../../state/[state_helpers, iterators]
 export income_types.IncomePhaseReport, income_types.HouseIncomeReport
 export colony.ColonyIncomeReport
 export production.MaintenanceReport, production.CompletedProject
+export multipliers  # Export economic multipliers (popGrowthMultiplier, etc.)
 # NOTE: Don't export game_state.Colony to avoid ambiguity
 
 ## Income Phase Resolution (gameplay.md:1.3.2)

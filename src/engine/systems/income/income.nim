@@ -13,7 +13,7 @@ import std/[math, strformat, logging]
 import ../../types/[game_state, colony, income, production as production_types]
 import ../../prestige/events as prestige_events
 import ../../config/economy_config
-import ../../globals
+import ./multipliers
 import ../production/engine as production_engine
 
 export colony.ColonyIncomeReport
