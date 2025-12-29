@@ -11,7 +11,7 @@ type
     Frigate
     Destroyer
     LightCruiser
-    HeavyCruiser
+    Cruiser
     Battlecruiser
     Battleship
     Dreadnought
@@ -72,7 +72,7 @@ const ShipClassRoles*: array[ShipClass, ShipRole] = [
   Frigate: ShipRole.Escort,
   Destroyer: ShipRole.Escort,
   LightCruiser: ShipRole.Capital,
-  HeavyCruiser: ShipRole.Capital,
+  Cruiser: ShipRole.Capital,
   Battlecruiser: ShipRole.Capital,
   Battleship: ShipRole.Capital,
   Dreadnought: ShipRole.Capital,

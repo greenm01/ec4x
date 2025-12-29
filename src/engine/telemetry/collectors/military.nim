@@ -29,9 +29,8 @@ proc collectMilitaryMetrics*(
   var scoutShips = 0i32
   var raiderShips = 0i32
   var destroyerShips = 0i32
-  var cruiserShips = 0i32
   var lightCruiserShips = 0i32
-  var heavyCruiserShips = 0i32
+  var cruiserShips = 0i32
   var battlecruiserShips = 0i32
   var battleshipShips = 0i32
   var dreadnoughtShips = 0i32
@@ -74,8 +73,8 @@ proc collectMilitaryMetrics*(
           destroyerShips += 1
         of ShipClass.LightCruiser:
           lightCruiserShips += 1
-        of ShipClass.HeavyCruiser:
-          heavyCruiserShips += 1
+        of ShipClass.Cruiser:
+          cruiserShips += 1
         of ShipClass.Battlecruiser:
           battlecruiserShips += 1
         of ShipClass.Battleship:
@@ -107,9 +106,8 @@ proc collectMilitaryMetrics*(
   result.scoutShips = scoutShips
   result.raiderShips = raiderShips
   result.destroyerShips = destroyerShips
-  result.cruiserShips = cruiserShips
   result.lightCruiserShips = lightCruiserShips
-  result.heavyCruiserShips = heavyCruiserShips
+  result.cruiserShips = cruiserShips
   result.battlecruiserShips = battlecruiserShips
   result.battleshipShips = battleshipShips
   result.dreadnoughtShips = dreadnoughtShips
@@ -123,7 +121,7 @@ proc collectMilitaryMetrics*(
   # Calculate total ships (18 ship classes, starbases are facilities)
   result.totalShips =
     fighterShips + corvetteShips + frigateShips + scoutShips + raiderShips +
-    destroyerShips + cruiserShips + lightCruiserShips + heavyCruiserShips +
+    destroyerShips + lightCruiserShips + cruiserShips +
     battlecruiserShips + battleshipShips + dreadnoughtShips + superDreadnoughtShips +
     carrierShips + superCarrierShips + etacShips + troopTransportShips +
     planetBreakerShips

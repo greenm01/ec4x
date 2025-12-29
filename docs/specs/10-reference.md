@@ -30,7 +30,7 @@ Flagship-capable ships that lead squadrons. Subject to both capital squadron lim
 
 | Class | Name              | CST | PC  | MC  | AS | DS | CC | CR | CL |
 |:-----:| ----------------- |:---:|:---:|:---:|:--:|:--:|:--:|:--:|:--:|
-| CA    | Heavy Cruiser     | 2   | 80  | 5%  | 12 | 13 | 3  | 7  | —  |
+| CA    | Cruiser           | 2   | 80  | 5%  | 12 | 13 | 3  | 7  | —  |
 | BC    | Battle Cruiser    | 3   | 100 | 5%  | 16 | 18 | 3  | 8  | —  |
 | BB    | Battleship        | 4   | 150 | 5%  | 20 | 25 | 3  | 10 | —  |
 | DN    | Dreadnought       | 5   | 200 | 5%  | 28 | 30 | 4  | 12 | —  |

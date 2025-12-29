@@ -20,7 +20,7 @@ type
     frigate*: ShipStatsConfig
     destroyer*: ShipStatsConfig
     lightCruiser*: ShipStatsConfig
-    heavyCruiser*: ShipStatsConfig
+    cruiser*: ShipStatsConfig
     battlecruiser*: ShipStatsConfig
     battleship*: ShipStatsConfig
     dreadnought*: ShipStatsConfig

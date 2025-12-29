@@ -163,9 +163,8 @@ type
     scoutShips*: int32 # SC Scout
     raiderShips*: int32 # RR Raider
     destroyerShips*: int32 # DD Destroyer
-    cruiserShips*: int32 # Cruiser (generic)
     lightCruiserShips*: int32 # CL Light Cruiser
-    heavyCruiserShips*: int32 # CA Heavy Cruiser
+    cruiserShips*: int32 # CA Cruiser
     battlecruiserShips*: int32 # BC Battle Cruiser
     battleshipShips*: int32 # BB Battleship
     dreadnoughtShips*: int32 # DN Dreadnought

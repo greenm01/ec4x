@@ -73,7 +73,7 @@ proc collectCapacityMetrics*(
         let flagship = flagshipOpt.get()
         # TODO: Use isCapitalShip() helper when available
         if flagship.shipClass in [
-          ShipClass.LightCruiser, ShipClass.HeavyCruiser,
+          ShipClass.LightCruiser, ShipClass.Cruiser,
           ShipClass.Battlecruiser, ShipClass.Battleship, ShipClass.Dreadnought,
           ShipClass.SuperDreadnought, ShipClass.Carrier, ShipClass.SuperCarrier,
         ]:

@@ -46,7 +46,7 @@ proc loadShipsConfig*(configPath: string): ShipsConfig =
   parseShip("frigate", frigate)
   parseShip("destroyer", destroyer)
   parseShip("lightCruiser", lightCruiser)
-  parseShip("heavyCruiser", heavyCruiser)
+  parseShip("cruiser", cruiser)
   parseShip("battlecruiser", battlecruiser)
   parseShip("battleship", battleship)
   parseShip("dreadnought", dreadnought)

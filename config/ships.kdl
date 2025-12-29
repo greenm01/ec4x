@@ -76,7 +76,7 @@ lightCruiser {
 // CAPITAL SHIPS
 // ============================================================================
 
-heavyCruiser {
+cruiser {
     description "Heavy guns, strong armor, backbone of battle lines"
     minCST 2
     productionCost 80

@@ -47,9 +47,8 @@ proc getShipConfigStats(shipClass: ShipClass): ShipStatsConfig =
   of ShipClass.Scout: cfg.scout
   of ShipClass.Raider: cfg.raider
   of ShipClass.Destroyer: cfg.destroyer
+  of ShipClass.LightCruiser: cfg.lightCruiser
   of ShipClass.Cruiser: cfg.cruiser
-  of ShipClass.LightCruiser: cfg.light_cruiser
-  of ShipClass.HeavyCruiser: cfg.heavy_cruiser
   of ShipClass.Battlecruiser: cfg.battlecruiser
   of ShipClass.Battleship: cfg.battleship
   of ShipClass.Dreadnought: cfg.dreadnought

@@ -62,7 +62,7 @@ proc shipConfig*(shipClass: ShipClass): ShipStatsConfig =
   of ShipClass.Raider: gameConfig.ships.raider
   of ShipClass.Destroyer: gameConfig.ships.destroyer
   of ShipClass.LightCruiser: gameConfig.ships.lightCruiser
-  of ShipClass.HeavyCruiser: gameConfig.ships.heavyCruiser
+  of ShipClass.Cruiser: gameConfig.ships.cruiser
   of ShipClass.Battlecruiser: gameConfig.ships.battlecruiser
   of ShipClass.Battleship: gameConfig.ships.battleship
   of ShipClass.Dreadnought: gameConfig.ships.dreadnought

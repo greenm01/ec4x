@@ -85,12 +85,10 @@ proc getShipConfig(shipClass: ShipClass): ships_config.ShipStatsConfig =
     return ships_config.globalShipsConfig.frigate
   of ShipClass.Destroyer:
     return ships_config.globalShipsConfig.destroyer
+  of ShipClass.LightCruiser:
+    return ships_config.globalShipsConfig.lightCruiser
   of ShipClass.Cruiser:
     return ships_config.globalShipsConfig.cruiser
-  of ShipClass.LightCruiser:
-    return ships_config.globalShipsConfig.light_cruiser
-  of ShipClass.HeavyCruiser:
-    return ships_config.globalShipsConfig.heavy_cruiser
   of ShipClass.Battlecruiser:
     return ships_config.globalShipsConfig.battlecruiser
   of ShipClass.Battleship:
