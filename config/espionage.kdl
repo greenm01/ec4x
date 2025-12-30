@@ -1,18 +1,18 @@
 // EC4X Espionage Configuration v0.2
-// Source: docs/specs/08-diplomacy.md
+// Source: docs/specs/09-intel-espionage.md
 // Defines costs, effects, and detection mechanics for the espionage system.
 
 // --- Budget Point Costs ---
 pointCosts {
-    (docs)"docs/specs/08-diplomacy.md#section-8-2"
-    // Also see: docs/specs/08-diplomacy.md#section-8-3
+    (docs)"docs/specs/09-intel-espionage.md#section-9-2"
+    // Also see: docs/specs/09-intel-espionage.md#section-9-3
     ebpCostPp 40 // Cost in PP to generate one Espionage Budget Point (EBP)
     cipCostPp 40 // Cost in PP to generate one Counter-Intelligence Point (CIP)
 }
 
 // --- Action Costs & Effects ---
 actions {
-    (docs)"docs/specs/08-diplomacy.md#section-8-2-1"
+    (docs)"docs/specs/09-intel-espionage.md#section-9-2-1"
     techTheft {
         ebpCost 5
         effect "Steals 10 SRP from the target's research pool."
@@ -70,7 +70,7 @@ actions {
 
 // --- Detection Mechanics ---
 detection {
-    (docs)"docs/specs/08-diplomacy.md#section-8-3"
+    (docs)"docs/specs/09-intel-espionage.md#section-9-3"
     cipConsumedPerRoll 1
 
     // d20 roll must be > threshold

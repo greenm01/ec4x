@@ -328,7 +328,7 @@ EC4X uses four intelligence quality tiers:
 3. **Perfect** (Scouts & Owned Assets) - Complete accuracy, all details, real-time updates
 4. **None** (Fog of War) - No intelligence available
 
-See [Section 9.3](09-intelligence.md#93-intelligence-quality-levels) for complete quality level specifications.
+See [Section 9.6](09-intel-espionage.md#96-intelligence-quality-levels) for complete quality level specifications.
 
 **Intelligence Collection Scenarios:**
 
@@ -352,7 +352,7 @@ This reflects the reality that military forces cannot remain completely hidden w
 
 **Intelligence Reports:**
 
-All intelligence is stored in your house's intelligence database with timestamps. See [Section 9](09-intelligence.md) for complete intelligence system documentation including:
+All intelligence is stored in your house's intelligence database with timestamps. See [Section 9](09-intel-espionage.md) for complete intelligence system documentation including:
 
 - Report types and contents
 - Intelligence corruption from disinformation/dishonor
@@ -364,7 +364,7 @@ All intelligence is stored in your house's intelligence database with timestamps
 You do not have automatic visibility into:
 
 - Rival empire economics (income, production, treasury)
-- Rival empire technology levels (requires espionage per [Section 8.2](08-diplomacy.md#82-subversion-subterfuge))
+- Rival empire technology levels (requires espionage per [Section 9.2](09-intel-espionage.md#92-subversion--subterfuge))
 - Fleet movements in systems without your friendly presence
 - Colony development and construction projects
 - Strategic intentions and future commands

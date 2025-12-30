@@ -150,7 +150,7 @@ Intelligence warfare creates a meta-game layer where information itself becomes 
 
 Houses must balance offensive espionage (sabotage, assassination) with intelligence warfare. A well-timed disinformation campaign can cause more damage than physical sabotage by poisoning enemy strategic planning. Intelligence Theft can reveal enemy war plans, allowing preemptive counter-measures. Counter-Intelligence Sweeps protect your most sensitive operations from enemy surveillance.
 
-The interplay between **Intelligence Corruption** (disinformation and dishonor) and **Counter-Intelligence** creates strategic depth. See [Section 9.4](09-intelligence.md#94-intelligence-corruption) for complete intelligence corruption mechanics.
+The interplay between **Intelligence Corruption** (disinformation and dishonor) and **Counter-Intelligence** creates strategic depth. See [Section 9.7](09-intel-espionage.md#97-intelligence-corruption) for complete intelligence corruption mechanics.
 
 ## 9.3 Counter Intelligence Command (CIC)
 
@@ -320,7 +320,7 @@ The variance is significant enough to cause serious errors in strategic planning
 
 Counter-Intelligence Sweeps can block disinformation attempts. Investing in counter-intelligence protection is the only defense against this insidious form of espionage.
 
-See [Section 8.2.2](08-diplomacy.md#822-intelligence-warfare-actions) for disinformation mechanics and costs.
+See [Section 9.2.2](#922-intelligence-warfare-actions) for disinformation mechanics and costs.
 
 ### 9.7.2 Dishonor and Intelligence Failure
 

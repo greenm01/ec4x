@@ -123,11 +123,11 @@
 ## Diplomacy & Intelligence
 | Term | Definition | Section Link |
 |------|------------|--------------|
-| CIP | Counter-Intelligence Point – defense against espionage; costs 40 PP each | [8.3](08-diplomacy.md#83-counter-intelligence-command-cic) |
-| Detection | Process of discovering espionage attempts or cloaked Raiders via dice rolls | [8.3](08-diplomacy.md#83-counter-intelligence-command-cic) |
-| EBP | Espionage Budget Point – cost 40 PP each; used for covert actions | [8.2](08-diplomacy.md#82-subversion-subterfuge) |
+| CIP | Counter-Intelligence Point – defense against espionage; costs 40 PP each | [9.3](09-intel-espionage.md#93-counter-intelligence-command-cic) |
+| Detection | Process of discovering espionage attempts or cloaked Raiders via dice rolls | [9.3](09-intel-espionage.md#93-counter-intelligence-command-cic) |
+| EBP | Espionage Budget Point – cost 40 PP each; used for covert actions | [9.2](09-intel-espionage.md#92-subversion--subterfuge) |
 | Enemy | Diplomatic status commanding fleets to engage at every opportunity | [8.1.4](08-diplomacy.md#814-enemy) |
-| Espionage | Covert operations including tech theft, sabotage, assassination, and psyops | [8.2](08-diplomacy.md#82-subversion-subterfuge) |
+| Espionage | Covert operations including tech theft, sabotage, assassination, and psyops | [9.2](09-intel-espionage.md#92-subversion--subterfuge) |
 | Fog of War | Restricted visibility requiring active intelligence gathering to see rivals | [1.5.2](01-gameplay.md#152-fog-of-war) |
 | Hostile | Diplomatic status signifying tense relations and limited engagement | [8.1.3](08-diplomacy.md#813-hostile) |
 | Neutral | Diplomatic status where fleets avoid hostilities outside controlled territory | [8.1.2](08-diplomacy.md#812-neutral) |

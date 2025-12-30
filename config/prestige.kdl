@@ -42,7 +42,7 @@ morale {
 
 prestigeEvents {
     (docs)"docs/specs/10-reference.md#section-10-4"
-    // Espionage prestige effects also documented in docs/specs/08-diplomacy.md
+    // Espionage prestige effects also documented in docs/specs/09-intel-espionage.md
 
     // --- Non-Competitive (Absolute Gains) ---
     techAdvancement { value 2 type "Absolute" }
@@ -77,11 +77,11 @@ prestigeEvents {
 
 // --- Recurring Penalties ---
 recurringPenalties {
-    (docs)"docs/specs/08-diplomacy.md#section-8-2"
-    // Also see: docs/specs/08-diplomacy.md#section-8-3
+    (docs)"docs/specs/09-intel-espionage.md#section-9-2"
+    // Also see: docs/specs/09-intel-espionage.md#section-9-3
     overInvestment {
         budgetThreshold 0.05 // 5%
-        penaltyPerPercent -2 // -2 prestige per 1% over budget (08-diplomacy.md Section 8.4)
+        penaltyPerPercent -2 // -2 prestige per 1% over budget (09-intel-espionage.md Section 9.4)
     }
 }
 

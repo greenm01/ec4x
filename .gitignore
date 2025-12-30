@@ -28,6 +28,8 @@
 !*.xlsx
 !*.xls
 !*.adoc
+!*.zip
+!*.gz
 
 # Whitelist root files
 !.gitignore
