@@ -4,38 +4,41 @@
 
 // --- General Combat Rules ---
 combat {
-    criticalHitRoll 9       // Natural 9 on 1d10 is a critical hit (Section 7.3.3)
-    retreatAfterRound 1     // Fleets can retreat after round 1 (Section 7.3.6)
-    maxCombatRounds 20      // Prevents infinite combat (Section 7.3.5)
-    desperationRoundTrigger 5 // Stalemate for 5 rounds triggers +2 CER bonus (Section 7.3.5)
+    (docs)"docs/specs/07-combat.md#section-7-3"
+    criticalHitRoll 9       // Natural 9 on 1d10 is a critical hit
+    retreatAfterRound 1     // Fleets can retreat after round 1
+    maxCombatRounds 20      // Prevents infinite combat
+    desperationRoundTrigger 5 // Stalemate for 5 rounds triggers +2 CER bonus
 }
 
 // --- Combat Effectiveness Rating (CER) ---
 cer {
-    // CER Modifiers (Section 7.3.3, 7.2.4)
+    (docs)"docs/specs/07-combat.md#section-7-3-3"
+
     modifiers {
+        (docs)"docs/specs/07-combat.md#section-7-2-4"
         ambushBonus 4 // +4 for undetected Raider first-strike (replaces surprise/ambush)
         // Morale modifiers are handled in-game based on prestige
     }
 
-    // Space Combat CER Table (Section 7.3.3)
     spaceCombatTable {
+        // Inherits parent (docs) attribute
         tier 1 { maxRoll=2 multiplier=0.25 } // "Less than zero, 0, 1, 2"
         tier 2 { maxRoll=4 multiplier=0.50 } // "3, 4"
         tier 3 { maxRoll=6 multiplier=0.75 } // "5, 6"
         tier 4 { minRoll=7 multiplier=1.00 } // "7, 8, 9+"
     }
 
-    // Planetary Bombardment CER Table (Section 7.5.1)
     bombardmentTable {
+        (docs)"docs/specs/07-combat.md#section-7-5-1"
         tier 1 { maxRoll=2 multiplier=0.25 }
         tier 2 { maxRoll=5 multiplier=0.50 }
         tier 3 { maxRoll=8 multiplier=1.00 }
         // Natural 9 is a critical hit
     }
 
-    // Ground Combat CER Table (Section 7.6.1)
     groundCombatTable {
+        (docs)"docs/specs/07-combat.md#section-7-6-1"
         tier 1 { maxRoll=2 multiplier=0.50 }
         tier 2 { maxRoll=6 multiplier=1.00 }
         tier 3 { maxRoll=8 multiplier=1.50 }
@@ -45,25 +48,30 @@ cer {
 
 // --- Combat Damage & Targeting ---
 damage {
-    crippledAsMultiplier 0.5        // Crippled ship AS is halved (Section 7.2.2)
-    crippledMaintenanceMultiplier 0.5 // Crippled ships have 50% maintenance cost (Logical, but not in spec 07)
-    crippledTargetingWeight 2.0     // Crippled squadrons have 2x targeting weight (Section 7.3.4)
+    (docs)"docs/specs/07-combat.md#section-7-2-2"
+    crippledAsMultiplier 0.5        // Crippled ship AS is halved
+    crippledMaintenanceMultiplier 0.5 // Crippled ships have 50% maintenance cost // NOTE: Not in spec - implementation-defined
+    crippledTargetingWeight 2.0     // Crippled squadrons have 2x targeting weight
 }
 
 retreat {
-    fightersNeverRetreat true           // (Section 7.3.6)
-    spaceliftDestroyedIfEscortLost true // (Section 7.3.6)
-    retreatToNearestFriendly true       // (Section 7.3.6)
+    (docs)"docs/specs/07-combat.md#section-7-3-6"
+    fightersNeverRetreat true
+    spaceliftDestroyedIfEscortLost true
+    retreatToNearestFriendly true
 }
 
-// --- Blockade Mechanics --- (Section 6.3.8, 10.4)
+// --- Blockade Mechanics ---
 blockade {
+    (docs)"docs/specs/06-operations.md#section-6-3-8"
+    // Also see: docs/specs/10-reference.md#section-10-4
     gcoReduction 0.60        // -60% Gross Colonial Output (GCO)
     prestigePenaltyPerTurn 2 // -2 prestige per turn per blockaded colony
 }
 
-// --- Invasion Mechanics --- (Section 7.6)
+// --- Invasion Mechanics ---
 invasion {
+    (docs)"docs/specs/07-combat.md#section-7-6"
     iuLossOnConquest 0.50      // Conquered planet loses 50% of IU
     iuLossOnBlitz 0.00         // Blitz preserves all IU if successful
     blitzMarinePenalty 0.5   // Marines fight at 0.5x AS during a Blitz

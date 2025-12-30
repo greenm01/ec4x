@@ -4,7 +4,11 @@
 // population transfers facilitated by the neutral Space Guild.
 
 guildMechanics {
+    (docs)"docs/specs/03-economy.md#section-3-5"
+    // NOTE: Guild mechanics have minimal spec documentation - most details are implementation-defined
+
     // Base cost in PP per PTU, based on the destination planet's class.
+    // NOTE: Transfer costs not detailed in spec - implementation-defined
     transferCosts {
         planetClass "Eden" { cost 4 }
         planetClass "Lush" { cost 5 }
@@ -16,6 +20,7 @@ guildMechanics {
     }
 
     // Transit time and cost modifiers based on distance.
+    // NOTE: Transit mechanics not in spec - implementation-defined
     transferModifiers {
         turnsPerJump 1          // 1 turn per jump lane in the path
         minimumTurns 1          // Minimum 1 turn even for same-system transfers
@@ -23,6 +28,7 @@ guildMechanics {
     }
 
     // Defines behavior for edge cases when colony status changes mid-transfer.
+    // NOTE: Edge case behaviors not in spec - implementation-defined
     transferRisks {
         sourceConquered "continue"      // Transfer continues as the Guild is neutral and was already paid.
         destinationConquered "lost"       // Colonists are lost as refugees in the chaos.
@@ -32,6 +38,7 @@ guildMechanics {
 }
 
 // Defines parameters for how the game AI decides to use Guild transfers.
+// NOTE: AI strategy parameters not in spec - tuning/balance values
 aiStrategy {
     minTreasuryForTransfer 200
     minSourcePopulation 10

@@ -4,6 +4,7 @@
 
 // Science Level Progression (SRP and ERP Costs)
 scienceLevel {
+    (docs)"docs/specs/04-research_development.md#section-4-2"
     // SL advances automatically when both ERP and SRP thresholds are met.
     level 2 {
         erpRequired 10
@@ -46,6 +47,7 @@ scienceLevel {
 // --- ECONOMIC RESEARCH (ERP) ---
 
 economicLevel {
+    (docs)"docs/specs/04-research_development.md#section-4-3"
     level 2 {
         slRequired 2
         erpCost 10
@@ -96,6 +98,7 @@ economicLevel {
 // --- TECHNOLOGY RESEARCH (TRP) ---
 
 weaponsTech {
+    (docs)"docs/specs/04-research_development.md#section-4-4-1"
     // Modifier: stat × (1.10 ^ (level - 1))
     level 2 {
         slRequired 2
@@ -136,6 +139,7 @@ weaponsTech {
 }
 
 constructionTech {
+    (docs)"docs/specs/04-research_development.md#section-4-4-2"
     // CST_MOD = 1.0 + (level - 1) × 0.10
     level 2 {
         slRequired 2
@@ -181,6 +185,7 @@ constructionTech {
 }
 
 flagshipCommandTech {
+    (docs)"docs/specs/04-research_development.md#section-4-4-3"
     level 2 {
         slRequired 2
         trpCost 12
@@ -209,6 +214,7 @@ flagshipCommandTech {
 }
 
 strategicCommandTech {
+    (docs)"docs/specs/04-research_development.md#section-4-4-4"
     level 1 {
         slRequired 2
         trpCost 15
@@ -237,6 +243,7 @@ strategicCommandTech {
 }
 
 fighterDoctrineTech {
+    (docs)"docs/specs/04-research_development.md#section-4-4-5"
     level 2 {
         slRequired 2
         trpCost 15
@@ -250,6 +257,7 @@ fighterDoctrineTech {
 }
 
 advancedCarrierOpsTech {
+    (docs)"docs/specs/04-research_development.md#section-4-4-6"
     level 2 {
         slRequired 4
         trpCost 20
@@ -267,6 +275,7 @@ advancedCarrierOpsTech {
 // --- SCIENCE RESEARCH (SRP) ---
 
 shieldsTech {
+    (docs)"docs/specs/04-research_development.md#section-4-5-1"
     level 1 {
         slRequired 2
         srpCost 10
@@ -306,6 +315,7 @@ shieldsTech {
 }
 
 terraformingTech {
+    (docs)"docs/specs/04-research_development.md#section-4-5-2"
     level 1 {
         slRequired 4
         srpCost 16
@@ -345,6 +355,7 @@ terraformingTech {
 }
 
 cloakingTech {
+    (docs)"docs/specs/04-research_development.md#section-4-5-3"
     level 1 {
         slRequired 2
         srpCost 10
@@ -368,6 +379,7 @@ cloakingTech {
 }
 
 electronicIntelligenceTech {
+    (docs)"docs/specs/04-research_development.md#section-4-5-4"
     level 1 {
         slRequired 2
         srpCost 10
@@ -391,6 +403,7 @@ electronicIntelligenceTech {
 }
 
 strategicLiftTech {
+    (docs)"docs/specs/04-research_development.md#section-4-5-5"
     level 1 {
         slRequired 1
         srpCost 0

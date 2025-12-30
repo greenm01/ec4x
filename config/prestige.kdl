@@ -4,13 +4,16 @@
 
 // --- Victory & Defeat Conditions ---
 victory {
-    startingPrestige 100          // Per gameplay.md Section 1.1
+    (docs)"docs/specs/01-gameplay.md#section-1-1"
+    // Also see: docs/specs/01-gameplay.md#section-1-4-1
+    startingPrestige 100
     defeatThreshold 0            // Below 0 for consecutive turns = collapse
-    defeatConsecutiveTurns 3     // Per gameplay.md Section 1.4.1
+    defeatConsecutiveTurns 3
 }
 
-// --- Dynamic Prestige Scaling --- (Section 10.4)
+// --- Dynamic Prestige Scaling ---
 dynamicScaling {
+    (docs)"docs/specs/10-reference.md#section-10-4"
     // Controls game pacing by scaling base prestige values based on map size.
     enabled true
     baseMultiplier 5.0             // Baseline multiplier for small maps
@@ -21,8 +24,9 @@ dynamicScaling {
     maxMultiplier 8.0
 }
 
-// --- Morale System --- (Section 7.2.1)
+// --- Morale System ---
 morale {
+    (docs)"docs/specs/07-combat.md#section-7-2-1"
     tier "Crisis" { maxPrestige 0 }
     tier "Low" { maxPrestige 20 }
     tier "Average" { maxPrestige 60 }
@@ -31,11 +35,14 @@ morale {
 }
 
 // ============================================================================
-// BASE PRESTIGE VALUES (Source: reference.md Table 10.4)
+// BASE PRESTIGE VALUES
 // These are the raw values before the dynamicScaling multiplier is applied.
 // ============================================================================
 
 prestigeEvents {
+    (docs)"docs/specs/10-reference.md#section-10-4"
+    // Espionage prestige effects also documented in docs/specs/08-diplomacy.md
+
     // --- Non-Competitive (Absolute Gains) ---
     techAdvancement { value 2 type "Absolute" }
     colonyEstablishment { value 5 type "Absolute" }
@@ -69,15 +76,17 @@ prestigeEvents {
 
 // --- Recurring Penalties ---
 recurringPenalties {
-    // Espionage/Counter-Intel Over-Investment (Section 8.2, 8.3)
+    (docs)"docs/specs/08-diplomacy.md#section-8-2"
+    // Also see: docs/specs/08-diplomacy.md#section-8-3
     overInvestment {
         budgetThreshold 0.05 // 5%
         penaltyPerPercent -1
     }
 }
 
-// --- Tax Penalties (Rolling 6-turn average) --- (Section 3.2.1)
+// --- Tax Penalties (Rolling 6-turn average) ---
 taxPenalties {
+    (docs)"docs/specs/03-economy.md#section-3-2-1"
     tier 1 { minRate=0 maxRate=50 penalty=0 }
     tier 2 { minRate=51 maxRate=60 penalty=-1 }
     tier 3 { minRate=61 maxRate=70 penalty=-2 }
@@ -86,8 +95,9 @@ taxPenalties {
     tier 6 { minRate=91 maxRate=100 penalty=-11 }
 }
 
-// --- Low-Tax Incentives --- (Section 3.2.2)
+// --- Low-Tax Incentives ---
 taxIncentives {
+    (docs)"docs/specs/03-economy.md#section-3-2-2"
     // Note: Population growth multipliers are in economy.kdl
     tier 1 { minRate=21 maxRate=30 prestigeBonusPerColony=1 }
     tier 2 { minRate=11 maxRate=20 prestigeBonusPerColony=2 }

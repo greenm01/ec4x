@@ -7,11 +7,10 @@
 
 // ============================================================================
 // ESPIONAGE ACTION EFFECTS
-// Source: docs/specs/diplomacy.md Section 8.2.1
 // ============================================================================
 
 espionageEffects {
-    // BALANCE: Mechanical effects of successful espionage
+    (docs)"docs/specs/08-diplomacy.md#section-8-2-1"
 
     // Tech Theft
     techTheftSrpStolen 10         // Steals 10 SRP from target
@@ -44,11 +43,10 @@ espionageEffects {
 
 // ============================================================================
 // COUNTER-INTELLIGENCE DETECTION
-// Source: docs/specs/diplomacy.md Section 8.3
 // ============================================================================
 
 detection {
-    // BALANCE: Detection failure prestige penalty
+    (docs)"docs/specs/08-diplomacy.md#section-8-3"
     failedEspionagePrestigeLoss -2  // Attacker loses 2 prestige when detected
 
     // Note: Detection modifiers, thresholds, and CIP costs are in espionage.kdl

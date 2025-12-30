@@ -5,12 +5,14 @@
 
 // --- Global Modifiers ---
 constructionModifiers {
-    planetsideShipCostMultiplier 2.0 // +100% PC for planet-side ship construction (Section 02-assets.md 2.3.2.1)
+    (docs)"docs/specs/02-assets.md#section-2-3-2-1"
+    planetsideShipCostMultiplier 2.0 // +100% PC for planet-side ship construction
 }
 
 // --- Global Build Times (in turns) ---
 buildTimes {
-    ship 1 // All ships build in 1 turn (Section 10.1.1)
+    (docs)"docs/specs/10-reference.md#section-10-1-1"
+    ship 1 // All ships build in 1 turn
     fighterSquadron 1
     army 1
     marine 1
@@ -22,8 +24,10 @@ buildTimes {
     starbase 3
 }
 
-// --- Global Repair Mechanics --- (Section 02-assets.md 2.3.2.3, 2.4.4)
+// --- Global Repair Mechanics ---
 repair {
+    (docs)"docs/specs/02-assets.md#section-2-3-2-3"
+    // Also see: docs/specs/02-assets.md#section-2-4-4
     shipRepairTurns 1
     shipRepairCostMultiplier 0.25
     starbaseRepairTurns 1

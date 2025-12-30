@@ -4,8 +4,9 @@
 
 // --- Jump Lane Generation ---
 lanes {
+    (docs)"docs/specs/02-assets.md#section-2-1"
     // Defines the distribution and behavior of jump lane types.
-    // Spec 2.1: Major and Minor lanes allow ALL ship types.
+    // Major and Minor lanes allow ALL ship types.
     // Restricted lanes block crippled ships only.
     distribution {
         major 0.50
@@ -16,13 +17,15 @@ lanes {
 
 // --- Homeworld Placement ---
 homeworld {
+    (docs)"docs/specs/02-assets.md#section-2-1"
     // Homeworlds are placed using distance maximization to ensure fair spacing.
     guaranteedLaneCount 3      // Each homeworld is guaranteed this many lanes.
-    guaranteedLaneType "Major" // Per spec, these must be Major lanes.
+    guaranteedLaneType "Major" // These must be Major lanes.
 }
 
 // --- Hub System ---
 hub {
+    (docs)"docs/specs/02-assets.md#section-2-1"
     guaranteedLaneCount 6  // The central hub system is guaranteed to have 6 lanes.
     mixedLanes true        // Hub uses the standard lane distribution.
 }

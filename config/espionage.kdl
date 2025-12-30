@@ -4,12 +4,15 @@
 
 // --- Budget Point Costs ---
 pointCosts {
+    (docs)"docs/specs/08-diplomacy.md#section-8-2"
+    // Also see: docs/specs/08-diplomacy.md#section-8-3
     ebpCostPp 40 // Cost in PP to generate one Espionage Budget Point (EBP)
     cipCostPp 40 // Cost in PP to generate one Counter-Intelligence Point (CIP)
 }
 
 // --- Action Costs & Effects ---
 actions {
+    (docs)"docs/specs/08-diplomacy.md#section-8-2-1"
     techTheft {
         ebpCost 5
         effect "Steals 10 SRP from the target's research pool."
@@ -65,10 +68,11 @@ actions {
     }
 }
 
-// --- Detection Mechanics --- (Section 8.3)
+// --- Detection Mechanics ---
 detection {
+    (docs)"docs/specs/08-diplomacy.md#section-8-3"
     cipConsumedPerRoll 1
-    
+
     // d20 roll must be > threshold
     thresholds {
         cic1 15

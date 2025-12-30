@@ -3,19 +3,22 @@
 // This file defines core economic mechanics: population, production, investment, taxation, colonization.
 // All values are tunable gameplay parameters.
 
-// --- Population & Transfer Units --- (Section 3.1, 3.5)
+// --- Population & Transfer Units ---
 population {
-  naturalGrowthRate 0.30 // Base birthrate from Section 3.5
+  (docs)"docs/specs/03-economy.md#section-3-1"
+  // Also see: docs/specs/03-economy.md#section-3-5
+  naturalGrowthRate 0.30 // Base birthrate
   // ptuGrowthRate 0.04  // Not explicitly defined in spec for PU to PTU conversion
-  ptuToSouls 50000       // One PTU represents approx. 50,000 souls (Section 3.1)
-  puToPtuConversion 0.00657 // Constant for PU to PTU conversion formula (Section 3.1)
-  minViableColonyPop 5000 // Minimum viable souls to sustain a colony
+  ptuToSouls 50000       // One PTU represents approx. 50,000 souls
+  puToPtuConversion 0.00657 // Constant for PU to PTU conversion formula
+  minViableColonyPop 5000 // Minimum viable souls to sustain a colony // NOTE: Not in spec - implementation-defined
 }
 
 
 
-// --- Raw Material Efficiency Multipliers --- (Section 3.1 RAW INDEX Table)
+// --- Raw Material Efficiency Multipliers ---
 rawMaterialEfficiency {
+  (docs)"docs/specs/03-economy.md#section-3-1"
   material "Very Poor" {
     eden=0.60 lush=0.60 benign=0.60 harsh=0.60 hostile=0.60 desolate=0.60 extreme=0.60
   }
@@ -33,13 +36,14 @@ rawMaterialEfficiency {
   }
 }
 
-// --- Tax Mechanics --- (Section 3.2.1)
+// --- Tax Mechanics ---
 taxMechanics {
-  taxAveragingWindowTurns 6 // Rolling 6-turn window for prestige penalty (Section 3.2.1)
+  (docs)"docs/specs/03-economy.md#section-3-2-1"
+  taxAveragingWindowTurns 6 // Rolling 6-turn window for prestige penalty
 }
 
 taxPopulationGrowth {
-  // Low-Tax Incentives for population growth (Section 3.2.2)
+  (docs)"docs/specs/03-economy.md#section-3-2-2"
   tier 1 { minRate=41 maxRate=50 popMultiplier=1.0 }
   tier 2 { minRate=31 maxRate=40 popMultiplier=1.05 }
   tier 3 { minRate=21 maxRate=30 popMultiplier=1.10 }
@@ -47,21 +51,25 @@ taxPopulationGrowth {
   tier 5 { minRate=0 maxRate=10 popMultiplier=1.20 }
 }
 
-// --- Industrial Growth Parameters --- (Section 3.4)
+// --- Industrial Growth Parameters ---
 industrialGrowth {
-  passiveGrowthDivisor 50.0 // floor(PU / 50) for passive IU growth (Section 3.4)
-  passiveGrowthMinimum 2.0  // max(2, ...) for passive IU growth (Section 3.4)
+  (docs)"docs/specs/03-economy.md#section-3-4"
+  passiveGrowthDivisor 50.0 // floor(PU / 50) for passive IU growth
+  passiveGrowthMinimum 2.0  // max(2, ...) for passive IU growth
 }
 
-// --- Starbase Economic Bonuses --- (Section 2.4.4, 3.1, 3.5)
+// --- Starbase Economic Bonuses ---
 starbaseBonuses {
+  (docs)"docs/specs/02-assets.md#section-2-4-4"
+  // Also see: docs/specs/03-economy.md#section-3-1, #section-3-5
   populationGrowthBonusPerStarbase 0.05 // +5% population growth per SB
   industrialProductionBonusPerStarbase 0.05 // +5% IU output per SB
   eliBonusPerStarbase 2                   // +2 ELI bonus per SB
 }
 
-// --- Production Modifiers --- (Section 3.1 GCO formula, 6.3.8)
+// --- Production Modifiers ---
 productionModifiers {
-  // Blockade reduces GCO by 60% (Section 6.3.8)
-  blockadeGcoReduction 0.60
+  (docs)"docs/specs/03-economy.md#section-3-1"
+  // Also see: docs/specs/06-operations.md#section-6-3-8
+  blockadeGcoReduction 0.60 // Blockade reduces GCO by 60%
 }

@@ -2,8 +2,9 @@
 // Source: docs/specs/02-assets.md, docs/specs/03-economy.md
 // This file defines all functional limits, caps, and capacities for the game.
 
-// --- C2 Pool & Fleet Limits --- (Section 2.3.3)
+// --- C2 Pool & Fleet Limits ---
 c2Limits {
+    (docs)"docs/specs/02-assets.md#section-2-3-3"
     c2ConversionRatio 0.5    // Total House IU * 0.5 = C2 from industry
     c2OverdraftRatio 0.5     // Cost per Turn = (Total Fleet CC - C2 Pool) * 0.5
     capitalShipCrThreshold 7 // Ships with CR >= 7 are capital ships
@@ -11,20 +12,24 @@ c2Limits {
 
 // --- Unit & Facility Quantity Limits ---
 quantityLimits {
-    maxStarbasesPerColony 3      // (Section 2.4.4)
-    maxPlanetaryShieldsPerColony 1 // (Section 2.4.7)
-    maxPlanetBreakersPerColony 1 // (Section 2.4.8, 10.5)
+    (docs)"docs/specs/02-assets.md#section-2-4-4"
+    // Also see: docs/specs/02-assets.md#section-2-4-7, #section-2-4-8, docs/specs/10-reference.md#section-10-5
+    maxStarbasesPerColony 3
+    maxPlanetaryShieldsPerColony 1
+    maxPlanetBreakersPerColony 1
 }
 
-// --- Fighter Squadron Capacity --- (Section 3.6)
+// --- Fighter Squadron Capacity ---
 fighterCapacity {
+    (docs)"docs/specs/03-economy.md#section-3-6"
     iuDivisor 100                  // Base capacity: 1 FS per 100 IU
     violationGracePeriodTurns 2    // 2 turns grace before auto-disband
 }
 
 // --- Unit Cargo & Planet Capacity ---
 capacities {
-    // Planet PU Limits (Section 2.2)
+    (docs)"docs/specs/02-assets.md#section-2-2"
+    // Planet PU Limits
     planetClass "Extreme" { puMax 20 }
     planetClass "Desolate" { puMax 60 }
     planetClass "Hostile" { puMax 180 }
@@ -34,8 +39,9 @@ capacities {
     planetClass "Eden" { puMax 999999 }
 }
 
-// --- Space Guild Transfer Limits --- (from guild.kdl)
+// --- Space Guild Transfer Limits ---
 guildTransferLimits {
+    (docs)"docs/specs/03-economy.md#section-3-5"
     minPtuPerTransfer 1
     minSourcePuRemaining 1
     maxConcurrentTransfers 5

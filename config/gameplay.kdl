@@ -4,18 +4,21 @@
 // NOTE: Starting tech levels are defined in config/tech.kdl [starting_tech]
 
 elimination {
+    (docs)"docs/specs/01-gameplay.md#section-1-4-1"
     // Player elimination thresholds
-    defensiveCollapseTurns 3        // Turns below 0 prestige before elimination (gameplay.md:23, 90)
+    defensiveCollapseTurns 3        // Turns below 0 prestige before elimination
     defensiveCollapseThreshold 0    // Prestige threshold (below this = collapse risk)
 }
 
 autopilot {
+    (docs)"docs/specs/01-gameplay.md#section-1-4-2"
     // Autopilot (MIA) activation rules
-    miaTurnsThreshold 3             // Consecutive missed turns before autopilot (gameplay.md:105)
+    miaTurnsThreshold 3             // Consecutive missed turns before autopilot
 }
 
 autopilotBehavior {
-    // Autopilot AI behavior (not balance-tunable)
+    (docs)"docs/specs/01-gameplay.md#section-1-4-2"
+    // NOTE: Autopilot behavior flags are implementation-defined, not spec-detailed
     continueStandingOrders #true      // Fleets continue existing orders
     patrolHomeSystems #true           // Idle fleets patrol/defend home
     maintainEconomy #true             // Continue tax/R&D at current rates
@@ -25,7 +28,8 @@ autopilotBehavior {
 }
 
 defensiveCollapseBehavior {
-    // Defensive Collapse behavior (not balance-tunable)
+    (docs)"docs/specs/01-gameplay.md#section-1-4-1"
+    // NOTE: Collapse behavior details are implementation-defined
     retreatToHome #true              // All fleets return to controlled systems
     defendOnly #true                 // Defend against Enemy-status houses
     noConstruction #true             // No new build orders
