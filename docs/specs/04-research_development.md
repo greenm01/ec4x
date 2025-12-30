@@ -17,7 +17,8 @@ These are checked at runtime from `house.techTree.levels` and apply to all appli
 | CLK  | Cloaking Tech              | Cloaking effectiveness for Raiders             | Runtime      |
 | ACO  | Advanced Carrier Ops       | Carrier capacity (CV/CX hangar size)           | Runtime      |
 | STL  | Strategic Lift             | Transport capacity (ETAC/TT carry limit)       | Runtime      |
-| CMD  | Command Tech               | Command Rating bonus for capital ships         | Runtime      |
+| FC   | Flagship Command           | Command Rating bonus for capital ships         | Runtime      |
+| SC   | Strategic Command          | C2 Pool bonus for fleet capacity               | Runtime      |
 | FD   | Fighter Doctrine           | Fighter squadron capacity multiplier           | Runtime      |
 | EL   | Economic Level             | Production multiplier (all colonies)           | Runtime      |
 | SL   | Science Level              | Gates tech research                            | Build-time   |
@@ -450,77 +451,84 @@ STL improvements enable larger invasion forces. A Transport at STL V carries 5 M
 
 STL is an economic multiplier for expansion-focused strategies. If you pursue aggressive colonization, early STL investment benefits you enormously, while defensive Houses can delay STL research indefinitely. However, STL becomes critical during peer conflicts—Houses that neglect STL face logistical disadvantages when reinforcing distant colonies or conducting invasions across extended jump lane networks.
 
-## 4.10 Command (CMD)
+## 4.10 Flagship Command (FC)
 
-Command technology increases the Command Rating (CR) of capital ship flagships, allowing them to lead larger squadrons.
+Flagship Command improves the tactical doctrine and command systems used by your capital ship officers. Researching `FC` increases the **Command Rating (CR)** of your flagships, allowing them to lead larger and more powerful squadrons.
 
 **Research Progression:**
 
-<!-- CMD_TABLE_START -->
+<!-- FC_TABLE_REVISED_START -->
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | CR Increase |
-|:----------:| ------------- |:--------:|:-----------:|:-----------:|
-| CMD I      | None          | N/A      | 1           | Base CR     |
-| CMD II     | CMD I         | 10       | 2           | +1 CR       |
-| CMD III    | CMD II        | 12       | 3           | +2 CR       |
-| CMD IV     | CMD III       | 15       | 4           | +3 CR       |
-| CMD V      | CMD IV        | 19       | 5           | +4 CR       |
+| Tech Level | Prerequisites | TRP Cost | SL Required | **CR Increase** |
+|:----------:| ------------- |:--------:|:-----------:|:---------------:|
+| FC I       | None          | N/A      | 1           | Base CR         |
+| FC II      | FC I          | 12       | 2           | +1 CR           |
+| FC III     | FC II         | 15       | 3           | +1 CR           |
+| FC IV      | FC III        | 20       | 4           | +2 CR           |
+| FC V       | FC V          | 25       | 6           | +2 CR           |
+| FC VI      | FC IV         | 32       | 8           | +3 CR           |
 
-*Source: config/tech.toml [command] section*
+*Source: config/tech.toml [flagship_command] section*
 
-<!-- CMD_TABLE_END -->
+<!-- FC_TABLE_REVISED_END -->
 
 **Application:**
 
-CMD bonuses apply to the base Command Rating of capital ship flagships:
+FC bonuses apply to the base Command Rating of capital ship flagships:
 
 ```
-Effective CR = Base CR + CMD Bonus
+Effective CR = Base CR + FC Bonus
 ```
 
-Example: A Battleship (BB) has Base CR 9. At CMD III, Effective CR = 9 + 2 = 11.
+Example: A Battleship (BB) has Base CR 10. At FC III (+1 CR total), Effective CR = 10 + 1 = 11.
 
-Higher CR allows flagships to command more ships within their squadron, as each ship consumes Command Cost (CC) based on its class. For squadron composition rules and CC values, see [Section 2.3.3](02-assets.md#233-squadrons).
+Higher CR allows flagships to command more ships within their squadron, as each ship consumes Command Cost (CC). For squadron composition rules, see [Section 2.3.3.1](02-assets.md#2331-squadrons-tactical-level).
 
 **Immediate Application:**
 
-CMD bonuses are house-level tech that applies automatically to all capital ships. The moment CMD research completes, all capital ships can immediately reorganize squadrons to take advantage of increased CR. No ship modifications needed—it's a pure tactical doctrine upgrade.
+FC bonuses are house-level tech that applies automatically to all capital ships. The moment FC research completes, all capital ships can immediately reorganize squadrons to take advantage of increased CR. No ship modifications needed—it's a pure tactical doctrine upgrade.
 
 **Strategic Considerations:**
 
-CMD research enables squadron consolidation, reducing administrative overhead and improving tactical flexibility. At CMD V, you can field fewer, larger squadrons instead of many small squadrons, simplifying fleet management during complex operations. However, larger squadrons become more vulnerable to focused fire—losing a high-CR flagship potentially scatters many ships, creating organizational chaos.
+FC research enables squadron consolidation, reducing administrative overhead and improving tactical flexibility. At FC VI, you can field fewer, larger squadrons instead of many small squadrons, simplifying fleet management during complex operations. However, larger squadrons become more vulnerable to focused fire—losing a high-CR flagship potentially scatters many ships, creating organizational chaos. This tech is a direct trade-off with **Strategic Command (SC)**, which allows for more fleets rather than larger squadrons.
 
-## 4.11 Capital Ship Capacity
+## 4.11 Strategic Command (SC)
 
-Capital squadron capacity represents a House's ability to maintain large warships through industrial infrastructure:
+Strategic Command represents your House's investment in its high-level naval staff, interstellar communication networks, and logistical infrastructure. Researching `SC` increases your **C2 Pool**, allowing you to field a larger total navy without suffering the "Logistical Strain" financial penalty.
+
+**Research Progression:**
+
+<!-- SC_TABLE_NEW_START -->
+
+| Tech Level | Prerequisites | TRP Cost | SL Required | **C2 Pool Bonus** |
+|:----------:| ------------- |:--------:|:-----------:|:-----------------:|
+| SC I       | None          | 15       | 2           | +50               |
+| SC II      | SC I          | 18       | 3           | +60               |
+| SC III     | SC II         | 22       | 5           | +75               |
+| SC IV      | SC III        | 28       | 7           | +90               |
+| SC V       | SC IV         | 36       | 9           | +125              |
+
+*Source: config/tech.toml [strategic_command] section (new)*
+
+<!-- SC_TABLE_NEW_END -->
+
+**Application:**
+
+SC research provides a flat bonus to your House's C2 Pool, which governs the total Command Cost (CC) of all ships you can field before incurring penalties.
 
 ```
-Max Capital Squadrons = max(8, floor(Total_House_IU ÷ 100) × 2)
+Total C2 Pool = (Total House IU * 0.5) + SC Bonus
 ```
 
-Capital ships are defined as vessels with Command Rating (CR) ≥ 7:
+For the full explanation of the C2 Pool and the Logistical Strain penalty, see [Section 2.3.3.3](02-assets.md#2333-command--control-c2-pool).
 
-- Battlecruisers (BC)
-- Battleships (BB)
-- Dreadnoughts (DN)
-- Super-Dreadnoughts (SD)
-- Standard Carriers (CV)
-- Super Carriers (CX)
+**Immediate Application:**
 
-**Capacity Enforcement:**
+SC is a house-level tech that applies at runtime. The moment research completes, your C2 Pool is immediately increased, potentially reducing or eliminating any Logistical Strain penalty you are paying.
 
-When a House exceeds capital squadron capacity (typically from IU loss due to bombardment, blockades, or territory loss), excess squadrons are immediately claimed by Space Guilds for salvage. Priority for removal:
+**Strategic Considerations:**
 
-1. Crippled flagships first
-2. Lowest Attack Strength (AS) among non-crippled flagships
-
-The House receives 50% of each ship's original build cost as salvage payment.
-
-**Strategic Implications:**
-
-Your industrial capacity directly determines fleet size. If you pursue capital ship strategies, invest heavily in IU development and protect your industrial colonies from bombardment. Losing a major industrial world can force immediate fleet reductions, potentially at the worst possible moment.
-
-For complete salvage mechanics, see [Section 2.5.1](02-assets.md#251-capital-ship-salvage-operations).
+SC research is essential for houses that wish to project power across a wide area with numerous fleets. It allows you to expand the sheer size of your navy, enabling multi-front wars, extensive patrol networks, and large-scale exploration and colonization efforts. This technology is a direct trade-off with **Flagship Command (FC)**, which allows for larger, denser squadrons rather than a greater number of fleets. A balanced approach between `SC`, `FC`, `WEP`, and `CST` is the mark of a master strategist.
 
 ## 4.12 Fighter Doctrine (FD)
 

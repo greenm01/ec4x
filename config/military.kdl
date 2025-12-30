@@ -1,5 +1,5 @@
 // EC4X Military Configuration
-// Fighter squadrons, fleet limits, and salvage mechanics
+// Fighter squadrons, fleet limits, figher limits
 //
 // This file contains:
 // - BALANCE VARIABLES: Squadron limits, fighter capacity
@@ -17,7 +17,7 @@ fighterMechanics {
 }
 
 // ============================================================================
-// FLEET SQUADRON LIMITS
+// SQUADRON LIMITS
 // ============================================================================
 
 squadronLimits {

@@ -194,25 +194,83 @@ Troop Transports are specialized ships that taxi Space Marine divisions between 
 
 For STL capacity progression, see [Section 4.9](04-research_development.md#49-strategic-lift-stl).
 
-### 2.3.3 Squadrons
+### 2.3.3 Naval Command Structure
 
-Your Space Force is organized by squadrons. Each squadron is commanded by a flagship with a Command Rating (CR) that accommodates ships with a Command Cost (CC) summing to less than or equal to the CR. This enables you to tactically group various classes of ships to balance combat effectiveness.
+Your House's military forces are organized into a clear command hierarchy. Understanding this structure is critical to effective strategic management.
 
-Squadrons fight as a unit and die as a unit. A squadron's total AS and DS values constitute a sum of all the ships under a flagship's command (including itself).
+#### 2.3.3.1 Squadrons (Tactical Level)
 
-In non-hostile systems, you can reassign ships in a squadron to an already existing squadron if the new flagship's CR allows. Squadrons can constitute a solo flagship.
+The smallest tactical unit in your navy is the **Squadron**.
+- Each squadron is commanded by a single **flagship**.
+- The flagship's **Command Rating (CR)** determines the maximum size of the squadron.
+- Other ships in the squadron have a **Command Cost (CC)**. The sum of all CCs in a squadron (excluding the flagship) cannot exceed the flagship's CR.
+- Squadrons fight and move as a single entity.
+- A squadron can consist of a solo flagship.
 
-You can only commission squadrons in systems with a functioning shipyard.
+Improving the size and capability of your squadrons is done by researching **Flagship Command (FC)** technology, which increases the CR of your flagships. See [Section 4.10](04-research_development.md#410-flagship-command-fc).
 
-**Command Rating Enhancement**: CR can be increased through Command (CMD) research. See [Section 4.10](04-research_development.md#410-command-cmd) for CMD progression.
+#### 2.3.3.2 Fleets (Strategic Level)
 
-### 2.3.4 Fleets
+Squadrons are grouped together into **Fleets**. A Fleet is the primary strategic unit you will manage on the starmap.
+- A Fleet can contain any number of squadrons.
+- You can create, name, merge, and split fleets at any time in a non-hostile system.
+- Fleets are the units that receive movement and operational orders.
 
-You group squadrons together into fleets for traversing jump lanes. You can join or split fleets (creating new fleets) for strategic purposes in any non-hostile system. There is no limit to the number of squadrons you assign to a fleet.
+#### 2.3.3.3 Command & Control (C2) Pool
 
-### 2.3.5 Task Force
+While you can organize your squadrons into as many fleets as you wish, the total size of your navy is governed by your **Command & Control (C2) Pool**. This is a soft cap representing your empire's ability to command and support its military assets.
 
-A Task Force is temporary grouping of squadrons organized for combat. After hostilities cease, the task force is disbanded and surviving squadrons return to their originally assigned fleets.
+- Every combat ship has a **Command Cost (CC)**.
+- Your C2 Pool is the total CC your House can support without penalty.
+- The C2 Pool is determined by your industrial might and your investment in command technology.
+
+**C2 Pool Formula:**
+`Total C2 Pool = (Total House IU * 0.5) + [C2 Pool Bonus from SC Tech]`
+
+- **Auxiliary ships** (Scouts, ETACs, Transports) and **Facilities** (Starbases) do not have a CC and do not count against your C2 Pool.
+
+#### 2.3.3.4 Logistical Strain (Exceeding the C2 Pool)
+
+The C2 Pool is a soft limit. If the total CC of all your active ships exceeds your C2 Pool, your empire incurs a direct financial penalty each turn called **Logistical Strain**.
+
+**Logistical Strain Formula:**
+`Cost per Turn = (Total Fleet CC - C2 Pool) × 0.5`
+
+This flat PP cost is deducted from your treasury each turn. It represents the mounting inefficiency of an over-extended command structure. A player who loses industrial capacity (and thus C2 Pool) will face a painful but predictable economic challenge they can solve through strategic action.
+
+For the technology to increase your C2 Pool, see **Strategic Command (SC)** in [Section 4.11](04-research_development.md#411-strategic-command-sc).
+
+#### 2.3.3.5 Ship Status Management
+
+To effectively manage your C2 Pool and maintenance costs, you can assign different operational statuses to your fleets.
+
+**Active Duty:**
+- **CC Cost:** 100%
+- **Maintenance Cost:** 100%
+- **Status:** Fully operational. Can move and fight.
+
+**Reserve Status:**
+- **CC Cost:** 50%
+- **Maintenance Cost:** 50%
+- **Rules:**
+    - A fleet must be at a friendly starbase or shipyard to be placed in Reserve.
+    - Placing a fleet in Reserve is **instant** during the Command Phase.
+    - Reactivating it takes **1 full turn**.
+    - While in Reserve, a fleet is immobile and cannot fight.
+- **Strategic Use:** Ideal for reducing C2 and maintenance load during peacetime while keeping fleets ready for rapid deployment.
+
+**Mothballed Status:**
+- **CC Cost:** 0%
+- **Maintenance Cost:** 10% (for skeleton crews and basic system integrity)
+- **Rules:**
+    - A fleet must be at a friendly starbase or shipyard to be Mothballed.
+    - Mothballing a fleet is **instant** during the Command Phase.
+    - Reactivating a mothballed fleet takes **3 full turns**.
+- **Strategic Use:** For long-term storage of valuable but currently unneeded assets, completely freeing up their C2 Pool allocation for a minimal maintenance fee.
+
+#### 2.3.3.6 Task Force
+
+A Task Force is a temporary grouping of squadrons from one or more fleets, organized for a specific combat engagement. After hostilities cease, the task force is automatically disbanded and surviving squadrons return to their originally assigned fleets.
 
 ## 2.4 Special Units
 
@@ -520,27 +578,4 @@ Numerous Space Guilds compete for business in unregulated, private capital marke
 
 You contract the Guilds to provide various critical services to your House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price. They will not freely leak intelligence.
 
-### 2.5.1 Capital Ship Salvage Operations
 
-When a Great House loses industrial capacity and can no longer support its capital fleet, the Space Guilds step in to claim excess warships. The Guilds pay 50% of the original build cost in immediate currency, then refurbish and resell these vessels on the open market for profit.
-
-**Capacity Formula**: Each house can maintain `max(8, floor(Total_House_IU ÷ 100) × 2)` capital squadrons. Capital ships are defined as vessels with Command Rating (CR) ≥ 7.
-
-For detailed capacity rules and economic implications, see [Section 4.11](04-research_development.md#411-capital-ship-capacity).
-
-**Enforcement**: When a house exceeds its capital squadron capacity (typically due to IU loss from colony damage, blockades, or territory loss), excess squadrons are immediately claimed by the Space Guilds. Priority for removal:
-
-1. **Crippled flagships first** - Damaged vessels are easiest to claim
-2. **Lowest Attack Strength (AS) second** - Among non-crippled ships, weakest vessels removed first
-
-The house receives 50% of each ship's original build cost as salvage payment, credited to the house treasury.
-
-**Strategic Implications**:
-
-- You must maintain industrial capacity to support large fleets
-- Losing colonies means losing fleet capacity
-- Salvage payments soften the blow but don't fully compensate for ship loss
-- Crippled ships are vulnerable to involuntary salvage
-- Repair your crippled flagships quickly to avoid losing them
-
-**Reference**: See [Table 10.5](10-reference.md#105-game-limits-summary) for complete squadron limit details.

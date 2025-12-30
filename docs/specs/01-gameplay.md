@@ -65,7 +65,7 @@ See [Section 10.4](10-reference.md#104-prestige) for mathematical details.
 
 ## 1.2 Game Setup
 
-At game start, one player spins up the game server. The server becomes your impartial arbiter—tireless, incorruptible, and instant. It processes turn orders, resolves conflicts, calculates economics, and maintains fog of war without human error or bias.
+At game start, one player spins up the game server. The server becomes your impartial arbiter—tireless, incorruptible, and instant. It processes turn commands, resolves conflicts, calculates economics, and maintains fog of war without human error or bias.
 
 **Localhost Mode (Tabletop Sessions):**
 
@@ -73,13 +73,13 @@ Run the server on one machine. Everyone else connects from their laptops over th
 
 **Nostr Mode (Remote Play):**
 
-Deploy the server anywhere with Nostr relay access. Your friends connect from across the world. Submit your turn orders at 3 AM or during lunch break—the asynchronous architecture doesn't care. The Nostr protocol provides cryptographic verification ensuring nobody tampers with turn submissions. When all players finish (or the 24-hour deadline expires), the server processes the next cycle automatically.
+Deploy the server anywhere with Nostr relay access. Your friends connect from across the world. Submit your turn commands at 3 AM or during lunch break—the asynchronous architecture doesn't care. The Nostr protocol provides cryptographic verification ensuring nobody tampers with turn submissions. When all players finish (or the 24-hour deadline expires), the server processes the next cycle automatically.
 
 **What The Server Handles:**
 
 The game server executes every tedious task a human moderator would handle:
 
-- Processes turn orders from all Houses simultaneously
+- Processes turn commands from all Houses simultaneously
 - Resolves space battles, invasions, bombardments, and espionage operations
 - Calculates economic production, population growth, and prestige changes
 - Advances construction projects and research investments
@@ -107,11 +107,11 @@ You begin with a foundation for empire:
 
 **Starting Technology:**
 
-Your House begins at technology tier 1 across all domains: EL1, SL1, CST1, WEP1, TER1, ELI1, CIC1, FD I, ACO I. Every House starts equal. Your research priorities determine how quickly you advance. See [Section 4.0](04-research_development.md#40-research-development) for tech effects and [Section 10.11](10-reference.md#1011-technology-research) for advancement costs.
+Your House begins at technology tier 1 across all domains: EL1, SL1, CST1, WEP1, TER1, ELI1, FC I, SC I, FD I, ACO I. Every House starts equal. Your research priorities determine how quickly you advance. See [Section 4.0](04-research_development.md#40-research-development) for tech effects and [Section 10.11](10-reference.md#1011-technology-research) for advancement costs.
 
 **Diplomacy & Communication:**
 
-The server processes orders mechanically but doesn't handle diplomacy. You negotiate alliances, betray pacts, and coordinate strategies through your preferred communication method—Discord, Signal, email, or face-to-face trash talk at the table. The server doesn't care how you scheme; it only processes the orders you submit. Diplomacy is between humans. The server just enforces the consequences.
+The server processes commands mechanically but doesn't handle diplomacy. You negotiate alliances, betray pacts, and coordinate strategies through your preferred communication method—Discord, Signal, email, or face-to-face trash talk at the table. The server doesn't care how you scheme; it only processes the commands you submit. Diplomacy is between humans. The server just enforces the consequences.
 
 ---
 
@@ -140,23 +140,23 @@ This phase accounts for population growth at each colony, construction progress,
 
 The server issues updated game state to each player for the new turn. Each House receives customized data showing only their own assets and gathered intelligence—fog of war is maintained automatically.
 
-You receive new reports reflecting updated economics and the outcome of military orders issued in the previous turn. Access these reports through your game client.
+You receive new reports reflecting updated economics and the outcome of military commands issued in the previous turn. Access these reports through your game client.
 
-In the new turn, you decide which construction orders to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings. You can change your tax rate during this phase. Your client updates your local game state accordingly.
+In the new turn, you decide which construction commands to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings. You can change your tax rate during this phase. Your client updates your local game state accordingly.
 
 ### 1.3.3 Command Phase
 
-In the command phase, you issue fleet orders ([Section 6.3](06-operations.md#63-fleet-orders)) and make strategic decisions around asset management. You can change diplomatic status ([Section 8.1](08-diplomacy.md#81-diplomacy)) toward rival Houses.
+In the command phase, you issue fleet commands ([Section 6.3](06-operations.md#63-fleet-orders)) and make strategic decisions around asset management. You can change diplomatic status ([Section 8.1](08-diplomacy.md#81-diplomacy)) toward rival Houses.
 
-Build orders may fail if shipyards were destroyed in the conflict phase. You issue fleet movement and colonization orders for execution in the next turn's conflict phase.
+Build commands may fail if shipyards were destroyed in the conflict phase. You issue fleet movement and colonization commands for execution in the next turn's conflict phase.
 
-You submit your turn orders to the game server. Once all players submit (or the turn deadline expires), the server processes the next turn cycle.
+You submit your turn commands to the game server. Once all players submit (or the turn deadline expires), the server processes the next turn cycle.
 
 ### 1.3.4 Production Phase
 
 In the production phase, the game server advances construction projects, applies repairs to damaged facilities, and processes upkeep costs. Fleet maintenance is deducted from your house treasury.
 
-New construction orders process, along with investments in R&D, terraforming, Space Guild services, and industry.
+New construction commands process, along with investments in R&D, terraforming, Space Guild services, and industry.
 
 The server updates game state and issues customized reports to each player. You receive your own unique intelligence database, blind to other players' activities.
 
@@ -173,7 +173,7 @@ If your House's prestige drops below zero and stays there for three consecutive 
 - All your fleets immediately return to the nearest controlled system
 - Your fleets defend colonies against attacks from Enemy-status houses per [Section 8.1.4](diplomacy.md#814-enemy)
 - No offensive operations or expansion
-- No new construction orders
+- No new construction commands
 - No diplomatic changes
 - Economy ceases (no income, no R&D, no maintenance costs)
 
@@ -183,24 +183,24 @@ Your collapsed empire remains on the map as a defensive AI target. Other players
 
 
 
-If you fail to submit orders for three consecutive turns, your empire automatically enters **Autopilot** mode. Unlike Defensive Collapse, autopilot is temporary and you can rejoin at any time.
+If you fail to submit commands for three consecutive turns, your empire automatically enters **Autopilot** mode. Unlike Defensive Collapse, autopilot is temporary and you can rejoin at any time.
 
 **Autopilot Behavior:**
 
-- Your fleets continue executing standing orders until completion
-- Fleets without active orders patrol and defend home systems
+- Your fleets continue executing standing commands until completion
+- Fleets without active commands patrol and defend home systems
 - Your economy continues operating (current tax rate and R&D allocations maintained)
 - Construction focuses on defensive infrastructure and essential facilities
 - No new offensive operations or colonization attempts
 - Diplomatic stances remain unchanged
 - Engages Enemy-status houses that enter controlled territory per [Section 8.1.4](08-diplomacy.md#814-enemy)
 
-When you return and submit new orders, your empire immediately exits autopilot and resumes normal operations.
+When you return and submit new commands, your empire immediately exits autopilot and resumes normal operations.
 
 **Turn Processing:**
 
 - Autopilot activates in the Income Phase after the third consecutive missed turn per [Section 1.3.2](#132-income-phase)
-- Autopilot orders execute during the Command Phase per [Section 1.3.3](#133-command-phase)
+- Autopilot commands execute during the Command Phase per [Section 1.3.3](#133-command-phase)
 - You can resume control in any subsequent turn by submitting orders
 
 ### 1.4.3 Standard Elimination & Last-Stand Invasions
@@ -233,7 +233,7 @@ This creates dramatic comeback opportunities and rewards players who maintain mo
 
 You achieve victory by reaching 2500 prestige or by being the last active player in the game.
 
-- **Active Players**: Players submitting orders (not in autopilot or defensive collapse)
+- **Active Players**: Players submitting commands (not in autopilot or defensive collapse)
 - **Autopilot Players**: Count as active and can return to win
 - **Defensive Collapse Players**: Eliminated, do not count toward victory
 - **Last-Stand Players**: Count as active until final elimination
@@ -260,7 +260,7 @@ Whenever your friendly fleets are present in the same system as foreign forces, 
 
 - Fleet composition (ship types and squadron sizes)
 - Number of spacelift ships (transport count)
-- Standing orders (Patrol, Guard, Blockade, etc.)
+- Standing commands (Patrol, Guard, Blockade, etc.)
 - Fleet location (current system)
 
 **Visual Intelligence Limitations:**
@@ -300,7 +300,7 @@ You gather intelligence regardless of diplomatic relationships:
 
 - Enemy forces: Intelligence gathered, combat may occur
 - Hostile forces: Intelligence gathered, combat may occur
-- Neutral forces: Intelligence gathered, combat only if threatening orders are present
+- Neutral forces: Intelligence gathered, combat only if threatening commands are present
 
 This reflects the reality that military forces cannot remain completely hidden when operating in the same system, even if diplomatic protocols prevent engagement.
 
@@ -321,7 +321,7 @@ You do not have automatic visibility into:
 - Rival empire technology levels (requires espionage per [Section 8.2](08-diplomacy.md#82-subversion-subterfuge))
 - Fleet movements in systems without your friendly presence
 - Colony development and construction projects
-- Strategic intentions and future orders
+- Strategic intentions and future commands
 
 The game server maintains separate intelligence databases for each house to preserve fog of war. You must actively gather intelligence through fleet operations, scout missions, and espionage activities. The server ensures you see only what your House has legitimately discovered—no information leakage between players.
 

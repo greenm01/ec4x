@@ -86,7 +86,9 @@
 | EL | Economic Level – entrepreneurial & education advancement (max 10+) | [4.2](04-research_development.md#42-economic-level-el) |
 | ELI | Electronic Intelligence – detection tech level | [4.8](04-research_development.md#48-electronic-intelligence-eli) |
 | ERP | Economic Research Points – used to advance Economic Level | [4.1](04-research_development.md#41-science-level-sl) |
+| FC | Flagship Command – tech that increases capital ship Command Rating (CR) | [4.10](04-research_development.md#410-flagship-command-fc) |
 | FD | Fighter Doctrine tech level – multiplier to per-colony fighter capacity | [4.12](04-research_development.md#412-fighter-doctrine-fd) |
+| SC | Strategic Command – tech that increases C2 Pool capacity | [4.11](04-research_development.md#411-strategic-command-sc) |
 | SL | Science Level – scientific advancement (max 10+) | [4.1](04-research_development.md#41-science-level-sl) |
 | SRP | Science Research Points – used to advance Science Level | [4.1](04-research_development.md#41-science-level-sl) |
 | TL | Tech Level – generic technology level (context dependent) | [4.0](04-research_development.md#40-research-development) |
@@ -96,24 +98,27 @@
 ## Combat & Military Operations
 | Term | Definition | Section Link |
 |------|------------|--------------|
+| Active Duty | Operational status: 100% CC & maintenance, fully mobile | [2.3.3.5](02-assets.md#2335-ship-status-management) |
 | Ambush | Surprise attack where undetected Raiders strike first (+4 CER modifier) | [7.3.2](07-combat.md#732-combat-initiative-and-phases) |
 | Blitz | Fast Marine infiltration of planet; requires 2:1 superiority; less damage than invasion | [7.6.2](07-combat.md#762-planetary-blitz) |
-| Blockade | Fleet operation that reduces colony GCO by 60% and imposes -2 prestige penalty | [6.3.8](06-operations.md#638-blockade-a-planet-06) |
-| Bombardment | Orbital attack on planet's defensive assets and infrastructure | [6.3.9](06-operations.md#639-bombard-a-planet-07) |
+| Blockade | Fleet command that reduces colony GCO by 60% and imposes -2 prestige penalty | [6.3.8](06-operations.md#638-blockade-a-colony-06) |
+| Bombardment | Orbital attack on planet's defensive assets and infrastructure | [6.3.9](06-operations.md#639-bombard-a-colony-07) |
 | Cloaking | Stealth technology allowing Raiders to avoid detection; countered by ELI | [7.2.4](07-combat.md#724-cloaking-and-detection) |
 | Colonization | Landing an ETAC to establish a new colony on unoccupied planet | [6.3.12](06-operations.md#6312-colonize-a-planet-10) |
 | Critical Hit | Natural 9 on CER roll; bypasses destruction protection and awards prestige | [7.3.3](07-combat.md#733-combat-effectiveness-rating-cer) |
 | Crippled | Combat state where unit's AS is halved; requires DS hits to achieve | [7.2.2](07-combat.md#722-combat-state-and-damage) |
 | Destroyed | Final combat state where unit is dead and unrecoverable | [7.2.2](07-combat.md#722-combat-state-and-damage) |
-| Fleet | Grouping of squadrons for strategic movement through jump lanes | [2.3.4](02-assets.md#234-fleets) |
-| Flagship | Capital ship commanding a squadron; determines max capacity via CR | [2.3.3](02-assets.md#233-squadrons) |
+| Fleet | Primary strategic unit comprising one or more squadrons | [2.3.3.2](02-assets.md#2332-fleets-strategic-level) |
+| Flagship | Capital ship commanding a squadron; determines max capacity via CR | [2.3.3.1](02-assets.md#2331-squadrons-tactical-level) |
 | Invasion | Three-round battle to conquer planet: batteries, population, then Marines | [7.6.1](07-combat.md#761-planetary-invasion) |
+| Logistical Strain | PP penalty for exceeding C2 Pool | [2.3.3.4](02-assets.md#2334-logistical-strain-exceeding-the-c2-pool) |
 | Morale | Crew effectiveness based on prestige; affects CER rolls and combat behavior | [7.2.1](07-combat.md#721-rules-of-engagement-roe) |
-| Patrol | Fleet operation to actively engage hostiles entering a system | [6.3.5](06-operations.md#635-patrol-a-system-03) |
+| Mothballed Status | Operational status: 0% CC, 10% maintenance, immobile, defenseless | [2.3.3.5](02-assets.md#2335-ship-status-management) |
+| Patrol | Fleet command to actively engage hostiles entering a system | [6.3.5](06-operations.md#635-patrol-a-system-03) |
+| Reserve Status | Operational status: 50% CC, 50% maintenance, immobile | [2.3.3.5](02-assets.md#2335-ship-status-management) |
 | Retreat | Combat disengagement after first round; falls back to friendly system | [7.3.6](07-combat.md#736-retreat-mechanics) |
-| Salvage | Disband fleet at colony for 50% of ships' PC value | [6.3.18](06-operations.md#6318-salvage-16) |
-| Squadron | Organized group of ships under flagship command; fights as single unit | [2.3.3](02-assets.md#233-squadrons) |
-| Task Force | Temporary merger of all fleets + starbase during combat | [7.2.3](07-combat.md#723-task-force-formation) |
+| Squadron | Smallest tactical unit; group of ships under flagship command | [2.3.3.1](02-assets.md#2331-squadrons-tactical-level) |
+| Task Force | Temporary combat grouping of squadrons from one or more fleets | [2.3.3.6](02-assets.md#2336-task-force) |
 
 ## Diplomacy & Intelligence
 | Term | Definition | Section Link |
@@ -132,10 +137,10 @@
 ## Game Phases & Turn Structure
 | Term | Definition | Section Link |
 |------|------------|--------------|
-| Command Phase | Third phase: issue fleet orders, diplomatic changes, construction orders | [1.3.3](01-gameplay.md#133-command-phase) |
+| Command Phase | Third phase: issue fleet commands, diplomatic changes, construction commands | [1.3.3](01-gameplay.md#133-command-phase) |
 | Conflict Phase | First phase: resolve all military actions, combat, bombardment, invasion | [1.3.1](01-gameplay.md#131-conflict-phase) |
 | Income Phase | Second phase: recalculate economics, update prestige, grow population | [1.3.2](01-gameplay.md#132-income-phase) |
-| Maintenance Phase | Fourth phase: pay upkeep, complete repairs, process construction | [1.3.4](01-gameplay.md#134-maintenance-phase) |
+| Production Phase | Fourth phase: pay upkeep (including Logistical Strain), complete repairs, process construction | [1.3.4](01-gameplay.md#134-production-phase) |
 
 ## Special Mechanics & Status
 | Term | Definition | Section Link |

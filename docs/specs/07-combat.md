@@ -18,7 +18,7 @@ Fight enemy mobile fleets in deep space before reaching orbit. Your task forces 
 
 **Who fights:**
 - Your attacking fleets
-- Enemy mobile defenders (fleets with no Guard orders, active movement orders)
+- Enemy mobile defenders (fleets with no Guard commands, active movement commands)
 - Undetected Raiders can ambush with combat bonuses
 
 **Outcome determines:**
@@ -32,7 +32,7 @@ Assault fortified orbital defenses after achieving space superiority. Your fleet
 
 **Who fights:**
 - Your surviving attack fleets (if you won space combat)
-- Enemy guard fleets (fleets with Guard/Defend orders)
+- Enemy guard fleets (fleets with Guard/Defend commands)
 - Enemy reserve and mothballed fleets
 - Enemy starbases (orbital installations with heavy firepower)
 - Enemy unassigned squadrons at colony
@@ -61,7 +61,7 @@ Bombard planetary defenses and invade the surface after securing orbit. Your fle
 
 ### 7.1.2 Why Progressive Combat Matters
 
-**No theater skipping**: Your fleets cannot bypass defenses. Guard orders mean enemy fleets defend in orbital combat only—they don't participate in deep space battles. This creates strategic depth: defending admirals choose which fleets defend which theater.
+**No theater skipping**: Your fleets cannot bypass defenses. Guard commands mean enemy fleets defend in orbital combat only—they don't participate in deep space battles. This creates strategic depth: defending admirals choose which fleets defend which theater.
 
 **Resource allocation**: Attackers must maintain overwhelming force through all three phases. Winning space combat with 80% losses means facing orbital defenses with a crippled fleet. Plan for attrition.
 
@@ -107,9 +107,9 @@ Your house's prestige affects fleet morale, modifying effective ROE during comba
 
 **Homeworld Defense Exception**: Fleets defending their homeworld NEVER retreat regardless of ROE or losses.
 
-**ROE affects standing orders**: PatrolRoute with ROE=2 patrols but retreats unless 4:1 advantage. DefendSystem with ROE=8 fights even at 1:2 disadvantage.
+**ROE affects standing commands**: PatrolRoute with ROE=2 patrols but retreats unless 4:1 advantage. DefendSystem with ROE=8 fights even at 1:2 disadvantage.
 
-**ROE does NOT affect explicit orders**: When you issue Bombard, Invade, or Attack orders, your fleet executes regardless of ROE. ROE only matters for automated retreat decisions during combat.
+**ROE does NOT affect explicit commands**: When you issue Bombard, Invade, or Attack commands, your fleet executes regardless of ROE. ROE only matters for automated retreat decisions during combat.
 
 ### 7.2.2 Combat State and Damage
 
@@ -199,27 +199,27 @@ Space combat occurs when mobile fleets encounter each other in the same system. 
 
 **Diplomatic Status Determines Combat:**
 - **Enemy Status**: Combat occurs automatically (always hostile)
-- **Hostile Status**: Combat occurs if Hostile fleets have **threatening or provocative orders** in a system you control, or if already engaged.
-- **Neutral Status**: Combat occurs only if Neutral fleets have **threatening orders** (Invade, Bombard, Blitz, Blockade) in a system you control.
+- **Hostile Status**: Combat occurs if Hostile fleets have **threatening or provocative commands** in a system you control, or if already engaged.
+- **Neutral Status**: Combat occurs only if Neutral fleets have **threatening commands** (Invade, Bombard, Blitz, Blockade) in a system you control.
 - **Neutral + Non-Threatening**: No combat (peaceful coexistence)
 
 **Special Case: Mutual Stealth**
-If two cloaked Raider fleets from opposing houses are in the same system and neither detects the other during the Raider Detection step (see [Section 7.2.4](07-combat.md#724-cloaking-and-detection)), combat is not initiated. The fleets are considered to have passed each other undetected and will continue to execute their assigned fleet orders.
+If two cloaked Raider fleets from opposing houses are in the same system and neither detects the other during the Raider Detection step (see [Section 7.2.4](07-combat.md#724-cloaking-and-detection)), combat is not initiated. The fleets are considered to have passed each other undetected and will continue to execute their assigned fleet commands.
 
 **Rules of Engagement (ROE 0-10):**
 
 ROE determines when your fleets **retreat** during combat, not whether combat starts. Set higher ROE for aggressive stands, lower ROE for cautious retreats when outmatched.
 
 **Mobile Fleet Types** (Fight in Space Combat):
-- Fleets with **no orders** (default mobile posture)
-- Fleets with **Hold orders** (stationary but mobile-capable)
-- Fleets with **Patrol orders** (active patrol duty)
-- Fleets with **movement-based standing orders** (PatrolRoute, AutoReinforce, AutoRepair)
-- Fleets with **offensive mission orders** (Move, Invade, Bombard, Blockade)
-- **Active status fleets** without guard-specific orders
+- Fleets with **no commands** (default mobile posture)
+- Fleets with **Hold commands** (stationary but mobile-capable)
+- Fleets with **Patrol commands** (active patrol duty)
+- Fleets with **movement-based standing commands** (PatrolRoute, AutoReinforce, AutoRepair)
+- Fleets with **offensive mission commands** (Move, Invade, Bombard, Blockade)
+- **Active status fleets** without guard-specific commands
 
 **Who Does NOT Fight in Space Combat:**
-- **Guard fleets**: GuardStarbase, GuardPlanet, DefendSystem orders - they defend in orbital combat only
+- **Guard fleets**: GuardStarbase, GuardPlanet, DefendSystem commands - they defend in orbital combat only
 - **Reserve fleets**: Stationed at colony, fight in orbital combat only
 - **Mothballed fleets**: Offline, screened in orbital combat, cannot fight
 - **Starbases**: Fixed installations, orbital combat only. The do provide ELI support to space combatants.
@@ -450,7 +450,7 @@ Losing fleets can retreat before total destruction. Retreat saves surviving squa
 - Defenders who retreat cede space superiority (attackers proceed to orbital combat)
 - Crippled squadrons may be lost during retreat if cannot traverse restricted lanes
 
-**Pursuit**: Victorious fleet does NOT automatically pursue retreating enemies. Pursuit requires explicit orders (Move to follow) or standing orders (PatrolRoute, AutoReinforce).
+**Pursuit**: Victorious fleet does NOT automatically pursue retreating enemies. Pursuit requires explicit commands (Move to follow) or standing commands (PatrolRoute, AutoReinforce).
 
 **Multi-House Retreat Priority:**
 
@@ -501,7 +501,7 @@ Assault fortified colony defenses after winning space superiority. Your fleets e
 - Any fleets that bypassed space combat (if no mobile defenders present)
 
 **Orbital Defenders** (All Fight Simultaneously):
-- **Guard fleets**: Fleets with GuardStarbase, GuardPlanet, DefendSystem orders
+- **Guard fleets**: Fleets with GuardStarbase, GuardPlanet, DefendSystem commands
 - **Reserve fleets**: 50% maintenance fleets stationed at colony (reduced combat effectiveness)
 - **Mothballed fleets**: 0% maintenance fleets (CANNOT FIGHT - must be screened)
 - **Starbases**: Orbital installations with heavy firepower and detection capability
@@ -699,7 +699,7 @@ Excess bombardment hits (after damaging batteries and ground forces) destroy col
 - Faster conquest but higher military cost
 
 **Blockade Alternative:**
-- Blockade colony instead of bombardment (GuardPlanet/BlockadePlanet orders)
+- Blockade colony instead of bombardment (GuardPlanet/BlockadePlanet commands)
 - Cuts production 50% without destruction
 - Starves defenders over time
 - Less diplomatic penalty than bombardment

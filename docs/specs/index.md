@@ -18,9 +18,9 @@ You lead one of the Great Houses rising from the ashes. Your mandate is absolute
 
 **Strategic cycles operate on the Cipher Ledger**—a quantum-entangled network embedded in jump lane stabilizers enabling instantaneous cryptographic settlement across interstellar space. Each cycle represents the time required to gather intelligence, coordinate operations, and consolidate control across your territory. In tight regional conflicts, cycles pass quickly (1-2 years). Sprawling multi-sector campaigns unfold over decades (10-15 years per cycle).
 
-Turns cycle as soon as all players complete their orders, generally within 24 hours of real time. EC4X is intentionally slow burn—strategic empire building, not tactical skirmishing.
+Turns cycle as soon as all players complete their commands, generally within 24 hours of real time. EC4X is intentionally slow burn—strategic empire building, not tactical skirmishing.
 
-**The game automates tedious micromanagement.** Squadrons form automatically. Fleets organize themselves. Construction queues process without constant attention. You command at the strategic level—issuing fleet orders, setting research priorities, allocating resources. The game handles tactical execution.
+**The game automates tedious micromanagement.** Squadrons form automatically. Fleets organize themselves. Construction queues process without constant attention. You command at the strategic level—issuing fleet commands, setting research priorities, allocating resources. The game handles tactical execution.
 
 EC4X runs on your machine or across the Nostr network. For tabletop sessions, run the game server on localhost—players connect from their laptops around the table. For remote play between friends, the server operates over Nostr protocol, enabling asynchronous turn submission with cryptographic verification. The game server acts as moderator, processing turns automatically and maintaining fog of war. No human moderator required—the software handles everything.
 
@@ -61,7 +61,7 @@ The complete EC4X game specification is organized into the following documents:
 
 ### Game Systems
 
-- **[Military Assets](02-assets.md)** - Ships, fleets, squadrons, and special units
+- **[Military Assets](02-assets.md)** - Ships, squadrons, fleets, C2 Pool, and special units
 - **[Economy](03-economy.md)** - Economics system
 - **[Research & Development](04-research_development.md)** - R&D systems
 - **[Construction](05-construction.md)** - Construction systems

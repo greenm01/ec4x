@@ -14,7 +14,7 @@ Your **Scouts** are the primary tool for gathering detailed, high-quality intell
 
 Scout espionage missions progress through multiple phases:
 
-1. **Travel**: The Scout fleet moves toward the target system. During this phase, you can cancel the mission by issuing new orders.
+1. **Travel**: The Scout fleet moves toward the target system. During this phase, you can cancel the mission by issuing new commands.
 2. **Arrival**: When the fleet arrives, the mission begins. Scouts are "consumed" (committed to the mission) and the fleet is locked. You cannot recall scouts once the mission starts.
 3. **Persistent Operation**: Scouts remain at the target, gathering intelligence each turn while evading detection.
 4. **Detection Checks**: Every turn, the defending house attempts to detect your scouts. If detected, all scouts are destroyed immediately and the mission fails. If undetected, scouts gather **Perfect Quality** intelligence for that turn.
@@ -36,11 +36,11 @@ Scout missions are high-risk operations with significant rewards:
 - **Irreversible Commitment**: Once scouts arrive at the target, you cannot recall them. They remain on mission until detected or the target is lost.
 - **Diplomatic Escalation**: If detected, your diplomatic stance with the defender escalates to Hostile.
 
-See espionage orders in [Section 6.3.13-6.3.15](06-operations.md#6313-spy-on-a-planet-11) for mission details and detection mechanics.
+See espionage commands in [Section 6.3.13-6.3.15](06-operations.md#6313-spy-on-a-planet-11) for mission details and detection mechanics.
 
 ### 9.1.2 Fleet Encounters
 
-When your fleets encounter enemy forces in the same system, your captains automatically report what they observe. These visual sightings provide basic tactical intelligence: ship types, squadron sizes, and observable behavior such as patrol or blockade operations. You can count the enemy destroyers and cruisers, note the presence of transport vessels, and observe their standing orders.
+When your fleets encounter enemy forces in the same system, your captains automatically report what they observe. These visual sightings provide basic tactical intelligence: ship types, squadron sizes, and observable behavior such as patrol or blockade operations. You can count the enemy destroyers and cruisers, note the presence of transport vessels, and observe their standing commands.
 
 Visual intelligence has natural limitations. Your captains cannot assess technological sophistication from a distance, determine hull damage states, or identify cargo contents. An enemy transport fleet shows only the number of ships, not whether they carry invasion troops, colonists, or equipment. Tech levels display as zero since there is no way to visually assess research advancement. This reflects the reality of tactical observation in space warfare.
 
@@ -62,7 +62,7 @@ Your intelligence network generates detailed reports from all sources. These rep
 
 ### 9.2.1 Scout Encounter Reports
 
-Scout encounters produce your most detailed intelligence reports. When scouts observe enemy fleets, the report includes complete squadron compositions, tech levels for all ships, hull integrity assessments, and cargo manifests for transport vessels. Fleet behavior patterns are noted, including standing orders and patrol routes.
+Scout encounters produce your most detailed intelligence reports. When scouts observe enemy fleets, the report includes complete squadron compositions, tech levels for all ships, hull integrity assessments, and cargo manifests for transport vessels. Fleet behavior patterns are noted, including standing commands and patrol routes.
 
 Colony discoveries provide comprehensive settlement data. Your analysts learn population levels, industrial capacity, defensive installations, construction queues, and orbital defenses. Economic intelligence reveals gross output and net tax revenue. The construction queue shows what the enemy is building and how many turns remain to completion.
 
@@ -80,7 +80,7 @@ This historical tracking enables strategic prediction. If an enemy fleet has pat
 
 ### 9.2.3 Combat Intelligence
 
-Combat generates automatic intelligence reports for all participating forces. Before battle, both sides gain complete knowledge of enemy fleet composition, squadron breakdowns, spacelift cargo, and fleet orders. The fog of war lifts completely during combat - you see exactly what you're fighting.
+Combat generates automatic intelligence reports for all participating forces. Before battle, both sides gain complete knowledge of enemy fleet composition, squadron breakdowns, spacelift cargo, and fleet commands. The fog of war lifts completely during combat - you see exactly what you're fighting.
 
 Post-combat intelligence depends on survival. If your forces survive or retreat successfully, they report battle outcomes, losses sustained by both sides, and which enemy forces retreated. Complete annihilation provides no post-combat intelligence.
 

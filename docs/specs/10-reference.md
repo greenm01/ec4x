@@ -41,7 +41,7 @@ Flagship-capable ships that lead squadrons. Subject to both capital squadron lim
 
 ### Auxiliary Ships
 
-Non-combat support ships. Do not count toward squadron limits. Form Intel/Expansion/Auxiliary squadrons.
+Non-combat support ships. These vessels do not have a Command Cost (CC) and do not count toward the C2 Pool limit. They form their own Intel/Expansion/Auxiliary squadrons.
 
 | Class | Name            | CST | PC | MC  | AS | DS | Notes                                      |
 |:-----:| --------------- |:---:|:--:|:---:|:--:|:--:| ------------------------------------------ |
@@ -292,8 +292,7 @@ Ground units received 33% cost reductions to make defensive investments more acc
 
 | Limit Description                             | Rule Details                                                                                                                                                                                                                   | Source Section                                             |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| Total Squadrons (per house)                   | Maximum = Total House (IU ÷ 50) × mapMultiplier (round down, minimum 20). Includes ALL military squadrons (escorts + capitals). Excludes fighters and auxiliary ships. 2-turn grace period, then auto-disband weakest escorts. | [3.12](03-economy.md#312-house-combat-squadron-limit)         |
-| Capital Squadrons (per house)                 | Maximum = Total House (IU ÷ 100) × 2 × mapMultiplier (round down, minimum 8). Squadrons with capital ships. Subset of total squadron limit. No grace period, immediate enforcement with 50% salvage.                           | [3.12](03-economy.md#312-house-combat-squadron-limit)         |
+| Command & Control (C2) Pool                   | Soft cap on total navy size. Total Command Cost (CC) of all active ships is measured against the C2 Pool. Exceeding the pool incurs a "Logistical Strain" flat financial penalty. C2 Pool = (Total House IU × 0.5) + SC Tech Bonus. | [2.3.3.3](02-assets.md#2333-command--control-c2-pool)     |
 | Planet-Breakers (per colony)                  | Maximum 1 per currently owned colony (homeworld counts). Loss of colony instantly scraps its PB (no salvage).                                                                                                                  | [2.4.8](02-assets.md#248-planet-breaker)                      |
 | Fighter Squadrons (per colony)                | Max FS = floor(Colony IU ÷ 100) × Fighter Doctrine multiplier (FD I = 1.0×, FD II = 1.5×, FD III = 2.0×). Based on industrial capacity, not population. 2-turn grace on capacity violation → auto-disband excess.              | [2.4.1](02-assets.md#241-fighter-squadrons-carriers)          |
 | Carrier Hangar Capacity                       | CV = 3–5 FS, CX = 5–8 FS depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit.                                                                                          | [2.4.1](02-assets.md#241-fighter-squadrons-carriers)          |
@@ -301,19 +300,4 @@ Ground units received 33% cost reductions to make defensive investments more acc
 | Blockade Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for blockade penalty details.                                                                                                                                    | [6.2.6](06-operations.md#626-guardblockade-a-planet-05)       |
 | Tax Rate Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for tax rate penalty details.                                                                                                                                    | [3.2](03-economy.md#32-tax-rate)                              |
 
-**Map Size Multipliers** (affects both total and capital squadron limits):
 
-- **Small maps** (< 8 systems/player): 0.8× (encourages concentration)
-- **Medium maps** (8-12 systems/player): 1.0× (baseline)
-- **Large maps** (13-16 systems/player): 1.3× (more territory = more ships needed)
-- **Huge maps** (> 16 systems/player): 1.6× (vast empires need larger fleets)
-
-**Squadron Limit Relationship:**
-Capital squadron limit is a SUBSET of total squadron limit (not additive). Example with 1000 IU on medium map:
-
-- Total limit: floor(1000 ÷ 50) × 1.0 = 20 squadrons (ALL military ships)
-- Capital limit: floor(1000 ÷ 100) × 2 × 1.0 = 20 capital squadrons
-- Valid fleet: 20 capitals + 0 escorts = 20 total ✓
-- Valid fleet: 15 capitals + 5 escorts = 20 total ✓
-- Invalid: 25 capitals (violates capital limit) ✗
-- Invalid: 10 capitals + 15 escorts = 25 total (violates total limit) ✗

@@ -1,6 +1,8 @@
 src/engine/
     │
-    ├── game_engine.nim     # [MAIN APPLICATION ENTRY] Orchestrates game lifecycle.
+    ├── globals.nim         # [GLOBAL VARIABLES] Threadvar module-level storage.
+    │
+    ├── engine.nim          # [MAIN APPLICATION ENTRY] Orchestrates game lifecycle.
     │                       #   - Initializes new games.
     │                       #   - Loads/Saves state via `@persistence`.
     │                       #   - Drives the main turn cycle via `@turn_cycle/turn_executor.nim`.

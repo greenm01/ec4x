@@ -23,11 +23,11 @@ import
     capacity, core, game_state, squadron, ship, production, event, colony, house,
     facilities,
   ]
-import ../../state/[entity_manager, game_state as gs_helpers, iterators]
+import ../../state/[entity_manager, engine as gs_helpers, iterators]
 import ../../entities/squadron_ops
-import ../../config/[military_config, ships_config]
 import ../../event_factory/fleet_ops
 import ../../../common/logger
+import ../../globals
 
 export
   capacity.CapacityViolation, capacity.EnforcementAction, capacity.ViolationSeverity
@@ -35,7 +35,7 @@ export
 proc getCapitalShipCRThreshold*(): int =
   ## Get the CR threshold for capital ships from config
   ## Default: 7 (ships with CR >= 7 are capital ships)
-  return military_config.globalMilitaryConfig.squadron_limits.capital_ship_cr_threshold
+  return gameState.military.squadronLimits.capitalShipCrThreshold
 
 proc getSystemsForRings(mapRings: int): int =
   ## Estimate total systems for a given map ring count
