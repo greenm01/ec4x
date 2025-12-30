@@ -81,7 +81,7 @@ Where:
 | Rich      | 120% | 105% | 90%    | 75%   | 72%     | 69%      | 66%     |
 | Very Rich | 140% | 120% | 100%   | 80%   | 76%     | 72%      | 68%     |
 
-*Source: config/economy.toml [raw_material_efficiency] section*
+*Source: config/economy.kdl [rawMaterialEfficiency] section*
 
 <!-- RAW_MATERIAL_TABLE_END -->
 
@@ -133,7 +133,7 @@ To reward benevolent or populist rule, colonies grant bonuses in the same Income
 | 11 – 20 %          | ×1.15 (+14 %)                                           | +2                                  |
 | 0 – 10 %           | ×1.20 (+19 %)                                           | +3                                  |
 
-*Source: config/prestige.toml [tax_incentives] and config/economy.toml [tax_population_growth] sections*
+*Source: config/prestige.toml [tax_incentives] and config/economy.kdl [taxPopulationGrowth] sections*
 
 <!-- TAX_INCENTIVE_TABLE_END -->
 
@@ -193,7 +193,7 @@ PU Growth per Turn = max(2, floor(PU × 0.30 × tax_multiplier × (1 + starbase_
 Where:
 
 - Base birthrate = 30% per turn
-- Tax multiplier from [Section 3.2.2](#322-low-tax-incentives-the-carrot)
+- Tax multiplier from [Section 3.2.2](#322-low-tax-incentives)
 - Starbase bonus = 0.05 per operational starbase, max 0.15 (3 starbases)
 
 **Active Population Transfer:**

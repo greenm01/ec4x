@@ -1,199 +1,67 @@
-// EC4X Economy Configuration
-// Core economic mechanics: population, production, investment, taxation, colonization
-//
-// This file contains:
-// - BALANCE VARIABLES: Tunable gameplay parameters (adjust during playtesting)
-// - CORE MECHANICS: Fundamental game rules (mathematical formulas, type systems)
-//
-// Note: Starting resources and scenario setup are in game_setup/*.kdl files
-// Note: Construction costs/times are in construction.kdl
-// Note: Military squadron limits are in military.kdl
+// EC4X Economy Configuration v0.2
+// Source: docs/specs/03-economy.md
+// This file defines core economic mechanics: population, production, investment, taxation, colonization.
+// All values are tunable gameplay parameters.
 
+// --- Population & Transfer Units --- (Section 3.1, 3.5)
 population {
-  naturalGrowthRate 0.30
-  growthRatePerStarbase 0.10
-  maxStarbaseBonus 0.30
-  ptuGrowthRate 0.04
-  ptuToSouls 50000
-  puToPtuConversion 0.00657
-  minViableColonyPop 5000    // Minimum viable souls to sustain a colony 
+  naturalGrowthRate 0.30 // Base birthrate from Section 3.5
+  // ptuGrowthRate 0.04  // Not explicitly defined in spec for PU to PTU conversion
+  ptuToSouls 50000       // One PTU represents approx. 50,000 souls (Section 3.1)
+  puToPtuConversion 0.00657 // Constant for PU to PTU conversion formula (Section 3.1)
+  minViableColonyPop 5000 // Minimum viable souls to sustain a colony
 }
 
-ptuDefinition {
-    // Population Transfer Unit (PTU) definition
-    // One PTU is approximately 50k souls = 0.05 million people
-    // Used for both ETAC colonization and Space Guild transfers
-    soulsPerPtu 50000        // Number of souls in 1 PTU
-    ptuSizeMillions 0.05     // PTU size in millions (for colony.population field)
-    minPopulationRemaining 0 // Minimum population after PTU transfer (0 = allow evacuation)
-}
 
-production {
-  productionPer10Population 5
-  productionSplitCredits 0.33
-  productionSplitProduction 0.33
-  productionSplitResearch 0.33
-}
 
-infrastructure {
-  // TODO: Define infrastructure production modifiers
-}
-
-planetClasses {
-  extremePuMin 1
-  extremePuMax 20
-  desolatePuMin 21
-  desolatePuMax 60
-  hostilePuMin 61
-  hostilePuMax 180
-  harshPuMin 181
-  harshPuMax 500
-  benignPuMin 501
-  benignPuMax 1000
-  lushPuMin 1001
-  lushPuMax 2000
-  edenPuMin 2001
-}
-
-research {
-  researchCostBase 1000
-  researchCostExponent 2
-  researchBreakthroughBaseChance 0.10
-  researchBreakthroughRpPerPercent 50
-  minorBreakthroughBonus 10
-  moderateBreakthroughDiscount 0.20
-  revolutionaryQuantumComputingElModBonus 0.10
-  revolutionaryStealthDetectionBonus 2
-  revolutionaryTerraformingGrowthBonus 0.02
-  erpBaseCost 5
-  elEarlyBase 40
-  elEarlyIncrement 10
-  elLateIncrement 15
-  srpBaseCost 2
-  srpSlMultiplier 0.5
-  slEarlyBase 20
-  slEarlyIncrement 5
-  slLateIncrement 10
-  trpFirstLevelCost 25
-  trpLevelIncrement 5
-}
-
+// --- Raw Material Efficiency Multipliers --- (Section 3.1 RAW INDEX Table)
 rawMaterialEfficiency {
-  veryPoorEden 0.60
-  veryPoorLush 0.60
-  veryPoorBenign 0.60
-  veryPoorHarsh 0.60
-  veryPoorHostile 0.60
-  veryPoorDesolate 0.60
-  veryPoorExtreme 0.60
-  poorEden 0.80
-  poorLush 0.75
-  poorBenign 0.70
-  poorHarsh 0.65
-  poorHostile 0.64
-  poorDesolate 0.63
-  poorExtreme 0.62
-  abundantEden 1.00
-  abundantLush 0.90
-  abundantBenign 0.80
-  abundantHarsh 0.70
-  abundantHostile 0.68
-  abundantDesolate 0.66
-  abundantExtreme 0.64
-  richEden 1.20
-  richLush 1.05
-  richBenign 0.90
-  richHarsh 0.75
-  richHostile 0.72
-  richDesolate 0.69
-  richExtreme 0.66
-  veryRichEden 1.40
-  veryRichLush 1.20
-  veryRichBenign 1.00
-  veryRichHarsh 0.80
-  veryRichHostile 0.76
-  veryRichDesolate 0.72
-  veryRichExtreme 0.68
+  material "Very Poor" {
+    eden=0.60 lush=0.60 benign=0.60 harsh=0.60 hostile=0.60 desolate=0.60 extreme=0.60
+  }
+  material "Poor" {
+    eden=0.80 lush=0.75 benign=0.70 harsh=0.65 hostile=0.64 desolate=0.63 extreme=0.62
+  }
+  material "Abundant" {
+    eden=1.00 lush=0.90 benign=0.80 harsh=0.70 hostile=0.68 desolate=0.66 extreme=0.64
+  }
+  material "Rich" {
+    eden=1.20 lush=1.05 benign=0.90 harsh=0.75 hostile=0.72 desolate=0.69 extreme=0.66
+  }
+  material "Very Rich" {
+    eden=1.40 lush=1.20 benign=1.00 harsh=0.80 hostile=0.76 desolate=0.72 extreme=0.68
+  }
 }
 
+// --- Tax Mechanics --- (Section 3.2.1)
 taxMechanics {
-  taxAveragingWindowTurns 6
+  taxAveragingWindowTurns 6 // Rolling 6-turn window for prestige penalty (Section 3.2.1)
 }
 
 taxPopulationGrowth {
-  tier1Min 41
-  tier1Max 50
-  tier1PopMultiplier 1.0
-  tier2Min 31
-  tier2Max 40
-  tier2PopMultiplier 1.05
-  tier3Min 21
-  tier3Max 30
-  tier3PopMultiplier 1.10
-  tier4Min 11
-  tier4Max 20
-  tier4PopMultiplier 1.15
-  tier5Min 0
-  tier5Max 10
-  tier5PopMultiplier 1.20
+  // Low-Tax Incentives for population growth (Section 3.2.2)
+  tier 1 { minRate=41 maxRate=50 popMultiplier=1.0 }
+  tier 2 { minRate=31 maxRate=40 popMultiplier=1.05 }
+  tier 3 { minRate=21 maxRate=30 popMultiplier=1.10 }
+  tier 4 { minRate=11 maxRate=20 popMultiplier=1.15 }
+  tier 5 { minRate=0 maxRate=10 popMultiplier=1.20 }
 }
 
-industrialInvestment {
-  baseCost 3
-  tier1MaxPercent 50
-  tier1Multiplier 1.0
-  tier1Pp 3
-  tier2MinPercent 51
-  tier2MaxPercent 75
-  tier2Multiplier 1.2
-  tier2Pp 4
-  tier3MinPercent 76
-  tier3MaxPercent 100
-  tier3Multiplier 1.5
-  tier3Pp 5
-  tier4MinPercent 101
-  tier4MaxPercent 150
-  tier4Multiplier 2.0
-  tier4Pp 6
-  tier5MinPercent 151
-  tier5Multiplier 2.5
-  tier5Pp 8
-}
-
-colonization {
-  startingInfrastructureLevel 1
-  startingIuPercent 50
-  edenPpPerPtu 4
-  lushPpPerPtu 5
-  benignPpPerPtu 6
-  harshPpPerPtu 8
-  hostilePpPerPtu 10
-  desolatePpPerPtu 12
-  extremePpPerPtu 15
-}
-
+// --- Industrial Growth Parameters --- (Section 3.4)
 industrialGrowth {
-  passiveGrowthDivisor 50.0
-  passiveGrowthMinimum 2.0
-  appliesModifiers #true
+  passiveGrowthDivisor 50.0 // floor(PU / 50) for passive IU growth (Section 3.4)
+  passiveGrowthMinimum 2.0  // max(2, ...) for passive IU growth (Section 3.4)
 }
 
+// --- Starbase Economic Bonuses --- (Section 2.4.4, 3.1, 3.5)
 starbaseBonuses {
-  growthBonusPerStarbase 0.05
-  maxStarbasesForBonus 3
-  eliBonusPerStarbase 2
+  populationGrowthBonusPerStarbase 0.05 // +5% population growth per SB
+  industrialProductionBonusPerStarbase 0.05 // +5% IU output per SB
+  eliBonusPerStarbase 2                   // +2 ELI bonus per SB
 }
 
-squadronCapacity {
-  capitalSquadronIuDivisor 100
-  capitalSquadronMultiplier 2
-  capitalSquadronMinimum 8
-}
-
+// --- Production Modifiers --- (Section 3.1 GCO formula, 6.3.8)
 productionModifiers {
-  elBonusPerLevel 0.05
-  cstBonusPerLevel 0.10
-  blockadePenalty 0.40
-  prodGrowthNumerator 50.0
-  prodGrowthDenominator 500.0
+  // Blockade reduces GCO by 60% (Section 6.3.8)
+  blockadeGcoReduction 0.60
 }

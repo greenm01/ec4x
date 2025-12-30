@@ -1,115 +1,72 @@
-// EC4X Combat Rules Configuration
-// Edit this file to change combat mechanics for all games
+// EC4X Combat Rules Configuration v0.2
+// Source: docs/specs/07-combat.md
+// This file defines core combat mechanics.
 
+// --- General Combat Rules ---
 combat {
-    // Critical hit mechanics
-    criticalHitRoll 9              // Natural 9 on 1d10 = critical hit
-    retreatAfterRound 1            // Can retreat after this round
-
-    // Starbase combat bonuses
-    starbaseCriticalReroll #true    // Starbases reroll first critical hit against them
-    starbaseDieModifier 2          // +2 die roll modifier for starbases
+    criticalHitRoll 9       // Natural 9 on 1d10 is a critical hit (Section 7.3.3)
+    retreatAfterRound 1     // Fleets can retreat after round 1 (Section 7.3.6)
+    maxCombatRounds 20      // Prevents infinite combat (Section 7.3.5)
+    desperationRoundTrigger 5 // Stalemate for 5 rounds triggers +2 CER bonus (Section 7.3.5)
 }
 
-cerModifiers {
-    // Combat Effectiveness Rating die roll modifiers
-    scouts 1                       // +1 for having scouts in task force
-    surprise 3                     // +3 first round (cloaked attack)
-    ambush 4                       // +4 first round (cloaked defense in own system)
+// --- Combat Effectiveness Rating (CER) ---
+cer {
+    // CER Modifiers (Section 7.3.3, 7.2.4)
+    modifiers {
+        ambushBonus 4 // +4 for undetected Raider first-strike (replaces surprise/ambush)
+        // Morale modifiers are handled in-game based on prestige
+    }
+
+    // Space Combat CER Table (Section 7.3.3)
+    spaceCombatTable {
+        tier 1 { maxRoll=2 multiplier=0.25 } // "Less than zero, 0, 1, 2"
+        tier 2 { maxRoll=4 multiplier=0.50 } // "3, 4"
+        tier 3 { maxRoll=6 multiplier=0.75 } // "5, 6"
+        tier 4 { minRoll=7 multiplier=1.00 } // "7, 8, 9+"
+    }
+
+    // Planetary Bombardment CER Table (Section 7.5.1)
+    bombardmentTable {
+        tier 1 { maxRoll=2 multiplier=0.25 }
+        tier 2 { maxRoll=5 multiplier=0.50 }
+        tier 3 { maxRoll=8 multiplier=1.00 }
+        // Natural 9 is a critical hit
+    }
+
+    // Ground Combat CER Table (Section 7.6.1)
+    groundCombatTable {
+        tier 1 { maxRoll=2 multiplier=0.50 }
+        tier 2 { maxRoll=6 multiplier=1.00 }
+        tier 3 { maxRoll=8 multiplier=1.50 }
+        tier 4 { roll=9 multiplier=2.00 } // Critical hit
+    }
 }
 
-cerTable {
-    // Combat Effectiveness Rating results (1d10)
-    // Format: roll_min-roll_max = multiplier
-    // "Less than zero, 0, 1, 2" = 0.25
-    // "3, 4" = 0.50
-    // "5, 6" = 0.75
-    // "7, 8, 9+" = 1.00
-    veryPoorMax 2                  // Rolls ≤ 2 = 0.25x
-    poorMax 4                       // Rolls 3-4 = 0.50x
-    averageMax 6                    // Rolls 5-6 = 0.75x
-    goodMin 7                       // Rolls ≥ 7 = 1.00x
+// --- Combat Damage & Targeting ---
+damage {
+    crippledAsMultiplier 0.5        // Crippled ship AS is halved (Section 7.2.2)
+    crippledMaintenanceMultiplier 0.5 // Crippled ships have 50% maintenance cost (Logical, but not in spec 07)
+    crippledTargetingWeight 2.0     // Crippled squadrons have 2x targeting weight (Section 7.3.4)
 }
 
-bombardment {
-    // Planetary bombardment rules
-    maxRoundsPerTurn 3              // Maximum bombardment rounds per turn
-
-    // Bombardment CER table (1d10)
-    veryPoorMax 2                  // Rolls 0-2 = 0.25x
-    poorMax 5                       // Rolls 3-5 = 0.50x
-    goodMin 6                       // Rolls 6-8 = 1.00x
-    // Roll 9 = critical hit (only affects attacking squadrons)
+retreat {
+    fightersNeverRetreat true           // (Section 7.3.6)
+    spaceliftDestroyedIfEscortLost true // (Section 7.3.6)
+    retreatToNearestFriendly true       // (Section 7.3.6)
 }
 
-groundCombat {
-    // Ground combat (invasion/blitz) CER table (1d10)
-    poorMax 2                       // Rolls 0-2 = 0.50x
-    averageMax 6                    // Rolls 3-6 = 1.00x
-    goodMax 8                       // Rolls 7-8 = 1.50x
-    critical 9                      // Roll 9 = 2.00x
-}
-
-planetaryShields {
-    // Shield effectiveness by tech level (SLD1-SLD6)
-    // Format: chance_percentage, min_1d20_roll, hits_blocked_percentage
-
-    sld1Chance 15
-    sld1Roll 17                     // Need >17 on 1d20
-    sld1Block 25                    // Blocks 25% of hits
-
-    sld2Chance 30
-    sld2Roll 14
-    sld2Block 30
-
-    sld3Chance 45
-    sld3Roll 11
-    sld3Block 35
-
-    sld4Chance 60
-    sld4Roll 8
-    sld4Block 40
-
-    sld5Chance 75
-    sld5Roll 5
-    sld5Block 45
-
-    sld6Chance 90
-    sld6Roll 2
-    sld6Block 50
-}
-
-damageRules {
-    // Combat damage mechanics
-    crippledAsMultiplier 0.5       // Crippled ships have AS * 0.5 (round up)
-    crippledMaintenanceMultiplier 0.5  // Crippled ships have 50% maintenance cost
-    squadronFightsAsUnit #true     // Squadron total AS/DS, not individual ships
-    destroyAfterAllCrippled #true  // Don't destroy until all others crippled
-}
-
-retreatRules {
-    // Retreat mechanics
-    fightersNeverRetreat #true      // Fighter squadrons never retreat
-    spaceliftDestroyedIfEscortLost #true  // Spacelift ships destroyed if escorts die
-    retreatToNearestFriendly #true // Retreating fleets go to nearest friendly system
-}
-
-// ============================================================================
-// BLOCKADE MECHANICS
-// ============================================================================
-
+// --- Blockade Mechanics --- (Section 6.3.8, 10.4)
 blockade {
-    // BALANCE: Blockade effects
-    blockadeProductionPenalty 0.60 // -60% Gross Colonial Output (GCO)
-    blockadePrestigePenalty 2      // -2 prestige per turn per blockaded colony
+    gcoReduction 0.60        // -60% Gross Colonial Output (GCO)
+    prestigePenaltyPerTurn 2 // -2 prestige per turn per blockaded colony
 }
 
-// ============================================================================
-// INVASION MECHANICS
-// ============================================================================
-
+// --- Invasion Mechanics --- (Section 7.6)
 invasion {
-    // BALANCE: Invasion and conquest effects
-    invasionIuLoss 0.50            // Conquered planet loses 50% of IU
-    blitzIuLoss 0.00               // Blitz preserves all IU if successful
+    iuLossOnConquest 0.50      // Conquered planet loses 50% of IU
+    iuLossOnBlitz 0.00         // Blitz preserves all IU if successful
+    blitzMarinePenalty 0.5   // Marines fight at 0.5x AS during a Blitz
 }
+
+// planetaryShields: Shield mechanics are now defined by SLD tech in config/tech.kdl and Section 7.5.2.

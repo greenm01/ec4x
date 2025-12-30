@@ -1,68 +1,43 @@
-// Population Transfer via Space Guild
-// Source: docs/specs/economy.md Section 3.7
-//
-// The Space Guilds maintain civilian Starliners that transport colonists between
-// established colonies. This service is expensive and time-consuming, reflecting
-// the logistical complexity of moving thousands of people with equipment across
-// interstellar distances.
+// EC4X Space Guild Configuration v0.2
+// Source: docs/specs/03-economy.md Section 3.5
+// This file defines the core mechanics, costs, and behaviors for civilian
+// population transfers facilitated by the neutral Space Guild.
 
-transferCosts {
-    // Base cost per PTU by planet class (PP per PTU)
-    // Lower cost = easier living conditions = less equipment needed
-    edenCost 4
-    lushCost 5
-    benignCost 6
-    harshCost 8
-    hostileCost 10
-    desolateCost 12
-    extremeCost 15
+guildMechanics {
+    // Base cost in PP per PTU, based on the destination planet's class.
+    transferCosts {
+        planetClass "Eden" { cost 4 }
+        planetClass "Lush" { cost 5 }
+        planetClass "Benign" { cost 6 }
+        planetClass "Harsh" { cost 8 }
+        planetClass "Hostile" { cost 10 }
+        planetClass "Desolate" { cost 12 }
+        planetClass "Extreme" { cost 15 }
+    }
+
+    // Transit time and cost modifiers based on distance.
+    transferModifiers {
+        turnsPerJump 1          // 1 turn per jump lane in the path
+        minimumTurns 1          // Minimum 1 turn even for same-system transfers
+        costIncreasePerJump 0.20  // +20% to base cost per jump beyond the first
+    }
+
+    // Defines behavior for edge cases when colony status changes mid-transfer.
+    transferRisks {
+        sourceConquered "continue"      // Transfer continues as the Guild is neutral and was already paid.
+        destinationConquered "lost"       // Colonists are lost as refugees in the chaos.
+        destinationBlockaded "closest_owned" // Rerouted to the nearest friendly, safe colony.
+        destinationCollapsed "closest_owned" // Rerouted if destination is no longer viable.
+    }
 }
 
-transferTime {
-    // Transit time calculation
-    turnsPerJump 1  // 1 turn per jump lane in path
-    minimumTurns 1   // Minimum 1 turn even for same system
-}
-
-transferModifiers {
-    // Distance cost modifier (reflects increased risk, fuel, supplies)
-    costIncreasePerJump 0.20  // +20% per jump beyond first
-    // Example: 3 jumps = base_cost × (1 + 2×0.20) = base_cost × 1.40
-}
-
-transferLimits {
-    // Constraints on population transfer
-    minPtuTransfer 1           // Minimum PTUs per transfer
-    minSourcePuRemaining 1    // Source colony must keep at least 1 PU
-    maxConcurrentTransfers 5   // Max active transfers per house (prevent spam)
-}
-
-transferRisks {
-    // What happens when colonies change hands mid-transfer
-    // The Space Guild is neutral and attempts to deliver colonists somewhere safe
-
-    // Source conquered: Transfer continues (already paid, Guild is neutral)
-    sourceConqueredBehavior "continue"
-
-    // Destination conquered: PTUs lost (refugees disperse, chaos)
-    destConqueredBehavior "lost"
-
-    // Destination blockaded at arrival: Deliver to closest owned colony
-    // If no owned colonies exist, colonists are lost
-    destBlockadedBehavior "closest_owned"
-
-    // Destination collapsed (< 1 PTU): Deliver to closest owned colony
-    // If no owned colonies exist, colonists are lost
-    destCollapsedBehavior "closest_owned"
-}
-
+// Defines parameters for how the game AI decides to use Guild transfers.
 aiStrategy {
-    // AI decision making for population transfers
-    minTreasuryForTransfer 200    // Only transfer if treasury > this
-    minSourcePopulation 10         // Only transfer from colonies with PU > this
-    maxDestPopulation 5            // Only transfer to colonies with PU < this
-    recentColonyAgeTurns 20       // Consider colonies "new" if founded < this turns ago
-    ptuPerTransfer 2               // Default PTU amount to transfer
-    minEconomicFocus 0.5           // Only if AI economicFocus > this
-    minExpansionDrive 0.4          // Only if AI expansionDrive > this
+    minTreasuryForTransfer 200
+    minSourcePopulation 10
+    maxDestPopulation 5
+    recentColonyAgeTurns 20
+    ptuPerTransfer 2
+    minEconomicFocus 0.5
+    minExpansionDrive 0.4
 }

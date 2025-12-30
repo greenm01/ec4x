@@ -46,7 +46,7 @@ Non-combat support ships. These vessels do not have a Command Cost (CC) and do n
 | Class | Name            | CST | PC | MC  | AS | DS | Notes                                      |
 |:-----:| --------------- |:---:|:--:|:---:|:--:|:--:| ------------------------------------------ |
 | SC    | Scout           | 1   | 25 | 1%  | -  | -  | Intel operations, never joins combat       |
-| ET    | ETAC            | 1   | 50 | 5%  | —  | -  | Colonization (CL=1), starts with 3 PTU     |
+| ET    | ETAC            | 1   | 50 | 5%  | —  | -  | Colonization (CL=3), carries 3 PTU         |
 | TT    | Troop Transport | 1   | 30 | 3%  | —  | -  | Planetary invasion (CL=1), carries marines |
 
 ### Fighter Squadrons

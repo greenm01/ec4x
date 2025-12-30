@@ -1,267 +1,195 @@
 // EC4X Default Ship Statistics (WEP1)
 // Source: docs/specs/10-reference.md Section 10.1
-//
-// Edit this file to change ship stats for all games
-// Game-specific overrides can be placed in game_directory/game_config.toml
-//
-// Note: WEP modifiers (+10% AS/DS per level) are applied by the engine
-// These are base stats at WEP1
-
-// CST = Minimum CST Level
-// PC = Production Cost
-// MC = Maintenance Cost (% of PC)
-// AS = Attack Strength
-// DS = Defensive Strength
-// CC= Command Cost
-// CR = Command Rating
-// CL = Carry Limit
+// Defines the base statistics for all mobile ship units.
 
 // ============================================================================
 // ESCORT SHIPS
 // ============================================================================
-
-corvette {
-    description "Smallest warship, fast and cheap screening and exploration unit"
-    minCST 1
-    productionCost 20
-    maintenanceCost 3
-    attackStrength 2
-    defenseStrength 3
-    commandCost 1
-    commandRating 2
-    carryLimit 0
-    buildTime 1  // turns
-}
-
-frigate {
-    description "Anti-fighter/missile defense, escort role"
-    minCST 1
-    productionCost 30
-    maintenanceCost 3
-    attackStrength 3
-    defenseStrength 4
-    commandCost 2
-    commandRating 3
-    carryLimit 0
-    buildTime 1  // turns
-}
-
-destroyer {
-    description "Balanced fast attack ship, torpedo/missile platform"
-    minCST 1
-    productionCost 40
-    maintenanceCost 4
-    attackStrength 5
-    defenseStrength 6
-    commandCost 2
-    commandRating 4
-    carryLimit 0  
-    buildTime 1  // turns
-}
-
-lightCruiser {
-    description "Multi-role workhorse, moderate firepower and armor"
-    minCST 1
-    productionCost 60
-    maintenanceCost 4
-    attackStrength 8
-    defenseStrength 9
-    commandCost 3
-    commandRating 6
-    carryLimit 0
-    buildTime 1  // turns
+escorts {
+    corvette {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 1
+        buildCost 20
+        maintenancePercent 0.03 // 3%
+        attackStrength 2
+        defenseStrength 3
+        commandCost 1
+        commandRating 2
+    }
+    frigate {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 1
+        buildCost 30
+        maintenancePercent 0.03 // 3%
+        attackStrength 3
+        defenseStrength 4
+        commandCost 2
+        commandRating 3
+    }
+    destroyer {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 1
+        buildCost 40
+        maintenancePercent 0.04 // 4%
+        attackStrength 5
+        defenseStrength 6
+        commandCost 2
+        commandRating 4
+    }
+    lightCruiser {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 1
+        buildCost 60
+        maintenancePercent 0.04 // 4%
+        attackStrength 8
+        defenseStrength 9
+        commandCost 3
+        commandRating 6
+    }
 }
 
 // ============================================================================
 // CAPITAL SHIPS
 // ============================================================================
-
-cruiser {
-    description "Heavy guns, strong armor, backbone of battle lines"
-    minCST 2
-    productionCost 80
-    maintenanceCost 5
-    attackStrength 12
-    defenseStrength 13
-    commandCost 3
-    commandRating 7
-    carryLimit 0
-    buildTime 1  // turns
-}
-
-battlecruiser {
-    description "Speed and firepower over armor, pursuit and raiding"
-    minCST 3
-    productionCost 100
-    maintenanceCost 5
-    attackStrength 16
-    defenseStrength 18
-    commandCost 3
-    commandRating 8
-    carryLimit 0
-    buildTime 1  // turns
-}
-
-battleship {
-    description "Maximum conventional firepower and armor"
-    minCST 4
-    productionCost 150
-    maintenanceCost 5
-    attackStrength 20
-    defenseStrength 25
-    commandCost 3
-    commandRating 10
-    carryLimit 0
-    buildTime 1  // turns
-}
-
-dreadnought {
-    description "Super-heavy capital ship, fleet anchor"
-    minCST 5
-    productionCost 200
-    maintenanceCost 5
-    attackStrength 28
-    defenseStrength 30
-    commandCost 3
-    commandRating 12
-    carryLimit 0
-    buildTime 1  // turns
-}
-
-superDreadnought {
-    description "Ultimate capital ship, system control"
-    minCST 6
-    productionCost 250
-    maintenanceCost 8
-    attackStrength 35
-    defenseStrength 40
-    commandCost 5
-    commandRating 8
-    carryLimit 0
-    buildTime 1  // turns
-}
-
-carrier {
-    description "Fighter deployment platform"
-    minCST 3
-    productionCost 120
-    maintenanceCost 5
-    attackStrength 5
-    defenseStrength 18
-    commandCost 3
-    commandRating 8
-    carryLimit 3
-    buildTime 1  // turns
-}
-
-supercarrier {
-    description "Massive fighter complement, fleet command hub"
-    minCST 6
-    productionCost 225
-    maintenanceCost 7
-    attackStrength 8
-    defenseStrength 25
-    commandCost 4
-    commandRating 10
-    carryLimit 5
-    buildTime 1  // turns
-}
-
-raider {
-    description "Provides surprise/ambush first strike advantage"
-    minCST 5
-    productionCost 200
-    maintenanceCost 5
-    attackStrength 20
-    defenseStrength 25
-    commandCost 2
-    commandRating 6
-    carryLimit 0
-    buildTime 1  // turns
+capitals {
+    cruiser {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 2
+        buildCost 80
+        maintenancePercent 0.05 // 5%
+        attackStrength 12
+        defenseStrength 13
+        commandCost 3
+        commandRating 7
+    }
+    battlecruiser {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 3
+        buildCost 100
+        maintenancePercent 0.05 // 5%
+        attackStrength 16
+        defenseStrength 18
+        commandCost 3
+        commandRating 8
+    }
+    battleship {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 4
+        buildCost 150
+        maintenancePercent 0.05 // 5%
+        attackStrength 20
+        defenseStrength 25
+        commandCost 3
+        commandRating 10
+    }
+    dreadnought {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 5
+        buildCost 200
+        maintenancePercent 0.05 // 5%
+        attackStrength 28
+        defenseStrength 30
+        commandCost 4
+        commandRating 12
+    }
+    superDreadnought {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 6
+        buildCost 250
+        maintenancePercent 0.08 // 8%
+        attackStrength 35
+        defenseStrength 40
+        commandCost 5
+        commandRating 14
+    }
+    carrier {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 3
+        buildCost 120
+        maintenancePercent 0.05 // 5%
+        attackStrength 5
+        defenseStrength 18
+        commandCost 3
+        commandRating 8
+        carryLimit 3 // Base capacity for ACO I
+    }
+    supercarrier {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 6
+        buildCost 225
+        maintenancePercent 0.07 // 7%
+        attackStrength 8
+        defenseStrength 25
+        commandCost 4
+        commandRating 10
+        carryLimit 5 // Base capacity for ACO I
+    }
+    raider {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 5
+        buildCost 200
+        maintenancePercent 0.05 // 5%
+        attackStrength 20
+        defenseStrength 25
+        commandCost 2
+        commandRating 6
+    }
 }
 
 // ============================================================================
-// AUXILIARY (Screened during space/orbital combat)
+// AUXILIARY SHIPS
 // ============================================================================
-
-scout {
-    description "Autonomous Reconnaissance, sensor suite. No combat"
-    minCST 1
-    productionCost 50
-    maintenanceCost 1
-    attackStrength 0
-    defenseStrength 2
-    commandCost 0
-    commandRating 0
-    carryLimit 0
-    buildTime 1  // turns
-}
-
-etac {
-    description "Environmental Terraforming and Colonization ship - establishes new colonies"
-    minCST 1
-    productionCost 50
-    maintenanceCost 5
-    attackStrength 0
-    defenseStrength 0
-    commandCost 0
-    commandRating 0
-    carryLimit 3
-    buildTime 1  // turns
-}
-
-troopTransport {
-    description "Planetary invasion forces"
-    minCST 1
-    productionCost 30
-    maintenanceCost 3
-    attackStrength 0
-    defenseStrength 0
-    commandCost 0
-    commandRating 0
-    carryLimit 0
-    buildTime 1  // turns
+auxiliary {
+    scout {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 1
+        buildCost 25
+        maintenancePercent 0.01 // 1%
+        defenseStrength 2 // Has some DS but no AS
+    }
+    etac {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 1
+        buildCost 50
+        maintenancePercent 0.05 // 5%
+        carryLimit 3 // PTU (fixed capacity)
+    }
+    troopTransport {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 1
+        buildCost 30
+        maintenancePercent 0.03 // 3%
+        carryLimit 1 // Marine Divisions (base capacity for STL I)
+    }
 }
 
 // ============================================================================
 // FIGHTER SQUADRONS
 // ============================================================================
-
-fighter {
-    description "Glass cannon - extreme damage output, negligible defenses"
-    minCST 1
-    productionCost 25
-    maintenanceCost 3
-    attackStrength 5
-    defenseStrength 2
-    commandCost 1
-    commandRating 0
-    carryLimit 0
-    buildTime 0  // turns
+fighters {
+    fighterSquadron {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 1
+        buildCost 5
+        maintenancePercent 0.00 // 0% per spec 03-economy.md
+        attackStrength 5
+        defenseStrength 2
+        commandCost 1
+    }
 }
 
 // ============================================================================
 // SPECIAL WEAPONS
 // ============================================================================
-
-planetbreaker {
-    description "Apocalyptic weapon - orbital bombardment/planetary destruction"
-    minCST 10
-    productionCost 400
-    maintenanceCost 10
-    attackStrength 50
-    defenseStrength 20
-    commandCost 6
-    commandRating 6
-    carryLimit 0
-    buildTime 3  // turns
-}
-
-// ============================================================================
-// SALVAGE MECHANICS
-// ============================================================================
-
-salvage {
-    salvageValueMultiplier 0.5       // Salvaged ships return 50% of build cost
-    emergencySalvageMultiplier 0.25  // Emergency/combat salvage returns 25% of PC
+specialWeapons {
+    planetBreaker {
+        (docs)"docs/specs/10-reference.md#101-space-force-wep1"
+        minCST 10
+        buildCost 400
+        maintenancePercent 0.10 // 10%
+        attackStrength 50
+        defenseStrength 20
+        commandCost 6
+        commandRating 6
+    }
 }

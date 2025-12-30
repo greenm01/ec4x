@@ -1,251 +1,95 @@
-// EC4X Prestige Configuration
-// Source: docs/specs/reference.md Section 9.4
-//
-// This file contains:
-// - BALANCE VARIABLES: Prestige values (tunable during playtesting)
-// - GAME CONSTANTS: Victory thresholds, morale tiers
-// - DYNAMIC SCALING: Map-size based prestige multipliers for game pacing
+// EC4X Prestige Configuration v0.2
+// Source: docs/specs/10-reference.md Section 10.4, docs/specs/01-gameplay.md Section 1.1
+// Defines prestige values, victory/defeat conditions, morale, and dynamic scaling.
 
-// ============================================================================
-// VICTORY CONDITIONS
-// ============================================================================
-
+// --- Victory & Defeat Conditions ---
 victory {
-    // BALANCE: Victory and defeat thresholds
-    // Victory mode is now configured per-game in game_setup/*.toml
-    // See victory_conditions.primary_mode and victory_conditions.turn_limit
-    // prestige_victory removed - using turn limits or elimination only
-    startingPrestige 100            // Increased from 50 to enable Act 1 espionage (threshold: 50)
-    defeatThreshold 0               // Below 0 for consecutive turns = surrender
-    defeatConsecutiveTurns 3        // NOTE: Elimination mechanics in config/gameplay.kdl
+    startingPrestige 100          // Per gameplay.md Section 1.1
+    defeatThreshold 0            // Below 0 for consecutive turns = collapse
+    defeatConsecutiveTurns 3     // Per gameplay.md Section 1.4.1
 }
 
-// ============================================================================
-// DYNAMIC PRESTIGE SCALING (BALANCE SYSTEM)
-// ============================================================================
-
+// --- Dynamic Prestige Scaling --- (Section 10.4)
 dynamicScaling {
-    // BALANCE: Map-size based prestige scaling for accelerated game pacing
-    //
-    // DESIGN PHILOSOPHY:
-    // Accelerated pacing: 3x increase from original to reach 30-45 turn games
-    // Small maps (6-8 systems/player): Highest multiplier for fastest games
-    // Medium maps (9-11 systems/player): Target 30-40 turns
-    // Large maps (12-14 systems/player): Target 40-50 turns
-    //
-    // Formula: multiplier = base_multiplier * (baseline_turns / target_turns)
-    // Target turns = baseline_turns + (systems_per_player - baseline_ratio) * turn_scaling_factor
-    //
-    // Combined with 5x base value increases: 5x × 15x = 75x total acceleration
-    // This ensures games complete in 30-45 turns for 4-player medium maps
-
-    enabled #true                   // Enable dynamic scaling (false = use base_multiplier for all maps)
-    baseMultiplier 15.0             // Was 5.0 → 3x increase for accelerated pacing (CRITICAL)
-    baselineTurns 35                // Was 30 → target for medium maps
-    baselineSystemsPerPlayer 10     // Was 8 → recalibrated for medium maps
-    turnScalingFactor 3.0           // Was 2.0 → steeper scaling for larger maps
-    minMultiplier 5.0               // Was 1.5 → prevent too-slow games on large maps
-    maxMultiplier 25.0              // Was 8.0 → allow tiny map acceleration
+    // Controls game pacing by scaling base prestige values based on map size.
+    enabled true
+    baseMultiplier 5.0             // Baseline multiplier for small maps
+    baselineTurns 30
+    baselineSystemsPerPlayer 8
+    turnScalingFactor 2.0
+    minMultiplier 1.5
+    maxMultiplier 8.0
 }
 
-// ============================================================================
-// MORALE SYSTEM (GAME CONSTANTS)
-// ============================================================================
-
+// --- Morale System --- (Section 7.2.1)
 morale {
-    // Morale thresholds for combat (operations.md:7.1.4)
-    // MECHANIC: These define the morale tier system
-    crisisMax 0        // ≤0: Crisis (-1 CER, never succeeds morale check)
-    lowMax 20          // 1-20: Low (no effect unless check succeeds >18)
-    averageMax 40      // 21-40: Average (+1 CER one squadron if >15)
-    goodMax 60         // 41-60: Good (+1 CER all if >12)
-    highMax 80         // 61-80: High (+1 CER + critical auto-success if >9)
-    // 81+: Elite (+2 CER all if >6)
+    tier "Crisis" { maxPrestige 0 }
+    tier "Low" { maxPrestige 20 }
+    tier "Average" { maxPrestige 60 }
+    tier "Good" { maxPrestige 80 }
+    // 81+ is Elite
 }
 
 // ============================================================================
-// PRESTIGE SOURCES (BALANCE VARIABLES)
-// Source: reference.md Table 9.4
+// BASE PRESTIGE VALUES (Source: reference.md Table 10.4)
+// These are the raw values before the dynamicScaling multiplier is applied.
 // ============================================================================
 
-economic {
-    // BALANCE: Economic achievement rewards - TRUE BASE VALUES (5x INCREASED)
-    // These are base values BEFORE dynamic multiplier application
-    // Dynamic multiplier (15.0x for medium maps) scales these values automatically
-    // Combined effect: 5x base × 15x multiplier = 75x total acceleration
-    techAdvancement 2                // REDUCED: Tech should give modest prestige (not primary focus)
-    establishColony 1                // MINIMAL: Colonization should give almost no prestige (conquest is the focus)
-    maxPopulation 15                 // Was 3 → 5x increase
-    iuMilestone50 5                 // Was 1 → 5x increase
-    iuMilestone75 10                // Was 2 → 5x increase
-    iuMilestone100 15               // Was 3 → 5x increase
-    iuMilestone150 25               // Was 5 → 5x increase
-    terraformPlanet 25               // Was 5 → 5x increase (major project)
+prestigeEvents {
+    // --- Non-Competitive (Absolute Gains) ---
+    techAdvancement { value 2 type "Absolute" }
+    colonyEstablishment { value 5 type "Absolute" }
+    victoryAchieved { value 5 type "Absolute" }
+
+    // --- Competitive (Zero-Sum) ---
+    systemCapture { value 10 type "ZeroSum" }
+    shipDestroyed { value 1 type "ZeroSum" } // Per major ship
+    starbaseDestroyed { value 5 type "ZeroSum" }
+    fleetVictory { value 3 type "ZeroSum" } // Per battle
+    planetConquered { value 10 type "ZeroSum" }
+    houseEliminated { value 3 type "ZeroSum" }
+
+    // --- Espionage (Non-Zero-Sum Competitive) ---
+    techTheft { value 20 victimLoss -30 }
+    sabotageLowImpact { value 10 victimLoss -10 }
+    sabotageHighImpact { value 30 victimLoss -50 }
+    assassination { value 50 victimLoss -70 }
+    cyberAttack { value 20 victimLoss -30 }
+    economicManipulation { value 30 victimLoss -7 }
+    psyopsCampaign { value 10 victimLoss -3 }
+    counterIntelligenceSweep { value 5 victimLoss 0 }
+    intelligenceTheft { value 40 victimLoss -20 }
+    plantDisinformation { value 15 victimLoss -15 }
+
+    // --- Penalties ---
+    espionageFailure { value -2 type "Penalty" }
+    planetLost { value -10 type "Penalty" } // Base loss, defender side of planetConquered
+    undefendedColonyMultiplier 1.5 // planetLost * 1.5, breaks zero-sum
 }
 
-military {
-    // BALANCE: Military victory rewards - TRUE BASE VALUES (5x INCREASED)
-    // These are base values BEFORE dynamic multiplier application
-    destroySquadron 5                // Was 1 → 5x increase (per major ship destroyed)
-    destroyStarbase 25               // Was 5 → 5x increase (major structure)
-    fleetVictory 15                  // Was 3 → 5x increase (tactical victory)
-    invadePlanet 50                  // Was 10 → 5x increase (major conquest)
-    eliminateHouse 15                // Was 3 → 5x increase (strategic victory)
-    systemCapture 50                 // Was 10 → 5x increase (major conquest)
-
-    // BALANCE: Military defeat penalties - TRUE BASE VALUES (5x INCREASED)
-    losePlanet -50                   // Was -10 → 5x increase (matches invadePlanet)
-    loseStarbase -25                 // Was -5 → 5x increase (matches destroyStarbase)
-    ambushedByCloak -5              // Was -1 → 5x increase
-    forceRetreat 10                  // Was 2 → 5x increase (prestige for forcing enemy to retreat)
-    forcedToRetreat -5              // NEW: penalty for being forced to retreat (1/2 of forceRetreat)
-    scoutDestroyed -15               // Was -3 → 5x increase
-
-    // BALANCE: Undefended colony penalty (Phase F balance)
-    undefendedColonyPenaltyMultiplier 1.5  // +50% penalty for losing undefended colonies
+// --- Recurring Penalties ---
+recurringPenalties {
+    // Espionage/Counter-Intel Over-Investment (Section 8.2, 8.3)
+    overInvestment {
+        budgetThreshold 0.05 // 5%
+        penaltyPerPercent -1
+    }
 }
 
-espionage {
-    // BALANCE: Espionage success rewards - TRUE BASE VALUES (5x INCREASED)
-    // These are base values BEFORE dynamic multiplier application
-    techTheft 10                     // Was 2 → 5x increase (successful tech theft)
-    lowImpactSabotage 5             // Was 1 → 5x increase
-    highImpactSabotage 15           // Was 3 → 5x increase
-    assassination 25                  // Was 5 → 5x increase (major operation)
-    cyberAttack 10                   // Was 2 → 5x increase
-    economicManipulation 15          // Was 3 → 5x increase
-    psyopsCampaign 5                 // Was 1 → 5x increase
-    counterIntelSweep 5             // Was 1 → 5x increase (defensive success)
-    intelligenceTheft 20             // Was 4 → 5x increase (high-value operation)
-    plantDisinformation 10           // Was 2 → 5x increase
-
-    // BALANCE: Espionage failure/detection penalties - TRUE BASE VALUES (5x INCREASED)
-    failedEspionage -10              // Was -2 → 5x increase
-}
-
-espionageVictim {
-    // BALANCE: Prestige penalties for being targeted by espionage - TRUE BASE VALUES (5x INCREASED)
-    // These are base values BEFORE dynamic multiplier application
-    techTheftVictim -15             // Was -3 → 5x increase
-    lowImpactSabotageVictim -5     // Was -1 → 5x increase
-    highImpactSabotageVictim -25   // Was -5 → 5x increase
-    assassinationVictim -35          // Was -7 → 5x increase (major embarrassment)
-    cyberAttackVictim -15           // Was -3 → 5x increase
-    economicManipulationVictim -5   // Was -1 → 5x increase
-    psyopsCampaignVictim -5         // Was -1 → 5x increase
-    counterIntelSweepVictim 0      // No change (defensive action has no victim penalty)
-    intelligenceTheftVictim -10     // Was -2 → 5x increase
-    plantDisinformationVictim -10   // Was -2 → 5x increase
-}
-
-scout {
-    // BALANCE: Scout mission rewards - TRUE BASE VALUES (5x INCREASED)
-    spyOnPlanet 10                 // Was 2 → 5x increase (successful planet espionage)
-    hackStarbase 15                 // Was 3 → 5x increase (successful starbase hack)
-    spyOnSystem 10                 // Was 2 → 5x increase (successful system reconnaissance)
-}
-
-diplomacy {
-    // BALANCE: Diplomatic action prestige impacts - TRUE BASE VALUES (5x INCREASED)
-    // These are base values BEFORE dynamic multiplier application
-    declareWar 0                     // No inherent penalty
-    makePeace 0                      // No inherent bonus
-}
-
-victoryAchievement {
-    // BALANCE: Final victory rewards
-    victoryAchieved 5               // Game victory bonus
-}
-
-// ============================================================================
-// PRESTIGE PENALTY MECHANICS (BALANCE VARIABLES)
-// Source: reference.md Section 9.4 - Prestige Penalty Mechanics
-// ============================================================================
-
-penalties {
-    // BALANCE: Tax penalties (old system - reference.md spec)
-    // These use simple thresholds, not rolling averages
-    highTaxThreshold 51            // >51% triggers penalty
-    highTaxPenalty -2              // -1 prestige
-    highTaxFrequency 3             // Every 3 consecutive turns
-
-    veryHighTaxThreshold 66       // >66% triggers higher penalty
-    veryHighTaxPenalty -3         // -2 prestige
-    veryHighTaxFrequency 5        // Every 5 consecutive turns
-
-    // BALANCE: Maintenance shortfall escalation
-    maintenanceShortfallBase -8    // -5 turn 1
-    maintenanceShortfallIncrement -3  // Increases by -2 each turn (-5, -7, -9...)
-
-    // BALANCE: Blockade penalty
-    blockadePenalty -3              // -2 prestige per turn per colony
-
-    // BALANCE: Over-investment penalties (espionage/counter-intel)
-    overInvestEspionage -2         // -1 per 1% over 5% threshold
-    overInvestCounterIntel -2     // -1 per 1% over 5% threshold
-}
-
-// ============================================================================
-// TAX PENALTIES (NEW SYSTEM - economy.md spec)
-// Source: docs/specs/economy.md Section 3.2.1
-// Uses rolling 6-turn average instead of consecutive turns
-// ============================================================================
-
+// --- Tax Penalties (Rolling 6-turn average) --- (Section 3.2.1)
 taxPenalties {
-    // BALANCE: High-tax prestige penalties (rolling 6-turn average)
-    // Format: min_rate, max_rate, prestige_penalty
-    tier1Min 0
-    tier1Max 50
-    tier1Penalty 0                 // No penalty
-
-    tier2Min 51
-    tier2Max 60
-    tier2Penalty -1                // -1 prestige per turn
-
-    tier3Min 61
-    tier3Max 70
-    tier3Penalty -2                // -2 prestige per turn
-
-    tier4Min 71
-    tier4Max 80
-    tier4Penalty -4                // -4 prestige per turn
-
-    tier5Min 81
-    tier5Max 90
-    tier5Penalty -7                // -7 prestige per turn
-
-    tier6Min 91
-    tier6Max 100
-    tier6Penalty -11               // -11 prestige per turn
+    tier 1 { minRate=0 maxRate=50 penalty=0 }
+    tier 2 { minRate=51 maxRate=60 penalty=-1 }
+    tier 3 { minRate=61 maxRate=70 penalty=-2 }
+    tier 4 { minRate=71 maxRate=80 penalty=-4 }
+    tier 5 { minRate=81 maxRate=90 penalty=-7 }
+    tier 6 { minRate=91 maxRate=100 penalty=-11 }
 }
 
-// ============================================================================
-// TAX INCENTIVES (NEW SYSTEM - economy.md spec)
-// Source: docs/specs/economy.md Section 3.2.2
-// ============================================================================
-
+// --- Low-Tax Incentives --- (Section 3.2.2)
 taxIncentives {
-    // BALANCE: Low-tax prestige bonuses (applied same turn)
-    // Format: min_rate, max_rate, prestige_bonus_per_colony
     // Note: Population growth multipliers are in economy.kdl
-
-    tier1Min 41
-    tier1Max 50
-    tier1Prestige 0                // No bonus
-
-    tier2Min 31
-    tier2Max 40
-    tier2Prestige 0                // No bonus
-
-    tier3Min 21
-    tier3Max 30
-    tier3Prestige 1                // +1 prestige per colony
-
-    tier4Min 11
-    tier4Max 20
-    tier4Prestige 2                // +2 prestige per colony
-
-    tier5Min 0
-    tier5Max 10
-    tier5Prestige 3                // +3 prestige per colony
+    tier 1 { minRate=21 maxRate=30 prestigeBonusPerColony=1 }
+    tier 2 { minRate=11 maxRate=20 prestigeBonusPerColony=2 }
+    tier 3 { minRate=0 maxRate=10 prestigeBonusPerColony=3 }
 }

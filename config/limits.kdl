@@ -1,0 +1,42 @@
+// EC4X Game Limits Configuration v0.1
+// Source: docs/specs/02-assets.md, docs/specs/03-economy.md
+// This file defines all functional limits, caps, and capacities for the game.
+
+// --- C2 Pool & Fleet Limits --- (Section 2.3.3)
+c2Limits {
+    c2ConversionRatio 0.5    // Total House IU * 0.5 = C2 from industry
+    c2OverdraftRatio 0.5     // Cost per Turn = (Total Fleet CC - C2 Pool) * 0.5
+    capitalShipCrThreshold 7 // Ships with CR >= 7 are capital ships
+}
+
+// --- Unit & Facility Quantity Limits ---
+quantityLimits {
+    maxStarbasesPerColony 3      // (Section 2.4.4)
+    maxPlanetaryShieldsPerColony 1 // (Section 2.4.7)
+    maxPlanetBreakersPerColony 1 // (Section 2.4.8, 10.5)
+}
+
+// --- Fighter Squadron Capacity --- (Section 3.6)
+fighterCapacity {
+    iuDivisor 100                  // Base capacity: 1 FS per 100 IU
+    violationGracePeriodTurns 2    // 2 turns grace before auto-disband
+}
+
+// --- Unit Cargo & Planet Capacity ---
+capacities {
+    // Planet PU Limits (Section 2.2)
+    planetClass "Extreme" { puMax 20 }
+    planetClass "Desolate" { puMax 60 }
+    planetClass "Hostile" { puMax 180 }
+    planetClass "Harsh" { puMax 500 }
+    planetClass "Benign" { puMax 1000 }
+    planetClass "Lush" { puMax 2000 }
+    planetClass "Eden" { puMax 999999 }
+}
+
+// --- Space Guild Transfer Limits --- (from guild.kdl)
+guildTransferLimits {
+    minPtuPerTransfer 1
+    minSourcePuRemaining 1
+    maxConcurrentTransfers 5
+}

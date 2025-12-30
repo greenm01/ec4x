@@ -32,18 +32,20 @@ startingResources {
 }
 
 startingTech {
-    // Initial technology levels per gameplay.md:39
-    economicLevel 3                  // EL3 - 15% production bonus (was EL1 5%)
-    scienceLevel 2                   // SL2 - Better research (was SL1)
-    constructionTech 1               // CST1 - Standard ship building
-    weaponsTech 1                    // WEP1 - Keep at baseline
-    terraformingTech 1               // TER1
-    electronicIntelligence 1         // ELI1
-    cloakingTech 1                   // CLK1
-    shieldTech 1                     // SLD1 - Planetary shield technology
-    counterIntelligence 1            // CIC1
-    fighterDoctrine 1                // FD I (1.0x multiplier)
-    advancedCarrierOps 1            // ACO I (CV=3FS, CX=5FS)
+    // Initial technology levels per gameplay.md Section 1.2
+    economicLevel 1
+    scienceLevel 1
+    weaponsTech 1
+    constructionTech 1
+    shieldsTech 1
+    terraformingTech 1
+    electronicIntelligenceTech 1
+    cloakingTech 1
+    strategicLiftTech 1
+    flagshipCommandTech 1
+    strategicCommandTech 1
+    fighterDoctrineTech 1
+    advancedCarrierOpsTech 1
 }
 
 // Initial fleet composition, per Esterian Conquest v1.5 - 5 fleets total:

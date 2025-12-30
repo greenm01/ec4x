@@ -1,53 +1,28 @@
-// EC4X Starmap Configuration
-// Procedural map generation parameters
-//
-// This file contains:
-// - BALANCE VARIABLES: Lane type distribution, map generation weights
-// - CORE MECHANICS: Starmap generation rules
+// EC4X Starmap Configuration v0.2
+// Source: docs/specs/02-assets.md Section 2.1
+// Defines parameters for procedural map generation.
 
-// ============================================================================
-// JUMP LANE GENERATION
-// ============================================================================
-
-laneWeights {
-    // Controls strategic gameplay by determining movement restrictions
-    // - Major lanes: Allow all ship types (including crippled, ETAC, transports)
-    // - Minor lanes: Block crippled ships only
-    // - Restricted lanes: Block crippled ships, ETACs, and troop transports
-    //
-    // Default: 50% Major, 35% Minor, 15% Restricted
-    // Rationale: 85% of lanes allow colonization ships (ETACs) to reduce bottlenecks
-    majorWeight 0.50
-    minorWeight 0.35
-    restrictedWeight 0.15
+// --- Jump Lane Generation ---
+lanes {
+    // Defines the distribution and behavior of jump lane types.
+    // Spec 2.1: Major and Minor lanes allow ALL ship types.
+    // Restricted lanes block crippled ships only.
+    distribution {
+        major 0.50
+        minor 0.35
+        restricted 0.15
+    }
 }
 
-// ============================================================================
-// MAP GENERATION PARAMETERS
-// ============================================================================
-
-generation {
-    // Distance maximization ensures fair starting positions
-    useDistanceMaximization #true
-    preferVertexPositions #true  // Place homeworlds on hex vertices when possible
-
-    // Hub connectivity (center system)
-    // Mixed lane types prevent predictable "rush-to-center" gameplay
-    hubUsesMixedLanes #true
+// --- Homeworld Placement ---
+homeworld {
+    // Homeworlds are placed using distance maximization to ensure fair spacing.
+    guaranteedLaneCount 3      // Each homeworld is guaranteed this many lanes.
+    guaranteedLaneType "Major" // Per spec, these must be Major lanes.
 }
 
-// ============================================================================
-// HOMEWORLD PLACEMENT
-// ============================================================================
-
-homeworldPlacement {
-    // Homeworlds can be placed anywhere in the map using distance maximization
-    // This removes the predictable "outer ring only" constraint for unpredictable,
-    // placement where homeworlds can appear on any ring Distance maximization 
-    // ensures fair spacing regardless of ring location
-
-    // Number of jump lanes connecting each homeworld to adjacent systems
-    // Default: 3 (game spec requirement)
-    // Maximum: 6 (hex grid limit - hexagons have 6 neighbors)
-    homeworldLaneCount 3
+// --- Hub System ---
+hub {
+    guaranteedLaneCount 6  // The central hub system is guaranteed to have 6 lanes.
+    mixedLanes true        // Hub uses the standard lane distribution.
 }

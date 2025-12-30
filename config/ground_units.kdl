@@ -1,57 +1,40 @@
-// EC4X Ground Units Configuration
-// Based on EC4X specifications (Section 9.2)
+// EC4X Ground Units Configuration v0.2
+// Source: docs/specs/01-gameplay.md (Phase F Balance), docs/specs/10-reference.md
+// Defines the base statistics for all ground units and planetary defenses.
 
-planetaryShield {
-    description "Protects colonies from orbital bombardment"
-    minCST 5
-    productionCost 50  // Phase F: Further reduced from 67 to improve deployment rate (was 100 baseline)
-    maintenanceCost 5
-    defenseStrength 100
-    buildTime 1  // turns
-    maxPerPlanet 1
-    // Shield block chance by tech level
-    sld1BlockChance 0.30  // 30%
-    sld2BlockChance 0.40  // 40%
-    sld3BlockChance 0.50  // 50%
-    sld4BlockChance 0.60  // 60%
-    sld5BlockChance 0.70  // 70%
-    sld6BlockChance 0.80  // 80%
-    shieldDamageReduction 0.25     // 25% reduction from bombardment
-    shieldInvasionDifficulty 0.15  // +15% difficulty per SLD level
-}
-
-groundBattery {
-    description "Static defense units positioned on planet surface"
-    minCST  1
-    productionCost  13  // Reduced 33% from 20 (Phase F balance)
-    maintenanceCost  1  // Actual PP cost
-    attackStrength 10
-    defenseStrength 8
-    buildTime 0  // turns (instant)
-    maxPerPlanet -1  // unlimited
-}
-
-army {
-    description "Garrison forces that defend colonies"
-    minCST  1
-    productionCost  10  // Reduced 33% from 15 (Phase F balance)
-    maintenanceCost  1  // Actual PP cost
-    attackStrength 3
-    defenseStrength 5
-    buildTime 0  // turns
-    maxPerPlanet -1  // unlimited
-    populationCost 15000  // souls recruited (realistic army division size)
-}
-
-marineDivision {
-    description "Elite invasion forces that capture rival planets"
-    minCST  1
-    productionCost  17  // Reduced 33% from 25 (Phase F balance)
-    maintenanceCost  1  // Actual PP cost
-    attackStrength 6
-    defenseStrength 6
-    buildTime 0  // turns
-    maxPerPlanet -1  // unlimited
-    requiresTransport #true  // Must be loaded on Troop Transports
-    populationCost 18000  // souls recruited (realistic marine division size)
+groundUnits {
+    army {
+        (docs)"docs/specs/10-reference.md#102-ground-units-wep1"
+        buildCost 10 // Phase F Balance
+        maintenancePercent 0.02 // 2%
+        minCST 1
+        attackStrength 3
+        defenseStrength 5
+    }
+    marine {
+        (docs)"docs/specs/10-reference.md#102-ground-units-wep1"
+        buildCost 17 // Phase F Balance
+        maintenancePercent 0.02 // 2%
+        minCST 1
+        attackStrength 6
+        defenseStrength 6
+        requiresTransport true
+    }
+    groundBattery {
+        (docs)"docs/specs/10-reference.md#102-ground-units-wep1"
+        buildCost 13 // Phase F Balance
+        maintenancePercent 0.03 // 3%
+        minCST 1
+        attackStrength 10
+        defenseStrength 8
+    }
+    planetaryShield {
+        (docs)"docs/specs/10-reference.md#102-ground-units-wep1"
+        buildCost 50 // Phase F Balance (for SLD I)
+        maintenancePercent 0.05 // 5%
+        minCST 5 // Corresponds to SLD tech, but CST is the gate
+        defenseStrength 100 // Base DS, absorption is in tech.kdl
+        maxPerColony 1
+        replaceOnUpgrade true
+    }
 }

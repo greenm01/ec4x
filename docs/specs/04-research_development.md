@@ -417,19 +417,19 @@ ELI is a purely defensive technology that provides no direct economic or combat 
 
 ## 4.9 Strategic Lift (STL)
 
-Strategic Lift improves Environmental Transformation and Colonization (ETAC) ships and Troop Transports, increasing their carry capacity for colonists and Marines.
+Strategic Lift improves Troop Transports, increasing their carry capacity for Marines. This technology does not affect ETACs, which have a fixed carry capacity.
 
 **Research Progression:**
 
 <!-- STL_TABLE_START -->
 
-| Tech Level | Prerequisites | SRP Cost | SL Required | ETAC Capacity | Transport Capacity |
-|:----------:| ------------- |:--------:|:-----------:|:-------------:|:------------------:|
-| STL I      | None          | N/A      | 1           | 1 PTU         | 1 MD               |
-| STL II     | STL I         | 10       | 2           | 2 PTU         | 2 MD               |
-| STL III    | STL II        | 13       | 3           | 3 PTU         | 3 MD               |
-| STL IV     | STL III       | 16       | 4           | 4 PTU         | 4 MD               |
-| STL V      | STL IV        | 21       | 5           | 5 PTU         | 5 MD               |
+| Tech Level | Prerequisites | SRP Cost | SL Required | Transport Capacity |
+|:----------:| ------------- |:--------:|:-----------:|:------------------:|
+| STL I      | None          | N/A      | 1           | 1 MD               |
+| STL II     | STL I         | 10       | 2           | 2 MD               |
+| STL III    | STL II        | 13       | 3           | 3 MD               |
+| STL IV     | STL III       | 16       | 4           | 4 MD               |
+| STL V      | STL IV        | 21       | 5           | 5 MD               |
 
 *Source: config/tech.toml [strategic_lift] section*
 
@@ -437,11 +437,11 @@ Strategic Lift improves Environmental Transformation and Colonization (ETAC) shi
 
 **Application:**
 
-STL upgrades apply immediately to all existing ETACs and Troop Transports upon research completion. Ships in transit or loading can immediately increase their cargo capacity up to the new limit.
+STL upgrades apply immediately to all existing Troop Transports upon research completion. Ships in transit or loading can immediately increase their cargo capacity up to the new limit.
 
 **ETAC Implications:**
 
-Higher STL tiers allow new colonies to start with larger populations, accelerating early development. A single ETAC at STL V establishes colonies with 5 PTU instead of 1 PTU, providing immediate productive capacity and reducing the need for follow-up colonist transfers.
+ETACs are unaffected by STL technology. They maintain a fixed carry capacity of 3 PTU to establish new colonies.
 
 **Troop Transport Implications:**
 

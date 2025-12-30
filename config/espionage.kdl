@@ -1,67 +1,89 @@
-// Espionage System Configuration
-// Per diplomacy.md:8.2 - All espionage mechanics for balance tuning
+// EC4X Espionage Configuration v0.2
+// Source: docs/specs/08-diplomacy.md
+// Defines costs, effects, and detection mechanics for the espionage system.
 
-costs {
-    // EBP/CIP costs in PP (reduced from 40 to make early-game espionage viable)
-    ebpCostPp 15
-    cipCostPp 15
-
-    // Action costs in EBP
-    techTheftEbp 5
-    sabotageLowEbp 2
-    sabotageHighEbp 7
-    assassinationEbp 10
-    cyberAttackEbp 6
-    economicManipulationEbp 6
-    psyopsCampaignEbp 3
-    counterIntelSweepEbp 4
-    intelligenceTheftEbp 8
-    plantDisinformationEbp 6
+// --- Budget Point Costs ---
+pointCosts {
+    ebpCostPp 40 // Cost in PP to generate one Espionage Budget Point (EBP)
+    cipCostPp 40 // Cost in PP to generate one Counter-Intelligence Point (CIP)
 }
 
-investment {
-    // Over-investment penalties
-    thresholdPercentage 10  // 10% of turn budget (safe threshold for all game phases)
-    penaltyPerPercent -1    // -1 prestige per 1% over threshold
+// --- Action Costs & Effects ---
+actions {
+    techTheft {
+        ebpCost 5
+        effect "Steals 10 SRP from the target's research pool."
+        srpStolen 10
+    }
+    sabotageLowImpact {
+        ebpCost 2
+        effect "Reduces target's 1d6 Industrial Units (IU)."
+        iuDamageDice "1d6"
+    }
+    sabotageHighImpact {
+        ebpCost 7
+        effect "Reduces target's 1d20 Industrial Units (IU)."
+        iuDamageDice "1d20"
+    }
+    assassination {
+        ebpCost 10
+        effect "Reduces target's SRP gain by 50% for one turn."
+        srpGainReduction 0.50
+        durationTurns 1
+    }
+    cyberAttack {
+        ebpCost 6
+        effect "Cripples the target's Starbase."
+    }
+    economicManipulation {
+        ebpCost 6
+        effect "Halves target's Net Colony Value (NCV) for one turn."
+        ncvReduction 0.50
+        durationTurns 1
+    }
+    psyopsCampaign {
+        ebpCost 3
+        effect "Reduces target's tax revenue by 25% for one turn."
+        taxRevenueReduction 0.25
+        durationTurns 1
+    }
+    counterIntelligenceSweep {
+        ebpCost 4
+        effect "Blocks enemy intelligence gathering for 1 turn."
+        intelBlockDurationTurns 1
+    }
+    intelligenceTheft {
+        ebpCost 8
+        effect "Steals target's entire intelligence database."
+    }
+    plantDisinformation {
+        ebpCost 6
+        effect "Corrupts target's intel with 20-40% variance for 2 turns."
+        disinformationDurationTurns 2
+        minVariance 0.20
+        maxVariance 0.40
+    }
 }
 
-effects {
-    // Action effects
-    techTheftSrp 10            // SRP stolen
-    sabotageLowDice 6          // d6 IU damage
-    sabotageHighDice 20        // d20 IU damage
-    assassinationSrpReduction 50  // Percentage (50%)
-    economicNcvReduction 50    // Percentage (50%)
-    psyopsTaxReduction 25      // Percentage (25%)
-    effectDurationTurns 1      // How long effects last
-
-    // Intelligence warfare effects
-    intelBlockDuration 1       // Turns intelligence gathering is blocked
-    disinformationDuration 2    // Turns disinformation lasts
-    disinformationMinVariance 0.2  // 20% minimum corruption
-    disinformationMaxVariance 0.4  // 40% maximum corruption
-
-    // Detection failure penalties
-    failedEspionagePrestige -2  // When detected
-}
-
+// --- Detection Mechanics --- (Section 8.3)
 detection {
-    // CIP consumed per detection roll
-    cipPerRoll 1
+    cipConsumedPerRoll 1
+    
+    // d20 roll must be > threshold
+    thresholds {
+        cic1 15
+        cic2 12
+        cic3 10
+        cic4 7
+        cic5 4
+    }
 
-    // Detection thresholds (d20 roll must meet or exceed)
-    cic0Threshold 21  // Impossible (no counter-intelligence)
-    cic1Threshold 15  // 25% base detection
-    cic2Threshold 12  // 40% base detection
-    cic3Threshold 10  // 55% base detection
-    cic4Threshold 7   // 65% base detection
-    cic5Threshold 4   // 80% base detection
-
-    // CIP point modifiers
-    cip0Modifier 0
-    cip1To5Modifier 1
-    cip6To10Modifier 2
-    cip11To15Modifier 3
-    cip16To20Modifier 4
-    cip21PlusModifier 5
+    // Modifier added to d20 roll based on total CIP banked
+    modifiers {
+        tier "1-5" { modifier 1 }
+        tier "6-10" { modifier 2 }
+        tier "11-15" { modifier 3 }
+        tier "16-20" { modifier 4 }
+        tier "21+" { modifier 5 }
+    }
 }

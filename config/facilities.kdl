@@ -1,52 +1,46 @@
-// EC4X Facilities Configuration
-// Based on EC4X specifications (Section 9.3, 2.3.2)
+// EC4X Facilities Configuration v0.2
+// Source: docs/specs/02-assets.md, docs/specs/10-reference.md
+// Defines the base statistics for all constructible facilities.
 
-spaceport {
-    description "Ground-based facility that launches heavy-lift ships and equipment into orbit"
-    minCST 1
-    productionCost 100
-    maintenanceCost 5
-    defenseStrength 50
-    buildTime 1  // turns (one month)
-    docks 5  // Available for planet-side ship construction
-    maxPerPlanet -1  // unlimited
-    requiredForShipyard #true
+// --- Construction & Repair Facilities ---
+facilities {
+    spaceport {
+        (docs)"docs/specs/10-reference.md#104-construction--repair-facilities-wep1"
+        buildCost 20
+        maintenancePercent 0.05 // 5%
+        minCST 1
+        baseDocks 5
+        defenseStrength 50
+    }
+    shipyard {
+        (docs)"docs/specs/10-reference.md#104-construction--repair-facilities-wep1"
+        buildCost 60
+        maintenancePercent 0.03 // 3%
+        minCST 1
+        prerequisite "Spaceport"
+        baseDocks 10
+        defenseStrength 70
+    }
+    drydock {
+        (docs)"docs/specs/10-reference.md#104-construction--repair-facilities-wep1"
+        buildCost 150
+        maintenancePercent 0.05 // 5%
+        minCST 1
+        prerequisite "Spaceport"
+        baseDocks 10 // Repair Docks
+        defenseStrength 70
+    }
 }
 
-shipyard {
-    description "Orbital base for ship construction and repair"
-    minCST 1
-    productionCost 150
-    maintenanceCost  5
-    defenseStrength 70
-    buildTime 2  // turns (two months)
-    docks 10  // Available for construction and repair
-    maxPerPlanet -1  // unlimited
-    requiresSpaceport #true
-}
-
-drydock {
-    description "Orbital facility dedicated to ship repair operations"
-    minCST 1
-    productionCost 150
-    maintenanceCost  5
-    defenseStrength 70
-    buildTime 2  // turns (two months)
-    docks 10  // Available for repair only
-    maxPerPlanet -1  // unlimited
-    requiresSpaceport #true
-}
-
-starbase {
-    description "Immobile orbital defense platform providing economic and defensive bonuses"
-    minCST 3
-    productionCost 300
-    maintenanceCost  15
-    attackStrength 45
-    defenseStrength 50
-    buildTime 3  // turns (three months)
-    maxPerPlanet -1  // unlimited
-    requiresSpaceport #true  // Built using spaceport lift capacity
-    economicLiftBonus 2  // ELI+2 per operational starbase
-    growthBonus 0.05  // 5% population growth per operational starbase
+// --- Orbital Defenses ---
+orbitalDefenses {
+    starbase {
+        (docs)"docs/specs/10-reference.md#103-orbital-facilities-wep1"
+        buildCost 300
+        maintenancePercent 0.05 // 5%
+        minCST 3
+        prerequisite "Spaceport"
+        attackStrength 45
+        defenseStrength 50
+    }
 }

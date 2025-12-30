@@ -78,7 +78,7 @@ Flexibility and strategic foresight are your greatest tools. Use every resource 
 
 <!-- STARTING_PRESTIGE_START -->
 
-You start the game with 50 prestige points.
+You start the game with 100 prestige points.
 
 <!-- STARTING_PRESTIGE_END -->
 
