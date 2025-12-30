@@ -281,9 +281,9 @@ You allocate PP to three research pools during the Income Phase:
 
 **Economic Research Points (ERP)**: Improves your colony economic output through Economic Level (EL) technology. Each EL tier increases the economic multiplier applied to Industrial Units in the GCO formula.
 
-**Social Research Points (SRP)**: Unlocks critical infrastructure and doctrinal technologies including Fighter Doctrine (FD), Advanced Carrier Operations (ACO), Cloaking (CLK), Electronic Intelligence (ELI), Shields (SLD), Terraforming (TER), and Strategic Lift (STL).
+**Science Research Points (SRP)**: Unlocks critical infrastructure and doctrinal technologies including Fighter Doctrine (FD), Advanced Carrier Operations (ACO), Cloaking (CLK), Electronic Intelligence (ELI), Shields (SLD), Terraforming (TER), and Strategic Lift (STL).
 
-**Tactical Research Points (TRP)**: Advances weapons (WEP) and construction (CST) technologies. WEP improvements increase ship combat effectiveness. CST improvements increase facility construction capacity and unlock advanced hull classes.
+**Technology Research Points (TRP)**: Advances weapons (WEP) and construction (CST) technologies. WEP improvements increase ship combat effectiveness. CST improvements increase facility construction capacity and unlock advanced hull classes.
 
 Research pools accumulate over multiple turns. Technologies require specific point thresholds and Science Level (SL) prerequisites to unlock. For complete research progression tables and technology effects, see [Section 4.0](04-research_development.md#40-research--development).
 

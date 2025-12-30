@@ -1,5 +1,47 @@
 # 1.0 How to Play
 
+# The Dynatoi
+
+The *dynatoi* (δυνατοί - "the powerful") are the great houses that dominate known space. These ancient families control vast territories, command private fleets, and compete for power through conquest, alliances, and betrayal. Each house carries centuries of history, old grudges, and proud traditions.
+
+## The Twelve Houses
+
+**House Valerian**
+The oldest of the *dynatoi*, claiming unbroken lineage from the First Expansion. Their ancestral palace orbits a dying red giant, and family tradition requires every heir to make a pilgrimage there before assuming leadership.
+
+**House Thelon**
+Rose to power during the Collapse Wars by playing all sides. Their motto translates roughly as "patience cuts deeper than blades." Other houses consider them untrustworthy but valuable allies.
+
+**House Marius**
+A martial dynasty that's produced more fleet admirals than any other house. Marius officers traditionally duel for command positions. Their war college is considered the finest in known space.
+
+**House Kalan**
+Merchant princes who built their fortune on monopolizing rare earth extraction in the Kalan Cluster. Marriages into other houses always include complex financial arrangements that benefit Kalan interests for generations.
+
+**House Delos**
+Founded by a legendary scientist-explorer who discovered the Delos Traverse. The house maintains an obsession with technological superiority and views other houses as provincial. Their ceremonial robes incorporate circuit patterns.
+
+**House Stratos**
+Conquered and absorbed three lesser houses in the past two centuries through strategic marriages and opportunistic invasions. They celebrate "Incorporation Day" annually, which offends the descendants of the absorbed families.
+
+**House Nikos**
+Known for internal power struggles that sometimes spill into open civil war between branches of the family. Despite chronic instability, they've held their core territories for eight centuries through sheer stubbornness.
+
+**House Hektor**
+Their ancestral homeworld was rendered uninhabitable three centuries ago by industrial collapse. Now scattered across multiple systems, Hektor gatherings are melancholic affairs focused on lost glory and eventual restoration.
+
+**House Krios**
+Began as frontier colonists who struck it rich finding habitable worlds in what others considered worthless space. They still maintain a frontier mentality and look down on the "soft" core-world houses.
+
+**House Zenos**
+Every generation produces one designated Philosopher-Heir who writes the official history and strategic doctrine. These texts are studied throughout the empire, giving Zenos outsized cultural influence despite modest military power.
+
+**House Theron**
+Survived five major invasions in their history by trading space for time and bleeding attackers dry. Theron commanders are legendarily cautious, earning them a reputation for cowardice among more aggressive houses.
+
+**House Alexos**
+The newest great house, elevated only three generations ago through a marriage alliance that united two middling families. The older *dynatoi* still treat them as upstarts, which Alexos takes as a personal insult requiring constant proof of legitimacy.
+
 ## 1.1 Prestige
 
 Victory in EC4X is achieved through prestige accumulation—the ultimate measure of your House's dominance. Command your path to the imperial throne:

@@ -92,7 +92,7 @@
 | SL | Science Level – scientific advancement (max 10+) | [4.1](04-research_development.md#41-science-level-sl) |
 | SRP | Science Research Points – used to advance Science Level | [4.1](04-research_development.md#41-science-level-sl) |
 | TL | Tech Level – generic technology level (context dependent) | [4.0](04-research_development.md#40-research-development) |
-| TRP | Technology Research Points – used to purchase specific technologies | [4.1](04-research_development.md#41-science-level-sl) |
+| TRP | Technology Research Points – used to fund military and construction technologies | [4.0](04-research_development.md#40-research-development) |
 | WEP | Weapons Level – determines available ship classes and upgrades | [4.3](04-research_development.md#43-weapons-technology-wep) |
 
 ## Combat & Military Operations

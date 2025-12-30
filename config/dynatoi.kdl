@@ -1,0 +1,70 @@
+// Dynatoi House Theme Configuration for EC4X
+// ======================================
+// Defines name/color themes for the 12 player houses
+// Each house maps to a specific personality archetype (see tests/balance/ai_controller.nim)
+//
+// Active theme is selected in config/gameplay.kdl
+// You can add custom themes by adding new theme nodes
+
+// IMPORTANT: Select 'dynatoi' theme in config/gameplay.kdl
+theme name="dynatoi" {
+    description "The Twelve Great Houses (Dynatoi) of EC4X"
+
+    // Starmap color configuration for optimal visibility
+    starmap {
+        backgroundColor "#000000" // black
+        majorLaneColor "#B8860B" // darkgoldenrod
+        minorLaneColor "#4682B4" // steelblue
+        restrictedLaneColor "#8B0000" // darkred
+        unownedColonyColor "#FFFFF0" // ivory
+        gridLineColor "#404040" // dark charcoal gray
+    }
+
+    // Position 0: Balanced personality (noble, honorable)
+    house0Name "Valerian"
+    house0Color "#4169E1" // royalblue
+
+    // Position 1: Aggressive personality (brutal military)
+    house1Name "Thelon"
+    house1Color "#DC143C" // crimson
+
+    // Position 2: Espionage personality (secretive, sabotage)
+    house2Name "Marius"
+    house2Color "#2E8B57" // seagreen
+
+    // Position 3: Diplomatic personality (political manipulation)
+    house3Name "Kalan"
+    house3Color "#FFD700" // gold
+
+    // Position 4: TechRush personality (technological masters)
+    house4Name "Delos"
+    house4Color "#9932CC" // darkorchid
+
+    // Position 5: Raider personality (assassins, hit-and-run)
+    house5Name "Stratos"
+    house5Color "#FF8C00" // darkorange
+
+    // Position 6: Economic personality (wealthy merchants)
+    house6Name "Nikos"
+    house6Color "#00BFFF" // deepskyblue
+
+    // Position 7: MilitaryIndustrial personality (martial training)
+    house7Name "Hektor"
+    house7Color "#5F9EA0" // cadetblue
+
+    // Position 8: Opportunistic personality (flexible, adaptable)
+    house8Name "Krios"
+    house8Color "#6B8E23" // olivedrab
+
+    // Position 9: Isolationist personality (xenophobic)
+    house9Name "Zenos"
+    house9Color "#4B0082" // indigo
+
+    // Position 10: Expansionist personality (rapid expansion)
+    house10Name "Theron"
+    house10Color "#008B8B" // darkcyan
+
+    // Position 11: Turtle personality (patient, long-term)
+    house11Name "Alexos"
+    house11Color "#B22222" // firebrick
+}
