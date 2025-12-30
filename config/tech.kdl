@@ -99,7 +99,8 @@ economicLevel {
 
 weaponsTech {
     (docs)"docs/specs/04-research_development.md#section-4-4-1"
-    // Modifier: stat × (1.10 ^ (level - 1))
+    // Modifier: stat × (baseMultiplier ^ (level - 1))
+    baseMultiplier 1.10  // WEP tech applies 10% compounding bonus per level
     level 2 {
         slRequired 2
         trpCost 10
@@ -140,7 +141,10 @@ weaponsTech {
 
 constructionTech {
     (docs)"docs/specs/04-research_development.md#section-4-4-2"
-    // CST_MOD = 1.0 + (level - 1) × 0.10
+    // CST_MOD = baseModifier + (level - 1) × incrementPerLevel
+    // Note: Ship definitions and minCST requirements in ships.kdl
+    baseModifier 1.0        // Starting CST modifier at level 1
+    incrementPerLevel 0.10  // CST increases by 10% per level (additive)
     level 2 {
         slRequired 2
         trpCost 10
@@ -258,17 +262,20 @@ fighterDoctrineTech {
 
 advancedCarrierOpsTech {
     (docs)"docs/specs/04-research_development.md#section-4-4-6"
+    // Carrier capacity is TECH-DRIVEN - these values REPLACE base carryLimit from ships.kdl
+    // CV (Carrier): ACO I=3 (ships.kdl base), ACO II=4, ACO III=5
+    // CX (Supercarrier): ACO I=5 (ships.kdl base), ACO II=6, ACO III=8
     level 2 {
         slRequired 4
         trpCost 20
-        cvCapacity 4
-        cxCapacity 6
+        cvCapacity 4  // Carrier capacity at ACO II
+        cxCapacity 6  // Supercarrier capacity at ACO II
     }
     level 3 {
         slRequired 5
         trpCost 22
-        cvCapacity 5
-        cxCapacity 8
+        cvCapacity 5  // Carrier capacity at ACO III
+        cxCapacity 8  // Supercarrier capacity at ACO III
     }
 }
 
@@ -276,41 +283,57 @@ advancedCarrierOpsTech {
 
 shieldsTech {
     (docs)"docs/specs/04-research_development.md#section-4-5-1"
+    // Also see: docs/specs/07-combat.md#section-7-5-2 (bombardment mechanics)
+    // Shields reduce bombardment damage via 1d20 activation roll
+    // shieldDs values ADD to base DS (100) from ground_units.kdl planetaryShield
+    // Total DS = 100 + shieldDs (e.g., SLD3 = 100 + 30 = 130 DS)
     level 1 {
         slRequired 2
         srpCost 10
-        absorption 15
-        shieldDs 10
+        absorption 15            // % chance shields activate (not used - see d20Threshold)
+        shieldDs 10              // Defense Strength bonus
+        d20Threshold 17          // Must roll >17 on 1d20 (15% chance)
+        hitsBlocked 0.25         // Blocks 25% of conventional bombardment hits
     }
     level 2 {
         slRequired 3
         srpCost 13
         absorption 25
         shieldDs 20
+        d20Threshold 14          // Must roll >14 (30% chance)
+        hitsBlocked 0.30         // Blocks 30%
     }
     level 3 {
         slRequired 4
         srpCost 16
         absorption 35
         shieldDs 30
+        d20Threshold 11          // Must roll >11 (45% chance)
+        hitsBlocked 0.35         // Blocks 35%
     }
     level 4 {
         slRequired 5
         srpCost 21
         absorption 45
         shieldDs 40
+        d20Threshold 8           // Must roll >8 (60% chance)
+        hitsBlocked 0.40         // Blocks 40%
     }
     level 5 {
         slRequired 6
         srpCost 27
         absorption 55
         shieldDs 50
+        d20Threshold 5           // Must roll >5 (75% chance)
+        hitsBlocked 0.45         // Blocks 45%
     }
     level 6 {
         slRequired 7
         srpCost 35
         absorption 65
         shieldDs 60
+        d20Threshold 2           // Must roll >2 (90% chance)
+        hitsBlocked 0.50         // Blocks 50%
     }
 }
 

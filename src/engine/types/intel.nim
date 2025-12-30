@@ -25,9 +25,10 @@ type
     threshold*: int32
 
   IntelQuality* {.pure.} = enum
-    Visual
-    Scan
-    Spy
+    Visual   # Fleet-on-fleet encounters
+    Scan     # View a World Fleet Command
+    Spy      # Espionage events (e.g. intel theft )
+    Perfect  # Scouts intel missions
 
   ColonyIntelReport* = object
     ## Ground/planetary intelligence + colony construction pipeline

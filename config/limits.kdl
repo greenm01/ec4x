@@ -22,6 +22,7 @@ quantityLimits {
 // --- Fighter Squadron Capacity ---
 fighterCapacity {
     (docs)"docs/specs/03-economy.md#section-3-6"
+    // Note: Fighter squadron stats (cost, AS/DS, maintenance) defined in ships.kdl fighters section
     iuDivisor 100                  // Base capacity: 1 FS per 100 IU
     violationGracePeriodTurns 2    // 2 turns grace before auto-disband
 }
@@ -37,12 +38,4 @@ capacities {
     planetClass "Benign" { puMax 1000 }
     planetClass "Lush" { puMax 2000 }
     planetClass "Eden" { puMax 999999 }
-}
-
-// --- Space Guild Transfer Limits ---
-guildTransferLimits {
-    (docs)"docs/specs/03-economy.md#section-3-5"
-    minPtuPerTransfer 1
-    minSourcePuRemaining 1
-    maxConcurrentTransfers 5
 }

@@ -1,6 +1,7 @@
 // EC4X Facilities Configuration v0.2
 // Source: docs/specs/02-assets.md, docs/specs/10-reference.md
 // Defines the base statistics for all constructible facilities.
+// Note: Build times and construction mechanics defined in construction.kdl
 
 // --- Construction & Repair Facilities ---
 facilities {

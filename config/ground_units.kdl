@@ -30,10 +30,13 @@ groundUnits {
     }
     planetaryShield {
         (docs)"docs/specs/10-reference.md#102-ground-units-wep1"
+        // Also see: docs/specs/07-combat.md#section-7-5-2 (bombardment mechanics)
         buildCost 50 // Phase F Balance (for SLD I)
         maintenancePercent 0.05 // 5%
         minCST 5 // Corresponds to SLD tech, but CST is the gate
-        defenseStrength 100 // Base DS, absorption is in tech.kdl
+        defenseStrength 100 // Base DS - TECH-DRIVEN bonuses in tech.kdl shieldsTech
+        // Tech.kdl shieldDs values (10-60) ADD to this base per shield tech level
+        // Tech.kdl also defines d20 thresholds and hit blocking percentages
         maxPerColony 1
         replaceOnUpgrade true
     }

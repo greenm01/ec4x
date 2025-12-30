@@ -27,6 +27,23 @@ type
     Surprise
     Ambush
 
+  MoraleEffectTarget* {.pure.} = enum
+    ## Who receives the CER bonus from a successful morale check
+    ## Based on docs/specs/07-combat.md Section 7.3.3
+    None      # No bonus applied
+    Random    # Applies to one random squadron
+    All       # Applies to all squadrons
+
+  MoraleCheckResult* = object
+    ## Result of a 1d20 morale check for a task force
+    rolled*: bool              # Whether check was attempted
+    roll*: int32               # 1d20 roll value
+    threshold*: int32          # Required roll to succeed
+    success*: bool             # Whether check succeeded
+    cerBonus*: int32           # CER bonus if successful
+    appliesTo*: MoraleEffectTarget  # Who receives the bonus
+    criticalAutoSuccess*: bool # High morale critical hit rule
+
   CERRoll* = object
     naturalRoll*: int32
     modifiers*: int32

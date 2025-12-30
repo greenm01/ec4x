@@ -5,6 +5,7 @@
 // The game engine loads: config/*.kdl (balance/mechanics) + scenarios/*.kdl (scenario)
 
 gameParameters {
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
     scenarioName "Standard 4-Player"
     scenarioDescription "Classic balanced 4-player start with standard resources"
     playerCount 4
@@ -14,25 +15,33 @@ gameParameters {
 
 // Map generation parameters
 mapGeneration {
+    (docs)"docs/specs/02-assets.md#section-2-1"
     numRings 4                      // 2-12 valid (absolute bounds), determines map size
                                      // 4 rings = 61 systems, ~15 systems per player for 4 players
                                      // See docs/guides/map-sizing-guide.md for systems-per-player table
 }
 
 victoryConditions {
+    (docs)"docs/specs/01-gameplay.md#section-1-1"
+    // Victory conditions:
+    // - Turn limit reached: Highest prestige wins
+    // - All enemy colonies captured: Military victory
+    // - Last-stand rule: Houses with marines/transports can recapture colonies
     turnLimit 35                     // Max number of game turns
-    prestigeLimit 10000              // Max prestige for victory
+    // No hard prestige limit - prestige scales dynamically with map size
     finalConflictAutoEnemy #true     // Final 2 players forced to Enemy status
 }
 
 startingResources {
-    treasury 1200                    // Starting Production Points (PP) - was 1000, originally 420
-    startingPrestige 100             // Starting prestige points (gameplay.md:21)
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    treasury 1000                    // Starting Production Points (PP)
+    startingPrestige 100             // Starting prestige points
     defaultTaxRate 0.50              // Default tax rate (50%)
 }
 
 startingTech {
-    // Initial technology levels per gameplay.md Section 1.2
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    // Initial technology levels - all start at level 1
     economicLevel 1
     scienceLevel 1
     weaponsTech 1
@@ -48,15 +57,13 @@ startingTech {
     advancedCarrierOpsTech 1
 }
 
-// Initial fleet composition, per Esterian Conquest v1.5 - 5 fleets total:
-// - 3 colonization fleets (ETAC + Light Cruiser each with 3 PTU foundation colony)
+// Initial fleet composition per Esterian Conquest v1.5 - 4 fleets total:
+// - 2 colonization fleets (ETAC + Light Cruiser, each ETAC with 3 PTU)
 // - 2 scout fleets (Destroyer each)
 // - All fleets start with guard-blockade orders on homeworld
 
 startingFleets {
-    fleet {
-        ships "ETAC" "LightCruiser"
-    }
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
     fleet {
         ships "ETAC" "LightCruiser"
     }
@@ -72,27 +79,27 @@ startingFleets {
 }
 
 startingFacilities {
-    // Homeworld starting facilities and defenses
-    spaceports 1                      
-    shipyards 1                       
-    starbases 1                            
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    spaceports 1
+    shipyards 1
+    drydocks 1
 }
 
 startingGroundForces {
-    // Starting ground units for homeworld defense
-    armies 10                         
-    marines 5 
-    groundBatteries 5                
-    planetaryShields 0                     
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    armies 10
+    marines 5
+    groundBatteries 5
+    planetaryShields 0
 }
 
 homeworld {
-    // Homeworld characteristics per 01-gameplay.md
-    planetClass "Eden"               
-    rawQuality "Abundant"            
-    colonyLevel 5                    
-    populationUnits 840              
-    industrialUnits 420              
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    planetClass "Eden"
+    rawQuality "Abundant"
+    colonyLevel 5
+    populationUnits 840
+    industrialUnits 420
 }
 
 optionalBalanceOverrides {

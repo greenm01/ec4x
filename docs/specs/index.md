@@ -10,11 +10,13 @@ In memory of Jonathan F. Pratt.
 
 Welcome to EC4X—an asynchronous turn-based wargame of galactic conquest.
 
-You are the Duke of an upstart House battling for dominance in a contested region of space. Your rivals seek the same prize: the imperial throne. Command your forces, expand your territory, crush your enemies, and seize the crown.
+You are the Archon of an upstart House battling for dominance in a contested region of space. Your rivals seek the same prize: the imperial throne. Command your forces, expand your territory, crush your enemies, and seize the crown.
 
 **The year is 3000.** The second Esterian Empire has collapsed. Reckless monetary policy, corrupt bureaucracies, and socialist excess bankrupted the old order. Revolution swept through the core worlds. The Emperor is dead. His heirs squabble over the ruins.
 
-You lead one of the Great Houses rising from the ashes. Your mandate is absolute: conquer the region, subjugate your rivals, and establish the third imperium under your banner.
+You lead one of the *dynatoi* (δυνατοί - "the powerful")—the twelve Great Houses rising from the ashes. Ancient families with centuries of history, old grudges, and proud traditions. Each commands private fleets and vast territories. Your mandate is absolute: conquer the region, subjugate your rivals, and establish the third imperium under your banner.
+
+See [Section 1.0](01-gameplay.md#the-dynatoi) for complete house descriptions and histories.
 
 **Strategic cycles operate on the Cipher Ledger**—a quantum-entangled network embedded in jump lane stabilizers enabling instantaneous cryptographic settlement across interstellar space. Each cycle represents the time required to gather intelligence, coordinate operations, and consolidate control across your territory. In tight regional conflicts, cycles pass quickly (1-2 years). Sprawling multi-sector campaigns unfold over decades (10-15 years per cycle).
 
@@ -70,8 +72,8 @@ The complete EC4X game specification is organized into the following documents:
 
 - **[Operations](06-operations.md)** - Movement mechanics
 - **[Combat](07-combat.md)** - Combat mechanics
-- **[Diplomacy](08-diplomacy.md)** - Diplomatic states and espionage
-- **[Intelligence](09-intelligence.md)** - Intelligence gathering, reports, and fog of war
+- **[Diplomacy](08-diplomacy.md)** - Diplomatic states and territorial control
+- **[Intelligence & Espionage](09-intel-espionage.md)** - Intelligence gathering, espionage operations, and fog of war
 
 ### Reference
 
@@ -85,8 +87,8 @@ The complete EC4X game specification is organized into the following documents:
 - **Version**: 0.1
 - **Players**: 2-12
 - **Turn Duration**: ~24 hours (real-time)
-- **Victory Condition**: Reach 2500 prestige or be the last House standing
-- **Starting Prestige**: 50 points
+- **Victory Conditions**: Turn limit reached (highest prestige wins) or last House standing (all rivals eliminated)
+- **Starting Prestige**: 100 points
 - **Elimination**: Below 0 prestige for 3 consecutive turns
 
 ---

@@ -1,6 +1,6 @@
 # 3.0 Economics
 
-Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, deficit spending, out of control socialist entitlements, and simple greed by bureaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Duke, your obligation is to rebuild from the ashes and lead your House to prosperity.
+Reckless fiat monetary policy left the former Empire in ruins. Demagoguery, excessive money printing, deficit spending, out of control socialist entitlements, and simple greed by bureaucratic elites led directly to revolution and collapse. The Empire cannibalized itself from the inside out. As Archon, your obligation is to rebuild from the ashes and lead your House to prosperity.
 
 The standard unit of account in EC4X is the Production Point (PP).
 

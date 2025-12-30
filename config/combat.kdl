@@ -46,12 +46,69 @@ cer {
     }
 }
 
+// --- Morale Check Mechanics ---
+moraleChecks {
+    (docs)"docs/specs/07-combat.md#section-7-3-3"
+    // 1d20 roll required to succeed morale check, CER bonus applied on success
+    // Note: Morale tiers (collapsing/veryLow/low/normal/high/veryHigh) defined in prestige.kdl morale section
+    // Morale tier is determined by current prestige value
+
+    collapsing {
+        threshold 21              // Never succeeds (roll can't exceed 20)
+        cerPenalty -1            // -1 CER penalty applies regardless
+        appliesTo none           // No bonus (enum: none, random, all)
+    }
+
+    veryLow {
+        threshold 18             // Must roll >18 (only natural 19-20)
+        cerBonus 0              // No CER bonus on success
+        appliesTo none          // No bonus
+    }
+
+    low {
+        threshold 15             // Must roll >15 (16-20)
+        cerBonus 1              // +1 CER bonus
+        appliesTo random        // Applies to one random squadron
+    }
+
+    normal {
+        threshold 12             // Must roll >12 (13-20)
+        cerBonus 1              // +1 CER bonus
+        appliesTo all           // Applies to all squadrons
+    }
+
+    high {
+        threshold 9              // Must roll >9 (10-20)
+        cerBonus 1              // +1 CER bonus
+        appliesTo all           // Applies to all squadrons
+        criticalAutoSuccess #true  // Critical hits (9+ on d10) auto-succeed
+    }
+
+    veryHigh {
+        threshold 6              // Must roll >6 (7-20, very likely)
+        cerBonus 2              // +2 CER bonus
+        appliesTo all           // Applies to all squadrons
+    }
+}
+
 // --- Combat Damage & Targeting ---
 damage {
     (docs)"docs/specs/07-combat.md#section-7-2-2"
     crippledAsMultiplier 0.5        // Crippled ship AS is halved
     crippledMaintenanceMultiplier 0.5 // Crippled ships have 50% maintenance cost
     crippledTargetingWeight 2.0     // Crippled squadrons have 2x targeting weight
+}
+
+// --- Targeting Priority Buckets ---
+targeting {
+    (docs)"docs/specs/07-combat.md#section-7-3-4"
+    // Base targeting weights by ship role (lower = higher priority to target)
+    raiderWeight 1.0      // Raiders targeted first
+    capitalWeight 2.0     // Capital ships second
+    escortWeight 3.0      // Escorts third
+    fighterWeight 4.0     // Fighters fourth
+    starbaseWeight 5.0    // Starbases last
+    // Note: Crippled multiplier (2.0) defined in damage section above
 }
 
 retreat {
@@ -65,7 +122,7 @@ retreat {
 blockade {
     (docs)"docs/specs/06-operations.md#section-6-3-8"
     // Also see: docs/specs/10-reference.md#section-10-4
-    gcoReduction 0.60        // -60% Gross Colonial Output (GCO)
+    // GCO reduction defined in economy.kdl
     prestigePenaltyPerTurn 2 // -2 prestige per turn per blockaded colony
 }
 

@@ -27,6 +27,7 @@ dynamicScaling {
 // --- Morale System ---
 morale {
     (docs)"docs/specs/07-combat.md#section-7-2-1"
+    // Note: Morale check mechanics (d20 thresholds, CER bonuses) defined in combat.kdl moraleChecks section
     tier "Crisis" { maxPrestige 0 }
     tier "Low" { maxPrestige 20 }
     tier "Average" { maxPrestige 60 }
@@ -80,13 +81,14 @@ recurringPenalties {
     // Also see: docs/specs/08-diplomacy.md#section-8-3
     overInvestment {
         budgetThreshold 0.05 // 5%
-        penaltyPerPercent -1
+        penaltyPerPercent -2 // -2 prestige per 1% over budget (08-diplomacy.md Section 8.4)
     }
 }
 
 // --- Tax Penalties (Rolling 6-turn average) ---
 taxPenalties {
     (docs)"docs/specs/03-economy.md#section-3-2-1"
+    // Note: Averaging window (6 turns) defined in economy.kdl taxMechanics
     tier 1 { minRate=0 maxRate=50 penalty=0 }
     tier 2 { minRate=51 maxRate=60 penalty=-1 }
     tier 3 { minRate=61 maxRate=70 penalty=-2 }

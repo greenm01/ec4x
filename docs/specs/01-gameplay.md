@@ -142,8 +142,8 @@ You begin with a foundation for empire:
 **Treasury**: 1000 production points (PP)
 **Infrastructure**: One spaceport, one shipyard, one drydock
 **Industrial Capacity**: 420 IU (0.5 × PU)
-**Fleet**: Two Light Cruisers, two Destroyers
-**Colonization**: Two ETACs loaded with colonists
+**Fleet**: Two Light Cruisers (each escorting an ETAC), two Destroyers
+**Colonization**: Two ETACs loaded with colonists (3 PTU each, foundation colonies)
 **Scouts**: None—build these immediately
 **Tax Rate**: 50% (you'll want to adjust this)
 
@@ -223,8 +223,6 @@ Your collapsed empire remains on the map as a defensive AI target. Other players
 
 ### 1.4.2 MIA Autopilot
 
-
-
 If you fail to submit commands for three consecutive turns, your empire automatically enters **Autopilot** mode. Unlike Defensive Collapse, autopilot is temporary and you can rejoin at any time.
 
 **Autopilot Behavior:**
@@ -273,14 +271,20 @@ This creates dramatic comeback opportunities and rewards players who maintain mo
 
 ### 1.4.4 Victory Conditions
 
-You achieve victory by reaching 2500 prestige or by being the last active player in the game.
+You achieve victory through one of two conditions:
+
+**1. Turn Limit Victory**: When the maximum turn limit is reached, the House with the highest prestige wins. Prestige accumulation scales dynamically with map size per [Section 1.1](#11-prestige).
+
+**2. Military Victory**: Be the last active House standing—all rivals eliminated through conquest or defensive collapse.
+
+**Player Status for Victory:**
 
 - **Active Players**: Players submitting commands (not in autopilot or defensive collapse)
 - **Autopilot Players**: Count as active and can return to win
 - **Defensive Collapse Players**: Eliminated, do not count toward victory
 - **Last-Stand Players**: Count as active until final elimination
 
-A player in autopilot can still win through prestige accumulation if their empire's defensive economy generates sufficient prestige growth.
+A player in autopilot can still win through prestige accumulation if their empire's defensive economy generates sufficient prestige growth. When the turn limit is reached, autopilot empires compete for victory based on final prestige.
 
 **Final Conflict Rule:**
 

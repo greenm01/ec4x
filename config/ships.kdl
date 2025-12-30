@@ -1,6 +1,7 @@
 // EC4X Default Ship Statistics (WEP1)
 // Source: docs/specs/10-reference.md Section 10.1
 // Defines the base statistics for all mobile ship units.
+// Note: minCST requirements and ship unlocks defined in tech.kdl constructionTech section
 
 // ============================================================================
 // ESCORT SHIPS
@@ -13,8 +14,8 @@ escorts {
         maintenancePercent 0.03 // 3%
         attackStrength 2
         defenseStrength 3
-        commandCost 1
-        commandRating 2
+        c2Cost 1
+        crRating 2
     }
     frigate {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -23,8 +24,8 @@ escorts {
         maintenancePercent 0.03 // 3%
         attackStrength 3
         defenseStrength 4
-        commandCost 2
-        commandRating 3
+        c2Cost 2
+        crRating 3
     }
     destroyer {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -33,8 +34,8 @@ escorts {
         maintenancePercent 0.04 // 4%
         attackStrength 5
         defenseStrength 6
-        commandCost 2
-        commandRating 4
+        c2Cost 2
+        crRating 4
     }
     lightCruiser {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -43,8 +44,8 @@ escorts {
         maintenancePercent 0.04 // 4%
         attackStrength 8
         defenseStrength 9
-        commandCost 3
-        commandRating 6
+        c2Cost 3
+        crRating 6
     }
 }
 
@@ -59,8 +60,8 @@ capitals {
         maintenancePercent 0.05 // 5%
         attackStrength 12
         defenseStrength 13
-        commandCost 3
-        commandRating 7
+        c2Cost 3
+        crRating 7
     }
     battlecruiser {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -69,8 +70,8 @@ capitals {
         maintenancePercent 0.05 // 5%
         attackStrength 16
         defenseStrength 18
-        commandCost 3
-        commandRating 8
+        c2Cost 3
+        crRating 8
     }
     battleship {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -79,8 +80,8 @@ capitals {
         maintenancePercent 0.05 // 5%
         attackStrength 20
         defenseStrength 25
-        commandCost 3
-        commandRating 10
+        c2Cost 3
+        crRating 10
     }
     dreadnought {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -89,8 +90,8 @@ capitals {
         maintenancePercent 0.05 // 5%
         attackStrength 28
         defenseStrength 30
-        commandCost 4
-        commandRating 12
+        c2Cost 4
+        crRating 12
     }
     superDreadnought {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -99,8 +100,8 @@ capitals {
         maintenancePercent 0.08 // 8%
         attackStrength 35
         defenseStrength 40
-        commandCost 5
-        commandRating 14
+        c2Cost 5
+        crRating 14
     }
     carrier {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -109,9 +110,10 @@ capitals {
         maintenancePercent 0.05 // 5%
         attackStrength 5
         defenseStrength 18
-        commandCost 3
-        commandRating 8
-        carryLimit 3 // Base capacity for ACO I
+        c2Cost 3
+        crRating 8
+        carryLimit 3 // Base capacity at ACO I - TECH-DRIVEN, see tech.kdl advancedCarrierOpsTech
+        // Capacity increases with ACO tech: ACO I=3, ACO II=4, ACO III=5
     }
     supercarrier {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -120,9 +122,10 @@ capitals {
         maintenancePercent 0.07 // 7%
         attackStrength 8
         defenseStrength 25
-        commandCost 4
-        commandRating 10
-        carryLimit 5 // Base capacity for ACO I
+        c2Cost 4
+        crRating 10
+        carryLimit 5 // Base capacity at ACO I - TECH-DRIVEN, see tech.kdl advancedCarrierOpsTech
+        // Capacity increases with ACO tech: ACO I=5, ACO II=6, ACO III=8
     }
     raider {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -131,8 +134,8 @@ capitals {
         maintenancePercent 0.05 // 5%
         attackStrength 20
         defenseStrength 25
-        commandCost 2
-        commandRating 6
+        c2Cost 2
+        crRating 6
     }
 }
 
@@ -167,14 +170,15 @@ auxiliary {
 // FIGHTER SQUADRONS
 // ============================================================================
 fighters {
+    // Note: Fighter capacity limits based on IU defined in limits.kdl fighterCapacity
     fighterSquadron {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 1
         buildCost 5
-        maintenancePercent 0.00 // 0% per spec 03-economy.md
+        maintenancePercent 0.00 // 0% maintenance (cap enforced by IU, not cost)
         attackStrength 5
         defenseStrength 2
-        commandCost 1
+        c2Cost 1
     }
 }
 
@@ -189,7 +193,32 @@ specialWeapons {
         maintenancePercent 0.10 // 10%
         attackStrength 50
         defenseStrength 20
-        commandCost 6
-        commandRating 6
+        c2Cost 6
+        crRating 6
+    }
+}
+
+// ============================================================================
+// SHIP STATUS MANAGEMENT
+// ============================================================================
+shipStatus {
+    (docs)"docs/specs/02-assets.md#section-2-3-3-5"
+
+    active {
+        c2CostMultiplier 1.00      // 100% C2 cost
+        maintenanceMultiplier 1.00      // 100% maintenance cost
+        reactivationTurns 0             // Already active
+    }
+
+    reserve {
+        c2CostMultiplier 0.50      // 50% C2 cost
+        maintenanceMultiplier 0.50      // 50% maintenance cost
+        reactivationTurns 1             // 1 turn to reactivate to Active
+    }
+
+    mothballed {
+        c2CostMultiplier 0.00      // 0% C2 cost (no C2 consumed)
+        maintenanceMultiplier 0.10      // 10% maintenance cost
+        reactivationTurns 3             // 3 turns to reactivate to Active
     }
 }
