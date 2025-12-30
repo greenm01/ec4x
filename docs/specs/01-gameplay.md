@@ -62,13 +62,6 @@ Poor colony management tarnishes your legacy. Exposure to rival covert operation
 
 Non-competitive achievements (colony establishment, technological research, good governance) still provide absolute prestige gains. But military dominance is the path to victory: **when one house rises, another must fall**.
 
-**Ground Defense Economics:** Defending your colonies is now more accessible and critical to your prestige. Ground units received cost reductions to incentivize defensive investments:
-
-- **Armies**: 10 PP each (was 15) - Basic garrison forces
-- **Marines**: 17 PP each (was 25) - Elite invasion forces
-- **Ground Batteries**: 13 PP each (was 20) - Anti-invasion defenses
-- **Planetary Shields**: 50 PP each (was 100, then 67) - High-tier passive defense
-
 **Undefended Colony Penalty:** Losing a colony with NO ground defense (no armies, marines, or ground batteries) incurs a **+50% prestige penalty**. This represents the dishonor of leaving your citizens defenseless. Planetary shields alone do NOT count as "defended" - shields buy time but don't stop invasions. At least one army, marine, or ground battery is required to avoid the penalty.
 
 - **Defended colony lost**: -50 prestige (base, scaled by map size)
@@ -86,10 +79,6 @@ If your House's prestige drops below zero and stays there for three consecutive 
 
 ### Dynamic Prestige Scaling
 
-**The Challenge:** Victory requires 2500 prestige. If prestige awards are fixed, small maps finish too quickly and large maps drag on forever.
-
-**The Solution:** Prestige awards automatically scale based on map size.
-
 **How it works:**
 
 - **Small maps** (8-10 systems per player): You earn **full** prestige values listed in the tables → games last ~30 turns
@@ -97,7 +86,7 @@ If your House's prestige drops below zero and stays there for three consecutive 
 
 **Why?** More territory means more turns needed to conquer everything. Lower prestige per action on large maps means you need more victories to reach 2500, perfectly matching the longer conquest timeline.
 
-**Example:** On a small map, colonizing a planet awards 50 prestige. On a large map, the same action awards 20 prestige. Both maps reach 2500 prestige around the time all territory is conquered.
+**Example:** On a small map, colonizing a planet awards 50 prestige. On a large map, the same action awards 20 prestige. 
 
 **For You:** The game calculates scaling automatically when the map generates. Larger maps mean longer campaigns—plan accordingly.
 
@@ -132,7 +121,7 @@ The game server executes every tedious task a human moderator would handle:
 
 **Map Generation:**
 
-Generate your star map using the tools provided in the GitHub repository (see [Section 2.1](02-assets.md#21-star-map)). The server loads the map at game initialization. Map size determines prestige scaling automatically—larger maps mean longer campaigns.
+Config files define the number of players and map size. The map size is set by the number of hexagonal rings centered around the hub system.
 
 **Your Starting Position:**
 
