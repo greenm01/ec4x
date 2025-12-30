@@ -109,17 +109,9 @@ For how Raw Materials affect colony economic output, see the RAW INDEX table in 
 
 ## 2.3 Military
 
-### 2.3.1 Space Force Ships
+### 2.3.1 Ships
 
-The base game includes a number of imperial classed space combatants listed in [Section 10.1](10-reference.md#101-space-force-wep1).
-
-### 2.3.2 Spacelift Command
-
-Spacelift Command provides commerce and transportation services supporting your House's expansion efforts. You own these assets, and senior Space Force officers command them. Loyal House citizens crew and operate the units.
-
-Spacelift assets have no offensive weapons capability—unescorted units are easily destroyed by rival forces.
-
-Spacelift Command attributes are listed in [Section 10.3](10-reference.md#103-spacelift-command-wep1).
+The game includes a number of Space Force ships listed in [Section 10.1](10-reference.md#101-space-force-wep1).
 
 #### 2.3.2.1 Spaceports
 
