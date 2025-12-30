@@ -50,7 +50,7 @@ cer {
 damage {
     (docs)"docs/specs/07-combat.md#section-7-2-2"
     crippledAsMultiplier 0.5        // Crippled ship AS is halved
-    crippledMaintenanceMultiplier 0.5 // Crippled ships have 50% maintenance cost // NOTE: Not in spec - implementation-defined
+    crippledMaintenanceMultiplier 0.5 // Crippled ships have 50% maintenance cost
     crippledTargetingWeight 2.0     // Crippled squadrons have 2x targeting weight
 }
 

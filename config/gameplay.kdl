@@ -18,7 +18,6 @@ autopilot {
 
 autopilotBehavior {
     (docs)"docs/specs/01-gameplay.md#section-1-4-2"
-    // NOTE: Autopilot behavior flags are implementation-defined, not spec-detailed
     continueStandingOrders #true      // Fleets continue existing orders
     patrolHomeSystems #true           // Idle fleets patrol/defend home
     maintainEconomy #true             // Continue tax/R&D at current rates
@@ -29,7 +28,6 @@ autopilotBehavior {
 
 defensiveCollapseBehavior {
     (docs)"docs/specs/01-gameplay.md#section-1-4-1"
-    // NOTE: Collapse behavior details are implementation-defined
     retreatToHome #true              // All fleets return to controlled systems
     defendOnly #true                 // Defend against Enemy-status houses
     noConstruction #true             // No new build orders

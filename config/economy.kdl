@@ -11,7 +11,7 @@ population {
   // ptuGrowthRate 0.04  // Not explicitly defined in spec for PU to PTU conversion
   ptuToSouls 50000       // One PTU represents approx. 50,000 souls
   puToPtuConversion 0.00657 // Constant for PU to PTU conversion formula
-  minViableColonyPop 5000 // Minimum viable souls to sustain a colony // NOTE: Not in spec - implementation-defined
+  minViableColonyPop 5000 // Minimum viable souls to sustain a colony
 }
 
 

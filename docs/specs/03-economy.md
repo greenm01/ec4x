@@ -20,6 +20,8 @@ The PTU-to-PU ratio increases exponentially with colony size. Small colonies are
 
 For planet classification and maximum PU capacity by planet class, see [Section 2.2](02-assets.md#22-solar-systems).
 
+**Minimum Viable Colony**: A colony requires a minimum population of 5,000 souls to remain viable. If a colony's population falls below this threshold (through combat losses, starvation, or other attrition), the colony collapses and is abandoned.
+
 The relationship between PU and PTU is exponential. As the population grows the laws of diminishing returns take effect and the amount of production generated per individual is reduced. People are doing less work while the colony continues to slowly gain wealth. Think of gains in efficiency, productivity, and quality of life. 
 
 This model is dis-inflationary; inflation asymptotically approaches zero over time.
@@ -206,7 +208,32 @@ You transport PTU via two methods:
 
 1. **Environmental Transformation and Colonization ships (ETACs)**: Plant new colonies. See [Section 2.3.2.3](02-assets.md#23223-environmental-transformation-and-colonization-etac) for unit specifications.
 
-2. **Space Guild contracts**: Move PTU between established colonies. Guild fees and mechanics are handled through the Income Phase interface.
+2. **Space Guild contracts**: Move PTU between established colonies. The neutral Space Guild facilitates civilian population transfers between your colonies for a fee.
+
+**Guild Transfer Costs:**
+
+Transfer cost is based on the destination planet's habitability class:
+
+| Planet Class | Cost (PP per PTU) |
+|--------------|-------------------|
+| Eden         | 4 PP             |
+| Lush         | 5 PP             |
+| Benign       | 6 PP             |
+| Harsh        | 8 PP             |
+| Hostile      | 10 PP            |
+| Desolate     | 12 PP            |
+| Extreme      | 15 PP            |
+
+**Transit Time:** Guild transports follow normal starmap traversal rules through jump lanes. The transfer time depends on the distance between source and destination colonies. This mechanic is abstracted from the player - you pay upfront and receive confirmation when the colonists arrive.
+
+**Transfer Edge Cases:**
+
+| Event | Result |
+|-------|--------|
+| Source Colony Conquered | Transfer continues (Guild already paid, neutral status) |
+| Destination Colony Conquered | Colonists lost as refugees |
+| Destination Colony Blockaded | Rerouted to nearest friendly colony |
+| Destination Colony Collapsed | Rerouted to nearest friendly colony |
 
 ## 3.6 Fighter Squadron Economics
 

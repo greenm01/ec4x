@@ -123,6 +123,8 @@ Squadrons exist in three combat states determining effectiveness:
 **Crippled** (Severely Degraded)
 - Squadron suffers major damage reducing combat effectiveness
 - Squadron flagship is crippled; escort ships may be destroyed
+- Attack Strength (AS) reduced to 50%
+- Maintenance cost reduced to 50% of normal
 - Cannot traverse restricted jump lanes
 - Requires shipyard repairs (1 turn, 25% of flagship build cost)
 - Still operational but at reduced capability
