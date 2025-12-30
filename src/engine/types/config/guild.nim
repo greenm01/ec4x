@@ -37,8 +37,6 @@ type
 
   GuildConfig* = object ## Complete population configuration loaded from KDL
     transferCosts*: TransferCostsConfig
-    transferTime*: TransferTimeConfig
-    transferModifiers*: TransferModifiersConfig
     transferLimits*: TransferLimitsConfig
     transferRisks*: TransferRisksConfig
     aiStrategy*: AiStrategyConfig

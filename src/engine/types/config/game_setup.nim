@@ -6,11 +6,9 @@ type
     scenarioDescription*: string ## Description of this scenario
     playerCount*: int32
     gameSeed*: Option[int64]
-    theme*: string
 
   VictoryConditionsConfig* = object ## Victory conditions
     turnLimit*: int32
-    prestigeLimit*: int32
     finalConflictAutoEnemy*: bool
 
   StartingResourcesConfig* = object ## Starting economic resources
@@ -21,15 +19,18 @@ type
   StartingTechConfig* = object ## Initial technology levels per gameplay.md:1.2
     economicLevel*: int32
     scienceLevel*: int32
-    constructionTech*: int32
-    weaponsTech*: int32
-    terraformingTech*: int32
+    weapons*: int32
+    construction*: int32
+    shields*: int32
+    terraforming*: int32
     electronicIntelligence*: int32
-    cloakingTech*: int32
-    shieldTech*: int32
+    cloaking*: int32
+    strategicLift*: int32
     counterIntelligence*: int32
+    flagshipCommand*: int32
+    strategicCommand*: int32
     fighterDoctrine*: int32
-    advancedCarrierOps*: int32
+    advancedCarrierOperations*: int32
 
   FleetConfig* = object ## Individual fleet configuration
     ships*: seq[string] # Ship class names (e.g., ["ETAC", "LightCruiser"])
@@ -40,7 +41,7 @@ type
   StartingFacilitiesConfig* = object ## Homeworld starting facilities
     spaceports*: int32
     shipyards*: int32
-    starbases*: int32
+    drydocks*: int32
 
   StartingGroundForcesConfig* = object ## Homeworld starting ground forces
     armies*: int32

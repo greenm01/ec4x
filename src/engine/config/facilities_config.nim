@@ -10,55 +10,41 @@ import ../types/config
 
 proc parseSpaceport(node: KdlNode, ctx: var KdlConfigContext): SpaceportConfig =
   result = SpaceportConfig(
-    description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("productionCost", ctx),
-    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
+    buildCost: node.requireInt32("buildCost", ctx),
+    maintenancePercent: node.requireFloat32("maintenancePercent", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    buildTime: node.requireInt32("buildTime", ctx),
-    docks: node.requireInt32("docks", ctx),
-    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
-    requiredForShipyard: node.requireBool("requiredForShipyard", ctx)
+    docks: node.requireInt32("docks", ctx)
   )
 
 proc parseShipyard(node: KdlNode, ctx: var KdlConfigContext): ShipyardConfig =
   result = ShipyardConfig(
-    description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("productionCost", ctx),
-    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
+    buildCost: node.requireInt32("buildCost", ctx),
+    maintenancePercent: node.requireFloat32("maintenancePercent", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    buildTime: node.requireInt32("buildTime", ctx),
-    docks: node.requireInt32("docks", ctx),
-    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
-    requiresSpaceport: node.requireBool("requiresSpaceport", ctx)
+    prerequisite: node.requireString("prerequisite", ctx),
+    docks: node.requireInt32("docks", ctx)
   )
 
 proc parseDrydock(node: KdlNode, ctx: var KdlConfigContext): DrydockConfig =
   result = DrydockConfig(
-    description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("productionCost", ctx),
-    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
+    buildCost: node.requireInt32("buildCost", ctx),
+    maintenancePercent: node.requireFloat32("maintenancePercent", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    buildTime: node.requireInt32("buildTime", ctx),
-    docks: node.requireInt32("docks", ctx),
-    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
-    requiresSpaceport: node.requireBool("requiresSpaceport", ctx)
+    prerequisite: node.requireString("prerequisite", ctx),
+    docks: node.requireInt32("docks", ctx)
   )
 
 proc parseStarbase(node: KdlNode, ctx: var KdlConfigContext): StarbaseConfig =
   result = StarbaseConfig(
-    description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("productionCost", ctx),
-    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
+    buildCost: node.requireInt32("buildCost", ctx),
+    maintenancePercent: node.requireFloat32("maintenancePercent", ctx),
+    attackStrength: node.requireInt32("attackStrength", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    buildTime: node.requireInt32("buildTime", ctx),
-    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
-    requiresSpaceport: node.requireBool("requiresSpaceport", ctx),
-    economicLiftBonus: node.requireInt32("economicLiftBonus", ctx),
-    growthBonus: node.requireFloat32("growthBonus", ctx)
+    prerequisite: node.requireString("prerequisite", ctx)
   )
 
 proc loadFacilitiesConfig*(configPath: string): FacilitiesConfig =
@@ -67,20 +53,29 @@ proc loadFacilitiesConfig*(configPath: string): FacilitiesConfig =
   let doc = loadKdlConfig(configPath)
   var ctx = newContext(configPath)
 
-  ctx.withNode("spaceport"):
-    let node = doc.requireNode("spaceport", ctx)
-    result.spaceport = parseSpaceport(node, ctx)
+  # Parse facilities parent node
+  ctx.withNode("facilities"):
+    let facilitiesNode = doc.requireNode("facilities", ctx)
+    for child in facilitiesNode.children:
+      case child.name
+      of "spaceport":
+        ctx.withNode("spaceport"):
+          result.spaceport = parseSpaceport(child, ctx)
+      of "shipyard":
+        ctx.withNode("shipyard"):
+          result.shipyard = parseShipyard(child, ctx)
+      of "drydock":
+        ctx.withNode("drydock"):
+          result.drydock = parseDrydock(child, ctx)
+      else:
+        discard
 
-  ctx.withNode("shipyard"):
-    let node = doc.requireNode("shipyard", ctx)
-    result.shipyard = parseShipyard(node, ctx)
-
-  ctx.withNode("drydock"):
-    let node = doc.requireNode("drydock", ctx)
-    result.drydock = parseDrydock(node, ctx)
-
-  ctx.withNode("starbase"):
-    let node = doc.requireNode("starbase", ctx)
-    result.starbase = parseStarbase(node, ctx)
+  # Parse orbitalDefenses parent node
+  ctx.withNode("orbitalDefenses"):
+    let orbitalNode = doc.requireNode("orbitalDefenses", ctx)
+    for child in orbitalNode.children:
+      if child.name == "starbase":
+        ctx.withNode("starbase"):
+          result.starbase = parseStarbase(child, ctx)
 
   logInfo("Config", "Loaded facilities configuration", "path=", configPath)

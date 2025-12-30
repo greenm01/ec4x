@@ -13,7 +13,6 @@ proc toHouseTheme(entry: ThemeEntry): HouseTheme =
   ## Convert KDL structure to internal HouseTheme representation
   result.name = entry.name
   result.description = entry.description
-  result.legalWarning = entry.legalWarning
 
   # Extract house names and colors (positions 0-11)
   result.houses =
@@ -44,7 +43,6 @@ proc parseThemeEntry(node: KdlNode, ctx: var KdlConfigContext): ThemeEntry =
   result = ThemeEntry(
     name: nameAttr.get(),
     description: node.requireString("description", ctx),
-    legalWarning: node.requireString("legalWarning", ctx),
     house0Name: node.requireString("house0Name", ctx),
     house0Color: node.requireString("house0Color", ctx),
     house1Name: node.requireString("house1Name", ctx),

@@ -6,75 +6,97 @@
 import kdl
 import kdl_helpers
 import ../../common/logger
-import ../types/config 
+import ../types/config
 
 proc parseCombatMechanics(node: KdlNode, ctx: var KdlConfigContext): CombatMechanicsConfig =
   result = CombatMechanicsConfig(
     criticalHitRoll: node.requireInt32("criticalHitRoll", ctx),
     retreatAfterRound: node.requireInt32("retreatAfterRound", ctx),
-    starbaseCriticalReroll: node.requireBool("starbaseCriticalReroll", ctx),
-    starbaseDieModifier: node.requireInt32("starbaseDieModifier", ctx)
-  )
-
-proc parseCerModifiers(node: KdlNode, ctx: var KdlConfigContext): CerModifiersConfig =
-  result = CerModifiersConfig(
-    scouts: node.requireInt32("scouts", ctx),
-    surprise: node.requireInt32("surprise", ctx),
-    ambush: node.requireInt32("ambush", ctx)
+    starbaseCriticalReroll: false,  # Removed from new config
+    starbaseDieModifier: 0'i32  # Removed from new config
   )
 
 proc parseCerTable(node: KdlNode, ctx: var KdlConfigContext): CerTableConfig =
+  ## Parse CER table with tier structure: tier 1 { maxRoll=2 multiplier=0.25 }
+  var tier1, tier2, tier3: tuple[maxRoll: int32, mult: float32]
+  var tier4Min: int32
+
+  for child in node.children:
+    if child.name == "tier" and child.args.len > 0:
+      let tierNum = child.args[0].getInt()
+      case tierNum
+      of 1:
+        tier1 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
+      of 2:
+        tier2 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
+      of 3:
+        tier3 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
+      of 4:
+        tier4Min = child.requireInt32("minRoll", ctx)
+      else: discard
+
   result = CerTableConfig(
-    veryPoorMax: node.requireInt32("veryPoorMax", ctx),
-    poorMax: node.requireInt32("poorMax", ctx),
-    averageMax: node.requireInt32("averageMax", ctx),
-    goodMin: node.requireInt32("goodMin", ctx)
+    veryPoorMax: tier1.maxRoll,
+    poorMax: tier2.maxRoll,
+    averageMax: tier3.maxRoll,
+    goodMin: tier4Min
   )
 
 proc parseBombardment(node: KdlNode, ctx: var KdlConfigContext): BombardmentConfig =
+  ## Parse bombardmentTable with tier structure
+  var tier1, tier2, tier3: tuple[maxRoll: int32, mult: float32]
+
+  for child in node.children:
+    if child.name == "tier" and child.args.len > 0:
+      let tierNum = child.args[0].getInt()
+      case tierNum
+      of 1:
+        tier1 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
+      of 2:
+        tier2 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
+      of 3:
+        tier3 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
+      else: discard
+
   result = BombardmentConfig(
-    maxRoundsPerTurn: node.requireInt32("maxRoundsPerTurn", ctx),
-    veryPoorMax: node.requireInt32("veryPoorMax", ctx),
-    poorMax: node.requireInt32("poorMax", ctx),
-    goodMin: node.requireInt32("goodMin", ctx)
+    maxRoundsPerTurn: 1,  # Default
+    veryPoorMax: tier1.maxRoll,
+    poorMax: tier2.maxRoll,
+    goodMin: tier3.maxRoll
   )
 
 proc parseGroundCombat(node: KdlNode, ctx: var KdlConfigContext): GroundCombatConfig =
-  result = GroundCombatConfig(
-    poorMax: node.requireInt32("poorMax", ctx),
-    averageMax: node.requireInt32("averageMax", ctx),
-    goodMax: node.requireInt32("goodMax", ctx),
-    critical: node.requireInt32("critical", ctx)
-  )
+  ## Parse groundCombatTable with tier structure
+  var tier1, tier2, tier3: tuple[maxRoll: int32, mult: float32]
+  var critRoll: int32
 
-proc parsePlanetaryShields(node: KdlNode, ctx: var KdlConfigContext): PlanetaryShieldsConfig =
-  result = PlanetaryShieldsConfig(
-    sld1Chance: node.requireInt32("sld1Chance", ctx),
-    sld1Roll: node.requireInt32("sld1Roll", ctx),
-    sld1Block: node.requireInt32("sld1Block", ctx),
-    sld2Chance: node.requireInt32("sld2Chance", ctx),
-    sld2Roll: node.requireInt32("sld2Roll", ctx),
-    sld2Block: node.requireInt32("sld2Block", ctx),
-    sld3Chance: node.requireInt32("sld3Chance", ctx),
-    sld3Roll: node.requireInt32("sld3Roll", ctx),
-    sld3Block: node.requireInt32("sld3Block", ctx),
-    sld4Chance: node.requireInt32("sld4Chance", ctx),
-    sld4Roll: node.requireInt32("sld4Roll", ctx),
-    sld4Block: node.requireInt32("sld4Block", ctx),
-    sld5Chance: node.requireInt32("sld5Chance", ctx),
-    sld5Roll: node.requireInt32("sld5Roll", ctx),
-    sld5Block: node.requireInt32("sld5Block", ctx),
-    sld6Chance: node.requireInt32("sld6Chance", ctx),
-    sld6Roll: node.requireInt32("sld6Roll", ctx),
-    sld6Block: node.requireInt32("sld6Block", ctx)
+  for child in node.children:
+    if child.name == "tier" and child.args.len > 0:
+      let tierNum = child.args[0].getInt()
+      case tierNum
+      of 1:
+        tier1 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
+      of 2:
+        tier2 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
+      of 3:
+        tier3 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
+      of 4:
+        critRoll = child.requireInt32("roll", ctx)
+      else: discard
+
+  result = GroundCombatConfig(
+    poorMax: tier1.maxRoll,
+    averageMax: tier2.maxRoll,
+    goodMax: tier3.maxRoll,
+    critical: critRoll
   )
 
 proc parseDamageRules(node: KdlNode, ctx: var KdlConfigContext): DamageRulesConfig =
   result = DamageRulesConfig(
     crippledAsMultiplier: node.requireFloat32("crippledAsMultiplier", ctx),
     crippledMaintenanceMultiplier: node.requireFloat32("crippledMaintenanceMultiplier", ctx),
-    squadronFightsAsUnit: node.requireBool("squadronFightsAsUnit", ctx),
-    destroyAfterAllCrippled: node.requireBool("destroyAfterAllCrippled", ctx)
+    squadronFightsAsUnit: true,  # Default
+    destroyAfterAllCrippled: true  # Default
   )
 
 proc parseRetreatRules(node: KdlNode, ctx: var KdlConfigContext): RetreatRulesConfig =
@@ -86,14 +108,14 @@ proc parseRetreatRules(node: KdlNode, ctx: var KdlConfigContext): RetreatRulesCo
 
 proc parseBlockade(node: KdlNode, ctx: var KdlConfigContext): BlockadeConfig =
   result = BlockadeConfig(
-    blockadeProductionPenalty: node.requireFloat32("blockadeProductionPenalty", ctx),
-    blockadePrestigePenalty: node.requireInt32("blockadePrestigePenalty", ctx)
+    blockadeProductionPenalty: 0.0,  # Moved to economy.kdl
+    blockadePrestigePenalty: node.requireInt32("prestigePenaltyPerTurn", ctx)
   )
 
 proc parseInvasion(node: KdlNode, ctx: var KdlConfigContext): InvasionConfig =
   result = InvasionConfig(
-    invasionIuLoss: node.requireFloat32("invasionIuLoss", ctx),
-    blitzIuLoss: node.requireFloat32("blitzIuLoss", ctx)
+    invasionIuLoss: node.requireFloat32("iuLossOnConquest", ctx),
+    blitzIuLoss: node.requireFloat32("iuLossOnBlitz", ctx)
   )
 
 proc loadCombatConfig*(configPath: string): CombatConfig =
@@ -102,45 +124,50 @@ proc loadCombatConfig*(configPath: string): CombatConfig =
   let doc = loadKdlConfig(configPath)
   var ctx = newContext(configPath)
 
-  # Parse each section
+  # Parse combat { }
   ctx.withNode("combat"):
-    let combatNode = doc.requireNode("combat", ctx)
-    result.combat = parseCombatMechanics(combatNode, ctx)
+    result.combat = parseCombatMechanics(doc.requireNode("combat", ctx), ctx)
 
-  ctx.withNode("cerModifiers"):
-    let cerModNode = doc.requireNode("cerModifiers", ctx)
-    result.cerModifiers = parseCerModifiers(cerModNode, ctx)
+  # Parse cer { modifiers { } spaceCombatTable { } bombardmentTable { } groundCombatTable { } }
+  ctx.withNode("cer"):
+    let cerNode = doc.requireNode("cer", ctx)
+    for child in cerNode.children:
+      case child.name
+      of "modifiers":
+        ctx.withNode("modifiers"):
+          result.cerModifiers = CerModifiersConfig(
+            scouts: 0,  # Removed
+            surprise: 0,  # Removed
+            ambush: child.requireInt32("ambushBonus", ctx)
+          )
+      of "spaceCombatTable":
+        ctx.withNode("spaceCombatTable"):
+          result.cerTable = parseCerTable(child, ctx)
+      of "bombardmentTable":
+        ctx.withNode("bombardmentTable"):
+          result.bombardment = parseBombardment(child, ctx)
+      of "groundCombatTable":
+        ctx.withNode("groundCombatTable"):
+          result.groundCombat = parseGroundCombat(child, ctx)
+      else: discard
 
-  ctx.withNode("cerTable"):
-    let cerTableNode = doc.requireNode("cerTable", ctx)
-    result.cerTable = parseCerTable(cerTableNode, ctx)
+  # Parse damage { }
+  ctx.withNode("damage"):
+    result.damageRules = parseDamageRules(doc.requireNode("damage", ctx), ctx)
 
-  ctx.withNode("bombardment"):
-    let bombNode = doc.requireNode("bombardment", ctx)
-    result.bombardment = parseBombardment(bombNode, ctx)
+  # Parse retreat { }
+  ctx.withNode("retreat"):
+    result.retreatRules = parseRetreatRules(doc.requireNode("retreat", ctx), ctx)
 
-  ctx.withNode("groundCombat"):
-    let groundNode = doc.requireNode("groundCombat", ctx)
-    result.groundCombat = parseGroundCombat(groundNode, ctx)
-
-  ctx.withNode("planetaryShields"):
-    let shieldsNode = doc.requireNode("planetaryShields", ctx)
-    result.planetaryShields = parsePlanetaryShields(shieldsNode, ctx)
-
-  ctx.withNode("damageRules"):
-    let damageNode = doc.requireNode("damageRules", ctx)
-    result.damageRules = parseDamageRules(damageNode, ctx)
-
-  ctx.withNode("retreatRules"):
-    let retreatNode = doc.requireNode("retreatRules", ctx)
-    result.retreatRules = parseRetreatRules(retreatNode, ctx)
-
+  # Parse blockade { }
   ctx.withNode("blockade"):
-    let blockadeNode = doc.requireNode("blockade", ctx)
-    result.blockade = parseBlockade(blockadeNode, ctx)
+    result.blockade = parseBlockade(doc.requireNode("blockade", ctx), ctx)
 
+  # Parse invasion { }
   ctx.withNode("invasion"):
-    let invasionNode = doc.requireNode("invasion", ctx)
-    result.invasion = parseInvasion(invasionNode, ctx)
+    result.invasion = parseInvasion(doc.requireNode("invasion", ctx), ctx)
+
+  # Planetary shields removed - now in tech.kdl
+  result.planetaryShields = PlanetaryShieldsConfig()  # Empty default
 
   logInfo("Config", "Loaded combat configuration", "path=", configPath)

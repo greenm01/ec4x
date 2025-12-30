@@ -1,6 +1,5 @@
 type
   PlanetaryShieldConfig* = object
-    description*: string
     minCST*: int32
     productionCost*: int32
     maintenanceCost*: int32
@@ -17,7 +16,6 @@ type
     shieldInvasionDifficulty*: float32
 
   GroundBatteryConfig* = object
-    description*: string
     minCST*: int32
     productionCost*: int32
     maintenanceCost*: int32
@@ -27,7 +25,6 @@ type
     maxPerPlanet*: int32
 
   ArmyConfig* = object
-    description*: string
     minCST*: int32
     productionCost*: int32
     maintenanceCost*: int32
@@ -38,7 +35,6 @@ type
     populationCost*: int32 # Souls recruited per division
 
   MarineDivisionConfig* = object
-    description*: string
     minCST*: int32
     productionCost*: int32
     maintenanceCost*: int32

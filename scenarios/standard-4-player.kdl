@@ -27,7 +27,6 @@ victoryConditions {
     // - All enemy colonies captured: Military victory
     // - Last-stand rule: Houses with marines/transports can recapture colonies
     turnLimit 35                     // Max number of game turns
-    // No hard prestige limit - prestige scales dynamically with map size
     finalConflictAutoEnemy #true     // Final 2 players forced to Enemy status
 }
 
@@ -43,17 +42,18 @@ startingTech {
     // Initial technology levels - all start at level 1
     economicLevel 1
     scienceLevel 1
-    weaponsTech 1
-    constructionTech 1
-    shieldsTech 1
-    terraformingTech 1
-    electronicIntelligenceTech 1
-    cloakingTech 1
-    strategicLiftTech 1
-    flagshipCommandTech 1
-    strategicCommandTech 1
-    fighterDoctrineTech 1
-    advancedCarrierOpsTech 1
+    weapons 1
+    construction 1
+    shields 1
+    terraforming 1
+    electronicIntelligence 1
+    cloaking 1
+    strategicLift 1
+    counterIntelligence 1
+    flagshipCommand 1
+    strategicCommand 1
+    fighterDoctrine 1
+    advancedCarrierOperations 1
 }
 
 // Initial fleet composition per Esterian Conquest v1.5 - 4 fleets total:

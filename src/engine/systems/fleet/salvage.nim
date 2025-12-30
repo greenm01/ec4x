@@ -16,7 +16,7 @@ import ../../types/[core, game_state, fleet, squadron, ship]
 import ../economy/types as econ_types
 import
   ../../config/[
-    engine as config_engine, military_config, construction_config, ships_config,
+    engine as config_engine, construction_config, ships_config,
     facilities_config,
   ]
 
@@ -66,19 +66,16 @@ type
 
 proc getSalvageValue*(shipClass: ShipClass, salvageType: SalvageType): int =
   ## Calculate salvage value for destroyed ship
-  ## Per military.toml:
-  ## - Normal salvage: 50% of build cost (at own colonies)
-  ## - Emergency salvage: 25% of build cost (in combat zones)
+  ## Per config/ships.kdl and docs/specs/05-construction.md:
+  ## - Salvage: 50% of build cost (PC recovery)
+  ## Note: Emergency salvage not implemented in specs, uses same multiplier
 
   let stats = config_engine.getShipStats(shipClass)
   let buildCost = stats.buildCost
 
-  let multiplier =
-    case salvageType
-    of SalvageType.Normal:
-      globalMilitaryConfig.salvage.salvage_value_multiplier
-    of SalvageType.Emergency:
-      globalMilitaryConfig.salvage.emergency_salvage_multiplier
+  # Per ships.kdl: salvageValueMultiplier = 0.5 (50% of build cost)
+  # Both Normal and Emergency use same multiplier (Emergency not in specs)
+  let multiplier = globalShipsConfig.salvage.salvageValueMultiplier
 
   return int(float(buildCost) * multiplier)
 
@@ -110,20 +107,20 @@ proc salvageDestroyedShips*(
 
 proc getShipRepairCost*(shipClass: ShipClass): int =
   ## Calculate repair cost for crippled ship
-  ## Per construction.toml: 25% of build cost
+  ## Per construction.kdl: 25% of build cost
 
   let stats = config_engine.getShipStats(shipClass)
   let buildCost = stats.buildCost
-  let multiplier = globalConstructionConfig.repair.ship_repair_cost_multiplier
+  let multiplier = globalConstructionConfig.repair.shipRepairCostMultiplier
 
   return int(float(buildCost) * multiplier)
 
 proc getStarbaseRepairCost*(): int =
   ## Calculate repair cost for crippled starbase
-  ## Per construction.toml: 25% of build cost
+  ## Per construction.kdl: 25% of build cost
 
-  let buildCost = globalConstructionConfig.costs.starbase_cost
-  let multiplier = globalConstructionConfig.repair.starbase_repair_cost_multiplier
+  let buildCost = globalFacilitiesConfig.starbase.productionCost
+  let multiplier = globalConstructionConfig.repair.starbaseRepairCostMultiplier
 
   return int(float(buildCost) * multiplier)
 

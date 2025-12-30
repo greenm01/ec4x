@@ -10,7 +10,7 @@ facilities {
         buildCost 20
         maintenancePercent 0.05 // 5%
         minCST 1
-        baseDocks 5
+        docks 5
         defenseStrength 50
     }
     shipyard {
@@ -19,7 +19,7 @@ facilities {
         maintenancePercent 0.03 // 3%
         minCST 1
         prerequisite "Spaceport"
-        baseDocks 10
+        docks 10
         defenseStrength 70
     }
     drydock {
@@ -28,7 +28,7 @@ facilities {
         maintenancePercent 0.05 // 5%
         minCST 1
         prerequisite "Spaceport"
-        baseDocks 10 // Repair Docks
+        docks 10 // Repair Docks
         defenseStrength 70
     }
 }

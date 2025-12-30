@@ -13,51 +13,6 @@ type
     ptuSizeMillions*: float32
     minPopulationRemaining*: int32
 
-  ProductionConfig* = object
-    productionPer10Population*: int32
-    productionSplitCredits*: float32
-    productionSplitProduction*: float32
-    productionSplitResearch*: float32
-
-  InfrastructureConfig* = object
-
-  PlanetClassesConfig* = object
-    extremePuMin*: int32
-    extremePuMax*: int32
-    desolatePuMin*: int32
-    desolatePuMax*: int32
-    hostilePuMin*: int32
-    hostilePuMax*: int32
-    harshPuMin*: int32
-    harshPuMax*: int32
-    benignPuMin*: int32
-    benignPuMax*: int32
-    lushPuMin*: int32
-    lushPuMax*: int32
-    edenPuMin*: int32
-
-  ResearchConfig* = object
-    researchCostBase*: int32
-    researchCostExponent*: int32
-    researchBreakthroughBaseChance*: float32
-    researchBreakthroughRpPerPercent*: int32
-    minorBreakthroughBonus*: int32
-    moderateBreakthroughDiscount*: float32
-    revolutionaryQuantumComputingElModBonus*: float32
-    revolutionaryStealthDetectionBonus*: int32
-    revolutionaryTerraformingGrowthBonus*: float32
-    erpBaseCost*: int32
-    elEarlyBase*: int32
-    elEarlyIncrement*: int32
-    elLateIncrement*: int32
-    srpBaseCost*: int32
-    srpSlMultiplier*: float32
-    slEarlyBase*: int32
-    slEarlyIncrement*: int32
-    slLateIncrement*: int32
-    trpFirstLevelCost*: int32
-    trpLevelIncrement*: int32
-
   RawMaterialEfficiencyConfig* = object
     veryPoorEden*: float32
     veryPoorLush*: float32
@@ -117,65 +72,26 @@ type
 
   IndustrialInvestmentConfig* = object
     baseCost*: int32
-    tier1MaxPercent*: int32
-    tier1Multiplier*: float32
-    tier1Pp*: int32
-    tier2MinPercent*: int32
-    tier2MaxPercent*: int32
-    tier2Multiplier*: float32
-    tier2Pp*: int32
-    tier3MinPercent*: int32
-    tier3MaxPercent*: int32
-    tier3Multiplier*: float32
-    tier3Pp*: int32
-    tier4MinPercent*: int32
-    tier4MaxPercent*: int32
-    tier4Multiplier*: float32
-    tier4Pp*: int32
-    tier5MinPercent*: int32
-    tier5Multiplier*: float32
-    tier5Pp*: int32
 
   ColonizationConfig* = object
     startingInfrastructureLevel*: int32
     startingIuPercent*: int32
-    edenPpPerPtu*: int32
-    lushPpPerPtu*: int32
-    benignPpPerPtu*: int32
-    harshPpPerPtu*: int32
-    hostilePpPerPtu*: int32
-    desolatePpPerPtu*: int32
-    extremePpPerPtu*: int32
 
   IndustrialGrowthConfig* = object
     passiveGrowthDivisor*: float32
     passiveGrowthMinimum*: float32
-    appliesModifiers*: bool
 
   StarbaseBonusesConfig* = object
-    growthBonusPerStarbase*: float32
-    maxStarbasesForBonus*: int32
+    populationGrowthBonusPerStarbase*: float32
+    industrialProductionBonusPerStarbase*: float32
     eliBonusPerStarbase*: int32
 
-  SquadronCapacityConfig* = object
-    capitalSquadronIuDivisor*: int32
-    capitalSquadronMultiplier*: int32
-    capitalSquadronMinimum*: int32
-
   ProductionModifiersConfig* = object
-    elBonusPerLevel*: float32
-    cstBonusPerLevel*: float32
     blockadePenalty*: float32
-    prodGrowthNumerator*: float32
-    prodGrowthDenominator*: float32
 
   EconomyConfig* = object ## Complete economy configuration loaded from KDL
     population*: PopulationConfig
     ptuDefinition*: PtuDefinitionConfig
-    production*: ProductionConfig
-    infrastructure*: InfrastructureConfig
-    planetClasses*: PlanetClassesConfig
-    research*: ResearchConfig
     rawMaterialEfficiency*: RawMaterialEfficiencyConfig
     taxMechanics*: TaxMechanicsConfig
     taxPopulationGrowth*: TaxPopulationGrowthConfig
@@ -183,6 +99,5 @@ type
     colonization*: ColonizationConfig
     industrialGrowth*: IndustrialGrowthConfig
     starbaseBonuses*: StarbaseBonusesConfig
-    squadronCapacity*: SquadronCapacityConfig
     productionModifiers*: ProductionModifiersConfig
 

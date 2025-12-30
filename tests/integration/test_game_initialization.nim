@@ -15,7 +15,6 @@ suite "Game Initialization - Complete Flow":
     let game = newGame()
 
     check game.turn == 1
-    check game.gameId == gameSetup.gameParameters.gameId
     let playerCount = gameSetup.gameParameters.playerCount
     check game.houses.entities.data.len == playerCount
 
@@ -35,15 +34,18 @@ suite "Game Initialization - Complete Flow":
       # Verify all tech levels from config
       check tech.economicLevel == gameSetup.startingTech.economicLevel
       check tech.scienceLevel == gameSetup.startingTech.scienceLevel
-      check tech.constructionTech == gameSetup.startingTech.constructionTech
-      check tech.weaponsTech == gameSetup.startingTech.weaponsTech
-      check tech.terraformingTech == gameSetup.startingTech.terraformingTech
+      check tech.constructionTech == gameSetup.startingTech.construction
+      check tech.weaponsTech == gameSetup.startingTech.weapons
+      check tech.terraformingTech == gameSetup.startingTech.terraforming
       check tech.electronicIntelligence == gameSetup.startingTech.electronicIntelligence
-      check tech.cloakingTech == gameSetup.startingTech.cloakingTech
-      check tech.shieldTech == gameSetup.startingTech.shieldTech
+      check tech.cloakingTech == gameSetup.startingTech.cloaking
+      check tech.shieldTech == gameSetup.startingTech.shields
       check tech.counterIntelligence == gameSetup.startingTech.counterIntelligence
+      check tech.strategicLiftTech == gameSetup.startingTech.strategicLift
+      check tech.flagshipCommandTech == gameSetup.startingTech.flagshipCommand
+      check tech.strategicCommandTech == gameSetup.startingTech.strategicCommand
       check tech.fighterDoctrine == gameSetup.startingTech.fighterDoctrine
-      check tech.advancedCarrierOps == gameSetup.startingTech.advancedCarrierOps
+      check tech.advancedCarrierOps == gameSetup.startingTech.advancedCarrierOperations
 
   test "Homeworld colonies created with facilities":
     let game = newGame()
@@ -56,27 +58,17 @@ suite "Game Initialization - Complete Flow":
       check colony.infrastructure == gameSetup.homeworld.colonyLevel
       check colony.spaceportIds.len == gameSetup.startingFacilities.spaceports
       check colony.shipyardIds.len == gameSetup.startingFacilities.shipyards
-      check colony.starbaseIds.len == gameSetup.startingFacilities.starbases
+      check colony.drydockIds.len == gameSetup.startingFacilities.drydocks
+      check colony.starbaseIds.len == 0  # No starting starbases
 
   test "Facilities properly created":
     let game = newGame()
 
-    var totalStarbases = 0
     var totalSpaceports = 0
     var totalShipyards = 0
+    var totalDrydocks = 0
 
     for colony in game.allColonies():
-      # Verify starbases
-      for starbaseId in colony.starbaseIds:
-        let starbaseOpt = game.starbases.entities.getEntity(starbaseId)
-        check starbaseOpt.isSome
-        if starbaseOpt.isSome:
-          let starbase = starbaseOpt.get()
-          check starbase.colonyId == colony.id
-          check starbase.commissionedTurn == 0
-          check starbase.isCrippled == false
-          totalStarbases += 1
-
       # Verify spaceports
       for spaceportId in colony.spaceportIds:
         let spaceportOpt = game.spaceports.entities.getEntity(spaceportId)
@@ -102,10 +94,23 @@ suite "Game Initialization - Complete Flow":
           check shipyard.isCrippled == false
           totalShipyards += 1
 
+      # Verify drydocks
+      for drydockId in colony.drydockIds:
+        let drydockOpt = game.drydocks.entities.getEntity(drydockId)
+        check drydockOpt.isSome
+        if drydockOpt.isSome:
+          let drydock = drydockOpt.get()
+          check drydock.colonyId == colony.id
+          check drydock.commissionedTurn == 0
+          check drydock.baseDocks > 0
+          check drydock.effectiveDocks == drydock.baseDocks
+          check drydock.isCrippled == false
+          totalDrydocks += 1
+
     let playerCount = gameSetup.gameParameters.playerCount
-    check totalStarbases == playerCount * gameSetup.startingFacilities.starbases
     check totalSpaceports == playerCount * gameSetup.startingFacilities.spaceports
     check totalShipyards == playerCount * gameSetup.startingFacilities.shipyards
+    check totalDrydocks == playerCount * gameSetup.startingFacilities.drydocks
 
   test "Ground units created with correct stats":
     let game = newGame()

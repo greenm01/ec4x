@@ -33,5 +33,5 @@ repair {
     starbaseRepairTurns 1
     starbaseRepairCostMultiplier 0.25
     starbaseRepairRequires "Spaceport"
-    starbaseRepairUsesDockCapacity false
+    starbaseRepairUsesDockCapacity #false
 }

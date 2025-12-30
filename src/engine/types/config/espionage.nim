@@ -13,10 +13,6 @@ type
     intelligenceTheftEbp*: int32
     plantDisinformationEbp*: int32
 
-  EspionageInvestmentConfig* = object
-    thresholdPercentage*: int32
-    penaltyPerPercent*: int32
-
   EspionageEffectsConfig* = object
     techTheftSrp*: int32
     sabotageLowDice*: int32
@@ -48,6 +44,5 @@ type
 
   EspionageConfig* = object ## Complete espionage configuration loaded from KDL
     costs*: EspionageCostsConfig
-    investment*: EspionageInvestmentConfig
     effects*: EspionageEffectsConfig
     detection*: EspionageDetectionConfig

@@ -9,9 +9,8 @@ import std/[tables, math, times, options, strutils]
 import ../../src/engine/starmap
 import ../../src/engine/types/[
   starmap as starmap_types, core, game_state, resolution, espionage,
-  diplomacy, intelligence, command, fleet
+  diplomacy, intel, command, fleet
 ]
-import ../../src/engine/state/id_gen
 import ../../src/engine/config/[engine as engine_config, game_setup_config]
 import ../../src/engine/globals
 
@@ -26,7 +25,7 @@ proc createTestGame(playerCount: int32, numRings: uint32 = 0): (
 
   # Load game configs (required for homeworld initialization)
   gameConfig = loadGameConfig("config")
-  gameSetup = loadGameSetupConfig("scenarios/standard.kdl")
+  gameSetup = loadGameSetupConfig("scenarios/standard-4-player.kdl")
 
   # Validate player count bounds (2-12)
   if playerCount < 2 or playerCount > 12:

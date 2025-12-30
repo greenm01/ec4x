@@ -97,7 +97,7 @@ economicLevel {
 
 // --- TECHNOLOGY RESEARCH (TRP) ---
 
-weaponsTech {
+weapons {
     (docs)"docs/specs/04-research_development.md#section-4-4-1"
     // Modifier: stat × (baseMultiplier ^ (level - 1))
     baseMultiplier 1.10  // WEP tech applies 10% compounding bonus per level
@@ -139,7 +139,7 @@ weaponsTech {
     }
 }
 
-constructionTech {
+construction {
     (docs)"docs/specs/04-research_development.md#section-4-4-2"
     // CST_MOD = baseModifier + (level - 1) × incrementPerLevel
     // Note: Ship definitions and minCST requirements in ships.kdl
@@ -157,7 +157,7 @@ constructionTech {
     level 4 {
         slRequired 4
         trpCost 15
-        unlocks ("BB", "CX")
+        unlocks "BB" "CX"
     }
     level 5 {
         slRequired 5
@@ -188,7 +188,7 @@ constructionTech {
     }
 }
 
-flagshipCommandTech {
+flagshipCommand {
     (docs)"docs/specs/04-research_development.md#section-4-4-3"
     level 2 {
         slRequired 2
@@ -217,7 +217,7 @@ flagshipCommandTech {
     }
 }
 
-strategicCommandTech {
+strategicCommand {
     (docs)"docs/specs/04-research_development.md#section-4-4-4"
     level 1 {
         slRequired 2
@@ -246,7 +246,7 @@ strategicCommandTech {
     }
 }
 
-fighterDoctrineTech {
+fighterDoctrine {
     (docs)"docs/specs/04-research_development.md#section-4-4-5"
     level 2 {
         slRequired 2
@@ -260,28 +260,9 @@ fighterDoctrineTech {
     }
 }
 
-advancedCarrierOpsTech {
-    (docs)"docs/specs/04-research_development.md#section-4-4-6"
-    // Carrier capacity is TECH-DRIVEN - these values REPLACE base carryLimit from ships.kdl
-    // CV (Carrier): ACO I=3 (ships.kdl base), ACO II=4, ACO III=5
-    // CX (Supercarrier): ACO I=5 (ships.kdl base), ACO II=6, ACO III=8
-    level 2 {
-        slRequired 4
-        trpCost 20
-        cvCapacity 4  // Carrier capacity at ACO II
-        cxCapacity 6  // Supercarrier capacity at ACO II
-    }
-    level 3 {
-        slRequired 5
-        trpCost 22
-        cvCapacity 5  // Carrier capacity at ACO III
-        cxCapacity 8  // Supercarrier capacity at ACO III
-    }
-}
-
 // --- SCIENCE RESEARCH (SRP) ---
 
-shieldsTech {
+shields {
     (docs)"docs/specs/04-research_development.md#section-4-5-1"
     // Also see: docs/specs/07-combat.md#section-7-5-2 (bombardment mechanics)
     // Shields reduce bombardment damage via 1d20 activation roll
@@ -337,7 +318,7 @@ shieldsTech {
     }
 }
 
-terraformingTech {
+terraforming {
     (docs)"docs/specs/04-research_development.md#section-4-5-2"
     level 1 {
         slRequired 4
@@ -377,7 +358,7 @@ terraformingTech {
     }
 }
 
-cloakingTech {
+cloaking {
     (docs)"docs/specs/04-research_development.md#section-4-5-3"
     level 1 {
         slRequired 2
@@ -401,7 +382,7 @@ cloakingTech {
     }
 }
 
-electronicIntelligenceTech {
+electronicIntelligence {
     (docs)"docs/specs/04-research_development.md#section-4-5-4"
     level 1 {
         slRequired 2
@@ -425,7 +406,7 @@ electronicIntelligenceTech {
     }
 }
 
-strategicLiftTech {
+strategicLift {
     (docs)"docs/specs/04-research_development.md#section-4-5-5"
     level 1 {
         slRequired 1
@@ -452,4 +433,35 @@ strategicLiftTech {
         srpCost 21
         transportCapacity 5
     }
+}
+
+// --- Terraforming Upgrade Costs ---
+terraformingUpgradeCosts {
+    (docs)"docs/specs/04-research_development.md#section-4-6"
+    extremeTer 1; extremePuMin 1; extremePuMax 20; extremePp 100
+    desolateTer 2; desolatePuMin 21; desolatePuMax 60; desolatePp 150
+    hostileTer 3; hostilePuMin 61; hostilePuMax 180; hostilePp 200
+    harshTer 4; harshPuMin 181; harshPuMax 500; harshPp 250
+    benignTer 5; benignPuMin 501; benignPuMax 1000; benignPp 300
+    lushTer 6; lushPuMin 1001; lushPuMax 2000; lushPp 350
+    edenTer 7; edenPuMin 2001; edenPuMax 999999; edenPp 0
+}
+
+// --- Counter-Intelligence Tech ---
+counterIntelligence {
+    (docs)"docs/specs/09-intel-espionage.md"
+    level 1 { slRequired 2; srpCost 10 }
+    level 2 { slRequired 3; srpCost 13 }
+    level 3 { slRequired 4; srpCost 16 }
+    level 4 { slRequired 5; srpCost 21 }
+    level 5 { slRequired 6; srpCost 27 }
+}
+
+// --- Advanced Carrier Operations ---
+advancedCarrierOperations {
+    (docs)"docs/specs/04-research_development.md#section-4-13"
+    capacityMultiplierPerLevel 1.0
+    level 1 { slRequired 1; trpCost 0; cvCapacity 3; cxCapacity 5; description "Standard carrier ops" }
+    level 2 { slRequired 4; trpCost 20; cvCapacity 4; cxCapacity 6; description "Enhanced carrier ops" }
+    level 3 { slRequired 5; trpCost 22; cvCapacity 5; cxCapacity 8; description "Advanced carrier ops" }
 }

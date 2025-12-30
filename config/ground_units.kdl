@@ -18,7 +18,7 @@ groundUnits {
         minCST 1
         attackStrength 6
         defenseStrength 6
-        requiresTransport true
+        requiresTransport #true
     }
     groundBattery {
         (docs)"docs/specs/10-reference.md#102-ground-units-wep1"
@@ -38,6 +38,6 @@ groundUnits {
         // Tech.kdl shieldDs values (10-60) ADD to this base per shield tech level
         // Tech.kdl also defines d20 thresholds and hit blocking percentages
         maxPerColony 1
-        replaceOnUpgrade true
+        replaceOnUpgrade #true
     }
 }

@@ -167,7 +167,7 @@ proc initializeHousesAndHomeworlds*(state: var GameState) =
   )
 
 proc initGameState*(
-  setupPath: string = "scenarios/standard.kdl",
+  setupPath: string = "scenarios/standard-4-player.kdl",
   gameName: string = "",
   gameDescription: string = "",
   configDir: string = "config",
@@ -177,7 +177,7 @@ proc initGameState*(
   ## All game parameters loaded from config files
   ##
   ## Args:
-  ##   setupPath: Path to scenario KDL file (default: scenarios/standard.kdl)
+  ##   setupPath: Path to scenario KDL file (default: scenarios/standard-4-player.kdl)
   ##   gameName: Human-readable game name (default: use scenarioName from config)
   ##   gameDescription: Optional game description for admin notes
   ##   configDir: Directory containing config/*.kdl files

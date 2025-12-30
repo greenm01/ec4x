@@ -15,7 +15,7 @@ victory {
 dynamicScaling {
     (docs)"docs/specs/10-reference.md#section-10-4"
     // Controls game pacing by scaling base prestige values based on map size.
-    enabled true
+    enabled #true
     baseMultiplier 5.0             // Baseline multiplier for small maps
     baselineTurns 30
     baselineSystemsPerPlayer 8
@@ -45,33 +45,33 @@ prestigeEvents {
     // Espionage prestige effects also documented in docs/specs/09-intel-espionage.md
 
     // --- Non-Competitive (Absolute Gains) ---
-    techAdvancement { value 2 type "Absolute" }
-    colonyEstablishment { value 5 type "Absolute" }
-    victoryAchieved { value 5 type "Absolute" }
+    techAdvancement { value 2; type "Absolute" }
+    colonyEstablishment { value 5; type "Absolute" }
+    victoryAchieved { value 5; type "Absolute" }
 
     // --- Competitive (Zero-Sum) ---
-    systemCapture { value 10 type "ZeroSum" }
-    shipDestroyed { value 1 type "ZeroSum" } // Per major ship
-    starbaseDestroyed { value 5 type "ZeroSum" }
-    fleetVictory { value 3 type "ZeroSum" } // Per battle
-    planetConquered { value 10 type "ZeroSum" }
-    houseEliminated { value 3 type "ZeroSum" }
+    systemCapture { value 10; type "ZeroSum" }
+    shipDestroyed { value 1; type "ZeroSum" } // Per major ship
+    starbaseDestroyed { value 5; type "ZeroSum" }
+    fleetVictory { value 3; type "ZeroSum" } // Per battle
+    planetConquered { value 10; type "ZeroSum" }
+    houseEliminated { value 3; type "ZeroSum" }
 
     // --- Espionage (Non-Zero-Sum Competitive) ---
-    techTheft { value 20 victimLoss -30 }
-    sabotageLowImpact { value 10 victimLoss -10 }
-    sabotageHighImpact { value 30 victimLoss -50 }
-    assassination { value 50 victimLoss -70 }
-    cyberAttack { value 20 victimLoss -30 }
-    economicManipulation { value 30 victimLoss -7 }
-    psyopsCampaign { value 10 victimLoss -3 }
-    counterIntelligenceSweep { value 5 victimLoss 0 }
-    intelligenceTheft { value 40 victimLoss -20 }
-    plantDisinformation { value 15 victimLoss -15 }
+    techTheft { value 20; victimLoss -30 }
+    sabotageLowImpact { value 10; victimLoss -10 }
+    sabotageHighImpact { value 30; victimLoss -50 }
+    assassination { value 50; victimLoss -70 }
+    cyberAttack { value 20; victimLoss -30 }
+    economicManipulation { value 30; victimLoss -7 }
+    psyopsCampaign { value 10; victimLoss -3 }
+    counterIntelligenceSweep { value 5; victimLoss 0 }
+    intelligenceTheft { value 40; victimLoss -20 }
+    plantDisinformation { value 15; victimLoss -15 }
 
     // --- Penalties ---
-    espionageFailure { value -2 type "Penalty" }
-    planetLost { value -10 type "Penalty" } // Base loss, defender side of planetConquered
+    espionageFailure { value -2; type "Penalty" }
+    planetLost { value -10; type "Penalty" } // Base loss, defender side of planetConquered
     undefendedColonyMultiplier 1.5 // planetLost * 1.5, breaks zero-sum
 }
 
@@ -89,19 +89,19 @@ recurringPenalties {
 taxPenalties {
     (docs)"docs/specs/03-economy.md#section-3-2-1"
     // Note: Averaging window (6 turns) defined in economy.kdl taxMechanics
-    tier 1 { minRate=0 maxRate=50 penalty=0 }
-    tier 2 { minRate=51 maxRate=60 penalty=-1 }
-    tier 3 { minRate=61 maxRate=70 penalty=-2 }
-    tier 4 { minRate=71 maxRate=80 penalty=-4 }
-    tier 5 { minRate=81 maxRate=90 penalty=-7 }
-    tier 6 { minRate=91 maxRate=100 penalty=-11 }
+    tier 1 { minRate 0; maxRate 50; penalty 0 }
+    tier 2 { minRate 51; maxRate 60; penalty -1 }
+    tier 3 { minRate 61; maxRate 70; penalty -2 }
+    tier 4 { minRate 71; maxRate 80; penalty -4 }
+    tier 5 { minRate 81; maxRate 90; penalty -7 }
+    tier 6 { minRate 91; maxRate 100; penalty -11 }
 }
 
 // --- Low-Tax Incentives ---
 taxIncentives {
     (docs)"docs/specs/03-economy.md#section-3-2-2"
     // Note: Population growth multipliers are in economy.kdl
-    tier 1 { minRate=21 maxRate=30 prestigeBonusPerColony=1 }
-    tier 2 { minRate=11 maxRate=20 prestigeBonusPerColony=2 }
-    tier 3 { minRate=0 maxRate=10 prestigeBonusPerColony=3 }
+    tier 1 { minRate 21; maxRate 30; prestigeBonusPerColony 1 }
+    tier 2 { minRate 11; maxRate 20; prestigeBonusPerColony 2 }
+    tier 3 { minRate 0; maxRate 10; prestigeBonusPerColony 3 }
 }

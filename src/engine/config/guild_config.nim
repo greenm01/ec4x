@@ -9,25 +9,31 @@ import ../../common/logger
 import ../types/config
 
 proc parseTransferCosts(node: KdlNode, ctx: var KdlConfigContext): TransferCostsConfig =
+  ## Parse transferCosts with planetClass children
+  ## Structure: planetClass "Eden" { cost 4 }
+  var costs: array[7, int32]
+  for child in node.children:
+    if child.name == "planetClass" and child.args.len > 0:
+      let planetClass = child.args[0].getString()
+      let cost = child.requireInt32("cost", ctx)
+      case planetClass
+      of "Eden": costs[0] = cost
+      of "Lush": costs[1] = cost
+      of "Benign": costs[2] = cost
+      of "Harsh": costs[3] = cost
+      of "Hostile": costs[4] = cost
+      of "Desolate": costs[5] = cost
+      of "Extreme": costs[6] = cost
+      else: discard
+
   result = TransferCostsConfig(
-    edenCost: node.requireInt32("edenCost", ctx),
-    lushCost: node.requireInt32("lushCost", ctx),
-    benignCost: node.requireInt32("benignCost", ctx),
-    harshCost: node.requireInt32("harshCost", ctx),
-    hostileCost: node.requireInt32("hostileCost", ctx),
-    desolateCost: node.requireInt32("desolateCost", ctx),
-    extremeCost: node.requireInt32("extremeCost", ctx)
-  )
-
-proc parseTransferTime(node: KdlNode, ctx: var KdlConfigContext): TransferTimeConfig =
-  result = TransferTimeConfig(
-    turnsPerJump: node.requireInt32("turnsPerJump", ctx),
-    minimumTurns: node.requireInt32("minimumTurns", ctx)
-  )
-
-proc parseTransferModifiers(node: KdlNode, ctx: var KdlConfigContext): TransferModifiersConfig =
-  result = TransferModifiersConfig(
-    costIncreasePerJump: node.requireFloat32("costIncreasePerJump", ctx)
+    edenCost: costs[0],
+    lushCost: costs[1],
+    benignCost: costs[2],
+    harshCost: costs[3],
+    hostileCost: costs[4],
+    desolateCost: costs[5],
+    extremeCost: costs[6]
   )
 
 proc parseTransferLimits(node: KdlNode, ctx: var KdlConfigContext): TransferLimitsConfig =
@@ -62,26 +68,24 @@ proc loadGuildConfig*(configPath: string): GuildConfig =
   let doc = loadKdlConfig(configPath)
   var ctx = newContext(configPath)
 
-  ctx.withNode("transferCosts"):
-    let node = doc.requireNode("transferCosts", ctx)
-    result.transferCosts = parseTransferCosts(node, ctx)
+  # Parse guildMechanics parent node
+  ctx.withNode("guildMechanics"):
+    let guildNode = doc.requireNode("guildMechanics", ctx)
+    for child in guildNode.children:
+      case child.name
+      of "transferCosts":
+        ctx.withNode("transferCosts"):
+          result.transferCosts = parseTransferCosts(child, ctx)
+      of "transferLimits":
+        ctx.withNode("transferLimits"):
+          result.transferLimits = parseTransferLimits(child, ctx)
+      of "transferRisks":
+        ctx.withNode("transferRisks"):
+          result.transferRisks = parseTransferRisks(child, ctx)
+      else:
+        discard
 
-  ctx.withNode("transferTime"):
-    let node = doc.requireNode("transferTime", ctx)
-    result.transferTime = parseTransferTime(node, ctx)
-
-  ctx.withNode("transferModifiers"):
-    let node = doc.requireNode("transferModifiers", ctx)
-    result.transferModifiers = parseTransferModifiers(node, ctx)
-
-  ctx.withNode("transferLimits"):
-    let node = doc.requireNode("transferLimits", ctx)
-    result.transferLimits = parseTransferLimits(node, ctx)
-
-  ctx.withNode("transferRisks"):
-    let node = doc.requireNode("transferRisks", ctx)
-    result.transferRisks = parseTransferRisks(node, ctx)
-
+  # Parse aiStrategy (top-level node)
   ctx.withNode("aiStrategy"):
     let node = doc.requireNode("aiStrategy", ctx)
     result.aiStrategy = parseAiStrategy(node, ctx)

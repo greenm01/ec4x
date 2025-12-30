@@ -1,6 +1,5 @@
 type
   ShipStatsConfig* = object
-    description*: string
     minCST*: int32
     productionCost*: int32
     maintenanceCost*: int32
@@ -13,7 +12,6 @@ type
 
   SalvageConfig* = object
     salvageValueMultiplier*: float32
-    emergencySalvageMultiplier*: float32
 
   ShipsConfig* = object
     corvette*: ShipStatsConfig

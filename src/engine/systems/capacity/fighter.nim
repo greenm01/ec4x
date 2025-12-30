@@ -26,10 +26,10 @@ import std/[sequtils, algorithm, math, tables, strutils, options]
 import
   ../../types/
     [capacity, core, game_state, squadron, ship, production, event, colony, house]
-import ../../state/[entity_manager, game_state as gs_helpers, iterators]
+import ../../state/[entity_manager, engine as gs_helpers, iterators]
 import ../../entities/squadron_ops
 import ../../event_factory/fleet_ops
-import ../../config/[military_config, tech_config]
+import ../../globals
 import ../../../common/logger
 
 export
@@ -37,8 +37,8 @@ export
 
 proc getFighterDoctrineMultiplier(fdLevel: int): float =
   ## Get Fighter Doctrine tech multiplier per assets.md:2.4.1
-  ## Reads from globalTechConfig.fighter_doctrine
-  let cfg = globalTechConfig.fighter_doctrine
+  ## Reads from gameConfig.tech.fighterDoctrine
+  let cfg = gameConfig.tech.fighterDoctrine
   case fdLevel
   of 1:
     return cfg.level_1_capacity_multiplier.float
@@ -53,9 +53,9 @@ proc calculateMaxFighterCapacity*(industrialUnits: int, fdLevel: int): int =
   ## Pure calculation of maximum fighter squadron capacity
   ## Formula: Max FS = floor(IU / divisor) × FD Tech Multiplier
   ## Per assets.md:2.4.1 and economy.md:3.10
-  ## Reads divisor from globalMilitaryConfig.fighter_mechanics
+  ## Reads divisor from gameConfig.limits.fighterCapacity
   let fdMult = getFighterDoctrineMultiplier(fdLevel)
-  let divisor = globalMilitaryConfig.fighter_mechanics.fighter_capacity_iu_divisor.float
+  let divisor = gameConfig.limits.fighterCapacity.iuDivisor.float
   return int(floor(float(industrialUnits) / divisor) * fdMult)
 
 proc analyzeCapacity*(
@@ -65,7 +65,7 @@ proc analyzeCapacity*(
   ## Returns capacity analysis without mutating state
 
   # Get Fighter Doctrine level from house tech tree
-  let houseOpt = gs_helpers.getHouse(state, houseId)
+  let houseOpt = gs_helpers.house(state, houseId)
   let fdLevel =
     if houseOpt.isSome:
       houseOpt.get().techTree.levels.fighterDoctrine
@@ -78,7 +78,7 @@ proc analyzeCapacity*(
   # Account for fighters already under construction at this colony
   var underConstruction = 0
   for projectId in colony.constructionQueue:
-    let projectOpt = gs_helpers.getConstructionProject(state, projectId)
+    let projectOpt = gs_helpers.constructionProject(state, projectId)
     if projectOpt.isSome:
       let project = projectOpt.get()
       if project.projectType == BuildType.Ship and project.itemId == "Fighter":
@@ -87,7 +87,7 @@ proc analyzeCapacity*(
   # Check underConstruction field (single active project)
   if colony.underConstruction.isSome:
     let projectId = colony.underConstruction.get()
-    let projectOpt = gs_helpers.getConstructionProject(state, projectId)
+    let projectOpt = gs_helpers.constructionProject(state, projectId)
     if projectOpt.isSome:
       let project = projectOpt.get()
       if project.projectType == BuildType.Ship and project.itemId == "Fighter":
@@ -125,7 +125,7 @@ proc analyzeCapacity*(
       if colony.capacityViolation.severity != capacity.ViolationSeverity.None:
         colony.capacityViolation.graceTurnsRemaining
       else:
-        2'i32,
+        gameConfig.limits.fighterCapacity.violationGracePeriodTurns,
     violationTurn:
       if colony.capacityViolation.severity != capacity.ViolationSeverity.None:
         colony.capacityViolation.violationTurn
@@ -140,7 +140,7 @@ proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
 
   # Use iterator to efficiently check all colonies
   for houseId in state.houses.entities.index.keys:
-    let houseOpt = gs_helpers.getHouse(state, houseId)
+    let houseOpt = gs_helpers.house(state, houseId)
     if houseOpt.isNone or houseOpt.get().isEliminated:
       continue
 
@@ -156,7 +156,7 @@ proc updateViolationTracking*(
   ## Explicit mutation - applies tracking state changes
 
   let colonyId = violation.entity.colonyId
-  let colonyOpt = gs_helpers.getColony(state, colonyId)
+  let colonyOpt = gs_helpers.colony(state, colonyId)
   if colonyOpt.isNone:
     return
 
@@ -175,7 +175,7 @@ proc updateViolationTracking*(
         maximum: violation.maximum,
         excess: violation.excess,
         severity: capacity.ViolationSeverity.Violation,
-        graceTurnsRemaining: 2'i32,
+        graceTurnsRemaining: gameConfig.limits.fighterCapacity.violationGracePeriodTurns,
         violationTurn: int32(state.turn),
       )
 
@@ -248,7 +248,7 @@ proc planEnforcement*(
     return
 
   let colonyId = violation.entity.colonyId
-  let colonyOpt = gs_helpers.getColony(state, colonyId)
+  let colonyOpt = gs_helpers.colony(state, colonyId)
   if colonyOpt.isNone:
     return
 
@@ -259,7 +259,7 @@ proc planEnforcement*(
   var sortedFighters: seq[SquadronId] = @[]
 
   for squadronId in colony.fighterSquadronIds:
-    let squadronOpt = gs_helpers.getSquadrons(state, squadronId)
+    let squadronOpt = gs_helpers.squadrons(state, squadronId)
     if squadronOpt.isSome:
       sortedFighters.add(squadronId)
 
@@ -288,7 +288,7 @@ proc applyEnforcement*(
     return
 
   let colonyId = action.entity.colonyId
-  let colonyOpt = gs_helpers.getColony(state, colonyId)
+  let colonyOpt = gs_helpers.colony(state, colonyId)
   if colonyOpt.isNone:
     return
 
@@ -299,7 +299,7 @@ proc applyEnforcement*(
     let fighterId = SquadronId(parseUInt(fighterIdStr))
 
     # Get squadron info before destroying
-    let squadronOpt = gs_helpers.getSquadrons(state, fighterId)
+    let squadronOpt = gs_helpers.squadrons(state, fighterId)
     if squadronOpt.isSome:
       let squadron = squadronOpt.get()
 
@@ -373,7 +373,7 @@ proc processCapacityEnforcement*(
     logger.logDebug("Military", "All colonies within fighter capacity limits")
     # Clear any lingering violation tracking
     for houseId in state.houses.entities.index.keys:
-      let houseOpt = gs_helpers.getHouse(state, houseId)
+      let houseOpt = gs_helpers.house(state, houseId)
       if houseOpt.isNone or houseOpt.get().isEliminated:
         continue
 

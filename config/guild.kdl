@@ -8,7 +8,7 @@ guildMechanics {
 
     // Transfer limits
     transferLimits {
-        minPtuPerTransfer 1
+        minPtuTransfer 1
         minSourcePuRemaining 1
         maxConcurrentTransfers 5
     }
@@ -29,10 +29,10 @@ guildMechanics {
 
     // Defines behavior for edge cases when colony status changes mid-transfer.
     transferRisks {
-        sourceConquered "continue"      // Transfer continues as the Guild is neutral and was already paid.
-        destinationConquered "lost"       // Colonists are lost as refugees in the chaos.
-        destinationBlockaded "closest_owned" // Rerouted to the nearest friendly, safe colony.
-        destinationCollapsed "closest_owned" // Rerouted if destination is no longer viable.
+        sourceConqueredBehavior "continue"      // Transfer continues as the Guild is neutral and was already paid.
+        destConqueredBehavior "lost"       // Colonists are lost as refugees in the chaos.
+        destBlockadedBehavior "closest_owned" // Rerouted to the nearest friendly, safe colony.
+        destCollapsedBehavior "closest_owned" // Rerouted if destination is no longer viable.
     }
 }
 

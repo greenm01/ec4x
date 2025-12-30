@@ -4,7 +4,6 @@ type
   ThemeEntry* = object
     name*: string
     description*: string
-    legalWarning*: string
     # All 12 houses inline
     house0Name*, house0Color*: string
     house1Name*, house1Color*: string
@@ -22,7 +21,6 @@ type
   HouseTheme* = object
     name*: string
     description*: string
-    legalWarning*: string
     houses*: seq[tuple[name: string, color: string]] # Indexed by position 0-11
 
   ThemesConfig* = object

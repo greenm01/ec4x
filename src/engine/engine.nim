@@ -8,7 +8,7 @@ export command.CommandPacket
 
 # Game lifecycle
 proc newGame*(
-  scenarioPath: string = "scenarios/standard.kdl",
+  scenarioPath: string = "scenarios/standard-4-player.kdl",
   gameName: string = "",
   gameDescription: string = "",
   dataDir: string = "data"
@@ -16,7 +16,7 @@ proc newGame*(
   ## Initialize a new game
   ##
   ## Args:
-  ##   scenarioPath: Path to scenario KDL file (default: scenarios/standard.kdl)
+  ##   scenarioPath: Path to scenario KDL file (default: scenarios/standard-4-player.kdl)
   ##   gameName: Human-readable game name (default: use scenarioName from config)
   ##   gameDescription: Optional game description for admin notes
   ##   dataDir: Root directory for per-game databases

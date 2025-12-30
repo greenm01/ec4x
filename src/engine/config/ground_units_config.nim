@@ -10,59 +10,55 @@ import ../types/config
 
 proc parsePlanetaryShield(node: KdlNode, ctx: var KdlConfigContext): PlanetaryShieldConfig =
   result = PlanetaryShieldConfig(
-    description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("productionCost", ctx),
-    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
+    productionCost: node.requireInt32("buildCost", ctx),
+    maintenanceCost: 0,  # Calculated from maintenancePercent elsewhere
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    buildTime: node.requireInt32("buildTime", ctx),
-    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
-    sld1BlockChance: node.requireFloat32("sld1BlockChance", ctx),
-    sld2BlockChance: node.requireFloat32("sld2BlockChance", ctx),
-    sld3BlockChance: node.requireFloat32("sld3BlockChance", ctx),
-    sld4BlockChance: node.requireFloat32("sld4BlockChance", ctx),
-    sld5BlockChance: node.requireFloat32("sld5BlockChance", ctx),
-    sld6BlockChance: node.requireFloat32("sld6BlockChance", ctx),
-    shieldDamageReduction: node.requireFloat32("shieldDamageReduction", ctx),
-    shieldInvasionDifficulty: node.requireFloat32("shieldInvasionDifficulty", ctx)
+    buildTime: 1,  # Default
+    maxPerPlanet: node.requireInt32("maxPerColony", ctx),
+    sld1BlockChance: 0.0,  # Defined in tech.kdl
+    sld2BlockChance: 0.0,
+    sld3BlockChance: 0.0,
+    sld4BlockChance: 0.0,
+    sld5BlockChance: 0.0,
+    sld6BlockChance: 0.0,
+    shieldDamageReduction: 0.0,  # Defined in tech.kdl
+    shieldInvasionDifficulty: 0.0  # Defined in tech.kdl
   )
 
 proc parseGroundBattery(node: KdlNode, ctx: var KdlConfigContext): GroundBatteryConfig =
   result = GroundBatteryConfig(
-    description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("productionCost", ctx),
-    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
+    productionCost: node.requireInt32("buildCost", ctx),
+    maintenanceCost: 0,  # Calculated from maintenancePercent elsewhere
     attackStrength: node.requireInt32("attackStrength", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    buildTime: node.requireInt32("buildTime", ctx),
-    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx)
+    buildTime: 1,  # Default
+    maxPerPlanet: 999  # Default
   )
 
 proc parseArmy(node: KdlNode, ctx: var KdlConfigContext): ArmyConfig =
   result = ArmyConfig(
-    description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("productionCost", ctx),
-    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
+    productionCost: node.requireInt32("buildCost", ctx),
+    maintenanceCost: 0,  # Calculated from maintenancePercent elsewhere
     attackStrength: node.requireInt32("attackStrength", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    buildTime: node.requireInt32("buildTime", ctx),
-    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
-    populationCost: node.requireInt32("populationCost", ctx)
+    buildTime: 1,  # Default
+    maxPerPlanet: 999,  # Default
+    populationCost: 0  # Not in current KDL
   )
 
 proc parseMarineDivision(node: KdlNode, ctx: var KdlConfigContext): MarineDivisionConfig =
   result = MarineDivisionConfig(
-    description: node.requireString("description", ctx),
     minCST: node.requireInt32("minCST", ctx),
-    productionCost: node.requireInt32("productionCost", ctx),
-    maintenanceCost: node.requireInt32("maintenanceCost", ctx),
+    productionCost: node.requireInt32("buildCost", ctx),
+    maintenanceCost: 0,  # Calculated from maintenancePercent elsewhere
     attackStrength: node.requireInt32("attackStrength", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    buildTime: node.requireInt32("buildTime", ctx),
-    maxPerPlanet: node.requireInt32("maxPerPlanet", ctx),
-    populationCost: node.requireInt32("populationCost", ctx)
+    buildTime: 1,  # Default
+    maxPerPlanet: 999,  # Default
+    populationCost: 0  # Not in current KDL
   )
 
 proc loadGroundUnitsConfig*(configPath: string): GroundUnitsConfig =
@@ -71,20 +67,26 @@ proc loadGroundUnitsConfig*(configPath: string): GroundUnitsConfig =
   let doc = loadKdlConfig(configPath)
   var ctx = newContext(configPath)
 
-  ctx.withNode("planetaryShield"):
-    let shieldNode = doc.requireNode("planetaryShield", ctx)
-    result.planetaryShield = parsePlanetaryShield(shieldNode, ctx)
+  # Get the groundUnits parent node
+  ctx.withNode("groundUnits"):
+    let groundUnitsNode = doc.requireNode("groundUnits", ctx)
 
-  ctx.withNode("groundBattery"):
-    let batteryNode = doc.requireNode("groundBattery", ctx)
-    result.groundBattery = parseGroundBattery(batteryNode, ctx)
-
-  ctx.withNode("army"):
-    let armyNode = doc.requireNode("army", ctx)
-    result.army = parseArmy(armyNode, ctx)
-
-  ctx.withNode("marineDivision"):
-    let marineNode = doc.requireNode("marineDivision", ctx)
-    result.marineDivision = parseMarineDivision(marineNode, ctx)
+    # Parse each unit type from within groundUnits
+    for child in groundUnitsNode.children:
+      case child.name
+      of "planetaryShield":
+        ctx.withNode("planetaryShield"):
+          result.planetaryShield = parsePlanetaryShield(child, ctx)
+      of "groundBattery":
+        ctx.withNode("groundBattery"):
+          result.groundBattery = parseGroundBattery(child, ctx)
+      of "army":
+        ctx.withNode("army"):
+          result.army = parseArmy(child, ctx)
+      of "marine":
+        ctx.withNode("marine"):
+          result.marineDivision = parseMarineDivision(child, ctx)
+      else:
+        discard
 
   logInfo("Config", "Loaded ground units configuration", "path=", configPath)

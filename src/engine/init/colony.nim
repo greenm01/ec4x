@@ -27,18 +27,10 @@ proc createHomeWorld*(
   var starbaseIds = newSeq[StarbaseId]()
   var spaceportIds = newSeq[SpaceportId]()
   var shipyardIds = newSeq[ShipyardId]()
+  var drydockIds = newSeq[DrydockId]()
   var groundBatteryIds = newSeq[GroundUnitId]()
   var armyIds = newSeq[GroundUnitId]()
   var marineIds = newSeq[GroundUnitId]()
-
-  # Create Starbases
-  for i in 0 ..< gameSetup.startingFacilities.starbases:
-    let starbaseId = state.generateStarbaseId()
-    let starbase = Starbase(
-      id: starbaseId, colonyId: colonyId, commissionedTurn: 0, isCrippled: false
-    )
-    state.starbases.entities.addEntity(starbaseId, starbase)
-    starbaseIds.add(starbaseId)
 
   # Create Spaceports
   let house = state.houses.entities.getEntity(owner).get()
@@ -76,6 +68,24 @@ proc createHomeWorld*(
     )
     state.shipyards.entities.addEntity(shipyardId, shipyard)
     shipyardIds.add(shipyardId)
+
+  # Create Drydocks
+  let baseDrydockDocks = gameConfig.facilities.drydock.docks
+  let effectiveDrydockDocks = calculateEffectiveDocks(baseDrydockDocks, cstLevel)
+  for i in 0 ..< gameSetup.startingFacilities.drydocks:
+    let drydockId = state.generateDrydockId()
+    let drydock = Drydock(
+      id: drydockId,
+      colonyId: colonyId,
+      commissionedTurn: 0,
+      baseDocks: baseDrydockDocks,
+      effectiveDocks: effectiveDrydockDocks,
+      isCrippled: false,
+      repairQueue: @[],
+      activeRepairs: @[],
+    )
+    state.drydocks.entities.addEntity(drydockId, drydock)
+    drydockIds.add(drydockId)
 
   # Create Ground Batteries
   for i in 0 ..< gameSetup.startingGroundForces.groundBatteries:
@@ -182,7 +192,7 @@ proc createHomeWorld*(
     starbaseIds: starbaseIds,
     spaceportIds: spaceportIds,
     shipyardIds: shipyardIds,
-    drydockIds: @[],
+    drydockIds: drydockIds,
     blockaded: false,
     blockadedBy: @[],
     blockadeTurns: 0,

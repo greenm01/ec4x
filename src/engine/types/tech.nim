@@ -33,6 +33,9 @@ type
     cloakingTech*: int32
     shieldTech*: int32
     counterIntelligence*: int32
+    strategicLiftTech*: int32
+    flagshipCommandTech*: int32
+    strategicCommandTech*: int32
     fighterDoctrine*: int32
     advancedCarrierOps*: int32
 

@@ -23,26 +23,26 @@ cer {
 
     spaceCombatTable {
         // Inherits parent (docs) attribute
-        tier 1 { maxRoll=2 multiplier=0.25 } // "Less than zero, 0, 1, 2"
-        tier 2 { maxRoll=4 multiplier=0.50 } // "3, 4"
-        tier 3 { maxRoll=6 multiplier=0.75 } // "5, 6"
-        tier 4 { minRoll=7 multiplier=1.00 } // "7, 8, 9+"
+        tier 1 { maxRoll 2; multiplier 0.25 } // "Less than zero, 0, 1, 2"
+        tier 2 { maxRoll 4; multiplier 0.50 } // "3, 4"
+        tier 3 { maxRoll 6; multiplier 0.75 } // "5, 6"
+        tier 4 { minRoll 7; multiplier 1.00 } // "7, 8, 9+"
     }
 
     bombardmentTable {
         (docs)"docs/specs/07-combat.md#section-7-5-1"
-        tier 1 { maxRoll=2 multiplier=0.25 }
-        tier 2 { maxRoll=5 multiplier=0.50 }
-        tier 3 { maxRoll=8 multiplier=1.00 }
+        tier 1 { maxRoll 2; multiplier 0.25 }
+        tier 2 { maxRoll 5; multiplier 0.50 }
+        tier 3 { maxRoll 8; multiplier 1.00 }
         // Natural 9 is a critical hit
     }
 
     groundCombatTable {
         (docs)"docs/specs/07-combat.md#section-7-6-1"
-        tier 1 { maxRoll=2 multiplier=0.50 }
-        tier 2 { maxRoll=6 multiplier=1.00 }
-        tier 3 { maxRoll=8 multiplier=1.50 }
-        tier 4 { roll=9 multiplier=2.00 } // Critical hit
+        tier 1 { maxRoll 2; multiplier 0.50 }
+        tier 2 { maxRoll 6; multiplier 1.00 }
+        tier 3 { maxRoll 8; multiplier 1.50 }
+        tier 4 { roll 9; multiplier 2.00 } // Critical hit
     }
 }
 
@@ -113,9 +113,9 @@ targeting {
 
 retreat {
     (docs)"docs/specs/07-combat.md#section-7-3-6"
-    fightersNeverRetreat true
-    spaceliftDestroyedIfEscortLost true
-    retreatToNearestFriendly true
+    fightersNeverRetreat #true
+    spaceliftDestroyedIfEscortLost #true
+    retreatToNearestFriendly #true
 }
 
 // --- Blockade Mechanics ---

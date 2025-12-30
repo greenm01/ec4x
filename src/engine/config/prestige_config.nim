@@ -27,144 +27,152 @@ proc parseDynamicScaling(node: KdlNode, ctx: var KdlConfigContext): DynamicPrest
   )
 
 proc parseMorale(node: KdlNode, ctx: var KdlConfigContext): MoraleConfig =
+  ## Parse morale { tier "Crisis" { maxPrestige 0 } ... }
+  var crisisMax, lowMax, averageMax, goodMax, highMax: int32
+  highMax = 999  # Elite is implicit (81+)
+
+  for child in node.children:
+    if child.name == "tier" and child.args.len > 0:
+      let tierName = child.args[0].getString()
+      let maxPrestige = child.requireInt32("maxPrestige", ctx)
+      case tierName
+      of "Crisis": crisisMax = maxPrestige
+      of "Low": lowMax = maxPrestige
+      of "Average": averageMax = maxPrestige
+      of "Good": goodMax = maxPrestige
+      else: discard
+
   result = MoraleConfig(
-    crisisMax: node.requireInt32("crisisMax", ctx),
-    lowMax: node.requireInt32("lowMax", ctx),
-    averageMax: node.requireInt32("averageMax", ctx),
-    goodMax: node.requireInt32("goodMax", ctx),
-    highMax: node.requireInt32("highMax", ctx)
+    crisisMax: crisisMax,
+    lowMax: lowMax,
+    averageMax: averageMax,
+    goodMax: goodMax,
+    highMax: highMax
   )
 
-proc parseEconomic(node: KdlNode, ctx: var KdlConfigContext): EconomicPrestigeConfig =
-  result = EconomicPrestigeConfig(
-    techAdvancement: node.requireInt32("techAdvancement", ctx),
-    establishColony: node.requireInt32("establishColony", ctx),
-    maxPopulation: node.requireInt32("maxPopulation", ctx),
-    iuMilestone50: node.requireInt32("iuMilestone50", ctx),
-    iuMilestone75: node.requireInt32("iuMilestone75", ctx),
-    iuMilestone100: node.requireInt32("iuMilestone100", ctx),
-    iuMilestone150: node.requireInt32("iuMilestone150", ctx),
-    terraformPlanet: node.requireInt32("terraformPlanet", ctx)
-  )
+proc parsePrestigeEvents(node: KdlNode, ctx: var KdlConfigContext): tuple[
+  economic: EconomicPrestigeConfig,
+  military: MilitaryPrestigeConfig,
+  espionage: EspionagePrestigeConfig,
+  espionageVictim: EspionageVictimPrestigeConfig,
+  scout: ScoutPrestigeConfig,
+  diplomacy: DiplomacyPrestigeConfig,
+  victoryAchievement: VictoryAchievementConfig,
+  penalties: PenaltiesPrestigeConfig
+] =
+  ## Parse prestigeEvents { techAdvancement { value 2 } shipDestroyed { value 1 victimLoss -1 } ... }
+  var economic: EconomicPrestigeConfig
+  var military: MilitaryPrestigeConfig
+  var espionage: EspionagePrestigeConfig
+  var espionageVictim: EspionageVictimPrestigeConfig
+  var scout: ScoutPrestigeConfig
+  var diplomacy: DiplomacyPrestigeConfig
+  var victoryAchievement: VictoryAchievementConfig
+  var penalties: PenaltiesPrestigeConfig
 
-proc parseMilitary(node: KdlNode, ctx: var KdlConfigContext): MilitaryPrestigeConfig =
-  result = MilitaryPrestigeConfig(
-    destroySquadron: node.requireInt32("destroySquadron", ctx),
-    destroyStarbase: node.requireInt32("destroyStarbase", ctx),
-    fleetVictory: node.requireInt32("fleetVictory", ctx),
-    invadePlanet: node.requireInt32("invadePlanet", ctx),
-    eliminateHouse: node.requireInt32("eliminateHouse", ctx),
-    systemCapture: node.requireInt32("systemCapture", ctx),
-    losePlanet: node.requireInt32("losePlanet", ctx),
-    loseStarbase: node.requireInt32("loseStarbase", ctx),
-    ambushedByCloak: node.requireInt32("ambushedByCloak", ctx),
-    forceRetreat: node.requireInt32("forceRetreat", ctx),
-    forcedToRetreat: node.requireInt32("forcedToRetreat", ctx),
-    scoutDestroyed: node.requireInt32("scoutDestroyed", ctx),
-    undefendedColonyPenaltyMultiplier: node.requireFloat32("undefendedColonyPenaltyMultiplier", ctx)
-  )
+  for child in node.children:
+    case child.name
+    # Economic events
+    of "techAdvancement": economic.techAdvancement = child.requireInt32("value", ctx)
+    of "colonyEstablishment": economic.establishColony = child.requireInt32("value", ctx)
 
-proc parseEspionage(node: KdlNode, ctx: var KdlConfigContext): EspionagePrestigeConfig =
-  result = EspionagePrestigeConfig(
-    techTheft: node.requireInt32("techTheft", ctx),
-    lowImpactSabotage: node.requireInt32("lowImpactSabotage", ctx),
-    highImpactSabotage: node.requireInt32("highImpactSabotage", ctx),
-    assassination: node.requireInt32("assassination", ctx),
-    cyberAttack: node.requireInt32("cyberAttack", ctx),
-    economicManipulation: node.requireInt32("economicManipulation", ctx),
-    psyopsCampaign: node.requireInt32("psyopsCampaign", ctx),
-    counterIntelSweep: node.requireInt32("counterIntelSweep", ctx),
-    intelligenceTheft: node.requireInt32("intelligenceTheft", ctx),
-    plantDisinformation: node.requireInt32("plantDisinformation", ctx),
-    failedEspionage: node.requireInt32("failedEspionage", ctx)
-  )
+    # Military events - attacker side
+    of "systemCapture": military.systemCapture = child.requireInt32("value", ctx)
+    of "shipDestroyed": military.destroySquadron = child.requireInt32("value", ctx)
+    of "starbaseDestroyed": military.destroyStarbase = child.requireInt32("value", ctx)
+    of "fleetVictory": military.fleetVictory = child.requireInt32("value", ctx)
+    of "planetConquered": military.invadePlanet = child.requireInt32("value", ctx)
+    of "houseEliminated": military.eliminateHouse = child.requireInt32("value", ctx)
 
-proc parseEspionageVictim(node: KdlNode, ctx: var KdlConfigContext): EspionageVictimPrestigeConfig =
-  result = EspionageVictimPrestigeConfig(
-    techTheftVictim: node.requireInt32("techTheftVictim", ctx),
-    lowImpactSabotageVictim: node.requireInt32("lowImpactSabotageVictim", ctx),
-    highImpactSabotageVictim: node.requireInt32("highImpactSabotageVictim", ctx),
-    assassinationVictim: node.requireInt32("assassinationVictim", ctx),
-    cyberAttackVictim: node.requireInt32("cyberAttackVictim", ctx),
-    economicManipulationVictim: node.requireInt32("economicManipulationVictim", ctx),
-    psyopsCampaignVictim: node.requireInt32("psyopsCampaignVictim", ctx),
-    counterIntelSweepVictim: node.requireInt32("counterIntelSweepVictim", ctx),
-    intelligenceTheftVictim: node.requireInt32("intelligenceTheftVictim", ctx),
-    plantDisinformationVictim: node.requireInt32("plantDisinformationVictim", ctx)
-  )
+    # Military events - defender side (penalties)
+    of "planetLost": military.losePlanet = child.requireInt32("value", ctx)
+    of "undefendedColonyMultiplier":
+      military.undefendedColonyPenaltyMultiplier = child.args[0].getFloat()
 
-proc parseScout(node: KdlNode, ctx: var KdlConfigContext): ScoutPrestigeConfig =
-  result = ScoutPrestigeConfig(
-    spyOnPlanet: node.requireInt32("spyOnPlanet", ctx),
-    hackStarbase: node.requireInt32("hackStarbase", ctx),
-    spyOnSystem: node.requireInt32("spyOnSystem", ctx)
-  )
+    # Espionage events - attacker
+    of "techTheft":
+      espionage.techTheft = child.requireInt32("value", ctx)
+      espionageVictim.techTheftVictim = child.requireInt32("victimLoss", ctx)
+    of "sabotageLowImpact":
+      espionage.lowImpactSabotage = child.requireInt32("value", ctx)
+      espionageVictim.lowImpactSabotageVictim = child.requireInt32("victimLoss", ctx)
+    of "sabotageHighImpact":
+      espionage.highImpactSabotage = child.requireInt32("value", ctx)
+      espionageVictim.highImpactSabotageVictim = child.requireInt32("victimLoss", ctx)
+    of "assassination":
+      espionage.assassination = child.requireInt32("value", ctx)
+      espionageVictim.assassinationVictim = child.requireInt32("victimLoss", ctx)
+    of "cyberAttack":
+      espionage.cyberAttack = child.requireInt32("value", ctx)
+      espionageVictim.cyberAttackVictim = child.requireInt32("victimLoss", ctx)
+    of "economicManipulation":
+      espionage.economicManipulation = child.requireInt32("value", ctx)
+      espionageVictim.economicManipulationVictim = child.requireInt32("victimLoss", ctx)
+    of "psyopsCampaign":
+      espionage.psyopsCampaign = child.requireInt32("value", ctx)
+      espionageVictim.psyopsCampaignVictim = child.requireInt32("victimLoss", ctx)
+    of "counterIntelligenceSweep":
+      espionage.counterIntelSweep = child.requireInt32("value", ctx)
+      espionageVictim.counterIntelSweepVictim = child.requireInt32("victimLoss", ctx)
+    of "intelligenceTheft":
+      espionage.intelligenceTheft = child.requireInt32("value", ctx)
+      espionageVictim.intelligenceTheftVictim = child.requireInt32("victimLoss", ctx)
+    of "plantDisinformation":
+      espionage.plantDisinformation = child.requireInt32("value", ctx)
+      espionageVictim.plantDisinformationVictim = child.requireInt32("victimLoss", ctx)
+    of "espionageFailure":
+      espionage.failedEspionage = child.requireInt32("value", ctx)
 
-proc parseDiplomacy(node: KdlNode, ctx: var KdlConfigContext): DiplomacyPrestigeConfig =
-  result = DiplomacyPrestigeConfig(
-    declareWar: node.requireInt32("declareWar", ctx),
-    makePeace: node.requireInt32("makePeace", ctx)
-  )
+    # Victory
+    of "victoryAchieved": victoryAchievement.victoryAchieved = child.requireInt32("value", ctx)
 
-proc parseVictoryAchievement(node: KdlNode, ctx: var KdlConfigContext): VictoryAchievementConfig =
-  result = VictoryAchievementConfig(
-    victoryAchieved: node.requireInt32("victoryAchieved", ctx)
-  )
+    else: discard
 
-proc parsePenalties(node: KdlNode, ctx: var KdlConfigContext): PenaltiesPrestigeConfig =
-  result = PenaltiesPrestigeConfig(
-    highTaxThreshold: node.requireInt32("highTaxThreshold", ctx),
-    highTaxPenalty: node.requireInt32("highTaxPenalty", ctx),
-    highTaxFrequency: node.requireInt32("highTaxFrequency", ctx),
-    veryHighTaxThreshold: node.requireInt32("veryHighTaxThreshold", ctx),
-    veryHighTaxPenalty: node.requireInt32("veryHighTaxPenalty", ctx),
-    veryHighTaxFrequency: node.requireInt32("veryHighTaxFrequency", ctx),
-    maintenanceShortfallBase: node.requireInt32("maintenanceShortfallBase", ctx),
-    maintenanceShortfallIncrement: node.requireInt32("maintenanceShortfallIncrement", ctx),
-    blockadePenalty: node.requireInt32("blockadePenalty", ctx),
-    overInvestEspionage: node.requireInt32("overInvestEspionage", ctx),
-    overInvestCounterIntel: node.requireInt32("overInvestCounterIntel", ctx)
-  )
+  result = (economic, military, espionage, espionageVictim, scout, diplomacy, victoryAchievement, penalties)
 
 proc parseTaxPenalties(node: KdlNode, ctx: var KdlConfigContext): TaxPenaltiesTier =
+  ## Parse taxPenalties { tier 1 { minRate=0 maxRate=50 penalty=0 } ... }
+  var tiers: array[6, tuple[min: int32, max: int32, penalty: int32]]
+
+  for child in node.children:
+    if child.name == "tier" and child.args.len > 0:
+      let tierNum = child.args[0].getInt()
+      if tierNum >= 1 and tierNum <= 6:
+        tiers[tierNum - 1] = (
+          child.requireInt32("minRate", ctx),
+          child.requireInt32("maxRate", ctx),
+          child.requireInt32("penalty", ctx)
+        )
+
   result = TaxPenaltiesTier(
-    tier1Min: node.requireInt32("tier1Min", ctx),
-    tier1Max: node.requireInt32("tier1Max", ctx),
-    tier1Penalty: node.requireInt32("tier1Penalty", ctx),
-    tier2Min: node.requireInt32("tier2Min", ctx),
-    tier2Max: node.requireInt32("tier2Max", ctx),
-    tier2Penalty: node.requireInt32("tier2Penalty", ctx),
-    tier3Min: node.requireInt32("tier3Min", ctx),
-    tier3Max: node.requireInt32("tier3Max", ctx),
-    tier3Penalty: node.requireInt32("tier3Penalty", ctx),
-    tier4Min: node.requireInt32("tier4Min", ctx),
-    tier4Max: node.requireInt32("tier4Max", ctx),
-    tier4Penalty: node.requireInt32("tier4Penalty", ctx),
-    tier5Min: node.requireInt32("tier5Min", ctx),
-    tier5Max: node.requireInt32("tier5Max", ctx),
-    tier5Penalty: node.requireInt32("tier5Penalty", ctx),
-    tier6Min: node.requireInt32("tier6Min", ctx),
-    tier6Max: node.requireInt32("tier6Max", ctx),
-    tier6Penalty: node.requireInt32("tier6Penalty", ctx)
+    tier1Min: tiers[0].min, tier1Max: tiers[0].max, tier1Penalty: tiers[0].penalty,
+    tier2Min: tiers[1].min, tier2Max: tiers[1].max, tier2Penalty: tiers[1].penalty,
+    tier3Min: tiers[2].min, tier3Max: tiers[2].max, tier3Penalty: tiers[2].penalty,
+    tier4Min: tiers[3].min, tier4Max: tiers[3].max, tier4Penalty: tiers[3].penalty,
+    tier5Min: tiers[4].min, tier5Max: tiers[4].max, tier5Penalty: tiers[4].penalty,
+    tier6Min: tiers[5].min, tier6Max: tiers[5].max, tier6Penalty: tiers[5].penalty
   )
 
 proc parseTaxIncentives(node: KdlNode, ctx: var KdlConfigContext): TaxIncentivesTier =
+  ## Parse taxIncentives { tier 1 { minRate=21 maxRate=30 prestigeBonusPerColony=1 } ... }
+  var tiers: array[5, tuple[min: int32, max: int32, prestige: int32]]
+
+  for child in node.children:
+    if child.name == "tier" and child.args.len > 0:
+      let tierNum = child.args[0].getInt()
+      if tierNum >= 1 and tierNum <= 5:
+        tiers[tierNum - 1] = (
+          child.requireInt32("minRate", ctx),
+          child.requireInt32("maxRate", ctx),
+          child.requireInt32("prestigeBonusPerColony", ctx)
+        )
+
   result = TaxIncentivesTier(
-    tier1Min: node.requireInt32("tier1Min", ctx),
-    tier1Max: node.requireInt32("tier1Max", ctx),
-    tier1Prestige: node.requireInt32("tier1Prestige", ctx),
-    tier2Min: node.requireInt32("tier2Min", ctx),
-    tier2Max: node.requireInt32("tier2Max", ctx),
-    tier2Prestige: node.requireInt32("tier2Prestige", ctx),
-    tier3Min: node.requireInt32("tier3Min", ctx),
-    tier3Max: node.requireInt32("tier3Max", ctx),
-    tier3Prestige: node.requireInt32("tier3Prestige", ctx),
-    tier4Min: node.requireInt32("tier4Min", ctx),
-    tier4Max: node.requireInt32("tier4Max", ctx),
-    tier4Prestige: node.requireInt32("tier4Prestige", ctx),
-    tier5Min: node.requireInt32("tier5Min", ctx),
-    tier5Max: node.requireInt32("tier5Max", ctx),
-    tier5Prestige: node.requireInt32("tier5Prestige", ctx)
+    tier1Min: tiers[0].min, tier1Max: tiers[0].max, tier1Prestige: tiers[0].prestige,
+    tier2Min: tiers[1].min, tier2Max: tiers[1].max, tier2Prestige: tiers[1].prestige,
+    tier3Min: tiers[2].min, tier3Max: tiers[2].max, tier3Prestige: tiers[2].prestige,
+    tier4Min: tiers[3].min, tier4Max: tiers[3].max, tier4Prestige: tiers[3].prestige,
+    tier5Min: tiers[4].min, tier5Max: tiers[4].max, tier5Prestige: tiers[4].prestige
   )
 
 proc loadPrestigeConfig*(configPath: string): PrestigeConfig =
@@ -174,55 +182,30 @@ proc loadPrestigeConfig*(configPath: string): PrestigeConfig =
   var ctx = newContext(configPath)
 
   ctx.withNode("victory"):
-    let node = doc.requireNode("victory", ctx)
-    result.victory = parseVictory(node, ctx)
+    result.victory = parseVictory(doc.requireNode("victory", ctx), ctx)
 
   ctx.withNode("dynamicScaling"):
-    let node = doc.requireNode("dynamicScaling", ctx)
-    result.dynamicScaling = parseDynamicScaling(node, ctx)
+    result.dynamicScaling = parseDynamicScaling(doc.requireNode("dynamicScaling", ctx), ctx)
 
   ctx.withNode("morale"):
-    let node = doc.requireNode("morale", ctx)
-    result.morale = parseMorale(node, ctx)
+    result.morale = parseMorale(doc.requireNode("morale", ctx), ctx)
 
-  ctx.withNode("economic"):
-    let node = doc.requireNode("economic", ctx)
-    result.economic = parseEconomic(node, ctx)
-
-  ctx.withNode("military"):
-    let node = doc.requireNode("military", ctx)
-    result.military = parseMilitary(node, ctx)
-
-  ctx.withNode("espionage"):
-    let node = doc.requireNode("espionage", ctx)
-    result.espionage = parseEspionage(node, ctx)
-
-  ctx.withNode("espionageVictim"):
-    let node = doc.requireNode("espionageVictim", ctx)
-    result.espionageVictim = parseEspionageVictim(node, ctx)
-
-  ctx.withNode("scout"):
-    let node = doc.requireNode("scout", ctx)
-    result.scout = parseScout(node, ctx)
-
-  ctx.withNode("diplomacy"):
-    let node = doc.requireNode("diplomacy", ctx)
-    result.diplomacy = parseDiplomacy(node, ctx)
-
-  ctx.withNode("victoryAchievement"):
-    let node = doc.requireNode("victoryAchievement", ctx)
-    result.victoryAchievement = parseVictoryAchievement(node, ctx)
-
-  ctx.withNode("penalties"):
-    let node = doc.requireNode("penalties", ctx)
-    result.penalties = parsePenalties(node, ctx)
+  # Parse prestigeEvents (contains all event values)
+  ctx.withNode("prestigeEvents"):
+    let events = parsePrestigeEvents(doc.requireNode("prestigeEvents", ctx), ctx)
+    result.economic = events.economic
+    result.military = events.military
+    result.espionage = events.espionage
+    result.espionageVictim = events.espionageVictim
+    result.scout = events.scout
+    result.diplomacy = events.diplomacy
+    result.victoryAchievement = events.victoryAchievement
+    result.penalties = events.penalties
 
   ctx.withNode("taxPenalties"):
-    let node = doc.requireNode("taxPenalties", ctx)
-    result.taxPenalties = parseTaxPenalties(node, ctx)
+    result.taxPenalties = parseTaxPenalties(doc.requireNode("taxPenalties", ctx), ctx)
 
   ctx.withNode("taxIncentives"):
-    let node = doc.requireNode("taxIncentives", ctx)
-    result.taxIncentives = parseTaxIncentives(node, ctx)
+    result.taxIncentives = parseTaxIncentives(doc.requireNode("taxIncentives", ctx), ctx)
 
   logInfo("Config", "Loaded prestige configuration", "path=", configPath)

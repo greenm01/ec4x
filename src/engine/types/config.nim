@@ -1,12 +1,12 @@
 import ./config/[
   gameplay, ships, ground_units, facilities, combat, economy, prestige, espionage,
-  tech, military, standing_commands, construction, game_setup, house_themes, guild,
-  starmap
+  tech, construction, game_setup, house_themes, guild,
+  starmap, limits
 ]
 
 export gameplay, ships, ground_units, facilities, combat, economy, prestige, espionage,
-  tech, military, standing_commands, construction, game_setup, house_themes, guild,
-  starmap
+  tech, construction, game_setup, house_themes, guild,
+  starmap, limits
 
 type
   GameConfig* = object
@@ -20,8 +20,7 @@ type
     economy*: EconomyConfig
     espionage*: EspionageConfig
     tech*: TechConfig
-    military*: MilitaryConfig
-    standingCommands*: StandingCommandsConfig
+    limits*: LimitsConfig
     construction*: ConstructionConfig
     guild*: GuildConfig
     prestige*: PrestigeConfig

@@ -27,5 +27,5 @@ homeworld {
 hub {
     (docs)"docs/specs/02-assets.md#section-2-1"
     guaranteedLaneCount 6  // The central hub system is guaranteed to have 6 lanes.
-    mixedLanes true        // Hub uses the standard lane distribution.
+    mixedLanes #true        // Hub uses the standard lane distribution.
 }

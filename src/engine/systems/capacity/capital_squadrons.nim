@@ -35,7 +35,7 @@ export
 proc getCapitalShipCRThreshold*(): int =
   ## Get the CR threshold for capital ships from config
   ## Default: 7 (ships with CR >= 7 are capital ships)
-  return gameState.military.squadronLimits.capitalShipCrThreshold
+  return gameConfig.limits.c2Limits.capitalShipCrThreshold
 
 proc getSystemsForRings(mapRings: int): int =
   ## Estimate total systems for a given map ring count
@@ -128,7 +128,7 @@ proc countCapitalSquadronsInFleets*(state: GameState, houseId: HouseId): int =
   result = 0
   for squadron in state.squadronsOwned(houseId):
     # Get flagship ship using entity manager
-    let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+    let flagshipOpt = gs_helpers.ship(state, squadron.flagshipId)
     if flagshipOpt.isSome:
       let flagship = flagshipOpt.get()
       if isCapitalShip(flagship.shipClass):
@@ -142,7 +142,7 @@ proc countCapitalSquadronsUnderConstruction*(state: GameState, houseId: HouseId)
   # Check spaceport construction queues
   for spaceport in state.spaceportsOwned(houseId):
     for projectId in spaceport.activeConstructions & spaceport.constructionQueue:
-      let projectOpt = gs_helpers.getConstructionProject(state, projectId)
+      let projectOpt = gs_helpers.constructionProject(state, projectId)
       if projectOpt.isNone:
         continue
       let project = projectOpt.get()
@@ -158,7 +158,7 @@ proc countCapitalSquadronsUnderConstruction*(state: GameState, houseId: HouseId)
   # Check shipyard construction queues
   for shipyard in state.shipyardsOwned(houseId):
     for projectId in shipyard.activeConstructions & shipyard.constructionQueue:
-      let projectOpt = gs_helpers.getConstructionProject(state, projectId)
+      let projectOpt = gs_helpers.constructionProject(state, projectId)
       if projectOpt.isNone:
         continue
       let project = projectOpt.get()
@@ -231,7 +231,7 @@ proc prioritizeSquadronsForRemoval(
 
   for squadron in state.squadronsOwned(houseId):
     # Get flagship ship using entity manager
-    let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+    let flagshipOpt = gs_helpers.ship(state, squadron.flagshipId)
     if flagshipOpt.isSome:
       let flagship = flagshipOpt.get()
       if isCapitalShip(flagship.shipClass):
@@ -317,7 +317,7 @@ proc applyEnforcement*(
       squadronsToRemove.add(squadron.id)
 
       # Get flagship ship using entity manager
-      let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
+      let flagshipOpt = gs_helpers.ship(state, squadron.flagshipId)
       if flagshipOpt.isNone:
         continue
 
@@ -354,7 +354,7 @@ proc applyEnforcement*(
 
   # Credit salvage to house treasury
   if totalSalvage > 0:
-    let houseOpt = gs_helpers.getHouse(state, houseId)
+    let houseOpt = gs_helpers.house(state, houseId)
     if houseOpt.isSome:
       var house = houseOpt.get()
       house.treasury += int32(totalSalvage)

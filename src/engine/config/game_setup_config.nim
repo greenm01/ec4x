@@ -14,14 +14,12 @@ proc parseGameParameters(node: KdlNode, ctx: var KdlConfigContext): GameParamete
     scenarioName: node.requireString("scenarioName", ctx),
     scenarioDescription: node.getString("scenarioDescription", ""),
     playerCount: node.requireInt32("playerCount", ctx),
-    gameSeed: node.getInt64Opt("gameSeed"),
-    theme: node.requireString("theme", ctx)
+    gameSeed: node.getInt64Opt("gameSeed")
   )
 
 proc parseVictoryConditions(node: KdlNode, ctx: var KdlConfigContext): VictoryConditionsConfig =
   result = VictoryConditionsConfig(
     turnLimit: node.requireInt32("turnLimit", ctx),
-    prestigeLimit: node.requireInt32("prestigeLimit", ctx),
     finalConflictAutoEnemy: node.requireBool("finalConflictAutoEnemy", ctx)
   )
 
@@ -36,15 +34,18 @@ proc parseStartingTech(node: KdlNode, ctx: var KdlConfigContext): StartingTechCo
   result = StartingTechConfig(
     economicLevel: node.requireInt32("economicLevel", ctx),
     scienceLevel: node.requireInt32("scienceLevel", ctx),
-    constructionTech: node.requireInt32("constructionTech", ctx),
-    weaponsTech: node.requireInt32("weaponsTech", ctx),
-    terraformingTech: node.requireInt32("terraformingTech", ctx),
+    weapons: node.requireInt32("weapons", ctx),
+    construction: node.requireInt32("construction", ctx),
+    shields: node.requireInt32("shields", ctx),
+    terraforming: node.requireInt32("terraforming", ctx),
     electronicIntelligence: node.requireInt32("electronicIntelligence", ctx),
-    cloakingTech: node.requireInt32("cloakingTech", ctx),
-    shieldTech: node.requireInt32("shieldTech", ctx),
+    cloaking: node.requireInt32("cloaking", ctx),
+    strategicLift: node.requireInt32("strategicLift", ctx),
     counterIntelligence: node.requireInt32("counterIntelligence", ctx),
+    flagshipCommand: node.requireInt32("flagshipCommand", ctx),
+    strategicCommand: node.requireInt32("strategicCommand", ctx),
     fighterDoctrine: node.requireInt32("fighterDoctrine", ctx),
-    advancedCarrierOps: node.requireInt32("advancedCarrierOps", ctx)
+    advancedCarrierOperations: node.requireInt32("advancedCarrierOperations", ctx)
   )
 
 proc parseFleetConfig(node: KdlNode, ctx: var KdlConfigContext): FleetConfig =
@@ -78,7 +79,7 @@ proc parseStartingFacilities(node: KdlNode, ctx: var KdlConfigContext): Starting
   result = StartingFacilitiesConfig(
     spaceports: node.requireInt32("spaceports", ctx),
     shipyards: node.requireInt32("shipyards", ctx),
-    starbases: node.requireInt32("starbases", ctx)
+    drydocks: node.requireInt32("drydocks", ctx)
   )
 
 proc parseStartingGroundForces(node: KdlNode, ctx: var KdlConfigContext): StartingGroundForcesConfig =

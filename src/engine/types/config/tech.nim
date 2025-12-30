@@ -123,6 +123,40 @@ type
     level7Trp*: int32
     level7PlanetClass*: string
 
+  FlagshipCommandConfig* = object
+    level2Sl*: int32
+    level2Trp*: int32
+    level2CrBonus*: int32
+    level3Sl*: int32
+    level3Trp*: int32
+    level3CrBonus*: int32
+    level4Sl*: int32
+    level4Trp*: int32
+    level4CrBonus*: int32
+    level5Sl*: int32
+    level5Trp*: int32
+    level5CrBonus*: int32
+    level6Sl*: int32
+    level6Trp*: int32
+    level6CrBonus*: int32
+
+  StrategicCommandConfig* = object
+    level1Sl*: int32
+    level1Trp*: int32
+    level1C2Bonus*: int32
+    level2Sl*: int32
+    level2Trp*: int32
+    level2C2Bonus*: int32
+    level3Sl*: int32
+    level3Trp*: int32
+    level3C2Bonus*: int32
+    level4Sl*: int32
+    level4Trp*: int32
+    level4C2Bonus*: int32
+    level5Sl*: int32
+    level5Trp*: int32
+    level5C2Bonus*: int32
+
   FighterDoctrineConfig* = object
     level1Sl*: int32
     level1Trp*: int32
@@ -196,6 +230,9 @@ type
     cloakingTech*: StandardTechLevelConfig
     shieldTech*: StandardTechLevelConfig
     counterIntelligenceTech*: StandardTechLevelConfig
+    strategicLiftTech*: StandardTechLevelConfig
+    flagshipCommand*: FlagshipCommandConfig
+    strategicCommand*: StrategicCommandConfig
     fighterDoctrine*: FighterDoctrineConfig
     advancedCarrierOperations*: AdvancedCarrierOpsConfig
 

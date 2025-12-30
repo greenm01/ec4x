@@ -8,10 +8,19 @@ population {
   (docs)"docs/specs/03-economy.md#section-3-1"
   // Also see: docs/specs/03-economy.md#section-3-5
   naturalGrowthRate 0.30 // Base birthrate
-  // ptuGrowthRate 0.04  // Not explicitly defined in spec for PU to PTU conversion
+  growthRatePerStarbase 0.05 // 5% growth bonus per starbase (docs/specs/02-assets.md:454)
+  maxStarbaseBonus 0.15 // Max 15% bonus (3 starbases)
+  ptuGrowthRate 0.04  // PTU growth rate
   ptuToSouls 50000       // One PTU represents approx. 50,000 souls
   puToPtuConversion 0.00657 // Constant for PU to PTU conversion formula
   minViableColonyPop 5000 // Minimum viable souls to sustain a colony
+}
+
+ptuDefinition {
+  (docs)"docs/specs/03-economy.md#section-3-1"
+  soulsPerPtu 50000 // One PTU = 50,000 souls
+  ptuSizeMillions 0.05 // 50,000 souls = 0.05 million
+  minPopulationRemaining 5000 // Minimum souls after transfer
 }
 
 
@@ -20,19 +29,19 @@ population {
 rawMaterialEfficiency {
   (docs)"docs/specs/03-economy.md#section-3-1"
   material "Very Poor" {
-    eden=0.60 lush=0.60 benign=0.60 harsh=0.60 hostile=0.60 desolate=0.60 extreme=0.60
+    eden 0.60; lush 0.60; benign 0.60; harsh 0.60; hostile 0.60; desolate 0.60; extreme 0.60
   }
   material "Poor" {
-    eden=0.80 lush=0.75 benign=0.70 harsh=0.65 hostile=0.64 desolate=0.63 extreme=0.62
+    eden 0.80; lush 0.75; benign 0.70; harsh 0.65; hostile 0.64; desolate 0.63; extreme 0.62
   }
   material "Abundant" {
-    eden=1.00 lush=0.90 benign=0.80 harsh=0.70 hostile=0.68 desolate=0.66 extreme=0.64
+    eden 1.00; lush 0.90; benign 0.80; harsh 0.70; hostile 0.68; desolate 0.66; extreme 0.64
   }
   material "Rich" {
-    eden=1.20 lush=1.05 benign=0.90 harsh=0.75 hostile=0.72 desolate=0.69 extreme=0.66
+    eden 1.20; lush 1.05; benign 0.90; harsh 0.75; hostile 0.72; desolate 0.69; extreme 0.66
   }
   material "Very Rich" {
-    eden=1.40 lush=1.20 benign=1.00 harsh=0.80 hostile=0.76 desolate=0.72 extreme=0.68
+    eden 1.40; lush 1.20; benign 1.00; harsh 0.80; hostile 0.76; desolate 0.72; extreme 0.68
   }
 }
 
@@ -45,11 +54,11 @@ taxMechanics {
 
 taxPopulationGrowth {
   (docs)"docs/specs/03-economy.md#section-3-2-2"
-  tier 1 { minRate=41 maxRate=50 popMultiplier=1.0 }
-  tier 2 { minRate=31 maxRate=40 popMultiplier=1.05 }
-  tier 3 { minRate=21 maxRate=30 popMultiplier=1.10 }
-  tier 4 { minRate=11 maxRate=20 popMultiplier=1.15 }
-  tier 5 { minRate=0 maxRate=10 popMultiplier=1.20 }
+  tier 1 { minRate 41; maxRate 50; popMultiplier 1.0 }
+  tier 2 { minRate 31; maxRate 40; popMultiplier 1.05 }
+  tier 3 { minRate 21; maxRate 30; popMultiplier 1.10 }
+  tier 4 { minRate 11; maxRate 20; popMultiplier 1.15 }
+  tier 5 { minRate 0; maxRate 10; popMultiplier 1.20 }
 }
 
 // --- Industrial Growth Parameters ---
@@ -57,6 +66,12 @@ industrialGrowth {
   (docs)"docs/specs/03-economy.md#section-3-4"
   passiveGrowthDivisor 50.0 // floor(PU / 50) for passive IU growth
   passiveGrowthMinimum 2.0  // max(2, ...) for passive IU growth
+}
+
+// --- Industrial Investment ---
+industrialInvestment {
+  (docs)"docs/specs/03-economy.md#section-3-4"
+  baseCost 1 // Cost in PP to purchase 1 IU (1:1 conversion)
 }
 
 // --- Starbase Economic Bonuses ---
@@ -68,9 +83,17 @@ starbaseBonuses {
   eliBonusPerStarbase 2                   // +2 ELI bonus per SB
 }
 
+// --- Colonization Starting Conditions ---
+colonization {
+  (docs)"docs/specs/03-economy.md#section-3-5"
+  startingInfrastructureLevel 0 // Starting infrastructure level for new colonies
+  startingIuPercent 0 // Starting IU as percentage of PU
+  // Note: Guild transfer costs (PP per PTU) are in guild.kdl
+}
+
 // --- Production Modifiers ---
 productionModifiers {
   (docs)"docs/specs/03-economy.md#section-3-1"
   // Also see: docs/specs/06-operations.md#section-6-3-8
-  blockadeGcoReduction 0.60 // Blockade reduces GCO by 60%
+  blockadePenalty 0.40 // Colony operates at 40% capacity when blockaded (60% reduction)
 }
