@@ -84,7 +84,7 @@ The complete EC4X game specification is organized into the following documents:
 
 ## Quick Reference
 
-- **Version**: 0.1
+- **Version**: 0.2
 - **Players**: 2-12
 - **Turn Duration**: ~24 hours (real-time)
 - **Victory Conditions**: Turn limit reached (highest prestige wins) or last House standing (all rivals eliminated)
