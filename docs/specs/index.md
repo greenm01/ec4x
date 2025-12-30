@@ -1,4 +1,4 @@
-# EC4X Specification v0.1
+# EC4X Specification v0.2
 
 Written by Mason A. Green
 
