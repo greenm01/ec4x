@@ -74,26 +74,17 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 
 ### Game Rules
 - **[Complete Game Specification](docs/specs/index.md)** - Full rules, gameplay, and strategic systems
+- **[Documentation Overview](docs/README.md)** - Navigation guide for all documentation
 
-### AI System
-- **[AI Documentation](docs/ai/README.md)** - AI system overview and navigation
-- **[AI Development Status](docs/ai/STATUS.md)** - Phase progress (31.3% complete)
-- **[AI Architecture](docs/ai/ARCHITECTURE.md)** - Modular RBA system design (8 subsystems + training export)
-- **[AI Personalities](docs/ai/PERSONALITIES.md)** - 12 strategy archetypes explained
-- **[Decision Framework](docs/ai/DECISION_FRAMEWORK.md)** - How AI makes decisions
+### Architecture
+- **[System Architecture](docs/architecture/overview.md)** - Core system design and components
+- **[Combat Engine](docs/architecture/combat-engine.md)** - Combat system architecture
+- **[Fleet System](docs/architecture/fleet_system.md)** - Fleet management architecture
+- **[Intelligence System](docs/architecture/intel.md)** - Fog-of-war and intelligence mechanics
 
-### Milestones
-- **[RBA Migration Complete](docs/milestones/RBA_MIGRATION_COMPLETE.md)** - Phase 2.5 completion (2025-11-29)
-
-### Testing & Balance
-- **[Testing Overview](docs/testing/README.md)** - Testing levels and methodology
-- **[Balance Methodology](docs/testing/BALANCE_METHODOLOGY.md)** - Regression testing approach
-
-### Technical Documentation
-- **[Architecture Guide](docs/EC4X-Architecture.md)** - System design and implementation structure
-- **[Nostr Implementation](docs/EC4X-Nostr-Implementation.md)** - Protocol modules and event handling
-- **[Nostr Events Schema](docs/EC4X-Nostr-Events.md)** - Event kinds, tags, and data flow
-- **[Deployment Guide](docs/EC4X-VPS-Deployment.md)** - Production deployment with Nostr relay
+### Development
+- **[TODO](docs/TODO.md)** - Current work tracking and roadmap
+- **[Playtesting Plans](docs/play_testing/README.md)** - Human playtesting and training data collection
 
 ## Development Setup
 
