@@ -9,7 +9,6 @@ gameParameters {
     scenarioName "Standard 4-Player"
     scenarioDescription "Classic balanced 4-player start with standard resources"
     playerCount 4
-    theme "dune"                    // Themes defined in game configs
     //gameSeed 99999                // Set a custom seed for reproducible game states
 }
 
