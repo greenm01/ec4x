@@ -35,7 +35,7 @@ For complete details on jump lane classes, distribution, and the starmap structu
 
 ## 6.2 Ship Commissioning and Fleet Organization
 
-Your industrial might produces warships and spacelift vessels. Ships move from treasury expenditure through construction yards to commissioned squadrons and finally into operational fleets. This four-stage pipeline transforms economic investment into military power.
+Your industrial might produces warships and auxiliary vessels. Ships move from treasury expenditure through construction yards to commissioned squadrons and finally into operational fleets. This four-stage pipeline transforms economic investment into military power.
 
 ### 6.2.1 The Commissioning Pipeline
 
@@ -87,7 +87,7 @@ When construction completes, your ships **immediately commission** into squadron
 - **Capital ships** (BB, DN, SD, CA, CL) create new squadrons as flagships
 - **Escorts** (DD, FF, CT) join existing unassigned capital squadrons based on command capacity
 - **Scouts and fighters** form single-ship squadrons for specialized missions
-- **Spacelift ships** enter the unassigned pool, ready for colonization or transport missions
+- **ETACs** join flagship squadrons (for escort)
 
 No intermediate "ready to commission" state—your ships transition directly from construction to operational status, just like vessels completing sea trials immediately join the active fleet.
 
@@ -271,7 +271,7 @@ Command devastating orbital bombardment of enemy colonies. Your fleet systematic
 Launch ground invasion of enemy colonies. Your fleet deploys marines and army units to seize control, conducting ground combat against defending forces.
 
 **Requirements:**
-- Fleet must contain spacelift ships with embarked ground forces
+- Fleet must contain troop transports with embarked Marines
 - Target colony must have reduced defenses (planetary shields destroyed, garrison weakened)
 
 **Combat Resolution:**
@@ -321,14 +321,14 @@ Command ETACs (Enhanced Terrestrial Administrative Carriers) with Population Tra
 Deploy a Scout fleet on a one-way mission to gather detailed intelligence on an enemy colony. All Scouts in the fleet are consumed in the attempt, regardless of outcome.
 
 **Requirements:**
-- Fleet must contain **only Scout auxiliary ships**.
+- Fleet must contain **only Scouts**.
 
 **Detection & Mission Success**:
-Upon arrival, the defending house makes a detection roll to find your Spy Scout(s).
+Upon arrival, the defending house makes a detection roll to find your Scouts.
 - **If detected**: The mission fails, the Scout is destroyed, and no intelligence is gathered.
 - **If undetected**: The mission succeeds, and you receive a **Perfect Quality** intelligence report.
 
-For the complete detection mechanic, see [Section 2.4.2](02-assets.md#242-spy-scouts). Sending more scouts on the same mission makes them harder to detect.
+For the complete detection mechanic, see [Section 2.4.2](02-assets.md#242-scouts). Sending more scouts on the same mission makes them harder to detect.
 
 **Intelligence Gathered:**
 - Colony infrastructure level
@@ -348,7 +348,7 @@ For the complete detection mechanic, see [Section 2.4.2](02-assets.md#242-spy-sc
 Deploy a Scout fleet on a one-way mission to gather intelligence on all fleet activity in a system. All Scouts in the fleet are consumed in the attempt.
 
 **Requirements:**
-- Fleet must contain **only Scout auxiliary ships**.
+- Fleet must contain **only Scouts**.
 
 **Detection & Mission Success**: See Command 11 (Spy on Planet) for detection mechanics.
 
@@ -369,7 +369,7 @@ Deploy a Scout fleet on a one-way mission to gather intelligence on all fleet ac
 Conduct a cyber warfare operation against an enemy starbase. All Scouts in the fleet are consumed in the attempt.
 
 **Requirements:**
-- Fleet must contain **only Scout auxiliary ships**.
+- Fleet must contain **only Scouts**.
 - Target system must have an enemy starbase.
 
 **Detection & Mission Success**: See Command 11 (Spy on Planet) for detection mechanics.
@@ -388,12 +388,12 @@ Conduct a cyber warfare operation against an enemy starbase. All Scouts in the f
 
 ### 6.3.16 Join Another Fleet (14)
 
-Transfer your fleet to merge with another fleet at the same location. Consolidate forces, reinforce battle groups, or reorganize for strategic operations. All squadrons and spacelift ships from the source fleet are transferred to the target fleet, and the source fleet is disbanded.
+Merge this fleet with another fleet. The source fleet will autonomously find and travel to the target fleet and consolidate forces for strategic operations. All squadrons from the source fleet are transferred to the target fleet, and the source fleet is disbanded.
 
 **Use Join Fleet to:**
 - Reinforce damaged fleets with fresh squadrons.
 - Consolidate scattered forces after combat.
-- Create combined task forces for major operations.
+- Create combined forces for major operations.
 - Group multiple Scouts into a single fleet to improve their stealth for an espionage mission.
 
 ### 6.3.17 Rendezvous at System (15)
@@ -478,7 +478,7 @@ Send a fleet to perform long-range reconnaissance on a planet from the edge of a
 **Tactical Advantages:**
 - **Safe Reconnaissance**: The fleet remains at the edge of the system, avoiding detection and combat.
 - **Any Ship Type**: While ideal for Scouts, any ship can perform this action.
-- **Early Intelligence**: Identify valuable targets before committing ETACs or Spy Scouts.
+- **Early Intelligence**: Identify valuable targets before committing ETACs or Scouts.
 - **Diplomatic Safety**: Not a hostile act; safe for gathering intel on neutrals.
 
 **Use View a World to:**
@@ -520,13 +520,13 @@ Reconfigure your fleet composition at friendly colonies without consuming turns.
 
 #### DetachShips
 
-Extract specific squadrons and spacelift ships from a fleet into a new fleet.
+Extract specific ships from a fleet into a new fleet.
 
 **Use cases:**
 - Split battle fleet into multiple patrol groups
 - Detach damaged squadrons for repair while healthy squadrons continue operations
 - Create specialized task forces from general-purpose fleets
-- Separate spacelift ships (ETACs, Troop Transports) from combat squadrons
+- Separate auxiliary ships (ETACs, Troop Transports) from combat squadrons
 
 **Mechanics:**
 - Select ships by index from fleet's total ship roster
@@ -538,7 +538,7 @@ Extract specific squadrons and spacelift ships from a fleet into a new fleet.
 
 #### TransferShips
 
-Move squadrons and spacelift ships between two existing fleets.
+Move ships between two existing fleets.
 
 **Use cases:**
 - Reinforce weakened patrol fleet from reserve fleet
@@ -566,7 +566,7 @@ Combine two fleets into a single unified force.
 
 **Mechanics:**
 - Source fleet merges entirely into target fleet
-- All squadrons and spacelift ships transfer to target
+- All ships transfer to target
 - Source fleet deleted after merge
 - Target fleet retains its commands and standing commands
 - Fleet composition limits still apply
@@ -575,16 +575,16 @@ Combine two fleets into a single unified force.
 
 ### 6.4.3 Cargo Operations
 
-Load and unload ground forces and colonists instantly during order submission.
+Load and unload Marines and colonists instantly during order submission.
 
 **Requirements:**
 - Fleet at friendly colony
-- Compatible spacelift ships in fleet (Troop Transports for marines, ETACs for colonists)
+- Compatible ships in fleet (Troop Transports for marines, ETACs for colonists)
 - Cargo available at colony (marines from garrison, colonists from population)
 
 #### LoadCargo
 
-Load marines or colonists from colony onto fleet spacelift ships.
+Load marines or colonists from colony onto fleet auxiliary ships.
 
 **Use cases:**
 - Load invasion forces immediately before launching offensive
@@ -604,7 +604,7 @@ Load marines or colonists from colony onto fleet spacelift ships.
 
 #### UnloadCargo
 
-Unload marines or colonists from fleet spacelift ships to colony.
+Unload marines or colonists from fleet auxiliary ships to colony.
 
 **Use cases:**
 - Deliver garrison reinforcements to border colonies
@@ -612,7 +612,7 @@ Unload marines or colonists from fleet spacelift ships to colony.
 - Consolidate forces at strategic staging bases
 
 **Mechanics:**
-- All cargo on fleet spacelift ships unloaded to colony
+- All cargo on fleet auxiliary ships unloaded to colony
 - Marines added to colony garrison
 - Colonists added to colony population (souls + population units)
 - Instant transfer, no turn cost

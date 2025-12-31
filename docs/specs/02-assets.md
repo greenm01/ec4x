@@ -424,7 +424,7 @@ Starbases (SB) are powerful orbital fortresses that facilitate planetary defense
 
 Starbases are equipped with powerful sensor arrays that enhance a system's defensive capabilities against stealth units.
 
-- **Against Spy Scouts**: A Starbase provides a **+2 bonus** to the defending house's ELI Level for detection rolls.
+- **Against Scouts**: A Starbase provides a **+2 bonus** to the defending house's ELI Level for detection rolls.
 - **Against Raiders**: A Starbase provides a **+2 bonus** to the defending house's detection roll.
 
 This makes starbases critical for protecting high-value systems from both espionage and surprise attacks.
