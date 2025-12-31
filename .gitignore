@@ -12,11 +12,6 @@
 
 # Whitelist config and scripts
 !*.kdl
-!*.yaml
-!*.yml
-!*.json
-!*.py
-!*.sh
 !*.fish
 !*.nix
 
@@ -30,6 +25,11 @@
 !*.adoc
 !*.zip
 !*.gz
+!*.ods
+!*.odt
+!*.odp
+!*.odg
+
 
 # Whitelist root files
 !.gitignore

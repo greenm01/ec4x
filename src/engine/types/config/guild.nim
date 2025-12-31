@@ -1,12 +1,11 @@
+import ../starmap  # For PlanetClass enum
+export PlanetClass
+
 type
   TransferCostsConfig* = object
-    edenCost*: int32
-    lushCost*: int32
-    benignCost*: int32
-    harshCost*: int32
-    hostileCost*: int32
-    desolateCost*: int32
-    extremeCost*: int32
+    ## Guild transfer costs indexed by planet class
+    ## Uses array pattern for categorical data (see data-guide.md)
+    costs*: array[PlanetClass, int32]
 
   TransferTimeConfig* = object
     turnsPerJump*: int32

@@ -1,3 +1,5 @@
+import std/tables
+
 type
   EspionageCostsConfig* = object
     ebpCostPp*: int32
@@ -27,20 +29,17 @@ type
     disinformationMinVariance*: float32
     disinformationMaxVariance*: float32
 
+  CIPTierData* = object
+    ## Data for a CIP (Counter-Intel Points) tier
+    maxPoints*: int32  # Max CIP in this tier
+    modifier*: int32   # Detection roll modifier
+
   EspionageDetectionConfig* = object
+    ## Espionage detection configuration
+    ## Uses Table for CIC thresholds, seq for ordered CIP tiers (see data-guide.md)
     cipPerRoll*: int32
-    cic0Threshold*: int32
-    cic1Threshold*: int32
-    cic2Threshold*: int32
-    cic3Threshold*: int32
-    cic4Threshold*: int32
-    cic5Threshold*: int32
-    cip0Modifier*: int32
-    cip1To5Modifier*: int32
-    cip6To10Modifier*: int32
-    cip11To15Modifier*: int32
-    cip16To20Modifier*: int32
-    cip21PlusModifier*: int32
+    cicThresholds*: Table[int32, int32]  # CIC level → detection threshold
+    cipTiers*: seq[CIPTierData]  # Ordered tiers for CIP modifiers
 
   EspionageConfig* = object ## Complete espionage configuration loaded from KDL
     costs*: EspionageCostsConfig

@@ -1,5 +1,9 @@
+import ../ship  # For ShipClass enum
+export ShipClass
+
 type
   ShipStatsConfig* = object
+    ## Configuration data for a ship class
     minCST*: int32
     productionCost*: int32
     maintenanceCost*: int32
@@ -14,22 +18,8 @@ type
     salvageValueMultiplier*: float32
 
   ShipsConfig* = object
-    corvette*: ShipStatsConfig
-    frigate*: ShipStatsConfig
-    destroyer*: ShipStatsConfig
-    lightCruiser*: ShipStatsConfig
-    cruiser*: ShipStatsConfig
-    battlecruiser*: ShipStatsConfig
-    battleship*: ShipStatsConfig
-    dreadnought*: ShipStatsConfig
-    superDreadnought*: ShipStatsConfig
-    planetbreaker*: ShipStatsConfig
-    carrier*: ShipStatsConfig
-    supercarrier*: ShipStatsConfig
-    fighter*: ShipStatsConfig
-    raider*: ShipStatsConfig
-    scout*: ShipStatsConfig
-    etac*: ShipStatsConfig
-    troopTransport*: ShipStatsConfig
+    ## Ship configuration indexed by semantic ship class
+    ## Uses array pattern for categorical data (see data-guide.md)
+    ships*: array[ShipClass, ShipStatsConfig]
     salvage*: SalvageConfig
 

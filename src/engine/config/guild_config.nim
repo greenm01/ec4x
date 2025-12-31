@@ -7,34 +7,21 @@ import kdl
 import kdl_helpers
 import ../../common/logger
 import ../types/config
+import ../utils  # For parsePlanetClass
 
 proc parseTransferCosts(node: KdlNode, ctx: var KdlConfigContext): TransferCostsConfig =
   ## Parse transferCosts with planetClass children
   ## Structure: planetClass "Eden" { cost 4 }
-  var costs: array[7, int32]
+  ## Returns array indexed by PlanetClass enum
+  var costs: array[PlanetClass, int32]
   for child in node.children:
     if child.name == "planetClass" and child.args.len > 0:
-      let planetClass = child.args[0].getString()
+      let planetClassName = child.args[0].getString()
+      let planetClass = parsePlanetClass(planetClassName)
       let cost = child.requireInt32("cost", ctx)
-      case planetClass
-      of "Eden": costs[0] = cost
-      of "Lush": costs[1] = cost
-      of "Benign": costs[2] = cost
-      of "Harsh": costs[3] = cost
-      of "Hostile": costs[4] = cost
-      of "Desolate": costs[5] = cost
-      of "Extreme": costs[6] = cost
-      else: discard
+      costs[planetClass] = cost
 
-  result = TransferCostsConfig(
-    edenCost: costs[0],
-    lushCost: costs[1],
-    benignCost: costs[2],
-    harshCost: costs[3],
-    hostileCost: costs[4],
-    desolateCost: costs[5],
-    extremeCost: costs[6]
-  )
+  result = TransferCostsConfig(costs: costs)
 
 proc parseTransferLimits(node: KdlNode, ctx: var KdlConfigContext): TransferLimitsConfig =
   result = TransferLimitsConfig(

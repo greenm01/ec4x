@@ -3,6 +3,7 @@
 ## Loads espionage values from config/espionage.kdl using nimkdl
 ## Allows runtime configuration for balance testing
 
+import std/tables
 import kdl
 import kdl_helpers
 import ../../common/logger
@@ -70,30 +71,33 @@ proc loadEspionageConfig*(configPath: string): EspionageConfig =
   ctx.withNode("detection"):
     let detNode = doc.requireNode("detection", ctx)
     detection.cipPerRoll = detNode.requireInt32("cipConsumedPerRoll", ctx)
+    detection.cicThresholds = initTable[int32, int32]()
+    detection.cipTiers = @[]
 
     # Parse thresholds child node
     for child in detNode.children:
       if child.name == "thresholds":
-        detection.cic0Threshold = 20  # Default max
-        detection.cic1Threshold = child.requireInt32("cic1", ctx)
-        detection.cic2Threshold = child.requireInt32("cic2", ctx)
-        detection.cic3Threshold = child.requireInt32("cic3", ctx)
-        detection.cic4Threshold = child.requireInt32("cic4", ctx)
-        detection.cic5Threshold = child.requireInt32("cic5", ctx)
+        detection.cicThresholds[0] = 20  # CIC 0 default max
+        detection.cicThresholds[1] = child.requireInt32("cic1", ctx)
+        detection.cicThresholds[2] = child.requireInt32("cic2", ctx)
+        detection.cicThresholds[3] = child.requireInt32("cic3", ctx)
+        detection.cicThresholds[4] = child.requireInt32("cic4", ctx)
+        detection.cicThresholds[5] = child.requireInt32("cic5", ctx)
       elif child.name == "modifiers":
-        # Parse tier children
+        # Parse tier children into ordered sequence
+        # Note: Tier ranges (1-5, 6-10, etc.) define max points, stored in order
+        detection.cipTiers.add(CIPTierData(maxPoints: 0, modifier: 0))  # 0 CIP tier
         for tier in child.children:
           if tier.name == "tier" and tier.args.len > 0:
             let tierName = tier.args[0].getString()
             let modifier = tier.requireInt32("modifier", ctx)
             case tierName
-            of "1-5": detection.cip1To5Modifier = modifier
-            of "6-10": detection.cip6To10Modifier = modifier
-            of "11-15": detection.cip11To15Modifier = modifier
-            of "16-20": detection.cip16To20Modifier = modifier
-            of "21+": detection.cip21PlusModifier = modifier
+            of "1-5": detection.cipTiers.add(CIPTierData(maxPoints: 5, modifier: modifier))
+            of "6-10": detection.cipTiers.add(CIPTierData(maxPoints: 10, modifier: modifier))
+            of "11-15": detection.cipTiers.add(CIPTierData(maxPoints: 15, modifier: modifier))
+            of "16-20": detection.cipTiers.add(CIPTierData(maxPoints: 20, modifier: modifier))
+            of "21+": detection.cipTiers.add(CIPTierData(maxPoints: 999, modifier: modifier))
             else: discard
-        detection.cip0Modifier = 0  # Default for 0 CIP
 
   result.detection = detection
 

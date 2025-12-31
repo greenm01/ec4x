@@ -45,30 +45,33 @@ proc loadShipsConfig*(configPath: string): ShipsConfig =
           return some(child)
     return none(KdlNode)
 
-  # Parse each ship type with context tracking
-  template parseShip(nodeName: string, field: untyped) =
+  # Map KDL node names to ShipClass enum values
+  const shipMapping = [
+    ("corvette", ShipClass.Corvette),
+    ("frigate", ShipClass.Frigate),
+    ("destroyer", ShipClass.Destroyer),
+    ("lightCruiser", ShipClass.LightCruiser),
+    ("cruiser", ShipClass.Cruiser),
+    ("battlecruiser", ShipClass.Battlecruiser),
+    ("battleship", ShipClass.Battleship),
+    ("dreadnought", ShipClass.Dreadnought),
+    ("superDreadnought", ShipClass.SuperDreadnought),
+    ("carrier", ShipClass.Carrier),
+    ("supercarrier", ShipClass.SuperCarrier),
+    ("raider", ShipClass.Raider),
+    ("scout", ShipClass.Scout),
+    ("etac", ShipClass.ETAC),
+    ("troopTransport", ShipClass.TroopTransport),
+    ("fighter", ShipClass.Fighter),
+    ("planetBreaker", ShipClass.PlanetBreaker)
+  ]
+
+  # Parse each ship type and store in array
+  for (nodeName, shipClass) in shipMapping:
     let nodeOpt = findShip(doc, nodeName)
     if nodeOpt.isSome:
       ctx.withNode(nodeName):
-        result.field = parseShipStats(nodeOpt.get, ctx)
-
-  parseShip("corvette", corvette)
-  parseShip("frigate", frigate)
-  parseShip("destroyer", destroyer)
-  parseShip("lightCruiser", lightCruiser)
-  parseShip("cruiser", cruiser)
-  parseShip("battlecruiser", battlecruiser)
-  parseShip("battleship", battleship)
-  parseShip("dreadnought", dreadnought)
-  parseShip("superDreadnought", superDreadnought)
-  parseShip("carrier", carrier)
-  parseShip("supercarrier", supercarrier)
-  parseShip("raider", raider)
-  parseShip("scout", scout)
-  parseShip("etac", etac)
-  parseShip("troopTransport", troopTransport)
-  parseShip("fighter", fighter)
-  parseShip("planetBreaker", planetbreaker)
+        result.ships[shipClass] = parseShipStats(nodeOpt.get, ctx)
 
   ctx.withNode("salvage"):
     let salvageNode = doc.requireNode("salvage", ctx)

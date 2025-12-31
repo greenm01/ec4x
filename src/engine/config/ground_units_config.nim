@@ -16,15 +16,7 @@ proc parsePlanetaryShield(node: KdlNode, ctx: var KdlConfigContext): PlanetarySh
     defenseStrength: node.requireInt32("defenseStrength", ctx),
     buildTime: 1,  # Default
     maxPerPlanet: node.requireInt32("maxPerColony", ctx),
-    replaceOnUpgrade: node.requireBool("replaceOnUpgrade", ctx),
-    sld1BlockChance: 0.0,  # Defined in tech.kdl
-    sld2BlockChance: 0.0,
-    sld3BlockChance: 0.0,
-    sld4BlockChance: 0.0,
-    sld5BlockChance: 0.0,
-    sld6BlockChance: 0.0,
-    shieldDamageReduction: 0.0,  # Defined in tech.kdl
-    shieldInvasionDifficulty: 0.0  # Defined in tech.kdl
+    replaceOnUpgrade: node.requireBool("replaceOnUpgrade", ctx)
   )
 
 proc parseGroundBattery(node: KdlNode, ctx: var KdlConfigContext): GroundBatteryConfig =

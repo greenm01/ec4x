@@ -1,5 +1,8 @@
 type
   PlanetaryShieldConfig* = object
+    ## Planetary shield facility configuration
+    ## Shield mechanics (block chance, damage reduction) calculated algorithmically
+    ## See: src/engine/systems/production/commissioning.nim:getShieldBlockChance()
     minCST*: int32
     productionCost*: int32
     maintenanceCost*: int32
@@ -7,14 +10,6 @@ type
     buildTime*: int32
     maxPerPlanet*: int32
     replaceOnUpgrade*: bool
-    sld1BlockChance*: float32
-    sld2BlockChance*: float32
-    sld3BlockChance*: float32
-    sld4BlockChance*: float32
-    sld5BlockChance*: float32
-    sld6BlockChance*: float32
-    shieldDamageReduction*: float32
-    shieldInvasionDifficulty*: float32
 
   GroundBatteryConfig* = object
     minCST*: int32

@@ -1,3 +1,5 @@
+import std/tables
+
 type
   VictoryConfig* = object
     ## Victory config (prestige_victory removed - now in scenarios/*.kdl)
@@ -96,42 +98,27 @@ type
     overInvestEspionage*: int32
     overInvestCounterIntel*: int32
 
+  TaxPenaltyTierData* = object
+    ## Data for a single tax penalty tier
+    minRate*: int32
+    maxRate*: int32
+    penalty*: int32
+
   TaxPenaltiesTier* = object
-    tier1Min*: int32
-    tier1Max*: int32
-    tier1Penalty*: int32
-    tier2Min*: int32
-    tier2Max*: int32
-    tier2Penalty*: int32
-    tier3Min*: int32
-    tier3Max*: int32
-    tier3Penalty*: int32
-    tier4Min*: int32
-    tier4Max*: int32
-    tier4Penalty*: int32
-    tier5Min*: int32
-    tier5Max*: int32
-    tier5Penalty*: int32
-    tier6Min*: int32
-    tier6Max*: int32
-    tier6Penalty*: int32
+    ## Tax penalties configuration
+    ## Uses Table pattern for numbered tiers (see data-guide.md)
+    tiers*: Table[int32, TaxPenaltyTierData]
+
+  TaxIncentiveTierData* = object
+    ## Data for a single tax incentive tier
+    minRate*: int32
+    maxRate*: int32
+    prestige*: int32
 
   TaxIncentivesTier* = object
-    tier1Min*: int32
-    tier1Max*: int32
-    tier1Prestige*: int32
-    tier2Min*: int32
-    tier2Max*: int32
-    tier2Prestige*: int32
-    tier3Min*: int32
-    tier3Max*: int32
-    tier3Prestige*: int32
-    tier4Min*: int32
-    tier4Max*: int32
-    tier4Prestige*: int32
-    tier5Min*: int32
-    tier5Max*: int32
-    tier5Prestige*: int32
+    ## Tax incentives configuration
+    ## Uses Table pattern for numbered tiers (see data-guide.md)
+    tiers*: Table[int32, TaxIncentiveTierData]
 
   PrestigeConfig* = object ## Complete prestige configuration loaded from KDL
     victory*: VictoryConfig

@@ -3,6 +3,7 @@
 ## Loads combat mechanics from config/combat.kdl using nimkdl
 ## Allows runtime configuration for combat rules, CER tables, and special mechanics
 
+import std/tables
 import kdl
 import kdl_helpers
 import ../../common/logger
@@ -185,6 +186,8 @@ proc loadCombatConfig*(configPath: string): CombatConfig =
     result.targeting = parseTargeting(doc.requireNode("targeting", ctx), ctx)
 
   # Planetary shields removed - now in tech.kdl
-  result.planetaryShields = PlanetaryShieldsConfig()  # Empty default
+  result.planetaryShields = PlanetaryShieldsConfig(
+    levels: initTable[int32, SldCombatLevelData]()  # Empty Table
+  )
 
   logInfo("Config", "Loaded combat configuration", "path=", configPath)

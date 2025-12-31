@@ -3,6 +3,7 @@
 ## Loads prestige values from config/prestige.kdl using nimkdl
 ## Allows runtime configuration for balance testing
 
+import std/tables
 import kdl
 import kdl_helpers
 import ../../common/logger
@@ -132,48 +133,37 @@ proc parsePrestigeEvents(node: KdlNode, ctx: var KdlConfigContext): tuple[
 
 proc parseTaxPenalties(node: KdlNode, ctx: var KdlConfigContext): TaxPenaltiesTier =
   ## Parse taxPenalties { tier 1 { minRate=0 maxRate=50 penalty=0 } ... }
-  var tiers: array[6, tuple[min: int32, max: int32, penalty: int32]]
+  ## Returns Table indexed by tier number
+  var tiers = initTable[int32, TaxPenaltyTierData]()
 
   for child in node.children:
     if child.name == "tier" and child.args.len > 0:
-      let tierNum = child.args[0].getInt()
+      let tierNum = int32(child.args[0].getInt())
       if tierNum >= 1 and tierNum <= 6:
-        tiers[tierNum - 1] = (
-          child.requireInt32("minRate", ctx),
-          child.requireInt32("maxRate", ctx),
-          child.requireInt32("penalty", ctx)
+        tiers[tierNum] = TaxPenaltyTierData(
+          minRate: child.requireInt32("minRate", ctx),
+          maxRate: child.requireInt32("maxRate", ctx),
+          penalty: child.requireInt32("penalty", ctx)
         )
 
-  result = TaxPenaltiesTier(
-    tier1Min: tiers[0].min, tier1Max: tiers[0].max, tier1Penalty: tiers[0].penalty,
-    tier2Min: tiers[1].min, tier2Max: tiers[1].max, tier2Penalty: tiers[1].penalty,
-    tier3Min: tiers[2].min, tier3Max: tiers[2].max, tier3Penalty: tiers[2].penalty,
-    tier4Min: tiers[3].min, tier4Max: tiers[3].max, tier4Penalty: tiers[3].penalty,
-    tier5Min: tiers[4].min, tier5Max: tiers[4].max, tier5Penalty: tiers[4].penalty,
-    tier6Min: tiers[5].min, tier6Max: tiers[5].max, tier6Penalty: tiers[5].penalty
-  )
+  result = TaxPenaltiesTier(tiers: tiers)
 
 proc parseTaxIncentives(node: KdlNode, ctx: var KdlConfigContext): TaxIncentivesTier =
   ## Parse taxIncentives { tier 1 { minRate=21 maxRate=30 prestigeBonusPerColony=1 } ... }
-  var tiers: array[5, tuple[min: int32, max: int32, prestige: int32]]
+  ## Returns Table indexed by tier number
+  var tiers = initTable[int32, TaxIncentiveTierData]()
 
   for child in node.children:
     if child.name == "tier" and child.args.len > 0:
-      let tierNum = child.args[0].getInt()
+      let tierNum = int32(child.args[0].getInt())
       if tierNum >= 1 and tierNum <= 5:
-        tiers[tierNum - 1] = (
-          child.requireInt32("minRate", ctx),
-          child.requireInt32("maxRate", ctx),
-          child.requireInt32("prestigeBonusPerColony", ctx)
+        tiers[tierNum] = TaxIncentiveTierData(
+          minRate: child.requireInt32("minRate", ctx),
+          maxRate: child.requireInt32("maxRate", ctx),
+          prestige: child.requireInt32("prestigeBonusPerColony", ctx)
         )
 
-  result = TaxIncentivesTier(
-    tier1Min: tiers[0].min, tier1Max: tiers[0].max, tier1Prestige: tiers[0].prestige,
-    tier2Min: tiers[1].min, tier2Max: tiers[1].max, tier2Prestige: tiers[1].prestige,
-    tier3Min: tiers[2].min, tier3Max: tiers[2].max, tier3Prestige: tiers[2].prestige,
-    tier4Min: tiers[3].min, tier4Max: tiers[3].max, tier4Prestige: tiers[3].prestige,
-    tier5Min: tiers[4].min, tier5Max: tiers[4].max, tier5Prestige: tiers[4].prestige
-  )
+  result = TaxIncentivesTier(tiers: tiers)
 
 proc loadPrestigeConfig*(configPath: string): PrestigeConfig =
   ## Load prestige configuration from KDL file

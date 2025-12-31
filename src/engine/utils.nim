@@ -77,24 +77,8 @@ proc parseResourceRating*(ratingName: string): ResourceRating =
 
 proc shipConfig*(shipClass: ShipClass): ShipStatsConfig =
   ## Get configuration for a ship class
-  case shipClass
-  of ShipClass.Fighter: gameConfig.ships.fighter
-  of ShipClass.Corvette: gameConfig.ships.corvette
-  of ShipClass.Frigate: gameConfig.ships.frigate
-  of ShipClass.Scout: gameConfig.ships.scout
-  of ShipClass.Raider: gameConfig.ships.raider
-  of ShipClass.Destroyer: gameConfig.ships.destroyer
-  of ShipClass.LightCruiser: gameConfig.ships.lightCruiser
-  of ShipClass.Cruiser: gameConfig.ships.cruiser
-  of ShipClass.Battlecruiser: gameConfig.ships.battlecruiser
-  of ShipClass.Battleship: gameConfig.ships.battleship
-  of ShipClass.Dreadnought: gameConfig.ships.dreadnought
-  of ShipClass.SuperDreadnought: gameConfig.ships.superDreadnought
-  of ShipClass.Carrier: gameConfig.ships.carrier
-  of ShipClass.SuperCarrier: gameConfig.ships.supercarrier
-  of ShipClass.ETAC: gameConfig.ships.etac
-  of ShipClass.TroopTransport: gameConfig.ships.troopTransport
-  of ShipClass.PlanetBreaker: gameConfig.ships.planetbreaker
+  ## Direct array access - O(1) lookup
+  gameConfig.ships.ships[shipClass]
 
 proc elUpgradeCost*(level: int32): int32 =
   ## Get ERP cost for advancing from level N to N+1
