@@ -119,7 +119,7 @@ proc getStarbaseRepairCost*(): int =
   ## Calculate repair cost for crippled starbase
   ## Per construction.kdl: 25% of build cost
 
-  let buildCost = globalFacilitiesConfig.starbase.productionCost
+  let buildCost = globalFacilitiesConfig.facilities[FacilityType.Starbase].productionCost
   let multiplier = globalConstructionConfig.repair.starbaseRepairCostMultiplier
 
   return int(float(buildCost) * multiplier)

@@ -1,6 +1,6 @@
-# Config Data Structure Guide
+# Types Structure Guide
 
-**Purpose:** Choose the right data structure for config definitions.
+**Purpose:** Choose the right data structure for type definitions (config and runtime).
 
 ## Decision Matrix
 

@@ -2,7 +2,7 @@
 ## Tracks Space Guild civilian transport between colonies
 ## Source: docs/specs/economy.md Section 3.7, config/population.toml
 import std/[tables]
-import ./core
+import ./[core, starmap]
 
 type
   TransferStatus* {.pure.} = enum
@@ -31,13 +31,7 @@ type
     ptuSizeMillions*: float32
 
     # Transfer costs by planet class (PP per PTU)
-    edenCost*: int32
-    lushCost*: int32
-    benignCost*: int32
-    harshCost*: int32
-    hostileCost*: int32
-    desolateCost*: int32
-    extremeCost*: int32
+    costs*: array[PlanetClass, int32]
 
     # Transfer time
     turnsPerJump*: int32

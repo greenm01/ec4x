@@ -19,7 +19,7 @@ type
 
   ShipsConfig* = object
     ## Ship configuration indexed by semantic ship class
-    ## Uses array pattern for categorical data (see data-guide.md)
+    ## Uses array pattern for categorical data (see types-guide.md)
     ships*: array[ShipClass, ShipStatsConfig]
     salvage*: SalvageConfig
 

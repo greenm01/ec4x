@@ -7,49 +7,43 @@ import kdl
 import kdl_helpers
 import ../../common/logger
 import ../types/config
+import ../types/facilities
 
-proc parseSpaceport(node: KdlNode, ctx: var KdlConfigContext): SpaceportConfig =
-  result = SpaceportConfig(
+proc parseFacilityStats(
+    node: KdlNode, facilityType: FacilityType, ctx: var KdlConfigContext
+): FacilityStatsConfig =
+  ## Parse facility stats from KDL node
+  ## Unified parser for all facility types
+  result = FacilityStatsConfig(
     minCST: node.requireInt32("minCST", ctx),
     buildCost: node.requireInt32("buildCost", ctx),
     maintenancePercent: node.requireFloat32("maintenancePercent", ctx),
     defenseStrength: node.requireInt32("defenseStrength", ctx),
-    docks: node.requireInt32("docks", ctx)
   )
 
-proc parseShipyard(node: KdlNode, ctx: var KdlConfigContext): ShipyardConfig =
-  result = ShipyardConfig(
-    minCST: node.requireInt32("minCST", ctx),
-    buildCost: node.requireInt32("buildCost", ctx),
-    maintenancePercent: node.requireFloat32("maintenancePercent", ctx),
-    defenseStrength: node.requireInt32("defenseStrength", ctx),
-    prerequisite: node.requireString("prerequisite", ctx),
-    docks: node.requireInt32("docks", ctx)
-  )
-
-proc parseDrydock(node: KdlNode, ctx: var KdlConfigContext): DrydockConfig =
-  result = DrydockConfig(
-    minCST: node.requireInt32("minCST", ctx),
-    buildCost: node.requireInt32("buildCost", ctx),
-    maintenancePercent: node.requireFloat32("maintenancePercent", ctx),
-    defenseStrength: node.requireInt32("defenseStrength", ctx),
-    prerequisite: node.requireString("prerequisite", ctx),
-    docks: node.requireInt32("docks", ctx)
-  )
-
-proc parseStarbase(node: KdlNode, ctx: var KdlConfigContext): StarbaseConfig =
-  result = StarbaseConfig(
-    minCST: node.requireInt32("minCST", ctx),
-    buildCost: node.requireInt32("buildCost", ctx),
-    maintenancePercent: node.requireFloat32("maintenancePercent", ctx),
-    attackStrength: node.requireInt32("attackStrength", ctx),
-    defenseStrength: node.requireInt32("defenseStrength", ctx),
-    prerequisite: node.requireString("prerequisite", ctx)
-  )
+  # Type-specific fields
+  case facilityType
+  of FacilityType.Spaceport:
+    result.docks = node.requireInt32("docks", ctx)
+    result.attackStrength = 0
+    result.prerequisite = ""
+  of FacilityType.Shipyard:
+    result.docks = node.requireInt32("docks", ctx)
+    result.prerequisite = node.requireString("prerequisite", ctx)
+    result.attackStrength = 0
+  of FacilityType.Drydock:
+    result.docks = node.requireInt32("docks", ctx)
+    result.prerequisite = node.requireString("prerequisite", ctx)
+    result.attackStrength = 0
+  of FacilityType.Starbase:
+    result.attackStrength = node.requireInt32("attackStrength", ctx)
+    result.prerequisite = node.requireString("prerequisite", ctx)
+    result.docks = 0
 
 proc loadFacilitiesConfig*(configPath: string): FacilitiesConfig =
   ## Load facilities configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
+  ## Builds array indexed by FacilityType for O(1) access
   let doc = loadKdlConfig(configPath)
   var ctx = newContext(configPath)
 
@@ -60,13 +54,16 @@ proc loadFacilitiesConfig*(configPath: string): FacilitiesConfig =
       case child.name
       of "spaceport":
         ctx.withNode("spaceport"):
-          result.spaceport = parseSpaceport(child, ctx)
+          result.facilities[FacilityType.Spaceport] =
+            parseFacilityStats(child, FacilityType.Spaceport, ctx)
       of "shipyard":
         ctx.withNode("shipyard"):
-          result.shipyard = parseShipyard(child, ctx)
+          result.facilities[FacilityType.Shipyard] =
+            parseFacilityStats(child, FacilityType.Shipyard, ctx)
       of "drydock":
         ctx.withNode("drydock"):
-          result.drydock = parseDrydock(child, ctx)
+          result.facilities[FacilityType.Drydock] =
+            parseFacilityStats(child, FacilityType.Drydock, ctx)
       else:
         discard
 
@@ -76,6 +73,7 @@ proc loadFacilitiesConfig*(configPath: string): FacilitiesConfig =
     for child in orbitalNode.children:
       if child.name == "starbase":
         ctx.withNode("starbase"):
-          result.starbase = parseStarbase(child, ctx)
+          result.facilities[FacilityType.Starbase] =
+            parseFacilityStats(child, FacilityType.Starbase, ctx)
 
   logInfo("Config", "Loaded facilities configuration", "path=", configPath)

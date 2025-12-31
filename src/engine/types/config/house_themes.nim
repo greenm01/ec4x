@@ -1,22 +1,17 @@
 import std/tables
 
 type
+  HouseThemeData* = object
+    ## Theme data for a single house
+    name*: string
+    color*: string
+
   ThemeEntry* = object
     name*: string
     description*: string
-    # All 12 houses inline
-    house0Name*, house0Color*: string
-    house1Name*, house1Color*: string
-    house2Name*, house2Color*: string
-    house3Name*, house3Color*: string
-    house4Name*, house4Color*: string
-    house5Name*, house5Color*: string
-    house6Name*, house6Color*: string
-    house7Name*, house7Color*: string
-    house8Name*, house8Color*: string
-    house9Name*, house9Color*: string
-    house10Name*, house10Color*: string
-    house11Name*, house11Color*: string
+    # Uses Table for numbered houses (0-11)
+    ## Per types-guide.md: Use Table[int32, T] for numbered sequences
+    houses*: Table[int32, HouseThemeData]
 
   HouseTheme* = object
     name*: string

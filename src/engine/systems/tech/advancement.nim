@@ -117,6 +117,9 @@ const
   maxCloakingTech* = 15 # CLK extended
   maxShieldTech* = 15 # SLD extended
   maxCounterIntelligence* = 15 # CIC extended
+  maxStrategicLiftTech* = 15 # STL extended for long games
+  maxFlagshipCommandTech* = 6 # FC limited to 6 levels
+  maxStrategicCommandTech* = 5 # SC limited to 5 levels
   maxFighterDoctrine* = 3 # FD limited to 3 doctrines
   maxAdvancedCarrierOps* = 3 # ACO limited to 3 levels
 
@@ -306,6 +309,9 @@ proc attemptTechAdvancement*(
     of TechField.CloakingTech: tree.levels.cloakingTech
     of TechField.ShieldTech: tree.levels.shieldTech
     of TechField.CounterIntelligence: tree.levels.counterIntelligence
+    of TechField.StrategicLiftTech: tree.levels.stl
+    of TechField.FlagshipCommandTech: tree.levels.fc
+    of TechField.StrategicCommandTech: tree.levels.sc
     of TechField.FighterDoctrine: tree.levels.fighterDoctrine
     of TechField.AdvancedCarrierOps: tree.levels.advancedCarrierOps
 
@@ -319,6 +325,9 @@ proc attemptTechAdvancement*(
     of TechField.CloakingTech: maxCloakingTech
     of TechField.ShieldTech: maxShieldTech
     of TechField.CounterIntelligence: maxCounterIntelligence
+    of TechField.StrategicLiftTech: maxStrategicLiftTech
+    of TechField.FlagshipCommandTech: maxFlagshipCommandTech
+    of TechField.StrategicCommandTech: maxStrategicCommandTech
     of TechField.FighterDoctrine: maxFighterDoctrine
     of TechField.AdvancedCarrierOps: maxAdvancedCarrierOps
 
@@ -353,6 +362,12 @@ proc attemptTechAdvancement*(
     tree.levels.shieldTech += 1
   of TechField.CounterIntelligence:
     tree.levels.counterIntelligence += 1
+  of TechField.StrategicLiftTech:
+    tree.levels.stl += 1
+  of TechField.FlagshipCommandTech:
+    tree.levels.fc += 1
+  of TechField.StrategicCommandTech:
+    tree.levels.sc += 1
   of TechField.FighterDoctrine:
     tree.levels.fighterDoctrine += 1
   of TechField.AdvancedCarrierOps:

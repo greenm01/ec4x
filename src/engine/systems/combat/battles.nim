@@ -118,7 +118,7 @@ proc getTargetBucket(shipClass: ShipClass): TargetBucket =
 proc getStarbaseStats(wepLevel: int): ShipStats =
   ## Load starbase combat stats from facilities.toml
   ## Applies WEP tech modifications like ships
-  let facilityConfig = globalFacilitiesConfig.starbase
+  let facilityConfig = globalFacilitiesConfig.facilities[FacilityType.Starbase]
 
   # Base stats from facilities.toml
   var stats = ShipStats(
@@ -511,7 +511,7 @@ proc executeCombat(
       if systemOwner.isSome and systemOwner.get() == defenderTF.house:
         let colonyOpt = state.colonies.entities.getEntity(systemId)
         if colonyOpt.isSome and colonyOpt.get().starbases.len > 0:
-          starbaseBonus = globalFacilitiesConfig.starbase.economic_lift_bonus
+          starbaseBonus = globalFacilitiesConfig.facilities[FacilityType.Starbase].economic_lift_bonus
       let defenderRoll = detectionRng.rand(1 .. 10) + defenderELI + starbaseBonus
 
       logInfo(

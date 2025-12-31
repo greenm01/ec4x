@@ -23,14 +23,16 @@ type
     goodMax*: int32
     highMax*: int32
 
+  IuMilestoneData* = object
+    ## Prestige reward for reaching an IU milestone
+    prestige*: int32
+
   EconomicPrestigeConfig* = object
     techAdvancement*: int32
     establishColony*: int32
     maxPopulation*: int32
-    iuMilestone50*: int32
-    iuMilestone75*: int32
-    iuMilestone100*: int32
-    iuMilestone150*: int32
+    ## Per types-guide.md: Use Table[int32, T] for numbered sequences
+    iuMilestones*: Table[int32, IuMilestoneData]  # Keys: 50, 75, 100, 150
     terraformPlanet*: int32
 
   MilitaryPrestigeConfig* = object
@@ -106,7 +108,7 @@ type
 
   TaxPenaltiesTier* = object
     ## Tax penalties configuration
-    ## Uses Table pattern for numbered tiers (see data-guide.md)
+    ## Uses Table pattern for numbered tiers (see types-guide.md)
     tiers*: Table[int32, TaxPenaltyTierData]
 
   TaxIncentiveTierData* = object
@@ -117,7 +119,7 @@ type
 
   TaxIncentivesTier* = object
     ## Tax incentives configuration
-    ## Uses Table pattern for numbered tiers (see data-guide.md)
+    ## Uses Table pattern for numbered tiers (see types-guide.md)
     tiers*: Table[int32, TaxIncentiveTierData]
 
   PrestigeConfig* = object ## Complete prestige configuration loaded from KDL

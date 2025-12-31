@@ -35,7 +35,7 @@ proc createHomeWorld*(
   # Create Spaceports
   let house = state.houses.entities.getEntity(owner).get()
   let cstLevel = house.techTree.levels.cst
-  let baseSpaceportDocks = gameConfig.facilities.spaceport.docks
+  let baseSpaceportDocks = gameConfig.facilities.facilities[FacilityType.Spaceport].docks
   let effectiveSpaceportDocks =
     calculateEffectiveDocks(baseSpaceportDocks, cstLevel)
   for i in 0 ..< gameSetup.startingFacilities.spaceports:
@@ -52,7 +52,7 @@ proc createHomeWorld*(
     state.spaceports.entities.addEntity(spaceportId, spaceport)
     spaceportIds.add(spaceportId)
 
-  let baseShipyardDocks = gameConfig.facilities.shipyard.docks
+  let baseShipyardDocks = gameConfig.facilities.facilities[FacilityType.Shipyard].docks
   let effectiveShipyardDocks = calculateEffectiveDocks(baseShipyardDocks, cstLevel)
   for i in 0 ..< gameSetup.startingFacilities.shipyards:
     let shipyardId = state.generateShipyardId()
@@ -70,7 +70,7 @@ proc createHomeWorld*(
     shipyardIds.add(shipyardId)
 
   # Create Drydocks
-  let baseDrydockDocks = gameConfig.facilities.drydock.docks
+  let baseDrydockDocks = gameConfig.facilities.facilities[FacilityType.Drydock].docks
   let effectiveDrydockDocks = calculateEffectiveDocks(baseDrydockDocks, cstLevel)
   for i in 0 ..< gameSetup.startingFacilities.drydocks:
     let drydockId = state.generateDrydockId()
@@ -90,7 +90,7 @@ proc createHomeWorld*(
   # Create Ground Batteries
   for i in 0 ..< gameSetup.startingGroundForces.groundBatteries:
     let groundUnitId = state.generateGroundUnitId()
-    let gbConfig = gameConfig.groundUnits.groundBattery
+    let gbConfig = gameConfig.groundUnits.units[GroundUnitType.GroundBattery]
     let groundBattery = GroundUnit(
       id: groundUnitId,
       houseId: owner,
@@ -110,7 +110,7 @@ proc createHomeWorld*(
   # Create Armies
   for i in 0 ..< gameSetup.startingGroundForces.armies:
     let groundUnitId = state.generateGroundUnitId()
-    let armyConfig = gameConfig.groundUnits.army
+    let armyConfig = gameConfig.groundUnits.units[GroundUnitType.Army]
     let army = GroundUnit(
       id: groundUnitId,
       houseId: owner,
@@ -130,7 +130,7 @@ proc createHomeWorld*(
   # Create Marines
   for i in 0 ..< gameSetup.startingGroundForces.marines:
     let groundUnitId = state.generateGroundUnitId()
-    let marineConfig = gameConfig.groundUnits.marineDivision
+    let marineConfig = gameConfig.groundUnits.units[GroundUnitType.Marine]
     let marine = GroundUnit(
       id: groundUnitId,
       houseId: owner,

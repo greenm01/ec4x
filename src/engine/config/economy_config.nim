@@ -7,7 +7,7 @@ import std/strutils
 import kdl
 import kdl_helpers
 import ../../common/logger
-import ../types/config
+import ../types/[config, starmap]
 
 proc parsePopulation(node: KdlNode, ctx: var KdlConfigContext): PopulationConfig =
   result = PopulationConfig(
@@ -47,24 +47,24 @@ proc parseRawMaterialEfficiency(
 
   for child in node.children:
     if child.name == "material" and child.args.len > 0:
-      # Parse material quality from string like "Very Poor" -> VeryPoor
+      # Parse resource rating from string like "Very Poor" -> VeryPoor
       let materialStr = child.args[0].getString().replace(" ", "")
-      let quality = parseEnum[MaterialQuality](materialStr)
+      let quality = parseEnum[ResourceRating](materialStr)
 
-      # Parse all planet type values
-      result.multipliers[quality][PlanetType.Eden] =
+      # Parse all planet class values
+      result.multipliers[quality][PlanetClass.Eden] =
         child.requireFloat32("eden", ctx)
-      result.multipliers[quality][PlanetType.Lush] =
+      result.multipliers[quality][PlanetClass.Lush] =
         child.requireFloat32("lush", ctx)
-      result.multipliers[quality][PlanetType.Benign] =
+      result.multipliers[quality][PlanetClass.Benign] =
         child.requireFloat32("benign", ctx)
-      result.multipliers[quality][PlanetType.Harsh] =
+      result.multipliers[quality][PlanetClass.Harsh] =
         child.requireFloat32("harsh", ctx)
-      result.multipliers[quality][PlanetType.Hostile] =
+      result.multipliers[quality][PlanetClass.Hostile] =
         child.requireFloat32("hostile", ctx)
-      result.multipliers[quality][PlanetType.Desolate] =
+      result.multipliers[quality][PlanetClass.Desolate] =
         child.requireFloat32("desolate", ctx)
-      result.multipliers[quality][PlanetType.Extreme] =
+      result.multipliers[quality][PlanetClass.Extreme] =
         child.requireFloat32("extreme", ctx)
 
 proc parseTaxMechanics(

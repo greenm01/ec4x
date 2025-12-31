@@ -4,7 +4,7 @@ export PlanetClass
 type
   TransferCostsConfig* = object
     ## Guild transfer costs indexed by planet class
-    ## Uses array pattern for categorical data (see data-guide.md)
+    ## Uses array pattern for categorical data (see types-guide.md)
     costs*: array[PlanetClass, int32]
 
   TransferTimeConfig* = object

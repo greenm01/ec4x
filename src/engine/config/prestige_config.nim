@@ -62,7 +62,9 @@ proc parsePrestigeEvents(node: KdlNode, ctx: var KdlConfigContext): tuple[
   penalties: PenaltiesPrestigeConfig
 ] =
   ## Parse prestigeEvents { techAdvancement { value 2 } shipDestroyed { value 1 victimLoss -1 } ... }
-  var economic: EconomicPrestigeConfig
+  var economic = EconomicPrestigeConfig(
+    iuMilestones: initTable[int32, IuMilestoneData]()
+  )
   var military: MilitaryPrestigeConfig
   var espionage: EspionagePrestigeConfig
   var espionageVictim: EspionageVictimPrestigeConfig

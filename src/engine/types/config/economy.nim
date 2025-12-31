@@ -1,24 +1,8 @@
 import std/tables
+import ../starmap  # Import PlanetClass and ResourceRating from starmap
+export PlanetClass, ResourceRating  # Re-export for other config modules
 
 type
-  PlanetType* {.pure.} = enum
-    ## Classification of planet habitability affecting resource extraction
-    Eden
-    Lush
-    Benign
-    Harsh
-    Hostile
-    Desolate
-    Extreme
-
-  MaterialQuality* {.pure.} = enum
-    ## Quality rating of raw material deposits
-    VeryPoor
-    Poor
-    Abundant
-    Rich
-    VeryRich
-
   PopulationConfig* = object
     naturalGrowthRate*: float32
     growthRatePerStarbase*: float32
@@ -35,7 +19,7 @@ type
 
   RawMaterialEfficiencyConfig* = object
     ## Configuration for raw material extraction efficiency multipliers
-    multipliers*: array[MaterialQuality, array[PlanetType, float32]]
+    multipliers*: array[ResourceRating, array[PlanetClass, float32]]
 
   TaxMechanicsConfig* = object
     taxAveragingWindowTurns*: int32

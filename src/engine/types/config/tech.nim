@@ -1,9 +1,9 @@
 ## Tech configuration types
-## Note: PlanetType is imported from economy config types
+## Note: PlanetClass is imported from economy config types (via starmap)
 
 import std/tables
 import ./economy
-export PlanetType
+export PlanetClass
 
 type
   ElLevelData* = object
@@ -165,8 +165,8 @@ type
     levels*: Table[int32, AcoLevelData]
 
   TerCostsConfig* = object
-    ## Terraforming upgrade costs by planet type
-    costs*: array[PlanetType, TerraformingUpgradeCostData]
+    ## Terraforming upgrade costs by planet class
+    costs*: array[PlanetClass, TerraformingUpgradeCostData]
 
   TechConfig* = object
     ## Complete technology configuration loaded from KDL

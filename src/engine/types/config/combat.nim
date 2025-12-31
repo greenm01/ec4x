@@ -1,17 +1,11 @@
-import std/tables
-
 type
   CombatMechanicsConfig* = object
     criticalHitRoll*: int32
     retreatAfterRound*: int32
     maxCombatRounds*: int32
     desperationRoundTrigger*: int32
-    starbaseCriticalReroll*: bool
-    starbaseDieModifier*: int32
 
   CerModifiersConfig* = object
-    scouts*: int32
-    surprise*: int32
     ambush*: int32
 
   CerTableConfig* = object
@@ -32,18 +26,6 @@ type
     goodMax*: int32
     critical*: int32
 
-  SldCombatLevelData* = object
-    ## Shield level combat data (legacy - now in tech.kdl)
-    chance*: int32  # Currently unused (all 0s in original config)
-    roll*: int32
-    blocked*: int32  # Renamed from 'block' (reserved keyword)
-
-  PlanetaryShieldsConfig* = object
-    ## Planetary shields configuration (moved to tech.kdl)
-    ## Uses Table pattern for numbered levels (see data-guide.md)
-    ## Parser returns empty default - shield data now in TechConfig.sld
-    levels*: Table[int32, SldCombatLevelData]
-
   DamageRulesConfig* = object
     crippledAsMultiplier*: float32
     crippledMaintenanceMultiplier*: float32
@@ -57,7 +39,6 @@ type
     retreatToNearestFriendly*: bool
 
   BlockadeConfig* = object
-    blockadeProductionPenalty*: float32
     blockadePrestigePenalty*: int32
 
   InvasionConfig* = object
@@ -78,7 +59,6 @@ type
     cerTable*: CerTableConfig
     bombardment*: BombardmentConfig
     groundCombat*: GroundCombatConfig
-    planetaryShields*: PlanetaryShieldsConfig
     damageRules*: DamageRulesConfig
     retreatRules*: RetreatRulesConfig
     blockade*: BlockadeConfig

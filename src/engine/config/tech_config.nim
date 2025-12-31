@@ -365,49 +365,49 @@ proc parseTerraformingUpgradeCosts(
   result = TerCostsConfig()
 
   # Parse each planet type's costs
-  result.costs[PlanetType.Extreme] = TerraformingUpgradeCostData(
+  result.costs[PlanetClass.Extreme] = TerraformingUpgradeCostData(
     terRequired: node.requireInt32("extremeTer", ctx),
     puMin: node.requireInt32("extremePuMin", ctx),
     puMax: node.requireInt32("extremePuMax", ctx),
     ppCost: node.requireInt32("extremePp", ctx)
   )
 
-  result.costs[PlanetType.Desolate] = TerraformingUpgradeCostData(
+  result.costs[PlanetClass.Desolate] = TerraformingUpgradeCostData(
     terRequired: node.requireInt32("desolateTer", ctx),
     puMin: node.requireInt32("desolatePuMin", ctx),
     puMax: node.requireInt32("desolatePuMax", ctx),
     ppCost: node.requireInt32("desolatePp", ctx)
   )
 
-  result.costs[PlanetType.Hostile] = TerraformingUpgradeCostData(
+  result.costs[PlanetClass.Hostile] = TerraformingUpgradeCostData(
     terRequired: node.requireInt32("hostileTer", ctx),
     puMin: node.requireInt32("hostilePuMin", ctx),
     puMax: node.requireInt32("hostilePuMax", ctx),
     ppCost: node.requireInt32("hostilePp", ctx)
   )
 
-  result.costs[PlanetType.Harsh] = TerraformingUpgradeCostData(
+  result.costs[PlanetClass.Harsh] = TerraformingUpgradeCostData(
     terRequired: node.requireInt32("harshTer", ctx),
     puMin: node.requireInt32("harshPuMin", ctx),
     puMax: node.requireInt32("harshPuMax", ctx),
     ppCost: node.requireInt32("harshPp", ctx)
   )
 
-  result.costs[PlanetType.Benign] = TerraformingUpgradeCostData(
+  result.costs[PlanetClass.Benign] = TerraformingUpgradeCostData(
     terRequired: node.requireInt32("benignTer", ctx),
     puMin: node.requireInt32("benignPuMin", ctx),
     puMax: node.requireInt32("benignPuMax", ctx),
     ppCost: node.requireInt32("benignPp", ctx)
   )
 
-  result.costs[PlanetType.Lush] = TerraformingUpgradeCostData(
+  result.costs[PlanetClass.Lush] = TerraformingUpgradeCostData(
     terRequired: node.requireInt32("lushTer", ctx),
     puMin: node.requireInt32("lushPuMin", ctx),
     puMax: node.requireInt32("lushPuMax", ctx),
     ppCost: node.requireInt32("lushPp", ctx)
   )
 
-  result.costs[PlanetType.Eden] = TerraformingUpgradeCostData(
+  result.costs[PlanetClass.Eden] = TerraformingUpgradeCostData(
     terRequired: node.requireInt32("edenTer", ctx),
     puMin: node.requireInt32("edenPuMin", ctx),
     puMax: node.requireInt32("edenPuMax", ctx),

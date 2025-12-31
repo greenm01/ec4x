@@ -3,7 +3,6 @@
 ## Loads combat mechanics from config/combat.kdl using nimkdl
 ## Allows runtime configuration for combat rules, CER tables, and special mechanics
 
-import std/tables
 import kdl
 import kdl_helpers
 import ../../common/logger
@@ -14,9 +13,7 @@ proc parseCombatMechanics(node: KdlNode, ctx: var KdlConfigContext): CombatMecha
     criticalHitRoll: node.requireInt32("criticalHitRoll", ctx),
     retreatAfterRound: node.requireInt32("retreatAfterRound", ctx),
     maxCombatRounds: node.requireInt32("maxCombatRounds", ctx),
-    desperationRoundTrigger: node.requireInt32("desperationRoundTrigger", ctx),
-    starbaseCriticalReroll: false,  # Removed from new config
-    starbaseDieModifier: 0'i32  # Removed from new config
+    desperationRoundTrigger: node.requireInt32("desperationRoundTrigger", ctx)
   )
 
 proc parseCerTable(node: KdlNode, ctx: var KdlConfigContext): CerTableConfig =
@@ -112,7 +109,6 @@ proc parseRetreatRules(node: KdlNode, ctx: var KdlConfigContext): RetreatRulesCo
 
 proc parseBlockade(node: KdlNode, ctx: var KdlConfigContext): BlockadeConfig =
   result = BlockadeConfig(
-    blockadeProductionPenalty: 0.0,  # Moved to economy.kdl
     blockadePrestigePenalty: node.requireInt32("prestigePenaltyPerTurn", ctx)
   )
 
@@ -150,8 +146,6 @@ proc loadCombatConfig*(configPath: string): CombatConfig =
       of "modifiers":
         ctx.withNode("modifiers"):
           result.cerModifiers = CerModifiersConfig(
-            scouts: 0,  # Removed
-            surprise: 0,  # Removed
             ambush: child.requireInt32("ambushBonus", ctx)
           )
       of "spaceCombatTable":
@@ -184,10 +178,5 @@ proc loadCombatConfig*(configPath: string): CombatConfig =
   # Parse targeting { }
   ctx.withNode("targeting"):
     result.targeting = parseTargeting(doc.requireNode("targeting", ctx), ctx)
-
-  # Planetary shields removed - now in tech.kdl
-  result.planetaryShields = PlanetaryShieldsConfig(
-    levels: initTable[int32, SldCombatLevelData]()  # Empty Table
-  )
 
   logInfo("Config", "Loaded combat configuration", "path=", configPath)

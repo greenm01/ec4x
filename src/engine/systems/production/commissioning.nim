@@ -389,7 +389,7 @@ proc commissionPlanetaryDefense*(
         let colony = colonyOpt.get()
 
         # Create new spaceport (docks from facilities_config.toml, scaled by CST)
-        let baseDocks = globalFacilitiesConfig.spaceport.docks
+        let baseDocks = globalFacilitiesConfig.facilities[FacilityType.Spaceport].docks
         let houseOpt = gs_helpers.getHouse(state, colony.owner)
         if houseOpt.isNone:
           continue
@@ -444,7 +444,7 @@ proc commissionPlanetaryDefense*(
           continue
 
         # Create new shipyard (docks from facilities_config.toml, scaled by CST)
-        let baseDocks = globalFacilitiesConfig.shipyard.docks
+        let baseDocks = globalFacilitiesConfig.facilities[FacilityType.Shipyard].docks
         let houseOpt = gs_helpers.getHouse(state, colony.owner)
         if houseOpt.isNone:
           continue
@@ -500,7 +500,7 @@ proc commissionPlanetaryDefense*(
           continue
 
         # Create new drydock (docks from facilities_config.toml, scaled by CST)
-        let baseDocks = globalFacilitiesConfig.drydock.docks
+        let baseDocks = globalFacilitiesConfig.facilities[FacilityType.Drydock].docks
         let houseOpt = gs_helpers.getHouse(state, colony.owner)
         if houseOpt.isNone:
           continue
@@ -551,9 +551,9 @@ proc commissionPlanetaryDefense*(
           id: unitId,
           unitType: GroundUnitType.GroundBattery,
           owner: colony.owner,
-          attackStrength: int32(globalGroundUnitsConfig.ground_battery.attack_strength),
+          attackStrength: int32(globalGroundUnitsConfig.units[GroundUnitType.GroundBattery].attack_strength),
           defenseStrength:
-            int32(globalGroundUnitsConfig.ground_battery.defense_strength),
+            int32(globalGroundUnitsConfig.units[GroundUnitType.GroundBattery].defense_strength),
           state: CombatState.Undamaged,
         )
         state.groundUnits.entities.addEntity(unitId, battery)
@@ -613,7 +613,7 @@ proc commissionPlanetaryDefense*(
         var colony = colonyOpt.get()
 
         # Get population cost from config
-        let marinePopCost = globalGroundUnitsConfig.marine_division.population_cost
+        let marinePopCost = globalGroundUnitsConfig.units[GroundUnitType.Marine].population_cost
         let minViablePop = population_config.minViablePopulation()
 
         if colony.souls < marinePopCost:
@@ -636,9 +636,9 @@ proc commissionPlanetaryDefense*(
             unitType: GroundUnitType.Marine,
             owner: colony.owner,
             attackStrength:
-              int32(globalGroundUnitsConfig.marine_division.attack_strength),
+              int32(globalGroundUnitsConfig.units[GroundUnitType.Marine].attack_strength),
             defenseStrength:
-              int32(globalGroundUnitsConfig.marine_division.defense_strength),
+              int32(globalGroundUnitsConfig.units[GroundUnitType.Marine].defense_strength),
             state: CombatState.Undamaged,
           )
           state.groundUnits.entities.addEntity(unitId, marine)
@@ -673,7 +673,7 @@ proc commissionPlanetaryDefense*(
         var colony = colonyOpt.get()
 
         # Get population cost from config
-        let armyPopCost = globalGroundUnitsConfig.army.population_cost
+        let armyPopCost = globalGroundUnitsConfig.units[GroundUnitType.Army].population_cost
         let minViablePop = population_config.minViablePopulation()
 
         if colony.souls < armyPopCost:
@@ -695,8 +695,8 @@ proc commissionPlanetaryDefense*(
             id: unitId,
             unitType: GroundUnitType.Army,
             owner: colony.owner,
-            attackStrength: int32(globalGroundUnitsConfig.army.attack_strength),
-            defenseStrength: int32(globalGroundUnitsConfig.army.defense_strength),
+            attackStrength: int32(globalGroundUnitsConfig.units[GroundUnitType.Army].attack_strength),
+            defenseStrength: int32(globalGroundUnitsConfig.units[GroundUnitType.Army].defense_strength),
             state: CombatState.Undamaged,
           )
           state.groundUnits.entities.addEntity(unitId, army)

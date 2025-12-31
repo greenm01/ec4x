@@ -36,7 +36,7 @@ type
 
   EspionageDetectionConfig* = object
     ## Espionage detection configuration
-    ## Uses Table for CIC thresholds, seq for ordered CIP tiers (see data-guide.md)
+    ## Uses Table for CIC thresholds, seq for ordered CIP tiers (see types-guide.md)
     cipPerRoll*: int32
     cicThresholds*: Table[int32, int32]  # CIC level → detection threshold
     cipTiers*: seq[CIPTierData]  # Ordered tiers for CIP modifiers
