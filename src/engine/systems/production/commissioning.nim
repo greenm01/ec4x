@@ -66,7 +66,7 @@ proc getOperationalStarbaseCount*(state: GameState, colonyId: ColonyId): int =
     return 0
 
   for starbaseId in state.starbases.byColony[colonyId]:
-    let starbaseOpt = state.starbases.entities.getEntity(starbaseId)
+    let starbaseOpt = state.starbases.entities.entity(starbaseId)
     if starbaseOpt.isSome:
       let starbase = starbaseOpt.get()
       if not starbase.isCrippled:
@@ -114,7 +114,7 @@ proc autoLoadFightersToCarriers(
   for colonyId in modifiedColonies.keys:
     # Re-fetch colony from state to get current fighterSquadronIds
     # (they may have been modified by previous auto-loading operations)
-    let colonyOpt = state.colonies.entities.getEntity(colonyId)
+    let colonyOpt = state.colonies.entities.entity(colonyId)
     if colonyOpt.isNone:
       continue
 
@@ -189,7 +189,7 @@ proc autoLoadFightersToCarriers(
         fightersToLoad.delete(0)
 
         # Get carrier squadron for updating
-        let carrierSquadronOpt = state.squadrons[].entities.getEntity(carrierSquadronId)
+        let carrierSquadronOpt = state.squadrons[].entities.entity(carrierSquadronId)
         if carrierSquadronOpt.isNone:
           break
 
@@ -202,7 +202,7 @@ proc autoLoadFightersToCarriers(
         # Remove fighter from colony
         # Note: We need to re-fetch colony from state since it may have been
         # updated by previous iterations
-        let colonyOpt = state.colonies.entities.getEntity(colonyId)
+        let colonyOpt = state.colonies.entities.entity(colonyId)
         if colonyOpt.isSome:
           var updatedColony = colonyOpt.get()
           # Filter out the loaded fighter squadron
@@ -320,7 +320,7 @@ proc commissionPlanetaryDefense*(
 
         # Update all fighter ships with squadronId
         for shipId in fighterShipIds:
-          var ship = state.ships.entities.getEntity(shipId).get()
+          var ship = state.ships.entities.entity(shipId).get()
           ship.squadronId = squadronId
           state.ships.entities.updateEntity(shipId, ship)
 

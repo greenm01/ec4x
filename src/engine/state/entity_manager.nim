@@ -2,7 +2,8 @@ import std/[options, tables]
 import ../types/[core]
 
 # Generic getter that works for any collection using our EntityManager pattern
-proc getEntity*[ID, T](collection: EntityManager[ID, T], id: ID): Option[T] =
+# Per NEP-1: getters should not use "get" prefix
+proc entity*[ID, T](collection: EntityManager[ID, T], id: ID): Option[T] =
   if collection.index.contains(id):
     let idx = collection.index[id]
     return some(collection.data[idx])

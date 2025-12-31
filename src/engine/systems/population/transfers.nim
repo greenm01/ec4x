@@ -400,7 +400,7 @@ proc canGuildTraversePath*(
       return false
 
     # If system has a colony, it must be friendly (not enemy-controlled)
-    let colonyOpt = state.colonies.entities.getEntity(systemId)
+    let colonyOpt = state.colonies.entities.entity(systemId)
     if colonyOpt.isSome:
       let colony = colonyOpt.get()
       if colony.owner != transferringHouse:
@@ -421,7 +421,7 @@ proc resolvePopulationTransfers*(
 
   for transfer in packet.populationTransfers:
     # Validate source colony exists and is owned by house
-    let sourceColonyOpt = state.colonies.entities.getEntity(transfer.sourceColony)
+    let sourceColonyOpt = state.colonies.entities.entity(transfer.sourceColony)
     if sourceColonyOpt.isNone:
       error "Transfer failed: source colony ", transfer.sourceColony, " not found"
       continue
@@ -433,7 +433,7 @@ proc resolvePopulationTransfers*(
       continue
 
     # Validate destination colony exists and is owned by house
-    let destColonyOpt = state.colonies.entities.getEntity(transfer.destColony)
+    let destColonyOpt = state.colonies.entities.entity(transfer.destColony)
     if destColonyOpt.isNone:
       error "Transfer failed: destination colony ", transfer.destColony, " not found"
       continue
@@ -493,7 +493,7 @@ proc resolvePopulationTransfers*(
     let cost = calculateTransferCost(destColony.planetClass, transfer.ptuAmount, jumps)
 
     # Check house treasury and deduct cost
-    let houseOpt = state.houses.entities.getEntity(packet.houseId)
+    let houseOpt = state.houses.entities.entity(packet.houseId)
     if houseOpt.isNone:
       error "Transfer failed: House ", packet.houseId, " not found"
       continue
@@ -563,7 +563,7 @@ proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]
     let soulsToDeliver = transfer.ptuAmount * soulsPerPtu()
 
     # Check destination status using entity_manager
-    let destColonyOpt = state.colonies.entities.getEntity(transfer.destSystem)
+    let destColonyOpt = state.colonies.entities.entity(transfer.destSystem)
     if destColonyOpt.isNone:
       # Destination colony no longer exists
       warn "Transfer ",
@@ -607,7 +607,7 @@ proc resolvePopulationArrivals*(state: var GameState, events: var seq[GameEvent]
       if alternativeDest.isSome:
         # Deliver to alternative colony
         let altSystemId = alternativeDest.get()
-        let altColonyOpt = state.colonies.entities.getEntity(altSystemId)
+        let altColonyOpt = state.colonies.entities.entity(altSystemId)
         if altColonyOpt.isSome:
           var altColony = altColonyOpt.get()
           altColony.souls += soulsToDeliver

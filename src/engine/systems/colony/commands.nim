@@ -16,7 +16,7 @@ proc resolveColonyManagementCommands*(state: var GameState, packet: CommandPacke
   ## Process colony management commands - tax rates, auto-repair toggles, etc.
   for command in packet.colonyManagement:
     # Validate colony exists and is owned using entity_manager accessor
-    let colonyOpt = state.colonies.entities.getEntity(command.colonyId)
+    let colonyOpt = state.colonies.entities.entity(command.colonyId)
     if colonyOpt.isNone:
       error &"Colony management failed: System-{$command.colonyId} has no colony"
       continue

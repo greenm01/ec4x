@@ -71,7 +71,7 @@ suite "Game Initialization - Complete Flow":
     for colony in game.allColonies():
       # Verify spaceports
       for spaceportId in colony.spaceportIds:
-        let spaceportOpt = game.spaceports.entities.getEntity(spaceportId)
+        let spaceportOpt = game.spaceports.entities.entity(spaceportId)
         check spaceportOpt.isSome
         if spaceportOpt.isSome:
           let spaceport = spaceportOpt.get()
@@ -83,7 +83,7 @@ suite "Game Initialization - Complete Flow":
 
       # Verify shipyards
       for shipyardId in colony.shipyardIds:
-        let shipyardOpt = game.shipyards.entities.getEntity(shipyardId)
+        let shipyardOpt = game.shipyards.entities.entity(shipyardId)
         check shipyardOpt.isSome
         if shipyardOpt.isSome:
           let shipyard = shipyardOpt.get()
@@ -96,7 +96,7 @@ suite "Game Initialization - Complete Flow":
 
       # Verify drydocks
       for drydockId in colony.drydockIds:
-        let drydockOpt = game.drydocks.entities.getEntity(drydockId)
+        let drydockOpt = game.drydocks.entities.entity(drydockId)
         check drydockOpt.isSome
         if drydockOpt.isSome:
           let drydock = drydockOpt.get()
@@ -122,7 +122,7 @@ suite "Game Initialization - Complete Flow":
     for colony in game.allColonies():
       # Verify armies
       for armyId in colony.armyIds:
-        let armyOpt = game.groundUnits.entities.getEntity(armyId)
+        let armyOpt = game.groundUnits.entities.entity(armyId)
         check armyOpt.isSome
         if armyOpt.isSome:
           let army = armyOpt.get()
@@ -135,7 +135,7 @@ suite "Game Initialization - Complete Flow":
 
       # Verify marines
       for marineId in colony.marineIds:
-        let marineOpt = game.groundUnits.entities.getEntity(marineId)
+        let marineOpt = game.groundUnits.entities.entity(marineId)
         check marineOpt.isSome
         if marineOpt.isSome:
           let marine = marineOpt.get()
@@ -148,7 +148,7 @@ suite "Game Initialization - Complete Flow":
 
       # Verify ground batteries
       for batteryId in colony.groundBatteryIds:
-        let batteryOpt = game.groundUnits.entities.getEntity(batteryId)
+        let batteryOpt = game.groundUnits.entities.entity(batteryId)
         check batteryOpt.isSome
         if batteryOpt.isSome:
           let battery = batteryOpt.get()

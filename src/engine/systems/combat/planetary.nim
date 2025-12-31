@@ -31,7 +31,7 @@ proc collectPlanetaryCombatIntents*(
         continue
 
       # Validate: fleet exists - using entity_manager
-      let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
+      let fleetOpt = state.fleets.entities.entity(command.fleetId)
       if fleetOpt.isNone:
         continue
 
@@ -160,7 +160,7 @@ proc resolvePlanetaryCombat*(
   for res in result:
     if res.outcome == ResolutionOutcome.Success and res.actualTarget.isSome:
       # Verify fleet is at target location before executing - using entity_manager
-      let fleetOpt = state.fleets.entities.getEntity(res.fleetId)
+      let fleetOpt = state.fleets.entities.entity(res.fleetId)
       if fleetOpt.isSome:
         let fleet = fleetOpt.get()
         let targetSystem = res.actualTarget.get()

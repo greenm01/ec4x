@@ -115,7 +115,7 @@ type
 
 proc validateOwnership*(state: GameState, houseId: HouseId): ValidationResult =
   ## DRY: Validate house exists
-  if state.houses.entities.getEntity(houseId).isNone:
+  if state.houses.entities.entity(houseId).isNone:
     return ValidationResult(valid: false, error: "House does not exist")
   return ValidationResult(valid: true, error: "")
 
@@ -126,7 +126,7 @@ proc validateFleetAtFriendlyColony*(
   ## CRITICAL: All zero-turn fleet/cargo operations require friendly colony
 
   # 1. Check fleet exists
-  let fleetOpt = state.fleets.entities.getEntity(fleetId)
+  let fleetOpt = state.fleets.entities.entity(fleetId)
   if fleetOpt.isNone:
     return ValidationResult(valid: false, error: "Fleet not found")
 
@@ -144,7 +144,7 @@ proc validateFleetAtFriendlyColony*(
     )
 
   let colonyId = state.colonies.bySystem[fleet.location]
-  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  let colonyOpt = state.colonies.entities.entity(colonyId)
   if colonyOpt.isNone:
     return ValidationResult(valid: false, error: "Colony not found")
 
@@ -166,7 +166,7 @@ proc validateColonyOwnership*(
     return ValidationResult(valid: false, error: "Colony not found")
 
   let colonyId = state.colonies.bySystem[systemId]
-  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  let colonyOpt = state.colonies.entities.entity(colonyId)
   if colonyOpt.isNone:
     return ValidationResult(valid: false, error: "Colony not found")
 
@@ -252,7 +252,7 @@ proc validateZeroTurnCommand*(
   case cmd.commandType
   of ZeroTurnCommandType.DetachShips, ZeroTurnCommandType.TransferShips:
     # Validate ship indices
-    let fleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+    let fleetOpt = state.fleets.entities.entity(cmd.sourceFleetId.get())
     if fleetOpt.isNone:
       return ValidationResult(valid: false, error: "Source fleet not found")
     let fleet = fleetOpt.get()
@@ -277,7 +277,7 @@ proc validateZeroTurnCommand*(
           if idx < 0 or idx >= fleet.squadrons.len:
             continue
           let squadronId = fleet.squadrons[idx]
-          let squadronOpt = state.squadrons.entities.getEntity(squadronId)
+          let squadronOpt = state.squadrons.entities.entity(squadronId)
           if squadronOpt.isNone:
             continue
           let squadron = squadronOpt.get()
@@ -286,7 +286,7 @@ proc validateZeroTurnCommand*(
             onlyExpansion = false
           else:
             # Check flagship ship class
-            let flagshipOpt = state.ships.entities.getEntity(squadron.flagshipId)
+            let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
             if flagshipOpt.isSome:
               let flagship = flagshipOpt.get()
               if flagship.shipClass != ShipClass.ETAC:
@@ -307,7 +307,7 @@ proc validateZeroTurnCommand*(
           ValidationResult(valid: false, error: "Target fleet ID required for transfer")
 
       let targetFleetId = cmd.targetFleetId.get()
-      let targetFleetOpt = state.fleets.entities.getEntity(targetFleetId)
+      let targetFleetOpt = state.fleets.entities.entity(targetFleetId)
       if targetFleetOpt.isNone:
         return ValidationResult(valid: false, error: "Target fleet not found")
 
@@ -331,7 +331,7 @@ proc validateZeroTurnCommand*(
       return ValidationResult(valid: false, error: "Target fleet ID required for merge")
 
     let targetFleetId = cmd.targetFleetId.get()
-    let targetFleetOpt = state.fleets.entities.getEntity(targetFleetId)
+    let targetFleetOpt = state.fleets.entities.entity(targetFleetId)
     if targetFleetOpt.isNone:
       return ValidationResult(valid: false, error: "Target fleet not found")
 
@@ -339,7 +339,7 @@ proc validateZeroTurnCommand*(
     if targetFleet.houseId != cmd.houseId:
       return ValidationResult(valid: false, error: "Target fleet not owned by house")
 
-    let sourceFleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+    let sourceFleetOpt = state.fleets.entities.entity(cmd.sourceFleetId.get())
     if sourceFleetOpt.isNone:
       return ValidationResult(valid: false, error: "Source fleet not found")
     let sourceFleet = sourceFleetOpt.get()
@@ -402,7 +402,7 @@ proc validateZeroTurnCommand*(
     # Validate both carriers exist and are at same location
     if cmd.sourceFleetId.isNone:
       return ValidationResult(valid: false, error: "Source fleet ID required")
-    let sourceFleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+    let sourceFleetOpt = state.fleets.entities.entity(cmd.sourceFleetId.get())
     if sourceFleetOpt.isNone:
       return ValidationResult(valid: false, error: "Source fleet not found")
     let sourceFleet = sourceFleetOpt.get()
@@ -459,7 +459,7 @@ proc executeDetachShips*(
   ## Both fleets remain at same location
 
   # Get source fleet via entity manager
-  let sourceFleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+  let sourceFleetOpt = state.fleets.entities.entity(cmd.sourceFleetId.get())
   if sourceFleetOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -553,7 +553,7 @@ proc executeTransferShips*(
   let targetFleetId = cmd.targetFleetId.get()
 
   # Get both fleets via entity manager
-  let sourceFleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+  let sourceFleetOpt = state.fleets.entities.entity(cmd.sourceFleetId.get())
   if sourceFleetOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -565,7 +565,7 @@ proc executeTransferShips*(
       warnings: @[],
     )
 
-  let targetFleetOpt = state.fleets.entities.getEntity(targetFleetId)
+  let targetFleetOpt = state.fleets.entities.entity(targetFleetId)
   if targetFleetOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -645,7 +645,7 @@ proc executeMergeFleets*(
   let targetFleetId = cmd.targetFleetId.get()
 
   # Get both fleets via entity manager
-  let sourceFleetOpt = state.fleets.entities.getEntity(cmd.sourceFleetId.get())
+  let sourceFleetOpt = state.fleets.entities.entity(cmd.sourceFleetId.get())
   if sourceFleetOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -657,7 +657,7 @@ proc executeMergeFleets*(
       warnings: @[],
     )
 
-  let targetFleetOpt = state.fleets.entities.getEntity(targetFleetId)
+  let targetFleetOpt = state.fleets.entities.entity(targetFleetId)
   if targetFleetOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -726,7 +726,7 @@ proc executeLoadCargo*(
       0 # 0 = all available
 
   # Get fleet via entity manager
-  let fleetOpt = state.fleets.entities.getEntity(fleetId)
+  let fleetOpt = state.fleets.entities.entity(fleetId)
   if fleetOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -754,7 +754,7 @@ proc executeLoadCargo*(
     )
 
   let colonyId = state.colonies.bySystem[colonySystem]
-  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  let colonyOpt = state.colonies.entities.entity(colonyId)
   if colonyOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -813,7 +813,7 @@ proc executeLoadCargo*(
       break
 
     # Get squadron entity
-    let squadronOpt = state.squadrons[].entities.getEntity(squadronId)
+    let squadronOpt = state.squadrons[].entities.entity(squadronId)
     if squadronOpt.isNone:
       continue
 
@@ -824,7 +824,7 @@ proc executeLoadCargo*(
       continue
 
     # Get flagship ship entity
-    let flagshipOpt = state.ships.entities.getEntity(squadron.flagshipId)
+    let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
     if flagshipOpt.isNone:
       continue
 
@@ -928,7 +928,7 @@ proc executeUnloadCargo*(
   let fleetId = cmd.sourceFleetId.get()
 
   # Get fleet via entity manager
-  let fleetOpt = state.fleets.entities.getEntity(fleetId)
+  let fleetOpt = state.fleets.entities.entity(fleetId)
   if fleetOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -956,7 +956,7 @@ proc executeUnloadCargo*(
     )
 
   let colonyId = state.colonies.bySystem[colonySystem]
-  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  let colonyOpt = state.colonies.entities.entity(colonyId)
   if colonyOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -976,7 +976,7 @@ proc executeUnloadCargo*(
   # Iterate over squadron IDs, get entities via entity manager
   for squadronId in fleet.squadrons:
     # Get squadron entity
-    let squadronOpt = state.squadrons[].entities.getEntity(squadronId)
+    let squadronOpt = state.squadrons[].entities.entity(squadronId)
     if squadronOpt.isNone:
       continue
 
@@ -987,7 +987,7 @@ proc executeUnloadCargo*(
       continue
 
     # Get flagship ship entity
-    let flagshipOpt = state.ships.entities.getEntity(squadron.flagshipId)
+    let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
     if flagshipOpt.isNone:
       continue
 
@@ -1087,7 +1087,7 @@ proc executeFormSquadron*(
     )
 
   let colonyId = state.colonies.bySystem[colonySystem]
-  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  let colonyOpt = state.colonies.entities.entity(colonyId)
   if colonyOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -1186,7 +1186,7 @@ proc executeTransferShipBetweenSquadrons*(
   # Locate source squadron by searching fleets at this colony
   if state.fleets.bySystem.hasKey(colonySystem):
     for fleetId in state.fleets.bySystem[colonySystem]:
-      let fleetOpt = state.fleets.entities.getEntity(fleetId)
+      let fleetOpt = state.fleets.entities.entity(fleetId)
       if fleetOpt.isNone:
         continue
 
@@ -1213,7 +1213,7 @@ proc executeTransferShipBetweenSquadrons*(
   # Locate target squadron
   if state.fleets.bySystem.hasKey(colonySystem):
     for fleetId in state.fleets.bySystem[colonySystem]:
-      let fleetOpt = state.fleets.entities.getEntity(fleetId)
+      let fleetOpt = state.fleets.entities.entity(fleetId)
       if fleetOpt.isNone:
         continue
 
@@ -1238,7 +1238,7 @@ proc executeTransferShipBetweenSquadrons*(
     )
 
   # Get source squadron via entity manager
-  let sourceSquadOpt = state.squadrons[].entities.getEntity(sourceSquadronId)
+  let sourceSquadOpt = state.squadrons[].entities.entity(sourceSquadronId)
   if sourceSquadOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -1281,7 +1281,7 @@ proc executeTransferShipBetweenSquadrons*(
   let shipId = shipIdOpt.get()
 
   # Get target squadron via entity manager
-  let targetSquadOpt = state.squadrons[].entities.getEntity(targetSquadronId)
+  let targetSquadOpt = state.squadrons[].entities.entity(targetSquadronId)
   if targetSquadOpt.isNone:
     # ROLLBACK: Put ship back in source squadron
     discard squadron_entity.addShip(sourceSquad, shipId, state.ships)
@@ -1353,7 +1353,7 @@ proc executeAssignSquadronToFleet*(
     )
 
   let colonyId = state.colonies.bySystem[colonySystem]
-  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  let colonyOpt = state.colonies.entities.entity(colonyId)
   if colonyOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -1374,7 +1374,7 @@ proc executeAssignSquadronToFleet*(
   # Search fleets at colony using bySystem index
   if state.fleets.bySystem.hasKey(colonySystem):
     for fleetId in state.fleets.bySystem[colonySystem]:
-      let fleetOpt = state.fleets.entities.getEntity(fleetId)
+      let fleetOpt = state.fleets.entities.entity(fleetId)
       if fleetOpt.isNone:
         continue
 
@@ -1410,7 +1410,7 @@ proc executeAssignSquadronToFleet*(
     )
 
   # Get squadron entity to check its type
-  let squadronOpt = state.squadrons[].entities.getEntity(squadronId)
+  let squadronOpt = state.squadrons[].entities.entity(squadronId)
   if squadronOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -1426,7 +1426,7 @@ proc executeAssignSquadronToFleet*(
 
   # Remove squadron from source fleet if it was in one
   if sourceFleetId.isSome:
-    let srcFleetOpt = state.fleets.entities.getEntity(sourceFleetId.get())
+    let srcFleetOpt = state.fleets.entities.entity(sourceFleetId.get())
     if srcFleetOpt.isSome:
       var srcFleet = srcFleetOpt.get()
       srcFleet.squadrons = srcFleet.squadrons.filterIt(it != squadronId)
@@ -1441,7 +1441,7 @@ proc executeAssignSquadronToFleet*(
   if cmd.targetFleetId.isSome:
     # Assign to existing fleet
     let targetId = cmd.targetFleetId.get()
-    let targetFleetOpt = state.fleets.entities.getEntity(targetId)
+    let targetFleetOpt = state.fleets.entities.entity(targetId)
 
     if targetFleetOpt.isNone:
       return ZeroTurnResult(
@@ -1476,7 +1476,7 @@ proc executeAssignSquadronToFleet*(
 
     # Check existing squadrons in fleet
     for existingSquadronId in targetFleet.squadrons:
-      let existingSquadOpt = state.squadrons[].entities.getEntity(existingSquadronId)
+      let existingSquadOpt = state.squadrons[].entities.entity(existingSquadronId)
       if existingSquadOpt.isSome:
         let existingSquad = existingSquadOpt.get()
         if existingSquad.squadronType == SquadronClass.Intel:
@@ -1569,7 +1569,7 @@ proc executeLoadFighters*(
   let carrierSquadronId = cmd.carrierSquadronId.get()
 
   # Get fleet via entity manager
-  let fleetOpt = state.fleets.entities.getEntity(sourceFleetId)
+  let fleetOpt = state.fleets.entities.entity(sourceFleetId)
   if fleetOpt.isNone:
     return ZeroTurnResult(success: false, error: "Fleet not found", warnings: @[])
 
@@ -1583,7 +1583,7 @@ proc executeLoadFighters*(
     )
 
   # Get carrier squadron via entity manager
-  let carrierSquadOpt = state.squadrons[].entities.getEntity(carrierSquadronId)
+  let carrierSquadOpt = state.squadrons[].entities.entity(carrierSquadronId)
   if carrierSquadOpt.isNone:
     return ZeroTurnResult(
       success: false, error: "Carrier squadron entity not found", warnings: @[]
@@ -1604,7 +1604,7 @@ proc executeLoadFighters*(
     )
 
   let colonyId = state.colonies.bySystem[systemId]
-  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  let colonyOpt = state.colonies.entities.entity(colonyId)
   if colonyOpt.isNone:
     return
       ZeroTurnResult(success: false, error: "Colony entity not found", warnings: @[])
@@ -1638,7 +1638,7 @@ proc executeLoadFighters*(
     let fighterSquadronId = colony.fighterSquadronIds[fighterIdx]
 
     # Get fighter squadron entity for logging
-    let fighterSquadOpt = state.squadrons[].entities.getEntity(fighterSquadronId)
+    let fighterSquadOpt = state.squadrons[].entities.entity(fighterSquadronId)
     if fighterSquadOpt.isNone:
       warnings.add(&"Fighter squadron {fighterSquadronId} not found, skipping")
       continue
@@ -1677,7 +1677,7 @@ proc executeUnloadFighters*(
   let carrierSquadronId = cmd.carrierSquadronId.get()
 
   # Get fleet via entity manager
-  let fleetOpt = state.fleets.entities.getEntity(sourceFleetId)
+  let fleetOpt = state.fleets.entities.entity(sourceFleetId)
   if fleetOpt.isNone:
     return ZeroTurnResult(success: false, error: "Fleet not found", warnings: @[])
 
@@ -1691,7 +1691,7 @@ proc executeUnloadFighters*(
     )
 
   # Get carrier squadron via entity manager
-  let carrierSquadOpt = state.squadrons[].entities.getEntity(carrierSquadronId)
+  let carrierSquadOpt = state.squadrons[].entities.entity(carrierSquadronId)
   if carrierSquadOpt.isNone:
     return ZeroTurnResult(
       success: false, error: "Carrier squadron entity not found", warnings: @[]
@@ -1706,7 +1706,7 @@ proc executeUnloadFighters*(
     )
 
   let colonyId = state.colonies.bySystem[systemId]
-  let colonyOpt = state.colonies.entities.getEntity(colonyId)
+  let colonyOpt = state.colonies.entities.entity(colonyId)
   if colonyOpt.isNone:
     return
       ZeroTurnResult(success: false, error: "Colony entity not found", warnings: @[])
@@ -1729,7 +1729,7 @@ proc executeUnloadFighters*(
     let fighterSquadronId = carrierSquadron.embarkedFighters[fighterIdx]
 
     # Get fighter squadron entity for logging
-    let fighterSquadOpt = state.squadrons[].entities.getEntity(fighterSquadronId)
+    let fighterSquadOpt = state.squadrons[].entities.entity(fighterSquadronId)
     if fighterSquadOpt.isSome:
       let fighterSquadron = fighterSquadOpt.get()
       let totalFighters = 1 + fighterSquadron.ships.len
@@ -1764,7 +1764,7 @@ proc executeTransferFighters*(
   let targetCarrierSquadronId = cmd.targetCarrierSquadronId.get()
 
   # Get source fleet via entity manager
-  let sourceFleetOpt = state.fleets.entities.getEntity(sourceFleetId)
+  let sourceFleetOpt = state.fleets.entities.entity(sourceFleetId)
   if sourceFleetOpt.isNone:
     return
       ZeroTurnResult(success: false, error: "Source fleet not found", warnings: @[])
@@ -1779,7 +1779,7 @@ proc executeTransferFighters*(
     )
 
   # Get source carrier squadron via entity manager
-  let sourceCarrierOpt = state.squadrons[].entities.getEntity(sourceCarrierSquadronId)
+  let sourceCarrierOpt = state.squadrons[].entities.entity(sourceCarrierSquadronId)
   if sourceCarrierOpt.isNone:
     return ZeroTurnResult(
       success: false, error: "Source carrier squadron entity not found", warnings: @[]
@@ -1806,7 +1806,7 @@ proc executeTransferFighters*(
         if fleetId == sourceFleetId:
           continue # Already checked
 
-        let fleetOpt = state.fleets.entities.getEntity(fleetId)
+        let fleetOpt = state.fleets.entities.entity(fleetId)
         if fleetOpt.isNone:
           continue
 
@@ -1826,7 +1826,7 @@ proc executeTransferFighters*(
     )
 
   # Get target carrier squadron via entity manager
-  let targetCarrierOpt = state.squadrons[].entities.getEntity(targetCarrierSquadronId)
+  let targetCarrierOpt = state.squadrons[].entities.entity(targetCarrierSquadronId)
   if targetCarrierOpt.isNone:
     return ZeroTurnResult(
       success: false, error: "Target carrier squadron entity not found", warnings: @[]
@@ -1869,7 +1869,7 @@ proc executeTransferFighters*(
     let fighterSquadronId = sourceCarrier.embarkedFighters[fighterIdx]
 
     # Get fighter squadron entity for logging
-    let fighterSquadOpt = state.squadrons[].entities.getEntity(fighterSquadronId)
+    let fighterSquadOpt = state.squadrons[].entities.entity(fighterSquadronId)
     if fighterSquadOpt.isSome:
       let fighterSquadron = fighterSquadOpt.get()
       let totalFighters = 1 + fighterSquadron.ships.len

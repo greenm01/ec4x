@@ -135,9 +135,9 @@ proc validateFleetCommand*(
     )
     var hasETAC = false
     for squadronId in fleet.squadrons:
-      let sq = state.squadrons.entities.getEntity(squadronId).get
+      let sq = state.squadrons.entities.entity(squadronId).get
       if sq.squadronType == SquadronClass.Expansion:
-        let flagship = state.ships.entities.getEntity(sq.flagshipId).get
+        let flagship = state.ships.entities.entity(sq.flagshipId).get
         logDebug(
           LogCategory.lcOrders,
           &"  Squadron {sq.id}: class={flagship.shipClass}, " &
@@ -168,7 +168,7 @@ proc validateFleetCommand*(
     let targetId = cmd.targetSystem.get()
     if state.colonies.bySystem.hasKey(targetId):
       let colonyId = state.colonies.bySystem[targetId]
-      let colony = state.colonies.entities.getEntity(colonyId).get
+      let colony = state.colonies.entities.entity(colonyId).get
       logWarn(
         LogCategory.lcOrders,
         &"{issuingHouse} Colonize command REJECTED: {cmd.fleetId} → {targetId} " &
@@ -183,7 +183,7 @@ proc validateFleetCommand*(
   of FleetCommandType.Bombard, FleetCommandType.Invade, FleetCommandType.Blitz:
     # Check fleet has no Intel squadrons (Intel squadrons are intelligence-only, not combat units)
     for squadronId in fleet.squadrons:
-      let sq = state.squadrons.entities.getEntity(squadronId).get
+      let sq = state.squadrons.entities.entity(squadronId).get
       if sq.squadronType == SquadronClass.Intel:
         logWarn(
           LogCategory.lcOrders,
@@ -197,8 +197,8 @@ proc validateFleetCommand*(
     # Check fleet has combat squadrons
     var hasMilitary = false
     for squadronId in fleet.squadrons:
-      let sq = state.squadrons.entities.getEntity(squadronId).get
-      let flagship = state.ships.entities.getEntity(sq.flagshipId).get
+      let sq = state.squadrons.entities.entity(squadronId).get
+      let flagship = state.ships.entities.entity(sq.flagshipId).get
       if flagship.stats.attackStrength > 0:
         hasMilitary = true
         break
@@ -246,7 +246,7 @@ proc validateFleetCommand*(
     var hasNonIntel = false
 
     for squadronId in fleet.squadrons:
-      let sq = state.squadrons.entities.getEntity(squadronId).get
+      let sq = state.squadrons.entities.entity(squadronId).get
       if sq.squadronType == SquadronClass.Intel:
         hasIntel = true
       else:
@@ -403,7 +403,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
   var validBuildCommands = 0
   for cmd in packet.buildCommands:
     # Check colony exists and is owned by house
-    let colonyOpt = state.colonies.entities.getEntity(cmd.colonyId)
+    let colonyOpt = state.colonies.entities.entity(cmd.colonyId)
     if colonyOpt.isNone:
       logWarn(
         LogCategory.lcOrders,
@@ -538,7 +538,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
   # Validate colony management commands
   for cmd in packet.colonyManagement:
     # Check colony exists
-    let colonyOpt = state.colonies.entities.getEntity(cmd.colonyId)
+    let colonyOpt = state.colonies.entities.entity(cmd.colonyId)
     if colonyOpt.isNone:
       return ValidationResult(
         valid: false,
@@ -700,7 +700,7 @@ proc calculateBuildCommandCost*(
           result = baseCost
       else:
         # LEGACY: Fall back to colony-wide check (for backwards compatibility)
-        let colonyOpt = state.colonies.entities.getEntity(cmd.colonyId)
+        let colonyOpt = state.colonies.entities.entity(cmd.colonyId)
         if colonyOpt.isSome:
           let colony = colonyOpt.get()
           let hasShipyard = colony.shipyardIds.len > 0
@@ -722,7 +722,7 @@ proc calculateBuildCommandCost*(
       result = projects.getBuildingCost(cmd.buildingType.get()) * cmd.quantity
   of BuildType.Industrial, BuildType.Infrastructure:
     # Infrastructure cost depends on colony state
-    let colonyOpt = state.colonies.entities.getEntity(cmd.colonyId)
+    let colonyOpt = state.colonies.entities.entity(cmd.colonyId)
     if colonyOpt.isSome:
       let colony = colonyOpt.get()
       result = projects.getIndustrialUnitCost(colony) * cmd.industrialUnits
@@ -739,7 +739,7 @@ proc validateBuildCommandWithBudget*(
   ## Updates context with committed spending if valid
 
   # Basic validation first
-  let colonyOpt = state.colonies.entities.getEntity(cmd.colonyId)
+  let colonyOpt = state.colonies.entities.entity(cmd.colonyId)
   if colonyOpt.isNone:
     return ValidationResult(
       valid: false, error: &"Build command: Colony not found at {cmd.colonyId}"
@@ -871,10 +871,10 @@ proc validateBuildCommandWithBudget*(
       # Count planet-breakers under construction house-wide
       var pbsUnderConstruction = 0
       for colId in state.colonies.byOwner.getOrDefault(houseId, @[]):
-        let col = state.colonies.entities.getEntity(colId).get
+        let col = state.colonies.entities.entity(colId).get
         # Count PlanetBreaker projects in queue
         for projId in col.constructionQueue:
-          let proj = state.constructionProjects.entities.getEntity(projId).get
+          let proj = state.constructionProjects.entities.entity(projId).get
           if proj.projectType == BuildType.Ship and proj.itemId == "PlanetBreaker":
             pbsUnderConstruction += 1
 

@@ -58,11 +58,11 @@ proc applySpaceLiftScreeningLosses(
 
     # Count Expansion/Auxiliary squadrons after
     var spaceliftSquadronsAfter = 0
-    let fleetOpt = state.fleets.entities.getEntity(fleetId)
+    let fleetOpt = state.fleets.entities.entity(fleetId)
     if fleetOpt.isSome:
       let fleet = fleetOpt.get()
       for sqId in fleet.squadrons:
-        let sqOpt = state.squadrons.entities.getEntity(sqId)
+        let sqOpt = state.squadrons.entities.entity(sqId)
         if sqOpt.isSome:
           let squadron = sqOpt.get()
           if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
@@ -178,8 +178,8 @@ proc autoEscalateDiplomacy(
       let house2 = housesInvolved[j]
 
       # Get current diplomatic states (using entity_manager)
-      let house1Opt = state.houses.entities.getEntity(house1)
-      let house2Opt = state.houses.entities.getEntity(house2)
+      let house1Opt = state.houses.entities.entity(house1)
+      let house2Opt = state.houses.entities.entity(house2)
       if house1Opt.isNone or house2Opt.isNone:
         logWarn(
           "Combat",
@@ -343,7 +343,7 @@ proc executeCombat(
 
     # Add unassigned squadrons from colony if this is orbital combat
     if includeUnassignedSquadrons and systemOwner.isSome and systemOwner.get() == houseId:
-      let colonyOpt = state.colonies.entities.getEntity(systemId)
+      let colonyOpt = state.colonies.entities.entity(systemId)
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
         for squadron in colony.unassignedSquadrons:
@@ -376,10 +376,10 @@ proc executeCombat(
     # In orbital combat: Starbases detect AND fight
     var combatFacilities: seq[CombatFacility] = @[]
     if systemOwner.isSome and systemOwner.get() == houseId:
-      let colonyOpt = state.colonies.entities.getEntity(systemId)
+      let colonyOpt = state.colonies.entities.entity(systemId)
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
-        let houseOpt = state.houses.entities.getEntity(houseId)
+        let houseOpt = state.houses.entities.entity(houseId)
         if houseOpt.isNone:
           logWarn(
             "Combat", "Cannot add starbases - house not found", "houseId=", $houseId
@@ -443,8 +443,8 @@ proc executeCombat(
     for j in (i + 1) ..< houseIds.len:
       let houseA = houseIds[i]
       let houseB = houseIds[j]
-      let houseAOpt = state.houses.entities.getEntity(houseA)
-      let houseBOpt = state.houses.entities.getEntity(houseB)
+      let houseAOpt = state.houses.entities.entity(houseA)
+      let houseBOpt = state.houses.entities.entity(houseB)
       if houseAOpt.isSome and houseBOpt.isSome:
         let stateAtoB =
           dip_engine.getDiplomaticState(houseAOpt.get().diplomaticRelations, houseB)
@@ -476,7 +476,7 @@ proc executeCombat(
 
     attackerTF.isCloaked = true
     var isDetected = false
-    let attackerHouseOpt = state.houses.entities.getEntity(attackerTF.house)
+    let attackerHouseOpt = state.houses.entities.entity(attackerTF.house)
     if attackerHouseOpt.isNone:
       logWarn(
         "Combat",
@@ -497,7 +497,7 @@ proc executeCombat(
       if relation == dip_types.DiplomaticState.Neutral:
         continue
 
-      let defenderHouseOpt = state.houses.entities.getEntity(defenderTF.house)
+      let defenderHouseOpt = state.houses.entities.entity(defenderTF.house)
       if defenderHouseOpt.isNone:
         logWarn(
           "Combat",
@@ -509,7 +509,7 @@ proc executeCombat(
       let defenderELI = defenderHouseOpt.get().techTree.levels.electronicIntelligence
       var starbaseBonus = 0
       if systemOwner.isSome and systemOwner.get() == defenderTF.house:
-        let colonyOpt = state.colonies.entities.getEntity(systemId)
+        let colonyOpt = state.colonies.entities.entity(systemId)
         if colonyOpt.isSome and colonyOpt.get().starbases.len > 0:
           starbaseBonus = globalFacilitiesConfig.facilities[FacilityClass.Starbase].economic_lift_bonus
       let defenderRoll = detectionRng.rand(1 .. 10) + defenderELI + starbaseBonus
@@ -627,7 +627,7 @@ proc processCombatEvents(
 
   for tf in combatResult.survivors:
     # Determine if attacker or defender based on system ownership (using entity_manager)
-    let colonyOpt = state.colonies.entities.getEntity(systemId)
+    let colonyOpt = state.colonies.entities.entity(systemId)
     let systemOwner =
       if colonyOpt.isSome:
         some(colonyOpt.get().owner)
@@ -802,7 +802,7 @@ proc resolveBattle*(
   logCombat("Resolving battle", "system=", $systemId)
 
   # 1. Determine system ownership (using entity_manager)
-  let colonyOpt = state.colonies.entities.getEntity(systemId)
+  let colonyOpt = state.colonies.entities.entity(systemId)
   let systemOwner =
     if colonyOpt.isSome:
       some(colonyOpt.get().owner)
@@ -908,7 +908,7 @@ proc resolveBattle*(
             alliedFleetIds, otherHouseFleetIds,
           )
           # CRITICAL: Get, modify, write back using entity_manager
-          let houseOpt = state.houses.entities.getEntity(reportingHouse)
+          let houseOpt = state.houses.entities.entity(reportingHouse)
           if houseOpt.isSome:
             var house = houseOpt.get()
             house.intelligence.addCombatReport(preCombatReport)
@@ -964,7 +964,7 @@ proc resolveBattle*(
   if systemOwner.isSome and spaceCombatSurvivors.len > 0:
     # Check if there are orbital defenders (using entity_manager)
     var hasOrbitalDefenders = orbitalDefenders.len > 0
-    let colonyOpt = state.colonies.entities.getEntity(systemId)
+    let colonyOpt = state.colonies.entities.entity(systemId)
     if colonyOpt.isSome:
       let colony = colonyOpt.get()
       if colony.starbases.len > 0 or colony.unassignedSquadrons.len > 0:
@@ -1015,7 +1015,7 @@ proc resolveBattle*(
                 alliedFleetIds, otherHouseFleetIds,
               )
               # CRITICAL: Get, modify, write back using entity_manager
-              let houseOpt = state.houses.entities.getEntity(reportingHouse)
+              let houseOpt = state.houses.entities.entity(reportingHouse)
               if houseOpt.isSome:
                 var house = houseOpt.get()
                 house.intelligence.addCombatReport(orbitalPreCombatReport)
@@ -1187,7 +1187,7 @@ proc resolveBattle*(
       for (fleetId, fleet) in fleetsAtSystem:
         if fleet.owner == defendingHouse:
           # Skip fleets that were already destroyed in combat (using entity_manager)
-          if state.fleets.entities.getEntity(fleetId).isNone:
+          if state.fleets.entities.entity(fleetId).isNone:
             continue
 
           # Destroy mothballed ships
@@ -1224,7 +1224,7 @@ proc resolveBattle*(
 
       # Destroy screened orbital facilities (spaceports, shipyards, drydocks)
       # These facilities are protected by orbital defenses - if defenses are eliminated, they're destroyed (using entity_manager)
-      let colonyOpt = state.colonies.entities.getEntity(systemId)
+      let colonyOpt = state.colonies.entities.entity(systemId)
       if colonyOpt.isSome:
         var colony = colonyOpt.get()
         var facilitiesDestroyed = 0
@@ -1311,7 +1311,7 @@ proc resolveBattle*(
 
   # Update starbases at colony based on survivors (using entity_manager)
   if systemOwner.isSome:
-    let colonyOpt = state.colonies.entities.getEntity(systemId)
+    let colonyOpt = state.colonies.entities.entity(systemId)
     if colonyOpt.isSome:
       var colony = colonyOpt.get()
       var survivingStarbases: seq[Starbase] = @[]
@@ -1330,7 +1330,7 @@ proc resolveBattle*(
 
   # Update unassigned squadrons at colony based on survivors (using entity_manager)
   if systemOwner.isSome:
-    let colonyOpt = state.colonies.entities.getEntity(systemId)
+    let colonyOpt = state.colonies.entities.entity(systemId)
     if colonyOpt.isSome:
       var colony = colonyOpt.get()
       var survivingUnassigned: seq[Squadron] = @[]
@@ -1476,7 +1476,7 @@ proc resolveBattle*(
 
     # Add starbases and unassigned squadrons to defender's total (using entity_manager)
     if systemOwner.isSome and systemOwner.get() == houseId:
-      let colonyOpt = state.colonies.entities.getEntity(systemId)
+      let colonyOpt = state.colonies.entities.entity(systemId)
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
         totalSquadrons += colony.starbases.len
@@ -1522,7 +1522,7 @@ proc resolveBattle*(
     )
     applyPrestigeEvent(state, victorHouse, victoryEvent)
     let victorHouseName =
-      state.houses.entities.getEntity(victorHouse).map(h => h.name).get("Unknown")
+      state.houses.entities.entity(victorHouse).map(h => h.name).get("Unknown")
     logCombat(
       "Combat victory prestige awarded",
       "house=",
@@ -1540,7 +1540,7 @@ proc resolveBattle*(
       )
       applyPrestigeEvent(state, loserHouse, defeatEvent)
       let loserHouseName =
-        state.houses.entities.getEntity(loserHouse).map(h => h.name).get("Unknown")
+        state.houses.entities.entity(loserHouse).map(h => h.name).get("Unknown")
       logCombat(
         "Combat defeat prestige penalty",
         "house=",
@@ -1581,7 +1581,7 @@ proc resolveBattle*(
         )
         applyPrestigeEvent(state, loserHouse, squadronLossEvent)
         let loserHouseName2 =
-          state.houses.entities.getEntity(loserHouse).map(h => h.name).get("Unknown")
+          state.houses.entities.entity(loserHouse).map(h => h.name).get("Unknown")
         logCombat(
           "Squadron loss prestige penalty",
           "house=",
@@ -1595,7 +1595,7 @@ proc resolveBattle*(
   # Generate event (using entity_manager)
   let victorName =
     if victor.isSome:
-      state.houses.entities.getEntity(victor.get()).map(h => h.name).get(
+      state.houses.entities.entity(victor.get()).map(h => h.name).get(
         "Unknown Victor"
       )
     else:

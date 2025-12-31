@@ -27,7 +27,7 @@ proc collectBlockadeIntents*(
         continue
 
       # Validate: fleet exists - using entity_manager
-      let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
+      let fleetOpt = state.fleets.entities.entity(command.fleetId)
       if fleetOpt.isNone:
         continue
 

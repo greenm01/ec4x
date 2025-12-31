@@ -14,7 +14,7 @@ proc collectCapacityMetrics*(
   ## Collect capacity metrics from GameState
   result = prevMetrics # Start with previous metrics
 
-  let houseOpt = state.houses.entities.getEntity(houseId)
+  let houseOpt = state.houses.entities.entity(houseId)
   if houseOpt.isNone:
     return result # House not found
   let house = houseOpt.get()

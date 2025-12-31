@@ -41,7 +41,7 @@ template destroyFacilityImpl(
     idType: typedesc,
 ): untyped =
   let typedId = idType(facilityId)
-  let facilityOpt = collection.entities.getEntity(typedId)
+  let facilityOpt = collection.entities.entity(typedId)
   if facilityOpt.isNone:
     return
   let facility = facilityOpt.get()

@@ -33,7 +33,7 @@ proc createHomeWorld*(
   var marineIds = newSeq[GroundUnitId]()
 
   # Create Spaceports
-  let house = state.houses.entities.getEntity(owner).get()
+  let house = state.houses.entities.entity(owner).get()
   let cstLevel = house.techTree.levels.cst
   let baseSpaceportDocks = gameConfig.facilities.facilities[FacilityClass.Spaceport].docks
   let effectiveSpaceportDocks =

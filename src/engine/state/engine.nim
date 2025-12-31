@@ -13,50 +13,50 @@ import
   ]
 
 proc house*(state: GameState, id: HouseId): Option[House] =
-  state.houses.entities.getEntity(id)
+  state.houses.entities.entity(id)
 
 proc system*(state: GameState, id: SystemId): Option[System] =
-  state.systems.entities.getEntity(id)
+  state.systems.entities.entity(id)
 
 proc colony*(state: GameState, id: ColonyId): Option[Colony] =
-  state.colonies.entities.getEntity(id)
+  state.colonies.entities.entity(id)
 
 proc fleet*(state: GameState, id: FleetId): Option[Fleet] =
-  state.fleets.entities.getEntity(id)
+  state.fleets.entities.entity(id)
 
 proc ship*(state: GameState, id: ShipId): Option[Ship] =
-  state.ships.entities.getEntity(id)
+  state.ships.entities.entity(id)
 
 proc squadrons*(state: GameState, id: SquadronId): Option[Squadron] =
-  state.squadrons.entities.getEntity(id)
+  state.squadrons.entities.entity(id)
 
 proc groundUnit*(state: GameState, id: GroundUnitId): Option[GroundUnit] =
-  state.groundUnits.entities.getEntity(id)
+  state.groundUnits.entities.entity(id)
 
 proc starbase*(state: GameState, id: StarbaseId): Option[Starbase] =
-  state.starbases.entities.getEntity(id)
+  state.starbases.entities.entity(id)
 
 proc spaceport*(state: GameState, id: SpaceportId): Option[Spaceport] =
-  state.spaceports.entities.getEntity(id)
+  state.spaceports.entities.entity(id)
 
 proc shipyard*(state: GameState, id: ShipyardId): Option[Shipyard] =
-  state.shipyards.entities.getEntity(id)
+  state.shipyards.entities.entity(id)
 
 proc drydock*(state: GameState, id: DrydockId): Option[Drydock] =
-  state.drydocks.entities.getEntity(id)
+  state.drydocks.entities.entity(id)
 
 proc constructionProject*(
     state: GameState, id: ConstructionProjectId
 ): Option[ConstructionProject] =
-  state.constructionProjects.entities.getEntity(id)
+  state.constructionProjects.entities.entity(id)
 
 proc repairProject*(state: GameState, id: RepairProjectId): Option[RepairProject] =
-  state.repairProjects.entities.getEntity(id)
+  state.repairProjects.entities.entity(id)
 
 proc populationTransfer*(
     state: GameState, id: PopulationTransferId
 ): Option[PopulationInTransit] =
-  state.populationTransfers.entities.getEntity(id)
+  state.populationTransfers.entities.entity(id)
 
 proc intel*(state: GameState, id: HouseId): Option[IntelligenceDatabase] =
   ## Direct table lookup for intelligence memory

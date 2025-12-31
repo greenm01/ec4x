@@ -13,7 +13,7 @@ proc collectHouseMetrics*(
   ## Collect house status metrics from GameState
   result = prevMetrics # Start with previous metrics
 
-  let houseOpt = state.houses.entities.getEntity(houseId)
+  let houseOpt = state.houses.entities.entity(houseId)
   if houseOpt.isNone:
     return result
   let house = houseOpt.get()

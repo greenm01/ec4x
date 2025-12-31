@@ -50,8 +50,8 @@ proc `$`*(f: Fleet, squadrons: Squadrons, ships: Ships): string =
   else:
     var shipClasses: seq[string] = @[]
     for sqId in f.squadrons:
-      let sq = squadrons.entities.getEntity(sqId).get
-      let flagship = ships.entities.getEntity(sq.flagshipId).get
+      let sq = squadrons.entities.entity(sqId).get
+      let flagship = ships.entities.entity(sq.flagshipId).get
       let status = if flagship.isCrippled: "*" else: ""
       let typeTag =
         case sq.squadronType
@@ -74,7 +74,7 @@ proc isEmpty*(f: Fleet): bool =
 proc hasIntelSquadrons*(f: Fleet, squadrons: Squadrons): bool =
   ## Check if fleet has any Intel squadrons (Scouts)
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
+    let sq = squadrons.entities.entity(sqId).get
     if sq.squadronType == SquadronClass.Intel:
       return true
   return false
@@ -82,7 +82,7 @@ proc hasIntelSquadrons*(f: Fleet, squadrons: Squadrons): bool =
 proc hasNonIntelSquadrons*(f: Fleet, squadrons: Squadrons): bool =
   ## Check if fleet has any non-Intel squadrons
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
+    let sq = squadrons.entities.entity(sqId).get
     if sq.squadronType != SquadronClass.Intel:
       return true
   return false
@@ -143,14 +143,14 @@ proc canTraverse*(
   of LaneClass.Restricted:
     # Check for crippled squadrons
     for sqId in f.squadrons:
-      let sq = squadrons.entities.getEntity(sqId).get
-      let flagship = ships.entities.getEntity(sq.flagshipId).get
+      let sq = squadrons.entities.entity(sqId).get
+      let flagship = ships.entities.entity(sq.flagshipId).get
       if flagship.isCrippled:
         return false
 
     # Check for Expansion/Auxiliary squadrons (ETAC, TroopTransport)
     for sqId in f.squadrons:
-      let sq = squadrons.entities.getEntity(sqId).get
+      let sq = squadrons.entities.entity(sqId).get
       if sq.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
         return false # Cannot cross restricted lanes with Expansion/Auxiliary squadrons
 
@@ -163,7 +163,7 @@ proc combatStrength*(f: Fleet, squadrons: Squadrons, ships: Ships): int =
   ## Calculate the total attack strength of the fleet
   result = 0
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
+    let sq = squadrons.entities.entity(sqId).get
     result += sq.combatStrength(ships)
 
 proc isCloaked*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
@@ -175,10 +175,10 @@ proc isCloaked*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
 
   # Check if fleet has any operational raiders
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
+    let sq = squadrons.entities.entity(sqId).get
     let raiderIds = sq.raiderShips(ships)
     for raiderId in raiderIds:
-      let raider = ships.entities.getEntity(raiderId).get
+      let raider = ships.entities.entity(raiderId).get
       if not raider.isCrippled:
         return true # Fleet is cloaked if it has ANY operational raider
 
@@ -188,16 +188,16 @@ proc transportCapacity*(f: Fleet, squadrons: Squadrons, ships: Ships): int =
   ## Calculate the number of operational Expansion/Auxiliary squadrons
   result = 0
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
+    let sq = squadrons.entities.entity(sqId).get
     if sq.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
-      let flagship = ships.entities.getEntity(sq.flagshipId).get
+      let flagship = ships.entities.entity(sq.flagshipId).get
       if not flagship.isCrippled:
         result += 1
 
 proc hasCombatShips*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
   ## Check if the fleet has any combat-capable squadrons
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
+    let sq = squadrons.entities.entity(sqId).get
     if sq.combatStrength(ships) > 0:
       return true
   return false
@@ -205,9 +205,9 @@ proc hasCombatShips*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
 proc hasTransportShips*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
   ## Check if the fleet has any operational Expansion/Auxiliary squadrons
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
+    let sq = squadrons.entities.entity(sqId).get
     if sq.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
-      let flagship = ships.entities.getEntity(sq.flagshipId).get
+      let flagship = ships.entities.entity(sq.flagshipId).get
       if not flagship.isCrippled:
         return true
   return false
@@ -218,8 +218,8 @@ proc isScoutOnly*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
   if f.squadrons.len == 0:
     return false
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
-    let flagship = ships.entities.getEntity(sq.flagshipId).get
+    let sq = squadrons.entities.entity(sqId).get
+    let flagship = ships.entities.entity(sq.flagshipId).get
     if flagship.shipClass != ShipClass.Scout:
       return false
   return true
@@ -227,8 +227,8 @@ proc isScoutOnly*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
 proc hasScouts*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
   ## Check if fleet contains any scout squadrons
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
-    let flagship = ships.entities.getEntity(sq.flagshipId).get
+    let sq = squadrons.entities.entity(sqId).get
+    let flagship = ships.entities.entity(sq.flagshipId).get
     if flagship.shipClass == ShipClass.Scout:
       return true
   return false
@@ -238,16 +238,16 @@ proc countScoutSquadrons*(f: Fleet, squadrons: Squadrons, ships: Ships): int =
   ## Used for Scout-on-Scout detection formula
   result = 0
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
-    let flagship = ships.entities.getEntity(sq.flagshipId).get
+    let sq = squadrons.entities.entity(sqId).get
+    let flagship = ships.entities.entity(sq.flagshipId).get
     if flagship.shipClass == ShipClass.Scout:
       result += 1
 
 proc hasCombatSquadrons*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
   ## Check if fleet has any non-scout combat squadrons
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
-    let flagship = ships.entities.getEntity(sq.flagshipId).get
+    let sq = squadrons.entities.entity(sqId).get
+    let flagship = ships.entities.entity(sq.flagshipId).get
     if flagship.shipClass != ShipClass.Scout:
       return true
   return false
@@ -277,7 +277,7 @@ proc combatSquadrons*(f: Fleet, squadrons: Squadrons, ships: Ships): seq[Squadro
   ## Get all combat-capable squadron IDs
   result = @[]
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
+    let sq = squadrons.entities.entity(sqId).get
     if sq.combatStrength(ships) > 0:
       result.add(sqId)
 
@@ -285,7 +285,7 @@ proc expansionSquadrons*(f: Fleet, squadrons: Squadrons): seq[SquadronId] =
   ## Get all Expansion squadron IDs (ETACs for colonization)
   result = @[]
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
+    let sq = squadrons.entities.entity(sqId).get
     if sq.squadronType == SquadronClass.Expansion:
       result.add(sqId)
 
@@ -293,7 +293,7 @@ proc auxiliarySquadrons*(f: Fleet, squadrons: Squadrons): seq[SquadronId] =
   ## Get all Auxiliary squadron IDs (TroopTransports for invasion)
   result = @[]
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
+    let sq = squadrons.entities.entity(sqId).get
     if sq.squadronType == SquadronClass.Auxiliary:
       result.add(sqId)
 
@@ -301,8 +301,8 @@ proc crippledSquadrons*(f: Fleet, squadrons: Squadrons, ships: Ships): seq[Squad
   ## Get all squadron IDs with crippled flagships
   result = @[]
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
-    let flagship = ships.entities.getEntity(sq.flagshipId).get
+    let sq = squadrons.entities.entity(sqId).get
+    let flagship = ships.entities.entity(sq.flagshipId).get
     if flagship.isCrippled:
       result.add(sqId)
 
@@ -312,8 +312,8 @@ proc effectiveSquadrons*(
   ## Get all squadron IDs with non-crippled flagships
   result = @[]
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
-    let flagship = ships.entities.getEntity(sq.flagshipId).get
+    let sq = squadrons.entities.entity(sqId).get
+    let flagship = ships.entities.entity(sq.flagshipId).get
     if not flagship.isCrippled:
       result.add(sqId)
 
@@ -369,11 +369,11 @@ proc getAllShips*(f: Fleet, squadrons: Squadrons, ships: Ships): seq[Ship] =
   # Add all squadron ships (flagship first, then escorts)
   # Includes all squadron types: Combat, Intel, Expansion, Auxiliary, Fighter
   for sqId in f.squadrons:
-    let sq = squadrons.entities.getEntity(sqId).get
-    let flagship = ships.entities.getEntity(sq.flagshipId).get
+    let sq = squadrons.entities.entity(sqId).get
+    let flagship = ships.entities.entity(sq.flagshipId).get
     result.add(flagship)
     for shipId in sq.ships:
-      let ship = ships.entities.getEntity(shipId).get
+      let ship = ships.entities.entity(shipId).get
       result.add(ship)
 
 proc translateShipIndicesToSquadrons*(
@@ -392,7 +392,7 @@ proc translateShipIndicesToSquadrons*(
   # Build mapping: ship index → squadron index
   for sqIdx in 0 ..< f.squadrons.len:
     let sqId = f.squadrons[sqIdx]
-    let sq = squadrons.entities.getEntity(sqId).get
+    let sq = squadrons.entities.entity(sqId).get
     shipIndexToSquadron.add(sqIdx) # Flagship
     for _ in sq.ships:
       shipIndexToSquadron.add(sqIdx) # Each escort

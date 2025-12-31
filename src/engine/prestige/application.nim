@@ -29,7 +29,7 @@ proc applyPrestigeEvent*(state: var GameState, houseId: HouseId, event: Prestige
   ## Follows DoD pattern: read-modify-write using EntityManager
 
   # Get current house (safe lookup)
-  let houseOpt = state.houses.entities.getEntity(houseId)
+  let houseOpt = state.houses.entities.entity(houseId)
   if houseOpt.isNone:
     # Silently ignore - house may have been eliminated
     return

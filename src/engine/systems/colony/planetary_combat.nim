@@ -119,7 +119,7 @@ proc resolveBombardment*(
     combatSquadrons.add(combatSq)
 
   # Get colony's planetary defense
-  let colonyOpt = state.colonies.entities.getEntity(targetId)
+  let colonyOpt = state.colonies.entities.entity(targetId)
   if colonyOpt.isNone:
     logWarn(
       "Combat",
@@ -148,7 +148,7 @@ proc resolveBombardment*(
 
   # Ground Batteries: Create GroundUnit objects from colony count
   defense.groundBatteries = @[]
-  let houseOpt = state.houses.entities.getEntity(colony.owner)
+  let houseOpt = state.houses.entities.entity(colony.owner)
   if houseOpt.isNone:
     logWarn("Combat", "Bombardment failed - house not found", "houseId=", $colony.owner)
     return
@@ -387,7 +387,7 @@ proc resolveInvasion*(
     )
     return
 
-  let colonyOpt = state.colonies.entities.getEntity(targetId)
+  let colonyOpt = state.colonies.entities.entity(targetId)
   if colonyOpt.isNone:
     logWarn("Combat", "Invasion failed - colony disappeared", "systemId=", $targetId)
     return
@@ -458,7 +458,7 @@ proc resolveInvasion*(
     )
 
   # Ground Batteries (must be destroyed for invasion to proceed)
-  let houseOpt = state.houses.entities.getEntity(colony.owner)
+  let houseOpt = state.houses.entities.entity(colony.owner)
   if houseOpt.isNone:
     logWarn("Combat", "Invasion failed - house not found", "houseId=", $colony.owner)
     return
@@ -545,7 +545,7 @@ proc resolveInvasion*(
     updatedColony.armies = 0 # Defender armies all destroyed/disbanded
 
     # Unload marines from spacelift squadrons (they've landed)
-    let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
+    let fleetOpt = state.fleets.entities.entity(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
@@ -651,7 +651,7 @@ proc resolveInvasion*(
 
     # All attacker marines destroyed - unload ALL marines from spacelift squadrons
     # Marines cannot retreat once they've landed on the planet
-    let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
+    let fleetOpt = state.fleets.entities.entity(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
@@ -766,7 +766,7 @@ proc resolveBlitz*(
     )
     return
 
-  let colonyOpt = state.colonies.entities.getEntity(targetId)
+  let colonyOpt = state.colonies.entities.entity(targetId)
   if colonyOpt.isNone:
     logWarn("Combat", "Blitz failed - colony disappeared", "systemId=", $targetId)
     return
@@ -852,7 +852,7 @@ proc resolveBlitz*(
     )
 
   # Ground Batteries (blitz fights through them unlike invasion)
-  let houseOpt = state.houses.entities.getEntity(colony.owner)
+  let houseOpt = state.houses.entities.entity(colony.owner)
   if houseOpt.isNone:
     logWarn("Combat", "Blitz failed - house not found", "houseId=", $colony.owner)
     return
@@ -916,7 +916,7 @@ proc resolveBlitz*(
     updatedColony.armies = 0
 
     # Unload marines from auxiliary squadrons
-    let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
+    let fleetOpt = state.fleets.entities.entity(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
@@ -1024,7 +1024,7 @@ proc resolveBlitz*(
 
     # All attacker marines destroyed - unload ALL marines from spacelift squadrons
     # Marines cannot retreat once they've landed on the planet
-    let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
+    let fleetOpt = state.fleets.entities.entity(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:

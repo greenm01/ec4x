@@ -199,7 +199,7 @@ proc findWeakestSquadron*(
       continue
 
     # Get Squadron entity to calculate DS
-    let squadronOpt = squadrons.entities.getEntity(combatSq.squadronId)
+    let squadronOpt = squadrons.entities.entity(combatSq.squadronId)
     if squadronOpt.isNone:
       continue
 
@@ -279,7 +279,7 @@ proc applyForceReduction*(
     return targetChange
 
   # Get weakest squadron's DS for damage application
-  let weakestSquadronOpt = squadrons.entities.getEntity(weakestId)
+  let weakestSquadronOpt = squadrons.entities.entity(weakestId)
   if weakestSquadronOpt.isNone:
     return targetChange
 

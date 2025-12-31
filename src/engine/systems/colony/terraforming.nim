@@ -20,7 +20,7 @@ proc resolveTerraformCommands*(
   ## Per economy.md Section 4.7
   for command in packet.terraformCommands:
     # Validate colony exists and is owned by house using entity_manager
-    let colonyOpt = state.colonies.entities.getEntity(command.colonyId)
+    let colonyOpt = state.colonies.entities.entity(command.colonyId)
     if colonyOpt.isNone:
       error "Terraforming failed: System-", command.colonyId, " has no colony"
       continue
@@ -38,7 +38,7 @@ proc resolveTerraformCommands*(
       continue
 
     # Get house tech level using entity_manager
-    let houseOpt = state.houses.entities.getEntity(packet.houseId)
+    let houseOpt = state.houses.entities.entity(packet.houseId)
     if houseOpt.isNone:
       error "Terraforming failed: House ", packet.houseId, " not found"
       continue
@@ -120,7 +120,7 @@ proc processTerraformingProjects*(state: var GameState, events: var seq[GameEven
     let houseId = colony.owner
 
     # Get house using entity_manager
-    let houseOpt = state.houses.entities.getEntity(houseId)
+    let houseOpt = state.houses.entities.entity(houseId)
     if houseOpt.isNone:
       continue
 

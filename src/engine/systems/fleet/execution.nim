@@ -36,7 +36,7 @@ proc validateCommandAtExecution(
   ## Checks if conditions have changed since submission
 
   # Check fleet still exists (may have been destroyed in combat) - using entity_manager
-  let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
+  let fleetOpt = state.fleets.entities.entity(command.fleetId)
   if fleetOpt.isNone:
     return ExecutionValidationResult(
       valid: false, shouldAbort: false, reason: "Fleet no longer exists"
@@ -71,7 +71,7 @@ proc validateCommandAtExecution(
     # Check target not already colonized (using entity_manager)
     if command.targetSystem.isSome:
       let targetId = command.targetSystem.get()
-      let colonyOpt = state.colonies.entities.getEntity(targetId)
+      let colonyOpt = state.colonies.entities.entity(targetId)
       if colonyOpt.isSome:
         return ExecutionValidationResult(
           valid: false, shouldAbort: true, reason: "Target system already colonized"
@@ -95,7 +95,7 @@ proc validateCommandAtExecution(
     # Allow attacks on enemies, neutral, or uncolonized systems
     if command.targetSystem.isSome:
       let targetId = command.targetSystem.get()
-      let colonyOpt = state.colonies.entities.getEntity(targetId)
+      let colonyOpt = state.colonies.entities.entity(targetId)
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
         if colony.owner == houseId:
@@ -110,7 +110,7 @@ proc validateCommandAtExecution(
     # Check target fleet still exists (using entity_manager)
     if command.targetFleet.isSome:
       let targetFleetId = command.targetFleet.get()
-      let targetFleetOpt = state.fleets.entities.getEntity(targetFleetId)
+      let targetFleetOpt = state.fleets.entities.entity(targetFleetId)
       if targetFleetOpt.isNone:
         return ExecutionValidationResult(
           valid: false, shouldAbort: false, reason: "Target fleet no longer exists"
@@ -180,11 +180,11 @@ proc validateCommandAtExecution(
     # Check if patrol system is now hostile (lost to enemy) - using entity_manager
     if command.targetSystem.isSome:
       let targetId = command.targetSystem.get()
-      let colonyOpt = state.colonies.entities.getEntity(targetId)
+      let colonyOpt = state.colonies.entities.entity(targetId)
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
         if colony.owner != houseId:
-          let houseOpt = state.houses.entities.getEntity(houseId)
+          let houseOpt = state.houses.entities.entity(houseId)
           if houseOpt.isSome:
             let relation =
               houseOpt.get().diplomaticRelations.getDiplomaticState(colony.owner)
@@ -227,7 +227,7 @@ proc performCommandMaintenance*(
           continue
 
         # Check if this fleet has a locked permanent order (Reserve/Mothball) - using entity_manager
-        let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
+        let fleetOpt = state.fleets.entities.entity(command.fleetId)
         if fleetOpt.isSome:
           let fleet = fleetOpt.get()
           if fleet.status == FleetStatus.Reserve or
@@ -258,7 +258,7 @@ proc performCommandMaintenance*(
     if fleetId in newOrdersThisTurn:
       continue # Overridden by new order
 
-    let fleetOpt = state.fleets.entities.getEntity(fleetId)
+    let fleetOpt = state.fleets.entities.entity(fleetId)
     if fleetOpt.isNone:
       continue # Fleet no longer exists
 
@@ -303,7 +303,7 @@ proc performCommandMaintenance*(
 
       if validation.shouldAbort:
         # Order should abort - convert to SeekHome/Hold (using entity_manager)
-        let fleetOpt = state.fleets.entities.getEntity(command.fleetId)
+        let fleetOpt = state.fleets.entities.entity(command.fleetId)
         if fleetOpt.isSome:
           let fleet = fleetOpt.get()
           let safeDestination = findClosestOwnedColony(state, fleet.location, houseId)
@@ -373,7 +373,7 @@ proc performCommandMaintenance*(
       # Handle combat orders that trigger battles (using entity_manager and iterators)
       if actualOrder.commandType in
           {FleetCommandType.Bombard, FleetCommandType.Invade, FleetCommandType.Blitz}:
-        let fleetOpt = state.fleets.entities.getEntity(actualOrder.fleetId)
+        let fleetOpt = state.fleets.entities.entity(actualOrder.fleetId)
         if fleetOpt.isSome and actualOrder.targetSystem.isSome:
           let fleet = fleetOpt.get()
           let targetSystem = actualOrder.targetSystem.get()
@@ -382,7 +382,7 @@ proc performCommandMaintenance*(
           var hasHostileForces = false
 
           # Check for enemy/neutral fleets (using fleetsInSystem iterator)
-          let houseOpt = state.houses.entities.getEntity(houseId)
+          let houseOpt = state.houses.entities.entity(houseId)
           if houseOpt.isSome:
             for otherFleet in state.fleetsInSystem(targetSystem):
               if otherFleet.owner != houseId:
@@ -395,7 +395,7 @@ proc performCommandMaintenance*(
                   break
 
           # Check for starbases (using entity_manager)
-          let colonyOpt = state.colonies.entities.getEntity(targetSystem)
+          let colonyOpt = state.colonies.entities.entity(targetSystem)
           if colonyOpt.isSome:
             let colony = colonyOpt.get()
             if colony.owner != houseId and colony.starbases.len > 0:
@@ -415,7 +415,7 @@ proc performCommandMaintenance*(
             resolveBattle(state, targetSystem, orders, combatReports, events, rng)
 
             # Check if fleet survived combat (using entity_manager)
-            if state.fleets.entities.getEntity(actualOrder.fleetId).isNone:
+            if state.fleets.entities.entity(actualOrder.fleetId).isNone:
               logInfo(
                 LogCategory.lcCombat, &"Fleet {actualOrder.fleetId} destroyed in combat"
               )

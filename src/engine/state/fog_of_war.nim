@@ -245,7 +245,7 @@ proc hasVisibilityOn*(state: GameState, systemId: SystemId, houseId: HouseId): b
   ## Used by Space Guild for transfer path validation
 
   # Check if house owns colony in this system using entity_manager
-  let colonyOpt = state.colonies.entities.getEntity(systemId)
+  let colonyOpt = state.colonies.entities.entity(systemId)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     if colony.owner == houseId:

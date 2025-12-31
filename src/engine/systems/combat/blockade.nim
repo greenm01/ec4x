@@ -39,12 +39,12 @@ proc isSystemBlockaded*(
       # Check if fleet has combat ships
       var hasCombatShips = false
       for sqId in fleet.squadrons:
-        let sqOpt = state.squadrons.entities.getEntity(sqId)
+        let sqOpt = state.squadrons.entities.entity(sqId)
         if sqOpt.isSome:
           let squadron = sqOpt.get()
           # Check if squadron has combat capability
           for shipId in squadron.ships:
-            let shipOpt = state.ships.entities.getEntity(shipId)
+            let shipOpt = state.ships.entities.entity(shipId)
             if shipOpt.isSome:
               let ship = shipOpt.get()
               if ship.stats.attackStrength > 0:
@@ -178,11 +178,11 @@ proc getBlockadingFleets*(state: GameState, systemId: SystemId): seq[Fleet] =
       # Check if fleet has combat capability
       var hasCombatShips = false
       for sqId in fleet.squadrons:
-        let sqOpt = state.squadrons.entities.getEntity(sqId)
+        let sqOpt = state.squadrons.entities.entity(sqId)
         if sqOpt.isSome:
           let squadron = sqOpt.get()
           for shipId in squadron.ships:
-            let shipOpt = state.ships.entities.getEntity(shipId)
+            let shipOpt = state.ships.entities.entity(shipId)
             if shipOpt.isSome:
               let ship = shipOpt.get()
               if ship.stats.attackStrength > 0:
@@ -214,22 +214,22 @@ proc canBreakBlockade*(state: GameState, systemId: SystemId, reliefFleet: Fleet)
   var blockaderStrength = 0
   for fleet in blockaders:
     for sqId in fleet.squadrons:
-      let sqOpt = state.squadrons.entities.getEntity(sqId)
+      let sqOpt = state.squadrons.entities.entity(sqId)
       if sqOpt.isSome:
         let squadron = sqOpt.get()
         for shipId in squadron.ships:
-          let shipOpt = state.ships.entities.getEntity(shipId)
+          let shipOpt = state.ships.entities.entity(shipId)
           if shipOpt.isSome:
             let ship = shipOpt.get()
             blockaderStrength += ship.stats.attackStrength
 
   var reliefStrength = 0
   for sqId in reliefFleet.squadrons:
-    let sqOpt = state.squadrons.entities.getEntity(sqId)
+    let sqOpt = state.squadrons.entities.entity(sqId)
     if sqOpt.isSome:
       let squadron = sqOpt.get()
       for shipId in squadron.ships:
-        let shipOpt = state.ships.entities.getEntity(shipId)
+        let shipOpt = state.ships.entities.entity(shipId)
         if shipOpt.isSome:
           let ship = shipOpt.get()
           reliefStrength += ship.stats.attackStrength
