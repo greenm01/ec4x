@@ -1,9 +1,0 @@
-// EC4X Diplomacy Configuration
-// Diplomatic mechanics, pact violations, espionage effects
-//
-// This file contains:
-// - BALANCE VARIABLES: Diplomatic durations, espionage effects
-// - CORE MECHANICS: Diplomatic state rules
-
-// Note: Espionage action effects and detection mechanics are in espionage.kdl
-// Note: Espionage prestige effects are in prestige.kdl

@@ -12,6 +12,8 @@ proc parseCombatMechanics(node: KdlNode, ctx: var KdlConfigContext): CombatMecha
   result = CombatMechanicsConfig(
     criticalHitRoll: node.requireInt32("criticalHitRoll", ctx),
     retreatAfterRound: node.requireInt32("retreatAfterRound", ctx),
+    maxCombatRounds: node.requireInt32("maxCombatRounds", ctx),
+    desperationRoundTrigger: node.requireInt32("desperationRoundTrigger", ctx),
     starbaseCriticalReroll: false,  # Removed from new config
     starbaseDieModifier: 0'i32  # Removed from new config
   )
@@ -95,6 +97,7 @@ proc parseDamageRules(node: KdlNode, ctx: var KdlConfigContext): DamageRulesConf
   result = DamageRulesConfig(
     crippledAsMultiplier: node.requireFloat32("crippledAsMultiplier", ctx),
     crippledMaintenanceMultiplier: node.requireFloat32("crippledMaintenanceMultiplier", ctx),
+    crippledTargetingWeight: node.requireFloat32("crippledTargetingWeight", ctx),
     squadronFightsAsUnit: true,  # Default
     destroyAfterAllCrippled: true  # Default
   )
@@ -115,7 +118,17 @@ proc parseBlockade(node: KdlNode, ctx: var KdlConfigContext): BlockadeConfig =
 proc parseInvasion(node: KdlNode, ctx: var KdlConfigContext): InvasionConfig =
   result = InvasionConfig(
     invasionIuLoss: node.requireFloat32("iuLossOnConquest", ctx),
-    blitzIuLoss: node.requireFloat32("iuLossOnBlitz", ctx)
+    blitzIuLoss: node.requireFloat32("iuLossOnBlitz", ctx),
+    blitzMarinePenalty: node.requireFloat32("blitzMarinePenalty", ctx)
+  )
+
+proc parseTargeting(node: KdlNode, ctx: var KdlConfigContext): TargetingConfig =
+  result = TargetingConfig(
+    raiderWeight: node.requireFloat32("raiderWeight", ctx),
+    capitalWeight: node.requireFloat32("capitalWeight", ctx),
+    escortWeight: node.requireFloat32("escortWeight", ctx),
+    fighterWeight: node.requireFloat32("fighterWeight", ctx),
+    starbaseWeight: node.requireFloat32("starbaseWeight", ctx)
   )
 
 proc loadCombatConfig*(configPath: string): CombatConfig =
@@ -166,6 +179,10 @@ proc loadCombatConfig*(configPath: string): CombatConfig =
   # Parse invasion { }
   ctx.withNode("invasion"):
     result.invasion = parseInvasion(doc.requireNode("invasion", ctx), ctx)
+
+  # Parse targeting { }
+  ctx.withNode("targeting"):
+    result.targeting = parseTargeting(doc.requireNode("targeting", ctx), ctx)
 
   # Planetary shields removed - now in tech.kdl
   result.planetaryShields = PlanetaryShieldsConfig()  # Empty default

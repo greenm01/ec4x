@@ -18,11 +18,16 @@ proc loadConstructionConfig*(configPath: string): ConstructionConfig =
   var construction: ConstructionTimesConfig
   ctx.withNode("buildTimes"):
     let timesNode = doc.requireNode("buildTimes", ctx)
+    construction.shipTurns = timesNode.requireInt32("ship", ctx)
+    construction.fighterSquadronTurns = timesNode.requireInt32("fighterSquadron", ctx)
+    construction.armyTurns = timesNode.requireInt32("army", ctx)
+    construction.marineTurns = timesNode.requireInt32("marine", ctx)
+    construction.groundBatteryTurns = timesNode.requireInt32("groundBattery", ctx)
+    construction.planetaryShieldTurns = timesNode.requireInt32("planetaryShield", ctx)
     construction.spaceportTurns = timesNode.requireInt32("spaceport", ctx)
     construction.shipyardTurns = timesNode.requireInt32("shipyard", ctx)
+    construction.drydockTurns = timesNode.requireInt32("drydock", ctx)
     construction.starbaseTurns = timesNode.requireInt32("starbase", ctx)
-    construction.planetaryShieldTurns = timesNode.requireInt32("planetaryShield", ctx)
-    construction.groundBatteryTurns = timesNode.requireInt32("groundBattery", ctx)
     # Defaults for fields not in KDL (docks/flags moved to facilities.kdl)
     construction.spaceportDocks = 3
     construction.shipyardDocks = 1
@@ -41,7 +46,10 @@ proc loadConstructionConfig*(configPath: string): ConstructionConfig =
     let repairNode = doc.requireNode("repair", ctx)
     repair.shipRepairTurns = repairNode.requireInt32("shipRepairTurns", ctx)
     repair.shipRepairCostMultiplier = repairNode.requireFloat32("shipRepairCostMultiplier", ctx)
+    repair.starbaseRepairTurns = repairNode.requireInt32("starbaseRepairTurns", ctx)
     repair.starbaseRepairCostMultiplier = repairNode.requireFloat32("starbaseRepairCostMultiplier", ctx)
+    repair.starbaseRepairRequires = repairNode.requireString("starbaseRepairRequires", ctx)
+    repair.starbaseRepairUsesDockCapacity = repairNode.requireBool("starbaseRepairUsesDockCapacity", ctx)
   result.repair = repair
 
   # Parse constructionModifiers

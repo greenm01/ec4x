@@ -1,238 +1,187 @@
+## Tech configuration types
+## Note: PlanetType is imported from economy config types
+
+import std/tables
+import ./economy
+export PlanetType
+
 type
-  EconomicLevelConfig* = object
-    level1Erp*: int32
-    level1Mod*: float32
-    level2Erp*: int32
-    level2Mod*: float32
-    level3Erp*: int32
-    level3Mod*: float32
-    level4Erp*: int32
-    level4Mod*: float32
-    level5Erp*: int32
-    level5Mod*: float32
-    level6Erp*: int32
-    level6Mod*: float32
-    level7Erp*: int32
-    level7Mod*: float32
-    level8Erp*: int32
-    level8Mod*: float32
-    level9Erp*: int32
-    level9Mod*: float32
-    level10Erp*: int32
-    level10Mod*: float32
-    level11Erp*: int32
-    level11Mod*: float32
+  ElLevelData* = object
+    ## Economic Level data (EL)
+    slRequired*: int32
+    erpCost*: int32
+    multiplier*: float32
 
-  ScienceLevelConfig* = object
-    level1Srp*: int32
-    level2Srp*: int32
-    level3Srp*: int32
-    level4Srp*: int32
-    level5Srp*: int32
-    level6Srp*: int32
-    level7Srp*: int32
-    level8Srp*: int32
+  SlLevelData* = object
+    ## Science Level data (SL)
+    erpRequired*: int32
+    srpRequired*: int32
 
-  StandardTechLevelConfig* = object
+  WepLevelData* = object
+    ## Weapons Tech level data (WEP)
+    slRequired*: int32
+    trpCost*: int32
+
+  EliLevelData* = object
+    ## Electronic Intelligence level data (ELI)
+    slRequired*: int32
+    srpCost*: int32
+
+  ClkLevelData* = object
+    ## Cloaking Tech level data (CLK)
+    slRequired*: int32
+    srpCost*: int32
+
+  CicLevelData* = object
+    ## Counter Intelligence level data (CIC)
+    slRequired*: int32
+    srpCost*: int32
+
+  StlLevelData* = object
+    ## Strategic Lift Tech level data (STL)
+    slRequired*: int32
+    srpCost*: int32
+
+  TerLevelData* = object
+    ## Terraforming Tech level data (TER)
+    slRequired*: int32
+    srpCost*: int32
+    ppCost*: int32
+    planetClass*: string
+
+  SldLevelData* = object
+    ## Shield Tech level data (SLD)
+    slRequired*: int32
+    srpCost*: int32
+    absorption*: int32
+    shieldDs*: int32
+    d20Threshold*: int32
+    hitsBlocked*: float32
+
+  FcLevelData* = object
+    ## Flagship Command level data (FC)
+    slRequired*: int32
+    trpCost*: int32
+    crBonus*: int32
+
+  ScLevelData* = object
+    ## Strategic Command level data (SC)
+    slRequired*: int32
+    trpCost*: int32
+    c2Bonus*: int32
+
+  FdLevelData* = object
+    ## Fighter Doctrine level data (FD)
+    slRequired*: int32
+    trpCost*: int32
+    capacityMultiplier*: float32
+    description*: string
+
+  AcoLevelData* = object
+    ## Advanced Carrier Operations level data (ACO)
+    slRequired*: int32
+    trpCost*: int32
+    cvCapacity*: int32
+    cxCapacity*: int32
+    description*: string
+
+  CstLevelData* = object
+    ## Construction Tech level data (CST)
+    slRequired*: int32
+    trpCost*: int32
+    unlocks*: seq[string]
+
+  TerraformingUpgradeCostData* = object
+    ## Data for terraforming upgrade costs per planet type
+    terRequired*: int32
+    puMin*: int32
+    puMax*: int32
+    ppCost*: int32
+
+  ElConfig* = object
+    ## Economic Level configuration (EL 2-10)
+    levels*: Table[int32, ElLevelData]
+
+  SlConfig* = object
+    ## Science Level configuration (SL 2-10)
+    levels*: Table[int32, SlLevelData]
+
+  EliConfig* = object
+    ## Electronic Intelligence configuration (ELI 1-15)
     capacityMultiplierPerLevel*: float32
-    level1Sl*: int32
-    level1Trp*: int32
-    level2Sl*: int32
-    level2Trp*: int32
-    level3Sl*: int32
-    level3Trp*: int32
-    level4Sl*: int32
-    level4Trp*: int32
-    level5Sl*: int32
-    level5Trp*: int32
-    level6Sl*: int32
-    level6Trp*: int32
-    level7Sl*: int32
-    level7Trp*: int32
-    level8Sl*: int32
-    level8Trp*: int32
-    level9Sl*: int32
-    level9Trp*: int32
-    level10Sl*: int32
-    level10Trp*: int32
-    level11Sl*: int32
-    level11Trp*: int32
-    level12Sl*: int32
-    level12Trp*: int32
-    level13Sl*: int32
-    level13Trp*: int32
-    level14Sl*: int32
-    level14Trp*: int32
-    level15Sl*: int32
-    level15Trp*: int32
+    levels*: Table[int32, EliLevelData]
 
-  WeaponsTechConfig* = object
+  ClkConfig* = object
+    ## Cloaking Tech configuration (CLK 1-15)
+    capacityMultiplierPerLevel*: float32
+    levels*: Table[int32, ClkLevelData]
+
+  CicConfig* = object
+    ## Counter Intelligence configuration (CIC 1-15)
+    capacityMultiplierPerLevel*: float32
+    levels*: Table[int32, CicLevelData]
+
+  StlConfig* = object
+    ## Strategic Lift Tech configuration (STL 1-15)
+    capacityMultiplierPerLevel*: float32
+    levels*: Table[int32, StlLevelData]
+
+  CstConfig* = object
+    ## Construction Tech configuration (CST 2-10)
+    baseModifier*: float32
+    incrementPerLevel*: float32
+    capacityMultiplierPerLevel*: float32
+    levels*: Table[int32, CstLevelData]
+
+  WepConfig* = object
+    ## Weapons Tech configuration (WEP 2-10)
     weaponsStatIncreasePerLevel*: float32
     weaponsCostIncreasePerLevel*: float32
-    level1Sl*: int32
-    level1Trp*: int32
-    level2Sl*: int32
-    level2Trp*: int32
-    level3Sl*: int32
-    level3Trp*: int32
-    level4Sl*: int32
-    level4Trp*: int32
-    level5Sl*: int32
-    level5Trp*: int32
-    level6Sl*: int32
-    level6Trp*: int32
-    level7Sl*: int32
-    level7Trp*: int32
-    level8Sl*: int32
-    level8Trp*: int32
-    level9Sl*: int32
-    level9Trp*: int32
-    level10Sl*: int32
-    level10Trp*: int32
-    level11Sl*: int32
-    level11Trp*: int32
-    level12Sl*: int32
-    level12Trp*: int32
-    level13Sl*: int32
-    level13Trp*: int32
-    level14Sl*: int32
-    level14Trp*: int32
-    level15Sl*: int32
-    level15Trp*: int32
+    levels*: Table[int32, WepLevelData]
 
-  TerraformingTechConfig* = object
-    level1Sl*: int32
-    level1Trp*: int32
-    level1PlanetClass*: string
-    level2Sl*: int32
-    level2Trp*: int32
-    level2PlanetClass*: string
-    level3Sl*: int32
-    level3Trp*: int32
-    level3PlanetClass*: string
-    level4Sl*: int32
-    level4Trp*: int32
-    level4PlanetClass*: string
-    level5Sl*: int32
-    level5Trp*: int32
-    level5PlanetClass*: string
-    level6Sl*: int32
-    level6Trp*: int32
-    level6PlanetClass*: string
-    level7Sl*: int32
-    level7Trp*: int32
-    level7PlanetClass*: string
+  TerConfig* = object
+    ## Terraforming Tech configuration (TER 1-6)
+    levels*: Table[int32, TerLevelData]
 
-  FlagshipCommandConfig* = object
-    level2Sl*: int32
-    level2Trp*: int32
-    level2CrBonus*: int32
-    level3Sl*: int32
-    level3Trp*: int32
-    level3CrBonus*: int32
-    level4Sl*: int32
-    level4Trp*: int32
-    level4CrBonus*: int32
-    level5Sl*: int32
-    level5Trp*: int32
-    level5CrBonus*: int32
-    level6Sl*: int32
-    level6Trp*: int32
-    level6CrBonus*: int32
+  SldConfig* = object
+    ## Shield Tech configuration (SLD 1-6)
+    levels*: Table[int32, SldLevelData]
 
-  StrategicCommandConfig* = object
-    level1Sl*: int32
-    level1Trp*: int32
-    level1C2Bonus*: int32
-    level2Sl*: int32
-    level2Trp*: int32
-    level2C2Bonus*: int32
-    level3Sl*: int32
-    level3Trp*: int32
-    level3C2Bonus*: int32
-    level4Sl*: int32
-    level4Trp*: int32
-    level4C2Bonus*: int32
-    level5Sl*: int32
-    level5Trp*: int32
-    level5C2Bonus*: int32
+  FcConfig* = object
+    ## Flagship Command configuration (FC 2-6)
+    levels*: Table[int32, FcLevelData]
 
-  FighterDoctrineConfig* = object
-    level1Sl*: int32
-    level1Trp*: int32
-    level1CapacityMultiplier*: float32
-    level1Description*: string
-    level2Sl*: int32
-    level2Trp*: int32
-    level2CapacityMultiplier*: float32
-    level2Description*: string
-    level3Sl*: int32
-    level3Trp*: int32
-    level3CapacityMultiplier*: float32
-    level3Description*: string
+  ScConfig* = object
+    ## Strategic Command configuration (SC 1-5)
+    levels*: Table[int32, ScLevelData]
 
-  AdvancedCarrierOpsConfig* = object
+  FdConfig* = object
+    ## Fighter Doctrine configuration (FD 2-3)
+    levels*: Table[int32, FdLevelData]
+
+  AcoConfig* = object
+    ## Advanced Carrier Operations configuration (ACO 1-3)
     capacityMultiplierPerLevel*: float32
-    level1Sl*: int32
-    level1Trp*: int32
-    level1CvCapacity*: int32
-    level1CxCapacity*: int32
-    level1Description*: string
-    level2Sl*: int32
-    level2Trp*: int32
-    level2CvCapacity*: int32
-    level2CxCapacity*: int32
-    level2Description*: string
-    level3Sl*: int32
-    level3Trp*: int32
-    level3CvCapacity*: int32
-    level3CxCapacity*: int32
-    level3Description*: string
+    levels*: Table[int32, AcoLevelData]
 
-  TerraformingUpgradeCostsConfig* = object
-    extremeTer*: int32
-    extremePuMin*: int32
-    extremePuMax*: int32
-    extremePp*: int32
-    desolateTer*: int32
-    desolatePuMin*: int32
-    desolatePuMax*: int32
-    desolatePp*: int32
-    hostileTer*: int32
-    hostilePuMin*: int32
-    hostilePuMax*: int32
-    hostilePp*: int32
-    harshTer*: int32
-    harshPuMin*: int32
-    harshPuMax*: int32
-    harshPp*: int32
-    benignTer*: int32
-    benignPuMin*: int32
-    benignPuMax*: int32
-    benignPp*: int32
-    lushTer*: int32
-    lushPuMin*: int32
-    lushPuMax*: int32
-    lushPp*: int32
-    edenTer*: int32
-    edenPuMin*: int32
-    edenPuMax*: int32
-    edenPp*: int32
+  TerCostsConfig* = object
+    ## Terraforming upgrade costs by planet type
+    costs*: array[PlanetType, TerraformingUpgradeCostData]
 
-  TechConfig* = object ## Complete technology configuration loaded from KDL
-    economicLevel*: EconomicLevelConfig
-    scienceLevel*: ScienceLevelConfig
-    constructionTech*: StandardTechLevelConfig
-    weaponsTech*: WeaponsTechConfig
-    terraformingTech*: TerraformingTechConfig
-    terraformingUpgradeCosts*: TerraformingUpgradeCostsConfig
-    electronicIntelligence*: StandardTechLevelConfig
-    cloakingTech*: StandardTechLevelConfig
-    shieldTech*: StandardTechLevelConfig
-    counterIntelligenceTech*: StandardTechLevelConfig
-    strategicLiftTech*: StandardTechLevelConfig
-    flagshipCommand*: FlagshipCommandConfig
-    strategicCommand*: StrategicCommandConfig
-    fighterDoctrine*: FighterDoctrineConfig
-    advancedCarrierOperations*: AdvancedCarrierOpsConfig
-
+  TechConfig* = object
+    ## Complete technology configuration loaded from KDL
+    el*: ElConfig
+    sl*: SlConfig
+    cst*: CstConfig
+    wep*: WepConfig
+    ter*: TerConfig
+    terCosts*: TerCostsConfig
+    eli*: EliConfig
+    clk*: ClkConfig
+    sld*: SldConfig
+    cic*: CicConfig
+    stl*: StlConfig
+    fc*: FcConfig
+    sc*: ScConfig
+    fd*: FdConfig
+    aco*: AcoConfig

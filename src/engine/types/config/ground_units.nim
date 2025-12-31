@@ -6,6 +6,7 @@ type
     defenseStrength*: int32
     buildTime*: int32
     maxPerPlanet*: int32
+    replaceOnUpgrade*: bool
     sld1BlockChance*: float32
     sld2BlockChance*: float32
     sld3BlockChance*: float32
@@ -43,6 +44,7 @@ type
     buildTime*: int32
     maxPerPlanet*: int32
     populationCost*: int32 # Souls recruited per division
+    requiresTransport*: bool
 
   GroundUnitsConfig* = object ## Complete ground units configuration loaded from KDL
     planetaryShield*: PlanetaryShieldConfig

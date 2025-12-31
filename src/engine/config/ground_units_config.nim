@@ -16,6 +16,7 @@ proc parsePlanetaryShield(node: KdlNode, ctx: var KdlConfigContext): PlanetarySh
     defenseStrength: node.requireInt32("defenseStrength", ctx),
     buildTime: 1,  # Default
     maxPerPlanet: node.requireInt32("maxPerColony", ctx),
+    replaceOnUpgrade: node.requireBool("replaceOnUpgrade", ctx),
     sld1BlockChance: 0.0,  # Defined in tech.kdl
     sld2BlockChance: 0.0,
     sld3BlockChance: 0.0,
@@ -58,7 +59,8 @@ proc parseMarineDivision(node: KdlNode, ctx: var KdlConfigContext): MarineDivisi
     defenseStrength: node.requireInt32("defenseStrength", ctx),
     buildTime: 1,  # Default
     maxPerPlanet: 999,  # Default
-    populationCost: 0  # Not in current KDL
+    populationCost: 0,  # Not in current KDL
+    requiresTransport: node.requireBool("requiresTransport", ctx)
   )
 
 proc loadGroundUnitsConfig*(configPath: string): GroundUnitsConfig =

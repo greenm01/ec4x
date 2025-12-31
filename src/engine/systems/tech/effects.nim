@@ -65,7 +65,7 @@ proc getDockCapacityMultiplier*(cstLevel: int): float =
   ## Per economy.md:4.5: +10% per level (dock count increases)
   ## Formula: effectiveDocks = baseDocks × (1.0 + (CST - 1) × multiplier)
   ## Pulls multiplier from config/tech.kdl
-  let multiplierPerLevel = gameConfig.tech.constructionTech.capacityMultiplierPerLevel
+  let multiplierPerLevel = gameConfig.tech.cst.capacityMultiplierPerLevel
   result = 1.0 + (float(cstLevel - 1) * multiplierPerLevel)
 
 proc calculateEffectiveDocks*(baseDocks: int32, cstLevel: int32): int32 =

@@ -8,229 +8,328 @@ import kdl_helpers
 import ../../common/logger
 import ../types/config
 
-proc parseEconomicLevel(node: KdlNode, ctx: var KdlConfigContext): EconomicLevelConfig =
+proc parseEconomicLevel(node: KdlNode, ctx: var KdlConfigContext): ElConfig =
   ## Parse economicLevel with hierarchical level nodes
-  ## Structure: level 2 { slRequired 2; erpCost 10; multiplier 1.5 }
-  result = EconomicLevelConfig()
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## economicLevel {
+  ##   level 2 { slRequired 2; erpCost 10; multiplier 1.5 }
+  ##   level 3 { slRequired 3; erpCost 15; multiplier 2.0 }
+  ## }
+  ## ```
+  result = ElConfig()
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt()
-      let erpCost = child.requireInt32("erpCost", ctx)
-      let multiplier = child.requireFloat32("multiplier", ctx)
+      let levelNum = child.args[0].getInt().int32
 
-      case levelNum
-      of 2:
-        result.level1Erp = erpCost
-        result.level1Mod = multiplier
-      of 3:
-        result.level2Erp = erpCost
-        result.level2Mod = multiplier
-      of 4:
-        result.level3Erp = erpCost
-        result.level3Mod = multiplier
-      of 5:
-        result.level4Erp = erpCost
-        result.level4Mod = multiplier
-      of 6:
-        result.level5Erp = erpCost
-        result.level5Mod = multiplier
-      of 7:
-        result.level6Erp = erpCost
-        result.level6Mod = multiplier
-      of 8:
-        result.level7Erp = erpCost
-        result.level7Mod = multiplier
-      of 9:
-        result.level8Erp = erpCost
-        result.level8Mod = multiplier
-      of 10:
-        result.level9Erp = erpCost
-        result.level9Mod = multiplier
-      of 11:
-        result.level10Erp = erpCost
-        result.level10Mod = multiplier
-      of 12:
-        result.level11Erp = erpCost
-        result.level11Mod = multiplier
-      else:
-        discard
+      # Store with actual level number as key (2-10)
+      if levelNum >= 2 and levelNum <= 10:
+        result.levels[levelNum] = ElLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          erpCost: child.requireInt32("erpCost", ctx),
+          multiplier: child.requireFloat32("multiplier", ctx)
+        )
 
-proc parseScienceLevel(node: KdlNode, ctx: var KdlConfigContext): ScienceLevelConfig =
+proc parseScienceLevel(node: KdlNode, ctx: var KdlConfigContext): SlConfig =
   ## Parse scienceLevel with hierarchical level nodes
-  ## Structure: level 2 { erpRequired 10; srpRequired 10 }
-  result = ScienceLevelConfig()
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## scienceLevel {
+  ##   level 2 { erpRequired 10; srpRequired 10 }
+  ##   level 3 { erpRequired 12; srpRequired 13 }
+  ## }
+  ## ```
+  result = SlConfig()
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt()
-      let srpRequired = child.requireInt32("srpRequired", ctx)
+      let levelNum = child.args[0].getInt().int32
 
-      case levelNum
-      of 2: result.level1Srp = srpRequired
-      of 3: result.level2Srp = srpRequired
-      of 4: result.level3Srp = srpRequired
-      of 5: result.level4Srp = srpRequired
-      of 6: result.level5Srp = srpRequired
-      of 7: result.level6Srp = srpRequired
-      of 8: result.level7Srp = srpRequired
-      of 9: result.level8Srp = srpRequired
-      else: discard
+      # Store with actual level number as key (2-10)
+      if levelNum >= 2 and levelNum <= 10:
+        result.levels[levelNum] = SlLevelData(
+          erpRequired: child.requireInt32("erpRequired", ctx),
+          srpRequired: child.requireInt32("srpRequired", ctx)
+        )
 
-proc parseStandardTechLevel(
+proc parseElectronicIntelligence(
   node: KdlNode,
-  ctx: var KdlConfigContext,
-  hasCapacityMultiplier: bool = false
-): StandardTechLevelConfig =
-  ## Parse standard tech with hierarchical level nodes
-  ## Structure: level 2 { slRequired 2; trpCost 10 } or { slRequired 2; srpCost 10 }
-  result = StandardTechLevelConfig()
+  ctx: var KdlConfigContext
+): EliConfig =
+  ## Parse electronicIntelligence with hierarchical level nodes
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## electronicIntelligence {
+  ##   capacityMultiplierPerLevel 0.10
+  ##   level 1 { slRequired 1; trpCost 10 }
+  ## }
+  ## ```
+  result = EliConfig()
 
-  # Parse base-level fields if present
-  if hasCapacityMultiplier:
-    # Try to get capacityMultiplierPerLevel if it exists
-    try:
-      result.capacityMultiplierPerLevel = node.requireFloat32("capacityMultiplierPerLevel", ctx)
-    except ConfigError:
-      result.capacityMultiplierPerLevel = 0.0
+  # Parse capacityMultiplierPerLevel if present
+  try:
+    result.capacityMultiplierPerLevel =
+      node.requireFloat32("capacityMultiplierPerLevel", ctx)
+  except ConfigError:
+    result.capacityMultiplierPerLevel = 0.0
 
   # Parse level nodes
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt()
-      let slRequired = child.requireInt32("slRequired", ctx)
-      # Try trpCost first, fall back to srpCost for science-based techs
-      var trpCost: int32
-      try:
-        trpCost = child.requireInt32("trpCost", ctx)
-      except ConfigError:
-        trpCost = child.requireInt32("srpCost", ctx)
+      let levelNum = child.args[0].getInt().int32
 
-      case levelNum
-      of 2:
-        result.level1Sl = slRequired
-        result.level1Trp = trpCost
-      of 3:
-        result.level2Sl = slRequired
-        result.level2Trp = trpCost
-      of 4:
-        result.level3Sl = slRequired
-        result.level3Trp = trpCost
-      of 5:
-        result.level4Sl = slRequired
-        result.level4Trp = trpCost
-      of 6:
-        result.level5Sl = slRequired
-        result.level5Trp = trpCost
-      of 7:
-        result.level6Sl = slRequired
-        result.level6Trp = trpCost
-      of 8:
-        result.level7Sl = slRequired
-        result.level7Trp = trpCost
-      of 9:
-        result.level8Sl = slRequired
-        result.level8Trp = trpCost
-      of 10:
-        result.level9Sl = slRequired
-        result.level9Trp = trpCost
-      of 11:
-        result.level10Sl = slRequired
-        result.level10Trp = trpCost
-      of 12:
-        result.level11Sl = slRequired
-        result.level11Trp = trpCost
-      of 13:
-        result.level12Sl = slRequired
-        result.level12Trp = trpCost
-      of 14:
-        result.level13Sl = slRequired
-        result.level13Trp = trpCost
-      of 15:
-        result.level14Sl = slRequired
-        result.level14Trp = trpCost
-      of 16:
-        result.level15Sl = slRequired
-        result.level15Trp = trpCost
-      else: discard
+      # Store with actual level number as key (1-15)
+      if levelNum >= 1 and levelNum <= 15:
+        result.levels[levelNum] = EliLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          srpCost: child.requireInt32("srpCost", ctx)
+        )
 
-proc parseWeaponsTech(node: KdlNode, ctx: var KdlConfigContext): WeaponsTechConfig =
+proc parseCloaking(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): ClkConfig =
+  ## Parse cloaking with hierarchical level nodes
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## cloaking {
+  ##   capacityMultiplierPerLevel 0.10
+  ##   level 1 { slRequired 1; trpCost 10 }
+  ## }
+  ## ```
+  result = ClkConfig()
+
+  # Parse capacityMultiplierPerLevel if present
+  try:
+    result.capacityMultiplierPerLevel =
+      node.requireFloat32("capacityMultiplierPerLevel", ctx)
+  except ConfigError:
+    result.capacityMultiplierPerLevel = 0.0
+
+  # Parse level nodes
+  for child in node.children:
+    if child.name == "level" and child.args.len > 0:
+      let levelNum = child.args[0].getInt().int32
+
+      # Store with actual level number as key (1-15)
+      if levelNum >= 1 and levelNum <= 15:
+        result.levels[levelNum] = ClkLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          srpCost: child.requireInt32("srpCost", ctx)
+        )
+
+proc parseCounterIntelligence(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): CicConfig =
+  ## Parse counterIntelligence with hierarchical level nodes
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## counterIntelligence {
+  ##   capacityMultiplierPerLevel 0.10
+  ##   level 1 { slRequired 1; trpCost 10 }
+  ## }
+  ## ```
+  result = CicConfig()
+
+  # Parse capacityMultiplierPerLevel if present
+  try:
+    result.capacityMultiplierPerLevel =
+      node.requireFloat32("capacityMultiplierPerLevel", ctx)
+  except ConfigError:
+    result.capacityMultiplierPerLevel = 0.0
+
+  # Parse level nodes
+  for child in node.children:
+    if child.name == "level" and child.args.len > 0:
+      let levelNum = child.args[0].getInt().int32
+
+      # Store with actual level number as key (1-15)
+      if levelNum >= 1 and levelNum <= 15:
+        result.levels[levelNum] = CicLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          srpCost: child.requireInt32("srpCost", ctx)
+        )
+
+proc parseStrategicLift(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): StlConfig =
+  ## Parse strategicLift with hierarchical level nodes
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## strategicLift {
+  ##   capacityMultiplierPerLevel 0.10
+  ##   level 1 { slRequired 1; trpCost 10 }
+  ## }
+  ## ```
+  result = StlConfig()
+
+  # Parse capacityMultiplierPerLevel if present
+  try:
+    result.capacityMultiplierPerLevel =
+      node.requireFloat32("capacityMultiplierPerLevel", ctx)
+  except ConfigError:
+    result.capacityMultiplierPerLevel = 0.0
+
+  # Parse level nodes
+  for child in node.children:
+    if child.name == "level" and child.args.len > 0:
+      let levelNum = child.args[0].getInt().int32
+
+      # Store with actual level number as key (1-15)
+      if levelNum >= 1 and levelNum <= 15:
+        result.levels[levelNum] = StlLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          srpCost: child.requireInt32("srpCost", ctx)
+        )
+
+proc parseWeaponsTech(node: KdlNode, ctx: var KdlConfigContext): WepConfig =
   ## Parse weaponsTech with hierarchical level nodes
-  ## Structure: baseMultiplier 1.10; level 2 { slRequired 2; trpCost 10 }
-  result = WeaponsTechConfig()
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## weapons {
+  ##   baseMultiplier 1.10
+  ##   level 2 { slRequired 2; trpCost 10 }
+  ## }
+  ## ```
+  result = WepConfig()
 
   # Parse base-level fields
-  result.weaponsStatIncreasePerLevel = node.requireFloat32("baseMultiplier", ctx)
+  result.weaponsStatIncreasePerLevel =
+    node.requireFloat32("baseMultiplier", ctx)
   result.weaponsCostIncreasePerLevel = 0.0  # Not in current KDL
 
   # Parse level nodes
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt()
-      let slRequired = child.requireInt32("slRequired", ctx)
-      let trpCost = child.requireInt32("trpCost", ctx)
+      let levelNum = child.args[0].getInt().int32
 
-      case levelNum
-      of 2:
-        result.level1Sl = slRequired
-        result.level1Trp = trpCost
-      of 3:
-        result.level2Sl = slRequired
-        result.level2Trp = trpCost
-      of 4:
-        result.level3Sl = slRequired
-        result.level3Trp = trpCost
-      of 5:
-        result.level4Sl = slRequired
-        result.level4Trp = trpCost
-      of 6:
-        result.level5Sl = slRequired
-        result.level5Trp = trpCost
-      of 7:
-        result.level6Sl = slRequired
-        result.level6Trp = trpCost
-      of 8:
-        result.level7Sl = slRequired
-        result.level7Trp = trpCost
-      of 9:
-        result.level8Sl = slRequired
-        result.level8Trp = trpCost
-      of 10:
-        result.level9Sl = slRequired
-        result.level9Trp = trpCost
-      of 11:
-        result.level10Sl = slRequired
-        result.level10Trp = trpCost
-      of 12:
-        result.level11Sl = slRequired
-        result.level11Trp = trpCost
-      of 13:
-        result.level12Sl = slRequired
-        result.level12Trp = trpCost
-      of 14:
-        result.level13Sl = slRequired
-        result.level13Trp = trpCost
-      of 15:
-        result.level14Sl = slRequired
-        result.level14Trp = trpCost
-      of 16:
-        result.level15Sl = slRequired
-        result.level15Trp = trpCost
-      else: discard
+      # Store with actual level number as key (2-10)
+      if levelNum >= 2 and levelNum <= 10:
+        result.levels[levelNum] = WepLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          trpCost: child.requireInt32("trpCost", ctx)
+        )
+
+proc parseConstructionTech(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): CstConfig =
+  ## Parse construction tech with special fields
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## construction {
+  ##   baseModifier 1.0
+  ##   incrementPerLevel 0.10
+  ##   capacityMultiplierPerLevel 0.10
+  ##   level 2 { slRequired 2; trpCost 10; unlocks "BC" }
+  ## }
+  ## ```
+  result = CstConfig(
+    baseModifier: node.requireFloat32("baseModifier", ctx),
+    incrementPerLevel: node.requireFloat32("incrementPerLevel", ctx)
+  )
+
+  # Try to get capacityMultiplierPerLevel if it exists
+  try:
+    result.capacityMultiplierPerLevel =
+      node.requireFloat32("capacityMultiplierPerLevel", ctx)
+  except ConfigError:
+    result.capacityMultiplierPerLevel = 0.0
+
+  # Parse level nodes
+  for child in node.children:
+    if child.name == "level" and child.args.len > 0:
+      let levelNum = child.args[0].getInt().int32
+
+      # Store with actual level number as key (2-10)
+      if levelNum >= 2 and levelNum <= 10:
+        # Parse unlocks property (can have multiple values)
+        var unlocks: seq[string] = @[]
+        try:
+          let unlocksNode = child.getProperty("unlocks")
+          if unlocksNode.isSome:
+            let val = unlocksNode.get()
+            if val.kind == KValKind.KString:
+              unlocks.add(val.getString())
+          # If there are multiple unlocks as separate properties,
+          # they'll be space-separated in KDL, handled by kdl parser
+          for arg in child.args:
+            if arg.kind == KValKind.KString:
+              let val = arg.getString()
+              if val.len == 2 or val.len == 3:  # Ship codes like "BC", "BB"
+                unlocks.add(val)
+        except: discard
+
+        result.levels[levelNum] = CstLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          trpCost: child.requireInt32("trpCost", ctx),
+          unlocks: unlocks
+        )
+
+proc parseShieldTech(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): SldConfig =
+  ## Parse shield tech with special fields
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## shields {
+  ##   level 1 {
+  ##     slRequired 2; srpCost 10
+  ##     absorption 15; shieldDs 10
+  ##     d20Threshold 17; hitsBlocked 0.25
+  ##   }
+  ## }
+  ## ```
+  result = SldConfig()
+
+  for child in node.children:
+    if child.name == "level" and child.args.len > 0:
+      let levelNum = child.args[0].getInt().int32
+
+      # Store with actual level number as key (1-6)
+      if levelNum >= 1 and levelNum <= 6:
+        result.levels[levelNum] = SldLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          srpCost: child.requireInt32("srpCost", ctx),
+          absorption: child.requireInt32("absorption", ctx),
+          shieldDs: child.requireInt32("shieldDs", ctx),
+          d20Threshold: child.requireInt32("d20Threshold", ctx),
+          hitsBlocked: child.requireFloat32("hitsBlocked", ctx)
+        )
 
 proc parseTerraformingTech(
   node: KdlNode,
   ctx: var KdlConfigContext
-): TerraformingTechConfig =
+): TerConfig =
   ## Parse terraformingTech with hierarchical level nodes
-  ## Structure: level 1 { slRequired 4; srpCost 16; upgrades "From" to "To" }
-  result = TerraformingTechConfig()
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## terraforming {
+  ##   level 1 {
+  ##     slRequired 4; srpCost 16; ppCost 100
+  ##     upgrades "Extreme" to "Desolate"
+  ##   }
+  ## }
+  ## ```
+  result = TerConfig()
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt()
-      let slRequired = child.requireInt32("slRequired", ctx)
-      let srpCost = child.requireInt32("srpCost", ctx)
+      let levelNum = child.args[0].getInt().int32
 
       # Get target planet class from "upgrades" child
       # Format: upgrades "Extreme" to "Desolate"
@@ -241,161 +340,153 @@ proc parseTerraformingTech(
           planetClass = upgradeChild.args[2].getString()
           break
 
-      case levelNum
-      of 1:
-        result.level1Sl = slRequired
-        result.level1Trp = srpCost
-        result.level1PlanetClass = planetClass
-      of 2:
-        result.level2Sl = slRequired
-        result.level2Trp = srpCost
-        result.level2PlanetClass = planetClass
-      of 3:
-        result.level3Sl = slRequired
-        result.level3Trp = srpCost
-        result.level3PlanetClass = planetClass
-      of 4:
-        result.level4Sl = slRequired
-        result.level4Trp = srpCost
-        result.level4PlanetClass = planetClass
-      of 5:
-        result.level5Sl = slRequired
-        result.level5Trp = srpCost
-        result.level5PlanetClass = planetClass
-      of 6:
-        result.level6Sl = slRequired
-        result.level6Trp = srpCost
-        result.level6PlanetClass = planetClass
-      of 7:
-        result.level7Sl = slRequired
-        result.level7Trp = srpCost
-        result.level7PlanetClass = planetClass
-      else: discard
+      # Store with actual level number as key (1-6)
+      if levelNum >= 1 and levelNum <= 6:
+        result.levels[levelNum] = TerLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          srpCost: child.requireInt32("srpCost", ctx),
+          ppCost: child.requireInt32("ppCost", ctx),
+          planetClass: planetClass
+        )
 
 proc parseTerraformingUpgradeCosts(
   node: KdlNode,
   ctx: var KdlConfigContext
-): TerraformingUpgradeCostsConfig =
-  result = TerraformingUpgradeCostsConfig(
-    extremeTer: node.requireInt32("extremeTer", ctx),
-    extremePuMin: node.requireInt32("extremePuMin", ctx),
-    extremePuMax: node.requireInt32("extremePuMax", ctx),
-    extremePp: node.requireInt32("extremePp", ctx),
-    desolateTer: node.requireInt32("desolateTer", ctx),
-    desolatePuMin: node.requireInt32("desolatePuMin", ctx),
-    desolatePuMax: node.requireInt32("desolatePuMax", ctx),
-    desolatePp: node.requireInt32("desolatePp", ctx),
-    hostileTer: node.requireInt32("hostileTer", ctx),
-    hostilePuMin: node.requireInt32("hostilePuMin", ctx),
-    hostilePuMax: node.requireInt32("hostilePuMax", ctx),
-    hostilePp: node.requireInt32("hostilePp", ctx),
-    harshTer: node.requireInt32("harshTer", ctx),
-    harshPuMin: node.requireInt32("harshPuMin", ctx),
-    harshPuMax: node.requireInt32("harshPuMax", ctx),
-    harshPp: node.requireInt32("harshPp", ctx),
-    benignTer: node.requireInt32("benignTer", ctx),
-    benignPuMin: node.requireInt32("benignPuMin", ctx),
-    benignPuMax: node.requireInt32("benignPuMax", ctx),
-    benignPp: node.requireInt32("benignPp", ctx),
-    lushTer: node.requireInt32("lushTer", ctx),
-    lushPuMin: node.requireInt32("lushPuMin", ctx),
-    lushPuMax: node.requireInt32("lushPuMax", ctx),
-    lushPp: node.requireInt32("lushPp", ctx),
-    edenTer: node.requireInt32("edenTer", ctx),
-    edenPuMin: node.requireInt32("edenPuMin", ctx),
-    edenPuMax: node.requireInt32("edenPuMax", ctx),
-    edenPp: node.requireInt32("edenPp", ctx)
+): TerCostsConfig =
+  ## Parse terraformingUpgradeCosts with flat planet type fields
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## terraformingUpgradeCosts {
+  ##   extremeTer 1; extremePuMin 1; extremePuMax 20; extremePp 15
+  ##   desolateTer 1; desolatePuMin 21; desolatePuMax 60; desolatePp 12
+  ## }
+  ## ```
+  result = TerCostsConfig()
+
+  # Parse each planet type's costs
+  result.costs[PlanetType.Extreme] = TerraformingUpgradeCostData(
+    terRequired: node.requireInt32("extremeTer", ctx),
+    puMin: node.requireInt32("extremePuMin", ctx),
+    puMax: node.requireInt32("extremePuMax", ctx),
+    ppCost: node.requireInt32("extremePp", ctx)
+  )
+
+  result.costs[PlanetType.Desolate] = TerraformingUpgradeCostData(
+    terRequired: node.requireInt32("desolateTer", ctx),
+    puMin: node.requireInt32("desolatePuMin", ctx),
+    puMax: node.requireInt32("desolatePuMax", ctx),
+    ppCost: node.requireInt32("desolatePp", ctx)
+  )
+
+  result.costs[PlanetType.Hostile] = TerraformingUpgradeCostData(
+    terRequired: node.requireInt32("hostileTer", ctx),
+    puMin: node.requireInt32("hostilePuMin", ctx),
+    puMax: node.requireInt32("hostilePuMax", ctx),
+    ppCost: node.requireInt32("hostilePp", ctx)
+  )
+
+  result.costs[PlanetType.Harsh] = TerraformingUpgradeCostData(
+    terRequired: node.requireInt32("harshTer", ctx),
+    puMin: node.requireInt32("harshPuMin", ctx),
+    puMax: node.requireInt32("harshPuMax", ctx),
+    ppCost: node.requireInt32("harshPp", ctx)
+  )
+
+  result.costs[PlanetType.Benign] = TerraformingUpgradeCostData(
+    terRequired: node.requireInt32("benignTer", ctx),
+    puMin: node.requireInt32("benignPuMin", ctx),
+    puMax: node.requireInt32("benignPuMax", ctx),
+    ppCost: node.requireInt32("benignPp", ctx)
+  )
+
+  result.costs[PlanetType.Lush] = TerraformingUpgradeCostData(
+    terRequired: node.requireInt32("lushTer", ctx),
+    puMin: node.requireInt32("lushPuMin", ctx),
+    puMax: node.requireInt32("lushPuMax", ctx),
+    ppCost: node.requireInt32("lushPp", ctx)
+  )
+
+  result.costs[PlanetType.Eden] = TerraformingUpgradeCostData(
+    terRequired: node.requireInt32("edenTer", ctx),
+    puMin: node.requireInt32("edenPuMin", ctx),
+    puMax: node.requireInt32("edenPuMax", ctx),
+    ppCost: node.requireInt32("edenPp", ctx)
   )
 
 proc parseFlagshipCommand(
   node: KdlNode,
   ctx: var KdlConfigContext
-): FlagshipCommandConfig =
-  ## Structure: level 2 { slRequired 2; trpCost 12; crBonus 1 }
-  result = FlagshipCommandConfig()
+): FcConfig =
+  ## Parse flagshipCommand with hierarchical level nodes
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## flagshipCommand {
+  ##   level 2 { slRequired 2; trpCost 12; crBonus 1 }
+  ## }
+  ## ```
+  result = FcConfig()
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt()
-      let slRequired = child.requireInt32("slRequired", ctx)
-      let trpCost = child.requireInt32("trpCost", ctx)
-      let crBonus = child.requireInt32("crBonus", ctx)
+      let levelNum = child.args[0].getInt().int32
 
-      case levelNum
-      of 2:
-        result.level2Sl = slRequired
-        result.level2Trp = trpCost
-        result.level2CrBonus = crBonus
-      of 3:
-        result.level3Sl = slRequired
-        result.level3Trp = trpCost
-        result.level3CrBonus = crBonus
-      of 4:
-        result.level4Sl = slRequired
-        result.level4Trp = trpCost
-        result.level4CrBonus = crBonus
-      of 5:
-        result.level5Sl = slRequired
-        result.level5Trp = trpCost
-        result.level5CrBonus = crBonus
-      of 6:
-        result.level6Sl = slRequired
-        result.level6Trp = trpCost
-        result.level6CrBonus = crBonus
-      else:
-        discard
+      # Store with actual level number as key (2-6)
+      if levelNum >= 2 and levelNum <= 6:
+        result.levels[levelNum] = FcLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          trpCost: child.requireInt32("trpCost", ctx),
+          crBonus: child.requireInt32("crBonus", ctx)
+        )
 
 proc parseStrategicCommand(
   node: KdlNode,
   ctx: var KdlConfigContext
-): StrategicCommandConfig =
-  ## Structure: level 1 { slRequired 2; trpCost 15; c2Bonus 50 }
-  result = StrategicCommandConfig()
+): ScConfig =
+  ## Parse strategicCommand with hierarchical level nodes
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## strategicCommand {
+  ##   level 1 { slRequired 2; trpCost 15; c2Bonus 50 }
+  ## }
+  ## ```
+  result = ScConfig()
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt()
-      let slRequired = child.requireInt32("slRequired", ctx)
-      let trpCost = child.requireInt32("trpCost", ctx)
-      let c2Bonus = child.requireInt32("c2Bonus", ctx)
+      let levelNum = child.args[0].getInt().int32
 
-      case levelNum
-      of 1:
-        result.level1Sl = slRequired
-        result.level1Trp = trpCost
-        result.level1C2Bonus = c2Bonus
-      of 2:
-        result.level2Sl = slRequired
-        result.level2Trp = trpCost
-        result.level2C2Bonus = c2Bonus
-      of 3:
-        result.level3Sl = slRequired
-        result.level3Trp = trpCost
-        result.level3C2Bonus = c2Bonus
-      of 4:
-        result.level4Sl = slRequired
-        result.level4Trp = trpCost
-        result.level4C2Bonus = c2Bonus
-      of 5:
-        result.level5Sl = slRequired
-        result.level5Trp = trpCost
-        result.level5C2Bonus = c2Bonus
-      else:
-        discard
+      # Store with actual level number as key (1-5)
+      if levelNum >= 1 and levelNum <= 5:
+        result.levels[levelNum] = ScLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          trpCost: child.requireInt32("trpCost", ctx),
+          c2Bonus: child.requireInt32("c2Bonus", ctx)
+        )
 
 proc parseFighterDoctrine(
   node: KdlNode,
   ctx: var KdlConfigContext
-): FighterDoctrineConfig =
-  ## Structure: level 2 { slRequired 2; trpCost 15; multiplier 1.5 }
-  result = FighterDoctrineConfig()
+): FdConfig =
+  ## Parse fighterDoctrine with hierarchical level nodes
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## fighterDoctrine {
+  ##   level 2 {
+  ##     slRequired 2
+  ##     trpCost 15
+  ##     multiplier 1.5
+  ##   }
+  ## }
+  ## ```
+  result = FdConfig()
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt()
-      let slRequired = child.requireInt32("slRequired", ctx)
-      let trpCost = child.requireInt32("trpCost", ctx)
-      let multiplier = child.requireFloat32("multiplier", ctx)
+      let levelNum = child.args[0].getInt().int32
 
       # Optional description field
       var description = ""
@@ -404,42 +495,42 @@ proc parseFighterDoctrine(
       except ConfigError:
         description = ""
 
-      case levelNum
-      of 1:
-        result.level1Sl = slRequired
-        result.level1Trp = trpCost
-        result.level1CapacityMultiplier = multiplier
-        result.level1Description = description
-      of 2:
-        result.level2Sl = slRequired
-        result.level2Trp = trpCost
-        result.level2CapacityMultiplier = multiplier
-        result.level2Description = description
-      of 3:
-        result.level3Sl = slRequired
-        result.level3Trp = trpCost
-        result.level3CapacityMultiplier = multiplier
-        result.level3Description = description
-      else:
-        discard
+      # Store with actual level number as key (2-3)
+      if levelNum >= 2 and levelNum <= 3:
+        result.levels[levelNum] = FdLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          trpCost: child.requireInt32("trpCost", ctx),
+          capacityMultiplier: child.requireFloat32("multiplier", ctx),
+          description: description
+        )
 
 proc parseAdvancedCarrierOps(
   node: KdlNode,
   ctx: var KdlConfigContext
-): AdvancedCarrierOpsConfig =
-  ## Structure: level 1 { slRequired 1; trpCost 0; cvCapacity 3; cxCapacity 5; description "..." }
-  result = AdvancedCarrierOpsConfig(
+): AcoConfig =
+  ## Parse advancedCarrierOperations with hierarchical level nodes
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## advancedCarrierOperations {
+  ##   capacityMultiplierPerLevel 0.15
+  ##   level 1 {
+  ##     slRequired 1
+  ##     trpCost 0
+  ##     cvCapacity 3
+  ##     cxCapacity 5
+  ##     description "Basic ops"
+  ##   }
+  ## }
+  ## ```
+  result = AcoConfig(
     capacityMultiplierPerLevel:
       node.requireFloat32("capacityMultiplierPerLevel", ctx)
   )
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt()
-      let slRequired = child.requireInt32("slRequired", ctx)
-      let trpCost = child.requireInt32("trpCost", ctx)
-      let cvCapacity = child.requireInt32("cvCapacity", ctx)
-      let cxCapacity = child.requireInt32("cxCapacity", ctx)
+      let levelNum = child.args[0].getInt().int32
 
       # Optional description field
       var description = ""
@@ -448,27 +539,15 @@ proc parseAdvancedCarrierOps(
       except ConfigError:
         description = ""
 
-      case levelNum
-      of 1:
-        result.level1Sl = slRequired
-        result.level1Trp = trpCost
-        result.level1CvCapacity = cvCapacity
-        result.level1CxCapacity = cxCapacity
-        result.level1Description = description
-      of 2:
-        result.level2Sl = slRequired
-        result.level2Trp = trpCost
-        result.level2CvCapacity = cvCapacity
-        result.level2CxCapacity = cxCapacity
-        result.level2Description = description
-      of 3:
-        result.level3Sl = slRequired
-        result.level3Trp = trpCost
-        result.level3CvCapacity = cvCapacity
-        result.level3CxCapacity = cxCapacity
-        result.level3Description = description
-      else:
-        discard
+      # Store with actual level number as key (1-3)
+      if levelNum >= 1 and levelNum <= 3:
+        result.levels[levelNum] = AcoLevelData(
+          slRequired: child.requireInt32("slRequired", ctx),
+          trpCost: child.requireInt32("trpCost", ctx),
+          cvCapacity: child.requireInt32("cvCapacity", ctx),
+          cxCapacity: child.requireInt32("cxCapacity", ctx),
+          description: description
+        )
 
 proc loadTechConfig*(configPath: string): TechConfig =
   ## Load technology configuration from KDL file
@@ -478,62 +557,62 @@ proc loadTechConfig*(configPath: string): TechConfig =
 
   ctx.withNode("economicLevel"):
     let node = doc.requireNode("economicLevel", ctx)
-    result.economicLevel = parseEconomicLevel(node, ctx)
+    result.el = parseEconomicLevel(node, ctx)
 
   ctx.withNode("scienceLevel"):
     let node = doc.requireNode("scienceLevel", ctx)
-    result.scienceLevel = parseScienceLevel(node, ctx)
+    result.sl = parseScienceLevel(node, ctx)
 
   ctx.withNode("construction"):
     let node = doc.requireNode("construction", ctx)
-    result.constructionTech = parseStandardTechLevel(node, ctx, true)
+    result.cst = parseConstructionTech(node, ctx)
 
   ctx.withNode("weapons"):
     let node = doc.requireNode("weapons", ctx)
-    result.weaponsTech = parseWeaponsTech(node, ctx)
+    result.wep = parseWeaponsTech(node, ctx)
 
   ctx.withNode("terraforming"):
     let node = doc.requireNode("terraforming", ctx)
-    result.terraformingTech = parseTerraformingTech(node, ctx)
+    result.ter = parseTerraformingTech(node, ctx)
 
   ctx.withNode("terraformingUpgradeCosts"):
     let node = doc.requireNode("terraformingUpgradeCosts", ctx)
-    result.terraformingUpgradeCosts = parseTerraformingUpgradeCosts(node, ctx)
+    result.terCosts = parseTerraformingUpgradeCosts(node, ctx)
 
   ctx.withNode("electronicIntelligence"):
     let node = doc.requireNode("electronicIntelligence", ctx)
-    result.electronicIntelligence = parseStandardTechLevel(node, ctx, false)
+    result.eli = parseElectronicIntelligence(node, ctx)
 
   ctx.withNode("cloaking"):
     let node = doc.requireNode("cloaking", ctx)
-    result.cloakingTech = parseStandardTechLevel(node, ctx, false)
+    result.clk = parseCloaking(node, ctx)
 
   ctx.withNode("shields"):
     let node = doc.requireNode("shields", ctx)
-    result.shieldTech = parseStandardTechLevel(node, ctx, false)
+    result.sld = parseShieldTech(node, ctx)
 
   ctx.withNode("counterIntelligence"):
     let node = doc.requireNode("counterIntelligence", ctx)
-    result.counterIntelligenceTech = parseStandardTechLevel(node, ctx, false)
+    result.cic = parseCounterIntelligence(node, ctx)
 
   ctx.withNode("strategicLift"):
     let node = doc.requireNode("strategicLift", ctx)
-    result.strategicLiftTech = parseStandardTechLevel(node, ctx, false)
+    result.stl = parseStrategicLift(node, ctx)
 
   ctx.withNode("flagshipCommand"):
     let node = doc.requireNode("flagshipCommand", ctx)
-    result.flagshipCommand = parseFlagshipCommand(node, ctx)
+    result.fc = parseFlagshipCommand(node, ctx)
 
   ctx.withNode("strategicCommand"):
     let node = doc.requireNode("strategicCommand", ctx)
-    result.strategicCommand = parseStrategicCommand(node, ctx)
+    result.sc = parseStrategicCommand(node, ctx)
 
   ctx.withNode("fighterDoctrine"):
     let node = doc.requireNode("fighterDoctrine", ctx)
-    result.fighterDoctrine = parseFighterDoctrine(node, ctx)
+    result.fd = parseFighterDoctrine(node, ctx)
 
   ctx.withNode("advancedCarrierOperations"):
     let node = doc.requireNode("advancedCarrierOperations", ctx)
-    result.advancedCarrierOperations = parseAdvancedCarrierOps(node, ctx)
+    result.aco = parseAdvancedCarrierOps(node, ctx)
 
   logInfo("Config", "Loaded technology configuration", "path=", configPath)

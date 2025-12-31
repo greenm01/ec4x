@@ -37,8 +37,8 @@ export
 
 proc getFighterDoctrineMultiplier(fdLevel: int): float =
   ## Get Fighter Doctrine tech multiplier per assets.md:2.4.1
-  ## Reads from gameConfig.tech.fighterDoctrine
-  let cfg = gameConfig.tech.fighterDoctrine
+  ## Reads from gameConfig.tech.fd
+  let cfg = gameConfig.tech.fd
   case fdLevel
   of 1:
     return cfg.level_1_capacity_multiplier.float

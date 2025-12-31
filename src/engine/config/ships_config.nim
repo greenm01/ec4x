@@ -68,7 +68,7 @@ proc loadShipsConfig*(configPath: string): ShipsConfig =
   parseShip("etac", etac)
   parseShip("troopTransport", troopTransport)
   parseShip("fighter", fighter)
-  parseShip("planetbreaker", planetbreaker)
+  parseShip("planetBreaker", planetbreaker)
 
   ctx.withNode("salvage"):
     let salvageNode = doc.requireNode("salvage", ctx)

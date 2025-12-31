@@ -10,20 +10,20 @@ Technologies in EC4X fall into three categories based on how they're applied:
 
 These are checked at runtime from `house.techTree.levels` and apply to all applicable units immediately:
 
-| Tech | Full Name                  | Application                                    | Apply Method |
-|:----:| -------------------------- | ---------------------------------------------- |:------------:|
-| CST  | Construction Tech          | Gates which ship classes can be built          | Build-time   |
-| ELI  | Electronic Intelligence    | Detection capability (all fleets/colonies)     | Runtime      |
-| CLK  | Cloaking Tech              | Cloaking effectiveness for Raiders             | Runtime      |
-| ACO  | Advanced Carrier Ops       | Carrier capacity (CV/CX hangar size)           | Runtime      |
-| STL  | Strategic Lift             | Transport capacity (ETAC/TT carry limit)       | Runtime      |
-| FC   | Flagship Command           | Command Rating bonus for capital ships         | Runtime      |
-| SC   | Strategic Command          | C2 Pool bonus for fleet capacity               | Runtime      |
-| FD   | Fighter Doctrine           | Fighter squadron capacity multiplier           | Runtime      |
-| EL   | Economic Level             | Production multiplier (all colonies)           | Runtime      |
-| SL   | Science Level              | Gates tech research                            | Build-time   |
-| TER  | Terraforming               | Enables planet upgrades                        | Build-time   |
-| SLD  | Shields                    | Shield construction capability                 | Build-time   |
+| Tech | Full Name                  | Cost    | Application                                    | Apply Method |
+|:----:| -------------------------- |:-------:| ---------------------------------------------- |:------------:|
+| CST  | Construction Tech          | TRP     | Gates which ship classes can be built          | Build-time   |
+| ELI  | Electronic Intelligence    | SRP     | Detection capability (all fleets/colonies)     | Runtime      |
+| CLK  | Cloaking Tech              | SRP     | Cloaking effectiveness for Raiders             | Runtime      |
+| ACO  | Advanced Carrier Ops       | TRP     | Carrier capacity (CV/CX hangar size)           | Runtime      |
+| STL  | Strategic Lift             | SRP     | Transport capacity (ETAC/TT carry limit)       | Runtime      |
+| FC   | Flagship Command           | TRP     | Command Rating bonus for capital ships         | Runtime      |
+| SC   | Strategic Command          | TRP     | C2 Pool bonus for fleet capacity               | Runtime      |
+| FD   | Fighter Doctrine           | TRP     | Fighter squadron capacity multiplier           | Runtime      |
+| EL   | Economic Level             | ERP     | Production multiplier (all colonies)           | Runtime      |
+| SL   | Science Level              | ERP+SRP | Gates tech research                            | Build-time   |
+| TER  | Terraforming               | SRP     | Enables planet upgrades                        | Build-time   |
+| SLD  | Shields                    | SRP     | Shield construction capability                 | Build-time   |
 
 **Runtime**: Tech level queried from house when needed (detection, capacity checks, calculations)
 **Build-time**: Tech level checked once during construction/research, then no longer referenced

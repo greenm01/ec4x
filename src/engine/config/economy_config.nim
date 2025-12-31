@@ -3,6 +3,7 @@
 ## Loads economy mechanics from config/economy.kdl
 ## Allows runtime configuration for population, production, research, taxation, colonization
 
+import std/strutils
 import kdl
 import kdl_helpers
 import ../../common/logger
@@ -32,62 +33,39 @@ proc parseRawMaterialEfficiency(
   ctx: var KdlConfigContext
 ): RawMaterialEfficiencyConfig =
   ## Parse rawMaterialEfficiency with hierarchical material nodes
-  ## Structure: material "Very Poor" { eden 0.60; lush 0.60; ... }
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## rawMaterialEfficiency {
+  ##   material "Very Poor" {
+  ##     eden 0.60; lush 0.60; benign 0.55; ...
+  ##   }
+  ##   material "Poor" { ... }
+  ## }
+  ## ```
   result = RawMaterialEfficiencyConfig()
 
   for child in node.children:
     if child.name == "material" and child.args.len > 0:
-      let materialType = child.args[0].getString()
-      let eden = child.requireFloat32("eden", ctx)
-      let lush = child.requireFloat32("lush", ctx)
-      let benign = child.requireFloat32("benign", ctx)
-      let harsh = child.requireFloat32("harsh", ctx)
-      let hostile = child.requireFloat32("hostile", ctx)
-      let desolate = child.requireFloat32("desolate", ctx)
-      let extreme = child.requireFloat32("extreme", ctx)
+      # Parse material quality from string like "Very Poor" -> VeryPoor
+      let materialStr = child.args[0].getString().replace(" ", "")
+      let quality = parseEnum[MaterialQuality](materialStr)
 
-      case materialType
-      of "Very Poor":
-        result.veryPoorEden = eden
-        result.veryPoorLush = lush
-        result.veryPoorBenign = benign
-        result.veryPoorHarsh = harsh
-        result.veryPoorHostile = hostile
-        result.veryPoorDesolate = desolate
-        result.veryPoorExtreme = extreme
-      of "Poor":
-        result.poorEden = eden
-        result.poorLush = lush
-        result.poorBenign = benign
-        result.poorHarsh = harsh
-        result.poorHostile = hostile
-        result.poorDesolate = desolate
-        result.poorExtreme = extreme
-      of "Abundant":
-        result.abundantEden = eden
-        result.abundantLush = lush
-        result.abundantBenign = benign
-        result.abundantHarsh = harsh
-        result.abundantHostile = hostile
-        result.abundantDesolate = desolate
-        result.abundantExtreme = extreme
-      of "Rich":
-        result.richEden = eden
-        result.richLush = lush
-        result.richBenign = benign
-        result.richHarsh = harsh
-        result.richHostile = hostile
-        result.richDesolate = desolate
-        result.richExtreme = extreme
-      of "Very Rich":
-        result.veryRichEden = eden
-        result.veryRichLush = lush
-        result.veryRichBenign = benign
-        result.veryRichHarsh = harsh
-        result.veryRichHostile = hostile
-        result.veryRichDesolate = desolate
-        result.veryRichExtreme = extreme
-      else: discard
+      # Parse all planet type values
+      result.multipliers[quality][PlanetType.Eden] =
+        child.requireFloat32("eden", ctx)
+      result.multipliers[quality][PlanetType.Lush] =
+        child.requireFloat32("lush", ctx)
+      result.multipliers[quality][PlanetType.Benign] =
+        child.requireFloat32("benign", ctx)
+      result.multipliers[quality][PlanetType.Harsh] =
+        child.requireFloat32("harsh", ctx)
+      result.multipliers[quality][PlanetType.Hostile] =
+        child.requireFloat32("hostile", ctx)
+      result.multipliers[quality][PlanetType.Desolate] =
+        child.requireFloat32("desolate", ctx)
+      result.multipliers[quality][PlanetType.Extreme] =
+        child.requireFloat32("extreme", ctx)
 
 proc parseTaxMechanics(
   node: KdlNode,
@@ -103,38 +81,27 @@ proc parseTaxPopulationGrowth(
   ctx: var KdlConfigContext
 ): TaxPopulationGrowthConfig =
   ## Parse taxPopulationGrowth with hierarchical tier nodes
-  ## Structure: tier 1 { minRate 41; maxRate 50; popMultiplier 1.0 }
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## taxPopulationGrowth {
+  ##   tier 1 { minRate 41; maxRate 50; popMultiplier 1.0 }
+  ##   tier 2 { ... }
+  ## }
+  ## ```
   result = TaxPopulationGrowthConfig()
 
   for child in node.children:
     if child.name == "tier" and child.args.len > 0:
-      let tierNum = child.args[0].getInt()
-      let minRate = child.requireInt32("minRate", ctx)
-      let maxRate = child.requireInt32("maxRate", ctx)
-      let popMult = child.requireFloat32("popMultiplier", ctx)
+      let tierNum = child.args[0].getInt().int32
 
-      case tierNum
-      of 1:
-        result.tier1Min = minRate
-        result.tier1Max = maxRate
-        result.tier1PopMultiplier = popMult
-      of 2:
-        result.tier2Min = minRate
-        result.tier2Max = maxRate
-        result.tier2PopMultiplier = popMult
-      of 3:
-        result.tier3Min = minRate
-        result.tier3Max = maxRate
-        result.tier3PopMultiplier = popMult
-      of 4:
-        result.tier4Min = minRate
-        result.tier4Max = maxRate
-        result.tier4PopMultiplier = popMult
-      of 5:
-        result.tier5Min = minRate
-        result.tier5Max = maxRate
-        result.tier5PopMultiplier = popMult
-      else: discard
+      # Store with actual tier number as key (1-5)
+      if tierNum >= 1 and tierNum <= 5:
+        result.tiers[tierNum] = TaxTierData(
+          minRate: child.requireInt32("minRate", ctx),
+          maxRate: child.requireInt32("maxRate", ctx),
+          popMultiplier: child.requireFloat32("popMultiplier", ctx)
+        )
 
 proc parseIndustrialInvestment(
   node: KdlNode,

@@ -2,6 +2,8 @@ type
   CombatMechanicsConfig* = object
     criticalHitRoll*: int32
     retreatAfterRound*: int32
+    maxCombatRounds*: int32
+    desperationRoundTrigger*: int32
     starbaseCriticalReroll*: bool
     starbaseDieModifier*: int32
 
@@ -51,6 +53,7 @@ type
   DamageRulesConfig* = object
     crippledAsMultiplier*: float32
     crippledMaintenanceMultiplier*: float32
+    crippledTargetingWeight*: float32
     squadronFightsAsUnit*: bool
     destroyAfterAllCrippled*: bool
 
@@ -66,6 +69,14 @@ type
   InvasionConfig* = object
     invasionIuLoss*: float32
     blitzIuLoss*: float32
+    blitzMarinePenalty*: float32
+
+  TargetingConfig* = object
+    raiderWeight*: float32
+    capitalWeight*: float32
+    escortWeight*: float32
+    fighterWeight*: float32
+    starbaseWeight*: float32
 
   CombatConfig* = object ## Complete combat configuration loaded from KDL
     combat*: CombatMechanicsConfig
@@ -78,4 +89,5 @@ type
     retreatRules*: RetreatRulesConfig
     blockade*: BlockadeConfig
     invasion*: InvasionConfig
+    targeting*: TargetingConfig
 

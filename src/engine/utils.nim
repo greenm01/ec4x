@@ -1,9 +1,32 @@
 ## Accessors for commonly-used values
 
-import std/strutils
-import ./types/[starmap, ship, tech, config]
+import std/[strutils, strformat, tables]
+import ./types/[starmap, ship, tech, config, validation]
 
 import ./globals
+
+proc techLevel[T](
+  levels: Table[int32, T],
+  level: int32,
+  techName: string,
+  minLevel: int32 = 1,
+  maxLevel: int32 = 15
+): T =
+  ## Retrieve tech level data with validation
+  ## Raises ValidationError if level is out of bounds or doesn't exist
+  if level < minLevel or level > maxLevel:
+    raise newException(
+      ValidationError,
+      &"{techName} level must be between {minLevel} and {maxLevel}, got {level}"
+    )
+
+  if not levels.hasKey(level):
+    raise newException(
+      ValidationError,
+      &"{techName} level {level} does not exist in configuration"
+    )
+
+  return levels[level]
 
 proc soulsPerPtu*(): int32 =
   gameConfig.economy.ptuDefinition.soulsPerPtu
@@ -76,44 +99,13 @@ proc shipConfig*(shipClass: ShipClass): ShipStatsConfig =
 proc elUpgradeCost*(level: int32): int32 =
   ## Get ERP cost for advancing from level N to N+1
   ## Uses loaded config data from tech.kdl
-  let cfg = gameConfig.tech.economicLevel
-
-  case level
-  of 1: return cfg.level1Erp
-  of 2: return cfg.level2Erp
-  of 3: return cfg.level3Erp
-  of 4: return cfg.level4Erp
-  of 5: return cfg.level5Erp
-  of 6: return cfg.level6Erp
-  of 7: return cfg.level7Erp
-  of 8: return cfg.level8Erp
-  of 9: return cfg.level9Erp
-  of 10: return cfg.level10Erp
-  of 11: return cfg.level11Erp
-  else:
-    raise newException(
-      ValueError,
-      "Invalid EL level: " & $level & " (max is 11)"
-    )
+  let cfg = gameConfig.tech.el
+  return techLevel(cfg.levels, level, "EL", 2, 10).erpCost
 
 proc slUpgradeCost*(level: int32): int32 =
   ## Get SRP cost for advancing from level N to N+1
-  let cfg = gameConfig.tech.scienceLevel
-
-  case level
-  of 1: return cfg.level1Srp
-  of 2: return cfg.level2Srp
-  of 3: return cfg.level3Srp
-  of 4: return cfg.level4Srp
-  of 5: return cfg.level5Srp
-  of 6: return cfg.level6Srp
-  of 7: return cfg.level7Srp
-  of 8: return cfg.level8Srp
-  else:
-    raise newException(
-      ValueError,
-      "Invalid SL level: " & $level & " (max is 8)"
-    )
+  let cfg = gameConfig.tech.sl
+  return techLevel(cfg.levels, level, "SL", 2, 10).srpRequired
 
 proc techUpgradeCost*(techField: TechField, level: int32): int32 =
   ## Get TRP cost for advancing from level N to N+1
@@ -121,173 +113,46 @@ proc techUpgradeCost*(techField: TechField, level: int32): int32 =
 
   case techField
   of TechField.ConstructionTech:
-    let cfg = gameConfig.tech.constructionTech
-    case level
-    of 1: return cfg.level1Trp
-    of 2: return cfg.level2Trp
-    of 3: return cfg.level3Trp
-    of 4: return cfg.level4Trp
-    of 5: return cfg.level5Trp
-    of 6: return cfg.level6Trp
-    of 7: return cfg.level7Trp
-    of 8: return cfg.level8Trp
-    of 9: return cfg.level9Trp
-    of 10: return cfg.level10Trp
-    of 11: return cfg.level11Trp
-    of 12: return cfg.level12Trp
-    of 13: return cfg.level13Trp
-    of 14: return cfg.level14Trp
-    of 15: return cfg.level15Trp
-    else:
-      raise newException(
-        ValueError,
-        "Invalid CST level: " & $level & " (max is 15)"
-      )
+    let cfg = gameConfig.tech.cst
+    return techLevel(cfg.levels, level, "CST", 2, 10).trpCost
+
   of TechField.WeaponsTech:
-    let cfg = gameConfig.tech.weaponsTech
-    case level
-    of 1: return cfg.level1Trp
-    of 2: return cfg.level2Trp
-    of 3: return cfg.level3Trp
-    of 4: return cfg.level4Trp
-    of 5: return cfg.level5Trp
-    of 6: return cfg.level6Trp
-    of 7: return cfg.level7Trp
-    of 8: return cfg.level8Trp
-    of 9: return cfg.level9Trp
-    of 10: return cfg.level10Trp
-    of 11: return cfg.level11Trp
-    of 12: return cfg.level12Trp
-    of 13: return cfg.level13Trp
-    of 14: return cfg.level14Trp
-    of 15: return cfg.level15Trp
-    else:
-      raise newException(
-        ValueError,
-        "Invalid WEP level: " & $level & " (max is 15)"
-      )
+    let cfg = gameConfig.tech.wep
+    return techLevel(cfg.levels, level, "WEP", 2, 10).trpCost
+
   of TechField.TerraformingTech:
-    let cfg = gameConfig.tech.terraformingTech
-    case level
-    of 1: return cfg.level1Trp
-    of 2: return cfg.level2Trp
-    of 3: return cfg.level3Trp
-    of 4: return cfg.level4Trp
-    of 5: return cfg.level5Trp
-    of 6: return cfg.level6Trp
-    of 7: return cfg.level7Trp
-    else: return 30 + (level - 7) * 5 # Level 8+
+    if level < 1 or level > 6:
+      # Level 7+ uses formula (if needed)
+      return 60 + (level - 6) * 10
+    let cfg = gameConfig.tech.ter
+    return techLevel(cfg.levels, level, "TER", 1, 6).srpCost
+
   of TechField.ElectronicIntelligence:
-    let cfg = gameConfig.tech.electronicIntelligence
-    case level
-    of 1: return cfg.level1Trp
-    of 2: return cfg.level2Trp
-    of 3: return cfg.level3Trp
-    of 4: return cfg.level4Trp
-    of 5: return cfg.level5Trp
-    of 6: return cfg.level6Trp
-    of 7: return cfg.level7Trp
-    of 8: return cfg.level8Trp
-    of 9: return cfg.level9Trp
-    of 10: return cfg.level10Trp
-    of 11: return cfg.level11Trp
-    of 12: return cfg.level12Trp
-    of 13: return cfg.level13Trp
-    of 14: return cfg.level14Trp
-    of 15: return cfg.level15Trp
-    else:
-      raise newException(
-        ValueError,
-        "Invalid ELI level: " & $level & " (max is 15)"
-      )
+    let cfg = gameConfig.tech.eli
+    return techLevel(cfg.levels, level, "ELI", 1, 15).srpCost
+
   of TechField.CloakingTech:
-    let cfg = gameConfig.tech.cloakingTech
-    case level
-    of 1: return cfg.level1Trp
-    of 2: return cfg.level2Trp
-    of 3: return cfg.level3Trp
-    of 4: return cfg.level4Trp
-    of 5: return cfg.level5Trp
-    of 6: return cfg.level6Trp
-    of 7: return cfg.level7Trp
-    of 8: return cfg.level8Trp
-    of 9: return cfg.level9Trp
-    of 10: return cfg.level10Trp
-    of 11: return cfg.level11Trp
-    of 12: return cfg.level12Trp
-    of 13: return cfg.level13Trp
-    of 14: return cfg.level14Trp
-    of 15: return cfg.level15Trp
-    else:
-      raise newException(
-        ValueError,
-        "Invalid CLK level: " & $level & " (max is 15)"
-      )
+    let cfg = gameConfig.tech.clk
+    return techLevel(cfg.levels, level, "CLK", 1, 15).srpCost
+
   of TechField.ShieldTech:
-    let cfg = gameConfig.tech.shieldTech
-    case level
-    of 1: return cfg.level1Trp
-    of 2: return cfg.level2Trp
-    of 3: return cfg.level3Trp
-    of 4: return cfg.level4Trp
-    of 5: return cfg.level5Trp
-    of 6: return cfg.level6Trp
-    of 7: return cfg.level7Trp
-    of 8: return cfg.level8Trp
-    of 9: return cfg.level9Trp
-    of 10: return cfg.level10Trp
-    of 11: return cfg.level11Trp
-    of 12: return cfg.level12Trp
-    of 13: return cfg.level13Trp
-    of 14: return cfg.level14Trp
-    of 15: return cfg.level15Trp
-    else:
-      raise newException(
-        ValueError,
-        "Invalid SLD level: " & $level & " (max is 15)"
-      )
+    let cfg = gameConfig.tech.sld
+    return techLevel(cfg.levels, level, "SLD", 1, 6).srpCost
+
   of TechField.CounterIntelligence:
-    let cfg = gameConfig.tech.counterIntelligenceTech
-    case level
-    of 1: return cfg.level1Trp
-    of 2: return cfg.level2Trp
-    of 3: return cfg.level3Trp
-    of 4: return cfg.level4Trp
-    of 5: return cfg.level5Trp
-    of 6: return cfg.level6Trp
-    of 7: return cfg.level7Trp
-    of 8: return cfg.level8Trp
-    of 9: return cfg.level9Trp
-    of 10: return cfg.level10Trp
-    of 11: return cfg.level11Trp
-    of 12: return cfg.level12Trp
-    of 13: return cfg.level13Trp
-    of 14: return cfg.level14Trp
-    of 15: return cfg.level15Trp
-    else:
-      raise newException(
-        ValueError,
-        "Invalid CIC level: " & $level & " (max is 15)"
-      )
+    let cfg = gameConfig.tech.cic
+    return techLevel(cfg.levels, level, "CIC", 1, 15).srpCost
+
   of TechField.FighterDoctrine:
-    let cfg = gameConfig.tech.fighterDoctrine
-    case level
-    of 1: return cfg.level1Trp
-    of 2: return cfg.level2Trp
-    of 3: return cfg.level3Trp
-    else:
-      raise newException(
-        ValueError,
-        "Invalid FD level: " & $level & " (max is 3)"
-      )
+    let cfg = gameConfig.tech.fd
+    return techLevel(cfg.levels, level, "FD", 2, 3).trpCost
+
   of TechField.AdvancedCarrierOps:
-    let cfg = gameConfig.tech.advancedCarrierOperations
-    case level
-    of 1: return cfg.level1Trp
-    of 2: return cfg.level2Trp
-    of 3: return cfg.level3Trp
-    else:
-      raise newException(
-        ValueError,
-        "Invalid ACO level: " & $level & " (max is 3)"
-      )
+    let cfg = gameConfig.tech.aco
+    return techLevel(cfg.levels, level, "ACO", 1, 3).trpCost
+
+proc taxTier*(tier: int32): TaxTierData =
+  ## Get tax tier data with validation
+  ## Tax tiers range from 1 (lowest tax) to 5 (highest tax)
+  let cfg = gameConfig.economy.taxPopulationGrowth
+  return techLevel(cfg.tiers, tier, "Tax Tier", 1, 5)
