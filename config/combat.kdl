@@ -111,6 +111,14 @@ targeting {
     // Note: Crippled multiplier (2.0) defined in damage section above
 }
 
+// --- Starbase Combat Bonuses ---
+starbase {
+    (docs)"docs/specs/07-combat.md#section-7-4"
+    // Also see: docs/specs/02-assets.md#section-2-4-4
+    criticalReroll #true    // Starbases reroll first critical hit against them
+    dieModifier 2           // +2 die roll modifier for starbases in combat
+}
+
 retreat {
     (docs)"docs/specs/07-combat.md#section-7-3-6"
     fightersNeverRetreat #true

@@ -544,7 +544,34 @@ Reserve fleets fight at reduced effectiveness:
 - Still better than no defense
 - Can be reactivated to full strength (Reactivate order, returns to Active status)
 
-### 7.4.4 Victory Conditions
+### 7.4.4 Starbase Combat Bonuses
+
+Starbases provide significant defensive advantages beyond their raw combat statistics:
+
+**Critical Hit Resilience:**
+- **First Critical Reroll**: When a starbase is hit by a critical hit (natural 9 on 1d10), it may reroll the first critical hit against it each combat round
+- This ability represents the starbase's redundant systems, armored sections, and compartmentalized design
+- Only the first critical hit per round can be rerolled—subsequent criticals apply normally
+- If the reroll is also a critical hit, the starbase takes full critical damage
+
+**Combat Die Modifier:**
+- **+2 Die Roll Bonus**: Starbases receive a +2 modifier to all combat die rolls
+- This bonus applies to both offensive (attacking enemy ships) and defensive (absorbing damage) rolls
+- Represents superior fire control systems, targeting computers, and defensive coordination
+- Stacks with other modifiers (morale, CER bonuses, etc.)
+
+**Detection Capability:**
+- **+2 Detection Bonus**: Already covered in [Section 7.4.2](#742-orbital-combat-differences-from-space-combat)
+- Starbases add +2 to defender's detection roll against cloaked Raiders
+- This detection bonus applies in both space combat and orbital combat phases
+
+**Strategic Implications:**
+- Starbases are exceptionally difficult to destroy in orbital combat
+- Attackers face much higher casualties when assaulting fortified colonies
+- Multiple starbases create nearly impregnable defenses
+- Late-game sieges require overwhelming force or Planet-Breaker superweapons
+
+### 7.4.5 Victory Conditions
 
 **Attacker Victory:**
 - All orbital defenders destroyed or retreated

@@ -228,9 +228,27 @@ Deploy your fleet to defend a friendly colony. Your fleet maintains low orbit, p
 
 Deploy your fleet to blockade an enemy planet. Your fleet maintains low orbit, participating in orbital combat and engaging in economic warfare.
 
+**Economic Effects:**
+
+A successful blockade severely disrupts colony operations:
+- **Production Penalty**: Colony operates at 40% capacity (60% reduction to Gross Colonial Output)
+- **Prestige Loss**: -2 prestige per turn per blockaded colony
+- **Trade Disruption**: Guild transport vessels cannot reach blockaded system
+
+The blockade continues as long as your fleet remains in orbit with hostile or enemy diplomatic status toward the colony owner.
+
+**Tactical Considerations:**
+
+- Blockades require maintaining orbital superiority—if defeated in orbital combat, your blockade fails
+- Multiple colonies can be blockaded simultaneously by different fleets
+- Prolonged blockades can starve enemy production without the prestige penalties of bombardment
+- Blockades are less destructive than bombardment but achieve similar strategic effects over time
+
 **Use Blockade to:**
-- Establish orbital blockades cutting enemy colony production
-- Prevent enemy reinforcements from landing
+- Strangle enemy production capacity without bombardment penalties
+- Deny enemy access to critical resource systems
+- Force enemy fleets to engage on unfavorable terms
+- Pressure enemies economically while minimizing diplomatic fallout
 
 ### 6.3.9 Bombard a Colony (07)
 

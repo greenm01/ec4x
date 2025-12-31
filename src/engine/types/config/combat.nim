@@ -40,6 +40,11 @@ type
 
   BlockadeConfig* = object
     blockadePrestigePenalty*: int32
+    blockadeProductionPenalty*: float32
+
+  StarbaseConfig* = object
+    starbaseCriticalReroll*: bool
+    starbaseDieModifier*: int32
 
   InvasionConfig* = object
     invasionIuLoss*: float32
@@ -62,6 +67,7 @@ type
     damageRules*: DamageRulesConfig
     retreatRules*: RetreatRulesConfig
     blockade*: BlockadeConfig
+    starbase*: StarbaseConfig
     invasion*: InvasionConfig
     targeting*: TargetingConfig
 

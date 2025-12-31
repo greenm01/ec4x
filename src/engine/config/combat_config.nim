@@ -109,7 +109,14 @@ proc parseRetreatRules(node: KdlNode, ctx: var KdlConfigContext): RetreatRulesCo
 
 proc parseBlockade(node: KdlNode, ctx: var KdlConfigContext): BlockadeConfig =
   result = BlockadeConfig(
-    blockadePrestigePenalty: node.requireInt32("prestigePenaltyPerTurn", ctx)
+    blockadePrestigePenalty: node.requireInt32("prestigePenaltyPerTurn", ctx),
+    blockadeProductionPenalty: 0.0  # Loaded from economy.kdl productionModifiers
+  )
+
+proc parseStarbase(node: KdlNode, ctx: var KdlConfigContext): StarbaseConfig =
+  result = StarbaseConfig(
+    starbaseCriticalReroll: node.requireBool("criticalReroll", ctx),
+    starbaseDieModifier: node.requireInt32("dieModifier", ctx)
   )
 
 proc parseInvasion(node: KdlNode, ctx: var KdlConfigContext): InvasionConfig =
@@ -170,6 +177,10 @@ proc loadCombatConfig*(configPath: string): CombatConfig =
   # Parse blockade { }
   ctx.withNode("blockade"):
     result.blockade = parseBlockade(doc.requireNode("blockade", ctx), ctx)
+
+  # Parse starbase { }
+  ctx.withNode("starbase"):
+    result.starbase = parseStarbase(doc.requireNode("starbase", ctx), ctx)
 
   # Parse invasion { }
   ctx.withNode("invasion"):
