@@ -115,14 +115,14 @@ proc generateStarbaseSurveillance*(
         let fleetOwnerHouseOpt = state_helpers.house(state, fleet.houseId)
         if fleetOwnerHouseOpt.isSome:
           let fleetOwnerHouse = fleetOwnerHouseOpt.get()
-          let scoutELI = fleetOwnerHouse.techTree.levels.electronicIntelligence
+          let scoutELI = fleetOwnerHouse.techTree.levels.eli
           evaded = performStealthCheck(int(scoutELI), 5, rng)
       elif hasCloakedRaiders:
         # Cloaked raiders can evade (house-level CLK tech)
         let fleetOwnerHouseOpt = state_helpers.house(state, fleet.houseId)
         if fleetOwnerHouseOpt.isSome:
           let fleetOwnerHouse = fleetOwnerHouseOpt.get()
-          let raiderCLK = fleetOwnerHouse.techTree.levels.cloakingTech
+          let raiderCLK = fleetOwnerHouse.techTree.levels.clk
           evaded = performStealthCheck(int(raiderCLK), 5, rng)
 
       if evaded:

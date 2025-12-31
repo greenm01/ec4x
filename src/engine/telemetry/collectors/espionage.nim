@@ -23,7 +23,7 @@ proc collectEspionageMetrics*(
   # ================================================================
 
   # Check if CLK researched but no Raiders built
-  let hasCLK: bool = house.techTree.levels.cloakingTech > 1
+  let hasCLK: bool = house.techTree.levels.clk > 1
   var hasRaiders: bool = false
 
   for squadron in state.squadronsOwned(houseId):

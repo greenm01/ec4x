@@ -32,20 +32,20 @@ suite "Game Initialization - Complete Flow":
     for house in game.allHouses():
       let tech = house.techTree.levels
       # Verify all tech levels from config
-      check tech.economicLevel == gameSetup.startingTech.economicLevel
-      check tech.scienceLevel == gameSetup.startingTech.scienceLevel
-      check tech.constructionTech == gameSetup.startingTech.construction
-      check tech.weaponsTech == gameSetup.startingTech.weapons
-      check tech.terraformingTech == gameSetup.startingTech.terraforming
-      check tech.electronicIntelligence == gameSetup.startingTech.electronicIntelligence
-      check tech.cloakingTech == gameSetup.startingTech.cloaking
-      check tech.shieldTech == gameSetup.startingTech.shields
-      check tech.counterIntelligence == gameSetup.startingTech.counterIntelligence
-      check tech.strategicLiftTech == gameSetup.startingTech.strategicLift
-      check tech.flagshipCommandTech == gameSetup.startingTech.flagshipCommand
-      check tech.strategicCommandTech == gameSetup.startingTech.strategicCommand
-      check tech.fighterDoctrine == gameSetup.startingTech.fighterDoctrine
-      check tech.advancedCarrierOps == gameSetup.startingTech.advancedCarrierOperations
+      check tech.el == gameSetup.startingTech.el
+      check tech.sl == gameSetup.startingTech.sl
+      check tech.cst == gameSetup.startingTech.cst
+      check tech.wep == gameSetup.startingTech.wep
+      check tech.ter == gameSetup.startingTech.ter
+      check tech.eli == gameSetup.startingTech.eli
+      check tech.clk == gameSetup.startingTech.clk
+      check tech.sld == gameSetup.startingTech.sld
+      check tech.cic == gameSetup.startingTech.cic
+      check tech.stl == gameSetup.startingTech.stl
+      check tech.fc == gameSetup.startingTech.fc
+      check tech.sc == gameSetup.startingTech.sc
+      check tech.fd == gameSetup.startingTech.fd
+      check tech.aco == gameSetup.startingTech.aco
 
   test "Homeworld colonies created with facilities":
     let game = newGame()

@@ -92,7 +92,7 @@ proc slUpgradeCost*(level: int32): int32 =
   return techLevel(cfg.levels, level, "SL", 2, 10).srpRequired
 
 proc techUpgradeCost*(techField: TechField, level: int32): int32 =
-  ## Get TRP cost for advancing from level N to N+1
+  ## Get TRP/SRP cost for advancing from level N to N+1
   ## Looks up cost from gameConfig.tech based on field and level
 
   case techField
@@ -126,6 +126,18 @@ proc techUpgradeCost*(techField: TechField, level: int32): int32 =
   of TechField.CounterIntelligence:
     let cfg = gameConfig.tech.cic
     return techLevel(cfg.levels, level, "CIC", 1, 15).srpCost
+
+  of TechField.StrategicLiftTech:
+    let cfg = gameConfig.tech.stl
+    return techLevel(cfg.levels, level, "STL", 1, 15).srpCost
+
+  of TechField.FlagshipCommandTech:
+    let cfg = gameConfig.tech.fc
+    return techLevel(cfg.levels, level, "FC", 2, 6).trpCost
+
+  of TechField.StrategicCommandTech:
+    let cfg = gameConfig.tech.sc
+    return techLevel(cfg.levels, level, "SC", 1, 5).trpCost
 
   of TechField.FighterDoctrine:
     let cfg = gameConfig.tech.fd

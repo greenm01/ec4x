@@ -20,7 +20,7 @@ proc createShip*(
   
   # Get house's current WEP tech level
   let house = gs_helper.house(state, owner).get()
-  let weaponsTech = house.techTree.levels.weaponsTech
+  let weaponsTech = house.techTree.levels.wep
   
   # Apply WEP modifiers: +10% AS/DS per level above 1
   let wepMultiplier = 1.0 + (weaponsTech - 1).float * 0.10

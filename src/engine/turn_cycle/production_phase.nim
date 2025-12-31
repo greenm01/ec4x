@@ -341,7 +341,7 @@ proc resolveMaintenancePhase*(
         # Count scout squadrons for detection formula
         let observerScoutCount = observerFleet.countScoutSquadrons()
         let targetELI =
-          state.houses[target.owner].techTree.levels.electronicIntelligence
+          state.houses[target.owner].techTree.levels.eli
 
         # Detection roll: 1d20 vs (15 - observerScoutCount + targetELI)
         let detectionRoll = rng.rand(1 .. 20)
@@ -515,7 +515,7 @@ proc resolveMaintenancePhase*(
   for houseId, house in state.houses.mpairs:
     # STEP 7b: Economic Level (EL) Advancement
     # Try to advance Economic Level (EL) with accumulated ERP
-    let currentEL = house.techTree.levels.economicLevel
+    let currentEL = house.techTree.levels.el
     let elAdv = attemptELAdvancement(house.techTree, currentEL)
     if elAdv.isSome:
       totalAdvancements += 1
@@ -532,7 +532,7 @@ proc resolveMaintenancePhase*(
 
     # STEP 7c: Science Level (SL) Advancement
     # Try to advance Science Level (SL) with accumulated SRP
-    let currentSL = house.techTree.levels.scienceLevel
+    let currentSL = house.techTree.levels.sl
     let slAdv = attemptSLAdvancement(house.techTree, currentSL)
     if slAdv.isSome:
       totalAdvancements += 1

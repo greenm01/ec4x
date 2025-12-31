@@ -25,7 +25,7 @@ proc collectCapacityMetrics*(
 
   # Fighter Doctrine multiplier (FD tech level)
   let fdMultiplier: float32 =
-    case house.techTree.levels.fighterDoctrine
+    case house.techTree.levels.fd
     of 1: 1.0
     of 2: 1.5
     of 3: 2.0

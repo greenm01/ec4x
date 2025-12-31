@@ -248,7 +248,7 @@ proc generateSystemIntelReport*(
           # Tech level and hull integrity only for Spy+ quality
           techLevel:
             if quality == IntelQuality.Spy:
-              flagship.stats.weaponsTech
+              flagship.stats.wep
             else:
               0,
           hullIntegrity:
@@ -280,7 +280,7 @@ proc generateSystemIntelReport*(
               squadronId: fighterSquadronId,
               shipClass: $fighterFlagship.shipClass,
               shipCount: int32(1 + fighterSquadron.ships.len),
-              techLevel: fighterFlagship.stats.weaponsTech,
+              techLevel: fighterFlagship.stats.wep,
               hullIntegrity:
                 if fighterFlagship.isCrippled:
                   some(int32(50))
@@ -322,7 +322,7 @@ proc generateSystemIntelReport*(
           # Tech level and hull integrity only for Spy+ quality
           techLevel:
             if quality == IntelQuality.Spy:
-              flagship.stats.weaponsTech
+              flagship.stats.wep
             else:
               0,
           hullIntegrity:
@@ -420,8 +420,8 @@ proc generateStarbaseIntelReport*(
   # let targetColonies = toSeq(state.coloniesOwned(colony.owner))
   # let incomeReport = income_system.calculateHouseIncome(
   #   targetColonies,
-  #   int(targetHouse.techTree.levels.economicLevel),
-  #   int(targetHouse.techTree.levels.constructionTech),
+  #   int(targetHouse.techTree.levels.el),
+  #   int(targetHouse.techTree.levels.cst),
   #   targetHouse.taxPolicy,
   #   int(targetHouse.treasury),
   # )

@@ -16,26 +16,26 @@ proc validateTechTree*(techTree: TechTree) =
   ## Common mistake in tests: Creating House() without techTree field
   ## Fix: Always include `techTree: res_types.initTechTree()` in House
   ## constructors
-  if techTree.levels.economicLevel < 1:
+  if techTree.levels.el < 1:
     raise newException(
       ValueError,
       "EL (Economics Level) cannot be less than 1. Found: " &
-        $techTree.levels.economicLevel &
+        $techTree.levels.el &
         ". Use initTechTree() to create valid tech tree.",
     )
-  if techTree.levels.scienceLevel < 1:
+  if techTree.levels.sl < 1:
     raise newException(
       ValueError,
-      "SL (Science Level) cannot be less than 1. Found: " & $techTree.levels.scienceLevel &
+      "SL (Science Level) cannot be less than 1. Found: " & $techTree.levels.sl &
         ". Use initTechTree() to create valid tech tree.",
     )
-  if techTree.levels.economicLevel > 11:
+  if techTree.levels.el > 11:
     raise newException(
       ValueError,
-      "EL (Economics Level) cannot exceed 11. Found: " & $techTree.levels.economicLevel,
+      "EL (Economics Level) cannot exceed 11. Found: " & $techTree.levels.el,
     )
-  if techTree.levels.scienceLevel > 11:
+  if techTree.levels.sl > 11:
     raise newException(
       ValueError,
-      "SL (Science Level) cannot exceed 11. Found: " & $techTree.levels.scienceLevel,
+      "SL (Science Level) cannot exceed 11. Found: " & $techTree.levels.sl,
     )

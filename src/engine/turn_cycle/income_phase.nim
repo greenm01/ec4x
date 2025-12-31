@@ -215,9 +215,9 @@ proc resolveIncomePhase*(
 
   for houseId, house in state.houses:
     houseTaxPolicies[houseId] = house.taxPolicy
-    houseTechLevels[houseId] = house.techTree.levels.economicLevel
+    houseTechLevels[houseId] = house.techTree.levels.el
       # EL = economicLevel (confusing naming)
-    houseCSTTechLevels[houseId] = house.techTree.levels.constructionTech
+    houseCSTTechLevels[houseId] = house.techTree.levels.cst
     houseTreasuries[houseId] = house.treasury
 
   # Call economy engine with natural growth rate from config

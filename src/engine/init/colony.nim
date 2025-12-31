@@ -34,7 +34,7 @@ proc createHomeWorld*(
 
   # Create Spaceports
   let house = state.houses.entities.getEntity(owner).get()
-  let cstLevel = house.techTree.levels.constructionTech
+  let cstLevel = house.techTree.levels.cst
   let baseSpaceportDocks = gameConfig.facilities.spaceport.docks
   let effectiveSpaceportDocks =
     calculateEffectiveDocks(baseSpaceportDocks, cstLevel)

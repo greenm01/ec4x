@@ -22,17 +22,17 @@ proc collectTechMetrics*(
   # TECHNOLOGY LEVELS (All 11 technology types)
   # ================================================================
 
-  result.techCST = house.techTree.levels.constructionTech
-  result.techWEP = house.techTree.levels.weaponsTech
-  result.techEL = house.techTree.levels.economicLevel
-  result.techSL = house.techTree.levels.scienceLevel
-  result.techTER = house.techTree.levels.terraformingTech
-  result.techELI = house.techTree.levels.electronicIntelligence
-  result.techCLK = house.techTree.levels.cloakingTech
-  result.techSLD = house.techTree.levels.shieldTech
-  result.techCIC = house.techTree.levels.counterIntelligence
-  result.techFD = house.techTree.levels.fighterDoctrine
-  result.techACO = house.techTree.levels.advancedCarrierOps
+  result.techCST = house.techTree.levels.cst
+  result.techWEP = house.techTree.levels.wep
+  result.techEL = house.techTree.levels.el
+  result.techSL = house.techTree.levels.sl
+  result.techTER = house.techTree.levels.ter
+  result.techELI = house.techTree.levels.eli
+  result.techCLK = house.techTree.levels.clk
+  result.techSLD = house.techTree.levels.sld
+  result.techCIC = house.techTree.levels.cic
+  result.techFD = house.techTree.levels.fd
+  result.techACO = house.techTree.levels.aco
 
   # ================================================================
   # RESEARCH POINTS (tracked from events)

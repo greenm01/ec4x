@@ -17,20 +17,21 @@ type
     defaultTaxRate*: float32
 
   StartingTechConfig* = object ## Initial technology levels per gameplay.md:1.2
-    economicLevel*: int32
-    scienceLevel*: int32
-    weapons*: int32
-    construction*: int32
-    shields*: int32
-    terraforming*: int32
-    electronicIntelligence*: int32
-    cloaking*: int32
-    strategicLift*: int32
-    counterIntelligence*: int32
-    flagshipCommand*: int32
-    strategicCommand*: int32
-    fighterDoctrine*: int32
-    advancedCarrierOperations*: int32
+    ## Uses standard tech abbreviations (see docs/specs/04-research_development.md)
+    el*: int32   # Economic Level
+    sl*: int32   # Science Level
+    wep*: int32  # Weapons Tech
+    cst*: int32  # Construction Tech
+    sld*: int32  # Shield Tech
+    ter*: int32  # Terraforming Tech
+    eli*: int32  # Electronic Intelligence
+    clk*: int32  # Cloaking Tech
+    stl*: int32  # Strategic Lift Tech
+    cic*: int32  # Counter Intelligence
+    fc*: int32   # Flagship Command Tech
+    sc*: int32   # Strategic Command Tech
+    fd*: int32   # Fighter Doctrine
+    aco*: int32  # Advanced Carrier Ops
 
   FleetConfig* = object ## Individual fleet configuration
     ships*: seq[string] # Ship class names (e.g., ["ETAC", "LightCruiser"])

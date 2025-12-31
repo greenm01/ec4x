@@ -225,7 +225,7 @@ proc resolveCommandPhase*(
             gho += state.colonies[colonyId].production
 
       # Get current tech levels
-      let currentSL = state.houses[houseId].techTree.levels.scienceLevel # Science Level
+      let currentSL = state.houses[houseId].techTree.levels.sl # Science Level
 
       # Convert PP allocations to RP (use SCALED allocation, not original)
       let earnedRP = res_costs.allocateResearch(scaledAllocation, gho, currentSL)

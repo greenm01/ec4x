@@ -55,7 +55,7 @@ proc resolveSpyScoutDetection*(
     return false # No defender, no detection
 
   let defenderHouse = defenderHouseOpt.get()
-  let defenderELI = defenderHouse.techTree.levels.electronicIntelligence
+  let defenderELI = defenderHouse.techTree.levels.eli
 
   # 3. Get starbase bonus (+2 ELI for detection per assets.md:2.4.2)
   let starbaseBonus: int32 = if colony.starbaseIds.len > 0: 2 else: 0
@@ -110,7 +110,7 @@ proc resolveSpyScoutDetection*(
     return SpyDetectionResult(detected: false, roll: 0, threshold: 0)
 
   let defenderHouse = defenderHouseOpt.get()
-  let defenderELI = defenderHouse.techTree.levels.electronicIntelligence
+  let defenderELI = defenderHouse.techTree.levels.eli
 
   # Get starbase bonus (+2 ELI for detection per assets.md:2.4.2)
   var starbaseBonus: int32 = 0

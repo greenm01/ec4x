@@ -13,31 +13,35 @@ import ./[core, prestige]
 
 type
   TechField* {.pure.} = enum
-    ConstructionTech
-    WeaponsTech
-    TerraformingTech
-    ElectronicIntelligence
-    CloakingTech
-    ShieldTech
-    CounterIntelligence
-    FighterDoctrine
-    AdvancedCarrierOps
+    ConstructionTech       # CST
+    WeaponsTech            # WEP
+    TerraformingTech       # TER
+    ElectronicIntelligence # ELI
+    CloakingTech           # CLK
+    ShieldTech             # SLD
+    CounterIntelligence    # CIC
+    StrategicLiftTech      # STL
+    FlagshipCommandTech    # FC
+    StrategicCommandTech   # SC
+    FighterDoctrine        # FD
+    AdvancedCarrierOps     # ACO
 
   TechLevel* = object
-    economicLevel*: int32
-    scienceLevel*: int32
-    constructionTech*: int32
-    weaponsTech*: int32
-    terraformingTech*: int32
-    electronicIntelligence*: int32
-    cloakingTech*: int32
-    shieldTech*: int32
-    counterIntelligence*: int32
-    strategicLiftTech*: int32
-    flagshipCommandTech*: int32
-    strategicCommandTech*: int32
-    fighterDoctrine*: int32
-    advancedCarrierOps*: int32
+    ## Tech levels using standard abbreviations (see docs/specs/04-research_development.md)
+    el*: int32   # Economic Level
+    sl*: int32   # Science Level
+    cst*: int32  # Construction Tech
+    wep*: int32  # Weapons Tech
+    ter*: int32  # Terraforming Tech
+    eli*: int32  # Electronic Intelligence
+    clk*: int32  # Cloaking Tech
+    sld*: int32  # Shield Tech
+    cic*: int32  # Counter Intelligence
+    stl*: int32  # Strategic Lift Tech
+    fc*: int32   # Flagship Command Tech
+    sc*: int32   # Strategic Command Tech
+    fd*: int32   # Fighter Doctrine
+    aco*: int32  # Advanced Carrier Ops
 
   ResearchPoints* = object
     economic*: int32

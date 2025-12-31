@@ -31,21 +31,22 @@ proc parseStartingResources(node: KdlNode, ctx: var KdlConfigContext): StartingR
   )
 
 proc parseStartingTech(node: KdlNode, ctx: var KdlConfigContext): StartingTechConfig =
+  ## Parse starting tech using abbreviated field names
   result = StartingTechConfig(
-    economicLevel: node.requireInt32("economicLevel", ctx),
-    scienceLevel: node.requireInt32("scienceLevel", ctx),
-    weapons: node.requireInt32("weapons", ctx),
-    construction: node.requireInt32("construction", ctx),
-    shields: node.requireInt32("shields", ctx),
-    terraforming: node.requireInt32("terraforming", ctx),
-    electronicIntelligence: node.requireInt32("electronicIntelligence", ctx),
-    cloaking: node.requireInt32("cloaking", ctx),
-    strategicLift: node.requireInt32("strategicLift", ctx),
-    counterIntelligence: node.requireInt32("counterIntelligence", ctx),
-    flagshipCommand: node.requireInt32("flagshipCommand", ctx),
-    strategicCommand: node.requireInt32("strategicCommand", ctx),
-    fighterDoctrine: node.requireInt32("fighterDoctrine", ctx),
-    advancedCarrierOperations: node.requireInt32("advancedCarrierOperations", ctx)
+    el: node.requireInt32("economicLevel", ctx),
+    sl: node.requireInt32("scienceLevel", ctx),
+    wep: node.requireInt32("weapons", ctx),
+    cst: node.requireInt32("construction", ctx),
+    sld: node.requireInt32("shields", ctx),
+    ter: node.requireInt32("terraforming", ctx),
+    eli: node.requireInt32("electronicIntelligence", ctx),
+    clk: node.requireInt32("cloaking", ctx),
+    stl: node.requireInt32("strategicLift", ctx),
+    cic: node.requireInt32("counterIntelligence", ctx),
+    fc: node.requireInt32("flagshipCommand", ctx),
+    sc: node.requireInt32("strategicCommand", ctx),
+    fd: node.requireInt32("fighterDoctrine", ctx),
+    aco: node.requireInt32("advancedCarrierOperations", ctx)
   )
 
 proc parseFleetConfig(node: KdlNode, ctx: var KdlConfigContext): FleetConfig =

@@ -19,20 +19,20 @@ proc initHouse*(houseId: HouseId, name: string): House =
     techTree: TechTree(
       houseId: houseId,
       levels: TechLevel(
-        economicLevel: startingTech.economicLevel,
-        scienceLevel: startingTech.scienceLevel,
-        constructionTech: startingTech.construction,
-        weaponsTech: startingTech.weapons,
-        terraformingTech: startingTech.terraforming,
-        electronicIntelligence: startingTech.electronicIntelligence,
-        cloakingTech: startingTech.cloaking,
-        shieldTech: startingTech.shields,
-        counterIntelligence: startingTech.counterIntelligence,
-        strategicLiftTech: startingTech.strategicLift,
-        flagshipCommandTech: startingTech.flagshipCommand,
-        strategicCommandTech: startingTech.strategicCommand,
-        fighterDoctrine: startingTech.fighterDoctrine,
-        advancedCarrierOps: startingTech.advancedCarrierOperations
+        el: startingTech.el,
+        sl: startingTech.sl,
+        cst: startingTech.cst,
+        wep: startingTech.wep,
+        ter: startingTech.ter,
+        eli: startingTech.eli,
+        clk: startingTech.clk,
+        sld: startingTech.sld,
+        cic: startingTech.cic,
+        stl: startingTech.stl,
+        fc: startingTech.fc,
+        sc: startingTech.sc,
+        fd: startingTech.fd,
+        aco: startingTech.aco
       ),
       accumulated: ResearchPoints(
         economic: 0'i32, science: 0'i32, technology: initTable[TechField, int32]()

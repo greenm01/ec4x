@@ -48,7 +48,7 @@ proc createStartingFleets*(
         ))
       # Get house's current weapons tech for ship stats
       let house = state.houses.entities.getEntity(owner).get()
-      let weaponsTech = house.techTree.levels.weaponsTech
+      let weaponsTech = house.techTree.levels.wep
 
       let flagship = Ship(
         id: shipId,
