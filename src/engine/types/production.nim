@@ -36,12 +36,12 @@ type
     costPaid*: int32
     turnsRemaining*: int32
     facilityId*: Option[uint32]
-    facilityType*: Option[FacilityType]
+    facilityType*: Option[FacilityClass]
 
   ConstructionProjects* = object
     entities*: EntityManager[ConstructionProjectId, ConstructionProject] # Core storage
     byColony*: Table[ColonyId, seq[ConstructionProjectId]]
-    byFacility*: Table[(FacilityType, uint32), seq[ConstructionProjectId]]
+    byFacility*: Table[(FacilityClass, uint32), seq[ConstructionProjectId]]
 
   RepairTargetType* {.pure.} = enum
     Ship
@@ -51,7 +51,7 @@ type
     id*: RepairProjectId
     colonyId*: ColonyId
     targetType*: RepairTargetType
-    facilityType*: FacilityType
+    facilityType*: FacilityClass
     facilityId*: Option[uint32]
     # For ship repairs
     fleetId*: Option[FleetId]
@@ -67,7 +67,7 @@ type
   RepairProjects* = object
     entities*: EntityManager[RepairProjectId, RepairProject] # Core storage
     byColony*: Table[ColonyId, seq[RepairProjectId]]
-    byFacility*: Table[(FacilityType, uint32), seq[RepairProjectId]]
+    byFacility*: Table[(FacilityClass, uint32), seq[RepairProjectId]]
 
   CompletedProject* = object
     colonyId*: ColonyId

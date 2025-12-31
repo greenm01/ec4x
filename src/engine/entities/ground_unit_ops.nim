@@ -8,7 +8,7 @@ import ../state/[game_state as gs_helpers, id_gen, entity_manager, iterators]
 import ../types/[game_state, core, ground_unit, colony]
 
 proc createGroundUnit*(
-    state: var GameState, owner: HouseId, colonyId: ColonyId, unitType: GroundUnitType
+    state: var GameState, owner: HouseId, colonyId: ColonyId, unitType: GroundClass
 ): GroundUnit =
   ## Creates a new ground unit, adds it to the entity manager, and links it to a colony.
   let unitId = state.generateGroundUnitId()
@@ -26,11 +26,11 @@ proc createGroundUnit*(
 
   var colony = gs_helpers.colony(state, colonyId).get()
   case unitType
-  of GroundUnitType.Army:
+  of GroundClass.Army:
     colony.armyIds.add(unitId)
-  of GroundUnitType.Marine:
+  of GroundClass.Marine:
     colony.marineIds.add(unitId)
-  of GroundUnitType.GroundBattery:
+  of GroundClass.GroundBattery:
     colony.groundBatteryIds.add(unitId)
   else:
     discard
@@ -48,13 +48,13 @@ proc destroyGroundUnit*(state: var GameState, unitId: GroundUnitId) =
   var ownerColonyId: ColonyId
   for col in state.allColonies():
     case unit.unitType
-    of GroundUnitType.Army:
+    of GroundClass.Army:
       if unitId in col.armyIds:
         ownerColonyId = col.id
-    of GroundUnitType.Marine:
+    of GroundClass.Marine:
       if unitId in col.marineIds:
         ownerColonyId = col.id
-    of GroundUnitType.GroundBattery:
+    of GroundClass.GroundBattery:
       if unitId in col.groundBatteryIds:
         ownerColonyId = col.id
     else:
@@ -65,17 +65,17 @@ proc destroyGroundUnit*(state: var GameState, unitId: GroundUnitId) =
   if ownerColonyId != 0'u32:
     var colony = gs_helpers.colony(state, ownerColonyId).get()
     case unit.unitType
-    of GroundUnitType.Army:
+    of GroundClass.Army:
       colony.armyIds.keepIf(
         proc(id: GroundUnitId): bool =
           id != unitId
       )
-    of GroundUnitType.Marine:
+    of GroundClass.Marine:
       colony.marineIds.keepIf(
         proc(id: GroundUnitId): bool =
           id != unitId
       )
-    of GroundUnitType.GroundBattery:
+    of GroundClass.GroundBattery:
       colony.groundBatteryIds.keepIf(
         proc(id: GroundUnitId): bool =
           id != unitId

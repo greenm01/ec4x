@@ -10,7 +10,7 @@ import ../../state/[game_state as state_helpers]
 import ../../../common/logger
 
 proc clearFacilityQueues*(
-    colony: var Colony, facilityType: facilities.FacilityType, state: GameState
+    colony: var Colony, facilityType: facilities.FacilityClass, state: GameState
 ) =
   ## Clear construction and repair queues for a specific facility type
   ## Called when a facility is destroyed or crippled
@@ -100,7 +100,7 @@ proc clearAllConstructionQueues*(colony: var Colony, state: GameState) =
     )
 
 proc handleFacilityDestruction*(
-    colony: var Colony, facilityType: facilities.FacilityType, state: GameState
+    colony: var Colony, facilityType: facilities.FacilityClass, state: GameState
 ) =
   ## Handle facility destruction: clear queues and check if any facilities remain
   ##

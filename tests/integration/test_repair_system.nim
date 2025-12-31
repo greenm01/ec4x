@@ -92,7 +92,7 @@ suite "Ship Repair System":
     check repair.targetType == econ_types.RepairTargetType.Ship
     check repair.shipClass.get() == ShipClass.Destroyer
     check repair.turnsRemaining == 1
-    check repair.facilityType == econ_types.FacilityType.Shipyard
+    check repair.facilityType == econ_types.FacilityClass.Shipyard
 
     # Check escort was removed from squadron
     let updatedFleet = state.fleets[fleetId]
@@ -426,7 +426,7 @@ suite "Starbase Repair System":
     check state.colonies[1].repairQueue.len == 1
     let repair = state.colonies[1].repairQueue[0]
     check repair.targetType == econ_types.RepairTargetType.Starbase
-    check repair.facilityType == econ_types.FacilityType.Spaceport  # Starbases use Spaceport
+    check repair.facilityType == econ_types.FacilityClass.Spaceport  # Starbases use Spaceport
     check repair.turnsRemaining == 1
 
   test "Starbase repairs require spaceport":

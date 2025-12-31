@@ -2,14 +2,14 @@ import std/tables
 import ./core
 
 type
-  FacilityType* {.pure.} = enum
+  FacilityClass* {.pure.} = enum
     Shipyard
     Spaceport
     Drydock
     Starbase
 
   FacilityStats* = object
-    facilityType*: FacilityType
+    facilityType*: FacilityClass
     buildCost*: int32
     upkeepCost*: int32
     baseDocks*: int32

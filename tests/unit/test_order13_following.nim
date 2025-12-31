@@ -34,13 +34,13 @@ proc createTestStarMap(): StarMap =
 
   # Create jump lanes connecting them in a line: 1-2-3-4
   result.lanes.add(JumpLane(
-    source: 1, destination: 2, laneType: LaneType.Major
+    source: 1, destination: 2, laneType: LaneClass.Major
   ))
   result.lanes.add(JumpLane(
-    source: 2, destination: 3, laneType: LaneType.Major
+    source: 2, destination: 3, laneType: LaneClass.Major
   ))
   result.lanes.add(JumpLane(
-    source: 3, destination: 4, laneType: LaneType.Major
+    source: 3, destination: 4, laneType: LaneClass.Major
   ))
 
   # Build adjacency for pathfinding

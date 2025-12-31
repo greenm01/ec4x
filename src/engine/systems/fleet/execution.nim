@@ -57,7 +57,7 @@ proc validateCommandAtExecution(
     # ETACs are in Expansion squadrons
     var hasETAC = false
     for squadron in fleet.squadrons:
-      if squadron.squadronType == SquadronType.Expansion:
+      if squadron.squadronType == SquadronClass.Expansion:
         if squadron.flagship.shipClass == ShipClass.ETAC:
           if not squadron.flagship.isCrippled:
             hasETAC = true
@@ -124,13 +124,13 @@ proc validateCommandAtExecution(
         )
 
       # Check squadron type compatibility (Intel cannot mix with non-Intel)
-      let sourceHasIntel = fleet.squadrons.anyIt(it.squadronType == SquadronType.Intel)
+      let sourceHasIntel = fleet.squadrons.anyIt(it.squadronType == SquadronClass.Intel)
       let sourceHasNonIntel =
-        fleet.squadrons.anyIt(it.squadronType != SquadronType.Intel)
+        fleet.squadrons.anyIt(it.squadronType != SquadronClass.Intel)
       let targetHasIntel =
-        targetFleet.squadrons.anyIt(it.squadronType == SquadronType.Intel)
+        targetFleet.squadrons.anyIt(it.squadronType == SquadronClass.Intel)
       let targetHasNonIntel =
-        targetFleet.squadrons.anyIt(it.squadronType != SquadronType.Intel)
+        targetFleet.squadrons.anyIt(it.squadronType != SquadronClass.Intel)
 
       # Intel squadrons cannot join non-Intel fleets
       if sourceHasIntel and targetHasNonIntel:
@@ -150,8 +150,8 @@ proc validateCommandAtExecution(
   of FleetCommandType.SpyPlanet, FleetCommandType.SpySystem,
       FleetCommandType.HackStarbase:
     # Check fleet is still Intel-only (no combat/other squadrons added)
-    let hasIntel = fleet.squadrons.anyIt(it.squadronType == SquadronType.Intel)
-    let hasNonIntel = fleet.squadrons.anyIt(it.squadronType != SquadronType.Intel)
+    let hasIntel = fleet.squadrons.anyIt(it.squadronType == SquadronClass.Intel)
+    let hasNonIntel = fleet.squadrons.anyIt(it.squadronType != SquadronClass.Intel)
 
     if not hasIntel:
       return ExecutionValidationResult(
@@ -169,7 +169,7 @@ proc validateCommandAtExecution(
 
     # Check no Expansion/Auxiliary squadrons (spy missions require Intel-only)
     for squadron in fleet.squadrons:
-      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+      if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
         return ExecutionValidationResult(
           valid: false,
           shouldAbort: false,

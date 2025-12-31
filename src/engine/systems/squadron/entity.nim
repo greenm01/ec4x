@@ -11,7 +11,7 @@ import ../../types/[core, ship, squadron]
 import ../../state/entity_manager # For getEntity()
 import ../ship/entity as ship_entity # Ship helper functions
 
-proc getSquadronType*(shipClass: ShipClass): SquadronType =
+proc getSquadronType*(shipClass: ShipClass): SquadronClass =
   ## Determine squadron type from ship class
   ## Used during commissioning and migration
   case shipClass

@@ -85,7 +85,7 @@ suite "Last-Stand Invasions":
       location: 1,
       isCrippled: false,
       cargo: SpaceLiftCargo(
-        cargoType: CargoType.Marines,
+        cargoType: CargoClass.Marines,
         quantity: 2,  # 2 marines loaded
         capacity: 5
       )
@@ -192,7 +192,7 @@ suite "Last-Stand Invasions":
       location: 1,
       isCrippled: false,
       cargo: SpaceLiftCargo(
-        cargoType: CargoType.None,
+        cargoType: CargoClass.None,
         quantity: 0,
         capacity: 5
       )
@@ -232,7 +232,7 @@ suite "Last-Stand Invasions":
       location: 1,
       isCrippled: false,
       cargo: SpaceLiftCargo(
-        cargoType: CargoType.Marines,
+        cargoType: CargoClass.Marines,
         quantity: 2,
         capacity: 5
       )
@@ -322,7 +322,7 @@ suite "Last-Stand Blitz Operations":
       location: 1,
       isCrippled: false,
       cargo: SpaceLiftCargo(
-        cargoType: CargoType.Marines,
+        cargoType: CargoClass.Marines,
         quantity: 3,
         capacity: 5
       )

@@ -34,13 +34,13 @@ type
     Auxiliary      # Screened during space/orbital combat
     Intel          # Intelligence gathering (non-combat) 
 
-  CargoType* {.pure.} = enum
+  CargoClass* {.pure.} = enum
     None
     Marines
     Colonists
 
   ShipCargo* = object
-    cargoType*: CargoType
+    cargoType*: CargoClass
     quantity*: int32
     capacity*: int32
 

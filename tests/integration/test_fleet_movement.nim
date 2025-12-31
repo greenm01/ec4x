@@ -43,7 +43,7 @@ suite "Fleet Movement Integration":
       result.starMap.lanes.add(JumpLane(
         source: i,
         destination: i + 1,
-        laneType: LaneType.Major
+        laneType: LaneClass.Major
       ))
 
       # Update adjacency
@@ -212,7 +212,7 @@ suite "Fleet Movement Integration":
     state.starMap.lanes.add(JumpLane(
       source: 1,
       destination: 2,
-      laneType: LaneType.Major
+      laneType: LaneClass.Major
     ))
     state.starMap.adjacency[1] = @[2u]
     state.starMap.adjacency[2] = @[1u, 3u]
@@ -220,7 +220,7 @@ suite "Fleet Movement Integration":
     state.starMap.lanes.add(JumpLane(
       source: 2,
       destination: 3,
-      laneType: LaneType.Restricted
+      laneType: LaneClass.Restricted
     ))
     state.starMap.adjacency[3] = @[2u]
 

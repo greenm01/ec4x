@@ -757,11 +757,11 @@ proc executeInvadeCommand(
 
   # Check Auxiliary squadrons for loaded marines
   for squadron in fleet.squadrons:
-    if squadron.squadronType == SquadronType.Auxiliary:
+    if squadron.squadronType == SquadronClass.Auxiliary:
       if squadron.flagship.cargo.isSome:
         let cargo = squadron.flagship.cargo.get()
         if squadron.flagship.shipClass == ShipClass.TroopTransport and
-            cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+            cargo.cargoType == CargoClass.Marines and cargo.quantity > 0:
           hasLoadedTransports = true
           break
 
@@ -810,12 +810,12 @@ proc executeBlitzCommand(
   var hasLoadedTransports = false
 
   for squadron in fleet.squadrons:
-    if squadron.squadronType == SquadronType.Auxiliary:
+    if squadron.squadronType == SquadronClass.Auxiliary:
       if squadron.flagship.shipClass == ShipClass.TroopTransport:
         # Check if transport has Marines loaded
         if squadron.flagship.cargo.isSome:
           let cargo = squadron.flagship.cargo.get()
-          if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+          if cargo.cargoType == CargoClass.Marines and cargo.quantity > 0:
             hasLoadedTransports = true
             break
 
@@ -1240,10 +1240,10 @@ proc executeColonizeCommand(
   var hasLoadedETAC = false
 
   for squadron in fleet.squadrons:
-    if squadron.squadronType == SquadronType.Expansion:
+    if squadron.squadronType == SquadronClass.Expansion:
       if squadron.flagship.shipClass == ShipClass.ETAC and squadron.flagship.cargo.isSome:
         let cargo = squadron.flagship.cargo.get()
-        if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+        if cargo.cargoType == CargoClass.Colonists and cargo.quantity > 0:
           hasLoadedETAC = true
           break
 

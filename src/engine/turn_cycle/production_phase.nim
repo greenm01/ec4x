@@ -210,7 +210,7 @@ proc resolveMaintenancePhase*(
           let toSys = pathResult.path[i + 1]
 
           let laneType = state.starMap.getLaneType(fromSys, toSys)
-          if laneType.isNone or laneType.get() != LaneType.Major:
+          if laneType.isNone or laneType.get() != LaneClass.Major:
             nextTwoAreMajor = false
             break
 

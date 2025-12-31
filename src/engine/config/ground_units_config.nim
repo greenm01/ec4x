@@ -10,7 +10,7 @@ import ../types/config
 import ../types/ground_unit
 
 proc parseGroundUnitStats(
-    node: KdlNode, unitType: GroundUnitType, ctx: var KdlConfigContext
+    node: KdlNode, unitType: GroundClass, ctx: var KdlConfigContext
 ): GroundUnitStatsConfig =
   ## Parse ground unit stats from KDL node
   ## Unified parser for all ground unit types
@@ -23,28 +23,28 @@ proc parseGroundUnitStats(
 
   # Type-specific fields
   case unitType
-  of GroundUnitType.PlanetaryShield:
+  of GroundClass.PlanetaryShield:
     result.defenseStrength = node.requireInt32("defenseStrength", ctx)
     result.maxPerPlanet = node.requireInt32("maxPerColony", ctx)
     result.replaceOnUpgrade = node.requireBool("replaceOnUpgrade", ctx)
     result.attackStrength = 0
     result.populationCost = 0
     result.requiresTransport = false
-  of GroundUnitType.GroundBattery:
+  of GroundClass.GroundBattery:
     result.attackStrength = node.requireInt32("attackStrength", ctx)
     result.defenseStrength = node.requireInt32("defenseStrength", ctx)
     result.maxPerPlanet = 999 # Default
     result.populationCost = 0
     result.requiresTransport = false
     result.replaceOnUpgrade = false
-  of GroundUnitType.Army:
+  of GroundClass.Army:
     result.attackStrength = node.requireInt32("attackStrength", ctx)
     result.defenseStrength = node.requireInt32("defenseStrength", ctx)
     result.maxPerPlanet = 999 # Default
     result.populationCost = 0 # Not in current KDL
     result.requiresTransport = false
     result.replaceOnUpgrade = false
-  of GroundUnitType.Marine:
+  of GroundClass.Marine:
     result.attackStrength = node.requireInt32("attackStrength", ctx)
     result.defenseStrength = node.requireInt32("defenseStrength", ctx)
     result.maxPerPlanet = 999 # Default
@@ -55,7 +55,7 @@ proc parseGroundUnitStats(
 proc loadGroundUnitsConfig*(configPath: string): GroundUnitsConfig =
   ## Load ground units configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
-  ## Builds array indexed by GroundUnitType for O(1) access
+  ## Builds array indexed by GroundClass for O(1) access
   let doc = loadKdlConfig(configPath)
   var ctx = newContext(configPath)
 
@@ -68,20 +68,20 @@ proc loadGroundUnitsConfig*(configPath: string): GroundUnitsConfig =
       case child.name
       of "planetaryShield":
         ctx.withNode("planetaryShield"):
-          result.units[GroundUnitType.PlanetaryShield] =
-            parseGroundUnitStats(child, GroundUnitType.PlanetaryShield, ctx)
+          result.units[GroundClass.PlanetaryShield] =
+            parseGroundUnitStats(child, GroundClass.PlanetaryShield, ctx)
       of "groundBattery":
         ctx.withNode("groundBattery"):
-          result.units[GroundUnitType.GroundBattery] =
-            parseGroundUnitStats(child, GroundUnitType.GroundBattery, ctx)
+          result.units[GroundClass.GroundBattery] =
+            parseGroundUnitStats(child, GroundClass.GroundBattery, ctx)
       of "army":
         ctx.withNode("army"):
-          result.units[GroundUnitType.Army] =
-            parseGroundUnitStats(child, GroundUnitType.Army, ctx)
+          result.units[GroundClass.Army] =
+            parseGroundUnitStats(child, GroundClass.Army, ctx)
       of "marine":
         ctx.withNode("marine"):
-          result.units[GroundUnitType.Marine] =
-            parseGroundUnitStats(child, GroundUnitType.Marine, ctx)
+          result.units[GroundClass.Marine] =
+            parseGroundUnitStats(child, GroundClass.Marine, ctx)
       else:
         discard
 

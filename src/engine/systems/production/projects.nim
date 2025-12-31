@@ -88,7 +88,7 @@ proc createShipProject*(shipClass: ShipClass, cstLevel: int = 1): ConstructionPr
     costPaid: cost, # Full upfront payment
     turnsRemaining: turns,
     facilityId: none(uint32),
-    facilityType: none(FacilityType),
+    facilityType: none(FacilityClass),
   )
 
 proc createBuildingProject*(buildingType: string): ConstructionProject =
@@ -106,7 +106,7 @@ proc createBuildingProject*(buildingType: string): ConstructionProject =
     costPaid: cost, # Full upfront payment
     turnsRemaining: turns,
     facilityId: none(uint32),
-    facilityType: none(FacilityType),
+    facilityType: none(FacilityClass),
   )
 
 proc createIndustrialProject*(colony: Colony, units: int): ConstructionProject =
@@ -124,5 +124,5 @@ proc createIndustrialProject*(colony: Colony, units: int): ConstructionProject =
     costPaid: totalCost, # Full upfront payment
     turnsRemaining: 1, # IU investment completes in 1 turn
     facilityId: none(uint32),
-    facilityType: none(FacilityType),
+    facilityType: none(FacilityClass),
   )

@@ -493,10 +493,10 @@ proc resolveIncomePhase*(
 
       for fleet in fleets:
         for squadron in fleet.squadrons:
-          if squadron.squadronType == SquadronType.Auxiliary:
+          if squadron.squadronType == SquadronClass.Auxiliary:
             if squadron.flagship.cargo.isSome:
               let cargo = squadron.flagship.cargo.get()
-              if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+              if cargo.cargoType == CargoClass.Marines and cargo.quantity > 0:
                 hasInvasionCapability = true
                 break
         if hasInvasionCapability:

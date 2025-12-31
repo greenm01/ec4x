@@ -178,7 +178,7 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
     )
   of "Army", "army":
     BuildingConfig(
-      cost: globalGroundUnitsConfig.units[GroundUnitType.Army].build_cost,
+      cost: globalGroundUnitsConfig.units[GroundClass.Army].build_cost,
       time: 1,
       requiresSpaceport: false,
       requiresShipyard: false,
@@ -186,7 +186,7 @@ proc getBuildingConfig(buildingType: string): BuildingConfig =
     )
   of "Marine", "marine_division":
     BuildingConfig(
-      cost: globalGroundUnitsConfig.units[GroundUnitType.Marine].build_cost,
+      cost: globalGroundUnitsConfig.units[GroundClass.Marine].build_cost,
       time: 1,
       requiresSpaceport: false,
       requiresShipyard: false,
@@ -253,12 +253,12 @@ proc getPlanetaryShieldCost*(sldLevel: int): int =
 proc getArmyBuildCost*(): int =
   ## Get construction cost for army division
   ## Returns build_cost from ground_units.toml
-  globalGroundUnitsConfig.units[GroundUnitType.Army].build_cost
+  globalGroundUnitsConfig.units[GroundClass.Army].build_cost
 
 proc getMarineBuildCost*(): int =
   ## Get construction cost for marine division
   ## Returns build_cost from ground_units.toml
-  globalGroundUnitsConfig.units[GroundUnitType.Marine].build_cost
+  globalGroundUnitsConfig.units[GroundClass.Marine].build_cost
 
 ## Export for use in construction.nim
 export getShipConstructionCost, getShipBaseBuildTime, getShipCSTRequirement

@@ -119,7 +119,7 @@ proc getStarbaseRepairCost*(): int =
   ## Calculate repair cost for crippled starbase
   ## Per construction.kdl: 25% of build cost
 
-  let buildCost = globalFacilitiesConfig.facilities[FacilityType.Starbase].productionCost
+  let buildCost = globalFacilitiesConfig.facilities[FacilityClass.Starbase].productionCost
   let multiplier = globalConstructionConfig.repair.starbaseRepairCostMultiplier
 
   return int(float(buildCost) * multiplier)
@@ -207,7 +207,7 @@ proc validateRepairRequest*(
   # Check dock capacity for Ship repairs only (Starbases don't consume docks)
   if request.targetType == RepairTargetType.Ship:
     let activeProjects =
-      colony.getActiveProjectsByFacility(econ_types.FacilityType.Shipyard)
+      colony.getActiveProjectsByFacility(econ_types.FacilityClass.Shipyard)
     let capacity = colony.getShipyardDockCapacity()
 
     if activeProjects >= capacity:

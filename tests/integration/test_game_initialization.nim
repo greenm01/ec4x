@@ -126,7 +126,7 @@ suite "Game Initialization - Complete Flow":
         check armyOpt.isSome
         if armyOpt.isSome:
           let army = armyOpt.get()
-          check army.stats.unitType == GroundUnitType.Army
+          check army.stats.unitType == GroundClass.Army
           check army.stats.attackStrength > 0
           check army.stats.defenseStrength > 0
           check army.garrison.locationType == GroundUnitLocation.OnColony
@@ -139,7 +139,7 @@ suite "Game Initialization - Complete Flow":
         check marineOpt.isSome
         if marineOpt.isSome:
           let marine = marineOpt.get()
-          check marine.stats.unitType == GroundUnitType.Marine
+          check marine.stats.unitType == GroundClass.Marine
           check marine.stats.attackStrength > 0
           check marine.stats.defenseStrength > 0
           check marine.garrison.locationType == GroundUnitLocation.OnColony
@@ -152,7 +152,7 @@ suite "Game Initialization - Complete Flow":
         check batteryOpt.isSome
         if batteryOpt.isSome:
           let battery = batteryOpt.get()
-          check battery.stats.unitType == GroundUnitType.GroundBattery
+          check battery.stats.unitType == GroundClass.GroundBattery
           check battery.stats.attackStrength > 0
           check battery.stats.defenseStrength > 0
           check battery.garrison.locationType == GroundUnitLocation.OnColony

@@ -47,7 +47,7 @@ suite "Fleet Orders: Complete Integration Tests":
       result.starMap.lanes.add(JumpLane(
         source: i,
         destination: i + 1,
-        laneType: LaneType.Major
+        laneType: LaneClass.Major
       ))
 
       # Update adjacency
@@ -373,7 +373,7 @@ suite "Fleet Orders: Complete Integration Tests":
       location: 3,
       isCrippled: false,
       cargo: SpaceLiftCargo(
-        cargoType: CargoType.Marines,
+        cargoType: CargoClass.Marines,
         quantity: 10
       )
     )
@@ -414,7 +414,7 @@ suite "Fleet Orders: Complete Integration Tests":
       location: 3,
       isCrippled: false,
       cargo: SpaceLiftCargo(
-        cargoType: CargoType.Marines,
+        cargoType: CargoClass.Marines,
         quantity: 10
       )
     )
@@ -554,7 +554,7 @@ suite "Fleet Orders: Complete Integration Tests":
       location: 5,
       isCrippled: false,
       cargo: SpaceLiftCargo(
-        cargoType: CargoType.Colonists,
+        cargoType: CargoClass.Colonists,
         quantity: 1
       )
     )

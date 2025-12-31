@@ -166,9 +166,9 @@ suite "EC4X Game Specification Validation":
       var restrictedCount = 0
       for lane in hubLanes:
         case lane.laneType
-        of LaneType.Major: majorCount += 1
-        of LaneType.Minor: minorCount += 1
-        of LaneType.Restricted: restrictedCount += 1
+        of LaneClass.Major: majorCount += 1
+        of LaneClass.Minor: minorCount += 1
+        of LaneClass.Restricted: restrictedCount += 1
 
       # Should have at least one Major lane
       check majorCount >= 1
@@ -201,7 +201,7 @@ suite "EC4X Game Specification Validation":
         var majorLanes = 0
         for lane in starMap.lanes.data:
           if ((lane.source == systemId) or (lane.destination == systemId)) and
-             (lane.laneType == LaneType.Major):
+             (lane.laneType == LaneClass.Major):
             majorLanes += 1
 
         check majorLanes >= 1  # At least one major lane
@@ -427,7 +427,7 @@ suite "EC4X Game Specification Validation":
         var majorLaneCount = 0
         for lane in starMap.lanes.data:
           if ((lane.source == systemId) or (lane.destination == systemId)) and
-             (lane.laneType == LaneType.Major):
+             (lane.laneType == LaneClass.Major):
             majorLaneCount += 1
 
         check majorLaneCount == 3

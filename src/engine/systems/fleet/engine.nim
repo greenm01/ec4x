@@ -99,7 +99,7 @@ proc canMergeFleets*(
   for sqId in source.squadrons:
     let sqOpt = gs_helpers.getSquadrons(state, sqId)
     if sqOpt.isSome:
-      if sqOpt.get().squadronType == SquadronType.Intel:
+      if sqOpt.get().squadronType == SquadronClass.Intel:
         sourceHasIntel = true
       else:
         sourceHasNonIntel = true
@@ -107,7 +107,7 @@ proc canMergeFleets*(
   for sqId in target.squadrons:
     let sqOpt = gs_helpers.getSquadrons(state, sqId)
     if sqOpt.isSome:
-      if sqOpt.get().squadronType == SquadronType.Intel:
+      if sqOpt.get().squadronType == SquadronClass.Intel:
         targetHasIntel = true
       else:
         targetHasNonIntel = true

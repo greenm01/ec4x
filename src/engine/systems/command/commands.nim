@@ -136,7 +136,7 @@ proc validateFleetCommand*(
     var hasETAC = false
     for squadronId in fleet.squadrons:
       let sq = state.squadrons.entities.getEntity(squadronId).get
-      if sq.squadronType == SquadronType.Expansion:
+      if sq.squadronType == SquadronClass.Expansion:
         let flagship = state.ships.entities.getEntity(sq.flagshipId).get
         logDebug(
           LogCategory.lcOrders,
@@ -184,7 +184,7 @@ proc validateFleetCommand*(
     # Check fleet has no Intel squadrons (Intel squadrons are intelligence-only, not combat units)
     for squadronId in fleet.squadrons:
       let sq = state.squadrons.entities.getEntity(squadronId).get
-      if sq.squadronType == SquadronType.Intel:
+      if sq.squadronType == SquadronClass.Intel:
         logWarn(
           LogCategory.lcOrders,
           &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
@@ -247,7 +247,7 @@ proc validateFleetCommand*(
 
     for squadronId in fleet.squadrons:
       let sq = state.squadrons.entities.getEntity(squadronId).get
-      if sq.squadronType == SquadronType.Intel:
+      if sq.squadronType == SquadronClass.Intel:
         hasIntel = true
       else:
         hasNonIntel = true
@@ -662,7 +662,7 @@ proc getRemainingBudget*(ctx: CommandValidationContext): int32 =
 proc calculateBuildCommandCost*(
     cmd: BuildCommand,
     state: GameState,
-    assignedFacilityType: Option[FacilityType] = none(FacilityType),
+    assignedFacilityClass: Option[FacilityClass] = none(FacilityClass),
 ): int32 =
   ## Calculate the PP cost of a build command
   ## Returns 0 if cost cannot be determined
@@ -673,7 +673,7 @@ proc calculateBuildCommandCost*(
   ## - Fighters are EXEMPT (distributed planetary manufacturing)
   ## - Shipyard/Starbase buildings are EXEMPT (orbital construction, no penalty)
   ##
-  ## If assignedFacilityType is provided, use it to determine cost.
+  ## If assignedFacilityClass is provided, use it to determine cost.
   ## Otherwise, fall back to legacy logic (check if colony has shipyard).
   result = 0
 
@@ -690,9 +690,9 @@ proc calculateBuildCommandCost*(
       if shipClass == ShipClass.Fighter:
         # Fighters never incur commission penalty (distributed planetary manufacturing)
         result = baseCost
-      elif assignedFacilityType.isSome:
+      elif assignedFacilityClass.isSome:
         # NEW: Per-facility cost calculation
-        if assignedFacilityType.get() == FacilityType.Spaceport:
+        if assignedFacilityClass.get() == FacilityClass.Spaceport:
           # Planet-side construction (spaceport) → 100% penalty (double cost)
           result = baseCost * 2
         else:

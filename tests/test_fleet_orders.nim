@@ -414,7 +414,7 @@ suite "Order 06-08: Combat Orders":
       owner: "house1",
       location: 2,
       isCrippled: false,
-      cargo: SpaceLiftCargo(cargoType: CargoType.Marines, quantity: 1, capacity: 1)
+      cargo: SpaceLiftCargo(cargoType: CargoClass.Marines, quantity: 1, capacity: 1)
     )
     var sq1 = newSquadron(destroyer)
 
@@ -448,7 +448,7 @@ suite "Order 06-08: Combat Orders":
       owner: "house1",
       location: 2,
       isCrippled: false,
-      cargo: SpaceLiftCargo(cargoType: CargoType.Marines, quantity: 1, capacity: 1)
+      cargo: SpaceLiftCargo(cargoType: CargoClass.Marines, quantity: 1, capacity: 1)
     )
 
     let fleet = Fleet(
@@ -567,7 +567,7 @@ suite "Order 12: Colonize":
       owner: "house1",
       location: 1,
       isCrippled: false,
-      cargo: SpaceLiftCargo(cargoType: CargoType.Colonists, quantity: 1, capacity: 1)
+      cargo: SpaceLiftCargo(cargoType: CargoClass.Colonists, quantity: 1, capacity: 1)
     )
 
     let fleet = Fleet(

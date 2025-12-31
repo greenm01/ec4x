@@ -16,7 +16,7 @@ import ../../systems/ship/entity as ship_entity # Ship helper functions
 import ../../entities/[fleet_ops, colony_ops]
 import ../../../common/logger
 
-export production.RepairProject, facilities.FacilityType, production.RepairTargetType
+export production.RepairProject, facilities.FacilityClass, production.RepairTargetType
 
 proc calculateRepairCost*(shipClass: ShipClass): int =
   ## Calculate repair cost for a ship
@@ -166,7 +166,7 @@ proc extractCrippledShip*(
   # Create repair project
   let repair = production.RepairProject(
     targetType: production.RepairTargetType.Ship,
-    facilityType: facilities.FacilityType.Drydock, # Drydocks only
+    facilityType: facilities.FacilityClass.Drydock, # Drydocks only
     fleetId: some(fleetId),
     squadronId: some(squadronId),
     shipId: some(shipId),
@@ -216,7 +216,7 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
 
       let repair = production.RepairProject(
         targetType: production.RepairTargetType.Starbase,
-        facilityType: facilities.FacilityType.Spaceport, # Use Spaceport, not Shipyard
+        facilityType: facilities.FacilityClass.Spaceport, # Use Spaceport, not Shipyard
         fleetId: none(FleetId),
         squadronId: none(SquadronId),
         shipId: none(ShipId),
@@ -292,7 +292,7 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
         if flagship.isCrippled:
           # Check drydock capacity
           let drydockProjects =
-            colony.getActiveProjectsByFacility(facilities.FacilityType.Drydock)
+            colony.getActiveProjectsByFacility(facilities.FacilityClass.Drydock)
           let drydockCapacity = colony.getDrydockDockCapacity()
 
           if drydockProjects < drydockCapacity:
@@ -328,7 +328,7 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
         if ship.isCrippled:
           # Check drydock capacity
           let drydockProjects =
-            colony.getActiveProjectsByFacility(facilities.FacilityType.Drydock)
+            colony.getActiveProjectsByFacility(facilities.FacilityClass.Drydock)
           let drydockCapacity = colony.getDrydockDockCapacity()
 
           if drydockProjects < drydockCapacity:

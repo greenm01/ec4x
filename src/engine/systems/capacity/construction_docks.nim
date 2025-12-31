@@ -29,7 +29,7 @@ export capacity.CapacityViolation, capacity.ViolationSeverity
 
 type FacilityCapacity* = object ## Capacity status for a single facility
   facilityId*: string
-  facilityType*: FacilityType
+  facilityType*: FacilityClass
   maxDocks*: int
   usedDocks*: int
   isCrippled*: bool
@@ -42,7 +42,7 @@ proc getFacilityCapacity*(spaceport: Spaceport): FacilityCapacity =
 
   result = FacilityCapacity(
     facilityId: $uint32(spaceport.id),
-    facilityType: FacilityType.Spaceport,
+    facilityType: FacilityClass.Spaceport,
     maxDocks: spaceport.effectiveDocks,
     usedDocks: used,
     isCrippled: false, # Spaceports don't get crippled
@@ -56,7 +56,7 @@ proc getFacilityCapacity*(shipyard: Shipyard): FacilityCapacity =
 
   result = FacilityCapacity(
     facilityId: $uint32(shipyard.id),
-    facilityType: FacilityType.Shipyard,
+    facilityType: FacilityClass.Shipyard,
     maxDocks: shipyard.effectiveDocks,
     usedDocks: used,
     isCrippled: shipyard.isCrippled,
@@ -70,7 +70,7 @@ proc getFacilityCapacity*(drydock: Drydock): FacilityCapacity =
 
   result = FacilityCapacity(
     facilityId: $uint32(drydock.id),
-    facilityType: FacilityType.Drydock,
+    facilityType: FacilityClass.Drydock,
     maxDocks: drydock.effectiveDocks,
     usedDocks: used,
     isCrippled: drydock.isCrippled,
@@ -162,7 +162,7 @@ proc checkAllViolations*(state: GameState): seq[capacity.CapacityViolation] =
 
 proc getAvailableFacilities*(
     state: GameState, colonyId: ColonyId, projectType: BuildType
-): seq[tuple[facilityId: string, facilityType: FacilityType, availableDocks: int]] =
+): seq[tuple[facilityId: string, facilityType: FacilityClass, availableDocks: int]] =
   ## Get list of facilities with available dock capacity at colony
   ## Returns facilities sorted by priority: shipyards first, then by available
   ## capacity (descending)
@@ -185,7 +185,7 @@ proc getAvailableFacilities*(
       continue
 
     # Skip drydocks - they're repair-only, not for construction
-    if facility.facilityType == FacilityType.Drydock:
+    if facility.facilityType == FacilityClass.Drydock:
       continue
 
     let available = facility.maxDocks - facility.usedDocks
@@ -194,14 +194,14 @@ proc getAvailableFacilities*(
 
   # Sort: Shipyards first, then by available docks (descending)
   result.sort do(
-    a, b: tuple[facilityId: string, facilityType: FacilityType, availableDocks: int]
+    a, b: tuple[facilityId: string, facilityType: FacilityClass, availableDocks: int]
   ) -> int:
     # Shipyards have priority
-    if a.facilityType == FacilityType.Shipyard and
-        b.facilityType == FacilityType.Spaceport:
+    if a.facilityType == FacilityClass.Shipyard and
+        b.facilityType == FacilityClass.Spaceport:
       return -1
-    elif a.facilityType == FacilityType.Spaceport and
-        b.facilityType == FacilityType.Shipyard:
+    elif a.facilityType == FacilityClass.Spaceport and
+        b.facilityType == FacilityClass.Shipyard:
       return 1
     else:
       # Among same type, prefer more available docks (even distribution)
@@ -209,7 +209,7 @@ proc getAvailableFacilities*(
 
 proc assignFacility*(
     state: GameState, colonyId: ColonyId, projectType: BuildType, itemId: string
-): Option[tuple[facilityId: uint32, facilityType: FacilityType]] =
+): Option[tuple[facilityId: uint32, facilityType: FacilityClass]] =
   ## Assign a construction project to the best available facility
   ##
   ## Assignment algorithm:
@@ -227,21 +227,21 @@ proc assignFacility*(
     # For shipyard, we need a spaceport but it doesn't consume docks
     let colonyOpt = gs_helpers.getColony(state, colonyId)
     if colonyOpt.isNone:
-      return none(tuple[facilityId: uint32, facilityType: FacilityType])
+      return none(tuple[facilityId: uint32, facilityType: FacilityClass])
 
     let colony = colonyOpt.get()
     if colony.spaceportIds.len > 0:
       # Return first spaceport (assists but doesn't consume capacity)
       let spaceportId = colony.spaceportIds[0]
-      return some((uint32(spaceportId), FacilityType.Spaceport))
+      return some((uint32(spaceportId), FacilityClass.Spaceport))
     else:
-      return none(tuple[facilityId: uint32, facilityType: FacilityType])
+      return none(tuple[facilityId: uint32, facilityType: FacilityClass])
 
   # Normal case: find facility with available capacity
   let available = getAvailableFacilities(state, colonyId, projectType)
 
   if available.len == 0:
-    return none(tuple[facilityId: uint32, facilityType: FacilityType])
+    return none(tuple[facilityId: uint32, facilityType: FacilityClass])
 
   # Return first (highest priority) facility
   # Convert string ID back to uint32
@@ -316,7 +316,7 @@ proc assignAndQueueProject*(
   assignedProject.facilityType = some(facilityType)
 
   # Add to facility queue
-  if facilityType == FacilityType.Spaceport:
+  if facilityType == FacilityClass.Spaceport:
     # Update spaceport
     let spaceportId = SpaceportId(facilityId)
     let spaceportOpt = gs_helpers.getSpaceport(state, spaceportId)

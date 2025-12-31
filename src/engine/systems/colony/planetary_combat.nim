@@ -219,7 +219,7 @@ proc resolveBombardment*(
     if project.projectType == econ_types.ConstructionType.Ship:
       # Only destroy if in spaceport dock (bombardment doesn't affect shipyard docks)
       if project.facilityType.isSome and
-          project.facilityType.get() == econ_types.FacilityType.Spaceport:
+          project.facilityType.get() == econ_types.FacilityClass.Spaceport:
         updatedColony.underConstruction = none(econ_types.ConstructionProject)
         shipsDestroyedInDock = true
         logCombat(
@@ -258,7 +258,7 @@ proc resolveBombardment*(
     result.batteriesDestroyed,
     groundForcesKilled,
     fleet.squadrons.countIt(
-      it.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}
+      it.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}
     ), # Invasion threat assessment (count spacelift squadrons)
   )
 
@@ -417,10 +417,10 @@ proc resolveInvasion*(
   # Build attacking ground forces from spacelift squadrons (marines only)
   var attackingForces: seq[GroundUnit] = @[]
   for squadron in fleet.squadrons:
-    if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+    if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
       if squadron.flagship.cargo.isSome:
         let cargo = squadron.flagship.cargo.get()
-        if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+        if cargo.cargoType == CargoClass.Marines and cargo.quantity > 0:
           for i in 0 ..< cargo.quantity:
             let marine = createMarine(
               id = $houseId & "_MD_" & $targetId & "_" & $i, owner = houseId
@@ -536,7 +536,7 @@ proc resolveInvasion*(
     updatedColony.spaceports = @[]
 
     # Destroy ships under construction/repair in spaceport docks (per economy.md:5.0)
-    handleFacilityDestruction(updatedColony, econ_types.FacilityType.Spaceport)
+    handleFacilityDestruction(updatedColony, econ_types.FacilityClass.Spaceport)
 
     # Update ground forces
     # Attacker marines that survived become garrison
@@ -549,14 +549,14 @@ proc resolveInvasion*(
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
-        if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+        if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
           if squadron.flagship.cargo.isSome:
             let cargo = squadron.flagship.cargo.get()
-            if cargo.cargoType == CargoType.Marines:
+            if cargo.cargoType == CargoClass.Marines:
               # Clear the cargo
               squadron.flagship.cargo = some(
                 ShipCargo(
-                  cargoType: CargoType.None, quantity: 0, capacity: cargo.capacity
+                  cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity
                 )
               )
       state.fleets.entities.updateEntity(command.fleetId, updatedFleet)
@@ -655,14 +655,14 @@ proc resolveInvasion*(
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
-        if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+        if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
           if squadron.flagship.cargo.isSome:
             let cargo = squadron.flagship.cargo.get()
-            if cargo.cargoType == CargoType.Marines:
+            if cargo.cargoType == CargoClass.Marines:
               # Clear the cargo (marines destroyed)
               squadron.flagship.cargo = some(
                 ShipCargo(
-                  cargoType: CargoType.None, quantity: 0, capacity: cargo.capacity
+                  cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity
                 )
               )
       state.fleets.entities.updateEntity(command.fleetId, updatedFleet)
@@ -811,10 +811,10 @@ proc resolveBlitz*(
   # Build attacking ground forces from spacelift squadrons (marines only)
   var attackingForces: seq[GroundUnit] = @[]
   for squadron in fleet.squadrons:
-    if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+    if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
       if squadron.flagship.cargo.isSome:
         let cargo = squadron.flagship.cargo.get()
-        if cargo.cargoType == CargoType.Marines and cargo.quantity > 0:
+        if cargo.cargoType == CargoClass.Marines and cargo.quantity > 0:
           for i in 0 ..< cargo.quantity:
             let marine = createMarine(
               id = $houseId & "_MD_" & $targetId & "_" & $i, owner = houseId
@@ -920,14 +920,14 @@ proc resolveBlitz*(
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
-        if squadron.squadronType == SquadronType.Auxiliary:
+        if squadron.squadronType == SquadronClass.Auxiliary:
           if squadron.flagship.cargo.isSome:
             let cargo = squadron.flagship.cargo.get()
-            if cargo.cargoType == CargoType.Marines:
+            if cargo.cargoType == CargoClass.Marines:
               # Clear marines cargo
               squadron.flagship.cargo = some(
                 ShipCargo(
-                  cargoType: CargoType.None, quantity: 0, capacity: cargo.capacity
+                  cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity
                 )
               )
       state.fleets.entities.updateEntity(command.fleetId, updatedFleet)
@@ -1028,14 +1028,14 @@ proc resolveBlitz*(
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
-        if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+        if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
           if squadron.flagship.cargo.isSome:
             let cargo = squadron.flagship.cargo.get()
-            if cargo.cargoType == CargoType.Marines:
+            if cargo.cargoType == CargoClass.Marines:
               # Clear the cargo (marines destroyed)
               squadron.flagship.cargo = some(
                 ShipCargo(
-                  cargoType: CargoType.None, quantity: 0, capacity: cargo.capacity
+                  cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity
                 )
               )
       state.fleets.entities.updateEntity(command.fleetId, updatedFleet)

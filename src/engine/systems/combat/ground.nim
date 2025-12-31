@@ -471,7 +471,7 @@ proc conductBlitz*(
 
   # Apply Marine AS penalty for quick insertion
   for unit in attackers.mitems:
-    if unit.unitType == GroundUnitType.Marine:
+    if unit.unitType == GroundClass.Marine:
       unit.attackStrength = max(1, unit.attackStrength div 2)
 
   # Ground combat loop
@@ -577,7 +577,7 @@ proc createGroundBattery*(id: string, owner: HouseId, techLevel: int = 1): Groun
   let cfg = globalGroundUnitsConfig.ground_battery
 
   result = GroundUnit(
-    unitType: GroundUnitType.GroundBattery,
+    unitType: GroundClass.GroundBattery,
     id: id,
     owner: owner,
     attackStrength: cfg.attack_strength,
@@ -592,7 +592,7 @@ proc createArmy*(id: string, owner: HouseId): GroundUnit =
   let cfg = globalGroundUnitsConfig.army
 
   result = GroundUnit(
-    unitType: GroundUnitType.Army,
+    unitType: GroundClass.Army,
     id: id,
     owner: owner,
     attackStrength: cfg.attack_strength,
@@ -607,7 +607,7 @@ proc createMarine*(id: string, owner: HouseId): GroundUnit =
   let cfg = globalGroundUnitsConfig.marine_division
 
   result = GroundUnit(
-    unitType: GroundUnitType.Marine,
+    unitType: GroundClass.Marine,
     id: id,
     owner: owner,
     attackStrength: cfg.attack_strength,

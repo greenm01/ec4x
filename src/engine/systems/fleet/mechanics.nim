@@ -328,7 +328,7 @@ proc resolveMovementCommand*(
         for lane in state.starMap.lanes:
           if (lane.source == fromSys and lane.destination == toSys) or
               (lane.source == toSys and lane.destination == fromSys):
-            if lane.laneType == LaneType.Major:
+            if lane.laneType == LaneClass.Major:
               laneIsMajor = true
             break
 
@@ -600,10 +600,10 @@ proc resolveColonizationCommand*(
   # Check fleet has colonists (in Expansion squadrons)
   var hasColonists = false
   for squadron in fleet.squadrons:
-    if squadron.squadronType == SquadronType.Expansion:
+    if squadron.squadronType == SquadronClass.Expansion:
       if squadron.flagship.cargo.isSome:
         let cargo = squadron.flagship.cargo.get()
-        if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+        if cargo.cargoType == CargoClass.Colonists and cargo.quantity > 0:
           hasColonists = true
           break
 
@@ -623,10 +623,10 @@ proc resolveColonizationCommand*(
   # Get PTU quantity from ETAC cargo (should be 3 for new ETACs)
   var ptuToDeposit = 0
   for squadron in fleet.squadrons:
-    if squadron.squadronType == SquadronType.Expansion:
+    if squadron.squadronType == SquadronClass.Expansion:
       if squadron.flagship.cargo.isSome:
         let cargo = squadron.flagship.cargo.get()
-        if cargo.cargoType == CargoType.Colonists:
+        if cargo.cargoType == CargoClass.Colonists:
           ptuToDeposit = cargo.quantity
           break
 
@@ -655,17 +655,17 @@ proc resolveColonizationCommand*(
 
   # Unload colonists from Expansion squadrons
   for squadron in fleet.squadrons.mitems:
-    if squadron.squadronType == SquadronType.Expansion:
+    if squadron.squadronType == SquadronClass.Expansion:
       if squadron.flagship.cargo.isSome:
         var cargo = squadron.flagship.cargo.get()
-        if cargo.cargoType == CargoType.Colonists:
+        if cargo.cargoType == CargoClass.Colonists:
           logInfo(
             LogCategory.lcColonization,
             &"⚠️  PRE-UNLOAD: {squadron.flagship.shipClass} {squadron.id} has {cargo.quantity} PTU",
           )
           # Unload cargo
           cargo.quantity = 0
-          cargo.cargoType = CargoType.None
+          cargo.cargoType = CargoClass.None
           squadron.flagship.cargo = some(cargo)
           logInfo(
             LogCategory.lcColonization,
@@ -682,7 +682,7 @@ proc resolveColonizationCommand*(
   var cannibalized_count = 0
   for i in countdown(fleet.squadrons.high, 0):
     let squadron = fleet.squadrons[i]
-    if squadron.squadronType == SquadronType.Expansion:
+    if squadron.squadronType == SquadronClass.Expansion:
       let cargo = squadron.flagship.cargo
       let cargoQty =
         if cargo.isSome:
@@ -875,7 +875,7 @@ proc autoLoadCargo*(
 
       for squadron in fleet.squadrons.mitems:
         # Only process Expansion/Auxiliary squadrons
-        if squadron.squadronType notin {SquadronType.Expansion, SquadronType.Auxiliary}:
+        if squadron.squadronType notin {SquadronClass.Expansion, SquadronClass.Auxiliary}:
           continue
 
         # Skip crippled ships
@@ -885,7 +885,7 @@ proc autoLoadCargo*(
         # Skip ships already loaded
         if squadron.flagship.cargo.isSome:
           let cargo = squadron.flagship.cargo.get()
-          if cargo.cargoType != CargoType.None:
+          if cargo.cargoType != CargoClass.None:
             continue
 
         # Determine what cargo this ship can carry
@@ -897,7 +897,7 @@ proc autoLoadCargo*(
             let loadAmount = min(capacity, colony.marines)
             squadron.flagship.cargo = some(
               ShipCargo(
-                cargoType: CargoType.Marines, quantity: loadAmount, capacity: capacity
+                cargoType: CargoClass.Marines, quantity: loadAmount, capacity: capacity
               )
             )
             colony.marines -= loadAmount
@@ -914,7 +914,7 @@ proc autoLoadCargo*(
           if colony.souls > minSoulsToKeep + soulsPerPtu():
             let capacity = squadron.flagship.baseCarryLimit()
             squadron.flagship.cargo = some(
-              ShipCargo(cargoType: CargoType.Colonists, quantity: 1, capacity: capacity)
+              ShipCargo(cargoType: CargoClass.Colonists, quantity: 1, capacity: capacity)
             )
             colony.souls -= soulsPerPtu()
             colony.population = colony.souls div 1_000_000

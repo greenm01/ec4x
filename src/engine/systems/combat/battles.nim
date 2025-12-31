@@ -46,7 +46,7 @@ proc applySpaceLiftScreeningLosses(
     # Count Expansion/Auxiliary squadrons before
     var spaceliftSquadronsBefore = 0
     for squadron in fleetBefore.squadrons:
-      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+      if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
         spaceliftSquadronsBefore += 1
 
     if spaceliftSquadronsBefore == 0:
@@ -65,7 +65,7 @@ proc applySpaceLiftScreeningLosses(
         let sqOpt = state.squadrons.entities.getEntity(sqId)
         if sqOpt.isSome:
           let squadron = sqOpt.get()
-          if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+          if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
             spaceliftSquadronsAfter += 1
 
     # Track losses
@@ -101,7 +101,7 @@ proc isIntelOnlyFleet(fleet: Fleet): bool =
     return false
 
   for squadron in fleet.squadrons:
-    if squadron.squadronType != SquadronType.Intel:
+    if squadron.squadronType != SquadronClass.Intel:
       return false
 
   return true
@@ -118,7 +118,7 @@ proc getTargetBucket(shipClass: ShipClass): TargetBucket =
 proc getStarbaseStats(wepLevel: int): ShipStats =
   ## Load starbase combat stats from facilities.toml
   ## Applies WEP tech modifications like ships
-  let facilityConfig = globalFacilitiesConfig.facilities[FacilityType.Starbase]
+  let facilityConfig = globalFacilitiesConfig.facilities[FacilityClass.Starbase]
 
   # Base stats from facilities.toml
   var stats = ShipStats(
@@ -315,7 +315,7 @@ proc executeCombat(
       for squadron in fleet.squadrons:
         # Only Combat squadrons participate in combat
         # Intel, Auxiliary, Expansion, and Fighter squadrons are screened
-        if squadron.squadronType != SquadronType.Combat:
+        if squadron.squadronType != SquadronClass.Combat:
           logDebug(
             "Combat",
             "Non-combat squadron excluded from task force",
@@ -511,7 +511,7 @@ proc executeCombat(
       if systemOwner.isSome and systemOwner.get() == defenderTF.house:
         let colonyOpt = state.colonies.entities.getEntity(systemId)
         if colonyOpt.isSome and colonyOpt.get().starbases.len > 0:
-          starbaseBonus = globalFacilitiesConfig.facilities[FacilityType.Starbase].economic_lift_bonus
+          starbaseBonus = globalFacilitiesConfig.facilities[FacilityClass.Starbase].economic_lift_bonus
       let defenderRoll = detectionRng.rand(1 .. 10) + defenderELI + starbaseBonus
 
       logInfo(
@@ -1258,16 +1258,16 @@ proc resolveBattle*(
           if colony.underConstruction.isSome:
             let project = colony.underConstruction.get()
             if project.facilityType.isSome and
-                project.facilityType.get() == econ_types.FacilityType.Shipyard:
+                project.facilityType.get() == econ_types.FacilityClass.Shipyard:
               shipsUnderConstructionLost += 1
 
           # Count ships under repair in shipyard docks
           for repair in colony.repairQueue:
-            if repair.facilityType == econ_types.FacilityType.Shipyard:
+            if repair.facilityType == econ_types.FacilityClass.Shipyard:
               shipsUnderRepairLost += 1
 
           # Clear all shipyard construction/repair queues
-          facility_damage.clearFacilityQueues(colony, econ_types.FacilityType.Shipyard)
+          facility_damage.clearFacilityQueues(colony, econ_types.FacilityClass.Shipyard)
           colony.shipyards = @[]
 
         # Destroy drydocks and clear their repair queues
@@ -1283,11 +1283,11 @@ proc resolveBattle*(
 
           # Count ships under repair in drydock docks
           for repair in colony.repairQueue:
-            if repair.facilityType == econ_types.FacilityType.Drydock:
+            if repair.facilityType == econ_types.FacilityClass.Drydock:
               shipsUnderRepairLost += 1
 
           # Clear all drydock repair queues
-          facility_damage.clearFacilityQueues(colony, econ_types.FacilityType.Drydock)
+          facility_damage.clearFacilityQueues(colony, econ_types.FacilityClass.Drydock)
           colony.drydocks = @[]
 
         # Clear construction queue if no facilities remain

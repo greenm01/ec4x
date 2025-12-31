@@ -389,7 +389,7 @@ proc commissionPlanetaryDefense*(
         let colony = colonyOpt.get()
 
         # Create new spaceport (docks from facilities_config.toml, scaled by CST)
-        let baseDocks = globalFacilitiesConfig.facilities[FacilityType.Spaceport].docks
+        let baseDocks = globalFacilitiesConfig.facilities[FacilityClass.Spaceport].docks
         let houseOpt = gs_helpers.getHouse(state, colony.owner)
         if houseOpt.isNone:
           continue
@@ -444,7 +444,7 @@ proc commissionPlanetaryDefense*(
           continue
 
         # Create new shipyard (docks from facilities_config.toml, scaled by CST)
-        let baseDocks = globalFacilitiesConfig.facilities[FacilityType.Shipyard].docks
+        let baseDocks = globalFacilitiesConfig.facilities[FacilityClass.Shipyard].docks
         let houseOpt = gs_helpers.getHouse(state, colony.owner)
         if houseOpt.isNone:
           continue
@@ -500,7 +500,7 @@ proc commissionPlanetaryDefense*(
           continue
 
         # Create new drydock (docks from facilities_config.toml, scaled by CST)
-        let baseDocks = globalFacilitiesConfig.facilities[FacilityType.Drydock].docks
+        let baseDocks = globalFacilitiesConfig.facilities[FacilityClass.Drydock].docks
         let houseOpt = gs_helpers.getHouse(state, colony.owner)
         if houseOpt.isNone:
           continue
@@ -549,11 +549,11 @@ proc commissionPlanetaryDefense*(
         let unitId = generateGroundUnitId(state)
         let battery = GroundUnit(
           id: unitId,
-          unitType: GroundUnitType.GroundBattery,
+          unitType: GroundClass.GroundBattery,
           owner: colony.owner,
-          attackStrength: int32(globalGroundUnitsConfig.units[GroundUnitType.GroundBattery].attack_strength),
+          attackStrength: int32(globalGroundUnitsConfig.units[GroundClass.GroundBattery].attack_strength),
           defenseStrength:
-            int32(globalGroundUnitsConfig.units[GroundUnitType.GroundBattery].defense_strength),
+            int32(globalGroundUnitsConfig.units[GroundClass.GroundBattery].defense_strength),
           state: CombatState.Undamaged,
         )
         state.groundUnits.entities.addEntity(unitId, battery)
@@ -613,7 +613,7 @@ proc commissionPlanetaryDefense*(
         var colony = colonyOpt.get()
 
         # Get population cost from config
-        let marinePopCost = globalGroundUnitsConfig.units[GroundUnitType.Marine].population_cost
+        let marinePopCost = globalGroundUnitsConfig.units[GroundClass.Marine].population_cost
         let minViablePop = population_config.minViablePopulation()
 
         if colony.souls < marinePopCost:
@@ -633,12 +633,12 @@ proc commissionPlanetaryDefense*(
           let unitId = generateGroundUnitId(state)
           let marine = GroundUnit(
             id: unitId,
-            unitType: GroundUnitType.Marine,
+            unitType: GroundClass.Marine,
             owner: colony.owner,
             attackStrength:
-              int32(globalGroundUnitsConfig.units[GroundUnitType.Marine].attack_strength),
+              int32(globalGroundUnitsConfig.units[GroundClass.Marine].attack_strength),
             defenseStrength:
-              int32(globalGroundUnitsConfig.units[GroundUnitType.Marine].defense_strength),
+              int32(globalGroundUnitsConfig.units[GroundClass.Marine].defense_strength),
             state: CombatState.Undamaged,
           )
           state.groundUnits.entities.addEntity(unitId, marine)
@@ -673,7 +673,7 @@ proc commissionPlanetaryDefense*(
         var colony = colonyOpt.get()
 
         # Get population cost from config
-        let armyPopCost = globalGroundUnitsConfig.units[GroundUnitType.Army].population_cost
+        let armyPopCost = globalGroundUnitsConfig.units[GroundClass.Army].population_cost
         let minViablePop = population_config.minViablePopulation()
 
         if colony.souls < armyPopCost:
@@ -693,10 +693,10 @@ proc commissionPlanetaryDefense*(
           let unitId = generateGroundUnitId(state)
           let army = GroundUnit(
             id: unitId,
-            unitType: GroundUnitType.Army,
+            unitType: GroundClass.Army,
             owner: colony.owner,
-            attackStrength: int32(globalGroundUnitsConfig.units[GroundUnitType.Army].attack_strength),
-            defenseStrength: int32(globalGroundUnitsConfig.units[GroundUnitType.Army].defense_strength),
+            attackStrength: int32(globalGroundUnitsConfig.units[GroundClass.Army].attack_strength),
+            defenseStrength: int32(globalGroundUnitsConfig.units[GroundClass.Army].defense_strength),
             state: CombatState.Undamaged,
           )
           state.groundUnits.entities.addEntity(unitId, army)
@@ -780,7 +780,7 @@ proc commissionScout(
           isPureScoutFleet = false
           break
         let sq = sqOpt.get()
-        if sq.squadronType != SquadronType.Intel:
+        if sq.squadronType != SquadronClass.Intel:
           isPureScoutFleet = false
           break
 
@@ -839,7 +839,7 @@ proc commissionSpaceLift(
   if shipClass == ShipClass.ETAC:
     # ETACs commission with full cargo (cryostasis colonists)
     let cargoCapacity = ship.baseCarryLimit()
-    ship.initCargo(CargoType.Colonists, cargoCapacity)
+    ship.initCargo(CargoClass.Colonists, cargoCapacity)
     discard ship.loadCargo(cargoCapacity)
     logInfo(
       "Economy",
@@ -848,7 +848,7 @@ proc commissionSpaceLift(
   elif shipClass == ShipClass.TroopTransport:
     # TroopTransports start empty (marines loaded later)
     let cargoCapacity = ship.baseCarryLimit()
-    ship.initCargo(CargoType.Marines, cargoCapacity)
+    ship.initCargo(CargoClass.Marines, cargoCapacity)
 
   state.ships.entities.addEntity(shipId, ship)
 
@@ -929,7 +929,7 @@ proc commissionCapitalShip(
         let sq = sqOpt.get()
 
         # Combat fleet types: Combat (capital ships), Fighter
-        if sq.squadronType in [SquadronType.Combat, SquadronType.Fighter]:
+        if sq.squadronType in [SquadronClass.Combat, SquadronClass.Fighter]:
           isCombatFleet = true
           break
 

@@ -22,7 +22,7 @@ type
   Systems* = object
     entities*: EntityManager[SystemId, System]
 
-  LaneType* {.pure.} = enum
+  LaneClass* {.pure.} = enum
     ## Jump lane classifications
     ## Determines movement restrictions per game specs
     Major ## Standard lanes, 2 jumps/turn if owned
@@ -32,15 +32,15 @@ type
   JumpLane* = object
     source*: SystemId
     destination*: SystemId
-    laneType*: LaneType
+    laneType*: LaneClass
 
   JumpLanes* = object
     data*: seq[JumpLane]
     # Fast adjacency lookup: SystemId -> List of neighboring SystemIds
     neighbors*: Table[SystemId, seq[SystemId]]
     # Fast lookup for lane properties between two points
-    # (source, dest) -> LaneType
-    connectionInfo*: Table[(SystemId, SystemId), LaneType]
+    # (source, dest) -> LaneClass
+    connectionInfo*: Table[(SystemId, SystemId), LaneClass]
 
   PathResult* = object
     path*: seq[SystemId]

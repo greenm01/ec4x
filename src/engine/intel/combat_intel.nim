@@ -27,7 +27,7 @@ proc createFleetComposition*(
     let squadronOpt = state_helpers.squadrons(state, squadronId)
     if squadronOpt.isSome:
       let squadron = squadronOpt.get()
-      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+      if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
         spaceLiftSquadronIds.add(squadronId)
 
   # Get fleet's standing commands (if any)

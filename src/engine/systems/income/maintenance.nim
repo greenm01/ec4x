@@ -66,12 +66,12 @@ proc calculateFleetMaintenance*(ships: seq[(ShipClass, bool)]): int =
 proc getSpaceportUpkeep*(): int =
   ## Get upkeep cost for spaceport per turn
   ## Per facilities.toml and construction.toml
-  return globalFacilitiesConfig.facilities[FacilityType.Spaceport].upkeep_cost
+  return globalFacilitiesConfig.facilities[FacilityClass.Spaceport].upkeep_cost
 
 proc getShipyardUpkeep*(): int =
   ## Get upkeep cost for shipyard per turn
   ## Per facilities.toml and construction.toml
-  return globalFacilitiesConfig.facilities[FacilityType.Shipyard].upkeep_cost
+  return globalFacilitiesConfig.facilities[FacilityClass.Shipyard].upkeep_cost
 
 proc getStarbaseUpkeep*(): int =
   ## Get upkeep cost for starbase per turn
@@ -91,12 +91,12 @@ proc getPlanetaryShieldUpkeep*(): int =
 proc getArmyUpkeep*(): int =
   ## Get upkeep cost for army division per turn
   ## Per ground_units.toml
-  return globalGroundUnitsConfig.units[GroundUnitType.Army].upkeep_cost
+  return globalGroundUnitsConfig.units[GroundClass.Army].upkeep_cost
 
 proc getMarineUpkeep*(): int =
   ## Get upkeep cost for marine division per turn
   ## Per ground_units.toml
-  return globalGroundUnitsConfig.units[GroundUnitType.Marine].upkeep_cost
+  return globalGroundUnitsConfig.units[GroundClass.Marine].upkeep_cost
 
 proc getBuildingMaintenance*(buildingType: string): int =
   ## Get maintenance cost for building (legacy compatibility)

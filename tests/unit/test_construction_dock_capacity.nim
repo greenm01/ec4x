@@ -71,7 +71,7 @@ suite "Construction Dock Capacity - Facility Assignment":
 
     check(assignment.isSome)
     check(assignment.get().facilityId == "test-sy-1")  # Should assign to shipyard
-    check(assignment.get().facilityType == econ_types.FacilityType.Shipyard)
+    check(assignment.get().facilityType == econ_types.FacilityClass.Shipyard)
 
   test "assignFacility - Uses spaceport when no shipyard available":
     var state = GameState()
@@ -103,7 +103,7 @@ suite "Construction Dock Capacity - Facility Assignment":
 
     check(assignment.isSome)
     check(assignment.get().facilityId == "test-sp-1")  # Should assign to spaceport
-    check(assignment.get().facilityType == econ_types.FacilityType.Spaceport)
+    check(assignment.get().facilityType == econ_types.FacilityClass.Spaceport)
 
   test "assignFacility - Even distribution across multiple shipyards":
     var state = GameState()
@@ -510,7 +510,7 @@ suite "Construction Dock Capacity - Special Cases":
     let assignment = assignFacility(state, colonyId, econ_types.ConstructionType.Building, "Shipyard")
 
     check(assignment.isSome)  # Should succeed
-    check(assignment.get().facilityType == econ_types.FacilityType.Spaceport)
+    check(assignment.get().facilityType == econ_types.FacilityClass.Spaceport)
     # Shipyard construction uses spaceport assist but doesn't consume docks
 
   test "assignFacility - Starbase construction doesn't need dock":
@@ -541,4 +541,4 @@ suite "Construction Dock Capacity - Special Cases":
     let assignment = assignFacility(state, colonyId, econ_types.ConstructionType.Building, "Starbase")
 
     check(assignment.isSome)
-    check(assignment.get().facilityType == econ_types.FacilityType.Spaceport)
+    check(assignment.get().facilityType == econ_types.FacilityClass.Spaceport)

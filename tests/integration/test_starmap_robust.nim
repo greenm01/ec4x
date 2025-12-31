@@ -107,9 +107,9 @@ suite "Robust Starmap Tests":
     var majorCount = 0
     var minorCount = 0
     for lane in hubLanes:
-      if lane.laneType == LaneType.Major:
+      if lane.laneType == LaneClass.Major:
         majorCount += 1
-      elif lane.laneType == LaneType.Minor:
+      elif lane.laneType == LaneClass.Minor:
         minorCount += 1
     # Hub should have mix of lane types (exact mix may vary by generation)
     check majorCount + minorCount == 6
@@ -126,7 +126,7 @@ suite "Robust Starmap Tests":
       var majorLanes = 0
       for lane in starMap.lanes:
         if (lane.source == playerId or lane.destination == playerId) and
-           lane.laneType == LaneType.Major:
+           lane.laneType == LaneClass.Major:
           majorLanes += 1
 
       check majorLanes >= 1  # At least one major lane
@@ -180,19 +180,19 @@ suite "Robust Starmap Tests":
     let spaceliftFleet = newFleet(squadrons = @[spaceliftSq])
 
     # Normal fleet can traverse all lane types
-    check canFleetTraverseLane(normalFleet, LaneType.Major)
-    check canFleetTraverseLane(normalFleet, LaneType.Minor)
-    check canFleetTraverseLane(normalFleet, LaneType.Restricted)
+    check canFleetTraverseLane(normalFleet, LaneClass.Major)
+    check canFleetTraverseLane(normalFleet, LaneClass.Minor)
+    check canFleetTraverseLane(normalFleet, LaneClass.Restricted)
 
     # Crippled fleet cannot traverse restricted lanes
-    check canFleetTraverseLane(crippledFleet, LaneType.Major)
-    check canFleetTraverseLane(crippledFleet, LaneType.Minor)
-    check not canFleetTraverseLane(crippledFleet, LaneType.Restricted)
+    check canFleetTraverseLane(crippledFleet, LaneClass.Major)
+    check canFleetTraverseLane(crippledFleet, LaneClass.Minor)
+    check not canFleetTraverseLane(crippledFleet, LaneClass.Restricted)
 
     # Spacelift fleet cannot traverse restricted lanes
-    check canFleetTraverseLane(spaceliftFleet, LaneType.Major)
-    check canFleetTraverseLane(spaceliftFleet, LaneType.Minor)
-    check not canFleetTraverseLane(spaceliftFleet, LaneType.Restricted)
+    check canFleetTraverseLane(spaceliftFleet, LaneClass.Major)
+    check canFleetTraverseLane(spaceliftFleet, LaneClass.Minor)
+    check not canFleetTraverseLane(spaceliftFleet, LaneClass.Restricted)
 
   test "pathfinding with fleet restrictions":
     let starMap = starMap(4)

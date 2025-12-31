@@ -13,6 +13,6 @@ type
     prerequisite*: string # Empty for Spaceport
 
   FacilitiesConfig* = object ## Complete facilities configuration loaded from KDL
-    ## Array-indexed by FacilityType for O(1) access
-    facilities*: array[FacilityType, FacilityStatsConfig]
+    ## Array-indexed by FacilityClass for O(1) access
+    facilities*: array[FacilityClass, FacilityStatsConfig]
 

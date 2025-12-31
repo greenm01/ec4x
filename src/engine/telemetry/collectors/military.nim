@@ -150,14 +150,14 @@ proc collectMilitaryMetrics*(
     marinesAtColonies += colony.marineIds.len.int32
 
   for squadron in state.squadronsOwned(houseId):
-    if squadron.squadronType == SquadronType.Auxiliary:
+    if squadron.squadronType == SquadronClass.Auxiliary:
       # Lookup flagship ship to check cargo
       let flagshipOpt = state.ship(squadron.flagshipId)
       if flagshipOpt.isSome:
         let flagship = flagshipOpt.get()
         if flagship.cargo.isSome:
           let cargo = flagship.cargo.get()
-          if cargo.cargoType == CargoType.Marines:
+          if cargo.cargoType == CargoClass.Marines:
             marinesOnTransports += cargo.quantity
 
   result.planetaryShieldUnits = planetaryShieldUnits

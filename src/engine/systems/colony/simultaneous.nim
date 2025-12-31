@@ -46,7 +46,7 @@ proc collectColonizationIntents*(
         continue
       let squadron = squadronOpt.get()
 
-      if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+      if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
         # Get flagship ship to check cargo
         let flagshipOpt = state.ships.entities.getEntity(squadron.flagshipId)
         if flagshipOpt.isNone:
@@ -55,7 +55,7 @@ proc collectColonizationIntents*(
 
         if flagship.cargo.isSome:
           let cargo = flagship.cargo.get()
-          if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+          if cargo.cargoType == CargoClass.Colonists and cargo.quantity > 0:
             hasColonists = true
             break
     if not hasColonists:
@@ -151,7 +151,7 @@ proc establishColony(
       continue
     let squadron = squadronOpt.get()
 
-    if squadron.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+    if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
       # Get flagship ship to check cargo
       let flagshipOpt = state.ships.entities.getEntity(squadron.flagshipId)
       if flagshipOpt.isNone:
@@ -160,7 +160,7 @@ proc establishColony(
 
       if flagship.cargo.isSome:
         let cargo = flagship.cargo.get()
-        if cargo.cargoType == CargoType.Colonists and cargo.quantity > 0:
+        if cargo.cargoType == CargoClass.Colonists and cargo.quantity > 0:
           hasColonists = true
           colonistSquadronIdx = idx
           colonistSquadronId = squadronId
@@ -220,7 +220,7 @@ proc establishColony(
   # Update flagship cargo by getting ship, modifying it, and updating via entity manager
   var updatedFlagship = flagship
   updatedFlagship.cargo =
-    some(ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: cargo.capacity))
+    some(ShipCargo(cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity))
   # Update ship in entity manager
   state.ships.entities.updateEntity(squadron.flagshipId, updatedFlagship)
 

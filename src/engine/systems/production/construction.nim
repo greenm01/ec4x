@@ -81,8 +81,8 @@ proc resolveBuildOrders*(
 
     # For dock construction, check facility capacity and assign facility
     var assignedFacility:
-      Option[tuple[facilityId: string, facilityType: econ_types.FacilityType]] =
-      none(tuple[facilityId: string, facilityType: econ_types.FacilityType])
+      Option[tuple[facilityId: string, facilityType: econ_types.FacilityClass]] =
+      none(tuple[facilityId: string, facilityType: econ_types.FacilityClass])
 
     if requiresDock:
       # Try to assign to available facility

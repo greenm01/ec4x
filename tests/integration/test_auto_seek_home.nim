@@ -55,7 +55,7 @@ proc createTestStarMap(numSystems: int): StarMap =
     result.lanes.add(JumpLane(
       source: source,
       destination: dest,
-      laneType: LaneType.Major
+      laneType: LaneClass.Major
     ))
 
     # Update adjacency
@@ -194,7 +194,7 @@ suite "Automated Seek Home - ETAC Missions":
       location: 2,
       isCrippled: false,
       cargo: SpaceLiftCargo(
-        cargoType: CargoType.Colonists,
+        cargoType: CargoClass.Colonists,
         quantity: 10,  # 10 PU colonists
         capacity: 10
       )

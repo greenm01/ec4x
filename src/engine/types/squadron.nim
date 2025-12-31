@@ -7,10 +7,10 @@ import std/tables
 import ./[core, ship]
 
 export HouseId, FleetId, SystemId, SquadronId
-export Ship, ShipClass, ShipStats, CargoType, ShipCargo
+export Ship, ShipClass, ShipStats, CargoClass, ShipCargo
 
 type
-  SquadronType* {.pure.} = enum
+  SquadronClass* {.pure.} = enum
     ## Strategic role classification for squadrons
     ## Determines fleet composition rules and combat participation
     Combat # Combat squadrons (capital ships + escorts)
@@ -27,7 +27,7 @@ type
     houseId*: HouseId
     location*: SystemId
     destroyed*: bool = false # Set to true when squadron is destroyed in combat
-    squadronType*: SquadronType # Strategic role classification
+    squadronType*: SquadronClass # Strategic role classification
 
     # Carrier fighter operations (assets.md:2.4.1.1)
     embarkedFighters*: seq[SquadronId] # DoD: Embarked fighter squadron IDs
@@ -37,4 +37,4 @@ type Squadrons* = ref object
   byFleet*: Table[FleetId, seq[SquadronId]]
   byHouse*: Table[HouseId, seq[SquadronId]] # O(1) lookup for house queries
 
-export SquadronType, Squadron, Squadrons
+export SquadronClass, Squadron, Squadrons

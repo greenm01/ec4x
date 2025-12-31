@@ -53,7 +53,7 @@ suite "Game Initialization Tests":
           colonizationFleets += 1
           # Verify ETAC with exactly 1 PTU
           check fleet.spaceLiftShips[0].shipClass == ShipClass.ETAC
-          check fleet.spaceLiftShips[0].cargo.cargoType == CargoType.Colonists
+          check fleet.spaceLiftShips[0].cargo.cargoType == CargoClass.Colonists
           check fleet.spaceLiftShips[0].cargo.quantity == 1
           totalPTUs += fleet.spaceLiftShips[0].cargo.quantity
           # Verify Light Cruiser is the flagship of the squadron

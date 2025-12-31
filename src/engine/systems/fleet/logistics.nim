@@ -76,7 +76,7 @@ type
     shipIndex*: Option[int] ## For TransferShipBetweenSquadrons (single ship)
 
     # Cargo-specific
-    cargoType*: Option[CargoType] ## Type: Marines, Colonists
+    cargoType*: Option[CargoClass] ## Type: Marines, Colonists
     cargoQuantity*: Option[int] ## Amount to load/unload (0 = all available)
 
     # Fighter-specific
@@ -282,7 +282,7 @@ proc validateZeroTurnCommand*(
             continue
           let squadron = squadronOpt.get()
 
-          if squadron.squadronType != SquadronType.Expansion:
+          if squadron.squadronType != SquadronClass.Expansion:
             onlyExpansion = false
           else:
             # Check flagship ship class
@@ -772,9 +772,9 @@ proc executeLoadCargo*(
   # Check colony inventory based on cargo type
   var availableUnits =
     case cargoType
-    of CargoType.Marines:
+    of CargoClass.Marines:
       colony.marineIds.len
-    of CargoType.Colonists:
+    of CargoClass.Colonists:
       # Calculate how many complete PTUs can be loaded from exact population
       # Using souls field for accurate counting (no float rounding errors)
       # Per config/population.toml [transfer_limits] min_source_pu_remaining = 1
@@ -820,7 +820,7 @@ proc executeLoadCargo*(
     let squadron = squadronOpt.get()
 
     # Only Expansion and Auxiliary squadrons carry cargo
-    if squadron.squadronType notin {SquadronType.Expansion, SquadronType.Auxiliary}:
+    if squadron.squadronType notin {SquadronClass.Expansion, SquadronClass.Auxiliary}:
       continue
 
     # Get flagship ship entity
@@ -836,9 +836,9 @@ proc executeLoadCargo*(
     # Determine ship capacity and compatible cargo type
     let shipCargoType =
       case flagship.shipClass
-      of ShipClass.TroopTransport: CargoType.Marines
-      of ShipClass.ETAC: CargoType.Colonists
-      else: CargoType.None
+      of ShipClass.TroopTransport: CargoClass.Marines
+      of ShipClass.ETAC: CargoClass.Colonists
+      else: CargoClass.None
 
     if shipCargoType != cargoType:
       continue # Ship can't carry this cargo type
@@ -848,7 +848,7 @@ proc executeLoadCargo*(
       if flagship.cargo.isSome:
         flagship.cargo.get()
       else:
-        ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: 0)
+        ShipCargo(cargoType: CargoClass.None, quantity: 0, capacity: 0)
     let loadAmount = min(remainingToLoad, currentCargo.capacity - currentCargo.quantity)
 
     if loadAmount > 0:
@@ -870,13 +870,13 @@ proc executeLoadCargo*(
   # Update colony inventory
   if totalLoaded > 0:
     case cargoType
-    of CargoType.Marines:
+    of CargoClass.Marines:
       # Remove loaded marines from colony (reduce marineIds list length)
       # Note: Actual implementation would need to track which specific marine IDs were loaded
       # For now, we reduce the list length by removing from the end
       if totalLoaded <= colony.marineIds.len:
         colony.marineIds = colony.marineIds[0 ..< (colony.marineIds.len - totalLoaded)]
-    of CargoType.Colonists:
+    of CargoClass.Colonists:
       # Colonists come from population: 1 PTU = 50k souls
       # Use souls field for exact counting (no rounding errors)
       let soulsToLoad = totalLoaded * soulsPerPtu()
@@ -970,7 +970,7 @@ proc executeUnloadCargo*(
 
   var colony = colonyOpt.get()
   var totalUnloaded = 0
-  var unloadedType = CargoType.None
+  var unloadedType = CargoClass.None
 
   # Unload cargo from transport squadrons (Expansion/Auxiliary flagships)
   # Iterate over squadron IDs, get entities via entity manager
@@ -983,7 +983,7 @@ proc executeUnloadCargo*(
     let squadron = squadronOpt.get()
 
     # Only Expansion and Auxiliary squadrons carry cargo
-    if squadron.squadronType notin {SquadronType.Expansion, SquadronType.Auxiliary}:
+    if squadron.squadronType notin {SquadronClass.Expansion, SquadronClass.Auxiliary}:
       continue
 
     # Get flagship ship entity
@@ -997,7 +997,7 @@ proc executeUnloadCargo*(
       continue # No cargo to unload
 
     let cargo = flagship.cargo.get()
-    if cargo.cargoType == CargoType.None or cargo.quantity == 0:
+    if cargo.cargoType == CargoClass.None or cargo.quantity == 0:
       continue # Empty cargo
 
     # Unload cargo back to colony inventory
@@ -1007,12 +1007,12 @@ proc executeUnloadCargo*(
     unloadedType = cargoType
 
     case cargoType
-    of CargoType.Marines:
+    of CargoClass.Marines:
       colony.marines += quantity
       logDebug(
         "Economy", &"Unloaded {quantity} Marines from squadron {squadronId} to colony"
       )
-    of CargoType.Colonists:
+    of CargoClass.Colonists:
       # Colonists are delivered to population: 1 PTU = 50k souls
       # Use souls field for exact counting (no rounding errors)
       let soulsToUnload = quantity * soulsPerPtu()
@@ -1028,7 +1028,7 @@ proc executeUnloadCargo*(
 
     # Clear cargo from flagship
     flagship.cargo =
-      some(ShipCargo(cargoType: CargoType.None, quantity: 0, capacity: cargo.capacity))
+      some(ShipCargo(cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity))
 
     # Update ship entity
     state.ships.entities.updateEntity(squadron.flagshipId, flagship)
@@ -1470,7 +1470,7 @@ proc executeAssignSquadronToFleet*(
       )
 
     # CRITICAL: Validate squadron type compatibility (Intel never mixes)
-    let squadronIsIntel = squadron.squadronType == SquadronType.Intel
+    let squadronIsIntel = squadron.squadronType == SquadronClass.Intel
     var fleetHasIntel = false
     var fleetHasNonIntel = false
 
@@ -1479,7 +1479,7 @@ proc executeAssignSquadronToFleet*(
       let existingSquadOpt = state.squadrons[].entities.getEntity(existingSquadronId)
       if existingSquadOpt.isSome:
         let existingSquad = existingSquadOpt.get()
-        if existingSquad.squadronType == SquadronType.Intel:
+        if existingSquad.squadronType == SquadronClass.Intel:
           fleetHasIntel = true
         else:
           fleetHasNonIntel = true

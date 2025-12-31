@@ -17,7 +17,7 @@ import ../../types/[core, game_state, fleet, squadron, ship, starmap]
 
 proc canFleetTraverseLane*(
     fleet: Fleet,
-    laneType: LaneType,
+    laneType: LaneClass,
     squadrons: Squadrons,
     ships: Ships,
 ): bool =

@@ -18,7 +18,7 @@ import std/[options, math, strutils]
 import ../../types/[core, ship]
 import ../../config/ships_config
 
-export ShipClass, ShipRole, ShipStats, Ship, ShipCargo, CargoType, ShipId
+export ShipClass, ShipRole, ShipStats, Ship, ShipCargo, CargoClass, ShipId
 
 ## Ship Statistics and Configuration
 
@@ -209,7 +209,7 @@ proc effectiveDefenseStrength*(ship: Ship): int32 =
 
 ## Cargo Management for Transport Ships
 
-proc initCargo*(ship: var Ship, cargoType: CargoType, capacity: int32) =
+proc initCargo*(ship: var Ship, cargoType: CargoClass, capacity: int32) =
   ## Initialize cargo hold for transport ships
   ## Used for ETAC (colonists) and TroopTransport (marines)
   if not ship.isTransport():

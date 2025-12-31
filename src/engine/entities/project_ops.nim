@@ -28,11 +28,11 @@ proc queueConstructionProject*(
       projectId
     )
     case facilityType
-    of FacilityType.Spaceport:
+    of FacilityClass.Spaceport:
       var spaceport = gs_helpers.spaceport(state, SpaceportId(facilityId)).get()
       spaceport.constructionQueue.add(projectId)
       state.spaceports.entities.updateEntity(SpaceportId(facilityId), spaceport)
-    of FacilityType.Shipyard:
+    of FacilityClass.Shipyard:
       var shipyard = gs_helpers.shipyard(state, ShipyardId(facilityId)).get()
       shipyard.constructionQueue.add(projectId)
       state.shipyards.entities.updateEntity(ShipyardId(facilityId), shipyard)
@@ -71,14 +71,14 @@ proc completeConstructionProject*(
       )
 
     case facilityType
-    of FacilityType.Spaceport:
+    of FacilityClass.Spaceport:
       var spaceport = gs_helpers.spaceport(state, SpaceportId(facilityId)).get()
       spaceport.activeConstructions.keepIf(
         proc(id: ConstructionProjectId): bool =
           id != projectId
       )
       state.spaceports.entities.updateEntity(SpaceportId(facilityId), spaceport)
-    of FacilityType.Shipyard:
+    of FacilityClass.Shipyard:
       var shipyard = gs_helpers.shipyard(state, ShipyardId(facilityId)).get()
       shipyard.activeConstructions.keepIf(
         proc(id: ConstructionProjectId): bool =
@@ -115,7 +115,7 @@ proc queueRepairProject*(
     )
 
     case facilityType
-    of FacilityType.Drydock:
+    of FacilityClass.Drydock:
       var drydock = gs_helpers.drydock(state, DrydockId(facilityId)).get()
       drydock.repairQueue.add(projectId)
       state.drydocks.entities.updateEntity(DrydockId(facilityId), drydock)
@@ -147,7 +147,7 @@ proc completeRepairProject*(state: var GameState, projectId: RepairProjectId) =
       )
 
     case facilityType
-    of FacilityType.Drydock:
+    of FacilityClass.Drydock:
       var drydock = gs_helpers.drydock(state, DrydockId(facilityId)).get()
       drydock.activeRepairs.keepIf(
         proc(id: RepairProjectId): bool =

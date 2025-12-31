@@ -42,7 +42,7 @@ proc createStartingFleets*(
       if shipClass == ShipClass.ETAC:
         let ptuCapacity = shipConfig.carryLimit # PTU capacity from ship config
         shipCargo = some(ShipCargo(
-          cargoType: CargoType.Colonists,
+          cargoType: CargoClass.Colonists,
           quantity: ptuCapacity,
           capacity: ptuCapacity,
         ))
@@ -76,7 +76,7 @@ proc createStartingFleets*(
         houseId: owner,
         location: location,
         destroyed: false,
-        squadronType: SquadronType.Combat,
+        squadronType: SquadronClass.Combat,
         embarkedFighters: @[],
       )
 

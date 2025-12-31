@@ -162,7 +162,7 @@ proc generateStarMap*(
     lanes: JumpLanes(
       data: @[],
       neighbors: initTable[SystemId, seq[SystemId]](),
-      connectionInfo: initTable[(SystemId, SystemId), LaneType]()
+      connectionInfo: initTable[(SystemId, SystemId), LaneClass]()
     ),
     distanceMatrix: initTable[(SystemId, SystemId), uint32](),
     hubId: 0.SystemId,
@@ -435,7 +435,7 @@ proc connectHub(starMap: var StarMap, state: GameState, rng: var Rand) =
   let weights = gameConfig.starmap.laneWeights
   for neighborId in ring1Neighbors:
     let laneType = weightedSample(
-      [LaneType.Major, LaneType.Minor, LaneType.Restricted],
+      [LaneClass.Major, LaneClass.Minor, LaneClass.Restricted],
       [weights.majorWeight, weights.minorWeight, weights.restrictedWeight],
       rng,
     )
@@ -477,7 +477,7 @@ proc connectHouseSystems(starMap: var StarMap, state: GameState, rng: var Rand) 
 
     shuffle(rng, neighbors)
     for i in 0 ..< min(laneCount, neighbors.len):
-      let laneType = if i < laneCount: LaneType.Major else: LaneType.Minor
+      let laneType = if i < laneCount: LaneClass.Major else: LaneClass.Minor
       let lane =
         JumpLane(source: houseId, destination: neighbors[i], laneType: laneType)
       starMap.addLane(state, lane)
@@ -512,7 +512,7 @@ proc connectRemainingSystem(starMap: var StarMap, state: GameState, rng: var Ran
       # Use weighted lane type selection for balanced gameplay
       let weights = gameConfig.starmap.laneWeights
       let laneType = weightedSample(
-        [LaneType.Major, LaneType.Minor, LaneType.Restricted],
+        [LaneClass.Major, LaneClass.Minor, LaneClass.Restricted],
         [weights.majorWeight, weights.minorWeight, weights.restrictedWeight],
         rng,
       )
@@ -567,7 +567,7 @@ proc validateHomeworldLanes*(starMap: StarMap, state: GameState): seq[string] =
     for lane in starMap.lanes.data:
       if lane.source == houseId or lane.destination == houseId:
         totalLanes += 1
-        if lane.laneType == LaneType.Major:
+        if lane.laneType == LaneClass.Major:
           majorLanes += 1
 
     # Per assets.md: "Each homeworld is guaranteed to have exactly 3 Major lanes"
@@ -585,26 +585,26 @@ proc validateHomeworldLanes*(starMap: StarMap, state: GameState): seq[string] =
 # TODO: Fleet traversal functions removed - require Squadrons/Ships types
 # Will be re-added once type import issues are resolved
 
-proc weight*(laneType: LaneType): uint32 =
+proc weight*(laneType: LaneClass): uint32 =
   ## Get movement cost for lane type (for pathfinding)
   case laneType
-  of LaneType.Major:
+  of LaneClass.Major:
     1 # Standard cost
-  of LaneType.Minor:
+  of LaneClass.Minor:
     2 # Higher cost (less desirable)
-  of LaneType.Restricted:
+  of LaneClass.Restricted:
     3 # Highest cost (most restrictive)
 
 proc getLaneType*(
     starMap: StarMap, fromSystem: SystemId, toSystem: SystemId
-): Option[LaneType] =
+): Option[LaneClass] =
   ## Efficient lane type lookup between two systems
   ## Returns None if no lane exists between the systems
   ## Used for fleet movement calculations in maintenance phase
   ## Now O(1) via connectionInfo table instead of O(n) linear scan
   if (fromSystem, toSystem) in starMap.lanes.connectionInfo:
     return some(starMap.lanes.connectionInfo[(fromSystem, toSystem)])
-  return none(LaneType)
+  return none(LaneClass)
 
 # TODO: findPath and related fleet pathfinding functions removed
 # Will be re-added once Squadrons/Ships type import issues are resolved

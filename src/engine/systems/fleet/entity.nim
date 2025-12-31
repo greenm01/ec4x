@@ -15,10 +15,10 @@ import ../../types/[core, fleet, ship, squadron as squadron_types, combat, starm
 import ../../state/entity_manager # For getEntity()
 import std/[algorithm, strutils, options]
 
-export FleetId, SystemId, HouseId, LaneType, FleetMissionState
+export FleetId, SystemId, HouseId, LaneClass, FleetMissionState
 export Squadron, Ship, ShipClass # Export for fleet users
 export
-  SquadronType, ShipCargo, CargoType # Export squadron classification and cargo types
+  SquadronClass, ShipCargo, CargoClass # Export squadron classification and cargo types
 
 proc newFleet*(
     squadronIds: seq[SquadronId] = @[],
@@ -55,10 +55,10 @@ proc `$`*(f: Fleet, squadrons: Squadrons, ships: Ships): string =
       let status = if flagship.isCrippled: "*" else: ""
       let typeTag =
         case sq.squadronType
-        of SquadronType.Expansion: "[E]"
-        of SquadronType.Auxiliary: "[A]"
-        of SquadronType.Intel: "[I]"
-        of SquadronType.Fighter: "[F]"
+        of SquadronClass.Expansion: "[E]"
+        of SquadronClass.Auxiliary: "[A]"
+        of SquadronClass.Intel: "[I]"
+        of SquadronClass.Fighter: "[F]"
         else: ""
       shipClasses.add($flagship.shipClass & status & typeTag)
     "Fleet[" & $f.squadrons.len & " squadrons: " & shipClasses.join(", ") & "]"
@@ -75,7 +75,7 @@ proc hasIntelSquadrons*(f: Fleet, squadrons: Squadrons): bool =
   ## Check if fleet has any Intel squadrons (Scouts)
   for sqId in f.squadrons:
     let sq = squadrons.entities.getEntity(sqId).get
-    if sq.squadronType == SquadronType.Intel:
+    if sq.squadronType == SquadronClass.Intel:
       return true
   return false
 
@@ -83,7 +83,7 @@ proc hasNonIntelSquadrons*(f: Fleet, squadrons: Squadrons): bool =
   ## Check if fleet has any non-Intel squadrons
   for sqId in f.squadrons:
     let sq = squadrons.entities.getEntity(sqId).get
-    if sq.squadronType != SquadronType.Intel:
+    if sq.squadronType != SquadronClass.Intel:
       return true
   return false
 
@@ -97,7 +97,7 @@ proc canAddSquadron*(
     # Empty fleet - any squadron type can be added
     return (canAdd: true, reason: "")
 
-  let isIntelSquadron = squadron.squadronType == SquadronType.Intel
+  let isIntelSquadron = squadron.squadronType == SquadronClass.Intel
   let fleetHasIntel = f.hasIntelSquadrons(squadrons)
   let fleetHasNonIntel = f.hasNonIntelSquadrons(squadrons)
 
@@ -135,12 +135,12 @@ proc clear*(f: var Fleet) =
   f.squadrons.setLen(0)
 
 proc canTraverse*(
-    f: Fleet, laneType: LaneType, squadrons: Squadrons, ships: Ships
+    f: Fleet, laneType: LaneClass, squadrons: Squadrons, ships: Ships
 ): bool =
   ## Check if the fleet can traverse a specific type of jump lane
   ## Per operations.md:9 "Fleets containing crippled ships or Expansion/Auxiliary squadrons can not jump across restricted lanes"
   case laneType
-  of LaneType.Restricted:
+  of LaneClass.Restricted:
     # Check for crippled squadrons
     for sqId in f.squadrons:
       let sq = squadrons.entities.getEntity(sqId).get
@@ -151,7 +151,7 @@ proc canTraverse*(
     # Check for Expansion/Auxiliary squadrons (ETAC, TroopTransport)
     for sqId in f.squadrons:
       let sq = squadrons.entities.getEntity(sqId).get
-      if sq.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+      if sq.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
         return false # Cannot cross restricted lanes with Expansion/Auxiliary squadrons
 
     return true
@@ -189,7 +189,7 @@ proc transportCapacity*(f: Fleet, squadrons: Squadrons, ships: Ships): int =
   result = 0
   for sqId in f.squadrons:
     let sq = squadrons.entities.getEntity(sqId).get
-    if sq.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+    if sq.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
       let flagship = ships.entities.getEntity(sq.flagshipId).get
       if not flagship.isCrippled:
         result += 1
@@ -206,7 +206,7 @@ proc hasTransportShips*(f: Fleet, squadrons: Squadrons, ships: Ships): bool =
   ## Check if the fleet has any operational Expansion/Auxiliary squadrons
   for sqId in f.squadrons:
     let sq = squadrons.entities.getEntity(sqId).get
-    if sq.squadronType in {SquadronType.Expansion, SquadronType.Auxiliary}:
+    if sq.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
       let flagship = ships.entities.getEntity(sq.flagshipId).get
       if not flagship.isCrippled:
         return true
@@ -286,7 +286,7 @@ proc expansionSquadrons*(f: Fleet, squadrons: Squadrons): seq[SquadronId] =
   result = @[]
   for sqId in f.squadrons:
     let sq = squadrons.entities.getEntity(sqId).get
-    if sq.squadronType == SquadronType.Expansion:
+    if sq.squadronType == SquadronClass.Expansion:
       result.add(sqId)
 
 proc auxiliarySquadrons*(f: Fleet, squadrons: Squadrons): seq[SquadronId] =
@@ -294,7 +294,7 @@ proc auxiliarySquadrons*(f: Fleet, squadrons: Squadrons): seq[SquadronId] =
   result = @[]
   for sqId in f.squadrons:
     let sq = squadrons.entities.getEntity(sqId).get
-    if sq.squadronType == SquadronType.Auxiliary:
+    if sq.squadronType == SquadronClass.Auxiliary:
       result.add(sqId)
 
 proc crippledSquadrons*(f: Fleet, squadrons: Squadrons, ships: Ships): seq[SquadronId] =

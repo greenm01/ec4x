@@ -45,7 +45,7 @@ suite "Spy Scout Travel Mechanics":
       let lane = JumpLane(
         source: i,
         destination: i + 1,
-        laneType: LaneType.Major
+        laneType: LaneClass.Major
       )
       state.starMap.lanes.add(lane)
 

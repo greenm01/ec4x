@@ -53,7 +53,7 @@ proc createTestGameState(): GameState =
     class: ShipClass.ETAC,
     name: "Colony Ship",
     cargo: Cargo(
-      cargoType: CargoType.Colonists,
+      cargoType: CargoClass.Colonists,
       quantity: 1  # 1 PTU
     )
   )
@@ -149,7 +149,7 @@ suite "Colonization Prestige Bug Fix":
       class: ShipClass.ETAC,
       name: "Colony Ship 2",
       cargo: Cargo(
-        cargoType: CargoType.Colonists,
+        cargoType: CargoClass.Colonists,
         quantity: 1
       )
     )

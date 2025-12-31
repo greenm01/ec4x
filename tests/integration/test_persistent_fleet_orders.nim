@@ -56,7 +56,7 @@ suite "Persistent Fleet Orders":
       result.starMap.lanes.add(JumpLane(
         source: i,
         destination: i + 1,
-        laneType: LaneType.Major
+        laneType: LaneClass.Major
       ))
 
       # Update adjacency (bidirectional)

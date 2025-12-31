@@ -234,7 +234,7 @@ suite "Zero-Turn Commands: Cargo Operations":
       commandType: ZeroTurnCommandType.LoadCargo,
       sourceFleetId: some("F1"),
       colonySystem: some(SystemId(1)),
-      cargoType: some(CargoType.Marines),
+      cargoType: some(CargoClass.Marines),
       cargoQuantity: some(5)
     )
 
@@ -250,7 +250,7 @@ suite "Zero-Turn Commands: Cargo Operations":
 
     # Load cargo first
     var ship = state.fleets["F1"].spaceLiftShips[0]
-    ship.cargo = SpaceLiftCargo(cargoType: CargoType.Marines, quantity: 5)
+    ship.cargo = SpaceLiftCargo(cargoType: CargoClass.Marines, quantity: 5)
     state.fleets["F1"].spaceLiftShips[0] = ship
 
     let cmd = ZeroTurnCommand(
@@ -569,7 +569,7 @@ suite "Zero-Turn Commands: Edge Cases":
       commandType: ZeroTurnCommandType.LoadCargo,
       sourceFleetId: some("F1"),
       colonySystem: some(SystemId(1)),
-      cargoType: some(CargoType.Marines),
+      cargoType: some(CargoClass.Marines),
       cargoQuantity: some(100)  # Request way more than capacity
     )
 

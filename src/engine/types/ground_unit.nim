@@ -7,14 +7,14 @@ import std/tables
 import ./core
 
 type
-  GroundUnitType* {.pure.} = enum
+  GroundClass* {.pure.} = enum
     Army
     Marine
     GroundBattery
     PlanetaryShield
 
   GroundUnitStats* = object
-    unitType*: GroundUnitType
+    unitType*: GroundClass
     attackStrength*: int32
     defenseStrength*: int32
     

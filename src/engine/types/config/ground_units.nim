@@ -16,5 +16,5 @@ type
     replaceOnUpgrade*: bool # Only true for PlanetaryShield
 
   GroundUnitsConfig* = object ## Complete ground units configuration loaded from KDL
-    ## Array-indexed by GroundUnitType for O(1) access
-    units*: array[GroundUnitType, GroundUnitStatsConfig]
+    ## Array-indexed by GroundClass for O(1) access
+    units*: array[GroundClass, GroundUnitStatsConfig]

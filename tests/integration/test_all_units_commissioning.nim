@@ -268,7 +268,7 @@ suite "Spacelift Ship Commissioning":
     let ship = getCommissionedSpaceLiftShip(state)
     check ship.shipClass == ShipClass.ETAC
     # ETACs auto-load 1 PTU at commissioning
-    check ship.cargo.cargoType == CargoType.Colonists
+    check ship.cargo.cargoType == CargoClass.Colonists
     check ship.cargo.quantity == 1
     check ship.cargo.capacity == 1
 

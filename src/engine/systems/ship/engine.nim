@@ -31,14 +31,14 @@ type CargoTransferResult* = object ## Result of cargo transfer operation
   amountTransferred*: int32
 
 proc loadShipCargo*(
-    ship: var Ship, cargoType: CargoType, amount: int32
+    ship: var Ship, cargoType: CargoClass, amount: int32
 ): CargoTransferResult =
   ## Load cargo onto ship (marines or colonists)
   ## Validates ship type and capacity constraints
   ##
   ## **Usage:**
   ## ```nim
-  ## let result = loadShipCargo(ship, CargoType.Marines, 5)
+  ## let result = loadShipCargo(ship, CargoClass.Marines, 5)
   ## if result.success:
   ##   echo "Loaded ", result.amountTransferred, " marines"
   ## ```
@@ -59,7 +59,7 @@ proc loadShipCargo*(
 
   # Validate cargo type matches ship type
   let currentCargo = ship.cargo.get()
-  if currentCargo.cargoType != CargoType.None and currentCargo.cargoType != cargoType:
+  if currentCargo.cargoType != CargoClass.None and currentCargo.cargoType != cargoType:
     return CargoTransferResult(
       success: false,
       error: &"Ship already carrying {currentCargo.cargoType}, cannot load {cargoType}",
@@ -132,7 +132,7 @@ proc transferCargoFromColony*(
     state: var GameState,
     shipId: ShipId,
     colonyId: SystemId,
-    cargoType: CargoType,
+    cargoType: CargoClass,
     amount: int32,
 ): CargoTransferResult =
   ## Transfer cargo from colony to ship

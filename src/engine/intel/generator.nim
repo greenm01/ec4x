@@ -149,7 +149,7 @@ proc generateOrbitalIntelReport*(
     let squadronOpt = state_helpers.squadrons(state, squadronId)
     if squadronOpt.isSome:
       let squadron = squadronOpt.get()
-      if squadron.squadronType == squadron_types.SquadronType.Fighter:
+      if squadron.squadronType == squadron_types.SquadronClass.Fighter:
         fighterSquadronIds.add(squadronId)
 
   var report = OrbitalIntelReport(
@@ -211,7 +211,7 @@ proc generateSystemIntelReport*(
         if squadronOpt.isSome:
           let squadron = squadronOpt.get()
           if squadron.squadronType in
-              {squadron_types.SquadronType.Expansion, squadron_types.SquadronType.Auxiliary}:
+              {squadron_types.SquadronClass.Expansion, squadron_types.SquadronClass.Auxiliary}:
             transportCount += 1
 
       let fleetIntel = FleetIntel(
@@ -305,7 +305,7 @@ proc generateSystemIntelReport*(
         let squadron = squadronOpt.get()
 
         # Only report Fighter squadrons (other types should be in fleets or docked)
-        if squadron.squadronType != squadron_types.SquadronType.Fighter:
+        if squadron.squadronType != squadron_types.SquadronClass.Fighter:
           continue
 
         # Get flagship for details

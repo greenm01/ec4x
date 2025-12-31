@@ -15,7 +15,7 @@ proc createSquadron*(
     owner: HouseId,
     fleetId: FleetId,
     flagshipId: ShipId,
-    squadronType: SquadronType,
+    squadronType: SquadronClass,
 ): Squadron =
   ## Creates a new squadron, adds it to a fleet, and updates all indexes.
   let squadronId = state.generateSquadronId()
