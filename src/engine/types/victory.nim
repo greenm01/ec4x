@@ -8,13 +8,11 @@ export HouseId
 
 type
   VictoryType* {.pure.} = enum
-    ## Ways to win the game
-    PrestigeVictory # Reach 5000 prestige
-    LastHouseStanding # All other houses eliminated
+    ## Ways to win the game per docs/specs/01-gameplay.md Section 1.4.4
+    MilitaryVictory # Last house standing (all rivals eliminated)
     TurnLimit # Highest prestige when turn limit reached
 
   VictoryCondition* = object ## Victory condition configuration
-    prestigeThreshold*: int32 # Default: 5000
     turnLimit*: int32 # Optional turn limit (0 = no limit)
     enableDefensiveCollapse*: bool # Allow elimination via negative prestige
 

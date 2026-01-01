@@ -32,7 +32,7 @@ proc collectCapacityMetrics*(
     else: 1.0
 
   # Calculate fighter capacity and violations
-  let fighterIUDivisor: int32 = gameConfig.military.fighterMechanics.fighterCapacityIuDivisor
+  let fighterIUDivisor: int32 = gameConfig.limits.fighterCapacity.iuDivisor
   var totalFighterCapacity: int32 = 0
   var totalFighters: int32 = 0
   var capacityViolationCount: int32 = 0
@@ -59,8 +59,10 @@ proc collectCapacityMetrics*(
   for colony in state.coloniesOwned(houseId):
     totalIU += colony.industrial.units
 
-  let squadronIUDivisor: int32 = gameConfig.military.squadronLimits.squadronLimitIuDivisor
-  let squadronMinimum: int32 = gameConfig.military.squadronLimits.squadronLimitMinimum
+  # Capital squadron limit formula: max(8, floor(Total_House_IU ÷ 100) × 2)
+  # Per docs/specs/10-reference.md Table 10.5
+  const squadronIUDivisor: int32 = 100
+  const squadronMinimum: int32 = 8
   result.squadronLimitMax = max(squadronMinimum, (totalIU div squadronIUDivisor) * 2)
 
   # Count actual capital squadrons

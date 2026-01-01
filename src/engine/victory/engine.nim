@@ -3,48 +3,22 @@
 ## Evaluate victory conditions and determine game winner
 
 import std/[tables, algorithm, options]
-import types
-import ../gamestate
-import ../../common/types/core
+import ../types/[victory, game_state, core, house]
+import ../state/iterators
 
-export types
+export victory
 
 ## Victory Checking
 
-proc checkPrestigeVictory*(
-    houses: Table[HouseId, House], condition: VictoryCondition, currentTurn: int
-): VictoryCheck =
-  ## Check if any house has reached prestige threshold
-  ## If threshold is 0, prestige victory is disabled
-  result = VictoryCheck(victoryOccurred: false)
-
-  # Prestige victory disabled if threshold is 0
-  if condition.prestigeThreshold <= 0:
-    return
-
-  for houseId, house in houses:
-    if not house.eliminated and house.prestige >= condition.prestigeThreshold:
-      result.victoryOccurred = true
-      result.status = VictoryStatus(
-        victoryAchieved: true,
-        victor: houseId,
-        victoryType: VictoryType.PrestigeVictory,
-        achievedOnTurn: currentTurn,
-        description:
-          house.name & " achieved " & $house.prestige & " prestige (threshold: " &
-          $condition.prestigeThreshold & ")",
-      )
-      return
-
-proc checkLastHouseStanding*(
-    houses: Table[HouseId, House], currentTurn: int
+proc checkMilitaryVictory*(
+    houses: Table[HouseId, House], currentTurn: int32
 ): VictoryCheck =
   ## Check if only one house remains
   result = VictoryCheck(victoryOccurred: false)
 
   var remainingHouses: seq[(HouseId, House)] = @[]
-  for houseId, house in houses:
-    if not house.eliminated:
+  for houseId, house in houses.pairs:
+    if not house.isEliminated:
       remainingHouses.add((houseId, house))
 
   if remainingHouses.len == 1:
@@ -52,24 +26,24 @@ proc checkLastHouseStanding*(
     result.victoryOccurred = true
     result.status = VictoryStatus(
       victoryAchieved: true,
-      victor: victorId,
-      victoryType: VictoryType.LastHouseStanding,
+      houseId: victorId,
+      victoryType: VictoryType.MilitaryVictory,
       achievedOnTurn: currentTurn,
       description: victorHouse.name & " is the last house standing!",
     )
 
 proc checkTurnLimitVictory*(
-    houses: Table[HouseId, House], condition: VictoryCondition, currentTurn: int
+    houses: Table[HouseId, House], condition: VictoryCondition, currentTurn: int32
 ): VictoryCheck =
   ## Check if turn limit reached, award victory to highest prestige
   result = VictoryCheck(victoryOccurred: false)
 
   if condition.turnLimit > 0 and currentTurn >= condition.turnLimit:
     # Find house with highest prestige
-    var bestHouse: Option[(HouseId, House, int)] = none((HouseId, House, int))
+    var bestHouse: Option[(HouseId, House, int32)] = none((HouseId, House, int32))
 
-    for houseId, house in houses:
-      if not house.eliminated:
+    for houseId, house in houses.pairs:
+      if not house.isEliminated:
         if bestHouse.isNone or house.prestige > bestHouse.get()[2]:
           bestHouse = some((houseId, house, house.prestige))
 
@@ -78,7 +52,7 @@ proc checkTurnLimitVictory*(
       result.victoryOccurred = true
       result.status = VictoryStatus(
         victoryAchieved: true,
-        victor: victorId,
+        houseId: victorId,
         victoryType: VictoryType.TurnLimit,
         achievedOnTurn: currentTurn,
         description:
@@ -90,20 +64,22 @@ proc checkVictoryConditions*(
     state: GameState, condition: VictoryCondition
 ): VictoryCheck =
   ## Check all victory conditions and return result
-  ## Checks in priority command: Prestige → Last Standing → Turn Limit
+  ## Per docs/specs/01-gameplay.md Section 1.4.4:
+  ## 1. Military Victory: Last house standing (highest priority)
+  ## 2. Turn Limit Victory: Highest prestige when turn limit reached
 
-  # 1. Prestige victory (highest priority)
-  let prestigeCheck = checkPrestigeVictory(state.houses, condition, state.turn)
-  if prestigeCheck.victoryOccurred:
-    return prestigeCheck
+  # Build houses table from entity manager
+  var houses: Table[HouseId, House]
+  for idx, house in state.houses.entities.data.pairs:
+    houses[HouseId(idx)] = house
 
-  # 2. Last house standing
-  let lastStandingCheck = checkLastHouseStanding(state.houses, state.turn)
-  if lastStandingCheck.victoryOccurred:
-    return lastStandingCheck
+  # 1. Military victory - last house standing (highest priority)
+  let militaryCheck = checkMilitaryVictory(houses, state.turn)
+  if militaryCheck.victoryOccurred:
+    return militaryCheck
 
-  # 3. Turn limit victory (lowest priority)
-  let turnLimitCheck = checkTurnLimitVictory(state.houses, condition, state.turn)
+  # 2. Turn limit victory - highest prestige at turn limit
+  let turnLimitCheck = checkTurnLimitVictory(houses, condition, state.turn)
   if turnLimitCheck.victoryOccurred:
     return turnLimitCheck
 
@@ -130,8 +106,12 @@ proc generateLeaderboard*(state: GameState): Leaderboard =
   ## Generate ranked leaderboard of all houses with game metadata
   var rankings: seq[HouseRanking] = @[]
 
-  for houseId, house in state.houses:
-    let colonyCount = state.getHouseColonies(houseId).len
+  for idx, house in state.houses.entities.data.pairs:
+    let houseId = HouseId(idx)
+    # Count colonies using iterator
+    var colonyCount: int32 = 0
+    for colony in state.coloniesOwned(houseId):
+      colonyCount += 1
 
     rankings.add(
       HouseRanking(
@@ -139,7 +119,7 @@ proc generateLeaderboard*(state: GameState): Leaderboard =
         houseName: house.name,
         prestige: house.prestige,
         colonies: colonyCount,
-        eliminated: house.eliminated,
+        eliminated: house.isEliminated,
         rank: 0, # Will be set after sorting
       )
     )
@@ -163,6 +143,6 @@ proc generateLeaderboard*(state: GameState): Leaderboard =
 
   return Leaderboard(
     rankings: rankings,
-    totalSystems: state.starMap.systems.len,
+    totalSystems: int32(state.systems.entities.data.len),
     totalColonized: totalColonized,
   )

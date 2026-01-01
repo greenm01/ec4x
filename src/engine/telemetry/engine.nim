@@ -1,6 +1,4 @@
-## @engine/telemetry/orchestrator.nim
-##
-## Public API for telemetry system. Orchestrates collection from all domain
+## Public API for telemetry system.
 ## collectors using event-driven architecture.
 
 import ../types/[telemetry, core, game_state]

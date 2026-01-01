@@ -3,7 +3,6 @@
 ## Loads construction times, costs, repair costs, and upkeep from config/construction.kdl
 ## Allows runtime configuration for construction mechanics
 
-import kdl
 import kdl_helpers
 import ../../common/logger
 import ../types/config

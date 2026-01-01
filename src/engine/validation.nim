@@ -17,35 +17,6 @@ import ./state/iterators
 # Move most of these to applicable systems modules #
 ####################################################
 
-## Tech Level Validation
-
-proc techLevel*[T](
-  levels: Table[int32, T],
-  level: int32,
-  techName: string,
-  minLevel: int32 = 1,
-  maxLevel: int32 = 15
-): T =
-  ## Retrieve tech level data with validation
-  ## Raises ValidationError if level is out of bounds or doesn't exist
-  ##
-  ## Example:
-  ##   let data = techLevel(cfg.levels, 5, "EL", 2, 10)
-  ##   return data.erpCost
-  if level < minLevel or level > maxLevel:
-    raise newException(
-      ValidationError,
-      &"{techName} level must be between {minLevel} and {maxLevel}, got {level}"
-    )
-
-  if not levels.hasKey(level):
-    raise newException(
-      ValidationError,
-      &"{techName} level {level} does not exist in configuration"
-    )
-
-  return levels[level]
-
 proc success*(): ValidationResult =
   ## Create a successful validation result
   ValidationResult(valid: true, errorMessage: "")
