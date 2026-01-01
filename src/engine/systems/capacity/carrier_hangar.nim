@@ -19,8 +19,8 @@
 
 import std/[options, math]
 import ../../types/[capacity, core, game_state, squadron, ship]
-import ../../state/[game_state as gs_helpers, iterators]
-import ../../config/tech_config
+import ../../state/[engine as state_helpers, iterators]
+import ../../globals
 import ../../../common/logger
 
 export
@@ -36,7 +36,7 @@ proc getCarrierMaxCapacity*(shipClass: ShipClass, acoLevel: int): int =
   ## Returns 0 for non-carrier ships
   ##
   ## Reads capacity from globalTechConfig.advanced_carrier_operations
-  let cfg = globalTechConfig.advanced_carrier_operations
+  let cfg = gameConfig.tech.advanced_carrier_operations
 
   case shipClass
   of ShipClass.Carrier:

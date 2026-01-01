@@ -9,9 +9,9 @@
 ##   events.add(event_factory.shipCommissioned(houseId, shipClass, systemId))
 
 import
-  commissioning, military, economic, intelligence, victory, prestige, diplomatic,
+  commissioning, military, economic, intel, victory, prestige, diplomatic,
   alerts, fleet_ops
 
 export
-  commissioning, military, economic, intelligence, victory, prestige, diplomatic,
+  commissioning, military, economic, intel, victory, prestige, diplomatic,
   alerts, fleet_ops

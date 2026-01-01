@@ -8,16 +8,13 @@
 
 import std/[tables, options]
 import ./[income, maintenance, multipliers]
-import ../facilities/queue as facility_queue
-import ../capacity/carrier_hangar # For carrier hangar capacity enforcement
 import
   ../../types/
-    [game_state, core, units, event, income as income_types, colony, production]
-import ../../state/[state_helpers, iterators]
+    [game_state, core, ship, event, income as income_types, colony]
+import ../../state/[iterators, engine as state_helpers, entity_manager]
 
 export income_types.IncomePhaseReport, income_types.HouseIncomeReport
 export colony.ColonyIncomeReport
-export production.MaintenanceReport, production.CompletedProject
 export multipliers  # Export economic multipliers (popGrowthMultiplier, etc.)
 # NOTE: Don't export game_state.Colony to avoid ambiguity
 
@@ -136,25 +133,24 @@ proc calculateAndDeductMaintenanceUpkeep*(
 
       # Iterate over squadron IDs
       for squadronId in fleet.squadrons:
-        if squadronId notin state.squadrons.entities.index:
+        let squadronOpt = state_helpers.squadrons(state, squadronId)
+        if squadronOpt.isNone:
           continue
 
-        let squadronIdx = state.squadrons.entities.index[squadronId]
-        let squadron = state.squadrons.entities.data[squadronIdx]
+        let squadron = squadronOpt.get()
 
         # Add flagship
-        if squadron.flagshipId in state.ships.entities.index:
-          let flagshipIdx = state.ships.entities.index[squadron.flagshipId]
-          let flagship = state.ships.entities.data[flagshipIdx]
+        let flagshipOpt = state_helpers.ship(state, squadron.flagshipId)
+        if flagshipOpt.isSome:
+          let flagship = flagshipOpt.get()
           fleetData.add((flagship.shipClass, flagship.isCrippled))
 
         # Add escort ships
         for shipId in squadron.ships:
-          if shipId notin state.ships.entities.index:
-            continue
-          let shipIdx = state.ships.entities.index[shipId]
-          let ship = state.ships.entities.data[shipIdx]
-          fleetData.add((ship.shipClass, ship.isCrippled))
+          let shipOpt = state_helpers.ship(state, shipId)
+          if shipOpt.isSome:
+            let ship = shipOpt.get()
+            fleetData.add((ship.shipClass, ship.isCrippled))
 
       totalUpkeep += calculateFleetMaintenance(fleetData)
 
@@ -166,25 +162,33 @@ proc calculateAndDeductMaintenanceUpkeep*(
 
     # CHECK FOR SHORTFALL BEFORE DEDUCTION (economy.md:3.11)
     if house.treasury < totalUpkeep:
-      let shortfall = totalUpkeep - house.treasury
-
       # TODO: Execute maintenance shortfall cascade (not implemented yet)
+      # let shortfall = totalUpkeep - house.treasury
       # let cascade = processShortfall(state, houseId, shortfall)
       # applyShortfallCascade(state, cascade, events)
       # Cascade should: zero treasury, add salvage, increment consecutiveShortfallTurns
       # Events should be emitted for fleet disbanding
 
       # Temporary: Just increment shortfall counter
-      state.withHouse(houseId):
-        house.consecutiveShortfallTurns += 1
+      let houseOpt = state_helpers.house(state, houseId)
+      if houseOpt.isSome:
+        var updatedHouse = houseOpt.get()
+        updatedHouse.consecutiveShortfallTurns += 1
+        state.houses.entities.updateEntity(houseId, updatedHouse)
     else:
       # Full payment - reset shortfall counter
-      state.withHouse(houseId):
-        house.consecutiveShortfallTurns = 0
+      let houseOpt = state_helpers.house(state, houseId)
+      if houseOpt.isSome:
+        var updatedHouse = houseOpt.get()
+        updatedHouse.consecutiveShortfallTurns = 0
+        state.houses.entities.updateEntity(houseId, updatedHouse)
 
     # Deduct maintenance (treasury may have salvage added by cascade)
-    state.withHouse(houseId):
-      house.treasury -= totalUpkeep
+    let houseOpt = state_helpers.house(state, houseId)
+    if houseOpt.isSome:
+      var updatedHouse = houseOpt.get()
+      updatedHouse.treasury -= int32(totalUpkeep)
+      state.houses.entities.updateEntity(houseId, updatedHouse)
 
     # Generate MaintenancePaid event
     events.add(
@@ -196,48 +200,3 @@ proc calculateAndDeductMaintenanceUpkeep*(
         details: some("MaintenanceUpkeep"),
       )
     )
-
-proc tickConstructionAndRepair*(
-    state: var GameState, events: var seq[event.GameEvent]
-): MaintenanceReport =
-  ## Advance construction and repair queues
-  ## This is called during Maintenance Phase (Phase 4)
-  ##
-  ## NOTE: This does NOT calculate or deduct maintenance costs!
-  ## Maintenance upkeep is handled in Income Phase Step 3 via
-  ## calculateAndDeductMaintenanceUpkeep()
-
-  result = MaintenanceReport(
-    turn: state.turn,
-    completedProjects: @[],
-    houseUpkeep: initTable[HouseId, int](),
-      # Empty - maintenance handled in Income Phase
-    repairsApplied: @[],
-  )
-
-  # Advance construction projects
-  # TWO SYSTEMS:
-  # 1. Facility queues: Capital ships + repairs (per-facility dock capacity)
-  # 2. Colony queue: Fighters, buildings, ground units, IU investment (planet-side)
-
-  for systemId, colony in state.colonies.entities.data.mpairs:
-    # Advance facility queues (capital ships in spaceports/shipyards + repairs in shipyards)
-    let facilityResults = facility_queue.advanceColonyQueues(colony)
-    result.completedProjects.add(facilityResults.completedProjects)
-    # Note: completed repairs handled separately (not in completedProjects)
-
-    # Advance colony queue (legacy system for fighters, buildings, ground units, IU)
-    if colony.underConstruction.isSome:
-      let completed = advanceConstruction(colony)
-      if completed.isSome:
-        result.completedProjects.add(completed.get())
-      # Colony is already mutated in place via mpairs
-
-  # Infrastructure repairs handled by repair_queue.nim during Construction Phase
-  # Damaged infrastructure tracked in colony.infrastructureDamage
-  # Repairs applied via PP allocation in construction system
-
-  # Check carrier hangar capacity (should find no violations - blocked at load time)
-  discard carrier_hangar.processCapacityEnforcement(state)
-
-  return result

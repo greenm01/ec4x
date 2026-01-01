@@ -15,7 +15,7 @@
 
 import std/math
 import ../../types/[production, colony, starmap, game_state]
-import ../../config/economy_config
+import ../../globals
 import ../../../common/logger
 
 export production.ProductionOutput
@@ -27,93 +27,9 @@ proc getRawIndex*(planetClass: PlanetClass, resources: ResourceRating): float =
   ## Get RAW INDEX modifier from config
   ## Returns percentage modifier (0.60 - 1.40)
   ##
-  ## Uses config/economy.toml raw_material_efficiency section
-  let cfg = globalEconomyConfig.raw_material_efficiency
-
-  # Map enum values to config fields
-  # ResourceRating: VeryPoor=0, Poor=1, Abundant=2, Rich=3, VeryRich=4
-  # PlanetClass: Extreme=0, Desolate=1, Hostile=2, Harsh=3, Benign=4, Lush=5, Eden=6
-  case resources
-  of ResourceRating.VeryPoor:
-    case planetClass
-    of PlanetClass.Extreme:
-      return cfg.very_poor_extreme
-    of PlanetClass.Desolate:
-      return cfg.very_poor_desolate
-    of PlanetClass.Hostile:
-      return cfg.very_poor_hostile
-    of PlanetClass.Harsh:
-      return cfg.very_poor_harsh
-    of PlanetClass.Benign:
-      return cfg.very_poor_benign
-    of PlanetClass.Lush:
-      return cfg.very_poor_lush
-    of PlanetClass.Eden:
-      return cfg.very_poor_eden
-  of ResourceRating.Poor:
-    case planetClass
-    of PlanetClass.Extreme:
-      return cfg.poor_extreme
-    of PlanetClass.Desolate:
-      return cfg.poor_desolate
-    of PlanetClass.Hostile:
-      return cfg.poor_hostile
-    of PlanetClass.Harsh:
-      return cfg.poor_harsh
-    of PlanetClass.Benign:
-      return cfg.poor_benign
-    of PlanetClass.Lush:
-      return cfg.poor_lush
-    of PlanetClass.Eden:
-      return cfg.poor_eden
-  of ResourceRating.Abundant:
-    case planetClass
-    of PlanetClass.Extreme:
-      return cfg.abundant_extreme
-    of PlanetClass.Desolate:
-      return cfg.abundant_desolate
-    of PlanetClass.Hostile:
-      return cfg.abundant_hostile
-    of PlanetClass.Harsh:
-      return cfg.abundant_harsh
-    of PlanetClass.Benign:
-      return cfg.abundant_benign
-    of PlanetClass.Lush:
-      return cfg.abundant_lush
-    of PlanetClass.Eden:
-      return cfg.abundant_eden
-  of ResourceRating.Rich:
-    case planetClass
-    of PlanetClass.Extreme:
-      return cfg.rich_extreme
-    of PlanetClass.Desolate:
-      return cfg.rich_desolate
-    of PlanetClass.Hostile:
-      return cfg.rich_hostile
-    of PlanetClass.Harsh:
-      return cfg.rich_harsh
-    of PlanetClass.Benign:
-      return cfg.rich_benign
-    of PlanetClass.Lush:
-      return cfg.rich_lush
-    of PlanetClass.Eden:
-      return cfg.rich_eden
-  of ResourceRating.VeryRich:
-    case planetClass
-    of PlanetClass.Extreme:
-      return cfg.very_rich_extreme
-    of PlanetClass.Desolate:
-      return cfg.very_rich_desolate
-    of PlanetClass.Hostile:
-      return cfg.very_rich_hostile
-    of PlanetClass.Harsh:
-      return cfg.very_rich_harsh
-    of PlanetClass.Benign:
-      return cfg.very_rich_benign
-    of PlanetClass.Lush:
-      return cfg.very_rich_lush
-    of PlanetClass.Eden:
-      return cfg.very_rich_eden
+  ## Uses config/economy.kdl raw_material_efficiency section
+  ## Direct array access - O(1) lookup by enum values
+  gameConfig.economy.rawMaterialEfficiency.multipliers[resources][planetClass]
 
 proc getEconomicLevelModifier*(techLevel: int): float =
   ## Get EL_MOD from tech level

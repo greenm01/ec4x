@@ -9,7 +9,8 @@
 import std/[options, tables]
 import ../../types/[core, game_state, starmap, prestige]
 import ../../entities/colony_ops
-import ../../config/[prestige_config, prestige_multiplier]
+import ../../globals
+import ../../prestige/engine as prestige_engine
 
 type ColonizationResult* = object ## Result of a colonization attempt
   success*: bool
@@ -63,8 +64,8 @@ proc establishColony*(
   )
 
   # Award prestige with dynamic scaling
-  let config = globalPrestigeConfig
-  let prestigeAmount = applyMultiplier(config.economic.establish_colony)
+  let basePrestige = gameConfig.prestige.economic.establishColony
+  let prestigeAmount = prestige_engine.applyPrestigeMultiplier(basePrestige)
   let prestigeEvent = PrestigeEvent(
     source: PrestigeSource.ColonyEstablished,
     amount: prestigeAmount.int32,

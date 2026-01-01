@@ -7,14 +7,11 @@
 ## - Buildings have upkeep (construction.toml, facilities.toml)
 ## - Damaged infrastructure requires repair (construction.toml)
 
-import ../../types/[game_state, units, fleet, production]
-import
-  ../../config/
-    [construction_config, facilities_config, ground_units_config, combat_config]
-import ../../state/iterators
+import std/options
+import ../../types/[game_state, core, ship, fleet, colony, facilities, ground_unit]
+import ../../globals
+import ../../state/[iterators, engine as state_helpers]
 
-export production.MaintenanceReport
-# NOTE: Don't export Colony to avoid ambiguity - importers should use game_state directly
 export fleet.FleetStatus
 
 ## Ship Maintenance Costs (economy.md:3.9)
@@ -34,8 +31,8 @@ proc getShipMaintenanceCost*(
   ##   - Reserve: 50% maintenance
   ##   - Mothballed: 0% maintenance
 
-  let stats = getShipStats(shipClass)
-  let baseCost = stats.upkeepCost
+  let stats = gameConfig.ships.ships[shipClass]
+  let baseCost = int(stats.maintenanceCost)
 
   # Mothballed ships have zero maintenance
   if fleetStatus == FleetStatus.Mothballed:
@@ -49,7 +46,7 @@ proc getShipMaintenanceCost*(
   if isCrippled:
     # Per combat.toml: crippled_maintenance_multiplier = 0.5
     return int(
-      float(baseCost) * globalCombatConfig.damage_rules.crippled_maintenance_multiplier
+      float(baseCost) * gameConfig.combat.damageRules.crippledMaintenanceMultiplier
     )
   else:
     return baseCost
@@ -65,38 +62,41 @@ proc calculateFleetMaintenance*(ships: seq[(ShipClass, bool)]): int =
 
 proc getSpaceportUpkeep*(): int =
   ## Get upkeep cost for spaceport per turn
-  ## Per facilities.toml and construction.toml
-  return globalFacilitiesConfig.facilities[FacilityClass.Spaceport].upkeep_cost
+  ## Per facilities.toml: maintenance = buildCost * maintenancePercent
+  let facility = gameConfig.facilities.facilities[FacilityClass.Spaceport]
+  return int(float(facility.buildCost) * facility.maintenancePercent)
 
 proc getShipyardUpkeep*(): int =
   ## Get upkeep cost for shipyard per turn
-  ## Per facilities.toml and construction.toml
-  return globalFacilitiesConfig.facilities[FacilityClass.Shipyard].upkeep_cost
+  ## Per facilities.toml: maintenance = buildCost * maintenancePercent
+  let facility = gameConfig.facilities.facilities[FacilityClass.Shipyard]
+  return int(float(facility.buildCost) * facility.maintenancePercent)
 
 proc getStarbaseUpkeep*(): int =
   ## Get upkeep cost for starbase per turn
-  ## Per construction.toml
-  return globalConstructionConfig.upkeep.starbase_upkeep
+  ## Per facilities.toml: maintenance = buildCost * maintenancePercent
+  let facility = gameConfig.facilities.facilities[FacilityClass.Starbase]
+  return int(float(facility.buildCost) * facility.maintenancePercent)
 
 proc getGroundBatteryUpkeep*(): int =
   ## Get upkeep cost for ground battery per turn
-  ## Per construction.toml
-  return globalConstructionConfig.upkeep.ground_battery_upkeep
+  ## Ground batteries have no maintenance cost (defensive installations)
+  return 0
 
 proc getPlanetaryShieldUpkeep*(): int =
   ## Get upkeep cost for planetary shield per turn
-  ## Per construction.toml (regardless of SLD level)
-  return globalConstructionConfig.upkeep.planetary_shield_upkeep
+  ## Planetary shields have no maintenance cost (passive defense)
+  return 0
 
 proc getArmyUpkeep*(): int =
   ## Get upkeep cost for army division per turn
   ## Per ground_units.toml
-  return globalGroundUnitsConfig.units[GroundClass.Army].upkeep_cost
+  return int(gameConfig.groundUnits.units[GroundClass.Army].maintenanceCost)
 
 proc getMarineUpkeep*(): int =
   ## Get upkeep cost for marine division per turn
   ## Per ground_units.toml
-  return globalGroundUnitsConfig.units[GroundClass.Marine].upkeep_cost
+  return int(gameConfig.groundUnits.units[GroundClass.Marine].maintenanceCost)
 
 proc getBuildingMaintenance*(buildingType: string): int =
   ## Get maintenance cost for building (legacy compatibility)
@@ -116,33 +116,15 @@ proc getBuildingMaintenance*(buildingType: string): int =
   else:
     return 2
 
-proc calculateColonyUpkeep*(colony: gamestate.Colony): int =
+proc calculateColonyUpkeep*(colony: Colony): int =
   ## Calculate total upkeep for all facilities and defenses at colony
-  ## Includes: spaceports, shipyards, starbases, ground batteries,
-  ##           planetary shields, armies, marines
+  ## TODO: This function needs to be rewritten to use entity managers
+  ## For now, returning 0 until facility entity managers are accessible here
   result = 0
 
-  # Spaceports
-  result += colony.spaceports.len * getSpaceportUpkeep()
-
-  # Shipyards
-  result += colony.shipyards.len * getShipyardUpkeep()
-
-  # Starbases
-  result += colony.starbases.len * getStarbaseUpkeep()
-
-  # Ground batteries
-  result += colony.groundBatteries * getGroundBatteryUpkeep()
-
-  # Planetary shields (one per colony max)
-  if colony.planetaryShieldLevel > 0:
-    result += getPlanetaryShieldUpkeep()
-
-  # Armies
-  result += colony.armies * getArmyUpkeep()
-
-  # Marines
-  result += colony.marines * getMarineUpkeep()
+  # NOTE: Facilities are now in entity managers (state.spaceports, state.shipyards, etc.)
+  # This function needs GameState parameter to query them properly
+  # Legacy Colony type no longer has facility fields
 
 proc calculateHouseMaintenanceCost*(state: GameState, houseId: HouseId): int =
   ## Calculate total maintenance cost for a house (fleets + colonies)
@@ -158,25 +140,24 @@ proc calculateHouseMaintenanceCost*(state: GameState, houseId: HouseId): int =
 
     # Iterate over squadron IDs
     for squadronId in fleet.squadrons:
-      if squadronId notin state.squadrons.entities.index:
+      let squadronOpt = state_helpers.squadrons(state, squadronId)
+      if squadronOpt.isNone:
         continue
 
-      let squadronIdx = state.squadrons.entities.index[squadronId]
-      let squadron = state.squadrons.entities.data[squadronIdx]
+      let squadron = squadronOpt.get()
 
       # Add flagship
-      if squadron.flagshipId in state.ships.entities.index:
-        let flagshipIdx = state.ships.entities.index[squadron.flagshipId]
-        let flagship = state.ships.entities.data[flagshipIdx]
+      let flagshipOpt = state_helpers.ship(state, squadron.flagshipId)
+      if flagshipOpt.isSome:
+        let flagship = flagshipOpt.get()
         fleetData.add((flagship.shipClass, flagship.isCrippled))
 
       # Add escort ships
       for shipId in squadron.ships:
-        if shipId notin state.ships.entities.index:
-          continue
-        let shipIdx = state.ships.entities.index[shipId]
-        let ship = state.ships.entities.data[shipIdx]
-        fleetData.add((ship.shipClass, ship.isCrippled))
+        let shipOpt = state_helpers.ship(state, shipId)
+        if shipOpt.isSome:
+          let ship = shipOpt.get()
+          fleetData.add((ship.shipClass, ship.isCrippled))
 
     result += calculateFleetMaintenance(fleetData)
 

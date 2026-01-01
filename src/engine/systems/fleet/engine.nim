@@ -10,7 +10,7 @@
 import std/[options, algorithm]
 import ../../types/[core, game_state, fleet, squadron]
 import ../../entities/fleet_ops
-import ../../state/[game_state as gs_helpers, entity_manager]
+import ../../state/[engine as state_helpers, entity_manager]
 
 type FleetOperationResult* = object ## Result of a fleet operation
   success*: bool
@@ -24,12 +24,12 @@ proc canCreateFleet*(
   ## Check: system exists, house is active
 
   # Check if system exists
-  let systemOpt = gs_helpers.getSystem(state, location)
+  let systemOpt = state_helpers.system(state, location)
   if systemOpt.isNone:
     return (false, "System does not exist")
 
   # Check if house exists and is active
-  let houseOpt = gs_helpers.getHouse(state, houseId)
+  let houseOpt = state_helpers.house(state, houseId)
   if houseOpt.isNone:
     return (false, "House does not exist")
 
@@ -70,8 +70,8 @@ proc canMergeFleets*(
   ## Validate if two fleets can be merged
   ## Check: both exist, same owner, same location, compatible squadron types
 
-  let sourceOpt = gs_helpers.getFleet(state, sourceId)
-  let targetOpt = gs_helpers.getFleet(state, targetId)
+  let sourceOpt = state_helpers.fleet(state, sourceId)
+  let targetOpt = state_helpers.fleet(state, targetId)
 
   if sourceOpt.isNone:
     return (false, "Source fleet does not exist")
@@ -97,7 +97,7 @@ proc canMergeFleets*(
   var targetHasNonIntel = false
 
   for sqId in source.squadrons:
-    let sqOpt = gs_helpers.getSquadrons(state, sqId)
+    let sqOpt = state_helpers.squadrons(state, sqId)
     if sqOpt.isSome:
       if sqOpt.get().squadronType == SquadronClass.Intel:
         sourceHasIntel = true
@@ -105,7 +105,7 @@ proc canMergeFleets*(
         sourceHasNonIntel = true
 
   for sqId in target.squadrons:
-    let sqOpt = gs_helpers.getSquadrons(state, sqId)
+    let sqOpt = state_helpers.squadrons(state, sqId)
     if sqOpt.isSome:
       if sqOpt.get().squadronType == SquadronClass.Intel:
         targetHasIntel = true
@@ -136,8 +136,8 @@ proc mergeFleets*(
       success: false, reason: validation.reason, fleetId: none(FleetId)
     )
 
-  let sourceOpt = gs_helpers.getFleet(state, sourceId)
-  let targetOpt = gs_helpers.getFleet(state, targetId)
+  let sourceOpt = state_helpers.fleet(state, sourceId)
+  let targetOpt = state_helpers.fleet(state, targetId)
 
   # Should always succeed after validation, but check anyway
   if sourceOpt.isNone or targetOpt.isNone:
@@ -165,7 +165,7 @@ proc canSplitFleet*(
   ## Validate if a fleet can be split
   ## Check: fleet exists, indices valid, wouldn't leave fleet empty
 
-  let fleetOpt = gs_helpers.getFleet(state, fleetId)
+  let fleetOpt = state_helpers.fleet(state, fleetId)
   if fleetOpt.isNone:
     return (false, "Fleet does not exist")
 
@@ -205,7 +205,7 @@ proc splitFleet*(
       success: false, reason: validation.reason, fleetId: none(FleetId)
     )
 
-  let fleetOpt = gs_helpers.getFleet(state, fleetId)
+  let fleetOpt = state_helpers.fleet(state, fleetId)
   if fleetOpt.isNone:
     return FleetOperationResult(
       success: false, reason: "Fleet not found", fleetId: none(FleetId)

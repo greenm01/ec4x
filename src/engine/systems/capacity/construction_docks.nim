@@ -327,8 +327,7 @@ proc assignAndQueueProject*(
     var spaceport = spaceportOpt.get()
     spaceport.constructionQueue.add(assignedProject.id)
 
-    state.spaceports.entities.data[state.spaceports.entities.index[spaceportId]] =
-      spaceport
+    state.spaceports.entities.updateEntity(spaceportId, spaceport)
 
     logger.logDebug(
       "Economy",
@@ -350,7 +349,7 @@ proc assignAndQueueProject*(
     var shipyard = shipyardOpt.get()
     shipyard.constructionQueue.add(assignedProject.id)
 
-    state.shipyards.entities.data[state.shipyards.entities.index[shipyardId]] = shipyard
+    state.shipyards.entities.updateEntity(shipyardId, shipyard)
 
     logger.logDebug(
       "Economy",

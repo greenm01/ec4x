@@ -1729,7 +1729,7 @@ proc executeUnloadFighters*(
     let fighterSquadronId = carrierSquadron.embarkedFighters[fighterIdx]
 
     # Get fighter squadron entity for logging
-    let fighterSquadOpt = state.squadrons[].entities.entity(fighterSquadronId)
+    let fighterSquadOpt = state.squadrons.entities.entity(fighterSquadronId)
     if fighterSquadOpt.isSome:
       let fighterSquadron = fighterSquadOpt.get()
       let totalFighters = 1 + fighterSquadron.ships.len

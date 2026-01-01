@@ -15,49 +15,18 @@
 ## - Used by squadron/entity and production/commissioning
 
 import std/[options, math, strutils]
-import ../../types/[core, ship]
-import ../../config/ships_config
+import ../../types/[core, ship, config]
+import ../../globals
 
 export ShipClass, ShipRole, ShipStats, Ship, ShipCargo, CargoClass, ShipId
-
-## Ship Statistics and Configuration
-
-proc parseShipRole(roleStr: string): ShipRole =
-  ## Convert config role string to ShipRole enum
-  case roleStr.toLowerAscii()
-  of "escort": ShipRole.Escort
-  of "capital": ShipRole.Capital
-  of "auxiliary": ShipRole.Auxiliary
-  of "specialweapon": ShipRole.SpecialWeapon
-  of "fighter": ShipRole.Fighter
-  else: ShipRole.Escort
-    # Default
 
 ## Config Data Access (non-WEP stats)
 
 proc getShipConfigStats(shipClass: ShipClass): ShipStatsConfig =
-  ## Get full config stats for a ship class from config/ships.toml
+  ## Get full config stats for a ship class from config/ships.kdl
   ## Used for looking up non-WEP stats (role, costs, CC, CR, carry limit)
-  let cfg = globalShipsConfig
-
-  case shipClass
-  of ShipClass.Fighter: cfg.fighter
-  of ShipClass.Corvette: cfg.corvette
-  of ShipClass.Frigate: cfg.frigate
-  of ShipClass.Scout: cfg.scout
-  of ShipClass.Raider: cfg.raider
-  of ShipClass.Destroyer: cfg.destroyer
-  of ShipClass.LightCruiser: cfg.lightCruiser
-  of ShipClass.Cruiser: cfg.cruiser
-  of ShipClass.Battlecruiser: cfg.battlecruiser
-  of ShipClass.Battleship: cfg.battleship
-  of ShipClass.Dreadnought: cfg.dreadnought
-  of ShipClass.SuperDreadnought: cfg.super_dreadnought
-  of ShipClass.Carrier: cfg.carrier
-  of ShipClass.SuperCarrier: cfg.supercarrier
-  of ShipClass.ETAC: cfg.etac
-  of ShipClass.TroopTransport: cfg.troop_transport
-  of ShipClass.PlanetBreaker: cfg.planetbreaker
+  ## Direct array access - O(1) lookup
+  gameConfig.ships.ships[shipClass]
 
 proc getShipStats*(shipClass: ShipClass, weaponsTech: int32 = 1): ShipStats =
   ## Calculate WEP-modified stats for a ship class
@@ -74,8 +43,8 @@ proc getShipStats*(shipClass: ShipClass, weaponsTech: int32 = 1): ShipStats =
   ## etc.
 
   let configStats = getShipConfigStats(shipClass)
-  let baseAS = int32(configStats.attack_strength)
-  let baseDS = int32(configStats.defense_strength)
+  let baseAS = configStats.attackStrength
+  let baseDS = configStats.defenseStrength
 
   # Apply WEP multiplier (compound 10% per level above WEP I)
   let modifiedAS =
@@ -99,9 +68,9 @@ proc getShipStats*(shipClass: ShipClass, weaponsTech: int32 = 1): ShipStats =
 proc newShip*(
     shipClass: ShipClass,
     weaponsTech: int32 = 1,
-    name: string = "",
     id: ShipId = ShipId(0),
     squadronId: SquadronId = SquadronId(0),
+    houseId: HouseId = HouseId(0),
 ): Ship =
   ## Create a new ship with WEP-modified stats
   ## weaponsTech defaults to 1 (WEP I - starting level per gameplay.md:1.2)
@@ -113,54 +82,45 @@ proc newShip*(
 
   Ship(
     id: id,
+    houseId: houseId,
     squadronId: squadronId,
     shipClass: shipClass,
     stats: stats,
     isCrippled: false,
-    name: name,
     cargo: none(ShipCargo),
   )
 
 proc `$`*(ship: Ship): string =
   ## String representation of ship
   let status = if ship.isCrippled: " (crippled)" else: ""
-  let name =
-    if ship.name.len > 0:
-      " \"" & ship.name & "\""
-    else:
-      ""
-  $ship.shipClass & name & status
+  $ship.shipClass & status
 
-## Config Lookups (non-WEP stats from config/ships.toml)
+## Config Lookups (non-WEP stats from config/ships.kdl)
 
 proc role*(ship: Ship): ShipRole =
-  ## Get ship's role from config (Escort, Capital, Auxiliary, etc.)
-  parseShipRole(getShipConfigStats(ship.shipClass).ship_role)
+  ## Get ship's role from ShipClassRoles constant (Escort, Capital, Auxiliary, etc.)
+  ShipClassRoles[ship.shipClass]
 
 proc commandCost*(ship: Ship): int32 =
   ## Get command cost (CC) from config
-  int32(getShipConfigStats(ship.shipClass).command_cost)
+  getShipConfigStats(ship.shipClass).commandCost
 
 proc commandRating*(ship: Ship): int32 =
   ## Get command rating (CR) from config
-  int32(getShipConfigStats(ship.shipClass).command_rating)
+  getShipConfigStats(ship.shipClass).commandRating
 
 proc buildCost*(ship: Ship): int32 =
   ## Get build cost (PC) from config
-  int32(getShipConfigStats(ship.shipClass).build_cost)
+  getShipConfigStats(ship.shipClass).productionCost
 
 proc upkeepCost*(ship: Ship): int32 =
   ## Get maintenance cost (MC) from config
-  int32(getShipConfigStats(ship.shipClass).upkeep_cost)
+  getShipConfigStats(ship.shipClass).maintenanceCost
 
 proc baseCarryLimit*(ship: Ship): int32 =
   ## Get base carry limit from config (for carriers/transports)
   ## Modified at runtime by ACO/STL tech levels
-  let config = getShipConfigStats(ship.shipClass)
-  if config.carry_limit.isSome:
-    int32(config.carry_limit.get)
-  else:
-    0'i32
+  getShipConfigStats(ship.shipClass).carryLimit
 
 ## Ship Capability Queries
 

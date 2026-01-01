@@ -3,10 +3,10 @@
 ## Data-oriented design: Single execution path for all espionage actions
 ## Replaces 10 nearly-identical functions with 1 data-driven function
 
-import std/[random, options]
+import std/[random, options, tables]
 import ../../types/[core, espionage, prestige]
 import ../../prestige/events as prestige_events
-import ../../config/[prestige_config, espionage_config]
+import ../../globals
 import action_descriptors
 
 export espionage, action_descriptors
@@ -57,7 +57,7 @@ proc executeEspionageAction*(
     if descriptor.failedPrestigeReason != "": # Some actions don't penalize detection
       result.attackerPrestigeEvents.add(
         prestige_events.createPrestigeEvent(
-          PrestigeSource.Eliminated, globalPrestigeConfig.espionage.failed_espionage,
+          PrestigeSource.Eliminated, gameConfig.prestige.espionage.failed_espionage,
           descriptor.failedPrestigeReason,
         )
       )
@@ -95,7 +95,7 @@ proc executeEspionageAction*(
       # Update description with damage amount
       result.description =
         descriptor.successPrestigeReason & " (" & $result.iuDamage & " IU " & (
-          if descriptor.damageDice == globalEspionageConfig.effects.sabotage_low_dice:
+          if descriptor.damageDice == gameConfig.espionage.effects.sabotage_low_dice:
           "damaged"
           else: "destroyed"
         ) & ")"
@@ -131,31 +131,26 @@ proc executeEspionageAction*(
 
 proc getDetectionThreshold*(cicLevel: CICLevel): int =
   ## Get detection threshold for CIC level from config
-  let config = globalEspionageConfig.detection
-  case cicLevel
-  of CICLevel.CIC0: config.cic0_threshold
-  of CICLevel.CIC1: config.cic1_threshold
-  of CICLevel.CIC2: config.cic2_threshold
-  of CICLevel.CIC3: config.cic3_threshold
-  of CICLevel.CIC4: config.cic4_threshold
-  of CICLevel.CIC5: config.cic5_threshold
+  let config = gameConfig.espionage.detection
+  let key = int32(ord(cicLevel))
+  if config.cicThresholds.hasKey(key):
+    int(config.cicThresholds[key])
+  else:
+    15  # Default threshold if not found
 
 proc getCIPModifier*(cipPoints: int): int =
   ## Convert CIP (Counter-Intelligence Points) to detection roll modifier
   ## Uses tiered modifiers from espionage config
-  let config = globalEspionageConfig.detection
-  if cipPoints == 0:
-    config.cip_0_modifier
-  elif cipPoints <= 5:
-    config.cip_1_5_modifier
-  elif cipPoints <= 10:
-    config.cip_6_10_modifier
-  elif cipPoints <= 15:
-    config.cip_11_15_modifier
-  elif cipPoints <= 20:
-    config.cip_16_20_modifier
+  let config = gameConfig.espionage.detection
+  # Find matching tier by iterating through ordered tiers
+  for tier in config.cipTiers:
+    if int32(cipPoints) <= tier.maxPoints:
+      return int(tier.modifier)
+  # If no tier matches, return highest tier modifier
+  if config.cipTiers.len > 0:
+    int(config.cipTiers[^1].modifier)
   else:
-    config.cip_21_plus_modifier
+    0  # Default if no tiers configured
 
 ## Main Entry Point
 

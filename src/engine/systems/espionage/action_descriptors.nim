@@ -4,7 +4,7 @@
 ## This eliminates 93% code duplication in engine.nim (448 lines → ~30 lines)
 
 import ../../types/espionage
-import ../../config/[prestige_config, espionage_config]
+import ../../globals
 
 export espionage
 
@@ -39,9 +39,6 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
   ## Get action-specific data for execution
   ## Pure function - all action mechanics defined here
 
-  let prestigeConfig = globalPrestigeConfig
-  let espConfig = globalEspionageConfig
-
   case action
   of EspionageAction.TechTheft:
     ActionDescriptor(
@@ -50,13 +47,13 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       successDesc: "Successfully stole research data",
       failedPrestigeReason: "Failed espionage attempt (detected)",
       successPrestigeReason: "Tech theft successful",
-      attackerSuccessPrestige: prestigeConfig.espionage.tech_theft,
-      targetSuccessPrestige: -prestigeConfig.espionage.tech_theft - 1,
+      attackerSuccessPrestige: gameConfig.prestige.espionage.tech_theft,
+      targetSuccessPrestige: -gameConfig.prestige.espionage.tech_theft - 1,
       targetSuccessReason: "Research stolen",
       requiresSystem: false,
       hasEffect: false,
       stealsSRP: true,
-      srpAmount: espConfig.effects.tech_theft_srp,
+      srpAmount: gameConfig.espionage.effects.tech_theft_srp,
     )
   of EspionageAction.SabotageLow:
     ActionDescriptor(
@@ -65,13 +62,13 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       successDesc: "Industrial sabotage successful",
       failedPrestigeReason: "Failed sabotage attempt",
       successPrestigeReason: "Sabotage successful",
-      attackerSuccessPrestige: prestigeConfig.espionage.low_impact_sabotage,
+      attackerSuccessPrestige: gameConfig.prestige.espionage.low_impact_sabotage,
       targetSuccessPrestige: -1,
       targetSuccessReason: "Industrial sabotage",
       requiresSystem: true,
       hasEffect: false,
       damagesIU: true,
-      damageDice: espConfig.effects.sabotage_low_dice,
+      damageDice: gameConfig.espionage.effects.sabotage_low_dice,
     )
   of EspionageAction.SabotageHigh:
     ActionDescriptor(
@@ -80,13 +77,13 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       successDesc: "Devastating industrial sabotage",
       failedPrestigeReason: "Failed major sabotage",
       successPrestigeReason: "Major sabotage",
-      attackerSuccessPrestige: prestigeConfig.espionage.high_impact_sabotage,
+      attackerSuccessPrestige: gameConfig.prestige.espionage.high_impact_sabotage,
       targetSuccessPrestige: -5,
       targetSuccessReason: "Devastating sabotage",
       requiresSystem: true,
       hasEffect: false,
       damagesIU: true,
-      damageDice: espConfig.effects.sabotage_high_dice,
+      damageDice: gameConfig.espionage.effects.sabotage_high_dice,
     )
   of EspionageAction.Assassination:
     ActionDescriptor(
@@ -95,14 +92,14 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       successDesc: "Key figure eliminated",
       failedPrestigeReason: "Failed assassination",
       successPrestigeReason: "Assassination successful",
-      attackerSuccessPrestige: prestigeConfig.espionage.assassination,
+      attackerSuccessPrestige: gameConfig.prestige.espionage.assassination,
       targetSuccessPrestige: -7,
       targetSuccessReason: "Key figure assassinated",
       requiresSystem: false,
       hasEffect: true,
       effectType: EffectType.SRPReduction,
-      effectTurns: espConfig.effects.effect_duration_turns,
-      effectMagnitude: float(espConfig.effects.assassination_srp_reduction),
+      effectTurns: gameConfig.espionage.effects.effect_duration_turns,
+      effectMagnitude: float(gameConfig.espionage.effects.assassination_srp_reduction),
     )
   of EspionageAction.CyberAttack:
     ActionDescriptor(
@@ -111,13 +108,13 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       successDesc: "Starbase systems compromised",
       failedPrestigeReason: "Failed cyber attack",
       successPrestigeReason: "Cyber attack successful",
-      attackerSuccessPrestige: prestigeConfig.espionage.cyber_attack,
+      attackerSuccessPrestige: gameConfig.prestige.espionage.cyber_attack,
       targetSuccessPrestige: -3,
       targetSuccessReason: "Starbase crippled by cyber attack",
       requiresSystem: true,
       hasEffect: true,
       effectType: EffectType.StarbaseCrippled,
-      effectTurns: espConfig.effects.effect_duration_turns,
+      effectTurns: gameConfig.espionage.effects.effect_duration_turns,
       effectMagnitude: 1.0,
     )
   of EspionageAction.EconomicManipulation:
@@ -127,14 +124,14 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       successDesc: "Markets disrupted successfully",
       failedPrestigeReason: "Failed economic manipulation",
       successPrestigeReason: "Economic disruption successful",
-      attackerSuccessPrestige: prestigeConfig.espionage.economic_manipulation,
+      attackerSuccessPrestige: gameConfig.prestige.espionage.economic_manipulation,
       targetSuccessPrestige: -4,
       targetSuccessReason: "Economy disrupted",
       requiresSystem: false,
       hasEffect: true,
       effectType: EffectType.NCVReduction,
-      effectTurns: espConfig.effects.effect_duration_turns,
-      effectMagnitude: float(espConfig.effects.economic_ncv_reduction),
+      effectTurns: gameConfig.espionage.effects.effect_duration_turns,
+      effectMagnitude: float(gameConfig.espionage.effects.economic_ncv_reduction),
     )
   of EspionageAction.PsyopsCampaign:
     ActionDescriptor(
@@ -143,14 +140,14 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       successDesc: "Psyops campaign undermines morale",
       failedPrestigeReason: "Failed psyops campaign",
       successPrestigeReason: "Psyops campaign successful",
-      attackerSuccessPrestige: prestigeConfig.espionage.psyops_campaign,
+      attackerSuccessPrestige: gameConfig.prestige.espionage.psyops_campaign,
       targetSuccessPrestige: -2,
       targetSuccessReason: "Public morale damaged by propaganda",
       requiresSystem: false,
       hasEffect: true,
       effectType: EffectType.TaxReduction,
-      effectTurns: espConfig.effects.effect_duration_turns,
-      effectMagnitude: float(espConfig.effects.psyops_tax_reduction),
+      effectTurns: gameConfig.espionage.effects.effect_duration_turns,
+      effectMagnitude: float(gameConfig.espionage.effects.psyops_tax_reduction),
     )
   of EspionageAction.CounterIntelSweep:
     ActionDescriptor(
@@ -165,7 +162,7 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       requiresSystem: false,
       hasEffect: true,
       effectType: EffectType.IntelBlocked,
-      effectTurns: espConfig.effects.intel_block_duration,
+      effectTurns: gameConfig.espionage.effects.intel_block_duration,
       effectMagnitude: 1.0,
       effectTargetsSelf: true, # Defensive action
     )
@@ -186,8 +183,8 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
   of EspionageAction.PlantDisinformation:
     let avgVariance =
       (
-        espConfig.effects.disinformation_min_variance +
-        espConfig.effects.disinformation_max_variance
+        gameConfig.espionage.effects.disinformation_min_variance +
+        gameConfig.espionage.effects.disinformation_max_variance
       ) / 2.0
     ActionDescriptor(
       action: action,
@@ -201,6 +198,6 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       requiresSystem: false,
       hasEffect: true,
       effectType: EffectType.IntelCorrupted,
-      effectTurns: espConfig.effects.disinformation_duration,
+      effectTurns: gameConfig.espionage.effects.disinformation_duration,
       effectMagnitude: avgVariance,
     )

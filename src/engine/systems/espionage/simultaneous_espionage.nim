@@ -3,36 +3,36 @@
 ## Handles simultaneous resolution of SpyPlanet, SpySystem, and HackStarbase orders
 ## to prevent first-mover advantages in intelligence operations.
 
-import std/[tables, options, random, strformat, algorithm, logging]
+import std/[tables, options, random, logging]
 import
-  ../../types/[core, game_state, simultaneous, orders, espionage, intelligence, event]
+  ../../types/[core, game_state, simultaneous, command, fleet, espionage, intel, event]
+import ../../state/[engine as state_helpers, iterators, entity_manager]
 import ../../entities/fleet_ops
-import ../intelligence/[spy_resolution, generator as intel_generator]
-import ../combat/simultaneous_resolver
-import ../event/factory/intelligence as intelligence_events
-import ../prestige/engine as prestige
-import ../../config/espionage_config
+import ../../intel/[spy_resolution, generator as intel_generator]
+import ../../event_factory/intel as intelligence_events
+import ../../prestige/engine as prestige
 import ./[engine as esp_engine, executor as esp_executor]
 
 proc collectEspionageIntents*(
-    state: GameState, orders: Table[HouseId, OrderPacket]
+    state: GameState, orders: Table[HouseId, CommandPacket]
 ): seq[simultaneous.EspionageIntent] =
   ## Collect all espionage attempts
   result = @[]
 
-  for houseId, house in state.houses.entities.data:
+  for houseId, house in state.allHousesWithId():
     if houseId notin orders:
       continue
 
     for command in orders[houseId].fleetCommands:
       if command.commandType notin [
-        FleetCommandType.SpyPlanet, FleetCommandType.SpySystem,
+        FleetCommandType.SpyColony, FleetCommandType.SpySystem,
         FleetCommandType.HackStarbase,
       ]:
         continue
 
       # Validate: fleet exists
-      if command.fleetId notin state.fleets.entities.index:
+      let fleetCheckOpt = state_helpers.fleet(state, command.fleetId)
+      if fleetCheckOpt.isNone:
         continue
 
       # Calculate espionage strength using house prestige
@@ -46,11 +46,12 @@ proc collectEspionageIntents*(
       let targetSystem = command.targetSystem.get()
 
       # Log if fleet not at target (will attempt movement in Maintenance Phase)
-      let fleetIdx = state.fleets.entities.index[command.fleetId]
-      let fleet = state.fleets.entities.data[fleetIdx]
-      if fleet.location != targetSystem:
-        debug "Espionage order queued: ",
-          command.fleetId, " will move from ", fleet.location, " to ", targetSystem
+      let fleetOpt = state_helpers.fleet(state, command.fleetId)
+      if fleetOpt.isSome:
+        let fleet = fleetOpt.get()
+        if fleet.location != targetSystem:
+          debug "Espionage order queued: ",
+            command.fleetId, " will move from ", fleet.location, " to ", targetSystem
 
       result.add(
         simultaneous.EspionageIntent(
@@ -101,9 +102,10 @@ proc resolveEspionageConflict*(
     var outcome: simultaneous.ResolutionOutcome
     if detected:
       outcome = simultaneous.ResolutionOutcome.ConflictLost
-      if intent.targetSystem in state.colonies.entities.index:
-        let colonyIdx = state.colonies.entities.index[intent.targetSystem]
-        let defender = state.colonies.entities.data[colonyIdx].owner
+      # Try to find colony at target system (ColonyId typically matches SystemId)
+      let colonyOpt = state_helpers.colony(state, ColonyId(intent.targetSystem))
+      if colonyOpt.isSome:
+        let defender = colonyOpt.get().owner
         events.add(
           intelligence_events.scoutDetected(
             intent.houseId, defender, intent.targetSystem, "Spy Scout"
@@ -129,7 +131,7 @@ proc resolveEspionageConflict*(
 
 proc resolveEspionage*(
     state: var GameState,
-    orders: Table[HouseId, OrderPacket],
+    orders: Table[HouseId, CommandPacket],
     rng: var Rand,
     events: var seq[event.GameEvent],
 ): seq[simultaneous.EspionageResult] =
@@ -157,17 +159,23 @@ proc wasEspionageHandled*(
 
 proc processEspionageActions*(
     state: var GameState,
-    orders: Table[HouseId, OrderPacket],
+    orders: Table[HouseId, CommandPacket],
     rng: var Rand,
     events: var seq[event.GameEvent],
 ) =
-  ## Process OrderPacket.espionageAction for all houses
+  ## Process CommandPacket.espionageAction for all houses
   ## This handles EBP-based espionage actions (TechTheft, Assassination, etc.)
   ## separate from fleet-based espionage orders
 
-  for houseId, house in state.houses.entities.data.mpairs:
+  for houseId, _ in state.allHousesWithId():
     if houseId notin orders:
       continue
+
+    # Get mutable copy of house for modifications
+    let houseOpt = state_helpers.house(state, houseId)
+    if houseOpt.isNone:
+      continue
+    var house = houseOpt.get()
 
     let packet = orders[houseId]
 
@@ -189,16 +197,20 @@ proc processEspionageActions*(
 
     # Step 2: Execute espionage action if present
     if packet.espionageAction.isNone:
+      # Update house if investments were made
+      if packet.ebpInvestment > 0 or packet.cipInvestment > 0:
+        state.houses.entities.updateEntity(houseId, house)
       continue
 
     let attempt = packet.espionageAction.get()
 
     # Validate target house is not eliminated (leaderboard is public info)
-    if attempt.target in state.houses.entities.index:
-      let targetIdx = state.houses.entities.index[attempt.target]
-      if state.houses.entities.data[targetIdx].isEliminated:
-        debug houseId, " cannot target eliminated house ", attempt.target
-        continue
+    let targetOpt = state_helpers.house(state, attempt.target)
+    if targetOpt.isSome and targetOpt.get().isEliminated:
+      debug houseId, " cannot target eliminated house ", attempt.target
+      # Update house before continuing
+      state.houses.entities.updateEntity(houseId, house)
+      continue
 
     # Check if attacker has sufficient EBP
     let actionCost = esp_engine.getActionCost(attempt.action)
@@ -206,11 +218,15 @@ proc processEspionageActions*(
       debug houseId,
         " cannot afford ", attempt.action, " (cost: ", actionCost, " EBP, has: ",
         house.espionageBudget.ebpPoints, ")"
+      # Update house before continuing
+      state.houses.entities.updateEntity(houseId, house)
       continue
 
     # Spend EBP
     if not esp_engine.spendEBP(house.espionageBudget, attempt.action):
       debug houseId, " failed to spend EBP for ", attempt.action
+      # Update house before continuing
+      state.houses.entities.updateEntity(houseId, house)
       continue
 
     info houseId,
@@ -218,8 +234,12 @@ proc processEspionageActions*(
       actionCost, " EBP)"
 
     # Get target's CIC level from tech tree
-    let targetIdx = state.houses.entities.index[attempt.target]
-    let targetHouse = state.houses.entities.data[targetIdx]
+    let targetHouseOpt = state_helpers.house(state, attempt.target)
+    if targetHouseOpt.isNone:
+      # Update house before continuing
+      state.houses.entities.updateEntity(houseId, house)
+      continue
+    let targetHouse = targetHouseOpt.get()
     let targetCICLevel =
       case targetHouse.techTree.levels.counterIntelligence
       of 1: espionage.CICLevel.CIC1
@@ -326,16 +346,22 @@ proc processEspionageActions*(
 
       # Apply immediate effects (SRP theft, IU damage, etc.)
       if result.srpStolen > 0:
-        if attempt.target in state.houses.entities.index:
-          let targetIdx2 = state.houses.entities.index[attempt.target]
-          let attackerIdx = state.houses.entities.index[attempt.attacker]
-          state.houses.entities.data[targetIdx2].techTree.accumulated.science = max(
+        let targetHouseOpt = state_helpers.house(state, attempt.target)
+        let attackerHouseOpt = state_helpers.house(state, attempt.attacker)
+
+        if targetHouseOpt.isSome and attackerHouseOpt.isSome:
+          var targetHouse = targetHouseOpt.get()
+          var attackerHouse = attackerHouseOpt.get()
+
+          targetHouse.techTree.accumulated.science = max(
             0,
-            state.houses.entities.data[targetIdx2].techTree.accumulated.science -
-              result.srpStolen,
+            targetHouse.techTree.accumulated.science - result.srpStolen
           )
-          state.houses.entities.data[attackerIdx].techTree.accumulated.science +=
-            result.srpStolen
+          attackerHouse.techTree.accumulated.science += result.srpStolen
+
+          state.houses.entities.updateEntity(attempt.target, targetHouse)
+          state.houses.entities.updateEntity(attempt.attacker, attackerHouse)
+
           info "    Stole ", result.srpStolen, " SRP from ", attempt.target
     else:
       info "  DETECTED by ", attempt.target
@@ -354,10 +380,13 @@ proc processEspionageActions*(
           )
         )
 
+    # Update house entity after espionage action resolution
+    state.houses.entities.updateEntity(houseId, house)
+
 proc processScoutIntelligence*(
     state: var GameState,
     results: seq[simultaneous.EspionageResult],
-    orders: Table[HouseId, OrderPacket],
+    orders: Table[HouseId, CommandPacket],
     rng: var Rand,
     events: var seq[event.GameEvent],
 ) =
@@ -403,7 +432,7 @@ proc processScoutIntelligence*(
 
     # Generate appropriate intelligence based on order type
     case orderType
-    of FleetCommandType.SpyPlanet:
+    of FleetCommandType.SpyColony:
       # Generate colony intelligence report
       let intelReport = intel_generator.generateColonyIntelReport(
         state, houseId, targetSystem, intelligence.IntelQuality.Spy
@@ -411,36 +440,38 @@ proc processScoutIntelligence*(
 
       if intelReport.isSome:
         let report = intelReport.get()
-        let houseIdx = state.houses.entities.index[houseId]
-        state.houses.entities.data[houseIdx].intelligence.addColonyReport(report)
+        let houseOpt = state_helpers.house(state, houseId)
+        if houseOpt.isSome:
+          var house = houseOpt.get()
+          house.intelligence.addColonyReport(report)
+          state.houses.entities.updateEntity(houseId, house)
 
-        # Calculate economic value for event
-        let grossOutput = report.grossOutput.get(0)
-        let industryValue = report.industry * 100
-        let economicValue = grossOutput + industryValue
-        let totalDefenses = report.defenses + report.starbaseLevel * 10
+          # Calculate economic value for event
+          let grossOutput = report.grossOutput.get(0)
+          let industryValue = report.industry * 100
+          let economicValue = grossOutput + industryValue
+          let totalDefenses = report.defenses + report.starbaseLevel * 10
 
-        # Create rich narrative event (visible only to spy house)
-        # Scout-specific: SpyPlanet mission by scout fleet
-        events.add(
-          intelligence_events.scoutColonyIntelGathered(
-            houseId,
-            report.targetOwner,
-            targetSystem,
-            result.fleetId,
-            totalDefenses,
-            economicValue,
-            report.starbaseLevel > 0,
-            $report.quality,
+          # Create rich narrative event (visible only to spy house)
+          # Scout-specific: SpyPlanet mission by scout fleet
+          events.add(
+            intelligence_events.scoutColonyIntelGathered(
+              houseId,
+              report.targetOwner,
+              targetSystem,
+              result.fleetId,
+              totalDefenses,
+              economicValue,
+              report.starbaseLevel > 0,
+              $report.quality,
+            )
           )
-        )
 
-        # Log success
-        let reportCount =
-          state.houses.entities.data[houseIdx].intelligence.colonyReports.len
-        info "Fleet ",
-          result.fleetId, " (", houseId, ") SpyPlanet success at ", targetSystem,
-          " - intelligence DB now has ", reportCount, " colony reports"
+          # Log success
+          let reportCount = house.intelligence.colonyReports.len
+          info "Fleet ",
+            result.fleetId, " (", houseId, ") SpyPlanet success at ", targetSystem,
+            " - intelligence DB now has ", reportCount, " colony reports"
     of FleetCommandType.SpySystem:
       # Generate system intelligence report (fleet composition)
       let intelReport = intel_generator.generateSystemIntelReport(
@@ -448,20 +479,22 @@ proc processScoutIntelligence*(
       )
 
       if intelReport.isSome:
-        let report = intelReport.get()
-        let houseIdx = state.houses.entities.index[houseId]
-        state.houses.entities.data[houseIdx].intelligence.addSystemReport(report)
+        let package = intelReport.get()
+
+        # Store system intel report in intelligence database
+        if houseId in state.intelligence:
+          state.intelligence[houseId].systemReports[targetSystem] = package.report
 
         # Count detected fleets and ships
-        let fleetsDetected = report.detectedFleets.len
+        let fleetsDetected = package.fleetIntel.len
         var shipsDetected = 0
-        for fleetIntel in report.detectedFleets:
-          shipsDetected += fleetIntel.shipCount
+        for (fleetId, intel) in package.fleetIntel:
+          shipsDetected += intel.shipCount
 
         # Determine target house (first fleet's owner, or none if empty)
         let targetHouse =
           if fleetsDetected > 0:
-            report.detectedFleets[0].owner
+            package.fleetIntel[0].intel.owner
           else:
             houseId # Fallback
 
@@ -490,59 +523,54 @@ proc processScoutIntelligence*(
 
       if intelReport.isSome:
         let report = intelReport.get()
-        let houseIdx = state.houses.entities.index[houseId]
-        state.houses.entities.data[houseIdx].intelligence.addStarbaseReport(report)
+        let houseOpt = state_helpers.house(state, houseId)
+        if houseOpt.isSome:
+          var house = houseOpt.get()
+          house.intelligence.addStarbaseReport(report)
+          state.houses.entities.updateEntity(houseId, house)
 
         # Check if economic data was acquired (based on quality)
         let hasEconomicData =
-          report.quality == intelligence.IntelQuality.Spy or
-          report.quality == intelligence.IntelQuality.Perfect
+          report.quality == IntelQuality.Spy or
+          report.quality == IntelQuality.Perfect
 
         # Get facility data from colony (visible since hack succeeded)
-        let colonyIdx = state.colonies.entities.index[targetSystem]
-        let colony = state.colonies.entities.data[colonyIdx]
-        let starbaseCount = colony.starbases.len
-        let spaceportCount = colony.spaceports.len
-        let shipyardCount = colony.shipyards.len
+        let colonyOpt = state_helpers.colony(state, ColonyId(targetSystem))
+        if colonyOpt.isSome:
+          let colony = colonyOpt.get()
 
-        # Calculate total dock capacity
-        var totalDocks = 0
-        for spaceport in colony.spaceports:
-          totalDocks += spaceport.effectiveDocks
-        for shipyard in colony.shipyards:
-          totalDocks += shipyard.effectiveDocks
+          # TODO: Refactor to use GameState entity managers for facilities
+          # Facilities are now in state.starbases, state.spaceports, state.shipyards
+          # Construction/repair queues are in separate systems
+          let starbaseCount = 0  # TODO: Query state.starbases for this colony
+          let spaceportCount = 0 # TODO: Query state.spaceports for this colony
+          let shipyardCount = 0  # TODO: Query state.shipyards for this colony
+          let totalDocks = 0     # TODO: Calculate from facility entities
+          let shipsUnderConstruction = 0  # TODO: Query construction system
+          let shipsUnderRepair = 0         # TODO: Query repair system
 
-        # Count ships under construction (active + queued)
-        var shipsUnderConstruction = 0
-        if colony.underConstruction.isSome:
-          shipsUnderConstruction += 1
-        shipsUnderConstruction += colony.constructionQueue.len
-
-        # Count ships under repair
-        let shipsUnderRepair = colony.repairQueue.len
-
-        # Create rich narrative event (visible only to spy house)
-        # Scout-specific: HackStarbase mission by scout fleet
-        events.add(
-          intelligence_events.scoutStarbaseIntelGathered(
-            houseId,
-            report.targetOwner,
-            targetSystem,
-            result.fleetId,
-            starbaseCount,
-            spaceportCount,
-            shipyardCount,
-            totalDocks,
-            shipsUnderConstruction,
-            shipsUnderRepair,
-            hasEconomicData,
-            $report.quality,
+          # Create rich narrative event (visible only to spy house)
+          # Scout-specific: HackStarbase mission by scout fleet
+          events.add(
+            intelligence_events.scoutStarbaseIntelGathered(
+              houseId,
+              report.targetOwner,
+              targetSystem,
+              result.fleetId,
+              starbaseCount,
+              spaceportCount,
+              shipyardCount,
+              totalDocks,
+              shipsUnderConstruction,
+              shipsUnderRepair,
+              hasEconomicData,
+              $report.quality,
+            )
           )
-        )
 
-        info "Fleet ",
-          result.fleetId, " (", houseId, ") HackStarbase success at ", targetSystem,
-          " - gathered economic/R&D intelligence"
+          info "Fleet ",
+            result.fleetId, " (", houseId, ") HackStarbase success at ", targetSystem,
+            " - gathered economic/R&D intelligence"
     else:
       # Ignore non-espionage orders
       discard

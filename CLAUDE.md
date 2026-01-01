@@ -23,6 +23,7 @@
 
 The src tree API is located in docs/api/api.json for efficient context.
 
+Strictly follow entity patterns established in src/engine/architecture.md
 ---
 
 ## Design Patterns (DRY & DoD)

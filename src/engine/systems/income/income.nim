@@ -10,9 +10,11 @@
 ## 5. Apply population growth
 
 import std/[math, strformat, logging]
-import ../../types/[game_state, colony, income, production as production_types]
+import
+  ../../types/
+    [game_state, colony, income, production as production_types, core, prestige]
 import ../../prestige/events as prestige_events
-import ../../config/economy_config
+import ../../globals
 import ./multipliers
 import ../production/engine as production_engine
 
@@ -138,7 +140,7 @@ proc calculateHouseIncome*(
       if colonies.len > 0:
         colonies[0].owner
       else:
-        "",
+        HouseId(0),
     colonies: @[],
     totalGross: 0,
     totalNet: 0,
@@ -146,8 +148,8 @@ proc calculateHouseIncome*(
     taxAverage6Turn: 0,
     taxPenalty: 0,
     totalPrestigeBonus: 0,
-    treasuryBefore: treasury,
-    treasuryAfter: treasury,
+    treasuryBefore: int32(treasury),
+    treasuryAfter: int32(treasury),
     transactions: @[],
     prestigeEvents: @[],
   )
@@ -161,9 +163,12 @@ proc calculateHouseIncome*(
     result.totalNet += colonyReport.netValue
 
   # Calculate tax effects
-  result.taxAverage6Turn = calculateRollingTaxAverage(taxPolicy.history)
-  result.taxPenalty = calculateTaxPenalty(result.taxAverage6Turn)
-  result.totalPrestigeBonus = calculateTaxBonus(taxPolicy.currentRate, colonies.len)
+  var history: seq[int] = @[]
+  for h in taxPolicy.history:
+    history.add(int(h))
+  result.taxAverage6Turn = int32(calculateRollingTaxAverage(history))
+  result.taxPenalty = int32(calculateTaxPenalty(result.taxAverage6Turn))
+  result.totalPrestigeBonus = int32(calculateTaxBonus(taxPolicy.currentRate, colonies.len))
 
   # Generate prestige events from tax policy
   # Low tax bonus (using configured thresholds and values)
@@ -188,7 +193,7 @@ proc calculateHouseIncome*(
     )
 
   # Apply to treasury
-  result.treasuryAfter = treasury + result.totalNet
+  result.treasuryAfter = int32(treasury) + result.totalNet
 
   # Record transactions
   result.transactions.add(
@@ -252,10 +257,12 @@ proc applyPopulationGrowth*(
 
   # Calculate new population (ensure non-negative and within capacity)
   let newPU = int(min(currentPU + growth, capacity))
-  colony.populationUnits = max(1, newPU) # Minimum 1 PU (colony doesn't die from growth)
+  colony.populationUnits = int32(max(1, newPU)) # Minimum 1 PU (colony doesn't die from growth)
 
-  # Update PTU
-  colony.populationTransferUnits = calculatePTU(colony.populationUnits)
+  # Update PTU using formula: PTU = PU - 1 + exp(0.00657 * PU)
+  # Per economy.md:3.6 - exponential relationship between PU and PTU
+  let pu = float(colony.populationUnits)
+  colony.populationTransferUnits = int32(pu - 1.0 + exp(0.00657 * pu))
 
   # Return actual growth percentage for reporting
   if currentPU > 0:
@@ -289,10 +296,10 @@ proc applyIndustrialGrowth*(
 
   # Base growth scales with population size (2x accelerated for 30-45 turn games)
   # Larger populations naturally build more infrastructure
-  let growthConfig = economy_config.globalEconomyConfig.industrial_growth
+  let growthConfig = gameConfig.economy.industrialGrowth
   let baseIndustrialGrowth = max(
-    growthConfig.passive_growth_minimum,
-    floor(currentPU / growthConfig.passive_growth_divisor),
+    growthConfig.passiveGrowthMinimum,
+    floor(currentPU / growthConfig.passiveGrowthDivisor),
   )
 
   # Apply same tax and starbase modifiers as population
@@ -303,7 +310,7 @@ proc applyIndustrialGrowth*(
 
   # Apply growth
   let newIU = int(currentIU + effectiveGrowth)
-  colony.industrial.units = max(0, newIU)
+  colony.industrial.units = int32(max(0, newIU))
 
   # Return growth amount
   return effectiveGrowth
