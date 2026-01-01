@@ -388,7 +388,7 @@ proc executeCombat(
           for starbase in colony.starbases:
             # Load starbase combat stats from facilities.toml
             # Apply owner's WEP tech level to starbase AS/DS
-            let ownerWepLevel = houseOpt.get().techTree.levels.weaponsTech
+            let ownerWepLevel = houseOpt.get().techTree.levels.wep
             let starbaseStats = getStarbaseStats(ownerWepLevel)
 
             let combatFacility = CombatFacility(

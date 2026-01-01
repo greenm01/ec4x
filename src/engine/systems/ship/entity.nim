@@ -91,7 +91,7 @@ proc getShipStats*(shipClass: ShipClass, weaponsTech: int32 = 1): ShipStats =
       baseDS
 
   ShipStats(
-    attackStrength: modifiedAS, defenseStrength: modifiedDS, weaponsTech: weaponsTech
+    attackStrength: modifiedAS, defenseStrength: modifiedDS, wep: weaponsTech
   )
 
 ## Ship Construction

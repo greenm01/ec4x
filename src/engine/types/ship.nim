@@ -49,7 +49,7 @@ type
     ## All other stats (role, costs, CC, CR) looked up from config via shipClass
     attackStrength*: int32 # WEP-modified AS at construction
     defenseStrength*: int32 # WEP-modified DS at construction
-    weaponsTech*: int32 # WEP level at construction (permanent)
+    wep*: int32 # WEP level at construction (permanent)
 
   Ship* = object
     id*: ShipId

@@ -303,7 +303,7 @@ proc attemptTechAdvancement*(
   let currentLevel =
     case field
     of TechField.ConstructionTech: tree.levels.constructionTech
-    of TechField.WeaponsTech: tree.levels.weaponsTech
+    of TechField.WeaponsTech: tree.levels.wep
     of TechField.TerraformingTech: tree.levels.terraformingTech
     of TechField.ElectronicIntelligence: tree.levels.electronicIntelligence
     of TechField.CloakingTech: tree.levels.cloakingTech
@@ -351,7 +351,7 @@ proc attemptTechAdvancement*(
     # Recalculate facility dock capacities for new CST level
     applyDockCapacityUpgrade(state, houseId)
   of TechField.WeaponsTech:
-    tree.levels.weaponsTech += 1
+    tree.levels.wep += 1
   of TechField.TerraformingTech:
     tree.levels.terraformingTech += 1
   of TechField.ElectronicIntelligence:

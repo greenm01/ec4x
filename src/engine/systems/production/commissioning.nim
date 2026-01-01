@@ -296,7 +296,7 @@ proc commissionPlanetaryDefense*(
         if houseOpt.isNone:
           continue
         let house = houseOpt.get()
-        let techLevel = house.techTree.levels.weaponsTech
+        let techLevel = house.techTree.levels.wep
 
         # Create 12 fighter ships (squadron strength)
         var fighterShipIds: seq[ShipId] = @[]
@@ -1018,7 +1018,7 @@ proc commissionShips*(
         logWarn("Economy", &"Cannot commission ship - house {owner} not found")
         continue
       let house = houseOpt.get()
-      let techLevel = house.techTree.levels.weaponsTech
+      let techLevel = house.techTree.levels.wep
 
       # Commission ship based on type
       case shipClass
