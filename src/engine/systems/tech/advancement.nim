@@ -16,11 +16,9 @@
 
 import std/[random, tables, options]
 import costs, effects
-import ../../types/[core, game_state, tech, command, prestige]
-import ../../state/iterators
-import ../../state/game_state as state_helpers
-import ../../config/[tech_config, prestige_multiplier, prestige_config]
-import ../../../common/logger
+import ../../types/[core, game_state, tech, prestige]
+import ../../state/[engine as state_helpers, entity_manager]
+import ../../globals
 
 export
   tech.ResearchAdvancement, tech.AdvancementType, tech.BreakthroughEvent, tech.TechTree
@@ -30,26 +28,33 @@ export
 proc updateSpaceportDocks(
     state: var GameState, spaceportId: SpaceportId, effectiveDocks: int32
 ) =
-  ## Helper to update spaceport effective docks (works around Nim var field access limitations)
-  if spaceportId in state.spaceports.entities.index:
-    let idx = state.spaceports.entities.index[spaceportId]
-    state.spaceports.entities.data[idx].effectiveDocks = effectiveDocks
+  ## Helper to update spaceport effective docks using DoD pattern
+  ## Uses updateEntity instead of direct index manipulation
+  let spaceportOpt = state.spaceports.entities.entity(spaceportId)
+  if spaceportOpt.isSome:
+    var spaceport = spaceportOpt.get()
+    spaceport.effectiveDocks = effectiveDocks
+    state.spaceports.entities.updateEntity(spaceportId, spaceport)
 
 proc updateShipyardDocks(
     state: var GameState, shipyardId: ShipyardId, effectiveDocks: int32
 ) =
-  ## Helper to update shipyard effective docks
-  if shipyardId in state.shipyards.entities.index:
-    let idx = state.shipyards.entities.index[shipyardId]
-    state.shipyards.entities.data[idx].effectiveDocks = effectiveDocks
+  ## Helper to update shipyard effective docks using DoD pattern
+  let shipyardOpt = state.shipyards.entities.entity(shipyardId)
+  if shipyardOpt.isSome:
+    var shipyard = shipyardOpt.get()
+    shipyard.effectiveDocks = effectiveDocks
+    state.shipyards.entities.updateEntity(shipyardId, shipyard)
 
 proc updateDrydockDocks(
     state: var GameState, drydockId: DrydockId, effectiveDocks: int32
 ) =
-  ## Helper to update drydock effective docks
-  if drydockId in state.drydocks.entities.index:
-    let idx = state.drydocks.entities.index[drydockId]
-    state.drydocks.entities.data[idx].effectiveDocks = effectiveDocks
+  ## Helper to update drydock effective docks using DoD pattern
+  let drydockOpt = state.drydocks.entities.entity(drydockId)
+  if drydockOpt.isSome:
+    var drydock = drydockOpt.get()
+    drydock.effectiveDocks = effectiveDocks
+    state.drydocks.entities.updateEntity(drydockId, drydock)
 
 proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
   ## Recalculate all facility dock capacities when CST tech advances
@@ -59,25 +64,25 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
   ## DoD compliant: Uses getHouse, iterates colony IDs, updates facilities via entity managers
 
   # Get house's CST level
-  let houseOpt = state_helpers.getHouse(state, houseId)
+  let houseOpt = state_helpers.house(state, houseId)
   if houseOpt.isNone:
     return
   let house = houseOpt.get()
-  let cstLevel = house.techTree.levels.constructionTech
+  let cstLevel = house.techTree.levels.cst
 
   # Iterate over all colonies owned by this house
   if houseId notin state.colonies.byOwner:
     return
 
   for colonyId in state.colonies.byOwner[houseId]:
-    let colonyOpt = state_helpers.getColony(state, colonyId)
+    let colonyOpt = state_helpers.colony(state, colonyId)
     if colonyOpt.isNone:
       continue
     let colony = colonyOpt.get()
 
     # Update spaceport capacities
     for spaceportId in colony.spaceportIds:
-      let spaceportOpt = state_helpers.getSpaceport(state, spaceportId)
+      let spaceportOpt = state_helpers.spaceport(state, spaceportId)
       if spaceportOpt.isNone:
         continue
       let spaceport = spaceportOpt.get()
@@ -87,7 +92,7 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
 
     # Update shipyard capacities
     for shipyardId in colony.shipyardIds:
-      let shipyardOpt = state_helpers.getShipyard(state, shipyardId)
+      let shipyardOpt = state_helpers.shipyard(state, shipyardId)
       if shipyardOpt.isNone:
         continue
       let shipyard = shipyardOpt.get()
@@ -97,7 +102,7 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
 
     # Update drydock capacities
     for drydockId in colony.drydockIds:
-      let drydockOpt = state_helpers.getDrydock(state, drydockId)
+      let drydockOpt = state_helpers.drydock(state, drydockId)
       if drydockOpt.isNone:
         continue
       let drydock = drydockOpt.get()
@@ -196,10 +201,10 @@ proc applyBreakthrough*(
   of BreakthroughType.Major:
     # Auto-advance EL or SL
     if allocation.economic > allocation.science:
-      tree.levels.economicLevel += 1
+      tree.levels.el += 1
       result.category = ResearchCategory.Economic
     else:
-      tree.levels.scienceLevel += 1
+      tree.levels.sl += 1
       result.category = ResearchCategory.Science
     result.autoAdvance = true
   of BreakthroughType.Revolutionary:
@@ -228,14 +233,13 @@ proc attemptELAdvancement*(
     tree.accumulated.economic -= int32(cost)
 
     # Advance level
-    tree.levels.economicLevel = int32(currentEL + 1)
+    tree.levels.el = int32(currentEL + 1)
 
-    # Create prestige event with dynamic scaling
-    let config = globalPrestigeConfig
-    let prestigeAmount = applyMultiplier(config.economic.tech_advancement)
+    # Create prestige event
+    let prestigeAmount = gameConfig.prestige.economic.techAdvancement
     let prestigeEvent = PrestigeEvent(
       source: PrestigeSource.TechAdvancement,
-      amount: int32(prestigeAmount),
+      amount: prestigeAmount,
       description: "Economic Level " & $currentEL & " → " & $(currentEL + 1),
     )
 
@@ -269,14 +273,13 @@ proc attemptSLAdvancement*(
     tree.accumulated.science -= int32(cost)
 
     # Advance level
-    tree.levels.scienceLevel = int32(currentSL + 1)
+    tree.levels.sl = int32(currentSL + 1)
 
-    # Create prestige event with dynamic scaling
-    let config = globalPrestigeConfig
-    let prestigeAmount = applyMultiplier(config.economic.tech_advancement)
+    # Create prestige event
+    let prestigeAmount = gameConfig.prestige.economic.techAdvancement
     let prestigeEvent = PrestigeEvent(
       source: PrestigeSource.TechAdvancement,
-      amount: int32(prestigeAmount),
+      amount: prestigeAmount,
       description: "Science Level " & $currentSL & " → " & $(currentSL + 1),
     )
 
@@ -302,18 +305,18 @@ proc attemptTechAdvancement*(
 
   let currentLevel =
     case field
-    of TechField.ConstructionTech: tree.levels.constructionTech
+    of TechField.ConstructionTech: tree.levels.cst
     of TechField.WeaponsTech: tree.levels.wep
-    of TechField.TerraformingTech: tree.levels.terraformingTech
-    of TechField.ElectronicIntelligence: tree.levels.electronicIntelligence
-    of TechField.CloakingTech: tree.levels.cloakingTech
-    of TechField.ShieldTech: tree.levels.shieldTech
-    of TechField.CounterIntelligence: tree.levels.counterIntelligence
+    of TechField.TerraformingTech: tree.levels.ter
+    of TechField.ElectronicIntelligence: tree.levels.eli
+    of TechField.CloakingTech: tree.levels.clk
+    of TechField.ShieldTech: tree.levels.sld
+    of TechField.CounterIntelligence: tree.levels.cic
     of TechField.StrategicLiftTech: tree.levels.stl
     of TechField.FlagshipCommandTech: tree.levels.fc
     of TechField.StrategicCommandTech: tree.levels.sc
-    of TechField.FighterDoctrine: tree.levels.fighterDoctrine
-    of TechField.AdvancedCarrierOps: tree.levels.advancedCarrierOps
+    of TechField.FighterDoctrine: tree.levels.fd
+    of TechField.AdvancedCarrierOps: tree.levels.aco
 
   # Check if already at max level
   let maxLevel =
@@ -347,21 +350,21 @@ proc attemptTechAdvancement*(
   # Advance level
   case field
   of TechField.ConstructionTech:
-    tree.levels.constructionTech += 1
+    tree.levels.cst += 1
     # Recalculate facility dock capacities for new CST level
     applyDockCapacityUpgrade(state, houseId)
   of TechField.WeaponsTech:
     tree.levels.wep += 1
   of TechField.TerraformingTech:
-    tree.levels.terraformingTech += 1
+    tree.levels.ter += 1
   of TechField.ElectronicIntelligence:
-    tree.levels.electronicIntelligence += 1
+    tree.levels.eli += 1
   of TechField.CloakingTech:
-    tree.levels.cloakingTech += 1
+    tree.levels.clk += 1
   of TechField.ShieldTech:
-    tree.levels.shieldTech += 1
+    tree.levels.sld += 1
   of TechField.CounterIntelligence:
-    tree.levels.counterIntelligence += 1
+    tree.levels.cic += 1
   of TechField.StrategicLiftTech:
     tree.levels.stl += 1
   of TechField.FlagshipCommandTech:
@@ -369,17 +372,16 @@ proc attemptTechAdvancement*(
   of TechField.StrategicCommandTech:
     tree.levels.sc += 1
   of TechField.FighterDoctrine:
-    tree.levels.fighterDoctrine += 1
+    tree.levels.fd += 1
   of TechField.AdvancedCarrierOps:
-    tree.levels.advancedCarrierOps += 1
+    tree.levels.aco += 1
 
-  # Create prestige event with dynamic scaling
-  let config = globalPrestigeConfig
-  let prestigeAmount = applyMultiplier(config.economic.tech_advancement)
+  # Create prestige event
+  let prestigeAmount = gameConfig.prestige.economic.techAdvancement
   let fieldName = $field
   let prestigeEvent = PrestigeEvent(
     source: PrestigeSource.TechAdvancement,
-    amount: int32(prestigeAmount),
+    amount: prestigeAmount,
     description: fieldName & " " & $currentLevel & " → " & $(currentLevel + 1),
   )
 

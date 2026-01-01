@@ -9,7 +9,7 @@
 
 import std/[math, tables]
 import ../../types/tech
-import ../../config/tech_config
+import ../../globals
 
 export tech.ResearchAllocation
 
@@ -27,44 +27,28 @@ proc convertPPToERP*(pp: int32, gho: int32): int32 =
 
 proc getELUpgradeCost*(currentLevel: int32): int32 =
   ## Get ERP cost to advance Economic Level
-  ## Per economy.md:4.2 and config/tech.toml
-  ##
-  ## Loads from globalTechConfig instead of hardcoded formula
-  return getELUpgradeCostFromConfig(currentLevel)
+  ## Per economy.md:4.2 and config/tech.kdl
+  ## Uses Table pattern for levels
+  let nextLevel = currentLevel + 1
+  if gameConfig.tech.el.levels.hasKey(nextLevel):
+    return gameConfig.tech.el.levels[nextLevel].erpCost
+  else:
+    return 0 # Level not found or at max
 
 proc getELModifier*(level: int32): float32 =
   ## Get EL economic modifier (as multiplier)
   ## Per economy.md:4.2: +5% per level, capped at 50%
-  ## Returns 1.0 + bonus (e.g., 1.05 for EL1, 1.50 for EL10+)
-  ##
-  ## Reads from globalTechConfig
-  let cfg = globalTechConfig.economic_level
-
-  case level
-  of 1:
-    return cfg.level_1_mod
-  of 2:
-    return cfg.level_2_mod
-  of 3:
-    return cfg.level_3_mod
-  of 4:
-    return cfg.level_4_mod
-  of 5:
-    return cfg.level_5_mod
-  of 6:
-    return cfg.level_6_mod
-  of 7:
-    return cfg.level_7_mod
-  of 8:
-    return cfg.level_8_mod
-  of 9:
-    return cfg.level_9_mod
-  of 10:
-    return cfg.level_10_mod
-  of 11:
-    return cfg.level_11_mod
+  ## Returns multiplier (e.g., 1.05 for EL1, 1.50 for EL10+)
+  ## Uses Table pattern for levels
+  if gameConfig.tech.el.levels.hasKey(level):
+    return gameConfig.tech.el.levels[level].multiplier
+  elif level <= 0:
+    return 1.0 # Base level (no bonus)
   else:
-    return cfg.level_11_mod # Cap at level 11
+    # Level not in config, calculate dynamically
+    # +5% per level, capped at 50%
+    let bonus = min(float32(level) * 0.05, 0.50)
+    return 1.0 + bonus
 
 ## Science Research Points (economy.md:4.3)
 
@@ -80,10 +64,15 @@ proc convertPPToSRP*(pp: int32, currentSL: int32): int32 =
 
 proc getSLUpgradeCost*(currentLevel: int32): int32 =
   ## Get SRP cost to advance Science Level
-  ## Per economy.md:4.3 and config/tech.toml
-  ##
-  ## Loads from globalTechConfig instead of hardcoded formula
-  return getSLUpgradeCostFromConfig(currentLevel)
+  ## Per economy.md:4.3 and config/tech.kdl
+  ## Uses Table pattern for levels
+  let nextLevel = currentLevel + 1
+  if gameConfig.tech.sl.levels.hasKey(nextLevel):
+    let levelData = gameConfig.tech.sl.levels[nextLevel]
+    # SL uses srpRequired as the cost
+    return levelData.srpRequired
+  else:
+    return 0 # Level not found or at max
 
 proc getSLModifier*(level: int): float =
   ## Get SL research modifier
@@ -116,10 +105,50 @@ proc convertPPToTRP*(
 
 proc getTechUpgradeCost*(techField: TechField, currentLevel: int32): int32 =
   ## Get TRP cost to advance tech level
-  ## Per economy.md:4.4-4.12 and config/tech.toml
-  ##
-  ## Loads from globalTechConfig instead of hardcoded values
-  return getTechUpgradeCostFromConfig(techField, currentLevel)
+  ## Per economy.md:4.4-4.12 and config/tech.kdl
+  ## Uses Table pattern for levels
+  let nextLevel = currentLevel + 1
+
+  # Get cost from appropriate config table
+  case techField
+  of TechField.ConstructionTech:
+    if gameConfig.tech.cst.levels.hasKey(nextLevel):
+      return gameConfig.tech.cst.levels[nextLevel].trpCost
+  of TechField.WeaponsTech:
+    if gameConfig.tech.wep.levels.hasKey(nextLevel):
+      return gameConfig.tech.wep.levels[nextLevel].trpCost
+  of TechField.TerraformingTech:
+    if gameConfig.tech.ter.levels.hasKey(nextLevel):
+      return gameConfig.tech.ter.levels[nextLevel].srpCost
+  of TechField.ElectronicIntelligence:
+    if gameConfig.tech.eli.levels.hasKey(nextLevel):
+      return gameConfig.tech.eli.levels[nextLevel].srpCost
+  of TechField.CloakingTech:
+    if gameConfig.tech.clk.levels.hasKey(nextLevel):
+      return gameConfig.tech.clk.levels[nextLevel].srpCost
+  of TechField.ShieldTech:
+    if gameConfig.tech.sld.levels.hasKey(nextLevel):
+      return gameConfig.tech.sld.levels[nextLevel].srpCost
+  of TechField.CounterIntelligence:
+    if gameConfig.tech.cic.levels.hasKey(nextLevel):
+      return gameConfig.tech.cic.levels[nextLevel].srpCost
+  of TechField.StrategicLiftTech:
+    if gameConfig.tech.stl.levels.hasKey(nextLevel):
+      return gameConfig.tech.stl.levels[nextLevel].srpCost
+  of TechField.FlagshipCommandTech:
+    if gameConfig.tech.fc.levels.hasKey(nextLevel):
+      return gameConfig.tech.fc.levels[nextLevel].trpCost
+  of TechField.StrategicCommandTech:
+    if gameConfig.tech.sc.levels.hasKey(nextLevel):
+      return gameConfig.tech.sc.levels[nextLevel].trpCost
+  of TechField.FighterDoctrine:
+    if gameConfig.tech.fd.levels.hasKey(nextLevel):
+      return gameConfig.tech.fd.levels[nextLevel].trpCost
+  of TechField.AdvancedCarrierOps:
+    if gameConfig.tech.aco.levels.hasKey(nextLevel):
+      return gameConfig.tech.aco.levels[nextLevel].trpCost
+
+  return 0 # Level not found or at max
 
 ## Research Allocation
 
