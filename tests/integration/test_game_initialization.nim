@@ -189,7 +189,7 @@ suite "Game Initialization - Complete Flow":
           check shipOpt.isSome
           if shipOpt.isSome:
             let ship = shipOpt.get()
-            check ship.stats.weaponsTech > 0
+            check ship.stats.wep > 0
             shipCount += 1
 
             # ETACs should have cargo

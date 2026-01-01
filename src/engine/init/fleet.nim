@@ -58,7 +58,7 @@ proc createStartingFleets*(
         stats: ShipStats(
           attackStrength: shipConfig.attack_strength,
           defenseStrength: shipConfig.defense_strength,
-          weaponsTech: weaponsTech,
+          wep: weaponsTech,
         ),
         isCrippled: false,
         cargo: shipCargo,
