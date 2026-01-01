@@ -14,6 +14,7 @@
 ##   5b. Total Squadron Limit (2-Turn Grace Period)
 ##   5c. Fighter Squadron Capacity (2-Turn Grace Period)
 ##   5d. Planet-Breaker Enforcement (Immediate)
+## Step 5a: Apply C2 Pool Logistical Strain
 ## Step 6: Collect Resources
 ## Step 7: Calculate Prestige
 ## Step 8: House Elimination & Victory Checks
@@ -53,6 +54,7 @@ import
     planet_breakers as planet_breaker_capacity,
     total_squadrons as total_squadron_capacity,
   ]
+import ../../systems/capacity/c2_pool
 import ../../event_factory/init as event_factory
 import
   ../../systems/intelligence/[
@@ -386,6 +388,36 @@ proc resolveIncomePhase*(
       )
 
   logInfo(LogCategory.lcEconomy, "[INCOME STEP 5] Completed capacity enforcement")
+
+  # ===================================================================
+  # STEP 5a: APPLY C2 POOL LOGISTICAL STRAIN
+  # ===================================================================
+  # Per assets.md:2.3.3.4 - Logistical strain penalty for exceeding C2 Pool
+  # Formula: max(0, Total Fleet CC - C2 Pool) × 0.5 PP per turn
+  # Applies fleet status modifiers: Active (100%), Reserve (50%), Mothballed (0%)
+  logInfo(
+    LogCategory.lcEconomy, "[INCOME STEP 5a] Processing C2 Pool logistical strain..."
+  )
+
+  for houseId in state.houses.keys:
+    let analysis = c2_pool.processLogisticalStrain(state, houseId, events)
+
+    if analysis.logisticalStrain > 0:
+      logWarn(
+        LogCategory.lcEconomy,
+        &"{houseId} logistical strain: {analysis.logisticalStrain} PP " &
+          &"(Fleet CC: {analysis.totalFleetCC}, C2 Pool: {analysis.c2Pool}, " &
+          &"Excess: {analysis.excess})",
+      )
+    else:
+      logDebug(
+        LogCategory.lcEconomy,
+        &"{houseId} C2 Pool status: {analysis.totalFleetCC}/{analysis.c2Pool} CC " &
+          &"(IU: {analysis.totalIU}, SC Level: {analysis.scLevel}, " &
+          &"Bonus: +{analysis.scBonus})",
+      )
+
+  logInfo(LogCategory.lcEconomy, "[INCOME STEP 5a] Completed C2 Pool enforcement")
 
   # ===================================================================
   # STEP 6: COLLECT RESOURCES
