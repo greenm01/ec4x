@@ -72,6 +72,14 @@ industrialGrowth {
 industrialInvestment {
   (docs)"docs/specs/03-economy.md#section-3-4"
   baseCost 1 // Cost in PP to purchase 1 IU (1:1 conversion)
+
+  // Cost scaling tiers based on IU percentage relative to PU
+  // Per economy.md:3.4 - cost increases as IU saturates population
+  tier 1 { threshold 50;  multiplier 1.0 }  // Up to 50% PU: 1.0x (30 PP)
+  tier 2 { threshold 75;  multiplier 1.2 }  // 51-75% PU: 1.2x (36 PP)
+  tier 3 { threshold 100; multiplier 1.5 }  // 76-100% PU: 1.5x (45 PP)
+  tier 4 { threshold 150; multiplier 2.0 }  // 101-150% PU: 2.0x (60 PP)
+  tier 5 { threshold 999; multiplier 2.5 }  // 151%+ PU: 2.5x (75 PP)
 }
 
 // --- Starbase Economic Bonuses ---

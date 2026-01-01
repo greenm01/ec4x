@@ -39,36 +39,32 @@ proc getShipBuildTime*(shipClass: ShipClass, cstLevel: int): int =
 
 ## Industrial Unit Investment (economy.md:3.4)
 
-proc getIndustrialUnitCost*(colony: Colony): int =
+proc getIndustrialUnitCost*(colony: Colony): int32 =
   ## Calculate cost for next IU investment
-  ## Cost scales based on IU percentage relative to PU
-  ##
-  ## Per economy.md:3.4:
-  ## - Up to 50% PU: 1.0x (30 PP)
-  ## - 51-75%: 1.2x (36 PP)
-  ## - 76-100%: 1.5x (45 PP)
-  ## - 101-150%: 2.0x (60 PP)
-  ## - 151%+: 2.5x (75 PP)
+  ## Cost scales based on IU percentage relative to PU (economy.md:3.4)
+  ## Reads scaling tiers from config/economy.kdl
 
   let iuPercent =
     if colony.populationUnits > 0:
-      int((float(colony.industrial.units) / float(colony.populationUnits)) * 100.0)
+      int32((float32(colony.industrial.units) / float32(colony.populationUnits)) * 100.0)
     else:
-      0
+      0'i32
 
-  let multiplier =
-    if iuPercent <= 50:
-      1.0
-    elif iuPercent <= 75:
-      1.2
-    elif iuPercent <= 100:
-      1.5
-    elif iuPercent <= 150:
-      2.0
-    else:
-      2.5
+  # Find applicable tier based on IU percentage
+  # Tiers are ordered 1-5, check in order until threshold exceeded
+  var multiplier = 1.0'f32  # Default fallback
 
-  return int(float(globalEconomyConfig.industrial_investment.base_cost) * multiplier)
+  let cfg = globalEconomyConfig.industrialInvestment
+  for tierNum in 1'i32 .. 5'i32:
+    if cfg.costScaling.hasKey(tierNum):
+      let tier = cfg.costScaling[tierNum]
+      if iuPercent <= tier.threshold:
+        multiplier = tier.multiplier
+        break
+      # If we've passed all thresholds, use the highest tier's multiplier
+      multiplier = tier.multiplier
+
+  return int32(float32(cfg.baseCost) * multiplier)
 
 ## Construction Project Factory Functions
 

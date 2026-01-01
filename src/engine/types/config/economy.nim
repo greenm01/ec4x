@@ -34,8 +34,14 @@ type
     ## Configuration for tax impact on population growth by tier
     tiers*: Table[int32, TaxTierData]
 
+  IuCostScalingTier* = object
+    ## Cost scaling tier for IU investment (economy.md:3.4)
+    threshold*: int32  # IU percentage threshold (relative to PU)
+    multiplier*: float32  # Cost multiplier applied to baseCost
+
   IndustrialInvestmentConfig* = object
     baseCost*: int32
+    costScaling*: Table[int32, IuCostScalingTier]  # Tier 1-5
 
   ColonizationConfig* = object
     startingInfrastructureLevel*: int32

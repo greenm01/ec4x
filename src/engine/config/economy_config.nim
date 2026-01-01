@@ -107,9 +107,31 @@ proc parseIndustrialInvestment(
   node: KdlNode,
   ctx: var KdlConfigContext
 ): IndustrialInvestmentConfig =
+  ## Parse industrialInvestment with cost scaling tiers
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## industrialInvestment {
+  ##   baseCost 1
+  ##   tier 1 { threshold 50; multiplier 1.0 }
+  ##   tier 2 { threshold 75; multiplier 1.2 }
+  ## }
+  ## ```
   result = IndustrialInvestmentConfig(
     baseCost: node.requireInt32("baseCost", ctx)
   )
+
+  # Parse cost scaling tiers
+  for child in node.children:
+    if child.name == "tier" and child.args.len > 0:
+      let tierNum = child.args[0].getInt().int32
+
+      # Store with actual tier number as key (1-5)
+      if tierNum >= 1 and tierNum <= 5:
+        result.costScaling[tierNum] = IuCostScalingTier(
+          threshold: child.requireInt32("threshold", ctx),
+          multiplier: child.requireFloat32("multiplier", ctx)
+        )
 
 proc parseColonization(
   node: KdlNode,
