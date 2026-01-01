@@ -5,8 +5,9 @@
 ##
 ## Uses deterministic PRNG for reproducible tests
 
-import std/[hashes, strutils]
+import std/[hashes, strutils, options]
 import ../../types/combat as combat_types
+import ../../globals
 
 export combat_types
 
@@ -62,36 +63,28 @@ proc isCritical*(naturalRoll: int): bool =
 
 proc lookupCER*(finalRoll: int): float32 =
   ## Look up Combat Effectiveness Rating from CER table
-  ## Based on EC4X specs Section 7.3.3
-  ## Returns effectiveness multiplier (0.0 to 2.0+)
-  if finalRoll <= 0:
-    0.0
-  elif finalRoll == 1:
-    0.1
-  elif finalRoll == 2:
-    0.2
-  elif finalRoll == 3:
-    0.3
-  elif finalRoll == 4:
-    0.4
-  elif finalRoll == 5:
-    0.5
-  elif finalRoll == 6:
-    0.6
-  elif finalRoll == 7:
-    0.8
-  elif finalRoll == 8:
-    1.0
-  elif finalRoll == 9:
-    1.2
-  elif finalRoll == 10:
-    1.4
-  elif finalRoll == 11:
-    1.6
-  elif finalRoll == 12:
-    1.8
+  ## Reads bucketed values from config/combat.kdl per Section 7.3.3
+  ##
+  ## Spec table (07-combat.md:344-354):
+  ## | Modified Roll | CER Multiplier |
+  ## |---------------|----------------|
+  ## | 0, 1, 2       | 0.25           |
+  ## | 3, 4          | 0.50           |
+  ## | 5, 6          | 0.75           |
+  ## | 7, 8          | 1.00           |
+  ## | 9*            | 1.00 (critical)|
+  ##
+  ## Returns effectiveness multiplier from config (typically 0.25 to 1.00)
+  let cfg = gameConfig.combat.cerTable
+
+  if finalRoll <= cfg.veryPoorMax:
+    cfg.veryPoorMultiplier # Typically 0.25 for rolls 0-2
+  elif finalRoll <= cfg.poorMax:
+    cfg.poorMultiplier # Typically 0.50 for rolls 3-4
+  elif finalRoll <= cfg.averageMax:
+    cfg.averageMultiplier # Typically 0.75 for rolls 5-6
   else:
-    2.0 # 13+
+    cfg.goodMultiplier # Typically 1.00 for rolls 7+
 
 proc calculateModifiers*(
     phase: CombatPhase,
@@ -151,16 +144,87 @@ proc rollCER*(
     isCriticalHit: isCrit,
   )
 
-proc applyDamage*(damage: int, effectiveness: float): int =
+proc applyDamage*(damage: int32, effectiveness: float): int32 =
   ## Calculate actual damage: damage * CER
   ## Round up (Section 7.3.3)
   let exactDamage = float(damage) * effectiveness
-  return int(exactDamage + 0.5) # Round to nearest (0.5+ rounds up)
+  return int32(exactDamage + 0.5) # Round to nearest (0.5+ rounds up)
 
-proc calculateHits*(squadronAS: int, cerRoll: CERRoll): int =
+proc calculateHits*(squadronAS: int32, cerRoll: CERRoll): int32 =
   ## Calculate total hits from squadron attack
   ## Total Hits = CER × Squadron_AS
   applyDamage(squadronAS, cerRoll.effectiveness)
+
+## Morale Check System (Section 7.3.3)
+
+proc getMoraleTierFromPrestige*(prestige: int): MoraleTier =
+  ## Determine morale tier from house prestige
+  ## Reads thresholds from config/prestige.kdl morale section
+  let cfg = gameConfig.prestige.morale
+
+  if prestige <= cfg.crisisMax:
+    MoraleTier.Collapsing
+  elif prestige <= cfg.veryLowMax:
+    MoraleTier.VeryLow
+  elif prestige <= cfg.lowMax:
+    MoraleTier.Low
+  elif prestige <= cfg.averageMax:
+    MoraleTier.Normal
+  elif prestige <= cfg.goodMax:
+    MoraleTier.High
+  elif prestige <= cfg.highMax:
+    MoraleTier.VeryHigh
+  else:
+    MoraleTier.VeryHigh
+
+proc rollMoraleCheck*(
+  prestige: int, rng: var CombatRNG, d10CriticalRoll: Option[int] = none(int)
+): MoraleCheckResult =
+  ## Roll 1d20 morale check for a house
+  ## Based on docs/specs/07-combat.md Section 7.3.3
+  ##
+  ## Args:
+  ##   prestige: House prestige value
+  ##   rng: Combat RNG for die rolls
+  ##   d10CriticalRoll: Optional d10 crit roll for high morale auto-success
+  ##
+  ## Returns: MoraleCheckResult with roll outcome and CER bonus
+
+  let tier = getMoraleTierFromPrestige(prestige)
+  let cfg = gameConfig.combat.moraleChecks[tier]
+
+  # Roll 1d20
+  let roll = rng.roll1d20()
+
+  # Check for critical auto-success (high morale only)
+  var criticalAutoSuccess = false
+  if cfg.criticalAutoSuccess and d10CriticalRoll.isSome:
+    # High morale: natural 9+ on d10 auto-succeeds morale check
+    if d10CriticalRoll.get() >= 9:
+      criticalAutoSuccess = true
+
+  # Determine success
+  let success = criticalAutoSuccess or (roll > cfg.threshold)
+
+  # Collapsing tier: penalty applies regardless of success
+  let appliedBonus =
+    if tier == MoraleTier.Collapsing:
+      cfg.cerBonus  # Always apply (it's negative)
+    elif success:
+      cfg.cerBonus  # Apply if successful
+    else:
+      0  # No bonus if failed
+
+  result = MoraleCheckResult(
+    rolled: true,
+    roll: int32(roll),
+    threshold: cfg.threshold,
+    success: success,
+    cerBonus: appliedBonus,
+    appliesTo: if success or tier == MoraleTier.Collapsing: cfg.appliesTo
+    else: MoraleEffectTarget.None,
+    criticalAutoSuccess: criticalAutoSuccess,
+  )
 
 ## String formatting for logging
 

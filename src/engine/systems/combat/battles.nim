@@ -511,7 +511,7 @@ proc executeCombat(
       if systemOwner.isSome and systemOwner.get() == defenderTF.house:
         let colonyOpt = state.colonies.entities.entity(systemId)
         if colonyOpt.isSome and colonyOpt.get().starbases.len > 0:
-          starbaseBonus = globalFacilitiesConfig.facilities[FacilityClass.Starbase].economic_lift_bonus
+          starbaseBonus = gameConfig.combat.starbase.starbaseDetectionBonus
       let defenderRoll = detectionRng.rand(1 .. 10) + defenderELI + starbaseBonus
 
       logInfo(
@@ -593,6 +593,13 @@ proc executeCombat(
   let allowAmbush = (combatPhase == "Space Combat" or combatPhase == "Orbital Combat")
   let allowStarbaseCombat = (combatPhase == "Orbital Combat" or includeStarbases)
 
+  # Check if defender has starbases for detection bonus
+  var hasDefenderStarbase = false
+  if systemOwner.isSome:
+    let colonyOpt = state.colonies.entities.entity(systemId)
+    if colonyOpt.isSome:
+      hasDefenderStarbase = colonyOpt.get().starbases.len > 0
+
   var battleContext = BattleContext(
     systemId: systemId,
     taskForces: allTaskForces,
@@ -603,6 +610,7 @@ proc executeCombat(
     preDetectedHouses: preDetectedHouses,
     diplomaticRelations: diplomaticRelations,
     systemOwner: systemOwner,
+    hasDefenderStarbase: hasDefenderStarbase,
   )
 
   # Execute battle

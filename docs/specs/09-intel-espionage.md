@@ -14,7 +14,7 @@ Your **Scouts** are the primary tool for gathering detailed, high-quality intell
 
 Scout espionage missions progress through multiple phases:
 
-1. **Travel**: The Scout fleet moves toward the target system. During this phase, you can cancel the mission by issuing new commands.
+1. **Travel**: The Scout fleet moves toward the target system. During this phase, you can cancel the mission by issuing a new command.
 2. **Arrival**: When the fleet arrives, the mission begins. Scouts are "consumed" (committed to the mission) and the fleet is locked. You cannot recall scouts once the mission starts.
 3. **Persistent Operation**: Scouts remain at the target, gathering intelligence each turn while evading detection.
 4. **Detection Checks**: Every turn, the defending house attempts to detect your scouts. If detected, all scouts are destroyed immediately and the mission fails. If undetected, scouts gather **Perfect Quality** intelligence for that turn.

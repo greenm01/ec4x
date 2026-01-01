@@ -28,11 +28,13 @@ dynamicScaling {
 morale {
     (docs)"docs/specs/07-combat.md#section-7-2-1"
     // Note: Morale check mechanics (d20 thresholds, CER bonuses) defined in combat.kdl moraleChecks section
-    tier "Crisis" { maxPrestige 0 }
-    tier "Low" { maxPrestige 20 }
-    tier "Average" { maxPrestige 60 }
-    tier "Good" { maxPrestige 80 }
-    // 81+ is Elite
+    tier "Crisis" { maxPrestige 0 }     // Collapsing house
+    tier "VeryLow" { maxPrestige 10 }   // Near collapse
+    tier "Low" { maxPrestige 20 }       // Struggling
+    tier "Average" { maxPrestige 60 }   // Normal/stable
+    tier "Good" { maxPrestige 80 }      // Strong
+    tier "High" { maxPrestige 100 }     // Very strong
+    // 101+ is VeryHigh (Elite)
 }
 
 // ============================================================================

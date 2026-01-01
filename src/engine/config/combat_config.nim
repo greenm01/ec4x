@@ -7,6 +7,7 @@ import kdl
 import kdl_helpers
 import ../../common/logger
 import ../types/config
+import ../types/combat
 
 proc parseCombatMechanics(node: KdlNode, ctx: var KdlConfigContext): CombatMechanicsConfig =
   result = CombatMechanicsConfig(
@@ -18,8 +19,7 @@ proc parseCombatMechanics(node: KdlNode, ctx: var KdlConfigContext): CombatMecha
 
 proc parseCerTable(node: KdlNode, ctx: var KdlConfigContext): CerTableConfig =
   ## Parse CER table with tier structure: tier 1 { maxRoll=2 multiplier=0.25 }
-  var tier1, tier2, tier3: tuple[maxRoll: int32, mult: float32]
-  var tier4Min: int32
+  var tier1, tier2, tier3, tier4: tuple[maxRoll: int32, mult: float32]
 
   for child in node.children:
     if child.name == "tier" and child.args.len > 0:
@@ -32,14 +32,18 @@ proc parseCerTable(node: KdlNode, ctx: var KdlConfigContext): CerTableConfig =
       of 3:
         tier3 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
       of 4:
-        tier4Min = child.requireInt32("minRoll", ctx)
+        tier4 = (child.requireInt32("minRoll", ctx), child.requireFloat32("multiplier", ctx))
       else: discard
 
   result = CerTableConfig(
     veryPoorMax: tier1.maxRoll,
+    veryPoorMultiplier: tier1.mult,
     poorMax: tier2.maxRoll,
+    poorMultiplier: tier2.mult,
     averageMax: tier3.maxRoll,
-    goodMin: tier4Min
+    averageMultiplier: tier3.mult,
+    goodMin: tier4.maxRoll,
+    goodMultiplier: tier4.mult
   )
 
 proc parseBombardment(node: KdlNode, ctx: var KdlConfigContext): BombardmentConfig =
@@ -115,6 +119,7 @@ proc parseBlockade(node: KdlNode, ctx: var KdlConfigContext): BlockadeConfig =
 
 proc parseStarbase(node: KdlNode, ctx: var KdlConfigContext): StarbaseConfig =
   result = StarbaseConfig(
+    starbaseDetectionBonus: node.requireInt32("detectionBonus", ctx),
     starbaseCriticalReroll: node.requireBool("criticalReroll", ctx),
     starbaseDieModifier: node.requireInt32("dieModifier", ctx)
   )
@@ -134,6 +139,50 @@ proc parseTargeting(node: KdlNode, ctx: var KdlConfigContext): TargetingConfig =
     fighterWeight: node.requireFloat32("fighterWeight", ctx),
     starbaseWeight: node.requireFloat32("starbaseWeight", ctx)
   )
+
+proc parseMoraleEffectTarget(value: string): MoraleEffectTarget =
+  ## Convert string to MoraleEffectTarget enum
+  case value
+  of "none": MoraleEffectTarget.None
+  of "random": MoraleEffectTarget.Random
+  of "all": MoraleEffectTarget.All
+  else: MoraleEffectTarget.None
+
+proc parseMoraleTier(node: KdlNode, ctx: var KdlConfigContext): MoraleTierConfig =
+  ## Parse a single morale tier configuration
+  let appliesTo = node.requireString("appliesTo", ctx)
+
+  # Handle both cerBonus and cerPenalty
+  # Config uses cerPenalty with negative value (e.g., cerPenalty -1)
+  var cerBonus: int32
+  if node.hasChild("cerBonus"):
+    cerBonus = node.requireInt32("cerBonus", ctx)
+  elif node.hasChild("cerPenalty"):
+    cerBonus = node.requireInt32("cerPenalty", ctx)  # Already negative in config
+  else:
+    cerBonus = 0
+
+  result = MoraleTierConfig(
+    threshold: node.requireInt32("threshold", ctx),
+    cerBonus: cerBonus,
+    appliesTo: parseMoraleEffectTarget(appliesTo),
+    criticalAutoSuccess: node.getBool("criticalAutoSuccess", false)
+  )
+
+proc parseMoraleChecks(node: KdlNode, ctx: var KdlConfigContext): MoraleChecksConfig =
+  ## Parse moraleChecks { } with tier structure
+  for child in node.children:
+    let tier = case child.name
+      of "collapsing": MoraleTier.Collapsing
+      of "veryLow": MoraleTier.VeryLow
+      of "low": MoraleTier.Low
+      of "normal": MoraleTier.Normal
+      of "high": MoraleTier.High
+      of "veryHigh": MoraleTier.VeryHigh
+      else: continue
+
+    ctx.withNode(child.name):
+      result[tier] = parseMoraleTier(child, ctx)
 
 proc loadCombatConfig*(configPath: string): CombatConfig =
   ## Load combat configuration from KDL file
@@ -189,5 +238,9 @@ proc loadCombatConfig*(configPath: string): CombatConfig =
   # Parse targeting { }
   ctx.withNode("targeting"):
     result.targeting = parseTargeting(doc.requireNode("targeting", ctx), ctx)
+
+  # Parse moraleChecks { }
+  ctx.withNode("moraleChecks"):
+    result.moraleChecks = parseMoraleChecks(doc.requireNode("moraleChecks", ctx), ctx)
 
   logInfo("Config", "Loaded combat configuration", "path=", configPath)

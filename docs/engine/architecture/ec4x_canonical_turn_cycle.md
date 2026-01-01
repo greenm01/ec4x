@@ -11,47 +11,75 @@
 EC4X uses a four-phase turn structure that separates combat resolution, economic calculation, player decision-making, and server processing. Each phase has distinct timing and execution properties.
 
 **The Four Phases:**
-1. **Conflict Phase** - Resolve all combat and espionage (orders from Turn N-1)
-2. **Income Phase** - Calculate economics, enforce capacity limits, check victory. End of turn.
-3. **Command Phase** - Server commissioning, player submission, order validation. Start turn.
-4. **Production Phase** - Server processing (movement, construction, diplomacy)
+1. **Conflict Phase** - Resolve all combat and espionage (commands from previous engine turn)
+2. **Income Phase** - Calculate economics, enforce capacity limits, check victory conditions
+3. **Command Phase** - Server commissioning, player submission of new commands, command validation
+4. **Production Phase** - Server processing: movement, construction, diplomacy, and turn counter incrementation
 
-**Key Timing Principle:** Combat orders submitted Turn N execute Turn N+1 Conflict Phase. Movement orders submitted Turn N execute Turn N Production Phase.
+**Key Timing Principle:** Combat commands submitted by the player in their turn N execute in the Conflict Phase of engine turn N+1. Movement commands submitted in player turn N execute in the Production Phase of engine turn N.
+
+---
+
+### Turn Progression (Engine vs. Player)
+
+To avoid ambiguity, we distinguish between the **Engine's Turn Counter** (a continuous, internal value) and a **Player's Perceived Turn** (the cycle of action and outcome they experience).
+
+- **Engine's Turn Counter:** This internal counter increments *once* at the end of the Production Phase, after all processing for the current engine turn is complete.
+
+- **Player's Perceived Turn N:**
+  - **Begins:** When the player first sees the game state and submits commands in the **Command Phase** (of a given engine turn, e.g., Engine Turn X).
+  - **Player Actions:** Submits fleet commands, build commands, diplomatic changes, research allocations.
+  - **Immediate Results:** Zero-turn administrative commands (e.g., Load Cargo, Fleet Reorganization) execute instantly within this Command Phase.
+  - **Delayed Results:** Operational commands (movement, combat, espionage, colonization) are queued for later engine phases.
+
+- **Engine Processing for Player's Perceived Turn N:**
+  - **Production Phase (Engine Turn X):** Executes movement commands submitted by the player in the preceding Command Phase (of Engine Turn X). Also advances construction/repairs, and increments the **Engine's Turn Counter to X+1**.
+  - **Conflict Phase (Engine Turn X+1):** Resolves combat, espionage, and colonization based on fleet positions and commands from the *previous* player turn (i.e., player commands submitted in Command Phase of Engine Turn X-1, whose movement resolved in Production Phase of Engine Turn X-1).
+  - **Income Phase (Engine Turn X+1):** Calculates economic results, prestige, and victory conditions for the results of the Conflict Phase. This is where the *player sees the outcome* of their Player's Perceived Turn N-1, and often marks the *end* of that perceived turn.
+
+**Simplified Flow for Player's Turn N:**
+1.  **Player Acts:** Submits commands (Engine's Command Phase).
+2.  **Server Processes Movement/Construction:** Player's new movement commands execute (Engine's Production Phase).
+3.  **Server Resolves Combat:** Actions from *previous* player turn commands resolve (Engine's Conflict Phase).
+4.  **Server Calculates Economy/Presents Results:** Player sees outcomes (Engine's Income Phase).
+
+This structure means that a player's submitted commands will often manifest their full impact across two engine turns, particularly for combat-related actions.
 
 ---
 
 ## Order Lifecycle Terminology (Universal for All Orders)
 
-EC4X uses precise terminology for the three stages of order processing. **This applies to BOTH active orders AND standing orders:**
+
+EC4X uses precise terminology for the three stages of command processing. **This applies to BOTH active commands AND standing commands:**
 
 ### Initiate (Command Phase Part B)
-- **Active orders:** Player submits explicit orders via OrderPacket
-- **Standing orders:** Player configures standing order rules
-- Orders queued for future processing
+- **Active commands:** Player submits explicit commands via `OrderPacket`
+- **Standing commands:** Player configures standing command rules
+- Commands queued for future processing
 - Phase: Command Phase Part B
 
 ### Validate (Command Phase Part C)
-- **Both order types:** Engine validates orders and configurations
-- Active orders stored in `state.fleetOrders` for later activation
-- Standing order configs validated (conditions, targets, parameters)
+- **Both command types:** Engine validates commands and configurations
+- Active commands stored in `state.fleetOrders` for later activation
+- Standing command configs validated (conditions, targets, parameters)
 - Phase: Command Phase Part C
 
 ### Activate (Production Phase Step 1a)
-- **Active orders:** Order becomes active, fleet starts moving toward target
-- **Standing orders:** System checks conditions and generates fleet orders
-- **Both:** Fleets begin traveling, orders written to state
-- Events: `StandingOrderActivated`, `StandingOrderSuspended`
+- **Active commands:** Command becomes active, fleet starts moving toward target
+- **Standing commands:** System checks conditions and generates fleet commands
+- **Both:** Fleets begin traveling, commands written to state
+- Events: `StandingCommandActivated`, `StandingCommandSuspended`
 - Phase: Production Phase Step 1a
 
 ### Execute (Conflict/Income Phase)
-- **Both order types:** Fleet orders conduct their missions at target locations
+- **Both command types:** Fleet commands conduct their missions at target locations
 - Bombard, Colonize, Trade, Blockade, etc. actually happen
-- Results generate events (`OrderCompleted`, `OrderFailed`, etc.)
-- Phase: Depends on order type (Conflict for combat, Income for trade)
+- Results generate events (`CommandCompleted`, `CommandFailed`, etc.)
+- Phase: Depends on command type (Conflict for combat, Income for trade)
 
-**Key Insight:** Active and standing orders follow the SAME four-tier lifecycle:
-- Active order: Initiate (Command B) → Validate (Command C) → Activate (Production 1a) → Execute (Conflict/Income)
-- Standing order: Initiate (Command B) → Validate (Command C) → Activate (Production 1a) → Execute (Conflict/Income)
+**Key Insight:** Active and standing commands follow the SAME four-tier lifecycle:
+- Active command: Initiate (Command B) → Validate (Command C) → Activate (Production 1a) → Execute (Conflict/Income)
+- Standing command: Initiate (Command B) → Validate (Command C) → Activate (Production 1a) → Execute (Conflict/Income)
 
 ---
 
@@ -59,84 +87,84 @@ EC4X uses precise terminology for the three stages of order processing. **This a
 
 **Purpose:** Resolve all combat, colonization, scout, and espionage operations submitted previous turn.
 
-**Timing:** Orders submitted Turn N-1 execute Turn N.
+**Timing:** Commands submitted Turn N-1 execute Turn N.
 
 ### Execution Order
 
-**0. Merge Active Fleet Orders** (prepare orders for execution)
+**0. Merge Active Fleet Commands** (prepare commands for execution)
 
-**Purpose:** Merge orders from `state.fleetOrders` into execution context.
+**Purpose:** Merge commands from `state.fleetOrders` into execution context.
 
-- Iterate all orders in `state.fleetOrders` table
-- Filter for Conflict Phase orders (skip orders executing in other phases):
+- Iterate all commands in `state.fleetOrders` table
+- Filter for Conflict Phase commands (skip commands executing in other phases):
   - **Include:** Bombard, Invade, Blitz, Colonize, SpyPlanet, SpySystem, HackStarbase, GuardPlanet
   - **Exclude:** Move, Patrol, SeekHome (Production Phase), Salvage (Income Phase)
 - Verify fleet exists and is alive
 - Check fleet arrival using `state.arrivedFleets` table (from Production Step 1d)
-- Merge arrived orders into `effectiveOrders` by house
-- Result: All combat/espionage orders ready for execution this turn
+- Merge arrived commands into `effectiveCommands` by house
+- Result: All combat/espionage commands ready for execution this turn
 
-**Note:** Universal order lifecycle ensures consistency:
-- Command Phase Part C: Orders validated and stored in `state.fleetOrders`
-- Production Phase Step 1a: Orders activated (standing orders generated)
+**Note:** Universal command lifecycle ensures consistency:
+- Command Phase Part C: Commands validated and stored in `state.fleetOrders`
+- Production Phase Step 1a: Commands activated (standing commands generated)
 - Production Phase Step 1c: Fleets move toward targets
 - Production Phase Step 1d: Arrivals detected, `state.arrivedFleets` populated
-- **Conflict Phase Step 0:** Orders merged for execution ← YOU ARE HERE
-- Conflict Phase Steps 1-6: Orders execute
+- **Conflict Phase Step 0:** Commands merged for execution ← YOU ARE HERE
+- Conflict Phase Steps 1-6: Commands execute
 
 **1. Space Combat** (simultaneous resolution)
-- **1a. Raider Detection**: Perform detection checks for all engaging fleets containing Raiders to determine surprise/ambush advantage.
+- **1a. Raider Detection**: Perform detection checks for all engaging fleets containing Raiders to determine ambush advantage.
 - **1b. Combat Resolution**: Collect all space combat intents, resolve conflicts, and execute the combat engine, applying any first-strike bonuses.
-- Generate GameEvents (ShipDestroyed, FleetEliminated)
+- Generate `GameEvents` (ShipDestroyed, FleetEliminated)
 
 **2. Orbital Combat** (simultaneous resolution)
 - **2a. Raider Detection**: Perform a new round of detection checks for fleets engaging in orbital combat.
 - **2b. Combat Resolution**: Collect all orbital combat intents, resolve conflicts, and execute strikes sequentially, applying any first-strike bonuses.
-- Generate GameEvents (StarbaseDestroyed, DefensesWeakened)
+- Generate `GameEvents` (StarbaseDestroyed, DefensesWeakened)
 
 **3. Blockade Resolution** (simultaneous resolution)
 - Collect all blockade intents
 - Resolve conflicts (determine blockade controller)
 - Establish blockade status (affects Income Phase)
-- Generate GameEvents (BlockadeEstablished, BlockadeBroken)
+- Generate `GameEvents` (BlockadeEstablished, BlockadeBroken)
 
 **4. Planetary Combat** (sequential execution, simultaneous priority)
-- Collect all planetary combat intents (Bombard/Invade/Blitz)
-- Resolve conflicts (determine attack priority order)
-- Execute attacks sequentially in priority order
+- Collect all planetary combat intents (Bombard/Invade/Blitz commands)
+- Resolve conflicts (determine attack priority command)
+- Execute attacks sequentially in priority command
 - Weaker attackers benefit from prior battles weakening defenders
-- Generate GameEvents (SystemCaptured, ColonyCaptured, PlanetBombarded)
+- Generate `GameEvents` (SystemCaptured, ColonyCaptured, PlanetBombarded)
 
 **5. Colonization** (simultaneous resolution)
 - ETAC fleets establish colonies
 - Resolve conflicts (winner-takes-all)
-- Fallback logic for losers (AutoColonize standing orders)
-- Generate GameEvents (ColonyEstablished)
+- Fallback logic for losers (AutoColonize standing commands)
+- Generate `GameEvents` (ColonyEstablished)
 
 **6. Espionage Operations** (simultaneous resolution)
 
 **6a. Fleet-Based Espionage** (one-time execution on arrival)
-- `SpyPlanet`, `SpySystem`, and `HackStarbase` orders execute when scout fleet arrives at target
+- `SpyPlanet`, `SpySystem`, and `HackStarbase` commands execute when scout fleet arrives at target
 - Scout fleet transitions from Traveling to OnSpyMission state
-- Fleet locked (cannot accept new orders), scouts "consumed"
-- Mission registered in activeSpyMissions table
-- Generate GameEvents (SpyMissionStarted)
+- Fleet locked (cannot accept new commands), scouts "consumed"
+- Mission registered in `activeSpyMissions` table
+- Generate `GameEvents` (SpyMissionStarted)
 - **Note**: Detection checks happen in Step 6a.5, NOT on arrival
 
 **6a.5. Persistent Spy Mission Detection** (every turn for active missions)
-- Iterate all activeSpyMissions from previous turns
+- Iterate all `activeSpyMissions` from previous turns
 - For each active mission:
   - Run detection check: 1d20 vs (15 - scoutCount + ELI + starbaseBonus)
   - **If DETECTED**: Scouts destroyed immediately, mission fails, diplomatic escalation
   - **If UNDETECTED**: Generate Perfect quality intelligence, mission continues
 - Repeat detection check next turn for surviving missions
-- Generate GameEvents (IntelGathered, SpyScoutDetected, DiplomaticStateChanged)
+- Generate `GameEvents` (IntelGathered, SpyScoutDetected, DiplomaticStateChanged)
 
 **6b. Space Guild Espionage** (EBP-based covert ops)
 - Tech Theft, Sabotage, Assassination, Cyber Attack
 - Economic Manipulation, Psyops, Counter-Intel
 - Intelligence Theft, Plant Disinformation, Recruit Agent
-- Generate GameEvents (EspionageSuccess, EspionageDetected)
+- Generate `GameEvents` (EspionageSuccess, EspionageDetected)
 
 **6c. Starbase Surveillance** (continuous monitoring)
 - Automatic intelligence gathering from friendly starbases
@@ -146,11 +174,11 @@ EC4X uses precise terminology for the three stages of order processing. **This a
 
 
 ### Key Properties
-- All orders execute from previous turn's submission
+- All commands execute from previous turn's submission
 - Simultaneous resolution prevents first-mover advantage
 - Sequential execution after priority determination
 - Intelligence gathering happens AFTER combat (collect after-action data)
-- Destroyed ships are deleted from ship lists (orders become unreachable)
+- Destroyed ships are deleted from ship lists (commands become unreachable)
 
 ---
 
@@ -264,7 +292,7 @@ Evaluate elimination conditions for each house in sequential order:
 *Standard Elimination:*
 - Condition: House has zero colonies AND no invasion capability
 - Invasion capability check:
-  - Scan all house fleets for spacelift ships
+  - Scan all house fleets for Auxiliary Ships
   - Check if any transport has CargoType.Marines with quantity > 0
   - If found: House has invasion capability
 - Elimination triggers if:
@@ -342,20 +370,20 @@ On victory:
 
 ### Part A: Server Processing (BEFORE Player Window)
 
-**1. Starport & Shipyard Commissioning**
-- Commission ships completed in previous turn's Production Phase
-- **Ship units only:** Escort, Capital, Special Weapon, Spacelift (ETAC, TroopTransport) ships
-- Frees dock space at shipyards/spaceports
-- Auto-create squadrons, auto-assign to fleets
-- Auto-load PTU onto ETAC ships
-- Fighters are an exception, as they are commissioned planetside.
-- **Note:** Planetary defense (facilities, fighters, ground units) and facilities are already commissioned in Production Phase
+**1. Starport & Shipyard Commissioning (Ships Only)**
+- Commission all ships that completed construction in the previous turn's Production Phase.
+- **Applicable Units:** Escort, Capital, Special Weapon, and Auxiliary Ships (Scout, ETAC, TroopTransport).
+- This step ensures ships are only commissioned if their construction facilities (docks) survived the preceding Conflict Phase.
+- Frees dock space at shipyards/spaceports.
+- Auto-create squadrons, auto-assign to fleets at their location.
+  - **Note on Scouts:** Scouts are auto-assigned to their own scout-only squadrons/fleets and do not mix with combat ships or other auxiliary ships.
+- Auto-load ETACs with their maximum cargo (per config).
+- **Note:** Planetary defense assets (Facilities, Ground Units, Fighters) were commissioned immediately in the previous Production Phase.
 
 **2. Colony Automation**
-- Auto-load fighters to carriers (uses newly-freed hangar capacity)
-- Auto-submit repair orders (uses newly-freed dock capacity)
-- Auto-balance squadrons across fleets
-- Auto-load PTU onto ETAC ships
+- Auto-load newly commissioned fighters to carriers (if any are present and have capacity).
+- Auto-submit repair orders for damaged units (uses newly-freed dock capacity).
+- Auto-balance squadrons across fleets at colonies.
 
 **Result:** New game state exists (commissioned ships, repaired ships queued, new colonies)
 
@@ -501,8 +529,7 @@ Completed projects split into two commissioning paths:
 - **Result:** Available for defense in NEXT turn's Conflict Phase ✓
 
 *Military Units (Commission Next Turn):*
-- **Capital Ships:** All ship classes (Corvette → PlanetBreaker)
-- **Spacelift Ships:** ETAC, TroopTransport
+- **Ships:** All ship classes (Corvette → PlanetBreaker) and Auxiliary Ships (ETAC, TroopTransport)
 - **Strategic Rationale:** Ships may be destroyed in docks during Conflict Phase
 - **Timing:** Stored in pendingMilitaryCommissions, commission next turn's Command Phase Part A
 - **Result:** Verified docks survived combat before commissioning
@@ -608,7 +635,7 @@ Process tech advancements using accumulated RP from Command Phase. Per economy.m
 | 16    | Place on Reserve      | Production Phase | Fleet status change                          |
 | 17    | Mothball Fleet        | Production Phase | Fleet status change                          |
 | 18    | Reactivate Fleet      | Production Phase | Fleet status change                          |
-| 19    | View a World          | Production Phase | Movement + reconnaissance                    |
+| 19    | View a Planet         | Production Phase | Movement + reconnaissance                    |
 
 ### Zero-Turn Administrative Commands (7 types)
 
@@ -675,10 +702,12 @@ Execute immediately during Command Phase Part B player window:
    - Immediate execution for administrative tasks
    - Players can reorganize before issuing operational orders
 
-8. **Salvage validation: fleet must have survived Conflict Phase**
-   - Destroyed ships deleted from ship lists
-   - Orders from destroyed fleets become unreachable
-   - No special validation needed
+8. **Salvage Order Execution Check**
+   - For a `Salvage` order to execute in the Income Phase, the fleet must meet two conditions:
+     1.  **Survival:** The fleet must have survived the preceding Conflict Phase (i.e., not destroyed and removed from the game state).
+     2.  **Location:** The fleet must be at the designated salvage mission objective location.
+   - If a fleet is destroyed in the Conflict Phase, its pending orders (including `Salvage`) fail implicitly because the fleet entity no longer exists in the game state.
+   - **Auxiliary Ships** (ETACs, TroopTransports) are screened during combat (do not participate directly), but are destroyed if their protecting combat fleets are eliminated or retreat.
 
 9. **Capacity enforcement uses post-blockade IU values**
    - Blockades applied in Income Phase Step 2
@@ -1088,7 +1117,7 @@ Production Phase -> New positions, completed construction
 **AS (Attack Strength):** Combat effectiveness rating for squadrons  
 **CR (Combat Rating):** Ship size class (≥7 for capital ships)  
 **EBP (Espionage Budget Points):** Currency for Space Guild covert operations  
-**ETAC (Explorer/Transport/Armed Colonizer):** Colony ship type  
+**ETAC (Explorer/Transport/Armed Colonizer):** Colony ship  
 **FD_MULTIPLIER:** Fighter defense capacity multiplier per colony  
 **IU (Industrial Units):** Colony economic output measure  
 **NCV (Net Colony Value):** Total economic value of colony infrastructure  

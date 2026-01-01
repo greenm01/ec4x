@@ -34,6 +34,16 @@ type
     Random    # Applies to one random squadron
     All       # Applies to all squadrons
 
+  MoraleTier* {.pure.} = enum
+    ## Morale tier based on house prestige
+    ## Based on docs/specs/07-combat.md Section 7.3.3
+    Collapsing  # Prestige ≤ 0
+    VeryLow     # Prestige ≤ 20
+    Low         # Prestige ≤ 60
+    Normal      # Prestige ≤ 80
+    High        # Prestige ≤ 100
+    VeryHigh    # Prestige > 100
+
   MoraleCheckResult* = object
     ## Result of a 1d20 morale check for a task force
     rolled*: bool              # Whether check was attempted
@@ -70,7 +80,10 @@ type
       facilityId*: StarbaseId # Use typed ID, not string
 
   CombatSquadron* = object
-    squadronId*: SquadronId # Reference, not embedded object
+    squadronId*: SquadronId # Reference ID
+    attackStrength*: int32 # Cached AS from squadron for combat
+    defenseStrength*: int32 # Cached DS from squadron for combat
+    commandRating*: int32 # Cached CR from flagship for phase ordering
     state*: CombatState
     fleetStatus*: FleetStatus
     damageThisTurn*: int32
@@ -102,7 +115,7 @@ type
     clkLevel*: int32
 
   AttackResult* = object
-    attackerId*: SquadronId
+    attackerId*: CombatTargetId # Can be squadron or facility
     targetId*: CombatTargetId # Can be squadron or facility
     cerRoll*: CERRoll
     damageDealt*: int32
@@ -150,6 +163,7 @@ type
     preDetectedHouses*: seq[HouseId]
     diplomaticRelations*: Table[(HouseId, HouseId), DiplomaticState]
     systemOwner*: Option[HouseId]
+    hasDefenderStarbase*: bool
 
   CombatReport* = object
     systemId*: SystemId

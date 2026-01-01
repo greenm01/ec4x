@@ -1,3 +1,5 @@
+import ../combat
+
 type
   CombatMechanicsConfig* = object
     criticalHitRoll*: int32
@@ -10,9 +12,13 @@ type
 
   CerTableConfig* = object
     veryPoorMax*: int32
+    veryPoorMultiplier*: float32
     poorMax*: int32
+    poorMultiplier*: float32
     averageMax*: int32
+    averageMultiplier*: float32
     goodMin*: int32
+    goodMultiplier*: float32
 
   BombardmentConfig* = object
     maxRoundsPerTurn*: int32
@@ -45,6 +51,7 @@ type
   StarbaseConfig* = object
     starbaseCriticalReroll*: bool
     starbaseDieModifier*: int32
+    starbaseDetectionBonus*: int32
 
   InvasionConfig* = object
     invasionIuLoss*: float32
@@ -58,6 +65,14 @@ type
     fighterWeight*: float32
     starbaseWeight*: float32
 
+  MoraleTierConfig* = object
+    threshold*: int32 # 1d20 roll required to succeed
+    cerBonus*: int32 # CER bonus on success (or penalty if negative)
+    appliesTo*: MoraleEffectTarget # Who gets the bonus
+    criticalAutoSuccess*: bool # Critical hits auto-succeed
+
+  MoraleChecksConfig* = array[MoraleTier, MoraleTierConfig]
+
   CombatConfig* = object ## Complete combat configuration loaded from KDL
     combat*: CombatMechanicsConfig
     cerModifiers*: CerModifiersConfig
@@ -70,4 +85,5 @@ type
     starbase*: StarbaseConfig
     invasion*: InvasionConfig
     targeting*: TargetingConfig
+    moraleChecks*: MoraleChecksConfig
 

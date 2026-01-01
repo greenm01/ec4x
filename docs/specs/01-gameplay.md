@@ -148,48 +148,42 @@ The server processes commands mechanically but doesn't handle diplomacy. You neg
 
 ## 1.3 Turns
 
-Each turn comprises four phases:
+Each turn comprises four phases, representing a complete cycle of player action and server resolution. From a player's perspective, the sequence is:
 
-1. Conflict Phase
-2. Income Phase
-3. Command Phase
-4. Production Phase
+1.  **Command Phase:** You issue commands.
+2.  **Production Phase:** The server processes construction and fleet movement.
+3.  **Conflict Phase:** The server resolves combat based on the new fleet positions.
+4.  **Income Phase:** The server calculates economic results, and the turn's results are presented.
 
-### 1.3.1 Conflict Phase
+### 1.3.1 Command Phase
 
-At the beginning of each turn, the game server resolves all military actions from the previous turn. Combat, planetary bombardment, invasions, and espionage activities process automatically according to the rules engines.
+In the command phase, you issue fleet commands ([Section 6.3](06-operations.md#63-fleet-commands)) and make strategic decisions around asset management. You can change diplomatic status ([Section 8.1](08-diplomacy.md#81-diplomacy)) toward rival Houses.
 
-**This phase happens FIRST** so damaged infrastructure affects production in the Income Phase. Bombarded planets produce less. Destroyed shipyards cannot build ships. Damaged starbases provide reduced bonuses.
+You also decide which construction commands to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings. You can change your tax rate during this phase.
 
-Space battles, orbital bombardment, ground invasions, and espionage operations all resolve during this phase. Infrastructure damage applies to colonies, shipyards, and starbases before economic calculations.
+You submit your turn commands to the game server. Once all players submit (or the turn deadline expires), the server begins processing the next phases of the turn cycle.
 
-### 1.3.2 Income Phase
+### 1.3.2 Production Phase
 
-After conflict resolution, all economic factors ([Section 3](03-economy.md#30-economics)) are recalculated and production points deposited in your house treasury. Production calculates **after** conflict, accounting for infrastructure damage from bombardment or invasion.
-
-This phase accounts for population growth at each colony, construction progress, maintenance costs, taxes, and R&D. Your House prestige points are recalculated and updated. The game server processes these calculations automatically using the master game state.
-
-The server issues updated game state to each player for the new turn. Each House receives customized data showing only their own assets and gathered intelligence—fog of war is maintained automatically.
-
-You receive new reports reflecting updated economics and the outcome of military commands issued in the previous turn. Access these reports through your game client.
-
-In the new turn, you decide which construction commands to place and where to invest production points in R&D, industry, terraforming, population movement, espionage, and savings. You can change your tax rate during this phase. Your client updates your local game state accordingly.
-
-### 1.3.3 Command Phase
-
-In the command phase, you issue fleet commands ([Section 6.3](06-operations.md#63-fleet-orders)) and make strategic decisions around asset management. You can change diplomatic status ([Section 8.1](08-diplomacy.md#81-diplomacy)) toward rival Houses.
-
-Build commands may fail if shipyards were destroyed in the conflict phase. You issue fleet movement and colonization commands for execution in the next turn's conflict phase.
-
-You submit your turn commands to the game server. Once all players submit (or the turn deadline expires), the server processes the next turn cycle.
-
-### 1.3.4 Production Phase
-
-In the production phase, the game server advances construction projects, applies repairs to damaged facilities, and processes upkeep costs. Fleet maintenance is deducted from your house treasury.
+In the production phase, the game server advances construction projects, applies repairs to damaged facilities, and processes upkeep costs. Fleet maintenance is deducted from your house treasury. Your fleets execute their movement commands, positioning them for the next phase.
 
 New construction commands process, along with investments in R&D, terraforming, Space Guild services, and industry.
 
-The server updates game state and issues customized reports to each player. You receive your own unique intelligence database, blind to other players' activities.
+The server updates the master game state but does not yet issue reports.
+
+### 1.3.3 Conflict Phase
+
+At the beginning of this phase, the game server resolves all military actions. Fleets that moved in the Production Phase now engage in combat. Planetary bombardment, invasions, and espionage activities process automatically according to the rules engines.
+
+**This phase happens AFTER movement** so that fleets can engage in their new locations. Infrastructure damage from combat applies to colonies, shipyards, and starbases before economic calculations in the next phase.
+
+### 1.3.4 Income Phase
+
+After conflict resolution, all economic factors ([Section 3](03-economy.md#30-economics)) are recalculated and production points are deposited in your house treasury. Production calculates **after** conflict, accounting for infrastructure damage from bombardment or invasion.
+
+This phase also accounts for population growth at each colony. Your House prestige points are recalculated and updated.
+
+At the end of this phase, the turn is complete. The server issues updated game state reports to each player for the new turn. Each House receives customized data showing only their own assets and gathered intelligence—fog of war is maintained automatically. You receive new reports reflecting updated economics and the outcome of the turn's military actions.
 
 ---
 
@@ -230,7 +224,7 @@ When you return and submit new commands, your empire immediately exits autopilot
 
 - Autopilot activates in the Income Phase after the third consecutive missed turn per [Section 1.3.2](#132-income-phase)
 - Autopilot commands execute during the Command Phase per [Section 1.3.3](#133-command-phase)
-- You can resume control in any subsequent turn by submitting orders
+- You can resume control in any subsequent turn by submitting commands
 
 ### 1.4.3 Standard Elimination & Last-Stand Invasions
 

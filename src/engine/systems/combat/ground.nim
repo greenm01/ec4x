@@ -8,12 +8,11 @@
 ## - Section 7.6: Planetary Invasion & Blitz
 ## - Section 2.4.8: Planet-Breaker shield penetration
 
-import std/[options, sequtils, math]
-import ../../types/combat as combat_types
+import std/[options, math, tables, sequtils]
+import ../../types/[combat as combat_types, core, ground_unit, game_state, squadron, ship]
+import ../../state/entity_manager
+import ../../globals
 import cer
-import ../../../../common/[types/core, types/units, types/combat as commonCombat]
-import ../squadron/entity
-import ../../config/[combat_config, ground_units_config]
 
 export combat_types
 
@@ -22,13 +21,13 @@ proc getBombardmentCER*(roll: int): (float, bool) =
   ## Get bombardment CER multiplier and critical hit flag from config
   ## Returns (multiplier, isCritical)
   ##
-  ## Uses config/combat.toml bombardment thresholds
-  let cfg = globalCombatConfig.bombardment
+  ## Reads from config/combat.kdl bombardment thresholds
+  let cfg = gameConfig.combat.bombardment
 
-  if roll <= cfg.very_poor_max:
+  if roll <= cfg.veryPoorMax:
     # Roll 0-2: 0.25× (round up)
     return (0.25, false)
-  elif roll <= cfg.poor_max:
+  elif roll <= cfg.poorMax:
     # Roll 3-5: 0.50× (round up)
     return (0.50, false)
   elif roll <= 8:
@@ -46,16 +45,16 @@ proc getBombardmentCER*(roll: int): (float, bool) =
 proc getGroundCombatCER*(roll: int): float =
   ## Get ground combat CER multiplier (invasion/blitz) from config
   ##
-  ## Uses config/combat.toml ground_combat thresholds
-  let cfg = globalCombatConfig.ground_combat
+  ## Reads from config/combat.kdl ground combat thresholds
+  let cfg = gameConfig.combat.groundCombat
 
-  if roll <= cfg.poor_max:
+  if roll <= cfg.poorMax:
     # Roll 0-2: 0.50× (round up)
     return 0.5
-  elif roll <= cfg.average_max:
+  elif roll <= cfg.averageMax:
     # Roll 3-6: 1.00×
     return 1.0
-  elif roll <= cfg.good_max:
+  elif roll <= cfg.goodMax:
     # Roll 7-8: 1.50× (round up)
     return 1.5
   elif roll >= cfg.critical:
@@ -71,24 +70,17 @@ proc getShieldData*(shieldLevel: int): (int, float) =
   ## Get shield data from config for given level (1-6)
   ## Returns (rollNeeded, blockPct)
   ##
-  ## Uses config/combat.toml planetary_shields section
-  let cfg = globalCombatConfig.planetary_shields
-
-  case shieldLevel
-  of 1:
-    return (cfg.sld1_roll, float(cfg.sld1_block) / 100.0)
-  of 2:
-    return (cfg.sld2_roll, float(cfg.sld2_block) / 100.0)
-  of 3:
-    return (cfg.sld3_roll, float(cfg.sld3_block) / 100.0)
-  of 4:
-    return (cfg.sld4_roll, float(cfg.sld4_block) / 100.0)
-  of 5:
-    return (cfg.sld5_roll, float(cfg.sld5_block) / 100.0)
-  of 6:
-    return (cfg.sld6_roll, float(cfg.sld6_block) / 100.0)
-  else:
+  ## Reads from config/tech.kdl shields section
+  if shieldLevel < 1 or shieldLevel > 6:
     return (20, 0.0) # Invalid level - shield never activates
+
+  # Look up shield level data from tech config
+  let key = int32(shieldLevel)
+  if not gameConfig.tech.sld.levels.hasKey(key):
+    return (20, 0.0) # Level not in config
+
+  let sldData = gameConfig.tech.sld.levels[key]
+  return (int(sldData.d20Threshold), float(sldData.hitsBlocked))
 
 proc rollShieldBlock*(shieldLevel: int, rng: var CombatRNG): (bool, float) =
   ## Roll to see if shields block damage
@@ -123,11 +115,14 @@ proc applyShieldReduction*(hits: int, shieldLevel: int, rng: var CombatRNG): int
 
 ## Planet-Breaker Shield Penetration (Section 7.5.2)
 
-proc separatePlanetBreakerAS*(squadrons: seq[CombatSquadron]): (int, int) =
+proc separatePlanetBreakerAS*(
+    state: GameState, squadrons: seq[CombatSquadron]
+): (int, int) =
   ## Separate Planet-Breaker AS from conventional ship AS
   ## Returns (planet_breaker_as, conventional_as)
   ##
   ## Planet-Breakers bypass shields completely
+  ## Uses proper DoD pattern: lookup squadron via entity manager
 
   var pbAS = 0
   var convAS = 0
@@ -136,42 +131,66 @@ proc separatePlanetBreakerAS*(squadrons: seq[CombatSquadron]): (int, int) =
     if sq.state == CombatState.Destroyed:
       continue
 
-    let currentAS = sq.getCurrentAS()
+    let currentAS =
+      if sq.state == CombatState.Crippled:
+        max(1'i32, sq.attackStrength div 2)
+      else:
+        sq.attackStrength
 
-    # Note: Squadron is nested inside CombatSquadron
-    if sq.squadron.flagship.shipClass == ShipClass.PlanetBreaker:
-      pbAS += currentAS
+    # Look up squadron to check if it has Planet-Breaker flagship
+    let squadronOpt = state.squadrons.entities.entity(sq.squadronId)
+    if squadronOpt.isSome:
+      let squadron = squadronOpt.get()
+      let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+      if flagshipOpt.isSome:
+        let flagship = flagshipOpt.get()
+        if flagship.shipClass == ShipClass.PlanetBreaker:
+          pbAS += int(currentAS)
+        else:
+          convAS += int(currentAS)
+      else:
+        convAS += int(currentAS) # No flagship found, treat as conventional
     else:
-      convAS += currentAS
+      convAS += int(currentAS) # No squadron found, treat as conventional
 
   return (pbAS, convAS)
 
 ## Bombardment Resolution (Section 7.5)
 
 proc resolveBombardmentRound*(
-    attackingFleet: seq[CombatSquadron],
+    state: var GameState,
+    attackingFleet: var seq[CombatSquadron],
     defense: var PlanetaryDefense,
     rng: var CombatRNG,
 ): BombardmentResult =
   ## Resolve one round of planetary bombardment (max 3 per turn)
   ## Implements Section 7.5.1-7.5.4
+  ##
+  ## Ground batteries fire back at bombarding ships (Section 7.5.3)
+  ## Uses proper DoD entity patterns - reads via entity(), writes via updateEntity()
 
   result = BombardmentResult()
 
   # Calculate attacking AS (separate Planet-Breakers from conventional)
-  let (pbAS, convAS) = separatePlanetBreakerAS(attackingFleet)
+  let (pbAS, convAS) = separatePlanetBreakerAS(state, attackingFleet)
   let totalAttackerAS = pbAS + convAS
 
   # Calculate defending AS (ground batteries only attack back)
+  # Use proper entity pattern: read via entity()
   var defenderAS = 0
-  for battery in defense.groundBatteries:
+  for batteryId in defense.groundBatteryIds:
+    let batteryOpt = state.groundUnits.entities.entity(batteryId)
+    if batteryOpt.isNone:
+      continue
+    let battery = batteryOpt.get()
+
     if battery.state == CombatState.Destroyed:
       continue
     let batteryAS =
       if battery.state == CombatState.Crippled:
-        max(1, battery.attackStrength div 2)
+        max(1, battery.stats.attackStrength div 2)
       else:
-        battery.attackStrength
+        battery.stats.attackStrength
     defenderAS += batteryAS
 
   # Both sides roll CER
@@ -192,84 +211,135 @@ proc resolveBombardmentRound*(
   if defense.shields.isSome:
     effectiveConvHits =
       applyShieldReduction(effectiveConvHits, defense.shields.get.level, rng)
-    result.shieldBlocked = (ceil(float(convAS) * attackCER).int - effectiveConvHits)
+    result.shieldBlocked = int32(ceil(float(convAS) * attackCER).int - effectiveConvHits)
 
   # Planet-Breaker hits bypass shields entirely
   attackerHits = pbHits + effectiveConvHits
-  result.attackerHits = attackerHits
-  result.defenderHits = defenderHits
+  result.attackerHits = int32(attackerHits)
+  result.defenderHits = int32(defenderHits)
 
   # Apply damage to ground batteries (Section 7.5.3)
+  # Use proper entity pattern: read, mutate copy, write back via updateEntity()
   var excessAttackerHits = attackerHits
-  for battery in defense.groundBatteries.mitems:
-    if battery.state == CombatState.Destroyed or excessAttackerHits <= 0:
+  for batteryId in defense.groundBatteryIds:
+    if excessAttackerHits <= 0:
+      break
+
+    let batteryOpt = state.groundUnits.entities.entity(batteryId)
+    if batteryOpt.isNone:
+      continue
+    var battery = batteryOpt.get()
+
+    if battery.state == CombatState.Destroyed:
       continue
 
-    if excessAttackerHits >= battery.defenseStrength:
+    if excessAttackerHits >= battery.stats.defenseStrength:
       # Enough hits to reduce this battery
-      excessAttackerHits -= battery.defenseStrength
+      excessAttackerHits -= battery.stats.defenseStrength
 
       case battery.state
       of CombatState.Undamaged:
         battery.state = CombatState.Crippled
-        battery.attackStrength = max(1, battery.attackStrength div 2)
+        battery.stats = GroundUnitStats(
+          unitType: battery.stats.unitType,
+          attackStrength: max(1, battery.stats.attackStrength div 2),
+          defenseStrength: battery.stats.defenseStrength,
+        )
         result.batteriesCrippled += 1
       of CombatState.Crippled:
         # Check destruction protection
-        let allOthersCrippled = defense.groundBatteries.allIt(
-          it.id == battery.id or it.state != CombatState.Undamaged
-        )
+        # Check if all other batteries are crippled/destroyed
+        var allOthersCrippled = true
+        for otherId in defense.groundBatteryIds:
+          if otherId == batteryId:
+            continue
+          let otherOpt = state.groundUnits.entities.entity(otherId)
+          if otherOpt.isSome and otherOpt.get().state == CombatState.Undamaged:
+            allOthersCrippled = false
+            break
+
         if allOthersCrippled or attackCrit:
           battery.state = CombatState.Destroyed
           result.batteriesDestroyed += 1
       of CombatState.Destroyed:
         discard
 
+      # Write back changes via updateEntity()
+      state.groundUnits.entities.updateEntity(batteryId, battery)
+
   # Apply excess hits to ground forces (Section 7.5.4)
+  # Use proper entity pattern: read, mutate copy, write back via updateEntity()
   if excessAttackerHits > 0:
-    for unit in defense.groundForces.mitems:
-      if unit.state == CombatState.Destroyed or excessAttackerHits <= 0:
+    for unitId in defense.groundForceIds:
+      if excessAttackerHits <= 0:
+        break
+
+      let unitOpt = state.groundUnits.entities.entity(unitId)
+      if unitOpt.isNone:
+        continue
+      var unit = unitOpt.get()
+
+      if unit.state == CombatState.Destroyed:
         continue
 
-      if excessAttackerHits >= unit.defenseStrength:
-        excessAttackerHits -= unit.defenseStrength
+      if excessAttackerHits >= unit.stats.defenseStrength:
+        excessAttackerHits -= unit.stats.defenseStrength
         case unit.state
         of CombatState.Undamaged:
           unit.state = CombatState.Crippled
-          unit.attackStrength = max(1, unit.attackStrength div 2)
-        of CombatState.Crippled:
-          let allOthersCrippled = defense.groundForces.allIt(
-            it.id == unit.id or it.state != CombatState.Undamaged
+          unit.stats = GroundUnitStats(
+            unitType: unit.stats.unitType,
+            attackStrength: max(1, unit.stats.attackStrength div 2),
+            defenseStrength: unit.stats.defenseStrength,
           )
+        of CombatState.Crippled:
+          # Check if all other ground forces are crippled/destroyed
+          var allOthersCrippled = true
+          for otherId in defense.groundForceIds:
+            if otherId == unitId:
+              continue
+            let otherOpt = state.groundUnits.entities.entity(otherId)
+            if otherOpt.isSome and otherOpt.get().state == CombatState.Undamaged:
+              allOthersCrippled = false
+              break
+
           if allOthersCrippled:
             unit.state = CombatState.Destroyed
         of CombatState.Destroyed:
           discard
 
+        # Write back changes via updateEntity()
+        state.groundUnits.entities.updateEntity(unitId, unit)
+
   # Remaining excess hits damage infrastructure (IU then PU)
   # Per user requirement: IU and PU both take damage during bombardment
   # IU represents factories/infrastructure, PU represents civilian casualties
   # Damage is split: each excess hit damages both IU and PU
-  result.infrastructureDamage = excessAttackerHits
-  result.populationDamage = excessAttackerHits
+  result.infrastructureDamage = int32(excessAttackerHits)
+  result.populationDamage = int32(excessAttackerHits)
     # Same damage to both (bombardment is indiscriminate)
 
   # Apply defender hits to attacking fleet (critical hits bypass protection)
   var excessDefenderHits = defenderHits
-  for squadron in attackingFleet:
+  for squadron in attackingFleet.mitems:
     if squadron.state == CombatState.Destroyed or excessDefenderHits <= 0:
       continue
 
-    let squadronDS = squadron.squadron.flagship.stats.defenseStrength
-    if excessDefenderHits >= squadronDS:
-      excessDefenderHits -= squadronDS
-      # Note: Would need mutable access to apply damage
-      # This is tracked separately in the combat result
+    # Use cached defense strength from CombatSquadron
+    if excessDefenderHits >= int(squadron.defenseStrength):
+      excessDefenderHits -= int(squadron.defenseStrength)
+
       case squadron.state
       of CombatState.Undamaged:
+        squadron.state = CombatState.Crippled
         result.squadronsCrippled += 1
       of CombatState.Crippled:
-        if defenseCrit:
+        # Check destruction protection (unless critical hit)
+        let allOthersCrippled = attackingFleet.allIt(
+          it.squadronId == squadron.squadronId or it.state != CombatState.Undamaged
+        )
+        if allOthersCrippled or defenseCrit:
+          squadron.state = CombatState.Destroyed
           result.squadronsDestroyed += 1
       of CombatState.Destroyed:
         discard
@@ -277,19 +347,23 @@ proc resolveBombardmentRound*(
   result.roundsCompleted = 1
 
 proc conductBombardment*(
-    attackingFleet: seq[CombatSquadron],
+    state: var GameState,
+    attackingFleet: var seq[CombatSquadron],
     defense: var PlanetaryDefense,
     seed: int64,
     maxRounds: int = 3,
 ): BombardmentResult =
   ## Conduct full bombardment (up to 3 rounds per turn)
   ## Section 7.5: "No more than three combat rounds are conducted per turn"
+  ##
+  ## Attacking squadrons can be crippled/destroyed by ground battery counter-fire
+  ## Uses proper DoD entity patterns
 
   var rng = initRNG(seed)
   result = BombardmentResult()
 
   for round in 1 .. maxRounds:
-    let roundResult = resolveBombardmentRound(attackingFleet, defense, rng)
+    let roundResult = resolveBombardmentRound(state, attackingFleet, defense, rng)
 
     # Accumulate results
     result.attackerHits += roundResult.attackerHits
@@ -303,14 +377,21 @@ proc conductBombardment*(
     result.roundsCompleted += 1
 
     # Stop if all batteries destroyed
-    let batteriesRemaining =
-      defense.groundBatteries.anyIt(it.state != CombatState.Destroyed)
+    # Use proper entity pattern to check battery states
+    var batteriesRemaining = false
+    for batteryId in defense.groundBatteryIds:
+      let batteryOpt = state.groundUnits.entities.entity(batteryId)
+      if batteryOpt.isSome and batteryOpt.get().state != CombatState.Destroyed:
+        batteriesRemaining = true
+        break
+
     if not batteriesRemaining:
       break
 
 ## Planetary Invasion (Section 7.6.1)
 
 proc conductInvasion*(
+    state: var GameState,
     attackingForces: seq[GroundUnit],
     defendingForces: seq[GroundUnit],
     defense: var PlanetaryDefense,
@@ -325,13 +406,20 @@ proc conductInvasion*(
   ## Effects on success:
   ## - Shields and spaceports destroyed immediately on landing
   ## - 50% of remaining IU destroyed by loyal citizens
+  ## Uses proper DoD entity patterns
 
   var rng = initRNG(seed)
   result = InvasionResult()
 
-  # Check prerequisites
-  let batteriesDestroyed =
-    defense.groundBatteries.allIt(it.state == CombatState.Destroyed)
+  # Check prerequisites - all batteries must be destroyed
+  # Use proper entity pattern to check battery states
+  var batteriesDestroyed = true
+  for batteryId in defense.groundBatteryIds:
+    let batteryOpt = state.groundUnits.entities.entity(batteryId)
+    if batteryOpt.isSome and batteryOpt.get().state != CombatState.Destroyed:
+      batteriesDestroyed = false
+      break
+
   if not batteriesDestroyed:
     result.success = false
     return
@@ -353,9 +441,9 @@ proc conductInvasion*(
         continue
       let unitAS =
         if unit.state == CombatState.Crippled:
-          max(1, unit.attackStrength div 2)
+          max(1, unit.stats.attackStrength div 2)
         else:
-          unit.attackStrength
+          unit.stats.attackStrength
       attackerAS += unitAS
 
     var defenderAS = 0
@@ -364,9 +452,9 @@ proc conductInvasion*(
         continue
       let unitAS =
         if unit.state == CombatState.Crippled:
-          max(1, unit.attackStrength div 2)
+          max(1, unit.stats.attackStrength div 2)
         else:
-          unit.attackStrength
+          unit.stats.attackStrength
       defenderAS += unitAS
 
     # Roll on Ground Combat Table
@@ -385,19 +473,23 @@ proc conductInvasion*(
       if unit.state == CombatState.Destroyed or excessAttackerHits <= 0:
         continue
 
-      if excessAttackerHits >= unit.defenseStrength:
-        excessAttackerHits -= unit.defenseStrength
+      if excessAttackerHits >= unit.stats.defenseStrength:
+        excessAttackerHits -= unit.stats.defenseStrength
         case unit.state
         of CombatState.Undamaged:
           unit.state = CombatState.Crippled
-          unit.attackStrength = max(1, unit.attackStrength div 2)
-          result.defenderCasualties.add(unit)
+          unit.stats = GroundUnitStats(
+            unitType: unit.stats.unitType,
+            attackStrength: max(1, unit.stats.attackStrength div 2),
+            defenseStrength: unit.stats.defenseStrength,
+          )
+          result.defenderCasualties.add(unit.id)
         of CombatState.Crippled:
           let allOthersCrippled =
             defenders.allIt(it.id == unit.id or it.state != CombatState.Undamaged)
           if allOthersCrippled:
             unit.state = CombatState.Destroyed
-            result.defenderCasualties.add(unit)
+            result.defenderCasualties.add(unit.id)
         of CombatState.Destroyed:
           discard
 
@@ -407,19 +499,23 @@ proc conductInvasion*(
       if unit.state == CombatState.Destroyed or excessDefenderHits <= 0:
         continue
 
-      if excessDefenderHits >= unit.defenseStrength:
-        excessDefenderHits -= unit.defenseStrength
+      if excessDefenderHits >= unit.stats.defenseStrength:
+        excessDefenderHits -= unit.stats.defenseStrength
         case unit.state
         of CombatState.Undamaged:
           unit.state = CombatState.Crippled
-          unit.attackStrength = max(1, unit.attackStrength div 2)
-          result.attackerCasualties.add(unit)
+          unit.stats = GroundUnitStats(
+            unitType: unit.stats.unitType,
+            attackStrength: max(1, unit.stats.attackStrength div 2),
+            defenseStrength: unit.stats.defenseStrength,
+          )
+          result.attackerCasualties.add(unit.id)
         of CombatState.Crippled:
           let allOthersCrippled =
             attackers.allIt(it.id == unit.id or it.state != CombatState.Undamaged)
           if allOthersCrippled:
             unit.state = CombatState.Destroyed
-            result.attackerCasualties.add(unit)
+            result.attackerCasualties.add(unit.id)
         of CombatState.Destroyed:
           discard
 
@@ -437,8 +533,10 @@ proc conductInvasion*(
 ## Planetary Blitz (Section 7.6.2)
 
 proc conductBlitz*(
-    attackingFleet: seq[CombatSquadron],
+    state: var GameState,
+    attackingFleet: var seq[CombatSquadron],
     attackingForces: seq[GroundUnit],
+    defendingForces: seq[GroundUnit],
     defense: var PlanetaryDefense,
     seed: int64,
 ): InvasionResult =
@@ -449,6 +547,7 @@ proc conductBlitz*(
   ## 2. Marines get 0.5× AS modifier (quick insertion penalty)
   ## 3. No IU destroyed on success (assets seized intact)
   ## 4. Shields, spaceports, batteries seized if successful
+  ## Uses proper DoD entity patterns
 
   var rng = initRNG(seed)
   result = InvasionResult()
@@ -456,8 +555,9 @@ proc conductBlitz*(
 
   # Phase 1: One round of bombardment (transports vulnerable)
   # Section 7.6.2: "Troop transports are included as individual units"
-  # Note: This would need mutable fleet access, simplified for now
-  let bombardmentResult = resolveBombardmentRound(attackingFleet, defense, rng)
+  # Fleet is now mutable - transports can be damaged by battery fire
+  let bombardmentResult =
+    resolveBombardmentRound(state, attackingFleet, defense, rng)
 
   # Track battery destruction for intelligence reporting
   result.batteriesDestroyed = bombardmentResult.batteriesDestroyed
@@ -467,12 +567,16 @@ proc conductBlitz*(
 
   # Phase 2: Ground combat with Marines at 0.5× AS
   var attackers = attackingForces
-  var defenders = defense.groundForces
+  var defenders = defendingForces
 
   # Apply Marine AS penalty for quick insertion
   for unit in attackers.mitems:
-    if unit.unitType == GroundClass.Marine:
-      unit.attackStrength = max(1, unit.attackStrength div 2)
+    if unit.stats.unitType == GroundClass.Marine:
+      unit.stats = GroundUnitStats(
+        unitType: unit.stats.unitType,
+        attackStrength: max(1, unit.stats.attackStrength div 2),
+        defenseStrength: unit.stats.defenseStrength,
+      )
 
   # Ground combat loop
   while true:
@@ -482,9 +586,9 @@ proc conductBlitz*(
         continue
       let unitAS =
         if unit.state == CombatState.Crippled:
-          max(1, unit.attackStrength div 2)
+          max(1, unit.stats.attackStrength div 2)
         else:
-          unit.attackStrength
+          unit.stats.attackStrength
       attackerAS += unitAS
 
     var defenderAS = 0
@@ -493,9 +597,9 @@ proc conductBlitz*(
         continue
       let unitAS =
         if unit.state == CombatState.Crippled:
-          max(1, unit.attackStrength div 2)
+          max(1, unit.stats.attackStrength div 2)
         else:
-          unit.attackStrength
+          unit.stats.attackStrength
       defenderAS += unitAS
 
     # Roll on Ground Combat Table
@@ -514,19 +618,23 @@ proc conductBlitz*(
       if unit.state == CombatState.Destroyed or excessAttackerHits <= 0:
         continue
 
-      if excessAttackerHits >= unit.defenseStrength:
-        excessAttackerHits -= unit.defenseStrength
+      if excessAttackerHits >= unit.stats.defenseStrength:
+        excessAttackerHits -= unit.stats.defenseStrength
         case unit.state
         of CombatState.Undamaged:
           unit.state = CombatState.Crippled
-          unit.attackStrength = max(1, unit.attackStrength div 2)
-          result.defenderCasualties.add(unit)
+          unit.stats = GroundUnitStats(
+            unitType: unit.stats.unitType,
+            attackStrength: max(1, unit.stats.attackStrength div 2),
+            defenseStrength: unit.stats.defenseStrength,
+          )
+          result.defenderCasualties.add(unit.id)
         of CombatState.Crippled:
           let allOthersCrippled =
             defenders.allIt(it.id == unit.id or it.state != CombatState.Undamaged)
           if allOthersCrippled:
             unit.state = CombatState.Destroyed
-            result.defenderCasualties.add(unit)
+            result.defenderCasualties.add(unit.id)
         of CombatState.Destroyed:
           discard
 
@@ -536,19 +644,23 @@ proc conductBlitz*(
       if unit.state == CombatState.Destroyed or excessDefenderHits <= 0:
         continue
 
-      if excessDefenderHits >= unit.defenseStrength:
-        excessDefenderHits -= unit.defenseStrength
+      if excessDefenderHits >= unit.stats.defenseStrength:
+        excessDefenderHits -= unit.stats.defenseStrength
         case unit.state
         of CombatState.Undamaged:
           unit.state = CombatState.Crippled
-          unit.attackStrength = max(1, unit.attackStrength div 2)
-          result.attackerCasualties.add(unit)
+          unit.stats = GroundUnitStats(
+            unitType: unit.stats.unitType,
+            attackStrength: max(1, unit.stats.attackStrength div 2),
+            defenseStrength: unit.stats.defenseStrength,
+          )
+          result.attackerCasualties.add(unit.id)
         of CombatState.Crippled:
           let allOthersCrippled =
             attackers.allIt(it.id == unit.id or it.state != CombatState.Undamaged)
           if allOthersCrippled:
             unit.state = CombatState.Destroyed
-            result.attackerCasualties.add(unit)
+            result.attackerCasualties.add(unit.id)
         of CombatState.Destroyed:
           discard
 
@@ -563,137 +675,6 @@ proc conductBlitz*(
         result.assetsSeized = true
         result.infrastructureDestroyed = 0
       break
-
-## Ground Unit Management
-
-proc createGroundBattery*(id: string, owner: HouseId, techLevel: int = 1): GroundUnit =
-  ## Create a ground battery unit from config
-  ## Stats loaded from config/ground_units.toml
-  ##
-  ## NOTE: techLevel parameter accepted but not applied (no formula defined)
-  ## Per economy.md:4.5, CST affects construction capacity, not ground unit stats
-  ## Future: Define if/how CST should modify ground battery AS/DS
-
-  let cfg = globalGroundUnitsConfig.ground_battery
-
-  result = GroundUnit(
-    unitType: GroundClass.GroundBattery,
-    id: id,
-    owner: owner,
-    attackStrength: cfg.attack_strength,
-    defenseStrength: cfg.defense_strength,
-    state: CombatState.Undamaged,
-  )
-
-proc createArmy*(id: string, owner: HouseId): GroundUnit =
-  ## Create an Army unit (garrison defense) from config
-  ## Stats loaded from config/ground_units.toml
-
-  let cfg = globalGroundUnitsConfig.army
-
-  result = GroundUnit(
-    unitType: GroundClass.Army,
-    id: id,
-    owner: owner,
-    attackStrength: cfg.attack_strength,
-    defenseStrength: cfg.defense_strength,
-    state: CombatState.Undamaged,
-  )
-
-proc createMarine*(id: string, owner: HouseId): GroundUnit =
-  ## Create a Marine unit (invasion force) from config
-  ## Stats loaded from config/ground_units.toml
-
-  let cfg = globalGroundUnitsConfig.marine_division
-
-  result = GroundUnit(
-    unitType: GroundClass.Marine,
-    id: id,
-    owner: owner,
-    attackStrength: cfg.attack_strength,
-    defenseStrength: cfg.defense_strength,
-    state: CombatState.Undamaged,
-  )
-
-## Ground Force Assembly (Consolidation Functions)
-## These functions eliminate duplication in combat resolution code
-
-proc assembleDefendingForces*(
-    systemId: string, armyCount: int, marineCount: int, owner: HouseId
-): seq[GroundUnit] =
-  ## Assemble defending ground forces from colony counts
-  ## Consolidates duplicated code from bombardment/invasion/blitz resolution
-  ##
-  ## Creates armies and marines with proper IDs and stats from config
-  ## Returns seq ready for ground combat
-
-  result = @[]
-
-  # Add armies (garrison forces)
-  for i in 0 ..< armyCount:
-    let army = createArmy(id = systemId & "_AA_" & $i, owner = owner)
-    result.add(army)
-
-  # Add marines (can defend too)
-  for i in 0 ..< marineCount:
-    let marine = createMarine(id = systemId & "_MD_" & $i, owner = owner)
-    result.add(marine)
-
-proc assemblePlanetaryDefense*(
-    systemId: string,
-    shieldLevel: int,
-    batteryCount: int,
-    owner: HouseId,
-    constructionTechLevel: int,
-): PlanetaryDefense =
-  ## Assemble complete planetary defense structure
-  ## Consolidates duplicated code from bombardment/invasion/blitz resolution
-  ##
-  ## Creates shields and ground batteries with proper IDs and tech levels
-  ## Returns PlanetaryDefense ready for combat
-
-  result = PlanetaryDefense()
-
-  # Add planetary shields if present
-  if shieldLevel > 0:
-    let (rollNeeded, blockPct) = getShieldData(shieldLevel)
-    result.shields = some(
-      ShieldLevel(
-        level: shieldLevel,
-        blockChance: float(rollNeeded) / 20.0,
-        blockPercentage: blockPct,
-      )
-    )
-
-  # Add ground batteries
-  result.groundBatteries = @[]
-  for i in 0 ..< batteryCount:
-    let battery = createGroundBattery(
-      id = systemId & "_GB" & $i, owner = owner, techLevel = constructionTechLevel
-    )
-    result.groundBatteries.add(battery)
-
-  # Spaceport status (true if exists, managed separately)
-  result.spaceport = false # Set by caller based on colony state
-
-proc assembleAttackingForces*(
-    systemId: string, marineCount: int, owner: HouseId
-): seq[GroundUnit] =
-  ## Assemble attacking ground forces (marines only)
-  ## Consolidates duplicated code from invasion/blitz resolution
-  ##
-  ## Creates marines with proper IDs and stats from config
-  ## Returns seq ready for ground combat
-
-  result = @[]
-
-  # Add marines (invasion/blitz force)
-  for i in 0 ..< marineCount:
-    let marine = createMarine(
-      id = systemId & "_AM_" & $i, # AM = Attacking Marine
-      owner = owner,
-    )
-    result.add(marine)
 
 ## Notes for Future Implementation
 ##

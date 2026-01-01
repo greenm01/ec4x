@@ -325,12 +325,12 @@ Fighters are fragile but cost-effective. A mature colony can field dozens of squ
 Scouts are autonmous auxiliary ships that specialize in espionage and reconnaissance. They are non-combat units that operate in **Scout-only fleets**. This allows you to move them to strategic locations and group them together before a mission.
 
 They have two primary functions:
-1.  **Reconnaissance (Non-Consumable)**: Using the `View a World` order, a Scout can gather basic intelligence on a system from a safe distance without being consumed.
-2.  **Espionage (Consumable)**: When you issue a spy order (`Spy on Planet`, `Spy on System`, `Hack a Starbase`), the Scout fleet travels to the target system and establishes a persistent intelligence-gathering mission. All Scouts in the fleet are consumed (committed to the mission) and cannot be recalled.
+1.  **Reconnaissance (Non-Consumable)**: Using the `View a Planet` command, a Scout can gather basic intelligence on a system from a safe distance without being consumed.
+2.  **Espionage (Consumable)**: When you issue a spy command (`Spy on Planet`, `Spy on System`, `Hack a Starbase`), the Scout fleet travels to the target system and establishes a persistent intelligence-gathering mission. All Scouts in the fleet are consumed (committed to the mission) and cannot be recalled.
 
 **Mission Lifecycle**:
 
-When you issue a spy order, the mission progresses through multiple phases:
+When you issue a spy command, the mission progresses through multiple phases:
 
 1. **Travel Phase**: Scout fleet moves toward the target system using normal fleet movement. During this phase, you can cancel the mission by issuing new orders.
 2. **Mission Start**: When the fleet arrives at the target system, the mission begins. The scouts are now "consumed" (committed to the mission), the fleet is locked, and you cannot issue new orders to this fleet.

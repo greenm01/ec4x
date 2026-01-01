@@ -6,16 +6,18 @@
 ## Pure game logic - no I/O, works with typed data
 
 import std/[options, tables, sequtils, strutils, random]
-import ../../types/combat as combat_types
-import cer, resolution, retreat, damage
+import ../../types/[core, combat as combat_types, game_state, squadron, ship]
+import ../../state/entity_manager
+import ../../globals
+import cer, resolution, retreat, damage, targeting
 import ../squadron/entity
-import ../intelligence/detection
+import ../../intel/detection
 
 export combat_types
 
 ## Main Combat Resolution
 
-proc resolveCombat*(context: BattleContext): CombatResult =
+proc resolveCombat*(state: GameState, context: BattleContext): CombatResult =
   ## Resolve complete combat scenario
   ## Pure function: same input = same output (deterministic PRNG)
   ##
@@ -53,13 +55,13 @@ proc resolveCombat*(context: BattleContext): CombatResult =
 
   # Mark pre-detected houses as detected
   for targetIdx, targetTF in taskForces.mpairs:
-    if targetTF.house in context.preDetectedHouses:
+    if targetTF.houseId in context.preDetectedHouses:
       taskForces[targetIdx].isCloaked = false
 
   for detectorIdx, detectorTF in taskForces.mpairs:
     # Skip if this task force has no ELI capability (no scouts)
-    let detectorSquadrons = detectorTF.squadrons.mapIt(it.squadron)
-    if not hasELICapability(detectorSquadrons):
+    let detectorSquadronIds = detectorTF.squadrons.mapIt(it.squadronId)
+    if not hasELICapability(state, detectorSquadronIds):
       continue
 
     # Check each opposing task force for cloaked raiders
@@ -78,13 +80,19 @@ proc resolveCombat*(context: BattleContext): CombatResult =
       # Check if detector has scouts (required for detection)
       var hasScouts = false
       for sq in detectorTF.squadrons:
-        if sq.squadron.scoutShips().len > 0:
-          hasScouts = true
-          break
+        let squadronOpt = state.squadrons.entities.entity(sq.squadronId)
+        if squadronOpt.isSome:
+          let squadron = squadronOpt.get()
+          if squadron.scoutShips(state.ships).len > 0:
+            hasScouts = true
+            break
 
       # Check for starbase presence (provides +2 detection bonus)
-      # TODO: Starbases moved to facility system - need colony data to determine presence
-      let starbaseBonus = 0 # Placeholder until colony integration
+      let starbaseBonus =
+        if context.hasDefenderStarbase:
+          gameConfig.combat.starbase.starbaseDetectionBonus
+        else:
+          0
 
       # Use target's house CLK level
       let targetCloakLevel = targetTF.clkLevel
@@ -103,11 +111,11 @@ proc resolveCombat*(context: BattleContext): CombatResult =
             "Detection",
             "Raider detection attempt (opposed rolls)",
             "detector=",
-            $detectorTF.house,
+            $detectorTF.houseId,
             " defenderELI=",
             $detectorTF.eliLevel,
             " target=",
-            $targetTF.house,
+            $targetTF.houseId,
             " attackerCLK=",
             $targetCloakLevel,
             " defenderRoll=",
@@ -219,7 +227,7 @@ proc resolveCombat*(context: BattleContext): CombatResult =
           # Check if this house wants to retreat
           var wantsRetreat = false
           for eval in retreatEvals:
-            if eval.taskForce == houseId:
+            if eval.taskForceHouse == houseId:
               wantsRetreat = true
               break
 
@@ -243,28 +251,102 @@ proc resolveCombat*(context: BattleContext): CombatResult =
 
   # Record survivors and eliminated
   for tf in context.taskForces:
-    let stillPresent = taskForces.anyIt(it.house == tf.house)
+    let stillPresent = taskForces.anyIt(it.houseId == tf.houseId)
     if stillPresent:
       # Find updated Task Force
       for updatedTF in taskForces:
-        if updatedTF.house == tf.house:
+        if updatedTF.houseId == tf.houseId:
           result.survivors.add(updatedTF)
           break
     else:
       # Check if retreated or eliminated
-      if not result.retreated.contains(tf.house):
-        result.eliminated.add(tf.house)
+      if not result.retreated.contains(tf.houseId):
+        result.eliminated.add(tf.houseId)
 
   # If only survivors remain and no victor set, award to survivor
   if result.victor.isNone() and result.survivors.len == 1:
-    result.victor = some(result.survivors[0].house)
+    result.victor = some(result.survivors[0].houseId)
+
+## CombatSquadron Helper Methods
+
+proc isAlive*(sq: CombatSquadron): bool {.inline.} =
+  ## Check if squadron can still fight
+  sq.state != CombatState.Destroyed
+
+proc getCurrentAS*(sq: CombatSquadron): int32 {.inline.} =
+  ## Get current attack strength (halved if crippled)
+  if sq.state == CombatState.Crippled:
+    max(1'i32, sq.attackStrength div 2)
+  else:
+    sq.attackStrength
+
+proc resetRoundDamage*(sq: var CombatSquadron) {.inline.} =
+  ## Reset damage counter for new round
+  sq.damageThisTurn = 0
 
 ## Combat Initialization Helpers
 
-proc initializeCombatSquadron*(squadron: Squadron): CombatSquadron =
+proc classifyBucket(squadron: Squadron): TargetBucket =
+  ## Classify squadron into combat bucket based on squadron class
+  ## See docs/specs/07-combat.md for bucket definitions
+  case squadron.squadronType
+  of SquadronClass.Intel:
+    TargetBucket.Raider  # Scouts = Raiders for targeting purposes
+  of SquadronClass.Fighter:
+    TargetBucket.Fighter
+  of SquadronClass.Combat:
+    # Combat squadrons are either Capital or Escort based on flagship
+    # For now, default to Capital (can be refined with flagship class check)
+    TargetBucket.Capital
+  of SquadronClass.Auxiliary, SquadronClass.Expansion:
+    TargetBucket.Escort  # Support squadrons treated as escorts
+
+proc calculateTargetWeight(sq: CombatSquadron): float32 =
+  ## Calculate target priority weight for targeting system
+  ## Higher weight = higher priority target
+  ## Formula: (AS / DS) * bucket_modifier
+
+  # Avoid division by zero
+  let defenseFactor = if sq.defenseStrength > 0:
+    float32(sq.defenseStrength)
+  else:
+    1.0'f32
+
+  # Base weight: attack strength divided by defense (threat-to-vulnerability ratio)
+  var weight = float32(sq.attackStrength) / defenseFactor
+
+  # Apply bucket-specific modifiers
+  case sq.bucket
+  of TargetBucket.Raider:
+    weight *= 1.5'f32  # High priority - eliminate scouts/raiders first
+  of TargetBucket.Capital:
+    weight *= 1.2'f32  # High priority - major threats
+  of TargetBucket.Escort:
+    weight *= 1.0'f32  # Normal priority
+  of TargetBucket.Fighter:
+    weight *= 0.8'f32  # Lower priority - dealt with in fighter phase
+  of TargetBucket.Starbase:
+    weight *= 2.0'f32  # Highest priority - eliminate defensive assets
+
+  return weight
+
+proc initializeCombatSquadron*(state: GameState, squadron: Squadron): CombatSquadron =
   ## Convert Squadron to CombatSquadron for battle
+  ## Cache total attack/defense/command stats from all ships in squadron
+  let flagship = state.ships.entities.entity(squadron.flagshipId).get()
+
+  # Calculate total squadron strength (all ships)
+  let totalAS = int32(squadron.combatStrength(state.ships))
+  let totalDS = int32(squadron.defenseStrength(state.ships))
+
+  # Look up CR from flagship ship class config
+  let flagshipCR = gameConfig.ships.ships[flagship.shipClass].commandRating
+
   result = CombatSquadron(
-    squadron: squadron,
+    squadronId: squadron.id,
+    attackStrength: totalAS,
+    defenseStrength: totalDS,
+    commandRating: flagshipCR,  # CR comes from flagship class config
     state: CombatState.Undamaged,
     damageThisTurn: 0,
     crippleRound: 0,
@@ -276,29 +358,33 @@ proc initializeCombatSquadron*(squadron: Squadron): CombatSquadron =
   result.targetWeight = calculateTargetWeight(result)
 
 proc initializeTaskForce*(
+    state: GameState,
     house: HouseId,
     squadrons: seq[Squadron],
     roe: int,
     prestige: int = 50,
     isHomeworld: bool = false,
-    eliLevel: int = 1,
-    clkLevel: int = 1,
 ): TaskForce =
   ## Create Task Force from squadrons
   ##
   ## Args:
+  ##   state: GameState for entity lookups
   ##   house: House ID
   ##   squadrons: Squadrons in Task Force
   ##   roe: Rules of Engagement (0-10)
   ##   prestige: House prestige for morale (default 50)
   ##   isHomeworld: Defending homeworld (never retreat)
-  ##   eliLevel: House ELI tech level (for scout detection)
-  ##   clkLevel: House CLK tech level (for raider cloaking)
+
+  # Look up house tech levels
+  let houseData = state.houses.entities.entity(house).get()
+  let eliLevel = houseData.techTree.levels.eli
+  let clkLevel = houseData.techTree.levels.clk
 
   result = TaskForce(
-    house: house,
+    houseId: house,
     squadrons: @[],
-    roe: roe,
+    facilities: @[],
+    roe: int32(roe),
     isCloaked: false,
     moraleModifier: 0,
     isDefendingHomeworld: isHomeworld,
@@ -308,15 +394,15 @@ proc initializeTaskForce*(
 
   # Convert squadrons
   for sq in squadrons:
-    result.squadrons.add(initializeCombatSquadron(sq))
+    result.squadrons.add(initializeCombatSquadron(state, sq))
 
   # Check if all squadrons are cloaked Raiders
   var allCloaked = true
   var hasRaiders = false
   for sq in squadrons:
-    if sq.raiderShips().len > 0:
+    if sq.raiderShips(state.ships).len > 0:
       hasRaiders = true
-      if not sq.isCloaked():
+      if not sq.isCloaked(state.ships):
         allCloaked = false
     else:
       allCloaked = false
@@ -324,14 +410,15 @@ proc initializeTaskForce*(
   result.isCloaked = hasRaiders and allCloaked
 
   # Calculate morale modifier from prestige
-  result.moraleModifier = getMoraleROEModifier(prestige)
+  result.moraleModifier = int32(getMoraleROEModifier(prestige))
 
 ## Quick Battle Helper
 
 proc quickBattle*(
+    state: GameState,
     attacker: TaskForce,
     defender: TaskForce,
-    systemId: SystemId = 0,
+    systemId: SystemId = SystemId(0),
     seed: int64 = 12345,
 ): CombatResult =
   ## Convenience function for simple 1v1 battles
@@ -339,4 +426,4 @@ proc quickBattle*(
     systemId: systemId, taskForces: @[attacker, defender], seed: seed, maxRounds: 20
   )
 
-  return resolveCombat(context)
+  return resolveCombat(state, context)

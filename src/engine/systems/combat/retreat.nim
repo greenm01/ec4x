@@ -5,7 +5,7 @@
 ## (Section 7.3.4, 7.3.5)
 
 import std/[algorithm, strutils, options]
-import ../../types/combat as combat_types
+import ../../types/[core, combat as combat_types]
 
 export combat_types
 
@@ -48,7 +48,7 @@ proc evaluateRetreat*(
   ## Returns evaluation with decision and reasoning
 
   result = RetreatEvaluation(
-    taskForce: taskForce.house,
+    taskForceHouse: taskForce.houseId,
     wantsToRetreat: false,
     effectiveROE: taskForce.roe,
     ourStrength: 0,
@@ -62,8 +62,13 @@ proc evaluateRetreat*(
     result.reason = "Defending homeworld - never retreat"
     return result
 
-  # Calculate our strength
-  result.ourStrength = taskForce.totalAS()
+  # Calculate our strength (sum of all squadron AS)
+  for sq in taskForce.squadrons:
+    if sq.state != CombatState.Destroyed:
+      if sq.state == CombatState.Crippled:
+        result.ourStrength += max(1, sq.attackStrength div 2)
+      else:
+        result.ourStrength += sq.attackStrength
 
   if result.ourStrength == 0:
     result.wantsToRetreat = true
@@ -72,8 +77,13 @@ proc evaluateRetreat*(
 
   # Calculate total hostile strength (all other Task Forces)
   for tf in allTaskForces:
-    if tf.house != taskForce.house:
-      result.enemyStrength += tf.totalAS()
+    if tf.houseId != taskForce.houseId:
+      for sq in tf.squadrons:
+        if sq.state != CombatState.Destroyed:
+          if sq.state == CombatState.Crippled:
+            result.enemyStrength += max(1'i32, sq.attackStrength div 2)
+          else:
+            result.enemyStrength += sq.attackStrength
 
   if result.enemyStrength == 0:
     result.reason = "No hostile forces remaining"
@@ -84,7 +94,7 @@ proc evaluateRetreat*(
 
   # Apply morale modifier to effective ROE
   let moraleModifier = getMoraleROEModifier(prestige)
-  result.effectiveROE = taskForce.roe + moraleModifier
+  result.effectiveROE = int32(taskForce.roe + moraleModifier)
 
   # Clamp to valid range
   if result.effectiveROE < 0:
@@ -116,7 +126,14 @@ proc getRetreatPriority*(taskForces: seq[TaskForce]): seq[HouseId] =
   var strengths: seq[TFStrength] = @[]
 
   for tf in taskForces:
-    strengths.add((tf.house, tf.totalAS()))
+    var totalAS = 0'i32
+    for sq in tf.squadrons:
+      if sq.state != CombatState.Destroyed:
+        if sq.state == CombatState.Crippled:
+          totalAS += max(1'i32, sq.attackStrength div 2)
+        else:
+          totalAS += sq.attackStrength
+    strengths.add((tf.houseId, int(totalAS)))
 
   # Sort by strength ascending (weakest first), then by house ID
   strengths.sort(
@@ -124,7 +141,7 @@ proc getRetreatPriority*(taskForces: seq[TaskForce]): seq[HouseId] =
       if a.strength != b.strength:
         return cmp(a.strength, b.strength)
       else:
-        return cmp(a.house, b.house)
+        return cmp(int(a.house), int(b.house))
   )
 
   result = @[]
@@ -142,8 +159,14 @@ proc checkCombatTermination*(
   # Count alive Task Forces
   var aliveHouses: seq[HouseId] = @[]
   for tf in taskForces:
-    if not tf.isEliminated():
-      aliveHouses.add(tf.house)
+    # Check if any squadrons are alive
+    var hasAliveSquadrons = false
+    for sq in tf.squadrons:
+      if sq.state != CombatState.Destroyed:
+        hasAliveSquadrons = true
+        break
+    if hasAliveSquadrons:
+      aliveHouses.add(tf.houseId)
 
   # Only one side remains
   if aliveHouses.len == 1:
@@ -191,7 +214,7 @@ proc executeRetreat*(taskForces: var seq[TaskForce], houseId: HouseId) =
   ## For combat simulation, we just mark as retreated
 
   for i in countdown(taskForces.len - 1, 0):
-    if taskForces[i].house == houseId:
+    if taskForces[i].houseId == houseId:
       taskForces.delete(i)
       break
 
@@ -199,7 +222,7 @@ proc executeRetreat*(taskForces: var seq[TaskForce], houseId: HouseId) =
 
 proc `$`*(eval: RetreatEvaluation): string =
   ## Pretty print retreat evaluation
-  result = "House " & eval.taskForce & ": "
+  result = "House " & $eval.taskForceHouse & ": "
   if eval.wantsToRetreat:
     result &= "RETREAT"
   else:

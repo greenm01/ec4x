@@ -18,6 +18,7 @@ type
 
   MoraleConfig* = object
     crisisMax*: int32
+    veryLowMax*: int32
     lowMax*: int32
     averageMax*: int32
     goodMax*: int32

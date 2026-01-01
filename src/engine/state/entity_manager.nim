@@ -9,6 +9,13 @@ proc entity*[ID, T](collection: EntityManager[ID, T], id: ID): Option[T] =
     return some(collection.data[idx])
   return none(T)
 
+# Template to generate convenience entity() procs for collection types
+# Usage: defineEntityAccessor(Squadrons, SquadronId, Squadron)
+# Generates: proc entity*(collection: Squadrons, id: SquadronId): Option[Squadron]
+template defineEntityAccessor*(CollectionType, IDType, EntityType: untyped) =
+  proc entity*(collection: CollectionType, id: IDType): Option[EntityType] {.inline.} =
+    collection.entities.entity(id)
+
 # Generic adder that works for any collection using our EntityManager pattern
 proc addEntity*[ID, T](collection: var EntityManager[ID, T], id: ID, entity: T) =
   collection.data.add(entity)

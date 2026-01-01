@@ -34,8 +34,7 @@ import
     simultaneous as simultaneous_types,
   ]
 import ../systems/combat/simultaneous_blockade
-import ../systems/combat/battles # Space/orbital combat (resolveBattle)
-import ../systems/combat/planetary
+import ../systems/combat/orchestrator # Theater progression (Space → Orbital → Planetary)
 import ../systems/espionage/simultaneous_espionage
 import
   ../systems/intelligence/
@@ -236,21 +235,6 @@ proc resolveConflictPhase*(
         break # System added, move to next system.
 
   # ===================================================================
-  # STEPS 1 & 2: SPACE & ORBITAL COMBAT
-  # ===================================================================
-  # Resolve combat in each system (operations.md:7.0)
-  logInfo(
-    LogCategory.lcOrders,
-    &"[CONFLICT STEPS 1 & 2] Resolving space/orbital combat ({combatSystems.len} systems)...",
-  )
-  for systemId in combatSystems:
-    resolveBattle(state, systemId, effectiveOrders, combatReports, events, rng)
-  logInfo(
-    LogCategory.lcOrders,
-    &"[CONFLICT STEPS 1 & 2] Completed ({combatReports.len} battles resolved)",
-  )
-
-  # ===================================================================
   # ARRIVAL FILTERING: Filter orders to only arrived fleets
   # ===================================================================
   # Orders requiring arrival: Bombard, Invade, Blitz, Colonize, SpyPlanet, SpySystem, HackStarbase
@@ -277,6 +261,24 @@ proc resolveConflictPhase*(
         # Keep orders that don't require arrival checking
         filteredFleetOrders.add(command)
     arrivedOrders[houseId].fleetCommands = filteredFleetOrders
+
+  # ===================================================================
+  # STEPS 1, 2, & 4: ALL COMBAT THEATERS (orchestrated)
+  # ===================================================================
+  # Resolve combat in each system with theater progression enforcement
+  # Space → Orbital → Planetary (operations.md:7.0)
+  logInfo(
+    LogCategory.lcOrders,
+    &"[CONFLICT STEPS 1, 2, & 4] Resolving all combat theaters ({combatSystems.len} systems)...",
+  )
+  for systemId in combatSystems:
+    orchestrator.resolveSystemCombat(
+      state, systemId, effectiveOrders, arrivedOrders, combatReports, events, rng
+    )
+  logInfo(
+    LogCategory.lcOrders,
+    &"[CONFLICT STEPS 1, 2, & 4] Completed ({combatReports.len} battles resolved)",
+  )
 
   # ===================================================================
   # STEP 3: BLOCKADE RESOLUTION
@@ -312,24 +314,11 @@ proc resolveConflictPhase*(
           )
 
   # ===================================================================
-  # STEP 4: PLANETARY COMBAT RESOLUTION
+  # STEP 4: PLANETARY COMBAT - HANDLED BY ORCHESTRATOR ABOVE
   # ===================================================================
-  # Resolve all planetary combat (bombard/invade/blitz) simultaneously
-  logInfo(LogCategory.lcOrders, "[CONFLICT STEP 4] Resolving planetary combat...")
-  let planetaryCombatResults =
-    planetary.resolvePlanetaryCombat(state, arrivedOrders, rng, events)
-  logInfo(
-    LogCategory.lcOrders,
-    &"[CONFLICT STEP 4] Completed ({planetaryCombatResults.len} planetary combat attempts)",
-  )
-
-  # Clear arrivedFleets for executed planetary combat orders
-  for result in planetaryCombatResults:
-    if result.fleetId in state.arrivedFleets:
-      state.arrivedFleets.del(result.fleetId)
-      logDebug(
-        LogCategory.lcOrders, &"  Cleared arrival status for fleet {result.fleetId}"
-      )
+  # Planetary combat is now resolved as part of theater progression in Step 1-2-4
+  # The orchestrator enforces Space → Orbital → Planetary sequence
+  # No separate call needed here
 
   # ===================================================================
   # STEP 5: COLONIZATION

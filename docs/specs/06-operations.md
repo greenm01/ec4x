@@ -490,7 +490,7 @@ Send a fleet to perform long-range reconnaissance on a planet from the edge of a
 
 ## 6.4 Zero-Turn Administrative Commands
 
-Reorganize your forces instantly during order submission. Zero-turn administrative commands execute immediately—before turn resolution begins—enabling you to prepare forces precisely for the upcoming turn without consuming time.
+Reorganize your forces instantly during command submission. Zero-turn administrative commands execute immediately—before turn resolution begins—enabling you to prepare forces precisely for the upcoming turn without consuming time.
 
 ### 6.4.1 Concept: Administrative vs Operational Commands
 
@@ -499,7 +499,7 @@ Reorganize your forces instantly during order submission. Zero-turn administrati
 - Cargo operations (load/unload troops and colonists)
 - Squadron management (transfer ships between squadrons, assign to fleets)
 - Ship status changes (Reserve/Mothball)
-- Execute **immediately** during order submission
+- Execute **immediately** during command submission
 - No turn cost—prepare forces and execute strategy in the same turn
 
 **Operational Commands (1+ turns):**
@@ -663,7 +663,7 @@ Assign newly-commissioned squadrons from unassigned pool to specific fleets.
 - If source fleet emptied, deleted automatically
 - Executes before auto-assignment during turn resolution
 
-**Strategic Control:** Issue commands during order submission to assign specific squadrons to specific fleets. Auto-assignment still handles remaining unassigned squadrons, but your manual assignments take priority.
+**Strategic Control:** Issue commands during command submission to assign specific squadrons to specific fleets. Auto-assignment still handles remaining unassigned squadrons, but your manual assignments take priority.
 
 **Example:** Colony completes 2 dreadnought squadrons + 4 cruiser squadrons. Use AssignSquadronToFleet commands to put dreadnoughts in battle fleet, cruisers in patrol fleet → precise control instead of automatic distribution.
 
@@ -732,7 +732,7 @@ Persistent behaviors that execute when fleet has no active mission. Standing com
 | DefendSystem          | Patrol a System (03)      | Patrol system. Remain on station until ordered otherwise (persist).               |
 | GuardColony           | Guard a Colony (03)       | Guard colony/planet. Remain on station until ordered otherwise (persist).         |
 | AutoReinforce         | Join another Fleet (14)   | Seek target fleet and join.                                                       |
-| AutoRepair            | Move Fleet (01)           | Move to nearest house controlled shipyard for repair.                             |
+| AutoRepair            | Move Fleet (01)           | Move to nearest house controlled drydock for repair.                             |
 | BlockadeTarget        | Blockade a Colony (06)    | Blockade enemy colony/planet in designated system.                                |
 
 **Note:** Active command codes reference table 6.2.1. All fleet commands (except Hold) include automatic travel to target.
@@ -766,11 +766,11 @@ Standing commands include multiple layers of control to prevent unwanted automat
 - Default: `activation.default_activation_delay_turns` (1 turn)
 - Configurable per-fleet
 - Countdown resets when you issue explicit order
-- **Critical for preventing strategic errors**: Fleet completes mission, you have 1 turn to issue new orders before standing order takes over
+- **Critical for preventing strategic errors**: Fleet completes mission, you have 1 turn to issue new fleet commands before standing command takes over
 
 **Activation Flow Example:**
 ```
-Turn N:   Fleet completes Colonize order → order removed
+Turn N:   Fleet completes Colonize command → command removed
 Turn N:   Standing order countdown starts: turnsUntilActivation = 1
 Turn N+1: You can issue new explicit command OR let countdown continue
 Turn N+1: If no explicit command: countdown decrements to 0

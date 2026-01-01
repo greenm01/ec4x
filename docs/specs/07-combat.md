@@ -175,11 +175,9 @@ When a fleet containing one or more Raiders engages in combat (both Space and Or
 
 See [Section 2.4.3](02-assets.md#243-raiders) for the full mechanic.
 
-**First-Strike Advantage: Ambush & Surprise**
-If a Raider fleet remains undetected at the start of a combat phase (both Space and Orbital), it gains a first-strike advantage for that engagement:
+**First-Strike Advantage: Ambush**
+If a Raider fleet remains undetected at the start of a combat phase (both Space and Orbital), it gains a first-strike advantage by successfully ambushing the enemy. This applies whether the Raider fleet is attacking or defending. An ambush provides:
 - A **+4 Combat Effectiveness Rating (CER)** bonus in the first round of combat.
-- **Ambush**: Achieved by a defending Raider fleet.
-- **Surprise**: Achieved by an attacking Raider fleet.
 
 This bonus represents a devastating attack before the enemy can effectively respond.
 
@@ -233,17 +231,17 @@ When three or more houses have mobile fleets in the same system:
 - Each house forms separate task force
 - Each squadron targets hostile houses based on diplomatic status
 - Enemy status: Always hostile
-- Hostile status: Always hostile if provocative orders are present, or engaged in combat
-- Neutral status: Only hostile if threatening orders are issued against your controlled system
+- Hostile status: Always hostile if provocative commands are present, or engaged in combat
+- Neutral status: Only hostile if threatening commands are issued against your controlled system
 - All combat phases (Raiders, Fighters, Capitals) resolve simultaneously with multi-faction targeting
 
 ### 7.3.2 Combat Initiative and Phases
 
 Space combat resolves in three phases determining strike order:
 
-**Phase 1: Undetected Raiders (Ambush / Surprise)**
+**Phase 1: Undetected Raiders (Ambush)**
 
-Undetected Raider fleets strike first with a **+4 CER bonus**. This represents a devastating ambush (for a defending fleet) or surprise attack (for an attacking fleet) before the enemy can respond.
+Undetected Raider fleets strike first with a **+4 CER bonus**. This represents a devastating ambush, regardless of whether the fleet is attacking or defending.
 
 **Conditions:**
 - A fleet with Raiders wins the detection roll at the start of combat.
@@ -322,8 +320,7 @@ CER determines strike effectiveness—how much damage your squadrons inflict. Ea
 1. **Roll 1d10** (result 0-9, treat 10 as 0)
 2. **Add modifiers**:
    - Morale modifier (see table below): -1 to +2
-   - Surprise (first round only): +3
-   - Ambush (Raiders, space combat, first round): +4
+   - Ambush (Raiders, first round only): +4
 3. **Look up effectiveness multiplier**:
 
 **Morale Check CER Bonuses:**
@@ -444,7 +441,7 @@ Losing fleets can retreat before total destruction. Retreat saves surviving squa
 - CER disadvantage exceeds threshold (significantly outmatched)
 - Losses exceed acceptable percentage per ROE settings
 - Morale collapse (excessive casualties break formation)
-- Commander discretion (standing orders respect ROE retreat thresholds)
+- Commander discretion (standing commands respect ROE retreat thresholds)
 
 **Retreat Consequences:**
 - Retreating fleet moves to nearest friendly system via jump lanes
@@ -542,7 +539,7 @@ Assault fortified colony defenses after winning space superiority. Your fleets e
 Reserve fleets fight at reduced effectiveness:
 - **Reduced AS/DS**: Half combat strength (maintenance savings = readiness trade-off)
 - Still better than no defense
-- Can be reactivated to full strength (Reactivate order, returns to Active status)
+- Can be reactivated to full strength (Reactivate command, returns to Active status)
 
 ### 7.4.4 Starbase Combat Bonuses
 
@@ -599,7 +596,7 @@ Destroy enemy infrastructure and defenses from orbit after achieving orbital sup
 **Requirements:**
 - Orbital supremacy achieved (won orbital combat)
 - Combat-capable squadrons present (AS > 0)
-- Bombard order issued to fleet
+- Bombard command issued to fleet
 
 **Bombardment Process:**
 
@@ -747,7 +744,7 @@ Land ground forces to conquer enemy colonies. Invasion requires orbital supremac
 - Orbital supremacy achieved (won orbital combat)
 - **ALL ground batteries destroyed** (mandatory—batteries fire on landing transports)
 - Troop Transports with loaded Marines (MD = Marine Division)
-- Invade order issued to fleet
+- Invade command issued to fleet
 
 **Invasion Process:**
 
@@ -804,7 +801,7 @@ Conduct rapid combined bombardment + invasion operations. Blitz sacrifices safet
 **Blitz Requirements:**
 - Orbital supremacy achieved
 - Loaded Troop Transports present
-- Blitz order issued to fleet
+- Blitz command issued to fleet
 - **No requirement for weak defenses**—blitz works against any target (risky against strong defenses)
 
 **Blitz Mechanics:**
@@ -922,7 +919,7 @@ Practical scenarios demonstrating combat theater progression and strategic decis
 - **Result**: Orbital supremacy achieved
 
 **Turn 1 - Blitz Operation (Same Turn):**
-- Corrino issues Blitz order
+- Corrino issues Blitz command
 - Fleet bombards while transports land simultaneously
 - Minimal shield (SLD-1), few batteries
 - 2 Marine Divisions land and engage

@@ -5,6 +5,7 @@
 
 import std/tables
 import ./core
+import ./combat  # For CombatState
 
 type
   GroundClass* {.pure.} = enum
@@ -17,7 +18,7 @@ type
     unitType*: GroundClass
     attackStrength*: int32
     defenseStrength*: int32
-    
+
   GroundUnitLocation* {.pure.} = enum
     OnColony, OnTransport
 
@@ -32,6 +33,7 @@ type
     id*: GroundUnitId
     houseId*: HouseId
     stats*: GroundUnitStats
+    state*: CombatState  # Combat damage state (Undamaged, Crippled, Destroyed)
     garrison*: GroundUnitGarrison
 
   GroundUnits* = object

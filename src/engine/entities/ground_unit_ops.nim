@@ -4,8 +4,8 @@
 ## Ensures consistency between the main `GroundUnits` collection and the
 ## ID lists within each `Colony` object.
 import std/[options, sequtils]
-import ../state/[game_state as gs_helpers, id_gen, entity_manager, iterators]
-import ../types/[game_state, core, ground_unit, colony]
+import ../state/[id_gen, entity_manager, iterators]
+import ../types/[game_state, core, ground_unit, colony, combat]
 
 proc createGroundUnit*(
     state: var GameState, owner: HouseId, colonyId: ColonyId, unitType: GroundClass
@@ -15,16 +15,24 @@ proc createGroundUnit*(
   # In a real implementation, stats would come from a config file based on unitType and tech
   let newUnit = GroundUnit(
     id: unitId,
-    unitType: unitType,
-    owner: owner,
-    attackStrength: 5,
-    defenseStrength: 5,
+    houseId: owner,
+    stats: GroundUnitStats(
+      unitType: unitType,
+      attackStrength: 5,
+      defenseStrength: 5,
+    ),
     state: CombatState.Undamaged,
+    garrison: GroundUnitGarrison(locationType: GroundUnitLocation.OnColony, colonyId: colonyId),
   )
 
   state.groundUnits.entities.addEntity(unitId, newUnit)
 
-  var colony = gs_helpers.colony(state, colonyId).get()
+  # Access colony from state
+  let colonyOpt = state.colonies.entities.entity(colonyId)
+  if colonyOpt.isNone:
+    return newUnit
+
+  var colony = colonyOpt.get()
   case unitType
   of GroundClass.Army:
     colony.armyIds.add(unitId)
@@ -40,14 +48,14 @@ proc createGroundUnit*(
 
 proc destroyGroundUnit*(state: var GameState, unitId: GroundUnitId) =
   ## Destroys a ground unit, removing it from all collections.
-  let unitOpt = gs_helpers.groundUnit(state, unitId)
+  let unitOpt = state.groundUnits.entities.entity(unitId)
   if unitOpt.isNone:
     return
   let unit = unitOpt.get()
 
-  var ownerColonyId: ColonyId
-  for col in state.allColonies():
-    case unit.unitType
+  var ownerColonyId: ColonyId = ColonyId(0)
+  for colId, col in state.colonies.entities.pairs():
+    case unit.stats.unitType
     of GroundClass.Army:
       if unitId in col.armyIds:
         ownerColonyId = col.id
@@ -59,12 +67,15 @@ proc destroyGroundUnit*(state: var GameState, unitId: GroundUnitId) =
         ownerColonyId = col.id
     else:
       discard
-    if ownerColonyId != 0'u32:
+    if ownerColonyId != ColonyId(0):
       break
 
-  if ownerColonyId != 0'u32:
-    var colony = gs_helpers.colony(state, ownerColonyId).get()
-    case unit.unitType
+  if ownerColonyId != ColonyId(0):
+    let colonyOpt = state.colonies.entities.entity(ownerColonyId)
+    if colonyOpt.isNone:
+      return
+    var colony = colonyOpt.get()
+    case unit.stats.unitType
     of GroundClass.Army:
       colony.armyIds.keepIf(
         proc(id: GroundUnitId): bool =
