@@ -24,10 +24,9 @@ proc parseTransferCosts(node: KdlNode, ctx: var KdlConfigContext): TransferCosts
   result = TransferCostsConfig(costs: costs)
 
 proc parseTransferLimits(node: KdlNode, ctx: var KdlConfigContext): TransferLimitsConfig =
+  # Note: minColonyPopulation and maxConcurrentTransfers moved to limits.kdl
   result = TransferLimitsConfig(
-    minPtuTransfer: node.requireInt32("minPtuTransfer", ctx),
-    minSourcePuRemaining: node.requireInt32("minSourcePuRemaining", ctx),
-    maxConcurrentTransfers: node.requireInt32("maxConcurrentTransfers", ctx)
+    minPtuTransfer: node.requireInt32("minPtuTransfer", ctx)
   )
 
 proc parseTransferRisks(node: KdlNode, ctx: var KdlConfigContext): TransferRisksConfig =

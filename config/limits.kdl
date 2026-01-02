@@ -27,6 +27,15 @@ fighterCapacity {
     violationGracePeriodTurns 2    // 2 turns grace before auto-disband
 }
 
+// --- Population Limits ---
+populationLimits {
+    (docs)"docs/specs/03-economy.md#section-3-1"
+    // Cross-system population constraints
+    // Used by: cargo loading, population transfers, colonization
+    minColonyPopulation 5000       // Minimum viable colony (5000 souls)
+    maxConcurrentTransfers 5       // Max simultaneous population transfers per house
+}
+
 // --- Unit Cargo & Planet Capacity ---
 capacities {
     (docs)"docs/specs/02-assets.md#section-2-2"

@@ -9,8 +9,7 @@ guildMechanics {
     // Transfer limits
     transferLimits {
         minPtuTransfer 1
-        minSourcePuRemaining 1
-        maxConcurrentTransfers 5
+        // Note: minColonyPopulation and maxConcurrentTransfers moved to config/limits.kdl
     }
 
     // Base cost in PP per PTU, based on the destination planet's class.

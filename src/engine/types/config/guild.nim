@@ -16,8 +16,7 @@ type
 
   TransferLimitsConfig* = object
     minPtuTransfer*: int32
-    minSourcePuRemaining*: int32
-    maxConcurrentTransfers*: int32
+    # Note: minColonyPopulation and maxConcurrentTransfers moved to limits.kdl
 
   TransferRisksConfig* = object
     sourceConqueredBehavior*: string

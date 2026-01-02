@@ -37,6 +37,15 @@ proc parseFighterCapacity(
       node.requireInt32("violationGracePeriodTurns", ctx)
   )
 
+proc parsePopulationLimits(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): PopulationLimitsConfig =
+  result = PopulationLimitsConfig(
+    minColonyPopulation: node.requireInt32("minColonyPopulation", ctx),
+    maxConcurrentTransfers: node.requireInt32("maxConcurrentTransfers", ctx)
+  )
+
 proc parsePlanetCapacity(
   node: KdlNode,
   ctx: var KdlConfigContext
@@ -71,6 +80,10 @@ proc loadLimitsConfig*(configPath: string): LimitsConfig =
   ctx.withNode("fighterCapacity"):
     let node = doc.requireNode("fighterCapacity", ctx)
     result.fighterCapacity = parseFighterCapacity(node, ctx)
+
+  ctx.withNode("populationLimits"):
+    let node = doc.requireNode("populationLimits", ctx)
+    result.populationLimits = parsePopulationLimits(node, ctx)
 
   ctx.withNode("capacities"):
     let node = doc.requireNode("capacities", ctx)

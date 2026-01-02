@@ -23,8 +23,6 @@ ptuDefinition {
   minPopulationRemaining 5000 // Minimum souls after transfer
 }
 
-
-
 // --- Raw Material Efficiency Multipliers ---
 rawMaterialEfficiency {
   (docs)"docs/specs/03-economy.md#section-3-1"

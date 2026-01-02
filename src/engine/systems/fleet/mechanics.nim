@@ -8,15 +8,16 @@
 
 import std/[tables, options, sequtils, strformat]
 import ../../../common/logger
-import ../../types/[core, combat, ground_unit, game_state, command, fleet, squadron, event, diplomacy, intel, starmap, espionage]
+import ../../types/[core, combat, ground_unit, game_state, command, fleet, squadron, event, diplomacy, intel, starmap, espionage, ship]
 import ../../state/[entity_manager, iterators]
 import ../../starmap as starmap_module
 import ../ship/entity as ship_entity # Ship helper functions
-import ../../entities/colony_ops
+import ../../entities/[colony_ops, fleet_ops, squadron_ops]
 import ../colony/engine as col_engine
 import ../../prestige/engine as prestige_engine
 import ../../event_factory/init as event_factory
 import ../../intel/generator
+import ../../utils # For soulsPerPtu
 import ./standing
 import ./movement # For findPath
 
@@ -119,9 +120,41 @@ proc findClosestOwnedColony*(
   ## Also used for automated Seek Home behavior for stranded fleets
   ##
   ## INTEGRATION: Checks house's pre-planned fallback routes first for optimal retreat paths
+  ##
+  ## FUTURE ENHANCEMENT: Strategic Retreat Planning (fallbackRoutes)
+  ## ================================================================
+  ## Per operations spec (06-operations.md), fleets use Seek Home command to retreat
+  ## to nearest friendly colony with drydock facilities. The automatic fallback calculation
+  ## balances distance and risk using fog-of-war information.
+  ##
+  ## A future enhancement would allow players to pre-define strategic retreat routes
+  ## that override the automatic calculation:
+  ##
+  ## House Type Extension:
+  ##   type FallbackRoute = object
+  ##     region*: SystemId           ## Source region for this route
+  ##     fallbackSystem*: SystemId   ## Designated safe harbor
+  ##     lastUpdated*: int32         ## Turn when route was defined
+  ##
+  ##   type House = object
+  ##     ...
+  ##     fallbackRoutes*: seq[FallbackRoute]
+  ##
+  ## Implementation Logic (currently commented out):
+  ##   - Check if house has pre-defined route for this region
+  ##   - Verify route is recent (updated within 20 turns)
+  ##   - Confirm fallback system still has friendly colony
+  ##   - Return pre-defined route instead of automatic calculation
+  ##
+  ## Benefits:
+  ##   - Players can plan retreat corridors in advance
+  ##   - Avoid retreating into hostile territory
+  ##   - Coordinate defensive fallback positions
+  ##   - Strategic depth for defensive operations
+  ##
+  ## Current Status: Not implemented (House type lacks fallbackRoutes field)
 
-  # Check if house has a pre-planned fallback route from this region
-  # TODO: Fallback routes not yet implemented in House type
+  # Commented out pending House type extension:
   # let houseOpt = state.houses.entities.entity(houseId)
   # if houseOpt.isSome:
   #   let house = houseOpt.get()
@@ -655,20 +688,44 @@ proc resolveColonizationCommand*(
       )
       return
 
-  # Check fleet has colonists (assumes ETAC ships carry colonists)
-  # Simplified check: any squadron in fleet is assumed to have colonists
-  # TODO: Implement proper cargo tracking when cargo system is complete
-  var hasColonists = fleet.squadrons.len > 0
+  # Find ETAC squadrons with loaded colonists
+  var etacSquadronId: Option[SquadronId] = none(SquadronId)
+  var ptuToDeposit: int32 = 0
 
-  if not hasColonists:
+  for squadronId in fleet.squadrons:
+    let squadronOpt = state.squadrons[].entity(squadronId)
+    if squadronOpt.isNone:
+      continue
+
+    let squadron = squadronOpt.get()
+    if squadron.squadronType != SquadronClass.Expansion:
+      continue
+
+    # Get flagship to check cargo
+    let flagshipOpt = state.ships.entity(squadron.flagshipId)
+    if flagshipOpt.isNone:
+      continue
+
+    let flagship = flagshipOpt.get()
+    if flagship.shipClass != ShipClass.ETAC:
+      continue
+
+    # Check if ETAC has colonist cargo
+    if flagship.cargo.isSome:
+      let cargo = flagship.cargo.get()
+      if cargo.cargoType == CargoClass.Colonists and cargo.quantity > 0:
+        etacSquadronId = some(squadronId)
+        ptuToDeposit = cargo.quantity
+        break # Found ETAC with colonists
+
+  if etacSquadronId.isNone or ptuToDeposit == 0:
     logError(
       "Colonization",
-      &"Fleet {command.fleetId} has no colonists (PTU) - colonization failed",
+      &"Fleet {command.fleetId} has no ETAC with colonists (PTU) - colonization failed",
     )
     return
 
   # Establish colony using system's actual planet properties
-  # Get system to determine planet class and resources
   let systemOpt = state.systems.entities.entity(targetId)
   if systemOpt.isNone:
     logError("Colonization", &"System {targetId} not found in entity manager")
@@ -676,10 +733,6 @@ proc resolveColonizationCommand*(
   let system = systemOpt.get()
   let planetClass = system.planetClass
   let resources = system.resourceRating
-
-  # Get PTU quantity from ETAC cargo (default: 3 PTU per ETAC)
-  # TODO: Implement proper cargo tracking when cargo system is complete
-  var ptuToDeposit = 3  # Standard ETAC carries 3 PTU
 
   logInfo(
     "Colonization",
@@ -693,7 +746,7 @@ proc resolveColonizationCommand*(
     houseId,
     planetClass,
     resources,
-    int32(ptuToDeposit),
+    ptuToDeposit,
   )
 
   logInfo(
@@ -701,9 +754,29 @@ proc resolveColonizationCommand*(
     &"Colony {colonyId} established at {targetId} with {ptuToDeposit} PTU"
   )
 
-  # TODO: Unload colonists from Expansion squadron cargo when cargo system is complete
-  # TODO: ETAC cannibalization - remove ETAC from fleet after colonization
-  # TODO: Apply prestige award for colonization
+  # ETAC cannibalization: Remove ETAC squadron from fleet after colonization
+  # Per spec: ETAC is consumed to provide colony infrastructure
+  let squadronId = etacSquadronId.get()
+
+  # Get current fleet for modification
+  var fleetMut = fleet
+  fleetMut.squadrons = fleetMut.squadrons.filterIt(it != squadronId)
+
+  # Update fleet in entity manager
+  state.fleets.entities.updateEntity(command.fleetId, fleetMut)
+
+  # Destroy squadron (removes ships and cleans up indexes)
+  squadron_ops.destroySquadron(state, squadronId)
+
+  logInfo(
+    "Colonization",
+    &"ETAC squadron {squadronId} cannibalized for colony infrastructure"
+  )
+
+  # Apply prestige award for colonization
+  prestige_engine.awardPrestige(
+    state, houseId, gameConfig.prestige.economic.colony_established
+  )
 
   # Generate colonization event
   events.add(event_factory.colonyEstablished(houseId, targetId, 0))
@@ -853,23 +926,192 @@ proc autoLoadCargo*(
   ## Automatically load available marines/colonists onto empty transports at colonies
   ## NOTE: Manual cargo operations now use zero-turn commands (executed before turn resolution)
   ## This auto-load only processes fleets that weren't manually managed
-
-  # TODO: Cargo system needs refactoring
-  # Current implementation requires complex mutable fleet/squadron manipulation
-  # that doesn't work well with entity pattern
-  # Defer to future cargo system implementation per architecture.md
+  ##
+  ## Auto-load conditions:
+  ## - Fleet is at friendly colony
+  ## - Fleet has transport ships (TroopTransport/ETAC) with empty cargo space
+  ## - Colony has available marines or population
+  ## - Ship is not crippled
 
   # Process each colony
   for colony in state.allColonies():
+    let colonyId = colony.id
     let systemId = colony.systemId
+    let houseId = colony.owner
+
+    # Check if colony has cargo to load
+    let hasMarines = colony.marineIds.len > 0
+    # Must keep minimum population per limits config (5000 souls)
+    let minSoulsToKeep = gameConfig.limits.populationLimits.minColonyPopulation
+    let hasPopulation = colony.souls > minSoulsToKeep
+
+    if not hasMarines and not hasPopulation:
+      continue # No cargo available
 
     # Find fleets at this colony
     for fleet in state.fleetsInSystem(systemId):
-      if fleet.houseId != colony.owner:
+      if fleet.houseId != houseId:
+        continue # Not owned by colony's house
+
+      # Check if fleet has transport capacity
+      var hasTransports = false
+      for squadronId in fleet.squadrons:
+        let squadronOpt = state.squadrons[].entity(squadronId)
+        if squadronOpt.isSome:
+          let squadron = squadronOpt.get()
+          if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
+            hasTransports = true
+            break
+
+      if not hasTransports:
         continue
 
-      # TODO: Auto-load cargo functionality needs proper cargo system
-      # For now, skip auto-loading until cargo system is implemented
-      # See mechanics.nim colonization for similar deferral
+      # Auto-load marines onto TroopTransports if available
+      if hasMarines:
+        autoLoadMarines(state, fleet, colony, colonyId, events)
 
-      discard # Placeholder for future cargo system integration
+      # Auto-load colonists onto ETACs if available
+      if hasPopulation:
+        autoLoadColonists(state, fleet, colony, colonyId, events)
+
+proc autoLoadMarines(
+    state: var GameState,
+    fleet: Fleet,
+    colony: Colony,
+    colonyId: ColonyId,
+    events: var seq[GameEvent],
+) =
+  ## Helper: Auto-load marines from colony garrison onto TroopTransports
+  var colonyMut = colony
+  var totalLoaded = 0
+
+  for squadronId in fleet.squadrons:
+    if colonyMut.marineIds.len == 0:
+      break # No more marines to load
+
+    let squadronOpt = state.squadrons[].entity(squadronId)
+    if squadronOpt.isNone:
+      continue
+
+    let squadron = squadronOpt.get()
+    if squadron.squadronType notin {SquadronClass.Auxiliary}:
+      continue # Only Auxiliary squadrons carry marines
+
+    # Get flagship
+    let flagshipOpt = state.ships.entity(squadron.flagshipId)
+    if flagshipOpt.isNone:
+      continue
+
+    var flagship = flagshipOpt.get()
+    if flagship.isCrippled or flagship.shipClass != ShipClass.TroopTransport:
+      continue
+
+    # Check cargo capacity
+    let currentCargo =
+      if flagship.cargo.isSome:
+        flagship.cargo.get()
+      else:
+        ShipCargo(cargoType: CargoClass.None, quantity: 0, capacity: 0)
+
+    let availableSpace = currentCargo.capacity - currentCargo.quantity
+    if availableSpace <= 0:
+      continue # Ship full
+
+    # Load marines
+    let loadAmount = min(availableSpace, int32(colonyMut.marineIds.len))
+    if loadAmount > 0:
+      var newCargo = currentCargo
+      newCargo.cargoType = CargoClass.Marines
+      newCargo.quantity += loadAmount
+      flagship.cargo = some(newCargo)
+
+      # Update ship
+      state.ships.entities.updateEntity(squadron.flagshipId, flagship)
+
+      # Remove marines from colony
+      if loadAmount <= int32(colonyMut.marineIds.len):
+        colonyMut.marineIds = colonyMut.marineIds[0 ..< (colonyMut.marineIds.len - int(loadAmount))]
+
+      totalLoaded += int(loadAmount)
+
+  # Update colony if marines were loaded
+  if totalLoaded > 0:
+    state.colonies.entities.updateEntity(colonyId, colonyMut)
+    logDebug("AutoLoad", &"Auto-loaded {totalLoaded} marines onto fleet {fleet.id}")
+
+proc autoLoadColonists(
+    state: var GameState,
+    fleet: Fleet,
+    colony: Colony,
+    colonyId: ColonyId,
+    events: var seq[GameEvent],
+) =
+  ## Helper: Auto-load colonists onto ETACs for expansion missions
+  var colonyMut = colony
+  var totalLoaded = 0
+
+  # Calculate available PTUs - must keep minimum population per config
+  # Using minColonyPopulation from limits.kdl (5000 souls minimum)
+  let minSoulsToKeep = gameConfig.limits.populationLimits.minColonyPopulation
+
+  if colonyMut.souls <= minSoulsToKeep:
+    return # Cannot load any PTUs
+
+  let availableSouls = colonyMut.souls - minSoulsToKeep
+  var availablePTUs = availableSouls div soulsPerPtu()
+
+  for squadronId in fleet.squadrons:
+    if availablePTUs <= 0:
+      break
+
+    let squadronOpt = state.squadrons[].entity(squadronId)
+    if squadronOpt.isNone:
+      continue
+
+    let squadron = squadronOpt.get()
+    if squadron.squadronType != SquadronClass.Expansion:
+      continue
+
+    # Get flagship
+    let flagshipOpt = state.ships.entity(squadron.flagshipId)
+    if flagshipOpt.isNone:
+      continue
+
+    var flagship = flagshipOpt.get()
+    if flagship.isCrippled or flagship.shipClass != ShipClass.ETAC:
+      continue
+
+    # Check cargo capacity
+    let currentCargo =
+      if flagship.cargo.isSome:
+        flagship.cargo.get()
+      else:
+        ShipCargo(cargoType: CargoClass.None, quantity: 0, capacity: 3) # ETACs carry 3 PTU
+
+    let availableSpace = currentCargo.capacity - currentCargo.quantity
+    if availableSpace <= 0:
+      continue # Ship full
+
+    # Load colonists (PTUs)
+    let loadAmount = min(availableSpace, availablePTUs)
+    if loadAmount > 0:
+      var newCargo = currentCargo
+      newCargo.cargoType = CargoClass.Colonists
+      newCargo.quantity += loadAmount
+      flagship.cargo = some(newCargo)
+
+      # Update ship
+      state.ships.entities.updateEntity(squadron.flagshipId, flagship)
+
+      # Remove colonists from colony
+      let soulsToLoad = loadAmount * soulsPerPtu()
+      colonyMut.souls -= soulsToLoad
+      colonyMut.population = colonyMut.souls div 1_000_000
+
+      totalLoaded += int(loadAmount)
+      availablePTUs -= loadAmount
+
+  # Update colony if colonists were loaded
+  if totalLoaded > 0:
+    state.colonies.entities.updateEntity(colonyId, colonyMut)
+    logDebug("AutoLoad", &"Auto-loaded {totalLoaded} PTU onto fleet {fleet.id}")
