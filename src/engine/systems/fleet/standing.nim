@@ -13,16 +13,12 @@
 ## See docs/architecture/standing-commands.md for complete design.
 
 import std/[tables, options, strformat, algorithm, sets, sequtils]
-import ../../types/[core, game_state, command, fleet, squadron]
-import ../../starmap
-import ../../state/[game_state as state_module, iterators]
-import ../../../common/types/[core as common_core, planets]
-import ../../config/standing_orders_config
-import ../../event_factory/init as event_factory
-import ../resolution/types as resolution_types
-import ../../intel/types as intel_types
-import ../population/transfers # For findNearestOwnedColony
 import ../../../common/logger
+import ../../types/[core, game_state, command, fleet, squadron, starmap, resolution, intel]
+import ../../starmap
+import ../../state/[entity_manager, iterators]
+import ../../event_factory/init as event_factory
+import ../population/transfers # For findNearestOwnedColony
 
 export StandingCommandType, StandingOrder, StandingCommandParams
 

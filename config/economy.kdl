@@ -105,3 +105,16 @@ productionModifiers {
   // Also see: docs/specs/06-operations.md#section-6-3-8
   blockadePenalty 0.40 // Colony operates at 40% capacity when blockaded (60% reduction)
 }
+
+// --- Population Transfer (Space Guild) ---
+populationTransfer {
+  (docs)"docs/specs/03-economy.md#section-3-5"
+  // Space Guild transfer costs (PP per PTU) by destination planet class
+  eden 4
+  lush 5
+  benign 6
+  harsh 8
+  hostile 10
+  desolate 12
+  extreme 15
+}

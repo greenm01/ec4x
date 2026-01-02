@@ -174,6 +174,40 @@ proc parseProductionModifiers(
     blockadePenalty: node.requireFloat32("blockadePenalty", ctx)
   )
 
+proc parsePopulationTransfer(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): PopulationTransferConfig =
+  ## Parse populationTransfer costs by planet class
+  ##
+  ## Expected structure:
+  ## ```kdl
+  ## populationTransfer {
+  ##   eden 4
+  ##   lush 5
+  ##   benign 6
+  ##   harsh 8
+  ##   hostile 10
+  ##   desolate 12
+  ##   extreme 15
+  ## }
+  ## ```
+  result = PopulationTransferConfig()
+  result.costsByPlanetClass[PlanetClass.Eden] =
+    node.requireInt32("eden", ctx)
+  result.costsByPlanetClass[PlanetClass.Lush] =
+    node.requireInt32("lush", ctx)
+  result.costsByPlanetClass[PlanetClass.Benign] =
+    node.requireInt32("benign", ctx)
+  result.costsByPlanetClass[PlanetClass.Harsh] =
+    node.requireInt32("harsh", ctx)
+  result.costsByPlanetClass[PlanetClass.Hostile] =
+    node.requireInt32("hostile", ctx)
+  result.costsByPlanetClass[PlanetClass.Desolate] =
+    node.requireInt32("desolate", ctx)
+  result.costsByPlanetClass[PlanetClass.Extreme] =
+    node.requireInt32("extreme", ctx)
+
 proc loadEconomyConfig*(configPath: string): EconomyConfig =
   ## Load economy configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
@@ -219,5 +253,9 @@ proc loadEconomyConfig*(configPath: string): EconomyConfig =
   ctx.withNode("productionModifiers"):
     let node = doc.requireNode("productionModifiers", ctx)
     result.productionModifiers = parseProductionModifiers(node, ctx)
+
+  ctx.withNode("populationTransfer"):
+    let node = doc.requireNode("populationTransfer", ctx)
+    result.populationTransfer = parsePopulationTransfer(node, ctx)
 
   logInfo("Config", "Loaded economy configuration", "path=", configPath)

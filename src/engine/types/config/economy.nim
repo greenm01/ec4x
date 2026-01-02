@@ -59,6 +59,10 @@ type
   ProductionModifiersConfig* = object
     blockadePenalty*: float32
 
+  PopulationTransferConfig* = object
+    ## Space Guild population transfer costs per planet class (economy.md:3.5)
+    costsByPlanetClass*: Table[PlanetClass, int32]
+
   EconomyConfig* = object ## Complete economy configuration loaded from KDL
     population*: PopulationConfig
     ptuDefinition*: PtuDefinitionConfig
@@ -70,4 +74,5 @@ type
     industrialGrowth*: IndustrialGrowthConfig
     starbaseBonuses*: StarbaseBonusesConfig
     productionModifiers*: ProductionModifiersConfig
+    populationTransfer*: PopulationTransferConfig
 

@@ -8,21 +8,17 @@
 ## See colony/planetary_combat.nim for Theater 3 (planetary operations)
 
 import std/[tables, options, sequtils, hashes, math, random, strformat]
-import
-  ../../../../common/
-    [types/core, types/combat as common_combat_types, types/units, logger]
-import ../../types/[game_state, command, fleet, squadron, ship, colony, house]
+import ../../../common/logger
+import ../../types/[core, combat, game_state, command, fleet, squadron, ship, colony, house, ground_unit, facilities as econ_types]
 import ../../state/[entity_manager, iterators]
-import ../index_maintenance
 import ./[engine as combat_engine, ground]
-import ../economy/[entity as econ_entity, facility_damage]
-import ../prestige/engine
-import ../../config/[prestige_multiplier, prestige_config, facilities_config]
-import ../diplomacy/[entity as dip_entity, engine as dip_engine]
-import ../intelligence/diplomatic_intel
+import ../facilities/damage as facility_damage
+import ../../prestige/engine
+import ../../config/[prestige_config, facilities_config]
+import ../diplomacy/engine as dip_engine
+import ../../intel/[diplomatic_intel, combat_intel]
 import ../fleet/mechanics
 import ../../event_factory/init as event_factory
-import ../intelligence/[entity as intel_entity, combat_intel]
 
 proc applySpaceLiftScreeningLosses(
     state: var GameState,
@@ -1601,21 +1597,24 @@ proc resolveBattle*(
         )
 
   # Generate event (using entity_manager)
-  let victorName =
-    if victor.isSome:
-      state.houses.entities.entity(victor.get()).map(h => h.name).get(
-        "Unknown Victor"
-      )
+  var victorName = "No one"
+  if victor.isSome:
+    let houseOpt = state.houses.entities.entity(victor.get())
+    if houseOpt.isSome:
+      victorName = houseOpt.get().name
     else:
-      "No one"
+      victorName = "Unknown Victor"
+
+  let systemIdStr = $systemId
+  let battleDesc = "Battle at " & systemIdStr & ". Victor: " & victorName
   events.add(
     event_factory.battle(
       if victor.isSome:
         victor.get()
       else:
-        HouseId(""),
+        HouseId(0),
       systemId,
-      "Battle at " & $systemId & ". Victor: " & victorName,
+      battleDesc,
     )
   )
 

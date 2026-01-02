@@ -7,21 +7,17 @@
 ## - Helper functions for path finding and hostility detection
 
 import std/[tables, options, sequtils, strformat]
-import ../../../common/types/[core, combat, units]
-import ../../types/[game_state, command, fleet, squadron, event]
-import ../../state/[game_state as state_module, iterators]
+import ../../../common/logger
+import ../../types/[core, combat, ground_unit, game_state, command, fleet, squadron, event, diplomacy, intel]
+import ../../state/[entity_manager, iterators]
 import ../../starmap
 import ../ship/entity as ship_entity # Ship helper functions
 import ../../entities/colony_ops
-import ../colonization/engine as col_engine
-import ../diplomacy/[types as dip_types]
-import ../../config/population_config
-import ../prestige
+import ../colony/engine as col_engine
+import ../../prestige/engine as prestige_engine
 import ../../event_factory/init as event_factory
 import ../../intel/generator
-import ../../intel/types as intel_types
 import ./standing
-import ../../../common/logger
 
 proc completeFleetCommand*(
     state: var GameState,

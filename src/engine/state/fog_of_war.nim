@@ -2,20 +2,16 @@
 ##
 ## Filters game state to create player-specific views with limited visibility.
 import std/[tables, options, sets]
-import ../types/intelligence as intel_types
+import ../types/intel as intel_types
 import
   ../types/[colony, core, diplomacy, fleet, game_state, house, player_view, starmap]
-import ./iterators
+import ./[entity_manager, iterators]
 
 proc getOwnedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   ## Get all systems where this house has a colony
   result = initHashSet[SystemId]()
-  if state.colonies.byOwner.contains(houseId):
-    for colonyId in state.colonies.byOwner[houseId]:
-      if state.colonies.entities.index.contains(colonyId):
-        let colony =
-          state.colonies.entities.data[state.colonies.entities.index[colonyId]]
-        result.incl(colony.systemId)
+  for colony in state.coloniesOwned(houseId):
+    result.incl(colony.systemId)
 
 proc getOccupiedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   ## Get all systems where this house has fleet(s)
@@ -62,7 +58,10 @@ proc getScoutedSystems(
       result.incl(systemId)
 
 proc createVisibleColony(
-    colony: Colony, isOwned: bool, intelReport: Option[intel_types.ColonyIntelReport]
+    colony: Colony,
+    isOwned: bool,
+    colonyIntel: Option[intel_types.ColonyIntelReport],
+    orbitalIntel: Option[intel_types.OrbitalIntelReport],
 ): VisibleColony =
   ## Create a visible colony view
   result.colonyId = colony.id
@@ -76,24 +75,27 @@ proc createVisibleColony(
     result.planetClass = some(colony.planetClass)
     result.resources = some(colony.resources)
     result.production = some(colony.production)
-  elif intelReport.isSome:
-    # Limited details from intelligence report
-    let report = intelReport.get
-    result.intelTurn = some(report.gatheredTurn)
-    result.estimatedPopulation = some(report.population)
-    result.estimatedIndustry = some(report.industry)
-    result.estimatedDefenses = some(report.defenses)
-    result.starbaseLevel = some(report.starbaseLevel)
-    result.unassignedSquadronCount = some(report.unassignedSquadronCount)
-    result.reserveFleetCount = some(report.reserveFleetCount)
-    result.mothballedFleetCount = some(report.mothballedFleetCount)
-    result.shipyardCount = some(report.shipyardCount)
+  elif colonyIntel.isSome or orbitalIntel.isSome:
+    # Limited details from intelligence reports
+    if colonyIntel.isSome:
+      let report = colonyIntel.get
+      result.intelTurn = some(report.gatheredTurn)
+      result.estimatedPopulation = some(report.population)
+      result.estimatedIndustry = some(report.infrastructure)
+      result.estimatedDefenses = some(report.groundBatteryCount)
+    if orbitalIntel.isSome:
+      let report = orbitalIntel.get
+      result.starbaseLevel = some(report.starbaseCount)
+      result.reserveFleetCount = some(report.reserveFleetCount)
+      result.mothballedFleetCount = some(report.mothballedFleetCount)
+      result.shipyardCount = some(report.shipyardCount)
 
 proc countShips(state: GameState, fleet: Fleet): int32 =
   result = 0
   for sqId in fleet.squadrons:
-    if state.squadrons.entities.index.contains(sqId):
-      let squadron = state.squadrons.entities.data[state.squadrons.entities.index[sqId]]
+    let squadronOpt = state.squadrons.entities.entity(sqId)
+    if squadronOpt.isSome:
+      let squadron = squadronOpt.get()
       result += 1 + int32(squadron.ships.len)
 
 proc createVisibleFleet(
@@ -137,8 +139,9 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
 
   # Owned systems
   for systemId in ownedSystems:
-    if state.systems.entities.index.contains(systemId):
-      let system = state.systems.entities.data[state.systems.entities.index[systemId]]
+    let systemOpt = state.systems.entities.entity(systemId)
+    if systemOpt.isSome:
+      let system = systemOpt.get()
       let coords = (q: system.coords.q, r: system.coords.r)
       result.visibleSystems[systemId] = VisibleSystem(
         systemId: systemId,
@@ -151,8 +154,9 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
   # Occupied systems
   for systemId in occupiedSystems:
     if systemId notin ownedSystems:
-      if state.systems.entities.index.contains(systemId):
-        let system = state.systems.entities.data[state.systems.entities.index[systemId]]
+      let systemOpt = state.systems.entities.entity(systemId)
+      if systemOpt.isSome:
+        let system = systemOpt.get()
         let coords = (q: system.coords.q, r: system.coords.r)
         result.visibleSystems[systemId] = VisibleSystem(
           systemId: systemId,
@@ -165,8 +169,9 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
   # Scouted systems
   let intel = state.intelligence.getOrDefault(houseId)
   for systemId in scoutedSystems:
-    if state.systems.entities.index.contains(systemId):
-      let system = state.systems.entities.data[state.systems.entities.index[systemId]]
+    let systemOpt = state.systems.entities.entity(systemId)
+    if systemOpt.isSome:
+      let system = systemOpt.get()
       let coords = (q: system.coords.q, r: system.coords.r)
       var lastTurn: int32 = 0
       if intel.systemReports.contains(systemId):
@@ -196,14 +201,20 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
     if colony.owner != houseId:
       let systemId = colony.systemId
       var isVisible = false
-      var intelReport: Option[intel_types.ColonyIntelReport]
+      var colonyIntel: Option[intel_types.ColonyIntelReport]
+      var orbitalIntel: Option[intel_types.OrbitalIntelReport]
       if intel.colonyReports.contains(colony.id):
         isVisible = true
-        intelReport = some(intel.colonyReports[colony.id])
+        colonyIntel = some(intel.colonyReports[colony.id])
+      if intel.orbitalReports.contains(colony.id):
+        isVisible = true
+        orbitalIntel = some(intel.orbitalReports[colony.id])
       if systemId in ownedSystems or systemId in occupiedSystems:
         isVisible = true
       if isVisible:
-        result.visibleColonies.add(createVisibleColony(colony, false, intelReport))
+        result.visibleColonies.add(
+          createVisibleColony(colony, false, colonyIntel, orbitalIntel)
+        )
 
   # Visible fleets
   for fleet in state.allFleets():
@@ -244,16 +255,18 @@ proc hasVisibilityOn*(state: GameState, systemId: SystemId, houseId: HouseId): b
   ##
   ## Used by Space Guild for transfer path validation
 
-  # Check if house owns colony in this system using entity_manager
-  let colonyOpt = state.colonies.entities.entity(systemId)
-  if colonyOpt.isSome:
-    let colony = colonyOpt.get()
-    if colony.owner == houseId:
-      return true
+  # Check if house owns colony in this system
+  if state.colonies.bySystem.hasKey(systemId):
+    let colonyId = state.colonies.bySystem[systemId]
+    let colonyOpt = state.colonies.entities.entity(colonyId)
+    if colonyOpt.isSome:
+      let colony = colonyOpt.get()
+      if colony.owner == houseId:
+        return true
 
   # Check if house has any fleets in this system using iterator
   for fleet in state.fleetsInSystem(systemId):
-    if fleet.owner == houseId:
+    if fleet.houseId == houseId:
       return true
 
   return false

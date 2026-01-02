@@ -6,7 +6,7 @@
 
 import std/[options, strformat]
 import ../../types/[core, game_state, production, facilities, colony]
-import ../../state/[game_state as state_helpers]
+import ../../state/entity_manager
 import ../../../common/logger
 
 proc clearFacilityQueues*(
@@ -25,7 +25,7 @@ proc clearFacilityQueues*(
   # Clear facility-specific repairs
   var survivingRepairs: seq[RepairProjectId] = @[]
   for repairId in colony.repairQueue:
-    let repairOpt = state_helpers.getRepairProject(state, repairId)
+    let repairOpt = state.repairProjects.entities.entity(repairId)
     if repairOpt.isNone:
       # Project doesn't exist, skip it
       continue
@@ -70,7 +70,7 @@ proc clearAllConstructionQueues*(colony: var Colony, state: GameState) =
   if colony.underConstruction.isSome:
     destroyedProjects += 1
     let projectId = colony.underConstruction.get()
-    let projectOpt = state_helpers.getConstructionProject(state, projectId)
+    let projectOpt = state.constructionProjects.entities.entity(projectId)
     if projectOpt.isSome:
       let project = projectOpt.get()
       logWarn(
@@ -80,7 +80,7 @@ proc clearAllConstructionQueues*(colony: var Colony, state: GameState) =
       )
 
   for projectId in colony.constructionQueue:
-    let projectOpt = state_helpers.getConstructionProject(state, projectId)
+    let projectOpt = state.constructionProjects.entities.entity(projectId)
     if projectOpt.isSome:
       let project = projectOpt.get()
       logWarn(
@@ -119,7 +119,7 @@ proc handleFacilityDestruction*(
   # Shipyards: Check if any non-crippled shipyards exist
   var hasShipyards = false
   for shipyardId in colony.shipyardIds:
-    let shipyardOpt = state_helpers.getShipyard(state, shipyardId)
+    let shipyardOpt = state.shipyards.entities.entity(shipyardId)
     if shipyardOpt.isSome:
       let shipyard = shipyardOpt.get()
       if not shipyard.isCrippled:
