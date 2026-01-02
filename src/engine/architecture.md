@@ -36,9 +36,11 @@ src/engine/
     │   ├── entity_manager.nim#   - Implements the generic DoD storage pattern (data: seq, index: Table).
     │   ├── game_state.nim    #   - `initGameState` constructor, simple getters, and trackers (e.g., `GracePeriodTracker`).
     │   ├── id_gen.nim        #   - Logic for generating new, unique entity IDs.
-    │   ├── iterators.nim     #   - The PRIMARY READ-ONLY API for the engine (e.g., `fleetsInSystem`, `coloniesOwned`).
+    │   ├── iterators.nim     #   - The PRIMARY READ-ONLY API for batch entity access (e.g., `fleetsInSystem`, `coloniesOwned`).
     │   │                     #   - ALWAYS use iterators instead of `.entities.data` with manual filtering.
     │   │                     #   - Provides O(1) indexed lookups via `byHouse`, `byOwner`, `bySystem` tables.
+    │   ├── entity_helpers.nim#   - Helper procs for single index-based entity lookups (e.g., `colonyBySystem`).
+    │   │                     #   - Reduces verbose 3-line pattern to 1-line calls.
     │   └── fog_of_war.nim    #   - A complex READ-ONLY query system that transforms `GameState` into a `PlayerView`.
     │
     │                                     (WRITE/MUTATION ACCESS)
@@ -117,11 +119,11 @@ EC4X uses a strict three-layer pattern for entity management:
 ┌─────────────────────────────────────────────────────────────┐
 │ Layer 3: SYSTEMS (@systems/)                                │
 │ • Business logic, validation, algorithms                    │
-│ • Reads via iterators, writes via entity ops                │
+│ • Reads via iterators/helpers, writes via entity ops        │
 │ • Example: combat resolution, economic calculations         │
 └─────────────────────────────────────────────────────────────┘
                               ▲
-                              │ reads via iterators
+                              │ reads via iterators/helpers
                               │ writes via entity ops
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
@@ -136,7 +138,8 @@ EC4X uses a strict three-layer pattern for entity management:
 ┌─────────────────────────────────────────────────────────────┐
 │ Layer 1: STATE CORE (@state/)                               │
 │ • entity_manager.nim: Generic DoD storage (data, index)     │
-│ • iterators.nim: Read-only access patterns                  │
+│ • iterators.nim: Batch entity access (multi-entity reads)   │
+│ • entity_helpers.nim: Single entity lookups (1-line access) │
 │ • Generic operations: entity(), addEntity(), updateEntity() │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -176,6 +179,54 @@ for colony in state.colonies.entities.data:
 - Clear intent (self-documenting code)
 - Type-safe (compiler enforces correct usage)
 - Cache-friendly (batch processing)
+
+## Entity Helpers (Index-Based Single Lookups)
+
+For single entity lookups via indexes, use helpers from `@state/entity_helpers.nim`:
+
+**✅ CORRECT - Use entity helpers:**
+
+```nim
+import ../state/entity_helpers
+
+# Get colony at system (1:1 relationship)
+let colonyOpt = state.colonyBySystem(systemId)
+if colonyOpt.isSome:
+  let colony = colonyOpt.get()
+  applyBlockade(colony)
+
+# Get squadrons in fleet (1:many relationship)
+let squadrons = state.squadronsByFleet(fleetId)
+for squadron in squadrons:
+  repairShips(squadron)
+```
+
+**❌ WRONG - Don't use verbose 3-line pattern:**
+
+```nim
+# DON'T DO THIS (67% more code):
+if state.colonies.bySystem.hasKey(systemId):
+  let colonyId = state.colonies.bySystem[systemId]
+  let colonyOpt = state.colonies.entities.entity(colonyId)
+  # ^^^ Use state.colonyBySystem(systemId) instead
+```
+
+**When to use helpers vs iterators:**
+- **Helpers**: Single entity lookup by index key (systemId, fleetId, etc.)
+- **Iterators**: Processing multiple entities (all fleets at system, all colonies owned)
+- **Simple existence check**: Use `hasKey()` directly (more efficient than helper)
+
+**Available helpers:**
+| Helper | Returns | Use Case |
+|--------|---------|----------|
+| `colonyBySystem(systemId)` | `Option[Colony]` | Get colony at system |
+| `squadronsByFleet(fleetId)` | `seq[Squadron]` | Get all squadrons in fleet |
+| `shipsBySquadron(squadronId)` | `seq[Ship]` | Get all ships in squadron |
+| `groundUnitsAtColony(colonyId)` | `seq[GroundUnit]` | Get garrison at colony |
+| `starbasesAtColony(colonyId)` | `seq[Starbase]` | Get starbases at colony |
+| `shipyardsAtColony(colonyId)` | `seq[Shipyard]` | Get shipyards at colony |
+
+See `src/engine/state/entity_helpers.nim` for complete list.
 
 ## Writing Entities (Always Use Entity Ops)
 
@@ -320,6 +371,7 @@ Each `*_ops.nim` module maintains specific indexes:
 - Iterators have zero allocation overhead (compiler inlines them)
 - O(1) indexed lookups for coloniesOwned, fleetsAtSystem, etc.
 - O(n) for allColonies, allFleets (use sparingly)
+- Entity helpers have zero overhead (inline to same code as verbose pattern)
 - Entity ops maintain index consistency without performance penalty
 
 ## Common Mistakes
@@ -337,7 +389,20 @@ for colony in state.coloniesOwned(houseId):  # CORRECT
   # ...
 ```
 
-### ❌ Mistake 2: Manual index updates
+### ❌ Mistake 2: Verbose index lookup pattern
+```nim
+if state.colonies.bySystem.hasKey(systemId):  # WRONG
+  let colonyId = state.colonies.bySystem[systemId]
+  let colonyOpt = state.colonies.entities.entity(colonyId)
+  # 3 lines of boilerplate...
+```
+
+### ✅ Fix: Use entity helper
+```nim
+let colonyOpt = state.colonyBySystem(systemId)  # CORRECT
+```
+
+### ❌ Mistake 3: Manual index updates
 ```nim
 state.fleets.bySystem[oldSystem].delete(fleetId)  # WRONG
 state.fleets.bySystem[newSystem].add(fleetId)
@@ -348,7 +413,7 @@ state.fleets.bySystem[newSystem].add(fleetId)
 fleet_ops.moveFleet(state, fleetId, newSystem)  # CORRECT
 ```
 
-### ❌ Mistake 3: Modifying indexed fields
+### ❌ Mistake 4: Modifying indexed fields
 ```nim
 var fleet = state.fleets.entities.entity(fleetId).get()
 fleet.location = newSystem  # WRONG - breaks bySystem index
@@ -364,13 +429,14 @@ fleet_ops.moveFleet(state, fleetId, newSystem)  # CORRECT
 
 **Need to...** | **Use...**
 --- | ---
-Read entities | `@state/iterators.nim`
+Read multiple entities | `@state/iterators.nim`
+Read single entity by index | `@state/entity_helpers.nim`
 Create/destroy entities | `@entities/*_ops.nim`
 Change location/owner | `@entities/*_ops.nim`
 Update simple fields | `@state/entity_manager.updateEntity()`
 Check if exists | `@state/entity_manager.entity(id).isSome`
-Business logic | `@systems/*/` (reads via iterators, writes via ops)
+Business logic | `@systems/*/` (reads via iterators/helpers, writes via ops)
 
 ---
 
-**Remember:** Iterators for reads, entity ops for writes, never touch indexes directly.
+**Remember:** Iterators for batch reads, helpers for single lookups, entity ops for writes, never touch indexes directly.
