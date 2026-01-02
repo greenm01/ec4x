@@ -9,12 +9,13 @@
 
 import std/[tables, options, sequtils, hashes, math, random, strformat]
 import ../../../common/logger
-import ../../types/[core, combat, game_state, command, fleet, squadron, ship, colony, house, ground_unit, facilities as econ_types]
+import ../../types/[core, combat, game_state, command, fleet, squadron, ship, colony, house, ground_unit, facilities as econ_types, diplomacy as dip_types]
 import ../../state/[entity_manager, iterators]
 import ./[engine as combat_engine, ground]
 import ../facilities/damage as facility_damage
 import ../../prestige/engine
 import ../../config/[prestige_config, facilities_config]
+import ../../globals # For gameConfig
 import ../diplomacy/engine as dip_engine
 import ../../intel/[diplomatic_intel, combat_intel]
 import ../fleet/mechanics
@@ -41,9 +42,12 @@ proc applySpaceLiftScreeningLosses(
   for fleetId, fleetBefore in fleetsBeforeCombat.pairs:
     # Count Expansion/Auxiliary squadrons before
     var spaceliftSquadronsBefore = 0
-    for squadron in fleetBefore.squadrons:
-      if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
-        spaceliftSquadronsBefore += 1
+    for squadronId in fleetBefore.squadrons:
+      let squadronOpt = state.squadrons[].entity(squadronId)
+      if squadronOpt.isSome:
+        let squadron = squadronOpt.get()
+        if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
+          spaceliftSquadronsBefore += 1
 
     if spaceliftSquadronsBefore == 0:
       continue # No spacelift squadrons to lose
@@ -58,7 +62,7 @@ proc applySpaceLiftScreeningLosses(
     if fleetOpt.isSome:
       let fleet = fleetOpt.get()
       for sqId in fleet.squadrons:
-        let sqOpt = state.squadrons.entities.entity(sqId)
+        let sqOpt = state.squadrons[].entity(sqId)
         if sqOpt.isSome:
           let squadron = sqOpt.get()
           if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
@@ -67,8 +71,8 @@ proc applySpaceLiftScreeningLosses(
     # Track losses
     let spaceliftLosses = spaceliftSquadronsBefore - spaceliftSquadronsAfter
     if spaceliftLosses > 0:
-      spaceliftLossesByHouse[fleetBefore.owner] =
-        spaceliftLossesByHouse.getOrDefault(fleetBefore.owner, 0) + spaceliftLosses
+      spaceliftLossesByHouse[fleetBefore.houseId] =
+        spaceliftLossesByHouse.getOrDefault(fleetBefore.houseId, 0) + spaceliftLosses
 
       logCombat(
         &"{combatPhase} combat: Fleet {fleetId} transport squadron losses",
@@ -90,15 +94,18 @@ proc applySpaceLiftScreeningLosses(
       )
     )
 
-proc isIntelOnlyFleet(fleet: Fleet): bool =
+proc isIntelOnlyFleet(state: GameState, fleet: Fleet): bool =
   ## Check if fleet contains only Intel squadrons (intelligence gathering units)
   ## Intel-only fleets are invisible to combat fleets and never participate in combat
   if fleet.squadrons.len == 0:
     return false
 
-  for squadron in fleet.squadrons:
-    if squadron.squadronType != SquadronClass.Intel:
-      return false
+  for squadronId in fleet.squadrons:
+    let squadronOpt = state.squadrons[].entity(squadronId)
+    if squadronOpt.isSome:
+      let squadron = squadronOpt.get()
+      if squadron.squadronType != SquadronClass.Intel:
+        return false
 
   return true
 
@@ -108,37 +115,30 @@ proc getTargetBucket(shipClass: ShipClass): TargetBucket =
   case shipClass
   of ShipClass.Raider: TargetBucket.Raider
   of ShipClass.Fighter: TargetBucket.Fighter
-  of ShipClass.Destroyer: TargetBucket.Destroyer
-  else: TargetBucket.Capital
+  of ShipClass.Corvette, ShipClass.Frigate, ShipClass.Destroyer:
+    TargetBucket.Escort # Light warships are escorts
+  else: TargetBucket.Capital # Cruisers, battleships, carriers, etc
 
 proc getStarbaseStats(wepLevel: int): ShipStats =
-  ## Load starbase combat stats from facilities.toml
+  ## Load starbase combat stats from facilities.kdl
   ## Applies WEP tech modifications like ships
-  let facilityConfig = globalFacilitiesConfig.facilities[FacilityClass.Starbase]
+  let facilityConfig = gameConfig.facilities.facilities[FacilityClass.Starbase]
 
-  # Base stats from facilities.toml
-  var stats = ShipStats(
-    name: "Starbase",
-    class: "SB",
-    role: ShipRole.SpecialWeapon,
-    attackStrength: facilityConfig.attack_strength,
-    defenseStrength: facilityConfig.defense_strength,
-    commandCost: 0, # Starbases don't consume command
-    commandRating: 0, # Starbases can't lead squadrons
-    techLevel: facilityConfig.cst_min,
-    buildCost: facilityConfig.build_cost,
-    upkeepCost: facilityConfig.upkeep_cost,
-    specialCapability: "", # No special capabilities
-    carryLimit: 0,
-  )
+  # Base stats from facilities config
+  var baseAS = facilityConfig.attackStrength
+  var baseDS = facilityConfig.defenseStrength
 
   # Apply WEP tech modifications (AS and DS scale with weapons tech)
   if wepLevel > 1:
     let weaponsMultiplier = pow(1.10, float(wepLevel - 1))
-    stats.attackStrength = int(float(stats.attackStrength) * weaponsMultiplier)
-    stats.defenseStrength = int(float(stats.defenseStrength) * weaponsMultiplier)
+    baseAS = int32(float(baseAS) * weaponsMultiplier)
+    baseDS = int32(float(baseDS) * weaponsMultiplier)
 
-  return stats
+  return ShipStats(
+    attackStrength: baseAS,
+    defenseStrength: baseDS,
+    wep: int32(wepLevel),
+  )
 
 proc autoEscalateDiplomacy(
     state: var GameState,
@@ -164,8 +164,8 @@ proc autoEscalateDiplomacy(
   # Collect all houses involved in combat
   var housesInvolved: seq[HouseId] = @[]
   for (fleetId, fleet) in fleetsInCombat:
-    if fleet.owner notin housesInvolved:
-      housesInvolved.add(fleet.owner)
+    if fleet.houseId notin housesInvolved:
+      housesInvolved.add(fleet.houseId)
 
   # Auto-escalate diplomatic relations between all pairs of combatants
   for i in 0 ..< housesInvolved.len:
@@ -187,31 +187,35 @@ proc autoEscalateDiplomacy(
         )
         continue
 
-      let currentState1 =
-        dip_engine.getDiplomaticState(house1Opt.get().diplomaticRelations, house2)
-      let currentState2 =
-        dip_engine.getDiplomaticState(house2Opt.get().diplomaticRelations, house1)
+      # Get current diplomatic state from state.diplomaticRelation
+      let key = (house1, house2)
+      let currentState =
+        if state.diplomaticRelation.hasKey(key):
+          state.diplomaticRelation[key].state
+        else:
+          dip_types.DiplomaticState.Neutral
 
-      # Only escalate if current state is less hostile than target
       # Only escalate if current state is less hostile than target
       # Neutral (0) < Hostile (1) < Enemy (2)
-      if ord(currentState1) < ord(targetState):
-        var house1Data = house1Opt.get()
-        house1Data.diplomaticRelations.setDiplomaticState(
-          house2, targetState, state.turn
+      if ord(currentState) < ord(targetState):
+        # Update diplomatic relation (bidirectional)
+        state.diplomaticRelation[key] = dip_types.DiplomaticRelation(
+          sourceHouse: house1,
+          targetHouse: house2,
+          state: targetState,
+          sinceTurn: state.turn,
         )
-        state.houses.entities.updateEntity(house1, house1Data)
 
         logResolve(
           "Auto-escalation",
           "phase=",
           combatPhase,
-          " house=",
+          " house1=",
           $house1,
-          " target=",
+          " house2=",
           $house2,
           " oldState=",
-          $currentState1,
+          $currentState,
           " newState=",
           $targetState,
         )
@@ -226,36 +230,6 @@ proc autoEscalateDiplomacy(
             state, house1, house2, state.turn
           )
 
-      if ord(currentState2) < ord(targetState):
-        var house2Data = house2Opt.get()
-        house2Data.diplomaticRelations.setDiplomaticState(
-          house1, targetState, state.turn
-        )
-        state.houses.entities.updateEntity(house2, house2Data)
-
-        logResolve(
-          "Auto-escalation",
-          "phase=",
-          combatPhase,
-          " house=",
-          $house2,
-          " target=",
-          $house1,
-          " oldState=",
-          $currentState2,
-          " newState=",
-          $targetState,
-        )
-
-        # Generate intelligence about escalation
-        if targetState == dip_types.DiplomaticState.Hostile:
-          diplomatic_intel.generateHostilityDeclarationIntel(
-            state, house2, house1, state.turn
-          )
-        else:
-          diplomatic_intel.generateWarDeclarationIntel(
-            state, house2, house1, state.turn
-          )
 
 proc executeCombat(
     state: var GameState,
@@ -285,9 +259,9 @@ proc executeCombat(
   # Group fleets by house
   var houseFleets: Table[HouseId, seq[Fleet]] = initTable[HouseId, seq[Fleet]]()
   for (fleetId, fleet) in fleetsInCombat:
-    if fleet.owner notin houseFleets:
-      houseFleets[fleet.owner] = @[]
-    houseFleets[fleet.owner].add(fleet)
+    if fleet.houseId notin houseFleets:
+      houseFleets[fleet.houseId] = @[]
+    houseFleets[fleet.houseId].add(fleet)
 
   # Check if there's actual conflict (need at least 2 different houses)
   if houseFleets.len < 2:
@@ -308,7 +282,12 @@ proc executeCombat(
         )
         continue
 
-      for squadron in fleet.squadrons:
+      for squadronId in fleet.squadrons:
+        let squadronOpt = state.squadrons[].entity(squadronId)
+        if squadronOpt.isNone:
+          continue
+        let squadron = squadronOpt.get()
+
         # Only Combat squadrons participate in combat
         # Intel, Auxiliary, Expansion, and Fighter squadrons are screened
         if squadron.squadronType != SquadronClass.Combat:
@@ -322,49 +301,78 @@ proc executeCombat(
           )
           continue
 
+        # Get flagship ship via DoD pattern (flagshipId reference)
+        let flagshipOpt = state.ships.entity(squadron.flagshipId)
+        if flagshipOpt.isNone:
+          continue # Skip squadron if flagship doesn't exist
+
+        let flagship = flagshipOpt.get()
+
         let combatSq = CombatSquadron(
-          squadron: squadron,
+          squadronId: squadron.id,
+          attackStrength: flagship.stats.attackStrength,
+          defenseStrength: flagship.stats.defenseStrength,
+          commandRating: gameConfig.ships.ships[flagship.shipClass].commandRating,
           state:
-            if squadron.flagship.isCrippled:
+            if flagship.isCrippled:
               CombatState.Crippled
             else:
               CombatState.Undamaged,
           fleetStatus: fleet.status,
           damageThisTurn: 0,
           crippleRound: 0,
-          bucket: getTargetBucket(squadron.flagship.shipClass),
+          bucket: getTargetBucket(flagship.shipClass),
           targetWeight: 1.0,
         )
         combatSquadrons.add(combatSq)
 
     # Add unassigned squadrons from colony if this is orbital combat
     if includeUnassignedSquadrons and systemOwner.isSome and systemOwner.get() == houseId:
-      let colonyOpt = state.colonies.entities.entity(systemId)
-      if colonyOpt.isSome:
-        let colony = colonyOpt.get()
-        for squadron in colony.unassignedSquadrons:
-          let combatSq = CombatSquadron(
-            squadron: squadron,
-            state:
-              if squadron.flagship.isCrippled:
-                CombatState.Crippled
-              else:
-                CombatState.Undamaged,
-            fleetStatus: FleetStatus.Active,
-              # Unassigned squadrons fight at full strength
-            damageThisTurn: 0,
-            crippleRound: 0,
-            bucket: getTargetBucket(squadron.flagship.shipClass),
-            targetWeight: 1.0,
-          )
-          combatSquadrons.add(combatSq)
-        if colony.unassignedSquadrons.len > 0:
-          logDebug(
-            "Combat",
-            "Added unassigned squadrons to orbital defense",
-            "count=",
-            $colony.unassignedSquadrons.len,
-          )
+      # Look up colony by system
+      if state.colonies.bySystem.hasKey(systemId):
+        let colonyId = state.colonies.bySystem[systemId]
+        let colonyOpt = state.colonies.entities.entity(colonyId)
+        if colonyOpt.isSome:
+          let colony = colonyOpt.get()
+          for squadronId in colony.unassignedSquadronIds:
+            # Get squadron entity via DoD pattern
+            let squadronOpt = state.squadrons[].entity(squadronId)
+            if squadronOpt.isNone:
+              continue
+            let squadron = squadronOpt.get()
+
+            # Get flagship ship via DoD pattern
+            let flagshipOpt = state.ships.entity(squadron.flagshipId)
+            if flagshipOpt.isNone:
+              continue # Skip squadron if flagship doesn't exist
+
+            let flagship = flagshipOpt.get()
+
+            let combatSq = CombatSquadron(
+              squadronId: squadron.id,
+              attackStrength: flagship.stats.attackStrength,
+              defenseStrength: flagship.stats.defenseStrength,
+              commandRating: gameConfig.ships.ships[flagship.shipClass].commandRating,
+              state:
+                if flagship.isCrippled:
+                  CombatState.Crippled
+                else:
+                  CombatState.Undamaged,
+              fleetStatus: FleetStatus.Active,
+                # Unassigned squadrons fight at full strength
+              damageThisTurn: 0,
+              crippleRound: 0,
+              bucket: getTargetBucket(flagship.shipClass),
+              targetWeight: 1.0,
+            )
+            combatSquadrons.add(combatSq)
+          if colony.unassignedSquadronIds.len > 0:
+            logDebug(
+              "Combat",
+              "Added unassigned squadrons to orbital defense",
+              "count=",
+              $colony.unassignedSquadronIds.len,
+            )
 
     # Add starbases for system owner (always included for detection)
     # Starbases are ALWAYS included in task forces for detection purposes
@@ -372,46 +380,56 @@ proc executeCombat(
     # In orbital combat: Starbases detect AND fight
     var combatFacilities: seq[CombatFacility] = @[]
     if systemOwner.isSome and systemOwner.get() == houseId:
-      let colonyOpt = state.colonies.entities.entity(systemId)
-      if colonyOpt.isSome:
-        let colony = colonyOpt.get()
-        let houseOpt = state.houses.entities.entity(houseId)
-        if houseOpt.isNone:
-          logWarn(
-            "Combat", "Cannot add starbases - house not found", "houseId=", $houseId
-          )
-        else:
-          for starbase in colony.starbases:
-            # Load starbase combat stats from facilities.toml
-            # Apply owner's WEP tech level to starbase AS/DS
-            let ownerWepLevel = houseOpt.get().techTree.levels.wep
-            let starbaseStats = getStarbaseStats(ownerWepLevel)
+      # Look up colony by system
+      if state.colonies.bySystem.hasKey(systemId):
+        let colonyId = state.colonies.bySystem[systemId]
+        let colonyOpt = state.colonies.entities.entity(colonyId)
+        if colonyOpt.isSome:
+          let colony = colonyOpt.get()
+          let houseOpt = state.houses.entities.entity(houseId)
+          if houseOpt.isNone:
+            logWarn(
+              "Combat", "Cannot add starbases - house not found", "houseId=", $houseId
+            )
+          else:
+            for starbaseId in colony.starbaseIds:
+              # Get starbase entity via DoD pattern
+              let starbaseOpt = state.starbases.entities.entity(starbaseId)
+              if starbaseOpt.isNone:
+                continue
 
-            let combatFacility = CombatFacility(
-              facilityId: starbase.id,
-              systemId: systemId,
-              owner: houseId,
-              attackStrength: starbaseStats.attackStrength,
-              defenseStrength: starbaseStats.defenseStrength,
-              state:
-                if starbase.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
-              damageThisTurn: 0,
-              crippleRound: 0,
-              bucket: TargetBucket.Starbase,
-              targetWeight: 5.0, # Base weight for Starbase bucket
-            )
-            combatFacilities.add(combatFacility)
-          if colony.starbases.len > 0:
-            let combatRole =
-              if includeStarbases: "defense and detection" else: "detection only"
-            logDebug(
-              "Combat",
-              "Added starbases",
-              "count=",
-              $colony.starbases.len,
-              " role=",
-              combatRole,
-            )
+              let starbase = starbaseOpt.get()
+
+              # Load starbase combat stats from facilities.toml
+              # Apply owner's WEP tech level to starbase AS/DS
+              let ownerWepLevel = houseOpt.get().techTree.levels.wep
+              let starbaseStats = getStarbaseStats(ownerWepLevel)
+
+              let combatFacility = CombatFacility(
+                facilityId: starbase.id,
+                systemId: systemId,
+                owner: houseId,
+                attackStrength: starbaseStats.attackStrength,
+                defenseStrength: starbaseStats.defenseStrength,
+                state:
+                  if starbase.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
+                damageThisTurn: 0,
+                crippleRound: 0,
+                bucket: TargetBucket.Starbase,
+                targetWeight: 5.0, # Base weight for Starbase bucket
+              )
+              combatFacilities.add(combatFacility)
+            if colony.starbaseIds.len > 0:
+              let combatRole =
+                if includeStarbases: "defense and detection" else: "detection only"
+              logDebug(
+                "Combat",
+                "Added starbases",
+                "count=",
+                $colony.starbaseIds.len,
+                " role=",
+                combatRole,
+              )
 
     # Create TaskForce for this house
     taskForces[houseId] = TaskForce(
@@ -454,9 +472,13 @@ proc executeCombat(
   for i, tf in allTaskForces:
     var hasRaiders = false
     for sq in tf.squadrons:
-      if sq.squadron.flagship.shipClass == ShipClass.Raider:
-        hasRaiders = true
-        break
+      # Get flagship via DoD pattern
+      let flagshipOpt = state.ships.entity(sq.squadron.flagshipId)
+      if flagshipOpt.isSome:
+        let flagship = flagshipOpt.get()
+        if flagship.shipClass == ShipClass.Raider:
+          hasRaiders = true
+          break
     if hasRaiders:
       raiderTFs.add(i)
 
@@ -523,13 +545,20 @@ proc executeCombat(
 
         # Generate RaiderDetected events for each raider fleet
         for (fleetId, fleet) in fleetsInCombat:
-          if fleet.owner == attackerTF.house:
+          if fleet.houseId == attackerTF.house:
             # Check if this fleet has raiders
             var hasRaiders = false
-            for squadron in fleet.squadrons:
-              if squadron.flagship.shipClass == ShipClass.Raider:
-                hasRaiders = true
-                break
+            for squadronId in fleet.squadrons:
+              let squadronOpt = state.squadrons[].entity(squadronId)
+              if squadronOpt.isSome:
+                let squadron = squadronOpt.get()
+                # Get flagship via DoD pattern
+                let flagshipOpt = state.ships.entity(squadron.flagshipId)
+                if flagshipOpt.isSome:
+                  let flagship = flagshipOpt.get()
+                  if flagship.shipClass == ShipClass.Raider:
+                    hasRaiders = true
+                    break
 
             if hasRaiders:
               let detectorType = if starbaseBonus > 0: "Starbase" else: "Scout"
@@ -554,13 +583,20 @@ proc executeCombat(
           &"Raider fleet from {attackerTF.house} evaded {defenderTF.house} detection.",
         )
         for (fleetId, fleet) in fleetsInCombat:
-          if fleet.owner == attackerTF.house:
+          if fleet.houseId == attackerTF.house:
             # Check if this fleet has raiders
             var hasRaiders = false
-            for squadron in fleet.squadrons:
-              if squadron.flagship.shipClass == ShipClass.Raider:
-                hasRaiders = true
-                break
+            for squadronId in fleet.squadrons:
+              let squadronOpt = state.squadrons[].entity(squadronId)
+              if squadronOpt.isSome:
+                let squadron = squadronOpt.get()
+                # Get flagship via DoD pattern
+                let flagshipOpt = state.ships.entity(squadron.flagshipId)
+                if flagshipOpt.isSome:
+                  let flagship = flagshipOpt.get()
+                  if flagship.shipClass == ShipClass.Raider:
+                    hasRaiders = true
+                    break
 
             if hasRaiders:
               let detectorType = if starbaseBonus > 0: "Starbase" else: "Scout"
@@ -828,20 +864,20 @@ proc resolveBattle*(
 
     # Intel-only fleets are invisible to combat fleets and never participate in combat
     # They operate independently for intelligence gathering (per 02-assets.md:2.4.2)
-    if isIntelOnlyFleet(fleet):
+    if isIntelOnlyFleet(state, fleet):
       logDebug("Combat", "Intel-only fleet excluded from combat", "fleetId=", $fleetId)
       continue
 
     # Classify fleet based on ownership and orders
-    let isDefender = systemOwner.isSome and systemOwner.get() == fleet.owner
+    let isDefender = systemOwner.isSome and systemOwner.get() == fleet.houseId
 
     if isDefender:
       # Defender fleet classification
       var isOrbitalOnly = false
 
       # Check for guard orders
-      if fleet.owner in orders:
-        for command in orders[fleet.owner].fleetCommands:
+      if fleet.houseId in orders:
+        for command in orders[fleet.houseId].fleetCommands:
           if command.fleetId == fleetId and (
             command.commandType == FleetCommandType.GuardStarbase or
             command.commandType == FleetCommandType.GuardPlanet
@@ -884,8 +920,8 @@ proc resolveBattle*(
     # This handles multi-house combat correctly (3-way, 4-way, etc.)
     var housesInCombat: seq[HouseId] = @[]
     for (fleetId, fleet) in spaceCombatParticipants:
-      if fleet.owner notin housesInCombat:
-        housesInCombat.add(fleet.owner)
+      if fleet.houseId notin housesInCombat:
+        housesInCombat.add(fleet.houseId)
 
     # Generate separate reports for each house observing each other house
     for reportingHouse in housesInCombat:
@@ -893,7 +929,7 @@ proc resolveBattle*(
 
       # Collect own forces
       for (fleetId, fleet) in spaceCombatParticipants:
-        if fleet.owner == reportingHouse:
+        if fleet.houseId == reportingHouse:
           alliedFleetIds.add(fleetId)
 
       # Generate separate intel report for EACH other house
@@ -903,7 +939,7 @@ proc resolveBattle*(
 
         var otherHouseFleetIds: seq[FleetId] = @[]
         for (fleetId, fleet) in spaceCombatParticipants:
-          if fleet.owner == otherHouse:
+          if fleet.houseId == otherHouse:
             otherHouseFleetIds.add(fleetId)
 
         if otherHouseFleetIds.len > 0:
@@ -953,8 +989,8 @@ proc resolveBattle*(
     logCombat("No space combat - no mobile defenders")
     # All attackers advance to orbital combat
     for (fleetId, fleet) in attackingFleets:
-      if fleet.owner notin spaceCombatSurvivors:
-        spaceCombatSurvivors.add(fleet.owner)
+      if fleet.houseId notin spaceCombatSurvivors:
+        spaceCombatSurvivors.add(fleet.houseId)
   else:
     logCombat("No space combat - no attackers")
 
@@ -980,7 +1016,7 @@ proc resolveBattle*(
       # Gather surviving attacker fleets
       var survivingAttackerFleets: seq[(FleetId, Fleet)] = @[]
       for (fleetId, fleet) in fleetsAtSystem:
-        if fleet.owner in spaceCombatSurvivors and fleet.owner != systemOwner.get():
+        if fleet.houseId in spaceCombatSurvivors and fleet.houseId != systemOwner.get():
           survivingAttackerFleets.add((fleetId, fleet))
 
       if survivingAttackerFleets.len > 0:
@@ -991,8 +1027,8 @@ proc resolveBattle*(
         # Each house generates detailed intel on EACH other house's orbital forces
         var orbitalHouses: seq[HouseId] = @[]
         for (fleetId, fleet) in orbitalFleets:
-          if fleet.owner notin orbitalHouses:
-            orbitalHouses.add(fleet.owner)
+          if fleet.houseId notin orbitalHouses:
+            orbitalHouses.add(fleet.houseId)
 
         # Generate separate reports for each house observing each other house
         for reportingHouse in orbitalHouses:
@@ -1000,7 +1036,7 @@ proc resolveBattle*(
 
           # Collect own forces
           for (fleetId, fleet) in orbitalFleets:
-            if fleet.owner == reportingHouse:
+            if fleet.houseId == reportingHouse:
               alliedFleetIds.add(fleetId)
 
           # Generate separate intel report for EACH other house
@@ -1010,7 +1046,7 @@ proc resolveBattle*(
 
             var otherHouseFleetIds: seq[FleetId] = @[]
             for (fleetId, fleet) in orbitalFleets:
-              if fleet.owner == otherHouse:
+              if fleet.houseId == otherHouse:
                 otherHouseFleetIds.add(fleetId)
 
             if otherHouseFleetIds.len > 0:
@@ -1136,7 +1172,7 @@ proc resolveBattle*(
       let updatedFleet = Fleet(
         squadrons: updatedSquadrons,
         id: fleet.id,
-        owner: fleet.owner,
+        owner: fleet.houseId,
         location: fleet.location,
         status: fleet.status, # Preserve status (Active/Reserve)
         autoBalanceSquadrons: fleet.autoBalanceSquadrons, # Preserve balancing setting
@@ -1144,7 +1180,7 @@ proc resolveBattle*(
       state.fleets.entities.updateEntity(fleetId, updatedFleet)
     else:
       # Fleet destroyed - remove fleet and clean up orders
-      state.removeFleetFromIndices(fleetId, fleet.owner, fleet.location)
+      state.removeFleetFromIndices(fleetId, fleet.houseId, fleet.location)
       state.fleets.del(fleetId)
       if fleetId in state.fleetCommands:
         state.fleetCommands.del(fleetId)
@@ -1189,7 +1225,7 @@ proc resolveBattle*(
       var mothballedSquadronsDestroyed = 0
 
       for (fleetId, fleet) in fleetsAtSystem:
-        if fleet.owner == defendingHouse:
+        if fleet.houseId == defendingHouse:
           # Skip fleets that were already destroyed in combat (using entity_manager)
           if state.fleets.entities.entity(fleetId).isNone:
             continue
@@ -1202,7 +1238,7 @@ proc resolveBattle*(
             let emptyFleet = Fleet(
               squadrons: @[], # Empty fleet
               id: fleet.id,
-              owner: fleet.owner,
+              owner: fleet.houseId,
               location: fleet.location,
               status: FleetStatus.Mothballed,
               autoBalanceSquadrons: fleet.autoBalanceSquadrons, # Preserve setting
@@ -1400,7 +1436,7 @@ proc resolveBattle*(
       # Use fleetsAtSystemForHouseWithId iterator (using iterators)
       for (fleetId, fleet) in state.fleetsAtSystemForHouseWithId(systemId, houseId):
         # Find closest owned colony for retreat destination
-        let safeDestination = findClosestOwnedColony(state, fleet.location, fleet.owner)
+        let safeDestination = findClosestOwnedColony(state, fleet.location, fleet.houseId)
 
         if safeDestination.isSome:
           logDebug(
@@ -1462,12 +1498,12 @@ proc resolveBattle*(
   var allHouses: seq[HouseId] = @[]
 
   for (fleetId, fleet) in fleetsAtSystem:
-    if fleet.owner notin allHouses:
-      allHouses.add(fleet.owner)
-      if systemOwner.isSome and systemOwner.get() == fleet.owner:
-        defenderHouses.add(fleet.owner)
+    if fleet.houseId notin allHouses:
+      allHouses.add(fleet.houseId)
+      if systemOwner.isSome and systemOwner.get() == fleet.houseId:
+        defenderHouses.add(fleet.houseId)
       else:
-        attackerHouses.add(fleet.owner)
+        attackerHouses.add(fleet.houseId)
 
   # 7. Count losses by house
   var houseLosses: Table[HouseId, int] = initTable[HouseId, int]()
@@ -1475,7 +1511,7 @@ proc resolveBattle*(
   for houseId in allHouses:
     var totalSquadrons = 0
     for (fleetId, fleet) in fleetsAtSystem:
-      if fleet.owner == houseId:
+      if fleet.houseId == houseId:
         totalSquadrons += fleet.squadrons.len
 
     # Add starbases and unassigned squadrons to defender's total (using entity_manager)

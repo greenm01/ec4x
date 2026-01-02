@@ -10,8 +10,8 @@
 
 import
   commissioning, military, economic, intel, victory, prestige, diplomatic,
-  alerts, fleet_ops
+  alerts, fleet_ops, commands
 
 export
   commissioning, military, economic, intel, victory, prestige, diplomatic,
-  alerts, fleet_ops
+  alerts, fleet_ops, commands
