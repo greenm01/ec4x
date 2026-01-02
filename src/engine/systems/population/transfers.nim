@@ -79,6 +79,7 @@ proc createTransferInitiation*(
     return (false, "Source system has no colony")
 
   let sourceColony = sourceColonyOpt.get()
+  let sourceColonyId = state.colonies.bySystem[sourceSystem] # Needed for transfer ID
   if sourceColony.owner != houseId:
     return (false, "Source colony not owned by house")
 
@@ -225,6 +226,7 @@ proc applyTransferCompletion*(
       # Deliver population
       let destColonyOpt = state.colonyBySystem(destSystem)
       if destColonyOpt.isSome:
+          let destColonyId = state.colonies.bySystem[destSystem] # Needed for updateEntity
           var destColony = destColonyOpt.get()
           destColony.populationUnits += completion.transfer.ptuAmount
           destColony.population = destColony.populationUnits

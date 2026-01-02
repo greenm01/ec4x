@@ -9,16 +9,18 @@
 
 import std/[tables, options, sequtils, hashes, math, random, strformat]
 import ../../../common/logger
-import ../../types/[core, combat, game_state, command, fleet, squadron, ship, colony, house, ground_unit, facilities as econ_types, diplomacy as dip_types]
+import ../../types/[core, combat, game_state, fleet, squadron, ship, colony, house, facilities as econ_types, diplomacy as dip_types, intel as intel_types, prestige]
 import ../../state/[entity_manager, iterators, entity_helpers]
 import ./[engine as combat_engine, ground]
-import ../facilities/damage as facility_damage
-import ../../prestige/engine
-import ../../config/[prestige_config, facilities_config]
 import ../../globals # For gameConfig
+import ../../prestige/[
+  engine as prestige_engine, application as prestige_app, sources as prestige_sources,
+  events as prestige_events,
+]
 import ../diplomacy/engine as dip_engine
 import ../../intel/[diplomatic_intel, combat_intel]
 import ../fleet/mechanics
+import ../facilities/damage as facility_damage
 import ../../event_factory/init as event_factory
 
 proc applySpaceLiftScreeningLosses(
@@ -142,7 +144,7 @@ proc getStarbaseStats(wepLevel: int): ShipStats =
 
 proc autoEscalateDiplomacy(
     state: var GameState,
-    combatOutcome: CombatResult,
+    combatOutcome: combat_engine.CombatResult,
     combatPhase: string,
     fleetsInCombat: seq[(FleetId, Fleet)],
 ) =
@@ -649,7 +651,7 @@ proc executeCombat(
   )
 
   # Execute battle
-  let outcome = combat_engine.resolveCombat(battleContext)
+  let outcome = combat_engine.resolveCombat(state, battleContext)
 
   return (outcome, fleetsInCombat, newlyDetectedHouses)
 
@@ -677,12 +679,12 @@ proc processCombatEvents(
       else:
         none(HouseId)
 
-    if systemOwner.isSome() and systemOwner.get() == tf.house:
-      if tf.house notin defenders:
-        defenders.add(tf.house)
+    if systemOwner.isSome() and systemOwner.get() == tf.houseId:
+      if tf.houseId notin defenders:
+        defenders.add(tf.houseId)
     else:
-      if tf.house notin attackers:
-        attackers.add(tf.house)
+      if tf.houseId notin attackers:
+        attackers.add(tf.houseId)
 
   # Add eliminated and retreated houses
   for house in combatResult.eliminated:
@@ -709,13 +711,13 @@ proc processCombatEvents(
       # Map CombatPhase enum to phase string
       let phaseName =
         case phaseResult.phase
-        of combat_types.CombatPhase.Ambush:
+        of combat.CombatPhase.Ambush:
           "RaiderAmbush"
-        of combat_types.CombatPhase.Intercept:
+        of combat.CombatPhase.Intercept:
           "FighterIntercept"
-        of combat_types.CombatPhase.MainEngagement:
+        of combat.CombatPhase.MainEngagement:
           "CapitalEngagement"
-        of combat_types.CombatPhase.PreCombat, combat_types.CombatPhase.PostCombat:
+        of combat.CombatPhase.PreCombat, combat.CombatPhase.PostCombat:
           "PrePostCombat" # Shouldn't occur in round results
 
       # Emit phase began event
@@ -744,16 +746,18 @@ proc processCombatEvents(
         if attackerHouse.isSome() and targetHouse.isSome():
           # Emit weapon fired event
           let weaponType = "Energy" # Placeholder - could extract from squadron
+          let attackerHouseVal = attackerHouse.get()
+          let targetHouseVal = targetHouse.get()
           events.add(
             event_factory.weaponFired(
-              attackerSquadron = attack.attackerId,
-              attackerHouse = attackerHouse.get(),
-              targetSquadron = attack.targetId,
-              targetHouse = targetHouse.get(),
+              attackerSquadron = $attack.attackerId.squadronId,
+              attackerHouse = attackerHouseVal,
+              targetSquadron = $attack.targetId.squadronId,
+              targetHouse = targetHouseVal,
               weaponType = weaponType,
               cerRoll = 5, # Placeholder - would need to extract from cerRoll
               cerModifier = 0, # Placeholder
-              damage = attack.damageDealt,
+              damage = int(attack.damageDealt),
               systemId = systemId,
             )
           )
@@ -761,23 +765,23 @@ proc processCombatEvents(
           # Emit damage/destruction event if state changed
           if attack.targetStateBefore != attack.targetStateAfter:
             case attack.targetStateAfter
-            of combat_types.CombatState.Crippled:
+            of combat.CombatState.Crippled:
               events.add(
                 event_factory.shipDamaged(
-                  squadronId = attack.targetId,
-                  houseId = targetHouse.get(),
-                  damage = attack.damageDealt,
+                  squadronId = $attack.targetId.squadronId,
+                  houseId = targetHouseVal,
+                  damage = int(attack.damageDealt),
                   newState = "Crippled",
                   remainingDs = 0, # Placeholder
                   systemId = systemId,
                 )
               )
-            of combat_types.CombatState.Destroyed:
+            of combat.CombatState.Destroyed:
               events.add(
                 event_factory.shipDestroyed(
-                  squadronId = attack.targetId,
-                  houseId = targetHouse.get(),
-                  killedByHouse = attackerHouse.get(),
+                  squadronId = $attack.targetId.squadronId,
+                  houseId = targetHouseVal,
+                  killedByHouse = attackerHouseVal,
                   criticalHit = attack.cerRoll.isCriticalHit,
                   overkillDamage = 0, # Placeholder
                   systemId = systemId,
@@ -810,7 +814,7 @@ proc processCombatEvents(
   # Emit retreat events
   for house in combatResult.retreated:
     # Find fleet ID for this house (placeholder - would need to track this)
-    let fleetId: FleetId = "" # Placeholder - FleetId is string type
+    let fleetId: FleetId = FleetId(0) # Placeholder - FleetId is distinct uint32
     events.add(
       event_factory.fleetRetreat(
         fleetId = fleetId,
@@ -836,15 +840,14 @@ proc processCombatEvents(
 proc resolveBattle*(
     state: var GameState,
     systemId: SystemId,
-    orders: Table[HouseId, OrderPacket],
-    combatReports: var seq[CombatReport],
+    combatReports: var seq[combat.CombatReport],
     events: var seq[GameEvent],
     rng: var Rand,
 ) =
   ## Resolve combat at a system with linear progression (operations.md:7.0)
   ## Phase 1: Space Combat - non-guard mobile fleets fight first
   ## Phase 2: Orbital Combat - if attackers survive, fight guard/reserve fleets + starbases
-  ## Uses orders to determine which fleets are on guard duty
+  ## Uses fleet commands from state to determine which fleets are on guard duty
   logCombat("Resolving battle", "system=", $systemId)
 
   # 1. Determine system ownership
@@ -881,15 +884,13 @@ proc resolveBattle*(
       # Defender fleet classification
       var isOrbitalOnly = false
 
-      # Check for guard orders
-      if fleet.houseId in orders:
-        for command in orders[fleet.houseId].fleetCommands:
-          if command.fleetId == fleetId and (
-            command.commandType == FleetCommandType.GuardStarbase or
-            command.commandType == FleetCommandType.GuardPlanet
-          ):
-            isOrbitalOnly = true
-            break
+      # Check for guard orders in fleet commands
+      # Guarding fleets only defend in orbital combat, not space combat
+      if state.fleetCommands.hasKey(fleetId):
+        let command = state.fleetCommands[fleetId]
+        if command.commandType == FleetCommandType.GuardStarbase or
+            command.commandType == FleetCommandType.GuardColony:
+          isOrbitalOnly = true
 
       # Reserve and mothballed fleets only defend in orbital combat
       if fleet.status == FleetStatus.Reserve or fleet.status == FleetStatus.Mothballed:
@@ -953,12 +954,10 @@ proc resolveBattle*(
             state, systemId, intel_types.CombatPhase.Space, reportingHouse,
             alliedFleetIds, otherHouseFleetIds,
           )
-          # CRITICAL: Get, modify, write back using entity_manager
-          let houseOpt = state.houses.entities.entity(reportingHouse)
-          if houseOpt.isSome:
-            var house = houseOpt.get()
-            house.intelligence.addCombatReport(preCombatReport)
-            state.houses.entities.updateEntity(reportingHouse, house)
+          # Intelligence stored in state.intelligence table (DoD pattern)
+          if not state.intelligence.hasKey(reportingHouse):
+            state.intelligence[reportingHouse] = intel_types.IntelligenceDatabase(houseId: reportingHouse)
+          state.intelligence[reportingHouse].combatReports.add(preCombatReport)
 
     let (outcome, fleets, detected) = executeCombat(
       state,
@@ -977,8 +976,8 @@ proc resolveBattle*(
 
     # Track which attacker houses survived
     for tf in outcome.survivors:
-      if tf.house != systemOwner.get() and tf.house notin spaceCombatSurvivors:
-        spaceCombatSurvivors.add(tf.house)
+      if tf.houseId != systemOwner.get() and tf.houseId notin spaceCombatSurvivors:
+        spaceCombatSurvivors.add(tf.houseId)
 
     logCombat("Space combat complete", "rounds=", $spaceCombatOutcome.totalRounds)
     logCombat("Combat result", "survivors=", $spaceCombatSurvivors.len)
@@ -1013,7 +1012,7 @@ proc resolveBattle*(
     let colonyOpt = state.colonyBySystem(systemId)
     if colonyOpt.isSome:
       let colony = colonyOpt.get()
-      if colony.starbases.len > 0 or colony.unassignedSquadrons.len > 0:
+      if colony.starbaseIds.len > 0 or colony.unassignedSquadronIds.len > 0:
         hasOrbitalDefenders = true
 
     if hasOrbitalDefenders:
@@ -1060,12 +1059,10 @@ proc resolveBattle*(
                 state, systemId, intel_types.CombatPhase.Orbital, reportingHouse,
                 alliedFleetIds, otherHouseFleetIds,
               )
-              # CRITICAL: Get, modify, write back using entity_manager
-              let houseOpt = state.houses.entities.entity(reportingHouse)
-              if houseOpt.isSome:
-                var house = houseOpt.get()
-                house.intelligence.addCombatReport(orbitalPreCombatReport)
-                state.houses.entities.updateEntity(reportingHouse, house)
+              # Intelligence stored in state.intelligence table (DoD pattern)
+              if not state.intelligence.hasKey(reportingHouse):
+                state.intelligence[reportingHouse] = intel_types.IntelligenceDatabase(houseId: reportingHouse)
+              state.intelligence[reportingHouse].combatReports.add(orbitalPreCombatReport)
 
         let (outcome, fleets, detected) = executeCombat(
           state,
@@ -1134,8 +1131,8 @@ proc resolveBattle*(
       survivingSquadronIds[combatSq.squadronId] = combatSq
 
   # Collect surviving facilities by ID
-  var survivingFacilityIds: Table[string, CombatFacility] =
-    initTable[string, CombatFacility]()
+  var survivingFacilityIds: Table[StarbaseId, combat.CombatFacility] =
+    initTable[StarbaseId, combat.CombatFacility]()
   for tf in outcome.survivors:
     for combatFac in tf.facilities:
       survivingFacilityIds[combatFac.facilityId] = combatFac
@@ -1151,34 +1148,48 @@ proc resolveBattle*(
     if fleet.status == FleetStatus.Mothballed:
       continue
 
-    var updatedSquadrons: seq[Squadron] = @[]
+    var survivingSquadronIdsForFleet: seq[SquadronId] = @[]
 
-    for squadron in fleet.squadrons:
-      if squadron.id in survivingSquadronIds:
-        # Squadron survived - update crippled status
-        let survivorState = survivingSquadronIds[squadron.id]
-        var updatedSquadron = squadron
-        updatedSquadron.flagship.isCrippled =
-          (survivorState.state == CombatState.Crippled)
-        updatedSquadrons.add(updatedSquadron)
+    # Iterate over squadron IDs and update entities
+    for squadronId in fleet.squadrons:
+      if squadronId in survivingSquadronIds:
+        # Squadron survived - update crippled status in entity table
+        let squadronOpt = state.squadrons.entities.entity(squadronId)
+        if squadronOpt.isSome:
+          let survivorState = survivingSquadronIds[squadronId]
+          var updatedSquadron = squadronOpt.get()
+
+          # Update flagship's crippled status
+          let flagshipOpt = state.ships.entities.entity(updatedSquadron.flagshipId)
+          if flagshipOpt.isSome:
+            var updatedFlagship = flagshipOpt.get()
+            updatedFlagship.isCrippled = (survivorState.state == CombatState.Crippled)
+            state.ships.entities.updateEntity(updatedSquadron.flagshipId, updatedFlagship)
+
+          state.squadrons.entities.updateEntity(squadronId, updatedSquadron)
+          survivingSquadronIdsForFleet.add(squadronId)
       else:
-        # Squadron destroyed - mark it before removal
-        var destroyedSquadron = squadron
-        destroyedSquadron.destroyed = true
-        logCombat(
-          "Squadron destroyed",
-          "id=",
-          destroyedSquadron.id,
-          " class=",
-          $destroyedSquadron.flagship.shipClass,
-        )
+        # Squadron destroyed - log before removal
+        let squadronOpt = state.squadrons.entities.entity(squadronId)
+        if squadronOpt.isSome:
+          let squadron = squadronOpt.get()
+          let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+          if flagshipOpt.isSome:
+            let flagship = flagshipOpt.get()
+            logCombat(
+              "Squadron destroyed",
+              "id=",
+              $squadronId,
+              " class=",
+              $flagship.shipClass,
+            )
 
-    # Update fleet with surviving squadrons, or remove if none survived (using entity_manager)
-    if updatedSquadrons.len > 0:
+    # Update fleet with surviving squadron IDs, or remove if none survived (using entity_manager)
+    if survivingSquadronIdsForFleet.len > 0:
       let updatedFleet = Fleet(
-        squadrons: updatedSquadrons,
+        squadrons: survivingSquadronIdsForFleet,
         id: fleet.id,
-        owner: fleet.houseId,
+        houseId: fleet.houseId,
         location: fleet.location,
         status: fleet.status, # Preserve status (Active/Reserve)
         autoBalanceSquadrons: fleet.autoBalanceSquadrons, # Preserve balancing setting
@@ -1186,8 +1197,22 @@ proc resolveBattle*(
       state.fleets.entities.updateEntity(fleetId, updatedFleet)
     else:
       # Fleet destroyed - remove fleet and clean up orders
-      state.removeFleetFromIndices(fleetId, fleet.houseId, fleet.location)
-      state.fleets.del(fleetId)
+      # Remove from bySystem index
+      if state.fleets.bySystem.hasKey(fleet.location):
+        state.fleets.bySystem[fleet.location] =
+          state.fleets.bySystem[fleet.location].filterIt(it != fleetId)
+        if state.fleets.bySystem[fleet.location].len == 0:
+          state.fleets.bySystem.del(fleet.location)
+
+      # Remove from byOwner index
+      if state.fleets.byOwner.hasKey(fleet.houseId):
+        state.fleets.byOwner[fleet.houseId] =
+          state.fleets.byOwner[fleet.houseId].filterIt(it != fleetId)
+        if state.fleets.byOwner[fleet.houseId].len == 0:
+          state.fleets.byOwner.del(fleet.houseId)
+
+      # Remove from entity manager
+      state.fleets.entities.removeEntity(fleetId)
       if fleetId in state.fleetCommands:
         state.fleetCommands.del(fleetId)
       if fleetId in state.standingCommands:
@@ -1220,7 +1245,7 @@ proc resolveBattle*(
     # Check if defending house has any surviving active/reserve squadrons
     var defenderHasSurvivors = false
     for tf in outcome.survivors:
-      if tf.house == defendingHouse and tf.squadrons.len > 0:
+      if tf.houseId == defendingHouse and tf.squadrons.len > 0:
         defenderHasSurvivors = true
         break
 
@@ -1244,7 +1269,7 @@ proc resolveBattle*(
             let emptyFleet = Fleet(
               squadrons: @[], # Empty fleet
               id: fleet.id,
-              owner: fleet.houseId,
+              houseId: fleet.houseId,
               location: fleet.location,
               status: FleetStatus.Mothballed,
               autoBalanceSquadrons: fleet.autoBalanceSquadrons, # Preserve setting
@@ -1278,70 +1303,80 @@ proc resolveBattle*(
         var shipsUnderRepairLost = 0
 
         # Destroy spaceports
-        if colony.spaceports.len > 0:
-          facilitiesDestroyed += colony.spaceports.len
+        if colony.spaceportIds.len > 0:
+          facilitiesDestroyed += colony.spaceportIds.len
           logCombat(
             "Spaceports destroyed - no orbital defense remains",
             "spaceports=",
-            $colony.spaceports.len,
+            $colony.spaceportIds.len,
             " systemId=",
             $systemId,
           )
-          colony.spaceports = @[]
+          colony.spaceportIds = @[]
 
         # Destroy shipyards and clear their construction/repair queues
-        if colony.shipyards.len > 0:
-          facilitiesDestroyed += colony.shipyards.len
+        if colony.shipyardIds.len > 0:
+          facilitiesDestroyed += colony.shipyardIds.len
           logCombat(
             "Shipyards destroyed - no orbital defense remains",
             "shipyards=",
-            $colony.shipyards.len,
+            $colony.shipyardIds.len,
             " systemId=",
             $systemId,
           )
 
           # Count ships under construction in shipyard docks
           if colony.underConstruction.isSome:
-            let project = colony.underConstruction.get()
-            if project.facilityType.isSome and
-                project.facilityType.get() == econ_types.FacilityClass.Shipyard:
-              shipsUnderConstructionLost += 1
+            let projectId = colony.underConstruction.get()
+            let projectOpt = state.constructionProjects.entities.entity(projectId)
+            if projectOpt.isSome:
+              let project = projectOpt.get()
+              if project.facilityType.isSome and
+                  project.facilityType.get() == econ_types.FacilityClass.Shipyard:
+                shipsUnderConstructionLost += 1
 
           # Count ships under repair in shipyard docks
-          for repair in colony.repairQueue:
-            if repair.facilityType == econ_types.FacilityClass.Shipyard:
-              shipsUnderRepairLost += 1
+          for repairId in colony.repairQueue:
+            let repairOpt = state.repairProjects.entities.entity(repairId)
+            if repairOpt.isSome:
+              let repair = repairOpt.get()
+              if repair.facilityType == econ_types.FacilityClass.Shipyard:
+                shipsUnderRepairLost += 1
 
           # Clear all shipyard construction/repair queues
-          facility_damage.clearFacilityQueues(colony, econ_types.FacilityClass.Shipyard)
-          colony.shipyards = @[]
+          facility_damage.clearFacilityQueues(colony, econ_types.FacilityClass.Shipyard, state)
+          colony.shipyardIds = @[]
 
         # Destroy drydocks and clear their repair queues
-        if colony.drydocks.len > 0:
-          facilitiesDestroyed += colony.drydocks.len
+        if colony.drydockIds.len > 0:
+          facilitiesDestroyed += colony.drydockIds.len
           logCombat(
             "Drydocks destroyed - no orbital defense remains",
             "drydocks=",
-            $colony.drydocks.len,
+            $colony.drydockIds.len,
             " systemId=",
             $systemId,
           )
 
           # Count ships under repair in drydock docks
-          for repair in colony.repairQueue:
-            if repair.facilityType == econ_types.FacilityClass.Drydock:
-              shipsUnderRepairLost += 1
+          for repairId in colony.repairQueue:
+            let repairOpt = state.repairProjects.entities.entity(repairId)
+            if repairOpt.isSome:
+              let repair = repairOpt.get()
+              if repair.facilityType == econ_types.FacilityClass.Drydock:
+                shipsUnderRepairLost += 1
 
           # Clear all drydock repair queues
-          facility_damage.clearFacilityQueues(colony, econ_types.FacilityClass.Drydock)
-          colony.drydocks = @[]
+          facility_damage.clearFacilityQueues(colony, econ_types.FacilityClass.Drydock, state)
+          colony.drydockIds = @[]
 
         # Clear construction queue if no facilities remain
-        if colony.spaceports.len == 0 and colony.shipyards.len == 0:
-          facility_damage.clearAllConstructionQueues(colony)
+        if colony.spaceportIds.len == 0 and colony.shipyardIds.len == 0:
+          facility_damage.clearAllConstructionQueues(colony, state)
 
         # Update colony with destroyed facilities (using entity_manager)
-        state.colonies.entities.updateEntity(systemId, colony)
+        let colonyId = state.colonies.bySystem[systemId]
+        state.colonies.entities.updateEntity(colonyId, colony)
 
         # Generate events for screened facility destruction
         if facilitiesDestroyed > 0:
@@ -1359,71 +1394,94 @@ proc resolveBattle*(
   if systemOwner.isSome:
     let colonyOpt = state.colonyBySystem(systemId)
     if colonyOpt.isSome:
+      let colonyId = state.colonies.bySystem[systemId]
       var colony = colonyOpt.get()
-      var survivingStarbases: seq[Starbase] = @[]
-      for starbase in colony.starbases:
-        if starbase.id in survivingFacilityIds:
-          # Starbase survived - update crippled status
-          let survivorState = survivingFacilityIds[starbase.id]
-          var updatedStarbase = starbase
-          updatedStarbase.isCrippled = (survivorState.state == CombatState.Crippled)
-          survivingStarbases.add(updatedStarbase)
+      var survivingStarbaseIds: seq[StarbaseId] = @[]
+
+      # Iterate over starbase IDs and update entities
+      for starbaseId in colony.starbaseIds:
+        if starbaseId in survivingFacilityIds:
+          # Starbase survived - update crippled status in entity table
+          let starbaseOpt = state.starbases.entities.entity(starbaseId)
+          if starbaseOpt.isSome:
+            let survivorState = survivingFacilityIds[starbaseId]
+            var updatedStarbase = starbaseOpt.get()
+            updatedStarbase.isCrippled = (survivorState.state == combat.CombatState.Crippled)
+            state.starbases.entities.updateEntity(starbaseId, updatedStarbase)
+            survivingStarbaseIds.add(starbaseId)
         else:
           # Starbase destroyed - log before removal
-          logCombat("Starbase destroyed", "id=", starbase.id, " systemId=", $systemId)
-      colony.starbases = survivingStarbases
-      state.colonies.entities.updateEntity(systemId, colony)
+          logCombat("Starbase destroyed", "id=", $starbaseId, " systemId=", $systemId)
+
+      colony.starbaseIds = survivingStarbaseIds
+      state.colonies.entities.updateEntity(colonyId, colony)
 
   # Update unassigned squadrons at colony based on survivors
   if systemOwner.isSome:
     let colonyOpt = state.colonyBySystem(systemId)
     if colonyOpt.isSome:
+      let colonyId = state.colonies.bySystem[systemId]
       var colony = colonyOpt.get()
-      var survivingUnassigned: seq[Squadron] = @[]
-      for squadron in colony.unassignedSquadrons:
-        if squadron.id in survivingSquadronIds:
-          # Squadron survived - update crippled status
-          let survivorState = survivingSquadronIds[squadron.id]
-          var updatedSquadron = squadron
-          updatedSquadron.flagship.isCrippled =
-            (survivorState.state == CombatState.Crippled)
-          survivingUnassigned.add(updatedSquadron)
+      var survivingUnassignedIds: seq[SquadronId] = @[]
+
+      # Iterate over squadron IDs and update entities
+      for squadronId in colony.unassignedSquadronIds:
+        if squadronId in survivingSquadronIds:
+          # Squadron survived - update crippled status in entity table
+          let squadronOpt = state.squadrons.entities.entity(squadronId)
+          if squadronOpt.isSome:
+            let survivorState = survivingSquadronIds[squadronId]
+            var updatedSquadron = squadronOpt.get()
+            let flagshipOpt = state.ships.entities.entity(updatedSquadron.flagshipId)
+            if flagshipOpt.isSome:
+              var updatedFlagship = flagshipOpt.get()
+              updatedFlagship.isCrippled = (survivorState.state == CombatState.Crippled)
+              state.ships.entities.updateEntity(updatedSquadron.flagshipId, updatedFlagship)
+            state.squadrons.entities.updateEntity(squadronId, updatedSquadron)
+            survivingUnassignedIds.add(squadronId)
         else:
-          # Unassigned squadron destroyed - mark it before removal
-          var destroyedSquadron = squadron
-          destroyedSquadron.destroyed = true
-          logCombat(
-            "Unassigned squadron destroyed",
-            "id=",
-            destroyedSquadron.id,
-            " class=",
-            $destroyedSquadron.flagship.shipClass,
-          )
-      colony.unassignedSquadrons = survivingUnassigned
-      state.colonies.entities.updateEntity(systemId, colony)
+          # Unassigned squadron destroyed - log before removal
+          let squadronOpt = state.squadrons.entities.entity(squadronId)
+          if squadronOpt.isSome:
+            let squadron = squadronOpt.get()
+            let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+            if flagshipOpt.isSome:
+              let flagship = flagshipOpt.get()
+              logCombat(
+                "Unassigned squadron destroyed",
+                "id=",
+                $squadronId,
+                " class=",
+                $flagship.shipClass,
+              )
+
+      colony.unassignedSquadronIds = survivingUnassignedIds
+      state.colonies.entities.updateEntity(colonyId, colony)
 
   # INTELLIGENCE: Update combat reports with post-combat outcomes
   # Update for Space Combat phase if it occurred
   if spaceCombatOutcome.totalRounds > 0:
+    let spaceFleetsAfterCombat = spaceCombatFleets.toTable()
     combat_intel.updatePostCombatIntelligence(
       state,
       systemId,
       intel_types.CombatPhase.Space,
       spaceCombatFleets,
-      state.fleets,
-      spaceCombatOutcome.retreated.mapIt(it),
+      spaceFleetsAfterCombat,
+      spaceCombatOutcome.retreated,
       spaceCombatOutcome.victor,
     )
 
   # Update for Orbital Combat phase if it occurred
   if orbitalCombatOutcome.totalRounds > 0:
+    let orbitalFleetsAfterCombat = orbitalCombatFleets.toTable()
     combat_intel.updatePostCombatIntelligence(
       state,
       systemId,
       intel_types.CombatPhase.Orbital,
       orbitalCombatFleets,
-      state.fleets,
-      orbitalCombatOutcome.retreated.mapIt(it),
+      orbitalFleetsAfterCombat,
+      orbitalCombatOutcome.retreated,
       orbitalCombatOutcome.victor,
     )
 
@@ -1459,12 +1517,13 @@ proc resolveBattle*(
           # Create Seek Home order for this fleet
           # NOTE: This creates an "in-flight" movement that will be processed immediately
           # The fleet will begin its retreat movement in the same turn
-          let seekHomeOrder = FleetOrder(
+          let seekHomeOrder = FleetCommand(
             fleetId: fleetId,
-            orderType: FleetCommandType.SeekHome,
+            commandType: FleetCommandType.SeekHome,
             targetSystem: safeDestination,
             targetFleet: none(FleetId),
             priority: 0,
+            roe: none(int32),
           )
 
           # Execute the seek home movement immediately (fleet retreats in same turn)
@@ -1474,7 +1533,7 @@ proc resolveBattle*(
             event_factory.battle(
               houseId,
               systemId,
-              "Fleet " & fleetId &
+              "Fleet " & $fleetId &
                 " retreated from combat - seeking nearest friendly system " &
                 $safeDestination.get(),
             )
@@ -1493,7 +1552,7 @@ proc resolveBattle*(
             event_factory.battle(
               houseId,
               systemId,
-              "Fleet " & fleetId &
+              "Fleet " & $fleetId &
                 " retreated from combat but has no friendly colonies - holding position",
             )
           )
@@ -1525,11 +1584,11 @@ proc resolveBattle*(
       let colonyOpt = state.colonyBySystem(systemId)
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
-        totalSquadrons += colony.starbases.len
-        totalSquadrons += colony.unassignedSquadrons.len
+        totalSquadrons += colony.starbaseIds.len
+        totalSquadrons += colony.unassignedSquadronIds.len
 
     let survivingSquadrons = outcome.survivors
-      .filterIt(it.house == houseId)
+      .filterIt(it.houseId == houseId)
       .mapIt(it.squadrons.len)
       .foldl(a + b, 0)
     houseLosses[houseId] = totalSquadrons - survivingSquadrons
@@ -1547,12 +1606,12 @@ proc resolveBattle*(
     else:
       0
 
-  let report = CombatReport(
+  let report = combat.CombatReport(
     systemId: systemId,
     attackers: attackerHouses,
     defenders: defenderHouses,
-    attackerLosses: attackerLosses,
-    defenderLosses: defenderLosses,
+    attackerLosses: int32(attackerLosses),
+    defenderLosses: int32(defenderLosses),
     victor: victor,
   )
   combatReports.add(report)
@@ -1562,13 +1621,16 @@ proc resolveBattle*(
     let victorHouse = victor.get()
 
     # Combat victory prestige (zero-sum)
-    let victorPrestige = applyMultiplier(getPrestigeValue(PrestigeSource.CombatVictory))
-    let victoryEvent = createPrestigeEvent(
+    let victorPrestige = prestige_engine.applyPrestigeMultiplier(
+      prestige_sources.getPrestigeValue(PrestigeSource.CombatVictory)
+    )
+    let victoryEvent = prestige_events.createPrestigeEvent(
       PrestigeSource.CombatVictory, victorPrestige, "Won battle at " & $systemId
     )
-    applyPrestigeEvent(state, victorHouse, victoryEvent)
+    prestige_app.applyPrestigeEvent(state, victorHouse, victoryEvent)
+    let victorHouseOpt = state.houses.entities.entity(victorHouse)
     let victorHouseName =
-      state.houses.entities.entity(victorHouse).map(h => h.name).get("Unknown")
+      if victorHouseOpt.isSome: victorHouseOpt.get().name else: "Unknown"
     logCombat(
       "Combat victory prestige awarded",
       "house=",
@@ -1581,12 +1643,13 @@ proc resolveBattle*(
     let loserHouses =
       if victorHouse in attackerHouses: defenderHouses else: attackerHouses
     for loserHouse in loserHouses:
-      let defeatEvent = createPrestigeEvent(
+      let defeatEvent = prestige_events.createPrestigeEvent(
         PrestigeSource.CombatVictory, -victorPrestige, "Lost battle at " & $systemId
       )
-      applyPrestigeEvent(state, loserHouse, defeatEvent)
+      prestige_app.applyPrestigeEvent(state, loserHouse, defeatEvent)
+      let loserHouseOpt = state.houses.entities.entity(loserHouse)
       let loserHouseName =
-        state.houses.entities.entity(loserHouse).map(h => h.name).get("Unknown")
+        if loserHouseOpt.isSome: loserHouseOpt.get().name else: "Unknown"
       logCombat(
         "Combat defeat prestige penalty",
         "house=",
@@ -1600,13 +1663,15 @@ proc resolveBattle*(
       if victorHouse in attackerHouses: defenderLosses else: attackerLosses
     if enemyLosses > 0:
       let squadronPrestige =
-        applyMultiplier(getPrestigeValue(PrestigeSource.SquadronDestroyed)) * enemyLosses
-      let squadronDestructionEvent = createPrestigeEvent(
+        prestige_engine.applyPrestigeMultiplier(
+          prestige_sources.getPrestigeValue(PrestigeSource.SquadronDestroyed)
+        ) * enemyLosses
+      let squadronDestructionEvent = prestige_events.createPrestigeEvent(
         PrestigeSource.SquadronDestroyed,
-        squadronPrestige,
+        int32(squadronPrestige),
         "Destroyed " & $enemyLosses & " enemy squadrons at " & $systemId,
       )
-      applyPrestigeEvent(state, victorHouse, squadronDestructionEvent)
+      prestige_app.applyPrestigeEvent(state, victorHouse, squadronDestructionEvent)
       # Re-use victorHouseName from earlier
       logCombat(
         "Squadron destruction prestige awarded",
@@ -1620,14 +1685,15 @@ proc resolveBattle*(
 
       # Apply penalty to houses that lost squadrons (zero-sum)
       for loserHouse in loserHouses:
-        let squadronLossEvent = createPrestigeEvent(
+        let squadronLossEvent = prestige_events.createPrestigeEvent(
           PrestigeSource.SquadronDestroyed,
-          -squadronPrestige,
+          -int32(squadronPrestige),
           "Lost " & $enemyLosses & " squadrons at " & $systemId,
         )
-        applyPrestigeEvent(state, loserHouse, squadronLossEvent)
+        prestige_app.applyPrestigeEvent(state, loserHouse, squadronLossEvent)
+        let loserHouseOpt2 = state.houses.entities.entity(loserHouse)
         let loserHouseName2 =
-          state.houses.entities.entity(loserHouse).map(h => h.name).get("Unknown")
+          if loserHouseOpt2.isSome: loserHouseOpt2.get().name else: "Unknown"
         logCombat(
           "Squadron loss prestige penalty",
           "house=",

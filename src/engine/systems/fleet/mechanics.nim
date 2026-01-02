@@ -9,20 +9,17 @@
 import std/[tables, options, sequtils, strformat]
 import ../../../common/logger
 import ../../types/[
-  core, combat, ground_unit, game_state, command, fleet, squadron, event,
+  core, game_state, command, fleet, squadron, event,
   diplomacy, intel, starmap, espionage, ship, prestige, colony
 ]
 import ../../state/[entity_manager, iterators, entity_helpers]
 import ../../globals # For gameConfig
-import ../../starmap as starmap_module
 import ../ship/entity as ship_entity # Ship helper functions
-import ../../entities/[colony_ops, fleet_ops, squadron_ops]
-import ../colony/engine as col_engine
+import ../../entities/[colony_ops, squadron_ops]
 import ../../prestige/[engine as prestige_engine, application as prestige_app]
 import ../../event_factory/init as event_factory
 import ../../intel/generator
 import ../../utils # For soulsPerPtu
-import ./standing
 import ./movement # For findPath
 
 proc completeFleetCommand*(
@@ -62,13 +59,13 @@ proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): b
   let colonyOpt = state.colonyBySystem(systemId)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
-      if colony.owner != houseId:
-        # Check diplomatic status
-        let key = (houseId, colony.owner)
-        if state.diplomaticRelation.hasKey(key):
-          if state.diplomaticRelation[key].state == DiplomaticState.Enemy:
-            # Player can see this colony - it's hostile
-            return true
+    if colony.owner != houseId:
+      # Check diplomatic status
+      let key = (houseId, colony.owner)
+      if state.diplomaticRelation.hasKey(key):
+        if state.diplomaticRelation[key].state == DiplomaticState.Enemy:
+          # Player can see this colony - it's hostile
+          return true
 
   # Check intelligence database for known enemy colonies
   if state.intelligence.hasKey(houseId):
@@ -108,9 +105,9 @@ proc estimatePathRisk*(state: GameState, path: seq[SystemId], houseId: HouseId):
         if colony.owner != houseId:
           # Foreign but not enemy (neutral) - moderate risk
           result += 3
-    else:
-      # Unexplored or empty - low risk
-      result += 1
+      else:
+        # Unexplored or empty - low risk
+        result += 1
 
 proc findClosestOwnedColony*(
     state: GameState, fromSystem: SystemId, houseId: HouseId
@@ -232,11 +229,11 @@ proc shouldAutoSeekHome*(state: GameState, fleet: Fleet, command: FleetCommand):
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
         # If colony ownership changed to enemy, abort
-          if colony.owner != fleet.houseId:
-            let key = (fleet.houseId, colony.owner)
-            if state.diplomaticRelation.hasKey(key):
-              if state.diplomaticRelation[key].state == DiplomaticState.Enemy:
-                return true
+        if colony.owner != fleet.houseId:
+          let key = (fleet.houseId, colony.owner)
+          if state.diplomaticRelation.hasKey(key):
+            if state.diplomaticRelation[key].state == DiplomaticState.Enemy:
+              return true
       else:
         # Colony destroyed - abort
         return true
@@ -263,10 +260,6 @@ proc shouldAutoSeekHome*(state: GameState, fleet: Fleet, command: FleetCommand):
   return false
 
 var movementCallDepth {.global.} = 0
-
-# =============================================================================
-# Spy Scout Movement Support
-# =============================================================================
 
 # =============================================================================
 # Movement Resolution
@@ -480,6 +473,7 @@ proc resolveMovementCommand*(
           state, houseId, newLocation, IntelQuality.Visual
         )
         if intelReport.isSome:
+          let colonyId = state.colonies.bySystem[newLocation] # Needed for intel.colonyReports
           var intel = state.intelligence[houseId]
           intel.colonyReports[colonyId] = intelReport.get()
           state.intelligence[houseId] = intel
@@ -572,11 +566,10 @@ proc resolveColonizationCommand*(
 
   # Check if system already colonized
   let colonyOpt = state.colonyBySystem(targetId)
-  if colonyOpt.isNone:
-    return
-  let colony = colonyOpt.get()
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
 
-  # ORBITAL INTELLIGENCE GATHERING
+    # ORBITAL INTELLIGENCE GATHERING
     # Fleet approaching colony for colonization/guard/blockade gets close enough to see orbital defenses
     if colony.owner != houseId:
       # Generate detailed colony intel including orbital defenses
@@ -827,51 +820,45 @@ proc resolveViewWorldCommand*(
   if colonyOpt.isNone:
     return
   let colony = colonyOpt.get()
+  let colonyId = state.colonies.bySystem[targetId] # Needed for intel report
 
-    # Create minimal colony intel report from long-range scan
-    # ViewWorld only gathers: owner + planet class (no detailed statistics)
-    let intelReport = ColonyIntelReport(
-      colonyId: colonyId,
-      targetOwner: colony.owner,
-      gatheredTurn: state.turn,
-      quality: IntelQuality.Scan, # Long-range scan quality
-      # Colony stats: minimal info from long-range scan
-      population: 0, # Unknown from long range
-      infrastructure: 0, # Unknown from long range
-      groundBatteryCount: 0, # Unknown from long range
+  # Create minimal colony intel report from long-range scan
+  # ViewWorld only gathers: owner + planet class (no detailed statistics)
+  let intelReport = ColonyIntelReport(
+    colonyId: colonyId,
+    targetOwner: colony.owner,
+    gatheredTurn: state.turn,
+    quality: IntelQuality.Scan, # Long-range scan quality
+    # Colony stats: minimal info from long-range scan
+    population: 0, # Unknown from long range
+    infrastructure: 0, # Unknown from long range
+    groundBatteryCount: 0, # Unknown from long range
+  )
+
+  # Store intel in state.intelligence
+  if not state.intelligence.hasKey(houseId):
+    state.intelligence[houseId] = IntelligenceDatabase(
+      houseId: houseId,
+      colonyReports: initTable[ColonyId, ColonyIntelReport](),
+      orbitalReports: initTable[ColonyId, OrbitalIntelReport](),
+      systemReports: initTable[SystemId, SystemIntelReport](),
+      starbaseReports: initTable[StarbaseId, StarbaseIntelReport](),
+      fleetIntel: initTable[FleetId, FleetIntel](),
+      squadronIntel: initTable[SquadronId, SquadronIntel](),
+      fleetMovementHistory: initTable[FleetId, FleetMovementHistory](),
+      constructionActivity: initTable[ColonyId, ConstructionActivityReport](),
+      populationTransferStatus: initTable[
+        PopulationTransferId, PopulationTransferStatusReport
+      ](),
     )
+  var intel = state.intelligence[houseId]
+  intel.colonyReports[colonyId] = intelReport
+  state.intelligence[houseId] = intel
 
-    # Store intel in state.intelligence
-    if not state.intelligence.hasKey(houseId):
-      state.intelligence[houseId] = IntelligenceDatabase(
-        houseId: houseId,
-        colonyReports: initTable[ColonyId, ColonyIntelReport](),
-        orbitalReports: initTable[ColonyId, OrbitalIntelReport](),
-        systemReports: initTable[SystemId, SystemIntelReport](),
-        starbaseReports: initTable[StarbaseId, StarbaseIntelReport](),
-        fleetIntel: initTable[FleetId, FleetIntel](),
-        squadronIntel: initTable[SquadronId, SquadronIntel](),
-        fleetMovementHistory: initTable[FleetId, FleetMovementHistory](),
-        constructionActivity: initTable[ColonyId, ConstructionActivityReport](),
-        populationTransferStatus: initTable[
-          PopulationTransferId, PopulationTransferStatusReport
-        ](),
-      )
-    var intel = state.intelligence[houseId]
-    intel.colonyReports[colonyId] = intelReport
-    state.intelligence[houseId] = intel
-
-    logInfo(
-      "Fleet",
-      &"{house.name} viewed world at {targetId}: Owner={colony.owner}, Class={colony.planetClass}",
-    )
-  else:
-    # Uncolonized system - no intel report needed
-    # Just log that we found an uncolonized system
-    if state.systems.entities.entity(targetId).isSome:
-      logInfo(
-        "Fleet", &"{house.name} viewed uncolonized system at {targetId}"
-      )
+  logInfo(
+    "Fleet",
+    &"{house.name} viewed world at {targetId}: Owner={colony.owner}, Class={colony.planetClass}",
+  )
 
   # Generate event - use viewing house as target since ViewWorld scans neutral systems
   events.add(
@@ -883,8 +870,7 @@ proc resolveViewWorldCommand*(
     )
   )
 
-  # Generate OrderCompleted event for successful scan
-  let colonyOpt = state.colonyBySystem(targetId)
+  # Generate OrderCompleted event for successful scan (reuse colonyOpt from above)
   let scanDetails =
     if colonyOpt.isSome:
       let colony = colonyOpt.get()

@@ -16,6 +16,7 @@
 ## - Architecture-compliant: Follows DoD patterns from architecture.md
 
 import std/[options, tables]
+import ./entity_manager
 import
   ../types/[
     game_state, colony, squadron, ship, ground_unit, facilities, production, core,
@@ -59,9 +60,9 @@ proc squadronsByFleet*(state: GameState, fleetId: FleetId): seq[Squadron] =
   ##   for squadron in squadrons:
   ##     echo "Squadron type: ", squadron.squadronType
   result = @[]
-  if state.squadrons[].byFleet.hasKey(fleetId):
-    for squadronId in state.squadrons[].byFleet[fleetId]:
-      let squadronOpt = state.squadrons[].entities.entity(squadronId)
+  if state.squadrons.byFleet.hasKey(fleetId):
+    for squadronId in state.squadrons.byFleet[fleetId]:
+      let squadronOpt = state.squadrons.entities.entity(squadronId)
       if squadronOpt.isSome:
         result.add(squadronOpt.get())
 
