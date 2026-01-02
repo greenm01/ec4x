@@ -5,7 +5,7 @@ import std/[tables, options, sets]
 import ../types/intel as intel_types
 import
   ../types/[colony, core, diplomacy, fleet, game_state, house, player_view, starmap]
-import ./[entity_manager, iterators]
+import ./[entity_manager, iterators, entity_helpers]
 
 proc getOwnedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   ## Get all systems where this house has a colony
@@ -256,12 +256,10 @@ proc hasVisibilityOn*(state: GameState, systemId: SystemId, houseId: HouseId): b
   ## Used by Space Guild for transfer path validation
 
   # Check if house owns colony in this system
-  if state.colonies.bySystem.hasKey(systemId):
-    let colonyId = state.colonies.bySystem[systemId]
-    let colonyOpt = state.colonies.entities.entity(colonyId)
-    if colonyOpt.isSome:
-      let colony = colonyOpt.get()
-      if colony.owner == houseId:
+  let colonyOpt = state.colonyBySystem(systemId)
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
+    if colony.owner == houseId:
         return true
 
   # Check if house has any fleets in this system using iterator

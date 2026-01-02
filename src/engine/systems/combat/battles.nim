@@ -10,7 +10,7 @@
 import std/[tables, options, sequtils, hashes, math, random, strformat]
 import ../../../common/logger
 import ../../types/[core, combat, game_state, command, fleet, squadron, ship, colony, house, ground_unit, facilities as econ_types, diplomacy as dip_types]
-import ../../state/[entity_manager, iterators]
+import ../../state/[entity_manager, iterators, entity_helpers]
 import ./[engine as combat_engine, ground]
 import ../facilities/damage as facility_damage
 import ../../prestige/engine
@@ -43,7 +43,7 @@ proc applySpaceLiftScreeningLosses(
     # Count Expansion/Auxiliary squadrons before
     var spaceliftSquadronsBefore = 0
     for squadronId in fleetBefore.squadrons:
-      let squadronOpt = state.squadrons[].entity(squadronId)
+      let squadronOpt = state.squadrons[].entities.entity(squadronId)
       if squadronOpt.isSome:
         let squadron = squadronOpt.get()
         if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
@@ -62,7 +62,7 @@ proc applySpaceLiftScreeningLosses(
     if fleetOpt.isSome:
       let fleet = fleetOpt.get()
       for sqId in fleet.squadrons:
-        let sqOpt = state.squadrons[].entity(sqId)
+        let sqOpt = state.squadrons[].entities.entity(sqId)
         if sqOpt.isSome:
           let squadron = sqOpt.get()
           if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
@@ -101,7 +101,7 @@ proc isIntelOnlyFleet(state: GameState, fleet: Fleet): bool =
     return false
 
   for squadronId in fleet.squadrons:
-    let squadronOpt = state.squadrons[].entity(squadronId)
+    let squadronOpt = state.squadrons[].entities.entity(squadronId)
     if squadronOpt.isSome:
       let squadron = squadronOpt.get()
       if squadron.squadronType != SquadronClass.Intel:
@@ -283,7 +283,7 @@ proc executeCombat(
         continue
 
       for squadronId in fleet.squadrons:
-        let squadronOpt = state.squadrons[].entity(squadronId)
+        let squadronOpt = state.squadrons[].entities.entity(squadronId)
         if squadronOpt.isNone:
           continue
         let squadron = squadronOpt.get()
@@ -302,7 +302,7 @@ proc executeCombat(
           continue
 
         # Get flagship ship via DoD pattern (flagshipId reference)
-        let flagshipOpt = state.ships.entity(squadron.flagshipId)
+        let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
         if flagshipOpt.isNone:
           continue # Skip squadron if flagship doesn't exist
 
@@ -329,20 +329,18 @@ proc executeCombat(
     # Add unassigned squadrons from colony if this is orbital combat
     if includeUnassignedSquadrons and systemOwner.isSome and systemOwner.get() == houseId:
       # Look up colony by system
-      if state.colonies.bySystem.hasKey(systemId):
-        let colonyId = state.colonies.bySystem[systemId]
-        let colonyOpt = state.colonies.entities.entity(colonyId)
-        if colonyOpt.isSome:
+      let colonyOpt = state.colonyBySystem(systemId)
+      if colonyOpt.isSome:
           let colony = colonyOpt.get()
           for squadronId in colony.unassignedSquadronIds:
             # Get squadron entity via DoD pattern
-            let squadronOpt = state.squadrons[].entity(squadronId)
+            let squadronOpt = state.squadrons[].entities.entity(squadronId)
             if squadronOpt.isNone:
               continue
             let squadron = squadronOpt.get()
 
             # Get flagship ship via DoD pattern
-            let flagshipOpt = state.ships.entity(squadron.flagshipId)
+            let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
             if flagshipOpt.isNone:
               continue # Skip squadron if flagship doesn't exist
 
@@ -381,10 +379,8 @@ proc executeCombat(
     var combatFacilities: seq[CombatFacility] = @[]
     if systemOwner.isSome and systemOwner.get() == houseId:
       # Look up colony by system
-      if state.colonies.bySystem.hasKey(systemId):
-        let colonyId = state.colonies.bySystem[systemId]
-        let colonyOpt = state.colonies.entities.entity(colonyId)
-        if colonyOpt.isSome:
+      let colonyOpt = state.colonyBySystem(systemId)
+      if colonyOpt.isSome:
           let colony = colonyOpt.get()
           let houseOpt = state.houses.entities.entity(houseId)
           if houseOpt.isNone:
@@ -431,15 +427,22 @@ proc executeCombat(
                 combatRole,
               )
 
+    # Get house tech levels
+    let houseOpt = state.houses.entities.entity(houseId)
+    let eliLevel = if houseOpt.isSome: houseOpt.get().techTree.levels.eli else: 0
+    let clkLevel = if houseOpt.isSome: houseOpt.get().techTree.levels.clk else: 0
+
     # Create TaskForce for this house
     taskForces[houseId] = TaskForce(
-      house: houseId,
+      houseId: houseId,
       squadrons: combatSquadrons,
       facilities: combatFacilities, # Starbases and other defensive facilities
       roe: 5, # Default ROE
       isCloaked: false,
       moraleModifier: 0,
       isDefendingHomeworld: false,
+      eliLevel: eliLevel,
+      clkLevel: clkLevel,
     )
 
   # Collect all task forces for battle
@@ -450,35 +453,35 @@ proc executeCombat(
   # Generate deterministic seed
   let deterministicSeed = hash((state.turn, systemId, combatPhase)).int64
 
-  # Build diplomatic relations table for combat logic (using entity_manager)
+  # Build diplomatic relations table for combat logic
   var diplomaticRelations = initTable[tuple[a, b: HouseId], dip_types.DiplomaticState]()
-  let houseIds = toSeq(taskForces.keys)
-  for i in 0 ..< houseIds.len:
-    for j in (i + 1) ..< houseIds.len:
-      let houseA = houseIds[i]
-      let houseB = houseIds[j]
-      let houseAOpt = state.houses.entities.entity(houseA)
-      let houseBOpt = state.houses.entities.entity(houseB)
-      if houseAOpt.isSome and houseBOpt.isSome:
-        let stateAtoB =
-          dip_engine.getDiplomaticState(houseAOpt.get().diplomaticRelations, houseB)
-        let stateBtoA =
-          dip_engine.getDiplomaticState(houseBOpt.get().diplomaticRelations, houseA)
-        diplomaticRelations[(houseA, houseB)] = stateAtoB
-        diplomaticRelations[(houseB, houseA)] = stateBtoA
+  for houseA in taskForces.keys:
+    for houseB in taskForces.keys:
+      if houseA.int32 < houseB.int32:  # Only process each pair once
+        # Look up diplomatic state from GameState
+        if state.diplomaticRelation.hasKey((houseA, houseB)):
+          let relationAtoB = state.diplomaticRelation[(houseA, houseB)]
+          diplomaticRelations[(houseA, houseB)] = relationAtoB.state
+        if state.diplomaticRelation.hasKey((houseB, houseA)):
+          let relationBtoA = state.diplomaticRelation[(houseB, houseA)]
+          diplomaticRelations[(houseB, houseA)] = relationBtoA.state
 
   # Raider Detection Logic per assets.md:2.4.3
   var raiderTFs: seq[int]
   for i, tf in allTaskForces:
     var hasRaiders = false
     for sq in tf.squadrons:
-      # Get flagship via DoD pattern
-      let flagshipOpt = state.ships.entity(sq.squadron.flagshipId)
-      if flagshipOpt.isSome:
-        let flagship = flagshipOpt.get()
-        if flagship.shipClass == ShipClass.Raider:
-          hasRaiders = true
-          break
+      # Get squadron to access flagship
+      let squadronOpt = state.squadrons[].entities.entity(sq.squadronId)
+      if squadronOpt.isSome:
+        let squadron = squadronOpt.get()
+        # Get flagship via DoD pattern
+        let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+        if flagshipOpt.isSome:
+          let flagship = flagshipOpt.get()
+          if flagship.shipClass == ShipClass.Raider:
+            hasRaiders = true
+            break
     if hasRaiders:
       raiderTFs.add(i)
 
@@ -487,73 +490,73 @@ proc executeCombat(
 
   for i in raiderTFs:
     var attackerTF = allTaskForces[i]
-    if attackerTF.house in preDetectedHouses:
+    if attackerTF.houseId in preDetectedHouses:
       attackerTF.isCloaked = false
       allTaskForces[i] = attackerTF
       continue
 
     attackerTF.isCloaked = true
     var isDetected = false
-    let attackerHouseOpt = state.houses.entities.entity(attackerTF.house)
+    let attackerHouseOpt = state.houses.entities.entity(attackerTF.houseId)
     if attackerHouseOpt.isNone:
       logWarn(
         "Combat",
         "Raider detection failed - attacker house not found",
         "house=",
-        $attackerTF.house,
+        $attackerTF.houseId,
       )
       continue
-    let attackerCLK = attackerHouseOpt.get().techTree.levels.cloakingTech
+    let attackerCLK = attackerHouseOpt.get().techTree.levels.clk
     let attackerRoll = detectionRng.rand(1 .. 10) + attackerCLK
 
     for j, defenderTF in allTaskForces:
       if i == j:
         continue
       let relation = diplomaticRelations.getOrDefault(
-        (attackerTF.house, defenderTF.house), dip_types.DiplomaticState.Neutral
+        (attackerTF.houseId, defenderTF.houseId), dip_types.DiplomaticState.Neutral
       )
       if relation == dip_types.DiplomaticState.Neutral:
         continue
 
-      let defenderHouseOpt = state.houses.entities.entity(defenderTF.house)
+      let defenderHouseOpt = state.houses.entities.entity(defenderTF.houseId)
       if defenderHouseOpt.isNone:
         logWarn(
           "Combat",
           "Raider detection failed - defender house not found",
           "house=",
-          $defenderTF.house,
+          $defenderTF.houseId,
         )
         continue
-      let defenderELI = defenderHouseOpt.get().techTree.levels.electronicIntelligence
+      let defenderELI = defenderHouseOpt.get().techTree.levels.eli
       var starbaseBonus = 0
-      if systemOwner.isSome and systemOwner.get() == defenderTF.house:
-        let colonyOpt = state.colonies.entities.entity(systemId)
-        if colonyOpt.isSome and colonyOpt.get().starbases.len > 0:
-          starbaseBonus = gameConfig.combat.starbase.starbaseDetectionBonus
+      if systemOwner.isSome and systemOwner.get() == defenderTF.houseId:
+        let colonyOpt = state.colonyBySystem(systemId)
+        if colonyOpt.isSome and colonyOpt.get().starbaseIds.len > 0:
+            starbaseBonus = gameConfig.combat.starbase.starbaseDetectionBonus
       let defenderRoll = detectionRng.rand(1 .. 10) + defenderELI + starbaseBonus
 
       logInfo(
-        LogCategory.lcCombat,
-        &"Raider Detection Check: {attackerTF.house} (CLK {attackerCLK}, roll {attackerRoll}) vs {defenderTF.house} (ELI {defenderELI}, bonus {starbaseBonus}, roll {defenderRoll})",
+        "Combat",
+        &"Raider Detection Check: {attackerTF.houseId} (CLK {attackerCLK}, roll {attackerRoll}) vs {defenderTF.houseId} (ELI {defenderELI}, bonus {starbaseBonus}, roll {defenderRoll})",
       )
       if defenderRoll >= attackerRoll:
         isDetected = true
         logInfo(
-          LogCategory.lcCombat,
-          &"Raider fleet from {attackerTF.house} DETECTED by {defenderTF.house}.",
+          "Combat",
+          &"Raider fleet from {attackerTF.houseId} DETECTED by {defenderTF.houseId}.",
         )
 
         # Generate RaiderDetected events for each raider fleet
         for (fleetId, fleet) in fleetsInCombat:
-          if fleet.houseId == attackerTF.house:
+          if fleet.houseId == attackerTF.houseId:
             # Check if this fleet has raiders
             var hasRaiders = false
             for squadronId in fleet.squadrons:
-              let squadronOpt = state.squadrons[].entity(squadronId)
+              let squadronOpt = state.squadrons[].entities.entity(squadronId)
               if squadronOpt.isSome:
                 let squadron = squadronOpt.get()
                 # Get flagship via DoD pattern
-                let flagshipOpt = state.ships.entity(squadron.flagshipId)
+                let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
                 if flagshipOpt.isSome:
                   let flagship = flagshipOpt.get()
                   if flagship.shipClass == ShipClass.Raider:
@@ -565,8 +568,8 @@ proc executeCombat(
               events.add(
                 event_factory.raiderDetected(
                   raiderFleetId = fleetId,
-                  raiderHouse = attackerTF.house,
-                  detectorHouse = defenderTF.house,
+                  raiderHouse = attackerTF.houseId,
+                  detectorHouse = defenderTF.houseId,
                   detectorType = detectorType,
                   systemId = systemId,
                   eliRoll = defenderRoll,
@@ -579,19 +582,19 @@ proc executeCombat(
         # Detection failed - generate stealth success events for diagnostics
         # Visible only to raider (fog-of-war)
         logInfo(
-          LogCategory.lcCombat,
-          &"Raider fleet from {attackerTF.house} evaded {defenderTF.house} detection.",
+          "Combat",
+          &"Raider fleet from {attackerTF.houseId} evaded {defenderTF.houseId} detection.",
         )
         for (fleetId, fleet) in fleetsInCombat:
-          if fleet.houseId == attackerTF.house:
+          if fleet.houseId == attackerTF.houseId:
             # Check if this fleet has raiders
             var hasRaiders = false
             for squadronId in fleet.squadrons:
-              let squadronOpt = state.squadrons[].entity(squadronId)
+              let squadronOpt = state.squadrons[].entities.entity(squadronId)
               if squadronOpt.isSome:
                 let squadron = squadronOpt.get()
                 # Get flagship via DoD pattern
-                let flagshipOpt = state.ships.entity(squadron.flagshipId)
+                let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
                 if flagshipOpt.isSome:
                   let flagship = flagshipOpt.get()
                   if flagship.shipClass == ShipClass.Raider:
@@ -603,8 +606,8 @@ proc executeCombat(
               events.add(
                 event_factory.raiderStealthSuccess(
                   raiderFleetId = fleetId,
-                  raiderHouse = attackerTF.house,
-                  detectorHouse = defenderTF.house,
+                  raiderHouse = attackerTF.houseId,
+                  detectorHouse = defenderTF.houseId,
                   detectorType = detectorType,
                   systemId = systemId,
                   eliRoll = defenderRoll,
@@ -614,11 +617,11 @@ proc executeCombat(
 
     if isDetected:
       attackerTF.isCloaked = false
-      newlyDetectedHouses.add(attackerTF.house)
+      newlyDetectedHouses.add(attackerTF.houseId)
     else:
       logInfo(
-        LogCategory.lcCombat,
-        &"Raider fleet from {attackerTF.house} remains UNDETECTED.",
+        "Combat",
+        &"Raider fleet from {attackerTF.houseId} remains UNDETECTED.",
       )
     allTaskForces[i] = attackerTF
 
@@ -628,9 +631,9 @@ proc executeCombat(
   # Check if defender has starbases for detection bonus
   var hasDefenderStarbase = false
   if systemOwner.isSome:
-    let colonyOpt = state.colonies.entities.entity(systemId)
+    let colonyOpt = state.colonyBySystem(systemId)
     if colonyOpt.isSome:
-      hasDefenderStarbase = colonyOpt.get().starbases.len > 0
+      hasDefenderStarbase = colonyOpt.get().starbaseIds.len > 0
 
   var battleContext = BattleContext(
     systemId: systemId,
@@ -666,8 +669,8 @@ proc processCombatEvents(
   var casualties: seq[HouseId] = @[]
 
   for tf in combatResult.survivors:
-    # Determine if attacker or defender based on system ownership (using entity_manager)
-    let colonyOpt = state.colonies.entities.entity(systemId)
+    # Determine if attacker or defender based on system ownership
+    let colonyOpt = state.colonyBySystem(systemId)
     let systemOwner =
       if colonyOpt.isSome:
         some(colonyOpt.get().owner)
@@ -731,10 +734,12 @@ proc processCombatEvents(
         # Search squadrons in survivors to find houses
         for tf in combatResult.survivors:
           for sq in tf.squadrons:
-            if sq.squadron.id == attack.attackerId:
-              attackerHouse = some(tf.house)
-            if sq.squadron.id == attack.targetId:
-              targetHouse = some(tf.house)
+            if attack.attackerId.kind == CombatTargetKind.Squadron and
+                sq.squadronId == attack.attackerId.squadronId:
+              attackerHouse = some(tf.houseId)
+            if attack.targetId.kind == CombatTargetKind.Squadron and
+                sq.squadronId == attack.targetId.squadronId:
+              targetHouse = some(tf.houseId)
 
         if attackerHouse.isSome() and targetHouse.isSome():
           # Emit weapon fired event
@@ -785,11 +790,12 @@ proc processCombatEvents(
       var phaseCasualties: seq[HouseId] = @[]
       for stateChange in phaseResult.stateChanges:
         # Find house for this squadron
-        for tf in combatResult.survivors:
-          for sq in tf.squadrons:
-            if sq.squadron.id == stateChange.squadronId:
-              if tf.house notin phaseCasualties:
-                phaseCasualties.add(tf.house)
+        if stateChange.targetId.kind == CombatTargetKind.Squadron:
+          for tf in combatResult.survivors:
+            for sq in tf.squadrons:
+              if sq.squadronId == stateChange.targetId.squadronId:
+                if tf.houseId notin phaseCasualties:
+                  phaseCasualties.add(tf.houseId)
 
       events.add(
         event_factory.combatPhaseCompleted(
@@ -841,8 +847,8 @@ proc resolveBattle*(
   ## Uses orders to determine which fleets are on guard duty
   logCombat("Resolving battle", "system=", $systemId)
 
-  # 1. Determine system ownership (using entity_manager)
-  let colonyOpt = state.colonies.entities.entity(systemId)
+  # 1. Determine system ownership
+  let colonyOpt = state.colonyBySystem(systemId)
   let systemOwner =
     if colonyOpt.isSome:
       some(colonyOpt.get().owner)
@@ -1002,9 +1008,9 @@ proc resolveBattle*(
 
   # Only run if there's a colony with defenders and surviving attackers
   if systemOwner.isSome and spaceCombatSurvivors.len > 0:
-    # Check if there are orbital defenders (using entity_manager)
+    # Check if there are orbital defenders
     var hasOrbitalDefenders = orbitalDefenders.len > 0
-    let colonyOpt = state.colonies.entities.entity(systemId)
+    let colonyOpt = state.colonyBySystem(systemId)
     if colonyOpt.isSome:
       let colony = colonyOpt.get()
       if colony.starbases.len > 0 or colony.unassignedSquadrons.len > 0:
@@ -1125,7 +1131,7 @@ proc resolveBattle*(
     initTable[SquadronId, CombatSquadron]()
   for tf in outcome.survivors:
     for combatSq in tf.squadrons:
-      survivingSquadronIds[combatSq.squadron.id] = combatSq
+      survivingSquadronIds[combatSq.squadronId] = combatSq
 
   # Collect surviving facilities by ID
   var survivingFacilityIds: Table[string, CombatFacility] =
@@ -1187,7 +1193,7 @@ proc resolveBattle*(
       if fleetId in state.standingCommands:
         state.standingCommands.del(fleetId)
       logInfo(
-        LogCategory.lcCombat,
+        "Combat",
         "Removed empty fleet " & $fleetId & " after combat (all squadrons destroyed)",
       )
 
@@ -1263,8 +1269,8 @@ proc resolveBattle*(
         )
 
       # Destroy screened orbital facilities (spaceports, shipyards, drydocks)
-      # These facilities are protected by orbital defenses - if defenses are eliminated, they're destroyed (using entity_manager)
-      let colonyOpt = state.colonies.entities.entity(systemId)
+      # These facilities are protected by orbital defenses - if defenses are eliminated, they're destroyed
+      let colonyOpt = state.colonyBySystem(systemId)
       if colonyOpt.isSome:
         var colony = colonyOpt.get()
         var facilitiesDestroyed = 0
@@ -1349,9 +1355,9 @@ proc resolveBattle*(
             )
           )
 
-  # Update starbases at colony based on survivors (using entity_manager)
+  # Update starbases at colony based on survivors
   if systemOwner.isSome:
-    let colonyOpt = state.colonies.entities.entity(systemId)
+    let colonyOpt = state.colonyBySystem(systemId)
     if colonyOpt.isSome:
       var colony = colonyOpt.get()
       var survivingStarbases: seq[Starbase] = @[]
@@ -1368,9 +1374,9 @@ proc resolveBattle*(
       colony.starbases = survivingStarbases
       state.colonies.entities.updateEntity(systemId, colony)
 
-  # Update unassigned squadrons at colony based on survivors (using entity_manager)
+  # Update unassigned squadrons at colony based on survivors
   if systemOwner.isSome:
-    let colonyOpt = state.colonies.entities.entity(systemId)
+    let colonyOpt = state.colonyBySystem(systemId)
     if colonyOpt.isSome:
       var colony = colonyOpt.get()
       var survivingUnassigned: seq[Squadron] = @[]
@@ -1514,9 +1520,9 @@ proc resolveBattle*(
       if fleet.houseId == houseId:
         totalSquadrons += fleet.squadrons.len
 
-    # Add starbases and unassigned squadrons to defender's total (using entity_manager)
+    # Add starbases and unassigned squadrons to defender's total
     if systemOwner.isSome and systemOwner.get() == houseId:
-      let colonyOpt = state.colonies.entities.entity(systemId)
+      let colonyOpt = state.colonyBySystem(systemId)
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
         totalSquadrons += colony.starbases.len

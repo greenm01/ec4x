@@ -16,7 +16,7 @@ import std/[tables, options, strformat, algorithm, sets, sequtils]
 import ../../../common/logger
 import ../../types/[core, game_state, command, fleet, squadron, starmap, resolution, intel, event]
 import ../../starmap
-import ../../state/[entity_manager, iterators]
+import ../../state/[entity_manager, iterators, entity_helpers]
 import ../../event_factory/init as event_factory
 import ../population/transfers # For findNearestOwnedColony
 import ./movement # For findPath
@@ -81,11 +81,9 @@ proc hasColonyIntel*(state: GameState, houseId: HouseId, systemId: SystemId): bo
   ## - System has enemy colony with intel report
 
   # Own colony at system
-  if state.colonies.bySystem.hasKey(systemId):
-    let colonyId = state.colonies.bySystem[systemId]
-    let colonyOpt = state.colonies.entities.entity(colonyId)
-    if colonyOpt.isSome and colonyOpt.get().owner == houseId:
-      return true
+  let colonyOpt = state.colonyBySystem(systemId)
+  if colonyOpt.isSome and colonyOpt.get().owner == houseId:
+    return true
 
   # Enemy colony with intel report
   if not state.intelligence.hasKey(houseId):
@@ -93,7 +91,8 @@ proc hasColonyIntel*(state: GameState, houseId: HouseId, systemId: SystemId): bo
   let intel = state.intelligence[houseId]
 
   # Check if we have colony intel reports
-  if state.colonies.bySystem.hasKey(systemId):
+  let colonyOpt = state.colonyBySystem(systemId)
+  if colonyOpt.isSome:
     let colonyId = state.colonies.bySystem[systemId]
     if colonyId in intel.colonyReports:
       return true

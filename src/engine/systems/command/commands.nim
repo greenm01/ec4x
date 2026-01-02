@@ -19,7 +19,7 @@ import
     facilities,
   ]
 import ../capacity/[capital_squadrons, total_squadrons]
-import ../../state/game_state as state_helpers
+import ../../state/[game_state as state_helpers, entity_helpers]
 import ../../../common/logger
 import ../production/projects
 import ../fleet/entity
@@ -166,9 +166,9 @@ proc validateFleetCommand*(
 
     # Check if system already colonized
     let targetId = cmd.targetSystem.get()
-    if state.colonies.bySystem.hasKey(targetId):
-      let colonyId = state.colonies.bySystem[targetId]
-      let colony = state.colonies.entities.entity(colonyId).get
+    let colonyOpt = state.colonyBySystem(targetId)
+    if colonyOpt.isSome:
+      let colony = colonyOpt.get()
       logWarn(
         LogCategory.lcOrders,
         &"{issuingHouse} Colonize command REJECTED: {cmd.fleetId} → {targetId} " &

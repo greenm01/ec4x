@@ -9,7 +9,7 @@ import std/[tables, sequtils, options, logging, math]
 import ../../types/[
   game_state, core, event, population as pop_types, starmap, fleet, colony,
 ]
-import ../../state/[entity_manager, iterators]
+import ../../state/[entity_manager, iterators, entity_helpers]
 import ../../starmap as starmap_module
 import ../fleet/movement
 import ../../event_factory/init as event_factory
@@ -74,13 +74,9 @@ proc createTransferInitiation*(
     return (false, "Maximum 5 concurrent transfers allowed per house")
 
   # Validate source colony exists
-  if not state.colonies.bySystem.hasKey(sourceSystem):
-    return (false, "Source system has no colony")
-
-  let sourceColonyId = state.colonies.bySystem[sourceSystem]
-  let sourceColonyOpt = state.colonies.entities.entity(sourceColonyId)
+  let sourceColonyOpt = state.colonyBySystem(sourceSystem)
   if sourceColonyOpt.isNone:
-    return (false, "Source colony does not exist")
+    return (false, "Source system has no colony")
 
   let sourceColony = sourceColonyOpt.get()
   if sourceColony.owner != houseId:
@@ -107,15 +103,12 @@ proc createTransferInitiation*(
 
   # Determine destination planet class
   let destPlanetClass =
-    if state.colonies.bySystem.hasKey(destSystem):
-      let destColonyId = state.colonies.bySystem[destSystem]
-      let destColony = state.colonies.entities.entity(destColonyId)
+    block:
+      let destColony = state.colonyBySystem(destSystem)
       if destColony.isSome:
         destColony.get().planetClass
       else:
-        PlanetClass.Benign
-    else:
-      PlanetClass.Benign # Uncolonized
+        PlanetClass.Benign # Uncolonized
 
   # Calculate cost (spec: destination cost only)
   let cost =
@@ -196,11 +189,8 @@ proc processArrivingTransfer(
   let destSystem = SystemId(transfer.destColony)
 
   # Check if destination colony exists and is owned
-  if state.colonies.bySystem.hasKey(destSystem):
-    let destColonyId = state.colonies.bySystem[destSystem]
-    let destColonyOpt = state.colonies.entities.entity(destColonyId)
-
-    if destColonyOpt.isSome:
+  let destColonyOpt = state.colonyBySystem(destSystem)
+  if destColonyOpt.isSome:
       let destColony = destColonyOpt.get()
 
       if destColony.owner == transfer.houseId and not destColony.blockaded:
@@ -232,12 +222,9 @@ proc applyTransferCompletion*(
     if completion.actualDestination.isSome:
       let destSystem = completion.actualDestination.get()
 
-      # Deliver population (using entity pattern)
-      if state.colonies.bySystem.hasKey(destSystem):
-        let destColonyId = state.colonies.bySystem[destSystem]
-        let destColonyOpt = state.colonies.entities.entity(destColonyId)
-
-        if destColonyOpt.isSome:
+      # Deliver population
+      let destColonyOpt = state.colonyBySystem(destSystem)
+      if destColonyOpt.isSome:
           var destColony = destColonyOpt.get()
           destColony.populationUnits += completion.transfer.ptuAmount
           destColony.population = destColony.populationUnits

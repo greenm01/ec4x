@@ -16,7 +16,7 @@
 ##   if result.success: echo "Success!"
 
 import ../../types/[core, game_state, fleet, squadron, ship, colony, event]
-import ../../state/[entity_manager, iterators, game_state as state_access, id_gen]
+import ../../state/[entity_manager, iterators, entity_helpers, game_state as state_access, id_gen]
 import ../../entities/[fleet_ops, squadron_ops, colony_ops]
 import ../fleet/entity as fleet_entity
 import ../squadron/entity as squadron_entity
@@ -138,13 +138,7 @@ proc validateFleetAtFriendlyColony*(
 
   # 3. CRITICAL: Fleet must be at friendly colony
   # Use bySystem index to map SystemId → ColonyId
-  if not state.colonies.bySystem.hasKey(fleet.location):
-    return ValidationResult(
-      valid: false, error: "Fleet must be at a colony for zero-turn operations"
-    )
-
-  let colonyId = state.colonies.bySystem[fleet.location]
-  let colonyOpt = state.colonies.entities.entity(colonyId)
+  let colonyOpt = state.colonyBySystem(fleet.location)
   if colonyOpt.isNone:
     return ValidationResult(valid: false, error: "Colony not found")
 
@@ -162,11 +156,7 @@ proc validateColonyOwnership*(
   ## DRY: Validate colony exists and is owned by house
 
   # Use bySystem index to map SystemId → ColonyId
-  if not state.colonies.bySystem.hasKey(systemId):
-    return ValidationResult(valid: false, error: "Colony not found")
-
-  let colonyId = state.colonies.bySystem[systemId]
-  let colonyOpt = state.colonies.entities.entity(colonyId)
+  let colonyOpt = state.colonyBySystem(systemId)
   if colonyOpt.isNone:
     return ValidationResult(valid: false, error: "Colony not found")
 
@@ -753,8 +743,7 @@ proc executeLoadCargo*(
       warnings: @[],
     )
 
-  let colonyId = state.colonies.bySystem[colonySystem]
-  let colonyOpt = state.colonies.entities.entity(colonyId)
+  let colonyOpt = state.colonyBySystem(colonySystem)
   if colonyOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -955,8 +944,7 @@ proc executeUnloadCargo*(
       warnings: @[],
     )
 
-  let colonyId = state.colonies.bySystem[colonySystem]
-  let colonyOpt = state.colonies.entities.entity(colonyId)
+  let colonyOpt = state.colonyBySystem(colonySystem)
   if colonyOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -1086,8 +1074,7 @@ proc executeFormSquadron*(
       warnings: @[],
     )
 
-  let colonyId = state.colonies.bySystem[colonySystem]
-  let colonyOpt = state.colonies.entities.entity(colonyId)
+  let colonyOpt = state.colonyBySystem(colonySystem)
   if colonyOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -1352,8 +1339,7 @@ proc executeAssignSquadronToFleet*(
       warnings: @[],
     )
 
-  let colonyId = state.colonies.bySystem[colonySystem]
-  let colonyOpt = state.colonies.entities.entity(colonyId)
+  let colonyOpt = state.colonyBySystem(colonySystem)
   if colonyOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -1603,8 +1589,7 @@ proc executeLoadFighters*(
       success: false, error: "No colony at fleet location", warnings: @[]
     )
 
-  let colonyId = state.colonies.bySystem[systemId]
-  let colonyOpt = state.colonies.entities.entity(colonyId)
+  let colonyOpt = state.colonyBySystem(systemId)
   if colonyOpt.isNone:
     return
       ZeroTurnResult(success: false, error: "Colony entity not found", warnings: @[])
@@ -1705,8 +1690,7 @@ proc executeUnloadFighters*(
       success: false, error: "No colony at fleet location", warnings: @[]
     )
 
-  let colonyId = state.colonies.bySystem[systemId]
-  let colonyOpt = state.colonies.entities.entity(colonyId)
+  let colonyOpt = state.colonyBySystem(systemId)
   if colonyOpt.isNone:
     return
       ZeroTurnResult(success: false, error: "Colony entity not found", warnings: @[])
