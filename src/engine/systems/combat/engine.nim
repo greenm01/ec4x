@@ -7,7 +7,7 @@
 
 import std/[options, sequtils, strutils, random]
 import ../../types/[core, combat as combat_types, game_state, squadron, ship]
-import ../../state/entity_manager
+import ../../state/engine
 import ../../globals
 import cer, resolution, retreat, damage, targeting
 import ../squadron/entity
@@ -80,10 +80,10 @@ proc resolveCombat*(state: GameState, context: BattleContext): CombatResult =
       # Check if detector has scouts (required for detection)
       var hasScouts = false
       for sq in detectorTF.squadrons:
-        let squadronOpt = state.squadrons.entities.entity(sq.squadronId)
+        let squadronOpt = state.squadron(sq.squadronId)
         if squadronOpt.isSome:
           let squadron = squadronOpt.get()
-          if squadron.scoutShips(state.ships).len > 0:
+          if state.scoutShips(squadron).len > 0:
             hasScouts = true
             break
 
@@ -333,11 +333,11 @@ proc calculateTargetWeight(sq: CombatSquadron): float32 =
 proc initializeCombatSquadron*(state: GameState, squadron: Squadron): CombatSquadron =
   ## Convert Squadron to CombatSquadron for battle
   ## Cache total attack/defense/command stats from all ships in squadron
-  let flagship = state.ships.entities.entity(squadron.flagshipId).get()
+  let flagship = state.ship(squadron.flagshipId).get()
 
   # Calculate total squadron strength (all ships)
-  let totalAS = int32(squadron.combatStrength(state.ships))
-  let totalDS = int32(squadron.defenseStrength(state.ships))
+  let totalAS = int32(state.combatStrength(squadron))
+  let totalDS = int32(state.defenseStrength(squadron))
 
   # Look up CR from flagship ship class config
   let flagshipCR = gameConfig.ships.ships[flagship.shipClass].commandRating
@@ -376,7 +376,7 @@ proc initializeTaskForce*(
   ##   isHomeworld: Defending homeworld (never retreat)
 
   # Look up house tech levels
-  let houseData = state.houses.entities.entity(house).get()
+  let houseData = state.house(house).get()
   let eliLevel = houseData.techTree.levels.eli
   let clkLevel = houseData.techTree.levels.clk
 
@@ -400,9 +400,9 @@ proc initializeTaskForce*(
   var allCloaked = true
   var hasRaiders = false
   for sq in squadrons:
-    if sq.raiderShips(state.ships).len > 0:
+    if state.raiderShips(sq).len > 0:
       hasRaiders = true
-      if not sq.isCloaked(state.ships):
+      if not state.isCloaked(sq):
         allCloaked = false
     else:
       allCloaked = false

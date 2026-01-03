@@ -26,7 +26,7 @@ import std/[sequtils, algorithm, math, tables, strutils, options]
 import
   ../../types/
     [capacity, core, game_state, squadron, ship, production, event, colony, house]
-import ../../state/[entity_manager, engine as gs_helpers, iterators]
+import ../../state/[engine as gs_helpers, iterators]
 import ../../entities/squadron_ops
 import ../../event_factory/fleet_ops
 import ../../globals
@@ -139,7 +139,7 @@ proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
   result = @[]
 
   # Use iterator to efficiently check all colonies
-  for houseId in state.houses.entities.index.keys:
+  for houseId in state.allHouses:
     let houseOpt = gs_helpers.house(state, houseId)
     if houseOpt.isNone or houseOpt.get().isEliminated:
       continue
@@ -227,7 +227,7 @@ proc updateViolationTracking*(
       )
 
   # Update colony in state
-  state.colonies.entities.updateEntity(colonyId, colony)
+  state.updateColony(colonyId, colony)
 
 proc planEnforcement*(
     state: GameState, violation: capacity.CapacityViolation
@@ -343,7 +343,7 @@ proc applyEnforcement*(
   )
 
   # Update colony in state
-  state.colonies.entities.updateEntity(colonyId, colony)
+  state.updateColony(colonyId, colony)
 
   logger.logDebug(
     "Military",
@@ -372,7 +372,7 @@ proc processCapacityEnforcement*(
   if violations.len == 0:
     logger.logDebug("Military", "All colonies within fighter capacity limits")
     # Clear any lingering violation tracking
-    for houseId in state.houses.entities.index.keys:
+    for houseId in state.allHouses:
       let houseOpt = gs_helpers.house(state, houseId)
       if houseOpt.isNone or houseOpt.get().isEliminated:
         continue
@@ -392,7 +392,7 @@ proc processCapacityEnforcement*(
             graceTurnsRemaining: 0,
             violationTurn: 0,
           )
-          state.colonies.entities.updateEntity(colony.id, mutColony)
+          state.updateColony(colony.id, mutColony)
     return
 
   logger.logDebug("Military", "Capacity violations found, count=", $violations.len)

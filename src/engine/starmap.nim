@@ -259,8 +259,8 @@ proc newSystem(
 
 proc addLane(starMap: var StarMap, state: GameState, lane: JumpLane) =
   # Validate lane endpoints exist
-  if lane.source notin state.systems.entities.index or
-     lane.destination notin state.systems.entities.index:
+  if state.system(lane.source).isNone or
+     state.system(lane.destination).isNone:
     raise newException(StarMapError, "Lane endpoints must exist in starmap")
 
   # Prevent duplicate lanes

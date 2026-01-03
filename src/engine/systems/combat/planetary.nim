@@ -7,22 +7,23 @@
 ## combat where all attacking fleets are evaluated before outcomes are applied.
 
 import std/[tables, options, random, strformat]
-import ../../types/[simultaneous, game_state, core]
+import ../../types/[simultaneous, game_state, core, event, command, fleet]
 import simultaneous_resolver
-import ../../../../common/logger
+import ../../../common/logger
 import ../squadron/entity
 import ../colony/planetary_combat
-import ../../state/entity_manager
+import ../../state/[engine, iterators]
 
 proc collectPlanetaryCombatIntents*(
-    state: GameState, orders: Table[HouseId, OrderPacket]
+    state: GameState, orders: Table[HouseId, CommandPacket]
 ): seq[PlanetaryCombatIntent] =
   ## Collect all planetary combat attempts (Bombard, Invade, Blitz)
   result = @[]
 
-  for houseId in state.houses.entities.keys:
-    if houseId notin orders:
+  for house in state.allHouses:
+    if house.id notin orders:
       continue
+    let houseId = house.id
 
     for command in orders[houseId].fleetCommands:
       # Skip non-planetary combat orders
@@ -30,17 +31,18 @@ proc collectPlanetaryCombatIntents*(
           [FleetCommandType.Bombard, FleetCommandType.Invade, FleetCommandType.Blitz]:
         continue
 
-      # Validate: fleet exists - using entity_manager
-      let fleetOpt = state.fleets.entities.entity(command.fleetId)
+      # Validate: fleet exists
+      let fleetOpt = state.fleet(command.fleetId)
       if fleetOpt.isNone:
         continue
 
       let fleet = fleetOpt.get()
 
       # Calculate attack strength (use total AS for all types)
-      var attackStrength = 0
-      for squadron in fleet.squadrons:
-        attackStrength += squadron.combatStrength()
+      var attackStrength: int32 = 0
+      for sqId in fleet.squadrons:
+        let sq = state.squadron(sqId).get
+        attackStrength += state.combatStrength(sq)
 
       # Get target from order
       if command.targetSystem.isNone:
@@ -48,12 +50,12 @@ proc collectPlanetaryCombatIntents*(
 
       let targetSystem = command.targetSystem.get()
 
-      # Add validated intent
+      # Add validated intent (cast SystemId → ColonyId, 1:1 relationship)
       result.add(
         PlanetaryCombatIntent(
           houseId: houseId,
           fleetId: command.fleetId,
-          targetColony: targetSystem,
+          targetColony: ColonyId(targetSystem),
           orderType: $command.commandType,
           attackStrength: attackStrength,
         )
@@ -63,7 +65,7 @@ proc detectPlanetaryCombatConflicts*(
     intents: seq[PlanetaryCombatIntent]
 ): seq[PlanetaryCombatConflict] =
   ## Group planetary combat intents by target colony
-  var targetColonies = initTable[SystemId, seq[PlanetaryCombatIntent]]()
+  var targetColonies = initTable[ColonyId, seq[PlanetaryCombatIntent]]()
 
   for intent in intents:
     if intent.targetColony notin targetColonies:
@@ -101,12 +103,16 @@ proc resolvePlanetaryCombatConflict*(
     return
 
   # Multiple intents = conflict, strongest wins
-  let seed = tiebreakerSeed(state.turn, conflict.targetColony)
-  let winner =
-    resolveConflictByStrength(conflict.intents, planetaryCombatStrength, seed, rng)
+  let seed = tiebreakerSeed(state.turn, SystemId(conflict.targetColony))
+  let winner = resolveConflictByStrength(
+    conflict.intents,
+    proc(intent: PlanetaryCombatIntent): int = intent.attackStrength,
+    seed,
+    rng
+  )
 
   logInfo(
-    LogCategory.lcCombat,
+    "Combat",
     &"Planetary combat conflict at {conflict.targetColony}: {conflict.intents.len} attackers competing, {winner.houseId} wins",
   )
 
@@ -131,16 +137,16 @@ proc resolvePlanetaryCombatConflict*(
           fleetId: loser.fleetId,
           originalTarget: loser.targetColony,
           outcome: ResolutionOutcome.ConflictLost,
-          actualTarget: none(SystemId),
+          actualTarget: none(ColonyId),
           prestigeAwarded: 0,
         )
       )
 
 proc resolvePlanetaryCombat*(
     state: var GameState,
-    orders: Table[HouseId, OrderPacket],
+    orders: Table[HouseId, CommandPacket],
     rng: var Rand,
-    events: var seq[res_types.GameEvent],
+    events: var seq[GameEvent],
 ): seq[PlanetaryCombatResult] =
   ## Main entry point: Resolve all planetary combat orders simultaneously
   ## Then execute invasions/bombardments for winners at target
@@ -159,16 +165,17 @@ proc resolvePlanetaryCombat*(
   # Execute invasions/bombardments for winners WHO ARE AT THE TARGET
   for res in result:
     if res.outcome == ResolutionOutcome.Success and res.actualTarget.isSome:
-      # Verify fleet is at target location before executing - using entity_manager
-      let fleetOpt = state.fleets.entities.entity(res.fleetId)
+      # Verify fleet is at target location before executing
+      let fleetOpt = state.fleet(res.fleetId)
       if fleetOpt.isSome:
         let fleet = fleetOpt.get()
-        let targetSystem = res.actualTarget.get()
+        let targetColony = res.actualTarget.get()
+        let targetSystem = SystemId(targetColony)  # Cast ColonyId → SystemId (1:1 relationship)
 
         if fleet.location == targetSystem:
           # Fleet is at target - execute the assault
           logInfo(
-            LogCategory.lcCombat,
+            "Combat",
             &"Executing planetary assault: {res.fleetId} at {targetSystem}",
           )
           let winnerHouse = res.houseId
@@ -182,18 +189,18 @@ proc resolvePlanetaryCombat*(
                 # Execute the planetary assault
                 case command.commandType
                 of FleetCommandType.Bombard:
-                  resolveBombardment(state, winnerHouse, order, events)
+                  resolveBombardment(state, winnerHouse, command, events)
                 of FleetCommandType.Invade:
-                  resolveInvasion(state, winnerHouse, order, events)
+                  resolveInvasion(state, winnerHouse, command, events)
                 of FleetCommandType.Blitz:
-                  resolveBlitz(state, winnerHouse, order, events)
+                  resolveBlitz(state, winnerHouse, command, events)
                 else:
                   discard
-                break # Found and executed the order
+                break # Found and executed the command
         else:
           # Fleet not at target - skip this turn (will retry next turn if order persists)
           logDebug(
-            LogCategory.lcCombat,
+            "Combat",
             &"Skipping planetary assault: {res.fleetId} not at {targetSystem} (currently at {fleet.location})",
           )
 

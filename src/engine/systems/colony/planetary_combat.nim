@@ -12,7 +12,7 @@
 
 import std/[tables, options, sequtils, hashes, math, random, strformat]
 import ../../types/[core, game_state, combat, command, ground_unit, ship, fleet]
-import ../../state/[entity_manager, iterators]
+import ../../state/[engine, iterators]
 import ../combat/ground
 import ../../config/[prestige_config, facilities_config]
 import ../diplomacy/engine as dip_engine
@@ -119,7 +119,7 @@ proc resolveBombardment*(
     combatSquadrons.add(combatSq)
 
   # Get colony's planetary defense
-  let colonyOpt = state.colonies.entities.entity(targetId)
+  let colonyOpt = state.colony(targetId)
   if colonyOpt.isNone:
     logWarn(
       "Combat",
@@ -148,7 +148,7 @@ proc resolveBombardment*(
 
   # Ground Batteries: Create GroundUnit objects from colony count
   defense.groundBatteries = @[]
-  let houseOpt = state.houses.entities.entity(colony.owner)
+  let houseOpt = state.house(colony.owner)
   if houseOpt.isNone:
     logWarn("Combat", "Bombardment failed - house not found", "houseId=", $colony.owner)
     return
@@ -228,7 +228,7 @@ proc resolveBombardment*(
           $targetId,
         )
 
-  state.colonies.entities.updateEntity(targetId, updatedColony)
+  state.updateColony(targetId, updatedColony)
 
   logCombat(
     "Bombardment complete",
@@ -387,7 +387,7 @@ proc resolveInvasion*(
     )
     return
 
-  let colonyOpt = state.colonies.entities.entity(targetId)
+  let colonyOpt = state.colony(targetId)
   if colonyOpt.isNone:
     logWarn("Combat", "Invasion failed - colony disappeared", "systemId=", $targetId)
     return
@@ -458,7 +458,7 @@ proc resolveInvasion*(
     )
 
   # Ground Batteries (must be destroyed for invasion to proceed)
-  let houseOpt = state.houses.entities.entity(colony.owner)
+  let houseOpt = state.house(colony.owner)
   if houseOpt.isNone:
     logWarn("Combat", "Invasion failed - house not found", "houseId=", $colony.owner)
     return
@@ -545,7 +545,7 @@ proc resolveInvasion*(
     updatedColony.armies = 0 # Defender armies all destroyed/disbanded
 
     # Unload marines from spacelift squadrons (they've landed)
-    let fleetOpt = state.fleets.entities.entity(command.fleetId)
+    let fleetOpt = state.fleet(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
@@ -559,7 +559,7 @@ proc resolveInvasion*(
                   cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity
                 )
               )
-      state.fleets.entities.updateEntity(command.fleetId, updatedFleet)
+      state.updateFleet(command.fleetId, updatedFleet)
 
     # Check if colony was undefended (BEFORE taking ownership)
     let wasUndefended = isColonyUndefended(colony)
@@ -651,7 +651,7 @@ proc resolveInvasion*(
 
     # All attacker marines destroyed - unload ALL marines from spacelift squadrons
     # Marines cannot retreat once they've landed on the planet
-    let fleetOpt = state.fleets.entities.entity(command.fleetId)
+    let fleetOpt = state.fleet(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
@@ -665,7 +665,7 @@ proc resolveInvasion*(
                   cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity
                 )
               )
-      state.fleets.entities.updateEntity(command.fleetId, updatedFleet)
+      state.updateFleet(command.fleetId, updatedFleet)
 
     # Generate event
     events.add(event_factory.invasionRepelled(colony.owner, targetId, houseId))
@@ -681,7 +681,7 @@ proc resolveInvasion*(
       )
     )
 
-  state.colonies.entities.updateEntity(targetId, updatedColony)
+  state.updateColony(targetId, updatedColony)
 
   # INTELLIGENCE: Generate invasion reports for both houses (after state updates)
   combat_intel.generateInvasionIntelligence(
@@ -766,7 +766,7 @@ proc resolveBlitz*(
     )
     return
 
-  let colonyOpt = state.colonies.entities.entity(targetId)
+  let colonyOpt = state.colony(targetId)
   if colonyOpt.isNone:
     logWarn("Combat", "Blitz failed - colony disappeared", "systemId=", $targetId)
     return
@@ -852,7 +852,7 @@ proc resolveBlitz*(
     )
 
   # Ground Batteries (blitz fights through them unlike invasion)
-  let houseOpt = state.houses.entities.entity(colony.owner)
+  let houseOpt = state.house(colony.owner)
   if houseOpt.isNone:
     logWarn("Combat", "Blitz failed - house not found", "houseId=", $colony.owner)
     return
@@ -916,7 +916,7 @@ proc resolveBlitz*(
     updatedColony.armies = 0
 
     # Unload marines from auxiliary squadrons
-    let fleetOpt = state.fleets.entities.entity(command.fleetId)
+    let fleetOpt = state.fleet(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
@@ -930,7 +930,7 @@ proc resolveBlitz*(
                   cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity
                 )
               )
-      state.fleets.entities.updateEntity(command.fleetId, updatedFleet)
+      state.updateFleet(command.fleetId, updatedFleet)
 
     # Check if colony was undefended (BEFORE taking ownership)
     let wasUndefended = isColonyUndefended(colony)
@@ -1024,7 +1024,7 @@ proc resolveBlitz*(
 
     # All attacker marines destroyed - unload ALL marines from spacelift squadrons
     # Marines cannot retreat once they've landed on the planet
-    let fleetOpt = state.fleets.entities.entity(command.fleetId)
+    let fleetOpt = state.fleet(command.fleetId)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       for squadron in updatedFleet.squadrons.mitems:
@@ -1038,7 +1038,7 @@ proc resolveBlitz*(
                   cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity
                 )
               )
-      state.fleets.entities.updateEntity(command.fleetId, updatedFleet)
+      state.updateFleet(command.fleetId, updatedFleet)
 
     # Generate event
     events.add(event_factory.invasionRepelled(colony.owner, targetId, houseId))
@@ -1054,7 +1054,7 @@ proc resolveBlitz*(
       )
     )
 
-  state.colonies.entities.updateEntity(targetId, updatedColony)
+  state.updateColony(targetId, updatedColony)
 
   # INTELLIGENCE: Generate blitz reports for both houses (after state updates)
   combat_intel.generateBlitzIntelligence(

@@ -8,9 +8,9 @@
 
 import std/[tables, options, random]
 import ../../../common/logger
-import ../../types/[core, game_state, command]
+import ../../types/[core, game_state, command, combat, event]
 import ../../types/resolution as res_types
-import ../../state/[entity_manager, iterators]
+import ../../state/[engine, iterators]
 import battles # Space + Orbital combat
 import planetary # Planetary combat (bombardment, invasion, blitz)
 
@@ -30,7 +30,7 @@ type
     planetaryAttacks*: int # Number of bombardment/invasion attempts
 
 proc determineTheaterOutcome(
-    combatReports: seq[CombatReport], systemOwner: Option[HouseId]
+    combatReports: seq[combat.CombatReport], systemOwner: Option[HouseId]
 ): TheaterResult =
   ## Analyze combat reports to determine if attackers won the theater
   ## Attackers win if: defender eliminated OR defender retreated
@@ -58,10 +58,10 @@ proc determineTheaterOutcome(
 proc resolveSystemCombat*(
     state: var GameState,
     systemId: SystemId,
-    orders: Table[HouseId, OrderPacket],
-    arrivedOrders: Table[HouseId, OrderPacket],
-    combatReports: var seq[CombatReport],
-    events: var seq[res_types.GameEvent],
+    orders: Table[HouseId, CommandPacket],
+    arrivedOrders: Table[HouseId, CommandPacket],
+    combatReports: var seq[combat.CombatReport],
+    events: var seq[GameEvent],
     rng: var Rand,
 ) =
   ## Single entry point for all combat in a system
@@ -77,7 +77,7 @@ proc resolveSystemCombat*(
 
   logCombat("[THEATER] Resolving combat", " system=", $systemId)
 
-  let colonyOpt = state.colonies.entities.entity(systemId)
+  let colonyOpt = state.colonyBySystem(systemId)
   let systemOwner =
     if colonyOpt.isSome:
       some(colonyOpt.get().owner)
@@ -86,9 +86,9 @@ proc resolveSystemCombat*(
 
   # THEATER 1 & 2: Space + Orbital Combat (handled by battles.nim)
   # resolveBattle() already implements proper space → orbital progression
-  # Uses 'orders' (all orders - space/orbital don't require arrival)
+  # Note: resolveBattle does not take orders parameter - it reads fleets directly from state
   let reportCountBefore = combatReports.len
-  battles.resolveBattle(state, systemId, orders, combatReports, events, rng)
+  battles.resolveBattle(state, systemId, combatReports, events, rng)
   let reportCountAfter = combatReports.len
 
   # Determine if attackers achieved orbital supremacy

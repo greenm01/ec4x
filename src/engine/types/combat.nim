@@ -77,7 +77,7 @@ type
     of Squadron:
       squadronId*: SquadronId
     of Facility:
-      facilityId*: StarbaseId # Use typed ID, not string
+      kastraId*: KastraId  # Defensive facility (Starbase)
 
   CombatSquadron* = object
     squadronId*: SquadronId # Reference ID

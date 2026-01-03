@@ -9,7 +9,7 @@ import std/[tables, sequtils, options, logging, math]
 import ../../types/[
   game_state, core, event, population as pop_types, starmap, fleet, colony,
 ]
-import ../../state/[engine, entity_manager, iterators]
+import ../../state/[engine, iterators]
 import ../../starmap as starmap_module
 import ../fleet/movement
 import ../../event_factory/init as event_factory
@@ -165,8 +165,8 @@ proc findNearestOwnedColony*(
   for colony in state.coloniesOwned(houseId):
     let dist = int(
       distance(
-        state.systems.entities.entity(colony.systemId).get().coords,
-        state.systems.entities.entity(fromSystem).get().coords,
+        state.system(colony.systemId).get().coords,
+        state.system(fromSystem).get().coords,
       )
     )
     if dist < nearestDist:
@@ -230,7 +230,7 @@ proc applyTransferCompletion*(
           var destColony = destColonyOpt.get()
           destColony.populationUnits += completion.transfer.ptuAmount
           destColony.population = destColony.populationUnits
-          state.colonies.entities.updateEntity(destColonyId, destColony)
+          state.updateColony(destColonyId, destColony)
 
       info(
         "Population transfer completed: ", $completion.transfer.ptuAmount, " PTU to ",

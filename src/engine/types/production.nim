@@ -59,8 +59,8 @@ type
     fleetId*: Option[FleetId]
     squadronId*: Option[SquadronId]
     shipId*: Option[ShipId]
-    # For starbase repairs
-    starbaseId*: Option[StarbaseId]
+    # For kastra (defensive facility) repairs
+    kastraId*: Option[KastraId]
     shipClass*: Option[ShipClass]
     cost*: int32
     turnsRemaining*: int32

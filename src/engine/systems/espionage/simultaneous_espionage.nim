@@ -6,7 +6,7 @@
 import std/[tables, options, random, logging]
 import
   ../../types/[core, game_state, simultaneous, command, fleet, espionage, intel, event]
-import ../../state/[engine as state_helpers, iterators, entity_manager]
+import ../../state/[engine as state_helpers, iterators]
 import ../../entities/fleet_ops
 import ../../intel/[spy_resolution, generator as intel_generator]
 import ../../event_factory/intel as intelligence_events
@@ -199,7 +199,7 @@ proc processEspionageActions*(
     if packet.espionageAction.isNone:
       # Update house if investments were made
       if packet.ebpInvestment > 0 or packet.cipInvestment > 0:
-        state.houses.entities.updateEntity(houseId, house)
+        state.updateHouse(houseId, house)
       continue
 
     let attempt = packet.espionageAction.get()
@@ -209,7 +209,7 @@ proc processEspionageActions*(
     if targetOpt.isSome and targetOpt.get().isEliminated:
       debug houseId, " cannot target eliminated house ", attempt.target
       # Update house before continuing
-      state.houses.entities.updateEntity(houseId, house)
+      state.updateHouse(houseId, house)
       continue
 
     # Check if attacker has sufficient EBP
@@ -219,14 +219,14 @@ proc processEspionageActions*(
         " cannot afford ", attempt.action, " (cost: ", actionCost, " EBP, has: ",
         house.espionageBudget.ebpPoints, ")"
       # Update house before continuing
-      state.houses.entities.updateEntity(houseId, house)
+      state.updateHouse(houseId, house)
       continue
 
     # Spend EBP
     if not esp_engine.spendEBP(house.espionageBudget, attempt.action):
       debug houseId, " failed to spend EBP for ", attempt.action
       # Update house before continuing
-      state.houses.entities.updateEntity(houseId, house)
+      state.updateHouse(houseId, house)
       continue
 
     info houseId,
@@ -237,7 +237,7 @@ proc processEspionageActions*(
     let targetHouseOpt = state_helpers.house(state, attempt.target)
     if targetHouseOpt.isNone:
       # Update house before continuing
-      state.houses.entities.updateEntity(houseId, house)
+      state.updateHouse(houseId, house)
       continue
     let targetHouse = targetHouseOpt.get()
     let targetCICLevel =
@@ -359,8 +359,8 @@ proc processEspionageActions*(
           )
           attackerHouse.techTree.accumulated.science += result.srpStolen
 
-          state.houses.entities.updateEntity(attempt.target, targetHouse)
-          state.houses.entities.updateEntity(attempt.attacker, attackerHouse)
+          state.updateHouse(attempt.target, targetHouse)
+          state.updateHouse(attempt.attacker, attackerHouse)
 
           info "    Stole ", result.srpStolen, " SRP from ", attempt.target
     else:
@@ -381,7 +381,7 @@ proc processEspionageActions*(
         )
 
     # Update house entity after espionage action resolution
-    state.houses.entities.updateEntity(houseId, house)
+    state.updateHouse(houseId, house)
 
 proc processScoutIntelligence*(
     state: var GameState,
@@ -397,7 +397,7 @@ proc processScoutIntelligence*(
 
   for result in results:
     # Consume scout fleet, regardless of outcome
-    if result.fleetId in state.fleets.entities.index:
+    if result.fleetId in state.hasFleet:
       fleet_ops.destroyFleet(state, result.fleetId)
       info "Spy Scout fleet ", result.fleetId, " consumed on mission."
 
@@ -444,7 +444,7 @@ proc processScoutIntelligence*(
         if houseOpt.isSome:
           var house = houseOpt.get()
           house.intelligence.addColonyReport(report)
-          state.houses.entities.updateEntity(houseId, house)
+          state.updateHouse(houseId, house)
 
           # Calculate economic value for event
           let grossOutput = report.grossOutput.get(0)
@@ -527,7 +527,7 @@ proc processScoutIntelligence*(
         if houseOpt.isSome:
           var house = houseOpt.get()
           house.intelligence.addStarbaseReport(report)
-          state.houses.entities.updateEntity(houseId, house)
+          state.updateHouse(houseId, house)
 
         # Check if economic data was acquired (based on quality)
         let hasEconomicData =

@@ -10,13 +10,13 @@
 
 import std/[options, strformat, logging]
 import ../../types/[core, game_state, command]
-import ../../state/entity_manager
+import ../../state/engine
 
 proc resolveColonyManagementCommands*(state: var GameState, packet: CommandPacket) =
   ## Process colony management commands - tax rates, auto-repair toggles, etc.
   for command in packet.colonyManagement:
-    # Validate colony exists and is owned using entity_manager accessor
-    let colonyOpt = state.colonies.entities.entity(command.colonyId)
+    # Validate colony exists and is owned using public API
+    let colonyOpt = state.colony(command.colonyId)
     if colonyOpt.isNone:
       error &"Colony management failed: System-{$command.colonyId} has no colony"
       continue
@@ -40,5 +40,5 @@ proc resolveColonyManagementCommands*(state: var GameState, packet: CommandPacke
     let etacStatus = if command.autoReloadETACs: "enabled" else: "disabled"
     info &"Colony-{$command.colonyId} auto-reload ETACs {etacStatus}"
 
-    # Write back using entity_manager accessor
-    state.colonies.entities.updateEntity(command.colonyId, colony)
+    # Write back using public API
+    state.updateColony(command.colonyId, colony)

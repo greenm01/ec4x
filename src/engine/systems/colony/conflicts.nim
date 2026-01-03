@@ -7,7 +7,7 @@
 
 import std/[tables, options, random]
 import ../../types/[core, game_state, starmap]
-import ../../state/entity_manager
+import ../../state/engine
 import ./engine as colony_engine
 
 type

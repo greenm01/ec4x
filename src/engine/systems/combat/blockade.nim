@@ -4,7 +4,7 @@
 import std/[tables, options]
 import ../../types/[core, fleet, colony, squadron, ship]
 import ../../types/game_state as game_state_types
-import ../../state/[entity_manager, iterators]
+import ../../state/[iterators]
 import ../../state/engine
 # import ../intelligence/blockade_intel  # TODO: Module doesn't exist yet
 
@@ -35,12 +35,12 @@ proc isSystemBlockaded*(
       # Check if fleet has combat ships
       var hasCombatShips = false
       for sqId in fleet.squadrons:
-        let sqOpt = state.squadrons.entities.entity(sqId)
+        let sqOpt = state.squadron(sqId)
         if sqOpt.isSome:
           let squadron = sqOpt.get()
           # Check if squadron has combat capability
           for shipId in squadron.ships:
-            let shipOpt = state.ships.entities.entity(shipId)
+            let shipOpt = state.ship(shipId)
             if shipOpt.isSome:
               let ship = shipOpt.get()
               if ship.stats.attackStrength > 0:
@@ -111,7 +111,7 @@ proc applyBlockades*(state: var GameState) =
 
     # Write back if changed
     if needsUpdate:
-      state.colonies.entities.updateEntity(ColonyId(systemId), updatedColony)
+      state.updateColony(ColonyId(systemId), updatedColony)
 
 # =============================================================================
 # Blockade Effects

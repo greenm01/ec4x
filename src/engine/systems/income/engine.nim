@@ -11,7 +11,7 @@ import ./[income, maintenance, multipliers]
 import
   ../../types/
     [game_state, core, ship, event, income as income_types, colony]
-import ../../state/[iterators, engine as state_helpers, entity_manager]
+import ../../state/[iterators, engine as state_helpers]
 
 export income_types.IncomePhaseReport, income_types.HouseIncomeReport
 export colony.ColonyIncomeReport
@@ -174,21 +174,21 @@ proc calculateAndDeductMaintenanceUpkeep*(
       if houseOpt.isSome:
         var updatedHouse = houseOpt.get()
         updatedHouse.consecutiveShortfallTurns += 1
-        state.houses.entities.updateEntity(houseId, updatedHouse)
+        state.updateHouse(houseId, updatedHouse)
     else:
       # Full payment - reset shortfall counter
       let houseOpt = state_helpers.house(state, houseId)
       if houseOpt.isSome:
         var updatedHouse = houseOpt.get()
         updatedHouse.consecutiveShortfallTurns = 0
-        state.houses.entities.updateEntity(houseId, updatedHouse)
+        state.updateHouse(houseId, updatedHouse)
 
     # Deduct maintenance (treasury may have salvage added by cascade)
     let houseOpt = state_helpers.house(state, houseId)
     if houseOpt.isSome:
       var updatedHouse = houseOpt.get()
       updatedHouse.treasury -= int32(totalUpkeep)
-      state.houses.entities.updateEntity(houseId, updatedHouse)
+      state.updateHouse(houseId, updatedHouse)
 
     # Generate MaintenancePaid event
     events.add(

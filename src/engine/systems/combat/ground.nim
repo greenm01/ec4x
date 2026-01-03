@@ -10,7 +10,7 @@
 
 import std/[options, math, tables, sequtils]
 import ../../types/[combat as combat_types, core, ground_unit, game_state, squadron, ship]
-import ../../state/entity_manager
+import ../../state/engine
 import ../../globals
 import cer
 
@@ -138,10 +138,10 @@ proc separatePlanetBreakerAS*(
         sq.attackStrength
 
     # Look up squadron to check if it has Planet-Breaker flagship
-    let squadronOpt = state.squadrons.entities.entity(sq.squadronId)
+    let squadronOpt = state.squadron(sq.squadronId)
     if squadronOpt.isSome:
       let squadron = squadronOpt.get()
-      let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+      let flagshipOpt = state.ship(squadron.flagshipId)
       if flagshipOpt.isSome:
         let flagship = flagshipOpt.get()
         if flagship.shipClass == ShipClass.PlanetBreaker:
@@ -179,7 +179,7 @@ proc resolveBombardmentRound*(
   # Use proper entity pattern: read via entity()
   var defenderAS = 0
   for batteryId in defense.groundBatteryIds:
-    let batteryOpt = state.groundUnits.entities.entity(batteryId)
+    let batteryOpt = state.groundUnit(batteryId)
     if batteryOpt.isNone:
       continue
     let battery = batteryOpt.get()
@@ -225,7 +225,7 @@ proc resolveBombardmentRound*(
     if excessAttackerHits <= 0:
       break
 
-    let batteryOpt = state.groundUnits.entities.entity(batteryId)
+    let batteryOpt = state.groundUnit(batteryId)
     if batteryOpt.isNone:
       continue
     var battery = batteryOpt.get()
@@ -253,7 +253,7 @@ proc resolveBombardmentRound*(
         for otherId in defense.groundBatteryIds:
           if otherId == batteryId:
             continue
-          let otherOpt = state.groundUnits.entities.entity(otherId)
+          let otherOpt = state.groundUnit(otherId)
           if otherOpt.isSome and otherOpt.get().state == CombatState.Undamaged:
             allOthersCrippled = false
             break
@@ -265,7 +265,7 @@ proc resolveBombardmentRound*(
         discard
 
       # Write back changes via updateEntity()
-      state.groundUnits.entities.updateEntity(batteryId, battery)
+      state.updateGroundUnit(batteryId, battery)
 
   # Apply excess hits to ground forces (Section 7.5.4)
   # Use proper entity pattern: read, mutate copy, write back via updateEntity()
@@ -274,7 +274,7 @@ proc resolveBombardmentRound*(
       if excessAttackerHits <= 0:
         break
 
-      let unitOpt = state.groundUnits.entities.entity(unitId)
+      let unitOpt = state.groundUnit(unitId)
       if unitOpt.isNone:
         continue
       var unit = unitOpt.get()
@@ -298,7 +298,7 @@ proc resolveBombardmentRound*(
           for otherId in defense.groundForceIds:
             if otherId == unitId:
               continue
-            let otherOpt = state.groundUnits.entities.entity(otherId)
+            let otherOpt = state.groundUnit(otherId)
             if otherOpt.isSome and otherOpt.get().state == CombatState.Undamaged:
               allOthersCrippled = false
               break
@@ -309,7 +309,7 @@ proc resolveBombardmentRound*(
           discard
 
         # Write back changes via updateEntity()
-        state.groundUnits.entities.updateEntity(unitId, unit)
+        state.updateGroundUnit(unitId, unit)
 
   # Remaining excess hits damage infrastructure (IU then PU)
   # Per user requirement: IU and PU both take damage during bombardment
@@ -380,7 +380,7 @@ proc conductBombardment*(
     # Use proper entity pattern to check battery states
     var batteriesRemaining = false
     for batteryId in defense.groundBatteryIds:
-      let batteryOpt = state.groundUnits.entities.entity(batteryId)
+      let batteryOpt = state.groundUnit(batteryId)
       if batteryOpt.isSome and batteryOpt.get().state != CombatState.Destroyed:
         batteriesRemaining = true
         break
@@ -415,7 +415,7 @@ proc conductInvasion*(
   # Use proper entity pattern to check battery states
   var batteriesDestroyed = true
   for batteryId in defense.groundBatteryIds:
-    let batteryOpt = state.groundUnits.entities.entity(batteryId)
+    let batteryOpt = state.groundUnit(batteryId)
     if batteryOpt.isSome and batteryOpt.get().state != CombatState.Destroyed:
       batteriesDestroyed = false
       break

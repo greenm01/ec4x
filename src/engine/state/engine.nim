@@ -5,6 +5,8 @@ import
     production, intel, starmap, population,
   ]
 
+export GameState
+
 include ./entity_manager
 
 proc house*(state: GameState, id: HouseId): Option[House] {.inline.} =
@@ -226,6 +228,30 @@ proc repairProjectsCount*(state: GameState): int32 {.inline.} =
 proc populationTransfersCount*(state: GameState): int32 {.inline.} =
   ## Get the total number of population transfers in the game state
   state.populationTransfers.entities.data.len.int32
+
+# ============================================================================
+# Entity Existence Checks
+# ============================================================================
+
+proc hasSystem*(state: GameState, id: SystemId): bool {.inline.} =
+  ## Check if a system with the given ID exists
+  state.systems.entities.index.contains(id)
+
+proc hasColony*(state: GameState, id: ColonyId): bool {.inline.} =
+  ## Check if a colony with the given ID exists
+  state.colonies.entities.index.contains(id)
+
+proc hasFleet*(state: GameState, id: FleetId): bool {.inline.} =
+  ## Check if a fleet with the given ID exists
+  state.fleets.entities.index.contains(id)
+
+proc hasShip*(state: GameState, id: ShipId): bool {.inline.} =
+  ## Check if a ship with the given ID exists
+  state.ships.entities.index.contains(id)
+
+proc hasSquadron*(state: GameState, id: SquadronId): bool {.inline.} =
+  ## Check if a squadron with the given ID exists
+  state.squadrons.entities.index.contains(id)
 
 # ============================================================================
 # Colony Accessors (bySystem: 1:1)

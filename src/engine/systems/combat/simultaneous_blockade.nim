@@ -6,56 +6,56 @@
 import std/[tables, options, random, strformat]
 import ../../types/simultaneous as simultaneous_types
 import simultaneous_resolver
-import ../../types/game_state
-import ../../../../common/logger
+import ../../types/[game_state, fleet, command, core]
+import ../../../common/logger
 import ../squadron/entity
-import ../../types/core
-import ../../state/entity_manager
+import ../../state/[engine, iterators]
 
 proc collectBlockadeIntents*(
-    state: GameState, orders: Table[HouseId, OrderPacket]
+    state: GameState, orders: Table[HouseId, CommandPacket]
 ): seq[BlockadeIntent] =
   ## Collect all blockade attempts
   result = @[]
 
-  for houseId in state.houses.entities.keys:
-    if houseId notin orders:
+  for house in state.allHouses:
+    if house.id notin orders:
       continue
 
-    for command in orders[houseId].fleetCommands:
-      if command.commandType != FleetCommandType.BlockadePlanet:
+    for command in orders[house.id].fleetCommands:
+      if command.commandType != FleetCommandType.Blockade:
         continue
 
-      # Validate: fleet exists - using entity_manager
-      let fleetOpt = state.fleets.entities.entity(command.fleetId)
+      # Validate: fleet exists
+      let fleetOpt = state.fleet(command.fleetId)
       if fleetOpt.isNone:
         continue
 
       let fleet = fleetOpt.get()
 
       # Calculate blockade strength (total AS)
-      var blockadeStrength = 0
-      for squadron in fleet.squadrons:
-        blockadeStrength += squadron.combatStrength()
+      var blockadeStrength: int32 = 0
+      for sqId in fleet.squadrons:
+        let sq = state.squadron(sqId).get
+        blockadeStrength += state.combatStrength(sq)
 
       # Get target from order
       if command.targetSystem.isNone:
         continue
 
-      let targetSystem = command.targetSystem.get()
+      let targetSystem: SystemId = command.targetSystem.get()
 
       result.add(
         BlockadeIntent(
-          houseId: houseId,
+          houseId: house.id,
           fleetId: command.fleetId,
-          targetColony: targetSystem,
+          targetColony: ColonyId(targetSystem),  # Cast SystemId → ColonyId (1:1 relationship)
           blockadeStrength: blockadeStrength,
         )
       )
 
 proc detectBlockadeConflicts*(intents: seq[BlockadeIntent]): seq[BlockadeConflict] =
   ## Group blockade intents by target colony
-  var targetColonies = initTable[SystemId, seq[BlockadeIntent]]()
+  var targetColonies = initTable[ColonyId, seq[BlockadeIntent]]()
 
   for intent in intents:
     if intent.targetColony notin targetColonies:
@@ -91,12 +91,17 @@ proc resolveBlockadeConflict*(
     return
 
   # Multiple intents = conflict, strongest wins
-  let seed = tiebreakerSeed(state.turn, conflict.targetColony)
-  let winner = resolveConflictByStrength(conflict.intents, blockadeStrength, seed, rng)
+  let seed = tiebreakerSeed(state.turn, SystemId(conflict.targetColony))  # Cast ColonyId → SystemId
+  let winner = resolveConflictByStrength(
+    conflict.intents,
+    proc(intent: BlockadeIntent): int = intent.blockadeStrength,
+    seed,
+    rng
+  )
 
   logInfo(
-    LogCategory.lcCombat,
-    &"Blockade conflict at {conflict.targetColony}: {conflict.intents.len} houses competing, {winner.houseId} wins",
+    "Combat",
+    &"Blockade conflict at {conflict.targetColony}: {conflict.intents.len} houses competing, {winner.houseId} wins"
   )
 
   # Winner blockades
@@ -120,13 +125,13 @@ proc resolveBlockadeConflict*(
           fleetId: loser.fleetId,
           originalTarget: loser.targetColony,
           outcome: ResolutionOutcome.ConflictLost,
-          actualTarget: none(SystemId),
+          actualTarget: none(ColonyId),
           prestigeAwarded: 0,
         )
       )
 
 proc resolveBlockades*(
-    state: var GameState, orders: Table[HouseId, OrderPacket], rng: var Rand
+    state: var GameState, orders: Table[HouseId, CommandPacket], rng: var Rand
 ): seq[BlockadeResult] =
   ## Main entry point: Resolve all blockade orders simultaneously
   result = @[]

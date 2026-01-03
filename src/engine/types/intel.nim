@@ -96,7 +96,7 @@ type
     squadronIntel*: seq[tuple[squadronId: SquadronId, intel: SquadronIntel]]
 
   StarbaseIntelReport* = object
-    starbaseId*: StarbaseId # Use typed ID
+    kastraId*: KastraId  # Defensive facility (Starbase)
     targetOwner*: HouseId
     gatheredTurn*: int32
     quality*: IntelQuality
@@ -193,7 +193,7 @@ type
     Perfect
 
   StarbaseSurveillanceReport* = object
-    starbaseId*: StarbaseId
+    kastraId*: KastraId  # Defensive facility (Starbase)
     systemId*: SystemId
     owner*: HouseId
     turn*: int32
@@ -268,7 +268,7 @@ type
     colonyReports*: Table[ColonyId, ColonyIntelReport]
     orbitalReports*: Table[ColonyId, OrbitalIntelReport]
     systemReports*: Table[SystemId, SystemIntelReport]
-    starbaseReports*: Table[StarbaseId, StarbaseIntelReport]
+    starbaseReports*: Table[KastraId, StarbaseIntelReport]
     fleetIntel*: Table[FleetId, FleetIntel] # Detailed fleet intelligence
     squadronIntel*: Table[SquadronId, SquadronIntel] # Detailed squadron intelligence
     espionageActivity*: seq[EspionageActivityReport]

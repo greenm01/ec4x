@@ -9,6 +9,7 @@
 import std/[options, math, sequtils]
 import ../../types/[core, ship, squadron]
 import ../../state/engine
+import ../ship/entity as ship_entity
 
 proc getSquadronType*(shipClass: ShipClass): SquadronClass =
   ## Determine squadron type from ship class
@@ -91,7 +92,7 @@ proc isEmpty*(sq: Squadron): bool =
 
 proc shipCount*(sq: Squadron): int32 =
   ## Total number of ships including flagship
-  sq.ships.len + 1
+  int32(sq.ships.len + 1)
 
 proc hasCombatShips*(state: GameState, sq: Squadron): bool =
   ## Check if squadron has combat-capable ships
@@ -160,7 +161,7 @@ proc scoutShips*(state: GameState, sq: Squadron): seq[ShipId] =
 proc hasScouts*(state: GameState, sq: Squadron): bool =
   ## Check if squadron has any operational scouts
 
-  sq.scoutShips(state).filterIt(not state.ship(it).get().isCrippled).len > 0
+  state.scoutShips(sq).filterIt(not state.ship(it).get().isCrippled).len > 0
 
 proc raiderShips*(state: GameState, sq: Squadron): seq[ShipId] =
   ## Get all ship IDs with cloaking capability (CLK tech)

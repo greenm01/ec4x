@@ -12,7 +12,7 @@ import ../../types/[
   core, game_state, command, fleet, squadron, event,
   diplomacy, intel, starmap, espionage, ship, prestige, colony
 ]
-import ../../state/[engine, entity_manager, iterators]
+import ../../state/[engine, iterators]
 import ../../globals # For gameConfig
 import ../ship/entity as ship_entity # Ship helper functions
 import ../../entities/[colony_ops, squadron_ops]
@@ -472,7 +472,7 @@ proc resolveMovementCommand*(
           state, houseId, newLocation, IntelQuality.Visual
         )
         if intelReport.isSome:
-          let colonyId = state.colonies.bySystem[newLocation] # Needed for intel.colonyReports
+          let colonyId = colony.id # Needed for intel.colonyReports
           var intel = state.intelligence[houseId]
           intel.colonyReports[colonyId] = intelReport.get()
           state.intelligence[houseId] = intel
@@ -576,7 +576,7 @@ proc resolveColonizationCommand*(
         state, houseId, targetId, IntelQuality.Visual
       )
       if colonyIntel.isSome:
-        let colonyId = state.colonies.bySystem[targetId]
+        let colonyId = colony.id
         var intel = state.intelligence[houseId]
         intel.colonyReports[colonyId] = colonyIntel.get()
         state.intelligence[houseId] = intel
@@ -819,7 +819,7 @@ proc resolveViewWorldCommand*(
   if colonyOpt.isNone:
     return
   let colony = colonyOpt.get()
-  let colonyId = state.colonies.bySystem[targetId] # Needed for intel report
+  let colonyId = colony.id # Needed for intel report
 
   # Create minimal colony intel report from long-range scan
   # ViewWorld only gathers: owner + planet class (no detailed statistics)

@@ -23,7 +23,7 @@
 import std/[options, math, tables]
 import
   ../../types/[core, game_state, house, fleet, squadron, ship, event]
-import ../../state/[engine as gs_helpers, iterators, entity_manager]
+import ../../state/[engine as gs_helpers, iterators]
 import ../../globals
 import ../../../common/logger
 
@@ -193,7 +193,7 @@ proc applyLogisticalStrain*(
 
   var house = houseOpt.get()
   house.treasury -= int32(strainCost)
-  state.houses.entities.updateEntity(houseId, house)
+  state.updateHouse(houseId, house)
 
   # Generate event for visibility
   events.add(

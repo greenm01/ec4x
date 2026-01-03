@@ -11,6 +11,7 @@ import std/[tables, options, sequtils, hashes, math, random, strformat]
 import ../../../common/logger
 import ../../types/[core, combat, game_state, fleet, squadron, ship, colony, house, facilities as econ_types, diplomacy as dip_types, intel as intel_types, prestige]
 import ../../state/[engine, iterators]
+import ../../entities/fleet_ops
 import ./[engine as combat_engine, ground]
 import ../../globals # For gameConfig
 import ../../prestige/[
@@ -1193,22 +1194,8 @@ proc resolveBattle*(
       state.updateFleet(fleetId, updatedFleet)
     else:
       # Fleet destroyed - remove fleet and clean up orders
-      # Remove from bySystem index
-      if state.fleets.bySystem.hasKey(fleet.location):
-        state.fleets.bySystem[fleet.location] =
-          state.fleets.bySystem[fleet.location].filterIt(it != fleetId)
-        if state.fleets.bySystem[fleet.location].len == 0:
-          state.fleets.bySystem.del(fleet.location)
-
-      # Remove from byOwner index
-      if state.fleets.byOwner.hasKey(fleet.houseId):
-        state.fleets.byOwner[fleet.houseId] =
-          state.fleets.byOwner[fleet.houseId].filterIt(it != fleetId)
-        if state.fleets.byOwner[fleet.houseId].len == 0:
-          state.fleets.byOwner.del(fleet.houseId)
-
-      # Remove from entity manager
-      state.delFleet(fleetId)
+      # Use entity_ops to handle all index cleanup
+      destroyFleet(state, fleetId)
       if fleetId in state.fleetCommands:
         state.fleetCommands.del(fleetId)
       if fleetId in state.standingCommands:

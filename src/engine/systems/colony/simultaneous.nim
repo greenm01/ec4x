@@ -7,7 +7,7 @@ import std/[tables, options, random, sequtils, algorithm, strformat, hashes]
 import
   ../../types/
     [core, game_state, command, event, starmap, prestige, fleet, squadron, ship]
-import ../../state/[entity_manager, iterators]
+import ../../state/[engine, iterators]
 import ../combat/simultaneous_resolver
 import ./[engine as col_engine, conflicts]
 import ../../entities/[colony_ops, fleet_ops, squadron_ops]
@@ -31,7 +31,7 @@ proc collectColonizationIntents*(
       continue
 
     # Validate: fleet exists
-    let fleetOpt = state.fleets.entities.entity(fleetId)
+    let fleetOpt = state.fleet(fleetId)
     if fleetOpt.isNone:
       continue
 
@@ -41,14 +41,14 @@ proc collectColonizationIntents*(
     # Validate: fleet has colonists (PTUs) in Expansion/Auxiliary squadron cargo
     var hasColonists = false
     for squadronId in fleet.squadrons:
-      let squadronOpt = state.squadrons.entities.entity(squadronId)
+      let squadronOpt = state.squadron(squadronId)
       if squadronOpt.isNone:
         continue
       let squadron = squadronOpt.get()
 
       if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
         # Get flagship ship to check cargo
-        let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+        let flagshipOpt = state.ship(squadron.flagshipId)
         if flagshipOpt.isNone:
           continue
         let flagship = flagshipOpt.get()
@@ -64,7 +64,7 @@ proc collectColonizationIntents*(
     # Calculate fleet strength for conflict resolution (total attack strength)
     var fleetStrength: int32 = 0
     for squadronId in fleet.squadrons:
-      let squadronOpt = state.squadrons.entities.entity(squadronId)
+      let squadronOpt = state.squadron(squadronId)
       if squadronOpt.isNone:
         continue
       let squadron = squadronOpt.get()
@@ -134,7 +134,7 @@ proc establishColony(
     return
 
   # Get fleet
-  let fleetOpt = state.fleets.entities.entity(fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     logError(LogCategory.lcColonization, &"Fleet {fleetId} not found")
     return
@@ -146,14 +146,14 @@ proc establishColony(
   var colonistSquadronIdx = -1
   var colonistSquadronId: SquadronId
   for idx, squadronId in fleet.squadrons:
-    let squadronOpt = state.squadrons.entities.entity(squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isNone:
       continue
     let squadron = squadronOpt.get()
 
     if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
       # Get flagship ship to check cargo
-      let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+      let flagshipOpt = state.ship(squadron.flagshipId)
       if flagshipOpt.isNone:
         continue
       let flagship = flagshipOpt.get()
@@ -181,13 +181,13 @@ proc establishColony(
   )
 
   # Get PTU quantity from ETAC cargo (one-time consumable: deposits all PTU)
-  let squadronOpt = state.squadrons.entities.entity(colonistSquadronId)
+  let squadronOpt = state.squadron(colonistSquadronId)
   if squadronOpt.isNone:
     logError(LogCategory.lcColonization, &"Squadron {colonistSquadronId} not found")
     return
   let squadron = squadronOpt.get()
 
-  let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+  let flagshipOpt = state.ship(squadron.flagshipId)
   if flagshipOpt.isNone:
     logError(LogCategory.lcColonization, &"Flagship {squadron.flagshipId} not found")
     return
@@ -217,12 +217,12 @@ proc establishColony(
   # Unload ALL PTU from ETAC flagship (one-time consumable)
   let transferredPTU = ptuToDeposit
 
-  # Update flagship cargo by getting ship, modifying it, and updating via entity manager
+  # Update flagship cargo by getting ship, modifying it, and updating
   var updatedFlagship = flagship
   updatedFlagship.cargo =
     some(ShipCargo(cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity))
-  # Update ship in entity manager
-  state.ships.entities.updateEntity(squadron.flagshipId, updatedFlagship)
+  # Update ship
+  state.updateShip(squadron.flagshipId, updatedFlagship)
 
   logDebug(
     LogCategory.lcColonization,
@@ -240,7 +240,7 @@ proc establishColony(
     )
 
     # Check if fleet is now empty (refresh fleet data)
-    let updatedFleetOpt = state.fleets.entities.entity(fleetId)
+    let updatedFleetOpt = state.fleet(fleetId)
     if updatedFleetOpt.isSome:
       let updatedFleet = updatedFleetOpt.get()
       if updatedFleet.squadrons.len == 0:
@@ -262,8 +262,8 @@ proc establishColony(
     prestige_app.applyPrestigeEvent(state, houseId, prestigeEvent)
     result.prestigeAwarded = prestigeEvent.amount
 
-    # Get house name via entity manager
-    let houseOpt = state.houses.entities.entity(houseId)
+    # Get house name
+    let houseOpt = state.house(houseId)
     if houseOpt.isSome:
       let houseName = houseOpt.get().name
       logInfo(

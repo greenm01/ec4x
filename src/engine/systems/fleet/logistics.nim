@@ -16,7 +16,7 @@
 ##   if result.success: echo "Success!"
 
 import ../../types/[core, game_state, fleet, squadron, ship, colony, event]
-import ../../state/[engine, entity_manager, iterators, game_state as state_access, id_gen]
+import ../../state/[engine, iterators]
 import ../../entities/[fleet_ops, squadron_ops, colony_ops]
 import ../fleet/entity as fleet_entity
 import ../squadron/entity as squadron_entity
@@ -506,13 +506,13 @@ proc executeDetachShips*(
     )
   else:
     # Write back modified source fleet via entity manager
-    state.fleets.entities.updateEntity(cmd.sourceFleetId.get(), sourceFleet)
+    state.updateFleet(cmd.sourceFleetId.get(), sourceFleet)
     logFleet(
       &"DetachShips: Created fleet {newFleetId} with {newFleet.squadrons.len} squadrons"
     )
 
   # Add new fleet to state via entity manager
-  state.fleets.entities.addEntity(newFleetId, newFleet)
+  state.addFleet(newFleetId, newFleet)
   # Update indexes
   state.fleets.bySystem.mgetOrPut(newFleet.location, @[]).add(newFleetId)
   state.fleets.byOwner.mgetOrPut(newFleet.houseId, @[]).add(newFleetId)
@@ -584,7 +584,7 @@ proc executeTransferShips*(
   # Note: balanceSquadrons() is deprecated, removed calls
 
   # Write back modified target fleet via entity manager
-  state.fleets.entities.updateEntity(targetFleetId, targetFleet)
+  state.updateFleet(targetFleetId, targetFleet)
 
   # Check if source fleet is now empty
   if fleet_entity.isEmpty(sourceFleet):
@@ -596,7 +596,7 @@ proc executeTransferShips*(
     )
   else:
     # Write back modified source fleet via entity manager
-    state.fleets.entities.updateEntity(cmd.sourceFleetId.get(), sourceFleet)
+    state.updateFleet(cmd.sourceFleetId.get(), sourceFleet)
     logFleet(
       &"TransferShips: Transferred {squadronIndices.len} squadrons from {cmd.sourceFleetId.get()} to {targetFleetId}"
     )
@@ -671,7 +671,7 @@ proc executeMergeFleets*(
   # Note: balanceSquadrons() is deprecated, removed call
 
   # Write back modified target fleet via entity manager
-  state.fleets.entities.updateEntity(targetFleetId, targetFleet)
+  state.updateFleet(targetFleetId, targetFleet)
 
   # Delete source fleet using DRY helper (handles indexes and commands)
   cleanupEmptyFleet(state, cmd.sourceFleetId.get())
@@ -802,7 +802,7 @@ proc executeLoadCargo*(
       break
 
     # Get squadron entity
-    let squadronOpt = state.squadrons[].entities.entity(squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isNone:
       continue
 
@@ -847,7 +847,7 @@ proc executeLoadCargo*(
       flagship.cargo = some(newCargo)
 
       # Update ship entity
-      state.ships.entities.updateEntity(squadron.flagshipId, flagship)
+      state.updateShip(squadron.flagshipId, flagship)
 
       totalLoaded += loadAmount
       remainingToLoad -= loadAmount
@@ -880,7 +880,7 @@ proc executeLoadCargo*(
       discard
 
     # Write back modified colony via entity manager
-    state.colonies.entities.updateEntity(colonyId, colony)
+    state.updateColony(colonyId, colony)
     logEconomy(
       &"LoadCargo: Successfully loaded {totalLoaded} {cargoType} onto fleet {fleetId} at system {colonySystem}"
     )
@@ -964,7 +964,7 @@ proc executeUnloadCargo*(
   # Iterate over squadron IDs, get entities via entity manager
   for squadronId in fleet.squadrons:
     # Get squadron entity
-    let squadronOpt = state.squadrons[].entities.entity(squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isNone:
       continue
 
@@ -1019,11 +1019,11 @@ proc executeUnloadCargo*(
       some(ShipCargo(cargoType: CargoClass.None, quantity: 0, capacity: cargo.capacity))
 
     # Update ship entity
-    state.ships.entities.updateEntity(squadron.flagshipId, flagship)
+    state.updateShip(squadron.flagshipId, flagship)
 
   # Write back modified colony
   if totalUnloaded > 0:
-    state.colonies.entities.updateEntity(colonyId, colony)
+    state.updateColony(colonyId, colony)
     logEconomy(
       &"UnloadCargo: Successfully unloaded {totalUnloaded} {unloadedType} from fleet {fleetId} at system {colonySystem}"
     )
@@ -1125,7 +1125,7 @@ proc executeFormSquadron*(
 
   # Update colony's unassigned squadrons
   colony.unassignedSquadronIds = remainingSquadronIds
-  state.colonies.entities.updateEntity(colonyId, colony)
+  state.updateColony(colonyId, colony)
 
   # Generate squadron IDs (if not custom provided)
   let newSquadronId =
@@ -1225,7 +1225,7 @@ proc executeTransferShipBetweenSquadrons*(
     )
 
   # Get source squadron via entity manager
-  let sourceSquadOpt = state.squadrons[].entities.entity(sourceSquadronId)
+  let sourceSquadOpt = state.squadron(sourceSquadronId)
   if sourceSquadOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -1268,11 +1268,11 @@ proc executeTransferShipBetweenSquadrons*(
   let shipId = shipIdOpt.get()
 
   # Get target squadron via entity manager
-  let targetSquadOpt = state.squadrons[].entities.entity(targetSquadronId)
+  let targetSquadOpt = state.squadron(targetSquadronId)
   if targetSquadOpt.isNone:
     # ROLLBACK: Put ship back in source squadron
     discard squadron_entity.addShip(sourceSquad, shipId, state.ships)
-    state.squadrons[].entities.updateEntity(sourceSquadronId, sourceSquad)
+    state.updateSquadron(sourceSquadronId, sourceSquad)
     return ZeroTurnResult(
       success: false,
       error: &"Target squadron {targetSquadronId} not found in entity manager",
@@ -1289,7 +1289,7 @@ proc executeTransferShipBetweenSquadrons*(
   if not squadron_entity.addShip(targetSquad, shipId, state.ships):
     # ROLLBACK: Put ship back in source squadron
     discard squadron_entity.addShip(sourceSquad, shipId, state.ships)
-    state.squadrons[].entities.updateEntity(sourceSquadronId, sourceSquad)
+    state.updateSquadron(sourceSquadronId, sourceSquad)
     return ZeroTurnResult(
       success: false,
       error: "Could not add ship to target squadron (may be full or incompatible)",
@@ -1301,8 +1301,8 @@ proc executeTransferShipBetweenSquadrons*(
     )
 
   # Update both squadrons in entity manager
-  state.squadrons[].entities.updateEntity(sourceSquadronId, sourceSquad)
-  state.squadrons[].entities.updateEntity(targetSquadronId, targetSquad)
+  state.updateSquadron(sourceSquadronId, sourceSquad)
+  state.updateSquadron(targetSquadronId, targetSquad)
 
   logFleet(
     &"TransferShipBetweenSquadrons: Transferred ship from {sourceSquadronId} to {targetSquadronId}"
@@ -1382,7 +1382,7 @@ proc executeAssignSquadronToFleet*(
       # Remove from unassigned list
       colony.unassignedSquadronIds =
         colony.unassignedSquadronIds.filterIt(it != squadronId)
-      state.colonies.entities.updateEntity(colonyId, colony)
+      state.updateColony(colonyId, colony)
 
   if not foundInFleet and not foundInUnassigned:
     return ZeroTurnResult(
@@ -1396,7 +1396,7 @@ proc executeAssignSquadronToFleet*(
     )
 
   # Get squadron entity to check its type
-  let squadronOpt = state.squadrons[].entities.entity(squadronId)
+  let squadronOpt = state.squadron(squadronId)
   if squadronOpt.isNone:
     return ZeroTurnResult(
       success: false,
@@ -1416,7 +1416,7 @@ proc executeAssignSquadronToFleet*(
     if srcFleetOpt.isSome:
       var srcFleet = srcFleetOpt.get()
       srcFleet.squadrons = srcFleet.squadrons.filterIt(it != squadronId)
-      state.fleets.entities.updateEntity(sourceFleetId.get(), srcFleet)
+      state.updateFleet(sourceFleetId.get(), srcFleet)
 
       # If source fleet is now empty, remove it and clean up orders (DRY helper)
       if srcFleet.squadrons.len == 0:
@@ -1462,7 +1462,7 @@ proc executeAssignSquadronToFleet*(
 
     # Check existing squadrons in fleet
     for existingSquadronId in targetFleet.squadrons:
-      let existingSquadOpt = state.squadrons[].entities.entity(existingSquadronId)
+      let existingSquadOpt = state.squadron(existingSquadronId)
       if existingSquadOpt.isSome:
         let existingSquad = existingSquadOpt.get()
         if existingSquad.squadronType == SquadronClass.Intel:
@@ -1495,7 +1495,7 @@ proc executeAssignSquadronToFleet*(
       )
 
     targetFleet.squadrons.add(squadronId)
-    state.fleets.entities.updateEntity(targetId, targetFleet)
+    state.updateFleet(targetId, targetFleet)
     resultFleetId = targetId
     logFleet(
       &"AssignSquadronToFleet: Assigned squadron {squadronId} to existing fleet {targetId}"
@@ -1522,7 +1522,7 @@ proc executeAssignSquadronToFleet*(
     )
 
     # Add to entity manager and update indexes
-    state.fleets.entities.addEntity(newFleetId, newFleet)
+    state.addFleet(newFleetId, newFleet)
     state.fleets.bySystem.mgetOrPut(colonySystem, @[]).add(newFleetId)
     state.fleets.byOwner.mgetOrPut(cmd.houseId, @[]).add(newFleetId)
 
@@ -1569,7 +1569,7 @@ proc executeLoadFighters*(
     )
 
   # Get carrier squadron via entity manager
-  let carrierSquadOpt = state.squadrons[].entities.entity(carrierSquadronId)
+  let carrierSquadOpt = state.squadron(carrierSquadronId)
   if carrierSquadOpt.isNone:
     return ZeroTurnResult(
       success: false, error: "Carrier squadron entity not found", warnings: @[]
@@ -1623,7 +1623,7 @@ proc executeLoadFighters*(
     let fighterSquadronId = colony.fighterSquadronIds[fighterIdx]
 
     # Get fighter squadron entity for logging
-    let fighterSquadOpt = state.squadrons[].entities.entity(fighterSquadronId)
+    let fighterSquadOpt = state.squadron(fighterSquadronId)
     if fighterSquadOpt.isNone:
       warnings.add(&"Fighter squadron {fighterSquadronId} not found, skipping")
       continue
@@ -1643,10 +1643,10 @@ proc executeLoadFighters*(
     )
 
   # Update carrier squadron in entity manager
-  state.squadrons[].entities.updateEntity(carrierSquadronId, carrierSquadron)
+  state.updateSquadron(carrierSquadronId, carrierSquadron)
 
   # Update colony in entity manager
-  state.colonies.entities.updateEntity(colonyId, colony)
+  state.updateColony(colonyId, colony)
 
   return ZeroTurnResult(
     success: true, error: "", fightersLoaded: loadedCount, warnings: warnings
@@ -1676,7 +1676,7 @@ proc executeUnloadFighters*(
     )
 
   # Get carrier squadron via entity manager
-  let carrierSquadOpt = state.squadrons[].entities.entity(carrierSquadronId)
+  let carrierSquadOpt = state.squadron(carrierSquadronId)
   if carrierSquadOpt.isNone:
     return ZeroTurnResult(
       success: false, error: "Carrier squadron entity not found", warnings: @[]
@@ -1728,10 +1728,10 @@ proc executeUnloadFighters*(
     unloadedCount += 1
 
   # Update carrier squadron in entity manager
-  state.squadrons[].entities.updateEntity(carrierSquadronId, carrierSquadron)
+  state.updateSquadron(carrierSquadronId, carrierSquadron)
 
   # Update colony in entity manager
-  state.colonies.entities.updateEntity(colonyId, colony)
+  state.updateColony(colonyId, colony)
 
   return ZeroTurnResult(
     success: true, error: "", fightersUnloaded: unloadedCount, warnings: warnings
@@ -1763,7 +1763,7 @@ proc executeTransferFighters*(
     )
 
   # Get source carrier squadron via entity manager
-  let sourceCarrierOpt = state.squadrons[].entities.entity(sourceCarrierSquadronId)
+  let sourceCarrierOpt = state.squadron(sourceCarrierSquadronId)
   if sourceCarrierOpt.isNone:
     return ZeroTurnResult(
       success: false, error: "Source carrier squadron entity not found", warnings: @[]

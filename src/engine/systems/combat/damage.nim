@@ -5,7 +5,7 @@
 
 import std/[options, tables]
 import ../../types/[core, combat as combat_types, squadron, ship]
-import ../../state/entity_manager
+import ../../state/engine
 import ../squadron/entity as squadron_entity
 
 export combat_types
@@ -108,7 +108,7 @@ proc applyDamageToFacility*(
   if facility.state == CombatState.Destroyed:
     return StateChange(
       targetId:
-        CombatTargetId(kind: CombatTargetKind.Facility, facilityId: facility.facilityId),
+        CombatTargetId(kind: CombatTargetKind.Facility, kastraId: facility.facilityId),
       fromState: initialState,
       toState: initialState,
       destructionProtectionApplied: false,
@@ -139,7 +139,7 @@ proc applyDamageToFacility*(
           # Destruction protection applies - stays crippled
           return StateChange(
             targetId: CombatTargetId(
-              kind: CombatTargetKind.Facility, facilityId: facility.facilityId
+              kind: CombatTargetKind.Facility, kastraId: facility.facilityId
             ),
             fromState: initialState,
             toState: CombatState.Crippled,
@@ -156,7 +156,7 @@ proc applyDamageToFacility*(
 
   return StateChange(
     targetId:
-      CombatTargetId(kind: CombatTargetKind.Facility, facilityId: facility.facilityId),
+      CombatTargetId(kind: CombatTargetKind.Facility, kastraId: facility.facilityId),
     fromState: initialState,
     toState: newState,
     destructionProtectionApplied: false,
@@ -177,15 +177,12 @@ proc resetRoundDamage*(facility: var CombatFacility) =
 ## Critical Hit Special Rules (Section 7.3.3)
 
 proc findWeakestSquadron*(
-    combatSquadrons: seq[CombatSquadron], squadrons: Squadrons, ships: Ships
+    combatSquadrons: seq[CombatSquadron], state: GameState
 ): Option[SquadronId] =
   ## Find squadron with lowest current DS in combat squadrons list
   ## Used for Force Reduction when critical hit can't reduce selected target
   ##
-  ## Following DoD pattern:
-  ## - Takes combat state (seq[CombatSquadron]) as parameter
-  ## - Takes entity access (Squadrons, Ships) for DS calculation
-  ## - Returns ID, not embedded object
+  ## Refactored to use GameState public API (2025-12-14)
 
   if combatSquadrons.len == 0:
     return none(SquadronId)
@@ -199,12 +196,12 @@ proc findWeakestSquadron*(
       continue
 
     # Get Squadron entity to calculate DS
-    let squadronOpt = squadrons.entities.entity(combatSq.squadronId)
+    let squadronOpt = state.squadron(combatSq.squadronId)
     if squadronOpt.isNone:
       continue
 
     let squadron = squadronOpt.get()
-    let ds = squadron_entity.defenseStrength(squadron, ships)
+    let ds = state.defenseStrength(squadron)
 
     if ds < lowestDS:
       lowestDS = ds
@@ -218,16 +215,12 @@ proc applyForceReduction*(
     damage: int32,
     defenseStrength: int32,
     roundNumber: int32,
-    squadrons: Squadrons,
-    ships: Ships,
+    state: GameState,
 ): StateChange =
   ## Apply Force Reduction rule for critical hits (Section 7.3.3)
   ## If insufficient damage to reduce target, reduce weakest unit instead
   ##
-  ## Following DoD pattern:
-  ## - Takes combat state (var seq[CombatSquadron]) for mutation
-  ## - Takes entity access (Squadrons, Ships) for DS calculations
-  ## - Modifies combat state in place
+  ## Refactored to use GameState public API (2025-12-14)
 
   # Find target squadron in combat state
   var targetIdx = -1
@@ -261,7 +254,7 @@ proc applyForceReduction*(
     return targetChange
 
   # Target not reduced - find weakest squadron for Force Reduction
-  let weakestIdOpt = findWeakestSquadron(combatSquadrons, squadrons, ships)
+  let weakestIdOpt = findWeakestSquadron(combatSquadrons, state)
   if weakestIdOpt.isNone:
     # No valid target found, damage wasted
     return targetChange
@@ -279,12 +272,12 @@ proc applyForceReduction*(
     return targetChange
 
   # Get weakest squadron's DS for damage application
-  let weakestSquadronOpt = squadrons.entities.entity(weakestId)
+  let weakestSquadronOpt = state.squadron(weakestId)
   if weakestSquadronOpt.isNone:
     return targetChange
 
   let weakestSquadron = weakestSquadronOpt.get()
-  let weakestDS = squadron_entity.defenseStrength(weakestSquadron, ships).int32
+  let weakestDS = state.defenseStrength(weakestSquadron).int32
 
   # Apply damage to weakest squadron
   var weakestCombatSq = combatSquadrons[weakestIdx]
@@ -396,7 +389,7 @@ proc `$`*(change: StateChange): string =
   of CombatTargetKind.Squadron:
     result = "Squadron " & $change.targetId.squadronId & ": "
   of CombatTargetKind.Facility:
-    result = "Facility " & $change.targetId.facilityId & ": "
+    result = "Facility " & $change.targetId.kastraId & ": "
   result &= $change.fromState & " → " & $change.toState
   if change.destructionProtectionApplied:
     result &= " (destruction protection applied)"

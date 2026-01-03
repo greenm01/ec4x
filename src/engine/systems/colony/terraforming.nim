@@ -8,8 +8,8 @@
 ## called from turn_cycle/income_phase.nim
 
 import std/[tables, options, logging, strformat]
-import ../../types/[game_state, command, event]
-import ../../state/entity_manager
+import ../../types/[core, game_state, command, event, starmap]
+import ../../state/engine
 import ../tech/[costs as res_costs, effects as res_effects]
 import ../../event_factory/init as event_factory
 
@@ -19,8 +19,8 @@ proc resolveTerraformCommands*(
   ## Process terraforming commands - initiate new terraforming projects
   ## Per economy.md Section 4.7
   for command in packet.terraformCommands:
-    # Validate colony exists and is owned by house using entity_manager
-    let colonyOpt = state.colonies.entities.entity(command.colonyId)
+    # Validate colony exists and is owned by house
+    let colonyOpt = state.colony(command.colonyId)
     if colonyOpt.isNone:
       error "Terraforming failed: System-", command.colonyId, " has no colony"
       continue
@@ -37,8 +37,8 @@ proc resolveTerraformCommands*(
         command.colonyId, " already has active terraforming project"
       continue
 
-    # Get house tech level using entity_manager
-    let houseOpt = state.houses.entities.entity(packet.houseId)
+    # Get house tech level
+    let houseOpt = state.house(packet.houseId)
     if houseOpt.isNone:
       error "Terraforming failed: House ", packet.houseId, " not found"
       continue
@@ -66,10 +66,10 @@ proc resolveTerraformCommands*(
         ppCost, ", have ", house.treasury, ")"
       continue
 
-    # Deduct PP cost from house treasury using entity_manager
+    # Deduct PP cost from house treasury
     var houseToUpdate = house
     houseToUpdate.treasury -= ppCost
-    state.houses.entities.updateEntity(packet.houseId, houseToUpdate)
+    state.updateHouse(packet.houseId, houseToUpdate)
 
     # Create terraforming project
     let project = TerraformProject(
@@ -81,7 +81,7 @@ proc resolveTerraformCommands*(
     )
 
     colony.activeTerraforming = some(project)
-    state.colonies.entities.updateEntity(command.colonyId, colony)
+    state.updateColony(command.colonyId, colony)
 
     let className =
       case targetClass
@@ -119,8 +119,8 @@ proc processTerraformingProjects*(state: var GameState, events: var seq[GameEven
 
     let houseId = colony.owner
 
-    # Get house using entity_manager
-    let houseOpt = state.houses.entities.entity(houseId)
+    # Get house
+    let houseOpt = state.house(houseId)
     if houseOpt.isNone:
       continue
 
@@ -159,5 +159,5 @@ proc processTerraformingProjects*(state: var GameState, events: var seq[GameEven
       # Update project
       colonyMut.activeTerraforming = some(project)
 
-    # Write back using entity_manager
-    state.colonies.entities.updateEntity(colonyId, colonyMut)
+    # Write back (cast SystemId → ColonyId, 1:1 relationship)
+    state.updateColony(ColonyId(colonyId), colonyMut)

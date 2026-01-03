@@ -286,7 +286,7 @@ proc commissionPlanetaryDefense*(
       completed.projectType == BuildType.Facility and
       completed.itemId == "FighterSquadron"
     ) or (completed.projectType == BuildType.Ship and completed.itemId == "Fighter"):
-      if completed.colonyId in state.colonies.entities.index:
+      if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
@@ -345,7 +345,7 @@ proc commissionPlanetaryDefense*(
     # Special handling for starbases
     elif completed.projectType == BuildType.Facility and completed.itemId == "Starbase":
       # Commission starbase at colony using DoD
-      if completed.colonyId in state.colonies.entities.index:
+      if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
@@ -379,7 +379,7 @@ proc commissionPlanetaryDefense*(
 
     # Special handling for spaceports
     elif completed.projectType == BuildType.Facility and completed.itemId == "Spaceport":
-      if completed.colonyId in state.colonies.entities.index:
+      if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
@@ -411,7 +411,7 @@ proc commissionPlanetaryDefense*(
 
     # Special handling for shipyards
     elif completed.projectType == BuildType.Facility and completed.itemId == "Shipyard":
-      if completed.colonyId in state.colonies.entities.index:
+      if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
@@ -452,7 +452,7 @@ proc commissionPlanetaryDefense*(
 
     # Special handling for drydocks
     elif completed.projectType == BuildType.Facility and completed.itemId == "Drydock":
-      if completed.colonyId in state.colonies.entities.index:
+      if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
@@ -492,7 +492,7 @@ proc commissionPlanetaryDefense*(
     # Special handling for ground batteries
     elif completed.projectType == BuildType.Facility and
         completed.itemId == "GroundBattery":
-      if completed.colonyId in state.colonies.entities.index:
+      if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
@@ -530,7 +530,7 @@ proc commissionPlanetaryDefense*(
     # Special handling for planetary shields (replacement, not upgrade)
     elif completed.projectType == BuildType.Facility and
         completed.itemId.startsWith("PlanetaryShield"):
-      if completed.colonyId in state.colonies.entities.index:
+      if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
@@ -559,7 +559,7 @@ proc commissionPlanetaryDefense*(
     # Special handling for Marines (MD)
     elif completed.projectType == BuildType.Facility and
         (completed.itemId == "Marine" or completed.itemId == "marine_division"):
-      if completed.colonyId in state.colonies.entities.index:
+      if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
@@ -619,7 +619,7 @@ proc commissionPlanetaryDefense*(
     # Special handling for Armies (AA)
     elif completed.projectType == BuildType.Facility and
         (completed.itemId == "Army" or completed.itemId == "army"):
-      if completed.colonyId in state.colonies.entities.index:
+      if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
