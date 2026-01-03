@@ -147,13 +147,7 @@ proc autoLoadFightersToCarriers(
     # Get all carrier squadrons in fleets at this system
     var carriersWithSpace: seq[tuple[squadronId: SquadronId, availableSpace: int]] = @[]
 
-    for fleetId in state.fleets.bySystem[systemId]:
-      let fleetOpt = state.fleet(fleetId)
-      if fleetOpt.isNone:
-        continue
-
-      let fleet = fleetOpt.get()
-
+    for fleet in state.fleetsInSystem(systemId):
       # Only load onto friendly fleets
       if fleet.houseId != colony.owner:
         continue
@@ -713,31 +707,25 @@ proc commissionScout(
   # 3. Find existing scout fleet at this location, or create new one
   var scoutFleetId: FleetId = FleetId(0)
 
-  if systemId in state.fleets.bySystem:
-    for fleetId in state.fleets.bySystem[systemId]:
-      let fleetOpt = state.fleet(fleetId)
-      if fleetOpt.isNone:
-        continue
-      let fleet = fleetOpt.get()
+  for fleet in state.fleetsInSystem(systemId):
+    if fleet.houseId != owner:
+      continue
 
-      if fleet.houseId != owner:
-        continue
-
-      # Check if this is a pure scout fleet (only scout squadrons)
-      var isPureScoutFleet = fleet.squadrons.len > 0
-      for sqId in fleet.squadrons:
-        let sqOpt = state.squadron(sqId)
-        if sqOpt.isNone:
-          isPureScoutFleet = false
-          break
-        let sq = sqOpt.get()
-        if sq.squadronType != SquadronClass.Intel:
-          isPureScoutFleet = false
-          break
-
-      if isPureScoutFleet:
-        scoutFleetId = fleetId
+    # Check if this is a pure scout fleet (only scout squadrons)
+    var isPureScoutFleet = fleet.squadrons.len > 0
+    for sqId in fleet.squadrons:
+      let sqOpt = state.squadron(sqId)
+      if sqOpt.isNone:
+        isPureScoutFleet = false
         break
+      let sq = sqOpt.get()
+      if sq.squadronType != SquadronClass.Intel:
+        isPureScoutFleet = false
+        break
+
+    if isPureScoutFleet:
+      scoutFleetId = fleet.id
+      break
 
   # 4. Add squadron to fleet (existing or new)
   if scoutFleetId != FleetId(0):
@@ -860,33 +848,27 @@ proc commissionCapitalShip(
   # 3. Find existing combat fleet at this location, or create new one
   var combatFleetId: FleetId = FleetId(0)
 
-  if systemId in state.fleets.bySystem:
-    for fleetId in state.fleets.bySystem[systemId]:
-      let fleetOpt = state.fleet(fleetId)
-      if fleetOpt.isNone:
+  for fleet in state.fleetsInSystem(systemId):
+    if fleet.houseId != owner:
+      continue
+
+    # Check if this is a combat fleet (not pure scout/spacelift)
+    # Combat fleets contain capital ships and/or fighters
+    var isCombatFleet = false
+    for sqId in fleet.squadrons:
+      let sqOpt = state.squadron(sqId)
+      if sqOpt.isNone:
         continue
-      let fleet = fleetOpt.get()
+      let sq = sqOpt.get()
 
-      if fleet.houseId != owner:
-        continue
-
-      # Check if this is a combat fleet (not pure scout/spacelift)
-      # Combat fleets contain capital ships and/or fighters
-      var isCombatFleet = false
-      for sqId in fleet.squadrons:
-        let sqOpt = state.squadron(sqId)
-        if sqOpt.isNone:
-          continue
-        let sq = sqOpt.get()
-
-        # Combat fleet types: Combat (capital ships), Fighter
-        if sq.squadronType in [SquadronClass.Combat, SquadronClass.Fighter]:
-          isCombatFleet = true
-          break
-
-      if isCombatFleet:
-        combatFleetId = fleetId
+      # Combat fleet types: Combat (capital ships), Fighter
+      if sq.squadronType in [SquadronClass.Combat, SquadronClass.Fighter]:
+        isCombatFleet = true
         break
+
+    if isCombatFleet:
+      combatFleetId = fleet.id
+      break
 
   # 4. Add squadron to fleet (existing or new)
   if combatFleetId != FleetId(0):

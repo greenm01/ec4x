@@ -68,14 +68,7 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
   let cstLevel = house.techTree.levels.cst
 
   # Iterate over all colonies owned by this house
-  if houseId notin state.colonies.byOwner:
-    return
-
-  for colonyId in state.colonies.byOwner[houseId]:
-    let colonyOpt = state.colony(colonyId)
-    if colonyOpt.isNone:
-      continue
-    let colony = colonyOpt.get()
+  for colony in state.coloniesOwned(houseId):
 
     # Update spaceport capacities
     for spaceportId in colony.spaceportIds:

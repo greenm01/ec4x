@@ -1355,9 +1355,8 @@ proc resolveBattle*(
         if colony.spaceportIds.len == 0 and colony.shipyardIds.len == 0:
           facility_damage.clearAllConstructionQueues(colony, state)
 
-        # Update colony with destroyed facilities (using entity_manager)
-        let colonyId = state.colonies.bySystem[systemId]
-        state.updateColony(colonyId, colony)
+        # Update colony with destroyed facilities
+        state.updateColony(colony.id, colony)
     
         # Generate events for screened facility destruction
         if facilitiesDestroyed > 0:
@@ -1375,8 +1374,8 @@ proc resolveBattle*(
   if systemOwner.isSome:
     let colonyOpt = state.colonyBySystem(systemId)
     if colonyOpt.isSome:
-      let colonyId = state.colonies.bySystem[systemId]
       var colony = colonyOpt.get()
+      let colonyId = colony.id
       var survivingKastraIds: seq[KastraId] = @[]
 
       # Iterate over kastra IDs and update entities
@@ -1401,8 +1400,8 @@ proc resolveBattle*(
   if systemOwner.isSome:
     let colonyOpt = state.colonyBySystem(systemId)
     if colonyOpt.isSome:
-      let colonyId = state.colonies.bySystem[systemId]
       var colony = colonyOpt.get()
+      let colonyId = colony.id
       var survivingUnassignedIds: seq[SquadronId] = @[]
 
       # Iterate over squadron IDs and update entities

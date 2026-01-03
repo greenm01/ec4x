@@ -91,7 +91,7 @@ proc hasColonyIntel*(state: GameState, houseId: HouseId, systemId: SystemId): bo
 
   # Check if we have colony intel reports (reuse colonyOpt from above)
   if colonyOpt.isSome:
-    let colonyId = state.colonies.bySystem[systemId]
+    let colonyId = colonyOpt.get().id
     if colonyId in intel.colonyReports:
       return true
 

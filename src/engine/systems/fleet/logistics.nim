@@ -1182,20 +1182,14 @@ proc executeTransferShipBetweenSquadrons*(
   var targetFleetId: Option[FleetId] = none(FleetId)
 
   # Locate source squadron by searching fleets at this colony
-  if state.fleets.bySystem.hasKey(colonySystem):
-    for fleetId in state.fleets.bySystem[colonySystem]:
-      let fleetOpt = state.fleet(fleetId)
-      if fleetOpt.isNone:
-        continue
+  for fleet in state.fleetsInSystem(colonySystem):
+    if fleet.houseId != cmd.houseId:
+      continue
 
-      let fleet = fleetOpt.get()
-      if fleet.houseId != cmd.houseId:
-        continue
-
-      # Check if this fleet has the source squadron
-      if sourceSquadronId in fleet.squadrons:
-        sourceFleetId = some(fleetId)
-        break
+    # Check if this fleet has the source squadron
+    if sourceSquadronId in fleet.squadrons:
+      sourceFleetId = some(fleet.id)
+      break
 
   if sourceFleetId.isNone:
     return ZeroTurnResult(
@@ -1209,20 +1203,14 @@ proc executeTransferShipBetweenSquadrons*(
     )
 
   # Locate target squadron
-  if state.fleets.bySystem.hasKey(colonySystem):
-    for fleetId in state.fleets.bySystem[colonySystem]:
-      let fleetOpt = state.fleet(fleetId)
-      if fleetOpt.isNone:
-        continue
+  for fleet in state.fleetsInSystem(colonySystem):
+    if fleet.houseId != cmd.houseId:
+      continue
 
-      let fleet = fleetOpt.get()
-      if fleet.houseId != cmd.houseId:
-        continue
-
-      # Check if this fleet has the target squadron
-      if targetSquadronId in fleet.squadrons:
-        targetFleetId = some(fleetId)
-        break
+    # Check if this fleet has the target squadron
+    if targetSquadronId in fleet.squadrons:
+      targetFleetId = some(fleet.id)
+      break
 
   if targetFleetId.isNone:
     return ZeroTurnResult(
@@ -1368,22 +1356,16 @@ proc executeAssignSquadronToFleet*(
   var foundInFleet = false
   var sourceFleetId: Option[FleetId] = none(FleetId)
 
-  # Search fleets at colony using bySystem index
-  if state.fleets.bySystem.hasKey(colonySystem):
-    for fleetId in state.fleets.bySystem[colonySystem]:
-      let fleetOpt = state.fleet(fleetId)
-      if fleetOpt.isNone:
-        continue
+  # Search fleets at colony
+  for fleet in state.fleetsInSystem(colonySystem):
+    if fleet.houseId != cmd.houseId:
+      continue
 
-      let fleet = fleetOpt.get()
-      if fleet.houseId != cmd.houseId:
-        continue
-
-      # Check if squadron is in this fleet
-      if squadronId in fleet.squadrons:
-        foundInFleet = true
-        sourceFleetId = some(fleetId)
-        break
+    # Check if squadron is in this fleet
+    if squadronId in fleet.squadrons:
+      foundInFleet = true
+      sourceFleetId = some(fleet.id)
+      break
 
   # If not found in fleets, check unassigned squadrons at colony
   var foundInUnassigned = false
@@ -1795,23 +1777,17 @@ proc executeTransferFighters*(
   if targetCarrierSquadronId in sourceFleet.squadrons:
     targetFleetId = some(sourceFleetId)
   else:
-    # Search other fleets at same location using bySystem index
-    if state.fleets.bySystem.hasKey(sourceLocation):
-      for fleetId in state.fleets.bySystem[sourceLocation]:
-        if fleetId == sourceFleetId:
-          continue # Already checked
+    # Search other fleets at same location
+    for fleet in state.fleetsInSystem(sourceLocation):
+      if fleet.id == sourceFleetId:
+        continue # Already checked
 
-        let fleetOpt = state.fleet(fleetId)
-        if fleetOpt.isNone:
-          continue
+      if fleet.houseId != cmd.houseId:
+        continue
 
-        let fleet = fleetOpt.get()
-        if fleet.houseId != cmd.houseId:
-          continue
-
-        if targetCarrierSquadronId in fleet.squadrons:
-          targetFleetId = some(fleetId)
-          break
+      if targetCarrierSquadronId in fleet.squadrons:
+        targetFleetId = some(fleet.id)
+        break
 
   if targetFleetId.isNone:
     return ZeroTurnResult(
