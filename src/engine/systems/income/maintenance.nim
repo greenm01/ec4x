@@ -20,7 +20,7 @@ proc getShipMaintenanceCost*(
     shipClass: ShipClass,
     isCrippled: bool,
     fleetStatus: FleetStatus = FleetStatus.Active,
-): int =
+): int32 =
   ## Get maintenance cost for ship per turn
   ## Per economy.md:3.9 and ships.toml upkeep_cost field
   ##
@@ -32,7 +32,7 @@ proc getShipMaintenanceCost*(
   ##   - Mothballed: 0% maintenance
 
   let stats = gameConfig.ships.ships[shipClass]
-  let baseCost = int(stats.maintenanceCost)
+  let baseCost = stats.maintenanceCost
 
   # Mothballed ships have zero maintenance
   if fleetStatus == FleetStatus.Mothballed:
@@ -45,13 +45,13 @@ proc getShipMaintenanceCost*(
   # Active ships: full cost unless crippled
   if isCrippled:
     # Per combat.toml: crippled_maintenance_multiplier = 0.5
-    return int(
-      float(baseCost) * gameConfig.combat.damageRules.crippledMaintenanceMultiplier
+    return int32(
+      float32(baseCost) * gameConfig.combat.damageRules.crippledMaintenanceMultiplier
     )
   else:
     return baseCost
 
-proc calculateFleetMaintenance*(ships: seq[(ShipClass, bool)]): int =
+proc calculateFleetMaintenance*(ships: seq[(ShipClass, bool)]): int32 =
   ## Calculate total fleet maintenance
   ## Args: seq of (ship class, is crippled)
   result = 0
@@ -60,73 +60,91 @@ proc calculateFleetMaintenance*(ships: seq[(ShipClass, bool)]): int =
 
 ## Building and Facility Maintenance
 
-proc getSpaceportUpkeep*(): int =
+proc getSpaceportUpkeep*(): int32 =
   ## Get upkeep cost for spaceport per turn
-  ## Per facilities.toml: maintenance = buildCost * maintenancePercent
+  ## Per facilities.kdl: maintenance = buildCost * maintenancePercent
   let facility = gameConfig.facilities.facilities[FacilityClass.Spaceport]
-  return int(float(facility.buildCost) * facility.maintenancePercent)
+  return int32(float32(facility.buildCost) * facility.maintenancePercent)
 
-proc getShipyardUpkeep*(): int =
+proc getShipyardUpkeep*(): int32 =
   ## Get upkeep cost for shipyard per turn
-  ## Per facilities.toml: maintenance = buildCost * maintenancePercent
+  ## Per facilities.kdl: maintenance = buildCost * maintenancePercent
   let facility = gameConfig.facilities.facilities[FacilityClass.Shipyard]
-  return int(float(facility.buildCost) * facility.maintenancePercent)
+  return int32(float32(facility.buildCost) * facility.maintenancePercent)
 
-proc getStarbaseUpkeep*(): int =
+proc getStarbaseUpkeep*(): int32 =
   ## Get upkeep cost for starbase per turn
-  ## Per facilities.toml: maintenance = buildCost * maintenancePercent
+  ## Per facilities.kdl: maintenance = buildCost * maintenancePercent
   let facility = gameConfig.facilities.facilities[FacilityClass.Starbase]
-  return int(float(facility.buildCost) * facility.maintenancePercent)
+  return int32(float32(facility.buildCost) * facility.maintenancePercent)
 
-proc getGroundBatteryUpkeep*(): int =
+proc getDrydockUpkeep*(): int32 =
+  ## Get upkeep cost for drydock per turn
+  ## Per facilities.kdl: maintenance = buildCost * maintenancePercent
+  ## Drydock: 150 PP * 5% = 7.5 PP/turn
+  let facility = gameConfig.facilities.facilities[FacilityClass.Drydock]
+  return int32(float32(facility.buildCost) * facility.maintenancePercent)
+
+proc getGroundBatteryUpkeep*(): int32 =
   ## Get upkeep cost for ground battery per turn
   ## Ground batteries have no maintenance cost (defensive installations)
   return 0
 
-proc getPlanetaryShieldUpkeep*(): int =
+proc getPlanetaryShieldUpkeep*(): int32 =
   ## Get upkeep cost for planetary shield per turn
   ## Planetary shields have no maintenance cost (passive defense)
   return 0
 
-proc getArmyUpkeep*(): int =
+proc getArmyUpkeep*(): int32 =
   ## Get upkeep cost for army division per turn
-  ## Per ground_units.toml
-  return int(gameConfig.groundUnits.units[GroundClass.Army].maintenanceCost)
+  ## Per ground_units.kdl
+  return gameConfig.groundUnits.units[GroundClass.Army].maintenanceCost
 
-proc getMarineUpkeep*(): int =
+proc getMarineUpkeep*(): int32 =
   ## Get upkeep cost for marine division per turn
-  ## Per ground_units.toml
-  return int(gameConfig.groundUnits.units[GroundClass.Marine].maintenanceCost)
+  ## Per ground_units.kdl
+  return gameConfig.groundUnits.units[GroundClass.Marine].maintenanceCost
 
-proc getBuildingMaintenance*(buildingType: string): int =
-  ## Get maintenance cost for building (legacy compatibility)
-  ## Use specific functions above for new code
-  case buildingType
-  of "Shipyard":
-    return getShipyardUpkeep()
-  of "Spaceport":
-    return getSpaceportUpkeep()
-  of "ResearchLab":
-    # NOTE: Research labs are not implemented as physical buildings
-    # The game uses TRP (Technology Research Points) for research instead
-    # This is a legacy case preserved for backward compatibility
-    return 4
-  of "Starbase":
-    return getStarbaseUpkeep()
-  else:
-    return 2
-
-proc calculateColonyUpkeep*(colony: Colony): int =
+proc calculateColonyUpkeep*(state: GameState, colony: Colony): int32 =
   ## Calculate total upkeep for all facilities and defenses at colony
-  ## TODO: This function needs to be rewritten to use entity managers
-  ## For now, returning 0 until facility entity managers are accessible here
+  ## Uses entity managers to access Neorias and Kastras
   result = 0
 
-  # NOTE: Facilities are now in entity managers (state.spaceports, state.shipyards, etc.)
-  # This function needs GameState parameter to query them properly
-  # Legacy Colony type no longer has facility fields
+  # Neoria upkeep (Spaceports, Shipyards, Drydocks)
+  for neoriaId in colony.neoriaIds:
+    let neoriaOpt = state.neoria(neoriaId)
+    if neoriaOpt.isSome:
+      let neoria = neoriaOpt.get()
+      case neoria.neoriaClass
+      of NeoriaClass.Spaceport:
+        result += getSpaceportUpkeep()
+      of NeoriaClass.Shipyard:
+        result += getShipyardUpkeep()
+      of NeoriaClass.Drydock:
+        result += getDrydockUpkeep()
 
-proc calculateHouseMaintenanceCost*(state: GameState, houseId: HouseId): int =
+  # Kastra upkeep (Starbases)
+  for kastraId in colony.kastraIds:
+    let kastraOpt = state.kastra(kastraId)
+    if kastraOpt.isSome:
+      result += getStarbaseUpkeep()
+
+  # Ground unit upkeep
+  for groundUnitId in colony.groundUnitIds:
+    let unitOpt = state.groundUnit(groundUnitId)
+    if unitOpt.isSome:
+      let unit = unitOpt.get()
+      case unit.groundClass
+      of GroundClass.Army:
+        result += getArmyUpkeep()
+      of GroundClass.Marine:
+        result += getMarineUpkeep()
+      of GroundClass.GroundBattery:
+        result += getGroundBatteryUpkeep()
+      of GroundClass.PlanetaryShield:
+        result += getPlanetaryShieldUpkeep()
+
+proc calculateHouseMaintenanceCost*(state: GameState, houseId: HouseId): int32 =
   ## Calculate total maintenance cost for a house (fleets + colonies)
   ## This is a PURE calculation function for AI budget planning
   ## Does NOT deduct from treasury - just calculates the cost
@@ -163,29 +181,29 @@ proc calculateHouseMaintenanceCost*(state: GameState, houseId: HouseId): int =
 
   # Colony maintenance (facilities, ground forces)
   for colony in state.coloniesOwned(houseId):
-    result += calculateColonyUpkeep(colony)
+    result += calculateColonyUpkeep(state, colony)
 
 ## Infrastructure Repair
 
-proc calculateRepairCost*(damage: float): int =
+proc calculateRepairCost*(damage: float32): int32 =
   ## Calculate cost to repair infrastructure damage
   ## Per operations.md:6.2.6 - bombardment damages infrastructure
   ##
   ## Formula: damage * 100 PP
   ## Example: 0.1 damage (10%) = 10 PP to repair
   ## This represents the PP cost to restore damaged infrastructure
-  return int(damage * 100.0)
+  return int32(damage * 100.0'f32)
 
-proc applyRepair*(colony: var Colony, repairPoints: int): float =
+proc applyRepair*(colony: var Colony, repairPoints: int32): float32 =
   ## Apply repair points to damaged infrastructure
   ## Returns amount of damage repaired
-  if colony.infrastructureDamage <= 0.0:
-    return 0.0
+  if colony.infrastructureDamage <= 0.0'f32:
+    return 0.0'f32
 
   # Convert repair PP to damage reduction
   # Rate: 100 PP repairs 1.0 (100%) damage
   # This is the inverse of calculateRepairCost
-  let repairAmount = float(repairPoints) / 100.0
+  let repairAmount = float32(repairPoints) / 100.0'f32
 
   let actualRepair = min(repairAmount, colony.infrastructureDamage)
   colony.infrastructureDamage -= actualRepair
@@ -194,7 +212,7 @@ proc applyRepair*(colony: var Colony, repairPoints: int): float =
 
 ## Maintenance Shortfall (economy.md:3.11)
 
-proc applyMaintenanceShortfall*(colony: var Colony, shortfall: int) =
+proc applyMaintenanceShortfall*(colony: var Colony, shortfall: int32) =
   ## Apply consequences of maintenance shortfall
   ## Per economy.md:3.11
   ##
@@ -206,5 +224,5 @@ proc applyMaintenanceShortfall*(colony: var Colony, shortfall: int) =
   ## Full shortfall cascade system in maintenance_shortfall.nim
 
   if shortfall > 0:
-    let damageAmount = float(shortfall) / 1000.0 # 1% damage per 10 PP shortfall
-    colony.infrastructureDamage = min(1.0, colony.infrastructureDamage + damageAmount)
+    let damageAmount = float32(shortfall) / 1000.0'f32 # 1% damage per 10 PP shortfall
+    colony.infrastructureDamage = min(1.0'f32, colony.infrastructureDamage + damageAmount)

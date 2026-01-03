@@ -110,7 +110,7 @@ proc resolveIncomePhase*(
 
 proc calculateAndDeductMaintenanceUpkeep*(
     state: var GameState, events: var seq[event.GameEvent]
-): Table[HouseId, int] =
+): Table[HouseId, int32] =
   ## Calculate and deduct maintenance upkeep costs from house treasuries
   ## This implements Income Phase Step 3 (after Conflict Phase, before resource collection)
   ##
@@ -120,13 +120,13 @@ proc calculateAndDeductMaintenanceUpkeep*(
   ## - Deduct from treasuries
   ## - Generate MaintenancePaid events
   ##
-  ## Returns: Table[HouseId, int] of total maintenance costs per house (for reporting)
+  ## Returns: Table[HouseId, int32] of total maintenance costs per house (for reporting)
 
-  result = initTable[HouseId, int]()
+  result = initTable[HouseId, int32]()
 
   # Calculate upkeep and handle shortfalls for all houses
   for (houseId, house) in state.activeHousesWithId():
-    var totalUpkeep = 0
+    var totalUpkeep: int32 = 0
 
     # Fleet maintenance (surviving ships after Conflict Phase)
     for fleet in state.fleetsOwned(houseId):
@@ -158,7 +158,7 @@ proc calculateAndDeductMaintenanceUpkeep*(
 
     # Colony maintenance (facilities, ground forces)
     for colony in state.coloniesOwned(houseId):
-      totalUpkeep += calculateColonyUpkeep(colony)
+      totalUpkeep += calculateColonyUpkeep(state, colony)
 
     result[houseId] = totalUpkeep
 
@@ -189,7 +189,7 @@ proc calculateAndDeductMaintenanceUpkeep*(
     let houseOpt = state_helpers.house(state, houseId)
     if houseOpt.isSome:
       var updatedHouse = houseOpt.get()
-      updatedHouse.treasury -= int32(totalUpkeep)
+      updatedHouse.treasury -= totalUpkeep
       state.updateHouse(houseId, updatedHouse)
 
     # Generate MaintenancePaid event
