@@ -48,35 +48,14 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
 
   # Iterate over all colonies owned by this house
   for colony in state.coloniesOwned(houseId):
-
-    # Update spaceport capacities
-    for spaceportId in colony.spaceportIds:
-      let spaceportOpt = state.neoria(spaceportId)
-      if spaceportOpt.isNone:
+    # Update all neoria capacities (Spaceport, Shipyard, Drydock)
+    for neoriaId in colony.neoriaIds:
+      let neoriaOpt = state.neoria(neoriaId)
+      if neoriaOpt.isNone:
         continue
-      let spaceport = spaceportOpt.get()
-      let newDocks =
-        int32(effects.calculateEffectiveDocks(spaceport.baseDocks, cstLevel))
-      updateSpaceportDocks(state, spaceportId, newDocks)
-
-    # Update shipyard capacities
-    for shipyardId in colony.shipyardIds:
-      let shipyardOpt = state.neoria(shipyardId)
-      if shipyardOpt.isNone:
-        continue
-      let shipyard = shipyardOpt.get()
-      let newDocks =
-        int32(effects.calculateEffectiveDocks(shipyard.baseDocks, cstLevel))
-      updateShipyardDocks(state, shipyardId, newDocks)
-
-    # Update drydock capacities
-    for drydockId in colony.drydockIds:
-      let drydockOpt = state.neoria(drydockId)
-      if drydockOpt.isNone:
-        continue
-      let drydock = drydockOpt.get()
-      let newDocks = int32(effects.calculateEffectiveDocks(drydock.baseDocks, cstLevel))
-      updateDrydockDocks(state, drydockId, newDocks)
+      let neoria = neoriaOpt.get()
+      let newDocks = int32(effects.calculateEffectiveDocks(neoria.baseDocks, cstLevel))
+      updateNeoriaDocks(state, neoriaId, newDocks)
 
 ## Maximum Tech Levels (economy.md:4.0)
 ## Caps prevent wasteful investment once maximum research levels reached
