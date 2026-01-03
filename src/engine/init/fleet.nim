@@ -5,7 +5,7 @@
 import std/[options, tables, strutils]
 import ../types/[core, game_state, fleet, squadron, ship]
 import ../types/config/game_setup
-import ../state/[engine as gs_helper, id_gen, entity_manager]
+import ../state/[engine, id_gen]
 import ../entities/fleet_ops
 import ../utils
 
@@ -47,7 +47,7 @@ proc createStartingFleets*(
           capacity: ptuCapacity,
         ))
       # Get house's current weapons tech for ship stats
-      let house = state.houses.entities.entity(owner).get()
+      let house = state.house(owner).get()
       let weaponsTech = house.techTree.levels.wep
 
       let flagship = Ship(
@@ -65,7 +65,7 @@ proc createStartingFleets*(
       )
 
       # Add flagship to ship entity manager and index
-      state.ships.entities.addEntity(shipId, flagship)
+      state.addShip(shipId, flagship)
       state.ships.bySquadron.mgetOrPut(squadronId, @[]).add(shipId)
 
       # Create squadron with the flagship (manually, not via createSquadron)
@@ -81,10 +81,10 @@ proc createStartingFleets*(
       )
 
       # Add squadron to entity manager and indices
-      state.squadrons.entities.addEntity(squadronId, newSquadron)
+      state.addSquadron(squadronId, newSquadron)
       state.squadrons.byFleet.mgetOrPut(newFleet.id, @[]).add(squadronId)
 
       # Add squadron to fleet's squadron list
       var updatedFleet = state.fleet(newFleet.id).get()
       updatedFleet.squadrons.add(squadronId)
-      state.fleets.entities.updateEntity(newFleet.id, updatedFleet)
+      state.updateFleet(newFleet.id, updatedFleet)

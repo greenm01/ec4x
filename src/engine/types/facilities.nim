@@ -15,53 +15,46 @@ type
     baseDocks*: int32
     techRequirement*: int32
 
-  Starbase* = object
-    id*: StarbaseId
+  # Unified facility types (Neoria = production, Kastra = defense)
+  NeoriaClass* {.pure.} = enum
+    Spaceport
+    Shipyard
+    Drydock
+
+  KastraClass* {.pure.} = enum
+    Starbase
+
+  KastraStats* = object
+    ## Combat stats for defensive facilities (tech-modified at construction)
+    attackStrength*: int32
+    defenseStrength*: int32
+    wep*: int32  # WEP tech level at construction
+
+  Neoria* = object
+    ## Production and repair facilities (Spaceport, Shipyard, Drydock)
+    id*: NeoriaId
+    neoriaClass*: NeoriaClass
     colonyId*: ColonyId
     commissionedTurn*: int32
-    isCrippled*: bool
-
-  Starbases* = object
-    entities*: EntityManager[StarbaseId, Starbase]
-    byColony*: Table[ColonyId, seq[StarbaseId]]
-
-  Spaceport* = object
-    id*: SpaceportId
-    colonyId*: ColonyId
-    commissionedTurn*: int32
-    baseDocks*: int32
-    effectiveDocks*: int32
-    constructionQueue*: seq[ConstructionProjectId]
-    activeConstructions*: seq[ConstructionProjectId]
-
-  Spaceports* = object
-    entities*: EntityManager[SpaceportId, Spaceport]
-    byColony*: Table[ColonyId, seq[SpaceportId]]
-
-  Shipyard* = object
-    id*: ShipyardId
-    colonyId*: ColonyId
-    commissionedTurn*: int32
-    baseDocks*: int32
-    effectiveDocks*: int32
     isCrippled*: bool
     constructionQueue*: seq[ConstructionProjectId]
     activeConstructions*: seq[ConstructionProjectId]
-
-  Shipyards* = object
-    entities*: EntityManager[ShipyardId, Shipyard]
-    byColony*: Table[ColonyId, seq[ShipyardId]]
-
-  Drydock* = object
-    id*: DrydockId
-    colonyId*: ColonyId
-    commissionedTurn*: int32
-    baseDocks*: int32
-    effectiveDocks*: int32
-    isCrippled*: bool
     repairQueue*: seq[RepairProjectId]
     activeRepairs*: seq[RepairProjectId]
 
-  Drydocks* = object
-    entities*: EntityManager[DrydockId, Drydock]
-    byColony*: Table[ColonyId, seq[DrydockId]]
+  Neorias* = object
+    entities*: EntityManager[NeoriaId, Neoria]
+    byColony*: Table[ColonyId, seq[NeoriaId]]
+
+  Kastra* = object
+    ## Defensive military installations (Starbase)
+    id*: KastraId
+    kastraClass*: KastraClass
+    colonyId*: ColonyId
+    commissionedTurn*: int32
+    stats*: KastraStats
+    isCrippled*: bool
+
+  Kastras* = object
+    entities*: EntityManager[KastraId, Kastra]
+    byColony*: Table[ColonyId, seq[KastraId]]

@@ -50,18 +50,18 @@ proc totalCommandCost*(sq: Squadron, ships: Ships): int =
   ## Calculate total command cost of ships in squadron (excluding flagship)
   result = 0
   for shipId in sq.ships:
-    let ship = ships.entities.entity(shipId).get
+    let ship = ships.entity(shipId).get
     result += ship.commandCost()
 
 proc availableCommandCapacity*(sq: Squadron, ships: Ships): int =
   ## Calculate remaining command capacity
-  let flagship = ships.entities.entity(sq.flagshipId).get
+  let flagship = ships.entity(sq.flagshipId).get
   flagship.commandRating() - sq.totalCommandCost(ships)
 
 proc canAddShip*(sq: Squadron, shipId: ShipId, ships: Ships): bool =
   ## Check if ship can be added to squadron
   ## Ship's CC must not exceed available CR
-  let ship = ships.entities.entity(shipId).get
+  let ship = ships.entity(shipId).get
   if ship.commandCost() > sq.availableCommandCapacity(ships):
     return false
   return true
@@ -94,14 +94,14 @@ proc combatStrength*(sq: Squadron, ships: Ships): int =
   ## Uses effectiveAttackStrength which handles crippled ships (AS halved)
   result = 0
   for shipId in sq.allShipIds():
-    let ship = ships.entities.entity(shipId).get
+    let ship = ships.entity(shipId).get
     result += ship.effectiveAttackStrength()
 
 proc defenseStrength*(sq: Squadron, ships: Ships): int =
   ## Calculate total defense strength of squadron
   result = 0
   for shipId in sq.allShipIds():
-    let ship = ships.entities.entity(shipId).get
+    let ship = ships.entity(shipId).get
     result += ship.effectiveDefenseStrength()
 
 proc isEmpty*(sq: Squadron): bool =
@@ -115,7 +115,7 @@ proc shipCount*(sq: Squadron): int =
 proc hasCombatShips*(sq: Squadron, ships: Ships): bool =
   ## Check if squadron has combat-capable ships
   for shipId in sq.allShipIds():
-    let ship = ships.entities.entity(shipId).get
+    let ship = ships.entity(shipId).get
     if ship.stats.attackStrength > 0 and not ship.isCrippled:
       return true
   return false
@@ -130,7 +130,7 @@ proc crippleShip*(sq: var Squadron, index: int, ships: var Ships): bool =
   ## Index -1 means flagship
   ## Returns true if ship was crippled, false if already crippled or invalid
   if index == -1:
-    var flagship = ships.entities.entity(sq.flagshipId).get
+    var flagship = ships.entity(sq.flagshipId).get
     if flagship.isCrippled:
       return false
     flagship.isCrippled = true
@@ -141,7 +141,7 @@ proc crippleShip*(sq: var Squadron, index: int, ships: var Ships): bool =
     return false
 
   let shipId = sq.ships[index]
-  var ship = ships.entities.entity(shipId).get
+  var ship = ships.entity(shipId).get
   if ship.isCrippled:
     return false
 
@@ -153,32 +153,32 @@ proc crippleShip*(sq: var Squadron, index: int, ships: var Ships): bool =
 
 proc militaryShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all military ship IDs in squadron (non-transport ships)
-  sq.allShipIds().filterIt(not ships.entities.entity(it).get.isTransport())
+  sq.allShipIds().filterIt(not ships.entity(it).get.isTransport())
 
 proc spaceliftShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all transport ship IDs in squadron (ETAC/TroopTransport)
-  sq.allShipIds().filterIt(ships.entities.entity(it).get.isTransport())
+  sq.allShipIds().filterIt(ships.entity(it).get.isTransport())
 
 proc crippledShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all crippled ship IDs in squadron
-  sq.allShipIds().filterIt(ships.entities.entity(it).get.isCrippled)
+  sq.allShipIds().filterIt(ships.entity(it).get.isCrippled)
 
 proc effectiveShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all non-crippled ship IDs in squadron
-  sq.allShipIds().filterIt(not ships.entities.entity(it).get.isCrippled)
+  sq.allShipIds().filterIt(not ships.entity(it).get.isCrippled)
 
 proc scoutShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all ship IDs with scout capability (ELI tech)
-  sq.allShipIds().filterIt(ships.entities.entity(it).get.isScout())
+  sq.allShipIds().filterIt(ships.entity(it).get.isScout())
 
 proc hasScouts*(sq: Squadron, ships: Ships): bool =
   ## Check if squadron has any operational scouts
 
-  sq.scoutShips(ships).filterIt(not ships.entities.entity(it).get.isCrippled).len > 0
+  sq.scoutShips(ships).filterIt(not ships.entity(it).get.isCrippled).len > 0
 
 proc raiderShips*(sq: Squadron, ships: Ships): seq[ShipId] =
   ## Get all ship IDs with cloaking capability (CLK tech)
-  sq.allShipIds().filterIt(ships.entities.entity(it).get.isRaider())
+  sq.allShipIds().filterIt(ships.entity(it).get.isRaider())
 
 proc isCloaked*(sq: Squadron, ships: Ships): bool =
   ## Check if squadron has cloaking capability
@@ -189,7 +189,7 @@ proc isCloaked*(sq: Squadron, ships: Ships): bool =
 
   # Check no crippled raiders
   for shipId in raiders:
-    let ship = ships.entities.entity(shipId).get
+    let ship = ships.entity(shipId).get
     if ship.isCrippled:
       return false
 
@@ -230,7 +230,7 @@ proc isCloaked*(sq: Squadron, ships: Ships): bool =
 
 proc isCarrier*(sq: Squadron, ships: Ships): bool =
   ## Check if squadron flagship is a carrier (CV or CX)
-  let flagship = ships.entities.entity(sq.flagshipId).get
+  let flagship = ships.entity(sq.flagshipId).get
   return flagship.shipClass in [ShipClass.Carrier, ShipClass.SuperCarrier]
 
 proc getCarrierCapacity*(sq: Squadron, ships: Ships, acoLevel: int): int =
@@ -243,7 +243,7 @@ proc getCarrierCapacity*(sq: Squadron, ships: Ships, acoLevel: int): int =
   if not sq.isCarrier(ships):
     return 0
 
-  let flagship = ships.entities.entity(sq.flagshipId).get
+  let flagship = ships.entity(sq.flagshipId).get
   case flagship.shipClass
   of ShipClass.Carrier:
     # Per economy.md tech tables: ACO I (starting level) = 3FS, ACO II = 4FS, ACO III = 5FS

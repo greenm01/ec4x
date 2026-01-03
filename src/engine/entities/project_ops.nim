@@ -5,7 +5,7 @@
 ## as projects are queued, started, and completed.
 
 import std/[options, tables, sequtils]
-import ../state/[engine as gs_helpers, id_gen, entity_manager]
+import ../state/[engine, id_gen]
 import ../types/[core, game_state, production, facilities, colony]
 
 # --- Construction Projects ---
@@ -18,10 +18,19 @@ proc queueConstructionProject*(
   project.id = projectId
   project.colonyId = colonyId
 
-  state.constructionProjects.entities.addEntity(projectId, project)
+  state.addConstructionProject(projectId, project)
   state.constructionProjects.byColony.mgetOrPut(colonyId, @[]).add(projectId)
 
-  if project.facilityId.isSome and project.facilityType.isSome:
+  # NEW: Use typed NeoriaId directly - no more uint32 conversions!
+  if project.neoriaId.isSome:
+    let neoriaId = project.neoriaId.get()
+    state.constructionProjects.byNeoria.mgetOrPut(neoriaId, @[]).add(projectId)
+
+    var neoria = state.neoria(neoriaId).get()
+    neoria.constructionQueue.add(projectId)
+    state.updateNeoria(neoriaId, neoria)
+  # OLD: Keep for backward compatibility during migration
+  elif project.facilityId.isSome and project.facilityType.isSome:
     let facilityId = project.facilityId.get()
     let facilityType = project.facilityType.get()
     state.constructionProjects.byFacility.mgetOrPut((facilityType, facilityId), @[]).add(
@@ -29,19 +38,19 @@ proc queueConstructionProject*(
     )
     case facilityType
     of FacilityClass.Spaceport:
-      var spaceport = gs_helpers.spaceport(state, SpaceportId(facilityId)).get()
+      var spaceport = state.spaceport(SpaceportId(facilityId)).get()
       spaceport.constructionQueue.add(projectId)
-      state.spaceports.entities.updateEntity(SpaceportId(facilityId), spaceport)
+      state.updateSpaceport(SpaceportId(facilityId), spaceport)
     of FacilityClass.Shipyard:
-      var shipyard = gs_helpers.shipyard(state, ShipyardId(facilityId)).get()
+      var shipyard = state.shipyard(ShipyardId(facilityId)).get()
       shipyard.constructionQueue.add(projectId)
-      state.shipyards.entities.updateEntity(ShipyardId(facilityId), shipyard)
+      state.updateShipyard(ShipyardId(facilityId), shipyard)
     else:
       discard
   else:
-    var colony = gs_helpers.colony(state, colonyId).get()
+    var colony = state.colony(colonyId).get()
     colony.constructionQueue.add(projectId)
-    state.colonies.entities.updateEntity(colonyId, colony)
+    state.updateColony(colonyId, colony)
 
   return project
 
@@ -49,7 +58,7 @@ proc completeConstructionProject*(
     state: var GameState, projectId: ConstructionProjectId
 ) =
   ## Completes a construction project, removing it from active queues and indexes.
-  let projectOpt = gs_helpers.constructionProject(state, projectId)
+  let projectOpt = state.constructionProject(projectId)
   if projectOpt.isNone:
     return
   let project = projectOpt.get()
@@ -60,7 +69,22 @@ proc completeConstructionProject*(
         id != projectId
     )
 
-  if project.facilityId.isSome and project.facilityType.isSome:
+  # NEW: Use typed NeoriaId directly - clean and simple!
+  if project.neoriaId.isSome:
+    let neoriaId = project.neoriaId.get()
+    if state.constructionProjects.byNeoria.hasKey(neoriaId):
+      state.constructionProjects.byNeoria[neoriaId] = state.constructionProjects.byNeoria[
+        neoriaId
+      ].filterIt(it != projectId)
+
+    var neoria = state.neoria(neoriaId).get()
+    neoria.activeConstructions.keepIf(
+      proc(id: ConstructionProjectId): bool =
+        id != projectId
+    )
+    state.updateNeoria(neoriaId, neoria)
+  # OLD: Keep for backward compatibility during migration
+  elif project.facilityId.isSome and project.facilityType.isSome:
     let facilityId = project.facilityId.get()
     let facilityType = project.facilityType.get()
     let key = (facilityType, facilityId)
@@ -72,28 +96,28 @@ proc completeConstructionProject*(
 
     case facilityType
     of FacilityClass.Spaceport:
-      var spaceport = gs_helpers.spaceport(state, SpaceportId(facilityId)).get()
+      var spaceport = state.spaceport(SpaceportId(facilityId)).get()
       spaceport.activeConstructions.keepIf(
         proc(id: ConstructionProjectId): bool =
           id != projectId
       )
-      state.spaceports.entities.updateEntity(SpaceportId(facilityId), spaceport)
+      state.updateSpaceport(SpaceportId(facilityId), spaceport)
     of FacilityClass.Shipyard:
-      var shipyard = gs_helpers.shipyard(state, ShipyardId(facilityId)).get()
+      var shipyard = state.shipyard(ShipyardId(facilityId)).get()
       shipyard.activeConstructions.keepIf(
         proc(id: ConstructionProjectId): bool =
           id != projectId
       )
-      state.shipyards.entities.updateEntity(ShipyardId(facilityId), shipyard)
+      state.updateShipyard(ShipyardId(facilityId), shipyard)
     else:
       discard
   else:
-    var colony = gs_helpers.colony(state, project.colonyId).get()
+    var colony = state.colony(project.colonyId).get()
     if colony.underConstruction.isSome and colony.underConstruction.get() == projectId:
       colony.underConstruction = none(ConstructionProjectId)
-      state.colonies.entities.updateEntity(colony.id, colony)
+      state.updateColony(colony.id, colony)
 
-  state.constructionProjects.entities.removeEntity(projectId)
+  state.delConstructionProject(projectId)
 
 # --- Repair Projects ---
 
@@ -104,10 +128,19 @@ proc queueRepairProject*(
   project.id = projectId
   project.colonyId = colonyId
 
-  state.repairProjects.entities.addEntity(projectId, project)
+  state.addRepairProject(projectId, project)
   state.repairProjects.byColony.mgetOrPut(colonyId, @[]).add(projectId)
 
-  if project.facilityId.isSome:
+  # NEW: Use typed NeoriaId directly - no more uint32 conversions!
+  if project.neoriaId.isSome:
+    let neoriaId = project.neoriaId.get()
+    state.repairProjects.byNeoria.mgetOrPut(neoriaId, @[]).add(projectId)
+
+    var neoria = state.neoria(neoriaId).get()
+    neoria.repairQueue.add(projectId)
+    state.updateNeoria(neoriaId, neoria)
+  # OLD: Keep for backward compatibility during migration
+  elif project.facilityId.isSome:
     let facilityId = project.facilityId.get()
     let facilityType = project.facilityType
     state.repairProjects.byFacility.mgetOrPut((facilityType, facilityId), @[]).add(
@@ -116,16 +149,16 @@ proc queueRepairProject*(
 
     case facilityType
     of FacilityClass.Drydock:
-      var drydock = gs_helpers.drydock(state, DrydockId(facilityId)).get()
+      var drydock = state.drydock(DrydockId(facilityId)).get()
       drydock.repairQueue.add(projectId)
-      state.drydocks.entities.updateEntity(DrydockId(facilityId), drydock)
+      state.updateDrydock(DrydockId(facilityId), drydock)
     else:
       discard
 
   return project
 
 proc completeRepairProject*(state: var GameState, projectId: RepairProjectId) =
-  let projectOpt = gs_helpers.repairProject(state, projectId)
+  let projectOpt = state.repairProject(projectId)
   if projectOpt.isNone:
     return
   let project = projectOpt.get()
@@ -136,7 +169,22 @@ proc completeRepairProject*(state: var GameState, projectId: RepairProjectId) =
         id != projectId
     )
 
-  if project.facilityId.isSome:
+  # NEW: Use typed NeoriaId directly - clean and simple!
+  if project.neoriaId.isSome:
+    let neoriaId = project.neoriaId.get()
+    if state.repairProjects.byNeoria.hasKey(neoriaId):
+      state.repairProjects.byNeoria[neoriaId] = state.repairProjects.byNeoria[
+        neoriaId
+      ].filterIt(it != projectId)
+
+    var neoria = state.neoria(neoriaId).get()
+    neoria.activeRepairs.keepIf(
+      proc(id: RepairProjectId): bool =
+        id != projectId
+    )
+    state.updateNeoria(neoriaId, neoria)
+  # OLD: Keep for backward compatibility during migration
+  elif project.facilityId.isSome:
     let facilityId = project.facilityId.get()
     let facilityType = project.facilityType
     let key = (facilityType, facilityId)
@@ -148,13 +196,13 @@ proc completeRepairProject*(state: var GameState, projectId: RepairProjectId) =
 
     case facilityType
     of FacilityClass.Drydock:
-      var drydock = gs_helpers.drydock(state, DrydockId(facilityId)).get()
+      var drydock = state.drydock(DrydockId(facilityId)).get()
       drydock.activeRepairs.keepIf(
         proc(id: RepairProjectId): bool =
           id != projectId
       )
-      state.drydocks.entities.updateEntity(DrydockId(facilityId), drydock)
+      state.updateDrydock(DrydockId(facilityId), drydock)
     else:
       discard
 
-  state.repairProjects.entities.removeEntity(projectId)
+  state.delRepairProject(projectId)

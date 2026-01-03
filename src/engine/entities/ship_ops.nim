@@ -3,7 +3,7 @@
 ## Write API for creating, destroying, and modifying Ship entities.
 ## Ensures that the `bySquadron` secondary index is kept consistent.
 import std/[tables, sequtils, options]
-import ../state/[engine as gs_helper, id_gen, entity_manager]
+import ../state/[engine, id_gen]
 import ../types/[core, game_state, ship, squadron]
 import ../utils
 
@@ -19,7 +19,7 @@ proc createShip*(
   let config = shipConfig(shipClass)
   
   # Get house's current WEP tech level
-  let house = gs_helper.house(state, owner).get()
+  let house = state.house(owner).get()
   let weaponsTech = house.techTree.levels.wep
   
   # Apply WEP modifiers: +10% AS/DS per level above 1
@@ -41,22 +41,22 @@ proc createShip*(
   )
   
   # 1. Add to entity manager
-  state.ships.entities.addEntity(shipId, newShip)
+  state.updateShip(shipId, newShip)
 
   # 2. Update indexes
   state.ships.bySquadron.mgetOrPut(squadronId, @[]).add(shipId)
   state.ships.byHouse.mgetOrPut(owner, @[]).add(shipId)
 
   # 3. Add to squadron's ship list
-  var squadron = gs_helper.squadrons(state, squadronId).get()
+  var squadron = state.squadron(squadronId).get()
   squadron.ships.add(shipId)
-  state.squadrons[].entities.updateEntity(squadronId, squadron)
+  state.updateSquadron(squadronId, squadron)
   
   return newShip
 
 proc destroyShip*(state: var GameState, shipId: ShipId) =
   ## Destroys a ship, removing it from all collections and indexes.
-  let shipOpt = gs_helper.ship(state, shipId)
+  let shipOpt = state.ship(shipId)
   if shipOpt.isNone:
     return
   let ship = shipOpt.get()
@@ -70,19 +70,19 @@ proc destroyShip*(state: var GameState, shipId: ShipId) =
     )
 
   # 2. Remove from squadron's ship list
-  var squadron = gs_helper.squadrons(state, squadronId).get()
+  var squadron = state.squadron(squadronId).get()
   squadron.ships.keepIf(
     proc(id: ShipId): bool =
       id != shipId
   )
-  state.squadrons[].entities.updateEntity(squadronId, squadron)
+  state.updateSquadron(squadronId, squadron)
 
-  # 3. Remove from entity manager
-  state.ships.entities.removeEntity(shipId)
+  # 3. Delete from entity manager
+  state.delShip(shipId)
 
 proc transferShip*(state: var GameState, shipId: ShipId, newSquadronId: SquadronId) =
   ## Moves a ship from one squadron to another.
-  let shipOpt = gs_helper.ship(state, shipId)
+  let shipOpt = state.ship(shipId)
   if shipOpt.isNone:
     return
   var ship = shipOpt.get()
@@ -98,20 +98,18 @@ proc transferShip*(state: var GameState, shipId: ShipId, newSquadronId: Squadron
         id != shipId
     )
 
-  var oldSquadron = gs_helper.squadrons(state, oldSquadronId).get()
+  var oldSquadron = state.squadrons(oldSquadronId).get()
   oldSquadron.ships.keepIf(
     proc(id: ShipId): bool =
       id != shipId
   )
-  state.squadrons[].entities.updateEntity(oldSquadronId, oldSquadron)
-
+  state.updateSquadron(oldSquadronId, oldSquadron)
   # 2. Add to new squadron's bySquadron index and ship list
   state.ships.bySquadron.mgetOrPut(newSquadronId, @[]).add(shipId)
 
-  var newSquadron = gs_helper.squadrons(state, newSquadronId).get()
+  var newSquadron = state.squadron(newSquadronId).get()
   newSquadron.ships.add(shipId)
-  state.squadrons[].entities.updateEntity(newSquadronId, newSquadron)
-
+  state.updateSquadron(newSquadronId, newSquadron)
   # 3. Update the ship's own squadronId
   ship.squadronId = newSquadronId
-  state.ships.entities.updateEntity(shipId, ship)
+  state.updateShip(shipId, ship)

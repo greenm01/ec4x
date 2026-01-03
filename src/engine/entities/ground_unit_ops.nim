@@ -4,7 +4,7 @@
 ## Ensures consistency between the main `GroundUnits` collection and the
 ## ID lists within each `Colony` object.
 import std/[options, sequtils]
-import ../state/[id_gen, entity_manager, iterators]
+import ../state/[engine, id_gen, iterators]
 import ../types/[game_state, core, ground_unit, colony, combat]
 
 proc createGroundUnit*(
@@ -25,10 +25,10 @@ proc createGroundUnit*(
     garrison: GroundUnitGarrison(locationType: GroundUnitLocation.OnColony, colonyId: colonyId),
   )
 
-  state.groundUnits.entities.addEntity(unitId, newUnit)
+  state.addGroundUnit(unitId, newUnit)
 
   # Access colony from state
-  let colonyOpt = state.colonies.entities.entity(colonyId)
+  let colonyOpt = state.colonie(colonyId)
   if colonyOpt.isNone:
     return newUnit
 
@@ -42,57 +42,40 @@ proc createGroundUnit*(
     colony.groundBatteryIds.add(unitId)
   else:
     discard
-  state.colonies.entities.updateEntity(colonyId, colony)
+  state.updateColony(colonyId, colony)
 
   return newUnit
 
 proc destroyGroundUnit*(state: var GameState, unitId: GroundUnitId) =
   ## Destroys a ground unit, removing it from all collections.
-  let unitOpt = state.groundUnits.entities.entity(unitId)
+  let unitOpt = state.groundUnit(unitId)
   if unitOpt.isNone:
     return
   let unit = unitOpt.get()
 
-  var ownerColonyId: ColonyId = ColonyId(0)
-  for colId, col in state.colonies.entities.pairs():
-    case unit.stats.unitType
-    of GroundClass.Army:
-      if unitId in col.armyIds:
-        ownerColonyId = col.id
-    of GroundClass.Marine:
-      if unitId in col.marineIds:
-        ownerColonyId = col.id
-    of GroundClass.GroundBattery:
-      if unitId in col.groundBatteryIds:
-        ownerColonyId = col.id
-    else:
-      discard
-    if ownerColonyId != ColonyId(0):
-      break
+  # Use garrison.colonyId directly for O(1) lookup instead of O(n) iteration
+  if unit.garrison.locationType == GroundUnitLocation.OnColony:
+    let colonyOpt = state.colony(unit.garrison.colonyId)
+    if colonyOpt.isSome:
+      var colony = colonyOpt.get()
+      case unit.stats.unitType
+      of GroundClass.Army:
+        colony.armyIds.keepIf(
+          proc(id: GroundUnitId): bool =
+            id != unitId
+        )
+      of GroundClass.Marine:
+        colony.marineIds.keepIf(
+          proc(id: GroundUnitId): bool =
+            id != unitId
+        )
+      of GroundClass.GroundBattery:
+        colony.groundBatteryIds.keepIf(
+          proc(id: GroundUnitId): bool =
+            id != unitId
+        )
+      else:
+        discard
+      state.updateColony(unit.garrison.colonyId, colony)
 
-  if ownerColonyId != ColonyId(0):
-    let colonyOpt = state.colonies.entities.entity(ownerColonyId)
-    if colonyOpt.isNone:
-      return
-    var colony = colonyOpt.get()
-    case unit.stats.unitType
-    of GroundClass.Army:
-      colony.armyIds.keepIf(
-        proc(id: GroundUnitId): bool =
-          id != unitId
-      )
-    of GroundClass.Marine:
-      colony.marineIds.keepIf(
-        proc(id: GroundUnitId): bool =
-          id != unitId
-      )
-    of GroundClass.GroundBattery:
-      colony.groundBatteryIds.keepIf(
-        proc(id: GroundUnitId): bool =
-          id != unitId
-      )
-    else:
-      discard
-    state.colonies.entities.updateEntity(ownerColonyId, colony)
-
-  state.groundUnits.entities.removeEntity(unitId)
+  state.delGroundUnit(unitId)

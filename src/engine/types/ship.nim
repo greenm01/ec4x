@@ -67,10 +67,6 @@ type
 
 export Ships
 
-# Generate convenience entity() accessor: state.ships.entity(id)
-import ../state/entity_manager
-defineEntityAccessor(Ships, ShipId, Ship)
-
 const ShipClassRoles*: array[ShipClass, ShipRole] = [
   Corvette: ShipRole.Escort,
   Frigate: ShipRole.Escort,

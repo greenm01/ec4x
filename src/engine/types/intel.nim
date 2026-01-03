@@ -263,7 +263,7 @@ type
     travelRoute*: Option[seq[SystemId]]
     currentLocation*: Option[SystemId]
 
-  IntelligenceDatabase* = object
+  IntelDatabase* = object
     houseId*: HouseId # Back-reference
     colonyReports*: Table[ColonyId, ColonyIntelReport]
     orbitalReports*: Table[ColonyId, OrbitalIntelReport]

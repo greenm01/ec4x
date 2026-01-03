@@ -92,7 +92,7 @@ type
     targetWeight*: float32
 
   CombatFacility* = object
-    facilityId*: StarbaseId
+    facilityId*: KastraId
     systemId*: SystemId
     owner*: HouseId
     attackStrength*: int32

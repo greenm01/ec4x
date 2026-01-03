@@ -5,7 +5,7 @@ import std/[tables, options]
 import ../../types/[core, fleet, colony, squadron, ship]
 import ../../types/game_state as game_state_types
 import ../../state/[entity_manager, iterators]
-import ../../state/game_state
+import ../../state/engine
 # import ../intelligence/blockade_intel  # TODO: Module doesn't exist yet
 
 # =============================================================================
@@ -18,10 +18,6 @@ proc isSystemBlockaded*(
   ## Check if a system is currently blockaded by hostile forces
   ## Returns (isBlockaded, blockadingHouses)
   ## (O(1) lookup via fleetsByLocation index)
-  ##
-  ## Per operations.md:6.2.6:
-  ## "Fleets are ordered to blockade an enemy planet and do not engage
-  ##  in Space Combat unless confronted by enemy ships under order 05"
   ##
   ## Multiple empires can blockade the same planet if all are hostile
   ## to the colony owner. Blockade effects stack (still 60% reduction,
@@ -166,7 +162,7 @@ proc getBlockadingFleets*(state: GameState, systemId: SystemId): seq[Fleet] =
   result = @[]
 
   # Get colony using state helper (convert SystemId to ColonyId)
-  let colonyOpt = getColony(state, ColonyId(systemId))
+  let colonyOpt = state.colony(ColonyId(systemId))
   if colonyOpt.isNone:
     return result
 
@@ -178,11 +174,11 @@ proc getBlockadingFleets*(state: GameState, systemId: SystemId): seq[Fleet] =
       # Check if fleet has combat capability
       var hasCombatShips = false
       for sqId in fleet.squadrons:
-        let sqOpt = state.squadrons.entities.entity(sqId)
+        let sqOpt = state.squadron(sqId)
         if sqOpt.isSome:
           let squadron = sqOpt.get()
           for shipId in squadron.ships:
-            let shipOpt = state.ships.entities.entity(shipId)
+            let shipOpt = state.ship(shipId)
             if shipOpt.isSome:
               let ship = shipOpt.get()
               if ship.stats.attackStrength > 0:
@@ -214,22 +210,22 @@ proc canBreakBlockade*(state: GameState, systemId: SystemId, reliefFleet: Fleet)
   var blockaderStrength = 0
   for fleet in blockaders:
     for sqId in fleet.squadrons:
-      let sqOpt = state.squadrons.entities.entity(sqId)
+      let sqOpt = state.squadron(sqId)
       if sqOpt.isSome:
         let squadron = sqOpt.get()
         for shipId in squadron.ships:
-          let shipOpt = state.ships.entities.entity(shipId)
+          let shipOpt = state.ship(shipId)
           if shipOpt.isSome:
             let ship = shipOpt.get()
             blockaderStrength += ship.stats.attackStrength
 
   var reliefStrength = 0
   for sqId in reliefFleet.squadrons:
-    let sqOpt = state.squadrons.entities.entity(sqId)
+    let sqOpt = state.squadron(sqId)
     if sqOpt.isSome:
       let squadron = sqOpt.get()
       for shipId in squadron.ships:
-        let shipOpt = state.ships.entities.entity(shipId)
+        let shipOpt = state.ship(shipId)
         if shipOpt.isSome:
           let ship = shipOpt.get()
           reliefStrength += ship.stats.attackStrength

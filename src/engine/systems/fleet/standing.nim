@@ -16,7 +16,7 @@ import std/[tables, options, strformat, algorithm, sets, sequtils]
 import ../../../common/logger
 import ../../types/[core, game_state, command, fleet, squadron, starmap, intel, event]
 import ../../starmap
-import ../../state/[entity_manager, iterators, entity_helpers]
+import ../../state/[engine, entity_manager, iterators]
 import ../../event_factory/init as event_factory
 import ./movement # For findPath
 
@@ -69,7 +69,7 @@ proc getKnownSystems*(state: GameState, houseId: HouseId): HashSet[SystemId] =
 
   # 3. Enemy colonies we know about - map ColonyId to SystemId
   for colonyId in intel.colonyReports.keys:
-    let colonyOpt = state.colonies.entities.entity(colonyId)
+    let colonyOpt = state.colonie(colonyId)
     if colonyOpt.isSome:
       result.incl(colonyOpt.get().systemId)
 
@@ -124,7 +124,7 @@ proc getKnownEnemyFleetsInSystem*(
     let report = systemIntel.get()
     for fleetId in report.detectedFleetIds:
       # Only return fleets that are actually still there
-      let fleetOpt = state.fleets.entities.entity(fleetId)
+      let fleetOpt = state.fleet(fleetId)
       if fleetOpt.isSome:
         let fleet = fleetOpt.get()
         if fleet.location == systemId and fleet.houseId != houseId:
@@ -140,7 +140,7 @@ proc getKnownEnemyFleetsInSystem*(
       let lastSighting = history.sightings[^1] # Most recent sighting
       if lastSighting.systemId == systemId:
         # Verify fleet still exists and is at this location
-        let fleetOpt = state.fleets.entities.entity(fleetId)
+        let fleetOpt = state.fleet(fleetId)
         if fleetOpt.isSome:
           let fleet = fleetOpt.get()
           if fleet.location == systemId:
@@ -157,7 +157,7 @@ proc activatePatrolRoute(
 ): ActivationResult =
   ## Execute patrol route - move to next system in path
   ## Loops continuously through patrol path
-  let fleetOpt = state.fleets.entities.entity(fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     return ActivationResult(success: false, error: "Fleet does not exist")
   let fleet = fleetOpt.get()
@@ -171,7 +171,7 @@ proc activatePatrolRoute(
   )
 
   # Verify target system exists and is reachable
-  if state.systems.entities.entity(nextSystem).isNone:
+  if state.system(nextSystem).isNone:
     logWarn(
       "Orders",
       &"{fleetId} PatrolRoute failed: Target system {nextSystem} does not exist",
@@ -211,7 +211,7 @@ proc activateDefendSystem(
     state: var GameState, fleetId: FleetId, params: StandingCommandParams
 ): ActivationResult =
   ## Execute defend system - stay at target or return if moved away
-  let fleetOpt = state.fleets.entities.entity(fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     return ActivationResult(success: false, error: "Fleet does not exist")
   let fleet = fleetOpt.get()
@@ -226,7 +226,7 @@ proc activateDefendSystem(
     logError("Orders", &"[ENGINE ACTIVATION] {fleetId} DefendSystem: BUG - defendSystem is SystemId(0)!")
     return ActivationResult(success: false, error: "Invalid defend target (SystemId 0)")
 
-  if state.systems.entities.entity(targetSystem).isNone:
+  if state.system(targetSystem).isNone:
     logWarn("Orders", &"[ENGINE ACTIVATION] {fleetId} DefendSystem: Target system {targetSystem} does not exist")
     return ActivationResult(success: false, error: "Defend target system does not exist")
 
@@ -421,7 +421,7 @@ proc findColonizationTarget*(
       continue
 
     # Get planet class
-    let systemOpt = state.systems.entities.entity(systemId)
+    let systemOpt = state.system(systemId)
     if systemOpt.isNone:
       continue
     let planetClass = systemOpt.get().planetClass
@@ -588,7 +588,7 @@ proc activateAutoRepair(
 ): ActivationResult =
   ## Execute auto-repair - return to nearest shipyard when ships are crippled
   ## Triggers when crippled ship percentage exceeds threshold
-  let fleetOpt = state.fleets.entities.entity(fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     return ActivationResult(success: false, error: "Fleet does not exist")
   let fleet = fleetOpt.get()
@@ -598,14 +598,14 @@ proc activateAutoRepair(
   var crippledShips = 0
 
   for squadronId in fleet.squadrons:
-    let squadronOpt = state.squadrons.entities.entity(squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isNone:
       continue
     let squadron = squadronOpt.get()
 
     # Check flagship
     totalShips += 1
-    let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+    let flagshipOpt = state.ship(squadron.flagshipId)
     if flagshipOpt.isSome:
       let flagship = flagshipOpt.get()
       if flagship.isCrippled:
@@ -614,7 +614,7 @@ proc activateAutoRepair(
     # Include escort ships
     for shipId in squadron.ships:
       totalShips += 1
-      let shipOpt = state.ships.entities.entity(shipId)
+      let shipOpt = state.ship(shipId)
       if shipOpt.isSome:
         let ship = shipOpt.get()
         if ship.isCrippled:
@@ -724,7 +724,7 @@ proc activateAutoReinforce(
 ): ActivationResult =
   ## Execute auto-reinforce - join damaged friendly fleet
   ## Finds nearest damaged fleet and moves to join it
-  let fleetOpt = state.fleets.entities.entity(fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     return ActivationResult(success: false, error: "Fleet does not exist")
   let fleet = fleetOpt.get()
@@ -742,7 +742,7 @@ proc activateAutoReinforce(
   if params.reinforceTarget.isSome:
     # Specific target fleet
     let specificTarget = params.reinforceTarget.get()
-    let targetFleetOpt = state.fleets.entities.entity(specificTarget)
+    let targetFleetOpt = state.fleet(specificTarget)
     if targetFleetOpt.isSome:
       let targetFleet = targetFleetOpt.get()
 
@@ -752,14 +752,14 @@ proc activateAutoReinforce(
         var targetTotalShips = 0
         var targetCrippledShips = 0
         for squadronId in targetFleet.squadrons:
-          let squadronOpt = state.squadrons.entities.entity(squadronId)
+          let squadronOpt = state.squadron(squadronId)
           if squadronOpt.isNone:
             continue
           let squadron = squadronOpt.get()
 
           # Check flagship
           targetTotalShips += 1
-          let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+          let flagshipOpt = state.ship(squadron.flagshipId)
           if flagshipOpt.isSome:
             let flagship = flagshipOpt.get()
             if flagship.isCrippled:
@@ -768,7 +768,7 @@ proc activateAutoReinforce(
           # Check escort ships
           for shipId in squadron.ships:
             targetTotalShips += 1
-            let shipOpt = state.ships.entities.entity(shipId)
+            let shipOpt = state.ship(shipId)
             if shipOpt.isSome:
               let ship = shipOpt.get()
               if ship.isCrippled:
@@ -801,14 +801,14 @@ proc activateAutoReinforce(
       var otherTotalShips = 0
       var otherCrippledShips = 0
       for squadronId in otherFleet.squadrons:
-        let squadronOpt = state.squadrons.entities.entity(squadronId)
+        let squadronOpt = state.squadron(squadronId)
         if squadronOpt.isNone:
           continue
         let squadron = squadronOpt.get()
 
         # Check flagship
         otherTotalShips += 1
-        let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+        let flagshipOpt = state.ship(squadron.flagshipId)
         if flagshipOpt.isSome:
           let flagship = flagshipOpt.get()
           if flagship.isCrippled:
@@ -817,7 +817,7 @@ proc activateAutoReinforce(
         # Check escort ships
         for shipId in squadron.ships:
           otherTotalShips += 1
-          let shipOpt = state.ships.entities.entity(shipId)
+          let shipOpt = state.ship(shipId)
           if shipOpt.isSome:
             let ship = shipOpt.get()
             if ship.isCrippled:
@@ -903,20 +903,20 @@ proc calculateFleetStrength(state: GameState, fleet: Fleet): int =
   ## Sum of attack strength across all ships
   result = 0
   for squadronId in fleet.squadrons:
-    let squadronOpt = state.squadrons.entities.entity(squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isNone:
       continue
     let squadron = squadronOpt.get()
 
     # Add flagship strength
-    let flagshipOpt = state.ships.entities.entity(squadron.flagshipId)
+    let flagshipOpt = state.ship(squadron.flagshipId)
     if flagshipOpt.isSome:
       let flagship = flagshipOpt.get()
       result += flagship.stats.attackStrength
 
     # Add escort ship strength
     for shipId in squadron.ships:
-      let shipOpt = state.ships.entities.entity(shipId)
+      let shipOpt = state.ship(shipId)
       if shipOpt.isSome:
         let ship = shipOpt.get()
         result += ship.stats.attackStrength
@@ -926,7 +926,7 @@ proc activateBlockadeTarget(
 ): ActivationResult =
   ## Execute blockade target - maintain blockade on enemy colony
   ## Moves to target colony and issues BlockadePlanet order
-  let fleetOpt = state.fleets.entities.entity(fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     return ActivationResult(success: false, error: "Fleet does not exist")
   let fleet = fleetOpt.get()
@@ -937,7 +937,7 @@ proc activateBlockadeTarget(
   let targetColonyId = params.blockadeTargetColony.get()
 
   # Get colony entity to find its system
-  let colonyOpt = state.colonies.entities.entity(targetColonyId)
+  let colonyOpt = state.colonie(targetColonyId)
   if colonyOpt.isNone:
     return ActivationResult(success: false, error: "Target colony no longer exists")
   let colony = colonyOpt.get()

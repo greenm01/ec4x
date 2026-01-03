@@ -5,7 +5,7 @@
 ##
 ## Pure game logic - no I/O, works with typed data
 
-import std/[options, tables, sequtils, strutils, random]
+import std/[options, sequtils, strutils, random]
 import ../../types/[core, combat as combat_types, game_state, squadron, ship]
 import ../../state/entity_manager
 import ../../globals

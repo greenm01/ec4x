@@ -19,7 +19,7 @@
 ## ```
 
 import std/options
-import ../state/entity_manager
+import ../state/engine
 import ../types/[prestige, core, game_state, house]
 
 proc applyPrestigeEvent*(state: var GameState, houseId: HouseId, event: PrestigeEvent) =
@@ -29,7 +29,7 @@ proc applyPrestigeEvent*(state: var GameState, houseId: HouseId, event: Prestige
   ## Follows DoD pattern: read-modify-write using EntityManager
 
   # Get current house (safe lookup)
-  let houseOpt = state.houses.entities.entity(houseId)
+  let houseOpt = state.house(houseId)
   if houseOpt.isNone:
     # Silently ignore - house may have been eliminated
     return
@@ -39,7 +39,7 @@ proc applyPrestigeEvent*(state: var GameState, houseId: HouseId, event: Prestige
   house.prestige += event.amount
 
   # Write back to EntityManager
-  state.houses.entities.updateEntity(houseId, house)
+  state.updateHouse(houseId, house)
 
 proc applyPrestigeEvents*(
     state: var GameState, houseId: HouseId, events: seq[PrestigeEvent]

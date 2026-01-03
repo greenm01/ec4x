@@ -9,7 +9,7 @@
 
 import std/[tables, options, sequtils, strformat]
 import ../../common/logger
-import ../state/engine as state_helpers
+import ../state/engine
 import ../types/[core, game_state, intel, fleet, squadron]
 
 proc createFleetComposition*(
@@ -24,7 +24,7 @@ proc createFleetComposition*(
 
   # Track space-lift capable squadrons separately
   for squadronId in fleet.squadrons:
-    let squadronOpt = state_helpers.squadrons(state, squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isSome:
       let squadron = squadronOpt.get()
       if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
@@ -179,10 +179,10 @@ proc updatePostCombatIntelligence*(
             alliedLosses.add(lostSquadronId)
           else:
             # Enemy loss: lookup squadron for ship class name
-            let squadronOpt = state_helpers.squadrons(state, lostSquadronId)
+            let squadronOpt = state.squadrons(lostSquadronId)
             if squadronOpt.isSome:
               let squadron = squadronOpt.get()
-              let shipOpt = state_helpers.ship(state, squadron.flagshipId)
+              let shipOpt = state.ship(squadron.flagshipId)
               if shipOpt.isSome:
                 enemyLosses.add($shipOpt.get().shipClass)
               else:
@@ -245,7 +245,7 @@ proc generateBlitzIntelligence*(
 
   # Get post-blitz colony state for asset reporting
   var assetInfo: seq[string] = @[]
-  let colonyOpt = state_helpers.colony(state, ColonyId(systemId))
+  let colonyOpt = state.colony(ColonyId(systemId))
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     if blitzSuccess:
@@ -378,7 +378,7 @@ proc generateInvasionIntelligence*(
 
   # Get post-invasion colony state for asset reporting
   var assetInfo: seq[string] = @[]
-  let colonyOpt = state_helpers.colony(state, ColonyId(systemId))
+  let colonyOpt = state.colony(ColonyId(systemId))
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     if invasionSuccess:
@@ -504,7 +504,7 @@ proc generateBombardmentIntelligence*(
 
   # Get post-bombardment colony state for surviving assets intel
   var survivingAssets: seq[string] = @[]
-  let colonyOpt = state_helpers.colony(state, ColonyId(systemId))
+  let colonyOpt = state.colony(ColonyId(systemId))
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     survivingAssets.add(&"Infrastructure: {colony.infrastructure} levels")

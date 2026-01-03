@@ -9,7 +9,7 @@ import db_connector/db_sqlite
 import ../../common/logger
 import ../[globals, starmap]
 import ../config/engine
-import ../state/[id_gen, entity_manager]
+import ../state/[engine, id_gen]
 import ../persistence/schema
 import ../types/[
   core, game_state, squadron, intel, diplomacy,
@@ -116,7 +116,7 @@ proc initializeHousesAndHomeworlds*(state: var GameState) =
     # 1. Create House entity
     let houseName = "House " & $(playerIndex + 1)
     let house = house_init.initHouse(houseId, houseName)
-    state.houses.entities.addEntity(houseId, house)
+    state.addHouse(houseId, house)
 
     logInfo(
       "Initialization",
@@ -142,7 +142,7 @@ proc initializeHousesAndHomeworlds*(state: var GameState) =
     )
 
     # 4. Initialize empty intelligence database
-    state.intelligence[houseId] = IntelligenceDatabase()
+    state.intel[houseId] = IntelDatabase()
 
     # 5. Initialize diplomatic relations (all start neutral)
     for otherPlayerIndex in 0 ..< playerCount:
@@ -272,7 +272,7 @@ proc initGameState*(
       )
     ),
     # Initialize Tables (Sequences initialize to @[] automatically)
-    intelligence: initTable[HouseId, IntelligenceDatabase](),
+    intel: initTable[HouseId, IntelDatabase](),
     diplomaticRelation: initTable[(HouseId, HouseId), DiplomaticRelation](),
     diplomaticViolation: initTable[HouseId, ViolationHistory](),
     fleetCommands: initTable[FleetId, FleetCommand](),

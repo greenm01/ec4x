@@ -32,11 +32,9 @@ type
     groundBatteryIds*: seq[GroundUnitId]
     armyIds*: seq[GroundUnitId]
     marineIds*: seq[GroundUnitId]
-    # Facility references
-    starbaseIds*: seq[StarbaseId]
-    spaceportIds*: seq[SpaceportId]
-    shipyardIds*: seq[ShipyardId]
-    drydockIds*: seq[DrydockId]
+    # Facility references (unified types)
+    neoriaIds*: seq[NeoriaId]
+    kastraIds*: seq[KastraId]
     blockaded*: bool
     blockadedBy*: seq[HouseId]
     blockadeTurns*: int32

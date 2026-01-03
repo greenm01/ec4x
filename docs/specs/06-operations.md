@@ -48,7 +48,7 @@ Allocate treasury (production points) to construction projects at your colonies.
 - Can build any ship type
 - **100% commission penalty**: Ships (except fighters) cost double production points due to orbital launch costs
 - Fighter squadrons exempt from penalty (distributed planetary manufacturing)
-- Required prerequisite for building shipyards
+- Required prerequisite for building shipyards, spaceports, and starbases.
 
 **Shipyards** (Orbital Construction):
 - Built in 2 turns, requires existing spaceport, provides 10 construction docks
@@ -266,7 +266,7 @@ Command devastating orbital bombardment of enemy colonies. Your fleet systematic
 - Punish enemy aggression
 - **WARNING**: Bombardment generates massive diplomatic penalties
 
-### 6.3.10 Invade a Planet (08)
+### 6.3.10 Invade a Colony (08)
 
 Launch ground invasion of enemy colonies. Your fleet deploys marines and army units to seize control, conducting ground combat against defending forces.
 
@@ -285,7 +285,7 @@ Launch ground invasion of enemy colonies. Your fleet deploys marines and army un
 - Capture strategic colonies intact
 - Expand your empire through force
 
-### 6.3.11 Blitz a Planet (09)
+### 6.3.11 Blitz a Colony (09)
 
 Execute rapid planetary assault combining orbital bombardment with immediate ground invasion. Your forces strike simultaneously, overwhelming defenders before they can coordinate defense.
 
@@ -300,7 +300,7 @@ Execute rapid planetary assault combining orbital bombardment with immediate gro
 
 ### 6.3.12 Colonize a Planet (10)
 
-Command ETACs (Enhanced Terrestrial Administrative Carriers) with Population Transfer Units to establish new colonies. Your fleet travels to the target system, deploys the PTUs, and establishes colonial infrastructure.
+Command ETACs (Enhanced Terrestrial Administrative Carriers) with Population Transfer Units to establish new colonies. Your fleet travels to the target system, deploys the PTUs, and establishes colonial infrastructure. Once a planet is colonized, it may not be colonized again and must be conquored to change ownership.
 
 **Requirements:**
 - Fleet must contain at least one ETAC ship

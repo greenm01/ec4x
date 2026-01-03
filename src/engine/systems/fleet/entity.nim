@@ -359,7 +359,7 @@ proc split*(f: var Fleet, indices: seq[int]): Fleet =
 # Fleet Management Command Support (for administrative ship reorganization)
 # ============================================================================
 
-proc getAllShips*(f: Fleet, squadrons: Squadrons, ships: Ships): seq[Ship] =
+proc allShips*(f: Fleet, squadrons: Squadrons, ships: Ships): seq[Ship] =
   ## Get flat list of all ships in fleet for player UI
   ## Order: squadron flagships + escorts for all squadron types
   ## Used by FleetManagementCommand to present ships to player
@@ -379,7 +379,7 @@ proc getAllShips*(f: Fleet, squadrons: Squadrons, ships: Ships): seq[Ship] =
 proc translateShipIndicesToSquadrons*(
     f: Fleet, squadrons: Squadrons, indices: seq[int]
 ): seq[int] =
-  ## Convert flat ship indices (from getAllShips()) to squadron indices
+  ## Convert flat ship indices (from allShips()) to squadron indices
   ## Player selects ships by index, this translates to backend structure
   ##
   ## Note: Squadron index means "remove entire squadron"

@@ -5,7 +5,7 @@
 
 import std/[options, math]
 import ../../types/[telemetry, core, game_state, event, squadron, house, ship]
-import ../../state/[entity_manager, iterators, engine]
+import ../../state/[engine, iterators]
 
 proc collectEspionageMetrics*(
     state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
@@ -13,7 +13,7 @@ proc collectEspionageMetrics*(
   ## Collect espionage metrics from events and GameState
   result = prevMetrics # Start with previous metrics
 
-  let houseOpt = state.houses.entities.entity(houseId)
+  let houseOpt = state.house(houseId)
   if houseOpt.isNone:
     return result
   let house = houseOpt.get()

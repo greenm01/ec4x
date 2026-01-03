@@ -43,17 +43,15 @@ type
     groundUnits*: GroundUnits
 
     # Intelligence databases - one per house
-    intelligence*: Table[HouseId, IntelligenceDatabase]
+    intel*: Table[HouseId, IntelDatabase]
 
     # Diplomacy
     diplomaticRelation*: Table[(HouseId, HouseId), DiplomaticRelation]
     diplomaticViolation*: Table[HouseId, ViolationHistory]
 
-    # Facilities
-    starbases*: Starbases
-    spaceports*: Spaceports
-    shipyards*: Shipyards
-    drydocks*: Drydocks
+    # Facilities (unified types)
+    neorias*: Neorias
+    kastras*: Kastras
 
     # Production
     constructionProjects*: ConstructionProjects

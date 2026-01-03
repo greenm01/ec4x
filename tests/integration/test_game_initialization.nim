@@ -6,7 +6,7 @@
 import std/[unittest, options, tables]
 import ../../src/engine/engine
 import ../../src/engine/types/[core, game_state, house, colony, facilities, ground_unit, ship]
-import ../../src/engine/state/[engine as state_helpers, entity_manager, iterators]
+import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/globals
 
 suite "Game Initialization - Complete Flow":
@@ -71,7 +71,7 @@ suite "Game Initialization - Complete Flow":
     for colony in game.allColonies():
       # Verify spaceports
       for spaceportId in colony.spaceportIds:
-        let spaceportOpt = game.spaceports.entities.entity(spaceportId)
+        let spaceportOpt = game.spaceport(spaceportId)
         check spaceportOpt.isSome
         if spaceportOpt.isSome:
           let spaceport = spaceportOpt.get()
@@ -83,7 +83,7 @@ suite "Game Initialization - Complete Flow":
 
       # Verify shipyards
       for shipyardId in colony.shipyardIds:
-        let shipyardOpt = game.shipyards.entities.entity(shipyardId)
+        let shipyardOpt = game.shipyard(shipyardId)
         check shipyardOpt.isSome
         if shipyardOpt.isSome:
           let shipyard = shipyardOpt.get()
@@ -96,7 +96,7 @@ suite "Game Initialization - Complete Flow":
 
       # Verify drydocks
       for drydockId in colony.drydockIds:
-        let drydockOpt = game.drydocks.entities.entity(drydockId)
+        let drydockOpt = game.drydock(drydockId)
         check drydockOpt.isSome
         if drydockOpt.isSome:
           let drydock = drydockOpt.get()
@@ -122,7 +122,7 @@ suite "Game Initialization - Complete Flow":
     for colony in game.allColonies():
       # Verify armies
       for armyId in colony.armyIds:
-        let armyOpt = game.groundUnits.entities.entity(armyId)
+        let armyOpt = game.groundUnit(armyId)
         check armyOpt.isSome
         if armyOpt.isSome:
           let army = armyOpt.get()
@@ -135,7 +135,7 @@ suite "Game Initialization - Complete Flow":
 
       # Verify marines
       for marineId in colony.marineIds:
-        let marineOpt = game.groundUnits.entities.entity(marineId)
+        let marineOpt = game.groundUnit(marineId)
         check marineOpt.isSome
         if marineOpt.isSome:
           let marine = marineOpt.get()
@@ -148,7 +148,7 @@ suite "Game Initialization - Complete Flow":
 
       # Verify ground batteries
       for batteryId in colony.groundBatteryIds:
-        let batteryOpt = game.groundUnits.entities.entity(batteryId)
+        let batteryOpt = game.groundUnit(batteryId)
         check batteryOpt.isSome
         if batteryOpt.isSome:
           let battery = batteryOpt.get()
@@ -181,11 +181,11 @@ suite "Game Initialization - Complete Flow":
     var shipCount = 0
     for fleet in game.allFleets():
       for squadronId in fleet.squadrons:
-        let squadronOpt = state_helpers.squadrons(game, squadronId)
+        let squadronOpt = game.squadron(squadronId)
         check squadronOpt.isSome
         if squadronOpt.isSome:
           let squadron = squadronOpt.get()
-          let shipOpt = state_helpers.ship(game, squadron.flagshipId)
+          let shipOpt = game.ship(squadron.flagshipId)
           check shipOpt.isSome
           if shipOpt.isSome:
             let ship = shipOpt.get()

@@ -37,8 +37,3 @@ type Squadrons* = ref object
   byFleet*: Table[FleetId, seq[SquadronId]]
   byHouse*: Table[HouseId, seq[SquadronId]] # O(1) lookup for house queries
 
-export SquadronClass, Squadron, Squadrons
-
-# Generate convenience entity() accessor: state.squadrons.entity(id)
-import ../state/entity_manager
-defineEntityAccessor(Squadrons, SquadronId, Squadron)

@@ -35,13 +35,14 @@ type
     costTotal*: int32
     costPaid*: int32
     turnsRemaining*: int32
-    facilityId*: Option[uint32]
-    facilityType*: Option[FacilityClass]
+    # Typed facility reference
+    neoriaId*: Option[NeoriaId]  # Production facility (Spaceport, Shipyard)
 
   ConstructionProjects* = object
     entities*: EntityManager[ConstructionProjectId, ConstructionProject] # Core storage
     byColony*: Table[ColonyId, seq[ConstructionProjectId]]
-    byFacility*: Table[(FacilityClass, uint32), seq[ConstructionProjectId]]
+    # Index by typed ID
+    byNeoria*: Table[NeoriaId, seq[ConstructionProjectId]]
 
   RepairTargetType* {.pure.} = enum
     Ship
@@ -51,8 +52,9 @@ type
     id*: RepairProjectId
     colonyId*: ColonyId
     targetType*: RepairTargetType
-    facilityType*: FacilityClass
-    facilityId*: Option[uint32]
+    facilityType*: FacilityClass  # Keep for knowing which neoria type (Drydock)
+    # Typed facility reference
+    neoriaId*: Option[NeoriaId]  # Repair facility (Drydock)
     # For ship repairs
     fleetId*: Option[FleetId]
     squadronId*: Option[SquadronId]
@@ -67,7 +69,8 @@ type
   RepairProjects* = object
     entities*: EntityManager[RepairProjectId, RepairProject] # Core storage
     byColony*: Table[ColonyId, seq[RepairProjectId]]
-    byFacility*: Table[(FacilityClass, uint32), seq[RepairProjectId]]
+    # Index by typed ID
+    byNeoria*: Table[NeoriaId, seq[RepairProjectId]]
 
   CompletedProject* = object
     colonyId*: ColonyId

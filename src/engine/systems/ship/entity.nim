@@ -14,7 +14,7 @@
 ## - Reads from config/ships.toml via globalShipsConfig
 ## - Used by squadron/entity and production/commissioning
 
-import std/[options, math, strutils]
+import std/[options, math]
 import ../../types/[core, ship, config]
 import ../../globals
 

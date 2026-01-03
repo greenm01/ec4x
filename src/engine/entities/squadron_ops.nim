@@ -5,9 +5,7 @@
 
 import std/[tables, sequtils, options]
 import ../types/game_state
-import ../state/id_gen
-import ../state/entity_manager
-import ../state/engine as gs_helpers
+import ../state/[engine, id_gen]
 import ../types/[core, squadron, fleet]
 
 proc createSquadron*(
@@ -19,7 +17,7 @@ proc createSquadron*(
 ): Squadron =
   ## Creates a new squadron, adds it to a fleet, and updates all indexes.
   let squadronId = state.generateSquadronId()
-  let fleetLocation = gs_helpers.fleet(state, fleetId).get().location
+  let fleetLocation = state.fleet(fleetId).get().location
   let newSquadron = Squadron(
     id: squadronId,
     flagshipId: flagshipId,
@@ -31,19 +29,18 @@ proc createSquadron*(
     embarkedFighters: @[],
   )
 
-  state[].squadrons[].entities.addEntity(squadronId, newSquadron)
-
+  state.addSquadron(squadronId, newSquadron)
   state[].squadrons[].byFleet.mgetOrPut(fleetId, @[]).add(squadronId)
 
-  var fleet = gs_helpers.fleet(state, fleetId).get()
+  var fleet = state.fleet(fleetId).get()
   fleet.squadrons.add(squadronId)
-  state[].fleets.entities.updateEntity(fleetId, fleet)
-
+  state.updateFleet(fleetId, fleet)
+  
   return newSquadron
 
 proc destroySquadron*(state: var GameState, squadronId: SquadronId) =
   ## Destroys a squadron, removing it from the entity manager and all indexes.
-  let squadronOpt = gs_helpers.squadrons(state, squadronId)
+  let squadronOpt = state.squadron(squadronId)
   if squadronOpt.isNone:
     return
 
@@ -61,20 +58,20 @@ proc destroySquadron*(state: var GameState, squadronId: SquadronId) =
     )
     state[].squadrons[].byFleet[ownerFleetId] = fleetSquadrons
 
-    var fleet = gs_helpers.fleet(state, ownerFleetId).get()
+    var fleet = state.fleet(ownerFleetId).get()
     fleet.squadrons.keepIf(
       proc(id: SquadronId): bool =
         id != squadronId
     )
-    state[].fleets.entities.updateEntity(ownerFleetId, fleet)
+    state.updateFleet(ownerFleetId, fleet)
 
-  state[].squadrons[].entities.removeEntity(squadronId)
+  state.delSquadron(squadronId)
 
 proc transferSquadron*(
     state: var GameState, squadronId: SquadronId, newFleetId: FleetId
 ) =
   ## Moves a squadron from one fleet to another, updating all indexes.
-  let squadronOpt = gs_helpers.squadrons(state, squadronId)
+  let squadronOpt = state.squadron(squadronId)
   if squadronOpt.isNone:
     return
 
@@ -92,15 +89,15 @@ proc transferSquadron*(
     )
     state[].squadrons[].byFleet[oldFleetId] = oldFleetSquadrons
 
-    var oldFleet = gs_helpers.fleet(state, oldFleetId).get()
+    var oldFleet = state.fleet(oldFleetId).get()
     oldFleet.squadrons.keepIf(
       proc(id: SquadronId): bool =
         id != squadronId
     )
-    state[].fleets.entities.updateEntity(oldFleetId, oldFleet)
+    state.updateFleet(oldFleetId, oldFleet)
 
   state[].squadrons[].byFleet.mgetOrPut(newFleetId, @[]).add(squadronId)
 
-  var newFleet = gs_helpers.fleet(state, newFleetId).get()
+  var newFleet = state.fleet(newFleetId).get()
   newFleet.squadrons.add(squadronId)
-  state[].fleets.entities.updateEntity(newFleetId, newFleet)
+  state.updateFleet(newFleetId, newFleet)

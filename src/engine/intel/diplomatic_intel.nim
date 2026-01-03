@@ -1,7 +1,7 @@
 ## Diplomatic Event Intelligence Reporting
 ##
-## Generates intelligence reports for diplomatic events
-## All houses receive intelligence about major diplomatic shifts
+## Generates intel reports for diplomatic events
+## All houses receive intel about major diplomatic shifts
 ##
 ## **Architecture Role:** Business logic (like @systems modules)
 ## - Reads from @state using safe accessors
@@ -13,11 +13,11 @@ import ../types/[core, game_state, intel]
 proc generateHostilityDeclarationIntel*(
     state: var GameState, declaringHouse: HouseId, targetHouse: HouseId, turn: int32
 ) =
-  ## Generate intelligence reports when hostility is declared
-  ## All houses receive this intelligence (public event)
+  ## Generate intel reports when hostility is declared
+  ## All houses receive this intel (public event)
 
   # Notify all houses of the hostility declaration
-  for houseId in state.intelligence.keys:
+  for houseId in state.intel.keys:
     let significance: int32 =
       if houseId == declaringHouse or houseId == targetHouse:
         7 # High significance for direct participants
@@ -34,7 +34,7 @@ proc generateHostilityDeclarationIntel*(
 
     let report = ScoutEncounterReport(
       reportId: &"{houseId}-hostility-declaration-{turn}-{declaringHouse}-{targetHouse}",
-      fleetId: FleetId(0), # Diplomatic intelligence, not fleet-specific
+      fleetId: FleetId(0), # Diplomatic intel, not fleet-specific
       turn: turn,
       systemId: SystemId(0), # No specific system
       encounterType: ScoutEncounterType.DiplomaticActivity,
@@ -46,20 +46,20 @@ proc generateHostilityDeclarationIntel*(
       significance: significance,
     )
 
-    # Write to intelligence database (Table read-modify-write)
-    if state.intelligence.contains(houseId):
-      var intel = state.intelligence[houseId]
+    # Write to intel database (Table read-modify-write)
+    if state.intel.contains(houseId):
+      var intel = state.intel[houseId]
       intel.scoutEncounters.add(report)
-      state.intelligence[houseId] = intel
+      state.intel[houseId] = intel
 
 proc generateWarDeclarationIntel*(
     state: var GameState, declaringHouse: HouseId, targetHouse: HouseId, turn: int32
 ) =
-  ## Generate intelligence reports when war is declared
-  ## All houses receive this intelligence (public event)
+  ## Generate intel reports when war is declared
+  ## All houses receive this intel (public event)
 
   # Notify all houses of the war declaration
-  for houseId in state.intelligence.keys:
+  for houseId in state.intel.keys:
     let significance: int32 =
       if houseId == declaringHouse or houseId == targetHouse:
         10 # Maximum significance for direct participants
@@ -76,7 +76,7 @@ proc generateWarDeclarationIntel*(
 
     let report = ScoutEncounterReport(
       reportId: &"{houseId}-war-declaration-{turn}-{declaringHouse}-{targetHouse}",
-      fleetId: FleetId(0), # Diplomatic intelligence, not fleet-specific
+      fleetId: FleetId(0), # Diplomatic intel, not fleet-specific
       turn: turn,
       systemId: SystemId(0), # No specific system
       encounterType: ScoutEncounterType.DiplomaticActivity,
@@ -88,19 +88,19 @@ proc generateWarDeclarationIntel*(
       significance: significance,
     )
 
-    # Write to intelligence database (Table read-modify-write)
-    if state.intelligence.contains(houseId):
-      var intel = state.intelligence[houseId]
+    # Write to intel database (Table read-modify-write)
+    if state.intel.contains(houseId):
+      var intel = state.intel[houseId]
       intel.scoutEncounters.add(report)
-      state.intelligence[houseId] = intel
+      state.intel[houseId] = intel
 
 proc generatePeaceTreatyIntel*(
     state: var GameState, house1: HouseId, house2: HouseId, turn: int32
 ) =
-  ## Generate intelligence reports when peace treaty is signed
-  ## All houses receive this intelligence (public event)
+  ## Generate intel reports when peace treaty is signed
+  ## All houses receive this intel (public event)
 
-  for houseId in state.intelligence.keys:
+  for houseId in state.intel.keys:
     let significance: int32 =
       if houseId == house1 or houseId == house2:
         9 # Very significant for direct participants
@@ -116,7 +116,7 @@ proc generatePeaceTreatyIntel*(
 
     let report = ScoutEncounterReport(
       reportId: &"{houseId}-peace-treaty-{turn}-{house1}-{house2}",
-      fleetId: FleetId(0), # Diplomatic intelligence, not fleet-specific
+      fleetId: FleetId(0), # Diplomatic intel, not fleet-specific
       turn: turn,
       systemId: SystemId(0),
       encounterType: ScoutEncounterType.DiplomaticActivity,
@@ -128,19 +128,19 @@ proc generatePeaceTreatyIntel*(
       significance: significance,
     )
 
-    # Write to intelligence database (Table read-modify-write)
-    if state.intelligence.contains(houseId):
-      var intel = state.intelligence[houseId]
+    # Write to intel database (Table read-modify-write)
+    if state.intel.contains(houseId):
+      var intel = state.intel[houseId]
       intel.scoutEncounters.add(report)
-      state.intelligence[houseId] = intel
+      state.intel[houseId] = intel
 
 proc generateAllianceFormedIntel*(
     state: var GameState, house1: HouseId, house2: HouseId, turn: int32
 ) =
-  ## Generate intelligence reports when alliance is formed
-  ## All houses receive this intelligence (public event)
+  ## Generate intel reports when alliance is formed
+  ## All houses receive this intel (public event)
 
-  for houseId in state.intelligence.keys:
+  for houseId in state.intel.keys:
     let significance: int32 =
       if houseId == house1 or houseId == house2:
         9 # Very significant for direct participants
@@ -156,7 +156,7 @@ proc generateAllianceFormedIntel*(
 
     let report = ScoutEncounterReport(
       reportId: &"{houseId}-alliance-formed-{turn}-{house1}-{house2}",
-      fleetId: FleetId(0), # Diplomatic intelligence, not fleet-specific
+      fleetId: FleetId(0), # Diplomatic intel, not fleet-specific
       turn: turn,
       systemId: SystemId(0),
       encounterType: ScoutEncounterType.DiplomaticActivity,
@@ -168,19 +168,19 @@ proc generateAllianceFormedIntel*(
       significance: significance,
     )
 
-    # Write to intelligence database (Table read-modify-write)
-    if state.intelligence.contains(houseId):
-      var intel = state.intelligence[houseId]
+    # Write to intel database (Table read-modify-write)
+    if state.intel.contains(houseId):
+      var intel = state.intel[houseId]
       intel.scoutEncounters.add(report)
-      state.intelligence[houseId] = intel
+      state.intel[houseId] = intel
 
 proc generatePactFormedIntel*(
     state: var GameState, house1: HouseId, house2: HouseId, pactType: string, turn: int32
 ) =
-  ## Generate intelligence reports when pact is formed
-  ## All houses receive this intelligence (public event)
+  ## Generate intel reports when pact is formed
+  ## All houses receive this intel (public event)
 
-  for houseId in state.intelligence.keys:
+  for houseId in state.intel.keys:
     let significance: int32 =
       if houseId == house1 or houseId == house2:
         8 # Significant for direct participants
@@ -196,7 +196,7 @@ proc generatePactFormedIntel*(
 
     let report = ScoutEncounterReport(
       reportId: &"{houseId}-pact-formed-{turn}-{house1}-{house2}",
-      fleetId: FleetId(0), # Diplomatic intelligence, not fleet-specific
+      fleetId: FleetId(0), # Diplomatic intel, not fleet-specific
       turn: turn,
       systemId: SystemId(0),
       encounterType: ScoutEncounterType.DiplomaticActivity,
@@ -208,11 +208,11 @@ proc generatePactFormedIntel*(
       significance: significance,
     )
 
-    # Write to intelligence database (Table read-modify-write)
-    if state.intelligence.contains(houseId):
-      var intel = state.intelligence[houseId]
+    # Write to intel database (Table read-modify-write)
+    if state.intel.contains(houseId):
+      var intel = state.intel[houseId]
       intel.scoutEncounters.add(report)
-      state.intelligence[houseId] = intel
+      state.intel[houseId] = intel
 
 proc generateDiplomaticBreakIntel*(
     state: var GameState,
@@ -221,10 +221,10 @@ proc generateDiplomaticBreakIntel*(
     relationshipType: string, # "alliance", "pact", etc.
     turn: int32,
 ) =
-  ## Generate intelligence reports when diplomatic relationship is broken
-  ## All houses receive this intelligence (public event)
+  ## Generate intel reports when diplomatic relationship is broken
+  ## All houses receive this intel (public event)
 
-  for houseId in state.intelligence.keys:
+  for houseId in state.intel.keys:
     let significance: int32 =
       if houseId == house1 or houseId == house2:
         8 # Significant for direct participants
@@ -240,7 +240,7 @@ proc generateDiplomaticBreakIntel*(
 
     let report = ScoutEncounterReport(
       reportId: &"{houseId}-diplomatic-break-{turn}-{house1}-{house2}",
-      fleetId: FleetId(0), # Diplomatic intelligence, not fleet-specific
+      fleetId: FleetId(0), # Diplomatic intel, not fleet-specific
       turn: turn,
       systemId: SystemId(0),
       encounterType: ScoutEncounterType.DiplomaticActivity,
@@ -252,8 +252,8 @@ proc generateDiplomaticBreakIntel*(
       significance: significance,
     )
 
-    # Write to intelligence database (Table read-modify-write)
-    if state.intelligence.contains(houseId):
-      var intel = state.intelligence[houseId]
+    # Write to intel database (Table read-modify-write)
+    if state.intel.contains(houseId):
+      var intel = state.intel[houseId]
       intel.scoutEncounters.add(report)
-      state.intelligence[houseId] = intel
+      state.intel[houseId] = intel

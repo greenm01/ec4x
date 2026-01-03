@@ -8,7 +8,7 @@ import std/[options, random, tables]
 # import std/sequtils  # TODO: Needed for toSeq() in income calculation (restore after refactor)
 import ../types/[core, game_state, intel, fleet]
 import ../types/squadron as squadron_types
-import ../state/[engine as state_helpers, iterators]
+import ../state/[engine, iterators]
 # import ../systems/income/income as income_system  # TODO: Uncomment after systems refactor
 import corruption
 
@@ -28,7 +28,7 @@ proc generateColonyIntelReport*(
   ## - Economic data (Spy quality only)
 
   # Use safe accessor
-  let colonyOpt = state_helpers.colony(state, ColonyId(targetSystem))
+  let colonyOpt = state.colony(ColonyId(targetSystem))
   if colonyOpt.isNone:
     return none(ColonyIntelReport)
 
@@ -73,7 +73,7 @@ proc generateColonyIntelReport*(
 
     # TODO: Add spaceport dock queue when spaceport construction is implemented
     # for spaceportId in colony.spaceportIds:
-    #   let spaceport = state_helpers.spaceport(state, spaceportId)
+    #   let spaceport = state.spaceport(spaceportId)
     #   if spaceport.isSome:
     #     report.spaceportDockQueue.add(spaceport.get().constructionQueue)
     report.spaceportDockQueue = @[]
@@ -104,7 +104,7 @@ proc generateOrbitalIntelReport*(
   ## - Fighter squadrons (stationed at colony)
 
   # Use safe accessor
-  let colonyOpt = state_helpers.colony(state, ColonyId(targetSystem))
+  let colonyOpt = state.colony(ColonyId(targetSystem))
   if colonyOpt.isNone:
     return none(OrbitalIntelReport)
 
@@ -146,7 +146,7 @@ proc generateOrbitalIntelReport*(
     fighterSquadronIds.add(squadronId)
   for squadronId in colony.unassignedSquadronIds:
     # Check if it's a fighter squadron
-    let squadronOpt = state_helpers.squadrons(state, squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isSome:
       let squadron = squadronOpt.get()
       if squadron.squadronType == squadron_types.SquadronClass.Fighter:
@@ -207,7 +207,7 @@ proc generateSystemIntelReport*(
       # Count transport/space-lift squadrons
       var transportCount: int32 = 0
       for squadronId in fleet.squadrons:
-        let squadronOpt = state_helpers.squadrons(state, squadronId)
+        let squadronOpt = state.squadron(squadronId)
         if squadronOpt.isSome:
           let squadron = squadronOpt.get()
           if squadron.squadronType in
@@ -228,14 +228,14 @@ proc generateSystemIntelReport*(
 
       # Build detailed squadron intelligence for each squadron
       for squadronId in fleet.squadrons:
-        let squadronOpt = state_helpers.squadrons(state, squadronId)
+        let squadronOpt = state.squadrons(squadronId)
         if squadronOpt.isNone:
           continue
 
         let squadron = squadronOpt.get()
 
         # Get flagship for details
-        let flagshipOpt = state_helpers.ship(state, squadron.flagshipId)
+        let flagshipOpt = state.ship(squadron.flagshipId)
         if flagshipOpt.isNone:
           continue
 
@@ -263,14 +263,14 @@ proc generateSystemIntelReport*(
         # Check for embarked fighters on carriers (Spy quality only - requires infiltration)
         if quality == IntelQuality.Spy and squadron.embarkedFighters.len > 0:
           for fighterSquadronId in squadron.embarkedFighters:
-            let fighterSquadronOpt = state_helpers.squadrons(state, fighterSquadronId)
+            let fighterSquadronOpt = state.squadrons(fighterSquadronId)
             if fighterSquadronOpt.isNone:
               continue
 
             let fighterSquadron = fighterSquadronOpt.get()
 
             # Get fighter flagship for details
-            let fighterFlagshipOpt = state_helpers.ship(state, fighterSquadron.flagshipId)
+            let fighterFlagshipOpt = state.ship(fighterSquadron.flagshipId)
             if fighterFlagshipOpt.isNone:
               continue
 
@@ -292,13 +292,13 @@ proc generateSystemIntelReport*(
 
   # Check for colony-based fighter squadrons (not in fleets)
   # Fighters can be stationed at colonies for defense
-  let colonyOpt = state_helpers.colony(state, ColonyId(targetSystem))
+  let colonyOpt = state.colony(ColonyId(targetSystem))
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     if colony.owner != scoutOwner:
       # Scan unassigned squadrons at this colony
       for squadronId in colony.unassignedSquadronIds:
-        let squadronOpt = state_helpers.squadrons(state, squadronId)
+        let squadronOpt = state.squadrons(squadronId)
         if squadronOpt.isNone:
           continue
 
@@ -309,7 +309,7 @@ proc generateSystemIntelReport*(
           continue
 
         # Get flagship for details
-        let flagshipOpt = state_helpers.ship(state, squadron.flagshipId)
+        let flagshipOpt = state.ship(squadron.flagshipId)
         if flagshipOpt.isNone:
           continue
 
@@ -382,7 +382,7 @@ proc generateStarbaseIntelReport*(
   ## Per intel.md and operations.md:6.2.11 - "economic and R&D intelligence"
 
   # Use safe accessor
-  let colonyOpt = state_helpers.colony(state, ColonyId(targetSystem))
+  let colonyOpt = state.colony(ColonyId(targetSystem))
   if colonyOpt.isNone:
     return none(StarbaseIntelReport)
 
@@ -397,7 +397,7 @@ proc generateStarbaseIntelReport*(
     return none(StarbaseIntelReport)
 
   # Get target house data
-  let targetHouseOpt = state_helpers.house(state, colony.owner)
+  let targetHouseOpt = state.house(colony.owner)
   if targetHouseOpt.isNone:
     return none(StarbaseIntelReport)
 

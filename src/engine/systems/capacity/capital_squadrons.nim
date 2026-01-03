@@ -23,7 +23,7 @@ import
     capacity, core, game_state, squadron, ship, production, event, colony, house,
     facilities,
   ]
-import ../../state/[entity_manager, engine as gs_helpers, iterators]
+import ../../state/[engine, iterators]
 import ../../entities/squadron_ops
 import ../../event_factory/fleet_ops
 import ../../../common/logger
@@ -128,7 +128,7 @@ proc countCapitalSquadronsInFleets*(state: GameState, houseId: HouseId): int =
   result = 0
   for squadron in state.squadronsOwned(houseId):
     # Get flagship ship using entity manager
-    let flagshipOpt = gs_helpers.ship(state, squadron.flagshipId)
+    let flagshipOpt = state.ship(squadron.flagshipId)
     if flagshipOpt.isSome:
       let flagship = flagshipOpt.get()
       if isCapitalShip(flagship.shipClass):
@@ -142,7 +142,7 @@ proc countCapitalSquadronsUnderConstruction*(state: GameState, houseId: HouseId)
   # Check spaceport construction queues
   for spaceport in state.spaceportsOwned(houseId):
     for projectId in spaceport.activeConstructions & spaceport.constructionQueue:
-      let projectOpt = gs_helpers.constructionProject(state, projectId)
+      let projectOpt = state.constructionProject(projectId)
       if projectOpt.isNone:
         continue
       let project = projectOpt.get()
@@ -158,7 +158,7 @@ proc countCapitalSquadronsUnderConstruction*(state: GameState, houseId: HouseId)
   # Check shipyard construction queues
   for shipyard in state.shipyardsOwned(houseId):
     for projectId in shipyard.activeConstructions & shipyard.constructionQueue:
-      let projectOpt = gs_helpers.constructionProject(state, projectId)
+      let projectOpt = state.constructionProject(projectId)
       if projectOpt.isNone:
         continue
       let project = projectOpt.get()
@@ -231,7 +231,7 @@ proc prioritizeSquadronsForRemoval(
 
   for squadron in state.squadronsOwned(houseId):
     # Get flagship ship using entity manager
-    let flagshipOpt = gs_helpers.ship(state, squadron.flagshipId)
+    let flagshipOpt = state.ship(squadron.flagshipId)
     if flagshipOpt.isSome:
       let flagship = flagshipOpt.get()
       if isCapitalShip(flagship.shipClass):
@@ -317,7 +317,7 @@ proc applyEnforcement*(
       squadronsToRemove.add(squadron.id)
 
       # Get flagship ship using entity manager
-      let flagshipOpt = gs_helpers.ship(state, squadron.flagshipId)
+      let flagshipOpt = state.ship(squadron.flagshipId)
       if flagshipOpt.isNone:
         continue
 
@@ -354,11 +354,11 @@ proc applyEnforcement*(
 
   # Credit salvage to house treasury
   if totalSalvage > 0:
-    let houseOpt = gs_helpers.house(state, houseId)
+    let houseOpt = state.house(houseId)
     if houseOpt.isSome:
       var house = houseOpt.get()
       house.treasury += int32(totalSalvage)
-      state.houses.entities.updateEntity(houseId, house)
+      state.updateHouse(houseId, house)
       logger.logDebug(
         "Military",
         "Salvage credited to house treasury",

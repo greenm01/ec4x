@@ -9,7 +9,7 @@ import std/[tables, sequtils, options, logging, math]
 import ../../types/[
   game_state, core, event, population as pop_types, starmap, fleet, colony,
 ]
-import ../../state/[entity_manager, iterators, entity_helpers]
+import ../../state/[engine, entity_manager, iterators]
 import ../../starmap as starmap_module
 import ../fleet/movement
 import ../../event_factory/init as event_factory
@@ -88,7 +88,7 @@ proc createTransferInitiation*(
     return (false, "Source must retain at least 1 PU")
 
   # Validate destination system exists
-  if state.systems.entities.entity(destSystem).isNone:
+  if state.system(destSystem).isNone:
     return (false, "Destination system does not exist")
 
   # Calculate distance via pathfinding
@@ -116,7 +116,7 @@ proc createTransferInitiation*(
     calculateTransferCost(sourceColony.planetClass, destPlanetClass, distance, ptuAmount)
 
   # Check treasury
-  let houseOpt = state.houses.entities.entity(houseId)
+  let houseOpt = state.house(houseId)
   if houseOpt.isNone:
     return (false, "House does not exist")
   if houseOpt.get().treasury < cost:
@@ -139,13 +139,13 @@ proc createTransferInitiation*(
   var updatedSourceColony = sourceColony
   updatedSourceColony.populationUnits -= int32(ptuAmount)
   updatedSourceColony.population = updatedSourceColony.populationUnits
-  state.colonies.entities.updateEntity(sourceColonyId, updatedSourceColony)
+  state.updateColony(sourceColonyId, updatedSourceColony)
 
   # Deduct cost from treasury (using entity pattern)
   var house = houseOpt.get()
   house.treasury -= cost
-  state.houses.entities.updateEntity(houseId, house)
-
+  state.updateHouse(houseId, house)
+  
   # Add to active transfers
   state.populationInTransit.add(transfer)
 

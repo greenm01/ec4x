@@ -5,7 +5,7 @@ import std/[tables, options, sets]
 import ../types/intel as intel_types
 import
   ../types/[colony, core, diplomacy, fleet, game_state, house, player_view, starmap]
-import ./[entity_manager, iterators, entity_helpers]
+import ./[engine, iterators]
 
 proc getOwnedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   ## Get all systems where this house has a colony
@@ -93,7 +93,7 @@ proc createVisibleColony(
 proc countShips(state: GameState, fleet: Fleet): int32 =
   result = 0
   for sqId in fleet.squadrons:
-    let squadronOpt = state.squadrons.entities.entity(sqId)
+    let squadronOpt = state.squadron(sqId)
     if squadronOpt.isSome:
       let squadron = squadronOpt.get()
       result += 1 + int32(squadron.ships.len)
@@ -139,7 +139,7 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
 
   # Owned systems
   for systemId in ownedSystems:
-    let systemOpt = state.systems.entities.entity(systemId)
+    let systemOpt = state.system(systemId)
     if systemOpt.isSome:
       let system = systemOpt.get()
       let coords = (q: system.coords.q, r: system.coords.r)
@@ -154,7 +154,7 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
   # Occupied systems
   for systemId in occupiedSystems:
     if systemId notin ownedSystems:
-      let systemOpt = state.systems.entities.entity(systemId)
+      let systemOpt = state.system(systemId)
       if systemOpt.isSome:
         let system = systemOpt.get()
         let coords = (q: system.coords.q, r: system.coords.r)
@@ -169,7 +169,7 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
   # Scouted systems
   let intel = state.intelligence.getOrDefault(houseId)
   for systemId in scoutedSystems:
-    let systemOpt = state.systems.entities.entity(systemId)
+    let systemOpt = state.system(systemId)
     if systemOpt.isSome:
       let system = systemOpt.get()
       let coords = (q: system.coords.q, r: system.coords.r)

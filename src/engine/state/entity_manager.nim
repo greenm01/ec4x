@@ -3,32 +3,25 @@ import ../types/[core]
 
 # Generic getter that works for any collection using our EntityManager pattern
 # Per NEP-1: getters should not use "get" prefix
-proc entity*[ID, T](collection: EntityManager[ID, T], id: ID): Option[T] =
+proc entity[ID, T](collection: EntityManager[ID, T], id: ID): Option[T] =
   if collection.index.contains(id):
     let idx = collection.index[id]
     return some(collection.data[idx])
   return none(T)
 
-# Template to generate convenience entity() procs for collection types
-# Usage: defineEntityAccessor(Squadrons, SquadronId, Squadron)
-# Generates: proc entity*(collection: Squadrons, id: SquadronId): Option[Squadron]
-template defineEntityAccessor*(CollectionType, IDType, EntityType: untyped) =
-  proc entity*(collection: CollectionType, id: IDType): Option[EntityType] {.inline.} =
-    collection.entities.entity(id)
-
 # Generic adder that works for any collection using our EntityManager pattern
-proc addEntity*[ID, T](collection: var EntityManager[ID, T], id: ID, entity: T) =
+proc addEntity[ID, T](collection: var EntityManager[ID, T], id: ID, entity: T) =
   collection.data.add(entity)
   collection.index[id] = collection.data.len - 1
 
-proc updateEntity*[ID, T](mgr: var EntityManager[ID, T], id: ID, newEntity: T) =
+proc updateEntity[ID, T](mgr: var EntityManager[ID, T], id: ID, newEntity: T) =
   ## Updates an existing entity in the entity manager.
   if not mgr.index.contains(id):
     return
   let idx = mgr.index[id]
   mgr.data[idx] = newEntity
 
-proc removeEntity*[ID, T](mgr: var EntityManager[ID, T], id: ID) =
+proc delEntity[ID, T](mgr: var EntityManager[ID, T], id: ID) =
   if not mgr.index.contains(id):
     return
 

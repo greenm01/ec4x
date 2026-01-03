@@ -31,10 +31,9 @@ type
 
   # Colony and Facility IDs
   ColonyId* = distinct uint32
-  StarbaseId* = distinct uint32
-  SpaceportId* = distinct uint32
-  ShipyardId* = distinct uint32
-  DrydockId* = distinct uint32
+  # Unified facility IDs (Neoria = production, Kastra = defense)
+  NeoriaId* = distinct uint32
+  KastraId* = distinct uint32
 
   # Military IDs
   FleetId* = distinct uint32
@@ -59,10 +58,8 @@ type
     nextHouseId*: uint32
     nextSystemId*: uint32
     nextColonyId*: uint32
-    nextStarbaseId*: uint32
-    nextSpaceportId*: uint32
-    nextShipyardId*: uint32
-    nextDrydockId*: uint32
+    nextNeoriaId*: uint32  # Unified production facilities
+    nextKastraId*: uint32  # Unified defense facilities
     nextFleetId*: uint32
     nextSquadronId*: uint32
     nextShipId*: uint32
@@ -81,17 +78,11 @@ proc hash*(id: SystemId): Hash {.borrow.}
 proc `==`*(a, b: ColonyId): bool {.borrow.}
 proc hash*(id: ColonyId): Hash {.borrow.}
 
-proc `==`*(a, b: StarbaseId): bool {.borrow.}
-proc hash*(id: StarbaseId): Hash {.borrow.}
+proc `==`*(a, b: NeoriaId): bool {.borrow.}
+proc hash*(id: NeoriaId): Hash {.borrow.}
 
-proc `==`*(a, b: SpaceportId): bool {.borrow.}
-proc hash*(id: SpaceportId): Hash {.borrow.}
-
-proc `==`*(a, b: ShipyardId): bool {.borrow.}
-proc hash*(id: ShipyardId): Hash {.borrow.}
-
-proc `==`*(a, b: DrydockId): bool {.borrow.}
-proc hash*(id: DrydockId): Hash {.borrow.}
+proc `==`*(a, b: KastraId): bool {.borrow.}
+proc hash*(id: KastraId): Hash {.borrow.}
 
 proc `==`*(a, b: FleetId): bool {.borrow.}
 proc hash*(id: FleetId): Hash {.borrow.}
@@ -123,7 +114,5 @@ proc `$`*(id: GroundUnitId): string {.borrow.}
 proc `$`*(id: ConstructionProjectId): string {.borrow.}
 proc `$`*(id: RepairProjectId): string {.borrow.}
 proc `$`*(id: PopulationTransferId): string {.borrow.}
-proc `$`*(id: StarbaseId): string {.borrow.}
-proc `$`*(id: SpaceportId): string {.borrow.}
-proc `$`*(id: ShipyardId): string {.borrow.}
-proc `$`*(id: DrydockId): string {.borrow.}
+proc `$`*(id: NeoriaId): string {.borrow.}
+proc `$`*(id: KastraId): string {.borrow.}

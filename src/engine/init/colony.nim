@@ -6,8 +6,9 @@
 import std/[options, tables]
 import
   ../types/[core, colony, production, capacity, facilities, ground_unit, game_state]
-import ../state/[id_gen, entity_manager]
+import ../state/[engine, id_gen]
 import ../systems/tech/effects
+import ../entities/[neoria_ops, kastra_ops]
 import ../globals
 import ../utils
 
@@ -33,7 +34,7 @@ proc createHomeWorld*(
   var marineIds = newSeq[GroundUnitId]()
 
   # Create Spaceports
-  let house = state.houses.entities.entity(owner).get()
+  let house = state.house(owner).get()
   let cstLevel = house.techTree.levels.cst
   let baseSpaceportDocks = gameConfig.facilities.facilities[FacilityClass.Spaceport].docks
   let effectiveSpaceportDocks =
@@ -49,7 +50,7 @@ proc createHomeWorld*(
       constructionQueue: @[],
       activeConstructions: @[],
     )
-    state.spaceports.entities.addEntity(spaceportId, spaceport)
+    state.addSpaceport(spaceportId, spaceport)
     spaceportIds.add(spaceportId)
 
   let baseShipyardDocks = gameConfig.facilities.facilities[FacilityClass.Shipyard].docks
@@ -66,7 +67,7 @@ proc createHomeWorld*(
       constructionQueue: @[],
       activeConstructions: @[],
     )
-    state.shipyards.entities.addEntity(shipyardId, shipyard)
+    state.addShipyard(shipyardId, shipyard)
     shipyardIds.add(shipyardId)
 
   # Create Drydocks
@@ -84,8 +85,25 @@ proc createHomeWorld*(
       repairQueue: @[],
       activeRepairs: @[],
     )
-    state.drydocks.entities.addEntity(drydockId, drydock)
+    state.addDrydock(drydockId, drydock)
     drydockIds.add(drydockId)
+
+  # NEW: Create unified Neorias (production facilities)
+  var neoriaIds = newSeq[NeoriaId]()
+  for i in 0 ..< gameSetup.startingFacilities.spaceports:
+    let neoria = createNeoria(state, colonyId, NeoriaClass.Spaceport)
+    neoriaIds.add(neoria.id)
+  for i in 0 ..< gameSetup.startingFacilities.shipyards:
+    let neoria = createNeoria(state, colonyId, NeoriaClass.Shipyard)
+    neoriaIds.add(neoria.id)
+  for i in 0 ..< gameSetup.startingFacilities.drydocks:
+    let neoria = createNeoria(state, colonyId, NeoriaClass.Drydock)
+    neoriaIds.add(neoria.id)
+
+  # NEW: Create Kastras (defensive facilities) with WEP-modified stats
+  # NOTE: Original code didn't create starbases at game start (starbaseIds was empty)
+  # Keeping same behavior for now - kastras can be added later via production system
+  var kastraIds = newSeq[KastraId]()
 
   # Create Ground Batteries
   for i in 0 ..< gameSetup.startingGroundForces.groundBatteries:
@@ -104,7 +122,7 @@ proc createHomeWorld*(
         colonyId: colonyId,
       ),
     )
-    state.groundUnits.entities.addEntity(groundUnitId, groundBattery)
+    state.addGroundUnit(groundUnitId, groundBattery)
     groundBatteryIds.add(groundUnitId)
 
   # Create Armies
@@ -124,7 +142,7 @@ proc createHomeWorld*(
         colonyId: colonyId,
       ),
     )
-    state.groundUnits.entities.addEntity(groundUnitId, army)
+    state.addGroundUnit(groundUnitId, army)
     armyIds.add(groundUnitId)
 
   # Create Marines
@@ -144,7 +162,7 @@ proc createHomeWorld*(
         colonyId: colonyId,
       ),
     )
-    state.groundUnits.entities.addEntity(groundUnitId, marine)
+    state.addGroundUnit(groundUnitId, marine)
     marineIds.add(groundUnitId)
 
   var newColony = Colony(
@@ -193,12 +211,14 @@ proc createHomeWorld*(
     spaceportIds: spaceportIds,
     shipyardIds: shipyardIds,
     drydockIds: drydockIds,
+    neoriaIds: neoriaIds,
+    kastraIds: kastraIds,
     blockaded: false,
     blockadedBy: @[],
     blockadeTurns: 0,
   )
 
-  state.colonies.entities.addEntity(colonyId, newColony)
+  state.addColony(colonyId, newColony)
   state.colonies.bySystem[systemId] = colonyId
   if not state.colonies.byOwner.hasKey(owner):
     state.colonies.byOwner[owner] = @[]

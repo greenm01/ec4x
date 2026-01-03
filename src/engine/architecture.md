@@ -31,8 +31,10 @@ src/engine/
     │                                     (READ-ONLY ACCESS)
     │                         ┌──────────────────────────────────────────────┐
     │                         │                                              │
-    ├── @state/               # [STATE MANAGEMENT CORE - The "Database"]     ▼
+├── @state/               # [STATE MANAGEMENT CORE - The "Database"]
     │   │                     # Provides generic, low-level mechanics for storing and accessing data.
+    │   │                     # `entity_manager.nim` is private to this directory.
+    │   ├── engine.nim      #   - The PUBLIC API for direct `GameState` entity access (add, update, del, get by ID).
     │   ├── entity_manager.nim#   - Implements the generic DoD storage pattern (data: seq, index: Table).
     │   ├── game_state.nim    #   - `initGameState` constructor, simple getters, and trackers (e.g., `GracePeriodTracker`).
     │   ├── id_gen.nim        #   - Logic for generating new, unique entity IDs.
@@ -59,7 +61,9 @@ src/engine/
     │   ├── squadron_ops.nim  #   - `createSquadron`, `destroySquadron`, `transferSquadron`
     │   │                     #   - Maintains `byFleet` index
     │   ├── ground_unit_ops.nim
-    │   ├── facility_ops.nim
+    │   ├── neoria_ops.nim    #   - `createNeoria`, `destroyNeoria` (production facilities)
+    │   ├── kastra_ops.nim    #   - `createKastra`, `destroyKastra` (defensive facilities)
+    │   ├── facility_ops.nim  #   - Legacy ops (will be removed after migration)
     │   ├── project_ops.nim
     │   └── population_transfer_ops.nim
     │
@@ -137,10 +141,10 @@ EC4X uses a strict three-layer pattern for entity management:
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ Layer 1: STATE CORE (@state/)                               │
-│ • entity_manager.nim: Generic DoD storage (data, index)     │
+│ • engine.nim: The PUBLIC API for add, update, del, get by ID│
+│ • entity_manager.nim: Private generic DoD storage           │
 │ • iterators.nim: Batch entity access (multi-entity reads)   │
 │ • entity_helpers.nim: Single entity lookups (1-line access) │
-│ • Generic operations: entity(), addEntity(), updateEntity() │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -223,10 +227,12 @@ if state.colonies.bySystem.hasKey(systemId):
 | `squadronsByFleet(fleetId)` | `seq[Squadron]` | Get all squadrons in fleet |
 | `shipsBySquadron(squadronId)` | `seq[Ship]` | Get all ships in squadron |
 | `groundUnitsAtColony(colonyId)` | `seq[GroundUnit]` | Get garrison at colony |
-| `starbasesAtColony(colonyId)` | `seq[Starbase]` | Get starbases at colony |
-| `shipyardsAtColony(colonyId)` | `seq[Shipyard]` | Get shipyards at colony |
+| `starbasesAtColony(colonyId)` | `seq[Starbase]` | Get starbases at colony (legacy) |
+| `shipyardsAtColony(colonyId)` | `seq[Shipyard]` | Get shipyards at colony (legacy) |
+| `neoriasAtColony(colonyId)` | `seq[Neoria]` | Get production facilities at colony |
+| `kastrasAtColony(colonyId)` | `seq[Kastra]` | Get defensive facilities at colony |
 
-See `src/engine/state/entity_helpers.nim` for complete list.
+See `src/engine/state/engine.nim` for complete list.
 
 ## Writing Entities (Always Use Entity Ops)
 
@@ -268,15 +274,15 @@ state.colonies.entities.data[idx] = colony
 - Single source of truth for mutations
 - Easy to audit and test
 
-## Simple Updates (Use entity_manager.nim)
+## Simple Updates (Use @state/engine.nim)
 
-For simple field updates that don't affect indexes:
+For simple field updates that don't affect indexes, use the public procs in `state/engine.nim`:
 
 ```nim
-import ../state/entity_manager
+import ../state/engine
 
-# Get entity (read-only)
-let fleetOpt = state.fleets.entities.entity(fleetId)
+# Get entity
+let fleetOpt = state.fleet(fleetId)
 if fleetOpt.isSome:
   var fleet = fleetOpt.get()
 
@@ -284,12 +290,12 @@ if fleetOpt.isSome:
   fleet.fuelRemaining -= 1
   fleet.lastActionTurn = state.turn
 
-  # Update entity
-  state.fleets.entities.updateEntity(fleetId, fleet)
+  # Update entity using public API
+  state.updateFleet(fleetId, fleet)
 ```
 
-**When to use updateEntity vs entity ops:**
-- `updateEntity()`: Simple field changes (fuel, status flags, turn counters)
+**When to use update procs (in `engine.nim`) vs entity ops:**
+- `updateEntity()` (via `engine.updateX` procs): Simple field changes (fuel, status flags, turn counters)
 - Entity ops: Changes that affect indexes (location, owner, creation, deletion)
 
 ## Iterator Variants
@@ -362,9 +368,77 @@ Each `*_ops.nim` module maintains specific indexes:
 | `colony_ops.nim` | Colony | bySystem, byOwner |
 | `squadron_ops.nim` | Squadron | byHouse, byFleet |
 | `ship_ops.nim` | Ship | byHouse, bySquadron |
-| `facility_ops.nim` | Starbase, Spaceport, etc. | byColony |
+| `neoria_ops.nim` | Neoria (production facilities) | byColony |
+| `kastra_ops.nim` | Kastra (defensive facilities) | byColony |
+| `facility_ops.nim` | Legacy (Starbase, Spaceport, etc.) | byColony |
 
 **Golden Rule:** If a mutation affects an index, use the entity ops module.
+
+## Facility Design: Neoria vs Kastra
+
+The facility system uses semantic categories instead of per-type entities:
+
+### Neoria (νεώρια - Production Facilities)
+**Production/repair facilities:** Spaceport, Shipyard, Drydock
+
+**Single unified type:**
+```nim
+type Neoria = object
+  id: NeoriaId                    # Single ID type for all production facilities
+  neoriaClass: NeoriaClass        # Enum: Spaceport | Shipyard | Drydock
+  colonyId: ColonyId
+  commissionedTurn: int32
+  isCrippled: bool
+  constructionQueue: seq[ConstructionProjectId]
+  activeConstructions: seq[ConstructionProjectId]
+  repairQueue: seq[RepairProjectId]
+  activeRepairs: seq[RepairProjectId]
+```
+
+**Benefits:**
+- Single ID type reduces code duplication (no separate SpaceportId, ShipyardId, DrydockId)
+- Unified production interface - all neorias handle construction/repair projects
+- Follows Ship pattern (single ShipId + ShipClass enum)
+
+### Kastra (castra - Defensive Facilities)
+**Defensive facilities:** Starbase
+
+**Tech-modified combat stats:**
+```nim
+type Kastra = object
+  id: KastraId
+  kastraClass: KastraClass        # Enum: Starbase (extensible for future types)
+  colonyId: ColonyId
+  commissionedTurn: int32
+  stats: KastraStats              # Combat stats (WEP-modified at construction)
+  isCrippled: bool
+
+type KastraStats = object
+  attackStrength: int32   # Tech-modified at construction time
+  defenseStrength: int32  # Tech-modified at construction time
+  wep: int32              # WEP level at construction (permanent record)
+```
+
+**Key design decision:** Like Ships, Kastras store tech-modified stats at construction time instead of calculating dynamically. This:
+- Matches Ship behavior (WEP modifiers applied at build time)
+- Eliminates need for dynamic stat calculation in combat
+- Preserves historical tech level (captured starbase keeps original stats)
+
+**Combat integration:**
+```nim
+# Creating kastra with WEP modifiers
+let house = state.house(owner).get()
+let wepLevel = house.techTree.levels.wep
+let kastra = createKastra(state, colonyId, KastraClass.Starbase, wepLevel)
+
+# Combat uses stored stats directly (no dynamic calculation)
+attackStrength = kastra.stats.attackStrength  # Already tech-modified
+defenseStrength = kastra.stats.defenseStrength
+```
+
+### Migration Status
+**Current:** Dual system - both old (Starbase/Spaceport/Shipyard/Drydock) and new (Kastra/Neoria) facilities coexist
+**Future (Phase 8):** Remove old facility types after all systems migrated
 
 ## Performance Notes
 
@@ -431,10 +505,10 @@ fleet_ops.moveFleet(state, fleetId, newSystem)  # CORRECT
 --- | ---
 Read multiple entities | `@state/iterators.nim`
 Read single entity by index | `@state/entity_helpers.nim`
-Create/destroy entities | `@entities/*_ops.nim`
+Create/destroy entities | `@state/engine.nim` (e.g., `addFleet`, `delColony`)
 Change location/owner | `@entities/*_ops.nim`
-Update simple fields | `@state/entity_manager.updateEntity()`
-Check if exists | `@state/entity_manager.entity(id).isSome`
+Update simple fields | `@state/engine.nim` (e.g., `updateFleet`)
+Check if exists | `@state/engine.nim` (e.g., `state.colony(id).isSome`)
 Business logic | `@systems/*/` (reads via iterators/helpers, writes via ops)
 
 ---

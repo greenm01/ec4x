@@ -33,7 +33,7 @@ proc createFleet*(state: var GameState, owner: HouseId, location: SystemId): Fle
   let newFleet = Fleet(id: fleetId, houseId: owner, location: location, squadrons: @[])
 
   # 1. Add to entity manager
-  state.fleets.entities.addEntity(fleetId, newFleet)
+  state.addFleet(fleetId, newFleet)
 
   # 2. Update bySystem index
   state.registerFleetLocation(fleetId, location)
@@ -62,7 +62,7 @@ proc destroyFleet*(state: var GameState, fleetId: FleetId) =
   state.unregisterFleetOwner(fleetId, fleet.houseId)
 
   # 4. Remove from entity manager
-  state.fleets.entities.removeEntity(fleetId)
+  state.delFleet(fleetId)
 
 proc moveFleet*(state: var GameState, fleetId: FleetId, destId: SystemId) =
   ## Moves a fleet to a new system, updating the spatial index.
@@ -82,7 +82,7 @@ proc moveFleet*(state: var GameState, fleetId: FleetId, destId: SystemId) =
 
   # 2. Update Data: Change the field and save back
   fleet.location = destId
-  state.fleets.entities.updateEntity(fleetId, fleet)
+  state.updateFleet(fleetId, fleet)
 
 proc changeFleetOwner*(state: var GameState, fleetId: FleetId, newOwner: HouseId) =
   ## Transfers ownership of a fleet, updating the byOwner index
@@ -103,4 +103,4 @@ proc changeFleetOwner*(state: var GameState, fleetId: FleetId, newOwner: HouseId
 
   # 3. Update entity
   fleet.houseId = newOwner
-  state.fleets.entities.updateEntity(fleetId, fleet)
+  state.updateFleet(fleetId, fleet)

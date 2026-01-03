@@ -10,7 +10,7 @@
 
 import std/[math, random, sequtils, options]
 import ../types/[core, game_state, squadron, ship]
-import ../state/engine as state_helpers
+import ../state/engine
 
 export Option
 
@@ -135,14 +135,14 @@ proc hasELICapability*(state: GameState, squadronIds: seq[SquadronId]): bool =
   ## Check if fleet has any ELI-capable units (scouts)
   ## Uses safe accessors to look up squadron and ship entities
   for squadronId in squadronIds:
-    let squadronOpt = state_helpers.squadrons(state, squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isNone:
       continue
 
     let squadron = squadronOpt.get()
 
     # Check flagship
-    let flagshipOpt = state_helpers.ship(state, squadron.flagshipId)
+    let flagshipOpt = state.ship(squadron.flagshipId)
     if flagshipOpt.isSome:
       let flagship = flagshipOpt.get()
       if flagship.shipClass == ShipClass.Scout:
@@ -150,7 +150,7 @@ proc hasELICapability*(state: GameState, squadronIds: seq[SquadronId]): bool =
 
     # Check other ships in squadron
     for shipId in squadron.ships:
-      let shipOpt = state_helpers.ship(state, shipId)
+      let shipOpt = state.ship(shipId)
       if shipOpt.isSome:
         let ship = shipOpt.get()
         if ship.shipClass == ShipClass.Scout:

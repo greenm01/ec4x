@@ -12,7 +12,7 @@ import ../../types/[
   core, game_state, command, fleet, squadron, event,
   diplomacy, intel, starmap, espionage, ship, prestige, colony
 ]
-import ../../state/[entity_manager, iterators, entity_helpers]
+import ../../state/[engine, entity_manager, iterators]
 import ../../globals # For gameConfig
 import ../ship/entity as ship_entity # Ship helper functions
 import ../../entities/[colony_ops, squadron_ops]
@@ -32,7 +32,7 @@ proc completeFleetCommand*(
 ) =
   ## Standard completion handler: generates OrderCompleted event
   ## Cleanup handled by event-driven order_cleanup module in Command Phase
-  let fleetOpt = state.fleets.entities.entity(fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     return
   let houseId = fleetOpt.get().houseId
@@ -50,10 +50,9 @@ proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): b
   ## 2. Enemy fleets (from intelligence database or visibility)
   ## IMPORTANT: This respects fog-of-war - only uses information available to the house
 
-  let houseOpt = state.houses.entities.entity(houseId)
+  let houseOpt = state.house(houseId)
   if houseOpt.isNone:
     return false
-  let house = houseOpt.get()
 
   # Check if system has enemy colony (visible or from intel database)
   let colonyOpt = state.colonyBySystem(systemId)
@@ -71,7 +70,7 @@ proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): b
   if state.intelligence.hasKey(houseId):
     let intel = state.intelligence[houseId]
     for colonyId, colonyIntel in intel.colonyReports:
-      let colonyOpt = state.colonies.entities.entity(colonyId)
+      let colonyOpt = state.colonie(colonyId)
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
         if colony.systemId == systemId and colony.owner != houseId:
@@ -153,14 +152,14 @@ proc findClosestOwnedColony*(
   ## Current Status: Not implemented (House type lacks fallbackRoutes field)
 
   # Commented out pending House type extension:
-  # let houseOpt = state.houses.entities.entity(houseId)
+  # let houseOpt = state.house(houseId)
   # if houseOpt.isSome:
   #   let house = houseOpt.get()
   #   for route in house.fallbackRoutes:
   #     if route.region == fromSystem and state.turn - route.lastUpdated < 20:
   #       if state.colonies.bySystem.hasKey(route.fallbackSystem):
   #         let colonyId = state.colonies.bySystem[route.fallbackSystem]
-  #         let colonyOpt = state.colonies.entities.entity(colonyId)
+  #         let colonyOpt = state.colonie(colonyId)
   #         if colonyOpt.isSome and colonyOpt.get().owner == houseId:
   #           return some(route.fallbackSystem)
 
@@ -294,7 +293,7 @@ proc resolveMovementCommand*(
     return
 
   # Get fleet
-  let fleetOpt = state.fleets.entities.entity(command.fleetId)
+  let fleetOpt = state.fleet(command.fleetId)
   if fleetOpt.isNone:
     return
   var fleet = fleetOpt.get()
@@ -388,7 +387,7 @@ proc resolveMovementCommand*(
 
   # Update fleet location
   fleet.location = newLocation
-  state.fleets.entities.updateEntity(command.fleetId, fleet)
+  state.updateFleet(command.fleetId, fleet)
 
   # Generate OrderCompleted event for fleet movement
   let moveDetails =
@@ -433,7 +432,7 @@ proc resolveMovementCommand*(
       )
 
       # Update fleet in state
-      state.fleets.entities.updateEntity(command.fleetId, fleet)
+      state.updateFleet(command.fleetId, fleet)
 
       # Generate mission start event
       let missionName =
@@ -502,7 +501,7 @@ proc resolveMovementCommand*(
   # Generate fleet encounter event (Phase 7b)
   if enemyFleetsAtLocation.len > 0:
     # Get diplomatic relation
-    let firstEnemyFleetOpt = state.fleets.entities.entity(enemyFleetsAtLocation[0])
+    let firstEnemyFleetOpt = state.fleet(enemyFleetsAtLocation[0])
     var diplomaticStatus = "neutral"
     if firstEnemyFleetOpt.isSome:
       let enemyHouseId = firstEnemyFleetOpt.get().houseId
@@ -620,12 +619,12 @@ proc resolveColonizationCommand*(
     )
     return
 
-  let fleetOpt = state.fleets.entities.entity(command.fleetId)
+  let fleetOpt = state.fleet(command.fleetId)
   if fleetOpt.isNone:
     return
 
   # Check system exists
-  if state.systems.entities.entity(targetId).isNone:
+  if state.system(targetId).isNone:
     logError(
       "Colonization",
       &"Fleet {command.fleetId}: System {targetId} not found",
@@ -657,7 +656,7 @@ proc resolveColonizationCommand*(
     )
 
     # Reload fleet after movement
-    let movedFleetOpt = state.fleets.entities.entity(command.fleetId)
+    let movedFleetOpt = state.fleet(command.fleetId)
     if movedFleetOpt.isNone:
       return
     fleet = movedFleetOpt.get()
@@ -675,7 +674,7 @@ proc resolveColonizationCommand*(
   var ptuToDeposit: int32 = 0
 
   for squadronId in fleet.squadrons:
-    let squadronOpt = state.squadrons[].entity(squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isNone:
       continue
 
@@ -684,7 +683,7 @@ proc resolveColonizationCommand*(
       continue
 
     # Get flagship to check cargo
-    let flagshipOpt = state.ships.entity(squadron.flagshipId)
+    let flagshipOpt = state.ship(squadron.flagshipId)
     if flagshipOpt.isNone:
       continue
 
@@ -708,7 +707,7 @@ proc resolveColonizationCommand*(
     return
 
   # Establish colony using system's actual planet properties
-  let systemOpt = state.systems.entities.entity(targetId)
+  let systemOpt = state.system(targetId)
   if systemOpt.isNone:
     logError("Colonization", &"System {targetId} not found in entity manager")
     return
@@ -745,7 +744,7 @@ proc resolveColonizationCommand*(
   fleetMut.squadrons = fleetMut.squadrons.filterIt(it != squadronId)
 
   # Update fleet in entity manager
-  state.fleets.entities.updateEntity(command.fleetId, fleetMut)
+  state.updateFleet(command.fleetId, fleetMut)
 
   # Destroy squadron (removes ships and cleans up indexes)
   squadron_ops.destroySquadron(state, squadronId)
@@ -800,7 +799,7 @@ proc resolveViewWorldCommand*(
   let targetId = command.targetSystem.get()
 
   # Get fleet using entity pattern
-  let fleetOpt = state.fleets.entities.entity(command.fleetId)
+  let fleetOpt = state.fleet(command.fleetId)
   if fleetOpt.isNone:
     return
   let fleet = fleetOpt.get()
@@ -810,7 +809,7 @@ proc resolveViewWorldCommand*(
     return
 
   # Get house using entity pattern
-  let houseOpt = state.houses.entities.entity(houseId)
+  let houseOpt = state.house(houseId)
   if houseOpt.isNone:
     return
   let house = houseOpt.get()
@@ -907,7 +906,7 @@ proc autoLoadMarines(
     if colonyMut.marineIds.len == 0:
       break # No more marines to load
 
-    let squadronOpt = state.squadrons[].entity(squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isNone:
       continue
 
@@ -916,7 +915,7 @@ proc autoLoadMarines(
       continue # Only Auxiliary squadrons carry marines
 
     # Get flagship
-    let flagshipOpt = state.ships.entity(squadron.flagshipId)
+    let flagshipOpt = state.ship(squadron.flagshipId)
     if flagshipOpt.isNone:
       continue
 
@@ -944,7 +943,7 @@ proc autoLoadMarines(
       flagship.cargo = some(newCargo)
 
       # Update ship
-      state.ships.entities.updateEntity(squadron.flagshipId, flagship)
+      state.updateShip(squadron.flagshipId, flagship)
 
       # Remove marines from colony
       if loadAmount <= int32(colonyMut.marineIds.len):
@@ -955,7 +954,7 @@ proc autoLoadMarines(
 
   # Update colony if marines were loaded
   if totalLoaded > 0:
-    state.colonies.entities.updateEntity(colonyId, colonyMut)
+    state.updateColony(colonyId, colonyMut)
     logDebug(
       "AutoLoad", &"Auto-loaded {totalLoaded} marines onto fleet {fleet.id}"
     )
@@ -985,7 +984,7 @@ proc autoLoadColonists(
     if availablePTUs <= 0:
       break
 
-    let squadronOpt = state.squadrons[].entity(squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isNone:
       continue
 
@@ -994,7 +993,7 @@ proc autoLoadColonists(
       continue
 
     # Get flagship
-    let flagshipOpt = state.ships.entity(squadron.flagshipId)
+    let flagshipOpt = state.ship(squadron.flagshipId)
     if flagshipOpt.isNone:
       continue
 
@@ -1024,7 +1023,7 @@ proc autoLoadColonists(
       flagship.cargo = some(newCargo)
 
       # Update ship
-      state.ships.entities.updateEntity(squadron.flagshipId, flagship)
+      state.updateShip(squadron.flagshipId, flagship)
 
       # Remove colonists from colony
       let soulsToLoad = loadAmount * soulsPerPtu()
@@ -1036,7 +1035,7 @@ proc autoLoadColonists(
 
   # Update colony if colonists were loaded
   if totalLoaded > 0:
-    state.colonies.entities.updateEntity(colonyId, colonyMut)
+    state.updateColony(colonyId, colonyMut)
     logDebug("AutoLoad", &"Auto-loaded {totalLoaded} PTU onto fleet {fleet.id}")
 
 proc autoLoadCargo*(
@@ -1077,7 +1076,7 @@ proc autoLoadCargo*(
       # Check if fleet has transport capacity
       var hasTransports = false
       for squadronId in fleet.squadrons:
-        let squadronOpt = state.squadrons[].entity(squadronId)
+        let squadronOpt = state.squadron(squadronId)
         if squadronOpt.isSome:
           let squadron = squadronOpt.get()
           if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:

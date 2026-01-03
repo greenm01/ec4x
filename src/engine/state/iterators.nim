@@ -278,49 +278,23 @@ iterator shipsOwned*(state: GameState, houseId: HouseId): Ship =
 
 # Facility iterators (O(colonies_owned * facilities_per_colony) via byColony index)
 
-iterator starbasesOwned*(state: GameState, houseId: HouseId): Starbase =
-  ## Iterate all starbases owned by a house
-  ## O(colonies_owned * starbases_per_colony) via coloniesOwned + byColony index
-  ##
-  ## Example:
-  ##   var totalStarbases = 0
-  ##   for starbase in state.starbasesOwned(houseId):
-  ##     totalStarbases += 1
+iterator neoriasOwned*(state: GameState, houseId: HouseId): Neoria =
+  ## Iterate all neorias (production facilities) owned by a house
+  ## O(colonies_owned * neorias_per_colony) via coloniesOwned + byColony index
   for colony in state.coloniesOwned(houseId):
-    if state.starbases.byColony.contains(colony.id):
-      for starbaseId in state.starbases.byColony[colony.id]:
-        if state.starbases.entities.index.contains(starbaseId):
-          yield
-            state.starbases.entities.data[state.starbases.entities.index[starbaseId]]
+    if state.neorias.byColony.contains(colony.id):
+      for neoriaId in state.neorias.byColony[colony.id]:
+        if state.neorias.entities.index.contains(neoriaId):
+          yield state.neorias.entities.data[state.neorias.entities.index[neoriaId]]
 
-iterator spaceportsOwned*(state: GameState, houseId: HouseId): Spaceport =
-  ## Iterate all spaceports owned by a house
-  ## O(colonies_owned * spaceports_per_colony) via coloniesOwned + byColony index
+iterator kastrasOwned*(state: GameState, houseId: HouseId): Kastra =
+  ## Iterate all kastras (defensive facilities) owned by a house
+  ## O(colonies_owned * kastras_per_colony) via coloniesOwned + byColony index
   for colony in state.coloniesOwned(houseId):
-    if state.spaceports.byColony.contains(colony.id):
-      for spaceportId in state.spaceports.byColony[colony.id]:
-        if state.spaceports.entities.index.contains(spaceportId):
-          yield
-            state.spaceports.entities.data[state.spaceports.entities.index[spaceportId]]
-
-iterator shipyardsOwned*(state: GameState, houseId: HouseId): Shipyard =
-  ## Iterate all shipyards owned by a house
-  ## O(colonies_owned * shipyards_per_colony) via coloniesOwned + byColony index
-  for colony in state.coloniesOwned(houseId):
-    if state.shipyards.byColony.contains(colony.id):
-      for shipyardId in state.shipyards.byColony[colony.id]:
-        if state.shipyards.entities.index.contains(shipyardId):
-          yield
-            state.shipyards.entities.data[state.shipyards.entities.index[shipyardId]]
-
-iterator drydocksOwned*(state: GameState, houseId: HouseId): Drydock =
-  ## Iterate all drydocks owned by a house
-  ## O(colonies_owned * drydocks_per_colony) via coloniesOwned + byColony index
-  for colony in state.coloniesOwned(houseId):
-    if state.drydocks.byColony.contains(colony.id):
-      for drydockId in state.drydocks.byColony[colony.id]:
-        if state.drydocks.entities.index.contains(drydockId):
-          yield state.drydocks.entities.data[state.drydocks.entities.index[drydockId]]
+    if state.kastras.byColony.contains(colony.id):
+      for kastraId in state.kastras.byColony[colony.id]:
+        if state.kastras.entities.index.contains(kastraId):
+          yield state.kastras.entities.data[state.kastras.entities.index[kastraId]]
 
 # ============================================================================
 # All-Entity Iterators (Added 2025-12-22)
@@ -387,6 +361,24 @@ iterator shipsOwnedWithId*(
       if state.ships.entities.index.contains(shipId):
         let ship = state.ships.entities.data[state.ships.entities.index[shipId]]
         yield (shipId, ship)
+
+iterator allNeoriasWithId*(
+    state: GameState
+): tuple[id: NeoriaId, neoria: Neoria] =
+  ## Iterate all neorias with IDs (for mutations)
+  ## O(n) where n = total neorias
+  ## Use when you need to mutate neorias or need their IDs
+  for neoria in state.neorias.entities.data:
+    yield (neoria.id, neoria)
+
+iterator allKastrasWithId*(
+    state: GameState
+): tuple[id: KastraId, kastra: Kastra] =
+  ## Iterate all kastras with IDs (for mutations)
+  ## O(n) where n = total kastras
+  ## Use when you need to mutate kastras or need their IDs
+  for kastra in state.kastras.entities.data:
+    yield (kastra.id, kastra)
 
 ## Design Notes:
 ##
