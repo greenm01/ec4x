@@ -81,7 +81,17 @@ proc getStarbaseGrowthBonus*(state: GameState, colonyId: ColonyId): float =
 
 proc hasSpaceport*(state: GameState, colonyId: ColonyId): bool =
   ## Check if colony has at least one spaceport using DoD
-  colonyId in state.spaceports.byColony and state.spaceports.byColony[colonyId].len > 0
+  let colonyOpt = state.colony(colonyId)
+  if colonyOpt.isNone:
+    return false
+
+  let colony = colonyOpt.get()
+  for neoriaId in colony.neoriaIds:
+    let neoriaOpt = state.neoria(neoriaId)
+    if neoriaOpt.isSome and neoriaOpt.get().neoriaClass == NeoriaClass.Spaceport:
+      return true
+
+  return false
 
 proc getShieldBlockChance*(shieldLevel: int): float =
   ## Calculate block chance for planetary shield level
