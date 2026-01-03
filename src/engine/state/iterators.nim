@@ -16,7 +16,8 @@
 ## NOTE: These are read-only iterators. For mutations, use state_helpers.
 import std/tables, std/options
 import
-  ../types/[colony, core, fleet, game_state, house, ship, squadron, facilities, starmap]
+  ../types/
+    [colony, core, fleet, game_state, house, ship, squadron, facilities, starmap, population]
 
 include ./entity_manager
 
@@ -397,6 +398,29 @@ iterator allKastrasWithId*(
   ## Use when you need to mutate kastras or need their IDs
   for kastraId in state.kastras.entities.index.keys:
     yield (kastraId, state.kastras.entities.entity(kastraId).get())
+
+iterator activePopulationTransfers*(
+    state: GameState
+): tuple[id: PopulationTransferId, transfer: PopulationInTransit] =
+  ## Iterate all active population transfers (in transit)
+  ## O(n) where n = active transfers
+  ## Uses inTransit index for efficient access
+  for transferId in state.populationTransfers.inTransit:
+    let transferOpt = state.populationTransfer(transferId)
+    if transferOpt.isSome:
+      yield (transferId, transferOpt.get())
+
+iterator populationTransfersForHouse*(
+    state: GameState, houseId: HouseId
+): tuple[id: PopulationTransferId, transfer: PopulationInTransit] =
+  ## Iterate all population transfers for a house
+  ## O(n) where n = transfers for house
+  ## Uses byHouse index for efficient access
+  if state.populationTransfers.byHouse.contains(houseId):
+    for transferId in state.populationTransfers.byHouse[houseId]:
+      let transferOpt = state.populationTransfer(transferId)
+      if transferOpt.isSome:
+        yield (transferId, transferOpt.get())
 
 ## Design Notes:
 ##

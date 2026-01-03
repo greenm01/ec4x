@@ -25,35 +25,14 @@ export
 
 ## CST Tech Upgrade Helpers
 
-proc updateSpaceportDocks(
-    state: var GameState, spaceportId: SpaceportId, effectiveDocks: int32
-) =
-  ## Helper to update spaceport effective docks using DoD pattern
-  let spaceportOpt = state.neoria(spaceportId)
-  if spaceportOpt.isSome:
-    var spaceport = spaceportOpt.get()
-    spaceport.effectiveDocks = effectiveDocks
-    state.updateNeoria(spaceportId, spaceport)
-
-proc updateShipyardDocks(
-    state: var GameState, shipyardId: ShipyardId, effectiveDocks: int32
-) =
-  ## Helper to update shipyard effective docks using DoD pattern
-  let shipyardOpt = state.neoria(shipyardId)
-  if shipyardOpt.isSome:
-    var shipyard = shipyardOpt.get()
-    shipyard.effectiveDocks = effectiveDocks
-    state.updateNeoria(shipyardId, shipyard)
-
-proc updateDrydockDocks(
-    state: var GameState, drydockId: DrydockId, effectiveDocks: int32
-) =
-  ## Helper to update drydock effective docks using DoD pattern
-  let drydockOpt = state.neoria(drydockId)
-  if drydockOpt.isSome:
-    var drydock = drydockOpt.get()
-    drydock.effectiveDocks = effectiveDocks
-    state.updateNeoria(drydockId, drydock)
+proc updateNeoriaDocks(state: var GameState, neoriaId: NeoriaId, effectiveDocks: int32) =
+  ## Helper to update neoria effective docks using DoD pattern
+  ## Works for all neoria types (Spaceport, Shipyard, Drydock)
+  let neoriaOpt = state.neoria(neoriaId)
+  if neoriaOpt.isSome:
+    var neoria = neoriaOpt.get()
+    neoria.effectiveDocks = effectiveDocks
+    state.updateNeoria(neoriaId, neoria)
 
 proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
   ## Recalculate all facility dock capacities when CST tech advances

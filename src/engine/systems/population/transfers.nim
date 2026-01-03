@@ -10,8 +10,8 @@ import ../../types/[
   game_state, core, event, population as pop_types, starmap, fleet, colony,
 ]
 import ../../state/[engine, iterators]
-import ../../entities/fleet_ops
-import ../../starmap as starmap_module
+import ../../entities/[fleet_ops, population_transfer_ops]
+import ../../starmap
 import ../fleet/movement
 import ../../event_factory/init as event_factory
 import ../../globals
@@ -69,9 +69,10 @@ proc createTransferInitiation*(
   ## Returns (success, message) tuple
 
   # Validate concurrent transfer limit
-  let activeTransfers =
-    state.populationInTransit.filterIt(it.houseId == houseId)
-  if activeTransfers.len >= 5:
+  var activeTransferCount = 0
+  for (_, _) in state.populationTransfersForHouse(houseId):
+    activeTransferCount += 1
+  if activeTransferCount >= 5:
     return (false, "Maximum 5 concurrent transfers allowed per house")
 
   # Validate source colony exists
@@ -122,32 +123,18 @@ proc createTransferInitiation*(
   if houseOpt.get().treasury < cost:
     return (false, "Insufficient funds: " & $cost & " PP required")
 
-  # Create transfer record
+  # Get destination colony ID
+  let destColonyIdOpt = state.colonyIdBySystem(destSystem)
+  if destColonyIdOpt.isNone:
+    return (false, "Destination system has no colony")
+
+  # Create transfer using entity operations
+  # This handles: ID generation, entity manager, indexes, population/treasury deduction
   let arrivalTurn = int32(state.turn + distance)
-  let transfer = pop_types.PopulationInTransit(
-    id: PopulationTransferId(sourceColonyId.uint32 xor destSystem.uint32 xor state.turn.uint32),
-    houseId: houseId,
-    sourceColony: sourceColonyId,
-    destColony: state.colonyIdBySystem(destSystem).get(),  # Lookup ColonyId
-    ptuAmount: int32(ptuAmount),
-    costPaid: cost,
-    arrivalTurn: arrivalTurn,
-    status: TransferStatus.InTransit,
+  let _ = population_transfer_ops.startTransfer(
+    state, houseId, sourceColonyId, destColonyIdOpt.get(), int32(ptuAmount), cost,
+    arrivalTurn,
   )
-
-  # Deduct population from source (using entity pattern)
-  var updatedSourceColony = sourceColony
-  updatedSourceColony.populationUnits -= int32(ptuAmount)
-  updatedSourceColony.population = updatedSourceColony.populationUnits
-  state.updateColony(sourceColonyId, updatedSourceColony)
-
-  # Deduct cost from treasury (using entity pattern)
-  var house = houseOpt.get()
-  house.treasury -= cost
-  state.updateHouse(houseId, house)
-  
-  # Add to active transfers
-  state.populationInTransit.add(transfer)
 
   return (true, "Transfer initiated")
 
@@ -212,7 +199,7 @@ proc processArrivingTransfer(
     result.actualDestination = none(SystemId)
 
 proc applyTransferCompletion*(
-    state: var GameState, completion: TransferCompletion
+    state: var GameState, transferId: PopulationTransferId, completion: TransferCompletion
 ) =
   ## Apply transfer completion to state
   ## Mutates state using entity patterns
@@ -222,14 +209,11 @@ proc applyTransferCompletion*(
     if completion.actualDestination.isSome:
       let destSystem = completion.actualDestination.get()
 
-      # Deliver population
+      # Deliver population using entity operations
       let destColonyOpt = state.colonyBySystem(destSystem)
       if destColonyOpt.isSome:
-          var destColony = destColonyOpt.get()
-          let destColonyId = destColony.id # Needed for updateEntity
-          destColony.populationUnits += completion.transfer.ptuAmount
-          destColony.population = destColony.populationUnits
-          state.updateColony(destColonyId, destColony)
+        let destColonyId = destColonyOpt.get().id
+        population_transfer_ops.deliverTransfer(state, transferId, destColonyId)
 
       info(
         "Population transfer completed: ", $completion.transfer.ptuAmount, " PTU to ",
@@ -254,18 +238,20 @@ proc applyTransferCompletion*(
 proc processTransfers*(state: var GameState): seq[TransferCompletion] =
   ## Batch process all active transfers arriving this turn
   result = @[]
-  var completedIndices: seq[int] = @[]
+  var completedIds: seq[PopulationTransferId] = @[]
 
-  for i, transfer in state.populationInTransit:
+  # Use iterator to access active transfers via entity manager
+  for (transferId, transfer) in state.activePopulationTransfers():
     if transfer.arrivalTurn == state.turn:
       let completion = processArrivingTransfer(state, transfer)
-      applyTransferCompletion(state, completion)
+      applyTransferCompletion(state, transferId, completion)
       result.add(completion)
-      completedIndices.add(i)
+      completedIds.add(transferId)
 
-  # Remove completed transfers (reverse order to preserve indices)
-  for i in countdown(completedIndices.len - 1, 0):
-    state.populationInTransit.delete(completedIndices[i])
+  # Remove completed transfers using entity operations
+  # This handles: entity manager deletion, byHouse index, inTransit index
+  for transferId in completedIds:
+    population_transfer_ops.completeTransfer(state, transferId)
 
   info(
     "Processed ", $result.len, " population transfers (", $result.filterIt(

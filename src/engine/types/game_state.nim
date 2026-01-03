@@ -68,7 +68,6 @@ type
     activeSpyMissions*: Table[FleetId, ActiveSpyMission]
     ongoingEffects*: seq[OngoingEffect]
     pendingProposals*: seq[PendingProposal]
-    populationInTransit*: seq[PopulationInTransit]
 
     # Commissioning queues
     pendingCommissions*: seq[CompletedProject]

@@ -33,11 +33,10 @@ proc collectPopulationMetrics*(
   result.coloniesBlockadedCount = blockadedCount
   result.blockadeTurnsCumulative = blockadeTurns
 
-  # Population transfers in transit
+  # Population transfers in transit (use iterator for entity manager access)
   var thisHouseTransfers: int32 = 0
-  for transfer in state.populationInTransit:
-    if transfer.houseId == houseId:
-      thisHouseTransfers += 1
+  for (_, _) in state.populationTransfersForHouse(houseId):
+    thisHouseTransfers += 1
   result.populationTransfersActive = thisHouseTransfers
 
   # Track from events
