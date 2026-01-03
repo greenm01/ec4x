@@ -15,7 +15,7 @@ type
     name*: string # Planet/system name from config
     coords*: Hex
     ring*: uint32
-    house*: Option[HouseId]
+    # house removed - system controlled only if colony exists (use Colony.owner)
     planetClass*: PlanetClass
     resourceRating*: ResourceRating
 

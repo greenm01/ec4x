@@ -10,7 +10,7 @@ import std/[tables, options, sequtils, strformat]
 import ../../../common/logger
 import ../../types/[
   core, game_state, command, fleet, squadron, event,
-  diplomacy, intel, starmap, espionage, ship, prestige, colony
+  diplomacy, intel, starmap, espionage, ship, prestige, colony, ground_unit
 ]
 import ../../state/[engine, iterators]
 import ../../globals # For gameConfig
@@ -821,6 +821,12 @@ proc resolveViewWorldCommand*(
   let colony = colonyOpt.get()
   let colonyId = colony.id # Needed for intel report
 
+  # Get system for planetClass
+  let systemOpt = state.system(targetId)
+  if systemOpt.isNone:
+    return
+  let system = systemOpt.get()
+
   # Create minimal colony intel report from long-range scan
   # ViewWorld only gathers: owner + planet class (no detailed statistics)
   let intelReport = ColonyIntelReport(
@@ -856,7 +862,7 @@ proc resolveViewWorldCommand*(
 
   logInfo(
     "Fleet",
-    &"{house.name} viewed world at {targetId}: Owner={colony.owner}, Class={colony.planetClass}",
+    &"{house.name} viewed world at {targetId}: Owner={colony.owner}, Class={system.planetClass}",
   )
 
   # Generate event - use viewing house as target since ViewWorld scans neutral systems
@@ -902,8 +908,17 @@ proc autoLoadMarines(
   var colonyMut = colony
   var totalLoaded = 0
 
+  # Helper: Count marines in colony
+  proc countMarines(col: Colony): int =
+    var count = 0
+    for unitId in col.groundUnitIds:
+      let unitOpt = state.groundUnit(unitId)
+      if unitOpt.isSome and unitOpt.get().stats.unitType == GroundClass.Marine:
+        count += 1
+    return count
+
   for squadronId in fleet.squadrons:
-    if colonyMut.marineIds.len == 0:
+    if countMarines(colonyMut) == 0:
       break # No more marines to load
 
     let squadronOpt = state.squadron(squadronId)
@@ -935,7 +950,7 @@ proc autoLoadMarines(
       continue # Ship full
 
     # Load marines
-    let loadAmount = min(availableSpace, int32(colonyMut.marineIds.len))
+    let loadAmount = min(availableSpace, int32(countMarines(colonyMut)))
     if loadAmount > 0:
       var newCargo = currentCargo
       newCargo.cargoType = CargoClass.Marines
@@ -945,10 +960,15 @@ proc autoLoadMarines(
       # Update ship
       state.updateShip(squadron.flagshipId, flagship)
 
-      # Remove marines from colony
-      if loadAmount <= int32(colonyMut.marineIds.len):
-        colonyMut.marineIds =
-          colonyMut.marineIds[0 ..< (colonyMut.marineIds.len - int(loadAmount))]
+      # Remove marines from colony (remove N marine units from groundUnitIds)
+      var marinesToRemove = int(loadAmount)
+      var i = colonyMut.groundUnitIds.len - 1
+      while marinesToRemove > 0 and i >= 0:
+        let unitOpt = state.groundUnit(colonyMut.groundUnitIds[i])
+        if unitOpt.isSome and unitOpt.get().stats.unitType == GroundClass.Marine:
+          colonyMut.groundUnitIds.delete(i)
+          marinesToRemove -= 1
+        i -= 1
 
       totalLoaded += int(loadAmount)
 
@@ -1060,7 +1080,13 @@ proc autoLoadCargo*(
     let houseId = colony.owner
 
     # Check if colony has cargo to load
-    let hasMarines = colony.marineIds.len > 0
+    # Count marines in groundUnitIds
+    var hasMarines = false
+    for unitId in colony.groundUnitIds:
+      let unitOpt = state.groundUnit(unitId)
+      if unitOpt.isSome and unitOpt.get().stats.unitType == GroundClass.Marine:
+        hasMarines = true
+        break
     # Must keep minimum population per limits config (5000 souls)
     let minSoulsToKeep = gameConfig.limits.populationLimits.minColonyPopulation
     let hasPopulation = colony.souls > minSoulsToKeep

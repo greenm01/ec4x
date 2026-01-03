@@ -15,7 +15,7 @@
 ##   let result = submitZeroTurnCommand(state, cmd)
 ##   if result.success: echo "Success!"
 
-import ../../types/[core, game_state, fleet, squadron, ship, colony, event]
+import ../../types/[core, game_state, fleet, squadron, ship, colony, event, ground_unit]
 import ../../state/[engine, iterators]
 import ../../entities/[fleet_ops, squadron_ops, colony_ops]
 import ../fleet/entity as fleet_entity
@@ -762,7 +762,13 @@ proc executeLoadCargo*(
   var availableUnits =
     case cargoType
     of CargoClass.Marines:
-      colony.marineIds.len
+      # Count marine units in groundUnitIds
+      var marineCount = 0
+      for unitId in colony.groundUnitIds:
+        let unitOpt = state.groundUnit(unitId)
+        if unitOpt.isSome and unitOpt.get().stats.unitType == GroundClass.Marine:
+          marineCount += 1
+      marineCount
     of CargoClass.Colonists:
       # Calculate how many complete PTUs can be loaded from exact population
       # Using souls field for accurate counting (no float rounding errors)
@@ -860,11 +866,16 @@ proc executeLoadCargo*(
   if totalLoaded > 0:
     case cargoType
     of CargoClass.Marines:
-      # Remove loaded marines from colony (reduce marineIds list length)
-      # Note: Actual implementation would need to track which specific marine IDs were loaded
-      # For now, we reduce the list length by removing from the end
-      if totalLoaded <= colony.marineIds.len:
-        colony.marineIds = colony.marineIds[0 ..< (colony.marineIds.len - totalLoaded)]
+      # Remove loaded marines from colony (remove N marine units from groundUnitIds)
+      # Note: Removes marines from end of list (FIFO loading)
+      var marinesToRemove = totalLoaded
+      var i = colony.groundUnitIds.len - 1
+      while marinesToRemove > 0 and i >= 0:
+        let unitOpt = state.groundUnit(colony.groundUnitIds[i])
+        if unitOpt.isSome and unitOpt.get().stats.unitType == GroundClass.Marine:
+          colony.groundUnitIds.delete(i)
+          marinesToRemove -= 1
+        i -= 1
     of CargoClass.Colonists:
       # Colonists come from population: 1 PTU = 50k souls
       # Use souls field for exact counting (no rounding errors)

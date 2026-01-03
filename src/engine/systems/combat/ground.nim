@@ -178,19 +178,23 @@ proc resolveBombardmentRound*(
   # Calculate defending AS (ground batteries only attack back)
   # Use proper entity pattern: read via entity()
   var defenderAS = 0
-  for batteryId in defense.groundBatteryIds:
-    let batteryOpt = state.groundUnit(batteryId)
-    if batteryOpt.isNone:
+  for unitId in defense.groundUnitIds:
+    let unitOpt = state.groundUnit(unitId)
+    if unitOpt.isNone:
       continue
-    let battery = batteryOpt.get()
+    let unit = unitOpt.get()
 
-    if battery.state == CombatState.Destroyed:
+    # Only ground batteries fire back during bombardment
+    if unit.stats.unitType != GroundClass.GroundBattery:
+      continue
+
+    if unit.state == CombatState.Destroyed:
       continue
     let batteryAS =
-      if battery.state == CombatState.Crippled:
-        max(1, battery.stats.attackStrength div 2)
+      if unit.state == CombatState.Crippled:
+        max(1, unit.stats.attackStrength div 2)
       else:
-        battery.stats.attackStrength
+        unit.stats.attackStrength
     defenderAS += batteryAS
 
   # Both sides roll CER
@@ -221,56 +225,66 @@ proc resolveBombardmentRound*(
   # Apply damage to ground batteries (Section 7.5.3)
   # Use proper entity pattern: read, mutate copy, write back via updateEntity()
   var excessAttackerHits = attackerHits
-  for batteryId in defense.groundBatteryIds:
+  for unitId in defense.groundUnitIds:
     if excessAttackerHits <= 0:
       break
 
-    let batteryOpt = state.groundUnit(batteryId)
-    if batteryOpt.isNone:
+    let unitOpt = state.groundUnit(unitId)
+    if unitOpt.isNone:
       continue
-    var battery = batteryOpt.get()
+    var unit = unitOpt.get()
 
-    if battery.state == CombatState.Destroyed:
+    # Only ground batteries take bombardment damage
+    if unit.stats.unitType != GroundClass.GroundBattery:
       continue
 
-    if excessAttackerHits >= battery.stats.defenseStrength:
+    if unit.state == CombatState.Destroyed:
+      continue
+
+    if excessAttackerHits >= unit.stats.defenseStrength:
       # Enough hits to reduce this battery
-      excessAttackerHits -= battery.stats.defenseStrength
+      excessAttackerHits -= unit.stats.defenseStrength
 
-      case battery.state
+      case unit.state
       of CombatState.Undamaged:
-        battery.state = CombatState.Crippled
-        battery.stats = GroundUnitStats(
-          unitType: battery.stats.unitType,
-          attackStrength: max(1, battery.stats.attackStrength div 2),
-          defenseStrength: battery.stats.defenseStrength,
+        unit.state = CombatState.Crippled
+        unit.stats = GroundUnitStats(
+          unitType: unit.stats.unitType,
+          attackStrength: max(1, unit.stats.attackStrength div 2),
+          defenseStrength: unit.stats.defenseStrength,
         )
         result.batteriesCrippled += 1
       of CombatState.Crippled:
         # Check destruction protection
         # Check if all other batteries are crippled/destroyed
         var allOthersCrippled = true
-        for otherId in defense.groundBatteryIds:
-          if otherId == batteryId:
-            continue
+        for otherId in defense.groundUnitIds:
           let otherOpt = state.groundUnit(otherId)
-          if otherOpt.isSome and otherOpt.get().state == CombatState.Undamaged:
+          if otherOpt.isNone:
+            continue
+          let other = otherOpt.get()
+          # Only check other batteries
+          if other.stats.unitType != GroundClass.GroundBattery:
+            continue
+          if otherId == unitId:
+            continue
+          if other.state == CombatState.Undamaged:
             allOthersCrippled = false
             break
 
         if allOthersCrippled or attackCrit:
-          battery.state = CombatState.Destroyed
+          unit.state = CombatState.Destroyed
           result.batteriesDestroyed += 1
       of CombatState.Destroyed:
         discard
 
       # Write back changes via updateEntity()
-      state.updateGroundUnit(batteryId, battery)
+      state.updateGroundUnit(unitId, unit)
 
   # Apply excess hits to ground forces (Section 7.5.4)
   # Use proper entity pattern: read, mutate copy, write back via updateEntity()
   if excessAttackerHits > 0:
-    for unitId in defense.groundForceIds:
+    for unitId in defense.groundUnitIds:
       if excessAttackerHits <= 0:
         break
 
@@ -278,6 +292,10 @@ proc resolveBombardmentRound*(
       if unitOpt.isNone:
         continue
       var unit = unitOpt.get()
+
+      # Only ground forces (armies/marines) take overflow damage, not batteries
+      if unit.stats.unitType notin [GroundClass.Army, GroundClass.Marine]:
+        continue
 
       if unit.state == CombatState.Destroyed:
         continue
@@ -295,11 +313,17 @@ proc resolveBombardmentRound*(
         of CombatState.Crippled:
           # Check if all other ground forces are crippled/destroyed
           var allOthersCrippled = true
-          for otherId in defense.groundForceIds:
+          for otherId in defense.groundUnitIds:
+            let otherOpt = state.groundUnit(otherId)
+            if otherOpt.isNone:
+              continue
+            let other = otherOpt.get()
+            # Only check other ground forces (armies/marines)
+            if other.stats.unitType notin [GroundClass.Army, GroundClass.Marine]:
+              continue
             if otherId == unitId:
               continue
-            let otherOpt = state.groundUnit(otherId)
-            if otherOpt.isSome and otherOpt.get().state == CombatState.Undamaged:
+            if other.state == CombatState.Undamaged:
               allOthersCrippled = false
               break
 
@@ -379,9 +403,14 @@ proc conductBombardment*(
     # Stop if all batteries destroyed
     # Use proper entity pattern to check battery states
     var batteriesRemaining = false
-    for batteryId in defense.groundBatteryIds:
-      let batteryOpt = state.groundUnit(batteryId)
-      if batteryOpt.isSome and batteryOpt.get().state != CombatState.Destroyed:
+    for unitId in defense.groundUnitIds:
+      let unitOpt = state.groundUnit(unitId)
+      if unitOpt.isNone:
+        continue
+      let unit = unitOpt.get()
+      # Only check batteries
+      if unit.stats.unitType == GroundClass.GroundBattery and
+          unit.state != CombatState.Destroyed:
         batteriesRemaining = true
         break
 
@@ -414,9 +443,14 @@ proc conductInvasion*(
   # Check prerequisites - all batteries must be destroyed
   # Use proper entity pattern to check battery states
   var batteriesDestroyed = true
-  for batteryId in defense.groundBatteryIds:
-    let batteryOpt = state.groundUnit(batteryId)
-    if batteryOpt.isSome and batteryOpt.get().state != CombatState.Destroyed:
+  for unitId in defense.groundUnitIds:
+    let unitOpt = state.groundUnit(unitId)
+    if unitOpt.isNone:
+      continue
+    let unit = unitOpt.get()
+    # Check if any batteries remain operational
+    if unit.stats.unitType == GroundClass.GroundBattery and
+        unit.state != CombatState.Destroyed:
       batteriesDestroyed = false
       break
 

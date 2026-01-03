@@ -482,8 +482,8 @@ proc connectHouseSystems(starMap: var StarMap, state: GameState, rng: var Rand) 
 proc connectRemainingSystem(starMap: var StarMap, state: GameState, rng: var Rand) =
   ## Connect all remaining systems with random lane types
   for system in state.allSystems():
-    if system.ring == 0 or system.house.isSome:
-      continue  # Skip hub and house systems
+    if system.ring == 0 or system.id in starMap.homeWorlds:
+      continue  # Skip hub and house homeworld systems
 
     # Find unconnected neighbors
     var neighbors: seq[SystemId] = @[]
@@ -682,9 +682,11 @@ proc verifyGameRules*(starMap: StarMap, state: GameState): bool =
     return false
 
 proc houseSystems*(starMap: StarMap, state: GameState, houseId: HouseId): seq[System] =
-  ## Get all systems owned by a specific house
+  ## Get all systems owned by a specific house (via colony ownership)
   var systems: seq[System] = @[]
   for system in state.allSystems():
-    if system.house.isSome and system.house.get() == houseId:
+    # System is owned if it has a colony owned by this house
+    let colonyOpt = state.colonyBySystem(system.id)
+    if colonyOpt.isSome and colonyOpt.get().owner == houseId:
       systems.add(system)
   return systems

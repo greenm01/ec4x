@@ -38,6 +38,28 @@ proc generateColonyIntelReport*(
   if colony.owner == scoutOwner:
     return none(ColonyIntelReport)
 
+  # Count ground units from consolidated groundUnitIds
+  var armyCount, marineCount, groundBatteryCount, shieldLevel = 0i32
+  for unitId in colony.groundUnitIds:
+    let unitOpt = state.groundUnit(unitId)
+    if unitOpt.isSome:
+      let unit = unitOpt.get()
+      case unit.stats.unitType
+      of GroundClass.Army:
+        armyCount += 1
+      of GroundClass.Marine:
+        marineCount += 1
+      of GroundClass.GroundBattery:
+        groundBatteryCount += 1
+      of GroundClass.PlanetaryShield:
+        # Get shield level from house SLD tech
+        let houseOpt = state.house(colony.owner)
+        if houseOpt.isSome:
+          shieldLevel = houseOpt.get().techTree.levels.sld
+
+  # Count neoria facilities (spaceports)
+  let spaceportCount = colony.neoriaIds.len.int32
+
   var report = ColonyIntelReport(
     colonyId: colonyOpt.get().id,  # Use actual colony ID
     targetOwner: colony.owner,
@@ -45,11 +67,11 @@ proc generateColonyIntelReport*(
     quality: quality,
     population: colony.population,
     infrastructure: colony.infrastructure,
-    spaceportCount: int32(colony.spaceportIds.len),
-    armyCount: int32(colony.armyIds.len),
-    marineCount: int32(colony.marineIds.len),
-    groundBatteryCount: int32(colony.groundBatteryIds.len),
-    planetaryShieldLevel: colony.planetaryShieldLevel,
+    spaceportCount: spaceportCount,
+    armyCount: armyCount,
+    marineCount: marineCount,
+    groundBatteryCount: groundBatteryCount,
+    planetaryShieldLevel: shieldLevel,
     colonyConstructionQueue: @[],
     grossOutput: none(int32),
     taxRevenue: none(int32),

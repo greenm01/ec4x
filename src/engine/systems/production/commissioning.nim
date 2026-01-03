@@ -44,7 +44,7 @@ import ../../types/[core, game_state, production, event, ground_unit]
 import ../../types/[ship, colony, fleet, squadron, facilities]
 import ../../state/[engine, id_gen]
 import ../../config/[ground_units_config, facilities_config]
-import ../../entities/[neoria_ops, kastra_ops]
+import ../../entities/[neoria_ops, kastra_ops, ground_unit_ops]
 import ../../globals
 import ../../../common/logger
 import ../ship/entity as ship_entity
@@ -87,6 +87,15 @@ proc getShieldBlockChance*(shieldLevel: int): float =
   ## Calculate block chance for planetary shield level
   ## SLD1=10%, SLD2=20%, ..., SLD6=60%
   result = shieldLevel.float * 0.10
+
+proc countGroundUnits(state: GameState, colony: Colony, unitType: GroundClass): int =
+  ## Count ground units of specific type in colony
+  var count = 0
+  for unitId in colony.groundUnitIds:
+    let unitOpt = state.groundUnit(unitId)
+    if unitOpt.isSome and unitOpt.get().stats.unitType == unitType:
+      count += 1
+  return count
 
 # Note: getTotalGroundDefense removed - groundBatteries is still a simple counter on Colony
 # getTotalConstructionDocks and hasSpaceport moved to DoD versions above
@@ -248,7 +257,7 @@ proc commissionPlanetaryDefense*(
   ## - Fighters → colony.fighterSquadrons (planetside construction)
   ## - Starbases → colony.starbases (orbital defense)
   ## - Facilities → colony.spaceports/shipyards/drydocks
-  ## - Ground defenses → colony.groundBatteries/planetaryShieldLevel
+  ## - Ground defenses → colony.groundUnitIds (GroundBattery, PlanetaryShield units)
   ## - Ground forces → colony.marines/armies
   ##
   ## **Strategic Rationale:** Planetary assets commission immediately so defenders
@@ -496,30 +505,24 @@ proc commissionPlanetaryDefense*(
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
-        var colony = colonyOpt.get()
+        let colony = colonyOpt.get()
 
-        # Create ground battery
-        let unitId = generateGroundUnitId(state)
-        let battery = GroundUnit(
-          id: unitId,
-          unitType: GroundClass.GroundBattery,
-          owner: colony.owner,
-          attackStrength: int32(globalGroundUnitsConfig.units[GroundClass.GroundBattery].attack_strength),
-          defenseStrength:
-            int32(globalGroundUnitsConfig.units[GroundClass.GroundBattery].defense_strength),
-          state: CombatState.Undamaged,
+        # Create ground battery using entity helper
+        let battery = ground_unit_ops.createGroundUnit(
+          state, colony.owner, completed.colonyId, GroundClass.GroundBattery
         )
-        state.addGroundUnit(unitId, battery)
 
-        # Link to colony
-        colony.groundBatteryIds.add(unitId)
-        state.updateColony(completed.colonyId, colony)
+        # Get updated colony for count
+        let updatedColonyOpt = state.colony(completed.colonyId)
+        if updatedColonyOpt.isSome:
+          let updatedColony = updatedColonyOpt.get()
+          let batteryCount = countGroundUnits(state, updatedColony, GroundClass.GroundBattery)
 
-        logInfo(
-          "Economy",
-          &"Deployed ground battery at {completed.colonyId} " &
-            &"(Total ground defenses: {colony.groundBatteryIds.len} batteries)",
-        )
+          logInfo(
+            "Economy",
+            &"Deployed ground battery at {completed.colonyId} " &
+              &"(Total ground defenses: {batteryCount} batteries)",
+          )
 
         events.add(
           event_factory.buildingCompleted(
@@ -536,22 +539,25 @@ proc commissionPlanetaryDefense*(
           continue
         var colony = colonyOpt.get()
 
-        # Extract shield level from itemId (e.g., "PlanetaryShield-3" -> 3)
-        # For now, assume sequential upgrades
-        let newLevel = colony.planetaryShieldLevel + 1
-        colony.planetaryShieldLevel = min(newLevel, 6) # Max SLD6
-        saveColony(completed.colonyId, colony)
+        # Create PlanetaryShield ground unit (shield level from house SLD tech)
+        let shieldUnit = ground_unit_ops.createGroundUnit(
+          state, colony.owner, completed.colonyId, GroundClass.PlanetaryShield
+        )
+
+        # Get house SLD tech level for logging
+        let houseOpt = state.house(colony.owner)
+        let sldLevel = if houseOpt.isSome: houseOpt.get().techTree.levels.sld else: 1
 
         logInfo(
           "Economy",
-          &"Deployed planetary shield SLD{colony.planetaryShieldLevel} at {completed.colonyId} " &
-            &"(Block chance: {int(getShieldBlockChance(colony.planetaryShieldLevel) * 100.0)}%)",
+          &"Deployed planetary shield SLD{sldLevel} at {completed.colonyId} " &
+            &"(Block chance: {int(getShieldBlockChance(sldLevel) * 100.0)}%)",
         )
 
         events.add(
           event_factory.buildingCompleted(
             colony.owner,
-            &"Planetary Shield SLD{colony.planetaryShieldLevel}",
+            &"Planetary Shield SLD{sldLevel}",
             colony.systemId,
           )
         )
@@ -582,39 +588,34 @@ proc commissionPlanetaryDefense*(
               &"({colony.souls - marinePopCost} < {minViablePop} souls)",
           )
         else:
-          # Create marine ground unit
-          let unitId = generateGroundUnitId(state)
-          let marine = GroundUnit(
-            id: unitId,
-            unitType: GroundClass.Marine,
-            owner: colony.owner,
-            attackStrength:
-              int32(globalGroundUnitsConfig.units[GroundClass.Marine].attack_strength),
-            defenseStrength:
-              int32(globalGroundUnitsConfig.units[GroundClass.Marine].defense_strength),
-            state: CombatState.Undamaged,
-          )
-          state.addGroundUnit(unitId, marine)
-
-          # Link to colony
-          colony.marineIds.add(unitId)
-
-          # Deduct recruited souls
-          colony.souls -= int32(marinePopCost)
-          colony.population = colony.souls div 1_000_000
-          state.updateColony(completed.colonyId, colony)
-
-          logInfo(
-            "Economy",
-            &"Recruited Marine Division at {completed.colonyId} " &
-              &"(Total Marines: {colony.marineIds.len} MD, {colony.souls} souls remaining)",
+          # Create marine ground unit using entity helper
+          let marine = ground_unit_ops.createGroundUnit(
+            state, colony.owner, completed.colonyId, GroundClass.Marine
           )
 
-          events.add(
-            event_factory.unitRecruited(
-              colony.owner, "Marine Division", colony.systemId, 1
+          # Get colony again to deduct population (createGroundUnit updated it)
+          let colonyOpt2 = state.colony(completed.colonyId)
+          if colonyOpt2.isSome:
+            var updatedColony = colonyOpt2.get()
+
+            # Deduct recruited souls
+            updatedColony.souls -= int32(marinePopCost)
+            updatedColony.population = updatedColony.souls div 1_000_000
+            state.updateColony(completed.colonyId, updatedColony)
+
+            let marineCount = countGroundUnits(state, updatedColony, GroundClass.Marine)
+
+            logInfo(
+              "Economy",
+              &"Recruited Marine Division at {completed.colonyId} " &
+                &"(Total Marines: {marineCount} MD, {updatedColony.souls} souls remaining)",
             )
-          )
+
+            events.add(
+              event_factory.unitRecruited(
+                updatedColony.owner, "Marine Division", updatedColony.systemId, 1
+              )
+            )
 
     # Special handling for Armies (AA)
     elif completed.projectType == BuildType.Facility and
@@ -642,37 +643,34 @@ proc commissionPlanetaryDefense*(
               &"({colony.souls - armyPopCost} < {minViablePop} souls)",
           )
         else:
-          # Create army ground unit
-          let unitId = generateGroundUnitId(state)
-          let army = GroundUnit(
-            id: unitId,
-            unitType: GroundClass.Army,
-            owner: colony.owner,
-            attackStrength: int32(globalGroundUnitsConfig.units[GroundClass.Army].attack_strength),
-            defenseStrength: int32(globalGroundUnitsConfig.units[GroundClass.Army].defense_strength),
-            state: CombatState.Undamaged,
-          )
-          state.addGroundUnit(unitId, army)
-
-          # Link to colony
-          colony.armyIds.add(unitId)
-
-          # Deduct recruited souls
-          colony.souls -= int32(armyPopCost)
-          colony.population = colony.souls div 1_000_000
-          state.updateColony(completed.colonyId, colony)
-
-          logInfo(
-            "Economy",
-            &"Mustered Army Division at {completed.colonyId} " &
-              &"(Total Armies: {colony.armyIds.len} AA, {colony.souls} souls remaining)",
+          # Create army ground unit using entity helper
+          let army = ground_unit_ops.createGroundUnit(
+            state, colony.owner, completed.colonyId, GroundClass.Army
           )
 
-          events.add(
-            event_factory.unitRecruited(
-              colony.owner, "Army Division", colony.systemId, 1
+          # Get colony again to deduct population (createGroundUnit updated it)
+          let colonyOpt2 = state.colony(completed.colonyId)
+          if colonyOpt2.isSome:
+            var updatedColony = colonyOpt2.get()
+
+            # Deduct recruited souls
+            updatedColony.souls -= int32(armyPopCost)
+            updatedColony.population = updatedColony.souls div 1_000_000
+            state.updateColony(completed.colonyId, updatedColony)
+
+            let armyCount = countGroundUnits(state, updatedColony, GroundClass.Army)
+
+            logInfo(
+              "Economy",
+              &"Mustered Army Division at {completed.colonyId} " &
+                &"(Total Armies: {armyCount} AA, {updatedColony.souls} souls remaining)",
             )
-          )
+
+            events.add(
+              event_factory.unitRecruited(
+                updatedColony.owner, "Army Division", updatedColony.systemId, 1
+              )
+            )
 
   # Write all modified colonies back to state
   # This ensures multiple units completing at same colony see accumulated changes

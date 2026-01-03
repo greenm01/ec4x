@@ -62,7 +62,7 @@ proc getStarbaseGrowthBonus*(colony: Colony): float =
   return 0.0
 
 proc calculateGrossOutput*(
-    colony: Colony, elTechLevel: int, cstTechLevel: int = 1
+    state: GameState, colony: Colony, elTechLevel: int, cstTechLevel: int = 1
 ): int =
   ## Calculate GCO (Gross Colony Output) for colony
   ## Per economy.md:3.1 and 4.5
@@ -74,8 +74,14 @@ proc calculateGrossOutput*(
   let validPopulationUnits = max(0, colony.populationUnits)
   let validIndustrialUnits = max(0, colony.industrial.units)
 
+  # Get planetClass and resources from System (single source of truth)
+  let systemOpt = state.system(colony.systemId)
+  if systemOpt.isNone:
+    return 0  # No production if system not found
+  let system = systemOpt.get()
+
   # Population production component
-  let rawIndex = getRawIndex(colony.planetClass, colony.resources)
+  let rawIndex = getRawIndex(system.planetClass, system.resourceRating)
   let populationProd = float(validPopulationUnits) * rawIndex
 
   # Industrial production component
@@ -106,14 +112,20 @@ proc calculateNetValue*(grossOutput: int, taxRate: int): int =
   result = int(ceil(float(grossOutput) * (float(taxRate) / 100.0)))
 
 proc calculateProductionOutput*(
-    colony: Colony, elTechLevel: int, cstTechLevel: int = 1
+    state: GameState, colony: Colony, elTechLevel: int, cstTechLevel: int = 1
 ): ProductionOutput =
   ## Calculate full production output for colony
-  let gco = calculateGrossOutput(colony, elTechLevel, cstTechLevel)
+  let gco = state.calculateGrossOutput(colony, elTechLevel, cstTechLevel)
   let ncv = calculateNetValue(gco, colony.taxRate)
 
+  # Get planetClass and resources from System (single source of truth)
+  let systemOpt = state.system(colony.systemId)
+  if systemOpt.isNone:
+    return ProductionOutput(gco: 0, ncv: 0, popProd: 0, indProd: 0, rawIndex: 0.0)
+  let system = systemOpt.get()
+
   # Calculate component breakdown
-  let rawIndex = getRawIndex(colony.planetClass, colony.resources)
+  let rawIndex = getRawIndex(system.planetClass, system.resourceRating)
   let popProd = int(float(colony.populationUnits) * rawIndex)
 
   let elMod = getEconomicLevelModifier(elTechLevel)

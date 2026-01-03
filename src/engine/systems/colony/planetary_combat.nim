@@ -20,6 +20,28 @@ import ../fleet/mechanics
 import ../../event_factory/init as event_factory
 
 # ============================================================================
+# HELPER: Shield Level
+# ============================================================================
+
+proc getShieldLevel*(state: GameState, colony: Colony): int32 =
+  ## Get shield level for colony
+  ## Shield level is house-level tech (SLD), shields are GroundUnit entities
+  ## Returns 0 if no shield present, or house's SLD tech level if shield exists
+
+  # Check if colony has a PlanetaryShield ground unit
+  for unitId in colony.groundUnitIds:
+    let unitOpt = state.groundUnit(unitId)
+    if unitOpt.isSome:
+      let unit = unitOpt.get()
+      if unit.stats.unitType == GroundClass.PlanetaryShield:
+        # Shield exists - return owner's SLD tech level
+        let houseOpt = state.house(colony.owner)
+        if houseOpt.isSome:
+          return houseOpt.get().techTree.levels.sld
+        return 0
+  return 0  # No shield present
+
+# ============================================================================
 # BOMBARDMENT RESOLUTION
 # ============================================================================
 
@@ -134,11 +156,11 @@ proc resolveBombardment*(
   var defense = PlanetaryDefense()
 
   # Shields: Convert colony shield level to ShieldLevel object
-  if colony.planetaryShieldLevel > 0:
-    let (rollNeeded, blockPct) = getShieldData(colony.planetaryShieldLevel)
+  if state.getShieldLevel(colony) > 0:
+    let (rollNeeded, blockPct) = getShieldData(state.getShieldLevel(colony))
     defense.shields = some(
       ShieldLevel(
-        level: colony.planetaryShieldLevel,
+        level: state.getShieldLevel(colony),
         blockChance: float(rollNeeded) / 20.0, # Convert d20 roll to probability
         blockPercentage: blockPct,
       )
@@ -447,11 +469,11 @@ proc resolveInvasion*(
   var defense = PlanetaryDefense()
 
   # Shields
-  if colony.planetaryShieldLevel > 0:
-    let (rollNeeded, blockPct) = getShieldData(colony.planetaryShieldLevel)
+  if state.getShieldLevel(colony) > 0:
+    let (rollNeeded, blockPct) = getShieldData(state.getShieldLevel(colony))
     defense.shields = some(
       ShieldLevel(
-        level: colony.planetaryShieldLevel,
+        level: state.getShieldLevel(colony),
         blockChance: float(rollNeeded) / 20.0,
         blockPercentage: blockPct,
       )
@@ -531,9 +553,14 @@ proc resolveInvasion*(
     if updatedColony.industrial.units < 0:
       updatedColony.industrial.units = 0
 
-    # Shields and spaceports destroyed on landing (per spec)
-    updatedColony.planetaryShieldLevel = 0
-    updatedColony.spaceports = @[]
+    # Shields destroyed on landing (per spec) - remove PlanetaryShield units
+    updatedColony.groundUnitIds.keepIf(
+      proc(unitId: GroundUnitId): bool =
+        let unitOpt = state.groundUnit(unitId)
+        if unitOpt.isNone:
+          return false
+        unitOpt.get().stats.unitType != GroundClass.PlanetaryShield
+    )
 
     # Destroy ships under construction/repair in spaceport docks (per economy.md:5.0)
     handleFacilityDestruction(updatedColony, econ_types.FacilityClass.Spaceport)
@@ -841,11 +868,11 @@ proc resolveBlitz*(
   var defense = PlanetaryDefense()
 
   # Shields
-  if colony.planetaryShieldLevel > 0:
-    let (rollNeeded, blockPct) = getShieldData(colony.planetaryShieldLevel)
+  if state.getShieldLevel(colony) > 0:
+    let (rollNeeded, blockPct) = getShieldData(state.getShieldLevel(colony))
     defense.shields = some(
       ShieldLevel(
-        level: colony.planetaryShieldLevel,
+        level: state.getShieldLevel(colony),
         blockChance: float(rollNeeded) / 20.0,
         blockPercentage: blockPct,
       )

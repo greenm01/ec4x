@@ -4,8 +4,8 @@
 ## Covers: colony counts, colonies gained/lost, colonization events.
 
 import std/options
-import ../../types/[telemetry, core, game_state, event, colony]
-import ../../state/iterators
+import ../../types/[telemetry, core, game_state, event, colony, ground_unit]
+import ../../state/[iterators, engine]
 
 proc collectColonyMetrics*(
     state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
@@ -46,10 +46,18 @@ proc collectColonyMetrics*(
     # Check if colony has ground defense
     # NOTE: Planetary shields don't count (passive only)
     # NOTE: Starbases and fleets are orbital defense, not ground defense
-    let hasGroundDefense = (
-      colony.armyIds.len > 0 or colony.marineIds.len > 0 or
-      colony.groundBatteryIds.len > 0
-    )
+    var hasGroundDefense = false
+    for unitId in colony.groundUnitIds:
+      let unitOpt = state.groundUnit(unitId)
+      if unitOpt.isSome:
+        let unit = unitOpt.get()
+        # Count Army, Marine, GroundBattery (but NOT PlanetaryShield)
+        if unit.stats.unitType in [
+          GroundClass.Army, GroundClass.Marine, GroundClass.GroundBattery
+        ]:
+          hasGroundDefense = true
+          break
+
     if not hasGroundDefense:
       undefendedColonies += 1
 

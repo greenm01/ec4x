@@ -21,12 +21,13 @@ export multipliers  # Export economic multipliers (popGrowthMultiplier, etc.)
 ## Income Phase Resolution (gameplay.md:1.3.2)
 
 proc resolveIncomePhase*(
+    state: GameState,
     colonies: var seq[Colony],
     houseTaxPolicies: Table[HouseId, TaxPolicy],
-    houseTechLevels: Table[HouseId, int],
-    houseCSTTechLevels: Table[HouseId, int],
-    houseTreasuries: var Table[HouseId, int],
-    baseGrowthRate: float = 0.015,
+    houseTechLevels: Table[HouseId, int32],
+    houseCSTTechLevels: Table[HouseId, int32],
+    houseTreasuries: var Table[HouseId, int32],
+    baseGrowthRate: float32 = 0.015,
 ): IncomePhaseReport =
   ## Resolve income phase for all houses
   ##
@@ -38,6 +39,7 @@ proc resolveIncomePhase*(
   ## 5. Apply population growth
   ##
   ## Args:
+  ##   state: GameState for accessing planet data
   ##   colonies: All game colonies (modified for pop growth)
   ##   houseTaxPolicies: Tax policy per house
   ##   houseTechLevels: Economic Level tech per house
@@ -73,23 +75,23 @@ proc resolveIncomePhase*(
       if houseId in houseTechLevels:
         houseTechLevels[houseId]
       else:
-        1 # Default EL1
+        1i32 # Default EL1
 
     let cstTech =
       if houseId in houseCSTTechLevels:
         houseCSTTechLevels[houseId]
       else:
-        1 # Default CST1
+        1i32 # Default CST1
 
     let treasury =
       if houseId in houseTreasuries:
         houseTreasuries[houseId]
       else:
-        0
+        0i32
 
     # Calculate house income
     let houseReport =
-      calculateHouseIncome(houseColonyList, elTech, cstTech, taxPolicy, treasury)
+      calculateHouseIncome(state, houseColonyList, elTech, cstTech, taxPolicy, treasury)
 
     # Update treasury
     houseTreasuries[houseId] = houseReport.treasuryAfter
@@ -97,7 +99,7 @@ proc resolveIncomePhase*(
     # Apply population and industrial growth to colonies
     for i, colony in colonies.mpairs:
       if colony.owner == houseId:
-        discard applyPopulationGrowth(colony, taxPolicy.currentRate, baseGrowthRate)
+        discard state.applyPopulationGrowth(colony, taxPolicy.currentRate, baseGrowthRate)
         discard applyIndustrialGrowth(colony, taxPolicy.currentRate, baseGrowthRate)
         # Note: Could update report with growth rates here
 

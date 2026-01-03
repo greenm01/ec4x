@@ -10,7 +10,27 @@
 import std/[tables, options, sequtils, strformat]
 import ../../common/logger
 import ../state/engine
-import ../types/[core, game_state, intel, fleet, squadron, combat]
+import ../types/[core, game_state, intel, fleet, squadron, combat, ground_unit]
+
+proc getShieldLevel(state: GameState, colony: Colony): int32 =
+  ## Get shield level for colony (shield level from house SLD tech)
+  for unitId in colony.groundUnitIds:
+    let unitOpt = state.groundUnit(unitId)
+    if unitOpt.isSome and unitOpt.get().stats.unitType == GroundClass.PlanetaryShield:
+      let houseOpt = state.house(colony.owner)
+      if houseOpt.isSome:
+        return houseOpt.get().techTree.levels.sld
+      return 0
+  return 0
+
+proc countGroundUnits(state: GameState, colony: Colony, unitType: GroundClass): int =
+  ## Count ground units of specific type in colony
+  var count = 0
+  for unitId in colony.groundUnitIds:
+    let unitOpt = state.groundUnit(unitId)
+    if unitOpt.isSome and unitOpt.get().stats.unitType == unitType:
+      count += 1
+  return count
 
 proc createFleetComposition*(
     state: GameState, fleet: Fleet, fleetId: FleetId
@@ -254,11 +274,11 @@ proc generateBlitzIntelligence*(
       assetInfo.add(&"Infrastructure: {colony.infrastructure} levels (NO DAMAGE)")
       assetInfo.add(&"Industrial: {colony.industrial.units} IU (NO DAMAGE)")
       assetInfo.add(&"Population: {colony.population} PU")
-      assetInfo.add(&"Garrison: {colony.marineIds.len} Marines")
-      if colony.planetaryShieldLevel > 0:
-        assetInfo.add(&"Shields: SLD{colony.planetaryShieldLevel} (INTACT)")
-      if colony.groundBatteryIds.len > 0:
-        assetInfo.add(&"Ground Batteries: {colony.groundBatteryIds.len} (INTACT)")
+      assetInfo.add(&"Garrison: {state.countGroundUnits(colony, GroundClass.Marine)} Marines")
+      if state.getShieldLevel(colony) > 0:
+        assetInfo.add(&"Shields: SLD{state.getShieldLevel(colony)} (INTACT)")
+      if state.countGroundUnits(colony, GroundClass.GroundBattery) > 0:
+        assetInfo.add(&"Ground Batteries: {state.countGroundUnits(colony, GroundClass.GroundBattery)} (INTACT)")
       if colony.spaceportIds.len > 0:
         assetInfo.add(&"Spaceports: {colony.spaceportIds.len} (INTACT)")
     else:
@@ -267,13 +287,13 @@ proc generateBlitzIntelligence*(
       assetInfo.add(&"Infrastructure: {colony.infrastructure} levels")
       assetInfo.add(&"Industrial: {colony.industrial.units} IU")
       assetInfo.add(&"Population: {colony.population} PU")
-      assetInfo.add(&"Defense: {colony.armyIds.len} Armies, {colony.marineIds.len} Marines")
+      assetInfo.add(&"Defense: {state.countGroundUnits(colony, GroundClass.Army)} Armies, {state.countGroundUnits(colony, GroundClass.Marine)} Marines")
       if batteriesDestroyed > 0:
         assetInfo.add(
-          &"Ground Batteries: {colony.groundBatteryIds.len} ({batteriesDestroyed} destroyed in bombardment)"
+          &"Ground Batteries: {state.countGroundUnits(colony, GroundClass.GroundBattery)} ({batteriesDestroyed} destroyed in bombardment)"
         )
       else:
-        assetInfo.add(&"Ground Batteries: {colony.groundBatteryIds.len}")
+        assetInfo.add(&"Ground Batteries: {state.countGroundUnits(colony, GroundClass.GroundBattery)}")
 
   # Attacker's blitz report
   let attackerOutcome =
@@ -389,17 +409,17 @@ proc generateInvasionIntelligence*(
         &"Industrial: {colony.industrial.units} IU ({industrialUnitsDestroyed} IU destroyed)"
       )
       assetInfo.add(&"Population: {colony.population} PU")
-      assetInfo.add(&"Garrison: {colony.marineIds.len} Marines")
-      if colony.planetaryShieldLevel > 0:
-        assetInfo.add(&"Shields: SLD{colony.planetaryShieldLevel}")
+      assetInfo.add(&"Garrison: {state.countGroundUnits(colony, GroundClass.Marine)} Marines")
+      if state.getShieldLevel(colony) > 0:
+        assetInfo.add(&"Shields: SLD{state.getShieldLevel(colony)}")
     else:
       # Failed invasion - defender shows surviving assets
       assetInfo.add("--- Surviving Assets ---")
       assetInfo.add(&"Infrastructure: {colony.infrastructure} levels")
       assetInfo.add(&"Industrial: {colony.industrial.units} IU")
       assetInfo.add(&"Population: {colony.population} PU")
-      assetInfo.add(&"Defense: {colony.armyIds.len} Armies, {colony.marineIds.len} Marines")
-      assetInfo.add(&"Ground Batteries: {colony.groundBatteryIds.len}")
+      assetInfo.add(&"Defense: {state.countGroundUnits(colony, GroundClass.Army)} Armies, {state.countGroundUnits(colony, GroundClass.Marine)} Marines")
+      assetInfo.add(&"Ground Batteries: {state.countGroundUnits(colony, GroundClass.GroundBattery)}")
 
   # Attacker's invasion report
   let attackerOutcome =
@@ -510,9 +530,9 @@ proc generateBombardmentIntelligence*(
     survivingAssets.add(&"Infrastructure: {colony.infrastructure} levels")
     survivingAssets.add(&"Industrial: {colony.industrial.units} IU")
     survivingAssets.add(&"Population: {colony.population} PU")
-    survivingAssets.add(&"Ground Batteries: {colony.groundBatteryIds.len}")
-    if colony.planetaryShieldLevel > 0:
-      survivingAssets.add(&"Shields: SLD{colony.planetaryShieldLevel}")
+    survivingAssets.add(&"Ground Batteries: {state.countGroundUnits(colony, GroundClass.GroundBattery)}")
+    if state.getShieldLevel(colony) > 0:
+      survivingAssets.add(&"Shields: SLD{state.getShieldLevel(colony)}")
 
   # Attacker's bombardment report (they know exactly what they did)
   var attackerEnemyLosses =

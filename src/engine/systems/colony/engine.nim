@@ -9,6 +9,7 @@
 import std/[options, tables]
 import ../../types/[core, game_state, starmap, prestige]
 import ../../entities/colony_ops
+import ../../state/engine
 import ../../globals
 import ../../prestige/engine as prestige_engine
 
@@ -21,7 +22,7 @@ type ColonizationResult* = object ## Result of a colonization attempt
 proc canColonize*(state: GameState, systemId: SystemId): bool =
   ## Check if a system can be colonized (no existing colony)
   ## Per operations.md:6.2.13
-  not state.colonies.bySystem.hasKey(systemId)
+  state.colonyBySystem(systemId).isNone
 
 proc establishColony*(
     state: var GameState,

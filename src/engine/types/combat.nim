@@ -192,8 +192,7 @@ type
 
   PlanetaryDefense* = object
     shields*: Option[ShieldLevel]
-    groundBatteryIds*: seq[GroundUnitId] # Store IDs, not objects
-    groundForceIds*: seq[GroundUnitId]
+    groundUnitIds*: seq[GroundUnitId] # All ground units (batteries, armies, marines, shields)
     spaceport*: bool
 
   ShieldLevel* = object ## Planetary shield information (per reference.md Section 9.3)

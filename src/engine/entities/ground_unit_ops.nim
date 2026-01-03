@@ -27,21 +27,13 @@ proc createGroundUnit*(
 
   state.addGroundUnit(unitId, newUnit)
 
-  # Access colony from state
+  # Access colony from state and add unit to groundUnitIds
   let colonyOpt = state.colonie(colonyId)
   if colonyOpt.isNone:
     return newUnit
 
   var colony = colonyOpt.get()
-  case unitType
-  of GroundClass.Army:
-    colony.armyIds.add(unitId)
-  of GroundClass.Marine:
-    colony.marineIds.add(unitId)
-  of GroundClass.GroundBattery:
-    colony.groundBatteryIds.add(unitId)
-  else:
-    discard
+  colony.groundUnitIds.add(unitId)
   state.updateColony(colonyId, colony)
 
   return newUnit
@@ -58,24 +50,10 @@ proc destroyGroundUnit*(state: var GameState, unitId: GroundUnitId) =
     let colonyOpt = state.colony(unit.garrison.colonyId)
     if colonyOpt.isSome:
       var colony = colonyOpt.get()
-      case unit.stats.unitType
-      of GroundClass.Army:
-        colony.armyIds.keepIf(
-          proc(id: GroundUnitId): bool =
-            id != unitId
-        )
-      of GroundClass.Marine:
-        colony.marineIds.keepIf(
-          proc(id: GroundUnitId): bool =
-            id != unitId
-        )
-      of GroundClass.GroundBattery:
-        colony.groundBatteryIds.keepIf(
-          proc(id: GroundUnitId): bool =
-            id != unitId
-        )
-      else:
-        discard
+      colony.groundUnitIds.keepIf(
+        proc(id: GroundUnitId): bool =
+          id != unitId
+      )
       state.updateColony(unit.garrison.colonyId, colony)
 
   state.delGroundUnit(unitId)

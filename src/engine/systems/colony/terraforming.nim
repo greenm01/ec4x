@@ -8,8 +8,8 @@
 ## called from turn_cycle/income_phase.nim
 
 import std/[tables, options, logging, strformat]
-import ../../types/[core, game_state, command, event, starmap]
-import ../../state/engine
+import ../../types/[core, game_state, command, event, starmap, colony]
+import ../../state/[engine, iterators]
 import ../tech/[costs as res_costs, effects as res_effects]
 import ../../event_factory/init as event_factory
 
@@ -44,10 +44,17 @@ proc resolveTerraformCommands*(
       continue
 
     let house = houseOpt.get()
-    let terLevel = house.techTree.levels.terraformingTech
+    let terLevel = house.techTree.levels.ter
+
+    # Get system to access planetClass
+    let systemOpt = state.system(colony.systemId)
+    if systemOpt.isNone:
+      error "Terraforming failed: System not found for colony ", command.colonyId
+      continue
+    let system = systemOpt.get()
 
     # Validate TER level requirement
-    let currentClass = ord(colony.planetClass) + 1 # Convert enum to class number (1-7)
+    let currentClass = ord(system.planetClass) + 1 # Convert enum to class number (1-7)
     if not res_effects.canTerraform(currentClass, terLevel):
       let targetClass = currentClass + 1
       error "Terraforming failed: TER level ",
@@ -68,16 +75,16 @@ proc resolveTerraformCommands*(
 
     # Deduct PP cost from house treasury
     var houseToUpdate = house
-    houseToUpdate.treasury -= ppCost
+    houseToUpdate.treasury -= ppCost.int32
     state.updateHouse(packet.houseId, houseToUpdate)
 
     # Create terraforming project
     let project = TerraformProject(
       startTurn: state.turn,
-      turnsRemaining: turnsRequired,
-      targetClass: targetClass,
-      ppCost: ppCost,
-      ppPaid: ppCost,
+      turnsRemaining: turnsRequired.int32,
+      targetClass: targetClass.int32,
+      ppCost: ppCost.int32,
+      ppPaid: ppCost.int32,
     )
 
     colony.activeTerraforming = some(project)
@@ -102,15 +109,13 @@ proc resolveTerraformCommands*(
     # Note: This was using TerraformComplete incorrectly for "initiated" - should be constructionStarted
     events.add(
       event_factory.constructionStarted(
-        packet.houseId, &"Terraforming to {className}", command.colonyId, ppCost
+        packet.houseId, &"Terraforming to {className}", colony.systemId, ppCost
       )
     )
 
 proc processTerraformingProjects*(state: var GameState, events: var seq[GameEvent]) =
   ## Process active terraforming projects for all houses
   ## Per economy.md Section 4.7
-
-  import ../../state/iterators
 
   # Iterate over all colonies using iterator (read-only access)
   for (colonyId, colony) in state.allColoniesWithId():
@@ -133,8 +138,14 @@ proc processTerraformingProjects*(state: var GameState, events: var seq[GameEven
 
     if project.turnsRemaining <= 0:
       # Terraforming complete!
-      # Convert int class number (1-7) back to PlanetClass enum (0-6)
-      colonyMut.planetClass = PlanetClass(project.targetClass - 1)
+      # Update System.planetClass (single source of truth)
+      let systemOpt = state.system(colony.systemId)
+      if systemOpt.isSome:
+        var systemMut = systemOpt.get()
+        # Convert int class number (1-7) back to PlanetClass enum (0-6)
+        systemMut.planetClass = PlanetClass(project.targetClass - 1)
+        state.updateSystem(colony.systemId, systemMut)
+
       colonyMut.activeTerraforming = none(TerraformProject)
 
       let className =
@@ -152,12 +163,12 @@ proc processTerraformingProjects*(state: var GameState, events: var seq[GameEven
         " completed terraforming of ", colonyId, " to ", className, " (class ",
         project.targetClass, ")"
 
-      events.add(event_factory.terraformComplete(houseId, colonyId, className))
+      events.add(event_factory.terraformComplete(houseId, colony.systemId, className))
     else:
       debug house.name,
         " terraforming ", colonyId, ": ", project.turnsRemaining, " turn(s) remaining"
       # Update project
       colonyMut.activeTerraforming = some(project)
 
-    # Write back (cast SystemId → ColonyId, 1:1 relationship)
-    state.updateColony(ColonyId(colonyId), colonyMut)
+    # Write back colony changes
+    state.updateColony(colonyId, colonyMut)

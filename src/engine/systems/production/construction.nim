@@ -156,13 +156,21 @@ proc resolveBuildOrders*(
       let buildingType = command.buildingType.get()
 
       # Phase F: Check planetary shield limit (max 1 per colony)
-      # Shields can be rebuilt if destroyed (planetaryShieldLevel == 0)
+      # Shields can be rebuilt if destroyed
       if buildingType.startsWith("PlanetaryShield"):
-        if colony.planetaryShieldLevel > 0:
+        # Check if colony already has a PlanetaryShield ground unit
+        var hasShield = false
+        for unitId in colony.groundUnitIds:
+          let unitOpt = state.groundUnit(unitId)
+          if unitOpt.isSome and unitOpt.get().stats.unitType == GroundClass.PlanetaryShield:
+            hasShield = true
+            break
+
+        if hasShield:
           logWarn(
             LogCategory.lcEconomy,
             &"[BUILD ORDER REJECTED] {packet.houseId}: System {command.colonySystem} already has " &
-              &"planetary shield (level {colony.planetaryShieldLevel}), max 1 per colony",
+              &"planetary shield, max 1 per colony",
           )
           continue
 

@@ -196,15 +196,14 @@ proc establishColony(
   let cargo = flagship.cargo.get()
   let ptuToDeposit = cargo.quantity
 
-  # Create ETAC colony with all PTU (foundation colony)
-  let colony = createETACColony(systemId, houseId, planetClass, resources)
-
   # Use colonization engine to establish with prestige
+  # planetClass and resources come from System (lines 175-176)
   let colResult = col_engine.establishColony(
+    state,
     houseId,
     systemId,
-    colony.planetClass,
-    colony.resources,
+    planetClass,
+    resources,
     ptuToDeposit, # Deposit all PTU (3 PTU = 3 PU foundation colony)
   )
 

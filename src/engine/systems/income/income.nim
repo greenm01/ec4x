@@ -88,11 +88,16 @@ proc calculateRollingTaxAverage*(history: seq[int]): int =
 ## Colony Income Calculation
 
 proc calculateColonyIncome*(
-    colony: Colony, houseELTech: int, houseCSTTech: int, houseTaxRate: int
+    state: GameState,
+    colony: Colony,
+    houseELTech: int32,
+    houseCSTTech: int32,
+    houseTaxRate: int32,
 ): ColonyIncomeReport =
   ## Calculate income for single colony
   ##
   ## Args:
+  ##   state: GameState for accessing planet data
   ##   colony: Colony economic data
   ##   houseELTech: House Economic Level tech
   ##   houseCSTTech: House Construction tech (affects capacity)
@@ -100,11 +105,13 @@ proc calculateColonyIncome*(
 
   let taxRate =
     if colony.taxRate > 0:
-      int(colony.taxRate)
+      colony.taxRate
     else:
       houseTaxRate
   let output =
-    production_engine.calculateProductionOutput(colony, houseELTech, houseCSTTech)
+    production_engine.calculateProductionOutput(
+      state, colony, houseELTech, houseCSTTech
+    )
 
   result = ColonyIncomeReport(
     colonyId: colony.id,  # Use actual colony ID, not system ID
@@ -120,15 +127,17 @@ proc calculateColonyIncome*(
 ## House Income Calculation
 
 proc calculateHouseIncome*(
+    state: GameState,
     colonies: seq[Colony],
-    houseELTech: int,
-    houseCSTTech: int,
+    houseELTech: int32,
+    houseCSTTech: int32,
     taxPolicy: TaxPolicy,
-    treasury: int,
+    treasury: int32,
 ): HouseIncomeReport =
   ## Calculate total income for house
   ##
   ## Args:
+  ##   state: GameState for accessing planet data
   ##   colonies: All colonies owned by house
   ##   houseELTech: Economic Level tech
   ##   houseCSTTech: Construction tech (affects capacity)
@@ -157,7 +166,7 @@ proc calculateHouseIncome*(
   # Calculate each colony's income
   for colony in colonies:
     let colonyReport =
-      calculateColonyIncome(colony, houseELTech, houseCSTTech, taxPolicy.currentRate)
+      calculateColonyIncome(state, colony, houseELTech, houseCSTTech, taxPolicy.currentRate)
     result.colonies.add(colonyReport)
     result.totalGross += colonyReport.grossOutput
     result.totalNet += colonyReport.netValue
@@ -219,8 +228,8 @@ proc getPlanetCapacity*(planetClass: PlanetClass): int =
   of PlanetClass.Eden: 5000
 
 proc applyPopulationGrowth*(
-    colony: var Colony, taxRate: int, baseGrowthRate: float
-): float =
+    state: GameState, colony: var Colony, taxRate: int32, baseGrowthRate: float32
+): float32 =
   ## Apply logistic population growth to colony
   ## Returns growth percentage for reporting
   ##
@@ -241,7 +250,13 @@ proc applyPopulationGrowth*(
   ##   baseGrowthRate: Base growth rate from config (e.g., 0.015 for 1.5%)
 
   let currentPU = float(colony.populationUnits)
-  let capacity = float(getPlanetCapacity(colony.planetClass))
+
+  # Get planetClass from System (single source of truth)
+  let systemOpt = state.system(colony.systemId)
+  if systemOpt.isNone:
+    return 0.0  # No growth if system not found
+  let system = systemOpt.get()
+  let capacity = float(getPlanetCapacity(system.planetClass))
 
   # Calculate effective growth rate with tax modifier, starbase bonus, and map scaling
   let taxMultiplier = getPopulationGrowthMultiplier(taxRate)

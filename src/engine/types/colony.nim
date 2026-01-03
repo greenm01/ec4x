@@ -26,15 +26,10 @@ type
     unassignedSquadronIds*: seq[SquadronId]
     fighterSquadronIds*: seq[SquadronId]
     capacityViolation*: CapacityViolation
-    planetClass*: PlanetClass
-    resources*: ResourceRating
-    planetaryShieldLevel*: int32
-    groundBatteryIds*: seq[GroundUnitId]
-    armyIds*: seq[GroundUnitId]
-    marineIds*: seq[GroundUnitId]
-    # Facility references (unified types)
-    neoriaIds*: seq[NeoriaId]
-    kastraIds*: seq[KastraId]
+    # Entity references (bucket-level tracking)
+    groundUnitIds*: seq[GroundUnitId]  # All ground units (batteries, armies, marines, shields)
+    neoriaIds*: seq[NeoriaId]          # Production facilities (spaceport, shipyard, drydock)
+    kastraIds*: seq[KastraId]          # Defensive facilities (starbase)
     blockaded*: bool
     blockadedBy*: seq[HouseId]
     blockadeTurns*: int32

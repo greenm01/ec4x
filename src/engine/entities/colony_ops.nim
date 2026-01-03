@@ -36,8 +36,7 @@ proc establishColony*(
         (ptuCount * gameConfig.economy.colonization.startingIuPercent) div 100,
       investmentCost: gameConfig.economy.industrialInvestment.baseCost,
     ),
-    planetClass: planetClass,
-    resources: resources,
+    # planetClass and resources removed - stored in System, not Colony
     production: 0,
     grossOutput: 0,
     taxRate: 50, # Default 50% tax rate
@@ -61,14 +60,10 @@ proc establishColony*(
       maximum: 0,
       excess: 0,
     ),
-    starbaseIds: @[],
-    spaceportIds: @[],
-    shipyardIds: @[],
-    drydockIds: @[],
-    planetaryShieldLevel: 0,
-    groundBatteryIds: @[],
-    armyIds: @[],
-    marineIds: @[],
+    # Entity references (bucket-level tracking)
+    groundUnitIds: @[],  # All ground units (batteries, armies, marines, shields)
+    neoriaIds: @[],      # Production facilities (spaceport, shipyard, drydock)
+    kastraIds: @[],      # Defensive facilities (starbase)
     blockaded: false,
     blockadedBy: @[],
     blockadeTurns: 0,

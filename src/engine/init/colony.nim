@@ -25,70 +25,9 @@ proc createHomeWorld*(
 
   let colonyId = state.generateColonyId()
 
-  var starbaseIds = newSeq[StarbaseId]()
-  var spaceportIds = newSeq[SpaceportId]()
-  var shipyardIds = newSeq[ShipyardId]()
-  var drydockIds = newSeq[DrydockId]()
-  var groundBatteryIds = newSeq[GroundUnitId]()
-  var armyIds = newSeq[GroundUnitId]()
-  var marineIds = newSeq[GroundUnitId]()
+  var groundUnitIds = newSeq[GroundUnitId]()
 
-  # Create Spaceports
-  let house = state.house(owner).get()
-  let cstLevel = house.techTree.levels.cst
-  let baseSpaceportDocks = gameConfig.facilities.facilities[FacilityClass.Spaceport].docks
-  let effectiveSpaceportDocks =
-    calculateEffectiveDocks(baseSpaceportDocks, cstLevel)
-  for i in 0 ..< gameSetup.startingFacilities.spaceports:
-    let spaceportId = state.generateSpaceportId()
-    let spaceport = Spaceport(
-      id: spaceportId,
-      colonyId: colonyId,
-      commissionedTurn: 0,
-      baseDocks: baseSpaceportDocks,
-      effectiveDocks: effectiveSpaceportDocks,
-      constructionQueue: @[],
-      activeConstructions: @[],
-    )
-    state.addSpaceport(spaceportId, spaceport)
-    spaceportIds.add(spaceportId)
-
-  let baseShipyardDocks = gameConfig.facilities.facilities[FacilityClass.Shipyard].docks
-  let effectiveShipyardDocks = calculateEffectiveDocks(baseShipyardDocks, cstLevel)
-  for i in 0 ..< gameSetup.startingFacilities.shipyards:
-    let shipyardId = state.generateShipyardId()
-    let shipyard = Shipyard(
-      id: shipyardId,
-      colonyId: colonyId,
-      commissionedTurn: 0,
-      baseDocks: baseShipyardDocks,
-      effectiveDocks: effectiveShipyardDocks,
-      isCrippled: false,
-      constructionQueue: @[],
-      activeConstructions: @[],
-    )
-    state.addShipyard(shipyardId, shipyard)
-    shipyardIds.add(shipyardId)
-
-  # Create Drydocks
-  let baseDrydockDocks = gameConfig.facilities.facilities[FacilityClass.Drydock].docks
-  let effectiveDrydockDocks = calculateEffectiveDocks(baseDrydockDocks, cstLevel)
-  for i in 0 ..< gameSetup.startingFacilities.drydocks:
-    let drydockId = state.generateDrydockId()
-    let drydock = Drydock(
-      id: drydockId,
-      colonyId: colonyId,
-      commissionedTurn: 0,
-      baseDocks: baseDrydockDocks,
-      effectiveDocks: effectiveDrydockDocks,
-      isCrippled: false,
-      repairQueue: @[],
-      activeRepairs: @[],
-    )
-    state.addDrydock(drydockId, drydock)
-    drydockIds.add(drydockId)
-
-  # NEW: Create unified Neorias (production facilities)
+  # Create unified Neorias (production facilities)
   var neoriaIds = newSeq[NeoriaId]()
   for i in 0 ..< gameSetup.startingFacilities.spaceports:
     let neoria = createNeoria(state, colonyId, NeoriaClass.Spaceport)
@@ -100,9 +39,9 @@ proc createHomeWorld*(
     let neoria = createNeoria(state, colonyId, NeoriaClass.Drydock)
     neoriaIds.add(neoria.id)
 
-  # NEW: Create Kastras (defensive facilities) with WEP-modified stats
-  # NOTE: Original code didn't create starbases at game start (starbaseIds was empty)
-  # Keeping same behavior for now - kastras can be added later via production system
+  # Create Kastras (defensive facilities) with WEP-modified stats
+  # NOTE: Original code didn't create starbases at game start
+  # Keeping same behavior - kastras can be added later via production system
   var kastraIds = newSeq[KastraId]()
 
   # Create Ground Batteries
@@ -123,7 +62,7 @@ proc createHomeWorld*(
       ),
     )
     state.addGroundUnit(groundUnitId, groundBattery)
-    groundBatteryIds.add(groundUnitId)
+    groundUnitIds.add(groundUnitId)
 
   # Create Armies
   for i in 0 ..< gameSetup.startingGroundForces.armies:
@@ -143,7 +82,7 @@ proc createHomeWorld*(
       ),
     )
     state.addGroundUnit(groundUnitId, army)
-    armyIds.add(groundUnitId)
+    groundUnitIds.add(groundUnitId)
 
   # Create Marines
   for i in 0 ..< gameSetup.startingGroundForces.marines:
@@ -163,7 +102,7 @@ proc createHomeWorld*(
       ),
     )
     state.addGroundUnit(groundUnitId, marine)
-    marineIds.add(groundUnitId)
+    groundUnitIds.add(groundUnitId)
 
   var newColony = Colony(
     id: colonyId,
@@ -178,8 +117,6 @@ proc createHomeWorld*(
       units: homeworldCfg.industrialUnits,
       investmentCost: gameConfig.economy.industrialInvestment.baseCost,
     ),
-    planetClass: planetClass,
-    resources: resources,
     production: 0,
     grossOutput: 0,
     taxRate: 50,
@@ -203,14 +140,8 @@ proc createHomeWorld*(
       maximum: 0,
       excess: 0,
     ),
-    planetaryShieldLevel: gameSetup.startingGroundForces.planetaryShields,
-    groundBatteryIds: groundBatteryIds,
-    armyIds: armyIds,
-    marineIds: marineIds,
-    starbaseIds: starbaseIds,
-    spaceportIds: spaceportIds,
-    shipyardIds: shipyardIds,
-    drydockIds: drydockIds,
+    # Entity references (bucket-level tracking)
+    groundUnitIds: groundUnitIds,
     neoriaIds: neoriaIds,
     kastraIds: kastraIds,
     blockaded: false,

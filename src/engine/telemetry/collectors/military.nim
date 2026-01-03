@@ -141,13 +141,21 @@ proc collectMilitaryMetrics*(
   var marinesAtColonies = 0i32
   var marinesOnTransports = 0i32
 
-  # Count ground units at colonies
+  # Count ground units at colonies (bucket-level tracking)
   for colony in state.coloniesOwned(houseId):
-    if colony.planetaryShieldLevel > 0:
-      planetaryShieldUnits += 1
-    groundBatteryUnits += colony.groundBatteryIds.len.int32
-    armyUnits += colony.armyIds.len.int32
-    marinesAtColonies += colony.marineIds.len.int32
+    for unitId in colony.groundUnitIds:
+      let unitOpt = state.groundUnit(unitId)
+      if unitOpt.isSome:
+        let unit = unitOpt.get()
+        case unit.stats.unitType
+        of GroundClass.PlanetaryShield:
+          planetaryShieldUnits += 1
+        of GroundClass.GroundBattery:
+          groundBatteryUnits += 1
+        of GroundClass.Army:
+          armyUnits += 1
+        of GroundClass.Marine:
+          marinesAtColonies += 1
 
   for squadron in state.squadronsOwned(houseId):
     if squadron.squadronType == SquadronClass.Auxiliary:

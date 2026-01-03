@@ -58,6 +58,7 @@ proc getScoutedSystems(
       result.incl(systemId)
 
 proc createVisibleColony(
+    state: GameState,
     colony: Colony,
     isOwned: bool,
     colonyIntel: Option[intel_types.ColonyIntelReport],
@@ -69,11 +70,14 @@ proc createVisibleColony(
   result.owner = colony.owner
 
   if isOwned:
-    # Full details for owned colonies
+    # Full details for owned colonies - get planetClass/resources from System
+    let systemOpt = state.system(colony.systemId)
     result.population = some(colony.population)
     result.infrastructure = some(colony.infrastructure)
-    result.planetClass = some(colony.planetClass)
-    result.resources = some(colony.resources)
+    if systemOpt.isSome:
+      let system = systemOpt.get()
+      result.planetClass = some(system.planetClass)
+      result.resources = some(system.resourceRating)
     result.production = some(colony.production)
   elif colonyIntel.isSome or orbitalIntel.isSome:
     # Limited details from intelligence reports
@@ -213,7 +217,7 @@ proc createPlayerView*(state: GameState, houseId: HouseId): PlayerView =
         isVisible = true
       if isVisible:
         result.visibleColonies.add(
-          createVisibleColony(colony, false, colonyIntel, orbitalIntel)
+          state.createVisibleColony(colony, false, colonyIntel, orbitalIntel)
         )
 
   # Visible fleets
