@@ -15,7 +15,7 @@ import ../../types/[
 import ../../state/[engine, iterators]
 import ../../globals # For gameConfig
 import ../ship/entity as ship_entity # Ship helper functions
-import ../../entities/[colony_ops, squadron_ops]
+import ../../entities/[colony_ops, squadron_ops, fleet_ops]
 import ../../prestige/[engine as prestige_engine, application as prestige_app]
 import ../../event_factory/init as event_factory
 import ../../intel/generator
@@ -174,12 +174,12 @@ proc findClosestOwnedColony*(
     if systemId != fromSystem:
       # Calculate distance (jump count) to this colony
       # Create dummy fleet for pathfinding
-      let dummyFleet = Fleet(
-        id: FleetId(999999), # Temporary ID for pathfinding
-        houseId: houseId,
-        location: fromSystem,
-        squadrons: @[],
-        status: FleetStatus.Active,
+      let dummyFleet = fleet_ops.newFleet(
+        squadronIds = @[],
+        id = FleetId(999999), # Temporary ID for pathfinding
+        owner = houseId,
+        location = fromSystem,
+        status = FleetStatus.Active,
       )
 
       # Note: findPath requires squadrons and ships parameters

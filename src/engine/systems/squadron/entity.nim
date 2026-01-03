@@ -22,27 +22,9 @@ proc getSquadronType*(shipClass: ShipClass): SquadronClass =
   else: Combat
 
 ## Squadron construction
-
-proc newSquadron*(
-    flagshipId: ShipId,
-    flagshipClass: ShipClass,
-    id: SquadronId = SquadronId(0),
-    owner: HouseId = HouseId(0),
-    location: SystemId = SystemId(0),
-): Squadron =
-  ## Create a new squadron with flagship
-  ## DoD: Takes ShipId reference and ship class for squadron type determination
-  let squadronType = getSquadronType(flagshipClass)
-
-  Squadron(
-    id: id,
-    flagshipId: flagshipId,
-    ships: @[],
-    houseId: owner,
-    location: location,
-    squadronType: squadronType,
-    embarkedFighters: @[],
-  )
+##
+## Note: newSquadron() has been moved to entities/squadron_ops.nim
+## This module provides pure business logic for squadron operations
 
 ## Squadron operations
 
@@ -160,7 +142,6 @@ proc scoutShips*(state: GameState, sq: Squadron): seq[ShipId] =
 
 proc hasScouts*(state: GameState, sq: Squadron): bool =
   ## Check if squadron has any operational scouts
-
   state.scoutShips(sq).filterIt(not state.ship(it).get().isCrippled).len > 0
 
 proc raiderShips*(state: GameState, sq: Squadron): seq[ShipId] =

@@ -8,22 +8,19 @@ import ../types/[game_state, core, colony, starmap, production, capacity]
 import ../globals
 import ../utils
 
-proc establishColony*(
-    state: var GameState,
+proc newColony*(
+    id: ColonyId,
     systemId: SystemId,
     owner: HouseId,
-    planetClass: PlanetClass,
-    resources: ResourceRating,
-    ptuCount: int32 = 3,
-): ColonyId =
-  ## Create a new ETAC-colonized system with specified PTU
-  ## Default: 3 PTU (150k souls) for standard ETAC colonization
-  ## PTU size loaded from config/economy.toml
-  let colonyId = state.generateColonyId()
+    ptuCount: int32,
+    taxRate: int32,
+): Colony =
+  ## Create a new colony value
+  ## Use this when you need a Colony value without state mutations
   let totalSouls = ptuCount * soulsPerPtu()
 
-  let newColony = Colony(
-    id: colonyId,
+  Colony(
+    id: id,
     systemId: systemId,
     owner: owner,
     population: totalSouls div 1_000_000,
@@ -36,10 +33,9 @@ proc establishColony*(
         (ptuCount * gameConfig.economy.colonization.startingIuPercent) div 100,
       investmentCost: gameConfig.economy.industrialInvestment.baseCost,
     ),
-    # planetClass and resources removed - stored in System, not Colony
     production: 0,
     grossOutput: 0,
-    taxRate: 50, # Default 50% tax rate
+    taxRate: taxRate,
     infrastructureDamage: 0.0,
     underConstruction: none(ConstructionProjectId),
     constructionQueue: @[],
@@ -55,18 +51,34 @@ proc establishColony*(
       graceTurnsRemaining: 0,
       violationTurn: 0,
       capacityType: CapacityType.FighterSquadron,
-      entity: EntityIdUnion(kind: CapacityType.FighterSquadron, colonyId: colonyId),
+      entity: EntityIdUnion(kind: CapacityType.FighterSquadron, colonyId: id),
       current: 0,
       maximum: 0,
       excess: 0,
     ),
-    # Entity references (bucket-level tracking)
-    groundUnitIds: @[],  # All ground units (batteries, armies, marines, shields)
-    neoriaIds: @[],      # Production facilities (spaceport, shipyard, drydock)
-    kastraIds: @[],      # Defensive facilities (starbase)
+    groundUnitIds: @[],
+    neoriaIds: @[],
+    kastraIds: @[],
     blockaded: false,
     blockadedBy: @[],
     blockadeTurns: 0,
+  )
+
+proc establishColony*(
+    state: var GameState,
+    systemId: SystemId,
+    owner: HouseId,
+    planetClass: PlanetClass,
+    resources: ResourceRating,
+    ptuCount: int32 = 3,
+): ColonyId =
+  ## Create a new ETAC-colonized system with specified PTU
+  ## Default: 3 PTU (150k souls) for standard ETAC colonization
+  ## PTU size loaded from config/economy.toml
+  let colonyId = state.generateColonyId()
+  let house = state.house(owner).get()
+  let newColony = newColony(
+    colonyId, systemId, owner, ptuCount, house.taxPolicy.currentRate
   )
 
   # Add to entity manager and update indices

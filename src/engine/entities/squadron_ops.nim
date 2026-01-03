@@ -6,7 +6,35 @@
 import std/[tables, sequtils, options]
 import ../types/game_state
 import ../state/[engine, id_gen]
-import ../types/[core, squadron, fleet]
+import ../types/[core, squadron, fleet, ship]
+import ../systems/squadron/entity as squadron_entity
+
+proc newSquadron*(
+    flagshipId: ShipId,
+    flagshipClass: ShipClass,
+    id: SquadronId,
+    owner: HouseId,
+    location: SystemId,
+): Squadron =
+  ## Create a new squadron with flagship
+  ## Use this for commissioning where fleet doesn't exist yet
+  ## DoD: Takes ShipId reference and ship class for squadron type determination
+  let squadronType = squadron_entity.getSquadronType(flagshipClass)
+
+  Squadron(
+    id: id,
+    flagshipId: flagshipId,
+    ships: @[],
+    houseId: owner,
+    location: location,
+    squadronType: squadronType,
+    embarkedFighters: @[],
+  )
+
+proc registerSquadronInFleet*(state: var GameState, squadronId: SquadronId, fleetId: FleetId) =
+  ## Register a squadron in the byFleet index
+  ## Use this when a squadron is added to a fleet outside normal createSquadron() flow
+  state[].squadrons[].byFleet.mgetOrPut(fleetId, @[]).add(squadronId)
 
 proc createSquadron*(
     state: var GameState,

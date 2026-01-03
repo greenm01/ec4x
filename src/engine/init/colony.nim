@@ -8,7 +8,7 @@ import
   ../types/[core, colony, production, capacity, facilities, ground_unit, game_state]
 import ../state/[engine, id_gen]
 import ../systems/tech/effects
-import ../entities/[neoria_ops, kastra_ops]
+import ../entities/[neoria_ops, kastra_ops, ground_unit_ops, colony_ops]
 import ../globals
 import ../utils
 
@@ -47,19 +47,8 @@ proc createHomeWorld*(
   # Create Ground Batteries
   for i in 0 ..< gameSetup.startingGroundForces.groundBatteries:
     let groundUnitId = state.generateGroundUnitId()
-    let gbConfig = gameConfig.groundUnits.units[GroundClass.GroundBattery]
-    let groundBattery = GroundUnit(
-      id: groundUnitId,
-      houseId: owner,
-      stats: GroundUnitStats(
-        unitType: GroundClass.GroundBattery,
-        attackStrength: gbConfig.attackStrength,
-        defenseStrength: gbConfig.defenseStrength,
-      ),
-      garrison: GroundUnitGarrison(
-        locationType: GroundUnitLocation.OnColony,
-        colonyId: colonyId,
-      ),
+    let groundBattery = ground_unit_ops.newGroundUnit(
+      groundUnitId, owner, colonyId, GroundClass.GroundBattery
     )
     state.addGroundUnit(groundUnitId, groundBattery)
     groundUnitIds.add(groundUnitId)
@@ -67,19 +56,8 @@ proc createHomeWorld*(
   # Create Armies
   for i in 0 ..< gameSetup.startingGroundForces.armies:
     let groundUnitId = state.generateGroundUnitId()
-    let armyConfig = gameConfig.groundUnits.units[GroundClass.Army]
-    let army = GroundUnit(
-      id: groundUnitId,
-      houseId: owner,
-      stats: GroundUnitStats(
-        unitType: GroundClass.Army,
-        attackStrength: armyConfig.attackStrength,
-        defenseStrength: armyConfig.defenseStrength,
-      ),
-      garrison: GroundUnitGarrison(
-        locationType: GroundUnitLocation.OnColony,
-        colonyId: colonyId,
-      ),
+    let army = ground_unit_ops.newGroundUnit(
+      groundUnitId, owner, colonyId, GroundClass.Army
     )
     state.addGroundUnit(groundUnitId, army)
     groundUnitIds.add(groundUnitId)
@@ -87,22 +65,14 @@ proc createHomeWorld*(
   # Create Marines
   for i in 0 ..< gameSetup.startingGroundForces.marines:
     let groundUnitId = state.generateGroundUnitId()
-    let marineConfig = gameConfig.groundUnits.units[GroundClass.Marine]
-    let marine = GroundUnit(
-      id: groundUnitId,
-      houseId: owner,
-      stats: GroundUnitStats(
-        unitType: GroundClass.Marine,
-        attackStrength: marineConfig.attackStrength,
-        defenseStrength: marineConfig.defenseStrength,
-      ),
-      garrison: GroundUnitGarrison(
-        locationType: GroundUnitLocation.OnColony,
-        colonyId: colonyId,
-      ),
+    let marine = ground_unit_ops.newGroundUnit(
+      groundUnitId, owner, colonyId, GroundClass.Marine
     )
     state.addGroundUnit(groundUnitId, marine)
     groundUnitIds.add(groundUnitId)
+
+  # Get house's current tax rate for homeworld
+  let house = state.house(owner).get()
 
   var newColony = Colony(
     id: colonyId,
@@ -119,7 +89,7 @@ proc createHomeWorld*(
     ),
     production: 0,
     grossOutput: 0,
-    taxRate: 50,
+    taxRate: house.taxPolicy.currentRate,
     infrastructureDamage: 0.0,
     underConstruction: none(ConstructionProjectId),
     constructionQueue: @[],

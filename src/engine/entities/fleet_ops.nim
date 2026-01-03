@@ -3,24 +3,50 @@ import ../types/[core, game_state, fleet, squadron]
 import ../state/[engine, id_gen]
 import ./squadron_ops
 
-proc registerFleetLocation(state: var GameState, fleetId: FleetId, sysId: SystemId) =
-  ## Internal helper to add a fleet to the system index
+proc newFleet*(
+    squadronIds: seq[SquadronId] = @[],
+    id: FleetId = FleetId(0),
+    owner: HouseId = HouseId(0),
+    location: SystemId = SystemId(0),
+    status: FleetStatus = FleetStatus.Active,
+    autoBalanceSquadrons: bool = true,
+): Fleet =
+  ## Create a new fleet with the given squadron IDs
+  ## Use this for operations that need a Fleet value without state mutations
+  ## Supports all squadron types: Combat, Intel, Expansion, Auxiliary, Fighter
+  Fleet(
+    id: id,
+    squadrons: squadronIds,
+    houseId: owner,
+    location: location,
+    status: status,
+    autoBalanceSquadrons: autoBalanceSquadrons,
+    missionState: FleetMissionState.None,
+    missionType: none(int32),
+    missionTarget: none(SystemId),
+    missionStartTurn: 0,
+  )
+
+proc registerFleetLocation*(state: var GameState, fleetId: FleetId, sysId: SystemId) =
+  ## Add a fleet to the system index
   state.fleets.bySystem.mgetOrPut(sysId, @[]).add(fleetId)
 
-proc unregisterFleetLocation(state: var GameState, fleetId: FleetId, sysId: SystemId) =
-  ## Internal helper to remove a fleet from the system index
+proc unregisterFleetLocation*(
+    state: var GameState, fleetId: FleetId, sysId: SystemId
+) =
+  ## Remove a fleet from the system index
   if state.fleets.bySystem.contains(sysId):
     state.fleets.bySystem[sysId].keepIf(
       proc(id: FleetId): bool =
         id != fleetId
     )
 
-proc registerFleetOwner(state: var GameState, fleetId: FleetId, owner: HouseId) =
-  ## Internal helper to add a fleet to the owner index
+proc registerFleetOwner*(state: var GameState, fleetId: FleetId, owner: HouseId) =
+  ## Add a fleet to the owner index
   state.fleets.byOwner.mgetOrPut(owner, @[]).add(fleetId)
 
-proc unregisterFleetOwner(state: var GameState, fleetId: FleetId, owner: HouseId) =
-  ## Internal helper to remove a fleet from the owner index
+proc unregisterFleetOwner*(state: var GameState, fleetId: FleetId, owner: HouseId) =
+  ## Remove a fleet from the owner index
   if state.fleets.byOwner.contains(owner):
     state.fleets.byOwner[owner].keepIf(
       proc(id: FleetId): bool =

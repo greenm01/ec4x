@@ -44,11 +44,9 @@ import ../../types/[core, game_state, production, event, ground_unit]
 import ../../types/[ship, colony, fleet, squadron, facilities]
 import ../../state/[engine, id_gen]
 import ../../config/[ground_units_config, facilities_config]
-import ../../entities/[neoria_ops, kastra_ops, ground_unit_ops]
+import ../../entities/[neoria_ops, kastra_ops, ground_unit_ops, ship_ops, squadron_ops, fleet_ops]
 import ../../globals
 import ../../../common/logger
-import ../ship/entity as ship_entity
-import ../squadron/entity as squadron_entity
 import ../capacity/carrier_hangar
 import ../../event_factory/init as event_factory
 
@@ -307,15 +305,15 @@ proc commissionPlanetaryDefense*(
         # Create 12 fighter ships (squadron strength)
         var fighterShipIds: seq[ShipId] = @[]
         for i in 0 ..< 12:
-          let shipId = generateShipId(state)
+          let shipId = state.generateShipId()
           let ship =
-            ship_entity.newShip(ShipClass.Fighter, techLevel, "", shipId, SquadronId(0))
+            ship_ops.newShip(ShipClass.Fighter, techLevel, shipId, SquadronId(0), colony.owner)
           state.addShip(shipId, ship)
           fighterShipIds.add(shipId)
 
         # Create fighter squadron (use first fighter as "flagship" reference)
-        let squadronId = generateSquadronId(state)
-        let squadron = squadron_entity.newSquadron(
+        let squadronId = state.generateSquadronId()
+        let squadron = squadron_ops.newSquadron(
           fighterShipIds[0],
           ShipClass.Fighter,
           squadronId,
@@ -324,11 +322,17 @@ proc commissionPlanetaryDefense*(
         )
         state.addSquadron(squadronId, squadron)
 
-        # Update all fighter ships with squadronId
+        # Update all fighter ships with squadronId and register indexes
         for shipId in fighterShipIds:
           var ship = state.ship(shipId).get()
           ship.squadronId = squadronId
           state.updateShip(shipId, ship)
+          ship_ops.registerShipIndexes(state, shipId)
+
+        # Update squadron with ship list
+        var updatedSquadron = state.squadron(squadronId).get()
+        updatedSquadron.ships = fighterShipIds
+        state.updateSquadron(squadronId, updatedSquadron)
 
         # Link squadron to colony
         colony.fighterSquadronIds.add(squadronId)
@@ -691,20 +695,26 @@ proc commissionScout(
   ## Scouts at the same system join the same fleet for mesh network bonuses
 
   # 1. Create the scout ship
-  let shipId = generateShipId(state)
-  let ship = ship_entity.newShip(ShipClass.Scout, techLevel, "", shipId, SquadronId(0))
+  let shipId = state.generateShipId()
+  let ship = ship_ops.newShip(ShipClass.Scout, techLevel, shipId, SquadronId(0), owner)
   state.addShip(shipId, ship)
 
   # 2. Create squadron with scout as flagship
-  let squadronId = generateSquadronId(state)
+  let squadronId = state.generateSquadronId()
   let squadron =
-    squadron_entity.newSquadron(shipId, ShipClass.Scout, squadronId, owner, systemId)
+    squadron_ops.newSquadron(shipId, ShipClass.Scout, squadronId, owner, systemId)
   state.addSquadron(squadronId, squadron)
 
-  # Update ship with correct squadronId
+  # Update ship with correct squadronId and register indexes
   var updatedShip = ship
   updatedShip.squadronId = squadronId
   state.updateShip(shipId, updatedShip)
+  ship_ops.registerShipIndexes(state, shipId)
+
+  # Update squadron with ship list
+  var updatedSquadron = state.squadron(squadronId).get()
+  updatedSquadron.ships = @[shipId]
+  state.updateSquadron(squadronId, updatedSquadron)
 
   # 3. Find existing scout fleet at this location, or create new one
   var scoutFleetId: FleetId = FleetId(0)
@@ -742,83 +752,24 @@ proc commissionScout(
         &"({fleet.squadrons.len} scouts, mesh network bonus)",
     )
   else:
-    # Create new scout fleet
-    scoutFleetId = generateFleetId(state)
-    let fleet = Fleet(
-      id: scoutFleetId, houseId: owner, location: systemId, squadrons: @[squadronId]
-    )
-    state.addFleet(scoutFleetId, fleet)
-    state.fleets.bySystem.mgetOrPut(systemId, @[]).add(scoutFleetId)
-    state.fleets.byOwner.mgetOrPut(owner, @[]).add(scoutFleetId)
+    # Create new scout fleet using fleet_ops
+    let fleet = fleet_ops.createFleet(state, owner, systemId)
+    scoutFleetId = fleet.id
+
+    # Add squadron to fleet
+    var updatedFleet = state.fleet(scoutFleetId).get()
+    updatedFleet.squadrons.add(squadronId)
+    state.updateFleet(scoutFleetId, updatedFleet)
 
     logInfo(
       "Fleet", &"Commissioned Scout in new dedicated fleet {scoutFleetId} at {systemId}"
     )
 
-  # 5. Update squadron.byFleet index
-  state.squadrons.byFleet.mgetOrPut(scoutFleetId, @[]).add(squadronId)
+  # 5. Register squadron in fleet index
+  squadron_ops.registerSquadronInFleet(state, squadronId, scoutFleetId)
 
   # 6. Generate event
   events.add(event_factory.shipCommissioned(owner, ShipClass.Scout, systemId))
-
-proc commissionSpaceLift(
-    state: var GameState,
-    owner: HouseId,
-    systemId: SystemId,
-    shipClass: ShipClass,
-    techLevel: int32,
-    events: var seq[GameEvent],
-) =
-  ## Commission a spacelift ship (ETAC or TroopTransport)
-  ## These form single-ship squadrons in dedicated fleets
-
-  # 1. Create the ship
-  let shipId = generateShipId(state)
-  var ship = ship_entity.newShip(shipClass, techLevel, "", shipId, SquadronId(0))
-
-  # Initialize cargo for spacelift ships
-  if shipClass == ShipClass.ETAC:
-    # ETACs commission with full cargo (cryostasis colonists)
-    let cargoCapacity = ship.baseCarryLimit()
-    ship.initCargo(CargoClass.Colonists, cargoCapacity)
-    discard ship.loadCargo(cargoCapacity)
-    logInfo(
-      "Economy",
-      &"Commissioned ETAC with {cargoCapacity} PTU (cryostasis generation ship)",
-    )
-  elif shipClass == ShipClass.TroopTransport:
-    # TroopTransports start empty (marines loaded later)
-    let cargoCapacity = ship.baseCarryLimit()
-    ship.initCargo(CargoClass.Marines, cargoCapacity)
-
-  state.addShip(shipId, ship)
-
-  # 2. Create squadron with spacelift ship as flagship
-  let squadronId = generateSquadronId(state)
-  let squadron =
-    squadron_entity.newSquadron(shipId, shipClass, squadronId, owner, systemId)
-  state.addSquadron(squadronId, squadron)
-
-  # Update ship with correct squadronId
-  var updatedShip = ship
-  updatedShip.squadronId = squadronId
-  state.updateShip(shipId, updatedShip)
-
-  # 3. Create new fleet for this spacelift ship
-  let fleetId = generateFleetId(state)
-  let fleet =
-    Fleet(id: fleetId, houseId: owner, location: systemId, squadrons: @[squadronId])
-  state.addFleet(fleetId, fleet)
-  state.fleets.bySystem.mgetOrPut(systemId, @[]).add(fleetId)
-  state.fleets.byOwner.mgetOrPut(owner, @[]).add(fleetId)
-
-  # 4. Update squadron.byFleet index
-  state.squadrons.byFleet.mgetOrPut(fleetId, @[]).add(squadronId)
-
-  logInfo("Fleet", &"Commissioned {shipClass} in new fleet {fleetId} at {systemId}")
-
-  # 5. Generate event
-  events.add(event_factory.shipCommissioned(owner, shipClass, systemId))
 
 proc commissionCapitalShip(
     state: var GameState,
@@ -832,20 +783,26 @@ proc commissionCapitalShip(
   ## Capital ships join existing combat fleets or form new fleets
 
   # 1. Create the capital ship
-  let shipId = generateShipId(state)
-  let ship = ship_entity.newShip(shipClass, techLevel, "", shipId, SquadronId(0))
+  let shipId = state.generateShipId()
+  let ship = ship_ops.newShip(shipClass, techLevel, shipId, SquadronId(0), owner)
   state.addShip(shipId, ship)
 
   # 2. Create squadron with capital ship as flagship
-  let squadronId = generateSquadronId(state)
+  let squadronId = state.generateSquadronId()
   let squadron =
-    squadron_entity.newSquadron(shipId, shipClass, squadronId, owner, systemId)
+    squadron_ops.newSquadron(shipId, shipClass, squadronId, owner, systemId)
   state.addSquadron(squadronId, squadron)
 
-  # Update ship with correct squadronId
+  # Update ship with correct squadronId and register indexes
   var updatedShip = ship
   updatedShip.squadronId = squadronId
   state.updateShip(shipId, updatedShip)
+  ship_ops.registerShipIndexes(state, shipId)
+
+  # Update squadron with ship list
+  var updatedSquadron = state.squadron(squadronId).get()
+  updatedSquadron.ships = @[shipId]
+  state.updateSquadron(squadronId, updatedSquadron)
 
   # 3. Find existing combat fleet at this location, or create new one
   var combatFleetId: FleetId = FleetId(0)
@@ -885,21 +842,21 @@ proc commissionCapitalShip(
         &"at {systemId} ({fleet.squadrons.len} squadrons)",
     )
   else:
-    # Create new combat fleet
-    combatFleetId = generateFleetId(state)
-    let fleet = Fleet(
-      id: combatFleetId, houseId: owner, location: systemId, squadrons: @[squadronId]
-    )
-    state.addFleet(combatFleetId, fleet)
-    state.fleets.bySystem.mgetOrPut(systemId, @[]).add(combatFleetId)
-    state.fleets.byOwner.mgetOrPut(owner, @[]).add(combatFleetId)
+    # Create new combat fleet using fleet_ops
+    let fleet = fleet_ops.createFleet(state, owner, systemId)
+    combatFleetId = fleet.id
+
+    # Add squadron to fleet
+    var updatedFleet = state.fleet(combatFleetId).get()
+    updatedFleet.squadrons.add(squadronId)
+    state.updateFleet(combatFleetId, updatedFleet)
 
     logInfo(
       "Fleet", &"Commissioned {shipClass} in new fleet {combatFleetId} at {systemId}"
     )
 
-  # 5. Update squadron.byFleet index
-  state.squadrons.byFleet.mgetOrPut(combatFleetId, @[]).add(squadronId)
+  # 5. Register squadron in fleet index
+  squadron_ops.registerSquadronInFleet(state, squadronId, combatFleetId)
 
   # 6. Generate event
   events.add(event_factory.shipCommissioned(owner, shipClass, systemId))
@@ -961,11 +918,8 @@ proc commissionShips*(
         # Scouts form dedicated single-ship fleets
         # Multiple scouts at same colony join same fleet for mesh network bonuses
         commissionScout(state, owner, colony.systemId, techLevel, events)
-      of ShipClass.ETAC, ShipClass.TroopTransport:
-        # Spacelift ships form single-ship squadrons
-        commissionSpaceLift(state, owner, colony.systemId, shipClass, techLevel, events)
       else:
-        # Capital ships and other combat vessels
+        # All other ships (capital ships, ETAC, TroopTransport, etc.)
         commissionCapitalShip(
           state, owner, colony.systemId, shipClass, techLevel, events
         )

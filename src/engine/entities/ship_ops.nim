@@ -5,31 +5,63 @@
 import std/[tables, sequtils, options]
 import ../state/[engine, id_gen]
 import ../types/[core, game_state, ship, squadron]
-import ../utils
+import ../systems/ship/entity as ship_entity
 
-proc role*(ship: Ship): ShipRole =
-  ## Get the role for this ship based on its class
-  ShipClassRoles[ship.shipClass]
+proc registerShipIndexes*(state: var GameState, shipId: ShipId) =
+  ## Register an existing ship in the bySquadron and byHouse indexes
+  ## Use this when a ship is created outside the normal createShip() flow
+  ## (e.g., during commissioning where squadron doesn't exist yet)
+  let shipOpt = state.ship(shipId)
+  if shipOpt.isNone:
+    return
+
+  let ship = shipOpt.get()
+
+  # Add to bySquadron index
+  if ship.squadronId != SquadronId(0):
+    state.ships.bySquadron.mgetOrPut(ship.squadronId, @[]).add(shipId)
+
+  # Add to byHouse index
+  state.ships.byHouse.mgetOrPut(ship.houseId, @[]).add(shipId)
+
+proc newShip*(
+    shipClass: ShipClass,
+    weaponsTech: int32,
+    id: ShipId,
+    squadronId: SquadronId,
+    houseId: HouseId,
+): Ship =
+  ## Create a new ship with WEP-modified stats
+  ## Use this for commissioning where squadron doesn't exist yet
+  ##
+  ## Stats (AS, DS, WEP) are calculated once at construction and never change
+  ## Config values (role, costs, CC, CR) looked up via shipClass
+  ## Cargo is initialized as None (use initCargo to add cargo)
+  let stats = ship_entity.getShipStats(shipClass, weaponsTech)
+
+  Ship(
+    id: id,
+    houseId: houseId,
+    squadronId: squadronId,
+    shipClass: shipClass,
+    stats: stats,
+    isCrippled: false,
+    cargo: none(ShipCargo),
+  )
 
 proc createShip*(
     state: var GameState, owner: HouseId, squadronId: SquadronId, shipClass: ShipClass
 ): Ship =
   ## Creates a new ship, adds it to a squadron, and updates all indexes.
   let shipId = state.generateShipId()
-  let config = shipConfig(shipClass)
-  
+
   # Get house's current WEP tech level
   let house = state.house(owner).get()
   let weaponsTech = house.techTree.levels.wep
-  
-  # Apply WEP modifiers: +10% AS/DS per level above 1
-  let wepMultiplier = 1.0 + (weaponsTech - 1).float * 0.10
-  let stats = ShipStats(
-    attackStrength: (config.attack_strength.float * wepMultiplier).int32,
-    defenseStrength: (config.defense_strength.float * wepMultiplier).int32,
-    weaponsTech: weaponsTech
-  )
-  
+
+  # Use ship_entity.getShipStats() for correct compound WEP calculation
+  let stats = ship_entity.getShipStats(shipClass, weaponsTech)
+
   let newShip = Ship(
     id: shipId,
     houseId: owner,
@@ -98,7 +130,7 @@ proc transferShip*(state: var GameState, shipId: ShipId, newSquadronId: Squadron
         id != shipId
     )
 
-  var oldSquadron = state.squadrons(oldSquadronId).get()
+  var oldSquadron = state.squadron(oldSquadronId).get()
   oldSquadron.ships.keepIf(
     proc(id: ShipId): bool =
       id != shipId

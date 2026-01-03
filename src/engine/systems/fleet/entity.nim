@@ -13,6 +13,7 @@ import ../squadron/entity as squadron
 import ../ship/entity as ship_entity # Ship helper functions
 import ../../types/[core, fleet, ship, squadron as squadron_types, combat, starmap, game_state]
 import ../../state/engine
+import ../../entities/fleet_ops
 import std/[algorithm, strutils, options]
 
 export FleetId, SystemId, HouseId, LaneClass, FleetMissionState
@@ -20,28 +21,10 @@ export Squadron, Ship, ShipClass # Export for fleet users
 export
   SquadronClass, ShipCargo, CargoClass # Export squadron classification and cargo types
 
-proc newFleet*(
-    squadronIds: seq[SquadronId] = @[],
-    id: FleetId = FleetId(0),
-    owner: HouseId = HouseId(0),
-    location: SystemId = SystemId(0),
-    status: FleetStatus = FleetStatus.Active,
-    autoBalanceSquadrons: bool = true,
-): Fleet =
-  ## Create a new fleet with the given squadron IDs
-  ## Supports all squadron types: Combat, Intel, Expansion, Auxiliary, Fighter
-  Fleet(
-    id: id,
-    squadrons: squadronIds,
-    houseId: owner,
-    location: location,
-    status: status,
-    autoBalanceSquadrons: autoBalanceSquadrons,
-    missionState: FleetMissionState.None,
-    missionType: none(int32),
-    missionTarget: none(SystemId),
-    missionStartTurn: 0,
-  )
+## Fleet construction
+##
+## Note: newFleet() has been moved to entities/fleet_ops.nim
+## This module provides pure business logic for fleet operations
 
 proc `$`*(state: GameState, f: Fleet): string =
   ## String representation of a fleet
@@ -336,7 +319,7 @@ proc split*(f: var Fleet, indices: seq[int]): Fleet =
   for i in toRemove.sorted(Descending):
     f.squadrons.delete(i)
 
-  newFleet(newSquadronIds)
+  fleet_ops.newFleet(newSquadronIds)
 
 ## TODO: balanceSquadrons needs to be refactored for DoD
 ## This proc mutates squadron internal structure (redistributing escort ships).

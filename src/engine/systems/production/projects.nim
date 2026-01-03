@@ -17,6 +17,7 @@ import std/options
 import math
 import ../../types/[core, production, ship, colony, facilities]
 import ../../config/[economy_config, config_accessors]
+import ../../entities/project_ops
 import ../../../common/logger
 
 export production.ConstructionProject, production.CompletedProject, production.BuildType
@@ -75,16 +76,15 @@ proc createShipProject*(shipClass: ShipClass, cstLevel: int = 1): ConstructionPr
   let cost = int32(getShipConstructionCost(shipClass))
   let turns = int32(getShipBuildTime(shipClass, cstLevel))
 
-  result = ConstructionProject(
-    id: ConstructionProjectId(0), # ID assigned by entity manager
-    colonyId: ColonyId(0), # Assigned when added to queue
-    projectType: BuildType.Ship,
-    itemId: $shipClass,
-    costTotal: cost,
-    costPaid: cost, # Full upfront payment
-    turnsRemaining: turns,
-    facilityId: none(uint32),
-    facilityType: none(FacilityClass),
+  result = project_ops.newConstructionProject(
+    id = ConstructionProjectId(0), # ID assigned by entity manager
+    colonyId = ColonyId(0), # Assigned when added to queue
+    projectType = BuildType.Ship,
+    itemId = $shipClass,
+    costTotal = cost,
+    costPaid = cost, # Full upfront payment
+    turnsRemaining = turns,
+    neoriaId = none(NeoriaId),
   )
 
 proc createBuildingProject*(buildingType: string): ConstructionProject =
@@ -93,16 +93,15 @@ proc createBuildingProject*(buildingType: string): ConstructionProject =
   let cost = int32(getBuildingCost(buildingType))
   let turns = int32(getBuildingTime(buildingType))
 
-  result = ConstructionProject(
-    id: ConstructionProjectId(0), # ID assigned by entity manager
-    colonyId: ColonyId(0), # Assigned when added to queue
-    projectType: BuildType.Facility,
-    itemId: buildingType,
-    costTotal: cost,
-    costPaid: cost, # Full upfront payment
-    turnsRemaining: turns,
-    facilityId: none(uint32),
-    facilityType: none(FacilityClass),
+  result = project_ops.newConstructionProject(
+    id = ConstructionProjectId(0), # ID assigned by entity manager
+    colonyId = ColonyId(0), # Assigned when added to queue
+    projectType = BuildType.Facility,
+    itemId = buildingType,
+    costTotal = cost,
+    costPaid = cost, # Full upfront payment
+    turnsRemaining = turns,
+    neoriaId = none(NeoriaId),
   )
 
 proc createIndustrialProject*(colony: Colony, units: int): ConstructionProject =
@@ -111,14 +110,13 @@ proc createIndustrialProject*(colony: Colony, units: int): ConstructionProject =
   let costPerUnit = getIndustrialUnitCost(colony)
   let totalCost = int32(costPerUnit * units)
 
-  result = ConstructionProject(
-    id: ConstructionProjectId(0), # ID assigned by entity manager
-    colonyId: ColonyId(0), # Assigned when added to queue
-    projectType: BuildType.Industrial,
-    itemId: $units & " IU",
-    costTotal: totalCost,
-    costPaid: totalCost, # Full upfront payment
-    turnsRemaining: 1, # IU investment completes in 1 turn
-    facilityId: none(uint32),
-    facilityType: none(FacilityClass),
+  result = project_ops.newConstructionProject(
+    id = ConstructionProjectId(0), # ID assigned by entity manager
+    colonyId = ColonyId(0), # Assigned when added to queue
+    projectType = BuildType.Industrial,
+    itemId = $units & " IU",
+    costTotal = totalCost,
+    costPaid = totalCost, # Full upfront payment
+    turnsRemaining = 1, # IU investment completes in 1 turn
+    neoriaId = none(NeoriaId),
   )

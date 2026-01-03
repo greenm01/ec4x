@@ -8,6 +8,28 @@ import ../state/[engine, id_gen]
 import ../types/[game_state, core, population, colony]
 import ../globals
 
+proc newPopulationInTransit*(
+    id: PopulationTransferId,
+    houseId: HouseId,
+    sourceColonyId: ColonyId,
+    destColonyId: ColonyId,
+    ptuAmount: int32,
+    cost: int32,
+    arrivalTurn: int32,
+): PopulationInTransit =
+  ## Create a new population transfer value
+  ## Use this when you need a PopulationInTransit value without state mutations
+  PopulationInTransit(
+    id: id,
+    houseId: houseId,
+    sourceColony: sourceColonyId,
+    destColony: destColonyId,
+    ptuAmount: ptuAmount,
+    costPaid: cost,
+    arrivalTurn: arrivalTurn,
+    status: TransferStatus.InTransit,
+  )
+
 proc startTransfer*(
     state: var GameState,
     houseId: HouseId,
@@ -19,15 +41,8 @@ proc startTransfer*(
 ): PopulationInTransit =
   ## Starts a new population transfer, adding it to all relevant collections and indexes.
   let transferId = state.generatePopulationTransferId()
-  let newTransfer = PopulationInTransit(
-    id: transferId,
-    houseId: houseId,
-    sourceColony: sourceColonyId,
-    destColony: destColonyId,
-    ptuAmount: ptuAmount,
-    costPaid: cost,
-    arrivalTurn: arrivalTurn,
-    status: TransferStatus.InTransit,
+  let newTransfer = newPopulationInTransit(
+    transferId, houseId, sourceColonyId, destColonyId, ptuAmount, cost, arrivalTurn
   )
 
   state.addPopulationTransfer(transferId, newTransfer)

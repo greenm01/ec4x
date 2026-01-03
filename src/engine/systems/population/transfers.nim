@@ -10,6 +10,7 @@ import ../../types/[
   game_state, core, event, population as pop_types, starmap, fleet, colony,
 ]
 import ../../state/[engine, iterators]
+import ../../entities/fleet_ops
 import ../../starmap as starmap_module
 import ../fleet/movement
 import ../../event_factory/init as event_factory
@@ -92,7 +93,9 @@ proc createTransferInitiation*(
     return (false, "Destination system does not exist")
 
   # Calculate distance via pathfinding
-  let dummyFleet = Fleet(location: sourceSystem, houseId: houseId)
+  let dummyFleet = fleet_ops.newFleet(
+    squadronIds = @[], owner = houseId, location = sourceSystem
+  )
   let pathResult = state.findPath(sourceSystem, destSystem, dummyFleet)
   if not pathResult.found:
     return (false, "No path exists to destination")

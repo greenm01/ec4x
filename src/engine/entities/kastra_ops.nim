@@ -49,6 +49,24 @@ proc getKastraStats*(kastraClass: KastraClass, weaponsTech: int32 = 1): KastraSt
     attackStrength: modifiedAS, defenseStrength: modifiedDS, wep: weaponsTech
   )
 
+proc newKastra*(
+    id: KastraId,
+    kastraClass: KastraClass,
+    colonyId: ColonyId,
+    commissionedTurn: int32,
+    stats: KastraStats,
+): Kastra =
+  ## Create a new kastra value with WEP-modified stats
+  ## Use this when you need a Kastra value without state mutations
+  Kastra(
+    id: id,
+    kastraClass: kastraClass,
+    colonyId: colonyId,
+    commissionedTurn: commissionedTurn,
+    stats: stats,
+    isCrippled: false,
+  )
+
 proc createKastra*(
     state: var GameState, colonyId: ColonyId, kastraClass: KastraClass, wepLevel: int32
 ): Kastra =
@@ -56,18 +74,8 @@ proc createKastra*(
   ## and links it to a colony.
   ## Applies WEP tech modifiers to combat stats at construction time.
   let kastraId = state.generateKastraId()
-
-  # Calculate tech-modified stats (permanent at construction)
   let stats = getKastraStats(kastraClass, wepLevel)
-
-  let newKastra = Kastra(
-    id: kastraId,
-    kastraClass: kastraClass,
-    colonyId: colonyId,
-    commissionedTurn: state.turn,
-    stats: stats,
-    isCrippled: false,
-  )
+  let newKastra = newKastra(kastraId, kastraClass, colonyId, state.turn, stats)
 
   state.addKastra(kastraId, newKastra)
   state.kastras.byColony.mgetOrPut(colonyId, @[]).add(kastraId)

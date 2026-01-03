@@ -7,14 +7,16 @@ import std/[options, sequtils]
 import ../state/[engine, id_gen, iterators]
 import ../types/[game_state, core, ground_unit, colony, combat]
 
-proc createGroundUnit*(
-    state: var GameState, owner: HouseId, colonyId: ColonyId, unitType: GroundClass
+proc newGroundUnit*(
+    id: GroundUnitId,
+    owner: HouseId,
+    colonyId: ColonyId,
+    unitType: GroundClass,
 ): GroundUnit =
-  ## Creates a new ground unit, adds it to the entity manager, and links it to a colony.
-  let unitId = state.generateGroundUnitId()
-  # In a real implementation, stats would come from a config file based on unitType and tech
-  let newUnit = GroundUnit(
-    id: unitId,
+  ## Create a new ground unit value
+  ## Use this when you need a GroundUnit value without state mutations
+  GroundUnit(
+    id: id,
     houseId: owner,
     stats: GroundUnitStats(
       unitType: unitType,
@@ -24,6 +26,13 @@ proc createGroundUnit*(
     state: CombatState.Undamaged,
     garrison: GroundUnitGarrison(locationType: GroundUnitLocation.OnColony, colonyId: colonyId),
   )
+
+proc createGroundUnit*(
+    state: var GameState, owner: HouseId, colonyId: ColonyId, unitType: GroundClass
+): GroundUnit =
+  ## Creates a new ground unit, adds it to the entity manager, and links it to a colony.
+  let unitId = state.generateGroundUnitId()
+  let newUnit = newGroundUnit(unitId, owner, colonyId, unitType)
 
   state.addGroundUnit(unitId, newUnit)
 

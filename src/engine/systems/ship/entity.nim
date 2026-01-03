@@ -64,31 +64,9 @@ proc getShipStats*(shipClass: ShipClass, weaponsTech: int32 = 1): ShipStats =
   )
 
 ## Ship Construction
-
-proc newShip*(
-    shipClass: ShipClass,
-    weaponsTech: int32 = 1,
-    id: ShipId = ShipId(0),
-    squadronId: SquadronId = SquadronId(0),
-    houseId: HouseId = HouseId(0),
-): Ship =
-  ## Create a new ship with WEP-modified stats
-  ## weaponsTech defaults to 1 (WEP I - starting level per gameplay.md:1.2)
-  ##
-  ## Stats (AS, DS, WEP) are calculated once at construction and never change
-  ## Config values (role, costs, CC, CR) looked up via shipClass
-  ## Cargo is initialized as None (use initCargo to add cargo)
-  let stats = getShipStats(shipClass, weaponsTech)
-
-  Ship(
-    id: id,
-    houseId: houseId,
-    squadronId: squadronId,
-    shipClass: shipClass,
-    stats: stats,
-    isCrippled: false,
-    cargo: none(ShipCargo),
-  )
+##
+## Note: newShip() has been moved to entities/ship_ops.nim
+## This module provides pure business logic for ship stats and capabilities
 
 proc `$`*(ship: Ship): string =
   ## String representation of ship

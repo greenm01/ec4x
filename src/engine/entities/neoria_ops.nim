@@ -8,24 +8,33 @@ import std/[options, sequtils, tables]
 import ../state/[engine, id_gen]
 import ../types/[game_state, core, facilities, colony]
 
-proc createNeoria*(
-    state: var GameState, colonyId: ColonyId, neoriaClass: NeoriaClass
+proc newNeoria*(
+    id: NeoriaId,
+    neoriaClass: NeoriaClass,
+    colonyId: ColonyId,
+    commissionedTurn: int32,
 ): Neoria =
-  ## Creates a new neoria (production facility), adds it to the entity manager,
-  ## and links it to a colony.
-  let neoriaId = state.generateNeoriaId()
-
-  let newNeoria = Neoria(
-    id: neoriaId,
+  ## Create a new neoria value
+  ## Use this when you need a Neoria value without state mutations
+  Neoria(
+    id: id,
     neoriaClass: neoriaClass,
     colonyId: colonyId,
-    commissionedTurn: state.turn,
+    commissionedTurn: commissionedTurn,
     isCrippled: false,
     constructionQueue: @[],
     activeConstructions: @[],
     repairQueue: @[],
     activeRepairs: @[],
   )
+
+proc createNeoria*(
+    state: var GameState, colonyId: ColonyId, neoriaClass: NeoriaClass
+): Neoria =
+  ## Creates a new neoria (production facility), adds it to the entity manager,
+  ## and links it to a colony.
+  let neoriaId = state.generateNeoriaId()
+  let newNeoria = newNeoria(neoriaId, neoriaClass, colonyId, state.turn)
 
   state.addNeoria(neoriaId, newNeoria)
   state.neorias.byColony.mgetOrPut(colonyId, @[]).add(neoriaId)

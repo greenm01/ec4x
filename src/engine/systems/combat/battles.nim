@@ -1181,14 +1181,8 @@ proc resolveBattle*(
 
     # Update fleet with surviving squadron IDs, or remove if none survived (using entity_manager)
     if survivingSquadronIdsForFleet.len > 0:
-      let updatedFleet = Fleet(
-        squadrons: survivingSquadronIdsForFleet,
-        id: fleet.id,
-        houseId: fleet.houseId,
-        location: fleet.location,
-        status: fleet.status, # Preserve status (Active/Reserve)
-        autoBalanceSquadrons: fleet.autoBalanceSquadrons, # Preserve balancing setting
-      )
+      var updatedFleet = fleet
+      updatedFleet.squadrons = survivingSquadronIdsForFleet
       state.updateFleet(fleetId, updatedFleet)
     else:
       # Fleet destroyed - remove fleet and clean up orders
@@ -1247,14 +1241,8 @@ proc resolveBattle*(
             mothballedSquadronsDestroyed += fleet.squadrons.len
             mothballedFleetsDestroyed += 1
             # Destroy the fleet by removing all squadrons (using entity_manager)
-            let emptyFleet = Fleet(
-              squadrons: @[], # Empty fleet
-              id: fleet.id,
-              houseId: fleet.houseId,
-              location: fleet.location,
-              status: FleetStatus.Mothballed,
-              autoBalanceSquadrons: fleet.autoBalanceSquadrons, # Preserve setting
-            )
+            var emptyFleet = fleet
+            emptyFleet.squadrons = @[]
             state.updateFleet(fleetId, emptyFleet)
 
       if mothballedFleetsDestroyed > 0:

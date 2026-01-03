@@ -13,7 +13,7 @@
 import std/[tables, options, strformat, sequtils]
 import ../../types/[core, ship, production, facilities]
 import ../../systems/ship/entity as ship_entity # Ship helper functions
-import ../../entities/fleet_ops
+import ../../entities/[fleet_ops, project_ops]
 import ../../../common/logger
 
 export production.RepairProject, facilities.FacilityClass, production.RepairTargetType
@@ -151,18 +151,21 @@ proc extractCrippledShip*(
   # Create repair project (drydocks only)
   let cost = calculateRepairCost(shipClass)
 
-  # Create repair project
-  let repair = production.RepairProject(
-    targetType: production.RepairTargetType.Ship,
-    facilityType: facilities.FacilityClass.Drydock, # Drydocks only
-    fleetId: some(fleetId),
-    squadronId: some(squadronId),
-    shipId: some(shipId),
-    starbaseId: none(StarbaseId),
-    shipClass: some(shipClass),
-    cost: cost.int32,
-    turnsRemaining: 1,
-    priority: 1, # Ship repairs = priority 1 (construction = 0, starbase = 2)
+  # Create repair project using project_ops
+  let repair = project_ops.newRepairProject(
+    id = RepairProjectId(0), # ID assigned by entity manager
+    colonyId = ColonyId(0), # Assigned when queued
+    targetType = production.RepairTargetType.Ship,
+    facilityType = facilities.FacilityClass.Drydock, # Drydocks only
+    cost = cost.int32,
+    turnsRemaining = 1,
+    priority = 1, # Ship repairs = priority 1 (construction = 0, kastra = 2)
+    neoriaId = none(NeoriaId),
+    fleetId = some(fleetId),
+    squadronId = some(squadronId),
+    shipId = some(shipId),
+    kastraId = none(KastraId),
+    shipClass = some(shipClass),
   )
 
   logInfo(
@@ -218,17 +221,20 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
       let starbaseBuildCost = 300 # From facilities.toml
       let repairCost = (starbaseBuildCost.float * 0.25).int
 
-      let repair = production.RepairProject(
-        targetType: production.RepairTargetType.Starbase,
-        facilityType: facilities.FacilityClass.Spaceport, # Use Spaceport, not Shipyard
-        fleetId: none(FleetId),
-        squadronId: none(SquadronId),
-        shipId: none(ShipId),
-        starbaseId: some(kastra.id),
-        shipClass: none(ShipClass),
-        cost: repairCost,
-        turnsRemaining: 1,
-        priority: 2, # Starbase repairs = priority 2 (lowest)
+      let repair = project_ops.newRepairProject(
+        id = RepairProjectId(0), # ID assigned by entity manager
+        colonyId = ColonyId(0), # Assigned when queued
+        targetType = production.RepairTargetType.Starbase,
+        facilityType = facilities.FacilityClass.Spaceport, # Use Spaceport, not Shipyard
+        cost = repairCost.int32,
+        turnsRemaining = 1,
+        priority = 2, # Kastra repairs = priority 2 (lowest)
+        neoriaId = none(NeoriaId),
+        fleetId = none(FleetId),
+        squadronId = none(SquadronId),
+        shipId = none(ShipId),
+        kastraId = some(kastra.id),
+        shipClass = none(ShipClass),
       )
 
       colony.repairQueue.add(repair)

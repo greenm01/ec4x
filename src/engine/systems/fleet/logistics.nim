@@ -478,18 +478,14 @@ proc executeDetachShips*(
     else:
       generateFleetId(state)
 
-  # Create new fleet structure
-  var newFleet = Fleet(
-    id: newFleetId,
-    squadrons: splitResult.squadrons,
-    houseId: cmd.houseId,
-    location: sourceFleet.location,
-    status: FleetStatus.Active,
-    autoBalanceSquadrons: true,
-    missionState: FleetMissionState.None,
-    missionType: none(int32),
-    missionTarget: none(SystemId),
-    missionStartTurn: 0,
+  # Create new fleet using entity ops
+  let newFleet = fleet_ops.newFleet(
+    squadronIds = splitResult.squadrons,
+    id = newFleetId,
+    owner = cmd.houseId,
+    location = sourceFleet.location,
+    status = FleetStatus.Active,
+    autoBalanceSquadrons = true,
   )
 
   let squadronsDetached = newFleet.squadrons.len
@@ -512,9 +508,9 @@ proc executeDetachShips*(
 
   # Add new fleet to state via entity manager
   state.addFleet(newFleetId, newFleet)
-  # Update indexes
-  state.fleets.bySystem.mgetOrPut(newFleet.location, @[]).add(newFleetId)
-  state.fleets.byOwner.mgetOrPut(newFleet.houseId, @[]).add(newFleetId)
+  # Update indexes using fleet_ops helpers
+  fleet_ops.registerFleetLocation(state, newFleetId, newFleet.location)
+  fleet_ops.registerFleetOwner(state, newFleetId, newFleet.houseId)
 
   # Emit FleetDetachment event (Phase 7b)
   events.add(
@@ -1500,23 +1496,19 @@ proc executeAssignSquadronToFleet*(
       else:
         generateFleetId(state)
 
-    var newFleet = Fleet(
-      id: newFleetId,
-      houseId: cmd.houseId,
-      location: colonySystem,
-      squadrons: @[squadronId],
-      status: FleetStatus.Active,
-      autoBalanceSquadrons: true,
-      missionState: FleetMissionState.None,
-      missionType: none(int32),
-      missionTarget: none(SystemId),
-      missionStartTurn: 0,
+    let newFleet = fleet_ops.newFleet(
+      squadronIds = @[squadronId],
+      id = newFleetId,
+      owner = cmd.houseId,
+      location = colonySystem,
+      status = FleetStatus.Active,
+      autoBalanceSquadrons = true,
     )
 
     # Add to entity manager and update indexes
     state.addFleet(newFleetId, newFleet)
-    state.fleets.bySystem.mgetOrPut(colonySystem, @[]).add(newFleetId)
-    state.fleets.byOwner.mgetOrPut(cmd.houseId, @[]).add(newFleetId)
+    fleet_ops.registerFleetLocation(state, newFleetId, colonySystem)
+    fleet_ops.registerFleetOwner(state, newFleetId, cmd.houseId)
 
     resultFleetId = newFleetId
     logFleet(

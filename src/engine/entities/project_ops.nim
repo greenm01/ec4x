@@ -10,6 +10,29 @@ import ../types/[core, game_state, production, facilities, colony]
 
 # --- Construction Projects ---
 
+proc newConstructionProject*(
+    id: ConstructionProjectId,
+    colonyId: ColonyId,
+    projectType: BuildType,
+    itemId: string,
+    costTotal: int32,
+    costPaid: int32,
+    turnsRemaining: int32,
+    neoriaId: Option[NeoriaId] = none(NeoriaId),
+): ConstructionProject =
+  ## Create a new construction project value
+  ## Use this when you need a ConstructionProject value without state mutations
+  ConstructionProject(
+    id: id,
+    colonyId: colonyId,
+    projectType: projectType,
+    itemId: itemId,
+    costTotal: costTotal,
+    costPaid: costPaid,
+    turnsRemaining: turnsRemaining,
+    neoriaId: neoriaId,
+  )
+
 proc queueConstructionProject*(
     state: var GameState, colonyId: ColonyId, project: var ConstructionProject
 ): ConstructionProject =
@@ -120,6 +143,39 @@ proc completeConstructionProject*(
   state.delConstructionProject(projectId)
 
 # --- Repair Projects ---
+
+proc newRepairProject*(
+    id: RepairProjectId,
+    colonyId: ColonyId,
+    targetType: RepairTargetType,
+    facilityType: FacilityClass,
+    cost: int32,
+    turnsRemaining: int32,
+    priority: int32 = 0,
+    neoriaId: Option[NeoriaId] = none(NeoriaId),
+    fleetId: Option[FleetId] = none(FleetId),
+    squadronId: Option[SquadronId] = none(SquadronId),
+    shipId: Option[ShipId] = none(ShipId),
+    kastraId: Option[KastraId] = none(KastraId),
+    shipClass: Option[ShipClass] = none(ShipClass),
+): RepairProject =
+  ## Create a new repair project value
+  ## Use this when you need a RepairProject value without state mutations
+  RepairProject(
+    id: id,
+    colonyId: colonyId,
+    targetType: targetType,
+    facilityType: facilityType,
+    neoriaId: neoriaId,
+    fleetId: fleetId,
+    squadronId: squadronId,
+    shipId: shipId,
+    kastraId: kastraId,
+    shipClass: shipClass,
+    cost: cost,
+    turnsRemaining: turnsRemaining,
+    priority: priority,
+  )
 
 proc queueRepairProject*(
     state: var GameState, colonyId: ColonyId, project: var RepairProject
