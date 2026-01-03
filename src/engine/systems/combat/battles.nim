@@ -705,17 +705,15 @@ proc processCombatEvents(
     let roundNum = roundIdx + 1
 
     for phaseResult in roundPhases:
-      # Map CombatPhase enum to phase string
+      # Map ResolutionPhase enum to phase string
       let phaseName =
         case phaseResult.phase
-        of combat.CombatPhase.Ambush:
+        of ResolutionPhase.Ambush:
           "RaiderAmbush"
-        of combat.CombatPhase.Intercept:
+        of ResolutionPhase.Intercept:
           "FighterIntercept"
-        of combat.CombatPhase.MainEngagement:
+        of ResolutionPhase.MainEngagement:
           "CapitalEngagement"
-        of combat.CombatPhase.PreCombat, combat.CombatPhase.PostCombat:
-          "PrePostCombat" # Shouldn't occur in round results
 
       # Emit phase began event
       events.add(
@@ -948,7 +946,7 @@ proc resolveBattle*(
 
         if otherHouseFleetIds.len > 0:
           let preCombatReport = combat_intel.generatePreCombatReport(
-            state, systemId, intel_types.CombatPhase.Space, reportingHouse,
+            state, systemId, CombatPhase.Space, reportingHouse,
             alliedFleetIds, otherHouseFleetIds,
           )
           # Intelligence stored in state.intel table (DoD pattern)
@@ -1053,7 +1051,7 @@ proc resolveBattle*(
 
             if otherHouseFleetIds.len > 0:
               let orbitalPreCombatReport = combat_intel.generatePreCombatReport(
-                state, systemId, intel_types.CombatPhase.Orbital, reportingHouse,
+                state, systemId, CombatPhase.Orbital, reportingHouse,
                 alliedFleetIds, otherHouseFleetIds,
               )
               # Intelligence stored in state.intel table (DoD pattern)
@@ -1448,7 +1446,7 @@ proc resolveBattle*(
     combat_intel.updatePostCombatIntelligence(
       state,
       systemId,
-      intel_types.CombatPhase.Space,
+      CombatPhase.Space,
       spaceCombatFleets,
       spaceFleetsAfterCombat,
       spaceCombatOutcome.retreated,
@@ -1461,7 +1459,7 @@ proc resolveBattle*(
     combat_intel.updatePostCombatIntelligence(
       state,
       systemId,
-      intel_types.CombatPhase.Orbital,
+      CombatPhase.Orbital,
       orbitalCombatFleets,
       orbitalFleetsAfterCombat,
       orbitalCombatOutcome.retreated,

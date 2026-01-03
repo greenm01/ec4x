@@ -15,16 +15,33 @@ type
     Destroyed
 
   CombatPhase* {.pure.} = enum
-    PreCombat
-    Ambush
-    Intercept
-    MainEngagement
-    PostCombat
+    ## Strategic combat phases (three sequential stages of battle)
+    Space      # Fleet vs fleet combat
+    Orbital    # Orbital bombardment/facility combat
+    Planetary  # Ground invasion/combat
+
+  ResolutionPhase* {.pure.} = enum
+    ## Tactical resolution phases within Space/Orbital combat
+    ## Per docs/specs/07-combat.md Section 7.3.1
+    Ambush          # Phase 1: Undetected Raiders
+    Intercept       # Phase 2: Fighter Squadrons
+    MainEngagement  # Phase 3: Capital Ships
+
+  CombatOutcome* {.pure.} = enum
+    ## Result of combat engagement (for intel reports)
+    Victory
+    Defeat
+    Retreat
+    MutualRetreat
+    Ongoing
+
+  BlockadeStatus* {.pure.} = enum
+    ## Status of orbital blockade (for intel reports)
+    Established
+    Lifted
 
   CERModifier* {.pure.} = enum
-    Scouts
     Morale
-    Surprise
     Ambush
 
   MoraleEffectTarget* {.pure.} = enum
@@ -129,7 +146,7 @@ type
     destructionProtectionApplied*: bool
 
   RoundResult* = object
-    phase*: CombatPhase
+    phase*: ResolutionPhase
     roundNumber*: int32
     attacks*: seq[AttackResult]
     stateChanges*: seq[StateChange]

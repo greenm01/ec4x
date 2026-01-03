@@ -87,7 +87,7 @@ proc lookupCER*(finalRoll: int): float32 =
     cfg.goodMultiplier # Typically 1.00 for rolls 7+
 
 proc calculateModifiers*(
-    phase: CombatPhase,
+    phase: ResolutionPhase,
     roundNumber: int,
     moraleModifier: int,
     isSurprise: bool,
@@ -107,12 +107,12 @@ proc calculateModifiers*(
       result += 3
 
     # Ambush: +4 (Phase 1 only, first round)
-    if isAmbush and phase == CombatPhase.Ambush:
+    if isAmbush and phase == ResolutionPhase.Ambush:
       result += 4
 
 proc rollCER*(
     rng: var CombatRNG,
-    phase: CombatPhase,
+    phase: ResolutionPhase,
     roundNumber: int,
     moraleModifier: int,
     isSurprise: bool = false,
@@ -243,7 +243,7 @@ proc `$`*(cer: CERRoll): string =
 
 ## Testing helpers
 
-proc deterministicRoll*(seed: string, phase: CombatPhase, roundNum: int): CERRoll =
+proc deterministicRoll*(seed: string, phase: ResolutionPhase, roundNum: int): CERRoll =
   ## Create deterministic CER roll for testing
   ## Uses same seed every time for reproducibility
   var rng = initRNG(seed)

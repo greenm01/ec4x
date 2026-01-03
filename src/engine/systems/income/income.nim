@@ -107,7 +107,7 @@ proc calculateColonyIncome*(
     production_engine.calculateProductionOutput(colony, houseELTech, houseCSTTech)
 
   result = ColonyIncomeReport(
-    colonyId: ColonyId(colony.systemId),
+    colonyId: colony.id,  # Use actual colony ID, not system ID
     houseId: colony.owner,
     populationUnits: colony.populationUnits,
     grossOutput: output.grossOutput,

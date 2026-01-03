@@ -37,7 +37,7 @@ proc resolveSpyScoutDetection*(
     return true
 
   # 2. Get defender's info using safe accessors
-  let colonyOpt = state_helpers.colony(state, ColonyId(targetSystem))
+  let colonyOpt = state_helpers.colonyBySystem(state, targetSystem)
   if colonyOpt.isNone:
     # No colony, no owner, no detection
     return false
@@ -114,7 +114,7 @@ proc resolveSpyScoutDetection*(
 
   # Get starbase bonus (+2 ELI for detection per assets.md:2.4.2)
   var starbaseBonus: int32 = 0
-  let colonyOpt = state_helpers.colony(state, ColonyId(targetSystem))
+  let colonyOpt = state_helpers.colonyBySystem(state, targetSystem)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     starbaseBonus = if colony.starbaseIds.len > 0: 2 else: 0

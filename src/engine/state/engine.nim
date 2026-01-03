@@ -275,6 +275,21 @@ proc colonyBySystem*(state: GameState, systemId: SystemId): Option[Colony] =
     return state.colonies.entities.entity(colonyId)
   return none(Colony)
 
+proc colonyIdBySystem*(state: GameState, systemId: SystemId): Option[ColonyId] =
+  ## Look up colony ID at system (1:1 relationship)
+  ## Returns: Some(colonyId) if exists, None if system uncolonized
+  ##
+  ## Use when you only need the ColonyId, not the full Colony object.
+  ## NEVER use ColonyId(systemId) cast - that bypasses proper lookup!
+  ##
+  ## Example:
+  ##   let colonyIdOpt = state.colonyIdBySystem(systemId)
+  ##   if colonyIdOpt.isSome:
+  ##     let colonyId = colonyIdOpt.get()
+  if state.colonies.bySystem.hasKey(systemId):
+    return some(state.colonies.bySystem[systemId])
+  return none(ColonyId)
+
 # ============================================================================
 # Squadron Accessors (byFleet: 1:many)
 # ============================================================================

@@ -24,7 +24,7 @@ proc processEventsForIntelligence*(
   ## DoD: Processes data (events) without modifying event objects
 
   for event in events:
-    for houseId in state.houses.entities.index.keys:
+    for (houseId, _) in state.allHousesWithId():
       # Check fog-of-war visibility
       if not visibility.shouldHouseSeeEvent(state, houseId, event):
         continue

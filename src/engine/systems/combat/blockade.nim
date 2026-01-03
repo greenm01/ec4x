@@ -64,7 +64,8 @@ proc applyBlockades*(state: var GameState) =
   ## Per operations.md:6.2.6: "Blockades established during the Conflict Phase
   ## reduce GCO for that same turn's Income Phase calculation"
 
-  for (systemId, colony) in state.allColoniesWithId():
+  for (colonyId, colony) in state.allColoniesWithId():
+    let systemId = colony.systemId  # Get system location from colony
     let (isBlockaded, blockaders) = isSystemBlockaded(state, systemId, colony.owner)
     var updatedColony = colony
 
@@ -111,7 +112,7 @@ proc applyBlockades*(state: var GameState) =
 
     # Write back if changed
     if needsUpdate:
-      state.updateColony(ColonyId(systemId), updatedColony)
+      state.updateColony(colonyId, updatedColony)
 
 # =============================================================================
 # Blockade Effects
@@ -161,8 +162,8 @@ proc getBlockadingFleets*(state: GameState, systemId: SystemId): seq[Fleet] =
   ## Get all fleets that are blockading a system
   result = @[]
 
-  # Get colony using state helper (convert SystemId to ColonyId)
-  let colonyOpt = state.colony(ColonyId(systemId))
+  # Get colony at system (proper lookup, not cast)
+  let colonyOpt = state.colonyBySystem(systemId)
   if colonyOpt.isNone:
     return result
 

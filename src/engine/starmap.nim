@@ -8,7 +8,7 @@
 ## - Provides fast, reliable starmap generation and pathfinding
 import ../common/logger
 import types/[starmap, squadron, core, game_state]
-import state/id_gen
+import state/[id_gen, iterators, engine]
 import globals
 import utils
 import std/[
@@ -685,6 +685,6 @@ proc houseSystems*(starMap: StarMap, state: GameState, houseId: HouseId): seq[Sy
   ## Get all systems owned by a specific house
   var systems: seq[System] = @[]
   for system in state.allSystems():
-    if system.house.isSome and system.house.get == houseId:
+    if system.house.isSome and system.house.get() == houseId:
       systems.add(system)
   return systems

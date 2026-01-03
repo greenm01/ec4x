@@ -19,7 +19,7 @@ proc hasFleetInSystem*(state: GameState, houseId: HouseId, systemId: SystemId): 
 proc hasColonyInSystem*(state: GameState, houseId: HouseId, systemId: SystemId): bool =
   ## Check if house owns colony in system
   ## Uses safe accessor
-  let colonyOpt = state_helpers.colony(state, ColonyId(systemId))
+  let colonyOpt = state_helpers.colonyBySystem(state, systemId)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     return colony.owner == houseId
@@ -32,7 +32,7 @@ proc hasStarbaseSurveillance*(
   ## Starbases provide surveillance of their system + adjacent systems
 
   # Direct starbase in system
-  let colonyOpt = state_helpers.colony(state, ColonyId(systemId))
+  let colonyOpt = state_helpers.colonyBySystem(state, systemId)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     if colony.owner == houseId and colony.starbaseIds.len > 0:
@@ -42,7 +42,7 @@ proc hasStarbaseSurveillance*(
   if state.starMap.lanes.neighbors.hasKey(systemId):
     let adjacentSystems = state.starMap.lanes.neighbors[systemId]
     for adjSystemId in adjacentSystems:
-      let adjColonyOpt = state_helpers.colony(state, ColonyId(adjSystemId))
+      let adjColonyOpt = state_helpers.colonyBySystem(state, adjSystemId)
       if adjColonyOpt.isSome:
         let adjColony = adjColonyOpt.get()
         if adjColony.owner == houseId and adjColony.starbaseIds.len > 0:

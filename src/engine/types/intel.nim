@@ -2,7 +2,7 @@
 ##
 ## Defines intelligence data structures for spy scout missions
 import std/[tables, options]
-import ./[core, tech]
+import ./[core, tech, combat]
 
 type
   DetectionEventType* {.pure.} = enum
@@ -116,18 +116,6 @@ type
     detected*: bool
     description*: string
 
-  CombatPhase* {.pure.} = enum
-    Space
-    Orbital
-    Planetary
-
-  CombatOutcome* {.pure.} = enum
-    Victory
-    Defeat
-    Retreat
-    MutualRetreat
-    Ongoing
-
   FleetOrderIntel* = object
     orderType*: string
     targetSystem*: Option[SystemId]
@@ -162,10 +150,6 @@ type
     retreatedEnemies*: seq[FleetId]
     survived*: bool
 
-  BlockadeStatus* {.pure.} = enum
-    Established
-    Lifted
-
   BlockadeReport* = object
     reportId*: string
     turn*: int32
@@ -185,12 +169,6 @@ type
     Construction
     FleetMovement
     DiplomaticActivity
-
-  SensorQuality* {.pure.} = enum
-    None
-    Visual
-    Scan
-    Perfect
 
   StarbaseSurveillanceReport* = object
     kastraId*: KastraId  # Defensive facility (Starbase)
@@ -241,7 +219,9 @@ type
     activeProjects*: seq[string]
     completedSinceLastVisit*: seq[string]
 
-  PopulationTransferStatus* {.pure.} = enum
+  PopulationTransferReportStatus* {.pure.} = enum
+    ## Status for intel reports on population transfers
+    ## (Different from population.TransferStatus which is internal state)
     Initiated
     InTransit
     Delivered
@@ -249,9 +229,10 @@ type
     Failed
 
   PopulationTransferStatusReport* = object
+    ## Intelligence report on population transfer status
     transferId*: PopulationTransferId
     turn*: int32
-    status*: PopulationTransferStatus
+    status*: PopulationTransferReportStatus
     sourceColony*: ColonyId
     intendedDestination*: ColonyId
     ptuAmount*: int32

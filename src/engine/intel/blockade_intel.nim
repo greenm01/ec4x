@@ -9,7 +9,7 @@
 
 import std/[strformat, tables, options]
 import ../state/engine as state_helpers
-import ../types/[core, game_state, intel]
+import ../types/[core, game_state, intel, combat]
 import ../globals  # For gameConfig to get GCO reduction %
 
 proc generateBlockadeEstablishedIntel*(
@@ -25,7 +25,7 @@ proc generateBlockadeEstablishedIntel*(
 
   # Look up colony to get defending house
   # ColonyId and SystemId are same value (colony is identified by its system)
-  let colonyId = ColonyId(systemId)
+  let colonyId = state.colonyIdBySystem(systemId).get()
   let colonyOpt = state_helpers.colony(state, colonyId)
   if colonyOpt.isNone:
     return # No colony at this system
@@ -63,17 +63,17 @@ proc generateBlockadeEstablishedIntel*(
   )
 
   # Add report to defender's intelligence database
-  if state.intelligence.contains(defendingHouse):
-    var intel = state.intelligence[defendingHouse]
+  if state.intel.contains(defendingHouse):
+    var intel = state.intel[defendingHouse]
     intel.blockadeReports.add(report)
-    state.intelligence[defendingHouse] = intel
+    state.intel[defendingHouse] = intel
 
   # Add same report to each blockader's intelligence database
   for house in blockadingHouses:
-    if state.intelligence.contains(house):
-      var intel = state.intelligence[house]
+    if state.intel.contains(house):
+      var intel = state.intel[house]
       intel.blockadeReports.add(report)
-      state.intelligence[house] = intel
+      state.intel[house] = intel
 
 proc generateBlockadeLiftedIntel*(
     state: var GameState,
@@ -88,7 +88,7 @@ proc generateBlockadeLiftedIntel*(
 
   # Look up colony to get defending house
   # ColonyId and SystemId are same value (colony is identified by its system)
-  let colonyId = ColonyId(systemId)
+  let colonyId = state.colonyIdBySystem(systemId).get()
   let colonyOpt = state_helpers.colony(state, colonyId)
   if colonyOpt.isNone:
     return # No colony at this system
@@ -123,14 +123,14 @@ proc generateBlockadeLiftedIntel*(
   )
 
   # Add report to defender's intelligence database
-  if state.intelligence.contains(defendingHouse):
-    var intel = state.intelligence[defendingHouse]
+  if state.intel.contains(defendingHouse):
+    var intel = state.intel[defendingHouse]
     intel.blockadeReports.add(report)
-    state.intelligence[defendingHouse] = intel
+    state.intel[defendingHouse] = intel
 
   # Add same report to each former blockader's intelligence database
   for house in previousBlockaders:
-    if state.intelligence.contains(house):
-      var intel = state.intelligence[house]
+    if state.intel.contains(house):
+      var intel = state.intel[house]
       intel.blockadeReports.add(report)
-      state.intelligence[house] = intel
+      state.intel[house] = intel

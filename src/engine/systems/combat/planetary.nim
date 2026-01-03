@@ -55,7 +55,7 @@ proc collectPlanetaryCombatIntents*(
         PlanetaryCombatIntent(
           houseId: houseId,
           fleetId: command.fleetId,
-          targetColony: ColonyId(targetSystem),
+          targetColony: state.colonyIdBySystem(targetSystem).get(),  # Lookup ColonyId
           orderType: $command.commandType,
           attackStrength: attackStrength,
         )
@@ -103,7 +103,9 @@ proc resolvePlanetaryCombatConflict*(
     return
 
   # Multiple intents = conflict, strongest wins
-  let seed = tiebreakerSeed(state.turn, SystemId(conflict.targetColony))
+  # Get systemId from colony (no cast)
+  let targetColony = state.colony(conflict.targetColony).get()
+  let seed = tiebreakerSeed(state.turn, targetColony.systemId)
   let winner = resolveConflictByStrength(
     conflict.intents,
     proc(intent: PlanetaryCombatIntent): int = intent.attackStrength,
@@ -169,8 +171,10 @@ proc resolvePlanetaryCombat*(
       let fleetOpt = state.fleet(res.fleetId)
       if fleetOpt.isSome:
         let fleet = fleetOpt.get()
-        let targetColony = res.actualTarget.get()
-        let targetSystem = SystemId(targetColony)  # Cast ColonyId → SystemId (1:1 relationship)
+        let targetColonyId = res.actualTarget.get()
+        # Get systemId from colony (no cast)
+        let colonyObj = state.colony(targetColonyId).get()
+        let targetSystem = colonyObj.systemId
 
         if fleet.location == targetSystem:
           # Fleet is at target - execute the assault

@@ -103,7 +103,7 @@ proc resolveEspionageConflict*(
     if detected:
       outcome = simultaneous.ResolutionOutcome.ConflictLost
       # Try to find colony at target system (ColonyId typically matches SystemId)
-      let colonyOpt = state_helpers.colony(state, ColonyId(intent.targetSystem))
+      let colonyOpt = state_helpers.colonyBySystem(state, intent.targetSystem)
       if colonyOpt.isSome:
         let defender = colonyOpt.get().owner
         events.add(
@@ -535,7 +535,7 @@ proc processScoutIntelligence*(
           report.quality == IntelQuality.Perfect
 
         # Get facility data from colony (visible since hack succeeded)
-        let colonyOpt = state_helpers.colony(state, ColonyId(targetSystem))
+        let colonyOpt = state_helpers.colonyBySystem(state, targetSystem)
         if colonyOpt.isSome:
           let colony = colonyOpt.get()
 

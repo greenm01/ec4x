@@ -10,7 +10,7 @@
 import std/[tables, options, sequtils, strformat]
 import ../../common/logger
 import ../state/engine
-import ../types/[core, game_state, intel, fleet, squadron]
+import ../types/[core, game_state, intel, fleet, squadron, combat]
 
 proc createFleetComposition*(
     state: GameState, fleet: Fleet, fleetId: FleetId
@@ -121,10 +121,10 @@ proc updatePostCombatIntelligence*(
   # Update each house's latest combat report
   for houseId in houseFleetsBefore.keys:
     # Get intelligence database (Table read-modify-write)
-    if not state.intelligence.contains(houseId):
+    if not state.intel.contains(houseId):
       continue # No intelligence database for this house
 
-    var intel = state.intelligence[houseId]
+    var intel = state.intel[houseId]
 
     # Find most recent combat report for this system/phase
     var reportIdx = -1
@@ -213,7 +213,7 @@ proc updatePostCombatIntelligence*(
 
     # Write back updated intelligence (Table mutation)
     intel.combatReports[reportIdx] = report
-    state.intelligence[houseId] = intel
+    state.intel[houseId] = intel
 
 proc generateBlitzIntelligence*(
     state: var GameState,
@@ -245,7 +245,7 @@ proc generateBlitzIntelligence*(
 
   # Get post-blitz colony state for asset reporting
   var assetInfo: seq[string] = @[]
-  let colonyOpt = state.colony(ColonyId(systemId))
+  let colonyOpt = state.colonyBySystem(systemId)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     if blitzSuccess:
@@ -306,10 +306,10 @@ proc generateBlitzIntelligence*(
   )
 
   # Write to intelligence database (Table read-modify-write)
-  if state.intelligence.contains(attackingHouse):
-    var intel = state.intelligence[attackingHouse]
+  if state.intel.contains(attackingHouse):
+    var intel = state.intel[attackingHouse]
     intel.combatReports.add(attackerReport)
-    state.intelligence[attackingHouse] = intel
+    state.intel[attackingHouse] = intel
 
   # Defender's blitz report (mirror perspective)
   let defenderOutcome =
@@ -345,10 +345,10 @@ proc generateBlitzIntelligence*(
   )
 
   # Write to intelligence database (Table read-modify-write)
-  if state.intelligence.contains(defendingHouse):
-    var intel = state.intelligence[defendingHouse]
+  if state.intel.contains(defendingHouse):
+    var intel = state.intel[defendingHouse]
     intel.combatReports.add(defenderReport)
-    state.intelligence[defendingHouse] = intel
+    state.intel[defendingHouse] = intel
 
 proc generateInvasionIntelligence*(
     state: var GameState,
@@ -378,7 +378,7 @@ proc generateInvasionIntelligence*(
 
   # Get post-invasion colony state for asset reporting
   var assetInfo: seq[string] = @[]
-  let colonyOpt = state.colony(ColonyId(systemId))
+  let colonyOpt = state.colonyBySystem(systemId)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     if invasionSuccess:
@@ -432,10 +432,10 @@ proc generateInvasionIntelligence*(
   )
 
   # Write to intelligence database (Table read-modify-write)
-  if state.intelligence.contains(attackingHouse):
-    var intel = state.intelligence[attackingHouse]
+  if state.intel.contains(attackingHouse):
+    var intel = state.intel[attackingHouse]
     intel.combatReports.add(attackerReport)
-    state.intelligence[attackingHouse] = intel
+    state.intel[attackingHouse] = intel
 
   # Defender's invasion report (mirror perspective)
   let defenderOutcome =
@@ -471,10 +471,10 @@ proc generateInvasionIntelligence*(
   )
 
   # Write to intelligence database (Table read-modify-write)
-  if state.intelligence.contains(defendingHouse):
-    var intel = state.intelligence[defendingHouse]
+  if state.intel.contains(defendingHouse):
+    var intel = state.intel[defendingHouse]
     intel.combatReports.add(defenderReport)
-    state.intelligence[defendingHouse] = intel
+    state.intel[defendingHouse] = intel
 
 proc generateBombardmentIntelligence*(
     state: var GameState,
@@ -504,7 +504,7 @@ proc generateBombardmentIntelligence*(
 
   # Get post-bombardment colony state for surviving assets intel
   var survivingAssets: seq[string] = @[]
-  let colonyOpt = state.colony(ColonyId(systemId))
+  let colonyOpt = state.colonyBySystem(systemId)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     survivingAssets.add(&"Infrastructure: {colony.infrastructure} levels")
@@ -543,10 +543,10 @@ proc generateBombardmentIntelligence*(
   )
 
   # Write to intelligence database (Table read-modify-write)
-  if state.intelligence.contains(attackingHouse):
-    var intel = state.intelligence[attackingHouse]
+  if state.intel.contains(attackingHouse):
+    var intel = state.intel[attackingHouse]
     intel.combatReports.add(attackerReport)
-    state.intelligence[attackingHouse] = intel
+    state.intel[attackingHouse] = intel
 
   # Defender's bombardment report (knows they're being bombarded)
   var defenderAlliedLosses =
@@ -576,10 +576,10 @@ proc generateBombardmentIntelligence*(
   )
 
   # Write to intelligence database (Table read-modify-write)
-  if state.intelligence.contains(defendingHouse):
-    var intel = state.intelligence[defendingHouse]
+  if state.intel.contains(defendingHouse):
+    var intel = state.intel[defendingHouse]
     intel.combatReports.add(defenderReport)
-    state.intelligence[defendingHouse] = intel
+    state.intel[defendingHouse] = intel
 
   # THREAT ASSESSMENT: If transport squadrons detected, invasion is imminent
   if spaceLiftShipsInvolved > 0:

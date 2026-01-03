@@ -51,7 +51,7 @@ proc resolvePhase1_Ambush*(
   ## - allowStarbaseTargeting: If false, starbases are screened and cannot be targeted
 
   result = RoundResult(
-    phase: CombatPhase.Ambush, roundNumber: roundNumber, attacks: @[], stateChanges: @[]
+    phase: ResolutionPhase.Ambush, roundNumber: roundNumber, attacks: @[], stateChanges: @[]
   )
 
   # Find all undetected cloaked squadrons
@@ -101,7 +101,7 @@ proc resolvePhase1_Ambush*(
     # Ambush bonus only applies if allowAmbush=true (space combat, not orbital)
     let cerRoll = rollCER(
       rng,
-      CombatPhase.Ambush,
+      ResolutionPhase.Ambush,
       roundNumber,
       moraleModifier = taskForces[tfIdx].moraleModifier,
       isSurprise = (roundNumber == 1),
@@ -168,7 +168,7 @@ proc resolvePhase2_Fighters*(
   ## - allowStarbaseTargeting: If false, starbases are screened and cannot be targeted
 
   result = RoundResult(
-    phase: CombatPhase.Intercept,
+    phase: ResolutionPhase.Intercept,
     roundNumber: roundNumber,
     attacks: @[],
     stateChanges: @[],
@@ -278,7 +278,7 @@ proc resolvePhase3_CapitalShips*(
   ## - If allowStarbaseCombat=false, starbases are screened and cannot fight
 
   result = RoundResult(
-    phase: CombatPhase.MainEngagement,
+    phase: ResolutionPhase.MainEngagement,
     roundNumber: roundNumber,
     attacks: @[],
     stateChanges: @[],
@@ -364,7 +364,7 @@ proc resolveCRTier(
   ## allowStarbaseTargeting: If false, starbases are screened and cannot be targeted
 
   result = RoundResult(
-    phase: CombatPhase.MainEngagement,
+    phase: ResolutionPhase.MainEngagement,
     roundNumber: roundNumber,
     attacks: @[],
     stateChanges: @[],
@@ -421,7 +421,7 @@ proc resolveCRTier(
       # Roll CER with starbase bonus
       var cerRoll = rollCER(
         rng,
-        CombatPhase.MainEngagement,
+        ResolutionPhase.MainEngagement,
         roundNumber,
         moraleModifier = taskForces[tfIdx].moraleModifier + dieModifier,
         isSurprise = (roundNumber == 1),
@@ -433,7 +433,7 @@ proc resolveCRTier(
           gameConfig.combat.starbase.starbaseCriticalReroll:
         let reroll = rollCER(
           rng,
-          CombatPhase.MainEngagement,
+          ResolutionPhase.MainEngagement,
           roundNumber,
           moraleModifier = taskForces[tfIdx].moraleModifier + dieModifier,
           isSurprise = (roundNumber == 1),
@@ -474,7 +474,7 @@ proc resolveCRTier(
       # Roll CER (with desperation bonus if applicable)
       let cerRoll = rollCER(
         rng,
-        CombatPhase.MainEngagement,
+        ResolutionPhase.MainEngagement,
         roundNumber,
         moraleModifier = taskForces[tfIdx].moraleModifier,
         isSurprise = (roundNumber == 1),
@@ -526,7 +526,7 @@ proc resolveCRTier(
       if attack.isFacilityAttack:
         CombatTargetId(
           kind: CombatTargetKind.Facility,
-          facilityId: taskForces[attack.attackerTfIdx].facilities[attack.attackerFacIdx]
+          kastraId: taskForces[attack.attackerTfIdx].facilities[attack.attackerFacIdx]
             .facilityId,
         )
       else:

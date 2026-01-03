@@ -9,17 +9,17 @@
 ## for create/destroy/move operations.
 
 import std/[tables, options, sets, heapqueue]
-import ../../types/[core, fleet, squadron, ship, starmap]
+import ../../types/[core, fleet, squadron, ship, starmap, game_state]
+import ../../state/engine
 
 # =============================================================================
 # Lane Traversal Validation
 # =============================================================================
 
 proc canFleetTraverseLane*(
+    state: GameState,
     fleet: Fleet,
     laneType: LaneClass,
-    squadrons: Squadrons,
-    ships: Ships,
 ): bool =
   ## Check if a fleet can traverse a specific lane type
   ##
@@ -35,14 +35,14 @@ proc canFleetTraverseLane*(
 
   # Restricted lanes: check for disqualifying ships
   for squadronId in fleet.squadrons:
-    let squadronOpt = squadrons.entity(squadronId)
+    let squadronOpt = state.squadron(squadronId)
     if squadronOpt.isNone:
       continue
 
     let squadron = squadronOpt.get()
 
     # Check flagship
-    let flagshipOpt = ships.entity(squadron.flagshipId)
+    let flagshipOpt = state.ship(squadron.flagshipId)
     if flagshipOpt.isSome:
       let flagship = flagshipOpt.get()
 
@@ -57,7 +57,7 @@ proc canFleetTraverseLane*(
 
     # Check escort ships
     for shipId in squadron.ships:
-      let shipOpt = ships.entity(shipId)
+      let shipOpt = state.ship(shipId)
       if shipOpt.isSome:
         let ship = shipOpt.get()
 
@@ -82,12 +82,10 @@ proc `<`(a, b: PathNode): bool =
   a.f < b.f
 
 proc findPath*(
-    starMap: StarMap,
+    state: GameState,
     start: SystemId,
     goal: SystemId,
     fleet: Fleet,
-    squadrons: Squadrons,
-    ships: Ships,
 ): PathResult =
   ## Find optimal path from start to goal considering fleet restrictions
   ##
@@ -109,7 +107,7 @@ proc findPath*(
 
   # Initialize
   gScore[start] = 0'u32
-  let h = starMap.distanceMatrix.getOrDefault((start, goal), 999'u32)
+  let h = state.starMap.distanceMatrix.getOrDefault((start, goal), 999'u32)
   fScore[start] = h
   openSet.push((h, start))
 
@@ -129,14 +127,14 @@ proc findPath*(
       )
 
     # Explore neighbors
-    let neighbors = starMap.lanes.neighbors.getOrDefault(current, @[])
+    let neighbors = state.starMap.lanes.neighbors.getOrDefault(current, @[])
     for neighbor in neighbors:
-      let laneClass = starMap.lanes.connectionInfo.getOrDefault(
+      let laneClass = state.starMap.lanes.connectionInfo.getOrDefault(
         (current, neighbor), LaneClass.Minor
       )
 
       # Check if fleet can traverse this lane
-      if not canFleetTraverseLane(fleet, laneClass, squadrons, ships):
+      if not canFleetTraverseLane(state, fleet, laneClass):
         continue # Skip impassable lanes
 
       # Lane cost
@@ -151,7 +149,7 @@ proc findPath*(
       if neighbor notin gScore or tentativeGScore < gScore[neighbor]:
         cameFrom[neighbor] = current
         gScore[neighbor] = tentativeGScore
-        let h = starMap.distanceMatrix.getOrDefault((neighbor, goal), 999'u32)
+        let h = state.starMap.distanceMatrix.getOrDefault((neighbor, goal), 999'u32)
         fScore[neighbor] = tentativeGScore + h
         openSet.push((fScore[neighbor], neighbor))
 
@@ -159,24 +157,20 @@ proc findPath*(
   return PathResult(found: false, path: @[], totalCost: 0)
 
 proc isReachable*(
-    starMap: StarMap,
+    state: GameState,
     start: SystemId,
     goal: SystemId,
     fleet: Fleet,
-    squadrons: Squadrons,
-    ships: Ships,
 ): bool =
   ## Check if goal is reachable from start with given fleet
-  let path = findPath(starMap, start, goal, fleet, squadrons, ships)
+  let path = findPath(state, start, goal, fleet)
   return path.found
 
 proc findPathsInRange*(
-    starMap: StarMap,
+    state: GameState,
     start: SystemId,
     maxCost: uint32,
     fleet: Fleet,
-    squadrons: Squadrons,
-    ships: Ships,
 ): seq[SystemId] =
   ## Find all systems reachable within a given movement cost
   ##
@@ -201,17 +195,17 @@ proc findPathsInRange*(
     let currentCost = costMap[current]
 
     # Explore neighbors
-    let neighbors = starMap.lanes.neighbors.getOrDefault(current, @[])
+    let neighbors = state.starMap.lanes.neighbors.getOrDefault(current, @[])
     for neighbor in neighbors:
       if neighbor in visited:
         continue
 
-      let laneClass = starMap.lanes.connectionInfo.getOrDefault(
+      let laneClass = state.starMap.lanes.connectionInfo.getOrDefault(
         (current, neighbor), LaneClass.Minor
       )
 
       # Check if fleet can traverse this lane
-      if not canFleetTraverseLane(fleet, laneClass, squadrons, ships):
+      if not canFleetTraverseLane(state, fleet, laneClass):
         continue
 
       # Calculate cost to reach neighbor
@@ -232,11 +226,9 @@ proc findPathsInRange*(
   return result
 
 proc getPathCost*(
-    starMap: StarMap,
+    state: GameState,
     path: seq[SystemId],
     fleet: Fleet,
-    squadrons: Squadrons,
-    ships: Ships,
 ): uint32 =
   ## Calculate the total cost of a path for a given fleet
   ##
@@ -252,12 +244,12 @@ proc getPathCost*(
     let next = path[i + 1]
 
     # Get lane type
-    let laneClass = starMap.lanes.connectionInfo.getOrDefault(
+    let laneClass = state.starMap.lanes.connectionInfo.getOrDefault(
       (current, next), LaneClass.Minor
     )
 
     # Check if fleet can traverse
-    if not canFleetTraverseLane(fleet, laneClass, squadrons, ships):
+    if not canFleetTraverseLane(state, fleet, laneClass):
       return uint32.high
 
     # Add lane cost
@@ -276,12 +268,10 @@ proc getPathCost*(
 # =============================================================================
 
 proc calculateETA*(
-    starMap: StarMap,
+    state: GameState,
     fromSystem: SystemId,
     toSystem: SystemId,
     fleet: Fleet,
-    squadrons: Squadrons,
-    ships: Ships,
 ): Option[int] =
   ## Calculate estimated turns for fleet to reach target system
   ##
@@ -298,7 +288,7 @@ proc calculateETA*(
   if fromSystem == toSystem:
     return some(0)
 
-  let pathResult = findPath(starMap, fromSystem, toSystem, fleet, squadrons, ships)
+  let pathResult = findPath(state, fromSystem, toSystem, fleet)
 
   if not pathResult.found:
     return none(int)
@@ -309,11 +299,9 @@ proc calculateETA*(
   return some(jumps)
 
 proc calculateMultiFleetETA*(
-    starMap: StarMap,
+    state: GameState,
     assemblyPoint: SystemId,
     fleets: seq[Fleet],
-    squadrons: Squadrons,
-    ships: Ships,
 ): Option[int] =
   ## Calculate when all fleets can reach assembly point
   ##
@@ -329,7 +317,7 @@ proc calculateMultiFleetETA*(
 
   for fleet in fleets:
     let etaOpt = calculateETA(
-      starMap, fleet.location, assemblyPoint, fleet, squadrons, ships
+      state, fleet.location, assemblyPoint, fleet
     )
 
     if etaOpt.isNone:

@@ -28,7 +28,7 @@ proc generateColonyIntelReport*(
   ## - Economic data (Spy quality only)
 
   # Use safe accessor
-  let colonyOpt = state.colony(ColonyId(targetSystem))
+  let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isNone:
     return none(ColonyIntelReport)
 
@@ -39,7 +39,7 @@ proc generateColonyIntelReport*(
     return none(ColonyIntelReport)
 
   var report = ColonyIntelReport(
-    colonyId: ColonyId(targetSystem),
+    colonyId: colonyOpt.get().id,  # Use actual colony ID
     targetOwner: colony.owner,
     gatheredTurn: state.turn,
     quality: quality,
@@ -104,7 +104,7 @@ proc generateOrbitalIntelReport*(
   ## - Fighter squadrons (stationed at colony)
 
   # Use safe accessor
-  let colonyOpt = state.colony(ColonyId(targetSystem))
+  let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isNone:
     return none(OrbitalIntelReport)
 
@@ -153,7 +153,7 @@ proc generateOrbitalIntelReport*(
         fighterSquadronIds.add(squadronId)
 
   var report = OrbitalIntelReport(
-    colonyId: ColonyId(targetSystem),
+    colonyId: colonyOpt.get().id,  # Use actual colony ID
     targetOwner: colony.owner,
     gatheredTurn: state.turn,
     quality: quality,
@@ -292,7 +292,7 @@ proc generateSystemIntelReport*(
 
   # Check for colony-based fighter squadrons (not in fleets)
   # Fighters can be stationed at colonies for defense
-  let colonyOpt = state.colony(ColonyId(targetSystem))
+  let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     if colony.owner != scoutOwner:
@@ -382,7 +382,7 @@ proc generateStarbaseIntelReport*(
   ## Per intel.md and operations.md:6.2.11 - "economic and R&D intelligence"
 
   # Use safe accessor
-  let colonyOpt = state.colony(ColonyId(targetSystem))
+  let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isNone:
     return none(StarbaseIntelReport)
 

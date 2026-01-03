@@ -48,7 +48,7 @@ proc collectBlockadeIntents*(
         BlockadeIntent(
           houseId: house.id,
           fleetId: command.fleetId,
-          targetColony: ColonyId(targetSystem),  # Cast SystemId → ColonyId (1:1 relationship)
+          targetColony: state.colonyIdBySystem(targetSystem).get(),  # Lookup ColonyId from SystemId (1:1 relationship)
           blockadeStrength: blockadeStrength,
         )
       )
@@ -91,7 +91,9 @@ proc resolveBlockadeConflict*(
     return
 
   # Multiple intents = conflict, strongest wins
-  let seed = tiebreakerSeed(state.turn, SystemId(conflict.targetColony))  # Cast ColonyId → SystemId
+  # Get systemId from colony (no cast)
+  let targetColony = state.colony(conflict.targetColony).get()
+  let seed = tiebreakerSeed(state.turn, targetColony.systemId)
   let winner = resolveConflictByStrength(
     conflict.intents,
     proc(intent: BlockadeIntent): int = intent.blockadeStrength,

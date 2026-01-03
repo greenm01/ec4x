@@ -174,6 +174,26 @@ iterator blockadedColoniesWithId*(
     if colony.blockaded:
       yield (colonyId, colony)
 
+iterator allFleetsWithId*(state: GameState): tuple[id: FleetId, fleet: Fleet] =
+  ## Iterate all fleets with IDs (for batch processing)
+  ##
+  ## Example:
+  ##   for (fleetId, fleet) in state.allFleetsWithId():
+  ##     state.withFleet(fleetId):
+  ##       fleet.fuelRemaining -= 1
+  for fleetId in state.fleets.entities.index.keys:
+    yield (fleetId, state.fleets.entities.entity(fleetId).get())
+
+iterator allHousesWithId*(state: GameState): tuple[id: HouseId, house: House] =
+  ## Iterate all houses with IDs (for batch processing)
+  ##
+  ## Example:
+  ##   for (houseId, house) in state.allHousesWithId():
+  ##     state.withHouse(houseId):
+  ##       house.turnsWithoutOrders += 1
+  for houseId in state.houses.entities.index.keys:
+    yield (houseId, state.houses.entities.entity(houseId).get())
+
 iterator fleetsWithOrders*(
     state: GameState
 ): tuple[id: FleetId, fleet: Fleet, command: FleetCommand] =
@@ -219,35 +239,15 @@ iterator activeHousesWithId*(state: GameState): tuple[id: HouseId, house: House]
 
 # Utility iterators (helper patterns)
 
-iterator allColoniesWithId*(state: GameState): tuple[id: SystemId, colony: Colony] =
+iterator allColoniesWithId*(state: GameState): tuple[id: ColonyId, colony: Colony] =
   ## Iterate all colonies with IDs (for batch processing)
   ##
   ## Example:
-  ##   for (systemId, colony) in state.allColoniesWithId():
-  ##     state.withColony(systemId):
+  ##   for (colonyId, colony) in state.allColoniesWithId():
+  ##     state.withColony(colonyId):
   ##       colony.production = calculateProduction(colony)
   for colonyId in state.colonies.entities.index.keys:
     yield (colonyId, state.colonies.entities.entity(colonyId).get())
-
-iterator allFleetsWithId*(state: GameState): tuple[id: FleetId, fleet: Fleet] =
-  ## Iterate all fleets with IDs (for batch processing)
-  ##
-  ## Example:
-  ##   for (fleetId, fleet) in state.allFleetsWithId():
-  ##     state.withFleet(fleetId):
-  ##       fleet.fuelRemaining -= 1
-  for fleetId in state.fleets.entities.index.keys:
-    yield (fleetId, state.fleets.entities.entity(fleetId).get())
-
-iterator allHousesWithId*(state: GameState): tuple[id: HouseId, house: House] =
-  ## Iterate all houses with IDs (for batch processing)
-  ##
-  ## Example:
-  ##   for (houseId, house) in state.allHousesWithId():
-  ##     state.withHouse(houseId):
-  ##       house.turnsWithoutOrders += 1
-  for houseId in state.houses.entities.index.keys:
-    yield (houseId, state.houses.entities.entity(houseId).get())
 
 iterator allShipsWithId*(state: GameState): tuple[id: ShipId, ship: Ship] =
   ## Iterate all ships with IDs (for batch processing)
@@ -295,7 +295,7 @@ iterator neoriasOwned*(state: GameState, houseId: HouseId): Neoria =
     if state.neorias.byColony.contains(colony.id):
       for neoriaId in state.neorias.byColony[colony.id]:
         if state.neorias.entities.index.contains(neoriaId):
-          yield state.neoria(neoriaId).get()
+          yield state.neorias.entities.entity(neoriaId).get()
 
 iterator kastrasOwned*(state: GameState, houseId: HouseId): Kastra =
   ## Iterate all kastras (defensive facilities) owned by a house
@@ -304,7 +304,7 @@ iterator kastrasOwned*(state: GameState, houseId: HouseId): Kastra =
     if state.kastras.byColony.contains(colony.id):
       for kastraId in state.kastras.byColony[colony.id]:
         if state.kastras.entities.index.contains(kastraId):
-          yield state.kastra(kastraId).get()
+          yield state.kastras.entities.entity(kastraId).get()
 
 # ============================================================================
 # All-Entity Iterators (Added 2025-12-22)
@@ -325,12 +325,12 @@ iterator allFleets*(state: GameState): Fleet =
   for (id, fleet) in state.allFleetsWithId():
     yield fleet
 
-iterator allSquadrons*(state: GameState): Squadron =
-  ## Iterate all squadrons (read-only)
-  ## O(n) where n = total squadrons
-  ## Use when you need to process ALL squadrons regardless of owner
-  for (id, squadron) in state.allSquadronsWithId():
-    yield squadron
+iterator allSystemsWithId*(state: GameState): tuple[id: SystemId, system: System] =
+  ## Iterate all systems with IDs (for mutations)
+  ## O(n) where n = total systems
+  ## Use when you need to mutate systems or need their IDs
+  for systemId in state.systems.entities.index.keys:
+    yield (systemId, state.systems.entities.entity(systemId).get())
 
 iterator allSystems*(state: GameState): System =
   ## Iterate all star systems (read-only)
@@ -338,13 +338,6 @@ iterator allSystems*(state: GameState): System =
   ## Use when you need to process ALL systems
   for (id, system) in state.allSystemsWithId():
     yield system
-
-iterator allSystemsWithId*(state: GameState): tuple[id: SystemId, system: System] =
-  ## Iterate all systems with IDs (for mutations)
-  ## O(n) where n = total systems
-  ## Use when you need to mutate systems or need their IDs
-  for systemId in state.systems.entities.index.keys:
-    yield (systemId, state.system(systemId).get())
 
 iterator allSquadronsWithId*(
     state: GameState
@@ -354,6 +347,13 @@ iterator allSquadronsWithId*(
   ## Use when you need to mutate squadrons or need their IDs
   for squadronId in state.squadrons.entities.index.keys:
     yield (squadronId, state.squadrons.entities.entity(squadronId).get())
+
+iterator allSquadrons*(state: GameState): Squadron =
+  ## Iterate all squadrons (read-only)
+  ## O(n) where n = total squadrons
+  ## Use when you need to process ALL squadrons regardless of owner
+  for (id, squadron) in state.allSquadronsWithId():
+    yield squadron
 
 iterator squadronsOwnedWithId*(
     state: GameState, houseId: HouseId
@@ -387,7 +387,7 @@ iterator allNeoriasWithId*(
   ## O(n) where n = total neorias
   ## Use when you need to mutate neorias or need their IDs
   for neoriaId in state.neorias.entities.index.keys:
-    yield (neoriaId, state.neoria(neoriaId).get())
+    yield (neoriaId, state.neorias.entities.entity(neoriaId).get())
 
 iterator allKastrasWithId*(
     state: GameState
@@ -396,7 +396,7 @@ iterator allKastrasWithId*(
   ## O(n) where n = total kastras
   ## Use when you need to mutate kastras or need their IDs
   for kastraId in state.kastras.entities.index.keys:
-    yield (kastraId, state.kastra(kastraId).get())
+    yield (kastraId, state.kastras.entities.entity(kastraId).get())
 
 ## Design Notes:
 ##

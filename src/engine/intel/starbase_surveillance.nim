@@ -45,7 +45,7 @@ proc generateStarbaseSurveillance*(
   ## Applies stealth checks for scouts and raiders
 
   # Find starbase(s) at this system using safe accessor
-  let colonyOpt = state_helpers.colony(state, ColonyId(starbaseSystemId))
+  let colonyOpt = state_helpers.colonyBySystem(state, starbaseSystemId)
   if colonyOpt.isNone:
     return none(StarbaseSurveillanceReport)
 
@@ -164,7 +164,7 @@ proc processAllStarbaseSurveillance*(state: var GameState, turn: int32, rng: var
   ## Reports are stored in state.intelligence Table
 
   # Process each house's colonies
-  for houseId in state.houses.entities.index.keys:
+  for (houseId, _) in state.allHousesWithId():
     for colony in state.coloniesOwned(houseId):
       if colony.starbaseIds.len > 0:
         let surveillance =

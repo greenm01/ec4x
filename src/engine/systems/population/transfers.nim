@@ -93,10 +93,7 @@ proc createTransferInitiation*(
 
   # Calculate distance via pathfinding
   let dummyFleet = Fleet(location: sourceSystem, houseId: houseId)
-  let pathResult = findPath(
-    state.starMap, sourceSystem, destSystem, dummyFleet, state.squadrons[],
-    state.ships,
-  )
+  let pathResult = state.findPath(sourceSystem, destSystem, dummyFleet)
   if not pathResult.found:
     return (false, "No path exists to destination")
 
@@ -128,7 +125,7 @@ proc createTransferInitiation*(
     id: PopulationTransferId(sourceColonyId.uint32 xor destSystem.uint32 xor state.turn.uint32),
     houseId: houseId,
     sourceColony: sourceColonyId,
-    destColony: ColonyId(destSystem), # Cast: same system ID space
+    destColony: state.colonyIdBySystem(destSystem).get(),  # Lookup ColonyId
     ptuAmount: int32(ptuAmount),
     costPaid: cost,
     arrivalTurn: arrivalTurn,
@@ -186,22 +183,21 @@ proc processArrivingTransfer(
       SystemId
     ))
 
-  # Get destination as SystemId
-  let destSystem = SystemId(transfer.destColony)
-
-  # Check if destination colony exists and is owned
-  let destColonyOpt = state.colonyBySystem(destSystem)
+  # Get destination colony directly (no cast needed)
+  let destColonyOpt = state.colony(transfer.destColony)
   if destColonyOpt.isSome:
       let destColony = destColonyOpt.get()
 
       if destColony.owner == transfer.houseId and not destColony.blockaded:
         # Success - deliver to destination
         result.result = TransferResult.Delivered
-        result.actualDestination = some(destSystem)
+        result.actualDestination = some(destColony.systemId)
         return
 
   # Destination unavailable - try smart delivery
-  let nearestColony = findNearestOwnedColony(state, destSystem, transfer.houseId)
+  # Get systemId from colony for nearest search
+  let destColonyForSearch = state.colony(transfer.destColony).get()
+  let nearestColony = findNearestOwnedColony(state, destColonyForSearch.systemId, transfer.houseId)
 
   if nearestColony.isSome:
     # Found alternative - redirect
@@ -238,7 +234,9 @@ proc applyTransferCompletion*(
       )
 
       if completion.result == TransferResult.Redirected:
-        info("Transfer redirected from ", $SystemId(completion.transfer.destColony))
+        # Get original destination systemId for logging
+        let origColony = state.colony(completion.transfer.destColony).get()
+        info("Transfer redirected from ", $origColony.systemId)
 
   of TransferResult.Lost:
     info(
@@ -278,14 +276,17 @@ proc processTransfers*(state: var GameState): seq[TransferCompletion] =
 # =============================================================================
 
 proc generateTransferEvents*(
-    completions: seq[TransferCompletion]
+    state: GameState, completions: seq[TransferCompletion]
 ): seq[event.GameEvent] =
   ## Generate events for completed transfers
   result = @[]
 
   for completion in completions:
-    let sourceSystem = SystemId(completion.transfer.sourceColony)
-    let destSystem = SystemId(completion.transfer.destColony)
+    # Get systemIds from colonies (no cast - proper lookup)
+    let sourceColony = state.colony(completion.transfer.sourceColony).get()
+    let destColony = state.colony(completion.transfer.destColony).get()
+    let sourceSystem = sourceColony.systemId
+    let destSystem = destColony.systemId
 
     case completion.result
     of TransferResult.Delivered:

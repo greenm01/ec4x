@@ -24,6 +24,9 @@
 The src tree API is located in docs/api/api.json for efficient context.
 
 Strictly follow entity patterns established in src/engine/architecture.md
+
+Use UFCS (method-style syntax) for proc calls, e.g. state.foo(bar1, bar2, bar3) instead of foo(state, bar1, bar2, bar3)
+
 ---
 
 ## Design Patterns (DRY & DoD)
