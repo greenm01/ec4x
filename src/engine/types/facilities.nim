@@ -37,6 +37,8 @@ type
     colonyId*: ColonyId
     commissionedTurn*: int32
     isCrippled*: bool
+    baseDocks*: int32  # Base dock capacity from config (immutable)
+    effectiveDocks*: int32  # CST-modified dock capacity (updated on tech changes)
     constructionQueue*: seq[ConstructionProjectId]
     activeConstructions*: seq[ConstructionProjectId]
     repairQueue*: seq[RepairProjectId]

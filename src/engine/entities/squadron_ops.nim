@@ -41,20 +41,22 @@ proc createSquadron*(
     owner: HouseId,
     fleetId: FleetId,
     flagshipId: ShipId,
-    squadronType: SquadronClass,
 ): Squadron =
   ## Creates a new squadron, adds it to a fleet, and updates all indexes.
+  ## Squadron type is derived from flagship's ship class.
   let squadronId = state.generateSquadronId()
   let fleetLocation = state.fleet(fleetId).get().location
-  let newSquadron = Squadron(
-    id: squadronId,
-    flagshipId: flagshipId,
-    ships: @[],
-    houseId: owner,
-    location: fleetLocation,
-    squadronType: squadronType,
-    destroyed: false,
-    embarkedFighters: @[],
+
+  # Derive squadron type from flagship's ship class
+  let flagship = state.ship(flagshipId).get()
+
+  # Use newSquadron() for consistent value construction
+  let newSquadron = newSquadron(
+    flagshipId = flagshipId,
+    flagshipClass = flagship.shipClass,
+    id = squadronId,
+    owner = owner,
+    location = fleetLocation,
   )
 
   state.addSquadron(squadronId, newSquadron)
@@ -63,7 +65,7 @@ proc createSquadron*(
   var fleet = state.fleet(fleetId).get()
   fleet.squadrons.add(squadronId)
   state.updateFleet(fleetId, fleet)
-  
+
   return newSquadron
 
 proc destroySquadron*(state: var GameState, squadronId: SquadronId) =

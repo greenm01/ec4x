@@ -56,7 +56,16 @@ proc unregisterFleetOwner*(state: var GameState, fleetId: FleetId, owner: HouseI
 proc createFleet*(state: var GameState, owner: HouseId, location: SystemId): Fleet =
   ## Creates a new, empty fleet and adds it to the game state.
   let fleetId = state.generateFleetId()
-  let newFleet = Fleet(id: fleetId, houseId: owner, location: location, squadrons: @[])
+
+  # Use newFleet() for consistent field initialization
+  let newFleet = newFleet(
+    squadronIds = @[],
+    id = fleetId,
+    owner = owner,
+    location = location,
+    status = FleetStatus.Active,
+    autoBalanceSquadrons = true,
+  )
 
   # 1. Add to entity manager
   state.addFleet(fleetId, newFleet)

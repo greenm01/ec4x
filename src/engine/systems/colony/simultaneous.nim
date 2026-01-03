@@ -124,7 +124,7 @@ proc establishColony(
   result = (success: false, prestigeAwarded: 0)
 
   # Validate system not already colonized
-  if state.colonies.bySystem.hasKey(systemId):
+  if state.colonyBySystem(systemId).isSome:
     logWarn(LogCategory.lcColonization, &"System {systemId} already colonized")
     return
 
@@ -306,7 +306,7 @@ proc findBestColonizationTarget(
   # Scan all systems within range
   for systemId, system in state.starMap.systems:
     # Skip if already colonized
-    if state.colonies.bySystem.hasKey(systemId):
+    if state.colonyBySystem(systemId).isSome:
       continue
 
     # Check distance via jump lanes

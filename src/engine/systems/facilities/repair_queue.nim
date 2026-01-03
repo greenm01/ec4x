@@ -181,7 +181,7 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
   ## Starbases use spaceport facilities and do NOT consume dock space
   ## Per architecture: Starbases are facilities that require Spaceports
 
-  let colonyIdOpt = state.colonies.bySystem.getOrDefault(systemId)
+  let colonyIdOpt = state.colonyBySystem(systemId)
   if colonyIdOpt.isNone:
     return
 
@@ -248,7 +248,7 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
   ## Ship repairs require drydocks (spaceports and shipyards cannot repair)
   ## Called during turn resolution after fleet movements
 
-  let colonyIdOpt = state.colonies.bySystem.getOrDefault(systemId)
+  let colonyIdOpt = state.colonyBySystem(systemId)
   if colonyIdOpt.isNone:
     return
 

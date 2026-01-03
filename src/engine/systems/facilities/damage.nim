@@ -115,18 +115,22 @@ proc handleFacilityDestruction*(
   clearFacilityQueues(colony, facilityType, state)
 
   # Check if colony has ANY remaining construction facilities
-  # Shipyards: Check if any non-crippled shipyards exist
+  # Iterate over neorias to find shipyards and spaceports
   var hasShipyards = false
-  for shipyardId in colony.shipyardIds:
-    let shipyardOpt = state.neoria(NeoriaId(shipyardId)
-    if shipyardOpt.isSome:
-      let shipyard = shipyardOpt.get()
-      if not shipyard.isCrippled:
-        hasShipyards = true
-        break
+  var hasSpaceports = false
 
-  # Spaceports: Just check if any exist (spaceports don't have crippled status)
-  let hasSpaceports = colony.spaceportIds.len > 0
+  for neoriaId in colony.neoriaIds:
+    let neoriaOpt = state.neoria(neoriaId)
+    if neoriaOpt.isSome:
+      let neoria = neoriaOpt.get()
+      if neoria.neoriaClass == NeoriaClass.Shipyard and not neoria.isCrippled:
+        hasShipyards = true
+      elif neoria.neoriaClass == NeoriaClass.Spaceport and not neoria.isCrippled:
+        hasSpaceports = true
+
+      # Early exit if we found both types
+      if hasShipyards and hasSpaceports:
+        break
 
   if not hasShipyards and not hasSpaceports:
     # No construction facilities left - clear all construction queues

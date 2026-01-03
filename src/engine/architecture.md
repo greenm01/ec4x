@@ -348,14 +348,15 @@ for (fleetId, fleet) in state.fleetsOwnedWithId(houseId):
 ### Pattern 4: Create and Link
 ```nim
 # Create squadron via entity ops (maintains indexes)
-let squadronId = squadron_ops.createSquadron(
-  state, houseId, fleetId, shipClass, shipCount
+# Squadron type is automatically derived from flagship's ship class
+let squadron = squadron_ops.createSquadron(
+  state, houseId, fleetId, flagshipId
 )
 
 # Squadron is automatically added to:
-# - squadrons.byHouse[houseId]
 # - squadrons.byFleet[fleetId]
 # - fleet.squadrons list
+# Squadron type is derived from flagship's shipClass
 ```
 
 ## Entity Ops Responsibilities
