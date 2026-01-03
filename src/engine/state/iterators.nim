@@ -23,26 +23,21 @@ iterator fleetsInSystem*(state: GameState, sysId: SystemId): Fleet =
   if state.fleets.bySystem.contains(sysId):
     for fId in state.fleets.bySystem[sysId]:
       if state.fleets.entities.index.contains(fId):
-        yield state.fleets.entities.data[state.fleets.entities.index[fId]]
+        yield state.fleet(fId).get()
 
 iterator squadronsInSystem*(state: GameState, sysId: SystemId): Squadron =
   for fleet in state.fleetsInSystem(sysId):
     for sqId in fleet.squadrons:
       if state.squadrons.entities.index.contains(sqId):
-        yield state.squadrons.entities.data[state.squadrons.entities.index[sqId]]
+        yield state.squadron(sqId).get()
 
 iterator allShips*(state: GameState): Ship =
-  for ship in state.ships.entities.data:
+  for (id, ship) in state.allShipsWithId():
     yield ship
 
 iterator allHouses*(state: GameState): House =
-  for house in state.houses.entities.data:
+  for (id, house) in state.allHousesWithId():
     yield house
-
-# Mutable iterator for when you need to update values (AS, DS, combat state)
-iterator mAllShips*(state: var GameState): var Ship =
-  for ship in mitems(state.ships.entities.data):
-    yield ship
 
 iterator coloniesOwned*(state: GameState, houseId: HouseId): Colony =
   ## Iterate all colonies owned by a house (O(1) lookup via index)
@@ -54,7 +49,7 @@ iterator coloniesOwned*(state: GameState, houseId: HouseId): Colony =
   if state.colonies.byOwner.contains(houseId):
     for colonyId in state.colonies.byOwner[houseId]:
       if state.colonies.entities.index.contains(colonyId):
-        yield state.colonies.entities.data[state.colonies.entities.index[colonyId]]
+        yield state.colony(colonyId).get()
 
 iterator coloniesOwnedWithId*(
     state: GameState, houseId: HouseId
@@ -69,7 +64,7 @@ iterator coloniesOwnedWithId*(
     for colonyId in state.colonies.byOwner[houseId]:
       if state.colonies.entities.index.contains(colonyId):
         let colony =
-          state.colonies.entities.data[state.colonies.entities.index[colonyId]]
+          state.colony(colonyId).get()
         yield (colony.systemId, colony)
 
 iterator fleetsOwned*(state: GameState, houseId: HouseId): Fleet =
@@ -79,7 +74,7 @@ iterator fleetsOwned*(state: GameState, houseId: HouseId): Fleet =
   ##   var totalMaintenance = 0
   ##   for fleet in state.fleetsOwned(houseId):
   ##     totalMaintenance += fleet.maintenanceCost
-  for fleet in state.fleets.entities.data:
+  for (id, fleet) in state.allFleetsWithId():
     if fleet.houseId == houseId:
       yield fleet
 
@@ -92,9 +87,9 @@ iterator fleetsOwnedWithId*(
   ##   for (fleetId, fleet) in state.fleetsOwnedWithId(houseId):
   ##     state.withFleet(fleetId):
   ##       fleet.status = FleetStatus.Reserve
-  for fleet in state.fleets.entities.data:
+  for (id, fleet) in state.allFleetsWithId():
     if fleet.houseId == houseId:
-      yield (fleet.id, fleet)
+      yield (id, fleet)
 
 # Location-based iterators (entities at a location)
 
@@ -108,7 +103,7 @@ iterator fleetsAtSystem*(state: GameState, systemId: SystemId): Fleet =
   if state.fleets.bySystem.contains(systemId):
     for fleetId in state.fleets.bySystem[systemId]:
       if state.fleets.entities.index.contains(fleetId):
-        yield state.fleets.entities.data[state.fleets.entities.index[fleetId]]
+        yield state.fleet(fleetId).get()
 
 iterator fleetsAtSystemWithId*(
     state: GameState, systemId: SystemId
@@ -123,7 +118,7 @@ iterator fleetsAtSystemWithId*(
   if state.fleets.bySystem.contains(systemId):
     for fleetId in state.fleets.bySystem[systemId]:
       if state.fleets.entities.index.contains(fleetId):
-        let fleet = state.fleets.entities.data[state.fleets.entities.index[fleetId]]
+        let fleet = state.fleet(fleetId).get()
         yield (fleetId, fleet)
 
 iterator fleetsAtSystemForHouse*(
@@ -138,7 +133,7 @@ iterator fleetsAtSystemForHouse*(
   if state.fleets.bySystem.contains(systemId):
     for fleetId in state.fleets.bySystem[systemId]:
       if state.fleets.entities.index.contains(fleetId):
-        let fleet = state.fleets.entities.data[state.fleets.entities.index[fleetId]]
+        let fleet = state.fleet(fleetId).get()
         if fleet.houseId == houseId:
           yield fleet
 
@@ -149,7 +144,7 @@ iterator fleetsAtSystemForHouseWithId*(
   if state.fleets.bySystem.contains(systemId):
     for fleetId in state.fleets.bySystem[systemId]:
       if state.fleets.entities.index.contains(fleetId):
-        let fleet = state.fleets.entities.data[state.fleets.entities.index[fleetId]]
+        let fleet = state.fleet(fleetId).get()
         if fleet.houseId == houseId:
           yield (fleetId, fleet)
 
@@ -162,7 +157,7 @@ iterator blockadedColonies*(state: GameState): Colony =
   ##   var blockadeCount = 0
   ##   for colony in state.blockadedColonies():
   ##     blockadeCount += 1
-  for colony in state.colonies.entities.data:
+  for (id, colony) in state.allColoniesWithId():
     if colony.blockaded:
       yield colony
 
@@ -170,9 +165,9 @@ iterator blockadedColoniesWithId*(
     state: GameState
 ): tuple[id: SystemId, colony: Colony] =
   ## Iterate blockaded colonies with IDs (for mutations)
-  for colony in state.colonies.entities.data:
+  for (id, colony) in state.allColoniesWithId():
     if colony.blockaded:
-      yield (colony.systemId, colony)
+      yield (id, colony)
 
 iterator fleetsWithOrders*(
     state: GameState
@@ -182,9 +177,9 @@ iterator fleetsWithOrders*(
   ## Example:
   ##   for (fleetId, fleet, command) in state.fleetsWithOrders():
   ##     # Execute fleet order
-  for fleet in state.fleets.entities.data:
+  for (id, fleet) in state.allFleetsWithId():
     if fleet.command.isSome():
-      yield (fleet.id, fleet, fleet.command.get())
+      yield (id, fleet, fleet.command.get())
 
 iterator eliminatedHouses*(state: GameState): House =
   ## Iterate eliminated houses
@@ -192,7 +187,7 @@ iterator eliminatedHouses*(state: GameState): House =
   ## Example:
   ##   for house in state.eliminatedHouses():
   ##     echo house.name, " has been eliminated"
-  for house in state.houses.entities.data:
+  for (id, house) in state.allHousesWithId():
     if house.isEliminated:
       yield house
 
@@ -202,7 +197,7 @@ iterator activeHouses*(state: GameState): House =
   ## Example:
   ##   for house in state.activeHouses():
   ##     # Process active house
-  for house in state.houses.entities.data:
+  for (id, house) in state.allHousesWithId():
     if not house.isEliminated:
       yield house
 
@@ -213,9 +208,9 @@ iterator activeHousesWithId*(state: GameState): tuple[id: HouseId, house: House]
   ##   for (houseId, house) in state.activeHousesWithId():
   ##     state.withHouse(houseId):
   ##       house.prestige += bonus
-  for house in state.houses.entities.data:
+  for (id, house) in state.allHousesWithId():
     if not house.isEliminated:
-      yield (house.id, house)
+      yield (id, house)
 
 # Utility iterators (helper patterns)
 
@@ -226,8 +221,8 @@ iterator allColoniesWithId*(state: GameState): tuple[id: SystemId, colony: Colon
   ##   for (systemId, colony) in state.allColoniesWithId():
   ##     state.withColony(systemId):
   ##       colony.production = calculateProduction(colony)
-  for colony in state.colonies.entities.data:
-    yield (colony.systemId, colony)
+  for colonyId in state.colonies.entities.index.keys:
+    yield (colonyId, state.colony(colonyId).get())
 
 iterator allFleetsWithId*(state: GameState): tuple[id: FleetId, fleet: Fleet] =
   ## Iterate all fleets with IDs (for batch processing)
@@ -236,8 +231,8 @@ iterator allFleetsWithId*(state: GameState): tuple[id: FleetId, fleet: Fleet] =
   ##   for (fleetId, fleet) in state.allFleetsWithId():
   ##     state.withFleet(fleetId):
   ##       fleet.fuelRemaining -= 1
-  for fleet in state.fleets.entities.data:
-    yield (fleet.id, fleet)
+  for fleetId in state.fleets.entities.index.keys:
+    yield (fleetId, state.fleet(fleetId).get())
 
 iterator allHousesWithId*(state: GameState): tuple[id: HouseId, house: House] =
   ## Iterate all houses with IDs (for batch processing)
@@ -246,8 +241,8 @@ iterator allHousesWithId*(state: GameState): tuple[id: HouseId, house: House] =
   ##   for (houseId, house) in state.allHousesWithId():
   ##     state.withHouse(houseId):
   ##       house.turnsWithoutOrders += 1
-  for house in state.houses.entities.data:
-    yield (house.id, house)
+  for houseId in state.houses.entities.index.keys:
+    yield (houseId, state.house(houseId).get())
 
 # Military asset iterators (O(1) lookups via byHouse index)
 
@@ -261,7 +256,7 @@ iterator squadronsOwned*(state: GameState, houseId: HouseId): Squadron =
   if state.squadrons.byHouse.contains(houseId):
     for squadronId in state.squadrons.byHouse[houseId]:
       if state.squadrons.entities.index.contains(squadronId):
-        yield state.squadrons.entities.data[state.squadrons.entities.index[squadronId]]
+        yield state.squadron(squadronId).get()
 
 iterator shipsOwned*(state: GameState, houseId: HouseId): Ship =
   ## Iterate all ships owned by a house (O(1) lookup via byHouse index)
@@ -274,7 +269,7 @@ iterator shipsOwned*(state: GameState, houseId: HouseId): Ship =
   if state.ships.byHouse.contains(houseId):
     for shipId in state.ships.byHouse[houseId]:
       if state.ships.entities.index.contains(shipId):
-        yield state.ships.entities.data[state.ships.entities.index[shipId]]
+        yield state.ship(shipId).get()
 
 # Facility iterators (O(colonies_owned * facilities_per_colony) via byColony index)
 
@@ -285,7 +280,7 @@ iterator neoriasOwned*(state: GameState, houseId: HouseId): Neoria =
     if state.neorias.byColony.contains(colony.id):
       for neoriaId in state.neorias.byColony[colony.id]:
         if state.neorias.entities.index.contains(neoriaId):
-          yield state.neorias.entities.data[state.neorias.entities.index[neoriaId]]
+          yield state.neoria(neoriaId).get()
 
 iterator kastrasOwned*(state: GameState, houseId: HouseId): Kastra =
   ## Iterate all kastras (defensive facilities) owned by a house
@@ -294,7 +289,7 @@ iterator kastrasOwned*(state: GameState, houseId: HouseId): Kastra =
     if state.kastras.byColony.contains(colony.id):
       for kastraId in state.kastras.byColony[colony.id]:
         if state.kastras.entities.index.contains(kastraId):
-          yield state.kastras.entities.data[state.kastras.entities.index[kastraId]]
+          yield state.kastra(kastraId).get()
 
 # ============================================================================
 # All-Entity Iterators (Added 2025-12-22)
@@ -304,29 +299,36 @@ iterator allColonies*(state: GameState): Colony =
   ## Iterate all colonies (read-only)
   ## O(n) where n = total colonies
   ## Use when you need to process ALL colonies regardless of owner
-  for colony in state.colonies.entities.data:
+  for (id, colony) in state.allColoniesWithId():
     yield colony
 
 iterator allFleets*(state: GameState): Fleet =
   ## Iterate all fleets (read-only)
   ## O(n) where n = total fleets
   ## Use when you need to process ALL fleets regardless of owner
-  for fleet in state.fleets.entities.data:
+  for (id, fleet) in state.allFleetsWithId():
     yield fleet
 
 iterator allSquadrons*(state: GameState): Squadron =
   ## Iterate all squadrons (read-only)
   ## O(n) where n = total squadrons
   ## Use when you need to process ALL squadrons regardless of owner
-  for squadron in state.squadrons.entities.data:
+  for (id, squadron) in state.allSquadronsWithId():
     yield squadron
 
 iterator allSystems*(state: GameState): System =
   ## Iterate all star systems (read-only)
   ## O(n) where n = total systems
   ## Use when you need to process ALL systems
-  for system in state.systems.entities.data:
+  for (id, system) in state.allSystemsWithId():
     yield system
+
+iterator allSystemsWithId*(state: GameState): tuple[id: SystemId, system: System] =
+  ## Iterate all systems with IDs (for mutations)
+  ## O(n) where n = total systems
+  ## Use when you need to mutate systems or need their IDs
+  for systemId in state.systems.entities.index.keys:
+    yield (systemId, state.system(systemId).get())
 
 iterator allSquadronsWithId*(
     state: GameState
@@ -334,8 +336,8 @@ iterator allSquadronsWithId*(
   ## Iterate all squadrons with IDs (for mutations)
   ## O(n) where n = total squadrons
   ## Use when you need to mutate squadrons or need their IDs
-  for squadron in state.squadrons.entities.data:
-    yield (squadron.id, squadron)
+  for squadronId in state.squadrons.entities.index.keys:
+    yield (squadronId, state.squadron(squadronId).get())
 
 iterator squadronsOwnedWithId*(
     state: GameState, houseId: HouseId
@@ -347,7 +349,7 @@ iterator squadronsOwnedWithId*(
     for squadronId in state.squadrons.byHouse[houseId]:
       if state.squadrons.entities.index.contains(squadronId):
         let squadron =
-          state.squadrons.entities.data[state.squadrons.entities.index[squadronId]]
+          state.squadron(squadronId).get()
         yield (squadronId, squadron)
 
 iterator shipsOwnedWithId*(
@@ -359,7 +361,7 @@ iterator shipsOwnedWithId*(
   if state.ships.byHouse.contains(houseId):
     for shipId in state.ships.byHouse[houseId]:
       if state.ships.entities.index.contains(shipId):
-        let ship = state.ships.entities.data[state.ships.entities.index[shipId]]
+        let ship = state.ship(shipId).get()
         yield (shipId, ship)
 
 iterator allNeoriasWithId*(
@@ -368,8 +370,8 @@ iterator allNeoriasWithId*(
   ## Iterate all neorias with IDs (for mutations)
   ## O(n) where n = total neorias
   ## Use when you need to mutate neorias or need their IDs
-  for neoria in state.neorias.entities.data:
-    yield (neoria.id, neoria)
+  for neoriaId in state.neorias.entities.index.keys:
+    yield (neoriaId, state.neoria(neoriaId).get())
 
 iterator allKastrasWithId*(
     state: GameState
@@ -377,8 +379,8 @@ iterator allKastrasWithId*(
   ## Iterate all kastras with IDs (for mutations)
   ## O(n) where n = total kastras
   ## Use when you need to mutate kastras or need their IDs
-  for kastra in state.kastras.entities.data:
-    yield (kastra.id, kastra)
+  for kastraId in state.kastras.entities.index.keys:
+    yield (kastraId, state.kastra(kastraId).get())
 
 ## Design Notes:
 ##

@@ -68,18 +68,18 @@ proc exportFogOfWarView*(state: GameState, houseId: HouseId): FogOfWarView =
   )
 
   # Get house's own data (full visibility)
-  for idx, colony in state.colonies.entities.data:
+  for (colonyId, colony) in state.allColoniesWithId():
     if colony.owner == houseId:
       result.ownColonies.add(toJson(colony))
 
-  for idx, fleet in state.fleets.entities.data:
+  for (fleetId, fleet) in state.allFleetsWithId():
     if fleet.houseId == houseId:
       result.ownFleets.add(toJson(fleet))
 
   # Get own house data
-  if houseId in state.houses.entities.index:
-    let houseIdx = state.houses.entities.index[houseId]
-    let house = state.houses.entities.data[houseIdx]
+  let houseOpt = state.house(houseId)
+  if houseOpt.isSome:
+    let house = houseOpt.get()
     result.ownHouse = toJson(house)
 
   # Get intelligence database for this house

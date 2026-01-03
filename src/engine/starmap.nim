@@ -50,7 +50,7 @@ proc withinRadius*(center: Hex, radius: int32): seq[Hex] =
 proc findSystemByCoords(starMap: StarMap, state: GameState, coords: Hex): Option[SystemId] =
   ## Find a system by its hex coordinates
   ## Returns the SystemId if found, none if not found
-  for system in state.systems.entities.data:
+  for system in state.allSystems():
     if system.coords.q == coords.q and system.coords.r == coords.r:
       return some(system.id)
   return none(SystemId)
@@ -256,9 +256,6 @@ proc newSystem(
     resourceRating: pickWeighted[ResourceRating](rng, ResourceWeights)
   )
 
-proc addSystem(state: var GameState, system: System) =
-  state.systems.entities.data.add(system)
-  state.systems.entities.index[system.id] = state.systems.entities.data.len - 1
 
 proc addLane(starMap: var StarMap, state: GameState, lane: JumpLane) =
   # Validate lane endpoints exist
@@ -327,7 +324,7 @@ proc generateHexGrid(starMap: var StarMap, state: var GameState, playerCount: in
   # Add hub system at center
   let hub = state.newSystem(center, 0, none(HouseId), seed)
   starMap.hubId = hub.id
-  state.addSystem(hub)
+  state.addSystem(hub.id, hub)
 
   # Generate all systems in rings
   let allHexes = center.withinRadius(numRings.int32)
@@ -337,14 +334,14 @@ proc generateHexGrid(starMap: var StarMap, state: var GameState, playerCount: in
 
     let ring = distance(hexCoord, center)
     let system = state.newSystem(hexCoord, ring, none(HouseId), seed)
-    state.addSystem(system)
+    state.addSystem(system.id, system)
 
 proc assignHouseHomeworlds(starMap: var StarMap, state: var GameState, playerCount: int32, seed: int64) =
   ## Assign house homeworlds following game specification
   ## Homeworlds can be placed on any ring (except hub ring 0) using distance maximization
   let maxVertexHouses: int32 = 4  # Hex grids only have 4 true vertices
   var allSystems: seq[System] = @[]
-  for system in state.systems.entities.data:
+  for system in state.allSystems():
     # Exclude hub (ring 0), allow all other rings
     if system.ring > 0:
       allSystems.add(system)
@@ -405,26 +402,27 @@ proc assignHouseHomeworlds(starMap: var StarMap, state: var GameState, playerCou
 
   # Assign houses to selected systems and apply homeworld characteristics
   for i, system in selectedSystems:
-    # Update system using EntityManager
-    let idx = state.systems.entities.index[system.id]
-    state.systems.entities.data[idx].house = some(i.uint32.HouseId)
+    # Update system using public API
+    var updatedSystem = state.system(system.id).get()
+    updatedSystem.house = some(i.uint32.HouseId)
 
     # Override with configured homeworld characteristics
-    state.systems.entities.data[idx].planetClass =
+    updatedSystem.planetClass =
       parsePlanetClass(gameSetup.homeworld.planetClass)
-    state.systems.entities.data[idx].resourceRating =
+    updatedSystem.resourceRating =
       parseResourceRating(gameSetup.homeworld.rawQuality)
+
+    state.updateSystem(updatedSystem.id, updatedSystem)
 
     starMap.houseSystemIds.add(system.id)
     starMap.homeWorlds[system.id] = i.uint32.HouseId
 
 proc connectHub(starMap: var StarMap, state: GameState, rng: var Rand) =
   ## Connect hub with mixed lane types to first ring (prevents rush-to-center)
-  let hubIdx = state.systems.entities.index[starMap.hubId]
-  let hubSystem = state.systems.entities.data[hubIdx]
+  let hubSystem = state.system(starMap.hubId).get()
 
   var ring1Neighbors: seq[SystemId] = @[]
-  for system in state.systems.entities.data:
+  for system in state.allSystems():
     if system.ring == 1 and distance(system.coords, hubSystem.coords) == 1:
       ring1Neighbors.add(system.id)
 
@@ -453,8 +451,7 @@ proc connectHouseSystems(starMap: var StarMap, state: GameState, rng: var Rand) 
              " houses=", starMap.houseSystemIds.len)
 
   for houseId in starMap.houseSystemIds:
-    let sysIdx = state.systems.entities.index[houseId]
-    let system = state.systems.entities.data[sysIdx]
+    let system = state.system(houseId).get()
 
     # Find all potential neighbors
     var neighbors: seq[SystemId] = @[]
@@ -484,7 +481,7 @@ proc connectHouseSystems(starMap: var StarMap, state: GameState, rng: var Rand) 
 
 proc connectRemainingSystem(starMap: var StarMap, state: GameState, rng: var Rand) =
   ## Connect all remaining systems with random lane types
-  for system in state.systems.entities.data:
+  for system in state.allSystems():
     if system.ring == 0 or system.house.isSome:
       continue  # Skip hub and house systems
 
@@ -502,8 +499,7 @@ proc connectRemainingSystem(starMap: var StarMap, state: GameState, rng: var Ran
     # Connect to available neighbors with random lane types
     for neighborId in neighbors:
       # Check if neighbor is a house system that already has 3 connections
-      let neighborIdx = state.systems.entities.index[neighborId]
-      let neighborSystem = state.systems.entities.data[neighborIdx]
+      let neighborSystem = state.system(neighborId).get()
       if neighborSystem.house.isSome:
         let neighborConnections = starMap.getAdjacentSystems(neighborId)
         if neighborConnections.len >= 3:
@@ -538,7 +534,7 @@ proc generateLanes(starMap: var StarMap, state: var GameState, seed: int64) =
 
 proc validateConnectivity*(starMap: StarMap, state: GameState): bool =
   ## Validate that all systems are reachable from hub
-  if state.systems.entities.data.len == 0:
+  if state.systemsCount() == 0:
     return false
 
   var visited = initHashSet[SystemId]()
@@ -552,7 +548,7 @@ proc validateConnectivity*(starMap: StarMap, state: GameState): bool =
         visited.incl(neighbor)
         queue.add(neighbor)
 
-  return visited.len == state.systems.entities.data.len
+  return visited.len == state.systemsCount()
 
 proc validateHomeworldLanes*(starMap: StarMap, state: GameState): seq[string] =
   ## Validate that each homeworld has exactly 3 Major lanes
@@ -611,8 +607,8 @@ proc getLaneType*(
 
 proc buildDistanceMatrix(starMap: var StarMap, state: GameState) =
   ## Pre-compute all pairwise hex distances for O(1) heuristic lookup
-  for sys1 in state.systems.entities.data:
-    for sys2 in state.systems.entities.data:
+  for sys1 in state.allSystems():
+    for sys2 in state.allSystems():
       if sys1.id != sys2.id:
         starMap.distanceMatrix[(sys1.id, sys2.id)] = distance(sys1.coords, sys2.coords)
 
@@ -624,28 +620,30 @@ proc assignSystemNames*(starMap: var StarMap, state: var GameState, seed: int64)
 
   if namePool.len == 0:
     # Fallback to numeric names
-    for i in 0 ..< state.systems.entities.data.len:
-      state.systems.entities.data[i].name =
-        "System-" & $state.systems.entities.data[i].id
+    for (systemId, system) in state.allSystemsWithId():
+      var updated = system
+      updated.name = "System-" & $systemId
+      state.updateSystem(systemId, updated)
     return
 
   # Assign names from pool
   var nameIdx = 0
-  for i in 0 ..< state.systems.entities.data.len:
+  for (systemId, system) in state.allSystemsWithId():
+    var updated = system
     if nameIdx < namePool.len:
-      state.systems.entities.data[i].name = namePool[nameIdx]
+      updated.name = namePool[nameIdx]
       nameIdx += 1
     else:
       # Fallback if pool exhausted
-      state.systems.entities.data[i].name =
-        "System-" & $state.systems.entities.data[i].id
+      updated.name = "System-" & $systemId
+    state.updateSystem(systemId, updated)
 
 # Debugging and analysis functions
 proc starMapStats*(starMap: StarMap, state: GameState): string =
   ## Get comprehensive starmap statistics
   var stats = "StarMap Statistics:\n"
   stats &= "  Houses: " & $starMap.houseSystemIds.len & "\n"
-  stats &= "  Total Systems: " & $state.systems.entities.data.len & "\n"
+  stats &= "  Total Systems: " & $state.systemsCount() & "\n"
   stats &= "  Total Lanes: " & $starMap.lanes.data.len & "\n"
 
   # Count lane types
@@ -686,7 +684,7 @@ proc verifyGameRules*(starMap: StarMap, state: GameState): bool =
 proc houseSystems*(starMap: StarMap, state: GameState, houseId: HouseId): seq[System] =
   ## Get all systems owned by a specific house
   var systems: seq[System] = @[]
-  for system in state.systems.entities.data:
+  for system in state.allSystems():
     if system.house.isSome and system.house.get == houseId:
       systems.add(system)
   return systems

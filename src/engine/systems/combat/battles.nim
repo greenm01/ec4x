@@ -10,7 +10,7 @@
 import std/[tables, options, sequtils, hashes, math, random, strformat]
 import ../../../common/logger
 import ../../types/[core, combat, game_state, fleet, squadron, ship, colony, house, facilities as econ_types, diplomacy as dip_types, intel as intel_types, prestige]
-import ../../state/[engine, entity_manager, iterators]
+import ../../state/[engine, iterators]
 import ./[engine as combat_engine, ground]
 import ../../globals # For gameConfig
 import ../../prestige/[

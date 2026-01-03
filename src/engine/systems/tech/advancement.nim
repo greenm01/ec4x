@@ -17,7 +17,7 @@
 import std/[random, tables, options]
 import costs, effects
 import ../../types/[core, game_state, tech, prestige]
-import ../../state/[engine as state_helpers, entity_manager]
+import ../../state/engine
 import ../../globals
 
 export
@@ -29,42 +29,39 @@ proc updateSpaceportDocks(
     state: var GameState, spaceportId: SpaceportId, effectiveDocks: int32
 ) =
   ## Helper to update spaceport effective docks using DoD pattern
-  ## Uses updateEntity instead of direct index manipulation
-  let spaceportOpt = state.spaceports.entities.entity(spaceportId)
+  let spaceportOpt = state.neoria(spaceportId)
   if spaceportOpt.isSome:
     var spaceport = spaceportOpt.get()
     spaceport.effectiveDocks = effectiveDocks
-    state.spaceports.entities.updateEntity(spaceportId, spaceport)
+    state.updateNeoria(spaceportId, spaceport)
 
 proc updateShipyardDocks(
     state: var GameState, shipyardId: ShipyardId, effectiveDocks: int32
 ) =
   ## Helper to update shipyard effective docks using DoD pattern
-  let shipyardOpt = state.shipyards.entities.entity(shipyardId)
+  let shipyardOpt = state.neoria(shipyardId)
   if shipyardOpt.isSome:
     var shipyard = shipyardOpt.get()
     shipyard.effectiveDocks = effectiveDocks
-    state.shipyards.entities.updateEntity(shipyardId, shipyard)
+    state.updateNeoria(shipyardId, shipyard)
 
 proc updateDrydockDocks(
     state: var GameState, drydockId: DrydockId, effectiveDocks: int32
 ) =
   ## Helper to update drydock effective docks using DoD pattern
-  let drydockOpt = state.drydocks.entities.entity(drydockId)
+  let drydockOpt = state.neoria(drydockId)
   if drydockOpt.isSome:
     var drydock = drydockOpt.get()
     drydock.effectiveDocks = effectiveDocks
-    state.drydocks.entities.updateEntity(drydockId, drydock)
+    state.updateNeoria(drydockId, drydock)
 
 proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
   ## Recalculate all facility dock capacities when CST tech advances
   ## Called automatically after CST level increases
   ## Updates stored effectiveDocks values for all facilities owned by house
-  ##
-  ## DoD compliant: Uses getHouse, iterates colony IDs, updates facilities via entity managers
 
   # Get house's CST level
-  let houseOpt = state_helpers.house(state, houseId)
+  let houseOpt = state.house(houseId)
   if houseOpt.isNone:
     return
   let house = houseOpt.get()
@@ -75,14 +72,14 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
     return
 
   for colonyId in state.colonies.byOwner[houseId]:
-    let colonyOpt = state_helpers.colony(state, colonyId)
+    let colonyOpt = state.colony(colonyId)
     if colonyOpt.isNone:
       continue
     let colony = colonyOpt.get()
 
     # Update spaceport capacities
     for spaceportId in colony.spaceportIds:
-      let spaceportOpt = state_helpers.spaceport(state, spaceportId)
+      let spaceportOpt = state.neoria(spaceportId)
       if spaceportOpt.isNone:
         continue
       let spaceport = spaceportOpt.get()
@@ -92,7 +89,7 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
 
     # Update shipyard capacities
     for shipyardId in colony.shipyardIds:
-      let shipyardOpt = state_helpers.shipyard(state, shipyardId)
+      let shipyardOpt = state.neoria(shipyardId)
       if shipyardOpt.isNone:
         continue
       let shipyard = shipyardOpt.get()
@@ -102,7 +99,7 @@ proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
 
     # Update drydock capacities
     for drydockId in colony.drydockIds:
-      let drydockOpt = state_helpers.drydock(state, drydockId)
+      let drydockOpt = state.neoria(drydockId)
       if drydockOpt.isNone:
         continue
       let drydock = drydockOpt.get()

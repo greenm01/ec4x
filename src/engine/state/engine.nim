@@ -179,6 +179,54 @@ proc intel*(state: GameState, id: HouseId): Option[IntelDatabase] =
     return some(state.intel[id])
   return none(IntelDatabase)
 
+proc systemsCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of systems in the game state
+  state.systems.entities.data.len.int32
+
+proc housesCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of houses in the game state
+  state.houses.entities.data.len.int32
+
+proc coloniesCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of colonies in the game state
+  state.colonies.entities.data.len.int32
+
+proc fleetsCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of fleets in the game state
+  state.fleets.entities.data.len.int32
+
+proc shipsCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of ships in the game state
+  state.ships.entities.data.len.int32
+
+proc squadronsCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of squadrons in the game state
+  state.squadrons.entities.data.len.int32
+
+proc groundUnitsCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of ground units in the game state
+  state.groundUnits.entities.data.len.int32
+
+proc neoriasCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of neorias (production facilities) in the game state
+  state.neorias.entities.data.len.int32
+
+proc kastrasCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of kastras (defensive facilities) in the game state
+  state.kastras.entities.data.len.int32
+
+proc constructionProjectsCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of construction projects in the game state
+  state.constructionProjects.entities.data.len.int32
+
+proc repairProjectsCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of repair projects in the game state
+  state.repairProjects.entities.data.len.int32
+
+proc populationTransfersCount*(state: GameState): int32 {.inline.} =
+  ## Get the total number of population transfers in the game state
+  state.populationTransfers.entities.data.len.int32
+
 # ============================================================================
 # Colony Accessors (bySystem: 1:1)
 # ============================================================================

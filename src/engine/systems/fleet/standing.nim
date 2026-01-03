@@ -16,7 +16,7 @@ import std/[tables, options, strformat, algorithm, sets, sequtils]
 import ../../../common/logger
 import ../../types/[core, game_state, command, fleet, squadron, starmap, intel, event]
 import ../../starmap
-import ../../state/[engine, entity_manager, iterators]
+import ../../state/[engine, iterators]
 import ../../event_factory/init as event_factory
 import ./movement # For findPath
 
@@ -69,7 +69,7 @@ proc getKnownSystems*(state: GameState, houseId: HouseId): HashSet[SystemId] =
 
   # 3. Enemy colonies we know about - map ColonyId to SystemId
   for colonyId in intel.colonyReports.keys:
-    let colonyOpt = state.colonie(colonyId)
+    let colonyOpt = state.colony(colonyId)
     if colonyOpt.isSome:
       result.incl(colonyOpt.get().systemId)
 
@@ -937,7 +937,7 @@ proc activateBlockadeTarget(
   let targetColonyId = params.blockadeTargetColony.get()
 
   # Get colony entity to find its system
-  let colonyOpt = state.colonie(targetColonyId)
+  let colonyOpt = state.colony(targetColonyId)
   if colonyOpt.isNone:
     return ActivationResult(success: false, error: "Target colony no longer exists")
   let colony = colonyOpt.get()
@@ -1209,7 +1209,7 @@ proc activateStandingCommands*(
 
   # Summary logging
   let totalAttempted = activatedCount + failedCount + notImplementedCount
-  let totalFleets = state.fleets.entities.data.len
+  let totalFleets = state.fleetsCount()
   logInfo(
     "Orders",
     &"Standing Orders Summary: {totalFleets} total fleets, " &

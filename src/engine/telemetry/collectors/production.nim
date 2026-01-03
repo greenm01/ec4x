@@ -5,7 +5,7 @@
 
 import std/options
 import ../../types/[telemetry, core, game_state, event, production, colony]
-import ../../state/[entity_manager, iterators]
+import ../../state/[engine, iterators]
 
 proc collectProductionMetrics*(
     state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
@@ -53,7 +53,7 @@ proc collectProductionMetrics*(
       totalBuildQueueDepth += 1
       # Get the actual project to determine type
       let constructionId = colony.underConstruction.get()
-      let projectOpt = state.constructionProjects.entities.entity(constructionId)
+      let projectOpt = state.constructionProject(constructionId)
       if projectOpt.isSome:
         let project = projectOpt.get()
         if project.projectType == BuildType.Ship:
@@ -66,7 +66,7 @@ proc collectProductionMetrics*(
     # Add queued projects
     totalBuildQueueDepth += colony.constructionQueue.len.int32
     for projectId in colony.constructionQueue:
-      let projectOpt = state.constructionProjects.entities.entity(projectId)
+      let projectOpt = state.constructionProject(projectId)
       if projectOpt.isSome:
         let project = projectOpt.get()
         if project.projectType == BuildType.Ship:

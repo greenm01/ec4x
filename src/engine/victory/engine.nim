@@ -70,8 +70,8 @@ proc checkVictoryConditions*(
 
   # Build houses table from entity manager
   var houses: Table[HouseId, House]
-  for idx, house in state.houses.entities.data.pairs:
-    houses[HouseId(idx)] = house
+  for (id, house) in state.allHousesWithId():
+    houses[id] = house
 
   # 1. Military victory - last house standing (highest priority)
   let militaryCheck = checkMilitaryVictory(houses, state.turn)
@@ -106,8 +106,7 @@ proc generateLeaderboard*(state: GameState): Leaderboard =
   ## Generate ranked leaderboard of all houses with game metadata
   var rankings: seq[HouseRanking] = @[]
 
-  for idx, house in state.houses.entities.data.pairs:
-    let houseId = HouseId(idx)
+  for (houseId, house) in state.allHousesWithId():
     # Count colonies using iterator
     var colonyCount: int32 = 0
     for colony in state.coloniesOwned(houseId):
@@ -143,6 +142,6 @@ proc generateLeaderboard*(state: GameState): Leaderboard =
 
   return Leaderboard(
     rankings: rankings,
-    totalSystems: int32(state.systems.entities.data.len),
+    totalSystems: state.systemsCount(),
     totalColonized: totalColonized,
   )

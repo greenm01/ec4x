@@ -25,8 +25,8 @@
 ## Exception: Shipyard/Starbase buildings (orbital construction, no penalty)
 
 import std/[options, tables, algorithm, strutils]
-import ../../types/[core, game_state, production, facilities, colony]
-import ../../state/game_state as gs_helpers
+import ../../types/[core, production, facilities, colony]
+import ../../state/engine as state_engine
 import ../../../common/logger
 
 export production.CompletedProject
@@ -36,7 +36,7 @@ type QueueAdvancementResult* = object ## Results from advancing a facility's que
   completedRepairs*: seq[production.RepairProject]
 
 proc advanceSpaceportQueue*(
-    spaceport: var facilities.Spaceport, colonyId: SystemId
+    spaceport: var Neoria, colonyId: SystemId
 ): QueueAdvancementResult =
   ## Advance spaceport construction queue (FIFO)
   ## Spaceports handle multiple simultaneous construction (up to effective docks limit with CST scaling)
@@ -109,7 +109,7 @@ proc advanceSpaceportQueue*(
       pulled += 1
 
 proc advanceDrydockQueue*(
-    drydock: var facilities.Drydock, colonyId: SystemId
+    drydock: var Neoria, colonyId: SystemId
 ): QueueAdvancementResult =
   ## Advance drydock repair queue (repair-only facility)
   ## Drydocks handle repairs only (effective docks with CST scaling, no construction)
@@ -163,7 +163,7 @@ proc advanceDrydockQueue*(
     pulled += 1
 
 proc advanceShipyardQueue*(
-    shipyard: var facilities.Shipyard, colonyId: SystemId
+    shipyard: var Neoria, colonyId: SystemId
 ): QueueAdvancementResult =
   ## Advance shipyard construction queue (construction-only facility)
   ## Shipyards handle multiple simultaneous construction (effective docks with CST scaling)
@@ -246,45 +246,31 @@ proc advanceColonyQueues*(
   result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
 
   # Get colony to access facility IDs
-  let colonyOpt = gs_helpers.getColony(state, colonyId)
+  let colonyOpt = state_engine.mColony(state, colonyId)
   if colonyOpt.isNone:
     return result
 
   let colony = colonyOpt.get()
   let systemId = colony.systemId
 
-  # Advance all spaceports
-  for spaceportId in colony.spaceportIds:
-    let spaceportOpt = gs_helpers.getSpaceport(state, spaceportId)
-    if spaceportOpt.isSome:
-      var spaceport = spaceportOpt.get()
-      let spaceportResult = advanceSpaceportQueue(spaceport, systemId)
-      result.completedProjects.add(spaceportResult.completedProjects)
-      result.completedRepairs.add(spaceportResult.completedRepairs)
-      # Update facility back to state
-      state.spaceports.entities.updateEntity(spaceportId, spaceport)
-
-  # Advance all shipyards
-  for shipyardId in colony.shipyardIds:
-    let shipyardOpt = gs_helpers.getShipyard(state, shipyardId)
-    if shipyardOpt.isSome:
-      var shipyard = shipyardOpt.get()
-      let shipyardResult = advanceShipyardQueue(shipyard, systemId)
-      result.completedProjects.add(shipyardResult.completedProjects)
-      result.completedRepairs.add(shipyardResult.completedRepairs)
-      # Update facility back to state
-      state.shipyards.entities.updateEntity(shipyardId, shipyard)
-
-  # Advance all drydocks
-  for drydockId in colony.drydockIds:
-    let drydockOpt = gs_helpers.getDrydock(state, drydockId)
-    if drydockOpt.isSome:
-      var drydock = drydockOpt.get()
-      let drydockResult = advanceDrydockQueue(drydock, systemId)
-      result.completedProjects.add(drydockResult.completedProjects)
-      result.completedRepairs.add(drydockResult.completedRepairs)
-      # Update facility back to state
-      state.drydocks.entities.updateEntity(drydockId, drydock)
+  # Advance all neorias (spaceports, shipyards, drydocks)
+  for neoriaId in colony.neoriaIds:
+    let neoriaOpt = state_engine.mNeoria(state, neoriaId)
+    if neoriaOpt.isSome:
+      var neoria = neoriaOpt.get()
+      case neoria.neoriaClass:
+      of NeoriaClass.Spaceport:
+        let spaceportResult = advanceSpaceportQueue(neoria, systemId)
+        result.completedProjects.add(spaceportResult.completedProjects)
+        result.completedRepairs.add(spaceportResult.completedRepairs)
+      of NeoriaClass.Shipyard:
+        let shipyardResult = advanceShipyardQueue(neoria, systemId)
+        result.completedProjects.add(shipyardResult.completedProjects)
+        result.completedRepairs.add(shipyardResult.completedRepairs)
+      of NeoriaClass.Drydock:
+        let drydockResult = advanceDrydockQueue(neoria, systemId)
+        result.completedProjects.add(drydockResult.completedProjects)
+        result.completedRepairs.add(drydockResult.completedRepairs)
 
 proc isPlanetaryDefense*(project: production.CompletedProject): bool =
   ## Returns true if project should commission in Maintenance Phase
@@ -315,7 +301,7 @@ proc advanceAllQueues*(
   ## NOTE: Uses pre-calculated effectiveDocks (updated on CST tech upgrade)
   result = (projects: @[], repairs: @[])
 
-  for colonyId in state.colonies.entities.data.keys:
+  for (colonyId, colony) in state.allColoniesWithId():
     let colonyResult = advanceColonyQueues(state, colonyId)
     result.projects.add(colonyResult.completedProjects)
     result.repairs.add(colonyResult.completedRepairs)

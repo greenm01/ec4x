@@ -5,7 +5,7 @@
 
 import std/options
 import ../../types/[telemetry, core, game_state, ship, squadron, colony]
-import ../../state/[entity_manager, iterators, engine]
+import ../../state/[engine, iterators]
 
 proc collectMilitaryMetrics*(
     state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
@@ -13,7 +13,7 @@ proc collectMilitaryMetrics*(
   ## Collect military asset counts from GameState
   result = prevMetrics # Start with previous metrics
 
-  let houseOption = state.houses.entities.entity(houseId)
+  let houseOption = state.house(houseId)
   if houseOption.isNone:
     return prevMetrics
   let house = houseOption.get()

@@ -3,7 +3,7 @@
 ## Write API for creating, destroying, and modifying Colony entities.
 ## Ensures that all secondary indexes (`bySystem`, `byOwner`) are kept consistent.
 import std/[tables, sequtils, options]
-import ../state/[id_gen, entity_manager, engine as gs_helpers]
+import ../state/[engine, id_gen]
 import ../types/[game_state, core, colony, starmap, production, capacity]
 import ../globals
 import ../utils
@@ -75,7 +75,7 @@ proc establishColony*(
   )
 
   # Add to entity manager and update indices
-  state.colonies.entities.addEntity(colonyId, newColony)
+  state.addColony(colonyId, newColony)
   state.colonies.bySystem[systemId] = colonyId
   if not state.colonies.byOwner.hasKey(owner):
     state.colonies.byOwner[owner] = @[]
@@ -85,7 +85,7 @@ proc establishColony*(
 
 proc destroyColony*(state: var GameState, colonyId: ColonyId) =
   ## Destroys a colony, removing it from the entity manager and all indexes.
-  let colonyOpt = gs_helpers.colony(state, colonyId)
+  let colonyOpt = state.colony(colonyId)
   if colonyOpt.isNone:
     return
   let colony = colonyOpt.get()
@@ -101,11 +101,11 @@ proc destroyColony*(state: var GameState, colonyId: ColonyId) =
   if state.colonies.bySystem.contains(colony.systemId):
     state.colonies.bySystem.del(colony.systemId)
 
-  state.colonies.entities.removeEntity(colonyId)
+  state.delColony(colonyId)
 
 proc changeColonyOwner*(state: var GameState, colonyId: ColonyId, newOwner: HouseId) =
   ## Transfers ownership of a colony, updating the `byOwner` index.
-  let colonyOpt = gs_helpers.colony(state, colonyId)
+  let colonyOpt = state.colony(colonyId)
   if colonyOpt.isNone:
     return
   var colony = colonyOpt.get()
@@ -127,4 +127,4 @@ proc changeColonyOwner*(state: var GameState, colonyId: ColonyId, newOwner: Hous
   state.colonies.byOwner[newOwner] = newOwnerColonies
 
   colony.owner = newOwner
-  state.colonies.entities.updateEntity(colonyId, colony)
+  state.updateColony(colonyId, colony)

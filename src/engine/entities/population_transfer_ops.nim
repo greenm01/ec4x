@@ -4,8 +4,9 @@
 ## Ensures consistency of the `byHouse` and `inTransit` indexes.
 
 import std/[options, tables, sequtils]
-import ../state/[game_state as gs_helpers, id_gen, entity_manager]
+import ../state/[engine, id_gen]
 import ../types/[game_state, core, population, colony]
+import ../globals
 
 proc startTransfer*(
     state: var GameState,
@@ -29,32 +30,32 @@ proc startTransfer*(
     status: TransferStatus.InTransit,
   )
 
-  state.populationTransfers.entities.addEntity(transferId, newTransfer)
+  state.addPopulationTransfer(transferId, newTransfer)
   state.populationTransfers.byHouse.mgetOrPut(houseId, @[]).add(transferId)
   state.populationTransfers.inTransit.add(transferId)
 
-  var sourceColony = gs_helpers.colony(state, sourceColonyId).get()
+  var sourceColony = state.colony(sourceColonyId).get()
   sourceColony.population -= ptuAmount
-  sourceColony.souls -= ptuAmount * 50000 # Example
-  state.colonies.entities.updateEntity(sourceColonyId, sourceColony)
+  sourceColony.souls -= ptuAmount * gameConfig.economy.ptuDefinition.soulsPerPtu 
+  state.updateColony(sourceColonyId, sourceColony)
 
-  var house = gs_helpers.house(state, houseId).get()
+  var house = state.house(houseId).get()
   house.treasury -= cost
-  state.houses.entities.updateEntity(houseId, house)
+  state.updateHouse(houseId, house)
 
   return newTransfer
 
 proc completeTransfer*(state: var GameState, transferId: PopulationTransferId) =
   ## Completes a population transfer, removing it from active lists and indexes.
-  let transferOpt = gs_helpers.populationTransfer(state, transferId)
+  let transferOpt = state.populationTransfer(transferId)
   if transferOpt.isNone:
     return
   let transfer = transferOpt.get()
 
-  var destColony = gs_helpers.colony(state, transfer.destColony).get()
+  var destColony = state.colony(transfer.destColony).get()
   destColony.population += transfer.ptuAmount
-  destColony.souls += transfer.ptuAmount * 50000
-  state.colonies.entities.updateEntity(transfer.destColony, destColony)
+  destColony.souls += transfer.ptuAmount * gameConfig.economy.ptuDefinition.soulsPerPtu
+  state.updateColony(transfer.destColony, destColony)
 
   state.populationTransfers.inTransit.keepIf(
     proc(id: PopulationTransferId): bool =
@@ -67,4 +68,4 @@ proc completeTransfer*(state: var GameState, transferId: PopulationTransferId) =
         id != transferId
     )
 
-  state.populationTransfers.entities.removeEntity(transferId)
+  state.delPopulationTransfer(transferId)

@@ -162,8 +162,8 @@ proc initializeHousesAndHomeworlds*(state: var GameState) =
   logInfo(
     "Initialization",
     "Game initialization complete: ", playerCount, " houses, ",
-    state.colonies.entities.data.len, " colonies, ",
-    state.fleets.entities.data.len, " fleets"
+    state.coloniesCount(), " colonies, ",
+    state.fleetsCount(), " fleets"
   )
 
 proc initGameState*(
@@ -297,10 +297,10 @@ proc initGameState*(
   # Generate starmap (populates result.systems)
   result.starMap = generateStarMap(result, playerCount, numRings.uint32)
 
-  logInfo("Initialization", "Generated map with ", result.systems.entities.data.len, " systems")
+  logInfo("Initialization", "Generated map with ", result.systemsCount(), " systems")
 
   # Initialize dynamic multipliers based on map size and player count
-  let numSystems = result.systems.entities.data.len.int32
+  let numSystems = result.systemsCount()
   initPrestigeMultiplier(numSystems, playerCount.int32)
   initPopulationGrowthMultiplier(numSystems, playerCount.int32)
 

@@ -11,9 +11,9 @@
 ## - Shipyards are construction-only facilities (clean separation of concerns)
 
 import std/[tables, options, strformat, sequtils]
-import ../../types/[game_state, core, ship, production, facilities]
+import ../../types/[core, ship, production, facilities]
 import ../../systems/ship/entity as ship_entity # Ship helper functions
-import ../../entities/[fleet_ops, colony_ops]
+import ../../entities/fleet_ops
 import ../../../common/logger
 
 export production.RepairProject, facilities.FacilityClass, production.RepairTargetType
@@ -32,29 +32,26 @@ proc extractCrippledShip*(
   ## Returns None if extraction fails
 
   # Look up fleet using entity manager
-  if fleetId notin state.fleets.entities.index:
+  let fleetOpt = state.mFleet(fleetId)
+  if fleetOpt.isNone:
     return none(RepairProject)
-
-  let fleetIdx = state.fleets.entities.index[fleetId]
-  var fleet = state.fleets.entities.data[fleetIdx]
+  var fleet = fleetOpt.get()
 
   # Verify squadron is in fleet
   if squadronId notin fleet.squadrons:
     return none(RepairProject)
 
   # Look up squadron using entity manager
-  if squadronId notin state.squadrons.entities.index:
+  let squadronOpt = state.mSquadron(squadronId)
+  if squadronOpt.isNone:
     return none(RepairProject)
-
-  let squadronIdx = state.squadrons.entities.index[squadronId]
-  var squadron = state.squadrons.entities.data[squadronIdx]
+  var squadron = squadronOpt.get()
 
   # Look up the ship being extracted
-  if shipId notin state.ships.entities.index:
+  let shipOpt = state.ship(shipId)
+  if shipOpt.isNone:
     return none(RepairProject)
-
-  let shipIdx = state.ships.entities.index[shipId]
-  let ship = state.ships.entities.data[shipIdx]
+  let ship = shipOpt.get()
 
   if not ship.isCrippled:
     return none(RepairProject)
@@ -97,10 +94,10 @@ proc extractCrippledShip*(
       var bestStrength = 0
 
       for escortId in squadron.ships:
-        if escortId notin state.ships.entities.index:
+        let escortOpt = state.ship(escortId)
+        if escortOpt.isNone:
           continue
-        let escortIdx = state.ships.entities.index[escortId]
-        let escort = state.ships.entities.data[escortIdx]
+        let escort = escortOpt.get()
         let strength = escort.stats.attackStrength + escort.stats.defenseStrength
         if strength > bestStrength:
           bestStrength = strength
@@ -109,10 +106,6 @@ proc extractCrippledShip*(
       # Promote escort to flagship position
       squadron.flagshipId = bestEscortId
       squadron.ships = squadron.ships.filterIt(it != bestEscortId)
-
-      # Write back modified squadron
-      state.squadrons.entities.data[state.squadrons.entities.index[squadronId]] =
-        squadron
 
       logInfo(
         "Repair", "Promoted escort to flagship (old flagship sent for repair)",
@@ -143,8 +136,6 @@ proc extractCrippledShip*(
           "squadronId=", squadron.id, " fleetId=", fleetId,
         )
       else:
-        # Write back modified fleet
-        state.fleets.entities.data[fleetIdx] = fleet
         logInfo(
           "Repair", "Dissolved squadron from fleet (flagship sent for repair)",
           "squadronId=", squadron.id, " fleetId=", fleetId,
@@ -156,9 +147,6 @@ proc extractCrippledShip*(
 
     # Remove escort from squadron
     squadron.ships = squadron.ships.filterIt(it != shipId)
-
-    # Write back modified squadron
-    state.squadrons.entities.data[state.squadrons.entities.index[squadronId]] = squadron
 
   # Create repair project (drydocks only)
   let cost = calculateRepairCost(shipClass)
@@ -190,25 +178,41 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
   ## Starbases use spaceport facilities and do NOT consume dock space
   ## Per architecture: Starbases are facilities that require Spaceports
 
-  if systemId notin state.colonies.bySystem:
+  let colonyIdOpt = state.colonies.bySystem.getOrDefault(systemId)
+  if colonyIdOpt.isNone:
     return
 
-  let colonyId = state.colonies.bySystem[systemId]
-  if colonyId notin state.colonies.entities.index:
+  let colonyId = colonyIdOpt.get()
+  let colonyOpt = state.mColony(colonyId)
+  if colonyOpt.isNone:
     return
-
-  let colonyIdx = state.colonies.entities.index[colonyId]
-  var colony = state.colonies.entities.data[colonyIdx]
+  var colony = colonyOpt.get()
 
   # Check if colony has spaceport (starbases require spaceport for repair)
-  let spaceportCount = colony.spaceports.len
-  if spaceportCount == 0:
+  # Note: This logic assumes 'spaceports' is a field in Colony type.
+  # If spaceports are now Neorias, this needs to be adapted to count Neorias of type Spaceport.
+  # For now, keeping as is, assuming colony.spaceports is still a thing for legacy reasons or internal tracking.
+  # TODO: Revisit if Colony.spaceports changes due to Neoria/Kastra migration.
+  # The type `facilities.FacilityClass.Spaceport` indicates a `NeoriaClass.Spaceport` for repair.
+  var hasSpaceport = false
+  for neoriaId in colony.neoriaIds:
+    let neoriaOpt = state.neoria(neoriaId)
+    if neoriaOpt.isSome and neoriaOpt.get().neoriaClass == NeoriaClass.Spaceport:
+      hasSpaceport = true
+      break
+  if not hasSpaceport:
     return # No spaceport available
 
   # Submit repairs for crippled starbases
   # Note: Starbases do NOT consume dock capacity (they are facilities, not ships)
-  for starbase in colony.starbases:
-    if starbase.isCrippled:
+  # TODO: Iterate over actual Kastra objects for starbases.
+  # This currently assumes 'starbases' is a field in Colony type, which might be a legacy structure.
+  for kastraId in colony.kastraIds:
+    let kastraOpt = state.kastra(kastraId)
+    if kastraOpt.isNone:
+      continue
+    let kastra = kastraOpt.get()
+    if kastra.isCrippled:
       # Calculate repair cost (25% of starbase build cost)
       # TODO: Get actual starbase build cost from config (for now use estimate)
       let starbaseBuildCost = 300 # From facilities.toml
@@ -220,7 +224,7 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
         fleetId: none(FleetId),
         squadronId: none(SquadronId),
         shipId: none(ShipId),
-        starbaseId: some(starbase.id),
+        starbaseId: some(kastra.id),
         shipClass: none(ShipClass),
         cost: repairCost,
         turnsRemaining: 1,
@@ -229,66 +233,65 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
 
       colony.repairQueue.add(repair)
       logInfo(
-        "Repair", "Submitted repair for starbase", "starbaseId=", starbase.id,
+        "Repair", "Submitted repair for starbase", "starbaseId=", kastra.id,
         " systemId=", systemId, " cost=", repairCost, " facilityType=Spaceport",
       )
-
-  # Write back modified colony
-  state.colonies.entities.data[colonyIdx] = colony
 
 proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
   ## Automatically submit repair requests for fleets with crippled ships at this colony
   ## Ship repairs require drydocks (spaceports and shipyards cannot repair)
   ## Called during turn resolution after fleet movements
 
-  if systemId notin state.colonies.bySystem:
+  let colonyIdOpt = state.colonies.bySystem.getOrDefault(systemId)
+  if colonyIdOpt.isNone:
     return
 
-  let colonyId = state.colonies.bySystem[systemId]
-  if colonyId notin state.colonies.entities.index:
+  let colonyId = colonyIdOpt.get()
+  let colonyOpt = state.mColony(colonyId)
+  if colonyOpt.isNone:
     return
-
-  let colonyIdx = state.colonies.entities.index[colonyId]
-  var colony = state.colonies.entities.data[colonyIdx]
+  var colony = colonyOpt.get()
 
   # Check if colony has drydock (required for all ship repairs)
-  let hasDrydock = colony.drydocks.len > 0
-
+  var hasDrydock = false
+  for neoriaId in colony.neoriaIds:
+    let neoriaOpt = state.neoria(neoriaId)
+    if neoriaOpt.isSome and neoriaOpt.get().neoriaClass == NeoriaClass.Drydock:
+      hasDrydock = true
+      break
   if not hasDrydock:
     return # No drydock = no repairs
 
   # Submit starbase repairs first (they have lower priority but same facility)
   submitAutomaticStarbaseRepairs(state, systemId)
 
-  # Reload colony after starbase repairs submitted
-  colony = state.colonies.entities.data[colonyIdx]
+  # Reload colony after starbase repairs submitted (it might have been modified)
+  colony = state.mColony(colonyId).get()
 
-  # Find all fleets at this colony using entity manager
+  # Find all fleets at this colony
   var fleetsAtColony: seq[FleetId] = @[]
-  for fleetId, fleet in state.fleets.entities.data:
-    if fleet.location == systemId and fleet.owner == colony.owner:
+  for (fleetId, fleet) in state.allFleetsWithId():
+    if fleet.location == systemId and fleet.houseId == colony.owner:
       fleetsAtColony.add(fleetId)
 
   # Process each fleet, extracting crippled ships
   for fleetId in fleetsAtColony:
-    if fleetId notin state.fleets.entities.index:
+    let fleetOpt = state.fleet(fleetId)
+    if fleetOpt.isNone:
       continue
-
-    let fleetIdx = state.fleets.entities.index[fleetId]
-    let fleet = state.fleets.entities.data[fleetIdx]
+    let fleet = fleetOpt.get()
 
     # Check each squadron for crippled ships
     for squadronId in fleet.squadrons:
-      if squadronId notin state.squadrons.entities.index:
+      let squadronOpt = state.squadron(squadronId)
+      if squadronOpt.isNone:
         continue
-
-      let squadronIdx = state.squadrons.entities.index[squadronId]
-      let squadron = state.squadrons.entities.data[squadronIdx]
+      let squadron = squadronOpt.get()
 
       # Check flagship
-      if squadron.flagshipId in state.ships.entities.index:
-        let flagshipIdx = state.ships.entities.index[squadron.flagshipId]
-        let flagship = state.ships.entities.data[flagshipIdx]
+      let flagshipOpt = state.ship(squadron.flagshipId)
+      if flagshipOpt.isSome:
+        let flagship = flagshipOpt.get()
         if flagship.isCrippled:
           # Check drydock capacity
           let drydockProjects =
@@ -319,11 +322,10 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
 
       # Check escorts
       for shipId in squadron.ships:
-        if shipId notin state.ships.entities.index:
+        let shipOpt = state.ship(shipId)
+        if shipOpt.isNone:
           continue
-
-        let shipIdx = state.ships.entities.index[shipId]
-        let ship = state.ships.entities.data[shipIdx]
+        let ship = shipOpt.get()
 
         if ship.isCrippled:
           # Check drydock capacity
@@ -351,6 +353,3 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
               used = drydockProjects,
               capacity = drydockCapacity,
             )
-
-  # Write back modified colony
-  state.colonies.entities.data[colonyIdx] = colony

@@ -5,7 +5,7 @@
 
 import std/[options]
 import ../../types/[telemetry, core, game_state, event, house]
-import ../../state/entity_manager
+import ../../state/engine
 
 proc collectHouseMetrics*(
     state: GameState, houseId: HouseId, prevMetrics: DiagnosticMetrics
@@ -13,7 +13,7 @@ proc collectHouseMetrics*(
   ## Collect house status metrics from GameState
   result = prevMetrics # Start with previous metrics
 
-  let houseOpt = state.houses.entities.entity(houseId)
+  let houseOpt = state.house(houseId)
   if houseOpt.isNone:
     return result
   let house = houseOpt.get()
