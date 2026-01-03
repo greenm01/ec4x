@@ -10,7 +10,7 @@
 import std/[tables, options, sequtils, strformat]
 import ../../common/logger
 import ../state/engine
-import ../types/[core, game_state, intel, fleet, squadron, combat, ground_unit]
+import ../types/[core, game_state, intel, fleet, squadron, combat, ground_unit, colony]
 
 proc getShieldLevel(state: GameState, colony: Colony): int32 =
   ## Get shield level for colony (shield level from house SLD tech)
@@ -199,7 +199,7 @@ proc updatePostCombatIntelligence*(
             alliedLosses.add(lostSquadronId)
           else:
             # Enemy loss: lookup squadron for ship class name
-            let squadronOpt = state.squadrons(lostSquadronId)
+            let squadronOpt = state.squadron(lostSquadronId)
             if squadronOpt.isSome:
               let squadron = squadronOpt.get()
               let shipOpt = state.ship(squadron.flagshipId)
@@ -279,8 +279,8 @@ proc generateBlitzIntelligence*(
         assetInfo.add(&"Shields: SLD{state.getShieldLevel(colony)} (INTACT)")
       if state.countGroundUnits(colony, GroundClass.GroundBattery) > 0:
         assetInfo.add(&"Ground Batteries: {state.countGroundUnits(colony, GroundClass.GroundBattery)} (INTACT)")
-      if colony.spaceportIds.len > 0:
-        assetInfo.add(&"Spaceports: {colony.spaceportIds.len} (INTACT)")
+      if colony.neoriaIds.len > 0:
+        assetInfo.add(&"Production Facilities: {colony.neoriaIds.len} (INTACT)")
     else:
       # Failed blitz - defender shows surviving assets
       assetInfo.add("--- Surviving Assets ---")

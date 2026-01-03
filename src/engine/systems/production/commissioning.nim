@@ -61,16 +61,18 @@ proc calculateEffectiveDocks(baseDocks: int, cstLevel: int): int =
 
 # Helper functions using DoD patterns
 proc getOperationalStarbaseCount*(state: GameState, colonyId: ColonyId): int =
-  ## Count non-crippled starbases for a colony using DoD entity manager
+  ## Count non-crippled kastra (starbases) for a colony using DoD entity manager
   result = 0
-  if colonyId notin state.starbases.byColony:
+  let colonyOpt = state.colony(colonyId)
+  if colonyOpt.isNone:
     return 0
 
-  for starbaseId in state.starbases.byColony[colonyId]:
-    let starbaseOpt = state.starbase(starbaseId)
-    if starbaseOpt.isSome:
-      let starbase = starbaseOpt.get()
-      if not starbase.isCrippled:
+  let colony = colonyOpt.get()
+  for kastraId in colony.kastraIds:
+    let kastraOpt = state.kastra(kastraId)
+    if kastraOpt.isSome:
+      let kastra = kastraOpt.get()
+      if not kastra.isCrippled:
         result += 1
 
 proc getStarbaseGrowthBonus*(state: GameState, colonyId: ColonyId): float =

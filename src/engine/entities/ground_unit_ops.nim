@@ -28,7 +28,7 @@ proc createGroundUnit*(
   state.addGroundUnit(unitId, newUnit)
 
   # Access colony from state and add unit to groundUnitIds
-  let colonyOpt = state.colonie(colonyId)
+  let colonyOpt = state.colony(colonyId)
   if colonyOpt.isNone:
     return newUnit
 

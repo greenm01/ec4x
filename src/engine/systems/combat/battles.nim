@@ -1293,15 +1293,15 @@ proc resolveBattle*(
             " systemId=",
             $systemId,
           )
-          colony.spaceportIds = @[]
+          // colony.spaceportIds removed - now using neoriaIds
 
         # Destroy shipyards and clear their construction/repair queues
-        if colony.shipyardIds.len > 0:
-          facilitiesDestroyed += colony.shipyardIds.len
+        if colony.neoriaIds.len > 0:
+          facilitiesDestroyed += colony.neoriaIds.len
           logCombat(
             "Shipyards destroyed - no orbital defense remains",
             "shipyards=",
-            $colony.shipyardIds.len,
+            $colony.neoriaIds.len,
             " systemId=",
             $systemId,
           )
@@ -1326,15 +1326,15 @@ proc resolveBattle*(
 
           # Clear all shipyard construction/repair queues
           facility_damage.clearFacilityQueues(colony, econ_types.FacilityClass.Shipyard, state)
-          colony.shipyardIds = @[]
+          colony.neoriaIds = @[]
 
         # Destroy drydocks and clear their repair queues
-        if colony.drydockIds.len > 0:
-          facilitiesDestroyed += colony.drydockIds.len
+        if colony.neoriaIds.len > 0:
+          facilitiesDestroyed += colony.neoriaIds.len
           logCombat(
             "Drydocks destroyed - no orbital defense remains",
             "drydocks=",
-            $colony.drydockIds.len,
+            $colony.neoriaIds.len,
             " systemId=",
             $systemId,
           )
@@ -1349,10 +1349,10 @@ proc resolveBattle*(
 
           # Clear all drydock repair queues
           facility_damage.clearFacilityQueues(colony, econ_types.FacilityClass.Drydock, state)
-          colony.drydockIds = @[]
+          colony.neoriaIds = @[]
 
-        # Clear construction queue if no facilities remain
-        if colony.spaceportIds.len == 0 and colony.shipyardIds.len == 0:
+        # Clear construction queue if no production facilities remain
+        if colony.neoriaIds.len == 0:
           facility_damage.clearAllConstructionQueues(colony, state)
 
         # Update colony with destroyed facilities

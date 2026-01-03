@@ -403,7 +403,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
   var validBuildCommands = 0
   for cmd in packet.buildCommands:
     # Check colony exists and is owned by house
-    let colonyOpt = state.colonie(cmd.colonyId)
+    let colonyOpt = state.colony(cmd.colonyId)
     if colonyOpt.isNone:
       logWarn(
         LogCategory.lcOrders,
@@ -538,7 +538,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
   # Validate colony management commands
   for cmd in packet.colonyManagement:
     # Check colony exists
-    let colonyOpt = state.colonie(cmd.colonyId)
+    let colonyOpt = state.colony(cmd.colonyId)
     if colonyOpt.isNone:
       return ValidationResult(
         valid: false,
@@ -700,7 +700,7 @@ proc calculateBuildCommandCost*(
           result = baseCost
       else:
         # LEGACY: Fall back to colony-wide check (for backwards compatibility)
-        let colonyOpt = state.colonie(cmd.colonyId)
+        let colonyOpt = state.colony(cmd.colonyId)
         if colonyOpt.isSome:
           let colony = colonyOpt.get()
           let hasShipyard = colony.shipyardIds.len > 0
@@ -722,7 +722,7 @@ proc calculateBuildCommandCost*(
       result = projects.getBuildingCost(cmd.buildingType.get()) * cmd.quantity
   of BuildType.Industrial, BuildType.Infrastructure:
     # Infrastructure cost depends on colony state
-    let colonyOpt = state.colonie(cmd.colonyId)
+    let colonyOpt = state.colony(cmd.colonyId)
     if colonyOpt.isSome:
       let colony = colonyOpt.get()
       result = projects.getIndustrialUnitCost(colony) * cmd.industrialUnits
@@ -739,7 +739,7 @@ proc validateBuildCommandWithBudget*(
   ## Updates context with committed spending if valid
 
   # Basic validation first
-  let colonyOpt = state.colonie(cmd.colonyId)
+  let colonyOpt = state.colony(cmd.colonyId)
   if colonyOpt.isNone:
     return ValidationResult(
       valid: false, error: &"Build command: Colony not found at {cmd.colonyId}"
@@ -871,7 +871,7 @@ proc validateBuildCommandWithBudget*(
       # Count planet-breakers under construction house-wide
       var pbsUnderConstruction = 0
       for colId in state.colonies.byOwner.getOrDefault(houseId, @[]):
-        let col = state.colonie(colId).get
+        let col = state.colony(colId).get
         # Count PlanetBreaker projects in queue
         for projId in col.constructionQueue:
           let proj = state.constructionProject(projId).get
@@ -975,7 +975,7 @@ proc previewCommandPacketCost*(
     result.errors.add(&"House {packet.houseId} not found")
 
   logInfo(
-    LogCategory.lcEconomy,
+    "Economy",
     &"{packet.houseId} Command Cost Preview: Build={result.buildCosts}PP, " &
       &"Research={result.researchCosts}PP, Espionage={result.espionageCosts}PP, " &
       &"Total={result.totalCost}PP, CanAfford={result.canAfford}",

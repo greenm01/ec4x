@@ -70,7 +70,7 @@ proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): b
   if state.intelligence.hasKey(houseId):
     let intel = state.intelligence[houseId]
     for colonyId, colonyIntel in intel.colonyReports:
-      let colonyOpt = state.colonie(colonyId)
+      let colonyOpt = state.colony(colonyId)
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
         if colony.systemId == systemId and colony.owner != houseId:

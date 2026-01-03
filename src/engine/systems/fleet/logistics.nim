@@ -21,8 +21,7 @@ import ../../entities/[fleet_ops, squadron_ops, colony_ops]
 import ../fleet/entity as fleet_entity
 import ../squadron/entity as squadron_entity
 import ../ship/entity as ship_entity
-import
-  ../../config/population_config # For population config (soulsPerPtu, ptuSizeMillions)
+import ../../utils # For soulsPerPtu(), ptuSizeMillions()
 import ../../event_factory/init as event_factory
 import std/[options, algorithm, tables, strformat, sequtils]
 import ../../../common/logger
@@ -167,11 +166,11 @@ proc validateColonyOwnership*(
   return ValidationResult(valid: true, error: "")
 
 proc validateShipIndices*(
-    fleet: Fleet, squadrons: Squadrons, ships: Ships, indices: seq[int]
+    state: GameState, fleet: Fleet, indices: seq[int]
 ): ValidationResult =
   ## DRY: Validate ship indices are valid and not selecting all ships
 
-  let allShips = fleet_entity.allShips(fleet, squadrons, ships)
+  let allShips = fleet_entity.allShips(state, fleet)
 
   # Must select at least one ship
   if indices.len == 0:
@@ -247,14 +246,14 @@ proc validateZeroTurnCommand*(
       return ValidationResult(valid: false, error: "Source fleet not found")
     let fleet = fleetOpt.get()
 
-    result = validateShipIndices(fleet, state.squadrons[], state.ships, cmd.shipIndices)
+    result = validateShipIndices(state, fleet, cmd.shipIndices)
     if not result.valid:
       return result
 
     # DetachShips specific: cannot detach transport-only fleet (except ETACs)
     if cmd.commandType == ZeroTurnCommandType.DetachShips:
       let squadronIndices = fleet_entity.translateShipIndicesToSquadrons(
-        fleet, state.squadrons[], cmd.shipIndices
+        state, fleet, cmd.shipIndices
       )
 
       # Check if only Expansion squadrons (ETACs) are being detached
@@ -312,7 +311,7 @@ proc validateZeroTurnCommand*(
       # Check scout/combat fleet mixing (validate after transfer would occur)
       # TODO: This is a simplified check - ideally we'd simulate the transfer
       # and check if the result would mix scouts with combat ships
-      let mergeCheck = fleet_entity.canMergeWith(fleet, targetFleet, state.squadrons[])
+      let mergeCheck = fleet_entity.canMergeWith(state, fleet, targetFleet)
       if not mergeCheck.canMerge:
         return ValidationResult(valid: false, error: mergeCheck.reason)
   of ZeroTurnCommandType.MergeFleets:
@@ -344,7 +343,7 @@ proc validateZeroTurnCommand*(
 
     # Check scout/combat fleet mixing
     let mergeCheck =
-      fleet_entity.canMergeWith(sourceFleet, targetFleet, state.squadrons[])
+      fleet_entity.canMergeWith(state, sourceFleet, targetFleet)
     if not mergeCheck.canMerge:
       return ValidationResult(valid: false, error: mergeCheck.reason)
   of ZeroTurnCommandType.LoadCargo, ZeroTurnCommandType.UnloadCargo:
@@ -1694,7 +1693,7 @@ proc executeUnloadFighters*(
   var unloadedCount = 0
   var warnings: seq[string] = @[]
   var sortedIndices = cmd.embarkedFighterIndices
-  sortedIndices.sort(system.cmp, order = SortOrder.Descending)
+  sortedIndices.sort(cmp, order = SortOrder.Descending)
 
   for fighterIdx in sortedIndices:
     # Validate fighter index

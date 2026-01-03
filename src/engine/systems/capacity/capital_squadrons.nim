@@ -23,6 +23,7 @@ import
     capacity, core, game_state, squadron, ship, production, event, colony, house,
     facilities,
   ]
+import ../../types/config/ships
 import ../../state/[engine, iterators]
 import ../../entities/squadron_ops
 import ../../event_factory/fleet_ops
@@ -76,51 +77,18 @@ proc calculateMaxCapitalSquadrons*(
   let scaledLimit = int(float(baseLimit) * mapMultiplier)
   return max(8, scaledLimit)
 
-proc getShipConfig(shipClass: ShipClass): ships_config.ShipStatsConfig =
+proc getShipConfig(shipClass: ShipClass): ShipStatsConfig =
   ## Get ship configuration from global config
-  case shipClass
-  of ShipClass.Corvette:
-    return ships_config.globalShipsConfig.corvette
-  of ShipClass.Frigate:
-    return ships_config.globalShipsConfig.frigate
-  of ShipClass.Destroyer:
-    return ships_config.globalShipsConfig.destroyer
-  of ShipClass.LightCruiser:
-    return ships_config.globalShipsConfig.lightCruiser
-  of ShipClass.Cruiser:
-    return ships_config.globalShipsConfig.cruiser
-  of ShipClass.Battlecruiser:
-    return ships_config.globalShipsConfig.battlecruiser
-  of ShipClass.Battleship:
-    return ships_config.globalShipsConfig.battleship
-  of ShipClass.Dreadnought:
-    return ships_config.globalShipsConfig.dreadnought
-  of ShipClass.SuperDreadnought:
-    return ships_config.globalShipsConfig.super_dreadnought
-  of ShipClass.Carrier:
-    return ships_config.globalShipsConfig.carrier
-  of ShipClass.SuperCarrier:
-    return ships_config.globalShipsConfig.supercarrier
-  of ShipClass.Fighter:
-    return ships_config.globalShipsConfig.fighter
-  of ShipClass.Raider:
-    return ships_config.globalShipsConfig.raider
-  of ShipClass.Scout:
-    return ships_config.globalShipsConfig.scout
-  of ShipClass.ETAC:
-    return ships_config.globalShipsConfig.etac
-  of ShipClass.TroopTransport:
-    return ships_config.globalShipsConfig.troop_transport
-  of ShipClass.PlanetBreaker:
-    return ships_config.globalShipsConfig.planetbreaker
+  return gameConfig.ships.ships[shipClass]
 
 proc isCapitalShip*(shipClass: ShipClass): bool =
-  ## Check if a ship class is a capital ship (role-based)
+  ## Check if a ship class is a capital ship (CR-based)
   ## Capital ships include: Heavy Cruiser, Battle Cruiser, Battleship,
   ## Dreadnought, Super Dreadnought, Carrier, Super Carrier, Raider
-  ## Determined by ship_role field in config/ships.toml
+  ## Determined by commandRating >= capital_ship_cr_threshold (default: 7)
   let config = getShipConfig(shipClass)
-  return config.ship_role == "Capital"
+  const capitalShipThreshold = 7  # TODO: Make configurable via gameConfig.military
+  return config.commandRating >= capitalShipThreshold
 
 proc countCapitalSquadronsInFleets*(state: GameState, houseId: HouseId): int =
   ## Count capital squadrons currently in fleets for a house
@@ -258,9 +226,8 @@ proc calculateSalvageValue*(shipClass: ShipClass): int =
   ## Calculate salvage value for a ship (50% of build cost)
   ## Space Guilds pay fair market value for excess capital ships
   let config = getShipConfig(shipClass)
-  let salvageMultiplier =
-    military_config.globalMilitaryConfig.salvage.salvage_value_multiplier
-  return int(float(config.build_cost) * salvageMultiplier)
+  let salvageMultiplier = gameConfig.ships.salvage.salvageValueMultiplier
+  return int(float(config.productionCost) * salvageMultiplier)
 
 proc planEnforcement*(
     state: GameState, violation: capacity.CapacityViolation
