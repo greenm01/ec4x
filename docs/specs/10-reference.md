@@ -9,39 +9,38 @@ PC = Production Cost
 MC = Maintenance Cost (% of PC)
 AS = Attack Strength
 DS = Defensive Strength
-CC= Command Cost
-CR = Command Rating
+CC = Command Cost
 CL = Carry Limit
 
-### Escort Ships (CR < 7)
+### Escort Ships
 
-Combat-capable ships that can join squadrons as escorts. Count toward total squadron limit.
+Small, fast combat vessels that provide screening and patrol duties.
 
-| Class | Name          | CST | PC | MC  | AS | DS | CC | CR |
-|:-----:| ------------- |:---:|:--:|:---:|:--:|:--:|:--:|:--:|
-| CT    | Corvette      | 1   | 20 | 3%  | 2  | 3  | 1  | 2  |
-| FG    | Frigate       | 1   | 30 | 3%  | 3  | 4  | 2  | 3  |
-| DD    | Destroyer     | 1   | 40 | 4%  | 5  | 6  | 2  | 4  |
-| CL    | Light Cruiser | 1   | 60 | 4%  | 8  | 9  | 3  | 6  |
+| Class | Name          | CST | PC | MC  | AS | DS | CC |
+|:-----:| ------------- |:---:|:--:|:---:|:--:|:--:|:--:|
+| CT    | Corvette      | 1   | 20 | 3%  | 2  | 3  | 1  |
+| FG    | Frigate       | 1   | 30 | 3%  | 3  | 4  | 2  |
+| DD    | Destroyer     | 1   | 40 | 4%  | 5  | 6  | 2  |
+| CL    | Light Cruiser | 1   | 60 | 4%  | 8  | 9  | 3  |
 
-### Capital Ships (CR >= 7)
+### Capital Ships
 
-Flagship-capable ships that lead squadrons. Subject to both capital squadron limits AND total squadron limits.
+Heavy combat vessels that form the core of battle fleets.
 
-| Class | Name              | CST | PC  | MC  | AS | DS | CC | CR | CL |
-|:-----:| ----------------- |:---:|:---:|:---:|:--:|:--:|:--:|:--:|:--:|
-| CA    | Cruiser           | 2   | 80  | 5%  | 12 | 13 | 3  | 7  | —  |
-| BC    | Battle Cruiser    | 3   | 100 | 5%  | 16 | 18 | 3  | 8  | —  |
-| BB    | Battleship        | 4   | 150 | 5%  | 20 | 25 | 3  | 10 | —  |
-| DN    | Dreadnought       | 5   | 200 | 5%  | 28 | 30 | 4  | 12 | —  |
-| SD    | Super Dreadnought | 6   | 250 | 8%  | 35 | 40 | 5  | 14 | —  |
-| CV    | Carrier           | 3   | 120 | 5%  | 5  | 18 | 3  | 8  | 3  |
-| CX    | Super Carrier     | 6   | 225 | 7%  | 8  | 25 | 4  | 10 | 5  |
-| RR    | Raider            | 5   | 200 | 5%  | 20 | 25 | 2  | 6  | —  |
+| Class | Name              | CST | PC  | MC  | AS | DS | CC | CL |
+|:-----:| ----------------- |:---:|:---:|:---:|:--:|:--:|:--:|:--:|
+| CA    | Cruiser           | 2   | 80  | 5%  | 12 | 13 | 3  | —  |
+| BC    | Battle Cruiser    | 3   | 100 | 5%  | 16 | 18 | 3  | —  |
+| BB    | Battleship        | 4   | 150 | 5%  | 20 | 25 | 3  | —  |
+| DN    | Dreadnought       | 5   | 200 | 5%  | 28 | 30 | 4  | —  |
+| SD    | Super Dreadnought | 6   | 250 | 8%  | 35 | 40 | 5  | —  |
+| CV    | Carrier           | 3   | 120 | 5%  | 5  | 18 | 3  | 3  |
+| CX    | Super Carrier     | 6   | 225 | 7%  | 8  | 25 | 4  | 5  |
+| RR    | Raider            | 5   | 200 | 5%  | 20 | 25 | 2  | —  |
 
 ### Auxiliary Ships
 
-Non-combat support ships. These vessels do not have a Command Cost (CC) and do not count toward the C2 Pool limit. They form their own Intel/Expansion/Auxiliary squadrons.
+Non-combat support ships. These vessels do not have a Command Cost (CC) and do not count toward the C2 Pool limit.
 
 | Class | Name            | CST | PC | MC  | AS | DS | Notes                                      |
 |:-----:| --------------- |:---:|:--:|:---:|:--:|:--:| ------------------------------------------ |
@@ -49,32 +48,25 @@ Non-combat support ships. These vessels do not have a Command Cost (CC) and do n
 | ET    | ETAC            | 1   | 50 | 5%  | —  | -  | Colonization (CL=3), carries 3 PTU         |
 | TT    | Troop Transport | 1   | 30 | 3%  | —  | -  | Planetary invasion (CL=1), carries marines |
 
-### Fighter Squadrons
+### Fighters
 
-Embarked strike squadron craft with per-colony capacity limits. Cannot join fleets, based at colonies for system defense or loaded onto carriers for offensive operations.
+Small strike craft with per-colony capacity limits. Based at colonies for system defense or loaded onto carriers for offensive operations.
 
-| Class | Name    | CST | PC | MC  | AS | DS | CC |Notes                            |
+| Class | Name    | CST | PC | MC  | AS | DS | CC | Notes                            |
 |:-----:| ------- |:---:|:--:|:---:|:--:|:--:|:--:| -------------------------------- |
-| FS    | Fighter | 1   | 25 | 3%  | 5  | 2  | 1  | Colony-based or carrier-embarked |
+| F     | Fighter | 1   | 5  | 0%  | 3  | 1  | 0  | Colony-based or carrier-embarked |
 
 ### Special Weapons
 
 Unique strategic units with special capacity rules.
 
-| Class | Name           | CST | PC  | MC  | AS | DS | CC | CR | Notes                        |
-|:-----:| -------------- |:---:|:---:|:---:|:--:|:--:|:--:|:--:| ---------------------------- |
-| PB    | Planet Breaker | 10  | 400 | 10% | 50 | 20 | 6  | 6  | Max 1 per owned colony       |
+| Class | Name           | CST | PC  | MC  | AS | DS | CC | Notes                        |
+|:-----:| -------------- |:---:|:---:|:---:|:--:|:--:|:--:| ---------------------------- |
+| PB    | Planet Breaker | 10  | 400 | 10% | 50 | 20 | 6  | Max 1 per owned colony       |
 
 *Source: config/ships.toml*
 
-**Note:** Starbases are **facilities** (not ships) and are documented in [Section 2.4.4](02-assets.md#244-starbases). They are built via the Colony pipeline and stored at colonies, never assigned to fleets or squadrons.
-
-**Squadron Type Mapping:**
-- **Combat Squadrons**: Escort + Capital ships (participate in combat)
-- **Intel Squadrons**: Scout only (intelligence operations, never mix with combat)
-- **Auxiliary Squadrons**: Troop Transports (invasion support, screened in combat)
-- **Expansion Squadrons**: ETACs (colonization, screened in combat)
-- **Fighter Squadrons**: Fighters (planetary defense, carrier-based)
+**Note:** Starbases are **facilities** (not ships) and are documented in [Section 2.4.4](02-assets.md#244-starbases). They are built via the Colony pipeline and stored at colonies, never assigned to fleets.
 
 <!-- SPACE_FORCE_TABLE_END -->
 
@@ -189,7 +181,7 @@ Small maps (8-10 systems/player) use the baseline multiplier. Larger maps scale 
 **Competitive Events (Zero-Sum):** When one house gains prestige, the opponent loses an equal amount. These represent direct competition where one side's victory is the other's defeat:
 
 - **Combat**: Victor gains prestige, defeated loses equal amount
-- **Squadron Destruction**: Victor gains per ship destroyed, defeated loses equal amount
+- **Ship Destruction**: Victor gains per ship destroyed, defeated loses equal amount
 - **Invasions/Blitz**: Attacker gains for planet seized, defender loses equal amount
 - **Espionage**: Attacker gains for successful operation, victim loses equal amount
 
@@ -292,11 +284,13 @@ Ground units received 33% cost reductions to make defensive investments more acc
 
 | Limit Description                             | Rule Details                                                                                                                                                                                                                   | Source Section                                             |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| Command & Control (C2) Pool                   | Soft cap on total navy size. Total Command Cost (CC) of all active ships is measured against the C2 Pool. Exceeding the pool incurs a "Logistical Strain" flat financial penalty. C2 Pool = (Total House IU × 0.5) + SC Tech Bonus. | [2.3.3.3](02-assets.md#2333-command--control-c2-pool)     |
+| Command & Control (C2) Pool                   | Soft cap on total navy size. Total Command Cost (CC) of all active ships is measured against the C2 Pool. Exceeding the pool incurs a "Logistical Strain" flat financial penalty. C2 Pool = Total House IU × 0.3. | [2.3.3.2](02-assets.md#2332-command--control-c2-pool)     |
+| Fleet Count (per House)                       | Hard cap on number of **combat fleets** (fleets containing any combat ships). SC I: 10 fleets → SC VI: 20/28/36 fleets (scales by map size: small/medium/large). Auxiliary-only fleets (scouts, ETACs, transports) are exempt and do not count against this limit. | [4.11](04-research_development.md#411-strategic-command-sc) |
+| Ships Per Fleet                               | Hard cap on ships per individual fleet. FC I: 10 ships → FC VI: 30 ships. Fleet cannot accept more ships when at capacity. | [4.10](04-research_development.md#410-fleet-command-fc) |
 | Planet-Breakers (per colony)                  | Maximum 1 per currently owned colony (homeworld counts). Loss of colony instantly scraps its PB (no salvage).                                                                                                                  | [2.4.8](02-assets.md#248-planet-breaker)                      |
-| Fighter Squadrons (per colony)                | Max FS = floor(Colony IU ÷ 100) × Fighter Doctrine multiplier (FD I = 1.0×, FD II = 1.5×, FD III = 2.0×). Based on industrial capacity, not population. 2-turn grace on capacity violation → auto-disband excess.              | [2.4.1](02-assets.md#241-fighter-squadrons-carriers)          |
-| Carrier Hangar Capacity                       | CV = 3–5 FS, CX = 5–8 FS depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit.                                                                                          | [2.4.1](02-assets.md#241-fighter-squadrons-carriers)          |
-| Squadron Destruction Protection (anti-fodder) | A squadron may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled squadron are lost (critical hits bypass).                                                           | [7.3.3](07-combat.md#733-combat-effectiveness-rating-cer) |
+| Fighters (per colony)                         | Max Fighters = floor(Colony IU ÷ 100) × Fighter Doctrine multiplier (FD I = 1.0×, FD II = 1.5×, FD III = 2.0×). Based on industrial capacity, not population. 2-turn grace on capacity violation → auto-disband excess.       | [2.4.1](02-assets.md#241-fighters--carriers)                  |
+| Carrier Hangar Capacity                       | CV = 3–5 Fighters, CX = 5–8 Fighters depending on Advanced Carrier Operations (ACO) tech level (house-wide instant upgrade). Hard physical limit.                                                                              | [2.4.1](02-assets.md#241-fighters--carriers)                  |
+| Ship Destruction Protection (anti-fodder)     | A ship may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled ship are lost (critical hits bypass).                                                                   | [7.2.2](07-combat.md#722-hit-application-rules)               |
 | Blockade Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for blockade penalty details.                                                                                                                                    | [6.2.6](06-operations.md#626-guardblockade-a-planet-05)       |
 | Tax Rate Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for tax rate penalty details.                                                                                                                                    | [3.2](03-economy.md#32-tax-rate)                              |
 

@@ -26,9 +26,10 @@ Destroyed ships-in-construction provide no salvage value. Your house loses the f
 Ship building completes at the start of the Command Phase and are immediately commissioned:
 
 - Ship is created with current house tech levels
-- Automatically assigned to existing squadron at facility location (if capacity available)
-- Otherwise, new squadron is created with ship as flagship
-- If no fleet exists at location, new fleet is created
+- Automatically assigned to existing fleet at facility location (if stationary fleet present)
+- Otherwise, new fleet is created with the ship
+- Scouts form scout-only fleets
+- Fighters remain colony-assigned (not assigned to fleets)
 
 **Construction Locations:**
 
@@ -36,11 +37,11 @@ Ships can be constructed at two facility types with different costs and requirem
 
 ## 5.2 Planet-side Construction
 
-Ground units and fighter squadrons are produced via colony industry, distributed across the surface or in underground factories.
+Ground units and Fighters are produced via colony industry, distributed across the surface or in underground factories.
 
 **Spaceports:**
 
-Ships (excluding fighter squadrons) constructed planet-side incur a **100% PC increase** due to the added cost of orbital launch, and require a spaceport to commission.
+Ships (excluding Fighters) constructed planet-side incur a **100% PC increase** due to the added cost of orbital launch, and require a spaceport to commission.
 
 **Example Cost Calculation:**
 
@@ -51,7 +52,7 @@ For spaceport specifications and capacity, see [Section 2.3.2.1](02-assets.md#23
 
 ## 5.3 Planet-side Repair
 
-Ground units and fighter squadrons are repaired and refitted planet-side using colony industrial capacity.
+Ground units and Fighters are repaired and refitted planet-side using colony industrial capacity.
 
 **Spaceports cannot repair ships.** Spaceports are construction facilities only - they launch ships into orbit but cannot repair orbital damage.
 
@@ -71,7 +72,7 @@ For shipyard specifications and capacity, see [Section 2.3.2.2](02-assets.md#232
 
 **Ship Repairs:**
 
-The number of turns required to repair a crippled ship is one turn. The ship's squadron must be located at a colony equipped with a drydock, and the ship remains decommissioned through the repair period.
+The number of turns required to repair a crippled ship is one turn. The ship must be located at a colony equipped with a drydock, and the ship remains decommissioned through the repair period.
 
 The cost of repair equals one quarter (25%) of the ship's construction PP. All ship repairs complete in 1 turn regardless of ship class.
 

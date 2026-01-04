@@ -28,15 +28,14 @@ Fight enemy mobile fleets in deep space before reaching orbit. Your task forces 
 
 **Orbital Combat** (Second Theater)
 
-Assault fortified orbital defenses after achieving space superiority. Your fleets engage stationary defenders protecting the planet—guard fleets, reserve forces, starbases, and unassigned squadrons fight as a unified defensive position.
+Assault fortified orbital defenses after achieving space superiority. Your fleets engage stationary defenders protecting the planet—guard fleets, reserve forces, starbases, and unassigned ships fight as a unified defensive position.
 
 **Who fights:**
 - Your surviving attack fleets (if you won space combat)
 - Enemy guard fleets (fleets with Guard/Defend commands)
-- Enemy reserve and mothballed fleets
-- Enemy starbases (orbital installations with heavy firepower)
-- Enemy unassigned squadrons at colony
-- **Screened units protected**: Mothballed ships, spacelift vessels remain behind battle lines
+- Enemy reserve fleets
+- Enemy starbases 
+- Enemy unassigned ships at colony
 
 **Outcome determines:**
 - If attackers win: Achieve orbital supremacy, proceed to planetary operations
@@ -48,7 +47,7 @@ Assault fortified orbital defenses after achieving space superiority. Your fleet
 Bombard planetary defenses and invade the surface after securing orbit. Your fleets destroy shields, neutralize ground batteries, and deploy invasion forces. The final phase before colony capture.
 
 **Who fights:**
-- Your bombardment fleets (any combat squadrons)
+- Your bombardment fleets (any combat ships)
 - Your invasion forces (marines from troop transports)
 - Enemy planetary shields (reduce bombardment damage)
 - Enemy ground batteries (fire on orbiting ships and landing forces)
@@ -71,39 +70,103 @@ Bombard planetary defenses and invade the surface after securing orbit. Your fle
 
 ## 7.2 Combat Fundamentals
 
-Every engagement follows consistent rules governing targeting, effectiveness, and resolution. Master these fundamentals to predict combat outcomes and design effective fleet compositions.
+Every engagement follows consistent rules governing combat resolution, damage application, and retreat mechanics. Master these fundamentals to predict combat outcomes and design effective fleet compositions.
 
-### 7.2.1 Rules of Engagement (ROE)
+### 7.2.1 Ship Status
+
+Ships exist in three combat states determining effectiveness:
+
+**Undamaged** (Full Effectiveness)
+- Ship operates at full Attack Strength (AS) and Defense Strength (DS)
+- Contributes full combat power to task force
+- Can execute all missions
+
+**Crippled** (Severely Degraded)
+- Ship suffers major damage reducing combat effectiveness
+- Attack Strength (AS) reduced to 50%
+- Defense Strength (DS) reduced to 50%
+- Maintenance cost reduced to 50% of normal
+- Cannot traverse restricted jump lanes
+- Requires shipyard repairs (1 turn, 25% of build cost)
+- Still operational but at reduced capability
+
+**Destroyed** (Eliminated)
+- Ship eliminated from combat
+- Permanent loss unless rebuilt
+
+**Fighter Exception (Glass Cannons):**
+
+Fighter ships skip the Crippled state entirely:
+- Undamaged (100% AS/DS) → Destroyed
+- Represents their fragility in combat
+- Cannot be repaired once damaged
+- Must be replaced through production
+
+### 7.2.2 Hit Application Rules
+
+Combat generates hits that damage or destroy ships. Hits apply following these strict rules:
+
+**Rule 1: Must Cripple All Before Destroying Any**
+
+All full-strength ships must be crippled before any crippled ships can be destroyed. This prevents instant-kill scenarios and ensures multi-round engagements.
+
+Example:
+```
+Task force: 3 Battleships (Undamaged), 2 Cruisers (Crippled)
+Receives: 120 hits
+
+Hit application:
+1. Battleship 1: 40 DS → Crippled (80 hits remaining)
+2. Battleship 2: 40 DS → Crippled (40 hits remaining)
+3. Battleship 3: 40 DS → Cannot cripple (insufficient hits)
+
+Remaining 40 hits lost (cannot destroy Cruisers while Battleship 3 undamaged)
+
+Result: 3 Battleships (all Crippled), 2 Cruisers (still Crippled)
+```
+
+**Rule 2: Critical Hits Bypass Protection**
+
+Natural roll of 9 (before modifiers) = Critical Hit
+- Can destroy crippled ships even with full-strength ships present
+- Represents catastrophic damage (magazine explosion, reactor breach)
+- If insufficient hits for normal damage, still inflicts 1 ship crippled/destroyed
+
+**Rule 3: Excess Hits Lost**
+
+If hits cannot be applied due to protection rules, they are lost. No "overkill" carry-over between rounds.
+
+### 7.2.3 Rules of Engagement (ROE)
 
 Set your fleet's aggression level with Rules of Engagement—a 0-10 scale determining when to retreat during combat. ROE compares your total AS to enemy total AS.
 
 **ROE Retreat Thresholds:**
 
-| ROE | Threshold | Meaning | Use Case |
-|-----|-----------|---------|----------|
-| 0 | 0.0 | Avoid all hostile forces | Pure scouts, intel gathering |
-| 1 | 999.0 | Engage only defenseless | Extreme caution |
-| 2 | 4.0 | Need 4:1 advantage | Scout fleets, recon forces |
-| 3 | 3.0 | Need 3:1 advantage | Cautious patrols |
-| 4 | 2.0 | Need 2:1 advantage | Conservative operations |
-| 5 | 1.5 | Need 3:2 advantage | Defensive posture |
-| 6 | 1.0 | Fight if equal or superior | Standard combat fleets |
-| 7 | 0.67 | Fight even at 2:3 disadvantage | Aggressive fleets |
-| 8 | 0.5 | Fight even at 1:2 disadvantage | Battle fleets |
-| 9 | 0.33 | Fight even at 1:3 disadvantage | Desperate defense |
-| 10 | 0.0 | Fight regardless of odds | Suicidal last stands, homeworld defense |
+| ROE | Threshold | Meaning                        | Use Case                                |
+|-----|-----------|--------------------------------|-----------------------------------------|
+| 0   | 0.0       | Avoid all hostile forces       | Pure scouts, intel gathering            |
+| 1   | 999.0     | Engage only defenseless        | Extreme caution                         |
+| 2   | 4.0       | Need 4:1 advantage             | Scout fleets, recon forces              |
+| 3   | 3.0       | Need 3:1 advantage             | Cautious patrols                        |
+| 4   | 2.0       | Need 2:1 advantage             | Conservative operations                 |
+| 5   | 1.5       | Need 3:2 advantage             | Defensive posture                       |
+| 6   | 1.0       | Fight if equal or superior     | Standard combat fleets                  |
+| 7   | 0.67      | Fight even at 2:3 disadvantage | Aggressive fleets                       |
+| 8   | 0.5       | Fight even at 1:2 disadvantage | Battle fleets                           |
+| 9   | 0.33      | Fight even at 1:3 disadvantage | Desperate defense                       |
+| 10  | 0.0       | Fight regardless of odds       | Suicidal last stands, homeworld defense |
 
 **Morale Modifies Effective ROE:**
 
 Your house's prestige affects fleet morale, modifying effective ROE during combat:
 
-| Prestige | Morale Modifier | Effect on ROE |
-|----------|-----------------|---------------|
-| 0 or less | -2 | Fleets retreat much earlier (ROE 8 becomes ROE 6) |
-| 1-20 | -1 | Fleets retreat earlier (ROE 8 becomes ROE 7) |
-| 21-60 | 0 | No change |
-| 61-80 | +1 | Fleets fight longer (ROE 6 becomes ROE 7) |
-| 81+ | +2 | Fleets fight much longer (ROE 6 becomes ROE 8) |
+| Prestige  | Morale Modifier | Effect on ROE                                     |
+|-----------|-----------------|---------------------------------------------------|
+| 0 or less | -2              | Fleets retreat much earlier (ROE 8 becomes ROE 6) |
+| 1-20      | -1              | Fleets retreat earlier (ROE 8 becomes ROE 7)      |
+| 21-60     | 0               | No change                                         |
+| 61-80     | +1              | Fleets fight longer (ROE 6 becomes ROE 7)         |
+| 81+       | +2              | Fleets fight much longer (ROE 6 becomes ROE 8)    |
 
 **Homeworld Defense Exception**: Fleets defending their homeworld NEVER retreat regardless of ROE or losses.
 
@@ -111,87 +174,276 @@ Your house's prestige affects fleet morale, modifying effective ROE during comba
 
 **ROE does NOT affect explicit commands**: When you issue Bombard, Invade, or Attack commands, your fleet executes regardless of ROE. ROE only matters for automated retreat decisions during combat.
 
-### 7.2.2 Combat State and Damage
-
-Squadrons exist in three combat states determining effectiveness:
-
-**Undamaged** (Full Effectiveness)
-- Squadron operates at full Attack Strength (AS) and Defense Strength (DS)
-- Contributes full combat power to task force
-- Can execute all missions
-
-**Crippled** (Severely Degraded)
-- Squadron suffers major damage reducing combat effectiveness
-- Squadron flagship is crippled; escort ships may be destroyed
-- Attack Strength (AS) reduced to 50%
-- Maintenance cost reduced to 50% of normal
-- Cannot traverse restricted jump lanes
-- Requires shipyard repairs (1 turn, 25% of flagship build cost)
-- Still operational but at reduced capability
-
-**Destroyed** (Eliminated)
-- Squadron eliminated from combat
-- Flagship and all escort ships destroyed
-- Provides salvage value (50% of build cost at friendly colony)
-- Permanent loss unless rebuilt
-
-**Damage accumulation**: Squadrons take damage during combat rounds. Sufficient damage cripples squadrons (flagship crippled, escorts may be lost). Additional damage beyond crippled destroys the entire squadron. Heavy firepower can destroy squadrons directly without crippling them first.
-
-**Destruction Protection:**
-- Squadrons cannot go Undamaged → Crippled → Destroyed in the **same combat round**
-- If a squadron takes enough damage to cripple AND destroy it in one round, it stays Crippled
-- Next round, additional damage can destroy it
-- **Critical hits bypass protection**: Natural 9 on CER roll destroys immediately
-- Prevents instant-kill cheese, ensures multi-round engagements
-
-**Note**: Combat targets squadrons as tactical units. Each squadron contains one flagship plus escort ships. When a squadron is destroyed, all ships in it are lost.
-
-### 7.2.3 Task Force Formation
+### 7.2.4 Task Force Formation
 
 Fleets combine into **task forces** during combat—unified battle groups that concentrate firepower and share detection.
 
 **Task force composition**:
-- All squadrons from participating fleets
+- All ships from participating fleets
 - Starbases at system (orbital combat only)
-- Fighter squadrons at colony (if carriers present)
-- Unassigned squadrons at colony (orbital combat only)
+- Colony-assigned fighters (if applicable)
+- Unassigned ships at colony (orbital combat only)
 
 **Task force benefits**:
-- Shared detection: ELI-equipped scouts detect cloaked enemies for entire task force
-- Concentrated firepower: All squadrons engage simultaneously
-- Screened units protected: Mothballed fleets and spacelift vessels stay behind combat squadrons
+- Concentrated firepower: All ships engage simultaneously
+- Screened units protected: Mothballed ships, auxiliary vessels (ETACS, Troop Transports), spacelift vessels, and facilities (shipyards, drydocks, spaceports) stay behind combat ships
 
-**Multiple houses in combat**: Three-way or four-way battles resolve with each house forming separate task forces. All hostile task forces engage each other based on diplomatic status (Enemy or Neutral).
+**Multiple fleets in combat**: Friendly fleets fight alongside each other but remain organizationally distinct. Each fleet checks its own ROE independently and can retreat separately based on its own threshold. This creates emergent tactics where cautious fleets "screen" aggressive fleets then bug out when odds worsen.
 
-### 7.2.4 Cloaking and Detection
-
-Raiders are specialized ships that can cloak an entire fleet, making it invisible to enemy sensors. An undetected fleet can gain a powerful **first-strike advantage** in combat.
-
-**Detection Mechanics**:
-When a fleet containing one or more Raiders engages in combat (both Space and Orbital), a detection check is made at the start of that combat phase. It is an opposed roll pitting the attacker's **Cloaking (CLK)** technology against the defender's **Electronic Intelligence (ELI)** technology.
-
-- **Attacker Rolls**: `1d10 + CLK Level`
-- **Defender Rolls**: `1d10 + ELI Level + Starbase Bonus`
-
-See [Section 2.4.3](02-assets.md#243-raiders) for the full mechanic.
-
-**First-Strike Advantage: Ambush**
-If a Raider fleet remains undetected at the start of a combat phase (both Space and Orbital), it gains a first-strike advantage by successfully ambushing the enemy. This applies whether the Raider fleet is attacking or defending. An ambush provides:
-- A **+4 Combat Effectiveness Rating (CER)** bonus in the first round of combat.
-
-This bonus represents a devastating attack before the enemy can effectively respond.
-
-**Detection Effects**:
-- A detected Raider fleet loses its first-strike bonus for that combat phase and fights as a normal fleet.
-- A new detection check is made at the beginning of each combat theater (Space and Orbital). A fleet could be detected in Space Combat but successfully remain hidden for Orbital Combat.
+**Multiple houses in combat**: Three-way or four-way battles resolve with each house forming separate task forces. All hostile task forces engage each other based on diplomatic status (Enemy, Hostile, or Neutral with threatening commands).
 
 ---
 
-## 7.3 Space Combat
+## 7.3 Detection & Intelligence
+
+Raiders are specialized ships that can cloak entire fleets, making them invisible to enemy sensors. An undetected fleet gains a powerful **first-strike advantage** in combat.
+
+### 7.3.1 Detection Mechanics
+
+When fleets with Raiders engage in combat, a detection check determines if they remain hidden:
+
+**Both Sides Have Raiders (Detection Roll-Off):**
+
+Both sides roll to detect each other:
+- Side A: 1d10 + CLK_A + ELI_A (+ Starbase +2)
+- Side B: 1d10 + CLK_B + ELI_B (+ Starbase +2)
+
+Compare results:
+- Winner by 5+: Winner achieves **Ambush** (undetected, +4 DRM first round)
+- Winner by 1-4: Winner achieves **Surprise** (detected late, +3 DRM first round)
+- Tie: **Intercept** (both detected, no bonus)
+
+**One Side Has Raiders (Detection Roll):**
+
+Defender attempts to detect attacker:
+- Attacker: 1d10 + CLK
+- Defender: 1d10 + ELI (+ Starbase +2)
+
+Compare results:
+- Attacker wins by 5+: **Ambush** (+4 DRM first round)
+- Attacker wins by 1-4: **Surprise** (+3 DRM first round)
+- Defender wins: **Intercept** (Raiders detected, no bonus)
+
+**Neither Has Raiders:**
+
+No detection roll. **Intercept** condition (normal combat).
+
+**Special Case: Mutual Stealth**
+
+If two cloaked Raider fleets from opposing houses are in the same system and neither detects the other during the detection roll (extremely rare), combat is not initiated. The fleets pass each other undetected and continue executing assigned fleet commands.
+
+### 7.3.2 Intelligence Conditions
+
+Detection determines the intelligence condition for the first combat round:
+
+**Ambush** (Undetected by 5+)
+- Winner applies hits FIRST
+- Winner gets +4 DRM to combat roll
+- Loser's survivors strike back (if any remain)
+- First round only (subsequent rounds normal)
+- Devastating advantage
+
+**Surprise** (Detected Late, 1-4)
+- Winner applies hits FIRST
+- Winner gets +3 DRM to combat roll
+- Loser's survivors strike back (if any remain)
+- First round only (subsequent rounds normal)
+- Significant advantage
+
+**Intercept** (Normal Detection)
+- SIMULTANEOUS hit application
+- No first-strike bonus
+- Both sides apply hits at same time
+- Standard combat
+
+**Detection only applies to first round.** Subsequent rounds always use Intercept condition (simultaneous combat).
+
+### 7.3.3 Starbase Detection Support
+
+Starbases provide advanced sensor support even in space combat (before they directly participate in orbital combat):
+
+**Detection Bonus (Space AND Orbital):**
+- +2 to detection roll (if starbase undamaged)
+- Makes Raiders much harder to hide from fortified colonies
+- Represents massive sensor arrays and tracking systems
+
+**If Starbase Crippled:**
+- No detection bonus (sensors damaged)
+- No sensor coordination bonus (see below)
+
+**If Starbase Destroyed:**
+- All bonuses lost
+
+---
+
+## 7.4 Combat Resolution System
+
+All combat—space, orbital, and planetary—uses a unified resolution system based on Attack Strength × Combat Effectiveness Rating.
+
+### 7.4.1 Combat Round Sequence
+
+**1. Calculate Attack Strength (Both Sides)**
+
+Sum the Attack Strength (AS) of all participating ships:
+- Space/Orbital: All combat ships (Raiders, Fighters, Capitals, Starbases in orbital)
+- Bombardment: Fleet bombardment strength vs Ground Battery AS
+- Invasion: Marine AS vs Ground Forces AS
+
+**2. Apply Die Roll Modifiers (Both Sides)**
+
+Calculate applicable modifiers (see sections below for specific DRMs per theater).
+
+**3. Roll Combat Effectiveness Rating (Both Sides)**
+
+Each side rolls: 1d10 + Die Roll Modifiers (DRM)
+
+Look up modified roll on appropriate Combat Results Table:
+
+**Space/Orbital Combat CRT:**
+| Modified Roll | Combat Effectiveness Rating (CER) |
+|---------------|-----------------------------------|
+| 0, 1, 2       | 0.25× (one quarter, round up)     |
+| 3, 4, 5       | 0.50× (one half, round up)        |
+| 6, 7, 8       | 1.00× (full strength)             |
+| 9 (natural)*  | 1.00× + Critical Hit              |
+| 9+            | 1.00×                             |
+
+*Natural 9 (before modifiers) triggers Critical Hit
+
+**Ground Combat CRT (Bombardment/Invasion/Blitz):**
+| Modified Roll | Combat Effectiveness Rating (CER) |
+|---------------|-----------------------------------|
+| ≤2            | 0.5× (half, round up)             |
+| 3, 4, 5, 6    | 1.0× (full strength)              |
+| 7, 8          | 1.5× (one and a half, round up)   |
+| 9+            | 2.0× (double)                     |
+
+Ground combat is more lethal—can achieve up to 2.0× effectiveness vs 1.0× maximum in space combat.
+
+**4. Calculate Hits (Both Sides)**
+
+Total Hits = Attack Strength × CER (round up)
+
+Example:
+```
+Fleet AS: 200
+Roll: 1d10 = 4, DRM = +2, Modified = 6
+CER: 1.00×
+Hits: 200 × 1.00 = 200 hits
+```
+
+**5. Apply Hits**
+
+Apply hits based on intelligence condition:
+- **Ambush/Surprise**: Winner applies hits first, survivors strike back
+- **Intercept**: SIMULTANEOUS hit application
+
+Follow hit application rules (Section 7.2.2):
+- Must cripple all before destroying any
+- Critical Hits bypass this rule
+- Excess hits lost
+
+**6. Check Retreat (Per Fleet)**
+
+Each fleet independently checks current AS ratio vs enemy AS:
+- Calculate: Fleet current AS / Enemy total AS
+- Compare to fleet ROE threshold
+- If below threshold: Fleet retreats (unless explicit command or homeworld defense)
+- Retreating fleet moves to nearest friendly system
+- Auxiliary vessels (ETACS, Troop Transports) assigned to fleet retreat with it
+- If fleet destroyed, auxiliary vessels assigned to that fleet are also destroyed
+
+**7. Determine Winner**
+
+After all hits applied and retreats resolved:
+- Calculate surviving Attack Strength (both sides)
+- Higher surviving AS wins
+- Tie: Defender wins
+- Winner proceeds to next theater (if attacker) or repels attack (if defender)
+
+### 7.4.2 Die Roll Modifiers Summary
+
+**Space Combat:**
+- Ambush (first round): +4 (Raider undetected by 5+)
+- Surprise (first round): +3 (Raider undetected by 1-4)
+- Fighter Superiority (all rounds): +1 (2:1 advantage) or +2 (3:1+ advantage)
+- Starbase Sensors (all rounds): +1 (if starbase undamaged at colony)
+- Morale (all rounds): ±1 or ±2 (based on house prestige)
+- ELI Advantage (all rounds): +1 (if your ELI tech > enemy ELI)
+- Homeworld Defense (all rounds): +1 (defending house homeworld only)
+
+**Orbital Combat:**
+- Same as Space Combat
+- Starbases participate directly (contribute AS/DS to defender)
+
+**Bombardment:**
+- Planet-Breaker (all rounds): +4 (attacker, if Planet-Breaker ships present)
+- Morale (all rounds): ±1 or ±2 (both sides)
+
+**Invasion (Standard):**
+- Prepared Defenses (all rounds): +2 (defender, entrenched colony)
+- Homeworld Defense (all rounds): +1 (defender, if house homeworld)
+- Morale (all rounds): ±1 or ±2 (both sides)
+
+**Blitz:**
+- Landing Under Fire (all rounds): +3 (defender, marines landing under battery fire)
+- Homeworld Defense (all rounds): +1 (defender, if house homeworld)
+- Morale (all rounds): ±1 or ±2 (both sides)
+
+### 7.4.3 Fighter Superiority
+
+Fighters provide a die roll modifier based on numerical advantage. Calculate each round (can change as fighters destroyed):
+
+**Calculate Fighter Strength Ratio:**
+- Your Fighter Strength (FS) = Sum of all Fighter ship AS
+- Enemy Fighter Strength (FS) = Sum of all enemy Fighter ship AS
+- Ratio = Your FS / Enemy FS
+
+**Apply Modifier:**
+- 3:1+ advantage: +2 DRM
+- 2:1+ advantage: +1 DRM
+- 1:1 to 2:1: +0 DRM
+- 1:2 disadvantage: -1 DRM (enemy gets +1)
+- 1:3 disadvantage: -2 DRM (enemy gets +2)
+
+**Fighter Types:**
+
+Fighters come in two assignments:
+- **Colony-assigned**: Stationed at colony, defend location, cannot travel. Participate in space/orbital combat at their colony.
+- **Carrier-assigned**: Housed in carriers, travel with fleet, deploy in combat anywhere. Lost if carrier destroyed while embarked.
+
+Both types contribute to Fighter Superiority calculation during combat.
+
+**Dynamic Advantage:**
+
+As fighters are destroyed, superiority shifts. Losing fighters hurts twice:
+1. Direct AS loss (less total damage inflicted)
+2. DRM loss (worse combat rolls, compounding losses)
+
+### 7.4.4 Morale Effects
+
+House prestige affects combat morale, providing die roll modifiers:
+
+**Morale Die Roll Modifier:**
+| Prestige Level | Morale DRM | Effect |
+|----------------|------------|--------|
+| 0 or less | -2 | Poor morale, worse combat rolls |
+| 1-20 | -1 | Low morale |
+| 21-60 | 0 | Normal morale |
+| 61-80 | +1 | High morale, better combat rolls |
+| 81+ | +2 | Exceptional morale |
+
+Morale applies to ALL combat rounds (not just first round like detection bonuses).
+
+High prestige houses fight more effectively AND retreat less often (morale modifies ROE too).
+
+---
+
+## 7.5 Space Combat
 
 Engage enemy mobile fleets in deep space. Your task forces clash with full tactical freedom—the first theater of planetary conquest.
 
-### 7.3.1 Space Combat Participants
+### 7.5.1 Space Combat Participants
 
 **Mobile Fleets Engage When They Meet:**
 
@@ -199,16 +451,9 @@ Space combat occurs when mobile fleets encounter each other in the same system. 
 
 **Diplomatic Status Determines Combat:**
 - **Enemy Status**: Combat occurs automatically (always hostile)
-- **Hostile Status**: Combat occurs if Hostile fleets have **threatening or provocative commands** in a system you control, or if already engaged.
-- **Neutral Status**: Combat occurs only if Neutral fleets have **threatening commands** (Invade, Bombard, Blitz, Blockade) in a system you control.
+- **Hostile Status**: Combat occurs if Hostile fleets have **threatening or provocative commands** in a system you control, or if already engaged
+- **Neutral Status**: Combat occurs only if Neutral fleets have **threatening commands** (Invade, Bombard, Blitz, Blockade) in a system you control
 - **Neutral + Non-Threatening**: No combat (peaceful coexistence)
-
-**Special Case: Mutual Stealth**
-If two cloaked Raider fleets from opposing houses are in the same system and neither detects the other during the Raider Detection step (see [Section 7.2.4](07-combat.md#724-cloaking-and-detection)), combat is not initiated. The fleets are considered to have passed each other undetected and will continue to execute their assigned fleet commands.
-
-**Rules of Engagement (ROE 0-10):**
-
-ROE determines when your fleets **retreat** during combat, not whether combat starts. Set higher ROE for aggressive stands, lower ROE for cautious retreats when outmatched.
 
 **Mobile Fleet Types** (Fight in Space Combat):
 - Fleets with **no commands** (default mobile posture)
@@ -219,250 +464,89 @@ ROE determines when your fleets **retreat** during combat, not whether combat st
 - **Active status fleets** without guard-specific commands
 
 **Who Does NOT Fight in Space Combat:**
+- **Scouts**: Consumed when initiating spy missions, destroyed upon detection - never participate in fleet combat
 - **Guard fleets**: GuardStarbase, GuardPlanet, DefendSystem commands - they defend in orbital combat only
 - **Reserve fleets**: Stationed at colony, fight in orbital combat only
 - **Mothballed fleets**: Offline, screened in orbital combat, cannot fight
-- **Starbases**: Fixed installations, orbital combat only. The do provide ELI support to space combatants.
+- **Starbases**: Fixed installations, orbital combat only (but provide sensor bonuses in space combat)
+- **Auxiliary vessels**: ETACS and Troop Transports are screened, do not fight (retreat or destroyed with their fleet)
 
-**Multi-Faction Combat:**
+### 7.5.2 Space Combat Resolution
 
-When three or more houses have mobile fleets in the same system:
-- **Single unified battle** with all houses present
-- Each house forms separate task force
-- Each squadron targets hostile houses based on diplomatic status
-- Enemy status: Always hostile
-- Hostile status: Always hostile if provocative commands are present, or engaged in combat
-- Neutral status: Only hostile if threatening commands are issued against your controlled system
-- All combat phases (Raiders, Fighters, Capitals) resolve simultaneously with multi-faction targeting
+**Round 1:**
 
-### 7.3.2 Combat Initiative and Phases
+**Step 1: Detection Phase (If Raiders Present)**
 
-Space combat resolves in three phases determining strike order:
+Conduct detection roll (Section 7.3) to determine intelligence condition:
+- Ambush: Winner gets +4 DRM, applies hits first
+- Surprise: Winner gets +3 DRM, applies hits first
+- Intercept: No bonus, simultaneous combat
 
-**Phase 1: Undetected Raiders (Ambush)**
+**Step 2: Calculate Attack Strength**
 
-Undetected Raider fleets strike first with a **+4 CER bonus**. This represents a devastating ambush, regardless of whether the fleet is attacking or defending.
+Both sides sum total AS:
+- All mobile fleet ships (Raiders, Fighters, Capitals)
+- Colony-assigned fighters at location (if defending colony)
+- Reduce crippled ships to 50% AS
 
-**Conditions:**
-- A fleet with Raiders wins the detection roll at the start of combat.
-- The fleet gains the first-strike bonus (+4 CER).
+**Step 3: Calculate Die Roll Modifiers**
 
-**Phase 2: Fighter Squadrons (Intercept)**
+Attacker DRM:
+- Detection bonus (first round): +4 Ambush or +3 Surprise (if applicable)
+- Fighter Superiority: +0, +1, or +2 (if advantage)
+- Morale: ±1 or ±2
+- ELI Advantage: +1 (if your ELI > enemy ELI)
 
-Carrier-launched fighters engage after Raiders but before capital ships. Fast interceptors screen the main fleet.
+Defender DRM:
+- Detection bonus (first round): +4 Ambush or +3 Surprise (if applicable)
+- Fighter Superiority: +0, +1, or +2 (if advantage)
+- Starbase Sensors: +1 (if undamaged starbase at colony)
+- Morale: ±1 or ±2
+- ELI Advantage: +1 (if your ELI > enemy ELI)
+- Homeworld: +1 (if defending house homeworld)
 
-**Conditions:**
-- Carriers present with loaded fighter squadrons
-- Fighters launch and engage enemy formations
-- **Fighters do NOT roll CER**—they deal full AS as damage (100% effectiveness always)
+**Step 4: Roll CER**
 
-**Fighter Tactical Employment:**
+Both sides: 1d10 + DRM → Space/Orbital Combat CRT
 
-Fighters excel as force multipliers and screening units. Use them strategically:
+**Step 5: Calculate Hits**
 
-**The Carrier/Fighter Dynamic:**
+Both sides: Total AS × CER = Total Hits (round up)
 
-Carriers and fighters form a symbiotic combat relationship with unique vulnerabilities:
+**Step 6: Apply Hits**
 
-- **Fighters protect carriers**: Fighters engage in Phase 2, eliminating enemy fighters and carriers before your carriers face fire in Phase 3
-- **Carriers enable fighters**: Embarked fighters deploy anywhere without colony infrastructure
-- **Mutual dependence**: If your carrier dies, all embarked fighters die with it—no survival, no re-embarkment
-- **Strategic implication**: Lose your carriers early and your fighters deploy but become stranded; lose your fighters and your carriers become priority targets
+Based on intelligence condition:
+- Ambush/Surprise: Winner applies hits first, survivors strike back
+- Intercept: Simultaneous application
 
-**Carrier Strike Groups:**
-- Carriers with embarked fighters project power without colony infrastructure
-- 5-10 embarked fighters deploy instantly when carrier enters combat
-- **Critical**: Protect carriers at all costs—carrier destruction means fighter destruction
-- Fighters re-embark after combat (remain carrier-owned)
-- Use fighters to screen carriers from enemy fire
+Follow hit application rules (must cripple all before destroying any).
 
-**Colony Defense:**
-- Planet-based fighters never retreat (fight to the death)
-- Ideal for fortress colonies and chokepoints
-- Colony fighters + carrier fighters stack for overwhelming local superiority
-- Example: 8 colony fighters + 5 carrier fighters = 13 FS in battle
+**Step 7: Check Retreat**
 
-**Fighter vs Fighter Combat:**
-- Fighters prioritize enemy fighters first (counter-air mission)
-- Winning fighter superiority protects capital squadrons
-- Losing fighter superiority exposes your fleet to enemy fighter strikes
+Each fleet independently:
+- Calculate current AS / enemy total AS
+- Compare to ROE threshold
+- Retreat if below threshold (unless explicit command or homeworld)
+- Auxiliary vessels (ETACS, Troop Transports) retreat with their assigned fleet
+- If fleet destroyed, auxiliary vessels assigned to that fleet are also destroyed
 
-**Anti-Carrier Operations:**
-- Fighters target carriers (Bucket 2) after enemy fighters eliminated
-- Stripping enemy carriers eliminates their fighter advantage
-- Concentrate fighters to overwhelm carrier defenses
+**Round 2+:**
 
-**Screening Role:**
-- Fighters absorb enemy fire before capital squadrons engage
-- Low DS means fighters die quickly but buy time
-- Sacrificial screening protects high-value battleships and dreadnoughts
+Repeat steps 2-7, but:
+- NO detection bonus (first round only)
+- Fighter Superiority still applies (recalculate each round)
+- Always Intercept condition (simultaneous)
 
-**Fighter Fragility:**
-- Fighters skip crippled state: Undamaged → Destroyed
-- No retreat, no repairs—fighters are expendable
-- Replace losses through colony production (requires capacity)
+Continue until: one side destroyed, one side retreated, or maximum 20 rounds.
 
-**Phase 3: Capital & Escort Squadrons (Main Engagement)**
+**Desperation Mechanic:**
 
-Capital and escort squadrons exchange fire. The decisive engagement phase.
-
-**Conditions:**
-- All capital squadrons and escorts engage
-- Standard CER calculations
-- Majority of combat damage occurs here
-
-### 7.3.3 Combat Effectiveness Rating (CER)
-
-CER determines strike effectiveness—how much damage your squadrons inflict. Each attacking squadron rolls for CER independently.
-
-**CER Calculation Process:**
-
-1. **Roll 1d10** (result 0-9, treat 10 as 0)
-2. **Add modifiers**:
-   - Morale modifier (see table below): -1 to +2
-   - Ambush (Raiders, first round only): +4
-3. **Look up effectiveness multiplier**:
-
-**Morale Check CER Bonuses:**
-
-At the start of each turn, roll 1d20 to determine morale effects for that turn:
-
-| Morale Level         | Morale Threshold | Effect on Success                   |
-| -------------------- | ---------------- | ----------------------------------- |
-| Collapsing           | Never succeeds   | -1 to all CER rolls this turn       |
-| VeryLow              | > 18             | No effect                           |
-| Low                  | > 15             | +1 to CER for one random squadron   |
-| Normal               | > 12             | +1 to all CER rolls this turn       |
-| High                 | > 9              | +1 CER + one critical auto-succeeds |
-| VeryHigh/Exceptional | > 6              | +2 to all CER rolls this turn       |
-
-*Note: Morale levels and thresholds defined by house prestige—see reference.md for current configuration*
-
-**CER Table:**
-
-| **Modified 1D10 Die Roll** | **Space Combat CER**             |
-| -------------------------- | -------------------------------- |
-| Less than zero, 0, 1, 2    | One Quarter (0.25) (round up)    |
-| 3, 4                       | One Half (0.50) (round up)       |
-| 5, 6                       | Three Quarters (0.75) (round up) |
-| 7, 8                       | One (1)                          |
-| 9*                         | One* (1)                         |
-| 9+                         | One (1)                          |
-
-*If the die roll is a natural nine before any required modification, then a critical hit is achieved
-
-4. **Calculate damage**: Total Hits = Squadron AS × CER Multiplier (round up)
-
-**Critical Hits:**
-- **Natural roll of 9** (before modifiers) = Critical Hit
-- Bypasses destruction protection (can destroy Undamaged → Destroyed in one round)
-- **Force Reduction**: If critical hit damage insufficient to reduce target (damage < target DS), the **weakest squadron** in enemy task force is reduced instead (lowest DS squadron takes the hit)
-
-**Overkill Damage:**
-
-When multiple squadrons independently target the same enemy squadron:
-- **Combined damage** from all attackers applies to target
-- If combined damage would destroy squadron in same round it's crippled:
-  - **If ANY attacker rolled critical**: Destruction protection bypassed, squadron destroyed
-  - **If NO critical hit**: Destruction protection applies, squadron stays crippled, excess damage lost
-- Prevents multiple attackers from wasting firepower on already-dead targets
-
-**Example:**
-- Battleship squadron: AS 50
-- Roll: 5 (natural)
-- Modifiers: +1 (scouts) +1 (high morale) = +2
-- Modified roll: 7 → CER 1.00×
-- Damage: 50 × 1.00 = 50 hits
-
-### 7.3.4 Target Selection
-
-Squadrons target enemies using priority buckets—categories determining which enemies to shoot first.
-
-**Targeting Priority Buckets:**
-
-| Bucket            | Unit Type                                 | Base Weight | Priority |
-|-------------------|-------------------------------------------|-------------|----------|
-| **1 – Raider**    | Squadron with Raider flagship             | 1.0         | Highest  |
-| **2 – Capital**   | Squadron with capital flagship            | 2.0         | High     |
-| **3 – Escort**    | Squadron with escort flagship             | 3.0         | Medium   |
-| **4 – Fighter**   | Fighter squadron (no capital flagship)    | 4.0         | Low      |
-| **5 – Starbase**  | Orbital installation                      | 5.0         | Lowest   |
-
-**Notes:**
-- Lower bucket numbers = higher targeting priority
-- Fighter squadrons consist entirely of fighter craft (no capital ship flagship)
-- Starbases are orbital installations, not squadrons
-- Targeting walks buckets in order: Raider → Capital → Escort → Fighter → Starbase
-
-**Special Rule: Fighter Squadron Targeting**
-
-Fighter squadrons launched from carriers target enemy fighters first (fighter-vs-fighter combat), then proceed to standard bucket priority if no enemy fighters remain.
-
-**Weighted Random Selection**
-
-Within each bucket, targets selected randomly weighted by Defense Strength—tougher squadrons (higher DS) more likely to be targeted. This represents fire concentration on the biggest threats.
-
-**Crippled Squadron Targeting:**
-- Crippled squadrons get **2× targeting weight**
-- Makes them more likely to be finished off
-- Represents opportunistic fire on damaged enemies
-- Example: Crippled Battleship (DS 40) has targeting weight of 80
-
-### 7.3.5 Combat Rounds
-
-Combat resolves in rounds—simultaneous exchanges of fire continuing until one side retreats or is destroyed.
-
-**Round Sequence:**
-
-1. **Target Selection**: Both sides assign targets per priority buckets
-2. **Damage Calculation**: Calculate damage based on AS, CER, and target DS
-3. **Apply Damage**: Squadrons crippled or destroyed
-4. **Update Combat State**: Remove destroyed squadrons, update crippled squadrons
-5. **Retreat Check**: Losing side checks morale and ROE for retreat decision
-6. **Repeat**: Continue until combat ends
-
-**Maximum Rounds**: 20 rounds per combat (prevents infinite combat)
-
-**Round Duration**: Each round represents approximately 30-60 minutes of engagement time
-
-**Desperation Mechanics:**
-
-If combat stalls (5 consecutive rounds without any squadron state changes):
-- Both sides get **+2 CER bonus** for one "desperation round"
-- Represents desperate all-out attacks to break the stalemate
+If 5 consecutive rounds occur with no ship state changes (stalemate):
+- Both sides get +2 DRM next round (desperation attack)
+- Represents all-out effort to break deadlock
 - After desperation round, combat continues normally
-- If still no progress after desperation, moves toward 20-round stalemate
 
-### 7.3.6 Retreat Mechanics
-
-Losing fleets can retreat before total destruction. Retreat saves surviving squadrons but concedes the battlefield.
-
-**Retreat Triggers:**
-- CER disadvantage exceeds threshold (significantly outmatched)
-- Losses exceed acceptable percentage per ROE settings
-- Morale collapse (excessive casualties break formation)
-- Commander discretion (standing commands respect ROE retreat thresholds)
-
-**Retreat Consequences:**
-- Retreating fleet moves to nearest friendly system via jump lanes
-- Attackers who retreat fail their mission (invasion aborted, bombardment incomplete)
-- Defenders who retreat cede space superiority (attackers proceed to orbital combat)
-- Crippled squadrons may be lost during retreat if cannot traverse restricted lanes
-
-**Pursuit**: Victorious fleet does NOT automatically pursue retreating enemies. Pursuit requires explicit commands (Move to follow) or standing commands (PatrolRoute, AutoReinforce).
-
-**Multi-House Retreat Priority:**
-
-When 3+ houses attempt to retreat simultaneously:
-1. **Weakest retreats first**: Houses retreat in ascending order of total AS (weakest first)
-2. **Ties broken by house ID**: If equal AS, alphanumeric house ID order
-3. **Re-evaluation**: After each retreat, remaining houses re-check ROE against new enemy strength
-4. **Cancel option**: Re-evaluation may cause house to cancel retreat and continue fighting
-5. **One retreats**: Other houses continue battling until their own ROE triggers
-
-### 7.3.7 Victory Conditions
-
-Space combat ends when:
+### 7.5.3 Victory Conditions
 
 **Attacker Victory:**
 - All mobile defenders destroyed or retreated
@@ -479,21 +563,13 @@ Space combat ends when:
 - Rare but possible with evenly matched forces
 - **Result**: Status quo maintained, no territorial change
 
-**Multi-House Prestige Attribution:**
-
-When 3+ houses participate in combat, prestige for kills is awarded based on who dealt the crippling blow:
-- **Squadron destroyed**: House that dealt crippling blow gets prestige
-- **Already-crippled squadron finished off**: All attacking houses share prestige equally (minimum 1 per house)
-- **Fleet retreats**: All houses engaged with retreating fleet share prestige equally
-- **Critical**: Track damage sources to determine crippling blow attribution
-
 ---
 
-## 7.4 Orbital Combat
+## 7.6 Orbital Combat
 
-Assault fortified colony defenses after winning space superiority. Your fleets engage guard forces, reserve fleets, starbases, and orbital squadrons in a unified defensive position.
+Assault fortified colony defenses after winning space superiority. Your fleets engage guard forces, reserve fleets, starbases, and orbital ships in a unified defensive position.
 
-### 7.4.1 Orbital Combat Participants
+### 7.6.1 Orbital Combat Participants
 
 **Attackers** (If They Won Space Combat):
 - All surviving attack fleets from space combat
@@ -501,74 +577,108 @@ Assault fortified colony defenses after winning space superiority. Your fleets e
 
 **Orbital Defenders** (All Fight Simultaneously):
 - **Guard fleets**: Fleets with GuardStarbase, GuardPlanet, DefendSystem commands
-- **Reserve fleets**: 50% maintenance fleets stationed at colony (reduced combat effectiveness)
+- **Reserve fleets**: 50% maintenance fleets stationed at colony (fight at 100% AS - already included in ship stats)
 - **Mothballed fleets**: 0% maintenance fleets (CANNOT FIGHT - must be screened)
 - **Starbases**: Orbital installations with heavy firepower and detection capability
-- **Unassigned squadrons**: Combat squadrons at colony not assigned to fleets
-- **Fighter squadrons**: Colony-based fighters (if not already loaded on carriers)
+- **Unassigned ships**: Combat ships at colony not assigned to fleets
+- **Colony-assigned fighters**: Fighters stationed at colony for defense
 
 **Screened Units (Protected, Do Not Fight):**
 - Mothballed ships (offline, defenseless)
+- Auxiliary vessels (ETACS, Troop Transports - no combat capability in space/orbital)
 - Spacelift vessels (no combat capability)
+- Colony facilities (shipyards, drydocks, spaceports - exception: starbases DO fight)
 - These units hide behind defending task force; destroyed if defenders eliminated
 
-### 7.4.2 Orbital Combat Differences from Space Combat
+### 7.6.2 Orbital Combat Differences from Space Combat
 
 **New Detection Check:**
-- A new detection check is performed at the start of Orbital Combat.
-- Raider fleets that were detected in Space Combat have a chance to re-cloak and gain the ambush bonus again.
-- Starbases, with their powerful sensors, add their +2 bonus to the defender's detection roll, making it much harder to achieve an ambush in Orbital Combat.
 
-**Starbases Participate:**
-- Starbases add significant AS/DS to defender task force
+A new detection check is performed at the start of Orbital Combat:
+- Raider fleets that were detected in Space Combat have a chance to re-cloak and gain the ambush bonus again
+- Starbases, with their powerful sensors, add +2 bonus to the defender's detection roll, making it much harder to achieve an ambush in Orbital Combat
+
+**Starbases Participate Directly:**
+
+Starbases add significant AS/DS to defender task force:
 - Fixed installations with heavy firepower
 - Cannot retreat—fight to destruction or victory
+- Provide detection bonus (+2) and sensor coordination (+1 DRM)
+- If destroyed, all bonuses lost
 
 **Reduced Mobility:**
+
 - Defenders fight from fortified positions
 - Attackers cannot maneuver as freely (planetary gravity well)
 - Retreat harder for attackers (must break orbit under fire)
 
 **Screened Unit Vulnerability:**
+
 - If defenders eliminated, screened units exposed
 - Mothballed ships destroyed if not protected
+- Auxiliary vessels (ETACS, Troop Transports) destroyed if defenders fail
 - Spacelift vessels destroyed if defenders fail
+- Colony facilities (shipyards, drydocks, spaceports) destroyed if defenders fail
 
-### 7.4.3 Reserve Fleet Combat Penalty
+### 7.6.3 Starbase Combat Bonuses
 
-Reserve fleets fight at reduced effectiveness:
-- **Reduced AS/DS**: Half combat strength (maintenance savings = readiness trade-off)
-- Still better than no defense
-- Can be reactivated to full strength (Reactivate command, returns to Active status)
+Starbases provide significant defensive advantages:
 
-### 7.4.4 Starbase Combat Bonuses
+**Detection Support (Already covered in Section 7.3.3):**
+- +2 Detection bonus (helps detect Raiders)
+- Only if starbase undamaged
 
-Starbases provide significant defensive advantages beyond their raw combat statistics:
+**Sensor Coordination:**
+- +1 DRM to defender combat rolls (all rounds)
+- Represents superior fire control, targeting computers, defensive coordination
+- Maximum +1 regardless of number of starbases
+- Only if at least one starbase undamaged
 
-**Critical Hit Resilience:**
-- **First Critical Reroll**: When a starbase is hit by a critical hit (natural 9 on 1d10), it may reroll the first critical hit against it each combat round
-- This ability represents the starbase's redundant systems, armored sections, and compartmentalized design
-- Only the first critical hit per round can be rerolled—subsequent criticals apply normally
-- If the reroll is also a critical hit, the starbase takes full critical damage
+**Direct Combat Participation:**
+- Starbase contributes AS/DS to defender task force
+- Multiple starbases = cumulative AS/DS (significant firepower)
+- Each starbase can be crippled (50% AS/DS) then destroyed
+- Difficult targets (high DS)
 
-**Combat Die Modifier:**
-- **+2 Die Roll Bonus**: Starbases receive a +2 modifier to all combat die rolls
-- This bonus applies to both offensive (attacking enemy ships) and defensive (absorbing damage) rolls
-- Represents superior fire control systems, targeting computers, and defensive coordination
-- Stacks with other modifiers (morale, CER bonuses, etc.)
+**If Starbase Crippled:**
+- No detection bonus (sensors damaged)
+- No sensor coordination (+1 DRM lost)
+- Still fights at 50% AS/DS
 
-**Detection Capability:**
-- **+2 Detection Bonus**: Already covered in [Section 7.4.2](#742-orbital-combat-differences-from-space-combat)
-- Starbases add +2 to defender's detection roll against cloaked Raiders
-- This detection bonus applies in both space combat and orbital combat phases
+**If All Starbases Destroyed:**
+- All bonuses lost
+- Orbital defense significantly weakened
 
 **Strategic Implications:**
-- Starbases are exceptionally difficult to destroy in orbital combat
-- Attackers face much higher casualties when assaulting fortified colonies
-- Multiple starbases create nearly impregnable defenses
-- Late-game sieges require overwhelming force or Planet-Breaker superweapons
 
-### 7.4.5 Victory Conditions
+Starbases make orbital assaults extremely costly. Late-game sieges against multiple starbases require overwhelming force or Planet-Breaker superweapons to crack fortress colonies.
+
+### 7.6.4 Orbital Combat Resolution
+
+Same as Space Combat (Section 7.5.2), with these differences:
+
+**Die Roll Modifiers (Orbital Combat):**
+
+Attacker DRM:
+- Detection bonus (first round): +4 Ambush or +3 Surprise (if applicable)
+- Fighter Superiority: +0, +1, or +2 (if advantage)
+- Morale: ±1 or ±2
+- ELI Advantage: +1 (if your ELI > enemy ELI)
+
+Defender DRM:
+- Detection bonus (first round): +4 Ambush or +3 Surprise (if applicable)
+- Fighter Superiority: +0, +1, or +2 (if advantage)
+- **Starbase Sensors: +1 (if at least one starbase undamaged)** ← Key difference
+- Morale: ±1 or ±2
+- ELI Advantage: +1 (if your ELI > enemy ELI)
+- Homeworld: +1 (if defending house homeworld)
+
+**Starbase AS/DS Contribution:**
+
+Defender total AS includes starbase AS (direct combat participation).
+Defender total DS includes starbase DS (targets for attacker hits).
+
+### 7.6.5 Victory Conditions
 
 **Attacker Victory:**
 - All orbital defenders destroyed or retreated
@@ -581,164 +691,206 @@ Starbases provide significant defensive advantages beyond their raw combat stati
 - **Result**: Colony remains secure, invasion repelled
 
 **Screened Unit Loss:**
-- If attackers win, mothballed/spacelift units destroyed
-- Significant economic and strategic loss
-- Defenders should activate mothballed fleets before combat if threatened
+- If attackers win, all screened units destroyed: mothballed ships, auxiliary vessels (ETACS, Troop Transports), spacelift vessels, and facilities (shipyards, drydocks, spaceports)
+- Significant economic and strategic loss (especially facilities)
+- Defenders should activate mothballed fleets and evacuate auxiliary vessels before combat if threatened
 
 ---
 
-## 7.5 Planetary Bombardment
+## 7.7 Planetary Bombardment
 
 Destroy enemy infrastructure and defenses from orbit after achieving orbital supremacy. Your fleets systematically dismantle planetary shields, neutralize ground batteries, and reduce industrial capacity.
 
-### 7.5.1 Bombardment Execution
+### 7.7.1 Bombardment Requirements
 
-**Requirements:**
+**Prerequisites:**
 - Orbital supremacy achieved (won orbital combat)
-- Combat-capable squadrons present (AS > 0)
+- Combat-capable ships present (AS > 0)
 - Bombard command issued to fleet
 
-**Bombardment Process:**
+**Note:** Starbases have already been destroyed in orbital combat. They do not participate in bombardment phase.
 
-Each turn of bombardment (up to 3 rounds), your fleet attacks planetary defenses. Shields reduce incoming damage, but hits penetrate to damage batteries, ground forces, and infrastructure simultaneously:
+### 7.7.2 Bombardment Participants
 
-**Bombardment Damage Flow:**
+**Attacker:**
+- All surviving fleet ships with bombardment capability (all combat ships)
+- Planet-Breaker ships (if present) provide +4 DRM and bypass shields
 
-1. **Calculate Bombardment Hits** (AS × CER)
-   - Your fleet's total Attack Strength
-   - Roll 1d10 on Bombardment CER table (see below)
-   - Planet-Breaker AS counted separately (bypasses shields)
+**Defender:**
+- Ground Batteries (fire back at orbiting ships)
+- Planetary Shields (reduce incoming damage)
+- Infrastructure (damaged by excess hits)
 
-**Bombardment CER Table:**
+### 7.7.3 Bombardment Resolution
 
-| **1D10 Die Roll** | **Bombardment CER**           |
-| ----------------- | ----------------------------- |
-| 0, 1, 2           | One Quarter (0.25) (round up) |
-| 3, 4, 5           | One Half (0.50) (round up)    |
-| 6, 7, 8           | One (1)                       |
-| 9*                | One* (1)                      |
+**Step 1: Calculate Attack Strength**
 
-*Critical hits apply only against attacking squadrons (ground batteries firing back), not against ground targets
+Attacker AS = Fleet total bombardment AS (all combat ships)
+Defender AS = Ground Batteries total AS
 
-2. **Shields Reduce Conventional Hits**
-   - Planetary shields reduce conventional ship damage by percentage (20%-70% based on SLD level)
-   - Planet-Breaker hits bypass shields entirely
-   - Total effective hits = Planet-Breaker hits + (reduced conventional hits)
+**Step 2: Calculate Die Roll Modifiers**
 
-3. **Hits Flow Through Defenses in Order:**
-   - **First**: Ground batteries absorb hits (crippled, then destroyed)
-   - **Excess hits**: Damage ground forces (armies and marines)
-   - **Remaining excess**: Destroy infrastructure (IU loss)
+Attacker DRM:
+- **Planet-Breaker: +4 (if Planet-Breaker ships present)** ← Late-game stalemate breaker
+- Morale: ±1 or ±2
 
-**Key Mechanics:**
-- Shields slow damage but don't prevent it—batteries, forces, and infrastructure can be damaged in the same turn
-- Ground batteries fire back each round (can cripple/destroy bombarding squadrons)
-- Multiple bombardment turns gradually overwhelm defenses
-- Higher shield levels reduce more damage, prolonging defensive survival
+Defender DRM:
+- Morale: ±1 or ±2
 
-### 7.5.2 Planetary Shields
+**No starbase bonuses** (already destroyed in orbital combat).
+**No air superiority bonuses** (not applicable to bombardment).
+
+**Step 3: Roll CER**
+
+Both sides: 1d10 + DRM → Space/Orbital Combat CRT
+
+Note: Bombardment uses Space/Orbital CRT (not Ground Combat CRT). Maximum 1.0× CER.
+
+**Step 4: Calculate Base Hits**
+
+Attacker base hits = Fleet AS × Attacker CER (round up)
+Defender base hits = Battery AS × Defender CER (round up)
+
+**Step 5: Apply Shield Reduction (Attacker Hits Only)**
+
+Planetary shields reduce bombardment damage before hits applied:
+
+**Shield Reduction Table:**
+| Shield Level | Damage Reduction |
+|--------------|------------------|
+| SLD 1        | 25%              |
+| SLD 2        | 30%              |
+| SLD 3        | 35%              |
+| SLD 4        | 40%              |
+| SLD 5        | 45%              |
+| SLD 6        | 50%              |
+
+**Planet-Breaker ships bypass shields entirely:**
+
+If Planet-Breaker ships present:
+```
+Planet-Breaker hits = Planet-Breaker AS × CER (NO reduction)
+Regular fleet hits = (Fleet AS - Planet-Breaker AS) × CER × (1 - Shield %)
+Total attacker hits = Planet-Breaker hits + Reduced fleet hits
+```
+
+If no Planet-Breaker ships:
+```
+Total attacker hits = Fleet AS × CER × (1 - Shield %)
+```
+
+Example:
+```
+Attacker: 200 AS fleet (40 AS Planet-Breaker, 160 AS regular)
+CER: 1.0×
+Base hits: 200 × 1.0 = 200
+
+Shield: SLD 6 (50% reduction)
+
+Planet-Breaker: 40 × 1.0 = 40 hits (bypass shield)
+Regular: 160 × 1.0 × 0.5 = 80 hits (reduced by shield)
+Total: 120 hits penetrate shield
+
+Without Planet-Breaker: 200 × 0.5 = 100 hits (all reduced)
+Planet-Breaker advantage: +20 hits
+```
+
+**Step 6: Apply Hits (Simultaneous)**
+
+Attacker hits → Ground Batteries (cripple/destroy), then Infrastructure
+Defender hits → Fleet ships (cripple/destroy)
+
+**Hit Flow:**
+1. Apply hits to Ground Batteries first (following hit application rules)
+2. Excess hits (after all batteries destroyed) damage Infrastructure
+3. Each excess hit destroys 1 IU (Infrastructure Unit)
+
+**Step 7: Check Retreat (Attacker Only)**
+
+Attacker fleets check ROE:
+- If taking heavy casualties from battery fire, may retreat
+- Bombardment abandoned if attacker retreats
+- Defender cannot retreat (batteries are fixed installations)
+
+**Repeat Rounds:**
+
+Continue bombardment rounds until:
+- All ground batteries destroyed (bombardment successful)
+- Attacker retreats (ROE triggered by heavy losses)
+- Maximum 20 rounds (rare—usually batteries destroyed or attacker retreats)
+
+### 7.7.4 Planetary Shields
 
 Shields reduce bombardment damage from conventional ships. Higher shield levels block larger percentages of incoming hits.
 
-**Shield Levels and Damage Reduction:**
-
-| SLD Level | % Chance | 1D20 Roll | % of Hits Blocked |
-|:---------:|:--------:|:---------:|:-----------------:|
-| SLD1      | 15%      | > 17      | 25%               |
-| SLD2      | 30%      | > 14      | 30%               |
-| SLD3      | 45%      | > 11      | 35%               |
-| SLD4      | 60%      | > 8       | 40%               |
-| SLD5      | 75%      | > 5       | 45%               |
-| SLD6      | 90%      | > 2       | 50%               |
-
 **Shield Mechanics:**
-- Each bombardment round, roll 1d20 to see if shields activate
-- If roll meets or exceeds threshold, shield blocks percentage of conventional hits
-- Shields reduce hits, they don't prevent them—damage still penetrates to batteries/infrastructure
+- Shields are ALWAYS active (no activation roll)
+- Reduce damage every bombardment round consistently
 - Planet-Breaker hits bypass shields entirely (no reduction)
-- Shields remain active throughout bombardment (don't "degrade" or "get destroyed")
-- Shields only destroyed when Marines land during invasion
+- Shields do NOT degrade or get destroyed by bombardment
+- Shields ARE destroyed when Marines land during invasion (represents marines seizing shield generators on surface)
 
-**Planet-Breaker Advantage:**
+**Strategic Implications:**
 
-Planet-Breaker ships bypass ALL shield levels:
-- Planet-Breaker AS ignores shield reduction completely
-- Mixed fleets: Planet-Breaker AS + (reduced conventional AS) = total hits
-- Expensive (400 PP) but essential for high-shield fortress worlds
-- Strategic siege weapon for heavily defended targets
+High-level shields (SLD 5-6) make conventional bombardment extremely inefficient. Fleets without Planet-Breaker ships may bombard for many rounds with minimal effect, taking heavy casualties from battery return fire.
 
-### 7.5.3 Ground Batteries
+Planet-Breaker ships are late-game stalemate breakers—expensive but essential for cracking fortress worlds with high shields and multiple batteries.
 
-Ground-based defensive installations fire on orbiting ships. Batteries threaten bombarding fleets and invasion forces.
+### 7.7.5 Ground Batteries
+
+Ground-based defensive installations fire on orbiting ships. Batteries threaten bombarding fleets with sustained return fire.
 
 **Ground Battery Mechanics:**
-- Each battery has attack strength
-- Targets orbiting ships randomly
+- Each battery has attack strength (AS) and defense strength (DS)
+- Targets orbiting ships using standard hit application rules
 - Can cripple or destroy bombarding vessels
 - Battery fire continues until batteries destroyed
 - Multiple batteries = sustained defensive fire
 
 **Neutralizing Batteries:**
-- Bombardment hits damage batteries first (before ground forces or infrastructure)
-- Shields reduce conventional hits but don't prevent battery damage
-- Each battery can be crippled (reduced AS) then destroyed
-- All batteries must be destroyed before invasion can proceed
+- Bombardment hits damage batteries first (before infrastructure)
+- Follow standard hit application rules (must cripple all before destroying any)
+- Each battery can be crippled (50% AS) then destroyed
+- All batteries must be destroyed before standard invasion can proceed
 
 **Strategic Considerations:**
-- High battery count = dangerous bombardment
+- High battery count = dangerous bombardment (heavy attacker casualties)
 - Weak bombarding fleet risks losses to battery fire
-- Alternative: Starve colony via blockade instead of bombardment
+- Alternative: Starve colony via blockade instead of bombardment (avoids casualties)
 
-### 7.5.4 Infrastructure Damage
+### 7.7.6 Infrastructure Damage
 
-Excess bombardment hits (after damaging batteries and ground forces) destroy colony infrastructure:
+Excess bombardment hits (after all batteries destroyed) destroy colony infrastructure:
 
 **Infrastructure Damage Effects:**
-- **Production loss**: Each percentage point reduces GDP
-- **Facility destruction**: Spaceports, shipyards can be destroyed
+- **Production loss**: Each IU destroyed reduces colony GDP permanently
+- **Facility destruction**: Spaceports, shipyards can be destroyed if bombardment excessive
 - **Population casualties**: Souls lost to bombardment
-- **Morale impact**: Defender prestige loss, attacker diplomatic penalties
+- **Morale impact**: Defender prestige loss, attacker diplomatic penalties (war crimes)
 
 **Damage Accumulation:**
-- Infrastructure damage percentage increases each bombardment turn
-- 10% damage = 10% production loss
-- 50% damage = colony crippled
-- 100% damage = colony ruins (remains colonized but devastated)
+
+Infrastructure damage is permanent (until repaired):
+- 10 IU destroyed = 10 IU loss from colony total
+- Reduces production capacity proportionally
+- Captured colonies often require extensive rebuilding (PP investment)
 
 **Repair Costs:**
-- Damaged infrastructure requires PP investment to repair
-- Repair time scales with damage percentage
-- Captured colonies often require extensive rebuilding
 
-### 7.5.5 Bombardment Strategy
-
-**Prolonged Siege:**
-- Bombard over multiple turns to systematically destroy defenses
-- Reduces invasion risk by eliminating batteries and shields
-- Expensive in time and fleet commitment
-- Generates diplomatic penalties
-
-**Quick Assault:**
-- Minimal bombardment, immediate invasion
-- Risks heavy invasion casualties
-- Captures infrastructure intact
-- Faster conquest but higher military cost
-
-**Blockade Alternative:**
-- Blockade colony instead of bombardment (GuardPlanet/BlockadePlanet commands)
-- Cuts production 50% without destruction
-- Starves defenders over time
-- Less diplomatic penalty than bombardment
+Damaged infrastructure requires PP investment to repair:
+- Cost: 25% of original build cost per IU
+- Repair time: Immediate (once PP spent)
+- Captured colonies often devastated (50% IU destroyed from invasion + bombardment damage)
 
 ---
 
-## 7.6 Planetary Invasion and Blitz
+## 7.8 Planetary Invasion
 
-Seize enemy colonies by landing ground forces after achieving orbital supremacy. Your marines and armies fight defending ground forces for control of the planet surface.
+Seize enemy colonies by landing ground forces after achieving orbital supremacy. Your marines fight defending ground forces for control of the planet surface.
 
-### 7.6.1 Planetary Invasion
+### 7.8.1 Standard Invasion
 
-Land ground forces to conquer enemy colonies. Invasion requires orbital supremacy, loaded troop transports, and overwhelming ground superiority.
+Land ground forces to conquer enemy colonies. Invasion requires orbital supremacy, cleared ground defenses, and loaded troop transports.
 
 **Invasion Requirements:**
 - Orbital supremacy achieved (won orbital combat)
@@ -748,53 +900,72 @@ Land ground forces to conquer enemy colonies. Invasion requires orbital supremac
 
 **Invasion Process:**
 
-1. **Bombardment Round**
-   - Conduct ONE round of bombardment first (Section 7.5)
-   - Ground batteries must be destroyed before landing
-   - If batteries remain after bombardment round, invasion fails (cannot land)
-   - If all batteries destroyed, proceed to landing
+**Step 1: Marines Land**
+- Transports unload marines (troops committed to battle)
+- **Shields and spaceports immediately destroyed** upon marine landing (marines seize shield generators on surface)
 
-2. **Landing Phase**
-   - Marines land—shields and spaceports immediately destroyed upon landing
-   - Transports unload marines (troops committed to battle)
+**Step 2: Calculate Attack Strength**
 
-3. **Ground Combat Phase**
-   - **Both sides roll 1d10 on Ground Combat Table**
-   - Calculate hits: AS × Ground CER → damage to enemy forces
-   - Apply hits to ground units (cripple, then destroy)
-   - Repeat rounds until one side eliminated
+Attacker AS = Marines total AS (all Marine Divisions)
+Defender AS = Ground Forces total AS (Armies + colonial Marines)
 
-**Ground Combat Table:**
+**Step 3: Calculate Die Roll Modifiers**
 
-| 1d10 Roll | Ground CER Multiplier |
-|-----------|-----------------------|
-| 0-2       | 0.5× (round up)       |
-| 3-6       | 1.0×                  |
-| 7-8       | 1.5× (round up)       |
-| 9         | 2.0×                  |
+Attacker DRM:
+- Morale: ±1 or ±2
 
-**Ground Forces:**
+Defender DRM:
+- **Prepared Defenses: +2 (entrenched colony defenders)**
+- Homeworld: +1 (if defending house homeworld)
+- Morale: ±1 or ±2
 
-**Attackers:**
-- Marines from Troop Transports (1 MD per transport)
-- Each MD: AS 10, DS 10 (from config)
-- Marines fight at full strength
+Total defender advantage: Typically +2 to +3 DRM
 
-**Defenders:**
-- Ground Armies (garrison forces): AS 8, DS 8 each
-- Defending Marines (colony-based): AS 10, DS 10 each
-- Combined ground strength
+**No air superiority bonus** (already achieved by winning orbital combat—prerequisite for invasion).
 
-**Combat Resolution:**
+**Step 4: Roll CER**
 
-Both sides roll each round, exchange fire, until one side eliminated:
-- Units crippled: AS reduced to 50%
-- Crippled units destroyed if all others crippled
-- Battle continues until total elimination
-- **If attackers win**: Colony captured, **50% IU destroyed** by loyal citizens before order restored
-- **If defenders win**: Invasion repelled, attacker marines destroyed
+Both sides: 1d10 + DRM → Ground Combat CRT
 
-### 7.6.2 Planetary Blitz
+Ground Combat CRT (higher effectiveness):
+| Modified Roll | CER  |
+|---------------|------|
+| ≤2            | 0.5× |
+| 3-6           | 1.0× |
+| 7-8           | 1.5× |
+| 9+            | 2.0× |
+
+**Step 5: Calculate Hits**
+
+Attacker hits = Marine AS × Attacker CER (round up)
+Defender hits = Ground Forces AS × Defender CER (round up)
+
+**Step 6: Apply Hits (SIMULTANEOUS)**
+
+Both sides apply hits to ground units:
+- Must cripple all before destroying any
+- Critical Hits (natural 9) bypass this rule
+- Ground combat is brutal—high casualty rates on both sides
+
+**Step 7: Repeat Rounds**
+
+Continue ground combat rounds until:
+- One side eliminated (winner captures/holds colony)
+- Maximum 20 rounds (rare—ground combat usually decisive within few rounds)
+
+**Outcome:**
+
+**If Attackers Win:**
+- Colony captured, ownership transfers to attacker
+- **50% of remaining IU destroyed** by loyal citizens before order restored (sabotage)
+- Surviving attacker marines garrison colony
+
+**If Defenders Win:**
+- Invasion repelled
+- All attacker marines destroyed
+- Colony remains under defender control
+
+### 7.8.2 Planetary Blitz
 
 Conduct rapid combined bombardment + invasion operations. Blitz sacrifices safety for speed—marines land under fire from ground batteries.
 
@@ -802,152 +973,228 @@ Conduct rapid combined bombardment + invasion operations. Blitz sacrifices safet
 - Orbital supremacy achieved
 - Loaded Troop Transports present
 - Blitz command issued to fleet
-- **No requirement for weak defenses**—blitz works against any target (risky against strong defenses)
+- **No requirement for batteries destroyed**—blitz works against any defenses (risky!)
 
 **Blitz Mechanics:**
 
-Blitz combines bombardment and ground combat in compressed sequence:
+**Phase 1: Bombardment Round (Transports Vulnerable)**
 
-1. **Bombardment Round (Transports Vulnerable)**
-   - Conduct ONE round of bombardment (Section 7.5)
-   - **Ground batteries fire at Troop Transports** (included as units in fleet)
-   - Transports can be destroyed before landing marines
-   - No civilian infrastructure targeted (avoid damage to assets)
+Conduct ONE round of bombardment:
+- Fleet bombards batteries/shields
+- **Ground batteries fire at ALL fleet ships** (including Troop Transports!)
+- Transports can be destroyed before landing marines (mission fails)
+- Shields reduce bombardment damage normally
+- No infrastructure targeted (avoid damaging assets to be captured)
 
-2. **Landing Phase (If Transports Survive)**
-   - Marines land immediately (don't wait for batteries eliminated)
-   - **Marines fight at 0.5× AS** (quick insertion penalty, evading batteries)
-   - Shields, spaceports, batteries seized intact if successful
+**Phase 2: Landing Phase (If Transports Survive)**
 
-3. **Ground Combat**
-   - Same Ground Combat Table as invasion (1d10 roll)
-   - Marines at half AS disadvantage
-   - Repeat rounds until one side eliminated
-   - **If attackers win**: All assets seized intact (**0% IU destroyed**)
-   - **If defenders win**: Invasion repelled, attacker marines destroyed
+Marines land immediately (don't wait for batteries eliminated):
+- Marines commit to ground combat
+- **Shields, spaceports, batteries seized intact** if invasion successful
+- Batteries do NOT fire during ground combat (marines are on surface, not in orbit)
 
-**When to Use Blitz:**
+**Phase 3: Ground Combat**
+
+**Step 1: Calculate Attack Strength**
+
+Attacker AS = Marines total AS
+Defender AS = Ground Forces AS + remaining Ground Batteries AS
+
+**Note:** Batteries participate in ground combat during Blitz (not eliminated in bombardment phase). Represents batteries firing on landing zones and marine positions.
+
+**Step 2: Calculate Die Roll Modifiers**
+
+Attacker DRM:
+- Morale: ±1 or ±2
+
+Defender DRM:
+- **Landing Under Fire: +3 (marines landing under battery fire, even more advantageous than prepared defenses)**
+- Homeworld: +1 (if defending house homeworld)
+- Morale: ±1 or ±2
+
+Total defender advantage: Typically +3 to +4 DRM (very dangerous for attacker)
+
+**Step 3: Roll CER**
+
+Both sides: 1d10 + DRM → Ground Combat CRT (same as standard invasion)
+
+**Step 4: Apply Hits and Resolve**
+
+Same as standard invasion, but defender has significant advantage (+3 DRM instead of +2).
+
+**Outcome:**
+
+**If Attackers Win:**
+- Colony captured, ownership transfers
+- **0% IU destroyed** (all assets seized intact!) ← Key Blitz advantage
+- Shields, batteries, spaceports captured functional
+
+**If Defenders Win:**
+- Invasion repelled
+- All attacker marines destroyed
+- Colony remains under defender control
+
+### 7.8.3 Invasion Strategy Comparison
+
+**Standard Invasion:**
 
 **Advantages:**
-- Seizes colony infrastructure intact (no IU loss on victory)
-- Captures shields, batteries, spaceports
-- Faster than methodical bombardment + invasion
-- Good against weak defenses
+- Safer (batteries destroyed before landing)
+- Lower marine casualties (defender +2 DRM instead of +3)
+- More predictable outcome
 
-**Risks:**
-- Transports vulnerable during bombardment round (can be destroyed)
-- Marines fight at half AS (quick insertion penalty)
-- High casualty risk against strong ground batteries
-- Dangerous against heavily fortified colonies (high shields, many batteries, large garrison)
+**Disadvantages:**
+- Slower (requires bombardment rounds first)
+- Infrastructure damaged (50% IU destroyed on capture)
+- Shields/spaceports destroyed (must rebuild)
 
-### 7.6.3 Invasion Strategy
+**Blitz Operation:**
 
-**Overwhelming Force:**
-- Bring 2:1 marine superiority minimum
-- Reduces casualties, ensures victory
-- Expensive but decisive
-
-**Bombardment Preparation:**
-- Destroy shields and batteries before invasion
-- Reduces marine casualties during landing
-- Preserves marine strength for ground combat
-- Takes more time but safer
-
-**Blockade + Starvation:**
-- Blockade colony for multiple turns
-- Production halved, garrison weakens over time
-- Invade after defenders weakened
-- Minimizes military losses, maximizes time cost
-
-**Blitz Expansion:**
-- Use blitz against weak frontier colonies during land grabs
+**Advantages:**
+- Faster (one bombardment round, immediate invasion)
+- Infrastructure intact (0% IU destroyed on capture!)
+- Shields/batteries/spaceports captured functional
 - Speed captures territory before rivals
-- Accept higher casualties for strategic advantage
-- Effective early-game expansion tool
+
+**Disadvantages:**
+- Riskier (transports vulnerable in bombardment phase)
+- Higher marine casualties (defender +3 DRM)
+- Dangerous against heavily defended colonies (high shields, many batteries, large garrison)
+
+**When to Use Each:**
+
+Standard Invasion:
+- Heavily fortified colonies (high shields, many batteries)
+- When you have time (no rival rushing same target)
+- When you want to minimize military losses
+- When infrastructure damage acceptable
+
+Blitz:
+- Weak frontier colonies (low shields, few batteries, small garrison)
+- Land grab races (beat rivals to capture)
+- High-value infrastructure (want to capture intact)
+- Accept higher casualties for strategic speed
 
 ---
 
-## 7.7 Combat Examples
+## 7.9 Multi-House Combat
 
-Practical scenarios demonstrating combat theater progression and strategic decision-making.
+When three or more houses have fleets in the same system, complex multi-faction battles can occur. Combat resolves based on diplomatic status and force allocation.
 
-### 7.7.1 Example: Standard Planetary Invasion
+### 7.9.1 Diplomatic Status and Hostility
 
-**Scenario**: House Atreides invades House Harkonnen colony at Giedi Prime.
+Combat only occurs between houses with hostile diplomatic relationships:
 
-**Turn 1 - Space Combat:**
-- Atreides fleet (3 Battleships, 6 Destroyers) enters Giedi Prime
-- Harkonnen mobile defender (2 Cruisers, 4 Frigates) intercepts
-- Space combat: Atreides wins (superior firepower), 1 Battleship crippled
-- Harkonnen fleet retreats to adjacent system
-- **Result**: Atreides achieves space superiority, advances to orbital combat
+**Enemy Status:**
+- Always hostile (automatic combat)
+- Most common in active wars
 
-**Turn 2 - Orbital Combat:**
-- Atreides surviving fleet (2 Battleships, 1 crippled, 6 Destroyers) engages orbital defenses
-- Harkonnen orbital defense: 1 Guard fleet (Light Cruiser + 3 Destroyers), 2 Starbases, 5 unassigned squadrons
-- Orbital combat: Atreides wins (overwhelming numbers), 2 Destroyers destroyed
-- Harkonnen starbases destroyed, guard fleet eliminated
-- **Result**: Atreides achieves orbital supremacy, proceeds to bombardment
+**Hostile Status:**
+- Hostile if fleets have provocative commands (Invade, Bombard, Blockade) in your controlled system
+- Hostile if already engaged in combat
+- Otherwise neutral (no combat)
 
-**Turn 3-5 - Bombardment:**
-- Atreides bombards SLD-4 shield (4 turns to destroy)
-- Ground batteries fire back, cripple 1 Destroyer
-- Turn 5: Shield destroyed, batteries neutralized
-- **Result**: Planet defenses eliminated, ready for invasion
+**Neutral Status:**
+- Hostile only if fleets have explicitly threatening commands (Invade, Bombard, Blitz) in your controlled system
+- Peaceful coexistence otherwise (fleets can be in same system without fighting)
 
-**Turn 6 - Invasion:**
-- Atreides lands 6 Marine Divisions
-- Harkonnen garrison: 3 Armies + 2 Marine Divisions
-- Ground combat: Atreides 6 MD vs. Harkonnen 5 ground units
-- Atreides wins (slight superiority), 2 MD lost
-- **Result**: Colony captured, ownership transfers to Atreides
+### 7.9.2 Multi-Faction Battle Resolution
 
-**Total Cost**: 6 turns, 1 Battleship crippled, 2 Destroyers destroyed, 2 Marine Divisions lost, 1 Destroyer crippled by batteries
+When 3+ houses have hostile relationships in same system:
 
-### 7.7.2 Example: Blitz Operation
+**Step 1: Identify Hostile Pairs**
 
-**Scenario**: House Corrino blitzes weakly defended rebel colony.
+Determine which houses fight which:
+```
+Example:
+  House A: Enemy with House B, Neutral with House C
+  House B: Enemy with House A, Hostile (provocative) with House C
+  House C: Neutral with House A, Hostile with House B
 
-**Turn 1 - Space Combat:**
-- Corrino fleet (1 Battle Cruiser, 4 Destroyers, 2 Troop Transports) enters system
-- No mobile defenders present
-- **Result**: Automatic space superiority, proceed to orbital combat
+Result: Two separate battles
+  Battle 1: A vs B
+  Battle 2: B vs C (House B fights on two fronts!)
+```
 
-**Turn 1 - Orbital Combat (Same Turn):**
-- Rebel defense: 1 unassigned squadron (Light Cruiser), no starbases
-- Corrino wins easily, Light Cruiser destroyed
-- **Result**: Orbital supremacy achieved
+**Step 2: Allocate Forces**
 
-**Turn 1 - Blitz Operation (Same Turn):**
-- Corrino issues Blitz command
-- Fleet bombards while transports land simultaneously
-- Minimal shield (SLD-1), few batteries
-- 2 Marine Divisions land and engage
-- Rebel garrison: 1 Army
-- Blitz successful: Colony captured
-- **Result**: Colony captured in single turn
+Houses fighting multiple enemies must divide forces:
 
-**Total Cost**: 1 turn, no ship losses, minor marine casualties
+**Proportional Allocation (Automatic):**
 
-**Comparison**: Standard invasion would take 4-5 turns (bombardment + invasion). Blitz sacrificed methodical approach for speed, accepting slightly higher marine casualties.
+House allocates AS proportionally based on enemy strength:
+```
+House H: 100 AS total
+  Faces: House A (80 AS) and House C (40 AS)
+  Total enemy AS: 120
 
-### 7.7.3 Example: Failed Invasion
+Allocation:
+  vs A: 100 × (80/120) = 67 AS
+  vs C: 100 × (40/120) = 33 AS
+```
 
-**Scenario**: House Ordos attempts invasion of heavily fortified Ix.
+Each fleet commits to one battle based on proportional needs. Fleets remain organizationally distinct (check own ROE independently).
 
-**Turn 1 - Space Combat:**
-- Ordos fleet (2 Dreadnoughts, 4 Cruisers) enters Ix
-- Ix mobile defense (3 Battle Cruisers, 8 Destroyers, ELI scout)
-- ELI scout detects Ordos Raider (no ambush bonus)
-- Space combat: Ordos loses (outnumbered, no ambush advantage)
-- 1 Dreadnought destroyed, 2 Cruisers crippled
-- **Result**: Ordos fleet retreats to friendly system, invasion fails before reaching orbit
+**Step 3: Resolve Battles Independently**
 
-**Lessons**:
-- Space superiority crucial—cannot skip theater
-- ELI detection negated Raider ambush advantage
-- Ordos should have brought overwhelming force or reconnoitered first
+Each hostile pair resolves combat simultaneously but independently:
+- Battle 1: A (80 AS) vs H (67 AS)
+- Battle 2: C (40 AS) vs H (33 AS)
+
+House H takes casualties from BOTH battles (same ships can only fight in one battle).
+
+**Step 4: Apply Casualties and Determine Winners**
+
+Each battle determines winner independently:
+- Battle 1 winner advances to orbital (if attacking) or repels (if defending)
+- Battle 2 winner advances or repels independently
+- House fighting multiple battles may win one and lose another
+
+### 7.9.3 Retreat Priority in Multi-House Battles
+
+When 3+ houses attempt to retreat simultaneously from same battle:
+
+**Retreat Order:**
+1. Weakest retreats first (lowest total AS)
+2. Ties broken by house ID (alphanumeric)
+3. After each retreat, remaining houses re-check ROE against new enemy strength
+4. Re-evaluation may cause house to cancel retreat and continue fighting
+5. Continue until one retreats or all commit to fighting
+
+Example:
+```
+Round 3 ends:
+  House A: 50 AS, ROE 6 (threshold 1.0)
+  House B: 60 AS, ROE 6 (threshold 1.0)
+  House C: 100 AS, ROE 6 (threshold 1.0)
+
+House A checks: 50 / (60+100) = 0.31 < 1.0 → Retreat!
+House A (weakest) retreats first.
+
+Remaining:
+  House B: 60 AS
+  House C: 100 AS
+
+House B checks: 60 / 100 = 0.6 < 1.0 → Retreat!
+House B retreats.
+
+House C wins by attrition.
+```
 
 ---
 
-**End of Section 7**
+## 7.10 Combat Example
+
+**Scenario**: House Valerian (CLK 3, ELI 2) raids House Stratos mining colony defended by a starbase.
+
+**Space Combat**: Valerian Raiders (45 AS) + Destroyers (40 AS) vs Stratos Cruisers (60 AS). Detection: Valerian wins by 4 → Surprise (+3 DRM). Valerian DRM +4, Stratos DRM +1 (starbase sensors). Both roll CER 1.0× and 0.5×. Valerian inflicts 85 hits (cripples both cruisers), Stratos inflicts 30 hits (cripples 2 raiders). Stratos retreats (0.39:1 ratio below ROE 6 threshold).
+
+**Orbital Combat**: Valerian engages Stratos starbases (AS 80, DS 100) + guard cruisers. Starbase provides +1 DRM. Critical hit from defender destroys multiple Valerian destroyers despite undamaged ships present. Valerian wins at heavy cost, proceeds to bombardment.
+
+**Bombardment**: Valerian fleet (150 AS) vs ground batteries (60 AS) + SLD 5 shields (45% reduction). Shields reduce 150 hits to 83 effective hits. Two rounds required to destroy batteries. Excess 29 hits damage infrastructure.
+
+**Invasion**: Marines (40 AS) land. Defender gets +2 Prepared Defenses DRM. Ground Combat CRT produces 1.5× and 1.0× CER. Marines eliminate ground forces with minimal casualties. Colony captured with 50% IU destroyed (invasion penalty).
+
+---
+
+**End of Section 7: Combat**

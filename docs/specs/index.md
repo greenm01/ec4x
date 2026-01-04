@@ -22,7 +22,7 @@ See [Section 1.0](01-gameplay.md#the-dynatoi) for complete house descriptions an
 
 Turns cycle as soon as all players complete their commands, generally within 24 hours of real time. EC4X is intentionally slow burn—strategic empire building, not tactical skirmishing.
 
-**The game automates tedious micromanagement.** Squadrons form automatically. Fleets organize themselves. Construction queues process without constant attention. You command at the strategic level—issuing fleet commands, setting research priorities, allocating resources. The game handles tactical execution.
+**The game automates tedious micromanagement.** Ships join fleets automatically. Fleet organization handles itself. Construction queues process without constant attention. You command at the strategic level—issuing fleet commands, setting research priorities, allocating resources. The game handles tactical execution.
 
 EC4X runs on your machine or across the Nostr network. For tabletop sessions, run the game server on localhost—players connect from their laptops around the table. For remote play between friends, the server operates over Nostr protocol, enabling asynchronous turn submission with cryptographic verification. The game server acts as moderator, processing turns automatically and maintaining fog of war. No human moderator required—the software handles everything.
 
@@ -63,7 +63,7 @@ The complete EC4X game specification is organized into the following documents:
 
 ### Game Systems
 
-- **[Military Assets](02-assets.md)** - Ships, squadrons, fleets, C2 Pool, and special units
+- **[Military Assets](02-assets.md)** - Ships, fleets, C2 Pool, and special units
 - **[Economy](03-economy.md)** - Economics system
 - **[Research & Development](04-research_development.md)** - R&D systems
 - **[Construction](05-construction.md)** - Construction systems

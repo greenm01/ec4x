@@ -190,49 +190,55 @@ For STL capacity progression, see [Section 4.9](04-research_development.md#49-st
 
 Your House's military forces are organized into a clear command hierarchy. Understanding this structure is critical to effective strategic management.
 
-#### 2.3.3.1 Squadrons (Tactical Level)
+#### 2.3.3.1 Fleets (Strategic Level)
 
-The smallest tactical unit in your navy is the **Squadron**.
-- Each squadron is commanded by a single **flagship**.
-- The flagship's **Command Rating (CR)** determines the maximum size of the squadron.
-- Other ships in the squadron have a **Command Cost (CC)**. The sum of all CCs in a squadron (excluding the flagship) cannot exceed the flagship's CR.
-- Squadrons fight and move as a single entity.
-- A squadron can consist of a solo flagship.
-
-Improving the size and capability of your squadrons is done by researching **Flagship Command (FC)** technology, which increases the CR of your flagships. See [Section 4.10](04-research_development.md#410-flagship-command-fc).
-
-#### 2.3.3.2 Fleets (Strategic Level)
-
-Squadrons are grouped together into **Fleets**. A Fleet is the primary strategic unit you will manage on the starmap.
-- A Fleet can contain any number of squadrons.
+Ships are organized into **Fleets**. A Fleet is the primary strategic unit you will manage on the starmap.
+- A Fleet can contain ships up to its Fleet Command (FC) tech limit.
 - You can create, name, merge, and split fleets at any time in a non-hostile system.
 - Fleets are the units that receive movement and operational orders.
+- Individual ships within a fleet fight and move as a unified force.
 
-#### 2.3.3.3 Command & Control (C2) Pool
+**Fleet Count Limits:**
 
-While you can organize your squadrons into as many fleets as you wish, the total size of your navy is governed by your **Command & Control (C2) Pool**. This is a soft cap representing your empire's ability to command and support its military assets.
+Your total number of **combat fleets** is limited by Strategic Command (SC) technology. However, auxiliary-only fleets are exempt:
+
+- **Combat fleets** (containing any combat ships): Count against SC fleet limit
+- **Scout fleets** (scouts only): Do not count against SC fleet limit
+- **ETAC fleets** (ETACs only): Do not count against SC fleet limit
+- **Transport fleets** (troop transports only): Do not count against SC fleet limit
+
+This ensures exploration and colonization operations are never bottlenecked by military command capacity. See [Section 4.11](04-research_development.md#411-strategic-command-sc) for SC tech progression.
+
+#### 2.3.3.2 Command & Control (C2) Pool
+
+The total size of your navy is governed by your **Command & Control (C2) Pool**. This is a soft cap representing your empire's ability to command and support its military assets.
 
 - Every combat ship has a **Command Cost (CC)**.
 - Your C2 Pool is the total CC your House can support without penalty.
-- The C2 Pool is determined by your industrial might and your investment in command technology.
+- The C2 Pool is determined by your industrial capacity.
 
 **C2 Pool Formula:**
-`Total C2 Pool = (Total House IU * 0.5) + [C2 Pool Bonus from SC Tech]`
+```
+Total C2 Pool = Total House IU × 0.3
+```
 
 - **Auxiliary ships** (Scouts, ETACs, Transports) and **Facilities** (Starbases) do not have a CC and do not count against your C2 Pool.
+- **Fleet count** is governed separately by Strategic Command (SC) technology, which controls how many fleets you can command simultaneously.
 
-#### 2.3.3.4 Logistical Strain (Exceeding the C2 Pool)
+#### 2.3.3.3 Logistical Strain (Exceeding the C2 Pool)
 
 The C2 Pool is a soft limit. If the total CC of all your active ships exceeds your C2 Pool, your empire incurs a direct financial penalty each turn called **Logistical Strain**.
 
 **Logistical Strain Formula:**
-`Cost per Turn = (Total Fleet CC - C2 Pool) × 0.5`
+```
+Cost per Turn = (Total Fleet CC - C2 Pool) × 0.5
+```
 
 This flat PP cost is deducted from your treasury each turn. It represents the mounting inefficiency of an over-extended command structure. A player who loses industrial capacity (and thus C2 Pool) will face a painful but predictable economic challenge they can solve through strategic action.
 
-For the technology to increase your C2 Pool, see **Strategic Command (SC)** in [Section 4.11](04-research_development.md#411-strategic-command-sc).
+The C2 Pool scales purely with industrial capacity. To increase your total naval capacity, invest in industrial growth or research **Fleet Command (FC)** and **Strategic Command (SC)** technologies to optimize fleet organization. See [Section 4.10](04-research_development.md#410-fleet-command-fc) and [Section 4.11](04-research_development.md#411-strategic-command-sc).
 
-#### 2.3.3.5 Ship Status Management
+#### 2.3.3.4 Ship Status Management
 
 To effectively manage your C2 Pool and maintenance costs, you can assign different operational statuses to your fleets.
 
@@ -260,25 +266,25 @@ To effectively manage your C2 Pool and maintenance costs, you can assign differe
     - Reactivating a mothballed fleet takes **3 full turns**.
 - **Strategic Use:** For long-term storage of valuable but currently unneeded assets, completely freeing up their C2 Pool allocation for a minimal maintenance fee.
 
-#### 2.3.3.6 Task Force
+#### 2.3.3.5 Task Force
 
-A Task Force is a temporary grouping of squadrons from one or more fleets, organized for a specific combat engagement. After hostilities cease, the task force is automatically disbanded and surviving squadrons return to their originally assigned fleets.
+A Task Force is a temporary grouping of ships from one or more fleets, organized for a specific combat engagement. After hostilities cease, the task force is automatically disbanded and surviving ships return to their originally assigned fleets.
 
 ## 2.4 Special Units
 
-### 2.4.1 Fighter Squadrons & Carriers
+### 2.4.1 Fighters & Carriers
 
-Fighters are small ships you commission in Fighter Squadrons (FS) that freely patrol a system. They're based planet-side and never retreat from combat. Fighters are glass cannons—cheap to build but pack a punch.
+Fighters are small combat ships assigned to colonies or carriers for defense. They're planet-based defensive assets that never retreat from combat. Fighters are glass cannons—cheap to build but pack a punch.
 
-**Construction Cost**: 5 PP per squadron  
+**Construction Cost**: 5 PP per Fighter
 **Maintenance Cost**: Zero
 
 **Capacity Limits**:
 
-Fighter Squadron capacity per colony is determined by industrial capacity and Fighter Doctrine (FD) research:
+Fighter capacity per colony is determined by industrial capacity and Fighter Doctrine (FD) research:
 
 ```
-Max FS per Colony = floor(IU / 100) × FD_MULTIPLIER
+Max Fighters per Colony = floor(IU / 100) × FD_MULTIPLIER
 ```
 
 Where:
@@ -287,38 +293,38 @@ Where:
 
 **No Infrastructure Required**: Fighters are built planet-side via distributed manufacturing. No spaceports, shipyards, or starbases required.
 
-**Enforcement**: Colonies exceeding capacity receive 2-turn grace period, then oldest squadrons auto-disband.
+**Enforcement**: Colonies exceeding capacity receive 2-turn grace period, then oldest Fighters auto-disband.
 
-For FD research progression and capacity multipliers, see [Section 4.12](04-research_development.md#412-fighter-doctrine-fd). For economic and strategic considerations, see [Section 3.6](03-economy.md#36-fighter-squadron-economics).
+For FD research progression and capacity multipliers, see [Section 4.12](04-research_development.md#412-fighter-doctrine-fd). For economic and strategic considerations, see [Section 3.6](03-economy.md#36-fighter-economics).
 
 **Carrier Operations**:
 
-Fighter Squadrons can be loaded onto carriers for mobility:
+Fighters can be loaded onto carriers for mobility:
 
 **Standard Carrier (CV)**:
 
-- ACO I: 3 FS capacity
-- ACO II: 4 FS capacity
-- ACO III: 5 FS capacity
+- ACO I: 3 Fighters capacity
+- ACO II: 4 Fighters capacity
+- ACO III: 5 Fighters capacity
 
 **Super Carrier (CX)**:
 
-- ACO I: 5 FS capacity
-- ACO II: 6 FS capacity
-- ACO III: 8 FS capacity
+- ACO I: 5 Fighters capacity
+- ACO II: 6 Fighters capacity
+- ACO III: 8 Fighters capacity
 
 For Advanced Carrier Operations (ACO) research, see [Section 4.13](04-research_development.md#413-advanced-carrier-operations-aco).
 
 **Combat Mechanics**:
 
-Fighter squadrons based at your colony automatically participate in orbital defense (see [Section 7.4](07-combat.md#74-orbital-combat)). Carrier-based fighters participate in space combat with their carrier's task force.
+Colony-assigned Fighters automatically participate in orbital defense (see [Section 7.6](07-combat.md#76-orbital-combat)). Carrier-based Fighters participate in space combat with their carrier's fleet.
 
-Each FS contributes:
+Each Fighter contributes:
 
 - **Attack Strength (AS)**: 3
 - **Defense Strength (DS)**: 1
 
-Fighters are fragile but cost-effective. A mature colony can field dozens of squadrons, making direct assault prohibitively expensive.
+Fighters are fragile but cost-effective. A mature colony can field dozens of Fighters, making direct assault prohibitively expensive.
 
 ### 2.4.2 Scouts
 
@@ -410,7 +416,7 @@ The CLK vs. ELI technology race is central to late-game warfare.
 
 Starbases (SB) are powerful orbital fortresses that facilitate planetary defense and economic development via ground weather modification and advanced telecommunications.
 
-**Architecture**: Starbases are **facilities** (not ships). They are built and stored at colonies, never assigned to fleets or squadrons. In combat, they participate as facility units with their own combat statistics.
+**Architecture**: Starbases are **facilities** (not ships). They are built and stored at colonies, never assigned to fleets. In combat, they participate as facility units with their own combat statistics.
 
 **Construction**:
 
@@ -436,7 +442,6 @@ Starbases have fixed combat statistics that scale with Weapons (WEP) technology:
 - **Attack Strength (AS)**: 45 (base) + WEP scaling (10% per level)
 - **Defense Strength (DS)**: 50 (base) + WEP scaling (10% per level)
 - **Command Cost (CC)**: 0 (facilities don't consume command)
-- **Command Rating (CR)**: 0 (facilities can't lead squadrons)
 
 **Combat Participation**:
 
@@ -447,7 +452,7 @@ Starbases participate in detection for ALL combat phases occurring in their syst
 
 **Rationale**: Advanced sensors provide system-wide detection support; physical weapons only engage threats to your colony itself.
 
-**Combat Architecture**: Starbases participate in combat as `CombatFacility` units (parallel to squadron-based ships), enabling future expansion of defensive facilities (ground batteries as combat units, orbital defense platforms, etc.).
+**Combat Architecture**: Starbases participate in combat as `CombatFacility` units (parallel to fleet-based ships), enabling future expansion of defensive facilities (ground batteries as combat units, orbital defense platforms, etc.).
 
 **Economic Benefits**:
 

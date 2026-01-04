@@ -246,9 +246,9 @@ If you lose all your colonies but retain fleets with loaded marine divisions, yo
 
 **Example Last-Stand Scenario:**
 
-House Atreides controls 15 systems. House Harkonnen launches a massive offensive and conquers all 15 colonies in a single turn. However, three Atreides troop transports carrying marine divisions survive the onslaught in deep space.
+House Valerian controls 15 systems. House Stratos launches a massive offensive and conquers all 15 colonies in a single turn. However, three Valerian troop transports carrying marine divisions survive the onslaught in deep space.
 
-**Result:** House Atreides is NOT eliminated. On the next turn, they can attempt invasion/blitz operations with their surviving marines. If they successfully recapture even one colony, they're back in the game. If all marines are killed in failed invasions, THEN they're eliminated.
+**Result:** House Valerian is NOT eliminated. On the next turn, they can attempt invasion/blitz operations with their surviving marines. If they successfully recapture even one colony, they're back in the game. If all marines are killed in failed invasions, THEN they're eliminated.
 
 This creates dramatic comeback opportunities and rewards players who maintain mobile invasion forces even when losing territory.
 
@@ -287,7 +287,7 @@ When your fleets encounter forces from different houses in the same system, inte
 
 Whenever your friendly fleets are present in the same system as foreign forces, you receive **Visual quality** intelligence reports containing:
 
-- Fleet composition (ship types and squadron sizes)
+- Fleet composition (ship types and fleet sizes)
 - Number of spacelift ships (transport count)
 - Standing commands (Patrol, Guard, Blockade, etc.)
 - Fleet location (current system)

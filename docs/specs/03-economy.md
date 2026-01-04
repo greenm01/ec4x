@@ -235,12 +235,12 @@ Transfer cost is based on the destination planet's habitability class:
 | Destination Colony Blockaded | Rerouted to nearest friendly colony |
 | Destination Colony Collapsed | Rerouted to nearest friendly colony |
 
-## 3.6 Fighter Squadron Economics
+## 3.6 Fighter Economics
 
-Fighter Squadron (FS) capacity is determined by colony industrial capacity and House technology:
+Fighter capacity is determined by colony industrial capacity and House technology:
 
 ```
-Max FS per Colony = floor(IU / 100) × FD_MULTIPLIER
+Max Fighters per Colony = floor(IU / 100) × FD_MULTIPLIER
 ```
 
 Where:
@@ -250,23 +250,23 @@ Where:
 
 **No Infrastructure Required**: Fighters are built planet-side via distributed manufacturing. No spaceports, shipyards, or starbases required.
 
-**Capacity Enforcement**: Colonies exceeding capacity receive 2-turn grace period, then oldest squadrons auto-disband with no salvage value.
+**Capacity Enforcement**: Colonies exceeding capacity receive 2-turn grace period, then oldest Fighters auto-disband with no salvage value.
 
 **Construction Cost:**
 
-Each Fighter Squadron costs **5 PP** to commission.
+Each Fighter costs **5 PP** to commission.
 
 **Maintenance:**
 
-Fighter Squadrons have zero ongoing maintenance cost. Once built, they're free to operate.
+Fighters have zero ongoing maintenance cost. Once built, they're free to operate.
 
 **Carriers:**
 
-Fighter Squadrons can be loaded onto carriers for mobility. Carrier capacity depends on carrier type and Advanced Carrier Operations (ACO) technology. See [Section 2.4.1](02-assets.md#241-fighter-squadrons--carriers) for carrier loading mechanics and [Section 4.13](04-research_development.md#413-advanced-carrier-operations-aco) for ACO research.
+Fighters can be loaded onto carriers for mobility. Carrier capacity depends on carrier type and Advanced Carrier Operations (ACO) technology. See [Section 2.4.1](02-assets.md#241-fighters--carriers) for carrier loading mechanics and [Section 4.13](04-research_development.md#413-advanced-carrier-operations-aco) for ACO research.
 
 **Strategic Considerations:**
 
-Fighter Squadrons are cost-effective early-game defenders and remain relevant throughout the campaign. Large mature colonies can field dozens of squadrons, creating formidable defensive positions. Industrial capacity (IU) determines your maximum fighter complement—colonies with high IU investment can support massive fighter wings, while underdeveloped colonies are limited to token forces.
+Fighters are cost-effective early-game defenders and remain relevant throughout the campaign. Large mature colonies can field dozens of Fighters, creating formidable defensive positions. Industrial capacity (IU) determines your maximum fighter complement—colonies with high IU investment can support massive fighter wings, while underdeveloped colonies are limited to token forces.
 
 ## 3.7 Facility Construction Economics
 

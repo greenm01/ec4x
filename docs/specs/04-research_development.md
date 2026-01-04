@@ -17,9 +17,9 @@ These are checked at runtime from `house.techTree.levels` and apply to all appli
 | CLK  | Cloaking Tech              | SRP     | Cloaking effectiveness for Raiders             | Runtime      |
 | ACO  | Advanced Carrier Ops       | TRP     | Carrier capacity (CV/CX hangar size)           | Runtime      |
 | STL  | Strategic Lift             | SRP     | Transport capacity (ETAC/TT carry limit)       | Runtime      |
-| FC   | Flagship Command           | TRP     | Command Rating bonus for capital ships         | Runtime      |
-| SC   | Strategic Command          | TRP     | C2 Pool bonus for fleet capacity               | Runtime      |
-| FD   | Fighter Doctrine           | TRP     | Fighter squadron capacity multiplier           | Runtime      |
+| FC   | Fleet Command              | TRP     | Maximum fleet size (ships per fleet)           | Runtime      |
+| SC   | Strategic Command          | TRP     | C2 Pool bonus for total navy capacity          | Runtime      |
+| FD   | Fighter Doctrine           | TRP     | Fighter capacity multiplier per colony         | Runtime      |
 | EL   | Economic Level             | ERP     | Production multiplier (all colonies)           | Runtime      |
 | SL   | Science Level              | ERP+SRP | Gates tech research                            | Build-time   |
 | TER  | Terraforming               | SRP     | Enables planet upgrades                        | Build-time   |
@@ -451,88 +451,99 @@ STL improvements enable larger invasion forces. A Transport at STL V carries 5 M
 
 STL is an economic multiplier for expansion-focused strategies. If you pursue aggressive colonization, early STL investment benefits you enormously, while defensive Houses can delay STL research indefinitely. However, STL becomes critical during peer conflicts—Houses that neglect STL face logistical disadvantages when reinforcing distant colonies or conducting invasions across extended jump lane networks.
 
-## 4.10 Flagship Command (FC)
+## 4.10 Fleet Command (FC)
 
-Flagship Command improves the tactical doctrine and command systems used by your capital ship officers. Researching `FC` increases the **Command Rating (CR)** of your flagships, allowing them to lead larger and more powerful squadrons.
+Fleet Command improves the tactical doctrine and command systems used by your fleet admirals. Researching `FC` increases your **maximum ships per fleet**, allowing you to concentrate larger forces in a single tactical formation.
 
 **Research Progression:**
 
 <!-- FC_TABLE_REVISED_START -->
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | **CR Increase** |
-|:----------:| ------------- |:--------:|:-----------:|:---------------:|
-| FC I       | None          | N/A      | 1           | Base CR         |
-| FC II      | FC I          | 12       | 2           | +1 CR           |
-| FC III     | FC II         | 15       | 3           | +1 CR           |
-| FC IV      | FC III        | 20       | 4           | +2 CR           |
-| FC V       | FC V          | 25       | 6           | +2 CR           |
-| FC VI      | FC IV         | 32       | 8           | +3 CR           |
+| Tech Level | Prerequisites | TRP Cost | SL Required | **Max Ships Per Fleet** |
+|:----------:| ------------- |:--------:|:-----------:|:-----------------------:|
+| FC I       | None          | N/A      | 1           | 10 ships                |
+| FC II      | FC I          | 12       | 2           | 14 ships                |
+| FC III     | FC II         | 15       | 3           | 18 ships                |
+| FC IV      | FC III        | 20       | 4           | 22 ships                |
+| FC V       | FC IV         | 25       | 6           | 26 ships                |
+| FC VI      | FC V          | 32       | 8           | 30 ships                |
 
-*Source: config/tech.toml [flagship_command] section*
+*Source: config/tech.toml [fleet_command] section*
 
 <!-- FC_TABLE_REVISED_END -->
 
 **Application:**
 
-FC bonuses apply to the base Command Rating of capital ship flagships:
-
-```
-Effective CR = Base CR + FC Bonus
-```
-
-Example: A Battleship (BB) has Base CR 10. At FC III (+1 CR total), Effective CR = 10 + 1 = 11.
-
-Higher CR allows flagships to command more ships within their squadron, as each ship consumes Command Cost (CC). For squadron composition rules, see [Section 2.3.3.1](02-assets.md#2331-squadrons-tactical-level).
+FC determines the maximum number of ships that can be assigned to a single fleet. Fleets exceeding this limit cannot accept additional ships until capacity becomes available.
 
 **Immediate Application:**
 
-FC bonuses are house-level tech that applies automatically to all capital ships. The moment FC research completes, all capital ships can immediately reorganize squadrons to take advantage of increased CR. No ship modifications needed—it's a pure tactical doctrine upgrade.
+FC bonuses are house-level tech that applies automatically to all fleets. The moment FC research completes, your fleets can immediately accept additional ships up to the new capacity limit. Ships beyond the limit remain unassigned or in separate fleets.
 
 **Strategic Considerations:**
 
-FC research enables squadron consolidation, reducing administrative overhead and improving tactical flexibility. At FC VI, you can field fewer, larger squadrons instead of many small squadrons, simplifying fleet management during complex operations. However, larger squadrons become more vulnerable to focused fire—losing a high-CR flagship potentially scatters many ships, creating organizational chaos. This tech is a direct trade-off with **Strategic Command (SC)**, which allows for more fleets rather than larger squadrons.
+FC research enables tactical concentration, allowing you to field increasingly powerful battle fleets. At FC VI, you can mass 30 ships into a single overwhelming strike force instead of dividing your strength across multiple smaller formations. However, larger fleets are easier to detect and become high-value targets—losing an entire concentrated fleet can cripple your strategic position. This tech complements **Strategic Command (SC)**, which increases the total number of fleets you can command simultaneously.
 
 ## 4.11 Strategic Command (SC)
 
-Strategic Command represents your House's investment in its high-level naval staff, interstellar communication networks, and logistical infrastructure. Researching `SC` increases your **C2 Pool**, allowing you to field a larger total navy without suffering the "Logistical Strain" financial penalty.
+Strategic Command represents your House's investment in its high-level naval staff, interstellar communication networks, and command infrastructure. Researching `SC` increases your **maximum number of fleets**, allowing you to project power across multiple fronts simultaneously.
 
 **Research Progression:**
 
 <!-- SC_TABLE_NEW_START -->
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | **C2 Pool Bonus** |
-|:----------:| ------------- |:--------:|:-----------:|:-----------------:|
-| SC I       | None          | 15       | 2           | +50               |
-| SC II      | SC I          | 18       | 3           | +60               |
-| SC III     | SC II         | 22       | 5           | +75               |
-| SC IV      | SC III        | 28       | 7           | +90               |
-| SC V       | SC IV         | 36       | 9           | +125              |
+| Tech Level | Prerequisites | TRP Cost | SL Required | **Max Fleets (Small)** | **Max Fleets (Medium)** | **Max Fleets (Large)** |
+|:----------:| ------------- |:--------:|:-----------:|:----------------------:|:-----------------------:|:----------------------:|
+| SC I       | None          | N/A      | 1           | 10                     | 10                      | 10                     |
+| SC II      | SC I          | 15       | 2           | 12                     | 13                      | 14                     |
+| SC III     | SC II         | 18       | 3           | 14                     | 17                      | 19                     |
+| SC IV      | SC III        | 22       | 5           | 16                     | 21                      | 25                     |
+| SC V       | SC IV         | 28       | 7           | 18                     | 25                      | 31                     |
+| SC VI      | SC V          | 36       | 9           | 20                     | 28                      | 36                     |
 
-*Source: config/tech.toml [strategic_command] section (new)*
+*Source: config/tech.toml [strategic_command] section*
+
+**Map Size Classifications:**
+- **Small Maps**: 8-10 systems per player
+- **Medium Maps**: 15-20 systems per player
+- **Large Maps**: 30+ systems per player
 
 <!-- SC_TABLE_NEW_END -->
 
 **Application:**
 
-SC research provides a flat bonus to your House's C2 Pool, which governs the total Command Cost (CC) of all ships you can field before incurring penalties.
+SC determines the maximum number of **combat fleets** your House can command. Fleet count limits scale dynamically based on map size, as larger maps require more fleets to control territory effectively.
 
+**Auxiliary Fleets (Exempt from SC Limits):**
+- **Scout fleets** (scouts-only) do not count against SC fleet limits
+- **ETAC fleets** (ETACs-only) do not count against SC fleet limits
+- **Transport fleets** (troop transports-only) do not count against SC fleet limits
+- **Mixed fleets** (containing any combat ships) count as combat fleets and apply to SC limits
+
+**Dynamic Scaling:**
+
+The SC VI fleet limit uses logarithmic scaling based on systems per player:
 ```
-Total C2 Pool = (Total House IU * 0.5) + SC Bonus
+SC VI Max Fleets = 10 + floor(log2(systems_per_player / 8))
 ```
 
-For the full explanation of the C2 Pool and the Logistical Strain penalty, see [Section 2.3.3.3](02-assets.md#2333-command--control-c2-pool).
+This ensures strategic complexity scales appropriately with map size without overwhelming micromanagement.
 
 **Immediate Application:**
 
-SC is a house-level tech that applies at runtime. The moment research completes, your C2 Pool is immediately increased, potentially reducing or eliminating any Logistical Strain penalty you are paying.
+SC is a house-level tech that applies at runtime. The moment research completes, you can immediately create additional fleets up to the new limit. Fleets beyond the limit cannot be created until capacity becomes available.
 
 **Strategic Considerations:**
 
-SC research is essential for houses that wish to project power across a wide area with numerous fleets. It allows you to expand the sheer size of your navy, enabling multi-front wars, extensive patrol networks, and large-scale exploration and colonization efforts. This technology is a direct trade-off with **Flagship Command (FC)**, which allows for larger, denser squadrons rather than a greater number of fleets. A balanced approach between `SC`, `FC`, `WEP`, and `CST` is the mark of a master strategist.
+SC research is essential for houses pursuing multi-front military strategies. Higher SC enables simultaneous offensive campaigns, defensive patrols, and multi-theater operations without consolidating forces. At SC VI on large maps, you can command 36 separate combat fleets—enabling true strategic depth across vast territories. However, more fleets mean more micromanagement.
+
+Auxiliary fleets (scouts, ETACs, transports) operate outside SC limits, ensuring exploration and colonization are never bottlenecked by military command capacity. This is critical for early game expansion when SC I limits you to just 10 combat fleets.
+
+This technology complements **Fleet Command (FC)**, which controls individual fleet size rather than total fleet count. Together, FC and SC define your military capabilities: `Max Combat Ships = FC × SC`.
 
 ## 4.12 Fighter Doctrine (FD)
 
-Fighter Doctrine improves organizational efficiency and training throughput, increasing the number of Fighter Squadrons (FS) each colony can support.
+Fighter Doctrine improves organizational efficiency and training throughput, increasing the number of Fighters each colony can support.
 
 **Research Progression:**
 
@@ -550,43 +561,43 @@ Fighter Doctrine improves organizational efficiency and training throughput, inc
 
 **FD I - Basic Fighter Operations**
 
-Standard fighter squadron operations with conventional command structures. Base capacity determined by industrial capacity.
+Standard fighter operations with conventional command structures. Base capacity determined by industrial capacity.
 
 **FD II - Advanced Fighter Operations**
 
-Enhanced pilot academies, improved communication networks, and advanced squadron coordination protocols. Increases operational capacity by 50% through better resource utilization and training throughput.
+Enhanced pilot academies, improved communication networks, and advanced coordination protocols. Increases operational capacity by 50% through better resource utilization and training throughput.
 
 **FD III - Elite Fighter Operations**
 
-Elite pilot training programs, AI-assisted tactical coordination, and distributed command networks. Doubles fighter squadron capacity through revolutionary organizational efficiency and automated logistics systems.
+Elite pilot training programs, AI-assisted tactical coordination, and distributed command networks. Doubles fighter capacity through revolutionary organizational efficiency and automated logistics systems.
 
 **Application:**
 
-Fighter Doctrine upgrades apply house-wide immediately upon research completion. All colonies recalculate their maximum fighter squadron capacity using the new multiplier:
+Fighter Doctrine upgrades apply house-wide immediately upon research completion. All colonies recalculate their maximum Fighter capacity using the new multiplier:
 
 ```
-Max FS per Colony = floor(IU / 100) × FD_MULTIPLIER
+Max Fighters per Colony = floor(IU / 100) × FD_MULTIPLIER
 ```
 
-When FD tech increases capacity, existing fighter squadrons remain operational and colonies can immediately commission additional squadrons up to their new capacity limit (subject to available production points).
+When FD tech increases capacity, existing Fighters remain operational and colonies can immediately commission additional Fighters up to their new capacity limit (subject to available production points).
 
-**Capacity Violations**: If a colony's IU drops (due to bombardment, blockade, etc.) causing it to exceed fighter capacity, the colony receives a 2-turn grace period before oldest squadrons auto-disband.
+**Capacity Violations**: If a colony's IU drops (due to bombardment, blockade, etc.) causing it to exceed fighter capacity, the colony receives a 2-turn grace period before oldest Fighters auto-disband.
 
-For fighter squadron economics, see [Section 3.6](03-economy.md#36-fighter-squadron-economics). For combat mechanics, see [Section 2.4.1](02-assets.md#241-fighter-squadrons--carriers).
+For fighter economics, see [Section 3.6](03-economy.md#36-fighter-economics). For combat mechanics, see [Section 2.4.1](02-assets.md#241-fighters--carriers).
 
 ## 4.13 Advanced Carrier Operations (ACO)
 
-Advanced Carrier Operations improves carrier efficiency, allowing greater fighter squadron capacity per vessel through enhanced hangar systems, rapid deployment mechanisms, and improved logistics.
+Advanced Carrier Operations improves carrier efficiency, allowing greater Fighter capacity per vessel through enhanced hangar systems, rapid deployment mechanisms, and improved logistics.
 
 **Research Progression:**
 
 <!-- ACO_TABLE_START -->
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | CV Capacity | CX Capacity |
-|:----------:| ------------- |:--------:|:-----------:|:-----------:|:-----------:|
-| ACO I      | None          | N/A      | 1           | 3 FS        | 5 FS        |
-| ACO II     | ACO I         | 20       | 4           | 4 FS        | 6 FS        |
-| ACO III    | ACO II        | 22       | 5           | 5 FS        | 8 FS        |
+| Tech Level | Prerequisites | TRP Cost | SL Required | CV Capacity  | CX Capacity  |
+|:----------:| ------------- |:--------:|:-----------:|:------------:|:------------:|
+| ACO I      | None          | N/A      | 1           | 3 Fighters   | 5 Fighters   |
+| ACO II     | ACO I         | 20       | 4           | 4 Fighters   | 6 Fighters   |
+| ACO III    | ACO II        | 22       | 5           | 5 Fighters   | 8 Fighters   |
 
 *Source: config/tech.toml [advanced_carrier_operations] section*
 
@@ -594,25 +605,25 @@ Advanced Carrier Operations improves carrier efficiency, allowing greater fighte
 
 **ACO I - Standard Carrier Operations**
 
-Base carrier capacity with conventional hangar layouts and deployment systems. Standard Carriers (CV) accommodate 3 fighter squadrons; Super Carriers (CX) carry 5.
+Base carrier capacity with conventional hangar layouts and deployment systems. Standard Carriers (CV) accommodate 3 Fighters; Super Carriers (CX) carry 5.
 
 **ACO II - Enhanced Carrier Operations**
 
-Improved hangar bay design, automated fighter launch systems, and enhanced maintenance facilities increase carrier capacity by 33%. Standard Carriers (CV) can accommodate 4 fighter squadrons; Super Carriers (CX) can carry 6.
+Improved hangar bay design, automated fighter launch systems, and enhanced maintenance facilities increase carrier capacity by 33%. Standard Carriers (CV) can accommodate 4 Fighters; Super Carriers (CX) can carry 6.
 
 **ACO III - Advanced Carrier Operations**
 
-Revolutionary multi-deck hangar systems, AI-coordinated rapid deployment, and advanced repair facilities maximize carrier efficiency. Standard Carriers (CV) accommodate 5 fighter squadrons; Super Carriers (CX) carry 8.
+Revolutionary multi-deck hangar systems, AI-coordinated rapid deployment, and advanced repair facilities maximize carrier efficiency. Standard Carriers (CV) accommodate 5 Fighters; Super Carriers (CX) carry 8.
 
 **Application:**
 
-ACO upgrades apply immediately to all carriers in the House fleet upon research completion. Existing carriers can load additional fighters up to their new capacity limit at any friendly colony during the loading phase.
+ACO upgrades apply immediately to all carriers in the House fleet upon research completion. Existing carriers can load additional Fighters up to their new capacity limit at any friendly colony during the loading phase.
 
 Carriers in transit or in combat zones must return to a friendly colony to take advantage of increased capacity.
 
-ACO technology affects carrier capacity only and does not modify fighter squadron statistics, maintenance costs, or combat effectiveness.
+ACO technology affects carrier capacity only and does not modify Fighter statistics, maintenance costs, or combat effectiveness.
 
-For carrier combat mechanics, see [Section 2.4.1](02-assets.md#241-fighter-squadrons--carriers).
+For carrier combat mechanics, see [Section 2.4.1](02-assets.md#241-fighters--carriers).
 
 ## 4.14 Strategic Considerations
 

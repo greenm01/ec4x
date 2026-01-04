@@ -1,6 +1,6 @@
 # 6.0 Fleet Operations and Movement
 
-Command your fleets across the stars. Direct them with explicit commands for immediate missions or standing commands for persistent behaviors. Your strategic decisions at the fleet level drive military success—squadrons handle the tactical execution.
+Command your fleets across the stars. Direct them with explicit commands for immediate missions or standing commands for persistent behaviors. Your strategic decisions at the fleet level drive military success—individual ships work together as unified task forces.
 
 This section covers jump lane travel, ship commissioning pipelines, fleet commands, standing commands, and repair operations. Master these systems to project power effectively across your empire.
 
@@ -35,7 +35,7 @@ For complete details on jump lane classes, distribution, and the starmap structu
 
 ## 6.2 Ship Commissioning and Fleet Organization
 
-Your industrial might produces warships and auxiliary vessels. Ships move from treasury expenditure through construction yards to commissioned squadrons and finally into operational fleets. This four-stage pipeline transforms economic investment into military power.
+Your industrial might produces warships and auxiliary vessels. Ships move from treasury expenditure through construction yards to commissioned status and finally into operational fleets. This three-stage pipeline transforms economic investment into military power.
 
 ### 6.2.1 The Commissioning Pipeline
 
@@ -47,7 +47,7 @@ Allocate treasury (production points) to construction projects at your colonies.
 - Built in 1 turn, provides 5 construction docks
 - Can build any ship type
 - **100% commission penalty**: Ships (except fighters) cost double production points due to orbital launch costs
-- Fighter squadrons exempt from penalty (distributed planetary manufacturing)
+- Fighters exempt from penalty (distributed planetary manufacturing)
 - Required prerequisite for building shipyards, spaceports, and starbases.
 
 **Shipyards** (Orbital Construction):
@@ -81,51 +81,38 @@ Allocate treasury (production points) to construction projects at your colonies.
 
 **Strategic Priority:** Build shipyards early at all major colonies. The 100% spaceport penalty makes planet-side construction economically devastating for anything except fighters. Plan ahead—commit resources turn X, receive operational ships turn X+N.
 
-**Stage Two: Construction Completion**
+**Stage Two: Construction Completion & Fleet Assignment**
 
-When construction completes, your ships **immediately commission** into squadrons:
-- **Capital ships** (BB, DN, SD, CA, CL) create new squadrons as flagships
-- **Escorts** (DD, FF, CT) join existing unassigned capital squadrons based on command capacity
-- **Scouts and fighters** form single-ship squadrons for specialized missions
-- **ETACs** join flagship squadrons (for escort)
+When construction completes, your ships **immediately commission** and join fleets at their construction colony. No intermediate "ready to commission" state—your ships transition directly from construction to operational status.
 
-No intermediate "ready to commission" state—your ships transition directly from construction to operational status, just like vessels completing sea trials immediately join the active fleet.
+**Ship Assignment Rules:**
 
-**Stage Three: Fleet Assignment**
-
-Squadrons automatically join fleets at their construction colony, eliminating tactical micromanagement while keeping your forces operationally ready. Your newly-commissioned squadrons organize into existing stationary fleets or form new fleets automatically.
-
-**Stationary fleets receive reinforcements:**
+**Combat ships** (BB, DN, SD, CA, CL, DD, FF, CT) automatically join existing stationary fleets:
 - Fleets with **Hold, Guard, or Patrol** commands (at same system)
 - Fleets with **defensive standing commands** (DefendSystem, GuardColony)
 - Fleets with **no commands** (default stationary posture)
+- If no suitable fleet exists, creates new fleet automatically
+
+**Scouts** form scout-only fleets for reconnaissance and espionage missions
+
+**Fighters** remain colony-assigned for orbital defense (not assigned to fleets)
+
+**ETACs and Transports** join appropriate fleets based on operational needs
 
 **Moving fleets do not receive reinforcements:**
 - Fleets executing **movement commands** or on patrol routes
 - Fleets with **movement-based standing commands** (PatrolRoute, AutoRepair)
 - **Reserve or Mothballed** fleets (intentional reduced-readiness status)
 
-This system ensures squadrons join fleets **intentionally stationary** at your colony, not temporarily passing through. Your fleets maintain operational readiness without interrupting ongoing missions.
+This system ensures ships join fleets **intentionally stationary** at your colony, not temporarily passing through. Your fleets maintain operational readiness without interrupting ongoing missions.
 
-**Why automatic assignment?** Squadrons are **tactical assets for combat**, not strategic decision points. You command at the fleet level—issuing fleet commands, setting patrol routes, managing fleet composition. Automatic assignment eliminates the micromanagement trap of forgetting to deploy newly-built units while preserving your strategic control through fleet commands and standing commands.
+**Why automatic assignment?** Ships are organized into fleets for strategic control. You command at the fleet level—issuing fleet commands, setting patrol routes, managing fleet composition. Automatic assignment eliminates the micromanagement trap of forgetting to deploy newly-built units while preserving your strategic control through fleet commands and standing commands.
 
-**Stage Four: Fleet Operations**
+**Stage Three: Fleet Operations**
 
-Once in fleets, control your forces through **fleet commands** (one-time missions) and **standing commands** (persistent behaviors). Active fleets consume Command Cost (CC) from your House's C2 Pool. Transfer squadrons between fleets, adjust compositions, or place fleets in Reserve/Mothballed status to control operational costs.
+Once in fleets, control your forces through **fleet commands** (one-time missions) and **standing commands** (persistent behaviors). Active fleets consume Command Cost (CC) from your House's C2 Pool. Transfer ships between fleets, adjust compositions, or place fleets in Reserve/Mothballed status to control operational costs.
 
-### 6.2.2 Squadron Formation Rules
-
-Your ships organize into squadrons based on command structure:
-
-**Capital ships become flagships**: Battleships, Dreadnoughts, Super Dreadnoughts, Heavy Cruisers, and Light Cruisers create new squadrons. Each capital ship commands its own squadron.
-
-**Escorts serve as wingmen**: Destroyers, Frigates, and Corvettes join capital squadrons based on the flagship's command capacity. A Battleship commands more escorts than a Light Cruiser.
-
-**Scouts operate independently**: Scout ships form single-ship squadrons for reconnaissance missions, intelligence gathering, and espionage operations.
-
-**Fighters defend colonies**: Fighter squadrons remain assigned to colonies for orbital defense, separate from fleet operations.
-
-### 6.2.3 Fleet Composition Strategy
+### 6.2.2 Fleet Composition Strategy
 
 Design your fleets for their mission profile:
 
@@ -133,9 +120,9 @@ Design your fleets for their mission profile:
 
 **Patrol fleets** use Light Cruisers with Destroyer escorts for patrol routes and border security. Balance firepower with operational cost.
 
-**Scout fleets** deploy single-scout squadrons for intelligence gathering, system reconnaissance, and espionage missions. Small footprint, high stealth.
+**Scout fleets** deploy scouts for intelligence gathering, system reconnaissance, and espionage missions. Small footprint, high stealth.
 
-**Reserve fleets** store mothballed squadrons at major colonies for emergency mobilization. Zero maintenance cost, immediate reactivation when needed.
+**Reserve fleets** store mothballed ships at major colonies for emergency mobilization. Zero maintenance cost, immediate reactivation when needed.
 
 ---
 
@@ -160,9 +147,9 @@ Explicit commands that execute until completed or overridden:
 | 08  | Invade a Colony         | Combat ship(s) & loaded Troop Transports |
 | 09  | Blitz a Colony          | Loaded Troop Transports                  |
 | 10  | Colonize a Planet       | One ETAC                                 |
-| 11  | Spy on a Colony         | Scout-only fleet (1+ scout squadrons)    |
-| 12  | Spy on a System         | Scout-only fleet (1+ scout squadrons)    |
-| 13  | Hack a Starbase         | Scout-only fleet (1+ scout squadrons)    |
+| 11  | Spy on a Colony         | Scout-only fleet (1+ scouts)             |
+| 12  | Spy on a System         | Scout-only fleet (1+ scouts)             |
+| 13  | Hack a Starbase         | Scout-only fleet (1+ scouts)             |
 | 14  | Join another Fleet      | None                                     |
 | 15  | Rendezvous at System    | None                                     |
 | 16  | Salvage                 | Friendly Colony System                   |
@@ -388,10 +375,10 @@ Conduct a cyber warfare operation against an enemy starbase. All Scouts in the f
 
 ### 6.3.16 Join Another Fleet (14)
 
-Merge this fleet with another fleet. The source fleet will autonomously find and travel to the target fleet and consolidate forces for strategic operations. All squadrons from the source fleet are transferred to the target fleet, and the source fleet is disbanded.
+Merge this fleet with another fleet. The source fleet will autonomously find and travel to the target fleet and consolidate forces for strategic operations. All ships from the source fleet are transferred to the target fleet, and the source fleet is disbanded.
 
 **Use Join Fleet to:**
-- Reinforce damaged fleets with fresh squadrons.
+- Reinforce damaged fleets with fresh ships.
 - Consolidate scattered forces after combat.
 - Create combined forces for major operations.
 - Group multiple Scouts into a single fleet to improve their stealth for an espionage mission.
@@ -427,7 +414,7 @@ Instantly places a fleet into **Reserve** status during the Command Phase. This 
 - **CC Cost**: Reduced to 50% of base.
 - **Maintenance Cost**: Reduced to 50% of base.
 - The fleet becomes immobile and cannot fight.
-- The fleet will not receive auto-assigned squadrons.
+- The fleet will not receive auto-assigned ships.
 - **Requirements**: Fleet must be at a friendly starbase or shipyard.
 
 **Use Reserve Status to:**
@@ -443,7 +430,7 @@ Instantly places a fleet into **Mothballed** status during the Command Phase. Th
 - **CC Cost**: Reduced to 0% of base, completely freeing up C2 allocation.
 - **Maintenance Cost**: Reduced to 10% of base (for skeleton crews).
 - The fleet is defenseless and cannot move or fight.
-- The fleet will not receive auto-assigned squadrons.
+- The fleet will not receive auto-assigned ships.
 - **Requirements**: Fleet must be at a friendly starbase or shipyard.
 
 **Use Mothball to:**
@@ -460,7 +447,7 @@ Issues an order to reactivate a fleet from Reserve or Mothballed status, returni
 - **From Reserve**: Takes **1 full turn**. After completion, fleet is Active.
 - **From Mothball**: Takes **3 full turns**. After completion, fleet is Active.
 - Upon reactivation, the fleet returns to 100% CC and 100% Maintenance Cost.
-- The fleet can once again move, fight, and receive auto-assigned squadrons.
+- The fleet can once again move, fight, and receive auto-assigned ships.
 
 **Use Reactivate to:**
 - Mobilize reserves in response to a threat.
@@ -495,9 +482,8 @@ Reorganize your forces instantly during command submission. Zero-turn administra
 ### 6.4.1 Concept: Administrative vs Operational Commands
 
 **Administrative Commands (0 turns):**
-- Fleet reorganization (detach ships, transfer squadrons, merge fleets)
+- Fleet reorganization (detach ships, transfer ships, merge fleets)
 - Cargo operations (load/unload troops and colonists)
-- Squadron management (transfer ships between squadrons, assign to fleets)
 - Ship status changes (Reserve/Mothball)
 - Execute **immediately** during command submission
 - No turn cost—prepare forces and execute strategy in the same turn
@@ -524,9 +510,9 @@ Extract specific ships from a fleet into a new fleet.
 
 **Use cases:**
 - Split battle fleet into multiple patrol groups
-- Detach damaged squadrons for repair while healthy squadrons continue operations
+- Detach damaged ships for repair while healthy ships continue operations
 - Create specialized task forces from general-purpose fleets
-- Separate auxiliary ships (ETACs, Troop Transports) from combat squadrons
+- Separate auxiliary ships (ETACs, Troop Transports) from combat ships
 
 **Mechanics:**
 - Select ships by index from fleet's total ship roster
@@ -534,7 +520,7 @@ Extract specific ships from a fleet into a new fleet.
 - Source fleet retains unselected ships
 - If all ships detached, source fleet deleted and commands cleared
 
-**Example:** Battle fleet at home system with 3 capital squadrons + 5 destroyers. Detach 1 capital squadron + 2 destroyers → creates new patrol fleet while main battle fleet continues with remaining forces.
+**Example:** Battle fleet at home system with 3 capitals + 5 destroyers. Detach 1 capital + 2 destroyers → creates new patrol fleet while main battle fleet continues with remaining forces.
 
 #### TransferShips
 
@@ -549,10 +535,9 @@ Move ships between two existing fleets.
 **Mechanics:**
 - Both fleets must be at same friendly colony
 - Select ships from source fleet to transfer to target fleet
-- Squadron cohesion preserved (entire squadron transfers together)
 - If source fleet emptied, automatically deleted
 
-**Example:** Patrol fleet returns damaged (2 squadrons). Transfer 3 fresh squadrons from reserve fleet → patrol fleet reinforced and ready for immediate redeployment.
+**Example:** Patrol fleet returns damaged (2 ships). Transfer 3 fresh ships from reserve fleet → patrol fleet reinforced and ready for immediate redeployment.
 
 #### MergeFleets
 
@@ -619,55 +604,7 @@ Unload marines or colonists from fleet auxiliary ships to colony.
 
 **Example:** Evacuate colony threatened by superior enemy fleet. Load colonists, move fleet to safe system, unload colonists → population preserved, enemy gains empty colony.
 
-### 6.4.4 Squadron Management Commands
-
-Fine-tune squadron composition and fleet assignments for optimal combat effectiveness.
-
-**Requirements:**
-- Colony must be friendly and under your control
-- Squadrons must be at same colony (either in fleets or unassigned)
-
-#### TransferShipBetweenSquadrons
-
-Move individual escort ships between squadrons to balance combat power.
-
-**Use cases:**
-- Balance destroyer distribution across capital squadrons
-- Optimize escort screens for different capital ship types
-- Reorganize after combat losses
-- Prepare specialized squadron configurations
-
-**Mechanics:**
-- Source and target squadrons must be in fleets at same colony
-- Only escort ships can transfer (destroyers, frigates, corvettes)
-- Cannot transfer flagships (capital ships)
-- If target squadron at capacity, transfer fails
-- Rollback on failure (ship returns to source if transfer impossible)
-
-**Example:** Battle fleet has 3 cruiser squadrons: CL with 4 destroyers, CL with 1 destroyer, CL with 2 destroyers. Transfer 1 destroyer from first to second → balanced squadrons (3, 2, 2) improve combat effectiveness.
-
-#### AssignSquadronToFleet
-
-Assign newly-commissioned squadrons from unassigned pool to specific fleets.
-
-**Use cases:**
-- Manual control before auto-assignment runs
-- Assign squadrons to specific mission fleets instead of default assignment
-- Create specialized task forces with precise composition
-- Override auto-assignment for strategic fleet builds
-
-**Mechanics:**
-- Squadron can be in unassigned pool OR in existing fleet
-- Target fleet must exist at colony OR new fleet created if none specified
-- Squadron removed from source location
-- If source fleet emptied, deleted automatically
-- Executes before auto-assignment during turn resolution
-
-**Strategic Control:** Issue commands during command submission to assign specific squadrons to specific fleets. Auto-assignment still handles remaining unassigned squadrons, but your manual assignments take priority.
-
-**Example:** Colony completes 2 dreadnought squadrons + 4 cruiser squadrons. Use AssignSquadronToFleet commands to put dreadnoughts in battle fleet, cruisers in patrol fleet → precise control instead of automatic distribution.
-
-### 6.4.5 Workflow: Prepare Forces → Execute Strategy
+### 6.4.4 Workflow: Prepare Forces → Execute Strategy
 
 Execute complex operations in a single turn by combining zero-turn commands with operational commands.
 
@@ -684,16 +621,15 @@ Turn N resolution: Fleet moves and invades. Total: 1 turn.
 Launching 3-fleet offensive. Turn submission:
 
 1. **MergeFleets** - Combine cruiser fleets into battle group
-2. **DetachShips** - Split off scout squadron for recon
+2. **DetachShips** - Split off scouts for recon
 3. **LoadCargo** - Load 15 marine divisions
-4. **AssignSquadronToFleet** - Add fresh dreadnought squadrons
-5. **Issue Commands**:
+4. **Issue Commands**:
    - Battle fleet: Command 07 (Invade)
    - Scout fleet: Command 11 (Spy on System)
 
 All preparation complete, offensive launches immediately. Total: 1 turn.
 
-### 6.4.6 Limitations and Restrictions
+### 6.4.5 Limitations and Restrictions
 
 **Location Requirements:**
 - Fleet operations require friendly colony presence
@@ -708,7 +644,7 @@ All preparation complete, offensive launches immediately. Total: 1 turn.
 **Command Precedence:**
 - Zero-turn commands execute before operational commands
 - Administrative commands processed in submission order
-- Auto-assignment runs after manual squadron assignments
+- Auto-assignment runs after manual ship assignments
 
 **Validation:**
 - All commands validated before execution
@@ -832,13 +768,13 @@ Defend a specific colony within a system. Functionally identical to Defend Syste
 
 ### 6.5.7 Auto-Reinforce Standing Command
 
-Command your fleet to automatically reinforce the nearest damaged friendly fleet. Your fleet identifies allies in need, travels to their location, and transfers squadrons to restore combat effectiveness.
+Command your fleet to automatically reinforce the nearest damaged friendly fleet. Your fleet identifies allies in need, travels to their location, and transfers ships to restore combat effectiveness.
 
 **Behavior:**
 - Fleet scans for damaged friendly fleets
 - Calculates nearest target
 - Travels to target location
-- Transfers squadrons as appropriate
+- Transfers ships as appropriate
 - Resumes scanning for next target
 
 **Use Auto-Reinforce to:**
@@ -851,7 +787,7 @@ Command your fleet to automatically reinforce the nearest damaged friendly fleet
 Command damaged fleets to automatically return to drydocks when crippled. Your fleet recognizes critical damage, calculates nearest repair facility, and travels there automatically.
 
 **Behavior:**
-- Fleet monitors squadron damage status
+- Fleet monitors ship damage status
 - When crippled (threshold TBD), seeks repair
 - Identifies nearest colony with drydock
 - Travels to repair facility

@@ -18,9 +18,9 @@
 ### Carriers & Fighters
 | Term | Definition | Section Link |
 |------|------------|--------------|
-| CV | Carrier – medium carrier that holds 3-5 FS | [10.1](10-reference.md#101-space-force-wep1) |
-| CX | Super Carrier – heavy carrier that holds 5-8 FS | [10.1](10-reference.md#101-space-force-wep1) |
-| FS | Fighter Squadron | [2.4.1](02-assets.md#241-fighter-squadrons-carriers) |
+| CV | Carrier – medium carrier that holds 3-5 Fighters | [10.1](10-reference.md#101-space-force-wep1) |
+| CX | Super Carrier – heavy carrier that holds 5-8 Fighters | [10.1](10-reference.md#101-space-force-wep1) |
+| F  | Fighter | [2.4.1](02-assets.md#241-fighters--carriers) |
 
 ### Special Ships
 | Term | Definition | Section Link |
@@ -50,11 +50,10 @@
 ## Ship & Unit Statistics
 | Term | Definition | Section Link |
 |------|------------|--------------|
-| AS | Attack Strength – offensive firepower of a ship or squadron | [7.3](07-combat.md#73-space-combat) |
-| CC | Command Cost – the "size" a ship takes in a squadron | [10.1](10-reference.md#101-space-force-wep1) |
+| AS | Attack Strength – offensive firepower of a ship | [7.5](07-combat.md#75-space-combat) |
+| CC | Command Cost – the cost a ship consumes from C2 Pool | [2.3.3.2](02-assets.md#2332-command--control-c2-pool) |
 | CER | Combat Effectiveness Rating – multiplier applied to AS in Phases 1 & 3 | [7.3.3](07-combat.md#733-combat-effectiveness-rating-cer) |
-| CL | Carry Limit – number of FS (fighters) or MD/PTU a carrier/transport holds | [10.1](10-reference.md#101-space-force-wep1) |
-| CR | Command Rating – maximum total CC a flagship can command | [10.1](10-reference.md#101-space-force-wep1) |
+| CL | Carry Limit – number of Fighters or MD/PTU a carrier/transport holds | [10.1](10-reference.md#101-space-force-wep1) |
 | DS | Defense Strength – hits required to cripple or destroy a unit | [7.3](07-combat.md#73-space-combat) |
 | MC | Maintenance Cost – upkeep cost as percentage of PC | [10.1](10-reference.md#101-space-force-wep1) |
 | PC | Production Cost – build cost in PP | [10.1](10-reference.md#101-space-force-wep1) |
@@ -86,9 +85,9 @@
 | EL | Economic Level – entrepreneurial & education advancement (max 10+) | [4.2](04-research_development.md#42-economic-level-el) |
 | ELI | Electronic Intelligence – detection tech level | [4.8](04-research_development.md#48-electronic-intelligence-eli) |
 | ERP | Economic Research Points – used to advance Economic Level | [4.1](04-research_development.md#41-science-level-sl) |
-| FC | Flagship Command – tech that increases capital ship Command Rating (CR) | [4.10](04-research_development.md#410-flagship-command-fc) |
+| FC | Fleet Command – tech that increases maximum ships per fleet | [4.10](04-research_development.md#410-fleet-command-fc) |
 | FD | Fighter Doctrine tech level – multiplier to per-colony fighter capacity | [4.12](04-research_development.md#412-fighter-doctrine-fd) |
-| SC | Strategic Command – tech that increases C2 Pool capacity | [4.11](04-research_development.md#411-strategic-command-sc) |
+| SC | Strategic Command – tech that increases maximum number of fleets | [4.11](04-research_development.md#411-strategic-command-sc) |
 | SL | Science Level – scientific advancement (max 10+) | [4.1](04-research_development.md#41-science-level-sl) |
 | SRP | Science Research Points – used to advance Science Level | [4.1](04-research_development.md#41-science-level-sl) |
 | TL | Tech Level – generic technology level (context dependent) | [4.0](04-research_development.md#40-research-development) |
@@ -108,8 +107,7 @@
 | Critical Hit | Natural 9 on CER roll; bypasses destruction protection and awards prestige | [7.3.3](07-combat.md#733-combat-effectiveness-rating-cer) |
 | Crippled | Combat state where unit's AS is halved; requires DS hits to achieve | [7.2.2](07-combat.md#722-combat-state-and-damage) |
 | Destroyed | Final combat state where unit is dead and unrecoverable | [7.2.2](07-combat.md#722-combat-state-and-damage) |
-| Fleet | Primary strategic unit comprising one or more squadrons | [2.3.3.2](02-assets.md#2332-fleets-strategic-level) |
-| Flagship | Capital ship commanding a squadron; determines max capacity via CR | [2.3.3.1](02-assets.md#2331-squadrons-tactical-level) |
+| Fleet | Primary strategic unit comprising ships | [2.3.3.1](02-assets.md#2331-fleets-strategic-level) |
 | Invasion | Three-round battle to conquer planet: batteries, population, then Marines | [7.6.1](07-combat.md#761-planetary-invasion) |
 | Logistical Strain | PP penalty for exceeding C2 Pool | [2.3.3.4](02-assets.md#2334-logistical-strain-exceeding-the-c2-pool) |
 | Morale | Crew effectiveness based on prestige; affects CER rolls and combat behavior | [7.2.1](07-combat.md#721-rules-of-engagement-roe) |
@@ -117,8 +115,7 @@
 | Patrol | Fleet command to actively engage hostiles entering a system | [6.3.5](06-operations.md#635-patrol-a-system-03) |
 | Reserve Status | Operational status: 50% CC, 50% maintenance, immobile | [2.3.3.5](02-assets.md#2335-ship-status-management) |
 | Retreat | Combat disengagement after first round; falls back to friendly system | [7.3.6](07-combat.md#736-retreat-mechanics) |
-| Squadron | Smallest tactical unit; group of ships under flagship command | [2.3.3.1](02-assets.md#2331-squadrons-tactical-level) |
-| Task Force | Temporary combat grouping of squadrons from one or more fleets | [2.3.3.6](02-assets.md#2336-task-force) |
+| Task Force | Temporary combat grouping of ships from one or more fleets | [2.3.3.5](02-assets.md#2335-task-force) |
 
 ## Diplomacy & Intelligence
 | Term | Definition | Section Link |
@@ -146,7 +143,7 @@
 | Term | Definition | Section Link |
 |------|------------|--------------|
 | Autopilot | Temporary MIA mode when player misses 3 turns; defensive operations only | [1.4.2](01-gameplay.md#142-mia-autopilot) |
-| Capacity Violation | When fighter squadrons exceed limits; 2-turn grace or disbanded | [2.4.1](02-assets.md#241-fighter-squadrons-carriers) |
+| Capacity Violation | When Fighters exceed colony limits; 2-turn grace or disbanded | [2.4.1](02-assets.md#241-fighters--carriers) |
 | Defensive Collapse | Elimination when prestige ≤ 0 for 3 consecutive turns | [1.4.1](01-gameplay.md#141-prestige-failure-defensive-collapse) |
 | Jump Lanes | Hex interconnections with three classes: restricted, minor, major | [6.1](06-operations.md#61-jump-lanes) |
 | Research Breakthrough | Bi-annual technological leap (10% base chance + RP investment bonus) | [4.1.1](04-research_development.md#411-research-breakthroughs) |
