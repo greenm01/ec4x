@@ -2,7 +2,6 @@ type
   C2LimitsConfig* = object
     c2ConversionRatio*: float32
     c2OverdraftRatio*: float32
-    capitalShipCrThreshold*: int32
 
   QuantityLimitsConfig* = object
     maxStarbasesPerColony*: int32
@@ -26,9 +25,16 @@ type
   CapacitiesConfig* = object
     planetCapacities*: seq[PlanetCapacityConfig]
 
+  ScScalingConfig* = object
+    ## Strategic Command logarithmic fleet scaling
+    ## Formula: maxFleets = base × (1 + log₂(systems_per_player ÷ divisor) × scaleFactor)
+    systemsPerPlayerDivisor*: float32  # Threshold where scaling begins (default: 8.0)
+    scaleFactor*: float32               # Scaling aggressiveness (default: 0.4)
+
   LimitsConfig* = object
     c2Limits*: C2LimitsConfig
     quantityLimits*: QuantityLimitsConfig
     fighterCapacity*: FighterCapacityConfig
     populationLimits*: PopulationLimitsConfig
     capacities*: CapacitiesConfig
+    scScaling*: ScScalingConfig

@@ -6,7 +6,7 @@
 
 import std/[options, sequtils, tables]
 import ../state/[engine, id_gen]
-import ../types/[game_state, core, facilities, colony]
+import ../types/[game_state, core, facilities, colony, combat]
 import ../globals
 import ../systems/tech/effects
 
@@ -26,7 +26,7 @@ proc newNeoria*(
     neoriaClass: neoriaClass,
     colonyId: colonyId,
     commissionedTurn: commissionedTurn,
-    isCrippled: false,
+    state: CombatState.Undamaged,
     baseDocks: baseDocks,
     effectiveDocks: effectiveDocks,
     constructionQueue: @[],
@@ -57,7 +57,7 @@ proc createNeoria*(
   let houseOpt = state.house(colony.owner)
   let cstLevel =
     if houseOpt.isSome:
-      houseOpt.get().tech.cst
+      houseOpt.get().techTree.levels.cst
     else:
       1.int32
 

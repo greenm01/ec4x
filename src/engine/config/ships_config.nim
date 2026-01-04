@@ -22,7 +22,6 @@ proc parseShipStats(node: KdlNode, ctx: var KdlConfigContext): ShipStatsConfig =
     attackStrength: node.getInt32("attackStrength", 0),
     defenseStrength: node.getInt32("defenseStrength", 0),
     commandCost: node.getInt32("c2Cost", 0),
-    commandRating: node.getInt32("crRating", 0),
     carryLimit: node.getInt32("carryLimit", 0),
     buildTime: node.getInt32("buildTime", 0)
   )
@@ -87,13 +86,16 @@ proc loadShipsConfig*(configPath: string): ShipsConfig =
     let salvageNode = doc.requireNode("salvage", ctx)
     result.salvage = parseSalvage(salvageNode, ctx)
 
-  # Parse fleet status modifiers
-  ctx.withNode("reserve"):
-    let reserveNode = doc.requireNode("reserve", ctx)
-    result.reserve = parseFleetStatusModifiers(reserveNode, ctx)
+  # Parse fleet status modifiers from shipStatus block
+  ctx.withNode("shipStatus"):
+    let shipStatusNode = doc.requireNode("shipStatus", ctx)
 
-  ctx.withNode("mothballed"):
-    let mothballedNode = doc.requireNode("mothballed", ctx)
-    result.mothballed = parseFleetStatusModifiers(mothballedNode, ctx)
+    ctx.withNode("reserve"):
+      let reserveNode = shipStatusNode.requireChildNode("reserve", ctx)
+      result.reserve = parseFleetStatusModifiers(reserveNode, ctx)
+
+    ctx.withNode("mothballed"):
+      let mothballedNode = shipStatusNode.requireChildNode("mothballed", ctx)
+      result.mothballed = parseFleetStatusModifiers(mothballedNode, ctx)
 
   logInfo("Config", "Loaded ships configuration", "path=", configPath)

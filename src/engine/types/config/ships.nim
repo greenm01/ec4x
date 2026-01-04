@@ -10,7 +10,6 @@ type
     attackStrength*: int32
     defenseStrength*: int32
     commandCost*: int32
-    commandRating*: int32
     carryLimit*: int32
     buildTime*: int32
 

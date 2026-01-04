@@ -414,16 +414,16 @@ proc parseTerraformingUpgradeCosts(
     ppCost: node.requireInt32("edenPp", ctx)
   )
 
-proc parseFlagshipCommand(
+proc parseFleetCommand(
   node: KdlNode,
   ctx: var KdlConfigContext
 ): FcConfig =
-  ## Parse flagshipCommand with hierarchical level nodes
+  ## Parse fleetCommand with hierarchical level nodes
   ##
   ## Expected structure:
   ## ```kdl
-  ## flagshipCommand {
-  ##   level 2 { slRequired 2; trpCost 12; crBonus 1 }
+  ## fleetCommand {
+  ##   level 1 { slRequired 1; trpCost 0; maxShipsPerFleet 10 }
   ## }
   ## ```
   result = FcConfig()
@@ -432,12 +432,12 @@ proc parseFlagshipCommand(
     if child.name == "level" and child.args.len > 0:
       let levelNum = child.args[0].getInt().int32
 
-      # Store with actual level number as key (2-6)
-      if levelNum >= 2 and levelNum <= 6:
+      # Store with actual level number as key (1-6)
+      if levelNum >= 1 and levelNum <= 6:
         result.levels[levelNum] = FcLevelData(
           slRequired: child.requireInt32("slRequired", ctx),
           trpCost: child.requireInt32("trpCost", ctx),
-          crBonus: child.requireInt32("crBonus", ctx)
+          maxShipsPerFleet: child.requireInt32("maxShipsPerFleet", ctx)
         )
 
 proc parseStrategicCommand(
@@ -449,7 +449,7 @@ proc parseStrategicCommand(
   ## Expected structure:
   ## ```kdl
   ## strategicCommand {
-  ##   level 1 { slRequired 2; trpCost 15; c2Bonus 50 }
+  ##   level 1 { slRequired 1; trpCost 0; c2Bonus 50; maxCombatFleetsBase 10 }
   ## }
   ## ```
   result = ScConfig()
@@ -458,12 +458,13 @@ proc parseStrategicCommand(
     if child.name == "level" and child.args.len > 0:
       let levelNum = child.args[0].getInt().int32
 
-      # Store with actual level number as key (1-5)
-      if levelNum >= 1 and levelNum <= 5:
+      # Store with actual level number as key (1-6)
+      if levelNum >= 1 and levelNum <= 6:
         result.levels[levelNum] = ScLevelData(
           slRequired: child.requireInt32("slRequired", ctx),
           trpCost: child.requireInt32("trpCost", ctx),
-          c2Bonus: child.requireInt32("c2Bonus", ctx)
+          c2Bonus: child.requireInt32("c2Bonus", ctx),
+          maxCombatFleetsBase: child.requireInt32("maxCombatFleetsBase", ctx)
         )
 
 proc parseFighterDoctrine(
@@ -599,9 +600,9 @@ proc loadTechConfig*(configPath: string): TechConfig =
     let node = doc.requireNode("strategicLift", ctx)
     result.stl = parseStrategicLift(node, ctx)
 
-  ctx.withNode("flagshipCommand"):
-    let node = doc.requireNode("flagshipCommand", ctx)
-    result.fc = parseFlagshipCommand(node, ctx)
+  ctx.withNode("fleetCommand"):
+    let node = doc.requireNode("fleetCommand", ctx)
+    result.fc = parseFleetCommand(node, ctx)
 
   ctx.withNode("strategicCommand"):
     let node = doc.requireNode("strategicCommand", ctx)

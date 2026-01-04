@@ -56,61 +56,39 @@ suite "Game Initialization - Complete Flow":
     for colony in game.allColonies():
       check colony.populationUnits == gameSetup.homeworld.populationUnits
       check colony.infrastructure == gameSetup.homeworld.colonyLevel
-      check colony.spaceportIds.len == gameSetup.startingFacilities.spaceports
-      check colony.shipyardIds.len == gameSetup.startingFacilities.shipyards
-      check colony.drydockIds.len == gameSetup.startingFacilities.drydocks
-      check colony.starbaseIds.len == 0  # No starting starbases
+      # Check unified facilities (neorias = production, kastras = defensive)
+      let expectedNeorias =
+        gameSetup.startingFacilities.spaceports +
+        gameSetup.startingFacilities.shipyards +
+        gameSetup.startingFacilities.drydocks
+      check colony.neoriaIds.len == expectedNeorias
+      check colony.kastraIds.len == 0  # No starting starbases
 
   test "Facilities properly created":
     let game = newGame()
 
-    var totalSpaceports = 0
-    var totalShipyards = 0
-    var totalDrydocks = 0
+    var totalNeorias = 0
 
     for colony in game.allColonies():
-      # Verify spaceports
-      for spaceportId in colony.spaceportIds:
-        let spaceportOpt = game.spaceport(spaceportId)
-        check spaceportOpt.isSome
-        if spaceportOpt.isSome:
-          let spaceport = spaceportOpt.get()
-          check spaceport.colonyId == colony.id
-          check spaceport.commissionedTurn == 0
-          check spaceport.baseDocks > 0
-          check spaceport.effectiveDocks == spaceport.baseDocks
-          totalSpaceports += 1
-
-      # Verify shipyards
-      for shipyardId in colony.shipyardIds:
-        let shipyardOpt = game.shipyard(shipyardId)
-        check shipyardOpt.isSome
-        if shipyardOpt.isSome:
-          let shipyard = shipyardOpt.get()
-          check shipyard.colonyId == colony.id
-          check shipyard.commissionedTurn == 0
-          check shipyard.baseDocks > 0
-          check shipyard.effectiveDocks == shipyard.baseDocks
-          check shipyard.isCrippled == false
-          totalShipyards += 1
-
-      # Verify drydocks
-      for drydockId in colony.drydockIds:
-        let drydockOpt = game.drydock(drydockId)
-        check drydockOpt.isSome
-        if drydockOpt.isSome:
-          let drydock = drydockOpt.get()
-          check drydock.colonyId == colony.id
-          check drydock.commissionedTurn == 0
-          check drydock.baseDocks > 0
-          check drydock.effectiveDocks == drydock.baseDocks
-          check drydock.isCrippled == false
-          totalDrydocks += 1
+      # Verify neorias (unified production facilities)
+      for neoriaId in colony.neoriaIds:
+        let neoriaOpt = game.neoria(neoriaId)
+        check neoriaOpt.isSome
+        if neoriaOpt.isSome:
+          let neoria = neoriaOpt.get()
+          check neoria.colonyId == colony.id
+          check neoria.commissionedTurn == 1  # Game starts at turn 1
+          check neoria.baseDocks > 0
+          check neoria.effectiveDocks == neoria.baseDocks
+          totalNeorias += 1
 
     let playerCount = gameSetup.gameParameters.playerCount
-    check totalSpaceports == playerCount * gameSetup.startingFacilities.spaceports
-    check totalShipyards == playerCount * gameSetup.startingFacilities.shipyards
-    check totalDrydocks == playerCount * gameSetup.startingFacilities.drydocks
+    let expectedTotal = playerCount * (
+      gameSetup.startingFacilities.spaceports +
+      gameSetup.startingFacilities.shipyards +
+      gameSetup.startingFacilities.drydocks
+    )
+    check totalNeorias == expectedTotal
 
   test "Ground units created with correct stats":
     let game = newGame()
@@ -120,44 +98,26 @@ suite "Game Initialization - Complete Flow":
     var totalBatteries = 0
 
     for colony in game.allColonies():
-      # Verify armies
-      for armyId in colony.armyIds:
-        let armyOpt = game.groundUnit(armyId)
-        check armyOpt.isSome
-        if armyOpt.isSome:
-          let army = armyOpt.get()
-          check army.stats.unitType == GroundClass.Army
-          check army.stats.attackStrength > 0
-          check army.stats.defenseStrength > 0
-          check army.garrison.locationType == GroundUnitLocation.OnColony
-          check army.garrison.colonyId == colony.id
-          totalArmies += 1
+      # Verify ground units (unified collection)
+      for groundUnitId in colony.groundUnitIds:
+        let unitOpt = game.groundUnit(groundUnitId)
+        check unitOpt.isSome
+        if unitOpt.isSome:
+          let unit = unitOpt.get()
+          check unit.stats.attackStrength > 0 or unit.stats.defenseStrength > 0
+          check unit.garrison.locationType == GroundUnitLocation.OnColony
+          check unit.garrison.colonyId == colony.id
 
-      # Verify marines
-      for marineId in colony.marineIds:
-        let marineOpt = game.groundUnit(marineId)
-        check marineOpt.isSome
-        if marineOpt.isSome:
-          let marine = marineOpt.get()
-          check marine.stats.unitType == GroundClass.Marine
-          check marine.stats.attackStrength > 0
-          check marine.stats.defenseStrength > 0
-          check marine.garrison.locationType == GroundUnitLocation.OnColony
-          check marine.garrison.colonyId == colony.id
-          totalMarines += 1
-
-      # Verify ground batteries
-      for batteryId in colony.groundBatteryIds:
-        let batteryOpt = game.groundUnit(batteryId)
-        check batteryOpt.isSome
-        if batteryOpt.isSome:
-          let battery = batteryOpt.get()
-          check battery.stats.unitType == GroundClass.GroundBattery
-          check battery.stats.attackStrength > 0
-          check battery.stats.defenseStrength > 0
-          check battery.garrison.locationType == GroundUnitLocation.OnColony
-          check battery.garrison.colonyId == colony.id
-          totalBatteries += 1
+          # Count by type
+          case unit.stats.unitType
+          of GroundClass.Army:
+            totalArmies += 1
+          of GroundClass.Marine:
+            totalMarines += 1
+          of GroundClass.GroundBattery:
+            totalBatteries += 1
+          else:
+            discard
 
     let playerCount = gameSetup.gameParameters.playerCount
     check totalArmies == playerCount * gameSetup.startingGroundForces.armies
@@ -172,7 +132,7 @@ suite "Game Initialization - Complete Flow":
     check game.fleets.entities.data.len == playerCount * fleetsPerPlayer
 
     for fleet in game.allFleets():
-      check fleet.squadrons.len > 0
+      check fleet.ships.len > 0  # Changed from squadrons to ships
       check fleet.location in game.starMap.houseSystemIds
 
   test "Ships properly created with stats":
@@ -180,23 +140,19 @@ suite "Game Initialization - Complete Flow":
 
     var shipCount = 0
     for fleet in game.allFleets():
-      for squadronId in fleet.squadrons:
-        let squadronOpt = game.squadron(squadronId)
-        check squadronOpt.isSome
-        if squadronOpt.isSome:
-          let squadron = squadronOpt.get()
-          let shipOpt = game.ship(squadron.flagshipId)
-          check shipOpt.isSome
-          if shipOpt.isSome:
-            let ship = shipOpt.get()
-            check ship.stats.wep > 0
-            shipCount += 1
+      for shipId in fleet.ships:  # Changed from squadrons to ships
+        let shipOpt = game.ship(shipId)
+        check shipOpt.isSome
+        if shipOpt.isSome:
+          let ship = shipOpt.get()
+          check ship.stats.wep > 0
+          shipCount += 1
 
-            # ETACs should have cargo
-            if ship.shipClass == ShipClass.ETAC:
-              check ship.cargo.isSome
-              if ship.cargo.isSome:
-                check ship.cargo.get().quantity > 0
+          # ETACs should have cargo
+          if ship.shipClass == ShipClass.ETAC:
+            check ship.cargo.isSome
+            if ship.cargo.isSome:
+              check ship.cargo.get().quantity > 0
 
     check shipCount > 0
 

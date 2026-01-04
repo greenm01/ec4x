@@ -59,16 +59,17 @@ type
     hitsBlocked*: float32
 
   FcLevelData* = object
-    ## Flagship Command level data (FC)
+    ## Fleet Command level data (FC)
     slRequired*: int32
     trpCost*: int32
-    crBonus*: int32
+    maxShipsPerFleet*: int32
 
   ScLevelData* = object
     ## Strategic Command level data (SC)
     slRequired*: int32
     trpCost*: int32
     c2Bonus*: int32
+    maxCombatFleetsBase*: int32
 
   FdLevelData* = object
     ## Fighter Doctrine level data (FD)

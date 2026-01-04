@@ -83,10 +83,6 @@ proc commandCost*(ship: Ship): int32 =
   ## Get command cost (CC) from config
   getShipConfigStats(ship.shipClass).commandCost
 
-proc commandRating*(ship: Ship): int32 =
-  ## Get command rating (CR) from config
-  getShipConfigStats(ship.shipClass).commandRating
-
 proc buildCost*(ship: Ship): int32 =
   ## Get build cost (PC) from config
   getShipConfigStats(ship.shipClass).productionCost
@@ -128,10 +124,6 @@ proc isFighter*(ship: Ship): bool =
 proc isCarrier*(ship: Ship): bool =
   ## Check if ship is a carrier (CV or CX)
   ship.shipClass in {ShipClass.Carrier, ShipClass.SuperCarrier}
-
-proc canCommand*(ship: Ship): bool =
-  ## Check if ship can serve as squadron flagship (has command rating)
-  ship.commandRating() > 0
 
 proc effectiveAttackStrength*(ship: Ship): int32 =
   ## Get effective attack strength (halved if crippled)

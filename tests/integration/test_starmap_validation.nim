@@ -45,12 +45,9 @@ proc createTestGame(playerCount: int32, numRings: uint32 = 0): (
       nextHouseId: 1,
       nextSystemId: 1,
       nextColonyId: 1,
-      nextStarbaseId: 1,
-      nextSpaceportId: 1,
-      nextShipyardId: 1,
-      nextDrydockId: 1,
+      nextNeoriaId: 1,
+      nextKastraId: 1,
       nextFleetId: 1,
-      nextSquadronId: 1,
       nextShipId: 1,
       nextGroundUnitId: 1,
       nextConstructionProjectId: 1,
@@ -63,7 +60,7 @@ proc createTestGame(playerCount: int32, numRings: uint32 = 0): (
         index: initTable[SystemId, int]()
       )
     ),
-    intelligence: initTable[HouseId, IntelligenceDatabase](),
+    intel: initTable[HouseId, IntelDatabase](),
     diplomaticRelation: initTable[(HouseId, HouseId), DiplomaticRelation](),
     diplomaticViolation: initTable[HouseId, ViolationHistory](),
     fleetCommands: initTable[FleetId, FleetCommand](),
@@ -238,7 +235,7 @@ suite "EC4X Game Specification Validation":
         # Check that players are reasonably distributed
         var playerSystems: seq[System] = @[]
         for system in state.systems.entities.data:
-          if system.house.isSome:
+          if system.id in starMap.houseSystemIds:
             playerSystems.add(system)
 
         # Players can be on any ring (except hub)

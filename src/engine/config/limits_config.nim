@@ -11,8 +11,7 @@ import ../types/config
 proc parseC2Limits(node: KdlNode, ctx: var KdlConfigContext): C2LimitsConfig =
   result = C2LimitsConfig(
     c2ConversionRatio: node.requireFloat32("c2ConversionRatio", ctx),
-    c2OverdraftRatio: node.requireFloat32("c2OverdraftRatio", ctx),
-    capitalShipCrThreshold: node.requireInt32("capitalShipCrThreshold", ctx)
+    c2OverdraftRatio: node.requireFloat32("c2OverdraftRatio", ctx)
   )
 
 proc parseQuantityLimits(
@@ -63,6 +62,16 @@ proc parseCapacities(node: KdlNode, ctx: var KdlConfigContext): CapacitiesConfig
     if child.name == "planetClass":
       result.planetCapacities.add(parsePlanetCapacity(child, ctx))
 
+proc parseScScaling(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): ScScalingConfig =
+  ## Parse Strategic Command logarithmic scaling parameters
+  result = ScScalingConfig(
+    systemsPerPlayerDivisor: node.requireFloat32("systemsPerPlayerDivisor", ctx),
+    scaleFactor: node.requireFloat32("scaleFactor", ctx)
+  )
+
 proc loadLimitsConfig*(configPath: string): LimitsConfig =
   ## Load limits configuration from KDL file
   ## Uses kdl_helpers for type-safe parsing
@@ -88,5 +97,9 @@ proc loadLimitsConfig*(configPath: string): LimitsConfig =
   ctx.withNode("capacities"):
     let node = doc.requireNode("capacities", ctx)
     result.capacities = parseCapacities(node, ctx)
+
+  ctx.withNode("strategicCommandScaling"):
+    let node = doc.requireNode("strategicCommandScaling", ctx)
+    result.scScaling = parseScScaling(node, ctx)
 
   logInfo("Config", "Loaded limits configuration", "path=", configPath)

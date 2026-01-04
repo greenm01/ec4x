@@ -44,8 +44,7 @@ proc newColony*(
     autoLoadingEnabled: true, # Default ON
     autoReloadETACs: true, # Default ON
     activeTerraforming: none(TerraformProject),
-    unassignedSquadronIds: @[],
-    fighterSquadronIds: @[],
+    fighterIds: @[],
     capacityViolation: CapacityViolation(
       severity: ViolationSeverity.None,
       graceTurnsRemaining: 0,

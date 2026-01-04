@@ -251,7 +251,6 @@ proc newSystem(
     name: "",
     coords: coords,
     ring: ring,
-    house: house,
     planetClass: pickWeighted[PlanetClass](rng, PlanetWeights),
     resourceRating: pickWeighted[ResourceRating](rng, ResourceWeights)
   )
@@ -404,7 +403,6 @@ proc assignHouseHomeworlds(starMap: var StarMap, state: var GameState, playerCou
   for i, system in selectedSystems:
     # Update system using public API
     var updatedSystem = state.system(system.id).get()
-    updatedSystem.house = some(i.uint32.HouseId)
 
     # Override with configured homeworld characteristics
     updatedSystem.planetClass =
@@ -499,8 +497,7 @@ proc connectRemainingSystem(starMap: var StarMap, state: GameState, rng: var Ran
     # Connect to available neighbors with random lane types
     for neighborId in neighbors:
       # Check if neighbor is a house system that already has 3 connections
-      let neighborSystem = state.system(neighborId).get()
-      if neighborSystem.house.isSome:
+      if neighborId in starMap.houseSystemIds:
         let neighborConnections = starMap.getAdjacentSystems(neighborId)
         if neighborConnections.len >= 3:
           continue  # Skip connecting to house systems that already have 3 connections

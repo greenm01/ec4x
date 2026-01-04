@@ -522,12 +522,26 @@ SC determines the maximum number of **combat fleets** your House can command. Fl
 
 **Dynamic Scaling:**
 
-The SC VI fleet limit uses logarithmic scaling based on systems per player:
+SC fleet limits use multiplicative logarithmic scaling based on map density (systems per player):
+
 ```
-SC VI Max Fleets = 10 + floor(log2(systems_per_player / 8))
+Max Combat Fleets = base × (1 + log₂(systems_per_player ÷ divisor) × scaleFactor)
 ```
 
-This ensures strategic complexity scales appropriately with map size without overwhelming micromanagement.
+Where:
+- **base** = SC tech level base fleet count (from config/tech.kdl: 10/12/14/16/18/20)
+- **systems_per_player** = total systems on map ÷ number of players
+- **divisor** = 8 (threshold where scaling begins, configurable in config/limits.kdl)
+- **scaleFactor** = 0.4 (scaling aggressiveness, configurable in config/limits.kdl)
+
+**Example Calculations:**
+
+For SC VI (base 20 fleets):
+- **Small map** (9 systems/player): 20 × (1 + log₂(9÷8) × 0.4) = 20 × 1.07 ≈ **21 fleets**
+- **Medium map** (23 systems/player): 20 × (1 + log₂(23÷8) × 0.4) = 20 × 1.61 ≈ **32 fleets**
+- **Large map** (39 systems/player): 20 × (1 + log₂(39÷8) × 0.4) = 20 × 1.92 ≈ **38 fleets**
+
+This logarithmic approach provides smooth, continuous scaling across all map sizes while avoiding exponential fleet spam on huge maps. The formula applies consistently across all SC levels—SC I (base 10) through SC VI (base 20)—ensuring balanced progression regardless of map size.
 
 **Immediate Application:**
 

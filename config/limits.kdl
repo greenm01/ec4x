@@ -11,20 +11,30 @@ c2Limits {
 
 // --- Strategic Command Fleet Scaling ---
 strategicCommandScaling {
-    (docs)"Map size affects SC combat fleet limits"
-    // Applies multiplier to maxCombatFleetsBase from tech.kdl strategicCommand levels
-    small {
-        sizeThreshold 6      // numRings <= 6
-        multiplier 1.0       // 10-20 fleets (no scaling)
-    }
-    medium {
-        sizeThreshold 10     // 7 <= numRings <= 10
-        multiplier 1.4       // 14-28 fleets
-    }
-    large {
-        sizeThreshold 999    // numRings > 10
-        multiplier 1.8       // 18-36 fleets
-    }
+    (docs)"docs/specs/04-research_development.md#411-strategic-command-sc"
+
+    // Logarithmic fleet scaling based on map density (systems per player)
+    // Formula: maxFleets = base × (1 + log₂(systems_per_player ÷ divisor) × scaleFactor)
+    //
+    // Where:
+    //   - base = SC tech level base fleet count (from tech.kdl: 10/12/14/16/18/20)
+    //   - systems_per_player = total map systems ÷ player count
+    //   - divisor = threshold where scaling begins (default: 8)
+    //   - scaleFactor = scaling aggressiveness (default: 0.4)
+    //
+    // Example for SC VI (base 20):
+    //   Small map  (9 sys/player):  20 × (1 + log₂(9÷8) × 0.4) ≈ 21 fleets
+    //   Medium map (23 sys/player): 20 × (1 + log₂(23÷8) × 0.4) ≈ 32 fleets
+    //   Large map  (39 sys/player): 20 × (1 + log₂(39÷8) × 0.4) ≈ 38 fleets
+    //
+    // Balance Tuning:
+    //   - Increase scaleFactor (0.4 → 0.5) for more aggressive scaling on large maps
+    //   - Decrease scaleFactor (0.4 → 0.3) for more conservative fleet counts
+    //   - Decrease divisor (8 → 6) to make scaling kick in earlier
+    //   - Increase divisor (8 → 10) to delay scaling for denser maps only
+
+    systemsPerPlayerDivisor 8.0   // Threshold where logarithmic scaling begins
+    scaleFactor 0.4                // Scaling aggressiveness (higher = more fleets on large maps)
 }
 
 // --- Unit & Facility Quantity Limits ---

@@ -7,6 +7,7 @@
 ## - EL: +5% GCO per level (economy)
 ## - CST: Dock capacity multiplier (facility docks)
 ## - TER: Terraforming cost and requirements
+## - SC: Strategic Command fleet limits (map-scaled)
 ##
 ## Tech effects implemented elsewhere:
 ## - CST: Squadron limit (gamestate.nim)
@@ -17,6 +18,7 @@
 ## - FD: Fighter capacity multiplier (economy/fighter_capacity.nim)
 ## - ACO: Carrier capacity (implemented here)
 
+import std/[math, tables]
 import ../../types/tech
 import ../../globals
 
@@ -183,3 +185,48 @@ proc getCarrierCapacityCX*(acoLevel: int): int =
   # ACO II
   else:
     8 # ACO III+
+
+## Strategic Command Effects (economy.md:4.11)
+
+proc getMaxCombatFleets*(
+  scLevel: int32, totalSystems: int32, playerCount: int32
+): int32 =
+  ## Calculate maximum combat fleets based on SC tech level and map density
+  ## Per docs/specs/04-research_development.md#411-strategic-command-sc
+  ##
+  ## Formula: maxFleets = base × (1 + log₂(systems_per_player ÷ divisor) × scaleFactor)
+  ##
+  ## Where:
+  ##   - base = SC tech level base fleet count (from config/tech.kdl)
+  ##   - systems_per_player = total systems ÷ player count
+  ##   - divisor = threshold where scaling begins (from config/limits.kdl)
+  ##   - scaleFactor = scaling aggressiveness (from config/limits.kdl)
+  ##
+  ## Example for SC VI (base 20):
+  ##   Small map (9 sys/player):  20 × (1 + log₂(9÷8) × 0.4) ≈ 21 fleets
+  ##   Medium map (23 sys/player): 20 × (1 + log₂(23÷8) × 0.4) ≈ 32 fleets
+  ##   Large map (39 sys/player):  20 × (1 + log₂(39÷8) × 0.4) ≈ 38 fleets
+
+  # Get base fleet count from SC tech level
+  let cfg = gameConfig.tech.sc
+  if not cfg.levels.hasKey(scLevel):
+    # Fallback to SC I if level not found
+    return 10
+
+  let baseFleets = cfg.levels[scLevel].maxCombatFleetsBase
+
+  # Calculate systems per player
+  let systemsPerPlayer = float32(totalSystems) / float32(max(1, playerCount))
+
+  # Get scaling parameters from config
+  let divisor = gameConfig.limits.scScaling.systemsPerPlayerDivisor
+  let scaleFactor = gameConfig.limits.scScaling.scaleFactor
+
+  # Apply logarithmic scaling formula
+  # maxFleets = base × (1 + log₂(sys_per_player ÷ divisor) × scaleFactor)
+  let ratio = systemsPerPlayer / divisor
+  let logScaling = log2(ratio) * scaleFactor
+  let multiplier = 1.0 + logScaling
+
+  # Calculate final fleet count (rounded down)
+  result = int32(float32(baseFleets) * multiplier)

@@ -12,7 +12,7 @@ import ../config/engine
 import ../state/[engine, id_gen]
 import ../persistence/schema
 import ../types/[
-  core, game_state, squadron, intel, diplomacy,
+  core, game_state, intel, diplomacy,
   espionage, resolution, starmap, command, fleet,
   house
 ]
@@ -249,7 +249,6 @@ proc initGameState*(
       nextNeoriaId: 1,
       nextKastraId: 1,
       nextFleetId: 1,
-      nextSquadronId: 1,
       nextShipId: 1,
       nextGroundUnitId: 1,
       nextConstructionProjectId: 1,
@@ -279,17 +278,6 @@ proc initGameState*(
     activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
     gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
     lastTurnReports: initTable[HouseId, TurnResolutionReport](),
-  )
-
-  # Initialize ref squadrons collection
-  new(result.squadrons)
-  result.squadrons[] = Squadrons(
-    entities: EntityManager[SquadronId, Squadron](
-      data: @[],
-      index: initTable[SquadronId, int]()
-    ),
-    byFleet: initTable[FleetId, seq[SquadronId]](),
-    byHouse: initTable[HouseId, seq[SquadronId]]()
   )
 
   # Generate starmap (populates result.systems)

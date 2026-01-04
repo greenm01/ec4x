@@ -24,7 +24,7 @@ type
     ## Tactical resolution phases within Space/Orbital combat
     ## Per docs/specs/07-combat.md Section 7.3.1
     Ambush          # Phase 1: Undetected Raiders
-    Intercept       # Phase 2: Fighter Squadrons
+    Intercept       # Phase 2: Fighters
     MainEngagement  # Phase 3: Capital Ships
 
   CombatOutcome* {.pure.} = enum
@@ -48,8 +48,8 @@ type
     ## Who receives the CER bonus from a successful morale check
     ## Based on docs/specs/07-combat.md Section 7.3.3
     None      # No bonus applied
-    Random    # Applies to one random squadron
-    All       # Applies to all squadrons
+    Random    # Applies to one random ship
+    All       # Applies to all ships
 
   MoraleTier* {.pure.} = enum
     ## Morale tier based on house prestige
@@ -86,21 +86,20 @@ type
     Starbase = 5
 
   CombatTargetKind* {.pure.} = enum
-    Squadron
+    Ship
     Facility
 
   CombatTargetId* = object
     case kind*: CombatTargetKind
-    of Squadron:
-      squadronId*: SquadronId
+    of Ship:
+      shipId*: ShipId
     of Facility:
       kastraId*: KastraId  # Defensive facility (Starbase)
 
-  CombatSquadron* = object
-    squadronId*: SquadronId # Reference ID
-    attackStrength*: int32 # Cached AS from squadron for combat
-    defenseStrength*: int32 # Cached DS from squadron for combat
-    commandRating*: int32 # Cached CR from flagship for phase ordering
+  CombatShip* = object
+    shipId*: ShipId # Reference ID
+    attackStrength*: int32 # Cached AS from ship for combat
+    defenseStrength*: int32 # Cached DS from ship for combat
     state*: CombatState
     fleetStatus*: FleetStatus
     damageThisTurn*: int32
@@ -122,7 +121,7 @@ type
 
   TaskForce* = object
     houseId*: HouseId
-    squadrons*: seq[CombatSquadron] # Combat state for squadrons in this TF
+    ships*: seq[CombatShip] # Combat state for ships in this TF
     facilities*: seq[CombatFacility] # Combat state for facilities in this TF
     roe*: int32
     isCloaked*: bool
@@ -132,8 +131,8 @@ type
     clkLevel*: int32
 
   AttackResult* = object
-    attackerId*: CombatTargetId # Can be squadron or facility
-    targetId*: CombatTargetId # Can be squadron or facility
+    attackerId*: CombatTargetId # Can be ship or facility
+    targetId*: CombatTargetId # Can be ship or facility
     cerRoll*: CERRoll
     damageDealt*: int32
     targetStateBefore*: CombatState
@@ -206,8 +205,8 @@ type
     shieldBlocked*: int32 # Hits blocked by shields
     batteriesDestroyed*: int32
     batteriesCrippled*: int32
-    squadronsDestroyed*: int32
-    squadronsCrippled*: int32
+    shipsDestroyed*: int32
+    shipsCrippled*: int32
     infrastructureDamage*: int32 # IU lost
     populationDamage*: int32 # PU lost
     roundsCompleted*: int32 # 1-3 max per turn

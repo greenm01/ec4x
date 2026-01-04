@@ -186,7 +186,7 @@ specialWeapons {
 }
 
 // ============================================================================
-// SHIP STATUS MANAGEMENT
+// FLEET STATUS MODIFIERS
 // ============================================================================
 shipStatus {
     (docs)"docs/specs/02-assets.md#section-2-3-3-5"

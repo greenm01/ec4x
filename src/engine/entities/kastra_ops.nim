@@ -8,7 +8,7 @@
 
 import std/[options, sequtils, tables, math]
 import ../state/[engine, id_gen]
-import ../types/[game_state, core, facilities, colony]
+import ../types/[game_state, core, facilities, colony, combat]
 import ../globals
 
 proc getKastraStats*(kastraClass: KastraClass, weaponsTech: int32 = 1): KastraStats =

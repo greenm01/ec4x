@@ -98,8 +98,7 @@ proc createHomeWorld*(
     autoLoadingEnabled: true,
     autoReloadETACs: true,
     activeTerraforming: none(TerraformProject),
-    unassignedSquadronIds: @[],
-    fighterSquadronIds: @[],
+    fighterIds: @[],
     capacityViolation: CapacityViolation(
       severity: ViolationSeverity.None,
       graceTurnsRemaining: 0,

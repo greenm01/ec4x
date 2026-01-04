@@ -1,6 +1,6 @@
 ## Accessors for commonly-used values
 
-import std/[strutils, strformat, tables]
+import std/[strutils, strformat, tables, math]
 import ./types/[starmap, ship, tech, config, validation]
 
 import ./globals
