@@ -1,7 +1,6 @@
-import std/[options, tables]
-import ../types/[core]
-
 # Generic getter that works for any collection using our EntityManager pattern
+# Note: This file is included (not imported) by engine.nim and iterators.nim
+# It relies on parent file imports: std/[options, tables], ../types/[core]
 # Per NEP-1: getters should not use "get" prefix
 proc entity[ID, T](collection: EntityManager[ID, T], id: ID): Option[T] =
   if collection.index.contains(id):
@@ -10,18 +9,18 @@ proc entity[ID, T](collection: EntityManager[ID, T], id: ID): Option[T] =
   return none(T)
 
 # Generic adder that works for any collection using our EntityManager pattern
-proc addEntity[ID, T](collection: var EntityManager[ID, T], id: ID, entity: T) =
+proc addEntity[ID, T](collection: var EntityManager[ID, T], id: ID, entity: T) {.used.} =
   collection.data.add(entity)
   collection.index[id] = collection.data.len - 1
 
-proc updateEntity[ID, T](mgr: var EntityManager[ID, T], id: ID, newEntity: T) =
+proc updateEntity[ID, T](mgr: var EntityManager[ID, T], id: ID, newEntity: T) {.used.} =
   ## Updates an existing entity in the entity manager.
   if not mgr.index.contains(id):
     return
   let idx = mgr.index[id]
   mgr.data[idx] = newEntity
 
-proc delEntity[ID, T](mgr: var EntityManager[ID, T], id: ID) =
+proc delEntity[ID, T](mgr: var EntityManager[ID, T], id: ID) {.used.} =
   if not mgr.index.contains(id):
     return
 

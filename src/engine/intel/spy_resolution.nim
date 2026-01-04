@@ -4,7 +4,8 @@
 import std/[options, random]
 import ../../common/logger
 import ../types/[core, game_state]
-import ../state/engine as state_helpers
+import ../state/engine
+import ../systems/fleet/entity
 
 type SpyDetectionResult* = object
   ## Detection result for spy missions with roll details
@@ -23,21 +24,20 @@ proc resolveSpyScoutDetection*(
   ## Returns true if detected, false otherwise.
 
   # 1. Get number of scouts using safe accessor
-  let fleetOpt = state_helpers.fleet(state, fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     logWarn("Intelligence", "Spy fleet not found for detection check", "fleetId=", $fleetId)
     return true # Cannot find fleet, assume mission fails/detected
 
   let fleet = fleetOpt.get()
-  let numScouts = int32(fleet.squadrons.len)
-    # Assuming 1 scout per squadron in a scout-only fleet
+  let numScouts = state.countScoutShips(fleet)
 
   if numScouts == 0:
     logWarn("Intelligence", "Spy fleet has no scouts for detection check", "fleetId=", $fleetId)
     return true
 
   # 2. Get defender's info using safe accessors
-  let colonyOpt = state_helpers.colonyBySystem(state, targetSystem)
+  let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isNone:
     # No colony, no owner, no detection
     return false
@@ -49,7 +49,7 @@ proc resolveSpyScoutDetection*(
     # Spying on self? No detection
     return false
 
-  let defenderHouseOpt = state_helpers.house(state, defender)
+  let defenderHouseOpt = state.house(defender)
   if defenderHouseOpt.isNone:
     logWarn("Intelligence", "Defender house not found for detection check", "defender=", $defender)
     return false # No defender, no detection
@@ -58,7 +58,7 @@ proc resolveSpyScoutDetection*(
   let defenderELI = defenderHouse.techTree.levels.eli
 
   # 3. Get starbase bonus (+2 ELI for detection per assets.md:2.4.2)
-  let starbaseBonus: int32 = if colony.starbaseIds.len > 0: 2 else: 0
+  let starbaseBonus: int32 = if state.countStarbasesAtColony(colony.id) > 0: 2 else: 0
 
   # 4. Calculate target number
   let targetNumber = 15 - numScouts + (defenderELI + starbaseBonus)
@@ -103,7 +103,7 @@ proc resolveSpyScoutDetection*(
   ## Returns SpyDetectionResult with detected flag and roll details
 
   # Get defender's ELI level using safe accessor
-  let defenderHouseOpt = state_helpers.house(state, defender)
+  let defenderHouseOpt = state.house(defender)
   if defenderHouseOpt.isNone:
     logWarn("Intelligence", "Defender house not found for detection check", "defender=", $defender)
     # No defender house found, detection fails (spies succeed)
@@ -114,10 +114,10 @@ proc resolveSpyScoutDetection*(
 
   # Get starbase bonus (+2 ELI for detection per assets.md:2.4.2)
   var starbaseBonus: int32 = 0
-  let colonyOpt = state_helpers.colonyBySystem(state, targetSystem)
+  let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
-    starbaseBonus = if colony.starbaseIds.len > 0: 2 else: 0
+    starbaseBonus = if state.countStarbasesAtColony(colony.id) > 0: 2 else: 0
 
   # Calculate target number
   let targetNumber = 15 - scoutCount + (defenderELI + starbaseBonus)

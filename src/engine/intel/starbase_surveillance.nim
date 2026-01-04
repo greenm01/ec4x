@@ -53,20 +53,19 @@ proc generateStarbaseSurveillance*(
   if colony.owner != starbaseOwner:
     return none(StarbaseSurveillanceReport)
 
-  if colony.starbaseIds.len == 0:
+  # Check if colony has any starbases (kastras)
+  let kastras = state.kastrasAtColony(colony.id)
+  if kastras.len == 0:
     return none(StarbaseSurveillanceReport)
 
-  # Check if any starbase is operational (not crippled)
+  # Check if any kastra (starbase) is operational (not crippled)
   var hasOperationalStarbase = false
-  var operationalStarbaseId = StarbaseId(0)
-  for starbaseId in colony.starbaseIds:
-    let starbaseOpt = state_helpers.starbase(state, starbaseId)
-    if starbaseOpt.isSome:
-      let starbase = starbaseOpt.get()
-      if starbase.state != CombatState.Crippled:
-        hasOperationalStarbase = true
-        operationalStarbaseId = starbaseId
-        break
+  var operationalKastraId = KastraId(0)
+  for kastra in kastras:
+    if kastra.state != CombatState.Crippled:
+      hasOperationalStarbase = true
+      operationalKastraId = kastra.id
+      break
 
   if not hasOperationalStarbase:
     return none(StarbaseSurveillanceReport) # Crippled starbases can't surveil
@@ -86,25 +85,20 @@ proc generateStarbaseSurveillance*(
       var hasScouts = false
       var hasCloakedRaiders = false
 
-      # Check each squadron in the fleet
-      for squadronId in fleet.squadrons:
-        let squadronOpt = state_helpers.squadrons(state, squadronId)
-        if squadronOpt.isNone:
+      # Check each ship in the fleet (no squadrons)
+      for shipId in fleet.ships:
+        let shipOpt = state_helpers.ship(state, shipId)
+        if shipOpt.isNone:
           continue
 
-        let squadron = squadronOpt.get()
-        let flagshipOpt = state_helpers.ship(state, squadron.flagshipId)
-        if flagshipOpt.isNone:
-          continue
-
-        let flagship = flagshipOpt.get()
+        let ship = shipOpt.get()
 
         # Check for scouts (ELI capability)
-        if flagship.shipClass == ShipClass.Scout and flagship.state != CombatState.Crippled:
+        if ship.shipClass == ShipClass.Scout and ship.state != CombatState.Crippled:
           hasScouts = true
 
         # Check for raiders (CLK capability)
-        if flagship.shipClass == ShipClass.Raider and flagship.state != CombatState.Crippled:
+        if ship.shipClass == ShipClass.Raider and ship.state != CombatState.Crippled:
           hasCloakedRaiders = true
 
       # Determine if fleet evades detection
@@ -134,7 +128,7 @@ proc generateStarbaseSurveillance*(
             fleetId: fleet.id,
             location: fleet.location,
             owner: fleet.houseId,
-            shipCount: int32(fleet.squadrons.len),
+            shipCount: int32(fleet.ships.len),
           )
         )
 
@@ -143,7 +137,7 @@ proc generateStarbaseSurveillance*(
     return none(StarbaseSurveillanceReport)
 
   let report = StarbaseSurveillanceReport(
-    starbaseId: operationalStarbaseId,
+    kastraId: operationalKastraId,
     systemId: starbaseSystemId,
     owner: starbaseOwner,
     turn: turn,
@@ -166,7 +160,7 @@ proc processAllStarbaseSurveillance*(state: var GameState, turn: int32, rng: var
   # Process each house's colonies
   for (houseId, _) in state.allHousesWithId():
     for colony in state.coloniesOwned(houseId):
-      if colony.starbaseIds.len > 0:
+      if state.countStarbasesAtColony(colony.id) > 0:
         let surveillance =
           generateStarbaseSurveillance(state, colony.systemId, colony.owner, turn, rng)
 
@@ -200,7 +194,7 @@ proc processAllStarbaseSurveillance*(state: var GameState, turn: int32, rng: var
             report.detectedFleets = corruptedDetected
 
           # Store report in intelligence database (Table read-modify-write pattern)
-          if state.intelligence.contains(colony.owner):
-            var intel = state.intelligence[colony.owner]
-            intel.starbaseSurveillance.add(report)
-            state.intelligence[colony.owner] = intel
+          if state.intel.contains(colony.owner):
+            var intelDb = state.intel[colony.owner]
+            intelDb.starbaseSurveillance.add(report)
+            state.intel[colony.owner] = intelDb

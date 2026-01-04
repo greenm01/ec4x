@@ -9,7 +9,7 @@ import
 import ../../state/[engine as state_helpers, iterators]
 import ../../entities/fleet_ops
 import ../../intel/[spy_resolution, generator as intel_generator]
-import ../../event_factory/intel as intelligence_events
+import ../../event_factory/intel
 import ../../prestige/engine as prestige
 import ./[engine as esp_engine, executor as esp_executor]
 
@@ -107,7 +107,7 @@ proc resolveEspionageConflict*(
       if colonyOpt.isSome:
         let defender = colonyOpt.get().owner
         events.add(
-          intelligence_events.scoutDetected(
+          intel.scoutDetected(
             intent.houseId, defender, intent.targetSystem, "Spy Scout"
           )
         )
@@ -241,7 +241,7 @@ proc processEspionageActions*(
       continue
     let targetHouse = targetHouseOpt.get()
     let targetCICLevel =
-      case targetHouse.techTree.levels.counterIntelligence
+      case targetHouse.techTree.levels.cic
       of 1: espionage.CICLevel.CIC1
       of 2: espionage.CICLevel.CIC2
       of 3: espionage.CICLevel.CIC3
@@ -269,7 +269,7 @@ proc processEspionageActions*(
       of espionage.EspionageAction.SabotageLow:
         if attempt.targetSystem.isSome:
           events.add(
-            intelligence_events.sabotageConducted(
+            sabotageConducted(
               attempt.attacker,
               attempt.target,
               attempt.targetSystem.get(),
@@ -280,7 +280,7 @@ proc processEspionageActions*(
       of espionage.EspionageAction.SabotageHigh:
         if attempt.targetSystem.isSome:
           events.add(
-            intelligence_events.sabotageConducted(
+            sabotageConducted(
               attempt.attacker,
               attempt.target,
               attempt.targetSystem.get(),
@@ -290,20 +290,20 @@ proc processEspionageActions*(
           )
       of espionage.EspionageAction.TechTheft:
         events.add(
-          intelligence_events.techTheftExecuted(
+          techTheftExecuted(
             attempt.attacker, attempt.target, result.srpStolen
           )
         )
       of espionage.EspionageAction.Assassination:
         events.add(
-          intelligence_events.assassinationAttempted(
+          assassinationAttempted(
             attempt.attacker, attempt.target,
             globalEspionageConfig.effects.assassination_srp_reduction,
           )
         )
       of espionage.EspionageAction.EconomicManipulation:
         events.add(
-          intelligence_events.economicManipulationExecuted(
+          economicManipulationExecuted(
             attempt.attacker, attempt.target,
             globalEspionageConfig.effects.economic_ncv_reduction,
           )
@@ -311,31 +311,31 @@ proc processEspionageActions*(
       of espionage.EspionageAction.CyberAttack:
         if attempt.targetSystem.isSome:
           events.add(
-            intelligence_events.cyberAttackConducted(
+            cyberAttackConducted(
               attempt.attacker, attempt.target, attempt.targetSystem.get()
             )
           )
       of espionage.EspionageAction.PsyopsCampaign:
         events.add(
-          intelligence_events.psyopsCampaignLaunched(
+          psyopsCampaignLaunched(
             attempt.attacker, attempt.target,
             globalEspionageConfig.effects.psyops_tax_reduction,
           )
         )
-      of espionage.EspionageAction.IntelligenceTheft:
+      of espionage.EspionageAction.IntelTheft:
         events.add(
-          intelligence_events.intelligenceTheftExecuted(
+          intelTheftExecuted(
             attempt.attacker, attempt.target
           )
         )
       of espionage.EspionageAction.PlantDisinformation:
         events.add(
-          intelligence_events.disinformationPlanted(attempt.attacker, attempt.target)
+          disinformationPlanted(attempt.attacker, attempt.target)
         )
       of espionage.EspionageAction.CounterIntelSweep:
         if attempt.targetSystem.isSome:
           events.add(
-            intelligence_events.counterIntelSweepExecuted(
+            counterIntelSweepExecuted(
               attempt.attacker, attempt.targetSystem.get()
             )
           )
@@ -372,7 +372,7 @@ proc processEspionageActions*(
       # Create detection event
       if attempt.targetSystem.isSome:
         events.add(
-          intelligence_events.spyMissionDetected(
+          spyMissionDetected(
             attempt.attacker,
             attempt.target,
             attempt.targetSystem.get(),
@@ -455,7 +455,7 @@ proc processScoutIntelligence*(
           # Create rich narrative event (visible only to spy house)
           # Scout-specific: SpyPlanet mission by scout fleet
           events.add(
-            intelligence_events.scoutColonyIntelGathered(
+            scoutColonyIntelGathered(
               houseId,
               report.targetOwner,
               targetSystem,
@@ -501,7 +501,7 @@ proc processScoutIntelligence*(
         # Create rich narrative event (visible only to spy house)
         # Scout-specific: SpySystem mission by scout fleet
         events.add(
-          intelligence_events.scoutSystemIntelGathered(
+          scoutSystemIntelGathered(
             houseId,
             targetHouse,
             targetSystem,
@@ -552,7 +552,7 @@ proc processScoutIntelligence*(
           # Create rich narrative event (visible only to spy house)
           # Scout-specific: HackStarbase mission by scout fleet
           events.add(
-            intelligence_events.scoutStarbaseIntelGathered(
+            scoutStarbaseIntelGathered(
               houseId,
               report.targetOwner,
               targetSystem,

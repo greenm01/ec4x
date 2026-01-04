@@ -20,7 +20,7 @@ type
     EconomicManipulation
     PsyopsCampaign
     CounterIntelSweep
-    IntelligenceTheft
+    IntelTheft
     PlantDisinformation
 
   SpyMissionType* {.pure.} = enum

@@ -4,7 +4,7 @@
 
 import std/[tables, algorithm, options]
 import ../types/[victory, game_state, core, house]
-import ../state/iterators
+import ../state/[engine, iterators]
 
 export victory
 
