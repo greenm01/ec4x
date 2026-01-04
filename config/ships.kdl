@@ -15,7 +15,6 @@ escorts {
         attackStrength 2
         defenseStrength 3
         c2Cost 1
-        crRating 2
     }
     frigate {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -25,7 +24,6 @@ escorts {
         attackStrength 3
         defenseStrength 4
         c2Cost 2
-        crRating 3
     }
     destroyer {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -35,7 +33,6 @@ escorts {
         attackStrength 5
         defenseStrength 6
         c2Cost 2
-        crRating 4
     }
     lightCruiser {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -45,7 +42,6 @@ escorts {
         attackStrength 8
         defenseStrength 9
         c2Cost 3
-        crRating 6
     }
 }
 
@@ -61,7 +57,6 @@ capitals {
         attackStrength 12
         defenseStrength 13
         c2Cost 3
-        crRating 7
     }
     battlecruiser {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -71,7 +66,6 @@ capitals {
         attackStrength 16
         defenseStrength 18
         c2Cost 3
-        crRating 8
     }
     battleship {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -81,7 +75,6 @@ capitals {
         attackStrength 20
         defenseStrength 25
         c2Cost 3
-        crRating 10
     }
     dreadnought {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -91,7 +84,6 @@ capitals {
         attackStrength 28
         defenseStrength 30
         c2Cost 4
-        crRating 12
     }
     superDreadnought {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -101,7 +93,6 @@ capitals {
         attackStrength 35
         defenseStrength 40
         c2Cost 5
-        crRating 14
     }
     carrier {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
@@ -111,7 +102,6 @@ capitals {
         attackStrength 5
         defenseStrength 18
         c2Cost 3
-        crRating 8
         carryLimit 3 // Base capacity at ACO I - TECH-DRIVEN, see tech.kdl advancedCarrierOpsTech
         // Capacity increases with ACO tech: ACO I=3, ACO II=4, ACO III=5
     }
@@ -123,7 +113,6 @@ capitals {
         attackStrength 8
         defenseStrength 25
         c2Cost 4
-        crRating 10
         carryLimit 5 // Base capacity at ACO I - TECH-DRIVEN, see tech.kdl advancedCarrierOpsTech
         // Capacity increases with ACO tech: ACO I=5, ACO II=6, ACO III=8
     }
@@ -135,7 +124,6 @@ capitals {
         attackStrength 20
         defenseStrength 25
         c2Cost 2
-        crRating 6
     }
 }
 
@@ -194,7 +182,6 @@ specialWeapons {
         attackStrength 50
         defenseStrength 20
         c2Cost 6
-        crRating 6
     }
 }
 

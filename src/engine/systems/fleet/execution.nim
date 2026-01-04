@@ -8,11 +8,12 @@
 ## - Special commands: Various phases (colonize, salvage, espionage)
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
-import ../../types/[core, game_state, command, fleet, squadron]
+import ../../types/[core, game_state, command, fleet, ship, combat]
 import ../../../common/logger as common_logger
 import ../../state/[engine, iterators]
 import ../commands/[executor]
 import ./standing
+import ./entity as fleet_entity
 import ../resolution/[types as res_types, fleet_orders, simultaneous]
 import ../combat/battles # Space/orbital combat (resolveBattle)
 import
@@ -53,15 +54,15 @@ proc validateCommandAtExecution(
   # Order-specific validation
   case command.commandType
   of FleetCommandType.Colonize:
-    # Check fleet still has ETAC
-    # ETACs are in Expansion squadrons
+    # Check fleet still has operational ETAC
     var hasETAC = false
-    for squadron in fleet.squadrons:
-      if squadron.squadronType == SquadronClass.Expansion:
-        if squadron.flagship.shipClass == ShipClass.ETAC:
-          if squadron.flagship.state != CombatState.Crippled:
-            hasETAC = true
-            break
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        if ship.shipClass == ShipClass.ETAC and ship.state != CombatState.Crippled:
+          hasETAC = true
+          break
 
     if not hasETAC:
       return ExecutionValidationResult(
@@ -79,10 +80,13 @@ proc validateCommandAtExecution(
   of FleetCommandType.Bombard, FleetCommandType.Invade, FleetCommandType.Blitz:
     # Check fleet still has combat capability
     var hasCombat = false
-    for squadron in fleet.squadrons:
-      if squadron.flagship.stats.attackStrength > 0 and squadron.flagship.state != CombatState.Crippled:
-        hasCombat = true
-        break
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        if ship.stats.attackStrength > 0 and ship.state != CombatState.Crippled:
+          hasCombat = true
+          break
 
     if not hasCombat:
       return ExecutionValidationResult(
@@ -123,59 +127,33 @@ proc validateCommandAtExecution(
           valid: false, shouldAbort: false, reason: "Fleets no longer in same location"
         )
 
-      # Check squadron type compatibility (Intel cannot mix with non-Intel)
-      let sourceHasIntel = fleet.squadrons.anyIt(it.squadronType == SquadronClass.Intel)
-      let sourceHasNonIntel =
-        fleet.squadrons.anyIt(it.squadronType != SquadronClass.Intel)
-      let targetHasIntel =
-        targetFleet.squadrons.anyIt(it.squadronType == SquadronClass.Intel)
-      let targetHasNonIntel =
-        targetFleet.squadrons.anyIt(it.squadronType != SquadronClass.Intel)
-
-      # Intel squadrons cannot join non-Intel fleets
-      if sourceHasIntel and targetHasNonIntel:
+      # Check ship type compatibility (Intel/Scout ships cannot mix with non-Intel)
+      let mergeCheck = fleet_entity.canMergeWith(state, fleet, targetFleet)
+      if not mergeCheck.canMerge:
         return ExecutionValidationResult(
           valid: false,
           shouldAbort: false,
-          reason: "Cannot join Intel squadron to fleet with non-Intel squadrons",
-        )
-
-      # Non-Intel squadrons cannot join Intel fleets
-      if sourceHasNonIntel and targetHasIntel:
-        return ExecutionValidationResult(
-          valid: false,
-          shouldAbort: false,
-          reason: "Cannot join non-Intel squadron to Intel-only fleet",
+          reason: mergeCheck.reason,
         )
   of FleetCommandType.SpyColony, FleetCommandType.SpySystem,
       FleetCommandType.HackStarbase:
-    # Check fleet is still Intel-only (no combat/other squadrons added)
-    let hasIntel = fleet.squadrons.anyIt(it.squadronType == SquadronClass.Intel)
-    let hasNonIntel = fleet.squadrons.anyIt(it.squadronType != SquadronClass.Intel)
+    # Check fleet is still Intel-only (Scout ships only, no combat/other ships)
+    let hasIntel = fleet_entity.hasScouts(state, fleet)
+    let hasNonIntel = fleet_entity.hasNonScoutShips(state, fleet)
 
     if not hasIntel:
       return ExecutionValidationResult(
         valid: false,
         shouldAbort: false,
-        reason: "Fleet has no Intel squadrons (spy missions require Intel squadrons)",
+        reason: "Fleet has no Scout ships (spy missions require Scout ships)",
       )
 
     if hasNonIntel:
       return ExecutionValidationResult(
         valid: false,
         shouldAbort: false,
-        reason: "Fleet has non-Intel squadrons (spy missions require pure Intel fleets)",
+        reason: "Fleet has non-Scout ships (spy missions require pure Scout fleets)",
       )
-
-    # Check no Expansion/Auxiliary squadrons (spy missions require Intel-only)
-    for squadron in fleet.squadrons:
-      if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
-        return ExecutionValidationResult(
-          valid: false,
-          shouldAbort: false,
-          reason:
-            "Fleet has Expansion/Auxiliary squadrons (spy missions require Intel-only)",
-        )
   of FleetCommandType.Patrol:
     # Check if patrol system is now hostile (lost to enemy)
     if command.targetSystem.isSome:

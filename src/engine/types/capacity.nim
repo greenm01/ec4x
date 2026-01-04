@@ -49,5 +49,4 @@ type
     description*: string
 
   GracePeriodTracker* = object
-    totalSquadronsExpiry*: int32
     fighterCapacityExpiry*: Table[SystemId, int32]

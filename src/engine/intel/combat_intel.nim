@@ -10,7 +10,7 @@
 import std/[tables, options, sequtils, strformat]
 import ../../common/logger
 import ../state/engine
-import ../types/[core, game_state, intel, fleet, squadron, combat, ground_unit, colony]
+import ../types/[core, game_state, intel, fleet, ship, combat, ground_unit, colony]
 
 proc getShieldLevel(state: GameState, colony: Colony): int32 =
   ## Get shield level for colony (shield level from house SLD tech)
@@ -36,19 +36,10 @@ proc createFleetComposition*(
     state: GameState, fleet: Fleet, fleetId: FleetId
 ): CombatFleetComposition =
   ## Create fleet composition intel from combat encounter
-  ## Stores squadron IDs, not full details (lookup separately via FleetIntel)
+  ## Stores ship IDs, not full details (lookup separately via FleetIntel)
 
-  # Collect squadron IDs
-  var squadronIds: seq[SquadronId] = fleet.squadrons
-  var spaceLiftSquadronIds: seq[SquadronId] = @[]
-
-  # Track space-lift capable squadrons separately
-  for squadronId in fleet.squadrons:
-    let squadronOpt = state.squadron(squadronId)
-    if squadronOpt.isSome:
-      let squadron = squadronOpt.get()
-      if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
-        spaceLiftSquadronIds.add(squadronId)
+  # Collect ship IDs directly from fleet
+  var shipIds: seq[ShipId] = fleet.ships
 
   # Get fleet's standing commands (if any)
   var orderIntel: Option[FleetOrderIntel] = none(FleetOrderIntel)
@@ -65,8 +56,7 @@ proc createFleetComposition*(
     fleetId: fleetId,
     owner: fleet.houseId,
     standingOrders: orderIntel,
-    squadronIds: squadronIds,
-    spaceLiftSquadronIds: spaceLiftSquadronIds,
+    shipIds: shipIds,
     isCloaked: false, # TODO: Implement cloaking detection logic
   )
 
@@ -102,7 +92,7 @@ proc generatePreCombatReport*(
 proc updateCombatReportOutcome*(
     report: var CombatEncounterReport,
     outcome: CombatOutcome,
-    alliedLosses: seq[SquadronId],
+    alliedLosses: seq[ShipId],
     enemyLosses: seq[string],
     retreatedAllies: seq[FleetId],
     retreatedEnemies: seq[FleetId],
@@ -178,35 +168,30 @@ proc updatePostCombatIntelligence*(
       else:
         outcome = CombatOutcome.Retreat
 
-    # Calculate losses (SquadronIds for allies, ship classes for enemies)
-    var alliedLosses: seq[SquadronId] = @[]
+    # Calculate losses (ShipIds for allies, ship classes for enemies)
+    var alliedLosses: seq[ShipId] = @[]
     var enemyLosses: seq[string] = @[]
 
     for (fleetId, fleetBefore) in fleetsBeforeCombat:
-      let squadronsBefore = fleetBefore.squadrons.len
-      var squadronsAfter = 0
+      let shipsBefore = fleetBefore.ships.len
+      var shipsAfter = 0
 
       if fleetId in fleetsAfterCombat:
-        squadronsAfter = fleetsAfterCombat[fleetId].squadrons.len
+        shipsAfter = fleetsAfterCombat[fleetId].ships.len
 
-      let lossCount = squadronsBefore - squadronsAfter
+      let lossCount = shipsBefore - shipsAfter
       if lossCount > 0:
-        # Record losses - assume first squadrons in list were destroyed
-        for i in 0 ..< min(lossCount, fleetBefore.squadrons.len):
-          let lostSquadronId = fleetBefore.squadrons[i]
+        # Record losses - assume first ships in list were destroyed
+        for i in 0 ..< min(lossCount, fleetBefore.ships.len):
+          let lostShipId = fleetBefore.ships[i]
           if fleetBefore.houseId == houseId:
-            # Allied loss: store squadron ID
-            alliedLosses.add(lostSquadronId)
+            # Allied loss: store ship ID
+            alliedLosses.add(lostShipId)
           else:
-            # Enemy loss: lookup squadron for ship class name
-            let squadronOpt = state.squadron(lostSquadronId)
-            if squadronOpt.isSome:
-              let squadron = squadronOpt.get()
-              let shipOpt = state.ship(squadron.flagshipId)
-              if shipOpt.isSome:
-                enemyLosses.add($shipOpt.get().shipClass)
-              else:
-                enemyLosses.add("Unknown")
+            # Enemy loss: lookup ship for ship class name
+            let shipOpt = state.ship(lostShipId)
+            if shipOpt.isSome:
+              enemyLosses.add($shipOpt.get().shipClass)
             else:
               enemyLosses.add("Unknown")
 
@@ -317,7 +302,7 @@ proc generateBlitzIntelligence*(
     alliedFleetIds: @[], # Ground forces, not fleets
     enemyFleetIds: @[],
     outcome: attackerOutcome,
-    alliedLosses: @[], # No squadron losses in ground combat
+    alliedLosses: @[], # No ship losses in ground combat
     enemyLosses:
       (0 ..< defenderCasualties).mapIt(if it < defendingArmies: "Army" else: "Marine"),
     retreatedAllies: @[],
@@ -357,7 +342,7 @@ proc generateBlitzIntelligence*(
     alliedFleetIds: @[],
     enemyFleetIds: @[],
     outcome: defenderOutcome,
-    alliedLosses: @[], # No squadron losses in ground combat
+    alliedLosses: @[], # No ship losses in ground combat
     enemyLosses: (0 ..< attackerCasualties).mapIt("Marine"),
     retreatedAllies: @[],
     retreatedEnemies: @[],
@@ -443,7 +428,7 @@ proc generateInvasionIntelligence*(
     alliedFleetIds: @[], # Ground forces, not fleets
     enemyFleetIds: @[],
     outcome: attackerOutcome,
-    alliedLosses: @[], # No squadron losses in ground combat
+    alliedLosses: @[], # No ship losses in ground combat
     enemyLosses:
       (0 ..< defenderCasualties).mapIt(if it < defendingArmies: "Army" else: "Marine"),
     retreatedAllies: @[],
@@ -483,7 +468,7 @@ proc generateInvasionIntelligence*(
     alliedFleetIds: @[],
     enemyFleetIds: @[],
     outcome: defenderOutcome,
-    alliedLosses: @[], # No squadron losses in ground combat
+    alliedLosses: @[], # No ship losses in ground combat
     enemyLosses: (0 ..< attackerCasualties).mapIt("Marine"),
     retreatedAllies: @[],
     retreatedEnemies: @[],
@@ -507,7 +492,6 @@ proc generateBombardmentIntelligence*(
     shieldsActive: bool,
     groundBatteriesDestroyed: int,
     groundForcesKilled: int,
-    spaceLiftShipsInvolved: int,
 ) =
   ## Generate intelligence reports for planetary bombardment
   ## Both attacker and defender receive detailed reports
@@ -518,7 +502,6 @@ proc generateBombardmentIntelligence*(
   ## - Industrial capacity (IU) destroyed
   ## - Planetary defenses status (shields, batteries)
   ## - Ground forces/population casualties (PU)
-  ## - Whether invasion force is present (transport squadrons detected)
 
   let turn = state.turn
 
@@ -555,7 +538,7 @@ proc generateBombardmentIntelligence*(
     enemyFleetIds: @[], # Can't see ground defenses from orbit
     outcome: CombatOutcome.Victory,
       # Bombardment always "succeeds" if executed
-    alliedLosses: @[], # Bombardment doesn't lose squadrons
+    alliedLosses: @[], # Bombardment doesn't lose ships
     enemyLosses: attackerEnemyLosses,
     retreatedAllies: @[],
     retreatedEnemies: @[],
@@ -588,7 +571,7 @@ proc generateBombardmentIntelligence*(
     alliedFleetIds: @[], # Ground forces (no fleet composition for defenders)
     enemyFleetIds: @[attackingFleetId], # Defender can see attacking fleet
     outcome: CombatOutcome.Defeat, # Being bombarded
-    alliedLosses: @[], # No squadron losses in bombardment
+    alliedLosses: @[], # No ship losses in bombardment
     enemyLosses: @[], # Bombardment doesn't damage attacking fleet
     retreatedAllies: @[],
     retreatedEnemies: @[],
@@ -600,14 +583,3 @@ proc generateBombardmentIntelligence*(
     var intel = state.intel[defendingHouse]
     intel.combatReports.add(defenderReport)
     state.intel[defendingHouse] = intel
-
-  # THREAT ASSESSMENT: If transport squadrons detected, invasion is imminent
-  if spaceLiftShipsInvolved > 0:
-    logWarn(
-      "Intelligence",
-      "CRITICAL: Invasion force detected",
-      "transportSquadrons=",
-      $spaceLiftShipsInvolved,
-      " system=",
-      $systemId,
-    )

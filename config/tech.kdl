@@ -188,61 +188,77 @@ construction {
     }
 }
 
-flagshipCommand {
-    (docs)"docs/specs/04-research_development.md#section-4-4-3"
+fleetCommand {
+    (docs)"docs/specs/04-research_development.md#410-fleet-command-fc"
+    level 1 {
+        slRequired 1
+        trpCost 0
+        maxShipsPerFleet 10
+    }
     level 2 {
         slRequired 2
         trpCost 12
-        crBonus 1
+        maxShipsPerFleet 14
     }
     level 3 {
         slRequired 3
         trpCost 15
-        crBonus 1 // Total bonus: +2
+        maxShipsPerFleet 18
     }
     level 4 {
         slRequired 4
         trpCost 20
-        crBonus 2 // Total bonus: +4
+        maxShipsPerFleet 22
     }
     level 5 {
         slRequired 6
         trpCost 25
-        crBonus 2 // Total bonus: +6
+        maxShipsPerFleet 26
     }
     level 6 {
         slRequired 8
         trpCost 32
-        crBonus 3 // Total bonus: +9
+        maxShipsPerFleet 30
     }
 }
 
 strategicCommand {
-    (docs)"docs/specs/04-research_development.md#section-4-4-4"
+    (docs)"docs/specs/04-research_development.md#411-strategic-command-sc"
     level 1 {
-        slRequired 2
-        trpCost 15
+        slRequired 1
+        trpCost 0
         c2Bonus 50
+        maxCombatFleetsBase 10
     }
     level 2 {
-        slRequired 3
-        trpCost 18
-        c2Bonus 60
+        slRequired 2
+        trpCost 15
+        c2Bonus 65
+        maxCombatFleetsBase 12
     }
     level 3 {
-        slRequired 5
-        trpCost 22
-        c2Bonus 75
+        slRequired 3
+        trpCost 18
+        c2Bonus 80
+        maxCombatFleetsBase 14
     }
     level 4 {
-        slRequired 7
-        trpCost 28
-        c2Bonus 90
+        slRequired 5
+        trpCost 22
+        c2Bonus 95
+        maxCombatFleetsBase 16
     }
     level 5 {
+        slRequired 7
+        trpCost 28
+        c2Bonus 110
+        maxCombatFleetsBase 18
+    }
+    level 6 {
         slRequired 9
         trpCost 36
         c2Bonus 125
+        maxCombatFleetsBase 20
     }
 }
 

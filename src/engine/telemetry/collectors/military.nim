@@ -4,7 +4,7 @@
 ## Covers: ship counts by class, squadron counts, ground unit counts.
 
 import std/options
-import ../../types/[telemetry, core, game_state, ship, squadron, colony]
+import ../../types/[telemetry, core, game_state, ship, colony, ground_unit]
 import ../../state/[engine, iterators]
 
 proc collectMilitaryMetrics*(
@@ -43,7 +43,7 @@ proc collectMilitaryMetrics*(
 
   # Count colony-based fighters
   for colony in state.coloniesOwned(houseId):
-    fighterShips += colony.fighterSquadronIds.len.int32
+    fighterShips += colony.fighterIds.len.int32
 
   # Planet-breakers tracked at house level
   planetBreakerShips = house.planetBreakerCount
@@ -52,13 +52,12 @@ proc collectMilitaryMetrics*(
   var idleCarrierCount = 0i32
   var totalCarrierCount = 0i32
 
-  for squadron in state.squadronsOwned(houseId):
-    if not squadron.destroyed:
-      # Lookup flagship ship to check its class
-      let flagshipOpt = state.ship(squadron.flagshipId)
-      if flagshipOpt.isSome:
-        let flagship = flagshipOpt.get()
-        case flagship.shipClass
+  for fleet in state.fleetsOwned(houseId):
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        case ship.shipClass
         of ShipClass.Fighter:
           fighterShips += 1
         of ShipClass.Corvette:
@@ -86,9 +85,9 @@ proc collectMilitaryMetrics*(
         of ShipClass.Carrier:
           carrierShips += 1
           totalCarrierCount += 1
-          # TODO: Check embarked fighters when squadron type supports it
-          # if squadron.embarkedFighters.len == 0:
-          #   idleCarrierCount += 1
+          # Check embarked fighters to track idle carriers
+          if ship.embarkedFighters.len == 0:
+            idleCarrierCount += 1
         of ShipClass.SuperCarrier:
           superCarrierShips += 1
           totalCarrierCount += 1
@@ -157,14 +156,13 @@ proc collectMilitaryMetrics*(
         of GroundClass.Marine:
           marinesAtColonies += 1
 
-  for squadron in state.squadronsOwned(houseId):
-    if squadron.squadronType == SquadronClass.Auxiliary:
-      # Lookup flagship ship to check cargo
-      let flagshipOpt = state.ship(squadron.flagshipId)
-      if flagshipOpt.isSome:
-        let flagship = flagshipOpt.get()
-        if flagship.cargo.isSome:
-          let cargo = flagship.cargo.get()
+  for fleet in state.fleetsOwned(houseId):
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        if ship.cargo.isSome:
+          let cargo = ship.cargo.get()
           if cargo.cargoType == CargoClass.Marines:
             marinesOnTransports += cargo.quantity
 
@@ -181,22 +179,14 @@ proc collectMilitaryMetrics*(
 
   var scoutCount = 0i32
 
-  # Count scouts in squadrons
-  for squadron in state.squadronsOwned(houseId):
-    if not squadron.destroyed:
-      # Check flagship
-      let flagshipOpt = state.ship(squadron.flagshipId)
-      if flagshipOpt.isSome:
-        let flagship = flagshipOpt.get()
-        if flagship.shipClass == ShipClass.Scout:
+  # Count scouts in fleets
+  for fleet in state.fleetsOwned(houseId):
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        if ship.shipClass == ShipClass.Scout:
           scoutCount += 1
-      # Count additional scout ships in squadron
-      for shipId in squadron.ships:
-        let shipOpt = state.ship(shipId)
-        if shipOpt.isSome:
-          let ship = shipOpt.get()
-          if ship.shipClass == ShipClass.Scout:
-            scoutCount += 1
 
   result.scoutCount = scoutCount
 

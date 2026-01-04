@@ -1,8 +1,11 @@
 ## Capital Squadron Capacity Enforcement System
 ##
-## Implements capital ship squadron limits per reference.md Table 10.5
+## ⚠️ DEPRECATED: This file implements CR-based capital squadron limits.
+## TODO: Replace with FC (Fleet Command) and SC (Strategic Command) enforcement.
+## See: capacity/fleet_command.nim and capacity/strategic_command.nim (to be created)
 ##
-## Capacity Formula: max(8, floor(Total_House_IU ÷ 100) × 2)
+## OLD: Implements capital ship squadron limits per reference.md Table 10.5
+## OLD: Capacity Formula: max(8, floor(Total_House_IU ÷ 100) × 2)
 ##
 ## **IMPORTANT:** Capital squadrons are limited by industrial capacity to reflect
 ## the massive infrastructure needed to maintain capital warships (dockyards, crew,

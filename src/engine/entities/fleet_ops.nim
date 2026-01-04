@@ -1,26 +1,23 @@
 import std/[tables, sequtils, options]
-import ../types/[core, game_state, fleet, squadron]
+import ../types/[core, game_state, fleet, ship]
 import ../state/[engine, id_gen]
-import ./squadron_ops
+import ./ship_ops
 
 proc newFleet*(
-    squadronIds: seq[SquadronId] = @[],
+    shipIds: seq[ShipId] = @[],
     id: FleetId = FleetId(0),
     owner: HouseId = HouseId(0),
     location: SystemId = SystemId(0),
     status: FleetStatus = FleetStatus.Active,
-    autoBalanceSquadrons: bool = true,
 ): Fleet =
-  ## Create a new fleet with the given squadron IDs
+  ## Create a new fleet with the given ship IDs
   ## Use this for operations that need a Fleet value without state mutations
-  ## Supports all squadron types: Combat, Intel, Expansion, Auxiliary, Fighter
   Fleet(
     id: id,
-    squadrons: squadronIds,
+    ships: shipIds,
     houseId: owner,
     location: location,
     status: status,
-    autoBalanceSquadrons: autoBalanceSquadrons,
     missionState: FleetMissionState.None,
     missionType: none(int32),
     missionTarget: none(SystemId),
@@ -59,12 +56,11 @@ proc createFleet*(state: var GameState, owner: HouseId, location: SystemId): Fle
 
   # Use newFleet() for consistent field initialization
   let newFleet = newFleet(
-    squadronIds = @[],
+    shipIds = @[],
     id = fleetId,
     owner = owner,
     location = location,
     status = FleetStatus.Active,
-    autoBalanceSquadrons = true,
   )
 
   # 1. Add to entity manager
@@ -79,16 +75,16 @@ proc createFleet*(state: var GameState, owner: HouseId, location: SystemId): Fle
   return newFleet
 
 proc destroyFleet*(state: var GameState, fleetId: FleetId) =
-  ## Destroys a fleet and all squadrons within it.
+  ## Destroys a fleet and all ships within it.
   let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     return
   let fleet = fleetOpt.get()
 
-  # 1. Destroy all squadrons in the fleet
-  # Iterate over a copy, as destroySquadron will modify the list
-  for squadronId in fleet.squadrons:
-    destroySquadron(state, squadronId)
+  # 1. Destroy all ships in the fleet
+  # Iterate over a copy, as destroyShip will modify indexes
+  for shipId in fleet.ships:
+    destroyShip(state, shipId)
 
   # 2. Unregister location
   state.unregisterFleetLocation(fleetId, fleet.location)

@@ -1,7 +1,7 @@
 import std/tables
 import
   ./[
-    core, house, starmap, colony, fleet, squadron, ship, ground_unit, intel,
+    core, house, starmap, colony, fleet, ship, ground_unit, intel,
     diplomacy, facilities, production, espionage, population, resolution, progression,
     event, command,
   ]
@@ -16,7 +16,6 @@ type
   GracePeriodTracker* = object
     ## Tracks grace periods for capacity enforcement
     ## Per FINAL_TURN_SEQUENCE.md Income Phase Step 5
-    totalSquadronsExpiry*: int32 # Turn when total squadron grace expires
     fighterCapacityExpiry*: Table[SystemId, int] # Per-colony fighter grace
 
   GameState* = ref object
@@ -38,7 +37,6 @@ type
     systems*: Systems
     colonies*: Colonies
     fleets*: Fleets
-    squadrons*: ref Squadrons
     ships*: Ships
     groundUnits*: GroundUnits
 

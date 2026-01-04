@@ -9,18 +9,19 @@
 import std/[tables, options, sequtils, strformat]
 import ../../../common/logger
 import ../../types/[
-  core, game_state, command, fleet, squadron, event,
+  core, game_state, command, fleet, event,
   diplomacy, intel, starmap, espionage, ship, prestige, colony, ground_unit, combat
 ]
 import ../../state/[engine, iterators]
 import ../../globals # For gameConfig
 import ../ship/entity as ship_entity # Ship helper functions
-import ../../entities/[colony_ops, squadron_ops, fleet_ops]
+import ../../entities/[colony_ops, fleet_ops, ship_ops]
 import ../../prestige/[engine as prestige_engine, application as prestige_app]
 import ../../event_factory/init as event_factory
 import ../../intel/generator
 import ../../utils # For soulsPerPtu
 import ./movement # For findPath
+import ./entity as fleet_entity
 
 proc completeFleetCommand*(
     state: var GameState,
@@ -178,15 +179,15 @@ proc findClosestOwnedColony*(
       # Calculate distance (jump count) to this colony
       # Create dummy fleet for pathfinding
       let dummyFleet = fleet_ops.newFleet(
-        squadronIds = @[],
+        shipIds = @[],
         id = FleetId(999999), # Temporary ID for pathfinding
         owner = houseId,
         location = fromSystem,
         status = FleetStatus.Active,
       )
 
-      # Note: findPath requires squadrons and ships parameters
-      let pathResult = findPath(state.starMap, fromSystem, systemId, dummyFleet, state.squadrons[], state.ships)
+      # Use movement.nim findPath with full GameState
+      let pathResult = movement.findPath(state, fromSystem, systemId, dummyFleet)
       if pathResult.path.len > 0:
         let distance = pathResult.path.len - 1 # Number of jumps
 
@@ -338,7 +339,7 @@ proc resolveMovementCommand*(
   )
 
   # Find path to destination (operations.md:6.1)
-  let pathResult = findPath(state.starMap, startId, targetId, fleet, state.squadrons[], state.ships)
+  let pathResult = movement.findPath(state, startId, targetId, fleet)
 
   if not pathResult.found:
     logWarn(
@@ -422,7 +423,7 @@ proc resolveMovementCommand*(
       fleet.missionState = FleetMissionState.OnSpyMission
       fleet.missionStartTurn = state.turn
 
-      let scoutCount = int32(fleet.squadrons.len)
+      let scoutCount = int32(fleet_entity.countScoutShips(state, fleet))
 
       # Register active mission
       state.activeSpyMissions[command.fleetId] = ActiveSpyMission(
@@ -532,7 +533,7 @@ proc resolveMovementCommand*(
             systemReports: initTable[SystemId, SystemIntelReport](),
             starbaseReports: initTable[StarbaseId, StarbaseIntelReport](),
             fleetIntel: initTable[FleetId, FleetIntel](),
-            squadronIntel: initTable[SquadronId, SquadronIntel](),
+            shipIntel: initTable[ShipId, ShipIntel](),
             fleetMovementHistory: initTable[FleetId, FleetMovementHistory](),
             constructionActivity: initTable[ColonyId, ConstructionActivityReport](),
             populationTransferStatus: initTable[PopulationTransferId, PopulationTransferStatusReport](),
@@ -540,11 +541,11 @@ proc resolveMovementCommand*(
         var intel = state.intelligence[houseId]
         let package = systemIntelReport.get()
         intel.systemReports[newLocation] = package.report
-        # Also store fleet and squadron intel from the package
+        # Also store fleet and ship intel from the package
         for (fleetId, fleetIntel) in package.fleetIntel:
           intel.fleetIntel[fleetId] = fleetIntel
-        for (squadronId, squadronIntel) in package.squadronIntel:
-          intel.squadronIntel[squadronId] = squadronIntel
+        for (shipId, shipIntel) in package.shipIntel:
+          intel.shipIntel[shipId] = shipIntel
         state.intelligence[houseId] = intel
         logDebug(
           "Fleet",
@@ -601,7 +602,7 @@ proc resolveColonizationCommand*(
             systemReports: initTable[SystemId, SystemIntelReport](),
             starbaseReports: initTable[StarbaseId, StarbaseIntelReport](),
             fleetIntel: initTable[FleetId, FleetIntel](),
-            squadronIntel: initTable[SquadronId, SquadronIntel](),
+            shipIntel: initTable[ShipId, ShipIntel](),
             fleetMovementHistory: initTable[FleetId, FleetMovementHistory](),
             constructionActivity: initTable[ColonyId, ConstructionActivityReport](),
             populationTransferStatus: initTable[PopulationTransferId, PopulationTransferStatusReport](),
@@ -609,11 +610,11 @@ proc resolveColonizationCommand*(
         var intel = state.intelligence[houseId]
         let package = systemIntel.get()
         intel.systemReports[targetId] = package.report
-        # Also store fleet and squadron intel from the package
+        # Also store fleet and ship intel from the package
         for (fleetId, fleetIntel) in package.fleetIntel:
           intel.fleetIntel[fleetId] = fleetIntel
-        for (squadronId, squadronIntel) in package.squadronIntel:
-          intel.squadronIntel[squadronId] = squadronIntel
+        for (shipId, shipIntel) in package.shipIntel:
+          intel.shipIntel[shipId] = shipIntel
         state.intelligence[houseId] = intel
 
     logWarn(
@@ -672,37 +673,28 @@ proc resolveColonizationCommand*(
       )
       return
 
-  # Find ETAC squadrons with loaded colonists
-  var etacSquadronId: Option[SquadronId] = none(SquadronId)
+  # Find ETAC ships with loaded colonists
+  var etacShipId: Option[ShipId] = none(ShipId)
   var ptuToDeposit: int32 = 0
 
-  for squadronId in fleet.squadrons:
-    let squadronOpt = state.squadron(squadronId)
-    if squadronOpt.isNone:
+  for shipId in fleet.ships:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isNone:
       continue
 
-    let squadron = squadronOpt.get()
-    if squadron.squadronType != SquadronClass.Expansion:
-      continue
-
-    # Get flagship to check cargo
-    let flagshipOpt = state.ship(squadron.flagshipId)
-    if flagshipOpt.isNone:
-      continue
-
-    let flagship = flagshipOpt.get()
-    if flagship.shipClass != ShipClass.ETAC:
+    let ship = shipOpt.get()
+    if ship.shipClass != ShipClass.ETAC:
       continue
 
     # Check if ETAC has colonist cargo
-    if flagship.cargo.isSome:
-      let cargo = flagship.cargo.get()
+    if ship.cargo.isSome:
+      let cargo = ship.cargo.get()
       if cargo.cargoType == CargoClass.Colonists and cargo.quantity > 0:
-        etacSquadronId = some(squadronId)
+        etacShipId = some(shipId)
         ptuToDeposit = cargo.quantity
         break # Found ETAC with colonists
 
-  if etacSquadronId.isNone or ptuToDeposit == 0:
+  if etacShipId.isNone or ptuToDeposit == 0:
     logError(
       "Colonization",
       &"Fleet {command.fleetId} has no ETAC with colonists (PTU) - colonization failed",
@@ -738,23 +730,23 @@ proc resolveColonizationCommand*(
     &"Colony {colonyId} established at {targetId} with {ptuToDeposit} PTU"
   )
 
-  # ETAC cannibalization: Remove ETAC squadron from fleet after colonization
+  # ETAC cannibalization: Remove ETAC ship from fleet after colonization
   # Per spec: ETAC is consumed to provide colony infrastructure
-  let squadronId = etacSquadronId.get()
+  let shipId = etacShipId.get()
 
   # Get current fleet for modification
   var fleetMut = fleet
-  fleetMut.squadrons = fleetMut.squadrons.filterIt(it != squadronId)
+  fleetMut.ships = fleetMut.ships.filterIt(it != shipId)
 
   # Update fleet in entity manager
   state.updateFleet(command.fleetId, fleetMut)
 
-  # Destroy squadron (removes ships and cleans up indexes)
-  squadron_ops.destroySquadron(state, squadronId)
+  # Destroy ETAC ship (cleans up indexes)
+  ship_ops.destroyShip(state, shipId)
 
   logInfo(
     "Colonization",
-    &"ETAC squadron {squadronId} cannibalized for colony infrastructure"
+    &"ETAC ship {shipId} cannibalized for colony infrastructure"
   )
 
   # Apply prestige award for colonization
@@ -852,7 +844,7 @@ proc resolveViewWorldCommand*(
       systemReports: initTable[SystemId, SystemIntelReport](),
       starbaseReports: initTable[StarbaseId, StarbaseIntelReport](),
       fleetIntel: initTable[FleetId, FleetIntel](),
-      squadronIntel: initTable[SquadronId, SquadronIntel](),
+      shipIntel: initTable[ShipId, ShipIntel](),
       fleetMovementHistory: initTable[FleetId, FleetMovementHistory](),
       constructionActivity: initTable[ColonyId, ConstructionActivityReport](),
       populationTransferStatus: initTable[
@@ -920,31 +912,22 @@ proc autoLoadMarines(
         count += 1
     return count
 
-  for squadronId in fleet.squadrons:
+  for shipId in fleet.ships:
     if countMarines(colonyMut) == 0:
       break # No more marines to load
 
-    let squadronOpt = state.squadron(squadronId)
-    if squadronOpt.isNone:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isNone:
       continue
 
-    let squadron = squadronOpt.get()
-    if squadron.squadronType notin {SquadronClass.Auxiliary}:
-      continue # Only Auxiliary squadrons carry marines
-
-    # Get flagship
-    let flagshipOpt = state.ship(squadron.flagshipId)
-    if flagshipOpt.isNone:
-      continue
-
-    var flagship = flagshipOpt.get()
-    if flagship.state == CombatState.Crippled or flagship.shipClass != ShipClass.TroopTransport:
-      continue
+    var ship = shipOpt.get()
+    if ship.state == CombatState.Crippled or ship.shipClass != ShipClass.TroopTransport:
+      continue # Only operational TroopTransports carry marines
 
     # Check cargo capacity
     let currentCargo =
-      if flagship.cargo.isSome:
-        flagship.cargo.get()
+      if ship.cargo.isSome:
+        ship.cargo.get()
       else:
         ShipCargo(cargoType: CargoClass.None, quantity: 0, capacity: 0)
 
@@ -958,10 +941,10 @@ proc autoLoadMarines(
       var newCargo = currentCargo
       newCargo.cargoType = CargoClass.Marines
       newCargo.quantity += loadAmount
-      flagship.cargo = some(newCargo)
+      ship.cargo = some(newCargo)
 
       # Update ship
-      state.updateShip(squadron.flagshipId, flagship)
+      state.updateShip(shipId, ship)
 
       # Remove marines from colony (remove N marine units from groundUnitIds)
       var marinesToRemove = int(loadAmount)
@@ -1003,31 +986,22 @@ proc autoLoadColonists(
   let availableSouls = colonyMut.souls - minSoulsToKeep
   var availablePTUs = availableSouls div soulsPerPtu()
 
-  for squadronId in fleet.squadrons:
+  for shipId in fleet.ships:
     if availablePTUs <= 0:
       break
 
-    let squadronOpt = state.squadron(squadronId)
-    if squadronOpt.isNone:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isNone:
       continue
 
-    let squadron = squadronOpt.get()
-    if squadron.squadronType != SquadronClass.Expansion:
-      continue
-
-    # Get flagship
-    let flagshipOpt = state.ship(squadron.flagshipId)
-    if flagshipOpt.isNone:
-      continue
-
-    var flagship = flagshipOpt.get()
-    if flagship.state == CombatState.Crippled or flagship.shipClass != ShipClass.ETAC:
-      continue
+    var ship = shipOpt.get()
+    if ship.state == CombatState.Crippled or ship.shipClass != ShipClass.ETAC:
+      continue # Only operational ETACs carry colonists
 
     # Check cargo capacity
     let currentCargo =
-      if flagship.cargo.isSome:
-        flagship.cargo.get()
+      if ship.cargo.isSome:
+        ship.cargo.get()
       else:
         ShipCargo(
           cargoType: CargoClass.None, quantity: 0, capacity: 3
@@ -1043,10 +1017,10 @@ proc autoLoadColonists(
       var newCargo = currentCargo
       newCargo.cargoType = CargoClass.Colonists
       newCargo.quantity += loadAmount
-      flagship.cargo = some(newCargo)
+      ship.cargo = some(newCargo)
 
       # Update ship
-      state.updateShip(squadron.flagshipId, flagship)
+      state.updateShip(shipId, ship)
 
       # Remove colonists from colony
       let soulsToLoad = loadAmount * soulsPerPtu()
@@ -1102,13 +1076,13 @@ proc autoLoadCargo*(
       if fleet.houseId != houseId:
         continue # Not owned by colony's house
 
-      # Check if fleet has transport capacity
+      # Check if fleet has transport capacity (ETAC or TroopTransport)
       var hasTransports = false
-      for squadronId in fleet.squadrons:
-        let squadronOpt = state.squadron(squadronId)
-        if squadronOpt.isSome:
-          let squadron = squadronOpt.get()
-          if squadron.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
+      for shipId in fleet.ships:
+        let shipOpt = state.ship(shipId)
+        if shipOpt.isSome:
+          let ship = shipOpt.get()
+          if ship.shipClass in {ShipClass.ETAC, ShipClass.TroopTransport}:
             hasTransports = true
             break
 

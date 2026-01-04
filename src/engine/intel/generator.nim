@@ -6,8 +6,7 @@
 
 import std/[options, random, tables]
 # import std/sequtils  # TODO: Needed for toSeq() in income calculation (restore after refactor)
-import ../types/[core, game_state, intel, fleet, combat, ground_unit]
-import ../types/squadron as squadron_types
+import ../types/[core, game_state, intel, fleet, combat, ground_unit, ship]
 import ../state/[engine, iterators]
 # import ../systems/income/income as income_system  # TODO: Uncomment after systems refactor
 import corruption
@@ -162,17 +161,8 @@ proc generateOrbitalIntelReport*(
       #     blockadeFleetIds.add(fleet.id)
       discard
 
-  # Collect fighter squadron IDs
-  var fighterSquadronIds: seq[SquadronId] = @[]
-  for squadronId in colony.fighterSquadronIds:
-    fighterSquadronIds.add(squadronId)
-  for squadronId in colony.unassignedSquadronIds:
-    # Check if it's a fighter squadron
-    let squadronOpt = state.squadron(squadronId)
-    if squadronOpt.isSome:
-      let squadron = squadronOpt.get()
-      if squadron.squadronType == squadron_types.SquadronClass.Fighter:
-        fighterSquadronIds.add(squadronId)
+  # Collect fighter IDs from colony
+  var fighterIds: seq[ShipId] = colony.fighterIds
 
   var report = OrbitalIntelReport(
     colonyId: colonyOpt.get().id,  # Use actual colony ID
@@ -186,7 +176,7 @@ proc generateOrbitalIntelReport*(
     mothballedFleetCount: mothballedFleets,
     guardFleetIds: guardFleetIds,
     blockadeFleetIds: blockadeFleetIds,
-    fighterSquadronIds: fighterSquadronIds,
+    fighterIds: fighterIds,
   )
 
   # Apply corruption if gathering house's intelligence is compromised (disinformation)
@@ -218,7 +208,7 @@ proc generateSystemIntelReport*(
 
   var detectedFleetIds: seq[FleetId] = @[]
   var fleetIntelData: seq[tuple[fleetId: FleetId, intel: FleetIntel]] = @[]
-  var squadronIntelData: seq[tuple[squadronId: SquadronId, intel: SquadronIntel]] = @[]
+  var shipIntelData: seq[tuple[shipId: ShipId, intel: ShipIntel]] = @[]
 
   # Find all fleets in this system that are not owned by the gathering house
   for fleet in state.fleetsAtSystem(targetSystem):
@@ -226,138 +216,99 @@ proc generateSystemIntelReport*(
       detectedFleetIds.add(fleet.id)
 
       # Build detailed fleet intelligence
-      # Count transport/space-lift squadrons
-      var transportCount: int32 = 0
-      for squadronId in fleet.squadrons:
-        let squadronOpt = state.squadron(squadronId)
-        if squadronOpt.isSome:
-          let squadron = squadronOpt.get()
-          if squadron.squadronType in
-              {squadron_types.SquadronClass.Expansion, squadron_types.SquadronClass.Auxiliary}:
-            transportCount += 1
-
       let fleetIntel = FleetIntel(
         fleetId: fleet.id,
         owner: fleet.houseId,
         location: targetSystem,
-        shipCount: int32(fleet.squadrons.len),
+        shipCount: int32(fleet.ships.len),
         standingOrders: none(string), # Future: detect fleet orders
-        spaceLiftShipCount: if transportCount > 0: some(transportCount) else: none(int32),
-        squadronIds: fleet.squadrons,
+        shipIds: fleet.ships,
       )
 
       fleetIntelData.add((fleet.id, fleetIntel))
 
-      # Build detailed squadron intelligence for each squadron
-      for squadronId in fleet.squadrons:
-        let squadronOpt = state.squadrons(squadronId)
-        if squadronOpt.isNone:
+      # Build detailed ship intelligence for each ship in fleet
+      for shipId in fleet.ships:
+        let shipOpt = state.ship(shipId)
+        if shipOpt.isNone:
           continue
 
-        let squadron = squadronOpt.get()
+        let ship = shipOpt.get()
 
-        # Get flagship for details
-        let flagshipOpt = state.ship(squadron.flagshipId)
-        if flagshipOpt.isNone:
-          continue
-
-        let flagship = flagshipOpt.get()
-
-        let squadronIntel = SquadronIntel(
-          squadronId: squadronId,
-          shipClass: $flagship.shipClass,
-          shipCount: int32(1 + squadron.ships.len), # Flagship + escorts
+        let shipIntel = ShipIntel(
+          shipId: shipId,
+          shipClass: $ship.shipClass,
           # Tech level and hull integrity only for Spy+ quality
           techLevel:
             if quality == IntelQuality.Spy:
-              flagship.stats.wep
+              ship.stats.wep
             else:
               0,
           hullIntegrity:
             if quality == IntelQuality.Spy:
-              (if flagship.state == CombatState.Crippled: some(int32(50)) else: some(int32(100)))
+              (if ship.state == CombatState.Crippled: some(int32(50)) else: some(int32(100)))
             else:
               none(int32),
         )
 
-        squadronIntelData.add((squadronId, squadronIntel))
+        shipIntelData.add((shipId, shipIntel))
 
         # Check for embarked fighters on carriers (Spy quality only - requires infiltration)
-        if quality == IntelQuality.Spy and squadron.embarkedFighters.len > 0:
-          for fighterSquadronId in squadron.embarkedFighters:
-            let fighterSquadronOpt = state.squadrons(fighterSquadronId)
-            if fighterSquadronOpt.isNone:
+        if quality == IntelQuality.Spy and ship.embarkedFighters.len > 0:
+          for fighterShipId in ship.embarkedFighters:
+            let fighterShipOpt = state.ship(fighterShipId)
+            if fighterShipOpt.isNone:
               continue
 
-            let fighterSquadron = fighterSquadronOpt.get()
+            let fighterShip = fighterShipOpt.get()
 
-            # Get fighter flagship for details
-            let fighterFlagshipOpt = state.ship(fighterSquadron.flagshipId)
-            if fighterFlagshipOpt.isNone:
-              continue
-
-            let fighterFlagship = fighterFlagshipOpt.get()
-
-            let fighterIntel = SquadronIntel(
-              squadronId: fighterSquadronId,
-              shipClass: $fighterFlagship.shipClass,
-              shipCount: int32(1 + fighterSquadron.ships.len),
-              techLevel: fighterFlagship.stats.wep,
+            let fighterIntel = ShipIntel(
+              shipId: fighterShipId,
+              shipClass: $fighterShip.shipClass,
+              techLevel: fighterShip.stats.wep,
               hullIntegrity:
-                if fighterFlagship.state == CombatState.Crippled:
+                if fighterShip.state == CombatState.Crippled:
                   some(int32(50))
                 else:
                   some(int32(100)),
             )
 
-            squadronIntelData.add((fighterSquadronId, fighterIntel))
+            shipIntelData.add((fighterShipId, fighterIntel))
 
-  # Check for colony-based fighter squadrons (not in fleets)
+  # Check for colony-based fighter ships (not in fleets)
   # Fighters can be stationed at colonies for defense
   let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
     if colony.owner != scoutOwner:
-      # Scan unassigned squadrons at this colony
-      for squadronId in colony.unassignedSquadronIds:
-        let squadronOpt = state.squadrons(squadronId)
-        if squadronOpt.isNone:
+      # Scan fighter ships at this colony
+      for fighterShipId in colony.fighterIds:
+        let fighterShipOpt = state.ship(fighterShipId)
+        if fighterShipOpt.isNone:
           continue
 
-        let squadron = squadronOpt.get()
+        let fighterShip = fighterShipOpt.get()
 
-        # Only report Fighter squadrons (other types should be in fleets or docked)
-        if squadron.squadronType != squadron_types.SquadronClass.Fighter:
-          continue
-
-        # Get flagship for details
-        let flagshipOpt = state.ship(squadron.flagshipId)
-        if flagshipOpt.isNone:
-          continue
-
-        let flagship = flagshipOpt.get()
-
-        let squadronIntel = SquadronIntel(
-          squadronId: squadronId,
-          shipClass: $flagship.shipClass,
-          shipCount: int32(1 + squadron.ships.len), # Flagship + escorts
+        let fighterIntel = ShipIntel(
+          shipId: fighterShipId,
+          shipClass: $fighterShip.shipClass,
           # Tech level and hull integrity only for Spy+ quality
           techLevel:
             if quality == IntelQuality.Spy:
-              flagship.stats.wep
+              fighterShip.stats.wep
             else:
               0,
           hullIntegrity:
             if quality == IntelQuality.Spy:
-              (if flagship.state == CombatState.Crippled: some(int32(50)) else: some(int32(100)))
+              (if fighterShip.state == CombatState.Crippled: some(int32(50)) else: some(int32(100)))
             else:
               none(int32),
         )
 
-        squadronIntelData.add((squadronId, squadronIntel))
+        shipIntelData.add((fighterShipId, fighterIntel))
 
   # Return none if no intelligence gathered (no fleets and no colony fighters)
-  if detectedFleetIds.len == 0 and squadronIntelData.len == 0:
+  if detectedFleetIds.len == 0 and shipIntelData.len == 0:
     return none(SystemIntelPackage)
 
   var report = SystemIntelReport(
@@ -375,22 +326,22 @@ proc generateSystemIntelReport*(
     let magnitude = corruptionEffect.get().magnitude
     report = corruption.corruptSystemIntel(report, magnitude, rng)
 
-    # Also corrupt fleet and squadron intel
+    # Also corrupt fleet and ship intel
     for i in 0 ..< fleetIntelData.len:
       fleetIntelData[i].intel = corruption.corruptFleetIntel(
         fleetIntelData[i].intel, magnitude, rng
       )
 
-    for i in 0 ..< squadronIntelData.len:
-      squadronIntelData[i].intel = corruption.corruptSquadronIntel(
-        squadronIntelData[i].intel, magnitude, rng
+    for i in 0 ..< shipIntelData.len:
+      shipIntelData[i].intel = corruption.corruptShipIntel(
+        shipIntelData[i].intel, magnitude, rng
       )
 
   # Return complete intelligence package
   # Caller is responsible for storing in intelligence database
   return some(
     SystemIntelPackage(
-      report: report, fleetIntel: fleetIntelData, squadronIntel: squadronIntelData
+      report: report, fleetIntel: fleetIntelData, shipIntel: shipIntelData
     )
   )
 

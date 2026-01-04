@@ -1,8 +1,8 @@
-## Fighter Squadron Capacity Enforcement System
+## Fighter Capacity Enforcement System
 ##
-## Implements assets.md:2.4.1 - fighter squadron capacity limits and violation enforcement.
+## Implements assets.md:2.4.1 - fighter capacity limits and violation enforcement.
 ##
-## Capacity Formula: Max FS = floor(IU / 100) × FD Multiplier
+## Capacity Formula: Max Fighters = floor(IU / 100) × FD Multiplier
 ##
 ## Where Fighter Doctrine (FD) Tech Level Multiplier is:
 ## - FD I (base): 1.0x
@@ -18,16 +18,16 @@
 ## or starbase infrastructure is required for colony-based fighters.
 ##
 ## Grace Period: 2 turns to resolve violation
-## Enforcement: Disband oldest squadrons first after grace period expires
+## Enforcement: Disband oldest fighters first after grace period expires
 ##
 ## Data-oriented design: Calculate violations (pure), apply enforcement (explicit mutations)
 
 import std/[sequtils, algorithm, math, tables, strutils, options]
 import
   ../../types/
-    [capacity, core, game_state, squadron, ship, production, event, colony, house]
+    [capacity, core, game_state, ship, production, event, colony, house]
 import ../../state/[engine as gs_helpers, iterators]
-import ../../entities/squadron_ops
+import ../../entities/ship_ops
 import ../../event_factory/fleet_ops
 import ../../globals
 import ../../../common/logger
@@ -50,8 +50,8 @@ proc getFighterDoctrineMultiplier(fdLevel: int): float =
     return cfg.level_1_capacity_multiplier.float # Default to base
 
 proc calculateMaxFighterCapacity*(industrialUnits: int, fdLevel: int): int =
-  ## Pure calculation of maximum fighter squadron capacity
-  ## Formula: Max FS = floor(IU / divisor) × FD Tech Multiplier
+  ## Pure calculation of maximum fighter capacity
+  ## Formula: Max Fighters = floor(IU / divisor) × FD Tech Multiplier
   ## Per assets.md:2.4.1 and economy.md:3.10
   ## Reads divisor from gameConfig.limits.fighterCapacity
   let fdMult = getFighterDoctrineMultiplier(fdLevel)
@@ -73,7 +73,7 @@ proc analyzeCapacity*(
       1 # Default to base level
 
   # Count current fighters (only those actually commissioned, referenced by colony)
-  var current = colony.fighterSquadronIds.len
+  var current = colony.fighterIds.len
 
   # Account for fighters already under construction at this colony
   var underConstruction = 0
@@ -254,17 +254,17 @@ proc planEnforcement*(
 
   let colony = colonyOpt.get()
 
-  # Get actual fighter squadrons from state.squadrons
-  # Sort by squadron ID (IDs are generated sequentially, oldest = lowest ID)
-  var sortedFighters: seq[SquadronId] = @[]
+  # Get actual fighters from colony
+  # Sort by ship ID (IDs are generated sequentially, oldest = lowest ID)
+  var sortedFighters: seq[ShipId] = @[]
 
-  for squadronId in colony.fighterSquadronIds:
-    let squadronOpt = gs_helpers.squadrons(state, squadronId)
-    if squadronOpt.isSome:
-      sortedFighters.add(squadronId)
+  for shipId in colony.fighterIds:
+    let shipOpt = gs_helpers.ship(state, shipId)
+    if shipOpt.isSome:
+      sortedFighters.add(shipId)
 
   # Sort by ID (oldest first - lowest IDs were created first)
-  sortedFighters.sort do(a, b: SquadronId) -> int:
+  sortedFighters.sort do(a, b: ShipId) -> int:
     cmp(uint32(a), uint32(b))
 
   # Select excess fighters for disbanding
@@ -274,7 +274,7 @@ proc planEnforcement*(
     result.affectedUnitIds.add($sortedFighters[i])
 
   result.description =
-    $toDisbandCount & " fighter squadron(s) auto-disbanded at colony-" &
+    $toDisbandCount & " fighter(s) auto-disbanded at colony-" &
     $violation.entity.colonyId & " (capacity violation)"
 
 proc applyEnforcement*(
@@ -296,37 +296,37 @@ proc applyEnforcement*(
 
   # Disband fighters (oldest first)
   for fighterIdStr in action.affectedUnitIds:
-    let fighterId = SquadronId(parseUInt(fighterIdStr))
+    let fighterId = ShipId(parseUInt(fighterIdStr))
 
-    # Get squadron info before destroying
-    let squadronOpt = gs_helpers.squadrons(state, fighterId)
-    if squadronOpt.isSome:
-      let squadron = squadronOpt.get()
+    # Get ship info before destroying
+    let shipOpt = gs_helpers.ship(state, fighterId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
 
-      # Emit SquadronDisbanded event (fighters use ShipClass.Fighter)
+      # Emit shipDisbanded event
       events.add(
         fleet_ops.squadronDisbanded(
           houseId = colony.owner,
           squadronId = fighterIdStr,
           shipClass = ShipClass.Fighter,
-          reason = "Fighter squadron capacity exceeded (IU loss)",
+          reason = "Fighter capacity exceeded (IU loss)",
           systemId = colony.systemId,
         )
       )
 
       logger.logDebug(
-        "Military", "Fighter squadron disbanded - capacity violation", " squadronId=",
+        "Military", "Fighter disbanded - capacity violation", " shipId=",
         fighterIdStr, " salvage=none",
       )
 
-    # Remove from colony's fighter squadron list
-    colony.fighterSquadronIds.keepIf(
-      proc(id: SquadronId): bool =
+    # Remove from colony's fighter list
+    colony.fighterIds.keepIf(
+      proc(id: ShipId): bool =
         id != fighterId
     )
 
-    # Destroy squadron from state.squadrons EntityManager
-    squadron_ops.destroySquadron(state, fighterId)
+    # Destroy ship from state.ships EntityManager
+    ship_ops.destroyShip(state, fighterId)
 
   # Clear violation tracking
   colony.capacityViolation = capacity.CapacityViolation(
@@ -426,7 +426,7 @@ proc processCapacityEnforcement*(
     logger.logDebug("Military", "No violations requiring immediate enforcement")
 
 proc canCommissionFighter*(state: GameState, colony: Colony): bool =
-  ## Check if colony can commission a new fighter squadron
+  ## Check if colony can commission a new fighter
   ## Returns false if colony is in capacity violation
   ## Pure function - no mutations
 
@@ -456,11 +456,11 @@ proc canCommissionFighter*(state: GameState, colony: Colony): bool =
 ##
 ## **Spec Compliance:**
 ## - assets.md:2.4.1: Complete capacity system
-## - economy.md:3.10: Fighter squadron economics
+## - economy.md:3.10: Fighter economics
 ## - Formula: Max FS = floor(IU / 100) × FD Tech Multiplier
 ## - NO infrastructure requirements (no starbases, shipyards, spaceports)
 ## - 2-turn grace period for violations
-## - Disband oldest squadrons first
+## - Disband oldest fighters first
 ## - No salvage value for forced disbanding
 ##
 ## **Integration Points:**

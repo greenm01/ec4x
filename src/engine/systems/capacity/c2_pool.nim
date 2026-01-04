@@ -22,7 +22,7 @@
 
 import std/[options, math, tables]
 import
-  ../../types/[core, game_state, house, fleet, squadron, ship, event]
+  ../../types/[core, game_state, house, fleet, ship, event]
 import ../../state/[engine as gs_helpers, iterators]
 import ../../globals
 import ../../../common/logger
@@ -76,24 +76,6 @@ proc calculateShipCC(
   let modifier = getFleetStatusCCModifier(fleetStatus)
   return int(floor(float(baseCC) * modifier))
 
-proc calculateSquadronCC(
-    state: GameState, squadronId: SquadronId, fleetStatus: FleetStatus
-): int =
-  ## Calculate total CC for all ships in squadron (excluding flagship)
-  ## Flagship CC is not counted per squadron command structure
-  let squadronOpt = gs_helpers.squadrons(state, squadronId)
-  if squadronOpt.isNone:
-    return 0
-
-  let squadron = squadronOpt.get()
-  var totalCC = 0
-
-  # Count escort ships (flagship doesn't count toward CC)
-  for shipId in squadron.ships:
-    totalCC += calculateShipCC(state, shipId, fleetStatus)
-
-  return totalCC
-
 proc calculateFleetCC(state: GameState, fleetId: FleetId): int =
   ## Calculate total CC for all ships in fleet with status modifiers
   let fleetOpt = gs_helpers.fleet(state, fleetId)
@@ -103,9 +85,9 @@ proc calculateFleetCC(state: GameState, fleetId: FleetId): int =
   let fleet = fleetOpt.get()
   var totalCC = 0
 
-  # Sum CC from all squadrons in fleet
-  for squadronId in fleet.squadrons:
-    totalCC += calculateSquadronCC(state, squadronId, fleet.status)
+  # Sum CC from all ships in fleet
+  for shipId in fleet.ships:
+    totalCC += calculateShipCC(state, shipId, fleet.status)
 
   return totalCC
 

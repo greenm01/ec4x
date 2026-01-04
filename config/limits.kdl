@@ -5,9 +5,26 @@
 // --- C2 Pool & Fleet Limits ---
 c2Limits {
     (docs)"docs/specs/02-assets.md#section-2-3-3"
-    c2ConversionRatio 0.5    // Total House IU * 0.5 = C2 from industry
+    c2ConversionRatio 0.3    // Total House IU * 0.3 = C2 from industry
     c2OverdraftRatio 0.5     // Cost per Turn = (Total Fleet CC - C2 Pool) * 0.5
-    capitalShipCrThreshold 7 // Ships with CR >= 7 are capital ships
+}
+
+// --- Strategic Command Fleet Scaling ---
+strategicCommandScaling {
+    (docs)"Map size affects SC combat fleet limits"
+    // Applies multiplier to maxCombatFleetsBase from tech.kdl strategicCommand levels
+    small {
+        sizeThreshold 6      // numRings <= 6
+        multiplier 1.0       // 10-20 fleets (no scaling)
+    }
+    medium {
+        sizeThreshold 10     // 7 <= numRings <= 10
+        multiplier 1.4       // 14-28 fleets
+    }
+    large {
+        sizeThreshold 999    // numRings > 10
+        multiplier 1.8       // 18-36 fleets
+    }
 }
 
 // --- Unit & Facility Quantity Limits ---

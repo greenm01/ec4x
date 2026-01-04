@@ -159,26 +159,12 @@ proc calculateHouseMaintenanceCost*(state: GameState, houseId: HouseId): int32 =
   for fleet in state.fleetsOwned(houseId):
     var fleetData: seq[(ShipClass, CombatState)] = @[]
 
-    # Iterate over squadron IDs
-    for squadronId in fleet.squadrons:
-      let squadronOpt = state.squadron(squadronId)
-      if squadronOpt.isNone:
-        continue
-
-      let squadron = squadronOpt.get()
-
-      # Add flagship
-      let flagshipOpt = state.ship(squadron.flagshipId)
-      if flagshipOpt.isSome:
-        let flagship = flagshipOpt.get()
-        fleetData.add((flagship.shipClass, flagship.state))
-
-      # Add escort ships
-      for shipId in squadron.ships:
-        let shipOpt = state.ship(shipId)
-        if shipOpt.isSome:
-          let ship = shipOpt.get()
-          fleetData.add((ship.shipClass, ship.state))
+    # Iterate over ships in fleet
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        fleetData.add((ship.shipClass, ship.state))
 
     result += calculateFleetMaintenance(fleetData)
 

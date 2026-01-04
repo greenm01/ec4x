@@ -100,10 +100,10 @@ type
     Disbanded
     Scrapped
 
-  SquadronEvent* = object
+  ShipEvent* = object
     base*: BaseEvent
     kind*: SquadronEventKind
-    squadronId*: SquadronId
+    shipId*: ShipId
     fleetId*: Option[FleetId]
     newState*: Option[string]
     killedBy*: Option[HouseId]
@@ -164,7 +164,7 @@ type
     research*: seq[ResearchEvent]
     diplomacy*: seq[DiplomaticEvent]
     fleets*: seq[FleetEvent]
-    squadrons*: seq[SquadronEvent]
+    ships*: seq[ShipEvent]
     colonies*: seq[ColonyEvent]
     construction*: seq[ConstructionEvent]
     prestige*: seq[PrestigeEvent]

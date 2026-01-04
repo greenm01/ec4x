@@ -9,7 +9,7 @@
 ## for create/destroy/move operations.
 
 import std/[tables, options, sets, heapqueue]
-import ../../types/[core, fleet, squadron, ship, starmap, game_state, combat]
+import ../../types/[core, fleet, ship, starmap, game_state, combat]
 import ../../state/engine
 
 # =============================================================================
@@ -34,39 +34,21 @@ proc canFleetTraverseLane*(
     return true
 
   # Restricted lanes: check for disqualifying ships
-  for squadronId in fleet.squadrons:
-    let squadronOpt = state.squadron(squadronId)
-    if squadronOpt.isNone:
+  for shipId in fleet.ships:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isNone:
       continue
 
-    let squadron = squadronOpt.get()
+    let ship = shipOpt.get()
 
-    # Check flagship
-    let flagshipOpt = state.ship(squadron.flagshipId)
-    if flagshipOpt.isSome:
-      let flagship = flagshipOpt.get()
+    # Crippled ships can't use restricted lanes
+    if ship.state == CombatState.Crippled:
+      return false
 
-      # Crippled ships can't use restricted lanes
-      if flagship.state == CombatState.Crippled:
-        return false
-
-      # Transport ships can't use restricted lanes
-      if flagship.shipClass == ShipClass.ETAC or
-         flagship.shipClass == ShipClass.TroopTransport:
-        return false
-
-    # Check escort ships
-    for shipId in squadron.ships:
-      let shipOpt = state.ship(shipId)
-      if shipOpt.isSome:
-        let ship = shipOpt.get()
-
-        if ship.state == CombatState.Crippled:
-          return false
-
-        if ship.shipClass == ShipClass.ETAC or
-           ship.shipClass == ShipClass.TroopTransport:
-          return false
+    # Transport ships can't use restricted lanes
+    if ship.shipClass == ShipClass.ETAC or
+       ship.shipClass == ShipClass.TroopTransport:
+      return false
 
   return true
 

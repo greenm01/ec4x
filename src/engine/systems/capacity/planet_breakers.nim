@@ -15,9 +15,9 @@
 import std/[strutils, algorithm, options]
 import
   ../../types/
-    [capacity, core, game_state, squadron, ship, production, event, colony, house]
+    [capacity, core, game_state, ship, production, event, colony, house]
 import ../../state/[game_state as gs_helpers, iterators]
-import ../../entities/squadron_ops
+import ../../entities/ship_ops
 import ../../event_factory/fleet_ops
 import ../../../common/logger
 
@@ -32,15 +32,14 @@ proc calculateMaxPlanetBreakers*(colonyCount: int): int =
 
 proc countPlanetBreakersInFleets*(state: GameState, houseId: HouseId): int =
   ## Count planet-breakers currently in fleets for a house
-  ## (O(1) lookup via squadronsOwned iterator)
   result = 0
-  for squadron in state.squadronsOwned(houseId):
-    # Get flagship ship using entity manager
-    let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
-    if flagshipOpt.isSome:
-      let flagship = flagshipOpt.get()
-      if flagship.shipClass == ShipClass.PlanetBreaker:
-        result += 1
+  for fleet in state.fleetsOwned(houseId):
+    for shipId in fleet.ships:
+      let shipOpt = gs_helpers.getShip(state, shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        if ship.shipClass == ShipClass.PlanetBreaker:
+          result += 1
 
 proc countPlanetBreakersUnderConstruction*(state: GameState, houseId: HouseId): int =
   ## Count planet-breakers currently under construction house-wide
@@ -127,25 +126,25 @@ proc planEnforcement*(
   let houseId = violation.entity.houseId
 
   # Find all planet-breakers for this house
-  # Sort by squadron ID (deterministic order, oldest squadrons have lower IDs)
-  var squadronIds: seq[string] = @[]
+  # Sort by ship ID (deterministic order, oldest ships have lower IDs)
+  var shipIds: seq[string] = @[]
 
-  for squadron in state.squadronsOwned(houseId):
-    # Get flagship ship using entity manager
-    let flagshipOpt = gs_helpers.getShip(state, squadron.flagshipId)
-    if flagshipOpt.isSome:
-      let flagship = flagshipOpt.get()
-      if flagship.shipClass == ShipClass.PlanetBreaker:
-        squadronIds.add($squadron.id)
+  for fleet in state.fleetsOwned(houseId):
+    for shipId in fleet.ships:
+      let shipOpt = gs_helpers.getShip(state, shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        if ship.shipClass == ShipClass.PlanetBreaker:
+          shipIds.add($shipId)
 
-  # Sort by squadron ID (alphabetical/numerical order gives deterministic "oldest first" behavior)
-  squadronIds.sort()
+  # Sort by ship ID (alphabetical/numerical order gives deterministic "oldest first" behavior)
+  shipIds.sort()
 
   # Select excess planet-breakers for scrapping
-  let toScrapCount = min(violation.excess, int32(squadronIds.len))
+  let toScrapCount = min(violation.excess, int32(shipIds.len))
   result.actionType = "auto_scrap"
   for i in 0 ..< toScrapCount:
-    result.affectedUnitIds.add(squadronIds[i])
+    result.affectedUnitIds.add(shipIds[i])
 
   result.description =
     $toScrapCount & " planet-breaker(s) auto-scrapped for house-" &
@@ -163,34 +162,34 @@ proc applyEnforcement*(
 
   let houseId = action.entity.houseId
 
-  # Remove planet-breakers using squadron_ops.destroySquadron
-  for squadronIdStr in action.affectedUnitIds:
-    let squadronId = SquadronId(parseUInt(squadronIdStr))
+  # Remove planet-breakers using ship_ops.destroyShip
+  for shipIdStr in action.affectedUnitIds:
+    let shipId = ShipId(parseUInt(shipIdStr))
 
-    # Get squadron info before destroying
-    let squadronOpt = gs_helpers.getSquadrons(state, squadronId)
-    if squadronOpt.isSome:
-      let squadron = squadronOpt.get()
+    # Get ship info before destroying
+    let shipOpt = gs_helpers.getShip(state, shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
 
-      # Emit SquadronScrapped event
+      # Emit ship scrapped event
       events.add(
         fleet_ops.squadronScrapped(
           houseId = houseId,
-          squadronId = squadronIdStr,
+          squadronId = shipIdStr,
           shipClass = ShipClass.PlanetBreaker,
           reason = "Planet-breaker capacity exceeded (colony loss)",
           salvageValue = 0, # No salvage for planet-breakers
-          systemId = squadron.location,
+          systemId = ship.fleetId, # Note: using fleetId as placeholder for location
         )
       )
 
       logger.logDebug(
-        "Military", "Planet-breaker auto-scrapped - colony loss", " squadronId=",
-        squadronIdStr, " salvage=none",
+        "Military", "Planet-breaker auto-scrapped - colony loss", " shipId=",
+        shipIdStr, " salvage=none",
       )
 
-    # Destroy squadron from state.squadrons EntityManager
-    squadron_ops.destroySquadron(state, squadronId)
+    # Destroy ship from state.ships EntityManager
+    ship_ops.destroyShip(state, shipId)
 
   logger.logDebug(
     "Military",

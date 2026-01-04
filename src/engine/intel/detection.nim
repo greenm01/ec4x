@@ -9,7 +9,7 @@
 ## - Reduced from 357 lines → 259 lines (27% reduction)
 
 import std/[math, random, sequtils, options]
-import ../types/[core, game_state, squadron, ship]
+import ../types/[core, game_state, ship, fleet]
 import ../state/engine
 
 export Option
@@ -131,29 +131,14 @@ proc detectRaider*(
 
 ## Fleet ELI Capability Check
 
-proc hasELICapability*(state: GameState, squadronIds: seq[SquadronId]): bool =
+proc hasELICapability*(state: GameState, fleet: Fleet): bool =
   ## Check if fleet has any ELI-capable units (scouts)
-  ## Uses safe accessors to look up squadron and ship entities
-  for squadronId in squadronIds:
-    let squadronOpt = state.squadron(squadronId)
-    if squadronOpt.isNone:
-      continue
-
-    let squadron = squadronOpt.get()
-
-    # Check flagship
-    let flagshipOpt = state.ship(squadron.flagshipId)
-    if flagshipOpt.isSome:
-      let flagship = flagshipOpt.get()
-      if flagship.shipClass == ShipClass.Scout:
+  ## Uses safe accessors to look up ship entities
+  for shipId in fleet.ships:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.shipClass == ShipClass.Scout:
         return true
-
-    # Check other ships in squadron
-    for shipId in squadron.ships:
-      let shipOpt = state.ship(shipId)
-      if shipOpt.isSome:
-        let ship = shipOpt.get()
-        if ship.shipClass == ShipClass.Scout:
-          return true
 
   return false

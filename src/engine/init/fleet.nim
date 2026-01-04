@@ -3,10 +3,10 @@
 ## Creates starting fleets with specified compositions per game setup configuration.
 
 import std/[options, tables, strutils]
-import ../types/[core, game_state, fleet, squadron, ship]
+import ../types/[core, game_state, fleet, ship]
 import ../types/config/game_setup
 import ../state/[engine, id_gen]
-import ../entities/[fleet_ops, ship_ops, squadron_ops]
+import ../entities/[fleet_ops, ship_ops]
 import ../utils
 
 proc createStartingFleets*(
@@ -15,14 +15,14 @@ proc createStartingFleets*(
     location: SystemId,
     fleetConfigs: seq[FleetConfig],
 ) =
-  ## Creates starting fleets and all their child entities (squadrons, ships).
+  ## Creates starting fleets and ships directly (no squadrons).
 
   for config in fleetConfigs:
 
     # 1. Create the Fleet
     let newFleet = fleet_ops.createFleet(state, owner, location)
 
-    # 2. Create Squadrons and Ships for the Fleet
+    # 2. Create Ships for the Fleet
     for shipName in config.ships:
       let shipClass =
         try:
@@ -30,10 +30,7 @@ proc createStartingFleets*(
         except:
           continue
 
-      # Generate squadronId first to avoid circular dependency
-      let squadronId = state.generateSquadronId()
-
-      # Create flagship ship with the pre-generated squadronId
+      # Create ship ID
       let shipId = state.generateShipId()
       let shipConfig = shipConfig(shipClass)
 
@@ -41,38 +38,27 @@ proc createStartingFleets*(
       let house = state.house(owner).get()
       let weaponsTech = house.techTree.levels.wep
 
-      # Create flagship using entity ops (applies WEP correctly)
-      var flagship = ship_ops.newShip(
-        shipClass, weaponsTech, shipId, squadronId, owner
+      # Create ship using entity ops (applies WEP correctly)
+      var newShip = ship_ops.newShip(
+        shipClass, weaponsTech, shipId, newFleet.id, owner
       )
 
       # ETACs start fully loaded with PTU at game init (capacity from config)
       if shipClass == ShipClass.ETAC:
         let ptuCapacity = shipConfig.carryLimit # PTU capacity from ship config
-        flagship.cargo = some(ShipCargo(
+        newShip.cargo = some(ShipCargo(
           cargoType: CargoClass.Colonists,
           quantity: ptuCapacity,
           capacity: ptuCapacity,
         ))
 
-      # Add flagship to ship entity manager
-      state.addShip(shipId, flagship)
+      # Add ship to ship entity manager
+      state.addShip(shipId, newShip)
 
-      # Register ship indexes (bySquadron, byHouse)
+      # Register ship indexes (byFleet, byHouse)
       ship_ops.registerShipIndexes(state, shipId)
 
-      # Create squadron using entity ops
-      let newSquadron = squadron_ops.newSquadron(
-        shipId, shipClass, squadronId, owner, location
-      )
-
-      # Add squadron to entity manager
-      state.addSquadron(squadronId, newSquadron)
-
-      # Register squadron in fleet's index
-      squadron_ops.registerSquadronInFleet(state, squadronId, newFleet.id)
-
-      # Add squadron to fleet's squadron list
+      # Add ship to fleet's ship list
       var updatedFleet = state.fleet(newFleet.id).get()
-      updatedFleet.squadrons.add(squadronId)
+      updatedFleet.ships.add(shipId)
       state.updateFleet(newFleet.id, updatedFleet)

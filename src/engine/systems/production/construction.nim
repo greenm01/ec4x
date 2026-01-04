@@ -23,7 +23,7 @@
 
 import std/[tables, options, strutils, strformat]
 import ../../types/[core, game_state, production, command]
-import ../../types/[ship, colony, fleet, squadron]
+import ../../types/[ship, colony, fleet]
 import ../../state/[game_state as gs_helpers, id_gen]
 import ../../config/[economy_config, config_accessors]
 import ../../../common/logger

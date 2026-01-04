@@ -14,10 +14,11 @@
 ##     # Process colony
 ##
 ## NOTE: These are read-only iterators. For mutations, use state_helpers.
-import std/tables, std/options
-import
-  ../types/
-    [colony, core, fleet, game_state, house, ship, squadron, facilities, starmap, population]
+import std/[tables, options]
+import ../types/[core, game_state, house, ship, facilities, starmap, population]
+import ../types/fleet as fleet_types
+import ../types/colony as colony_types
+import ./engine
 
 include ./entity_manager
 
@@ -28,11 +29,30 @@ iterator fleetsInSystem*(state: GameState, sysId: SystemId): Fleet =
       if state.fleets.entities.index.contains(fId):
         yield state.fleets.entities.entity(fId).get()
 
-iterator squadronsInSystem*(state: GameState, sysId: SystemId): Squadron =
+iterator shipsInSystem*(state: GameState, sysId: SystemId): Ship =
+  ## Iterate all ships in a system (via fleets in that system)
   for fleetEntity in state.fleetsInSystem(sysId):
-    for sqId in fleetEntity.squadrons:
-      if state.squadrons.entities.index.contains(sqId):
-        yield state.squadrons.entities.entity(sqId).get()
+    for shipId in fleetEntity.ships:
+      if state.ships.entities.index.contains(shipId):
+        yield state.ships.entities.entity(shipId).get()
+
+iterator shipsInFleet*(state: GameState, fleetId: FleetId): Ship =
+  ## Iterate all ships in a specific fleet
+  let fleetOpt = state.fleet(fleetId)
+  if fleetOpt.isSome:
+    let fleet = fleetOpt.get()
+    for shipId in fleet.ships:
+      if state.ships.entities.index.contains(shipId):
+        yield state.ships.entities.entity(shipId).get()
+
+iterator fightersAtColony*(state: GameState, colonyId: ColonyId): Ship =
+  ## Iterate all fighter ships assigned to a colony (not in fleets or on carriers)
+  let colonyOpt = state.colony(colonyId)
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
+    for shipId in colony.fighterIds:
+      if state.ships.entities.index.contains(shipId):
+        yield state.ships.entities.entity(shipId).get()
 
 iterator allShips*(state: GameState): Ship =
   for shipId in state.ships.entities.index.keys:
@@ -262,18 +282,6 @@ iterator allShipsWithId*(state: GameState): tuple[id: ShipId, ship: Ship] =
 
 # Military asset iterators (O(1) lookups via byHouse index)
 
-iterator squadronsOwned*(state: GameState, houseId: HouseId): Squadron =
-  ## Iterate all squadrons owned by a house (O(1) lookup via byHouse index)
-  ##
-  ## Example:
-  ##   var totalSquadrons = 0
-  ##   for squadron in state.squadronsOwned(houseId):
-  ##     totalSquadrons += 1
-  if state.squadrons.byHouse.contains(houseId):
-    for squadronId in state.squadrons.byHouse[houseId]:
-      if state.squadrons.entities.index.contains(squadronId):
-        yield state.squadrons.entities.entity(squadronId).get()
-
 iterator shipsOwned*(state: GameState, houseId: HouseId): Ship =
   ## Iterate all ships owned by a house (O(1) lookup via byHouse index)
   ##
@@ -339,35 +347,6 @@ iterator allSystems*(state: GameState): System =
   ## Use when you need to process ALL systems
   for (id, system) in state.allSystemsWithId():
     yield system
-
-iterator allSquadronsWithId*(
-    state: GameState
-): tuple[id: SquadronId, squadron: Squadron] =
-  ## Iterate all squadrons with IDs (for mutations)
-  ## O(n) where n = total squadrons
-  ## Use when you need to mutate squadrons or need their IDs
-  for squadronId in state.squadrons.entities.index.keys:
-    yield (squadronId, state.squadrons.entities.entity(squadronId).get())
-
-iterator allSquadrons*(state: GameState): Squadron =
-  ## Iterate all squadrons (read-only)
-  ## O(n) where n = total squadrons
-  ## Use when you need to process ALL squadrons regardless of owner
-  for (id, squadron) in state.allSquadronsWithId():
-    yield squadron
-
-iterator squadronsOwnedWithId*(
-    state: GameState, houseId: HouseId
-): tuple[id: SquadronId, squadron: Squadron] =
-  ## Iterate squadrons owned by house with IDs (for mutations)
-  ## O(1) lookup via byHouse index
-  ## Use when you need to mutate house-owned squadrons
-  if state.squadrons.byHouse.contains(houseId):
-    for squadronId in state.squadrons.byHouse[houseId]:
-      if state.squadrons.entities.index.contains(squadronId):
-        let squadron =
-          state.squadrons.entities.entity(squadronId).get()
-        yield (squadronId, squadron)
 
 iterator shipsOwnedWithId*(
     state: GameState, houseId: HouseId

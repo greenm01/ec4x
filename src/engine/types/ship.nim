@@ -55,16 +55,20 @@ type
   Ship* = object
     id*: ShipId
     houseId*: HouseId
-    squadronId*: SquadronId
+    fleetId*: FleetId  # Direct fleet assignment (0 if unassigned/colony-based)
     shipClass*: ShipClass
     stats*: ShipStats
     state*: CombatState  # Combat damage state (Undamaged, Crippled, Destroyed)
     cargo*: Option[ShipCargo]
+    # Fighter-specific fields:
+    assignedToCarrier*: Option[ShipId]  # If this fighter is embarked on a carrier
+    embarkedFighters*: seq[ShipId]      # If this ship is a carrier
 
   Ships* = object
     entities*: EntityManager[ShipId, Ship] # Core storage
     byHouse*: Table[HouseId, seq[ShipId]] # O(1) lookup for house queries
-    bySquadron*: Table[SquadronId, seq[ShipId]]
+    byFleet*: Table[FleetId, seq[ShipId]] # O(1) lookup for fleet queries
+    byCarrier*: Table[ShipId, seq[ShipId]] # O(1) lookup for embarked fighters
 
 export Ships
 

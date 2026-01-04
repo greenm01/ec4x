@@ -3,9 +3,9 @@
 ## Routes commands to appropriate handlers based on command type
 
 import std/[options, tables, strformat]
-import ../../types/[core, fleet, squadron, game_state, event, command, combat]
+import ../../types/[core, fleet, ship, game_state, event, command, combat]
 import ../../state/[game_state as state_module, iterators]
-import ../../entities/[fleet_ops, squadron_ops]
+import ../../entities/[fleet_ops, ship_ops]
 import ../../intel/detection
 import ../../event_factory/init as event_factory
 import ../../starmap
@@ -451,10 +451,13 @@ proc executeGuardStarbaseCommand(
 
   # Check for combat capability
   var hasCombatShips = false
-  for squadron in fleet.squadrons:
-    if squadron.flagship.stats.attackStrength > 0:
-      hasCombatShips = true
-      break
+  for shipId in fleet.ships:
+    let shipOpt = state_module.ship(state, shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.stats.attackStrength > 0:
+        hasCombatShips = true
+        break
 
   if not hasCombatShips:
     events.add(
@@ -541,10 +544,13 @@ proc executeGuardPlanetCommand(
 
   # Check for combat capability
   var hasCombatShips = false
-  for squadron in fleet.squadrons:
-    if squadron.flagship.stats.attackStrength > 0:
-      hasCombatShips = true
-      break
+  for shipId in fleet.ships:
+    let shipOpt = state_module.ship(state, shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.stats.attackStrength > 0:
+        hasCombatShips = true
+        break
 
   if not hasCombatShips:
     events.add(
@@ -603,10 +609,13 @@ proc executeBlockadeCommand(
 
   # Check for combat capability
   var hasCombatShips = false
-  for squadron in fleet.squadrons:
-    if squadron.flagship.stats.attackStrength > 0:
-      hasCombatShips = true
-      break
+  for shipId in fleet.ships:
+    let shipOpt = state_module.ship(state, shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.stats.attackStrength > 0:
+        hasCombatShips = true
+        break
 
   if not hasCombatShips:
     events.add(
@@ -703,10 +712,13 @@ proc executeBombardCommand(
 
   # Check for combat capability
   var hasCombatShips = false
-  for squadron in fleet.squadrons:
-    if squadron.flagship.stats.attackStrength > 0:
-      hasCombatShips = true
-      break
+  for shipId in fleet.ships:
+    let shipOpt = state_module.ship(state, shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.stats.attackStrength > 0:
+        hasCombatShips = true
+        break
 
   if not hasCombatShips:
     return OrderOutcome.Failed
@@ -751,16 +763,21 @@ proc executeInvadeCommand(
   var hasCombatShips = false
   var hasLoadedTransports = false
 
-  for squadron in fleet.squadrons:
-    if squadron.flagship.stats.attackStrength > 0:
-      hasCombatShips = true
+  for shipId in fleet.ships:
+    let shipOpt = state_module.ship(state, shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.stats.attackStrength > 0:
+        hasCombatShips = true
 
-  # Check Auxiliary squadrons for loaded marines
-  for squadron in fleet.squadrons:
-    if squadron.squadronType == SquadronClass.Auxiliary:
-      if squadron.flagship.cargo.isSome:
-        let cargo = squadron.flagship.cargo.get()
-        if squadron.flagship.shipClass == ShipClass.TroopTransport and
+  # Check for loaded marines on troop transports
+  for shipId in fleet.ships:
+    let shipOpt = state_module.ship(state, shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.cargo.isSome:
+        let cargo = ship.cargo.get()
+        if ship.shipClass == ShipClass.TroopTransport and
             cargo.cargoType == CargoClass.Marines and cargo.quantity > 0:
           hasLoadedTransports = true
           break
@@ -806,15 +823,17 @@ proc executeBlitzCommand(
     if targetHouse.eliminated:
       return OrderOutcome.Failed
 
-  # Check for loaded troop transports (Auxiliary squadrons)
+  # Check for loaded troop transports
   var hasLoadedTransports = false
 
-  for squadron in fleet.squadrons:
-    if squadron.squadronType == SquadronClass.Auxiliary:
-      if squadron.flagship.shipClass == ShipClass.TroopTransport:
+  for shipId in fleet.ships:
+    let shipOpt = state_module.ship(state, shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.shipClass == ShipClass.TroopTransport:
         # Check if transport has Marines loaded
-        if squadron.flagship.cargo.isSome:
-          let cargo = squadron.flagship.cargo.get()
+        if ship.cargo.isSome:
+          let cargo = ship.cargo.get()
           if cargo.cargoType == CargoClass.Marines and cargo.quantity > 0:
             hasLoadedTransports = true
             break
@@ -869,7 +888,7 @@ proc executeSpyPlanetCommand(
         return OrderOutcome.Failed
 
   # Count scouts for mesh network bonus (validation already confirmed scout-only fleet)
-  let scoutCount = fleet.squadrons.len
+  let scoutCount = fleet.ships.len
 
   # Set fleet mission state
   var updatedFleet = fleet
@@ -1016,7 +1035,7 @@ proc executeHackStarbaseCommand(
       return OrderOutcome.Failed
 
   # Count scouts for mission (validation already confirmed scout-only fleet)
-  let scoutCount = fleet.squadrons.len
+  let scoutCount = fleet.ships.len
 
   # Set fleet mission state
   var updatedFleet = fleet
@@ -1140,7 +1159,7 @@ proc executeSpySystemCommand(
         return OrderOutcome.Failed
 
   # Count scouts for mission (validation already confirmed scout-only fleet)
-  let scoutCount = fleet.squadrons.len
+  let scoutCount = fleet.ships.len
 
   # Set fleet mission state
   var updatedFleet = fleet
@@ -1236,13 +1255,15 @@ proc executeColonizeCommand(
   if command.targetSystem.isNone:
     return OrderOutcome.Failed
 
-  # Check fleet has ETAC with loaded colonists (Expansion squadrons)
+  # Check fleet has ETAC with loaded colonists
   var hasLoadedETAC = false
 
-  for squadron in fleet.squadrons:
-    if squadron.squadronType == SquadronClass.Expansion:
-      if squadron.flagship.shipClass == ShipClass.ETAC and squadron.flagship.cargo.isSome:
-        let cargo = squadron.flagship.cargo.get()
+  for shipId in fleet.ships:
+    let shipOpt = state_module.ship(state, shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.shipClass == ShipClass.ETAC and ship.cargo.isSome:
+        let cargo = ship.cargo.get()
         if cargo.cargoType == CargoClass.Colonists and cargo.quantity > 0:
           hasLoadedETAC = true
           break
@@ -1268,11 +1289,11 @@ proc executeJoinFleetCommand(
     events: var seq[resolution_types.GameEvent],
 ): OrderOutcome =
   ## Order 13: Seek and merge with another fleet
-  ## Old fleet disbands, squadrons join target
+  ## Old fleet disbands, ships join target
   ## Per operations.md:6.2.14
   ##
   ## SCOUT MESH NETWORK BENEFITS:
-  ## When merging scout squadrons, they automatically gain mesh network ELI bonuses:
+  ## When merging scout ships, they automatically gain mesh network ELI bonuses:
   ## - 2-3 scouts: +1 ELI bonus
   ## - 4-5 scouts: +2 ELI bonus
   ## - 6+ scouts: +3 ELI bonus (maximum)
@@ -1383,10 +1404,10 @@ proc executeJoinFleetCommand(
 
     # If we got here, fleet reached target - fall through to merge logic below
 
-  # At same location - merge squadrons into target fleet (all squadron types)
+  # At same location - merge ships into target fleet
   var updatedTargetFleet = targetFleet
-  for squadron in fleet.squadrons:
-    updatedTargetFleet.squadrons.add(squadron)
+  for shipId in fleet.ships:
+    updatedTargetFleet.ships.add(shipId)
 
   state.fleets[targetFleetId] = updatedTargetFleet
 
@@ -1432,11 +1453,11 @@ proc executeRendezvousCommand(
   ## Per operations.md:6.2.15
   ##
   ## SCOUT MESH NETWORK BENEFITS:
-  ## When multiple scout squadrons rendezvous, they automatically gain mesh network ELI bonuses:
+  ## When multiple scout ships rendezvous, they automatically gain mesh network ELI bonuses:
   ## - 2-3 scouts: +1 ELI bonus
   ## - 4-5 scouts: +2 ELI bonus
   ## - 6+ scouts: +3 ELI bonus (maximum)
-  ## All squadrons (including scouts) from all rendezvous fleets are merged into the host fleet.
+  ## All ships (including scouts) from all rendezvous fleets are merged into the host fleet.
   ## See assets.md:2.4.2 for mesh network modifier table.
 
   if command.targetSystem.isNone:
@@ -1546,9 +1567,9 @@ proc executeRendezvousCommand(
     if f.id == lowestId:
       continue # Skip host
 
-    # Merge squadrons (all squadron types)
-    for squadron in f.squadrons:
-      hostFleet.squadrons.add(squadron)
+    # Merge ships from all fleets
+    for shipId in f.ships:
+      hostFleet.ships.add(shipId)
 
     # Remove merged fleet and clean up orders
     state.removeFleetFromIndices(f.id, f.owner, f.location)
@@ -1646,11 +1667,10 @@ proc executeSalvageCommand(
 
   # Calculate salvage value (50% of ship PC per operations.md:6.2.16)
   var salvageValue = 0
-  for squadron in fleet.squadrons:
-    # Flagship
-    salvageValue += (squadron.flagship.stats.buildCost div 2)
-    # Other ships in squadron
-    for ship in squadron.ships:
+  for shipId in fleet.ships:
+    let shipOpt = state_module.ship(state, shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
       salvageValue += (ship.stats.buildCost div 2)
 
   # Add salvage PP to house treasury
@@ -1679,7 +1699,7 @@ proc executeSalvageCommand(
       fleet.owner,
       fleet.id,
       "Salvage",
-      details = &"recovered {salvageValue} PP from {fleet.squadrons.len} squadron(s)",
+      details = &"recovered {salvageValue} PP from {fleet.ships.len} ship(s)",
       systemId = some(targetSystem),
     )
   )

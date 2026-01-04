@@ -5,8 +5,8 @@
 ##
 ## Design:
 ## - Fleets with crippled ships at colonies automatically submit repair requests
-## - Ships extracted from squadrons → repair queue (1 turn, 25% cost)
-## - Repaired ships recommission through standard pipeline (squadron → fleet)
+## - Ships extracted from fleets → repair queue (1 turn, 25% cost)
+## - Repaired ships recommission through standard pipeline (fleet)
 ## - Drydocks are repair-only facilities (10 docks each)
 ## - Shipyards are construction-only facilities (clean separation of concerns)
 
@@ -25,27 +25,21 @@ proc calculateRepairCost*(shipClass: ShipClass): int =
   result = (ship.buildCost().float * 0.25).int
 
 proc extractCrippledShip*(
-    state: var GameState, fleetId: FleetId, squadronId: SquadronId, shipId: ShipId
+    state: var GameState, fleetId: FleetId, shipId: ShipId
 ): Option[production.RepairProject] =
-  ## Extract a crippled ship from a fleet squadron and create repair project
+  ## Extract a crippled ship from a fleet and create repair project
   ## Works with entity IDs for DoD compliance
   ## Returns None if extraction fails
 
   # Look up fleet using entity manager
-  let fleetOpt = state.mFleet(fleetId)
+  let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
     return none(RepairProject)
   var fleet = fleetOpt.get()
 
-  # Verify squadron is in fleet
-  if squadronId notin fleet.squadrons:
+  # Verify ship is in fleet
+  if shipId notin fleet.ships:
     return none(RepairProject)
-
-  # Look up squadron using entity manager
-  let squadronOpt = state.mSquadron(squadronId)
-  if squadronOpt.isNone:
-    return none(RepairProject)
-  var squadron = squadronOpt.get()
 
   # Look up the ship being extracted
   let shipOpt = state.ship(shipId)
@@ -57,96 +51,25 @@ proc extractCrippledShip*(
     return none(RepairProject)
 
   let shipClass = ship.shipClass
-  let isFlagship = (shipId == squadron.flagshipId)
 
-  if isFlagship:
-    # =========================================================================
-    # FLAGSHIP EXTRACTION FOR REPAIR
-    # =========================================================================
-    # Flagships are the command ships that hold squadrons together. When a
-    # crippled flagship needs repair, we must handle the squadron appropriately.
-    #
-    # Per operations.md:6.5.2, all crippled ships must be repairable.
-    # However, flagships cannot simply be removed like escort ships.
-    #
-    # STRATEGY:
-    # - Case 1: Squadron has escorts → Promote strongest escort to new flagship
-    # - Case 2: Squadron has no escorts → Dissolve squadron entirely
-    #
-    # This ensures:
-    # - All crippled ships can be repaired (no stranded crippled flagships)
-    # - Squadrons remain valid (always have a flagship or are removed)
-    # - Empty fleets are cleaned up (no orphaned fleet structures)
-    # =========================================================================
+  # Remove ship from fleet
+  fleet.ships = fleet.ships.filterIt(it != shipId)
 
-    if squadron.ships.len > 0:
-      # -----------------------------------------------------------------------
-      # CASE 1: SQUADRON HAS ESCORTS - PROMOTE TO FLAGSHIP
-      # -----------------------------------------------------------------------
-      # When the squadron has escort ships, we promote the strongest escort
-      # to become the new flagship. This preserves the squadron structure.
-      #
-      # Selection criteria: Highest combined AS + DS (combat effectiveness)
-      # The old flagship is extracted for repair.
-      # -----------------------------------------------------------------------
-
-      var bestEscortId: ShipId
-      var bestStrength = 0
-
-      for escortId in squadron.ships:
-        let escortOpt = state.ship(escortId)
-        if escortOpt.isNone:
-          continue
-        let escort = escortOpt.get()
-        let strength = escort.stats.attackStrength + escort.stats.defenseStrength
-        if strength > bestStrength:
-          bestStrength = strength
-          bestEscortId = escortId
-
-      # Promote escort to flagship position
-      squadron.flagshipId = bestEscortId
-      squadron.ships = squadron.ships.filterIt(it != bestEscortId)
-
-      logInfo(
-        "Repair", "Promoted escort to flagship (old flagship sent for repair)",
-        "squadronId=", squadron.id,
-      )
-    else:
-      # -----------------------------------------------------------------------
-      # CASE 2: SQUADRON HAS NO ESCORTS - DISSOLVE SQUADRON
-      # -----------------------------------------------------------------------
-      # When the squadron has no escorts (single-flagship squadron), we must
-      # dissolve the squadron entirely. The flagship goes to repair, and the
-      # squadron structure is removed from the fleet.
-      #
-      # This also triggers EMPTY FLEET CLEANUP if this was the last squadron.
-      # -----------------------------------------------------------------------
-
-      # Remove squadron from fleet
-      fleet.squadrons = fleet.squadrons.filterIt(it != squadronId)
-
-      # EMPTY FLEET CLEANUP
-      # If removing this squadron leaves the fleet empty (no squadrons remaining),
-      # delete the fleet entirely using fleet_ops.
-      if fleet.squadrons.len == 0:
-        destroyFleet(state, fleetId)
-        logInfo(
-          "Repair",
-          "Dissolved squadron and removed empty fleet (flagship sent for repair)",
-          "squadronId=", squadron.id, " fleetId=", fleetId,
-        )
-      else:
-        logInfo(
-          "Repair", "Dissolved squadron from fleet (flagship sent for repair)",
-          "squadronId=", squadron.id, " fleetId=", fleetId,
-        )
+  # EMPTY FLEET CLEANUP
+  # If removing this ship leaves the fleet empty, delete the fleet entirely
+  if fleet.ships.len == 0:
+    destroyFleet(state, fleetId)
+    logInfo(
+      "Repair",
+      "Removed crippled ship and deleted empty fleet",
+      "shipId=", shipId, " fleetId=", fleetId,
+    )
   else:
-    # Escort extraction
-    if shipId notin squadron.ships:
-      return none(RepairProject)
-
-    # Remove escort from squadron
-    squadron.ships = squadron.ships.filterIt(it != shipId)
+    state.updateFleet(fleetId, fleet)
+    logInfo(
+      "Repair", "Extracted crippled ship from fleet for repair",
+      "shipId=", shipId, " fleetId=", fleetId,
+    )
 
   # Create repair project (drydocks only)
   let cost = calculateRepairCost(shipClass)
@@ -162,7 +85,6 @@ proc extractCrippledShip*(
     priority = 1, # Ship repairs = priority 1 (construction = 0, kastra = 2)
     neoriaId = none(NeoriaId),
     fleetId = some(fleetId),
-    squadronId = some(squadronId),
     shipId = some(shipId),
     kastraId = none(KastraId),
     shipClass = some(shipClass),
@@ -170,7 +92,7 @@ proc extractCrippledShip*(
 
   logInfo(
     "Repair", "Extracted crippled ship for repair", "shipClass=", shipClass,
-    " fleetId=", fleetId, " squadronId=", squadronId, " cost=", cost,
+    " fleetId=", fleetId, " shipId=", shipId, " cost=", cost,
     " facilityType=Drydock",
   )
 
@@ -231,7 +153,6 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
         priority = 2, # Kastra repairs = priority 2 (lowest)
         neoriaId = none(NeoriaId),
         fleetId = none(FleetId),
-        squadronId = none(SquadronId),
         shipId = none(ShipId),
         kastraId = some(kastra.id),
         shipClass = none(ShipClass),
@@ -287,75 +208,36 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
       continue
     let fleet = fleetOpt.get()
 
-    # Check each squadron for crippled ships
-    for squadronId in fleet.squadrons:
-      let squadronOpt = state.squadron(squadronId)
-      if squadronOpt.isNone:
+    # Check each ship in fleet for crippled status
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isNone:
         continue
-      let squadron = squadronOpt.get()
+      let ship = shipOpt.get()
 
-      # Check flagship
-      let flagshipOpt = state.ship(squadron.flagshipId)
-      if flagshipOpt.isSome:
-        let flagship = flagshipOpt.get()
-        if flagship.state == CombatState.Crippled:
-          # Check drydock capacity
-          let drydockProjects =
-            colony.getActiveProjectsByFacility(facilities.FacilityClass.Drydock)
-          let drydockCapacity = colony.getDrydockDockCapacity()
+      if ship.state == CombatState.Crippled:
+        # Check drydock capacity
+        let drydockProjects =
+          colony.getActiveProjectsByFacility(facilities.FacilityClass.Drydock)
+        let drydockCapacity = colony.getDrydockDockCapacity()
 
-          if drydockProjects < drydockCapacity:
-            # Extract and add to repair queue
-            let repairOpt =
-              state.extractCrippledShip(fleetId, squadronId, squadron.flagshipId)
-            if repairOpt.isSome:
-              colony.repairQueue.add(repairOpt.get())
-              logInfo(
-                "Repair",
-                "Submitted repair for flagship",
-                shipClass = flagship.shipClass,
-                fleetId = fleetId,
-                systemId = systemId,
-              )
-          else:
-            logDebug(
+        if drydockProjects < drydockCapacity:
+          # Extract and add to repair queue
+          let repairOpt = state.extractCrippledShip(fleetId, shipId)
+          if repairOpt.isSome:
+            colony.repairQueue.add(repairOpt.get())
+            logInfo(
               "Repair",
-              "Colony has no drydock capacity",
+              "Submitted ship for repair",
+              shipClass = ship.shipClass,
+              fleetId = fleetId,
               systemId = systemId,
-              used = drydockProjects,
-              capacity = drydockCapacity,
             )
-
-      # Check escorts
-      for shipId in squadron.ships:
-        let shipOpt = state.ship(shipId)
-        if shipOpt.isNone:
-          continue
-        let ship = shipOpt.get()
-
-        if ship.state == CombatState.Crippled:
-          # Check drydock capacity
-          let drydockProjects =
-            colony.getActiveProjectsByFacility(facilities.FacilityClass.Drydock)
-          let drydockCapacity = colony.getDrydockDockCapacity()
-
-          if drydockProjects < drydockCapacity:
-            # Extract and add to repair queue
-            let repairOpt = state.extractCrippledShip(fleetId, squadronId, shipId)
-            if repairOpt.isSome:
-              colony.repairQueue.add(repairOpt.get())
-              logInfo(
-                "Repair",
-                "Submitted repair for escort",
-                shipClass = ship.shipClass,
-                fleetId = fleetId,
-                systemId = systemId,
-              )
-          else:
-            logDebug(
-              "Repair",
-              "Colony has no drydock capacity",
-              systemId = systemId,
-              used = drydockProjects,
-              capacity = drydockCapacity,
-            )
+        else:
+          logDebug(
+            "Repair",
+            "Colony has no drydock capacity",
+            systemId = systemId,
+            used = drydockProjects,
+            capacity = drydockCapacity,
+          )

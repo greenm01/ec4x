@@ -1,25 +1,23 @@
 ## Fleet management for EC4X
 ##
-## This module defines fleets which are collections of squadrons that can
+## This module defines fleets which are collections of ships that can
 ## move together and engage in combat as a unit.
 ##
-## UNIFIED ARCHITECTURE (2025-12-17):
-## - Fleet → Squadrons (all types: Combat, Intel, Expansion, Auxiliary, Fighter)
-## - Expansion squadrons (ETAC) handle colonization
-## - Auxiliary squadrons (TroopTransport) handle invasion support
-## - All ships use unified Squadron structure with squadronType classification
+## ARCHITECTURE:
+## - Fleet → Ships (all types: Combat, Scout, ETAC, TroopTransport, Fighters)
+## - ETAC handle colonization
+## - TroopTransport handle invasion support
+## - All ships in fleets can move and fight together
 
-import ../squadron/entity as squadron
 import ../ship/entity as ship_entity # Ship helper functions
-import ../../types/[core, fleet, ship, squadron as squadron_types, combat, starmap, game_state]
+import ../../types/[core, fleet, ship, combat, starmap, game_state]
 import ../../state/engine
 import ../../entities/fleet_ops
 import std/[algorithm, strutils, options]
 
 export FleetId, SystemId, HouseId, LaneClass, FleetMissionState
-export Squadron, Ship, ShipClass # Export for fleet users
-export
-  SquadronClass, ShipCargo, CargoClass # Export squadron classification and cargo types
+export Ship, ShipClass # Export for fleet users
+export ShipCargo, CargoClass # Export cargo types
 
 ## Fleet construction
 ##
@@ -28,114 +26,105 @@ export
 
 proc `$`*(state: GameState, f: Fleet): string =
   ## String representation of a fleet
-  if f.squadrons.len == 0:
+  if f.ships.len == 0:
     "Empty Fleet"
   else:
     var shipClasses: seq[string] = @[]
-    for sqId in f.squadrons:
-      let sq = state.squadron(sqId).get
-      let flagship = state.ship(sq.flagshipId).get
-      let status = if flagship.state == CombatState.Crippled: "*" else: ""
-      let typeTag =
-        case sq.squadronType
-        of SquadronClass.Expansion: "[E]"
-        of SquadronClass.Auxiliary: "[A]"
-        of SquadronClass.Intel: "[I]"
-        of SquadronClass.Fighter: "[F]"
-        else: ""
-      shipClasses.add($flagship.shipClass & status & typeTag)
-    "Fleet[" & $f.squadrons.len & " squadrons: " & shipClasses.join(", ") & "]"
+    for shipId in f.ships:
+      let ship = state.ship(shipId).get
+      let status = if ship.state == CombatState.Crippled: "*" else: ""
+      shipClasses.add($ship.shipClass & status)
+    "Fleet[" & $f.ships.len & " ships: " & shipClasses.join(", ") & "]"
 
 proc len*(f: Fleet): int =
-  ## Get the number of squadrons in the fleet
-  f.squadrons.len
+  ## Get the number of ships in the fleet
+  f.ships.len
 
 proc isEmpty*(f: Fleet): bool =
-  ## Check if the fleet has no squadrons
-  f.squadrons.len == 0
+  ## Check if the fleet has no ships
+  f.ships.len == 0
 
-proc hasIntelSquadrons*(state: GameState, f: Fleet): bool =
-  ## Check if fleet has any Intel squadrons (Scouts)
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    if sq.squadronType == SquadronClass.Intel:
+proc hasIntelShips*(state: GameState, f: Fleet): bool =
+  ## Check if fleet has any Intel ships (Scouts)
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.shipClass == ShipClass.Scout:
       return true
   return false
 
-proc hasNonIntelSquadrons*(state: GameState, f: Fleet): bool =
-  ## Check if fleet has any non-Intel squadrons
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    if sq.squadronType != SquadronClass.Intel:
+proc hasNonIntelShips*(state: GameState, f: Fleet): bool =
+  ## Check if fleet has any non-Intel ships
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.shipClass != ShipClass.Scout:
       return true
   return false
 
-proc canAddSquadron*(
-    state: GameState, f: Fleet, squadron: Squadron
+proc canAddShip*(
+    state: GameState, f: Fleet, ship: Ship
 ): tuple[canAdd: bool, reason: string] =
-  ## Check if a squadron can be added to this fleet
-  ## RULE: Intel squadrons cannot be mixed with other squadron types
+  ## Check if a ship can be added to this fleet
+  ## RULE: Intel ships (Scouts) cannot be mixed with other ship types
 
-  if f.squadrons.len == 0:
-    # Empty fleet - any squadron type can be added
+  if f.ships.len == 0:
+    # Empty fleet - any ship type can be added
     return (canAdd: true, reason: "")
 
-  let isIntelSquadron = squadron.squadronType == SquadronClass.Intel
-  let fleetHasIntel = state.hasIntelSquadrons(f)
-  let fleetHasNonIntel = state.hasNonIntelSquadrons(f)
+  let isIntelShip = ship.shipClass == ShipClass.Scout
+  let fleetHasIntel = state.hasIntelShips(f)
+  let fleetHasNonIntel = state.hasNonIntelShips(f)
 
-  if isIntelSquadron and fleetHasNonIntel:
+  if isIntelShip and fleetHasNonIntel:
     return (
       canAdd: false,
-      reason: "Cannot add Intel squadron to fleet with non-Intel squadrons",
+      reason: "Cannot add Intel ship to fleet with non-Intel ships",
     )
 
-  if not isIntelSquadron and fleetHasIntel:
-    return (canAdd: false, reason: "Cannot add non-Intel squadron to Intel-only fleet")
+  if not isIntelShip and fleetHasIntel:
+    return (canAdd: false, reason: "Cannot add non-Intel ship to Intel-only fleet")
 
   return (canAdd: true, reason: "")
 
-proc add*(state: GameState, f: var Fleet, squadron: Squadron) =
-  ## Add a squadron to the fleet
-  ## Validates that Intel squadrons are not mixed with other types
-  let validation = state.canAddSquadron(f, squadron)
+proc add*(state: GameState, f: var Fleet, ship: Ship) =
+  ## Add a ship to the fleet
+  ## Validates that Intel ships are not mixed with other types
+  let validation = state.canAddShip(f, ship)
   if not validation.canAdd:
     raise newException(
       ValueError,
       "Fleet composition violation: " & validation.reason & " (fleet: " & $f.id &
-        ", squadron: " & $squadron.id & ")",
+        ", ship: " & $ship.id & ")",
     )
 
-  f.squadrons.add(squadron.id)
+  f.ships.add(ship.id)
 
 proc remove*(f: var Fleet, index: int) =
-  ## Remove a squadron at the given index
-  if index >= 0 and index < f.squadrons.len:
-    f.squadrons.delete(index)
+  ## Remove a ship at the given index
+  if index >= 0 and index < f.ships.len:
+    f.ships.delete(index)
 
 proc clear*(f: var Fleet) =
-  ## Remove all squadrons from the fleet
-  f.squadrons.setLen(0)
+  ## Remove all ships from the fleet
+  f.ships.setLen(0)
 
 proc canTraverse*(
     state: GameState, f: Fleet, laneType: LaneClass
 ): bool =
   ## Check if the fleet can traverse a specific type of jump lane
-  ## Per operations.md:9 "Fleets containing crippled ships or Expansion/Auxiliary squadrons can not jump across restricted lanes"
+  ## Per operations.md:9 "Fleets containing crippled ships or Expansion/Auxiliary ships can not jump across restricted lanes"
   case laneType
   of LaneClass.Restricted:
-    # Check for crippled squadrons
-    for sqId in f.squadrons:
-      let sq = state.squadron(sqId).get
-      let flagship = state.ship(sq.flagshipId).get
-      if flagship.state == CombatState.Crippled:
+    # Check for crippled ships
+    for shipId in f.ships:
+      let ship = state.ship(shipId).get
+      if ship.state == CombatState.Crippled:
         return false
 
-    # Check for Expansion/Auxiliary squadrons (ETAC, TroopTransport)
-    for sqId in f.squadrons:
-      let sq = state.squadron(sqId).get
-      if sq.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
-        return false # Cannot cross restricted lanes with Expansion/Auxiliary squadrons
+    # Check for Expansion/Auxiliary ships (ETAC, TroopTransport)
+    for shipId in f.ships:
+      let ship = state.ship(shipId).get
+      if ship.shipClass in {ShipClass.ETAC, ShipClass.TroopTransport}:
+        return false # Cannot cross restricted lanes with Expansion/Auxiliary ships
 
     return true
   else:
@@ -145,93 +134,84 @@ proc canTraverse*(
 proc combatStrength*(state: GameState, f: Fleet): int =
   ## Calculate the total attack strength of the fleet
   result = 0
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    result += state.combatStrength(sq)
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    result += int(ship.effectiveAttackStrength())
 
 proc isCloaked*(state: GameState, f: Fleet): bool =
   ## Check if fleet is cloaked
   ## Per assets.md:2.4.3: "Fleets that include Raiders are fully cloaked"
   ## Returns true if fleet has ANY non-crippled raiders
-  if f.squadrons.len == 0:
+  if f.ships.len == 0:
     return false
 
   # Check if fleet has any operational raiders
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    let raiderIds = state.raiderShips(sq)
-    for raiderId in raiderIds:
-      let raider = state.ship(raiderId).get
-      if raider.state != CombatState.Crippled:
-        return true # Fleet is cloaked if it has ANY operational raider
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.shipClass == ShipClass.Raider and ship.state != CombatState.Crippled:
+      return true # Fleet is cloaked if it has ANY operational raider
 
   return false
 
 proc transportCapacity*(state: GameState, f: Fleet): int =
-  ## Calculate the number of operational Expansion/Auxiliary squadrons
+  ## Calculate the number of operational Expansion/Auxiliary ships
   result = 0
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    if sq.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
-      let flagship = state.ship(sq.flagshipId).get
-      if flagship.state != CombatState.Crippled:
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.shipClass in {ShipClass.ETAC, ShipClass.TroopTransport}:
+      if ship.state != CombatState.Crippled:
         result += 1
 
 proc hasCombatShips*(state: GameState, f: Fleet): bool =
-  ## Check if the fleet has any combat-capable squadrons
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    if state.combatStrength(sq) > 0:
+  ## Check if the fleet has any combat-capable ships
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.effectiveAttackStrength() > 0:
       return true
   return false
 
 proc hasTransportShips*(state: GameState, f: Fleet): bool =
-  ## Check if the fleet has any operational Expansion/Auxiliary squadrons
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    if sq.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
-      let flagship = state.ship(sq.flagshipId).get
-      if flagship.state != CombatState.Crippled:
+  ## Check if the fleet has any operational Expansion/Auxiliary ships
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.shipClass in {ShipClass.ETAC, ShipClass.TroopTransport}:
+      if ship.state != CombatState.Crippled:
         return true
   return false
 
 proc isScoutOnly*(state: GameState, f: Fleet): bool =
-  ## Check if fleet contains ONLY scout squadrons (no combat ships)
+  ## Check if fleet contains ONLY scout ships (no combat ships)
   ## Scouts are intelligence-only units that cannot join combat operations
-  if f.squadrons.len == 0:
+  if f.ships.len == 0:
     return false
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    let flagship = state.ship(sq.flagshipId).get
-    if flagship.shipClass != ShipClass.Scout:
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.shipClass != ShipClass.Scout:
       return false
   return true
 
 proc hasScouts*(state: GameState, f: Fleet): bool =
-  ## Check if fleet contains any scout squadrons
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    let flagship = state.ship(sq.flagshipId).get
-    if flagship.shipClass == ShipClass.Scout:
+  ## Check if fleet contains any scout ships
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.shipClass == ShipClass.Scout:
       return true
   return false
 
-proc countScoutSquadrons*(state: GameState, f: Fleet): int =
-  ## Count number of scout squadrons in fleet
+proc countScoutShips*(state: GameState, f: Fleet): int =
+  ## Count number of scout ships in fleet
   ## Used for Scout-on-Scout detection formula
   result = 0
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    let flagship = state.ship(sq.flagshipId).get
-    if flagship.shipClass == ShipClass.Scout:
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.shipClass == ShipClass.Scout:
       result += 1
 
-proc hasCombatSquadrons*(state: GameState, f: Fleet): bool =
-  ## Check if fleet has any non-scout combat squadrons
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    let flagship = state.ship(sq.flagshipId).get
-    if flagship.shipClass != ShipClass.Scout:
+proc hasNonScoutShips*(state: GameState, f: Fleet): bool =
+  ## Check if fleet has any non-scout ships
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.shipClass != ShipClass.Scout:
       return true
   return false
 
@@ -239,104 +219,85 @@ proc canMergeWith*(
     state: GameState, f1: Fleet, f2: Fleet
 ): tuple[canMerge: bool, reason: string] =
   ## Check if two fleets can merge (validates Intel/combat mixing)
-  ## RULE: Intel squadrons cannot be mixed with other squadron types
+  ## RULE: Intel ships (Scouts) cannot be mixed with other ship types
   ## Intel fleets NEVER mix with anything (pure intelligence operations)
   ## Combat, Auxiliary, and Expansion can mix (combat escorts for transports)
   ## Fighters stay at colonies and don't join fleets
 
-  let f1HasIntel = state.hasIntelSquadrons(f1)
-  let f2HasIntel = state.hasIntelSquadrons(f2)
-  let f1HasNonIntel = state.hasNonIntelSquadrons(f1)
-  let f2HasNonIntel = state.hasNonIntelSquadrons(f2)
+  let f1HasIntel = state.hasIntelShips(f1)
+  let f2HasIntel = state.hasIntelShips(f2)
+  let f1HasNonIntel = state.hasNonIntelShips(f1)
+  let f2HasNonIntel = state.hasNonIntelShips(f2)
 
-  # Intel squadrons cannot mix with non-Intel squadrons
+  # Intel ships cannot mix with non-Intel ships
   if (f1HasIntel and f2HasNonIntel) or (f1HasNonIntel and f2HasIntel):
-    return (false, "Intel squadrons cannot be mixed with other squadron types")
+    return (false, "Intel ships cannot be mixed with other ship types")
 
   # Both fleets are compatible (either both Intel-only or both have no Intel)
   return (true, "")
 
-proc combatSquadrons*(state: GameState, f: Fleet): seq[SquadronId] =
-  ## Get all combat-capable squadron IDs
+proc combatShips*(state: GameState, f: Fleet): seq[ShipId] =
+  ## Get all combat-capable ship IDs
   result = @[]
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    if state.combatStrength(sq) > 0:
-      result.add(sqId)
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.effectiveAttackStrength() > 0:
+      result.add(shipId)
 
-proc expansionSquadrons*(state: GameState, f: Fleet): seq[SquadronId] =
-  ## Get all Expansion squadron IDs (ETACs for colonization)
+proc expansionShips*(state: GameState, f: Fleet): seq[ShipId] =
+  ## Get all Expansion ship IDs (ETACs for colonization)
   result = @[]
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    if sq.squadronType == SquadronClass.Expansion:
-      result.add(sqId)
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.shipClass == ShipClass.ETAC:
+      result.add(shipId)
 
-proc auxiliarySquadrons*(state: GameState, f: Fleet): seq[SquadronId] =
-  ## Get all Auxiliary squadron IDs (TroopTransports for invasion)
+proc auxiliaryShips*(state: GameState, f: Fleet): seq[ShipId] =
+  ## Get all Auxiliary ship IDs (TroopTransports for invasion)
   result = @[]
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    if sq.squadronType == SquadronClass.Auxiliary:
-      result.add(sqId)
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.shipClass == ShipClass.TroopTransport:
+      result.add(shipId)
 
-proc crippledSquadrons*(state: GameState, f: Fleet): seq[SquadronId] =
-  ## Get all squadron IDs with crippled flagships
+proc crippledShips*(state: GameState, f: Fleet): seq[ShipId] =
+  ## Get all crippled ship IDs
   result = @[]
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    let flagship = state.ship(sq.flagshipId).get
-    if flagship.state == CombatState.Crippled:
-      result.add(sqId)
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.state == CombatState.Crippled:
+      result.add(shipId)
 
-proc effectiveSquadrons*(
+proc effectiveShips*(
     state: GameState, f: Fleet
-): seq[SquadronId] =
-  ## Get all squadron IDs with non-crippled flagships
+): seq[ShipId] =
+  ## Get all non-crippled ship IDs
   result = @[]
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    let flagship = state.ship(sq.flagshipId).get
-    if flagship.state != CombatState.Crippled:
-      result.add(sqId)
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    if ship.state != CombatState.Crippled:
+      result.add(shipId)
 
 proc merge*(f1: var Fleet, f2: Fleet) =
   ## Merge another fleet into this one
-  ## Merges all squadron types: Combat, Intel, Expansion, Auxiliary, Fighter
-  f1.squadrons.add(f2.squadrons)
+  ## Merges all ship types: Combat, Intel, Expansion, Auxiliary, Fighter
+  f1.ships.add(f2.ships)
 
 proc split*(f: var Fleet, indices: seq[int]): Fleet =
-  ## Split off squadrons at the given indices into a new fleet
-  var newSquadronIds: seq[SquadronId] = @[]
+  ## Split off ships at the given indices into a new fleet
+  var newShipIds: seq[ShipId] = @[]
   var toRemove: seq[int] = @[]
 
   for i in indices:
-    if i >= 0 and i < f.squadrons.len:
-      newSquadronIds.add(f.squadrons[i])
+    if i >= 0 and i < f.ships.len:
+      newShipIds.add(f.ships[i])
       toRemove.add(i)
 
-  # Remove squadrons from original fleet (in reverse order to maintain indices)
+  # Remove ships from original fleet (in reverse order to maintain indices)
   for i in toRemove.sorted(Descending):
-    f.squadrons.delete(i)
+    f.ships.delete(i)
 
-  fleet_ops.newFleet(newSquadronIds)
-
-## TODO: balanceSquadrons needs to be refactored for DoD
-## This proc mutates squadron internal structure (redistributing escort ships).
-## In DoD architecture, this belongs in:
-## - entities/squadron_ops.nim (handles squadron mutations + index maintenance)
-## - OR: systems/fleet/engine.nim with GameState access
-##
-## The proc needs mutable access to Squadrons and Ships entity managers,
-## and should use updateEntity() to commit changes. This is complex domain
-## logic that requires careful handling of the entity graph.
-##
-## Signature should be:
-## proc balanceFleetSquadrons*(state: var GameState, fleetId: FleetId)
-##
-# proc balanceSquadrons*(f: var Fleet) =
-#   ## DEPRECATED - needs DoD refactoring
-#   discard
+  fleet_ops.newFleet(newShipIds)
 
 # ============================================================================
 # Fleet Management Command Support (for administrative ship reorganization)
@@ -344,54 +305,23 @@ proc split*(f: var Fleet, indices: seq[int]): Fleet =
 
 proc allShips*(state: GameState, f: Fleet): seq[Ship] =
   ## Get flat list of all ships in fleet for player UI
-  ## Order: squadron flagships + escorts for all squadron types
   ## Used by FleetManagementCommand to present ships to player
   ## Player selects ships by index in this list
   result = @[]
 
-  # Add all squadron ships (flagship first, then escorts)
-  # Includes all squadron types: Combat, Intel, Expansion, Auxiliary, Fighter
-  for sqId in f.squadrons:
-    let sq = state.squadron(sqId).get
-    let flagship = state.ship(sq.flagshipId).get
-    result.add(flagship)
-    for shipId in sq.ships:
-      let ship = state.ship(shipId).get
-      result.add(ship)
+  # Add all ships in fleet order
+  for shipId in f.ships:
+    let ship = state.ship(shipId).get
+    result.add(ship)
 
-proc translateShipIndicesToSquadrons*(
+proc validateShipIndices*(
     state: GameState, f: Fleet, indices: seq[int]
 ): seq[int] =
-  ## Convert flat ship indices (from allShips()) to squadron indices
-  ## Player selects ships by index, this translates to backend structure
-  ##
-  ## Note: Squadron index means "remove entire squadron"
-  ## (flagship always moves with its escorts)
-  ##
-  ## Returns: Which squadrons to remove (by squadron index)
+  ## Validate and filter ship indices for fleet operations
+  ## Player selects ships by index from allShips()
+  ## Returns: Valid ship indices (filtered for bounds checking)
 
-  var shipIndexToSquadron: seq[int] = @[] # Maps ship index → squadron index
-
-  # Build mapping: ship index → squadron index
-  for sqIdx in 0 ..< f.squadrons.len:
-    let sqId = f.squadrons[sqIdx]
-    let sq = state.squadron(sqId).get
-    shipIndexToSquadron.add(sqIdx) # Flagship
-    for _ in sq.ships:
-      shipIndexToSquadron.add(sqIdx) # Each escort
-
-  # Track which squadrons have ANY ship selected
-  var squadronsToRemove: seq[bool] = newSeq[bool](f.squadrons.len)
-
-  # Process each selected ship index
-  for idx in indices:
-    if idx < shipIndexToSquadron.len:
-      # Ship is in a squadron - mark entire squadron for removal
-      let sqIdx = shipIndexToSquadron[idx]
-      squadronsToRemove[sqIdx] = true
-
-  # Build final squadron indices list
   result = @[]
-  for sqIdx in 0 ..< f.squadrons.len:
-    if squadronsToRemove[sqIdx]:
-      result.add(sqIdx)
+  for idx in indices:
+    if idx >= 0 and idx < f.ships.len:
+      result.add(idx)

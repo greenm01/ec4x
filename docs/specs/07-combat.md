@@ -87,12 +87,12 @@ Ships exist in three combat states determining effectiveness:
 - Defense Strength (DS) reduced to 50%
 - Maintenance cost reduced to 50% of normal
 - Cannot traverse restricted jump lanes
-- Requires shipyard repairs (1 turn, 25% of build cost)
+- Requires drydock repairs (1 turn, 25% of build cost)
 - Still operational but at reduced capability
 
 **Destroyed** (Eliminated)
 - Ship eliminated from combat
-- Permanent loss unless rebuilt
+- Permanent loss
 
 **Fighter Exception (Glass Cannons):**
 
@@ -186,7 +186,7 @@ Fleets combine into **task forces** during combat—unified battle groups that c
 
 **Task force benefits**:
 - Concentrated firepower: All ships engage simultaneously
-- Screened units protected: Mothballed ships, auxiliary vessels (ETACS, Troop Transports), spacelift vessels, and facilities (shipyards, drydocks, spaceports) stay behind combat ships
+- Screened units protected: Mothballed ships, auxiliary vessels (ETACS, Troop Transports), and facilities (shipyards, drydocks, spaceports) stay behind combat ships
 
 **Multiple fleets in combat**: Friendly fleets fight alongside each other but remain organizationally distinct. Each fleet checks its own ROE independently and can retreat separately based on its own threshold. This creates emergent tactics where cautious fleets "screen" aggressive fleets then bug out when odds worsen.
 
@@ -461,11 +461,12 @@ Space combat occurs when mobile fleets encounter each other in the same system. 
 - Fleets with **Patrol commands** (active patrol duty)
 - Fleets with **movement-based standing commands** (PatrolRoute, AutoReinforce, AutoRepair)
 - Fleets with **offensive mission commands** (Move, Invade, Bombard, Blockade)
+- Fleets with **System Guard Commands** (DefendSystem)
 - **Active status fleets** without guard-specific commands
 
 **Who Does NOT Fight in Space Combat:**
 - **Scouts**: Consumed when initiating spy missions, destroyed upon detection - never participate in fleet combat
-- **Guard fleets**: GuardStarbase, GuardPlanet, DefendSystem commands - they defend in orbital combat only
+- **Orbital Guard fleets**: GuardStarbase, GuardPlanet commands - they defend in orbital combat only
 - **Reserve fleets**: Stationed at colony, fight in orbital combat only
 - **Mothballed fleets**: Offline, screened in orbital combat, cannot fight
 - **Starbases**: Fixed installations, orbital combat only (but provide sensor bonuses in space combat)
@@ -576,7 +577,7 @@ Assault fortified colony defenses after winning space superiority. Your fleets e
 - Any fleets that bypassed space combat (if no mobile defenders present)
 
 **Orbital Defenders** (All Fight Simultaneously):
-- **Guard fleets**: Fleets with GuardStarbase, GuardPlanet, DefendSystem commands
+- **Guard fleets**: Fleets with GuardStarbase, GuardPlanet commands
 - **Reserve fleets**: 50% maintenance fleets stationed at colony (fight at 100% AS - already included in ship stats)
 - **Mothballed fleets**: 0% maintenance fleets (CANNOT FIGHT - must be screened)
 - **Starbases**: Orbital installations with heavy firepower and detection capability
@@ -691,7 +692,7 @@ Defender total DS includes starbase DS (targets for attacker hits).
 - **Result**: Colony remains secure, invasion repelled
 
 **Screened Unit Loss:**
-- If attackers win, all screened units destroyed: mothballed ships, auxiliary vessels (ETACS, Troop Transports), spacelift vessels, and facilities (shipyards, drydocks, spaceports)
+- If attackers win, all screened units destroyed: mothballed ships, auxiliary vessels (ETACS, Troop Transports), and facilities (shipyards, drydocks, spaceports)
 - Significant economic and strategic loss (especially facilities)
 - Defenders should activate mothballed fleets and evacuate auxiliary vessels before combat if threatened
 
@@ -1095,7 +1096,7 @@ Combat only occurs between houses with hostile diplomatic relationships:
 - Otherwise neutral (no combat)
 
 **Neutral Status:**
-- Hostile only if fleets have explicitly threatening commands (Invade, Bombard, Blitz) in your controlled system
+- Hostile only if fleets have explicitly threatening commands (Invade, Bombard, Blitz, Blockade) in your controlled system
 - Peaceful coexistence otherwise (fleets can be in same system without fighting)
 
 ### 7.9.2 Multi-Faction Battle Resolution

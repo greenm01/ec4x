@@ -57,7 +57,6 @@ type
     neoriaId*: Option[NeoriaId]  # Repair facility (Drydock)
     # For ship repairs
     fleetId*: Option[FleetId]
-    squadronId*: Option[SquadronId]
     shipId*: Option[ShipId]
     # For kastra (defensive facility) repairs
     kastraId*: Option[KastraId]

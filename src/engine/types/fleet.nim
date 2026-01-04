@@ -11,15 +11,14 @@ type
     Reserve
     Mothballed
 
-  Fleet* = object ## A collection of squadrons that move together
+  Fleet* = object ## A collection of ships that move together
     id*: FleetId # Unique fleet identifier
-    squadrons*: seq[SquadronId]
-      # All squadron types (Combat, Intel, Expansion, Auxiliary)
+    ships*: seq[ShipId]
+      # All ship types (combat, intel, auxiliary)
     houseId*: HouseId # House that owns this fleet
     location*: SystemId # Current system location
     status*: FleetStatus # Operational status (active/reserve/mothballed)
     command*: Option[FleetCommand]
-    autoBalanceSquadrons*: bool # Auto-optimize squadron composition (default: true)
     # Spy mission state (for Scout-only fleets)
     missionState*: FleetMissionState # Spy mission state
     missionType*: Option[int32] # Type of active mission (SpyMissionType)

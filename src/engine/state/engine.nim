@@ -1,7 +1,7 @@
 import std/[tables, options]
 import
   ../types/[
-    core, game_state, fleet, ship, squadron, ground_unit, house, colony, facilities,
+    core, game_state, fleet, ship, ground_unit, house, colony, facilities,
     production, intel, starmap, population,
   ]
 
@@ -68,18 +68,6 @@ proc delShip*(state: GameState, id: ShipId) {.inline.} =
 
 proc addShip*(state: GameState, id: ShipId, ship: Ship) {.inline.} =
   state.ships.entities.addEntity(id, ship)
-  
-proc squadron*(state: GameState, id: SquadronId): Option[Squadron] {.inline.} =
-  state.squadrons.entities.entity(id)
-
-proc updateSquadron*(state: GameState, id: SquadronId, squadron: Squadron) {.inline.} =
-  state.squadrons.entities.updateEntity(id, squadron)
-
-proc delSquadron*(state: GameState, id: SquadronId) {.inline.} =
-  state.squadrons.entities.delEntity(id)
-
-proc addSquadron*(state: GameState, id: SquadronId, squadron: Squadron) {.inline.} =
-  state.squadrons.entities.addEntity(id, squadron)
 
 proc groundUnit*(state: GameState, id: GroundUnitId): Option[GroundUnit] {.inline.} =
   state.groundUnits.entities.entity(id)
@@ -201,10 +189,6 @@ proc shipsCount*(state: GameState): int32 {.inline.} =
   ## Get the total number of ships in the game state
   state.ships.entities.data.len.int32
 
-proc squadronsCount*(state: GameState): int32 {.inline.} =
-  ## Get the total number of squadrons in the game state
-  state.squadrons.entities.data.len.int32
-
 proc groundUnitsCount*(state: GameState): int32 {.inline.} =
   ## Get the total number of ground units in the game state
   state.groundUnits.entities.data.len.int32
@@ -249,10 +233,6 @@ proc hasShip*(state: GameState, id: ShipId): bool {.inline.} =
   ## Check if a ship with the given ID exists
   state.ships.entities.index.contains(id)
 
-proc hasSquadron*(state: GameState, id: SquadronId): bool {.inline.} =
-  ## Check if a squadron with the given ID exists
-  state.squadrons.entities.index.contains(id)
-
 # ============================================================================
 # Colony Accessors (bySystem: 1:1)
 # ============================================================================
@@ -291,44 +271,22 @@ proc colonyIdBySystem*(state: GameState, systemId: SystemId): Option[ColonyId] =
   return none(ColonyId)
 
 # ============================================================================
-# Squadron Accessors (byFleet: 1:many)
+# Ship Accessors (byFleet: 1:many)
 # ============================================================================
 
-proc squadronsByFleet*(state: GameState, fleetId: FleetId): seq[Squadron] =
-  ## Get all squadrons in a fleet (1:many relationship)
-  ## Returns: seq of squadrons (empty if fleet has no squadrons)
-  ##
-  ## Note: For batch processing all squadrons, use iterator squadronsOwned()
-  ## Use this helper when you need a seq for later use or non-iterator context
-  ##
-  ## Example:
-  ##   let squadrons = state.squadronsByFleet(fleetId)
-  ##   for squadron in squadrons:
-  ##     echo "Squadron type: ", squadron.squadronType
-  result = @[]
-  if state.squadrons.byFleet.hasKey(fleetId):
-    for squadronId in state.squadrons.byFleet[fleetId]:
-      let squadronOpt = state.squadrons.entities.entity(squadronId)
-      if squadronOpt.isSome:
-        result.add(squadronOpt.get())
-
-# ============================================================================
-# Ship Accessors (bySquadron: 1:many)
-# ============================================================================
-
-proc shipsBySquadron*(state: GameState, squadronId: SquadronId): seq[Ship] =
-  ## Get all ships in a squadron (1:many relationship)
-  ## Returns: seq of ships (empty if squadron has no ships)
+proc shipsByFleet*(state: GameState, fleetId: FleetId): seq[Ship] =
+  ## Get all ships in a fleet (1:many relationship)
+  ## Returns: seq of ships (empty if fleet has no ships)
   ##
   ## Note: For batch processing all ships owned by house, use iterator shipsOwned()
-  ## Use this helper when you need ships for a specific squadron
+  ## Use this helper when you need ships for a specific fleet
   ##
   ## Example:
-  ##   let ships = state.shipsBySquadron(squadronId)
-  ##   let totalAS = ships.mapIt(it.attackStrength).sum()
+  ##   let ships = state.shipsByFleet(fleetId)
+  ##   let totalAS = ships.mapIt(it.stats.attackStrength).sum()
   result = @[]
-  if state.ships.bySquadron.hasKey(squadronId):
-    for shipId in state.ships.bySquadron[squadronId]:
+  if state.ships.byFleet.hasKey(fleetId):
+    for shipId in state.ships.byFleet[fleetId]:
       let shipOpt = state.ships.entities.entity(shipId)
       if shipOpt.isSome:
         result.add(shipOpt.get())

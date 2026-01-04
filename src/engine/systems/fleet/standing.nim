@@ -14,7 +14,7 @@
 
 import std/[tables, options, strformat, algorithm, sets, sequtils]
 import ../../../common/logger
-import ../../types/[core, game_state, command, fleet, squadron, starmap, intel, event, combat]
+import ../../types/[core, game_state, command, fleet, starmap, intel, event, combat]
 import ../../starmap
 import ../../state/[engine, iterators]
 import ../../event_factory/init as event_factory
@@ -257,7 +257,7 @@ proc activateDefendSystem(
     return ActivationResult(success: true, action: &"Patrol system-{targetSystem}")
 
   # Check distance from target (via jump lanes, not as the crow flies)
-  let pathResult = findPath(state.starMap, fleet.location, targetSystem, fleet, state.squadrons[], state.ships)
+  let pathResult = movement.findPath(state, fleet.location, targetSystem, fleet)
   if not pathResult.found:
     # Can't reach target - suspended order, log warning
     logWarn(
@@ -412,7 +412,7 @@ proc findColonizationTarget*(
       continue
 
     # Check distance via jump lanes
-    let pathResult = findPath(state.starMap, currentLocation, systemId, fleet, state.squadrons[], state.ships)
+    let pathResult = movement.findPath(state, currentLocation, systemId, fleet)
     if not pathResult.found:
       continue # Can't reach this system
 
@@ -522,7 +522,7 @@ proc findColonizationTarget*(
 #      continue
 #
 #    # Check distance via jump lanes (proper pathfinding)
-#    let pathResult = findPath(filtered.starMap, currentLocation, systemId, fleet, filtered.squadrons[], filtered.ships)
+#    let pathResult = movement.findPath(filtered, currentLocation, systemId, fleet)
 #    if not pathResult.found:
 #      continue # Can't reach this system
 #
@@ -597,28 +597,13 @@ proc activateAutoRepair(
   var totalShips = 0
   var crippledShips = 0
 
-  for squadronId in fleet.squadrons:
-    let squadronOpt = state.squadron(squadronId)
-    if squadronOpt.isNone:
-      continue
-    let squadron = squadronOpt.get()
-
-    # Check flagship
+  for shipId in fleet.ships:
     totalShips += 1
-    let flagshipOpt = state.ship(squadron.flagshipId)
-    if flagshipOpt.isSome:
-      let flagship = flagshipOpt.get()
-      if flagship.state == CombatState.Crippled:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.state == CombatState.Crippled:
         crippledShips += 1
-
-    # Include escort ships
-    for shipId in squadron.ships:
-      totalShips += 1
-      let shipOpt = state.ship(shipId)
-      if shipOpt.isSome:
-        let ship = shipOpt.get()
-        if ship.state == CombatState.Crippled:
-          crippledShips += 1
 
   if totalShips == 0:
     # No ships (shouldn't happen, but safety check)
@@ -662,7 +647,7 @@ proc activateAutoRepair(
       continue
 
     # Calculate distance via jump lanes
-    let pathResult = findPath(state.starMap, fleet.location, colony.systemId, fleet, state.squadrons[], state.ships)
+    let pathResult = movement.findPath(state, fleet.location, colony.systemId, fleet)
     if not pathResult.found:
       continue
 
@@ -751,28 +736,13 @@ proc activateAutoReinforce(
         # Count crippled ships in target fleet
         var targetTotalShips = 0
         var targetCrippledShips = 0
-        for squadronId in targetFleet.squadrons:
-          let squadronOpt = state.squadron(squadronId)
-          if squadronOpt.isNone:
-            continue
-          let squadron = squadronOpt.get()
-
-          # Check flagship
+        for shipId in targetFleet.ships:
           targetTotalShips += 1
-          let flagshipOpt = state.ship(squadron.flagshipId)
-          if flagshipOpt.isSome:
-            let flagship = flagshipOpt.get()
-            if flagship.state == CombatState.Crippled:
+          let shipOpt = state.ship(shipId)
+          if shipOpt.isSome:
+            let ship = shipOpt.get()
+            if ship.state == CombatState.Crippled:
               targetCrippledShips += 1
-
-          # Check escort ships
-          for shipId in squadron.ships:
-            targetTotalShips += 1
-            let shipOpt = state.ship(shipId)
-            if shipOpt.isSome:
-              let ship = shipOpt.get()
-              if ship.state == CombatState.Crippled:
-                targetCrippledShips += 1
 
         let targetCrippledPercent =
           if targetTotalShips > 0:
@@ -786,7 +756,7 @@ proc activateAutoReinforce(
           targetFleetLocation = targetFleet.location
 
           let pathResult =
-            findPath(state.starMap, fleet.location, targetFleet.location, fleet, state.squadrons[], state.ships)
+            movement.findPath(state, fleet.location, targetFleet.location, fleet)
           if pathResult.found:
             minDistance = pathResult.path.len - 1
 
@@ -800,28 +770,13 @@ proc activateAutoReinforce(
       # Count crippled ships
       var otherTotalShips = 0
       var otherCrippledShips = 0
-      for squadronId in otherFleet.squadrons:
-        let squadronOpt = state.squadron(squadronId)
-        if squadronOpt.isNone:
-          continue
-        let squadron = squadronOpt.get()
-
-        # Check flagship
+      for shipId in otherFleet.ships:
         otherTotalShips += 1
-        let flagshipOpt = state.ship(squadron.flagshipId)
-        if flagshipOpt.isSome:
-          let flagship = flagshipOpt.get()
-          if flagship.state == CombatState.Crippled:
+        let shipOpt = state.ship(shipId)
+        if shipOpt.isSome:
+          let ship = shipOpt.get()
+          if ship.state == CombatState.Crippled:
             otherCrippledShips += 1
-
-        # Check escort ships
-        for shipId in squadron.ships:
-          otherTotalShips += 1
-          let shipOpt = state.ship(shipId)
-          if shipOpt.isSome:
-            let ship = shipOpt.get()
-            if ship.state == CombatState.Crippled:
-              otherCrippledShips += 1
 
       if otherTotalShips == 0:
         continue
@@ -834,7 +789,7 @@ proc activateAutoReinforce(
 
       # Calculate distance via jump lanes
       let pathResult =
-        findPath(state.starMap, fleet.location, otherFleet.location, fleet, state.squadrons[], state.ships)
+        movement.findPath(state, fleet.location, otherFleet.location, fleet)
       if not pathResult.found:
         continue
 
@@ -902,24 +857,11 @@ proc calculateFleetStrength(state: GameState, fleet: Fleet): int =
   ## Calculate raw combat strength of fleet
   ## Sum of attack strength across all ships
   result = 0
-  for squadronId in fleet.squadrons:
-    let squadronOpt = state.squadron(squadronId)
-    if squadronOpt.isNone:
-      continue
-    let squadron = squadronOpt.get()
-
-    # Add flagship strength
-    let flagshipOpt = state.ship(squadron.flagshipId)
-    if flagshipOpt.isSome:
-      let flagship = flagshipOpt.get()
-      result += flagship.stats.attackStrength
-
-    # Add escort ship strength
-    for shipId in squadron.ships:
-      let shipOpt = state.ship(shipId)
-      if shipOpt.isSome:
-        let ship = shipOpt.get()
-        result += ship.stats.attackStrength
+  for shipId in fleet.ships:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      result += ship.stats.attackStrength
 
 proc activateBlockadeTarget(
     state: var GameState, fleetId: FleetId, params: StandingCommandParams
@@ -986,7 +928,7 @@ proc activateBlockadeTarget(
     )
 
   # Move to target colony
-  let pathResult = findPath(state.starMap, fleet.location, targetSystem, fleet, state.squadrons[], state.ships)
+  let pathResult = movement.findPath(state, fleet.location, targetSystem, fleet)
   if not pathResult.found:
     logWarn(
       "Orders",

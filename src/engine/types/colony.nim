@@ -23,8 +23,7 @@ type
     autoLoadingEnabled*: bool
     autoReloadETACs*: bool
     activeTerraforming*: Option[TerraformProject]
-    unassignedSquadronIds*: seq[SquadronId]
-    fighterSquadronIds*: seq[SquadronId]
+    fighterIds*: seq[ShipId]  # Colony-assigned fighters (not in fleets)
     capacityViolation*: CapacityViolation
     # Entity references (bucket-level tracking)
     groundUnitIds*: seq[GroundUnitId]  # All ground units (batteries, armies, marines, shields)

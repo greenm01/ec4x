@@ -37,7 +37,6 @@ type
 
   # Military IDs
   FleetId* = distinct uint32
-  SquadronId* = distinct uint32
   ShipId* = distinct uint32
   GroundUnitId* = distinct uint32
 
@@ -61,7 +60,6 @@ type
     nextNeoriaId*: uint32  # Unified production facilities
     nextKastraId*: uint32  # Unified defense facilities
     nextFleetId*: uint32
-    nextSquadronId*: uint32
     nextShipId*: uint32
     nextGroundUnitId*: uint32
     nextConstructionProjectId*: uint32
@@ -87,9 +85,6 @@ proc hash*(id: KastraId): Hash {.borrow.}
 proc `==`*(a, b: FleetId): bool {.borrow.}
 proc hash*(id: FleetId): Hash {.borrow.}
 
-proc `==`*(a, b: SquadronId): bool {.borrow.}
-proc hash*(id: SquadronId): Hash {.borrow.}
-
 proc `==`*(a, b: ShipId): bool {.borrow.}
 proc hash*(id: ShipId): Hash {.borrow.}
 
@@ -108,7 +103,6 @@ proc `$`*(id: SystemId): string {.borrow.}
 proc `$`*(id: ColonyId): string {.borrow.}
 proc `$`*(id: FleetId): string {.borrow.}
 proc `$`*(id: HouseId): string {.borrow.}
-proc `$`*(id: SquadronId): string {.borrow.}
 proc `$`*(id: ShipId): string {.borrow.}
 proc `$`*(id: GroundUnitId): string {.borrow.}
 proc `$`*(id: ConstructionProjectId): string {.borrow.}

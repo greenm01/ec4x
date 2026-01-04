@@ -12,7 +12,7 @@
 ## - Requires shipyard with available docks
 
 import std/[tables, options, sequtils]
-import ../../types/[core, game_state, fleet, squadron, ship]
+import ../../types/[core, game_state, fleet, ship]
 import ../economy/types as econ_types
 import
   ../../config/[
@@ -37,7 +37,7 @@ type
   RepairProject* = object ## Ship or starbase repair project
     targetType*: RepairTargetType
     fleetId*: Option[FleetId] # For ship repairs
-    squadronIndex*: int # Index within fleet
+    shipId*: Option[ShipId] # Ship being repaired
     colonyId*: Option[SystemId] # For starbase repairs
     starbaseIndex*: int # Index within colony
     cost*: int
@@ -219,7 +219,7 @@ proc validateRepairRequest*(
   result.cost = cost
   result.message = "Repair approved"
 
-proc repairShip*(state: var GameState, fleetId: FleetId, squadronIndex: int): bool =
+proc repairShip*(state: var GameState, fleetId: FleetId, shipId: ShipId): bool =
   ## Immediately repair a crippled ship at a friendly shipyard
   ## Deducts repair cost from house treasury
   ## Returns true if repair successful
@@ -228,24 +228,29 @@ proc repairShip*(state: var GameState, fleetId: FleetId, squadronIndex: int): bo
   if fleetId notin state.fleets:
     return false
 
-  var fleet = state.fleets[fleetId]
+  let fleet = state.fleets[fleetId]
 
-  # Validate squadron index
-  if squadronIndex < 0 or squadronIndex >= fleet.squadrons.len:
+  # Find ship in fleet
+  var shipOpt = state.ship(shipId)
+  if shipOpt.isNone:
     return false
 
-  var squadron = fleet.squadrons[squadronIndex]
+  var ship = shipOpt.get()
+
+  # Verify ship is in this fleet
+  if ship.fleetId != fleetId:
+    return false
 
   # Check if ship is crippled
-  if not squadron.flagship.isCrippled:
+  if ship.state != CombatState.Crippled:
     return false
 
   # Validate repair request
   let request = RepairRequest(
     targetType: RepairTargetType.Ship,
-    shipClass: some(squadron.flagship.shipClass),
+    shipClass: some(ship.shipClass),
     systemId: fleet.location,
-    requestingHouse: fleet.owner,
+    requestingHouse: fleet.houseId,
   )
 
   let validation = validateRepairRequest(request, state)
@@ -253,12 +258,13 @@ proc repairShip*(state: var GameState, fleetId: FleetId, squadronIndex: int): bo
     return false
 
   # Deduct cost
-  state.houses[fleet.owner].treasury -= validation.cost
+  var house = state.houses[fleet.houseId]
+  house.treasury -= validation.cost
+  state.houses[fleet.houseId] = house
 
   # Repair ship
-  squadron.flagship.isCrippled = false
-  fleet.squadrons[squadronIndex] = squadron
-  state.fleets[fleetId] = fleet
+  ship.state = CombatState.Undamaged
+  state.updateShip(shipId, ship)
 
   return true
 
@@ -309,19 +315,23 @@ proc repairStarbase*(
 
 ## Helper Functions
 
-proc getFleetSalvageValue*(fleet: Fleet, salvageType: SalvageType): int =
+proc getFleetSalvageValue*(
+    state: GameState, fleet: Fleet, salvageType: SalvageType
+): int =
   ## Calculate total salvage value for an entire fleet
   result = 0
-  for squadron in fleet.squadrons:
-    result += getSalvageValue(squadron.flagship.shipClass, salvageType)
+  for shipId in fleet.ships:
+    let ship = state.ship(shipId).get()
+    result += getSalvageValue(ship.shipClass, salvageType)
 
-proc getCrippledShips*(fleet: Fleet): seq[(int, ShipClass)] =
+proc getCrippledShips*(state: GameState, fleet: Fleet): seq[(ShipId, ShipClass)] =
   ## Get list of crippled ships in fleet
-  ## Returns (squadron index, ship class) pairs
+  ## Returns (ship ID, ship class) pairs
   result = @[]
-  for i, squadron in fleet.squadrons:
-    if squadron.flagship.isCrippled:
-      result.add((i, squadron.flagship.shipClass))
+  for shipId in fleet.ships:
+    let ship = state.ship(shipId).get()
+    if ship.state == CombatState.Crippled:
+      result.add((shipId, ship.shipClass))
 
 proc getCrippledStarbases*(colony: Colony): seq[(int, string)] =
   ## Get list of crippled starbases at colony

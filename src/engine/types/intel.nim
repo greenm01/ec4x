@@ -64,7 +64,7 @@ type
     mothballedFleetCount*: int32 # Fleets in mothballed status at this system
     guardFleetIds*: seq[FleetId] # Fleets with Guard orders for this colony
     blockadeFleetIds*: seq[FleetId] # Fleets with Blockade orders for this colony
-    fighterSquadronIds*: seq[SquadronId] # Fighter squadrons stationed at colony
+    fighterIds*: seq[ShipId] # Fighters stationed at colony
 
   FleetIntel* = object
     fleetId*: FleetId
@@ -72,13 +72,11 @@ type
     location*: SystemId
     shipCount*: int32
     standingOrders*: Option[string]
-    spaceLiftShipCount*: Option[int32]
-    squadronIds*: seq[SquadronId] # Store IDs, not details
+    shipIds*: seq[ShipId] # Store IDs, not details
 
-  SquadronIntel* = object
-    squadronId*: SquadronId # Use typed ID
+  ShipIntel* = object
+    shipId*: ShipId # Use typed ID
     shipClass*: string
-    shipCount*: int32
     techLevel*: int32
     hullIntegrity*: Option[int32]
 
@@ -90,10 +88,10 @@ type
 
   SystemIntelPackage* = object
     ## Complete intelligence package from system surveillance
-    ## Includes the system report plus detailed fleet/squadron intel
+    ## Includes the system report plus detailed fleet/ship intel
     report*: SystemIntelReport
     fleetIntel*: seq[tuple[fleetId: FleetId, intel: FleetIntel]]
-    squadronIntel*: seq[tuple[squadronId: SquadronId, intel: SquadronIntel]]
+    shipIntel*: seq[tuple[shipId: ShipId, intel: ShipIntel]]
 
   StarbaseIntelReport* = object
     kastraId*: KastraId  # Defensive facility (Starbase)
@@ -121,7 +119,7 @@ type
     targetSystem*: Option[SystemId]
 
   SpaceLiftCargoIntel* = object
-    squadronId*: SquadronId # Use typed ID
+    shipId*: ShipId # Use typed ID
     shipClass*: string
     cargoType*: string
     quantity*: int32
@@ -131,8 +129,7 @@ type
     fleetId*: FleetId
     owner*: HouseId
     standingOrders*: Option[FleetOrderIntel]
-    squadronIds*: seq[SquadronId] # Store IDs
-    spaceLiftSquadronIds*: seq[SquadronId]
+    shipIds*: seq[ShipId] # Store IDs
     isCloaked*: bool
 
   CombatEncounterReport* = object
@@ -144,7 +141,7 @@ type
     alliedFleetIds*: seq[FleetId]
     enemyFleetIds*: seq[FleetId]
     outcome*: CombatOutcome
-    alliedLosses*: seq[SquadronId]
+    alliedLosses*: seq[ShipId]
     enemyLosses*: seq[string] # Ship classes
     retreatedAllies*: seq[FleetId]
     retreatedEnemies*: seq[FleetId]
@@ -251,7 +248,7 @@ type
     systemReports*: Table[SystemId, SystemIntelReport]
     starbaseReports*: Table[KastraId, StarbaseIntelReport]
     fleetIntel*: Table[FleetId, FleetIntel] # Detailed fleet intelligence
-    squadronIntel*: Table[SquadronId, SquadronIntel] # Detailed squadron intelligence
+    shipIntel*: Table[ShipId, ShipIntel] # Detailed ship intelligence
     espionageActivity*: seq[EspionageActivityReport]
     combatReports*: seq[CombatEncounterReport]
     blockadeReports*: seq[BlockadeReport]

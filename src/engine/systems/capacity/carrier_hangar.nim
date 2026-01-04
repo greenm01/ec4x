@@ -5,8 +5,8 @@
 ## Capacity Formula: Based on carrier type and ACO (Advanced Carrier Operations) tech
 ##
 ## **Carrier Types and Capacity:**
-## - Carrier (CV): 3/4/5 fighter squadrons at ACO I/II/III
-## - Super Carrier (CX): 5/6/8 fighter squadrons at ACO I/II/III
+## - Carrier (CV): 3/4/5 fighter ships at ACO I/II/III
+## - Super Carrier (CX): 5/6/8 fighter ships at ACO I/II/III
 ##
 ## **IMPORTANT:** Carrier hangar capacity is a hard physical constraint.
 ## Cannot load fighters beyond available hangar space. No grace period.
@@ -18,7 +18,7 @@
 ## enforce at load time (explicit mutations)
 
 import std/[options, math, tables]
-import ../../types/[capacity, core, game_state, squadron, ship]
+import ../../types/[capacity, core, game_state, ship]
 import ../../state/[engine, iterators]
 import ../../globals
 import ../../../common/logger
@@ -53,49 +53,42 @@ proc getCarrierMaxCapacity*(shipClass: ShipClass, acoLevel: int): int =
   else:
     return 0 # Non-carriers have no hangar capacity
 
-proc getCurrentHangarLoad*(squadron: Squadron): int =
+proc getCurrentHangarLoad*(ship: Ship): int =
   ## Get current number of fighters embarked on carrier
   ## Pure function - just counts embarkedFighters
-  return squadron.embarkedFighters.len
+  return ship.embarkedFighters.len
 
 proc analyzeCarrierCapacity*(
-    state: GameState, squadronId: SquadronId
+    state: GameState, shipId: ShipId
 ): Option[capacity.CapacityViolation] =
   ## Analyze single carrier's hangar capacity
   ## Returns violation if carrier exceeds capacity, none otherwise
   ##
   ## Args:
   ##   state: Game state
-  ##   squadronId: Squadron ID of the carrier
+  ##   shipId: Ship ID of the carrier
   ##
   ## Returns:
   ##   Some(violation) if over capacity, none otherwise
 
-  let squadronOpt = state.squadron(squadronId)
-  if squadronOpt.isNone:
+  let shipOpt = state.ship(shipId)
+  if shipOpt.isNone:
     return none(capacity.CapacityViolation)
 
-  let squadron = squadronOpt.get()
-
-  # Get flagship ship to check if carrier
-  let flagshipOpt = state.ship(squadron.flagshipId)
-  if flagshipOpt.isNone:
-    return none(capacity.CapacityViolation)
-
-  let flagship = flagshipOpt.get()
+  let ship = shipOpt.get()
 
   # Only check carriers
-  if not isCarrier(flagship.shipClass):
+  if not isCarrier(ship.shipClass):
     return none(capacity.CapacityViolation)
 
   # Get house's ACO tech level
-  let houseOpt = state.house(squadron.houseId)
+  let houseOpt = state.house(ship.houseId)
   if houseOpt.isNone:
     return none(capacity.CapacityViolation)
 
   let acoLevel = houseOpt.get().techTree.levels.aco
-  let maximum = getCarrierMaxCapacity(flagship.shipClass, acoLevel)
-  let current = getCurrentHangarLoad(squadron)
+  let maximum = getCarrierMaxCapacity(ship.shipClass, acoLevel)
+  let current = getCurrentHangarLoad(ship)
   let excess = max(0, current - maximum)
 
   # Carrier hangar has no grace period - immediate critical if over
@@ -128,68 +121,61 @@ proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
   ## Pure function - returns analysis without mutations
   result = @[]
 
-  # Iterate through all active houses and their squadrons
+  # Iterate through all ships to find carriers
   for house in state.activeHouses():
-    for squadron in state.squadronsOwned(house.id):
-      # Get flagship to check if carrier
-      let flagshipOpt = state.ship(squadron.flagshipId)
-      if flagshipOpt.isSome:
-        let flagship = flagshipOpt.get()
-        if isCarrier(flagship.shipClass):
-          let violation = analyzeCarrierCapacity(state, squadron.id)
-          if violation.isSome:
-            result.add(violation.get())
+    for fleet in state.fleetsOwned(house.id):
+      for shipId in fleet.ships:
+        let shipOpt = state.ship(shipId)
+        if shipOpt.isSome:
+          let ship = shipOpt.get()
+          if isCarrier(ship.shipClass):
+            let violation = analyzeCarrierCapacity(state, shipId)
+            if violation.isSome:
+              result.add(violation.get())
 
-proc getAvailableHangarSpace*(state: GameState, squadronId: SquadronId): int =
+proc getAvailableHangarSpace*(state: GameState, shipId: ShipId): int =
   ## Get remaining hangar capacity for carrier
   ## Returns: maximum - current
   ## Returns 0 if carrier doesn't exist or is not a carrier
   ##
   ## Used to check if carrier can load additional fighters
 
-  let squadronOpt = state.squadron(squadronId)
-  if squadronOpt.isNone:
+  let shipOpt = state.ship(shipId)
+  if shipOpt.isNone:
     return 0
 
-  let squadron = squadronOpt.get()
-
-  # Get flagship ship to check if carrier
-  let flagshipOpt = state.ship(squadron.flagshipId)
-  if flagshipOpt.isNone:
-    return 0
-
-  let flagship = flagshipOpt.get()
+  let ship = shipOpt.get()
 
   # Only carriers have hangar space
-  if not isCarrier(flagship.shipClass):
+  if not isCarrier(ship.shipClass):
     return 0
 
   # Get house's ACO tech level
-  let houseOpt = state.house(squadron.houseId)
+  let houseOpt = state.house(ship.houseId)
   if houseOpt.isNone:
     return 0
 
   let acoLevel = houseOpt.get().techTree.levels.aco
-  let maximum = getCarrierMaxCapacity(flagship.shipClass, acoLevel)
-  let current = getCurrentHangarLoad(squadron)
+  let maximum = getCarrierMaxCapacity(ship.shipClass, acoLevel)
+  let current = getCurrentHangarLoad(ship)
 
   return max(0, maximum - current)
 
 proc canLoadFighters*(
-    state: GameState, squadronId: SquadronId, fightersToLoad: int
+    state: GameState, shipId: ShipId, fightersToLoad: int
 ): bool =
   ## Check if carrier has hangar space available to load fighters
   ## Returns true if carrier can accommodate fightersToLoad additional fighters
   ##
   ## Args:
   ##   state: Game state
-  ##   squadronId: Squadron ID of the carrier
-  ##   fightersToLoad: Number of fighter squadrons to load
+  ##   shipId: Ship ID of the carrier
+  ##   fightersToLoad: Number of fighter ships to load
   ##
   ## Returns:
   ##   true if carrier has enough hangar space, false otherwise
 
-  let availableSpace = getAvailableHangarSpace(state, squadronId)
+  let availableSpace = getAvailableHangarSpace(state, shipId)
   return availableSpace >= fightersToLoad
 
 proc processCapacityEnforcement*(
@@ -198,7 +184,7 @@ proc processCapacityEnforcement*(
   ## Main entry point - check all carriers for hangar capacity violations
   ## Called during Maintenance phase
   ##
-  ## NOTE: Unlike fighter squadron grace period or capital squadron auto-scrap,
+  ## NOTE: Unlike fighter grace period or capital ship auto-scrap,
   ## carrier hangar violations should NEVER occur because loading is blocked at
   ## capacity. This function exists for consistency and debugging.
   ##
@@ -262,10 +248,10 @@ proc processCapacityEnforcement*(
 ## - reference.md Table 10.5 - Capacity limits per ACO level
 ##
 ## **Integration Points:**
-## - Call canLoadFighters(state, squadronId, count) before allowing fighter
+## - Call canLoadFighters(state, shipId, count) before allowing fighter
 ##   loading operations
 ## - Call processCapacityEnforcement() in Maintenance phase (debugging only)
-## - Use getAvailableHangarSpace(state, squadronId) to show available capacity
+## - Use getAvailableHangarSpace(state, shipId) to show available capacity
 ##   to players
 ##
 ## **Special Cases:**
