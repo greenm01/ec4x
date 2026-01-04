@@ -2,7 +2,7 @@
 ##
 ## This module contains the type definitions for the hexagonal grid (Hex),
 ## star systems (System), jump lanes (JumpLane), and other related map types.
-import std/[tables, options]
+import std/tables
 import ./core
 
 type

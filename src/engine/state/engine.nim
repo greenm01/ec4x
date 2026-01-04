@@ -2,7 +2,7 @@ import std/[tables, options]
 import
   ../types/[
     core, game_state, fleet, ship, ground_unit, house, colony, facilities,
-    production, intel, starmap, population,
+    production, intel, starmap, population, combat,
   ]
 
 export GameState
@@ -329,6 +329,87 @@ proc groundUnitsOnTransport*(
         result.add(unitOpt.get())
 
 # ============================================================================
+# Facility Accessors (byColony: 1:many)
+# ============================================================================
+
+proc neoriasAtColony*(state: GameState, colonyId: ColonyId): seq[Neoria] =
+  ## Get all production facilities (Neorias) at a colony (1:many relationship)
+  ## Returns: seq of Neoria (Spaceports, Shipyards, Drydocks)
+  ##
+  ## Note: For counting specific facility types, use count*AtColony() procs
+  ##
+  ## Example:
+  ##   let facilities = state.neoriasAtColony(colonyId)
+  ##   let totalDocks = facilities.mapIt(it.effectiveDocks).sum()
+  result = @[]
+  if state.neorias.byColony.hasKey(colonyId):
+    for neoriaId in state.neorias.byColony[colonyId]:
+      let neoriaOpt = state.neorias.entities.entity(neoriaId)
+      if neoriaOpt.isSome:
+        result.add(neoriaOpt.get())
+
+proc kastrasAtColony*(state: GameState, colonyId: ColonyId): seq[Kastra] =
+  ## Get all defensive facilities (Kastras) at a colony (1:many relationship)
+  ## Returns: seq of Kastra (Starbases)
+  ##
+  ## Example:
+  ##   let defenses = state.kastrasAtColony(colonyId)
+  ##   let totalDefense = defenses.mapIt(it.stats.defenseStrength).sum()
+  result = @[]
+  if state.kastras.byColony.hasKey(colonyId):
+    for kastraId in state.kastras.byColony[colonyId]:
+      let kastraOpt = state.kastras.entities.entity(kastraId)
+      if kastraOpt.isSome:
+        result.add(kastraOpt.get())
+
+proc countSpaceportsAtColony*(state: GameState, colonyId: ColonyId): int32 =
+  ## Count Spaceports at a colony
+  ## Returns: number of Spaceport facilities (includes crippled)
+  result = 0
+  for neoria in state.neoriasAtColony(colonyId):
+    if neoria.neoriaClass == NeoriaClass.Spaceport:
+      result += 1
+
+proc countShipyardsAtColony*(state: GameState, colonyId: ColonyId): int32 =
+  ## Count Shipyards at a colony
+  ## Returns: number of Shipyard facilities (includes crippled)
+  result = 0
+  for neoria in state.neoriasAtColony(colonyId):
+    if neoria.neoriaClass == NeoriaClass.Shipyard:
+      result += 1
+
+proc countDrydocksAtColony*(state: GameState, colonyId: ColonyId): int32 =
+  ## Count Drydocks at a colony
+  ## Returns: number of Drydock facilities (includes crippled)
+  result = 0
+  for neoria in state.neoriasAtColony(colonyId):
+    if neoria.neoriaClass == NeoriaClass.Drydock:
+      result += 1
+
+proc countStarbasesAtColony*(state: GameState, colonyId: ColonyId): int32 =
+  ## Count Starbases at a colony
+  ## Returns: number of Starbase facilities (includes crippled)
+  result = 0
+  for kastra in state.kastrasAtColony(colonyId):
+    if kastra.kastraClass == KastraClass.Starbase:
+      result += 1
+
+proc countOperationalNeoriasAtColony*(state: GameState, colonyId: ColonyId): int32 =
+  ## Count operational (non-crippled) production facilities at a colony
+  ## Returns: number of Neorias in Undamaged state
+  result = 0
+  for neoria in state.neoriasAtColony(colonyId):
+    if neoria.state != CombatState.Crippled:
+      result += 1
+
+proc countOperationalKastrasAtColony*(state: GameState, colonyId: ColonyId): int32 =
+  ## Count operational (non-crippled) defensive facilities at a colony
+  ## Returns: number of Kastras in Undamaged state
+  result = 0
+  for kastra in state.kastrasAtColony(colonyId):
+    if kastra.state != CombatState.Crippled:
+      result += 1
+
 # ============================================================================
 # Production Accessors (byColony: 1:many)
 # ============================================================================

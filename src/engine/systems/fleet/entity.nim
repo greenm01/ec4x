@@ -12,17 +12,20 @@
 import ../ship/entity as ship_entity # Ship helper functions
 import ../../types/[core, fleet, ship, combat, starmap, game_state]
 import ../../state/engine
-import ../../entities/fleet_ops
-import std/[algorithm, strutils, options]
+import std/[strutils, options]
 
 export FleetId, SystemId, HouseId, LaneClass, FleetMissionState
 export Ship, ShipClass # Export for fleet users
 export ShipCargo, CargoClass # Export cargo types
 
-## Fleet construction
+## Fleet Business Logic
 ##
-## Note: newFleet() has been moved to entities/fleet_ops.nim
-## This module provides pure business logic for fleet operations
+## This module provides pure business logic for fleet operations:
+## - Query procs (combatStrength, hasIntelShips, etc.)
+## - Validation procs (canAddShip, canMergeWith, etc.)
+## - Analysis procs (isScoutOnly, hasCombatShips, etc.)
+##
+## For mutations (add/remove ships, merge, split), use entities/fleet_ops.nim
 
 proc `$`*(state: GameState, f: Fleet): string =
   ## String representation of a fleet
@@ -84,28 +87,6 @@ proc canAddShip*(
     return (canAdd: false, reason: "Cannot add non-Intel ship to Intel-only fleet")
 
   return (canAdd: true, reason: "")
-
-proc add*(state: GameState, f: var Fleet, ship: Ship) =
-  ## Add a ship to the fleet
-  ## Validates that Intel ships are not mixed with other types
-  let validation = state.canAddShip(f, ship)
-  if not validation.canAdd:
-    raise newException(
-      ValueError,
-      "Fleet composition violation: " & validation.reason & " (fleet: " & $f.id &
-        ", ship: " & $ship.id & ")",
-    )
-
-  f.ships.add(ship.id)
-
-proc remove*(f: var Fleet, index: int) =
-  ## Remove a ship at the given index
-  if index >= 0 and index < f.ships.len:
-    f.ships.delete(index)
-
-proc clear*(f: var Fleet) =
-  ## Remove all ships from the fleet
-  f.ships.setLen(0)
 
 proc canTraverse*(
     state: GameState, f: Fleet, laneType: LaneClass
@@ -277,27 +258,6 @@ proc effectiveShips*(
     let ship = state.ship(shipId).get
     if ship.state != CombatState.Crippled:
       result.add(shipId)
-
-proc merge*(f1: var Fleet, f2: Fleet) =
-  ## Merge another fleet into this one
-  ## Merges all ship types: Combat, Intel, Expansion, Auxiliary, Fighter
-  f1.ships.add(f2.ships)
-
-proc split*(f: var Fleet, indices: seq[int]): Fleet =
-  ## Split off ships at the given indices into a new fleet
-  var newShipIds: seq[ShipId] = @[]
-  var toRemove: seq[int] = @[]
-
-  for i in indices:
-    if i >= 0 and i < f.ships.len:
-      newShipIds.add(f.ships[i])
-      toRemove.add(i)
-
-  # Remove ships from original fleet (in reverse order to maintain indices)
-  for i in toRemove.sorted(Descending):
-    f.ships.delete(i)
-
-  fleet_ops.newFleet(newShipIds)
 
 # ============================================================================
 # Fleet Management Command Support (for administrative ship reorganization)

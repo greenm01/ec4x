@@ -9,7 +9,7 @@
 ## - Reduced from 357 lines → 259 lines (27% reduction)
 
 import std/[math, random, sequtils, options]
-import ../types/[core, game_state, ship, fleet]
+import ../types/[game_state, ship, fleet]
 import ../state/engine
 
 export Option

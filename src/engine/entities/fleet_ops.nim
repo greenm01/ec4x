@@ -135,3 +135,165 @@ proc changeFleetOwner*(state: var GameState, fleetId: FleetId, newOwner: HouseId
   # 3. Update entity
   fleet.houseId = newOwner
   state.updateFleet(fleetId, fleet)
+
+# ============================================================================
+# Fleet-Ship Assignment Operations (Index-Aware Mutations)
+# ============================================================================
+# These operations maintain consistency between:
+# - fleet.ships (ship list)
+# - ship.fleetId (fleet assignment)
+# - ships.byFleet (fleet → ships index)
+#
+# IMPORTANT: Caller is responsible for validation (see systems/fleet/entity.nim)
+# ============================================================================
+
+# Forward declaration
+proc removeShipFromFleet*(state: var GameState, fleetId: FleetId, shipId: ShipId)
+
+proc addShipToFleet*(state: var GameState, fleetId: FleetId, shipId: ShipId) =
+  ## Add a ship to a fleet - maintains all indexes
+  ## NOTE: Caller must validate compatibility (Intel/combat mixing rules)
+  ##       Use systems/fleet/entity.canAddShip() before calling
+  let fleetOpt = state.fleet(fleetId)
+  let shipOpt = state.ship(shipId)
+
+  if fleetOpt.isNone or shipOpt.isNone:
+    return
+
+  var fleet = fleetOpt.get()
+  var ship = shipOpt.get()
+
+  # Remove from old fleet if assigned
+  if ship.fleetId != FleetId(0):
+    removeShipFromFleet(state, ship.fleetId, shipId)
+
+  # 1. Update fleet entity
+  fleet.ships.add(shipId)
+  state.updateFleet(fleetId, fleet)
+
+  # 2. Update ship entity
+  ship.fleetId = fleetId
+  state.updateShip(shipId, ship)
+
+  # 3. Update byFleet index
+  state.ships.byFleet.mgetOrPut(fleetId, @[]).add(shipId)
+
+proc removeShipFromFleet*(state: var GameState, fleetId: FleetId, shipId: ShipId) =
+  ## Remove a ship from a fleet - maintains all indexes
+  let fleetOpt = state.fleet(fleetId)
+  let shipOpt = state.ship(shipId)
+
+  if fleetOpt.isNone or shipOpt.isNone:
+    return
+
+  var fleet = fleetOpt.get()
+  var ship = shipOpt.get()
+
+  # 1. Update fleet entity
+  fleet.ships.keepIf(proc(id: ShipId): bool = id != shipId)
+  state.updateFleet(fleetId, fleet)
+
+  # 2. Update ship entity
+  ship.fleetId = FleetId(0)  # Unassigned
+  state.updateShip(shipId, ship)
+
+  # 3. Update byFleet index
+  if state.ships.byFleet.contains(fleetId):
+    state.ships.byFleet[fleetId].keepIf(proc(id: ShipId): bool = id != shipId)
+
+proc clearFleetShips*(state: var GameState, fleetId: FleetId) =
+  ## Remove all ships from a fleet - maintains all indexes
+  let fleetOpt = state.fleet(fleetId)
+  if fleetOpt.isNone:
+    return
+
+  let fleet = fleetOpt.get()
+
+  # Remove each ship (updates ship.fleetId and indexes)
+  for shipId in fleet.ships:
+    var ship = state.ship(shipId).get()
+    ship.fleetId = FleetId(0)
+    state.updateShip(shipId, ship)
+
+  # Clear fleet's ship list
+  var updatedFleet = fleet
+  updatedFleet.ships.setLen(0)
+  state.updateFleet(fleetId, updatedFleet)
+
+  # Clear byFleet index
+  if state.ships.byFleet.contains(fleetId):
+    state.ships.byFleet[fleetId].setLen(0)
+
+proc mergeFleets*(
+    state: var GameState, sourceFleetId: FleetId, targetFleetId: FleetId
+) =
+  ## Merge source fleet into target fleet - maintains all indexes
+  ## NOTE: Caller must validate compatibility (see systems/fleet/entity.canMergeWith)
+  ## Source fleet is destroyed after merge
+  let sourceOpt = state.fleet(sourceFleetId)
+  let targetOpt = state.fleet(targetFleetId)
+
+  if sourceOpt.isNone or targetOpt.isNone:
+    return
+
+  let sourceFleet = sourceOpt.get()
+  var targetFleet = targetOpt.get()
+
+  # Transfer each ship from source to target
+  for shipId in sourceFleet.ships:
+    var ship = state.ship(shipId).get()
+
+    # Update ship to point to target fleet
+    ship.fleetId = targetFleetId
+    state.updateShip(shipId, ship)
+
+    # Add to target fleet
+    targetFleet.ships.add(shipId)
+
+    # Update byFleet index
+    state.ships.byFleet.mgetOrPut(targetFleetId, @[]).add(shipId)
+
+  # Update target fleet
+  state.updateFleet(targetFleetId, targetFleet)
+
+  # Destroy source fleet (already empty of ships)
+  destroyFleet(state, sourceFleetId)
+
+proc splitFleet*(
+    state: var GameState,
+    sourceFleetId: FleetId,
+    shipIds: seq[ShipId],
+    newFleetLocation: SystemId,
+): FleetId =
+  ## Split ships from source fleet into a new fleet - maintains all indexes
+  ## Returns: ID of newly created fleet
+  ## NOTE: Caller must validate ship ownership and composition rules
+  let sourceOpt = state.fleet(sourceFleetId)
+  if sourceOpt.isNone:
+    return FleetId(0)
+
+  let sourceFleet = sourceOpt.get()
+
+  # Create new fleet at specified location
+  var newFleet = createFleet(state, sourceFleet.houseId, newFleetLocation)
+  let newFleetId = newFleet.id
+
+  # Move each specified ship to new fleet
+  for shipId in shipIds:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isNone:
+      continue
+
+    var ship = shipOpt.get()
+
+    # Verify ship is actually in source fleet
+    if ship.fleetId != sourceFleetId:
+      continue
+
+    # Remove from source fleet
+    removeShipFromFleet(state, sourceFleetId, shipId)
+
+    # Add to new fleet
+    addShipToFleet(state, newFleetId, shipId)
+
+  return newFleetId

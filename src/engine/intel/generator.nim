@@ -56,8 +56,8 @@ proc generateColonyIntelReport*(
         if houseOpt.isSome:
           shieldLevel = houseOpt.get().techTree.levels.sld
 
-  # Count neoria facilities (spaceports)
-  let spaceportCount = colony.neoriaIds.len.int32
+  # Count spaceport facilities specifically (not all neorias)
+  let spaceportCount = state.countSpaceportsAtColony(colony.id)
 
   var report = ColonyIntelReport(
     colonyId: colonyOpt.get().id,  # Use actual colony ID
@@ -169,9 +169,9 @@ proc generateOrbitalIntelReport*(
     targetOwner: colony.owner,
     gatheredTurn: state.turn,
     quality: quality,
-    starbaseCount: int32(colony.starbaseIds.len),
-    shipyardCount: int32(colony.shipyardIds.len),
-    drydockCount: int32(colony.drydockIds.len),
+    starbaseCount: state.countStarbasesAtColony(colony.id),
+    shipyardCount: state.countShipyardsAtColony(colony.id),
+    drydockCount: state.countDrydocksAtColony(colony.id),
     reserveFleetCount: reserveFleets,
     mothballedFleetCount: mothballedFleets,
     guardFleetIds: guardFleetIds,
@@ -326,16 +326,10 @@ proc generateSystemIntelReport*(
     let magnitude = corruptionEffect.get().magnitude
     report = corruption.corruptSystemIntel(report, magnitude, rng)
 
-    # Also corrupt fleet and ship intel
+    # Also corrupt fleet intel (ship intel corruption not implemented)
     for i in 0 ..< fleetIntelData.len:
-      fleetIntelData[i].intel = corruption.corruptFleetIntel(
-        fleetIntelData[i].intel, magnitude, rng
-      )
-
-    for i in 0 ..< shipIntelData.len:
-      shipIntelData[i].intel = corruption.corruptShipIntel(
-        shipIntelData[i].intel, magnitude, rng
-      )
+      let (fleetId, intel) = fleetIntelData[i]
+      fleetIntelData[i] = (fleetId, corruption.corruptFleetIntel(intel, magnitude, rng))
 
   # Return complete intelligence package
   # Caller is responsible for storing in intelligence database
@@ -366,7 +360,7 @@ proc generateStarbaseIntelReport*(
     return none(StarbaseIntelReport)
 
   # No starbase to hack
-  if colony.starbaseIds.len == 0:
+  if state.countStarbasesAtColony(colony.id) == 0:
     return none(StarbaseIntelReport)
 
   # Get target house data
@@ -376,8 +370,12 @@ proc generateStarbaseIntelReport*(
 
   let targetHouse = targetHouseOpt.get()
 
+  # Get first kastra (starbase) at colony for report identifier
+  let kastras = state.kastrasAtColony(colony.id)
+  let kastraId = if kastras.len > 0: kastras[0].id else: KastraId(0)
+
   var report = StarbaseIntelReport(
-    starbaseId: StarbaseId(targetSystem), # Using system ID as starbase identifier
+    kastraId: kastraId,
     targetOwner: colony.owner,
     gatheredTurn: state.turn,
     quality: quality,
@@ -424,16 +422,13 @@ proc generateStarbaseIntelReport*(
   )
 
   # Current research focus (most accumulated type)
-  let maxAccum = max(
-    [
-      targetHouse.techTree.accumulated.economic,
-      targetHouse.techTree.accumulated.science, totalTRP,
-    ]
-  )
+  let economicAccum = targetHouse.techTree.accumulated.economic
+  let scienceAccum = targetHouse.techTree.accumulated.science
+  let maxAccum = max([economicAccum, scienceAccum, totalTRP])
 
-  if maxAccum == targetHouse.techTree.accumulated.economic:
+  if maxAccum == economicAccum:
     report.currentResearch = some("Economic")
-  elif maxAccum == targetHouse.techTree.accumulated.science:
+  elif maxAccum == scienceAccum:
     report.currentResearch = some("Science")
   else:
     report.currentResearch = some("Technology")

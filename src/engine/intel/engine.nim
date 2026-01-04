@@ -87,17 +87,17 @@ proc gatherStarbaseIntel*(
 # Intelligence Database Access
 # ============================================================================
 
-proc hasIntelligenceDatabase*(state: GameState, houseId: HouseId): bool =
+proc hasIntelDatabase*(state: GameState, houseId: HouseId): bool =
   ## Check if a house has an intelligence database
-  return state.intelligence.contains(houseId)
+  return state.intel.contains(houseId)
 
-proc getIntelligenceDatabase*(
+proc getIntelDatabase*(
     state: GameState, houseId: HouseId
-): Option[IntelligenceDatabase] =
+): Option[IntelDatabase] =
   ## Retrieve a house's intelligence database
-  if not state.intelligence.contains(houseId):
-    return none(IntelligenceDatabase)
-  return some(state.intelligence[houseId])
+  if not state.intel.contains(houseId):
+    return none(IntelDatabase)
+  return some(state.intel[houseId])
 
 # ============================================================================
 # Intelligence Corruption API

@@ -56,27 +56,6 @@ proc corruptFleetIntel*(
   # Corrupt ship count
   result.shipCount = corruptInt(fleet.shipCount, magnitude, rng)
 
-  # Corrupt space-lift ship count if present
-  result.spaceLiftShipCount = corruptIntOption(fleet.spaceLiftShipCount, magnitude, rng)
-
-  # NOTE: squadronIds not corrupted - these are references, not measured data
-  # Squadron details should be corrupted separately via SquadronIntel reports
-
-## Squadron Intelligence Corruption
-
-proc corruptSquadronIntel*(
-    squadron: SquadronIntel, magnitude: float, rng: var Rand
-): SquadronIntel =
-  ## Corrupt squadron intelligence data
-  result = squadron
-
-  # Corrupt ship count and tech level
-  result.shipCount = corruptInt(squadron.shipCount, magnitude, rng)
-  result.techLevel = corruptInt(squadron.techLevel, magnitude, rng)
-  result.hullIntegrity = corruptIntOption(squadron.hullIntegrity, magnitude, rng)
-
-  # NOTE: squadronId and shipClass not corrupted - these are identifiers
-
 ## Colony Intelligence Corruption
 
 proc corruptColonyIntel*(
