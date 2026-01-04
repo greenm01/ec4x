@@ -1,3 +1,4 @@
+import std/tables
 import ./[core, tech, espionage, income]
 
 type
@@ -21,6 +22,11 @@ type
     turnsWithoutOrders*: int32
     consecutiveShortfallTurns*: int32
     negativePrestigeTurns*: int32
+    # Maintenance shortfall tracking (house-level economic penalties)
+    maintenanceShortfallShips*: Table[ShipId, int32]
+    maintenanceShortfallNeorias*: Table[NeoriaId, int32]
+    maintenanceShortfallKastras*: Table[KastraId, int32]
+    maintenanceShortfallGroundUnits*: Table[GroundUnitId, int32]
     # Special assets
     planetBreakerCount*: int32
 

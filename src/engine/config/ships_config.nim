@@ -32,6 +32,16 @@ proc parseSalvage(node: KdlNode, ctx: var KdlConfigContext): SalvageConfig =
     salvageValueMultiplier: node.requireFloat32("salvageValueMultiplier", ctx)
   )
 
+proc parseFleetStatusModifiers(
+    node: KdlNode, ctx: var KdlConfigContext
+): FleetStatusModifiers =
+  ## Parse fleet status modifiers (reserve/mothballed)
+  result = FleetStatusModifiers(
+    c2CostMultiplier: node.requireFloat32("c2CostMultiplier", ctx),
+    maintenanceMultiplier: node.requireFloat32("maintenanceMultiplier", ctx),
+    reactivationTurns: node.requirePositiveInt32("reactivationTurns", ctx),
+  )
+
 proc loadShipsConfig*(configPath: string): ShipsConfig =
   ## Load ships configuration from KDL file with validation
   let doc = loadKdlConfig(configPath)
@@ -76,5 +86,14 @@ proc loadShipsConfig*(configPath: string): ShipsConfig =
   ctx.withNode("salvage"):
     let salvageNode = doc.requireNode("salvage", ctx)
     result.salvage = parseSalvage(salvageNode, ctx)
+
+  # Parse fleet status modifiers
+  ctx.withNode("reserve"):
+    let reserveNode = doc.requireNode("reserve", ctx)
+    result.reserve = parseFleetStatusModifiers(reserveNode, ctx)
+
+  ctx.withNode("mothballed"):
+    let mothballedNode = doc.requireNode("mothballed", ctx)
+    result.mothballed = parseFleetStatusModifiers(mothballedNode, ctx)
 
   logInfo("Config", "Loaded ships configuration", "path=", configPath)

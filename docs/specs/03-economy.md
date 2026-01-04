@@ -314,4 +314,52 @@ You allocate PP to three research pools during the Income Phase:
 
 Research pools accumulate over multiple turns. Technologies require specific point thresholds and Science Level (SL) prerequisites to unlock. For complete research progression tables and technology effects, see [Section 4.0](04-research_development.md#40-research--development).
 
+## 3.9 Maintenance Costs
+
+All military assets require ongoing maintenance each turn. Maintenance costs are deducted from your treasury during the Income Phase, after resource collection.
+
+**Fleet Maintenance**: Ships incur maintenance based on their class and current status. Active fleets pay full maintenance. Reserve fleets pay reduced maintenance. Mothballed fleets pay minimal maintenance for preservation and skeleton crews.
+
+**Facility Maintenance**: Spaceports, shipyards, drydocks, and starbases require ongoing upkeep. Ground units (armies and marines) also incur maintenance costs.
+
+**Crippled Ships**: Ships crippled by combat damage pay reduced maintenance (50% of base cost) until repaired.
+
+Maintenance costs scale with your military power. Houses with large fleets and extensive infrastructure face proportionally higher upkeep obligations.
+
+For specific maintenance rates by asset type, see `config/ships.kdl`, `config/facilities.kdl`, and `config/ground_units.kdl`.
+
+## 3.9.1 Maintenance Shortfall Consequences
+
+If your treasury cannot cover total maintenance costs, your House enters a maintenance shortfall crisis. The consequences are graduated and severe.
+
+### Payment Processing
+
+**Full Payment**: If treasury ≥ total maintenance, deduct full amount. All maintenance-crippled ships have their shortfall counters reset to zero, preventing salvage.
+
+**Partial Payment**: If treasury < total maintenance, the house pays what it can. The payment ratio (treasury / total maintenance) determines what percentage of maintenance-crippled ships have their shortfall counters reset. Ships with lower counters (more recently crippled) are prioritized for restoration.
+
+**No Payment**: If treasury = 0, no ships are restored. All existing maintenance-crippled ships continue countdown to salvage, and additional ships are crippled to cover the full shortfall.
+
+### Shortfall Penalties
+
+**Ship Crippling**: The oldest ships (lowest Ship IDs) are progressively crippled until the cumulative maintenance cost of crippled ships equals or exceeds the unpaid shortfall amount. These ships are marked with `CrippledReason: Maintenance` and begin a two-turn countdown to auto-salvage.
+
+**Infrastructure Degradation**: Colonies suffer infrastructure damage proportional to the shortfall amount. Damaged infrastructure reduces production capacity until repaired.
+
+**Consecutive Shortfall Tracking**: The house's consecutive shortfall turn counter increments. This counter resets to zero only when full maintenance is paid. Consecutive shortfalls impose escalating prestige penalties.
+
+### Auto-Salvage System
+
+Ships crippled by maintenance shortfall (not combat damage) enter a two-turn grace period:
+
+- **Turn N**: Ship crippled due to shortfall (shortfallTurns = 1)
+- **Turn N+1**: Counter increments (shortfallTurns = 2), unless partial payment resets it
+- **Turn N+2**: Ship auto-salvaged if shortfallTurns ≥ 2
+
+Auto-salvage destroys the ship and returns 50% of its production cost to the house treasury. The salvage value multiplier is configurable in `config/ships.kdl`.
+
+**Recovery Mechanism**: Houses that resume full or partial maintenance payments can prevent salvage by resetting ship shortfall counters. Ships remain crippled but are preserved in your fleet, available for future repairs.
+
+**Combat-Crippled Ships**: Ships crippled by battle damage (`CrippledReason: Combat`) are never auto-salvaged. They remain crippled until repaired at drydocks and do not count toward the shortfall salvage system.
+
 ---

@@ -8,17 +8,18 @@
 ## - Damaged infrastructure requires repair (construction.toml)
 
 import std/options
-import ../../types/[game_state, core, ship, fleet, colony, facilities, ground_unit]
+import ../../types/[game_state, core, ship, fleet, colony, facilities, ground_unit, combat]
 import ../../globals
 import ../../state/[iterators, engine as state_helpers]
 
 export fleet.FleetStatus
+export combat.CombatState
 
 ## Ship Maintenance Costs (economy.md:3.9)
 
 proc getShipMaintenanceCost*(
     shipClass: ShipClass,
-    isCrippled: bool,
+    state: CombatState,
     fleetStatus: FleetStatus = FleetStatus.Active,
 ): int32 =
   ## Get maintenance cost for ship per turn
@@ -29,34 +30,36 @@ proc getShipMaintenanceCost*(
   ## Fleet status modifiers:
   ##   - Active: 100% maintenance (or 50% if crippled)
   ##   - Reserve: 50% maintenance
-  ##   - Mothballed: 0% maintenance
+  ##   - Mothballed: 10% maintenance (skeleton crews, system integrity)
 
   let stats = gameConfig.ships.ships[shipClass]
   let baseCost = stats.maintenanceCost
 
-  # Mothballed ships have zero maintenance
-  if fleetStatus == FleetStatus.Mothballed:
-    return 0
-
-  # Reserve ships cost half to maintain
-  if fleetStatus == FleetStatus.Reserve:
-    return baseCost div 2
-
-  # Active ships: full cost unless crippled
-  if isCrippled:
-    # Per combat.toml: crippled_maintenance_multiplier = 0.5
+  # Apply fleet status modifiers
+  # Per 02-assets.md section 2.3.3.5 and config/ships.kdl
+  case fleetStatus
+  of FleetStatus.Mothballed:
     return int32(
-      float32(baseCost) * gameConfig.combat.damageRules.crippledMaintenanceMultiplier
+      float32(baseCost) * gameConfig.ships.mothballed.maintenanceMultiplier
     )
-  else:
-    return baseCost
+  of FleetStatus.Reserve:
+    return int32(float32(baseCost) * gameConfig.ships.reserve.maintenanceMultiplier)
+  of FleetStatus.Active:
+    # Active ships: full cost unless crippled
+    if state == CombatState.Crippled:
+      # Per combat.toml: crippled_maintenance_multiplier
+      return int32(
+        float32(baseCost) * gameConfig.combat.damageRules.crippledMaintenanceMultiplier
+      )
+    else:
+      return baseCost
 
-proc calculateFleetMaintenance*(ships: seq[(ShipClass, bool)]): int32 =
+proc calculateFleetMaintenance*(ships: seq[(ShipClass, CombatState)]): int32 =
   ## Calculate total fleet maintenance
-  ## Args: seq of (ship class, is crippled)
+  ## Args: seq of (ship class, combat state)
   result = 0
-  for (shipClass, isCrippled) in ships:
-    result += getShipMaintenanceCost(shipClass, isCrippled)
+  for (shipClass, shipState) in ships:
+    result += getShipMaintenanceCost(shipClass, shipState)
 
 ## Building and Facility Maintenance
 
@@ -134,7 +137,7 @@ proc calculateColonyUpkeep*(state: GameState, colony: Colony): int32 =
     let unitOpt = state.groundUnit(groundUnitId)
     if unitOpt.isSome:
       let unit = unitOpt.get()
-      case unit.groundClass
+      case unit.stats.unitType
       of GroundClass.Army:
         result += getArmyUpkeep()
       of GroundClass.Marine:
@@ -154,28 +157,28 @@ proc calculateHouseMaintenanceCost*(state: GameState, houseId: HouseId): int32 =
 
   # Fleet maintenance using entity managers
   for fleet in state.fleetsOwned(houseId):
-    var fleetData: seq[(ShipClass, bool)] = @[]
+    var fleetData: seq[(ShipClass, CombatState)] = @[]
 
     # Iterate over squadron IDs
     for squadronId in fleet.squadrons:
-      let squadronOpt = state_helpers.squadrons(state, squadronId)
+      let squadronOpt = state.squadron(squadronId)
       if squadronOpt.isNone:
         continue
 
       let squadron = squadronOpt.get()
 
       # Add flagship
-      let flagshipOpt = state_helpers.ship(state, squadron.flagshipId)
+      let flagshipOpt = state.ship(squadron.flagshipId)
       if flagshipOpt.isSome:
         let flagship = flagshipOpt.get()
-        fleetData.add((flagship.shipClass, flagship.isCrippled))
+        fleetData.add((flagship.shipClass, flagship.state))
 
       # Add escort ships
       for shipId in squadron.ships:
-        let shipOpt = state_helpers.ship(state, shipId)
+        let shipOpt = state.ship(shipId)
         if shipOpt.isSome:
           let ship = shipOpt.get()
-          fleetData.add((ship.shipClass, ship.isCrippled))
+          fleetData.add((ship.shipClass, ship.state))
 
     result += calculateFleetMaintenance(fleetData)
 

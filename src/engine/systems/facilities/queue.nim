@@ -25,7 +25,7 @@
 ## Exception: Shipyard/Starbase buildings (orbital construction, no penalty)
 
 import std/[options, tables, algorithm, strutils]
-import ../../types/[core, production, facilities, colony]
+import ../../types/[core, production, facilities, colony, combat]
 import ../../state/engine as state_engine
 import ../../../common/logger
 
@@ -116,7 +116,7 @@ proc advanceDrydockQueue*(
   result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
 
   # Crippled drydocks can't work
-  if drydock.isCrippled:
+  if drydock.state == CombatState.Crippled:
     return
 
   # Step 1: Advance active repairs
@@ -170,7 +170,7 @@ proc advanceShipyardQueue*(
   result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
 
   # Crippled shipyards can't work
-  if shipyard.isCrippled:
+  if shipyard.state == CombatState.Crippled:
     return
 
   # Step 1: Advance all active construction projects

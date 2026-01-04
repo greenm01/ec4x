@@ -15,7 +15,7 @@
 ##   let result = submitZeroTurnCommand(state, cmd)
 ##   if result.success: echo "Success!"
 
-import ../../types/[core, game_state, fleet, squadron, ship, colony, event, ground_unit]
+import ../../types/[core, game_state, fleet, squadron, ship, colony, event, ground_unit, combat]
 import ../../state/[engine, iterators]
 import ../../entities/[fleet_ops, squadron_ops, colony_ops]
 import ../fleet/entity as fleet_entity
@@ -820,7 +820,7 @@ proc executeLoadCargo*(
 
     var flagship = flagshipOpt.get()
 
-    if flagship.isCrippled:
+    if flagship.state == CombatState.Crippled:
       continue
 
     # Determine ship capacity and compatible cargo type

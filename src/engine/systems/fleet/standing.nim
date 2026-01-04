@@ -14,7 +14,7 @@
 
 import std/[tables, options, strformat, algorithm, sets, sequtils]
 import ../../../common/logger
-import ../../types/[core, game_state, command, fleet, squadron, starmap, intel, event]
+import ../../types/[core, game_state, command, fleet, squadron, starmap, intel, event, combat]
 import ../../starmap
 import ../../state/[engine, iterators]
 import ../../event_factory/init as event_factory
@@ -608,7 +608,7 @@ proc activateAutoRepair(
     let flagshipOpt = state.ship(squadron.flagshipId)
     if flagshipOpt.isSome:
       let flagship = flagshipOpt.get()
-      if flagship.isCrippled:
+      if flagship.state == CombatState.Crippled:
         crippledShips += 1
 
     # Include escort ships
@@ -617,7 +617,7 @@ proc activateAutoRepair(
       let shipOpt = state.ship(shipId)
       if shipOpt.isSome:
         let ship = shipOpt.get()
-        if ship.isCrippled:
+        if ship.state == CombatState.Crippled:
           crippledShips += 1
 
   if totalShips == 0:
@@ -762,7 +762,7 @@ proc activateAutoReinforce(
           let flagshipOpt = state.ship(squadron.flagshipId)
           if flagshipOpt.isSome:
             let flagship = flagshipOpt.get()
-            if flagship.isCrippled:
+            if flagship.state == CombatState.Crippled:
               targetCrippledShips += 1
 
           # Check escort ships
@@ -771,7 +771,7 @@ proc activateAutoReinforce(
             let shipOpt = state.ship(shipId)
             if shipOpt.isSome:
               let ship = shipOpt.get()
-              if ship.isCrippled:
+              if ship.state == CombatState.Crippled:
                 targetCrippledShips += 1
 
         let targetCrippledPercent =
@@ -811,7 +811,7 @@ proc activateAutoReinforce(
         let flagshipOpt = state.ship(squadron.flagshipId)
         if flagshipOpt.isSome:
           let flagship = flagshipOpt.get()
-          if flagship.isCrippled:
+          if flagship.state == CombatState.Crippled:
             otherCrippledShips += 1
 
         # Check escort ships
@@ -820,7 +820,7 @@ proc activateAutoReinforce(
           let shipOpt = state.ship(shipId)
           if shipOpt.isSome:
             let ship = shipOpt.get()
-            if ship.isCrippled:
+            if ship.state == CombatState.Crippled:
               otherCrippledShips += 1
 
       if otherTotalShips == 0:

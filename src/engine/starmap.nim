@@ -7,12 +7,12 @@
 ## - Implements actual game rules for lane traversal
 ## - Provides fast, reliable starmap generation and pathfinding
 import ../common/logger
-import types/[starmap, squadron, core, game_state]
+import types/[starmap, squadron, core, game_state, house]
 import state/[id_gen, iterators, engine]
 import globals
 import utils
 import std/[
-  tables, sequtils, random, math, algorithm, hashes, sets,
+  tables, sequtils, random, math, algorithm, sets,
   strutils, heapqueue, options
 ]
 

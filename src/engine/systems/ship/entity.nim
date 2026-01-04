@@ -15,10 +15,10 @@
 ## - Used by squadron/entity and production/commissioning
 
 import std/[options, math]
-import ../../types/[core, ship, config]
+import ../../types/[core, ship, combat, config]
 import ../../globals
 
-export ShipClass, ShipRole, ShipStats, Ship, ShipCargo, CargoClass, ShipId
+export ShipClass, ShipRole, ShipStats, Ship, ShipCargo, CargoClass, ShipId, CombatState
 
 ## Config Data Access (non-WEP stats)
 
@@ -70,7 +70,7 @@ proc getShipStats*(shipClass: ShipClass, weaponsTech: int32 = 1): ShipStats =
 
 proc `$`*(ship: Ship): string =
   ## String representation of ship
-  let status = if ship.isCrippled: " (crippled)" else: ""
+  let status = if ship.state == CombatState.Crippled: " (crippled)" else: ""
   $ship.shipClass & status
 
 ## Config Lookups (non-WEP stats from config/ships.kdl)
@@ -109,7 +109,7 @@ proc isTransport*(ship: Ship): bool =
 
 proc isCombatShip*(ship: Ship): bool =
   ## Check if ship has combat capability (non-zero attack strength)
-  ship.stats.attackStrength > 0 and not ship.isCrippled
+  ship.stats.attackStrength > 0 and ship.state != CombatState.Crippled
 
 proc isScout*(ship: Ship): bool =
   ## Check if ship can leverage ELI (Electronic Intelligence) tech
@@ -136,7 +136,7 @@ proc canCommand*(ship: Ship): bool =
 proc effectiveAttackStrength*(ship: Ship): int32 =
   ## Get effective attack strength (halved if crippled)
   ## Per combat rules: crippled ships have AS reduced by half
-  if ship.isCrippled:
+  if ship.state == CombatState.Crippled:
     ship.stats.attackStrength div 2
   else:
     ship.stats.attackStrength

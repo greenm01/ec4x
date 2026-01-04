@@ -40,7 +40,7 @@
 ## - Construction queue advancement (happens in Maintenance Phase)
 
 import std/[tables, options, strformat, strutils]
-import ../../types/[core, game_state, production, event, ground_unit]
+import ../../types/[core, game_state, production, event, ground_unit, combat]
 import ../../types/[ship, colony, fleet, squadron, facilities]
 import ../../state/[engine, id_gen]
 import ../../config/[ground_units_config, facilities_config]
@@ -70,7 +70,7 @@ proc getOperationalStarbaseCount*(state: GameState, colonyId: ColonyId): int =
     let kastraOpt = state.kastra(kastraId)
     if kastraOpt.isSome:
       let kastra = kastraOpt.get()
-      if not kastra.isCrippled:
+      if kastra.state != CombatState.Crippled:
         result += 1
 
 proc getStarbaseGrowthBonus*(state: GameState, colonyId: ColonyId): float =

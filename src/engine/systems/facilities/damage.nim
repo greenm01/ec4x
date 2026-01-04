@@ -5,7 +5,8 @@
 ## the Conflict Phase if the shipyard/spaceport is destroyed or crippled"
 
 import std/[options, strformat]
-import ../../types/[core, game_state, production, facilities, colony]
+import ../../types/[core, game_state, production, facilities, colony, combat]
+import ../../state/engine
 import ../../../common/logger
 
 proc clearFacilityQueues*(
@@ -123,9 +124,9 @@ proc handleFacilityDestruction*(
     let neoriaOpt = state.neoria(neoriaId)
     if neoriaOpt.isSome:
       let neoria = neoriaOpt.get()
-      if neoria.neoriaClass == NeoriaClass.Shipyard and not neoria.isCrippled:
+      if neoria.neoriaClass == NeoriaClass.Shipyard and neoria.state != CombatState.Crippled:
         hasShipyards = true
-      elif neoria.neoriaClass == NeoriaClass.Spaceport and not neoria.isCrippled:
+      elif neoria.neoriaClass == NeoriaClass.Spaceport and neoria.state != CombatState.Crippled:
         hasSpaceports = true
 
       # Early exit if we found both types

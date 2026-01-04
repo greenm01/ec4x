@@ -131,7 +131,7 @@ proc resolveBombardment*(
     let combatSq = CombatSquadron(
       squadron: squadron,
       state:
-        if squadron.flagship.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
+        if squadron.flagship.state == CombatState.Crippled: CombatState.Crippled else: CombatState.Undamaged,
       fleetStatus: fleet.status, # Pass fleet status for reserve AS/DS penalty
       damageThisTurn: 0,
       crippleRound: 0,
@@ -826,7 +826,7 @@ proc resolveBlitz*(
     let combatSq = CombatSquadron(
       squadron: squadron,
       state:
-        if squadron.flagship.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
+        if squadron.flagship.state == CombatState.Crippled: CombatState.Crippled else: CombatState.Undamaged,
       fleetStatus: fleet.status,
       damageThisTurn: 0,
       crippleRound: 0,

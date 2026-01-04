@@ -10,7 +10,7 @@
 ## - Crippled starbases: No surveillance capability
 
 import std/[options, random, hashes, tables]
-import ../types/[core, game_state, intel, ship]
+import ../types/[core, game_state, intel, ship, combat]
 import ../state/[engine as state_helpers, iterators]
 import corruption
 
@@ -63,7 +63,7 @@ proc generateStarbaseSurveillance*(
     let starbaseOpt = state_helpers.starbase(state, starbaseId)
     if starbaseOpt.isSome:
       let starbase = starbaseOpt.get()
-      if not starbase.isCrippled:
+      if starbase.state != CombatState.Crippled:
         hasOperationalStarbase = true
         operationalStarbaseId = starbaseId
         break
@@ -100,11 +100,11 @@ proc generateStarbaseSurveillance*(
         let flagship = flagshipOpt.get()
 
         # Check for scouts (ELI capability)
-        if flagship.shipClass == ShipClass.Scout and not flagship.isCrippled:
+        if flagship.shipClass == ShipClass.Scout and flagship.state != CombatState.Crippled:
           hasScouts = true
 
         # Check for raiders (CLK capability)
-        if flagship.shipClass == ShipClass.Raider and not flagship.isCrippled:
+        if flagship.shipClass == ShipClass.Raider and flagship.state != CombatState.Crippled:
           hasCloakedRaiders = true
 
       # Determine if fleet evades detection

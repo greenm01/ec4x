@@ -11,7 +11,7 @@
 ## - Shipyards are construction-only facilities (clean separation of concerns)
 
 import std/[tables, options, strformat, sequtils]
-import ../../types/[core, ship, production, facilities]
+import ../../types/[core, ship, production, facilities, combat]
 import ../../systems/ship/entity as ship_entity # Ship helper functions
 import ../../entities/[fleet_ops, project_ops]
 import ../../../common/logger
@@ -53,7 +53,7 @@ proc extractCrippledShip*(
     return none(RepairProject)
   let ship = shipOpt.get()
 
-  if not ship.isCrippled:
+  if ship.state != CombatState.Crippled:
     return none(RepairProject)
 
   let shipClass = ship.shipClass
@@ -215,7 +215,7 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
     if kastraOpt.isNone:
       continue
     let kastra = kastraOpt.get()
-    if kastra.isCrippled:
+    if kastra.state == CombatState.Crippled:
       # Calculate repair cost (25% of starbase build cost)
       # TODO: Get actual starbase build cost from config (for now use estimate)
       let starbaseBuildCost = 300 # From facilities.toml
@@ -298,7 +298,7 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
       let flagshipOpt = state.ship(squadron.flagshipId)
       if flagshipOpt.isSome:
         let flagship = flagshipOpt.get()
-        if flagship.isCrippled:
+        if flagship.state == CombatState.Crippled:
           # Check drydock capacity
           let drydockProjects =
             colony.getActiveProjectsByFacility(facilities.FacilityClass.Drydock)
@@ -333,7 +333,7 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
           continue
         let ship = shipOpt.get()
 
-        if ship.isCrippled:
+        if ship.state == CombatState.Crippled:
           # Check drydock capacity
           let drydockProjects =
             colony.getActiveProjectsByFacility(facilities.FacilityClass.Drydock)

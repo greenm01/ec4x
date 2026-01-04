@@ -9,7 +9,7 @@
 
 import std/[tables, options, sequtils, hashes, math, random, strformat]
 import ../../../common/logger
-import ../../types/[core, combat, game_state, fleet, squadron, ship, colony, house, facilities as econ_types, diplomacy as dip_types, intel as intel_types, prestige]
+import ../../types/[core, combat, game_state, fleet, squadron, ship, colony, house, facilities as econ_types, production, diplomacy as dip_types, intel as intel_types, prestige]
 import ../../state/[engine, iterators]
 import ../../entities/fleet_ops
 import ./[engine as combat_engine, ground]
@@ -316,11 +316,7 @@ proc executeCombat(
           attackStrength: flagship.stats.attackStrength,
           defenseStrength: flagship.stats.defenseStrength,
           commandRating: gameConfig.ships.ships[flagship.shipClass].commandRating,
-          state:
-            if flagship.isCrippled:
-              CombatState.Crippled
-            else:
-              CombatState.Undamaged,
+          state: flagship.state,
           fleetStatus: fleet.status,
           damageThisTurn: 0,
           crippleRound: 0,
@@ -354,11 +350,7 @@ proc executeCombat(
               attackStrength: flagship.stats.attackStrength,
               defenseStrength: flagship.stats.defenseStrength,
               commandRating: gameConfig.ships.ships[flagship.shipClass].commandRating,
-              state:
-                if flagship.isCrippled:
-                  CombatState.Crippled
-                else:
-                  CombatState.Undamaged,
+              state: flagship.state,
               fleetStatus: FleetStatus.Active,
                 # Unassigned squadrons fight at full strength
               damageThisTurn: 0,
@@ -406,8 +398,7 @@ proc executeCombat(
                 owner: houseId,
                 attackStrength: kastra.stats.attackStrength,
                 defenseStrength: kastra.stats.defenseStrength,
-                state:
-                  if kastra.isCrippled: CombatState.Crippled else: CombatState.Undamaged,
+                state: kastra.state,
                 damageThisTurn: 0,
                 crippleRound: 0,
                 bucket: TargetBucket.Starbase,
@@ -1126,8 +1117,8 @@ proc resolveBattle*(
       survivingSquadronIds[combatSq.squadronId] = combatSq
 
   # Collect surviving facilities by ID
-  var survivingFacilityIds: Table[StarbaseId, combat.CombatFacility] =
-    initTable[StarbaseId, combat.CombatFacility]()
+  var survivingFacilityIds: Table[KastraId, combat.CombatFacility] =
+    initTable[KastraId, combat.CombatFacility]()
   for tf in outcome.survivors:
     for combatFac in tf.facilities:
       survivingFacilityIds[combatFac.facilityId] = combatFac
@@ -1158,7 +1149,7 @@ proc resolveBattle*(
           let flagshipOpt = state.ship(updatedSquadron.flagshipId)
           if flagshipOpt.isSome:
             var updatedFlagship = flagshipOpt.get()
-            updatedFlagship.isCrippled = (survivorState.state == CombatState.Crippled)
+            updatedFlagship.state = survivorState.state
             state.updateShip(updatedSquadron.flagshipId, updatedFlagship)
 
           state.updateSquadron(squadronId, updatedSquadron)
@@ -1271,19 +1262,7 @@ proc resolveBattle*(
         var shipsUnderConstructionLost = 0
         var shipsUnderRepairLost = 0
 
-        # Destroy spaceports
-        if colony.spaceportIds.len > 0:
-          facilitiesDestroyed += colony.spaceportIds.len
-          logCombat(
-            "Spaceports destroyed - no orbital defense remains",
-            "spaceports=",
-            $colony.spaceportIds.len,
-            " systemId=",
-            $systemId,
-          )
-          // colony.spaceportIds removed - now using neoriaIds
-
-        # Destroy shipyards and clear their construction/repair queues
+        # Destroy neorias (spaceports, shipyards, drydocks) and clear their queues
         if colony.neoriaIds.len > 0:
           facilitiesDestroyed += colony.neoriaIds.len
           logCombat(
@@ -1294,54 +1273,26 @@ proc resolveBattle*(
             $systemId,
           )
 
-          # Count ships under construction in shipyard docks
+          # Count ships under construction (all neorias being destroyed)
           if colony.underConstruction.isSome:
             let projectId = colony.underConstruction.get()
             let projectOpt = state.constructionProject(projectId)
             if projectOpt.isSome:
               let project = projectOpt.get()
-              if project.facilityType.isSome and
-                  project.facilityType.get() == econ_types.FacilityClass.Shipyard:
+              if project.projectType == BuildType.Ship:
                 shipsUnderConstructionLost += 1
 
-          # Count ships under repair in shipyard docks
+          # Count ships under repair (all repair projects lost)
           for repairId in colony.repairQueue:
             let repairOpt = state.repairProject(repairId)
             if repairOpt.isSome:
               let repair = repairOpt.get()
-              if repair.facilityType == econ_types.FacilityClass.Shipyard:
+              if repair.targetType == RepairTargetType.Ship:
                 shipsUnderRepairLost += 1
 
-          # Clear all shipyard construction/repair queues
-          facility_damage.clearFacilityQueues(colony, econ_types.FacilityClass.Shipyard, state)
-          colony.neoriaIds = @[]
-
-        # Destroy drydocks and clear their repair queues
-        if colony.neoriaIds.len > 0:
-          facilitiesDestroyed += colony.neoriaIds.len
-          logCombat(
-            "Drydocks destroyed - no orbital defense remains",
-            "drydocks=",
-            $colony.neoriaIds.len,
-            " systemId=",
-            $systemId,
-          )
-
-          # Count ships under repair in drydock docks
-          for repairId in colony.repairQueue:
-            let repairOpt = state.repairProject(repairId)
-            if repairOpt.isSome:
-              let repair = repairOpt.get()
-              if repair.facilityType == econ_types.FacilityClass.Drydock:
-                shipsUnderRepairLost += 1
-
-          # Clear all drydock repair queues
-          facility_damage.clearFacilityQueues(colony, econ_types.FacilityClass.Drydock, state)
-          colony.neoriaIds = @[]
-
-        # Clear construction queue if no production facilities remain
-        if colony.neoriaIds.len == 0:
+          # Clear all construction/repair queues (all neorias destroyed)
           facility_damage.clearAllConstructionQueues(colony, state)
+          colony.neoriaIds = @[]
 
         # Update colony with destroyed facilities
         state.updateColony(colony.id, colony)
@@ -1374,7 +1325,7 @@ proc resolveBattle*(
           if kastraOpt.isSome:
             let survivorState = survivingFacilityIds[kastraId]
             var updatedKastra = kastraOpt.get()
-            updatedKastra.isCrippled = (survivorState.state == combat.CombatState.Crippled)
+            updatedKastra.state = survivorState.state
             state.updateKastra(kastraId, updatedKastra)
             survivingKastraIds.add(kastraId)
         else:
@@ -1403,7 +1354,7 @@ proc resolveBattle*(
             let flagshipOpt = state.ship(updatedSquadron.flagshipId)
             if flagshipOpt.isSome:
               var updatedFlagship = flagshipOpt.get()
-              updatedFlagship.isCrippled = (survivorState.state == CombatState.Crippled)
+              updatedFlagship.state = survivorState.state
               state.updateShip(updatedSquadron.flagshipId, updatedFlagship)
             state.updateSquadron(squadronId, updatedSquadron)
             survivingUnassignedIds.add(squadronId)

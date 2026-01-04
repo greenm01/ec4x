@@ -35,7 +35,7 @@ proc `$`*(state: GameState, f: Fleet): string =
     for sqId in f.squadrons:
       let sq = state.squadron(sqId).get
       let flagship = state.ship(sq.flagshipId).get
-      let status = if flagship.isCrippled: "*" else: ""
+      let status = if flagship.state == CombatState.Crippled: "*" else: ""
       let typeTag =
         case sq.squadronType
         of SquadronClass.Expansion: "[E]"
@@ -128,7 +128,7 @@ proc canTraverse*(
     for sqId in f.squadrons:
       let sq = state.squadron(sqId).get
       let flagship = state.ship(sq.flagshipId).get
-      if flagship.isCrippled:
+      if flagship.state == CombatState.Crippled:
         return false
 
     # Check for Expansion/Auxiliary squadrons (ETAC, TroopTransport)
@@ -162,7 +162,7 @@ proc isCloaked*(state: GameState, f: Fleet): bool =
     let raiderIds = state.raiderShips(sq)
     for raiderId in raiderIds:
       let raider = state.ship(raiderId).get
-      if not raider.isCrippled:
+      if raider.state != CombatState.Crippled:
         return true # Fleet is cloaked if it has ANY operational raider
 
   return false
@@ -174,7 +174,7 @@ proc transportCapacity*(state: GameState, f: Fleet): int =
     let sq = state.squadron(sqId).get
     if sq.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
       let flagship = state.ship(sq.flagshipId).get
-      if not flagship.isCrippled:
+      if flagship.state != CombatState.Crippled:
         result += 1
 
 proc hasCombatShips*(state: GameState, f: Fleet): bool =
@@ -191,7 +191,7 @@ proc hasTransportShips*(state: GameState, f: Fleet): bool =
     let sq = state.squadron(sqId).get
     if sq.squadronType in {SquadronClass.Expansion, SquadronClass.Auxiliary}:
       let flagship = state.ship(sq.flagshipId).get
-      if not flagship.isCrippled:
+      if flagship.state != CombatState.Crippled:
         return true
   return false
 
@@ -286,7 +286,7 @@ proc crippledSquadrons*(state: GameState, f: Fleet): seq[SquadronId] =
   for sqId in f.squadrons:
     let sq = state.squadron(sqId).get
     let flagship = state.ship(sq.flagshipId).get
-    if flagship.isCrippled:
+    if flagship.state == CombatState.Crippled:
       result.add(sqId)
 
 proc effectiveSquadrons*(
@@ -297,7 +297,7 @@ proc effectiveSquadrons*(
   for sqId in f.squadrons:
     let sq = state.squadron(sqId).get
     let flagship = state.ship(sq.flagshipId).get
-    if not flagship.isCrippled:
+    if flagship.state != CombatState.Crippled:
       result.add(sqId)
 
 proc merge*(f1: var Fleet, f2: Fleet) =

@@ -9,7 +9,7 @@
 ## for create/destroy/move operations.
 
 import std/[tables, options, sets, heapqueue]
-import ../../types/[core, fleet, squadron, ship, starmap, game_state]
+import ../../types/[core, fleet, squadron, ship, starmap, game_state, combat]
 import ../../state/engine
 
 # =============================================================================
@@ -47,7 +47,7 @@ proc canFleetTraverseLane*(
       let flagship = flagshipOpt.get()
 
       # Crippled ships can't use restricted lanes
-      if flagship.isCrippled:
+      if flagship.state == CombatState.Crippled:
         return false
 
       # Transport ships can't use restricted lanes
@@ -61,7 +61,7 @@ proc canFleetTraverseLane*(
       if shipOpt.isSome:
         let ship = shipOpt.get()
 
-        if ship.isCrippled:
+        if ship.state == CombatState.Crippled:
           return false
 
         if ship.shipClass == ShipClass.ETAC or

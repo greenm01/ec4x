@@ -6,7 +6,7 @@
 
 import std/[options, random, tables]
 # import std/sequtils  # TODO: Needed for toSeq() in income calculation (restore after refactor)
-import ../types/[core, game_state, intel, fleet]
+import ../types/[core, game_state, intel, fleet, combat, ground_unit]
 import ../types/squadron as squadron_types
 import ../state/[engine, iterators]
 # import ../systems/income/income as income_system  # TODO: Uncomment after systems refactor
@@ -275,7 +275,7 @@ proc generateSystemIntelReport*(
               0,
           hullIntegrity:
             if quality == IntelQuality.Spy:
-              (if flagship.isCrippled: some(int32(50)) else: some(int32(100)))
+              (if flagship.state == CombatState.Crippled: some(int32(50)) else: some(int32(100)))
             else:
               none(int32),
         )
@@ -304,7 +304,7 @@ proc generateSystemIntelReport*(
               shipCount: int32(1 + fighterSquadron.ships.len),
               techLevel: fighterFlagship.stats.wep,
               hullIntegrity:
-                if fighterFlagship.isCrippled:
+                if fighterFlagship.state == CombatState.Crippled:
                   some(int32(50))
                 else:
                   some(int32(100)),
@@ -349,7 +349,7 @@ proc generateSystemIntelReport*(
               0,
           hullIntegrity:
             if quality == IntelQuality.Spy:
-              (if flagship.isCrippled: some(int32(50)) else: some(int32(100)))
+              (if flagship.state == CombatState.Crippled: some(int32(50)) else: some(int32(100)))
             else:
               none(int32),
         )

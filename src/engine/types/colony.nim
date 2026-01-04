@@ -1,5 +1,5 @@
 import std/[tables, options]
-import ./[core, starmap, production, capacity, prestige]
+import ./[core, production, capacity, prestige]
 
 type
   Colony* = object

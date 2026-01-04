@@ -9,12 +9,13 @@
 ## 4. Deposit NHV to treasury
 ## 5. Apply population growth
 
-import std/[math, strformat, logging]
+import std/[math, options]
 import
   ../../types/
     [game_state, colony, income, production as production_types, core, prestige]
 import ../../prestige/events as prestige_events
 import ../../globals
+import ../../state/engine
 import ./multipliers
 import ../production/engine as production_engine
 
@@ -255,12 +256,12 @@ proc applyPopulationGrowth*(
   let systemOpt = state.system(colony.systemId)
   if systemOpt.isNone:
     return 0.0  # No growth if system not found
-  let system = systemOpt.get()
-  let capacity = float(getPlanetCapacity(system.planetClass))
+  let starSystem = systemOpt.get()
+  let capacity = float(getPlanetCapacity(starSystem.planetClass))
 
   # Calculate effective growth rate with tax modifier, starbase bonus, and map scaling
   let taxMultiplier = getPopulationGrowthMultiplier(taxRate)
-  let starbaseBonus = getStarbaseGrowthBonus(colony)
+  let starbaseBonus = state.starbaseGrowthBonus(colony)
     # 5% per operational starbase, max 15%
   let mapScaleMultiplier = popGrowthMultiplier()
   let effectiveGrowthRate =
@@ -286,7 +287,7 @@ proc applyPopulationGrowth*(
     return 0.0
 
 proc applyIndustrialGrowth*(
-    colony: var Colony, taxRate: int, baseGrowthRate: float
+    state: GameState, colony: var Colony, taxRate: int, baseGrowthRate: float
 ): float =
   ## Apply passive industrial growth to colony
   ## IU grows naturally as colonies develop infrastructure
@@ -320,7 +321,7 @@ proc applyIndustrialGrowth*(
   # Apply same tax and starbase modifiers as population
   # Low taxes → more economic freedom → faster industrialization
   let taxMultiplier = getPopulationGrowthMultiplier(taxRate)
-  let starbaseBonus = getStarbaseGrowthBonus(colony)
+  let starbaseBonus = state.starbaseGrowthBonus(colony)
   let effectiveGrowth = baseIndustrialGrowth * taxMultiplier * (1.0 + starbaseBonus)
 
   # Apply growth

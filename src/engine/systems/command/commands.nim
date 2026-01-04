@@ -17,6 +17,7 @@ import
     espionage as esp_types,
     tech as tech_types,
     facilities,
+    combat,
   ]
 import ../capacity/[capital_squadrons, total_squadrons]
 import ../../state/[engine]
@@ -141,10 +142,10 @@ proc validateFleetCommand*(
         logDebug(
           LogCategory.lcOrders,
           &"  Squadron {sq.id}: class={flagship.shipClass}, " &
-            &"crippled={flagship.isCrippled}, " & &"cargo={flagship.cargo}",
+            &"crippled={flagship.state == CombatState.Crippled}, " & &"cargo={flagship.cargo}",
         )
         if flagship.shipClass == ShipClass.ETAC:
-          if not flagship.isCrippled:
+          if flagship.state != CombatState.Crippled:
             hasETAC = true
             break
 

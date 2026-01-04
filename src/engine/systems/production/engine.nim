@@ -13,26 +13,26 @@
 ## - PROD_GROWTH: Productivity growth from tax policy
 ## - STARBASE_BONUS: Operational starbases boost IU output (+5% per SB, max +15%)
 
-import std/math
-import ../../types/[production, colony, starmap, game_state]
+import std/[math, options]
+import ../../types/[production, colony, starmap, game_state, combat]
 import ../../globals
-import ../../../common/logger
+import ../../state/engine
 
 export production.ProductionOutput
 export starmap.PlanetClass, starmap.ResourceRating
 
 ## RAW INDEX Table (economy.md:3.1)
 
-proc getRawIndex*(planetClass: PlanetClass, resources: ResourceRating): float =
-  ## Get RAW INDEX modifier from config
+proc rawIndex*(planetClass: PlanetClass, resources: ResourceRating): float32 =
+  ## RAW INDEX modifier from config
   ## Returns percentage modifier (0.60 - 1.40)
   ##
   ## Uses config/economy.kdl raw_material_efficiency section
   ## Direct array access - O(1) lookup by enum values
   gameConfig.economy.rawMaterialEfficiency.multipliers[resources][planetClass]
 
-proc getEconomicLevelModifier*(techLevel: int): float =
-  ## Get EL_MOD from tech level
+proc economicLevelModifier*(techLevel: int32): float32 =
+  ## EL_MOD from tech level
   ## Per economy.md:4.2 - "A House's GHO benefits from EL upgrades by 5% per level"
   ##
   ## CRITICAL: Tech starts at EL1 (gameplay.md:1.2), so EL1 = 1.05 (5% bonus)
@@ -40,10 +40,10 @@ proc getEconomicLevelModifier*(techLevel: int): float =
   ## - EL1 = 1.05 (5% bonus)
   ## - EL2 = 1.10 (10% bonus)
   ## - EL10 = 1.50 (50% bonus maximum)
-  result = 1.0 + (float(techLevel) * 0.05)
+  result = 1.0 + (float32(techLevel) * 0.05)
 
-proc getProductivityGrowth*(taxRate: int): float =
-  ## Get PROD_GROWTH from tax rate
+proc productivityGrowth*(taxRate: int32): float32 =
+  ## PROD_GROWTH from tax rate
   ## Lower taxes = higher productivity growth
   ##
   ## Linear growth curve per economy.md:
@@ -52,18 +52,29 @@ proc getProductivityGrowth*(taxRate: int): float =
   ## - Tax 0% = +10% growth (economic freedom boosts productivity)
   ##
   ## Formula: PROD_GROWTH = (50 - taxRate) / 500
-  result = (50.0 - float(taxRate)) / 500.0
+  result = (50.0 - float32(taxRate)) / 500.0
 
-proc getStarbaseGrowthBonus*(colony: Colony): float =
-  ## TODO: DoD refactoring needed
-  ## This function needs GameState to count operational starbases via entity manager
-  ## For now, return 0.0 (no bonus)
-  ## Proper implementation should call commissioning.getStarbaseGrowthBonus(state, colonyId)
-  return 0.0
+proc starbaseGrowthBonus*(state: GameState, colony: Colony): float32 =
+  ## Starbase growth bonus for colony
+  ## Per economy.md: +5% per operational starbase, max +15% (3 starbases)
+  ##
+  ## Counts operational (non-crippled) Kastras (Starbases) at colony
+  var operationalStarbases: int32 = 0
+
+  for kastraId in colony.kastraIds:
+    let kastraOpt = state.kastra(kastraId)
+    if kastraOpt.isSome:
+      let kastra = kastraOpt.get()
+      if kastra.state != CombatState.Crippled:
+        operationalStarbases += 1
+
+  # Cap at 3 starbases for max 15% bonus
+  let effectiveStarbases = min(operationalStarbases, 3)
+  return float32(effectiveStarbases) * 0.05
 
 proc calculateGrossOutput*(
-    state: GameState, colony: Colony, elTechLevel: int, cstTechLevel: int = 1
-): int =
+    state: GameState, colony: Colony, elTechLevel: int32, cstTechLevel: int32 = 1
+): int32 =
   ## Calculate GCO (Gross Colony Output) for colony
   ## Per economy.md:3.1 and 4.5
   ##
@@ -81,17 +92,17 @@ proc calculateGrossOutput*(
   let system = systemOpt.get()
 
   # Population production component
-  let rawIndex = getRawIndex(system.planetClass, system.resourceRating)
-  let populationProd = float(validPopulationUnits) * rawIndex
+  let rawIdx = rawIndex(system.planetClass, system.resourceRating)
+  let populationProd = float32(validPopulationUnits) * rawIdx
 
   # Industrial production component
-  let elMod = getEconomicLevelModifier(elTechLevel)
-  let cstMod = 1.0 + (float(cstTechLevel - 1) * 0.10) # CST capacity bonus
-  let prodGrowth = getProductivityGrowth(colony.taxRate)
-  let starbaseBonus = getStarbaseGrowthBonus(colony)
+  let elMod = economicLevelModifier(elTechLevel)
+  let cstMod = 1.0 + (float32(cstTechLevel - 1) * 0.10) # CST capacity bonus
+  let prodGrowth = productivityGrowth(colony.taxRate)
+  let starbaseBonus = state.starbaseGrowthBonus(colony)
     # 5% per operational starbase, max 15%
   let industrialProd =
-    float(validIndustrialUnits) * elMod * cstMod * (1.0 + prodGrowth + starbaseBonus)
+    float32(validIndustrialUnits) * elMod * cstMod * (1.0 + prodGrowth + starbaseBonus)
 
   # Total GCO (guaranteed non-negative)
   var totalGCO = populationProd + industrialProd
@@ -101,18 +112,18 @@ proc calculateGrossOutput*(
   if colony.blockaded:
     totalGCO = totalGCO * 0.4
 
-  result = int(totalGCO)
+  result = int32(totalGCO)
 
-proc calculateNetValue*(grossOutput: int, taxRate: int): int =
+proc calculateNetValue*(grossOutput: int32, taxRate: int32): int32 =
   ## Calculate NCV (Net Colony Value) from GCO and tax rate
   ## Per economy.md:3.2: "PP Income = Total GCO across all colonies × Tax Rate (rounded up)"
   ## Per economy.md:3.3: Formula: NCV = GCO × tax rate
   ##
   ## Use ceil() to round up per specification
-  result = int(ceil(float(grossOutput) * (float(taxRate) / 100.0)))
+  result = int32(ceil(float32(grossOutput) * (float32(taxRate) / 100.0)))
 
 proc calculateProductionOutput*(
-    state: GameState, colony: Colony, elTechLevel: int, cstTechLevel: int = 1
+    state: GameState, colony: Colony, elTechLevel: int32, cstTechLevel: int32 = 1
 ): ProductionOutput =
   ## Calculate full production output for colony
   let gco = state.calculateGrossOutput(colony, elTechLevel, cstTechLevel)
@@ -121,20 +132,22 @@ proc calculateProductionOutput*(
   # Get planetClass and resources from System (single source of truth)
   let systemOpt = state.system(colony.systemId)
   if systemOpt.isNone:
-    return ProductionOutput(gco: 0, ncv: 0, popProd: 0, indProd: 0, rawIndex: 0.0)
+    return ProductionOutput(
+      grossOutput: 0, netValue: 0, populationProduction: 0, industrialProduction: 0
+    )
   let system = systemOpt.get()
 
   # Calculate component breakdown
-  let rawIndex = getRawIndex(system.planetClass, system.resourceRating)
-  let popProd = int(float(colony.populationUnits) * rawIndex)
+  let rawIdx = rawIndex(system.planetClass, system.resourceRating)
+  let popProd = int32(float32(colony.populationUnits) * rawIdx)
 
-  let elMod = getEconomicLevelModifier(elTechLevel)
-  let cstMod = 1.0 + (float(cstTechLevel - 1) * 0.10) # CST capacity bonus
-  let prodGrowth = getProductivityGrowth(colony.taxRate)
-  let starbaseBonus = getStarbaseGrowthBonus(colony)
+  let elMod = economicLevelModifier(elTechLevel)
+  let cstMod = 1.0 + (float32(cstTechLevel - 1) * 0.10) # CST capacity bonus
+  let prodGrowth = productivityGrowth(colony.taxRate)
+  let starbaseBonus = state.starbaseGrowthBonus(colony)
     # 5% per operational starbase, max 15%
-  let indProd = int(
-    float(colony.industrial.units) * elMod * cstMod * (1.0 + prodGrowth + starbaseBonus)
+  let indProd = int32(
+    float32(colony.industrial.units) * elMod * cstMod * (1.0 + prodGrowth + starbaseBonus)
   )
 
   result = ProductionOutput(
@@ -152,4 +165,4 @@ proc applyInfrastructureDamage*(colony: var Colony) =
   if colony.infrastructureDamage > 0.0:
     # Reduce cached GCO by damage percentage
     colony.grossOutput =
-      int32(float(colony.grossOutput) * (1.0 - colony.infrastructureDamage))
+      int32(float32(colony.grossOutput) * (1.0 - colony.infrastructureDamage))

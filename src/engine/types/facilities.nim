@@ -1,5 +1,6 @@
 import std/tables
 import ./core
+import ./combat  # For CombatState
 
 type
   FacilityClass* {.pure.} = enum
@@ -36,7 +37,7 @@ type
     neoriaClass*: NeoriaClass
     colonyId*: ColonyId
     commissionedTurn*: int32
-    isCrippled*: bool
+    state*: CombatState  # Combat damage state (Undamaged, Crippled, Destroyed)
     baseDocks*: int32  # Base dock capacity from config (immutable)
     effectiveDocks*: int32  # CST-modified dock capacity (updated on tech changes)
     constructionQueue*: seq[ConstructionProjectId]
@@ -55,7 +56,7 @@ type
     colonyId*: ColonyId
     commissionedTurn*: int32
     stats*: KastraStats
-    isCrippled*: bool
+    state*: CombatState  # Combat damage state (Undamaged, Crippled, Destroyed)
 
   Kastras* = object
     entities*: EntityManager[KastraId, Kastra]

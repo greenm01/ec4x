@@ -4,6 +4,7 @@
 ## stats, cargo, and operational capabilities.
 import std/[tables, options]
 import ./core
+import ./combat  # For CombatState
 
 type
   ShipClass* {.pure.} = enum
@@ -57,7 +58,7 @@ type
     squadronId*: SquadronId
     shipClass*: ShipClass
     stats*: ShipStats
-    isCrippled*: bool
+    state*: CombatState  # Combat damage state (Undamaged, Crippled, Destroyed)
     cargo*: Option[ShipCargo]
 
   Ships* = object

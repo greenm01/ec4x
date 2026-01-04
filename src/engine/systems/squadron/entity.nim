@@ -7,7 +7,7 @@
 ## Fleet Hierarchy: Fleet → Squadron → Ship
 
 import std/[options, math, sequtils]
-import ../../types/[core, ship, squadron]
+import ../../types/[core, ship, squadron, combat]
 import ../../state/engine
 import ../ship/entity as ship_entity
 
@@ -80,7 +80,7 @@ proc hasCombatShips*(state: GameState, sq: Squadron): bool =
   ## Check if squadron has combat-capable ships
   for shipId in sq.allShipIds():
     let ship = state.ship(shipId).get()
-    if ship.stats.attackStrength > 0 and not ship.isCrippled:
+    if ship.stats.attackStrength > 0 and ship.state != CombatState.Crippled:
       return true
   return false
 
@@ -98,9 +98,9 @@ proc crippleShip*(state: var GameState, sq: Squadron, index: int): bool =
     let flagshipOpt = state.ship(sq.flagshipId)
     if flagshipOpt.isNone: return false
     var flagship = flagshipOpt.get()
-    if flagship.isCrippled:
+    if flagship.state == CombatState.Crippled:
       return false
-    flagship.isCrippled = true
+    flagship.state = CombatState.Crippled
     state.updateShip(sq.flagshipId, flagship)
     return true
 
@@ -111,10 +111,10 @@ proc crippleShip*(state: var GameState, sq: Squadron, index: int): bool =
   let shipOpt = state.ship(shipId)
   if shipOpt.isNone: return false
   var ship = shipOpt.get()
-  if ship.isCrippled:
+  if ship.state == CombatState.Crippled:
     return false
 
-  ship.isCrippled = true
+  ship.state = CombatState.Crippled
   state.updateShip(shipId, ship)
   return true
 
@@ -130,11 +130,11 @@ proc spaceliftShips*(state: GameState, sq: Squadron): seq[ShipId] =
 
 proc crippledShips*(state: GameState, sq: Squadron): seq[ShipId] =
   ## Get all crippled ship IDs in squadron
-  sq.allShipIds().filterIt(state.ship(it).get().isCrippled)
+  sq.allShipIds().filterIt(state.ship(it).get().state == CombatState.Crippled)
 
 proc effectiveShips*(state: GameState, sq: Squadron): seq[ShipId] =
   ## Get all non-crippled ship IDs in squadron
-  sq.allShipIds().filterIt(not state.ship(it).get().isCrippled)
+  sq.allShipIds().filterIt(state.ship(it).get().state != CombatState.Crippled)
 
 proc scoutShips*(state: GameState, sq: Squadron): seq[ShipId] =
   ## Get all ship IDs with scout capability (ELI tech)
@@ -142,7 +142,7 @@ proc scoutShips*(state: GameState, sq: Squadron): seq[ShipId] =
 
 proc hasScouts*(state: GameState, sq: Squadron): bool =
   ## Check if squadron has any operational scouts
-  state.scoutShips(sq).filterIt(not state.ship(it).get().isCrippled).len > 0
+  state.scoutShips(sq).filterIt(state.ship(it).get().state != CombatState.Crippled).len > 0
 
 proc raiderShips*(state: GameState, sq: Squadron): seq[ShipId] =
   ## Get all ship IDs with cloaking capability (CLK tech)
@@ -158,7 +158,7 @@ proc isCloaked*(state: GameState, sq: Squadron): bool =
   # Check no crippled raiders
   for shipId in raiders:
     let ship = state.ship(shipId).get()
-    if ship.isCrippled:
+    if ship.state == CombatState.Crippled:
       return false
 
   return true

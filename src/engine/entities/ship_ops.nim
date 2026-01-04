@@ -45,7 +45,7 @@ proc newShip*(
     squadronId: squadronId,
     shipClass: shipClass,
     stats: stats,
-    isCrippled: false,
+    state: CombatState.Undamaged,
     cargo: none(ShipCargo),
   )
 
@@ -68,7 +68,7 @@ proc createShip*(
     squadronId: squadronId,
     shipClass: shipClass,
     stats: stats,
-    isCrippled: false,
+    state: CombatState.Undamaged,
     cargo: none(ShipCargo)
   )
   

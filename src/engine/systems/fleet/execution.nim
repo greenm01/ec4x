@@ -59,7 +59,7 @@ proc validateCommandAtExecution(
     for squadron in fleet.squadrons:
       if squadron.squadronType == SquadronClass.Expansion:
         if squadron.flagship.shipClass == ShipClass.ETAC:
-          if not squadron.flagship.isCrippled:
+          if squadron.flagship.state != CombatState.Crippled:
             hasETAC = true
             break
 
@@ -80,7 +80,7 @@ proc validateCommandAtExecution(
     # Check fleet still has combat capability
     var hasCombat = false
     for squadron in fleet.squadrons:
-      if squadron.flagship.stats.attackStrength > 0 and not squadron.flagship.isCrippled:
+      if squadron.flagship.stats.attackStrength > 0 and squadron.flagship.state != CombatState.Crippled:
         hasCombat = true
         break
 

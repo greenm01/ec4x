@@ -17,7 +17,7 @@
 import std/[random, tables, options]
 import costs, effects
 import ../../types/[core, game_state, tech, prestige]
-import ../../state/engine
+import ../../state/[engine, iterators]
 import ../../globals
 
 export

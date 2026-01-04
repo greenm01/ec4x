@@ -255,7 +255,7 @@ iterator allShipsWithId*(state: GameState): tuple[id: ShipId, ship: Ship] =
   ##
   ## Example:
   ##   for (shipId, ship) in state.allShipsWithId():
-  ##     if ship.isCrippled:
+  ##     if ship.state == CombatState.Crippled:
   ##       echo "Ship ", shipId, " needs repair"
   for shipId in state.ships.entities.index.keys:
     yield (shipId, state.ships.entities.entity(shipId).get())
@@ -280,7 +280,7 @@ iterator shipsOwned*(state: GameState, houseId: HouseId): Ship =
   ## Example:
   ##   var crippledShips = 0
   ##   for ship in state.shipsOwned(houseId):
-  ##     if ship.isCrippled:
+  ##     if ship.state == CombatState.Crippled:
   ##       crippledShips += 1
   if state.ships.byHouse.contains(houseId):
     for shipId in state.ships.byHouse[houseId]:
@@ -406,9 +406,8 @@ iterator activePopulationTransfers*(
   ## O(n) where n = active transfers
   ## Uses inTransit index for efficient access
   for transferId in state.populationTransfers.inTransit:
-    let transferOpt = state.populationTransfer(transferId)
-    if transferOpt.isSome:
-      yield (transferId, transferOpt.get())
+    if state.populationTransfers.entities.index.contains(transferId):
+      yield (transferId, state.populationTransfers.entities.entity(transferId).get())
 
 iterator populationTransfersForHouse*(
     state: GameState, houseId: HouseId
@@ -418,9 +417,8 @@ iterator populationTransfersForHouse*(
   ## Uses byHouse index for efficient access
   if state.populationTransfers.byHouse.contains(houseId):
     for transferId in state.populationTransfers.byHouse[houseId]:
-      let transferOpt = state.populationTransfer(transferId)
-      if transferOpt.isSome:
-        yield (transferId, transferOpt.get())
+      if state.populationTransfers.entities.index.contains(transferId):
+        yield (transferId, state.populationTransfers.entities.entity(transferId).get())
 
 ## Design Notes:
 ##
