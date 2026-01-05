@@ -9,7 +9,7 @@
 ## - Combat aggregates at house level
 ## - Only persistent state is ship.state (Undamaged/Crippled/Destroyed)
 
-import std/options
+import std/[options, tables]
 import ./core
 
 type
@@ -78,25 +78,52 @@ type
     defenderRetreatedFleets*: seq[FleetId]
 
   # =============================================================================
+  # Multi-House Combat (Targeting System)
+  # =============================================================================
+
+  TargetingPriority* = object
+    ## Defines what proportion of firepower to direct at a target house
+    ## Per docs/specs/07-combat.md Section 7.9.2
+    targetHouse*: HouseId
+    fireProportion*: float  # 0.0-1.0, sum to 1.0 per shooter
+
+  MultiHouseBattle* = object
+    ## Single battle with N participants using targeting matrix
+    ## Replaces pairwise Battle bucketing for 3+ house scenarios
+    ## Per docs/specs/07-combat.md Section 7.9
+    systemId*: SystemId
+    theater*: CombatTheater
+    participants*: seq[HouseCombatForce]
+    targeting*: Table[HouseId, seq[TargetingPriority]]
+    detection*: Table[HouseId, DetectionResult]  # One per house
+    hasStarbase*: Table[HouseId, bool]  # Per defending house
+    retreatedFleets*: seq[FleetId]
+
+  # =============================================================================
   # Combat Results
   # =============================================================================
 
+  ShipLossesByClass* = object
+    ## Ship losses grouped by ship class for reporting
+    ## Uses string to avoid circular dependency with ship.nim
+    shipClassName*: string  # Name of ship class (e.g. "Battleship")
+    destroyed*: int32
+    crippled*: int32
+
+  HouseCombatResult* = object
+    ## Combat outcome for one house
+    houseId*: HouseId
+    losses*: seq[ShipLossesByClass]
+    survived*: bool  # Did house have operational ships at end?
+    retreatedFleets*: seq[FleetId]  # Which fleets retreated
+
   CombatResult* = object
-    ## Result of combat engagement
+    ## Complete combat result with per-house details
+    ## Unified type for both internal resolution and reporting
+    systemId*: SystemId
     theater*: CombatTheater
     rounds*: int32
-    attackerSurvived*: bool
-    defenderSurvived*: bool
-    attackerRetreatedFleets*: seq[FleetId]
-    defenderRetreatedFleets*: seq[FleetId]
-
-  CombatReport* = object
-    ## High-level combat summary for intel/events
-    systemId*: SystemId
-    attackers*: seq[HouseId]
-    defenders*: seq[HouseId]
-    attackerLosses*: int32
-    defenderLosses*: int32
+    participants*: seq[HouseCombatResult]
     victor*: Option[HouseId]
 
   # =============================================================================
