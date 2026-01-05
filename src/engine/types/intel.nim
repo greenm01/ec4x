@@ -136,7 +136,7 @@ type
     reportId*: string
     turn*: int32
     systemId*: SystemId
-    phase*: CombatPhase
+    phase*: CombatTheater
     reportingHouse*: HouseId
     alliedFleetIds*: seq[FleetId]
     enemyFleetIds*: seq[FleetId]

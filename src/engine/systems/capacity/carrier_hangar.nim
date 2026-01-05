@@ -105,7 +105,7 @@ proc analyzeCarrierCapacity*(
     capacity.CapacityViolation(
       capacityType: capacity.CapacityType.CarrierHangar,
       entity: capacity.EntityIdUnion(
-        kind: capacity.CapacityType.CarrierHangar, shipId: flagship.id
+        kind: capacity.CapacityType.CarrierHangar, shipId: ship.id
       ),
       current: int32(current),
       maximum: int32(maximum),

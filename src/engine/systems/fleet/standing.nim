@@ -52,9 +52,9 @@ proc getKnownSystems*(state: GameState, houseId: HouseId): HashSet[SystemId] =
     return result
 
   # Act 1 (turns 1-7): Fog-of-war intelligence (original logic)
-  if not state.intelligence.hasKey(houseId):
+  if not state.intel.hasKey(houseId):
     return result
-  let intel = state.intelligence[houseId]
+  let intel = state.intel[houseId]
 
   # 1. Own colonies (always known)
   for colony in state.coloniesOwned(houseId):
@@ -85,9 +85,9 @@ proc hasColonyIntel*(state: GameState, houseId: HouseId, systemId: SystemId): bo
     return true
 
   # Enemy colony with intel report
-  if not state.intelligence.hasKey(houseId):
+  if not state.intel.hasKey(houseId):
     return false
-  let intel = state.intelligence[houseId]
+  let intel = state.intel[houseId]
 
   # Check if we have colony intel reports (reuse colonyOpt from above)
   if colonyOpt.isSome:
@@ -109,9 +109,9 @@ proc getKnownEnemyFleetsInSystem*(
   ## - System intelligence reports (SpySystem missions)
   result = @[]
 
-  if not state.intelligence.hasKey(houseId):
+  if not state.intel.hasKey(houseId):
     return result
-  let intel = state.intelligence[houseId]
+  let intel = state.intel[houseId]
 
   # Check system intel report for fleet presence
   let systemIntel =
@@ -643,7 +643,7 @@ proc activateAutoRepair(
   # Search all owned colonies for shipyards/drydocks
   for colony in state.coloniesOwned(fleet.houseId):
     # Only owned colonies with operational shipyards
-    if colony.shipyardIds.len == 0:
+    if state.countShipyardsAtColony(colony.id) == 0:
       continue
 
     # Calculate distance via jump lanes

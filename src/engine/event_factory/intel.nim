@@ -266,19 +266,19 @@ proc psyopsCampaignLaunched*(
     details: some(&"Tax increase: {taxIncrease}%"),
   )
 
-proc intelligenceTheftExecuted*(
+proc intelTheftExecuted*(
     attacker: HouseId, target: HouseId
 ): event_types.GameEvent =
   ## Create event for intelligence database theft
   event_types.GameEvent(
-    eventType: event_types.GameEventType.IntelligenceTheftExecuted,
+    eventType: event_types.GameEventType.IntelTheftExecuted,
       # Specific event type
     houseId: some(attacker),
     description: &"Intelligence database stolen from {target}",
     systemId: none(SystemId),
     sourceHouseId: some(attacker),
     targetHouseId: some(target),
-    operationType: some(EspionageAction.IntelligenceTheft),
+    operationType: some(EspionageAction.IntelTheft),
     success: some(true),
     detected: some(false),
   )
@@ -337,7 +337,7 @@ proc spyMissionDetected*(
     of "Tech Theft":
       EspionageAction.TechTheft
     else:
-      EspionageAction.IntelligenceTheft
+      EspionageAction.IntelTheft
 
   event_types.GameEvent(
     eventType: event_types.GameEventType.SpyMissionDetected, # Specific event type

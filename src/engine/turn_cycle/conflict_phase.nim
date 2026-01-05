@@ -33,7 +33,7 @@ import
     resolution as res_types,
     simultaneous as simultaneous_types,
   ]
-import ../systems/combat/simultaneous_blockade
+# import ../systems/combat/simultaneous_blockade  # REMOVED: Legacy squadron-based system
 import ../systems/combat/orchestrator # Theater progression (Space → Orbital → Planetary)
 import ../systems/espionage/simultaneous_espionage
 import

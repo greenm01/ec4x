@@ -11,6 +11,13 @@ type
     Reserve
     Mothballed
 
+  ThreatLevel* {.pure.} = enum
+    ## Categorizes fleet mission threat levels for diplomatic escalation
+    ## Per docs/specs/08-diplomacy.md Section 8.1.5
+    Benign     # Non-threatening missions (Move, SeekHome, Guard own assets)
+    Contest    # System control contestation (Patrol, Hold, Rendezvous in enemy space)
+    Attack     # Direct colony attacks (Blockade, Bombard, Invade, Blitz)
+
   Fleet* = object ## A collection of ships that move together
     id*: FleetId # Unique fleet identifier
     ships*: seq[ShipId]
@@ -18,6 +25,7 @@ type
     houseId*: HouseId # House that owns this fleet
     location*: SystemId # Current system location
     status*: FleetStatus # Operational status (active/reserve/mothballed)
+    roe*: int32 # Rules of Engagement (0-10, default 6 = engage if equal)
     command*: Option[FleetCommand]
     # Spy mission state (for Scout-only fleets)
     missionState*: FleetMissionState # Spy mission state
@@ -92,3 +100,34 @@ type
     action*: string # Description of action taken
     error*: string # Error message if failed
     updatedParams*: Option[StandingCommandParams] # Updated params (e.g., patrol index)
+
+## Maps fleet commands to their threat level for diplomatic escalation
+## Per docs/specs/08-diplomacy.md Section 8.1.5
+const CommandThreatLevels* = {
+  # Attack tier - Direct colony attacks (Enemy escalation, immediate combat)
+  FleetCommandType.Blockade: ThreatLevel.Attack,
+  FleetCommandType.Bombard: ThreatLevel.Attack,
+  FleetCommandType.Invade: ThreatLevel.Attack,
+  FleetCommandType.Blitz: ThreatLevel.Attack,
+
+  # Contest tier - System control contestation (Hostile escalation, grace period)
+  FleetCommandType.Patrol: ThreatLevel.Contest,
+  FleetCommandType.Hold: ThreatLevel.Contest,
+  FleetCommandType.Rendezvous: ThreatLevel.Contest,
+
+  # Benign tier - Non-threatening missions
+  FleetCommandType.Move: ThreatLevel.Benign,
+  FleetCommandType.SeekHome: ThreatLevel.Benign,
+  FleetCommandType.GuardStarbase: ThreatLevel.Benign,
+  FleetCommandType.GuardColony: ThreatLevel.Benign,
+  FleetCommandType.Colonize: ThreatLevel.Benign,
+  FleetCommandType.SpyColony: ThreatLevel.Benign,
+  FleetCommandType.SpySystem: ThreatLevel.Benign,
+  FleetCommandType.HackStarbase: ThreatLevel.Benign,
+  FleetCommandType.JoinFleet: ThreatLevel.Benign,
+  FleetCommandType.Salvage: ThreatLevel.Benign,
+  FleetCommandType.Reserve: ThreatLevel.Benign,
+  FleetCommandType.Mothball: ThreatLevel.Benign,
+  FleetCommandType.Reactivate: ThreatLevel.Benign,
+  FleetCommandType.View: ThreatLevel.Benign,
+}.toTable

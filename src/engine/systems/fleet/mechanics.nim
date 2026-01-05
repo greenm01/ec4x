@@ -67,12 +67,12 @@ proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): b
           # Player can see this colony - it's hostile
           return true
 
-  # TODO: Fix intelligence access - state.intelligence field doesn't exist
+  # TODO: Fix intelligence access - state.intel field doesn't exist
   # Intelligence system has been refactored, need to use correct API
   # This is a pre-existing bug, not introduced by CombatState refactoring
   # Check intelligence database for known enemy colonies
-  # if state.intelligence.hasKey(houseId):
-  #   let intel = state.intelligence[houseId]
+  # if state.intel.hasKey(houseId):
+  #   let intel = state.intel[houseId]
   #   for colonyId, colonyIntel in intel.colonyReports:
   #     let colonyOpt = state.colony(colonyId)
   #     if colonyOpt.isSome:
@@ -477,9 +477,9 @@ proc resolveMovementCommand*(
         )
         if intelReport.isSome:
           let colonyId = colony.id # Needed for intel.colonyReports
-          var intel = state.intelligence[houseId]
+          var intel = state.intel[houseId]
           intel.colonyReports[colonyId] = intelReport.get()
-          state.intelligence[houseId] = intel
+          state.intel[houseId] = intel
           logInfo(
             "Fleet",
             &"Fleet {command.fleetId} ({houseId}) gathered intelligence on enemy colony at {newLocation} (owner: {colony.owner}) - DB now has {intel.colonyReports.len} reports",
@@ -525,20 +525,20 @@ proc resolveMovementCommand*(
         state, houseId, newLocation, IntelQuality.Visual
       )
       if systemIntelReport.isSome:
-        if not state.intelligence.hasKey(houseId):
-          state.intelligence[houseId] = IntelligenceDatabase(
+        if not state.intel.hasKey(houseId):
+          state.intel[houseId] = IntelDatabase(
             houseId: houseId,
             colonyReports: initTable[ColonyId, ColonyIntelReport](),
             orbitalReports: initTable[ColonyId, OrbitalIntelReport](),
             systemReports: initTable[SystemId, SystemIntelReport](),
-            starbaseReports: initTable[StarbaseId, StarbaseIntelReport](),
+            starbaseReports: initTable[KastraId, StarbaseIntelReport](),
             fleetIntel: initTable[FleetId, FleetIntel](),
             shipIntel: initTable[ShipId, ShipIntel](),
             fleetMovementHistory: initTable[FleetId, FleetMovementHistory](),
             constructionActivity: initTable[ColonyId, ConstructionActivityReport](),
             populationTransferStatus: initTable[PopulationTransferId, PopulationTransferStatusReport](),
           )
-        var intel = state.intelligence[houseId]
+        var intel = state.intel[houseId]
         let package = systemIntelReport.get()
         intel.systemReports[newLocation] = package.report
         # Also store fleet and ship intel from the package
@@ -546,7 +546,7 @@ proc resolveMovementCommand*(
           intel.fleetIntel[fleetId] = fleetIntel
         for (shipId, shipIntel) in package.shipIntel:
           intel.shipIntel[shipId] = shipIntel
-        state.intelligence[houseId] = intel
+        state.intel[houseId] = intel
         logDebug(
           "Fleet",
           &"Fleet {command.fleetId} gathered intelligence on {enemyFleetsAtLocation.len} enemy fleet(s) at {newLocation}",
@@ -581,9 +581,9 @@ proc resolveColonizationCommand*(
       )
       if colonyIntel.isSome:
         let colonyId = colony.id
-        var intel = state.intelligence[houseId]
+        var intel = state.intel[houseId]
         intel.colonyReports[colonyId] = colonyIntel.get()
-        state.intelligence[houseId] = intel
+        state.intel[houseId] = intel
         logDebug(
           "Fleet",
           &"Fleet {command.fleetId} gathered orbital intelligence on enemy colony at {targetId}",
@@ -594,20 +594,20 @@ proc resolveColonizationCommand*(
         state, houseId, targetId, IntelQuality.Visual
       )
       if systemIntel.isSome:
-        if not state.intelligence.hasKey(houseId):
-          state.intelligence[houseId] = IntelligenceDatabase(
+        if not state.intel.hasKey(houseId):
+          state.intel[houseId] = IntelDatabase(
             houseId: houseId,
             colonyReports: initTable[ColonyId, ColonyIntelReport](),
             orbitalReports: initTable[ColonyId, OrbitalIntelReport](),
             systemReports: initTable[SystemId, SystemIntelReport](),
-            starbaseReports: initTable[StarbaseId, StarbaseIntelReport](),
+            starbaseReports: initTable[KastraId, StarbaseIntelReport](),
             fleetIntel: initTable[FleetId, FleetIntel](),
             shipIntel: initTable[ShipId, ShipIntel](),
             fleetMovementHistory: initTable[FleetId, FleetMovementHistory](),
             constructionActivity: initTable[ColonyId, ConstructionActivityReport](),
             populationTransferStatus: initTable[PopulationTransferId, PopulationTransferStatusReport](),
           )
-        var intel = state.intelligence[houseId]
+        var intel = state.intel[houseId]
         let package = systemIntel.get()
         intel.systemReports[targetId] = package.report
         # Also store fleet and ship intel from the package
@@ -615,7 +615,7 @@ proc resolveColonizationCommand*(
           intel.fleetIntel[fleetId] = fleetIntel
         for (shipId, shipIntel) in package.shipIntel:
           intel.shipIntel[shipId] = shipIntel
-        state.intelligence[houseId] = intel
+        state.intel[houseId] = intel
 
     logWarn(
       "Colonization",
@@ -835,14 +835,14 @@ proc resolveViewWorldCommand*(
     groundBatteryCount: 0, # Unknown from long range
   )
 
-  # Store intel in state.intelligence
-  if not state.intelligence.hasKey(houseId):
-    state.intelligence[houseId] = IntelligenceDatabase(
+  # Store intel in state.intel
+  if not state.intel.hasKey(houseId):
+    state.intel[houseId] = IntelDatabase(
       houseId: houseId,
       colonyReports: initTable[ColonyId, ColonyIntelReport](),
       orbitalReports: initTable[ColonyId, OrbitalIntelReport](),
       systemReports: initTable[SystemId, SystemIntelReport](),
-      starbaseReports: initTable[StarbaseId, StarbaseIntelReport](),
+      starbaseReports: initTable[KastraId, StarbaseIntelReport](),
       fleetIntel: initTable[FleetId, FleetIntel](),
       shipIntel: initTable[ShipId, ShipIntel](),
       fleetMovementHistory: initTable[FleetId, FleetMovementHistory](),
@@ -851,9 +851,9 @@ proc resolveViewWorldCommand*(
         PopulationTransferId, PopulationTransferStatusReport
       ](),
     )
-  var intel = state.intelligence[houseId]
+  var intel = state.intel[houseId]
   intel.colonyReports[colonyId] = intelReport
-  state.intelligence[houseId] = intel
+  state.intel[houseId] = intel
 
   logInfo(
     "Fleet",

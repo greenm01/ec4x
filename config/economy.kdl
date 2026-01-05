@@ -10,7 +10,7 @@ population {
   naturalGrowthRate 0.30 // Base birthrate
   growthRatePerStarbase 0.05 // 5% growth bonus per starbase (docs/specs/02-assets.md:454)
   maxStarbaseBonus 0.15 // Max 15% bonus (3 starbases)
-  ptuGrowthRate 0.04  // PTU growth rate
+  ptuGrowthRate 0.30  // PTU growth rate
   ptuToSouls 50000       // One PTU represents approx. 50,000 souls
   puToPtuConversion 0.00657 // Constant for PU to PTU conversion formula
   minViableColonyPop 5000 // Minimum viable souls to sustain a colony

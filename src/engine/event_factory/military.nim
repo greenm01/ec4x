@@ -696,3 +696,37 @@ proc starbaseCombat*(
     starbaseDs: some(starbaseDs),
     starbaseEliBonus: some(eliBonus),
   )
+
+# -----------------------------------------------------------------------------
+# Blockade Events
+# -----------------------------------------------------------------------------
+
+proc blockadeSuccessful*(
+    blockadingHouse: HouseId,
+    targetColony: SystemId,
+    colonyOwner: HouseId,
+    fleetId: FleetId,
+    blockadeTurn: int32, # How many turns blockaded
+    totalBlockaders: int, # Total houses blockading
+): event_types.GameEvent =
+  ## Create event for successful blockade establishment
+  ## Per docs/specs/06-operations.md Section 6.3.8
+  let desc =
+    if totalBlockaders > 1:
+      &"Blockade established at system {targetColony} (held by " &
+      &"{colonyOwner}) - {totalBlockaders} houses blockading"
+    else:
+      &"Blockade established at system {targetColony} (held by " &
+      &"{colonyOwner})"
+
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.BlockadeSuccessful,
+    houseId: some(blockadingHouse),
+    description: desc,
+    systemId: some(targetColony),
+    sourceHouseId: some(blockadingHouse),
+    targetHouseId: some(colonyOwner),
+    fleetId: some(fleetId),
+    blockadeTurns: some(blockadeTurn),
+    totalBlockaders: some(totalBlockaders),
+  )

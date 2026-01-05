@@ -91,6 +91,7 @@ type
     BlitzBegan # Blitz operation began (bombardment + invasion)
     GroundCombatRound # Ground combat round (marines vs ground forces)
     StarbaseCombat # Starbase participated in orbital combat
+    BlockadeSuccessful # Blockade established at colony
     # Fleet Operations Events (Phase 7b)
     StandingOrderSet # Standing command configured on fleet
     StandingOrderActivated # Standing command triggered and generated fleet order
@@ -312,6 +313,9 @@ type
       starbaseAs*: Option[int] # Starbase attack strength
       starbaseDs*: Option[int] # Starbase defense strength
       starbaseEliBonus*: Option[int] # ELI detection bonus (+2 for starbases)
+    of BlockadeSuccessful:
+      blockadeTurns*: Option[int32] # Number of turns blockaded
+      totalBlockaders*: Option[int] # Total houses blockading
 
     # Fleet Operations Events (Phase 7b)
     of StandingOrderSet:

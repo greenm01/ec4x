@@ -8,19 +8,16 @@
 ## - Special commands: Various phases (colonize, salvage, espionage)
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
-import ../../types/[core, game_state, command, fleet, ship, combat]
+import ../../types/[core, game_state, command, fleet, ship, combat, event, diplomacy]
 import ../../../common/logger as common_logger
 import ../../state/[engine, iterators]
-import ../commands/[executor]
+import ./dispatcher # For OrderOutcome and executeFleetCommand
 import ./standing
+import ./mechanics # For findClosestOwnedColony
 import ./entity as fleet_entity
-import ../resolution/[types as res_types, fleet_orders, simultaneous]
-import ../combat/battles # Space/orbital combat (resolveBattle)
-import
-  ../colony/planetary_combat
-    # Planetary combat (resolveBombardment, resolveInvasion, resolveBlitz)
+# import ../combat/battles # REMOVED: Legacy squadron-based system
+# import ../colony/planetary_combat # REMOVED: Combat now handled by orchestrator
 import ../../event_factory/init as event_factory
-import ../diplomacy/[types as dip_types]
 
 type
   OrderCategoryFilter* = proc(orderType: FleetCommandType): bool
@@ -72,7 +69,7 @@ proc validateCommandAtExecution(
     # Check target not already colonized
     if command.targetSystem.isSome:
       let targetId = command.targetSystem.get()
-      let colonyOpt = state.colony(targetId)
+      let colonyOpt = state.colonyBySystem(targetId)
       if colonyOpt.isSome:
         return ExecutionValidationResult(
           valid: false, shouldAbort: true, reason: "Target system already colonized"
@@ -99,7 +96,7 @@ proc validateCommandAtExecution(
     # Allow attacks on enemies, neutral, or uncolonized systems
     if command.targetSystem.isSome:
       let targetId = command.targetSystem.get()
-      let colonyOpt = state.colony(targetId)
+      let colonyOpt = state.colonyBySystem(targetId)
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
         if colony.owner == houseId:
@@ -158,15 +155,14 @@ proc validateCommandAtExecution(
     # Check if patrol system is now hostile (lost to enemy)
     if command.targetSystem.isSome:
       let targetId = command.targetSystem.get()
-      let colonyOpt = state.colony(targetId)
+      let colonyOpt = state.colonyBySystem(targetId)
       if colonyOpt.isSome:
         let colony = colonyOpt.get()
         if colony.owner != houseId:
-          let houseOpt = state.house(houseId)
-          if houseOpt.isSome:
-            let relation =
-              houseOpt.get().diplomaticRelations.getDiplomaticState(colony.owner)
-            if relation == dip_types.DiplomaticState.Enemy:
+          # Check if patrol system is now enemy-owned
+          if (houseId, colony.owner) in state.diplomaticRelation:
+            let relation = state.diplomaticRelation[(houseId, colony.owner)]
+            if relation.state == DiplomaticState.Enemy:
               return ExecutionValidationResult(
                 valid: false,
                 shouldAbort: true,
@@ -180,9 +176,9 @@ proc validateCommandAtExecution(
 
 proc performCommandMaintenance*(
     state: var GameState,
-    orders: Table[HouseId, OrderPacket],
-    events: var seq[res_types.GameEvent],
-    combatReports: var seq[res_types.CombatReport],
+    orders: Table[HouseId, CommandPacket],
+    events: var seq[GameEvent],
+    combatReports: var seq[combat.CombatReport],
     rng: var Rand,
     categoryFilter: OrderCategoryFilter,
     phaseDescription: string,
@@ -190,14 +186,14 @@ proc performCommandMaintenance*(
   ## Manage fleet order lifecycle: validation, completion detection, and execution
   ## This is the core fleet order maintenance logic shared across phases
 
-  logDebug(LogCategory.lcOrders, &"[{phaseDescription}] Starting fleet order execution")
+  logDebug("Commands", &"[{phaseDescription}] Starting fleet order execution")
 
   # Collect all fleet orders (new + persistent)
   var allFleetCommands: seq[(HouseId, FleetCommand)] = @[]
-  var newOrdersThisTurn = initHashSet[FleetId]()
+  var newCommandsThisTurn = initHashSet[FleetId]()
 
   # Step 1: Collect NEW orders from this turn's OrderPackets
-  for houseId in state.houses.keys:
+  for (houseId, _) in state.allHousesWithId():
     if houseId in orders:
       for command in orders[houseId].fleetCommands:
         # Only process orders matching the category filter
@@ -212,13 +208,13 @@ proc performCommandMaintenance*(
               fleet.status == FleetStatus.Mothballed:
             if command.commandType != FleetCommandType.Reactivate:
               logDebug(
-                LogCategory.lcOrders,
+                "Commands",
                 &"  [LOCKED] Fleet {command.fleetId} has locked permanent order",
               )
               continue
 
         allFleetCommands.add((houseId, command))
-        newOrdersThisTurn.incl(command.fleetId)
+        newCommandsThisTurn.incl(command.fleetId)
         state.fleetCommands[command.fleetId] = command
 
         # Generate OrderIssued event for new order
@@ -233,7 +229,7 @@ proc performCommandMaintenance*(
 
   # Step 2: Add PERSISTENT orders from previous turns (not overridden)
   for fleetId, persistentOrder in state.fleetCommands:
-    if fleetId in newOrdersThisTurn:
+    if fleetId in newCommandsThisTurn:
       continue # Overridden by new order
 
     let fleetOpt = state.fleet(fleetId)
@@ -252,7 +248,7 @@ proc performCommandMaintenance*(
     cmp(a[1].priority, b[1].priority)
 
   logDebug(
-    LogCategory.lcOrders, &"[{phaseDescription}] Executing {allFleetCommands.len} orders"
+    "Commands", &"[{phaseDescription}] Executing {allFleetCommands.len} orders"
   )
 
   # Track which fleets have already executed orders this turn
@@ -263,7 +259,7 @@ proc performCommandMaintenance*(
     # Skip if fleet already executed an order this turn
     if command.fleetId in fleetsProcessed:
       logDebug(
-        LogCategory.lcOrders, &"  [SKIPPED] Fleet {command.fleetId} already executed"
+        Commands, &"  [SKIPPED] Fleet {command.fleetId} already executed"
       )
       continue
 
@@ -275,7 +271,7 @@ proc performCommandMaintenance*(
     var actualOrder = command
     if not validation.valid:
       logWarn(
-        LogCategory.lcOrders,
+        Commands,
         &"  [EXECUTION VALIDATION FAILED] Fleet {command.fleetId}: {validation.reason}",
       )
 
@@ -300,50 +296,50 @@ proc performCommandMaintenance*(
           if safeDestination.isSome:
             actualOrder = FleetCommand(
               fleetId: command.fleetId,
-              orderType: FleetCommandType.SeekHome,
+              commandType: FleetCommandType.SeekHome,
               targetSystem: safeDestination,
               targetFleet: none(FleetId),
               priority: command.priority,
             )
             state.fleetCommands[command.fleetId] = actualOrder
             logInfo(
-              LogCategory.lcFleet,
+              Fleet,
               &"Fleet {command.fleetId} mission aborted - seeking home ({validation.reason})",
             )
           else:
             actualOrder = FleetCommand(
               fleetId: command.fleetId,
-              orderType: FleetCommandType.Hold,
+              commandType: FleetCommandType.Hold,
               targetSystem: some(fleet.location),
               targetFleet: none(FleetId),
               priority: command.priority,
             )
             state.fleetCommands[command.fleetId] = actualOrder
             logWarn(
-              LogCategory.lcFleet,
+              Fleet,
               &"Fleet {command.fleetId} mission aborted - holding position ({validation.reason})",
             )
         else:
           # Fleet doesn't exist, skip order
           logWarn(
-            LogCategory.lcOrders,
+            Commands,
             &"  [SKIPPED] Fleet {command.fleetId} no longer exists",
           )
           continue
       else:
         # Order invalid, skip execution
         logWarn(
-          LogCategory.lcOrders,
+          Commands,
           &"  [SKIPPED] Fleet {command.fleetId} order invalid at execution",
         )
         continue
 
     # Execute the validated order (events added directly via mutable parameter)
-    let outcome = executor.executeFleetCommand(state, houseId, actualOrder, events)
+    let outcome = dispatcher.executeFleetCommand(state, houseId, actualOrder, events)
 
     if outcome == OrderOutcome.Success:
       logDebug(
-        LogCategory.lcFleet,
+        Fleet,
         &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} executed",
       )
       # Events already added via mutable parameter
@@ -360,34 +356,34 @@ proc performCommandMaintenance*(
           var hasHostileForces = false
 
           # Check for enemy/neutral fleets (using fleetsInSystem iterator)
-          let houseOpt = state.house(houseId)
-          if houseOpt.isSome:
-            for otherFleet in state.fleetsInSystem(targetSystem):
-              if otherFleet.owner != houseId:
-                let relation = houseOpt.get().diplomaticRelations.getDiplomaticState(
-                    otherFleet.owner
-                  )
-                if relation == dip_types.DiplomaticState.Enemy or
-                    relation == dip_types.DiplomaticState.Neutral:
-                  hasHostileForces = true
-                  break
+          for otherFleet in state.fleetsInSystem(targetSystem):
+            if otherFleet.houseId != houseId:
+              # Check diplomatic relation
+              var relation = DiplomaticState.Neutral # Default
+              if (houseId, otherFleet.houseId) in state.diplomaticRelation:
+                relation = state.diplomaticRelation[(houseId, otherFleet.houseId)].state
+              if relation == DiplomaticState.Enemy or
+                  relation == DiplomaticState.Neutral:
+                hasHostileForces = true
+                break
 
           # Check for starbases
-          let colonyOpt = state.colony(targetSystem)
+          let colonyOpt = state.colonyBySystem(targetSystem)
           if colonyOpt.isSome:
             let colony = colonyOpt.get()
-            if colony.owner != houseId and colony.starbases.len > 0:
-              if houseOpt.isSome:
-                let relation =
-                  houseOpt.get().diplomaticRelations.getDiplomaticState(colony.owner)
-                if relation == dip_types.DiplomaticState.Enemy or
-                    relation == dip_types.DiplomaticState.Neutral:
-                  hasHostileForces = true
+            if colony.owner != houseId and state.countStarbasesAtColony(colony.id) > 0:
+              # Check diplomatic relation with colony owner
+              var relation = DiplomaticState.Neutral # Default
+              if (houseId, colony.owner) in state.diplomaticRelation:
+                relation = state.diplomaticRelation[(houseId, colony.owner)].state
+              if relation == DiplomaticState.Enemy or
+                  relation == DiplomaticState.Neutral:
+                hasHostileForces = true
 
           # If hostile forces present, trigger battle first
           if hasHostileForces:
             logInfo(
-              LogCategory.lcCombat,
+              "Combat",
               &"Fleet {actualOrder.fleetId} engaging defenders before {actualOrder.commandType}",
             )
             resolveBattle(state, targetSystem, orders, combatReports, events, rng)
@@ -395,33 +391,28 @@ proc performCommandMaintenance*(
             # Check if fleet survived combat
             if state.fleet(actualOrder.fleetId).isNone:
               logInfo(
-                LogCategory.lcCombat, &"Fleet {actualOrder.fleetId} destroyed in combat"
+                "Combat", &"Fleet {actualOrder.fleetId} destroyed in combat"
               )
               continue
 
-          # Execute planetary assault
-          case actualOrder.commandType
-          of FleetCommandType.Bombard:
-            resolveBombardment(state, houseId, actualOrder, events)
-          of FleetCommandType.Invade:
-            resolveInvasion(state, houseId, actualOrder, events)
-          of FleetCommandType.Blitz:
-            resolveBlitz(state, houseId, actualOrder, events)
-          else:
-            discard
+          # NOTE: Planetary assault combat now handled by orchestrator.nim
+          # Execution just validates and marks commands complete
+          # Combat resolution happens in turn_cycle/conflict_phase via orchestrator
+          # TODO: Implement simultaneous assault resolution in orchestrator
+          discard
     elif outcome == OrderOutcome.Failed:
       # Order failed validation - event generated, cleanup handled by Command Phase
       logDebug(
-        LogCategory.lcFleet,
+        Fleet,
         &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} failed validation",
       )
     elif outcome == OrderOutcome.Aborted:
       # Order aborted - event generated, cleanup handled by Command Phase
       logDebug(
-        LogCategory.lcFleet,
+        Fleet,
         &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} aborted",
       )
 
   logDebug(
-    LogCategory.lcOrders, &"[{phaseDescription}] Completed fleet order execution"
+    Commands, &"[{phaseDescription}] Completed fleet order execution"
   )

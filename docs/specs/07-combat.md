@@ -228,9 +228,9 @@ Compare results:
 
 No detection roll. **Intercept** condition (normal combat).
 
-**Special Case: Mutual Stealth**
+**Tie Detection Roll:**
 
-If two cloaked Raider fleets from opposing houses are in the same system and neither detects the other during the detection roll (extremely rare), combat is not initiated. The fleets pass each other undetected and continue executing assigned fleet commands.
+If both sides have Raiders and the detection roll results in a tie, combat occurs under **Intercept** condition (simultaneous combat, no DRM bonuses). Neither side gains detection advantage—both fleets engage normally.
 
 ### 7.3.2 Intelligence Conditions
 
@@ -445,15 +445,35 @@ Engage enemy mobile fleets in deep space. Your task forces clash with full tacti
 
 ### 7.5.1 Space Combat Participants
 
-**Mobile Fleets Engage When They Meet:**
+**Mobile Fleets Engage Based on Diplomatic Status and Mission Phase:**
 
-Space combat occurs when mobile fleets encounter each other in the same system. Combat engagement depends on **diplomatic status**:
+Space combat follows the diplomatic escalation ladder defined in [Section 8.1 Diplomacy](08-diplomacy.md#81-diplomacy). Combat depends on whether fleets are **traveling through systems** or **executing missions at destinations**.
 
-**Diplomatic Status Determines Combat:**
-- **Enemy Status**: Combat occurs automatically (always hostile)
-- **Hostile Status**: Combat occurs if Hostile fleets have **threatening or provocative commands** in a system you control, or if already engaged
-- **Neutral Status**: Combat occurs only if Neutral fleets have **threatening commands** (Invade, Bombard, Blitz, Blockade) in a system you control
-- **Neutral + Non-Threatening**: No combat (peaceful coexistence)
+**During Travel (Moving Through Systems):**
+- **Enemy Status**: Combat occurs automatically when fleets encounter each other
+- **Hostile Status**: No combat during travel (safe passage)
+- **Neutral Status**: No combat during travel (safe passage)
+
+**At Mission Destination (Executing Fleet Commands):**
+
+Combat and escalation follow a grace period system:
+
+**Tier 1 Missions (Direct Colony Attacks):**
+- Blockade, Bombard, Invade, Blitz targeting colony
+- Neutral/Hostile → Escalate to Enemy, **immediate combat** (no grace period)
+
+**Tier 2 Missions (System Control Contestation):**
+- Patrol a System, Hold Position, Rendezvous in their controlled system
+- Turn X: Neutral → Escalate to Hostile, **no combat** (grace period warning)
+- Turn X+1: Hostile → **Combat occurs** (warning ignored)
+
+**Tier 3 Missions (Non-Threatening):**
+- Move, Seek Home, Guard own assets, Spy if undetected, etc.
+- No escalation, no combat
+
+**Key Principle**: Space combat over system control (Patrol, Hold) escalates to Hostile, NOT Enemy. Only direct colony attacks escalate to Enemy.
+
+For complete escalation timing and threat categories, see [Section 8.1.6 Escalation Ladder](08-diplomacy.md#816-escalation-ladder-summary).
 
 **Mobile Fleet Types** (Fight in Space Combat):
 - Fleets with **no commands** (default mobile posture)
@@ -585,11 +605,12 @@ Assault fortified colony defenses after winning space superiority. Your fleets e
 - **Colony-assigned fighters**: Fighters stationed at colony for defense
 
 **Screened Units (Protected, Do Not Fight):**
-- Mothballed ships (offline, defenseless)
-- Auxiliary vessels (ETACS, Troop Transports - no combat capability in space/orbital)
-- Spacelift vessels (no combat capability)
-- Colony facilities (shipyards, drydocks, spaceports - exception: starbases DO fight)
-- These units hide behind defending task force; destroyed if defenders eliminated
+- **Mothballed ships** (offline, defenseless)
+- **Auxiliary vessels** (ETAC, Troop Transports - no combat capability in space/orbital)
+- **Orbital neoria facilities** (shipyards, drydocks - orbital construction/repair facilities)
+- **Spaceports** are planet-based and NOT auto-destroyed (only bombardment/invasion can destroy)
+- **Note:** Starbases (Kastras) are NOT screened - they fight directly
+- Screened units hide behind defending task force; destroyed if defenders eliminated (except spaceports)
 
 ### 7.6.2 Orbital Combat Differences from Space Combat
 
@@ -615,11 +636,16 @@ Starbases add significant AS/DS to defender task force:
 
 **Screened Unit Vulnerability:**
 
-- If defenders eliminated, screened units exposed
-- Mothballed ships destroyed if not protected
-- Auxiliary vessels (ETACS, Troop Transports) destroyed if defenders fail
-- Spacelift vessels destroyed if defenders fail
-- Colony facilities (shipyards, drydocks, spaceports) destroyed if defenders fail
+If defenders eliminated in orbital combat, screened units are destroyed:
+- **Mothballed ships** destroyed
+- **Auxiliary vessels** (ETAC, Troop Transports) destroyed
+- **Orbital neoria facilities** (shipyards, drydocks) destroyed
+- **Spaceports survive** (planet-based, protected by planet itself)
+
+**Spaceport Destruction:**
+Spaceports can only be destroyed by:
+- **Bombardment**: Excess hits (after batteries destroyed) can destroy spaceports
+- **Invasion**: Spaceports automatically destroyed when marines land (Section 7.8.1)
 
 ### 7.6.3 Starbase Combat Bonuses
 
@@ -1084,20 +1110,37 @@ When three or more houses have fleets in the same system, complex multi-faction 
 
 ### 7.9.1 Diplomatic Status and Hostility
 
-Combat only occurs between houses with hostile diplomatic relationships:
+Combat only occurs between houses following the diplomatic escalation ladder with grace period timing. For complete rules, see [Section 8.1 Diplomacy](08-diplomacy.md#81-diplomacy).
+
+**Key Combat Triggers:**
 
 **Enemy Status:**
-- Always hostile (automatic combat)
-- Most common in active wars
+- Combat occurs during travel (fleets engage when they meet in any system)
+- Combat occurs at destination (regardless of mission type)
+- Full warfare posture
 
 **Hostile Status:**
-- Hostile if fleets have provocative commands (Invade, Bombard, Blockade) in your controlled system
-- Hostile if already engaged in combat
-- Otherwise neutral (no combat)
+- No combat during travel (safe passage even through hostile territory)
+- Combat at destination if Tier 2 mission present (Patrol, Hold, Rendezvous in their system)
+- Tier 1 mission at their colony escalates to Enemy with immediate combat
 
 **Neutral Status:**
-- Hostile only if fleets have explicitly threatening commands (Invade, Bombard, Blitz, Blockade) in your controlled system
-- Peaceful coexistence otherwise (fleets can be in same system without fighting)
+- No combat during travel (safe passage)
+- Tier 2 mission in their territory: Escalate to Hostile with **grace period** (no combat Turn X, combat Turn X+1 if continues)
+- Tier 1 mission at their colony: Escalate to Enemy with **immediate combat** (no grace period)
+
+**Mission Threat Tiers** (from Section 8.1.5):
+
+**Tier 1 - Direct Colony Attacks** (Enemy escalation, immediate combat):
+- Blockade (Command 06), Bombard (Command 07), Invade (Command 08), Blitz (Command 09)
+
+**Tier 2 - System Control Contestation** (Hostile escalation, grace period):
+- Patrol a System (Command 03), Hold Position (Command 00), Rendezvous (Command 15)
+
+**Grace Period Logic:**
+- Turn X: Neutral + Tier 2 mission → Escalate to Hostile, no combat (warning)
+- Turn X+1: Hostile + Tier 2 mission → Combat occurs (warning ignored)
+- This gives players one turn to correct mistakes (cancel orders, retreat, adjust diplomacy)
 
 ### 7.9.2 Multi-Faction Battle Resolution
 

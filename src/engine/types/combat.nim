@@ -2,6 +2,12 @@
 ##
 ## Pure data types for combat resolution.
 ## Based on EC4X specifications Section 7.0 Combat
+##
+## **KEY ARCHITECTURE PRINCIPLES:**
+## - Ships fight directly in fleets (no squadrons)
+## - Task force is conceptual (all ships from one house's fleets)
+## - Combat aggregates at house level
+## - Only persistent state is ship.state (Undamaged/Crippled/Destroyed)
 
 import std/[tables, options]
 import ./core
@@ -9,23 +15,95 @@ import ./fleet # For FleetStatus
 import ./diplomacy # For DiplomaticState
 
 type
+  # =============================================================================
+  # Ship State (Persistent - survives across rounds)
+  # =============================================================================
+
   CombatState* {.pure.} = enum
+    ## Ship/starbase combat state (persistent)
+    ## Only three states - no damage tracking between rounds
     Undamaged
     Crippled
     Destroyed
 
-  CombatPhase* {.pure.} = enum
-    ## Strategic combat phases (three sequential stages of battle)
-    Space      # Fleet vs fleet combat
-    Orbital    # Orbital bombardment/facility combat
-    Planetary  # Ground invasion/combat
+  # =============================================================================
+  # Combat Theaters (Sequential Stages)
+  # =============================================================================
 
-  ResolutionPhase* {.pure.} = enum
-    ## Tactical resolution phases within Space/Orbital combat
-    ## Per docs/specs/07-combat.md Section 7.3.1
-    Ambush          # Phase 1: Undetected Raiders
-    Intercept       # Phase 2: Fighters
-    MainEngagement  # Phase 3: Capital Ships
+  CombatTheater* {.pure.} = enum
+    ## Strategic combat theaters (three sequential stages of battle)
+    ## Per docs/specs/07-combat.md Section 7.1
+    Space      # Fleet vs fleet combat in open space
+    Orbital    # Fleet vs orbital defenses (starbases)
+    Planetary  # Ground combat (bombardment, invasion, blitz)
+
+  # =============================================================================
+  # Detection System
+  # =============================================================================
+
+  DetectionResult* {.pure.} = enum
+    ## How well attacker was detected before combat
+    ## Per docs/specs/07-combat.md Section 7.3
+    Ambush      # Undetected by 5+ → +4 DRM first round
+    Surprise    # Detected late by 1-4 → +3 DRM first round
+    Intercept   # Detected normally → +0 DRM
+
+  # =============================================================================
+  # House Combat Forces (Replaces TaskForce)
+  # =============================================================================
+
+  HouseCombatForce* = object
+    ## All fleets from one house participating in combat
+    ## "Task force" is purely conceptual - just this aggregation
+    ## Per docs/specs/07-combat.md Section 7.2.2
+    houseId*: HouseId
+    fleets*: seq[FleetId]
+    morale*: int32  # DRM from prestige (±1 or ±2)
+    eliLevel*: int32
+    clkLevel*: int32
+    isDefendingHomeworld*: bool
+
+  # =============================================================================
+  # Battle Structure
+  # =============================================================================
+
+  Battle* = object
+    ## One hostile pair resolving combat
+    ## Per docs/specs/07-combat.md Section 7.9
+    attacker*: HouseCombatForce
+    defender*: HouseCombatForce
+    theater*: CombatTheater
+    systemId*: SystemId
+    detectionResult*: DetectionResult
+    hasDefenderStarbase*: bool
+    attackerRetreatedFleets*: seq[FleetId]
+    defenderRetreatedFleets*: seq[FleetId]
+
+  # =============================================================================
+  # Combat Results
+  # =============================================================================
+
+  CombatResult* = object
+    ## Result of combat engagement
+    theater*: CombatTheater
+    rounds*: int32
+    attackerSurvived*: bool
+    defenderSurvived*: bool
+    attackerRetreatedFleets*: seq[FleetId]
+    defenderRetreatedFleets*: seq[FleetId]
+
+  CombatReport* = object
+    ## High-level combat summary for intel/events
+    systemId*: SystemId
+    attackers*: seq[HouseId]
+    defenders*: seq[HouseId]
+    attackerLosses*: int32
+    defenderLosses*: int32
+    victor*: Option[HouseId]
+
+  # =============================================================================
+  # Outcome Classification
+  # =============================================================================
 
   CombatOutcome* {.pure.} = enum
     ## Result of combat engagement (for intel reports)
@@ -40,166 +118,26 @@ type
     Established
     Lifted
 
-  CERModifier* {.pure.} = enum
-    Morale
-    Ambush
-
-  MoraleEffectTarget* {.pure.} = enum
-    ## Who receives the CER bonus from a successful morale check
-    ## Based on docs/specs/07-combat.md Section 7.3.3
-    None      # No bonus applied
-    Random    # Applies to one random ship
-    All       # Applies to all ships
-
-  MoraleTier* {.pure.} = enum
-    ## Morale tier based on house prestige
-    ## Based on docs/specs/07-combat.md Section 7.3.3
-    Collapsing  # Prestige ≤ 0
-    VeryLow     # Prestige ≤ 20
-    Low         # Prestige ≤ 60
-    Normal      # Prestige ≤ 80
-    High        # Prestige ≤ 100
-    VeryHigh    # Prestige > 100
-
-  MoraleCheckResult* = object
-    ## Result of a 1d20 morale check for a task force
-    rolled*: bool              # Whether check was attempted
-    roll*: int32               # 1d20 roll value
-    threshold*: int32          # Required roll to succeed
-    success*: bool             # Whether check succeeded
-    cerBonus*: int32           # CER bonus if successful
-    appliesTo*: MoraleEffectTarget  # Who receives the bonus
-    criticalAutoSuccess*: bool # High morale critical hit rule
-
-  CERRoll* = object
-    naturalRoll*: int32
-    modifiers*: int32
-    finalRoll*: int32
-    effectiveness*: float32
-    isCriticalHit*: bool
-
-  TargetBucket* {.pure.} = enum
-    Raider = 1
-    Capital = 2
-    Escort = 3
-    Fighter = 4
-    Starbase = 5
-
-  CombatTargetKind* {.pure.} = enum
-    Ship
-    Facility
-
-  CombatTargetId* = object
-    case kind*: CombatTargetKind
-    of Ship:
-      shipId*: ShipId
-    of Facility:
-      kastraId*: KastraId  # Defensive facility (Starbase)
-
-  CombatShip* = object
-    shipId*: ShipId # Reference ID
-    attackStrength*: int32 # Cached AS from ship for combat
-    defenseStrength*: int32 # Cached DS from ship for combat
-    state*: CombatState
-    fleetStatus*: FleetStatus
-    damageThisTurn*: int32
-    crippleRound*: int32
-    bucket*: TargetBucket
-    targetWeight*: float32
-
-  CombatFacility* = object
-    facilityId*: KastraId
-    systemId*: SystemId
-    owner*: HouseId
-    attackStrength*: int32
-    defenseStrength*: int32
-    state*: CombatState
-    damageThisTurn*: int32
-    crippleRound*: int32
-    bucket*: TargetBucket
-    targetWeight*: float32
-
-  TaskForce* = object
-    houseId*: HouseId
-    ships*: seq[CombatShip] # Combat state for ships in this TF
-    facilities*: seq[CombatFacility] # Combat state for facilities in this TF
-    roe*: int32
-    isCloaked*: bool
-    moraleModifier*: int32
-    isDefendingHomeworld*: bool
-    eliLevel*: int32
-    clkLevel*: int32
-
-  AttackResult* = object
-    attackerId*: CombatTargetId # Can be ship or facility
-    targetId*: CombatTargetId # Can be ship or facility
-    cerRoll*: CERRoll
-    damageDealt*: int32
-    targetStateBefore*: CombatState
-    targetStateAfter*: CombatState
-
-  StateChange* = object
-    targetId*: CombatTargetId
-    fromState*: CombatState
-    toState*: CombatState
-    destructionProtectionApplied*: bool
-
-  RoundResult* = object
-    phase*: ResolutionPhase
-    roundNumber*: int32
-    attacks*: seq[AttackResult]
-    stateChanges*: seq[StateChange]
-
-  RetreatEvaluation* = object
-    taskForceHouse*: HouseId
-    wantsToRetreat*: bool
-    effectiveROE*: int32
-    ourStrength*: int32
-    enemyStrength*: int32
-    strengthRatio*: float32
-    reason*: string
-
-  CombatResult* = object
-    systemId*: SystemId
-    rounds*: seq[seq[RoundResult]]
-    survivors*: seq[TaskForce]
-    retreated*: seq[HouseId]
-    eliminated*: seq[HouseId]
-    victor*: Option[HouseId]
-    totalRounds*: int32
-    wasStalemate*: bool
-
-  BattleContext* = object
-    systemId*: SystemId
-    taskForces*: seq[TaskForce]
-    seed*: int64
-    maxRounds*: int32
-    allowAmbush*: bool
-    allowStarbaseCombat*: bool
-    preDetectedHouses*: seq[HouseId]
-    diplomaticRelations*: Table[(HouseId, HouseId), DiplomaticState]
-    systemOwner*: Option[HouseId]
-    hasDefenderStarbase*: bool
-
-  CombatReport* = object
-    systemId*: SystemId
-    attackers*: seq[HouseId]
-    defenders*: seq[HouseId]
-    attackerLosses*: int32
-    defenderLosses*: int32
-    victor*: Option[HouseId]
+  # =============================================================================
+  # Planetary Combat
+  # =============================================================================
 
   PlanetaryDefense* = object
+    ## Colony defensive assets
     shields*: Option[ShieldLevel]
-    groundUnitIds*: seq[GroundUnitId] # All ground units (batteries, armies, marines, shields)
+    groundUnitIds*: seq[GroundUnitId] # All ground units
     spaceport*: bool
 
-  ShieldLevel* = object ## Planetary shield information (per reference.md Section 9.3)
+  ShieldLevel* = object
+    ## Planetary shield information
+    ## Per docs/specs/reference.md Section 9.3
     level*: int32 # 1-6 (SLD1-SLD6)
     blockChance*: float32 # Probability shield blocks damage
     blockPercentage*: float32 # % of hits blocked if successful
 
-  BombardmentResult* = object ## Result of one bombardment round
+  BombardmentResult* = object
+    ## Result of one bombardment round
+    ## Per docs/specs/07-combat.md Section 7.7
     attackerHits*: int32
     defenderHits*: int32
     shieldBlocked*: int32 # Hits blocked by shields
@@ -211,12 +149,61 @@ type
     populationDamage*: int32 # PU lost
     roundsCompleted*: int32 # 1-3 max per turn
 
-  InvasionResult* = object ## Result of planetary invasion or blitz
+  InvasionResult* = object
+    ## Result of planetary invasion or blitz
+    ## Per docs/specs/07-combat.md Section 7.8
     success*: bool
     attacker*: HouseId
     defender*: HouseId
     attackerCasualties*: seq[GroundUnitId]
     defenderCasualties*: seq[GroundUnitId]
-    infrastructureDestroyed*: int32 # IU lost (50% on invasion success)
+    infrastructureDestroyed*: int32 # IU lost
     assetsSeized*: bool # True for blitz, false for invasion
-    batteriesDestroyed*: int32 # Ground batteries destroyed (blitz Phase 1 bombardment)
+    batteriesDestroyed*: int32 # Ground batteries destroyed
+
+  # =============================================================================
+  # Morale System (Kept for Config Compatibility)
+  # =============================================================================
+
+  MoraleTier* {.pure.} = enum
+    ## Morale tier based on house prestige
+    ## Per docs/specs/07-combat.md Section 7.4.2
+    Collapsing  # Prestige ≤ 0
+    VeryLow     # Prestige ≤ 20
+    Low         # Prestige ≤ 60
+    Normal      # Prestige ≤ 80
+    High        # Prestige ≤ 100
+    VeryHigh    # Prestige > 100
+
+  MoraleEffectTarget* {.pure.} = enum
+    ## Who receives morale bonus (legacy config system)
+    None      # No bonus applied
+    Random    # Applies to one random ship
+    All       # Applies to all ships
+
+## Design Notes:
+##
+## **Removed Types (Squadron-Based Architecture):**
+## - ResolutionPhase - No longer phased resolution
+## - TargetBucket - No bucket targeting
+## - CombatShip - Work directly with Ship entities
+## - CombatFacility - Work directly with Kastra entities
+## - TaskForce - Replaced with HouseCombatForce (conceptual aggregation)
+## - AttackResult, RoundResult, StateChange - Simplified tracking
+## - BattleContext - Replaced with Battle
+##
+## **Key Simplifications:**
+## 1. Ships fight in fleets (Fleet → Ships, not Fleet → Squadron → Ships)
+## 2. Task force is conceptual (just all ships from house's fleets)
+## 3. Combat aggregates at house level (sum all AS from all house fleets)
+## 4. Each fleet checks own ROE for retreat
+## 5. Only persistent state is ship.state (Undamaged/Crippled/Destroyed)
+## 6. No damage tracking between rounds
+## 7. Two CER tables: Space/Orbital vs Ground
+##
+## **Spec Compliance:**
+## - docs/specs/07-combat.md Section 7.1 - Combat Theaters
+## - docs/specs/07-combat.md Section 7.2 - Combat Fundamentals
+## - docs/specs/07-combat.md Section 7.3 - Detection & Intelligence
+## - docs/specs/07-combat.md Section 7.4 - Combat Resolution System
+## - docs/specs/07-combat.md Section 7.9 - Multi-House Combat

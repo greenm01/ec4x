@@ -9,15 +9,19 @@ proc newFleet*(
     owner: HouseId = HouseId(0),
     location: SystemId = SystemId(0),
     status: FleetStatus = FleetStatus.Active,
+    roe: int32 = 6,
 ): Fleet =
   ## Create a new fleet with the given ship IDs
   ## Use this for operations that need a Fleet value without state mutations
+  ## Default ROE = 6 (engage if equal or better)
   Fleet(
     id: id,
     ships: shipIds,
     houseId: owner,
     location: location,
     status: status,
+    roe: roe,
+    command: none(FleetCommand),
     missionState: FleetMissionState.None,
     missionType: none(int32),
     missionTarget: none(SystemId),

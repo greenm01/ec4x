@@ -1,237 +1,217 @@
 ## Retreat and ROE Evaluation System
 ##
-## Implements Rules of Engagement evaluation,
-## retreat decisions, and morale modifiers
-## (Section 7.3.4, 7.3.5)
+## Implements Rules of Engagement (ROE) evaluation and
+## per-fleet retreat decisions.
+##
+## Per docs/specs/07-combat.md Section 7.2.3
 
-import std/[algorithm, strutils, options]
-import ../../types/[core, combat as combat_types]
+import std/[options]
+import ../../types/[core, game_state, combat, fleet, ship]
+import ../../state/engine
+import ./strength
+import ./screened
 
-export combat_types
+proc applyRetreatLossesToScreenedUnits*(state: var GameState, fleetId: FleetId) =
+  ## Apply proportional losses to screened units during retreat
+  ## Screened units take same casualty rate as combat ships
+  ## Per screened.nim design notes
 
-## ROE Evaluation (Section 7.1.1 and 7.3.4)
+  let fleetOpt = state.fleet(fleetId)
+  if fleetOpt.isNone:
+    return
 
-const roeThresholds* = [
-  (roe: 0, threshold: 0.0, description: "Avoid all hostile forces"),
-  (roe: 1, threshold: 999.0, description: "Engage only defenseless"),
-  (roe: 2, threshold: 4.0, description: "Engage with 4:1 advantage"),
-  (roe: 3, threshold: 3.0, description: "Engage with 3:1 advantage"),
-  (roe: 4, threshold: 2.0, description: "Engage with 2:1 advantage"),
-  (roe: 5, threshold: 1.5, description: "Engage with 3:2 advantage"),
-  (roe: 6, threshold: 1.0, description: "Engage equal or inferior"),
-  (roe: 7, threshold: 0.67, description: "Engage even if outgunned 3:2"),
-  (roe: 8, threshold: 0.5, description: "Engage even if outgunned 2:1"),
-  (roe: 9, threshold: 0.33, description: "Engage even if outgunned 3:1"),
-  (roe: 10, threshold: 0.0, description: "Engage regardless of size"),
-]
+  # Get combat ships (exclude screened)
+  let combatShips = getCombatShipsInFleet(state, fleetId)
+  if combatShips.len == 0:
+    return
 
-proc getMoraleROEModifier*(prestige: int): int =
-  ## Get ROE modifier based on House prestige/morale
-  ## Section 7.3.4: Morale ROE Modifier table
-  if prestige <= 0:
-    return -2 # Crisis: retreat much more readily
-  elif prestige <= 20:
-    return -1 # Low: retreat more readily
-  elif prestige <= 60:
-    return 0 # Average/Good: no modification
-  elif prestige <= 80:
-    return +1 # High: fight more aggressively
-  else:
-    return +2 # Elite (81+): fight much more aggressively
+  # Count casualties among combat ships
+  var casualties = 0
+  for shipId in combatShips:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.state == CombatState.Crippled or ship.state == CombatState.Destroyed:
+        casualties += 1
 
-proc evaluateRetreat*(
-    taskForce: TaskForce, allTaskForces: seq[TaskForce], prestige: int
-): RetreatEvaluation =
-  ## Evaluate whether Task Force wants to retreat
-  ## Section 7.3.4: Multi-Faction Retreat Evaluation
+  # Calculate casualty rate
+  let casualtyRate = float(casualties) / float(combatShips.len)
+
+  # Apply same rate to screened units
+  let screenedShips = getScreenedShipsInFleet(state, fleetId)
+  let screenedCasualties = int(float(screenedShips.len) * casualtyRate)
+
+  # Destroy proportional number of screened units
+  for i in 0 ..< min(screenedCasualties, screenedShips.len):
+    let shipId = screenedShips[i]
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isSome:
+      var ship = shipOpt.get()
+      ship.state = CombatState.Destroyed
+      state.updateShip(shipId, ship)
+
+proc getROEThreshold*(roe: int32): float =
+  ## Get retreat threshold from ROE level
+  ## Per docs/specs/07-combat.md Section 7.2.3
   ##
-  ## Returns evaluation with decision and reasoning
+  ## **ROE Levels:**
+  ## - 0: 0.0 (never engage)
+  ## - 1: 999.0 (only engage defenseless)
+  ## - 2: 4.0 (need 4:1 advantage)
+  ## - 3: 3.0 (need 3:1 advantage)
+  ## - 4: 2.0 (need 2:1 advantage)
+  ## - 5: 1.5 (need 3:2 advantage)
+  ## - 6: 1.0 (engage if equal or better)
+  ## - 7: 0.67 (tolerate 3:2 disadvantage)
+  ## - 8: 0.5 (tolerate 2:1 disadvantage)
+  ## - 9: 0.33 (tolerate 3:1 disadvantage)
+  ## - 10: 0.0 (never retreat)
 
-  result = RetreatEvaluation(
-    taskForceHouse: taskForce.houseId,
-    wantsToRetreat: false,
-    effectiveROE: taskForce.roe,
-    ourStrength: 0,
-    enemyStrength: 0,
-    strengthRatio: 0.0,
-    reason: "",
-  )
-
-  # Homeworld defense exception - NEVER retreat
-  if taskForce.isDefendingHomeworld:
-    result.reason = "Defending homeworld - never retreat"
-    return result
-
-  # Calculate our strength (sum of all squadron AS)
-  for sq in taskForce.squadrons:
-    if sq.state != CombatState.Destroyed:
-      if sq.state == CombatState.Crippled:
-        result.ourStrength += max(1, sq.attackStrength div 2)
-      else:
-        result.ourStrength += sq.attackStrength
-
-  if result.ourStrength == 0:
-    result.wantsToRetreat = true
-    result.reason = "All squadrons destroyed"
-    return result
-
-  # Calculate total hostile strength (all other Task Forces)
-  for tf in allTaskForces:
-    if tf.houseId != taskForce.houseId:
-      for sq in tf.squadrons:
-        if sq.state != CombatState.Destroyed:
-          if sq.state == CombatState.Crippled:
-            result.enemyStrength += max(1'i32, sq.attackStrength div 2)
-          else:
-            result.enemyStrength += sq.attackStrength
-
-  if result.enemyStrength == 0:
-    result.reason = "No hostile forces remaining"
-    return result
-
-  # Calculate strength ratio (our AS / enemy AS)
-  result.strengthRatio = float(result.ourStrength) / float(result.enemyStrength)
-
-  # Apply morale modifier to effective ROE
-  let moraleModifier = getMoraleROEModifier(prestige)
-  result.effectiveROE = int32(taskForce.roe + moraleModifier)
-
-  # Clamp to valid range
-  if result.effectiveROE < 0:
-    result.effectiveROE = 0
-  if result.effectiveROE > 10:
-    result.effectiveROE = 10
-
-  # Get threshold for effective ROE
-  let threshold = roeThresholds[result.effectiveROE].threshold
-
-  # Decide whether to retreat
-  if result.strengthRatio < threshold:
-    result.wantsToRetreat = true
-    result.reason =
-      "Strength ratio $# below ROE $# threshold $#" %
-      [$result.strengthRatio, $result.effectiveROE, $threshold]
+  case roe
+  of 0:
+    0.0
+  of 1:
+    999.0
+  of 2:
+    4.0
+  of 3:
+    3.0
+  of 4:
+    2.0
+  of 5:
+    1.5
+  of 6:
+    1.0
+  of 7:
+    0.67
+  of 8:
+    0.5
+  of 9:
+    0.33
+  of 10:
+    0.0
   else:
-    result.reason =
-      "Strength ratio $# meets ROE $# threshold $#" %
-      [$result.strengthRatio, $result.effectiveROE, $threshold]
+    1.0 # Default to even odds
 
-## Multi-House Retreat Priority (Section 7.3.4)
+proc checkFleetRetreats*(
+  state: var GameState, battle: var Battle, attackerAS: int32, defenderAS: int32
+) =
+  ## Check retreat for each fleet individually
+  ## Per docs/specs/07-combat.md Section 7.2.3
+  ##
+  ## **Retreat Rules:**
+  ## - Each fleet compares its own AS to total enemy AS
+  ## - Ratio compared against fleet's ROE threshold
+  ## - If ratio < threshold, fleet retreats
+  ## - Homeworld defense: NEVER retreat (override)
 
-proc getRetreatPriority*(taskForces: seq[TaskForce]): seq[HouseId] =
-  ## Determine retreat order when multiple houses retreat simultaneously
-  ## Section 7.3.4: weakest first, then by house ID
+  # Check attacker fleets
+  for fleetId in battle.attacker.fleets:
+    let fleetOpt = state.fleet(fleetId)
+    if fleetOpt.isNone:
+      continue
 
-  type TFStrength = tuple[house: HouseId, strength: int]
-  var strengths: seq[TFStrength] = @[]
+    let fleet = fleetOpt.get()
+    let fleetAS = calculateFleetAS(state, fleetId)
 
-  for tf in taskForces:
-    var totalAS = 0'i32
-    for sq in tf.squadrons:
-      if sq.state != CombatState.Destroyed:
-        if sq.state == CombatState.Crippled:
-          totalAS += max(1'i32, sq.attackStrength div 2)
-        else:
-          totalAS += sq.attackStrength
-    strengths.add((tf.houseId, int(totalAS)))
+    # Skip if fleet has no combat power
+    if fleetAS == 0:
+      continue
 
-  # Sort by strength ascending (weakest first), then by house ID
-  strengths.sort(
-    proc(a, b: TFStrength): int =
-      if a.strength != b.strength:
-        return cmp(a.strength, b.strength)
-      else:
-        return cmp(int(a.house), int(b.house))
-  )
+    let ratio = float(fleetAS) / float(defenderAS)
+    let threshold = getROEThreshold(fleet.roe)
 
-  result = @[]
-  for entry in strengths:
-    result.add(entry.house)
+    if ratio < threshold:
+      # Fleet retreats
+      battle.attackerRetreatedFleets.add(fleetId)
 
-## Combat Termination Check (Section 7.3.4)
+      # Apply proportional losses to screened units
+      applyRetreatLossesToScreenedUnits(state, fleetId)
 
-proc checkCombatTermination*(
-    taskForces: seq[TaskForce], consecutiveRoundsNoChange: int
-): tuple[shouldEnd: bool, reason: string, victor: Option[HouseId]] =
-  ## Check if combat should end
-  ## Returns (shouldEnd, reason, victor)
+      # Remove fleet from battle
+      var newFleets: seq[FleetId] = @[]
+      for fid in battle.attacker.fleets:
+        if fid != fleetId:
+          newFleets.add(fid)
+      battle.attacker.fleets = newFleets
 
-  # Count alive Task Forces
-  var aliveHouses: seq[HouseId] = @[]
-  for tf in taskForces:
-    # Check if any squadrons are alive
-    var hasAliveSquadrons = false
-    for sq in tf.squadrons:
-      if sq.state != CombatState.Destroyed:
-        hasAliveSquadrons = true
-        break
-    if hasAliveSquadrons:
-      aliveHouses.add(tf.houseId)
+  # Check defender fleets
+  for fleetId in battle.defender.fleets:
+    let fleetOpt = state.fleet(fleetId)
+    if fleetOpt.isNone:
+      continue
 
-  # Only one side remains
-  if aliveHouses.len == 1:
-    return (true, "Only one Task Force remains", some(aliveHouses[0]))
+    let fleet = fleetOpt.get()
+    let fleetAS = calculateFleetAS(state, fleetId)
 
-  # All eliminated
-  if aliveHouses.len == 0:
-    return (true, "All Task Forces eliminated", none(HouseId))
+    # Skip if fleet has no combat power
+    if fleetAS == 0:
+      continue
 
-  # Stalemate after 20 rounds without progress
-  if consecutiveRoundsNoChange >= 20:
-    return (true, "Stalemate after 20 rounds without progress", none(HouseId))
+    let ratio = float(fleetAS) / float(attackerAS)
+    let threshold = getROEThreshold(fleet.roe)
 
-  # Combat continues
-  return (false, "", none(HouseId))
+    # Homeworld defense override: NEVER retreat
+    if battle.defender.isDefendingHomeworld:
+      continue
 
-## Round Progress Tracking
+    if ratio < threshold:
+      # Fleet retreats
+      battle.defenderRetreatedFleets.add(fleetId)
 
-proc hasProgressThisRound*(roundResults: seq[RoundResult]): bool =
-  ## Check if any state changes occurred this round
-  ## Used to detect stalemates
-  for phaseResult in roundResults:
-    if phaseResult.stateChanges.len > 0:
-      return true
-  return false
+      # Apply proportional losses to screened units
+      applyRetreatLossesToScreenedUnits(state, fleetId)
 
-## Retreat Execution Helpers
+      # Remove fleet from battle
+      var newFleets: seq[FleetId] = @[]
+      for fid in battle.defender.fleets:
+        if fid != fleetId:
+          newFleets.add(fid)
+      battle.defender.fleets = newFleets
 
-proc canRetreat*(taskForce: TaskForce, roundNumber: int): bool =
-  ## Check if Task Force can retreat this round
-  ## Section 7.3.5: Can only retreat after first round
+proc noCombatantsRemain*(state: GameState, battle: Battle): bool =
+  ## Check if combat should end (one or both sides have no operational ships)
+  ## Per docs/specs/07-combat.md Section 7.2.3
 
-  if roundNumber == 1:
-    return false
+  let attackerShips = countOperationalShips(state, battle.attacker.fleets)
+  let defenderShips = countOperationalShips(state, battle.defender.fleets)
 
-  # Homeworld defense exception
-  if taskForce.isDefendingHomeworld:
-    return false
+  return attackerShips == 0 or defenderShips == 0
 
-  return true
-
-proc executeRetreat*(taskForces: var seq[TaskForce], houseId: HouseId) =
-  ## Remove Task Force from battle (retreat to fallback system)
-  ## In actual game, this would trigger movement to fallback system
-  ## For combat simulation, we just mark as retreated
-
-  for i in countdown(taskForces.len - 1, 0):
-    if taskForces[i].houseId == houseId:
-      taskForces.delete(i)
-      break
-
-## String formatting
-
-proc `$`*(eval: RetreatEvaluation): string =
-  ## Pretty print retreat evaluation
-  result = "House " & $eval.taskForceHouse & ": "
-  if eval.wantsToRetreat:
-    result &= "RETREAT"
-  else:
-    result &= "FIGHT"
-  result &=
-    " (ROE=$#, AS=$#, Enemy=$#, Ratio=$#) - $#" % [
-      $eval.effectiveROE,
-      $eval.ourStrength,
-      $eval.enemyStrength,
-      formatFloat(eval.strengthRatio, precision = 2),
-      eval.reason,
-    ]
+## Design Notes:
+##
+## **Spec Compliance:**
+## - docs/specs/07-combat.md Section 7.2.3 - Rules of Engagement
+## - docs/specs/07-combat.md Section 7.2.3 - Retreat Mechanics
+##
+## **Per-Fleet Retreat:**
+## - Each fleet checks independently
+## - Compares fleet AS to total enemy AS (not individual enemy fleets)
+## - ROE threshold determines retreat behavior
+## - Retreated fleets removed from battle immediately
+##
+## **Homeworld Defense Override:**
+## - Defender at homeworld NEVER retreats
+## - Overrides ROE settings
+## - Only applies to defender (not attacker)
+##
+## **Retreat Timing:**
+## - Checked after each round of combat
+## - Retreat evaluation uses post-round strength
+## - Multiple fleets can retreat simultaneously
+##
+## **Fleet AS Calculation:**
+## - Sum of all ship AS in fleet
+## - Includes crippled ships (at 50% AS)
+## - Excludes destroyed ships (0 AS)
+##
+## **Combat Termination:**
+## - Combat ends when one side has no operational ships
+## - Operational = Undamaged or Crippled (not Destroyed)
+## - Empty fleets (all ships destroyed) don't prevent retreat checks
+##
+## **Special Cases:**
+## - ROE 0 (never engage): Immediate retreat if any enemy present
+## - ROE 1 (only engage defenseless): Retreat unless enemy has 0 AS
+## - ROE 10 (never retreat): Fight to the death
+## - Negative enemy AS: Impossible, but would trigger retreat for ROE < 10

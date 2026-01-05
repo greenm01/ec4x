@@ -8,7 +8,7 @@ import
   ../../types/
     [core, game_state, command, event, starmap, prestige, fleet, squadron, ship]
 import ../../state/[engine, iterators]
-import ../combat/simultaneous_resolver
+import ./simultaneous_resolver
 import ./[engine as col_engine, conflicts]
 import ../../entities/[colony_ops, fleet_ops, squadron_ops]
 import ../squadron/entity as squadron_entity
