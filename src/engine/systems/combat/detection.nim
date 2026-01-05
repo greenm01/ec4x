@@ -7,7 +7,7 @@
 ## Raiders provide detection advantage but do not skip combat.
 
 import std/[random, options]
-import ../../types/[core, game_state, combat, ship, fleet]
+import ../../types/[game_state, combat, ship, fleet]
 import ../../state/engine
 
 proc hasRaiders*(state: GameState, force: HouseCombatForce): bool =

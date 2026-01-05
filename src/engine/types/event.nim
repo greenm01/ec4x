@@ -61,7 +61,7 @@ type
     EconomicManipulationExecuted # Economic warfare executed
     CyberAttackConducted # Cyber attack executed
     PsyopsCampaignLaunched # Psychological operations launched
-    IntelligenceTheftExecuted # Intelligence stolen
+    IntelTheftExecuted # Intelligence stolen
     DisinformationPlanted # Disinformation planted
     CounterIntelSweepExecuted # Counter-intelligence sweep
     SpyMissionDetected # Enemy espionage detected
@@ -144,7 +144,7 @@ type
       defenderLosses*: Option[int]
     of Espionage, SpyMissionSucceeded, SabotageConducted, TechTheftExecuted,
         AssassinationAttempted, EconomicManipulationExecuted, CyberAttackConducted,
-        PsyopsCampaignLaunched, IntelligenceTheftExecuted, DisinformationPlanted,
+        PsyopsCampaignLaunched, IntelTheftExecuted, DisinformationPlanted,
         CounterIntelSweepExecuted, SpyMissionDetected:
       ## Events for espionage operations (success/detected in common fields)
       operationType*: Option[EspionageAction] # e.g., SabotageHigh, TechTheft

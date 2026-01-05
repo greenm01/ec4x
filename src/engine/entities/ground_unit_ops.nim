@@ -4,7 +4,7 @@
 ## Ensures consistency between the main `GroundUnits` collection and the
 ## ID lists within each `Colony` object.
 import std/[options, sequtils]
-import ../state/[engine, id_gen, iterators]
+import ../state/[engine, id_gen]
 import ../types/[game_state, core, ground_unit, colony, combat]
 
 proc newGroundUnit*(

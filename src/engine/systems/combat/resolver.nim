@@ -5,14 +5,10 @@
 ##
 ## Per docs/specs/07-combat.md
 
-import std/[random, options]
-import ../../types/[core, game_state, combat]
+import std/random
+import ../../types/[game_state, combat]
 import ../../state/engine
-import ./strength
-import ./cer
-import ./drm
-import ./hits
-import ./retreat
+import ./[strength, cer, drm, hits, retreat]
 
 proc determineOutcome*(state: GameState, battle: Battle): CombatResult =
   ## Determine battle outcome based on survivors

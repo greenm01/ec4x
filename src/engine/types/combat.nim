@@ -9,10 +9,8 @@
 ## - Combat aggregates at house level
 ## - Only persistent state is ship.state (Undamaged/Crippled/Destroyed)
 
-import std/[tables, options]
+import std/options
 import ./core
-import ./fleet # For FleetStatus
-import ./diplomacy # For DiplomaticState
 
 type
   # =============================================================================

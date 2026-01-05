@@ -6,7 +6,7 @@
 ## Per docs/specs/07-combat.md Section 7.4.2
 
 import std/[options]
-import ../../types/[core, game_state, combat, ship]
+import ../../types/[game_state, combat, ship]
 import ../../state/engine
 import ./strength
 
