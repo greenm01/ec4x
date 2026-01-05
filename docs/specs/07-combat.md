@@ -829,8 +829,11 @@ Defender hits → Fleet ships (cripple/destroy)
 
 **Hit Flow:**
 1. Apply hits to Ground Batteries first (following hit application rules)
-2. Excess hits (after all batteries destroyed) damage Infrastructure
-3. Each excess hit destroys 1 IU (Infrastructure Unit)
+2. Excess hits (after all batteries destroyed) cascade through three phases:
+   - **Phase 1**: Damage spaceports (large planetary facilities, visible and targetable from orbit)
+   - **Phase 2**: Damage ground forces (dispersed armies/marines, mobile and harder to target)
+   - **Phase 3**: Remaining hits split 50/50 between infrastructure and population (collateral damage)
+3. See Section 7.7.6 for detailed excess hit distribution mechanics
 
 **Step 7: Check Retreat (Attacker Only)**
 
@@ -887,13 +890,44 @@ Ground-based defensive installations fire on orbiting ships. Batteries threaten 
 
 ### 7.7.6 Infrastructure Damage
 
-Excess bombardment hits (after all batteries destroyed) destroy colony infrastructure:
+Excess bombardment hits (after all batteries destroyed) cascade through three targeting phases before causing general infrastructure damage:
 
-**Infrastructure Damage Effects:**
-- **Production loss**: Each IU destroyed reduces colony GDP permanently
-- **Facility destruction**: Spaceports, shipyards can be destroyed if bombardment excessive
-- **Population casualties**: Souls lost to bombardment
-- **Morale impact**: Defender prestige loss, attacker diplomatic penalties (war crimes)
+**Phase 1: Spaceport Destruction**
+
+Large planetary spaceport facilities are visible and targetable from orbit:
+- Each spaceport has Defense Strength (DS) based on facility class
+- Bombardment follows standard damage model:
+  - Undamaged → Crippled (requires DS hits)
+  - Crippled → Destroyed (requires 50% DS hits)
+- Spaceports are hardened targets requiring sustained bombardment
+- Hits consumed destroying spaceports do not carry over to next phase
+
+**Phase 2: Ground Force Attrition**
+
+Remaining hits target dispersed ground forces (armies and marines stationed at colony):
+- Ground forces are mobile and dispersed, harder to target precisely from orbit
+- Bombardment follows standard damage model:
+  - Undamaged → Crippled (requires unit DS hits)
+  - Crippled → Destroyed (requires 50% unit DS hits)
+- Must cripple all undamaged units before destroying crippled units
+- Weakens garrison before invasion attempts
+
+**Phase 3: Infrastructure and Population**
+
+Remaining hits represent indiscriminate bombardment causing collateral damage:
+- Hits split **50/50** between infrastructure and population
+- **Infrastructure damage**: Each hit destroys 1 IU (Infrastructure Unit)
+  - Permanent production capacity loss (until repaired)
+  - Reduces colony GDP proportionally
+- **Population casualties**: Each hit kills 1 PTU (50,000 souls per config)
+  - Permanent population loss
+  - Defender prestige penalties
+
+**Targeting Priority Rationale:**
+
+1. **Spaceports first**: Large, fixed facilities visible from orbit, strategic military targets
+2. **Ground forces second**: Mobile units harder to target, require area bombardment
+3. **Infrastructure/population last**: Collateral damage from indiscriminate fire
 
 **Damage Accumulation:**
 

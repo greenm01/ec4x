@@ -355,6 +355,29 @@ proc resolveSystemCombat*(
     else:
       continue
 
+    # Check invasion validation failure (batteries not cleared)
+    # If rounds == 0 and attacker didn't survive, validation failed
+    # Per planetary.nim resolveInvasion: returns early if batteries operational
+    if not result.attackerSurvived and result.rounds == 0:
+      let assaultTypeName = if intent.assaultType == FleetCommandType.Invade:
+        "Invade" else: "Blitz"
+
+      events.add(event_factory.commandFailed(
+        intent.houseId,
+        intent.fleetId,
+        assaultTypeName,
+        reason = "ground batteries still operational - bombardment required",
+        systemId = some(systemId)
+      ))
+
+      logCombat(
+        "[THEATER] Invasion failed - batteries operational",
+        " system=", $systemId,
+        " house=", $intent.houseId,
+        " assault_type=", assaultTypeName
+      )
+      continue # Next house gets their chance
+
     # Check if invasion succeeded (attacker survived and defender didn't)
     if result.attackerSurvived and not result.defenderSurvived:
       colonyCaptured = true
@@ -363,7 +386,7 @@ proc resolveSystemCombat*(
         " system=", $systemId,
         " victor=", $intent.houseId
       )
-    # If invasion failed, next house gets their chance
+    # If invasion failed in ground combat, next house gets their chance
 
   # THEATER 4: Blockade (Simultaneous)
   # Multiple houses can blockade, but penalty applies only once per turn

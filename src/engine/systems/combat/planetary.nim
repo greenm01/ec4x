@@ -46,8 +46,7 @@ proc getShieldReduction*(state: GameState, colonyId: ColonyId): float32 =
   if colonyOpt.isNone:
     return 0.0
 
-  let colony = colonyOpt.get()
-  let houseOpt = state.house(colony.owner)
+  let houseOpt = state.house(colonyOpt.get().owner)
   if houseOpt.isNone:
     return 0.0
 
@@ -138,15 +137,64 @@ proc applyBombardmentExcessHits*(
   state: var GameState, colonyId: ColonyId, excessHits: int32
 ) =
   ## Distribute bombardment excess hits (after batteries destroyed)
-  ## Damages: Ground forces → Spaceports → Infrastructure
+  ## Damages: Spaceports → Ground forces → Infrastructure/Population
   ## Per docs/specs/07-combat.md Section 7.7.6
+  ##
+  ## **Targeting Priority Logic:**
+  ## 1. Spaceports: Large planetary facilities, easily visible and targetable from orbit
+  ## 2. Ground forces: Dispersed infantry/garrisons, mobile and harder to target precisely
+  ## 3. Infrastructure/Population: Collateral damage from indiscriminate bombardment
 
   if excessHits <= 0:
     return
 
   var remainingHits = excessHits
 
-  # Phase 1: Damage ground forces (armies/marines)
+  # Phase 1: Destroy spaceports (large planetary facilities, visible from orbit)
+  # Each spaceport has DS - requires multiple hits to destroy
+  if state.neorias.byColony.hasKey(colonyId) and remainingHits > 0:
+    for neoriaId in state.neorias.byColony[colonyId]:
+      if remainingHits <= 0:
+        break
+
+      let neoriaOpt = state.neoria(neoriaId)
+      if neoriaOpt.isNone:
+        continue
+
+      var neoria = neoriaOpt.get()
+
+      # Only target spaceports (planet-based facilities)
+      if neoria.neoriaClass != NeoriaClass.Spaceport:
+        continue
+
+      # Skip if already destroyed
+      if neoria.state == CombatState.Destroyed:
+        continue
+
+      # Get DS from facility config (convert NeoriaClass to FacilityClass)
+      let facilityClass = case neoria.neoriaClass
+        of NeoriaClass.Spaceport: FacilityClass.Spaceport
+        of NeoriaClass.Shipyard: FacilityClass.Shipyard
+        of NeoriaClass.Drydock: FacilityClass.Drydock
+
+      let spaceportDS = gameConfig.facilities.facilities[facilityClass].defenseStrength
+
+      if neoria.state == CombatState.Undamaged:
+        # Need DS hits to cripple
+        if remainingHits >= spaceportDS:
+          neoria.state = CombatState.Crippled
+          remainingHits -= spaceportDS
+          state.updateNeoria(neoriaId, neoria)
+      elif neoria.state == CombatState.Crippled:
+        # Need 50% DS to destroy crippled facility
+        let hitsNeeded = int32(float32(spaceportDS) * 0.5)
+        if remainingHits >= hitsNeeded:
+          neoria.state = CombatState.Destroyed
+          remainingHits -= hitsNeeded
+          state.updateNeoria(neoriaId, neoria)
+
+  # Phase 2: Damage ground forces (armies/marines)
+  # Dispersed ground targets, harder to hit from orbit
   if state.groundUnits.byColony.hasKey(colonyId) and remainingHits > 0:
     # First pass: Cripple undamaged ground forces
     for groundUnitId in state.groundUnits.byColony[colonyId]:
@@ -221,49 +269,6 @@ proc applyBombardmentExcessHits*(
           unit.state = CombatState.Destroyed
           remainingHits -= hitsNeeded
           state.updateGroundUnit(groundUnitId, unit)
-
-  # Phase 2: Destroy spaceports
-  # Each spaceport has DS - requires multiple hits to destroy
-  if state.neorias.byColony.hasKey(colonyId) and remainingHits > 0:
-    for neoriaId in state.neorias.byColony[colonyId]:
-      if remainingHits <= 0:
-        break
-
-      let neoriaOpt = state.neoria(neoriaId)
-      if neoriaOpt.isNone:
-        continue
-
-      var neoria = neoriaOpt.get()
-
-      # Only target spaceports (planet-based facilities)
-      if neoria.neoriaClass != NeoriaClass.Spaceport:
-        continue
-
-      # Skip if already destroyed
-      if neoria.state == CombatState.Destroyed:
-        continue
-
-      # Get DS from facility config (convert NeoriaClass to FacilityClass)
-      let facilityClass = case neoria.neoriaClass
-        of NeoriaClass.Spaceport: FacilityClass.Spaceport
-        of NeoriaClass.Shipyard: FacilityClass.Shipyard
-        of NeoriaClass.Drydock: FacilityClass.Drydock
-
-      let spaceportDS = gameConfig.facilities.facilities[facilityClass].defenseStrength
-
-      if neoria.state == CombatState.Undamaged:
-        # Need DS hits to cripple
-        if remainingHits >= spaceportDS:
-          neoria.state = CombatState.Crippled
-          remainingHits -= spaceportDS
-          state.updateNeoria(neoriaId, neoria)
-      elif neoria.state == CombatState.Crippled:
-        # Need 50% DS to destroy crippled facility
-        let hitsNeeded = int32(float32(spaceportDS) * 0.5)
-        if remainingHits >= hitsNeeded:
-          neoria.state = CombatState.Destroyed
-          remainingHits -= hitsNeeded
-          state.updateNeoria(neoriaId, neoria)
 
   # Phase 3: Remaining hits damage infrastructure and population
   if remainingHits > 0:
@@ -393,9 +398,84 @@ proc calculateGroundBatteryAS*(state: GameState, colonyId: ColonyId): int32 =
 
     result += int32(float32(baseAS) * multiplier)
 
+proc propagateTransportDamageToMarines*(
+  state: var GameState,
+  oldShipStates: Table[ShipId, CombatState],
+  ships: seq[ShipId]
+) =
+  ## Propagate transport damage to marines aboard
+  ##
+  ## **When This Applies:**
+  ## ONLY during **Blitz Phase 1** bombardment (Section 7.8.2)
+  ## - Ground batteries fire at ALL fleet ships including transports
+  ## - Transports are vulnerable while marines still aboard
+  ## - If transport hit, marines aboard take proportional damage
+  ##
+  ## **Does NOT Apply To:**
+  ## - Regular Bombardment: Transports screened (auxiliary vessels)
+  ## - Standard Invasion: All batteries destroyed before transports approach
+  ##
+  ## **Damage Propagation Model:**
+  ## - Transport crippled → Marines crippled (if undamaged)
+  ## - Transport destroyed → Marines destroyed
+  ##
+  ## **Rationale:**
+  ## Marines aboard transports in orbit are vulnerable to weapons fire.
+  ## Once they land, ground combat rules apply (see applyHitsToGroundUnits).
+  ##
+  ## Call this AFTER applyHits() to sync marine states with transport states.
+
+  for shipId in ships:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isNone:
+      continue
+
+    let ship = shipOpt.get()
+
+    # Only process troop transports
+    if ship.shipClass != ShipClass.TroopTransport:
+      continue
+
+    # Check if transport state changed during combat
+    let oldState = oldShipStates.getOrDefault(shipId, CombatState.Undamaged)
+    if oldState == ship.state:
+      continue # No damage, skip
+
+    # Propagate damage to marines aboard
+    if not state.groundUnits.byTransport.hasKey(shipId):
+      continue # No marines loaded
+
+    for groundUnitId in state.groundUnits.byTransport[shipId]:
+      let unitOpt = state.groundUnit(groundUnitId)
+      if unitOpt.isNone:
+        continue
+
+      var unit = unitOpt.get()
+
+      # Only marines participate in invasion combat
+      if unit.stats.unitType != GroundClass.Marine:
+        continue
+
+      # Apply damage transition based on transport state
+      if ship.state == CombatState.Destroyed:
+        # Transport destroyed → all marines destroyed
+        unit.state = CombatState.Destroyed
+      elif ship.state == CombatState.Crippled and unit.state == CombatState.Undamaged:
+        # Transport crippled → undamaged marines become crippled
+        # (Already crippled marines stay crippled, not destroyed)
+        unit.state = CombatState.Crippled
+
+      state.updateGroundUnit(groundUnitId, unit)
+
 proc calculateMarineAS*(state: GameState, fleets: seq[FleetId]): int32 =
   ## Calculate total AS from marine units in fleets
   ## Per docs/specs/07-combat.md Section 7.8
+  ##
+  ## **Note on Transport Damage:**
+  ## This proc only checks marine combat state, NOT transport state.
+  ## Marines are already damaged when their transport is hit (see
+  ## propagateTransportDamageToMarines), so no additional multiplier needed.
+  ## Destroyed transports are excluded entirely.
   result = 0
 
   for fleetId in fleets:
@@ -420,7 +500,6 @@ proc calculateMarineAS*(state: GameState, fleets: seq[FleetId]): int32 =
         if not state.groundUnits.byTransport.hasKey(shipId):
           continue # No units loaded
 
-        var transportMarineAS = 0'i32
         for groundUnitId in state.groundUnits.byTransport[shipId]:
           let unitOpt = state.groundUnit(groundUnitId)
           if unitOpt.isNone:
@@ -434,23 +513,15 @@ proc calculateMarineAS*(state: GameState, fleets: seq[FleetId]): int32 =
               # Get base marine AS from config
               let baseAS = gameConfig.groundUnits.units[GroundClass.Marine].attackStrength
 
-              # Apply unit combat state multiplier
-              let unitMultiplier =
+              # Apply marine's own combat state
+              # (Transport damage already propagated to marine state)
+              let multiplier =
                 if unit.state == CombatState.Crippled:
                   0.5
                 else:
                   1.0
 
-              transportMarineAS += int32(float32(baseAS) * unitMultiplier)
-
-        # Apply ship damage multiplier to total transport AS
-        let shipMultiplier =
-          if ship.state == CombatState.Crippled:
-            0.5 # Crippled transport reduces effectiveness
-          else:
-            1.0
-
-        result += int32(float32(transportMarineAS) * shipMultiplier)
+              result += int32(float32(baseAS) * multiplier)
 
 proc applyHitsToGroundUnits*(
   state: var GameState,
@@ -635,9 +706,11 @@ proc resolveBombardment*(
         0'i32
     let defenderDRM = 0'i32
 
-    # Roll CER (ground combat table)
-    let attackerCER = rollCER(rng, attackerDRM, CombatTheater.Planetary)
-    let defenderCER = rollCER(rng, defenderDRM, CombatTheater.Planetary)
+    # Roll CER using Space/Orbital table (NOT Ground Combat table)
+    # Per docs/specs/07-combat.md Section 7.7.3 Step 3:
+    # "Bombardment uses Space/Orbital CRT (not Ground Combat CRT). Maximum 1.0× CER."
+    let attackerCER = rollCER(rng, attackerDRM, CombatTheater.Orbital)
+    let defenderCER = rollCER(rng, defenderDRM, CombatTheater.Orbital)
 
     # Calculate hits
     var attackerHits = 0'i32
@@ -651,7 +724,6 @@ proc resolveBombardment*(
       result.defenderSurvived = false
       return
 
-    let colony = colonyOpt.get()
     let shieldReduction = getShieldReduction(state, targetColony)
     let regularHits =
       int32(float32(regularAS) * attackerCER * (1.0 - shieldReduction))
@@ -692,8 +764,23 @@ proc resolveInvasion*(
   rng: var Rand
 ): CombatResult =
   ## Standard Invasion: Marines vs Ground Forces
-  ## Requires all batteries destroyed first
-  ## Per docs/specs/07-combat.md Section 7.8
+  ## Per docs/specs/07-combat.md Section 7.8.1
+  ##
+  ## **Prerequisites (MANDATORY):**
+  ## - Orbital supremacy achieved (won orbital combat)
+  ## - ALL ground batteries destroyed (validated below)
+  ## - Troop Transports with loaded Marines present
+  ##
+  ## **Why Battery Clearance Required:**
+  ## Batteries fire on landing transports during approach.
+  ## Transports must land safely after batteries eliminated.
+  ## Use Blitz if you want to land under fire (high risk/reward).
+  ##
+  ## **Invasion Process:**
+  ## 1. Marines land → Shields/spaceports destroyed (line 713-714)
+  ## 2. Ground combat: Marines vs Ground Forces (armies/colonial marines)
+  ## 3. Defender gets +2 DRM (prepared defenses) + homeworld bonus
+  ## 4. If attackers win: 50% infrastructure destroyed (sabotage)
 
   result = CombatResult(
     theater: CombatTheater.Planetary,
@@ -704,8 +791,13 @@ proc resolveInvasion*(
     defenderRetreatedFleets: @[]
   )
 
-  # Check prerequisite: batteries must be destroyed
+  # VALIDATION: All batteries must be destroyed before invasion
+  # Per docs/specs/07-combat.md Section 7.8.1 line 924
   if not allBatteriesDestroyed(state, targetColony):
+    # Validation failed - return early with rounds = 0
+    # Orchestrator detects this (rounds == 0 + attackerSurvived = false)
+    # and fires OrderFailed event with reason "batteries still operational"
+    # See: combat/orchestrator.nim lines 358-379
     result.attackerSurvived = false
     return result
 
@@ -805,7 +897,9 @@ proc resolveBlitz*(
 
   # Phase 1: One bombardment round (batteries fire at ALL fleet ships!)
   # Per docs/specs/07-combat.md Section 7.8.2 Phase 1
-  # This is BOMBARDMENT, not ground combat - fleet bombards from orbit
+  # **KEY DIFFERENCE FROM STANDARD INVASION:**
+  # Batteries NOT cleared first - marines land under fire (high risk!)
+  # Transports are VULNERABLE during this phase (not screened)
 
   # Calculate fleet bombardment AS (all combat ships, not marines!)
   var planetBreakerAS = 0'i32
@@ -832,7 +926,6 @@ proc resolveBlitz*(
       else:
         regularAS += shipAS
 
-  let totalAttackerAS = planetBreakerAS + regularAS
   let defenderAS = calculateGroundBatteryAS(state, targetColony)
 
   # DRM: This is orbital bombardment, not ground combat
@@ -855,8 +948,7 @@ proc resolveBlitz*(
   # Apply hits to batteries (excess not needed in blitz Phase 1)
   discard applyHitsToBatteries(state, targetColony, attackerHits)
 
-  # Apply hits to ALL fleet ships (including transports!)
-  # Transports are vulnerable - can be destroyed before landing
+  # Collect all fleet ships for damage application
   var allShips: seq[ShipId] = @[]
   for fleetId in attackerFleets:
     let fleetOpt = state.fleet(fleetId)
@@ -864,8 +956,23 @@ proc resolveBlitz*(
       let fleet = fleetOpt.get()
       allShips.add(fleet.ships)
 
-  # Apply hits using standard hit application rules
+  # Capture ship states BEFORE applying hits
+  # Needed to detect which transports were damaged (for marine damage propagation)
+  var oldShipStates: Table[ShipId, CombatState]
+  for shipId in allShips:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isSome:
+      oldShipStates[shipId] = shipOpt.get().state
+
+  # Apply hits to ALL fleet ships (including transports!)
+  # Per docs/specs/07-combat.md Section 7.8.2 line 1011
+  # "Ground batteries fire at ALL fleet ships (including Troop Transports!)"
   applyHits(state, allShips, defenderHits)
+
+  # Propagate transport damage to marines aboard
+  # If transport crippled/destroyed, marines aboard also crippled/destroyed
+  # This is the ONLY place this mechanic applies (Blitz Phase 1)
+  propagateTransportDamageToMarines(state, oldShipStates, allShips)
 
   # Check if transports survived - if all destroyed, mission fails
   var hasOperationalTransports = false
@@ -984,23 +1091,31 @@ proc resolveBlitz*(
 ## - Planet-Breaker ships bypass shields entirely
 ## - Limited to 3 rounds per turn
 ## - Excess hits damage infrastructure
+## - Transports SCREENED (auxiliary vessels, not vulnerable)
 ##
-## **Invasion Mechanics:**
-## - Requires all batteries destroyed first
-## - Marines land → shields destroyed
+## **Standard Invasion Mechanics:**
+## - VALIDATION: Requires all batteries destroyed first (mandatory prerequisite)
+## - If validation fails, invasion aborted (game event fired)
+## - Marines land safely → shields/spaceports destroyed
 ## - Marines vs Ground Forces
 ## - Defender gets +2 DRM (prepared defenses), +1 if homeworld
 ## - 50% infrastructure destroyed if attackers win
+## - Transports NOT VULNERABLE (batteries already eliminated)
 ##
 ## **Blitz Mechanics:**
-## - One bombardment round (batteries fire at transports!)
-## - Marines land immediately under fire
-## - Ground combat with batteries + ground forces (defender +3 DRM)
-## - 0% infrastructure destroyed if attackers win (captured intact)
-## - High risk, high reward
+## - Phase 1: One bombardment round (batteries fire at ALL ships including transports!)
+## - **Marine Damage Propagation**: Transport hit → Marines aboard damaged
+##   - Transport crippled → Marines crippled (if undamaged)
+##   - Transport destroyed → Marines destroyed
+##   - This mechanic ONLY applies during Blitz Phase 1 (not regular bombardment/invasion)
+## - Phase 2: Marines land immediately under fire (if transports survive)
+## - Phase 3: Ground combat with batteries + ground forces (defender +3 DRM)
+## - 0% infrastructure destroyed if attackers win (captured intact!)
+## - High risk (transports vulnerable, +3 DRM), high reward (intact capture)
 ##
 ## **Implementation Notes:**
 ## - Ground unit damage properly tracked (no placeholder systems)
 ## - Uses standard hit application from hits module (no code duplication)
 ## - Bombardment excess hits properly applied after batteries destroyed
 ## - All combat follows standard damage model: Cripple all → Destroy crippled
+## - Marine damage propagation called after Blitz Phase 1 applyHits (see propagateTransportDamageToMarines)
