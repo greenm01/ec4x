@@ -730,3 +730,27 @@ proc blockadeSuccessful*(
     blockadeTurns: some(blockadeTurn),
     totalBlockaders: some(totalBlockaders),
   )
+
+proc colonyProjectsLost*(
+    houseId: HouseId,
+    systemId: SystemId,
+    constructionCount: int,
+    repairCount: int,
+): event_types.GameEvent =
+  let desc =
+    if constructionCount > 0 and repairCount > 0:
+      &"Bombardment destroyed {constructionCount} construction " &
+      &"and {repairCount} repair projects at colony {$systemId}"
+    elif constructionCount > 0:
+      &"Bombardment destroyed {constructionCount} construction " &
+      &"projects at colony {$systemId}"
+    else:
+      &"Bombardment destroyed {repairCount} repair " &
+      &"projects at colony {$systemId}"
+
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.ColonyProjectsLost,
+    houseId: some(houseId),
+    description: desc,
+    systemId: some(systemId),
+  )

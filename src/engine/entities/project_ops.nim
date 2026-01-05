@@ -6,7 +6,7 @@
 
 import std/[options, tables, sequtils]
 import ../state/[engine, id_gen]
-import ../types/[core, game_state, production, facilities, colony]
+import ../types/[core, game_state, production, facilities, colony, ship]
 
 # --- Construction Projects ---
 
@@ -44,7 +44,7 @@ proc queueConstructionProject*(
   state.addConstructionProject(projectId, project)
   state.constructionProjects.byColony.mgetOrPut(colonyId, @[]).add(projectId)
 
-  # NEW: Use typed NeoriaId directly - no more uint32 conversions!
+  # Use typed NeoriaId for facility-based construction
   if project.neoriaId.isSome:
     let neoriaId = project.neoriaId.get()
     state.constructionProjects.byNeoria.mgetOrPut(neoriaId, @[]).add(projectId)
@@ -52,24 +52,7 @@ proc queueConstructionProject*(
     var neoria = state.neoria(neoriaId).get()
     neoria.constructionQueue.add(projectId)
     state.updateNeoria(neoriaId, neoria)
-  # OLD: Keep for backward compatibility during migration
-  elif project.facilityId.isSome and project.facilityType.isSome:
-    let facilityId = project.facilityId.get()
-    let facilityType = project.facilityType.get()
-    state.constructionProjects.byFacility.mgetOrPut((facilityType, facilityId), @[]).add(
-      projectId
-    )
-    case facilityType
-    of FacilityClass.Spaceport:
-      var spaceport = state.spaceport(SpaceportId(facilityId)).get()
-      spaceport.constructionQueue.add(projectId)
-      state.updateSpaceport(SpaceportId(facilityId), spaceport)
-    of FacilityClass.Shipyard:
-      var shipyard = state.shipyard(ShipyardId(facilityId)).get()
-      shipyard.constructionQueue.add(projectId)
-      state.updateShipyard(ShipyardId(facilityId), shipyard)
-    else:
-      discard
+  # Legacy code removed (facilityId/facilityType fields don't exist in ConstructionProject)
   else:
     var colony = state.colony(colonyId).get()
     colony.constructionQueue.add(projectId)
@@ -92,7 +75,7 @@ proc completeConstructionProject*(
         id != projectId
     )
 
-  # NEW: Use typed NeoriaId directly - clean and simple!
+  # Use typed NeoriaId for facility-based construction cleanup
   if project.neoriaId.isSome:
     let neoriaId = project.neoriaId.get()
     if state.constructionProjects.byNeoria.hasKey(neoriaId):
@@ -106,34 +89,7 @@ proc completeConstructionProject*(
         id != projectId
     )
     state.updateNeoria(neoriaId, neoria)
-  # OLD: Keep for backward compatibility during migration
-  elif project.facilityId.isSome and project.facilityType.isSome:
-    let facilityId = project.facilityId.get()
-    let facilityType = project.facilityType.get()
-    let key = (facilityType, facilityId)
-    if state.constructionProjects.byFacility.contains(key):
-      state.constructionProjects.byFacility[key].keepIf(
-        proc(id: ConstructionProjectId): bool =
-          id != projectId
-      )
-
-    case facilityType
-    of FacilityClass.Spaceport:
-      var spaceport = state.spaceport(SpaceportId(facilityId)).get()
-      spaceport.activeConstructions.keepIf(
-        proc(id: ConstructionProjectId): bool =
-          id != projectId
-      )
-      state.updateSpaceport(SpaceportId(facilityId), spaceport)
-    of FacilityClass.Shipyard:
-      var shipyard = state.shipyard(ShipyardId(facilityId)).get()
-      shipyard.activeConstructions.keepIf(
-        proc(id: ConstructionProjectId): bool =
-          id != projectId
-      )
-      state.updateShipyard(ShipyardId(facilityId), shipyard)
-    else:
-      discard
+  # Legacy code removed (facilityId/facilityType fields don't exist in ConstructionProject)
   else:
     var colony = state.colony(project.colonyId).get()
     if colony.underConstruction.isSome and colony.underConstruction.get() == projectId:
@@ -185,7 +141,7 @@ proc queueRepairProject*(
   state.addRepairProject(projectId, project)
   state.repairProjects.byColony.mgetOrPut(colonyId, @[]).add(projectId)
 
-  # NEW: Use typed NeoriaId directly - no more uint32 conversions!
+  # Use typed NeoriaId for facility-based repairs
   if project.neoriaId.isSome:
     let neoriaId = project.neoriaId.get()
     state.repairProjects.byNeoria.mgetOrPut(neoriaId, @[]).add(projectId)
@@ -193,21 +149,7 @@ proc queueRepairProject*(
     var neoria = state.neoria(neoriaId).get()
     neoria.repairQueue.add(projectId)
     state.updateNeoria(neoriaId, neoria)
-  # OLD: Keep for backward compatibility during migration
-  elif project.facilityId.isSome:
-    let facilityId = project.facilityId.get()
-    let facilityType = project.facilityType
-    state.repairProjects.byFacility.mgetOrPut((facilityType, facilityId), @[]).add(
-      projectId
-    )
-
-    case facilityType
-    of FacilityClass.Drydock:
-      var drydock = state.drydock(DrydockId(facilityId)).get()
-      drydock.repairQueue.add(projectId)
-      state.updateDrydock(DrydockId(facilityId), drydock)
-    else:
-      discard
+  # Legacy code removed (facilityId/facilityType fields don't exist in RepairProject)
 
   return project
 
@@ -223,7 +165,7 @@ proc completeRepairProject*(state: var GameState, projectId: RepairProjectId) =
         id != projectId
     )
 
-  # NEW: Use typed NeoriaId directly - clean and simple!
+  # Use typed NeoriaId for facility-based repair cleanup
   if project.neoriaId.isSome:
     let neoriaId = project.neoriaId.get()
     if state.repairProjects.byNeoria.hasKey(neoriaId):
@@ -237,26 +179,6 @@ proc completeRepairProject*(state: var GameState, projectId: RepairProjectId) =
         id != projectId
     )
     state.updateNeoria(neoriaId, neoria)
-  # OLD: Keep for backward compatibility during migration
-  elif project.facilityId.isSome:
-    let facilityId = project.facilityId.get()
-    let facilityType = project.facilityType
-    let key = (facilityType, facilityId)
-    if state.repairProjects.byFacility.contains(key):
-      state.repairProjects.byFacility[key].keepIf(
-        proc(id: RepairProjectId): bool =
-          id != projectId
-      )
-
-    case facilityType
-    of FacilityClass.Drydock:
-      var drydock = state.drydock(DrydockId(facilityId)).get()
-      drydock.activeRepairs.keepIf(
-        proc(id: RepairProjectId): bool =
-          id != projectId
-      )
-      state.updateDrydock(DrydockId(facilityId), drydock)
-    else:
-      discard
+  # Legacy code removed (facilityId/facilityType fields don't exist in RepairProject)
 
   state.delRepairProject(projectId)

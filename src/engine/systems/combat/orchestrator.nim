@@ -17,6 +17,7 @@ import ../../event_factory/init as event_factory
 import ../../prestige/application as prestige_app
 import multi_house # New spec-compliant multi-house combat
 import planetary # Planetary combat (bombardment, invasion, blitz)
+import cleanup # Post-combat entity cleanup
 
 type
   TheaterResult* = object
@@ -122,8 +123,8 @@ proc resolveBlockades(
   # - Trade Disruption: Guild transports cannot reach (applied elsewhere)
 
   # Apply prestige penalty to colony owner
-  let prestigePenalty = PrestigeEvent(
-    source: PrestigeSource.BlockadePenalty,
+  let prestigePenalty = prestige.PrestigeEvent(
+    source: prestige.PrestigeSource.BlockadePenalty,
     amount: -2'i32,
     description: "Colony blockaded at system " & $systemId
   )
@@ -368,6 +369,10 @@ proc resolveSystemCombat*(
   # Multiple houses can blockade, but penalty applies only once per turn
   if colonyOpt.isSome and attackersAchievedOrbitalSupremacy:
     resolveBlockades(state, systemId, colonyOpt.get().id, arrivedOrders, events)
+
+  # CLEANUP: Remove destroyed entities and clear queues
+  # Called after all combat resolution and reporting complete
+  cleanup.cleanupPostCombat(state, systemId)
 
 ## Design Notes:
 ##

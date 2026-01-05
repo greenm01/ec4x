@@ -92,6 +92,7 @@ type
     GroundCombatRound # Ground combat round (marines vs ground forces)
     StarbaseCombat # Starbase participated in orbital combat
     BlockadeSuccessful # Blockade established at colony
+    ColonyProjectsLost # Colony construction/repair projects destroyed by bombardment
     # Fleet Operations Events (Phase 7b)
     StandingOrderSet # Standing command configured on fleet
     StandingOrderActivated # Standing command triggered and generated fleet order
@@ -316,6 +317,8 @@ type
     of BlockadeSuccessful:
       blockadeTurns*: Option[int32] # Number of turns blockaded
       totalBlockaders*: Option[int] # Total houses blockading
+    of ColonyProjectsLost:
+      discard # Uses common systemId field, description has counts
 
     # Fleet Operations Events (Phase 7b)
     of StandingOrderSet:
