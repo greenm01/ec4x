@@ -19,11 +19,11 @@ import
     facilities,
     combat,
   ]
-import ../capacity/[capital_squadrons, total_squadrons]
 import ../../state/[engine]
 import ../../../common/logger
 import ../production/projects
 import ../fleet/entity
+import ../capacity/[fighter, planet_breakers]
 
 # Re-export command types for convenience
 export command.CommandPacket, command.ValidationResult
@@ -49,10 +49,10 @@ proc validateFleetCommand*(
   result = ValidationResult(valid: true, error: "")
 
   # Check fleet exists
-  let fleetOpt = state_helpers.getFleet(state, cmd.fleetId)
+  let fleetOpt = state.fleet(cmd.fleetId)
   if fleetOpt.isNone:
     logWarn(
-      LogCategory.lcOrders,
+      "Commands",
       &"{issuingHouse} Fleet Validation FAILED: {cmd.fleetId} does not exist",
     )
     return ValidationResult(valid: false, error: "Fleet does not exist")
@@ -62,7 +62,7 @@ proc validateFleetCommand*(
   # CRITICAL: Validate fleet ownership (prevent controlling enemy fleets)
   if fleet.houseId != issuingHouse:
     logWarn(
-      LogCategory.lcOrders,
+      "Commands",
       &"SECURITY VIOLATION: {issuingHouse} attempted to control {cmd.fleetId} " &
         &"(owned by {fleet.houseId})",
     )
@@ -75,7 +75,7 @@ proc validateFleetCommand*(
   # Scouts traveling to mission (Traveling state) can change commands (cancel mission)
   if fleet.missionState == FleetMissionState.OnSpyMission:
     logWarn(
-      LogCategory.lcOrders,
+      "Commands",
       &"{issuingHouse} Command REJECTED: {cmd.fleetId} is on active spy mission " &
         &"(cannot issue new commands while mission active)",
     )
@@ -84,7 +84,7 @@ proc validateFleetCommand*(
     )
 
   logDebug(
-    LogCategory.lcOrders,
+    "Commands",
     &"{issuingHouse} Validating {cmd.commandType} command for {cmd.fleetId} " &
       &"at {fleet.location}",
   )
@@ -97,7 +97,7 @@ proc validateFleetCommand*(
   of FleetCommandType.Move:
     if cmd.targetSystem.isNone:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} Move command REJECTED: {cmd.fleetId} - no target system specified",
       )
       return
@@ -106,7 +106,7 @@ proc validateFleetCommand*(
     let targetId = cmd.targetSystem.get()
     if not state.starMap.systems.hasKey(targetId):
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} Move command REJECTED: {cmd.fleetId} → {targetId} " &
           &"(target system does not exist)",
       )
@@ -116,42 +116,37 @@ proc validateFleetCommand*(
     let pathResult = state.starMap.findPath(fleet.location, targetId, fleet)
     if not pathResult.found:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} Move command REJECTED: {cmd.fleetId} → {targetId} " &
           &"(no valid path from {fleet.location})",
       )
       return ValidationResult(valid: false, error: "No valid path to target system")
 
     logDebug(
-      LogCategory.lcOrders,
+      "Commands",
       &"{issuingHouse} Move command VALID: {cmd.fleetId} → {targetId} " &
         &"({pathResult.path.len - 1} jumps via {fleet.location})",
     )
   of FleetCommandType.Colonize:
-    # Check fleet has operational ETAC (Expansion squadron)
+    # Check fleet has operational ETAC with colonists
     logDebug(
-      LogCategory.lcOrders,
+      "Commands",
       &"{issuingHouse} Validating Colonize command for {cmd.fleetId} at " &
-        &"{fleet.location} ({fleet.squadrons.len} squadrons)",
+        &"{fleet.location} ({fleet.ships.len} ships)",
     )
     var hasETAC = false
-    for squadronId in fleet.squadrons:
-      let sq = state.squadron(squadronId).get
-      if sq.squadronType == SquadronClass.Expansion:
-        let flagship = state.ship(sq.flagshipId).get
-        logDebug(
-          LogCategory.lcOrders,
-          &"  Squadron {sq.id}: class={flagship.shipClass}, " &
-            &"crippled={flagship.state == CombatState.Crippled}, " & &"cargo={flagship.cargo}",
-        )
-        if flagship.shipClass == ShipClass.ETAC:
-          if flagship.state != CombatState.Crippled:
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        if ship.shipClass == ShipClass.ETAC:
+          if ship.state != CombatState.Crippled:
             hasETAC = true
             break
 
     if not hasETAC:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} Colonize command REJECTED: {cmd.fleetId} - " &
           &"no functional ETAC",
       )
@@ -159,7 +154,7 @@ proc validateFleetCommand*(
 
     if cmd.targetSystem.isNone:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} Colonize command REJECTED: {cmd.fleetId} - no target system specified",
       )
       return
@@ -171,52 +166,40 @@ proc validateFleetCommand*(
     if colonyOpt.isSome:
       let colony = colonyOpt.get()
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} Colonize command REJECTED: {cmd.fleetId} → {targetId} " &
           &"(already colonized by {colony.owner})",
       )
       return ValidationResult(valid: false, error: "Target system is already colonized")
 
     logDebug(
-      LogCategory.lcOrders,
+      "Commands",
       &"{issuingHouse} Colonize command VALID: {cmd.fleetId} → {targetId}",
     )
   of FleetCommandType.Bombard, FleetCommandType.Invade, FleetCommandType.Blitz:
-    # Check fleet has no Intel squadrons (Intel squadrons are intelligence-only, not combat units)
-    for squadronId in fleet.squadrons:
-      let sq = state.squadron(squadronId).get
-      if sq.squadronType == SquadronClass.Intel:
-        logWarn(
-          LogCategory.lcOrders,
-          &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
-            &"combat commands cannot include Intel squadrons (intelligence-only)",
-        )
-        return ValidationResult(
-          valid: false, error: "Combat commands cannot include Intel squadrons"
-        )
-
-    # Check fleet has combat squadrons
+    # Check fleet has combat-capable ships
     var hasMilitary = false
-    for squadronId in fleet.squadrons:
-      let sq = state.squadron(squadronId).get
-      let flagship = state.ship(sq.flagshipId).get
-      if flagship.stats.attackStrength > 0:
-        hasMilitary = true
-        break
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        if ship.stats.attackStrength > 0'i32:
+          hasMilitary = true
+          break
 
     if not hasMilitary:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
-          &"no combat-capable squadrons",
+          &"no combat-capable ships",
       )
       return ValidationResult(
-        valid: false, error: "Combat command requires combat-capable squadrons"
+        valid: false, error: "Combat command requires combat-capable ships"
       )
 
     if cmd.targetSystem.isNone:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
           &"no target system specified",
       )
@@ -224,78 +207,79 @@ proc validateFleetCommand*(
         ValidationResult(valid: false, error: "Combat command requires target system")
 
     logDebug(
-      LogCategory.lcOrders,
+      "Commands",
       &"{issuingHouse} {cmd.commandType} command VALID: {cmd.fleetId} → " &
         &"{cmd.targetSystem.get()}",
     )
   of FleetCommandType.SpyColony, FleetCommandType.SpySystem,
       FleetCommandType.HackStarbase:
-    # Spy missions require pure Intel fleets (no combat, auxiliary, or expansion squadrons)
-    # Multiple Intel squadrons can merge for mesh network ELI bonuses
-    if fleet.squadrons.len == 0:
+    # Spy missions require Scout ships only (pure scout fleets)
+    if fleet.ships.len == 0:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
-          &"requires at least one Intel squadron",
+          &"requires at least one Scout",
       )
       return ValidationResult(
-        valid: false, error: "Spy missions require at least one Intel squadron"
+        valid: false, error: "Spy missions require at least one Scout"
       )
 
-    # Check fleet is pure Intel (all squadrons must be Intel type)
-    var hasIntel = false
-    var hasNonIntel = false
+    # Check fleet is pure Scout (all ships must be Scouts)
+    var hasScout = false
+    var hasNonScout = false
 
-    for squadronId in fleet.squadrons:
-      let sq = state.squadron(squadronId).get
-      if sq.squadronType == SquadronClass.Intel:
-        hasIntel = true
-      else:
-        hasNonIntel = true
-        logWarn(
-          LogCategory.lcOrders,
-          &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
-            &"spy missions require pure Intel fleet (found {sq.squadronType} squadron)",
-        )
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        if ship.shipClass == ShipClass.Scout:
+          hasScout = true
+        else:
+          hasNonScout = true
+          logWarn(
+            "Commands",
+            &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
+              &"spy missions require pure Scout fleet (found {ship.shipClass})",
+          )
 
-    if not hasIntel:
+    if not hasScout:
       return ValidationResult(
-        valid: false, error: "Spy missions require at least one Intel squadron"
+        valid: false, error: "Spy missions require at least one Scout"
       )
 
-    if hasNonIntel:
+    if hasNonScout:
       return ValidationResult(
         valid: false,
-        error: "Spy missions require pure Intel fleet (no combat/auxiliary/expansion)",
+        error: "Spy missions require pure Scout fleet (no combat/auxiliary/expansion ships)",
       )
 
     if cmd.targetSystem.isNone:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
           &"no target system specified",
       )
       return ValidationResult(valid: false, error: "Spy mission requires target system")
 
     logDebug(
-      LogCategory.lcOrders,
+      "Commands",
       &"{issuingHouse} {cmd.commandType} command VALID: {cmd.fleetId} → " &
         &"{cmd.targetSystem.get()}",
     )
   of FleetCommandType.JoinFleet:
     if cmd.targetFleet.isNone:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} JoinFleet command REJECTED: {cmd.fleetId} - " &
           &"no target fleet specified",
       )
       return ValidationResult(valid: false, error: "Join command requires target fleet")
 
     let targetFleetId = cmd.targetFleet.get()
-    let targetFleetOpt = state_helpers.getFleet(state, targetFleetId)
+    let targetFleetOpt = state.fleet(targetFleetId)
     if targetFleetOpt.isNone:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} JoinFleet command REJECTED: {cmd.fleetId} → {targetFleetId} " &
           &"(target fleet does not exist)",
       )
@@ -305,32 +289,25 @@ proc validateFleetCommand*(
     let targetFleet = targetFleetOpt.get()
     if fleet.location != targetFleet.location:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} JoinFleet command REJECTED: {cmd.fleetId} → {targetFleetId} " &
           &"(fleets at different systems: {fleet.location} vs {targetFleet.location})",
       )
       return
         ValidationResult(valid: false, error: "Fleets must be in same system to join")
 
-    # Check scout/combat fleet mixing
-    let mergeCheck = fleet.canMergeWith(targetFleet, state.squadrons)
-    if not mergeCheck.canMerge:
-      logWarn(
-        LogCategory.lcOrders,
-        &"{issuingHouse} JoinFleet command REJECTED: {cmd.fleetId} → {targetFleetId} - " &
-          &"{mergeCheck.reason}",
-      )
-      return ValidationResult(valid: false, error: mergeCheck.reason)
+    # TODO: Add fleet merge compatibility checks if needed
+    # For now, fleets in same system can merge
 
     logDebug(
-      LogCategory.lcOrders,
+      "Commands",
       &"{issuingHouse} JoinFleet command VALID: {cmd.fleetId} → {targetFleetId} " &
         &"at {fleet.location}",
     )
   of FleetCommandType.Rendezvous:
     if cmd.targetSystem.isNone:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} Rendezvous command REJECTED: {cmd.fleetId} - " &
           &"no target system specified",
       )
@@ -341,14 +318,14 @@ proc validateFleetCommand*(
     let targetId = cmd.targetSystem.get()
     if not state.starMap.systems.hasKey(targetId):
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{issuingHouse} Rendezvous command REJECTED: {cmd.fleetId} → {targetId} " &
           &"(target system does not exist)",
       )
       return ValidationResult(valid: false, error: "Target system does not exist")
 
     logDebug(
-      LogCategory.lcOrders,
+      "Commands",
       &"{issuingHouse} Rendezvous command VALID: {cmd.fleetId} → {targetId}",
     )
   else:
@@ -367,21 +344,21 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
   # Check house exists
   if packet.houseId notin state.houses:
     logWarn(
-      LogCategory.lcOrders, &"Command packet REJECTED: {packet.houseId} does not exist"
+      "Commands", &"Command packet REJECTED: {packet.houseId} does not exist"
     )
     return ValidationResult(valid: false, error: "House does not exist")
 
   # Check turn number matches
   if packet.turn != state.turn:
     logWarn(
-      LogCategory.lcOrders,
+      "Commands",
       &"{packet.houseId} Command packet REJECTED: wrong turn " &
         &"(packet={packet.turn}, current={state.turn})",
     )
     return ValidationResult(valid: false, error: "Command packet for wrong turn")
 
   logInfo(
-    LogCategory.lcOrders,
+    "Commands",
     &"{packet.houseId} Validating command packet: {packet.fleetCommands.len} fleet commands, " &
       &"{packet.buildCommands.len} build commands",
   )
@@ -396,7 +373,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
 
   if packet.fleetCommands.len > 0:
     logInfo(
-      LogCategory.lcOrders,
+      "Commands",
       &"{packet.houseId} Fleet commands: {validFleetCommands}/{packet.fleetCommands.len} valid",
     )
 
@@ -407,7 +384,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
     let colonyOpt = state.colony(cmd.colonyId)
     if colonyOpt.isNone:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"{packet.houseId} Build command REJECTED: colony at {cmd.colonyId} " &
           &"does not exist",
       )
@@ -418,7 +395,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
     let colony = colonyOpt.get()
     if colony.owner != packet.houseId:
       logWarn(
-        LogCategory.lcOrders,
+        "Commands",
         &"SECURITY VIOLATION: {packet.houseId} attempted to build at {cmd.colonyId} " &
           &"(owned by {colony.owner})",
       )
@@ -439,7 +416,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
 
         if house_cst < required_cst:
           logWarn(
-            LogCategory.lcOrders,
+            "Commands",
             &"{packet.houseId} Build command REJECTED: {shipClass} requires CST{required_cst}, " &
               &"house has CST{house_cst}",
           )
@@ -461,7 +438,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
 
         if house_cst < required_cst:
           logWarn(
-            LogCategory.lcOrders,
+            "Commands",
             &"{packet.houseId} Build command REJECTED: {buildingType} requires CST{required_cst}, " &
               &"house has CST{house_cst}",
           )
@@ -475,7 +452,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
       if requiresShipyard(buildingType):
         if not hasOperationalShipyard(colony):
           logWarn(
-            LogCategory.lcOrders,
+            "Commands",
             &"{packet.houseId} Build command REJECTED: {buildingType} requires operational shipyard at {cmd.colonyId}",
           )
           return ValidationResult(
@@ -490,13 +467,13 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
 
     validBuildCommands += 1
     logDebug(
-      LogCategory.lcOrders,
+      "Commands",
       &"{packet.houseId} Build command VALID: {cmd.buildType} at {cmd.colonyId}",
     )
 
   if packet.buildCommands.len > 0:
     logInfo(
-      LogCategory.lcOrders,
+      "Commands",
       &"{packet.houseId} Build commands: {validBuildCommands}/{packet.buildCommands.len} valid",
     )
 
@@ -564,7 +541,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
 
   # All validations passed
   logInfo(
-    LogCategory.lcOrders,
+    "Commands",
     &"{packet.houseId} Command packet VALIDATED: All commands valid and authorized",
   )
   result = ValidationResult(valid: true, error: "")
@@ -761,7 +738,7 @@ proc validateBuildCommandWithBudget*(
       if house_cst < required_cst:
         ctx.rejectedCommands += 1
         logWarn(
-          LogCategory.lcEconomy,
+          Economy,
           &"{houseId} Build command REJECTED: {shipClass} requires CST{required_cst}, " &
             &"house has CST{house_cst}",
         )
@@ -784,7 +761,7 @@ proc validateBuildCommandWithBudget*(
       if house_cst < required_cst:
         ctx.rejectedCommands += 1
         logWarn(
-          LogCategory.lcEconomy,
+          Economy,
           &"{houseId} Build command REJECTED: {buildingType} requires CST{required_cst}, " &
             &"house has CST{house_cst}",
         )
@@ -799,7 +776,7 @@ proc validateBuildCommandWithBudget*(
       if not hasOperationalShipyard(colony):
         ctx.rejectedCommands += 1
         logWarn(
-          LogCategory.lcEconomy,
+          Economy,
           &"{houseId} Build command REJECTED: {buildingType} requires operational shipyard at {cmd.colonyId}",
         )
         return ValidationResult(
@@ -807,89 +784,37 @@ proc validateBuildCommandWithBudget*(
           error: &"Build command: {buildingType} requires operational shipyard",
         )
 
-  # Check capacity limits for fighters and squadrons (military.toml)
+  # Check capacity limits using capacity modules
   if cmd.buildType == BuildType.Ship and cmd.shipClass.isSome:
     let shipClass = cmd.shipClass.get()
 
-    # Check fighter capacity (if building fighters)
+    # Check fighter capacity (delegates to capacity/fighter.nim)
     if shipClass == ShipClass.Fighter:
-      if houseId in state.houses:
-        if canCommissionFighter(state, colony) == false:
-          ctx.rejectedCommands += 1
-          return
-            ValidationResult(valid: false, error: &"Fighter capacity limit exceeded")
-
-    # Check capital squadron limit (if building capital ships)
-    # Fighters are exempt from squadron limits (separate per-colony limits)
-    if shipClass != ShipClass.Fighter:
-      # First check capital squadron limit (subset of total limit)
-      if capital_squadrons.isCapitalShip(shipClass):
-        if not capital_squadrons.canBuildCapitalShip(state, houseId):
-          let violation = capital_squadrons.analyzeCapacity(state, houseId)
-          let underConstruction =
-            capital_squadrons.countCapitalSquadronsUnderConstruction(state, houseId)
-
-          ctx.rejectedCommands += 1
-          logWarn(
-            LogCategory.lcEconomy,
-            &"{houseId} Build command REJECTED: Capital squadron limit exceeded " &
-              &"(current={violation.current}, queued={underConstruction}, max={violation.maximum})",
-          )
-          return ValidationResult(
-            valid: false,
-            error:
-              &"Capital squadron limit exceeded ({violation.current}+{underConstruction}/{violation.maximum})",
-          )
-
-      # Then check total squadron limit (all combat ships)
-      # This prevents escort spam while allowing flexible fleet composition
-      if not total_squadrons.canBuildSquadron(state, houseId, shipClass):
-        let violation = total_squadrons.analyzeCapacity(state, houseId)
-        let underConstruction =
-          total_squadrons.countTotalSquadronsUnderConstruction(state, houseId)
-
+      if not fighter.canCommissionFighter(state, colony):
         ctx.rejectedCommands += 1
         logWarn(
-          LogCategory.lcEconomy,
-          &"{houseId} Build command REJECTED: Total squadron limit exceeded " &
-            &"(commissioned={violation.current}, queued={underConstruction}, " &
-            &"max={violation.maximum}, ship={shipClass}). " &
-            &"Increase Industrial Units to expand capacity.",
+          Economy,
+          &"{houseId} Build command REJECTED: Fighter capacity limit exceeded at colony {cmd.colonyId}",
         )
         return ValidationResult(
           valid: false,
-          error:
-            &"Total squadron limit exceeded " &
-            &"({violation.current}+{underConstruction}/{violation.maximum}). " &
-            &"Requires more Industrial Units.",
+          error: &"Fighter capacity limit exceeded (check IU and FD tech level)",
         )
 
-    # Check planet-breaker limit (1 per colony owned, assets.md:2.4.8)
+    # Check planet-breaker capacity (delegates to capacity/planet_breakers.nim)
     if shipClass == ShipClass.PlanetBreaker:
-      let currentPBs = state.houses[houseId].planetBreakerCount
-      let maxPBs = state_helpers.getPlanetBreakerLimit(state, houseId)
-
-      # Count planet-breakers under construction house-wide
-      var pbsUnderConstruction = 0
-      for colId in state.colonies.byOwner.getOrDefault(houseId, @[]):
-        let col = state.colony(colId).get
-        # Count PlanetBreaker projects in queue
-        for projId in col.constructionQueue:
-          let proj = state.constructionProject(projId).get
-          if proj.projectType == BuildType.Ship and proj.itemId == "PlanetBreaker":
-            pbsUnderConstruction += 1
-
-      if currentPBs + pbsUnderConstruction + 1 > maxPBs:
+      if not planet_breakers.canBuildPlanetBreaker(state, houseId):
         ctx.rejectedCommands += 1
+        let violation = planet_breakers.analyzeCapacity(state, houseId)
         logWarn(
-          LogCategory.lcEconomy,
+          Economy,
           &"{houseId} Build command REJECTED: Planet-breaker limit exceeded " &
-            &"(current={currentPBs}, queued={pbsUnderConstruction}, max={maxPBs} [1 per colony])",
+            &"(current={violation.current}, max={violation.maximum} [1 per colony])",
         )
         return ValidationResult(
           valid: false,
           error:
-            &"Planet-breaker limit exceeded ({currentPBs}+{pbsUnderConstruction}/{maxPBs}, limited to 1 per colony)",
+            &"Planet-breaker limit exceeded ({violation.current}/{violation.maximum}, limited to 1 per colony)",
         )
 
   # Calculate cost
@@ -904,7 +829,7 @@ proc validateBuildCommandWithBudget*(
   if cost > remaining:
     ctx.rejectedCommands += 1
     logInfo(
-      LogCategory.lcEconomy,
+      Economy,
       &"Build command rejected: need {cost} PP, have {remaining} PP remaining " &
         &"(treasury={ctx.availableTreasury}, committed={ctx.committedSpending})",
     )
@@ -916,7 +841,7 @@ proc validateBuildCommandWithBudget*(
   # Valid - commit spending
   ctx.committedSpending += cost
   logDebug(
-    LogCategory.lcEconomy,
+    Economy,
     &"Build command validated: {cost} PP committed, {ctx.getRemainingBudget()} PP remaining",
   )
 

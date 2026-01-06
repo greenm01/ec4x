@@ -16,14 +16,28 @@
 import std/options
 import math
 import ../../types/[core, production, ship, colony, facilities]
-import ../../config/[economy_config, config_accessors]
 import ../../entities/project_ops
+import ../../globals
 import ../../../common/logger
 
 export production.ConstructionProject, production.CompletedProject, production.BuildType
-export config_accessors.getShipConstructionCost, config_accessors.getShipBaseBuildTime
-export config_accessors.getBuildingCost, config_accessors.getBuildingTime
-export config_accessors.requiresSpaceport
+
+# Config accessor functions
+proc getShipConstructionCost*(shipClass: ShipClass): int32 =
+  gameConfig.ships.ships[shipClass].productionCost
+
+proc getShipBaseBuildTime*(shipClass: ShipClass): int32 =
+  gameConfig.ships.ships[shipClass].buildTime
+
+proc getBuildingCost*(buildingType: FacilityClass): int32 =
+  gameConfig.facilities.facilities[buildingType].buildCost
+
+proc getBuildingTime*(buildingType: FacilityClass): int32 =
+  gameConfig.facilities.facilities[buildingType].baseBuildTime
+
+proc requiresSpaceport*(buildingType: FacilityClass): bool =
+  # Check if building requires spaceport (typically none do)
+  false
 
 ## Ship Construction Times (reference.md:9.1 and 9.1.1)
 ## (Cost and base time accessors provided by config_accessors.nim)
@@ -55,7 +69,7 @@ proc getIndustrialUnitCost*(colony: Colony): int32 =
   # Tiers are ordered 1-5, check in order until threshold exceeded
   var multiplier = 1.0'f32  # Default fallback
 
-  let cfg = globalEconomyConfig.industrialInvestment
+  let cfg = gameConfig.economy.industrialInvestment
   for tierNum in 1'i32 .. 5'i32:
     if cfg.costScaling.hasKey(tierNum):
       let tier = cfg.costScaling[tierNum]
