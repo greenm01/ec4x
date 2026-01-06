@@ -2,26 +2,21 @@
 ##
 ## Provides high-level colony operations that coordinate between:
 ## - @entities/colony_ops (low-level state mutations)
-## - Prestige awards
+## - Prestige system
 ##
-## Per operations.md:6.2.13 - Colony establishment rules
+## Per operations.md:6.3.12 - Colony establishment rules
 
-import std/[options, tables]
-import ../../types/[core, game_state, starmap, prestige]
+import std/[options, strformat]
+import ../../types/[core, game_state, starmap, prestige, colony]
 import ../../entities/colony_ops
 import ../../state/engine
 import ../../globals
-import ../../prestige/engine as prestige_engine
-
-type ColonizationResult* = object ## Result of a colonization attempt
-  success*: bool
-  reason*: string
-  colonyId*: Option[ColonyId]
-  prestigeEvent*: Option[PrestigeEvent]
+import ../../prestige/application as prestige_app
+import ../../../common/logger
 
 proc canColonize*(state: GameState, systemId: SystemId): bool =
   ## Check if a system can be colonized (no existing colony)
-  ## Per operations.md:6.2.13
+  ## Per operations.md:6.3.12
   state.colonyBySystem(systemId).isNone
 
 proc establishColony*(
@@ -30,52 +25,50 @@ proc establishColony*(
     systemId: SystemId,
     planetClass: PlanetClass,
     resources: ResourceRating,
-    ptuCount: int32 = 3,
-): ColonizationResult =
-  ## High-level colony establishment with prestige award
+    ptuCount: int32,
+): Option[ColonyId] =
+  ## Establish a new colony at system
   ##
-  ## Coordinates:
-  ## 1. Validation (can colonize?)
-  ## 2. Entity creation via @entities/colony_ops
-  ## 3. Prestige calculation
+  ## Returns:
+  ## - Some(ColonyId) if successful
+  ## - None if validation fails (logs error)
   ##
-  ## Returns result with success/failure and prestige event
+  ## Validation:
+  ## - System must not already have a colony
+  ## - Must have at least 1 PTU
+  ##
+  ## Side effects:
+  ## - Creates colony entity via @entities/colony_ops
+  ## - Awards prestige via prestige system
 
   # Validate: System must be uncolonized
   if not canColonize(state, systemId):
-    return ColonizationResult(
-      success: false,
-      reason: "System already colonized",
-      colonyId: none(ColonyId),
-      prestigeEvent: none(PrestigeEvent),
-    )
+    logError("Colonization",
+      &"Cannot colonize {systemId}: system already has colony")
+    return none(ColonyId)
 
   # Validate: Must have PTU
   if ptuCount < 1:
-    return ColonizationResult(
-      success: false,
-      reason: "Insufficient PTU (need at least 1)",
-      colonyId: none(ColonyId),
-      prestigeEvent: none(PrestigeEvent),
-    )
+    logError("Colonization",
+      &"Cannot colonize {systemId}: insufficient PTU (need ≥1, got {ptuCount})")
+    return none(ColonyId)
 
   # Create colony via entities layer (low-level state mutation)
   let colonyId = colony_ops.establishColony(
     state, systemId, houseId, planetClass, resources, ptuCount
   )
 
-  # Award prestige with dynamic scaling
+  # Award prestige
   let basePrestige = gameConfig.prestige.economic.establishColony
-  let prestigeAmount = prestige_engine.applyPrestigeMultiplier(basePrestige)
   let prestigeEvent = PrestigeEvent(
     source: PrestigeSource.ColonyEstablished,
-    amount: prestigeAmount,
-    description: "Established colony at system " & $systemId,
+    amount: basePrestige,
+    description: &"Established colony at system {systemId}",
   )
+  prestige_app.applyPrestigeEvent(state, houseId, prestigeEvent)
 
-  return ColonizationResult(
-    success: true,
-    reason: "Colony established successfully",
-    colonyId: some(colonyId),
-    prestigeEvent: some(prestigeEvent),
-  )
+  logInfo("Colonization",
+    &"House {houseId} established colony at {systemId} " &
+    &"({planetClass}, {resources}, {ptuCount} PU) [+{basePrestige} prestige]")
+
+  return some(colonyId)

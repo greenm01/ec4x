@@ -71,33 +71,32 @@ type
     populationGrowth*: float32
     prestigeBonus*: int32
 
-  ColonizationAttempt* = object ## Attempt to colonize a planet
-    houseId*: HouseId
-    systemId*: SystemId
-    fleetId*: FleetId
-    ptuUsed*: int
-
-  ColonizationResult* = object ## Result of colonization attempt
-    success*: bool
-    reason*: string
-    newColony*: Option[Colony] # Now uses unified Colony from gamestate
-    prestigeEvent*: Option[PrestigeEvent]
-
-  ColonizationIntent* = object ## Intent to colonize a system
+  ColonizationIntent* = object
+    ## Intent to colonize a system (collected during conflict phase)
     houseId*: HouseId
     fleetId*: FleetId
     targetSystem*: SystemId
-    fleetStrength*: int32 # For priority determination
-    hasStandingOrders*: bool # Manual orders take priority
+    fleetStrength*: int32 # AS value for conflict resolution
 
   ColonizationConflict* = object
     ## Multiple houses attempting to colonize the same system
     targetSystem*: SystemId
     intents*: seq[ColonizationIntent]
 
-  ConflictResolution* = object ## Result of resolving a colonization conflict
-    winner*: Option[ColonizationIntent]
-    losers*: seq[ColonizationIntent]
-    colonyId*: Option[ColonyId]
+  ColonizationOutcome* {.pure.} = enum
+    ## Result of colonization attempt
+    Success # Colony established successfully
+    ConflictLost # Lost colonization race to another house
+    SystemOccupied # System already has a colony
+    InsufficientResources # No ETAC with colonists in fleet
+
+  ColonizationResult* = object
+    ## Result of colonization resolution for a single fleet
+    houseId*: HouseId
+    fleetId*: FleetId
+    targetSystem*: SystemId
+    outcome*: ColonizationOutcome
+    colonyId*: Option[ColonyId] # Set if outcome == Success
+    prestigeAwarded*: int32
 
 

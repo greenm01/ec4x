@@ -399,6 +399,56 @@ iterator populationTransfersForHouse*(
       if state.populationTransfers.entities.index.contains(transferId):
         yield (transferId, state.populationTransfers.entities.entity(transferId).get())
 
+# ============================================================================
+# Command-Based Iterators (Added 2026-01-05)
+# ============================================================================
+
+iterator fleetsWithColonizeCommand*(
+    state: GameState
+): tuple[id: FleetId, fleet: Fleet, command: FleetCommand] =
+  ## Iterate fleets with Colonize commands that have arrived at target
+  ## Respects arrival tracking - only yields fleets ready to colonize
+  ## O(c) where c = fleets with colonize commands
+  ##
+  ## Example:
+  ##   for (fleetId, fleet, command) in state.fleetsWithColonizeCommand():
+  ##     if hasColonists(state, fleet):
+  ##       # Process colonization attempt
+  for fleetId, command in state.fleetCommands:
+    if command.commandType == fleet_types.FleetCommandType.Colonize:
+      if fleetId in state.arrivedFleets:
+        if state.fleets.entities.index.contains(fleetId):
+          yield (fleetId, state.fleets.entities.entity(fleetId).get(), command)
+
+iterator etacsInFleet*(state: GameState, fleet: Fleet): Ship =
+  ## Iterate ETAC ships in a fleet
+  ## O(s) where s = ships in fleet
+  ##
+  ## Example:
+  ##   for etac in state.etacsInFleet(fleet):
+  ##     if etac.cargo.isSome:
+  ##       # Check cargo
+  for shipId in fleet.ships:
+    if state.ships.entities.index.contains(shipId):
+      let ship = state.ships.entities.entity(shipId).get()
+      if ship.shipClass == ShipClass.ETAC:
+        yield ship
+
+iterator etacsInFleetWithId*(
+    state: GameState, fleet: Fleet
+): tuple[id: ShipId, ship: Ship] =
+  ## Iterate ETAC ships with IDs (for mutations)
+  ## O(s) where s = ships in fleet
+  ##
+  ## Example:
+  ##   for (shipId, etac) in state.etacsInFleetWithId(fleet):
+  ##     # Mutate ETAC cargo
+  for shipId in fleet.ships:
+    if state.ships.entities.index.contains(shipId):
+      let ship = state.ships.entities.entity(shipId).get()
+      if ship.shipClass == ShipClass.ETAC:
+        yield (shipId, ship)
+
 ## Design Notes:
 ##
 ## **Data-Oriented Benefits:**
