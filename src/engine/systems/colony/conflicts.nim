@@ -6,27 +6,9 @@
 ## Called by @systems/conflict/simultaneous.nim during conflict phase
 
 import std/[tables, options, random]
-import ../../types/[core, game_state, starmap]
+import ../../types/[core, game_state, starmap, colony]
 import ../../state/engine
 import ./engine as colony_engine
-
-type
-  ColonizationIntent* = object ## Intent to colonize a system
-    houseId*: HouseId
-    fleetId*: FleetId
-    targetSystem*: SystemId
-    fleetStrength*: int32 # For priority determination
-    hasStandingOrders*: bool # Manual orders take priority
-
-  ColonizationConflict* = object
-    ## Multiple houses attempting to colonize the same system
-    targetSystem*: SystemId
-    intents*: seq[ColonizationIntent]
-
-  ConflictResolution* = object ## Result of resolving a colonization conflict
-    winner*: Option[ColonizationIntent]
-    losers*: seq[ColonizationIntent]
-    colonyId*: Option[ColonyId]
 
 proc determineWinner*(
     conflict: ColonizationConflict, rng: var Rand

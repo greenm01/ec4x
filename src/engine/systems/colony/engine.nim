@@ -69,7 +69,7 @@ proc establishColony*(
   let prestigeAmount = prestige_engine.applyPrestigeMultiplier(basePrestige)
   let prestigeEvent = PrestigeEvent(
     source: PrestigeSource.ColonyEstablished,
-    amount: prestigeAmount.int32,
+    amount: prestigeAmount,
     description: "Established colony at system " & $systemId,
   )
 

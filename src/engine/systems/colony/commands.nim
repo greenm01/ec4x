@@ -27,8 +27,7 @@ proc resolveColonyManagementCommands*(state: var GameState, packet: CommandPacke
       continue
 
     # Apply colony settings from command
-    colony.autoRepairEnabled = command.autoRepair
-    colony.autoReloadETACs = command.autoReloadETACs
+    colony.autoRepair = command.autoRepair
 
     if command.taxRate.isSome:
       colony.taxRate = command.taxRate.get()
@@ -36,9 +35,6 @@ proc resolveColonyManagementCommands*(state: var GameState, packet: CommandPacke
 
     let repairStatus = if command.autoRepair: "enabled" else: "disabled"
     info &"Colony-{$command.colonyId} auto-repair {repairStatus}"
-
-    let etacStatus = if command.autoReloadETACs: "enabled" else: "disabled"
-    info &"Colony-{$command.colonyId} auto-reload ETACs {etacStatus}"
 
     # Write back using public API
     state.updateColony(command.colonyId, colony)

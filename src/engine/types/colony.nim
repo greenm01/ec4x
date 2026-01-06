@@ -19,9 +19,6 @@ type
     underConstruction*: Option[ConstructionProjectId]
     constructionQueue*: seq[ConstructionProjectId]
     repairQueue*: seq[RepairProjectId]
-    autoRepairEnabled*: bool
-    autoLoadingEnabled*: bool
-    autoReloadETACs*: bool
     activeTerraforming*: Option[TerraformProject]
     fighterIds*: seq[ShipId]  # Colony-assigned fighters (not in fleets)
     capacityViolation*: CapacityViolation
@@ -32,6 +29,11 @@ type
     blockaded*: bool
     blockadedBy*: seq[HouseId]
     blockadeTurns*: int32
+    # Automatic actions
+    autoRepair*: bool
+    autoLoadMarines*: bool
+    autoLoadFighters*: bool
+    autoJoinFleets*: bool
 
   Colonies* = object
     entities*: EntityManager[ColonyId, Colony]
@@ -80,3 +82,22 @@ type
     reason*: string
     newColony*: Option[Colony] # Now uses unified Colony from gamestate
     prestigeEvent*: Option[PrestigeEvent]
+
+  ColonizationIntent* = object ## Intent to colonize a system
+    houseId*: HouseId
+    fleetId*: FleetId
+    targetSystem*: SystemId
+    fleetStrength*: int32 # For priority determination
+    hasStandingOrders*: bool # Manual orders take priority
+
+  ColonizationConflict* = object
+    ## Multiple houses attempting to colonize the same system
+    targetSystem*: SystemId
+    intents*: seq[ColonizationIntent]
+
+  ConflictResolution* = object ## Result of resolving a colonization conflict
+    winner*: Option[ColonizationIntent]
+    losers*: seq[ColonizationIntent]
+    colonyId*: Option[ColonyId]
+
+

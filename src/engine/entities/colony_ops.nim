@@ -40,9 +40,10 @@ proc newColony*(
     underConstruction: none(ConstructionProjectId),
     constructionQueue: @[],
     repairQueue: @[],
-    autoRepairEnabled: false, # Default OFF
-    autoLoadingEnabled: true, # Default ON
-    autoReloadETACs: true, # Default ON
+    autoRepair: false, # Default OFF
+    autoLoadMarines: true, # Default ON
+    autoLoadFighters: true, # Default ON
+    autoJoinFleets: true, # Default ON
     activeTerraforming: none(TerraformProject),
     fighterIds: @[],
     capacityViolation: CapacityViolation(
