@@ -31,32 +31,32 @@ proc isCarrier*(shipClass: ShipClass): bool =
   ## Carriers: CV (Carrier), CX (Super Carrier)
   shipClass == ShipClass.Carrier or shipClass == ShipClass.SuperCarrier
 
-proc getCarrierMaxCapacity*(shipClass: ShipClass, acoLevel: int): int =
+proc getCarrierMaxCapacity*(shipClass: ShipClass, acoLevel: int32): int32 =
   ## Get max hangar capacity for carrier based on ACO tech level
   ## Returns 0 for non-carrier ships
   ##
   ## Reads capacity from gameConfig.tech.aco.levels
-  let levelKey = int32(acoLevel)
-  let defaultKey = int32(1)
+  let levelKey = acoLevel
+  let defaultKey = 1'i32
 
   case shipClass
   of ShipClass.Carrier:
     if gameConfig.tech.aco.levels.hasKey(levelKey):
-      return gameConfig.tech.aco.levels[levelKey].cvCapacity.int
+      return gameConfig.tech.aco.levels[levelKey].cvCapacity
     else:
-      return gameConfig.tech.aco.levels[defaultKey].cvCapacity.int # Default to ACO I
+      return gameConfig.tech.aco.levels[defaultKey].cvCapacity # Default to ACO I
   of ShipClass.SuperCarrier:
     if gameConfig.tech.aco.levels.hasKey(levelKey):
-      return gameConfig.tech.aco.levels[levelKey].cxCapacity.int
+      return gameConfig.tech.aco.levels[levelKey].cxCapacity
     else:
-      return gameConfig.tech.aco.levels[defaultKey].cxCapacity.int # Default to ACO I
+      return gameConfig.tech.aco.levels[defaultKey].cxCapacity # Default to ACO I
   else:
-    return 0 # Non-carriers have no hangar capacity
+    return 0'i32 # Non-carriers have no hangar capacity
 
-proc getCurrentHangarLoad*(ship: Ship): int =
+proc getCurrentHangarLoad*(ship: Ship): int32 =
   ## Get current number of fighters embarked on carrier
   ## Pure function - just counts embarkedFighters
-  return ship.embarkedFighters.len
+  return int32(ship.embarkedFighters.len)
 
 proc analyzeCarrierCapacity*(
     state: GameState, shipId: ShipId
@@ -133,7 +133,7 @@ proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
             if violation.isSome:
               result.add(violation.get())
 
-proc getAvailableHangarSpace*(state: GameState, shipId: ShipId): int =
+proc getAvailableHangarSpace*(state: GameState, shipId: ShipId): int32 =
   ## Get remaining hangar capacity for carrier
   ## Returns: maximum - current
   ## Returns 0 if carrier doesn't exist or is not a carrier
@@ -142,27 +142,27 @@ proc getAvailableHangarSpace*(state: GameState, shipId: ShipId): int =
 
   let shipOpt = state.ship(shipId)
   if shipOpt.isNone:
-    return 0
+    return 0'i32
 
   let ship = shipOpt.get()
 
   # Only carriers have hangar space
   if not isCarrier(ship.shipClass):
-    return 0
+    return 0'i32
 
   # Get house's ACO tech level
   let houseOpt = state.house(ship.houseId)
   if houseOpt.isNone:
-    return 0
+    return 0'i32
 
   let acoLevel = houseOpt.get().techTree.levels.aco
   let maximum = getCarrierMaxCapacity(ship.shipClass, acoLevel)
   let current = getCurrentHangarLoad(ship)
 
-  return max(0, maximum - current)
+  return max(0'i32, maximum - current)
 
 proc canLoadFighters*(
-    state: GameState, shipId: ShipId, fightersToLoad: int
+    state: GameState, shipId: ShipId, fightersToLoad: int32
 ): bool =
   ## Check if carrier has hangar space available to load fighters
   ## Returns true if carrier can accommodate fightersToLoad additional fighters

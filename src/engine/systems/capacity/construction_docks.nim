@@ -20,8 +20,8 @@
 ##
 ## Data-oriented design: Calculate violations (pure), report status (no enforcement needed - hard limit)
 
-import std/[tables, strutils, algorithm, options, math]
-import ../../types/[capacity, core, game_state, ship, production, facilities, colony]
+import std/[strutils, algorithm, options, math]
+import ../../types/[capacity, core, game_state, ship, production, facilities, colony, combat]
 import ../../state/[engine, iterators]
 import ../../../common/logger
 
@@ -29,53 +29,26 @@ export capacity.CapacityViolation, capacity.ViolationSeverity
 
 type FacilityCapacity* = object ## Capacity status for a single facility
   facilityId*: string
-  facilityType*: FacilityClass
-  maxDocks*: int
-  usedDocks*: int
+  facilityType*: NeoriaClass
+  maxDocks*: int32
+  usedDocks*: int32
   isCrippled*: bool
-  constructionProjects*: int # Active construction count
-  repairProjects*: int # Active repair count
+  constructionProjects*: int32 # Active construction count
+  repairProjects*: int32 # Active repair count
 
-proc getFacilityCapacity*(spaceport: Spaceport): FacilityCapacity =
-  ## Get capacity status for a spaceport (uses pre-calculated effectiveDocks)
-  let used = spaceport.activeConstructions.len
-
-  result = FacilityCapacity(
-    facilityId: $uint32(spaceport.id),
-    facilityType: FacilityClass.Spaceport,
-    maxDocks: spaceport.effectiveDocks,
-    usedDocks: used,
-    isCrippled: false, # Spaceports don't get crippled
-    constructionProjects: used,
-    repairProjects: 0, # Spaceports don't repair
-  )
-
-proc getFacilityCapacity*(shipyard: Shipyard): FacilityCapacity =
-  ## Get capacity status for a shipyard (uses pre-calculated effectiveDocks)
-  let used = shipyard.activeConstructions.len
+proc getFacilityCapacity*(neoria: Neoria): FacilityCapacity =
+  ## Get capacity status for a neoria (uses pre-calculated effectiveDocks)
+  let used = int32(neoria.activeConstructions.len + neoria.activeRepairs.len)
+  let isCrippled = neoria.state == CombatState.Crippled
 
   result = FacilityCapacity(
-    facilityId: $uint32(shipyard.id),
-    facilityType: FacilityClass.Shipyard,
-    maxDocks: shipyard.effectiveDocks,
+    facilityId: $uint32(neoria.id),
+    facilityType: neoria.neoriaClass,
+    maxDocks: neoria.effectiveDocks,
     usedDocks: used,
-    isCrippled: shipyard.isCrippled,
-    constructionProjects: used,
-    repairProjects: 0, # Shipyards don't repair (drydocks handle repairs)
-  )
-
-proc getFacilityCapacity*(drydock: Drydock): FacilityCapacity =
-  ## Get capacity status for a drydock (uses pre-calculated effectiveDocks)
-  let used = drydock.activeRepairs.len
-
-  result = FacilityCapacity(
-    facilityId: $uint32(drydock.id),
-    facilityType: FacilityClass.Drydock,
-    maxDocks: drydock.effectiveDocks,
-    usedDocks: used,
-    isCrippled: drydock.isCrippled,
-    constructionProjects: 0, # Drydocks cannot construct
-    repairProjects: drydock.activeRepairs.len,
+    isCrippled: isCrippled,
+    constructionProjects: int32(neoria.activeConstructions.len),
+    repairProjects: int32(neoria.activeRepairs.len),
   )
 
 proc analyzeColonyCapacity*(
@@ -85,29 +58,17 @@ proc analyzeColonyCapacity*(
   ## Returns capacity status for each facility
   result = @[]
 
-  let colonyOpt = gs_helpers.getColony(state, colonyId)
+  let colonyOpt = state.colony(colonyId)
   if colonyOpt.isNone:
     return
 
   let colony = colonyOpt.get()
 
-  # Analyze spaceports
-  for spaceportId in colony.spaceportIds:
-    let spaceportOpt = gs_helpers.getSpaceport(state, spaceportId)
-    if spaceportOpt.isSome:
-      result.add(getFacilityCapacity(spaceportOpt.get()))
-
-  # Analyze shipyards
-  for shipyardId in colony.shipyardIds:
-    let shipyardOpt = gs_helpers.getShipyard(state, shipyardId)
-    if shipyardOpt.isSome:
-      result.add(getFacilityCapacity(shipyardOpt.get()))
-
-  # Analyze drydocks
-  for drydockId in colony.drydockIds:
-    let drydockOpt = gs_helpers.getDrydock(state, drydockId)
-    if drydockOpt.isSome:
-      result.add(getFacilityCapacity(drydockOpt.get()))
+  # Analyze all neorias at colony
+  for neoriaId in colony.neoriaIds:
+    let neoriaOpt = state.neoria(neoriaId)
+    if neoriaOpt.isSome:
+      result.add(getFacilityCapacity(neoriaOpt.get()))
 
 proc checkColonyViolation*(
     state: GameState, colonyId: ColonyId
@@ -116,15 +77,15 @@ proc checkColonyViolation*(
   ## This should NEVER happen (hard limit at build time) but we track it
 
   let facilities = analyzeColonyCapacity(state, colonyId)
-  var totalCurrent = 0
-  var totalMaximum = 0
+  var totalCurrent = 0'i32
+  var totalMaximum = 0'i32
   var hasViolation = false
 
   for facility in facilities:
     totalCurrent += facility.usedDocks
-    # Crippled shipyards contribute 0 to max capacity
+    # Crippled facilities contribute 0 to max capacity
     if facility.isCrippled:
-      totalMaximum += 0
+      totalMaximum += 0'i32
     else:
       totalMaximum += facility.maxDocks
 
@@ -138,9 +99,9 @@ proc checkColonyViolation*(
         entity: capacity.EntityIdUnion(
           kind: capacity.CapacityType.ConstructionDock, colonyId: colonyId
         ),
-        current: int32(totalCurrent),
-        maximum: int32(totalMaximum),
-        excess: int32(max(0, totalCurrent - totalMaximum)),
+        current: totalCurrent,
+        maximum: totalMaximum,
+        excess: max(0'i32, totalCurrent - totalMaximum),
         severity: capacity.ViolationSeverity.Critical,
         graceTurnsRemaining: 0'i32,
         violationTurn: int32(state.turn),
@@ -162,7 +123,7 @@ proc checkAllViolations*(state: GameState): seq[capacity.CapacityViolation] =
 
 proc getAvailableFacilities*(
     state: GameState, colonyId: ColonyId, projectType: BuildType
-): seq[tuple[facilityId: string, facilityType: FacilityClass, availableDocks: int]] =
+): seq[tuple[facilityId: string, facilityType: NeoriaClass, availableDocks: int32]] =
   ## Get list of facilities with available dock capacity at colony
   ## Returns facilities sorted by priority: shipyards first, then by available
   ## capacity (descending)
@@ -172,7 +133,7 @@ proc getAvailableFacilities*(
   ##   occupy docks)
   result = @[]
 
-  let colonyOpt = gs_helpers.getColony(state, colonyId)
+  let colonyOpt = state.colony(colonyId)
   if colonyOpt.isNone:
     return
 
@@ -180,28 +141,28 @@ proc getAvailableFacilities*(
 
   # Collect available facilities
   for facility in facilities:
-    # Skip crippled shipyards/drydocks (0 capacity)
+    # Skip crippled facilities (0 capacity)
     if facility.isCrippled:
       continue
 
     # Skip drydocks - they're repair-only, not for construction
-    if facility.facilityType == FacilityClass.Drydock:
+    if facility.facilityType == NeoriaClass.Drydock:
       continue
 
     let available = facility.maxDocks - facility.usedDocks
-    if available > 0:
+    if available > 0'i32:
       result.add((facility.facilityId, facility.facilityType, available))
 
   # Sort: Shipyards first, then by available docks (descending)
   result.sort do(
-    a, b: tuple[facilityId: string, facilityType: FacilityClass, availableDocks: int]
+    a, b: tuple[facilityId: string, facilityType: NeoriaClass, availableDocks: int32]
   ) -> int:
     # Shipyards have priority
-    if a.facilityType == FacilityClass.Shipyard and
-        b.facilityType == FacilityClass.Spaceport:
+    if a.facilityType == NeoriaClass.Shipyard and
+        b.facilityType == NeoriaClass.Spaceport:
       return -1
-    elif a.facilityType == FacilityClass.Spaceport and
-        b.facilityType == FacilityClass.Shipyard:
+    elif a.facilityType == NeoriaClass.Spaceport and
+        b.facilityType == NeoriaClass.Shipyard:
       return 1
     else:
       # Among same type, prefer more available docks (even distribution)
@@ -209,7 +170,7 @@ proc getAvailableFacilities*(
 
 proc assignFacility*(
     state: GameState, colonyId: ColonyId, projectType: BuildType, itemId: string
-): Option[tuple[facilityId: uint32, facilityType: FacilityClass]] =
+): Option[tuple[facilityId: uint32, facilityType: NeoriaClass]] =
   ## Assign a construction project to the best available facility
   ##
   ## Assignment algorithm:
@@ -225,23 +186,28 @@ proc assignFacility*(
   # Shipyards are built in orbit and don't occupy dock space
   if projectType == BuildType.Facility and itemId == "Shipyard":
     # For shipyard, we need a spaceport but it doesn't consume docks
-    let colonyOpt = gs_helpers.getColony(state, colonyId)
+    let colonyOpt = state.colony(colonyId)
     if colonyOpt.isNone:
-      return none(tuple[facilityId: uint32, facilityType: FacilityClass])
+      return none(tuple[facilityId: uint32, facilityType: NeoriaClass])
 
     let colony = colonyOpt.get()
-    if colony.spaceportIds.len > 0:
-      # Return first spaceport (assists but doesn't consume capacity)
-      let spaceportId = colony.spaceportIds[0]
-      return some((uint32(spaceportId), FacilityClass.Spaceport))
-    else:
-      return none(tuple[facilityId: uint32, facilityType: FacilityClass])
+
+    # Find first spaceport at colony
+    for neoriaId in colony.neoriaIds:
+      let neoriaOpt = state.neoria(neoriaId)
+      if neoriaOpt.isSome:
+        let neoria = neoriaOpt.get()
+        if neoria.neoriaClass == NeoriaClass.Spaceport:
+          # Return first spaceport (assists but doesn't consume capacity)
+          return some((uint32(neoriaId), NeoriaClass.Spaceport))
+
+    return none(tuple[facilityId: uint32, facilityType: NeoriaClass])
 
   # Normal case: find facility with available capacity
   let available = getAvailableFacilities(state, colonyId, projectType)
 
   if available.len == 0:
-    return none(tuple[facilityId: uint32, facilityType: FacilityClass])
+    return none(tuple[facilityId: uint32, facilityType: NeoriaClass])
 
   # Return first (highest priority) facility
   # Convert string ID back to uint32
@@ -255,13 +221,15 @@ proc processCapacityReporting*(state: GameState): seq[capacity.CapacityViolation
   result = checkAllViolations(state)
 
   if result.len == 0:
-    logger.logDebug("Economy", "All facilities within construction dock capacity")
+    logDebug("Economy", "All facilities within construction dock capacity")
   else:
     # This should NEVER happen - capacity enforced at build time
     for violation in result:
-      logger.logWarn(
+      logWarn(
         "Economy",
-        "Colony " & $violation.entity.colonyId & " OVER dock capacity (BUG!)",
+        "Colony over dock capacity (BUG!)",
+        " colony=",
+        $violation.entity.colonyId,
         " usage=",
         $violation.current,
         "/",
@@ -278,10 +246,10 @@ proc shipRequiresDock*(shipClass: ShipClass): bool =
 
 proc getColonyTotalCapacity*(
     state: GameState, colonyId: ColonyId
-): tuple[current: int, maximum: int] =
+): tuple[current: int32, maximum: int32] =
   ## Get total dock capacity for colony (sum of all facilities)
   ## Used for display/reporting purposes
-  result = (current: 0, maximum: 0)
+  result = (current: 0'i32, maximum: 0'i32)
 
   let facilities = analyzeColonyCapacity(state, colonyId)
   for facility in facilities:
@@ -298,7 +266,7 @@ proc assignAndQueueProject*(
   ## This is the main entry point for adding construction projects to facility
   ## queues. Automatically assigns to best facility per assignment algorithm.
 
-  let colonyOpt = gs_helpers.getColony(state, colonyId)
+  let colonyOpt = state.colony(colonyId)
   if colonyOpt.isNone:
     return false
 
@@ -310,64 +278,41 @@ proc assignAndQueueProject*(
 
   let (facilityId, facilityType) = assignment.get()
 
-  # Create project with facility assignment
+  # Create project with facility assignment (if applicable)
   var assignedProject = project
-  assignedProject.facilityId = some(facilityId)
-  assignedProject.facilityType = some(facilityType)
+  # Note: ConstructionProject doesn't have facilityId/facilityType fields in current implementation
+  # These are tracked by which facility queue the project is in
 
   # Add to facility queue
-  if facilityType == FacilityClass.Spaceport:
-    # Update spaceport
-    let spaceportId = SpaceportId(facilityId)
-    let spaceportOpt = gs_helpers.getSpaceport(state, spaceportId)
-    if spaceportOpt.isNone:
-      logger.logWarn("Economy", "Failed to find spaceport", " facility=", $facilityId)
-      return false
+  let neoriaId = NeoriaId(facilityId)
+  let neoriaOpt = state.neoria(neoriaId)
+  if neoriaOpt.isNone:
+    logWarn("Economy", "Failed to find neoria", " facility=", $facilityId)
+    return false
 
-    var spaceport = spaceportOpt.get()
-    spaceport.constructionQueue.add(assignedProject.id)
+  var neoria = neoriaOpt.get()
+  neoria.constructionQueue.add(assignedProject.id)
 
-    state.updateSpaceport(spaceportId, spaceport)
+  state.updateNeoria(neoriaId, neoria)
 
-    logger.logDebug(
-      "Economy",
-      "Project queued to spaceport",
-      " facility=",
-      $facilityId,
-      " project=",
-      project.itemId,
-    )
-    return true
-  else:
-    # Update shipyard
-    let shipyardId = ShipyardId(facilityId)
-    let shipyardOpt = gs_helpers.getShipyard(state, shipyardId)
-    if shipyardOpt.isNone:
-      logger.logWarn("Economy", "Failed to find shipyard", " facility=", $facilityId)
-      return false
-
-    var shipyard = shipyardOpt.get()
-    shipyard.constructionQueue.add(assignedProject.id)
-
-    state.updateShipyard(shipyardId, shipyard)
-
-    logger.logDebug(
-      "Economy",
-      "Project queued to shipyard",
-      " facility=",
-      $facilityId,
-      " project=",
-      project.itemId,
-    )
-    return true
+  logDebug(
+    "Economy",
+    "Project queued to facility",
+    " facility=",
+    $facilityId,
+    " type=",
+    $neoria.neoriaClass,
+    " project=",
+    project.itemId,
+  )
+  return true
 
 ## Design Notes:
 ##
 ## **Per-Facility Architecture:**
 ## Each facility independently tracks its own queues and capacity:
-## - Spaceport.constructionQueue, Spaceport.activeConstruction
-## - Shipyard.constructionQueue, Shipyard.activeConstruction
-## - Shipyard.repairQueue, Shipyard.activeRepairs
+## - Neoria.constructionQueue, Neoria.activeConstructions
+## - Neoria.repairQueue, Neoria.activeRepairs
 ##
 ## **Assignment Strategy:**
 ## 1. Prioritize shipyards (more capable, 10 docks)
@@ -376,7 +321,7 @@ proc assignAndQueueProject*(
 ##
 ## **Special Cases:**
 ## - Shipyard/Starbase construction: Requires spaceport assist but doesn't occupy docks
-## - Crippled shipyards: 0 capacity until repaired
+## - Crippled facilities: 0 capacity until repaired
 ## - FIFO priority: Construction and repair projects treated equally in queue
 ##
 ## **Integration Points:**
@@ -387,3 +332,4 @@ proc assignAndQueueProject*(
 ## **Spaceport Cost Penalty:**
 ## Ships built at spaceports cost 2x PP (handled in construction cost calculation)
 ## Exception: Shipyard/Starbase buildings don't have penalty (orbital construction)
+##

@@ -155,7 +155,7 @@ proc analyzeC2Capacity*(state: GameState, houseId: HouseId): C2PoolAnalysis =
 ## Application Functions
 
 proc applyLogisticalStrain*(
-    state: var GameState, houseId: HouseId, strainCost: int, events: var seq[event.GameEvent]
+    state: var GameState, houseId: HouseId, strainCost: int32, events: var seq[event.GameEvent]
 ) =
   ## Apply logistical strain cost to house treasury
   ## Deducts PP cost from treasury and generates event
