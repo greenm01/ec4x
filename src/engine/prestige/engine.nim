@@ -1,10 +1,10 @@
 ## Prestige Engine - Multiplier and Utilities
-##
-## Provides prestige multiplier management and application functions.
-## The multiplier is initialized once at game start based on map size.
 
-import ../globals  # For gameConfig access
+import std/options
+import ../state/engine
+import ../types/[prestige, core, game_state, house]
 import ../../common/logger
+import ../globals
 
 # Private backing storage
 var prestigeMultiplierImpl {.threadvar.}: float64
@@ -31,3 +31,33 @@ proc prestigeMultiplier*(): float32 =
 proc applyPrestigeMultiplier*(baseValue: int32): int32 =
   ## Apply the dynamic multiplier to a base prestige value
   result = int32(float32(baseValue) * prestigeMultiplier())
+
+proc applyPrestigeEvent*(state: var GameState, houseId: HouseId, event: PrestigeEvent) =
+  ## Apply a single prestige event to a house
+  ##
+  ## This is the ONLY function that should mutate house.prestige
+  ## Follows DoD pattern: read-modify-write using EntityManager
+
+  # Get current house (safe lookup)
+  let houseOpt = state.house(houseId)
+  if houseOpt.isNone:
+    # Silently ignore - house may have been eliminated
+    return
+
+  # Apply prestige change (read-modify-write pattern)
+  var house = houseOpt.get()
+  house.prestige += event.amount
+
+  # Write back to EntityManager
+  state.updateHouse(houseId, house)
+
+proc applyPrestigeEvents*(
+    state: var GameState, houseId: HouseId, events: seq[PrestigeEvent]
+) =
+  ## Apply multiple prestige events to a house
+  ##
+  ## Convenience function for applying a batch of events
+  ## Calls applyPrestigeEvent() for each event
+
+  for event in events:
+    applyPrestigeEvent(state, houseId, event)

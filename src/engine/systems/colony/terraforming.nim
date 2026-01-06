@@ -7,11 +7,11 @@
 ## Per architecture.md: Colony system owns colony operations,
 ## called from turn_cycle/income_phase.nim
 
-import std/[tables, options, logging, strformat]
+import std/[options, logging, strformat]
 import ../../types/[core, game_state, command, event, starmap, colony]
 import ../../state/[engine, iterators]
-import ../tech/[costs as res_costs, effects as res_effects]
-import ../../event_factory/init as event_factory
+import ../tech/effects
+import ../../event_factory/init
 
 proc resolveTerraformCommands*(
     state: var GameState, packet: CommandPacket, events: var seq[GameEvent]
@@ -55,7 +55,7 @@ proc resolveTerraformCommands*(
 
     # Validate TER level requirement
     let currentClass = ord(system.planetClass) + 1 # Convert enum to class number (1-7)
-    if not res_effects.canTerraform(currentClass, terLevel):
+    if not canTerraform(currentClass, terLevel):
       let targetClass = currentClass + 1
       error "Terraforming failed: TER level ",
         terLevel, " insufficient for class ", currentClass, " → ", targetClass,
@@ -64,8 +64,8 @@ proc resolveTerraformCommands*(
 
     # Calculate costs and duration
     let targetClass = currentClass + 1
-    let ppCost = res_effects.getTerraformingBaseCost(currentClass)
-    let turnsRequired = res_effects.getTerraformingSpeed(terLevel)
+    let ppCost = getTerraformingBaseCost(currentClass)
+    let turnsRequired = getTerraformingSpeed(terLevel)
 
     # Check house treasury has sufficient PP
     if house.treasury < ppCost:
@@ -108,7 +108,7 @@ proc resolveTerraformCommands*(
 
     # Note: This was using TerraformComplete incorrectly for "initiated" - should be constructionStarted
     events.add(
-      event_factory.constructionStarted(
+      constructionStarted(
         packet.houseId, &"Terraforming to {className}", colony.systemId, ppCost
       )
     )
@@ -163,7 +163,7 @@ proc processTerraformingProjects*(state: var GameState, events: var seq[GameEven
         " completed terraforming of ", colonyId, " to ", className, " (class ",
         project.targetClass, ")"
 
-      events.add(event_factory.terraformComplete(houseId, colony.systemId, className))
+      events.add(terraformComplete(houseId, colony.systemId, className))
     else:
       debug house.name,
         " terraforming ", colonyId, ": ", project.turnsRemaining, " turn(s) remaining"
