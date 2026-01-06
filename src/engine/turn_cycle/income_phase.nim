@@ -203,33 +203,10 @@ proc resolveIncomePhase*(
   # ===================================================================
   logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Calculating base production...")
 
-  # Convert colonies table to sequence for income phase
-  # NOTE: No type conversion needed - gamestate.Colony has all economic fields
-  var coloniesSeqIncome: seq[Colony] = @[]
-  for systemId, colony in state.colonies:
-    coloniesSeqIncome.add(colony)
-
-  # Build house data tables in single pass (optimization: 4 loops → 1 loop)
-  var houseTaxPolicies = initTable[HouseId, econ_types.TaxPolicy]()
-  var houseTechLevels = initTable[HouseId, int]()
-  var houseCSTTechLevels = initTable[HouseId, int]()
-  var houseTreasuries = initTable[HouseId, int]()
-
-  for houseId, house in state.houses:
-    houseTaxPolicies[houseId] = house.taxPolicy
-    houseTechLevels[houseId] = house.techTree.levels.el
-      # EL = economicLevel (confusing naming)
-    houseCSTTechLevels[houseId] = house.techTree.levels.cst
-    houseTreasuries[houseId] = house.treasury
-
   # Call economy engine with natural growth rate from config
+  # Engine uses state layer APIs directly (no parameter passing)
   let incomeReport = econ_engine.resolveIncomePhase(
-    coloniesSeqIncome,
-    houseTaxPolicies,
-    houseTechLevels,
-    houseCSTTechLevels,
-    houseTreasuries,
-    baseGrowthRate = globalEconomyConfig.population.natural_growth_rate,
+    state, baseGrowthRate = globalEconomyConfig.population.natural_growth_rate
   )
 
   logInfo(LogCategory.lcEconomy, &"[INCOME STEP 1] Production calculation completed")
@@ -427,17 +404,11 @@ proc resolveIncomePhase*(
     &"[INCOME STEP 6] Collecting resources and applying to treasuries...",
   )
 
-  # Write back modified colonies (population growth was applied in-place)
-  # CRITICAL: Colonies were copied to seq, modified via mpairs, must write back to persist
-  for colony in coloniesSeqIncome:
-    state.colonies[colony.systemId] = colony
-
   # Apply results back to game state
+  # NOTE: Treasury and growth already applied by resolveIncomePhase()
   for houseId, houseReport in incomeReport.houseReports:
-    # CRITICAL: Get house once, modify all fields, write back to persist
-    var house = state.houses[houseId]
-    house.treasury = houseTreasuries[houseId]
     # Store income report for intelligence gathering (HackStarbase missions)
+    var house = state.houses[houseId]
     house.latestIncomeReport = some(houseReport)
     logInfo(
       LogCategory.lcEconomy,

@@ -3,11 +3,14 @@
 ## Implements economy.md:3.5 - civilian Starliner services for inter-colony
 ## population movement.
 ##
-## Architecture: Pure business logic, uses entity patterns from architecture.md
+## **Architecture:**
+## - Uses state layer APIs to read entities (state.colony, state.system)
+## - Uses entity ops for mutations (population_transfer_ops)
+## - Follows three-layer pattern: State → Business Logic → Entity Ops
 
-import std/[tables, sequtils, options, logging, math]
+import std/[tables, sequtils, options, math]
 import ../../types/[
-  game_state, core, event, population as pop_types, starmap, fleet, colony,
+  game_state, core, event, population as pop_types, starmap, colony,
 ]
 import ../../state/[engine, iterators]
 import ../../entities/[fleet_ops, population_transfer_ops]
@@ -15,6 +18,7 @@ import ../../starmap
 import ../fleet/movement
 import ../../event_factory/init as event_factory
 import ../../globals
+import ../../../common/logger
 
 type
   TransferResult* {.pure.} = enum
@@ -95,7 +99,7 @@ proc createTransferInitiation*(
 
   # Calculate distance via pathfinding
   let dummyFleet = fleet_ops.newFleet(
-    squadronIds = @[], owner = houseId, location = sourceSystem
+    shipIds = @[], owner = houseId, location = sourceSystem
   )
   let pathResult = state.findPath(sourceSystem, destSystem, dummyFleet)
   if not pathResult.found:
@@ -103,18 +107,21 @@ proc createTransferInitiation*(
 
   let distance = pathResult.path.len - 1
 
-  # Determine destination planet class
-  let destPlanetClass =
-    block:
-      let destColony = state.colonyBySystem(destSystem)
-      if destColony.isSome:
-        destColony.get().planetClass
-      else:
-        PlanetClass.Benign # Uncolonized
+  # Determine destination planet class (from System, not Colony)
+  let destSystemOpt = state.system(destSystem)
+  if destSystemOpt.isNone:
+    return (false, "Destination system does not exist")
+  let destPlanetClass = destSystemOpt.get().planetClass
+
+  # Get source planet class from System
+  let sourceSystemOpt = state.system(sourceSystem)
+  if sourceSystemOpt.isNone:
+    return (false, "Source system does not exist")
+  let sourcePlanetClass = sourceSystemOpt.get().planetClass
 
   # Calculate cost (spec: destination cost only)
   let cost =
-    calculateTransferCost(sourceColony.planetClass, destPlanetClass, distance, ptuAmount)
+    calculateTransferCost(sourcePlanetClass, destPlanetClass, distance, ptuAmount)
 
   # Check treasury
   let houseOpt = state.house(houseId)
@@ -146,15 +153,17 @@ proc findNearestOwnedColony*(
     state: GameState, fromSystem: SystemId, houseId: HouseId
 ): Option[SystemId] =
   ## Find nearest colony owned by house (for smart delivery)
-  var nearestDist = high(int)
+  var nearestDist = high(int32)
   var nearestSystem: Option[SystemId] = none(SystemId)
 
   for colony in state.coloniesOwned(houseId):
-    let dist = int(
-      distance(
-        state.system(colony.systemId).get().coords,
-        state.system(fromSystem).get().coords,
-      )
+    let fromSystemOpt = state.system(fromSystem)
+    let colonySystemOpt = state.system(colony.systemId)
+    if fromSystemOpt.isNone or colonySystemOpt.isNone:
+      continue
+
+    let dist = int32(
+      distance(colonySystemOpt.get().coords, fromSystemOpt.get().coords)
     )
     if dist < nearestDist:
       nearestDist = dist
@@ -215,20 +224,20 @@ proc applyTransferCompletion*(
         let destColonyId = destColonyOpt.get().id
         population_transfer_ops.deliverTransfer(state, transferId, destColonyId)
 
-      info(
-        "Population transfer completed: ", $completion.transfer.ptuAmount, " PTU to ",
-        $destSystem,
+      logInfo(
+        "Population", "Transfer completed",
+        " ptu=", completion.transfer.ptuAmount, " dest=", destSystem,
       )
 
       if completion.result == TransferResult.Redirected:
         # Get original destination systemId for logging
         let origColony = state.colony(completion.transfer.destColony).get()
-        info("Transfer redirected from ", $origColony.systemId)
+        logInfo("Population", "Transfer redirected", " from=", origColony.systemId)
 
   of TransferResult.Lost:
-    info(
-      "Population transfer LOST: ", $completion.transfer.ptuAmount,
-      " PTU (no viable destination)",
+    logWarn(
+      "Population", "Transfer LOST - no viable destination",
+      " ptu=", completion.transfer.ptuAmount,
     )
 
 # =============================================================================
@@ -253,11 +262,14 @@ proc processTransfers*(state: var GameState): seq[TransferCompletion] =
   for transferId in completedIds:
     population_transfer_ops.completeTransfer(state, transferId)
 
-  info(
-    "Processed ", $result.len, " population transfers (", $result.filterIt(
-      it.result == TransferResult.Delivered
-    ).len, " delivered, ", $result.filterIt(it.result == TransferResult.Redirected).len, " redirected, ",
-    $result.filterIt(it.result == TransferResult.Lost).len, " lost)",
+  let delivered = result.filterIt(it.result == TransferResult.Delivered).len
+  let redirected = result.filterIt(it.result == TransferResult.Redirected).len
+  let lost = result.filterIt(it.result == TransferResult.Lost).len
+
+  logInfo(
+    "Population", "Processed population transfers",
+    " total=", result.len, " delivered=", delivered,
+    " redirected=", redirected, " lost=", lost,
   )
 
 # =============================================================================

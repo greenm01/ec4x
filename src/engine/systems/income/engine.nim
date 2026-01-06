@@ -5,6 +5,11 @@
 ##
 ## Per gameplay.md:1.3.2 - Income Phase runs AFTER Conflict Phase
 ## Infrastructure damage from combat affects production
+##
+## **Architecture:**
+## - Uses state layer APIs to read entities (state.ship, state.colony, state.house)
+## - Uses entity ops for mutations (ship_ops.destroyShip)
+## - Follows three-layer pattern: State → Business Logic → Entity Ops
 
 import std/[tables, options, algorithm]
 import ./[income, maintenance, multipliers]
@@ -21,89 +26,76 @@ export multipliers  # Export economic multipliers (popGrowthMultiplier, etc.)
 # NOTE: Don't export game_state.Colony to avoid ambiguity
 
 ## Income Phase Resolution (gameplay.md:1.3.2)
+##
+## **Optimization History:**
+## - Pre-2026-01-06: Legacy API with manual colony grouping and table passing
+##   * Passed colonies: var seq[Colony] (manually grouped)
+##   * Passed houseTaxPolicies, houseTechLevels, houseCSTTechLevels, houseTreasuries
+##   * Required O(c) scan to group colonies by owner
+## - 2026-01-06: Optimized to use state layer APIs and Colonies.byOwner index
+##   * Uses state.coloniesOwned(houseId) for O(1) lookup via index
+##   * Gets house data directly from state (no table construction)
+##   * Mutates state in-place using updateHouse()/updateColony()
+##   * Eliminated 25+ lines of parameter building and passing
 
 proc resolveIncomePhase*(
-    state: GameState,
-    colonies: var seq[Colony],
-    houseTaxPolicies: Table[HouseId, TaxPolicy],
-    houseTechLevels: Table[HouseId, int32],
-    houseCSTTechLevels: Table[HouseId, int32],
-    houseTreasuries: var Table[HouseId, int32],
-    baseGrowthRate: float32 = 0.015,
+    state: var GameState, baseGrowthRate: float32 = 0.015
 ): IncomePhaseReport =
   ## Resolve income phase for all houses
+  ##
+  ## Uses state layer APIs to access colonies via Colonies.byOwner index
+  ## and house data directly, eliminating manual grouping and table passing.
   ##
   ## Steps:
   ## 1. Calculate GCO for all colonies (after conflict damage)
   ## 2. Apply tax policy
   ## 3. Calculate prestige effects
-  ## 4. Deposit to treasuries
+  ## 4. Update treasuries
   ## 5. Apply population growth
   ##
   ## Args:
-  ##   state: GameState for accessing planet data
-  ##   colonies: All game colonies (modified for pop growth)
-  ##   houseTaxPolicies: Tax policy per house
-  ##   houseTechLevels: Economic Level tech per house
-  ##   houseCSTTechLevels: Construction tech per house (affects capacity)
-  ##   houseTreasuries: House treasuries (modified with income)
+  ##   state: GameState (mutated with treasury/growth updates)
   ##   baseGrowthRate: Base population growth rate (loaded from config)
   ##
   ## Returns:
   ##   Complete income phase report
 
   result = IncomePhaseReport(
-    turn: 0, # NOTE: Legacy interface - turn tracking in GameState version
-    houseReports: initTable[HouseId, HouseIncomeReport](),
+    turn: state.turn, houseReports: initTable[HouseId, HouseIncomeReport]()
   )
 
-  # Group colonies by owner
-  var houseColonies = initTable[HouseId, seq[Colony]]()
-  for colony in colonies:
-    if colony.owner notin houseColonies:
-      houseColonies[colony.owner] = @[]
-    houseColonies[colony.owner].add(colony)
+  # Process each house using state layer APIs
+  for (houseId, house) in state.activeHousesWithId():
+    # Get house parameters directly from state
+    let taxPolicy = house.taxPolicy
+    let elTech = house.techTree.levels.el # Economic Level
+    let cstTech = house.techTree.levels.cst # Construction tech
+    let treasury = house.treasury
 
-  # Process each house
-  for houseId, houseColonyList in houseColonies:
-    # Get house parameters
-    let taxPolicy =
-      if houseId in houseTaxPolicies:
-        houseTaxPolicies[houseId]
-      else:
-        TaxPolicy(currentRate: 50, history: @[50]) # Default
-
-    let elTech =
-      if houseId in houseTechLevels:
-        houseTechLevels[houseId]
-      else:
-        1i32 # Default EL1
-
-    let cstTech =
-      if houseId in houseCSTTechLevels:
-        houseCSTTechLevels[houseId]
-      else:
-        1i32 # Default CST1
-
-    let treasury =
-      if houseId in houseTreasuries:
-        houseTreasuries[houseId]
-      else:
-        0i32
+    # Collect this house's colonies using byOwner index
+    var houseColonies: seq[Colony] = @[]
+    for colony in state.coloniesOwned(houseId):
+      houseColonies.add(colony)
 
     # Calculate house income
     let houseReport =
-      calculateHouseIncome(state, houseColonyList, elTech, cstTech, taxPolicy, treasury)
+      calculateHouseIncome(state, houseColonies, elTech, cstTech, taxPolicy, treasury)
 
-    # Update treasury
-    houseTreasuries[houseId] = houseReport.treasuryAfter
+    # Update treasury in state
+    var updatedHouse = house
+    updatedHouse.treasury = houseReport.treasuryAfter
+    state.updateHouse(houseId, updatedHouse)
 
     # Apply population and industrial growth to colonies
-    for i, colony in colonies.mpairs:
-      if colony.owner == houseId:
-        discard state.applyPopulationGrowth(colony, taxPolicy.currentRate, baseGrowthRate)
-        discard state.applyIndustrialGrowth(colony, taxPolicy.currentRate, baseGrowthRate)
-        # Note: Could update report with growth rates here
+    for colony in state.coloniesOwned(houseId):
+      var updatedColony = colony
+      discard state.applyPopulationGrowth(
+        updatedColony, taxPolicy.currentRate, baseGrowthRate
+      )
+      discard state.applyIndustrialGrowth(
+        updatedColony, taxPolicy.currentRate, baseGrowthRate
+      )
+      state.updateColony(colony.id, updatedColony)
 
     # Store report
     result.houseReports[houseId] = houseReport
@@ -226,26 +218,12 @@ proc calculateAndDeductMaintenanceUpkeep*(
       # Calculate maintenance for this fleet using entity managers
       var fleetData: seq[(ShipClass, CombatState)] = @[]
 
-      # Iterate over squadron IDs
-      for squadronId in fleet.squadrons:
-        let squadronOpt = state.squadron(squadronId)
-        if squadronOpt.isNone:
-          continue
-
-        let squadron = squadronOpt.get()
-
-        # Add flagship
-        let flagshipOpt = state.ship(squadron.flagshipId)
-        if flagshipOpt.isSome:
-          let flagship = flagshipOpt.get()
-          fleetData.add((flagship.shipClass, flagship.state))
-
-        # Add escort ships
-        for shipId in squadron.ships:
-          let shipOpt = state.ship(shipId)
-          if shipOpt.isSome:
-            let ship = shipOpt.get()
-            fleetData.add((ship.shipClass, ship.state))
+      # Iterate over ship IDs directly (squadrons removed)
+      for shipId in fleet.ships:
+        let shipOpt = state.ship(shipId)
+        if shipOpt.isSome:
+          let ship = shipOpt.get()
+          fleetData.add((ship.shipClass, ship.state))
 
       totalUpkeep += calculateFleetMaintenance(fleetData)
 
@@ -296,30 +274,15 @@ proc calculateAndDeductMaintenanceUpkeep*(
       # Collect all active (non-crippled) ships owned by house
       var activeShips: seq[(ShipId, ShipClass, int32)] = @[]
       for fleet in state.fleetsOwned(houseId):
-        for squadronId in fleet.squadrons:
-          let squadronOpt = state.squadron(squadronId)
-          if squadronOpt.isNone:
-            continue
-          let squadron = squadronOpt.get()
-
-          # Check flagship
-          let flagshipOpt = state.ship(squadron.flagshipId)
-          if flagshipOpt.isSome:
-            let flagship = flagshipOpt.get()
-            if flagship.state != CombatState.Crippled:
+        # Iterate over ship IDs directly (squadrons removed)
+        for shipId in fleet.ships:
+          let shipOpt = state.ship(shipId)
+          if shipOpt.isSome:
+            let ship = shipOpt.get()
+            if ship.state != CombatState.Crippled:
               let maintenanceCost =
-                getShipMaintenanceCost(flagship.shipClass, CombatState.Undamaged, fleet.status)
-              activeShips.add((flagship.id, flagship.shipClass, maintenanceCost))
-
-          # Check escorts
-          for shipId in squadron.ships:
-            let shipOpt = state.ship(shipId)
-            if shipOpt.isSome:
-              let ship = shipOpt.get()
-              if ship.state != CombatState.Crippled:
-                let maintenanceCost =
-                  getShipMaintenanceCost(ship.shipClass, CombatState.Undamaged, fleet.status)
-                activeShips.add((ship.id, ship.shipClass, maintenanceCost))
+                getShipMaintenanceCost(ship.shipClass, CombatState.Undamaged, fleet.status)
+              activeShips.add((ship.id, ship.shipClass, maintenanceCost))
 
       # Sort by ShipId (oldest first - lower IDs = older ships)
       activeShips.sort(
