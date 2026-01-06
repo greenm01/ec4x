@@ -2,8 +2,16 @@
 ##
 ## This module provides validation logic for player commands.
 ## All type definitions are in @types/ modules per architecture.md.
+##
+## **Operational Facility Definition:**
+## Throughout this module, "operational" means a facility that is NOT Crippled.
+## This applies to all facility types:
+## - Shipyard: operational = not CombatState.Crippled
+## - Spaceport: operational = not CombatState.Crippled
+## - Drydock: operational = not CombatState.Crippled
+## - Starbase: operational = not CombatState.Crippled (handled in facilities module)
 
-import std/[options, tables, strformat, sequtils]
+import std/[options, tables, strformat, strutils]
 import
   ../../types/[
     core,
@@ -19,10 +27,12 @@ import
     facilities,
     combat,
   ]
-import ../../state/[engine]
+import ../../state/[engine, iterators, fleet_queries]
+import ../../globals
 import ../../../common/logger
-import ../production/projects
+import ../production/[projects, accessors]
 import ../fleet/entity
+import ../fleet/movement
 import ../capacity/[fighter, planet_breakers]
 
 # Re-export command types for convenience
@@ -104,7 +114,7 @@ proc validateFleetCommand*(
         ValidationResult(valid: false, error: "Move command requires target system")
 
     let targetId = cmd.targetSystem.get()
-    if not state.starMap.systems.hasKey(targetId):
+    if state.system(targetId).isNone:
       logWarn(
         "Commands",
         &"{issuingHouse} Move command REJECTED: {cmd.fleetId} → {targetId} " &
@@ -113,7 +123,7 @@ proc validateFleetCommand*(
       return ValidationResult(valid: false, error: "Target system does not exist")
 
     # Check pathfinding - can fleet reach target?
-    let pathResult = state.starMap.findPath(fleet.location, targetId, fleet)
+    let pathResult = movement.findPath(state, fleet.location, targetId, fleet)
     if not pathResult.found:
       logWarn(
         "Commands",
@@ -135,14 +145,10 @@ proc validateFleetCommand*(
         &"{fleet.location} ({fleet.ships.len} ships)",
     )
     var hasETAC = false
-    for shipId in fleet.ships:
-      let shipOpt = state.ship(shipId)
-      if shipOpt.isSome:
-        let ship = shipOpt.get()
-        if ship.shipClass == ShipClass.ETAC:
-          if ship.state != CombatState.Crippled:
-            hasETAC = true
-            break
+    for etac in state.etacsInFleet(fleet):
+      if etac.state != CombatState.Crippled:
+        hasETAC = true
+        break
 
     if not hasETAC:
       logWarn(
@@ -177,17 +183,10 @@ proc validateFleetCommand*(
       &"{issuingHouse} Colonize command VALID: {cmd.fleetId} → {targetId}",
     )
   of FleetCommandType.Bombard, FleetCommandType.Invade, FleetCommandType.Blitz:
-    # Check fleet has combat-capable ships
-    var hasMilitary = false
-    for shipId in fleet.ships:
-      let shipOpt = state.ship(shipId)
-      if shipOpt.isSome:
-        let ship = shipOpt.get()
-        if ship.stats.attackStrength > 0'i32:
-          hasMilitary = true
-          break
+    # Check fleet has combat-capable ships (use fleet_queries helper)
+    let totalAS = state.calculateFleetAS(fleet)
 
-    if not hasMilitary:
+    if totalAS == 0:
       logWarn(
         "Commands",
         &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
@@ -228,19 +227,16 @@ proc validateFleetCommand*(
     var hasScout = false
     var hasNonScout = false
 
-    for shipId in fleet.ships:
-      let shipOpt = state.ship(shipId)
-      if shipOpt.isSome:
-        let ship = shipOpt.get()
-        if ship.shipClass == ShipClass.Scout:
-          hasScout = true
-        else:
-          hasNonScout = true
-          logWarn(
-            "Commands",
-            &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
-              &"spy missions require pure Scout fleet (found {ship.shipClass})",
-          )
+    for ship in state.shipsInFleet(fleet.id):
+      if ship.shipClass == ShipClass.Scout:
+        hasScout = true
+      else:
+        hasNonScout = true
+        logWarn(
+          "Commands",
+          &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
+            &"spy missions require pure Scout fleet (found {ship.shipClass})",
+        )
 
     if not hasScout:
       return ValidationResult(
@@ -316,7 +312,7 @@ proc validateFleetCommand*(
       )
 
     let targetId = cmd.targetSystem.get()
-    if not state.starMap.systems.hasKey(targetId):
+    if state.system(targetId).isNone:
       logWarn(
         "Commands",
         &"{issuingHouse} Rendezvous command REJECTED: {cmd.fleetId} → {targetId} " &
@@ -342,7 +338,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
   result = ValidationResult(valid: true, error: "")
 
   # Check house exists
-  if packet.houseId notin state.houses:
+  if state.house(packet.houseId).isNone:
     logWarn(
       "Commands", &"Command packet REJECTED: {packet.houseId} does not exist"
     )
@@ -407,12 +403,13 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
     # Check CST tech requirement for ships (economy.md:4.5)
     if cmd.buildType == BuildType.Ship and cmd.shipClass.isSome:
       let shipClass = cmd.shipClass.get()
-      let required_cst = getShipCSTRequirement(shipClass)
+      let required_cst = gameConfig.ships.ships[shipClass].minCST
 
       # Get house's CST level
-      if packet.houseId in state.houses:
-        let house = state.houses[packet.houseId]
-        let house_cst = house.techTree.levels.constructionTech
+      let houseOpt = state.house(packet.houseId)
+      if houseOpt.isSome:
+        let house = houseOpt.get()
+        let house_cst = house.techTree.levels.cst
 
         if house_cst < required_cst:
           logWarn(
@@ -428,29 +425,44 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
 
     # Check CST tech requirement and prerequisites for buildings (assets.md:2.4.4)
     if cmd.buildType == BuildType.Facility and cmd.buildingType.isSome:
-      let buildingType = cmd.buildingType.get()
+      let buildingTypeStr = cmd.buildingType.get()
+      let buildingType = parseEnum[FacilityClass](buildingTypeStr)
 
       # Check CST requirement (e.g., Starbase requires CST3)
-      let required_cst = getBuildingCSTRequirement(buildingType)
-      if required_cst > 0 and packet.houseId in state.houses:
-        let house = state.houses[packet.houseId]
-        let house_cst = house.techTree.levels.constructionTech
+      let required_cst = gameConfig.facilities.facilities[buildingType].minCST
+      if required_cst > 0:
+        let houseOpt = state.house(packet.houseId)
+        if houseOpt.isSome:
+          let house = houseOpt.get()
+          let house_cst = house.techTree.levels.cst
 
-        if house_cst < required_cst:
-          logWarn(
-            "Commands",
-            &"{packet.houseId} Build command REJECTED: {buildingType} requires CST{required_cst}, " &
-              &"house has CST{house_cst}",
-          )
-          return ValidationResult(
-            valid: false,
-            error:
-              &"Build command: {buildingType} requires CST{required_cst}, house has CST{house_cst}",
-          )
+          if house_cst < required_cst:
+            logWarn(
+              "Commands",
+              &"{packet.houseId} Build command REJECTED: {buildingType} requires CST{required_cst}, " &
+                &"house has CST{house_cst}",
+            )
+            return ValidationResult(
+              valid: false,
+              error:
+                &"Build command: {buildingType} requires CST{required_cst}, house has CST{house_cst}",
+            )
 
       # Check shipyard prerequisite (e.g., Starbase requires shipyard)
-      if requiresShipyard(buildingType):
-        if not hasOperationalShipyard(colony):
+      if requiresShipyard(buildingTypeStr):
+        # Check if colony has operational shipyard
+        # Operational = Shipyard that is not Crippled
+        var hasShipyard = false
+        for neoriaId in colony.neoriaIds:
+          let neoriaOpt = state.neoria(neoriaId)
+          if neoriaOpt.isSome:
+            let neoria = neoriaOpt.get()
+            # Operational check: must be Shipyard AND not Crippled
+            if neoria.neoriaClass == NeoriaClass.Shipyard and neoria.state != CombatState.Crippled:
+              hasShipyard = true
+              break
+
+        if not hasShipyard:
           logWarn(
             "Commands",
             &"{packet.houseId} Build command REJECTED: {buildingType} requires operational shipyard at {cmd.colonyId}",
@@ -496,13 +508,15 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
   # Validate diplomatic actions (check diplomatic state and constraints)
   for action in packet.diplomaticCommand:
     # Check target house exists
-    if action.targetHouse notin state.houses:
+    let targetHouseOpt = state.house(action.targetHouse)
+    if targetHouseOpt.isNone:
       return ValidationResult(
         valid: false, error: "Diplomatic action: Target house does not exist"
       )
 
     # Can't take diplomatic actions against eliminated houses
-    if state.houses[action.targetHouse].eliminated:
+    let targetHouse = targetHouseOpt.get()
+    if targetHouse.isEliminated:
       return ValidationResult(
         valid: false, error: "Diplomatic action: Target house is eliminated"
       )
@@ -553,7 +567,7 @@ proc createMoveCommand*(
 ): FleetCommand =
   ## Create a movement command
   result = FleetCommand(
-    orderType: FleetCommandType.Move,
+    commandType: FleetCommandType.Move,
     targetSystem: some(targetSystem),
     targetFleet: none(FleetId),
     priority: priority,
@@ -564,7 +578,7 @@ proc createColonizeCommand*(
 ): FleetCommand =
   ## Create a colonization command
   result = FleetCommand(
-    orderType: FleetCommandType.Colonize,
+    commandType: FleetCommandType.Colonize,
     targetSystem: some(targetSystem),
     targetFleet: none(FleetId),
     priority: priority,
@@ -578,7 +592,7 @@ proc createAttackCommand*(
 ): FleetCommand =
   ## Create an attack command (bombard, invade, or blitz)
   result = FleetCommand(
-    orderType: attackType,
+    commandType: attackType,
     targetSystem: some(targetSystem),
     targetFleet: none(FleetId),
     priority: priority,
@@ -587,7 +601,7 @@ proc createAttackCommand*(
 proc createHoldCommand*(fleetId: FleetId, priority: int32 = 0): FleetCommand =
   ## Create a hold position command
   result = FleetCommand(
-    orderType: FleetCommandType.Hold,
+    commandType: FleetCommandType.Hold,
     targetSystem: none(SystemId),
     targetFleet: none(FleetId),
     priority: priority,
@@ -606,7 +620,11 @@ proc newCommandPacket*(
     treasury: treasury,
     fleetCommands: @[],
     buildCommands: @[],
-    researchAllocation: tech_types.initResearchAllocation(),
+    researchAllocation: tech_types.ResearchAllocation(
+      economic: 0'i32,
+      science: 0'i32,
+      technology: initTable[tech_types.TechField, int32](),
+    ),
     diplomaticCommand: @[],
     populationTransfers: @[],
     terraformCommands: @[],
@@ -681,8 +699,20 @@ proc calculateBuildCommandCost*(
         let colonyOpt = state.colony(cmd.colonyId)
         if colonyOpt.isSome:
           let colony = colonyOpt.get()
-          let hasShipyard = colony.shipyardIds.len > 0
-          let hasSpaceport = colony.spaceportIds.len > 0
+          # Check if colony has operational shipyards or spaceports
+          # Operational = not Crippled (applies to all facility types)
+          var hasShipyard = false
+          var hasSpaceport = false
+          for neoriaId in colony.neoriaIds:
+            let neoriaOpt = state.neoria(neoriaId)
+            if neoriaOpt.isSome:
+              let neoria = neoriaOpt.get()
+              # Only count operational (non-crippled) facilities
+              if neoria.state != CombatState.Crippled:
+                if neoria.neoriaClass == NeoriaClass.Shipyard:
+                  hasShipyard = true
+                elif neoria.neoriaClass == NeoriaClass.Spaceport:
+                  hasSpaceport = true
 
           if not hasShipyard and hasSpaceport:
             # Planet-side construction (spaceport only) → 100% penalty (double cost)
@@ -697,7 +727,8 @@ proc calculateBuildCommandCost*(
     if cmd.buildingType.isSome:
       # Buildings never have spaceport penalty (planet-side industry)
       # Shipyard/Starbase are built in orbit and don't get penalty
-      result = projects.getBuildingCost(cmd.buildingType.get()) * cmd.quantity
+      let buildingType = parseEnum[FacilityClass](cmd.buildingType.get())
+      result = projects.getBuildingCost(buildingType) * cmd.quantity
   of BuildType.Industrial, BuildType.Infrastructure:
     # Infrastructure cost depends on colony state
     let colonyOpt = state.colony(cmd.colonyId)
@@ -728,17 +759,18 @@ proc validateBuildCommandWithBudget*(
   # Check CST tech requirement for ships (economy.md:4.5)
   if cmd.buildType == BuildType.Ship and cmd.shipClass.isSome:
     let shipClass = cmd.shipClass.get()
-    let required_cst = getShipCSTRequirement(shipClass)
+    let required_cst = gameConfig.ships.ships[shipClass].minCST
 
     # Get house's CST level
-    if houseId in state.houses:
-      let house = state.houses[houseId]
-      let house_cst = house.techTree.levels.constructionTech
+    let houseOpt = state.house(houseId)
+    if houseOpt.isSome:
+      let house = houseOpt.get()
+      let house_cst = house.techTree.levels.cst
 
       if house_cst < required_cst:
         ctx.rejectedCommands += 1
         logWarn(
-          Economy,
+          "Economy",
           &"{houseId} Build command REJECTED: {shipClass} requires CST{required_cst}, " &
             &"house has CST{house_cst}",
         )
@@ -750,33 +782,48 @@ proc validateBuildCommandWithBudget*(
 
   # Check CST tech requirement and prerequisites for buildings (assets.md:2.4.4)
   if cmd.buildType == BuildType.Facility and cmd.buildingType.isSome:
-    let buildingType = cmd.buildingType.get()
+    let buildingTypeStr = cmd.buildingType.get()
+    let buildingType = parseEnum[FacilityClass](buildingTypeStr)
 
     # Check CST requirement (e.g., Starbase requires CST3)
-    let required_cst = getBuildingCSTRequirement(buildingType)
-    if required_cst > 0 and houseId in state.houses:
-      let house = state.houses[houseId]
-      let house_cst = house.techTree.levels.constructionTech
+    let required_cst = gameConfig.facilities.facilities[buildingType].minCST
+    if required_cst > 0:
+      let houseOpt = state.house(houseId)
+      if houseOpt.isSome:
+        let house = houseOpt.get()
+        let house_cst = house.techTree.levels.cst
 
-      if house_cst < required_cst:
-        ctx.rejectedCommands += 1
-        logWarn(
-          Economy,
-          &"{houseId} Build command REJECTED: {buildingType} requires CST{required_cst}, " &
-            &"house has CST{house_cst}",
-        )
-        return ValidationResult(
-          valid: false,
-          error:
-            &"Build command: {buildingType} requires CST{required_cst}, house has CST{house_cst}",
-        )
+        if house_cst < required_cst:
+          ctx.rejectedCommands += 1
+          logWarn(
+            "Economy",
+            &"{houseId} Build command REJECTED: {buildingType} requires CST{required_cst}, " &
+              &"house has CST{house_cst}",
+          )
+          return ValidationResult(
+            valid: false,
+            error:
+              &"Build command: {buildingType} requires CST{required_cst}, house has CST{house_cst}",
+          )
 
     # Check shipyard prerequisite (e.g., Starbase requires shipyard)
-    if requiresShipyard(buildingType):
-      if not hasOperationalShipyard(colony):
+    if requiresShipyard(buildingTypeStr):
+      # Check if colony has operational shipyard
+      # Operational = Shipyard that is not Crippled
+      var hasShipyard = false
+      for neoriaId in colony.neoriaIds:
+        let neoriaOpt = state.neoria(neoriaId)
+        if neoriaOpt.isSome:
+          let neoria = neoriaOpt.get()
+          # Operational check: must be Shipyard AND not Crippled
+          if neoria.neoriaClass == NeoriaClass.Shipyard and neoria.state != CombatState.Crippled:
+            hasShipyard = true
+            break
+
+      if not hasShipyard:
         ctx.rejectedCommands += 1
         logWarn(
-          Economy,
+          "Economy",
           &"{houseId} Build command REJECTED: {buildingType} requires operational shipyard at {cmd.colonyId}",
         )
         return ValidationResult(
@@ -793,7 +840,7 @@ proc validateBuildCommandWithBudget*(
       if not fighter.canCommissionFighter(state, colony):
         ctx.rejectedCommands += 1
         logWarn(
-          Economy,
+          "Economy",
           &"{houseId} Build command REJECTED: Fighter capacity limit exceeded at colony {cmd.colonyId}",
         )
         return ValidationResult(
@@ -807,7 +854,7 @@ proc validateBuildCommandWithBudget*(
         ctx.rejectedCommands += 1
         let violation = planet_breakers.analyzeCapacity(state, houseId)
         logWarn(
-          Economy,
+          "Economy",
           &"{houseId} Build command REJECTED: Planet-breaker limit exceeded " &
             &"(current={violation.current}, max={violation.maximum} [1 per colony])",
         )
@@ -829,7 +876,7 @@ proc validateBuildCommandWithBudget*(
   if cost > remaining:
     ctx.rejectedCommands += 1
     logInfo(
-      Economy,
+      "Economy",
       &"Build command rejected: need {cost} PP, have {remaining} PP remaining " &
         &"(treasury={ctx.availableTreasury}, committed={ctx.committedSpending})",
     )
@@ -841,7 +888,7 @@ proc validateBuildCommandWithBudget*(
   # Valid - commit spending
   ctx.committedSpending += cost
   logDebug(
-    Economy,
+    "Economy",
     &"Build command validated: {cost} PP committed, {ctx.getRemainingBudget()} PP remaining",
   )
 
@@ -883,8 +930,9 @@ proc previewCommandPacketCost*(
   result.totalCost = result.buildCosts + result.researchCosts + result.espionageCosts
 
   # Check affordability
-  if packet.houseId in state.houses:
-    let house = state.houses[packet.houseId]
+  let houseOpt = state.house(packet.houseId)
+  if houseOpt.isSome:
+    let house = houseOpt.get()
     result.canAfford = house.treasury >= result.totalCost
 
     if not result.canAfford:

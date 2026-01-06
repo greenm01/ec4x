@@ -170,7 +170,7 @@ proc getAvailableFacilities*(
 
 proc assignFacility*(
     state: GameState, colonyId: ColonyId, projectType: BuildType, itemId: string
-): Option[tuple[facilityId: uint32, facilityType: NeoriaClass]] =
+): Option[tuple[facilityId: NeoriaId, facilityType: NeoriaClass]] =
   ## Assign a construction project to the best available facility
   ##
   ## Assignment algorithm:
@@ -188,7 +188,7 @@ proc assignFacility*(
     # For shipyard, we need a spaceport but it doesn't consume docks
     let colonyOpt = state.colony(colonyId)
     if colonyOpt.isNone:
-      return none(tuple[facilityId: uint32, facilityType: NeoriaClass])
+      return none(tuple[facilityId: NeoriaId, facilityType: NeoriaClass])
 
     let colony = colonyOpt.get()
 
@@ -199,19 +199,19 @@ proc assignFacility*(
         let neoria = neoriaOpt.get()
         if neoria.neoriaClass == NeoriaClass.Spaceport:
           # Return first spaceport (assists but doesn't consume capacity)
-          return some((uint32(neoriaId), NeoriaClass.Spaceport))
+          return some((neoriaId, NeoriaClass.Spaceport))
 
-    return none(tuple[facilityId: uint32, facilityType: NeoriaClass])
+    return none(tuple[facilityId: NeoriaId, facilityType: NeoriaClass])
 
   # Normal case: find facility with available capacity
   let available = getAvailableFacilities(state, colonyId, projectType)
 
   if available.len == 0:
-    return none(tuple[facilityId: uint32, facilityType: NeoriaClass])
+    return none(tuple[facilityId: NeoriaId, facilityType: NeoriaClass])
 
   # Return first (highest priority) facility
-  # Convert string ID back to uint32
-  return some((uint32(parseUInt(available[0].facilityId)), available[0].facilityType))
+  # Convert string ID to NeoriaId
+  return some((NeoriaId(parseUInt(available[0].facilityId)), available[0].facilityType))
 
 proc processCapacityReporting*(state: GameState): seq[capacity.CapacityViolation] =
   ## Main entry point - report capacity violations (should never happen)

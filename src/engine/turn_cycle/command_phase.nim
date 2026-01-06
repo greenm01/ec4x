@@ -35,8 +35,8 @@ import ../types/game_state
 import ../types/[diplomacy as dip_types, command, tech as tech_types]
 import ../systems/fleet/[standing, commands]
 import ../systems/automation
-import ../systems/commissioning
-import ../systems/construction
+import ../systems/production/commissioning
+import ../systems/production/construction
 import ../systems/production/engine as production_resolution
 import ../systems/events/event_factory/init as event_factory
 import ../systems/fleet/dispatcher as command_engine

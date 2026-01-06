@@ -24,7 +24,7 @@ type
     buildType*: BuildType
     quantity*: int32
     shipClass*: Option[ShipClass]
-    buildingType*: Option[string]
+    facilityClass*: Option[FacilityClass]  # Use enum, not string
     industrialUnits*: int32
 
   ConstructionProject* = object

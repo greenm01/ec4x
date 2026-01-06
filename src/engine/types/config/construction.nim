@@ -1,7 +1,6 @@
 type
   ConstructionTimesConfig* = object
     shipTurns*: int32
-    fighterSquadronTurns*: int32
     armyTurns*: int32
     marineTurns*: int32
     groundBatteryTurns*: int32

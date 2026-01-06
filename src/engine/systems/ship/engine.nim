@@ -2,7 +2,7 @@
 ##
 ## This module provides coordination functions that bridge:
 ## - ship/entity.nim (business logic, cargo operations)
-## - facilities/repair_queue.nim (repair coordination)
+## - production/repairs.nim (repair coordination)
 ## - State validation and error handling
 ##
 ## Per DoD architecture: This is the coordination layer that validates
@@ -196,11 +196,11 @@ proc repairShip*(
   ## 3. Creates repair project in drydock queue
   ## 4. Extracts ship from fleet into repair queue
   ##
-  ## **Note:** Actual repair logic handled by facilities/repair_queue.nim
+  ## **Note:** Actual repair logic handled by production/repairs.nim
   ## This function is a stub for future coordination
 
   # This is a placeholder for future implementation
-  # For now, repairs are handled automatically by facilities/repair_queue.nim
+  # For now, repairs are handled automatically by production/repairs.nim
   # which processes crippled ships at colonies with drydocks
 
   return RepairResult(

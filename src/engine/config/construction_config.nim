@@ -18,7 +18,6 @@ proc loadConstructionConfig*(configPath: string): ConstructionConfig =
   ctx.withNode("buildTimes"):
     let timesNode = doc.requireNode("buildTimes", ctx)
     construction.shipTurns = timesNode.requireInt32("ship", ctx)
-    construction.fighterSquadronTurns = timesNode.requireInt32("fighterSquadron", ctx)
     construction.armyTurns = timesNode.requireInt32("army", ctx)
     construction.marineTurns = timesNode.requireInt32("marine", ctx)
     construction.groundBatteryTurns = timesNode.requireInt32("groundBattery", ctx)

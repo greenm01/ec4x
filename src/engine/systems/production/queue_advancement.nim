@@ -2,6 +2,11 @@
 ##
 ## Manages construction and repair queues at individual facilities.
 ##
+## **Architecture:**
+## - Uses state layer APIs to read entities (state.constructionProject, state.neoria)
+## - Directly mutates state for project updates (no entity_ops yet)
+## - Follows three-layer pattern: State → Business Logic → Mutations
+##
 ## **Facility Specialization:**
 ## - Spaceport: Construction only (5 docks) - ground-based launch facility
 ## - Shipyard: Construction only (10 docks) - orbital ship construction
@@ -24,9 +29,10 @@
 ## Ships built at spaceports cost 2x PP (applied at order submission time)
 ## Exception: Shipyard/Starbase buildings (orbital construction, no penalty)
 
-import std/[options, tables, algorithm, strutils]
-import ../../types/[core, production, facilities, colony, combat]
-import ../../state/engine as state_engine
+import std/[options, sequtils, strutils]
+import ../../types/[core, production, facilities, colony, combat, game_state]
+import ../../state/[engine, iterators]
+import ../../entities/project_ops
 import ../../../common/logger
 
 export production.CompletedProject
@@ -36,56 +42,62 @@ type QueueAdvancementResult* = object ## Results from advancing a facility's que
   completedRepairs*: seq[production.RepairProject]
 
 proc advanceSpaceportQueue*(
-    spaceport: var Neoria, colonyId: SystemId
+    state: var GameState, spaceport: var Neoria, colonyId: ColonyId
 ): QueueAdvancementResult =
   ## Advance spaceport construction queue (FIFO)
-  ## Spaceports handle multiple simultaneous construction (up to effective docks limit with CST scaling)
+  ## Uses state layer APIs to access construction projects by ID
   result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
 
   # Step 1: Advance all active construction projects
-  var completedIndices: seq[int] = @[]
-  for idx, project in spaceport.activeConstructions:
-    var projectCopy = project
-    projectCopy.turnsRemaining -= 1
+  var completedIds: seq[ConstructionProjectId] = @[]
+  for projectId in spaceport.activeConstructions:
+    let projectOpt = state.constructionProject(projectId)
+    if projectOpt.isNone:
+      continue # Project not found, skip
 
-    if projectCopy.turnsRemaining <= 0:
+    var project = projectOpt.get()
+    project.turnsRemaining -= 1
+
+    if project.turnsRemaining <= 0:
       # Construction complete
       result.completedProjects.add(
         production.CompletedProject(
           colonyId: colonyId,
-          projectType: projectCopy.projectType,
-          itemId: projectCopy.itemId,
+          projectType: project.projectType,
+          itemId: project.itemId,
         )
       )
-      completedIndices.add(idx)
-      logDebug(
-        "Facilities",
-        "Spaceport construction complete",
-        facilityId = spaceport.id,
-        projectId = projectCopy.itemId,
-      )
+      completedIds.add(projectId)
+      logDebug("Facilities", "Spaceport construction complete: ", $spaceport.id, " project=", project.itemId)
+      # Use entity ops for proper cleanup
+      project_ops.completeConstructionProject(state, projectId)
     else:
-      # Still in progress - update in place
-      spaceport.activeConstructions[idx] = projectCopy
+      # Still in progress - write back to entity manager
+      state.updateConstructionProject(projectId, project)
 
-  # Remove completed projects (reverse order to maintain indices)
-  for idx in completedIndices.reversed:
-    spaceport.activeConstructions.delete(idx)
+  # Remove completed project IDs from active list
+  spaceport.activeConstructions = spaceport.activeConstructions.filterIt(it notin completedIds)
 
   # Step 2: Pull new projects from queue to fill available docks
   let availableDocks = spaceport.effectiveDocks - spaceport.activeConstructions.len
 
   var pulled = 0
   while pulled < availableDocks and spaceport.constructionQueue.len > 0:
-    var nextProject = spaceport.constructionQueue[0]
+    let nextProjectId = spaceport.constructionQueue[0]
     spaceport.constructionQueue.delete(0)
+
+    let projectOpt = state.constructionProject(nextProjectId)
+    if projectOpt.isNone:
+      continue # Project not found, skip
+
+    var nextProject = projectOpt.get()
 
     # CRITICAL: Decrement turnsRemaining immediately when starting
     # This ensures "1 turn" projects complete in the same turn cycle
     nextProject.turnsRemaining -= 1
 
     if nextProject.turnsRemaining <= 0:
-      # Project completes immediately (0-turn projects)
+      # Project completes immediately (1-turn projects)
       result.completedProjects.add(
         production.CompletedProject(
           colonyId: colonyId,
@@ -93,26 +105,23 @@ proc advanceSpaceportQueue*(
           itemId: nextProject.itemId,
         )
       )
-      logEconomy(
-        "Spaceport construction complete (instant)", "facility=", spaceport.id,
-        " project=", nextProject.itemId,
-      )
+      logDebug("Facilities", "Spaceport construction complete (instant): ", $spaceport.id, " project=", nextProject.itemId)
+      # Use entity ops for proper cleanup
+      project_ops.completeConstructionProject(state, nextProjectId)
       # Don't add to activeConstructions - dock remains free
       pulled += 1
     else:
-      # Project still needs more turns
-      spaceport.activeConstructions.add(nextProject)
-      logEconomy(
-        "Spaceport started new construction", "facility=", spaceport.id, " project=",
-        nextProject.itemId,
-      )
+      # Project still needs more turns - write to entity manager and activate
+      state.updateConstructionProject(nextProjectId, nextProject)
+      spaceport.activeConstructions.add(nextProjectId)
+      logDebug("Facilities", "Spaceport started new construction: ", $spaceport.id, " project=", nextProject.itemId)
       pulled += 1
 
 proc advanceDrydockQueue*(
-    drydock: var Neoria, colonyId: SystemId
+    state: var GameState, drydock: var Neoria, colonyId: ColonyId
 ): QueueAdvancementResult =
   ## Advance drydock repair queue (repair-only facility)
-  ## Drydocks handle repairs only (effective docks with CST scaling, no construction)
+  ## Uses state layer APIs to access repair projects by ID
   result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
 
   # Crippled drydocks can't work
@@ -120,53 +129,52 @@ proc advanceDrydockQueue*(
     return
 
   # Step 1: Advance active repairs
-  var completedRepairIndices: seq[int] = @[]
-  for idx, repair in drydock.activeRepairs:
-    var repairCopy = repair
-    repairCopy.turnsRemaining -= 1
+  var completedRepairIds: seq[RepairProjectId] = @[]
+  for repairId in drydock.activeRepairs:
+    let repairOpt = state.repairProject(repairId)
+    if repairOpt.isNone:
+      continue # Repair not found, skip
 
-    if repairCopy.turnsRemaining <= 0:
+    var repair = repairOpt.get()
+    repair.turnsRemaining -= 1
+
+    if repair.turnsRemaining <= 0:
       # Repair complete
-      result.completedRepairs.add(repairCopy)
-      completedRepairIndices.add(idx)
-      logEconomy(
-        "Drydock repair complete",
-        "facility=",
-        drydock.id,
-        " target=",
-        $repairCopy.targetType,
-      )
+      result.completedRepairs.add(repair)
+      completedRepairIds.add(repairId)
+      logDebug("Facilities", "Drydock repair complete: ", $drydock.id, " target=", $repair.targetType)
+      # Use entity ops for proper cleanup
+      project_ops.completeRepairProject(state, repairId)
     else:
-      # Still in progress - update in place
-      drydock.activeRepairs[idx] = repairCopy
+      # Still in progress - write back to entity manager
+      state.updateRepairProject(repairId, repair)
 
-  # Remove completed repairs (reverse order to maintain indices)
-  for idx in completedRepairIndices.reversed:
-    drydock.activeRepairs.delete(idx)
+  # Remove completed repair IDs from active list
+  drydock.activeRepairs = drydock.activeRepairs.filterIt(it notin completedRepairIds)
 
   # Step 2: Pull new repairs from queue to fill available docks
   let availableDocks = drydock.effectiveDocks - drydock.activeRepairs.len
 
   var pulled = 0
   while pulled < availableDocks and drydock.repairQueue.len > 0:
-    # Pull repair project
-    let nextRepair = drydock.repairQueue[0]
+    let nextRepairId = drydock.repairQueue[0]
     drydock.repairQueue.delete(0)
-    drydock.activeRepairs.add(nextRepair)
-    logEconomy(
-      "Drydock started new repair",
-      "facility=",
-      drydock.id,
-      " target=",
-      $nextRepair.targetType,
-    )
+
+    let repairOpt = state.repairProject(nextRepairId)
+    if repairOpt.isNone:
+      continue # Repair not found, skip
+
+    # Add to active repairs
+    drydock.activeRepairs.add(nextRepairId)
+    let repair = repairOpt.get()
+    logDebug("Facilities", "Drydock started new repair: ", $drydock.id, " target=", $repair.targetType)
     pulled += 1
 
 proc advanceShipyardQueue*(
-    shipyard: var Neoria, colonyId: SystemId
+    state: var GameState, shipyard: var Neoria, colonyId: ColonyId
 ): QueueAdvancementResult =
   ## Advance shipyard construction queue (construction-only facility)
-  ## Shipyards handle multiple simultaneous construction (effective docks with CST scaling)
+  ## Uses state layer APIs to access construction projects by ID
   result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
 
   # Crippled shipyards can't work
@@ -174,47 +182,55 @@ proc advanceShipyardQueue*(
     return
 
   # Step 1: Advance all active construction projects
-  var completedIndices: seq[int] = @[]
-  for idx, project in shipyard.activeConstructions:
-    var projectCopy = project
-    projectCopy.turnsRemaining -= 1
+  var completedIds: seq[ConstructionProjectId] = @[]
+  for projectId in shipyard.activeConstructions:
+    let projectOpt = state.constructionProject(projectId)
+    if projectOpt.isNone:
+      continue # Project not found, skip
 
-    if projectCopy.turnsRemaining <= 0:
+    var project = projectOpt.get()
+    project.turnsRemaining -= 1
+
+    if project.turnsRemaining <= 0:
       # Construction complete
       result.completedProjects.add(
         production.CompletedProject(
           colonyId: colonyId,
-          projectType: projectCopy.projectType,
-          itemId: projectCopy.itemId,
+          projectType: project.projectType,
+          itemId: project.itemId,
         )
       )
-      completedIndices.add(idx)
-      logEconomy(
-        "Shipyard construction complete", "facility=", shipyard.id, " project=",
-        projectCopy.itemId,
-      )
+      completedIds.add(projectId)
+      logDebug("Facilities", "Shipyard construction complete: ", $shipyard.id, " project=", project.itemId)
+      # Use entity ops for proper cleanup
+      project_ops.completeConstructionProject(state, projectId)
     else:
-      # Still in progress - update in place
-      shipyard.activeConstructions[idx] = projectCopy
+      # Still in progress - write back to entity manager
+      state.updateConstructionProject(projectId, project)
 
-  # Remove completed projects (reverse order to maintain indices)
-  for idx in completedIndices.reversed:
-    shipyard.activeConstructions.delete(idx)
+  # Remove completed project IDs from active list
+  shipyard.activeConstructions = shipyard.activeConstructions.filterIt(it notin completedIds)
 
   # Step 2: Pull new projects from queue to fill available docks
   let availableDocks = shipyard.effectiveDocks - shipyard.activeConstructions.len
 
   var pulled = 0
   while pulled < availableDocks and shipyard.constructionQueue.len > 0:
-    var nextProject = shipyard.constructionQueue[0]
+    let nextProjectId = shipyard.constructionQueue[0]
     shipyard.constructionQueue.delete(0)
+
+    let projectOpt = state.constructionProject(nextProjectId)
+    if projectOpt.isNone:
+      continue # Project not found, skip
+
+    var nextProject = projectOpt.get()
 
     # CRITICAL: Decrement turnsRemaining immediately when starting
     # This ensures "1 turn" projects complete in the same turn cycle
     nextProject.turnsRemaining -= 1
 
     if nextProject.turnsRemaining <= 0:
-      # Project completes immediately (0-turn projects)
+      # Project completes immediately (1-turn projects)
       result.completedProjects.add(
         production.CompletedProject(
           colonyId: colonyId,
@@ -222,19 +238,16 @@ proc advanceShipyardQueue*(
           itemId: nextProject.itemId,
         )
       )
-      logEconomy(
-        "Shipyard construction complete (instant)", "facility=", shipyard.id,
-        " project=", nextProject.itemId,
-      )
+      logDebug("Facilities", "Shipyard construction complete (instant): ", $shipyard.id, " project=", nextProject.itemId)
+      # Use entity ops for proper cleanup
+      project_ops.completeConstructionProject(state, nextProjectId)
       # Don't add to activeConstructions - dock remains free
       pulled += 1
     else:
-      # Project still needs more turns
-      shipyard.activeConstructions.add(nextProject)
-      logEconomy(
-        "Shipyard started new construction", "facility=", shipyard.id, " project=",
-        nextProject.itemId,
-      )
+      # Project still needs more turns - write to entity manager and activate
+      state.updateConstructionProject(nextProjectId, nextProject)
+      shipyard.activeConstructions.add(nextProjectId)
+      logDebug("Facilities", "Shipyard started new construction: ", $shipyard.id, " project=", nextProject.itemId)
       pulled += 1
 
 proc advanceColonyQueues*(
@@ -246,38 +259,43 @@ proc advanceColonyQueues*(
   result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
 
   # Get colony to access facility IDs
-  let colonyOpt = state_engine.mColony(state, colonyId)
+  let colonyOpt = state.colony(colonyId)
   if colonyOpt.isNone:
     return result
 
   let colony = colonyOpt.get()
-  let systemId = colony.systemId
 
   # Advance all neorias (spaceports, shipyards, drydocks)
   for neoriaId in colony.neoriaIds:
-    let neoriaOpt = state_engine.mNeoria(state, neoriaId)
+    let neoriaOpt = state.neoria(neoriaId)
     if neoriaOpt.isSome:
       var neoria = neoriaOpt.get()
       case neoria.neoriaClass:
       of NeoriaClass.Spaceport:
-        let spaceportResult = advanceSpaceportQueue(neoria, systemId)
+        let spaceportResult = state.advanceSpaceportQueue(neoria, colonyId)
         result.completedProjects.add(spaceportResult.completedProjects)
         result.completedRepairs.add(spaceportResult.completedRepairs)
+        # Write back modified neoria
+        state.updateNeoria(neoriaId, neoria)
       of NeoriaClass.Shipyard:
-        let shipyardResult = advanceShipyardQueue(neoria, systemId)
+        let shipyardResult = state.advanceShipyardQueue(neoria, colonyId)
         result.completedProjects.add(shipyardResult.completedProjects)
         result.completedRepairs.add(shipyardResult.completedRepairs)
+        # Write back modified neoria
+        state.updateNeoria(neoriaId, neoria)
       of NeoriaClass.Drydock:
-        let drydockResult = advanceDrydockQueue(neoria, systemId)
+        let drydockResult = state.advanceDrydockQueue(neoria, colonyId)
         result.completedProjects.add(drydockResult.completedProjects)
         result.completedRepairs.add(drydockResult.completedRepairs)
+        # Write back modified neoria
+        state.updateNeoria(neoriaId, neoria)
 
 proc isPlanetaryDefense*(project: production.CompletedProject): bool =
   ## Returns true if project should commission in Maintenance Phase
   ## Planetary assets: Facilities, ground forces, fighters (planetside)
   ## Military assets: Ships built in docks (Command Phase after combat)
 
-  if project.projectType == production.ConstructionType.Facility:
+  if project.projectType == BuildType.Facility:
     return
       project.itemId in [
         "Starbase", "Spaceport", "Shipyard", "Drydock", "GroundBattery", "Marine",
@@ -285,7 +303,7 @@ proc isPlanetaryDefense*(project: production.CompletedProject): bool =
       ] or project.itemId.startsWith("PlanetaryShield")
 
   # Fighters are planetside, commission with planetary defense
-  if project.projectType == production.ConstructionType.Ship:
+  if project.projectType == BuildType.Ship:
     return project.itemId == "Fighter"
 
   return false
@@ -323,40 +341,50 @@ proc advanceAllQueues*(
 ##
 ## Capital ships (non-fighters) use the facility queue system above.
 ##
-## TODO: These functions need refactoring to use entity managers:
-## - Colony.underConstruction stores ConstructionProjectId, not ConstructionProject
-## - Colony.constructionQueue stores seq[ConstructionProjectId]
-## - Functions need to look up projects using GameState.constructionProjects entity manager
-## - Currently BROKEN due to type mismatch
+## NOW REFACTORED to use entity managers properly.
 
 proc startConstruction*(
-    colony: var game_state.Colony, project: production.ConstructionProject
+    state: var GameState, colony: var Colony, project: ConstructionProject
 ): bool =
-  ## Start new construction project at colony
+  ## Start new construction project at colony using entity managers
   ## Returns true if started successfully
   ##
   ## NOTE: This function manages the legacy colony construction queue.
   ## Used for fighters, buildings, and IU investment (planet-side construction).
   ## Capital ships use the facility queue system (construction_docks.nim).
 
-  # Set underConstruction for first project
+  # Add project to entity manager (generates ID)
+  var mutableProject = project
+  let finalProject = state.queueConstructionProject(colony.id, mutableProject)
+
+  # Set underConstruction for first project if slot is empty
   if colony.underConstruction.isNone:
-    colony.underConstruction = some(project)
+    colony.underConstruction = some(finalProject.id)
+    # Remove from queue since it's now active
+    if colony.constructionQueue.len > 0 and colony.constructionQueue[0] == finalProject.id:
+      colony.constructionQueue.delete(0)
 
   # Always return true - actual capacity checking happens in resolution layer
   return true
 
 proc advanceConstruction*(
-    colony: var game_state.Colony
+    state: var GameState, colony: var Colony
 ): Option[production.CompletedProject] =
-  ## Advance colony construction by one turn (upfront payment model)
+  ## Advance colony construction by one turn using entity managers
   ## Returns completed project if finished
   ## Per economy.md:5.0 - full cost paid upfront, construction tracks turns
 
   if colony.underConstruction.isNone:
     return none(production.CompletedProject)
 
-  var project = colony.underConstruction.get()
+  let projectId = colony.underConstruction.get()
+  let projectOpt = state.constructionProject(projectId)
+  if projectOpt.isNone:
+    # Project not found - clear slot
+    colony.underConstruction = none(ConstructionProjectId)
+    return none(production.CompletedProject)
+
+  var project = projectOpt.get()
 
   # Decrement turns remaining
   project.turnsRemaining -= 1
@@ -364,23 +392,27 @@ proc advanceConstruction*(
   # Check if complete
   if project.turnsRemaining <= 0:
     let completed = production.CompletedProject(
-      colonyId: colony.systemId,
+      colonyId: colony.id,
       projectType: project.projectType,
       itemId: project.itemId,
     )
 
     # Clear construction slot
-    colony.underConstruction = none(production.ConstructionProject)
+    colony.underConstruction = none(ConstructionProjectId)
+
+    # Use entity ops for proper cleanup
+    state.completeConstructionProject(projectId)
 
     # Pull next project from queue if available
     if colony.constructionQueue.len > 0:
-      colony.underConstruction = some(colony.constructionQueue[0])
+      let nextId = colony.constructionQueue[0]
       colony.constructionQueue.delete(0)
+      colony.underConstruction = some(nextId)
 
     return some(completed)
 
-  # Update progress
-  colony.underConstruction = some(project)
+  # Update progress in entity manager
+  state.updateConstructionProject(projectId, project)
 
   return none(production.CompletedProject)
 

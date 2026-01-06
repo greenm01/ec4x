@@ -13,15 +13,14 @@ constructionModifiers {
 buildTimes {
     (docs)"docs/specs/10-reference.md#section-10-1-1"
     ship 1 // All ships build in 1 turn
-    fighterSquadron 1
     army 1
     marine 1
     groundBattery 1
     planetaryShield 1
     spaceport 1
-    shipyard 2
-    drydock 2
-    starbase 3
+    shipyard 1
+    drydock 1
+    starbase 1
 }
 
 // --- Global Repair Mechanics ---
