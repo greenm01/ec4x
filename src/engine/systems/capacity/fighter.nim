@@ -293,7 +293,6 @@ proc applyEnforcement*(
     # Get ship info before destroying
     let shipOpt = state.ship(fighterId)
     if shipOpt.isSome:
-      let ship = shipOpt.get()
 
       # Emit shipDisbanded event
       events.add(

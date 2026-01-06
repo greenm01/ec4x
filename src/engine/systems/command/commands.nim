@@ -424,12 +424,12 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
           )
 
     # Check CST tech requirement and prerequisites for buildings (assets.md:2.4.4)
-    if cmd.buildType == BuildType.Facility and cmd.buildingType.isSome:
-      let buildingTypeStr = cmd.buildingType.get()
-      let buildingType = parseEnum[FacilityClass](buildingTypeStr)
+    if cmd.buildType == BuildType.Facility and cmd.buildType.isSome:
+      let buildTypeStr = cmd.builType.get()
+      let builType = parseEnum[FacilityClass](buildTypeStr)
 
       # Check CST requirement (e.g., Starbase requires CST3)
-      let required_cst = gameConfig.facilities.facilities[buildingType].minCST
+      let required_cst = gameConfig.facilities.facilities[buildType].minCST
       if required_cst > 0:
         let houseOpt = state.house(packet.houseId)
         if houseOpt.isSome:
@@ -439,7 +439,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
           if house_cst < required_cst:
             logWarn(
               "Commands",
-              &"{packet.houseId} Build command REJECTED: {buildingType} requires CST{required_cst}, " &
+              &"{packet.houseId} Build command REJECTED: {buildType} requires CST{required_cst}, " &
                 &"house has CST{house_cst}",
             )
             return ValidationResult(
@@ -449,7 +449,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
             )
 
       # Check shipyard prerequisite (e.g., Starbase requires shipyard)
-      if requiresShipyard(buildingTypeStr):
+      if requiresShipyard(buildTypeStr):
         # Check if colony has operational shipyard
         # Operational = Shipyard that is not Crippled
         var hasShipyard = false
@@ -465,11 +465,11 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
         if not hasShipyard:
           logWarn(
             "Commands",
-            &"{packet.houseId} Build command REJECTED: {buildingType} requires operational shipyard at {cmd.colonyId}",
+            &"{packet.houseId} Build command REJECTED: {buildType} requires operational shipyard at {cmd.colonyId}",
           )
           return ValidationResult(
             valid: false,
-            error: &"Build command: {buildingType} requires operational shipyard",
+            error: &"Build command: {buildType} requires operational shipyard",
           )
 
     # NOTE: Multiple build commands per colony per turn are supported (queue system)

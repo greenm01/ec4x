@@ -12,7 +12,7 @@ type
     economicManipulationEbp*: int32
     psyopsCampaignEbp*: int32
     counterIntelSweepEbp*: int32
-    intelligenceTheftEbp*: int32
+    intelTheftEbp*: int32
     plantDisinformationEbp*: int32
 
   EspionageEffectsConfig* = object

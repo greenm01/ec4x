@@ -48,11 +48,11 @@ proc loadEspionageConfig*(configPath: string): EspionageConfig =
       of "psyopsCampaign":
         costs.psyopsCampaignEbp = child.requireInt32("ebpCost", ctx)
         effects.psyopsTaxReduction = 25  # 25% reduction
-      of "counterIntelligenceSweep":
+      of "counterIntelSweep":
         costs.counterIntelSweepEbp = child.requireInt32("ebpCost", ctx)
         effects.intelBlockDuration = child.requireInt32("intelBlockDurationTurns", ctx)
-      of "intelligenceTheft":
-        costs.intelligenceTheftEbp = child.requireInt32("ebpCost", ctx)
+      of "intelTheft":
+        costs.intelTheftEbp = child.requireInt32("ebpCost", ctx)
       of "plantDisinformation":
         costs.plantDisinformationEbp = child.requireInt32("ebpCost", ctx)
         effects.disinformationDuration = child.requireInt32("disinformationDurationTurns", ctx)

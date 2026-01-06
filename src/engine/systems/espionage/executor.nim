@@ -7,9 +7,9 @@ import std/[random, options, tables]
 import ../../types/[core, espionage, prestige]
 import ../../prestige/events as prestige_events
 import ../../globals
-import action_descriptors
+import descriptors
 
-export espionage, action_descriptors
+export espionage, descriptors
 
 ## Generic Execution
 

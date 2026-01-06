@@ -1,5 +1,5 @@
-import std/tables
-import ./[core, tech, espionage, income]
+import std/[tables, options]
+import ./[core, tech, espionage, income, intel]
 
 type
   HouseStatus* {.pure.} = enum
@@ -15,6 +15,8 @@ type
     techTree*: TechTree
     espionageBudget*: EspionageBudget
     taxPolicy*: TaxPolicy
+    intel*: IntelDatabase # Intel database for fog-of-war
+    latestIncomeReport*: Option[HouseIncomeReport] # For HackStarbase missions
     isEliminated*: bool
     eliminatedTurn*: int32
     # House status tracking

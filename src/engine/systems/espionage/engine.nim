@@ -11,9 +11,9 @@
 import std/random
 import ../../types/espionage
 import ../../globals
-import action_descriptors, executor
+import descriptors, executor
 
-export espionage, action_descriptors, executor
+export espionage, descriptors, executor
 
 ## Detection System
 
@@ -59,7 +59,7 @@ proc getActionCost*(action: EspionageAction): int =
   of EspionageAction.EconomicManipulation: config.economicManipulationEbp
   of EspionageAction.PsyopsCampaign: config.psyopsCampaignEbp
   of EspionageAction.CounterIntelSweep: config.counterIntelSweepEbp
-  of EspionageAction.IntelligenceTheft: config.intelligenceTheftEbp
+  of EspionageAction.IntelTheft: config.intelTheftEbp
   of EspionageAction.PlantDisinformation: config.plantDisinformationEbp
 
 ## Budget Management

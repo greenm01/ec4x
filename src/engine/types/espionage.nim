@@ -103,3 +103,23 @@ type
     turn*: int32
     attempts*: seq[EspionageResult]
     overInvestmentPenalties*: seq[tuple[houseId: HouseId, penalty: int32]]
+
+  # Scout-based intelligence operations (moved from simultaneous.nim)
+  # Per docs/specs/09-intel-espionage.md Section 9.1.1
+  ScoutIntelOperation* = object
+    ## Tracks a scout-based intelligence gathering operation
+    ## Replaces EspionageIntent (removed conflict terminology)
+    houseId*: HouseId
+    fleetId*: FleetId
+    targetSystem*: SystemId
+    orderType*: string # "SpyColony", "SpySystem", "HackStarbase"
+    espionageStrength*: int32
+
+  ScoutIntelResult* = object
+    ## Result of a scout intelligence operation
+    ## Replaces simultaneous.EspionageResult (avoids naming conflict)
+    houseId*: HouseId
+    fleetId*: FleetId
+    targetSystem*: SystemId
+    detected*: bool # Whether scouts were detected
+    intelligenceGathered*: bool # Whether intel was successfully gathered

@@ -1,7 +1,17 @@
 ## Espionage Action Descriptors
 ##
-## Data-oriented design: Extract action-specific data from execution logic
-## This eliminates 93% code duplication in engine.nim (448 lines → ~30 lines)
+## Data-driven design for EBP-based espionage actions.
+## Eliminates code duplication by extracting action-specific data from execution logic.
+##
+## Per docs/specs/09-intel-espionage.md Section 9.2:
+## - 10 espionage actions with varying costs and effects
+## - EBP cost ranges from 2 (Low Sabotage) to 10 (Assassination)
+## - Detection difficulty varies by action type
+##
+## **Design Pattern:**
+## - ActionDescriptor type defines action effects as pure data
+## - Generic executor in executor.nim uses descriptors (eliminates 93% duplication)
+## - Original: 448 lines of duplicate code → After: ~30 lines of data
 
 import ../../types/espionage
 import ../../globals
@@ -166,7 +176,7 @@ proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
       effectMagnitude: 1.0,
       effectTargetsSelf: true, # Defensive action
     )
-  of EspionageAction.IntelligenceTheft:
+  of EspionageAction.IntelTheft:
     ActionDescriptor(
       action: action,
       detectedDesc: "Intelligence theft detected and prevented",

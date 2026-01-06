@@ -35,7 +35,7 @@ import
   ]
 # import ../systems/combat/simultaneous_blockade  # REMOVED: Legacy squadron-based system
 import ../systems/combat/orchestrator # Theater progression (Space → Orbital → Planetary)
-import ../systems/espionage/simultaneous_espionage
+import ../systems/espionage/resolution as espionage_resolution
 import
   ../systems/intelligence/
     [espionage_intel, generator, spy_resolution, starbase_surveillance]
@@ -351,7 +351,7 @@ proc resolveConflictPhase*(
     "[CONFLICT STEP 6a] Fleet-based espionage (SpyPlanet, SpySystem, HackStarbase)...",
   )
   let espionageResults =
-    simultaneous_espionage.resolveEspionage(state, arrivedOrders, rng, events)
+    espionage_resolution.resolveEspionage(state, arrivedOrders, rng, events)
   logInfo(
     LogCategory.lcOrders,
     &"[CONFLICT STEP 6a] Completed ({espionageResults.len} fleet espionage attempts)",
@@ -368,7 +368,7 @@ proc resolveConflictPhase*(
   # Process scout espionage results and gather intelligence
   # Creates detailed narrative events for espionage reports
   logInfo(LogCategory.lcOrders, "[CONFLICT STEP 6a] Processing scout intelligence...")
-  simultaneous_espionage.processScoutIntelligence(
+  espionage_resolution.processScoutIntel(
     state, espionageResults, effectiveOrders, rng, events
   )
   logInfo(
@@ -510,7 +510,7 @@ proc resolveConflictPhase*(
     LogCategory.lcOrders,
     "[CONFLICT STEP 6b] Space Guild espionage (EBP-based covert ops)...",
   )
-  simultaneous_espionage.processEspionageActions(state, effectiveOrders, rng, events)
+  espionage_resolution.processEspionageActions(state, effectiveOrders, rng, events)
   logInfo(
     LogCategory.lcOrders, "[CONFLICT STEP 6b] Completed EBP-based espionage processing"
   )

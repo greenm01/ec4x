@@ -50,12 +50,12 @@ actions {
         taxRevenueReduction 0.25
         durationTurns 1
     }
-    counterIntelligenceSweep {
+    counterIntelSweep {
         ebpCost 4
         effect "Blocks enemy intelligence gathering for 1 turn."
         intelBlockDurationTurns 1
     }
-    intelligenceTheft {
+    intelTheft {
         ebpCost 8
         effect "Steals target's entire intelligence database."
     }

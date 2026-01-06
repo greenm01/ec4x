@@ -61,17 +61,3 @@ type
     intents*: seq[BlockadeIntent]
 
   BlockadeResult* = OrderResult[ColonyId]
-
-  # Espionage
-  EspionageIntent* = object
-    houseId*: HouseId
-    fleetId*: FleetId
-    targetSystem*: SystemId
-    orderType*: string
-    espionageStrength*: int32
-
-  EspionageConflict* = object
-    targetSystem*: SystemId
-    intents*: seq[EspionageIntent]
-
-  EspionageResult* = OrderResult[SystemId]
