@@ -9,15 +9,15 @@
 ##
 ## Per operations.md:6.3.12 - Colonize a Planet command
 
+## NOTE: This file is included by engine.nim, not imported
+## Do not add it to imports elsewhere - use systems/colony/engine instead
+
 import std/[tables, options, random, strformat]
 import
   ../../types/[core, game_state, fleet, ship, starmap, colony, event, prestige]
 import ../../state/[engine, iterators, fleet_queries]
-import ./engine as colony_engine
 import ../../entities/[fleet_ops, ship_ops]
 import ../../event_factory/init as event_factory
-import ../../prestige/application as prestige_app
-import ../../globals
 import ../../../common/logger
 
 # Conflict resolution tuning
@@ -30,7 +30,7 @@ const StrengthWeight = 2
 # Phase 1: Intent Collection
 # ============================================================================
 
-proc collectColonizationIntents*(state: GameState): seq[ColonizationIntent] =
+proc collectColonizationIntents(state: GameState): seq[ColonizationIntent] =
   ## Collect all colonization attempts from arrived fleets
   ## Uses state layer iterator - clean separation of concerns
   result = @[]
@@ -69,7 +69,7 @@ proc collectColonizationIntents*(state: GameState): seq[ColonizationIntent] =
 # Phase 2: Conflict Detection
 # ============================================================================
 
-proc detectConflicts*(
+proc detectConflicts(
     intents: seq[ColonizationIntent]
 ): seq[ColonizationConflict] =
   ## Group intents by target system to find conflicts
@@ -95,7 +95,7 @@ proc detectConflicts*(
 # Phase 3: Conflict Resolution (Option B: Strength + Randomness)
 # ============================================================================
 
-proc resolveConflict*(
+proc resolveConflict(
     conflict: ColonizationConflict, rng: var Rand
 ): ColonizationIntent =
   ## Resolve conflict using fleet strength + random factor
@@ -136,7 +136,7 @@ proc resolveConflict*(
 # Phase 4: Colony Establishment
 # ============================================================================
 
-proc establishColonyForFleet*(
+proc establishColonyForFleet(
     state: var GameState, intent: ColonizationIntent, events: var seq[GameEvent]
 ): ColonizationResult =
   ## Establish colony for winning fleet
@@ -194,7 +194,7 @@ proc establishColonyForFleet*(
   let system = systemOpt.get()
 
   # Check if system already colonized
-  if not colony_engine.canColonize(state, intent.targetSystem):
+  if not canColonize(state, intent.targetSystem):
     logWarn(
       "Colonization", &"System {intent.targetSystem} already colonized"
     )
@@ -209,7 +209,7 @@ proc establishColonyForFleet*(
       )
 
   # Establish colony via engine layer
-  let colonyIdOpt = colony_engine.establishColony(
+  let colonyIdOpt = establishColony(
     state, intent.houseId, intent.targetSystem, system.planetClass,
     system.resourceRating, ptuCount,
   )
