@@ -16,7 +16,7 @@ import std/[strutils, algorithm, options]
 import
   ../../types/
     [capacity, core, game_state, ship, production, event, colony, house]
-import ../../state/[game_state as gs_helpers, iterators]
+import ../../state/[engine, iterators]
 import ../../entities/ship_ops
 import ../../event_factory/fleet_ops
 import ../../../common/logger
@@ -24,52 +24,52 @@ import ../../../common/logger
 export
   capacity.CapacityViolation, capacity.EnforcementAction, capacity.ViolationSeverity
 
-proc calculateMaxPlanetBreakers*(colonyCount: int): int =
+proc calculateMaxPlanetBreakers*(colonyCount: int32): int32 =
   ## Pure calculation of maximum planet-breaker capacity
   ## Formula: Max PB = current colony count
   ## Homeworld counts as 1 colony
   return colonyCount
 
-proc countPlanetBreakersInFleets*(state: GameState, houseId: HouseId): int =
+proc countPlanetBreakersInFleets*(state: GameState, houseId: HouseId): int32 =
   ## Count planet-breakers currently in fleets for a house
-  result = 0
+  result = 0'i32
   for fleet in state.fleetsOwned(houseId):
     for shipId in fleet.ships:
-      let shipOpt = gs_helpers.getShip(state, shipId)
+      let shipOpt = state.ship(shipId)
       if shipOpt.isSome:
         let ship = shipOpt.get()
         if ship.shipClass == ShipClass.PlanetBreaker:
-          result += 1
+          result += 1'i32
 
-proc countPlanetBreakersUnderConstruction*(state: GameState, houseId: HouseId): int =
+proc countPlanetBreakersUnderConstruction*(state: GameState, houseId: HouseId): int32 =
   ## Count planet-breakers currently under construction house-wide
-  result = 0
+  result = 0'i32
   for colony in state.coloniesOwned(houseId):
     # Check underConstruction (single active project)
     if colony.underConstruction.isSome:
       let projectId = colony.underConstruction.get()
-      let projectOpt = gs_helpers.getConstructionProject(state, projectId)
+      let projectOpt = state.constructionProject(projectId)
       if projectOpt.isSome:
         let project = projectOpt.get()
         if project.projectType == BuildType.Ship and project.itemId == "PlanetBreaker":
-          result += 1
+          result += 1'i32
 
     # Check construction queue
     for projectId in colony.constructionQueue:
-      let projectOpt = gs_helpers.getConstructionProject(state, projectId)
+      let projectOpt = state.constructionProject(projectId)
       if projectOpt.isSome:
         let project = projectOpt.get()
         if project.projectType == BuildType.Ship and project.itemId == "PlanetBreaker":
-          result += 1
+          result += 1'i32
 
 proc analyzeCapacity*(state: GameState, houseId: HouseId): capacity.CapacityViolation =
   ## Pure function - analyze house's planet-breaker capacity status
   ## Returns capacity analysis without mutating state
 
   # Count colonies owned by house
-  var colonyCount = 0
+  var colonyCount = 0'i32
   for colony in state.coloniesOwned(houseId):
-    colonyCount += 1
+    colonyCount += 1'i32
 
   let current = countPlanetBreakersInFleets(state, houseId)
   let maximum = calculateMaxPlanetBreakers(colonyCount)
@@ -87,12 +87,12 @@ proc analyzeCapacity*(state: GameState, houseId: HouseId): capacity.CapacityViol
     entity: capacity.EntityIdUnion(
       kind: capacity.CapacityType.PlanetBreaker, houseId: houseId
     ),
-    current: int32(current),
-    maximum: int32(maximum),
-    excess: int32(excess),
+    current: current,
+    maximum: maximum,
+    excess: excess,
     severity: severity,
     graceTurnsRemaining: 0'i32, # No grace period
-    violationTurn: int32(state.turn),
+    violationTurn: state.turn,
   )
 
 proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
@@ -131,7 +131,7 @@ proc planEnforcement*(
 
   for fleet in state.fleetsOwned(houseId):
     for shipId in fleet.ships:
-      let shipOpt = gs_helpers.getShip(state, shipId)
+      let shipOpt = state.ship(shipId)
       if shipOpt.isSome:
         let ship = shipOpt.get()
         if ship.shipClass == ShipClass.PlanetBreaker:
@@ -167,9 +167,13 @@ proc applyEnforcement*(
     let shipId = ShipId(parseUInt(shipIdStr))
 
     # Get ship info before destroying
-    let shipOpt = gs_helpers.getShip(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
+
+      # Get fleet location for event
+      let fleetOpt = state.fleet(ship.fleetId)
+      let systemId = if fleetOpt.isSome: fleetOpt.get().location else: SystemId(0)
 
       # Emit ship scrapped event
       events.add(
@@ -179,11 +183,11 @@ proc applyEnforcement*(
           shipClass = ShipClass.PlanetBreaker,
           reason = "Planet-breaker capacity exceeded (colony loss)",
           salvageValue = 0, # No salvage for planet-breakers
-          systemId = ship.fleetId, # Note: using fleetId as placeholder for location
+          systemId = systemId,
         )
       )
 
-      logger.logDebug(
+      logDebug(
         "Military", "Planet-breaker auto-scrapped - colony loss", " shipId=",
         shipIdStr, " salvage=none",
       )
@@ -191,7 +195,7 @@ proc applyEnforcement*(
     # Destroy ship from state.ships EntityManager
     ship_ops.destroyShip(state, shipId)
 
-  logger.logDebug(
+  logDebug(
     "Military",
     "Planet-breaker capacity enforcement complete",
     " house=",
@@ -210,16 +214,16 @@ proc processCapacityEnforcement*(
 
   result = @[]
 
-  logger.logDebug("Military", "Checking planet-breaker capacity")
+  logDebug("Military", "Checking planet-breaker capacity")
 
   # Step 1: Check all houses for violations (pure)
   let violations = checkViolations(state)
 
   if violations.len == 0:
-    logger.logDebug("Military", "All houses within planet-breaker capacity limits")
+    logDebug("Military", "All houses within planet-breaker capacity limits")
     return
 
-  logger.logDebug(
+  logDebug(
     "Military", "Planet-breaker violations found, count=", $violations.len
   )
 
@@ -232,7 +236,7 @@ proc processCapacityEnforcement*(
 
   # Step 3: Apply enforcement (mutations)
   if enforcementActions.len > 0:
-    logger.logDebug(
+    logDebug(
       "Military",
       "Enforcing planet-breaker capacity violations",
       " count=",
@@ -242,7 +246,7 @@ proc processCapacityEnforcement*(
       applyEnforcement(state, action, events)
       result.add(action) # Track which actions were applied
   else:
-    logger.logDebug("Military", "No planet-breaker violations requiring enforcement")
+    logDebug("Military", "No planet-breaker violations requiring enforcement")
 
 proc canBuildPlanetBreaker*(state: GameState, houseId: HouseId): bool =
   ## Check if house can build a new planet-breaker

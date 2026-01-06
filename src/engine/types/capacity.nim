@@ -14,6 +14,9 @@ type
     PlanetBreaker # Per-house planet-breaker limits (colony-count-based)
     ConstructionDock # Per-colony construction dock capacity
     CarrierHangar # Per-ship carrier hangar capacity (CV & CX)
+    FleetSize # Per-fleet ship count limit (FC tech)
+    FleetCount # Per-house combat fleet count limit (SC tech)
+    C2Pool # Per-house command & control pool (soft cap with PP penalty)
 
   ViolationSeverity* {.pure.} = enum
     None # No violation - within limits
@@ -25,10 +28,12 @@ type
     case kind*: CapacityType
     of FighterSquadron, ConstructionDock:
       colonyId*: ColonyId
-    of CapitalSquadron, TotalSquadron, PlanetBreaker:
+    of CapitalSquadron, TotalSquadron, PlanetBreaker, FleetCount, C2Pool:
       houseId*: HouseId
     of CarrierHangar:
       shipId*: ShipId
+    of FleetSize:
+      fleetId*: FleetId
 
   CapacityViolation* = object
     capacityType*: CapacityType
@@ -50,3 +55,16 @@ type
 
   GracePeriodTracker* = object
     fighterCapacityExpiry*: Table[SystemId, int32]
+
+  ## C2 Pool Analysis Types
+
+  C2PoolAnalysis* = object
+    ## Analysis result for house C2 Pool capacity
+    houseId*: HouseId
+    totalIU*: int32
+    scLevel*: int32
+    scBonus*: int32
+    c2Pool*: int32
+    totalFleetCC*: int32
+    excess*: int32
+    logisticalStrain*: int32

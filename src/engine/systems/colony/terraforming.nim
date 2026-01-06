@@ -7,11 +7,12 @@
 ## Per architecture.md: Colony system owns colony operations,
 ## called from turn_cycle/income_phase.nim
 
-import std/[options, logging, strformat]
+import std/[options, strformat]
 import ../../types/[core, game_state, command, event, starmap, colony]
 import ../../state/[engine, iterators]
 import ../tech/effects
 import ../../event_factory/init
+import ../../../common/logger
 
 proc resolveTerraformCommands*(
     state: var GameState, packet: CommandPacket, events: var seq[GameEvent]
@@ -22,25 +23,28 @@ proc resolveTerraformCommands*(
     # Validate colony exists and is owned by house
     let colonyOpt = state.colony(command.colonyId)
     if colonyOpt.isNone:
-      error "Terraforming failed: System-", command.colonyId, " has no colony"
+      logError("Terraforming", "Terraforming failed: System has no colony",
+        "System-" & $command.colonyId)
       continue
 
     var colony = colonyOpt.get()
     if colony.owner != packet.houseId:
-      error "Terraforming failed: ",
-        packet.houseId, " does not own system-", command.colonyId
+      logError("Terraforming", "Terraforming failed: House does not own system",
+        $packet.houseId, "System-" & $command.colonyId)
       continue
 
     # Check if already terraforming
     if colony.activeTerraforming.isSome:
-      error "Terraforming failed: System-",
-        command.colonyId, " already has active terraforming project"
+      logError("Terraforming",
+        "Terraforming failed: System already has active terraforming project",
+        "System-" & $command.colonyId)
       continue
 
     # Get house tech level
     let houseOpt = state.house(packet.houseId)
     if houseOpt.isNone:
-      error "Terraforming failed: House ", packet.houseId, " not found"
+      logError("Terraforming", "Terraforming failed: House not found",
+        $packet.houseId)
       continue
 
     let house = houseOpt.get()
@@ -49,7 +53,8 @@ proc resolveTerraformCommands*(
     # Get system to access planetClass
     let systemOpt = state.system(colony.systemId)
     if systemOpt.isNone:
-      error "Terraforming failed: System not found for colony ", command.colonyId
+      logError("Terraforming", "Terraforming failed: System not found for colony",
+        $command.colonyId)
       continue
     let system = systemOpt.get()
 
@@ -57,9 +62,9 @@ proc resolveTerraformCommands*(
     let currentClass = ord(system.planetClass) + 1 # Convert enum to class number (1-7)
     if not canTerraform(currentClass, terLevel):
       let targetClass = currentClass + 1
-      error "Terraforming failed: TER level ",
-        terLevel, " insufficient for class ", currentClass, " → ", targetClass,
-        " (requires TER ", targetClass, ")"
+      logError("Terraforming",
+        &"Terraforming failed: TER level {terLevel} insufficient for class {currentClass} → {targetClass}",
+        &"(requires TER {targetClass})")
       continue
 
     # Calculate costs and duration
@@ -69,8 +74,8 @@ proc resolveTerraformCommands*(
 
     # Check house treasury has sufficient PP
     if house.treasury < ppCost:
-      error "Terraforming failed: Insufficient PP (need ",
-        ppCost, ", have ", house.treasury, ")"
+      logError("Terraforming",
+        &"Terraforming failed: Insufficient PP (need {ppCost}, have {house.treasury})")
       continue
 
     # Deduct PP cost from house treasury
@@ -101,10 +106,9 @@ proc resolveTerraformCommands*(
       of 7: "Eden"
       else: "Unknown"
 
-    info house.name,
-      " initiated terraforming of system-", command.colonyId, " to ", className,
-      " (class ", targetClass, ") - Cost: ", ppCost, " PP, Duration: ", turnsRequired,
-      " turns"
+    logInfo("Terraforming",
+      &"{house.name} initiated terraforming of system-{command.colonyId} to {className} (class {targetClass})",
+      &"Cost: {ppCost} PP", &"Duration: {turnsRequired} turns")
 
     # Note: This was using TerraformComplete incorrectly for "initiated" - should be constructionStarted
     events.add(
@@ -159,14 +163,13 @@ proc processTerraformingProjects*(state: var GameState, events: var seq[GameEven
         of 7: "Eden"
         else: "Unknown"
 
-      info house.name,
-        " completed terraforming of ", colonyId, " to ", className, " (class ",
-        project.targetClass, ")"
+      logInfo("Terraforming",
+        &"{house.name} completed terraforming of {colonyId} to {className} (class {project.targetClass})")
 
       events.add(terraformComplete(houseId, colony.systemId, className))
     else:
-      debug house.name,
-        " terraforming ", colonyId, ": ", project.turnsRemaining, " turn(s) remaining"
+      logDebug("Terraforming",
+        &"{house.name} terraforming {colonyId}: {project.turnsRemaining} turn(s) remaining")
       # Update project
       colonyMut.activeTerraforming = some(project)
 
