@@ -16,7 +16,7 @@ import ../../state/[engine, iterators, fleet_queries]
 import ../../globals # For gameConfig
 import ../ship/entity as ship_entity # Ship helper functions
 import ../../entities/[colony_ops, fleet_ops, ship_ops]
-import ../../prestige/[engine as prestige_engine, application as prestige_app]
+import ../../prestige/engine as prestige_engine
 import ../../event_factory/init as event_factory
 import ../../intel/generator
 import ../../utils # For soulsPerPtu
@@ -757,7 +757,7 @@ proc resolveColonizationCommand*(
     amount: prestigeAmount.int32,
     description: "Established colony at system " & $targetId
   )
-  prestige_app.applyPrestigeEvent(state, houseId, prestigeEvent)
+  prestige_engine.applyPrestigeEvent(state, houseId, prestigeEvent)
 
   # Generate colonization event
   events.add(event_factory.colonyEstablished(houseId, targetId, 0))
