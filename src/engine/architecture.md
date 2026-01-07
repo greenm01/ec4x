@@ -33,18 +33,18 @@ src/engine/
     │                         │                                              │
 ├── @state/               # [STATE MANAGEMENT CORE - The "Database"]
     │   │                     # Provides generic, low-level mechanics for storing and accessing data.
-    │   │                     # `entity_manager.nim` is private to this directory.
-    │   ├── engine.nim      #   - The PUBLIC API for direct `GameState` entity access (add, update, del, get by ID).
+    │   │                     # `entity_manager.nim` is private to this directory (included, not imported).
+    │   ├── engine.nim      #   - The PUBLIC API for direct `GameState` entity access:
+    │   │                     #     • CRUD: add/update/del/get by ID for all entity types
+    │   │                     #     • Helpers: colonyBySystem, shipsByFleet, groundUnitsAtColony, etc.
+    │   │                     #     • Count: fleetsCount, shipsCount, coloniesCount, etc.
     │   ├── entity_manager.nim#   - Implements the generic DoD storage pattern (data: seq, index: Table).
-    │   ├── game_state.nim    #   - `initGameState` constructor, simple getters, and trackers (e.g., `GracePeriodTracker`).
     │   ├── id_gen.nim        #   - Logic for generating new, unique entity IDs.
     │   ├── iterators.nim     #   - The PRIMARY READ-ONLY API for batch entity access (e.g., `fleetsInSystem`, `coloniesOwned`).
     │   │                     #   - ALWAYS use iterators instead of `.entities.data` with manual filtering.
     │   │                     #   - Provides O(1) indexed lookups via `byHouse`, `byOwner`, `bySystem` tables.
     │   ├── fleet_queries.nim #   - Derived fleet properties (hasColonists, canMergeWith, etc.) using iterators.
-    │   ├── entity_helpers.nim#   - Helper procs for single index-based entity lookups (e.g., `colonyBySystem`).
-    │   │                     #   - Reduces verbose 3-line pattern to 1-line calls.
-    │   └── fog_of_war.nim    #   - A complex READ-ONLY query system that transforms `GameState` into a `PlayerView`.
+    │   └── fog_of_war.nim    #   - Complex READ-ONLY query system that transforms `GameState` into `PlayerView`.
     │
     │                                     (WRITE/MUTATION ACCESS)
     │                         ┌──────────────────────────────────────────────┐
