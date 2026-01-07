@@ -183,6 +183,23 @@ proc isScoutOnly*(state: GameState, fleet: Fleet): bool =
         return false
   return true
 
+proc hasNonScoutShips*(state: GameState, fleet: Fleet): bool =
+  ## Check if fleet has any non-scout ships
+  ## O(s) where s = ships in fleet
+  ##
+  ## Used for spy mission validation (ensure pure scout fleets)
+  ##
+  ## Example:
+  ##   if state.hasNonScoutShips(fleet):
+  ##     # Fleet has combat or support ships
+  for shipId in fleet.ships:
+    let shipOpt = state_engine.ship(state, shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.shipClass != ShipClass.Scout:
+        return true
+  return false
+
 proc hasCargoType*(
     state: GameState, fleet: Fleet, cargoType: CargoClass
 ): bool =
@@ -220,3 +237,29 @@ proc totalCargoOfType*(
         let cargo = ship.cargo.get()
         if cargo.cargoType == cargoType:
           result += cargo.quantity
+
+proc canMergeWith*(
+    state: GameState, fleet1: Fleet, fleet2: Fleet
+): tuple[canMerge: bool, reason: string] =
+  ## Check if two fleets can merge
+  ## O(s1 + s2) where s = ships in each fleet
+  ##
+  ## RULE: Intel ships (Scouts) cannot be mixed with other ship types
+  ## Intel fleets NEVER mix with anything (pure intelligence operations)
+  ## Combat, Auxiliary, and Expansion can mix (combat escorts for transports)
+  ##
+  ## Example:
+  ##   let mergeCheck = state.canMergeWith(fleet1, fleet2)
+  ##   if mergeCheck.canMerge:
+  ##     # Proceed with merge
+  let f1HasIntel = state.hasScouts(fleet1)
+  let f2HasIntel = state.hasScouts(fleet2)
+  let f1HasNonIntel = state.hasNonScoutShips(fleet1)
+  let f2HasNonIntel = state.hasNonScoutShips(fleet2)
+
+  # Intel ships cannot mix with non-Intel ships
+  if (f1HasIntel and f2HasNonIntel) or (f1HasNonIntel and f2HasIntel):
+    return (false, "Intel ships cannot be mixed with other ship types")
+
+  # Both fleets are compatible (either both Intel-only or both have no Intel)
+  return (true, "")
