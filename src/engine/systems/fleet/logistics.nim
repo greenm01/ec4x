@@ -24,7 +24,7 @@ import ../../types/[
   core, game_state, fleet, ship, colony, ground_unit,
   event, zero_turn
 ]
-import ../../state/[engine, iterators, id_gen]
+import ../../state/[engine, iterators, id_gen, fleet_queries]
 import ../../entities/[fleet_ops, ship_ops, colony_ops]
 import ../fleet/entity as fleet_entity
 import ../ship/entity as ship_entity
@@ -100,15 +100,13 @@ proc validateShipIndices*(
 ): ValidationResult =
   ## DRY: Validate ship indices are valid and not selecting all ships
 
-  let allShips = fleet_entity.allShips(state, fleet)
-
   # Must select at least one ship
   if indices.len == 0:
     return ValidationResult(valid: false, error: "Must select at least one ship")
 
   # Validate each index
   for idx in indices:
-    if idx < 0 or idx >= allShips.len:
+    if idx < 0 or idx >= fleet.ships.len:
       return ValidationResult(valid: false, error: "Invalid ship index: " & $idx)
 
   # Check for duplicate indices
@@ -224,7 +222,7 @@ proc validateZeroTurnCommand*(
       # Check scout/combat fleet mixing (validate after transfer would occur)
       # TODO: This is a simplified check - ideally we'd simulate the transfer
       # and check if the result would mix scouts with combat ships
-      let mergeCheck = fleet_entity.canMergeWith(state, fleet, targetFleet)
+      let mergeCheck = state.canMergeWith(fleet, targetFleet)
       if not mergeCheck.canMerge:
         return ValidationResult(valid: false, error: mergeCheck.reason)
   of ZeroTurnCommandType.MergeFleets:
@@ -255,8 +253,7 @@ proc validateZeroTurnCommand*(
       return ValidationResult(valid: false, error: "Cannot merge fleet into itself")
 
     # Check scout/combat fleet mixing
-    let mergeCheck =
-      fleet_entity.canMergeWith(state, sourceFleet, targetFleet)
+    let mergeCheck = state.canMergeWith(sourceFleet, targetFleet)
     if not mergeCheck.canMerge:
       return ValidationResult(valid: false, error: mergeCheck.reason)
   of ZeroTurnCommandType.LoadCargo, ZeroTurnCommandType.UnloadCargo:

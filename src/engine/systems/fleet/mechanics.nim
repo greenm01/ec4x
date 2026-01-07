@@ -12,7 +12,7 @@ import ../../types/[
   core, game_state, command, fleet, event,
   diplomacy, intel, starmap, espionage, ship, prestige, colony, ground_unit, combat
 ]
-import ../../state/[engine, iterators]
+import ../../state/[engine, iterators, fleet_queries]
 import ../../globals # For gameConfig
 import ../ship/entity as ship_entity # Ship helper functions
 import ../../entities/[colony_ops, fleet_ops, ship_ops]
@@ -423,7 +423,7 @@ proc resolveMovementCommand*(
       fleet.missionState = FleetMissionState.OnSpyMission
       fleet.missionStartTurn = state.turn
 
-      let scoutCount = int32(fleet_entity.countScoutShips(state, fleet))
+      let scoutCount = state.countScoutShips(fleet)
 
       # Register active mission
       state.activeSpyMissions[command.fleetId] = ActiveSpyMission(

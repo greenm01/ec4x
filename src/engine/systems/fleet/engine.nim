@@ -10,7 +10,7 @@
 import std/[options, algorithm]
 import ../../types/[core, game_state, fleet, ship]
 import ../../entities/fleet_ops
-import ../../state/engine
+import ../../state/[engine, fleet_queries]
 import ./entity as fleet_entity
 
 type FleetOperationResult* = object ## Result of a fleet operation
@@ -90,8 +90,8 @@ proc canMergeFleets*(
   if source.location != target.location:
     return (false, "Fleets are in different systems")
 
-  # Check ship type compatibility using fleet_entity helper
-  let mergeCheck = fleet_entity.canMergeWith(state, source, target)
+  # Check ship type compatibility using state accessor
+  let mergeCheck = state.canMergeWith(source, target)
   if not mergeCheck.canMerge:
     return (false, mergeCheck.reason)
 

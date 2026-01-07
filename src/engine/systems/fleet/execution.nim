@@ -10,7 +10,7 @@
 import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
 import ../../types/[core, game_state, command, fleet, ship, combat, event, diplomacy]
 import ../../../common/logger as common_logger
-import ../../state/[engine, iterators]
+import ../../state/[engine, iterators, fleet_queries]
 import ./dispatcher # For OrderOutcome and executeFleetCommand
 import ./standing
 import ./mechanics # For findClosestOwnedColony
@@ -125,7 +125,7 @@ proc validateCommandAtExecution(
         )
 
       # Check ship type compatibility (Intel/Scout ships cannot mix with non-Intel)
-      let mergeCheck = fleet_entity.canMergeWith(state, fleet, targetFleet)
+      let mergeCheck = state.canMergeWith(fleet, targetFleet)
       if not mergeCheck.canMerge:
         return ExecutionValidationResult(
           valid: false,
@@ -135,8 +135,8 @@ proc validateCommandAtExecution(
   of FleetCommandType.SpyColony, FleetCommandType.SpySystem,
       FleetCommandType.HackStarbase:
     # Check fleet is still Intel-only (Scout ships only, no combat/other ships)
-    let hasIntel = fleet_entity.hasScouts(state, fleet)
-    let hasNonIntel = fleet_entity.hasNonScoutShips(state, fleet)
+    let hasIntel = state.hasScouts(fleet)
+    let hasNonIntel = state.hasNonScoutShips(fleet)
 
     if not hasIntel:
       return ExecutionValidationResult(
