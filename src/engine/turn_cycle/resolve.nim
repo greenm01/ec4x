@@ -243,13 +243,13 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
     result.newState, effectiveOrders, result.combatReports, result.events, rng
   )
 
-  # Phase 4: Maintenance (fleet movement → construction advancement → planetary defense commissioning → diplomatic actions)
-  let completedShips = maintenance_phase.resolveMaintenancePhase(
+  # Phase 4: Production (fleet movement → construction advancement → planetary defense commissioning → diplomatic actions)
+  let completedShips = maintenance_phase.resolveProductionPhase(
     result.newState, result.events, effectiveOrders, rng
   )
 
   # Store completed ships for next turn's commissioning
-  # (Planetary defense already commissioned in Maintenance Phase Step 2b)
+  # (Planetary defense already commissioned in Production Phase Step 2b)
   # Ships will be commissioned at start of next turn's Command Phase Part A
   result.newState.pendingMilitaryCommissions = completedShips
   logDebug(

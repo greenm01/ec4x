@@ -243,7 +243,7 @@ proc commissionPlanetaryDefense*(
   ## **Strategic Rationale:** Planetary assets commission immediately so defenders
   ## can respond to threats arriving next turn's Conflict Phase.
   ##
-  ## **Called From:** resolveMaintenancePhase() in phases/maintenance_phase.nim
+  ## **Called From:** resolveProductionPhase() in turn_cycle/production_phase.nim
   ## **Called After:** Construction queue advancement
   ## **Called Before:** Turn boundary (military units commission next turn)
 
