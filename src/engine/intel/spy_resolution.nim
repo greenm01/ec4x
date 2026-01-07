@@ -4,7 +4,7 @@
 import std/[options, random]
 import ../../common/logger
 import ../types/[core, game_state]
-import ../state/engine
+import ../state/[engine, fleet_queries]
 import ../systems/fleet/entity
 
 type SpyDetectionResult* = object

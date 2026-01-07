@@ -434,6 +434,39 @@ iterator fleetsWithColonizeCommand*(
         if state.fleets.entities.index.contains(fleetId):
           yield (fleetId, state.fleets.entities.entity(fleetId).get(), command)
 
+iterator fleetsWithArrivedConflictCommands*(
+    state: GameState
+): tuple[id: FleetId, fleet: Fleet, command: FleetCommand] =
+  ## Iterate fleets with Conflict Phase commands that have arrived at target
+  ## Filters for commands requiring arrival and checks arrivedFleets table
+  ## O(c) where c = fleets with commands
+  ##
+  ## Conflict Phase arrival-required commands:
+  ##   - Bombard, Invade, Blitz (planetary combat)
+  ##   - Colonize (colonization)
+  ##   - SpyColony, SpySystem, HackStarbase (espionage)
+  ##
+  ## Example:
+  ##   for (fleetId, fleet, cmd) in state.fleetsWithArrivedConflictCommands():
+  ##     case cmd.commandType
+  ##     of FleetCommandType.Bombard:
+  ##       # Execute bombardment
+  const ConflictPhaseArrivalRequired = [
+    fleet_types.FleetCommandType.Bombard,
+    fleet_types.FleetCommandType.Invade,
+    fleet_types.FleetCommandType.Blitz,
+    fleet_types.FleetCommandType.Colonize,
+    fleet_types.FleetCommandType.SpyColony,
+    fleet_types.FleetCommandType.SpySystem,
+    fleet_types.FleetCommandType.HackStarbase,
+  ]
+  
+  for fleetId, command in state.fleetCommands:
+    if command.commandType in ConflictPhaseArrivalRequired:
+      if fleetId in state.arrivedFleets:
+        if state.fleets.entities.index.contains(fleetId):
+          yield (fleetId, state.fleets.entities.entity(fleetId).get(), command)
+
 iterator etacsInFleet*(state: GameState, fleet: Fleet): Ship =
   ## Iterate ETAC ships in a fleet
   ## O(s) where s = ships in fleet
