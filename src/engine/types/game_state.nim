@@ -62,7 +62,6 @@ type
     standingCommands*: Table[FleetId, StandingCommand]
 
     # Phase-specific state
-    arrivedFleets*: Table[FleetId, SystemId]
     activeSpyMissions*: Table[FleetId, ActiveSpyMission]
     ongoingEffects*: seq[OngoingEffect]
     pendingProposals*: seq[PendingProposal]

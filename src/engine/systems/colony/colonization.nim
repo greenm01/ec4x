@@ -401,11 +401,6 @@ proc resolveColonization*(
           )
         )
 
-  # Clear arrival status for all processed fleets
-  for res in result:
-    if res.fleetId in state.arrivedFleets:
-      state.arrivedFleets.del(res.fleetId)
-
   logInfo(
     "Colonization", &"Colonization resolution complete: {result.len} results"
   )

@@ -14,7 +14,7 @@ import ../../types/[core, fleet, ship, combat, starmap, game_state]
 import ../../state/engine
 import std/[strutils, options]
 
-export FleetId, SystemId, HouseId, LaneClass, FleetMissionState
+export FleetId, SystemId, HouseId, LaneClass, MissionState
 export Ship, ShipClass # Export for fleet users
 export ShipCargo, CargoClass # Export cargo types
 

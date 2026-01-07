@@ -33,9 +33,9 @@ import ../../common/logger as common_logger
 import ../types/core
 import ../types/game_state
 import ../types/[diplomacy as dip_types, command, tech as tech_types]
-import ../systems/fleet/[standing, commands]
-import ../systems/automation
-import ../systems/production/commissioning
+import ../systems/fleet/standing
+import ../systems/command/commands
+# import ../systems/production/commissioning  # STUB: Module needs refactoring
 import ../systems/production/construction
 import ../systems/production/engine as production_resolution
 import ../systems/events/event_factory/init as event_factory
@@ -295,6 +295,16 @@ proc resolveCommandPhase*(
           let validation = validateFleetCommand(cmd, state, houseId)
           if validation.valid:
             state.fleetCommands[cmd.fleetId] = cmd
+
+            # Update fleet entity with command and mission state
+            let fleetOpt = state.fleet(cmd.fleetId)
+            if fleetOpt.isSome:
+              var updatedFleet = fleetOpt.get()
+              updatedFleet.command = some(cmd)
+              updatedFleet.missionState = MissionState.Traveling
+              updatedFleet.missionTarget = cmd.targetSystem
+              state.updateFleet(cmd.fleetId, updatedFleet)
+
             ordersStored += 1
             logDebug(
               LogCategory.lcOrders, &"  [STORED] Fleet {cmd.fleetId}: {cmd.commandType}"

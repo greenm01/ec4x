@@ -22,8 +22,7 @@ proc newFleet*(
     status: status,
     roe: roe,
     command: none(FleetCommand),
-    missionState: FleetMissionState.None,
-    missionType: none(int32),
+    missionState: MissionState.None,
     missionTarget: none(SystemId),
     missionStartTurn: 0,
   )

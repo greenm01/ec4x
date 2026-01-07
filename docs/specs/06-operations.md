@@ -169,7 +169,7 @@ Command your fleet to hold position and await new commands. Your fleet maintains
 
 ### 6.3.3 Move Fleet (01)
 
-Move your fleet to a new solar system and hold position. Your fleet travels to the destination system, establishes presence, then awaits further commands. Use Move for strategic repositioning without immediate combat intent.
+Move your fleet to a new solar system and hold position. Your fleet travels to the destination system, establishes presence, and is auto assigned order (00) to hold position to await further commands. Use Move for strategic repositioning without immediate combat intent.
 
 **Use Move to:**
 - Reposition forces to emerging threat sectors

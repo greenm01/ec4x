@@ -274,7 +274,6 @@ proc initGameState*(
     diplomaticViolation: initTable[HouseId, ViolationHistory](),
     fleetCommands: initTable[FleetId, FleetCommand](),
     standingCommands: initTable[FleetId, StandingCommand](),
-    arrivedFleets: initTable[FleetId, SystemId](),
     activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
     gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
     lastTurnReports: initTable[HouseId, TurnResolutionReport](),

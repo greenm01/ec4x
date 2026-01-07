@@ -72,7 +72,7 @@ proc validateFleetCommand*(
   # Check if fleet is locked on active spy mission
   # Scouts on active missions (OnSpyMission state) cannot accept new commands
   # Scouts traveling to mission (Traveling state) can change commands (cancel mission)
-  if fleet.missionState == FleetMissionState.OnSpyMission:
+  if fleet.missionState == MissionState.ScoutLocked:
     logWarn(
       "Commands",
       &"{issuingHouse} Command REJECTED: {cmd.fleetId} is on active spy mission " &

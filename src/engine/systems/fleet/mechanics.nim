@@ -419,16 +419,26 @@ proc resolveMovementCommand*(
     )
 
     # Check if this fleet is on a spy mission and start mission on arrival
-    if fleet.missionState == FleetMissionState.Traveling:
-      fleet.missionState = FleetMissionState.OnSpyMission
+    if fleet.missionState == MissionState.Traveling:
+      fleet.missionState = MissionState.ScoutLocked
       fleet.missionStartTurn = state.turn
 
       let scoutCount = state.countScoutShips(fleet)
 
+      # Derive mission type from command type
+      let missionType =
+        case command.commandType
+        of FleetCommandType.SpyColony: SpyMissionType.SpyOnPlanet
+        of FleetCommandType.SpySystem: SpyMissionType.SpyOnSystem
+        of FleetCommandType.HackStarbase: SpyMissionType.HackStarbase
+        else:
+          logError("Fleet", &"Invalid spy command type: {command.commandType}")
+          SpyMissionType.SpyOnPlanet # fallback
+
       # Register active mission
       state.activeSpyMissions[command.fleetId] = ActiveSpyMission(
         fleetId: command.fleetId,
-        missionType: SpyMissionType(fleet.missionType.get()),
+        missionType: missionType,
         targetSystem: fleet.location,
         scoutCount: scoutCount,
         startTurn: state.turn,
@@ -440,7 +450,7 @@ proc resolveMovementCommand*(
 
       # Generate mission start event
       let missionName =
-        case SpyMissionType(fleet.missionType.get())
+        case missionType
         of SpyMissionType.SpyOnPlanet: "spy mission"
         of SpyMissionType.HackStarbase: "starbase hack"
         of SpyMissionType.SpyOnSystem: "system reconnaissance"

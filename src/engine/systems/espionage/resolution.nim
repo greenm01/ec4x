@@ -95,7 +95,7 @@ proc resolveScoutMissions*(
       continue
 
     # Validate Traveling state (should be arriving from Production Phase)
-    if fleet.missionState != FleetMissionState.Traveling:
+    if fleet.missionState != MissionState.Traveling:
       logWarn("Espionage", "Fleet not in Traveling state",
         " fleetId=", fleetId, " state=", fleet.missionState)
       continue
@@ -118,7 +118,7 @@ proc resolveScoutMissions*(
 
     # TRANSITION: Traveling → OnSpyMission (before detection)
     var updatedFleet = fleet
-    updatedFleet.missionState = FleetMissionState.OnSpyMission
+    updatedFleet.missionState = MissionState.ScoutLocked
     updatedFleet.missionStartTurn = state.turn
     state.updateFleet(fleetId, updatedFleet)
 
@@ -166,10 +166,6 @@ proc resolveScoutMissions*(
       generateMissionIntel(state, missionType, targetSystem, fleet.houseId, events)
 
     newMissionsProcessed += 1
-
-    # Clear from arrivedFleets (mission processed)
-    if fleetId in state.arrivedFleets:
-      state.arrivedFleets.del(fleetId)
 
   logInfo("Espionage", "[Step 6a] Complete",
     " new_missions=", newMissionsProcessed)

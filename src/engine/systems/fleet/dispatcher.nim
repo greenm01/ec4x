@@ -855,8 +855,7 @@ proc executeSpyColonyCommand(
 
   # Set fleet mission state
   var updatedFleet = fleet
-  updatedFleet.missionState = FleetMissionState.Traveling
-  updatedFleet.missionType = some(int32(ord(SpyMissionType.SpyOnPlanet)))
+  updatedFleet.missionState = MissionState.Traveling
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)
@@ -902,7 +901,7 @@ proc executeSpyColonyCommand(
     )
   else:
     # Already at target - start mission immediately
-    updatedFleet.missionState = FleetMissionState.OnSpyMission
+    updatedFleet.missionState = MissionState.ScoutLocked
     updatedFleet.missionStartTurn = state.turn
 
     # Register active mission
@@ -1006,8 +1005,7 @@ proc executeHackStarbaseCommand(
 
   # Set fleet mission state
   var updatedFleet = fleet
-  updatedFleet.missionState = FleetMissionState.Traveling
-  updatedFleet.missionType = some(int32(ord(SpyMissionType.HackStarbase)))
+  updatedFleet.missionState = MissionState.Traveling
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)
@@ -1053,7 +1051,7 @@ proc executeHackStarbaseCommand(
     )
   else:
     # Already at target - start mission immediately
-    updatedFleet.missionState = FleetMissionState.OnSpyMission
+    updatedFleet.missionState = MissionState.ScoutLocked
     updatedFleet.missionStartTurn = state.turn
 
     # Register active mission
@@ -1134,8 +1132,7 @@ proc executeSpySystemCommand(
 
   # Set fleet mission state
   var updatedFleet = fleet
-  updatedFleet.missionState = FleetMissionState.Traveling
-  updatedFleet.missionType = some(int32(ord(SpyMissionType.SpyOnSystem)))
+  updatedFleet.missionState = MissionState.Traveling
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)
@@ -1181,7 +1178,7 @@ proc executeSpySystemCommand(
     )
   else:
     # Already at target - start mission immediately
-    updatedFleet.missionState = FleetMissionState.OnSpyMission
+    updatedFleet.missionState = MissionState.ScoutLocked
     updatedFleet.missionStartTurn = state.turn
 
     # Register active mission

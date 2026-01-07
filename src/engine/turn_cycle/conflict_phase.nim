@@ -44,9 +44,9 @@ import ../prestige/engine as prestige_app
 
 proc resolveConflictPhase*(
     state: var GameState,
-    orders: Table[HouseId, OrderPacket],
+    commands: Table[HouseId, command.CommandPacket],
     combatReports: var seq[res_types.CombatReport],
-    events: var seq[res_types.GameEvent],
+    events: var seq[event.GameEvent],
     rng: var Rand,
 ) =
   ## Phase 1: Resolve all combat and infrastructure damage
@@ -54,8 +54,8 @@ proc resolveConflictPhase*(
   logInfo("Conflict", "=== Conflict Phase ===", "turn=", state.turn)
   logInfo("Conflict", "Using RNG for combat resolution", "seed=", state.turn)
 
-  # Start with current turn orders (will merge state.fleetCommands below)
-  var effectiveOrders = orders
+  # Start with current turn commands (will merge state.fleetCommands below)
+  var effectiveCommands = commands
 
   # ===================================================================
   # STEP 0: MERGE ACTIVE FLEET ORDERS (from state.fleetCommands)
@@ -84,37 +84,44 @@ proc resolveConflictPhase*(
   for fleetId, fleetCommand in state.fleetCommands:
     # Only merge orders that execute in Conflict Phase
     # Skip orders that execute in other phases:
-    # - Movement orders (Move, Patrol, etc.): Execute in Maintenance Phase
+    # - Movement orders (Move, Patrol, etc.): Execute in Production Phase
     # - Salvage: Executes in Income Phase
-    if isMovementOrder(fleetCommand.commandType) or
+    const movementOrders = [
+      FleetCommandType.Move, FleetCommandType.Patrol, FleetCommandType.SeekHome
+    ]
+    if fleetCommand.commandType in movementOrders or
         fleetCommand.commandType == FleetCommandType.Salvage:
       continue
 
     # Find fleet owner
-    if fleetId notin state.fleets:
+    let fleetOpt = state.fleet(fleetId)
+    if fleetOpt.isNone:
       logDebug("Orders", "  [SKIP] Fleet no longer exists", "fleetId=", fleetId)
       continue
 
-    let fleetOwner = state.fleets[fleetId].owner
+    let fleetOwner = fleetOpt.get().houseId
 
-    # Ensure owner has order packet
-    if fleetOwner notin effectiveOrders:
-      effectiveOrders[fleetOwner] = OrderPacket(
+    # Ensure owner has command packet
+    if fleetOwner notin effectiveCommands:
+      effectiveCommands[fleetOwner] = command.CommandPacket(
         houseId: fleetOwner,
         turn: state.turn,
+        treasury: 0,
         fleetCommands: @[],
-        buildOrders: @[],
-        researchAllocation: res_types_research.initResearchAllocation(),
-        diplomaticActions: @[],
+        buildCommands: @[],
+        researchAllocation: ResearchAllocation(),
+        diplomaticCommand: @[],
         populationTransfers: @[],
-        terraformOrders: @[],
+        terraformCommands: @[],
+        colonyManagement: @[],
+        standingCommands: initTable[FleetId, StandingCommand](),
         espionageAction: none(esp_types.EspionageAttempt),
         ebpInvestment: 0,
         cipInvestment: 0,
       )
 
-    # Add fleet order to owner's orders
-    effectiveOrders[fleetOwner].fleetCommands.add(fleetCommand)
+    # Add fleet command to owner's commands
+    effectiveCommands[fleetOwner].fleetCommands.add(fleetCommand)
     mergedFleetOrderCount += 1
     logDebug("Orders", "  [MERGE] Command from fleet",
       "type=", fleetCommand.commandType,
@@ -123,8 +130,8 @@ proc resolveConflictPhase*(
   logInfo("Orders", "Active fleet orders merged",
     "conflict_orders=", mergedFleetOrderCount)
 
-  # Find all systems where combat should occur based on diplomatic status and orders.
-  # Use effectiveOrders (includes merged queued combat orders)
+  # Find all systems where combat should occur based on diplomatic status and commands.
+  # Use effectiveCommands (includes merged queued combat commands)
   var combatSystems: seq[SystemId] = @[]
 
   for systemId, system in state.starMap.systems:
@@ -174,9 +181,9 @@ proc resolveConflictPhase*(
           # from either house in this system.
           var foundProvocativeOrder = false
           for h in @[house1, house2]:
-            # Check effective orders (includes queued orders)
-            if h in effectiveOrders:
-              for command in effectiveOrders[h].fleetCommands:
+            # Check effective commands (includes queued commands)
+            if h in effectiveCommands:
+              for command in effectiveCommands[h].fleetCommands:
                 # Check if the fleet for this order is actually in the current system
                 let fleetOpt = state.fleet(command.fleetId)
                 if fleetOpt.isSome and fleetOpt.get().location == systemId:
@@ -207,19 +214,19 @@ proc resolveConflictPhase*(
             else:
               none(HouseId)
 
-          # Check effective orders (includes queued orders)
-          if house1 in effectiveOrders and systemOwner.isSome and
+          # Check effective commands (includes queued commands)
+          if house1 in effectiveCommands and systemOwner.isSome and
               systemOwner.get() == house2:
-            for command in effectiveOrders[house1].fleetCommands:
+            for command in effectiveCommands[house1].fleetCommands:
               let fleetOpt = state.fleet(command.fleetId)
               if fleetOpt.isSome and fleetOpt.get().location == systemId and
                   isThreateningFleetOrder(command.commandType):
                 house1ThreateningHouse2 = true
                 break
 
-          if house2 in effectiveOrders and systemOwner.isSome and
+          if house2 in effectiveCommands and systemOwner.isSome and
               systemOwner.get() == house1:
-            for command in effectiveOrders[house2].fleetCommands:
+            for command in effectiveCommands[house2].fleetCommands:
               let fleetOpt = state.fleet(command.fleetId)
               if fleetOpt.isSome and fleetOpt.get().location == systemId and
                   isThreateningFleetOrder(command.commandType):

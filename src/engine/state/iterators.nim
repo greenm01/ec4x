@@ -430,9 +430,10 @@ iterator fleetsWithColonizeCommand*(
   ##       # Process colonization attempt
   for fleetId, command in state.fleetCommands:
     if command.commandType == fleet_types.FleetCommandType.Colonize:
-      if fleetId in state.arrivedFleets:
-        if state.fleets.entities.index.contains(fleetId):
-          yield (fleetId, state.fleets.entities.entity(fleetId).get(), command)
+      if state.fleets.entities.index.contains(fleetId):
+        let fleet = state.fleets.entities.entity(fleetId).get()
+        if fleet.missionState == MissionState.Executing:
+          yield (fleetId, fleet, command)
 
 iterator fleetsWithArrivedConflictCommands*(
     state: GameState
@@ -463,9 +464,10 @@ iterator fleetsWithArrivedConflictCommands*(
   
   for fleetId, command in state.fleetCommands:
     if command.commandType in ConflictPhaseArrivalRequired:
-      if fleetId in state.arrivedFleets:
-        if state.fleets.entities.index.contains(fleetId):
-          yield (fleetId, state.fleets.entities.entity(fleetId).get(), command)
+      if state.fleets.entities.index.contains(fleetId):
+        let fleet = state.fleets.entities.entity(fleetId).get()
+        if fleet.missionState == MissionState.Executing:
+          yield (fleetId, fleet, command)
 
 iterator etacsInFleet*(state: GameState, fleet: Fleet): Ship =
   ## Iterate ETAC ships in a fleet
@@ -532,13 +534,13 @@ iterator fleetsWithStatus*(
       yield fleet
 
 iterator fleetsWithMissionState*(
-  state: GameState, houseId: HouseId, missionState: FleetMissionState
+  state: GameState, houseId: HouseId, missionState: MissionState
 ): Fleet =
   ## Iterate fleets by mission state
   ## O(f) where f = fleets owned by house
   ##
   ## Example:
-  ##   for fleet in state.fleetsWithMissionState(houseId, FleetMissionState.OnSpyMission):
+  ##   for fleet in state.fleetsWithMissionState(houseId, MissionState.ScoutLocked):
   ##     # Process active spy missions
   for fleet in state.fleetsOwned(houseId):
     if fleet.missionState == missionState:

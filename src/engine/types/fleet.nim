@@ -20,16 +20,14 @@ type
 
   Fleet* = object ## A collection of ships that move together
     id*: FleetId # Unique fleet identifier
-    ships*: seq[ShipId]
-      # All ship types (combat, intel, auxiliary)
+    ships*: seq[ShipId] # All ship types (combat, intel, auxiliary)
     houseId*: HouseId # House that owns this fleet
     location*: SystemId # Current system location
     status*: FleetStatus # Operational status (active/reserve/mothballed)
     roe*: int32 # Rules of Engagement (0-10, default 6 = engage if equal)
     command*: Option[FleetCommand]
-    # Spy mission state (for Scout-only fleets)
-    missionState*: FleetMissionState # Spy mission state
-    missionType*: Option[int32] # Type of active mission (SpyMissionType)
+    # Mission state trackers
+    missionState*: MissionState # mission state
     missionTarget*: Option[SystemId] # Target system for mission
     missionStartTurn*: int32 # Turn mission began (for duration tracking)
 
@@ -70,12 +68,13 @@ type
     priority*: int32 # Execution order within turn
     roe*: Option[int32] # Mission-specific retreat threshold (overrides standing command)
 
-  FleetMissionState* {.pure.} = enum
-    ## State machine for fleet spy missions
-    None # Normal fleet operation
-    Traveling # En route to spy mission target
-    OnSpyMission # Active spy mission (locked, gathering intel)
-    Detected # Detected during spy mission (destroyed next phase)
+  MissionState* {.pure.} = enum
+    ## State machine for fleets
+    None # No command assigned (no mission)
+    Executing # Executing the mission (arrived at mission objective)
+    Traveling # En route to mission target
+    ScoutLocked # Active scout mission (locked, gathering intel)
+    ScoutDetected # Detected during scout mission (destroyed next phase)
 
   StandingCommandType* {.pure.} = enum
     None
