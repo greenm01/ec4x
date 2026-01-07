@@ -373,9 +373,9 @@ proc executeSeekHomeCommand(
     return OrderOutcome.Success
 
   # Create movement order to closest colony
-  let moveOrder = FleetOrder(
+  let moveOrder = FleetCommand(
     fleetId: fleet.id,
-    orderType: FleetCommandType.Move,
+    commandType: FleetCommandType.Move,
     targetSystem: some(closestColony),
     targetFleet: none(FleetId),
     priority: command.priority,
@@ -417,8 +417,9 @@ proc executePatrolCommand(
   let targetSystem = command.targetSystem.get()
 
   # Check if target system lost (conquered by enemy)
-  if targetSystem in state.colonies:
-    let colony = state.colonies[targetSystem]
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
     if colony.owner != fleet.houseId:
       events.add(
         event_factory.commandAborted(
@@ -479,7 +480,8 @@ proc executeGuardStarbaseCommand(
   let targetSystem = command.targetSystem.get()
 
   # Validate starbase presence and ownership
-  if targetSystem notin state.colonies:
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isNone:
     events.add(
       event_factory.commandAborted(
         fleet.houseId,
@@ -491,7 +493,7 @@ proc executeGuardStarbaseCommand(
     )
     return OrderOutcome.Aborted
 
-  let colony = state.colonies[targetSystem]
+  let colony = colonyOpt.get()
   if colony.owner != fleet.houseId:
     events.add(
       event_factory.commandAborted(
