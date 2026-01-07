@@ -125,6 +125,11 @@ type
     rounds*: int32
     participants*: seq[HouseCombatResult]
     victor*: Option[HouseId]
+    # Planetary combat fields (attacker/defender model)
+    attackerSurvived*: bool  # Did attacker forces survive?
+    defenderSurvived*: bool  # Did defender forces survive?
+    attackerRetreatedFleets*: seq[FleetId]  # Fleets that retreated (attacker side)
+    defenderRetreatedFleets*: seq[FleetId]  # Fleets that retreated (defender side)
 
   # =============================================================================
   # Outcome Classification

@@ -14,7 +14,7 @@ import ../../types/[core, game_state, command, combat, event, fleet, diplomacy, 
 import ../../types/resolution as res_types
 import ../../state/[engine, iterators]
 import ../../event_factory/init as event_factory
-import ../../prestige/application as prestige_app
+import ../../prestige/engine as prestige_app
 import multi_house # New spec-compliant multi-house combat
 import planetary # Planetary combat (bombardment, invasion, blitz)
 import cleanup # Post-combat entity cleanup
