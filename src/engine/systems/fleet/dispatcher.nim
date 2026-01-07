@@ -4,7 +4,7 @@
 
 import std/[options, tables, strformat]
 import ../../types/[core, fleet, ship, game_state, event, command, combat, diplomacy]
-import ../../state/[engine as state_module, iterators]
+import ../../state/[engine as state_module, iterators, fleet_queries]
 import ../../entities/[fleet_ops, ship_ops]
 import ../../intel/detection
 import ../../event_factory/init as event_factory
@@ -257,6 +257,29 @@ proc executeFleetCommand*(
     return executeViewCommand(state, fleet, command, events)
 
 # =============================================================================
+# Helper Functions
+# =============================================================================
+
+proc findNearestColonyFromList(
+  state: GameState,
+  fleet: Fleet,
+  colonies: seq[SystemId]
+): tuple[colonyId: SystemId, distance: int32] =
+  ## Find nearest colony from a list using pathfinding
+  ## Returns the closest colony and its distance
+  ## Used to eliminate duplicate pathfinding-in-loop patterns
+  result.colonyId = colonies[0]
+  result.distance = int32.high
+
+  for colonyId in colonies:
+    let pathResult = state.starMap.findPath(fleet.location, colonyId, fleet)
+    if pathResult.found:
+      let distance = int32(pathResult.path.len - 1)
+      if distance < result.distance:
+        result.distance = distance
+        result.colonyId = colonyId
+
+# =============================================================================
 # Order 00: Hold Position
 # =============================================================================
 
@@ -314,10 +337,10 @@ proc executeSeekHomeCommand(
   ## If that colony is conquered, find next closest
 
   # Find all friendly colonies
-  # Use coloniesByOwner index for O(1) lookup instead of O(c) scan
+  # Use coloniesOwned iterator for O(1) indexed lookup
   var friendlyColonies: seq[SystemId] = @[]
-  if fleet.houseId in state.coloniesByOwner:
-    friendlyColonies = state.coloniesByOwner[fleet.houseId]
+  for colony in state.coloniesOwned(fleet.houseId):
+    friendlyColonies.add(colony.systemId)
 
   if friendlyColonies.len == 0:
     # No friendly colonies - abort mission
@@ -333,16 +356,7 @@ proc executeSeekHomeCommand(
     return OrderOutcome.Aborted
 
   # Find closest colony using pathfinding
-  var closestColony = friendlyColonies[0]
-  var minDistance = int.high
-
-  for colonyId in friendlyColonies:
-    let pathResult = state.starMap.findPath(fleet.location, colonyId, fleet)
-    if pathResult.found:
-      let distance = pathResult.path.len - 1
-      if distance < minDistance:
-        minDistance = distance
-        closestColony = colonyId
+  let (closestColony, minDistance) = findNearestColonyFromList(state, fleet, friendlyColonies)
 
   # Check if already at closest colony - mission complete
   if fleet.location == closestColony:
@@ -447,14 +461,7 @@ proc executeGuardStarbaseCommand(
     return OrderOutcome.Failed
 
   # Check for combat capability
-  var hasCombatShips = false
-  for shipId in fleet.ships:
-    let shipOpt = state.ship(shipId)
-    if shipOpt.isSome:
-      let ship = shipOpt.get()
-      if ship.stats.attackStrength > 0:
-        hasCombatShips = true
-        break
+  let hasCombatShips = state.hasCombatShips(fleet)
 
   if not hasCombatShips:
     events.add(
@@ -540,14 +547,7 @@ proc executeGuardPlanetCommand(
   let targetSystem = command.targetSystem.get()
 
   # Check for combat capability
-  var hasCombatShips = false
-  for shipId in fleet.ships:
-    let shipOpt = state.ship(shipId)
-    if shipOpt.isSome:
-      let ship = shipOpt.get()
-      if ship.stats.attackStrength > 0:
-        hasCombatShips = true
-        break
+  let hasCombatShips = state.hasCombatShips(fleet)
 
   if not hasCombatShips:
     events.add(
@@ -605,14 +605,7 @@ proc executeBlockadeCommand(
   let targetSystem = command.targetSystem.get()
 
   # Check for combat capability
-  var hasCombatShips = false
-  for shipId in fleet.ships:
-    let shipOpt = state.ship(shipId)
-    if shipOpt.isSome:
-      let ship = shipOpt.get()
-      if ship.stats.attackStrength > 0:
-        hasCombatShips = true
-        break
+  let hasCombatShips = state.hasCombatShips(fleet)
 
   if not hasCombatShips:
     events.add(
@@ -708,14 +701,7 @@ proc executeBombardCommand(
       return OrderOutcome.Failed
 
   # Check for combat capability
-  var hasCombatShips = false
-  for shipId in fleet.ships:
-    let shipOpt = state.ship(shipId)
-    if shipOpt.isSome:
-      let ship = shipOpt.get()
-      if ship.stats.attackStrength > 0:
-        hasCombatShips = true
-        break
+  let hasCombatShips = state.hasCombatShips(fleet)
 
   if not hasCombatShips:
     return OrderOutcome.Failed
@@ -757,27 +743,8 @@ proc executeInvadeCommand(
       return OrderOutcome.Failed
 
   # Check for combat ships and loaded troop transports
-  var hasCombatShips = false
-  var hasLoadedTransports = false
-
-  for shipId in fleet.ships:
-    let shipOpt = state.ship(shipId)
-    if shipOpt.isSome:
-      let ship = shipOpt.get()
-      if ship.stats.attackStrength > 0:
-        hasCombatShips = true
-
-  # Check for loaded marines on troop transports
-  for shipId in fleet.ships:
-    let shipOpt = state.ship(shipId)
-    if shipOpt.isSome:
-      let ship = shipOpt.get()
-      if ship.cargo.isSome:
-        let cargo = ship.cargo.get()
-        if ship.shipClass == ShipClass.TroopTransport and
-            cargo.cargoType == CargoClass.Marines and cargo.quantity > 0:
-          hasLoadedTransports = true
-          break
+  let hasCombatShips = state.hasCombatShips(fleet)
+  let hasLoadedTransports = state.hasLoadedMarines(fleet)
 
   if not hasCombatShips:
     return OrderOutcome.Failed
@@ -821,19 +788,7 @@ proc executeBlitzCommand(
       return OrderOutcome.Failed
 
   # Check for loaded troop transports
-  var hasLoadedTransports = false
-
-  for shipId in fleet.ships:
-    let shipOpt = state.ship(shipId)
-    if shipOpt.isSome:
-      let ship = shipOpt.get()
-      if ship.shipClass == ShipClass.TroopTransport:
-        # Check if transport has Marines loaded
-        if ship.cargo.isSome:
-          let cargo = ship.cargo.get()
-          if cargo.cargoType == CargoClass.Marines and cargo.quantity > 0:
-            hasLoadedTransports = true
-            break
+  let hasLoadedTransports = state.hasLoadedMarines(fleet)
 
   if not hasLoadedTransports:
     return OrderOutcome.Failed
@@ -1637,18 +1592,16 @@ proc executeSalvageCommand(
   # If not at suitable colony, search all owned colonies for one with facilities
   # Note: For simplicity, we take the first colony with facilities found
   # A more sophisticated implementation would use pathfinding to find truly closest
-  # Use coloniesByOwner index for O(1) lookup instead of O(c) scan
+  # Use coloniesOwned iterator for O(1) indexed lookup
   if closestColony.isNone:
-    if fleet.houseId in state.coloniesByOwner:
-      for colonyId in state.coloniesByOwner[fleet.houseId]:
-        if colonyId in state.colonies:
-          let colony = state.colonies[colonyId]
-          # Check if colony has salvage facilities
-          let hasFacilities = colony.spaceports.len > 0 or colony.shipyards.len > 0
+    for colony in state.coloniesOwned(fleet.houseId):
+      # Check if colony has salvage facilities (neorias)
+      let hasFacilities = state.countSpaceportsAtColony(colony.id) > 0 or
+                          state.countShipyardsAtColony(colony.id) > 0
 
-          if hasFacilities:
-            closestColony = some(colonyId)
-            break
+      if hasFacilities:
+        closestColony = some(colony.systemId)
+        break
 
   if closestColony.isNone:
     events.add(
@@ -1736,16 +1689,7 @@ proc executeReserveCommand(
       return OrderOutcome.Failed
 
     # Find closest colony using pathfinding
-    var closestColony = friendlyColonies[0]
-    var minDistance = int.high
-
-    for colonyId in friendlyColonies:
-      let pathResult = state.starMap.findPath(fleet.location, colonyId, fleet)
-      if pathResult.found:
-        let distance = pathResult.path.len - 1
-        if distance < minDistance:
-          minDistance = distance
-          closestColony = colonyId
+    let (closestColony, minDistance) = findNearestColonyFromList(state, fleet, friendlyColonies)
 
     # Not at colony yet - move toward it
     if fleet.location != closestColony:
@@ -1834,16 +1778,7 @@ proc executeMothballCommand(
       return OrderOutcome.Failed
 
     # Find closest colony using pathfinding
-    var closestColony = friendlyColoniesWithSpaceports[0]
-    var minDistance = int.high
-
-    for colonyId in friendlyColoniesWithSpaceports:
-      let pathResult = state.starMap.findPath(fleet.location, colonyId, fleet)
-      if pathResult.found:
-        let distance = pathResult.path.len - 1
-        if distance < minDistance:
-          minDistance = distance
-          closestColony = colonyId
+    let (closestColony, minDistance) = findNearestColonyFromList(state, fleet, friendlyColoniesWithSpaceports)
 
     # Not at colony yet - move toward it
     if fleet.location != closestColony:
