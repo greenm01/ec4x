@@ -11,6 +11,7 @@ import ../../event_factory/init as event_factory
 import ../../starmap
 import ./standing
 import ./mechanics
+import ./movement  # For findPath
 import ../../../common/logger
 
 type OrderOutcome* {.pure.} = enum
@@ -272,9 +273,9 @@ proc findNearestColonyFromList(
   result.distance = int32.high
 
   for colonyId in colonies:
-    let pathResult = state.starMap.findPath(fleet.location, colonyId, fleet)
-    if pathResult.found:
-      let distance = int32(pathResult.path.len - 1)
+    let path = findPath(state.starMap, fleet.location, colonyId, fleet)
+    if path.len > 0:
+      let distance = int32(path.len - 1)
       if distance < result.distance:
         result.distance = distance
         result.colonyId = colonyId
