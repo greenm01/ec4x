@@ -624,7 +624,8 @@ proc executeBlockadeCommand(
     return OrderOutcome.Failed
 
   # Check target colony exists and is hostile
-  if targetSystem notin state.colonies:
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isNone:
     events.add(
       event_factory.commandAborted(
         fleet.houseId,
@@ -636,7 +637,7 @@ proc executeBlockadeCommand(
     )
     return OrderOutcome.Aborted
 
-  let colony = state.colonies[targetSystem]
+  let colony = colonyOpt.get()
   if colony.owner == fleet.houseId:
     events.add(
       event_factory.commandAborted(
@@ -650,8 +651,9 @@ proc executeBlockadeCommand(
     return OrderOutcome.Aborted
 
   # Validate target house is not eliminated (leaderboard is public info)
-  if colony.owner in state.houses:
-    let targetHouse = state.houses[colony.owner]
+  let targetHouseOpt = state.house(colony.owner)
+  if targetHouseOpt.isSome:
+    let targetHouse = targetHouseOpt.get()
     if targetHouse.eliminated:
       events.add(
         event_factory.commandAborted(
@@ -1698,9 +1700,9 @@ proc executeReserveCommand(
     # Not at colony yet - move toward it
     if fleet.location != closestColony:
       # Create movement order to target colony
-      let moveOrder = FleetOrder(
+      let moveOrder = FleetCommand(
         fleetId: fleet.id,
-        orderType: FleetCommandType.Move,
+        commandType: FleetCommandType.Move,
         targetSystem: some(closestColony),
         targetFleet: none(FleetId),
         priority: command.priority,
@@ -1765,18 +1767,19 @@ proc executeMothballCommand(
 
   # Check if already at a friendly colony with spaceport
   var atFriendlyColonyWithSpaceport = false
-  if fleet.location in state.colonies:
-    let colony = state.colonies[fleet.location]
-    if colony.owner == fleet.houseId and colony.spaceports.len > 0:
+  let colonyOpt = state.colonyBySystem(fleet.location)
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
+    if colony.owner == fleet.houseId and colony.neoriaIds.len > 0:
       atFriendlyColonyWithSpaceport = true
 
   # If not at friendly colony with spaceport, find closest one and move there
   if not atFriendlyColonyWithSpaceport:
-    # Find all friendly colonies with spaceports
+    # Find all friendly colonies with spaceports (neoria facilities)
     var friendlyColoniesWithSpaceports: seq[SystemId] = @[]
-    for colonyId, colony in state.colonies:
-      if colony.owner == fleet.houseId and colony.spaceports.len > 0:
-        friendlyColoniesWithSpaceports.add(colonyId)
+    for colony in state.coloniesOwned(fleet.houseId):
+      if colony.neoriaIds.len > 0:
+        friendlyColoniesWithSpaceports.add(colony.systemId)
 
     if friendlyColoniesWithSpaceports.len == 0:
       return OrderOutcome.Failed
@@ -1787,9 +1790,9 @@ proc executeMothballCommand(
     # Not at colony yet - move toward it
     if fleet.location != closestColony:
       # Create movement order to target colony
-      let moveOrder = FleetOrder(
+      let moveOrder = FleetCommand(
         fleetId: fleet.id,
-        orderType: FleetCommandType.Move,
+        commandType: FleetCommandType.Move,
         targetSystem: some(closestColony),
         targetFleet: none(FleetId),
         priority: command.priority,
@@ -1827,7 +1830,7 @@ proc executeMothballCommand(
   # At friendly colony with spaceport - apply mothball status
   var updatedFleet = fleet
   updatedFleet.status = FleetStatus.Mothballed
-  state.fleets[fleet.id] = updatedFleet
+  state.updateFleet(fleet.id, updatedFleet)
 
   # Generate OrderCompleted event for state change
   events.add(
@@ -1865,7 +1868,7 @@ proc executeReactivateCommand(
   # Change status to Active
   var updatedFleet = fleet
   updatedFleet.status = FleetStatus.Active
-  state.fleets[fleet.id] = updatedFleet
+  state.updateFleet(fleet.id, updatedFleet)
 
   # Generate OrderCompleted event for state change
   events.add(
