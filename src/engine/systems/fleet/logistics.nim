@@ -1,9 +1,5 @@
 ## Zero-Turn Fleet Logistics System
 ##
-## ⚠️ WARNING: This file is partially updated for squadron removal refactor.
-## TODO: Complete refactoring of all execute functions for ship-based operations.
-## Estimated work remaining: ~1500 lines across 11 functions.
-##
 ## Unified administrative command system for fleet/cargo operations
 ## Execute immediately during command submission (0 turns, at friendly colonies)
 ##
@@ -24,7 +20,7 @@ import ../../types/[
   core, game_state, fleet, ship, colony, ground_unit,
   event, zero_turn
 ]
-import ../../state/[engine, id_gen, fleet_queries]
+import ../../state/[engine, fleet_queries]
 import ../../entities/fleet_ops
 import ../fleet/entity as fleet_entity
 import ../ship/entity as ship_entity
@@ -367,23 +363,17 @@ proc executeDetachShips*(
     else:
       remainingShips.add(shipId)
 
-  # Generate new fleet ID if not provided
-  let newFleetId =
-    if cmd.newFleetId.isSome:
-      cmd.newFleetId.get()
-    else:
-      state.generateFleetId()
+  # Create new fleet with proper index registration (fleet_ops handles all indexes)
+  # Note: createFleet() generates ID internally, ignoring cmd.newFleetId if provided
+  let newFleet = fleet_ops.createFleet(state, cmd.houseId, sourceFleet.location)
+  let newFleetId = newFleet.id
 
-  # Create new fleet using entity ops
-  let newFleet = fleet_ops.newFleet(
-    shipIds = shipsToDetach,
-    id = newFleetId,
-    owner = cmd.houseId,
-    location = sourceFleet.location,
-    status = FleetStatus.Active,
-  )
+  # Update new fleet with detached ships
+  var updatedNewFleet = newFleet
+  updatedNewFleet.ships = shipsToDetach
+  state.updateFleet(newFleetId, updatedNewFleet)
 
-  let shipsDetached = newFleet.ships.len
+  let shipsDetached = shipsToDetach.len
 
   # Update source fleet with remaining ships
   sourceFleet.ships = remainingShips
@@ -399,14 +389,8 @@ proc executeDetachShips*(
     # Write back modified source fleet via entity manager
     state.updateFleet(cmd.sourceFleetId.get(), sourceFleet)
     logFleet(
-      &"DetachShips: Created fleet {newFleetId} with {newFleet.ships.len} ships"
+      &"DetachShips: Created fleet {newFleetId} with {shipsDetached} ships"
     )
-
-  # Add new fleet to state via entity manager
-  state.addFleet(newFleetId, newFleet)
-  # Update indexes using fleet_ops helpers
-  fleet_ops.registerFleetLocation(state, newFleetId, newFleet.location)
-  fleet_ops.registerFleetOwner(state, newFleetId, newFleet.houseId)
 
   # Emit FleetDetachment event (Phase 7b)
   events.add(
@@ -617,22 +601,12 @@ proc executeLoadCargo*(
   let fleet = fleetOpt.get()
   let colonySystem = fleet.location
 
-  # Get colony via bySystem index
-  if not state.colonies.bySystem.hasKey(colonySystem):
-    return ZeroTurnResult(
-      success: false,
-      error: "Fleet not at colony",
-      newFleetId: none(FleetId),
-      cargoLoaded: 0,
-      cargoUnloaded: 0,
-      warnings: @[],
-    )
-
+  # Get colony via helper (encapsulates bySystem index)
   let colonyOpt = state.colonyBySystem(colonySystem)
   if colonyOpt.isNone:
     return ZeroTurnResult(
       success: false,
-      error: "Colony not found",
+      error: "Colony not found at fleet location",
       newFleetId: none(FleetId),
       cargoLoaded: 0,
       cargoUnloaded: 0,
@@ -815,22 +789,12 @@ proc executeUnloadCargo*(
   let fleet = fleetOpt.get()
   let colonySystem = fleet.location
 
-  # Get colony via bySystem index
-  if not state.colonies.bySystem.hasKey(colonySystem):
-    return ZeroTurnResult(
-      success: false,
-      error: "Fleet not at colony",
-      newFleetId: none(FleetId),
-      cargoLoaded: 0,
-      cargoUnloaded: 0,
-      warnings: @[],
-    )
-
+  # Get colony via helper (encapsulates bySystem index)
   let colonyOpt = state.colonyBySystem(colonySystem)
   if colonyOpt.isNone:
     return ZeroTurnResult(
       success: false,
-      error: "Colony not found",
+      error: "Colony not found at fleet location",
       newFleetId: none(FleetId),
       cargoLoaded: 0,
       cargoUnloaded: 0,
