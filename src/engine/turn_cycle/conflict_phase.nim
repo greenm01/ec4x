@@ -28,13 +28,14 @@ import
     diplomacy as dip_types,
     espionage as esp_types,
     intel as intel_types,
+    tech as tech_types,
     fleet,
     command,
     event,
     resolution as res_types,
     simultaneous as simultaneous_types,
   ]
-import ../state/engine as state_engine
+import ../state/[engine as state_engine, iterators]
 import ../entities/fleet_ops
 import ../systems/combat/orchestrator
 import ../systems/espionage/resolution as espionage_resolution
@@ -103,13 +104,19 @@ proc resolveConflictPhase*(
 
     # Ensure owner has command packet
     if fleetOwner notin effectiveCommands:
+      # STUB: Create minimal command packet for merged commands
+      # This section will be removed once we fully transition to Fleet.command
       effectiveCommands[fleetOwner] = command.CommandPacket(
         houseId: fleetOwner,
         turn: state.turn,
         treasury: 0,
         fleetCommands: @[],
         buildCommands: @[],
-        researchAllocation: ResearchAllocation(),
+        researchAllocation: tech_types.ResearchAllocation(
+          economic: 0,
+          science: 0,
+          technology: initTable[TechField, int32]()
+        ),
         diplomaticCommand: @[],
         populationTransfers: @[],
         terraformCommands: @[],
@@ -134,7 +141,7 @@ proc resolveConflictPhase*(
   # Use effectiveCommands (includes merged queued combat commands)
   var combatSystems: seq[SystemId] = @[]
 
-  for systemId, system in state.starMap.systems:
+  for systemId, system in state.allSystemsWithId():
     # Get all houses with active fleets or colonies at this system
     # Use state/iterators for O(1) indexed lookups
     var housesPresent: seq[HouseId] = @[]
@@ -161,83 +168,74 @@ proc resolveConflictPhase*(
         let house1 = housesPresent[i]
         let house2 = housesPresent[j]
 
-        # Get diplomatic state between these two houses from house1's perspective.
-        let relation1to2 =
-          state.houses[house1].diplomaticRelations.getDiplomaticState(house2)
-        # Get diplomatic state between these two houses from house2's perspective.
-        let relation2to1 =
-          state.houses[house2].diplomaticRelations.getDiplomaticState(house1)
+        # Get diplomatic state between these two houses (bidirectional)
+        let relation1to2Key = (house1, house2)
+        let relation2to1Key = (house2, house1)
 
-        # Combat decision logic per docs/engine/mechanics/diplomatic-combat-resolution.md
+        let relation1to2 =
+          if relation1to2Key in state.diplomaticRelation:
+            state.diplomaticRelation[relation1to2Key].state
+          else:
+            dip_types.DiplomaticState.Neutral  # Default to Neutral
+
+        let relation2to1 =
+          if relation2to1Key in state.diplomaticRelation:
+            state.diplomaticRelation[relation2to1Key].state
+          else:
+            dip_types.DiplomaticState.Neutral  # Default to Neutral
+
+        # Combat decision logic per docs/specs/08-diplomacy.md Section 8.1
+        # ENEMY: Combat on sight, anywhere, regardless of missionState or command type
         if relation1to2 == dip_types.DiplomaticState.Enemy or
             relation2to1 == dip_types.DiplomaticState.Enemy:
-          # If either side declares the other 'Enemy', combat occurs.
           systemHasCombat = true
           logDebug("Combat", "Combat triggered: Enemy status",
             "house1=", house1, " house2=", house2)
+
+        # HOSTILE: Combat if fleets are EXECUTING Contest or Attack tier commands
+        # This is post-escalation state (Neutral→Hostile happened previous turn)
         elif relation1to2 == dip_types.DiplomaticState.Hostile or
             relation2to1 == dip_types.DiplomaticState.Hostile:
-          # If either side declares 'Hostile', combat occurs if there are ANY threatening or provocative orders
-          # from either house in this system.
-          var foundProvocativeOrder = false
-          for h in @[house1, house2]:
-            # Check effective commands (includes queued commands)
-            if h in effectiveCommands:
-              for command in effectiveCommands[h].fleetCommands:
-                # Check if the fleet for this order is actually in the current system
-                let fleetOpt = state.fleet(command.fleetId)
-                if fleetOpt.isSome and fleetOpt.get().location == systemId:
-                  if isThreateningFleetOrder(command.commandType) or
-                      isNonThreateningButProvocativeFleetOrder(command.commandType):
-                    foundProvocativeOrder = true
-                    break
-              if foundProvocativeOrder:
+          var foundProvocative = false
+          for fleet in state.fleetsInSystem(systemId):
+            # Only fleets EXECUTING missions have intent at this location
+            if fleet.missionState == MissionState.Executing and fleet.command.isSome:
+              let threatLevel = CommandThreatLevels.getOrDefault(
+                fleet.command.get().commandType, ThreatLevel.Benign
+              )
+              # Contest (Patrol, Hold, Rendezvous) or Attack (Blockade, Bombard, etc.)
+              if threatLevel in [ThreatLevel.Contest, ThreatLevel.Attack]:
+                foundProvocative = true
                 break
-
-          if foundProvocativeOrder:
+          if foundProvocative:
             systemHasCombat = true
             logDebug("Combat",
-              "Combat triggered: Hostile status with provocative orders",
+              "Combat triggered: Hostile status with executing provoc commands",
               "house1=", house1, " house2=", house2)
+
+        # NEUTRAL: Check for Attack tier commands at their colony
+        # Contest tier at their system escalates to Hostile (no combat this turn)
+        # Attack tier at their colony escalates to Enemy (combat this turn)
         elif relation1to2 == dip_types.DiplomaticState.Neutral and
             relation2to1 == dip_types.DiplomaticState.Neutral:
-          # If both are Neutral, combat only occurs if threatening orders are issued
-          # against a system controlled by the other house.
-          var house1ThreateningHouse2 = false
-          var house2ThreateningHouse1 = false
-
-          # Check if system is controlled (has a colony)
-          let colonyOptForOwner = state.colonyBySystem(systemId)
-          let systemOwner =
-            if colonyOptForOwner.isSome:
-              some(colonyOptForOwner.get().owner)
-            else:
-              none(HouseId)
-
-          # Check effective commands (includes queued commands)
-          if house1 in effectiveCommands and systemOwner.isSome and
-              systemOwner.get() == house2:
-            for command in effectiveCommands[house1].fleetCommands:
-              let fleetOpt = state.fleet(command.fleetId)
-              if fleetOpt.isSome and fleetOpt.get().location == systemId and
-                  isThreateningFleetOrder(command.commandType):
-                house1ThreateningHouse2 = true
-                break
-
-          if house2 in effectiveCommands and systemOwner.isSome and
-              systemOwner.get() == house1:
-            for command in effectiveCommands[house2].fleetCommands:
-              let fleetOpt = state.fleet(command.fleetId)
-              if fleetOpt.isSome and fleetOpt.get().location == systemId and
-                  isThreateningFleetOrder(command.commandType):
-                house2ThreateningHouse1 = true
-                break
-
-          if house1ThreateningHouse2 or house2ThreateningHouse1:
-            systemHasCombat = true
-            logDebug("Combat",
-              "Combat triggered: Neutral status with threatening orders",
-              "house1=", house1, " house2=", house2)
+          if colonyOpt.isSome:
+            let systemOwner = colonyOpt.get().owner
+            # Check if non-owner has Attack tier command EXECUTING at this colony
+            for fleet in state.fleetsInSystem(systemId):
+              if fleet.houseId != systemOwner and fleet.missionState == MissionState.Executing:
+                if fleet.command.isSome:
+                  let threatLevel = CommandThreatLevels.getOrDefault(
+                    fleet.command.get().commandType, ThreatLevel.Benign
+                  )
+                  # Attack tier (Blockade, Bombard, Invade, Blitz) → Enemy + combat
+                  if threatLevel == ThreatLevel.Attack:
+                    systemHasCombat = true
+                    logDebug("Combat",
+                      "Combat triggered: Neutral + Attack tier at colony",
+                      "attacker=", fleet.houseId, " owner=", systemOwner)
+                    break
+                  # Contest tier (Patrol, Hold, Rendezvous) → Hostile + no combat
+                  # Escalation handled elsewhere, no combat triggered this turn
 
         if systemHasCombat:
           break # Found a combat pair, add system and move on.
@@ -253,18 +251,18 @@ proc resolveConflictPhase*(
   #
   # Arrival Detection (Production Phase):
   #   - Fleet location compared to order target
-  #   - If match: add to state.arrivedFleets[fleetId] = systemId
+  #   - If match: fleet.missionState set to Executing
   #
   # Execution (Conflict Phase):
-  #   - Only orders where command.fleetId in state.arrivedFleets execute
+  #   - Only orders where fleet.missionState == Executing execute
   #   - Ensures orders execute when fleets reach targets, not before
   #
-  # Orders requiring arrival: Bombard, Invade, Blitz, Colonize, 
-  #                          SpyPlanet, SpySystem, HackStarbase
+  # Orders requiring arrival: Bombard, Invade, Blitz, Colonize,
+  #                          SpyColony, SpySystem, HackStarbase
   # Create filtered order set once to avoid O(H×O) iteration per step
-  var arrivedOrders = effectiveOrders
+  var arrivedOrders = effectiveCommands
   for houseId in arrivedOrders.keys:
-    var filteredFleetOrders: seq[FleetOrder] = @[]
+    var filteredFleetOrders: seq[FleetCommand] = @[]
     for command in arrivedOrders[houseId].fleetCommands:
       # Check if order requires arrival
       const arrivalRequired = [
@@ -273,7 +271,8 @@ proc resolveConflictPhase*(
         FleetCommandType.SpySystem, FleetCommandType.HackStarbase,
       ]
       if command.commandType in arrivalRequired:
-        if command.fleetId in state.arrivedFleets:
+        let fleetOpt = state.fleet(command.fleetId)
+        if fleetOpt.isSome and fleetOpt.get().missionState == MissionState.Executing:
           filteredFleetOrders.add(command)
         else:
           logDebug("Orders", "  [SKIP] Fleet has not arrived",
@@ -293,7 +292,7 @@ proc resolveConflictPhase*(
     "systems=", combatSystems.len)
   for systemId in combatSystems:
     state.resolveSystemCombat(
-      systemId, effectiveOrders, arrivedOrders, combatReports, events, rng
+      systemId, effectiveCommands, arrivedOrders, combatReports, events, rng
     )
   logInfo("Combat", "[CONFLICT STEPS 1, 2, & 4] Completed",
     "battles=", combatReports.len)
@@ -320,17 +319,9 @@ proc resolveConflictPhase*(
   # ETACs establish colonies, resolve conflicts (winner-takes-all)
   # Fallback logic for losers with AutoColonize standing commands
   logInfo("Colony", "[CONFLICT STEP 5] Resolving colonization attempts...")
-  let colonizationResults =
-    state.resolveColonization(arrivedOrders, rng, events)
+  let colonizationResults = state.resolveColonization(rng, events)
   logInfo("Colony", "[CONFLICT STEP 5] Completed",
     "attempts=", colonizationResults.len)
-
-  # Clear arrivedFleets for executed colonization orders
-  for result in colonizationResults:
-    if result.fleetId in state.arrivedFleets:
-      state.arrivedFleets.del(result.fleetId)
-      logDebug("Orders", "  Cleared arrival status for fleet",
-        "fleetId=", result.fleetId)
 
   # ===================================================================
   # STEPS 6a & 6a.5: SCOUT MISSIONS (New + Existing)
@@ -340,8 +331,8 @@ proc resolveConflictPhase*(
   #
   # Unified processing for both new and existing scout missions:
   #
-  # Phase 1 (Step 6a): NEW missions from arrivedFleets
-  #   - Transition: Traveling → OnSpyMission
+  # Phase 1 (Step 6a): NEW missions (missionState == Executing)
+  #   - Transition: Executing → ScoutLocked
   #   - Run first detection check (gates mission registration)
   #   - If detected: Destroy scouts, mission fails
   #   - If undetected: Register in activeSpyMissions, generate Perfect intel
@@ -363,7 +354,7 @@ proc resolveConflictPhase*(
   # Process OrderPacket.espionageAction (EBP-based espionage)
   logInfo("Espionage",
     "[CONFLICT STEP 6b] Space Guild espionage (EBP-based covert ops)...")
-  state.processEspionageActions(effectiveOrders, rng, events)
+  state.processEspionageActions(effectiveCommands, rng, events)
   logInfo("Espionage", "[CONFLICT STEP 6b] Completed EBP-based espionage processing")
 
   # ===================================================================
@@ -375,7 +366,5 @@ proc resolveConflictPhase*(
   logInfo("Espionage",
     "[CONFLICT STEP 6c] Starbase surveillance (continuous monitoring)...")
   var survRng = initRand(state.turn + 12345) # Unique seed for surveillance
-  state.processAllStarbaseSurveillance(
-    state.turn, survRng, events
-  )
+  state.processAllStarbaseSurveillance(state.turn, survRng)
   logInfo("Espionage", "[CONFLICT STEP 6c] Completed starbase surveillance")

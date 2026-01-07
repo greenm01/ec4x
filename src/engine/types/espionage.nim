@@ -23,6 +23,7 @@ type
     IntelTheft
     PlantDisinformation
 
+  #TODO: why do we have this when they are already captured in fleet commands?
   SpyMissionType* {.pure.} = enum
     SpyOnPlanet
     HackStarbase
@@ -112,6 +113,7 @@ type
     houseId*: HouseId
     fleetId*: FleetId
     targetSystem*: SystemId
+    #TODO: Why is this a string?
     orderType*: string # "SpyColony", "SpySystem", "HackStarbase"
     espionageStrength*: int32
 

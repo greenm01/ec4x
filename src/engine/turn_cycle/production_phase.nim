@@ -269,9 +269,13 @@ proc resolveProductionPhase*(
         )
       )
 
-      # Track arrival for Conflict/Income phase execution
-      state.arrivedFleets[fleetId] = targetSystem
-      arrivedFleetCount += 1
+      # Update fleet mission state to Executing (arrived at target)
+      let fleetOpt = state.fleet(fleetId)
+      if fleetOpt.isSome:
+        var updatedFleet = fleetOpt.get()
+        updatedFleet.missionState = MissionState.Executing
+        state.updateFleet(fleetId, updatedFleet)
+        arrivedFleetCount += 1
 
       logDebug(
         LogCategory.lcOrders,
