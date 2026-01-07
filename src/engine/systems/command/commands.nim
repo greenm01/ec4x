@@ -12,21 +12,10 @@
 ## - Starbase: operational = not CombatState.Crippled (handled in facilities module)
 
 import std/[options, tables, strformat, strutils]
-import
-  ../../types/[
-    core,
-    game_state,
-    command,
-    fleet,
-    production,
-    diplomacy,
-    colony,
-    starmap,
-    espionage as esp_types,
-    tech as tech_types,
-    facilities,
-    combat,
-  ]
+import ../../types/[
+  core, game_state, command, fleet, production, diplomacy,
+  colony, starmap, espionage, tech, facilities, combat,
+]
 import ../../state/[engine, iterators, fleet_queries]
 import ../../globals
 import ../../../common/logger
@@ -424,12 +413,11 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
           )
 
     # Check CST tech requirement and prerequisites for buildings (assets.md:2.4.4)
-    if cmd.buildType == BuildType.Facility and cmd.buildType.isSome:
-      let buildTypeStr = cmd.builType.get()
-      let builType = parseEnum[FacilityClass](buildTypeStr)
+    if cmd.buildType == BuildType.Facility and cmd.facilityClass.isSome:
+      let facilityClass = cmd.facilityClass.get()
 
       # Check CST requirement (e.g., Starbase requires CST3)
-      let required_cst = gameConfig.facilities.facilities[buildType].minCST
+      let required_cst = gameConfig.facilities.facilities[facilityClass].minCST
       if required_cst > 0:
         let houseOpt = state.house(packet.houseId)
         if houseOpt.isSome:
@@ -439,17 +427,18 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
           if house_cst < required_cst:
             logWarn(
               "Commands",
-              &"{packet.houseId} Build command REJECTED: {buildType} requires CST{required_cst}, " &
+              &"{packet.houseId} Build command REJECTED: {facilityClass} requires CST{required_cst}, " &
                 &"house has CST{house_cst}",
             )
             return ValidationResult(
               valid: false,
               error:
-                &"Build command: {buildingType} requires CST{required_cst}, house has CST{house_cst}",
+                &"Build command: {facilityClass} requires CST{required_cst}, house has CST{house_cst}",
             )
 
       # Check shipyard prerequisite (e.g., Starbase requires shipyard)
-      if requiresShipyard(buildTypeStr):
+      if facilityClass == FacilityClass.Starbase and
+          gameConfig.construction.construction.starbaseRequiresShipyard:
         # Check if colony has operational shipyard
         # Operational = Shipyard that is not Crippled
         var hasShipyard = false
@@ -465,11 +454,11 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
         if not hasShipyard:
           logWarn(
             "Commands",
-            &"{packet.houseId} Build command REJECTED: {buildType} requires operational shipyard at {cmd.colonyId}",
+            &"{packet.houseId} Build command REJECTED: {facilityClass} requires operational shipyard at {cmd.colonyId}",
           )
           return ValidationResult(
             valid: false,
-            error: &"Build command: {buildType} requires operational shipyard",
+            error: &"Build command: {facilityClass} requires operational shipyard",
           )
 
     # NOTE: Multiple build commands per colony per turn are supported (queue system)
@@ -620,17 +609,17 @@ proc newCommandPacket*(
     treasury: treasury,
     fleetCommands: @[],
     buildCommands: @[],
-    researchAllocation: tech_types.ResearchAllocation(
+    researchAllocation: ResearchAllocation(
       economic: 0'i32,
       science: 0'i32,
-      technology: initTable[tech_types.TechField, int32](),
+      technology: initTable[TechField, int32](),
     ),
     diplomaticCommand: @[],
     populationTransfers: @[],
     terraformCommands: @[],
     colonyManagement: @[],
     standingCommands: initTable[FleetId, StandingCommand](),
-    espionageAction: none(esp_types.EspionageAttempt),
+    espionageAction: none(EspionageAttempt),
     ebpInvestment: 0,
     cipInvestment: 0,
   )
@@ -676,9 +665,8 @@ proc calculateBuildCommandCost*(
   case cmd.buildType
   of BuildType.Ship:
     if cmd.shipClass.isSome:
-      let baseCost =
-        projects.getShipConstructionCost(cmd.shipClass.get()) * cmd.quantity
       let shipClass = cmd.shipClass.get()
+      let baseCost = accessors.getShipConstructionCost(shipClass) * cmd.quantity
 
       # Apply spaceport commission penalty if building planet-side
       # Per economy.md:5.1 - "Ships (excluding fighter squadrons) constructed planet-side incur a 100% PC increase"
@@ -724,17 +712,17 @@ proc calculateBuildCommandCost*(
           # Colony doesn't exist (validation will catch this)
           result = baseCost
   of BuildType.Facility:
-    if cmd.buildingType.isSome:
+    if cmd.facilityClass.isSome:
       # Buildings never have spaceport penalty (planet-side industry)
       # Shipyard/Starbase are built in orbit and don't get penalty
-      let buildingType = parseEnum[FacilityClass](cmd.buildingType.get())
-      result = projects.getBuildingCost(buildingType) * cmd.quantity
+      let facilityClass = cmd.facilityClass.get()
+      result = accessors.getBuildingCost(facilityClass) * cmd.quantity
   of BuildType.Industrial, BuildType.Infrastructure:
     # Infrastructure cost depends on colony state
     let colonyOpt = state.colony(cmd.colonyId)
     if colonyOpt.isSome:
       let colony = colonyOpt.get()
-      result = projects.getIndustrialUnitCost(colony) * cmd.industrialUnits
+      result = getIndustrialUnitCost(colony) * cmd.industrialUnits
   else:
     discard
 
@@ -781,12 +769,11 @@ proc validateBuildCommandWithBudget*(
         )
 
   # Check CST tech requirement and prerequisites for buildings (assets.md:2.4.4)
-  if cmd.buildType == BuildType.Facility and cmd.buildingType.isSome:
-    let buildingTypeStr = cmd.buildingType.get()
-    let buildingType = parseEnum[FacilityClass](buildingTypeStr)
+  if cmd.buildType == BuildType.Facility and cmd.facilityClass.isSome:
+    let facilityClass = cmd.facilityClass.get()
 
     # Check CST requirement (e.g., Starbase requires CST3)
-    let required_cst = gameConfig.facilities.facilities[buildingType].minCST
+    let required_cst = gameConfig.facilities.facilities[facilityClass].minCST
     if required_cst > 0:
       let houseOpt = state.house(houseId)
       if houseOpt.isSome:
@@ -797,17 +784,18 @@ proc validateBuildCommandWithBudget*(
           ctx.rejectedCommands += 1
           logWarn(
             "Economy",
-            &"{houseId} Build command REJECTED: {buildingType} requires CST{required_cst}, " &
+            &"{houseId} Build command REJECTED: {facilityClass} requires CST{required_cst}, " &
               &"house has CST{house_cst}",
           )
           return ValidationResult(
             valid: false,
             error:
-              &"Build command: {buildingType} requires CST{required_cst}, house has CST{house_cst}",
+              &"Build command: {facilityClass} requires CST{required_cst}, house has CST{house_cst}",
           )
 
     # Check shipyard prerequisite (e.g., Starbase requires shipyard)
-    if requiresShipyard(buildingTypeStr):
+    if facilityClass == FacilityClass.Starbase and
+        gameConfig.construction.construction.starbaseRequiresShipyard:
       # Check if colony has operational shipyard
       # Operational = Shipyard that is not Crippled
       var hasShipyard = false
@@ -824,11 +812,11 @@ proc validateBuildCommandWithBudget*(
         ctx.rejectedCommands += 1
         logWarn(
           "Economy",
-          &"{houseId} Build command REJECTED: {buildingType} requires operational shipyard at {cmd.colonyId}",
+          &"{houseId} Build command REJECTED: {facilityClass} requires operational shipyard at {cmd.colonyId}",
         )
         return ValidationResult(
           valid: false,
-          error: &"Build command: {buildingType} requires operational shipyard",
+          error: &"Build command: {facilityClass} requires operational shipyard",
         )
 
   # Check capacity limits using capacity modules
