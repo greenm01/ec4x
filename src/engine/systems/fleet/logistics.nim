@@ -19,7 +19,7 @@
 ##   let result = submitZeroTurnCommand(state, cmd)
 ##   if result.success: echo "Success!"
 
-import std/[options, algorithm, tables, strformat, sequtils]
+import std/[options, algorithm, tables, strformat, sequtils, sets]
 import ../../types/[
   core, game_state, fleet, ship, colony, ground_unit,
   event, zero_turn
@@ -359,11 +359,13 @@ proc executeDetachShips*(
   let systemId = sourceFleet.location
 
   # Extract ships to detach based on indices
+  # Convert to HashSet for O(1) lookup (avoids O(n²) with seq.contains)
+  let indicesSet = cmd.shipIndices.toHashSet()
   var shipsToDetach: seq[ShipId] = @[]
   var remainingShips: seq[ShipId] = @[]
 
   for i, shipId in sourceFleet.ships:
-    if i in cmd.shipIndices:
+    if i in indicesSet:
       shipsToDetach.add(shipId)
     else:
       remainingShips.add(shipId)
@@ -461,11 +463,13 @@ proc executeTransferShips*(
   let systemId = sourceFleet.location
 
   # Extract ships to transfer based on indices
+  # Convert to HashSet for O(1) lookup (avoids O(n²) with seq.contains)
+  let indicesSet = cmd.shipIndices.toHashSet()
   var shipsToTransfer: seq[ShipId] = @[]
   var remainingShips: seq[ShipId] = @[]
 
   for i, shipId in sourceFleet.ships:
-    if i in cmd.shipIndices:
+    if i in indicesSet:
       shipsToTransfer.add(shipId)
     else:
       remainingShips.add(shipId)
