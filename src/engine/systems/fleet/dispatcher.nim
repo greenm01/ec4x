@@ -525,7 +525,7 @@ proc executeGuardStarbaseCommand(
 # Order 05: Guard/Blockade Planet
 # =============================================================================
 
-proc executeGuardPlanetCommand(
+proc executeGuardColonyCommand(
     state: var GameState,
     fleet: Fleet,
     command: FleetCommand,
@@ -803,7 +803,7 @@ proc executeBlitzCommand(
 # Order 09: Spy on Planet
 # =============================================================================
 
-proc executeSpyPlanetCommand(
+proc executeSpyColonyCommand(
     state: var GameState,
     fleet: Fleet,
     command: FleetCommand,
