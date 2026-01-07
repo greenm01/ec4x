@@ -7,12 +7,11 @@
 ## - Administrative commands: Command Phase
 ## - Special commands: Various phases (colonize, salvage, espionage)
 
-import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
+import std/[tables, algorithm, options, random, hashes, sets, strformat]
 import ../../types/[core, game_state, command, fleet, ship, combat, event, diplomacy]
 import ../../../common/logger as common_logger
 import ../../state/[engine, iterators, fleet_queries]
 import ./dispatcher # For OrderOutcome and executeFleetCommand
-import ./standing
 import ./mechanics # For findClosestOwnedColony
 import ./entity as fleet_entity
 # import ../combat/battles # REMOVED: Legacy squadron-based system
@@ -178,7 +177,6 @@ proc performCommandMaintenance*(
     state: var GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
-    combatReports: var seq[combat.CombatReport],
     rng: var Rand,
     categoryFilter: OrderCategoryFilter,
     phaseDescription: string,
@@ -259,7 +257,7 @@ proc performCommandMaintenance*(
     # Skip if fleet already executed an order this turn
     if command.fleetId in fleetsProcessed:
       logDebug(
-        Commands, &"  [SKIPPED] Fleet {command.fleetId} already executed"
+        "Commands", &"  [SKIPPED] Fleet {command.fleetId} already executed"
       )
       continue
 
@@ -271,7 +269,7 @@ proc performCommandMaintenance*(
     var actualOrder = command
     if not validation.valid:
       logWarn(
-        Commands,
+        "Commands",
         &"  [EXECUTION VALIDATION FAILED] Fleet {command.fleetId}: {validation.reason}",
       )
 
