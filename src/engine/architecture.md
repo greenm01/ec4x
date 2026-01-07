@@ -41,6 +41,7 @@ src/engine/
     │   ├── iterators.nim     #   - The PRIMARY READ-ONLY API for batch entity access (e.g., `fleetsInSystem`, `coloniesOwned`).
     │   │                     #   - ALWAYS use iterators instead of `.entities.data` with manual filtering.
     │   │                     #   - Provides O(1) indexed lookups via `byHouse`, `byOwner`, `bySystem` tables.
+    │   ├── fleet_queries.nim #   - Derived fleet properties (hasColonists, canMergeWith, etc.) using iterators.
     │   ├── entity_helpers.nim#   - Helper procs for single index-based entity lookups (e.g., `colonyBySystem`).
     │   │                     #   - Reduces verbose 3-line pattern to 1-line calls.
     │   └── fog_of_war.nim    #   - A complex READ-ONLY query system that transforms `GameState` into a `PlayerView`.
@@ -113,339 +114,245 @@ src/engine/
         ├── conflict_phase.nim#   - Calls `systems/combat/engine.resolveAllCombats(state)`.
         └── ...etc            #   - Passes the `GameState` from one system to the next.
 
-# Entity Management Developer Guide
+# Entity Access Patterns (Quick Reference)
 
-## The Three-Layer Pattern
-
-EC4X uses a strict three-layer pattern for entity management:
+## Three-Layer Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ Layer 3: SYSTEMS (@systems/)                                │
-│ • Business logic, validation, algorithms                    │
-│ • Reads via iterators/helpers, writes via entity ops        │
-│ • Example: combat resolution, economic calculations         │
-└─────────────────────────────────────────────────────────────┘
-                              ▲
-                              │ reads via iterators/helpers
-                              │ writes via entity ops
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│ Layer 2: ENTITY OPS (@entities/)                            │
-│ • Index-aware mutations only                                │
-│ • Maintains bySystem, byOwner, byHouse indexes              │
-│ • NO business logic                                         │
-└─────────────────────────────────────────────────────────────┘
-                              ▲
-                              │ uses
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│ Layer 1: STATE CORE (@state/)                               │
-│ • engine.nim: The PUBLIC API for add, update, del, get by ID│
-│ • entity_manager.nim: Private generic DoD storage           │
-│ • iterators.nim: Batch entity access (multi-entity reads)   │
-│ • entity_helpers.nim: Single entity lookups (1-line access) │
-└─────────────────────────────────────────────────────────────┘
+Systems (@systems/)         ← Business logic, validation
+    ↕ (reads via iterators, writes via entity_ops)
+Entity Ops (@entities/)     ← Index-aware mutations
+    ↕ (uses)
+State Core (@state/)        ← CRUD + batch access
 ```
 
-## Reading Entities (Always Use Iterators)
-
-**✅ CORRECT - Use iterators from @state/iterators.nim:**
+## UFCS Style (Always Use This)
 
 ```nim
-import ../state/iterators
+import ../state/[engine, iterators, fleet_queries]
+import ../entities/fleet_ops
 
-# Iterate colonies owned by a house
+# ✅ UFCS style (Uniform Function Call Syntax)
+let colonyOpt = state.colony(colonyId)
+let fleetOpt = state.fleet(fleetId)
+state.updateHouse(houseId, house)
+fleet_ops.createFleet(state, houseId, systemId)
+
+# ❌ Function style (don't use)
+let colonyOpt = colony(state, colonyId)  # Wrong!
+```
+
+## Reading Entities
+
+### Single Entity (state/engine.nim)
+
+```nim
+# Get by ID (returns Option[T])
+let colony = state.colony(colonyId)       # Option[Colony]
+let fleet = state.fleet(fleetId)         # Option[Fleet]
+let ship = state.ship(shipId)            # Option[Ship]
+let house = state.house(houseId)         # Option[House]
+
+# Existence check (faster than .isSome)
+if state.hasFleet(fleetId):
+  # Fleet exists
+
+# Index-based lookup (O(1))
+let colonyOpt = state.colonyBySystem(systemId)  # 1:1 relationship
+let ships = state.shipsByFleet(fleetId)         # 1:many relationship
+let units = state.groundUnitsAtColony(colonyId) # 1:many relationship
+
+# Count entities
+let fleetCount = state.fleetsCount()
+let shipCount = state.shipsCount()
+```
+
+### Batch Iteration (state/iterators.nim)
+
+```nim
+# By ownership (O(1) via byOwner index)
 for colony in state.coloniesOwned(houseId):
-  totalProduction += colony.production
+  totalPP += colony.production
 
-# Iterate fleets at a system
-for fleet in state.fleetsAtSystem(systemId):
-  if fleet.houseId == enemyHouse:
+for fleet in state.fleetsOwned(houseId):
+  totalMaintenance += fleet.maintenanceCost
+
+# By location (O(1) via bySystem index)
+for fleet in state.fleetsInSystem(systemId):
+  if fleet.houseId == enemyId:
     combatOccurs = true
 
-# Iterate all active houses
-for house in state.activeHouses():
+# By condition
+for house in state.activeHouses():  # Non-eliminated only
   calculatePrestige(house)
+
+# WithId variants (for mutations)
+for (fleetId, fleet) in state.fleetsOwnedWithId(houseId):
+  var updated = fleet
+  updated.fuelRemaining = updated.fuelMax
+  state.updateFleet(fleetId, updated)
 ```
 
-**❌ WRONG - Don't access .entities.data directly:**
+### Derived Queries (state/fleet_queries.nim)
 
 ```nim
-# DON'T DO THIS:
-for colony in state.colonies.entities.data:
-  if colony.owner == houseId:  # Manual filtering is error-prone
-    totalProduction += colony.production
+# Fleet composition checks
+if state.hasColonists(fleet):          # Any ETAC with colonists?
+  attemptColonization()
+
+if state.hasCombatShips(fleet):        # Any ships with AS > 0?
+  engageCombat()
+
+if state.isScoutOnly(fleet):           # Only scouts in fleet?
+  executeSpy mission()
+
+# Fleet cargo queries
+let marines = state.totalCargoOfType(fleet, CargoClass.Marines)
+if state.hasLoadedMarines(fleet):
+  invasionPossible = true
+
+# Fleet compatibility
+let mergeCheck = state.canMergeWith(fleet1, fleet2)
+if mergeCheck.canMerge:
+  fleet_ops.mergeFleets(state, fleet1.id, fleet2.id)
+
+# Fleet strength
+let totalAS = state.calculateFleetAS(fleet)
 ```
 
-**Why use iterators?**
-- O(1) indexed lookups (coloniesOwned uses byOwner index)
-- Clear intent (self-documenting code)
-- Type-safe (compiler enforces correct usage)
-- Cache-friendly (batch processing)
+## Writing Entities
 
-## Entity Helpers (Index-Based Single Lookups)
-
-For single entity lookups via indexes, use helpers from `@state/entity_helpers.nim`:
-
-**✅ CORRECT - Use entity helpers:**
+### Simple Updates (state/engine.nim)
 
 ```nim
-import ../state/entity_helpers
-
-# Get colony at system (1:1 relationship)
-let colonyOpt = state.colonyBySystem(systemId)
-if colonyOpt.isSome:
-  let colony = colonyOpt.get()
-  applyBlockade(colony)
-
-# Get squadrons in fleet (1:many relationship)
-let squadrons = state.squadronsByFleet(fleetId)
-for squadron in squadrons:
-  repairShips(squadron)
-```
-
-**❌ WRONG - Don't use verbose 3-line pattern:**
-
-```nim
-# DON'T DO THIS (67% more code):
-if state.colonies.bySystem.hasKey(systemId):
-  let colonyId = state.colonies.bySystem[systemId]
-  let colonyOpt = state.colonies.entities.entity(colonyId)
-  # ^^^ Use state.colonyBySystem(systemId) instead
-```
-
-**When to use helpers vs iterators:**
-- **Helpers**: Single entity lookup by index key (systemId, fleetId, etc.)
-- **Iterators**: Processing multiple entities (all fleets at system, all colonies owned)
-- **Simple existence check**: Use `hasKey()` directly (more efficient than helper)
-
-**Available helpers:**
-| Helper | Returns | Use Case |
-|--------|---------|----------|
-| `colonyBySystem(systemId)` | `Option[Colony]` | Get colony at system |
-| `squadronsByFleet(fleetId)` | `seq[Squadron]` | Get all squadrons in fleet |
-| `shipsBySquadron(squadronId)` | `seq[Ship]` | Get all ships in squadron |
-| `groundUnitsAtColony(colonyId)` | `seq[GroundUnit]` | Get garrison at colony |
-| `starbasesAtColony(colonyId)` | `seq[Starbase]` | Get starbases at colony (legacy) |
-| `shipyardsAtColony(colonyId)` | `seq[Shipyard]` | Get shipyards at colony (legacy) |
-| `neoriasAtColony(colonyId)` | `seq[Neoria]` | Get production facilities at colony |
-| `kastrasAtColony(colonyId)` | `seq[Kastra]` | Get defensive facilities at colony |
-
-See `src/engine/state/engine.nim` for complete list.
-
-## Writing Entities (Always Use Entity Ops)
-
-**✅ CORRECT - Use entity ops from @entities/:**
-
-```nim
-import ../entities/[fleet_ops, colony_ops, squadron_ops]
-
-# Create a new fleet (maintains bySystem and byOwner indexes)
-let fleetId = fleet_ops.createFleet(state, houseId, systemId, "Alpha Fleet")
-
-# Move fleet (updates bySystem index automatically)
-fleet_ops.moveFleet(state, fleetId, newSystemId)
-
-# Destroy colony (removes from byOwner and bySystem indexes)
-colony_ops.destroyColony(state, systemId, events)
-
-# Change fleet ownership (updates byOwner index for both houses)
-fleet_ops.changeFleetOwner(state, fleetId, newHouseId)
-```
-
-**❌ WRONG - Don't mutate entities directly:**
-
-```nim
-# DON'T DO THIS:
-let idx = state.fleets.entities.index[fleetId]
-state.fleets.entities.data[idx].location = newSystemId
-# ^^^ Breaks bySystem index! Other code will fail to find this fleet!
-
-# DON'T DO THIS:
-var colony = state.colonies.entities.data[idx]
-colony.owner = newHouseId  # Breaks byOwner index!
-state.colonies.entities.data[idx] = colony
-```
-
-**Why use entity ops?**
-- Maintains all indexes automatically (bySystem, byOwner, byHouse, etc.)
-- Ensures data consistency
-- Single source of truth for mutations
-- Easy to audit and test
-
-## Simple Updates (Use @state/engine.nim)
-
-For simple field updates that don't affect indexes, use the public procs in `state/engine.nim`:
-
-```nim
-import ../state/engine
-
-# Get entity
+# For fields that DON'T affect indexes (fuel, status, etc.)
 let fleetOpt = state.fleet(fleetId)
 if fleetOpt.isSome:
   var fleet = fleetOpt.get()
-
-  # Modify fields that don't affect indexes
   fleet.fuelRemaining -= 1
   fleet.lastActionTurn = state.turn
-
-  # Update entity using public API
-  state.updateFleet(fleetId, fleet)
+  state.updateFleet(fleetId, fleet)  # UFCS style
 ```
 
-**When to use update procs (in `engine.nim`) vs entity ops:**
-- `updateEntity()` (via `engine.updateX` procs): Simple field changes (fuel, status flags, turn counters)
-- Entity ops: Changes that affect indexes (location, owner, creation, deletion)
+### Index-Affecting Changes (entities/*_ops.nim)
 
-## Iterator Variants
-
-Iterators come in two flavors:
-
-**1. Read-only (no ID):**
 ```nim
-for colony in state.coloniesOwned(houseId):
-  # Read-only access, no mutations
-  totalPU += colony.population.units
-```
+import ../entities/[fleet_ops, colony_ops]
 
-**2. WithId (for mutations):**
-```nim
-for (systemId, colony) in state.coloniesOwnedWithId(houseId):
-  # Can mutate via updateEntity or entity ops
-  var updated = colony
-  updated.blockaded = false
-  state.colonies.entities.updateEntity(systemId, updated)
+# Create/destroy (maintains all indexes)
+let fleetId = fleet_ops.createFleet(state, houseId, systemId)
+colony_ops.destroyColony(state, colonyId, events)
+
+# Move (updates bySystem index)
+fleet_ops.moveFleet(state, fleetId, newSystemId)
+
+# Change owner (updates byOwner index)
+fleet_ops.changeFleetOwner(state, fleetId, newHouseId)
 ```
 
 ## Common Patterns
 
-### Pattern 1: Count and Filter
+### Pattern: Find and Update
+
 ```nim
-var totalShips = 0
-for squadron in state.squadronsOwned(houseId):
-  if not squadron.destroyed:
-    totalShips += squadron.ships.len
+# Find by condition, then update
+for (fleetId, fleet) in state.fleetsInSystemWithId(systemId):
+  if shouldRetreat(fleet):
+    var updated = fleet
+    updated.retreating = true
+    state.updateFleet(fleetId, updated)
 ```
 
-### Pattern 2: Find Entity
+### Pattern: Count with Filter
+
 ```nim
-var targetFleet: Option[Fleet] = none(Fleet)
-for fleet in state.fleetsAtSystem(systemId):
-  if fleet.houseId == enemyHouse:
-    targetFleet = some(fleet)
-    break
+var crippledShips = 0
+for ship in state.shipsOwned(houseId):
+  if ship.state == CombatState.Crippled:
+    crippledShips += 1
 ```
 
-### Pattern 3: Batch Update
+### Pattern: Existence Check Before Access
+
 ```nim
-for (fleetId, fleet) in state.fleetsOwnedWithId(houseId):
-  var updated = fleet
-  updated.fuelRemaining = updated.fuelMax
-  state.fleets.entities.updateEntity(fleetId, updated)
+# Fast existence check (doesn't allocate Option)
+if state.hasFleet(fleetId):
+  let fleet = state.fleet(fleetId).get()  # Safe: we checked existence
+  processFleet(fleet)
 ```
 
-### Pattern 4: Create and Link
-```nim
-# Create squadron via entity ops (maintains indexes)
-# Squadron type is automatically derived from flagship's ship class
-let squadron = squadron_ops.createSquadron(
-  state, houseId, fleetId, flagshipId
-)
+### Pattern: Aggregate Derived Properties
 
-# Squadron is automatically added to:
-# - squadrons.byFleet[fleetId]
-# - fleet.squadrons list
-# Squadron type is derived from flagship's shipClass
+```nim
+var totalAS = 0
+for fleet in state.fleetsOwned(houseId):
+  totalAS += state.calculateFleetAS(fleet)  # Uses fleet_queries
 ```
 
 ## Entity Ops Responsibilities
-
-Each `*_ops.nim` module maintains specific indexes:
 
 | Module | Creates/Updates | Maintains Indexes |
 |--------|----------------|-------------------|
 | `fleet_ops.nim` | Fleet | bySystem, byOwner |
 | `colony_ops.nim` | Colony | bySystem, byOwner |
-| `squadron_ops.nim` | Squadron | byHouse, byFleet |
-| `ship_ops.nim` | Ship | byHouse, bySquadron |
-| `neoria_ops.nim` | Neoria (production facilities) | byColony |
-| `kastra_ops.nim` | Kastra (defensive facilities) | byColony |
-| `facility_ops.nim` | Legacy (Starbase, Spaceport, etc.) | byColony |
-
-**Golden Rule:** If a mutation affects an index, use the entity ops module.
-
-## Performance Notes
-
-- Iterators have zero allocation overhead (compiler inlines them)
-- O(1) indexed lookups for coloniesOwned, fleetsAtSystem, etc.
-- O(n) for allColonies, allFleets (use sparingly)
-- Entity helpers have zero overhead (inline to same code as verbose pattern)
-- Entity ops maintain index consistency without performance penalty
+| `ship_ops.nim` | Ship | byHouse, byFleet |
+| `neoria_ops.nim` | Neoria (production) | byColony |
+| `kastra_ops.nim` | Kastra (defense) | byColony |
 
 ## Common Mistakes
 
-### ❌ Mistake 1: Direct data access
 ```nim
-for colony in state.colonies.entities.data:  # WRONG
-  if colony.owner == houseId:
-    # ...
-```
+# ❌ Don't access .entities.data directly
+for colony in state.colonies.entities.data:
+  if colony.owner == houseId:  # Manual filtering is slow
 
-### ✅ Fix: Use iterator
-```nim
-for colony in state.coloniesOwned(houseId):  # CORRECT
-  # ...
-```
+# ✅ Use indexed iterator
+for colony in state.coloniesOwned(houseId):  # O(1) lookup
 
-### ❌ Mistake 2: Verbose index lookup pattern
-```nim
-if state.colonies.bySystem.hasKey(systemId):  # WRONG
+# ❌ Don't modify indexed fields directly
+var fleet = state.fleet(fleetId).get()
+fleet.location = newSystem  # Breaks bySystem index!
+state.updateFleet(fleetId, fleet)
+
+# ✅ Use entity ops
+fleet_ops.moveFleet(state, fleetId, newSystem)
+
+# ❌ Don't use verbose index pattern
+if state.colonies.bySystem.hasKey(systemId):
   let colonyId = state.colonies.bySystem[systemId]
-  let colonyOpt = state.colonies.entities.entity(colonyId)
-  # 3 lines of boilerplate...
+  let colony = state.colony(colonyId).get()
+
+# ✅ Use helper
+let colony = state.colonyBySystem(systemId)
+
+# ❌ Don't write business logic in entity_ops
+proc moveFleet*(state: var GameState, ...) =
+  if fuelRemaining < distance:  # Business logic doesn't belong here!
+    return
+
+# ✅ Validate in systems layer, mutate via entity_ops
+proc executeMove(state: var GameState, ...):
+  if fleet.fuelRemaining < distance:  # Business logic in systems/
+    return
+  fleet_ops.moveFleet(state, ...)      # Mutation via entity_ops
 ```
 
-### ✅ Fix: Use entity helper
+## Module Import Guide
+
 ```nim
-let colonyOpt = state.colonyBySystem(systemId)  # CORRECT
+# For reading state
+import ../state/[engine, iterators, fleet_queries]
+
+# For mutations
+import ../entities/[fleet_ops, colony_ops, ship_ops]
+
+# Business logic
+import ../systems/fleet/entity  # Fleet validation/logic
 ```
 
-### ❌ Mistake 3: Manual index updates
-```nim
-state.fleets.bySystem[oldSystem].delete(fleetId)  # WRONG
-state.fleets.bySystem[newSystem].add(fleetId)
-```
+## Performance Notes
 
-### ✅ Fix: Use entity ops
-```nim
-fleet_ops.moveFleet(state, fleetId, newSystem)  # CORRECT
-```
-
-### ❌ Mistake 4: Modifying indexed fields
-```nim
-var fleet = state.fleets.entities.entity(fleetId).get()
-fleet.location = newSystem  # WRONG - breaks bySystem index
-state.fleets.entities.updateEntity(fleetId, fleet)
-```
-
-### ✅ Fix: Use entity ops
-```nim
-fleet_ops.moveFleet(state, fleetId, newSystem)  # CORRECT
-```
-
-## Quick Reference
-
-**Need to...** | **Use...**
---- | ---
-Read multiple entities | `@state/iterators.nim`
-Read single entity by index | `@state/entity_helpers.nim`
-Create/destroy entities | `@state/engine.nim` (e.g., `addFleet`, `delColony`)
-Change location/owner | `@entities/*_ops.nim`
-Update simple fields | `@state/engine.nim` (e.g., `updateFleet`)
-Check if exists | `@state/engine.nim` (e.g., `state.colony(id).isSome`)
-Business logic | `@systems/*/` (reads via iterators/helpers, writes via ops)
-
----
-
-**Remember:** Iterators for batch reads, helpers for single lookups, entity ops for writes, never touch indexes directly.
+- Iterators: O(1) indexed lookups (coloniesOwned, fleetsInSystem)
+- Helpers: O(1) index access (colonyBySystem, shipsByFleet)
+- Entity ops: O(1) index updates (moveFleet maintains bySystem)
+- All iterators inline to zero-cost loops (no allocation overhead)
