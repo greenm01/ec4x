@@ -143,79 +143,11 @@ proc transportCapacity*(state: GameState, f: Fleet): int =
       if ship.state != CombatState.Crippled:
         result += 1
 
-proc hasCombatShips*(state: GameState, f: Fleet): bool =
-  ## Check if the fleet has any combat-capable ships
-  for shipId in f.ships:
-    let ship = state.ship(shipId).get
-    if ship.effectiveAttackStrength() > 0:
-      return true
-  return false
-
-proc hasTransportShips*(state: GameState, f: Fleet): bool =
-  ## Check if the fleet has any operational Expansion/Auxiliary ships
-  for shipId in f.ships:
-    let ship = state.ship(shipId).get
-    if ship.shipClass in {ShipClass.ETAC, ShipClass.TroopTransport}:
-      if ship.state != CombatState.Crippled:
-        return true
-  return false
-
-proc isScoutOnly*(state: GameState, f: Fleet): bool =
-  ## Check if fleet contains ONLY scout ships (no combat ships)
-  ## Scouts are intelligence-only units that cannot join combat operations
-  if f.ships.len == 0:
-    return false
-  for shipId in f.ships:
-    let ship = state.ship(shipId).get
-    if ship.shipClass != ShipClass.Scout:
-      return false
-  return true
-
-proc hasScouts*(state: GameState, f: Fleet): bool =
-  ## Check if fleet contains any scout ships
-  for shipId in f.ships:
-    let ship = state.ship(shipId).get
-    if ship.shipClass == ShipClass.Scout:
-      return true
-  return false
-
-proc countScoutShips*(state: GameState, f: Fleet): int =
-  ## Count number of scout ships in fleet
-  ## Used for Scout-on-Scout detection formula
-  result = 0
-  for shipId in f.ships:
-    let ship = state.ship(shipId).get
-    if ship.shipClass == ShipClass.Scout:
-      result += 1
-
-proc hasNonScoutShips*(state: GameState, f: Fleet): bool =
-  ## Check if fleet has any non-scout ships
-  for shipId in f.ships:
-    let ship = state.ship(shipId).get
-    if ship.shipClass != ShipClass.Scout:
-      return true
-  return false
-
-proc canMergeWith*(
-    state: GameState, f1: Fleet, f2: Fleet
-): tuple[canMerge: bool, reason: string] =
-  ## Check if two fleets can merge (validates Intel/combat mixing)
-  ## RULE: Intel ships (Scouts) cannot be mixed with other ship types
-  ## Intel fleets NEVER mix with anything (pure intelligence operations)
-  ## Combat, Auxiliary, and Expansion can mix (combat escorts for transports)
-  ## Fighters stay at colonies and don't join fleets
-
-  let f1HasIntel = state.hasIntelShips(f1)
-  let f2HasIntel = state.hasIntelShips(f2)
-  let f1HasNonIntel = state.hasNonIntelShips(f1)
-  let f2HasNonIntel = state.hasNonIntelShips(f2)
-
-  # Intel ships cannot mix with non-Intel ships
-  if (f1HasIntel and f2HasNonIntel) or (f1HasNonIntel and f2HasIntel):
-    return (false, "Intel ships cannot be mixed with other ship types")
-
-  # Both fleets are compatible (either both Intel-only or both have no Intel)
-  return (true, "")
+# NOTE: Duplicate query functions removed (now in state/fleet_queries.nim):
+# - hasCombatShips, hasTransportShips, isScoutOnly
+# - hasScouts, countScoutShips, hasNonScoutShips
+# - canMergeWith
+# Use state.func(fleet) for UFCS-style access per CLAUDE.md:8
 
 proc combatShips*(state: GameState, f: Fleet): seq[ShipId] =
   ## Get all combat-capable ship IDs
