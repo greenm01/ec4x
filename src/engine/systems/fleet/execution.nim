@@ -343,51 +343,6 @@ proc performCommandMaintenance*(
         &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} executed",
       )
       # Events already added via mutable parameter
-
-      # Handle combat orders that trigger battles
-      if actualOrder.commandType in
-          {FleetCommandType.Bombard, FleetCommandType.Invade, FleetCommandType.Blitz}:
-        let fleetOpt = state.fleet(actualOrder.fleetId)
-        if fleetOpt.isSome and actualOrder.targetSystem.isSome:
-          let fleet = fleetOpt.get()
-          let targetSystem = actualOrder.targetSystem.get()
-
-          # Check if hostile forces are present
-          var hasHostileForces = false
-
-          # Check for enemy/neutral fleets (using fleetsInSystem iterator)
-          for otherFleet in state.fleetsInSystem(targetSystem):
-            if otherFleet.houseId != houseId:
-              # Check diplomatic relation
-              var relation = DiplomaticState.Neutral # Default
-              if (houseId, otherFleet.houseId) in state.diplomaticRelation:
-                relation = state.diplomaticRelation[(houseId, otherFleet.houseId)].state
-              if relation == DiplomaticState.Enemy or
-                  relation == DiplomaticState.Neutral:
-                hasHostileForces = true
-                break
-
-          # Check for starbases
-          let colonyOpt = state.colonyBySystem(targetSystem)
-          if colonyOpt.isSome:
-            let colony = colonyOpt.get()
-            if colony.owner != houseId and state.countStarbasesAtColony(colony.id) > 0:
-              # Check diplomatic relation with colony owner
-              var relation = DiplomaticState.Neutral # Default
-              if (houseId, colony.owner) in state.diplomaticRelation:
-                relation = state.diplomaticRelation[(houseId, colony.owner)].state
-              if relation == DiplomaticState.Enemy or
-                  relation == DiplomaticState.Neutral:
-                hasHostileForces = true
-
-          # NOTE: Combat now handled by orchestrator.nim in Conflict Phase
-          # Execution just validates and marks commands complete
-          # Old resolveBattle() call removed - combat resolution happens in
-          # turn_cycle/conflict_phase via orchestrator
-          #
-          # If hostile forces present, combat will be resolved by orchestrator
-          # before this order executes in the appropriate phase
-          discard
     elif outcome == OrderOutcome.Failed:
       # Order failed validation - event generated, cleanup handled by Command Phase
       logDebug(

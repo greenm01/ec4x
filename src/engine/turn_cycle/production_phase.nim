@@ -246,14 +246,14 @@ proc resolveMaintenancePhase*(
 
   var arrivedFleetCount = 0
 
-  for fleetId, order in state.fleetCommands:
+  for fleetId, command in state.fleetCommands:
     # Skip if fleet doesn't exist
     if fleetId notin state.fleets:
       continue
 
     let fleet = state.fleets[fleetId]
 
-    # Skip if order has no target system
+    # Skip if command has no target system
     if command.targetSystem.isNone:
       continue
 
