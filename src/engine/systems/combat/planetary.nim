@@ -5,7 +5,7 @@
 ##
 ## Per docs/specs/07-combat.md Section 7.7-7.8
 
-import std/[random, options, tables]
+import std/[random, options, tables, sequtils]
 import ../../types/[core, game_state, combat, ship, facilities, colony, ground_unit]
 import ../../state/engine
 import ../../globals
@@ -23,20 +23,13 @@ proc getShieldReduction*(state: GameState, colonyId: ColonyId): float32 =
   ## Per docs/specs/reference.md Section 9.3
   ## Shields are house-level tech - if colony has operational shield unit, use house's SLD level
 
-  # Check if colony has any ground units
-  if not state.groundUnits.byColony.hasKey(colonyId):
-    return 0.0
-
   # Find operational PlanetaryShield units
   var hasOperationalShield = false
-  for groundUnitId in state.groundUnits.byColony[colonyId]:
-    let unitOpt = state.groundUnit(groundUnitId)
-    if unitOpt.isSome:
-      let unit = unitOpt.get()
-      if unit.stats.unitType == GroundClass.PlanetaryShield and
-         unit.state != CombatState.Destroyed:
-        hasOperationalShield = true
-        break
+  for unit in state.groundUnitsAtColony(colonyId):
+    if unit.stats.unitType == GroundClass.PlanetaryShield and
+       unit.state != CombatState.Destroyed:
+      hasOperationalShield = true
+      break
 
   if not hasOperationalShield:
     return 0.0
@@ -64,14 +57,10 @@ proc allBatteriesDestroyed*(state: GameState, colonyId: ColonyId): bool =
   ## Per docs/specs/07-combat.md Section 7.7
 
   # Check ground batteries
-  if state.groundUnits.byColony.hasKey(colonyId):
-    for groundUnitId in state.groundUnits.byColony[colonyId]:
-      let unitOpt = state.groundUnit(groundUnitId)
-      if unitOpt.isSome:
-        let unit = unitOpt.get()
-        if unit.stats.unitType == GroundClass.GroundBattery and
-           unit.state != CombatState.Destroyed:
-          return false # At least one battery operational
+  for unit in state.groundUnitsAtColony(colonyId):
+    if unit.stats.unitType == GroundClass.GroundBattery and
+       unit.state != CombatState.Destroyed:
+      return false # At least one battery operational
 
   return true # No operational batteries found
 
@@ -82,40 +71,24 @@ proc destroyShields*(state: var GameState, colonyId: ColonyId) =
   ##
   ## NOTE: Blitz operations do NOT call this - shields captured intact if successful
 
-  if not state.groundUnits.byColony.hasKey(colonyId):
-    return
-
-  for groundUnitId in state.groundUnits.byColony[colonyId]:
-    let unitOpt = state.groundUnit(groundUnitId)
-    if unitOpt.isNone:
-      continue
-
-    var unit = unitOpt.get()
-
+  for unit in state.groundUnitsAtColony(colonyId):
     # Only destroy planetary shields
     if unit.stats.unitType == GroundClass.PlanetaryShield:
-      unit.state = CombatState.Destroyed
-      state.updateGroundUnit(groundUnitId, unit)
+      var updatedUnit = unit
+      updatedUnit.state = CombatState.Destroyed
+      state.updateGroundUnit(unit.id, updatedUnit)
 
 proc destroySpaceports*(state: var GameState, colonyId: ColonyId) =
   ## Destroy all spaceports when marines land during invasion
   ## Per docs/specs/07-combat.md Section 7.8.1
   ## "Shields and spaceports immediately destroyed upon marine landing"
 
-  if not state.neorias.byColony.hasKey(colonyId):
-    return
-
-  for neoriaId in state.neorias.byColony[colonyId]:
-    let neoriaOpt = state.neoria(neoriaId)
-    if neoriaOpt.isNone:
-      continue
-
-    var neoria = neoriaOpt.get()
-
+  for neoria in state.neoriasAtColony(colonyId):
     # Only destroy spaceports (planet-based facilities)
     if neoria.neoriaClass == NeoriaClass.Spaceport:
-      neoria.state = CombatState.Destroyed
-      state.updateNeoria(neoriaId, neoria)
+      var updatedNeoria = neoria
+      updatedNeoria.state = CombatState.Destroyed
+      state.updateNeoria(neoria.id, updatedNeoria)
 
 proc applyInfrastructureDamage*(
   state: var GameState, colonyId: ColonyId, damage: int32
@@ -152,16 +125,10 @@ proc applyBombardmentExcessHits*(
 
   # Phase 1: Destroy spaceports (large planetary facilities, visible from orbit)
   # Each spaceport has DS - requires multiple hits to destroy
-  if state.neorias.byColony.hasKey(colonyId) and remainingHits > 0:
-    for neoriaId in state.neorias.byColony[colonyId]:
+  if remainingHits > 0:
+    for neoria in state.neoriasAtColony(colonyId):
       if remainingHits <= 0:
         break
-
-      let neoriaOpt = state.neoria(neoriaId)
-      if neoriaOpt.isNone:
-        continue
-
-      var neoria = neoriaOpt.get()
 
       # Only target spaceports (planet-based facilities)
       if neoria.neoriaClass != NeoriaClass.Spaceport:
@@ -179,33 +146,28 @@ proc applyBombardmentExcessHits*(
 
       let spaceportDS = gameConfig.facilities.facilities[facilityClass].defenseStrength
 
+      var updatedNeoria = neoria
       if neoria.state == CombatState.Undamaged:
         # Need DS hits to cripple
         if remainingHits >= spaceportDS:
-          neoria.state = CombatState.Crippled
+          updatedNeoria.state = CombatState.Crippled
           remainingHits -= spaceportDS
-          state.updateNeoria(neoriaId, neoria)
+          state.updateNeoria(neoria.id, updatedNeoria)
       elif neoria.state == CombatState.Crippled:
         # Need 50% DS to destroy crippled facility
         let hitsNeeded = int32(float32(spaceportDS) * 0.5)
         if remainingHits >= hitsNeeded:
-          neoria.state = CombatState.Destroyed
+          updatedNeoria.state = CombatState.Destroyed
           remainingHits -= hitsNeeded
-          state.updateNeoria(neoriaId, neoria)
+          state.updateNeoria(neoria.id, updatedNeoria)
 
   # Phase 2: Damage ground forces (armies/marines)
   # Dispersed ground targets, harder to hit from orbit
-  if state.groundUnits.byColony.hasKey(colonyId) and remainingHits > 0:
+  if remainingHits > 0:
     # First pass: Cripple undamaged ground forces
-    for groundUnitId in state.groundUnits.byColony[colonyId]:
+    for unit in state.groundUnitsAtColony(colonyId):
       if remainingHits <= 0:
         break
-
-      let unitOpt = state.groundUnit(groundUnitId)
-      if unitOpt.isNone:
-        continue
-
-      var unit = unitOpt.get()
 
       # Only armies and marines take bombardment damage
       if unit.stats.unitType notin [GroundClass.Army, GroundClass.Marine]:
@@ -221,34 +183,26 @@ proc applyBombardmentExcessHits*(
           gameConfig.groundUnits.units[GroundClass.Marine].defenseStrength
 
       if remainingHits >= hitsNeeded:
-        unit.state = CombatState.Crippled
+        var updatedUnit = unit
+        updatedUnit.state = CombatState.Crippled
         remainingHits -= hitsNeeded
-        state.updateGroundUnit(groundUnitId, unit)
+        state.updateGroundUnit(unit.id, updatedUnit)
 
     # Second pass: Destroy crippled ground forces (only if no undamaged remain)
     let hasUndamagedGroundForces =
       block:
         var found = false
-        for groundUnitId in state.groundUnits.byColony[colonyId]:
-          let unitOpt = state.groundUnit(groundUnitId)
-          if unitOpt.isSome:
-            let unit = unitOpt.get()
-            if unit.stats.unitType in [GroundClass.Army, GroundClass.Marine] and
-               unit.state == CombatState.Undamaged:
-              found = true
-              break
+        for unit in state.groundUnitsAtColony(colonyId):
+          if unit.stats.unitType in [GroundClass.Army, GroundClass.Marine] and
+             unit.state == CombatState.Undamaged:
+            found = true
+            break
         found
 
     if not hasUndamagedGroundForces and remainingHits > 0:
-      for groundUnitId in state.groundUnits.byColony[colonyId]:
+      for unit in state.groundUnitsAtColony(colonyId):
         if remainingHits <= 0:
           break
-
-        let unitOpt = state.groundUnit(groundUnitId)
-        if unitOpt.isNone:
-          continue
-
-        var unit = unitOpt.get()
 
         # Only armies and marines
         if unit.stats.unitType notin [GroundClass.Army, GroundClass.Marine]:
@@ -266,9 +220,10 @@ proc applyBombardmentExcessHits*(
 
         let hitsNeeded = int32(float32(baseDS) * 0.5)
         if remainingHits >= hitsNeeded:
-          unit.state = CombatState.Destroyed
+          var updatedUnit = unit
+          updatedUnit.state = CombatState.Destroyed
           remainingHits -= hitsNeeded
-          state.updateGroundUnit(groundUnitId, unit)
+          state.updateGroundUnit(unit.id, updatedUnit)
 
   # Phase 3: Remaining hits damage infrastructure and population
   if remainingHits > 0:
@@ -297,20 +252,10 @@ proc applyHitsToBatteries*(
 
   var remainingHits = hits
 
-  # Get all ground batteries at colony
-  if not state.groundUnits.byColony.hasKey(colonyId):
-    return hits # No batteries, all hits remain
-
   # Phase 1: Cripple all undamaged batteries
-  for groundUnitId in state.groundUnits.byColony[colonyId]:
+  for unit in state.groundUnitsAtColony(colonyId):
     if remainingHits <= 0:
       break
-
-    let unitOpt = state.groundUnit(groundUnitId)
-    if unitOpt.isNone:
-      continue
-
-    var unit = unitOpt.get()
 
     # Only process ground batteries
     if unit.stats.unitType != GroundClass.GroundBattery:
@@ -321,34 +266,26 @@ proc applyHitsToBatteries*(
 
     let hitsNeeded = gameConfig.groundUnits.units[GroundClass.GroundBattery].defenseStrength
     if remainingHits >= hitsNeeded:
-      unit.state = CombatState.Crippled
+      var updatedUnit = unit
+      updatedUnit.state = CombatState.Crippled
       remainingHits -= hitsNeeded
-      state.updateGroundUnit(groundUnitId, unit)
+      state.updateGroundUnit(unit.id, updatedUnit)
 
   # Phase 2: Destroy crippled batteries
   let hasUndamaged =
     block:
       var found = false
-      for groundUnitId in state.groundUnits.byColony[colonyId]:
-        let unitOpt = state.groundUnit(groundUnitId)
-        if unitOpt.isSome:
-          let unit = unitOpt.get()
-          if unit.stats.unitType == GroundClass.GroundBattery and
-             unit.state == CombatState.Undamaged:
-            found = true
-            break
+      for unit in state.groundUnitsAtColony(colonyId):
+        if unit.stats.unitType == GroundClass.GroundBattery and
+           unit.state == CombatState.Undamaged:
+          found = true
+          break
       found
 
   if not hasUndamaged and remainingHits > 0:
-    for groundUnitId in state.groundUnits.byColony[colonyId]:
+    for unit in state.groundUnitsAtColony(colonyId):
       if remainingHits <= 0:
         break
-
-      let unitOpt = state.groundUnit(groundUnitId)
-      if unitOpt.isNone:
-        continue
-
-      var unit = unitOpt.get()
 
       # Only process ground batteries
       if unit.stats.unitType != GroundClass.GroundBattery:
@@ -361,9 +298,10 @@ proc applyHitsToBatteries*(
       let baseDS = gameConfig.groundUnits.units[GroundClass.GroundBattery].defenseStrength
       let hitsNeeded = int32(float32(baseDS) * 0.5)
       if remainingHits >= hitsNeeded:
-        unit.state = CombatState.Destroyed
+        var updatedUnit = unit
+        updatedUnit.state = CombatState.Destroyed
         remainingHits -= hitsNeeded
-        state.updateGroundUnit(groundUnitId, unit)
+        state.updateGroundUnit(unit.id, updatedUnit)
 
   return remainingHits
 
@@ -372,16 +310,7 @@ proc calculateGroundBatteryAS*(state: GameState, colonyId: ColonyId): int32 =
   ## Per docs/specs/07-combat.md Section 7.7
   result = 0
 
-  if not state.groundUnits.byColony.hasKey(colonyId):
-    return
-
-  for groundUnitId in state.groundUnits.byColony[colonyId]:
-    let unitOpt = state.groundUnit(groundUnitId)
-    if unitOpt.isNone:
-      continue
-
-    let unit = unitOpt.get()
-
+  for unit in state.groundUnitsAtColony(colonyId):
     # Only ground batteries contribute
     if unit.stats.unitType != GroundClass.GroundBattery:
       continue
@@ -442,30 +371,22 @@ proc propagateTransportDamageToMarines*(
       continue # No damage, skip
 
     # Propagate damage to marines aboard
-    if not state.groundUnits.byTransport.hasKey(shipId):
-      continue # No marines loaded
-
-    for groundUnitId in state.groundUnits.byTransport[shipId]:
-      let unitOpt = state.groundUnit(groundUnitId)
-      if unitOpt.isNone:
-        continue
-
-      var unit = unitOpt.get()
-
+    for unit in state.groundUnitsOnTransport(shipId):
       # Only marines participate in invasion combat
       if unit.stats.unitType != GroundClass.Marine:
         continue
 
+      var updatedUnit = unit
       # Apply damage transition based on transport state
       if ship.state == CombatState.Destroyed:
         # Transport destroyed → all marines destroyed
-        unit.state = CombatState.Destroyed
+        updatedUnit.state = CombatState.Destroyed
       elif ship.state == CombatState.Crippled and unit.state == CombatState.Undamaged:
         # Transport crippled → undamaged marines become crippled
         # (Already crippled marines stay crippled, not destroyed)
-        unit.state = CombatState.Crippled
+        updatedUnit.state = CombatState.Crippled
 
-      state.updateGroundUnit(groundUnitId, unit)
+      state.updateGroundUnit(unit.id, updatedUnit)
 
 proc calculateMarineAS*(state: GameState, fleets: seq[FleetId]): int32 =
   ## Calculate total AS from marine units in fleets
@@ -497,16 +418,7 @@ proc calculateMarineAS*(state: GameState, fleets: seq[FleetId]): int32 =
           continue # Destroyed transports contribute nothing
 
         # Get all ground units on this transport
-        if not state.groundUnits.byTransport.hasKey(shipId):
-          continue # No units loaded
-
-        for groundUnitId in state.groundUnits.byTransport[shipId]:
-          let unitOpt = state.groundUnit(groundUnitId)
-          if unitOpt.isNone:
-            continue
-
-          let unit = unitOpt.get()
-
+        for unit in state.groundUnitsOnTransport(shipId):
           # Only marines participate in invasion
           if unit.stats.unitType == GroundClass.Marine:
             if unit.state != CombatState.Destroyed:
@@ -617,16 +529,7 @@ proc calculateGroundForceAS*(state: GameState, colonyId: ColonyId): int32 =
     return
 
   # Get all ground units at colony
-  if not state.groundUnits.byColony.hasKey(colonyId):
-    return # No ground forces
-
-  for groundUnitId in state.groundUnits.byColony[colonyId]:
-    let unitOpt = state.groundUnit(groundUnitId)
-    if unitOpt.isNone:
-      continue
-
-    let unit = unitOpt.get()
-
+  for unit in state.groundUnitsAtColony(colonyId):
     # Only armies and marines defend (not batteries or shields)
     if unit.stats.unitType in [GroundClass.Army, GroundClass.Marine]:
       if unit.state != CombatState.Destroyed:
@@ -813,12 +716,10 @@ proc resolveInvasion*(
       continue
     let fleet = fleetOpt.get()
     for shipId in fleet.ships:
-      if state.groundUnits.byTransport.hasKey(shipId):
-        marineIds.add(state.groundUnits.byTransport[shipId])
+      marineIds.add(state.groundUnitsOnTransport(shipId).mapIt(it.id))
 
   var defenderIds: seq[GroundUnitId] = @[]
-  if state.groundUnits.byColony.hasKey(targetColony):
-    defenderIds = state.groundUnits.byColony[targetColony]
+  defenderIds = state.groundUnitsAtColony(targetColony).mapIt(it.id)
 
   var round = 1'i32
   let maxRounds = 20
@@ -1003,20 +904,15 @@ proc resolveBlitz*(
       continue
     let fleet = fleetOpt.get()
     for shipId in fleet.ships:
-      if state.groundUnits.byTransport.hasKey(shipId):
-        marineIds.add(state.groundUnits.byTransport[shipId])
+      marineIds.add(state.groundUnitsOnTransport(shipId).mapIt(it.id))
 
   var defenderGroundIds: seq[GroundUnitId] = @[]
   var batteryIds: seq[GroundUnitId] = @[]
-  if state.groundUnits.byColony.hasKey(targetColony):
-    for groundUnitId in state.groundUnits.byColony[targetColony]:
-      let unitOpt = state.groundUnit(groundUnitId)
-      if unitOpt.isSome:
-        let unit = unitOpt.get()
-        if unit.stats.unitType == GroundClass.GroundBattery:
-          batteryIds.add(groundUnitId)
-        elif unit.stats.unitType in [GroundClass.Army, GroundClass.Marine]:
-          defenderGroundIds.add(groundUnitId)
+  for unit in state.groundUnitsAtColony(targetColony):
+    if unit.stats.unitType == GroundClass.GroundBattery:
+      batteryIds.add(unit.id)
+    elif unit.stats.unitType in [GroundClass.Army, GroundClass.Marine]:
+      defenderGroundIds.add(unit.id)
 
   var round = 1'i32
   let maxRounds = 20'i32

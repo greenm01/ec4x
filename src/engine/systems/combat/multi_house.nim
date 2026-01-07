@@ -257,11 +257,7 @@ proc hasStarbaseInSystem*(
   state: GameState, systemId: SystemId, houseId: HouseId
 ): bool =
   ## Check if house has a starbase (Kastra) in this system
-  if not state.colonies.bySystem.hasKey(systemId):
-    return false
-
-  let colonyId = state.colonies.bySystem[systemId]
-  let colonyOpt = state.colony(colonyId)
+  let colonyOpt = state.colonyBySystem(systemId)
   if colonyOpt.isNone():
     return false
 

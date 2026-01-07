@@ -109,17 +109,11 @@ proc getScreenedNeoriasAtColony*(
   ## or invasion can destroy them.
   result = @[]
 
-  if not state.neorias.byColony.hasKey(colonyId):
-    return
-
   # Only orbital neorias (Shipyard, Drydock) are screened
   # Spaceports are planet-based and survive orbital combat loss
-  for neoriaId in state.neorias.byColony[colonyId]:
-    let neoriaOpt = state.neoria(neoriaId)
-    if neoriaOpt.isSome:
-      let neoria = neoriaOpt.get()
-      if neoria.neoriaClass in [NeoriaClass.Shipyard, NeoriaClass.Drydock]:
-        result.add(neoriaId)
+  for neoria in state.neoriasAtColony(colonyId):
+    if neoria.neoriaClass in [NeoriaClass.Shipyard, NeoriaClass.Drydock]:
+      result.add(neoria.id)
 
 proc destroyScreenedUnitsInFleet*(state: var GameState, fleetId: FleetId) =
   ## Destroy all screened units when fleet is destroyed

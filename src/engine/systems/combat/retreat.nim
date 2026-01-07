@@ -5,7 +5,7 @@
 ##
 ## Per docs/specs/07-combat.md Section 7.2.3
 
-import std/[options]
+import std/[options, sequtils]
 import ../../types/[core, game_state, combat, fleet, ship]
 import ../../state/engine
 import ./strength
@@ -129,11 +129,7 @@ proc checkFleetRetreats*(
       applyRetreatLossesToScreenedUnits(state, fleetId)
 
       # Remove fleet from battle
-      var newFleets: seq[FleetId] = @[]
-      for fid in battle.attacker.fleets:
-        if fid != fleetId:
-          newFleets.add(fid)
-      battle.attacker.fleets = newFleets
+      battle.attacker.fleets = battle.attacker.fleets.filterIt(it != fleetId)
 
   # Check defender fleets
   for fleetId in battle.defender.fleets:
@@ -163,11 +159,7 @@ proc checkFleetRetreats*(
       applyRetreatLossesToScreenedUnits(state, fleetId)
 
       # Remove fleet from battle
-      var newFleets: seq[FleetId] = @[]
-      for fid in battle.defender.fleets:
-        if fid != fleetId:
-          newFleets.add(fid)
-      battle.defender.fleets = newFleets
+      battle.defender.fleets = battle.defender.fleets.filterIt(it != fleetId)
 
 proc noCombatantsRemain*(state: GameState, battle: Battle): bool =
   ## Check if combat should end (one or both sides have no operational ships)

@@ -8,35 +8,40 @@
 import std/options
 import ../../../common/logger
 import ../../types/[core, game_state, combat, ship, fleet, facilities, ground_unit, colony, event]
-import ../../state/engine
+import ../../state/[engine, iterators]
 import ../../entities/[ship_ops, fleet_ops, neoria_ops, ground_unit_ops, kastra_ops]
 import ../../entities/project_ops
 import ../../event_factory/init as event_factory
 
-proc cleanupDestroyedShips*(state: var GameState) =
-  ## Remove all ships with CombatState.Destroyed from game state
+proc cleanupDestroyedShips*(state: var GameState, systemId: SystemId) =
+  ## Remove all ships with CombatState.Destroyed from fleets in this system
   ## Called after combat resolution
+  ##
+  ## **Optimization:** Only checks ships in fleets at this system (not global scan)
 
   var destroyedShips: seq[ShipId] = @[]
 
-  # Collect all destroyed ships (read-only iteration)
-  for ship in state.ships.entities.data:
-    if ship.state == CombatState.Destroyed:
-      destroyedShips.add(ship.id)
+  # Collect destroyed ships from fleets in this system only
+  for fleet in state.fleetsInSystem(systemId):
+    for (shipId, ship) in state.shipsInFleetWithId(fleet.id):
+      if ship.state == CombatState.Destroyed:
+        destroyedShips.add(shipId)
 
   # Destroy collected ships (mutation)
   for shipId in destroyedShips:
     logCombat("[CLEANUP] Destroying ship ", $shipId)
     ship_ops.destroyShip(state, shipId)
 
-proc cleanupEmptyFleets*(state: var GameState) =
-  ## Remove fleets with no ships remaining
+proc cleanupEmptyFleets*(state: var GameState, systemId: SystemId) =
+  ## Remove fleets with no ships remaining at this system
   ## Called after ship cleanup
+  ##
+  ## **Optimization:** Only checks fleets at this system (not global scan)
 
   var emptyFleets: seq[FleetId] = @[]
 
-  # Collect empty fleets (read-only iteration)
-  for fleet in state.fleets.entities.data:
+  # Collect empty fleets at this system only
+  for fleet in state.fleetsInSystem(systemId):
     if fleet.ships.len == 0:
       emptyFleets.add(fleet.id)
 
@@ -45,14 +50,23 @@ proc cleanupEmptyFleets*(state: var GameState) =
     logCombat("[CLEANUP] Destroying empty fleet ", $fleetId)
     fleet_ops.destroyFleet(state, fleetId)
 
-proc cleanupDestroyedNeorias*(state: var GameState) =
+proc cleanupDestroyedNeorias*(state: var GameState, systemId: SystemId) =
   ## Remove destroyed neorias and clear their construction/repair queues
   ## Called after combat resolution
+  ##
+  ## **Optimization:** Only checks neorias at colonies in this system (not global scan)
 
   var destroyedNeorias: seq[NeoriaId] = @[]
 
-  # Collect all destroyed neorias (read-only iteration)
-  for neoria in state.neorias.entities.data:
+  # Check if there's a colony in this system
+  let colonyOpt = state.colonyBySystem(systemId)
+  if colonyOpt.isNone:
+    return # No colony = no neorias to clean
+
+  let colonyId = colonyOpt.get().id
+
+  # Collect destroyed neorias at this colony only
+  for neoria in state.neoriasAtColony(colonyId):
     if neoria.state == CombatState.Destroyed:
       destroyedNeorias.add(neoria.id)
 
@@ -102,14 +116,23 @@ proc cleanupDestroyedNeorias*(state: var GameState) =
     # Finally, destroy the facility (will remove from all indexes)
     neoria_ops.destroyNeoria(state, neoriaId)
 
-proc cleanupDestroyedGroundUnits*(state: var GameState) =
-  ## Remove all ground units with CombatState.Destroyed
+proc cleanupDestroyedGroundUnits*(state: var GameState, systemId: SystemId) =
+  ## Remove all ground units with CombatState.Destroyed at colonies in this system
   ## Called after combat resolution
+  ##
+  ## **Optimization:** Only checks ground units at colonies in this system (not global scan)
 
   var destroyedUnits: seq[GroundUnitId] = @[]
 
-  # Collect all destroyed ground units (read-only iteration)
-  for unit in state.groundUnits.entities.data:
+  # Check if there's a colony in this system
+  let colonyOpt = state.colonyBySystem(systemId)
+  if colonyOpt.isNone:
+    return # No colony = no ground units to clean
+
+  let colonyId = colonyOpt.get().id
+
+  # Collect destroyed ground units at this colony only
+  for unit in state.groundUnitsAtColony(colonyId):
     if unit.state == CombatState.Destroyed:
       destroyedUnits.add(unit.id)
 
@@ -118,14 +141,23 @@ proc cleanupDestroyedGroundUnits*(state: var GameState) =
     logCombat("[CLEANUP] Destroying ground unit ", $unitId)
     ground_unit_ops.destroyGroundUnit(state, unitId)
 
-proc cleanupDestroyedKastras*(state: var GameState) =
-  ## Remove destroyed starbases
+proc cleanupDestroyedKastras*(state: var GameState, systemId: SystemId) =
+  ## Remove destroyed starbases at colonies in this system
   ## Called after combat resolution
+  ##
+  ## **Optimization:** Only checks kastras at colonies in this system (not global scan)
 
   var destroyedKastras: seq[KastraId] = @[]
 
-  # Collect all destroyed starbases (read-only iteration)
-  for kastra in state.kastras.entities.data:
+  # Check if there's a colony in this system
+  let colonyOpt = state.colonyBySystem(systemId)
+  if colonyOpt.isNone:
+    return # No colony = no kastras to clean
+
+  let colonyId = colonyOpt.get().id
+
+  # Collect destroyed kastras at this colony only
+  for kastra in state.kastrasAtColony(colonyId):
     if kastra.state == CombatState.Destroyed:
       destroyedKastras.add(kastra.id)
 
@@ -235,18 +267,18 @@ proc cleanupPostCombat*(state: var GameState, systemId: SystemId) =
 
   logCombat("[CLEANUP] Post-combat cleanup starting for system ", $systemId)
 
-  # Phase 1: Ships
-  cleanupDestroyedShips(state)
+  # Phase 1: Ships (only in fleets at this system)
+  cleanupDestroyedShips(state, systemId)
 
-  # Phase 2: Empty fleets (after ships removed)
-  cleanupEmptyFleets(state)
+  # Phase 2: Empty fleets (only at this system, after ships removed)
+  cleanupEmptyFleets(state, systemId)
 
-  # Phase 3: Facilities (with queue clearing)
-  cleanupDestroyedNeorias(state)
-  cleanupDestroyedKastras(state)
+  # Phase 3: Facilities (only at colonies in this system, with queue clearing)
+  cleanupDestroyedNeorias(state, systemId)
+  cleanupDestroyedKastras(state, systemId)
 
-  # Phase 4: Ground units
-  cleanupDestroyedGroundUnits(state)
+  # Phase 4: Ground units (only at colonies in this system)
+  cleanupDestroyedGroundUnits(state, systemId)
 
   logCombat("[CLEANUP] Post-combat cleanup complete for system ", $systemId)
 
@@ -270,11 +302,14 @@ proc cleanupPostCombat*(state: var GameState, systemId: SystemId) =
 ## - Ground units can be cleaned in any order
 ##
 ## **Performance:**
-## - Single pass through each entity table
+## - System-scoped iteration (only checks entities in combat system)
+## - Ships: O(ships_in_fleets_at_system) instead of O(all_ships_in_game)
+## - Fleets: O(fleets_at_system) instead of O(all_fleets_in_game)
+## - Facilities: O(facilities_at_colony) instead of O(all_facilities_in_game)
+## - Ground units: O(units_at_colony) instead of O(all_units_in_game)
 ## - Collects IDs first, then mutates (no iterator invalidation)
-## - O(n) per entity type, where n = entities in game (not just system)
+## - Major performance win in late-game with many systems
 ##
 ## **Future Enhancements:**
-## - System-scoped cleanup (only clean entities at specific system)
-## - Batch cleanup for multiple systems
+## - Batch cleanup for multiple systems (if needed)
 ## - Telemetry integration (track cleanup stats)

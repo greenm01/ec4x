@@ -158,15 +158,16 @@ proc determineTheaterOutcome(
     result.attackersWon = hasNonOwnerFleets
     return
 
-  # Analyze combat results
+  # Collect all retreated fleets from all combat results
+  var allRetreatedFleets: seq[FleetId] = @[]
   for combatResult in combatResults:
-    # Determine which houses survived
-    for fleet in state.fleetsInSystem(systemId):
-      let isSurviving =
-        fleet.id notin combatResult.attackerRetreatedFleets and
-        fleet.id notin combatResult.defenderRetreatedFleets
+    allRetreatedFleets.add(combatResult.attackerRetreatedFleets)
+    allRetreatedFleets.add(combatResult.defenderRetreatedFleets)
 
-      if isSurviving and fleet.houseId notin result.survivingAttackers:
+  # Single pass: determine which houses have surviving fleets
+  for fleet in state.fleetsInSystem(systemId):
+    if fleet.id notin allRetreatedFleets:
+      if fleet.houseId notin result.survivingAttackers:
         result.survivingAttackers.add(fleet.houseId)
 
   # Determine outcome

@@ -7,7 +7,7 @@
 
 import std/[options]
 import ../../types/[game_state, combat, ship]
-import ../../state/engine
+import ../../state/[engine, iterators]
 import ./strength
 
 proc calculateFighterSuperiority*(
@@ -26,29 +26,17 @@ proc calculateFighterSuperiority*(
 
   # Count our fighters
   for fleetId in ourForce.fleets:
-    let fleetOpt = state.fleet(fleetId)
-    if fleetOpt.isSome:
-      let fleet = fleetOpt.get()
-      for shipId in fleet.ships:
-        let shipOpt = state.ship(shipId)
-        if shipOpt.isSome:
-          let ship = shipOpt.get()
-          if ship.shipClass == ShipClass.Fighter and
-              ship.state != CombatState.Destroyed:
-            ourFighterAS += calculateShipAS(state, ship)
+    for ship in state.shipsInFleet(fleetId):
+      if ship.shipClass == ShipClass.Fighter and
+          ship.state != CombatState.Destroyed:
+        ourFighterAS += calculateShipAS(state, ship)
 
   # Count enemy fighters
   for fleetId in enemyForce.fleets:
-    let fleetOpt = state.fleet(fleetId)
-    if fleetOpt.isSome:
-      let fleet = fleetOpt.get()
-      for shipId in fleet.ships:
-        let shipOpt = state.ship(shipId)
-        if shipOpt.isSome:
-          let ship = shipOpt.get()
-          if ship.shipClass == ShipClass.Fighter and
-              ship.state != CombatState.Destroyed:
-            enemyFighterAS += calculateShipAS(state, ship)
+    for ship in state.shipsInFleet(fleetId):
+      if ship.shipClass == ShipClass.Fighter and
+          ship.state != CombatState.Destroyed:
+        enemyFighterAS += calculateShipAS(state, ship)
 
   # Calculate ratio
   if enemyFighterAS == 0 and ourFighterAS > 0:

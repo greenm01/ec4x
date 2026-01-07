@@ -7,7 +7,7 @@
 
 import std/[options]
 import ../../types/[core, game_state, combat, ship]
-import ../../state/engine
+import ../../state/[engine, iterators]
 import ./screened
 
 proc calculateShipAS*(state: GameState, ship: Ship): int32 =
@@ -70,14 +70,9 @@ proc calculateFleetAS*(state: GameState, fleetId: FleetId): int32 =
   if fleetOpt.isNone:
     return 0
 
-  let fleet = fleetOpt.get()
   result = 0
-
-  for shipId in fleet.ships:
-    let shipOpt = state.ship(shipId)
-    if shipOpt.isSome:
-      let ship = shipOpt.get()
-      result += calculateShipAS(state, ship)
+  for ship in state.shipsInFleet(fleetId):
+    result += calculateShipAS(state, ship)
 
 proc calculateFleetDS*(state: GameState, fleetId: FleetId): int32 =
   ## Sum DS from all ships in fleet
@@ -87,14 +82,9 @@ proc calculateFleetDS*(state: GameState, fleetId: FleetId): int32 =
   if fleetOpt.isNone:
     return 0
 
-  let fleet = fleetOpt.get()
   result = 0
-
-  for shipId in fleet.ships:
-    let shipOpt = state.ship(shipId)
-    if shipOpt.isSome:
-      let ship = shipOpt.get()
-      result += calculateShipDS(state, ship)
+  for ship in state.shipsInFleet(fleetId):
+    result += calculateShipDS(state, ship)
 
 proc calculateHouseAS*(state: GameState, force: HouseCombatForce): int32 =
   ## Sum AS from all fleets in house combat force

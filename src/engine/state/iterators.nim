@@ -15,7 +15,7 @@
 ##
 ## NOTE: These are read-only iterators. For mutations, use state_helpers.
 import std/[tables, options]
-import ../types/[core, game_state, house, ship, facilities, starmap, population]
+import ../types/[core, game_state, house, ship, facilities, starmap, population, ground_unit]
 import ../types/fleet as fleet_types
 import ../types/colony as colony_types
 import ./engine
@@ -377,6 +377,20 @@ iterator allKastrasWithId*(
   ## Use when you need to mutate kastras or need their IDs
   for kastraId in state.kastras.entities.index.keys:
     yield (kastraId, state.kastras.entities.entity(kastraId).get())
+
+iterator allGroundUnitsWithId*(
+    state: GameState
+): tuple[id: GroundUnitId, unit: GroundUnit] =
+  ## Iterate all ground units with IDs (for mutations)
+  ## O(n) where n = total ground units
+  ## Use when you need to mutate ground units or need their IDs
+  ##
+  ## Example:
+  ##   for (unitId, unit) in state.allGroundUnitsWithId():
+  ##     if unit.state == CombatState.Destroyed:
+  ##       destroyedUnits.add(unitId)
+  for unitId in state.groundUnits.entities.index.keys:
+    yield (unitId, state.groundUnits.entities.entity(unitId).get())
 
 iterator activePopulationTransfers*(
     state: GameState
