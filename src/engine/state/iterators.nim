@@ -449,6 +449,54 @@ iterator etacsInFleetWithId*(
       if ship.shipClass == ShipClass.ETAC:
         yield (shipId, ship)
 
+iterator shipsInFleetWithId*(
+  state: GameState, fleetId: FleetId
+): tuple[id: ShipId, ship: Ship] =
+  ## Iterate ships in fleet with IDs for mutations
+  ## O(s) where s = ships in fleet
+  ##
+  ## Complements shipsInFleet (line 39) with ID access for mutation operations
+  ##
+  ## Example:
+  ##   for (shipId, ship) in state.shipsInFleetWithId(fleetId):
+  ##     var updated = ship
+  ##     updated.fuelRemaining = 0
+  ##     state.updateShip(shipId, updated)
+  let fleetOpt = state.fleet(fleetId)
+  if fleetOpt.isSome:
+    let fleet = fleetOpt.get()
+    for shipId in fleet.ships:
+      if state.ships.entities.index.contains(shipId):
+        yield (shipId, state.ships.entities.entity(shipId).get())
+
+iterator fleetsWithStatus*(
+  state: GameState, houseId: HouseId, status: FleetStatus
+): Fleet =
+  ## Iterate fleets by status (Active, Reserve, Transit)
+  ## O(f) where f = fleets owned by house
+  ##
+  ## Uses fleetsOwned iterator with status filtering
+  ##
+  ## Example:
+  ##   for fleet in state.fleetsWithStatus(houseId, FleetStatus.Reserve):
+  ##     # Process reserve fleets
+  for fleet in state.fleetsOwned(houseId):
+    if fleet.status == status:
+      yield fleet
+
+iterator fleetsWithMissionState*(
+  state: GameState, houseId: HouseId, missionState: FleetMissionState
+): Fleet =
+  ## Iterate fleets by mission state
+  ## O(f) where f = fleets owned by house
+  ##
+  ## Example:
+  ##   for fleet in state.fleetsWithMissionState(houseId, FleetMissionState.OnSpyMission):
+  ##     # Process active spy missions
+  for fleet in state.fleetsOwned(houseId):
+    if fleet.missionState == missionState:
+      yield fleet
+
 ## Design Notes:
 ##
 ## **Data-Oriented Benefits:**
