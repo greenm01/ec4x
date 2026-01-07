@@ -24,9 +24,9 @@
 ## - Uses entity ops for mutations
 ## - Uses common/logger for logging
 
-import std/[tables, options, random, sequtils]
-import ../../types/[core, game_state, command, fleet, espionage, intel, event, facilities]
-import ../../state/[engine, iterators]
+import std/[tables, options, random]
+import ../../types/[core, game_state, command, fleet, espionage, intel, event]
+import ../../state/[engine, iterators, fleet_queries]
 import ../../entities/fleet_ops
 import ../../intel/[spy_resolution, generator as intel_generator]
 import ../../event_factory/intel
@@ -35,141 +35,268 @@ import ../../globals
 import ../../../common/logger
 import ./[engine as esp_engine, executor as esp_executor]
 
-proc collectScoutOperations*(
-    state: GameState, orders: Table[HouseId, CommandPacket]
-): seq[espionage.ScoutIntelOperation] =
-  ## Collect all scout-based intelligence operations from orders
-  result = @[]
+# Forward declaration helper
+proc generateMissionIntel(
+    state: var GameState,
+    missionType: SpyMissionType,
+    targetSystem: SystemId,
+    ownerHouse: HouseId,
+    events: var seq[event.GameEvent]
+)
 
-  for houseId, house in state.allHousesWithId():
-    if houseId notin orders:
+proc resolveScoutMissions*(
+    state: var GameState,
+    rng: var Rand,
+    events: var seq[event.GameEvent]
+) =
+  ## Unified scout mission processing for both new and existing missions
+  ## Handles both Conflict Phase Step 6a (new) and Step 6a.5 (existing)
+  ##
+  ## Phase 1: NEW missions (Step 6a - from arrivedFleets)
+  ##   - Process spy commands where fleet arrived this turn
+  ##   - Transition Traveling → OnSpyMission
+  ##   - Run first detection check (gates mission registration)
+  ##   - If detected: Destroy fleet, diplomatic escalation
+  ##   - If undetected: Register in activeSpyMissions, generate Perfect intel
+  ##
+  ## Phase 2: EXISTING missions (Step 6a.5 - from activeSpyMissions)
+  ##   - Process missions from previous turns (startTurn < state.turn)
+  ##   - Run ongoing detection checks
+  ##   - If detected: Destroy fleet, end mission
+  ##   - If undetected: Generate Perfect intel, continue mission
+  ##
+  ## Per:
+  ##   - docs/engine/mechanics/scout-espionage-system.md
+  ##   - docs/engine/architecture/ec4x_canonical_turn_cycle.md
+
+  logInfo("Espionage", "=== Resolving Scout Missions ===")
+
+  # ==================================================================
+  # PHASE 1: NEW MISSIONS (Step 6a - Mission Start & First Detection)
+  # ==================================================================
+  logInfo("Espionage", "[Step 6a] Processing new scout missions...")
+
+  var newMissionsProcessed = 0
+
+  # Use iterator: fleetsWithArrivedConflictCommands filters spy commands
+  for (fleetId, fleet, command) in state.fleetsWithArrivedConflictCommands():
+    # Filter for spy mission types only
+    if command.commandType notin [
+      FleetCommandType.SpyColony,
+      FleetCommandType.SpySystem,
+      FleetCommandType.HackStarbase
+    ]:
       continue
 
-    for command in orders[houseId].fleetCommands:
-      if command.commandType notin [
-        FleetCommandType.SpyColony, FleetCommandType.SpySystem,
-        FleetCommandType.HackStarbase,
-      ]:
-        continue
+    # Validate scout-only fleet
+    if not state.isScoutOnly(fleet):
+      logWarn("Espionage", "Non-scout ships in spy mission fleet",
+        " fleetId=", fleetId)
+      continue
 
-      # Validate: fleet exists
-      let fleetCheckOpt = state.fleet(command.fleetId)
-      if fleetCheckOpt.isNone:
-        continue
+    # Validate Traveling state (should be arriving from Production Phase)
+    if fleet.missionState != FleetMissionState.Traveling:
+      logWarn("Espionage", "Fleet not in Traveling state",
+        " fleetId=", fleetId, " state=", fleet.missionState)
+      continue
 
-      # Calculate espionage strength using house prestige
-      # Higher prestige = better intel operations
-      let espionageStrength = house.prestige
+    # Get scout count using fleet query
+    let scoutCount = state.countScoutShips(fleet)
+    if scoutCount == 0:
+      logWarn("Espionage", "No scouts in fleet", " fleetId=", fleetId)
+      continue
 
-      # Get target from order
-      if command.targetSystem.isNone:
-        continue
+    # Get target and defender
+    let targetSystem = command.targetSystem.get()  # Validated by iterator
+    let colonyOpt = state.colonyBySystem(targetSystem)
+    if colonyOpt.isNone:
+      logWarn("Espionage", "No colony at target",
+        " system=", targetSystem)
+      continue
 
-      let targetSystem = command.targetSystem.get()
+    let defender = colonyOpt.get().owner
 
-      # Log if fleet not at target (will attempt movement in Maintenance Phase)
-      let fleetOpt = state.fleet(command.fleetId)
-      if fleetOpt.isSome:
-        let fleet = fleetOpt.get()
-        if fleet.location != targetSystem:
-          logDebug(
-            "Espionage",
-            "Order queued: fleet will move",
-            " fleetId=",
-            command.fleetId,
-            " from=",
-            fleet.location,
-            " to=",
-            targetSystem,
-          )
+    # TRANSITION: Traveling → OnSpyMission (before detection)
+    var updatedFleet = fleet
+    updatedFleet.missionState = FleetMissionState.OnSpyMission
+    updatedFleet.missionStartTurn = state.turn
+    state.updateFleet(fleetId, updatedFleet)
 
-      result.add(
-        espionage.ScoutIntelOperation(
-          houseId: houseId,
-          fleetId: command.fleetId,
-          targetSystem: targetSystem,
-          orderType: $command.commandType,
-          espionageStrength: espionageStrength,
-        )
-      )
-
-proc resolveScoutOperation*(
-    state: var GameState,
-    operation: espionage.ScoutIntelOperation,
-    rng: var Rand,
-    events: var seq[event.GameEvent],
-): espionage.ScoutIntelResult =
-  ## Resolve a single scout intelligence operation
-  ## Each operation is independent (no conflict resolution)
-  ## Per docs/specs/09-intel-espionage.md Section 9.1.1
-
-  # Detection check
-  let detected = spy_resolution.resolveSpyScoutDetection(
-    state, operation.houseId, operation.fleetId, operation.targetSystem, rng
-  )
-
-  if detected:
-    # Scout detected - operation fails
-    let colonyOpt = state.colonyBySystem(operation.targetSystem)
-    if colonyOpt.isSome:
-      let defender = colonyOpt.get().owner
-      events.add(
-        intel.scoutDetected(
-          operation.houseId, defender, operation.targetSystem, "Spy Scout"
-        )
-      )
-
-    return espionage.ScoutIntelResult(
-      houseId: operation.houseId,
-      fleetId: operation.fleetId,
-      targetSystem: operation.targetSystem,
-      detected: true,
-      intelligenceGathered: false,
-    )
-  else:
-    # Scout undetected - operation succeeds
-    return espionage.ScoutIntelResult(
-      houseId: operation.houseId,
-      fleetId: operation.fleetId,
-      targetSystem: operation.targetSystem,
-      detected: false,
-      intelligenceGathered: true,
+    # RUN FIRST DETECTION CHECK (gates mission registration)
+    let detectionResult = spy_resolution.resolveScoutDetection(
+      state, scoutCount, defender, targetSystem, rng
     )
 
-proc resolveEspionage*(
+    if detectionResult.detected:
+      # DETECTED: Mission fails - destroy fleet
+      logInfo("Espionage", "New mission detected on start",
+        " fleetId=", fleetId, " scouts=", scoutCount,
+        " roll=", detectionResult.roll, " target=", detectionResult.threshold)
+
+      fleet_ops.destroyFleet(state, fleetId)
+
+      # Generate detection event + diplomatic escalation
+      events.add(intel.scoutDetected(
+        fleet.houseId, defender, targetSystem, "Scout"
+      ))
+
+    else:
+      # UNDETECTED: Mission succeeds - register for persistence
+      logInfo("Espionage", "New mission started successfully",
+        " fleetId=", fleetId, " scouts=", scoutCount)
+
+      # Convert command type to mission type
+      let missionType = case command.commandType
+        of FleetCommandType.SpyColony: SpyMissionType.SpyOnPlanet
+        of FleetCommandType.SpySystem: SpyMissionType.SpyOnSystem
+        of FleetCommandType.HackStarbase: SpyMissionType.HackStarbase
+        else: SpyMissionType.SpyOnPlanet  # Unreachable
+
+      # REGISTER IN ACTIVE SPY MISSIONS
+      state.activeSpyMissions[fleetId] = ActiveSpyMission(
+        fleetId: fleetId,
+        missionType: missionType,
+        targetSystem: targetSystem,
+        scoutCount: scoutCount,
+        startTurn: state.turn,  # CRITICAL: For filtering in Phase 2
+        ownerHouse: fleet.houseId
+      )
+
+      # Generate Perfect quality intel (first turn)
+      generateMissionIntel(state, missionType, targetSystem, fleet.houseId, events)
+
+    newMissionsProcessed += 1
+
+    # Clear from arrivedFleets (mission processed)
+    if fleetId in state.arrivedFleets:
+      state.arrivedFleets.del(fleetId)
+
+  logInfo("Espionage", "[Step 6a] Complete",
+    " new_missions=", newMissionsProcessed)
+
+  # ==================================================================
+  # PHASE 2: EXISTING MISSIONS (Step 6a.5 - Persistent Detection)
+  # ==================================================================
+  logInfo("Espionage", "[Step 6a.5] Processing existing missions...")
+
+  var existingMissionsProcessed = 0
+  var missionsToRemove: seq[FleetId] = @[]
+
+  for fleetId, mission in state.activeSpyMissions.pairs:
+    # CRITICAL FILTER: Skip missions that started THIS turn
+    # They already had first detection in Phase 1 above
+    if mission.startTurn >= state.turn:
+      logDebug("Espionage", "Skipping newly-started mission",
+        " fleetId=", fleetId, " startTurn=", mission.startTurn)
+      continue
+
+    # Validate fleet still exists
+    let fleetOpt = state.fleet(fleetId)
+    if fleetOpt.isNone:
+      logWarn("Espionage", "Mission fleet no longer exists",
+        " fleetId=", fleetId)
+      missionsToRemove.add(fleetId)
+      continue
+
+    # Validate target still exists
+    let colonyOpt = state.colonyBySystem(mission.targetSystem)
+    if colonyOpt.isNone:
+      logInfo("Espionage", "Target colony lost, ending mission",
+        " fleetId=", fleetId)
+      missionsToRemove.add(fleetId)
+      continue
+
+    let defender = colonyOpt.get().owner
+
+    # RUN PERSISTENT DETECTION CHECK
+    let detectionResult = spy_resolution.resolveScoutDetection(
+      state, mission.scoutCount, defender, mission.targetSystem, rng
+    )
+
+    if detectionResult.detected:
+      # DETECTED: Mission fails - destroy fleet
+      logInfo("Espionage", "Existing mission detected",
+        " fleetId=", fleetId, " turnsActive=", state.turn - mission.startTurn,
+        " roll=", detectionResult.roll, " target=", detectionResult.threshold)
+
+      fleet_ops.destroyFleet(state, fleetId)
+      missionsToRemove.add(fleetId)
+
+      # Generate detection event + diplomatic escalation
+      events.add(intel.scoutDetected(
+        mission.ownerHouse, defender, mission.targetSystem, "Scout"
+      ))
+
+    else:
+      # UNDETECTED: Generate Perfect intel, continue mission
+      logDebug("Espionage", "Mission continues",
+        " fleetId=", fleetId, " turnsActive=", state.turn - mission.startTurn)
+
+      # Generate Perfect quality intel (ongoing)
+      generateMissionIntel(
+        state, mission.missionType, mission.targetSystem,
+        mission.ownerHouse, events
+      )
+
+    existingMissionsProcessed += 1
+
+  # Remove ended missions
+  for fleetId in missionsToRemove:
+    state.activeSpyMissions.del(fleetId)
+
+  logInfo("Espionage", "[Step 6a.5] Complete",
+    " existing_missions=", existingMissionsProcessed,
+    " ended=", missionsToRemove.len)
+
+proc generateMissionIntel(
     state: var GameState,
-    orders: Table[HouseId, CommandPacket],
-    rng: var Rand,
-    events: var seq[event.GameEvent],
-): seq[espionage.ScoutIntelResult] =
-  ## Main entry point: Resolve all scout-based intelligence operations
-  ## Operations are processed independently (no conflict resolution needed)
-  ## Per docs/specs/09-intel-espionage.md Section 9.1.1
-  result = @[]
+    missionType: SpyMissionType,
+    targetSystem: SystemId,
+    ownerHouse: HouseId,
+    events: var seq[event.GameEvent]
+) =
+  ## Generate Perfect quality intelligence based on mission type
+  ## Called for both new missions (first turn) and ongoing missions
 
-  let operations = collectScoutOperations(state, orders)
-  if operations.len == 0:
-    return
+  case missionType
+  of SpyMissionType.SpyOnPlanet:
+    # Generate colony intel (Perfect quality)
+    let intelReport = intel_generator.generateColonyIntelReport(
+      state, ownerHouse, targetSystem, IntelQuality.Perfect
+    )
+    if intelReport.isSome:
+      let report = intelReport.get()
+      let houseOpt = state.house(ownerHouse)
+      if houseOpt.isSome:
+        var house = houseOpt.get()
+        house.intel.colonyReports[report.colonyId] = report
+        state.updateHouse(ownerHouse, house)
 
-  logInfo("Espionage", "Resolving scout operations", " count=", operations.len)
+  of SpyMissionType.SpyOnSystem:
+    # Generate system intel (Perfect quality)
+    let systemIntel = intel_generator.generateSystemIntelReport(
+      state, ownerHouse, targetSystem, IntelQuality.Perfect
+    )
+    if systemIntel.isSome:
+      let package = systemIntel.get()
+      let houseOpt = state.house(ownerHouse)
+      if houseOpt.isSome:
+        var house = houseOpt.get()
+        house.intel.systemReports[targetSystem] = package.report
+        state.updateHouse(ownerHouse, house)
 
-  # Process each operation independently
-  for operation in operations:
-    let operationResult = resolveScoutOperation(state, operation, rng, events)
-    result.add(operationResult)
-
-  let successful = result.filterIt(it.intelligenceGathered).len
-  let detected = result.filterIt(it.detected).len
-  logInfo(
-    "Espionage",
-    "Scout operations resolved",
-    " total=",
-    result.len,
-    " successful=",
-    successful,
-    " detected=",
-    detected,
-  )
+  of SpyMissionType.HackStarbase:
+    # Generate starbase intel (Perfect quality)
+    let intelReport = intel_generator.generateStarbaseIntelReport(
+      state, ownerHouse, targetSystem, IntelQuality.Perfect
+    )
+    if intelReport.isSome:
+      let report = intelReport.get()
+      let houseOpt = state.house(ownerHouse)
+      if houseOpt.isSome:
+        var house = houseOpt.get()
+        house.intel.starbaseReports[report.kastraId] = report
+        state.updateHouse(ownerHouse, house)
 
 proc wasEspionageHandled*(
     results: seq[espionage.ScoutIntelResult], houseId: HouseId, fleetId: FleetId
@@ -465,352 +592,6 @@ proc processEspionageActions*(
     # Update house entity after espionage action resolution
     state.updateHouse(houseId, house)
 
-proc processScoutIntel*(
-    state: var GameState,
-    results: seq[espionage.ScoutIntelResult],
-    orders: Table[HouseId, CommandPacket],
-    rng: var Rand,
-    events: var seq[event.GameEvent],
-) =
-  ## Process successful scout intelligence results and generate intelligence reports
-  ## Gathers colony/system/starbase intelligence from SpyPlanet/SpySystem/HackStarbase
-  ## operations and stores in house.intel databases
-  ## Per docs/specs/09-intel-espionage.md Section 9.1.1
-
-  for result in results:
-    # Consume scout fleet, regardless of outcome
-    if result.fleetId in state.fleets.entities.index:
-      fleet_ops.destroyFleet(state, result.fleetId)
-      logInfo(
-        "Espionage",
-        "Scout fleet consumed",
-        " fleetId=",
-        result.fleetId,
-      )
-
-    # Only process successful operations for intel gathering
-    if not result.intelligenceGathered:
-      continue
-
-    let targetSystem = result.targetSystem
-    let houseId = result.houseId
-
-    # Find the original fleet order to determine order type
-    if houseId notin orders:
-      continue
-
-    let packet = orders[houseId]
-    var orderType: FleetCommandType
-
-    # Find matching fleet order
-    var found = false
-    for command in packet.fleetCommands:
-      if command.fleetId == result.fleetId and command.targetSystem.isSome and
-          command.targetSystem.get() == targetSystem:
-        orderType = command.commandType
-        found = true
-        break
-
-    if not found:
-      continue
-
-    # Generate appropriate intelligence based on order type
-    case orderType
-    of FleetCommandType.SpyColony:
-      # Generate colony intelligence report
-      let intelReport = intel_generator.generateColonyIntelReport(
-        state, houseId, targetSystem, IntelQuality.Spy
-      )
-
-      if intelReport.isSome:
-        let report = intelReport.get()
-        let houseOpt = state.house(houseId)
-        if houseOpt.isSome:
-          var house = houseOpt.get()
-          house.intel.colonyReports[report.colonyId] = report
-          state.updateHouse(houseId, house)
-
-          # Calculate economic value for event
-          let grossOutput = report.grossOutput.get(0)
-          let infrastructureValue = report.infrastructure * 100
-          let economicValue = grossOutput + infrastructureValue
-          # Calculate total ground defenses (batteries, armies, marines)
-          let totalDefenses =
-            report.groundBatteryCount + report.armyCount + report.marineCount
-
-          # Create rich narrative event (visible only to spy house)
-          # Scout-specific: SpyPlanet mission by scout fleet
-          # Note: hasStarbase=false for colony intel (orbital intel needed for starbase)
-          events.add(
-            scoutColonyIntelGathered(
-              houseId,
-              report.targetOwner,
-              targetSystem,
-              result.fleetId,
-              totalDefenses,
-              economicValue,
-              false, # Colony intel doesn't include orbital starbase data
-              $report.quality,
-            )
-          )
-
-          # Log success
-          let reportCount = house.intel.colonyReports.len
-          logInfo(
-            "Espionage",
-            "SpyPlanet success",
-            " fleet=",
-            result.fleetId,
-            " house=",
-            houseId,
-            " target=",
-            targetSystem,
-            " reports=",
-            reportCount,
-          )
-    of FleetCommandType.SpySystem:
-      # Generate system intel report (fleet composition)
-      let intelReport = intel_generator.generateSystemIntelReport(
-        state, houseId, targetSystem, IntelQuality.Spy
-      )
-
-      if intelReport.isSome:
-        let package = intelReport.get()
-
-        # Store system intel report in house intel database
-        let houseOpt = state.house(houseId)
-        if houseOpt.isSome:
-          var house = houseOpt.get()
-          house.intel.systemReports[targetSystem] = package.report
-          state.updateHouse(houseId, house)
-
-        # Count detected fleets and ships
-        let fleetsDetected = package.fleetIntel.len
-        var shipsDetected = 0
-        for (fleetId, intel) in package.fleetIntel:
-          shipsDetected += intel.shipCount
-
-        # Determine target house (first fleet's owner, or none if empty)
-        let targetHouse =
-          if fleetsDetected > 0:
-            package.fleetIntel[0].intel.owner
-          else:
-            houseId # Fallback
-
-        # Create rich narrative event (visible only to spy house)
-        # Scout-specific: SpySystem mission by scout fleet
-        events.add(
-          scoutSystemIntelGathered(
-            houseId,
-            targetHouse,
-            targetSystem,
-            result.fleetId,
-            fleetsDetected,
-            shipsDetected,
-            $package.report.quality,
-          )
-        )
-
-        logInfo(
-          "Espionage",
-          "SpySystem success",
-          " fleet=",
-          result.fleetId,
-          " house=",
-          houseId,
-          " target=",
-          targetSystem,
-        )
-    of FleetCommandType.HackStarbase:
-      # Generate starbase intel report (economic/R&D data)
-      let intelReport = intel_generator.generateStarbaseIntelReport(
-        state, houseId, targetSystem, IntelQuality.Spy
-      )
-
-      if intelReport.isSome:
-        let report = intelReport.get()
-        let houseOpt = state.house(houseId)
-        if houseOpt.isSome:
-          var house = houseOpt.get()
-          house.intel.starbaseReports[report.kastraId] = report
-          state.updateHouse(houseId, house)
-
-        # Check if economic data was acquired (based on quality)
-        let hasEconomicData =
-          report.quality == IntelQuality.Spy or report.quality == IntelQuality.Perfect
-
-        # Get facility data from colony (visible since hack succeeded)
-        let colonyOpt = state.colonyBySystem(targetSystem)
-        if colonyOpt.isSome:
-          let colony = colonyOpt.get()
-
-          # Query facility counts using entity manager
-          # Neorias (production facilities): Spaceport, Shipyard, Drydock
-          # Kastras (defensive facilities): Starbase
-          let kastraCount = colony.kastraIds.len
-          var spaceportCount = 0
-          var shipyardCount = 0
-          var drydockCount = 0
-          var totalDocks = 0
-
-          for neoriaId in colony.neoriaIds:
-            let neoriaOpt = state.neoria(neoriaId)
-            if neoriaOpt.isSome:
-              let neoria = neoriaOpt.get()
-              case neoria.neoriaClass
-              of NeoriaClass.Spaceport:
-                spaceportCount += 1
-                totalDocks += neoria.effectiveDocks
-              of NeoriaClass.Shipyard:
-                shipyardCount += 1
-                totalDocks += neoria.effectiveDocks
-              of NeoriaClass.Drydock:
-                drydockCount += 1
-                totalDocks += neoria.effectiveDocks
-
-          # TODO: Query construction/repair queues from production system
-          let shipsUnderConstruction = 0 # Would need production system access
-          let shipsUnderRepair = 0 # Would need repair system access
-
-          # Create rich narrative event (visible only to spy house)
-          # Scout-specific: HackStarbase mission by scout fleet
-          events.add(
-            scoutStarbaseIntelGathered(
-              houseId,
-              report.targetOwner,
-              targetSystem,
-              result.fleetId,
-              kastraCount,
-              spaceportCount,
-              shipyardCount,
-              totalDocks,
-              shipsUnderConstruction,
-              shipsUnderRepair,
-              hasEconomicData,
-              $report.quality,
-            )
-          )
-
-          logInfo(
-            "Espionage",
-            "HackStarbase success",
-            " fleet=",
-            result.fleetId,
-            " house=",
-            houseId,
-            " target=",
-            targetSystem,
-          )
-    else:
-      # Ignore non-espionage orders
-      discard
-
-proc processPersistentSpyDetection*(
-    state: var GameState,
-    rng: var Rand,
-    events: var seq[event.GameEvent]
-) =
-  ## Check active spy missions for detection each turn
-  ## Per ec4x_canonical_turn_cycle.md:154-161 (Conflict Phase Step 6a.5)
-  ##
-  ## For each active spy mission:
-  ##   - Run detection check (1d20 vs threshold)
-  ##   - If DETECTED: Destroy scouts immediately, generate events
-  ##   - If UNDETECTED: Generate Perfect intel, mission continues
-  ##
-  ## Architecture:
-  ##   - Uses state layer APIs (state.fleet, state.colonyBySystem)
-  ##   - Uses entity_ops for fleet destruction
-  ##   - Uses intel/generator for intelligence creation
-  
-  var missionsToRemove: seq[FleetId] = @[]
-  var detectionRng = initRand(state.turn + 98765)
-  
-  for fleetId, mission in state.activeSpyMissions.pairs:
-    let fleetOpt = state.fleet(fleetId)
-    if fleetOpt.isNone:
-      missionsToRemove.add(fleetId)
-      continue
-    
-    let targetSystem = mission.targetSystem
-    let colonyOpt = state.colonyBySystem(targetSystem)
-    if colonyOpt.isNone:
-      continue
-    
-    let colony = colonyOpt.get()
-    let defender = colony.owner
-    
-    let detectionResult = spy_resolution.resolveSpyScoutDetection(
-      state, mission.scoutCount, defender, targetSystem, detectionRng
-    )
-    
-    if detectionResult.detected:
-      logInfo("Espionage", "Spy mission DETECTED",
-        " fleetId=", fleetId, " system=", targetSystem,
-        " roll=", detectionResult.roll, " threshold=", detectionResult.threshold)
-      
-      events.add(event.GameEvent(
-        eventType: event.GameEventType.SpyMissionDetected,
-        turn: state.turn,
-        houseId: some(mission.ownerHouse),
-        systemId: some(targetSystem),
-        details: some(
-          "Spy mission detected! " & $mission.scoutCount &
-          " scouts destroyed at " & $targetSystem
-        )
-      ))
-      
-      state.scoutLossEvents.add(intel.ScoutLossEvent(
-        turn: state.turn,
-        scoutId: $fleetId,
-        owner: mission.ownerHouse,
-        location: targetSystem,
-        detectorHouse: defender,
-        eventType: intel.DetectionEventType.CombatLoss
-      ))
-      
-      if state.fleet(fleetId).isSome:
-        fleet_ops.destroyFleet(state, fleetId)
-      missionsToRemove.add(fleetId)
-      logInfo("Espionage", "Fleet destroyed after detection", " fleetId=", fleetId)
-    else:
-      logDebug("Espionage", "Spy mission UNDETECTED",
-        " fleetId=", fleetId, " system=", targetSystem,
-        " roll=", detectionResult.roll, " threshold=", detectionResult.threshold)
-      
-      case mission.missionType
-      of espionage.SpyMissionType.SpyOnPlanet:
-        let intelReport = intel_generator.generateColonyIntelReport(
-          state, mission.ownerHouse, targetSystem, intel.IntelQuality.Perfect
-        )
-        if intelReport.isSome:
-          let houseOpt = state.house(mission.ownerHouse)
-          if houseOpt.isSome:
-            var house = houseOpt.get()
-            house.intelligence.addColonyReport(intelReport.get())
-            state.updateHouse(mission.ownerHouse, house)
-      
-      of espionage.SpyMissionType.SpyOnSystem:
-        let systemIntel = intel_generator.generateSystemIntelReport(
-          state, mission.ownerHouse, targetSystem, intel.IntelQuality.Perfect
-        )
-        if systemIntel.isSome:
-          let houseOpt = state.house(mission.ownerHouse)
-          if houseOpt.isSome:
-            var house = houseOpt.get()
-            house.intelligence.addSystemReport(systemIntel.get())
-            state.updateHouse(mission.ownerHouse, house)
-      
-      of espionage.SpyMissionType.HackStarbase:
-        let intelReport = intel_generator.generateColonyIntelReport(
-          state, mission.ownerHouse, targetSystem, intel.IntelQuality.Perfect
-        )
-        if intelReport.isSome:
-          let houseOpt = state.house(mission.ownerHouse)
-          if houseOpt.isSome:
-            var house = houseOpt.get()
-            house.intelligence.addColonyReport(intelReport.get())
-            state.updateHouse(mission.ownerHouse, house)
-  
-  for fleetId in missionsToRemove:
-    state.activeSpyMissions.del(fleetId)
+# Legacy functions removed - replaced by resolveScoutMissions()
+# Old processScoutIntel() and processPersistentSpyDetection() consolidated
+# into single unified resolveScoutMissions() function above

@@ -326,40 +326,28 @@ proc resolveConflictPhase*(
         "fleetId=", result.fleetId)
 
   # ===================================================================
-  # STEP 6a: FLEET-BASED ESPIONAGE
+  # STEPS 6a & 6a.5: SCOUT MISSIONS (New + Existing)
   # ===================================================================
-  # Per ec4x_canonical_turn_cycle.md:146-152
-  # Resolve fleet-based espionage orders simultaneously
-  # Includes Spy Scout detection as part of mission execution
-  logInfo("Espionage",
-    "[CONFLICT STEP 6a] Fleet-based espionage (SpyPlanet, SpySystem, HackStarbase)...")
-  let espionageResults =
-    state.resolveEspionage(arrivedOrders, rng, events)
-  logInfo("Espionage", "[CONFLICT STEP 6a] Completed",
-    "attempts=", espionageResults.len)
-
-  # Clear arrivedFleets for executed espionage orders
-  for result in espionageResults:
-    if result.fleetId in state.arrivedFleets:
-      state.arrivedFleets.del(result.fleetId)
-      logDebug("Orders", "  Cleared arrival status for fleet",
-        "fleetId=", result.fleetId)
-
-  # Process scout espionage results and gather intelligence
-  # Creates detailed narrative events for espionage reports
-  logInfo("Espionage", "[CONFLICT STEP 6a] Processing scout intelligence...")
-  state.processScoutIntel(
-    espionageResults, effectiveOrders, rng, events
-  )
-  logInfo("Espionage", "[CONFLICT STEP 6a] Scout intelligence gathering complete")
-
-  # ===================================================================
-  # STEP 6a.5: PERSISTENT SPY MISSION DETECTION
-  # ===================================================================
-  # Per ec4x_canonical_turn_cycle.md:154-161
-  logInfo("Espionage", "[CONFLICT STEP 6a.5] Persistent spy mission detection...")
-  state.processPersistentSpyDetection(rng, events)
-  logInfo("Espionage", "[CONFLICT STEP 6a.5] Complete")
+  # Per ec4x_canonical_turn_cycle.md:146-199
+  # Per docs/engine/mechanics/scout-espionage-system.md
+  #
+  # Unified processing for both new and existing scout missions:
+  #
+  # Phase 1 (Step 6a): NEW missions from arrivedFleets
+  #   - Transition: Traveling → OnSpyMission
+  #   - Run first detection check (gates mission registration)
+  #   - If detected: Destroy scouts, mission fails
+  #   - If undetected: Register in activeSpyMissions, generate Perfect intel
+  #
+  # Phase 2 (Step 6a.5): EXISTING missions from activeSpyMissions
+  #   - Process missions from previous turns (startTurn < state.turn)
+  #   - Run persistent detection checks
+  #   - If detected: Destroy scouts, end mission, diplomatic escalation
+  #   - If undetected: Generate Perfect intel, continue mission
+  #
+  logInfo("Espionage", "[CONFLICT STEPS 6a & 6a.5] Scout missions...")
+  state.resolveScoutMissions(rng, events)
+  logInfo("Espionage", "[CONFLICT STEPS 6a & 6a.5] Complete")
 
   # ===================================================================
   # STEP 6b: SPACE GUILD ESPIONAGE (EBP-based)
