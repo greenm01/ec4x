@@ -853,16 +853,6 @@ proc activateAutoReinforce(
 
   return ActivationResult(success: true, action: &"Move to reinforce {targetId}")
 
-proc calculateFleetStrength(state: GameState, fleet: Fleet): int =
-  ## Calculate raw combat strength of fleet
-  ## Sum of attack strength across all ships
-  result = 0
-  for shipId in fleet.ships:
-    let shipOpt = state.ship(shipId)
-    if shipOpt.isSome:
-      let ship = shipOpt.get()
-      result += ship.stats.attackStrength
-
 proc activateBlockadeTarget(
     state: var GameState, fleetId: FleetId, params: StandingCommandParams
 ): ActivationResult =

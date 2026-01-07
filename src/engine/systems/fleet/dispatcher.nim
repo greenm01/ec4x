@@ -3,15 +3,12 @@
 ## Routes commands to appropriate handlers based on command type
 
 import std/[options, tables, strformat]
-import ../../types/[core, fleet, ship, game_state, event, command, combat, diplomacy]
+import ../../types/[core, fleet, ship, game_state, event, diplomacy, espionage]
 import ../../state/[engine as state_module, iterators, fleet_queries]
-import ../../entities/[fleet_ops, ship_ops]
 import ../../intel/detection
 import ../../event_factory/init as event_factory
-import ../../starmap
-import ./standing
-import ./mechanics
-import ./movement  # For findPath
+import ./[standing, mechanics, movement]
+import ../ship/entity as ship_entity
 import ../../../common/logger
 
 type OrderOutcome* {.pure.} = enum
@@ -357,7 +354,7 @@ proc executeSeekHomeCommand(
     return OrderOutcome.Aborted
 
   # Find closest colony using pathfinding
-  let (closestColony, minDistance) = findNearestColonyFromList(state, fleet, friendlyColonies)
+  let (closestColony, _) = findNearestColonyFromList(state, fleet, friendlyColonies)
 
   # Check if already at closest colony - mission complete
   if fleet.location == closestColony:
@@ -654,7 +651,7 @@ proc executeBlockadeCommand(
   let targetHouseOpt = state.house(colony.owner)
   if targetHouseOpt.isSome:
     let targetHouse = targetHouseOpt.get()
-    if targetHouse.eliminated:
+    if targetHouse.isEliminated:
       events.add(
         event_factory.commandAborted(
           fleet.houseId,
@@ -693,17 +690,19 @@ proc executeBombardCommand(
   let targetSystem = command.targetSystem.get()
 
   # Check target colony exists
-  if targetSystem notin state.colonies:
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isNone:
     return OrderOutcome.Failed
 
-  let colony = state.colonies[targetSystem]
+  let colony = colonyOpt.get()
   if colony.owner == fleet.houseId:
     return OrderOutcome.Failed
 
   # Validate target house is not eliminated (leaderboard is public info)
-  if colony.owner in state.houses:
-    let targetHouse = state.houses[colony.owner]
-    if targetHouse.eliminated:
+  let targetHouseOpt = state.house(colony.owner)
+  if targetHouseOpt.isSome:
+    let targetHouse = targetHouseOpt.get()
+    if targetHouse.isEliminated:
       return OrderOutcome.Failed
 
   # Check for combat capability
@@ -735,17 +734,19 @@ proc executeInvadeCommand(
   let targetSystem = command.targetSystem.get()
 
   # Check target colony exists
-  if targetSystem notin state.colonies:
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isNone:
     return OrderOutcome.Failed
 
-  let colony = state.colonies[targetSystem]
+  let colony = colonyOpt.get()
   if colony.owner == fleet.houseId:
     return OrderOutcome.Failed
 
   # Validate target house is not eliminated (leaderboard is public info)
-  if colony.owner in state.houses:
-    let targetHouse = state.houses[colony.owner]
-    if targetHouse.eliminated:
+  let targetHouseOpt = state.house(colony.owner)
+  if targetHouseOpt.isSome:
+    let targetHouse = targetHouseOpt.get()
+    if targetHouse.isEliminated:
       return OrderOutcome.Failed
 
   # Check for combat ships and loaded troop transports
@@ -780,17 +781,19 @@ proc executeBlitzCommand(
   let targetSystem = command.targetSystem.get()
 
   # Check target colony exists
-  if targetSystem notin state.colonies:
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isNone:
     return OrderOutcome.Failed
 
-  let colony = state.colonies[targetSystem]
+  let colony = colonyOpt.get()
   if colony.owner == fleet.houseId:
     return OrderOutcome.Failed
 
   # Validate target house is not eliminated (leaderboard is public info)
-  if colony.owner in state.houses:
-    let targetHouse = state.houses[colony.owner]
-    if targetHouse.eliminated:
+  let targetHouseOpt = state.house(colony.owner)
+  if targetHouseOpt.isSome:
+    let targetHouse = targetHouseOpt.get()
+    if targetHouse.isEliminated:
       return OrderOutcome.Failed
 
   # Check for loaded troop transports
@@ -829,11 +832,13 @@ proc executeSpyColonyCommand(
   let targetSystem = command.targetSystem.get()
 
   # Validate target house is not eliminated (leaderboard is public info)
-  if targetSystem in state.colonies:
-    let colony = state.colonies[targetSystem]
-    if colony.owner in state.houses:
-      let targetHouse = state.houses[colony.owner]
-      if targetHouse.eliminated:
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
+    let targetHouseOpt = state.house(colony.owner)
+    if targetHouseOpt.isSome:
+      let targetHouse = targetHouseOpt.get()
+      if targetHouse.isEliminated:
         events.add(
           event_factory.commandFailed(
             fleet.houseId,
@@ -846,20 +851,20 @@ proc executeSpyColonyCommand(
         return OrderOutcome.Failed
 
   # Count scouts for mesh network bonus (validation already confirmed scout-only fleet)
-  let scoutCount = fleet.ships.len
+  let scoutCount = int32(fleet.ships.len)
 
   # Set fleet mission state
   var updatedFleet = fleet
   updatedFleet.missionState = FleetMissionState.Traveling
-  updatedFleet.missionType = some(ord(SpyMissionType.SpyOnPlanet))
+  updatedFleet.missionType = some(int32(ord(SpyMissionType.SpyOnPlanet)))
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)
   if fleet.location != targetSystem:
     # Calculate jump lane path from current location to target
-    let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
+    let pathResult = movement.findPath(state, fleet.location, targetSystem, fleet)
 
-    if path.path.len == 0:
+    if not pathResult.found:
       events.add(
         event_factory.commandFailed(
           fleet.houseId,
@@ -872,15 +877,17 @@ proc executeSpyColonyCommand(
       return OrderOutcome.Failed
 
     # Create movement order
-    let travelOrder = FleetOrder(
+    let travelOrder = FleetCommand(
       fleetId: fleet.id,
-      orderType: FleetCommandType.Move,
+      commandType: FleetCommandType.Move,
       targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0,
     )
     state.fleetCommands[fleet.id] = travelOrder
 
     # Update fleet in state
-    state.fleets[fleet.id] = updatedFleet
+    state.updateFleet(fleet.id, updatedFleet)
 
     # Generate order accepted event
     events.add(
@@ -909,7 +916,7 @@ proc executeSpyColonyCommand(
     )
 
     # Update fleet in state
-    state.fleets[fleet.id] = updatedFleet
+    state.updateFleet(fleet.id, updatedFleet)
 
     # Generate mission start event
     events.add(
@@ -952,7 +959,8 @@ proc executeHackStarbaseCommand(
   let targetSystem = command.targetSystem.get()
 
   # Validate starbase presence at target
-  if targetSystem notin state.colonies:
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isNone:
     events.add(
       event_factory.commandFailed(
         fleet.houseId,
@@ -964,8 +972,8 @@ proc executeHackStarbaseCommand(
     )
     return OrderOutcome.Failed
 
-  let colony = state.colonies[targetSystem]
-  if colony.starbases.len == 0:
+  let colony = colonyOpt.get()
+  if colony.kastraIds.len == 0:
     events.add(
       event_factory.commandFailed(
         fleet.houseId,
@@ -978,9 +986,10 @@ proc executeHackStarbaseCommand(
     return OrderOutcome.Failed
 
   # Validate target house is not eliminated (leaderboard is public info)
-  if colony.owner in state.houses:
-    let targetHouse = state.houses[colony.owner]
-    if targetHouse.eliminated:
+  let targetHouseOpt = state.house(colony.owner)
+  if targetHouseOpt.isSome:
+    let targetHouse = targetHouseOpt.get()
+    if targetHouse.isEliminated:
       events.add(
         event_factory.commandFailed(
           fleet.houseId,
@@ -993,20 +1002,20 @@ proc executeHackStarbaseCommand(
       return OrderOutcome.Failed
 
   # Count scouts for mission (validation already confirmed scout-only fleet)
-  let scoutCount = fleet.ships.len
+  let scoutCount = int32(fleet.ships.len)
 
   # Set fleet mission state
   var updatedFleet = fleet
   updatedFleet.missionState = FleetMissionState.Traveling
-  updatedFleet.missionType = some(ord(SpyMissionType.HackStarbase))
+  updatedFleet.missionType = some(int32(ord(SpyMissionType.HackStarbase)))
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)
   if fleet.location != targetSystem:
     # Calculate jump lane path from current location to target
-    let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
+    let pathResult = movement.findPath(state, fleet.location, targetSystem, fleet)
 
-    if path.path.len == 0:
+    if not pathResult.found:
       events.add(
         event_factory.commandFailed(
           fleet.houseId,
@@ -1019,15 +1028,17 @@ proc executeHackStarbaseCommand(
       return OrderOutcome.Failed
 
     # Create movement order
-    let travelOrder = FleetOrder(
+    let travelOrder = FleetCommand(
       fleetId: fleet.id,
-      orderType: FleetCommandType.Move,
+      commandType: FleetCommandType.Move,
       targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0,
     )
     state.fleetCommands[fleet.id] = travelOrder
 
     # Update fleet in state
-    state.fleets[fleet.id] = updatedFleet
+    state.updateFleet(fleet.id, updatedFleet)
 
     # Generate order accepted event
     events.add(
@@ -1056,7 +1067,7 @@ proc executeHackStarbaseCommand(
     )
 
     # Update fleet in state
-    state.fleets[fleet.id] = updatedFleet
+    state.updateFleet(fleet.id, updatedFleet)
 
     # Generate mission start event
     events.add(
@@ -1100,11 +1111,13 @@ proc executeSpySystemCommand(
   let targetSystem = command.targetSystem.get()
 
   # Validate target house is not eliminated (leaderboard is public info)
-  if targetSystem in state.colonies:
-    let colony = state.colonies[targetSystem]
-    if colony.owner in state.houses:
-      let targetHouse = state.houses[colony.owner]
-      if targetHouse.eliminated:
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
+    let targetHouseOpt = state.house(colony.owner)
+    if targetHouseOpt.isSome:
+      let targetHouse = targetHouseOpt.get()
+      if targetHouse.isEliminated:
         events.add(
           event_factory.commandFailed(
             fleet.houseId,
@@ -1117,20 +1130,20 @@ proc executeSpySystemCommand(
         return OrderOutcome.Failed
 
   # Count scouts for mission (validation already confirmed scout-only fleet)
-  let scoutCount = fleet.ships.len
+  let scoutCount = int32(fleet.ships.len)
 
   # Set fleet mission state
   var updatedFleet = fleet
   updatedFleet.missionState = FleetMissionState.Traveling
-  updatedFleet.missionType = some(ord(SpyMissionType.SpyOnSystem))
+  updatedFleet.missionType = some(int32(ord(SpyMissionType.SpyOnSystem)))
   updatedFleet.missionTarget = some(targetSystem)
 
   # Create movement order to target (if not already there)
   if fleet.location != targetSystem:
     # Calculate jump lane path from current location to target
-    let path = findPath(state.starMap, fleet.location, targetSystem, fleet)
+    let pathResult = movement.findPath(state, fleet.location, targetSystem, fleet)
 
-    if path.path.len == 0:
+    if not pathResult.found:
       events.add(
         event_factory.commandFailed(
           fleet.houseId,
@@ -1143,15 +1156,17 @@ proc executeSpySystemCommand(
       return OrderOutcome.Failed
 
     # Create movement order
-    let travelOrder = FleetOrder(
+    let travelOrder = FleetCommand(
       fleetId: fleet.id,
-      orderType: FleetCommandType.Move,
+      commandType: FleetCommandType.Move,
       targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0,
     )
     state.fleetCommands[fleet.id] = travelOrder
 
     # Update fleet in state
-    state.fleets[fleet.id] = updatedFleet
+    state.updateFleet(fleet.id, updatedFleet)
 
     # Generate order accepted event
     events.add(
@@ -1180,7 +1195,7 @@ proc executeSpySystemCommand(
     )
 
     # Update fleet in state
-    state.fleets[fleet.id] = updatedFleet
+    state.updateFleet(fleet.id, updatedFleet)
 
     # Generate mission start event
     events.add(
@@ -1297,7 +1312,7 @@ proc executeJoinFleetCommand(
   let targetFleet = targetFleetOpt.get()
 
   # Check same owner
-  if targetFleet.owner != fleet.houseId:
+  if targetFleet.houseId != fleet.houseId:
     events.add(
       event_factory.commandFailed(
         fleet.houseId,
@@ -1313,9 +1328,9 @@ proc executeJoinFleetCommand(
   if targetFleet.location != fleet.location:
     # Fleet will follow target - use centralized movement system
     # Create a movement order to target's current location
-    let movementOrder = FleetOrder(
+    let movementOrder = FleetCommand(
       fleetId: fleet.id,
-      orderType: FleetCommandType.Move,
+      commandType: FleetCommandType.Move,
       targetSystem: some(targetFleet.location),
       targetFleet: none(FleetId),
       priority: command.priority,
@@ -1367,18 +1382,13 @@ proc executeJoinFleetCommand(
   for shipId in fleet.ships:
     updatedTargetFleet.ships.add(shipId)
 
-  state.fleets[targetFleetId] = updatedTargetFleet
+  state.updateFleet(targetFleetId, updatedTargetFleet)
 
-  # Remove source fleet and clean up orders
-  state.removeFleetFromIndices(fleet.id, fleet.houseId, fleet.location)
-  state.fleets.del(fleet.id)
-  if fleet.id in state.fleetCommands:
-    state.fleetCommands.del(fleet.id)
-  if fleet.id in state.standingCommands:
-    state.standingCommands.del(fleet.id)
+  # Remove source fleet using state accessor (UFCS)
+  state.delFleet(fleet.id)
 
   logInfo(
-    LogCategory.lcFleet,
+    "Fleet",
     "Fleet " & $fleet.id & " merged into fleet " & $targetFleetId &
       " (source fleet removed)",
   )
@@ -1433,18 +1443,17 @@ proc executeRendezvousCommand(
   let targetSystem = command.targetSystem.get()
 
   # Check if rendezvous point has hostile forces (enemy/neutral fleets)
-  # Use fleetsByLocation index for O(1) lookup instead of O(F) scan
-  let house = state.houses[fleet.houseId]
-  if targetSystem in state.fleetsByLocation:
-    for otherFleetId in state.fleetsByLocation[targetSystem]:
-      if otherFleetId notin state.fleets:
-        continue # Skip stale index entry
-      let otherFleet = state.fleets[otherFleetId]
-      if otherFleet.owner != fleet.houseId:
-        let relation =
-          dip_types.getDiplomaticState(house.diplomaticRelations, otherFleet.owner)
-        if relation == DiplomaticState.Enemy or
-            relation == DiplomaticState.Hostile:
+  # Check for hostile forces at rendezvous point
+  let houseOpt = state.house(fleet.houseId)
+  if houseOpt.isSome:
+    for otherFleet in state.fleetsInSystem(targetSystem):
+      if otherFleet.houseId != fleet.houseId:
+        # Check diplomatic relation
+        var relation = DiplomaticState.Neutral # Default
+        if (fleet.houseId, otherFleet.houseId) in state.diplomaticRelation:
+          relation = state.diplomaticRelation[(fleet.houseId, otherFleet.houseId)].state
+
+        if relation == DiplomaticState.Enemy:
           # Hostile forces at rendezvous - abort
           events.add(
             event_factory.commandAborted(
@@ -1458,11 +1467,15 @@ proc executeRendezvousCommand(
           return OrderOutcome.Aborted
 
   # Check if rendezvous point colony is enemy-controlled (additional check)
-  if targetSystem in state.colonies:
-    let colony = state.colonies[targetSystem]
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
     if colony.owner != fleet.houseId:
-      let relation =
-        dip_types.getDiplomaticState(house.diplomaticRelations, colony.owner)
+      # Check diplomatic relation
+      var relation = DiplomaticState.Neutral # Default
+      if (fleet.houseId, colony.owner) in state.diplomaticRelation:
+        relation = state.diplomaticRelation[(fleet.houseId, colony.owner)].state
+
       if relation == DiplomaticState.Enemy:
         # Rendezvous point is enemy territory - abort
         events.add(
@@ -1482,28 +1495,24 @@ proc executeRendezvousCommand(
     return OrderOutcome.Success
 
   # Find other fleets at rendezvous with same order at same location
-  # Use fleetsByLocation index for O(1) lookup instead of O(F) scan
+  # Use fleetsInSystem iterator for O(1) indexed lookup
   var rendezvousFleets: seq[Fleet] = @[]
   rendezvousFleets.add(fleet)
 
   # Collect all fleets with Rendezvous orders at this system
-  if targetSystem in state.fleetsByLocation:
-    for fleetId in state.fleetsByLocation[targetSystem]:
-      if fleetId == fleet.id:
-        continue # Skip self
-      if fleetId notin state.fleets:
-        continue # Skip stale index entry
+  for otherFleet in state.fleetsInSystem(targetSystem):
+    if otherFleet.id == fleet.id:
+      continue # Skip self
 
-      let otherFleet = state.fleets[fleetId]
-      # Check if owned by same house
-      if otherFleet.owner == fleet.houseId:
-        # Check if has Rendezvous order to same system
-        if fleetId in state.fleetCommands:
-          let otherOrder = state.fleetCommands[fleetId]
-          if otherOrder.commandType == FleetCommandType.Rendezvous and
-              otherOrder.targetSystem.isSome and
-              otherOrder.targetSystem.get() == targetSystem:
-            rendezvousFleets.add(otherFleet)
+    # Check if owned by same house
+    if otherFleet.houseId == fleet.houseId:
+      # Check if has Rendezvous order to same system
+      if otherFleet.id in state.fleetCommands:
+        let otherOrder = state.fleetCommands[otherFleet.id]
+        if otherOrder.commandType == FleetCommandType.Rendezvous and
+            otherOrder.targetSystem.isSome and
+            otherOrder.targetSystem.get() == targetSystem:
+          rendezvousFleets.add(otherFleet)
 
   # If only this fleet, wait for others
   if rendezvousFleets.len == 1:
@@ -1513,11 +1522,11 @@ proc executeRendezvousCommand(
   # Multiple fleets at rendezvous - merge into lowest ID fleet
   var lowestId = fleet.id
   for f in rendezvousFleets:
-    if f.id < lowestId:
+    if uint32(f.id) < uint32(lowestId):
       lowestId = f.id
 
-  # Get host fleet
-  var hostFleet = state.fleets[lowestId]
+  # Get host fleet using state accessor (UFCS)
+  var hostFleet = state.fleet(lowestId).get()
 
   # Merge all other fleets into host
   var mergedCount = 0
@@ -1529,27 +1538,18 @@ proc executeRendezvousCommand(
     for shipId in f.ships:
       hostFleet.ships.add(shipId)
 
-    # Remove merged fleet and clean up orders
-    state.removeFleetFromIndices(f.id, f.owner, f.location)
-    state.fleets.del(f.id)
-    if f.id in state.fleetCommands:
-      state.fleetCommands.del(f.id)
-    if f.id in state.standingCommands:
-      state.standingCommands.del(f.id)
+    # Remove merged fleet using state accessor (UFCS)
+    state.delFleet(f.id)
 
     mergedCount += 1
     logInfo(
-      LogCategory.lcFleet,
+      "Fleet",
       "Fleet " & $f.id & " merged into rendezvous host " & $lowestId &
         " (source fleet removed)",
     )
 
-  # Update host fleet
-  state.fleets[lowestId] = hostFleet
-
-  var message =
-    "Rendezvous complete at " & $targetSystem & ": " & $mergedCount &
-    " fleets merged into " & $lowestId
+  # Update host fleet using state accessor (UFCS)
+  state.updateFleet(lowestId, hostFleet)
 
   # Generate OrderCompleted event for successful rendezvous
   var details = &"{mergedCount} fleet(s) merged"
@@ -1587,9 +1587,11 @@ proc executeSalvageCommand(
   var closestColony: Option[SystemId] = none(SystemId)
 
   # Check if fleet is currently at a friendly colony with facilities
-  if fleet.location in state.colonies:
-    let colony = state.colonies[fleet.location]
-    let hasFacilities = colony.spaceports.len > 0 or colony.shipyards.len > 0
+  let currentColonyOpt = state.colonyBySystem(fleet.location)
+  if currentColonyOpt.isSome:
+    let colony = currentColonyOpt.get()
+    let hasFacilities = state.countSpaceportsAtColony(colony.id) > 0 or
+                        state.countShipyardsAtColony(colony.id) > 0
 
     if colony.owner == fleet.houseId and hasFacilities:
       # Already at a suitable colony - use it immediately
@@ -1622,32 +1624,25 @@ proc executeSalvageCommand(
     return OrderOutcome.Failed
 
   # Calculate salvage value (50% of ship PC per operations.md:6.2.16)
-  var salvageValue = 0
+  var salvageValue: int32 = 0
   for shipId in fleet.ships:
     let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
-      salvageValue += (ship.stats.buildCost div 2)
+      salvageValue += (ship_entity.buildCost(ship) div 2)
 
   # Add salvage PP to house treasury
-  state.withHouse(fleet.houseId):
+  let houseOpt = state.house(fleet.houseId)
+  if houseOpt.isSome:
+    var house = houseOpt.get()
     house.treasury += salvageValue
+    state.updateHouse(fleet.houseId, house)
 
   # Generate event
   let targetSystem = closestColony.get()
-  let transitMessage =
-    if fleet.location == targetSystem:
-      "at colony"
-    else:
-      "after transit to " & $targetSystem
 
-  # Remove fleet from game state
-  state.removeFleetFromIndices(fleet.id, fleet.houseId, fleet.location)
-  state.fleets.del(fleet.id)
-  if fleet.id in state.fleetCommands:
-    state.fleetCommands.del(fleet.id)
-  if fleet.id in state.standingCommands:
-    state.standingCommands.del(fleet.id)
+  # Remove fleet from game state using state accessor (UFCS)
+  state.delFleet(fleet.id)
 
   # Generate OrderCompleted event for salvage operation
   events.add(
@@ -1678,8 +1673,9 @@ proc executeReserveCommand(
 
   # Check if already at a friendly colony
   var atFriendlyColony = false
-  if fleet.location in state.colonies:
-    let colony = state.colonies[fleet.location]
+  let currentColonyOpt = state.colonyBySystem(fleet.location)
+  if currentColonyOpt.isSome:
+    let colony = currentColonyOpt.get()
     if colony.owner == fleet.houseId:
       atFriendlyColony = true
 
@@ -1687,15 +1683,14 @@ proc executeReserveCommand(
   if not atFriendlyColony:
     # Find all friendly colonies
     var friendlyColonies: seq[SystemId] = @[]
-    for colonyId, colony in state.colonies:
-      if colony.owner == fleet.houseId:
-        friendlyColonies.add(colonyId)
+    for colony in state.coloniesOwned(fleet.houseId):
+      friendlyColonies.add(colony.systemId)
 
     if friendlyColonies.len == 0:
       return OrderOutcome.Failed
 
     # Find closest colony using pathfinding
-    let (closestColony, minDistance) = findNearestColonyFromList(state, fleet, friendlyColonies)
+    let (closestColony, _) = findNearestColonyFromList(state, fleet, friendlyColonies)
 
     # Not at colony yet - move toward it
     if fleet.location != closestColony:
@@ -1740,7 +1735,7 @@ proc executeReserveCommand(
   # At friendly colony - apply reserve status
   var updatedFleet = fleet
   updatedFleet.status = FleetStatus.Reserve
-  state.fleets[fleet.id] = updatedFleet
+  state.updateFleet(fleet.id, updatedFleet)
 
   # Generate OrderCompleted event for state change
   events.add(
@@ -1785,7 +1780,7 @@ proc executeMothballCommand(
       return OrderOutcome.Failed
 
     # Find closest colony using pathfinding
-    let (closestColony, minDistance) = findNearestColonyFromList(state, fleet, friendlyColoniesWithSpaceports)
+    let (closestColony, _) = findNearestColonyFromList(state, fleet, friendlyColoniesWithSpaceports)
 
     # Not at colony yet - move toward it
     if fleet.location != closestColony:
