@@ -19,13 +19,13 @@
 ##   let result = submitZeroTurnCommand(state, cmd)
 ##   if result.success: echo "Success!"
 
-import std/[options, algorithm, tables, strformat, sequtils, sets]
+import std/[options, tables, strformat, sequtils, sets]
 import ../../types/[
   core, game_state, fleet, ship, colony, ground_unit,
   event, zero_turn
 ]
-import ../../state/[engine, iterators, id_gen, fleet_queries]
-import ../../entities/[fleet_ops, ship_ops, colony_ops]
+import ../../state/[engine, id_gen, fleet_queries]
+import ../../entities/fleet_ops
 import ../fleet/entity as fleet_entity
 import ../ship/entity as ship_entity
 import ../capacity/carrier_hangar

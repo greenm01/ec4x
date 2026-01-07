@@ -11,15 +11,10 @@
 ## - Starbase repair: 1 turn + 25% of build cost
 ## - Requires shipyard with available docks
 
-import std/[tables, options, sequtils]
+import std/options
 import ../../types/[core, game_state, fleet, ship, facilities, combat, colony]
 import ../../state/engine
 import ../../globals
-import
-  ../../config/[
-    engine as config_engine, construction_config, ships_config,
-    facilities_config,
-  ]
 
 export HouseId, SystemId, FleetId, ShipClass
 

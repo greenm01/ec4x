@@ -8,7 +8,7 @@
 ## while entities layer handles index-aware state mutations.
 
 import std/[options, algorithm]
-import ../../types/[core, game_state, fleet, ship]
+import ../../types/[core, game_state, fleet]
 import ../../entities/fleet_ops
 import ../../state/[engine, fleet_queries]
 import ./entity as fleet_entity
