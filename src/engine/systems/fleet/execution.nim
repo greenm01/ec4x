@@ -303,7 +303,7 @@ proc performCommandMaintenance*(
             )
             state.fleetCommands[command.fleetId] = actualOrder
             logInfo(
-              Fleet,
+              "Fleet",
               &"Fleet {command.fleetId} mission aborted - seeking home ({validation.reason})",
             )
           else:
@@ -316,20 +316,20 @@ proc performCommandMaintenance*(
             )
             state.fleetCommands[command.fleetId] = actualOrder
             logWarn(
-              Fleet,
+              "Fleet",
               &"Fleet {command.fleetId} mission aborted - holding position ({validation.reason})",
             )
         else:
           # Fleet doesn't exist, skip order
           logWarn(
-            Commands,
+            "Commands",
             &"  [SKIPPED] Fleet {command.fleetId} no longer exists",
           )
           continue
       else:
         # Order invalid, skip execution
         logWarn(
-          Commands,
+          "Commands",
           &"  [SKIPPED] Fleet {command.fleetId} order invalid at execution",
         )
         continue
@@ -339,7 +339,7 @@ proc performCommandMaintenance*(
 
     if outcome == OrderOutcome.Success:
       logDebug(
-        Fleet,
+        "Fleet",
         &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} executed",
       )
       # Events already added via mutable parameter
@@ -380,39 +380,27 @@ proc performCommandMaintenance*(
                   relation == DiplomaticState.Neutral:
                 hasHostileForces = true
 
-          # If hostile forces present, trigger battle first
-          if hasHostileForces:
-            logInfo(
-              "Combat",
-              &"Fleet {actualOrder.fleetId} engaging defenders before {actualOrder.commandType}",
-            )
-            resolveBattle(state, targetSystem, orders, combatReports, events, rng)
-
-            # Check if fleet survived combat
-            if state.fleet(actualOrder.fleetId).isNone:
-              logInfo(
-                "Combat", &"Fleet {actualOrder.fleetId} destroyed in combat"
-              )
-              continue
-
-          # NOTE: Planetary assault combat now handled by orchestrator.nim
+          # NOTE: Combat now handled by orchestrator.nim in Conflict Phase
           # Execution just validates and marks commands complete
-          # Combat resolution happens in turn_cycle/conflict_phase via orchestrator
-          # TODO: Implement simultaneous assault resolution in orchestrator
+          # Old resolveBattle() call removed - combat resolution happens in
+          # turn_cycle/conflict_phase via orchestrator
+          #
+          # If hostile forces present, combat will be resolved by orchestrator
+          # before this order executes in the appropriate phase
           discard
     elif outcome == OrderOutcome.Failed:
       # Order failed validation - event generated, cleanup handled by Command Phase
       logDebug(
-        Fleet,
+        "Fleet",
         &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} failed validation",
       )
     elif outcome == OrderOutcome.Aborted:
       # Order aborted - event generated, cleanup handled by Command Phase
       logDebug(
-        Fleet,
+        "Fleet",
         &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} aborted",
       )
 
   logDebug(
-    Commands, &"[{phaseDescription}] Completed fleet order execution"
+    "Commands", &"[{phaseDescription}] Completed fleet order execution"
   )

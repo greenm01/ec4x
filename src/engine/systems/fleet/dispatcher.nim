@@ -273,9 +273,9 @@ proc findNearestColonyFromList(
   result.distance = int32.high
 
   for colonyId in colonies:
-    let path = findPath(state.starMap, fleet.location, colonyId, fleet)
-    if path.len > 0:
-      let distance = int32(path.len - 1)
+    let pathResult = movement.findPath(state, fleet.location, colonyId, fleet)
+    if pathResult.found:
+      let distance = int32(pathResult.path.len - 1)
       if distance < result.distance:
         result.distance = distance
         result.colonyId = colonyId
@@ -506,7 +506,7 @@ proc executeGuardStarbaseCommand(
     )
     return OrderOutcome.Aborted
 
-  if colony.starbases.len == 0:
+  if colony.kastraIds.len == 0:
     events.add(
       event_factory.commandAborted(
         fleet.houseId,
@@ -565,8 +565,9 @@ proc executeGuardPlanetCommand(
     return OrderOutcome.Failed
 
   # Check target colony still exists and is friendly
-  if targetSystem in state.colonies:
-    let colony = state.colonies[targetSystem]
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isSome:
+    let colony = colonyOpt.get()
     if colony.owner != fleet.houseId:
       events.add(
         event_factory.commandAborted(
