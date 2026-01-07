@@ -14,10 +14,16 @@ Your **Scouts** are the primary tool for gathering detailed, high-quality intell
 
 Scout espionage missions progress through multiple phases:
 
-1. **Travel**: The Scout fleet moves toward the target system. During this phase, you can cancel the mission by issuing a new command.
-2. **Arrival**: When the fleet arrives, the mission begins. Scouts are "consumed" (committed to the mission) and the fleet is locked. You cannot recall scouts once the mission starts.
-3. **Persistent Operation**: Scouts remain at the target, gathering intelligence each turn while evading detection.
-4. **Detection Checks**: Every turn, the defending house attempts to detect your scouts. If detected, all scouts are destroyed immediately and the mission fails. If undetected, scouts gather **Perfect Quality** intelligence for that turn.
+1. **Travel** (Production Phase): The Scout fleet moves toward the target system. During this phase, you can cancel the mission by issuing a new command.
+2. **Arrival** (Production Phase): When the fleet arrives at the target system, it prepares to begin the mission. The mission starts in the following Conflict Phase.
+3. **Mission Start & First Detection** (Conflict Phase): When the fleet begins its mission:
+   - Scouts establish position at target and begin intelligence gathering
+   - **First detection check** runs immediately - if successful, the mission becomes persistent
+   - If detected: All scouts destroyed, mission fails, no intelligence gathered
+   - If undetected: Scouts "consumed" (committed to mission), fleet locked, mission becomes active
+   - Perfect Quality intelligence gathered on first turn
+4. **Persistent Operation** (Conflict Phase, subsequent turns): Scouts remain at the target, gathering intelligence each turn while evading detection.
+5. **Ongoing Detection Checks**: Every turn while the mission is active, the defending house attempts to detect your scouts. If detected, all scouts are destroyed immediately and the mission fails. If undetected, scouts gather **Perfect Quality** intelligence for that turn.
 
 **Intelligence Quality**:
 
@@ -31,9 +37,10 @@ If successful, the intelligence gathered each turn is of **Perfect Quality**—i
 **Risk vs. Reward**:
 
 Scout missions are high-risk operations with significant rewards:
+- **First Detection Check**: Scouts face an initial detection check when starting the mission. Failure means immediate loss with no intelligence gathered.
 - **Cumulative Risk**: Detection checks occur every turn. Longer missions face higher cumulative detection risk.
 - **Multi-Turn Intelligence**: Successful missions provide Perfect Quality intelligence over multiple turns, tracking enemy development in real-time.
-- **Irreversible Commitment**: Once scouts arrive at the target, you cannot recall them. They remain on mission until detected or the target is lost.
+- **Irreversible Commitment**: Once scouts start their mission (pass the first detection check), you cannot recall them. They remain on mission until detected or the target is lost. You can cancel orders during the travel phase.
 - **Diplomatic Escalation**: If detected, your diplomatic stance with the defender escalates to Hostile.
 
 See espionage commands in [Section 6.3.13-6.3.15](06-operations.md#6313-spy-on-a-planet-11) for mission details and detection mechanics.

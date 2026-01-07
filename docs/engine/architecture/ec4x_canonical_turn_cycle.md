@@ -143,22 +143,60 @@ EC4X uses precise terminology for the three stages of command processing. **This
 
 **6. Espionage Operations** (simultaneous resolution)
 
-**6a. Fleet-Based Espionage** (one-time execution on arrival)
-- `SpyPlanet`, `SpySystem`, and `HackStarbase` commands execute when scout fleet arrives at target
-- Scout fleet transitions from Traveling to OnSpyMission state
-- Fleet locked (cannot accept new commands), scouts "consumed"
-- Mission registered in `activeSpyMissions` table
-- Generate `GameEvents` (SpyMissionStarted)
-- **Note**: Detection checks happen in Step 6a.5, NOT on arrival
+**6a. Fleet-Based Espionage** (mission start & first detection)
+
+When scout fleet arrives at target (fleetId in state.arrivedFleets):
+- **State Transition**: Fleet.missionState: Traveling → OnSpyMission
+- **First Detection Check**: Run detection **before** mission registration
+  - Detection formula: 1d20 vs (15 - scoutCount + ELI + starbaseBonus)
+  - **If DETECTED**: All scouts destroyed immediately, mission fails, no intel gathered
+  - **If UNDETECTED**: Continue to mission registration below
+
+- **Mission Registration** (only if not detected):
+  - Fleet.missionStartTurn = state.turn
+  - Add to state.activeSpyMissions table:
+    ```nim
+    state.activeSpyMissions[fleet.id] = ActiveSpyMission(
+      fleetId: fleet.id,
+      missionType: SpyMissionType(fleet.missionType.get()),
+      targetSystem: fleet.location,
+      scoutCount: fleet.squadrons.len,
+      startTurn: state.turn,
+      ownerHouse: fleet.owner
+    )
+    ```
+  - Generate Perfect quality intelligence (first turn)
+  - Fleet locked (cannot accept new orders), scouts "consumed"
+  - Generate `SpyMissionStarted` event
+
+**Game Events**: SpyMissionStarted (if successful) or ScoutDetected (if failed)
+**Critical**: First detection check gates mission registration
 
 **6a.5. Persistent Spy Mission Detection** (every turn for active missions)
-- Iterate all `activeSpyMissions` from previous turns
-- For each active mission:
-  - Run detection check: 1d20 vs (15 - scoutCount + ELI + starbaseBonus)
-  - **If DETECTED**: Scouts destroyed immediately, mission fails, diplomatic escalation
-  - **If UNDETECTED**: Generate Perfect quality intelligence, mission continues
-- Repeat detection check next turn for surviving missions
-- Generate `GameEvents` (IntelGathered, SpyScoutDetected, DiplomaticStateChanged)
+
+**Every turn** while mission is active, detection check runs for missions registered in previous turns:
+
+```nim
+# Iterate missions from previous turns only
+for fleetId, mission in state.activeSpyMissions.pairs:
+  if mission.startTurn < state.turn:  # Skip newly-registered missions
+    let detectionResult = resolveSpyScoutDetection(...)
+
+    if detectionResult.detected:
+      # DETECTED: Immediate destruction
+      fleet.missionState = FleetMissionState.Detected
+      fleet_ops.destroyFleet(state, fleetId)
+      state.activeSpyMissions.del(fleetId)
+      # Generate ScoutDetected event
+      # Diplomatic escalation to Hostile
+    else:
+      # UNDETECTED: Generate Perfect intelligence
+      generateSpyIntelligence(state, fleet, mission)
+      # Mission continues next turn
+```
+
+**Note**: Newly-started missions (startTurn == state.turn) already had their first detection check in Step 6a.
+**Game Events**: IntelGathered (if undetected), SpyScoutDetected (if detected), DiplomaticStateChanged (on detection)
 
 **6b. Space Guild Espionage** (EBP-based covert ops)
 - Tech Theft, Sabotage, Assassination, Cyber Attack
@@ -490,6 +528,7 @@ Players can immediately interact with newly-commissioned ships and colonies.
   - Mark order as ready for execution
 - Result: Conflict/Income phases use `arrivedFleets` to determine which orders execute
 - **Critical:** This is THE mechanism that determines when orders execute
+- **Note for Spy Missions:** Spy mission fleets added to arrivedFleets but remain in Traveling state until Conflict Phase Step 6a
 
 **1e. Scout-on-Scout Detection** (reconnaissance encounters)
 - Group all fleets by location (systemId)

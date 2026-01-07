@@ -10,7 +10,7 @@
 
 Scouts are specialized auxiliary ships that operate in **Scout-only fleets** for intelligence gathering. The system uses a fleet-based architecture where scouts travel to targets, establish persistent missions, and face detection checks each turn until destroyed or recalled.
 
-**Key Architectural Principle:** No separate SpyScout entities. All spy missions operate through the Fleet system with mission state tracking.
+**Key Architectural Principle:** All spy missions operate through the Fleet system with mission state tracking.
 
 ---
 
@@ -40,75 +40,113 @@ FleetOrder(
 
 **Special Case**: If fleet already at target, mission starts immediately (skip to Phase 3).
 
-### Phase 2: Travel to Target (Maintenance Phase)
+### Phase 2: Travel to Target (Production Phase)
 
 Scout fleet travels to target using normal fleet movement system:
 - **Visibility**: Scout fleets are invisible to combat fleets (one-way)
-- **Scout-on-Scout**: Rival scout fleets MAY detect each other (ELI roll)
+- **Scout-on-Scout Detection**: Rival scout fleets MAY detect each other during travel (Production Phase Step 1e)
+  - ELI-based detection rolls (asymmetric)
+  - Visual quality intel gathered (observable data only)
+  - **No mission execution** - this is reconnaissance during travel
+  - See "Scout-on-Scout Detection" section below for details
 - **Cancelable**: Player can issue new orders, cancel mission en route
 - **Duration**: Variable based on distance (1-2 jumps per turn)
 
-**Movement Resolution** (fleet_orders.nim):
+**Movement Resolution** (production_phase.nim Step 1c):
 ```nim
-proc resolveMovementOrder(fleet, order, state):
-  # Normal fleet movement logic
-  # When fleet arrives at destination:
-  if fleet.location == order.targetSystem.get():
-    # Check if spy mission
-    if fleet.missionState == FleetMissionState.Traveling:
-      # Transition to active mission (Phase 3)
+# Fleet moves toward target system using normal movement mechanics
+# Fleet remains in Traveling state during movement
+
+# When fleet arrives at destination (Step 1d):
+if fleet.location == targetSystem:
+  # Add to arrivedFleets table (gates Conflict Phase execution)
+  state.arrivedFleets[fleet.id] = fleet.location
+  # Generate FleetArrived event
+
+  # Fleet still in Traveling state - mission starts in Conflict Phase
 ```
 
-### Phase 3: Mission Start (Maintenance Phase - Arrival)
+### Phase 3: Mission Start & First Detection (Conflict Phase - Step 6a)
 
-When scout fleet arrives at target system:
-- **State Change**: Fleet.missionState = OnSpyMission
-- **Fleet Locked**: Cannot accept new orders while on mission
-- **Scouts "Consumed"**: Fleet dedicated to mission, cannot be recalled
-- **Registration**: Added to GameState.activeSpyMissions table
+When scout fleet arrives at target system (fleetId in state.arrivedFleets from Production Phase):
+- **State Transition**: Fleet.missionState: Traveling → OnSpyMission
+- **First Detection Check**: Run detection **before** mission registration
+  - Detection formula: 1d20 vs (15 - scoutCount + ELI + starbaseBonus)
+  - **If DETECTED**: All scouts destroyed immediately, mission fails, no intel gathered
+  - **If UNDETECTED**: Continue to mission registration below
+
+- **Mission Registration** (only if not detected):
+  - Fleet.missionStartTurn = state.turn
+  - **Fleet Locked**: Cannot accept new orders while on mission
+  - **Scouts "Consumed"**: Fleet dedicated to mission, cannot be recalled
+  - Added to GameState.activeSpyMissions table
+  - Generate Perfect quality intelligence (first turn)
 
 ```nim
-# In fleet_orders.nim (resolveMovementOrder)
+# In conflict_phase.nim (Step 6a - Fleet-Based Espionage)
+# For each spy order where fleet is in arrivedFleets:
+
+# Transition state
 fleet.missionState = FleetMissionState.OnSpyMission
 fleet.missionStartTurn = state.turn
 
-state.activeSpyMissions[fleet.id] = ActiveSpyMission(
-  fleetId: fleet.id,
-  missionType: SpyMissionType.SpyOnPlanet,
-  targetSystem: fleet.location,
-  scoutCount: fleet.squadrons.len,
-  startTurn: state.turn,
-  ownerHouse: fleet.owner
+# First detection check (gates mission registration)
+let detectionResult = resolveSpyScoutDetection(
+  state, scoutCount, defender, targetSystem, rng
 )
+
+if detectionResult.detected:
+  # Mission fails immediately - scouts destroyed
+  fleet_ops.destroyFleet(state, fleetId)
+  # Generate ScoutDetected event
+  # Diplomatic escalation to Hostile
+else:
+  # Mission succeeds - register for persistent operation
+  state.activeSpyMissions[fleet.id] = ActiveSpyMission(
+    fleetId: fleet.id,
+    missionType: SpyMissionType.SpyOnPlanet,
+    targetSystem: fleet.location,
+    scoutCount: fleet.squadrons.len,
+    startTurn: state.turn,
+    ownerHouse: fleet.owner
+  )
+  # Generate Perfect quality intelligence (first turn)
+  # Generate SpyMissionStarted event
 ```
 
-**Game Event**: SpyMissionStarted (visible to mission owner)
+**Game Events**: SpyMissionStarted (if successful) or ScoutDetected (if failed)
+**Critical**: First detection check must succeed for mission to become persistent
 
-### Phase 4: Persistent Detection Checks (Conflict Phase - Each Turn)
+### Phase 4: Persistent Detection Checks (Conflict Phase Step 6a.5 - Subsequent Turns)
 
-**Every turn** while mission is active, detection check runs in Conflict Phase Step 6a.5:
+**Every turn AFTER mission start**, detection check runs in Conflict Phase Step 6a.5 for missions registered in previous turns:
 
 ```nim
-# In conflict_phase.nim (Step 6a.5)
-for fleetId, mission in state.activeSpyMissions.pairs:
-  let detectionResult = resolveSpyScoutDetection(
-    state,
-    mission.scoutCount,
-    defender,
-    targetSystem,
-    rng
-  )
+# In conflict_phase.nim (Step 6a.5 - Persistent Spy Mission Detection)
+# Note: Newly-started missions (startTurn == state.turn) already had their
+# first detection check in Step 6a, so this only processes existing missions
 
-  if detectionResult.detected:
-    # DETECTED: Immediate destruction
-    fleet.missionState = FleetMissionState.Detected
-    state.fleets.del(fleetId)
-    state.activeSpyMissions.del(fleetId)
-    # Generate ScoutDetected event
-    # Diplomatic escalation
-  else:
-    # UNDETECTED: Generate intelligence
-    generateSpyIntelligence(state, fleet, mission)
+for fleetId, mission in state.activeSpyMissions.pairs:
+  if mission.startTurn < state.turn:  # Skip newly-registered missions
+    let detectionResult = resolveSpyScoutDetection(
+      state,
+      mission.scoutCount,
+      defender,
+      targetSystem,
+      rng
+    )
+
+    if detectionResult.detected:
+      # DETECTED: Immediate destruction
+      fleet.missionState = FleetMissionState.Detected
+      fleet_ops.destroyFleet(state, fleetId)
+      state.activeSpyMissions.del(fleetId)
+      # Generate ScoutDetected event
+      # Diplomatic escalation to Hostile
+    else:
+      # UNDETECTED: Generate Perfect intelligence
+      generateSpyIntelligence(state, fleet, mission)
+      # Mission continues next turn
 ```
 
 **Detection Formula**:
@@ -243,9 +281,9 @@ proc escalateDiplomaticStance(state, defender, attacker):
 
 ## Scout-on-Scout Detection (Reconnaissance)
 
-**IMPLEMENTED** (Maintenance Phase Step 1e)
+**IMPLEMENTED** (Production Phase Step 1e)
 
-When scout fleets from different houses are at same location:
+When scout fleets from different houses are at same location during movement:
 - Each side makes separate ELI-based detection roll
 - Detection formula: `1d20 vs (15 - observerScoutCount + targetELI)`
 - **Asymmetric detection possible**:
@@ -253,7 +291,9 @@ When scout fleets from different houses are at same location:
   - Fleet B may not detect Fleet A
   - No combat even if detected (scouts never fight)
 
-**Intelligence Quality**: Visual (not Perfect, only observable data)
+**Intelligence Quality**: Visual (only observable data, NOT Perfect quality)
+
+**Timing**: This occurs during Production Phase Step 1e (fleet movement), NOT during spy mission execution (Conflict Phase). Scout-on-scout detection is separate from spy mission detection checks.
 
 ---
 
@@ -310,23 +350,40 @@ type
 
 ## Integration Points
 
-### Command Phase (executor.nim)
+### Command Phase (src/engine/systems/fleet/dispatcher.nim)
 
-- `executeSpyPlanetOrder()`: Set fleet mission state, create movement order
-- `executeSpySystemOrder()`: Set fleet mission state, create movement order
-- `executeHackStarbaseOrder()`: Set fleet mission state, create movement order
+- `executeSpyColonyCommand()`: Set fleet mission state to Traveling, create movement order, store mission target
+- `executeSpySystemCommand()`: Set fleet mission state to Traveling, create movement order, store mission target
+- `executeHackStarbaseCommand()`: Set fleet mission state to Traveling, create movement order, store mission target
 
-### Maintenance Phase (fleet_orders.nim)
+### Production Phase (src/engine/turn_cycle/production_phase.nim)
 
-- `resolveMovementOrder()`: Detect arrival, start mission, register in activeSpyMissions
+- **Step 1c**: Fleet movement toward target (normal movement mechanics)
+- **Step 1d**: Arrival detection - adds fleetId to `state.arrivedFleets` table when fleet.location == targetSystem
+- **Step 1e**: Scout-on-Scout Detection - ELI-based detection rolls, generates Visual quality intel
 
-### Conflict Phase (conflict_phase.nim)
+**Note**: Mission does NOT start in Production Phase. Fleet remains in Traveling state until Conflict Phase.
 
-- **Step 6a.5**: Iterate activeSpyMissions, run detection, generate intel or destroy scouts
+### Conflict Phase (src/engine/turn_cycle/conflict_phase.nim)
 
-### Intelligence System (spy_resolution.nim)
+- **Step 6a**: Fleet-Based Espionage
+  - `resolveEspionage()`: Mission start & first detection check
+  - Transition: Traveling → OnSpyMission
+  - Run first detection check (gates mission registration)
+  - If undetected: Register in activeSpyMissions, generate Perfect intel
+  - If detected: Destroy fleet, mission fails
+
+- **Step 6a.5**: Persistent Spy Mission Detection
+  - `processPersistentSpyDetection()`: Ongoing detection for existing missions
+  - Iterate activeSpyMissions from previous turns only
+  - Run detection check each turn
+  - If undetected: Generate Perfect intel, continue mission
+  - If detected: Destroy fleet, end mission, diplomatic escalation
+
+### Intelligence System (src/engine/systems/espionage/resolution.nim)
 
 - `resolveSpyScoutDetection()`: Run detection check, return DetectionResult
+- `generateSpyIntelligence()`: Generate Perfect quality intel based on mission type
 
 ---
 
@@ -355,7 +412,7 @@ type
 1. Turn N: Issue SpyOnPlanet order (2 scouts, target 4 jumps away)
 2. Turn N+1: Fleet traveling (missionState = Traveling)
 3. Turn N+1: Player issues new Move order (cancels spy mission)
-4. Turn N+1 Maintenance: Fleet changes course, missionState = None
+4. Turn N+1 Production: Fleet changes course, missionState = None
 
 **Result**: Mission canceled, scouts preserved
 
