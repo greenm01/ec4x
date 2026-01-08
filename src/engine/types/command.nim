@@ -2,11 +2,8 @@ import std/[tables, options]
 import ./[core, fleet, production, tech, diplomacy, colony, espionage]
 
 type
-  StandingCommand* = object
-    commandType*: StandingCommandType
-    params*: StandingCommandParams
-    turnsUntilActivation*: int32
-    activationDelayTurns*: int32
+  # NOTE: StandingCommand moved to fleet.nim to avoid circular dependency
+  # Standing commands are fleet properties, stored in Fleet.standingCommand field
 
   ColonyManagementCommand* = object
     colonyId*: ColonyId

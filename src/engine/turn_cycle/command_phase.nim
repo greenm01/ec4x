@@ -16,7 +16,7 @@
 ##
 ## **Part C: Order Validation & Storage (AFTER Player Window)**
 ## - Administrative orders execute
-## - All other orders: Validate and store in state.fleetCommands
+## - All other orders: Validate and store in Fleet.command (entity-manager pattern)
 ## - Standing command configs: Validated and stored in state.standingCommands
 ## - Build orders: Add to construction queues
 ## - Tech research: Allocate RP
@@ -134,14 +134,14 @@ proc resolveCommandPhase*(
   #
   # Universal order processing (DRY design):
   # - Administrative orders: Validate & execute immediately (zero-turn)
-  # - All other orders: Validate & store in state.fleetCommands
+  # - All other orders: Validate & store in Fleet.command (entity-manager pattern)
   #   * Move, Patrol, SeekHome, Hold
   #   * Bombard, Invade, Blitz, Guard*
   #   * Colonize, SpyPlanet, SpySystem, HackStarbase
   #   * Salvage
   # - Standing command configs: Validate & store in state.standingCommands
   #
-  # Key principle: All non-admin orders follow same path → No special cases
+  # Key principle: All non-admin orders stored on fleet entity → No global tables
 
   logInfo(
     LogCategory.lcOrders, "[COMMAND PART C] Validating and storing fleet orders..."
@@ -274,43 +274,27 @@ proc resolveCommandPhase*(
   for houseId in state.houses.keys:
     if houseId in orders:
       for cmd in orders[houseId].fleetCommands:
-        # Execute administrative orders immediately (zero-turn)
-        if commands.isAdministrativeCommand(cmd.commandType):
-          let outcome = executor.executeFleetCommand(state, houseId, cmd, events)
-          if outcome == CommandOutcome.Success:
-            adminExecuted += 1
-            logDebug(
-              LogCategory.lcOrders,
-              &"  [ADMIN] Fleet {cmd.fleetId}: {cmd.commandType} executed",
-            )
-          else:
-            logDebug(
-              LogCategory.lcOrders,
-              &"  [ADMIN FAILED] Fleet {cmd.fleetId}: {cmd.commandType}",
-            )
+        # ALL FleetCommandType are persistent - they follow universal lifecycle:
+        # Initiate (here) → Validate (here) → Travel (Production) → Execute (Production/Conflict/Income)
+        # Note: Zero-turn commands (ZeroTurnCommandType) execute in Part B, not here
 
-        # All other orders: VALIDATE then store for movement and execution
-        # Universal lifecycle: Initiate (here) → Activate (Maintenance) → Execute (Conflict/Income)
-        else:
-          # CRITICAL: Validate command before storing (prevents NULL target Move commands)
-          let validation = validateFleetCommand(cmd, state, houseId)
-          if validation.valid:
-            state.fleetCommands[cmd.fleetId] = cmd
-
-            # Update fleet entity with command and mission state
-            let fleetOpt = state.fleet(cmd.fleetId)
-            if fleetOpt.isSome:
-              var updatedFleet = fleetOpt.get()
-              updatedFleet.command = some(cmd)
-              updatedFleet.missionState = MissionState.Traveling
-              updatedFleet.missionTarget = cmd.targetSystem
-              state.updateFleet(cmd.fleetId, updatedFleet)
+        # CRITICAL: Validate command before storing (prevents NULL target Move commands)
+        let validation = validateFleetCommand(cmd, state, houseId)
+        if validation.valid:
+          # Store command in Fleet entity (NOT in global table)
+          let fleetOpt = state.fleet(cmd.fleetId)
+          if fleetOpt.isSome:
+            var updatedFleet = fleetOpt.get()
+            updatedFleet.command = some(cmd)
+            updatedFleet.missionState = MissionState.Traveling
+            updatedFleet.missionTarget = cmd.targetSystem
+            state.updateFleet(cmd.fleetId, updatedFleet)
 
             ordersStored += 1
             logDebug(
               LogCategory.lcOrders, &"  [STORED] Fleet {cmd.fleetId}: {cmd.commandType}"
             )
-          else:
+        else:
             logWarn(
               LogCategory.lcOrders,
               &"  [REJECTED] Fleet {cmd.fleetId}: {cmd.commandType} - {validation.error}",
@@ -325,8 +309,12 @@ proc resolveCommandPhase*(
       # Process standing commands (persistent fleet behaviors)
       for fleetId, standingCmd in orders[houseId].standingCommands:
         # Validate that fleet exists and belongs to this house
-        if fleetId in state.fleets and state.fleets[fleetId].owner == houseId:
-          state.standingCommands[fleetId] = standingCmd
+        let fleetOpt = state.fleet(fleetId)
+        if fleetOpt.isSome and fleetOpt.get().houseId == houseId:
+          # Store standing command on fleet entity (entity-manager pattern)
+          var updatedFleet = fleetOpt.get()
+          updatedFleet.standingCommand = some(standingCmd)
+          state.updateFleet(fleetId, updatedFleet)
           standingOrdersProcessed += 1
           logDebug(
             LogCategory.lcOrders,

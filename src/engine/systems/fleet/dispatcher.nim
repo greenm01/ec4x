@@ -875,15 +875,17 @@ proc executeSpyColonyCommand(
       )
       return OrderOutcome.Failed
 
-    # Create movement order
-    let travelOrder = FleetCommand(
+    # Create movement command
+    let travelCommand = FleetCommand(
       fleetId: fleet.id,
       commandType: FleetCommandType.Move,
       targetSystem: some(targetSystem),
       targetFleet: none(FleetId),
       priority: 0,
     )
-    state.fleetCommands[fleet.id] = travelOrder
+
+    # Assign command to fleet (entity-manager pattern)
+    updatedFleet.command = some(travelCommand)
 
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
@@ -1025,15 +1027,17 @@ proc executeHackStarbaseCommand(
       )
       return OrderOutcome.Failed
 
-    # Create movement order
-    let travelOrder = FleetCommand(
+    # Create movement command
+    let travelCommand = FleetCommand(
       fleetId: fleet.id,
       commandType: FleetCommandType.Move,
       targetSystem: some(targetSystem),
       targetFleet: none(FleetId),
       priority: 0,
     )
-    state.fleetCommands[fleet.id] = travelOrder
+
+    # Assign command to fleet (entity-manager pattern)
+    updatedFleet.command = some(travelCommand)
 
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
@@ -1152,15 +1156,17 @@ proc executeSpySystemCommand(
       )
       return OrderOutcome.Failed
 
-    # Create movement order
-    let travelOrder = FleetCommand(
+    # Create movement command
+    let travelCommand = FleetCommand(
       fleetId: fleet.id,
       commandType: FleetCommandType.Move,
       targetSystem: some(targetSystem),
       targetFleet: none(FleetId),
       priority: 0,
     )
-    state.fleetCommands[fleet.id] = travelOrder
+
+    # Assign command to fleet (entity-manager pattern)
+    updatedFleet.command = some(travelCommand)
 
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
@@ -1288,10 +1294,14 @@ proc executeJoinFleetCommand(
   let targetFleetOpt = state.fleet(targetFleetId)
 
   if targetFleetOpt.isNone:
-    # Target fleet destroyed or deleted - clear the order and fall back to standing commands
-    # Standing commands will be used automatically by the order resolution system
-    if fleet.id in state.fleetCommands:
-      state.fleetCommands.del(fleet.id)
+    # Target fleet destroyed or deleted - clear the command and fall back to standing commands
+    # Standing commands will be used automatically by the command resolution system
+    let fleetOpt = state.fleet(fleet.id)
+    if fleetOpt.isSome:
+      var updatedFleet = fleetOpt.get()
+      updatedFleet.command = none(FleetCommand)
+      updatedFleet.missionState = MissionState.None
+      state.updateFleet(fleet.id, updatedFleet)
       standing.resetStandingCommandGracePeriod(state, fleet.id)
 
     events.add(
@@ -1348,10 +1358,12 @@ proc executeJoinFleetCommand(
     # Check if fleet actually moved (pathfinding succeeded)
     if movedFleet.location == fleet.location:
       # Fleet didn't move - no path found to target
-      # Cancel order and fall back to standing commands
-      if fleet.id in state.fleetCommands:
-        state.fleetCommands.del(fleet.id)
-        standing.resetStandingCommandGracePeriod(state, fleet.id)
+      # Cancel command and fall back to standing commands
+      var updatedFleet = movedFleet
+      updatedFleet.command = none(FleetCommand)
+      updatedFleet.missionState = MissionState.None
+      state.updateFleet(fleet.id, updatedFleet)
+      standing.resetStandingCommandGracePeriod(state, fleet.id)
 
       events.add(
         event_factory.commandAborted(
@@ -1503,12 +1515,12 @@ proc executeRendezvousCommand(
 
     # Check if owned by same house
     if otherFleet.houseId == fleet.houseId:
-      # Check if has Rendezvous order to same system
-      if otherFleet.id in state.fleetCommands:
-        let otherOrder = state.fleetCommands[otherFleet.id]
-        if otherOrder.commandType == FleetCommandType.Rendezvous and
-            otherOrder.targetSystem.isSome and
-            otherOrder.targetSystem.get() == targetSystem:
+      # Check if has Rendezvous command to same system
+      if otherFleet.command.isSome:
+        let otherCommand = otherFleet.command.get()
+        if otherCommand.commandType == FleetCommandType.Rendezvous and
+            otherCommand.targetSystem.isSome and
+            otherCommand.targetSystem.get() == targetSystem:
           rendezvousFleets.add(otherFleet)
 
   # If only this fleet, wait for others

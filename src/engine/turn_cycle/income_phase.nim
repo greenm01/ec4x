@@ -29,7 +29,7 @@
 ## - Elimination checks happen AFTER prestige calculation (Step 7)
 ## - Victory checks happen AFTER elimination processing (Step 8a)
 
-import std/[tables, options, strutils]
+import std/[tables, options, strutils, random]
 import ../../common/logger
 import ../types/[game_state, command, event, core, espionage, fleet, house, diplomacy, victory]
 import ../state/[engine, iterators, fleet_queries]
@@ -41,11 +41,13 @@ import ../systems/fleet/dispatcher
 import ../systems/diplomacy/proposals
 import ../victory/engine as victory_engine
 import ../event_factory/init as event_factory
+import ../systems/fleet/execution as fleet_order_execution
 
 proc resolveIncomePhase*(
     state: var GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
+    rng: var Rand,
 ) =
   ## Phase 2: Collect income and allocate resources
   ## Production is calculated AFTER conflict, so damaged infrastructure produces less
@@ -184,6 +186,19 @@ proc resolveIncomePhase*(
         # Salvage destroys the fleet, so no need to update missionState
 
   logInfo("Fleet", "[STEP 4] Complete", "salvaged=", $salvageCount)
+
+  # ===================================================================
+  # ADMINISTRATIVE COMPLETION (Income Commands)
+  # ===================================================================
+  # Mark Income Phase commands complete after salvage operations finish
+  # Note: This is administrative completion only - salvage behavior already happened above
+  logInfo("Income", "[INCOME PHASE] Administrative completion for Income commands...")
+  fleet_order_execution.performCommandMaintenance(
+    state, orders, events, rng,
+    fleet_order_execution.isIncomeCommand,
+    "Income Phase - Administrative Completion"
+  )
+  logInfo("Income", "[INCOME PHASE] Administrative completion complete")
 
   # ===================================================================
   # STEP 5: CAPACITY ENFORCEMENT AFTER IU LOSS

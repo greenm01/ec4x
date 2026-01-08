@@ -173,6 +173,47 @@ proc validateCommandAtExecution(
   # Order is valid at execution time
   return ExecutionValidationResult(valid: true, shouldAbort: false, reason: "")
 
+# ============================================================================
+# Command Category Filters
+# ============================================================================
+
+proc isProductionCommand*(cmdType: FleetCommandType): bool =
+  ## Returns true if command needs administrative completion in Production Phase
+  ## Travel completion, logistics, administrative status changes
+  result = cmdType in [
+    FleetCommandType.Move,
+    FleetCommandType.Hold,
+    FleetCommandType.SeekHome,
+    FleetCommandType.JoinFleet,
+    FleetCommandType.Rendezvous,
+    FleetCommandType.Reserve,
+    FleetCommandType.Mothball,
+    FleetCommandType.Reactivate,
+    FleetCommandType.View
+  ]
+
+proc isConflictCommand*(cmdType: FleetCommandType): bool =
+  ## Returns true if command needs administrative completion in Conflict Phase
+  ## Combat operations, espionage, colonization
+  result = cmdType in [
+    FleetCommandType.Patrol,
+    FleetCommandType.GuardStarbase,
+    FleetCommandType.GuardColony,
+    FleetCommandType.Blockade,
+    FleetCommandType.Bombard,
+    FleetCommandType.Invade,
+    FleetCommandType.Blitz,
+    FleetCommandType.Colonize,
+    FleetCommandType.SpyColony,
+    FleetCommandType.SpySystem,
+    FleetCommandType.HackStarbase
+  ]
+
+proc isIncomeCommand*(cmdType: FleetCommandType): bool =
+  ## Returns true if command needs administrative completion in Income Phase
+  ## Economic operations
+  result = cmdType == FleetCommandType.Salvage
+
 proc performCommandMaintenance*(
     state: var GameState,
     orders: Table[HouseId, CommandPacket],
@@ -211,35 +252,43 @@ proc performCommandMaintenance*(
               )
               continue
 
-        allFleetCommands.add((houseId, command))
-        newCommandsThisTurn.incl(command.fleetId)
-        state.fleetCommands[command.fleetId] = command
+          allFleetCommands.add((houseId, command))
+          newCommandsThisTurn.incl(command.fleetId)
 
-        # Generate OrderIssued event for new order
-        events.add(
-          event_factory.commandIssued(
-            houseId,
-            command.fleetId,
-            $command.commandType,
-            systemId = command.targetSystem,
+          # Assign command to fleet (entity-manager pattern)
+          var updatedFleet = fleet
+          updatedFleet.command = some(command)
+          updatedFleet.missionState = MissionState.Traveling
+          updatedFleet.missionTarget = command.targetSystem
+          state.updateFleet(command.fleetId, updatedFleet)
+
+          # Generate CommandIssued event for new command
+          events.add(
+            event_factory.commandIssued(
+              houseId,
+              command.fleetId,
+              $command.commandType,
+              systemId = command.targetSystem,
+            )
           )
-        )
 
-  # Step 2: Add PERSISTENT orders from previous turns (not overridden)
-  for fleetId, persistentOrder in state.fleetCommands:
-    if fleetId in newCommandsThisTurn:
-      continue # Overridden by new order
-
-    let fleetOpt = state.fleet(fleetId)
-    if fleetOpt.isNone:
-      continue # Fleet no longer exists
-
-    # Only process orders matching the category filter
-    if not categoryFilter(persistentOrder.commandType):
+  # Step 2: Add PERSISTENT commands from previous turns (not overridden)
+  for fleet in state.allFleets():
+    # Skip if overridden by new command this turn
+    if fleet.id in newCommandsThisTurn:
       continue
 
-    let fleet = fleetOpt.get()
-    allFleetCommands.add((fleet.houseId, persistentOrder))
+    # Skip if no command assigned
+    if fleet.command.isNone:
+      continue
+
+    let persistentCommand = fleet.command.get()
+
+    # Only process commands matching the category filter
+    if not categoryFilter(persistentCommand.commandType):
+      continue
+
+    allFleetCommands.add((fleet.houseId, persistentCommand))
 
   # Sort by priority
   allFleetCommands.sort do(a, b: (HouseId, FleetCommand)) -> int:
@@ -299,7 +348,14 @@ proc performCommandMaintenance*(
               targetFleet: none(FleetId),
               priority: command.priority,
             )
-            state.fleetCommands[command.fleetId] = actualOrder
+
+            # Assign fallback command to fleet (entity-manager pattern)
+            var updatedFleet = fleet
+            updatedFleet.command = some(actualOrder)
+            updatedFleet.missionState = MissionState.Traveling
+            updatedFleet.missionTarget = safeDestination
+            state.updateFleet(command.fleetId, updatedFleet)
+
             logInfo(
               "Fleet",
               &"Fleet {command.fleetId} mission aborted - seeking home ({validation.reason})",
@@ -312,7 +368,14 @@ proc performCommandMaintenance*(
               targetFleet: none(FleetId),
               priority: command.priority,
             )
-            state.fleetCommands[command.fleetId] = actualOrder
+
+            # Assign fallback command to fleet (entity-manager pattern)
+            var updatedFleet = fleet
+            updatedFleet.command = some(actualOrder)
+            updatedFleet.missionState = MissionState.None
+            updatedFleet.missionTarget = some(fleet.location)
+            state.updateFleet(command.fleetId, updatedFleet)
+
             logWarn(
               "Fleet",
               &"Fleet {command.fleetId} mission aborted - holding position ({validation.reason})",

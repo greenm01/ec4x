@@ -57,10 +57,6 @@ type
 
     counters*: IdCounters
 
-    # Command tracking
-    fleetCommands*: Table[FleetId, FleetCommand]
-    standingCommands*: Table[FleetId, StandingCommand]
-
     # Phase-specific state
     activeSpyMissions*: Table[FleetId, ActiveSpyMission]
     ongoingEffects*: seq[OngoingEffect]

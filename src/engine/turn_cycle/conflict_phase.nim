@@ -38,6 +38,7 @@ import ../systems/combat/orchestrator
 import ../systems/espionage/resolution as espionage_resolution
 import ../systems/colony/colonization
 import ../intel/starbase_surveillance
+import ../systems/fleet/execution as fleet_order_execution
 
 proc resolveConflictPhase*(
     state: var GameState,
@@ -51,87 +52,9 @@ proc resolveConflictPhase*(
   logInfo("Conflict", "=== Conflict Phase ===", "turn=", state.turn)
   logInfo("Conflict", "Using RNG for combat resolution", "seed=", state.turn)
 
-  # Start with current turn commands (will merge state.fleetCommands below)
-  var effectiveCommands = commands
-
-  # ===================================================================
-  # STEP 0: MERGE ACTIVE FLEET ORDERS (from state.fleetCommands)
-  # ===================================================================
-  # Per ec4x_canonical_turn_cycle.md:94-113 (Conflict Phase Step 0)
-  #
-  # Universal Order Lifecycle:
-  #   1. Command Phase Part C: Orders validated → state.fleetCommands
-  #   2. Production Phase Step 1a: Standing orders generated → state.fleetCommands  
-  #   3. Production Phase Step 1c: Fleets move toward targets
-  #   4. Production Phase Step 1d: Arrivals detected → state.arrivedFleets
-  #   5. Conflict Phase Step 0: Commands merged for execution ← YOU ARE HERE
-  #   6. Conflict Phase Steps 1-6: Commands execute
-  #
-  # state.fleetCommands contains:
-  #   - Active orders (player submission, Command Phase Part C)
-  #   - Standing orders (condition-generated, Production Phase Step 1a)
-  #
-  # Both types follow same lifecycle, stored in same table for consistency.
-  # Only merge orders that execute in Conflict Phase (skip Move, Patrol, Salvage).
-  logInfo("Orders",
-    "[CONFLICT STEP 0] Merging fleet orders for Conflict Phase execution",
-    "total_orders=", state.fleetCommands.len)
-
-  var mergedFleetOrderCount = 0
-  for fleetId, fleetCommand in state.fleetCommands:
-    # Only merge orders that execute in Conflict Phase
-    # Skip orders that execute in other phases:
-    # - Movement orders (Move, Patrol, etc.): Execute in Production Phase
-    # - Salvage: Executes in Income Phase
-    const movementOrders = [
-      FleetCommandType.Move, FleetCommandType.Patrol, FleetCommandType.SeekHome
-    ]
-    if fleetCommand.commandType in movementOrders or
-        fleetCommand.commandType == FleetCommandType.Salvage:
-      continue
-
-    # Find fleet owner
-    let fleetOpt = state.fleet(fleetId)
-    if fleetOpt.isNone:
-      logDebug("Orders", "  [SKIP] Fleet no longer exists", "fleetId=", fleetId)
-      continue
-
-    let fleetOwner = fleetOpt.get().houseId
-
-    # Ensure owner has command packet
-    if fleetOwner notin effectiveCommands:
-      # STUB: Create minimal command packet for merged commands
-      # This section will be removed once we fully transition to Fleet.command
-      effectiveCommands[fleetOwner] = command.CommandPacket(
-        houseId: fleetOwner,
-        turn: state.turn,
-        treasury: 0,
-        fleetCommands: @[],
-        buildCommands: @[],
-        researchAllocation: tech_types.ResearchAllocation(
-          economic: 0,
-          science: 0,
-          technology: initTable[TechField, int32]()
-        ),
-        diplomaticCommand: @[],
-        populationTransfers: @[],
-        terraformCommands: @[],
-        colonyManagement: @[],
-        standingCommands: initTable[FleetId, StandingCommand](),
-        espionageAction: none(esp_types.EspionageAttempt),
-        ebpInvestment: 0,
-        cipInvestment: 0,
-      )
-
-    # Add fleet command to owner's commands
-    effectiveCommands[fleetOwner].fleetCommands.add(fleetCommand)
-    mergedFleetOrderCount += 1
-    logDebug("Orders", "  [MERGE] Command from fleet",
-      "type=", fleetCommand.commandType,
-      " fleetId=", fleetId, " owner=", fleetOwner)
-
-  logInfo("Orders", "Active fleet orders merged",
-    "conflict_orders=", mergedFleetOrderCount)
+  # Commands are already stored in Fleet.command field (entity-manager pattern)
+  # No merge step needed - commands passed directly from Command Phase
+  let effectiveCommands = commands
 
   # Find all systems where combat should occur based on diplomatic status and commands.
   # Use effectiveCommands (includes merged queued combat commands)
@@ -364,3 +287,23 @@ proc resolveConflictPhase*(
   var survRng = initRand(state.turn + 12345) # Unique seed for surveillance
   state.processAllStarbaseSurveillance(state.turn, survRng)
   logInfo("Espionage", "[CONFLICT STEP 6c] Completed starbase surveillance")
+
+  # ===================================================================
+  # STEP 7: ADMINISTRATIVE COMPLETION (Conflict Commands)
+  # ===================================================================
+  # Handle administrative completion for commands that finish during Conflict Phase:
+  # - Combat commands: Patrol, Guard*, Blockade, Bombard, Invade, Blitz
+  #   (behavior already handled in combat resolution Steps 1-4)
+  # - Colonization: Colonize (already handled in Step 5)
+  # - Espionage: SpyColony, SpySystem, HackStarbase (already handled in Steps 6a/6b)
+  #
+  # This step marks commands complete after combat/colonization/espionage resolves
+  # Note: This is NOT command execution - effects already happened in Steps 1-6
+  # Commands are behavior parameters that already determined fleet/mission actions
+  logInfo("Conflict", "[CONFLICT STEP 7] Administrative completion for Conflict commands...")
+  fleet_order_execution.performCommandMaintenance(
+    state, arrivedOrders, events, rng,
+    fleet_order_execution.isConflictCommand,
+    "Conflict Phase Step 7"
+  )
+  logInfo("Conflict", "[CONFLICT STEP 7] Administrative completion complete")

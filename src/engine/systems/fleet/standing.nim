@@ -30,6 +30,27 @@ type ActivationResult* = object ## Result of standing command activation attempt
   updatedParams*: Option[StandingCommandParams] # Updated params (e.g., patrol index)
 
 # =============================================================================
+# Entity-Manager Pattern Helpers
+# =============================================================================
+
+proc assignFleetCommand*(
+    state: var GameState, fleetId: FleetId, command: FleetCommand
+): bool =
+  ## Assign a command to a fleet using entity-manager pattern
+  ## Updates fleet.command, missionState, and missionTarget fields
+  ## Returns true if successful, false if fleet doesn't exist
+  let fleetOpt = state.fleet(fleetId)
+  if fleetOpt.isNone:
+    return false
+
+  var updatedFleet = fleetOpt.get()
+  updatedFleet.command = some(command)
+  updatedFleet.missionState = MissionState.Traveling
+  updatedFleet.missionTarget = command.targetSystem
+  state.updateFleet(fleetId, updatedFleet)
+  return true
+
+# =============================================================================
 # Fog-of-War Helpers (DRY Principle)
 # =============================================================================
 
@@ -193,7 +214,7 @@ proc activatePatrolRoute(
   newParams.patrolIndex = int32((currentIndex + 1) mod params.patrolSystems.len)
 
   # Store order for execution
-  state.fleetCommands[fleetId] = moveOrder
+  discard assignFleetCommand(state, fleetId, moveOrder)
 
   logInfo(
     "Orders",
@@ -247,7 +268,7 @@ proc activateDefendSystem(
       targetSystem: some(targetSystem),
       priority: 100,
     )
-    state.fleetCommands[fleetId] = guardOrder
+    discard assignFleetCommand(state, fleetId, guardOrder)
 
     logInfo(
       "Orders",
@@ -276,7 +297,7 @@ proc activateDefendSystem(
       targetSystem: some(targetSystem),
       priority: 100,
     )
-    state.fleetCommands[fleetId] = moveOrder
+    discard assignFleetCommand(state, fleetId, moveOrder)
 
     logInfo(
       "Orders",
@@ -292,7 +313,7 @@ proc activateDefendSystem(
     targetSystem: none(SystemId),
     priority: 100,
   )
-  state.fleetCommands[fleetId] = holdOrder
+  discard assignFleetCommand(state, fleetId, holdOrder)
 
   logInfo(
     "Orders",
@@ -632,7 +653,7 @@ proc activateAutoRepair(
       targetSystem: none(SystemId),
       priority: 100,
     )
-    state.fleetCommands[fleetId] = holdOrder
+    discard assignFleetCommand(state, fleetId, holdOrder)
 
     return ActivationResult(success: true, action: "Hold (fleet healthy)")
 
@@ -681,7 +702,7 @@ proc activateAutoRepair(
       targetSystem: none(SystemId),
       priority: 100,
     )
-    state.fleetCommands[fleetId] = holdOrder
+    discard assignFleetCommand(state, fleetId, holdOrder)
 
     return ActivationResult(success: true, action: &"Hold at shipyard (repairing)")
 
@@ -698,7 +719,7 @@ proc activateAutoRepair(
     targetSystem: some(targetSystem),
     priority: 100,
   )
-  state.fleetCommands[fleetId] = moveOrder
+  discard assignFleetCommand(state, fleetId, moveOrder)
 
   return ActivationResult(
     success: true, action: &"Return to shipyard at system-{targetSystem}"
@@ -813,7 +834,7 @@ proc activateAutoReinforce(
       targetSystem: none(SystemId),
       priority: 100,
     )
-    state.fleetCommands[fleetId] = holdOrder
+    discard assignFleetCommand(state, fleetId, holdOrder)
 
     return ActivationResult(success: true, action: "Hold (no damaged fleets)")
 
@@ -832,7 +853,7 @@ proc activateAutoReinforce(
       targetFleet: some(targetId),
       priority: 100,
     )
-    state.fleetCommands[fleetId] = joinOrder
+    discard assignFleetCommand(state, fleetId, joinOrder)
 
     return ActivationResult(success: true, action: &"Join fleet {targetId}")
 
@@ -849,7 +870,7 @@ proc activateAutoReinforce(
     targetSystem: some(targetFleetLocation),
     priority: 100,
   )
-  state.fleetCommands[fleetId] = moveOrder
+  discard assignFleetCommand(state, fleetId, moveOrder)
 
   return ActivationResult(success: true, action: &"Move to reinforce {targetId}")
 
@@ -911,7 +932,7 @@ proc activateBlockadeTarget(
       targetSystem: some(targetSystem),
       priority: 100,
     )
-    state.fleetCommands[fleetId] = blockadeOrder
+    discard assignFleetCommand(state, fleetId, blockadeOrder)
 
     return ActivationResult(
       success: true, action: &"Blockade colony at system-{targetSystem}"
@@ -940,7 +961,7 @@ proc activateBlockadeTarget(
     targetSystem: some(targetSystem),
     priority: 100,
   )
-  state.fleetCommands[fleetId] = moveOrder
+  discard assignFleetCommand(state, fleetId, moveOrder)
 
   return ActivationResult(
     success: true, action: &"Move to blockade target at system-{targetSystem}"
@@ -953,11 +974,14 @@ proc activateBlockadeTarget(
 proc resetStandingCommandGracePeriod*(state: var GameState, fleetId: FleetId) =
   ## Reset activation delay countdown when explicit order completes
   ## Gives player time to issue new orders before standing command reactivates
-  ## Called after every order completion (via state.fleetCommands.del)
-  if fleetId in state.standingCommands:
-    var standingOrder = state.standingCommands[fleetId]
+  ## Called after every order completion
+  let fleetOpt = state.fleet(fleetId)
+  if fleetOpt.isSome and fleetOpt.get().standingCommand.isSome:
+    var updatedFleet = fleetOpt.get()
+    var standingOrder = updatedFleet.standingCommand.get()
     standingOrder.turnsUntilActivation = standingOrder.activationDelayTurns
-    state.standingCommands[fleetId] = standingOrder
+    updatedFleet.standingCommand = some(standingOrder)
+    state.updateFleet(fleetId, updatedFleet)
     logDebug(
       "Orders",
       &"Fleet {fleetId} standing command grace period reset to " &
@@ -1022,8 +1046,8 @@ proc activateStandingCommands*(
   for fleet in state.allFleets():
     let fleetId = fleet.id
     # Skip if fleet has explicit order this turn
-    if fleetId in state.fleetCommands:
-      let explicitOrder = state.fleetCommands[fleetId]
+    if fleet.command.isSome:
+      let explicitOrder = fleet.command.get()
       logDebug(
         "Orders",
         &"{fleetId} has explicit order ({explicitOrder.commandType}), " &
@@ -1032,10 +1056,12 @@ proc activateStandingCommands*(
       skippedCount += 1
 
       # Reset activation countdown when explicit order exists
-      if fleetId in state.standingCommands:
-        var standingOrder = state.standingCommands[fleetId]
+      if fleet.standingCommand.isSome:
+        var updatedFleet = fleet
+        var standingOrder = fleet.standingCommand.get()
         standingOrder.turnsUntilActivation = standingOrder.activationDelayTurns
-        state.standingCommands[fleetId] = standingOrder
+        updatedFleet.standingCommand = some(standingOrder)
+        state.updateFleet(fleetId, updatedFleet)
 
         # Emit StandingOrderSuspended event (suspended by explicit order)
         events.add(
@@ -1051,7 +1077,7 @@ proc activateStandingCommands*(
       continue
 
     # Check for standing command
-    if fleetId notin state.standingCommands:
+    if fleet.standingCommand.isNone:
       logDebug(
         "Orders",
         &"{fleetId} (owner: {fleet.houseId}) has no standing command assigned, skipping",
@@ -1059,7 +1085,7 @@ proc activateStandingCommands*(
       noStandingOrderCount += 1
       continue
 
-    var standingOrder = state.standingCommands[fleetId]
+    var standingOrder = fleet.standingCommand.get()
 
     # TODO: Skip if suspended or disabled (fields need to be added to StandingCommand type)
     # if standingOrder.suspended:
@@ -1075,7 +1101,9 @@ proc activateStandingCommands*(
     if standingOrder.turnsUntilActivation > 0:
       # Decrement countdown
       standingOrder.turnsUntilActivation -= 1
-      state.standingCommands[fleetId] = standingOrder
+      var updatedFleet = fleet
+      updatedFleet.standingCommand = some(standingOrder)
+      state.updateFleet(fleetId, updatedFleet)
       logDebug(
         "Orders",
         &"{fleetId} standing command waiting {standingOrder.turnsUntilActivation} more turn(s)",
@@ -1093,10 +1121,11 @@ proc activateStandingCommands*(
         &"{fleetId} activated {standingOrder.commandType}: {result.action}",
       )
 
-      # Get generated fleet order type
+      # Get generated fleet order type (read from fleet entity after activation)
+      let updatedFleetOpt = state.fleet(fleetId)
       let generatedOrderType =
-        if fleetId in state.fleetCommands:
-          $state.fleetCommands[fleetId].commandType
+        if updatedFleetOpt.isSome and updatedFleetOpt.get().command.isSome:
+          $updatedFleetOpt.get().command.get().commandType
         else:
           "None"
 
@@ -1125,7 +1154,11 @@ proc activateStandingCommands*(
       if result.updatedParams.isSome:
         updatedOrder.params = result.updatedParams.get()
 
-      state.standingCommands[fleetId] = updatedOrder
+      # Update standing command on fleet entity
+      if updatedFleetOpt.isSome:
+        var fleetToUpdate = updatedFleetOpt.get()
+        fleetToUpdate.standingCommand = some(updatedOrder)
+        state.updateFleet(fleetId, fleetToUpdate)
     elif result.error == "Not yet implemented":
       notImplementedCount += 1
       logDebug(

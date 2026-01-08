@@ -25,7 +25,9 @@ type
     location*: SystemId # Current system location
     status*: FleetStatus # Operational status (active/reserve/mothballed)
     roe*: int32 # Rules of Engagement (0-10, default 6 = engage if equal)
-    command*: Option[FleetCommand]
+    # Command tracking (entity-manager pattern - data lives on entity)
+    command*: Option[FleetCommand] # Active command (player OR standing-generated)
+    standingCommand*: Option[StandingCommand] # Persistent behavior configuration
     # Mission state trackers
     missionState*: MissionState # mission state
     missionTarget*: Option[SystemId] # Target system for mission
@@ -93,6 +95,14 @@ type
     blockadeTargetColony*: Option[ColonyId]
     reinforceTarget*: Option[FleetId]
     repairThreshold*: float32
+
+  StandingCommand* = object
+    ## Persistent fleet behavior configuration (entity-manager pattern)
+    ## Stored on Fleet.standingCommand field, NOT in global table
+    commandType*: StandingCommandType
+    params*: StandingCommandParams
+    turnsUntilActivation*: int32
+    activationDelayTurns*: int32
 
   ActivationResult* = object ## Result of standing command activation attempt
     success*: bool
