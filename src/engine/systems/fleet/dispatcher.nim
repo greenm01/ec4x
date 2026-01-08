@@ -3,7 +3,7 @@
 ## Routes commands to appropriate handlers based on command type
 
 import std/[options, tables, strformat]
-import ../../types/[core, fleet, ship, game_state, event, diplomacy, espionage]
+import ../../types/[core, fleet, ship, game_state, event, diplomacy]
 import ../../state/[engine as state_module, iterators, fleet_queries]
 import ../../intel/detection
 import ../../event_factory/init as event_factory

@@ -134,11 +134,11 @@ proc shouldHouseSeeEvent*(
     return false
 
   # Order events - private to house
-  of GameEventType.OrderRejected,
-      GameEventType.OrderIssued,
-      GameEventType.OrderCompleted,
-      GameEventType.OrderFailed,
-      GameEventType.OrderAborted,
+  of GameEventType.CommandRejected,
+      GameEventType.CommandIssued,
+      GameEventType.CommandCompleted,
+      GameEventType.CommandFailed,
+      GameEventType.CommandAborted,
       GameEventType.FleetArrived,
       # Phase 7b: Fleet reorganization events (zero-turn commands)
       GameEventType.FleetMerged,

@@ -295,7 +295,7 @@ proc performCommandMaintenance*(
     cmp(a[1].priority, b[1].priority)
 
   logDebug(
-    "Commands", &"[{phas commands"
+    "Commands", &"[{phaseDescription}] Processing {allFleetCommands.len} commands"
   )
 
   # Track which fleets have already executed commands this turn

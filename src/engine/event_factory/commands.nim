@@ -19,7 +19,7 @@ proc orderRejected*(
 ): event_types.GameEvent =
   ## Create event for rejected command (validation failure)
   event_types.GameEvent(
-    eventType: event_types.GameEventType.OrderRejected,
+    eventType: event_types.GameEventType.CommandRejected,
     houseId: some(houseId),
     systemId: systemId,
     description: &"{orderType} command rejected: {reason}",
@@ -37,7 +37,7 @@ proc commandFailed*(
 ): event_types.GameEvent =
   ## Order execution failed (validation failure at execution time)
   event_types.GameEvent(
-    eventType: event_types.GameEventType.OrderFailed,
+    eventType: event_types.GameEventType.CommandFailed,
     houseId: some(houseId),
     systemId: systemId,
     description: &"Fleet {fleetId} {orderType} failed: {reason}",
@@ -55,7 +55,7 @@ proc commandAborted*(
 ): event_types.GameEvent =
   ## Order cancelled/aborted (target lost, conditions changed)
   event_types.GameEvent(
-    eventType: event_types.GameEventType.OrderAborted,
+    eventType: event_types.GameEventType.CommandAborted,
     houseId: some(houseId),
     systemId: systemId,
     description: &"Fleet {fleetId} {orderType} aborted: {reason}",
@@ -72,7 +72,7 @@ proc commandIssued*(
 ): event_types.GameEvent =
   ## Order submitted and added to fleet commands queue
   event_types.GameEvent(
-    eventType: event_types.GameEventType.OrderIssued,
+    eventType: event_types.GameEventType.CommandIssued,
     houseId: some(houseId),
     systemId: systemId,
     description: &"Fleet {fleetId}: Command issued - {orderType}",
@@ -95,7 +95,7 @@ proc commandCompleted*(
       &"Fleet {fleetId} {orderType} completed"
 
   event_types.GameEvent(
-    eventType: event_types.GameEventType.OrderCompleted,
+    eventType: event_types.GameEventType.CommandCompleted,
     houseId: some(houseId),
     systemId: systemId,
     description: desc,

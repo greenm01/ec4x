@@ -8,7 +8,7 @@
 ## - 7 espionage actions with varying costs and effects
 ## - Detection system with CIC levels
 import std/options
-import ./[core, prestige, fleet]
+import ./[core, prestige]
 
 type
   EspionageAction* {.pure.} = enum

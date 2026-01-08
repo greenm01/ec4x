@@ -38,23 +38,16 @@
 ## - Auto-loading fighters to carriers (separate function)
 ## - Construction queue advancement (happens in Maintenance Phase)
 
-import std/[tables, options, strformat, strutils]
+import std/[tables, options, strformat, strutils, sequtils]
 import ../../types/[core, game_state, production, event, ground_unit, combat]
 import ../../types/[ship, colony, fleet, facilities]
-import ../../state/[engine, id_gen]
-import ../../config/[ground_units_config, facilities_config]
-import ../../entities/[neoria_ops, kastra_ops, ground_unit_ops, ship_ops, fleet_ops]
+import ../../state/[engine, id_gen, iterators]
+import ../../entities/[neoria_ops, kastra_ops, ship_ops, fleet_ops]
 import ../../globals
+import ../../utils
 import ../../../common/logger
 import ../capacity/carrier_hangar
 import ../../event_factory/init as event_factory
-
-# Temporary inline version until research/effects is fixed
-proc calculateEffectiveDocks(baseDocks: int, cstLevel: int): int =
-  ## Calculate effective dock capacity with CST multiplier
-  ## CST provides +10% capacity per level above 1
-  let multiplier = 1.0 + (float(cstLevel - 1) * 0.10)
-  result = int(float(baseDocks) * multiplier)
 
 # Helper functions using DoD patterns
 proc getOperationalStarbaseCount*(state: GameState, colonyId: ColonyId): int =
@@ -149,14 +142,10 @@ proc autoLoadFightersToCarriers(
 
     let systemId = colony.systemId
 
-    # Find fleets at this system
-    if systemId notin state.fleets.bySystem:
-      continue
-
     # Get all carriers in fleets at this system with available space
-    var carriersWithSpace: seq[tuple[carrierId: ShipId, availableSpace: int]] = @[]
+    var carriersWithSpace: seq[tuple[carrierId: ShipId, availableSpace: int32]] = @[]
 
-    for fleet in state.fleetsInSystem(systemId):
+    for fleet in state.fleetsAtSystem(systemId):
       # Only load onto friendly fleets
       if fleet.houseId != colony.owner:
         continue
@@ -201,7 +190,7 @@ proc autoLoadFightersToCarriers(
         let colonyOpt = state.colony(colonyId)
         if colonyOpt.isSome:
           var updatedColony = colonyOpt.get()
-          updatedColony.fighterIds.keepIf(proc(id: ShipId): bool = id != fighterId)
+          updatedColony.fighterIds = updatedColony.fighterIds.filterIt(it != fighterId)
           state.updateColony(colonyId, updatedColony)
 
         loadedToThisCarrier += 1
@@ -249,20 +238,6 @@ proc commissionPlanetaryDefense*(
 
   # Use same modified colonies pattern as original function
   var modifiedColonies = initTable[ColonyId, Colony]()
-
-  template getColony(colId: ColonyId): Colony =
-    if colId in modifiedColonies:
-      modifiedColonies[colId]
-    else:
-      let opt = state.colony(colId)
-      if opt.isSome:
-        opt.get()
-      else:
-        # Return default colony if not found (shouldn't happen)
-        Colony()
-
-  template saveColony(colId: ColonyId, col: Colony) =
-    modifiedColonies[colId] = col
 
   for completed in completedProjects:
     logInfo(
@@ -359,13 +334,9 @@ proc commissionPlanetaryDefense*(
         let colony = colonyOpt.get()
 
         # Create new spaceport (docks from facilities_config.toml, scaled by CST)
-        let baseDocks = globalFacilitiesConfig.facilities[FacilityClass.Spaceport].docks
         let houseOpt = state.house(colony.owner)
         if houseOpt.isNone:
           continue
-        let house = houseOpt.get()
-        let cstLevel = house.techTree.levels.constructionTech
-        let effectiveDocks = calculateEffectiveDocks(baseDocks, cstLevel)
 
         # Create Neoria (production facility)
         var updatedColony = colony
@@ -400,13 +371,9 @@ proc commissionPlanetaryDefense*(
           continue
 
         # Create new shipyard (docks from facilities_config.toml, scaled by CST)
-        let baseDocks = globalFacilitiesConfig.facilities[FacilityClass.Shipyard].docks
         let houseOpt = state.house(colony.owner)
         if houseOpt.isNone:
           continue
-        let house = houseOpt.get()
-        let cstLevel = house.techTree.levels.constructionTech
-        let effectiveDocks = calculateEffectiveDocks(baseDocks, cstLevel)
 
         # Create Neoria (production facility)
         var updatedColony = colony
@@ -441,13 +408,9 @@ proc commissionPlanetaryDefense*(
           continue
 
         # Create new drydock (docks from facilities_config.toml, scaled by CST)
-        let baseDocks = globalFacilitiesConfig.facilities[FacilityClass.Drydock].docks
         let houseOpt = state.house(colony.owner)
         if houseOpt.isNone:
           continue
-        let house = houseOpt.get()
-        let cstLevel = house.techTree.levels.constructionTech
-        let effectiveDocks = calculateEffectiveDocks(baseDocks, cstLevel)
 
         # Create Neoria (production facility)
         var updatedColony = colony
@@ -470,11 +433,6 @@ proc commissionPlanetaryDefense*(
         if colonyOpt.isNone:
           continue
         let colony = colonyOpt.get()
-
-        # Create ground battery using entity helper
-        let battery = ground_unit_ops.createGroundUnit(
-          state, colony.owner, completed.colonyId, GroundClass.GroundBattery
-        )
 
         # Get updated colony for count
         let updatedColonyOpt = state.colony(completed.colonyId)
@@ -502,11 +460,6 @@ proc commissionPlanetaryDefense*(
         if colonyOpt.isNone:
           continue
         var colony = colonyOpt.get()
-
-        # Create PlanetaryShield ground unit (shield level from house SLD tech)
-        let shieldUnit = ground_unit_ops.createGroundUnit(
-          state, colony.owner, completed.colonyId, GroundClass.PlanetaryShield
-        )
 
         # Get house SLD tech level for logging
         let houseOpt = state.house(colony.owner)
@@ -536,8 +489,8 @@ proc commissionPlanetaryDefense*(
         var colony = colonyOpt.get()
 
         # Get population cost from config
-        let marinePopCost = globalGroundUnitsConfig.units[GroundClass.Marine].population_cost
-        let minViablePop = population_config.minViablePopulation()
+        let marinePopCost = gameConfig.groundUnits.units[GroundClass.Marine].populationCost
+        let minViablePop = minViablePopulation()
 
         if colony.souls < marinePopCost:
           logWarn(
@@ -552,11 +505,6 @@ proc commissionPlanetaryDefense*(
               &"({colony.souls - marinePopCost} < {minViablePop} souls)",
           )
         else:
-          # Create marine ground unit using entity helper
-          let marine = ground_unit_ops.createGroundUnit(
-            state, colony.owner, completed.colonyId, GroundClass.Marine
-          )
-
           # Get colony again to deduct population (createGroundUnit updated it)
           let colonyOpt2 = state.colony(completed.colonyId)
           if colonyOpt2.isSome:
@@ -591,8 +539,8 @@ proc commissionPlanetaryDefense*(
         var colony = colonyOpt.get()
 
         # Get population cost from config
-        let armyPopCost = globalGroundUnitsConfig.units[GroundClass.Army].population_cost
-        let minViablePop = population_config.minViablePopulation()
+        let armyPopCost = gameConfig.groundUnits.units[GroundClass.Army].populationCost
+        let minViablePop = minViablePopulation()
 
         if colony.souls < armyPopCost:
           logWarn(
@@ -607,11 +555,6 @@ proc commissionPlanetaryDefense*(
               &"({colony.souls - armyPopCost} < {minViablePop} souls)",
           )
         else:
-          # Create army ground unit using entity helper
-          let army = ground_unit_ops.createGroundUnit(
-            state, colony.owner, completed.colonyId, GroundClass.Army
-          )
-
           # Get colony again to deduct population (createGroundUnit updated it)
           let colonyOpt2 = state.colony(completed.colonyId)
           if colonyOpt2.isSome:
@@ -661,7 +604,7 @@ proc commissionScout(
   # 1. Find existing scout fleet at this location, or create new one
   var scoutFleetId: FleetId = FleetId(0)
 
-  for fleet in state.fleetsInSystem(systemId):
+  for fleet in state.fleetsAtSystem(systemId):
     if fleet.houseId != owner:
       continue
 
@@ -714,7 +657,7 @@ proc commissionCapitalShip(
   # 1. Find existing combat fleet at this location, or create new one
   var combatFleetId: FleetId = FleetId(0)
 
-  for fleet in state.fleetsInSystem(systemId):
+  for fleet in state.fleetsAtSystem(systemId):
     if fleet.houseId != owner:
       continue
 

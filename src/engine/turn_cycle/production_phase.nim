@@ -31,46 +31,38 @@
 ## - Military units (ships) are stored and commissioned next turn (Command Phase Part A)
 ## - Fleet movement positions units for next turn's Conflict Phase
 
-import
-  std/[tables, options, strformat, strutils, algorithm, sequtils, random, sets, hashes]
-import ../../../common/[types/core, types/units, types/tech, types/combat]
-import ../../gamestate, ../../orders, ../../logger, ../../starmap
-import ../../index_maintenance
-import ../../order_types
-import ../fleet_order_execution # For movement command execution
-import ../../economy/[types as econ_types, engine as econ_engine, facility_queue]
-import ../../research/[types as res_types, advancement]
-import ../commissioning # For planetary defense commissioning
-import ../../espionage/[types as esp_types]
-import ../../diplomacy/[proposals as dip_proposals]
-import ../../population/[types as pop_types]
-import ../../config/[gameplay_config, population_config]
-import ../[types as res_types_common]
-import ../fleet_orders # For findClosestOwnedColony
-import ../diplomatic_resolution
-import ../event_factory/init as event_factory
-import ../../prestige
-import ../../fleet # For scout detection helpers
-import ../../intelligence/[types as intel_types, generator] # For intel generation
-import ../../colony/terraforming # For processTerraformingProjects
-import ../../population/transfers as pop_transfers # For resolvePopulationArrivals
+import std/[tables, options, strformat, random, sets, hashes]
+import ../../common/logger
+import ../types/[core, game_state, fleet, event, command, production, starmap, tech, intel, house, prestige]
+import ../state/[engine, iterators, fleet_queries]
+import ../entities/fleet_ops
+import ../systems/fleet/[execution, movement]
+import ../systems/production/[commissioning, queue_advancement, projects]
+import ../systems/diplomacy/resolution
+import ../systems/population/transfers
+import ../systems/colony/terraforming
+import ../systems/tech/advancement
+import ../prestige/engine
+import ../event_factory/[commands, intel, init as event_factory, victory]
+import ../intel/generator
+import ../starmap as starmap_module
 
 proc resolveProductionPhase*(
     state: var GameState,
     events: var seq[GameEvent],
     orders: Table[HouseId, CommandPacket],
     rng: var Rand,
-): seq[econ_types.CompletedProject] =
+): seq[CompletedProject] =
   ## Phase 4: Upkeep, effect decrements, and diplomatic status updates
   ## Returns completed projects for commissioning in next turn's Command Phase
-  logInfo(LogCategory.lcCommands, &"=== Production Phase === (turn={state.turn})")
+  logInfo("Production", &"=== Production Phase === (turn={state.turn})")
 
   result = @[] # Will collect completed projects from construction queues
 
   # Build set of fleets with completed commands for O(1) lookup in Step 1a
   var completedFleetCommands = initHashSet[FleetId]()
   for event in events:
-    if event.eventType == res_types_common.GameEventType.CommandCompleted and
+    if event.eventType == GameEventType.CommandCompleted and
         event.fleetId.isSome:
       completedFleetCommands.incl(event.fleetId.get())
 
@@ -87,7 +79,7 @@ proc resolveProductionPhase*(
       persistentCommandCount += 1
 
   logInfo(
-    LogCategory.lcCommands,
+    "Production",
     &"[PRODUCTION STEP 1a] Moving fleets toward command targets... ({persistentCommandCount} persistent commands)",
   )
 
@@ -113,16 +105,16 @@ proc resolveProductionPhase*(
 
     # Check 1: Skip if command already completed this turn (event-based)
     if fleetId in completedFleetCommands:
-      logDebug(LogCategory.lcCommands, &"  {fleetId} command completed, no movement needed")
+      logDebug("Production", &"  {fleetId} command completed, no movement needed")
       continue
 
     # Check 2: Skip if fleet already at target
     if fleet.location == targetSystem:
-      logDebug(LogCategory.lcCommands, &"  {fleetId} already at target {targetSystem}")
+      logDebug("Production", &"  {fleetId} already at target {targetSystem}")
       continue
 
     logDebug(
-      LogCategory.lcCommands,
+      "Production",
       &"  Moving {fleetId} toward {targetSystem} for {persistentCommand.commandType} command",
     )
 
@@ -131,11 +123,11 @@ proc resolveProductionPhase*(
     # - Fleet with crippled ships: Major lanes only (via canFleetTraverseLane)
     # - Fleet with ETACs/TroopTransports: Major + Minor lanes only
     # - Fleet with no restrictions: All lanes available
-    let pathResult = state.starMap.findPath(fleet.location, targetSystem, fleet)
+    let pathResult = state.findPath(fleet.location, targetSystem, fleet)
 
     if not pathResult.found or pathResult.path.len == 0:
       logWarn(
-        LogCategory.lcCommands,
+        "Production",
         &"  No path found for {fleetId} from {fleet.location} to {targetSystem} (lane restrictions may apply)",
       )
       continue
@@ -150,7 +142,8 @@ proc resolveProductionPhase*(
 
       # Check ownership of all systems in path
       for systemId in pathResult.path:
-        if systemId notin state.colonies or state.colonies[systemId].owner != fleet.owner:
+        let colonyOpt = state.colonyBySystem(systemId)
+        if colonyOpt.isNone or colonyOpt.get().owner != fleet.houseId:
           allSystemsOwned = false
           break
 
@@ -172,18 +165,16 @@ proc resolveProductionPhase*(
     let jumpsToMove = min(maxJumps, pathResult.path.len - 1)
     let newLocation = pathResult.path[jumpsToMove]
 
-    # Update fleet location
-    let oldLocation = fleet.location
-    state.updateFleetLocation(fleetId, oldLocation, newLocation)
-    state.fleets[fleetId].location = newLocation
+    # Update fleet location (uses entity_ops to maintain indexes)
+    fleet_ops.moveFleet(state, fleetId, newLocation)
     fleetsMovedCount += 1
 
     logDebug(
-      LogCategory.lcCommands, &"  Moved {fleetId} {jumpsToMove} jump(s) to {newLocation}"
+      "Production", &"  Moved {fleetId} {jumpsToMove} jump(s) to {newLocation}"
     )
 
   logInfo(
-    LogCategory.lcCommands,
+    "Production",
     &"[PRODUCTION STEP 1a] Completed ({fleetsMovedCount} fleets moved toward targets)",
   )
 
@@ -195,7 +186,7 @@ proc resolveProductionPhase*(
   # Set missionState = Executing for arrived fleets
   # Generate FleetArrived events for execution in Conflict/Income phases
 
-  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 1b] Detecting fleet arrivals...")
+  logInfo("Production", "[PRODUCTION STEP 1b] Detecting fleet arrivals...")
 
   var arrivedFleetCount = 0
 
@@ -217,7 +208,7 @@ proc resolveProductionPhase*(
     if fleet.location == targetSystem:
       # Generate FleetArrived event
       events.add(
-        event_factory.fleetArrived(
+        fleetArrived(
           fleet.houseId,
           fleetId,
           $command.commandType, # Convert enum to string
@@ -232,12 +223,12 @@ proc resolveProductionPhase*(
       arrivedFleetCount += 1
 
       logDebug(
-        LogCategory.lcCommands,
+        "Production",
         &"  Fleet {fleetId} arrived at {targetSystem} (command: {command.commandType})",
       )
 
   logInfo(
-    LogCategory.lcCommands,
+    "Production",
     &"[PRODUCTION STEP 1b] Completed ({arrivedFleetCount} fleets arrived at targets)",
   )
 
@@ -251,19 +242,18 @@ proc resolveProductionPhase*(
   # Note: This is NOT command execution - it's lifecycle management
   # Commands are behavior parameters that already determined fleet actions
   logInfo(
-    LogCategory.lcCommands,
+    "Production",
     "[PRODUCTION STEP 1c] Administrative completion for Production commands...",
   )
-  fleet_order_execution.performCommandMaintenance(
-    state,
+  state.performCommandMaintenance(
     orders,
     events,
     rng,
-    fleet_order_execution.isProductionCommand,
+    isProductionCommand,
     "Production Phase Step 1c",
   )
   logInfo(
-    LogCategory.lcCommands, "[PRODUCTION STEP 1c] Administrative completion complete"
+    "Production", "[PRODUCTION STEP 1c] Administrative completion complete"
   )
 
   # ===================================================================
@@ -277,14 +267,14 @@ proc resolveProductionPhase*(
   # Intelligence Quality: Visual (only observable data)
 
   logInfo(
-    LogCategory.lcCommands,
+    "Production",
     "[PRODUCTION STEP 1d] Checking for scout-on-scout encounters...",
   )
 
   var scoutDetectionCount = 0
 
   # Check each location for scout encounters (using persistent index)
-  for systemId, fleetIds in state.fleetsByLocation:
+  for systemId, fleetIds in state.fleets.bySystem.pairs:
     # Need at least 2 fleets for detection
     if fleetIds.len < 2:
       continue
@@ -292,11 +282,12 @@ proc resolveProductionPhase*(
     # Filter for scout-only fleets
     var scoutFleets: seq[tuple[id: FleetId, owner: HouseId]] = @[]
     for fleetId in fleetIds:
-      if fleetId notin state.fleets:
+      let fleetOpt = state.fleet(fleetId)
+      if fleetOpt.isNone:
         continue # Skip stale index entry
-      let fleet = state.fleets[fleetId]
-      if fleet.isScoutOnly():
-        scoutFleets.add((id: fleetId, owner: fleet.owner))
+      let fleet = fleetOpt.get()
+      if state.isScoutOnly(fleet):
+        scoutFleets.add((id: fleetId, owner: fleet.houseId))
 
     # Need at least 2 scout fleets for detection
     if scoutFleets.len < 2:
@@ -313,23 +304,24 @@ proc resolveProductionPhase*(
           continue
 
         # Double-check fleets still exist (defensive programming)
-        if observer.id notin state.fleets or target.id notin state.fleets:
+        let observerFleetOpt = state.fleet(observer.id)
+        let targetFleetOpt = state.fleet(target.id)
+        if observerFleetOpt.isNone or targetFleetOpt.isNone:
           continue
 
-        let observerFleet = state.fleets[observer.id]
-        let targetFleet = state.fleets[target.id]
+        let observerFleet = observerFleetOpt.get()
 
-        # Count scout squadrons for detection formula
-        let observerScoutCount = observerFleet.countScoutSquadrons()
-        let targetELI =
-          state.houses[target.owner].techTree.levels.eli
+        # Count scout ships for detection formula (scout-only fleets)
+        let observerScoutCount = state.countScoutShips(observerFleet)
+        let targetHouse = state.house(target.owner).get()
+        let targetELI = targetHouse.techTree.levels.eli
 
         # Detection roll: 1d20 vs (15 - observerScoutCount + targetELI)
         let detectionRoll = rng.rand(1 .. 20)
         let detectionThreshold = 15 - observerScoutCount + targetELI
 
         logDebug(
-          LogCategory.lcCommands,
+          "Production",
           &"  {observer.owner} scouts ({observerScoutCount} sq) roll {detectionRoll} " &
             &"vs {detectionThreshold} to detect {target.owner} scouts at {systemId}",
         )
@@ -338,7 +330,7 @@ proc resolveProductionPhase*(
         if detectionRoll >= detectionThreshold:
           # Generate ScoutDetected event
           events.add(
-            event_factory.scoutDetected(
+            scoutDetected(
               owner = target.owner, # The scout's owner
               detector = observer.owner, # The house that detected
               systemId = systemId,
@@ -347,27 +339,34 @@ proc resolveProductionPhase*(
           )
 
           # Generate Visual quality intel report
-          let intelReport = generator.generateSystemIntelReport(
-            state,
+          let intelReport = state.generateSystemIntelReport(
             observer.owner, # Scout owner (observer)
             systemId,
-            intel_types.IntelQuality.Visual, # Only observable data
+            IntelQuality.Visual, # Only observable data
           )
 
           # Add intel report to observer's database
           if intelReport.isSome:
-            state.houses[observer.owner].intelligence.addSystemReport(intelReport.get())
+            var observerHouse = state.house(observer.owner).get()
+            let package = intelReport.get()
+            observerHouse.intel.systemReports[systemId] = package.report
+            # Also store fleet and ship intel
+            for (fleetId, fleetIntel) in package.fleetIntel:
+              observerHouse.intel.fleetIntel[fleetId] = fleetIntel
+            for (shipId, shipIntel) in package.shipIntel:
+              observerHouse.intel.shipIntel[shipId] = shipIntel
+            state.updateHouse(observer.owner, observerHouse)
 
           scoutDetectionCount += 1
 
           logDebug(
-            LogCategory.lcCommands,
+            "Production",
             &"  {observer.owner} detected {target.owner} scouts at {systemId} " &
               &"(roll: {detectionRoll} >= {detectionThreshold})",
           )
 
   logInfo(
-    LogCategory.lcCommands,
+    "Production",
     &"[PRODUCTION STEP 1d] Completed ({scoutDetectionCount} scout detections)",
   )
 
@@ -375,7 +374,7 @@ proc resolveProductionPhase*(
   # PRODUCTION STEP 2: Construction & Repair Advancement
   # ===================================================================
   logInfo(
-    LogCategory.lcEconomy,
+    "Economy",
     "[PRODUCTION STEP 2] Advancing construction & repair queues...",
   )
 
@@ -385,18 +384,18 @@ proc resolveProductionPhase*(
   # Advance build queues (ships, ground units, facilities)
   # Mark projects as completed
   # Consume PP/RP from treasuries
-  let maintenanceReport = econ_engine.tickConstructionAndRepair(state, events)
+  let queueResults = state.advanceAllQueues()
 
   # -------------------------------------------------------------------
   # STEP 2b: Split Commissioning
   # -------------------------------------------------------------------
   # Planetary Defense: Commission immediately (same turn)
   # Military Units: Store for next turn's Command Phase Part A
-  var planetaryProjects: seq[econ_types.CompletedProject] = @[]
-  var militaryProjects: seq[econ_types.CompletedProject] = @[]
+  var planetaryProjects: seq[CompletedProject] = @[]
+  var militaryProjects: seq[CompletedProject] = @[]
 
-  for project in maintenanceReport.completedProjects:
-    if facility_queue.isPlanetaryDefense(project):
+  for project in queueResults.projects:
+    if project.isPlanetaryDefense():
       planetaryProjects.add(project)
     else:
       militaryProjects.add(project)
@@ -404,10 +403,10 @@ proc resolveProductionPhase*(
   # Commission planetary defense immediately
   if planetaryProjects.len > 0:
     logInfo(
-      LogCategory.lcEconomy,
+      "Economy",
       &"[PRODUCTION STEP 2b] Commissioning {planetaryProjects.len} planetary defense assets",
     )
-    commissioning.commissionPlanetaryDefense(state, planetaryProjects, events)
+    state.commissionPlanetaryDefense(planetaryProjects, events)
 
   # Collect ship projects for next turn's Command Phase commissioning
   result.add(militaryProjects)
@@ -419,7 +418,7 @@ proc resolveProductionPhase*(
   # Repairs complete in 1 turn and are immediately operational (no commissioning delay)
 
   logInfo(
-    LogCategory.lcEconomy,
+    "Economy",
     &"[PRODUCTION STEP 2] Completed ({planetaryProjects.len} planetary commissioned, " &
       &"{militaryProjects.len} ships pending)",
   )
@@ -429,36 +428,38 @@ proc resolveProductionPhase*(
   # ===================================================================
   # Process diplomatic actions (moved from Command Phase)
   # Diplomatic state changes happen AFTER all commands execute
-  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 3] Processing diplomatic actions...")
-  diplomatic_resolution.resolveDiplomaticActions(state, orders, events)
-  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 3] Completed diplomatic actions")
+  logInfo("Production", "[PRODUCTION STEP 3] Processing diplomatic actions...")
+  state.resolveDiplomaticActions(orders, events)
+  logInfo("Production", "[PRODUCTION STEP 3] Completed diplomatic actions")
 
   # ===================================================================
   # STEP 4: POPULATION TRANSFERS
   # ===================================================================
   logInfo(
-    LogCategory.lcCommands, "[PRODUCTION STEP 4] Processing population transfers..."
+    "Production", "[PRODUCTION STEP 4] Processing population transfers..."
   )
-  pop_transfers.resolvePopulationArrivals(state, events)
-  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 4] Completed population transfers")
+  let transferCompletions = state.processTransfers()
+  let transferEvents = generateTransferEvents(state, transferCompletions)
+  events.add(transferEvents)
+  logInfo("Production", "[PRODUCTION STEP 4] Completed population transfers")
 
   # ===================================================================
   # STEP 5: TERRAFORMING
   # ===================================================================
   logInfo(
-    LogCategory.lcCommands, "[PRODUCTION STEP 5] Processing terraforming projects..."
+    "Production", "[PRODUCTION STEP 5] Processing terraforming projects..."
   )
-  terraforming.processTerraformingProjects(state, events)
-  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 5] Completed terraforming projects")
+  state.processTerraformingProjects(events)
+  logInfo("Production", "[PRODUCTION STEP 5] Completed terraforming projects")
 
   # ===================================================================
   # STEP 6: CLEANUP AND PREPARATION
   # ===================================================================
-  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 6] Performing cleanup...")
+  logInfo("Production", "[PRODUCTION STEP 6] Performing cleanup...")
   # Timer logic moved to Income Phase Step 9.
   # Other cleanup (destroyed entities, fog of war) is handled implicitly
   # by other systems or is not yet implemented.
-  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 6] Cleanup complete")
+  logInfo("Production", "[PRODUCTION STEP 6] Cleanup complete")
 
   # ===================================================================
   # STEP 7: RESEARCH ADVANCEMENT
@@ -467,39 +468,39 @@ proc resolveProductionPhase*(
   # Per economy.md:4.1: Tech upgrades can be purchased EVERY TURN if RP available
   # Per canonical turn cycle: Step 7 processes EL/SL/TechField upgrades
   logInfo(
-    LogCategory.lcCommands, "[PRODUCTION STEP 7] Processing research advancements..."
+    "Production", "[PRODUCTION STEP 7] Processing research advancements..."
   )
 
   # -------------------------------------------------------------------
   # STEP 7a: BREAKTHROUGH ROLLS (Every 5 Turns)
   # -------------------------------------------------------------------
   # Per economy.md:4.1.1: Breakthrough rolls provide bonus RP, cost reductions, or free levels
-  if advancement.isBreakthroughTurn(state.turn):
+  if state.turn.isBreakthroughTurn():
     logDebug(
-      LogCategory.lcResearch,
+      "Research",
       &"[RESEARCH BREAKTHROUGHS] Turn {state.turn} - rolling for breakthroughs",
     )
-    for houseId in state.houses.keys:
+    for (houseId, _) in state.allHousesWithId():
       # Roll for breakthrough
       var rng = initRand(hash(state.turn) xor hash(houseId))
-      let breakthroughOpt = advancement.rollBreakthrough(rng) # Approximate 5-turn total
+      let breakthroughOpt = rng.rollBreakthrough() # Approximate 5-turn total
 
       if breakthroughOpt.isSome:
         let breakthrough = breakthroughOpt.get
-        logInfo(LogCategory.lcResearch, &"{houseId} BREAKTHROUGH: {breakthrough}")
+        logInfo("Research", &"{houseId} BREAKTHROUGH: {breakthrough}")
 
         # Apply breakthrough effects. 50-50 for economic or science breakthrough
-        let allocation = res_types.ResearchAllocation(
-          economic: rng.rand(1 .. 10),
-          science: rng.rand(1 .. 10),
-          technology: initTable[TechField, int](),
+        let allocation = ResearchAllocation(
+          economic: int32(rng.rand(1 .. 10)),
+          science: int32(rng.rand(1 .. 10)),
+          technology: initTable[TechField, int32](),
         )
-        let event = advancement.applyBreakthrough(
-          state.houses[houseId].techTree, breakthrough, allocation
-        )
+        var house = state.house(houseId).get()
+        let event = house.techTree.applyBreakthrough(breakthrough, allocation)
+        state.updateHouse(houseId, house)
 
         logDebug(
-          LogCategory.lcResearch,
+          "Research",
           &"{houseId} breakthrough effect applied (category: {event.category})",
         )
 
@@ -508,40 +509,42 @@ proc resolveProductionPhase*(
   # -------------------------------------------------------------------
   # Process tech upgrades using accumulated RP from Command Phase Part C
   var totalAdvancements = 0
-  for houseId, house in state.houses.mpairs:
+  for (houseId, _) in state.allHousesWithId():
+    var house = state.house(houseId).get()
+    
     # STEP 7b: Economic Level (EL) Advancement
     # Try to advance Economic Level (EL) with accumulated ERP
     let currentEL = house.techTree.levels.el
-    let elAdv = attemptELAdvancement(house.techTree, currentEL)
+    let elAdv = house.techTree.attemptELAdvancement(currentEL)
     if elAdv.isSome:
       totalAdvancements += 1
       let adv = elAdv.get()
       logInfo(
-        LogCategory.lcResearch,
+        "Research",
         &"{house.name}: EL {adv.elFromLevel} → {adv.elToLevel} " &
           &"(spent {adv.elCost} ERP)",
       )
       if adv.prestigeEvent.isSome:
-        applyPrestigeEvent(state, houseId, adv.prestigeEvent.get())
-        logDebug(LogCategory.lcResearch, &"+{adv.prestigeEvent.get().amount} prestige")
-      events.add(event_factory.techAdvance(houseId, "Economic Level", adv.elToLevel))
+        state.applyPrestigeEvent(houseId, adv.prestigeEvent.get())
+        logDebug("Research", &"+{adv.prestigeEvent.get().amount} prestige")
+      events.add(victory.techAdvance(houseId, "Economic Level", adv.elToLevel))
 
     # STEP 7c: Science Level (SL) Advancement
     # Try to advance Science Level (SL) with accumulated SRP
     let currentSL = house.techTree.levels.sl
-    let slAdv = attemptSLAdvancement(house.techTree, currentSL)
+    let slAdv = house.techTree.attemptSLAdvancement(currentSL)
     if slAdv.isSome:
       totalAdvancements += 1
       let adv = slAdv.get()
       logInfo(
-        LogCategory.lcResearch,
+        "Research",
         &"{house.name}: SL {adv.slFromLevel} → {adv.slToLevel} " &
           &"(spent {adv.slCost} SRP)",
       )
       if adv.prestigeEvent.isSome:
-        applyPrestigeEvent(state, houseId, adv.prestigeEvent.get())
-        logDebug(LogCategory.lcResearch, &"+{adv.prestigeEvent.get().amount} prestige")
-      events.add(event_factory.techAdvance(houseId, "Science Level", adv.slToLevel))
+        state.applyPrestigeEvent(houseId, adv.prestigeEvent.get())
+        logDebug("Research", &"+{adv.prestigeEvent.get().amount} prestige")
+      events.add(victory.techAdvance(houseId, "Science Level", adv.slToLevel))
 
     # STEP 7d: Technology Field Advancement (CST, WEP, TFM, ELI, CI)
     # Try to advance technology fields with accumulated TRP
@@ -549,27 +552,30 @@ proc resolveProductionPhase*(
       TechField.ConstructionTech, TechField.WeaponsTech, TechField.TerraformingTech,
       TechField.ElectronicIntelligence, TechField.CounterIntelligence,
     ]:
-      let advancement = attemptTechAdvancement(state, houseId, house.techTree, field)
-      if advancement.isSome:
+      let techAdv = attemptTechAdvancement(state, houseId, house.techTree, field)
+      if techAdv.isSome:
         totalAdvancements += 1
-        let adv = advancement.get()
+        let adv = techAdv.get()
         logInfo(
-          LogCategory.lcResearch,
+          "Research",
           &"{house.name}: {field} {adv.techFromLevel} → " &
             &"{adv.techToLevel} (spent {adv.techCost} TRP)",
         )
 
         # Apply prestige if available
         if adv.prestigeEvent.isSome:
-          applyPrestigeEvent(state, houseId, adv.prestigeEvent.get())
+          state.applyPrestigeEvent(houseId, adv.prestigeEvent.get())
           logDebug(
-            LogCategory.lcResearch, &"+{adv.prestigeEvent.get().amount} prestige"
+            "Research", &"+{adv.prestigeEvent.get().amount} prestige"
           )
 
         # Generate event
-        events.add(event_factory.techAdvance(houseId, $field, adv.techToLevel))
+        events.add(victory.techAdvance(houseId, $field, adv.techToLevel))
+    
+    # Update house with all tech changes
+    state.updateHouse(houseId, house)
 
   logInfo(
-    LogCategory.lcCommands,
+    "Production",
     &"[PRODUCTION STEP 7] Research advancements completed ({totalAdvancements} total advancements)",
   )

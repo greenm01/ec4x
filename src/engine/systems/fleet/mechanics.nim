@@ -9,8 +9,8 @@
 import std/[tables, options, sequtils, strformat]
 import ../../../common/logger
 import ../../types/[
-  core, game_state, command, fleet, event,
-  diplomacy, intel, starmap, espionage, ship, prestige, colony, ground_unit, combat
+  core, game_state, command, fleet, event, diplomacy,
+  intel, starmap, ship, prestige, colony, ground_unit, combat
 ]
 import ../../state/[engine, iterators, fleet_queries]
 import ../../globals # For gameConfig
