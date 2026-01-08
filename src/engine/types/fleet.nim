@@ -66,7 +66,7 @@ type
     commandType*: FleetCommandType
     targetSystem*: Option[SystemId]
     targetFleet*: Option[FleetId]
-    priority*: int32 # Execution order within turn
+    priority*: int32 # Execution command within turn
     roe*: Option[int32] # Mission-specific retreat threshold
 
   MissionState* {.pure.} = enum

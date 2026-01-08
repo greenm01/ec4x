@@ -137,7 +137,7 @@ proc planEnforcement*(
         if ship.shipClass == ShipClass.PlanetBreaker:
           shipIds.add($shipId)
 
-  # Sort by ship ID (alphabetical/numerical order gives deterministic "oldest first" behavior)
+  # Sort by ship ID (alphabetical/numerical command gives deterministic "oldest first" behavior)
   shipIds.sort()
 
   # Select excess planet-breakers for scrapping

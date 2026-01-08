@@ -177,8 +177,8 @@ proc executeFleetCommand*(
     command: FleetCommand,
     events: var seq[GameEvent],
 ): OrderOutcome =
-  ## Main dispatcher for fleet order execution
-  ## Routes to appropriate handler based on order type
+  ## Main dispatcher for fleet command execution
+  ## Routes to appropriate handler based on command type
 
   # Validate fleet exists
   let fleetOpt = state.fleet(command.fleetId)
@@ -209,7 +209,7 @@ proc executeFleetCommand*(
     )
     return OrderOutcome.Failed
 
-  # Route to order type handler
+  # Route to command type handler
   case command.commandType
   of FleetCommandType.Hold:
     return executeHoldCommand(state, fleet, command, events)
@@ -369,7 +369,7 @@ proc executeSeekHomeCommand(
     )
     return OrderOutcome.Success
 
-  # Create movement order to closest colony
+  # Create movement command to closest colony
   let moveOrder = FleetCommand(
     fleetId: fleet.id,
     commandType: FleetCommandType.Move,
@@ -397,7 +397,7 @@ proc executePatrolCommand(
 ): OrderOutcome =
   ## Order 03: Actively patrol system, engaging hostile forces
   ## Engagement rules per operations.md:6.2.4
-  ## Persistent order - silent re-execution (only generates event on first execution)
+  ## Persistent command - silent re-execution (only generates event on first execution)
 
   if command.targetSystem.isNone:
     events.add(
@@ -429,7 +429,7 @@ proc executePatrolCommand(
       )
       return OrderOutcome.Aborted
 
-  # Persistent order - stays active, combat happens in Conflict Phase
+  # Persistent command - stays active, combat happens in Conflict Phase
   # Silent - no OrderCompleted spam (would generate every turn)
   return OrderOutcome.Success
 
@@ -445,7 +445,7 @@ proc executeGuardStarbaseCommand(
 ): OrderOutcome =
   ## Order 04: Protect starbase, join Task Force when confronted
   ## Requires combat ships
-  ## Persistent order - silent re-execution
+  ## Persistent command - silent re-execution
 
   if command.targetSystem.isNone:
     events.add(
@@ -515,7 +515,7 @@ proc executeGuardStarbaseCommand(
     )
     return OrderOutcome.Aborted
 
-  # Persistent order - stays active, silent re-execution
+  # Persistent command - stays active, silent re-execution
   return OrderOutcome.Success
 
 # =============================================================================
@@ -530,7 +530,7 @@ proc executeGuardColonyCommand(
 ): OrderOutcome =
   ## Order 05 (Guard): Protect friendly colony, rear guard position
   ## Does not auto-join starbase Task Force (allows Raiders)
-  ## Persistent order - silent re-execution
+  ## Persistent command - silent re-execution
 
   if command.targetSystem.isNone:
     events.add(
@@ -577,7 +577,7 @@ proc executeGuardColonyCommand(
       )
       return OrderOutcome.Aborted
 
-  # Persistent order - stays active, silent re-execution
+  # Persistent command - stays active, silent re-execution
   return OrderOutcome.Success
 
 proc executeBlockadeCommand(
@@ -589,7 +589,7 @@ proc executeBlockadeCommand(
   ## Order 05 (Blockade): Block enemy planet, reduce GCO by 60%
   ## Per operations.md:6.2.6 - Immediate effect during Income Phase
   ## Prestige penalty: -2 per turn if colony under blockade
-  ## Persistent order - silent re-execution
+  ## Persistent command - silent re-execution
 
   if command.targetSystem.isNone:
     events.add(
@@ -665,10 +665,10 @@ proc executeBlockadeCommand(
 
   # NOTE: Blockade tracking not yet implemented in Colony type
   # Blockade effects are calculated dynamically during Income Phase by checking
-  # for BlockadePlanet fleet orders at colony systems (see income.nim)
+  # for BlockadePlanet fleet commands at colony systems (see income.nim)
   # Future enhancement: Add blockaded: bool field to Colony type for faster lookups
 
-  # Persistent order - stays active, silent re-execution
+  # Persistent command - stays active, silent re-execution
   return OrderOutcome.Success
 
 # =============================================================================
@@ -858,7 +858,7 @@ proc executeScoutColonyCommand(
   updatedFleet.missionState = MissionState.Traveling
   updatedFleet.missionTarget = some(targetSystem)
 
-  # Create movement order to target (if not already there)
+  # Create movement command to target (if not already there)
   if fleet.location != targetSystem:
     # Calculate jump lane path from current location to target
     let pathResult = movement.findPath(state, fleet.location, targetSystem, fleet)
@@ -890,14 +890,14 @@ proc executeScoutColonyCommand(
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
 
-    # Generate order accepted event
+    # Generate command accepted event
     events.add(
       event_factory.commandCompleted(
         fleet.houseId,
         fleet.id,
         "SpyPlanet",
         details =
-          &"scout fleet traveling to {targetSystem} for spy mission ({scoutCount} scouts)",
+          &"scout fleet traveling to {targetSystem} for scout mission ({scoutCount} scouts)",
         systemId = some(fleet.location),
       )
     )
@@ -919,7 +919,7 @@ proc executeScoutColonyCommand(
         fleet.houseId,
         fleet.id,
         "SpyPlanet",
-        details = &"spy mission started at {targetSystem} ({scoutCount} scouts)",
+        details = &"scout mission started at {targetSystem} ({scoutCount} scouts)",
         systemId = some(targetSystem),
       )
     )
@@ -1004,7 +1004,7 @@ proc executeHackStarbaseCommand(
   updatedFleet.missionState = MissionState.Traveling
   updatedFleet.missionTarget = some(targetSystem)
 
-  # Create movement order to target (if not already there)
+  # Create movement command to target (if not already there)
   if fleet.location != targetSystem:
     # Calculate jump lane path from current location to target
     let pathResult = movement.findPath(state, fleet.location, targetSystem, fleet)
@@ -1036,7 +1036,7 @@ proc executeHackStarbaseCommand(
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
 
-    # Generate order accepted event
+    # Generate command accepted event
     events.add(
       event_factory.commandCompleted(
         fleet.houseId,
@@ -1125,7 +1125,7 @@ proc executeScoutSystemCommand(
   updatedFleet.missionState = MissionState.Traveling
   updatedFleet.missionTarget = some(targetSystem)
 
-  # Create movement order to target (if not already there)
+  # Create movement command to target (if not already there)
   if fleet.location != targetSystem:
     # Calculate jump lane path from current location to target
     let pathResult = movement.findPath(state, fleet.location, targetSystem, fleet)
@@ -1157,7 +1157,7 @@ proc executeScoutSystemCommand(
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
 
-    # Generate order accepted event
+    # Generate command accepted event
     events.add(
       event_factory.commandCompleted(
         fleet.houseId,
@@ -1251,7 +1251,7 @@ proc executeJoinFleetCommand(
   ## - 2-3 scouts: +1 ELI bonus
   ## - 4-5 scouts: +2 ELI bonus
   ## - 6+ scouts: +3 ELI bonus (maximum)
-  ## These bonuses apply to detection, counter-intelligence, and spy missions.
+  ## These bonuses apply to detection, counter-intelligence, and scout missions.
   ## See assets.md:2.4.2 for mesh network modifier table.
 
   if command.targetFleet.isNone:
@@ -1310,7 +1310,7 @@ proc executeJoinFleetCommand(
   # Check if at same location - if not, move toward target
   if targetFleet.location != fleet.location:
     # Fleet will follow target - use centralized movement system
-    # Create a movement order to target's current location
+    # Create a movement command to target's current location
     let movementOrder = FleetCommand(
       fleetId: fleet.id,
       commandType: FleetCommandType.Move,
@@ -1352,9 +1352,9 @@ proc executeJoinFleetCommand(
 
       return OrderOutcome.Failed
 
-    # If still not at target location, keep order persistent
+    # If still not at target location, keep command persistent
     if movedFleet.location != targetFleet.location:
-      # Keep the Join Fleet order active so it continues pursuit next turn
+      # Keep the Join Fleet command active so it continues pursuit next turn
       # Order remains in fleetCommands table
       # Silent - ongoing pursuit
       return OrderOutcome.Success
@@ -1478,12 +1478,12 @@ proc executeRendezvousCommand(
     # Still moving to rendezvous
     return OrderOutcome.Success
 
-  # Find other fleets at rendezvous with same order at same location
+  # Find other fleets at rendezvous with same command at same location
   # Use fleetsInSystem iterator for O(1) indexed lookup
   var rendezvousFleets: seq[Fleet] = @[]
   rendezvousFleets.add(fleet)
 
-  # Collect all fleets with Rendezvous orders at this system
+  # Collect all fleets with Rendezvous commands at this system
   for otherFleet in state.fleetsInSystem(targetSystem):
     if otherFleet.id == fleet.id:
       continue # Skip self
@@ -1564,7 +1564,7 @@ proc executeSalvageCommand(
   ## Fleet disbands, ships salvaged for 50% PC
   ## Per operations.md:6.2.16
   ##
-  ## AUTOMATIC EXECUTION: This order executes immediately when given
+  ## AUTOMATIC EXECUTION: This command executes immediately when given
   ## FACILITIES: Works at colonies with either spaceport OR shipyard
 
   # Find closest friendly colony with salvage facilities (spaceport or shipyard)
@@ -1678,7 +1678,7 @@ proc executeReserveCommand(
 
     # Not at colony yet - move toward it
     if fleet.location != closestColony:
-      # Create movement order to target colony
+      # Create movement command to target colony
       let moveOrder = FleetCommand(
         fleetId: fleet.id,
         commandType: FleetCommandType.Move,
@@ -1712,7 +1712,7 @@ proc executeReserveCommand(
         )
         return OrderOutcome.Failed
 
-      # Keep order persistent - will execute when fleet arrives
+      # Keep command persistent - will execute when fleet arrives
       # Silent - movement in progress
       return OrderOutcome.Success
 
@@ -1768,7 +1768,7 @@ proc executeMothballCommand(
 
     # Not at colony yet - move toward it
     if fleet.location != closestColony:
-      # Create movement order to target colony
+      # Create movement command to target colony
       let moveOrder = FleetCommand(
         fleetId: fleet.id,
         commandType: FleetCommandType.Move,
@@ -1802,7 +1802,7 @@ proc executeMothballCommand(
         )
         return OrderOutcome.Failed
 
-      # Keep order persistent - will execute when fleet arrives
+      # Keep command persistent - will execute when fleet arrives
       # Silent - movement in progress
       return OrderOutcome.Success
 

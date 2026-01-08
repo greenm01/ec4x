@@ -7,11 +7,11 @@ import std/[tables, strformat, logging, strutils]
 import db_connector/db_sqlite
 
 proc getColonizationFailures*(db: DbConn, gameId: int64): seq[Row] =
-  ## Find turns where colonize orders were issued but no colonies gained
+  ## Find turns where colonize commands were issued but no colonies gained
   ## Used for diagnosing colonization bug in Act 2
   ##
   ## Returns rows with columns:
-  ## - turn, house_id, colonize_orders_generated,
+  ## - turn, house_id, colonize_commands_generated,
   ##   colonies_gained_via_colonization, etac_ships
   info &"Querying colonization failures for game {gameId}"
   result = db.getAllRows(
@@ -19,12 +19,12 @@ proc getColonizationFailures*(db: DbConn, gameId: int64): seq[Row] =
     SELECT
       turn,
       house_id,
-      colonize_orders_generated,
+      colonize_commands_generated,
       colonies_gained_via_colonization,
       etac_ships
     FROM diagnostics
     WHERE game_id = ?
-      AND colonize_orders_generated > 0
+      AND colonize_commands_generated > 0
       AND colonies_gained_via_colonization = 0
     ORDER BY turn, house_id
   """,
@@ -37,7 +37,7 @@ proc getColonizationWithFleets*(db: DbConn, gameId: int64): seq[Row] =
   ## Joins diagnostics with game_events to see which fleets had colonize orders
   ##
   ## Returns rows with columns:
-  ## - turn, house_id, colonize_orders_generated,
+  ## - turn, house_id, colonize_commands_generated,
   ##   colonies_gained_via_colonization, etac_ships, fleet_count
   info &"Querying colonization with fleet data for game {gameId}"
   result = db.getAllRows(
@@ -45,7 +45,7 @@ proc getColonizationWithFleets*(db: DbConn, gameId: int64): seq[Row] =
     SELECT
       d.turn,
       d.house_id,
-      d.colonize_orders_generated,
+      d.colonize_commands_generated,
       d.colonies_gained_via_colonization,
       d.etac_ships,
       COUNT(DISTINCT ft.fleet_id) as fleet_count_with_etacs
@@ -56,7 +56,7 @@ proc getColonizationWithFleets*(db: DbConn, gameId: int64): seq[Row] =
       ft.house_id = d.house_id AND
       ft.etac_count > 0
     WHERE d.game_id = ?
-      AND d.colonize_orders_generated > 0
+      AND d.colonize_commands_generated > 0
       AND d.colonies_gained_via_colonization = 0
     GROUP BY d.turn, d.house_id
     ORDER BY d.turn, d.house_id
@@ -69,8 +69,8 @@ proc getFleetLifecycle*(db: DbConn, gameId: int64, fleetId: string): seq[Row] =
   ## Used for debugging why ETAC fleets fail to colonize
   ##
   ## Returns rows with columns:
-  ## - turn, location_system_id, active_order_type,
-  ##   order_target_system_id, has_arrived, etac_count,
+  ## - turn, location_system_id, active_command_type,
+  ##   command_target_system_id, has_arrived, etac_count,
   ##   event_type, description, reason
   info &"Querying lifecycle for fleet {fleetId} in game {gameId}"
   result = db.getAllRows(
@@ -78,8 +78,8 @@ proc getFleetLifecycle*(db: DbConn, gameId: int64, fleetId: string): seq[Row] =
     SELECT
       ft.turn,
       ft.location_system_id,
-      ft.active_order_type,
-      ft.order_target_system_id,
+      ft.active_command_type,
+      ft.command_target_system_id,
       ft.has_arrived,
       ft.etac_count,
       COALESCE(e.event_type, '') as event_type,
@@ -105,16 +105,16 @@ proc getFleetsByHouse*(
   ## Useful for examining fleet state during colonization failures
   ##
   ## Returns rows with columns:
-  ## - fleet_id, location_system_id, active_order_type,
-  ##   order_target_system_id, has_arrived, etac_count
+  ## - fleet_id, location_system_id, active_command_type,
+  ##   command_target_system_id, has_arrived, etac_count
   info &"Querying fleets for {houseId} at turn {turn} in game {gameId}"
   result = db.getAllRows(
     sql"""
     SELECT
       fleet_id,
       location_system_id,
-      active_order_type,
-      order_target_system_id,
+      active_command_type,
+      command_target_system_id,
       has_arrived,
       etac_count,
       scout_count,
@@ -130,38 +130,38 @@ proc getFleetsByHouse*(
   )
 
 proc getOrderExecutionStats*(
-    db: DbConn, gameId: int64, orderType: string
+    db: DbConn, gameId: int64, commandType: string
 ): Table[string, int] =
-  ## Get success/failure stats for specific order type
+  ## Get success/failure stats for specific command type
   ## Example: getOrderExecutionStats(db, 12345, "Colonize")
   ##
   ## Returns table with event_type → count mappings
-  info &"Querying order execution stats for {orderType} in game {gameId}"
+  info &"Querying command execution stats for {commandType} in game {gameId}"
   let rows = db.getAllRows(
     sql"""
     SELECT
       event_type,
       COUNT(*) as count
     FROM game_events
-    WHERE game_id = ? AND order_type = ?
+    WHERE game_id = ? AND command_type = ?
     GROUP BY event_type
     ORDER BY count DESC
   """,
     gameId,
-    orderType,
+    commandType,
   )
 
   result = initTable[string, int]()
   for row in rows:
     result[row[0]] = parseInt(row[1])
-  info &"Found {result.len} event types for {orderType} orders"
+  info &"Found {result.len} event types for {commandType} orders"
 
 proc getEventsByType*(db: DbConn, gameId: int64, eventType: string): seq[Row] =
   ## Get all events of a specific type for a game
-  ## Useful for examining order failures, arrivals, etc.
+  ## Useful for examining command failures, arrivals, etc.
   ##
   ## Returns rows with columns:
-  ## - turn, house_id, fleet_id, system_id, order_type,
+  ## - turn, house_id, fleet_id, system_id, command_type,
   ##   description, reason
   info &"Querying events of type {eventType} for game {gameId}"
   result = db.getAllRows(
@@ -171,7 +171,7 @@ proc getEventsByType*(db: DbConn, gameId: int64, eventType: string): seq[Row] =
       COALESCE(house_id, '') as house_id,
       COALESCE(fleet_id, '') as fleet_id,
       COALESCE(system_id, 0) as system_id,
-      COALESCE(order_type, '') as order_type,
+      COALESCE(command_type, '') as command_type,
       description,
       COALESCE(reason, '') as reason
     FROM game_events
@@ -189,7 +189,7 @@ proc getETACFleets*(db: DbConn, gameId: int64, turn: int): seq[Row] =
   ##
   ## Returns rows with columns:
   ## - house_id, fleet_id, location_system_id,
-  ##   active_order_type, order_target_system_id,
+  ##   active_command_type, command_target_system_id,
   ##   has_arrived, etac_count
   info &"Querying ETAC fleets for turn {turn} in game {gameId}"
   result = db.getAllRows(
@@ -198,8 +198,8 @@ proc getETACFleets*(db: DbConn, gameId: int64, turn: int): seq[Row] =
       house_id,
       fleet_id,
       location_system_id,
-      COALESCE(active_order_type, '') as active_order_type,
-      COALESCE(order_target_system_id, 0) as order_target_system_id,
+      COALESCE(active_command_type, '') as active_command_type,
+      COALESCE(command_target_system_id, 0) as command_target_system_id,
       has_arrived,
       etac_count
     FROM fleet_tracking
@@ -213,21 +213,21 @@ proc getETACFleets*(db: DbConn, gameId: int64, turn: int): seq[Row] =
 
 proc getColonizationSummary*(db: DbConn, gameId: int64): seq[Row] =
   ## Get per-turn summary of colonization activity across all houses
-  ## Shows colonization orders vs actual colonizations
+  ## Shows colonization commands vs actual colonizations
   ##
   ## Returns rows with columns:
-  ## - turn, total_orders, total_colonized,
+  ## - turn, total_commands, total_colonized,
   ##   total_etacs, houses_with_orders
   info &"Generating colonization summary for game {gameId}"
   result = db.getAllRows(
     sql"""
     SELECT
       turn,
-      SUM(colonize_orders_generated) as total_orders,
+      SUM(colonize_commands_generated) as total_commands,
       SUM(colonies_gained_via_colonization) as total_colonized,
       AVG(etac_ships) as avg_etacs,
       COUNT(DISTINCT CASE
-        WHEN colonize_orders_generated > 0 THEN house_id
+        WHEN colonize_commands_generated > 0 THEN house_id
       END) as houses_with_orders
     FROM diagnostics
     WHERE game_id = ?

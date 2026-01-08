@@ -211,18 +211,18 @@ iterator allHousesWithId*(state: GameState): tuple[id: HouseId, house: House] =
   ## Example:
   ##   for (houseId, house) in state.allHousesWithId():
   ##     state.withHouse(houseId):
-  ##       house.turnsWithoutOrders += 1
+  ##       house.turnsWithoutCommands += 1
   for houseId in state.houses.entities.index.keys:
     yield (houseId, state.houses.entities.entity(houseId).get())
 
-iterator fleetsWithOrders*(
+iterator fleetsWithCommands*(
     state: GameState
 ): tuple[id: FleetId, fleet: Fleet, command: FleetCommand] =
-  ## Iterate fleets that have persistent orders
+  ## Iterate fleets that have persistent commands
   ##
   ## Example:
-  ##   for (fleetId, fleet, command) in state.fleetsWithOrders():
-  ##     # Execute fleet order
+  ##   for (fleetId, fleet, command) in state.fleetsWithCommands():
+  ##     # Execute fleet command
   for (id, fleet) in state.allFleetsWithId():
     if fleet.command.isSome():
       yield (id, fleet, fleet.command.get())
@@ -539,7 +539,7 @@ iterator fleetsWithMissionState*(
   ##
   ## Example:
   ##   for fleet in state.fleetsWithMissionState(houseId, MissionState.ScoutLocked):
-  ##     # Process active spy missions
+  ##     # Process active scout missions
   for fleet in state.fleetsOwned(houseId):
     if fleet.missionState == missionState:
       yield fleet

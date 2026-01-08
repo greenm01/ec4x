@@ -130,7 +130,7 @@ type
     autopilotActive*: bool # Currently in MIA Autopilot mode
     defensiveCollapseActive*: bool # Currently in Defensive Collapse
     turnsUntilElimination*: int32 # If negative prestige, turns until elimination
-    missedOrderTurns*: int32 # Consecutive turns without orders (MIA risk)
+    missedOrderTurns*: int32 # Consecutive turns without commands (MIA risk)
 
     # Military
     spaceCombatWins*: int32
@@ -193,10 +193,10 @@ type
     totalInvasions*: int32
       # Phase F: Track total invasions (useful for strategy analysis)
     vulnerableTargets_count*: int32 # Phase 1: Count from intelligence snapshot
-    invasionOrders_generated*: int32 # Phase 1: Total invasion orders created this turn
-    invasionOrders_bombard*: int32 # Phase 1: Bombardment orders created
-    invasionOrders_invade*: int32 # Phase 1: Invasion orders created
-    invasionOrders_blitz*: int32 # Phase 1: Blitz orders created
+    invasionOrders_generated*: int32 # Phase 1: Total invasion commands created this turn
+    invasionOrders_bombard*: int32 # Phase 1: Bombardment commands created
+    invasionOrders_invade*: int32 # Phase 1: Invasion commands created
+    invasionOrders_blitz*: int32 # Phase 1: Blitz commands created
     invasionOrders_canceled*: int32 # Phase 1: Orders rejected/canceled
     # Phase 2: Multi-turn invasion campaign tracking
     activeCampaigns_total*: int32 # Total active campaigns this turn
@@ -236,9 +236,9 @@ type
 
     # Orders (ENHANCED for unknown-unknowns detection)
     invalidOrders*: int32 # Cumulative invalid/rejected orders
-    totalOrders*: int32 # Cumulative valid orders issued
-    fleetCommandsSubmitted*: int32 # Fleet movement orders this turn
-    buildOrdersSubmitted*: int32 # Construction orders this turn
+    totalOrders*: int32 # Cumulative valid commands issued
+    fleetCommandsSubmitted*: int32 # Fleet movement commands this turn
+    buildOrdersSubmitted*: int32 # Construction commands this turn
     colonizeOrdersSubmitted*: int32 # Colonization attempts this turn
 
     # Budget Allocation (Treasurer → Advisor Flow - DRY Fix Verification)
@@ -246,7 +246,7 @@ type
     logotheteBudgetAllocated*: int32 # PP allocated to Logothete by Treasurer
     drungariusBudgetAllocated*: int32 # PP allocated to Drungarius by Treasurer
     eparchBudgetAllocated*: int32 # PP allocated to Eparch by Treasurer
-    buildOrdersGenerated*: int32 # Build orders created by Domestikos
+    buildOrdersGenerated*: int32 # Build commands created by Domestikos
     ppSpentConstruction*: int32 # Actual PP spent on construction
     domestikosRequirementsTotal*: int32 # Total requirements from Domestikos
     domestikosRequirementsFulfilled*: int32
@@ -268,9 +268,9 @@ type
     # Fleet Activity (NEW - detect stuck fleets)
     fleetsMoved*: int32 # Fleets that changed systems this turn
     systemsColonized*: int32 # Successful colonizations this turn
-    failedColonizationAttempts*: int32 # Colonization orders rejected
+    failedColonizationAttempts*: int32 # Colonization commands rejected
     fleetsWithOrders*: int32 # Fleets with active orders
-    stuckFleets*: int32 # Fleets with orders but didn't move (pathfinding fail?)
+    stuckFleets*: int32 # Fleets with commands but didn't move (pathfinding fail?)
 
     # ETAC Specific (NEW - critical for colonization)
     totalETACs*: int32 # Current ETAC count

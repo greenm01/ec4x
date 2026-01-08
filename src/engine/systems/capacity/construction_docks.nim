@@ -325,7 +325,7 @@ proc assignAndQueueProject*(
 ## - FIFO priority: Construction and repair projects treated equally in queue
 ##
 ## **Integration Points:**
-## - Call assignFacility() when player submits build order
+## - Call assignFacility() when player submits build command
 ## - Call processCapacityReporting() in Maintenance phase (should find nothing)
 ## - Check getAvailableFacilities() to show player available capacity
 ##

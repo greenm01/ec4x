@@ -156,7 +156,7 @@ proc collectCombatMetrics*(
   # Cumulative invasion tracking
   result.totalInvasions = prevMetrics.totalInvasions + totalInvasions
 
-  # Invasion order tracking (Phase 1 - populated during order generation)
+  # Invasion command tracking (Phase 1 - populated during command generation)
   result.invasionOrders_generated = prevMetrics.invasionOrders_generated
   result.invasionOrders_bombard = prevMetrics.invasionOrders_bombard
   result.invasionOrders_invade = prevMetrics.invasionOrders_invade

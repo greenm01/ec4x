@@ -105,7 +105,7 @@ proc saveDiagnosticMetrics*(state: GameState, metrics: DiagnosticMetrics) =
       marines_at_colonies, marines_on_transports, marine_division_units,
       total_spaceports, total_shipyards, total_drydocks,
       total_invasions, vulnerable_targets_count,
-      invasion_orders_generated, invasion_orders_bombard,
+      invasion_commands_generated, invasion_orders_bombard,
       invasion_orders_invade, invasion_orders_blitz,
       invasion_orders_canceled,
       invasion_attempts_total, invasion_attempts_successful,
@@ -114,7 +114,7 @@ proc saveDiagnosticMetrics*(state: GameState, metrics: DiagnosticMetrics) =
       blitz_attempts_failed,
       bombardment_attempts_total, bombardment_orders_failed,
       invasion_marines_killed, invasion_defenders_killed,
-      colonize_orders_generated,
+      colonize_commands_generated,
       active_campaigns_total, active_campaigns_scouting,
       active_campaigns_bombardment, active_campaigns_invasion,
       campaigns_completed_success, campaigns_abandoned_stalled,
@@ -123,9 +123,9 @@ proc saveDiagnosticMetrics*(state: GameState, metrics: DiagnosticMetrics) =
       spy_planet, hack_starbase, total_espionage,
       undefended_colonies, total_colonies,
       mothball_used, mothball_total,
-      invalid_orders, total_orders,
+      invalid_orders, total_commands,
       domestikos_budget, logothete_budget, drungarius_budget, eparch_budget,
-      build_orders_generated, pp_spent_construction,
+      build_commands_generated, pp_spent_construction,
       domestikos_requirements_total, domestikos_requirements_fulfilled,
       domestikos_requirements_unfulfilled, domestikos_requirements_deferred,
       total_build_queue_depth, etac_in_construction,
@@ -437,7 +437,7 @@ proc saveGameEvent*(state: GameState, event: GameEvent) =
     sql"""
     INSERT INTO game_events (
       game_id, turn, event_type, house_id, fleet_id, system_id,
-      order_type, description, reason, event_data
+      command_type, description, reason, event_data
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   """,
     state.gameId,
@@ -446,7 +446,7 @@ proc saveGameEvent*(state: GameState, event: GameEvent) =
     houseIdStr,
     fleetIdStr,
     systemIdStr,
-    "", # orderType (extract from event if needed)
+    "", # commandType (extract from event if needed)
     event.description,
     "", # reason (extract from event if needed)
     eventDataJson,
@@ -472,7 +472,7 @@ proc saveGameEvents*(state: GameState, events: seq[GameEvent]) =
       sql"""
       INSERT INTO game_events (
         game_id, turn, event_type, house_id, fleet_id, system_id,
-        order_type, description, reason, event_data
+        command_type, description, reason, event_data
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
       state.gameId,

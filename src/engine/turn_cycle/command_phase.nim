@@ -1,7 +1,7 @@
 ## Command Phase Resolution - Phase 3 of Canonical Turn Cycle
 ##
-## Executes player order submissions and manages commissioning/automation cycles.
-## This is the "player interaction" phase where orders are processed and queued.
+## Executes player command submissions and manages commissioning/automation cycles.
+## This is the "player interaction" phase where commands are processed and queued.
 ##
 ## **Canonical Execution Order:**
 ##
@@ -15,7 +15,7 @@
 ## - Order Submission
 ##
 ## **Part C: Order Validation & Storage (AFTER Player Window)**
-## - Administrative orders execute
+## - Administrative commands execute
 ## - All other orders: Validate and store in Fleet.command (entity-manager pattern)
 ## - Build orders: Add to construction queues
 ## - Tech research: Allocate RP
@@ -23,8 +23,8 @@
 ## **Key Properties:**
 ## - Commissioning happens FIRST to free dock capacity before new builds
 ## - Auto-repair can use newly-freed dock capacity from commissioning
-## - Universal lifecycle: All orders follow same path (stored → activated → executed)
-## - Admin orders execute immediately; all others stored for Maintenance Phase
+## - Universal lifecycle: All commands follow same path (stored → activated → executed)
+## - Admin commands execute immediately; all others stored for Maintenance Phase
 ## - Four-tier lifecycle: Initiate (Part B) → Validate (Part C) → Activate (Maintenance) → Execute (Conflict/Income)
 
 import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
@@ -50,18 +50,18 @@ proc resolveCommandPhase*(
     events: var seq[res_types.GameEvent],
     rng: var Rand,
 ) =
-  ## Phase 3: Execute orders
+  ## Phas commands
   ## Commissioning happens FIRST to free up dock capacity before new builds
-  logInfo(LogCategory.lcOrders, &"=== Command Phase === (turn={state.turn})")
+  logInfo(LogCategory.lcCommands, &"=== Command Phase === (turn={state.turn})")
 
   # ===================================================================
   # STEP 0: ORDER CLEANUP FROM PREVIOUS TURN
   # ===================================================================
-  # Clean up completed/failed/aborted orders based on events from previous turn
+  # Clean up completed/failed/aborted commands based on events from previous turn
   # This runs BEFORE Part A to ensure clean command state
   # Per canonical turn cycle: Step 0 runs before commissioning/automation
   logInfo(
-    LogCategory.lcOrders, "[COMMAND STEP 0] Cleaning up orders from previous turn..."
+    LogCategory.lcCommands, "[COMMAND STEP 0] Cleaning up commands from previous turn..."
   )
   order_cleanup.cleanFleetOrders(state, events)
 
@@ -72,7 +72,7 @@ proc resolveCommandPhase*(
   # This clears shipyard/spaceport dock capacity and makes ships available
   # (Planetary defense commissioned in Maintenance Phase Step 2b)
   # STUB: Commissioning and automation disabled during refactoring
-  logInfo(LogCategory.lcOrders, "[COMMAND PART A] Ship commissioning & automation (STUBBED)...")
+  logInfo(LogCategory.lcCommands, "[COMMAND PART A] Ship commissioning & automation (STUBBED)...")
   # if state.pendingMilitaryCommissions.len > 0:
   #   logInfo(
   #     LogCategory.lcEconomy,
@@ -88,15 +88,15 @@ proc resolveCommandPhase*(
   # logInfo(LogCategory.lcEconomy, "[AUTOMATION] Processing colony automation...")
   # automation.processColonyAutomation(state, orders)
   logInfo(
-    LogCategory.lcOrders, "[COMMAND PART A] Completed (STUBBED)"
+    LogCategory.lcCommands, "[COMMAND PART A] Completed (STUBBED)"
   )
 
   # ===================================================================
   # PART B: PLAYER SUBMISSION WINDOW (simulated by AI)
   # ===================================================================
   # In multiplayer, this would be the window where players submit orders
-  # In AI mode, orders are pre-computed and passed to this function
-  logInfo(LogCategory.lcOrders, "[COMMAND PART B] Processing player submissions...")
+  # In AI mode, commands are pre-computed and passed to this function
+  logInfo(LogCategory.lcCommands, "[COMMAND PART B] Processing player submissions...")
 
   # Process colony management commands (tax rates, auto-repair toggles)
   for houseId in state.houses.keys:
@@ -110,9 +110,9 @@ proc resolveCommandPhase*(
 
   # NOTE: Squadron management and cargo management are now handled by
   # zero-turn commands (src/engine/commands/logistics.nim)
-  # These execute immediately during order submission, not turn resolution
+  # These execute immediately during command submission, not turn resolution
 
-  # Auto-load cargo at colonies (if no manual cargo order exists)
+  # Auto-load cargo at colonies (if no manual cargo command exists)
   autoLoadCargo(state, orders, events)
 
   # Process terraforming commands
@@ -120,18 +120,18 @@ proc resolveCommandPhase*(
     if houseId in orders:
       terraforming.resolveTerraformCommands(state, orders[houseId], events)
 
-  logInfo(LogCategory.lcOrders, "[COMMAND PART B] Completed player submissions")
+  logInfo(LogCategory.lcCommands, "[COMMAND PART B] Completed player submissions")
 
   # ===================================================================
   # PART C: ORDER VALIDATION & STORAGE
   # ===================================================================
-  # Universal order lifecycle (applies to ALL orders):
-  # - Initiate (Command Phase Part B): Player submits orders
-  # - Validate (Command Phase Part C): Engine validates and stores orders ← THIS SECTION
+  # Universal command lifecycle (applies to ALL orders):
+  # - Initiate (Command Phas commands
+  # - Validate (Command Phase Part C): Engine validates and stores commands ← THIS SECTION
   # - Activate (Maintenance Phase Step 1a): Orders become active, fleets start moving
   # - Execute (Conflict/Income Phase): Missions happen at targets
   #
-  # Universal order processing (DRY design):
+  # Universal command processing (DRY design):
   # - Administrative orders: Validate & execute immediately (zero-turn)
   # - All other orders: Validate & store in Fleet.command (entity-manager pattern)
   #   * Move, Patrol, SeekHome, Hold
@@ -140,13 +140,13 @@ proc resolveCommandPhase*(
   #   * Salvage
 
   #
-  # Key principle: All non-admin orders stored on fleet entity → No global tables
+  # Key principle: All non-admin commands stored on fleet entity → No global tables
 
   logInfo(
-    LogCategory.lcOrders, "[COMMAND PART C] Validating and storing fleet orders..."
+    LogCategory.lcCommands, "[COMMAND PART C] Validating and storing fleet commands..."
   )
 
-  # Process build orders (new construction using freed capacity)
+  # Process build commands (new construction using freed capacity)
   logInfo(LogCategory.lcEconomy, "[BUILD ORDERS] Processing construction orders...")
   for houseId in state.houses.keys:
     if houseId in orders:
@@ -268,7 +268,7 @@ proc resolveCommandPhase*(
   var ordersStored = 0
   var adminExecuted = 0
 
-  # Collect and categorize orders from all houses
+  # Collect and categorize commands from all houses
   for houseId in state.houses.keys:
     if houseId in orders:
       for cmd in orders[houseId].fleetCommands:
@@ -290,11 +290,11 @@ proc resolveCommandPhase*(
 
             ordersStored += 1
             logDebug(
-              LogCategory.lcOrders, &"  [STORED] Fleet {cmd.fleetId}: {cmd.commandType}"
+              LogCategory.lcCommands, &"  [STORED] Fleet {cmd.fleetId}: {cmd.commandType}"
             )
         else:
             logWarn(
-              LogCategory.lcOrders,
+              LogCategory.lcCommands,
               &"  [REJECTED] Fleet {cmd.fleetId}: {cmd.commandType} - {validation.error}",
             )
             # Generate rejection event
@@ -305,6 +305,6 @@ proc resolveCommandPhase*(
             )
 
   logInfo(
-    LogCategory.lcOrders,
-    &"[COMMAND PART C] Completed ({ordersStored} orders stored, {adminExecuted} admin executed)",
+    LogCategory.lcCommands,
+    &"[COMMAND PART C] Completed ({ordersStored} commands stored, {adminExecuted} admin executed)",
   )

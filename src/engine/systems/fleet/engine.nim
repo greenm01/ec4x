@@ -201,7 +201,7 @@ proc splitFleet*(
   for idx in shipIndices:
     newShips.add(fleet.ships[idx])
 
-  # Remove ships from original fleet (in reverse order to maintain indices)
+  # Remove ships from original fleet (in reverse command to maintain indices)
   var sortedIndices = shipIndices
   sortedIndices.sort(
     proc(a, b: int): int =

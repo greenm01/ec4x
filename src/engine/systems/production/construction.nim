@@ -1,6 +1,6 @@
-## Construction - Build order processing and validation
+## Construction - Build command processing and validation
 ##
-## This module handles Command Phase construction order submission,
+## This module handles Command Phase construction command submission,
 ## including budget validation, capacity checking, and routing to
 ## appropriate construction queues (facility-based or colony-based).
 ##
@@ -8,7 +8,7 @@
 ## - DOCK CONSTRUCTION: Capital ships → Spaceport/Shipyard facility queues
 ## - COLONY CONSTRUCTION: Fighters, buildings, IU → Colony queues
 ##
-## **Phase:** Command Phase (after commissioning, before fleet orders)
+## **Phas commands)
 ##
 ## **Flow:**
 ## 1. Validate colony ownership and budget
@@ -18,7 +18,7 @@
 ##
 ## **Separation of Concerns:**
 ## - projects.nim: "What to build" (project definitions)
-## - THIS MODULE: "How orders work" (validation, routing, treasury)
+## - THIS MODULE: "How commands work" (validation, routing, treasury)
 ## - queue_advancement.nim: "Queue management" (advancement)
 
 import std/[options, strformat]
@@ -34,12 +34,12 @@ import ../../event_factory/economic
 proc resolveBuildOrders*(
     state: var GameState, packet: CommandPacket, events: var seq[GameEvent]
 ) =
-  ## Process construction orders for a house with budget validation
+  ## Process construction commands for a house with budget validation
   ## Prevents overspending by tracking committed costs
   let house = state.house(packet.houseId).get()
   logInfo(
     "Economy",
-    &"Processing build orders for {house.name}",
+    &"Processing build commands for {house.name}",
   )
 
   # Initialize budget validation context
@@ -53,7 +53,7 @@ proc resolveBuildOrders*(
 
   logInfo(
     "Economy",
-    &"{packet.houseId} Build Order Validation: {packet.buildCommands.len} orders, " &
+    &"{packet.houseId} Build Command Validation: {packet.buildCommands.len} orders, " &
       &"{house.treasury} PP available (current treasury after income/maintenance)",
   )
 
@@ -153,7 +153,7 @@ proc resolveBuildOrders*(
       if units <= 0:
         logError(
           "Economy",
-          &"Infrastructure order failed: invalid unit count {units}",
+          &"Infrastructure command failed: invalid unit count {units}",
         )
         continue
 
@@ -218,7 +218,7 @@ proc resolveBuildOrders*(
       # Validation happened earlier, but treasury may have changed due to:
       # - Research spending in Income Phase
       # - Espionage spending in Income Phase
-      # - Other houses' construction orders processed before this one
+      # - Other houses' construction commands processed before this one
       if mutableHouse.treasury >= project.costTotal:
         mutableHouse.treasury -= project.costTotal
         state.updateHouse(packet.houseId, mutableHouse)
@@ -254,7 +254,7 @@ proc resolveBuildOrders*(
             discard mutableColony.constructionQueue.pop()
           state.updateColony(command.colonyId, mutableColony)
 
-        # Increment rejected orders counter for logging
+        # Increment rejected commands counter for logging
         budgetContext.rejectedCommands += 1
     else:
       logError(
@@ -267,8 +267,8 @@ proc resolveBuildOrders*(
   let successfulOrders = packet.buildCommands.len - budgetContext.rejectedCommands
   logInfo(
     "Economy",
-    &"{packet.houseId} Build Order Summary: {successfulOrders}/{packet.buildCommands.len} orders accepted, " &
+    &"{packet.houseId} Build Command Summary: {successfulOrders}/{packet.buildCommands.len} commands accepted, " &
       &"{budgetContext.committedSpending} PP committed, " &
       &"{remainingBudget} PP remaining, " &
-      &"{budgetContext.rejectedCommands} orders rejected due to insufficient funds",
+      &"{budgetContext.rejectedCommands} commands rejected due to insufficient funds",
   )

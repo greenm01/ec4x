@@ -201,7 +201,7 @@ proc allShips*(state: GameState, f: Fleet): seq[Ship] =
   ## Player selects ships by index in this list
   result = @[]
 
-  # Add all ships in fleet order
+  # Add all ships in fleet command
   for shipId in f.ships:
     let ship = state.ship(shipId).get
     result.add(ship)

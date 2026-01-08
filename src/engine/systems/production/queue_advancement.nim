@@ -13,7 +13,7 @@
 ## - Drydock: Repair only (10 docks) - orbital ship repair facility
 ##
 ## **FIFO Queue Model:**
-## Each facility independently advances its own queues in order queued.
+## Each facility independently advances its own queues in command queued.
 ##
 ## **Facility Queue Structure:**
 ## - Spaceport: constructionQueue → activeConstructions (up to 5 docks)
@@ -26,7 +26,7 @@
 ## 3. Pull new projects from queues (FIFO) to fill available docks
 ##
 ## **Spaceport Construction Penalty:**
-## Ships built at spaceports cost 2x PP (applied at order submission time)
+## Ships built at spaceports cost 2x PP (applied at command submission time)
 ## Exception: Shipyard/Starbase buildings (orbital construction, no penalty)
 
 import std/[options, sequtils, strutils]
@@ -434,7 +434,7 @@ proc advanceConstruction*(
 ## This allows efficient batch operations and maximizes facility utilization.
 ##
 ## **Spaceport Cost Penalty:**
-## The 2x cost penalty for spaceports is applied at BUILD ORDER time (in order submission),
+## The 2x cost penalty for spaceports is applied at BUILD ORDER time (in command submission),
 ## not during queue advancement. This ensures the cost is deducted upfront.
 ##
 ## **Integration with Legacy System:**

@@ -156,7 +156,7 @@ proc resolveIncomePhase*(
   # ===================================================================
   # STEP 4: EXECUTE SALVAGE ORDERS
   # ===================================================================
-  # Salvage orders execute if fleet survived Conflict Phase and arrived
+  # Salvage commands execute if fleet survived Conflict Phase and arrived
   logInfo("Fleet", "[STEP 4] Executing salvage orders...")
 
   var salvageCount = 0

@@ -34,7 +34,7 @@ import ../../../common/[types/core, types/units, types/tech, types/combat]
 import ../../gamestate, ../../orders, ../../logger, ../../starmap
 import ../../index_maintenance
 import ../../order_types
-import ../fleet_order_execution # For movement order execution
+import ../fleet_order_execution # For movement command execution
 import ../../economy/[types as econ_types, engine as econ_engine, facility_queue]
 import ../../research/[types as res_types, advancement]
 import ../commissioning # For planetary defense commissioning
@@ -60,7 +60,7 @@ proc resolveProductionPhase*(
 ): seq[econ_types.CompletedProject] =
   ## Phase 4: Upkeep, effect decrements, and diplomatic status updates
   ## Returns completed projects for commissioning in next turn's Command Phase
-  logInfo(LogCategory.lcOrders, &"=== Production Phase === (turn={state.turn})")
+  logInfo(LogCategory.lcCommands, &"=== Production Phase === (turn={state.turn})")
 
   result = @[] # Will collect completed projects from construction queues
 
@@ -68,7 +68,7 @@ proc resolveProductionPhase*(
   # PRODUCTION STEP 1a: Activate Commands
   # ===================================================================
   logInfo(
-    LogCategory.lcOrders,
+    LogCategory.lcCommands,
     "[PRODUCTION STEP 1a] Activating commands...",
   )
 
@@ -79,12 +79,12 @@ proc resolveProductionPhase*(
     if fleet.command.isSome:
       activeCommandCount += 1
   logInfo(
-    LogCategory.lcOrders,
+    LogCategory.lcCommands,
     &"  Active commands: {activeCommandCount} commands ready for processing",
   )
 
   logInfo(
-    LogCategory.lcOrders,
+    LogCategory.lcCommands,
     &"[PRODUCTION STEP 1a] Command activation complete ({activeCommandCount} total commands)",
   )
 
@@ -109,7 +109,7 @@ proc resolveProductionPhase*(
       persistentCommandCount += 1
 
   logInfo(
-    LogCategory.lcOrders,
+    LogCategory.lcCommands,
     &"[PRODUCTION STEP 1c] Moving fleets toward command targets... ({persistentCommandCount} persistent commands)",
   )
 
@@ -135,16 +135,16 @@ proc resolveProductionPhase*(
 
     # Check 1: Skip if command already completed this turn (event-based)
     if fleetId in completedFleetCommands:
-      logDebug(LogCategory.lcOrders, &"  {fleetId} command completed, no movement needed")
+      logDebug(LogCategory.lcCommands, &"  {fleetId} command completed, no movement needed")
       continue
 
     # Check 2: Skip if fleet already at target
     if fleet.location == targetSystem:
-      logDebug(LogCategory.lcOrders, &"  {fleetId} already at target {targetSystem}")
+      logDebug(LogCategory.lcCommands, &"  {fleetId} already at target {targetSystem}")
       continue
 
     logDebug(
-      LogCategory.lcOrders,
+      LogCategory.lcCommands,
       &"  Moving {fleetId} toward {targetSystem} for {persistentCommand.commandType} command",
     )
 
@@ -157,7 +157,7 @@ proc resolveProductionPhase*(
 
     if not pathResult.found or pathResult.path.len == 0:
       logWarn(
-        LogCategory.lcOrders,
+        LogCategory.lcCommands,
         &"  No path found for {fleetId} from {fleet.location} to {targetSystem} (lane restrictions may apply)",
       )
       continue
@@ -201,11 +201,11 @@ proc resolveProductionPhase*(
     fleetsMovedCount += 1
 
     logDebug(
-      LogCategory.lcOrders, &"  Moved {fleetId} {jumpsToMove} jump(s) to {newLocation}"
+      LogCategory.lcCommands, &"  Moved {fleetId} {jumpsToMove} jump(s) to {newLocation}"
     )
 
   logInfo(
-    LogCategory.lcOrders,
+    LogCategory.lcCommands,
     &"[PRODUCTION STEP 1c] Completed ({fleetsMovedCount} fleets moved toward targets)",
   )
 
@@ -215,7 +215,7 @@ proc resolveProductionPhase*(
   # Check which fleets have arrived at their command targets
   # Generate FleetArrived events for execution in Conflict/Income phases
 
-  logDebug(LogCategory.lcOrders, "[PRODUCTION STEP 1d] Checking for fleet arrivals...")
+  logDebug(LogCategory.lcCommands, "[PRODUCTION STEP 1d] Checking for fleet arrivals...")
 
   var arrivedFleetCount = 0
 
@@ -252,12 +252,12 @@ proc resolveProductionPhase*(
       arrivedFleetCount += 1
 
       logDebug(
-        LogCategory.lcOrders,
+        LogCategory.lcCommands,
         &"  Fleet {fleetId} arrived at {targetSystem} (command: {command.commandType})",
       )
 
   logInfo(
-    LogCategory.lcOrders,
+    LogCategory.lcCommands,
     &"[PRODUCTION STEP 1d] Completed ({arrivedFleetCount} fleets arrived at targets)",
   )
 
@@ -271,7 +271,7 @@ proc resolveProductionPhase*(
   # Note: This is NOT command execution - it's lifecycle management
   # Commands are behavior parameters that already determined fleet actions
   logInfo(
-    LogCategory.lcOrders,
+    LogCategory.lcCommands,
     "[PRODUCTION STEP 1e] Administrative completion for Production commands...",
   )
   fleet_order_execution.performCommandMaintenance(
@@ -283,7 +283,7 @@ proc resolveProductionPhase*(
     "Production Phase Step 1e",
   )
   logInfo(
-    LogCategory.lcOrders, "[PRODUCTION STEP 1e] Administrative completion complete"
+    LogCategory.lcCommands, "[PRODUCTION STEP 1e] Administrative completion complete"
   )
 
   # ===================================================================
@@ -297,7 +297,7 @@ proc resolveProductionPhase*(
   # Intelligence Quality: Visual (only observable data)
 
   logDebug(
-    LogCategory.lcOrders,
+    LogCategory.lcCommands,
     "[PRODUCTION STEP 1e] Checking for scout-on-scout encounters...",
   )
 
@@ -349,7 +349,7 @@ proc resolveProductionPhase*(
         let detectionThreshold = 15 - observerScoutCount + targetELI
 
         logDebug(
-          LogCategory.lcOrders,
+          LogCategory.lcCommands,
           &"  {observer.owner} scouts ({observerScoutCount} sq) roll {detectionRoll} " &
             &"vs {detectionThreshold} to detect {target.owner} scouts at {systemId}",
         )
@@ -381,13 +381,13 @@ proc resolveProductionPhase*(
           scoutDetectionCount += 1
 
           logDebug(
-            LogCategory.lcOrders,
+            LogCategory.lcCommands,
             &"  {observer.owner} detected {target.owner} scouts at {systemId} " &
               &"(roll: {detectionRoll} >= {detectionThreshold})",
           )
 
   logInfo(
-    LogCategory.lcOrders,
+    LogCategory.lcCommands,
     &"[PRODUCTION STEP 1e] Completed ({scoutDetectionCount} scout detections)",
   )
 
@@ -434,36 +434,36 @@ proc resolveProductionPhase*(
   # ===================================================================
   # Process diplomatic actions (moved from Command Phase)
   # Diplomatic state changes happen AFTER all commands execute
-  logInfo(LogCategory.lcOrders, "[PRODUCTION STEP 3] Processing diplomatic actions...")
+  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 3] Processing diplomatic actions...")
   diplomatic_resolution.resolveDiplomaticActions(state, orders, events)
-  logInfo(LogCategory.lcOrders, "[PRODUCTION STEP 3] Completed diplomatic actions")
+  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 3] Completed diplomatic actions")
 
   # ===================================================================
   # STEP 4: POPULATION TRANSFERS
   # ===================================================================
   logInfo(
-    LogCategory.lcOrders, "[PRODUCTION STEP 4] Processing population transfers..."
+    LogCategory.lcCommands, "[PRODUCTION STEP 4] Processing population transfers..."
   )
   pop_transfers.resolvePopulationArrivals(state, events)
-  logInfo(LogCategory.lcOrders, "[PRODUCTION STEP 4] Completed population transfers")
+  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 4] Completed population transfers")
 
   # ===================================================================
   # STEP 5: TERRAFORMING
   # ===================================================================
   logInfo(
-    LogCategory.lcOrders, "[PRODUCTION STEP 5] Processing terraforming projects..."
+    LogCategory.lcCommands, "[PRODUCTION STEP 5] Processing terraforming projects..."
   )
   terraforming.processTerraformingProjects(state, events)
-  logInfo(LogCategory.lcOrders, "[PRODUCTION STEP 5] Completed terraforming projects")
+  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 5] Completed terraforming projects")
 
   # ===================================================================
   # STEP 6: CLEANUP AND PREPARATION
   # ===================================================================
-  logInfo(LogCategory.lcOrders, "[PRODUCTION STEP 6] Performing cleanup...")
+  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 6] Performing cleanup...")
   # Timer logic moved to Income Phase Step 9.
   # Other cleanup (destroyed entities, fog of war) is handled implicitly
   # by other systems or is not yet implemented.
-  logInfo(LogCategory.lcOrders, "[PRODUCTION STEP 6] Cleanup complete")
+  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 6] Cleanup complete")
 
   # ===================================================================
   # STEP 7: RESEARCH ADVANCEMENT
@@ -472,7 +472,7 @@ proc resolveProductionPhase*(
   # Per economy.md:4.1: Tech upgrades can be purchased EVERY TURN if RP available
   # Per canonical turn cycle: Step 7 processes EL/SL/TechField upgrades
   logInfo(
-    LogCategory.lcOrders, "[PRODUCTION STEP 7] Processing research advancements..."
+    LogCategory.lcCommands, "[PRODUCTION STEP 7] Processing research advancements..."
   )
 
   # -------------------------------------------------------------------
@@ -575,6 +575,6 @@ proc resolveProductionPhase*(
         events.add(event_factory.techAdvance(houseId, $field, adv.techToLevel))
 
   logInfo(
-    LogCategory.lcOrders,
+    LogCategory.lcCommands,
     &"[MAINTENANCE] Research advancements completed ({totalAdvancements} total advancements)",
   )

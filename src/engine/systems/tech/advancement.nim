@@ -4,7 +4,7 @@
 ##
 ## Tech Upgrade Rules:
 ## - Can be purchased EVERY TURN if player has enough RP
-## - Sequential order only (must buy level N before N+1)
+## - Sequential command only (must buy level N before N+1)
 ## - No turn restrictions on purchases
 ##
 ## Research Breakthrough Rules:

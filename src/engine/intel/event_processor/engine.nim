@@ -83,6 +83,6 @@ proc processEventsForIntelligence*(
           state.intelligence[houseId] = intel
 
       # Other event types not converted to intelligence
-      # (Economic, prestige, order rejections are house-private)
+      # (Economic, prestige, command rejections are house-private)
       else:
         discard

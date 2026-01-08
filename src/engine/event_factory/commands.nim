@@ -17,12 +17,12 @@ proc orderRejected*(
     systemId: Option[SystemId] = none(SystemId),
     fleetId: Option[FleetId] = none(FleetId), # Added fleetId
 ): event_types.GameEvent =
-  ## Create event for rejected order (validation failure)
+  ## Create event for rejected command (validation failure)
   event_types.GameEvent(
     eventType: event_types.GameEventType.OrderRejected,
     houseId: some(houseId),
     systemId: systemId,
-    description: &"{orderType} order rejected: {reason}",
+    description: &"{orderType} command rejected: {reason}",
     fleetId: fleetId,
     orderType: some(orderType),
     reason: some(reason),
@@ -70,12 +70,12 @@ proc commandIssued*(
     orderType: string, # This should be FleetCommandType
     systemId: Option[SystemId] = none(SystemId),
 ): event_types.GameEvent =
-  ## Order submitted and added to fleet orders queue
+  ## Order submitted and added to fleet commands queue
   event_types.GameEvent(
     eventType: event_types.GameEventType.OrderIssued,
     houseId: some(houseId),
     systemId: systemId,
-    description: &"Fleet {fleetId}: Order issued - {orderType}",
+    description: &"Fleet {fleetId}: Command issued - {orderType}",
     fleetId: some(fleetId),
     orderType: some(orderType),
   )
@@ -107,7 +107,7 @@ proc commandCompleted*(
 proc fleetArrived*(
     houseId: HouseId, fleetId: FleetId, orderType: string, systemId: SystemId
 ): event_types.GameEvent =
-  ## Fleet arrived at order target system (ready for order execution)
+  ## Fleet arrived at command target system (ready for command execution)
   ## Generated in Maintenance Phase, checked in Conflict/Income phase
   event_types.GameEvent(
     eventType: event_types.GameEventType.FleetArrived,

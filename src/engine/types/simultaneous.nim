@@ -1,6 +1,6 @@
 ## Simultaneous Resolution Type Definitions
 ##
-## Generic framework types for simultaneous fleet order resolution.
+## Generic framework types for simultaneous fleet command resolution.
 import std/options
 import ./core
 

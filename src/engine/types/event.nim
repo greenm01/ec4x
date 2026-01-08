@@ -6,12 +6,12 @@ type
     ## Categories of game events.
     ## This enum now consolidates all specific event kinds.
     General # Generic informational event
-    OrderIssued # An order was successfully issued
-    OrderCompleted # An order was completed
-    OrderRejected # An order was rejected due to validation failure
-    OrderFailed # An order failed during execution
-    OrderAborted # An order was aborted due to changed conditions
-    FleetArrived # Fleet arrived at order target (ready for execution)
+    OrderIssued # An command was successfully issued
+    OrderCompleted # An command was completed
+    OrderRejected # An command was rejected due to validation failure
+    OrderFailed # An command failed during execution
+    OrderAborted # An command was aborted due to changed conditions
+    FleetArrived # Fleet arrived at command target (ready for execution)
     CombatResult # Result of a space combat or planetary assault
     Espionage # Outcome of an espionage operation
     Diplomacy # Outcome of a diplomatic action
@@ -125,9 +125,9 @@ type
       message*: string # Generic message or simple description
     of OrderIssued, OrderCompleted, OrderRejected, OrderFailed, OrderAborted,
         FleetArrived:
-      ## Events for fleet and other orders (fleetId/details in common fields)
+      ## Events for fleet and other commands (fleetId/details in common fields)
       orderType*: Option[string]
-        # String representation of the order type (e.g., "MoveFleet", "BuildFleet")
+        # String representation of the command type (e.g., "MoveFleet", "BuildFleet")
       reason*: Option[string] # Why it failed/rejected/aborted
     of CombatResult, SystemCaptured, ColonyCaptured, InvasionRepelled:
       ## Events for combat outcomes (newOwner/oldOwner in common fields)

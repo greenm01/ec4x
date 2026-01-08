@@ -1,7 +1,7 @@
 ## @engine/telemetry/collectors/espionage.nim
 ##
 ## Collect espionage metrics from events and GameState.
-## Covers: intelligence operations, counter-intelligence, spy missions.
+## Covers: intelligence operations, counter-intelligence, scout missions.
 
 import std/[options, math]
 import ../../types/[telemetry, core, game_state, event, house, ship]
@@ -93,7 +93,7 @@ proc collectEspionageMetrics*(
   # ESPIONAGE MISSION TRACKING (from orders)
   # ================================================================
 
-  # TODO: These are populated during order generation phase
+  # TODO: These are populated during command generation phase
   result.spyPlanetMissions = prevMetrics.spyPlanetMissions
   result.hackStarbaseMissions = prevMetrics.hackStarbaseMissions
   result.totalEspionageMissions = prevMetrics.totalEspionageMissions

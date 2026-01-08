@@ -5,7 +5,7 @@ type
   ZeroTurnCommandType* {.pure.} = enum
     ## Administrative commands that execute immediately (0 turns)
     ## All require fleet to be at friendly colony
-    ## Execute during order submission phase, NOT turn resolution
+    ## Execute during command submission phase, NOT turn resolution
 
     # Fleet reorganization (from FleetManagementCommand)
     DetachShips ## Split ships from fleet → create new fleet
@@ -23,7 +23,7 @@ type
 
   ZeroTurnCommand* = object
     ## Immediate-execution administrative command
-    ## Executes synchronously during order submission (NOT in OrderPacket)
+    ## Executes synchronously during command submission (NOT in OrderPacket)
     ## Returns immediate result (success/failure + error message)
     houseId*: HouseId
     commandType*: ZeroTurnCommandType

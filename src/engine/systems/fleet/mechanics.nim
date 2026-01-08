@@ -42,7 +42,7 @@ proc completeFleetCommand*(
     event_factory.commandCompleted(houseId, fleetId, orderType, details, systemId)
   )
 
-  logInfo("Orders", &"Fleet {fleetId} {orderType} order completed")
+  logInfo("Orders", &"Fleet {fleetId} {orderType} command completed")
 
 proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): bool =
   ## Check if a system is hostile to a house based on known intel (fog-of-war)
@@ -212,10 +212,10 @@ proc shouldAutoSeekHome*(state: GameState, fleet: Fleet, command: FleetCommand):
   ##
   ## Auto-abort conditions:
   ## - ETAC missions where destination becomes enemy-controlled
-  ## - Guard/blockade orders where target is lost or captured
+  ## - Guard/blockade commands where target is lost or captured
   ## - Patrol missions in now-hostile territory
 
-  # Check if fleet is executing an order that becomes invalid due to hostility
+  # Check if fleet is executing an command that becomes invalid due to hostility
   case command.commandType
   of FleetCommandType.Colonize:
     # ETAC missions abort if destination becomes enemy-controlled
@@ -225,7 +225,7 @@ proc shouldAutoSeekHome*(state: GameState, fleet: Fleet, command: FleetCommand):
         return true
   of FleetCommandType.GuardStarbase, FleetCommandType.GuardColony,
       FleetCommandType.Blockade:
-    # Guard/blockade orders abort if system lost to enemy
+    # Guard/blockade commands abort if system lost to enemy
     if command.targetSystem.isSome:
       let targetId = command.targetSystem.get()
       let colonyOpt = state.colonyBySystem(targetId)
@@ -274,7 +274,7 @@ proc resolveMovementCommand*(
     command: FleetCommand,
     events: var seq[GameEvent],
 ) =
-  ## Execute a fleet movement order with pathfinding and lane traversal rules
+  ## Execute a fleet movement command with pathfinding and lane traversal rules
   ## Per operations.md:6.1 - Lane traversal rules:
   ##   - Major lanes: 2 jumps per turn if all systems owned by player
   ##   - Major lanes: 1 jump per turn if jumping into unexplored/rival system
@@ -316,11 +316,11 @@ proc resolveMovementCommand*(
   let targetId = command.targetSystem.get()
   let startId = fleet.location
 
-  # Already at destination - clear order (arrival complete)
+  # Already at destination - clear command (arrival complete)
   if startId == targetId:
     logDebug(
       "Fleet",
-      &"Fleet {command.fleetId} arrived at destination, order complete",
+      &"Fleet {command.fleetId} arrived at destination, command complete",
     )
     # Generate OrderCompleted event - cleanup handled by Command Phase
     events.add(
@@ -415,10 +415,10 @@ proc resolveMovementCommand*(
   if newLocation == targetId:
     logInfo(
       "Fleet",
-      &"Fleet {command.fleetId} arrived at destination {targetId}, order complete",
+      &"Fleet {command.fleetId} arrived at destination {targetId}, command complete",
     )
 
-    # Check if this fleet is on a spy mission and start mission on arrival
+    # Check if this fleet is on a scout mission and start mission on arrival
     if fleet.missionState == MissionState.Traveling:
       fleet.missionState = MissionState.ScoutLocked
       fleet.missionStartTurn = state.turn
@@ -450,7 +450,7 @@ proc resolveMovementCommand*(
 
       logInfo(
         "Fleet",
-        &"Fleet {command.fleetId} spy mission started at {targetId}",
+        &"Fleet {command.fleetId} scout mission started at {targetId}",
       )
   else:
     logInfo(
@@ -636,7 +636,7 @@ proc resolveColonizationCommand*(
       "Colonization",
       &"Fleet {command.fleetId} not at target - moving from {fleet.location} to {targetId}",
     )
-    # Create temporary movement order to get fleet to destination
+    # Create temporary movement command to get fleet to destination
     let moveOrder = FleetCommand(
       fleetId: command.fleetId,
       commandType: FleetCommandType.Move,

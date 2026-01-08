@@ -13,7 +13,7 @@ export event_types
 proc constructionStarted*(
     houseId: HouseId, itemType: string, systemId: SystemId, cost: int
 ): event_types.GameEvent =
-  ## Create event for construction order acceptance
+  ## Create event for construction command acceptance
   event_types.GameEvent(
     eventType: event_types.GameEventType.ConstructionStarted, # Specific event type
     houseId: some(houseId),

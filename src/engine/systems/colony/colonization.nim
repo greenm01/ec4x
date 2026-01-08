@@ -1,6 +1,6 @@
 ## Colonization Resolution
 ##
-## Handles simultaneous colonization order resolution:
+## Handles simultaneous colonization command resolution:
 ## 1. Collect intents from all houses
 ## 2. Detect conflicts (multiple fleets → same system)
 ## 3. Resolve via fleet strength + randomness (Option B)
@@ -100,13 +100,13 @@ proc collectColonizationIntents(state: GameState): seq[ColonizationIntent] =
     # Validate: Has colonists (ETAC with PTU cargo)
     if not state.hasColonists(fleet):
       logWarn("Colonization",
-        &"Fleet {fleetId} has Colonize order but no colonists")
+        &"Fleet {fleetId} has Colonize command but no colonists")
       continue
 
     # Validate: Target system specified
     if command.targetSystem.isNone:
       logWarn("Colonization",
-        &"Fleet {fleetId} has Colonize order but no target system")
+        &"Fleet {fleetId} has Colonize command but no target system")
       continue
 
     let targetSystem = command.targetSystem.get()

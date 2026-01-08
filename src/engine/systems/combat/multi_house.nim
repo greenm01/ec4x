@@ -163,7 +163,7 @@ proc selectTargets*(
   ## Priority order:
   ## 1. Enemy status (highest priority)
   ## 2. Hostile status (medium priority)
-  ## 3. Neutral status with colony-threatening orders (lowest priority)
+  ## 3. Neutral status with colony-threatening commands (lowest priority)
   ##
   ## Within each diplomatic tier, targets highest AS first
 

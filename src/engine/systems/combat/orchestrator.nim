@@ -260,7 +260,7 @@ proc resolveSystemCombat*(
 
   let colonyId = colonyOpt.get().id
 
-  # Collect all planetary assault orders targeting this colony
+  # Collect all planetary assault commands targeting this colony
   type AssaultIntent = object
     houseId: HouseId
     fleetId: FleetId
@@ -312,7 +312,7 @@ proc resolveSystemCombat*(
   if invasions.len == 0:
     return # No invasion attempts
 
-  # Randomize order for fairness
+  # Randomize command for fairness
   for i in countdown(invasions.len - 1, 1):
     let j = rand(rng, 0..i)
     swap(invasions[i], invasions[j])
@@ -323,7 +323,7 @@ proc resolveSystemCombat*(
     " total_attempts=", $invasions.len
   )
 
-  # Try each invasion/blitz in random order until one succeeds
+  # Try each invasion/blitz in random command until one succeeds
   var colonyCaptured = false
   for intent in invasions:
     if colonyCaptured:

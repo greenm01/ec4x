@@ -80,7 +80,7 @@ proc resolveScoutMissions*(
 
   # Use iterator: fleetsWithArrivedConflictCommands filters spy commands
   for (fleetId, fleet, command) in state.fleetsWithArrivedConflictCommands():
-    # Filter for spy mission types only
+    # Filter for scout mission types only
     if command.commandType notin [
       FleetCommandType.ScoutColony,
       FleetCommandType.ScoutSystem,
@@ -90,7 +90,7 @@ proc resolveScoutMissions*(
 
     # Validate scout-only fleet
     if not state.isScoutOnly(fleet):
-      logWarn("Espionage", "Non-scout ships in spy mission fleet",
+      logWarn("Espionage", "Non-scout ships in scout mission fleet",
         " fleetId=", fleetId)
       continue
 
@@ -286,7 +286,7 @@ proc generateMissionIntel(
         state.updateHouse(ownerHouse, house)
 
   else:
-    discard # Other FleetCommandTypes not applicable to spy missions
+    discard # Other FleetCommandTypes not applicable to scout missions
 
 proc wasEspionageHandled*(
     results: seq[espionage.ScoutIntelResult], houseId: HouseId, fleetId: FleetId

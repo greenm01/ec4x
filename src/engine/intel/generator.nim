@@ -150,11 +150,11 @@ proc generateOrbitalIntelReport*(
     else:
       discard
 
-    # Check for guard/blockade orders (Spy quality only - requires infiltration)
+    # Check for guard/blockade commands (Spy quality only - requires infiltration)
     if quality == IntelQuality.Spy:
-      # TODO: Check fleet orders when order system is implemented
-      # if fleet.orders.isSome:
-      #   let order = fleet.orders.get()
+      # TODO: Check fleet commands when command system is implemented
+      # if fleet.command.isSome:
+      #   let command = fleet.command.get()
       #   if order.orderType == OrderType.Guard and order.targetColony == colony.id:
       #     guardFleetIds.add(fleet.id)
       #   elif order.orderType == OrderType.Blockade and order.targetColony == colony.id:

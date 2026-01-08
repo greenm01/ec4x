@@ -42,22 +42,22 @@
 ##   Step 9: Advance Timers (espionage effects, diplomatic timers, grace periods)
 ##
 ## **PHASE 3: COMMAND PHASE** [resolution/phases/command_phase.nim]
-##   Step 0: Order Cleanup (clean completed/failed/aborted orders from previous turn)
+##   Step 0: Order Cleanup (clean completed/failed/aborted commands from previous turn)
 ##   Part A: Ship Commissioning & Automation
 ##     - Commission completed ships from pendingMilitaryCommissions
 ##     - Auto-create squadrons, auto-assign to fleets
 ##     - Auto-load PTUs onto ETAC ships
 ##     - Colony automation (auto-repair, auto-load fighters)
 ##   Part B: Player Submission Window (24-hour window in multiplayer)
-##     - Process build orders
+##     - Process build commands
 ##     - Process colony management orders
 ##     - Process Space Guild population transfers
 ##     - Process diplomatic actions
 ##     - Process terraforming orders
 ##   Part C: Order Processing (categorization & queueing)
-##     - Queue combat orders for Turn N+1 Conflict Phase
-##     - Execute administrative orders immediately
-##     - Store movement orders for Maintenance Phase execution
+##     - Queue combat commands for Turn N+1 Conflict Phase
+##     - Execute administrative commands immediately
+##     - Store movement commands for Maintenance Phase execution
 ##     - Process research allocation (PP → ERP/SRP/TRP, with treasury scaling)
 ##
 ## **PHASE 4: MAINTENANCE PHASE** [resolution/phases/maintenance_phase.nim]
@@ -80,7 +80,7 @@
 ##     7d: Tech Field Advancement (CST, WEP, TFM, ELI, CI)
 ##
 ## **COMMISSIONING & AUTOMATION FLOW:**
-## - Turn N: Build orders submitted → queued
+## - Turn N: Build commands submitted → queued
 ## - Turn N: Maintenance advances queues → commissions planetary defense (same turn)
 ## - Turn N: Maintenance stores ship completions in pendingMilitaryCommissions
 ## - Turn N+1: Command Phase commissions ships → automation → new builds
@@ -162,9 +162,9 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
 
   logResolve("Starting strategic cycle", "turn=", $state.turn)
 
-  # Generate AI orders for special modes (Defensive Collapse & MIA Autopilot)
-  # These override player/AI orders for affected houses
-  var effectiveOrders = orders # Start with submitted orders
+  # Generate AI commands for special modes (Defensive Collapse & MIA Autopilot)
+  # These override player/AI commands for affected houses
+  var effectiveOrders = commands # Start with submitted orders
 
   for houseId, house in result.newState.houses:
     case house.status
@@ -172,7 +172,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
       # Generate defensive collapse AI orders
       let defensiveOrders = getDefensiveCollapseOrders(result.newState, houseId)
 
-      # Create empty order packet (no construction, research, diplomacy)
+      # Create empty command packet (no construction, research, diplomacy)
       var collapsePacket = OrderPacket(
         houseId: houseId,
         turn: state.turn,
@@ -187,7 +187,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         cipInvestment: 0,
       )
 
-      # Add defensive fleet orders
+      # Add defensive fleet commands
       for (fleetId, command) in defensiveOrders:
         collapsePacket.fleetCommands.add(command)
 
@@ -203,7 +203,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
       # Generate autopilot AI orders
       let autopilotOrders = getAutopilotOrders(result.newState, houseId)
 
-      # Create minimal order packet (no construction, no new research, no diplomacy)
+      # Create minimal command packet (no construction, no new research, no diplomacy)
       var autopilotPacket = OrderPacket(
         houseId: houseId,
         turn: state.turn,
@@ -218,7 +218,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
         cipInvestment: 0,
       )
 
-      # Add autopilot fleet orders
+      # Add autopilot fleet commands
       for (fleetId, command) in autopilotOrders:
         autopilotPacket.fleetCommands.add(command)
 
@@ -238,7 +238,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
   # Phase 2: Income (resource collection + capacity enforcement after IU loss)
   income_phase.resolveIncomePhase(result.newState, effectiveOrders, result.events)
 
-  # Phase 3: Command (ship commissioning → automation → build orders → fleet orders → diplomatic actions)
+  # Phase 3: Command (ship commissioning → automation → build commands → fleet commands → diplomatic actions)
   command_phase.resolveCommandPhase(
     result.newState, effectiveOrders, result.combatReports, result.events, rng
   )
@@ -290,7 +290,7 @@ proc resolveTurn*(state: GameState, orders: Table[HouseId, OrderPacket]): TurnRe
     result.newState, result.events, result.newState.turn
   )
   logInfo(
-    LogCategory.lcOrders,
+    LogCategory.lcCommands,
     &"Intelligence event processing complete ({result.events.len} events)",
   )
 

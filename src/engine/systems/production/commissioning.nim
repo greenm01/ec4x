@@ -2,12 +2,12 @@
 ##
 ## This module handles the commissioning of completed construction projects into
 ## operational military units and facilities. It runs as the FIRST step in the
-## Command Phase, before new build orders are processed.
+## Command Phase, before new build commands are processed.
 ##
 ## **Design Rationale:**
-## Commissioning must occur before build orders to ensure clean capacity calculations.
+## Commissioning must occur before build commands to ensure clean capacity calculations.
 ## When a shipyard completes a destroyer, that dock space becomes available for new
-## construction orders submitted the same turn. By commissioning first, we eliminate
+## construction commands submitted the same turn. By commissioning first, we eliminate
 ## temporal paradoxes where dock availability is ambiguous.
 ##
 ## **Phase Ordering (Updated 2025-12-04):**
@@ -21,7 +21,7 @@
 ## Command Phase:
 ##   1. Commission completed projects ← THIS MODULE
 ##   2. Auto-load fighters to carriers (if enabled)
-##   3. Process new build orders
+##   3. Process new build commands
 ##   4. ... rest of Command Phase ...
 ## ```
 ##
@@ -125,8 +125,8 @@ proc autoLoadFightersToCarriers(
   ##
   ## **Integration:**
   ## - Called after all units commissioned and colonies updated
-  ## - Runs before new build orders processed
-  ## - Per commissioning.nim:22-24 phase ordering
+  ## - Runs before new build commands processed
+  ## - Per commissioning.nim:22-24 phas commanding
 
   logDebug("Economy", "Starting auto-load fighters to carriers")
 
@@ -644,8 +644,8 @@ proc commissionPlanetaryDefense*(
     logDebug("Economy", &"  Colony {colonyId} updated")
 
   # Auto-load fighters onto carriers with available hangar space
-  # Per phase ordering (commissioning.nim:22-24), this happens after
-  # commissioning but before new build orders
+  # Per phas commanding (commissioning.nim:22-24), this happens after
+  # commissioning but before new build commands
   autoLoadFightersToCarriers(state, modifiedColonies, events)
 
 proc commissionScout(

@@ -23,7 +23,7 @@ type
 
   ExecutionValidationResult = object
     valid*: bool
-    shouldAbort*: bool # True if order should be converted to SeekHome/Hold
+    shouldAbort*: bool # True if command should be converted to SeekHome/Hold
     reason*: string
 
 proc validateCommandAtExecution(
@@ -141,14 +141,14 @@ proc validateCommandAtExecution(
       return ExecutionValidationResult(
         valid: false,
         shouldAbort: false,
-        reason: "Fleet has no Scout ships (spy missions require Scout ships)",
+        reason: "Fleet has no Scout ships (scout missions require Scout ships)",
       )
 
     if hasNonIntel:
       return ExecutionValidationResult(
         valid: false,
         shouldAbort: false,
-        reason: "Fleet has non-Scout ships (spy missions require pure Scout fleets)",
+        reason: "Fleet has non-Scout ships (scout missions require pure Scout fleets)",
       )
   of FleetCommandType.Patrol:
     # Check if patrol system is now hostile (lost to enemy)
@@ -222,24 +222,24 @@ proc performCommandMaintenance*(
     categoryFilter: OrderCategoryFilter,
     phaseDescription: string,
 ) =
-  ## Manage fleet order lifecycle: validation, completion detection, and execution
-  ## This is the core fleet order maintenance logic shared across phases
+  ## Manage fleet command lifecycle: validation, completion detection, and execution
+  ## This is the core fleet command maintenance logic shared across phases
 
-  logDebug("Commands", &"[{phaseDescription}] Starting fleet order execution")
+  logDebug("Commands", &"[{phaseDescription}] Starting fleet command execution")
 
-  # Collect all fleet orders (new + persistent)
+  # Collect all fleet commands (new + persistent)
   var allFleetCommands: seq[(HouseId, FleetCommand)] = @[]
   var newCommandsThisTurn = initHashSet[FleetId]()
 
-  # Step 1: Collect NEW orders from this turn's OrderPackets
+  # Step 1: Collect NEW commands from this turn's OrderPackets
   for (houseId, _) in state.allHousesWithId():
     if houseId in orders:
       for command in orders[houseId].fleetCommands:
-        # Only process orders matching the category filter
+        # Only process commands matching the category filter
         if not categoryFilter(command.commandType):
           continue
 
-        # Check if this fleet has a locked permanent order (Reserve/Mothball)
+        # Check if this fleet has a locked permanent command (Reserve/Mothball)
         let fleetOpt = state.fleet(command.fleetId)
         if fleetOpt.isSome:
           let fleet = fleetOpt.get()
@@ -248,7 +248,7 @@ proc performCommandMaintenance*(
             if command.commandType != FleetCommandType.Reactivate:
               logDebug(
                 "Commands",
-                &"  [LOCKED] Fleet {command.fleetId} has locked permanent order",
+                &"  [LOCKED] Fleet {command.fleetId} has command",
               )
               continue
 
@@ -295,15 +295,15 @@ proc performCommandMaintenance*(
     cmp(a[1].priority, b[1].priority)
 
   logDebug(
-    "Commands", &"[{phaseDescription}] Executing {allFleetCommands.len} orders"
+    "Commands", &"[{phas commands"
   )
 
-  # Track which fleets have already executed orders this turn
+  # Track which fleets have already executed commands this turn
   var fleetsProcessed = initHashSet[FleetId]()
 
-  # Execute all fleet orders
+  # Execute all fleet commands
   for (houseId, command) in allFleetCommands:
-    # Skip if fleet already executed an order this turn
+    # Skip if fleet already executed an command this turn
     if command.fleetId in fleetsProcessed:
       logDebug(
         "Commands", &"  [SKIPPED] Fleet {command.fleetId} already executed"
@@ -391,32 +391,32 @@ proc performCommandMaintenance*(
         # Order invalid, skip execution
         logWarn(
           "Commands",
-          &"  [SKIPPED] Fleet {command.fleetId} order invalid at execution",
+          &"  [SKIPPED] Fleet {command.fleetId} command invalid at execution",
         )
         continue
 
-    # Execute the validated order (events added directly via mutable parameter)
+    # Execute the validated command (events added directly via mutable parameter)
     let outcome = dispatcher.executeFleetCommand(state, houseId, actualOrder, events)
 
     if outcome == OrderOutcome.Success:
       logDebug(
         "Fleet",
-        &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} executed",
+        &"Fleet {actualOrder.fleetId} command {actualOrder.commandType} executed",
       )
       # Events already added via mutable parameter
     elif outcome == OrderOutcome.Failed:
       # Order failed validation - event generated, cleanup handled by Command Phase
       logDebug(
         "Fleet",
-        &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} failed validation",
+        &"Fleet {actualOrder.fleetId} command {actualOrder.commandType} failed validation",
       )
     elif outcome == OrderOutcome.Aborted:
       # Order aborted - event generated, cleanup handled by Command Phase
       logDebug(
         "Fleet",
-        &"Fleet {actualOrder.fleetId} order {actualOrder.commandType} aborted",
+        &"Fleet {actualOrder.fleetId} command {actualOrder.commandType} aborted",
       )
 
   logDebug(
-    "Commands", &"[{phaseDescription}] Completed fleet order execution"
+    "Commands", &"[{phaseDescription}] Completed fleet command execution"
   )

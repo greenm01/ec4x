@@ -461,7 +461,7 @@ proc executeTransferShips*(
 
   # Check if source fleet is now empty
   if sourceFleet.ships.len == 0:
-    # Delete empty fleet and cleanup orders (DRY helper)
+    # Delete empty fleet and cleanup commands (DRY helper)
     cleanupEmptyFleet(state, cmd.sourceFleetId.get())
     logFleet(
       &"TransferShips: Merged all ships from {cmd.sourceFleetId.get()} into {targetFleetId}, deleted source fleet"

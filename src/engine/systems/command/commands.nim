@@ -69,17 +69,17 @@ proc validateFleetCommand*(
       valid: false, error: &"Fleet {cmd.fleetId} is not owned by {issuingHouse}"
     )
 
-  # Check if fleet is locked on active spy mission
+  # Check if fleet is locked on active scout mission
   # Scouts on active missions (OnSpyMission state) cannot accept new commands
   # Scouts traveling to mission (Traveling state) can change commands (cancel mission)
   if fleet.missionState == MissionState.ScoutLocked:
     logWarn(
       "Commands",
-      &"{issuingHouse} Command REJECTED: {cmd.fleetId} is on active spy mission " &
+      &"{issuingHouse} Command REJECTED: {cmd.fleetId} is on active scout mission " &
         &"(cannot issue new commands while mission active)",
     )
     return ValidationResult(
-      valid: false, error: "Fleet locked on active spy mission (scouts consumed)"
+      valid: false, error: "Fleet locked on active scout mission (scouts consumed)"
     )
 
   logDebug(
@@ -201,7 +201,7 @@ proc validateFleetCommand*(
     )
   of FleetCommandType.ScoutColony, FleetCommandType.ScoutSystem,
       FleetCommandType.HackStarbase:
-    # Spy missions require Scout ships only (pure scout fleets)
+    # Scout missions require Scout ships only (pure scout fleets)
     if fleet.ships.len == 0:
       logWarn(
         "Commands",
@@ -209,7 +209,7 @@ proc validateFleetCommand*(
           &"requires at least one Scout",
       )
       return ValidationResult(
-        valid: false, error: "Spy missions require at least one Scout"
+        valid: false, error: "Scout missions require at least one Scout"
       )
 
     # Check fleet is pure Scout (all ships must be Scouts)
@@ -224,18 +224,18 @@ proc validateFleetCommand*(
         logWarn(
           "Commands",
           &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
-            &"spy missions require pure Scout fleet (found {ship.shipClass})",
+            &"scout missions require pure Scout fleet (found {ship.shipClass})",
         )
 
     if not hasScout:
       return ValidationResult(
-        valid: false, error: "Spy missions require at least one Scout"
+        valid: false, error: "Scout missions require at least one Scout"
       )
 
     if hasNonScout:
       return ValidationResult(
         valid: false,
-        error: "Spy missions require pure Scout fleet (no combat/auxiliary/expansion ships)",
+        error: "Scout missions require pure Scout fleet (no combat/auxiliary/expansion ships)",
       )
 
     if cmd.targetSystem.isNone:
@@ -244,7 +244,7 @@ proc validateFleetCommand*(
         &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
           &"no target system specified",
       )
-      return ValidationResult(valid: false, error: "Spy mission requires target system")
+      return ValidationResult(valid: false, error: "Scout mission requires target system")
 
     logDebug(
       "Commands",

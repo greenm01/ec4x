@@ -62,8 +62,8 @@ type
     drydockCount*: int32 # Orbital repair/refit (dock pipeline)
     reserveFleetCount*: int32 # Fleets in reserve status at this system
     mothballedFleetCount*: int32 # Fleets in mothballed status at this system
-    guardFleetIds*: seq[FleetId] # Fleets with Guard orders for this colony
-    blockadeFleetIds*: seq[FleetId] # Fleets with Blockade orders for this colony
+    guardFleetIds*: seq[FleetId] # Fleets with Guard commands for this colony
+    blockadeFleetIds*: seq[FleetId] # Fleets with Blockade commands for this colony
     fighterIds*: seq[ShipId] # Fighters stationed at colony
 
   FleetIntel* = object

@@ -164,26 +164,26 @@ proc resolveConflictPhase*(
         break # System added, move to next system.
 
   # ===================================================================
-  # ARRIVAL FILTERING: Filter orders to only arrived fleets
+  # ARRIVAL FILTERING: Filter commands to only arrived fleets
   # ===================================================================
   # Per ec4x_canonical_turn_cycle.md:486-492 (Production Phase Step 1d)
   #
   # Arrival Detection (Production Phase):
-  #   - Fleet location compared to order target
+  #   - Fleet location compared to command target
   #   - If match: fleet.missionState set to Executing
   #
   # Execution (Conflict Phase):
-  #   - Only orders where fleet.missionState == Executing execute
-  #   - Ensures orders execute when fleets reach targets, not before
+  #   - Only commands where fleet.missionState == Executing execute
+  #   - Ensures commands execute when fleets reach targets, not before
   #
   # Orders requiring arrival: Bombard, Invade, Blitz, Colonize,
   #                          SpyColony, SpySystem, HackStarbase
-  # Create filtered order set once to avoid O(H×O) iteration per step
+  # Create filtered command set once to avoid O(H×O) iteration per step
   var arrivedOrders = effectiveCommands
   for houseId in arrivedOrders.keys:
     var filteredFleetOrders: seq[FleetCommand] = @[]
     for command in arrivedOrders[houseId].fleetCommands:
-      # Check if order requires arrival
+      # Check if command requires arrival
       const arrivalRequired = [
         FleetCommandType.Bombard, FleetCommandType.Invade, FleetCommandType.Blitz,
         FleetCommandType.Colonize, FleetCommandType.SpyColony,
@@ -197,7 +197,7 @@ proc resolveConflictPhase*(
           logDebug("Orders", "  [SKIP] Fleet has not arrived",
             "fleetId=", command.fleetId, " order=", command.commandType)
       else:
-        # Keep orders that don't require arrival checking
+        # Keep commands that don't require arrival checking
         filteredFleetOrders.add(command)
     arrivedOrders[houseId].fleetCommands = filteredFleetOrders
 

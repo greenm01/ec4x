@@ -167,7 +167,7 @@ proc isScoutOnly*(state: GameState, fleet: Fleet): bool =
   ## Check if fleet contains ONLY scout ships
   ## O(s) where s = ships in fleet
   ##
-  ## Used for spy mission validation (pure scout fleets only)
+  ## Used for scout mission validation (pure scout fleets only)
   ##
   ## Example:
   ##   if state.isScoutOnly(fleet):
@@ -187,7 +187,7 @@ proc hasNonScoutShips*(state: GameState, fleet: Fleet): bool =
   ## Check if fleet has any non-scout ships
   ## O(s) where s = ships in fleet
   ##
-  ## Used for spy mission validation (ensure pure scout fleets)
+  ## Used for scout mission validation (ensure pure scout fleets)
   ##
   ## Example:
   ##   if state.hasNonScoutShips(fleet):

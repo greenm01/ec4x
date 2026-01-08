@@ -55,8 +55,8 @@ proc collectFleetMetrics*(
         let ship = shipOpt.get()
         if ship.shipClass == ShipClass.ETAC:
           totalETACs += 1
-          # TODO: Check if ETAC has orders or is in transit
-          # This requires checking fleet orders and fleet status
+          # TODO: Check if ETAC has commands or is in transit
+          # This requires checking fleet commands and fleet status
 
   result.totalETACs = totalETACs
   result.etacsWithoutOrders = etacsWithoutOrders

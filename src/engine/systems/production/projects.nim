@@ -6,11 +6,11 @@
 ## - Industrial Units (IU investment)
 ##
 ## These are pure "definition" functions that return ConstructionProject objects.
-## The actual order processing and queue assignment happens in construction.nim.
+## The actual command processing and queue assignment happens in construction.nim.
 ##
 ## **Separation of Concerns:**
 ## - This module: "What to build" (project definitions, cost calculations)
-## - construction.nim: "How orders work" (validation, routing, treasury)
+## - construction.nim: "How commands work" (validation, routing, treasury)
 ## - queue_advancement.nim: "Queue management" (advancement, completion)
 ##
 ## **Architecture Notes:**
@@ -40,7 +40,7 @@ proc getIndustrialUnitCost*(colony: Colony): int32 =
       0'i32
 
   # Find applicable tier based on IU percentage
-  # Tiers are ordered 1-5, check in order until threshold exceeded
+  # Tiers are ordered 1-5, check in command until threshold exceeded
   var multiplier = 1.0'f32  # Default fallback
 
   let cfg = gameConfig.economy.industrialInvestment

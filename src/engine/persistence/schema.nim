@@ -3,7 +3,7 @@
 ## Architecture: One SQLite database per game at: {dataDir}/games/{gameId}/ec4x.db
 ##
 ## Tables:
-##   Core State: games, houses, systems, lanes, colonies, fleets, ships, orders, diplomacy
+##   Core State: games, houses, systems, lanes, colonies, fleets, ships, commands, diplomacy
 ##   Intel: intel_systems, intel_fleets, intel_colonies
 ##   Telemetry: diagnostic_metrics
 ##   Events: game_events
@@ -163,17 +163,17 @@ CREATE TABLE IF NOT EXISTS ships (
 CREATE INDEX IF NOT EXISTS idx_ships_fleet ON ships(fleet_id);
 """
 
-const CreateOrdersTable* = """
-CREATE TABLE IF NOT EXISTS orders (
+const CreateCommandsTable* = """
+CREATE TABLE IF NOT EXISTS commands (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   game_id TEXT NOT NULL,
   house_id TEXT NOT NULL,
   turn INTEGER NOT NULL,
   fleet_id TEXT NOT NULL,
-  order_type TEXT NOT NULL,         -- Fleet order type
-  target_system_id TEXT,            -- For movement/patrol orders
-  target_fleet_id TEXT,             -- For join/rendezvous orders
-  params TEXT,                      -- JSON blob for order-specific data
+  command_type TEXT NOT NULL,         -- Fleet command type
+  target_system_id TEXT,            -- For movement/patrol commands
+  target_fleet_id TEXT,             -- For join/rendezvous commands
+  params TEXT,                      -- JSON blob for command-specific data
   submitted_at INTEGER NOT NULL,    -- Unix timestamp
   processed BOOLEAN NOT NULL DEFAULT 0,
   FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
@@ -181,12 +181,12 @@ CREATE TABLE IF NOT EXISTS orders (
   FOREIGN KEY (fleet_id) REFERENCES fleets(id) ON DELETE CASCADE,
   FOREIGN KEY (target_system_id) REFERENCES systems(id) ON DELETE SET NULL,
   FOREIGN KEY (target_fleet_id) REFERENCES fleets(id) ON DELETE SET NULL,
-  UNIQUE(game_id, turn, fleet_id)   -- One order per fleet per turn
+  UNIQUE(game_id, turn, fleet_id)   -- One command per fleet per turn
 );
 
-CREATE INDEX IF NOT EXISTS idx_orders_turn ON orders(game_id, turn);
-CREATE INDEX IF NOT EXISTS idx_orders_house_turn ON orders(house_id, turn);
-CREATE INDEX IF NOT EXISTS idx_orders_unprocessed ON orders(game_id, turn, processed)
+CREATE INDEX IF NOT EXISTS idx_commands_turn ON commands(game_id, turn);
+CREATE INDEX IF NOT EXISTS idx_commands_house_turn ON commands(house_id, turn);
+CREATE INDEX IF NOT EXISTS idx_commands_unprocessed ON commands(game_id, turn, processed)
   WHERE processed = 0;
 """
 
@@ -302,7 +302,7 @@ CREATE TABLE IF NOT EXISTS game_events (
   house_id TEXT,
   fleet_id TEXT,
   system_id TEXT,
-  order_type TEXT,
+  command_type TEXT,
   description TEXT NOT NULL,
   reason TEXT,
   event_data TEXT,                  -- JSON blob for event-specific data
@@ -441,7 +441,7 @@ CREATE TABLE IF NOT EXISTS diagnostic_metrics (
   autopilot_active INTEGER NOT NULL, -- Bool as 0 or 1
   defensive_collapse_active INTEGER NOT NULL, -- Bool as 0 or 1
   turns_until_elimination INTEGER NOT NULL,
-  missed_order_turns INTEGER NOT NULL,
+  missed_command_turns INTEGER NOT NULL,
 
   -- Military
   space_combat_wins INTEGER NOT NULL,
@@ -503,12 +503,12 @@ CREATE TABLE IF NOT EXISTS diagnostic_metrics (
   -- Intel
   total_invasions INTEGER NOT NULL,
   vulnerable_targets_count INTEGER NOT NULL,
-  invasion_orders_generated INTEGER NOT NULL,
-  invasion_orders_bombard INTEGER NOT NULL,
-  invasion_orders_invade INTEGER NOT NULL,
-  invasion_orders_blitz INTEGER NOT NULL,
-  invasion_orders_canceled INTEGER NOT NULL,
-  colonize_orders_submitted INTEGER NOT NULL,
+  invasion_commands_generated INTEGER NOT NULL,
+  invasion_commands_bombard INTEGER NOT NULL,
+  invasion_commands_invade INTEGER NOT NULL,
+  invasion_commands_blitz INTEGER NOT NULL,
+  invasion_commands_canceled INTEGER NOT NULL,
+  colonize_commands_submitted INTEGER NOT NULL,
 
   -- Phase 2: Multi-turn invasion campaigns
   active_campaigns_total INTEGER NOT NULL,
@@ -545,18 +545,18 @@ CREATE TABLE IF NOT EXISTS diagnostic_metrics (
   mothballed_fleets_used INTEGER NOT NULL,
   mothballed_fleets_total INTEGER NOT NULL,
 
-  -- Orders
-  invalid_orders INTEGER NOT NULL,
-  total_orders INTEGER NOT NULL,
+  -- Commands
+  invalid_commands INTEGER NOT NULL,
+  total_commands INTEGER NOT NULL,
   fleet_commands_submitted INTEGER NOT NULL,
-  build_orders_submitted INTEGER NOT NULL,
+  build_commands_submitted INTEGER NOT NULL,
 
   -- Budget Allocation
   domestikos_budget_allocated INTEGER NOT NULL,
   logothete_budget_allocated INTEGER NOT NULL,
   drungarius_budget_allocated INTEGER NOT NULL,
   eparch_budget_allocated INTEGER NOT NULL,
-  build_orders_generated INTEGER NOT NULL,
+  build_commands_generated INTEGER NOT NULL,
   pp_spent_construction INTEGER NOT NULL,
   domestikos_requirements_total INTEGER NOT NULL,
   domestikos_requirements_fulfilled INTEGER NOT NULL,
@@ -578,12 +578,12 @@ CREATE TABLE IF NOT EXISTS diagnostic_metrics (
   fleets_moved INTEGER NOT NULL,
   systems_colonized INTEGER NOT NULL,
   failed_colonization_attempts INTEGER NOT NULL,
-  fleets_with_orders INTEGER NOT NULL,
+  fleets_with_commands INTEGER NOT NULL,
   stuck_fleets INTEGER NOT NULL,
 
   -- ETAC Specific
   total_etacs INTEGER NOT NULL,
-  etacs_without_orders INTEGER NOT NULL,
+  etacs_without_commands INTEGER NOT NULL,
   etacs_in_transit INTEGER NOT NULL,
 
   -- Change Deltas
@@ -600,9 +600,9 @@ CREATE TABLE IF NOT EXISTS diagnostic_metrics (
   bilateral_relations TEXT NOT NULL,
 
   -- Event Counts
-  events_order_completed INTEGER NOT NULL,
-  events_order_failed INTEGER NOT NULL,
-  events_order_rejected INTEGER NOT NULL,
+  events_command_completed INTEGER NOT NULL,
+  events_command_failed INTEGER NOT NULL,
+  events_command_rejected INTEGER NOT NULL,
   events_combat_total INTEGER NOT NULL,
   events_bombardment INTEGER NOT NULL,
   events_colony_captured INTEGER NOT NULL,
@@ -653,7 +653,7 @@ proc createAllTables*(db: DbConn) =
   db.exec(sql CreateColoniesTable)
   db.exec(sql CreateFleetsTable)
   db.exec(sql CreateShipsTable)
-  db.exec(sql CreateOrdersTable)
+  db.exec(sql CreateCommandsTable)
   db.exec(sql CreateDiplomacyTable)
 
   # Intel system
