@@ -8,7 +8,7 @@
 ## - 7 espionage actions with varying costs and effects
 ## - Detection system with CIC levels
 import std/options
-import ./[core, prestige]
+import ./[core, prestige, fleet]
 
 type
   EspionageAction* {.pure.} = enum
@@ -23,12 +23,6 @@ type
     IntelTheft
     PlantDisinformation
 
-  #TODO: why do we have this when they are already captured in fleet commands?
-  SpyMissionType* {.pure.} = enum
-    SpyOnPlanet
-    HackStarbase
-    SpyOnSystem
-
   CICLevel* {.pure.} = enum
     CIC0
     CIC1
@@ -36,14 +30,6 @@ type
     CIC3
     CIC4
     CIC5
-
-  ActiveSpyMission* = object
-    fleetId*: FleetId
-    missionType*: SpyMissionType
-    targetSystem*: SystemId
-    scoutCount*: int32
-    startTurn*: int32
-    ownerHouse*: HouseId
 
   EspionageBudget* = object
     houseId*: HouseId # Back-reference
@@ -105,23 +91,4 @@ type
     attempts*: seq[EspionageResult]
     overInvestmentPenalties*: seq[tuple[houseId: HouseId, penalty: int32]]
 
-  # Scout-based intelligence operations (moved from simultaneous.nim)
-  # Per docs/specs/09-intel-espionage.md Section 9.1.1
-  ScoutIntelOperation* = object
-    ## Tracks a scout-based intelligence gathering operation
-    ## Replaces EspionageIntent (removed conflict terminology)
-    houseId*: HouseId
-    fleetId*: FleetId
-    targetSystem*: SystemId
-    #TODO: Why is this a string?
-    orderType*: string # "SpyColony", "SpySystem", "HackStarbase"
-    espionageStrength*: int32
 
-  ScoutIntelResult* = object
-    ## Result of a scout intelligence operation
-    ## Replaces simultaneous.EspionageResult (avoids naming conflict)
-    houseId*: HouseId
-    fleetId*: FleetId
-    targetSystem*: SystemId
-    detected*: bool # Whether scouts were detected
-    intelligenceGathered*: bool # Whether intel was successfully gathered

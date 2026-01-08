@@ -80,7 +80,7 @@ EC4X uses precise terminology for the command processing lifecycle:
 
 ## Phase 1: Conflict Phase
 
-**Purpose:** Resolve all combat, colonization, scout, and espionage operations submitted previous turn.
+**Purpose:** Resolve all combat, colonization, and scout intelligence operations submitted previous turn.
 
 **Timing:** Commands submitted Turn N-1 execute Turn N.
 
@@ -125,9 +125,9 @@ No merge step needed - fleets with `missionState == Executing` have arrived at t
 - Fallback logic for losers (Fleet holds position)
 - Generate `GameEvents` (ColonyEstablished)
 
-**6. Espionage Operations** (simultaneous resolution)
+**6. Scout Intelligence Operations**
 
-**6a. Fleet-Based Espionage** (mission start & first detection)
+**6a. Fleet-Based Scout Missions** (mission start & first detection)
 
 When scout fleet arrives at target (fleet.missionState == Executing):
 - **State Transition**: Fleet.missionState: Executing → ScoutLocked
@@ -138,49 +138,43 @@ When scout fleet arrives at target (fleet.missionState == Executing):
 
 - **Mission Registration** (only if not detected):
   - Fleet.missionStartTurn = state.turn
-  - Add to state.activeSpyMissions table:
-    ```nim
-    state.activeSpyMissions[fleet.id] = ActiveSpyMission(
-      fleetId: fleet.id,
-      missionType: SpyMissionType(fleet.missionType.get()),
-      targetSystem: fleet.location,
-      scoutCount: fleet.squadrons.len,
-      startTurn: state.turn,
-      ownerHouse: fleet.owner
-    )
-    ```
+  - Fleet.missionState = ScoutLocked
+  - Mission data stored on fleet entity:
+    - command.commandType = mission type (ScoutColony, ScoutSystem, HackStarbase)
+    - missionTarget = target system
+    - ships.len = scout count (scout-only fleets)
   - Generate Perfect quality intelligence (first turn)
   - Fleet locked (cannot accept new orders), scouts "consumed"
-  - Generate `SpyMissionStarted` event
+  - Generate `ScoutMissionStarted` event
 
-**Game Events**: SpyMissionStarted (if successful) or ScoutDetected (if failed)
+**Game Events**: ScoutMissionStarted (if successful) or ScoutDetected (if failed)
 **Critical**: First detection check gates mission registration
 
-**6a.5. Persistent Spy Mission Detection** (every turn for active missions)
+**6a.5. Persistent Scout Mission Detection** (every turn for active missions)
 
 **Every turn** while mission is active, detection check runs for missions registered in previous turns:
 
 ```nim
-# Iterate missions from previous turns only
-for fleetId, mission in state.activeSpyMissions.pairs:
-  if mission.startTurn < state.turn:  # Skip newly-registered missions
-    let detectionResult = resolveSpyScoutDetection(...)
+# Iterate fleets with active scout missions from previous turns
+for fleet in state.allFleets():
+  if fleet.missionState == ScoutLocked and fleet.missionStartTurn < state.turn:
+    let scoutCount = fleet.ships.len  # Scout-only fleets
+    let detectionResult = resolveScoutDetection(...)
 
     if detectionResult.detected:
       # DETECTED: Immediate destruction
-      fleet.missionState = FleetMissionState.Detected
+      fleet.missionState = ScoutDetected
       fleet_ops.destroyFleet(state, fleetId)
-      state.activeSpyMissions.del(fleetId)
       # Generate ScoutDetected event
       # Diplomatic escalation to Hostile
     else:
       # UNDETECTED: Generate Perfect intelligence
-      generateSpyIntelligence(state, fleet, mission)
+      generateScoutIntelligence(state, fleet)
       # Mission continues next turn
 ```
 
-**Note**: Newly-started missions (startTurn == state.turn) already had their first detection check in Step 6a.
-**Game Events**: IntelGathered (if undetected), SpyScoutDetected (if detected), DiplomaticStateChanged (on detection)
+**Note**: Newly-started missions (missionStartTurn == state.turn) already had their first detection check in Step 6a.
+**Game Events**: IntelGathered (if undetected), ScoutDetected (if detected), DiplomaticStateChanged (on detection)
 
 **6b. Space Guild Espionage** (EBP-based covert ops)
 - Tech Theft, Sabotage, Assassination, Cyber Attack
@@ -205,7 +199,7 @@ for fleetId, mission in state.activeSpyMissions.pairs:
   - Combat behavior already handled in Steps 1-4 (combat resolution)
   - This step just marks them complete
 - **Colonization**: Colonize (already established colony in Step 5, now mark complete)
-- **Espionage**: SpyColony, SpySystem, HackStarbase (already executed missions in Steps 6a/6b, now mark complete)
+- **Scout Intelligence**: ScoutColony, ScoutSystem, HackStarbase (already executed missions in Steps 6a/6b, now mark complete)
 
 **Key Distinction:** This is NOT command execution - it's administrative completion. Command effects already happened:
 - Combat commands determined fleet behavior DURING combat resolution (Steps 1-4)
@@ -469,14 +463,14 @@ Players can immediately interact with newly-commissioned ships and colonies.
   - JoinFleet, Rendezvous (can require travel to target)
   - Reserve, Mothball, Reactivate (status changes, Reactivate takes 1 full turn)
   - Move, Hold, SeekHome (travel completion)
-  - Patrol, Bombard, Invade, Colonize, Spy missions, Salvage
+  - Patrol, Bombard, Invade, Colonize, Scout missions, Salvage
 
 **Command Categorization by Effect Type:**
 
 Commands categorized by their PRIMARY EFFECT, not by whether they encounter combat:
 
 - **Production Phase**: Travel completion (Move, Hold, SeekHome, JoinFleet, Rendezvous) + Administrative (Reserve, Mothball, Reactivate, View)
-- **Conflict Phase**: Combat operations (Patrol, Guard*, Blockade, Bombard, Invade, Blitz) + Colonization + Espionage (SpyColony, SpySystem, HackStarbase)
+- **Conflict Phase**: Combat operations (Patrol, Guard*, Blockade, Bombard, Invade, Blitz) + Colonization + Scout Intelligence (ScoutColony, ScoutSystem, HackStarbase)
 - **Income Phase**: Economic operations (Salvage)
 
 **Combat vs Command Execution:**
@@ -522,7 +516,7 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
    - ALL FleetCommandType entries follow lifecycle: Submit → Validate → Travel → Execute
    - Categorized by PRIMARY EFFECT (not by whether they encounter combat):
      - **Production Phase commands**: Travel completion (Move, Hold, SeekHome, JoinFleet, Rendezvous) + Admin (Reserve, Mothball, Reactivate, View)
-     - **Conflict Phase commands**: Combat ops (Patrol, Guard*, Blockade, Bombard, Invade, Blitz) + Colonization + Espionage (SpyColony, SpySystem, HackStarbase)
+     - **Conflict Phase commands**: Combat ops (Patrol, Guard*, Blockade, Bombard, Invade, Blitz) + Colonization + Scout Intelligence (ScoutColony, ScoutSystem, HackStarbase)
      - **Income Phase commands**: Economic (Salvage)
 
 **Key Insight:** Combat is separate from command execution. Combat triggers by fleet presence + diplomatic state, not by fleet mission type. A fleet with Rendezvous mission can still fight if enemies are present.
@@ -583,7 +577,7 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 
 **1c. Fleet Travel** (fleets move toward targets)
 - **ALL fleets with persistent commands** move autonomously toward target systems via pathfinding
-- Includes ALL FleetCommandType: Move, Patrol, Colonize, Invade, Spy, Salvage, etc.
+- Includes ALL FleetCommandType: Move, Patrol, Colonize, Invade, ScoutColony, ScoutSystem, Salvage, etc.
 - Validate paths (fog-of-war, jump lanes)
 - Update fleet locations (1-2 jumps per turn based on lane control and class)
 - Generate GameEvents (FleetMoved)
@@ -599,7 +593,7 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
   - Mark command as ready for execution
 - Result: Conflict/Income phases filter for `missionState == Executing` to determine which commands execute
 - **Critical:** This is THE mechanism that determines when commands execute
-- **Note for Spy Missions:** Spy mission fleets set to Executing state, then transition to ScoutLocked after first detection check
+- **Note for Scout Missions:** Scout mission fleets set to Executing state, then transition to ScoutLocked after first detection check
 
 **1e. Administrative Completion (Production Commands)**
 - Handle administrative completion for commands that finish during/after travel
@@ -745,9 +739,9 @@ Process tech advancements using accumulated RP from Command Phase. Per economy.m
 | 06    | Bombard Planet        | Conflict Phase    | Planetary Combat (Step 4)                    |
 | 07    | Invade Planet         | Conflict Phase    | Planetary Combat (Step 4)                    |
 | 08    | Blitz Planet          | Conflict Phase    | Planetary Combat (Step 4)                    |
-| 09    | Spy on Planet         | Conflict Phase    | Fleet-Based Espionage (Step 6a)              |
-| 10    | Hack Starbase         | Conflict Phase    | Fleet-Based Espionage (Step 6a)              |
-| 11    | Spy on System         | Conflict Phase    | Fleet-Based Espionage (Step 6a)              |
+| 09    | Scout Colony          | Conflict Phase    | Fleet-Based Scout Intel (Step 6a)            |
+| 10    | Hack Starbase         | Conflict Phase    | Fleet-Based Scout Intel (Step 6a)            |
+| 11    | Scout System          | Conflict Phase    | Fleet-Based Scout Intel (Step 6a)            |
 | 12    | Colonize Planet       | Conflict Phase    | Colonization (Step 5)                        |
 | 13    | Join Another Fleet    | Production Phase | Fleet merging after movement                 |
 | 14    | Rendezvous at System  | Production Phase | Movement + auto-merge on arrival             |
@@ -778,7 +772,7 @@ Execute immediately during Command Phase Part B player window:
 ## Critical Timing Properties
 
 1. **Combat orders submitted Turn N execute Turn N+1 Conflict Phase**
-   - Bombard, Invade, Blitz, Spy, Hack, Colonize, Blockade orders
+   - Bombard, Invade, Blitz, ScoutColony, ScoutSystem, HackStarbase, Colonize, Blockade orders
    - One full turn delay between submission and execution
 
 2. **Movement orders submitted Turn N execute Turn N Production Phase**
@@ -793,8 +787,8 @@ Execute immediately during Command Phase Part B player window:
    - No instant movement + combat exploits
    - Fleet must be positioned one turn in advance
 
-5. **Espionage collects intel AFTER combat completes**
-   - Fleet espionage: Scout reconnaissance after battles
+5. **Scout intelligence collects intel AFTER combat completes**
+   - Fleet-based scouts: Reconnaissance after battles
    - Space Guild espionage: Covert ops exploit post-battle chaos
 
 6. **Commissioning happens BEFORE player submission window**
@@ -957,12 +951,12 @@ Production Phase -> New positions, completed construction
 ║                             |                              ║
 ║                             v                              ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 6: Espionage Operations (Simultaneous)           ║ ║
+║  ║ Step 6: Scout Intelligence Operations                 ║ ║
 ║  ║  6a. Fleet-Based Mission Start (on arrival)           ║ ║
-║  ║    • Scout fleet → OnSpyMission state                 ║ ║
-║  ║    • Register in activeSpyMissions table              ║ ║
-║  ║  6a.5. Persistent Spy Detection (each turn)           ║ ║
-║  ║    • Check all activeSpyMissions from prior turns     ║ ║
+║  ║    • Scout fleet → ScoutLocked state                  ║ ║
+║  ║    • Mission data stored on fleet entity              ║ ║
+║  ║  6a.5. Persistent Scout Detection (each turn)         ║ ║
+║  ║    • Check all fleets with missionState=ScoutLocked   ║ ║
 ║  ║    • Detected → destroy scouts, fail mission          ║ ║
 ║  ║    • Undetected → generate Perfect intel, continue    ║ ║
 ║  ║  6b. Space Guild: Tech Theft, Sabotage, etc.          ║ ║
@@ -1086,7 +1080,7 @@ Production Phase -> New positions, completed construction
 ║  ║   • Start tech research (allocate RP)                 ║ ║
 ║  ║   • Queue combat orders for Turn N+1 Conflict         ║ ║
 ║  ║   • Store movement orders for Production activation   ║ ║
-║  ║   • Note: Standing orders validated, not activated    ║ ║
+
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                                                            ║
 ╠════════════════════════════════════════════════════════════╣

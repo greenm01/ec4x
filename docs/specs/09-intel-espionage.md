@@ -6,9 +6,9 @@ Knowledge is power in EC4X. The intelligence and espionage systems determine wha
 
 Intelligence flows from multiple sources, each revealing different aspects of your enemies' capabilities and intentions.
 
-### 9.1.1 Spy Scout Missions (Perfect Quality)
+### 9.1.1 Scout Missions (Perfect Quality)
 
-Your **Scouts** are the primary tool for gathering detailed, high-quality intelligence. When you dispatch a fleet of Scouts on an espionage mission (e.g., `Spy on Planet`), they travel to the target system and establish a persistent intelligence-gathering operation.
+Your **Scouts** are the primary tool for gathering detailed, high-quality intelligence. When you dispatch a fleet of Scouts on an espionage mission (e.g., `Scout Colony`), they travel to the target system and establish a persistent intelligence-gathering operation.
 
 **Mission Execution**:
 
@@ -53,7 +53,7 @@ Visual intelligence has natural limitations. Your captains cannot assess technol
 
 ### 9.1.3 Espionage Operations (Perfect Quality)
 
-Your **Scouts** conducting espionage missions (`Spy on Planet`, `Spy on System`, `Hack a Starbase`) penetrate deeper than visual observation. If successful, these covert operations provide **Perfect Quality** intelligence, including economic data, construction queues, and technological assessments that visual sightings cannot reveal.
+Your **Scouts** conducting espionage missions (`Scout Colony`, `Scout System`, `Hack Starbase`) penetrate deeper than visual observation. If successful, these covert operations provide **Perfect Quality** intelligence, including economic data, construction queues, and technological assessments that visual sightings cannot reveal.
 
 This level of detail transforms strategic decision-making. Knowing an enemy's economic strength and research focus allows you to predict their capabilities turns in advance.
 
@@ -309,7 +309,7 @@ Intelligence reports carry quality indicators reflecting reliability and detail 
 
 **Spy** quality is not currently used.
 
-**Perfect** quality comes from successful **Spy Scout** missions and observations of your own assets. All details are available, accurate, and current. Perfect quality intelligence forms the foundation of strategic planning.
+**Perfect** quality comes from successful **Scout** missions and observations of your own assets. All details are available, accurate, and current. Perfect quality intelligence forms the foundation of strategic planning.
 
 Intelligence quality affects decision-making. Visual sightings reveal enemy presence but not capability. Spy-quality intelligence reveals capability but may lack real-time updates. Perfect quality intelligence provides complete situational awareness.
 

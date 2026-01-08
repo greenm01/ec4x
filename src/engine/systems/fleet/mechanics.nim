@@ -425,35 +425,18 @@ proc resolveMovementCommand*(
 
       let scoutCount = state.countScoutShips(fleet)
 
-      # Derive mission type from command type
-      let missionType =
-        case command.commandType
-        of FleetCommandType.SpyColony: SpyMissionType.SpyOnPlanet
-        of FleetCommandType.SpySystem: SpyMissionType.SpyOnSystem
-        of FleetCommandType.HackStarbase: SpyMissionType.HackStarbase
-        else:
-          logError("Fleet", &"Invalid spy command type: {command.commandType}")
-          SpyMissionType.SpyOnPlanet # fallback
-
       # Register active mission
-      state.activeSpyMissions[command.fleetId] = ActiveSpyMission(
-        fleetId: command.fleetId,
-        missionType: missionType,
-        targetSystem: fleet.location,
-        scoutCount: scoutCount,
-        startTurn: state.turn,
-        ownerHouse: fleet.houseId,
-      )
 
       # Update fleet in state
       state.updateFleet(command.fleetId, fleet)
 
       # Generate mission start event
       let missionName =
-        case missionType
-        of SpyMissionType.SpyOnPlanet: "spy mission"
-        of SpyMissionType.HackStarbase: "starbase hack"
-        of SpyMissionType.SpyOnSystem: "system reconnaissance"
+        case command.commandType
+        of FleetCommandType.ScoutColony: "scout mission"
+        of FleetCommandType.HackStarbase: "starbase hack"
+        of FleetCommandType.ScoutSystem: "system reconnaissance"
+        else: "unknown mission"
 
       events.add(
         event_factory.commandCompleted(

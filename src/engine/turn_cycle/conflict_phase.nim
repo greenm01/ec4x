@@ -254,9 +254,9 @@ proc resolveConflictPhase*(
   #   - Transition: Executing → ScoutLocked
   #   - Run first detection check (gates mission registration)
   #   - If detected: Destroy scouts, mission fails
-  #   - If undetected: Register in activeSpyMissions, generate Perfect intel
+  #   - If undetected: Set fleet.missionState = ScoutLocked, generate Perfect intel
   #
-  # Phase 2 (Step 6a.5): EXISTING missions from activeSpyMissions
+  # Phase 2 (Step 6a.5): EXISTING missions (query fleets with missionState == ScoutLocked)
   #   - Process missions from previous turns (startTurn < state.turn)
   #   - Run persistent detection checks
   #   - If detected: Destroy scouts, end mission, diplomatic escalation

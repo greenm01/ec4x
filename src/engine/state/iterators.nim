@@ -444,7 +444,7 @@ iterator fleetsWithArrivedConflictCommands*(
   ## Conflict Phase arrival-required commands:
   ##   - Bombard, Invade, Blitz (planetary combat)
   ##   - Colonize (colonization)
-  ##   - SpyColony, SpySystem, HackStarbase (espionage)
+  ##   - ScoutColony, ScoutSystem, HackStarbase (scout intelligence)
   ##
   ## Example:
   ##   for (fleetId, fleet, cmd) in state.fleetsWithArrivedConflictCommands():
@@ -456,8 +456,8 @@ iterator fleetsWithArrivedConflictCommands*(
     fleet_types.FleetCommandType.Invade,
     fleet_types.FleetCommandType.Blitz,
     fleet_types.FleetCommandType.Colonize,
-    fleet_types.FleetCommandType.SpyColony,
-    fleet_types.FleetCommandType.SpySystem,
+    fleet_types.FleetCommandType.ScoutColony,
+    fleet_types.FleetCommandType.ScoutSystem,
     fleet_types.FleetCommandType.HackStarbase,
   ]
 

@@ -58,7 +58,6 @@ type
     counters*: IdCounters
 
     # Phase-specific state
-    activeSpyMissions*: Table[FleetId, ActiveSpyMission]
     ongoingEffects*: seq[OngoingEffect]
     pendingProposals*: seq[PendingProposal]
 

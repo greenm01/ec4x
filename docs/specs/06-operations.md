@@ -92,7 +92,7 @@ When construction completes, your ships **immediately commission** and join flee
 - Fleets with **no commands** (default stationary posture)
 - If no suitable fleet exists, creates new fleet automatically
 
-**Scouts** form scout-only fleets for reconnaissance and espionage missions
+**Scouts** form scout-only fleets for reconnaissance and scout intelligence missions
 
 **Fighters** remain colony-assigned for orbital defense (not assigned to fleets)
 
@@ -118,7 +118,7 @@ Design your fleets for their mission profile:
 
 **Patrol fleets** use Light Cruisers with Destroyer escorts for patrol routes and border security. Balance firepower with operational cost.
 
-**Scout fleets** deploy scouts for intelligence gathering, system reconnaissance, and espionage missions. Small footprint, high stealth.
+**Scout fleets** deploy scouts for intelligence gathering, system reconnaissance, and scout intelligence missions. Small footprint, high stealth.
 
 **Mothball fleets** store mothballed ships at colonies for emergency mobilization. Zero CC cost, 10% maintenance. Ships are offline, defenseless, and screened during combat.
 
@@ -165,8 +165,8 @@ Explicit commands that execute until completed or overridden:
 | 08  | Invade a Colony         | Combat ship(s) & loaded Troop Transports |
 | 09  | Blitz a Colony          | Loaded Troop Transports                  |
 | 10  | Colonize a Planet       | One ETAC                                 |
-| 11  | Spy on a Colony         | Scout-only fleet (1+ scouts)             |
-| 12  | Spy on a System         | Scout-only fleet (1+ scouts)             |
+| 11  | Scout a Colony         | Scout-only fleet (1+ scouts)             |
+| 12  | Scout a System         | Scout-only fleet (1+ scouts)             |
 | 13  | Hack a Starbase         | Scout-only fleet (1+ scouts)             |
 | 14  | Join another Fleet      | None                                     |
 | 15  | Rendezvous at System    | None                                     |
@@ -321,7 +321,7 @@ Command ETACs (Enhanced Terrestrial Administrative Carriers) with Population Tra
   - Ship is removed from game (one-time consumable)
   - Build new ETACs at established colonies to continue expansion
 
-### 6.3.13 Spy on a Colony (11)
+### 6.3.13 Scout a Colony (11)
 
 Deploy a Scout fleet on a one-way mission to gather detailed intelligence on an enemy colony. All Scouts in the fleet are consumed in the attempt, regardless of outcome.
 
@@ -343,19 +343,19 @@ For the complete detection mechanic, see [Section 2.4.2](02-assets.md#242-scouts
 - Economic output (GCO, NCV)
 - Construction queues
 
-**Use Spy on Planet to:**
+**Use Scout Colony to:**
 - Assess target defenses before invasion
 - Track enemy economic development
 - Identify strategic targets for strikes
 
-### 6.3.14 Spy on a System (12)
+### 6.3.14 Scout a System (12)
 
 Deploy a Scout fleet on a one-way mission to gather intelligence on all fleet activity in a system. All Scouts in the fleet are consumed in the attempt.
 
 **Requirements:**
 - Fleet must contain **only Scouts**.
 
-**Detection & Mission Success**: See Command 11 (Spy on Planet) for detection mechanics.
+**Detection & Mission Success**: See Command 11 (Scout Colony) for detection mechanics.
 
 **Intelligence Gathered:**
 - All fleets present in system
@@ -363,7 +363,7 @@ Deploy a Scout fleet on a one-way mission to gather intelligence on all fleet ac
 - Fleet commands (if detectable)
 - Recent fleet movements
 
-**Use Spy on System to:**
+**Use Scout System to:**
 - Provide early warning of enemy attacks
 - Track hostile fleet movements
 - Identify enemy patrol patterns
@@ -377,7 +377,7 @@ Conduct a cyber warfare operation against an enemy starbase. All Scouts in the f
 - Fleet must contain **only Scouts**.
 - Target system must have an enemy starbase.
 
-**Detection & Mission Success**: See Command 11 (Spy on Planet) for detection mechanics.
+**Detection & Mission Success**: See Command 11 (Scout Colony) for detection mechanics.
 
 **Intelligence Gathered:**
 - Research progress
@@ -399,7 +399,7 @@ Merge this fleet with another fleet. The source fleet will autonomously find and
 - Reinforce damaged fleets with fresh ships.
 - Consolidate scattered forces after combat.
 - Create combined forces for major operations.
-- Group multiple Scouts into a single fleet to improve their stealth for an espionage mission.
+- Group multiple Scouts into a single fleet to improve their stealth for an scout intelligence mission.
 
 ### 6.3.17 Rendezvous at System (15)
 
@@ -409,7 +409,7 @@ Command your fleet to travel to a designated system and await further commands. 
 - Coordinate multi-fleet invasions.
 - Establish staging areas for offensives.
 - Organize defensive concentrations.
-- Consolidate multiple Scout fleets at a staging point before an espionage mission.
+- Consolidate multiple Scout fleets at a staging point before an scout intelligence mission.
 
 ### 6.3.18 Salvage (16)
 
@@ -488,7 +488,7 @@ Send a fleet to perform long-range reconnaissance on a planet from the edge of a
 **Use View a World to:**
 - Explore the map safely with Scouts in the early game.
 - Identify high-value planets (Eden, Lush) for priority colonization.
-- Gather basic intelligence on enemy territory before committing to a risky espionage mission.
+- Gather basic intelligence on enemy territory before committing to a risky scout intelligence mission.
 
 ---
 
@@ -642,7 +642,7 @@ Launching 3-fleet offensive. Turn submission:
 3. **LoadCargo** - Load 15 marine divisions
 4. **Issue Commands**:
    - Battle fleet: Command 07 (Invade)
-   - Scout fleet: Command 11 (Spy on System)
+   - Scout fleet: Command 11 (Scout System)
 
 All preparation complete, offensive launches immediately. Total: 1 turn.
 

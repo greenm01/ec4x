@@ -82,7 +82,7 @@ proc scoutSystemIntelGathered*(
     shipsDetected: int,
     quality: string,
 ): event_types.GameEvent =
-  ## Create detailed event for scout-based system intelligence gathering (SpySystem mission)
+  ## Create detailed event for scout-based system intelligence gathering (ScoutSystem mission)
   let details =
     &"Detected {fleetsDetected} enemy fleets ({shipsDetected} ships total), " &
     &"Intel quality: {quality}"

@@ -199,7 +199,7 @@ proc validateFleetCommand*(
       &"{issuingHouse} {cmd.commandType} command VALID: {cmd.fleetId} → " &
         &"{cmd.targetSystem.get()}",
     )
-  of FleetCommandType.SpyColony, FleetCommandType.SpySystem,
+  of FleetCommandType.ScoutColony, FleetCommandType.ScoutSystem,
       FleetCommandType.HackStarbase:
     # Spy missions require Scout ships only (pure scout fleets)
     if fleet.ships.len == 0:

@@ -6,7 +6,7 @@
 ## **Two Espionage Systems** (per docs/specs/09-intel-espionage.md):
 ##
 ## 1. **Scout Intelligence Operations** (Section 9.1.1)
-##    - Fleet commands: SpyColony, SpySystem, HackStarbase
+##    - Fleet commands: ScoutColony, ScoutSystem, HackStarbase
 ##    - Scouts travel to target, establish persistent operations
 ##    - Detection checks each turn (may be destroyed if detected)
 ##    - Provides Perfect Quality intelligence if successful
@@ -38,7 +38,7 @@ import ./[engine as esp_engine, executor as esp_executor]
 # Forward declaration helper
 proc generateMissionIntel(
     state: var GameState,
-    missionType: SpyMissionType,
+    missionType: FleetCommandType,
     targetSystem: SystemId,
     ownerHouse: HouseId,
     events: var seq[event.GameEvent]
@@ -57,9 +57,9 @@ proc resolveScoutMissions*(
   ##   - Transition Traveling → OnSpyMission
   ##   - Run first detection check (gates mission registration)
   ##   - If detected: Destroy fleet, diplomatic escalation
-  ##   - If undetected: Register in activeSpyMissions, generate Perfect intel
+  ##   - If undetected: Set fleet.missionState = ScoutLocked, generate Perfect intel
   ##
-  ## Phase 2: EXISTING missions (Step 6a.5 - from activeSpyMissions)
+  ## Phase 2: EXISTING missions (Step 6a.5 - query fleets with missionState == ScoutLocked)
   ##   - Process missions from previous turns (startTurn < state.turn)
   ##   - Run ongoing detection checks
   ##   - If detected: Destroy fleet, end mission
@@ -82,8 +82,8 @@ proc resolveScoutMissions*(
   for (fleetId, fleet, command) in state.fleetsWithArrivedConflictCommands():
     # Filter for spy mission types only
     if command.commandType notin [
-      FleetCommandType.SpyColony,
-      FleetCommandType.SpySystem,
+      FleetCommandType.ScoutColony,
+      FleetCommandType.ScoutSystem,
       FleetCommandType.HackStarbase
     ]:
       continue
@@ -141,29 +141,19 @@ proc resolveScoutMissions*(
       ))
 
     else:
-      # UNDETECTED: Mission succeeds - register for persistence
+      # UNDETECTED: Mission succeeds - fleet already has all mission data
       logInfo("Espionage", "New mission started successfully",
         " fleetId=", fleetId, " scouts=", scoutCount)
 
-      # Convert command type to mission type
-      let missionType = case command.commandType
-        of FleetCommandType.SpyColony: SpyMissionType.SpyOnPlanet
-        of FleetCommandType.SpySystem: SpyMissionType.SpyOnSystem
-        of FleetCommandType.HackStarbase: SpyMissionType.HackStarbase
-        else: SpyMissionType.SpyOnPlanet  # Unreachable
-
-      # REGISTER IN ACTIVE SPY MISSIONS
-      state.activeSpyMissions[fleetId] = ActiveSpyMission(
-        fleetId: fleetId,
-        missionType: missionType,
-        targetSystem: targetSystem,
-        scoutCount: scoutCount,
-        startTurn: state.turn,  # CRITICAL: For filtering in Phase 2
-        ownerHouse: fleet.houseId
-      )
+      # Mission data already set on fleet entity:
+      # - fleet.command.commandType = mission type (ScoutColony/ScoutSystem/HackStarbase)
+      # - fleet.missionState = ScoutLocked (set by caller)
+      # - fleet.missionTarget = targetSystem
+      # - fleet.missionStartTurn = state.turn
+      # - fleet.ships.len = scout count (scout-only fleets)
 
       # Generate Perfect quality intel (first turn)
-      generateMissionIntel(state, missionType, targetSystem, fleet.houseId, events)
+      generateMissionIntel(state, command.commandType, targetSystem, fleet.houseId, events)
 
     newMissionsProcessed += 1
 
@@ -176,69 +166,70 @@ proc resolveScoutMissions*(
   logInfo("Espionage", "[Step 6a.5] Processing existing missions...")
 
   var existingMissionsProcessed = 0
-  var missionsToRemove: seq[FleetId] = @[]
 
-  for fleetId, mission in state.activeSpyMissions.pairs:
+  # Query all fleets with active scout missions (entity-manager pattern)
+  for fleet in state.allFleets():
+    # Filter: Only fleets with active scout missions from PREVIOUS turns
+    if fleet.missionState != MissionState.ScoutLocked:
+      continue
+
     # CRITICAL FILTER: Skip missions that started THIS turn
     # They already had first detection in Phase 1 above
-    if mission.startTurn >= state.turn:
+    if fleet.missionStartTurn >= state.turn:
       logDebug("Espionage", "Skipping newly-started mission",
-        " fleetId=", fleetId, " startTurn=", mission.startTurn)
+        " fleetId=", fleet.id, " startTurn=", fleet.missionStartTurn)
       continue
 
-    # Validate fleet still exists
-    let fleetOpt = state.fleet(fleetId)
-    if fleetOpt.isNone:
-      logWarn("Espionage", "Mission fleet no longer exists",
-        " fleetId=", fleetId)
-      missionsToRemove.add(fleetId)
-      continue
+    # Extract mission data from fleet entity
+    let fleetId = fleet.id
+    let targetSystem = fleet.missionTarget.get(SystemId(0))
+    let scoutCount = int32(fleet.ships.len) # Scout-only fleets
+    let missionType = fleet.command.get().commandType
 
     # Validate target still exists
-    let colonyOpt = state.colonyBySystem(mission.targetSystem)
+    let colonyOpt = state.colonyBySystem(targetSystem)
     if colonyOpt.isNone:
       logInfo("Espionage", "Target colony lost, ending mission",
         " fleetId=", fleetId)
-      missionsToRemove.add(fleetId)
+      # Clear mission state on fleet
+      var updatedFleet = fleet
+      updatedFleet.missionState = MissionState.None
+      updatedFleet.command = none(FleetCommand)
+      state.updateFleet(fleetId, updatedFleet)
       continue
 
     let defender = colonyOpt.get().owner
 
     # RUN PERSISTENT DETECTION CHECK
     let detectionResult = spy_resolution.resolveScoutDetection(
-      state, mission.scoutCount, defender, mission.targetSystem, rng
+      state, scoutCount, defender, targetSystem, rng
     )
 
     if detectionResult.detected:
       # DETECTED: Mission fails - destroy fleet
       logInfo("Espionage", "Existing mission detected",
-        " fleetId=", fleetId, " turnsActive=", state.turn - mission.startTurn,
+        " fleetId=", fleetId, " turnsActive=", state.turn - fleet.missionStartTurn,
         " roll=", detectionResult.roll, " target=", detectionResult.threshold)
 
       fleet_ops.destroyFleet(state, fleetId)
-      missionsToRemove.add(fleetId)
 
       # Generate detection event + diplomatic escalation
       events.add(intel.scoutDetected(
-        mission.ownerHouse, defender, mission.targetSystem, "Scout"
+        fleet.houseId, defender, targetSystem, "Scout"
       ))
 
     else:
       # UNDETECTED: Generate Perfect intel, continue mission
       logDebug("Espionage", "Mission continues",
-        " fleetId=", fleetId, " turnsActive=", state.turn - mission.startTurn)
+        " fleetId=", fleetId, " turnsActive=", state.turn - fleet.missionStartTurn)
 
       # Generate Perfect quality intel (ongoing)
       generateMissionIntel(
-        state, mission.missionType, mission.targetSystem,
-        mission.ownerHouse, events
+        state, missionType, targetSystem,
+        fleet.houseId, events
       )
 
     existingMissionsProcessed += 1
-
-  # Remove ended missions
-  for fleetId in missionsToRemove:
-    state.activeSpyMissions.del(fleetId)
 
   logInfo("Espionage", "[Step 6a.5] Complete",
     " existing_missions=", existingMissionsProcessed,
@@ -246,7 +237,7 @@ proc resolveScoutMissions*(
 
 proc generateMissionIntel(
     state: var GameState,
-    missionType: SpyMissionType,
+    missionType: FleetCommandType,
     targetSystem: SystemId,
     ownerHouse: HouseId,
     events: var seq[event.GameEvent]
@@ -255,7 +246,7 @@ proc generateMissionIntel(
   ## Called for both new missions (first turn) and ongoing missions
 
   case missionType
-  of SpyMissionType.SpyOnPlanet:
+  of FleetCommandType.ScoutColony:
     # Generate colony intel (Perfect quality)
     let intelReport = intel_generator.generateColonyIntelReport(
       state, ownerHouse, targetSystem, IntelQuality.Perfect
@@ -268,7 +259,7 @@ proc generateMissionIntel(
         house.intel.colonyReports[report.colonyId] = report
         state.updateHouse(ownerHouse, house)
 
-  of SpyMissionType.SpyOnSystem:
+  of FleetCommandType.ScoutSystem:
     # Generate system intel (Perfect quality)
     let systemIntel = intel_generator.generateSystemIntelReport(
       state, ownerHouse, targetSystem, IntelQuality.Perfect
@@ -281,7 +272,7 @@ proc generateMissionIntel(
         house.intel.systemReports[targetSystem] = package.report
         state.updateHouse(ownerHouse, house)
 
-  of SpyMissionType.HackStarbase:
+  of FleetCommandType.HackStarbase:
     # Generate starbase intel (Perfect quality)
     let intelReport = intel_generator.generateStarbaseIntelReport(
       state, ownerHouse, targetSystem, IntelQuality.Perfect
@@ -293,6 +284,9 @@ proc generateMissionIntel(
         var house = houseOpt.get()
         house.intel.starbaseReports[report.kastraId] = report
         state.updateHouse(ownerHouse, house)
+
+  else:
+    discard # Other FleetCommandTypes not applicable to spy missions
 
 proc wasEspionageHandled*(
     results: seq[espionage.ScoutIntelResult], houseId: HouseId, fleetId: FleetId

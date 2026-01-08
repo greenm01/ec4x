@@ -49,9 +49,9 @@ type
     Invade # Ground assault
     Blitz # Combined bombardment + invasion
     Colonize # Establish colony
-    SpyColony # Intelligence gathering on colony
-    SpySystem # Reconnaissance of system
-    HackStarbase # Electronic warfare
+    ScoutColony # Intelligence gathering on colony
+    ScoutSystem # Reconnaissance of system
+    HackStarbase # Electronic warfare (cyber intrusion)
     JoinFleet # Merge with another fleet (scouts gain mesh network ELI bonus)
     Rendezvous # Meet and join with other fleets at location
     Salvage # Scrap fleet and reclaim production points (25%)
@@ -77,6 +77,16 @@ type
     ScoutLocked # Active scout mission (locked, gathering intel)
     ScoutDetected # Detected during scout mission (destroyed next phase)
 
+  # Scout intelligence operation results
+  # Per docs/specs/09-intel-espionage.md Section 9.1.1
+  ScoutIntelResult* = object
+    ## Result of a scout intelligence operation
+    houseId*: HouseId
+    fleetId*: FleetId
+    targetSystem*: SystemId
+    detected*: bool # Whether scouts were detected
+    intelligenceGathered*: bool # Whether intel was successfully gathered
+
 ## Maps fleet commands to their threat level for diplomatic escalation
 ## Per docs/specs/08-diplomacy.md Section 8.1.5
 const CommandThreatLevels* = {
@@ -97,8 +107,8 @@ const CommandThreatLevels* = {
   FleetCommandType.GuardStarbase: ThreatLevel.Benign,
   FleetCommandType.GuardColony: ThreatLevel.Benign,
   FleetCommandType.Colonize: ThreatLevel.Benign,
-  FleetCommandType.SpyColony: ThreatLevel.Benign,
-  FleetCommandType.SpySystem: ThreatLevel.Benign,
+  FleetCommandType.ScoutColony: ThreatLevel.Benign,
+  FleetCommandType.ScoutSystem: ThreatLevel.Benign,
   FleetCommandType.HackStarbase: ThreatLevel.Benign,
   FleetCommandType.JoinFleet: ThreatLevel.Benign,
   FleetCommandType.Salvage: ThreatLevel.Benign,

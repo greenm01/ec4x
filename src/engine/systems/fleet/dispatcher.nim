@@ -90,7 +90,7 @@ proc executeBlitzCommand(
   events: var seq[GameEvent],
 ): OrderOutcome
 
-proc executeSpyColonyCommand(
+proc executeScoutColonyCommand(
   state: var GameState,
   fleet: Fleet,
   command: FleetCommand,
@@ -104,7 +104,7 @@ proc executeHackStarbaseCommand(
   events: var seq[GameEvent],
 ): OrderOutcome
 
-proc executeSpySystemCommand(
+proc executeScoutSystemCommand(
   state: var GameState,
   fleet: Fleet,
   command: FleetCommand,
@@ -231,12 +231,12 @@ proc executeFleetCommand*(
     return executeInvadeCommand(state, fleet, command, events)
   of FleetCommandType.Blitz:
     return executeBlitzCommand(state, fleet, command, events)
-  of FleetCommandType.SpyColony:
-    return executeSpyColonyCommand(state, fleet, command, events)
+  of FleetCommandType.ScoutColony:
+    return executeScoutColonyCommand(state, fleet, command, events)
   of FleetCommandType.HackStarbase:
     return executeHackStarbaseCommand(state, fleet, command, events)
-  of FleetCommandType.SpySystem:
-    return executeSpySystemCommand(state, fleet, command, events)
+  of FleetCommandType.ScoutSystem:
+    return executeScoutSystemCommand(state, fleet, command, events)
   of FleetCommandType.Colonize:
     return executeColonizeCommand(state, fleet, command, events)
   of FleetCommandType.JoinFleet:
@@ -808,7 +808,7 @@ proc executeBlitzCommand(
 # Order 09: Spy on Planet
 # =============================================================================
 
-proc executeSpyColonyCommand(
+proc executeScoutColonyCommand(
     state: var GameState,
     fleet: Fleet,
     command: FleetCommand,
@@ -905,16 +905,10 @@ proc executeSpyColonyCommand(
     # Already at target - start mission immediately
     updatedFleet.missionState = MissionState.ScoutLocked
     updatedFleet.missionStartTurn = state.turn
-
-    # Register active mission
-    state.activeSpyMissions[fleet.id] = ActiveSpyMission(
-      fleetId: fleet.id,
-      missionType: SpyMissionType.SpyOnPlanet,
-      targetSystem: targetSystem,
-      scoutCount: scoutCount,
-      startTurn: state.turn,
-      ownerHouse: fleet.houseId,
-    )
+    # Mission data now stored on fleet entity (entity-manager pattern):
+    # - command.commandType = ScoutColony
+    # - missionTarget = targetSystem
+    # - ships.len = scout count (scout-only fleets)
 
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
@@ -1059,14 +1053,6 @@ proc executeHackStarbaseCommand(
     updatedFleet.missionStartTurn = state.turn
 
     # Register active mission
-    state.activeSpyMissions[fleet.id] = ActiveSpyMission(
-      fleetId: fleet.id,
-      missionType: SpyMissionType.HackStarbase,
-      targetSystem: targetSystem,
-      scoutCount: scoutCount,
-      startTurn: state.turn,
-      ownerHouse: fleet.houseId,
-    )
 
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
@@ -1089,7 +1075,7 @@ proc executeHackStarbaseCommand(
 # Order 11: Spy on System
 # =============================================================================
 
-proc executeSpySystemCommand(
+proc executeScoutSystemCommand(
     state: var GameState,
     fleet: Fleet,
     command: FleetCommand,
@@ -1103,7 +1089,7 @@ proc executeSpySystemCommand(
       event_factory.commandFailed(
         fleet.houseId,
         fleet.id,
-        "SpySystem",
+        "ScoutSystem",
         reason = "no target system specified",
         systemId = some(fleet.location),
       )
@@ -1124,7 +1110,7 @@ proc executeSpySystemCommand(
           event_factory.commandFailed(
             fleet.houseId,
             fleet.id,
-            "SpySystem",
+            "ScoutSystem",
             reason = "target house eliminated",
             systemId = some(fleet.location),
           )
@@ -1149,7 +1135,7 @@ proc executeSpySystemCommand(
         event_factory.commandFailed(
           fleet.houseId,
           fleet.id,
-          "SpySystem",
+          "ScoutSystem",
           reason = "no path to target system",
           systemId = some(fleet.location),
         )
@@ -1176,7 +1162,7 @@ proc executeSpySystemCommand(
       event_factory.commandCompleted(
         fleet.houseId,
         fleet.id,
-        "SpySystem",
+        "ScoutSystem",
         details =
           &"scout fleet traveling to {targetSystem} for system reconnaissance ({scoutCount} scouts)",
         systemId = some(fleet.location),
@@ -1188,14 +1174,6 @@ proc executeSpySystemCommand(
     updatedFleet.missionStartTurn = state.turn
 
     # Register active mission
-    state.activeSpyMissions[fleet.id] = ActiveSpyMission(
-      fleetId: fleet.id,
-      missionType: SpyMissionType.SpyOnSystem,
-      targetSystem: targetSystem,
-      scoutCount: scoutCount,
-      startTurn: state.turn,
-      ownerHouse: fleet.houseId,
-    )
 
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
@@ -1205,7 +1183,7 @@ proc executeSpySystemCommand(
       event_factory.commandCompleted(
         fleet.houseId,
         fleet.id,
-        "SpySystem",
+        "ScoutSystem",
         details =
           &"system reconnaissance mission started at {targetSystem} ({scoutCount} scouts)",
         systemId = some(targetSystem),

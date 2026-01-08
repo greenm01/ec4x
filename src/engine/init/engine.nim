@@ -13,7 +13,7 @@ import ../state/[engine, id_gen]
 import ../persistence/schema
 import ../types/[
   core, game_state, intel, diplomacy,
-  espionage, resolution, starmap, command, fleet,
+  resolution, starmap, command, fleet,
   house
 ]
 import ./house as house_init
@@ -272,7 +272,6 @@ proc initGameState*(
     intel: initTable[HouseId, IntelDatabase](),
     diplomaticRelation: initTable[(HouseId, HouseId), DiplomaticRelation](),
     diplomaticViolation: initTable[HouseId, ViolationHistory](),
-    activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
     gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
     lastTurnReports: initTable[HouseId, TurnResolutionReport](),
   )

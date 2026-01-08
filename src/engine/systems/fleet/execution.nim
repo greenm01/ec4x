@@ -131,7 +131,7 @@ proc validateCommandAtExecution(
           shouldAbort: false,
           reason: mergeCheck.reason,
         )
-  of FleetCommandType.SpyColony, FleetCommandType.SpySystem,
+  of FleetCommandType.ScoutColony, FleetCommandType.ScoutSystem,
       FleetCommandType.HackStarbase:
     # Check fleet is still Intel-only (Scout ships only, no combat/other ships)
     let hasIntel = state.hasScouts(fleet)
@@ -204,8 +204,8 @@ proc isConflictCommand*(cmdType: FleetCommandType): bool =
     FleetCommandType.Invade,
     FleetCommandType.Blitz,
     FleetCommandType.Colonize,
-    FleetCommandType.SpyColony,
-    FleetCommandType.SpySystem,
+    FleetCommandType.ScoutColony,
+    FleetCommandType.ScoutSystem,
     FleetCommandType.HackStarbase
   ]
 
