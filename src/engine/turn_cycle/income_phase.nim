@@ -171,15 +171,17 @@ proc resolveIncomePhase*(
       if fleetOpt.isNone:
         continue
 
+      let fleet = fleetOpt.get()
+
       # Check arrival (required for execution)
-      if command.fleetId notin state.arrivedFleets:
+      if fleet.missionState != MissionState.Executing:
         continue
 
       # Execute salvage via dispatcher
       let outcome = dispatcher.executeFleetCommand(state, houseId, command, events)
       if outcome == OrderOutcome.Success:
         salvageCount += 1
-        state.arrivedFleets.del(command.fleetId)
+        # Salvage destroys the fleet, so no need to update missionState
 
   logInfo("Fleet", "[STEP 4] Complete", "salvaged=", $salvageCount)
 

@@ -14,7 +14,7 @@
 ## - Destroyed if their fleet is destroyed
 ## - Destroyed if defenders eliminated (orbital combat only)
 
-import std/[options, tables]
+import std/options
 import ../../types/[core, game_state, ship, fleet, facilities, combat, colony]
 import ../../state/[engine, iterators]
 

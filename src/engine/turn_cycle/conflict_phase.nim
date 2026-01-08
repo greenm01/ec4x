@@ -19,7 +19,7 @@
 ##   6b. Space Guild Espionage
 ##   6c. Starbase Surveillance
 
-import std/[options, random, sequtils, strformat, tables]
+import std/[options, random, tables]
 import ../types/core
 import ../../common/logger
 import ../types/game_state
@@ -27,21 +27,17 @@ import
   ../types/[
     diplomacy as dip_types,
     espionage as esp_types,
-    intel as intel_types,
     tech as tech_types,
     fleet,
     command,
     event,
     resolution as res_types,
-    simultaneous as simultaneous_types,
   ]
 import ../state/[engine as state_engine, iterators]
-import ../entities/fleet_ops
 import ../systems/combat/orchestrator
 import ../systems/espionage/resolution as espionage_resolution
 import ../systems/colony/colonization
-import ../intel/[spy_resolution, starbase_surveillance]
-import ../prestige/engine as prestige_app
+import ../intel/starbase_surveillance
 
 proc resolveConflictPhase*(
     state: var GameState,
