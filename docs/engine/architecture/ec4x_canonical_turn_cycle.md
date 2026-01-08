@@ -1,8 +1,8 @@
 # EC4X Canonical Turn Sequence Specification
 
 **Purpose:** Complete and definitive turn order specification for EC4X  
-**Last Updated:** 2025-12-09
-**Status:** Implementation Complete (Split Commissioning System)
+**Last Updated:** 2026-01-08
+**Status:** Implementation Complete (Split Commissioning + Repair System)
 
 ---
 
@@ -408,22 +408,41 @@ On victory:
 
 ### Part A: Server Processing (BEFORE Player Window)
 
-**1. Starport & Shipyard Commissioning (Ships Only)**
-- Commission all ships that completed construction in the previous turn's Production Phase.
-- **Applicable Units:** Escort, Capital, Special Weapon, and Auxiliary Ships (Scout, ETAC, TroopTransport).
-- This step ensures ships are only commissioned if their construction facilities (docks) survived the preceding Conflict Phase.
-- Frees dock space at shipyards/spaceports.
-- Auto-create squadrons, auto-assign to fleets at their location.
-  - **Note on Scouts:** Scouts are auto-assigned to their own scout-only squadrons/fleets and do not mix with combat ships or other auxiliary ships.
-- Auto-load ETACs with their maximum cargo (per config).
-- **Note:** Planetary defense assets (Facilities, Ground Units, Fighters) were commissioned immediately in the previous Production Phase.
+**Step 0: Clear Damaged Facility Queues**
+- Scan all Neorias (Spaceport, Shipyard, Drydock) for crippled/destroyed state
+- Clear construction and repair queues from damaged facilities
+- Generate `ColonyProjectsLost` events for destroyed projects
+- **Why:** Prevents ships from commissioning from facilities destroyed in Conflict Phase
+- **Timing:** Must run BEFORE ship commissioning
 
-**2. Colony Automation**
-- Auto-load newly commissioned fighters to carriers (if any are present and have capacity).
-- Auto-submit repair orders for damaged units (uses newly-freed dock capacity).
-- Auto-balance squadrons across fleets at colonies.
+**Step 1: Ship Commissioning**
+- Commission all ships that completed construction in the previous turn's Production Phase
+- **Facility Validation:** Ships only commission if their construction facility survived Conflict Phase
+  - Each completed ship has tracked `neoriaId` of where it was built
+  - If facility is crippled/destroyed, ship construction is lost (generates event)
+- **Applicable Units:** Escort, Capital, Special Weapon, and Auxiliary Ships (Scout, ETAC, TroopTransport)
+- Frees dock space at shipyards/spaceports
+- Auto-create squadrons, auto-assign to fleets at their location
+  - **Note on Scouts:** Scouts are auto-assigned to their own scout-only squadrons/fleets and do not mix with combat ships or other auxiliary ships
+- Auto-load ETACs with their maximum cargo (per config)
+- **Note:** Planetary defense assets (Facilities, Ground Units, Fighters) were commissioned immediately in the previous Production Phase
 
-**Result:** New game state exists (commissioned ships, repaired ships queued, new colonies)
+**Step 2: Colony Automation - Auto-Repair Submission**
+- Auto-load newly commissioned fighters to carriers (if any are present and have capacity)
+- **Auto-submit repair orders** for crippled units (if `colony.autoRepair` enabled):
+  - **Ships (Priority 1):** Extract from fleets → Assign to specific drydock with available capacity
+  - **Starbases (Priority 2):** Queue at colony (requires operational spaceport)
+  - **Ground Units (Priority 2):** Queue at colony (uses colony infrastructure, no facility required)
+  - **Facilities (Priority 3):** Queue at colony with prerequisite checks:
+    - Spaceport: No prerequisite (colony self-repair)
+    - Shipyard: Requires operational spaceport
+    - Drydock: Requires operational spaceport
+- **Player Control:** Auto-repair orders can be cancelled during Part B submission window
+- **Manual Mode:** If `colony.autoRepair = false`, no auto-repairs submitted (player submits manually)
+- Auto-balance squadrons across fleets at colonies
+- Uses newly-freed dock capacity from commissioning
+
+**Result:** New game state exists (commissioned ships, auto-repair orders queued, new colonies)
 
 ### Part B: Player Submission Window (24-hour window)
 
@@ -439,8 +458,13 @@ Players see new game state (freed dock capacity, commissioned ships, established
 
 **Command Submission** (execute later):
 - Fleet commands, build commands, diplomatic actions
+- **Repair commands** (manual repairs when `colony.autoRepair = false`):
+  - Submit repairs for specific crippled ships, ground units, facilities, or starbases
+  - Validated for prerequisites (drydock for ships, spaceport for facilities, etc.)
+  - Added to same repair queue as auto-repairs
 
 Players can immediately interact with newly-commissioned ships and colonies.
+Players can cancel auto-repair orders and submit manual repair orders.
 
 ### Command Architecture: Persistence and Categorization
 
@@ -519,7 +543,12 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 
 **Simultaneous Resolution:** Colonize, Blockade, Invade, and Blitz support multiple houses targeting the same colony/planet in the same turn. Conflict resolution logic (collect intents → resolve conflicts → execute) determines outcomes in Conflict Phase Steps 3-5.
 3.  **Build orders**: Add to construction queues
-4.  **Tech research allocation** (detailed processing):
+4.  **Repair orders** (manual repairs): Validate and add to repair queues
+   - Validation checks: Entity exists, is crippled, prerequisites met (drydock/spaceport/etc.)
+   - Ships assigned to specific drydock with available capacity
+   - Ground units, facilities, starbases added to colony repair queue
+   - Uses same unified repair queue system as auto-repairs
+5.  **Tech research allocation** (detailed processing):
    - Calculate total PP cost for research allocation (ERP + SRP + TRP)
    - **Treasury scaling** (prevent negative treasury):
      - If treasury ≤ 0: Cancel all research (bankruptcy)
@@ -545,9 +574,15 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 - Appropriate phase executes mission when fleet arrives
 
 ### Key Properties
-- Commissioning -> Auto-repair -> Player sees accurate state
+- Commissioning -> Auto-repair submission -> Player sees accurate state
 - No 1-turn perception delay (colonies established before player submission)
 - Dock capacity visible includes freed space from commissioning
+- **Repair System:**
+  - Auto-repairs submitted during Part A (before player window)
+  - Players can cancel auto-repairs and submit manual repairs during Part B
+  - Both auto and manual repairs use unified queue system
+  - All repairs execute in Production Phase Step 2c
+  - Ships commission immediately after repair (same Production Phase)
 - Zero-turn commands execute BEFORE operational orders
 - Universal lifecycle: All commands stored in `Fleet.command` field (except admin)
 
@@ -636,12 +671,30 @@ Completed projects split into two commissioning paths:
 - **Timing:** Stored in pendingMilitaryCommissions, commission next turn's Command Phase Part A
 - **Result:** Verified docks survived combat before commissioning
 
-**2c. Repair Queue:**
-- Advance ship repairs (1 turn at shipyards, 25% cost)
-- Advance facility repairs (1 turn at spaceports, 25% cost)
+**2c. Repair Queue Advancement & Commissioning:**
+
+*Queue Advancement:*
+- Advance all repair queues (both auto-submitted and manual):
+  - **Ship repairs:** 1 turn at drydocks, 25% of build cost
+  - **Ground unit repairs:** 1 turn via colony infrastructure, 25% of build cost
+  - **Facility repairs:** 1 turn via colony infrastructure, 25% of build cost
+    - Spaceport: No prerequisite (colony self-repair)
+    - Shipyard/Drydock: Requires operational spaceport
+  - **Starbase repairs:** 1 turn via colony infrastructure, 25% of build cost (requires spaceport)
 - Mark repairs as completed
+- Consume PP from house treasuries
 - Generate GameEvents (RepairCompleted)
-- **Note:** Repaired units immediately operational (no commissioning delay)
+
+*Immediate Commissioning of Repaired Ships:*
+- **Ships:** Restored to Undamaged state, commissioned to fleets immediately
+  - All repaired ships from same colony grouped into single fleet
+  - Generate `ShipCommissioned` events
+  - Frees dock space at drydocks (already freed by repair completion)
+- **Other units:** Restored to Undamaged state, immediately operational (no fleet creation)
+  - Ground units remain at colony
+  - Facilities/starbases become operational
+
+**Note:** Repaired units immediately operational (no commissioning delay). Ships commissioning happens HERE in Production Phase, not in next Command Phase.
 
 **3. Diplomatic Actions**
 - Process alliance proposals (accept/reject)
@@ -800,11 +853,28 @@ Execute immediately during Command Phase Part B player window:
    - Capacity calculated with reduced IU in Step 5
 
 10. **Split Commissioning System (2025-12-09)**
-    - **Planetary Defense:** Commission same turn in Production Phase Step 2b
-      - Facilities, ground units, fighters available for next turn's defense
-    - **Military Units:** Commission next turn in Command Phase Part A
-      - Ships verified docks survived combat before commissioning
-    - **Strategic Timing:** Defenders get immediate protection, ships wait for safety check
+     - **Planetary Defense:** Commission same turn in Production Phase Step 2b
+       - Facilities, ground units, fighters available for next turn's defense
+     - **Military Units:** Commission next turn in Command Phase Part A
+       - Ships verified docks survived combat before commissioning
+     - **Strategic Timing:** Defenders get immediate protection, ships wait for safety check
+
+11. **Repair System (2026-01-08)**
+     - **Auto-Repair Submission:** Command Phase Part A Step 2 (before player window)
+       - Controlled by `colony.autoRepair` flag per colony
+       - Submits repairs for all crippled units in priority order
+       - Players can cancel during submission window
+     - **Manual Repair Submission:** Command Phase Part B (player submission window)
+       - Available when `colony.autoRepair = false`
+       - Players submit specific repair orders with validation
+     - **Repair Execution:** Production Phase Step 2c
+       - Both auto and manual repairs execute together
+       - Ships commission immediately after repair (same phase)
+       - All other units restored to operational state
+     - **Unified Queue:** Auto and manual repairs use same queue system
+     - **Architecture:**
+       - Ships: Drydock pipeline (`neoria.repairQueue`)
+       - Ground units, facilities, starbases: Colony pipeline (`colony.repairQueue`)
 
 ---
 
@@ -1027,17 +1097,26 @@ Production Phase -> New positions, completed construction
 ║                                                            ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
 ║  ║ PART A: Server Processing (BEFORE Player Window)      ║ ║
-║  ║                                                       ║ ║
-║  ║  Step 1: Commissioning                                ║ ║
-║  ║   • Commission completed projects                     ║ ║
-║  ║   • Free dock space                                   ║ ║
-║  ║   • Auto-create squadrons, assign to fleets           ║ ║
-║  ║   • Auto-load 1 PTU onto ETAC ships                   ║ ║
-║  ║                                                       ║ ║
-║  ║  Step 2: Colony Automation                            ║ ║
-║  ║   • Auto-load fighters to carriers                    ║ ║
-║  ║   • Auto-submit repair orders                         ║ ║
-║  ║   • Auto-balance squadrons                            ║ ║
+  ║  ║                                                       ║ ║
+  ║  ║  Step 0: Clear Damaged Facility Queues                ║ ║
+  ║  ║   • Clear queues from crippled/destroyed facilities   ║ ║
+  ║  ║   • Generate ColonyProjectsLost events                ║ ║
+  ║  ║                                                       ║ ║
+  ║  ║  Step 1: Ship Commissioning                           ║ ║
+  ║  ║   • Validate facility survived combat (neoriaId)      ║ ║
+  ║  ║   • Commission ships from operational facilities      ║ ║
+  ║  ║   • Free dock space                                   ║ ║
+  ║  ║   • Auto-create squadrons, assign to fleets           ║ ║
+  ║  ║   • Auto-load 1 PTU onto ETAC ships                   ║ ║
+  ║  ║                                                       ║ ║
+  ║  ║  Step 2: Colony Automation & Auto-Repair Submission   ║ ║
+  ║  ║   • Auto-load fighters to carriers                    ║ ║
+  ║  ║   • Auto-submit repair orders (if enabled):           ║ ║
+  ║  ║     - Ships → Drydock queue (Priority 1)              ║ ║
+  ║  ║     - Ground units → Colony queue (Priority 2)        ║ ║
+  ║  ║     - Facilities → Colony queue (Priority 3)          ║ ║
+  ║  ║     - Starbases → Colony queue (Priority 2)           ║ ║
+  ║  ║   • Auto-balance squadrons                            ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
@@ -1054,10 +1133,13 @@ Production Phase -> New positions, completed construction
 ║  ║   • LoadCargo, UnloadCargo                            ║ ║
 ║  ║   • TransferShipBetweenSquadrons                      ║ ║
 ║  ║                                                       ║ ║
-║  ║  Order Submission (Execute Later):                    ║ ║
-║  ║   • Fleet orders -> Conflict/Production Phase         ║ ║
-║  ║   • Build orders -> Construction queues               ║ ║
-║  ║   • Diplomatic actions -> Production Phase            ║ ║
+  ║  ║  Order Submission (Execute Later):                    ║ ║
+  ║  ║   • Fleet orders -> Conflict/Production Phase         ║ ║
+  ║  ║   • Build orders -> Construction queues               ║ ║
+  ║  ║   • Repair orders -> Repair queues (manual mode)      ║ ║
+  ║  ║   • Diplomatic actions -> Production Phase            ║ ║
+  ║  ║                                                       ║ ║
+  ║  ║  Players can cancel auto-repairs and submit manual    ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
@@ -1116,10 +1198,12 @@ Production Phase -> New positions, completed construction
 ║  ║   • Consume PP/RP from treasuries                     ║ ║
 ║  ║   • Completed -> Commission next Command Phase        ║ ║
 ║  ║                                                       ║ ║
-║  ║  Repair Queue:                                        ║ ║
-║  ║   • Advance ship/facility repairs (1 turn, 25% cost)  ║ ║
-║  ║   • Mark repairs as completed                         ║ ║
-║  ║   • Repaired -> Immediately operational               ║ ║
+  ║  ║  Repair Queue:                                        ║ ║
+  ║  ║   • Advance all repairs (auto + manual, 1 turn, 25%)  ║ ║
+  ║  ║   • Ships: Drydock queue (assigned to specific dock)  ║ ║
+  ║  ║   • Ground/Facilities/Starbases: Colony queue         ║ ║
+  ║  ║   • Commission repaired ships immediately to fleets   ║ ║
+  ║  ║   • Other units -> Immediately operational            ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║

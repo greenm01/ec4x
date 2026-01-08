@@ -112,6 +112,7 @@ proc newRepairProject*(
     fleetId: Option[FleetId] = none(FleetId),
     shipId: Option[ShipId] = none(ShipId),
     kastraId: Option[KastraId] = none(KastraId),
+    groundUnitId: Option[GroundUnitId] = none(GroundUnitId),
     shipClass: Option[ShipClass] = none(ShipClass),
 ): RepairProject =
   ## Create a new repair project value
@@ -125,6 +126,7 @@ proc newRepairProject*(
     fleetId: fleetId,
     shipId: shipId,
     kastraId: kastraId,
+    groundUnitId: groundUnitId,
     shipClass: shipClass,
     cost: cost,
     turnsRemaining: turnsRemaining,

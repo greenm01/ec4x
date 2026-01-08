@@ -47,6 +47,8 @@ type
   RepairTargetType* {.pure.} = enum
     Ship
     Starbase
+    GroundUnit
+    Facility
 
   RepairProject* = object
     id*: RepairProjectId
@@ -60,6 +62,8 @@ type
     shipId*: Option[ShipId]
     # For kastra (defensive facility) repairs
     kastraId*: Option[KastraId]
+    # For ground unit repairs
+    groundUnitId*: Option[GroundUnitId]
     shipClass*: Option[ShipClass]
     cost*: int32
     turnsRemaining*: int32
@@ -75,6 +79,7 @@ type
     colonyId*: ColonyId
     projectType*: BuildType
     itemId*: string
+    neoriaId*: Option[NeoriaId]  # Facility where it was built (for vulnerability checking)
 
   ## Reports
   ProductionReport* = object

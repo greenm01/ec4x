@@ -941,3 +941,118 @@ proc previewCommandPacketCost*(
       &"Research={result.researchCosts}PP, Espionage={result.espionageCosts}PP, " &
       &"Total={result.totalCost}PP, CanAfford={result.canAfford}",
   )
+
+proc validateRepairCommand*(
+    cmd: RepairCommand, state: GameState, issuingHouse: HouseId
+): ValidationResult =
+  ## Validate a manual repair command
+  ## Checks:
+  ## - Colony exists and is owned by issuing house
+  ## - Target entity exists and is crippled
+  ## - Prerequisites met (drydock for ships, spaceport for facilities, etc.)
+  ## - Sufficient PP in budget (validation happens during processing)
+  result = ValidationResult(valid: true, error: "")
+
+  # Check colony exists
+  let colonyOpt = state.colony(cmd.colonyId)
+  if colonyOpt.isNone:
+    return ValidationResult(valid: false, error: "Colony does not exist")
+
+  let colony = colonyOpt.get()
+
+  # Validate colony ownership
+  if colony.owner != issuingHouse:
+    logWarn(
+      "Commands",
+      &"SECURITY VIOLATION: {issuingHouse} attempted to repair at {cmd.colonyId} " &
+        &"(owned by {colony.owner})",
+    )
+    return ValidationResult(
+      valid: false,
+      error: &"Colony {cmd.colonyId} is not owned by {issuingHouse}",
+    )
+
+  # Validate target exists and is crippled based on target type
+  case cmd.targetType
+  of RepairTargetType.Ship:
+    let shipId = ShipId(cmd.targetId)
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isNone:
+      return ValidationResult(valid: false, error: "Ship does not exist")
+    let ship = shipOpt.get()
+    if ship.state != CombatState.Crippled:
+      return ValidationResult(valid: false, error: "Ship is not crippled")
+    # Check for drydock
+    var hasDrydock = false
+    for neoriaId in colony.neoriaIds:
+      let neoriaOpt = state.neoria(neoriaId)
+      if neoriaOpt.isSome:
+        let neoria = neoriaOpt.get()
+        if neoria.neoriaClass == NeoriaClass.Drydock and
+            neoria.state != CombatState.Crippled:
+          hasDrydock = true
+          break
+    if not hasDrydock:
+      return ValidationResult(
+        valid: false, error: "Colony has no operational drydock"
+      )
+
+  of RepairTargetType.GroundUnit:
+    let unitId = GroundUnitId(cmd.targetId)
+    let unitOpt = state.groundUnit(unitId)
+    if unitOpt.isNone:
+      return ValidationResult(valid: false, error: "Ground unit does not exist")
+    let unit = unitOpt.get()
+    if unit.state != CombatState.Crippled:
+      return ValidationResult(valid: false, error: "Ground unit is not crippled")
+    # Ground units use colony infrastructure (no facility check needed)
+
+  of RepairTargetType.Facility:
+    let neoriaId = NeoriaId(cmd.targetId)
+    let neoriaOpt = state.neoria(neoriaId)
+    if neoriaOpt.isNone:
+      return ValidationResult(valid: false, error: "Facility does not exist")
+    let neoria = neoriaOpt.get()
+    if neoria.state != CombatState.Crippled:
+      return ValidationResult(valid: false, error: "Facility is not crippled")
+    # Check prerequisites
+    if neoria.neoriaClass in {NeoriaClass.Shipyard, NeoriaClass.Drydock}:
+      # Requires operational spaceport
+      var hasSpaceport = false
+      for spNeoriaId in colony.neoriaIds:
+        let spNeoriaOpt = state.neoria(spNeoriaId)
+        if spNeoriaOpt.isSome:
+          let spNeoria = spNeoriaOpt.get()
+          if spNeoria.neoriaClass == NeoriaClass.Spaceport and
+              spNeoria.state != CombatState.Crippled:
+            hasSpaceport = true
+            break
+      if not hasSpaceport:
+        return ValidationResult(
+          valid: false, error: "Shipyard/Drydock repair requires operational spaceport"
+        )
+
+  of RepairTargetType.Starbase:
+    let kastraId = KastraId(cmd.targetId)
+    let kastraOpt = state.kastra(kastraId)
+    if kastraOpt.isNone:
+      return ValidationResult(valid: false, error: "Starbase does not exist")
+    let kastra = kastraOpt.get()
+    if kastra.state != CombatState.Crippled:
+      return ValidationResult(valid: false, error: "Starbase is not crippled")
+    # Check for spaceport
+    var hasSpaceport = false
+    for neoriaId in colony.neoriaIds:
+      let neoriaOpt = state.neoria(neoriaId)
+      if neoriaOpt.isSome:
+        let neoria = neoriaOpt.get()
+        if neoria.neoriaClass == NeoriaClass.Spaceport and
+            neoria.state != CombatState.Crippled:
+          hasSpaceport = true
+          break
+    if not hasSpaceport:
+      return ValidationResult(
+        valid: false, error: "Starbase repair requires operational spaceport"
+      )
+
+  return result

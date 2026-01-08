@@ -5,7 +5,7 @@
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
 import std/[options, strformat]
-import ../types/[core, ship, event as event_types]
+import ../types/[core, ship, event as event_types, facilities, production]
 
 # Export event_types alias for GameEvent types
 export event_types
@@ -73,4 +73,40 @@ proc unitDisbanded*(
     colonyEventType: some("UnitDisbanded"),
       # Specific detail for case branch (redundant but for clarity)
     details: some(&"UnitType: {unitType}, Reason: {reason}"),
+  )
+
+proc constructionLostToCombat*(
+    turn: int,
+    colonyId: ColonyId,
+    neoriaId: NeoriaId,
+    facilityType: NeoriaClass,
+    itemId: string,
+): event_types.GameEvent =
+  ## Create event for construction project lost due to facility damage
+  event_types.GameEvent(
+    turn: turn,
+    eventType: event_types.GameEventType.ColonyProjectsLost,
+    houseId: none(HouseId), # Filled in by caller if needed
+    description: &"Construction project '{itemId}' lost - {facilityType} was damaged in combat",
+    systemId: none(SystemId), # Can be filled by caller
+  )
+
+proc repairLostToCombat*(
+    turn: int,
+    colonyId: ColonyId,
+    neoriaId: NeoriaId,
+    targetType: RepairTargetType,
+    shipClass: Option[ShipClass],
+): event_types.GameEvent =
+  ## Create event for repair project lost due to facility damage
+  let targetDesc = if shipClass.isSome:
+    $shipClass.get()
+  else:
+    $targetType
+  event_types.GameEvent(
+    turn: turn,
+    eventType: event_types.GameEventType.ColonyProjectsLost,
+    houseId: none(HouseId), # Filled in by caller if needed
+    description: &"Repair of {targetDesc} lost - drydock was damaged in combat",
+    systemId: none(SystemId), # Can be filled by caller
   )

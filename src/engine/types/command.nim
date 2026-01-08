@@ -1,7 +1,16 @@
 import std/options
-import ./[core, fleet, production, tech, diplomacy, colony, espionage]
+import ./[core, fleet, production, tech, diplomacy, colony, espionage, ground_unit, facilities]
 
 type
+  RepairCommand* = object
+    ## Manual repair command submitted by player
+    ## Used when colony.autoRepair = false
+    ## Queued during Command Phase Part B, executed in Production Phase Step 2c
+    colonyId*: ColonyId
+    targetType*: RepairTargetType  # Ship, GroundUnit, Facility, Starbase
+    targetId*: uint32  # Polymorphic ID (ShipId, GroundUnitId, NeoriaId, or KastraId)
+    priority*: int32   # Player-specified priority (optional, default by type)
+
   ColonyManagementCommand* = object
     colonyId*: ColonyId
     autoRepair*: bool
@@ -16,6 +25,7 @@ type
     treasury*: int32
     fleetCommands*: seq[FleetCommand]
     buildCommands*: seq[BuildCommand]
+    repairCommands*: seq[RepairCommand]  # Manual repair orders
     researchAllocation*: ResearchAllocation
     diplomaticCommand*: seq[DiplomaticCommand]
     populationTransfers*: seq[PopulationTransferCommand]

@@ -724,6 +724,26 @@ proc commissionShips*(
     if completed.projectType != BuildType.Ship:
       continue # Only handle ship construction here
 
+    # CRITICAL: Validate facility survived combat
+    # Ships built in facilities may be destroyed if facility was crippled/destroyed
+    # during the Conflict Phase before commissioning
+    if completed.neoriaId.isSome:
+      let neoriaId = completed.neoriaId.get()
+      let neoriaOpt = state.neoria(neoriaId)
+      if neoriaOpt.isNone or neoriaOpt.get().state in {CombatState.Crippled, CombatState.Destroyed}:
+        logInfo(
+          "Economy",
+          &"Ship construction lost - facility {neoriaId} was damaged in combat",
+        )
+        events.add(event_factory.constructionLostToCombat(
+          state.turn,
+          completed.colonyId,
+          neoriaId,
+          neoriaOpt.get().neoriaClass,
+          completed.itemId,
+        ))
+        continue # Skip commissioning - ship destroyed with facility
+
     logInfo(
       "Economy",
       &"Commissioning ship: {completed.itemId} at system-{completed.colonyId}",
@@ -764,3 +784,178 @@ proc commissionShips*(
         )
     except ValueError:
       logError("Economy", &"Invalid ship class: {completed.itemId}")
+
+proc clearDamagedFacilityQueues*(state: var GameState, events: var seq[GameEvent]) =
+  ## Clear construction and repair queues for crippled/destroyed facilities
+  ## Called during Command Phase Part A (before ship commissioning)
+  ## Ensures ships don't commission from facilities that were destroyed in combat
+  ##
+  ## **Timing:** Command Phase Part A (before Step 1: Ship Commissioning)
+  ## **Why:** Facilities may have been crippled/destroyed during previous Conflict Phase
+  ##
+  ## **Clears:**
+  ## - Construction projects at crippled/destroyed Neorias (Spaceport, Shipyard, Drydock)
+  ## - Repair projects at crippled/destroyed Neorias (Drydock only handles ship repairs)
+  ## - Construction projects at crippled/destroyed Kastras (Starbases)
+  
+  # Check all Neorias for damage
+  for (neoriaId, neoria) in state.allNeoriasWithId():
+    if neoria.state in {CombatState.Crippled, CombatState.Destroyed}:
+      # Clear active constructions
+      for projectId in neoria.activeConstructions:
+        let projectOpt = state.constructionProject(projectId)
+        if projectOpt.isSome:
+          let project = projectOpt.get()
+          events.add(event_factory.constructionLostToCombat(
+            state.turn,
+            project.colonyId,
+            neoriaId,
+            neoria.neoriaClass,
+            project.itemId,
+          ))
+          logInfo(
+            "Commissioning", "Construction lost to combat - facility damaged",
+            " neoriaId=", neoriaId, " facilityType=", neoria.neoriaClass,
+            " projectId=", projectId, " state=", neoria.state,
+          )
+      
+      # Clear construction queue
+      for projectId in neoria.constructionQueue:
+        let projectOpt = state.constructionProject(projectId)
+        if projectOpt.isSome:
+          let project = projectOpt.get()
+          events.add(event_factory.constructionLostToCombat(
+            state.turn,
+            project.colonyId,
+            neoriaId,
+            neoria.neoriaClass,
+            project.itemId,
+          ))
+      
+      # Clear active repairs (drydock only - ship repairs)
+      for projectId in neoria.activeRepairs:
+        let projectOpt = state.repairProject(projectId)
+        if projectOpt.isSome:
+          let project = projectOpt.get()
+          events.add(event_factory.repairLostToCombat(
+            state.turn,
+            project.colonyId,
+            neoriaId,
+            project.targetType,
+            project.shipClass,
+          ))
+          logInfo(
+            "Commissioning", "Repair lost to combat - drydock damaged",
+            " neoriaId=", neoriaId, " projectId=", projectId,
+            " state=", neoria.state,
+          )
+      
+      # Clear repair queue
+      for projectId in neoria.repairQueue:
+        let projectOpt = state.repairProject(projectId)
+        if projectOpt.isSome:
+          let project = projectOpt.get()
+          events.add(event_factory.repairLostToCombat(
+            state.turn,
+            project.colonyId,
+            neoriaId,
+            project.targetType,
+            project.shipClass,
+          ))
+      
+      # Actually clear the queues
+      var updatedNeoria = neoria
+      updatedNeoria.activeConstructions = @[]
+      updatedNeoria.constructionQueue = @[]
+      updatedNeoria.activeRepairs = @[]
+      updatedNeoria.repairQueue = @[]
+
+proc commissionRepairedShips*(
+    state: var GameState, completedRepairs: seq[RepairProject], events: var seq[GameEvent]
+) =
+  ## Commission repaired ships back to fleets
+  ## Called during Production Phase Step 2c (after repair advancement)
+  ## Repaired ships are immediately operational (no delay)
+  ##
+  ## **Process:**
+  ## 1. Restore ship to Undamaged state
+  ## 2. Group ships by colony and add to single fleet per colony
+  ## 3. Generate ShipCommissioned event
+  ## 4. Dock space already freed by completeRepairProject()
+  
+  # Group repaired ships by colony
+  var shipsByColony: Table[ColonyId, seq[ShipId]]
+  
+  for repair in completedRepairs:
+    # Only process ship repairs (not ground units, facilities, or starbases)
+    if repair.targetType != RepairTargetType.Ship:
+      continue
+    
+    # Skip if ship doesn't exist (edge case - shouldn't happen)
+    if repair.shipId.isNone:
+      logWarn(
+        "Commissioning", "Ship repair has no shipId",
+        " repairId=", repair.id,
+      )
+      continue
+    
+    let shipId = repair.shipId.get()
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isNone:
+      logWarn(
+        "Commissioning", "Repaired ship not found",
+        " shipId=", shipId, " repairId=", repair.id,
+      )
+      continue
+    
+    var ship = shipOpt.get()
+    
+    # Restore ship to operational state
+    ship.state = CombatState.Undamaged
+    state.updateShip(shipId, ship)
+    
+    # Add to colony group
+    if not shipsByColony.hasKey(repair.colonyId):
+      shipsByColony[repair.colonyId] = @[]
+    shipsByColony[repair.colonyId].add(shipId)
+  
+  # Create one fleet per colony with all repaired ships
+  for colonyId, shipIds in shipsByColony.pairs:
+    let colonyOpt = state.colony(colonyId)
+    if colonyOpt.isNone:
+      logWarn(
+        "Commissioning", "Colony not found for repaired ships",
+        " colonyId=", colonyId,
+      )
+      continue
+    
+    let colony = colonyOpt.get()
+    let systemId = colony.systemId
+    
+    # Create fleet with all repaired ships from this colony
+    var newFleet = fleet_ops.createFleet(
+      state,
+      colony.owner,
+      systemId,
+    )
+    
+    # Add all ships to the fleet
+    newFleet.ships = shipIds
+    state.updateFleet(newFleet.id, newFleet)
+    
+    logInfo(
+      "Commissioning", "Commissioned repaired ships to single fleet",
+      " shipCount=", shipIds.len,
+      " fleetId=", newFleet.id, " systemId=", systemId,
+    )
+    
+    # Generate events for each ship
+    for shipId in shipIds:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isSome:
+        let ship = shipOpt.get()
+        events.add(event_factory.shipCommissioned(
+          colony.owner,
+          ship.shipClass,
+          systemId,
+        ))

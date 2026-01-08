@@ -35,6 +35,9 @@ type
     ShipCommissioned # New ship entered service
     BuildingCompleted # Building construction finished
     UnitRecruited # Ground unit recruited
+    RepairQueued # Manual repair order queued
+    RepairCompleted # Repair completed
+    RepairCancelled # Repair order cancelled by player
     UnitDisbanded # Unit disbanded
     FleetDisbanded # Fleet disbanded (maintenance shortfall)
     SquadronDisbanded # Squadron auto-disbanded (capacity enforcement)
@@ -165,10 +168,10 @@ type
         # "Income", "Maintenance", "Production" for generic Economy
       amount*: Option[int] # PP, IU, etc.
     of Colony, ColonyEstablished, BuildingCompleted, UnitRecruited, UnitDisbanded,
-        TerraformComplete:
+        TerraformComplete, RepairQueued, RepairCompleted, RepairCancelled:
       ## Colony events (newOwner/oldOwner/details in common fields)
       colonyEventType*: Option[string]
-        # "Established", "Lost", "Damage", "BuildingCompleted", "UnitRecruited", "UnitDisbanded", "TerraformComplete"
+        # "Established", "Lost", "Damage", "BuildingCompleted", "UnitRecruited", "UnitDisbanded", "TerraformComplete", "RepairQueued", "RepairCompleted", "RepairCancelled"
     of Fleet, FleetDestroyed, ShipCommissioned, ScoutDestroyed, FleetDisbanded,
         SquadronDisbanded, SquadronScrapped:
       ## Fleet events (fleetId/details in common fields, reason in common fields)

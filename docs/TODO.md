@@ -83,6 +83,11 @@ turns. Development priorities focus on:
    - Archive obsolete docs to `docs/archive/2025-12/`
    - Update architecture docs to reflect current state
    - Document engine API for client integration
+   - **Update `docs/engine/architecture/ec4x_canonical_turn_cycle.md`**:
+     - Specify that auto-repairs are submitted at Command Phase Part A Step 2 (Colony Automation)
+     - Clarify that players can cancel auto-repair orders during submission window (Part B)
+     - Document that all repairs (auto and manual) execute in Production Phase Step 2c
+     - Emphasize that auto-repair and manual-repair use the same unified repair queue system
 
 5. **Performance optimization**
    - Profile turn cycle execution

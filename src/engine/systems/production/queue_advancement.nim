@@ -65,6 +65,7 @@ proc advanceSpaceportQueue*(
           colonyId: colonyId,
           projectType: project.projectType,
           itemId: project.itemId,
+          neoriaId: some(spaceport.id),  # Track facility for vulnerability checking
         )
       )
       completedIds.add(projectId)
@@ -103,6 +104,7 @@ proc advanceSpaceportQueue*(
           colonyId: colonyId,
           projectType: nextProject.projectType,
           itemId: nextProject.itemId,
+          neoriaId: some(spaceport.id),  # Track facility for vulnerability checking
         )
       )
       logDebug("Facilities", "Spaceport construction complete (instant): ", $spaceport.id, " project=", nextProject.itemId)
@@ -236,6 +238,7 @@ proc advanceShipyardQueue*(
           colonyId: colonyId,
           projectType: nextProject.projectType,
           itemId: nextProject.itemId,
+          neoriaId: some(shipyard.id),  # Track facility for vulnerability checking
         )
       )
       logDebug("Facilities", "Shipyard construction complete (instant): ", $shipyard.id, " project=", nextProject.itemId)
@@ -395,6 +398,7 @@ proc advanceConstruction*(
       colonyId: colony.id,
       projectType: project.projectType,
       itemId: project.itemId,
+      neoriaId: none(NeoriaId),  # Colony-level construction (no specific facility)
     )
 
     # Clear construction slot
