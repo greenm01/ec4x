@@ -5,10 +5,11 @@
 ##
 ## **Canonical Execution Order:**
 ##
-## Step 1: Fleet Movement and Command Activation
-##   1a. Command Activation
-##   1b. Command Maintenance
-##   1c. Fleet Movement
+## Step 1: Fleet Movement
+##   1a. Fleet Travel (move fleets toward targets)
+##   1b. Fleet Arrival Detection (detect commands ready for execution)
+##   1c. Administrative Completion (Production commands: Move, JoinFleet, Reserve, etc.)
+##   1d. Scout-on-Scout Detection (reconnaissance encounters)
 ##
 ## Step 2: Construction and Repair Advancement
 ##   2a. Construction Queue Advancement
@@ -22,6 +23,8 @@
 ## Step 5: Terraforming
 ##
 ## Step 6: Cleanup and Preparation
+##
+## Step 7: Research Advancement (EL, SL, Tech Fields)
 ##
 ## **Key Properties:**
 ## - Split Commissioning: Planetary defenses commission immediately (Step 2b)
@@ -64,43 +67,18 @@ proc resolveProductionPhase*(
 
   result = @[] # Will collect completed projects from construction queues
 
-  # ===================================================================
-  # PRODUCTION STEP 1a: Activate Commands
-  # ===================================================================
-  logInfo(
-    LogCategory.lcCommands,
-    "[PRODUCTION STEP 1a] Activating commands...",
-  )
-
-  # Count active commands (already validated and stored in Fleet.command)
-  # "Activation" means commands are now ready for processing in Steps 1b/1c
-  var activeCommandCount = 0
-  for fleet in state.allFleets():
-    if fleet.command.isSome:
-      activeCommandCount += 1
-  logInfo(
-    LogCategory.lcCommands,
-    &"  Active commands: {activeCommandCount} commands ready for processing",
-  )
-
-  logInfo(
-    LogCategory.lcCommands,
-    &"[PRODUCTION STEP 1a] Command activation complete ({activeCommandCount} total commands)",
-  )
-
-  # Build set of fleets with completed commands for O(1) lookup in Step 1c
+  # Build set of fleets with completed commands for O(1) lookup in Step 1a
   var completedFleetCommands = initHashSet[FleetId]()
   for event in events:
-    if event.eventType == res_types_common.GameEventType.OrderCompleted and
+    if event.eventType == res_types_common.GameEventType.CommandCompleted and
         event.fleetId.isSome:
       completedFleetCommands.incl(event.fleetId.get())
 
   # ===================================================================
-  # STEP 1c: MOVE FLEETS TOWARD PERSISTENT COMMAND TARGETS
+  # PRODUCTION STEP 1a: Fleet Travel (Move Toward Targets)
   # ===================================================================
-  # For all persistent commands (except movement commands already handled in Step 1b),
-  # move fleets toward their target systems via pathfinding.
-  # This allows multi-turn missions: fleet travels incrementally each turn.
+  # ALL fleets with persistent commands move autonomously toward target systems
+  # via pathfinding. This allows multi-turn missions: fleet travels incrementally each turn.
 
   # Count persistent commands
   var persistentCommandCount = 0
@@ -110,7 +88,7 @@ proc resolveProductionPhase*(
 
   logInfo(
     LogCategory.lcCommands,
-    &"[PRODUCTION STEP 1c] Moving fleets toward command targets... ({persistentCommandCount} persistent commands)",
+    &"[PRODUCTION STEP 1a] Moving fleets toward command targets... ({persistentCommandCount} persistent commands)",
   )
 
   var fleetsMovedCount = 0
@@ -206,16 +184,18 @@ proc resolveProductionPhase*(
 
   logInfo(
     LogCategory.lcCommands,
-    &"[PRODUCTION STEP 1c] Completed ({fleetsMovedCount} fleets moved toward targets)",
+    &"[PRODUCTION STEP 1a] Completed ({fleetsMovedCount} fleets moved toward targets)",
   )
 
   # ===================================================================
-  # STEP 1d: DETECT FLEET ARRIVALS AT COMMAND TARGETS
+  # PRODUCTION STEP 1b: Fleet Arrival Detection
   # ===================================================================
+  # Detect commands ready for execution
   # Check which fleets have arrived at their command targets
+  # Set missionState = Executing for arrived fleets
   # Generate FleetArrived events for execution in Conflict/Income phases
 
-  logDebug(LogCategory.lcCommands, "[PRODUCTION STEP 1d] Checking for fleet arrivals...")
+  logInfo(LogCategory.lcCommands, "[PRODUCTION STEP 1b] Detecting fleet arrivals...")
 
   var arrivedFleetCount = 0
 
@@ -258,11 +238,11 @@ proc resolveProductionPhase*(
 
   logInfo(
     LogCategory.lcCommands,
-    &"[PRODUCTION STEP 1d] Completed ({arrivedFleetCount} fleets arrived at targets)",
+    &"[PRODUCTION STEP 1b] Completed ({arrivedFleetCount} fleets arrived at targets)",
   )
 
   # ===================================================================
-  # STEP 1e: ADMINISTRATIVE COMPLETION (Production Commands)
+  # PRODUCTION STEP 1c: Administrative Completion (Production Commands)
   # ===================================================================
   # Handle administrative completion for commands that finish during/after travel:
   # - Mark commands complete (Move, Hold, SeekHome, Rendezvous, View)
@@ -272,7 +252,7 @@ proc resolveProductionPhase*(
   # Commands are behavior parameters that already determined fleet actions
   logInfo(
     LogCategory.lcCommands,
-    "[PRODUCTION STEP 1e] Administrative completion for Production commands...",
+    "[PRODUCTION STEP 1c] Administrative completion for Production commands...",
   )
   fleet_order_execution.performCommandMaintenance(
     state,
@@ -280,14 +260,14 @@ proc resolveProductionPhase*(
     events,
     rng,
     fleet_order_execution.isProductionCommand,
-    "Production Phase Step 1e",
+    "Production Phase Step 1c",
   )
   logInfo(
-    LogCategory.lcCommands, "[PRODUCTION STEP 1e] Administrative completion complete"
+    LogCategory.lcCommands, "[PRODUCTION STEP 1c] Administrative completion complete"
   )
 
   # ===================================================================
-  # STEP 1f: SCOUT-ON-SCOUT DETECTION (RECONNAISSANCE)
+  # PRODUCTION STEP 1d: Scout-on-Scout Detection (Reconnaissance Encounters)
   # ===================================================================
   # When scout fleets from different houses are at same location,
   # each side makes independent ELI-based detection roll
@@ -296,9 +276,9 @@ proc resolveProductionPhase*(
   # No combat triggered - scouts never fight each other
   # Intelligence Quality: Visual (only observable data)
 
-  logDebug(
+  logInfo(
     LogCategory.lcCommands,
-    "[PRODUCTION STEP 1e] Checking for scout-on-scout encounters...",
+    "[PRODUCTION STEP 1d] Checking for scout-on-scout encounters...",
   )
 
   var scoutDetectionCount = 0
@@ -388,21 +368,30 @@ proc resolveProductionPhase*(
 
   logInfo(
     LogCategory.lcCommands,
-    &"[PRODUCTION STEP 1e] Completed ({scoutDetectionCount} scout detections)",
+    &"[PRODUCTION STEP 1d] Completed ({scoutDetectionCount} scout detections)",
   )
 
   # ===================================================================
-  # STEP 2: CONSTRUCTION & REPAIR ADVANCEMENT
+  # PRODUCTION STEP 2: Construction & Repair Advancement
   # ===================================================================
-  # Advance construction queues for both facilities (capital ships) and
-  # colonies (fighters/buildings)
   logInfo(
     LogCategory.lcEconomy,
     "[PRODUCTION STEP 2] Advancing construction & repair queues...",
   )
+
+  # -------------------------------------------------------------------
+  # STEP 2a: Construction Queue Advancement
+  # -------------------------------------------------------------------
+  # Advance build queues (ships, ground units, facilities)
+  # Mark projects as completed
+  # Consume PP/RP from treasuries
   let maintenanceReport = econ_engine.tickConstructionAndRepair(state, events)
 
-  # Split completed projects by commissioning phase
+  # -------------------------------------------------------------------
+  # STEP 2b: Split Commissioning
+  # -------------------------------------------------------------------
+  # Planetary Defense: Commission immediately (same turn)
+  # Military Units: Store for next turn's Command Phase Part A
   var planetaryProjects: seq[econ_types.CompletedProject] = @[]
   var militaryProjects: seq[econ_types.CompletedProject] = @[]
 
@@ -412,7 +401,7 @@ proc resolveProductionPhase*(
     else:
       militaryProjects.add(project)
 
-  # Step 2b: Commission planetary defense immediately (same turn)
+  # Commission planetary defense immediately
   if planetaryProjects.len > 0:
     logInfo(
       LogCategory.lcEconomy,
@@ -422,6 +411,12 @@ proc resolveProductionPhase*(
 
   # Collect ship projects for next turn's Command Phase commissioning
   result.add(militaryProjects)
+
+  # -------------------------------------------------------------------
+  # STEP 2c: Repair Queue
+  # -------------------------------------------------------------------
+  # Note: Repair advancement is handled by tickConstructionAndRepair() above
+  # Repairs complete in 1 turn and are immediately operational (no commissioning delay)
 
   logInfo(
     LogCategory.lcEconomy,
@@ -576,5 +571,5 @@ proc resolveProductionPhase*(
 
   logInfo(
     LogCategory.lcCommands,
-    &"[MAINTENANCE] Research advancements completed ({totalAdvancements} total advancements)",
+    &"[PRODUCTION STEP 7] Research advancements completed ({totalAdvancements} total advancements)",
   )

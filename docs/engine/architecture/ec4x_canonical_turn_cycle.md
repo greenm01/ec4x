@@ -47,34 +47,31 @@ This structure means that a player's submitted commands will often manifest thei
 
 ---
 
-## Command Lifecycle Terminology (Universal for All Commands)
+## Command Lifecycle (Universal for All Commands)
 
+EC4X uses a simple three-phase command processing lifecycle:
 
-EC4X uses precise terminology for the command processing lifecycle:
-
-### Initiate (Command Phase Part B)
-- **Active commands:** Player submits explicit commands via `CommandPacket`
-- Commands queued for future processing
+### Submit (Command Phase Part B)
+- Player submits commands via `CommandPacket`
+- Commands queued for validation
 - Phase: Command Phase Part B
 
-### Validate (Command Phase Part C)
-- Engine validates commands
-- Active commands stored in `Fleet.command` field (entity-manager pattern)
+### Store (Command Phase Part C)
+- Engine validates commands (syntax, resources, permissions)
+- Valid commands stored in `Fleet.command` field (entity-manager pattern)
+- Fleet `missionState` set to `Traveling`
+- Invalid commands rejected with error events
 - Phase: Command Phase Part C
 
-### Activate (Production Phase Step 1a)
-- Command becomes active, fleet starts moving toward target
-- Fleets begin traveling, `Fleet.missionState` set to Traveling
-- Phase: Production Phase Step 1a
-
-### Execute (Conflict/Income Phase)
-- Fleet commands conduct their missions at target locations
-- Bombard, Colonize, Trade, Blockade, etc. actually happen
+### Execute (Production/Conflict/Income Phase)
+- **Production Phase**: Fleet travel (Step 1a), arrival detection (Step 1b), administrative completion (Step 1c)
+- **Conflict Phase**: Combat, colonization, scout intelligence (filter: `missionState == Executing`)
+- **Income Phase**: Economic operations (Salvage)
 - Results generate events (`CommandCompleted`, `CommandFailed`, etc.)
-- Phase: Depends on command type (Conflict for combat, Income for trade)
+- Phase: Depends on command type
 
-**Key Insight:** All commands follow the SAME four-tier lifecycle:
-- Initiate (Command B) → Validate (Command C) → Activate (Production 1a) → Execute (Conflict/Income)
+**Key Insight:** All commands follow the SAME lifecycle:
+- Submit (Command B) → Store (Command C) → Execute (Production/Conflict/Income)
 
 ---
 
@@ -90,10 +87,9 @@ EC4X uses precise terminology for the command processing lifecycle:
 No merge step needed - fleets with `missionState == Executing` have arrived at targets and execute their commands.
 
 **Universal command lifecycle:**
-- Command Phase Part C: Commands validated and stored in `Fleet.command`
-- Production Phase Step 1a: Commands activated
-- Production Phase Step 1c: Fleets move toward targets
-- Production Phase Step 1d: Arrivals detected, `Fleet.missionState` set to `Executing`
+- Command Phase Part C: Commands validated and stored in `Fleet.command`, `missionState` set to `Traveling`
+- Production Phase Step 1a: Fleets move toward targets
+- Production Phase Step 1b: Arrivals detected, `Fleet.missionState` set to `Executing`
 - Conflict Phase Steps 1-6: Commands execute (filter: missionState == Executing)
 
 **1. Space Combat** (simultaneous resolution)
@@ -486,14 +482,14 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 - **All fleets present participate** in combat resolution (Conflict Phase Steps 1-4)
 
 **Example:** A fleet ordered to Rendezvous at a system will:
-1. Travel during Production Phase (Step 1c)
-2. Arrive at target (Step 1d sets `missionState = Executing`)
+1. Travel during Production Phase (Step 1a)
+2. Arrive at target (Step 1b sets `missionState = Executing`)
 3. **Participate in combat** if enemies present (Conflict Phase Steps 1-4) - command doesn't prevent combat
-4. Complete Rendezvous mission (Production Phase Step 1e, next turn) - administrative completion
+4. Complete Rendezvous mission (Production Phase Step 1c, next turn) - administrative completion
 
 **Example:** A fleet ordered to Bombard an enemy colony will:
-1. Travel during Production Phase (Step 1c)
-2. Arrive at target (Step 1d sets `missionState = Executing`)
+1. Travel during Production Phase (Step 1a)
+2. Arrive at target (Step 1b sets `missionState = Executing`)
 3. **Bombard command determines combat behavior** - fleet performs orbital bombardment DURING combat resolution (Conflict Phase Steps 1-4)
 4. Mark Bombard complete (Conflict Phase Step 7, after combat resolves) - administrative completion
 
@@ -504,7 +500,7 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 
 ### Part C: Command Validation & Storage (AFTER Player Window)
 
-**Universal Command Lifecycle:** Initiate (Part B) → Validate (Part C) → Activate (Production Phase) → Execute (Conflict/Income Phase)
+**Universal Command Lifecycle:** Submit (Part B) → Store (Part C) → Execute (Production/Conflict/Income Phase)
 
 **Command Processing:**
 1. **Zero-turn commands** (logistics only): Execute immediately in Part B
@@ -543,9 +539,9 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
    - **Note:** RP accumulation happens here in Command Phase, advancement happens in Production Phase Step 7
 
 **Key Principles:**
-- All non-admin orders follow same path: stored → activated → executed
+- All non-admin commands follow same path: submit → store → execute
 - No separate queues or special handling (DRY design)
-- Production Phase moves fleets toward targets (all order types)
+- Production Phase moves fleets toward targets (all command types)
 - Appropriate phase executes mission when fleet arrives
 
 ### Key Properties
@@ -565,17 +561,9 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 
 ### Execution Order
 
-**1. Fleet Movement and Command Activation**
+**1. Fleet Movement**
 
-**1a. Command Activation**
-- **Active commands:** Already validated in Command Phase Part C, now become active and ready for processing
-- Mark as ready for travel
-
-**1b. Order Maintenance** (lifecycle management)
-- Check completions, validate conditions
-- Process order state transitions
-
-**1c. Fleet Travel** (fleets move toward targets)
+**1a. Fleet Travel** (fleets move toward targets)
 - **ALL fleets with persistent commands** move autonomously toward target systems via pathfinding
 - Includes ALL FleetCommandType: Move, Patrol, Colonize, Invade, ScoutColony, ScoutSystem, Salvage, etc.
 - Validate paths (fog-of-war, jump lanes)
@@ -584,7 +572,7 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 - **Key:** This step handles travel for ALL persistent commands
 - **Note:** "Travel" is the general concept; "Move" is a specific fleet command
 
-**1d. Fleet Arrival Detection** (detect commands ready for execution)
+**1b. Fleet Arrival Detection** (detect commands ready for execution)
 - Iterate all fleets with commands (Fleet.command.isSome)
 - Check if fleet location matches command target system
 - If arrived:
@@ -595,7 +583,7 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 - **Critical:** This is THE mechanism that determines when commands execute
 - **Note for Scout Missions:** Scout mission fleets set to Executing state, then transition to ScoutLocked after first detection check
 
-**1e. Administrative Completion (Production Commands)**
+**1c. Administrative Completion (Production Commands)**
 - Handle administrative completion for commands that finish during/after travel
 - **Travel completion**: Move, Hold, SeekHome, Rendezvous (mark complete after arrival)
 - **Fleet merging**: JoinFleet (merge fleets, mark complete)
@@ -605,7 +593,7 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 - Generate GameEvents (CommandCompleted, FleetMerged, StatusChanged, etc.)
 - **Note:** This is administrative completion (marking done, merging fleets, status changes), not behavior execution. Fleet travel already happened in Step 1c
 
-**1f. Scout-on-Scout Detection** (reconnaissance encounters)
+**1d. Scout-on-Scout Detection** (reconnaissance encounters)
 - Group all fleets by location (systemId)
 - For each location with 2+ fleets:
   - Filter for scout-only fleets from different houses
@@ -757,11 +745,11 @@ Execute immediately during Command Phase Part B player window:
 
 | Command         | Execution Phase | Notes                                           |
 | --------------- | --------------- | ----------------------------------------------- |
-| DetachShips     | Command Phase B | Execute immediately during order submission     |
-| TransferShips   | Command Phase B | Execute immediately during order submission     |
-| MergeFleets     | Command Phase B | Execute immediately during order submission     |
-| LoadCargo       | Command Phase B | Execute immediately during order submission     |
-| UnloadCargo     | Command Phase B | Execute immediately during order submission     |
+| DetachShips     | Command Phase B | Execute immediately during command submission   |
+| TransferShips   | Command Phase B | Execute immediately during command submission   |
+| MergeFleets     | Command Phase B | Execute immediately during command submission   |
+| LoadCargo       | Command Phase B | Execute immediately during command submission   |
+| UnloadCargo     | Command Phase B | Execute immediately during command submission   |
 | PlaceOnReserve  | Command Phase B | Instant status change (reduces C2/Maint cost)   |
 | MothballFleet   | Command Phase B | Instant status change (zero C2, minimal Maint)  |
 
@@ -1097,22 +1085,25 @@ Production Phase -> New positions, completed construction
 ╠════════════════════════════════════════════════════════════╣
 ║                                                            ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 1: Fleet Movement & Order Activation             ║ ║
+║  ║ Step 1: Fleet Movement                                ║ ║
 ║  ║                                                       ║ ║
-║  ║  1a. Order Activation (active + standing)             ║ ║
-║  ║   • Active orders: validated -> active (ready)        ║ ║
-║  ║   • Standing orders: check conditions -> generate     ║ ║
-║  ║   • GameEvents: StandingOrderActivated                ║ ║
-║  ║                                                       ║ ║
-║  ║  1b. Order Maintenance (lifecycle management)         ║ ║
-║  ║   • Check completions, validate conditions            ║ ║
-║  ║   • Process order state transitions                   ║ ║
-║  ║                                                       ║ ║
-║  ║  1c. Fleet Movement (fleets move to targets)          ║ ║
-║  ║   • Process Move, SeekHome, Patrol orders             ║ ║
+║  ║  1a. Fleet Travel (fleets move to targets)            ║ ║
+║  ║   • ALL persistent commands move toward targets       ║ ║
 ║  ║   • Validate paths (fog-of-war, jump lanes)           ║ ║
 ║  ║   • Update fleet locations (1-2 jumps/turn)           ║ ║
-║  ║   • GameEvents: FleetMoved, FleetArrived              ║ ║
+║  ║   • GameEvents: FleetMoved                            ║ ║
+║  ║                                                       ║ ║
+║  ║  1b. Fleet Arrival Detection                          ║ ║
+║  ║   • Set missionState = Executing for arrived fleets   ║ ║
+║  ║   • GameEvents: FleetArrived                          ║ ║
+║  ║                                                       ║ ║
+║  ║  1c. Administrative Completion (Production commands)  ║ ║
+║  ║   • Move, JoinFleet, Reserve, Mothball, etc.          ║ ║
+║  ║   • GameEvents: CommandCompleted, FleetMerged         ║ ║
+║  ║                                                       ║ ║
+║  ║  1d. Scout-on-Scout Detection                         ║ ║
+║  ║   • Visual quality intel, asymmetric detection        ║ ║
+║  ║   • GameEvents: ScoutDetected                         ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
@@ -1171,10 +1162,10 @@ Production Phase -> New positions, completed construction
                         ║
                         ↓
      ╔══════════════════════════════════════════════════╗
-     ║         PHASE 1: CONFLICT (Turn N)               ║
-     ║    Execute orders from Turn N-1                  ║
-     ║    • Space -> Orbital -> Blockade -> Planetary   ║
-     ║    • Colonization -> Espionage                   ║
+║         PHASE 1: CONFLICT (Turn N)               ║
+║    Execute commands from Turn N-1                ║
+║    • Space -> Orbital -> Blockade -> Planetary   ║
+║    • Colonization -> Scout Intelligence          ║
      ╚══════════════════╦═══════════════════════════════╝
                         ║ Combat Results
                         ↓
@@ -1190,7 +1181,7 @@ Production Phase -> New positions, completed construction
      ║         PHASE 3: COMMAND (Turn N)                ║
      ║    Part A: Commissioning (before player window)  ║
      ║    Part B: Player submission (24-hour window)    ║
-     ║    Part C: Order validation (after player window)║
+     ║    Part C: Command validation (after player window)║
      ╚══════════════════╦═══════════════════════════════╝
                         ║ Validated Commands 
                         ↓
@@ -1224,8 +1215,8 @@ Production Phase -> New positions, completed construction
 **RP (Research Points):** Scientific research currency  
 **SRP (Science Research Points):** Alternative term for RP  
 
-**Simultaneous Resolution:** All players' orders collected, conflicts resolved, then executed in priority order  
-**Sequential Execution:** Commands  execute one at a time in strict order  
+**Simultaneous Resolution:** All players' commands collected, conflicts resolved, then executed in priority order  
+**Sequential Execution:** Commands execute one at a time in strict order  
 **Grace Period:** Time buffer before capacity enforcement triggers  
 **Commissioning:** Process of making completed construction operational  
-**Zero-Turn Command:** Administrative order that executes immediately
+**Zero-Turn Command:** Administrative command that executes immediately
