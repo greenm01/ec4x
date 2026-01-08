@@ -47,7 +47,6 @@ import ../fleet_orders # For findClosestOwnedColony
 import ../diplomatic_resolution
 import ../event_factory/init as event_factory
 import ../../prestige
-import ../../standing_orders # For standing command activation
 import ../../fleet # For scout detection helpers
 import ../../intelligence/[types as intel_types, generator] # For intel generation
 import ../../colony/terraforming # For processTerraformingProjects
@@ -66,19 +65,11 @@ proc resolveProductionPhase*(
   result = @[] # Will collect completed projects from construction queues
 
   # ===================================================================
-  # STEP 1: FLEET MOVEMENT
+  # PRODUCTION STEP 1a: Activate Commands
   # ===================================================================
-  # Per FINAL_TURN_SEQUENCE.md: "Movement orders execute Turn N Production Phase"
-
-  # Step 1a: Activate ALL orders (both active and standing)
-  # - Active orders: Already validated in Command Phase Part C, now become "active"
-  # - Standing commands: Check activation conditions, generate fleet commands
-  # Standing commands generate fleet commands (Move, Colonize, SeekHome, etc.)
-  # These are written to Fleet.command and processed in Steps 1b/1c
-  # Phase 7b: Emits StandingCommandActivated/Suspended events
   logInfo(
     LogCategory.lcOrders,
-    "[PRODUCTION STEP 1a] Activating commands (active + standing)...",
+    "[PRODUCTION STEP 1a] Activating commands...",
   )
 
   # Count active commands (already validated and stored in Fleet.command)
@@ -92,22 +83,9 @@ proc resolveProductionPhase*(
     &"  Active commands: {activeCommandCount} commands ready for processing",
   )
 
-  # Activate standing commands (check conditions, generate new fleet commands)
-  let standingCommandsBefore = activeCommandCount
-  standing_orders.activateStandingCommands(state, state.turn, events)
-  var totalCommandCount = 0
-  for fleet in state.allFleets():
-    if fleet.command.isSome:
-      totalCommandCount += 1
-  let standingCommandsGenerated = totalCommandCount - standingCommandsBefore
   logInfo(
     LogCategory.lcOrders,
-    &"  Standing commands: {standingCommandsGenerated} commands generated",
-  )
-
-  logInfo(
-    LogCategory.lcOrders,
-    &"[PRODUCTION STEP 1a] Command activation complete ({totalCommandCount} total commands)",
+    &"[PRODUCTION STEP 1a] Command activation complete ({activeCommandCount} total commands)",
   )
 
   # Build set of fleets with completed commands for O(1) lookup in Step 1c

@@ -316,7 +316,7 @@ proc cleanupEmptyFleet*(state: var GameState, fleetId: FleetId) =
   ## NOTE: Caller must ensure fleet should be deleted (this doesn't check isEmpty)
 
   # Use fleet_ops to properly destroy fleet (maintains indexes, destroys squadrons)
-  # Fleet.command and Fleet.standingCommand are automatically cleaned up with entity
+  # Fleet.command is automatically cleaned up with entity
   fleet_ops.destroyFleet(state, fleetId)
 
   logFleet(&"Removed fleet {fleetId} and associated commands")

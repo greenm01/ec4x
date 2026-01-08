@@ -7,7 +7,7 @@ import ../../types/[core, fleet, ship, game_state, event, diplomacy, espionage]
 import ../../state/[engine as state_module, iterators, fleet_queries]
 import ../../intel/detection
 import ../../event_factory/init as event_factory
-import ./[standing, mechanics, movement]
+import ./[mechanics, movement]
 import ../ship/entity as ship_entity
 import ../../../common/logger
 
@@ -1294,15 +1294,13 @@ proc executeJoinFleetCommand(
   let targetFleetOpt = state.fleet(targetFleetId)
 
   if targetFleetOpt.isNone:
-    # Target fleet destroyed or deleted - clear the command and fall back to standing commands
-    # Standing commands will be used automatically by the command resolution system
+    # Target fleet destroyed or deleted - clear the command
     let fleetOpt = state.fleet(fleet.id)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
       updatedFleet.command = none(FleetCommand)
       updatedFleet.missionState = MissionState.None
       state.updateFleet(fleet.id, updatedFleet)
-      standing.resetStandingCommandGracePeriod(state, fleet.id)
 
     events.add(
       event_factory.commandAborted(
@@ -1358,12 +1356,11 @@ proc executeJoinFleetCommand(
     # Check if fleet actually moved (pathfinding succeeded)
     if movedFleet.location == fleet.location:
       # Fleet didn't move - no path found to target
-      # Cancel command and fall back to standing commands
+      # Cancel command
       var updatedFleet = movedFleet
       updatedFleet.command = none(FleetCommand)
       updatedFleet.missionState = MissionState.None
       state.updateFleet(fleet.id, updatedFleet)
-      standing.resetStandingCommandGracePeriod(state, fleet.id)
 
       events.add(
         event_factory.commandAborted(

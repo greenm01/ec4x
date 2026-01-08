@@ -1,5 +1,5 @@
 ## Fleet Operations Event Factory
-## Events for standing commands, fleet encounters, reorganization, and scout operations
+## Events for fleet encounters, reorganization, and scout operations
 ##
 ## DRY Principle: Single source of truth for fleet operations event creation
 ## DoD Principle: Data (GameEvent) separated from creation logic
@@ -9,72 +9,6 @@ import ../types/[core, ship, event as event_types]
 
 # Export event_types alias
 export event_types
-
-# =============================================================================
-# Standing Order Events
-# =============================================================================
-
-proc standingOrderSet*(
-    houseId: HouseId,
-    fleetId: FleetId,
-    orderType: string,
-    enabled: bool,
-    activationDelay: int,
-    systemId: SystemId,
-): event_types.GameEvent =
-  ## Create event for standing command configuration
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.StandingOrderSet,
-    houseId: some(houseId),
-    description:
-      &"Fleet {fleetId} standing command set: {orderType} " &
-      &"(enabled={enabled}, delay={activationDelay} turns)",
-    systemId: some(systemId),
-    fleetId: some(fleetId),
-    standingOrderType: some(orderType),
-    standingOrderEnabled: some(enabled),
-    activationDelay: some(activationDelay),
-  )
-
-proc standingOrderActivated*(
-    houseId: HouseId,
-    fleetId: FleetId,
-    standingOrderType: string,
-    generatedOrderType: string,
-    triggerReason: string,
-    systemId: SystemId,
-): event_types.GameEvent =
-  ## Create event for standing command activation
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.StandingOrderActivated,
-    houseId: some(houseId),
-    description:
-      &"Fleet {fleetId} standing command activated: {standingOrderType} " &
-      &"generated {generatedOrderType} ({triggerReason})",
-    systemId: some(systemId),
-    fleetId: some(fleetId),
-    activatedOrderType: some(standingOrderType),
-    generatedFleetCommandType: some(generatedOrderType),
-    triggerReason: some(triggerReason),
-  )
-
-proc standingOrderSuspended*(
-    houseId: HouseId,
-    fleetId: FleetId,
-    orderType: string,
-    reason: string,
-    systemId: SystemId,
-): event_types.GameEvent =
-  ## Create event for standing command suspension
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.StandingOrderSuspended,
-    houseId: some(houseId),
-    description: &"Fleet {fleetId} standing command suspended: {orderType} ({reason})",
-    systemId: some(systemId),
-    fleetId: some(fleetId),
-    suspendedOrderType: some(orderType),
-    suspendReason: some(reason),
-  )
 
 # =============================================================================
 # Fleet Encounter Events

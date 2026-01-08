@@ -62,7 +62,7 @@
 ##
 ## **PHASE 4: MAINTENANCE PHASE** [resolution/phases/maintenance_phase.nim]
 ##   Step 1: Fleet Movement & Order Activation
-##     1a: Order Activation (activate orders, generate standing commands)
+##     1a: Order Activation (activate orders)
 ##     1b: Order Maintenance (lifecycle management)
 ##     1c: Fleet Movement (fleets move toward targets)
 ##     1d: Fleet Arrival Detection (populate state.arrivedFleets for Conflict/Income execution)
@@ -95,7 +95,7 @@
 import std/[tables, algorithm, options, random, sequtils, hashes, sets, strformat]
 import ../common/types/core
 import ../common/logger as common_logger
-import gamestate, orders, fleet, squadron, ai_special_modes, standing_orders, logger
+import gamestate, orders, fleet, squadron, ai_special_modes, logger
 import index_maintenance
 import espionage/[types as esp_types, engine as esp_engine]
 import

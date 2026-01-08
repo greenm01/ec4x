@@ -236,7 +236,7 @@ proc resolveConflictPhase*(
   # ===================================================================
   # Per ec4x_canonical_turn_cycle.md:138-142
   # ETACs establish colonies, resolve conflicts (winner-takes-all)
-  # Fallback logic for losers with AutoColonize standing commands
+  # Fallback logic for losers (fleet holds position)
   logInfo("Colony", "[CONFLICT STEP 5] Resolving colonization attempts...")
   let colonizationResults = state.resolveColonization(rng, events)
   logInfo("Colony", "[CONFLICT STEP 5] Completed",

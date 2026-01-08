@@ -27,7 +27,6 @@ type
     fleetId*: FleetId
     targetSystem*: SystemId
     fleetStrength*: int32
-    hasStandingOrders*: bool
 
   ColonizationConflict* = object
     targetSystem*: SystemId

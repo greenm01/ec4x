@@ -140,10 +140,6 @@ proc shouldHouseSeeEvent*(
       GameEventType.OrderFailed,
       GameEventType.OrderAborted,
       GameEventType.FleetArrived,
-      # Phase 7b: Standing command events
-      GameEventType.StandingOrderSet,
-      GameEventType.StandingOrderActivated,
-      GameEventType.StandingOrderSuspended,
       # Phase 7b: Fleet reorganization events (zero-turn commands)
       GameEventType.FleetMerged,
       GameEventType.FleetDetachment,

@@ -618,7 +618,6 @@ proc newCommandPacket*(
     populationTransfers: @[],
     terraformCommands: @[],
     colonyManagement: @[],
-    standingCommands: initTable[FleetId, StandingCommand](),
     espionageAction: none(EspionageAttempt),
     ebpInvestment: 0,
     cipInvestment: 0,

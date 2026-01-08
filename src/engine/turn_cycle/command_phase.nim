@@ -17,7 +17,6 @@
 ## **Part C: Order Validation & Storage (AFTER Player Window)**
 ## - Administrative orders execute
 ## - All other orders: Validate and store in Fleet.command (entity-manager pattern)
-## - Standing command configs: Validated and stored in state.standingCommands
 ## - Build orders: Add to construction queues
 ## - Tech research: Allocate RP
 ##
@@ -33,7 +32,7 @@ import ../../common/logger as common_logger
 import ../types/core
 import ../types/game_state
 import ../types/[diplomacy as dip_types, command, tech as tech_types]
-import ../systems/fleet/standing
+
 import ../systems/command/commands
 # import ../systems/production/commissioning  # STUB: Module needs refactoring
 import ../systems/production/construction
@@ -59,7 +58,7 @@ proc resolveCommandPhase*(
   # STEP 0: ORDER CLEANUP FROM PREVIOUS TURN
   # ===================================================================
   # Clean up completed/failed/aborted orders based on events from previous turn
-  # This runs BEFORE Part A to ensure standing commands can activate in Maintenance Phase
+  # This runs BEFORE Part A to ensure clean command state
   # Per canonical turn cycle: Step 0 runs before commissioning/automation
   logInfo(
     LogCategory.lcOrders, "[COMMAND STEP 0] Cleaning up orders from previous turn..."
@@ -139,7 +138,7 @@ proc resolveCommandPhase*(
   #   * Bombard, Invade, Blitz, Guard*
   #   * Colonize, SpyPlanet, SpySystem, HackStarbase
   #   * Salvage
-  # - Standing command configs: Validate & store in state.standingCommands
+
   #
   # Key principle: All non-admin orders stored on fleet entity → No global tables
 
@@ -268,7 +267,6 @@ proc resolveCommandPhase*(
 
   var ordersStored = 0
   var adminExecuted = 0
-  var standingOrdersProcessed = 0
 
   # Collect and categorize orders from all houses
   for houseId in state.houses.keys:
@@ -306,28 +304,7 @@ proc resolveCommandPhase*(
               )
             )
 
-      # Process standing commands (persistent fleet behaviors)
-      for fleetId, standingCmd in orders[houseId].standingCommands:
-        # Validate that fleet exists and belongs to this house
-        let fleetOpt = state.fleet(fleetId)
-        if fleetOpt.isSome and fleetOpt.get().houseId == houseId:
-          # Store standing command on fleet entity (entity-manager pattern)
-          var updatedFleet = fleetOpt.get()
-          updatedFleet.standingCommand = some(standingCmd)
-          state.updateFleet(fleetId, updatedFleet)
-          standingOrdersProcessed += 1
-          logDebug(
-            LogCategory.lcOrders,
-            &"  [STANDING COMMAND] {fleetId}: {standingCmd.commandType} assigned",
-          )
-        else:
-          logWarn(
-            LogCategory.lcOrders,
-            &"  [REJECTED] {fleetId}: Standing command rejected (fleet not found or wrong owner)",
-          )
-
   logInfo(
     LogCategory.lcOrders,
-    &"[COMMAND PART C] Completed ({ordersStored} orders stored, " &
-      &"{standingOrdersProcessed} standing commands assigned, {adminExecuted} admin executed)",
+    &"[COMMAND PART C] Completed ({ordersStored} orders stored, {adminExecuted} admin executed)",
   )

@@ -41,7 +41,7 @@ proc createFleetComposition*(
   # Collect ship IDs directly from fleet
   var shipIds: seq[ShipId] = fleet.ships
 
-  # Get fleet's standing commands (if any)
+  # Get fleet's active command (if any)
   var orderIntel: Option[FleetOrderIntel] = none(FleetOrderIntel)
   if fleet.command.isSome:
     let command = fleet.command.get()
@@ -55,7 +55,6 @@ proc createFleetComposition*(
   result = CombatFleetComposition(
     fleetId: fleetId,
     owner: fleet.houseId,
-    standingOrders: orderIntel,
     shipIds: shipIds,
     isCloaked: false, # TODO: Implement cloaking detection logic
   )

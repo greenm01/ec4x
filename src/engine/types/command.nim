@@ -1,10 +1,7 @@
-import std/[tables, options]
+import std/options
 import ./[core, fleet, production, tech, diplomacy, colony, espionage]
 
 type
-  # NOTE: StandingCommand moved to fleet.nim to avoid circular dependency
-  # Standing commands are fleet properties, stored in Fleet.standingCommand field
-
   ColonyManagementCommand* = object
     colonyId*: ColonyId
     autoRepair*: bool
@@ -24,7 +21,6 @@ type
     populationTransfers*: seq[PopulationTransferCommand]
     terraformCommands*: seq[TerraformCommand]
     colonyManagement*: seq[ColonyManagementCommand]
-    standingCommands*: Table[FleetId, StandingCommand]
     espionageAction*: Option[EspionageAttempt]
     ebpInvestment*: int32
     cipInvestment*: int32

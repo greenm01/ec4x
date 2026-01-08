@@ -94,9 +94,6 @@ type
     BlockadeSuccessful # Blockade established at colony
     ColonyProjectsLost # Colony construction/repair projects destroyed by bombardment
     # Fleet Operations Events (Phase 7b)
-    StandingOrderSet # Standing command configured on fleet
-    StandingOrderActivated # Standing command triggered and generated fleet order
-    StandingOrderSuspended # Standing command disabled or overridden
     FleetEncounter # Fleet encountered enemy fleet before combat
     FleetMerged # Squadrons transferred between fleets (merge)
     FleetDetachment # Squadrons split off to new fleet
@@ -321,18 +318,6 @@ type
       discard # Uses common systemId field, description has counts
 
     # Fleet Operations Events (Phase 7b)
-    of StandingOrderSet:
-      standingOrderType*: Option[string] # e.g., "AutoColonize", "PatrolRoute"
-      standingOrderEnabled*: Option[bool] # Whether enabled
-      activationDelay*: Option[int] # Turns until activation
-    of StandingOrderActivated:
-      activatedOrderType*: Option[string] # Standing command that activated
-      generatedFleetCommandType*: Option[string]
-        # Fleet order it generated (e.g., "Move", "Colonize")
-      triggerReason*: Option[string] # Why it activated
-    of StandingOrderSuspended:
-      suspendedOrderType*: Option[string] # Standing command that was suspended
-      suspendReason*: Option[string] # "ExplicitOrderIssued", "Disabled", "GlobalToggle"
     of FleetEncounter:
       encounteringFleetId*: Option[FleetId] # Fleet that detected enemy
       encounteredFleetIds*: Option[seq[FleetId]] # Enemy fleets detected

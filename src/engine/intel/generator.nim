@@ -221,7 +221,6 @@ proc generateSystemIntelReport*(
         owner: fleet.houseId,
         location: targetSystem,
         shipCount: int32(fleet.ships.len),
-        standingOrders: none(string), # Future: detect fleet orders
         shipIds: fleet.ships,
       )
 

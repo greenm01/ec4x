@@ -71,7 +71,6 @@ type
     owner*: HouseId
     location*: SystemId
     shipCount*: int32
-    standingOrders*: Option[string]
     shipIds*: seq[ShipId] # Store IDs, not details
 
   ShipIntel* = object
@@ -128,7 +127,6 @@ type
   CombatFleetComposition* = object
     fleetId*: FleetId
     owner*: HouseId
-    standingOrders*: Option[FleetOrderIntel]
     shipIds*: seq[ShipId] # Store IDs
     isCloaked*: bool
 

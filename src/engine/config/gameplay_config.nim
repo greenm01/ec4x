@@ -22,7 +22,6 @@ proc parseAutopilot(node: KdlNode, ctx: var KdlConfigContext): AutopilotConfig =
 
 proc parseAutopilotBehavior(node: KdlNode, ctx: var KdlConfigContext): AutopilotBehaviorConfig =
   result = AutopilotBehaviorConfig(
-    continueStandingOrders: node.requireBool("continueStandingOrders", ctx),
     patrolHomeSystems: node.requireBool("patrolHomeSystems", ctx),
     maintainEconomy: node.requireBool("maintainEconomy", ctx),
     defensiveConstruction: node.requireBool("defensiveConstruction", ctx),

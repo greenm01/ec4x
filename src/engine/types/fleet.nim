@@ -26,8 +26,7 @@ type
     status*: FleetStatus # Operational status (active/reserve/mothballed)
     roe*: int32 # Rules of Engagement (0-10, default 6 = engage if equal)
     # Command tracking (entity-manager pattern - data lives on entity)
-    command*: Option[FleetCommand] # Active command (player OR standing-generated)
-    standingCommand*: Option[StandingCommand] # Persistent behavior configuration
+    command*: Option[FleetCommand] # Active command
     # Mission state trackers
     missionState*: MissionState # mission state
     missionTarget*: Option[SystemId] # Target system for mission
@@ -68,7 +67,7 @@ type
     targetSystem*: Option[SystemId]
     targetFleet*: Option[FleetId]
     priority*: int32 # Execution order within turn
-    roe*: Option[int32] # Mission-specific retreat threshold (overrides standing command)
+    roe*: Option[int32] # Mission-specific retreat threshold
 
   MissionState* {.pure.} = enum
     ## State machine for fleets
@@ -77,38 +76,6 @@ type
     Traveling # En route to mission target
     ScoutLocked # Active scout mission (locked, gathering intel)
     ScoutDetected # Detected during scout mission (destroyed next phase)
-
-  StandingCommandType* {.pure.} = enum
-    None
-    PatrolRoute
-    DefendSystem
-    GuardColony
-    AutoReinforce
-    AutoRepair
-    BlockadeTarget
-
-  StandingCommandParams* = object
-    patrolSystems*: seq[SystemId]
-    patrolIndex*: int32
-    defendSystem*: Option[SystemId]
-    guardColony*: Option[ColonyId]
-    blockadeTargetColony*: Option[ColonyId]
-    reinforceTarget*: Option[FleetId]
-    repairThreshold*: float32
-
-  StandingCommand* = object
-    ## Persistent fleet behavior configuration (entity-manager pattern)
-    ## Stored on Fleet.standingCommand field, NOT in global table
-    commandType*: StandingCommandType
-    params*: StandingCommandParams
-    turnsUntilActivation*: int32
-    activationDelayTurns*: int32
-
-  ActivationResult* = object ## Result of standing command activation attempt
-    success*: bool
-    action*: string # Description of action taken
-    error*: string # Error message if failed
-    updatedParams*: Option[StandingCommandParams] # Updated params (e.g., patrol index)
 
 ## Maps fleet commands to their threat level for diplomatic escalation
 ## Per docs/specs/08-diplomacy.md Section 8.1.5

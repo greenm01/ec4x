@@ -18,7 +18,6 @@ autopilot {
 
 autopilotBehavior {
     (docs)"docs/specs/01-gameplay.md#section-1-4-2"
-    continueStandingOrders #true      // Fleets continue existing orders
     patrolHomeSystems #true           // Idle fleets patrol/defend home
     maintainEconomy #true             // Continue tax/R&D at current rates
     defensiveConstruction #true       // Build defensive infrastructure

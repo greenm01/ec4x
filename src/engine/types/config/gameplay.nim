@@ -7,7 +7,6 @@ type
     miaTurnsThreshold*: int32
 
   AutopilotBehaviorConfig* = object
-    continueStandingOrders*: bool
     patrolHomeSystems*: bool
     maintainEconomy*: bool
     defensiveConstruction*: bool
