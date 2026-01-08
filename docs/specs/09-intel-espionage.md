@@ -47,7 +47,7 @@ See espionage commands in [Section 6.3.13-6.3.15](06-operations.md#6313-spy-on-a
 
 ### 9.1.2 Fleet Encounters
 
-When your fleets encounter enemy forces in the same system, your captains automatically report what they observe. These visual sightings provide basic tactical intelligence: ship types, fleet sizes, and observable behavior such as patrol or blockade operations. You can count the enemy destroyers and cruisers, note the presence of transport vessels, and observe their standing commands.
+When your fleets encounter enemy forces in the same system, your captains automatically report what they observe. These visual sightings provide basic tactical intelligence: ship types, fleet sizes, and observable behavior such as patrol or blockade operations. You can count the enemy destroyers and cruisers, note the presence of transport vessels, and observe their active commands.
 
 Visual intelligence has natural limitations. Your captains cannot assess technological sophistication from a distance, determine hull damage states, or identify cargo contents. An enemy transport fleet shows only the number of ships, not whether they carry invasion troops, colonists, or equipment. Tech levels display as zero since there is no way to visually assess research advancement. This reflects the reality of tactical observation in space warfare.
 
@@ -261,7 +261,7 @@ Your intelligence network generates detailed reports from all sources. These rep
 
 ### 9.5.1 Scout Encounter Reports
 
-Scout encounters produce your most detailed intelligence reports. When scouts observe enemy fleets, the report includes complete fleet compositions, tech levels for all ships, hull integrity assessments, and cargo manifests for transport vessels. Fleet behavior patterns are noted, including standing commands and patrol routes.
+Scout encounters produce your most detailed intelligence reports. When scouts observe enemy fleets, the report includes complete fleet compositions, tech levels for all ships, hull integrity assessments, and cargo manifests for transport vessels. Fleet behavior patterns are noted, including active commands and patrol routes.
 
 Colony discoveries provide comprehensive settlement data. Your analysts learn population levels, industrial capacity, defensive installations, construction queues, and orbital defenses. Economic intelligence reveals gross output and net tax revenue. The construction queue shows what the enemy is building and how many turns remain to completion.
 

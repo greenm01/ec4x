@@ -16,7 +16,7 @@ EC4X uses a four-phase turn structure that separates combat resolution, economic
 3. **Command Phase** - Server commissioning, player submission of new commands, command validation
 4. **Production Phase** - Server processing: movement, construction, diplomacy, and turn counter incrementation
 
-**Key Timing Principle:** Combat commands submitted by the player in their turn N execute in the Conflict Phase of engine turn N+1. Movement commands submitted in player turn N execute in the Production Phase of engine turn N.
+**Key Timing Principle:** Combat commands submitted by the player in their turn N execute in the Conflict Phase of engine turn N+1. Fleet travel (derived from commands submitted in player turn N) executes in the Production Phase of engine turn N.
 
 ---
 
@@ -34,12 +34,12 @@ To avoid ambiguity, we distinguish between the **Engine's Turn Counter** (a cont
 
 - **Engine Processing for Player's Perceived Turn N:**
   - **Production Phase (Engine Turn X):** Executes movement commands submitted by the player in the preceding Command Phase (of Engine Turn X). Also advances construction/repairs, and increments the **Engine's Turn Counter to X+1**.
-  - **Conflict Phase (Engine Turn X+1):** Resolves combat, espionage, and colonization based on fleet positions and commands from the *previous* player turn (i.e., player commands submitted in Command Phase of Engine Turn X-1, whose movement resolved in Production Phase of Engine Turn X-1).
-  - **Income Phase (Engine Turn X+1):** Calculates economic results, prestige, and victory conditions for the results of the Conflict Phase. This is where the *player sees the outcome* of their Player's Perceived Turn N-1, and often marks the *end* of that perceived turn.
+  - **Conflict Phase:** Resolves combat, espionage, and colonization based on fleet positions and commands from the *previous* player turn (i.e., player commands submitted in Command Phase of Engine Turn N, whose travel resolved in Production Phase of Engine Turn N).
+  - **Income Phase:** Calculates economic results, prestige, and victory conditions for the results of the Conflict Phase. This is where the *player sees the outcome* of their Player's Perceived Turn N, and often marks the *end* of that perceived turn.
 
 **Simplified Flow for Player's Turn N:**
 1.  **Player Acts:** Submits commands (Engine's Command Phase).
-2.  **Server Processes Movement/Construction:** Player's new movement commands execute (Engine's Production Phase).
+2.  **Server Processes Travel/Construction:** Player's fleets travel towards objectives (Engine's Production Phase).
 3.  **Server Resolves Combat:** Actions from *previous* player turn commands resolve (Engine's Conflict Phase).
 4.  **Server Calculates Economy/Presents Results:** Player sees outcomes (Engine's Income Phase).
 
@@ -50,36 +50,31 @@ This structure means that a player's submitted commands will often manifest thei
 ## Command Lifecycle Terminology (Universal for All Commands)
 
 
-EC4X uses precise terminology for the three stages of command processing. **This applies to BOTH active commands AND standing commands:**
+EC4X uses precise terminology for the command processing lifecycle:
 
 ### Initiate (Command Phase Part B)
 - **Active commands:** Player submits explicit commands via `CommandPacket`
-- **Standing commands:** Player configures standing command rules
 - Commands queued for future processing
 - Phase: Command Phase Part B
 
 ### Validate (Command Phase Part C)
-- **Both command types:** Engine validates commands and configurations
+- Engine validates commands
 - Active commands stored in `Fleet.command` field (entity-manager pattern)
-- Standing command configs stored in `Fleet.standingCommand` field
 - Phase: Command Phase Part C
 
 ### Activate (Production Phase Step 1a)
-- **Active commands:** Command becomes active, fleet starts moving toward target
-- **Standing commands:** System checks conditions and generates fleet commands (written to Fleet.command)
-- **Both:** Fleets begin traveling, `Fleet.missionState` set to Traveling
-- Events: `StandingCommandActivated`, `StandingCommandSuspended`
+- Command becomes active, fleet starts moving toward target
+- Fleets begin traveling, `Fleet.missionState` set to Traveling
 - Phase: Production Phase Step 1a
 
 ### Execute (Conflict/Income Phase)
-- **Both command types:** Fleet commands conduct their missions at target locations
+- Fleet commands conduct their missions at target locations
 - Bombard, Colonize, Trade, Blockade, etc. actually happen
 - Results generate events (`CommandCompleted`, `CommandFailed`, etc.)
 - Phase: Depends on command type (Conflict for combat, Income for trade)
 
-**Key Insight:** Active and standing commands follow the SAME four-tier lifecycle:
-- Active command: Initiate (Command B) → Validate (Command C) → Activate (Production 1a) → Execute (Conflict/Income)
-- Standing command: Initiate (Command B) → Validate (Command C) → Activate (Production 1a) → Execute (Conflict/Income)
+**Key Insight:** All commands follow the SAME four-tier lifecycle:
+- Initiate (Command B) → Validate (Command C) → Activate (Production 1a) → Execute (Conflict/Income)
 
 ---
 
@@ -96,7 +91,7 @@ No merge step needed - fleets with `missionState == Executing` have arrived at t
 
 **Universal command lifecycle:**
 - Command Phase Part C: Commands validated and stored in `Fleet.command`
-- Production Phase Step 1a: Commands activated (standing commands generated → Fleet.command)
+- Production Phase Step 1a: Commands activated
 - Production Phase Step 1c: Fleets move toward targets
 - Production Phase Step 1d: Arrivals detected, `Fleet.missionState` set to `Executing`
 - Conflict Phase Steps 1-6: Commands execute (filter: missionState == Executing)
@@ -127,7 +122,7 @@ No merge step needed - fleets with `missionState == Executing` have arrived at t
 **5. Colonization** (simultaneous resolution)
 - ETAC fleets establish colonies
 - Resolve conflicts (winner-takes-all)
-- Fallback logic for losers (AutoColonize standing commands)
+- Fallback logic for losers (Fleet holds position)
 - Generate `GameEvents` (ColonyEstablished)
 
 **6. Espionage Operations** (simultaneous resolution)
@@ -137,7 +132,7 @@ No merge step needed - fleets with `missionState == Executing` have arrived at t
 When scout fleet arrives at target (fleet.missionState == Executing):
 - **State Transition**: Fleet.missionState: Executing → ScoutLocked
 - **First Detection Check**: Run detection **before** mission registration
-  - Detection formula: 1d20 vs (15 - scoutCount + ELI + starbaseBonus)
+  - Detection check: 1d20 + ELI + starbaseBonus vs 15 + scoutCount
   - **If DETECTED**: All scouts destroyed immediately, mission fails, no intel gathered
   - **If UNDETECTED**: Continue to mission registration below
 
@@ -418,7 +413,7 @@ On victory:
 - Clear completed commands from `Fleet.command` field
 - Remove failed commands (fleet destroyed, target lost)
 - Remove aborted commands (conditions no longer valid)
-- **Critical:** Runs BEFORE Part A to allow standing commands to activate in Production Phase
+- **Critical:** Runs BEFORE Part A to allow fleets to travel in Production Phase
 - Result: Clean slate for new turn's commands
 
 ### Part A: Server Processing (BEFORE Player Window)
@@ -468,7 +463,7 @@ Players can immediately interact with newly-commissioned ships and colonies.
 - Return immediate success/failure result
 
 **Persistent Fleet Commands (FleetCommandType):**
-- Persist across turns in `Fleet.command` or `Fleet.standingCommand` fields
+- Persist across turns in `Fleet.command` field
 - Follow multi-turn lifecycle: Submit (Command Phase) → Travel (Production Phase) → Execute (Production/Conflict/Income Phase)
 - **ALL** FleetCommandType entries are persistent, including:
   - JoinFleet, Rendezvous (can require travel to target)
@@ -511,7 +506,7 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 **Terminology:**
 - "Travel" = General concept of fleet movement (use this in docs)
 - "Move" = Specific FleetCommandType for "travel to target and hold"
-- Don't use "Movement commands" - it's ambiguous and confusing
+- "Movement commands" = Ambiguous/Confusing (AVOID)
 
 ### Part C: Command Validation & Storage (AFTER Player Window)
 
@@ -533,10 +528,8 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 **Key Insight:** Combat is separate from command execution. Combat triggers by fleet presence + diplomatic state, not by fleet mission type. A fleet with Rendezvous mission can still fight if enemies are present.
 
 **Simultaneous Resolution:** Colonize, Blockade, Invade, and Blitz support multiple houses targeting the same colony/planet in the same turn. Conflict resolution logic (collect intents → resolve conflicts → execute) determines outcomes in Conflict Phase Steps 3-5.
-3. **Standing command configs**: Validated and stored in `Fleet.standingCommand` field
-   - Activate in Production Phase Step 1a (only if no active command exists)
-4. **Build orders**: Add to construction queues
-5. **Tech research allocation** (detailed processing):
+3.  **Build orders**: Add to construction queues
+4.  **Tech research allocation** (detailed processing):
    - Calculate total PP cost for research allocation (ERP + SRP + TRP)
    - **Treasury scaling** (prevent negative treasury):
      - If treasury ≤ 0: Cancel all research (bankruptcy)
@@ -580,13 +573,13 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 
 **1. Fleet Movement and Command Activation**
 
-**1a. Command Activation** (activate ALL commands - both active and standing)
+**1a. Command Activation**
 - **Active commands:** Already validated in Command Phase Part C, now become active and ready for processing
-- **Standing commands:** Check activation conditions, generate new fleet commands
-- Standing commands write to `Fleet.command` field (same as active commands)
-- Generate GameEvents (StandingCommandActivated, StandingCommandSuspended)
+- Mark as ready for travel
 
-**1b. (REMOVED - Merged into Step 1e)**
+**1b. Order Maintenance** (lifecycle management)
+- Check completions, validate conditions
+- Process order state transitions
 
 **1c. Fleet Travel** (fleets move toward targets)
 - **ALL fleets with persistent commands** move autonomously toward target systems via pathfinding
@@ -746,7 +739,7 @@ Process tech advancements using accumulated RP from Command Phase. Per economy.m
 | 00    | Hold                  | N/A               | Defensive posture, affects combat behavior   |
 | 01    | Move                  | Production Phase | Fleet movement (Step 1)                      |
 | 02    | Seek Home             | Production Phase | Variant of Move (return to home colony)      |
-| 03    | Patrol System         | Production Phase | Variant of Move (patrol specific system)     |
+| 03    | Patrol System         | Conflict Phase    | Travels in Production, Defends in Conflict   |
 | 04    | Guard Starbase        | N/A               | Defensive posture, affects combat screening  |
 | 05    | Guard/Blockade Planet | Conflict Phase    | Blockade: Step 3, Guard: defensive posture   |
 | 06    | Bombard Planet        | Conflict Phase    | Planetary Combat (Step 4)                    |
@@ -768,33 +761,17 @@ Process tech advancements using accumulated RP from Command Phase. Per economy.m
 
 Execute immediately during Command Phase Part B player window:
 
-| Command                      | Execution Phase   | Notes                                        |
-|------------------------------|-------------------|----------------------------------------------|
-| DetachShips                  | Command Phase B   | Execute immediately during order submission  |
-| TransferShips                | Command Phase B   | Execute immediately during order submission  |
-| MergeFleets                  | Command Phase B   | Execute immediately during order submission  |
-| LoadCargo                    | Command Phase B   | Execute immediately during order submission  |
-| UnloadCargo                  | Command Phase B   | Execute immediately during order submission  |
-| TransferShipBetweenSquadrons | Command Phase B   | Execute immediately during order submission  |
-| AssignSquadronToFleet        | Command Phase B   | Execute immediately during order submission  |
+| Command         | Execution Phase | Notes                                           |
+| --------------- | --------------- | ----------------------------------------------- |
+| DetachShips     | Command Phase B | Execute immediately during order submission     |
+| TransferShips   | Command Phase B | Execute immediately during order submission     |
+| MergeFleets     | Command Phase B | Execute immediately during order submission     |
+| LoadCargo       | Command Phase B | Execute immediately during order submission     |
+| UnloadCargo     | Command Phase B | Execute immediately during order submission     |
+| PlaceOnReserve  | Command Phase B | Instant status change (reduces C2/Maint cost)   |
+| MothballFleet   | Command Phase B | Instant status change (zero C2, minimal Maint)  |
 
-**Key Property:** All zero-turn administrative commands execute BEFORE operational orders in same turn, allowing players to reorganize fleets and load cargo before issuing movement/combat orders.
-
-### Standing Commands  (9 types)
-
-| Standing Order | Behavior                             | Generated Order Execution            |
-|----------------|--------------------------------------|--------------------------------------|
-| None           | No standing order (default)          | N/A                                  |
-| PatrolRoute    | Follow patrol path indefinitely      | Move orders -> Production Phase     |
-| DefendSystem   | Guard system, engage per ROE         | Defensive posture (affects combat)   |
-| GuardColony    | Defend specific colony               | Defensive posture (affects combat)   |
-| AutoColonize   | ETACs auto-colonize nearest system   | Colonize orders -> Conflict Phase    |
-| AutoReinforce  | Join nearest damaged friendly fleet  | Move/Join orders -> Production      |
-| AutoRepair     | Return to shipyard when crippled     | Move orders -> Production Phase     |
-| AutoEvade      | Retreat if outnumbered per ROE       | Move orders -> Production Phase     |
-| BlockadeTarget | Maintain blockade on enemy colony    | Blockade orders -> Conflict Phase    |
-
-**Generation Timing:** Standing commands are CONFIGURED in Command Phase Part C (validated, stored in `Fleet.standingCommand` field). They GENERATE actual fleet commands during Production Phase Step 1a (only if fleet has no active command). Generated commands then follow universal lifecycle: activate (move) → execute (at arrival).
+**Key Property:** All zero-turn administrative commands execute BEFORE operational orders in same turn, allowing players to reorganize fleets, load cargo, and manage status before issuing movement/combat orders.
 
 ---
 

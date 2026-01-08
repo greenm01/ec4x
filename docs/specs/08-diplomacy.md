@@ -136,7 +136,6 @@ Regardless of diplomatic status, all your units will defend your House colonies 
 
 **Defensive Posture:**
 - Guard commands (GuardStarbase, GuardColony) are non-threatening
-- Defensive standing commands (DefendSystem, GuardColony) are non-threatening
 - Fleets responding to attacks on your colonies escalate diplomatic status
 
 ### 8.1.8 Territorial Control

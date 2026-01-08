@@ -50,8 +50,8 @@ Bombard planetary defenses and invade the surface after securing orbit. Your fle
 - Your bombardment fleets (any combat ships)
 - Your invasion forces (marines from troop transports)
 - Enemy planetary shields (reduce bombardment damage)
-- Enemy ground batteries (fire on orbiting ships and landing forces)
-- Enemy ground forces (armies and marines defend against invasion)
+- Enemy ground batteries (fire on orbiting ships during bombardment)
+- Enemy ground forces (armies and marines defend against invading marines)
 
 **Outcome determines:**
 - Successful bombardment: Infrastructure destroyed, defenses weakened
@@ -169,8 +169,6 @@ Your house's prestige affects fleet morale, modifying effective ROE during comba
 | 81+       | +2              | Fleets fight much longer (ROE 6 becomes ROE 8)    |
 
 **Homeworld Defense Exception**: Fleets defending their homeworld NEVER retreat regardless of ROE or losses.
-
-**ROE affects standing commands**: PatrolRoute with ROE=2 patrols but retreats unless 4:1 advantage. DefendSystem with ROE=8 fights even at 1:2 disadvantage.
 
 **ROE does NOT affect explicit commands**: When you issue Bombard, Invade, or Attack commands, your fleet executes regardless of ROE. ROE only matters for automated retreat decisions during combat.
 
@@ -479,7 +477,6 @@ For complete escalation timing and threat categories, see [Section 8.1.6 Escalat
 - Fleets with **no commands** (default mobile posture)
 - Fleets with **Hold commands** (stationary but mobile-capable)
 - Fleets with **Patrol commands** (active patrol duty)
-- Fleets with **movement-based standing commands** (PatrolRoute, AutoReinforce, AutoRepair)
 - Fleets with **offensive mission commands** (Move, Invade, Bombard, Blockade)
 - Fleets with **System Guard Commands** (DefendSystem)
 - **Active status fleets** without guard-specific commands
@@ -1059,9 +1056,9 @@ Marines land immediately (don't wait for batteries eliminated):
 **Step 1: Calculate Attack Strength**
 
 Attacker AS = Marines total AS
-Defender AS = Ground Forces AS + remaining Ground Batteries AS
+Defender AS = Ground Forces AS
 
-**Note:** Batteries participate in ground combat during Blitz (not eliminated in bombardment phase). Represents batteries firing on landing zones and marine positions.
+**Note:** Batteries do not participate directly in ground combat resolution (their effect is captured by the "Landing Under Fire" DRM).
 
 **Step 2: Calculate Die Roll Modifiers**
 

@@ -1,8 +1,8 @@
 # 6.0 Fleet Operations and Movement
 
-Command your fleets across the stars. Direct them with explicit commands for immediate missions or standing commands for persistent behaviors. Your strategic decisions at the fleet level drive military success—individual ships work together as unified task forces.
+Command your fleets across the stars. Direct them with explicit commands for immediate missions. Your strategic decisions at the fleet level drive military success—individual ships work together as unified task forces.
 
-This section covers jump lane travel, ship commissioning pipelines, fleet commands, standing commands, and repair operations. Master these systems to project power effectively across your empire.
+This section covers jump lane travel, ship commissioning pipelines, fleet commands, and repair operations. Master these systems to project power effectively across your empire.
 
 ---
 
@@ -87,9 +87,8 @@ When construction completes, your ships **immediately commission** and join flee
 
 **Ship Assignment Rules:**
 
-**Combat ships** (BB, DN, SD, CA, CL, DD, FF, CT) automatically join existing stationary fleets:
+**Combat ships** automatically join existing stationary fleets:
 - Fleets with **Hold, Guard, or Patrol** commands (at same system)
-- Fleets with **defensive standing commands** (DefendSystem, GuardColony)
 - Fleets with **no commands** (default stationary posture)
 - If no suitable fleet exists, creates new fleet automatically
 
@@ -101,16 +100,15 @@ When construction completes, your ships **immediately commission** and join flee
 
 **Moving fleets do not receive reinforcements:**
 - Fleets executing **movement commands** or on patrol routes
-- Fleets with **movement-based standing commands** (PatrolRoute, AutoRepair)
 - **Reserve or Mothballed** fleets (intentional reduced-readiness status)
 
 This system ensures ships join fleets **intentionally stationary** at your colony, not temporarily passing through. Your fleets maintain operational readiness without interrupting ongoing missions.
 
-**Why automatic assignment?** Ships are organized into fleets for strategic control. You command at the fleet level—issuing fleet commands, setting patrol routes, managing fleet composition. Automatic assignment eliminates the micromanagement trap of forgetting to deploy newly-built units while preserving your strategic control through fleet commands and standing commands.
+**Why automatic assignment?** Ships are organized into fleets for strategic control. You command at the fleet level—issuing fleet commands and managing fleet composition. Automatic assignment eliminates the micromanagement trap of forgetting to deploy newly-built units while preserving your strategic control.
 
 **Stage Three: Fleet Operations**
 
-Once in fleets, control your forces through **fleet commands** (one-time missions) and **standing commands** (persistent behaviors). Active fleets consume Command Cost (CC) from your House's C2 Pool. Transfer ships between fleets, adjust compositions, or place fleets in Reserve/Mothballed status to control operational costs.
+Once in fleets, control your forces through **fleet commands**. Active fleets consume Command Cost (CC) from your House's C2 Pool. Transfer ships between fleets, adjust compositions, or place fleets in Reserve/Mothballed status to control operational costs.
 
 ### 6.2.2 Fleet Composition Strategy
 
@@ -122,7 +120,27 @@ Design your fleets for their mission profile:
 
 **Scout fleets** deploy scouts for intelligence gathering, system reconnaissance, and espionage missions. Small footprint, high stealth.
 
-**Reserve fleets** store mothballed ships at major colonies for emergency mobilization. Zero maintenance cost, immediate reactivation when needed.
+**Mothball fleets** store mothballed ships at colonies for emergency mobilization. Zero CC cost, 10% maintenance. Ships are offline, defenseless, and screened during combat.
+
+**Reserve fleets** are stationary colony defense forces. Ships operate at 50% combat effectiveness (Crippled state) but incur only 50% maintenance and CC costs. They are automatically assigned the **Blockade** command to participate in orbital defense but cannot move until reactivated.  
+
+### 6.2.3 Rules of Engagement (ROE)
+
+Configure fleet combat behavior with Rules of Engagement—a 0-10 scale determining when to fight and when to retreat.
+
+**See [Section 7.2.3 Rules of Engagement](07-combat.md#723-rules-of-engagement-roe) for the complete table of retreat thresholds.**
+
+| ROE  | Behavior                                        |
+| ---- | ----------------------------------------------- |
+| 0-2  | Extremely cautious - Retreat from any threat    |
+| 3-5  | Defensive - Fight only if superior              |
+| 6-8  | Aggressive - Fight unless clearly outnumbered   |
+| 9-10 | Suicidal - Fight to the death                   |
+
+**Usage:**
+- Assign ROE when creating fleets or issuing commands.
+- **Patrol/Guard with ROE 2**: Fleet patrols but retreats from any hostile contact.
+- **Defend System with ROE 8**: Fleet defends aggressively, fighting unless outnumbered.
 
 ---
 
@@ -408,36 +426,35 @@ Recover resources from destroyed ships and derelict facilities in friendly syste
 
 ### 6.3.19 Place on Reserve (17)
 
-Instantly places a fleet into **Reserve** status during the Command Phase. This is an administrative action, not a turn-based order, used to manage your C2 Pool and economy.
+Instantly places a fleet into **Reserve** status during the Command Phase.
 
 **Reserve Status Effects:**
 - **CC Cost**: Reduced to 50% of base.
 - **Maintenance Cost**: Reduced to 50% of base.
-- The fleet becomes immobile and cannot fight.
-- The fleet will not receive auto-assigned ships.
+- **Combat Effectiveness**: Ships fight at 50% AS (Crippled state).
+- **Command Assignment**: Automatically assigned **Blockade (06)** command to participate in orbital defense.
+- **Mobility**: Immobile. Cannot execute movement commands.
 - **Requirements**: Fleet must be at a friendly starbase or shipyard.
 
 **Use Reserve Status to:**
-- Reduce your total active CC to get under your C2 Pool limit and avoid Logistical Strain.
-- Lower maintenance costs during peacetime.
-- Maintain defensive reserves at key colonies for rapid (1-turn) reactivation.
+- Reduce C2/Maintenance costs while maintaining a credible defensive deterrent.
+- Garrison colonies with lower-readiness forces.
 
 ### 6.3.20 Mothball Fleet (18)
 
-Instantly places a fleet into **Mothballed** status during the Command Phase. This is an administrative action for long-term fleet storage.
+Instantly places a fleet into **Mothballed** status during the Command Phase.
 
 **Mothball Status Effects:**
-- **CC Cost**: Reduced to 0% of base, completely freeing up C2 allocation.
-- **Maintenance Cost**: Reduced to 10% of base (for skeleton crews).
-- The fleet is defenseless and cannot move or fight.
-- The fleet will not receive auto-assigned ships.
+- **CC Cost**: Reduced to 0 (free).
+- **Maintenance Cost**: Reduced to 10% of base (skeleton crews).
+- **Combat Effectiveness**: None. Ships are offline and defenseless.
+- **Defense**: Must be screened by active/reserve fleets or starbases. Vulnerable to destruction if defenders lost.
+- **Mobility**: Immobile.
 - **Requirements**: Fleet must be at a friendly starbase or shipyard.
 
 **Use Mothball to:**
-- Drastically reduce your total active CC to solve a major C2 Pool deficit.
-- Store valuable but obsolete ships for a minimal maintenance fee.
-- Respond to a major economic crisis by slashing fleet upkeep.
-- **WARNING**: Mothballed fleets are vulnerable and should be protected by active fleets or colony defenses.
+- Store valuable ships at minimal cost during peacetime.
+- Preserve hull assets for future mobilization (requires Reactivate command).
 
 ### 6.3.21 Reactivate Fleet (19)
 
@@ -553,7 +570,7 @@ Combine two fleets into a single unified force.
 - Source fleet merges entirely into target fleet
 - All ships transfer to target
 - Source fleet deleted after merge
-- Target fleet retains its commands and standing commands
+- Target fleet retains its commands
 - Fleet composition limits still apply
 
 **Example:** 3 cruiser fleets return to home system. Merge all into single battle fleet → one unified command, simplified management, ready for coordinated offensive.
@@ -653,188 +670,6 @@ All preparation complete, offensive launches immediately. Total: 1 turn.
 
 ---
 
-## 6.5 Standing Commands
-
-Establish persistent fleet behaviors that execute automatically when no explicit command is given. Standing commands reduce micromanagement by codifying routine behaviors—your fleets patrol routes, defend systems, and reinforce damaged units without constant supervision.
-
-### 6.5.1 Standing Command Types
-
-Persistent behaviors that execute when fleet has no active mission. Standing commands generate active fleet commands automatically.
-
-| Standing Command Type | Active Command Generated  | Purpose                                                                           |
-| --------------------- | ------------------------- | --------------------------------------------------------------------------------- |
-| None                  | None (00)                 | Hold position. Standby for orders.                                                |
-| PatrolRoute           | Move Fleet (01)           | Move to target waypoint2, turn around and move back to waypoint1. Repeat in loop. |
-| DefendSystem          | Patrol a System (03)      | Patrol system. Remain on station until ordered otherwise (persist).               |
-| GuardColony           | Guard a Colony (03)       | Guard colony/planet. Remain on station until ordered otherwise (persist).         |
-| AutoReinforce         | Join another Fleet (14)   | Seek target fleet and join.                                                       |
-| AutoRepair            | Move Fleet (01)           | Move to nearest house controlled drydock for repair.                             |
-| BlockadeTarget        | Blockade a Colony (06)    | Blockade enemy colony/planet in designated system.                                |
-
-**Note:** Active command codes reference table 6.2.1. All fleet commands (except Hold) include automatic travel to target.
-
-### 6.5.2 Standing Command Execution
-
-**Standing commands are persistent**: Once assigned, your fleet executes the standing command every turn unless you issue an explicit command.
-
-**Explicit commands override temporarily**: Issue a one-time command to interrupt standing command behavior. Your fleet executes the explicit command this turn, then automatically resumes its standing command next turn.
-
-**Standing commands support Rules of Engagement**: Most defensive standing commands respect your ROE settings, determining when to fight and when to retreat.
-
-### 6.5.3 Player Controls (Strategic Safety)
-
-Standing commands include multiple layers of control to prevent unwanted automation that could undermine your strategy:
-
-**1. Global Toggle** (`config/standing_orders.toml` → `activation.global_enabled`)
-- **Master killswitch**: Disable ALL standing commands for ALL fleets instantly
-- Overrides all per-fleet settings
-- Default: `true` (standing commands enabled)
-- Use when you want complete manual control of all fleets
-
-**2. Per-Fleet Enable/Disable** (`StandingCommand.enabled` flag)
-- **Individual fleet control**: Enable/disable standing command for each fleet independently
-- Default controlled by `activation.enabled_by_default` (false by default)
-- New fleets do NOT auto-execute standing commands unless explicitly enabled
-- Use to selectively automate specific fleets while maintaining manual control of others
-
-**3. Activation Delay Grace Period** (`StandingCommand.activationDelayTurns`)
-- **Strategic breathing room**: Grace period (in turns) after mission completion before standing command activates
-- Default: `activation.default_activation_delay_turns` (1 turn)
-- Configurable per-fleet
-- Countdown resets when you issue explicit order
-- **Critical for preventing strategic errors**: Fleet completes mission, you have 1 turn to issue new fleet commands before standing command takes over
-
-**Activation Flow Example:**
-```
-Turn N:   Fleet completes Colonize command → command removed
-Turn N:   Standing order countdown starts: turnsUntilActivation = 1
-Turn N+1: You can issue new explicit command OR let countdown continue
-Turn N+1: If no explicit command: countdown decrements to 0
-Turn N+1: Standing command activates → generates new fleet command (e.g., Move to next colonization target)
-```
-
-**Why These Controls Matter:**
-- **Prevents strategic blunders**: Fleet completes mission in hostile territory, standing command sends it deeper into danger
-- **Preserves player agency**: You maintain strategic control, automation serves you
-- **Supports evolving strategies**: Disable standing commands globally during war, re-enable during expansion phases
-
-### 6.5.4 Patrol Route Standing Command
-
-Establish indefinite patrol routes through multiple systems. Your fleet automatically travels the route system-by-system, engaging hostiles per ROE, providing continuous defensive coverage.
-
-**Configuration:**
-- Define patrol path: ordered list of systems
-- Set Rules of Engagement (0-10 scale)
-- Fleet automatically cycles through route
-
-**Behavior:**
-- Fleet travels to next system in route
-- Engages hostiles per ROE
-- Continues to next system
-- Cycles back to start when route completes
-
-**Use Patrol Route to:**
-- Defend border regions spanning multiple systems
-- Maintain continuous presence in contested zones
-- Automate routine security operations
-
-### 6.5.5 Defend System Standing Command
-
-Station your fleet for permanent system defense. Your fleet remains at the system, engages hostiles per ROE, and protects colonies without requiring repeated commands.
-
-**Configuration:**
-- Target system (usually current location)
-- Rules of Engagement (0-10 scale)
-
-**Behavior:**
-- Fleet remains at target system
-- Engages hostile fleets per ROE
-- Protects colonies and starbases
-- Automatically screens mothballed fleets during combat
-
-**Use Defend System to:**
-- Create permanent defensive garrisons
-- Protect strategic colonies
-- Maintain defensive presence without micromanagement
-
-### 6.5.6 Guard Colony Standing Command
-
-Defend a specific colony within a system. Functionally identical to Defend System but explicitly designates which colony to prioritize during combat.
-
-**Use Guard Colony to:**
-- Prioritize specific colony defense in multi-colony systems
-- Designate which infrastructure to protect
-- Create colony-specific defensive postures
-
-### 6.5.7 Auto-Reinforce Standing Command
-
-Command your fleet to automatically reinforce the nearest damaged friendly fleet. Your fleet identifies allies in need, travels to their location, and transfers ships to restore combat effectiveness.
-
-**Behavior:**
-- Fleet scans for damaged friendly fleets
-- Calculates nearest target
-- Travels to target location
-- Transfers ships as appropriate
-- Resumes scanning for next target
-
-**Use Auto-Reinforce to:**
-- Maintain frontline fleet strength
-- Automate battle damage replacement
-- Create mobile reinforcement fleets
-
-### 6.5.8 Auto-Repair Standing Command
-
-Command damaged fleets to automatically return to drydocks when crippled. Your fleet recognizes critical damage, calculates nearest repair facility, and travels there automatically.
-
-**Behavior:**
-- Fleet monitors ship damage status
-- When crippled (threshold TBD), seeks repair
-- Identifies nearest colony with drydock
-- Travels to repair facility
-- Conducts repairs
-- Resumes previous standing command or awaits commands
-
-**Use Auto-Repair to:**
-- Preserve damaged units
-- Reduce fleet management micromanagement
-- Ensure damaged forces return to operational status
-
-### 6.5.9 Blockade Target Standing Command
-
-Maintain continuous blockade of enemy colony. Your fleet establishes orbital blockade and maintains it indefinitely, strangling enemy economy.
-
-**Configuration:**
-- Target colony system
-- Rules of Engagement (determines when to fight defending fleets)
-
-**Behavior:**
-- Fleet travels to target system if not present
-- Establishes orbital blockade
-- Engages defending forces per ROE
-- Maintains blockade continuously
-
-**Use Blockade Target to:**
-- Maintain long-term economic pressure
-- Weaken enemy colonies before invasion
-- Automate blockade operations
-
-### 6.5.10 Rules of Engagement (ROE)
-
-Configure standing order combat behavior with Rules of Engagement—a 0-10 scale determining when to fight and when to retreat.
-
-| ROE  | Behavior                                        |
-| ---- | ----------------------------------------------- |
-| 0-2  | Extremely cautious - Retreat from any threat    |
-| 3-5  | Defensive - Fight only if superior              |
-| 6-8  | Aggressive - Fight unless clearly outnumbered   |
-| 9-10 | Suicidal - Fight to the death                   |
-
-**Examples:**
-- **Patrol Route with ROE=2**: Fleet patrols border but retreats from any hostile contact
-- **Defend System with ROE=8**: Fleet defends aggressively, fighting unless outnumbered 4:1
-
----
-
 ## 6.5 Ship Repairs and Repair Queues
 
 Damaged ships require drydock facilities for repairs. Manage your repair priorities through explicit repair commands or automated repair queues. Drydocks are specialized repair-only facilities separate from construction infrastructure.
@@ -862,8 +697,6 @@ Damaged ships require drydock facilities for repairs. Manage your repair priorit
 **Forward repair facilities**: Build drydocks at frontline colonies for rapid turnaround. Maintain fleet readiness near combat zones.
 
 **Emergency repairs**: Lightly damaged ships remain operational. Save drydock capacity for critically damaged units requiring immediate attention.
-
-**Auto-Repair standing commands**: Configure damaged fleets to automatically return to designated repair facilities when crippled. Reduces micromanagement of battle-damaged forces.
 
 ---
 

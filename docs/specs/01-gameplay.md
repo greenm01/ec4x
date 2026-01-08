@@ -210,7 +210,7 @@ If you fail to submit commands for three consecutive turns, your empire automati
 
 **Autopilot Behavior:**
 
-- Your fleets continue executing standing commands until completion
+- Your fleets continue executing active commands until completion
 - Fleets without active commands patrol and defend home systems
 - Your economy continues operating (current tax rate and R&D allocations maintained)
 - Construction focuses on defensive infrastructure and essential facilities
@@ -289,7 +289,7 @@ Whenever your friendly fleets are present in the same system as foreign forces, 
 
 - Fleet composition (ship types and fleet sizes)
 - Number of spacelift ships (transport count)
-- Standing commands (Patrol, Guard, Blockade, etc.)
+- Active commands (Patrol, Guard, Blockade, etc.)
 - Fleet location (current system)
 
 **Visual Intelligence Limitations:**
