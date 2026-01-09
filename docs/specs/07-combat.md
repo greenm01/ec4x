@@ -18,7 +18,7 @@ Fight enemy mobile fleets in deep space before reaching orbit. Your task forces 
 
 **Who fights:**
 - Your attacking fleets
-- Enemy mobile defenders (fleets with no Guard commands, active movement commands)
+- Enemy mobile defenders (fleets without Guard commands)
 - Undetected Raiders can ambush with combat bonuses
 
 **Outcome determines:**
@@ -32,7 +32,7 @@ Assault fortified orbital defenses after achieving space superiority. Your fleet
 
 **Who fights:**
 - Your surviving attack fleets (if you won space combat)
-- Enemy guard fleets (fleets with Guard/Defend commands)
+- Enemy guard fleets (fleets with Guard commands)
 - Enemy reserve fleets
 - Enemy starbases 
 - Enemy unassigned ships at colony
@@ -481,7 +481,7 @@ For complete escalation timing and threat categories, see [Section 8.1.6 Escalat
 
 **Who Does NOT Fight in Space Combat:**
 - **Scouts**: Consumed when initiating spy missions, destroyed upon detection - never participate in fleet combat
-- **Orbital Guard fleets**: GuardStarbase, GuardPlanet commands - they defend in orbital combat only
+- **Orbital Guard fleets**: GuardStarbase, GuardColony commands - they defend in orbital combat only
 - **Reserve fleets**: Stationed at colony, fight in orbital combat only
 - **Mothballed fleets**: Offline, screened in orbital combat, cannot fight
 - **Starbases**: Fixed installations, orbital combat only (but provide sensor bonuses in space combat)
@@ -592,7 +592,7 @@ Assault fortified colony defenses after winning space superiority. Your fleets e
 - Any fleets that bypassed space combat (if no mobile defenders present)
 
 **Orbital Defenders** (All Fight Simultaneously):
-- **Guard fleets**: Fleets with GuardStarbase, GuardPlanet commands
+- **Guard fleets**: Fleets with GuardStarbase, GuardColony commands
 - **Reserve fleets**: 50% maintenance fleets stationed at colony, fight at 50% AS with auto-Blockade posture (orbital defense only)
 - **Mothballed fleets**: 0% maintenance fleets (CANNOT FIGHT - must be screened)
 - **Starbases**: Orbital installations with heavy firepower and detection capability

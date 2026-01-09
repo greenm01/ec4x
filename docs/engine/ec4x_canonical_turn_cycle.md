@@ -1,7 +1,7 @@
 # EC4X Canonical Turn Sequence Specification
 
 **Purpose:** Complete and definitive turn order specification for EC4X  
-**Last Updated:** 2026-01-09 (Combat Participant Filtering)
+**Last Updated:** 2026-01-09
 **Status:** Implementation Complete (Unified Commissioning + Repair System)
 
 ---
@@ -306,6 +306,8 @@ Combat requires both houses to have fleets present at the same location. For eac
 | **Hostile** | No combat (safe passage) |
 | **Neutral** | No combat (safe passage) |
 
+**Note:** Guard fleets (GuardColony, GuardStarbase) do NOT participate in travel interception. They only engage during orbital combat when their colony/starbase is directly targeted by Attack missions.
+
 **At Destination - Their Colony (Tier 1 Attack Missions):**
 
 | Diplomatic Status | Tier 1 (Attack) | Result |
@@ -342,6 +344,9 @@ Combat requires both houses to have fleets present at the same location. For eac
 - Defenders engage based on threat to their system/colony, not mere fleet presence
 - At Enemy status: Both sides engage on sight (mutual, simultaneous combat)
 - All combat is simultaneous - no attacker/defender initiative advantage
+
+**Fleet Participation in Enemy Encounters:**
+When Enemy fleets meet at any location, all Active fleets with non-Guard commands participate in space combat, regardless of their current mission. A fleet with a Move command paused at an intermediate system will fight if an Enemy fleet is present.
 
 **Grace Period Logic:**
 - Grace period is encoded in the diplomatic state transition itself

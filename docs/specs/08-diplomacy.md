@@ -65,29 +65,29 @@ Fleet commands are only threatening when the **fleet's mission target is this sy
 
 **Command Threat Classification Table:**
 
-| Command # | Mission Name | Threat Level | Escalation Effect | Notes |
-|-----------|--------------|--------------|-------------------|-------|
-| 06 | Blockade a Colony | **Attack** | Enemy, immediate combat | Economic warfare targeting colony |
-| 07 | Bombard a Colony | **Attack** | Enemy, immediate combat | Orbital bombardment targeting colony |
-| 08 | Invade a Colony | **Attack** | Enemy, immediate combat | Ground invasion targeting colony |
-| 09 | Blitz a Colony | **Attack** | Enemy, immediate combat | Combined assault targeting colony |
-| 03 | Patrol a System | **Contest** | Hostile, grace period | Active patrol of their controlled system |
-| 00 | Hold Position | **Contest** | Hostile, grace period | Sustained military presence in their system |
-| 15 | Rendezvous at System | **Contest** | Hostile, grace period | Assembling forces in their system |
-| 01 | Move Fleet | Benign | No escalation | Strategic repositioning or traveling through |
+| Command # | Mission | Threat Level | Escalation Effect | Notes |
+|-----------|---------|--------------|-------------------|-------|
+| 06 | Blockade | **Attack** | Enemy, immediate combat | Orbital control (blocks colonization or disrupts economy) |
+| 07 | Bombard | **Attack** | Enemy, immediate combat | Orbital bombardment targeting colony |
+| 08 | Invade | **Attack** | Enemy, immediate combat | Ground invasion targeting colony |
+| 09 | Blitz | **Attack** | Enemy, immediate combat | Combined assault targeting colony |
+| 03 | Patrol | **Contest** | Hostile, grace period | Active patrol of their controlled system |
+| 00 | Hold | **Contest** | Hostile, grace period | Sustained military presence in their system |
+| 15 | Rendezvous | **Contest** | Hostile, grace period | Assembling forces in their system |
+| 01 | Move | Benign | No escalation | Strategic repositioning or traveling through |
 | 02 | Seek Home | Benign | No escalation | Return to base (retreating) |
 | 04 | Guard Starbase | Benign | No escalation | Only valid for your own starbases |
-| 05 | Guard a Colony | Benign | No escalation | Only valid for your own colonies |
-| 10 | Colonize a Planet | Benign | No escalation | Only valid in neutral space |
-| 11 | Spy on a Colony | Benign | No escalation | If undetected (mission fails if detected) |
-| 12 | Spy on a System | Benign | No escalation | If undetected (mission fails if detected) |
-| 13 | Hack a Starbase | Benign | No escalation | If undetected (mission fails if detected) |
+| 05 | Guard Colony | Benign | No escalation | Only valid for your own colonies |
+| 10 | Colonize | Benign | No escalation | Only valid in neutral space |
+| 11 | Scout Colony | Benign | No escalation | If undetected (mission fails if detected) |
+| 12 | Scout System | Benign | No escalation | If undetected (mission fails if detected) |
+| 13 | Hack Starbase | Benign | No escalation | If undetected (mission fails if detected) |
 | 14 | Join Fleet | Benign | No escalation | Force consolidation |
 | 16 | Salvage | Benign | No escalation | Only valid in friendly space |
-| 17 | Place on Reserve | Benign | No escalation | Administrative action |
-| 18 | Mothball Fleet | Benign | No escalation | Administrative action |
-| 19 | Reactivate Fleet | Benign | No escalation | Administrative action |
-| 20 | View a Planet | Benign | No escalation | Passive reconnaissance |
+| 17 | Reserve | Benign | No escalation | Administrative action |
+| 18 | Mothball | Benign | No escalation | Administrative action |
+| 19 | Reactivate | Benign | No escalation | Administrative action |
+| 20 | View | Benign | No escalation | Passive reconnaissance |
 
 **Threat Level Effects:**
 

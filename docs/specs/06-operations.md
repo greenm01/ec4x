@@ -152,29 +152,29 @@ Command your fleets with 20 distinct mission types—from peaceful exploration t
 
 Explicit commands that execute until completed or overridden:
 
-| No. | Mission                 | Requirements                             |
-| --- | ----------------------- | ---------------------------------------- |
-| 00  | None (hold position)    | None                                     |
-| 01  | Move Fleet (only)       | None                                     |
-| 02  | Seek home               | None                                     |
-| 03  | Patrol a System         | None                                     |
-| 04  | Guard a Starbase        | Combat ship(s)                           |
-| 05  | Guard a Colony          | Combat ship(s)                           |
-| 06  | Blockade a Colony       | Combat ship(s)                           |
-| 07  | Bombard a Colony        | Combat ship(s)                           |
-| 08  | Invade a Colony         | Combat ship(s) & loaded Troop Transports |
-| 09  | Blitz a Colony          | Loaded Troop Transports                  |
-| 10  | Colonize a Planet       | One ETAC                                 |
-| 11  | Scout a Colony         | Scout-only fleet (1+ scouts)             |
-| 12  | Scout a System         | Scout-only fleet (1+ scouts)             |
-| 13  | Hack a Starbase         | Scout-only fleet (1+ scouts)             |
-| 14  | Join another Fleet      | None                                     |
-| 15  | Rendezvous at System    | None                                     |
-| 16  | Salvage                 | Friendly Colony System                   |
-| 17  | Place on Reserve        | At friendly colony                       |
-| 18  | Mothball Fleet          | At friendly colony with Spaceport        |
-| 19  | Reactivate Fleet        | Reserve or Mothballed fleet              |
-| 20  | View a Planet           | Any ship type                            |
+| No. | Mission        | Requirements                             |
+| --- | -------------- | ---------------------------------------- |
+| 00  | Hold           | None                                     |
+| 01  | Move           | None                                     |
+| 02  | Seek Home      | None                                     |
+| 03  | Patrol         | None                                     |
+| 04  | Guard Starbase | Combat ship(s)                           |
+| 05  | Guard Colony   | Combat ship(s)                           |
+| 06  | Blockade       | Combat ship(s)                           |
+| 07  | Bombard        | Combat ship(s)                           |
+| 08  | Invade         | Combat ship(s) & loaded Troop Transports |
+| 09  | Blitz          | Loaded Troop Transports                  |
+| 10  | Colonize       | One ETAC                                 |
+| 11  | Scout Colony   | Scout-only fleet (1+ scouts)             |
+| 12  | Scout System   | Scout-only fleet (1+ scouts)             |
+| 13  | Hack Starbase  | Scout-only fleet (1+ scouts)             |
+| 14  | Join Fleet     | None                                     |
+| 15  | Rendezvous     | None                                     |
+| 16  | Salvage        | Friendly colony system                   |
+| 17  | Reserve        | At friendly colony                       |
+| 18  | Mothball       | At friendly colony with Spaceport        |
+| 19  | Reactivate     | Reserve or Mothballed fleet              |
+| 20  | View           | Any ship type                            |
 
 **Command Defaults and Lifecycle:**
 
@@ -199,7 +199,7 @@ At each intermediate system during travel:
 
 This creates strategic chokepoints where Enemy fleets can be intercepted during transit, while Hostile and Neutral fleets enjoy safe passage until they reach their mission destination and reveal hostile intent.
 
-### 6.3.2 Hold Position (00)
+### 6.3.2 Hold (00)
 
 Command your fleet to hold position and await new commands. Your fleet maintains station at its current location, providing defensive presence or staging position for future operations.
 
@@ -208,7 +208,7 @@ Command your fleet to hold position and await new commands. Your fleet maintains
 - Stage fleets for coordinated offensives
 - Maintain presence without specific mission parameters
 
-### 6.3.3 Move Fleet (01)
+### 6.3.3 Move (01)
 
 Move your fleet to a new solar system and hold position. Your fleet travels to the destination system, establishes presence, and is auto assigned order (00) to hold position to await further commands. Use Move for strategic repositioning without immediate combat intent.
 
@@ -226,7 +226,7 @@ Command your fleet to return to the nearest friendly colony with drydock facilit
 - Return forces for strategic redeployment
 - Consolidate scattered forces at major bases
 
-### 6.3.5 Patrol a System (03)
+### 6.3.5 Patrol (03)
 
 Command your fleet to patrol a single solar system, maintaining defensive presence and engaging hostiles per your Rules of Engagement settings.
 
@@ -252,11 +252,11 @@ Deploy your fleet to defend a friendly colony. Your fleet maintains low orbit, p
 - Defend high-value colonies from bombardment
 - Support ground forces during invasion attempts
 
-### 6.3.8 Blockade a Colony (06)
+### 6.3.8 Blockade (06)
 
-Deploy your fleet to blockade an enemy planet. Your fleet maintains low orbit, participating in orbital combat and engaging in economic warfare.
+Deploy your fleet to blockade a planet. Your fleet establishes orbital control, preventing colonization of uncolonized planets and disrupting economic activity at colonies.
 
-**Economic Effects:**
+**Against Colonies (Colonized Planets):**
 
 A successful blockade severely disrupts colony operations:
 - **Production Penalty**: Colony operates at 40% capacity (60% reduction to Gross Colonial Output)
@@ -265,20 +265,29 @@ A successful blockade severely disrupts colony operations:
 
 The blockade continues as long as your fleet remains in orbit with hostile or enemy diplomatic status toward the colony owner.
 
+**Against Uncolonized Planets:**
+
+- **Colonization Prevention**: Enemy ETACs cannot establish colonies while blockade is active
+- **No economic penalty** (no colony to penalize)
+
+**Diplomatic Effect:** Blockade is a Tier 1 (Attack) mission—escalates to Enemy status with immediate combat regardless of whether the target is colonized.
+
 **Tactical Considerations:**
 
 - Blockades require maintaining orbital superiority—if defeated in orbital combat, your blockade fails
-- Multiple colonies can be blockaded simultaneously by different fleets
+- Multiple planets can be blockaded simultaneously by different fleets
 - Prolonged blockades can starve enemy production without the prestige penalties of bombardment
 - Blockades are less destructive than bombardment but achieve similar strategic effects over time
+- Blockading uncolonized planets denies expansion opportunities to rivals
 
 **Use Blockade to:**
 - Strangle enemy production capacity without bombardment penalties
 - Deny enemy access to critical resource systems
+- Prevent rivals from colonizing strategic planets
 - Force enemy fleets to engage on unfavorable terms
 - Pressure enemies economically while minimizing diplomatic fallout
 
-### 6.3.9 Bombard a Colony (07)
+### 6.3.9 Bombard (07)
 
 Command devastating orbital bombardment of enemy colonies. Your fleet systematically destroys infrastructure, reducing the colony's industrial capacity and effectiveness.
 
@@ -294,7 +303,7 @@ Command devastating orbital bombardment of enemy colonies. Your fleet systematic
 - Punish enemy aggression
 - **WARNING**: Bombardment generates massive diplomatic penalties
 
-### 6.3.10 Invade a Colony (08)
+### 6.3.10 Invade (08)
 
 Launch ground invasion of enemy colonies. Your fleet deploys marines and army units to seize control, conducting ground combat against defending forces.
 
@@ -313,7 +322,7 @@ Launch ground invasion of enemy colonies. Your fleet deploys marines and army un
 - Capture strategic colonies intact
 - Expand your empire through force
 
-### 6.3.11 Blitz a Colony (09)
+### 6.3.11 Blitz (09)
 
 Execute rapid planetary assault combining orbital bombardment with immediate ground invasion. Your forces strike simultaneously, overwhelming defenders before they can coordinate defense.
 
@@ -326,7 +335,7 @@ Execute rapid planetary assault combining orbital bombardment with immediate gro
 - Exploit tactical windows before reinforcements arrive
 - Reduce siege time for strategic operations
 
-### 6.3.12 Colonize a Planet (10)
+### 6.3.12 Colonize (10)
 
 Command ETACs (Enhanced Terrestrial Administrative Carriers) with Population Transfer Units to establish new colonies. Your fleet travels to the target system, deploys the PTUs, and establishes colonial infrastructure. Once a planet is colonized, it may not be colonized again and must be conquored to change ownership.
 
@@ -344,7 +353,7 @@ Command ETACs (Enhanced Terrestrial Administrative Carriers) with Population Tra
   - Ship is removed from game (one-time consumable)
   - Build new ETACs at established colonies to continue expansion
 
-### 6.3.13 Scout a Colony (11)
+### 6.3.13 Scout Colony (11)
 
 Deploy a Scout fleet on a one-way mission to gather detailed intelligence on an enemy colony. All Scouts in the fleet are consumed in the attempt, regardless of outcome.
 
@@ -371,7 +380,7 @@ For the complete detection mechanic, see [Section 2.4.2](02-assets.md#242-scouts
 - Track enemy economic development
 - Identify strategic targets for strikes
 
-### 6.3.14 Scout a System (12)
+### 6.3.14 Scout System (12)
 
 Deploy a Scout fleet on a one-way mission to gather intelligence on all fleet activity in a system. All Scouts in the fleet are consumed in the attempt.
 
@@ -392,7 +401,7 @@ Deploy a Scout fleet on a one-way mission to gather intelligence on all fleet ac
 - Identify enemy patrol patterns
 - Support strategic planning
 
-### 6.3.15 Hack a Starbase (13)
+### 6.3.15 Hack Starbase (13)
 
 Conduct a cyber warfare operation against an enemy starbase. All Scouts in the fleet are consumed in the attempt.
 
@@ -414,7 +423,7 @@ Conduct a cyber warfare operation against an enemy starbase. All Scouts in the f
 - Discover enemy strategic intentions
 - Gain economic intelligence
 
-### 6.3.16 Join Another Fleet (14)
+### 6.3.16 Join Fleet (14)
 
 Merge this fleet with another fleet. The source fleet will autonomously find and travel to the target fleet and consolidate forces for strategic operations. All ships from the source fleet are transferred to the target fleet, and the source fleet is disbanded.
 
@@ -424,7 +433,7 @@ Merge this fleet with another fleet. The source fleet will autonomously find and
 - Create combined forces for major operations.
 - Group multiple Scouts into a single fleet to improve their stealth for an scout intelligence mission.
 
-### 6.3.17 Rendezvous at System (15)
+### 6.3.17 Rendezvous (15)
 
 Command your fleet to travel to a designated system and await further commands. Coordinate multi-fleet operations by designating rendezvous points. Multiple fleets with Rendezvous commands to the same system automatically merge when they arrive, with all forces consolidating into the fleet with the lowest ID.
 
@@ -453,7 +462,7 @@ Disband your own fleet at a friendly colony to recover production points. Your f
 - Convert excess military assets back to economic resources
 - Scrap crippled ships that aren't worth repairing
 
-### 6.3.19 Place on Reserve (17)
+### 6.3.19 Reserve (17)
 
 Instantly places a fleet into **Reserve** status during the Command Phase.
 
@@ -469,7 +478,7 @@ Instantly places a fleet into **Reserve** status during the Command Phase.
 - Reduce C2/Maintenance costs while maintaining a credible defensive deterrent.
 - Garrison colonies with lower-readiness forces.
 
-### 6.3.20 Mothball Fleet (18)
+### 6.3.20 Mothball (18)
 
 Instantly places a fleet into **Mothballed** status during the Command Phase.
 
@@ -485,7 +494,7 @@ Instantly places a fleet into **Mothballed** status during the Command Phase.
 - Store valuable ships at minimal cost during peacetime.
 - Preserve hull assets for future mobilization (requires Reactivate command).
 
-### 6.3.21 Reactivate Fleet (19)
+### 6.3.21 Reactivate (19)
 
 Issues an order to reactivate a fleet from Reserve or Mothballed status, returning it to full operational readiness.
 
@@ -499,7 +508,7 @@ Issues an order to reactivate a fleet from Reserve or Mothballed status, returni
 - Mobilize reserves in response to a threat.
 - Bring stored fleets back into service for a major offensive.
 
-### 6.3.22 View a Planet (20)
+### 6.3.22 View (20)
 
 Send a fleet to perform long-range reconnaissance on a planet from the edge of a solar system. This is a primary, non-consumable mission for Scouts, allowing them to gather basic intelligence without being detected or destroyed.
 

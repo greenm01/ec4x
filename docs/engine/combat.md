@@ -1,7 +1,7 @@
 # Combat System Architecture
 
 **Purpose:** Implementation architecture for EC4X combat system  
-**Last Updated:** 2026-01-09 (Combat Participant Filtering)  
+**Last Updated:** 2026-01-09  
 **Status:** Unified Commissioning + Immediate Combat Effects
 
 ---
@@ -75,6 +75,8 @@ Combat eligibility depends on whose territory the fleet is in:
 | Enemy | Combat (automatic, simultaneous) |
 | Hostile | No combat (safe passage) |
 | Neutral | No combat (safe passage) |
+
+**Note:** Guard fleets (GuardColony, GuardStarbase) do NOT participate in travel interception. They only engage during orbital combat when their colony/starbase is directly targeted.
 
 **At Destination - Their Colony (Attack Missions):**
 
