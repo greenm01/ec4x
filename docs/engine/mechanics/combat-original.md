@@ -494,7 +494,7 @@ Enemy fleet bombards colony, destroys shipyard:
 Your border system has 1 starbase (ELI surveillance) and 1 shipyard. Enemy raid cripples the starbase:
 1. **Turn N (Conflict Phase)**: Starbase crippled in combat
 2. **Turn N (Immediate Effect)**: ELI surveillance disabled, population bonus lost
-3. **Turn N+1 (Maintenance Phase)**: Starbase automatically queued for repair at shipyard
+3. **Turn N+1 (Production Phase)**: Starbase automatically queued for repair at shipyard
 4. **Turn N+2**: Starbase repair completes, ELI and bonuses restored
 
 During Turn N+1 (repair in progress):

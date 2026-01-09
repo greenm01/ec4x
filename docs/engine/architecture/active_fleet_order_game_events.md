@@ -128,7 +128,7 @@
 2. ✅ Convert 5 existing call sites to use factories - DONE
 3. ✅ Add OrderCompleted events for all orders - DONE (20 orders)
 4. ✅ Add OrderFailed events for validation failures - DONE (17 new events)
-5. ✅ Add OrderAborted for combat orders in Maintenance Phase - DONE (4 orders)
+5. ✅ Add OrderAborted for combat orders in Production Phase - DONE (4 orders)
 6. ✅ Add OrderFailed for Colonize simultaneous resolution - DONE (3 failure scenarios)
 7. ✅ Add OrderAborted for spy order target loss - DONE (3 spy orders)
 8. ✅ Add OrderAborted for Rendezvous hostile forces - DONE (2 abort conditions)
@@ -168,18 +168,18 @@ Orders abort when:
 
 ### Standing Orders Integration
 
-**Standing orders execute in Maintenance Phase and generate fleet orders that trigger events with one exception:**
+**Standing orders execute in Production Phase and generate fleet orders that trigger events with one exception:**
 
 **How It Works:**
-1. **Maintenance Phase Step 1a**: `standing_orders.executeStandingOrders()` runs for fleets without explicit orders
+1. **Production Phase Step 1a**: `standing_orders.executeStandingOrders()` runs for fleets without explicit orders
 2. Standing order execution (e.g., `AutoColonize`) writes a regular `FleetOrder` to `state.fleetOrders`
-3. **Maintenance Phase Step 1b**: Fleet order execution loop picks up persistent orders from `state.fleetOrders`
+3. **Production Phase Step 1b**: Fleet order execution loop picks up persistent orders from `state.fleetOrders`
 4. Events fire when the underlying fleet order executes
 
 **Event Behavior:**
 - ❌ **OrderIssued**: Does NOT fire for standing-order-generated fleet orders
   - Only fires for NEW orders submitted via OrderPacket (in Command Phase)
-  - Standing orders write directly to persistent `state.fleetOrders` table (in Maintenance Phase)
+  - Standing orders write directly to persistent `state.fleetOrders` table (in Production Phase)
   - Skips "newOrdersThisTurn" tracking (fleet_order_execution.nim:189)
 - ✅ **OrderCompleted/OrderFailed/OrderAborted**: Fire normally when order executes
   - Standing orders produce regular fleet orders (Move, Colonize, SeekHome, etc.)

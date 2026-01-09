@@ -29,12 +29,12 @@ EC4X uses precise terminology to distinguish the four stages of order processing
 - Standing order configs validated (conditions, targets, parameters)
 - Phase: Command Phase Part C
 
-**3. Activate** (Maintenance Phase Step 1a)
+**3. Activate** (Production Phase Step 1a)
 - **Active orders:** Order becomes active, fleet starts moving toward target
 - **Standing orders:** System checks conditions and generates fleet orders
 - **Both:** Fleets begin traveling, movement happens
 - Events: `StandingOrderActivated`, `StandingOrderSuspended`
-- Phase: Maintenance Phase Step 1a
+- Phase: Production Phase Step 1a
 
 **4. Execute** (Conflict/Income Phases)
 - **Both order types:** Fleet orders conduct their missions at target locations
@@ -47,7 +47,7 @@ EC4X uses precise terminology to distinguish the four stages of order processing
 - Active order: Initiate (Command B) → Validate (Command C) → Activate (Maintenance 1a) → Execute (Conflict/Income)
 - Standing order: Initiate (Command B) → Validate (Command C) → Activate (Maintenance 1a) → Execute (Conflict/Income)
 
-This document uses **"activate"** for Maintenance Phase (orders become active) and **"execute"** for Conflict/Income Phase (missions conduct at targets).
+This document uses **"activate"** for Production Phase (orders become active) and **"execute"** for Conflict/Income Phase (missions conduct at targets).
 
 ---
 
@@ -81,7 +81,7 @@ Turn N Sequence:
 
   3. Command Phase: Commissioning → Player submission → Validation
 
-  4. Maintenance Phase: Fleet movement ONLY (no order execution)
+  4. Production Phase: Fleet movement ONLY (no order execution)
      - Step 1a: Activate ALL orders (active + standing - both become active/ready)
      - Step 1b: Order maintenance (lifecycle management, check completions)
      - Step 1c: Fleet movement (move all fleets toward order targets)
@@ -90,25 +90,25 @@ Turn N Sequence:
      - Step 3: Diplomatic actions
 ```
 
-**Key Principle:** Maintenance Phase handles movement. Conflict and Income phases handle order execution based on arrival status tracked in `state.arrivedFleets`.
+**Key Principle:** Production Phase handles movement. Conflict and Income phases handle order execution based on arrival status tracked in `state.arrivedFleets`.
 
 ### 3. Arrival Tracking System
 
 **State Table:** `state.arrivedFleets: Table[FleetId, SystemId]`
 - Tracks fleets that have arrived at their order targets
-- Populated in Maintenance Phase Step 1d
+- Populated in Production Phase Step 1d
 - Checked in Conflict Phase (Steps 4, 5, 6b) and Income Phase (Step 4)
 - Cleared after order execution
 
 **Event:** `FleetArrived`
-- Generated when fleet reaches target system (Maintenance Phase Step 1d)
+- Generated when fleet reaches target system (Production Phase Step 1d)
 - Contains: houseId, fleetId, orderType, systemId
 - Visibility: Private to owning house
 
 **Lifecycle:**
 1. **Turn N-1 Command Phase:** Player submits order → stored in `state.fleetOrders`
-2. **Turn N Maintenance Phase Step 1c:** Fleet moves toward target (1-2 jumps)
-3. **Turn N Maintenance Phase Step 1d:** If `fleet.location == order.targetSystem`:
+2. **Turn N Production Phase Step 1c:** Fleet moves toward target (1-2 jumps)
+3. **Turn N Production Phase Step 1d:** If `fleet.location == order.targetSystem`:
    - Generate `FleetArrived` event
    - Add to `state.arrivedFleets[fleetId] = targetSystem`
 4. **Turn N Conflict/Income Phase:** Execute order if `fleetId in state.arrivedFleets`
@@ -223,7 +223,7 @@ Turn N Sequence:
      - Log arrival
 
 **Key Feature:** Bridge Between Phases
-- Arrival detection (Maintenance Phase) is separate from order execution (Conflict/Income phases)
+- Arrival detection (Production Phase) is separate from order execution (Conflict/Income phases)
 - `state.arrivedFleets` acts as a queue of "ready to execute" orders
 - Cleared after execution to prevent duplicate execution
 
@@ -294,7 +294,7 @@ if targetFleetOpt.isNone:
 
 ## Order Type Catalog
 
-### Movement Orders (Maintenance Phase)
+### Movement Orders (Production Phase)
 
 **Move (01):** Travel to target system
 - Completion: Arrival at target (checked in Step 1b)
@@ -321,14 +321,14 @@ if targetFleetOpt.isNone:
 
 **Bombard (05), Invade (06), Blitz (07):** Planetary assault
 - Storage: Stored in `state.fleetOrders` in Command Phase Part C
-- Movement: Fleet travels toward target in Maintenance Phase Step 1c
+- Movement: Fleet travels toward target in Production Phase Step 1c
 - Execution: Executes in Conflict Phase when fleet arrives at target
 - Completion: After successful assault or failure
 - Events: `OrderCompleted` after assault resolution
 - Cleanup: Order removed + grace period reset
 - **Note:** Executes Turn N, N+1, or later depending on travel distance
 
-### Colonization Orders (Maintenance Phase)
+### Colonization Orders (Production Phase)
 
 **Colonize (08):** Establish new colony
 - Execution: `simultaneous.nim:resolveColonization()` (simultaneous resolution)
@@ -341,7 +341,7 @@ if targetFleetOpt.isNone:
   - `simultaneous.nim` fallback success
   - `fleet_orders.nim:resolveColonizationOrder()` (legacy)
 
-### Intelligence Orders (Maintenance Phase)
+### Intelligence Orders (Production Phase)
 
 **SpyPlanet (09), SpySystem (10), HackStarbase (11):** Espionage
 - Validation: Requires pure scout fleets (no combat ships, no spacelift)
@@ -476,7 +476,7 @@ Standardized completion pattern:
 
 **Turn N+1 or Later Events (when fleet arrives):**
 - `CombatResolved`: Conflict Phase (when combat order executes at arrival)
-- `FleetArrived`: Maintenance Phase (when fleet reaches order target)
+- `FleetArrived`: Production Phase (when fleet reaches order target)
 
 ---
 
