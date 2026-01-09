@@ -76,7 +76,7 @@ Combat eligibility depends on whose territory the fleet is in:
 | Hostile | No combat (safe passage) |
 | Neutral | No combat (safe passage) |
 
-**Note:** Guard fleets (GuardColony, GuardStarbase) do NOT participate in travel interception. They only engage during orbital combat when their colony/starbase is directly targeted.
+**Note:** Hold fleets and Guard fleets (GuardColony, GuardStarbase) do NOT participate in space combat. They only engage during orbital combat when their colony is directly targeted.
 
 **At Destination - Their Colony (Attack Missions):**
 

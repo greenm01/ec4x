@@ -474,18 +474,20 @@ Combat and escalation follow a grace period system:
 For complete escalation timing and threat categories, see [Section 8.1.6 Escalation Ladder](08-diplomacy.md#816-escalation-ladder-summary).
 
 **Mobile Fleet Types** (Fight in Space Combat):
-- Fleets with **Hold commands** (default stationary posture, awaiting orders)
 - Fleets with **Patrol commands** (active patrol duty)
-- Fleets with **offensive mission commands** (Move, Invade, Bombard, Blockade)
-- **Active status fleets** without Guard-specific commands
+- Fleets with **offensive mission commands** (Bombard, Invade, Blitz, Blockade)
+- Fleets traveling through (missionState == Traveling)
 
 **Who Does NOT Fight in Space Combat:**
-- **Scouts**: Consumed when initiating spy missions, destroyed upon detection - never participate in fleet combat
+- **Hold fleets**: Passive orbital posture, defend in orbital combat only
 - **Orbital Guard fleets**: GuardStarbase, GuardColony commands - they defend in orbital combat only
 - **Reserve fleets**: Stationed at colony, fight in orbital combat only
-- **Mothballed fleets**: Offline, screened in orbital combat, cannot fight
+- **Mothballed fleets**: Offline, cannot fight
 - **Starbases**: Fixed installations, orbital combat only (but provide sensor bonuses in space combat)
-- **Auxiliary vessels**: ETACS and Troop Transports are screened, do not fight (retreat or destroyed with their fleet)
+- **Scouts**: Stealthy vessels that slip through combat undetected to reach their mission target (detected only when on station conducting intelligence operations)
+
+**Screened Units (Present in Space Combat, Do Not Fight):**
+- **Auxiliary vessels**: ETACs and Troop Transports are screened by escorts, destroyed if their fleet loses (an unescorted auxiliary fleet would be immediately destroyed)
 
 ### 7.5.2 Space Combat Resolution
 
@@ -593,7 +595,7 @@ Assault fortified colony defenses after winning space superiority. Your fleets e
 
 **Orbital Defenders** (All Fight Simultaneously):
 - **Guard fleets**: Fleets with GuardStarbase, GuardColony commands
-- **Reserve fleets**: 50% maintenance fleets stationed at colony, fight at 50% AS with auto-Blockade posture (orbital defense only)
+- **Reserve fleets**: 50% maintenance fleets stationed at colony, fight at 50% AS with auto-assigned GuardColony command (orbital defense only)
 - **Mothballed fleets**: 0% maintenance fleets (CANNOT FIGHT - must be screened)
 - **Starbases**: Orbital installations with heavy firepower and detection capability
 - **Unassigned ships**: Combat ships at colony not assigned to fleets

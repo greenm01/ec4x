@@ -203,7 +203,7 @@ Fleets can be in one of three operational states:
 ### Reserve
 - **Maintenance**: 50% cost
 - **CC Cost**: 50%
-- **Combat**: 50% AS with auto-Blockade (participates in orbital defense)
+- **Combat**: 50% AS with auto-assigned GuardColony command (orbital defense only)
 - **Orders**: **Cannot move** (stationed at colony), can execute Reactivate
 - **Auto-assignment**: Does NOT receive new ships
 - **Purpose**: Budget management, defensive reserves

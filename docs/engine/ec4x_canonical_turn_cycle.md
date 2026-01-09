@@ -306,7 +306,7 @@ Combat requires both houses to have fleets present at the same location. For eac
 | **Hostile** | No combat (safe passage) |
 | **Neutral** | No combat (safe passage) |
 
-**Note:** Guard fleets (GuardColony, GuardStarbase) do NOT participate in travel interception. They only engage during orbital combat when their colony/starbase is directly targeted by Attack missions.
+**Note:** Hold fleets and Guard fleets (GuardColony, GuardStarbase) do NOT participate in space combat. They only engage during orbital combat when their colony is directly targeted.
 
 **At Destination - Their Colony (Tier 1 Attack Missions):**
 
@@ -321,7 +321,7 @@ Combat requires both houses to have fleets present at the same location. For eac
 | Diplomatic Status | Tier 2 (Contest) | Result |
 |-------------------|------------------|--------|
 | **Enemy** | Patrol/Hold/Rendezvous | Combat |
-| **Hostile** | Patrol/Hold/Rendezvous | Combat (grace period expired) |
+| **Hostile** | Patrol/Hold/Rendezvous | Combat |
 | **Neutral** | Patrol/Hold/Rendezvous | Escalate→Hostile, NO combat |
 
 **At Destination - Neutral System (Uncolonized):**
@@ -346,29 +346,35 @@ Combat requires both houses to have fleets present at the same location. For eac
 - All combat is simultaneous - no attacker/defender initiative advantage
 
 **Fleet Participation in Enemy Encounters:**
-When Enemy fleets meet at any location, all Active fleets with non-Guard commands participate in space combat, regardless of their current mission. A fleet with a Move command paused at an intermediate system will fight if an Enemy fleet is present.
+When Enemy fleets meet at any location, all Active fleets (except Hold and Guard) participate in space combat, regardless of their current mission. A fleet with a Move command paused at an intermediate system will fight if an Enemy fleet is present. Hold and Guard fleets only participate in orbital combat.
 
 **Grace Period Logic:**
-- Grace period is encoded in the diplomatic state transition itself
-- Neutral→Hostile transition IS the grace period (no separate timer needed)
-- Once at Hostile, subsequent Tier 2 missions trigger combat immediately
+- The only "grace period" is the Neutral→Hostile transition itself
+- Once at Hostile status, Tier 2 missions trigger combat immediately
+- There is no additional waiting period for houses already at Hostile status
 
 **Implementation Reference:** `docs/specs/08-diplomacy.md` Section 8.1.5-8.1.6
 
 ### 1. Combat Resolution
 
 **1a. Space Combat** (simultaneous resolution)
-- Filter participants: Mobile fleets (Active status, offensive missions)
-- Exclude: Guard fleets, Reserve fleets, Mothballed fleets, Scouts, Auxiliary vessels
+- Filter participants: Patrol fleets, offensive missions (Bombard/Invade/Blitz/Blockade), fleets traveling through
+- Exclude from combat: Hold fleets, Guard fleets, Reserve fleets, Mothballed fleets
+- Scouts: Slip through combat undetected (stealthy, not present in combat)
+- Screened (present but don't fight): Auxiliary vessels (ETACs, Troop Transports) - destroyed if their fleet loses
 - Apply diplomatic filtering (see above) to determine which fleets engage
 - Perform detection checks for all engaging fleets containing Raiders to determine ambush advantage
 - Collect all space combat intents, resolve conflicts, and execute the combat engine, applying any first-strike bonuses
+
+**Combat Resolution Details:** See `docs/specs/07-combat.md` for complete combat mechanics including ROE thresholds, detection/ambush, Combat Results Tables, and fighter superiority.
 - Generate `GameEvents` (ShipDestroyed, FleetEliminated)
 
 **1b. Orbital Combat** (simultaneous resolution)
-- Filter participants: Guard fleets, Reserve fleets (50% AS), Starbases, unassigned ships
-- Exclude: Mothballed fleets (screened), Scouts, Auxiliary vessels (screened)
-- Reserve fleets fight at 50% AS with auto-assigned Blockade posture
+- Filter participants: Hold fleets, Guard fleets, Reserve fleets (50% AS), Starbases, unassigned ships
+- Exclude from combat: Mothballed fleets
+- Scouts: Not present (stealthy, slip through to conduct missions)
+- Screened (present but don't fight): Auxiliary vessels (ETACs, Troop Transports) - destroyed if defenders lose
+- Reserve fleets fight at 50% AS with auto-assigned GuardColony command
 - Perform a new round of detection checks for fleets engaging in orbital combat
 - Collect all orbital combat intents, resolve conflicts, and execute strikes sequentially, applying any first-strike bonuses
 - Generate `GameEvents` (StarbaseDestroyed, DefensesWeakened)
@@ -1084,11 +1090,11 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 | Status | CC Cost | Maintenance | Combat | Movement | Reactivation |
 |--------|---------|-------------|--------|----------|--------------|
 | Active | 100% | 100% | Full AS/DS | Yes | N/A |
-| Reserve | 50% | 50% | 50% AS (auto-Blockade) | No | 1 turn (configurable) |
+| Reserve | 50% | 50% | 50% AS (GuardColony) | No | 1 turn (configurable) |
 | Mothballed | 0% | 10% | None (screened) | No | 1 turn (configurable) |
 
 **Reserve Status:**
-- Auto-assigned Blockade command (participates in orbital defense only)
+- Auto-assigned GuardColony command (participates in orbital defense only)
 - Fights at 50% AS (half attack strength) in orbital combat
 - Immobile: Cannot move or accept movement orders until reactivated
 - Requires friendly colony with starbase or shipyard

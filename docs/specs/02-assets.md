@@ -250,11 +250,11 @@ To effectively manage your C2 Pool and maintenance costs, you can assign differe
 **Reserve Status:**
 - **CC Cost:** 50%
 - **Maintenance Cost:** 50%
-- **Combat:** Fights at 50% AS (half attack strength) with auto-assigned Blockade command
+- **Combat:** Fights at 50% AS (half attack strength) with auto-assigned GuardColony command
 - **Rules:**
     - A fleet must be at a friendly starbase or shipyard to be placed in Reserve.
     - Placing a fleet in Reserve is **instant** during the Command Phase.
-    - While in Reserve, a fleet is immobile and auto-assigned the Blockade command.
+    - While in Reserve, a fleet is immobile and auto-assigned the GuardColony command.
     - Reserve fleets participate in orbital defense at reduced effectiveness (50% AS).
     - Cannot accept movement or other orders until reactivated.
     - Reactivation takes **1 turn** (default, configurable).
