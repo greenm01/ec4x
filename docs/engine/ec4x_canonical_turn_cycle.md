@@ -361,7 +361,7 @@ When Enemy fleets meet at any location, all Active fleets (except Hold and Guard
 - Filter participants: Patrol fleets, offensive missions (Bombard/Invade/Blitz/Blockade), fleets traveling through
 - Exclude from combat: Hold fleets, Guard fleets, Reserve fleets, Mothballed fleets
 - Scouts: Slip through combat undetected (stealthy, not present in combat)
-- Screened (present but don't fight): Auxiliary vessels (ETACs, Troop Transports) - destroyed if their fleet loses
+- Screened (present but don't fight): Auxiliary vessels (ETACs, Troop Transports) - suffer proportional losses on retreat, destroyed if fleet eliminated
 - Apply diplomatic filtering (see above) to determine which fleets engage
 - Perform detection checks for all engaging fleets containing Raiders to determine ambush advantage
 - Collect all space combat intents, resolve conflicts, and execute the combat engine, applying any first-strike bonuses
@@ -373,7 +373,7 @@ When Enemy fleets meet at any location, all Active fleets (except Hold and Guard
 - Filter participants: Hold fleets, Guard fleets, Reserve fleets (50% AS), Starbases, unassigned ships
 - Exclude from combat: Mothballed fleets
 - Scouts: Not present (stealthy, slip through to conduct missions)
-- Screened (present but don't fight): Auxiliary vessels (ETACs, Troop Transports) - destroyed if defenders lose
+- Screened (present but don't fight): Auxiliary vessels (ETACs, Troop Transports) - suffer proportional losses on retreat, destroyed if defenders eliminated
 - Reserve fleets fight at 50% AS with auto-assigned GuardColony command
 - Perform a new round of detection checks for fleets engaging in orbital combat
 - Collect all orbital combat intents, resolve conflicts, and execute strikes sequentially, applying any first-strike bonuses

@@ -113,6 +113,25 @@ Combat eligibility depends on whose territory the fleet is in:
 
 ---
 
+## Retreat Mechanics
+
+Fleets retreat based on Rules of Engagement (ROE) threshold comparisons during combat.
+
+**Key Behaviors:**
+- Each fleet checks ROE independently (can retreat separately from other friendly fleets)
+- Morale (prestige-based) modifies effective ROE (-2 to +2)
+- Retreating fleet moves to nearest friendly system
+- Auxiliary vessels (ETACs, Troop Transports) suffer **proportional losses** on retreat:
+  - Loss ratio = (starting escorts - surviving escorts) / starting escorts
+  - Same proportion of auxiliary vessels destroyed (rounded up)
+- If fleet destroyed (no surviving escorts), all auxiliary vessels destroyed
+- Homeworld defenders never retreat (ROE 10 equivalent)
+- Orbital installations (starbases, batteries) cannot retreat
+
+**Implementation Reference:** See `docs/specs/07-combat.md` Section 7.2.3 for complete ROE thresholds and morale modifiers.
+
+---
+
 ## Conflict Phase Integration
 
 ### CON1: Combat Resolution

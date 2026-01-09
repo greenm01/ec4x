@@ -348,8 +348,11 @@ Each fleet independently checks current AS ratio vs enemy AS:
 - Compare to fleet ROE threshold
 - If below threshold: Fleet retreats (unless explicit command or homeworld defense)
 - Retreating fleet moves to nearest friendly system
-- Auxiliary vessels (ETACS, Troop Transports) assigned to fleet retreat with it
-- If fleet destroyed, auxiliary vessels assigned to that fleet are also destroyed
+- Auxiliary vessels (ETACs, Troop Transports) suffer proportional losses during retreat:
+  - Calculate escort loss ratio: (starting escorts - surviving escorts) / starting escorts
+  - Destroy same proportion of auxiliary vessels (rounded up)
+  - Example: Fleet started with 10 escorts, 4 destroyed (40% loss) → 40% of auxiliary vessels destroyed
+- If fleet destroyed (no surviving escorts), all auxiliary vessels are also destroyed
 
 **7. Determine Winner**
 
@@ -487,7 +490,7 @@ For complete escalation timing and threat categories, see [Section 8.1.6 Escalat
 - **Scouts**: Stealthy vessels that slip through combat undetected to reach their mission target (detected only when on station conducting intelligence operations)
 
 **Screened Units (Present in Space Combat, Do Not Fight):**
-- **Auxiliary vessels**: ETACs and Troop Transports are screened by escorts, destroyed if their fleet loses (an unescorted auxiliary fleet would be immediately destroyed)
+- **Auxiliary vessels**: ETACs and Troop Transports are screened by escorts. On retreat, auxiliary vessels suffer proportional losses matching escort casualties. If fleet destroyed (no surviving escorts), all auxiliary vessels destroyed. An unescorted auxiliary fleet would be immediately destroyed.
 
 ### 7.5.2 Space Combat Resolution
 
@@ -545,8 +548,8 @@ Each fleet independently:
 - Calculate current AS / enemy total AS
 - Compare to ROE threshold
 - Retreat if below threshold (unless explicit command or homeworld)
-- Auxiliary vessels (ETACS, Troop Transports) retreat with their assigned fleet
-- If fleet destroyed, auxiliary vessels assigned to that fleet are also destroyed
+- Auxiliary vessels (ETACs, Troop Transports) suffer proportional losses on retreat (see Step 6)
+- If fleet destroyed (no surviving escorts), all auxiliary vessels are also destroyed
 
 **Round 2+:**
 
