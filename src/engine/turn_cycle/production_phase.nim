@@ -72,10 +72,10 @@ proc resolveProductionPhase*(
   # ALL fleets with persistent commands move autonomously toward target systems
   # via pathfinding. This allows multi-turn missions: fleet travels incrementally each turn.
 
-  # Count persistent commands
+  # Count active commands (fleets with missions)
   var persistentCommandCount = 0
   for fleet in state.allFleets():
-    if fleet.command.isSome:
+    if fleet.missionState != MissionState.None:
       persistentCommandCount += 1
 
   logInfo(
@@ -86,12 +86,12 @@ proc resolveProductionPhase*(
   var fleetsMovedCount = 0
 
   for fleet in state.allFleets():
-    # Skip if no command assigned
-    if fleet.command.isNone:
+    # Skip if no active command (idle fleet)
+    if fleet.missionState == MissionState.None:
       continue
 
     let fleetId = fleet.id
-    let persistentCommand = fleet.command.get()
+    let persistentCommand = fleet.command
 
     # Filter 1: Skip commands without target systems
     if persistentCommand.targetSystem.isNone:
@@ -191,12 +191,12 @@ proc resolveProductionPhase*(
   var arrivedFleetCount = 0
 
   for fleet in state.allFleets():
-    # Skip if no command assigned
-    if fleet.command.isNone:
+    # Skip if no active command (idle fleet)
+    if fleet.missionState == MissionState.None:
       continue
 
     let fleetId = fleet.id
-    let command = fleet.command.get()
+    let command = fleet.command
 
     # Skip if command has no target system
     if command.targetSystem.isNone:

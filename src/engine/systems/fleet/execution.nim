@@ -257,7 +257,7 @@ proc performCommandMaintenance*(
 
           # Assign command to fleet (entity-manager pattern)
           var updatedFleet = fleet
-          updatedFleet.command = some(command)
+          updatedFleet.command = command
           updatedFleet.missionState = MissionState.Traveling
           updatedFleet.missionTarget = command.targetSystem
           state.updateFleet(command.fleetId, updatedFleet)
@@ -278,11 +278,11 @@ proc performCommandMaintenance*(
     if fleet.id in newCommandsThisTurn:
       continue
 
-    # Skip if no command assigned
-    if fleet.command.isNone:
+    # Skip if no active command (idle fleet)
+    if fleet.missionState == MissionState.None:
       continue
 
-    let persistentCommand = fleet.command.get()
+    let persistentCommand = fleet.command
 
     # Only process commands matching the category filter
     if not categoryFilter(persistentCommand.commandType):
@@ -351,7 +351,7 @@ proc performCommandMaintenance*(
 
             # Assign fallback command to fleet (entity-manager pattern)
             var updatedFleet = fleet
-            updatedFleet.command = some(actualOrder)
+            updatedFleet.command = actualOrder
             updatedFleet.missionState = MissionState.Traveling
             updatedFleet.missionTarget = safeDestination
             state.updateFleet(command.fleetId, updatedFleet)
@@ -371,7 +371,7 @@ proc performCommandMaintenance*(
 
             # Assign fallback command to fleet (entity-manager pattern)
             var updatedFleet = fleet
-            updatedFleet.command = some(actualOrder)
+            updatedFleet.command = actualOrder
             updatedFleet.missionState = MissionState.None
             updatedFleet.missionTarget = some(fleet.location)
             state.updateFleet(command.fleetId, updatedFleet)

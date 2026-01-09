@@ -43,8 +43,8 @@ proc createFleetComposition*(
 
   # Get fleet's active command (if any)
   var orderIntel: Option[FleetOrderIntel] = none(FleetOrderIntel)
-  if fleet.command.isSome:
-    let command = fleet.command.get()
+  if fleet.missionState != MissionState.None:
+    let command = fleet.command
     orderIntel = some(
       FleetOrderIntel(
         orderType: $command.commandType,
@@ -62,7 +62,7 @@ proc createFleetComposition*(
 proc generatePreCombatReport*(
     state: GameState,
     systemId: SystemId,
-    phase: CombatPhase,
+    phase: CombatTheater,
     reportingHouse: HouseId,
     alliedFleets: seq[FleetId],
     enemyFleets: seq[FleetId],
@@ -109,7 +109,7 @@ proc updateCombatReportOutcome*(
 proc updatePostCombatIntelligence*(
     state: var GameState,
     systemId: SystemId,
-    phase: CombatPhase,
+    phase: CombatTheater,
     fleetsBeforeCombat: seq[(FleetId, Fleet)],
     fleetsAfterCombat: Table[FleetId, Fleet],
     retreatedHouses: seq[HouseId],
@@ -296,7 +296,7 @@ proc generateBlitzIntelligence*(
     reportId: &"{attackingHouse}-blitz-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: CombatPhase.Planetary,
+    phase: CombatTheater.Planetary,
     reportingHouse: attackingHouse,
     alliedFleetIds: @[], # Ground forces, not fleets
     enemyFleetIds: @[],
@@ -336,7 +336,7 @@ proc generateBlitzIntelligence*(
     reportId: &"{defendingHouse}-defense-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: CombatPhase.Planetary,
+    phase: CombatTheater.Planetary,
     reportingHouse: defendingHouse,
     alliedFleetIds: @[],
     enemyFleetIds: @[],
@@ -422,7 +422,7 @@ proc generateInvasionIntelligence*(
     reportId: &"{attackingHouse}-invasion-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: CombatPhase.Planetary,
+    phase: CombatTheater.Planetary,
     reportingHouse: attackingHouse,
     alliedFleetIds: @[], # Ground forces, not fleets
     enemyFleetIds: @[],
@@ -462,7 +462,7 @@ proc generateInvasionIntelligence*(
     reportId: &"{defendingHouse}-defense-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: CombatPhase.Planetary,
+    phase: CombatTheater.Planetary,
     reportingHouse: defendingHouse,
     alliedFleetIds: @[],
     enemyFleetIds: @[],
@@ -531,7 +531,7 @@ proc generateBombardmentIntelligence*(
     reportId: &"{attackingHouse}-bombardment-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: CombatPhase.Orbital,
+    phase: CombatTheater.Orbital,
     reportingHouse: attackingHouse,
     alliedFleetIds: @[attackingFleetId],
     enemyFleetIds: @[], # Can't see ground defenses from orbit
@@ -565,7 +565,7 @@ proc generateBombardmentIntelligence*(
     reportId: &"{defendingHouse}-bombardment-defense-{turn}-{systemId}",
     turn: turn,
     systemId: systemId,
-    phase: CombatPhase.Orbital,
+    phase: CombatTheater.Orbital,
     reportingHouse: defendingHouse,
     alliedFleetIds: @[], # Ground forces (no fleet composition for defenders)
     enemyFleetIds: @[attackingFleetId], # Defender can see attacking fleet

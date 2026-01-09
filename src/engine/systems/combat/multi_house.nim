@@ -31,10 +31,11 @@ proc getFleetThreatLevel*(
   ## Reused from old implementation
   ## Per docs/specs/08-diplomacy.md Section 8.1.5
 
-  if fleet.command.isNone:
+  # Idle fleet is benign
+  if fleet.missionState == MissionState.None:
     return ThreatLevel.Benign
 
-  let cmd = fleet.command.get()
+  let cmd = fleet.command
 
   # Check if this system is the mission target
   let isExecutingMissionHere =

@@ -8,9 +8,9 @@
 ## - Uses entity ops for mutations (population_transfer_ops)
 ## - Follows three-layer pattern: State → Business Logic → Entity Ops
 
-import std/[tables, sequtils, options, math]
+import std/[tables, sequtils, options, math, strformat]
 import ../../types/[
-  game_state, core, event, population as pop_types, starmap, colony,
+  game_state, core, event, population as pop_types, starmap, colony, command,
 ]
 import ../../state/[engine, iterators]
 import ../../entities/[fleet_ops, population_transfer_ops]
@@ -315,3 +315,49 @@ proc generateTransferEvents*(
           sourceSystem, destSystem, false, "no viable destination",
         )
       )
+
+# =============================================================================
+# Command Resolution (Command Phase)
+# =============================================================================
+
+proc resolvePopulationTransfers*(
+    state: var GameState, packet: CommandPacket, events: var seq[GameEvent]
+) =
+  ## Process population transfer commands - initiate new transfers
+  ## Called from Command Phase CMD5
+  
+  for command in packet.populationTransfers:
+    # Get source colony's system ID
+    let sourceColonyOpt = state.colony(command.sourceColony)
+    if sourceColonyOpt.isNone:
+      logWarn("Population",
+        &"Transfer failed: source colony {command.sourceColony} not found")
+      continue
+    
+    let sourceSystem = sourceColonyOpt.get().systemId
+    
+    # Get destination colony's system ID
+    let destColonyOpt = state.colony(command.destColony)
+    if destColonyOpt.isNone:
+      logWarn("Population",
+        &"Transfer failed: dest colony {command.destColony} not found")
+      continue
+    
+    let destSystem = destColonyOpt.get().systemId
+    
+    # Initiate the transfer
+    let (success, message) = createTransferInitiation(
+      state, packet.houseId, sourceSystem, destSystem, command.ptuAmount
+    )
+    
+    if success:
+      logInfo("Population",
+        &"{packet.houseId} initiated transfer of {command.ptuAmount} PTU " &
+        &"from {sourceSystem} to {destSystem}")
+      events.add(event_factory.populationTransfer(
+        packet.houseId, command.ptuAmount, sourceSystem, destSystem,
+        true, "transfer initiated"
+      ))
+    else:
+      logWarn("Population",
+        &"Transfer failed for {packet.houseId}: {message}")

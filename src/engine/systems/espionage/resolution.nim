@@ -28,6 +28,7 @@ import std/[tables, options, random]
 import ../../types/[core, game_state, command, fleet, espionage, intel, event]
 import ../../state/[engine, iterators, fleet_queries]
 import ../../entities/fleet_ops
+import ../command/commands as cmd_helpers
 import ../../intel/[spy_resolution, generator as intel_generator]
 import ../../event_factory/intel
 import ../../prestige/engine as prestige
@@ -184,17 +185,17 @@ proc resolveScoutMissions*(
     let fleetId = fleet.id
     let targetSystem = fleet.missionTarget.get(SystemId(0))
     let scoutCount = int32(fleet.ships.len) # Scout-only fleets
-    let missionType = fleet.command.get().commandType
+    let missionType = fleet.command.commandType
 
     # Validate target still exists
     let colonyOpt = state.colonyBySystem(targetSystem)
     if colonyOpt.isNone:
       logInfo("Espionage", "Target colony lost, ending mission",
         " fleetId=", fleetId)
-      # Clear mission state on fleet
+      # Reset fleet to Hold
       var updatedFleet = fleet
       updatedFleet.missionState = MissionState.None
-      updatedFleet.command = none(FleetCommand)
+      updatedFleet.command = cmd_helpers.createHoldCommand(fleetId)
       state.updateFleet(fleetId, updatedFleet)
       continue
 
@@ -232,8 +233,7 @@ proc resolveScoutMissions*(
     existingMissionsProcessed += 1
 
   logInfo("Espionage", "[Step 6a.5] Complete",
-    " existing_missions=", existingMissionsProcessed,
-    " ended=", missionsToRemove.len)
+    " existing_missions=", existingMissionsProcessed)
 
 proc generateMissionIntel(
     state: var GameState,
@@ -289,11 +289,11 @@ proc generateMissionIntel(
     discard # Other FleetCommandTypes not applicable to scout missions
 
 proc wasEspionageHandled*(
-    results: seq[espionage.ScoutIntelResult], houseId: HouseId, fleetId: FleetId
+    results: seq[ScoutIntelResult], houseId: HouseId, fleetId: FleetId
 ): bool =
   ## Check if a scout operation was already handled
-  for result in results:
-    if result.houseId == houseId and result.fleetId == fleetId:
+  for r in results:
+    if r.houseId == houseId and r.fleetId == fleetId:
       return true
   return false
 

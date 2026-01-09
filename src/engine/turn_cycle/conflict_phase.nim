@@ -118,9 +118,9 @@ proc resolveConflictPhase*(
           var foundProvocative = false
           for fleet in state.fleetsInSystem(systemId):
             # Only fleets EXECUTING missions have intent at this location
-            if fleet.missionState == MissionState.Executing and fleet.command.isSome:
+            if fleet.missionState == MissionState.Executing:
               let threatLevel = CommandThreatLevels.getOrDefault(
-                fleet.command.get().commandType, ThreatLevel.Benign
+                fleet.command.commandType, ThreatLevel.Benign
               )
               # Contest (Patrol, Hold, Rendezvous) or Attack (Blockade, Bombard, etc.)
               if threatLevel in [ThreatLevel.Contest, ThreatLevel.Attack]:
@@ -142,19 +142,18 @@ proc resolveConflictPhase*(
             # Check if non-owner has Attack tier command EXECUTING at this colony
             for fleet in state.fleetsInSystem(systemId):
               if fleet.houseId != systemOwner and fleet.missionState == MissionState.Executing:
-                if fleet.command.isSome:
-                  let threatLevel = CommandThreatLevels.getOrDefault(
-                    fleet.command.get().commandType, ThreatLevel.Benign
-                  )
-                  # Attack tier (Blockade, Bombard, Invade, Blitz) → Enemy + combat
-                  if threatLevel == ThreatLevel.Attack:
-                    systemHasCombat = true
-                    logDebug("Combat",
-                      "Combat triggered: Neutral + Attack tier at colony",
-                      "attacker=", fleet.houseId, " owner=", systemOwner)
-                    break
-                  # Contest tier (Patrol, Hold, Rendezvous) → Hostile + no combat
-                  # Escalation handled elsewhere, no combat triggered this turn
+                let threatLevel = CommandThreatLevels.getOrDefault(
+                  fleet.command.commandType, ThreatLevel.Benign
+                )
+                # Attack tier (Blockade, Bombard, Invade, Blitz) → Enemy + combat
+                if threatLevel == ThreatLevel.Attack:
+                  systemHasCombat = true
+                  logDebug("Combat",
+                    "Combat triggered: Neutral + Attack tier at colony",
+                    "attacker=", fleet.houseId, " owner=", systemOwner)
+                  break
+                # Contest tier (Patrol, Hold, Rendezvous) → Hostile + no combat
+                # Escalation handled elsewhere, no combat triggered this turn
 
         if systemHasCombat:
           break # Found a combat pair, add system and move on.
@@ -186,8 +185,8 @@ proc resolveConflictPhase*(
       # Check if command requires arrival
       const arrivalRequired = [
         FleetCommandType.Bombard, FleetCommandType.Invade, FleetCommandType.Blitz,
-        FleetCommandType.Colonize, FleetCommandType.SpyColony,
-        FleetCommandType.SpySystem, FleetCommandType.HackStarbase,
+        FleetCommandType.Colonize, FleetCommandType.ScoutColony,
+        FleetCommandType.ScoutSystem, FleetCommandType.HackStarbase,
       ]
       if command.commandType in arrivalRequired:
         let fleetOpt = state.fleet(command.fleetId)

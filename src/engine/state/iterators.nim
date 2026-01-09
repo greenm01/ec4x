@@ -218,14 +218,15 @@ iterator allHousesWithId*(state: GameState): tuple[id: HouseId, house: House] =
 iterator fleetsWithCommands*(
     state: GameState
 ): tuple[id: FleetId, fleet: Fleet, command: FleetCommand] =
-  ## Iterate fleets that have persistent commands
+  ## Iterate fleets that have active commands (not idle)
+  ## A fleet is considered to have an active command when missionState != None
   ##
   ## Example:
   ##   for (fleetId, fleet, command) in state.fleetsWithCommands():
   ##     # Execute fleet command
   for (id, fleet) in state.allFleetsWithId():
-    if fleet.command.isSome():
-      yield (id, fleet, fleet.command.get())
+    if fleet.missionState != MissionState.None:
+      yield (id, fleet, fleet.command)
 
 iterator eliminatedHouses*(state: GameState): House =
   ## Iterate eliminated houses
@@ -429,10 +430,9 @@ iterator fleetsWithColonizeCommand*(
   ##     if hasColonists(state, fleet):
   ##       # Process colonization attempt
   for fleet in state.allFleets():
-    if fleet.command.isSome and fleet.missionState == MissionState.Executing:
-      let command = fleet.command.get()
-      if command.commandType == fleet_types.FleetCommandType.Colonize:
-        yield (fleet.id, fleet, command)
+    if fleet.missionState == MissionState.Executing:
+      if fleet.command.commandType == fleet_types.FleetCommandType.Colonize:
+        yield (fleet.id, fleet, fleet.command)
 
 iterator fleetsWithArrivedConflictCommands*(
     state: GameState
@@ -462,10 +462,9 @@ iterator fleetsWithArrivedConflictCommands*(
   ]
 
   for fleet in state.allFleets():
-    if fleet.command.isSome and fleet.missionState == MissionState.Executing:
-      let command = fleet.command.get()
-      if command.commandType in ConflictPhaseArrivalRequired:
-        yield (fleet.id, fleet, command)
+    if fleet.missionState == MissionState.Executing:
+      if fleet.command.commandType in ConflictPhaseArrivalRequired:
+        yield (fleet.id, fleet, fleet.command)
 
 iterator etacsInFleet*(state: GameState, fleet: Fleet): Ship =
   ## Iterate ETAC ships in a fleet

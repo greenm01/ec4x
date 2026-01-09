@@ -9,6 +9,7 @@ import ../../intel/detection
 import ../../event_factory/init as event_factory
 import ./[mechanics, movement]
 import ../ship/entity as ship_entity
+import ../command/commands as cmd_helpers
 import ../../../common/logger
 
 type OrderOutcome* {.pure.} = enum
@@ -885,7 +886,7 @@ proc executeScoutColonyCommand(
     )
 
     # Assign command to fleet (entity-manager pattern)
-    updatedFleet.command = some(travelCommand)
+    updatedFleet.command = travelCommand
 
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
@@ -1031,7 +1032,7 @@ proc executeHackStarbaseCommand(
     )
 
     # Assign command to fleet (entity-manager pattern)
-    updatedFleet.command = some(travelCommand)
+    updatedFleet.command = travelCommand
 
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
@@ -1152,7 +1153,7 @@ proc executeScoutSystemCommand(
     )
 
     # Assign command to fleet (entity-manager pattern)
-    updatedFleet.command = some(travelCommand)
+    updatedFleet.command = travelCommand
 
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
@@ -1272,11 +1273,11 @@ proc executeJoinFleetCommand(
   let targetFleetOpt = state.fleet(targetFleetId)
 
   if targetFleetOpt.isNone:
-    # Target fleet destroyed or deleted - clear the command
+    # Target fleet destroyed or deleted - reset to Hold
     let fleetOpt = state.fleet(fleet.id)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
-      updatedFleet.command = none(FleetCommand)
+      updatedFleet.command = cmd_helpers.createHoldCommand(fleet.id)
       updatedFleet.missionState = MissionState.None
       state.updateFleet(fleet.id, updatedFleet)
 
@@ -1334,9 +1335,9 @@ proc executeJoinFleetCommand(
     # Check if fleet actually moved (pathfinding succeeded)
     if movedFleet.location == fleet.location:
       # Fleet didn't move - no path found to target
-      # Cancel command
+      # Reset to Hold
       var updatedFleet = movedFleet
-      updatedFleet.command = none(FleetCommand)
+      updatedFleet.command = cmd_helpers.createHoldCommand(fleet.id)
       updatedFleet.missionState = MissionState.None
       state.updateFleet(fleet.id, updatedFleet)
 
@@ -1491,8 +1492,8 @@ proc executeRendezvousCommand(
     # Check if owned by same house
     if otherFleet.houseId == fleet.houseId:
       # Check if has Rendezvous command to same system
-      if otherFleet.command.isSome:
-        let otherCommand = otherFleet.command.get()
+      if otherFleet.missionState != MissionState.None:
+        let otherCommand = otherFleet.command
         if otherCommand.commandType == FleetCommandType.Rendezvous and
             otherCommand.targetSystem.isSome and
             otherCommand.targetSystem.get() == targetSystem:
