@@ -26,7 +26,9 @@ type
     status*: FleetStatus # Operational status (active/reserve/mothballed)
     roe*: int32 # Rules of Engagement (0-10, default 6 = engage if equal)
     # Command tracking (entity-manager pattern - data lives on entity)
-    command*: Option[FleetCommand] # Active command
+    # Fleets always have a command - Hold (00) is default after mission completion.
+    # See docs/specs/06-operations.md "Command Defaults and Lifecycle"
+    command*: FleetCommand
     # Mission state trackers
     missionState*: MissionState # mission state
     missionTarget*: Option[SystemId] # Target system for mission

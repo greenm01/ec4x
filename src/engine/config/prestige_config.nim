@@ -170,6 +170,13 @@ proc parseTaxIncentives(node: KdlNode, ctx: var KdlConfigContext): TaxIncentives
 
   result = TaxIncentivesTier(tiers: tiers)
 
+proc parseMaintenanceShortfall(node: KdlNode, ctx: var KdlConfigContext,
+                                penalties: var PenaltiesPrestigeConfig) =
+  ## Parse maintenanceShortfall { basePenalty -5; escalationPerTurn -2 }
+  ## Updates the penalties config with maintenance shortfall values
+  penalties.maintenanceShortfallBase = node.requireInt32("basePenalty", ctx)
+  penalties.maintenanceShortfallIncrement = node.requireInt32("escalationPerTurn", ctx)
+
 proc loadPrestigeConfig*(configPath: string): PrestigeConfig =
   ## Load prestige configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
@@ -202,5 +209,9 @@ proc loadPrestigeConfig*(configPath: string): PrestigeConfig =
 
   ctx.withNode("taxIncentives"):
     result.taxIncentives = parseTaxIncentives(doc.requireNode("taxIncentives", ctx), ctx)
+
+  ctx.withNode("maintenanceShortfall"):
+    parseMaintenanceShortfall(doc.requireNode("maintenanceShortfall", ctx), ctx,
+                              result.penalties)
 
   logInfo("Config", "Loaded prestige configuration", "path=", configPath)

@@ -176,6 +176,29 @@ Explicit commands that execute until completed or overridden:
 | 19  | Reactivate Fleet        | Reserve or Mothballed fleet              |
 | 20  | View a Planet           | Any ship type                            |
 
+**Command Defaults and Lifecycle:**
+
+Every fleet **always has a command**—there is no "commandless" state. When a fleet completes its mission (e.g., arrives at Move destination, completes Salvage), it automatically reverts to **Hold Position (00)** if no new command has been queued.
+
+- **New fleets**: Created with Hold Position (00) by default
+- **Mission completion**: Fleet reverts to Hold Position (00)
+- **Player override**: New commands replace current command immediately
+
+This ensures fleets always have defined behavior for combat participant determination. Hold Position is the "awaiting orders" state from the player's perspective.
+
+**Travel and Combat During Transit:**
+
+Fleets travel across jump lanes at a rate determined by lane class and control (see Section 6.1.2). When traveling multi-hop routes, fleets **pause at each intermediate system** between jumps.
+
+At each intermediate system during travel:
+- Fleet `missionState` remains `Traveling` (not yet at destination)
+- Combat eligibility is checked based on diplomatic status:
+  - **Enemy status**: Combat occurs (automatic, simultaneous)
+  - **Hostile/Neutral status**: No combat (safe passage)
+- If combat occurs, the fleet may be delayed or destroyed before reaching destination
+
+This creates strategic chokepoints where Enemy fleets can be intercepted during transit, while Hostile and Neutral fleets enjoy safe passage until they reach their mission destination and reveal hostile intent.
+
 ### 6.3.2 Hold Position (00)
 
 Command your fleet to hold position and await new commands. Your fleet maintains station at its current location, providing defensive presence or staging position for future operations.
@@ -413,16 +436,22 @@ Command your fleet to travel to a designated system and await further commands. 
 
 ### 6.3.18 Salvage (16)
 
-Recover resources from destroyed ships and derelict facilities in friendly systems. Your fleet conducts salvage operations, recovering production points from battle debris.
+Disband your own fleet at a friendly colony to recover production points. Your fleet travels to the nearest friendly colony with spaceport or shipyard facilities, where ships are decommissioned and scrapped for materials.
 
 **Requirements:**
-- Must be at friendly colony system
-- Recent battle debris present
+- Fleet must travel to friendly colony with spaceport or shipyard
+- Fleet survives travel (vulnerable to interception)
+
+**Recovery:**
+- **50% PP recovery**: Receive half the original build cost of all ships in the fleet
+- Ships are permanently removed from the game
+- PP added to house treasury during Income Phase (INC5)
 
 **Use Salvage to:**
-- Recover resources after defensive battles
-- Maximize economic efficiency
-- Clean up post-battle debris
+- Recover value from obsolete or damaged ships
+- Free up ship capacity limits
+- Convert excess military assets back to economic resources
+- Scrap crippled ships that aren't worth repairing
 
 ### 6.3.19 Place on Reserve (17)
 

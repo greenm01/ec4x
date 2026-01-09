@@ -107,3 +107,11 @@ taxIncentives {
     tier 2 { minRate 11; maxRate 20; prestigeBonusPerColony 2 }
     tier 3 { minRate 0; maxRate 10; prestigeBonusPerColony 3 }
 }
+
+// --- Maintenance Shortfall Penalties ---
+maintenanceShortfall {
+    (docs)"docs/specs/03-economy.md#section-3-9-1"
+    basePenalty -5           // Turn 1 prestige penalty
+    escalationPerTurn -2     // Additional penalty per consecutive turn
+    // Turn 1: -5, Turn 2: -7, Turn 3: -9, Turn 4: -11, etc.
+}

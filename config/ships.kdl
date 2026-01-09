@@ -206,7 +206,7 @@ shipStatus {
     mothballed {
         c2CostMultiplier 0.00      // 0% C2 cost (no C2 consumed)
         maintenanceMultiplier 0.10      // 10% maintenance cost
-        reactivationTurns 3             // 3 turns to reactivate to Active
+        reactivationTurns 1             // 1 turn to reactivate to Active (default)
     }
 }
 

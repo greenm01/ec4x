@@ -1,8 +1,23 @@
 # EC4X Canonical Turn Sequence Specification
 
 **Purpose:** Complete and definitive turn order specification for EC4X  
-**Last Updated:** 2026-01-08
-**Status:** Implementation Complete (Split Commissioning + Repair System)
+**Last Updated:** 2026-01-09 (Combat Participant Filtering)
+**Status:** Implementation Complete (Unified Commissioning + Repair System)
+
+---
+
+## Reference Notation
+
+For unambiguous cross-references, steps use phase prefixes:
+
+| Phase | Prefix | Example |
+|-------|--------|---------|
+| Conflict | CON | CON1a (Space combat) |
+| Income | INC | INC7a (C2 Pool Logistical Strain) |
+| Command | CMD | CMD2 (Unified Commissioning) |
+| Production | PRD | PRD1a (Fleet Travel) |
+
+Within each phase section, steps are numbered 1, 2, 3... with substeps a, b, c...
 
 ---
 
@@ -23,34 +38,37 @@ EC4X uses a four-phase turn structure that separates combat resolution, economic
 ## Complete Turn Cycle Architecture (Hierarchical Overview)
 
 ```
-TURN N - CONFLICT PHASE
+TURN N - CONFLICT PHASE (CON)
 ├─ 1. Combat Resolution
-│  ├─ Space combat (mobile fleets)
-│  ├─ Orbital combat (guard fleets, starbases, reserves)
-│  ├─ Planetary combat (bombardment, invasion, blitz)
-│  └─ Generate combat events
+│  ├─ 1a. Space combat (mobile fleets)
+│  ├─ 1b. Orbital combat (guard fleets, starbases, reserves)
+│  ├─ 1c. Blockade resolution
+│  ├─ 1d. Planetary combat (bombardment, invasion, blitz)
+│  ├─ 1e. Colonization
+│  ├─ 1f. Scout Intelligence Operations
+│  └─ 1g. Administrative Completion (mark commands done)
 │
 └─ 2. Immediate Combat Effects
-   ├─ Remove destroyed entities:
+   ├─ 2a. Remove destroyed entities:
    │  ├─ Ships (CombatState.Destroyed)
    │  ├─ Neorias (Spaceport/Shipyard/Drydock)
    │  ├─ Kastras (Starbases)
    │  └─ Ground units (marines, armies, batteries, shields)
    │
-   ├─ Clear destroyed Neoria queues:
+   ├─ 2b. Clear destroyed Neoria queues:
    │  ├─ Spaceport constructionQueue
    │  ├─ Shipyard constructionQueue
    │  ├─ Drydock repairQueue
    │  └─ Ships/projects in destroyed docks = LOST
    │
-   ├─ Clear crippled Neoria queues:
+   ├─ 2c. Clear crippled Neoria queues:
    │  ├─ Neoria.state = Crippled
    │  ├─ Neoria.effectiveDocks = 0
    │  ├─ Clear all queues (constructionQueue, repairQueue)
    │  ├─ Ships/projects in crippled docks = LOST
    │  └─ Facility can be repaired (25% build cost via colony queue)
    │
-   ├─ Process colony conquest:
+   ├─ 2d. Process colony conquest:
    │  ├─ Transfer ownership: colony.owner = attacker
    │  ├─ Clear colony.constructionQueue
    │  ├─ Clear colony.repairQueue
@@ -58,7 +76,7 @@ TURN N - CONFLICT PHASE
    │  ├─ Cancel colony.activeTerraforming
    │  └─ Generate ColonyCaptured event (with projectsLost counts)
    │
-   └─ Process severe bombardment (>50% infrastructure):
+   └─ 2e. Process severe bombardment (>50% infrastructure):
       ├─ If infrastructureDamaged > (colony.infrastructure * 0.5):
       ├─ Clear colony.constructionQueue
       ├─ Clear colony.repairQueue
@@ -68,23 +86,33 @@ TURN N - CONFLICT PHASE
 
 State is now clean for Income Phase
 
-TURN N - INCOME PHASE
-├─ 0. Apply Ongoing Espionage Effects
-├─ 1. Calculate Base Production (uses post-combat colony ownership)
-├─ 2. Apply Blockades
-├─ 3. Execute Salvage Commands
-├─ 4. Calculate Maintenance Costs
-│  └─ Only assets commissioned in previous turns pay
-│  └─ Pending commissions do NOT pay maintenance
-├─ 5. Capacity Enforcement (uses post-combat ownership/IU)
-├─ 6. Collect Resources
-├─ 7. Calculate Prestige (from Conflict Phase events)
-├─ 8. House Elimination & Victory Checks
-└─ 9. Advance Timers
+TURN N - INCOME PHASE (INC)
+├─ 1. Apply Ongoing Espionage Effects
+├─ 2. Process EBP/CIP Investment
+├─ 3. Calculate Base Production (uses post-combat colony ownership)
+├─ 4. Apply Blockades
+├─ 5. Execute Salvage Commands
+├─ 6. Maintenance Processing
+│  ├─ 6a. Calculate Total Maintenance
+│  ├─ 6b. Payment Processing (full/partial/none)
+│  ├─ 6c. Shortfall Penalties (crippling, infrastructure, prestige)
+│  └─ 6d. Auto-Salvage Check (maintenance-crippled ships)
+├─ 7. Capacity Enforcement (uses post-combat ownership/IU)
+│  ├─ 7a. C2 Pool Logistical Strain (soft cap, financial penalty)
+│  ├─ 7b. Fighter Capacity (2-turn grace)
+│  └─ 7c. Planet-Breaker Enforcement (immediate)
+├─ 8. Collect Resources
+├─ 9. Calculate Prestige (from Conflict Phase events)
+├─ 10. House Elimination & Victory Checks
+│   ├─ 10a. House Elimination
+│   └─ 10b. Victory Conditions
+└─ 11. Advance Timers
 
-TURN N - COMMAND PHASE
-├─ A. Unified Commissioning
-│  │
+TURN N - COMMAND PHASE (CMD)
+├─ 1. Order Cleanup
+│  └─ Clear completed/failed/aborted commands from previous turn
+│
+├─ 2. Unified Commissioning
 │  ├─ Commission ships from Neorias:
 │  │  ├─ Iterate all Spaceports → commission pending ships
 │  │  ├─ Iterate all Shipyards → commission pending ships
@@ -109,15 +137,15 @@ TURN N - COMMAND PHASE
 │     │  └─ Neorias (Spaceports, Shipyards, Drydocks)
 │     └─ No validation needed (Colony exists = survived Conflict)
 │
-├─ B. Auto-Repair Submission (Before Player Window)
+├─ 3. Auto-Repair Submission (Before Player Window)
 │  └─ For each colony where colony.autoRepair = true:
-│     ├─ Priority 1: Damaged ships → Available Drydock queues
-│     ├─ Priority 2: Damaged starbases → Colony repair queue
-│     ├─ Priority 2: Damaged ground units → Colony repair queue
-│     ├─ Priority 3: Damaged Neorias → Colony repair queue
+│     ├─ Priority 1: Crippled ships → Available Drydock queues
+│     ├─ Priority 2: Crippled starbases → Colony repair queue
+│     ├─ Priority 2: Crippled ground units → Colony repair queue
+│     ├─ Priority 3: Crippled Neorias → Colony repair queue
 │     └─ NOTE: Player can cancel/modify these in submission window
 │
-├─ C. Colony Automation
+├─ 4. Colony Automation
 │  └─ For each colony:
 │     ├─ If colony.autoJoinFleets = true:
 │     │  └─ Auto-assign newly commissioned ships to fleets
@@ -127,42 +155,48 @@ TURN N - COMMAND PHASE
 │     ├─ If colony.autoLoadFighters = true:
 │     └─ Auto-load fighters onto carriers (Active stationary only)
 │
-├─ D. Player Submission Window (24-hour window)
-│  └─ Players see:
+├─ 5. Player Submission Window (24-hour window)
+│  ├─ 5a. Zero-Turn Administrative Commands (immediate)
+│  ├─ 5b. Query Commands (read-only)
+│  └─ 5c. Command Submission (queued)
 │     ├─ Commissioned assets (newly available)
 │     ├─ Auto-repair submissions (can cancel/modify)
-│     └─ Automated fleet/cargo assignments (result of Step C)
+│     └─ Automated fleet/cargo assignments (result of CMD4)
 │
-└─ E. Order Processing
-   ├─ Manual repair orders (always allowed, overrides auto-repair)
-   ├─ Build orders (pay PP upfront)
+└─ 6. Order Processing & Validation
+   ├─ 6a. Validate fleet commands (store in Fleet.command)
+   ├─ 6b. Process build orders (pay PP upfront)
    │  ├─ Ships → Neoria construction queues
    │  ├─ Fighters/Ground units/Facilities → Colony queues
    │  └─ Validate budget, capacity before queuing
-   └─ Fleet commands (validate, store in Fleet.command)
+   ├─ 6c. Process repair orders (manual, overrides auto-repair)
+   └─ 6d. Process tech research allocation
 
-TURN N - PRODUCTION PHASE
+TURN N - PRODUCTION PHASE (PRD)
 ├─ 1. Fleet Movement
+│  ├─ 1a. Fleet Travel
+│  ├─ 1b. Fleet Arrival Detection
+│  ├─ 1c. Administrative Completion (Production commands)
+│  └─ 1d. Scout-on-Scout Detection
 │
 ├─ 2. Construction & Repair Advancement
-│  │
-│  ├─ 2a. Advance Spaceport/Shipyard construction queues:
+│  ├─ 2a. Advance construction queues (Spaceport/Shipyard/Colony)
 │  │  └─ For each project: decrement turnsRemaining
 │  │     └─ If turnsRemaining = 0: Mark AwaitingCommission
-│  │
-│  ├─ 2b. Advance Drydock repair queues:
-│  │  ├─ For each repair: decrement turnsRemaining
-│  │  ├─ If turnsRemaining = 0:
-│  │  │  └─ Mark AwaitingCommission (treasury check deferred to Command A)
-│  │  └─ Ship stays in queue (occupies dock until commissioned)
-│  │
-│  └─ 2c. Advance colony construction/repair queues:
-│     └─ For each project: decrement turnsRemaining
+│  └─ 2b. Advance repair queues (Drydock/Colony)
+│     └─ For each repair: decrement turnsRemaining
 │        └─ If turnsRemaining = 0: Mark AwaitingCommission
+│     (Commissioning deferred to CMD2)
 │
-├─ 3. Research (tech advancement)
-├─ 4. Diplomacy (treaty processing)
-└─ 5. Terraforming (advance terraform projects)
+├─ 3. Diplomatic Actions
+├─ 4. Population Transfers
+├─ 5. Terraforming
+├─ 6. Cleanup and Preparation
+└─ 7. Research Advancement
+   ├─ 7a. Breakthrough Rolls
+   ├─ 7b. Economic Level Advancement
+   ├─ 7c. Science Level Advancement
+   └─ 7d. Technology Field Advancement
 ```
 
 ---
@@ -198,27 +232,27 @@ This structure means that a player's submitted commands will often manifest thei
 
 EC4X uses a simple three-phase command processing lifecycle:
 
-### Submit (Command Phase Part B)
+### Submit (CMD5 - Player Submission Window)
 - Player submits commands via `CommandPacket`
 - Commands queued for validation
-- Phase: Command Phase Part B
+- Phase: CMD5
 
-### Store (Command Phase Part C)
+### Store (CMD6 - Order Processing & Validation)
 - Engine validates commands (syntax, resources, permissions)
 - Valid commands stored in `Fleet.command` field (entity-manager pattern)
 - Fleet `missionState` set to `Traveling`
 - Invalid commands rejected with error events
-- Phase: Command Phase Part C
+- Phase: CMD6
 
 ### Execute (Production/Conflict/Income Phase)
-- **Production Phase**: Fleet travel (Step 1a), arrival detection (Step 1b), administrative completion (Step 1c)
+- **Production Phase**: Fleet travel (PRD1a), arrival detection (PRD1b), administrative completion (PRD1c)
 - **Conflict Phase**: Combat, colonization, scout intelligence (filter: `missionState == Executing`)
 - **Income Phase**: Economic operations (Salvage)
 - Results generate events (`CommandCompleted`, `CommandFailed`, etc.)
 - Phase: Depends on command type
 
 **Key Insight:** All commands follow the SAME lifecycle:
-- Submit (Command B) → Store (Command C) → Execute (Production/Conflict/Income)
+- Submit (CMD5) → Store (CMD6) → Execute (PRD/CON/INC)
 
 ---
 
@@ -234,43 +268,128 @@ EC4X uses a simple three-phase command processing lifecycle:
 No merge step needed - fleets with `missionState == Executing` have arrived at targets and execute their commands.
 
 **Universal command lifecycle:**
-- Command Phase Part C: Commands validated and stored in `Fleet.command`, `missionState` set to `Traveling`
-- Production Phase Step 1a: Fleets move toward targets
-- Production Phase Step 1b: Arrivals detected, `Fleet.missionState` set to `Executing`
-- Conflict Phase Steps 1-6: Commands execute (filter: missionState == Executing)
+- CMD6: Commands validated and stored in `Fleet.command`, `missionState` set to `Traveling`
+- PRD1a: Fleets move toward targets
+- PRD1b: Arrivals detected, `Fleet.missionState` set to `Executing`
+- CON1: Commands execute (filter: missionState == Executing)
 
-**1. Space Combat** (simultaneous resolution)
-- **1a. Raider Detection**: Perform detection checks for all engaging fleets containing Raiders to determine ambush advantage.
-- **1b. Combat Resolution**: Collect all space combat intents, resolve conflicts, and execute the combat engine, applying any first-strike bonuses.
+### Combat Participant Determination
+
+Before resolving combat, determine which fleets engage based on diplomatic status, mission threat level, territorial ownership, and mission phase. Uses `ThreatLevel` enum and `CommandThreatLevels` from `src/engine/types/fleet.nim`.
+
+**Step 1: Identify Fleet Location and Mission Phase**
+- `missionState == Executing`: Fleet is at mission target (destination)
+- `missionState == Traveling`: Fleet is in transit, paused at intermediate system
+
+**Step 2: Determine Territorial Ownership**
+- **Own territory**: System contains your colony
+- **Their territory**: System contains another house's colony
+- **Neutral territory**: System has no colony (uncolonized)
+
+**Step 3: Get Fleet ThreatLevel**
+```nim
+let threatLevel = CommandThreatLevels[fleet.command.commandType]
+# Attack: Blockade, Bombard, Invade, Blitz (target: colony)
+# Contest: Patrol, Hold, Rendezvous (target: system)
+# Benign: All others
+```
+
+**Step 4: Determine Combat Eligibility**
+
+Combat requires both houses to have fleets present at the same location. For each pair of houses with fleets in the same system, check:
+
+**During Travel (Intermediate Systems):**
+
+| Diplomatic Status | Result |
+|-------------------|--------|
+| **Enemy** | Combat (automatic, simultaneous) |
+| **Hostile** | No combat (safe passage) |
+| **Neutral** | No combat (safe passage) |
+
+**At Destination - Their Colony (Tier 1 Attack Missions):**
+
+| Diplomatic Status | Tier 1 (Attack) | Result |
+|-------------------|-----------------|--------|
+| **Enemy** | Blockade/Bombard/Invade/Blitz | Combat |
+| **Hostile** | Blockade/Bombard/Invade/Blitz | Escalate→Enemy, combat |
+| **Neutral** | Blockade/Bombard/Invade/Blitz | Escalate→Enemy, combat |
+
+**At Destination - Their System (Tier 2 Contest Missions):**
+
+| Diplomatic Status | Tier 2 (Contest) | Result |
+|-------------------|------------------|--------|
+| **Enemy** | Patrol/Hold/Rendezvous | Combat |
+| **Hostile** | Patrol/Hold/Rendezvous | Combat (grace period expired) |
+| **Neutral** | Patrol/Hold/Rendezvous | Escalate→Hostile, NO combat |
+
+**At Destination - Neutral System (Uncolonized):**
+
+| Diplomatic Status | Any Mission | Result |
+|-------------------|-------------|--------|
+| **Enemy** | Any | Combat |
+| **Hostile** | Any | No combat |
+| **Neutral** | Any | No combat |
+
+**At Destination - Own System:**
+
+| Diplomatic Status | Any Mission | Result |
+|-------------------|-------------|--------|
+| **Enemy** | Any | Combat (if enemy fleet present) |
+| **Hostile/Neutral** | Any | No combat (own territory, no threat) |
+
+**Defender Engagement Rules:**
+- Defenders do NOT intercept fleets traveling through unless Enemy status
+- Defenders engage based on threat to their system/colony, not mere fleet presence
+- At Enemy status: Both sides engage on sight (mutual, simultaneous combat)
+- All combat is simultaneous - no attacker/defender initiative advantage
+
+**Grace Period Logic:**
+- Grace period is encoded in the diplomatic state transition itself
+- Neutral→Hostile transition IS the grace period (no separate timer needed)
+- Once at Hostile, subsequent Tier 2 missions trigger combat immediately
+
+**Implementation Reference:** `docs/specs/08-diplomacy.md` Section 8.1.5-8.1.6
+
+### 1. Combat Resolution
+
+**1a. Space Combat** (simultaneous resolution)
+- Filter participants: Mobile fleets (Active status, offensive missions)
+- Exclude: Guard fleets, Reserve fleets, Mothballed fleets, Scouts, Auxiliary vessels
+- Apply diplomatic filtering (see above) to determine which fleets engage
+- Perform detection checks for all engaging fleets containing Raiders to determine ambush advantage
+- Collect all space combat intents, resolve conflicts, and execute the combat engine, applying any first-strike bonuses
 - Generate `GameEvents` (ShipDestroyed, FleetEliminated)
 
-**2. Orbital Combat** (simultaneous resolution)
-- **2a. Raider Detection**: Perform a new round of detection checks for fleets engaging in orbital combat.
-- **2b. Combat Resolution**: Collect all orbital combat intents, resolve conflicts, and execute strikes sequentially, applying any first-strike bonuses.
+**1b. Orbital Combat** (simultaneous resolution)
+- Filter participants: Guard fleets, Reserve fleets (50% AS), Starbases, unassigned ships
+- Exclude: Mothballed fleets (screened), Scouts, Auxiliary vessels (screened)
+- Reserve fleets fight at 50% AS with auto-assigned Blockade posture
+- Perform a new round of detection checks for fleets engaging in orbital combat
+- Collect all orbital combat intents, resolve conflicts, and execute strikes sequentially, applying any first-strike bonuses
 - Generate `GameEvents` (StarbaseDestroyed, DefensesWeakened)
 
-**3. Blockade Resolution** (simultaneous resolution)
+**1c. Blockade Resolution** (simultaneous resolution)
 - Collect all blockade intents
 - Resolve conflicts (determine blockade controller)
 - Establish blockade status (affects Income Phase)
 - Generate `GameEvents` (BlockadeEstablished, BlockadeBroken)
 
-**4. Planetary Combat** (sequential execution, simultaneous priority)
+**1d. Planetary Combat** (sequential execution, simultaneous priority)
 - Collect all planetary combat intents (Bombard/Invade/Blitz commands)
 - Resolve conflicts (determine attack priority command)
 - Execute attacks sequentially in priority command
 - Weaker attackers benefit from prior battles weakening defenders
 - Generate `GameEvents` (SystemCaptured, ColonyCaptured, PlanetBombarded)
 
-**5. Colonization** (simultaneous resolution)
+**1e. Colonization** (simultaneous resolution)
 - ETAC fleets establish colonies
 - Resolve conflicts (winner-takes-all)
 - Fallback logic for losers (Fleet holds position)
 - Generate `GameEvents` (ColonyEstablished)
 
-**6. Scout Intelligence Operations**
+**1f. Scout Intelligence Operations**
 
-**6a. Fleet-Based Scout Missions** (mission start & first detection)
+**1f.i. Fleet-Based Scout Missions** (mission start & first detection)
 
 When scout fleet arrives at target (fleet.missionState == Executing):
 - **State Transition**: Fleet.missionState: Executing → ScoutLocked
@@ -293,7 +412,7 @@ When scout fleet arrives at target (fleet.missionState == Executing):
 **Game Events**: ScoutMissionStarted (if successful) or ScoutDetected (if failed)
 **Critical**: First detection check gates mission registration
 
-**6a.5. Persistent Scout Mission Detection** (every turn for active missions)
+**1f.ii. Persistent Scout Mission Detection** (every turn for active missions)
 
 **Every turn** while mission is active, detection check runs for missions registered in previous turns:
 
@@ -316,22 +435,22 @@ for fleet in state.allFleets():
       # Mission continues next turn
 ```
 
-**Note**: Newly-started missions (missionStartTurn == state.turn) already had their first detection check in Step 6a.
+**Note**: Step CON1f.ii skips missions started this turn (missionStartTurn == state.turn) because they already passed their first detection check in CON1f.i above.
 **Game Events**: IntelGathered (if undetected), ScoutDetected (if detected), DiplomaticStateChanged (on detection)
 
-**6b. Space Guild Espionage** (EBP-based covert ops)
+**1f.iii. Space Guild Espionage** (EBP-based covert ops)
 - Tech Theft, Sabotage, Assassination, Cyber Attack
 - Economic Manipulation, Psyops, Counter-Intel
 - Intelligence Theft, Plant Disinformation, Recruit Agent
 - Generate `GameEvents` (EspionageSuccess, EspionageDetected)
 
-**6c. Starbase Surveillance** (continuous monitoring)
+**1f.iv. Starbase Surveillance** (continuous monitoring)
 - Automatic intelligence gathering from friendly starbases
 - Monitors adjacent systems for fleet movements
 - Updates intelligence tables with starbase sensor data
 - No player action required (passive system)
 
-**STEP 7: ADMINISTRATIVE COMPLETION (Conflict Commands)**
+**1g. Administrative Completion (Conflict Commands)**
 
 **Purpose:** Mark Conflict Phase commands complete after their effects have been resolved.
 
@@ -339,20 +458,20 @@ for fleet in state.allFleets():
 
 **Commands Completed:**
 - **Combat commands**: Patrol, GuardStarbase, GuardColony, Blockade, Bombard, Invade, Blitz
-  - Combat behavior already handled in Steps 1-4 (combat resolution)
+  - Combat behavior already handled in CON1a-1d (combat resolution)
   - This step just marks them complete
-- **Colonization**: Colonize (already established colony in Step 5, now mark complete)
-- **Scout Intelligence**: ScoutColony, ScoutSystem, HackStarbase (already executed missions in Steps 6a/6b, now mark complete)
+- **Colonization**: Colonize (already established colony in CON1e, now mark complete)
+- **Scout Intelligence**: ScoutColony, ScoutSystem, HackStarbase (already executed missions in CON1f, now mark complete)
 
 **Key Distinction:** This is NOT command execution - it's administrative completion. Command effects already happened:
-- Combat commands determined fleet behavior DURING combat resolution (Steps 1-4)
-- Colonization commands triggered colony establishment IN Step 5
-- Espionage commands triggered missions IN Steps 6a/6b
-- Step 7 just marks these commands complete and cleans up their lifecycle
+- Combat commands determined fleet behavior DURING combat resolution (CON1a-1d)
+- Colonization commands triggered colony establishment IN CON1e
+- Espionage commands triggered missions IN CON1f
+- CON1g just marks these commands complete and cleans up their lifecycle
 
 **Why Needed:** Ensures commands transition to completed state, events fire, and fleet command slots free up for new orders.
 
-**STEP 8: IMMEDIATE COMBAT EFFECTS**
+### 2. Immediate Combat Effects
 
 **Purpose:** Process all immediate consequences of combat before turn boundary. Ensures game state is "clean" for Income Phase economic calculations.
 
@@ -360,7 +479,7 @@ for fleet in state.allFleets():
 
 **What Gets Processed:**
 
-**1. Entity Destruction (Already Implemented)**
+**2a. Entity Destruction**
 - Remove destroyed entities from game state:
   - Ships (CombatState.Destroyed)
   - Neorias (Spaceports, Shipyards, Drydocks)
@@ -368,7 +487,13 @@ for fleet in state.allFleets():
   - Ground units (marines, armies, ground batteries, planetary shields)
 - Handled by: `cleanup.cleanupPostCombat(systemId)` per system
 
-**2. Crippled Facility Queue Clearing**
+**2b. Destroyed Neoria Queue Clearing**
+- Clear all construction queues (Spaceport/Shipyard)
+- Clear all repair queues (Drydock)
+- Ships/projects in destroyed docks = LOST
+- Generate `ColonyProjectsLost` event (telemetry)
+
+**2c. Crippled Facility Queue Clearing**
 - **Crippled Neorias** (Spaceport/Shipyard/Drydock):
   - Facility.state = Crippled
   - Facility.effectiveDocks = 0 (non-functional until repaired)
@@ -384,7 +509,7 @@ for fleet in state.allFleets():
   - No queues to clear (Kastras don't have construction/repair queues)
   - Can be repaired via colony repair queue
 
-**3. Colony Conquest Effects**
+**2d. Colony Conquest Effects**
 - **Ownership Transfer:**
   - colony.owner = attackingHouse (immediate)
 - **Queue Clearing:**
@@ -399,7 +524,7 @@ for fleet in state.allFleets():
 - **Facility Queues:** Also cleared by facility destruction during orbital combat
 - Generate `ColonyCaptured` event (includes projectsLost counts for telemetry)
 
-**4. Severe Bombardment Effects (>50% Infrastructure Damage)**
+**2e. Severe Bombardment Effects (>50% Infrastructure Damage)**
 - **Trigger:** infrastructureDamaged > (colony.infrastructure * 0.5)
 - **Queue Clearing:**
   - Clear colony.constructionQueue
@@ -436,12 +561,12 @@ for fleet in state.allFleets():
 **Income Phase Command Execution:**
 - Execute commands that complete during Income Phase: Salvage
 - Uses category filter: `isIncomeCommand()`
-- Salvage commands collect debris field resources when fleet arrives
+- Salvage commands execute when fleet arrives at mission objective
 - Administrative completion marks commands done after salvage operations finish
 
 ### Execution Order
 
-**0. Apply Ongoing Espionage Effects**
+**1. Apply Ongoing Espionage Effects**
 - Iterate `state.ongoingEffects`, decrement turn timers
 - Apply active effects to affected houses:
   - **SRP Reduction:** Reduce research point generation (-10% to -50%)
@@ -453,7 +578,7 @@ for fleet in state.allFleets():
 - Remove expired effects (turnsRemaining = 0)
 - Generate GameEvents for effect application
 
-**0b. Process EBP/CIP Investment**
+**2. Process EBP/CIP Investment**
 - Purchase EBP (Espionage Budget Points) and CIP (Counter-Intelligence Points)
 - Cost: 40 PP each (from `espionage.toml`)
 - Add purchased points to `house.espionageBudget`
@@ -464,87 +589,140 @@ for fleet in state.allFleets():
   - Apply prestige penalty if threshold exceeded
 - Generate GameEvents (EspionageBudgetIncreased, PrestigePenalty)
 
-**1. Calculate Base Production**
+**3. Calculate Base Production**
 - For each colony: Base PP/RP from planet class and resource rating
 - Apply improvements (Infrastructure, Manufactories, Labs)
-- Apply espionage effects from Step 0 (sabotage modifiers, NCV/tax reductions)
+- Apply espionage effects from INC1 (sabotage modifiers, NCV/tax reductions)
 
-**2. Apply Blockades** (from Conflict Phase)
-- Blockaded colonies: 50% production penalty
+**4. Apply Blockades** (from Conflict Phase)
+- Blockaded colonies: 60% production reduction (colony operates at 40% capacity)
 - Update economic output
 
-**3. Execute Salvage Commands** (Fleet Order 15, submitted previous turn)
-- For each fleet with Salvage order:
-  - Validate: Fleet survived Conflict Phase, at friendly colony, debris present
-  - Execute salvage recovery (PP from destroyed ships)
+**5. Execute Salvage Commands** (Fleet Order 16)
+- For each fleet with Salvage order that has arrived at mission objective:
+  - Validate: Fleet survived Conflict Phase, at friendly colony with spaceport/shipyard
+  - Disband fleet, recover 50% of ship build costs as PP
   - Add recovered PP to house treasury
-  - Generate GameEvents (ResourcesSalvaged)
+  - Generate GameEvents (FleetSalvaged)
 
-**4. Calculate Maintenance Costs**
-- Calculate maintenance for all commissioned assets (active in service)
+**6. Maintenance Processing** (03-economy.md Section 3.9)
+
+**6a. Calculate Total Maintenance**
+- Sum maintenance for all commissioned assets (ships, facilities, ground units)
 - **Commissioned assets only:** Ships/facilities commissioned in previous turns
 - **Pending commissions do NOT pay maintenance** (not yet in service)
-- Uses clean post-combat state from Conflict Phase Step 8
-- Damaged/crippled ships may have reduced maintenance (50% for crippled)
-- Deduct total maintenance from house treasuries
-- Generate GameEvents (MaintenancePaid)
-- **Note:** Assets commissioned this turn (Command Phase A) will pay maintenance starting next turn
+- Uses clean post-combat state from CON2
+- Rate modifiers:
+  - Active fleets: 100% maintenance
+  - Reserve fleets: 50% maintenance
+  - Mothballed fleets: 10% maintenance
+  - Crippled ships (combat): 50% maintenance
+- **Note:** Assets commissioned this turn (CMD2) pay maintenance starting next turn
 
-**5. Capacity Enforcement After IU Loss** (reference.md Table 10.5)
+**6b. Payment Processing**
+- **Full Payment** (treasury ≥ total maintenance):
+  - Deduct full amount from treasury
+  - Reset all maintenance-crippled ship shortfall counters to 0
+  - Reset house consecutive shortfall counter to 0
+  - Generate GameEvents (MaintenancePaid)
 
-When IU drops (blockades, lost colonies), capacity limits may fall below current forces. Enforcement with grace periods or immediate seizure.
+- **Partial Payment** (0 < treasury < total maintenance):
+  - Deduct entire treasury (pay what you can)
+  - Payment ratio = treasury / total maintenance
+  - Reset shortfall counters proportionally (prioritize lower counters)
+  - Increment house consecutive shortfall counter
+  - Proceed to shortfall penalties (6c)
 
-**Uses post-combat state:** Colony ownership and IU values updated in Conflict Phase Step 8 (conquest effects applied).
+- **No Payment** (treasury = 0):
+  - No ships restored
+  - Increment house consecutive shortfall counter
+  - Proceed to shortfall penalties (6c)
 
-**5a. Capital Squadron Capacity (No Grace Period)**
-- Calculate capacity: `max(8, floor(Total_House_IU ÷ 100) × 2 × mapMultiplier)`
-- Total_House_IU includes blockade effects from Step 2 AND conquest effects from Conflict Phase
-- If current capital squadrons > capacity:
-  - Identify excess squadrons (CR ≥ 7)
-  - Priority: Crippled flagships first, then lowest AS
-  - **Immediate enforcement** (no grace period)
-  - Space Guilds claim excess squadrons
-  - House receives 50% original PP cost as salvage payment
-  - Generate GameEvents (CapitalShipSeized)
+**6c. Shortfall Penalties** (only if partial/no payment)
+- **Ship Crippling:**
+  - Cripple oldest ships (lowest Ship IDs) until cumulative maintenance ≥ shortfall
+  - Mark with CrippledReason: Maintenance
+  - Set ship shortfallTurns = 1
+  - Generate GameEvents (ShipCrippledMaintenance)
 
-**5b. Total Squadron Limit (2-Turn Grace Period)**
-- Calculate capacity: `max(20, floor(Total_House_IU ÷ 50) × mapMultiplier)`
-- Includes ALL military squadrons (escorts + capitals)
-- If current total squadrons > capacity:
-  - Initiate 2-turn grace period timer (if not already started)
-  - If grace period expired: Auto-disband weakest escort squadrons (no PP refund)
-  - Priority: Lowest AS escorts first
-  - Generate GameEvents (SquadronDisbanded)
+- **Infrastructure Degradation:**
+  - Damage colony infrastructure proportional to shortfall amount
+  - Reduces production capacity until repaired
 
-**5c. Fighter Squadron Capacity (2-Turn Grace Period)**
+- **Prestige Penalty** (config/prestige.kdl maintenanceShortfall):
+  - Base: -5 prestige (turn 1 of shortfall)
+  - Escalates: +2 per consecutive turn (-5, -7, -9, -11, ...)
+  - Generate GameEvents (PrestigePenalty)
+
+**6d. Auto-Salvage Check**
+- For each ship with CrippledReason: Maintenance:
+  - If shortfallTurns ≥ 2: Auto-salvage
+    - Remove ship from game
+    - Return 50% PP to treasury
+    - Generate GameEvents (ShipAutoSalvaged)
+  - Else: Increment shortfallTurns
+
+**Note:** Combat-crippled ships (CrippledReason: Combat) are NEVER auto-salvaged.
+They remain crippled until repaired at drydocks.
+
+**7. Capacity Enforcement** (10-reference.md Section 10.5)
+
+**Uses post-combat state:** Colony ownership and IU values updated in CON2.
+
+**7a. C2 Pool Logistical Strain** (02-assets.md Section 2.3.3.2)
+- Calculate C2 Pool: `Total_House_IU × 0.3`
+- Calculate Total Fleet CC: Sum of CC for all active ships
+- If Total Fleet CC > C2 Pool:
+  - Calculate penalty: `(Total_Fleet_CC - C2_Pool) × 0.5` PP
+  - Deduct penalty from treasury
+  - Generate GameEvents (LogisticalStrainPenalty)
+- **Note:** This is a SOFT cap with financial penalty only (no ship seizure)
+- Reserve fleets: 50% CC cost
+- Mothballed fleets: 0% CC cost
+- Auxiliary ships (Scouts, ETACs, Transports): 0 CC
+
+**7b. Fighter Capacity (2-Turn Grace Period)**
 - Calculate per-colony capacity: `floor(Colony_IU ÷ 100) × FD_MULTIPLIER`
 - If colony fighters > capacity (from over-building OR IU loss):
   - Initiate 2-turn grace period timer (if not already started)
-  - If grace period expired: Auto-disband oldest squadrons (no PP refund)
-  - Generate GameEvents (FighterSquadronDisbanded)
+  - If grace period expired: Auto-disband oldest fighters (no PP refund)
+  - Generate GameEvents (FighterDisbanded)
 - **Note:** Fighters are NOT blocked at submission (can intentionally over-build)
 
-**5d. Planet-Breaker Enforcement (Immediate)**
+**7c. Planet-Breaker Enforcement (Immediate)**
 - Maximum 1 Planet-Breaker per currently owned colony
 - When colony lost (captured/destroyed) in Conflict Phase:
   - Instantly scrap associated Planet-Breaker (no salvage, no PP refund)
   - Generate GameEvents (PlanetBreakerScrapped)
 - **Note:** PB build orders ARE blocked at submission (can't over-build intentionally)
 
-**6. Collect Resources**
+**Capacity Enforcement Summary:**
+
+| Limit | Blocked at CMD6? | Engine Enforces? | Grace? |
+|-------|------------------|------------------|--------|
+| FC (Ships/Fleet) | Yes | Yes (PRD1c) | No |
+| SC (Fleet Count) | Yes | Yes (PRD1c) | No |
+| Fighter Capacity | No | Yes (INC7b) | 2 turns |
+| Planet-Breaker | Yes | Yes (INC7c) | No |
+| Carrier Hangar | Yes | Yes (CMD4) | No |
+| C2 Pool | No (soft cap) | Yes (INC7a) | N/A |
+
+**Note:** FC/SC are tech-based limits that don't fluctuate, so no grace period needed.
+Fighter capacity CAN drop unexpectedly (IU loss from blockade/conquest), hence the grace period.
+
+**8. Collect Resources**
 - Add PP/RP from production to house treasuries
 - Add PP from salvage orders to house treasuries
-- Add PP from Space Guild capital ship seizure payments to house treasuries
 - Generate GameEvents (ResourcesCollected)
 
-**7. Calculate Prestige**
+**9. Calculate Prestige**
 - Award prestige for events this turn (colonization, victories, tech advances)
 - Update house prestige totals
 - Generate GameEvents (PrestigeAwarded)
 
-**8. House Elimination & Victory Checks**
+**10. House Elimination & Victory Checks**
 
-**8a. House Elimination** (executed first)
+**10a. House Elimination** (executed first)
 
 Evaluate elimination conditions for each house in sequential order:
 
@@ -575,9 +753,9 @@ Evaluate elimination conditions for each house in sequential order:
       - Generate GameEvent(HouseEliminated, "collapsed from negative prestige")
   - If prestige ≥ threshold:
     - Reset house.negativePrestigeTurns = 0
-- Defensive collapse evaluation requires prestige from Step 7
+- Defensive collapse evaluation requires prestige from INC9
 
-**8b. Victory Conditions** (executed second)
+**10b. Victory Conditions** (executed second)
 
 Check victory conditions using non-eliminated houses:
 - **Prestige Victory:** House prestige ≥ prestige threshold (from config)
@@ -589,21 +767,22 @@ On victory:
 - Generate GameEvent(VictoryAchieved)
 - Log victor and victory type
 
-**9. Advance Timers**
+**11. Advance Timers**
 - Espionage effect timers (sabotage recovery)
 - Diplomatic effect timers (trade agreements)
-- Total squadron grace period timers (from Step 5b)
-- Fighter capacity grace period timers (from Step 5c)
+- Total ship grace period timers (from INC7b)
+- Fighter capacity grace period timers (from INC7c)
 
 ### Key Properties
-- Salvage executes BEFORE maintenance (don't pay maintenance on salvaged debris)
+- Salvage executes BEFORE maintenance (don't pay maintenance on salvaged fleet)
 - Maintenance costs based on surviving forces after Conflict Phase
-- Salvage orders execute if fleet survived Conflict Phase
+- Maintenance shortfall: ships crippled, infrastructure damaged, prestige penalties
+- Salvage orders execute if fleet survived Conflict Phase and arrived at objective
 - Capacity enforcement uses post-blockade IU values
-- Capital squadrons: Immediate seizure (no grace period)
-- Total squadrons/fighters: 2-turn grace period, then auto-disband
+- C2 Pool: Soft cap with Logistical Strain penalty (no ship seizure)
+- Fighters: 2-turn grace period, then auto-disband
 - Planet-Breakers: Instant scrap when colony lost
-- Economic operations consolidated (production + salvage + maintenance + seizures)
+- Economic operations consolidated (production + salvage + maintenance)
 - Prestige calculated from turn's events
 - Victory conditions evaluated after prestige update
 - Blockade effects applied immediately
@@ -613,11 +792,11 @@ On victory:
 
 ## Phase 3: Command Phase
 
-**Purpose:** Five-part phase - Order cleanup → Unified commissioning → Auto-repair → Colony automation → Player window → Order processing
+**Purpose:** Six-step phase - Order cleanup → Unified commissioning → Auto-repair → Colony automation → Player window → Order processing
 
 **Critical Timing:** Server processing happens BEFORE player submission window. Players see clean, commissioned assets.
 
-### Step 0: Order Cleanup
+### 1. Order Cleanup
 
 **Purpose:** Clean up completed/failed/aborted commands from previous turn.
 
@@ -628,7 +807,7 @@ On victory:
 - **Critical:** Runs FIRST to clean command slots for new orders
 - Result: Clean slate for new turn's commands
 
-### Part A: Unified Commissioning
+### 2. Unified Commissioning
 
 **Purpose:** Commission ALL pending assets that survived Conflict Phase. No validation needed - entity existence = survival.
 
@@ -636,14 +815,14 @@ On victory:
 
 **What Gets Commissioned:**
 
-**1. Ships from Neorias (Spaceports/Shipyards):**
+**2a. Ships from Neorias (Spaceports/Shipyards):**
 - Iterate all Spaceports → commission pending ships from construction queues
 - Iterate all Shipyards → commission pending ships from construction queues
 - Ships enter service, free dock capacity
 - **No validation needed:** If Neoria exists in game state, it survived Conflict Phase
-- Destroyed/crippled Neorias had queues cleared in Conflict Phase Step 8
+- Destroyed/crippled Neorias had queues cleared in CON2
 
-**2. Repaired Ships from Drydocks:**
+**2b. Repaired Ships from Drydocks:**
 - Iterate all Drydocks → check repair queues for completed repairs
 - For each pending repair:
   - Check house treasury (once per turn, here at commissioning)
@@ -653,7 +832,7 @@ On victory:
 - **No validation needed:** If Drydock exists, it survived Conflict Phase
 - Stalled repairs checked again next turn at this same step
 
-**3. Assets from Colony Queues:**
+**2c. Assets from Colony Queues:**
 - Iterate all colonies → commission pending assets:
   - Fighters (built via colony industrial capacity)
   - Ground units (marines, armies)
@@ -661,11 +840,11 @@ On victory:
   - Starbases (Kastras - orbital defense platforms)
   - Neorias (Spaceports, Shipyards, Drydocks - production facilities)
 - **No validation needed:** If colony exists, it survived/remained owned
-- Conquered colonies had queues cleared in Conflict Phase Step 8
+- Conquered colonies had queues cleared in CON2
 
 **Result:** All surviving pending assets commissioned, dock capacity freed, assets ready for automation
 
-### Part B: Auto-Repair Submission
+### 3. Auto-Repair Submission
 
 **Purpose:** Convenience feature - auto-submit repair orders for crippled assets (before player window).
 
@@ -679,13 +858,13 @@ On victory:
 
 **Player Control:**
 - Auto-repair is CONVENIENCE, not restriction
-- Manual repairs ALWAYS available (Part D)
-- Players can cancel auto-repairs during submission window (Part D)
+- Manual repairs ALWAYS available (CMD5)
+- Players can cancel auto-repairs during submission window (CMD5)
 - Both auto and manual repairs use same unified queue system
 
 **Payment:** NO payment at submission (deferred until commissioning next turn)
 
-### Part C: Colony Automation
+### 4. Colony Automation
 
 **Purpose:** Automatically organize newly commissioned assets before player sees them.
 
@@ -693,97 +872,112 @@ On victory:
 
 **Operations:** For each colony (player-configurable flags):
 
-**1. Auto-Assign Ships to Fleets** (`colony.autoJoinFleets`, default: true)
+**4a. Auto-Assign Ships to Fleets** (`colony.autoJoinFleets`, default: true)
 - Newly commissioned ships (from Spaceports/Shipyards)
 - Repaired ships (from Drydocks)
 - Logic: Join existing fleet at colony OR create new fleet
 - Applies to all ship types (combat ships, scouts, auxiliary vessels)
 
-**2. Auto-Load Marines** (`colony.autoLoadMarines`, default: true)
+**4b. Auto-Load Marines** (`colony.autoLoadMarines`, default: true)
 - Newly commissioned marines → Load onto troop transports
 - Only load to transports with available cargo capacity
 - Transports at same colony
 
-**3. Auto-Load Fighters** (`colony.autoLoadFighters`, default: true)
+**4c. Auto-Load Fighters** (`colony.autoLoadFighters`, default: true)
 - Newly commissioned fighters → Load onto carriers
 - Only load to Active stationary carriers (Hold/Guard orders or no orders)
 - Skip moving carriers and Reserve/Mothballed fleets
 - Respect carrier hangar capacity (ACO tech-based limits)
 
-**4. Auto-Balance Fleets** (always enabled, not toggleable)
+**4d. Auto-Balance Fleets** (always enabled, not toggleable)
 - Balance fleet compositions automatically
 - Ensures optimal fleet organization
 
 **Result:** Players see organized fleets and loaded cargo in submission window
 
-### Part D: Player Submission Window (24-hour window)
+### 5. Player Submission Window (24-hour window)
 
 **Purpose:** Players submit orders seeing clean, organized game state.
 
 Players see:
-- Commissioned assets (newly available from Part A)
-- Auto-repair submissions (from Part B, can cancel/modify)
-- Automated fleet/cargo assignments (from Part C)
+- Commissioned assets (newly available from CMD2)
+- Auto-repair submissions (from CMD3, can cancel/modify)
+- Automated fleet/cargo assignments (from CMD4)
 - Freed dock capacity (from commissioning)
 
-**Zero-Turn Administrative Commands** (execute immediately):
+**5a. Zero-Turn Administrative Commands** (execute immediately):
 - Fleet reorganization: DetachShips, TransferShips, MergeFleets
 - Cargo operations: LoadCargo, UnloadCargo, LoadFighters, UnloadFighters, TransferFighters
 - Immediate fleet management operations
 
-**Query Commands** (read-only):
+**5b. Query Commands** (read-only):
 - Intel reports, fleet status, economic reports
 
-**Command Submission** (execute later):
+**5c. Command Submission** (execute later):
 - Fleet commands (Move, Patrol, Bombard, Invade, etc.)
 - Build orders (construction, repair, research)
 - Diplomatic actions
 - **Manual repair orders** (always allowed, overrides auto-repair)
 
-### Part E: Command Validation & Storage (AFTER Player Window)
+### 6. Order Processing & Validation (AFTER Player Window)
 
-**Universal Command Lifecycle:** Submit (Part B) → Store (Part C) → Execute (Production/Conflict/Income Phase)
+**Universal Command Lifecycle:** Submit (CMD5) → Store (CMD6) → Execute (PRD/CON/INC)
 
 **Command Processing:**
-1. **Zero-turn commands** (logistics only): Execute immediately in Part B
-   - DetachShips, TransferShips, MergeFleets
-   - LoadCargo, UnloadCargo
-   - LoadFighters, UnloadFighters, TransferFighters
-   - **NOT included:** JoinFleet, Rendezvous, Reserve, Mothball, Reactivate (these are persistent)
-2. **Persistent fleet commands**: Validate and store in `Fleet.command` field (entity-manager pattern)
-   - ALL FleetCommandType entries follow lifecycle: Submit → Validate → Travel → Execute
-   - Categorized by PRIMARY EFFECT (not by whether they encounter combat):
-     - **Production Phase commands**: Travel completion (Move, Hold, SeekHome, JoinFleet, Rendezvous) + Admin (Reserve, Mothball, Reactivate, View)
-     - **Conflict Phase commands**: Combat ops (Patrol, Guard*, Blockade, Bombard, Invade, Blitz) + Colonization + Scout Intelligence (ScoutColony, ScoutSystem, HackStarbase)
-     - **Income Phase commands**: Economic (Salvage)
+
+**6a. Zero-turn commands** (logistics only): Execute immediately in CMD5
+- DetachShips, TransferShips, MergeFleets
+- LoadCargo, UnloadCargo
+- LoadFighters, UnloadFighters, TransferFighters
+- **NOT included:** JoinFleet, Rendezvous, Reserve, Mothball, Reactivate (these are persistent)
+
+**6b. Persistent fleet commands**: Validate and store in `Fleet.command` field (entity-manager pattern)
+- ALL FleetCommandType entries follow lifecycle: Submit → Validate → Travel → Execute
+- Categorized by PRIMARY EFFECT (not by whether they encounter combat):
+  - **Production Phase commands**: Travel completion (Move, Hold, SeekHome, JoinFleet, Rendezvous) + Admin (Reserve, Mothball, Reactivate, View)
+  - **Conflict Phase commands**: Combat ops (Patrol, Guard*, Blockade, Bombard, Invade, Blitz) + Colonization + Scout Intelligence (ScoutColony, ScoutSystem, HackStarbase)
+  - **Income Phase commands**: Economic (Salvage)
+
+**6b-i. Capacity Validation** (hard limits enforced at submission):
+- **FC (Ships/Fleet)**: 
+  - Zero-turn (MergeFleets, TransferShips): Reject if would exceed limit
+  - JoinFleet/Rendezvous: Validated at PRD1c merge time (target may change during travel)
+- **SC (Fleet Count)**: Reject fleet creation if at combat fleet limit
+- **PB (Planet-Breaker)**: Reject build if colony already has one
+- **Carrier Hangar**: Reject fighter loading beyond ACO-based capacity
+- **Fighter Capacity**: NOT blocked (intentional over-build allowed, 2-turn grace)
+- **C2 Pool**: NOT blocked (soft cap, financial penalty in INC7a)
 
 **Key Insight:** Combat is separate from command execution. Combat triggers by fleet presence + diplomatic state, not by fleet mission type. A fleet with Rendezvous mission can still fight if enemies are present.
 
-**Simultaneous Resolution:** Colonize, Blockade, Invade, and Blitz support multiple houses targeting the same colony/planet in the same turn. Conflict resolution logic (collect intents → resolve conflicts → execute) determines outcomes in Conflict Phase Steps 3-5.
-3.  **Build orders**: Add to construction queues
-4.  **Repair orders** (manual repairs): Validate and add to repair queues
-   - Validation checks: Entity exists, is crippled, prerequisites met (drydock/spaceport/etc.)
-   - Ships assigned to specific drydock with available capacity
-   - Ground units, facilities, starbases added to colony repair queue
-   - Uses same unified repair queue system as auto-repairs
-5.  **Tech research allocation** (detailed processing):
-   - Calculate total PP cost for research allocation (ERP + SRP + TRP)
-   - **Treasury scaling** (prevent negative treasury):
-     - If treasury ≤ 0: Cancel all research (bankruptcy)
-     - If cost > treasury: Scale allocations proportionally
-     - Example: 80 PP treasury, 100 PP research → scale to 80% (80 PP total)
-   - Deduct research cost from treasury (competes with builds)
-   - Calculate GHO (Gross House Output) from colony production
-   - **Convert PP → RP** using GHO and Science Level:
-     - ERP (Economic Research Points): `PP * (1 + GHO/1000) * (1 + SL/10)`
-     - SRP (Science Research Points): `PP * (1 + GHO/2000) * (1 + SL/5)`
-     - TRP (Technology Research Points): `PP * (1 + GHO/1500)` per field
-   - **Accumulate RP** in `house.techTree.accumulated`:
-     - `accumulated.economic += earnedRP.economic`
-     - `accumulated.science += earnedRP.science`
-     - `accumulated.technology[field] += earnedRP.technology[field]`
-   - Save earned RP to `house.lastTurnResearch*` for diagnostics
-   - **Note:** RP accumulation happens here in Command Phase, advancement happens in Production Phase Step 7
+**Simultaneous Resolution:** Colonize, Blockade, Invade, and Blitz support multiple houses targeting the same colony/planet in the same turn. Conflict resolution logic (collect intents → resolve conflicts → execute) determines outcomes in CON1c-1e.
+
+**6c. Build orders**: Add to construction queues
+
+**6d. Repair orders** (manual repairs): Validate and add to repair queues
+- Validation checks: Entity exists, is crippled, prerequisites met (drydock/spaceport/etc.)
+- Ships assigned to specific drydock with available capacity
+- Ground units, facilities, starbases added to colony repair queue
+- Uses same unified repair queue system as auto-repairs
+
+**6e. Tech research allocation** (detailed processing):
+- Calculate total PP cost for research allocation (ERP + SRP + TRP)
+- **Treasury scaling** (prevent negative treasury):
+  - If treasury ≤ 0: Cancel all research (bankruptcy)
+  - If cost > treasury: Scale allocations proportionally
+  - Example: 80 PP treasury, 100 PP research → scale to 80% (80 PP total)
+- Deduct research cost from treasury (competes with builds)
+- Calculate GHO (Gross House Output) from colony production
+- **Convert PP → RP** using GHO and Science Level:
+  - ERP (Economic Research Points): `PP * (1 + GHO/1000) * (1 + SL/10)`
+  - SRP (Science Research Points): `PP * (1 + GHO/2000) * (1 + SL/5)`
+  - TRP (Technology Research Points): `PP * (1 + GHO/1500)` per field
+- **Accumulate RP** in `house.techTree.accumulated`:
+  - `accumulated.economic += earnedRP.economic`
+  - `accumulated.science += earnedRP.science`
+  - `accumulated.technology[field] += earnedRP.technology[field]`
+- Save earned RP to `house.lastTurnResearch*` for diagnostics
+- **Note:** RP accumulation happens here in CMD6, advancement happens in PRD7
 
 **Key Principles:**
 - All non-admin commands follow same path: submit → store → execute
@@ -794,7 +988,7 @@ Players see:
 ### Command Architecture: Persistence and Categorization
 
 **Zero-Turn Commands (ZeroTurnCommandType):**
-- Execute **immediately** during command submission (Command Phase Part D)
+- Execute **immediately** during command submission (CMD5)
 - Do **NOT** persist across turns
 - Do **NOT** enter turn cycle (no travel, no arrival detection)
 - **Logistics only:** DetachShips, TransferShips, MergeFleets, LoadCargo, UnloadCargo, LoadFighters, UnloadFighters, TransferFighters
@@ -803,10 +997,10 @@ Players see:
 
 **Persistent Fleet Commands (FleetCommandType):**
 - Persist across turns in `Fleet.command` field
-- Follow multi-turn lifecycle: Submit (Command Phase E) → Travel (Production Phase) → Execute (Production/Conflict/Income Phase)
+- Follow multi-turn lifecycle: Submit (CMD6) → Travel (PRD1) → Execute (PRD/CON/INC)
 - **ALL** FleetCommandType entries are persistent, including:
   - JoinFleet, Rendezvous (can require travel to target)
-  - Reserve, Mothball, Reactivate (status changes, Reactivate takes 1 full turn)
+  - Reserve, Mothball, Reactivate (status changes, Reactivate default: 1 turn)
   - Move, Hold, SeekHome (travel completion)
   - Patrol, Bombard, Invade, Colonize, Scout missions, Salvage
 
@@ -814,23 +1008,23 @@ Players see:
 
 Commands categorized by their PRIMARY EFFECT, not by whether they encounter combat:
 
-- **Production Phase**: Travel completion (Move, Hold, SeekHome, JoinFleet, Rendezvous) + Administrative (Reserve, Mothball, Reactivate, View)
-- **Conflict Phase**: Combat operations (Patrol, Guard*, Blockade, Bombard, Invade, Blitz) + Colonization + Scout Intelligence (ScoutColony, ScoutSystem, HackStarbase)
-- **Income Phase**: Economic operations (Salvage)
+- **Production Phase (PRD)**: Travel completion (Move, Hold, SeekHome, JoinFleet, Rendezvous) + Administrative (Reserve, Mothball, Reactivate, View)
+- **Conflict Phase (CON)**: Combat operations (Patrol, Guard*, Blockade, Bombard, Invade, Blitz) + Colonization + Scout Intelligence (ScoutColony, ScoutSystem, HackStarbase)
+- **Income Phase (INC)**: Economic operations (Salvage)
 
 ### Key Properties
-- **Unified Commissioning:** All assets (ships, repairs, colony-built) commission in Part A
-- **No Validation Needed:** Entity existence = survival (queues cleared in Conflict Phase if destroyed)
+- **Unified Commissioning:** All assets (ships, repairs, colony-built) commission in CMD2
+- **No Validation Needed:** Entity existence = survival (queues cleared in CON2 if destroyed)
 - **Maintenance Timing:** Assets commissioned Turn N pay maintenance starting Turn N+1 Income Phase
 - **Proactive Defense Required:** 1-turn commissioning lag means defenses must be built ahead of threats
 - **Repair System:**
-  - Payment deferred until commissioning (Part A treasury check)
+  - Payment deferred until commissioning (CMD2 treasury check)
   - Stalled repairs occupy docks, vulnerable to next combat
-  - Auto-repair before player window (Part B, players can cancel)
-  - Manual repairs always allowed (Part E)
-- **Automation Before Player:** Parts B-C organize assets before player submission window
+  - Auto-repair before player window (CMD3, players can cancel)
+  - Manual repairs always allowed (CMD6)
+- **Automation Before Player:** CMD3-4 organize assets before player submission window
 - **Clean State for Players:** Commissioned assets, freed capacity, organized fleets all visible
-- Zero-turn commands execute immediately (Part D)
+- Zero-turn commands execute immediately (CMD5)
 - Persistent commands stored in `Fleet.command` field
 
 ---
@@ -873,7 +1067,35 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 - **Reconnaissance**: View (mark complete after edge-of-system scan)
 - Uses category filter: `isProductionCommand()`
 - Generate GameEvents (CommandCompleted, FleetMerged, StatusChanged, etc.)
-- **Note:** This is administrative completion (marking done, merging fleets, status changes), not behavior execution. Fleet travel already happened in Step 1c
+- **Note:** This is administrative completion (marking done, merging fleets, status changes), not behavior execution. Fleet travel already happened in PRD1a
+
+**Fleet Merge Capacity Enforcement:**
+- JoinFleet/Rendezvous: If combined ships would exceed FC limit, reject merge
+- Keep fleets separate, generate GameEvent (MergeRejectedCapacity)
+- Fleet creation: If at SC limit, reject new fleet creation
+
+**Fleet Status Rules** (02-assets.md Section 2.3.3.4):
+
+| Status | CC Cost | Maintenance | Combat | Movement | Reactivation |
+|--------|---------|-------------|--------|----------|--------------|
+| Active | 100% | 100% | Full AS/DS | Yes | N/A |
+| Reserve | 50% | 50% | 50% AS (auto-Blockade) | No | 1 turn (configurable) |
+| Mothballed | 0% | 10% | None (screened) | No | 1 turn (configurable) |
+
+**Reserve Status:**
+- Auto-assigned Blockade command (participates in orbital defense only)
+- Fights at 50% AS (half attack strength) in orbital combat
+- Immobile: Cannot move or accept movement orders until reactivated
+- Requires friendly colony with starbase or shipyard
+
+**Mothballed Status:**
+- Cannot fight (screened during combat, not targetable)
+- Immobile: Cannot move or accept orders until reactivated
+- Requires friendly colony with spaceport
+
+**Reactivation:**
+- Default: 1 turn (configurable via gameConfig.ships.*.reactivationTurns)
+- Fleet returns to Active status after reactivation period
 
 **1d. Scout-on-Scout Detection** (reconnaissance encounters)
 - Group all fleets by location (systemId)
@@ -895,45 +1117,16 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 
 **2a. Construction Queue Advancement:**
 - Advance build queues (ships, ground units, facilities)
-- Mark projects as completed
-- Consume PP/RP from treasuries
+- For each project: decrement `turnsRemaining`
+- If `turnsRemaining = 0`: Mark `AwaitingCommission`
 - Generate GameEvents (ConstructionProgress)
+- **Note:** Commissioning happens in CMD2 (unified commissioning)
 
-**2b. Split Commissioning (NEW - 2025-12-09):**
-
-Completed projects split into two commissioning paths:
-
-*Planetary Defense Assets (Commission Immediately - Same Turn):*
-- **Facilities:** Starbases, Spaceports, Shipyards, Drydocks
-- **Ground Defense:** Ground Batteries, Planetary Shields (SLD1-6)
-- **Ground Forces:** Marines, Armies
-- **Fighters:** Built planetside, commission with planetary defense
-- **Strategic Rationale:** Defenders need immediate defenses against threats arriving next turn
-- **Timing:** Commission immediately in Production Phase Step 2b
-- **Result:** Available for defense in NEXT turn's Conflict Phase ✓
-
-*Military Units (Commission Next Turn):*
-- **Ships:** All ship classes (Corvette → PlanetBreaker) and Auxiliary Ships (ETAC, TroopTransport)
-- **Strategic Rationale:** Ships may be destroyed in docks during Conflict Phase
-- **Timing:** Stored in pendingMilitaryCommissions, commission next turn's Command Phase Part A
-- **Result:** Verified docks survived combat before commissioning
-
-**2c. Repair Queue Advancement & Commissioning**
-
-**Process:**
+**2b. Repair Queue Advancement:**
 - Advance all repairs: `turnsRemaining -= 1`
-- For completed repairs (turnsRemaining = 0):
-  - Check treasury ≥ repair cost
-  - If YES: Deduct PP, commission immediately, remove from queue, free dock
-  - If NO: Mark Stalled, ship stays in queue, dock occupied
-- Re-check stalled repairs every turn
-- FIFO processing: First queued, first funded
-
-**Payment:** Deferred to completion (NOT at submission). Enables "queue optimistically, cancel if unaffordable."
-
-**Vulnerability:** Stalled repairs remain in docks → vulnerable to facility destruction next Conflict Phase
-
-**Result:** Funded repairs commission immediately. Stalled repairs remain in queue.
+- If `turnsRemaining = 0`: Mark `AwaitingCommission`
+- Ship stays in queue (occupies dock until commissioned in CMD2)
+- **Note:** Treasury check and commissioning happen in CMD2
 
 **3. Diplomatic Actions**
 - Process alliance proposals (accept/reject)
@@ -992,60 +1185,58 @@ Process tech advancements using accumulated RP from Command Phase. Per economy.m
 - Multiple fields can advance in same turn
 - CST affects ship build costs, WEP affects attack strength, etc.
 
-**Result:** Houses advance tech levels using accumulated RP. Research accumulation happens in Command Phase Part C, advancement happens here in Production Phase.
+**Result:** Houses advance tech levels using accumulated RP. Research accumulation happens in CMD6, advancement happens here in PRD7.
 
 ### Key Properties
 - Server processing time (no player interaction)
 - Fleet movement positions for next turn's combat
-- Construction and repair advance in parallel
-- Completed construction commissioned next turn in Command Phase Part A
-- Completed repairs immediately operational (no commissioning)
+- Construction and repair queues advance in parallel
+- Completed construction/repairs commission next turn in CMD2
 - Turn boundary: After Production, increment turn counter -> Conflict Phase
 
 ---
 
 ## Fleet Order Execution Reference
 
-### Active Fleet Commands (20 types)
+### Active Fleet Commands (21 types)
 
-| Order | Order Name            | Execution Phase  | Notes                                        |
-|-------|-----------------------|------------------|----------------------------------------------|
-| 00    | Hold                  | N/A              | Defensive posture, affects combat behavior   |
-| 01    | Move                  | Production Phase | Fleet movement (Step 1)                      |
-| 02    | Seek Home             | Production Phase | Variant of Move (return to home colony)      |
-| 03    | Patrol System         | Conflict Phase   | Travels in Production, Defends in Conflict   |
-| 04    | Guard Starbase        | N/A              | Defensive posture, affects combat screening  |
-| 05    | Guard/Blockade Planet | Conflict Phase   | Blockade: Step 3, Guard: defensive posture   |
-| 06    | Bombard Planet        | Conflict Phase   | Planetary Combat (Step 4)                    |
-| 07    | Invade Planet         | Conflict Phase   | Planetary Combat (Step 4)                    |
-| 08    | Blitz Planet          | Conflict Phase   | Planetary Combat (Step 4)                    |
-| 09    | Scout Colony          | Conflict Phase   | Fleet-Based Scout Intel (Step 6a)            |
-| 10    | Hack Starbase         | Conflict Phase   | Fleet-Based Scout Intel (Step 6a)            |
-| 11    | Scout System          | Conflict Phase   | Fleet-Based Scout Intel (Step 6a)            |
-| 12    | Colonize Planet       | Conflict Phase   | Colonization (Step 5)                        |
-| 13    | Join Another Fleet    | Production Phase | Fleet merging after movement                 |
-| 14    | Rendezvous at System  | Production Phase | Movement + auto-merge on arrival             |
-| 15    | Salvage               | Income Phase     | Resource recovery (Step 3)                   |
-| 16    | Place on Reserve      | Production Phase | Fleet status change                          |
-| 17    | Mothball Fleet        | Production Phase | Fleet status change                          |
-| 18    | Reactivate Fleet      | Production Phase | Fleet status change                          |
-| 19    | View a Planet         | Production Phase | Movement + reconnaissance                    |
+| Order | Order Name       | Execution Phase | Notes                                   |
+|-------|------------------|-----------------|------------------------------------------|
+| 00    | Hold             | N/A             | Defensive posture, affects combat behavior |
+| 01    | Move             | PRD1            | Fleet movement                           |
+| 02    | Seek Home        | PRD1            | Return to nearest drydock colony         |
+| 03    | Patrol System    | CON1            | Travels in PRD1, Defends in CON1         |
+| 04    | Guard Starbase   | N/A             | Defensive posture, affects combat screening |
+| 05    | Guard Colony     | N/A             | Defensive posture, orbital defense       |
+| 06    | Blockade Colony  | CON1c           | Blockade resolution                      |
+| 07    | Bombard Colony   | CON1d           | Planetary Combat                         |
+| 08    | Invade Colony    | CON1d           | Planetary Combat                         |
+| 09    | Blitz Colony     | CON1d           | Planetary Combat                         |
+| 10    | Colonize Planet  | CON1e           | Colonization                             |
+| 11    | Scout Colony     | CON1f           | Fleet-Based Scout Intel                  |
+| 12    | Scout System     | CON1f           | Fleet-Based Scout Intel                  |
+| 13    | Hack Starbase    | CON1f           | Fleet-Based Scout Intel                  |
+| 14    | Join Fleet       | PRD1c           | Fleet merging after movement             |
+| 15    | Rendezvous       | PRD1c           | Movement + auto-merge on arrival         |
+| 16    | Salvage          | INC5            | Disband fleet for 50% PP                 |
+| 17    | Place on Reserve | PRD1c           | Fleet status change                      |
+| 18    | Mothball Fleet   | PRD1c           | Fleet status change                      |
+| 19    | Reactivate Fleet | PRD1c           | Fleet status change                      |
+| 20    | View Planet      | PRD1c           | Movement + reconnaissance                |
 
-### Zero-Turn Administrative Commands (7 types)
+### Zero-Turn Administrative Commands (5 types)
 
-Execute immediately during Command Phase Part B player window:
+Execute immediately during CMD5 player window:
 
 | Command         | Execution Phase | Notes                                           |
 | --------------- | --------------- | ----------------------------------------------- |
-| DetachShips     | Command Phase B | Execute immediately during command submission   |
-| TransferShips   | Command Phase B | Execute immediately during command submission   |
-| MergeFleets     | Command Phase B | Execute immediately during command submission   |
-| LoadCargo       | Command Phase B | Execute immediately during command submission   |
-| UnloadCargo     | Command Phase B | Execute immediately during command submission   |
-| PlaceOnReserve  | Command Phase B | Instant status change (reduces C2/Maint cost)   |
-| MothballFleet   | Command Phase B | Instant status change (zero C2, minimal Maint)  |
+| DetachShips     | CMD5            | Execute immediately during command submission   |
+| TransferShips   | CMD5            | Execute immediately during command submission   |
+| MergeFleets     | CMD5            | Execute immediately during command submission   |
+| LoadCargo       | CMD5            | Execute immediately during command submission   |
+| UnloadCargo     | CMD5            | Execute immediately during command submission   |
 
-**Key Property:** All zero-turn administrative commands execute BEFORE operational orders in same turn, allowing players to reorganize fleets, load cargo, and manage status before issuing movement/combat orders.
+**Key Property:** All zero-turn administrative commands execute BEFORE operational orders in same turn, allowing players to reorganize fleets and load cargo before issuing movement/combat orders.
 
 ---
 
@@ -1060,7 +1251,7 @@ Execute immediately during Command Phase Part B player window:
    - Execute same turn as submission (at midnight server processing)
 
 3. **Fleets move in Production Phase, position for next Conflict Phase**
-   - Fleet locations updated during Maintenance
+   - Fleet locations updated during PRD1
    - Combat uses these new positions in next Conflict Phase
 
 4. **Combat always uses positions from previous turn's movement**
@@ -1072,44 +1263,41 @@ Execute immediately during Command Phase Part B player window:
    - Space Guild espionage: Covert ops exploit post-battle chaos
 
 6. **Commissioning happens BEFORE player submission window**
-   - Completed projects become operational before player orders
+   - Completed projects become operational before player orders (CMD2)
    - Dock space freed before player sees state
    - No perception delay
 
 7. **Zero-turn commands execute DURING player submission window**
-   - Immediate execution for administrative tasks
+   - Immediate execution for administrative tasks (CMD5)
    - Players can reorganize before issuing operational orders
 
 8. **Salvage Order Execution Check**
-   - For a `Salvage` order to execute in the Income Phase, the fleet must meet two conditions:
-     1.  **Survival:** The fleet must have survived the preceding Conflict Phase (i.e., not destroyed and removed from the game state).
-     2.  **Location:** The fleet must be at the designated salvage mission objective location.
-   - If a fleet is destroyed in the Conflict Phase, its pending orders (including `Salvage`) fail implicitly because the fleet entity no longer exists in the game state.
-   - **Auxiliary Ships** (ETACs, TroopTransports) are screened during combat (do not participate directly), but are destroyed if their protecting combat fleets are eliminated or retreat.
+   - For a `Salvage` order to execute in INC5, the fleet must meet two conditions:
+     1.  **Survival:** The fleet must have survived the preceding Conflict Phase
+     2.  **Location:** The fleet must be at friendly colony with spaceport/shipyard
+   - If a fleet is destroyed in the Conflict Phase, its pending orders fail implicitly
+   - **Auxiliary Ships** (ETACs, TroopTransports) are screened during combat but destroyed if their fleet is eliminated
 
 9. **Capacity enforcement uses post-blockade IU values**
-   - Blockades applied in Income Phase Step 2
-   - Capacity calculated with reduced IU in Step 5
+   - Blockades applied in INC4
+   - Capacity calculated with reduced IU in INC7
 
-10. **Split Commissioning System (2025-12-09)**
-     - **Planetary Defense:** Commission same turn in Production Phase Step 2b
-       - Facilities, ground units, fighters available for next turn's defense
-     - **Military Units:** Commission next turn in Command Phase Part A
-       - Ships verified docks survived combat before commissioning
-     - **Strategic Timing:** Defenders get immediate protection, ships wait for safety check
+10. **Unified Commissioning System (2026-01-09)**
+     - All assets (ships, repairs, colony-built) commission in CMD2
+     - Treasury check for repairs happens at commissioning
+     - Stalled repairs remain in queue until funded
+     - **Strategic Timing:** 1-turn commissioning lag means defenses must be built ahead
 
-11. **Repair System (2026-01-08)**
-     - **Auto-Repair Submission:** Command Phase Part A Step 2 (before player window)
+11. **Repair System (2026-01-09)**
+     - **Auto-Repair Submission:** CMD3 (before player window)
        - Controlled by `colony.autoRepair` flag per colony
        - Submits repairs for all crippled units in priority order
        - Players can cancel during submission window
-     - **Manual Repair Submission:** Command Phase Part B (player submission window)
-       - Available when `colony.autoRepair = false`
+     - **Manual Repair Submission:** CMD5 (player submission window)
        - Players submit specific repair orders with validation
-     - **Repair Execution:** Production Phase Step 2c
-       - Both auto and manual repairs execute together
-       - Ships commission immediately after repair (same phase)
-       - All other units restored to operational state
+     - **Repair Commissioning:** CMD2 (next turn)
+       - Treasury check, pay cost, commission
+       - Stalled repairs occupy docks until funded
      - **Unified Queue:** Auto and manual repairs use same queue system
      - **Architecture:**
        - Ships: Drydock pipeline (`neoria.repairQueue`)
@@ -1132,28 +1320,28 @@ Execute immediately during Command Phase Part B player window:
 4. Turn N+1 Income: Production calculated with damaged infrastructure
 5. **Validates:** Combat order timing, economic impact propagation
 
-### Scenario 3: Salvage Recovery Sequence
-1. Turn N Conflict: Fleet survives battle, debris present
-2. Turn N Command: Submit Salvage order
-3. Turn N+1 Conflict: Fleet survives again (or not)
-4. Turn N+1 Income Step 3: Salvage executes if fleet survived
-5. **Validates:** Salvage survival validation, destroyed ship cleanup
+### Scenario 3: Salvage Sequence
+1. Turn N Command: Submit Salvage order for fleet anywhere on map
+2. Turn N Production: Fleet travels toward nearest friendly colony with spaceport/shipyard
+3. Turn N+1: Fleet continues traveling if not arrived
+4. Turn N+X Income INC5: Fleet arrives, disbands, 50% PP recovered
+5. **Validates:** Salvage as persistent command, travel to objective, PP recovery
 
 ### Scenario 4: Capacity Enforcement Sequence
 1. Turn N Conflict: Colony captured, IU drops
-2. Turn N Income Step 2: Blockade applied, IU drops further
-3. Turn N Income Step 5: Capacity calculated with reduced IU
-4. Turn N Income Step 5a: Capital squadrons seized immediately
-5. Turn N Income Step 5b: Total squadron grace period starts
-6. Turn N+2 Income: Grace period expires, escorts disbanded
+2. Turn N Income INC4: Blockade applied, IU drops further
+3. Turn N Income INC7: Capacity calculated with reduced IU
+4. Turn N Income INC7a: Ships seized immediately (no grace)
+5. Turn N Income INC7b: Total ship grace period starts
+6. Turn N+2 Income: Grace period expires, ships disbanded
 7. **Validates:** Capacity enforcement timing, grace periods
 
 ### Scenario 5: Construction -> Commissioning Sequence
-1. Turn N-1 Production: Construction completes, marked complete
-2. Turn N Command Part A: Completed project commissioned
-3. Turn N Command Part B: Player sees commissioned ship, can reorganize
-4. Turn N Command Part B: Player submits orders for new ship
-5. Turn N Production: New ship movement orders execute
+1. Turn N-1 Production PRD2: Construction completes, marked AwaitingCommission
+2. Turn N Command CMD2: Completed project commissioned
+3. Turn N Command CMD5: Player sees commissioned ship, can reorganize
+4. Turn N Command CMD5: Player submits orders for new ship
+5. Turn N Production PRD1: New ship movement orders execute
 6. **Validates:** Commissioning timing, no perception delay
 
 ---
@@ -1161,10 +1349,10 @@ Execute immediately during Command Phase Part B player window:
 ## Architecture Principles
 
 ### Separation of Concerns
-- **Conflict Phase:** Pure combat resolution (no economic calculations)
-- **Income Phase:** Pure economic state (no combat, no movement)
-- **Command Phase:** Pure player interaction (no server processing in Part B)
-- **Production Phase:** Pure server processing (no player interaction)
+- **Conflict Phase (CON):** Pure combat resolution (no economic calculations)
+- **Income Phase (INC):** Pure economic state (no combat, no movement)
+- **Command Phase (CMD):** Pure player interaction (no server processing in CMD5)
+- **Production Phase (PRD):** Pure server processing (no player interaction)
 
 ### Deterministic Execution
 - All phases execute in strict order
@@ -1183,9 +1371,9 @@ Production Phase -> New positions, completed construction
 
 ### Timing Guarantees
 - Combat orders: 1 turn delay (Turn N submission -> Turn N+1 execution)
-- Movement orders: Same turn execution (Turn N submission -> Turn N Maintenance)
-- Zero-turn commands: Immediate execution (during submission window)
-- Commissioning: Before player sees state (no perception delay)
+- Movement orders: Same turn execution (Turn N submission -> Turn N PRD1)
+- Zero-turn commands: Immediate execution (during CMD5)
+- Commissioning: Before player sees state (CMD2, no perception delay)
 
 ### State Consistency
 - Game state changes (commissioning) happen before player window
@@ -1197,67 +1385,33 @@ Production Phase -> New positions, completed construction
 
 ## Phase Block Diagrams
 
-### Phase 1: Conflict Phase
+### Phase 1: Conflict Phase (CON)
 
 ```
 ╔════════════════════════════════════════════════════════════╗
 ║                    CONFLICT PHASE (Turn N)                 ║
-║                Commands  from Turn N-1 Execute             ║
+║                Commands from Turn N-1 Execute              ║
 ╠════════════════════════════════════════════════════════════╣
 ║                                                            ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 1: Space Combat (Simultaneous)                   ║ ║
-║  ║  • Collect all space combat intents                   ║ ║
-║  ║  • Resolve conflicts (determine winners)              ║ ║
-║  ║  • Execute combat engine for all battles              ║ ║
-║  ║  • GameEvents: ShipDestroyed, FleetEliminated         ║ ║
+║  ║ 1. Combat Resolution                                  ║ ║
+║  ║  1a. Space Combat (simultaneous)                      ║ ║
+║  ║  1b. Orbital Combat (simultaneous)                    ║ ║
+║  ║  1c. Blockade Resolution (simultaneous)               ║ ║
+║  ║  1d. Planetary Combat (sequential priority)           ║ ║
+║  ║  1e. Colonization (simultaneous)                      ║ ║
+║  ║  1f. Scout Intelligence Operations                    ║ ║
+║  ║  1g. Administrative Completion                        ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 2: Orbital Combat (Simultaneous)                 ║ ║
-║  ║  • Collect orbital bombardment intents                ║ ║
-║  ║  • Execute orbital strikes sequentially               ║ ║
-║  ║  • GameEvents: StarbaseDestroyed, DefensesWeakened    ║ ║
-║  ╚═══════════════════════════════════════════════════════╝ ║
-║                             |                              ║
-║                             v                              ║
-║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 3: Blockade Resolution (Simultaneous)            ║ ║
-║  ║  • Collect blockade intents                           ║ ║
-║  ║  • Determine blockade controller                      ║ ║
-║  ║  • Establish blockade status -> Income Phase          ║ ║
-║  ║  • GameEvents: BlockadeEstablished, BlockadeBroken    ║ ║
-║  ╚═══════════════════════════════════════════════════════╝ ║
-║                             |                              ║
-║                             v                              ║
-║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 4: Planetary Combat (Sequential Priority)        ║ ║
-║  ║  • Bombard/Invade/Blitz orders execute                ║ ║
-║  ║  • Weaker attackers benefit from prior damage         ║ ║
-║  ║  • GameEvents: SystemCaptured, ColonyCaptured         ║ ║
-║  ╚═══════════════════════════════════════════════════════╝ ║
-║                             |                              ║
-║                             v                              ║
-║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 5: Colonization (Simultaneous)                   ║ ║
-║  ║  • ETAC fleets establish colonies                     ║ ║
-║  ║  • Resolve conflicts (winner-takes-all)               ║ ║
-║  ║  • GameEvents: ColonyEstablished                      ║ ║
-║  ╚═══════════════════════════════════════════════════════╝ ║
-║                             |                              ║
-║                             v                              ║
-║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 6: Scout Intelligence Operations                 ║ ║
-║  ║  6a. Fleet-Based Mission Start (on arrival)           ║ ║
-║  ║    • Scout fleet → ScoutLocked state                  ║ ║
-║  ║    • Mission data stored on fleet entity              ║ ║
-║  ║  6a.5. Persistent Scout Detection (each turn)         ║ ║
-║  ║    • Check all fleets with missionState=ScoutLocked   ║ ║
-║  ║    • Detected → destroy scouts, fail mission          ║ ║
-║  ║    • Undetected → generate Perfect intel, continue    ║ ║
-║  ║  6b. Space Guild: Tech Theft, Sabotage, etc.          ║ ║
-║  ║  • GameEvents: IntelGathered, EspionageSuccess        ║ ║
+║  ║ 2. Immediate Combat Effects                           ║ ║
+║  ║  2a. Remove destroyed entities                        ║ ║
+║  ║  2b. Clear destroyed Neoria queues                    ║ ║
+║  ║  2c. Clear crippled Neoria queues                     ║ ║
+║  ║  2d. Process colony conquest                          ║ ║
+║  ║  2e. Process severe bombardment                       ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                                                            ║
 ╠════════════════════════════════════════════════════════════╣
@@ -1265,7 +1419,7 @@ Production Phase -> New positions, completed construction
 ╚════════════════════════════════════════════════════════════╝
 ```
 
-### Phase 2: Income Phase
+### Phase 2: Income Phase (INC)
 
 ```
 ╔═══════════════════════════════════════════════════════════════╗
@@ -1274,51 +1428,42 @@ Production Phase -> New positions, completed construction
 ╠═══════════════════════════════════════════════════════════════╣
 ║                                                               ║
 ║  ╔═══════════════════════════════════════════════════════╗    ║
-║  ║ Step 1: Calculate Base Production                     ║    ║
-║  ║  • PP/RP from colonies (planet class + resources)     ║    ║
-║  ║  • Apply improvements (Infrastructure, Labs)          ║    ║
-║  ║  • Apply espionage effects (sabotage, cyber)          ║    ║
+║  ║ 1-4: Economic Calculations                            ║    ║
+║  ║  1. Apply Ongoing Espionage Effects                   ║    ║
+║  ║  2. Process EBP/CIP Investment                        ║    ║
+║  ║  3. Calculate Base Production                         ║    ║
+║  ║  4. Apply Blockades (from CON1c)                      ║    ║
 ║  ╚═══════════════════════════════════════════════════════╝    ║
 ║                             |                                 ║
 ║                             v                                 ║
 ║  ╔═══════════════════════════════════════════════════════╗    ║
-║  ║ Step 2: Apply Blockades (from Conflict Phase)         ║    ║
-║  ║  • Blockaded colonies: 50% production penalty         ║    ║
-║  ║  • Update economic output                             ║    ║
+║  ║ 5. Execute Salvage Commands                           ║    ║
+║  ║  • Fleet arrived at friendly colony w/ spaceport      ║    ║
+║  ║  • Disband fleet, recover 50% PP                      ║    ║
 ║  ╚═══════════════════════════════════════════════════════╝    ║
 ║                             |                                 ║
 ║                             v                                 ║
 ║  ╔═══════════════════════════════════════════════════════╗    ║
-║  ║ Step 3: Execute Salvage Commands                      ║    ║
-║  ║  • Validate fleet survived Conflict Phase             ║    ║
-║  ║  • Recover PP from debris                             ║    ║
-║  ║  • GameEvents: ResourcesSalvaged                      ║    ║
-║  ╚═══════════════════════════════════════════════════════╝    ║
-║                             |                                 ║
-║                             v                                 ║
-║  ╔═══════════════════════════════════════════════════════╗    ║
-║  ║ Step 4: Calculate Maintenance Costs                   ║    ║
-║  ║  • Maintenance for surviving ships/facilities         ║    ║
+║  ║ 6. Calculate Maintenance Costs                        ║    ║
+║  ║  • Maintenance for commissioned ships/facilities      ║    ║
 ║  ║  • Deduct from house treasuries                       ║    ║
-║  ║  • GameEvents: MaintenancePaid                        ║    ║
 ║  ╚═══════════════════════════════════════════════════════╝    ║
 ║                             |                                 ║
 ║                             v                                 ║
 ║  ╔═════════════════════════════════════════════════════════╗  ║
-║  ║ Step 5: Capacity Enforcement (Table 10.5)               ║  ║
-║  ║  5a. Capital Squadrons -> Immediate Space Guild seizure ║  ║
-║  ║  5b. Total Squadrons -> 2-turn grace, then disband      ║  ║
-║  ║  5c. Fighter Squadrons -> 2-turn grace, then disband    ║  ║
-║  ║  5d. Planet-Breakers -> Instant scrap when colony lost  ║  ║
+║  ║ 7. Capacity Enforcement                                 ║  ║
+║  ║  7a. C2 Pool -> Soft cap, Logistical Strain penalty     ║  ║
+║  ║  7b. Fighter Capacity -> 2-turn grace, then disband     ║  ║
+║  ║  7c. Planet-Breakers -> Instant scrap when colony lost  ║  ║
 ║  ╚═════════════════════════════════════════════════════════╝  ║
 ║                             |                                 ║
 ║                             v                                 ║
 ║  ╔═══════════════════════════════════════════════════════╗    ║
-║  ║ Steps 6-9: Finalization                               ║    ║
-║  ║  • Collect resources (PP/RP + salvage + seizures)     ║    ║
-║  ║  • Calculate prestige                                 ║    ║
-║  ║  • Check victory conditions                           ║    ║
-║  ║  • Advance timers                                     ║    ║
+║  ║ 8-11: Finalization                                    ║    ║
+║  ║  8. Collect resources                                 ║    ║
+║  ║  9. Calculate prestige                                ║    ║
+║  ║  10. House Elimination & Victory Checks               ║    ║
+║  ║  11. Advance timers                                   ║    ║
 ║  ╚═══════════════════════════════════════════════════════╝    ║
 ║                                                               ║
 ╠═══════════════════════════════════════════════════════════════╣
@@ -1326,7 +1471,7 @@ Production Phase -> New positions, completed construction
 ╚═══════════════════════════════════════════════════════════════╝
 ```
 
-### Phase 3: Command Phase
+### Phase 3: Command Phase (CMD)
 
 ```
 ╔════════════════════════════════════════════════════════════╗
@@ -1335,60 +1480,51 @@ Production Phase -> New positions, completed construction
 ╠════════════════════════════════════════════════════════════╣
 ║                                                            ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ PART A: Server Processing (BEFORE Player Window)      ║ ║
+║  ║ 1-4: Server Processing (BEFORE Player Window)         ║ ║
 ║  ║                                                       ║ ║
-║  ║  Step 0: Clear Damaged Facility Queues                ║ ║
-║  ║   • Clear queues from crippled/destroyed facilities   ║ ║
-║  ║   • Generate ColonyProjectsLost events                ║ ║
+║  ║  1. Order Cleanup                                     ║ ║
+║  ║   • Clear completed/failed commands from prev turn    ║ ║
 ║  ║                                                       ║ ║
-║  ║  Step 1: Ship Commissioning                           ║ ║
-║  ║   • Validate facility survived combat (neoriaId)      ║ ║
-║  ║   • Commission ships from operational facilities      ║ ║
+║  ║  2. Unified Commissioning                             ║ ║
+║  ║   • Commission ships from Neorias (2a)                ║ ║
+║  ║   • Commission repaired ships from Drydocks (2b)      ║ ║
+║  ║   • Commission assets from colony queues (2c)         ║ ║
 ║  ║   • Free dock space                                   ║ ║
-║  ║   • Auto-create squadrons, assign to fleets           ║ ║
-║  ║   • Auto-load 1 PTU onto ETAC ships                   ║ ║
 ║  ║                                                       ║ ║
-║  ║  Step 2: Colony Automation & Auto-Repair Submission   ║ ║
-║  ║   • Auto-load fighters to carriers                    ║ ║
-║  ║   • Auto-submit repair orders (if enabled):           ║ ║
-║  ║     - Ships → Drydock queue (Priority 1)              ║ ║
-║  ║     - Ground units → Colony queue (Priority 2)        ║ ║
-║  ║     - Facilities → Colony queue (Priority 3)          ║ ║
-║  ║     - Starbases → Colony queue (Priority 2)           ║ ║
-║  ║   • Auto-balance squadrons                            ║ ║
+║  ║  3. Auto-Repair Submission                            ║ ║
+║  ║   • Submit repairs for crippled units (if enabled)    ║ ║
+║  ║                                                       ║ ║
+║  ║  4. Colony Automation                                 ║ ║
+║  ║   • Auto-assign ships to fleets (4a)                  ║ ║
+║  ║   • Auto-load marines (4b)                            ║ ║
+║  ║   • Auto-load fighters (4c)                           ║ ║
+║  ║   • Auto-balance fleets (4d)                          ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ PART B: Player Submission Window (24 hours)           ║ ║
+║  ║ 5. Player Submission Window (24 hours)                ║ ║
 ║  ║                                                       ║ ║
-║  ║  Players see accurate game state:                     ║ ║
-║  ║   • Commissioned ships operational                    ║ ║
-║  ║   • Freed dock space visible                          ║ ║
-║  ║   • Established colonies accessible                   ║ ║
-║  ║                                                       ║ ║
-║  ║  Zero-Turn Commands (Execute Immediately):            ║ ║
+║  ║  5a. Zero-Turn Commands (Execute Immediately)         ║ ║
 ║  ║   • DetachShips, TransferShips, MergeFleets           ║ ║
 ║  ║   • LoadCargo, UnloadCargo                            ║ ║
-║  ║   • TransferShipBetweenSquadrons                      ║ ║
 ║  ║                                                       ║ ║
-║  ║  Order Submission (Execute Later):                    ║ ║
-║  ║   • Fleet orders -> Conflict/Production Phase         ║ ║
+║  ║  5b. Query Commands (read-only)                       ║ ║
+║  ║                                                       ║ ║
+║  ║  5c. Command Submission (Execute Later)               ║ ║
+║  ║   • Fleet orders -> CON/PRD/INC Phase                 ║ ║
 ║  ║   • Build orders -> Construction queues               ║ ║
-║  ║   • Repair orders -> Repair queues (manual mode)      ║ ║
-║  ║   • Diplomatic actions -> Production Phase            ║ ║
-║  ║                                                       ║ ║
-║  ║  Players can cancel auto-repairs and submit manual    ║ ║
+║  ║   • Repair orders -> Repair queues                    ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ PART C: Order Validation & Queueing (AFTER Window)    ║ ║
-║  ║   • Validate all submitted orders                     ║ ║
-║  ║   • Process build orders (add to queues)              ║ ║
-║  ║   • Start tech research (allocate RP)                 ║ ║
-║  ║   • Queue combat orders for Turn N+1 Conflict         ║ ║
-║  ║   • Store movement orders for Production activation   ║ ║
+║  ║ 6. Order Processing & Validation (AFTER Window)       ║ ║
+║  ║   6a. Zero-turn commands (already executed)           ║ ║
+║  ║   6b. Persistent fleet commands (validate & store)    ║ ║
+║  ║   6c. Build orders (add to queues)                    ║ ║
+║  ║   6d. Repair orders (add to queues)                   ║ ║
+║  ║   6e. Tech research allocation                        ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                                                            ║
 ╠════════════════════════════════════════════════════════════╣
@@ -1396,52 +1532,44 @@ Production Phase -> New positions, completed construction
 ╚════════════════════════════════════════════════════════════╝
 ```
 
-### Phase 4: Production Phase
+### Phase 4: Production Phase (PRD)
 
 ```
 ╔════════════════════════════════════════════════════════════╗
-║                  Production PHASE (Turn N)                 ║
+║                  PRODUCTION PHASE (Turn N)                 ║
 ║              Server Batch Processing (Midnight)            ║
 ╠════════════════════════════════════════════════════════════╣
 ║                                                            ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 1: Fleet Movement                                ║ ║
+║  ║ 1. Fleet Movement                                     ║ ║
 ║  ║                                                       ║ ║
 ║  ║  1a. Fleet Travel (fleets move to targets)            ║ ║
 ║  ║   • ALL persistent commands move toward targets       ║ ║
-║  ║   • Validate paths (fog-of-war, jump lanes)           ║ ║
 ║  ║   • Update fleet locations (1-2 jumps/turn)           ║ ║
-║  ║   • GameEvents: FleetMoved                            ║ ║
 ║  ║                                                       ║ ║
 ║  ║  1b. Fleet Arrival Detection                          ║ ║
 ║  ║   • Set missionState = Executing for arrived fleets   ║ ║
-║  ║   • GameEvents: FleetArrived                          ║ ║
 ║  ║                                                       ║ ║
 ║  ║  1c. Administrative Completion (Production commands)  ║ ║
 ║  ║   • Move, JoinFleet, Reserve, Mothball, etc.          ║ ║
-║  ║   • GameEvents: CommandCompleted, FleetMerged         ║ ║
 ║  ║                                                       ║ ║
 ║  ║  1d. Scout-on-Scout Detection                         ║ ║
 ║  ║   • Visual quality intel, asymmetric detection        ║ ║
-║  ║   • GameEvents: ScoutDetected                         ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ Step 2: Construction & Repair (Parallel Processing)   ║ ║
+║  ║ 2. Construction & Repair Advancement                  ║ ║
 ║  ║                                                       ║ ║
-║  ║  Construction Queue:                                  ║ ║
+║  ║  2a. Construction Queue Advancement                   ║ ║
 ║  ║   • Advance build queues (ships, units, facilities)   ║ ║
-║  ║   • Mark projects as completed                        ║ ║
-║  ║   • Consume PP/RP from treasuries                     ║ ║
-║  ║   • Completed -> Commission next Command Phase        ║ ║
+║  ║   • Mark completed -> AwaitingCommission              ║ ║
+║  ║   • Commission happens next turn in CMD2              ║ ║
 ║  ║                                                       ║ ║
-║  ║  Repair Queue:                                        ║ ║
-║  ║   • Advance all repairs (auto + manual, 1 turn, 25%)  ║ ║
-║  ║   • Ships: Drydock queue (assigned to specific dock)  ║ ║
-║  ║   • Ground/Facilities/Starbases: Colony queue         ║ ║
-║  ║   • Commission repaired ships immediately to fleets   ║ ║
-║  ║   • Other units -> Immediately operational            ║ ║
+║  ║  2b. Repair Queue Advancement                         ║ ║
+║  ║   • Advance all repairs                               ║ ║
+║  ║   • Mark completed -> AwaitingCommission              ║ ║
+║  ║   • Commission happens next turn in CMD2              ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
@@ -1456,11 +1584,21 @@ Production Phase -> New positions, completed construction
 ║                             v                              ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
 ║  ║ Steps 4-6: Additional Processing                      ║ ║
-║  ║  • Population transfers (Space Lift)                  ║ ║
-║  ║  • Terraforming advancement                           ║ ║
-║  ║  • Cleanup destroyed entities                         ║ ║
-║  ║  • Update fog-of-war visibility                       ║ ║
-║  ║  • Prepare for next turn                              ║ ║
+║  ║  4. Population transfers (Space Lift)                 ║ ║
+║  ║  5. Terraforming advancement                          ║ ║
+║  ║  6. Cleanup and preparation                           ║ ║
+║  ║   • Cleanup destroyed entities                        ║ ║
+║  ║   • Update fog-of-war visibility                      ║ ║
+║  ║   • Prepare for next turn                             ║ ║
+║  ╚═══════════════════════════════════════════════════════╝ ║
+║                             |                              ║
+║                             v                              ║
+║  ╔═══════════════════════════════════════════════════════╗ ║
+║  ║ 7. Research Advancement                               ║ ║
+║  ║  7a. Breakthrough Rolls (every 5 turns)               ║ ║
+║  ║  7b. Economic Level (EL) Advancement                  ║ ║
+║  ║  7c. Science Level (SL) Advancement                   ║ ║
+║  ║  7d. Technology Field Advancement                     ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║
@@ -1501,9 +1639,9 @@ Production Phase -> New positions, completed construction
                         ↓
      ╔══════════════════════════════════════════════════╗
      ║         PHASE 3: COMMAND (Turn N)                ║
-     ║ Part A: Commissioning (before player window)     ║
-     ║ Part B: Player submission (24-hour window)       ║
-     ║ Part C: Command validation (after player window) ║
+     ║ CMD1-4: Server processing (before player window) ║
+     ║ CMD5: Player submission (24-hour window)         ║
+     ║ CMD6: Order processing (after player window)     ║
      ╚══════════════════╦═══════════════════════════════╝
                         ║ Validated Commands 
                         ↓
@@ -1525,7 +1663,7 @@ Production Phase -> New positions, completed construction
 
 ## Glossary
 
-**AS (Attack Strength):** Combat effectiveness rating for squadrons  
+**AS (Attack Strength):** Combat effectiveness rating for ships  
 **CR (Combat Rating):** Ship size class (≥7 for capital ships)  
 **EBP (Espionage Budget Points):** Currency for Space Guild covert operations  
 **ETAC (Explorer/Transport/Armed Colonizer):** Colony ship  

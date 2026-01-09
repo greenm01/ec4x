@@ -11,9 +11,8 @@ EC4X uses **three primary systems** for military asset production:
 Each system has different capacity limits, payment timing, queuing mechanisms, and commissioning rules.
 
 **Related Documentation:**
-- **Colony Systems:** `docs/engine/mechanics/colony-management.md` (terraforming, population, infrastructure)
-- **Capacity Systems:** `docs/engine/mechanics/capacity-systems.md` (dock capacity, hangar capacity)
-- **Turn Cycle:** `docs/engine/architecture/ec4x_canonical_turn_cycle.md` (timing and integration)
+- **Turn Cycle:** `docs/engine/ec4x_canonical_turn_cycle.md` (timing and integration)
+- **Specs:** `docs/specs/02-assets.md` (facility capacities), `docs/specs/04-research_development.md` (terraforming, ACO)
 
 ---
 
@@ -193,7 +192,7 @@ else:
 
 #### Manual Repair Orders
 
-**When:** Command Phase Part D (Player Submission Window)
+**When:** CMD5 (Player Submission Window)
 
 Players can manually submit repair orders for any damaged ship at a colony with available drydock capacity.
 
@@ -219,7 +218,7 @@ proc validateRepairOrder(state: GameState, order: RepairOrder): Result[void, str
 
 #### Auto-Repair Submission
 
-**When:** Command Phase Part B (before player window)
+**When:** CMD3 (Auto-Repair Submission, before player window)
 
 **Purpose:** Convenience mechanism to automatically submit repair orders for damaged ships at colonies with available drydock capacity.
 
@@ -257,7 +256,7 @@ proc submitAutoRepairs(state: var GameState, colonyId: ColonyId):
 **Key Properties:**
 - Runs automatically if `colony.autoRepair = true` (default: false)
 - Respects drydock capacity limits
-- Players can cancel auto-submitted repairs during submission window (Part D)
+- Players can cancel auto-submitted repairs during submission window (CMD5)
 - Manual repairs always allowed regardless of auto-repair setting
 
 ### Repair Advancement
@@ -278,13 +277,13 @@ proc advanceDrydockQueue(state: var GameState, drydock: var Drydock):
         events.add(RepairCompleted, repair)
 ```
 
-**Important:** Repairs that complete during Production Phase are marked as `AwaitingPayment` but do NOT commission immediately. They wait for the next turn's Command Phase Part A.
+**Important:** Repairs that complete during Production Phase are marked as `AwaitingPayment` but do NOT commission immediately. They wait for the next turn's CMD2 (Unified Commissioning).
 
 ### Payment & Stalling Mechanism
 
 #### When Payment is Checked
 
-**Once per turn:** Command Phase Part A (Unified Commissioning)
+**Once per turn:** CMD2 (Unified Commissioning)
 
 **NOT checked during Production Phase** - repairs advance mechanically without payment validation.
 
@@ -363,7 +362,7 @@ Turn 12 Production Phase:
     [1] Destroyer (repair complete, cost: 20 PP)
     [2] Battleship (repair complete, cost: 50 PP)
 
-Turn 13 Command Phase Part A:
+Turn 13 CMD2 (Unified Commissioning):
   House Treasury: 40 PP
   
   Processing (FIFO order):
@@ -387,11 +386,11 @@ Turn 13 Command Phase Part A:
 
 ### Payment Timing
 
-**Deferred until commissioning** (Command Phase Part A)
+**Deferred until commissioning** (CMD2)
 
 **Rationale:**
 1. **Auto-Repair is a convenience** - Players need ability to cancel before payment
-2. **Submission window allows cancellation** - Players see auto-repairs, can cancel in Part D
+2. **Submission window allows cancellation** - Players see auto-repairs, can cancel in CMD5
 3. **No premature commitment** - Repairs advance mechanically, payment only when commissioning
 
 **Comparison to Construction:**
@@ -416,10 +415,10 @@ Turn N Production Phase:
   - Repair status: InProgress → AwaitingPayment
   - Ship still in queue, dock still occupied
 
-Turn N+1 Command Phase Part A:
-  - Treasury check
-  - If sufficient: Pay, commission, free dock
-  - If insufficient: Stall, keep in queue
+Turn N+1 CMD2 (Unified Commissioning):
+   - Treasury check
+   - If sufficient: Pay, commission, free dock
+   - If insufficient: Stall, keep in queue
 ```
 
 ### Repair Costs
@@ -469,7 +468,7 @@ proc calculateRepairCost(shipClass: ShipClass, cstLevel: int): int =
 
 ### Integration with Commissioning
 
-**Unified Command Phase Part A:**
+**Unified CMD2 (Commissioning):**
 
 All asset commissioning happens in single step, including repaired ships:
 
@@ -495,17 +494,17 @@ proc unifiedCommissioning(state: var GameState):
 - Repaired ships commission alongside newly-built ships
 - Single commissioning phase simplifies mental model
 - Treasury check happens once per turn (not during Production Phase)
-- Stalled repairs stay in queue until next turn's Part A
+- Stalled repairs stay in queue until next turn's CMD2
 
 ### Auto-Assignment to Fleets
 
 **Repaired ships treated like newly commissioned ships:**
 
-When `colony.autoJoinFleets = true` (default), repaired ships are automatically assigned to fleets during Command Phase Part C (Colony Automation).
+When `colony.autoJoinFleets = true` (default), repaired ships are automatically assigned to fleets during CMD4 (Colony Automation).
 
 **Behavior:**
-- Repaired ship commissions in Part A
-- Auto-assignment happens in Part C (after commissioning)
+- Repaired ship commissions in CMD2
+- Auto-assignment happens in CMD4 (after commissioning)
 - Ship assigned to fleet at colony (new fleet if none exists)
 - No tracking of original fleet membership
 
@@ -564,7 +563,7 @@ EC4X uses **different payment timing** for construction vs repairs.
 
 ### Construction: Upfront Payment
 
-**When:** Command Phase Part C (order submission)
+**When:** CMD6 (Order Processing & Validation)
 
 **Rationale:** Deliberate player choice → commit resources upfront
 
@@ -601,9 +600,10 @@ proc resolveBuildOrders(state: var GameState, packet: CommandPacket):
 
 ### Repairs: Deferred Payment
 
-**When:** Production Phase Step 2c (repair completion)
+**When:** CMD2 (Unified Commissioning in Command Phase)
 
-**Rationale:** Auto-repair is AI helper → player needs cancel option before payment
+**Rationale:** Auto-repair is AI helper → player needs cancel option before payment.
+Repair queue advancement happens in PRD2, but actual payment occurs at CMD2 commissioning.
 
 **Algorithm:**
 
@@ -917,7 +917,7 @@ proc handleSevereBombardment(state: var GameState, colonyId: ColonyId):
 
 #### Construction: Upfront Payment (No Refunds)
 
-**Payment:** Command Phase Part E (order submission)
+**Payment:** CMD6 (Order Processing & Validation)
 
 **Queue Clearing:** Conflict Phase Step 8 (next turn)
 
@@ -943,7 +943,7 @@ Turn 11 Conflict Phase:
 
 #### Repairs: Deferred Payment (No Costs Yet)
 
-**Payment:** Command Phase Part A (commissioning, next turn)
+**Payment:** CMD2 (commissioning, next turn)
 
 **Queue Clearing:** Conflict Phase Step 8 (before payment)
 
@@ -1073,9 +1073,9 @@ Income Phase Step 5: Capacity Enforcement
   ├─ Uses post-combat IU/infrastructure values (from Step 8)
   └─ Overage calculations respect queue clearing
 
-Command Phase Part A: Unified Commissioning
-  ├─ Only processes surviving queues (cleared queues empty)
-  └─ No validation needed (entity existence = survival)
+CMD2: Unified Commissioning
+   ├─ Only processes surviving queues (cleared queues empty)
+   └─ No validation needed (entity existence = survival)
 ```
 
 **Key Principle:** Conflict Phase Step 8 clears queues → Income Phase sees clean state → Command Phase processes survivors
@@ -1115,7 +1115,7 @@ proc calculateMaintenance(state: GameState, house: House):
   
   # Ships that were in destroyed shipyard queue never commissioned → not counted
 
-# Command Phase Part A: Unified Commissioning
+# CMD2: Unified Commissioning
 proc unifiedCommissioning(state: var GameState):
   # Destroyed shipyard no longer exists → no queue to process
   for facility in state.allShipyards():  # Destroyed facility not in iteration
@@ -1293,9 +1293,9 @@ Colony:
 | **Commissioning** | Command Phase A (next turn) | Command Phase A (next turn) |
 | **Maintenance Lag** | 1 turn (commission N, pay N+1) | 1 turn (commission N, pay N+1) |
 
-**Note:** Other systems documented separately:
-- Terraforming → `docs/engine/mechanics/colony-management.md`
-- Carrier hangar → `docs/engine/mechanics/capacity-systems.md`
+**Note:** Other systems documented in specs:
+- Terraforming → `docs/specs/04-research_development.md` Section 4.6
+- Carrier hangar → `docs/specs/02-assets.md` Section 2.4.1
 
 ---
 
@@ -1304,7 +1304,7 @@ Colony:
 ```
 === TURN N: Command Phase ===
 
-Part A: Unified Commissioning
+CMD2: Unified Commissioning
          ↓
 ┌─────────────────────────────────┐
 │ Commission ALL completed assets │
@@ -1314,14 +1314,14 @@ Part A: Unified Commissioning
 │ → Frees capacity                │
 └─────────────┬───────────────────┘
               ↓
-Part B: Auto-Repair Submission
+CMD3: Auto-Repair Submission
               ↓
-Part C: Colony Automation
+CMD4: Colony Automation
          (Auto-assign, Auto-load)
               ↓
-Part D: Player Window
+CMD5: Player Window
               ↓
-Part E: Order Processing
+CMD6: Order Processing
          ↓
     ┌────────────┐
     │ Routing    │
@@ -1391,13 +1391,13 @@ Capital Ship?          Everything Else?
 === TURN N+1: Command Phase ===
                    ↓
         ┌──────────────────────┐
-        │ Part A: Commission   │
+        │ CMD2: Commission     │
         │ Survivors from N     │
         │ (Frees capacity)     │
         └──────────┬───────────┘
                    ↓
         ┌──────────────────────┐
-        │ Parts B-E: Automation│
+        │ CMD3-6: Automation   │
         │ and New Orders       │
         │ (Use freed capacity) │
         └──────────────────────┘
@@ -1458,11 +1458,11 @@ Capital Ship?          Everything Else?
 
 **Module:** `src/engine/resolution/commissioning.nim`
 
-EC4X uses a **unified commissioning system** where ALL assets commission in Command Phase Part A, regardless of type or build location.
+EC4X uses a **unified commissioning system** where ALL assets commission in CMD2, regardless of type or build location.
 
 #### Commissioning Timing
 
-**When:** Command Phase Part A (Unified Commissioning)
+**When:** CMD2 (Unified Commissioning)
 
 **What:** ALL completed assets from ALL sources:
 - Ships from Spaceports/Shipyards (construction)
@@ -1474,7 +1474,7 @@ EC4X uses a **unified commissioning system** where ALL assets commission in Comm
 - No split timing complexity (uniform 1-turn lag)
 - Clean separation: Production advances → Conflict resolves → Command commissions
 
-#### All Assets Commission Command Phase A
+#### All Assets Commission in CMD2
 
 **Universal 1-Turn Lag:**
 
@@ -1495,11 +1495,11 @@ Turn N Conflict Phase:
   - Facilities can be destroyed/crippled
   - Colonies can be conquered
 
-Turn N+1 Command Phase Part A:
-  - UNIFIED COMMISSIONING
-  - All completed assets commission together
-  - Ships/fighters/marines/facilities operational
-  - Docks freed, capacity available
+Turn N+1 CMD2 (Unified Commissioning):
+   - UNIFIED COMMISSIONING
+   - All completed assets commission together
+   - Ships/fighters/marines/facilities operational
+   - Docks freed, capacity available
 ```
 
 **Key Properties:**
@@ -1512,7 +1512,7 @@ Turn N+1 Command Phase Part A:
 
 ```nim
 proc unifiedCommissioning(state: var GameState):
-  # Part A: Commission ALL completed assets
+  # CMD2: Commission ALL completed assets
   
   # 1. Ships from Spaceports
   for spaceport in state.allSpaceports():
@@ -1626,14 +1626,14 @@ New system (unified commissioning):
 
 ```
 Turn N Command Phase:
-  Part A: Unified Commissioning
+  CMD2: Unified Commissioning
     ├─ Commission ships from Spaceports/Shipyards
     ├─ Commission repaired ships from Drydocks (with payment)
     └─ Commission colony-built assets
-  Part B: Auto-Repair Submission
-  Part C: Colony Automation
-  Part D: Player Submission Window
-  Part E: Command Validation & Storage
+  CMD3: Auto-Repair Submission
+  CMD4: Colony Automation
+  CMD5: Player Submission Window
+  CMD6: Command Validation & Storage
 
 Turn N Production Phase:
   Step 2: Queue Advancement
@@ -1653,7 +1653,7 @@ Turn N+1 Income Phase:
     └─ Assets commissioned Turn N exempt (1-turn lag)
 
 Turn N+1 Command Phase:
-  Part A: Unified Commissioning
+  CMD2: Unified Commissioning
     └─ Survivors from Turn N commission here
 ```
 
@@ -1661,8 +1661,8 @@ Turn N+1 Command Phase:
 
 ```
 Turn 10 Command Phase:
-  Part D: Player orders Battleship at Colony X
-  Part E: Payment (200 PP), added to Shipyard queue
+  CMD5: Player orders Battleship at Colony X
+  CMD6: Payment (200 PP), added to Shipyard queue
   
   Shipyard queue: [Battleship(turnsRemaining: 1)]
 
@@ -1690,7 +1690,7 @@ Turn 11 Command Phase A:
 
 **Module:** `src/engine/resolution/automation.nim`
 
-**When:** Command Phase Part C (after commissioning Part A, after auto-repair Part B, before player window Part D)
+**When:** CMD4 (after commissioning CMD2, after auto-repair CMD3, before player window CMD5)
 
 **Functions:**
 - `processColonyAutomation(state, orders)` - Batch automation processor
@@ -1769,24 +1769,24 @@ proc autoLoadMarinesToTransports(state: var GameState, colony: Colony):
 **Command Phase orchestration:**
 ```nim
 proc resolveCommandPhase(state: var GameState):
-  # Part A: Unified Commissioning
+  # CMD2: Unified Commissioning
   unifiedCommissioning(state)  # ALL assets commission here
   
-  # Part B: Auto-Repair Submission
+  # CMD3: Auto-Repair Submission
   for colony in state.allColonies():
     if colony.autoRepair:
       submitAutoRepairs(state, colony.id)
   
-  # Part C: Colony Automation
+  # CMD4: Colony Automation
   for colony in state.allColonies():
     autoAssignShipsToFleets(state, colony)  # Newly commissioned + repaired ships
     autoLoadFightersToCarriers(state, colony)
     autoLoadMarinesToTransports(state, colony)
   
-  # Part D: Player Submission Window (24-hour window)
+  # CMD5: Player Submission Window (24-hour window)
   # (Players can cancel auto-repairs, submit manual orders)
   
-  # Part E: Command Validation & Storage
+  # CMD6: Command Validation & Storage
   processAllOrders(state)  # Build orders, move orders, etc.
 ```
 
@@ -1799,7 +1799,7 @@ proc resolveProductionPhase(state: var GameState):
   advanceAllQueues(state)  # Facility + colony queues
   
   # Completed projects marked AwaitingCommission
-  # (Commission next turn in Command Phase A)
+  # (Commission next turn in CMD2)
 ```
 
 **Module:** `src/engine/combat/orchestrator.nim`

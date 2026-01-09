@@ -474,12 +474,10 @@ Combat and escalation follow a grace period system:
 For complete escalation timing and threat categories, see [Section 8.1.6 Escalation Ladder](08-diplomacy.md#816-escalation-ladder-summary).
 
 **Mobile Fleet Types** (Fight in Space Combat):
-- Fleets with **no commands** (default mobile posture)
-- Fleets with **Hold commands** (stationary but mobile-capable)
+- Fleets with **Hold commands** (default stationary posture, awaiting orders)
 - Fleets with **Patrol commands** (active patrol duty)
 - Fleets with **offensive mission commands** (Move, Invade, Bombard, Blockade)
-- Fleets with **System Guard Commands** (DefendSystem)
-- **Active status fleets** without guard-specific commands
+- **Active status fleets** without Guard-specific commands
 
 **Who Does NOT Fight in Space Combat:**
 - **Scouts**: Consumed when initiating spy missions, destroyed upon detection - never participate in fleet combat
@@ -595,7 +593,7 @@ Assault fortified colony defenses after winning space superiority. Your fleets e
 
 **Orbital Defenders** (All Fight Simultaneously):
 - **Guard fleets**: Fleets with GuardStarbase, GuardPlanet commands
-- **Reserve fleets**: 50% maintenance fleets stationed at colony (fight at 100% AS - already included in ship stats)
+- **Reserve fleets**: 50% maintenance fleets stationed at colony, fight at 50% AS with auto-Blockade posture (orbital defense only)
 - **Mothballed fleets**: 0% maintenance fleets (CANNOT FIGHT - must be screened)
 - **Starbases**: Orbital installations with heavy firepower and detection capability
 - **Unassigned ships**: Combat ships at colony not assigned to fleets

@@ -237,12 +237,12 @@ Penalty mechanics describe how prestige is deducted based on player actions and 
 | ----------------------------- | ------------------------------------- | --------------------------------- | ------------------------- | --------------------------- |
 | High Tax Rate                 | Rolling 6-turn avg 51-65%             | -2 prestige                       | Every 3 consecutive turns | `high_tax_*`                |
 | Very High Tax Rate            | Rolling 6-turn avg >66%               | -2 prestige                       | Every 5 consecutive turns | `very_high_tax_*`           |
-| Maintenance Shortfall         | Missed maintenance payment            | -8 turn 1, escalates by -3/turn   | Per turn missed           | `maintenance_shortfall_*`   |
+| Maintenance Shortfall         | Missed maintenance payment            | -5 turn 1, escalates by +2/turn   | Per turn missed           | `maintenance_shortfall_*`   |
 | Blockade                      | Colony under blockade at Income Phase | -3 prestige                       | Per turn per colony       | `blockade_penalty`          |
 | Espionage Over-Investment     | EBP spending >5% of budget            | -2 prestige per 1% over threshold | Per turn                  | `over_invest_espionage`     |
 | Counter-Intel Over-Investment | CIP spending >5% of budget            | -2 prestige per 1% over threshold | Per turn                  | `over_invest_counter_intel` |
 
-*Source: config/prestige.toml [penalties] section*
+*Source: config/prestige.kdl [maintenanceShortfall] section*
 
 <!-- PENALTY_MECHANICS_END -->
 

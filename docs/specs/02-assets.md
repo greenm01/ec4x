@@ -250,20 +250,26 @@ To effectively manage your C2 Pool and maintenance costs, you can assign differe
 **Reserve Status:**
 - **CC Cost:** 50%
 - **Maintenance Cost:** 50%
+- **Combat:** Fights at 50% AS (half attack strength) with auto-assigned Blockade command
 - **Rules:**
     - A fleet must be at a friendly starbase or shipyard to be placed in Reserve.
     - Placing a fleet in Reserve is **instant** during the Command Phase.
-    - Reactivating it takes **1 full turn**.
-    - While in Reserve, a fleet is immobile and cannot fight.
-- **Strategic Use:** Ideal for reducing C2 and maintenance load during peacetime while keeping fleets ready for rapid deployment.
+    - While in Reserve, a fleet is immobile and auto-assigned the Blockade command.
+    - Reserve fleets participate in orbital defense at reduced effectiveness (50% AS).
+    - Cannot accept movement or other orders until reactivated.
+    - Reactivation takes **1 turn** (default, configurable).
+- **Strategic Use:** Ideal for reducing C2 and maintenance load while maintaining a credible defensive deterrent at your colonies.
 
 **Mothballed Status:**
 - **CC Cost:** 0%
 - **Maintenance Cost:** 10% (for skeleton crews and basic system integrity)
+- **Combat:** Cannot fight (screened during combat, not targetable)
 - **Rules:**
-    - A fleet must be at a friendly starbase or shipyard to be Mothballed.
+    - A fleet must be at a friendly colony with spaceport to be Mothballed.
     - Mothballing a fleet is **instant** during the Command Phase.
-    - Reactivating a mothballed fleet takes **3 full turns**.
+    - While Mothballed, a fleet is completely offline and cannot participate in combat.
+    - Cannot accept any orders until reactivated.
+    - Reactivation takes **1 turn** (default, configurable).
 - **Strategic Use:** For long-term storage of valuable but currently unneeded assets, completely freeing up their C2 Pool allocation for a minimal maintenance fee.
 
 #### 2.3.3.5 Task Force

@@ -1,7 +1,7 @@
 # Combat System Architecture
 
 **Purpose:** Implementation architecture for EC4X combat system  
-**Last Updated:** 2026-01-09  
+**Last Updated:** 2026-01-09 (Combat Participant Filtering)  
 **Status:** Unified Commissioning + Immediate Combat Effects
 
 ---
@@ -11,16 +11,16 @@
 EC4X combat follows a **theater progression model** (Space → Orbital → Planetary) with immediate combat effects processing. This document describes the combat system architecture, integration with other systems, and event-driven state management.
 
 **Core Principles:**
-- **Immediate Effects:** Combat consequences applied instantly (Conflict Phase Step 8)
+- **Immediate Effects:** Combat consequences applied instantly (CON2 - Immediate Combat Effects)
 - **Event-Driven:** All combat effects generate events for telemetry/prestige
 - **No Validation:** Entity existence = survival (destroyed entities removed, queues cleared)
 - **Clean State:** Income Phase receives clean post-combat state (correct ownership, cleared queues)
 
 **Related Documentation:**
 - **Specification:** `docs/specs/07-combat.md` (gameplay rules)
-- **Turn Cycle:** `docs/engine/architecture/ec4x_canonical_turn_cycle.md` (phase timing)
-- **Construction/Repair:** `docs/engine/architecture/construction-repair-commissioning.md` (queue mechanics)
-- **Colony Management:** `docs/engine/mechanics/colony-management.md` (automation, terraforming)
+- **Turn Cycle:** `docs/engine/ec4x_canonical_turn_cycle.md` (phase timing)
+- **Construction/Repair:** `docs/engine/construction-repair-commissioning.md` (queue mechanics)
+- **Specs:** `docs/specs/04-research_development.md` (terraforming tech)
 
 ---
 
@@ -47,14 +47,78 @@ EC4X combat follows a **theater progression model** (Space → Orbital → Plane
 
 ---
 
+## Combat Participant Filtering
+
+Combat occurs based on diplomatic status, fleet mission threat level, and territorial ownership. Implementation uses `ThreatLevel` enum and `CommandThreatLevels` constant from `src/engine/types/fleet.nim`.
+
+### ThreatLevel Classification
+
+| Threat Level | Commands | Target | Escalation Effect |
+|--------------|----------|--------|-------------------|
+| **Attack** | Blockade, Bombard, Invade, Blitz | Colony | Enemy (immediate combat) |
+| **Contest** | Patrol, Hold, Rendezvous | System | Hostile (grace period applies) |
+| **Benign** | Move, SeekHome, Guard, Colonize, Scout*, etc. | Various | No escalation |
+
+### Territorial Ownership
+
+Combat eligibility depends on whose territory the fleet is in:
+- **Own territory**: System contains your colony
+- **Their territory**: System contains another house's colony  
+- **Neutral territory**: System has no colony (uncolonized)
+
+### Combat Rules by Location
+
+**During Travel (Intermediate Systems):**
+
+| Diplomatic Status | Result |
+|-------------------|--------|
+| Enemy | Combat (automatic, simultaneous) |
+| Hostile | No combat (safe passage) |
+| Neutral | No combat (safe passage) |
+
+**At Destination - Their Colony (Attack Missions):**
+
+| Diplomatic Status | Result |
+|-------------------|--------|
+| Any | Escalate to Enemy if needed, combat |
+
+**At Destination - Their System (Contest Missions):**
+
+| Diplomatic Status | Result |
+|-------------------|--------|
+| Enemy | Combat |
+| Hostile | Combat (grace expired) |
+| Neutral | Escalate→Hostile, NO combat |
+
+**At Destination - Neutral or Own System:**
+
+| Diplomatic Status | Result |
+|-------------------|--------|
+| Enemy | Combat (if enemy fleet present) |
+| Hostile/Neutral | No combat |
+
+### Defender Engagement
+
+- Defenders do NOT intercept fleets traveling through unless Enemy status
+- Defenders engage based on threat to their system/colony, not mere presence
+- All combat is simultaneous (no attacker/defender initiative)
+
+**Grace Period:** Encoded in diplomatic state transition. Neutral→Hostile IS the grace period (no separate timer). Once Hostile, subsequent Contest missions trigger combat immediately.
+
+**Implementation Reference:** 
+- Specs: `docs/specs/08-diplomacy.md` Section 8.1.5-8.1.6
+- Turn Cycle: `docs/engine/ec4x_canonical_turn_cycle.md` (Combat Participant Determination)
+
+---
+
 ## Conflict Phase Integration
 
-### Step 1-7: Combat Resolution
+### CON1: Combat Resolution
 - Execute all combat operations (Space, Orbital, Planetary, Blockade, Colonization, Intelligence)
 - Mark entities as Destroyed or Crippled (CombatState enum)
 - Generate combat events (ShipDestroyed, FacilityDestroyed, ColonyCaptured, etc.)
 
-### Step 8: Immediate Combat Effects
+### CON2: Immediate Combat Effects
 
 **Purpose:** Apply all combat consequences before turn boundary. Ensures Income Phase sees clean state.
 
@@ -108,15 +172,15 @@ colony.owner = attackingHouseId  # Immediate
 - Cancel `colony.activeTerraforming` (terraforming project)
 
 **Payment Implications:**
-- Construction: Paid upfront (Command Phase E) = sunk cost for previous owner
+- Construction: Paid upfront (CMD6) = sunk cost for previous owner
 - Repairs: Deferred payment (not yet paid) = no refund
-- Terraforming: Paid upfront (Command Phase E) = sunk cost
+- Terraforming: Paid upfront (CMD6) = sunk cost
 
 **Facility Queues:** Also cleared by facility destruction during orbital combat (Spaceports/Shipyards/Drydocks destroyed)
 
 **Events Generated:**
 - `ColonyCaptured` (includes infrastructureLost, projectsLost counts)
-- Event cached with deltas for prestige calculation (Income Phase Step 7)
+- Event cached with deltas for prestige calculation (INC9)
 
 **Rationale:** Conqueror inherits empty colony without previous owner's work-in-progress. Represents disruption of colony operations during conquest.
 
@@ -151,10 +215,10 @@ if infrastructureDamaged > (colony.infrastructure * 0.5):
 
 | Event | Spaceport Queue | Shipyard Queue | Drydock Queue | Colony Construction | Colony Repair | Terraforming | Timing |
 |-------|----------------|----------------|---------------|---------------------|---------------|--------------|--------|
-| Neoria Destroyed | ✅ Cleared | ✅ Cleared | ✅ Cleared | ❌ N/A | ❌ N/A | ❌ N/A | Conflict Step 8 |
-| Neoria Crippled | ✅ Cleared | ✅ Cleared | ✅ Cleared | ❌ N/A | ❌ N/A | ❌ N/A | Conflict Step 8 |
-| Colony Conquered | ✅ Cleared* | ✅ Cleared* | ✅ Cleared* | ✅ Cleared | ✅ Cleared | ✅ Cancelled | Conflict Step 8 |
-| Bombardment >50% | ❌ N/A | ❌ N/A | ❌ N/A | ✅ Cleared | ✅ Cleared | ✅ Cancelled | Conflict Step 8 |
+| Neoria Destroyed | ✅ Cleared | ✅ Cleared | ✅ Cleared | ❌ N/A | ❌ N/A | ❌ N/A | CON2 |
+| Neoria Crippled | ✅ Cleared | ✅ Cleared | ✅ Cleared | ❌ N/A | ❌ N/A | ❌ N/A | CON2 |
+| Colony Conquered | ✅ Cleared* | ✅ Cleared* | ✅ Cleared* | ✅ Cleared | ✅ Cleared | ✅ Cancelled | CON2 |
+| Bombardment >50% | ❌ N/A | ❌ N/A | ❌ N/A | ✅ Cleared | ✅ Cleared | ✅ Cancelled | CON2 |
 
 *Facility queues also cleared by facility destruction during orbital combat
 
@@ -235,42 +299,42 @@ if infrastructureDamaged > (colony.infrastructure * 0.5):
 ## Payment Implications
 
 ### Construction (Upfront Payment)
-- **When:** Command Phase E (order submission)
+- **When:** CMD6 (Order Processing & Validation)
 - **Amount:** Full build cost (ship, facility, terraforming)
 - **Lost on Combat:** Sunk cost (no refund)
 - **Rationale:** Deliberate player choice requires upfront commitment
 
 **Example:**
 ```
-Turn 5 Command E: Order Battleship (pay 500 PP)
+Turn 5 CMD6: Order Battleship (pay 500 PP)
 Turn 5 Production: Battleship construction advances
 Turn 6 Conflict: Colony conquered → Battleship construction LOST
 Result: 500 PP sunk cost (no refund)
 ```
 
 ### Repair (Deferred Payment)
-- **When:** Command Phase A (commissioning, next turn after completion)
+- **When:** CMD2 (Unified Commissioning, next turn after completion)
 - **Amount:** 25% of original build cost
 - **Lost on Combat:** No payment yet made = no refund, but no cost
 - **Rationale:** Auto-repair convenience requires cancel option before payment
 
 **Example:**
 ```
-Turn 5 Command B: Auto-repair submits Cruiser (no payment)
+Turn 5 CMD3: Auto-repair submits Cruiser (no payment)
 Turn 5 Production: Repair advances
 Turn 6 Conflict: Drydock crippled → Cruiser repair LOST
 Result: No PP lost (payment deferred, never made)
 ```
 
 ### Terraforming (Upfront Payment)
-- **When:** Command Phase E (order submission)
+- **When:** CMD6 (Order Processing & Validation)
 - **Amount:** Full terraforming cost (planet class upgrade)
 - **Lost on Combat:** Sunk cost (no refund)
 - **Rationale:** Multi-turn project requires upfront commitment
 
 **Example:**
 ```
-Turn 5 Command E: Order Terraforming Class 2→3 (pay 200 PP)
+Turn 5 CMD6: Order Terraforming Class 2→3 (pay 200 PP)
 Turn 5 Production: Terraforming advances (5 turns remaining)
 Turn 6 Conflict: Colony conquered → Terraforming CANCELLED
 Result: 200 PP sunk cost (no refund)
@@ -284,7 +348,7 @@ Result: 200 PP sunk cost (no refund)
 
 **Pending Commissions Vulnerable:**
 - Ships complete Production Phase → marked PendingCommission
-- Sit in docks/queues until Command Phase A (next turn)
+- Sit in docks/queues until CMD2 (next turn)
 - **Vulnerable window:** Entire Conflict Phase + Income Phase
 
 **Protection:**
@@ -297,7 +361,7 @@ Result: 200 PP sunk cost (no refund)
 **1-Turn Commissioning Lag:**
 ```
 Turn 5 Command: Scout spots enemy fleet 1 jump away
-Turn 5 Command E: Order 3 Marines for defense
+Turn 5 CMD6: Order 3 Marines for defense
 Turn 5 Production: Marines complete, marked PendingCommission
 
 Turn 6 Conflict: Enemy arrives, invades
@@ -306,9 +370,9 @@ Turn 6 Conflict: Enemy arrives, invades
   → Colony conquered, Marines LOST
 
 Correct Timeline (2-turn ahead planning):
-Turn 4 Command E: Order 3 Marines (proactive)
+Turn 4 CMD6: Order 3 Marines (proactive)
 Turn 4 Production: Marines complete
-Turn 5 Command A: Marines commissioned
+Turn 5 CMD2: Marines commissioned
 Turn 5-6: Marines available at colony
 Turn 6 Conflict: Enemy arrives → Marines defend ✓
 ```
@@ -350,7 +414,7 @@ GameEvent(
     repairCount: queuedRepairCount,
     terraformingCancelled: terraformingWasActive
   )),
-  # Cached deltas for prestige (Income Phase Step 7)
+  # Cached deltas for prestige (INC9)
   changeAmount: some(prestigeDeltaAttacker)
 )
 ```
@@ -443,7 +507,7 @@ GameEvent(
 - `clearColonyConstructionOnConquest(state, colonyId, newOwner)` - Conquest-specific clearing
 - `clearColonyConstructionOnBombardment(state, colonyId, events)` - Bombardment-specific clearing
 
-**Integration:** Called by Conflict Phase Step 8
+**Integration:** Called by CON2 (Immediate Combat Effects)
 
 ### combat/planetary.nim
 **Purpose:** Planetary combat mechanics
@@ -495,7 +559,7 @@ GameEvent(
 # Conflict Phase: Generate event
 events.add(colonyCaptured(...))
 
-# Conflict Phase Step 8: Process event
+# CON2: Process event
 for event in events:
   if event.eventType == ColonyCaptured:
     changeColonyOwner(state, event.colonyId, event.newOwner)
@@ -509,11 +573,11 @@ for event in events:
 **Benefits:**
 - Simpler code (no validation checks needed)
 - Clear mental model ("if it exists, it survived")
-- Single cleanup point (Conflict Phase Step 8)
+- Single cleanup point (CON2)
 
 **Example:**
 ```nim
-# Command Phase A: Commission pending ships
+# CMD2: Commission pending ships
 for neoria in state.allNeorias():
   for projectId in neoria.constructionQueue:
     if project.status == PendingCommission:
@@ -570,59 +634,17 @@ for neoria in state.allNeorias():
 
 ---
 
-## Future Enhancements
-
-### Potential Improvements
-
-**1. Partial Queue Preservation (Design Alternative)**
-- Instead of clearing all queues, preserve X% of progress
-- Represents salvaging partially-completed work
-- More forgiving for defenders, less punishing for conquest
-
-**2. Refund Mechanics**
-- Partial refunds for cancelled projects (e.g., 50% of construction cost)
-- Makes conquest/bombardment less economically devastating
-- Reduces sunk cost risks
-
-**3. Queue Priority System**
-- High-priority projects continue even during bombardment
-- Low-priority projects cancelled first
-- Player control over critical vs expendable projects
-
-**4. Facility Repair During Combat**
-- Emergency repairs during multi-round combat
-- Costs PP, reduces combat effectiveness temporarily
-- Adds tactical depth to prolonged sieges
-
-### Migration Notes
-
-**Current Implementation Status:**
-- ✅ Theater progression (orchestrator.nim)
-- ✅ Entity destruction cleanup (cleanup.nim)
-- ⚠️ Crippled facility queue clearing (documented, needs implementation)
-- ⚠️ Colony conquest queue clearing (documented, needs implementation)
-- ⚠️ Bombardment >50% queue clearing (documented, needs implementation)
-- ⚠️ Unified commissioning (documented, needs refactoring)
-
-**Implementation Priority:**
-1. Crippled facility queue clearing (Conflict Phase Step 8)
-2. Colony conquest effects (ownership + queues)
-3. Bombardment effects (>50% threshold)
-4. Unified commissioning (Command Phase A restructure)
-
----
-
 ## Related Systems
 
 ### Prestige System
-- Combat events drive prestige calculations (Income Phase Step 7)
+- Combat events drive prestige calculations (INC9)
 - Cached deltas in events (no recalculation needed)
 - Colony captured: Attacker +prestige, Defender -prestige
 
 ### Capacity Enforcement
-- Uses post-combat ownership (Income Phase Step 5)
+- Uses post-combat ownership (INC7)
 - IU values updated after conquest/bombardment
-- Capital/total/fighter squadron limits based on clean state
+- Capital/total/fighter ship limits based on clean state
 
 ### Intelligence System
 - Scout observations generate combat intel reports
