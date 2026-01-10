@@ -279,7 +279,7 @@ proc resolveMovementCommand*(
   ##   - Major lanes: 2 jumps per turn if all systems owned by player
   ##   - Major lanes: 1 jump per turn if jumping into unexplored/rival system
   ##   - Minor/Restricted lanes: 1 jump per turn maximum
-  ##   - Crippled ships or Spacelift ships cannot cross Restricted lanes
+  ##   - Restricted lanes: ONLY non-crippled ETACs allowed (combat ships blocked)
 
   # Detect infinite recursion
   movementCallDepth += 1

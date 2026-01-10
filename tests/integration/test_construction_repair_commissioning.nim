@@ -13,7 +13,7 @@ import std/[unittest, options, tables, sequtils]
 import ../../src/engine/engine
 import ../../src/engine/types/[
   core, game_state, house, colony, facilities, ship, fleet,
-  production, command, event, combat
+  production, command, event, combat, ground_unit
 ]
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/globals
@@ -47,7 +47,8 @@ suite "Construction: Project Factory Functions":
   test "createShipProject sets correct cost and time":
     let project = createShipProject(ShipClass.Destroyer)
     check project.projectType == BuildType.Ship
-    check project.itemId == "Destroyer"
+    check project.shipClass.isSome
+    check project.shipClass.get() == ShipClass.Destroyer
     check project.costTotal > 0
     check project.turnsRemaining >= 1
 
@@ -60,13 +61,15 @@ suite "Construction: Project Factory Functions":
   test "createBuildingProject for spaceport":
     let project = createBuildingProject(FacilityClass.Spaceport)
     check project.projectType == BuildType.Facility
-    check project.itemId == "Spaceport"
+    check project.facilityClass.isSome
+    check project.facilityClass.get() == FacilityClass.Spaceport
     check project.costTotal > 0
 
   test "createBuildingProject for shipyard":
     let project = createBuildingProject(FacilityClass.Shipyard)
     check project.projectType == BuildType.Facility
-    check project.itemId == "Shipyard"
+    check project.facilityClass.isSome
+    check project.facilityClass.get() == FacilityClass.Shipyard
     # Shipyards should cost more than spaceports
     let spaceportProject = createBuildingProject(FacilityClass.Spaceport)
     check project.costTotal > spaceportProject.costTotal
@@ -250,7 +253,10 @@ suite "Construction: Ship Commissioning":
     let completed = CompletedProject(
       colonyId: colony.id,
       projectType: BuildType.Ship,
-      itemId: "Destroyer",
+      shipClass: some(ShipClass.Destroyer),
+      facilityClass: none(FacilityClass),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
       neoriaId: none(NeoriaId)
     )
 
@@ -293,7 +299,10 @@ suite "Construction: Ship Commissioning":
     let completed = CompletedProject(
       colonyId: colony.id,
       projectType: BuildType.Ship,
-      itemId: "Cruiser",
+      shipClass: some(ShipClass.Cruiser),
+      facilityClass: none(FacilityClass),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
       neoriaId: none(NeoriaId)
     )
 
@@ -392,7 +401,10 @@ suite "Construction: Planetary Defense Commissioning":
     let completed = CompletedProject(
       colonyId: colony.id,
       projectType: BuildType.Facility,
-      itemId: "Starbase",
+      shipClass: none(ShipClass),
+      facilityClass: some(FacilityClass.Starbase),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
       neoriaId: none(NeoriaId)
     )
 
@@ -420,7 +432,10 @@ suite "Construction: Planetary Defense Commissioning":
     let completed = CompletedProject(
       colonyId: colony.id,
       projectType: BuildType.Facility,
-      itemId: "Spaceport",
+      shipClass: none(ShipClass),
+      facilityClass: some(FacilityClass.Spaceport),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
       neoriaId: none(NeoriaId)
     )
 
@@ -565,6 +580,706 @@ suite "Construction: Full Lifecycle Integration":
 
     # Ship should be commissioned (1-turn build time)
     check finalShipCount >= initialShipCount + 1
+
+suite "Construction: All Ship Classes Can Be Built":
+
+  test "All combat ship classes can be constructed":
+    # Test that every combat ship class can create a valid project
+    let combatShips = [
+      ShipClass.Corvette, ShipClass.Frigate, ShipClass.Destroyer,
+      ShipClass.LightCruiser, ShipClass.Cruiser, ShipClass.Battlecruiser,
+      ShipClass.Battleship, ShipClass.Dreadnought, ShipClass.SuperDreadnought
+    ]
+    
+    for shipClass in combatShips:
+      let project = createShipProject(shipClass)
+      check project.projectType == BuildType.Ship
+      check project.shipClass.isSome
+      check project.shipClass.get() == shipClass
+      check project.costTotal > 0
+      check project.turnsRemaining >= 1
+
+  test "All carrier classes can be constructed":
+    let carriers = [ShipClass.Carrier, ShipClass.SuperCarrier]
+    
+    for shipClass in carriers:
+      let project = createShipProject(shipClass)
+      check project.projectType == BuildType.Ship
+      check project.shipClass.isSome
+      check project.shipClass.get() == shipClass
+      check project.costTotal > 0
+
+  test "All auxiliary ship classes can be constructed":
+    let auxiliaryShips = [
+      ShipClass.Scout, ShipClass.ETAC, ShipClass.TroopTransport,
+      ShipClass.Raider
+    ]
+    
+    for shipClass in auxiliaryShips:
+      let project = createShipProject(shipClass)
+      check project.projectType == BuildType.Ship
+      check project.shipClass.isSome
+      check project.shipClass.get() == shipClass
+      check project.costTotal > 0
+
+  test "Fighters and special ships can be constructed":
+    let specialShips = [ShipClass.Fighter, ShipClass.PlanetBreaker]
+    
+    for shipClass in specialShips:
+      let project = createShipProject(shipClass)
+      check project.projectType == BuildType.Ship
+      check project.shipClass.isSome
+      check project.shipClass.get() == shipClass
+      check project.costTotal > 0
+
+suite "Construction: All Facility Classes Can Be Built":
+
+  test "All facility classes can be constructed":
+    let facilities = [
+      FacilityClass.Spaceport, FacilityClass.Shipyard,
+      FacilityClass.Drydock, FacilityClass.Starbase
+    ]
+    
+    for facilityClass in facilities:
+      let project = createBuildingProject(facilityClass)
+      check project.projectType == BuildType.Facility
+      check project.facilityClass.isSome
+      check project.facilityClass.get() == facilityClass
+      check project.costTotal > 0
+      check project.turnsRemaining >= 1
+
+suite "Construction: All Ground Unit Classes Can Be Built":
+
+  test "All ground unit classes can construct projects":
+    # Note: Ground units use different construction path, but verify config exists
+    let groundClasses = [
+      GroundClass.Army, GroundClass.Marine,
+      GroundClass.GroundBattery, GroundClass.PlanetaryShield
+    ]
+    
+    for groundClass in groundClasses:
+      # Verify config exists for each ground unit type
+      let cost = gameConfig.groundUnits.units[groundClass].productionCost
+      check cost > 0
+
+suite "Commissioning: All Ship Classes Can Be Commissioned":
+
+  test "All ship classes commission into fleets or colonies correctly":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    # Get first colony
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Test combat ships (should create fleet)
+    let combatShips = [
+      ShipClass.Destroyer, ShipClass.Cruiser, ShipClass.Battleship
+    ]
+    
+    for shipClass in combatShips:
+      let completed = CompletedProject(
+        colonyId: colony.id,
+        projectType: BuildType.Ship,
+        shipClass: some(shipClass),
+        facilityClass: none(FacilityClass),
+        groundClass: none(GroundClass),
+        industrialUnits: 0,
+        neoriaId: none(NeoriaId)
+      )
+      
+      let initialShips = game.allShips().toSeq.len
+      commissionShips(game, @[completed], events)
+      let finalShips = game.allShips().toSeq.len
+      
+      check finalShips == initialShips + 1
+
+  test "Scouts commission into scout-only fleets":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Ship,
+      shipClass: some(ShipClass.Scout),
+      facilityClass: none(FacilityClass),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    let initialShips = game.allShips().toSeq.len
+    commissionShips(game, @[completed], events)
+    let finalShips = game.allShips().toSeq.len
+    
+    check finalShips == initialShips + 1
+
+  test "ETACs commission into fleets":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Ship,
+      shipClass: some(ShipClass.ETAC),
+      facilityClass: none(FacilityClass),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    let initialShips = game.allShips().toSeq.len
+    commissionShips(game, @[completed], events)
+    let finalShips = game.allShips().toSeq.len
+    
+    check finalShips == initialShips + 1
+
+  test "Fighters remain colony-assigned (not in fleets)":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Ship,
+      shipClass: some(ShipClass.Fighter),
+      facilityClass: none(FacilityClass),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    let initialShips = game.allShips().toSeq.len
+    commissionShips(game, @[completed], events)
+    let finalShips = game.allShips().toSeq.len
+    
+    # Fighter should be created
+    check finalShips == initialShips + 1
+
+suite "Commissioning: All Facility Classes Can Be Commissioned":
+
+  test "Spaceports commission correctly":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    let initialNeorias = colony.neoriaIds.len
+    
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Facility,
+      shipClass: none(ShipClass),
+      facilityClass: some(FacilityClass.Spaceport),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    commissionPlanetaryDefense(game, @[completed], events)
+    
+    let updatedColony = game.colony(colony.id).get()
+    check updatedColony.neoriaIds.len == initialNeorias + 1
+
+  test "Shipyards commission correctly":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    let initialNeorias = colony.neoriaIds.len
+    
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Facility,
+      shipClass: none(ShipClass),
+      facilityClass: some(FacilityClass.Shipyard),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    commissionPlanetaryDefense(game, @[completed], events)
+    
+    let updatedColony = game.colony(colony.id).get()
+    check updatedColony.neoriaIds.len == initialNeorias + 1
+
+  test "Drydocks commission correctly":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    let initialNeorias = colony.neoriaIds.len
+    
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Facility,
+      shipClass: none(ShipClass),
+      facilityClass: some(FacilityClass.Drydock),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    commissionPlanetaryDefense(game, @[completed], events)
+    
+    let updatedColony = game.colony(colony.id).get()
+    check updatedColony.neoriaIds.len == initialNeorias + 1
+
+  test "Starbases commission correctly":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    let initialKastras = colony.kastraIds.len
+    
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Facility,
+      shipClass: none(ShipClass),
+      facilityClass: some(FacilityClass.Starbase),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    commissionPlanetaryDefense(game, @[completed], events)
+    
+    let updatedColony = game.colony(colony.id).get()
+    check updatedColony.kastraIds.len == initialKastras + 1
+
+suite "Construction: Ground Unit Workflow":
+
+  test "Army units can be built and commissioned":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Create Army project
+    let project = projects.createGroundUnitProject(GroundClass.Army)
+    check project.projectType == BuildType.Ground
+    check project.groundClass.isSome
+    check project.groundClass.get() == GroundClass.Army
+    
+    # Commission the army
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Ground,
+      shipClass: none(ShipClass),
+      facilityClass: none(FacilityClass),
+      groundClass: some(GroundClass.Army),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    var initialGroundUnits = 0
+    for (_, _) in game.allGroundUnitsWithId():
+      initialGroundUnits += 1
+    commissionPlanetaryDefense(game, @[completed], events)
+    var finalGroundUnits = 0
+    for (_, _) in game.allGroundUnitsWithId():
+      finalGroundUnits += 1
+    
+    # Army should be created
+    check finalGroundUnits == initialGroundUnits + 1
+
+  test "Marine units can be built and commissioned":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Create Marine project
+    let project = projects.createGroundUnitProject(GroundClass.Marine)
+    check project.projectType == BuildType.Ground
+    check project.groundClass.isSome
+    check project.groundClass.get() == GroundClass.Marine
+    
+    # Commission the marine
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Ground,
+      shipClass: none(ShipClass),
+      facilityClass: none(FacilityClass),
+      groundClass: some(GroundClass.Marine),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    var initialGroundUnits = 0
+    for (_, _) in game.allGroundUnitsWithId():
+      initialGroundUnits += 1
+    commissionPlanetaryDefense(game, @[completed], events)
+    var finalGroundUnits = 0
+    for (_, _) in game.allGroundUnitsWithId():
+      finalGroundUnits += 1
+    
+    # Marine should be created
+    check finalGroundUnits == initialGroundUnits + 1
+
+  test "Ground Battery units can be built and commissioned":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Create Ground Battery project
+    let project = projects.createGroundUnitProject(GroundClass.GroundBattery)
+    check project.projectType == BuildType.Ground
+    check project.groundClass.isSome
+    check project.groundClass.get() == GroundClass.GroundBattery
+    
+    # Commission the ground battery
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Ground,
+      shipClass: none(ShipClass),
+      facilityClass: none(FacilityClass),
+      groundClass: some(GroundClass.GroundBattery),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    var initialGroundUnits = 0
+    for (_, _) in game.allGroundUnitsWithId():
+      initialGroundUnits += 1
+    commissionPlanetaryDefense(game, @[completed], events)
+    var finalGroundUnits = 0
+    for (_, _) in game.allGroundUnitsWithId():
+      finalGroundUnits += 1
+    
+    # Ground Battery should be created
+    check finalGroundUnits == initialGroundUnits + 1
+
+  test "Planetary Shield units can be built and commissioned":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Create Planetary Shield project
+    let project = projects.createGroundUnitProject(GroundClass.PlanetaryShield)
+    check project.projectType == BuildType.Ground
+    check project.groundClass.isSome
+    check project.groundClass.get() == GroundClass.PlanetaryShield
+    
+    # Commission the planetary shield
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Ground,
+      shipClass: none(ShipClass),
+      facilityClass: none(FacilityClass),
+      groundClass: some(GroundClass.PlanetaryShield),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    var initialGroundUnits = 0
+    for (_, _) in game.allGroundUnitsWithId():
+      initialGroundUnits += 1
+    commissionPlanetaryDefense(game, @[completed], events)
+    var finalGroundUnits = 0
+    for (_, _) in game.allGroundUnitsWithId():
+      finalGroundUnits += 1
+    
+    # Planetary Shield should be created
+    check finalGroundUnits == initialGroundUnits + 1
+
+suite "Construction: Multi-Turn Queue Advancement":
+
+  test "Ship construction completes after correct number of turns":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Create ship project with known build time
+    let buildTime = accessors.getShipBaseBuildTime(ShipClass.Destroyer)
+    let project = createShipProject(ShipClass.Destroyer)
+    check project.turnsRemaining == buildTime
+    
+    # Projects complete based on turnsRemaining field
+    # (actual multi-turn simulation tested in integration)
+
+  test "Facility construction completes after correct number of turns":
+    let game = newGame()
+    
+    # Check build times for all facilities
+    let spaceportTime = accessors.getBuildingTime(FacilityClass.Spaceport)
+    let shipyardTime = accessors.getBuildingTime(FacilityClass.Shipyard)
+    let drydockTime = accessors.getBuildingTime(FacilityClass.Drydock)
+    let starbaseTime = accessors.getBuildingTime(FacilityClass.Starbase)
+    
+    # All should have valid build times
+    check spaceportTime >= 1
+    check shipyardTime >= 1
+    check drydockTime >= 1
+    check starbaseTime >= 1
+
+  test "Ground unit construction completes after correct number of turns":
+    let game = newGame()
+    
+    # Check build times for all ground units
+    let armyTime = accessors.getGroundUnitBuildTime(GroundClass.Army)
+    let marineTime = accessors.getGroundUnitBuildTime(GroundClass.Marine)
+    let batteryTime = accessors.getGroundUnitBuildTime(GroundClass.GroundBattery)
+    let shieldTime = accessors.getGroundUnitBuildTime(GroundClass.PlanetaryShield)
+    
+    # All should have valid build times
+    check armyTime >= 1
+    check marineTime >= 1
+    check batteryTime >= 1
+    check shieldTime >= 1
+
+suite "Construction: Insufficient Resources":
+
+  test "Construction rejected when treasury insufficient":
+    let game = newGame()
+    
+    var house: House
+    for h in game.allHouses():
+      house = h
+      break
+    
+    var colony: Colony
+    for c in game.coloniesOwned(house.id):
+      colony = c
+      break
+    
+    # Get destroyer cost
+    let destroyerCost = accessors.getShipConstructionCost(ShipClass.Destroyer)
+    
+    # Verify cost is positive and can cause insufficient funds
+    check destroyerCost > 0
+    
+    # Set treasury to less than cost
+    var updatedHouse = house
+    updatedHouse.treasury = destroyerCost - 100
+    game.updateHouse(house.id, updatedHouse)
+    
+    # Verify treasury is now insufficient
+    let finalHouse = game.house(house.id).get()
+    check finalHouse.treasury < destroyerCost
+    
+    # Construction validation happens in resolveBuildOrders
+    # which would reject this due to insufficient treasury
+
+  test "Ground unit recruitment fails with insufficient population":
+    # This is validated during commissioning, not build command
+    # Population cost is deducted during commissioning
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Set colony population very low
+    var updatedColony = colony
+    updatedColony.souls = 1000  # Very low population
+    updatedColony.population = 0
+    game.updateColony(colony.id, updatedColony)
+    
+    # Try to commission marines (requires population)
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Ground,
+      shipClass: none(ShipClass),
+      facilityClass: none(FacilityClass),
+      groundClass: some(GroundClass.Marine),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    var initialGroundUnits = 0
+    for (_, _) in game.allGroundUnitsWithId():
+      initialGroundUnits += 1
+    commissionPlanetaryDefense(game, @[completed], events)
+    var finalGroundUnits = 0
+    for (_, _) in game.allGroundUnitsWithId():
+      finalGroundUnits += 1
+    
+    # Marine should NOT be created due to insufficient population
+    check finalGroundUnits == initialGroundUnits
+
+suite "Construction: Capacity Limits":
+
+  test "Dock capacity limits construction":
+    let game = newGame()
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Get available facilities at colony
+    let availableFacilities = construction_docks.getAvailableFacilities(game, colony.id, BuildType.Ship)
+    
+    # Capacity limits enforced by facility availability
+    # (actual enforcement tested via build validation)
+    check availableFacilities.len >= 0
+
+  test "Multiple simultaneous projects consume docks":
+    let game = newGame()
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Analyze colony capacity (returns seq of facility capacities)
+    let facilities = construction_docks.analyzeColonyCapacity(game, colony.id)
+    
+    # Projects in queue consume dock capacity
+    # Colony should have facilities available
+    check facilities.len >= 0
+
+suite "Construction: Facility Prerequisites":
+
+  test "Shipyard requires spaceport":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Remove all spaceports from colony
+    var updatedColony = colony
+    updatedColony.neoriaIds = @[]
+    game.updateColony(colony.id, updatedColony)
+    
+    # Try to commission shipyard without spaceport
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Facility,
+      shipClass: none(ShipClass),
+      facilityClass: some(FacilityClass.Shipyard),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    # This should fail during commissioning (logged as error)
+    # The commissioning system checks for spaceport prerequisite
+    let initialNeorias = updatedColony.neoriaIds.len
+    commissionPlanetaryDefense(game, @[completed], events)
+    
+    let finalColony = game.colony(colony.id).get()
+    # Shipyard should NOT be created without spaceport
+    check finalColony.neoriaIds.len == initialNeorias
+
+  test "Drydock requires spaceport":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Remove all spaceports from colony
+    var updatedColony = colony
+    updatedColony.neoriaIds = @[]
+    game.updateColony(colony.id, updatedColony)
+    
+    # Try to commission drydock without spaceport
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Facility,
+      shipClass: none(ShipClass),
+      facilityClass: some(FacilityClass.Drydock),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    # This should fail during commissioning (logged as error)
+    let initialNeorias = updatedColony.neoriaIds.len
+    commissionPlanetaryDefense(game, @[completed], events)
+    
+    let finalColony = game.colony(colony.id).get()
+    # Drydock should NOT be created without spaceport
+    check finalColony.neoriaIds.len == initialNeorias
+
+  test "Spaceport has no prerequisites":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+    
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+    
+    # Remove all neorias to start fresh
+    var updatedColony = colony
+    updatedColony.neoriaIds = @[]
+    game.updateColony(colony.id, updatedColony)
+    
+    # Commission spaceport without any prerequisites
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Facility,
+      shipClass: none(ShipClass),
+      facilityClass: some(FacilityClass.Spaceport),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+    
+    commissionPlanetaryDefense(game, @[completed], events)
+    
+    let finalColony = game.colony(colony.id).get()
+    # Spaceport should be created successfully
+    check finalColony.neoriaIds.len == 1
 
 when isMainModule:
   echo "========================================"

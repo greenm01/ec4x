@@ -27,7 +27,7 @@ type
     ## Determines movement restrictions per game specs
     Major ## Standard lanes, 2 jumps/turn if owned
     Minor ## 1 jump/turn
-    Restricted ## 1 jump/turn, no crippled/transport ships
+    Restricted ## 1 jump/turn, ONLY non-crippled ETACs allowed
 
   JumpLane* = object
     source*: SystemId

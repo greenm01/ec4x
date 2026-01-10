@@ -92,25 +92,46 @@ proc canTraverse*(
     state: GameState, f: Fleet, laneType: LaneClass
 ): bool =
   ## Check if the fleet can traverse a specific type of jump lane
-  ## Per operations.md:9 "Fleets containing crippled ships or Expansion/Auxiliary ships can not jump across restricted lanes"
-  case laneType
-  of LaneClass.Restricted:
-    # Check for crippled ships
-    for shipId in f.ships:
-      let ship = state.ship(shipId).get
-      if ship.state == CombatState.Crippled:
-        return false
-
-    # Check for Expansion/Auxiliary ships (ETAC, TroopTransport)
-    for shipId in f.ships:
-      let ship = state.ship(shipId).get
-      if ship.shipClass in {ShipClass.ETAC, ShipClass.TroopTransport}:
-        return false # Cannot cross restricted lanes with Expansion/Auxiliary ships
-
+  ##
+  ## CORRECTED SPEC (§6.1.3):
+  ## - Major/Minor lanes: All ships can traverse
+  ## - Restricted lanes: ONLY non-crippled ETACs allowed
+  ##   - Combat ships CANNOT use restricted lanes
+  ##   - Crippled ships CANNOT use restricted lanes
+  ##   - Mixed fleets (ETAC + combat) CANNOT use restricted lanes
+  ##
+  ## Design rationale: ETACs need restricted lane access for early game
+  ## colonization speed. Combat ships are too large for restricted lanes.
+  ##
+  ## NOTE: Canonical implementation is in systems/fleet/movement.nim:canFleetTraverseLane
+  ## This function kept for API compatibility.
+  
+  # Major and Minor lanes allow all ships
+  if laneType != LaneClass.Restricted:
     return true
-  else:
-    # Major and Minor lanes can be traversed by any fleet
-    true
+  
+  # Restricted lanes: ONLY non-crippled ETACs allowed
+  var hasOnlyETACs = true
+  var hasAtLeastOneShip = false
+  
+  for shipId in f.ships:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isNone:
+      continue
+    
+    hasAtLeastOneShip = true
+    let ship = shipOpt.get()
+    
+    # Crippled ships cannot use restricted lanes (any type)
+    if ship.state == CombatState.Crippled:
+      return false
+    
+    # Only ETACs can use restricted lanes
+    if ship.shipClass != ShipClass.ETAC:
+      hasOnlyETACs = false
+  
+  # Fleet can traverse if it contains only non-crippled ETACs
+  return hasOnlyETACs and hasAtLeastOneShip
 
 proc combatStrength*(state: GameState, f: Fleet): int =
   ## Calculate the total attack strength of the fleet

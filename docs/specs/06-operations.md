@@ -461,6 +461,8 @@ Disband your own fleet at a friendly colony to recover production points. Your f
 - Convert excess military assets back to economic resources
 - Scrap crippled ships that aren't worth repairing
 
+**Note:** For scrapping individual ships/units at colonies without fleet travel, see **ScrapCommand** (§6.4.6). Fleet Salvage (16) is an operational command requiring fleet movement; ScrapCommand is a zero-turn administrative command executing instantly at colonies.
+
 ### 6.3.19 Reserve (17)
 
 Instantly places a fleet into **Reserve** status during the Command Phase.
@@ -525,6 +527,7 @@ Reorganize your forces instantly during command submission. Zero-turn administra
 - Fleet reorganization (detach ships, transfer ships, merge fleets)
 - Cargo operations (load/unload troops and colonists)
 - Fleet reactivation (return Reserve/Mothballed fleets to Active status)
+- Entity scrapping (scrap ships, ground units, facilities for immediate PP recovery)
 - Execute **immediately** during command submission
 - No turn cost—prepare forces and execute strategy in the same turn
 
@@ -715,6 +718,100 @@ All preparation complete, offensive launches immediately. Total: 1 turn.
 - All commands validated before execution
 - Failed commands return error immediately (no partial execution)
 - State changes atomic (all-or-nothing per command)
+
+### 6.4.6 Entity Scrapping (ScrapCommand)
+
+Scrap individual ships, ground units, and facilities at your colonies for immediate production point recovery. Unlike Fleet Salvage (Command 16) which requires fleets to travel, scrapping executes instantly at the colony during command submission.
+
+**Zero-turn administrative command:** Executes immediately during Command Phase, before turn resolution begins.
+
+#### Scrapable Entities
+
+**Ships:**
+- Any ship stationed at friendly colony
+- Ships must be at colony (not in transit, not in active fleet executing movement orders)
+- Individual ship scrapping—precise control over which assets to recover
+
+**Ground Units:**
+- Army divisions, Marine divisions
+- Ground Batteries, Planetary Shields
+- Units stationed at friendly colony garrison
+
+**Facilities (Neorias):**
+- Spaceports, Shipyards, Drydocks
+- **Warning:** Scrapping facilities with queued construction/repair projects destroys those projects with **no refund**
+- Must acknowledge queue loss (`acknowledgeQueueLoss=true`) to prevent accidental project destruction
+
+**Starbases (Kastras):**
+- Orbital defense platforms at friendly colonies
+- Recovered at 50% build cost
+
+#### Salvage Recovery
+
+**All entity types:** 50% production point recovery
+- Ships: 50% of original build cost (from `gameConfig.ships`)
+- Ground Units: 50% of original build cost (from `gameConfig.groundUnits`)
+- Facilities: 50% of original build cost (from `gameConfig.facilities`)
+- Starbases: 50% of 300 PP base cost = 150 PP
+
+**PP credited immediately:** Production points added to house treasury during command execution, available same turn.
+
+#### Requirements and Validation
+
+**Ownership:**
+- Must own the entity being scrapped
+- Must own the colony where entity is located
+- Cannot scrap assets at neutral or enemy colonies
+
+**Location:**
+- Entity must be at friendly colony under your control
+- Ships must be docked (not in transit fleets)
+- Ground units must be in colony garrison (not embarked on transports)
+
+**Facility Queue Acknowledgment:**
+- Scrapping facility with queued projects requires `acknowledgeQueueLoss=true`
+- Prevents accidental loss of in-progress construction
+- All queued projects at that facility destroyed (construction queue + repair queue)
+- **No refund** for invested PP in destroyed projects
+
+#### Use Cases
+
+**Economic Optimization:**
+- Scrap obsolete ship classes when better technology available
+- Recover PP from excess garrison units at secure colonies
+- Dismantle underutilized facilities at low-priority colonies
+- Convert military assets to economic resources during peacetime
+
+**Emergency Funding:**
+- Scrap assets for immediate PP when treasury empty
+- Fund critical construction projects by dismantling lower-priority assets
+- Raise funds for diplomacy or espionage operations
+
+**Fleet Modernization:**
+- Scrap damaged ships not worth repairing (compare repair cost vs salvage value)
+- Dismantle obsolete hulls to free ship capacity limits
+- Clear dock space by scrapping old ships awaiting repairs
+
+**Facility Management:**
+- Downgrade colonies by removing excess spaceports/shipyards
+- Scrap facilities before enemy conquest (deny infrastructure to invaders)
+- Consolidate industrial capacity at strategic hubs
+
+#### Comparison: ScrapCommand vs Fleet Salvage (16)
+
+| Feature | ScrapCommand (§6.4.6) | Fleet Salvage Command 16 (§6.3.18) |
+|---------|----------------------|-------------------------------------|
+| **Command Type** | Zero-turn administrative | Operational (1+ turns) |
+| **Execution** | Instant at colony | Fleet travels to colony, then disbands |
+| **Scope** | Individual entities (ships, units, facilities) | Entire fleet |
+| **Travel Required** | No (instant at colony) | Yes (fleet must reach colony with spaceport/shipyard) |
+| **Vulnerability** | None (instant) | Fleet vulnerable to interception during travel |
+| **Recovery Rate** | 50% PP (immediate) | 50% PP (after arrival) |
+| **Use Case** | Selective scrapping of specific assets | Disband entire fleet for bulk PP recovery |
+
+**Strategic Distinction:**
+- **ScrapCommand**: Tactical precision—scrap individual ships/units at home without moving fleets
+- **Fleet Salvage**: Operational decision—disband entire fleet at nearest colony with facilities
 
 ---
 

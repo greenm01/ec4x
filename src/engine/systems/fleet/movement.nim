@@ -23,9 +23,11 @@ proc canFleetTraverseLane*(
 ): bool =
   ## Check if a fleet can traverse a specific lane type
   ##
-  ## Restricted lanes cannot be used by:
-  ## - Crippled ships
-  ## - Transport ships (ETAC, TroopTransport)
+  ## Restricted lanes can ONLY be used by:
+  ## - Solo ETAC fleets (not crippled)
+  ##
+  ## Design rationale: ETACs need restricted lane access for early game
+  ## colonization speed. Combat ships cannot use restricted lanes.
   ##
   ## Returns: true if fleet can use this lane type
 
@@ -33,24 +35,29 @@ proc canFleetTraverseLane*(
   if laneType != LaneClass.Restricted:
     return true
 
-  # Restricted lanes: check for disqualifying ships
+  # Restricted lanes: ONLY non-crippled ETACs allowed
+  # Any other ship type blocks the entire fleet
+  var hasOnlyETACs = true
+  var hasAtLeastOneShip = false
+  
   for shipId in fleet.ships:
     let shipOpt = state.ship(shipId)
     if shipOpt.isNone:
       continue
-
+    
+    hasAtLeastOneShip = true
     let ship = shipOpt.get()
-
-    # Crippled ships can't use restricted lanes
+    
+    # Crippled ships cannot use restricted lanes (any type)
     if ship.state == CombatState.Crippled:
       return false
-
-    # Transport ships can't use restricted lanes
-    if ship.shipClass == ShipClass.ETAC or
-       ship.shipClass == ShipClass.TroopTransport:
-      return false
-
-  return true
+    
+    # Only ETACs can use restricted lanes
+    if ship.shipClass != ShipClass.ETAC:
+      hasOnlyETACs = false
+  
+  # Fleet can traverse if it contains only non-crippled ETACs
+  return hasOnlyETACs and hasAtLeastOneShip
 
 # =============================================================================
 # Pathfinding Algorithms
