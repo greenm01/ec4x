@@ -1,10 +1,10 @@
 ## Scout Intelligence Generation
 ##
-## Scouts are elite intelligence gatherers that provide Spy-quality intelligence
+## Scouts are elite intelligence gatherers that provide Perfect-quality intelligence
 ## They observe: fleets, colonies, combat, bombardment, blockades, construction
 ##
 ## Scout advantages over standard visibility:
-## - Spy-quality intelligence (construction queues, economic data, embarked fighters)
+## - Perfect-quality intelligence (construction queues, economic data, embarked fighters)
 ## - Detailed fleet composition (tech levels, hull integrity, cargo)
 ## - Construction progress tracking over time
 ## - Fleet movement pattern detection
@@ -20,7 +20,7 @@ proc processScoutIntelligence*(
     state: GameState, scoutFleetId: FleetId, scoutOwner: HouseId, systemId: SystemId
 ) =
   ## Process all intelligence gathering for a scout at a system
-  ## Scouts automatically generate Spy-quality intelligence:
+  ## Scouts automatically generate Perfect-quality intelligence:
   ## 1. System intel (fleets, squadrons, embarked fighters)
   ## 2. Colony intel (ground forces, construction queue, economic data)
   ## 3. Orbital intel (starbases, shipyards, fighters, guard/blockade fleets)
@@ -29,17 +29,17 @@ proc processScoutIntelligence*(
 
   let turn = state.turn
 
-  # Generate Spy-quality intelligence reports
+  # Generate Perfect-quality intelligence reports
   let systemIntel = generator.generateSystemIntelReport(
-    state, scoutOwner, systemId, IntelQuality.Spy
+    state, scoutOwner, systemId, IntelQuality.Perfect
   )
 
   let colonyIntel = generator.generateColonyIntelReport(
-    state, scoutOwner, systemId, IntelQuality.Spy
+    state, scoutOwner, systemId, IntelQuality.Perfect
   )
 
   let orbitalIntel = generator.generateOrbitalIntelReport(
-    state, scoutOwner, systemId, IntelQuality.Spy
+    state, scoutOwner, systemId, IntelQuality.Perfect
   )
 
   # Apply corruption if scout owner's intelligence is compromised (disinformation)

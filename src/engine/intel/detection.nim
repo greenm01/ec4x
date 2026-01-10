@@ -1,6 +1,6 @@
-## Detection System for Spy Scouts and Raiders
+## Detection System for Scouts and Raiders
 ##
-## Implements ELI-based detection mechanics for spy scouts and cloaked raiders
+## Implements ELI-based detection mechanics for scouts and cloaked raiders
 ## Based on assets.md Sections 2.4.2 and 2.4.3
 ##
 ## REFACTORED (Phase 10): Data-Oriented Design
@@ -67,18 +67,18 @@ proc calculateEffectiveELI*(eliLevels: seq[int], isStarbase: bool = false): int 
   # Step 2: Dominant tech penalty
   let afterPenalty = applyDominantTechPenalty(weightedAvg, eliLevels)
 
-  # Step 3: Starbase bonus (only against spy scouts) - hardcoded game rule
+  # Step 3: Starbase bonus (only against scouts) - hardcoded game rule
   let starbaseBonus = if isStarbase: 2 else: 0
 
   # Final ELI (capped at max level 5)
   result = min(5, afterPenalty + starbaseBonus)
 
-## Spy Scout Detection
+## Scout Detection
 
-proc detectSpyScouts*(
+proc detectScouts*(
     numScouts: int, defenderELI: int, starbaseBonus: int, rng: var Rand
 ): DetectionResult =
-  ## Detect spy scouts using simplified formula from assets.md:2.4.2
+  ## Detect scouts using simplified formula from assets.md:2.4.2
   ## Formula: Target = 15 - numScouts + (defenderELI + starbaseBonus)
   ## Roll 1d20, >= target = detected
   ##
@@ -95,11 +95,11 @@ proc detectSpyScouts*(
     roll: roll,
   )
 
-proc detectSpyScouts*(
+proc detectScouts*(
     numScouts: int, defenderELI: int, starbaseBonus: int = 0
 ): DetectionResult =
   ## Wrapper using global RNG
-  detectSpyScouts(numScouts, defenderELI, starbaseBonus, globalRNG)
+  detectScouts(numScouts, defenderELI, starbaseBonus, globalRNG)
 
 ## Raider Detection
 

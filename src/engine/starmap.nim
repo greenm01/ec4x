@@ -575,9 +575,6 @@ proc validateHomeworldLanes*(starMap: StarMap, state: GameState): seq[string] =
 
   return errors
 
-# TODO: Fleet traversal functions removed - require Squadrons/Ships types
-# Will be re-added once type import issues are resolved
-
 proc weight*(laneType: LaneClass): uint32 =
   ## Get movement cost for lane type (for pathfinding)
   case laneType
@@ -598,9 +595,6 @@ proc getLaneType*(
   if (fromSystem, toSystem) in starMap.lanes.connectionInfo:
     return some(starMap.lanes.connectionInfo[(fromSystem, toSystem)])
   return none(LaneClass)
-
-# TODO: findPath and related fleet pathfinding functions removed
-# Will be re-added once Squadrons/Ships type import issues are resolved
 
 proc buildDistanceMatrix(starMap: var StarMap, state: GameState) =
   ## Pre-compute all pairwise hex distances for O(1) heuristic lookup

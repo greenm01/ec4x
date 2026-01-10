@@ -15,14 +15,14 @@ proc generateColonyIntelReport*(
     targetSystem: SystemId,
     quality: IntelQuality,
 ): Option[ColonyIntelReport] =
-  ## Generate colony intelligence report from SpyOnPlanet mission
+  ## Generate colony intelligence report from Scout missions
   ## Reports on ground/planetary assets and colony construction pipeline:
   ## - Population and infrastructure
   ## - Spaceports (ground-to-orbit)
   ## - Ground forces (armies, marines, batteries)
   ## - Planetary shields
-  ## - Colony construction queue (Spy quality only)
-  ## - Economic data (Spy quality only)
+  ## - Colony construction queue (Perfect quality only)
+  ## - Economic data (Perfect quality only)
 
   # Use safe accessor
   let colonyOpt = state.colonyBySystem(targetSystem)
@@ -74,14 +74,14 @@ proc generateColonyIntelReport*(
     taxRevenue: none(int32),
   )
 
-  # Economic intelligence visible only with spy infiltration
-  if quality == IntelQuality.Spy:
+  # Economic intelligence visible only with Perfect quality intel
+  if quality == IntelQuality.Perfect:
     # Use colony's own economic data
     report.grossOutput = some(colony.grossOutput)
     report.taxRevenue = some(int32(colony.grossOutput * colony.taxRate / 100))
 
-  # Colony construction queue visible only with spy infiltration
-  if quality == IntelQuality.Spy:
+  # Colony construction queue visible only with Perfect quality intel
+  if quality == IntelQuality.Perfect:
     # Add all construction projects in queue
     report.colonyConstructionQueue = colony.constructionQueue
     # Also check underConstruction field
@@ -90,12 +90,15 @@ proc generateColonyIntelReport*(
       if projectId notin report.colonyConstructionQueue:
         report.colonyConstructionQueue.add(projectId)
 
-    # TODO: Add spaceport dock queue when spaceport construction is implemented
-    # for spaceportId in colony.spaceportIds:
-    #   let spaceport = state.spaceport(spaceportId)
-    #   if spaceport.isSome:
-    #     report.spaceportDockQueue.add(spaceport.get().constructionQueue)
+    # Populate spaceport dock queue from neorias at this colony
     report.spaceportDockQueue = @[]
+    for neoria in state.neoriasAtColony(colony.id):
+      # Add queued projects
+      for projectId in neoria.constructionQueue:
+        report.spaceportDockQueue.add(projectId)
+      # Add active construction projects
+      for projectId in neoria.activeConstructions:
+        report.spaceportDockQueue.add(projectId)
 
   # Apply corruption if gathering house's intelligence is compromised (disinformation)
   let corruptionEffect = corruption.hasIntelCorruption(state.ongoingEffects, scoutOwner)
@@ -148,8 +151,8 @@ proc generateOrbitalIntelReport*(
     else:
       discard
 
-    # Check for guard/blockade commands (Spy quality only - requires infiltration)
-    if quality == IntelQuality.Spy:
+    # Check for guard/blockade commands (Perfect quality only - requires detailed intel)
+    if quality == IntelQuality.Perfect:
       let command = fleet.command
       # Check if guarding this colony
       if command.commandType == FleetCommandType.GuardColony:
@@ -195,15 +198,15 @@ proc generateSystemIntelReport*(
     targetSystem: SystemId,
     quality: IntelQuality,
 ): Option[SystemIntelPackage] =
-  ## Generate system intelligence report from SpyOnSystem mission
+  ## Generate system intelligence report from Scout missions
   ## Reports on:
   ## - All enemy fleets in the system
-  ## - Carrier-embarked fighter squadrons (Spy quality only - requires infiltration)
+  ## - Carrier-embarked fighter squadrons (Perfect quality only - from scout missions)
   ## - Colony-based fighter squadrons (visible like regular fleets)
   ##
   ## Quality determines detail level:
-  ## - Visual: Ship counts, classes, transports
-  ## - Spy: Tech levels, hull integrity, embarked fighters
+  ## - Visual: Ship counts, classes, transports (fleet encounters during transit)
+  ## - Perfect: Tech levels, hull integrity, embarked fighters (scout missions)
 
   var detectedFleetIds: seq[FleetId] = @[]
   var fleetIntelData: seq[tuple[fleetId: FleetId, intel: FleetIntel]] = @[]
@@ -236,14 +239,14 @@ proc generateSystemIntelReport*(
         let shipIntel = ShipIntel(
           shipId: shipId,
           shipClass: $ship.shipClass,
-          # Tech level and hull integrity only for Spy+ quality
+          # Tech level and hull integrity only for Perfect quality
           techLevel:
-            if quality == IntelQuality.Spy:
+            if quality == IntelQuality.Perfect:
               ship.stats.wep
             else:
               0,
           hullIntegrity:
-            if quality == IntelQuality.Spy:
+            if quality == IntelQuality.Perfect:
               (if ship.state == CombatState.Crippled: some(int32(50)) else: some(int32(100)))
             else:
               none(int32),
@@ -251,8 +254,8 @@ proc generateSystemIntelReport*(
 
         shipIntelData.add((shipId, shipIntel))
 
-        # Check for embarked fighters on carriers (Spy quality only - requires infiltration)
-        if quality == IntelQuality.Spy and ship.embarkedFighters.len > 0:
+        # Check for embarked fighters on carriers (Perfect quality only - scout missions)
+        if quality == IntelQuality.Perfect and ship.embarkedFighters.len > 0:
           for fighterShipId in ship.embarkedFighters:
             let fighterShipOpt = state.ship(fighterShipId)
             if fighterShipOpt.isNone:
@@ -290,14 +293,14 @@ proc generateSystemIntelReport*(
         let fighterIntel = ShipIntel(
           shipId: fighterShipId,
           shipClass: $fighterShip.shipClass,
-          # Tech level and hull integrity only for Spy+ quality
+          # Tech level and hull integrity only for Perfect quality
           techLevel:
-            if quality == IntelQuality.Spy:
+            if quality == IntelQuality.Perfect:
               fighterShip.stats.wep
             else:
               0,
           hullIntegrity:
-            if quality == IntelQuality.Spy:
+            if quality == IntelQuality.Perfect:
               (if fighterShip.state == CombatState.Crippled: some(int32(50)) else: some(int32(100)))
             else:
               none(int32),

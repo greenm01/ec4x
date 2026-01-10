@@ -27,12 +27,11 @@ type
   IntelQuality* {.pure.} = enum
     Visual   # Fleet-on-fleet encounters
     Scan     # View a World Fleet Command
-    Spy      # Espionage events (e.g. intel theft )
-    Perfect  # Scouts intel missions
+    Perfect  # Scout missions (full intel)
 
   ColonyIntelReport* = object
     ## Ground/planetary intelligence + colony construction pipeline
-    ## Gathered from SpyOnPlanet mission
+    ## Gathered from Scout missions
     colonyId*: ColonyId
     targetOwner*: HouseId
     gatheredTurn*: int32
@@ -44,10 +43,10 @@ type
     marineCount*: int32 # Marine units (colony pipeline)
     groundBatteryCount*: int32 # Planetary defense batteries (colony pipeline)
     planetaryShieldLevel*: int32 # Planetary shield strength (colony pipeline)
-    colonyConstructionQueue*: seq[ConstructionProjectId] # Colony construction projects (Spy quality)
-    spaceportDockQueue*: seq[ConstructionProjectId] # Ships being built at spaceport docks (Spy quality)
-    grossOutput*: Option[int32] # Economic data (Spy quality)
-    taxRevenue*: Option[int32] # Economic data (Spy quality)
+    colonyConstructionQueue*: seq[ConstructionProjectId] # Colony construction projects (Perfect quality)
+    spaceportDockQueue*: seq[ConstructionProjectId] # Ships being built at spaceport docks (Perfect quality)
+    grossOutput*: Option[int32] # Economic data (Perfect quality)
+    taxRevenue*: Option[int32] # Economic data (Perfect quality)
 
   OrbitalIntelReport* = object
     ## Orbital/space intelligence (assets deployed in orbit)

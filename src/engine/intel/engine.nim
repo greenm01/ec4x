@@ -31,13 +31,13 @@ proc gatherSystemIntel*(
   ## - None if no intelligence available (no fleets, no colony)
   ##
   ## Quality levels:
-  ## - Visual: Basic fleet composition, ship counts
-  ## - Spy: Tech levels, hull integrity, embarked fighters
+  ## - Visual: Basic fleet composition, ship counts (fleet encounters during transit)
+  ## - Perfect: Tech levels, hull integrity, embarked fighters (scout missions)
   ##
   ## Used by:
-  ## - Scout missions (Spy quality)
+  ## - Scout missions (Perfect quality)
   ## - Visual encounters (Visual quality)
-  ## - Espionage operations (Spy quality)
+  ## - Espionage operations (Perfect quality)
   return generator.generateSystemIntelReport(state, houseId, systemId, quality)
 
 proc gatherColonyIntel*(
@@ -47,12 +47,11 @@ proc gatherColonyIntel*(
   ##
   ## Returns:
   ## - ColonyIntelReport with population, infrastructure, ground forces
-  ## - Spy quality includes construction queue and economic data
+  ## - Perfect quality includes construction queue and economic data
   ## - None if no colony or gathering own colony
   ##
   ## Used by:
-  ## - SpyOnPlanet missions (Spy quality)
-  ## - Scout observations (Spy quality)
+  ## - Scout missions (Perfect quality)
   return generator.generateColonyIntelReport(state, houseId, systemId, quality)
 
 proc gatherOrbitalIntel*(
@@ -62,12 +61,11 @@ proc gatherOrbitalIntel*(
   ##
   ## Returns:
   ## - OrbitalIntelReport with starbases, shipyards, fighter squadrons
-  ## - Spy quality includes guard/blockade fleet identification
+  ## - Perfect quality includes guard/blockade fleet identification
   ## - None if no colony or gathering own colony
   ##
   ## Used by:
-  ## - Approach/orbital missions
-  ## - Scout observations (Spy quality)
+  ## - Scout missions (Perfect quality)
   return generator.generateOrbitalIntelReport(state, houseId, systemId, quality)
 
 proc gatherStarbaseIntel*(
@@ -80,7 +78,7 @@ proc gatherStarbaseIntel*(
   ## - None if no starbase or gathering own starbase
   ##
   ## Used by:
-  ## - HackStarbase missions (Spy quality)
+  ## - HackStarbase missions (Perfect quality)
   return generator.generateStarbaseIntelReport(state, houseId, systemId, quality)
 
 # ============================================================================
@@ -123,7 +121,7 @@ proc hasIntelCorruption*(
 
 proc isScoutFleet*(fleet: Fleet): bool =
   ## Check if a fleet is a scout fleet
-  ## Scout fleets automatically gather Spy-quality intelligence
+  ## Scout fleets automatically gather Perfect-quality intelligence
   ##
   ## Future: Implement proper fleet role detection
   ## For now, placeholder returns false
@@ -181,7 +179,7 @@ proc isIntelStale*(gatheredTurn: int32, currentTurn: int32, threshold: int32 = 3
 ##
 ## # Gather system intel from a scout mission
 ## let systemIntel = intel.gatherSystemIntel(
-##   state, targetSystem, scoutOwner, IntelQuality.Spy
+##   state, targetSystem, scoutOwner, IntelQuality.Perfect
 ## )
 ##
 ## if systemIntel.isSome:
@@ -192,9 +190,9 @@ proc isIntelStale*(gatheredTurn: int32, currentTurn: int32, threshold: int32 = 3
 ##
 ## **Quality Levels:**
 ##
-## - Visual: Basic observation (ship types, counts)
-## - Spy: Detailed intelligence (tech, damage, cargo, queues)
-## - Perfect: Complete accuracy (own assets, fog-of-war exempt)
+## - Visual: Basic observation (ship types, counts) - fleet encounters during transit
+## - Scan: View a World command observations
+## - Perfect: Detailed intelligence (tech, damage, cargo, queues) - scout missions
 ##
 ## **Future Enhancements:**
 ##
