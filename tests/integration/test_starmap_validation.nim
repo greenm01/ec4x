@@ -63,7 +63,6 @@ proc createTestGame(playerCount: int32, numRings: uint32 = 0): (
     intel: initTable[HouseId, IntelDatabase](),
     diplomaticRelation: initTable[(HouseId, HouseId), DiplomaticRelation](),
     diplomaticViolation: initTable[HouseId, ViolationHistory](),
-    activeSpyMissions: initTable[FleetId, ActiveSpyMission](),
     gracePeriodTimers: initTable[HouseId, GracePeriodTracker](),
     lastTurnReports: initTable[HouseId, TurnResolutionReport]()
   )

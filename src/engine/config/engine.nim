@@ -18,7 +18,7 @@ proc loadGameConfig*(configDir: string = "config"): GameConfig =
   result.facilities = loadFacilitiesConfig(configDir / "facilities.kdl")
   result.combat = loadCombatConfig(configDir / "combat.kdl")
   result.economy = loadEconomyConfig(configDir / "economy.kdl")
-  result.prestige = loadPrestigeConfig(configDir / "kdl")
+  result.prestige = loadPrestigeConfig(configDir / "prestige.kdl")
   result.espionage = loadEspionageConfig(configDir / "espionage.kdl")
   result.tech = loadTechConfig(configDir / "tech.kdl")
   result.limits = loadLimitsConfig(configDir / "limits.kdl")

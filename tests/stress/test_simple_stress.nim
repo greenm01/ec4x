@@ -1,53 +1,25 @@
 ## Simple Stress Test
 ## Demonstrates stress testing on actual engine code
+##
+## Updated for new engine architecture (2026-01)
 
 import std/[times, strformat, random, tables, options, sequtils, math]
 import unittest
-import ../../src/engine/[gamestate, resolve, orders, starmap]
-import ../../src/engine/colonization/engine as colonization
-import ../../src/engine/research/types as res_types
-import ../../src/engine/espionage/types as esp_types
-import ../../src/engine/economy/types as econ_types
-import ../../src/common/types/[core, planets]
-
-proc createTestGameState(): GameState =
-  ## Create a minimal game state for stress testing
-  result = GameState()
-  result.turn = 1
-  result.phase = GamePhase.Active
-
-  # Generate proper starmap (minimum 2 players)
-  result.starMap = newStarMap(2, seed = 42)
-  result.starMap.populate()
-
-  # Get first player's starting system
-  let homeSystemId = result.starMap.playerSystemIds[0]
-
-  # Create test house
-  result.houses["house1"] = House(
-    id: "house1",
-    name: "Test House",
-    treasury: 10000,
-    eliminated: false,
-    techTree: res_types.initTechTree(),
-  )
-
-  # Create home colony at valid system
-  result.colonies[homeSystemId] = colonization.initNewColony(
-    homeSystemId,
-    "house1",
-    PlanetClass.Benign,
-    ResourceRating.Abundant,
-    2000  # startingPTU
-  )
+import ../../src/engine/engine
+import ../../src/engine/types/[core, command, fleet, house, tech, espionage]
+import ../../src/engine/state/iterators
+import ../../src/engine/turn_cycle/engine
+import ./stress_framework
 
 suite "Simple Stress: State Integrity":
 
   test "100-turn simulation maintains valid state":
-    echo "\n🧪 Running 100-turn simulation..."
+    echo "\nRunning 100-turn simulation..."
 
-    var game = createTestGameState()
+    var game = newGame()
+    var rng = initRand(42)
     var turnTimes: seq[float] = @[]
+    var allViolations: seq[InvariantViolation] = @[]
 
     for turn in 1..100:
       if turn mod 10 == 0:
@@ -55,88 +27,140 @@ suite "Simple Stress: State Integrity":
 
       let startTime = cpuTime()
 
-      # Create no-op orders
-      var orders = initTable[HouseId, OrderPacket]()
-      orders["house1"] = OrderPacket(
-        houseId: "house1",
-        turn: turn,
-        buildOrders: @[],
-        fleetOrders: @[],
-        researchAllocation: initResearchAllocation(),
-        diplomaticActions: @[],
-        populationTransfers: @[],
-        terraformOrders: @[],
-        espionageAction: none(esp_types.EspionageAttempt),
-        ebpInvestment: 0,
-        cipInvestment: 0
-      )
+      # Create empty commands (no-op turn)
+      var commands = initTable[HouseId, CommandPacket]()
+      for (houseId, house) in game.activeHousesWithId():
+        commands[houseId] = CommandPacket(
+          houseId: houseId,
+          turn: turn.int32,
+          treasury: house.treasury.int32,
+          fleetCommands: @[],
+          buildCommands: @[],
+          repairCommands: @[],
+          researchAllocation: ResearchAllocation(),
+          diplomaticCommand: @[],
+          populationTransfers: @[],
+          terraformCommands: @[],
+          colonyManagement: @[],
+          espionageAction: none(EspionageAttempt),
+          ebpInvestment: 0,
+          cipInvestment: 0
+        )
 
       # Resolve turn
       try:
-        let result = resolveTurn(game, orders)
-        game = result.newState
+        let turnResult = game.resolveTurn(commands, rng)
+        
+        # Check for victory (game might end early)
+        if turnResult.victoryCheck.victoryOccurred:
+          echo &"  Victory achieved at turn {turn}: {turnResult.victoryCheck.status.description}"
+          break
+          
       except CatchableError as e:
-        echo &"❌ Turn {turn} crashed: {e.msg}"
+        echo &"Turn {turn} crashed: {e.msg}"
         fail()
         break
 
       let elapsed = (cpuTime() - startTime) * 1000.0
       turnTimes.add(elapsed)
 
-    # Calculate statistics
-    let avgTime = turnTimes.sum() / turnTimes.len.float
-    let maxTime = turnTimes.max()
-    let minTime = turnTimes.min()
+      # Check invariants each turn
+      let violations = checkStateInvariants(game, turn)
+      allViolations.add(violations)
 
-    echo &"\n✅ Completed 100 turns"
-    echo &"  Average turn time: {avgTime:.2f}ms"
-    echo &"  Min: {minTime:.2f}ms, Max: {maxTime:.2f}ms"
+    # Calculate statistics
+    if turnTimes.len > 0:
+      let avgTime = turnTimes.sum() / turnTimes.len.float
+      let maxTime = turnTimes.max()
+      let minTime = turnTimes.min()
+
+      echo &"\nCompleted {turnTimes.len} turns"
+      echo &"  Average turn time: {avgTime:.2f}ms"
+      echo &"  Min: {minTime:.2f}ms, Max: {maxTime:.2f}ms"
+
+    # Report any invariant violations
+    if allViolations.len > 0:
+      reportViolations(allViolations)
 
     # Basic sanity checks
-    check game.houses.len > 0
-    check game.colonies.len > 0
-    echo &"  Final state: {game.houses.len} houses, {game.colonies.len} colonies, {game.fleets.len} fleets"
+    var houseCount = 0
+    for _ in game.allHouses():
+      houseCount += 1
+    
+    var colonyCount = 0
+    for _ in game.allColonies():
+      colonyCount += 1
+    
+    var fleetCount = 0
+    for _ in game.allFleets():
+      fleetCount += 1
 
-  test "Invalid system ID handling":
-    echo "\n🧪 Testing invalid system ID..."
+    check houseCount > 0
+    check colonyCount > 0
+    echo &"  Final state: {houseCount} houses, {colonyCount} colonies, {fleetCount} fleets"
 
-    var game = createTestGameState()
-
-    # Try to move fleet to invalid system
-    var orders = initTable[HouseId, OrderPacket]()
-    orders["house1"] = OrderPacket(
-      houseId: "house1",
-      turn: 1,
-      buildOrders: @[],
-      fleetOrders: @[
-        FleetOrder(
-          fleetId: "test-fleet",
-          orderType: FleetOrderType.Move,
-          targetSystem: some(SystemId(999999)),
-          targetFleet: none(FleetId),
-          priority: 0
-        )
-      ],
-      researchAllocation: initResearchAllocation(),
-      diplomaticActions: @[],
-      populationTransfers: @[],
-      terraformOrders: @[],
-      espionageAction: none(esp_types.EspionageAttempt),
-      ebpInvestment: 0,
-      cipInvestment: 0
+    # No critical violations
+    let criticalViolations = allViolations.filterIt(
+      it.severity == ViolationSeverity.Critical
     )
+    check criticalViolations.len == 0
 
-    # Engine should handle gracefully
+  test "Invalid fleet command handling":
+    echo "\nTesting invalid fleet command..."
+
+    var game = newGame()
+    var rng = initRand(12345)
+
+    # Get first house
+    var firstHouseId: HouseId
+    for (houseId, _) in game.activeHousesWithId():
+      firstHouseId = houseId
+      break
+
+    # Create command with invalid target system
+    var commands = initTable[HouseId, CommandPacket]()
+    for (houseId, house) in game.activeHousesWithId():
+      var packet = CommandPacket(
+        houseId: houseId,
+        turn: 1.int32,
+        treasury: house.treasury.int32,
+        fleetCommands: @[],
+        buildCommands: @[],
+        repairCommands: @[],
+        researchAllocation: ResearchAllocation(),
+        diplomaticCommand: @[],
+        populationTransfers: @[],
+        terraformCommands: @[],
+        colonyManagement: @[],
+        espionageAction: none(EspionageAttempt),
+        ebpInvestment: 0,
+        cipInvestment: 0
+      )
+
+      # Add invalid command to first house
+      if houseId == firstHouseId:
+        packet.fleetCommands.add(FleetCommand(
+          fleetId: FleetId(999999),  # Non-existent fleet
+          commandType: FleetCommandType.Move,
+          targetSystem: some(SystemId(999999)),  # Non-existent system
+          targetFleet: none(FleetId),
+          priority: 0,
+          roe: none(int32)
+        ))
+
+      commands[houseId] = packet
+
+    # Engine should handle gracefully (reject invalid command, continue)
     try:
-      let result = resolveTurn(game, orders)
-      game = result.newState
-      echo "  ✅ Engine handled invalid system ID gracefully"
+      let turnResult = game.resolveTurn(commands, rng)
+      echo "  Engine handled invalid fleet command gracefully"
+      check turnResult.turnAdvanced
     except CatchableError as e:
-      echo &"  ⚠️  Engine rejected invalid input: {e.msg}"
+      echo &"  Engine rejected invalid input: {e.msg}"
       # This is acceptable - engine validation caught it
 
 when isMainModule:
-  echo "╔════════════════════════════════════════════════╗"
-  echo "║  Simple Stress Test - Engine Validation       ║"
-  echo "╚════════════════════════════════════════════════╝"
+  echo "========================================"
+  echo "  Simple Stress Test - Engine Validation"
+  echo "========================================"
   echo ""

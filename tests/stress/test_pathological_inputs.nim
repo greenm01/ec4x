@@ -11,424 +11,306 @@
 ## 1. Reject invalid inputs gracefully
 ## 2. Handle them without crashing
 ## 3. NOT corrupt game state
+##
+## Updated for new engine architecture (2026-01)
 
-import std/[times, strformat, random, tables, options, sequtils]
+import std/[times, strformat, random, tables, options, sequtils, strutils]
 import unittest
 import stress_framework
-import ../../src/engine/[gamestate, resolve, orders, fleet, starmap, squadron]
-import ../../src/engine/colonization/engine as colonization
-import ../../src/engine/research/types as res_types
-import ../../src/engine/espionage/types as esp_types
-import ../../src/common/types/[core, planets]
-import ../../src/engine/diplomacy/types as dip_types
+import ../../src/engine/engine
+import ../../src/engine/types/[core, command, fleet, house, tech, espionage, production, ship, facilities]
+import ../../src/engine/state/[engine, iterators]
+import ../../src/engine/turn_cycle/engine
 
-proc createTestGame(): GameState =
-  ## Create a minimal test game with valid starmap
-  result = GameState()
-  result.turn = 1
-  result.phase = GamePhase.Active
-
-  # Create minimal starmap using newStarMap
-  result.starMap = newStarMap(2, seed = 42)
-  result.starMap.populate()
-
-  # Create test houses
-  result.houses["house1"] = House(
-    id: "house1",
-    name: "Test House 1",
-    treasury: 10000,
-    eliminated: false,
-    techTree: res_types.initTechTree(),
-  )
-
-  result.houses["house2"] = House(
-    id: "house2",
-    name: "Test House 2",
-    treasury: 10000,
-    eliminated: false,
-    techTree: res_types.initTechTree(),
-  )
-
-  # Create test colony at first player system
-  let homeSystemId = result.starMap.playerSystemIds[0]
-  result.colonies[homeSystemId] = colonization.initNewColony(
-    homeSystemId,
-    "house1",
-    PlanetClass.Benign,
-    ResourceRating.Abundant,
-    2000  # startingPTU
-  )
-
-  # Create test fleet
-  let flagship = newShip(ShipClass.Destroyer, techLevel = 1, name = "DD-1")
-  let squadron = Squadron(
-    id: "sq1",
-    flagship: flagship,
-    ships: @[],
-    owner: "house1",
-    location: homeSystemId,
-    embarkedFighters: @[]
-  )
-
-  result.fleets["fleet1"] = Fleet(
-    id: "fleet1",
-    owner: "house1",
-    location: homeSystemId,
-    squadrons: @[squadron],
-    spaceLiftShips: @[],
-    status: FleetStatus.Active,
-    autoBalanceSquadrons: false
-  )
-
-suite "Pathological Inputs: Invalid Orders":
-
-  test "Fuzz: fleet orders with invalid system IDs":
-    ## Try to move fleet to non-existent systems
-
-    echo "\n🧪 Fuzzing invalid system IDs..."
-
-    var game = createTestGame()
-    let firstHouse = toSeq(game.houses.keys)[0]
-    let firstFleet = block:
-      var fleetId: FleetId = ""
-      for fid, fleet in game.fleets:
-        if fleet.owner == firstHouse:
-          fleetId = fid
-          break
-      fleetId
-
-    if firstFleet == "":
-      skip()
-    else:
-      echo &"  Testing fleet: {firstFleet}"
-
-      # Try various invalid system IDs
-      let invalidSystemIds = [
-        SystemId(-1),           # Negative
-        SystemId(0),            # Zero (maybe valid as Imperial Hub?)
-        SystemId(999_999),      # Extremely large
-        SystemId(high(int32)),  # Maximum int
-      ]
-
-      for invalidSys in invalidSystemIds:
-        echo &"  Trying system ID: {invalidSys}"
-
-        var ordersTable = initTable[HouseId, OrderPacket]()
-        ordersTable[firstHouse] = OrderPacket(
-          houseId: firstHouse,
-          turn: 1,
-          buildOrders: @[],
-          fleetOrders: @[
-            FleetOrder(
-              fleetId: firstFleet,
-              orderType: FleetOrderType.Move,
-              targetSystem: some(invalidSys),
-              targetFleet: none(FleetId),
-              priority: 0
-            )
-          ],
-          researchAllocation: initResearchAllocation(),
-          diplomaticActions: @[],
-          populationTransfers: @[],
-          terraformOrders: @[],
-          espionageAction: none(esp_types.EspionageAttempt),
-          ebpInvestment: 0,
-          cipInvestment: 0
-        )
-
-        # Engine should handle gracefully - either reject order or ignore
-        try:
-          let result = resolveTurn(game, ordersTable)
-          game = result.newState
-
-          # Check that state is still valid
-          let violations = checkStateInvariants(game, 1)
-          if violations.len > 0:
-            echo &"    ⚠️  State corrupted after invalid system ID {invalidSys}"
-            reportViolations(violations)
-            fail()
-          else:
-            echo &"    ✅ Handled system ID {invalidSys} safely"
-
-        except CatchableError as e:
-          # Crash is acceptable IF it's a clean assertion/error
-          # NOT acceptable if it's a segfault or corruption
-          echo &"    ⚠️  Crashed on system ID {invalidSys}: {e.msg}"
-          # Don't fail - crash may be intentional validation
-
-  test "Fuzz: orders for non-existent fleets":
-    ## Try to give orders to fleets that don't exist
-
-    echo "\n🧪 Fuzzing non-existent fleet IDs..."
-
-    var game = createTestGame()
-    let firstHouse = toSeq(game.houses.keys)[0]
-    let validSystem = toSeq(game.starMap.systems.keys)[0]
-
-    # Try various non-existent fleet IDs
-    var fakeFleetIds: seq[string] = @[
-      "nonexistent_fleet",
-      "fleet_999999",
-      "",  # Empty string
-      "fleet-with-special-chars!@#$",
-    ]
-    fakeFleetIds.add("x".repeat(1000))  # Very long ID
-
-    for fakeFleet in fakeFleetIds:
-      echo &"  Trying fleet ID: '{fakeFleet[0..min(50, fakeFleet.len-1)]}'..."
-
-      var ordersTable = initTable[HouseId, OrderPacket]()
-      ordersTable[firstHouse] = OrderPacket(
-        houseId: firstHouse,
-        turn: 1,
-        buildOrders: @[],
-        fleetOrders: @[
-          FleetOrder(
-            fleetId: fakeFleet,
-            orderType: FleetOrderType.Move,
-            targetSystem: some(validSystem),
-            targetFleet: none(FleetId),
-            priority: 0
-          )
-        ],
-        researchAllocation: initResearchAllocation(),
-        diplomaticActions: @[],
-        populationTransfers: @[],
-        terraformOrders: @[],
-        espionageAction: none(esp_types.EspionageAttempt),
-        ebpInvestment: 0,
-        cipInvestment: 0
-      )
-
-      try:
-        let result = resolveTurn(game, ordersTable)
-        game = result.newState
-
-        # Check state integrity
-        let violations = checkStateInvariants(game, 1)
-        if violations.len > 0:
-          echo &"    ⚠️  State corrupted"
-          reportViolations(violations)
-          fail()
-        else:
-          echo &"    ✅ Handled gracefully"
-
-      except CatchableError as e:
-        echo &"    ⚠️  Crashed: {e.msg}"
-        # Don't fail - may be intentional
-
-  test "Fuzz: build orders with invalid ship classes":
-    ## Try to build ships that don't exist
-
-    echo "\n🧪 Fuzzing invalid ship classes..."
-
-    var game = createTestGame()
-    let firstHouse = toSeq(game.houses.keys)[0]
-    let firstColony = toSeq(game.colonies.keys)[0]
-
-    # Try building with invalid data
-    # Note: Can't directly fuzz ShipClass enum, but can test edge cases
-
-    # Test 1: Build order at non-existent colony
-    echo "  Trying build at non-existent colony..."
-
-    var ordersTable = initTable[HouseId, OrderPacket]()
-    ordersTable[firstHouse] = OrderPacket(
-      houseId: firstHouse,
-      turn: 1,
-      buildOrders: @[
-        BuildOrder(
-          colonySystem: SystemId(999_999),  # Doesn't exist
-          buildType: BuildType.Ship,
-          quantity: 1,
-          shipClass: some(ShipClass.Destroyer),
-          buildingType: none(string),
-          industrialUnits: 0
-        )
-      ],
-      fleetOrders: @[],
-      researchAllocation: initResearchAllocation(),
-      diplomaticActions: @[],
+proc createNoOpCommands(
+    game: GameState, turn: int
+): Table[HouseId, CommandPacket] =
+  ## Create empty commands for all houses
+  result = initTable[HouseId, CommandPacket]()
+  for (houseId, house) in game.activeHousesWithId():
+    result[houseId] = CommandPacket(
+      houseId: houseId,
+      turn: turn.int32,
+      treasury: house.treasury.int32,
+      fleetCommands: @[],
+      buildCommands: @[],
+      repairCommands: @[],
+      researchAllocation: ResearchAllocation(),
+      diplomaticCommand: @[],
       populationTransfers: @[],
-      terraformOrders: @[],
-      espionageAction: none(esp_types.EspionageAttempt),
+      terraformCommands: @[],
+      colonyManagement: @[],
+      espionageAction: none(EspionageAttempt),
       ebpInvestment: 0,
       cipInvestment: 0
     )
 
-    try:
-      let result = resolveTurn(game, ordersTable)
-      game = result.newState
+suite "Pathological Inputs: Invalid Orders":
 
-      let violations = checkStateInvariants(game, 1)
-      if violations.len > 0:
-        reportViolations(violations)
-        fail()
-      else:
-        echo "    ✅ Invalid build location handled safely"
+  test "Fuzz: fleet commands with invalid system IDs":
+    ## Try to move fleet to non-existent systems
 
-    except CatchableError as e:
-      echo &"    ⚠️  Crashed: {e.msg}"
+    echo "\nFuzzing invalid system IDs..."
+
+    var game = newGame()
+    var rng = initRand(42)
+
+    # Get first house and fleet
+    var firstHouseId: HouseId
+    var firstFleetId: FleetId
+    var foundFleet = false
+
+    for (houseId, _) in game.activeHousesWithId():
+      firstHouseId = houseId
+      break
+
+    for (fleetId, fleet) in game.allFleetsWithId():
+      if fleet.houseId == firstHouseId:
+        firstFleetId = fleetId
+        foundFleet = true
+        break
+
+    if not foundFleet:
+      echo "  No fleets found, skipping"
+      skip()
+
+    echo &"  Testing fleet: {firstFleetId}"
+
+    # Try various invalid system IDs
+    let invalidSystemIds = [
+      SystemId(0),            # Zero
+      SystemId(999_999),      # Extremely large
+      SystemId(high(uint32)), # Maximum uint32
+    ]
+
+    for invalidSys in invalidSystemIds:
+      echo &"  Trying system ID: {invalidSys}"
+
+      var commands = createNoOpCommands(game, 1)
+
+      # Add invalid fleet command
+      commands[firstHouseId].fleetCommands = @[
+        FleetCommand(
+          fleetId: firstFleetId,
+          commandType: FleetCommandType.Move,
+          targetSystem: some(invalidSys),
+          targetFleet: none(FleetId),
+          priority: 0,
+          roe: none(int32)
+        )
+      ]
+
+      # Engine should handle gracefully
+      try:
+        let turnResult = game.resolveTurn(commands, rng)
+
+        # Check that state is still valid
+        let violations = checkStateInvariants(game, 1)
+        if violations.len > 0:
+          echo &"    State corrupted after invalid system ID {invalidSys}"
+          reportViolations(violations)
+          fail()
+        else:
+          echo &"    Handled system ID {invalidSys} safely"
+
+      except CatchableError as e:
+        # Crash with clean error is acceptable
+        echo &"    Rejected system ID {invalidSys}: {e.msg}"
+
+  test "Fuzz: commands for non-existent fleets":
+    ## Try to give commands to fleets that don't exist
+
+    echo "\nFuzzing non-existent fleet IDs..."
+
+    var game = newGame()
+    var rng = initRand(43)
+
+    var firstHouseId: HouseId
+    for (houseId, _) in game.activeHousesWithId():
+      firstHouseId = houseId
+      break
+
+    # Get a valid system to target
+    var validSystemId: SystemId
+    for (systemId, _) in game.allSystemsWithId():
+      validSystemId = systemId
+      break
+
+    # Try various non-existent fleet IDs
+    let fakeFleetIds = [
+      FleetId(0),
+      FleetId(999_999),
+      FleetId(high(uint32)),
+    ]
+
+    for fakeFleetId in fakeFleetIds:
+      echo &"  Trying fleet ID: {fakeFleetId}"
+
+      var commands = createNoOpCommands(game, 1)
+      commands[firstHouseId].fleetCommands = @[
+        FleetCommand(
+          fleetId: fakeFleetId,
+          commandType: FleetCommandType.Move,
+          targetSystem: some(validSystemId),
+          targetFleet: none(FleetId),
+          priority: 0,
+          roe: none(int32)
+        )
+      ]
+
+      try:
+        let turnResult = game.resolveTurn(commands, rng)
+
+        let violations = checkStateInvariants(game, 1)
+        if violations.len > 0:
+          echo "    State corrupted"
+          reportViolations(violations)
+          fail()
+        else:
+          echo "    Handled gracefully"
+
+      except CatchableError as e:
+        echo &"    Rejected: {e.msg}"
+
+  test "Fuzz: build commands with invalid colony IDs":
+    ## Try to build at non-existent colonies
+
+    echo "\nFuzzing invalid colony IDs in build commands..."
+
+    var game = newGame()
+    var rng = initRand(44)
+
+    var firstHouseId: HouseId
+    for (houseId, _) in game.activeHousesWithId():
+      firstHouseId = houseId
+      break
+
+    let invalidColonyIds = [
+      ColonyId(0),
+      ColonyId(999_999),
+      ColonyId(high(uint32)),
+    ]
+
+    for invalidColony in invalidColonyIds:
+      echo &"  Trying colony ID: {invalidColony}"
+
+      var commands = createNoOpCommands(game, 1)
+      commands[firstHouseId].buildCommands = @[
+        BuildCommand(
+          colonyId: invalidColony,
+          buildType: BuildType.Ship,
+          quantity: 1,
+          shipClass: some(ShipClass.Scout),
+          facilityClass: none(FacilityClass),
+          industrialUnits: 0
+        )
+      ]
+
+      try:
+        let turnResult = game.resolveTurn(commands, rng)
+
+        let violations = checkStateInvariants(game, 1)
+        if violations.len > 0:
+          reportViolations(violations)
+          fail()
+        else:
+          echo "    Invalid build location handled safely"
+
+      except CatchableError as e:
+        echo &"    Rejected: {e.msg}"
 
   test "Fuzz: research allocation with invalid values":
     ## Try extreme/negative research allocations
 
-    echo "\n🧪 Fuzzing research allocations..."
+    echo "\nFuzzing research allocations..."
 
-    var game = createTestGame()
-    let firstHouse = toSeq(game.houses.keys)[0]
+    var game = newGame()
+    var rng = initRand(45)
+
+    var firstHouseId: HouseId
+    for (houseId, _) in game.activeHousesWithId():
+      firstHouseId = houseId
+      break
 
     # Try various invalid allocations
     let testCases = [
-      (-100, 0, 0),      # Negative allocation
-      (0, -50, 0),       # Negative allocation
-      (1000, 1000, 1000), # Exceeds 100% total
-      (200, 0, 0),       # Single field > 100%
+      (-100'i32, 0'i32),      # Negative economic
+      (0'i32, -50'i32),       # Negative science
+      (1000'i32, 1000'i32),   # Exceeds 100% total
+      (200'i32, 0'i32),       # Single field > 100%
     ]
 
-    for (econ, sci, tech) in testCases:
-      echo &"  Trying allocation: E={econ}, S={sci}, T={tech}"
+    for (econ, sci) in testCases:
+      echo &"  Trying allocation: E={econ}, S={sci}"
 
-      var research = initResearchAllocation()
-      research.economic = econ
-      research.science = sci
-      # Technology allocation is now a Table, skip for this test
-
-      var ordersTable = initTable[HouseId, OrderPacket]()
-      ordersTable[firstHouse] = OrderPacket(
-        houseId: firstHouse,
-        turn: 1,
-        buildOrders: @[],
-        fleetOrders: @[],
-        researchAllocation: research,
-        diplomaticActions: @[],
-        populationTransfers: @[],
-        terraformOrders: @[],
-        espionageAction: none(esp_types.EspionageAttempt),
-        ebpInvestment: 0,
-        cipInvestment: 0
+      var commands = createNoOpCommands(game, 1)
+      commands[firstHouseId].researchAllocation = ResearchAllocation(
+        economic: econ,
+        science: sci,
+        technology: initTable[TechField, int32]()
       )
 
       try:
-        let result = resolveTurn(game, ordersTable)
-        game = result.newState
+        let turnResult = game.resolveTurn(commands, rng)
 
         let violations = checkStateInvariants(game, 1)
         if violations.len > 0:
           reportViolations(violations)
           fail()
         else:
-          echo "    ✅ Handled safely"
+          echo "    Handled safely"
 
       except CatchableError as e:
-        echo &"    ⚠️  Crashed: {e.msg}"
+        echo &"    Rejected: {e.msg}"
 
 suite "Pathological Inputs: Extreme Values":
 
-  test "Extreme: very long fleet orders list":
-    ## Give 1000+ orders to a single fleet
+  test "Extreme: very long fleet commands list":
+    ## Give 1000+ commands (should be deduplicated per fleet)
 
-    echo "\n🧪 Testing 1000 fleet orders..."
+    echo "\nTesting 1000 fleet commands..."
 
-    var game = createTestGame()
-    let firstHouse = toSeq(game.houses.keys)[0]
-    let firstFleet = block:
-      var fleetId: FleetId = ""
-      for fid, fleet in game.fleets:
-        if fleet.owner == firstHouse:
-          fleetId = fid
-          break
-      fleetId
+    var game = newGame()
+    var rng = initRand(50)
 
-    if firstFleet == "":
+    var firstHouseId: HouseId
+    var firstFleetId: FleetId
+    var foundFleet = false
+
+    for (houseId, _) in game.activeHousesWithId():
+      firstHouseId = houseId
+      break
+
+    for (fleetId, fleet) in game.allFleetsWithId():
+      if fleet.houseId == firstHouseId:
+        firstFleetId = fleetId
+        foundFleet = true
+        break
+
+    if not foundFleet:
       skip()
-    else:
-      let validSystem = game.fleets[firstFleet].location
 
-      # Create 1000 Hold orders (should be harmless but test array handling)
-      var massiveOrders: seq[FleetOrder] = @[]
-      for i in 1..1000:
-        massiveOrders.add(FleetOrder(
-          fleetId: firstFleet,
-          orderType: FleetOrderType.Hold,
-          targetSystem: none(SystemId),
-          targetFleet: none(FleetId),
-          priority: i
-        ))
-
-      var ordersTable = initTable[HouseId, OrderPacket]()
-      ordersTable[firstHouse] = OrderPacket(
-        houseId: firstHouse,
-        turn: 1,
-        buildOrders: @[],
-        fleetOrders: massiveOrders,
-        researchAllocation: initResearchAllocation(),
-        diplomaticActions: @[],
-        populationTransfers: @[],
-        terraformOrders: @[],
-        espionageAction: none(esp_types.EspionageAttempt),
-        ebpInvestment: 0,
-        cipInvestment: 0
-      )
-
-      let startTime = cpuTime()
-      try:
-        let result = resolveTurn(game, ordersTable)
-        game = result.newState
-        let elapsed = cpuTime() - startTime
-
-        echo &"  ✅ Processed 1000 orders in {elapsed*1000:.1f}ms"
-
-        let violations = checkStateInvariants(game, 1)
-        if violations.len > 0:
-          reportViolations(violations)
-          fail()
-
-      except CatchableError as e:
-        echo &"  ❌ Crashed with 1000 orders: {e.msg}"
-        fail()
-
-  test "Extreme: maximum build queue":
-    ## Try to queue 100+ construction projects
-
-    echo "\n🧪 Testing maximum build queue..."
-
-    var game = createTestGame()
-    let firstHouse = toSeq(game.houses.keys)[0]
-    let firstColony = toSeq(game.colonies.keys)[0]
-
-    # Create 100 Scout build orders
-    var massiveQueue: seq[BuildOrder] = @[]
-    for i in 1..100:
-      massiveQueue.add(BuildOrder(
-        colonySystem: firstColony,
-        buildType: BuildType.Ship,
-        quantity: 1,
-        shipClass: some(ShipClass.Scout),
-        buildingType: none(string),
-        industrialUnits: 0
+    # Create 1000 Hold commands (should be mostly ignored/deduplicated)
+    var massiveCommands: seq[FleetCommand] = @[]
+    for i in 1..1000:
+      massiveCommands.add(FleetCommand(
+        fleetId: firstFleetId,
+        commandType: FleetCommandType.Hold,
+        targetSystem: none(SystemId),
+        targetFleet: none(FleetId),
+        priority: i.int32,
+        roe: none(int32)
       ))
 
-    var ordersTable = initTable[HouseId, OrderPacket]()
-    ordersTable[firstHouse] = OrderPacket(
-      houseId: firstHouse,
-      turn: 1,
-      buildOrders: massiveQueue,
-      fleetOrders: @[],
-      researchAllocation: initResearchAllocation(),
-      diplomaticActions: @[],
-      populationTransfers: @[],
-      terraformOrders: @[],
-      espionageAction: none(esp_types.EspionageAttempt),
-      ebpInvestment: 0,
-      cipInvestment: 0
-    )
+    var commands = createNoOpCommands(game, 1)
+    commands[firstHouseId].fleetCommands = massiveCommands
 
+    let startTime = cpuTime()
     try:
-      let result = resolveTurn(game, ordersTable)
-      game = result.newState
+      let turnResult = game.resolveTurn(commands, rng)
+      let elapsed = cpuTime() - startTime
 
-      echo "  ✅ Handled 100-item build queue"
+      echo &"  Processed 1000 commands in {elapsed*1000:.1f}ms"
 
       let violations = checkStateInvariants(game, 1)
       if violations.len > 0:
@@ -436,12 +318,126 @@ suite "Pathological Inputs: Extreme Values":
         fail()
 
     except CatchableError as e:
-      echo &"  ❌ Crashed: {e.msg}"
+      echo &"  Crashed with 1000 commands: {e.msg}"
       fail()
 
+  test "Extreme: maximum build queue":
+    ## Try to queue 100+ construction projects
+
+    echo "\nTesting maximum build queue..."
+
+    var game = newGame()
+    var rng = initRand(51)
+
+    var firstHouseId: HouseId
+    var firstColonyId: ColonyId
+    var foundColony = false
+
+    for (houseId, _) in game.activeHousesWithId():
+      firstHouseId = houseId
+      break
+
+    for (colonyId, colony) in game.allColoniesWithId():
+      if colony.owner == firstHouseId:
+        firstColonyId = colonyId
+        foundColony = true
+        break
+
+    if not foundColony:
+      skip()
+
+    # Create 100 Scout build commands
+    var massiveQueue: seq[BuildCommand] = @[]
+    for i in 1..100:
+      massiveQueue.add(BuildCommand(
+        colonyId: firstColonyId,
+        buildType: BuildType.Ship,
+        quantity: 1,
+        shipClass: some(ShipClass.Scout),
+        facilityClass: none(FacilityClass),
+        industrialUnits: 0
+      ))
+
+    var commands = createNoOpCommands(game, 1)
+    commands[firstHouseId].buildCommands = massiveQueue
+
+    try:
+      let turnResult = game.resolveTurn(commands, rng)
+      echo "  Handled 100-item build queue"
+
+      let violations = checkStateInvariants(game, 1)
+      if violations.len > 0:
+        reportViolations(violations)
+        fail()
+
+    except CatchableError as e:
+      echo &"  Crashed: {e.msg}"
+      fail()
+
+  test "Extreme: orders from wrong house":
+    ## Try to give orders for entities you don't own
+
+    echo "\nTesting cross-house command attempts..."
+
+    var game = newGame()
+    var rng = initRand(52)
+
+    # Get two different houses
+    var houseIds: seq[HouseId] = @[]
+    for (houseId, _) in game.activeHousesWithId():
+      houseIds.add(houseId)
+      if houseIds.len >= 2:
+        break
+
+    if houseIds.len < 2:
+      echo "  Need at least 2 houses, skipping"
+      skip()
+
+    let house1 = houseIds[0]
+    let house2 = houseIds[1]
+
+    # Find a fleet belonging to house2
+    var house2Fleet: FleetId
+    var foundFleet = false
+    for (fleetId, fleet) in game.allFleetsWithId():
+      if fleet.houseId == house2:
+        house2Fleet = fleetId
+        foundFleet = true
+        break
+
+    if not foundFleet:
+      echo "  No fleet for house2, skipping"
+      skip()
+
+    # House1 tries to command House2's fleet
+    var commands = createNoOpCommands(game, 1)
+    commands[house1].fleetCommands = @[
+      FleetCommand(
+        fleetId: house2Fleet,  # Not owned by house1!
+        commandType: FleetCommandType.Hold,
+        targetSystem: none(SystemId),
+        targetFleet: none(FleetId),
+        priority: 0,
+        roe: none(int32)
+      )
+    ]
+
+    try:
+      let turnResult = game.resolveTurn(commands, rng)
+      echo "  Engine accepted cross-house command (should be ignored)"
+
+      # The fleet should NOT have changed
+      let violations = checkStateInvariants(game, 1)
+      if violations.len > 0:
+        reportViolations(violations)
+        fail()
+
+    except CatchableError as e:
+      echo &"  Engine rejected cross-house command: {e.msg}"
+
 when isMainModule:
-  echo "╔════════════════════════════════════════════════╗"
-  echo "║  EC4X Pathological Input Fuzzing Tests        ║"
-  echo "║  Testing engine resilience to invalid inputs  ║"
-  echo "╚════════════════════════════════════════════════╝"
+  echo "========================================"
+  echo "  EC4X Pathological Input Fuzzing"
+  echo "  Testing engine input validation"
+  echo "========================================"
   echo ""
