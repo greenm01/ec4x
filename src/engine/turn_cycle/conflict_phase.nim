@@ -8,7 +8,7 @@
 ##   1f: Scout Intelligence Operations
 ##   1g: Administrative Completion
 ##
-## CON2: Immediate Combat Effects (handled per-system by orchestrator)
+## CON2: Immediate Combat Effects (handled per-system by combat engine)
 ##   2a: Remove destroyed entities
 ##   2b-2c: Clear destroyed/crippled Neoria queues
 ##   2d: Colony conquest effects
@@ -26,7 +26,7 @@ import ../../common/logger
 import ../types/game_state
 import ../types/[command, event, combat]
 import ../state/[engine, iterators]
-import ../systems/combat/orchestrator
+import ../systems/combat/engine
 import ../systems/combat/multi_house  # For buildMultiHouseBattle (UFCS)
 import ../systems/espionage/resolution
 import ../systems/colony/colonization
@@ -100,7 +100,7 @@ proc resolveConflictPhase*(
   ## - CON1e: Colonization
   ## - CON1f: Scout Intelligence Operations
   ## - CON1g: Administrative Completion
-  ## - CON2: Immediate Combat Effects (handled per-system by orchestrator)
+  ## - CON2: Immediate Combat Effects (handled per-system by combat engine)
 
   logInfo("Conflict", "=== Conflict Phase ===", " turn=", state.turn)
 
@@ -116,7 +116,7 @@ proc resolveConflictPhase*(
 
   # Resolve combat in each system with theater progression enforcement
   # Space → Orbital → Blockade → Planetary (single entry point pattern)
-  # CON2 (Immediate Combat Effects) handled per-system by orchestrator
+  # CON2 (Immediate Combat Effects) handled per-system by combat engine
   for systemId in combatSystems:
     let results = state.resolveSystemCombat(systemId, events, rng)
     combatResults.add(results)
@@ -191,7 +191,7 @@ proc resolveConflictPhase*(
   # ===================================================================
   # Per docs/engine/ec4x_canonical_turn_cycle.md Section CON2
   #
-  # CON2 is handled PER-SYSTEM by orchestrator.resolveSystemCombat():
+  # CON2 is handled PER-SYSTEM by state.resolveSystemCombat():
   # - 2a: Remove destroyed entities (ships, neorias, kastras, ground units)
   # - 2b: Clear destroyed Neoria queues
   # - 2c: Clear crippled Neoria queues
@@ -218,7 +218,7 @@ proc resolveConflictPhase*(
 ## - Handles escalation automatically (Neutral → Hostile → Enemy)
 ##
 ## **Immediate Combat Effects (CON2):**
-## - Handled per-system by orchestrator.resolveSystemCombat()
+## - Handled per-system by state.resolveSystemCombat()
 ## - Called after each system's combat, not batched
 ## - Ensures clean state for subsequent systems
 ##
