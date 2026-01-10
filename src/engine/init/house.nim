@@ -40,7 +40,7 @@ proc initHouse*(houseId: HouseId, name: string): House =
       breakthroughBonus: initTable[TechField, float32](),
     ),
     espionageBudget: EspionageBudget(houseId: houseId),
-    taxPolicy: TaxPolicy(currentRate: 50'i32, history: @[50'i32]),
+    taxPolicy: TaxPolicy(currentRate: 50'i32),
     isEliminated: false,
     eliminatedTurn: 0'i32,
     status: HouseStatus.Active,

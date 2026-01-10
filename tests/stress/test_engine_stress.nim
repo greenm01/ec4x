@@ -42,7 +42,7 @@ suite "Engine Stress: State Integrity":
           populationTransfers: @[],
           terraformCommands: @[],
           colonyManagement: @[],
-          espionageAction: none(EspionageAttempt),
+          espionageActions: @[],
           ebpInvestment: 0,
           cipInvestment: 0
         )
@@ -138,7 +138,7 @@ suite "Engine Stress: State Integrity":
           populationTransfers: @[],
           terraformCommands: @[],
           colonyManagement: @[],
-          espionageAction: none(EspionageAttempt),
+          espionageActions: @[],
           ebpInvestment: 0,
           cipInvestment: 0
         )
@@ -210,7 +210,7 @@ suite "Engine Stress: Performance Scaling":
             populationTransfers: @[],
             terraformCommands: @[],
             colonyManagement: @[],
-            espionageAction: none(EspionageAttempt),
+            espionageActions: @[],
             ebpInvestment: 0,
             cipInvestment: 0
           )

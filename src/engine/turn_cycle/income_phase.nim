@@ -74,7 +74,7 @@ proc processEBPCIPInvestment(
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
 ): int =
-  ## [INC2] Purchase EBP/CIP with PP, check over-investment penalty
+  ## [INC2] Purchase EBP/CIP with PP
   ## Returns count of houses that made purchases
   logInfo("Income", "[INC2] Processing EBP/CIP purchases...")
 
@@ -103,9 +103,6 @@ proc processEBPCIPInvestment(
     updatedHouse.treasury -= totalCost
     discard purchaseEBP(updatedHouse.espionageBudget, ebpCost)
     discard purchaseCIP(updatedHouse.espionageBudget, cipCost)
-
-    # TODO: Add over-investment penalty check if configured
-    # Threshold: >5% of turn budget → -1 prestige per 1% over threshold
 
     state.updateHouse(houseId, updatedHouse)
     purchaseCount += 1

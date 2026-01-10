@@ -235,20 +235,17 @@ Penalty mechanics describe how prestige is deducted based on player actions and 
 
 | Penalty Type                  | Condition                             | Prestige Impact                   | Frequency                 | Config Keys                 |
 | ----------------------------- | ------------------------------------- | --------------------------------- | ------------------------- | --------------------------- |
-| High Tax Rate                 | Rolling 6-turn avg 51-65%             | -2 prestige                       | Every 3 consecutive turns | `high_tax_*`                |
-| Very High Tax Rate            | Rolling 6-turn avg >66%               | -2 prestige                       | Every 5 consecutive turns | `very_high_tax_*`           |
+| High Tax Rate                 | Current tax rate > 50%                | Exponential: -floor(0.01 × (rate-50)²) | Per turn | `taxPenalty.*`              |
 | Maintenance Shortfall         | Missed maintenance payment            | -5 turn 1, escalates by +2/turn   | Per turn missed           | `maintenance_shortfall_*`   |
 | Blockade                      | Colony under blockade at Income Phase | -3 prestige                       | Per turn per colony       | `blockade_penalty`          |
-| Espionage Over-Investment     | EBP spending >5% of budget            | -2 prestige per 1% over threshold | Per turn                  | `over_invest_espionage`     |
-| Counter-Intel Over-Investment | CIP spending >5% of budget            | -2 prestige per 1% over threshold | Per turn                  | `over_invest_counter_intel` |
 
-*Source: config/prestige.kdl [maintenanceShortfall] section*
+*Source: config/prestige.kdl [taxPenalty], [maintenanceShortfall] sections*
 
 <!-- PENALTY_MECHANICS_END -->
 
 **Additional Notes:**
 
-- Tax penalties apply periodically based on rolling 6-turn average, not instantaneously
+- Tax penalties use exponential formula: 60% → -1, 70% → -4, 80% → -9, 90% → -16, 100% → -25
 - Maintenance shortfall escalates: Turn 1 (-5), Turn 2 (-7), Turn 3 (-9), continues +2/turn
 - See [Section 3.2](03-economy.md#32-tax-rate) for full tax mechanics
 - See [Section 3.9.1](03-economy.md#391-maintenance-tax-shortfall-consequences) for maintenance mechanics
@@ -296,5 +293,6 @@ Ground units received 33% cost reductions to make defensive investments more acc
 | Ship Destruction Protection (anti-fodder)     | A ship may not be destroyed in the same combat round it is crippled. Excess hits that would destroy a freshly crippled ship are lost (critical hits bypass).                                                                   | [7.2.2](07-combat.md#722-hit-application-rules)               |
 | Blockade Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for blockade penalty details.                                                                                                                                    | [6.2.6](06-operations.md#626-guardblockade-a-planet-05)       |
 | Tax Rate Prestige Penalty                     | See [Prestige Penalty Mechanics](#prestige-penalty-mechanics) for tax rate penalty details.                                                                                                                                    | [3.2](03-economy.md#32-tax-rate)                              |
+| Espionage Target Cooldown                     | Maximum 3 espionage operations per player against any single rival house per turn. Prevents focused harassment while allowing multi-front espionage. In a 4-player game, max 9 ops total (3×3 rivals).                        | [9.2](09-intel-espionage.md#92-espionage-actions)             |
 
 

@@ -24,21 +24,15 @@ export income.HouseIncomeReport, income.IncomePhaseReport
 
 ## Tax Policy Prestige Effects (economy.md:3.2)
 
-proc calculateTaxPenalty*(avgTaxRate: int): int =
-  ## Calculate prestige penalty from high rolling average tax rate
+proc calculateTaxPenalty*(taxRate: int): int =
+  ## Calculate prestige penalty from high tax rate (single turn, exponential)
+  ## Formula: penalty = -floor(baseCoefficient × (taxRate - threshold)^exponent)
   ## Per economy.md:3.2.1
-  if avgTaxRate <= 50:
+  let config = gameConfig.prestige.taxPenalty
+  if taxRate <= config.threshold:
     return 0
-  elif avgTaxRate <= 60:
-    return -1
-  elif avgTaxRate <= 70:
-    return -2
-  elif avgTaxRate <= 80:
-    return -4
-  elif avgTaxRate <= 90:
-    return -7
-  else:
-    return -11
+  let excess = float(taxRate - config.threshold)
+  return -int(floor(config.baseCoefficient * pow(excess, config.exponent)))
 
 proc calculateTaxBonus*(taxRate: int, colonyCount: int): int =
   ## Calculate prestige bonus from low tax rate
@@ -73,18 +67,7 @@ proc getPopulationGrowthMultiplier*(taxRate: int): float =
   else:
     return 1.20
 
-proc calculateRollingTaxAverage*(history: seq[int]): int =
-  ## Calculate 6-turn rolling average tax rate
-  ## Per economy.md:3.2.1
-  if history.len == 0:
-    return 0
 
-  var sum = 0
-  let count = min(history.len, 6)
-  for i in 0 ..< count:
-    sum += history[history.len - 1 - i] # Last 6 entries
-
-  return int(float(sum) / float(count))
 
 ## Colony Income Calculation
 
@@ -155,7 +138,6 @@ proc calculateHouseIncome*(
     totalGross: 0,
     totalNet: 0,
     taxRate: taxPolicy.currentRate,
-    taxAverage6Turn: 0,
     taxPenalty: 0,
     totalPrestigeBonus: 0,
     treasuryBefore: int32(treasury),
@@ -172,12 +154,8 @@ proc calculateHouseIncome*(
     result.totalGross += colonyReport.grossOutput
     result.totalNet += colonyReport.netValue
 
-  # Calculate tax effects
-  var history: seq[int] = @[]
-  for h in taxPolicy.history:
-    history.add(int(h))
-  result.taxAverage6Turn = int32(calculateRollingTaxAverage(history))
-  result.taxPenalty = int32(calculateTaxPenalty(result.taxAverage6Turn))
+  # Calculate tax effects (single-turn exponential penalty)
+  result.taxPenalty = int32(calculateTaxPenalty(taxPolicy.currentRate))
   result.totalPrestigeBonus = int32(calculateTaxBonus(taxPolicy.currentRate, colonies.len))
 
   # Generate prestige events from tax policy
@@ -192,13 +170,13 @@ proc calculateHouseIncome*(
       )
     )
 
-  # High tax penalty (using configured thresholds and values)
+  # High tax penalty (exponential formula based on current rate)
   if result.taxPenalty < 0:
     result.prestigeEvents.add(
       createPrestigeEvent(
         PrestigeSource.HighTaxPenalty,
         result.taxPenalty,
-        "High tax penalty (avg: " & $result.taxAverage6Turn & "%)",
+        "High tax penalty (rate: " & $taxPolicy.currentRate & "%)",
       )
     )
 

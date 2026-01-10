@@ -100,26 +100,30 @@ PP Income = Total GCO across all colonies × Tax Rate (rounded up)
 
 Higher tax rates generate more immediate revenue but anger your population. Lower rates slow short-term spending power but accelerate long-term growth and prestige.
 
-### 3.2.1 High-Tax Prestige Penalty (Anti-Cycling Rule)
+### 3.2.1 High-Tax Prestige Penalty
 
-Every Income Phase the game calculates the **average tax rate over the current turn + the previous five turns** (rolling 6-turn window) and applies the following prestige penalty if the average is above 50 %:
+Every Income Phase the game applies a prestige penalty based on the **current turn's tax rate** using an exponential formula:
+
+```
+penalty = -floor(0.01 × (taxRate - 50)²)
+```
 
 <!-- TAX_PENALTY_TABLE_START -->
 
-| Rolling 6-Turn Average Tax Rate | Prestige Penalty per Turn |
-| ------------------------------- | ------------------------- |
-| ≤ 50 %                          | 0                         |
-| 51 – 60 %                       | -1                        |
-| 61 – 70 %                       | -2                        |
-| 71 – 80 %                       | -4                        |
-| 81 – 90 %                       | -7                        |
-| 91 – 100 %                      | -11                       |
+| Current Tax Rate | Prestige Penalty |
+| ---------------- | ---------------- |
+| ≤ 50%            | 0                |
+| 60%              | -1               |
+| 70%              | -4               |
+| 80%              | -9               |
+| 90%              | -16              |
+| 100%             | -25              |
 
-*Source: config/prestige.toml [tax_penalties] section*
+*Source: config/prestige.kdl [taxPenalty] section*
 
 <!-- TAX_PENALTY_TABLE_END -->
 
-This penalty is applied every turn the qualifying average is met and cannot be avoided by short-term cycling.
+The exponential curve punishes extreme tax rates more heavily than moderate ones.
 
 ### 3.2.2 Low-Tax Incentives
 

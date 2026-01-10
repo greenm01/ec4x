@@ -32,7 +32,6 @@ proc collectColonyMetrics*(
         coloniesGainedViaConquest += 1
       if event.oldOwner == some(houseId):
         coloniesLost += 1
-    # TODO: Add ColonyAbandoned event
     else:
       discard
 

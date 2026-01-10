@@ -200,7 +200,8 @@ proc validateRepairRequest*(
       "Insufficient funds (need " & $cost & " PP, have " & $house.treasury & " PP)"
     return
 
-  # TODO: Check drydock capacity for Ship repairs when repair queue system implemented
+  # Note: Drydock capacity validation happens at repair queue assignment
+  # See production/repairs.nim:findAvailableDrydock() for capacity checking
   # Per operations.md:6.2.1, drydocks provide 10 repair docks
   # Starbase repairs do NOT consume dock capacity (separate queue)
 

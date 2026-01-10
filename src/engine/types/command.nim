@@ -51,7 +51,7 @@ type
     populationTransfers*: seq[PopulationTransferCommand]
     terraformCommands*: seq[TerraformCommand]
     colonyManagement*: seq[ColonyManagementCommand]
-    espionageAction*: Option[EspionageAttempt]
+    espionageActions*: seq[EspionageAttempt]
     ebpInvestment*: int32
     cipInvestment*: int32
 

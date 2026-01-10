@@ -5,10 +5,8 @@
 ## Per intel.md and operations.md specifications
 
 import std/[options, random, tables]
-# import std/sequtils  # TODO: Needed for toSeq() in income calculation (restore after refactor)
 import ../types/[core, game_state, intel, fleet, combat, ground_unit, ship]
 import ../state/[engine, iterators]
-# import ../systems/income/income as income_system  # TODO: Uncomment after systems refactor
 import corruption
 
 proc generateColonyIntelReport*(
@@ -152,14 +150,15 @@ proc generateOrbitalIntelReport*(
 
     # Check for guard/blockade commands (Spy quality only - requires infiltration)
     if quality == IntelQuality.Spy:
-      # TODO: Check fleet commands when command system is implemented
-      # if fleet.command.isSome:
-      #   let command = fleet.command.get()
-      #   if order.orderType == OrderType.Guard and order.targetColony == colony.id:
-      #     guardFleetIds.add(fleet.id)
-      #   elif order.orderType == OrderType.Blockade and order.targetColony == colony.id:
-      #     blockadeFleetIds.add(fleet.id)
-      discard
+      let command = fleet.command
+      # Check if guarding this colony
+      if command.commandType == FleetCommandType.GuardColony:
+        if command.targetSystem.isSome and command.targetSystem.get() == targetSystem:
+          guardFleetIds.add(fleet.id)
+      # Check if blockading this colony
+      elif command.commandType == FleetCommandType.Blockade:
+        if command.targetSystem.isSome and command.targetSystem.get() == targetSystem:
+          blockadeFleetIds.add(fleet.id)
 
   # Collect fighter IDs from colony
   var fighterIds: seq[ShipId] = colony.fighterIds
@@ -384,24 +383,12 @@ proc generateStarbaseIntelReport*(
   report.treasuryBalance = some(targetHouse.treasury)
   report.taxRate = some(targetHouse.taxPolicy.currentRate.float32)
 
-  # ============================================================================
-  # TODO: Restore income calculation after systems refactor
-  # ============================================================================
-  # let targetColonies = toSeq(state.coloniesOwned(colony.owner))
-  # let incomeReport = income_system.calculateHouseIncome(
-  #   targetColonies,
-  #   int(targetHouse.techTree.levels.el),
-  #   int(targetHouse.techTree.levels.cst),
-  #   targetHouse.taxPolicy,
-  #   int(targetHouse.treasury),
-  # )
-  # report.grossIncome = some(incomeReport.totalGross)
-  # report.netIncome = some(incomeReport.totalNet)
-
-  # Dummy values until systems refactor complete
-  report.grossIncome = some(int32(1000))
-  report.netIncome = some(int32(800))
-  # ============================================================================
+  # Note: Intelligence reports provide rough income estimates
+  # Actual income calculation requires full house state (tax rates, maintenance, tech, etc.)
+  # which is beyond the scope of colony-level intelligence gathering
+  # Future: Could implement rough estimation based on visible colony count and tech levels
+  report.grossIncome = none(int32)
+  report.netIncome = none(int32)
 
   # R&D intelligence - tech tree data
   report.techLevels = some(targetHouse.techTree.levels)

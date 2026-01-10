@@ -48,6 +48,10 @@ type
     TechAdvance # Technology level increased
     HouseEliminated # House eliminated from game
     PopulationTransfer # Population moved between systems
+    PopulationTransferCompleted # Population transfer completed successfully
+    PopulationTransferLost # Population transfer failed/lost
+    InfrastructureDamage # Infrastructure damaged (not from combat)
+    SalvageRecovered # Resources recovered from salvage operation
     IntelGathered # Intelligence report generated
     PrestigeGained # Prestige increased
     PrestigeLost # Prestige decreased
@@ -165,29 +169,30 @@ type
       oldLevel*: Option[int]
       newLevel*: Option[int]
       breakthrough*: Option[string] # "Minor", "Major", "Revolutionary"
-    of Economy, ConstructionStarted, PopulationTransfer:
+    of Economy, ConstructionStarted, PopulationTransfer, PopulationTransferCompleted,
+        PopulationTransferLost, InfrastructureDamage, SalvageRecovered:
       ## Economic events (details in common fields)
       category*: Option[string]
         # "Income", "Maintenance", "Production" for generic Economy
       amount*: Option[int] # PP, IU, etc.
     of Colony, ColonyEstablished, BuildingCompleted, UnitRecruited, UnitDisbanded,
-        TerraformComplete, RepairQueued, RepairCompleted, RepairCancelled,
+        TerraformComplete, RepairQueued, RepairCancelled,
         EntitySalvaged, ConstructionLost:
       ## Colony events (newOwner/oldOwner/details in common fields)
       colonyEventType*: Option[string]
         # "Established", "Lost", "Damage", "BuildingCompleted", "UnitRecruited",
-        # "UnitDisbanded", "TerraformComplete", "RepairQueued", "RepairCompleted",
+        # "UnitDisbanded", "TerraformComplete", "RepairQueued",
         # "RepairCancelled", "EntitySalvaged", "ConstructionLost"
       salvageValueColony*: Option[int]  # For EntitySalvaged: PP recovered
       lostProjectType*: Option[string]  # For ConstructionLost: project type
       lostProjectPP*: Option[int]       # For ConstructionLost: PP invested lost
     of Fleet, FleetDestroyed, ShipCommissioned, ScoutDestroyed, FleetDisbanded,
-        SquadronDisbanded, SquadronScrapped, RepairStalled:
+        SquadronDisbanded, SquadronScrapped, RepairStalled, RepairCompleted:
       ## Fleet events (fleetId/details in common fields, reason in common fields)
       fleetEventType*: Option[string]
-        # "Created", "Destroyed", "Crippled", "Repaired", "Disbanded", "Scrapped", "RepairStalled" for generic Fleet
+        # "Created", "Destroyed", "Crippled", "Repaired", "Disbanded", "Scrapped", "RepairStalled", "RepairCompleted" for generic Fleet
       shipClass*: Option[ShipClass]
-        # For fleet creation/destruction/crippling/commissioning/scout destruction/repair stalled
+        # For fleet creation/destruction/crippling/commissioning/scout destruction/repair stalled/repair completed
       salvageValue*: Option[int]
         # Salvage value recovered (25% for maintenance, 50% for capitals, 0% for auto-disband)
     of Intelligence, IntelGathered, ScoutDetected:

@@ -98,16 +98,12 @@ type
     overInvestEspionage*: int32
     overInvestCounterIntel*: int32
 
-  TaxPenaltyTierData* = object
-    ## Data for a single tax penalty tier
-    minRate*: int32
-    maxRate*: int32
-    penalty*: int32
-
-  TaxPenaltiesTier* = object
-    ## Tax penalties configuration
-    ## Uses Table pattern for numbered tiers (see types-guide.md)
-    tiers*: Table[int32, TaxPenaltyTierData]
+  TaxPenaltyConfig* = object
+    ## Exponential tax penalty configuration (single-turn)
+    ## Formula: penalty = -floor(baseCoefficient × (taxRate - threshold)²)
+    threshold*: int32          # Tax rate below this incurs no penalty
+    baseCoefficient*: float32  # Scaling factor for penalty curve
+    exponent*: float32         # Exponential growth rate (2 = quadratic)
 
   TaxIncentiveTierData* = object
     ## Data for a single tax incentive tier
@@ -132,6 +128,6 @@ type
     diplomacy*: DiplomacyPrestigeConfig
     victoryAchievement*: VictoryAchievementConfig
     penalties*: PenaltiesPrestigeConfig
-    taxPenalties*: TaxPenaltiesTier
+    taxPenalty*: TaxPenaltyConfig
     taxIncentives*: TaxIncentivesTier
 

@@ -92,7 +92,7 @@ proc getGroundBatteryBuildCost*(): int32 =
 proc getPlanetaryShieldCost*(sldLevel: int32): int32 =
   ## Get construction cost for planetary shield
   ## Note: Currently uses base cost; SLD level affects strength, not cost
-  ## TODO: Implement tiered costs if needed
+  ## Note: Simple per-unit cost model used (no tiered pricing in spec)
   gameConfig.groundUnits.units[GroundClass.PlanetaryShield].productionCost
 
 ## Generic Ground Unit Accessors

@@ -559,6 +559,7 @@ proc resolveMultiHouseBattle*(
     # Phase 2: Roll CER for each house
     var houseCER: Table[HouseId, float]
     var hitsGenerated: Table[HouseId, int32]
+    var houseCriticalHits: Table[HouseId, bool]
 
     for participant in battle.participants:
       let totalAS = houseAS[participant.houseId]
@@ -578,7 +579,7 @@ proc resolveMultiHouseBattle*(
       let cerResult = rollCER(rng, drm, battle.theater)
       houseCER[participant.houseId] = cerResult.cer
       hitsGenerated[participant.houseId] = int32(float(totalAS) * cerResult.cer)
-      # TODO: Track critical hits per house for multi-house combat
+      houseCriticalHits[participant.houseId] = cerResult.isCriticalHit
 
     # Phase 3: Distribute hits according to targeting matrix
     for shooter in battle.participants:
@@ -599,8 +600,9 @@ proc resolveMultiHouseBattle*(
             targetShips = getAllShips(state, participant.fleets)
             break
 
-        # Apply hits using existing hit application system
-        applyHits(state, targetShips, hits)
+        # Apply hits using existing hit application system with critical hit flag
+        let isCritical = houseCriticalHits.getOrDefault(shooter.houseId, false)
+        applyHits(state, targetShips, hits, isCritical)
 
     # Phase 4: Check retreat for each fleet (per-fleet ROE evaluation)
     for participantIdx in 0 ..< battle.participants.len:

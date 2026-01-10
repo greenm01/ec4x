@@ -19,6 +19,10 @@ type
     minColonyPopulation*: int32        # Minimum viable colony (5000 souls)
     maxConcurrentTransfers*: int32     # Max simultaneous population transfers per house
 
+  EspionageLimitsConfig* = object
+    ## Target cooldown: prevents espionage spam against single house
+    maxOpsPerTargetPerTurn*: int32     # Max ops vs any single rival house per turn
+
   PlanetCapacityConfig* = object
     planetClass*: string
     puMax*: int32
@@ -37,5 +41,6 @@ type
     quantityLimits*: QuantityLimitsConfig
     fighterCapacity*: FighterCapacityConfig
     populationLimits*: PopulationLimitsConfig
+    espionageLimits*: EspionageLimitsConfig
     capacities*: CapacitiesConfig
     scScaling*: ScScalingConfig

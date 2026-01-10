@@ -261,7 +261,6 @@ proc saveDiagnosticMetrics*(state: GameState, metrics: DiagnosticMetrics) =
     $metrics.salvageValueRecovered,
     $metrics.maintenanceCostDeficit,
     taxPenaltyInt,
-    $metrics.avgTaxRate6Turn,
     $metrics.fighterCapacityMax,
     $metrics.fighterCapacityUsed,
     fighterViolationInt,

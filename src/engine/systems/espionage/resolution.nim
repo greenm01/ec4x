@@ -12,7 +12,7 @@
 ##    - Provides Perfect Quality intelligence if successful
 ##
 ## 2. **EBP-Based Espionage Actions** (Section 9.2)
-##    - CommandPacket.espionageAction field
+##    - CommandPacket.espionageActions field (seq, max 3 per target per turn)
 ##    - Actions: TechTheft, Assassination, Sabotage, etc.
 ##    - Cost EBP points (40 PP each)
 ##    - Subject to CIC detection rolls
@@ -303,9 +303,10 @@ proc processEspionageActions*(
     rng: var Rand,
     events: var seq[event.GameEvent],
 ) =
-  ## Process CommandPacket.espionageAction for all houses
+  ## Process CommandPacket.espionageActions for all houses
   ## This handles EBP-based espionage actions (TechTheft, Assassination, etc.)
   ## separate from fleet-based espionage orders
+  ## Note: Max 3 operations per target house per turn (validated in commands.nim)
 
   for houseId, _ in state.allHousesWithId():
     if houseId notin orders:
@@ -353,233 +354,230 @@ proc processEspionageActions*(
         " PP",
       )
 
-    # Step 2: Execute espionage action if present
-    if packet.espionageAction.isNone:
+    # Step 2: Execute espionage actions (0 to many per turn)
+    if packet.espionageActions.len == 0:
       # Update house if investments were made
       if packet.ebpInvestment > 0 or packet.cipInvestment > 0:
         state.updateHouse(houseId, house)
       continue
 
-    let attempt = packet.espionageAction.get()
+    # Process each espionage action in the packet
+    for attempt in packet.espionageActions:
+      # Validate target house is not eliminated (leaderboard is public info)
+      let targetOpt = state.house(attempt.target)
+      if targetOpt.isSome and targetOpt.get().isEliminated:
+        logDebug(
+          "Espionage",
+          "Cannot target eliminated house",
+          " attacker=",
+          houseId,
+          " target=",
+          attempt.target,
+        )
+        continue
 
-    # Validate target house is not eliminated (leaderboard is public info)
-    let targetOpt = state.house(attempt.target)
-    if targetOpt.isSome and targetOpt.get().isEliminated:
-      logDebug(
+      # Check if attacker has sufficient EBP
+      let actionCost = getActionCost(attempt.action)
+      if not canAffordAction(house.espionageBudget, attempt.action):
+        logDebug(
+          "Espionage",
+          "Insufficient EBP",
+          " house=",
+          houseId,
+          " action=",
+          attempt.action,
+          " cost=",
+          actionCost,
+          " has=",
+          house.espionageBudget.ebpPoints,
+        )
+        continue
+
+      # Spend EBP
+      if not spendEBP(house.espionageBudget, attempt.action):
+        logDebug(
+          "Espionage",
+          "Failed to spend EBP",
+          " house=",
+          houseId,
+          " action=",
+          attempt.action,
+        )
+        continue
+
+      logInfo(
         "Espionage",
-        "Cannot target eliminated house",
+        "Executing action",
         " attacker=",
         houseId,
         " target=",
         attempt.target,
-      )
-      # Update house before continuing
-      state.updateHouse(houseId, house)
-      continue
-
-    # Check if attacker has sufficient EBP
-    let actionCost = getActionCost(attempt.action)
-    if not canAffordAction(house.espionageBudget, attempt.action):
-      logDebug(
-        "Espionage",
-        "Insufficient EBP",
-        " house=",
-        houseId,
         " action=",
         attempt.action,
         " cost=",
         actionCost,
-        " has=",
-        house.espionageBudget.ebpPoints,
+        " EBP",
       )
-      # Update house before continuing
-      state.updateHouse(houseId, house)
-      continue
 
-    # Spend EBP
-    if not spendEBP(house.espionageBudget, attempt.action):
-      logDebug(
-        "Espionage",
-        "Failed to spend EBP",
-        " house=",
-        houseId,
-        " action=",
-        attempt.action,
-      )
-      # Update house before continuing
-      state.updateHouse(houseId, house)
-      continue
+      # Get target's CIC level from tech tree
+      let targetHouseOpt = state.house(attempt.target)
+      if targetHouseOpt.isNone:
+        continue
+      let targetHouse = targetHouseOpt.get()
+      let targetCICLevel =
+        case targetHouse.techTree.levels.cic
+        of 1: espionage.CICLevel.CIC1
+        of 2: espionage.CICLevel.CIC2
+        of 3: espionage.CICLevel.CIC3
+        of 4: espionage.CICLevel.CIC4
+        of 5: espionage.CICLevel.CIC5
+        else: espionage.CICLevel.CIC1
 
-    logInfo(
-      "Espionage",
-      "Executing action",
-      " attacker=",
-      houseId,
-      " target=",
-      attempt.target,
-      " action=",
-      attempt.action,
-      " cost=",
-      actionCost,
-      " EBP",
-    )
+      let targetCIP = targetHouse.espionageBudget.cipPoints
 
-    # Get target's CIC level from tech tree
-    let targetHouseOpt = state.house(attempt.target)
-    if targetHouseOpt.isNone:
-      # Update house before continuing
-      state.updateHouse(houseId, house)
-      continue
-    let targetHouse = targetHouseOpt.get()
-    let targetCICLevel =
-      case targetHouse.techTree.levels.cic
-      of 1: espionage.CICLevel.CIC1
-      of 2: espionage.CICLevel.CIC2
-      of 3: espionage.CICLevel.CIC3
-      of 4: espionage.CICLevel.CIC4
-      of 5: espionage.CICLevel.CIC5
-      else: espionage.CICLevel.CIC1
+      # Execute espionage action with detection roll
+      let result = executeEspionage(attempt, targetCICLevel, targetCIP, rng)
 
-    let targetCIP = targetHouse.espionageBudget.cipPoints
+      # Apply results
+      if result.success:
+        logInfo("Espionage", "Action SUCCESS", " desc=", result.description)
 
-    # Execute espionage action with detection roll
-    let result = executeEspionage(attempt, targetCICLevel, targetCIP, rng)
+        # Apply prestige changes
+        for prestigeEvent in result.attackerPrestigeEvents:
+          applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
+        for prestigeEvent in result.targetPrestigeEvents:
+          applyPrestigeEvent(state, attempt.target, prestigeEvent)
 
-    # Apply results
-    if result.success:
-      logInfo("Espionage", "Action SUCCESS", " desc=", result.description)
+        # Create espionage event based on action type
+        case attempt.action
+        of espionage.EspionageAction.SabotageLow:
+          if attempt.targetSystem.isSome:
+            events.add(
+              sabotageConducted(
+                attempt.attacker,
+                attempt.target,
+                attempt.targetSystem.get(),
+                result.iuDamage,
+                "Low",
+              )
+            )
+        of espionage.EspionageAction.SabotageHigh:
+          if attempt.targetSystem.isSome:
+            events.add(
+              sabotageConducted(
+                attempt.attacker,
+                attempt.target,
+                attempt.targetSystem.get(),
+                result.iuDamage,
+                "High",
+              )
+            )
+        of espionage.EspionageAction.TechTheft:
+          events.add(
+            techTheftExecuted(
+              attempt.attacker, attempt.target, result.srpStolen
+            )
+          )
+        of espionage.EspionageAction.Assassination:
+          events.add(
+            assassinationAttempted(
+              attempt.attacker, attempt.target,
+              gameConfig.espionage.effects.assassination_srp_reduction,
+            )
+          )
+        of espionage.EspionageAction.EconomicManipulation:
+          events.add(
+            economicManipulationExecuted(
+              attempt.attacker, attempt.target,
+              gameConfig.espionage.effects.economic_ncv_reduction,
+            )
+          )
+        of espionage.EspionageAction.CyberAttack:
+          if attempt.targetSystem.isSome:
+            events.add(
+              cyberAttackConducted(
+                attempt.attacker, attempt.target, attempt.targetSystem.get()
+              )
+            )
+        of espionage.EspionageAction.PsyopsCampaign:
+          events.add(
+            psyopsCampaignLaunched(
+              attempt.attacker, attempt.target,
+              gameConfig.espionage.effects.psyops_tax_reduction,
+            )
+          )
+        of espionage.EspionageAction.IntelTheft:
+          events.add(
+            intelTheftExecuted(
+              attempt.attacker, attempt.target
+            )
+          )
+        of espionage.EspionageAction.PlantDisinformation:
+          events.add(
+            disinformationPlanted(attempt.attacker, attempt.target)
+          )
+        of espionage.EspionageAction.CounterIntelSweep:
+          if attempt.targetSystem.isSome:
+            events.add(
+              counterIntelSweepExecuted(
+                attempt.attacker, attempt.targetSystem.get()
+              )
+            )
 
-      # Apply prestige changes
-      for prestigeEvent in result.attackerPrestigeEvents:
-        applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
-      for prestigeEvent in result.targetPrestigeEvents:
-        applyPrestigeEvent(state, attempt.target, prestigeEvent)
+        # Apply ongoing effects
+        if result.effect.isSome:
+          state.ongoingEffects.add(result.effect.get())
 
-      # Create espionage event based on action type
-      case attempt.action
-      of espionage.EspionageAction.SabotageLow:
+        # Apply immediate effects (SRP theft, IU damage, etc.)
+        if result.srpStolen > 0:
+          let targetHouseOpt = state.house(attempt.target)
+          let attackerHouseOpt = state.house(attempt.attacker)
+
+          if targetHouseOpt.isSome and attackerHouseOpt.isSome:
+            var targetHouse = targetHouseOpt.get()
+            var attackerHouse = attackerHouseOpt.get()
+
+            targetHouse.techTree.accumulated.science = max(
+              0, targetHouse.techTree.accumulated.science - result.srpStolen
+            )
+            attackerHouse.techTree.accumulated.science += result.srpStolen
+
+            state.updateHouse(attempt.target, targetHouse)
+            state.updateHouse(attempt.attacker, attackerHouse)
+
+            logInfo(
+              "Espionage",
+              "SRP stolen",
+              " from=",
+              attempt.target,
+              " amount=",
+              result.srpStolen,
+            )
+      else:
+        logInfo(
+          "Espionage",
+          "Action DETECTED",
+          " attacker=",
+          houseId,
+          " defender=",
+          attempt.target,
+        )
+        # Apply detection prestige penalties
+        for prestigeEvent in result.attackerPrestigeEvents:
+          applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
+
+        # Create detection event
         if attempt.targetSystem.isSome:
           events.add(
-            sabotageConducted(
+            spyMissionDetected(
               attempt.attacker,
               attempt.target,
               attempt.targetSystem.get(),
-              result.iuDamage,
-              "Low",
-            )
-          )
-      of espionage.EspionageAction.SabotageHigh:
-        if attempt.targetSystem.isSome:
-          events.add(
-            sabotageConducted(
-              attempt.attacker,
-              attempt.target,
-              attempt.targetSystem.get(),
-              result.iuDamage,
-              "High",
-            )
-          )
-      of espionage.EspionageAction.TechTheft:
-        events.add(
-          techTheftExecuted(
-            attempt.attacker, attempt.target, result.srpStolen
-          )
-        )
-      of espionage.EspionageAction.Assassination:
-        events.add(
-          assassinationAttempted(
-            attempt.attacker, attempt.target,
-            gameConfig.espionage.effects.assassination_srp_reduction,
-          )
-        )
-      of espionage.EspionageAction.EconomicManipulation:
-        events.add(
-          economicManipulationExecuted(
-            attempt.attacker, attempt.target,
-            gameConfig.espionage.effects.economic_ncv_reduction,
-          )
-        )
-      of espionage.EspionageAction.CyberAttack:
-        if attempt.targetSystem.isSome:
-          events.add(
-            cyberAttackConducted(
-              attempt.attacker, attempt.target, attempt.targetSystem.get()
-            )
-          )
-      of espionage.EspionageAction.PsyopsCampaign:
-        events.add(
-          psyopsCampaignLaunched(
-            attempt.attacker, attempt.target,
-            gameConfig.espionage.effects.psyops_tax_reduction,
-          )
-        )
-      of espionage.EspionageAction.IntelTheft:
-        events.add(
-          intelTheftExecuted(
-            attempt.attacker, attempt.target
-          )
-        )
-      of espionage.EspionageAction.PlantDisinformation:
-        events.add(
-          disinformationPlanted(attempt.attacker, attempt.target)
-        )
-      of espionage.EspionageAction.CounterIntelSweep:
-        if attempt.targetSystem.isSome:
-          events.add(
-            counterIntelSweepExecuted(
-              attempt.attacker, attempt.targetSystem.get()
+              $attempt.action,
             )
           )
 
-      # Apply ongoing effects
-      if result.effect.isSome:
-        state.ongoingEffects.add(result.effect.get())
-
-      # Apply immediate effects (SRP theft, IU damage, etc.)
-      if result.srpStolen > 0:
-        let targetHouseOpt = state.house(attempt.target)
-        let attackerHouseOpt = state.house(attempt.attacker)
-
-        if targetHouseOpt.isSome and attackerHouseOpt.isSome:
-          var targetHouse = targetHouseOpt.get()
-          var attackerHouse = attackerHouseOpt.get()
-
-          targetHouse.techTree.accumulated.science = max(
-            0, targetHouse.techTree.accumulated.science - result.srpStolen
-          )
-          attackerHouse.techTree.accumulated.science += result.srpStolen
-
-          state.updateHouse(attempt.target, targetHouse)
-          state.updateHouse(attempt.attacker, attackerHouse)
-
-          logInfo(
-            "Espionage",
-            "SRP stolen",
-            " from=",
-            attempt.target,
-            " amount=",
-            result.srpStolen,
-          )
-    else:
-      logInfo(
-        "Espionage", "Action DETECTED", " attacker=", houseId, " defender=", attempt.target
-      )
-      # Apply detection prestige penalties
-      for prestigeEvent in result.attackerPrestigeEvents:
-        applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
-
-      # Create detection event
-      if attempt.targetSystem.isSome:
-        events.add(
-          spyMissionDetected(
-            attempt.attacker,
-            attempt.target,
-            attempt.targetSystem.get(),
-            $attempt.action,
-          )
-        )
-
-    # Update house entity after espionage action resolution
+    # Update house entity after all espionage actions resolved
     state.updateHouse(houseId, house)
 
 # Legacy functions removed - replaced by resolveScoutMissions()

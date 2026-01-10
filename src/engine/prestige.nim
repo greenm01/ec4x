@@ -14,7 +14,7 @@
 ## - Diplomatic actions
 ##
 ## Prestige penalties:
-## - High taxes (rolling average > 50%)
+## - High taxes (exponential penalty for rates > 50%)
 ## - Blockaded colonies
 ## - Maintenance shortfalls
 ## - Military defeats

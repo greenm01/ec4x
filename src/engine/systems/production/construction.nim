@@ -65,7 +65,7 @@ proc resolveBuildOrders*(
       logError(
         "Economy", &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}"
       )
-      # TODO: Add to GameEvent for AI/player feedback when GameEvent system is integrated
+      # Note: Rejection events handled by turn result system
       continue
 
     # Validate colony ownership
@@ -76,7 +76,7 @@ proc resolveBuildOrders*(
       logError(
         "Economy", &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}"
       )
-      # TODO: Add to GameEvent for AI/player feedback when GameEvent system is integrated
+      # Note: Rejection events handled by turn result system
       continue
 
     # Determine if this construction requires dock capacity

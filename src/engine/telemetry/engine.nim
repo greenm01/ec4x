@@ -118,7 +118,6 @@ proc initDiagnosticMetrics*(
     salvageValueRecovered: 0'i32,
     maintenanceCostDeficit: 0'i32,
     taxPenaltyActive: false,
-    avgTaxRate6Turn: 0'i32,
 
     # Squadron Capacity & Violations
     fighterCapacityMax: 0'i32,

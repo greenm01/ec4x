@@ -2,7 +2,9 @@
 ##
 ## Prestige modifiers from taxation and blockades
 
+import std/math
 import ../types/[core, prestige]
+import ../globals
 import ./[engine, sources, events]
 
 proc applyTaxPrestige*(
@@ -31,28 +33,20 @@ proc applyTaxPrestige*(
     $houseId & " low tax bonus (rate: " & $taxRate & "%)",
   )
 
-proc applyHighTaxPenalty*(houseId: HouseId, avgTaxRate: int): PrestigeEvent =
-  ## Apply prestige penalty from high rolling average tax
+proc applyHighTaxPenalty*(houseId: HouseId, taxRate: int): PrestigeEvent =
+  ## Apply prestige penalty from high tax rate (exponential formula)
   ## Per economy.md:3.2.1
+  let config = gameConfig.prestige.taxPenalty
   var penalty: int32 = 0
 
-  if avgTaxRate <= 50:
-    penalty = 0
-  elif avgTaxRate <= 60:
-    penalty = -1
-  elif avgTaxRate <= 70:
-    penalty = -2
-  elif avgTaxRate <= 80:
-    penalty = -4
-  elif avgTaxRate <= 90:
-    penalty = -7
-  else:
-    penalty = -11
+  if taxRate > config.threshold:
+    let excess = float(taxRate - config.threshold)
+    penalty = -int32(floor(config.baseCoefficient * pow(excess, config.exponent)))
 
   return createPrestigeEvent(
     PrestigeSource.HighTaxPenalty,
     penalty,
-    $houseId & " high tax penalty (avg: " & $avgTaxRate & "%)",
+    $houseId & " high tax penalty (rate: " & $taxRate & "%)",
   )
 
 proc applyBlockadePenalty*(houseId: HouseId, blockadedColonies: int): PrestigeEvent =

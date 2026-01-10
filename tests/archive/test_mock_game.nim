@@ -1369,7 +1369,7 @@ proc runComprehensiveProgression(): GameTestResult =
         populationTransfers: @[],
         terraformOrders: @[],
         colonyManagement: @[],
-        espionageAction: none(esp_types.EspionageAttempt),
+        espionageActions: @[],
         ebpInvestment: 0,
         cipInvestment: 0
       )

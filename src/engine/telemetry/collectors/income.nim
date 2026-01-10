@@ -59,14 +59,16 @@ proc collectIncomeMetrics*(
   for event in state.lastTurnEvents:
     if event.houseId != some(houseId):
       continue
-    # TODO: Add InfrastructureDamage, SalvageRecovered events
-    # case event.eventType:
-    # of InfrastructureDamage:
-    #   infrastructureDamage += extractAmount(event)
-    # of SalvageRecovered:
-    #   salvageValueRecovered += extractAmount(event)
-    # else:
-    #   discard
+    
+    case event.eventType
+    of InfrastructureDamage:
+      if event.amount.isSome:
+        infrastructureDamage += event.amount.get()
+    of SalvageRecovered:
+      if event.amount.isSome:
+        salvageValueRecovered += event.amount.get()
+    else:
+      discard
 
   result.infrastructureDamageTotal =
     prevMetrics.infrastructureDamageTotal + infrastructureDamage
@@ -74,5 +76,4 @@ proc collectIncomeMetrics*(
     prevMetrics.salvageValueRecovered + salvageValueRecovered
 
   # Tax rate analysis
-  result.avgTaxRate6Turn = result.taxRate # TODO: Calculate 6-turn average
-  result.taxPenaltyActive = result.taxRate > 50
+  result.taxPenaltyActive = result.taxRate > gameConfig.prestige.taxPenalty.threshold

@@ -73,26 +73,18 @@ prestigeEvents {
     undefendedColonyMultiplier 1.5 // planetLost * 1.5, breaks zero-sum
 }
 
-// --- Recurring Penalties ---
-recurringPenalties {
-    (docs)"docs/specs/09-intel-espionage.md#section-9-2"
-    // Also see: docs/specs/09-intel-espionage.md#section-9-3
-    overInvestment {
-        budgetThreshold 0.05 // 5%
-        penaltyPerPercent -2 // -2 prestige per 1% over budget (09-intel-espionage.md Section 9.4)
-    }
-}
 
-// --- Tax Penalties (Rolling 6-turn average) ---
-taxPenalties {
+
+// --- Tax Penalties (Single-turn exponential) ---
+taxPenalty {
     (docs)"docs/specs/03-economy.md#section-3-2-1"
-    // Note: Averaging window (6 turns) defined in economy.kdl taxMechanics
-    tier 1 { minRate 0; maxRate 50; penalty 0 }
-    tier 2 { minRate 51; maxRate 60; penalty -1 }
-    tier 3 { minRate 61; maxRate 70; penalty -2 }
-    tier 4 { minRate 71; maxRate 80; penalty -4 }
-    tier 5 { minRate 81; maxRate 90; penalty -7 }
-    tier 6 { minRate 91; maxRate 100; penalty -11 }
+    // Exponential penalty for high tax rates (single turn, no history)
+    // Formula: penalty = -floor(baseCoefficient × (taxRate - threshold)²)
+    // Example curve (threshold=50, baseCoefficient=0.01, exponent=2):
+    //   60% → -1, 70% → -4, 80% → -9, 90% → -16, 100% → -25
+    threshold 50             // Tax rate below this incurs no penalty
+    baseCoefficient 0.01     // Scaling factor for penalty curve
+    exponent 2.0             // Exponential growth rate (2 = quadratic)
 }
 
 // --- Low-Tax Incentives ---

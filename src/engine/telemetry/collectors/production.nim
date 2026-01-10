@@ -4,7 +4,7 @@
 ## Covers: construction projects, repair, commissioning.
 
 import std/options
-import ../../types/[telemetry, core, game_state, event, production, colony]
+import ../../types/[telemetry, core, game_state, event, production, colony, ship]
 import ../../state/[engine, iterators]
 
 proc collectProductionMetrics*(
@@ -26,14 +26,16 @@ proc collectProductionMetrics*(
     case event.eventType
     of ShipCommissioned:
       shipsCommissionedThisTurn += 1
-      # TODO: Detect ETAC from event details
-      # if event.details contains "ETAC":
-      #   etacCommissionedThisTurn += 1
+      # Detect ETAC from shipClass field
+      if event.shipClass.isSome and event.shipClass.get() == ShipClass.ETAC:
+        etacCommissionedThisTurn += 1
       squadronsCommissionedThisTurn += 1
+    of RepairCompleted:
+      # Track repairs completed (RepairCompleted event now emitted)
+      discard
     of ConstructionStarted:
       # Track construction starts if needed
       discard
-    # TODO: Add RepairCompleted event
     else:
       discard
 
@@ -71,7 +73,7 @@ proc collectProductionMetrics*(
         let project = projectOpt.get()
         if project.projectType == BuildType.Ship:
           shipsUnderConstruction += 1
-          if project.shipClass == some(ShipClass.ETAC):
+          if project.shipClass.isSome and project.shipClass.get() == ShipClass.ETAC:
             etacInConstruction += 1
         else:
           buildingsUnderConstruction += 1
@@ -80,5 +82,5 @@ proc collectProductionMetrics*(
   result.etacInConstruction = etacInConstruction
   result.shipsUnderConstruction = shipsUnderConstruction
   result.buildingsUnderConstruction = buildingsUnderConstruction
-
-  # TODO: Query repair projects - similar pattern to construction above
+  
+  # Note: Repair queue tracking could be added here when repair metrics are added to DiagnosticMetrics type

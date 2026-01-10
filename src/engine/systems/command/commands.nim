@@ -281,8 +281,22 @@ proc validateFleetCommand*(
       return
         ValidationResult(valid: false, error: "Fleets must be in same system to join")
 
-    # TODO: Add fleet merge compatibility checks if needed
-    # For now, fleets in same system can merge
+    # Fleet merge compatibility checks
+    if fleet.houseId != targetFleet.houseId:
+      logWarn(
+        "Commands",
+        &"{issuingHouse} JoinFleet command REJECTED: {cmd.fleetId} → {targetFleetId} " &
+          &"(different owners: {fleet.houseId} vs {targetFleet.houseId})",
+      )
+      return ValidationResult(valid: false, error: "Cannot merge fleets from different houses")
+    
+    if targetFleet.status != FleetStatus.Active:
+      logWarn(
+        "Commands",
+        &"{issuingHouse} JoinFleet command REJECTED: {cmd.fleetId} → {targetFleetId} " &
+          &"(target fleet not active, status: {targetFleet.status})",
+      )
+      return ValidationResult(valid: false, error: "Target fleet must be active to merge")
 
     logDebug(
       "Commands",
@@ -542,6 +556,41 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
           valid: false, error: "Colony management: Tax rate must be 0-100"
         )
 
+  # Validate espionage actions (max 3 per target house per turn)
+  if packet.espionageActions.len > 0:
+    var targetCounts = initTable[HouseId, int]()
+    let maxOpsPerTarget = gameConfig.limits.espionageLimits.maxOpsPerTargetPerTurn
+
+    for action in packet.espionageActions:
+      # Can't target self
+      if action.target == packet.houseId:
+        return ValidationResult(
+          valid: false, error: "Espionage action: Cannot target own house"
+        )
+
+      # Check target house exists
+      let targetHouseOpt = state.house(action.target)
+      if targetHouseOpt.isNone:
+        return ValidationResult(
+          valid: false, error: "Espionage action: Target house does not exist"
+        )
+
+      # Can't target eliminated houses
+      let targetHouse = targetHouseOpt.get()
+      if targetHouse.isEliminated:
+        return ValidationResult(
+          valid: false, error: "Espionage action: Target house is eliminated"
+        )
+
+      # Check target cooldown limit
+      targetCounts.mgetOrPut(action.target, 0) += 1
+      if targetCounts[action.target] > maxOpsPerTarget:
+        return ValidationResult(
+          valid: false,
+          error: &"Espionage action: Exceeded max {maxOpsPerTarget} " &
+            &"operations against house {action.target} per turn",
+        )
+
   # All validations passed
   logInfo(
     "Commands",
@@ -618,7 +667,7 @@ proc newCommandPacket*(
     populationTransfers: @[],
     terraformCommands: @[],
     colonyManagement: @[],
-    espionageAction: none(EspionageAttempt),
+    espionageActions: @[],
     ebpInvestment: 0,
     cipInvestment: 0,
   )

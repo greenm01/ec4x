@@ -116,22 +116,14 @@ proc parsePrestigeEvents(node: KdlNode, ctx: var KdlConfigContext): tuple[
 
   result = (economic, military, espionage, espionageVictim, scout, diplomacy, victoryAchievement, penalties)
 
-proc parseTaxPenalties(node: KdlNode, ctx: var KdlConfigContext): TaxPenaltiesTier =
-  ## Parse taxPenalties { tier 1 { minRate=0 maxRate=50 penalty=0 } ... }
-  ## Returns Table indexed by tier number
-  var tiers = initTable[int32, TaxPenaltyTierData]()
-
-  for child in node.children:
-    if child.name == "tier" and child.args.len > 0:
-      let tierNum = int32(child.args[0].getInt())
-      if tierNum >= 1 and tierNum <= 6:
-        tiers[tierNum] = TaxPenaltyTierData(
-          minRate: child.requireInt32("minRate", ctx),
-          maxRate: child.requireInt32("maxRate", ctx),
-          penalty: child.requireInt32("penalty", ctx)
-        )
-
-  result = TaxPenaltiesTier(tiers: tiers)
+proc parseTaxPenalty(node: KdlNode, ctx: var KdlConfigContext): TaxPenaltyConfig =
+  ## Parse taxPenalty { threshold 50; baseCoefficient 0.01; exponent 2.0 }
+  ## Exponential formula: penalty = -floor(baseCoefficient × (taxRate - threshold)^exponent)
+  result = TaxPenaltyConfig(
+    threshold: node.requireInt32("threshold", ctx),
+    baseCoefficient: node.requireFloat32("baseCoefficient", ctx),
+    exponent: node.requireFloat32("exponent", ctx)
+  )
 
 proc parseTaxIncentives(node: KdlNode, ctx: var KdlConfigContext): TaxIncentivesTier =
   ## Parse taxIncentives { tier 1 { minRate=21 maxRate=30 prestigeBonusPerColony=1 } ... }
@@ -184,8 +176,8 @@ proc loadPrestigeConfig*(configPath: string): PrestigeConfig =
     result.victoryAchievement = events.victoryAchievement
     result.penalties = events.penalties
 
-  ctx.withNode("taxPenalties"):
-    result.taxPenalties = parseTaxPenalties(doc.requireNode("taxPenalties", ctx), ctx)
+  ctx.withNode("taxPenalty"):
+    result.taxPenalty = parseTaxPenalty(doc.requireNode("taxPenalty", ctx), ctx)
 
   ctx.withNode("taxIncentives"):
     result.taxIncentives = parseTaxIncentives(doc.requireNode("taxIncentives", ctx), ctx)

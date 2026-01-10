@@ -42,7 +42,7 @@ suite "Simple Stress: State Integrity":
           populationTransfers: @[],
           terraformCommands: @[],
           colonyManagement: @[],
-          espionageAction: none(EspionageAttempt),
+          espionageActions: @[],
           ebpInvestment: 0,
           cipInvestment: 0
         )
@@ -132,7 +132,7 @@ suite "Simple Stress: State Integrity":
         populationTransfers: @[],
         terraformCommands: @[],
         colonyManagement: @[],
-        espionageAction: none(EspionageAttempt),
+        espionageActions: @[],
         ebpInvestment: 0,
         cipInvestment: 0
       )

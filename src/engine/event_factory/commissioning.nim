@@ -128,3 +128,20 @@ proc repairStalled*(
     shipClass: some(shipClass),
     details: some(&"ShipClass: {shipClass}, Cost: {cost} PP, Reason: insufficient_funds"),
   )
+
+proc repairCompleted*(
+    houseId: HouseId,
+    shipClass: ShipClass,
+    systemId: SystemId,
+    cost: int32,
+): event.GameEvent =
+  ## Create event for ship repair completion
+  event.GameEvent(
+    eventType: event.GameEventType.RepairCompleted,
+    houseId: some(houseId),
+    description: &"{shipClass} repair completed at system {systemId}",
+    systemId: some(systemId),
+    fleetEventType: some("RepairCompleted"),
+    shipClass: some(shipClass),
+    details: some(&"ShipClass: {shipClass}, Cost: {cost} PP"),
+  )

@@ -890,9 +890,85 @@ proc commissionRepairedShips*(
   var shipsByColony: Table[ColonyId, seq[ShipId]]
   
   for repair in completedRepairs:
-    # Only process ship repairs (not ground units, facilities, or starbases)
-    if repair.targetType != RepairTargetType.Ship:
+    # Get colony for owner/system info
+    let colonyOpt = state.colony(repair.colonyId)
+    if colonyOpt.isNone:
+      logWarn(
+        "Commissioning", "Colony not found for repair",
+        " colonyId=", repair.colonyId, " repairId=", repair.id,
+      )
       continue
+    
+    let colony = colonyOpt.get()
+    let houseId = colony.owner
+    
+    # Handle non-ship repairs (facilities, starbases, ground units)
+    if repair.targetType != RepairTargetType.Ship:
+      # Get house to check treasury
+      var house = state.house(houseId).get()
+      
+      if house.treasury < repair.cost:
+        # Insufficient funds - mark repair as Stalled
+        logWarn(
+          "Commissioning", "Insufficient funds for repair - marked Stalled",
+          " houseId=", houseId,
+          " targetType=", repair.targetType,
+          " cost=", repair.cost, " PP",
+          " treasury=", house.treasury, " PP",
+        )
+        
+        # Generate RepairStalled event (we need a generic version for non-ships)
+        events.add(GameEvent(
+          eventType: GameEventType.RepairStalled,
+          houseId: some(houseId),
+          description: &"{repair.targetType} repair stalled - insufficient funds ({repair.cost} PP required)",
+          systemId: some(colony.systemId),
+          details: some(&"TargetType: {repair.targetType}, Cost: {repair.cost} PP, Reason: insufficient_funds"),
+        ))
+        continue
+      
+      # Sufficient funds - deduct cost and restore
+      house.treasury -= repair.cost
+      state.updateHouse(houseId, house)
+      
+      # Restore the entity to operational state based on type
+      case repair.targetType
+      of RepairTargetType.Starbase:
+        if repair.kastraId.isSome:
+          var kastra = state.kastra(repair.kastraId.get()).get()
+          kastra.state = CombatState.Undamaged
+          state.updateKastra(repair.kastraId.get(), kastra)
+      of RepairTargetType.GroundUnit:
+        if repair.groundUnitId.isSome:
+          var unit = state.groundUnit(repair.groundUnitId.get()).get()
+          unit.state = CombatState.Undamaged
+          state.updateGroundUnit(repair.groundUnitId.get(), unit)
+      of RepairTargetType.Facility:
+        if repair.neoriaId.isSome:
+          var neoria = state.neoria(repair.neoriaId.get()).get()
+          neoria.state = CombatState.Undamaged
+          state.updateNeoria(repair.neoriaId.get(), neoria)
+      else:
+        discard
+      
+      # Generate RepairCompleted event
+      events.add(GameEvent(
+        eventType: GameEventType.RepairCompleted,
+        houseId: some(houseId),
+        description: &"{repair.targetType} repair completed at system {colony.systemId}",
+        systemId: some(colony.systemId),
+        details: some(&"TargetType: {repair.targetType}, Cost: {repair.cost} PP"),
+      ))
+      
+      logInfo(
+        "Commissioning", "Repaired non-ship entity",
+        " houseId=", houseId,
+        " targetType=", repair.targetType,
+        " cost=", repair.cost, " PP",
+      )
+      continue
+    
+    # === Ship repairs below (existing code) ===
     
     # Skip if ship doesn't exist (edge case - shouldn't happen)
     if repair.shipId.isNone:
@@ -913,18 +989,7 @@ proc commissionRepairedShips*(
     
     var ship = shipOpt.get()
     
-    # Get colony to find owner
-    let colonyOpt = state.colony(repair.colonyId)
-    if colonyOpt.isNone:
-      logWarn(
-        "Commissioning", "Colony not found for repair",
-        " colonyId=", repair.colonyId, " repairId=", repair.id,
-      )
-      continue
-    
-    let colony = colonyOpt.get()
-    let houseId = colony.owner
-    
+    # Reuse colony and houseId from outer scope (already fetched above)
     # Check treasury for repair cost
     var house = state.house(houseId).get()
     
@@ -965,6 +1030,14 @@ proc commissionRepairedShips*(
     # Restore ship to operational state
     ship.state = CombatState.Undamaged
     state.updateShip(shipId, ship)
+    
+    # Generate RepairCompleted event
+    events.add(repairCompleted(
+      houseId,
+      ship.shipClass,
+      colony.systemId,
+      repair.cost,
+    ))
     
     # Add to colony group for fleet assignment
     if not shipsByColony.hasKey(repair.colonyId):

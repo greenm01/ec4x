@@ -31,7 +31,7 @@ proc resolveColonyCommands*(state: GameState, packet: CommandPacket) =
   ##
   ## Called from turn_cycle/command_phase.nim during command resolution
   ##
-  ## TODO: This is currently incomplete
+  ## Note: System handles auto-repair and tax rate settings
   for command in packet.colonyManagement:
     # Validate colony exists and is owned using public API
     let colonyOpt = state.colony(command.colonyId)

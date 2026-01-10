@@ -38,14 +38,6 @@ task buildDebug, "Build main binary (debug)":
   exec "nim c " & debugFlags & " -o:bin/ec4x src/main/moderator.nim"
   echo "Debug build completed!"
 
-task buildSim, "Build parallel simulation (C API, static)":
-  echo "Building parallel simulation binary..."
-  exec "rm -rf bin/ nimcache/"
-  mkDir "bin"
-  exec "nim c --app:staticlib --noMain --opt:speed --threads:on --mm:arc " & sqliteFlag & " -o:bin/libec4x_engine.a src/c_api/engine_ffi.nim"
-  exec "gcc -O3 -pthread -o bin/run_simulation src/c_api/run_simulation.c bin/libec4x_engine.a -lsqlite3 -lm -ldl"
-  echo "Build completed!"
-
 task tidy, "Clean build artifacts":
   echo "Cleaning build artifacts..."
   exec "rm -rf bin/ nimcache/"

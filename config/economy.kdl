@@ -43,13 +43,6 @@ rawMaterialEfficiency {
   }
 }
 
-// --- Tax Mechanics ---
-taxMechanics {
-  (docs)"docs/specs/03-economy.md#section-3-2-1"
-  taxAveragingWindowTurns 6 // Rolling 6-turn window for prestige penalty
-  // See prestige.kdl taxPenalties for penalty values based on this average
-}
-
 taxPopulationGrowth {
   (docs)"docs/specs/03-economy.md#section-3-2-2"
   tier 1 { minRate 41; maxRate 50; popMultiplier 1.0 }

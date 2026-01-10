@@ -77,7 +77,9 @@ If you invest more than 5% of your turn budget into EBP, you lose Prestige point
 
 **Restrictions**:
 
-- Maximum of One Espionage Action Per Turn.
+- Maximum of 3 espionage operations against any single rival house per turn
+- No limit on total operations (can target multiple rivals simultaneously)
+- Example: In a 4-player game, House A can do up to 3 ops vs B, 3 vs C, 3 vs D (9 total max)
 
 <!-- ESPIONAGE_PRESTIGE_TABLE_START -->
 | Espionage Action           | Cost in EBPs | Description                                                          | Prestige Change for Player | Prestige Change for Target |
@@ -234,16 +236,6 @@ The citizens of the Empire prize strength, honor, and open warfare over deceit. 
 The more frequently espionage tactics are used, the more likely rivals are to bolster their counter-intelligence efforts. As other Houses ramp up their CIP investments, the effectiveness of your espionage actions diminishes, resulting in wasted resources and fewer successful missions.
 
 Excessive espionage may trigger rival Houses to adopt aggressive countermeasures, such as initiating economic sanctions, launching retaliatory cyber attacks, or coordinating with other players to mount a joint military response. The risks of provoking a coalition against your House increase with every detected espionage action.
-
-### Prestige Penalties
-
-Investing too much in espionage can erode the prestige of your House over time, creating a long-term disadvantage. The aristocracy views shadowy tactics as a sign of desperation rather than strength, leading to the perception that your House is incapable of achieving its goals through legitimate means.
-
-Each turn that espionage investments exceed 5% of your budget, your House loses 2 prestige points for every additional 1% invested over the 5% threshold. This penalty reflects the growing skepticism of your peers and the erosion of your House's noble reputation.
-
-*Configuration: `over_invest_espionage = -2` in config/prestige.toml [penalties] section*
-
-Repeated over-investment in espionage actions compounds the loss of prestige, as the Empire’s nobility becomes increasingly suspicious of your methods. Over time, this can severely impact your standing, making it difficult to assert dominance and achieve key diplomatic or military objectives.
 
 ### Increased Vulnerability to Espionage
 

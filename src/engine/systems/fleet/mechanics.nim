@@ -67,21 +67,18 @@ proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): b
           # Player can see this colony - it's hostile
           return true
 
-  # TODO: Fix intelligence access - state.intel field doesn't exist
-  # Intelligence system has been refactored, need to use correct API
-  # This is a pre-existing bug, not introduced by CombatState refactoring
   # Check intelligence database for known enemy colonies
-  # if state.intel.hasKey(houseId):
-  #   let intel = state.intel[houseId]
-  #   for colonyId, colonyIntel in intel.colonyReports:
-  #     let colonyOpt = state.colony(colonyId)
-  #     if colonyOpt.isSome:
-  #       let colony = colonyOpt.get()
-  #       if colony.systemId == systemId and colony.owner != houseId:
-  #         let key = (houseId, colony.owner)
-  #         if state.diplomaticRelation.hasKey(key):
-  #           if state.diplomaticRelation[key].state == DiplomaticState.Enemy:
-  #             return true
+  if state.intel.hasKey(houseId):
+    let intel = state.intel[houseId]
+    for colonyId, colonyIntel in intel.colonyReports:
+      let colonyOpt = state.colony(colonyId)
+      if colonyOpt.isSome:
+        let colony = colonyOpt.get()
+        if colony.systemId == systemId and colony.owner != houseId:
+          let key = (houseId, colony.owner)
+          if state.diplomaticRelation.hasKey(key):
+            if state.diplomaticRelation[key].state == DiplomaticState.Enemy:
+              return true
 
   # Check for enemy fleets at system (visible or from intel)
   for fleet in state.fleetsInSystem(systemId):

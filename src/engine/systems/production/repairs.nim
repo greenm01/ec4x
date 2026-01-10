@@ -34,6 +34,7 @@ import ../../types/[core, ship, production, facilities, combat, game_state, grou
 import ../../entities/[fleet_ops, project_ops]
 import ../../state/[engine, iterators]
 import ../../systems/production/accessors # For ship cost lookups
+import ../../globals
 import ../../../common/logger
 
 export production.RepairProject, facilities.FacilityClass, production.RepairTargetType
@@ -181,8 +182,7 @@ proc submitAutomaticStarbaseRepairs*(state: GameState, systemId: SystemId) =
     let kastra = kastraOpt.get()
     if kastra.state == CombatState.Crippled:
       # Calculate repair cost (25% of starbase build cost)
-      # TODO: Get actual starbase build cost from config (for now use estimate)
-      let starbaseBuildCost = 300'i32 # From facilities.kdl
+      let starbaseBuildCost = gameConfig.facilities.facilities[FacilityClass.Starbase].buildCost
       let repairCost = (starbaseBuildCost.float32 * 0.25'f32).int32
 
       # Create and queue repair project using entity manager

@@ -58,7 +58,7 @@ proc createNoOpCommands(
       populationTransfers: @[],
       terraformCommands: @[],
       colonyManagement: @[],
-      espionageAction: none(EspionageAttempt),
+      espionageActions: @[],
       ebpInvestment: 0,
       cipInvestment: 0
     )

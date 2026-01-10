@@ -18,10 +18,10 @@
 import std/[options, tables, strformat, sequtils, sets]
 import ../../types/[
   core, game_state, fleet, ship, colony, ground_unit,
-  event, zero_turn
+  event, zero_turn, combat
 ]
 import ../../state/[engine, fleet_queries]
-import ../../entities/fleet_ops
+import ../../entities/[fleet_ops, ground_unit_ops]
 import ../fleet/entity
 import ../ship/entity
 import ../capacity/carrier_hangar
@@ -861,10 +861,10 @@ proc executeUnloadCargo*(
 
     case cargoType
     of CargoClass.Marines:
-      # TODO: Create GroundUnit entities for marines
-      # For now, marines are unloaded from ship but not added to colony
-      # Proper implementation requires ground unit entity creation
-      logDebug("Economy", &"Unloaded {quantity} Marines from ship {shipId} (TODO: add to colony groundUnitIds)")
+      # Create ground unit entities for each marine
+      for i in 0 ..< quantity:
+        discard ground_unit_ops.createGroundUnit(state, fleet.houseId, colony.id, GroundClass.Marine)
+      logDebug("Economy", &"Unloaded {quantity} Marines from ship {shipId} to colony {colony.id}")
     of CargoClass.Colonists:
       # Colonists are delivered to population: 1 PTU = 50k souls
       # Use souls field for exact counting (no rounding errors)

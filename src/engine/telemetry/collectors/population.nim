@@ -47,14 +47,14 @@ proc collectPopulationMetrics*(
   for event in state.lastTurnEvents:
     if event.houseId != some(houseId):
       continue
-    # TODO: Add PopulationTransferCompleted, PopulationTransferLost events
-    # case event.eventType:
-    # of PopulationTransferCompleted:
-    #   popTransfersCompleted += 1
-    # of PopulationTransferLost:
-    #   popTransfersLost += 1
-    # else:
-    #   discard
+    
+    case event.eventType
+    of PopulationTransferCompleted:
+      popTransfersCompleted += 1
+    of PopulationTransferLost:
+      popTransfersLost += 1
+    else:
+      discard
 
   result.populationTransfersCompleted = popTransfersCompleted
   result.populationTransfersLost = popTransfersLost

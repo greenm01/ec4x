@@ -125,7 +125,6 @@ proc createDiagnosticMetricsTable*(db: DbConn) =
       salvage_value_recovered INTEGER NOT NULL,
       maintenance_cost_deficit INTEGER NOT NULL,
       tax_penalty_active INTEGER NOT NULL, -- Bool as 0 or 1
-      avg_tax_rate_6_turn INTEGER NOT NULL,
 
       -- Squadron Capacity & Violations (from military.toml)
       fighter_capacity_max INTEGER NOT NULL,
@@ -364,7 +363,7 @@ proc saveDiagnosticMetrics*(db: DbConn, metrics: DiagnosticMetrics) =
       population_transfers_lost, ptu_transferred_total,
       colonies_blockaded_count, blockade_turns_cumulative,
       treasury_deficit, infrastructure_damage_total, salvage_value_recovered,
-      maintenance_cost_deficit, tax_penalty_active, avg_tax_rate_6_turn,
+      maintenance_cost_deficit, tax_penalty_active,
       fighter_capacity_max, fighter_capacity_used, fighter_capacity_violation,
       squadron_limit_max, squadron_limit_used, squadron_limit_violation,
       starbases_actual,
@@ -531,7 +530,6 @@ proc saveDiagnosticMetrics*(db: DbConn, metrics: DiagnosticMetrics) =
     metrics.salvageValueRecovered,
     metrics.maintenanceCostDeficit,
     metrics.taxPenaltyActive.int,
-    metrics.avgTaxRate6Turn,
     metrics.fighterCapacityMax,
     metrics.fighterCapacityUsed,
     metrics.fighterCapacityViolation.int,

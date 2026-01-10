@@ -64,6 +64,14 @@ populationLimits {
     maxConcurrentTransfers 5       // Max simultaneous population transfers per house
 }
 
+// --- Espionage Limits ---
+espionageLimits {
+    (docs)"docs/specs/09-intel-espionage.md#section-9-2"
+    // Target cooldown: max operations per player against any single rival house per turn
+    // Example: In a 4-player game, House A can do up to 3 ops vs B, 3 vs C, 3 vs D (9 total max)
+    maxOpsPerTargetPerTurn 3       // Max espionage operations against same target house per turn
+}
+
 // --- Unit Cargo & Planet Capacity ---
 capacities {
     (docs)"docs/specs/02-assets.md#section-2-2"

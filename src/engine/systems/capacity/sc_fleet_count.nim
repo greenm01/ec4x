@@ -328,6 +328,6 @@ proc processCapacityEnforcement*(
 ## - Auxiliary fleets (scouts, ETACs, transports) don't count - unlimited
 ## - Players must balance between fleet quality (FC) and quantity (SC)
 ##
-## **TODO:**
+## **Future Enhancements:**
 ## - Integrate with starmap to get actual totalSystems and playerCount
 ## - Consider caching map scale factor (calculated once at game start)

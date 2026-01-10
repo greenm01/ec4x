@@ -113,7 +113,6 @@ type
     salvageValueRecovered*: int32 # PP recovered from salvaging ships (cumulative)
     maintenanceCostDeficit*: int32 # Shortfall amount if treasury insufficient
     taxPenaltyActive*: bool # High tax prestige penalty active?
-    avgTaxRate6Turn*: int32 # Rolling 6-turn average tax rate
 
     # Squadron Capacity & Violations (from military.toml)
     fighterCapacityMax*: int32

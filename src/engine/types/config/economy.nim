@@ -21,8 +21,7 @@ type
     ## Configuration for raw material extraction efficiency multipliers
     multipliers*: array[ResourceRating, array[PlanetClass, float32]]
 
-  TaxMechanicsConfig* = object
-    taxAveragingWindowTurns*: int32
+
 
   TaxTierData* = object
     ## Data for a single tax tier (tier 1-5)
@@ -67,7 +66,6 @@ type
     population*: PopulationConfig
     ptuDefinition*: PtuDefinitionConfig
     rawMaterialEfficiency*: RawMaterialEfficiencyConfig
-    taxMechanics*: TaxMechanicsConfig
     taxPopulationGrowth*: TaxPopulationGrowthConfig
     industrialInvestment*: IndustrialInvestmentConfig
     colonization*: ColonizationConfig

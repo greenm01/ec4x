@@ -67,15 +67,6 @@ proc parseRawMaterialEfficiency(
       result.multipliers[quality][PlanetClass.Extreme] =
         child.requireFloat32("extreme", ctx)
 
-proc parseTaxMechanics(
-  node: KdlNode,
-  ctx: var KdlConfigContext
-): TaxMechanicsConfig =
-  result = TaxMechanicsConfig(
-    taxAveragingWindowTurns:
-      node.requireInt32("taxAveragingWindowTurns", ctx)
-  )
-
 proc parseTaxPopulationGrowth(
   node: KdlNode,
   ctx: var KdlConfigContext
@@ -225,10 +216,6 @@ proc loadEconomyConfig*(configPath: string): EconomyConfig =
   ctx.withNode("rawMaterialEfficiency"):
     let node = doc.requireNode("rawMaterialEfficiency", ctx)
     result.rawMaterialEfficiency = parseRawMaterialEfficiency(node, ctx)
-
-  ctx.withNode("taxMechanics"):
-    let node = doc.requireNode("taxMechanics", ctx)
-    result.taxMechanics = parseTaxMechanics(node, ctx)
 
   ctx.withNode("taxPopulationGrowth"):
     let node = doc.requireNode("taxPopulationGrowth", ctx)

@@ -4,7 +4,6 @@ import ./[core, colony, prestige]
 type
   TaxPolicy* = object
     currentRate*: int32
-    history*: seq[int32] # Last 6 turns
 
   TransactionCategory* {.pure.} = enum
     TaxIncome
@@ -26,8 +25,7 @@ type
     totalGross*: int32
     totalNet*: int32
     taxRate*: int32
-    taxAverage6Turn*: int32
-    taxPenalty*: int32
+    taxPenalty*: int32           # Exponential penalty for high tax rates
     totalPrestigeBonus*: int32
     treasuryBefore*: int32
     treasuryAfter*: int32

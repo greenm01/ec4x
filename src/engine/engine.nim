@@ -31,42 +31,5 @@ proc resolve*(
 ): TurnResult =
   ## Execute complete turn cycle and return results
   result = resolveTurn(state, commands, rng)
-  #saveGame(state) # TODO: Auto-save after each turn
-
-#[
-proc loadGame*(gameId: int32): GameState =
-  ## Load existing game from database
-  load.loadGameState(gameId)
-
-proc saveGame*(state: GameState) =
-  ## Persist game state to database
-  save.saveGameState(state)
-
-# Player state
-proc getPlayerState*(state: GameState, houseId: HouseId): PlayerState =
-  ## Get complete fog-of-war filtered state with full entity data
-  fog_of_war.createPlayerState(state, houseId)
-
-# State queries (convenience methods)
-proc getHouse*(state: GameState, houseId: HouseId): House =
-  let idx = state.houses.index[houseId]
-  state.houses.data[idx]
-
-proc getFleet*(state: GameState, fleetId: FleetId): Fleet =
-  let idx = state.fleets.index[fleetId]
-  state.fleets.data[idx]
-
-proc getColony*(state: GameState, colonyId: ColonyId): Colony =
-  let idx = state.colonies.index[colonyId]
-  state.colonies.data[idx]
-
-# Game status
-proc isGameOver*(state: GameState): bool =
-  ## Check if game has ended (victory/defeat conditions)
-  checkVictoryConditions(state)
-
-proc getWinner*(state: GameState): Option[HouseId] =
-  ## Get winning house if game is over
-  determineWinner(state)
-
-]#
+  # Note: Auto-save commented out - implement when persistence layer is ready
+  # saveGame(state)

@@ -426,7 +426,6 @@ CREATE TABLE IF NOT EXISTS diagnostic_metrics (
   salvage_value_recovered INTEGER NOT NULL,
   maintenance_cost_deficit INTEGER NOT NULL,
   tax_penalty_active INTEGER NOT NULL, -- Bool as 0 or 1
-  avg_tax_rate_6_turn INTEGER NOT NULL,
 
   -- Squadron Capacity & Violations (from military.toml)
   fighter_capacity_max INTEGER NOT NULL,
