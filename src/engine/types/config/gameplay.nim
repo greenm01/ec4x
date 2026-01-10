@@ -21,7 +21,7 @@ type
     economyCeases*: bool
     permanentElimination*: bool
 
-  ColonizationConfig* = object
+  ColonizationCombatConfig* = object
     strengthWeight*: int32
 
   GameplayConfig* = object ## Complete gameplay configuration loaded from KDL
@@ -29,4 +29,4 @@ type
     autopilot*: AutopilotConfig
     autopilotBehavior*: AutopilotBehaviorConfig
     defensiveCollapseBehavior*: DefensiveCollapseBehaviorConfig
-    colonization*: ColonizationConfig
+    colonization*: ColonizationCombatConfig

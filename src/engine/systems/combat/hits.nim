@@ -10,18 +10,19 @@ import ../../types/[core, game_state, combat, ship]
 import ../../state/engine
 import ./strength
 
-proc applyHits*(state: var GameState, targetShips: seq[ShipId], hits: int32) =
+proc applyHits*(state: var GameState, targetShips: seq[ShipId], hits: int32, isCriticalHit: bool = false) =
   ## Apply hits to ships following hit application rules
-  ## Per docs/specs/07-combat.md Section 7.2.1
+  ## Per docs/specs/07-combat.md Section 7.2.1 and 7.2.2
   ##
   ## **Hit Application Rules:**
   ## 1. Must cripple all undamaged ships before destroying any
   ## 2. Fighters skip Crippled state (go directly Undamaged → Destroyed)
-  ## 3. Excess hits are lost
+  ## 3. Critical Hits (natural 9) bypass rule #1 - can destroy crippled ships immediately
+  ## 4. Excess hits are lost
   ##
   ## **Algorithm:**
   ## - Phase 1: Cripple all undamaged ships (if enough hits)
-  ## - Phase 2: Destroy crippled ships (only if no undamaged remain)
+  ## - Phase 2: Destroy crippled ships (only if no undamaged remain OR critical hit)
 
   var remainingHits = hits
 
@@ -53,7 +54,7 @@ proc applyHits*(state: var GameState, targetShips: seq[ShipId], hits: int32) =
       remainingHits -= hitsNeeded
       state.updateShip(shipId, ship)
 
-  # Phase 2: Destroy crippled ships (only if no undamaged remain)
+  # Phase 2: Destroy crippled ships (only if no undamaged remain OR critical hit)
   let hasUndamaged =
     block:
       var found = false
@@ -64,7 +65,9 @@ proc applyHits*(state: var GameState, targetShips: seq[ShipId], hits: int32) =
           break
       found
 
-  if not hasUndamaged and remainingHits > 0:
+  # Critical hits bypass "cripple all first" protection
+  # Can destroy crippled ships even with undamaged ships present
+  if (not hasUndamaged or isCriticalHit) and remainingHits > 0:
     for shipId in targetShips:
       if remainingHits <= 0:
         break

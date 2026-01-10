@@ -9,6 +9,7 @@
 
 import std/[tables, options, strformat]
 import ../types/[core, game_state, intel]
+import ../state/engine
 
 proc generateHostilityDeclarationIntel*(
     state: var GameState, declaringHouse: HouseId, targetHouse: HouseId, turn: int32
@@ -245,6 +246,115 @@ proc generateDiplomaticBreakIntel*(
       systemId: SystemId(0),
       encounterType: ScoutEncounterType.DiplomaticActivity,
       observedHouses: @[house1, house2],
+      observedFleetIds: @[],
+      colonyId: none(ColonyId),
+      fleetMovements: @[],
+      description: description,
+      significance: significance,
+    )
+
+    # Write to intel database (Table read-modify-write)
+    if state.intel.contains(houseId):
+      var intel = state.intel[houseId]
+      intel.scoutEncounters.add(report)
+      state.intel[houseId] = intel
+
+proc generateAutomaticHostilityEscalationIntel*(
+    state: var GameState,
+    houseA: HouseId,
+    houseB: HouseId,
+    systemId: SystemId,
+    turn: int32,
+) =
+  ## Generate intel reports when automatic escalation to Hostile occurs
+  ## Triggered by Contest-tier fleet missions (Patrol, Hold, Rendezvous)
+  ## All houses receive this intel (public event)
+
+  # Get system name for intel report
+  let systemOpt = state.system(systemId)
+  let systemName =
+    if systemOpt.isSome:
+      systemOpt.get().name
+    else:
+      $systemId # Fallback to ID if system not found
+
+  for houseId in state.intel.keys:
+    let significance: int32 =
+      if houseId == houseA or houseId == houseB:
+        7 # High significance for direct participants
+      else:
+        5 # Moderate significance for observers
+
+    let description =
+      if houseId == houseA:
+        &"TENSIONS ESCALATE: Fleet activity in {systemName} has triggered hostility with {houseB}."
+      elif houseId == houseB:
+        &"ALERT: {houseA} fleet presence in {systemName} has escalated relations to hostile!"
+      else:
+        &"DIPLOMATIC UPDATE: Fleet confrontation between {houseA} and {houseB} in {systemName}. Relations now hostile."
+
+    let report = ScoutEncounterReport(
+      reportId:
+        &"{houseId}-auto-hostility-{turn}-{houseA}-{houseB}-{systemId}",
+      fleetId: FleetId(0), # Diplomatic intel, not fleet-specific
+      turn: turn,
+      systemId: systemId,
+      encounterType: ScoutEncounterType.DiplomaticActivity,
+      observedHouses: @[houseA, houseB],
+      observedFleetIds: @[],
+      colonyId: none(ColonyId),
+      fleetMovements: @[],
+      description: description,
+      significance: significance,
+    )
+
+    # Write to intel database (Table read-modify-write)
+    if state.intel.contains(houseId):
+      var intel = state.intel[houseId]
+      intel.scoutEncounters.add(report)
+      state.intel[houseId] = intel
+
+proc generateAutomaticWarEscalationIntel*(
+    state: var GameState,
+    houseA: HouseId,
+    houseB: HouseId,
+    systemId: SystemId,
+    turn: int32,
+) =
+  ## Generate intel reports when automatic escalation to Enemy occurs
+  ## Triggered by Attack-tier fleet missions (Blockade, Bombard, Invade, Blitz)
+  ## All houses receive this intel (public event)
+
+  # Get system name for intel report
+  let systemOpt = state.system(systemId)
+  let systemName =
+    if systemOpt.isSome:
+      systemOpt.get().name
+    else:
+      $systemId # Fallback to ID if system not found
+
+  for houseId in state.intel.keys:
+    let significance: int32 =
+      if houseId == houseA or houseId == houseB:
+        10 # Maximum significance for direct participants
+      else:
+        8 # High significance for observers
+
+    let description =
+      if houseId == houseA:
+        &"WAR DECLARED: Your attack on {systemName} has triggered war with {houseB}!"
+      elif houseId == houseB:
+        &"WAR DECLARED: {houseA} attack on {systemName} means war! All forces mobilized."
+      else:
+        &"DIPLOMATIC ALERT: {houseA} attacked {houseB} in {systemName}. Full-scale war declared."
+
+    let report = ScoutEncounterReport(
+      reportId: &"{houseId}-auto-war-{turn}-{houseA}-{houseB}-{systemId}",
+      fleetId: FleetId(0), # Diplomatic intel, not fleet-specific
+      turn: turn,
+      systemId: systemId,
+      encounterType: ScoutEncounterType.DiplomaticActivity,
+      observedHouses: @[houseA, houseB],
       observedFleetIds: @[],
       colonyId: none(ColonyId),
       fleetMovements: @[],

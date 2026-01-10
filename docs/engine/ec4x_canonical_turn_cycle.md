@@ -354,6 +354,15 @@ When Enemy fleets meet at any location, all Active fleets (except Hold and Guard
 
 **Implementation Reference:** `docs/specs/08-diplomacy.md` Section 8.1.5-8.1.6
 
+**Automatic Escalation (Implementation Note):**
+Handled in `src/engine/systems/combat/multi_house.nim:areHostile()` during combat participant determination:
+- When checking if houses should fight, fleet threat levels trigger automatic escalation
+- Contest-tier (Patrol/Hold/Rendezvous): Neutral→Hostile, NO combat this turn (grace period)
+- Attack-tier (Blockade/Bombard/Invade/Blitz): Neutral/Hostile→Enemy, combat occurs immediately
+- Generates `DiplomaticRelationChanged` event with reason: "Automatic escalation: [Attack/Contest]-tier mission [targeting colony/in system]"
+- Generates intel for all houses with system name (e.g., "Fleet activity in Arcturus has triggered hostility")
+- Per `src/engine/intel/diplomatic_intel.nim`: `generateAutomaticWarEscalationIntel()` and `generateAutomaticHostilityEscalationIntel()`
+
 ### 1. Combat Resolution
 
 **1a. Space Combat** (simultaneous resolution)
@@ -362,11 +371,13 @@ When Enemy fleets meet at any location, all Active fleets (except Hold and Guard
 - Scouts: Slip through combat undetected (stealthy, not present in combat)
 - Screened (present but don't fight): Auxiliary vessels (ETACs, Troop Transports) - suffer proportional losses on retreat, destroyed if fleet eliminated
 - Apply diplomatic filtering (see above) to determine which fleets engage
+  - **Note:** Diplomatic escalation happens DURING this filtering (see "Automatic Escalation" above)
+  - Escalation events added to events queue for player notification
 - Perform detection checks for all engaging fleets containing Raiders to determine ambush advantage
 - Collect all space combat intents, resolve conflicts, and execute the combat engine, applying any first-strike bonuses
 
 **Combat Resolution Details:** See `docs/specs/07-combat.md` for complete combat mechanics including ROE thresholds, detection/ambush, Combat Results Tables, and fighter superiority.
-- Generate `GameEvents` (ShipDestroyed, FleetEliminated)
+- Generate `GameEvents` (ShipDestroyed, FleetEliminated, DiplomaticRelationChanged)
 
 **1b. Orbital Combat** (simultaneous resolution)
 - Filter participants: Hold fleets, Guard fleets, Reserve fleets (50% AS), Starbases, unassigned ships
@@ -778,10 +789,25 @@ On victory:
 - Log victor and victory type
 
 **11. Advance Timers**
-- Espionage effect timers (sabotage recovery)
-- Diplomatic effect timers (trade agreements)
-- Total ship grace period timers (from INC7b)
-- Fighter capacity grace period timers (from INC7c)
+
+Per `src/engine/turn_cycle/income_phase.nim:advanceTimers()`:
+
+**Espionage Effects:**
+- Decrement `turnsRemaining` for all `state.ongoingEffects`
+- Remove expired effects (turnsRemaining = 0)
+- Effects include: SRP Reduction, NCV Reduction, Tax Reduction, Starbase Crippled, Intel Blocked, Intel Corrupted
+
+**Diplomatic Proposals:**
+- Check all `state.pendingProposals` with status = Pending
+- If `turn >= expiresOnTurn`:
+  - Mark proposal status as Expired
+  - Generate `TreatyBroken` event: "Proposal expired without response"
+  - Remove from active proposals (keep 10-turn history for telemetry)
+- Default expiration: 3 turns from submission
+
+**Capacity Grace Periods:**
+- Fighter capacity grace period timers (from INC7b)
+- Total ship grace period timers (internal tracking)
 
 ### Key Properties
 - Salvage executes BEFORE maintenance (don't pay maintenance on salvaged fleet)
@@ -1146,10 +1172,50 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 - **Note:** Treasury check and commissioning happen in CMD2
 
 **3. Diplomatic Actions**
-- Process alliance proposals (accept/reject)
-- Execute trade agreements (resource transfers)
-- Update diplomatic statuses (Peace, War, Alliance)
-- Generate GameEvents (AllianceFormed, WarDeclared, TradeCompleted)
+
+Per `src/engine/systems/diplomacy/resolution.nim`, processes diplomatic commands from `CommandPacket`:
+
+**Manual Diplomatic Actions:**
+- `DeclareHostile` - Manual escalation to Hostile status
+- `DeclareEnemy` - Manual war declaration (Enemy status)
+- `SetNeutral` - Manual de-escalation to Neutral (immediate, no proposal required)
+
+**De-escalation Proposal System:**
+- `ProposeDeescalation` - Submit de-escalation proposal (3-turn expiration)
+  - DeescalateToNeutral: Hostile→Neutral or Enemy→Neutral
+  - DeescalateToHostile: Enemy→Hostile
+  - Validates current state allows de-escalation
+  - Creates proposal with auto-incremented ProposalId
+  - Adds to `state.pendingProposals`
+  - Generates `TreatyProposed` event
+
+- `AcceptProposal` - Accept pending proposal (requires ProposalId)
+  - Validates accepter is proposal target
+  - Validates proposal status is Pending
+  - Applies de-escalation via `dip_engine.setNeutral()` or `setHostile()`
+  - Marks proposal as Accepted
+  - Generates `TreatyAccepted` + `DiplomaticRelationChanged` events
+  - Generates intel for all houses
+
+- `RejectProposal` - Reject pending proposal (requires ProposalId)
+  - Validates rejecter is proposal target
+  - Marks proposal as Rejected
+  - No state change, no events (silent rejection)
+
+**Automatic Escalation (CON Phase):**
+Handled in `multi_house.nim:areHostile()` during combat resolution:
+- Contest-tier missions (Patrol/Hold/Rendezvous) → Escalate Neutral→Hostile, NO combat
+- Attack-tier missions (Blockade/Bombard/Invade/Blitz) → Escalate to Enemy, combat occurs
+- Generates `DiplomaticRelationChanged` events with reason
+- Generates intel for all houses via `generateAutomaticWarEscalationIntel()` or `generateAutomaticHostilityEscalationIntel()`
+
+**Events Generated:**
+- `WarDeclared` - War declaration (manual or automatic)
+- `PeaceSigned` - Peace treaty (manual SetNeutral or accepted proposal)
+- `DiplomaticRelationChanged` - Any diplomatic state change with reason
+- `TreatyProposed` - De-escalation proposal submitted
+- `TreatyAccepted` - Proposal accepted
+- `TreatyBroken` - Proposal expired (see INC11)
 
 **4. Population Transfers**
 - Execute PopulationTransfer orders (via Space Lift)

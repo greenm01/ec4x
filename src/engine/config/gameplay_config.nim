@@ -39,8 +39,8 @@ proc parseDefensiveCollapseBehavior(node: KdlNode, ctx: var KdlConfigContext): D
     permanentElimination: node.requireBool("permanentElimination", ctx)
   )
 
-proc parseColonization(node: KdlNode, ctx: var KdlConfigContext): ColonizationConfig =
-  result = ColonizationConfig(
+proc parseColonization(node: KdlNode, ctx: var KdlConfigContext): ColonizationCombatConfig =
+  result = ColonizationCombatConfig(
     strengthWeight: node.requireInt32("strengthWeight", ctx)
   )
 

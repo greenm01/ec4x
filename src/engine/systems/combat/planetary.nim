@@ -619,7 +619,7 @@ proc resolveBombardment*(
     var attackerHits = 0'i32
 
     # Planet-Breaker hits bypass shields!
-    let planetBreakerHits = int32(float32(planetBreakerAS) * attackerCER)
+    let planetBreakerHits = int32(float32(planetBreakerAS) * attackerCER.cer)
 
     # Regular hits reduced by shields
     let colonyOpt = state.colony(targetColony)
@@ -629,11 +629,11 @@ proc resolveBombardment*(
 
     let shieldReduction = getShieldReduction(state, targetColony)
     let regularHits =
-      int32(float32(regularAS) * attackerCER * (1.0 - shieldReduction))
+      int32(float32(regularAS) * attackerCER.cer * (1.0 - shieldReduction))
 
     attackerHits = planetBreakerHits + regularHits
 
-    let defenderHits = int32(float32(defenderAS) * defenderCER)
+    let defenderHits = int32(float32(defenderAS) * defenderCER.cer)
 
     # Apply hits to batteries and capture excess
     let excessHits = applyHitsToBatteries(state, targetColony, attackerHits)
@@ -758,8 +758,8 @@ proc resolveInvasion*(
     let defenderCER = rollCER(rng, defenderDRM, CombatTheater.Planetary)
 
     # Calculate hits
-    let attackerHits = int32(float32(attackerAS) * attackerCER)
-    let defenderHits = int32(float32(defenderAS) * defenderCER)
+    let attackerHits = int32(float32(attackerAS) * attackerCER.cer)
+    let defenderHits = int32(float32(defenderAS) * defenderCER.cer)
 
     # Apply damage to ground units
     applyHitsToGroundUnits(state, marineIds, defenderHits)
@@ -840,11 +840,11 @@ proc resolveBlitz*(
   # Calculate hits (Planet-Breaker bypasses shields)
   let shieldReduction = getShieldReduction(state, targetColony)
 
-  let planetBreakerHits = int32(float32(planetBreakerAS) * attackerCER)
-  let regularHits = int32(float32(regularAS) * attackerCER * (1.0 - shieldReduction))
+  let planetBreakerHits = int32(float32(planetBreakerAS) * attackerCER.cer)
+  let regularHits = int32(float32(regularAS) * attackerCER.cer * (1.0 - shieldReduction))
   let attackerHits = planetBreakerHits + regularHits
 
-  let defenderHits = int32(float32(defenderAS) * defenderCER)
+  let defenderHits = int32(float32(defenderAS) * defenderCER.cer)
 
   # Apply hits to batteries (excess not needed in blitz Phase 1)
   discard applyHitsToBatteries(state, targetColony, attackerHits)
@@ -950,8 +950,8 @@ proc resolveBlitz*(
     let attackerCER_round = rollCER(rng, attackerDRM_round, CombatTheater.Planetary)
     let defenderCER_round = rollCER(rng, defenderDRM_round, CombatTheater.Planetary)
 
-    let attackerHits_round = int32(float32(marineAS) * attackerCER_round)
-    let defenderHits_round = int32(float32(totalDefenderAS) * defenderCER_round)
+    let attackerHits_round = int32(float32(marineAS) * attackerCER_round.cer)
+    let defenderHits_round = int32(float32(totalDefenderAS) * defenderCER_round.cer)
 
     # Apply damage to ground units
     # Distribute attacker hits proportionally between ground forces and batteries

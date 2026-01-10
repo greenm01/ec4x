@@ -50,6 +50,66 @@ proc cleanupEmptyFleets*(state: var GameState, systemId: SystemId) =
     logCombat("[CLEANUP] Destroying empty fleet ", $fleetId)
     fleet_ops.destroyFleet(state, fleetId)
 
+proc cleanupCrippledNeorias*(state: var GameState, systemId: SystemId) =
+  ## Clear construction/repair queues from crippled neorias
+  ## Per spec: Crippled facilities lose all queued projects (not paused)
+  ## Called after combat resolution
+  ##
+  ## **Optimization:** Only checks neorias at colonies in this system (not global scan)
+
+  # Check if there's a colony in this system
+  let colonyOpt = state.colonyBySystem(systemId)
+  if colonyOpt.isNone:
+    return # No colony = no neorias to clean
+
+  let colonyId = colonyOpt.get().id
+
+  # Process crippled neorias at this colony
+  for neoria in state.neoriasAtColony(colonyId):
+    if neoria.state == CombatState.Crippled:
+      var neoriaToUpdate = neoria
+
+      logCombat(
+        "[CLEANUP] Clearing queues from crippled neoria ",
+        $neoria.id,
+        " (had ",
+        $neoria.constructionQueue.len,
+        " queued constructions, ",
+        $neoria.activeConstructions.len,
+        " active constructions, ",
+        $neoria.repairQueue.len,
+        " queued repairs, ",
+        $neoria.activeRepairs.len,
+        " active repairs)",
+      )
+
+      # Complete/cancel all active construction projects
+      for projectId in neoriaToUpdate.activeConstructions:
+        if state.constructionProject(projectId).isSome:
+          project_ops.completeConstructionProject(state, projectId)
+
+      # Complete/cancel all queued construction projects
+      for projectId in neoriaToUpdate.constructionQueue:
+        if state.constructionProject(projectId).isSome:
+          project_ops.completeConstructionProject(state, projectId)
+
+      # Complete/cancel all active repair projects
+      for projectId in neoriaToUpdate.activeRepairs:
+        if state.repairProject(projectId).isSome:
+          project_ops.completeRepairProject(state, projectId)
+
+      # Complete/cancel all queued repair projects
+      for projectId in neoriaToUpdate.repairQueue:
+        if state.repairProject(projectId).isSome:
+          project_ops.completeRepairProject(state, projectId)
+
+      # Clear the queues from neoria
+      neoriaToUpdate.activeConstructions = @[]
+      neoriaToUpdate.constructionQueue = @[]
+      neoriaToUpdate.activeRepairs = @[]
+      neoriaToUpdate.repairQueue = @[]
+      state.updateNeoria(neoria.id, neoriaToUpdate)
+
 proc cleanupDestroyedNeorias*(state: var GameState, systemId: SystemId) =
   ## Remove destroyed neorias and clear their construction/repair queues
   ## Called after combat resolution
@@ -262,8 +322,9 @@ proc cleanupPostCombat*(state: var GameState, systemId: SystemId) =
   ## **Order matters:**
   ## 1. Clean ships first (updates fleet.ships lists)
   ## 2. Clean empty fleets (now that ships are gone)
-  ## 3. Clean facilities (neorias, kastras) and their queues
-  ## 4. Clean ground units
+  ## 3. Clear queues from crippled facilities (per spec: CON2c)
+  ## 4. Clean destroyed facilities (neorias, kastras) and their queues
+  ## 5. Clean ground units
 
   logCombat("[CLEANUP] Post-combat cleanup starting for system ", $systemId)
 
@@ -273,11 +334,14 @@ proc cleanupPostCombat*(state: var GameState, systemId: SystemId) =
   # Phase 2: Empty fleets (only at this system, after ships removed)
   cleanupEmptyFleets(state, systemId)
 
-  # Phase 3: Facilities (only at colonies in this system, with queue clearing)
+  # Phase 3: Crippled facilities (clear queues per spec)
+  cleanupCrippledNeorias(state, systemId)
+
+  # Phase 4: Destroyed facilities (only at colonies in this system, with queue clearing)
   cleanupDestroyedNeorias(state, systemId)
   cleanupDestroyedKastras(state, systemId)
 
-  # Phase 4: Ground units (only at colonies in this system)
+  # Phase 5: Ground units (only at colonies in this system)
   cleanupDestroyedGroundUnits(state, systemId)
 
   logCombat("[CLEANUP] Post-combat cleanup complete for system ", $systemId)

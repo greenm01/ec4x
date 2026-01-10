@@ -55,19 +55,19 @@ proc resolveBattle*(
     let defenderDRM = calculateDRM(state, battle, isAttacker = false, round)
 
     # Roll CER (theater-specific table)
-    let attackerCER = rollCER(rng, attackerDRM, battle.theater)
-    let defenderCER = rollCER(rng, defenderDRM, battle.theater)
+    let attackerCERResult = rollCER(rng, attackerDRM, battle.theater)
+    let defenderCERResult = rollCER(rng, defenderDRM, battle.theater)
 
     # Calculate hits
-    let attackerHits = int32(float32(attackerAS) * attackerCER)
-    let defenderHits = int32(float32(defenderAS) * defenderCER)
+    let attackerHits = int32(float32(attackerAS) * attackerCERResult.cer)
+    let defenderHits = int32(float32(defenderAS) * defenderCERResult.cer)
 
     # Apply hits (changes ship.state across all fleets)
     let attackerShips = getAllShips(state, battle.attacker.fleets)
     let defenderShips = getAllShips(state, battle.defender.fleets)
 
-    applyHits(state, defenderShips, attackerHits)
-    applyHits(state, attackerShips, defenderHits)
+    applyHits(state, defenderShips, attackerHits, attackerCERResult.isCriticalHit)
+    applyHits(state, attackerShips, defenderHits, defenderCERResult.isCriticalHit)
 
     # Check retreat PER FLEET
     checkFleetRetreats(state, battle, attackerAS, defenderAS)

@@ -6,9 +6,11 @@
 ## Per docs/specs/07-combat.md Section 7.9
 
 import std/[tables, random, options, algorithm, sequtils]
-import ../../types/[core, game_state, combat, diplomacy, fleet]
+import ../../types/[core, game_state, combat, diplomacy, fleet, event]
 import ../../state/[engine, iterators]
 import ../../prestige/effects
+import ../../event_factory/init as event_factory
+import ../../intel/diplomatic_intel
 import ./strength
 import ./cer
 import ./hits
@@ -107,7 +109,8 @@ proc shouldCombatOccur*(
     return threatLevel == ThreatLevel.Attack
 
 proc areHostile*(
-  state: var GameState, houseA: HouseId, houseB: HouseId, systemId: SystemId
+  state: var GameState, houseA: HouseId, houseB: HouseId, systemId: SystemId,
+  events: var seq[GameEvent]
 ): bool =
   ## Check if two houses should fight at this system
   ## Handles diplomatic escalation and combat triggering with grace period
@@ -145,8 +148,38 @@ proc areHostile*(
   # Check if diplomatic status should escalate
   let (shouldEsc, newStatus) = shouldEscalate(currentStatus, maxThreatLevel)
   if shouldEsc:
+    let oldState = relation.state # Capture BEFORE change
     relation.state = newStatus
     state.diplomaticRelation[key] = relation
+
+    # Generate event with specific reason based on threat level
+    let reason =
+      case maxThreatLevel
+      of ThreatLevel.Attack:
+        "Automatic escalation: Attack-tier mission targeting colony"
+      of ThreatLevel.Contest:
+        "Automatic escalation: Contest-tier mission in system"
+      else:
+        "Automatic escalation due to fleet presence"
+
+    events.add(
+      event_factory.diplomaticRelationChanged(
+        houseA, houseB, oldState, newStatus, reason
+      )
+    )
+
+    # Generate intel for all houses
+    case newStatus
+    of DiplomaticState.Enemy:
+      diplomatic_intel.generateAutomaticWarEscalationIntel(
+        state, houseA, houseB, systemId, state.turn
+      )
+    of DiplomaticState.Hostile:
+      diplomatic_intel.generateAutomaticHostilityEscalationIntel(
+        state, houseA, houseB, systemId, state.turn
+      )
+    else:
+      discard
 
   # Determine if combat occurs this turn
   return shouldCombatOccur(relation.state, maxThreatLevel)
@@ -266,7 +299,8 @@ proc hasStarbaseInSystem*(
   return colony.owner == houseId and colony.kastraIds.len > 0
 
 proc buildMultiHouseBattle*(
-  state: var GameState, systemId: SystemId, rng: var Rand
+  state: var GameState, systemId: SystemId, rng: var Rand,
+  events: var seq[GameEvent]
 ): Option[MultiHouseBattle] =
   ## Build a multi-house battle structure with targeting matrix
   ## Returns none if no combat should occur
@@ -313,7 +347,7 @@ proc buildMultiHouseBattle*(
   for i, houseA in participants:
     for j in (i + 1) ..< participants.len:
       let houseB = participants[j]
-      if areHostile(state, houseA.houseId, houseB.houseId, systemId):
+      if areHostile(state, houseA.houseId, houseB.houseId, systemId, events):
         hasHostilePairs = true
         break
     if hasHostilePairs:
@@ -373,7 +407,9 @@ proc buildMultiHouseBattle*(
     for other in participants:
       if other.houseId == participant.houseId:
         continue
-      if not areHostile(state, participant.houseId, other.houseId, systemId):
+      if not areHostile(
+        state, participant.houseId, other.houseId, systemId, events
+      ):
         continue
 
       let enemyRoll = detectionRolls.getOrDefault(other.houseId, 0)
@@ -492,7 +528,8 @@ proc calculateCasualties(
   )
 
 proc resolveMultiHouseBattle*(
-  state: var GameState, battle: var MultiHouseBattle, rng: var Rand
+  state: var GameState, battle: var MultiHouseBattle, rng: var Rand,
+  events: var seq[GameEvent]
 ): seq[CombatResult] =
   ## Resolve one round of multi-house combat using targeting matrix
   ## Returns one CombatResult per house (simplified for now)
@@ -538,9 +575,10 @@ proc resolveMultiHouseBattle*(
           drm += 3
 
       # Roll CER
-      let cer = rollCER(rng, drm, battle.theater)
-      houseCER[participant.houseId] = cer
-      hitsGenerated[participant.houseId] = int32(float(totalAS) * cer)
+      let cerResult = rollCER(rng, drm, battle.theater)
+      houseCER[participant.houseId] = cerResult.cer
+      hitsGenerated[participant.houseId] = int32(float(totalAS) * cerResult.cer)
+      # TODO: Track critical hits per house for multi-house combat
 
     # Phase 3: Distribute hits according to targeting matrix
     for shooter in battle.participants:
@@ -572,7 +610,9 @@ proc resolveMultiHouseBattle*(
       var totalEnemyAS = 0'i32
       for other in battle.participants:
         if other.houseId != participant.houseId:
-          if areHostile(state, participant.houseId, other.houseId, battle.systemId):
+          if areHostile(
+            state, participant.houseId, other.houseId, battle.systemId, events
+          ):
             totalEnemyAS += houseAS[other.houseId]
 
       # Check each fleet in this house for retreat
@@ -654,18 +694,19 @@ proc resolveMultiHouseBattle*(
   )]
 
 proc resolveSystemCombat*(
-  state: var GameState, systemId: SystemId, rng: var Rand
+  state: var GameState, systemId: SystemId, rng: var Rand,
+  events: var seq[GameEvent]
 ): seq[CombatResult] =
   ## Single entry point for multi-house combat
   ## Replaces old pairwise bucketing approach
   ## Per docs/specs/07-combat.md Section 7.9
 
-  let battleOpt = buildMultiHouseBattle(state, systemId, rng)
+  let battleOpt = buildMultiHouseBattle(state, systemId, rng, events)
   if battleOpt.isNone:
     return @[]
 
   var battle = battleOpt.get()
-  return resolveMultiHouseBattle(state, battle, rng)
+  return resolveMultiHouseBattle(state, battle, rng, events)
 
 ## Design Notes:
 ##

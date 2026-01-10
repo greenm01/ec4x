@@ -8,7 +8,7 @@
 import std/random
 import ../../types/[combat]
 
-proc rollCER*(rng: var Rand, drm: int32, theater: CombatTheater): float32 =
+proc rollCER*(rng: var Rand, drm: int32, theater: CombatTheater): CERResult =
   ## Roll 1d10 + DRM, lookup CER from theater-specific table
   ## Per docs/specs/07-combat.md Section 7.4.1
   ##
@@ -22,29 +22,37 @@ proc rollCER*(rng: var Rand, drm: int32, theater: CombatTheater): float32 =
   ## - Roll 3-6: 1.0× effectiveness
   ## - Roll 7-8: 1.5× effectiveness
   ## - Roll 9+:  2.0× effectiveness (max)
+  ##
+  ## **Critical Hits:**
+  ## - Natural 9 (before DRM) = Critical Hit
+  ## - Can bypass "cripple all first" protection rule
 
-  let roll = rand(rng, 1..10) + drm.int
+  let naturalRoll = rand(rng, 1..10)
+  let modifiedRoll = naturalRoll + drm.int
+  
+  # Track if this is a critical hit (natural 9, before modifiers)
+  result.isCriticalHit = (naturalRoll == 9)
 
   case theater
   of CombatTheater.Space, CombatTheater.Orbital:
     # Space/Orbital CRT (07-combat.md Section 7.4.1)
-    if roll <= 2:
-      return 0.25
-    elif roll <= 5:
-      return 0.50
+    if modifiedRoll <= 2:
+      result.cer = 0.25
+    elif modifiedRoll <= 5:
+      result.cer = 0.50
     else:
-      return 1.00
+      result.cer = 1.00
 
   of CombatTheater.Planetary:
     # Ground Combat CRT (more lethal, higher ceiling)
-    if roll <= 2:
-      return 0.5
-    elif roll <= 6:
-      return 1.0
-    elif roll <= 8:
-      return 1.5
+    if modifiedRoll <= 2:
+      result.cer = 0.5
+    elif modifiedRoll <= 6:
+      result.cer = 1.0
+    elif modifiedRoll <= 8:
+      result.cer = 1.5
     else:
-      return 2.0
+      result.cer = 2.0
 
 proc getCERDescription*(cer: float32, theater: CombatTheater): string =
   ## Get human-readable description of CER result

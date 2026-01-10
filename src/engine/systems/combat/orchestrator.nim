@@ -287,7 +287,8 @@ proc resolveSystemCombat*(
   # THEATER 1: SPACE COMBAT
   # ===================================================================
   # Use new multi-house combat system
-  let spaceCombatResults = multi_house.resolveSystemCombat(state, systemId, rng)
+  let spaceCombatResults =
+    multi_house.resolveSystemCombat(state, systemId, rng, events)
   result.add(spaceCombatResults)
 
   # Determine theater outcome

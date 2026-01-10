@@ -47,6 +47,16 @@ type
     Intercept   # Detected normally → +0 DRM
 
   # =============================================================================
+  # Combat Effectiveness Rating (CER)
+  # =============================================================================
+
+  CERResult* = object
+    ## Result of CER roll including critical hit tracking
+    ## Per docs/specs/07-combat.md Section 7.4.1 and 7.2.2
+    cer*: float32         # Combat effectiveness multiplier
+    isCriticalHit*: bool  # True if natural 9 rolled (before DRM)
+
+  # =============================================================================
   # House Combat Forces (Replaces TaskForce)
   # =============================================================================
 

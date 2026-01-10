@@ -47,6 +47,9 @@ type
   # Population transfers (Guild Services)
   PopulationTransferId* = distinct uint32
 
+  # Diplomacy
+  ProposalId* = distinct uint32
+
   # Reusable game entity manager for all game assets
   EntityManager*[ID, T] = object
     data*: seq[T]
@@ -65,6 +68,7 @@ type
     nextConstructionProjectId*: uint32
     nextRepairProjectId*: uint32
     nextPopulationTransferId*: uint32
+    nextProposalId*: uint32
 
 # Hash and equality procs for all ID types
 proc `==`*(a, b: HouseId): bool {.borrow.}
@@ -98,6 +102,9 @@ proc hash*(id: RepairProjectId): Hash {.borrow.}
 
 proc `==`*(a, b: PopulationTransferId): bool {.borrow.}
 proc hash*(id: PopulationTransferId): Hash {.borrow.}
+
+proc `==`*(a, b: ProposalId): bool {.borrow.}
+proc hash*(id: ProposalId): Hash {.borrow.}
 
 proc `$`*(id: SystemId): string {.borrow.}
 proc `$`*(id: ColonyId): string {.borrow.}

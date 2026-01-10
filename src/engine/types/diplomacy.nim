@@ -14,11 +14,15 @@ type
     DeclareHostile
     DeclareEnemy
     SetNeutral
+    ProposeDeescalation  # Submit de-escalation proposal
+    AcceptProposal       # Accept pending proposal
+    RejectProposal       # Reject pending proposal
 
   ProposalType* {.pure.} = enum
-    TradeAgreement
-    MilitaryAlliance
-    TechnologySharing
+    ## Diplomatic de-escalation proposals
+    ## Per docs/specs/08-diplomacy.md - 3-state system (Neutral/Hostile/Enemy)
+    DeescalateToNeutral  # Hostile→Neutral or Enemy→Neutral (requires acceptance)
+    DeescalateToHostile  # Enemy→Hostile (requires acceptance)
 
   ProposalStatus* {.pure.} = enum
     Pending
@@ -28,7 +32,7 @@ type
     Withdrawn
 
   PendingProposal* = object
-    id*: string
+    id*: ProposalId
     proposer*: HouseId
     target*: HouseId
     proposalType*: ProposalType
@@ -46,7 +50,8 @@ type
     houseId*: HouseId
     targetHouse*: HouseId
     actionType*: DiplomaticActionType
-    proposalId*: Option[string]
+    proposalId*: Option[ProposalId]     # For AcceptProposal/RejectProposal
+    proposalType*: Option[ProposalType] # For ProposeDeescalation
     message*: Option[string]
 
   ViolationRecord* = object

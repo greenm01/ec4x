@@ -462,7 +462,7 @@ proc checkVictoryConditions(
 # INC11: Advance Timers
 # =============================================================================
 
-proc advanceTimers(state: var GameState): int =
+proc advanceTimers(state: var GameState, events: var seq[GameEvent]): int =
   ## [INC11] Decrement effect timers, expire diplomatic proposals
   ## Returns count of expired proposals
   logInfo("Income", "[INC11] Advancing timers...")
@@ -494,9 +494,23 @@ proc advanceTimers(state: var GameState): int =
         p.status = ProposalStatus.Expired
         expiredCount += 1
         logDebug("Diplomacy", "Proposal expired",
-          "id=", p.id,
+          "id=", $p.id,
           " from=", $p.proposer,
           " to=", $p.target)
+        
+        # Generate event for proposal expiration
+        # Use TreatyBroken event type (proposal expired = treaty opportunity lost)
+        let proposalTypeName = case p.proposalType
+          of ProposalType.DeescalateToNeutral:
+            "De-escalation to Neutral"
+          of ProposalType.DeescalateToHostile:
+            "De-escalation to Hostile"
+        
+        events.add(
+          event_factory.treatyBroken(
+            p.proposer, p.target, proposalTypeName, "Proposal expired without response"
+          )
+        )
 
     # Keep recent proposals (10 turn history)
     if p.status == ProposalStatus.Pending or (state.turn - p.submittedTurn) < 10:
@@ -568,6 +582,6 @@ proc resolveIncomePhase*(
   discard state.checkVictoryConditions(events)
 
   # INC11: Advance Timers
-  discard state.advanceTimers()
+  discard state.advanceTimers(events)
 
   logInfo("Income", "=== Income Phase Complete ===")
