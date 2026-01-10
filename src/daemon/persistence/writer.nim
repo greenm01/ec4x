@@ -15,7 +15,7 @@
 import std/[options, strutils]
 import db_connector/db_sqlite
 import ../../common/logger
-import ../types/[telemetry, event, game_state]
+import ../../engine/types/[telemetry, event, game_state]
 
 # ============================================================================
 # Core State Writers

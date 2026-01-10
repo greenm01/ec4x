@@ -1,16 +1,17 @@
-## Game Engine Initialization
+## Game Engine Initialization (Pure)
 ##
 ## Main entry point for creating new games. Orchestrates house, colony,
 ## and fleet initialization with proper starmap generation.
+##
+## IMPORTANT: This module is PURE - no I/O, no database operations.
+## Database persistence is handled by src/daemon/persistence/init.nim
 
-import std/[tables, monotimes, options, strutils, os, random, json, jsonutils]
-import db_connector/db_sqlite
+import std/[tables, monotimes, options, strutils, random]
 
 import ../../common/logger
 import ../[globals, starmap]
 import ../config/engine
 import ../state/[engine, id_gen]
-import ../persistence/schema
 import ../types/[
   core, game_state, intel, diplomacy,
   resolution, starmap, house
@@ -45,46 +46,8 @@ proc generateGameId(): string =
            hexBytes(1) & "-" & ["8", "9", "a", "b"][rand(3)] &
            hexBytes(1)[1..1] & hexBytes(1) & "-" & hexBytes(6)
 
-proc initPerGameDatabase(
-    gameId: string,
-    gameName: string,
-    description: string,
-    setupJson: string,
-    configJson: string,
-    dataDir: string
-): string =
-  ## Create per-game database directory and initialize schema
-  ## Returns database path
-  let (dbPath, gameDir) = defaultDBConfig(gameId, dataDir)
-
-  # Create game directory
-  createDir(gameDir)
-  logInfo("Initialization", "Created game directory: ", gameDir)
-
-  # Open database connection
-  let db = open(dbPath, "", "", "")
-  defer: db.close()
-
-  # Create all tables
-  createAllTables(db)
-
-  # Insert game metadata with configs
-  db.exec(sql"""
-    INSERT INTO games (
-      id, name, description, turn, year, month, phase, transport_mode,
-      game_setup_json, game_config_json,
-      created_at, updated_at
-    ) VALUES (
-      ?, ?, ?, 1, 2001, 1, 'Active', 'localhost',
-      ?, ?,
-      unixepoch(), unixepoch()
-    )
-  """, gameId, gameName, description, setupJson, configJson)
-
-  logInfo("Initialization", "Initialized database: ", dbPath)
-  logInfo("Initialization", "Game: ", gameName, " (", gameId, ")")
-
-  return dbPath
+# NOTE: initPerGameDatabase has been moved to src/daemon/persistence/init.nim
+# The engine is pure and has no database operations
 
 proc initializeHousesAndHomeworlds*(state: GameState) =
   ## Initialize houses, homeworlds, and starting fleets for all players
@@ -165,81 +128,18 @@ proc initializeHousesAndHomeworlds*(state: GameState) =
     state.fleetsCount(), " fleets"
   )
 
-proc initGameState*(
-  setupPath: string = "scenarios/standard-4-player.kdl",
-  gameName: string = "",
-  gameDescription: string = "",
-  configDir: string = "config",
-  dataDir: string = "data"
+proc createEmptyGameState(
+    gameId: string,
+    seed: int64,
+    dataDir: string = ""
 ): GameState =
-  ## Create a new game - SINGLE ENTRY POINT
-  ## All game parameters loaded from config files
-  ##
-  ## Args:
-  ##   setupPath: Path to scenario KDL file (default: scenarios/standard-4-player.kdl)
-  ##   gameName: Human-readable game name (default: use scenarioName from config)
-  ##   gameDescription: Optional game description for admin notes
-  ##   configDir: Directory containing config/*.kdl files
-  ##   dataDir: Root directory for per-game databases
-
-  # Load configs
-  gameConfig = loadGameConfig(configDir)
-  gameSetup = loadGameSetup(setupPath)
-
-  # Extract parameters
-  var params = gameSetup.gameParameters
-  var seed = params.gameSeed.get(initGameSeed(none(int64)))
-  var playerCount = params.playerCount
-  var numRings = gameSetup.mapGeneration.numRings
-
-  # Generate UUID for game
-  var gameId = generateGameId()
-
-  # Use provided name or fall back to scenario name
-  var finalGameName = if gameName != "": gameName else: params.scenarioName
-  var finalGameDescription = if gameDescription != "":
-    gameDescription
-  else:
-    params.scenarioDescription
-
-  # Validate map configuration (absolute bounds: 2-12 rings)
-  if numRings < 2 or numRings > 12:
-    raise newException(ValueError,
-      "numRings must be 2-12 (got " & $numRings & "). " &
-      "See docs/guides/map-sizing-guide.md for systems-per-player guidance."
-    )
-
-  # Log systems-per-player ratio for admin awareness
-  let totalSystems = 3 * numRings * numRings + 3 * numRings + 1
-  let systemsPerPlayer = totalSystems.float / playerCount.float
-  logInfo(
-    "Initialization",
-    "Map size: ", numRings, " rings = ", totalSystems, " systems (",
-    systemsPerPlayer.formatFloat(ffDecimal, 1), " per player)"
-  ) 
-
-  logInfo(
-    "Initialization", "Creating game ", gameId, ": ", playerCount, " players, ",
-    numRings, " rings, seed ", seed
-  )
-
-  # Serialize configs to JSON for database storage
-  let setupJson = $toJson(gameSetup)
-  let configJson = $toJson(gameConfig)
-
-  # Initialize per-game database
-  let dbPath = initPerGameDatabase(
-    gameId, finalGameName, finalGameDescription,
-    setupJson, configJson,
-    dataDir
-  )
-
-  # Initialize empty GameState
+  ## Create an empty GameState with initialized collections
+  ## This is a pure helper - no I/O
   result = GameState(
     gameId: gameId,
     seed: seed,
     turn: 1,
-    dbPath: dbPath,
+    dbPath: "",  # Set by daemon after DB creation
     dataDir: dataDir,
     counters: IdCounters(
       nextHouseId: 1,
@@ -275,12 +175,73 @@ proc initGameState*(
     lastTurnReports: initTable[HouseId, TurnResolutionReport](),
   )
 
-  # Generate starmap (populates result.systems)
+proc initGameState*(
+  setupPath: string = "scenarios/standard-4-player.kdl",
+  gameName: string = "",
+  gameDescription: string = "",
+  configDir: string = "config",
+  dataDir: string = "data"
+): GameState =
+  ## Create a new game from a scenario file - PURE function, no I/O
+  ##
+  ## This is the scenario-based entry point, loading all parameters from
+  ## the KDL scenario file.
+  ##
+  ## Args:
+  ##   setupPath: Path to scenario KDL file
+  ##   gameName: Human-readable game name (default: use scenarioName)
+  ##   gameDescription: Optional game description
+  ##   configDir: Directory containing config files
+  ##   dataDir: Root data directory
+
+  # Load configs
+  gameConfig = loadGameConfig(configDir)
+  gameSetup = loadGameSetup(setupPath)
+
+  # Extract parameters
+  let params = gameSetup.gameParameters
+  let seed = params.gameSeed.get(initGameSeed(none(int64)))
+  let playerCount = params.playerCount
+  let numRings = gameSetup.mapGeneration.numRings
+
+  # Generate UUID for game
+  let gameId = generateGameId()
+
+  # Use provided name or fall back to scenario name
+  let finalGameName = if gameName != "": gameName else: params.scenarioName
+
+  # Validate map configuration
+  if numRings < 2 or numRings > 12:
+    raise newException(ValueError,
+      "numRings must be 2-12 (got " & $numRings & "). " &
+      "See docs/guides/map-sizing-guide.md for systems-per-player guidance."
+    )
+
+  # Log setup
+  let totalSystems = 3 * numRings * numRings + 3 * numRings + 1
+  let systemsPerPlayer = totalSystems.float / playerCount.float
+  logInfo(
+    "Initialization",
+    "Map size: ", numRings, " rings = ", totalSystems, " systems (",
+    systemsPerPlayer.formatFloat(ffDecimal, 1), " per player)"
+  )
+
+  logInfo(
+    "Initialization", "Creating game ", gameId, ": ", playerCount, " players, ",
+    numRings, " rings, seed ", seed
+  )
+
+  # Create empty state
+  result = createEmptyGameState(gameId, seed, dataDir)
+  result.gameName = finalGameName
+  result.gameDescription = gameDescription
+
+  # Generate starmap
   result.starMap = generateStarMap(result, playerCount, numRings.uint32)
+  logInfo("Initialization", "Generated map with ", result.systemsCount(),
+          " systems")
 
-  logInfo("Initialization", "Generated map with ", result.systemsCount(), " systems")
-
-  # Initialize dynamic multipliers based on map size and player count
+  # Initialize dynamic multipliers
   let numSystems = result.systemsCount()
   initPrestigeMultiplier(numSystems, playerCount.int32)
   initPopulationGrowthMultiplier(numSystems, playerCount.int32)

@@ -2,10 +2,11 @@
 ## Public API for game initialization, turn processing, and state queries
 import std/[random, tables]
 import types/[core, game_state, command, player_state]
-import init/engine
+import init/game_state
 import turn_cycle/engine
 
-export game_state.GameState
+# Re-export core types from types/game_state (imported via init/game_state)
+export GameState
 export command.CommandPacket
 export player_state.PlayerState
 

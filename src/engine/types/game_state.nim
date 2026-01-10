@@ -19,6 +19,8 @@ type
 
   GameState* = ref object
     gameId*: string
+    gameName*: string # Human-readable name
+    gameDescription*: string # Optional admin notes
     turn*: int32
     phase*: GamePhase
     seed*: int64

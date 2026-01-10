@@ -1,5 +1,8 @@
 ## Public API for telemetry system.
-## collectors using event-driven architecture.
+## Collectors using event-driven architecture.
+##
+## IMPORTANT: This module is PURE - no I/O, no database operations.
+## The caller (daemon) is responsible for persisting metrics.
 
 import ../types/[telemetry, core, game_state]
 import
@@ -7,7 +10,6 @@ import
     combat, military, fleet, facilities, colony, production, capacity, population,
     income, tech, espionage, diplomacy, house,
   ]
-import ../persistence/writer
 
 proc initDiagnosticMetrics*(
     turn: int32, houseId: HouseId, gameId: string = ""
@@ -346,7 +348,7 @@ proc collectDiagnostics*(
   metrics = collectDiplomacyMetrics(state, houseId, metrics)
   metrics = collectHouseMetrics(state, houseId, metrics)
 
-  # Save metrics to per-game database
-  saveDiagnosticMetrics(state, metrics)
+  # NOTE: Caller (daemon) is responsible for persisting metrics
+  # via daemon/persistence/writer.saveDiagnosticMetrics()
 
   return metrics

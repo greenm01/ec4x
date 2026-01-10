@@ -27,16 +27,35 @@ const debugFlags = "-d:debug --debuginfo --linedir:on " & sqliteFlag
 # ==============================================================================
 
 task buildRelease, "Build main binary (release)":
-  echo "Building EC4X..."
+  echo "Building EC4X moderator..."
   mkDir "bin"
-  exec "nim c " & releaseFlags & " -o:bin/ec4x src/main/moderator.nim"
+  exec "nim c " & releaseFlags & " -o:bin/ec4x src/moderator/moderator.nim"
   echo "Build completed!"
 
 task buildDebug, "Build main binary (debug)":
   echo "Building EC4X with debug info..."
   mkDir "bin"
-  exec "nim c " & debugFlags & " -o:bin/ec4x src/main/moderator.nim"
+  exec "nim c " & debugFlags & " -o:bin/ec4x src/moderator/moderator.nim"
   echo "Debug build completed!"
+
+task buildModerator, "Build moderator CLI (release)":
+  echo "Building EC4X moderator..."
+  mkDir "bin"
+  exec "nim c " & releaseFlags & " -o:bin/ec4x src/moderator/moderator.nim"
+  echo "Moderator build completed!"
+
+task buildDaemon, "Build daemon (release)":
+  echo "Building EC4X daemon..."
+  mkDir "bin"
+  exec "nim c " & releaseFlags & " -o:bin/ec4x-daemon src/daemon/daemon.nim"
+  echo "Daemon build completed!"
+
+task buildAll, "Build all binaries (release)":
+  echo "Building all EC4X binaries..."
+  mkDir "bin"
+  exec "nim c " & releaseFlags & " -o:bin/ec4x src/moderator/moderator.nim"
+  exec "nim c " & releaseFlags & " -o:bin/ec4x-daemon src/daemon/daemon.nim"
+  echo "All builds completed!"
 
 task tidy, "Clean build artifacts":
   echo "Cleaning build artifacts..."
@@ -126,7 +145,7 @@ task check, "Check engine compiles":
 task checkAll, "Check all source files compile":
   echo "Checking all sources..."
   exec "nim check " & sqliteFlag & " src/engine/engine.nim"
-  exec "nim check src/main/moderator.nim"
+  exec "nim check " & sqliteFlag & " src/moderator/moderator.nim"
   echo "All sources compile!"
 
 task docs, "Generate documentation":
