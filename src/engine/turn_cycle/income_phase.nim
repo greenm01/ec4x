@@ -1,37 +1,34 @@
 ## Income Phase Resolution - Phase 2 of Canonical Turn Cycle
 ##
-## Handles all economic calculations, resource collection, and game state evaluation
-## after Conflict Phase damage has been applied.
+## Handles all economic calculations, resource collection, and game state
+## evaluation after Conflict Phase damage has been applied.
 ##
-## **Canonical Execution Order:**
+## **Canonical Execution Order (INC1-11):**
 ##
-## Step 1: Calculate Base Production
-## Step 2: Apply Blockades (from Conflict Phase)
-## Step 3: Calculate Maintenance Costs
-## Step 4: Execute Salvage Orders
-## Step 5: Capacity Enforcement After IU Loss
-##   5a. Capital Squadron Capacity (No Grace Period)
-##   5b. Total Squadron Limit (2-Turn Grace Period)
-##   5c. Fighter Squadron Capacity (2-Turn Grace Period)
-##   5d. Planet-Breaker Enforcement (Immediate)
-## Step 5a: Apply C2 Pool Logistical Strain
-## Step 6: Collect Resources
-## Step 7: Calculate Prestige
-## Step 8: House Elimination & Victory Checks
-##   8a. House Elimination
-##   8b. Victory Conditions
-## Step 9: Advance Timers
+## INC1: Apply Ongoing Espionage Effects
+## INC2: Process EBP/CIP Investment
+## INC3: Calculate Base Production
+## INC4: Apply Blockades (from Conflict Phase)
+## INC5: Execute Salvage Commands (BEFORE maintenance!)
+## INC6: Maintenance Processing (6a-6d)
+## INC7: Capacity Enforcement (7a C2 Pool, 7b Fighter, 7c Planet-Breaker)
+## INC8: Collect Resources
+## INC9: Calculate Prestige
+## INC10: House Elimination & Victory Checks (10a, 10b)
+## INC11: Advance Timers
 ##
 ## **Key Properties:**
-## - Production calculated AFTER Conflict Phase damage (damaged facilities produce less)
-## - Blockades established in Conflict Phase affect same turn's production (no delay)
+## - Production calculated AFTER Conflict Phase damage
+## - Blockades established in Conflict Phase affect same turn's production
+## - Salvage executes BEFORE maintenance (don't pay on salvaged fleets)
 ## - Capacity enforcement uses post-blockade/post-combat IU values
-## - Elimination checks happen AFTER prestige calculation (Step 7)
-## - Victory checks happen AFTER elimination processing (Step 8a)
+## - Elimination checks happen AFTER prestige calculation
+## - Victory checks happen AFTER elimination processing
 
-import std/[tables, options, strutils, random]
+import std/[tables, options, random]
 import ../../common/logger
-import ../types/[game_state, command, event, core, espionage, fleet, house, diplomacy, victory]
+import ../types/[game_state, command, event, core, espionage, fleet, house,
+                 diplomacy, victory]
 import ../state/[engine, iterators, fleet_queries]
 import ../globals
 import ../systems/income/engine as income_engine
@@ -43,22 +40,14 @@ import ../victory/engine as victory_engine
 import ../event_factory/init as event_factory
 import ../systems/fleet/execution as fleet_order_execution
 
-proc resolveIncomePhase*(
-    state: var GameState,
-    orders: Table[HouseId, CommandPacket],
-    events: var seq[GameEvent],
-    rng: var Rand,
-) =
-  ## Phase 2: Collect income and allocate resources
-  ## Production is calculated AFTER conflict, so damaged infrastructure produces less
-  ## Also applies ongoing espionage effects (SRP/NCV/Tax reductions)
-  logInfo("Income", "=== Income Phase ===", "turn=", $state.turn)
+# =============================================================================
+# INC1: Apply Ongoing Espionage Effects
+# =============================================================================
 
-  # ===================================================================
-  # STEP 0: APPLY ONGOING ESPIONAGE EFFECTS
-  # ===================================================================
-  # Effects modify production/intel during GCO calculation (Step 1)
-  logInfo("Income", "[STEP 0] Filtering active espionage effects...")
+proc applyOngoingEspionageEffects(state: var GameState): int =
+  ## [INC1] Filter active espionage effects, apply modifiers
+  ## Returns count of active effects
+  logInfo("Income", "[INC1] Applying ongoing espionage effects...")
 
   var activeEffects: seq[OngoingEffect] = @[]
   for effect in state.ongoingEffects:
@@ -73,13 +62,21 @@ proc resolveIncomePhase*(
       )
 
   state.ongoingEffects = activeEffects
-  logInfo("Income", "[STEP 0] Complete", "active=", $activeEffects.len)
+  logInfo("Income", "[INC1] Complete", "active=", $activeEffects.len)
+  return activeEffects.len
 
-  # ===================================================================
-  # STEP 0b: PROCESS EBP/CIP INVESTMENT
-  # ===================================================================
-  # Purchase EBP/CIP with PP, check over-investment penalty
-  logInfo("Income", "[STEP 0b] Processing EBP/CIP purchases...")
+# =============================================================================
+# INC2: Process EBP/CIP Investment
+# =============================================================================
+
+proc processEBPCIPInvestment(
+    state: var GameState,
+    orders: Table[HouseId, CommandPacket],
+    events: var seq[GameEvent],
+): int =
+  ## [INC2] Purchase EBP/CIP with PP, check over-investment penalty
+  ## Returns count of houses that made purchases
+  logInfo("Income", "[INC2] Processing EBP/CIP purchases...")
 
   var purchaseCount = 0
   for (houseId, house) in state.allHousesWithId():
@@ -101,63 +98,76 @@ proc resolveIncomePhase*(
       continue
 
     # Deduct from treasury and add points
+    # Pass PP spent (ebpCost/cipCost), NOT points to purchase
+    # purchaseEBP/CIP divide by cost to calculate points purchased
     updatedHouse.treasury -= totalCost
-    discard esp_engine.purchaseEBP(updatedHouse.espionageBudget,
-      packet.ebpInvestment)
-    discard esp_engine.purchaseCIP(updatedHouse.espionageBudget,
-      packet.cipInvestment)
+    discard esp_engine.purchaseEBP(updatedHouse.espionageBudget, ebpCost)
+    discard esp_engine.purchaseCIP(updatedHouse.espionageBudget, cipCost)
 
-    # Check over-investment penalty (if configured)
-    # TODO: Add investment config to espionage.toml if over-investment penalty needed
+    # TODO: Add over-investment penalty check if configured
+    # Threshold: >5% of turn budget → -1 prestige per 1% over threshold
 
     state.updateHouse(houseId, updatedHouse)
     purchaseCount += 1
 
-  logInfo("Income", "[STEP 0b] Complete", "purchases=", $purchaseCount)
+    logDebug("Espionage", "EBP/CIP purchased",
+      "house=", $houseId,
+      " ebp=", $packet.ebpInvestment,
+      " cip=", $packet.cipInvestment,
+      " cost=", $totalCost)
 
-  # ===================================================================
-  # STEP 1: CALCULATE BASE PRODUCTION
-  # ===================================================================
-  logInfo("Economy", "[STEP 1] Calculating base production...")
+  logInfo("Income", "[INC2] Complete", "purchases=", $purchaseCount)
+  return purchaseCount
 
-  # Call income engine (calculates GCO, applies blockades, updates treasuries)
+# =============================================================================
+# INC3: Calculate Base Production
+# =============================================================================
+
+proc calculateBaseProduction(
+    state: var GameState,
+): income_engine.IncomePhaseReport =
+  ## [INC3] Calculate GCO, apply blockades (via income_engine)
+  ## Returns income report with per-house and per-colony details
+  logInfo("Economy", "[INC3] Calculating base production...")
+
   let incomeReport = income_engine.resolveIncomePhase(
     state, baseGrowthRate = gameConfig.economy.population.naturalGrowthRate
   )
 
-  logInfo("Economy", "[STEP 1] Complete",
+  logInfo("Economy", "[INC3] Complete",
     "houses=", $incomeReport.houseReports.len)
+  return incomeReport
 
-  # ===================================================================
-  # STEP 2: APPLY BLOCKADES (from Conflict Phase)
-  # ===================================================================
-  # Blockades already applied during Step 1 GCO calculation
+# =============================================================================
+# INC4: Apply Blockades (informational - already applied in INC3)
+# =============================================================================
+
+proc countBlockadedColonies(state: GameState): int =
+  ## [INC4] Count blockaded colonies (blockades already applied during INC3)
+  ## Returns count of blockaded colonies
+  logInfo("Economy", "[INC4] Counting blockaded colonies...")
+
   var blockadeCount = 0
   for colony in state.allColonies():
     if colony.blockaded:
       blockadeCount += 1
 
-  logInfo("Economy", "[STEP 2] Blockades applied", "count=", $blockadeCount)
+  logInfo("Economy", "[INC4] Complete", "blockaded=", $blockadeCount)
+  return blockadeCount
 
-  # ===================================================================
-  # STEP 3: CALCULATE AND DEDUCT MAINTENANCE UPKEEP
-  # ===================================================================
-  logInfo("Economy", "[STEP 3] Calculating maintenance upkeep...")
+# =============================================================================
+# INC5: Execute Salvage Commands (BEFORE maintenance!)
+# =============================================================================
 
-  let maintenanceUpkeepByHouse =
-    income_engine.calculateAndDeductMaintenanceUpkeep(state, events)
-
-  for houseId, upkeepCost in maintenanceUpkeepByHouse:
-    logInfo("Economy", "Maintenance paid",
-      "house=", $houseId, " cost=", $upkeepCost, " PP")
-
-  logInfo("Economy", "[STEP 3] Complete")
-
-  # ===================================================================
-  # STEP 4: EXECUTE SALVAGE ORDERS
-  # ===================================================================
-  # Salvage commands execute if fleet survived Conflict Phase and arrived
-  logInfo("Fleet", "[STEP 4] Executing salvage orders...")
+proc executeSalvageCommands(
+    state: var GameState,
+    orders: Table[HouseId, CommandPacket],
+    events: var seq[GameEvent],
+): int =
+  ## [INC5] Execute salvage orders for fleets that survived Conflict Phase
+  ## CRITICAL: Runs BEFORE maintenance so salvaged ships don't incur costs
+  ## Returns count of salvaged fleets
+  logInfo("Fleet", "[INC5] Executing salvage orders...")
 
   var salvageCount = 0
   for (houseId, _) in state.allHousesWithId():
@@ -180,47 +190,52 @@ proc resolveIncomePhase*(
         continue
 
       # Execute salvage via dispatcher
-      let outcome = dispatcher.executeFleetCommand(state, houseId, command, events)
+      let outcome = dispatcher.executeFleetCommand(state, houseId, command,
+                                                   events)
       if outcome == OrderOutcome.Success:
         salvageCount += 1
         # Salvage destroys the fleet, so no need to update missionState
 
-  logInfo("Fleet", "[STEP 4] Complete", "salvaged=", $salvageCount)
+  logInfo("Fleet", "[INC5] Complete", "salvaged=", $salvageCount)
+  return salvageCount
 
-  # ===================================================================
-  # ADMINISTRATIVE COMPLETION (Income Commands)
-  # ===================================================================
-  # Mark Income Phase commands complete after salvage operations finish
-  # Note: This is administrative completion only - salvage behavior already happened above
-  logInfo("Income", "[INCOME PHASE] Administrative completion for Income commands...")
-  fleet_order_execution.performCommandMaintenance(
-    state, orders, events, rng,
-    fleet_order_execution.isIncomeCommand,
-    "Income Phase - Administrative Completion"
-  )
-  logInfo("Income", "[INCOME PHASE] Administrative completion complete")
+# =============================================================================
+# INC6: Maintenance Processing (6a-6d)
+# =============================================================================
 
-  # ===================================================================
-  # STEP 5: CAPACITY ENFORCEMENT AFTER IU LOSS
-  # ===================================================================
-  logInfo("Economy", "[STEP 5] Checking capacity violations...")
+proc processMaintenancePhase(
+    state: var GameState,
+    events: var seq[GameEvent],
+) =
+  ## [INC6] Calculate and deduct maintenance upkeep
+  ## Substeps: 6a Calculate, 6b Payment, 6c Shortfall, 6d Auto-Salvage
+  logInfo("Economy", "[INC6] Processing maintenance...")
 
-  # Fighter squadron capacity (2-turn grace period per colony)
-  let fighterEnforcement = fighter.processCapacityEnforcement(state, events)
+  let maintenanceUpkeepByHouse =
+    income_engine.calculateAndDeductMaintenanceUpkeep(state, events)
 
-  # Planet-breaker capacity (immediate enforcement, 1 per colony)
-  let pbEnforcement = planet_breakers.processCapacityEnforcement(state, events)
+  for houseId, upkeepCost in maintenanceUpkeepByHouse:
+    logInfo("Economy", "Maintenance paid",
+      "house=", $houseId, " cost=", $upkeepCost, " PP")
 
-  logInfo("Economy", "[STEP 5] Complete",
-    "fighters=", $fighterEnforcement.len,
-    " pbs=", $pbEnforcement.len)
+  logInfo("Economy", "[INC6] Complete")
 
-  # ===================================================================
-  # STEP 5a: APPLY C2 POOL LOGISTICAL STRAIN
-  # ===================================================================
-  # Logistical strain penalty for exceeding C2 Pool capacity
-  logInfo("Economy", "[STEP 5a] Processing C2 Pool logistical strain...")
+# =============================================================================
+# INC7: Capacity Enforcement (7a C2 Pool, 7b Fighter, 7c Planet-Breaker)
+# =============================================================================
 
+proc enforceCapacityLimits(
+    state: var GameState,
+    events: var seq[GameEvent],
+) =
+  ## [INC7] Enforce capacity limits post-combat
+  ## 7a: C2 Pool logistical strain (soft cap, financial penalty)
+  ## 7b: Fighter capacity (2-turn grace period)
+  ## 7c: Planet-Breaker enforcement (immediate)
+  logInfo("Economy", "[INC7] Enforcing capacity limits...")
+
+  # [INC7a] C2 Pool Logistical Strain
+  logInfo("Economy", "[INC7a] Processing C2 Pool logistical strain...")
   for (houseId, _) in state.allHousesWithId():
     let analysis = c2_pool.processLogisticalStrain(state, houseId, events)
 
@@ -234,13 +249,29 @@ proc resolveIncomePhase*(
         "house=", $houseId,
         " cc=", $analysis.totalFleetCC, "/", $analysis.c2Pool)
 
-  logInfo("Economy", "[STEP 5a] Complete")
+  # [INC7b] Fighter squadron capacity (2-turn grace period per colony)
+  logInfo("Economy", "[INC7b] Processing fighter capacity...")
+  let fighterEnforcement = fighter.processCapacityEnforcement(state, events)
 
-  # ===================================================================
-  # STEP 6: COLLECT RESOURCES
-  # ===================================================================
-  # Treasury and growth already applied by income_engine.resolveIncomePhase()
-  logInfo("Economy", "[STEP 6] Collecting resources...")
+  # [INC7c] Planet-breaker capacity (immediate enforcement, 1 per colony)
+  logInfo("Economy", "[INC7c] Processing planet-breaker capacity...")
+  let pbEnforcement = planet_breakers.processCapacityEnforcement(state, events)
+
+  logInfo("Economy", "[INC7] Complete",
+    "fighters=", $fighterEnforcement.len,
+    " pbs=", $pbEnforcement.len)
+
+# =============================================================================
+# INC8: Collect Resources
+# =============================================================================
+
+proc collectResources(
+    state: var GameState,
+    incomeReport: income_engine.IncomePhaseReport,
+) =
+  ## [INC8] Store income reports and update colony production fields
+  ## Treasury already updated by income_engine.resolveIncomePhase()
+  logInfo("Economy", "[INC8] Collecting resources...")
 
   for houseId, houseReport in incomeReport.houseReports:
     # Store income report for intelligence (HackStarbase missions)
@@ -263,12 +294,19 @@ proc resolveIncomePhase*(
         colony.production = colonyReport.grossOutput
         state.updateColony(colonyReport.colonyId, colony)
 
-  logInfo("Economy", "[STEP 6] Complete")
+  logInfo("Economy", "[INC8] Complete")
 
-  # ===================================================================
-  # STEP 7: CALCULATE PRESTIGE
-  # ===================================================================
-  logInfo("Prestige", "[STEP 7] Calculating prestige...")
+# =============================================================================
+# INC9: Calculate Prestige
+# =============================================================================
+
+proc calculatePrestige(
+    state: var GameState,
+    incomeReport: income_engine.IncomePhaseReport,
+    events: var seq[GameEvent],
+) =
+  ## [INC9] Apply prestige from economic activities and blockade penalties
+  logInfo("Prestige", "[INC9] Calculating prestige...")
 
   for houseId, houseReport in incomeReport.houseReports:
     # Apply prestige events from economic activities
@@ -302,12 +340,21 @@ proc resolveIncomePhase*(
           " penalty=", $blockadePenalty,
           " colonies=", $blockadedCount)
 
-  logInfo("Prestige", "[STEP 7] Complete")
+  logInfo("Prestige", "[INC9] Complete")
 
-  # ===================================================================
-  # STEP 8: CHECK ELIMINATION & VICTORY CONDITIONS
-  # ===================================================================
-  logInfo("Victory", "[STEP 8a] Checking elimination conditions...")
+# =============================================================================
+# INC10a: House Elimination
+# =============================================================================
+
+proc processEliminationChecks(
+    state: var GameState,
+    events: var seq[GameEvent],
+): int =
+  ## [INC10a] Check and process house eliminations
+  ## Standard elimination: no colonies AND no invasion capability
+  ## Defensive collapse: prestige below threshold for consecutive turns
+  ## Returns count of eliminated houses
+  logInfo("Victory", "[INC10a] Checking elimination conditions...")
 
   let defenseCollapseThreshold =
     gameConfig.gameplay.elimination.defensiveCollapseThreshold
@@ -359,7 +406,8 @@ proc resolveIncomePhase*(
       logWarn("Victory", "Defensive collapse warning",
         "house=", $houseId,
         " prestige=", $house.prestige,
-        " turns=", $houseToUpdate.negativePrestigeTurns, "/", $defenseCollapseTurns)
+        " turns=", $houseToUpdate.negativePrestigeTurns,
+        "/", $defenseCollapseTurns)
 
       if houseToUpdate.negativePrestigeTurns >= defenseCollapseTurns:
         houseToUpdate.isEliminated = true
@@ -378,30 +426,46 @@ proc resolveIncomePhase*(
 
     state.updateHouse(houseId, houseToUpdate)
 
-  logInfo("Victory", "[STEP 8a] Complete", "eliminated=", $eliminatedCount)
+  logInfo("Victory", "[INC10a] Complete", "eliminated=", $eliminatedCount)
+  return eliminatedCount
 
-  # Step 8b: Check victory conditions (after eliminations processed)
-  logInfo("Victory", "[STEP 8b] Checking victory conditions...")
-  
+# =============================================================================
+# INC10b: Victory Conditions
+# =============================================================================
+
+proc checkVictoryConditions(
+    state: var GameState,
+    events: var seq[GameEvent],
+): victory_engine.VictoryCheck =
+  ## [INC10b] Check victory conditions after eliminations processed
+  ## Returns victory check result
+  logInfo("Victory", "[INC10b] Checking victory conditions...")
+
   let victoryCondition = VictoryCondition(
     turnLimit: gameSetup.victoryConditions.turnLimit,
     enableDefensiveCollapse: true
   )
-  let victoryCheck = victory_engine.checkVictoryConditions(state, victoryCondition)
-  
+  let victoryCheck = victory_engine.checkVictoryConditions(state,
+                                                           victoryCondition)
+
   if victoryCheck.victoryOccurred:
     logInfo("Victory", "*** GAME OVER ***",
       "victor=", $victoryCheck.status.houseId,
       " type=", $victoryCheck.status.victoryType,
       " turn=", $victoryCheck.status.achievedOnTurn)
     # Victory event handled by victory engine
-  
-  logInfo("Victory", "[STEP 8b] Complete")
 
-  # ===================================================================
-  # STEP 9: ADVANCE TIMERS
-  # ===================================================================
-  logInfo("Income", "[STEP 9] Advancing timers...")
+  logInfo("Victory", "[INC10b] Complete")
+  return victoryCheck
+
+# =============================================================================
+# INC11: Advance Timers
+# =============================================================================
+
+proc advanceTimers(state: var GameState): int =
+  ## [INC11] Decrement effect timers, expire diplomatic proposals
+  ## Returns count of expired proposals
+  logInfo("Income", "[INC11] Advancing timers...")
 
   # Decrement ongoing espionage effect counters
   var remainingEffects: seq[OngoingEffect] = @[]
@@ -421,7 +485,7 @@ proc resolveIncomePhase*(
   # Expire pending diplomatic proposals
   var expiredCount = 0
   var updatedProposals: seq[PendingProposal] = @[]
-  
+
   for proposal in state.pendingProposals:
     var p = proposal
     if p.status == ProposalStatus.Pending:
@@ -433,13 +497,77 @@ proc resolveIncomePhase*(
           "id=", p.id,
           " from=", $p.proposer,
           " to=", $p.target)
-    
+
     # Keep recent proposals (10 turn history)
     if p.status == ProposalStatus.Pending or (state.turn - p.submittedTurn) < 10:
       updatedProposals.add(p)
 
   state.pendingProposals = updatedProposals
 
-  logInfo("Income", "[STEP 9] Complete",
+  logInfo("Income", "[INC11] Complete",
     "expired=", $expiredCount,
     " remaining=", $state.pendingProposals.len)
+  return expiredCount
+
+# =============================================================================
+# Main Orchestrator
+# =============================================================================
+
+proc resolveIncomePhase*(
+    state: var GameState,
+    orders: Table[HouseId, CommandPacket],
+    events: var seq[GameEvent],
+    rng: var Rand,
+) =
+  ## Phase 2: Income Phase orchestrator
+  ##
+  ## Executes all income phase steps in canonical order (INC1-11).
+  ## Production calculated AFTER Conflict Phase damage.
+  ## Salvage executes BEFORE maintenance (don't pay on salvaged fleets).
+  logInfo("Income", "=== Income Phase ===", "turn=", $state.turn)
+
+  # INC1: Apply Ongoing Espionage Effects
+  discard state.applyOngoingEspionageEffects()
+
+  # INC2: Process EBP/CIP Investment
+  discard state.processEBPCIPInvestment(orders, events)
+
+  # INC3: Calculate Base Production (includes blockade application)
+  let incomeReport = state.calculateBaseProduction()
+
+  # INC4: Apply Blockades (informational - already in INC3)
+  discard state.countBlockadedColonies()
+
+  # INC5: Execute Salvage Commands (BEFORE maintenance!)
+  discard state.executeSalvageCommands(orders, events)
+
+  # Administrative completion for Income commands
+  logInfo("Income", "[INCOME] Administrative completion for Income commands...")
+  fleet_order_execution.performCommandMaintenance(
+    state, orders, events, rng,
+    fleet_order_execution.isIncomeCommand,
+    "Income Phase - Administrative Completion"
+  )
+
+  # INC6: Maintenance Processing (AFTER salvage!)
+  state.processMaintenancePhase(events)
+
+  # INC7: Capacity Enforcement (7a C2 Pool, 7b Fighter, 7c Planet-Breaker)
+  state.enforceCapacityLimits(events)
+
+  # INC8: Collect Resources
+  state.collectResources(incomeReport)
+
+  # INC9: Calculate Prestige
+  state.calculatePrestige(incomeReport, events)
+
+  # INC10a: House Elimination
+  discard state.processEliminationChecks(events)
+
+  # INC10b: Victory Conditions
+  discard state.checkVictoryConditions(events)
+
+  # INC11: Advance Timers
+  discard state.advanceTimers()
+
+  logInfo("Income", "=== Income Phase Complete ===")
