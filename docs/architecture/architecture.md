@@ -14,19 +14,13 @@ src/engine/
     │   ├── capacity.nim    #   - Defines types for the capacity system.
     │   └── *.nim           #   - Universal data types for the entire engine.
     │
-    ├── @init/              # [GAME SETUP & BOOTSTRAP]
-    │   ├── engine.nim      #   - Entry for new game creation.
+    ├── @init/              # [GAME SETUP & BOOTSTRAP] Pure functions, no I/O.
+    │   ├── game_state.nim  #   - Entry for new game creation (initGameState).
     │   ├── house.nim       #   - House initialization with tech tree validation.
     │   ├── colony.nim      #   - Homeworld colony creation with facilities.
     │   ├── fleet.nim       #   - Starting fleet composition and creation.
     │   ├── multipliers.nim #   - Dynamic prestige/population multipliers.
     │   └── validation.nim  #   - Validates initial game setup.
-    │
-    ├── @persistence/       # [SAVE/LOAD MANAGEMENT]
-    │   ├── schema.nim      #   - Serialization/deserialization logic.
-    │   ├── writer.nim      #   - Writes `GameState` to storage.
-    │   ├── queries.nim     #   - Reads `GameState` from storage.
-    │   └── types.nim       #   - Types specific to save data.
     │
     │                                     (READ-ONLY ACCESS)
     │                         ┌──────────────────────────────────────────────┐

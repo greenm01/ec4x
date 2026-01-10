@@ -71,7 +71,7 @@ type
 
     # Reports (transient, cleared each turn)
     lastTurnReports*: Table[HouseId, TurnResolutionReport]
-    lastTurnEvents*: seq[GameEvent] # Event stream for telemetry
+    lastTurnEvents*: seq[GameEvent] # Event stream for persistence
     scoutLossEvents*: seq[ScoutLossEvent]
 
     # Population Transfers

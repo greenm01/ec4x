@@ -46,9 +46,6 @@ proc generateGameId(): string =
            hexBytes(1) & "-" & ["8", "9", "a", "b"][rand(3)] &
            hexBytes(1)[1..1] & hexBytes(1) & "-" & hexBytes(6)
 
-# NOTE: initPerGameDatabase has been moved to src/daemon/persistence/init.nim
-# The engine is pure and has no database operations
-
 proc initializeHousesAndHomeworlds*(state: GameState) =
   ## Initialize houses, homeworlds, and starting fleets for all players
   ## Per game setup rules (e.g., docs/specs/05-gameplay.md:1.3)

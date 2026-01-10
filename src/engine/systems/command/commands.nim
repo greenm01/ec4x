@@ -647,15 +647,11 @@ proc createHoldCommand*(fleetId: FleetId, priority: int32 = 0): FleetCommand =
 
 # Command packet creation
 
-proc newCommandPacket*(
-    houseId: HouseId, turn: int32, treasury: int32 = 0
-): CommandPacket =
+proc newCommandPacket*(houseId: HouseId, turn: int32): CommandPacket =
   ## Create empty command packet for a house
-  ## treasury: Treasury at command generation time (defaults to 0 for test harnesses)
   result = CommandPacket(
     houseId: houseId,
     turn: turn,
-    treasury: treasury,
     fleetCommands: @[],
     buildCommands: @[],
     researchAllocation: ResearchAllocation(

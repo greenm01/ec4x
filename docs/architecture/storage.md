@@ -43,7 +43,7 @@ data/games/
 
 **Daemon Discovery**: Scan `data/games/*/ec4x.db` to find active games.
 
-**Implementation:** Database initialized by `initPerGameDatabase()` in `src/engine/init/engine.nim`
+**Implementation:** Database initialized by `createGameDatabase()` in `src/daemon/persistence/init.nim`
 
 ## Core Schema
 

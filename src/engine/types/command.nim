@@ -41,7 +41,6 @@ type
   CommandPacket* = object
     houseId*: HouseId
     turn*: int32
-    treasury*: int32
     fleetCommands*: seq[FleetCommand]
     buildCommands*: seq[BuildCommand]
     repairCommands*: seq[RepairCommand]  # Manual repair orders

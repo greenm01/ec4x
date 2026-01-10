@@ -349,7 +349,7 @@ proc cleanupPostCombat*(state: GameState, systemId: SystemId) =
 ## Design Notes:
 ##
 ## **Why separate from combat resolution:**
-## - CombatState.Destroyed needed for after-action reports and telemetry
+## - CombatState.Destroyed needed for after-action reports
 ## - Stats collection needs to see what was destroyed
 ## - Event generation needs entity data
 ## - Cleanup happens after all reporting complete

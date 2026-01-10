@@ -15,18 +15,19 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 ```
 ┌─────────────────────────────────────┐
 │     Game Engine (src/engine/)       │
-│  • Pure game logic                  │
+│  • PURE game logic (no I/O)         │
 │  • Turn-based resolution            │
 │  • Order validation                 │
 │  • Combat & economy systems         │
+│  • Telemetry metrics collection     │
 └─────────────────────────────────────┘
-              ↓
+              ↑ imports
 ┌─────────────────────────────────────┐
-│ Storage Layer (src/persistence/)    │
-│  • SQLite (one db per game)         │
-│  • Event sourcing (~5-10MB/100 turns)│
-│  • Intel/fog of war tracking        │
-│  • Diagnostic telemetry (200+ metrics)│
+│       Daemon (src/daemon/)          │
+│  • TEA event loop                   │
+│  • Persistence (SQLite per game)    │
+│  • Transport handlers               │
+│  • Turn resolution orchestration    │
 └─────────────────────────────────────┘
          ↙                    ↘
 ┌─────────────┐          ┌─────────────┐
@@ -37,7 +38,19 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 │ • Direct DB │          │ • Relays    │
 │ • Testing   │          │ • P2P       │
 └─────────────┘          └─────────────┘
+
+┌─────────────────────────────────────┐
+│     Moderator (src/moderator/)      │
+│  • Admin CLI (bin/ec4x)             │
+│  • Game creation from scenarios     │
+│  • Game management (pause/resume)   │
+└─────────────────────────────────────┘
 ```
+
+**Import Rules:**
+- `engine/` → imports NOTHING from `daemon/` or `moderator/`
+- `daemon/` → imports from `engine/` (types, resolveTurn)
+- `moderator/` → imports from `engine/` and `daemon/persistence/`
 
 ## Components
 
@@ -60,7 +73,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - Minimizes network traffic (no formatted text sent over wire)
 
 ### Daemon (Turn Processor)
-**Binary**: `bin/daemon`
+**Binary**: `bin/ec4x-daemon`
 **Role**: Autonomous turn processing service
 **Capabilities**:
 - Monitors multiple games simultaneously
@@ -75,7 +88,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - Manages all active games in one process
 
 ### Moderator (Admin Tool)
-**Binary**: `bin/moderator`
+**Binary**: `bin/ec4x`
 **Role**: Game administration and management
 **Capabilities**:
 - Create new games (localhost or Nostr mode)
