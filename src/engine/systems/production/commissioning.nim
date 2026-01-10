@@ -42,12 +42,28 @@ import std/[tables, options, strformat, strutils, sequtils]
 import ../../types/[core, game_state, production, event, ground_unit, combat]
 import ../../types/[ship, colony, fleet, facilities]
 import ../../state/[engine, id_gen, iterators]
-import ../../entities/[neoria_ops, kastra_ops, ship_ops, fleet_ops]
+import ../../entities/[neoria_ops, kastra_ops, ship_ops, fleet_ops, ground_unit_ops]
 import ../../globals
 import ../../utils
 import ../../../common/logger
 import ../capacity/carrier_hangar
 import ../../event_factory/init
+
+proc projectDesc*(p: ConstructionProject): string =
+  ## Format project description from typed fields for logging
+  if p.shipClass.isSome: return $p.shipClass.get()
+  if p.facilityClass.isSome: return $p.facilityClass.get()
+  if p.groundClass.isSome: return $p.groundClass.get()
+  if p.industrialUnits > 0: return $p.industrialUnits & " IU"
+  return "unknown"
+
+proc completedProjectDesc*(p: CompletedProject): string =
+  ## Format completed project description from typed fields for logging
+  if p.shipClass.isSome: return $p.shipClass.get()
+  if p.facilityClass.isSome: return $p.facilityClass.get()
+  if p.groundClass.isSome: return $p.groundClass.get()
+  if p.industrialUnits > 0: return $p.industrialUnits & " IU"
+  return "unknown"
 
 # Helper functions using DoD patterns
 proc getOperationalStarbaseCount*(state: GameState, colonyId: ColonyId): int =
@@ -242,14 +258,11 @@ proc commissionPlanetaryDefense*(
   for completed in completedProjects:
     logInfo(
       "Economy",
-      &"Commissioning planetary defense: {completed.projectType} itemId={completed.itemId} at system-{completed.colonyId}",
+      &"Commissioning planetary defense: {completed.projectType} {completed.completedProjectDesc} at system-{completed.colonyId}",
     )
 
     # Special handling for Fighters (planetary defense, colony-based)
-    if (
-      completed.projectType == BuildType.Facility and
-      completed.itemId == "FighterSquadron"
-    ) or (completed.projectType == BuildType.Ship and completed.itemId == "Fighter"):
+    if completed.shipClass == some(ShipClass.Fighter):
       if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
@@ -291,7 +304,7 @@ proc commissionPlanetaryDefense*(
         )
 
     # Special handling for starbases
-    elif completed.projectType == BuildType.Facility and completed.itemId == "Starbase":
+    elif completed.facilityClass == some(FacilityClass.Starbase):
       # Commission starbase at colony using DoD
       if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
@@ -326,7 +339,7 @@ proc commissionPlanetaryDefense*(
         )
 
     # Special handling for spaceports
-    elif completed.projectType == BuildType.Facility and completed.itemId == "Spaceport":
+    elif completed.facilityClass == some(FacilityClass.Spaceport):
       if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
@@ -354,7 +367,7 @@ proc commissionPlanetaryDefense*(
         )
 
     # Special handling for shipyards
-    elif completed.projectType == BuildType.Facility and completed.itemId == "Shipyard":
+    elif completed.facilityClass == some(FacilityClass.Shipyard):
       if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
@@ -391,7 +404,7 @@ proc commissionPlanetaryDefense*(
         )
 
     # Special handling for drydocks
-    elif completed.projectType == BuildType.Facility and completed.itemId == "Drydock":
+    elif completed.facilityClass == some(FacilityClass.Drydock):
       if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
@@ -426,13 +439,17 @@ proc commissionPlanetaryDefense*(
         )
 
     # Special handling for ground batteries
-    elif completed.projectType == BuildType.Facility and
-        completed.itemId == "GroundBattery":
+    elif completed.groundClass == some(GroundClass.GroundBattery):
       if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
         let colony = colonyOpt.get()
+
+        # Create the ground battery unit
+        discard ground_unit_ops.createGroundUnit(
+          state, colony.owner, completed.colonyId, GroundClass.GroundBattery
+        )
 
         # Get updated colony for count
         let updatedColonyOpt = state.colony(completed.colonyId)
@@ -453,13 +470,17 @@ proc commissionPlanetaryDefense*(
         )
 
     # Special handling for planetary shields (replacement, not upgrade)
-    elif completed.projectType == BuildType.Facility and
-        completed.itemId.startsWith("PlanetaryShield"):
+    elif completed.groundClass == some(GroundClass.PlanetaryShield):
       if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
           continue
         var colony = colonyOpt.get()
+
+        # Create the planetary shield unit
+        discard ground_unit_ops.createGroundUnit(
+          state, colony.owner, completed.colonyId, GroundClass.PlanetaryShield
+        )
 
         # Get house SLD tech level for logging
         let houseOpt = state.house(colony.owner)
@@ -480,8 +501,7 @@ proc commissionPlanetaryDefense*(
         )
 
     # Special handling for Marines (MD)
-    elif completed.projectType == BuildType.Facility and
-        (completed.itemId == "Marine" or completed.itemId == "marine_division"):
+    elif completed.groundClass == some(GroundClass.Marine):
       if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
@@ -505,6 +525,11 @@ proc commissionPlanetaryDefense*(
               &"({colony.souls - marinePopCost} < {minViablePop} souls)",
           )
         else:
+          # Create the marine unit
+          discard ground_unit_ops.createGroundUnit(
+            state, colony.owner, completed.colonyId, GroundClass.Marine
+          )
+
           # Get colony again to deduct population (createGroundUnit updated it)
           let colonyOpt2 = state.colony(completed.colonyId)
           if colonyOpt2.isSome:
@@ -530,8 +555,7 @@ proc commissionPlanetaryDefense*(
             )
 
     # Special handling for Armies (AA)
-    elif completed.projectType == BuildType.Facility and
-        (completed.itemId == "Army" or completed.itemId == "army"):
+    elif completed.groundClass == some(GroundClass.Army):
       if state.hasColony(completed.colonyId):
         let colonyOpt = state.colony(completed.colonyId)
         if colonyOpt.isNone:
@@ -555,6 +579,11 @@ proc commissionPlanetaryDefense*(
               &"({colony.souls - armyPopCost} < {minViablePop} souls)",
           )
         else:
+          # Create the army unit
+          discard ground_unit_ops.createGroundUnit(
+            state, colony.owner, completed.colonyId, GroundClass.Army
+          )
+
           # Get colony again to deduct population (createGroundUnit updated it)
           let colonyOpt2 = state.colony(completed.colonyId)
           if colonyOpt2.isSome:
@@ -719,13 +748,13 @@ proc commissionShips*(
           completed.colonyId,
           neoriaId,
           neoriaOpt.get().neoriaClass,
-          completed.itemId,
+          completed.completedProjectDesc,
         ))
         continue # Skip commissioning - ship destroyed with facility
 
     logInfo(
       "Economy",
-      &"Commissioning ship: {completed.itemId} at system-{completed.colonyId}",
+      &"Commissioning ship: {completed.completedProjectDesc} at system-{completed.colonyId}",
     )
 
     # Get colony and owner
@@ -738,23 +767,23 @@ proc commissionShips*(
     let colony = colonyOpt.get()
     let owner = colony.owner
 
-    # Parse ship class from itemId
-    try:
-      let shipClass = parseEnum[ShipClass](completed.itemId)
+    # Get ship class from typed field
+    if completed.shipClass.isNone:
+      logError("Economy", &"Cannot commission ship - no shipClass in project")
+      continue
+    let shipClass = completed.shipClass.get()
 
-      # Get house tech level for ship stats
-      let houseOpt = state.house(owner)
-      if houseOpt.isNone:
-        logWarn("Economy", &"Cannot commission ship - house {owner} not found")
-        continue
-      let house = houseOpt.get()
-      let techLevel = house.techTree.levels.wep
+    # Get house tech level for ship stats
+    let houseOpt = state.house(owner)
+    if houseOpt.isNone:
+      logWarn("Economy", &"Cannot commission ship - house {owner} not found")
+      continue
+    let house = houseOpt.get()
+    let techLevel = house.techTree.levels.wep
 
-      # Commission ship (auto-assigns to appropriate fleet)
-      # Scouts -> pure scout fleets; others -> combat fleets
-      commissionShip(state, owner, colony.systemId, shipClass, techLevel, events)
-    except ValueError:
-      logError("Economy", &"Invalid ship class: {completed.itemId}")
+    # Commission ship (auto-assigns to appropriate fleet)
+    # Scouts -> pure scout fleets; others -> combat fleets
+    commissionShip(state, owner, colony.systemId, shipClass, techLevel, events)
 
 proc clearDamagedFacilityQueues*(state: GameState, events: var seq[GameEvent]) =
   ## Clear construction and repair queues for crippled/destroyed facilities
@@ -782,7 +811,7 @@ proc clearDamagedFacilityQueues*(state: GameState, events: var seq[GameEvent]) =
             project.colonyId,
             neoriaId,
             neoria.neoriaClass,
-            project.itemId,
+            project.projectDesc,
           ))
           logInfo(
             "Commissioning", "Construction lost to combat - facility damaged",
@@ -800,7 +829,7 @@ proc clearDamagedFacilityQueues*(state: GameState, events: var seq[GameEvent]) =
             project.colonyId,
             neoriaId,
             neoria.neoriaClass,
-            project.itemId,
+            project.projectDesc,
           ))
       
       # Clear active repairs (drydock only - ship repairs)

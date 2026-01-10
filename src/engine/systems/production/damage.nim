@@ -15,6 +15,14 @@ import ../../state/engine
 import ../../entities/project_ops
 import ../../../common/logger
 
+proc projectDesc*(p: ConstructionProject): string =
+  ## Format project description from typed fields for logging
+  if p.shipClass.isSome: return $p.shipClass.get()
+  if p.facilityClass.isSome: return $p.facilityClass.get()
+  if p.groundClass.isSome: return $p.groundClass.get()
+  if p.industrialUnits > 0: return $p.industrialUnits & " IU"
+  return "unknown"
+
 proc clearFacilityQueues*(
     state: GameState, colony: var Colony, facilityType: facilities.FacilityClass
 ) =
@@ -43,9 +51,10 @@ proc clearFacilityQueues*(
         else:
           "Unknown"
       logWarn(
-        "Facilities", "Facility destroyed: repair project lost",
+        "Facilities", "Facility destroyed: construction project lost",
         " type=", facilityType, " system=", colony.systemId,
-        " class=", className, " cost=", repair.cost,
+        " item=", project.projectDesc, " paid=", project.costPaid,
+        " total=", project.costTotal,
       )
       # Properly delete project from entity manager
       state.completeRepairProject(repairId)
@@ -79,7 +88,7 @@ proc clearAllConstructionQueues*(state: GameState, colony: var Colony) =
       let project = projectOpt.get()
       logWarn(
         "Facilities", "All facilities destroyed: construction project lost",
-        " system=", colony.systemId, " item=", project.itemId,
+        " system=", colony.systemId, " item=", project.projectDesc,
         " paid=", project.costPaid, " total=", project.costTotal,
       )
       # Properly delete project from entity manager
@@ -91,7 +100,7 @@ proc clearAllConstructionQueues*(state: GameState, colony: var Colony) =
       let project = projectOpt.get()
       logWarn(
         "Facilities", "All facilities destroyed: construction project lost",
-        " system=", colony.systemId, " item=", project.itemId,
+        " system=", colony.systemId, " item=", project.projectDesc,
         " paid=", project.costPaid, " total=", project.costTotal,
       )
       # Properly delete project from entity manager

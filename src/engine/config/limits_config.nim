@@ -23,7 +23,9 @@ proc parseQuantityLimits(
     maxPlanetaryShieldsPerColony:
       node.requireInt32("maxPlanetaryShieldsPerColony", ctx),
     maxPlanetBreakersPerColony:
-      node.requireInt32("maxPlanetBreakersPerColony", ctx)
+      node.requireInt32("maxPlanetBreakersPerColony", ctx),
+    maxSpaceportsPerColony:
+      node.requireInt32("maxSpaceportsPerColony", ctx)
   )
 
 proc parseFighterCapacity(

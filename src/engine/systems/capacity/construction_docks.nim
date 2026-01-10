@@ -21,10 +21,19 @@
 ## Data-oriented design: Calculate violations (pure), report status (no enforcement needed - hard limit)
 
 import std/[strutils, algorithm, options, math]
-import ../../types/[capacity, core, game_state, ship, production, facilities, colony, combat]
+import ../../types/[capacity, core, game_state, ship, production, facilities, colony,
+                    combat]
 import ../../state/[engine, iterators]
 import ../../entities/project_ops
 import ../../../common/logger
+
+proc projectDesc*(p: ConstructionProject): string =
+  ## Format project description from typed fields for logging
+  if p.shipClass.isSome: return $p.shipClass.get()
+  if p.facilityClass.isSome: return $p.facilityClass.get()
+  if p.groundClass.isSome: return $p.groundClass.get()
+  if p.industrialUnits > 0: return $p.industrialUnits & " IU"
+  return "unknown"
 
 export capacity.CapacityViolation, capacity.ViolationSeverity
 
@@ -129,7 +138,7 @@ proc getAvailableFacilities*(
   ## Returns facilities sorted by priority: shipyards first, then by available
   ## capacity (descending)
   ##
-  ## For projectType=Building and itemId=Shipyard/Starbase:
+  ## For projectType=Facility and facilityClass=Shipyard/Starbase:
   ##   Returns spaceports only (shipyards/starbases built in orbit, don't
   ##   occupy docks)
   result = @[]
@@ -170,7 +179,10 @@ proc getAvailableFacilities*(
       return cmp(b.availableDocks, a.availableDocks)
 
 proc assignFacility*(
-    state: GameState, colonyId: ColonyId, projectType: BuildType, itemId: string
+    state: GameState,
+    colonyId: ColonyId,
+    projectType: BuildType,
+    facilityClass: Option[FacilityClass] = none(FacilityClass),
 ): Option[tuple[facilityId: NeoriaId, facilityType: NeoriaClass]] =
   ## Assign a construction project to the best available facility
   ##
@@ -185,7 +197,7 @@ proc assignFacility*(
 
   # Special case: Shipyard construction only uses spaceports for assist
   # Shipyards are built in orbit and don't occupy dock space
-  if projectType == BuildType.Facility and itemId == "Shipyard":
+  if facilityClass == some(FacilityClass.Shipyard):
     # For shipyard, we need a spaceport but it doesn't consume docks
     let colonyOpt = state.colony(colonyId)
     if colonyOpt.isNone:
@@ -272,7 +284,7 @@ proc assignAndQueueProject*(
     return false
 
   # Assign facility
-  let assignment = assignFacility(state, colonyId, project.projectType, project.itemId)
+  let assignment = assignFacility(state, colonyId, project.projectType, project.facilityClass)
   if assignment.isNone:
     # No available facility capacity
     return false
@@ -302,7 +314,7 @@ proc assignAndQueueProject*(
     " type=",
     $neoria.neoriaClass,
     " project=",
-    project.itemId,
+    project.projectDesc,
   )
   return true
 

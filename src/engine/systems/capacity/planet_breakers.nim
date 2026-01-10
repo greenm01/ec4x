@@ -51,7 +51,7 @@ proc countPlanetBreakersUnderConstruction*(state: GameState, houseId: HouseId): 
       let projectOpt = state.constructionProject(projectId)
       if projectOpt.isSome:
         let project = projectOpt.get()
-        if project.projectType == BuildType.Ship and project.itemId == "PlanetBreaker":
+        if project.shipClass == some(ShipClass.PlanetBreaker):
           result += 1'i32
 
     # Check construction queue
@@ -59,7 +59,7 @@ proc countPlanetBreakersUnderConstruction*(state: GameState, houseId: HouseId): 
       let projectOpt = state.constructionProject(projectId)
       if projectOpt.isSome:
         let project = projectOpt.get()
-        if project.projectType == BuildType.Ship and project.itemId == "PlanetBreaker":
+        if project.shipClass == some(ShipClass.PlanetBreaker):
           result += 1'i32
 
 proc analyzeCapacity*(state: GameState, houseId: HouseId): capacity.CapacityViolation =

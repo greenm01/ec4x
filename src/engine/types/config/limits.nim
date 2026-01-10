@@ -7,6 +7,7 @@ type
     maxStarbasesPerColony*: int32
     maxPlanetaryShieldsPerColony*: int32
     maxPlanetBreakersPerColony*: int32
+    maxSpaceportsPerColony*: int32
 
   FighterCapacityConfig* = object
     iuDivisor*: int32

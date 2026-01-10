@@ -29,7 +29,7 @@ import ../state/[engine, iterators]
 import ../systems/command/commands
 import ../systems/production/[commissioning, construction, repairs]
 import ../systems/fleet/mechanics
-import ../systems/colony/[engine, terraforming]
+import ../systems/colony/[engine, terraforming, salvage]
 import ../systems/population/transfers
 import ../systems/tech/costs
 import ../event_factory/init
@@ -241,6 +241,9 @@ proc processPlayerSubmissions(
     if houseId in orders:
       # Colony management commands (tax rates, auto-flags)
       state.resolveColonyCommands(orders[houseId])
+
+      # Scrap/salvage commands (zero-turn administrative)
+      state.resolveScrapCommands(orders[houseId], events)
 
       # Population transfers (Space Guild)
       resolvePopulationTransfers(state, orders[houseId], events)

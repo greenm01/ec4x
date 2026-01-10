@@ -44,6 +44,7 @@ quantityLimits {
     maxStarbasesPerColony 3
     maxPlanetaryShieldsPerColony 1
     maxPlanetBreakersPerColony 1
+    maxSpaceportsPerColony 1
 }
 
 // --- Fighter Squadron Capacity ---

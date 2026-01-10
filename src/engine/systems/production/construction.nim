@@ -23,7 +23,7 @@
 
 import std/[options, strformat]
 import ../../types/[core, game_state, production, command, event]
-import ../../types/[colony, facilities]
+import ../../types/[colony, facilities, ground_unit]
 import ../../state/engine
 import ../../../common/logger
 import ../capacity/construction_docks
@@ -95,7 +95,7 @@ proc resolveBuildOrders*(
     if requiresDock:
       # Try to assign to available facility
       assignedFacility = construction_docks.assignFacility(
-        state, command.colonyId, BuildType.Ship, ""
+        state, command.colonyId, BuildType.Ship
       )
       if assignedFacility.isNone:
         # No facility capacity available
@@ -124,7 +124,10 @@ proc resolveBuildOrders*(
       of BuildType.Industrial, BuildType.Infrastructure:
         projects.getIndustrialUnitCost(colony) * command.industrialUnits
       of BuildType.Ground:
-        0'i32  # TODO: Implement ground unit costs
+        if command.groundClass.isSome:
+          accessors.getGroundUnitCost(command.groundClass.get())
+        else:
+          0'i32
 
     if budgetContext.availableTreasury - budgetContext.committedSpending < projectCost:
       let errorMsg = &"Insufficient funds: need {projectCost} PP, have {budgetContext.availableTreasury - budgetContext.committedSpending} PP"
@@ -183,9 +186,17 @@ proc resolveBuildOrders*(
       project = createBuildingProject(facilityClass)
       projectDesc = "Facility construction: " & $facilityClass
     of BuildType.Ground:
-      # Ground unit construction
-      logError("Economy", "Ground unit construction not yet implemented")
-      continue
+      # Ground unit construction (Army, Marine, GroundBattery, PlanetaryShield)
+      if command.groundClass.isNone:
+        logError(
+          "Economy",
+          &"Ground unit construction failed: no ground class specified",
+        )
+        continue
+
+      let groundClass = command.groundClass.get()
+      project = projects.createGroundUnitProject(groundClass)
+      projectDesc = "Ground unit construction: " & $groundClass
 
     # Route construction to facility queue (capital ships) or colony queue (everything else)
     var success = false

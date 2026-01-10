@@ -14,7 +14,7 @@
 import std/[options, tables, strformat, strutils]
 import ../../types/[
   core, game_state, command, fleet, production, diplomacy,
-  colony, starmap, espionage, tech, facilities, combat,
+  colony, starmap, espionage, tech, facilities, combat, ground_unit,
 ]
 import ../../state/[engine, iterators, fleet_queries]
 import ../../globals
@@ -22,7 +22,7 @@ import ../../../common/logger
 import ../production/[projects, accessors]
 import ../fleet/entity
 import ../fleet/movement
-import ../capacity/[fighter, planet_breakers]
+import ../capacity/[fighter, planet_breakers, planetary_shields, spaceports]
 
 # Re-export command types for convenience
 export command.CommandPacket, command.ValidationResult
@@ -849,6 +849,46 @@ proc validateBuildCommandWithBudget*(
           valid: false,
           error:
             &"Planet-breaker limit exceeded ({violation.current}/{violation.maximum}, limited to 1 per colony)",
+        )
+
+  # Check facility capacity limits
+  if cmd.buildType == BuildType.Facility and cmd.facilityClass.isSome:
+    let facilityClass = cmd.facilityClass.get()
+
+    # Check spaceport capacity (max 1 per colony)
+    if facilityClass == FacilityClass.Spaceport:
+      if not spaceports.canBuildSpaceport(state, colony):
+        ctx.rejectedCommands += 1
+        let violation = spaceports.analyzeCapacity(state, colony)
+        logWarn(
+          "Economy",
+          &"{houseId} Build command REJECTED: Spaceport limit exceeded at {cmd.colonyId} " &
+            &"(current={violation.current}, max={violation.maximum})",
+        )
+        return ValidationResult(
+          valid: false,
+          error:
+            &"Spaceport limit exceeded ({violation.current}/{violation.maximum}, max 1 per colony)",
+        )
+
+  # Check ground unit capacity limits
+  if cmd.buildType == BuildType.Ground and cmd.groundClass.isSome:
+    let groundClass = cmd.groundClass.get()
+
+    # Check planetary shield capacity (max 1 per colony)
+    if groundClass == GroundClass.PlanetaryShield:
+      if not planetary_shields.canBuildPlanetaryShield(state, colony):
+        ctx.rejectedCommands += 1
+        let violation = planetary_shields.analyzeCapacity(state, colony)
+        logWarn(
+          "Economy",
+          &"{houseId} Build command REJECTED: Planetary shield limit exceeded at {cmd.colonyId} " &
+            &"(current={violation.current}, max={violation.maximum})",
+        )
+        return ValidationResult(
+          valid: false,
+          error:
+            &"Planetary shield limit exceeded ({violation.current}/{violation.maximum}, max 1 per colony)",
         )
 
   # Calculate cost

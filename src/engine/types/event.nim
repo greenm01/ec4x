@@ -40,6 +40,8 @@ type
     RepairStalled # Repair stalled due to insufficient funds (CMD2b)
     RepairCancelled # Repair order cancelled by player
     UnitDisbanded # Unit disbanded
+    EntitySalvaged # Entity salvaged for PP refund (ScrapCommand)
+    ConstructionLost # Construction project lost (facility scrapped with queue)
     FleetDisbanded # Fleet disbanded (maintenance shortfall)
     SquadronDisbanded # Squadron auto-disbanded (capacity enforcement)
     SquadronScrapped # Squadron auto-scrapped (capacity enforcement)
@@ -169,10 +171,16 @@ type
         # "Income", "Maintenance", "Production" for generic Economy
       amount*: Option[int] # PP, IU, etc.
     of Colony, ColonyEstablished, BuildingCompleted, UnitRecruited, UnitDisbanded,
-        TerraformComplete, RepairQueued, RepairCompleted, RepairCancelled:
+        TerraformComplete, RepairQueued, RepairCompleted, RepairCancelled,
+        EntitySalvaged, ConstructionLost:
       ## Colony events (newOwner/oldOwner/details in common fields)
       colonyEventType*: Option[string]
-        # "Established", "Lost", "Damage", "BuildingCompleted", "UnitRecruited", "UnitDisbanded", "TerraformComplete", "RepairQueued", "RepairCompleted", "RepairCancelled"
+        # "Established", "Lost", "Damage", "BuildingCompleted", "UnitRecruited",
+        # "UnitDisbanded", "TerraformComplete", "RepairQueued", "RepairCompleted",
+        # "RepairCancelled", "EntitySalvaged", "ConstructionLost"
+      salvageValueColony*: Option[int]  # For EntitySalvaged: PP recovered
+      lostProjectType*: Option[string]  # For ConstructionLost: project type
+      lostProjectPP*: Option[int]       # For ConstructionLost: PP invested lost
     of Fleet, FleetDestroyed, ShipCommissioned, ScoutDestroyed, FleetDisbanded,
         SquadronDisbanded, SquadronScrapped, RepairStalled:
       ## Fleet events (fleetId/details in common fields, reason in common fields)

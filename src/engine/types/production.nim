@@ -1,5 +1,5 @@
 import std/[tables, options]
-import ./[core, ship, facilities]
+import ./[core, ship, facilities, ground_unit]
 
 type
   ProductionOutput* = object
@@ -25,17 +25,20 @@ type
     quantity*: int32
     shipClass*: Option[ShipClass]
     facilityClass*: Option[FacilityClass]  # Use enum, not string
+    groundClass*: Option[GroundClass]      # For ground units (Army, Marine, etc.)
     industrialUnits*: int32
 
   ConstructionProject* = object
     id*: ConstructionProjectId
     colonyId*: ColonyId
     projectType*: BuildType
-    itemId*: string
+    shipClass*: Option[ShipClass]
+    facilityClass*: Option[FacilityClass]
+    groundClass*: Option[GroundClass]
+    industrialUnits*: int32  # For Industrial/Infrastructure projects
     costTotal*: int32
     costPaid*: int32
     turnsRemaining*: int32
-    # Typed facility reference
     neoriaId*: Option[NeoriaId]  # Production facility (Spaceport, Shipyard)
 
   ConstructionProjects* = object
@@ -78,7 +81,10 @@ type
   CompletedProject* = object
     colonyId*: ColonyId
     projectType*: BuildType
-    itemId*: string
+    shipClass*: Option[ShipClass]
+    facilityClass*: Option[FacilityClass]
+    groundClass*: Option[GroundClass]
+    industrialUnits*: int32  # For Industrial/Infrastructure projects
     neoriaId*: Option[NeoriaId]  # Facility where it was built (for vulnerability checking)
 
   ## Reports

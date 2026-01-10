@@ -77,7 +77,7 @@ proc analyzeCapacity*(
     let projectOpt = state.constructionProject(projectId)
     if projectOpt.isSome:
       let project = projectOpt.get()
-      if project.projectType == BuildType.Ship and project.itemId == "Fighter":
+      if project.shipClass == some(ShipClass.Fighter):
         underConstruction += 1'i32
 
   # Check underConstruction field (single active project)
@@ -86,7 +86,7 @@ proc analyzeCapacity*(
     let projectOpt = state.constructionProject(projectId)
     if projectOpt.isSome:
       let project = projectOpt.get()
-      if project.projectType == BuildType.Ship and project.itemId == "Fighter":
+      if project.shipClass == some(ShipClass.Fighter):
         underConstruction += 1'i32
 
   current += underConstruction

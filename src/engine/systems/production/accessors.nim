@@ -95,6 +95,24 @@ proc getPlanetaryShieldCost*(sldLevel: int32): int32 =
   ## TODO: Implement tiered costs if needed
   gameConfig.groundUnits.units[GroundClass.PlanetaryShield].productionCost
 
+## Generic Ground Unit Accessors
+
+proc getGroundUnitCost*(groundClass: GroundClass): int32 =
+  ## Get construction cost (PP) for any ground unit type
+  gameConfig.groundUnits.units[groundClass].productionCost
+
+proc getGroundUnitBuildTime*(groundClass: GroundClass): int32 =
+  ## Get construction time (turns) for any ground unit type
+  gameConfig.groundUnits.units[groundClass].buildTime
+
+proc getGroundUnitCSTRequirement*(groundClass: GroundClass): int32 =
+  ## Get CST tech level required to build ground unit type
+  gameConfig.groundUnits.units[groundClass].minCST
+
+proc getGroundUnitPopulationCost*(groundClass: GroundClass): int32 =
+  ## Get population cost for recruiting ground unit (Army/Marine only)
+  gameConfig.groundUnits.units[groundClass].populationCost
+
 ## Construction Modifier Accessors
 
 proc getPlanetsideConstructionMultiplier*(): float32 =
@@ -108,7 +126,8 @@ export getShipConstructionCost, getShipBaseBuildTime, getShipCSTRequirement,
 export getBuildingCost, getBuildingTime, getBuildingCSTRequirement,
   requiresSpaceport, requiresShipyard
 export getArmyBuildCost, getMarineBuildCost, getGroundBatteryBuildCost,
-  getPlanetaryShieldCost
+  getPlanetaryShieldCost, getGroundUnitCost, getGroundUnitBuildTime,
+  getGroundUnitCSTRequirement, getGroundUnitPopulationCost
 export getPlanetsideConstructionMultiplier
 
 ## Design Notes:

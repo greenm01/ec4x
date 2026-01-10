@@ -6,7 +6,7 @@
 
 import std/[options, tables, sequtils]
 import ../state/[engine, id_gen]
-import ../types/[core, game_state, production, facilities, colony, ship]
+import ../types/[core, game_state, production, facilities, colony, ship, ground_unit]
 
 # --- Construction Projects ---
 
@@ -14,11 +14,14 @@ proc newConstructionProject*(
     id: ConstructionProjectId,
     colonyId: ColonyId,
     projectType: BuildType,
-    itemId: string,
     costTotal: int32,
     costPaid: int32,
     turnsRemaining: int32,
     neoriaId: Option[NeoriaId] = none(NeoriaId),
+    shipClass: Option[ShipClass] = none(ShipClass),
+    facilityClass: Option[FacilityClass] = none(FacilityClass),
+    groundClass: Option[GroundClass] = none(GroundClass),
+    industrialUnits: int32 = 0,
 ): ConstructionProject =
   ## Create a new construction project value
   ## Use this when you need a ConstructionProject value without state mutations
@@ -26,7 +29,10 @@ proc newConstructionProject*(
     id: id,
     colonyId: colonyId,
     projectType: projectType,
-    itemId: itemId,
+    shipClass: shipClass,
+    facilityClass: facilityClass,
+    groundClass: groundClass,
+    industrialUnits: industrialUnits,
     costTotal: costTotal,
     costPaid: costPaid,
     turnsRemaining: turnsRemaining,

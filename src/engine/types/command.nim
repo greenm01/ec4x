@@ -2,6 +2,26 @@ import std/options
 import ./[core, fleet, production, tech, diplomacy, colony, espionage]
 
 type
+  ScrapTargetType* {.pure.} = enum
+    ## Target type for scrap/salvage command
+    Ship          # Ship at home colony (not in transit)
+    GroundUnit    # Army, Marine, GroundBattery, PlanetaryShield
+    Neoria        # Spaceport, Shipyard, Drydock
+    Kastra        # Starbase
+
+  ScrapCommand* = object
+    ## Administrative command to salvage an entity at a home colony
+    ## Zero-turn execution: instant during Command Phase
+    ## Salvage value: 50% of original production cost
+    ##
+    ## Warning: Scrapping a facility with queued projects will destroy
+    ## all queued projects with no refund. Set acknowledgeQueueLoss=true
+    ## to confirm when queue is not empty.
+    colonyId*: ColonyId           # Colony where entity is located
+    targetType*: ScrapTargetType
+    targetId*: uint32             # ShipId, GroundUnitId, NeoriaId, or KastraId
+    acknowledgeQueueLoss*: bool   # Must be true if facility has queued projects
+
   RepairCommand* = object
     ## Manual repair command submitted by player
     ## Used when colony.autoRepair = false
@@ -25,6 +45,7 @@ type
     fleetCommands*: seq[FleetCommand]
     buildCommands*: seq[BuildCommand]
     repairCommands*: seq[RepairCommand]  # Manual repair orders
+    scrapCommands*: seq[ScrapCommand]    # Salvage entities at home colonies
     researchAllocation*: ResearchAllocation
     diplomaticCommand*: seq[DiplomaticCommand]
     populationTransfers*: seq[PopulationTransferCommand]

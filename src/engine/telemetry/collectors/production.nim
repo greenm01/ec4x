@@ -58,7 +58,7 @@ proc collectProductionMetrics*(
         let project = projectOpt.get()
         if project.projectType == BuildType.Ship:
           shipsUnderConstruction += 1
-          if project.itemId == "ETAC":
+          if project.shipClass == some(ShipClass.ETAC):
             etacInConstruction += 1
         else:
           buildingsUnderConstruction += 1
@@ -71,7 +71,7 @@ proc collectProductionMetrics*(
         let project = projectOpt.get()
         if project.projectType == BuildType.Ship:
           shipsUnderConstruction += 1
-          if project.itemId == "ETAC":
+          if project.shipClass == some(ShipClass.ETAC):
             etacInConstruction += 1
         else:
           buildingsUnderConstruction += 1

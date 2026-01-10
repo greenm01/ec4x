@@ -19,7 +19,7 @@
 ## - All projects use upfront payment model (economy.md:5.0)
 
 import std/[options, tables]
-import ../../types/[core, production, ship, colony, facilities]
+import ../../types/[core, production, ship, colony, facilities, ground_unit]
 import ../../entities/project_ops
 import ../../globals
 import ./accessors
@@ -57,40 +57,40 @@ proc getIndustrialUnitCost*(colony: Colony): int32 =
 
 ## Construction Project Factory Functions
 
-proc createShipProject*(shipClass: ShipClass, cstLevel: int = 1): ConstructionProject =
+proc createShipProject*(sc: ShipClass, cstLevel: int = 1): ConstructionProject =
   ## Create ship construction project with upfront payment model
   ## Per economy.md:5.0 - full cost must be paid upfront
   ## Per construction.kdl: all ships build in 1 turn
-  let cost = accessors.getShipConstructionCost(shipClass)
-  let turns = accessors.getShipBaseBuildTime(shipClass)
+  let cost = accessors.getShipConstructionCost(sc)
+  let turns = accessors.getShipBaseBuildTime(sc)
 
   result = project_ops.newConstructionProject(
     id = ConstructionProjectId(0), # ID assigned by entity manager
     colonyId = ColonyId(0), # Assigned when added to queue
     projectType = BuildType.Ship,
-    itemId = $shipClass,
     costTotal = cost,
     costPaid = cost, # Full upfront payment
     turnsRemaining = turns,
     neoriaId = none(NeoriaId),
+    shipClass = some(sc),
   )
 
-proc createBuildingProject*(buildingType: FacilityClass): ConstructionProject =
+proc createBuildingProject*(fc: FacilityClass): ConstructionProject =
   ## Create building construction project with upfront payment
   ## Per economy.md:5.0 - full cost must be paid upfront
   ## Per construction.kdl: all facilities build in 1 turn
-  let cost = accessors.getBuildingCost(buildingType)
-  let turns = accessors.getBuildingTime(buildingType)
+  let cost = accessors.getBuildingCost(fc)
+  let turns = accessors.getBuildingTime(fc)
 
   result = project_ops.newConstructionProject(
     id = ConstructionProjectId(0), # ID assigned by entity manager
     colonyId = ColonyId(0), # Assigned when added to queue
     projectType = BuildType.Facility,
-    itemId = $buildingType, # Convert enum to string
     costTotal = cost,
     costPaid = cost, # Full upfront payment
     turnsRemaining = turns,
     neoriaId = none(NeoriaId),
+    facilityClass = some(fc),
   )
 
 proc createIndustrialProject*(colony: Colony, units: int): ConstructionProject =
@@ -103,9 +103,31 @@ proc createIndustrialProject*(colony: Colony, units: int): ConstructionProject =
     id = ConstructionProjectId(0), # ID assigned by entity manager
     colonyId = ColonyId(0), # Assigned when added to queue
     projectType = BuildType.Industrial,
-    itemId = $units & " IU",
     costTotal = totalCost,
     costPaid = totalCost, # Full upfront payment
     turnsRemaining = 1, # IU investment completes in 1 turn
     neoriaId = none(NeoriaId),
+    industrialUnits = int32(units),
+  )
+
+proc createGroundUnitProject*(gc: GroundClass): ConstructionProject =
+  ## Create ground unit construction project with upfront payment
+  ## Ground units: Army, Marine, GroundBattery, PlanetaryShield
+  ##
+  ## Per economy.md:5.0 - full cost must be paid upfront
+  ## Build time from ground_units.kdl (typically 1 turn)
+  ##
+  ## Commissioning system handles actual unit creation and population costs
+  let cost = accessors.getGroundUnitCost(gc)
+  let turns = accessors.getGroundUnitBuildTime(gc)
+
+  result = project_ops.newConstructionProject(
+    id = ConstructionProjectId(0), # ID assigned by entity manager
+    colonyId = ColonyId(0), # Assigned when added to queue
+    projectType = BuildType.Ground,
+    costTotal = cost,
+    costPaid = cost, # Full upfront payment
+    turnsRemaining = turns,
+    neoriaId = none(NeoriaId),
+    groundClass = some(gc),
   )

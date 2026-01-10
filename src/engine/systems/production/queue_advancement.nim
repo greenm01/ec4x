@@ -30,12 +30,20 @@
 ## Exception: Shipyard/Starbase buildings (orbital construction, no penalty)
 
 import std/[options, sequtils, strutils]
-import ../../types/[core, production, facilities, colony, combat, game_state]
+import ../../types/[core, production, facilities, colony, combat, game_state, ship]
 import ../../state/[engine, iterators]
 import ../../entities/project_ops
 import ../../../common/logger
 
 export production.CompletedProject
+
+proc projectDesc*(p: ConstructionProject): string =
+  ## Format project description from typed fields for logging
+  if p.shipClass.isSome: return $p.shipClass.get()
+  if p.facilityClass.isSome: return $p.facilityClass.get()
+  if p.groundClass.isSome: return $p.groundClass.get()
+  if p.industrialUnits > 0: return $p.industrialUnits & " IU"
+  return "unknown"
 
 type QueueAdvancementResult* = object ## Results from advancing a facility's queues
   completedProjects*: seq[production.CompletedProject]
@@ -64,12 +72,16 @@ proc advanceSpaceportQueue*(
         production.CompletedProject(
           colonyId: colonyId,
           projectType: project.projectType,
-          itemId: project.itemId,
+          shipClass: project.shipClass,
+          facilityClass: project.facilityClass,
+          groundClass: project.groundClass,
+          industrialUnits: project.industrialUnits,
           neoriaId: some(spaceport.id),  # Track facility for vulnerability checking
         )
       )
       completedIds.add(projectId)
-      logDebug("Facilities", "Spaceport construction complete: ", $spaceport.id, " project=", project.itemId)
+      logDebug("Facilities", "Spaceport construction complete: ",
+               $spaceport.id, " project=", project.projectDesc)
       # Use entity ops for proper cleanup
       state.completeConstructionProject(projectId)
     else:
@@ -103,11 +115,15 @@ proc advanceSpaceportQueue*(
         production.CompletedProject(
           colonyId: colonyId,
           projectType: nextProject.projectType,
-          itemId: nextProject.itemId,
+          shipClass: nextProject.shipClass,
+          facilityClass: nextProject.facilityClass,
+          groundClass: nextProject.groundClass,
+          industrialUnits: nextProject.industrialUnits,
           neoriaId: some(spaceport.id),  # Track facility for vulnerability checking
         )
       )
-      logDebug("Facilities", "Spaceport construction complete (instant): ", $spaceport.id, " project=", nextProject.itemId)
+      logDebug("Facilities", "Spaceport construction complete (instant): ",
+               $spaceport.id, " project=", nextProject.projectDesc)
       # Use entity ops for proper cleanup
       state.completeConstructionProject(nextProjectId)
       # Don't add to activeConstructions - dock remains free
@@ -116,7 +132,8 @@ proc advanceSpaceportQueue*(
       # Project still needs more turns - write to entity manager and activate
       state.updateConstructionProject(nextProjectId, nextProject)
       spaceport.activeConstructions.add(nextProjectId)
-      logDebug("Facilities", "Spaceport started new construction: ", $spaceport.id, " project=", nextProject.itemId)
+      logDebug("Facilities", "Spaceport started new construction: ",
+               $spaceport.id, " project=", nextProject.projectDesc)
       pulled += 1
 
 proc advanceDrydockQueue*(
@@ -199,11 +216,15 @@ proc advanceShipyardQueue*(
         production.CompletedProject(
           colonyId: colonyId,
           projectType: project.projectType,
-          itemId: project.itemId,
+          shipClass: project.shipClass,
+          facilityClass: project.facilityClass,
+          groundClass: project.groundClass,
+          industrialUnits: project.industrialUnits,
         )
       )
       completedIds.add(projectId)
-      logDebug("Facilities", "Shipyard construction complete: ", $shipyard.id, " project=", project.itemId)
+      logDebug("Facilities", "Shipyard construction complete: ",
+               $shipyard.id, " project=", project.projectDesc)
       # Use entity ops for proper cleanup
       state.completeConstructionProject(projectId)
     else:
@@ -237,11 +258,15 @@ proc advanceShipyardQueue*(
         production.CompletedProject(
           colonyId: colonyId,
           projectType: nextProject.projectType,
-          itemId: nextProject.itemId,
+          shipClass: nextProject.shipClass,
+          facilityClass: nextProject.facilityClass,
+          groundClass: nextProject.groundClass,
+          industrialUnits: nextProject.industrialUnits,
           neoriaId: some(shipyard.id),  # Track facility for vulnerability checking
         )
       )
-      logDebug("Facilities", "Shipyard construction complete (instant): ", $shipyard.id, " project=", nextProject.itemId)
+      logDebug("Facilities", "Shipyard construction complete (instant): ",
+               $shipyard.id, " project=", nextProject.projectDesc)
       # Use entity ops for proper cleanup
       state.completeConstructionProject(nextProjectId)
       # Don't add to activeConstructions - dock remains free
@@ -250,7 +275,8 @@ proc advanceShipyardQueue*(
       # Project still needs more turns - write to entity manager and activate
       state.updateConstructionProject(nextProjectId, nextProject)
       shipyard.activeConstructions.add(nextProjectId)
-      logDebug("Facilities", "Shipyard started new construction: ", $shipyard.id, " project=", nextProject.itemId)
+      logDebug("Facilities", "Shipyard started new construction: ",
+               $shipyard.id, " project=", nextProject.projectDesc)
       pulled += 1
 
 proc advanceColonyQueues*(
@@ -298,16 +324,21 @@ proc isPlanetaryDefense*(project: production.CompletedProject): bool =
   ## Planetary assets: Facilities, ground forces, fighters (planetside)
   ## Military assets: Ships built in docks (Command Phase after combat)
 
-  if project.projectType == BuildType.Facility:
-    return
-      project.itemId in [
-        "Starbase", "Spaceport", "Shipyard", "Drydock", "GroundBattery", "Marine",
-        "marine_division", "Army", "army",
-      ] or project.itemId.startsWith("PlanetaryShield")
+  # Facilities (Starbase, Spaceport, Shipyard, Drydock) commission planetside
+  if project.facilityClass.isSome:
+    return true
+
+  # Ground units are planetside, commission with planetary defense
+  if project.groundClass.isSome:
+    return true
 
   # Fighters are planetside, commission with planetary defense
-  if project.projectType == BuildType.Ship:
-    return project.itemId == "Fighter"
+  if project.shipClass == some(ShipClass.Fighter):
+    return true
+
+  # Industrial projects commission planetside
+  if project.projectType in {BuildType.Industrial, BuildType.Infrastructure}:
+    return false
 
   return false
 
@@ -397,7 +428,10 @@ proc advanceConstruction*(
     let completed = production.CompletedProject(
       colonyId: colony.id,
       projectType: project.projectType,
-      itemId: project.itemId,
+      shipClass: project.shipClass,
+      facilityClass: project.facilityClass,
+      groundClass: project.groundClass,
+      industrialUnits: project.industrialUnits,
       neoriaId: none(NeoriaId),  # Colony-level construction (no specific facility)
     )
 
