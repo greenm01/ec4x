@@ -317,7 +317,7 @@ proc applyEnforcement*(
     )
 
     # Destroy ship from state.ships EntityManager
-    ship_ops.destroyShip(state, fighterId)
+    state.destroyShip(fighterId)
 
   # Clear violation tracking
   colony.capacityViolation = capacity.CapacityViolation(

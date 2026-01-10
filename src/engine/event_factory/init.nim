@@ -6,7 +6,7 @@
 ##
 ## Usage:
 ##   import resolution/event_factory
-##   events.add(event_factory.shipCommissioned(houseId, shipClass, systemId))
+##   events.add(shipCommissioned(houseId, shipClass, systemId))
 
 import
   commissioning, military, economic, intel, victory, prestige, diplomatic,

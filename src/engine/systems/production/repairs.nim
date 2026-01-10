@@ -102,7 +102,7 @@ proc extractCrippledShip*(
   # EMPTY FLEET CLEANUP
   # If removing this ship leaves the fleet empty, delete the fleet entirely
   if fleet.ships.len == 0:
-    fleet_ops.destroyFleet(state, fleetId)
+    state.destroyFleet(fleetId)
     logInfo(
       "Repair",
       "Removed crippled ship and deleted empty fleet",
@@ -201,7 +201,7 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
         shipClass = none(ShipClass),
       )
 
-      let finalRepair = project_ops.queueRepairProject(state, colonyId, repair)
+      let finalRepair = state.queueRepairProject(colonyId, repair)
 
       # Colony-level repair (no specific neoria), add to colony queue
       colony.repairQueue.add(finalRepair.id)
@@ -280,8 +280,7 @@ proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
           let repairOpt = state.extractCrippledShip(fleetId, shipId, drydockId)
           if repairOpt.isSome:
             var repair = repairOpt.get()
-            let finalRepair =
-              project_ops.queueRepairProject(state, colonyId, repair)
+            discard state.queueRepairProject(colonyId, repair)
 
             # Ship repair goes to drydock queue (handled by queueRepairProject)
             # No need to add to colony.repairQueue - ships use neoria pipeline
@@ -363,7 +362,7 @@ proc submitAutomaticGroundUnitRepairs*(
         shipClass = none(ShipClass),
       )
 
-      let finalRepair = project_ops.queueRepairProject(state, colonyId, repair)
+      let finalRepair = state.queueRepairProject(colonyId, repair)
 
       # Colony-level repair (no specific neoria), add to colony queue
       colony.repairQueue.add(finalRepair.id)
@@ -483,7 +482,7 @@ proc submitAutomaticFacilityRepairs*(
         shipClass = none(ShipClass),
       )
 
-      let finalRepair = project_ops.queueRepairProject(state, colonyId, repair)
+      let finalRepair = state.queueRepairProject(colonyId, repair)
 
       # Colony-level repair (no specific neoria), add to colony queue
       colony.repairQueue.add(finalRepair.id)
@@ -646,7 +645,7 @@ proc processManualRepairCommand*(
     let kastraOpt = state.kastra(kastraId)
     if kastraOpt.isNone:
       return false
-    let kastra = kastraOpt.get()
+    discard kastraOpt.get()
     let starbaseBuildCost = 300'i32 # From facilities.kdl
     let repairCost = (starbaseBuildCost.float32 * 0.25'f32).int32
     
@@ -667,7 +666,7 @@ proc processManualRepairCommand*(
     )
   
   # Queue the repair project
-  let finalRepair = project_ops.queueRepairProject(state, cmd.colonyId, repair)
+  let finalRepair = state.queueRepairProject(cmd.colonyId, repair)
   
   # Only add to colony queue for colony-pipeline repairs (not ships)
   # Ships go to drydock queue (handled by queueRepairProject via neoriaId)

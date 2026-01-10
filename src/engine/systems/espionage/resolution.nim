@@ -28,13 +28,13 @@ import std/[tables, options, random]
 import ../../types/[core, game_state, command, fleet, espionage, intel, event]
 import ../../state/[engine, iterators, fleet_queries]
 import ../../entities/fleet_ops
-import ../command/commands as cmd_helpers
-import ../../intel/[spy_resolution, generator as intel_generator]
+import ../command/commands
+import ../../intel/[spy_resolution, generator]
 import ../../event_factory/intel
-import ../../prestige/engine as prestige
+import ../../prestige/engine
 import ../../globals
 import ../../../common/logger
-import ./[engine as esp_engine, executor as esp_executor]
+import ./[engine, executor]
 
 # Forward declaration helper
 proc generateMissionIntel(
@@ -134,7 +134,7 @@ proc resolveScoutMissions*(
         " fleetId=", fleetId, " scouts=", scoutCount,
         " roll=", detectionResult.roll, " target=", detectionResult.threshold)
 
-      fleet_ops.destroyFleet(state, fleetId)
+      state.destroyFleet(fleetId)
 
       # Generate detection event + diplomatic escalation
       events.add(intel.scoutDetected(
@@ -195,7 +195,7 @@ proc resolveScoutMissions*(
       # Reset fleet to Hold
       var updatedFleet = fleet
       updatedFleet.missionState = MissionState.None
-      updatedFleet.command = cmd_helpers.createHoldCommand(fleetId)
+      updatedFleet.command = createHoldCommand(fleetId)
       state.updateFleet(fleetId, updatedFleet)
       continue
 
@@ -212,7 +212,7 @@ proc resolveScoutMissions*(
         " fleetId=", fleetId, " turnsActive=", state.turn - fleet.missionStartTurn,
         " roll=", detectionResult.roll, " target=", detectionResult.threshold)
 
-      fleet_ops.destroyFleet(state, fleetId)
+      state.destroyFleet(fleetId)
 
       # Generate detection event + diplomatic escalation
       events.add(intel.scoutDetected(
@@ -248,7 +248,7 @@ proc generateMissionIntel(
   case missionType
   of FleetCommandType.ScoutColony:
     # Generate colony intel (Perfect quality)
-    let intelReport = intel_generator.generateColonyIntelReport(
+    let intelReport = generateColonyIntelReport(
       state, ownerHouse, targetSystem, IntelQuality.Perfect
     )
     if intelReport.isSome:
@@ -261,7 +261,7 @@ proc generateMissionIntel(
 
   of FleetCommandType.ScoutSystem:
     # Generate system intel (Perfect quality)
-    let systemIntel = intel_generator.generateSystemIntelReport(
+    let systemIntel = generateSystemIntelReport(
       state, ownerHouse, targetSystem, IntelQuality.Perfect
     )
     if systemIntel.isSome:
@@ -274,7 +274,7 @@ proc generateMissionIntel(
 
   of FleetCommandType.HackStarbase:
     # Generate starbase intel (Perfect quality)
-    let intelReport = intel_generator.generateStarbaseIntelReport(
+    let intelReport = generateStarbaseIntelReport(
       state, ownerHouse, targetSystem, IntelQuality.Perfect
     )
     if intelReport.isSome:
@@ -322,7 +322,7 @@ proc processEspionageActions*(
     # Step 1: Process EBP/CIP investments (purchase points with PP)
     if packet.ebpInvestment > 0:
       let ebpPurchased =
-        esp_engine.purchaseEBP(house.espionageBudget, packet.ebpInvestment)
+        purchaseEBP(house.espionageBudget, packet.ebpInvestment)
       # Deduct PP from treasury (already projected in AI, but need to deduct actual cost)
       house.treasury -= packet.ebpInvestment
       logInfo(
@@ -339,7 +339,7 @@ proc processEspionageActions*(
 
     if packet.cipInvestment > 0:
       let cipPurchased =
-        esp_engine.purchaseCIP(house.espionageBudget, packet.cipInvestment)
+        purchaseCIP(house.espionageBudget, packet.cipInvestment)
       house.treasury -= packet.cipInvestment
       logInfo(
         "Espionage",
@@ -378,8 +378,8 @@ proc processEspionageActions*(
       continue
 
     # Check if attacker has sufficient EBP
-    let actionCost = esp_engine.getActionCost(attempt.action)
-    if not esp_engine.canAffordAction(house.espionageBudget, attempt.action):
+    let actionCost = getActionCost(attempt.action)
+    if not canAffordAction(house.espionageBudget, attempt.action):
       logDebug(
         "Espionage",
         "Insufficient EBP",
@@ -397,7 +397,7 @@ proc processEspionageActions*(
       continue
 
     # Spend EBP
-    if not esp_engine.spendEBP(house.espionageBudget, attempt.action):
+    if not spendEBP(house.espionageBudget, attempt.action):
       logDebug(
         "Espionage",
         "Failed to spend EBP",
@@ -443,7 +443,7 @@ proc processEspionageActions*(
     let targetCIP = targetHouse.espionageBudget.cipPoints
 
     # Execute espionage action with detection roll
-    let result = esp_executor.executeEspionage(attempt, targetCICLevel, targetCIP, rng)
+    let result = executeEspionage(attempt, targetCICLevel, targetCIP, rng)
 
     # Apply results
     if result.success:
@@ -451,9 +451,9 @@ proc processEspionageActions*(
 
       # Apply prestige changes
       for prestigeEvent in result.attackerPrestigeEvents:
-        prestige.applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
+        applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
       for prestigeEvent in result.targetPrestigeEvents:
-        prestige.applyPrestigeEvent(state, attempt.target, prestigeEvent)
+        applyPrestigeEvent(state, attempt.target, prestigeEvent)
 
       # Create espionage event based on action type
       case attempt.action
@@ -566,7 +566,7 @@ proc processEspionageActions*(
       )
       # Apply detection prestige penalties
       for prestigeEvent in result.attackerPrestigeEvents:
-        prestige.applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
+        applyPrestigeEvent(state, attempt.attacker, prestigeEvent)
 
       # Create detection event
       if attempt.targetSystem.isSome:

@@ -17,7 +17,7 @@ import std/[tables, options, random, strformat, sets, hashes]
 import ../../common/logger
 
 # Types
-import ../types/[core, game_state, command, fleet, event, tech as tech_types,
+import ../types/[core, game_state, command, fleet, event, tech,
                  production]
 
 # State Core (reading)
@@ -26,13 +26,13 @@ import ../state/[engine, iterators]
 # Entity Ops (writing) - none needed; fleet state updates via updateFleet()
 
 # Systems (business logic)
-import ../systems/command/commands as cmd_helpers
+import ../systems/command/commands
 import ../systems/production/[commissioning, construction, repairs]
 import ../systems/fleet/mechanics
-import ../systems/colony/[engine as colony_engine, terraforming]
-import ../systems/population/transfers as pop_transfers
-import ../systems/tech/costs as tech_costs
-import ../event_factory/init as event_factory
+import ../systems/colony/[engine, terraforming]
+import ../systems/population/transfers
+import ../systems/tech/costs
+import ../event_factory/init
 
 # =============================================================================
 # CMD1: ORDER CLEANUP
@@ -63,7 +63,7 @@ proc cleanupCompletedCommands(state: var GameState, events: seq[GameEvent]) =
     let fleetOpt = state.fleet(fleetId)
     if fleetOpt.isSome:
       var fleet = fleetOpt.get()
-      fleet.command = cmd_helpers.createHoldCommand(fleetId)
+      fleet.command = createHoldCommand(fleetId)
       fleet.missionState = MissionState.None
       fleet.missionTarget = none(SystemId)
       state.updateFleet(fleetId, fleet)
@@ -240,10 +240,10 @@ proc processPlayerSubmissions(
   for (houseId, house) in state.activeHousesWithId():
     if houseId in orders:
       # Colony management commands (tax rates, auto-flags)
-      colony_engine.resolveColonyCommands(state, orders[houseId])
+      state.resolveColonyCommands(orders[houseId])
 
       # Population transfers (Space Guild)
-      pop_transfers.resolvePopulationTransfers(state, orders[houseId], events)
+      resolvePopulationTransfers(state, orders[houseId], events)
 
       # Terraforming commands
       terraforming.resolveTerraformCommands(state, orders[houseId], events)
@@ -327,7 +327,7 @@ proc processResearchAllocation(
     let currentSL = house.techTree.levels.sl
 
     # Convert PP to RP using tech costs
-    let earnedRP = tech_costs.allocateResearch(scaledAllocation, gho, currentSL)
+    let earnedRP = allocateResearch(scaledAllocation, gho, currentSL)
 
     # Accumulate RP
     house.techTree.accumulated.economic += earnedRP.economic
@@ -366,7 +366,7 @@ proc processOrderValidation(
       continue
 
     for cmd in orders[houseId].fleetCommands:
-      let validation = cmd_helpers.validateFleetCommand(cmd, state, houseId)
+      let validation = validateFleetCommand(cmd, state, houseId)
 
       if validation.valid:
         let fleetOpt = state.fleet(cmd.fleetId)
@@ -386,7 +386,7 @@ proc processOrderValidation(
           &"  [REJECTED] Fleet {cmd.fleetId}: {cmd.commandType} - " &
           validation.error)
         events.add(
-          event_factory.orderRejected(
+          orderRejected(
             houseId,
             $cmd.commandType,
             validation.error,

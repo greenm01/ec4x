@@ -71,7 +71,7 @@ proc advanceSpaceportQueue*(
       completedIds.add(projectId)
       logDebug("Facilities", "Spaceport construction complete: ", $spaceport.id, " project=", project.itemId)
       # Use entity ops for proper cleanup
-      project_ops.completeConstructionProject(state, projectId)
+      state.completeConstructionProject(projectId)
     else:
       # Still in progress - write back to entity manager
       state.updateConstructionProject(projectId, project)
@@ -109,7 +109,7 @@ proc advanceSpaceportQueue*(
       )
       logDebug("Facilities", "Spaceport construction complete (instant): ", $spaceport.id, " project=", nextProject.itemId)
       # Use entity ops for proper cleanup
-      project_ops.completeConstructionProject(state, nextProjectId)
+      state.completeConstructionProject(nextProjectId)
       # Don't add to activeConstructions - dock remains free
       pulled += 1
     else:
@@ -146,7 +146,7 @@ proc advanceDrydockQueue*(
       completedRepairIds.add(repairId)
       logDebug("Facilities", "Drydock repair complete: ", $drydock.id, " target=", $repair.targetType)
       # Use entity ops for proper cleanup
-      project_ops.completeRepairProject(state, repairId)
+      state.completeRepairProject(repairId)
     else:
       # Still in progress - write back to entity manager
       state.updateRepairProject(repairId, repair)
@@ -205,7 +205,7 @@ proc advanceShipyardQueue*(
       completedIds.add(projectId)
       logDebug("Facilities", "Shipyard construction complete: ", $shipyard.id, " project=", project.itemId)
       # Use entity ops for proper cleanup
-      project_ops.completeConstructionProject(state, projectId)
+      state.completeConstructionProject(projectId)
     else:
       # Still in progress - write back to entity manager
       state.updateConstructionProject(projectId, project)
@@ -243,7 +243,7 @@ proc advanceShipyardQueue*(
       )
       logDebug("Facilities", "Shipyard construction complete (instant): ", $shipyard.id, " project=", nextProject.itemId)
       # Use entity ops for proper cleanup
-      project_ops.completeConstructionProject(state, nextProjectId)
+      state.completeConstructionProject(nextProjectId)
       # Don't add to activeConstructions - dock remains free
       pulled += 1
     else:

@@ -117,3 +117,4 @@ proc `$`*(id: RepairProjectId): string {.borrow.}
 proc `$`*(id: PopulationTransferId): string {.borrow.}
 proc `$`*(id: NeoriaId): string {.borrow.}
 proc `$`*(id: KastraId): string {.borrow.}
+proc `$`*(id: ProposalId): string {.borrow.}

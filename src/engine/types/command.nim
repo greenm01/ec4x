@@ -1,5 +1,5 @@
 import std/options
-import ./[core, fleet, production, tech, diplomacy, colony, espionage, ground_unit, facilities]
+import ./[core, fleet, production, tech, diplomacy, colony, espionage]
 
 type
   RepairCommand* = object

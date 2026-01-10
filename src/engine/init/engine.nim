@@ -16,7 +16,7 @@ import ../types/[
   resolution, starmap, command, fleet,
   house
 ]
-import ./house as house_init
+import ./house
 import ./colony
 import ./fleet
 import ./multipliers
@@ -115,7 +115,7 @@ proc initializeHousesAndHomeworlds*(state: var GameState) =
 
     # 1. Create House entity
     let houseName = "House " & $(playerIndex + 1)
-    let house = house_init.initHouse(houseId, houseName)
+    let house = initHouse(houseId, houseName)
     state.addHouse(houseId, house)
 
     logInfo(

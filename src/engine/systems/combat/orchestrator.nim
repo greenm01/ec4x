@@ -18,8 +18,8 @@ import std/[tables, options, random, sequtils]
 import ../../../common/logger
 import ../../types/[core, game_state, combat, event, fleet, diplomacy, prestige]
 import ../../state/[engine, iterators]
-import ../../event_factory/init as event_factory
-import ../../prestige/engine as prestige_app
+import ../../event_factory/init
+import ../../prestige/engine
 import multi_house # New spec-compliant multi-house combat
 import planetary # Planetary combat (bombardment, invasion, blitz)
 import cleanup # Post-combat entity cleanup
@@ -177,7 +177,7 @@ proc resolveBlockades(
 
   # Generate blockade events for each blockading house
   for intent in blockadeIntents:
-    events.add(event_factory.blockadeSuccessful(
+    events.add(blockadeSuccessful(
       blockadingHouse = intent.houseId,
       targetColony = systemId,
       colonyOwner = colonyOwner,
@@ -193,12 +193,12 @@ proc resolveBlockades(
   # - Trade Disruption: Guild transports cannot reach (applied elsewhere)
 
   # Apply prestige penalty to colony owner
-  let prestigePenalty = prestige.PrestigeEvent(
-    source: prestige.PrestigeSource.BlockadePenalty,
+  let prestigePenalty = PrestigeEvent(
+    source: PrestigeSource.BlockadePenalty,
     amount: -2'i32,
     description: "Colony blockaded at system " & $systemId
   )
-  prestige_app.applyPrestigeEvent(state, colonyOwner, prestigePenalty)
+  applyPrestigeEvent(state, colonyOwner, prestigePenalty)
 
 proc determineTheaterOutcome(
   state: GameState,
@@ -381,7 +381,7 @@ proc resolveSystemCombat*(
         let assaultTypeName = if intent.assaultType == FleetCommandType.Invade:
           "Invade" else: "Blitz"
 
-        events.add(event_factory.commandFailed(
+        events.add(commandFailed(
           intent.houseId,
           intent.fleetId,
           assaultTypeName,
@@ -413,7 +413,7 @@ proc resolveSystemCombat*(
         let assaultTypeName = if intent.assaultType == FleetCommandType.Invade:
           "Invade" else: "Blitz"
 
-        events.add(event_factory.commandFailed(
+        events.add(commandFailed(
           intent.houseId,
           intent.fleetId,
           assaultTypeName,

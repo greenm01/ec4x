@@ -9,10 +9,10 @@ import std/[tables, options]
 import ../../types/[core, game_state, diplomacy, command, event]
 import ../../state/iterators
 import ../../../common/logger
-import ./engine as dip_engine
+import ./engine
 import ./proposals
 import ../../intel/diplomatic_intel
-import ../../event_factory/init as event_factory
+import ../../event_factory/init
 
 proc resolveDiplomaticActions*(
     state: var GameState,
@@ -39,11 +39,11 @@ proc resolveDiplomaticActions*(
               DiplomaticState.Neutral
 
           # Update diplomatic state via engine
-          discard dip_engine.setHostile(state, houseId, action.targetHouse, state.turn)
+          discard state.setHostile(houseId, action.targetHouse, state.turn)
 
           # Emit DiplomaticRelationChanged event (Phase 7d)
           events.add(
-            event_factory.diplomaticRelationChanged(
+            diplomaticRelationChanged(
               houseId, action.targetHouse, oldState, DiplomaticState.Hostile,
               "Hostility declared",
             )
@@ -58,10 +58,10 @@ proc resolveDiplomaticActions*(
             "declarer=", $houseId, " target=", $action.targetHouse)
 
           # Update diplomatic state via engine
-          discard dip_engine.declareWar(state, houseId, action.targetHouse, state.turn)
+          discard state.declareWar(houseId, action.targetHouse, state.turn)
 
           # Emit WarDeclared event (Phase 7d)
-          events.add(event_factory.warDeclared(houseId, action.targetHouse))
+          events.add(warDeclared(houseId, action.targetHouse))
 
           # Generate war declaration intelligence
           diplomatic_intel.generateWarDeclarationIntel(
@@ -72,10 +72,10 @@ proc resolveDiplomaticActions*(
             "house=", $houseId, " target=", $action.targetHouse)
 
           # Update diplomatic state via engine
-          discard dip_engine.setNeutral(state, houseId, action.targetHouse, state.turn)
+          discard state.setNeutral(houseId, action.targetHouse, state.turn)
 
           # Emit PeaceSigned event (Phase 7d)
-          events.add(event_factory.peaceSigned(houseId, action.targetHouse))
+          events.add(peaceSigned(houseId, action.targetHouse))
 
           # Generate peace treaty intelligence
           diplomatic_intel.generatePeaceTreatyIntel(
@@ -128,7 +128,7 @@ proc resolveDiplomaticActions*(
               "De-escalation to Hostile"
           
           events.add(
-            event_factory.treatyProposed(
+            treatyProposed(
               houseId, action.targetHouse, proposalTypeName
             )
           )
@@ -185,11 +185,11 @@ proc resolveDiplomaticActions*(
           # Apply the de-escalation
           case newState
           of DiplomaticState.Neutral:
-            discard dip_engine.setNeutral(
+            discard setNeutral(
               state, proposal.proposer, proposal.target, state.turn
             )
           of DiplomaticState.Hostile:
-            discard dip_engine.setHostile(
+            discard setHostile(
               state, proposal.proposer, proposal.target, state.turn
             )
           of DiplomaticState.Enemy:
@@ -208,13 +208,13 @@ proc resolveDiplomaticActions*(
               "De-escalation to Hostile"
           
           events.add(
-            event_factory.treatyAccepted(
+            treatyAccepted(
               houseId, proposal.proposer, proposalTypeName
             )
           )
           
           events.add(
-            event_factory.diplomaticRelationChanged(
+            diplomaticRelationChanged(
               proposal.proposer,
               proposal.target,
               oldState,

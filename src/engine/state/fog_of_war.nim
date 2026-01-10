@@ -4,9 +4,9 @@
 
 import std/options
 import ../types/[core, game_state]
-import ./[engine, iterators, player_state as player_state_module]
+import ./[engine, iterators, player_state]
 
-export player_state_module.createPlayerState
+export createPlayerState
 
 proc hasVisibilityOn*(state: GameState, systemId: SystemId, houseId: HouseId): bool =
   ## Check if a house has visibility on a system (fog of war)

@@ -5,17 +5,17 @@
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
 import std/[options, strformat]
-import ../types/[core, event as event_types]
+import ../types/[core, event]
 
-# Export event_types alias for GameEvent types
-export event_types
+# Export event module for GameEvent types
+export event
 
 proc resourceWarning*(
     houseId: HouseId, resourceType: string, currentAmount: int, warningThreshold: int
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for low resource warning
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.ResourceWarning, # Specific event type
+  event.GameEvent(
+    eventType: event.GameEventType.ResourceWarning, # Specific event type
     houseId: some(houseId),
     description:
       &"Low {resourceType}: {currentAmount} (threshold: " & &"{warningThreshold})",
@@ -26,10 +26,10 @@ proc resourceWarning*(
 
 proc threatDetected*(
     houseId: HouseId, threatType: string, threatSource: HouseId, systemId: SystemId
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for detected threat (enemy fleet, spy, etc.)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.ThreatDetected, # Specific event type
+  event.GameEvent(
+    eventType: event.GameEventType.ThreatDetected, # Specific event type
     houseId: some(houseId),
     description: &"{threatType} detected from {threatSource} at system " & &"{systemId}",
     systemId: some(systemId),
@@ -38,10 +38,10 @@ proc threatDetected*(
 
 proc automationCompleted*(
     houseId: HouseId, actionType: string, systemId: SystemId
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for completed automation (auto-repair, auto-load, etc.)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.AutomationCompleted, # Specific event type
+  event.GameEvent(
+    eventType: event.GameEventType.AutomationCompleted, # Specific event type
     houseId: some(houseId),
     description: &"Automation completed: {actionType} at system {systemId}",
     systemId: some(systemId),

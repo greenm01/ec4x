@@ -9,9 +9,9 @@
 ## - terraforming.nim = Terraform operations
 ##
 ## Usage:
-##   import systems/colony/engine as colony_api
-##   colony_api.resolveColonization(...)
-##   colony_api.resolveTerraforming(...)
+##   import systems/colony/engine
+##   resolveColonization(...)
+##   resolveTerraforming(...)
 
 import std/[options, strformat]
 import ../../types/[core, game_state, colony, command]

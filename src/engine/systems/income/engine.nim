@@ -150,7 +150,7 @@ proc processCrippledShipSalvage*(
       result.mgetOrPut(houseId, 0) += salvageValue
 
     # Destroy the ship (removes from squadron, fleet, all indexes)
-    ship_ops.destroyShip(state, shipId)
+    state.destroyShip(shipId)
 
     # Emit salvage event
     events.add(
@@ -207,7 +207,8 @@ proc calculateAndDeductMaintenanceUpkeep*(
 
   # STEP 2: Process auto-salvage for ships crippled 2+ turns
   # This runs BEFORE maintenance calculation so salvaged ships don't incur costs
-  let salvageRevenue = processCrippledShipSalvage(state, events)
+  # Individual salvage events are emitted by processCrippledShipSalvage
+  discard processCrippledShipSalvage(state, events)
 
   # STEP 3: Calculate upkeep and handle shortfalls for all houses
   for (houseId, house) in state.activeHousesWithId():

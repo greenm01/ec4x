@@ -81,8 +81,8 @@ proc createDeescalationProposal*(
       # Invalid - cannot escalate via proposal
       ProposalType.DeescalateToNeutral # Fallback (should not happen)
   
-  let proposalId = ProposalId(state.idCounters.nextProposalId)
-  state.idCounters.nextProposalId += 1
+  let proposalId = ProposalId(state.counters.nextProposalId)
+  state.counters.nextProposalId += 1
   
   result = PendingProposal(
     id: proposalId,

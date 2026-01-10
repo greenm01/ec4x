@@ -9,7 +9,7 @@
 ## - TroopTransport handle invasion support
 ## - All ships in fleets can move and fight together
 
-import ../ship/entity as ship_entity # Ship helper functions
+import ../ship/entity # Ship helper functions
 import ../../types/[core, fleet, ship, combat, starmap, game_state]
 import ../../state/engine
 import std/[strutils, options]

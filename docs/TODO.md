@@ -86,17 +86,29 @@ turns. Development priorities focus on:
 
 ### 📋 Remaining Phase 1 Items (Optional)
 
-1. **Documentation cleanup** (Optional)
+1. **Code style compliance audit** ✅ COMPLETE (2026-01-10)
+   - ✅ Fixed 71 UFCS violations across 15 files
+     - Pattern: `module.func(state, ...)` → `state.func(...)`
+     - Highest impact: cleanup.nim (24), fleet_queries.nim (11), repairs.nim (6)
+   - ✅ Removed ALL 50 unnecessary import aliases (100% compliance)
+     - Zero tolerance: NO import aliases unless module names conflict
+     - Removed: `event_types`, `event_factory`, `state_helpers`, `*_engine`, `*_entity`, `cmd_helpers`
+     - Only acceptable: Aliases to resolve actual naming conflicts (e.g., `import ../systems/income/engine as income`)
+   - ✅ Updated CLAUDE.md with enforced UFCS and import style guidelines
+   - ✅ Updated pre-commit checklist
+   - **Actual effort:** 4 hours (more efficient than estimated 6-9 hours)
+
+2. **Documentation cleanup** (Optional)
    - Archive obsolete docs to `docs/archive/2026-01/`
    - Update `docs/engine/ec4x_canonical_turn_cycle.md` for auto-repair clarification
    - Document engine API for client integration
 
-2. **Performance optimization** (Optional - defer to post-launch)
+3. **Performance optimization** (Optional - defer to post-launch)
    - Profile turn cycle execution
    - Optimize hot paths if needed
    - Benchmark config loading
 
-3. **Validation and error handling** (Optional - defer to post-launch)
+4. **Validation and error handling** (Optional - defer to post-launch)
    - Comprehensive validation for all input data
    - Clear error messages with context
    - Graceful degradation for invalid state

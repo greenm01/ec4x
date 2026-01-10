@@ -5,17 +5,17 @@
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
 import std/[options, strformat]
-import ../types/[core, diplomacy, event as event_types]
+import ../types/[core, diplomacy, event]
 
-# Export event_types alias for GameEvent types
-export event_types
+# Export event module for GameEvent types
+export event
 
 proc warDeclared*(
     declaringHouse: HouseId, targetHouse: HouseId
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for war declaration
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.WarDeclared, # Specific event type
+  event.GameEvent(
+    eventType: event.GameEventType.WarDeclared, # Specific event type
     houseId: some(declaringHouse),
     description: &"{declaringHouse} declared war on {targetHouse}",
     systemId: none(SystemId),
@@ -27,10 +27,10 @@ proc warDeclared*(
     changeReason: some("War declared"),
   )
 
-proc peaceSigned*(house1: HouseId, house2: HouseId): event_types.GameEvent =
+proc peaceSigned*(house1: HouseId, house2: HouseId): event.GameEvent =
   ## Create event for peace treaty
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.PeaceSigned, # Specific event type
+  event.GameEvent(
+    eventType: event.GameEventType.PeaceSigned, # Specific event type
     houseId: some(house1),
     description: &"Peace treaty signed between {house1} and {house2}",
     systemId: none(SystemId),
@@ -48,10 +48,10 @@ proc diplomaticRelationChanged*(
     oldState: DiplomaticState,
     newState: DiplomaticState,
     reasonStr: string,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for any diplomatic state change with reason
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.DiplomaticRelationChanged,
+  event.GameEvent(
+    eventType: event.GameEventType.DiplomaticRelationChanged,
     houseId: some(sourceHouse),
     description:
       &"{sourceHouse} changed diplomatic state with {targetHouse}: {oldState} → {newState} ({reasonStr})",
@@ -67,10 +67,10 @@ proc diplomaticRelationChanged*(
 
 proc treatyProposed*(
     proposer: HouseId, target: HouseId, treatyType: string
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for treaty proposal
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.TreatyProposed,
+  event.GameEvent(
+    eventType: event.GameEventType.TreatyProposed,
     houseId: some(proposer),
     description: &"{proposer} proposed {treatyType} to {target}",
     systemId: none(SystemId),
@@ -84,10 +84,10 @@ proc treatyProposed*(
 
 proc treatyAccepted*(
     accepter: HouseId, proposer: HouseId, treatyType: string
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for treaty acceptance
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.TreatyAccepted,
+  event.GameEvent(
+    eventType: event.GameEventType.TreatyAccepted,
     houseId: some(accepter),
     description: &"{accepter} accepted {treatyType} from {proposer}",
     systemId: none(SystemId),
@@ -101,10 +101,10 @@ proc treatyAccepted*(
 
 proc treatyBroken*(
     breaker: HouseId, victim: HouseId, treatyType: string, violationReason: string
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for treaty violation/broken
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.TreatyBroken,
+  event.GameEvent(
+    eventType: event.GameEventType.TreatyBroken,
     houseId: some(breaker),
     description: &"{breaker} broke {treatyType} with {victim} ({violationReason})",
     systemId: none(SystemId),

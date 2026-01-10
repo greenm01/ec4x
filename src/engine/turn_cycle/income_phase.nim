@@ -31,14 +31,14 @@ import ../types/[game_state, command, event, core, espionage, fleet, house,
                  diplomacy, victory]
 import ../state/[engine, iterators, fleet_queries]
 import ../globals
-import ../systems/income/engine as income_engine
+import ../systems/income/engine
 import ../systems/capacity/[fighter, c2_pool, planet_breakers]
-import ../systems/espionage/engine as esp_engine
+import ../systems/espionage/engine
 import ../systems/fleet/dispatcher
 import ../systems/diplomacy/proposals
-import ../victory/engine as victory_engine
-import ../event_factory/init as event_factory
-import ../systems/fleet/execution as fleet_order_execution
+import ../victory/engine
+import ../event_factory/init
+import ../systems/fleet/execution
 
 # =============================================================================
 # INC1: Apply Ongoing Espionage Effects
@@ -101,8 +101,8 @@ proc processEBPCIPInvestment(
     # Pass PP spent (ebpCost/cipCost), NOT points to purchase
     # purchaseEBP/CIP divide by cost to calculate points purchased
     updatedHouse.treasury -= totalCost
-    discard esp_engine.purchaseEBP(updatedHouse.espionageBudget, ebpCost)
-    discard esp_engine.purchaseCIP(updatedHouse.espionageBudget, cipCost)
+    discard purchaseEBP(updatedHouse.espionageBudget, ebpCost)
+    discard purchaseCIP(updatedHouse.espionageBudget, cipCost)
 
     # TODO: Add over-investment penalty check if configured
     # Threshold: >5% of turn budget → -1 prestige per 1% over threshold
@@ -125,12 +125,12 @@ proc processEBPCIPInvestment(
 
 proc calculateBaseProduction(
     state: var GameState,
-): income_engine.IncomePhaseReport =
+): IncomePhaseReport =
   ## [INC3] Calculate GCO, apply blockades (via income_engine)
   ## Returns income report with per-house and per-colony details
   logInfo("Economy", "[INC3] Calculating base production...")
 
-  let incomeReport = income_engine.resolveIncomePhase(
+  let incomeReport = resolveIncomePhase(
     state, baseGrowthRate = gameConfig.economy.population.naturalGrowthRate
   )
 
@@ -212,7 +212,7 @@ proc processMaintenancePhase(
   logInfo("Economy", "[INC6] Processing maintenance...")
 
   let maintenanceUpkeepByHouse =
-    income_engine.calculateAndDeductMaintenanceUpkeep(state, events)
+    calculateAndDeductMaintenanceUpkeep(state, events)
 
   for houseId, upkeepCost in maintenanceUpkeepByHouse:
     logInfo("Economy", "Maintenance paid",
@@ -267,10 +267,10 @@ proc enforceCapacityLimits(
 
 proc collectResources(
     state: var GameState,
-    incomeReport: income_engine.IncomePhaseReport,
+    incomeReport: IncomePhaseReport,
 ) =
   ## [INC8] Store income reports and update colony production fields
-  ## Treasury already updated by income_engine.resolveIncomePhase()
+  ## Treasury already updated by income.resolveIncomePhase()
   logInfo("Economy", "[INC8] Collecting resources...")
 
   for houseId, houseReport in incomeReport.houseReports:
@@ -302,7 +302,7 @@ proc collectResources(
 
 proc calculatePrestige(
     state: var GameState,
-    incomeReport: income_engine.IncomePhaseReport,
+    incomeReport: IncomePhaseReport,
     events: var seq[GameEvent],
 ) =
   ## [INC9] Apply prestige from economic activities and blockade penalties
@@ -394,7 +394,7 @@ proc processEliminationChecks(
         let reason = if fleetCount == 0:
           "no remaining forces" else: "no marines for reconquest"
         # HouseId(0) represents "unknown" eliminator
-        events.add(event_factory.houseEliminated(houseId, HouseId(0)))
+        events.add(houseEliminated(houseId, HouseId(0)))
         logInfo("Victory", "House eliminated",
           "house=", $houseId, " reason=", reason)
         continue
@@ -416,7 +416,7 @@ proc processEliminationChecks(
         state.updateHouse(houseId, houseToUpdate)
         eliminatedCount += 1
         # HouseId(1) represents "defensive collapse" self-elimination
-        events.add(event_factory.houseEliminated(houseId, HouseId(1)))
+        events.add(houseEliminated(houseId, HouseId(1)))
         logInfo("Victory", "House eliminated by defensive collapse",
           "house=", $houseId)
         continue
@@ -436,7 +436,7 @@ proc processEliminationChecks(
 proc checkVictoryConditions(
     state: var GameState,
     events: var seq[GameEvent],
-): victory_engine.VictoryCheck =
+): victory.VictoryCheck =
   ## [INC10b] Check victory conditions after eliminations processed
   ## Returns victory check result
   logInfo("Victory", "[INC10b] Checking victory conditions...")
@@ -445,7 +445,7 @@ proc checkVictoryConditions(
     turnLimit: gameSetup.victoryConditions.turnLimit,
     enableDefensiveCollapse: true
   )
-  let victoryCheck = victory_engine.checkVictoryConditions(state,
+  let victoryCheck = state.checkVictoryConditions(
                                                            victoryCondition)
 
   if victoryCheck.victoryOccurred:
@@ -507,7 +507,7 @@ proc advanceTimers(state: var GameState, events: var seq[GameEvent]): int =
             "De-escalation to Hostile"
         
         events.add(
-          event_factory.treatyBroken(
+          treatyBroken(
             p.proposer, p.target, proposalTypeName, "Proposal expired without response"
           )
         )
@@ -557,9 +557,9 @@ proc resolveIncomePhase*(
 
   # Administrative completion for Income commands
   logInfo("Income", "[INCOME] Administrative completion for Income commands...")
-  fleet_order_execution.performCommandMaintenance(
+  execution.performCommandMaintenance(
     state, orders, events, rng,
-    fleet_order_execution.isIncomeCommand,
+    execution.isIncomeCommand,
     "Income Phase - Administrative Completion"
   )
 

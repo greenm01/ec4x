@@ -5,17 +5,17 @@
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
 import std/[options, strformat, strutils]
-import ../types/[core, tech, event as event_types]
+import ../types/[core, tech, event]
 
-# Export event_types alias for GameEvent types
-export event_types
+# Export event module for GameEvent types
+export event
 
 proc houseEliminated*(
     eliminatedHouse: HouseId, eliminatedBy: HouseId
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for house elimination
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.HouseEliminated,
+  event.GameEvent(
+    eventType: event.GameEventType.HouseEliminated,
       # Use specific HouseEliminated type
     description: &"{eliminatedHouse} eliminated by {eliminatedBy}",
     systemId: none(SystemId),
@@ -26,14 +26,14 @@ proc techAdvance*(
     houseId: HouseId,
     techType: string, # TechField enum name OR "Economic Level" / "Science Level"
     newLevel: int,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for technology advancement
   ## Handles both tech fields (CST, WEP, etc.) and research levels (EL, SL)
 
   # EL and SL are not TechField enum values, so use TechAdvance event with first tech field as placeholder
   if techType in ["Economic Level", "Science Level"]:
-    return event_types.GameEvent(
-      eventType: event_types.GameEventType.TechAdvance,
+    return event.GameEvent(
+      eventType: event.GameEventType.TechAdvance,
       description: &"{techType} advanced to level {newLevel}",
       systemId: none(SystemId),
       techField: TechField.ConstructionTech, # Placeholder for EL/SL
@@ -41,8 +41,8 @@ proc techAdvance*(
     )
 
   # Regular tech field advancement
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.TechAdvance,
+  event.GameEvent(
+    eventType: event.GameEventType.TechAdvance,
     description: &"{techType} advanced to level {newLevel}",
     systemId: none(SystemId),
     techField: parseEnum[TechField](techType),

@@ -20,7 +20,7 @@ proc createStartingFleets*(
   for config in fleetConfigs:
 
     # 1. Create the Fleet
-    let newFleet = fleet_ops.createFleet(state, owner, location)
+    let newFleet = state.createFleet(owner, location)
 
     # 2. Create Ships for the Fleet
     for shipName in config.ships:
@@ -56,7 +56,7 @@ proc createStartingFleets*(
       state.addShip(shipId, newShip)
 
       # Register ship indexes (byFleet, byHouse)
-      ship_ops.registerShipIndexes(state, shipId)
+      state.registerShipIndexes(shipId)
 
       # Add ship to fleet's ship list
       var updatedFleet = state.fleet(newFleet.id).get()

@@ -10,7 +10,7 @@
 import std/options
 import ../../types/[game_state, core, ship, fleet, colony, facilities, ground_unit, combat]
 import ../../globals
-import ../../state/[iterators, engine as state_helpers]
+import ../../state/[iterators, engine]
 
 export fleet.FleetStatus
 export combat.CombatState

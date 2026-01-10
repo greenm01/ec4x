@@ -4,12 +4,12 @@
 
 import std/[options, tables, strformat]
 import ../../types/[core, fleet, ship, game_state, event, diplomacy]
-import ../../state/[engine as state_module, iterators, fleet_queries]
+import ../../state/[engine, iterators, fleet_queries]
 import ../../intel/detection
-import ../../event_factory/init as event_factory
+import ../../event_factory/init
 import ./[mechanics, movement]
-import ../ship/entity as ship_entity
-import ../command/commands as cmd_helpers
+import ../ship/entity
+import ../command/commands
 import ../../../common/logger
 
 type OrderOutcome* {.pure.} = enum
@@ -178,7 +178,7 @@ proc executeFleetCommand*(
   let fleetOpt = state.fleet(command.fleetId)
   if fleetOpt.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         houseId = houseId,
         fleetId = command.fleetId,
         orderType = $command.commandType,
@@ -193,7 +193,7 @@ proc executeFleetCommand*(
   # Validate fleet ownership
   if fleet.houseId != houseId:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         houseId = houseId,
         fleetId = command.fleetId,
         orderType = $command.commandType,
@@ -335,7 +335,7 @@ proc executeSeekHomeCommand(
   if friendlyColonies.len == 0:
     # No friendly colonies - abort mission
     events.add(
-      event_factory.commandAborted(
+      commandAborted(
         fleet.houseId,
         fleet.id,
         "SeekHome",
@@ -351,7 +351,7 @@ proc executeSeekHomeCommand(
   # Check if already at closest colony - mission complete
   if fleet.location == closestColony:
     events.add(
-      event_factory.commandCompleted(
+      commandCompleted(
         fleet.houseId,
         fleet.id,
         "SeekHome",
@@ -393,7 +393,7 @@ proc executePatrolCommand(
 
   if command.targetSystem.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "Patrol",
@@ -411,7 +411,7 @@ proc executePatrolCommand(
     let colony = colonyOpt.get()
     if colony.owner != fleet.houseId:
       events.add(
-        event_factory.commandAborted(
+        commandAborted(
           fleet.houseId,
           fleet.id,
           "Patrol",
@@ -441,7 +441,7 @@ proc executeGuardStarbaseCommand(
 
   if command.targetSystem.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "GuardStarbase",
@@ -456,7 +456,7 @@ proc executeGuardStarbaseCommand(
 
   if not hasCombatShips:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "GuardStarbase",
@@ -472,7 +472,7 @@ proc executeGuardStarbaseCommand(
   let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isNone:
     events.add(
-      event_factory.commandAborted(
+      commandAborted(
         fleet.houseId,
         fleet.id,
         "GuardStarbase",
@@ -485,7 +485,7 @@ proc executeGuardStarbaseCommand(
   let colony = colonyOpt.get()
   if colony.owner != fleet.houseId:
     events.add(
-      event_factory.commandAborted(
+      commandAborted(
         fleet.houseId,
         fleet.id,
         "GuardStarbase",
@@ -497,7 +497,7 @@ proc executeGuardStarbaseCommand(
 
   if colony.kastraIds.len == 0:
     events.add(
-      event_factory.commandAborted(
+      commandAborted(
         fleet.houseId,
         fleet.id,
         "GuardStarbase",
@@ -526,7 +526,7 @@ proc executeGuardColonyCommand(
 
   if command.targetSystem.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "GuardPlanet",
@@ -543,7 +543,7 @@ proc executeGuardColonyCommand(
 
   if not hasCombatShips:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "GuardPlanet",
@@ -559,7 +559,7 @@ proc executeGuardColonyCommand(
     let colony = colonyOpt.get()
     if colony.owner != fleet.houseId:
       events.add(
-        event_factory.commandAborted(
+        commandAborted(
           fleet.houseId,
           fleet.id,
           "GuardPlanet",
@@ -585,7 +585,7 @@ proc executeBlockadeCommand(
 
   if command.targetSystem.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "BlockadePlanet",
@@ -602,7 +602,7 @@ proc executeBlockadeCommand(
 
   if not hasCombatShips:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "BlockadePlanet",
@@ -616,7 +616,7 @@ proc executeBlockadeCommand(
   let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isNone:
     events.add(
-      event_factory.commandAborted(
+      commandAborted(
         fleet.houseId,
         fleet.id,
         "BlockadePlanet",
@@ -629,7 +629,7 @@ proc executeBlockadeCommand(
   let colony = colonyOpt.get()
   if colony.owner == fleet.houseId:
     events.add(
-      event_factory.commandAborted(
+      commandAborted(
         fleet.houseId,
         fleet.id,
         "BlockadePlanet",
@@ -645,7 +645,7 @@ proc executeBlockadeCommand(
     let targetHouse = targetHouseOpt.get()
     if targetHouse.isEliminated:
       events.add(
-        event_factory.commandAborted(
+        commandAborted(
           fleet.houseId,
           fleet.id,
           "BlockadePlanet",
@@ -811,7 +811,7 @@ proc executeScoutColonyCommand(
 
   if command.targetSystem.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "SpyPlanet",
@@ -832,7 +832,7 @@ proc executeScoutColonyCommand(
       let targetHouse = targetHouseOpt.get()
       if targetHouse.isEliminated:
         events.add(
-          event_factory.commandFailed(
+          commandFailed(
             fleet.houseId,
             fleet.id,
             "SpyPlanet",
@@ -857,7 +857,7 @@ proc executeScoutColonyCommand(
 
     if not pathResult.found:
       events.add(
-        event_factory.commandFailed(
+        commandFailed(
           fleet.houseId,
           fleet.id,
           "SpyPlanet",
@@ -884,7 +884,7 @@ proc executeScoutColonyCommand(
 
     # Generate command accepted event
     events.add(
-      event_factory.commandCompleted(
+      commandCompleted(
         fleet.houseId,
         fleet.id,
         "SpyPlanet",
@@ -907,7 +907,7 @@ proc executeScoutColonyCommand(
 
     # Generate mission start event
     events.add(
-      event_factory.commandCompleted(
+      commandCompleted(
         fleet.houseId,
         fleet.id,
         "SpyPlanet",
@@ -933,7 +933,7 @@ proc executeHackStarbaseCommand(
 
   if command.targetSystem.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "HackStarbase",
@@ -949,7 +949,7 @@ proc executeHackStarbaseCommand(
   let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "HackStarbase",
@@ -962,7 +962,7 @@ proc executeHackStarbaseCommand(
   let colony = colonyOpt.get()
   if colony.kastraIds.len == 0:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "HackStarbase",
@@ -978,7 +978,7 @@ proc executeHackStarbaseCommand(
     let targetHouse = targetHouseOpt.get()
     if targetHouse.isEliminated:
       events.add(
-        event_factory.commandFailed(
+        commandFailed(
           fleet.houseId,
           fleet.id,
           "HackStarbase",
@@ -1003,7 +1003,7 @@ proc executeHackStarbaseCommand(
 
     if not pathResult.found:
       events.add(
-        event_factory.commandFailed(
+        commandFailed(
           fleet.houseId,
           fleet.id,
           "HackStarbase",
@@ -1030,7 +1030,7 @@ proc executeHackStarbaseCommand(
 
     # Generate command accepted event
     events.add(
-      event_factory.commandCompleted(
+      commandCompleted(
         fleet.houseId,
         fleet.id,
         "HackStarbase",
@@ -1051,7 +1051,7 @@ proc executeHackStarbaseCommand(
 
     # Generate mission start event
     events.add(
-      event_factory.commandCompleted(
+      commandCompleted(
         fleet.houseId,
         fleet.id,
         "HackStarbase",
@@ -1078,7 +1078,7 @@ proc executeScoutSystemCommand(
 
   if command.targetSystem.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "ScoutSystem",
@@ -1099,7 +1099,7 @@ proc executeScoutSystemCommand(
       let targetHouse = targetHouseOpt.get()
       if targetHouse.isEliminated:
         events.add(
-          event_factory.commandFailed(
+          commandFailed(
             fleet.houseId,
             fleet.id,
             "ScoutSystem",
@@ -1124,7 +1124,7 @@ proc executeScoutSystemCommand(
 
     if not pathResult.found:
       events.add(
-        event_factory.commandFailed(
+        commandFailed(
           fleet.houseId,
           fleet.id,
           "ScoutSystem",
@@ -1151,7 +1151,7 @@ proc executeScoutSystemCommand(
 
     # Generate command accepted event
     events.add(
-      event_factory.commandCompleted(
+      commandCompleted(
         fleet.houseId,
         fleet.id,
         "ScoutSystem",
@@ -1172,7 +1172,7 @@ proc executeScoutSystemCommand(
 
     # Generate mission start event
     events.add(
-      event_factory.commandCompleted(
+      commandCompleted(
         fleet.houseId,
         fleet.id,
         "ScoutSystem",
@@ -1248,7 +1248,7 @@ proc executeJoinFleetCommand(
 
   if command.targetFleet.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "JoinFleet",
@@ -1268,12 +1268,12 @@ proc executeJoinFleetCommand(
     let fleetOpt = state.fleet(fleet.id)
     if fleetOpt.isSome:
       var updatedFleet = fleetOpt.get()
-      updatedFleet.command = cmd_helpers.createHoldCommand(fleet.id)
+      updatedFleet.command = createHoldCommand(fleet.id)
       updatedFleet.missionState = MissionState.None
       state.updateFleet(fleet.id, updatedFleet)
 
     events.add(
-      event_factory.commandAborted(
+      commandAborted(
         houseId = fleet.houseId,
         fleetId = fleet.id,
         orderType = "JoinFleet",
@@ -1289,7 +1289,7 @@ proc executeJoinFleetCommand(
   # Check same owner
   if targetFleet.houseId != fleet.houseId:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "JoinFleet",
@@ -1328,12 +1328,12 @@ proc executeJoinFleetCommand(
       # Fleet didn't move - no path found to target
       # Reset to Hold
       var updatedFleet = movedFleet
-      updatedFleet.command = cmd_helpers.createHoldCommand(fleet.id)
+      updatedFleet.command = createHoldCommand(fleet.id)
       updatedFleet.missionState = MissionState.None
       state.updateFleet(fleet.id, updatedFleet)
 
       events.add(
-        event_factory.commandAborted(
+        commandAborted(
           houseId = fleet.houseId,
           fleetId = fleet.id,
           orderType = "JoinFleet",
@@ -1371,7 +1371,7 @@ proc executeJoinFleetCommand(
 
   # Generate OrderCompleted event for successful fleet merge
   events.add(
-    event_factory.commandCompleted(
+    commandCompleted(
       fleet.houseId,
       fleet.id,
       "JoinFleet",
@@ -1406,7 +1406,7 @@ proc executeRendezvousCommand(
 
   if command.targetSystem.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "Rendezvous",
@@ -1432,7 +1432,7 @@ proc executeRendezvousCommand(
         if relation == DiplomaticState.Enemy:
           # Hostile forces at rendezvous - abort
           events.add(
-            event_factory.commandAborted(
+            commandAborted(
               fleet.houseId,
               fleet.id,
               "Rendezvous",
@@ -1455,7 +1455,7 @@ proc executeRendezvousCommand(
       if relation == DiplomaticState.Enemy:
         # Rendezvous point is enemy territory - abort
         events.add(
-          event_factory.commandAborted(
+          commandAborted(
             fleet.houseId,
             fleet.id,
             "Rendezvous",
@@ -1531,7 +1531,7 @@ proc executeRendezvousCommand(
   var details = &"{mergedCount} fleet(s) merged"
 
   events.add(
-    event_factory.commandCompleted(
+    commandCompleted(
       fleet.houseId,
       lowestId,
       "Rendezvous",
@@ -1589,7 +1589,7 @@ proc executeSalvageCommand(
 
   if closestColony.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "Salvage",
@@ -1605,7 +1605,7 @@ proc executeSalvageCommand(
     let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
-      salvageValue += (ship_entity.buildCost(ship) div 2)
+      salvageValue += (buildCost(ship) div 2)
 
   # Add salvage PP to house treasury
   let houseOpt = state.house(fleet.houseId)
@@ -1622,7 +1622,7 @@ proc executeSalvageCommand(
 
   # Generate OrderCompleted event for salvage operation
   events.add(
-    event_factory.commandCompleted(
+    commandCompleted(
       fleet.houseId,
       fleet.id,
       "Salvage",
@@ -1694,7 +1694,7 @@ proc executeReserveCommand(
       if movedFleet.location == fleet.location:
         # Fleet didn't move - no path found
         events.add(
-          event_factory.commandFailed(
+          commandFailed(
             houseId = fleet.houseId,
             fleetId = fleet.id,
             orderType = "Reserve",
@@ -1715,7 +1715,7 @@ proc executeReserveCommand(
 
   # Generate OrderCompleted event for state change
   events.add(
-    event_factory.commandCompleted(
+    commandCompleted(
       fleet.houseId,
       fleet.id,
       "Reserve",
@@ -1784,7 +1784,7 @@ proc executeMothballCommand(
       if movedFleet.location == fleet.location:
         # Fleet didn't move - no path found
         events.add(
-          event_factory.commandFailed(
+          commandFailed(
             houseId = fleet.houseId,
             fleetId = fleet.id,
             orderType = "Mothball",
@@ -1805,7 +1805,7 @@ proc executeMothballCommand(
 
   # Generate OrderCompleted event for state change
   events.add(
-    event_factory.commandCompleted(
+    commandCompleted(
       fleet.houseId,
       fleet.id,
       "Mothball",
@@ -1832,7 +1832,7 @@ proc executeViewCommand(
 
   if command.targetSystem.isNone:
     events.add(
-      event_factory.commandFailed(
+      commandFailed(
         fleet.houseId,
         fleet.id,
         "ViewWorld",

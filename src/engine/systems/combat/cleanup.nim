@@ -11,7 +11,7 @@ import ../../types/[core, game_state, combat, ship, fleet, facilities, ground_un
 import ../../state/[engine, iterators]
 import ../../entities/[ship_ops, fleet_ops, neoria_ops, ground_unit_ops, kastra_ops]
 import ../../entities/project_ops
-import ../../event_factory/init as event_factory
+import ../../event_factory/init
 
 proc cleanupDestroyedShips*(state: var GameState, systemId: SystemId) =
   ## Remove all ships with CombatState.Destroyed from fleets in this system
@@ -30,7 +30,7 @@ proc cleanupDestroyedShips*(state: var GameState, systemId: SystemId) =
   # Destroy collected ships (mutation)
   for shipId in destroyedShips:
     logCombat("[CLEANUP] Destroying ship ", $shipId)
-    ship_ops.destroyShip(state, shipId)
+    state.destroyShip(shipId)
 
 proc cleanupEmptyFleets*(state: var GameState, systemId: SystemId) =
   ## Remove fleets with no ships remaining at this system
@@ -48,7 +48,7 @@ proc cleanupEmptyFleets*(state: var GameState, systemId: SystemId) =
   # Destroy empty fleets (mutation)
   for fleetId in emptyFleets:
     logCombat("[CLEANUP] Destroying empty fleet ", $fleetId)
-    fleet_ops.destroyFleet(state, fleetId)
+    state.destroyFleet(fleetId)
 
 proc cleanupCrippledNeorias*(state: var GameState, systemId: SystemId) =
   ## Clear construction/repair queues from crippled neorias
@@ -86,22 +86,22 @@ proc cleanupCrippledNeorias*(state: var GameState, systemId: SystemId) =
       # Complete/cancel all active construction projects
       for projectId in neoriaToUpdate.activeConstructions:
         if state.constructionProject(projectId).isSome:
-          project_ops.completeConstructionProject(state, projectId)
+          state.completeConstructionProject(projectId)
 
       # Complete/cancel all queued construction projects
       for projectId in neoriaToUpdate.constructionQueue:
         if state.constructionProject(projectId).isSome:
-          project_ops.completeConstructionProject(state, projectId)
+          state.completeConstructionProject(projectId)
 
       # Complete/cancel all active repair projects
       for projectId in neoriaToUpdate.activeRepairs:
         if state.repairProject(projectId).isSome:
-          project_ops.completeRepairProject(state, projectId)
+          state.completeRepairProject(projectId)
 
       # Complete/cancel all queued repair projects
       for projectId in neoriaToUpdate.repairQueue:
         if state.repairProject(projectId).isSome:
-          project_ops.completeRepairProject(state, projectId)
+          state.completeRepairProject(projectId)
 
       # Clear the queues from neoria
       neoriaToUpdate.activeConstructions = @[]
@@ -155,26 +155,26 @@ proc cleanupDestroyedNeorias*(state: var GameState, systemId: SystemId) =
     # Complete/cancel all active construction projects
     for projectId in neoria.activeConstructions:
       if state.constructionProject(projectId).isSome:
-        project_ops.completeConstructionProject(state, projectId)
+        state.completeConstructionProject(projectId)
 
     # Complete/cancel all queued construction projects
     for projectId in neoria.constructionQueue:
       if state.constructionProject(projectId).isSome:
-        project_ops.completeConstructionProject(state, projectId)
+        state.completeConstructionProject(projectId)
 
     # Complete/cancel all active repair projects
     for projectId in neoria.activeRepairs:
       if state.repairProject(projectId).isSome:
-        project_ops.completeRepairProject(state, projectId)
+        state.completeRepairProject(projectId)
 
     # Complete/cancel all queued repair projects
     for projectId in neoria.repairQueue:
       if state.repairProject(projectId).isSome:
-        project_ops.completeRepairProject(state, projectId)
+        state.completeRepairProject(projectId)
 
     # Note: complete*Project functions already clear queues from neoria
     # Finally, destroy the facility (will remove from all indexes)
-    neoria_ops.destroyNeoria(state, neoriaId)
+    state.destroyNeoria(neoriaId)
 
 proc cleanupDestroyedGroundUnits*(state: var GameState, systemId: SystemId) =
   ## Remove all ground units with CombatState.Destroyed at colonies in this system
@@ -199,7 +199,7 @@ proc cleanupDestroyedGroundUnits*(state: var GameState, systemId: SystemId) =
   # Destroy collected units (mutation)
   for unitId in destroyedUnits:
     logCombat("[CLEANUP] Destroying ground unit ", $unitId)
-    ground_unit_ops.destroyGroundUnit(state, unitId)
+    state.destroyGroundUnit(unitId)
 
 proc cleanupDestroyedKastras*(state: var GameState, systemId: SystemId) =
   ## Remove destroyed starbases at colonies in this system
@@ -225,7 +225,7 @@ proc cleanupDestroyedKastras*(state: var GameState, systemId: SystemId) =
   # Note: Starbases don't have construction queues, so just remove them
   for kastraId in destroyedKastras:
     logCombat("[CLEANUP] Destroying starbase ", $kastraId)
-    kastra_ops.destroyKastra(state, kastraId)
+    state.destroyKastra(kastraId)
 
 proc clearColonyConstructionQueue*(
   state: var GameState, colonyId: ColonyId, generateEvent: bool, events: var seq[GameEvent]
@@ -252,19 +252,19 @@ proc clearColonyConstructionQueue*(
   if colony.underConstruction.isSome:
     let projectId = colony.underConstruction.get()
     if state.constructionProject(projectId).isSome:
-      project_ops.completeConstructionProject(state, projectId)
+      state.completeConstructionProject(projectId)
       lostConstructionCount += 1
 
   # Complete/cancel all queued construction projects
   for projectId in colony.constructionQueue:
     if state.constructionProject(projectId).isSome:
-      project_ops.completeConstructionProject(state, projectId)
+      state.completeConstructionProject(projectId)
       lostConstructionCount += 1
 
   # Complete/cancel all queued repair projects
   for projectId in colony.repairQueue:
     if state.repairProject(projectId).isSome:
-      project_ops.completeRepairProject(state, projectId)
+      state.completeRepairProject(projectId)
       lostRepairCount += 1
 
   # Clear queue references from colony
@@ -286,7 +286,7 @@ proc clearColonyConstructionQueue*(
   # Generate event if requested (bombardment case)
   if generateEvent and (lostConstructionCount > 0 or lostRepairCount > 0):
     events.add(
-      event_factory.colonyProjectsLost(
+      colonyProjectsLost(
         houseId = originalOwner,
         systemId = colony.systemId,
         constructionCount = lostConstructionCount,

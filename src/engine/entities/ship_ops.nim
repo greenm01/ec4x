@@ -5,7 +5,7 @@
 import std/[tables, sequtils, options]
 import ../state/[engine, id_gen]
 import ../types/[core, game_state, ship, fleet]
-import ../systems/ship/entity as ship_entity
+import ../systems/ship/entity
 
 proc registerShipIndexes*(state: var GameState, shipId: ShipId) =
   ## Register an existing ship in the byFleet, byCarrier, and byHouse indexes
@@ -43,7 +43,7 @@ proc newShip*(
   ## Config values (role, costs, CC) looked up via shipClass
   ## Cargo is initialized as None (use initCargo to add cargo)
   ## fleetId = 0 means unassigned (colony-based fighters)
-  let stats = ship_entity.getShipStats(shipClass, weaponsTech)
+  let stats = getShipStats(shipClass, weaponsTech)
 
   Ship(
     id: id,
@@ -68,8 +68,8 @@ proc createShip*(
   let house = state.house(owner).get()
   let weaponsTech = house.techTree.levels.wep
 
-  # Use ship_entity.getShipStats() for correct compound WEP calculation
-  let stats = ship_entity.getShipStats(shipClass, weaponsTech)
+  # Use getShipStats() for correct compound WEP calculation
+  let stats = getShipStats(shipClass, weaponsTech)
 
   let newShip = Ship(
     id: shipId,

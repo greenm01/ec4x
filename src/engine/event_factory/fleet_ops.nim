@@ -5,10 +5,10 @@
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
 import std/[options, strformat, sequtils, strutils]
-import ../types/[core, ship, event as event_types]
+import ../types/[core, ship, event]
 
 # Export event_types alias
-export event_types
+export event
 
 # =============================================================================
 # Fleet Encounter Events
@@ -20,11 +20,11 @@ proc fleetEncounter*(
     encounteredFleetIds: seq[FleetId],
     diplomaticStatus: string,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for fleet encounter (detection before combat)
   let fleetList = encounteredFleetIds.mapIt($it).join(", ")
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.FleetEncounter,
+  event.GameEvent(
+    eventType: event.GameEventType.FleetEncounter,
     houseId: some(houseId),
     description:
       &"Fleet {encounteringFleetId} encountered {encounteredFleetIds.len} " &
@@ -47,10 +47,10 @@ proc fleetMerged*(
     targetFleetId: FleetId,
     squadronsMerged: int,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for fleet merge
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.FleetMerged,
+  event.GameEvent(
+    eventType: event.GameEventType.FleetMerged,
     houseId: some(houseId),
     description:
       &"Fleet {sourceFleetId} merged into {targetFleetId}: " &
@@ -69,10 +69,10 @@ proc fleetDetachment*(
     newFleetId: FleetId,
     squadronsDetached: int,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for fleet detachment
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.FleetDetachment,
+  event.GameEvent(
+    eventType: event.GameEventType.FleetDetachment,
     houseId: some(houseId),
     description:
       &"Fleet {newFleetId} detached from {parentFleetId}: " &
@@ -91,10 +91,10 @@ proc fleetTransfer*(
     targetFleetId: FleetId,
     squadronsTransferred: int,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for fleet squadron transfer
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.FleetTransfer,
+  event.GameEvent(
+    eventType: event.GameEventType.FleetTransfer,
     houseId: some(houseId),
     description:
       &"{squadronsTransferred} squadrons transferred from " &
@@ -113,10 +113,10 @@ proc cargoLoaded*(
     cargoType: string,
     quantity: int,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for cargo loading
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CargoLoaded,
+  event.GameEvent(
+    eventType: event.GameEventType.CargoLoaded,
     houseId: some(houseId),
     description: &"Fleet {fleetId} loaded {quantity} {cargoType} at {systemId}",
     systemId: some(systemId),
@@ -133,10 +133,10 @@ proc cargoUnloaded*(
     cargoType: string,
     quantity: int,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for cargo unloading
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CargoUnloaded,
+  event.GameEvent(
+    eventType: event.GameEventType.CargoUnloaded,
     houseId: some(houseId),
     description: &"Fleet {fleetId} unloaded {quantity} {cargoType} at {systemId}",
     systemId: some(systemId),
@@ -157,10 +157,10 @@ proc fleetDisbanded*(
     reason: string,
     salvageValue: int,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for fleet disbanded (maintenance shortfall)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.FleetDisbanded,
+  event.GameEvent(
+    eventType: event.GameEventType.FleetDisbanded,
     houseId: some(houseId),
     description:
       &"Fleet {fleetId} disbanded due to {reason} (salvage: {salvageValue} PP)",
@@ -177,10 +177,10 @@ proc squadronDisbanded*(
     shipClass: ShipClass,
     reason: string,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for squadron auto-disbanded (capacity enforcement)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.SquadronDisbanded,
+  event.GameEvent(
+    eventType: event.GameEventType.SquadronDisbanded,
     houseId: some(houseId),
     description:
       &"Squadron {squadronId} ({shipClass}) auto-disbanded: {reason} (no salvage)",
@@ -198,10 +198,10 @@ proc squadronScrapped*(
     reason: string,
     salvageValue: int,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for squadron auto-scrapped (capacity enforcement)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.SquadronScrapped,
+  event.GameEvent(
+    eventType: event.GameEventType.SquadronScrapped,
     houseId: some(houseId),
     description:
       &"Squadron {squadronId} ({shipClass}) auto-scrapped: {reason} (salvage: {salvageValue} PP)",

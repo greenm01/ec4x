@@ -21,7 +21,7 @@
 import std/[options, strformat]
 import ../../types/[core, ship, game_state]
 import ../../../common/logger
-import ./entity as ship_entity # Ship business logic
+import ./entity # Ship business logic
 
 # Cargo Operations
 

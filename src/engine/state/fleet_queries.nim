@@ -11,7 +11,7 @@
 import std/options
 import ../types/[core, game_state, fleet, ship]
 import ./iterators
-import ./engine as state_engine
+import ./engine
 
 proc hasColonists*(state: GameState, fleet: Fleet): bool =
   ## Check if fleet has any ETAC with colonist cargo
@@ -57,7 +57,7 @@ proc calculateFleetAS*(state: GameState, fleet: Fleet): int32 =
   ##   # Higher strength = better chance in colonization conflicts
   result = 0
   for shipId in fleet.ships:
-    let shipOpt = state_engine.ship(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       result += shipOpt.get().stats.attackStrength
 
@@ -71,7 +71,7 @@ proc hasCombatShips*(state: GameState, fleet: Fleet): bool =
   ##   if state.hasCombatShips(fleet):
   ##     # Fleet can engage in combat
   for shipId in fleet.ships:
-    let shipOpt = state_engine.ship(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
       if ship.stats.attackStrength > 0:
@@ -88,7 +88,7 @@ proc hasTransportShips*(state: GameState, fleet: Fleet): bool =
   ##   if state.hasTransportShips(fleet):
   ##     # Fleet can carry cargo/troops
   for shipId in fleet.ships:
-    let shipOpt = state_engine.ship(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
       if ship.shipClass == ShipClass.TroopTransport or
@@ -104,7 +104,7 @@ proc hasScouts*(state: GameState, fleet: Fleet): bool =
   ##   if state.hasScouts(fleet):
   ##     # Fleet has intel gathering capability
   for shipId in fleet.ships:
-    let shipOpt = state_engine.ship(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
       if ship.shipClass == ShipClass.Scout:
@@ -121,7 +121,7 @@ proc countScoutShips*(state: GameState, fleet: Fleet): int32 =
   ##     # Sufficient scouts for deep recon
   result = 0
   for shipId in fleet.ships:
-    let shipOpt = state_engine.ship(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
       if ship.shipClass == ShipClass.Scout:
@@ -135,7 +135,7 @@ proc hasLoadedTransports*(state: GameState, fleet: Fleet): bool =
   ##   if state.hasLoadedTransports(fleet):
   ##     # Fleet is carrying cargo
   for shipId in fleet.ships:
-    let shipOpt = state_engine.ship(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
       if ship.cargo.isSome:
@@ -154,7 +154,7 @@ proc hasLoadedMarines*(state: GameState, fleet: Fleet): bool =
   ##   if state.hasLoadedMarines(fleet):
   ##     # Fleet can conduct planetary assault
   for shipId in fleet.ships:
-    let shipOpt = state_engine.ship(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
       if ship.shipClass == ShipClass.TroopTransport and ship.cargo.isSome:
@@ -176,7 +176,7 @@ proc isScoutOnly*(state: GameState, fleet: Fleet): bool =
     return false
 
   for shipId in fleet.ships:
-    let shipOpt = state_engine.ship(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
       if ship.shipClass != ShipClass.Scout:
@@ -193,7 +193,7 @@ proc hasNonScoutShips*(state: GameState, fleet: Fleet): bool =
   ##   if state.hasNonScoutShips(fleet):
   ##     # Fleet has combat or support ships
   for shipId in fleet.ships:
-    let shipOpt = state_engine.ship(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
       if ship.shipClass != ShipClass.Scout:
@@ -210,7 +210,7 @@ proc hasCargoType*(
   ##   if state.hasCargoType(fleet, CargoClass.Colonists):
   ##     # Fleet can attempt colonization
   for shipId in fleet.ships:
-    let shipOpt = state_engine.ship(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
       if ship.cargo.isSome:
@@ -230,7 +230,7 @@ proc totalCargoOfType*(
   ##   echo "Fleet carrying ", marines, " marine divisions"
   result = 0
   for shipId in fleet.ships:
-    let shipOpt = state_engine.ship(state, shipId)
+    let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
       if ship.cargo.isSome:

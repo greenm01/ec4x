@@ -24,7 +24,7 @@ import ../types/[
   core, game_state, command, event, combat, victory
 ]
 import ./[conflict_phase, income_phase, command_phase, production_phase]
-import ../victory/engine as victory_engine
+import ../victory/engine
 
 type
   TurnResult* = object
@@ -76,7 +76,7 @@ proc resolveTurn*(
   # Calculates production, applies blockades, processes maintenance,
   # enforces capacity limits, collects resources, checks victory conditions.
   logInfo("TurnCycle", "[Phase 2/4] Income Phase")
-  resolveIncomePhase(state, orders, result.events, rng)
+  state.resolveIncomePhase(orders, result.events, rng)
 
   # Check victory conditions after Income Phase (INC10b)
   # Victory condition configuration - use defaults if not specified
@@ -84,7 +84,7 @@ proc resolveTurn*(
     turnLimit: 100,  # Default turn limit
     enableDefensiveCollapse: true
   )
-  result.victoryCheck = victory_engine.checkVictoryConditions(
+  result.victoryCheck = checkVictoryConditions(
     state, victoryCondition
   )
   

@@ -48,7 +48,7 @@ proc clearFacilityQueues*(
         " class=", className, " cost=", repair.cost,
       )
       # Properly delete project from entity manager
-      project_ops.completeRepairProject(state, repairId)
+      state.completeRepairProject(repairId)
     else:
       survivingRepairs.add(repairId)
   colony.repairQueue = survivingRepairs
@@ -83,7 +83,7 @@ proc clearAllConstructionQueues*(state: var GameState, colony: var Colony) =
         " paid=", project.costPaid, " total=", project.costTotal,
       )
       # Properly delete project from entity manager
-      project_ops.completeConstructionProject(state, projectId)
+      state.completeConstructionProject(projectId)
 
   for projectId in colony.constructionQueue:
     let projectOpt = state.constructionProject(projectId)
@@ -95,7 +95,7 @@ proc clearAllConstructionQueues*(state: var GameState, colony: var Colony) =
         " paid=", project.costPaid, " total=", project.costTotal,
       )
       # Properly delete project from entity manager
-      project_ops.completeConstructionProject(state, projectId)
+      state.completeConstructionProject(projectId)
 
   colony.constructionQueue = @[]
   colony.underConstruction = none(ConstructionProjectId)

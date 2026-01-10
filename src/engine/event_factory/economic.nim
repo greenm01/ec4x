@@ -5,17 +5,17 @@
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
 import std/[options, strformat]
-import ../types/[core, event as event_types]
+import ../types/[core, event]
 
-# Export event_types alias for GameEvent types
-export event_types
+# Export event module for GameEvent types
+export event
 
 proc constructionStarted*(
     houseId: HouseId, itemType: string, systemId: SystemId, cost: int
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for construction command acceptance
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.ConstructionStarted, # Specific event type
+  event.GameEvent(
+    eventType: event.GameEventType.ConstructionStarted, # Specific event type
     houseId: some(houseId),
     description: &"Started construction: {itemType} (cost: {cost} PP)",
     systemId: some(systemId),
@@ -31,7 +31,7 @@ proc populationTransfer*(
     destSystem: SystemId,
     success: bool,
     reason: string = "",
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for population transfer via Space Guild
   let desc =
     if success:
@@ -39,8 +39,8 @@ proc populationTransfer*(
     else:
       &"Population transfer failed: {ptuAmount} PTU from {sourceSystem} to " &
         &"{destSystem} - {reason}"
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.PopulationTransfer, # Specific event type
+  event.GameEvent(
+    eventType: event.GameEventType.PopulationTransfer, # Specific event type
     houseId: some(houseId),
     description: desc,
     systemId: some(destSystem),
@@ -52,10 +52,10 @@ proc populationTransfer*(
 
 proc terraformComplete*(
     houseId: HouseId, systemId: SystemId, newEnvironment: string
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for terraforming completion
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.TerraformComplete, # Specific event type
+  event.GameEvent(
+    eventType: event.GameEventType.TerraformComplete, # Specific event type
     houseId: some(houseId),
     description:
       &"Terraforming complete at system {systemId}: now " & &"{newEnvironment}",

@@ -193,7 +193,7 @@ proc applyEnforcement*(
       )
 
     # Destroy ship from state.ships EntityManager
-    ship_ops.destroyShip(state, shipId)
+    state.destroyShip(shipId)
 
   logDebug(
     "Military",

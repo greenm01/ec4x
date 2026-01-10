@@ -9,9 +9,9 @@
 ## - Raiders (CLK capability): Stealth roll required (cloaked if successful)
 ## - Crippled starbases: No surveillance capability
 
-import std/[options, random, hashes, tables]
+import std/[options, random, tables]
 import ../types/[core, game_state, intel, ship, combat]
-import ../state/[engine as state_helpers, iterators]
+import ../state/[engine, iterators]
 import corruption
 
 proc performStealthCheck*(
@@ -45,7 +45,7 @@ proc generateStarbaseSurveillance*(
   ## Applies stealth checks for scouts and raiders
 
   # Find starbase(s) at this system using safe accessor
-  let colonyOpt = state_helpers.colonyBySystem(state, starbaseSystemId)
+  let colonyOpt = state.colonyBySystem(starbaseSystemId)
   if colonyOpt.isNone:
     return none(StarbaseSurveillanceReport)
 
@@ -87,7 +87,7 @@ proc generateStarbaseSurveillance*(
 
       # Check each ship in the fleet (no squadrons)
       for shipId in fleet.ships:
-        let shipOpt = state_helpers.ship(state, shipId)
+        let shipOpt = state.ship(shipId)
         if shipOpt.isNone:
           continue
 
@@ -106,14 +106,14 @@ proc generateStarbaseSurveillance*(
 
       if hasScouts:
         # Scouts can evade with ELI capability (house-level tech)
-        let fleetOwnerHouseOpt = state_helpers.house(state, fleet.houseId)
+        let fleetOwnerHouseOpt = state.house(fleet.houseId)
         if fleetOwnerHouseOpt.isSome:
           let fleetOwnerHouse = fleetOwnerHouseOpt.get()
           let scoutELI = fleetOwnerHouse.techTree.levels.eli
           evaded = performStealthCheck(int(scoutELI), 5, rng)
       elif hasCloakedRaiders:
         # Cloaked raiders can evade (house-level CLK tech)
-        let fleetOwnerHouseOpt = state_helpers.house(state, fleet.houseId)
+        let fleetOwnerHouseOpt = state.house(fleet.houseId)
         if fleetOwnerHouseOpt.isSome:
           let fleetOwnerHouse = fleetOwnerHouseOpt.get()
           let raiderCLK = fleetOwnerHouse.techTree.levels.clk

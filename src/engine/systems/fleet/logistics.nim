@@ -22,12 +22,12 @@ import ../../types/[
 ]
 import ../../state/[engine, fleet_queries]
 import ../../entities/fleet_ops
-import ../fleet/entity as fleet_entity
-import ../ship/entity as ship_entity
+import ../fleet/entity
+import ../ship/entity
 import ../capacity/carrier_hangar
   # For isCarrier, getCarrierMaxCapacity, canLoadFighters
 import ../../utils # For soulsPerPtu(), ptuSizeMillions()
-import ../../event_factory/init as event_factory
+import ../../event_factory/init
 import ../../../common/logger
 
 # ============================================================================
@@ -353,7 +353,7 @@ proc cleanupEmptyFleet*(state: var GameState, fleetId: FleetId) =
 
   # Use fleet_ops to properly destroy fleet (maintains indexes, destroys squadrons)
   # Fleet.command is automatically cleaned up with entity
-  fleet_ops.destroyFleet(state, fleetId)
+  state.destroyFleet(fleetId)
 
   logFleet(&"Removed fleet {fleetId} and associated commands")
 
@@ -396,7 +396,7 @@ proc executeDetachShips*(
 
   # Create new fleet with proper index registration (fleet_ops handles all indexes)
   # Note: createFleet() generates ID internally, ignoring cmd.newFleetId if provided
-  let newFleet = fleet_ops.createFleet(state, cmd.houseId, sourceFleet.location)
+  let newFleet = state.createFleet(cmd.houseId, sourceFleet.location)
   let newFleetId = newFleet.id
 
   # Update new fleet with detached ships
@@ -425,7 +425,7 @@ proc executeDetachShips*(
 
   # Emit FleetDetachment event (Phase 7b)
   events.add(
-    event_factory.fleetDetachment(
+    fleetDetachment(
       cmd.houseId, cmd.sourceFleetId.get(), newFleetId, int32(shipsDetached), systemId
     )
   )
@@ -511,7 +511,7 @@ proc executeTransferShips*(
 
   # Emit FleetTransfer event (Phase 7b)
   events.add(
-    event_factory.fleetTransfer(
+    fleetTransfer(
       cmd.houseId,
       cmd.sourceFleetId.get(),
       targetFleetId,
@@ -585,7 +585,7 @@ proc executeMergeFleets*(
 
   # Emit FleetMerged event (Phase 7b)
   events.add(
-    event_factory.fleetMerged(
+    fleetMerged(
       cmd.houseId, cmd.sourceFleetId.get(), targetFleetId, int32(shipsMerged), systemId
     )
   )
@@ -777,7 +777,7 @@ proc executeLoadCargo*(
 
     # Emit CargoLoaded event (Phase 7b)
     events.add(
-      event_factory.cargoLoaded(
+      cargoLoaded(
         cmd.houseId, fleetId, $cargoType, int32(totalLoaded), colonySystem
       )
     )
@@ -896,7 +896,7 @@ proc executeUnloadCargo*(
 
     # Emit CargoUnloaded event (Phase 7b)
     events.add(
-      event_factory.cargoUnloaded(
+      cargoUnloaded(
         cmd.houseId, fleetId, $unloadedType, int32(totalUnloaded), colonySystem
       )
     )

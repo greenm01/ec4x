@@ -276,7 +276,7 @@ proc assignAndQueueProject*(
     # No available facility capacity
     return false
 
-  let (facilityId, facilityType) = assignment.get()
+  let (facilityId, _) = assignment.get()
 
   # Create project with facility assignment (if applicable)
   var assignedProject = project
@@ -284,7 +284,7 @@ proc assignAndQueueProject*(
   # These are tracked by which facility queue the project is in
 
   # Add to facility queue
-  let neoriaId = NeoriaId(facilityId)
+  let neoriaId = facilityId
   let neoriaOpt = state.neoria(neoriaId)
   if neoriaOpt.isNone:
     logWarn("Economy", "Failed to find neoria", " facility=", $facilityId)

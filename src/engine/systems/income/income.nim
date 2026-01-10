@@ -13,11 +13,11 @@ import std/[math, options]
 import
   ../../types/
     [game_state, colony, income, production as production_types, core, prestige]
-import ../../prestige/events as prestige_events
+import ../../prestige/events
 import ../../globals
 import ../../state/engine
 import ./multipliers
-import ../production/engine as production_engine
+import ../production/engine
 
 export colony.ColonyIncomeReport
 export income.HouseIncomeReport, income.IncomePhaseReport
@@ -110,7 +110,7 @@ proc calculateColonyIncome*(
     else:
       houseTaxRate
   let output =
-    production_engine.calculateProductionOutput(
+    calculateProductionOutput(
       state, colony, houseELTech, houseCSTTech
     )
 
@@ -184,7 +184,7 @@ proc calculateHouseIncome*(
   # Low tax bonus (using configured thresholds and values)
   if result.totalPrestigeBonus > 0:
     result.prestigeEvents.add(
-      prestige_events.createPrestigeEvent(
+      createPrestigeEvent(
         PrestigeSource.LowTaxBonus,
         result.totalPrestigeBonus,
         "Low tax bonus (rate: " & $taxPolicy.currentRate & "%, " & $colonies.len &
@@ -195,7 +195,7 @@ proc calculateHouseIncome*(
   # High tax penalty (using configured thresholds and values)
   if result.taxPenalty < 0:
     result.prestigeEvents.add(
-      prestige_events.createPrestigeEvent(
+      createPrestigeEvent(
         PrestigeSource.HighTaxPenalty,
         result.taxPenalty,
         "High tax penalty (avg: " & $result.taxAverage6Turn & "%)",

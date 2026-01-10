@@ -5,20 +5,20 @@
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
 import std/[options, strformat]
-import ../types/[core, event as event_types]
+import ../types/[core, event]
 
-# Export event_types alias for GameEvent types
-export event_types
+# Export event module for GameEvent types
+export event
 
 proc prestigeGained*(
     houseId: HouseId,
     amount: int,
     reason: string,
     systemId: Option[SystemId] = none(SystemId),
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for prestige gain
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.Prestige, # Use specific Prestige event type
+  event.GameEvent(
+    eventType: event.GameEventType.Prestige, # Use specific Prestige event type
     houseId: some(houseId),
     description: &"Gained {amount} prestige: {reason}",
     systemId: systemId,
@@ -32,10 +32,10 @@ proc prestigeLost*(
     amount: int,
     reason: string,
     systemId: Option[SystemId] = none(SystemId),
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for prestige loss
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.Prestige, # Use specific Prestige event type
+  event.GameEvent(
+    eventType: event.GameEventType.Prestige, # Use specific Prestige event type
     houseId: some(houseId),
     description: &"Lost {amount} prestige: {reason}",
     systemId: systemId,

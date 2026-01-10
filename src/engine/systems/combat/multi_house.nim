@@ -9,7 +9,7 @@ import std/[tables, random, options, algorithm, sequtils]
 import ../../types/[core, game_state, combat, diplomacy, fleet, event]
 import ../../state/[engine, iterators]
 import ../../prestige/effects
-import ../../event_factory/init as event_factory
+import ../../event_factory/init
 import ../../intel/diplomatic_intel
 import ./strength
 import ./cer
@@ -163,7 +163,7 @@ proc areHostile*(
         "Automatic escalation due to fleet presence"
 
     events.add(
-      event_factory.diplomaticRelationChanged(
+      diplomaticRelationChanged(
         houseA, houseB, oldState, newStatus, reason
       )
     )

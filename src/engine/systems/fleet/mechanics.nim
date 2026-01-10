@@ -14,14 +14,14 @@ import ../../types/[
 ]
 import ../../state/[engine, iterators, fleet_queries]
 import ../../globals # For gameConfig
-import ../ship/entity as ship_entity # Ship helper functions
+import ../ship/entity # Ship helper functions
 import ../../entities/[colony_ops, fleet_ops, ship_ops]
-import ../../prestige/engine as prestige_engine
-import ../../event_factory/init as event_factory
+import ../../prestige/engine
+import ../../event_factory/init
 import ../../intel/generator
 import ../../utils # For soulsPerPtu
 import ./movement # For findPath
-import ./entity as fleet_entity
+import ./entity
 
 proc completeFleetCommand*(
     state: var GameState,
@@ -39,7 +39,7 @@ proc completeFleetCommand*(
   let houseId = fleetOpt.get().houseId
 
   events.add(
-    event_factory.commandCompleted(houseId, fleetId, orderType, details, systemId)
+    commandCompleted(houseId, fleetId, orderType, details, systemId)
   )
 
   logInfo("Orders", &"Fleet {fleetId} {orderType} command completed")
@@ -324,7 +324,7 @@ proc resolveMovementCommand*(
     )
     # Generate OrderCompleted event - cleanup handled by Command Phase
     events.add(
-      event_factory.commandCompleted(
+      commandCompleted(
         houseId,
         command.fleetId,
         "Move",
@@ -401,7 +401,7 @@ proc resolveMovementCommand*(
       &"moved from {startId} to {newLocation} ({actualJumps} jump(s))"
 
   events.add(
-    event_factory.commandCompleted(
+    commandCompleted(
       houseId,
       command.fleetId,
       "Move",
@@ -439,7 +439,7 @@ proc resolveMovementCommand*(
         else: "unknown mission"
 
       events.add(
-        event_factory.commandCompleted(
+        commandCompleted(
           houseId,
           command.fleetId,
           "SpyMissionStarted",
@@ -507,7 +507,7 @@ proc resolveMovementCommand*(
         diplomaticStatus = $state.diplomaticRelation[key].state
 
     events.add(
-      event_factory.fleetEncounter(
+      fleetEncounter(
         houseId, command.fleetId, enemyFleetsAtLocation, diplomaticStatus, newLocation
       )
     )
@@ -735,7 +735,7 @@ proc resolveColonizationCommand*(
   state.updateFleet(command.fleetId, fleetMut)
 
   # Destroy ETAC ship (cleans up indexes)
-  ship_ops.destroyShip(state, shipId)
+  state.destroyShip(shipId)
 
   logInfo(
     "Colonization",
@@ -744,21 +744,21 @@ proc resolveColonizationCommand*(
 
   # Apply prestige award for colonization
   let basePrestige = gameConfig.prestige.economic.establishColony
-  let prestigeAmount = prestige_engine.applyPrestigeMultiplier(basePrestige)
+  let prestigeAmount = applyPrestigeMultiplier(basePrestige)
   let prestigeEvent = PrestigeEvent(
     source: PrestigeSource.ColonyEstablished,
     amount: prestigeAmount.int32,
     description: "Established colony at system " & $targetId
   )
-  prestige_engine.applyPrestigeEvent(state, houseId, prestigeEvent)
+  applyPrestigeEvent(state, houseId, prestigeEvent)
 
   # Generate colonization event
-  events.add(event_factory.colonyEstablished(houseId, targetId, 0))
+  events.add(colonyEstablished(houseId, targetId, 0))
 
   # Generate OrderCompleted event for successful colonization
   # Cleanup handled by Command Phase
   events.add(
-    event_factory.commandCompleted(
+    commandCompleted(
       houseId,
       command.fleetId,
       "Colonize",
@@ -855,7 +855,7 @@ proc resolveViewWorldCommand*(
 
   # Generate event - use viewing house as target since ViewWorld scans neutral systems
   events.add(
-    event_factory.intelGathered(
+    intelGathered(
       houseId,
       houseId, # ViewWorld doesn't target a specific house, use self
       targetId,
@@ -872,7 +872,7 @@ proc resolveViewWorldCommand*(
       &"scanned uncolonized system {targetId}"
 
   events.add(
-    event_factory.commandCompleted(
+    commandCompleted(
       houseId,
       command.fleetId,
       "ViewWorld",

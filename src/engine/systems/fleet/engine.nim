@@ -11,7 +11,7 @@ import std/[options, algorithm]
 import ../../types/[core, game_state, fleet]
 import ../../entities/fleet_ops
 import ../../state/[engine, fleet_queries]
-import ./entity as fleet_entity
+import ./entity
 
 type FleetOperationResult* = object ## Result of a fleet operation
   success*: bool
@@ -59,7 +59,7 @@ proc createFleetCoordinated*(
     )
 
   # Create fleet via entities layer (low-level state mutation)
-  let fleet = fleet_ops.createFleet(state, houseId, location)
+  let fleet = state.createFleet(houseId, location)
 
   return FleetOperationResult(
     success: true, reason: "Fleet created successfully", fleetId: some(fleet.id)
@@ -133,7 +133,7 @@ proc mergeFleets*(
   updateFleet(state, targetId, target)
 
   # Destroy source fleet via entities layer
-  fleet_ops.destroyFleet(state, sourceId)
+  state.destroyFleet(sourceId)
 
   return FleetOperationResult(
     success: true, reason: "Fleets merged successfully", fleetId: some(targetId)
@@ -194,7 +194,7 @@ proc splitFleet*(
   var fleet = fleetOpt.get()
 
   # Create new fleet in same location via entities layer
-  let newFleet = fleet_ops.createFleet(state, fleet.houseId, fleet.location)
+  let newFleet = state.createFleet(fleet.houseId, fleet.location)
 
   # Transfer ships to new fleet
   var newShips: seq[ShipId] = @[]

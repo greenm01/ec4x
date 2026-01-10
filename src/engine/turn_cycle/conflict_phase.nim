@@ -25,13 +25,13 @@ import ../types/core
 import ../../common/logger
 import ../types/game_state
 import ../types/[command, event, combat]
-import ../state/[engine as state_engine, iterators]
+import ../state/[engine, iterators]
 import ../systems/combat/orchestrator
-import ../systems/combat/multi_house
-import ../systems/espionage/resolution as espionage_resolution
+import ../systems/combat/multi_house  # For buildMultiHouseBattle (UFCS)
+import ../systems/espionage/resolution
 import ../systems/colony/colonization
 import ../intel/starbase_surveillance
-import ../systems/fleet/execution as fleet_order_execution
+import ../systems/fleet/execution
 
 # =============================================================================
 # HELPER PROCS
@@ -39,7 +39,8 @@ import ../systems/fleet/execution as fleet_order_execution
 
 proc identifyCombatSystems(
     state: var GameState,
-    rng: var Rand
+    rng: var Rand,
+    events: var seq[event.GameEvent]
 ): seq[SystemId] =
   ## Identify all systems where combat should occur
   ## Delegates to multi_house.buildMultiHouseBattle() for diplomatic checks
@@ -68,7 +69,7 @@ proc identifyCombatSystems(
   for systemId in systemsWithFleets:
     # buildMultiHouseBattle returns Some only if combat should occur
     # It handles all diplomatic checks, threat levels, and escalation
-    let battleOpt = multi_house.buildMultiHouseBattle(state, systemId, rng)
+    let battleOpt = state.buildMultiHouseBattle(systemId, rng, events)
     if battleOpt.isSome:
       result.add(systemId)
       logDebug("Combat", "Combat identified",
@@ -108,7 +109,7 @@ proc resolveConflictPhase*(
   # ===================================================================
   # Identify systems where combat should occur
   # Uses multi_house.buildMultiHouseBattle() for consistent diplomatic checks
-  let combatSystems = identifyCombatSystems(state, rng)
+  let combatSystems = state.identifyCombatSystems(rng, events)
 
   logInfo("Combat", "[CON1a-1d] Resolving combat theaters",
     " systems=", combatSystems.len)
@@ -177,9 +178,9 @@ proc resolveConflictPhase*(
   # This step marks commands complete and cleans up their lifecycle
   logInfo("Conflict", "[CON1g] Administrative completion...")
 
-  fleet_order_execution.performCommandMaintenance(
+  performCommandMaintenance(
     state, commands, events, rng,
-    fleet_order_execution.isConflictCommand,
+    isConflictCommand,
     "Conflict Phase CON1g"
   )
 

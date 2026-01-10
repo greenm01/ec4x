@@ -16,8 +16,8 @@
 ## NOTE: These are read-only iterators. For mutations, use state_helpers.
 import std/[tables, options]
 import ../types/[core, game_state, house, ship, facilities, starmap, population, ground_unit]
-import ../types/fleet as fleet_types
-import ../types/colony as colony_types
+import ../types/fleet
+import ../types/colony
 import ./engine
 
 include ./entity_manager
@@ -431,7 +431,7 @@ iterator fleetsWithColonizeCommand*(
   ##       # Process colonization attempt
   for fleet in state.allFleets():
     if fleet.missionState == MissionState.Executing:
-      if fleet.command.commandType == fleet_types.FleetCommandType.Colonize:
+      if fleet.command.commandType == FleetCommandType.Colonize:
         yield (fleet.id, fleet, fleet.command)
 
 iterator fleetsWithArrivedConflictCommands*(
@@ -452,13 +452,13 @@ iterator fleetsWithArrivedConflictCommands*(
   ##     of FleetCommandType.Bombard:
   ##       # Execute bombardment
   const ConflictPhaseArrivalRequired = [
-    fleet_types.FleetCommandType.Bombard,
-    fleet_types.FleetCommandType.Invade,
-    fleet_types.FleetCommandType.Blitz,
-    fleet_types.FleetCommandType.Colonize,
-    fleet_types.FleetCommandType.ScoutColony,
-    fleet_types.FleetCommandType.ScoutSystem,
-    fleet_types.FleetCommandType.HackStarbase,
+    FleetCommandType.Bombard,
+    FleetCommandType.Invade,
+    FleetCommandType.Blitz,
+    FleetCommandType.Colonize,
+    FleetCommandType.ScoutColony,
+    FleetCommandType.ScoutSystem,
+    FleetCommandType.HackStarbase,
   ]
 
   for fleet in state.allFleets():

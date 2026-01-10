@@ -1,6 +1,6 @@
 ## Prestige Configuration Loader
 ##
-## Loads prestige values from config/prestige.kdl using nimkdl
+## Loads prestige values from config/kdl using nimkdl
 ## Allows runtime configuration for balance testing
 
 import std/tables

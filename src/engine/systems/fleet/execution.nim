@@ -9,14 +9,14 @@
 
 import std/[tables, algorithm, options, random, hashes, sets, strformat]
 import ../../types/[core, game_state, command, fleet, ship, combat, event, diplomacy]
-import ../../../common/logger as common_logger
+import ../../../common/logger
 import ../../state/[engine, iterators, fleet_queries]
 import ./dispatcher # For OrderOutcome and executeFleetCommand
 import ./mechanics # For findClosestOwnedColony
-import ./entity as fleet_entity
+import ./entity
 # import ../combat/battles # REMOVED: Legacy squadron-based system
 # import ../colony/planetary_combat # REMOVED: Combat now handled by orchestrator
-import ../../event_factory/init as event_factory
+import ../../event_factory/init
 
 type
   OrderCategoryFilter* = proc(orderType: FleetCommandType): bool
@@ -188,7 +188,6 @@ proc isProductionCommand*(cmdType: FleetCommandType): bool =
     FleetCommandType.Rendezvous,
     FleetCommandType.Reserve,
     FleetCommandType.Mothball,
-    FleetCommandType.Reactivate,
     FleetCommandType.View
   ]
 
@@ -245,12 +244,13 @@ proc performCommandMaintenance*(
           let fleet = fleetOpt.get()
           if fleet.status == FleetStatus.Reserve or
               fleet.status == FleetStatus.Mothballed:
-            if command.commandType != FleetCommandType.Reactivate:
-              logDebug(
-                "Commands",
-                &"  [LOCKED] Fleet {command.fleetId} has command",
-              )
-              continue
+            # Reserved/Mothballed fleets are locked and cannot accept new commands
+            # They must be reactivated by changing status back to Active
+            logDebug(
+              "Commands",
+              &"  [LOCKED] Fleet {command.fleetId} has command",
+            )
+            continue
 
           allFleetCommands.add((houseId, command))
           newCommandsThisTurn.incl(command.fleetId)
@@ -264,7 +264,7 @@ proc performCommandMaintenance*(
 
           # Generate CommandIssued event for new command
           events.add(
-            event_factory.commandIssued(
+            commandIssued(
               houseId,
               command.fleetId,
               $command.commandType,
@@ -331,7 +331,7 @@ proc performCommandMaintenance*(
 
           # Generate OrderAborted event
           events.add(
-            event_factory.commandAborted(
+            commandAborted(
               houseId,
               command.fleetId,
               $command.commandType,

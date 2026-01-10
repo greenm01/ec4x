@@ -5,22 +5,22 @@
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
 import std/[options, strformat]
-import ../types/[core, event as event_types]
+import ../types/[core, event]
 
-# Export event_types alias for GameEvent types
-export event_types
+# Export event module for GameEvent types
+export event
 
 proc colonyEstablished*(
     houseId: HouseId, systemId: SystemId, prestigeAwarded: int = 0
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for successful colonization
   let desc =
     if prestigeAwarded > 0:
       &"Colony established at system {systemId} (+{prestigeAwarded} prestige)"
     else:
       &"Colony established at system {systemId}"
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.ColonyEstablished, # Specific eventType
+  event.GameEvent(
+    eventType: event.GameEventType.ColonyEstablished, # Specific eventType
     houseId: some(houseId),
     description: desc,
     systemId: some(systemId),
@@ -30,10 +30,10 @@ proc colonyEstablished*(
 
 proc systemCaptured*(
     houseId: HouseId, systemId: SystemId, previousOwner: HouseId
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for system capture via invasion
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.SystemCaptured, # Specific eventType
+  event.GameEvent(
+    eventType: event.GameEventType.SystemCaptured, # Specific eventType
     houseId: some(houseId),
     description: &"Captured system {systemId} from {previousOwner}",
     systemId: some(systemId),
@@ -43,10 +43,10 @@ proc systemCaptured*(
 
 proc battle*(
     houseId: HouseId, systemId: SystemId, description: string
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create generic battle event (CombatResult will be used for specific outcomes)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.General, # Use General for generic message
+  event.GameEvent(
+    eventType: event.GameEventType.General, # Use General for generic message
     houseId: some(houseId),
     description: description,
     systemId: some(systemId),
@@ -55,10 +55,10 @@ proc battle*(
 
 proc fleetDestroyed*(
     houseId: HouseId, fleetId: FleetId, systemId: SystemId, destroyedBy: HouseId
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for fleet destruction
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.FleetDestroyed, # Specific eventType
+  event.GameEvent(
+    eventType: event.GameEventType.FleetDestroyed, # Specific eventType
     houseId: some(houseId),
     description:
       &"Fleet {fleetId} destroyed by {destroyedBy} at system " & &"{systemId}",
@@ -70,10 +70,10 @@ proc fleetDestroyed*(
 
 proc invasionRepelled*(
     houseId: HouseId, systemId: SystemId, attacker: HouseId
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for successful invasion defense
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.InvasionRepelled, # Specific eventType
+  event.GameEvent(
+    eventType: event.GameEventType.InvasionRepelled, # Specific eventType
     houseId: some(houseId),
     description: &"Repelled invasion by {attacker} at system {systemId}",
     systemId: some(systemId),
@@ -89,10 +89,10 @@ proc bombardment*(
     infrastructureDamage: int,
     populationKilled: int,
     facilitiesDestroyed: int,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for planetary bombardment
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.Bombardment,
+  event.GameEvent(
+    eventType: event.GameEventType.Bombardment,
     houseId: some(attackingHouse),
     description:
       &"Bombarded system {systemId} held by {defendingHouse}: " &
@@ -108,10 +108,10 @@ proc colonyCaptured*(
     defendingHouse: HouseId,
     systemId: SystemId,
     captureMethod: string, # "Invasion" or "Blitz"
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for colony capture via ground assault
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.ColonyCaptured,
+  event.GameEvent(
+    eventType: event.GameEventType.ColonyCaptured,
     houseId: some(attackingHouse),
     description:
       &"Captured colony at {systemId} from {defendingHouse} " & &"via {captureMethod}",
@@ -127,13 +127,13 @@ proc battleOccurred*(
     attackers: seq[HouseId],
     defenders: seq[HouseId],
     outcome: string, # "Decisive", "Stalemate", etc.
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for battle between multiple houses (neutral observer)
   ## Used for intelligence reports when house observes combat but doesn't
   ## participate
   let housesInvolved = attackers & defenders
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.BattleOccurred,
+  event.GameEvent(
+    eventType: event.GameEventType.BattleOccurred,
     houseId:
       if attackers.len > 0:
         some(attackers[0])
@@ -160,10 +160,10 @@ proc combatTheaterBegan*(
     attackers: seq[HouseId],
     defenders: seq[HouseId],
     roundNumber: int,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for combat theater beginning
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CombatTheaterBegan,
+  event.GameEvent(
+    eventType: event.GameEventType.CombatTheaterBegan,
     houseId:
       if attackers.len > 0:
         some(attackers[0])
@@ -184,7 +184,7 @@ proc combatTheaterCompleted*(
     victor: Option[HouseId],
     roundNumber: int,
     casualties: seq[HouseId],
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for combat theater completion
   let victorDesc =
     if victor.isSome():
@@ -192,8 +192,8 @@ proc combatTheaterCompleted*(
     else:
       "No victor (stalemate or mutual annihilation)"
 
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CombatTheaterCompleted,
+  event.GameEvent(
+    eventType: event.GameEventType.CombatTheaterCompleted,
     houseId: victor,
     description: &"{theater} completed at system {systemId}: {victorDesc}",
     systemId: some(systemId),
@@ -208,10 +208,10 @@ proc combatPhaseBegan*(
     phase: string, # "RaiderAmbush", "FighterIntercept", "CapitalEngagement"
     systemId: SystemId,
     roundNumber: int,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for combat sub-phase beginning
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CombatPhaseBegan,
+  event.GameEvent(
+    eventType: event.GameEventType.CombatPhaseBegan,
     houseId: none(HouseId), # Phase affects all houses
     description: &"{phase} phase began at system {systemId} (round " & &"{roundNumber})",
     systemId: some(systemId),
@@ -227,10 +227,10 @@ proc combatPhaseCompleted*(
     roundNumber: int,
     phaseRounds: int,
     casualties: seq[HouseId],
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for combat sub-phase completion
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CombatPhaseCompleted,
+  event.GameEvent(
+    eventType: event.GameEventType.CombatPhaseCompleted,
     houseId: none(HouseId),
     description:
       &"{phase} phase completed at system {systemId} " &
@@ -254,10 +254,10 @@ proc raiderDetected*(
     systemId: SystemId,
     eliRoll: int,
     clkRoll: int,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for raider detection
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.RaiderDetected,
+  event.GameEvent(
+    eventType: event.GameEventType.RaiderDetected,
     houseId: some(raiderHouse),
     description:
       &"Raider fleet {raiderFleetId} detected by {detectorHouse} " &
@@ -280,11 +280,11 @@ proc raiderStealthSuccess*(
     systemId: SystemId,
     eliRoll: int,
     clkRoll: int,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for successful stealth (CLK beat ELI)
   ## Visible only to raider for diagnostics
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.RaiderStealthSuccess,
+  event.GameEvent(
+    eventType: event.GameEventType.RaiderStealthSuccess,
     houseId: some(raiderHouse),
     description:
       &"Raider fleet {raiderFleetId} evaded detection by {detectorHouse} " &
@@ -305,10 +305,10 @@ proc raiderAmbush*(
     targetHouse: HouseId,
     systemId: SystemId,
     ambushBonus: int = 4, # +4 CER for ambush
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for raider ambush activation
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.RaiderAmbush,
+  event.GameEvent(
+    eventType: event.GameEventType.RaiderAmbush,
     houseId: some(raiderHouse),
     description:
       &"Raider fleet {raiderFleetId} ambushed {targetHouse} at " &
@@ -330,10 +330,10 @@ proc fighterDeployed*(
     carrierHouse: HouseId,
     fighterSquadronId: string,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for fighter squadron deployment
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.FighterDeployed,
+  event.GameEvent(
+    eventType: event.GameEventType.FighterDeployed,
     houseId: some(carrierHouse),
     description:
       &"Fighter squadron {fighterSquadronId} deployed from " &
@@ -352,10 +352,10 @@ proc fighterEngagement*(
     targetHouse: HouseId,
     damage: int, # Full AS, no CER roll
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for fighter engagement (no CER, full AS damage)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.FighterEngagement,
+  event.GameEvent(
+    eventType: event.GameEventType.FighterEngagement,
     houseId: some(attackerHouse),
     description:
       &"Fighter {attackerFighter} engaged squadron " &
@@ -371,10 +371,10 @@ proc fighterEngagement*(
 
 proc carrierDestroyed*(
     carrierId: FleetId, carrierHouse: HouseId, embarkedFighters: int, systemId: SystemId
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for carrier destruction (embarked fighters lost)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CarrierDestroyed,
+  event.GameEvent(
+    eventType: event.GameEventType.CarrierDestroyed,
     houseId: some(carrierHouse),
     description:
       &"Carrier {carrierId} destroyed at system {systemId} " &
@@ -399,10 +399,10 @@ proc weaponFired*(
     cerModifier: int,
     damage: int,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for weapon fired at target
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.WeaponFired,
+  event.GameEvent(
+    eventType: event.GameEventType.WeaponFired,
     houseId: some(attackerHouse),
     description:
       &"Squadron {attackerSquadron} fired {weaponType} at " &
@@ -425,10 +425,10 @@ proc shipDamaged*(
     newState: string, # "Crippled" or "Undamaged"
     remainingDs: int,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for squadron damage and state change
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.ShipDamaged,
+  event.GameEvent(
+    eventType: event.GameEventType.ShipDamaged,
     houseId: some(houseId),
     description:
       &"Squadron {squadronId} damaged ({damage} hits, now " &
@@ -447,11 +447,11 @@ proc shipDestroyed*(
     criticalHit: bool,
     overkillDamage: int,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for squadron destruction
   let critDesc = if criticalHit: " (critical hit)" else: ""
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.ShipDestroyed,
+  event.GameEvent(
+    eventType: event.GameEventType.ShipDestroyed,
     houseId: some(houseId),
     description: &"Squadron {squadronId} destroyed by {killedByHouse}{critDesc}",
     systemId: some(systemId),
@@ -468,10 +468,10 @@ proc fleetRetreat*(
     threshold: int,
     casualties: int,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for fleet retreat from combat
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.FleetRetreat,
+  event.GameEvent(
+    eventType: event.GameEventType.FleetRetreat,
     houseId: some(houseId),
     description:
       &"Fleet {fleetId} retreated from system {systemId} " &
@@ -493,10 +493,10 @@ proc bombardmentRoundBegan*(
     fleetId: FleetId,
     attackingHouse: HouseId,
     systemId: SystemId,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for bombardment round beginning
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.BombardmentRoundBegan,
+  event.GameEvent(
+    eventType: event.GameEventType.BombardmentRoundBegan,
     houseId: some(attackingHouse),
     description:
       &"Bombardment round {round} began at system {systemId} " & &"(fleet {fleetId})",
@@ -520,11 +520,11 @@ proc bombardmentRoundCompleted*(
     populationKilled: int,
     facilitiesDestroyed: int,
     attackerCasualties: int,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for bombardment round completion with COMPLETE tactical data
   ## Fixes the critical gap where only partial data was included
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.BombardmentRoundCompleted,
+  event.GameEvent(
+    eventType: event.GameEventType.BombardmentRoundCompleted,
     houseId: some(attackingHouse),
     description:
       &"Bombardment round {round} completed at system {systemId}: " &
@@ -551,10 +551,10 @@ proc shieldActivated*(
     roll: int,
     threshold: int,
     percentBlocked: int, # 25-50%
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for planetary shield activation
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.ShieldActivated,
+  event.GameEvent(
+    eventType: event.GameEventType.ShieldActivated,
     houseId: some(defendingHouse),
     description:
       &"Planetary shield SLD{shieldLevel} activated at system " &
@@ -572,10 +572,10 @@ proc groundBatteryFired*(
     batteryId: int,
     targetSquadron: string,
     damage: int,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for ground battery firing at bombarding squadron
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.GroundBatteryFired,
+  event.GameEvent(
+    eventType: event.GameEventType.GroundBatteryFired,
     houseId: some(defendingHouse),
     description:
       &"Ground battery {batteryId} fired at squadron " &
@@ -596,10 +596,10 @@ proc invasionBegan*(
     defendingHouse: HouseId,
     systemId: SystemId,
     marinesLanding: int,
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for planetary invasion beginning
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.InvasionBegan,
+  event.GameEvent(
+    eventType: event.GameEventType.InvasionBegan,
     houseId: some(attackingHouse),
     description:
       &"Invasion began at system {systemId}: {marinesLanding} " &
@@ -621,10 +621,10 @@ proc blitzBegan*(
     marinesLanding: int,
     transportsVulnerable: bool = true,
     marineAsPenalty: float = 0.5, # Marines at 0.5x AS during blitz
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for blitz operation beginning
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.BlitzBegan,
+  event.GameEvent(
+    eventType: event.GameEventType.BlitzBegan,
     houseId: some(attackingHouse),
     description:
       &"Blitz operation began at system {systemId}: " &
@@ -647,10 +647,10 @@ proc groundCombatRound*(
     attackerRoll: int,
     defenderRoll: int,
     casualties: seq[HouseId],
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for ground combat round (marines vs ground forces)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.GroundCombatRound,
+  event.GameEvent(
+    eventType: event.GameEventType.GroundCombatRound,
     houseId:
       if attackers.len > 0:
         some(attackers[0])
@@ -679,10 +679,10 @@ proc starbaseCombat*(
     starbaseAs: int,
     starbaseDs: int,
     eliBonus: int = 2, # Starbases have +2 ELI detection bonus
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for starbase participating in orbital combat
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.StarbaseCombat,
+  event.GameEvent(
+    eventType: event.GameEventType.StarbaseCombat,
     houseId: some(defendingHouse),
     description:
       &"Starbase at system {systemId} engaged squadron " &
@@ -708,7 +708,7 @@ proc blockadeSuccessful*(
     fleetId: FleetId,
     blockadeTurn: int32, # How many turns blockaded
     totalBlockaders: int, # Total houses blockading
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for successful blockade establishment
   ## Per docs/specs/06-operations.md Section 6.3.8
   let desc =
@@ -719,8 +719,8 @@ proc blockadeSuccessful*(
       &"Blockade established at system {targetColony} (held by " &
       &"{colonyOwner})"
 
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.BlockadeSuccessful,
+  event.GameEvent(
+    eventType: event.GameEventType.BlockadeSuccessful,
     houseId: some(blockadingHouse),
     description: desc,
     systemId: some(targetColony),
@@ -736,7 +736,7 @@ proc colonyProjectsLost*(
     systemId: SystemId,
     constructionCount: int,
     repairCount: int,
-): event_types.GameEvent =
+): event.GameEvent =
   let desc =
     if constructionCount > 0 and repairCount > 0:
       &"Bombardment destroyed {constructionCount} construction " &
@@ -748,8 +748,8 @@ proc colonyProjectsLost*(
       &"Bombardment destroyed {repairCount} repair " &
       &"projects at colony {$systemId}"
 
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.ColonyProjectsLost,
+  event.GameEvent(
+    eventType: event.GameEventType.ColonyProjectsLost,
     houseId: some(houseId),
     description: desc,
     systemId: some(systemId),

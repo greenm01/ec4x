@@ -5,10 +5,10 @@
 ## DoD Principle: Data (GameEvent) separated from creation logic
 
 import std/[options, strformat]
-import ../types/[core, event as event_types]
+import ../types/[core, event]
 
 # Export the new event_types alias explicitly
-export event_types
+export event
 
 proc orderRejected*(
     houseId: HouseId,
@@ -16,10 +16,10 @@ proc orderRejected*(
     reason: string,
     systemId: Option[SystemId] = none(SystemId),
     fleetId: Option[FleetId] = none(FleetId), # Added fleetId
-): event_types.GameEvent =
+): event.GameEvent =
   ## Create event for rejected command (validation failure)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CommandRejected,
+  event.GameEvent(
+    eventType: event.GameEventType.CommandRejected,
     houseId: some(houseId),
     systemId: systemId,
     description: &"{orderType} command rejected: {reason}",
@@ -34,10 +34,10 @@ proc commandFailed*(
     orderType: string, # This should be FleetCommandType
     reason: string,
     systemId: Option[SystemId] = none(SystemId),
-): event_types.GameEvent =
+): event.GameEvent =
   ## Order execution failed (validation failure at execution time)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CommandFailed,
+  event.GameEvent(
+    eventType: event.GameEventType.CommandFailed,
     houseId: some(houseId),
     systemId: systemId,
     description: &"Fleet {fleetId} {orderType} failed: {reason}",
@@ -52,10 +52,10 @@ proc commandAborted*(
     orderType: string, # This should be FleetCommandType
     reason: string,
     systemId: Option[SystemId] = none(SystemId),
-): event_types.GameEvent =
+): event.GameEvent =
   ## Order cancelled/aborted (target lost, conditions changed)
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CommandAborted,
+  event.GameEvent(
+    eventType: event.GameEventType.CommandAborted,
     houseId: some(houseId),
     systemId: systemId,
     description: &"Fleet {fleetId} {orderType} aborted: {reason}",
@@ -69,10 +69,10 @@ proc commandIssued*(
     fleetId: FleetId,
     orderType: string, # This should be FleetCommandType
     systemId: Option[SystemId] = none(SystemId),
-): event_types.GameEvent =
+): event.GameEvent =
   ## Order submitted and added to fleet commands queue
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CommandIssued,
+  event.GameEvent(
+    eventType: event.GameEventType.CommandIssued,
     houseId: some(houseId),
     systemId: systemId,
     description: &"Fleet {fleetId}: Command issued - {orderType}",
@@ -86,7 +86,7 @@ proc commandCompleted*(
     orderType: string, # This should be FleetCommandType
     details: string = "",
     systemId: Option[SystemId] = none(SystemId),
-): event_types.GameEvent =
+): event.GameEvent =
   ## Order successfully completed (state change or one-shot operation)
   let desc =
     if details.len > 0:
@@ -94,8 +94,8 @@ proc commandCompleted*(
     else:
       &"Fleet {fleetId} {orderType} completed"
 
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.CommandCompleted,
+  event.GameEvent(
+    eventType: event.GameEventType.CommandCompleted,
     houseId: some(houseId),
     systemId: systemId,
     description: desc,
@@ -106,11 +106,11 @@ proc commandCompleted*(
 
 proc fleetArrived*(
     houseId: HouseId, fleetId: FleetId, orderType: string, systemId: SystemId
-): event_types.GameEvent =
+): event.GameEvent =
   ## Fleet arrived at command target system (ready for command execution)
   ## Generated in Maintenance Phase, checked in Conflict/Income phase
-  event_types.GameEvent(
-    eventType: event_types.GameEventType.FleetArrived,
+  event.GameEvent(
+    eventType: event.GameEventType.FleetArrived,
     houseId: some(houseId),
     systemId: some(systemId),
     description: &"Fleet {fleetId} arrived at {systemId} ({orderType} ready)",

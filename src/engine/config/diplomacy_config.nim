@@ -2,7 +2,7 @@
 ##
 ## Loads diplomacy values from config/diplomacy.kdl using nimkdl
 ## Currently diplomacy.kdl is a placeholder - actual config is in other files
-## (espionage in espionage.kdl, prestige effects in prestige.kdl)
+## (espionage in espionage.kdl, prestige effects in kdl)
 
 import kdl
 import kdl_helpers

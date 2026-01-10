@@ -16,7 +16,7 @@ import ../../state/[engine, iterators]
 import ../../entities/[fleet_ops, population_transfer_ops]
 import ../../starmap
 import ../fleet/movement
-import ../../event_factory/init as event_factory
+import ../../event_factory/init
 import ../../globals
 import ../../../common/logger
 
@@ -222,7 +222,7 @@ proc applyTransferCompletion*(
       let destColonyOpt = state.colonyBySystem(destSystem)
       if destColonyOpt.isSome:
         let destColonyId = destColonyOpt.get().id
-        population_transfer_ops.deliverTransfer(state, transferId, destColonyId)
+        state.deliverTransfer(transferId, destColonyId)
 
       logInfo(
         "Population", "Transfer completed",
@@ -260,7 +260,7 @@ proc processTransfers*(state: var GameState): seq[TransferCompletion] =
   # Remove completed transfers using entity operations
   # This handles: entity manager deletion, byHouse index, inTransit index
   for transferId in completedIds:
-    population_transfer_ops.completeTransfer(state, transferId)
+    state.completeTransfer(transferId)
 
   let delivered = result.filterIt(it.result == TransferResult.Delivered).len
   let redirected = result.filterIt(it.result == TransferResult.Redirected).len
@@ -292,7 +292,7 @@ proc generateTransferEvents*(
     case completion.result
     of TransferResult.Delivered:
       result.add(
-        event_factory.populationTransfer(
+        populationTransfer(
           completion.transfer.houseId, int(completion.transfer.ptuAmount),
           sourceSystem, destSystem, true, "",
         )
@@ -301,7 +301,7 @@ proc generateTransferEvents*(
     of TransferResult.Redirected:
       if completion.actualDestination.isSome:
         result.add(
-          event_factory.populationTransfer(
+          populationTransfer(
             completion.transfer.houseId, int(completion.transfer.ptuAmount),
             sourceSystem, completion.actualDestination.get(), true,
             "redirected from " & $destSystem,
@@ -310,7 +310,7 @@ proc generateTransferEvents*(
 
     of TransferResult.Lost:
       result.add(
-        event_factory.populationTransfer(
+        populationTransfer(
           completion.transfer.houseId, int(completion.transfer.ptuAmount),
           sourceSystem, destSystem, false, "no viable destination",
         )
@@ -354,7 +354,7 @@ proc resolvePopulationTransfers*(
       logInfo("Population",
         &"{packet.houseId} initiated transfer of {command.ptuAmount} PTU " &
         &"from {sourceSystem} to {destSystem}")
-      events.add(event_factory.populationTransfer(
+      events.add(populationTransfer(
         packet.houseId, command.ptuAmount, sourceSystem, destSystem,
         true, "transfer initiated"
       ))

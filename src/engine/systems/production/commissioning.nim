@@ -47,7 +47,7 @@ import ../../globals
 import ../../utils
 import ../../../common/logger
 import ../capacity/carrier_hangar
-import ../../event_factory/init as event_factory
+import ../../event_factory/init
 
 # Helper functions using DoD patterns
 proc getOperationalStarbaseCount*(state: GameState, colonyId: ColonyId): int =
@@ -184,7 +184,7 @@ proc autoLoadFightersToCarriers(
         fightersToLoad.delete(0)
 
         # Assign fighter to carrier using ship_ops
-        ship_ops.assignFighterToCarrier(state, fighterId, carrierId)
+        state.assignFighterToCarrier(fighterId, carrierId)
 
         # Remove fighter from colony
         let colonyOpt = state.colony(colonyId)
@@ -209,7 +209,7 @@ proc autoLoadFightersToCarriers(
 
       # Emit event for tracking
       events.add(
-        event_factory.unitRecruited(
+        unitRecruited(
           colony.owner, "Fighters (auto-loaded)", systemId, loadedCount
         )
       )
@@ -271,7 +271,7 @@ proc commissionPlanetaryDefense*(
           let ship =
             ship_ops.newShip(ShipClass.Fighter, techLevel, shipId, FleetId(0), colony.owner)
           state.addShip(shipId, ship)
-          ship_ops.registerShipIndexes(state, shipId)
+          state.registerShipIndexes(shipId)
           fighterShipIds.add(shipId)
           colony.fighterIds.add(shipId)
 
@@ -285,7 +285,7 @@ proc commissionPlanetaryDefense*(
 
         # Generate event
         events.add(
-          event_factory.buildingCompleted(
+          buildingCompleted(
             colony.owner, "Fighter Squadron", colony.systemId
           )
         )
@@ -322,7 +322,7 @@ proc commissionPlanetaryDefense*(
 
         # Generate event
         events.add(
-          event_factory.buildingCompleted(colony.owner, "Starbase", colony.systemId)
+          buildingCompleted(colony.owner, "Starbase", colony.systemId)
         )
 
     # Special handling for spaceports
@@ -350,7 +350,7 @@ proc commissionPlanetaryDefense*(
         )
 
         events.add(
-          event_factory.buildingCompleted(colony.owner, "Spaceport", colony.systemId)
+          buildingCompleted(colony.owner, "Spaceport", colony.systemId)
         )
 
     # Special handling for shipyards
@@ -387,7 +387,7 @@ proc commissionPlanetaryDefense*(
         )
 
         events.add(
-          event_factory.buildingCompleted(colony.owner, "Shipyard", colony.systemId)
+          buildingCompleted(colony.owner, "Shipyard", colony.systemId)
         )
 
     # Special handling for drydocks
@@ -422,7 +422,7 @@ proc commissionPlanetaryDefense*(
         logInfo("Economy", &"Commissioned drydock (neoria {neoria.id}) at {completed.colonyId}")
 
         events.add(
-          event_factory.buildingCompleted(colony.owner, "Drydock", colony.systemId)
+          buildingCompleted(colony.owner, "Drydock", colony.systemId)
         )
 
     # Special handling for ground batteries
@@ -447,7 +447,7 @@ proc commissionPlanetaryDefense*(
           )
 
         events.add(
-          event_factory.buildingCompleted(
+          buildingCompleted(
             colony.owner, "Ground Battery", colony.systemId
           )
         )
@@ -472,7 +472,7 @@ proc commissionPlanetaryDefense*(
         )
 
         events.add(
-          event_factory.buildingCompleted(
+          buildingCompleted(
             colony.owner,
             &"Planetary Shield SLD{sldLevel}",
             colony.systemId,
@@ -524,7 +524,7 @@ proc commissionPlanetaryDefense*(
             )
 
             events.add(
-              event_factory.unitRecruited(
+              unitRecruited(
                 updatedColony.owner, "Marine Division", updatedColony.systemId, 1
               )
             )
@@ -574,7 +574,7 @@ proc commissionPlanetaryDefense*(
             )
 
             events.add(
-              event_factory.unitRecruited(
+              unitRecruited(
                 updatedColony.owner, "Army Division", updatedColony.systemId, 1
               )
             )
@@ -664,20 +664,20 @@ proc commissionShip(
 
   # Create new fleet if no suitable fleet found
   if targetFleetId == FleetId(0):
-    let fleet = fleet_ops.createFleet(state, owner, systemId)
+    let fleet = state.createFleet(owner, systemId)
     targetFleetId = fleet.id
     let fleetType = if shipClass == ShipClass.Scout: "scout" else: "combat"
     logInfo("Fleet", &"Created new {fleetType} fleet {targetFleetId} at {systemId}")
 
   # Create and add ship to fleet
-  let ship = ship_ops.createShip(state, owner, targetFleetId, shipClass)
+  let ship = state.createShip(owner, targetFleetId, shipClass)
 
   let fleetShipCount = state.fleet(targetFleetId).get().ships.len
   logInfo("Fleet",
     &"Commissioned {shipClass} {ship.id} in fleet {targetFleetId} " &
     &"at {systemId} ({fleetShipCount} ships)")
 
-  events.add(event_factory.shipCommissioned(owner, shipClass, systemId))
+  events.add(shipCommissioned(owner, shipClass, systemId))
 
 proc commissionShips*(
     state: var GameState,
@@ -714,7 +714,7 @@ proc commissionShips*(
           "Economy",
           &"Ship construction lost - facility {neoriaId} was damaged in combat",
         )
-        events.add(event_factory.constructionLostToCombat(
+        events.add(constructionLostToCombat(
           state.turn,
           completed.colonyId,
           neoriaId,
@@ -777,7 +777,7 @@ proc clearDamagedFacilityQueues*(state: var GameState, events: var seq[GameEvent
         let projectOpt = state.constructionProject(projectId)
         if projectOpt.isSome:
           let project = projectOpt.get()
-          events.add(event_factory.constructionLostToCombat(
+          events.add(constructionLostToCombat(
             state.turn,
             project.colonyId,
             neoriaId,
@@ -795,7 +795,7 @@ proc clearDamagedFacilityQueues*(state: var GameState, events: var seq[GameEvent
         let projectOpt = state.constructionProject(projectId)
         if projectOpt.isSome:
           let project = projectOpt.get()
-          events.add(event_factory.constructionLostToCombat(
+          events.add(constructionLostToCombat(
             state.turn,
             project.colonyId,
             neoriaId,
@@ -808,7 +808,7 @@ proc clearDamagedFacilityQueues*(state: var GameState, events: var seq[GameEvent
         let projectOpt = state.repairProject(projectId)
         if projectOpt.isSome:
           let project = projectOpt.get()
-          events.add(event_factory.repairLostToCombat(
+          events.add(repairLostToCombat(
             state.turn,
             project.colonyId,
             neoriaId,
@@ -826,7 +826,7 @@ proc clearDamagedFacilityQueues*(state: var GameState, events: var seq[GameEvent
         let projectOpt = state.repairProject(projectId)
         if projectOpt.isSome:
           let project = projectOpt.get()
-          events.add(event_factory.repairLostToCombat(
+          events.add(repairLostToCombat(
             state.turn,
             project.colonyId,
             neoriaId,
@@ -911,7 +911,7 @@ proc commissionRepairedShips*(
       )
       
       # Generate RepairStalled event
-      events.add(event_factory.repairStalled(
+      events.add(repairStalled(
         houseId,
         ship.shipClass,
         repair.colonyId,
@@ -977,7 +977,7 @@ proc commissionRepairedShips*(
       let shipOpt = state.ship(shipId)
       if shipOpt.isSome:
         let ship = shipOpt.get()
-        events.add(event_factory.shipCommissioned(
+        events.add(shipCommissioned(
           colony.owner,
           ship.shipClass,
           systemId,

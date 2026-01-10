@@ -5,7 +5,7 @@
 
 import std/[random, options, tables]
 import ../../types/[core, espionage, prestige]
-import ../../prestige/events as prestige_events
+import ../../prestige/events
 import ../../globals
 import descriptors
 
@@ -56,7 +56,7 @@ proc executeEspionageAction*(
   if detected:
     if descriptor.failedPrestigeReason != "": # Some actions don't penalize detection
       result.attackerPrestigeEvents.add(
-        prestige_events.createPrestigeEvent(
+        events.createPrestigeEvent(
           PrestigeSource.Eliminated, gameConfig.prestige.espionage.failed_espionage,
           descriptor.failedPrestigeReason,
         )
@@ -66,7 +66,7 @@ proc executeEspionageAction*(
 
     # Prestige for attacker (ZERO-SUM: attacker gains, target loses equal amount)
     result.attackerPrestigeEvents.add(
-      prestige_events.createPrestigeEvent(
+      events.createPrestigeEvent(
         PrestigeSource.CombatVictory, # Generic success source
         int32(descriptor.attackerSuccessPrestige),
         descriptor.successPrestigeReason,
@@ -75,7 +75,7 @@ proc executeEspionageAction*(
 
     # Prestige penalty for target (ZERO-SUM: equal and opposite to attacker gain)
     result.targetPrestigeEvents.add(
-      prestige_events.createPrestigeEvent(
+      events.createPrestigeEvent(
         PrestigeSource.Eliminated,
         int32(-descriptor.attackerSuccessPrestige), # Negative of attacker gain
         if descriptor.targetSuccessReason != "":

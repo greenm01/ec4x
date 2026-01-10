@@ -2,7 +2,7 @@ import std/[tables, sequtils, options]
 import ../types/[core, game_state, fleet, ship]
 import ../state/[engine, id_gen]
 import ./ship_ops
-import ../systems/command/commands as cmd_helpers
+import ../systems/command/commands
 
 proc newFleet*(
     shipIds: seq[ShipId] = @[],
@@ -22,7 +22,7 @@ proc newFleet*(
     location: location,
     status: status,
     roe: roe,
-    command: cmd_helpers.createHoldCommand(id),
+    command: createHoldCommand(id),
     missionState: MissionState.None,
     missionTarget: none(SystemId),
     missionStartTurn: 0,

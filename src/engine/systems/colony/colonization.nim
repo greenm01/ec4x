@@ -297,7 +297,7 @@ proc establishColonyForFleet(
       state.updateShip(etacId, etac)
 
   # Cannibalize ETAC (destroy ship)
-  ship_ops.destroyShip(state, etacId)
+  state.destroyShip(etacId)
   logInfo(
     "Colonization", &"ETAC {etacId} cannibalized for colony infrastructure"
   )
@@ -305,7 +305,7 @@ proc establishColonyForFleet(
   # Check if fleet is now empty
   let updatedFleetOpt = state.fleet(intent.fleetId)
   if updatedFleetOpt.isSome and updatedFleetOpt.get().ships.len == 0:
-    fleet_ops.destroyFleet(state, intent.fleetId)
+    state.destroyFleet(intent.fleetId)
     logInfo(
       "Fleet", &"Fleet {intent.fleetId} disbanded after ETAC colonization"
     )

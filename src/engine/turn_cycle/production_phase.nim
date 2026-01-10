@@ -35,9 +35,9 @@ import ../systems/diplomacy/resolution
 import ../systems/population/transfers
 import ../systems/colony/terraforming
 import ../systems/tech/advancement
-import ../prestige/engine as prestige_engine
-import ../event_factory/[commands, intel as intel_events, victory]
-import ../intel/generator as intel_generator
+import ../prestige/engine
+import ../event_factory/[commands, intel, victory]
+import ../intel/generator
 import ../starmap
 
 # =============================================================================
@@ -137,7 +137,7 @@ proc processFleetTravel(
     let jumpsToMove = min(maxJumps, pathResult.path.len - 1)
     let newLocation = pathResult.path[jumpsToMove]
     
-    fleet_ops.moveFleet(state, fleetId, newLocation)
+    state.moveFleet(fleetId, newLocation)
     fleetsMovedCount += 1
     
     logDebug("Production",
@@ -312,7 +312,7 @@ proc processScoutDetection(
           ))
           
           # Generate Visual quality intel
-          let intelReport = intel_generator.generateSystemIntelReport(
+          let intelReport = generateSystemIntelReport(
             state, observer.owner, systemId, IntelQuality.Visual
           )
           
@@ -502,7 +502,7 @@ proc processResearchAdvancement(
         &"  {house.name}: EL {adv.elFromLevel} -> {adv.elToLevel} " &
         &"(spent {adv.elCost} ERP)")
       if adv.prestigeEvent.isSome:
-        prestige_engine.applyPrestigeEvent(state, houseId, adv.prestigeEvent.get())
+        state.applyPrestigeEvent(houseId, adv.prestigeEvent.get())
       events.add(victory.techAdvance(houseId, "Economic Level", adv.elToLevel))
     
     # PRD7c: Science Level (SL) Advancement
@@ -515,7 +515,7 @@ proc processResearchAdvancement(
         &"  {house.name}: SL {adv.slFromLevel} -> {adv.slToLevel} " &
         &"(spent {adv.slCost} SRP)")
       if adv.prestigeEvent.isSome:
-        prestige_engine.applyPrestigeEvent(state, houseId, adv.prestigeEvent.get())
+        state.applyPrestigeEvent(houseId, adv.prestigeEvent.get())
       events.add(victory.techAdvance(houseId, "Science Level", adv.slToLevel))
     
     # PRD7d: Technology Field Advancement
@@ -532,7 +532,7 @@ proc processResearchAdvancement(
           &"  {house.name}: {field} {adv.techFromLevel} -> {adv.techToLevel} " &
           &"(spent {adv.techCost} TRP)")
         if adv.prestigeEvent.isSome:
-          prestige_engine.applyPrestigeEvent(
+          applyPrestigeEvent(
             state, houseId, adv.prestigeEvent.get()
           )
         events.add(victory.techAdvance(houseId, $field, adv.techToLevel))

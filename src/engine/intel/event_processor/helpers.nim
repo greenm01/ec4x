@@ -6,7 +6,7 @@
 
 import std/[options, tables]
 import ../../types/[core, game_state]
-import ../../state/[engine as state_helpers, iterators]
+import ../../state/[engine, iterators]
 
 proc hasFleetInSystem*(state: GameState, houseId: HouseId, systemId: SystemId): bool =
   ## Check if house has any fleet in system

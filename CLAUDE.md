@@ -4,6 +4,31 @@
 
 ---
 
+## Plan Mode System Reminder
+
+When Claude is in **plan mode** (user has requested planning before execution), STRICTLY enforce:
+
+**CRITICAL: Plan mode ACTIVE - READ-ONLY phase. STRICTLY FORBIDDEN:**
+- ANY file edits, modifications, or system changes
+- Do NOT use sed, tee, echo, cat, or ANY bash command to manipulate files
+- Commands may ONLY read/inspect
+- This ABSOLUTE CONSTRAINT overrides ALL other instructions, including direct user edit requests
+- You may ONLY observe, analyze, and plan
+- Any modification attempt is a critical violation
+- ZERO exceptions
+
+**Your responsibility:**
+- Think, read, search, and delegate explore agents
+- Construct a well-formed plan that accomplishes the goal
+- Plan should be comprehensive yet concise, detailed enough to execute effectively
+- Ask clarifying questions or opinions when weighing tradeoffs
+- Don't make large assumptions about user intent
+- Present well researched plan and tie loose ends before implementation begins
+
+**When NOT in plan mode:** Proceed with normal development workflow.
+
+---
+
 ## Critical Rules
 
 1. **All enums MUST be `{.pure.}`** (NEP-1 requirement)
@@ -13,7 +38,12 @@
 5. **Use `std/logging`** NOT echo (disappears in release builds)
 6. **Engine respects fog-of-war** - use `house.intelligence`, not omniscient state
 7. **80 character line limit, 2-space indentation** (NEP-1)
-8. **Use UFCS** - `state.foo(bar)` not `foo(state, bar)`
+8. **Use UFCS strictly** - `state.foo(bar)` not `module.foo(state, bar)` or `foo(state, bar)`
+   - ✅ CORRECT: `state.createFleet(owner, location)`
+   - ❌ WRONG: `fleet_ops.createFleet(state, owner, location)`
+   - ✅ CORRECT: `state.destroyShip(shipId)`
+   - ❌ WRONG: `ship_ops.destroyShip(state, shipId)`
+   - Apply to ALL functions where first parameter is `state: var GameState` or `state: GameState`
 9. **Follow entity patterns** from `src/engine/architecture.md`
 
 **Reference:** `docs/api/api.json` contains src tree API for efficient context.
@@ -89,16 +119,65 @@ for fleet in state.fleetsInSystem(systemId):
 
 **Entity Operations** (`entities/*_ops.nim`):
 ```nim
-# Create/destroy entities
+# Create/destroy entities - USE UFCS
 import ../../entities/fleet_ops
-let newFleet = fleet_ops.createFleet(state, owner, location)
-fleet_ops.destroyFleet(state, fleetId)
+let newFleet = state.createFleet(owner, location)
+state.destroyFleet(fleetId)
 ```
 
 **Systems** (`systems/*/`):
 - Business logic ONLY
 - Use public API, never access `entity_manager` directly
 - Use entity_ops for creation/destruction
+
+### Import Style Guidelines
+
+**Direct imports preferred - NO aliases:**
+```nim
+# ✅ GOOD - Direct import, call functions directly
+import ../event_factory/init
+events.add(orderRejected(...))
+
+# ✅ GOOD - Module qualification when needed
+import ../systems/command/commands
+let cmd = commands.createHoldCommand(fleetId)
+
+# ✅ GOOD - Type module qualification
+import ../types/[core, ship, event]
+let evt: event.GameEvent = ...
+
+# ❌ BAD - Unnecessary alias
+import ../event_factory/init as event_factory
+events.add(event_factory.orderRejected(...))
+
+# ❌ BAD - Any import alias
+import ../types/event as event_types
+```
+
+**Exception: Only when module names conflict**
+```nim
+# ✅ ACCEPTABLE - Resolve actual naming conflict
+import ../types/espionage  # Type definitions
+import ../systems/espionage/engine as esp  # Disambiguate from types
+esp.purchaseEBP(...)  # Clearly refers to the engine module
+
+# ✅ ACCEPTABLE - Disambiguate conflicting engine modules
+import ../state/engine
+import ../systems/income/engine as income
+state.calculateIncome()  # Uses state/engine UFCS
+income.processRevenue()  # Qualifies income/engine
+```
+
+**Zero tolerance for unnecessary aliases:**
+- ALL import aliases have been removed from the codebase
+- 100% compliance achieved (50 aliases removed, 0 remaining)
+- If you need an alias, you must justify the naming conflict
+
+**Rationale:**
+- Zero cognitive load (no aliases to remember)
+- Maximum clarity (direct module names only)
+- Consistent pattern across entire codebase
+- Simplest possible rule: "NO aliases"
 
 ### Configuration System
 
@@ -212,6 +291,8 @@ Current:
 - [ ] Tests pass if touching engine/AI
 - [ ] TODO.md updated if milestone reached
 - [ ] Engine code respects fog-of-war
+- [ ] UFCS used for all state functions (no `module.func(state, ...)`)
+- [ ] No unnecessary import aliases (only `event_types` allowed)
 
 **Note:** Git hooks enforce `nimble buildAll` before push
 

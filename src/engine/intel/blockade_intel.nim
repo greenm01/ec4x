@@ -8,7 +8,7 @@
 ## - Writes using Table read-modify-write pattern
 
 import std/[strformat, tables, options]
-import ../state/engine as state_helpers
+import ../state/engine
 import ../types/[core, game_state, intel, combat]
 import ../globals  # For gameConfig to get GCO reduction %
 

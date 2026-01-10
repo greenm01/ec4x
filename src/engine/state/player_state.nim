@@ -11,7 +11,7 @@
 ## - Client state synchronization
 
 import std/[tables, options, sets]
-import ../types/intel as intel_types
+import ../types/intel
 import
   ../types/[
     colony, core, diplomacy, fleet, game_state, house, player_state, starmap, ship,
@@ -80,8 +80,8 @@ proc getScoutedSystems(
 proc createVisibleColony(
     state: GameState,
     colony: Colony,
-    colonyIntel: Option[intel_types.ColonyIntelReport],
-    orbitalIntel: Option[intel_types.OrbitalIntelReport],
+    colonyIntel: Option[ColonyIntelReport],
+    orbitalIntel: Option[OrbitalIntelReport],
 ): VisibleColony =
   ## Create a visible enemy colony with limited intel
   result.colonyId = colony.id
@@ -106,7 +106,7 @@ proc createVisibleFleet(
     state: GameState,
     fleet: Fleet,
     location: SystemId,
-    intelReport: Option[intel_types.SystemIntelReport],
+    intelReport: Option[SystemIntelReport],
     currentTurn: int32,
 ): VisibleFleet =
   ## Create a visible enemy fleet with limited intel
@@ -236,8 +236,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
     if colony.owner != houseId:
       let systemId = colony.systemId
       var isVisible = false
-      var colonyIntel: Option[intel_types.ColonyIntelReport]
-      var orbitalIntel: Option[intel_types.OrbitalIntelReport]
+      var colonyIntel: Option[ColonyIntelReport]
+      var orbitalIntel: Option[OrbitalIntelReport]
       if intel.colonyReports.contains(colony.id):
         isVisible = true
         colonyIntel = some(intel.colonyReports[colony.id])
@@ -257,7 +257,7 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
       let isVisible =
         fleet.location in ownedSystems or fleet.location in occupiedSystems
       if isVisible:
-        var systemIntel: Option[intel_types.SystemIntelReport]
+        var systemIntel: Option[SystemIntelReport]
         if intel.systemReports.contains(fleet.location):
           systemIntel = some(intel.systemReports[fleet.location])
         result.visibleFleets.add(
