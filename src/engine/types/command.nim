@@ -15,8 +15,7 @@ type
     colonyId*: ColonyId
     autoRepair*: bool
     autoLoadFighters*: bool
-    autoLoadMarines*:bool
-    autoJoinFleets*: bool
+    autoLoadMarines*: bool
     taxRate*: Option[int32]
 
   CommandPacket* = object

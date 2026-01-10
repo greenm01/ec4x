@@ -108,7 +108,7 @@ proc autoLoadFightersToCarriers(
     events: var seq[GameEvent],
 ) =
   ## Auto-load newly commissioned fighters onto carriers with available hangar
-  ## space. Only processes colonies with autoLoadingEnabled = true.
+  ## space. Only processes colonies with autoLoadFighters = true.
   ##
   ## **Design:**
   ## - Follows DoD pattern: uses entity managers for all state access
@@ -133,7 +133,7 @@ proc autoLoadFightersToCarriers(
     let colony = colonyOpt.get()
 
     # Skip colonies without auto-loading enabled
-    if not colony.autoLoadingEnabled:
+    if not colony.autoLoadFighters:
       continue
 
     # Skip colonies with no fighters
@@ -591,59 +591,42 @@ proc commissionPlanetaryDefense*(
   # commissioning but before new build commands
   autoLoadFightersToCarriers(state, modifiedColonies, events)
 
-proc commissionScout(
-    state: var GameState,
-    owner: HouseId,
-    systemId: SystemId,
-    techLevel: int32,
-    events: var seq[GameEvent],
-) =
-  ## Commission a Scout ship in a dedicated scout fleet
-  ## Scouts at the same system join the same fleet for mesh network bonuses
+# =============================================================================
+# Fleet Classification Helpers
+# =============================================================================
 
-  # 1. Find existing scout fleet at this location, or create new one
-  var scoutFleetId: FleetId = FleetId(0)
+proc isPureScoutFleet(state: GameState, fleet: Fleet): bool =
+  ## Check if fleet contains only Scout ships
+  ## Used to find appropriate fleet for newly commissioned scouts
+  if fleet.ships.len == 0:
+    return false
+  for shipId in fleet.ships:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isNone:
+      return false
+    if shipOpt.get().shipClass != ShipClass.Scout:
+      return false
+  return true
 
-  for fleet in state.fleetsAtSystem(systemId):
-    if fleet.houseId != owner:
+proc isCombatFleet(state: GameState, fleet: Fleet): bool =
+  ## Check if fleet contains at least one combat ship (not scout/auxiliary)
+  ## Used to find appropriate fleet for newly commissioned combat ships
+  for shipId in fleet.ships:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isNone:
       continue
+    let ship = shipOpt.get()
+    # Combat fleet contains capital ships (not just scouts/ETAC/transports)
+    if ship.shipClass notin [ShipClass.Scout, ShipClass.ETAC,
+                              ShipClass.TroopTransport]:
+      return true
+  return false
 
-    # Check if this is a pure scout fleet (only scout ships)
-    var isPureScoutFleet = fleet.ships.len > 0
-    for shipId in fleet.ships:
-      let shipOpt = state.ship(shipId)
-      if shipOpt.isNone:
-        isPureScoutFleet = false
-        break
-      let ship = shipOpt.get()
-      if ship.shipClass != ShipClass.Scout:
-        isPureScoutFleet = false
-        break
+# =============================================================================
+# Ship Commissioning (implements CMD4a "Auto-assign ships to fleets")
+# =============================================================================
 
-    if isPureScoutFleet:
-      scoutFleetId = fleet.id
-      break
-
-  # 2. Create fleet if needed
-  if scoutFleetId == FleetId(0):
-    let fleet = fleet_ops.createFleet(state, owner, systemId)
-    scoutFleetId = fleet.id
-    logInfo(
-      "Fleet", &"Created new scout fleet {scoutFleetId} at {systemId}"
-    )
-
-  # 3. Create and add the scout ship to the fleet
-  let ship = ship_ops.createShip(state, owner, scoutFleetId, ShipClass.Scout)
-
-  logInfo(
-    "Fleet",
-    &"Commissioned Scout {ship.id} in fleet {scoutFleetId} at {systemId}",
-  )
-
-  # 4. Generate event
-  events.add(event_factory.shipCommissioned(owner, ShipClass.Scout, systemId))
-
-proc commissionCapitalShip(
+proc commissionShip(
     state: var GameState,
     owner: HouseId,
     systemId: SystemId,
@@ -651,53 +634,49 @@ proc commissionCapitalShip(
     techLevel: int32,
     events: var seq[GameEvent],
 ) =
-  ## Commission a capital ship (Corvette, Frigate, Destroyer, Cruiser, etc.)
-  ## Capital ships join existing combat fleets or form new fleets
+  ## Commission a ship into an appropriate fleet
+  ##
+  ## This proc implements CMD4a "Auto-assign ships to fleets" from the
+  ## canonical turn cycle. Ships are always auto-assigned to fleets.
+  ##
+  ## Fleet selection logic:
+  ## - Scouts -> Join existing pure scout fleet, or create new fleet
+  ##   (scouts grouped for mesh network bonuses)
+  ## - All other ships -> Join existing combat fleet, or create new fleet
 
-  # 1. Find existing combat fleet at this location, or create new one
-  var combatFleetId: FleetId = FleetId(0)
+  var targetFleetId: FleetId = FleetId(0)
 
+  # Find appropriate existing fleet
   for fleet in state.fleetsAtSystem(systemId):
     if fleet.houseId != owner:
       continue
 
-    # Check if this is a combat fleet (not pure scout/auxiliary)
-    # Combat fleets contain capital ships (not just scouts/ETAC/transports)
-    var isCombatFleet = false
-    for shipId in fleet.ships:
-      let shipOpt = state.ship(shipId)
-      if shipOpt.isNone:
-        continue
-      let ship = shipOpt.get()
-
-      # Combat fleet contains capital ships (not just auxiliary ships)
-      if ship.shipClass notin [ShipClass.Scout, ShipClass.ETAC, ShipClass.TroopTransport]:
-        isCombatFleet = true
+    if shipClass == ShipClass.Scout:
+      # Scouts join pure scout fleets (for mesh network bonuses)
+      if isPureScoutFleet(state, fleet):
+        targetFleetId = fleet.id
+        break
+    else:
+      # All other ships join combat fleets
+      if isCombatFleet(state, fleet):
+        targetFleetId = fleet.id
         break
 
-    if isCombatFleet:
-      combatFleetId = fleet.id
-      break
-
-  # 2. Create fleet if needed
-  if combatFleetId == FleetId(0):
+  # Create new fleet if no suitable fleet found
+  if targetFleetId == FleetId(0):
     let fleet = fleet_ops.createFleet(state, owner, systemId)
-    combatFleetId = fleet.id
-    logInfo(
-      "Fleet", &"Created new combat fleet {combatFleetId} at {systemId}"
-    )
+    targetFleetId = fleet.id
+    let fleetType = if shipClass == ShipClass.Scout: "scout" else: "combat"
+    logInfo("Fleet", &"Created new {fleetType} fleet {targetFleetId} at {systemId}")
 
-  # 3. Create and add the capital ship to the fleet
-  let ship = ship_ops.createShip(state, owner, combatFleetId, shipClass)
+  # Create and add ship to fleet
+  let ship = ship_ops.createShip(state, owner, targetFleetId, shipClass)
 
-  let fleetShipCount = state.fleet(combatFleetId).get().ships.len
-  logInfo(
-    "Fleet",
-    &"Commissioned {shipClass} {ship.id} in fleet {combatFleetId} " &
-      &"at {systemId} ({fleetShipCount} ships)",
-  )
+  let fleetShipCount = state.fleet(targetFleetId).get().ships.len
+  logInfo("Fleet",
+    &"Commissioned {shipClass} {ship.id} in fleet {targetFleetId} " &
+    &"at {systemId} ({fleetShipCount} ships)")
 
-  # 4. Generate event
   events.add(event_factory.shipCommissioned(owner, shipClass, systemId))
 
 proc commissionShips*(
@@ -771,17 +750,9 @@ proc commissionShips*(
       let house = houseOpt.get()
       let techLevel = house.techTree.levels.wep
 
-      # Commission ship based on type
-      case shipClass
-      of ShipClass.Scout:
-        # Scouts form dedicated single-ship fleets
-        # Multiple scouts at same colony join same fleet for mesh network bonuses
-        commissionScout(state, owner, colony.systemId, techLevel, events)
-      else:
-        # All other ships (capital ships, ETAC, TroopTransport, etc.)
-        commissionCapitalShip(
-          state, owner, colony.systemId, shipClass, techLevel, events
-        )
+      # Commission ship (auto-assigns to appropriate fleet)
+      # Scouts -> pure scout fleets; others -> combat fleets
+      commissionShip(state, owner, colony.systemId, shipClass, techLevel, events)
     except ValueError:
       logError("Economy", &"Invalid ship class: {completed.itemId}")
 

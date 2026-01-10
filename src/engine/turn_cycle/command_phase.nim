@@ -7,7 +7,7 @@
 ## - CMD1: Order Cleanup - Reset completed/stale commands to Hold
 ## - CMD2: Unified Commissioning - Ships, repairs, colony assets
 ## - CMD3: Auto-Repair Submission - Queue repairs for autoRepair colonies
-## - CMD4: Colony Automation - Auto-assign ships, load cargo
+## - CMD4: Colony Automation - Auto-load marines/fighters
 ## - CMD5: Player Submission Window - Colony mgmt, transfers, terraforming
 ## - CMD6: Order Processing & Validation - Fleet commands, builds, research
 
@@ -17,7 +17,8 @@ import std/[tables, options, random, strformat, sets, hashes]
 import ../../common/logger
 
 # Types
-import ../types/[core, game_state, command, fleet, event, tech as tech_types, production]
+import ../types/[core, game_state, command, fleet, event, tech as tech_types,
+                 production]
 
 # State Core (reading)
 import ../state/[engine, iterators]
@@ -38,13 +39,13 @@ import ../event_factory/init as event_factory
 # =============================================================================
 
 proc cleanupCompletedCommands(state: var GameState, events: seq[GameEvent]) =
-  ## CMD1: Reset completed/failed/aborted commands to Hold + MissionState.None
+  ## [CMD1] Reset completed/failed/aborted commands to Hold + MissionState.None
   ##
   ## Scans events for CommandCompleted/Failed/Aborted and resets those fleets.
   ## Also resets any fleet with stale Executing state (consistency check).
-  
+
   logInfo("Commands", "[CMD1] Order Cleanup - resetting completed commands")
-  
+
   # Build set of fleets with completion events
   var completedFleets = initHashSet[FleetId]()
   for event in events:
@@ -55,7 +56,7 @@ proc cleanupCompletedCommands(state: var GameState, events: seq[GameEvent]) =
     }:
       if event.fleetId.isSome:
         completedFleets.incl(event.fleetId.get())
-  
+
   # Reset those fleets to Hold + MissionState.None
   var resetCount = 0
   for fleetId in completedFleets:
@@ -67,7 +68,7 @@ proc cleanupCompletedCommands(state: var GameState, events: seq[GameEvent]) =
       fleet.missionTarget = none(SystemId)
       state.updateFleet(fleetId, fleet)
       resetCount += 1
-  
+
   logInfo("Commands", &"[CMD1] Reset {resetCount} fleet commands to Hold")
 
 # =============================================================================
@@ -75,56 +76,67 @@ proc cleanupCompletedCommands(state: var GameState, events: seq[GameEvent]) =
 # =============================================================================
 
 proc commissionEntities(state: var GameState, events: var seq[GameEvent]) =
-  ## CMD2: Commission ALL pending assets that survived Conflict Phase
+  ## [CMD2] Commission ALL pending assets that survived Conflict Phase
   ##
   ## Per canonical spec:
-  ## - 2a: Commission ships from Neorias (Spaceports/Shipyards)
-  ## - 2b: Commission repaired ships from Drydocks (payment checked here)
-  ## - 2c: Commission colony assets (fighters, ground units, facilities, starbases)
+  ## - [CMD2a] Commission ships from Neorias (Spaceports/Shipyards)
+  ## - [CMD2b] Commission repaired ships from Drydocks (payment checked here)
+  ## - [CMD2c] Commission assets from colony queues (fighters, ground units,
+  ##           facilities, starbases)
   ##
-  ## No validation needed - if entity exists in state, it survived Conflict Phase.
-  
+  ## No validation needed - if entity exists in state, it survived Conflict
+  ## Phase. Destroyed/crippled facilities had queues cleared in CON2.
+  ##
+  ## NOTE: Ship commissioning (CMD2a, CMD2b) implements CMD4a "Auto-assign
+  ## ships to fleets". Ships are always auto-assigned during commissioning.
+  ## See commissioning.nim:commissionShip() for fleet assignment logic.
+
   logInfo("Commands", "[CMD2] Unified Commissioning")
-  
-  # 2a: Clear damaged facility queues first (ships in destroyed docks are lost)
+
+  # Pre-step: Clear damaged facility queues (ships in destroyed docks lost)
+  # This is NOT a canonical substep - it's cleanup from Conflict Phase
+  logInfo("Commands", "[CMD2-pre] Clearing damaged facility queues...")
   commissioning.clearDamagedFacilityQueues(state, events)
-  
-  # 2b: Commission all pending projects from Production Phase
-  # This includes both ships (military) and colony assets (planetary defense)
-  # Split commissioning is handled here - ships go to fleets, planetary goes to colonies
+
+  # Process pending commissions from Production Phase
   if state.pendingCommissions.len > 0:
-    # Separate military (ships) from planetary (fighters, ground units, facilities)
+    # Separate military (ships) from planetary (fighters, ground units,
+    # facilities)
     var militaryProjects: seq[CompletedProject] = @[]
     var planetaryProjects: seq[CompletedProject] = @[]
-    
+
     for project in state.pendingCommissions:
       if project.projectType == BuildType.Ship:
         militaryProjects.add(project)
       else:
         planetaryProjects.add(project)
-    
-    # Commission ships to fleets
+
+    # [CMD2a] Commission ships from Neorias (Spaceports/Shipyards)
+    # Ships are auto-assigned to fleets (implements CMD4a)
     if militaryProjects.len > 0:
-      logInfo("Commands", &"[CMD2a] Commissioning {militaryProjects.len} ships from Neorias")
+      logInfo("Commands",
+        &"[CMD2a] Commissioning {militaryProjects.len} ships from Neorias")
       commissioning.commissionShips(state, militaryProjects, events)
     else:
       logInfo("Commands", "[CMD2a] No ships to commission")
-    
-    # Commission planetary defense assets
+
+    # [CMD2c] Commission assets from colony queues
     if planetaryProjects.len > 0:
-      logInfo("Commands", &"[CMD2c] Commissioning {planetaryProjects.len} colony assets")
+      logInfo("Commands",
+        &"[CMD2c] Commissioning {planetaryProjects.len} colony assets")
       commissioning.commissionPlanetaryDefense(state, planetaryProjects, events)
     else:
       logInfo("Commands", "[CMD2c] No colony assets to commission")
-    
+
     # Clear pending commissions
     state.pendingCommissions = @[]
   else:
     logInfo("Commands", "[CMD2a] No pending commissions")
-  
-  # 2b: Commission repaired ships from drydocks
+
+  # [CMD2b] Commission repaired ships from Drydocks
   # Repairs that completed in Production Phase are marked in repair projects
   # Query for completed repairs and commission them
+  # Repaired ships are auto-assigned to fleets (implements CMD4a)
   var completedRepairs: seq[RepairProject] = @[]
   for (repairId, repair) in state.repairProjects.entities.index.pairs:
     let repairOpt = state.repairProject(repairId)
@@ -132,13 +144,14 @@ proc commissionEntities(state: var GameState, events: var seq[GameEvent]) =
       let r = repairOpt.get()
       if r.turnsRemaining <= 0:
         completedRepairs.add(r)
-  
+
   if completedRepairs.len > 0:
-    logInfo("Commands", &"[CMD2b] Commissioning {completedRepairs.len} repaired ships")
+    logInfo("Commands",
+      &"[CMD2b] Commissioning {completedRepairs.len} repaired ships")
     commissioning.commissionRepairedShips(state, completedRepairs, events)
   else:
     logInfo("Commands", "[CMD2b] No repairs to commission")
-  
+
   logInfo("Commands", "[CMD2] Unified Commissioning complete")
 
 # =============================================================================
@@ -146,26 +159,27 @@ proc commissionEntities(state: var GameState, events: var seq[GameEvent]) =
 # =============================================================================
 
 proc submitAutoRepairs(state: var GameState, events: var seq[GameEvent]) =
-  ## CMD3: Auto-submit repair orders for colonies with autoRepair=true
+  ## [CMD3] Auto-submit repair orders for colonies with autoRepair=true
   ##
   ## Per canonical spec:
-  ## - Priority 1: Crippled ships → Drydock queues
-  ## - Priority 2: Crippled starbases → Colony repair queue
-  ## - Priority 2: Crippled ground units → Colony repair queue
-  ## - Priority 3: Crippled Neorias → Colony repair queue
+  ## - Priority 1: Crippled ships -> Drydock queues
+  ## - Priority 2: Crippled starbases -> Colony repair queue
+  ## - Priority 2: Crippled ground units -> Colony repair queue
+  ## - Priority 3: Crippled Neorias -> Colony repair queue
   ##
   ## Players can cancel/modify these during CMD5 (player window).
   ## Payment happens at commissioning (CMD2 next turn).
-  
+
   logInfo("Commands", "[CMD3] Auto-Repair Submission")
-  
+
   var coloniesProcessed = 0
   for colony in state.allColonies():
     if colony.autoRepair:
       repairs.submitAllAutomaticRepairs(state, colony.systemId)
       coloniesProcessed += 1
-  
-  logInfo("Commands", &"[CMD3] Processed auto-repairs for {coloniesProcessed} colonies")
+
+  logInfo("Commands",
+    &"[CMD3] Processed auto-repairs for {coloniesProcessed} colonies")
 
 # =============================================================================
 # CMD4: COLONY AUTOMATION
@@ -176,24 +190,31 @@ proc processColonyAutomation(
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent]
 ) =
-  ## CMD4: Automatically organize newly commissioned assets
+  ## [CMD4] Automatically organize newly commissioned assets
   ##
   ## Per canonical spec:
-  ## - 4a: Auto-assign ships to fleets (autoJoinFleets)
-  ## - 4b: Auto-load marines onto transports (autoLoadMarines)
-  ## - 4c: Auto-load fighters onto carriers (autoLoadFighters)
+  ## - [CMD4a] Auto-assign ships to fleets
+  ##   NOTE: Already handled in CMD2 commissioning. Ships are always
+  ##   auto-assigned to fleets during commissionShip(). See
+  ##   commissioning.nim for implementation.
+  ##
+  ## - [CMD4b] Auto-load marines onto transports (autoLoadMarines)
+  ## - [CMD4c] Auto-load fighters onto carriers (autoLoadFighters)
   ##
   ## Players see organized fleets/cargo in CMD5 (player window).
-  
+
   logInfo("Commands", "[CMD4] Colony Automation")
-  
-  # Auto-load cargo at colonies (marines/colonists onto transports)
-  # This handles autoLoadMarines logic
+
+  # [CMD4a] Auto-assign ships to fleets
+  # NOTE: Handled in CMD2 commissioning - see commissionShip()
+  # Ships are always auto-assigned; there is no toggle for this behavior.
+
+  # [CMD4b] Auto-load marines onto transports (autoLoadMarines)
+  # [CMD4c] Auto-load fighters onto carriers (autoLoadFighters)
+  # autoLoadCargo handles marines; fighters handled by commissioning module
+  # via autoLoadFightersToCarriers() after commissioning fighters
   mechanics.autoLoadCargo(state, orders, events)
-  
-  # Note: Auto-load fighters to carriers is handled by commissioning module
-  # when it calls autoLoadFightersToCarriers after commissioning fighters
-  
+
   logInfo("Commands", "[CMD4] Colony Automation complete")
 
 # =============================================================================
@@ -205,28 +226,28 @@ proc processPlayerSubmissions(
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent]
 ) =
-  ## CMD5: Process player-submitted administrative commands
+  ## [CMD5] Process player-submitted administrative commands
   ##
   ## Per canonical spec:
-  ## - 5a: Zero-turn administrative commands (immediate)
-  ## - 5b: Query commands (read-only)
-  ## - 5c: Command submission (queued for CMD6)
+  ## - [CMD5a] Zero-turn administrative commands (immediate)
+  ## - [CMD5b] Query commands (read-only)
+  ## - [CMD5c] Command submission (queued for CMD6)
   ##
   ## This step processes colony management, population transfers, terraforming.
-  
+
   logInfo("Commands", "[CMD5] Player Submission Window")
-  
+
   for (houseId, house) in state.activeHousesWithId():
     if houseId in orders:
       # Colony management commands (tax rates, auto-flags)
       colony_engine.resolveColonyCommands(state, orders[houseId])
-      
+
       # Population transfers (Space Guild)
       pop_transfers.resolvePopulationTransfers(state, orders[houseId], events)
-      
+
       # Terraforming commands
       terraforming.resolveTerraformCommands(state, orders[houseId], events)
-  
+
   logInfo("Commands", "[CMD5] Player Submission Window complete")
 
 # =============================================================================
@@ -239,29 +260,29 @@ proc processResearchAllocation(
     events: var seq[GameEvent]
 ) =
   ## Process research allocation with treasury scaling
-  ## Per canonical spec CMD6e
-  
+  ## Per canonical spec CMD6d
+
   for (houseId, _) in state.activeHousesWithId():
     if houseId notin orders:
       continue
-    
+
     let packet = orders[houseId]
     let allocation = packet.researchAllocation
-    
+
     # Calculate total PP cost for research
     var totalResearchCost: int32 = allocation.economic + allocation.science
     for field, pp in allocation.technology:
       totalResearchCost += pp
-    
+
     # Skip if no research allocated
     if totalResearchCost == 0:
       continue
-    
+
     # Get house for reading/writing (UFCS pattern)
     var house = state.house(houseId).get()
     var scaledAllocation = allocation
     let treasury = house.treasury
-    
+
     # Treasury scaling - can't spend more than we have
     if treasury <= 0:
       # Bankrupt - no research
@@ -278,45 +299,45 @@ proc processResearchAllocation(
         int32(float(allocation.economic) * affordablePercent)
       scaledAllocation.science =
         int32(float(allocation.science) * affordablePercent)
-      
+
       var scaledTech = initTable[TechField, int32]()
       for field, pp in allocation.technology:
         scaledTech[field] = int32(float(pp) * affordablePercent)
       scaledAllocation.technology = scaledTech
-      
+
       # Recalculate actual cost
       totalResearchCost = scaledAllocation.economic + scaledAllocation.science
       for field, pp in scaledAllocation.technology:
         totalResearchCost += pp
-      
+
       logWarn("Research",
         &"{houseId} research scaled to {int(affordablePercent * 100)}%")
-    
+
     # Deduct from treasury
     if totalResearchCost > 0:
       house.treasury -= totalResearchCost
       logInfo("Research", &"{houseId} spent {totalResearchCost} PP on research")
-    
+
     # Calculate GHO (Gross House Output)
     var gho: int32 = 0
     for colony in state.coloniesOwned(houseId):
       gho += colony.production
-    
+
     # Get current science level for RP conversion
     let currentSL = house.techTree.levels.sl
-    
+
     # Convert PP to RP using tech costs
     let earnedRP = tech_costs.allocateResearch(scaledAllocation, gho, currentSL)
-    
+
     # Accumulate RP
     house.techTree.accumulated.economic += earnedRP.economic
     house.techTree.accumulated.science += earnedRP.science
-    
+
     for field, trp in earnedRP.technology:
       if field notin house.techTree.accumulated.technology:
         house.techTree.accumulated.technology[field] = 0
       house.techTree.accumulated.technology[field] += trp
-    
+
     # Write back house changes
     state.updateHouse(houseId, house)
 
@@ -325,34 +346,28 @@ proc processOrderValidation(
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent]
 ) =
-  ## CMD6: Validate and store fleet commands, process builds and research
+  ## [CMD6] Validate and store fleet commands, process builds and research
   ##
   ## Per canonical spec:
-  ## - 6a: Validate fleet commands (store in Fleet.command)
-  ## - 6b: Process build orders (pay PP upfront)
-  ## - 6c: Process repair orders (manual)
-  ## - 6d: Process tech research allocation
-  
+  ## - [CMD6a] Validate fleet commands (store in Fleet.command)
+  ## - [CMD6b] Process build orders (pay PP upfront)
+  ## - [CMD6c] Process repair orders (manual)
+  ## - [CMD6d] Process tech research allocation
+
   logInfo("Commands", "[CMD6] Order Processing & Validation")
-  
-  # 6a: Process build commands
-  logInfo("Commands", "[CMD6a] Processing build orders")
-  for (houseId, house) in state.activeHousesWithId():
-    if houseId in orders:
-      construction.resolveBuildOrders(state, orders[houseId], events)
-  
-  # 6b: Validate and store fleet commands
-  logInfo("Commands", "[CMD6b] Validating fleet commands")
+
+  # [CMD6a] Validate and store fleet commands
+  logInfo("Commands", "[CMD6a] Validating fleet commands...")
   var ordersStored = 0
   var ordersRejected = 0
-  
+
   for (houseId, house) in state.activeHousesWithId():
     if houseId notin orders:
       continue
-    
+
     for cmd in orders[houseId].fleetCommands:
       let validation = cmd_helpers.validateFleetCommand(cmd, state, houseId)
-      
+
       if validation.valid:
         let fleetOpt = state.fleet(cmd.fleetId)
         if fleetOpt.isSome:
@@ -362,11 +377,14 @@ proc processOrderValidation(
           fleet.missionTarget = cmd.targetSystem
           state.updateFleet(cmd.fleetId, fleet)
           ordersStored += 1
-          
-          logDebug("Commands", &"  [STORED] Fleet {cmd.fleetId}: {cmd.commandType}")
+
+          logDebug("Commands",
+            &"  [STORED] Fleet {cmd.fleetId}: {cmd.commandType}")
       else:
         ordersRejected += 1
-        logWarn("Commands", &"  [REJECTED] Fleet {cmd.fleetId}: {cmd.commandType} - {validation.error}")
+        logWarn("Commands",
+          &"  [REJECTED] Fleet {cmd.fleetId}: {cmd.commandType} - " &
+          validation.error)
         events.add(
           event_factory.orderRejected(
             houseId,
@@ -375,20 +393,27 @@ proc processOrderValidation(
             fleetId = some(cmd.fleetId)
           )
         )
-  
-  logInfo("Commands", &"[CMD6b] Fleet commands: {ordersStored} stored, {ordersRejected} rejected")
-  
-  # 6c: Process manual repair orders
-  logInfo("Commands", "[CMD6c] Processing manual repair orders")
+
+  logInfo("Commands",
+    &"[CMD6a] Fleet commands: {ordersStored} stored, {ordersRejected} rejected")
+
+  # [CMD6b] Process build orders (pay PP upfront)
+  logInfo("Commands", "[CMD6b] Processing build orders...")
+  for (houseId, house) in state.activeHousesWithId():
+    if houseId in orders:
+      construction.resolveBuildOrders(state, orders[houseId], events)
+
+  # [CMD6c] Process manual repair orders
+  logInfo("Commands", "[CMD6c] Processing manual repair orders...")
   for (houseId, house) in state.activeHousesWithId():
     if houseId in orders:
       for repairCmd in orders[houseId].repairCommands:
         discard repairs.processManualRepairCommand(state, repairCmd)
-  
-  # 6d: Process research allocation
-  logInfo("Commands", "[CMD6d] Processing research allocation")
+
+  # [CMD6d] Process tech research allocation
+  logInfo("Commands", "[CMD6d] Processing research allocation...")
   processResearchAllocation(state, orders, events)
-  
+
   logInfo("Commands", "[CMD6] Order Processing & Validation complete")
 
 # =============================================================================
@@ -405,30 +430,30 @@ proc resolveCommandPhase*(
   ##
   ## Executes six steps per docs/engine/ec4x_canonical_turn_cycle.md:
   ## - CMD1: Order Cleanup
-  ## - CMD2: Unified Commissioning
+  ## - CMD2: Unified Commissioning (includes CMD4a auto-assign to fleets)
   ## - CMD3: Auto-Repair Submission
-  ## - CMD4: Colony Automation
+  ## - CMD4: Colony Automation (auto-load marines/fighters)
   ## - CMD5: Player Submission Window
   ## - CMD6: Order Processing & Validation
-  
+
   logInfo("Commands", &"=== Command Phase === (turn={state.turn})")
-  
+
   # CMD1: Order Cleanup
-  cleanupCompletedCommands(state, events)
-  
+  state.cleanupCompletedCommands(events)
+
   # CMD2: Unified Commissioning
-  commissionEntities(state, events)
-  
+  state.commissionEntities(events)
+
   # CMD3: Auto-Repair Submission
-  submitAutoRepairs(state, events)
-  
+  state.submitAutoRepairs(events)
+
   # CMD4: Colony Automation
-  processColonyAutomation(state, orders, events)
-  
+  state.processColonyAutomation(orders, events)
+
   # CMD5: Player Submission Window
-  processPlayerSubmissions(state, orders, events)
-  
+  state.processPlayerSubmissions(orders, events)
+
   # CMD6: Order Processing & Validation
-  processOrderValidation(state, orders, events)
-  
+  state.processOrderValidation(orders, events)
+
   logInfo("Commands", "=== Command Phase Complete ===")

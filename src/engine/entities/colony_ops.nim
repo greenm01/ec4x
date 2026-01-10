@@ -43,7 +43,6 @@ proc newColony*(
     autoRepair: false, # Default OFF
     autoLoadMarines: true, # Default ON
     autoLoadFighters: true, # Default ON
-    autoJoinFleets: true, # Default ON
     activeTerraforming: none(TerraformProject),
     fighterIds: @[],
     capacityViolation: CapacityViolation(

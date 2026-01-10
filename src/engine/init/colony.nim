@@ -97,7 +97,6 @@ proc createHomeWorld*(
     autoRepair: false,
     autoLoadMarines: true,
     autoLoadFighters: true,
-    autoJoinFleets: true,
     activeTerraforming: none(TerraformProject),
     fighterIds: @[],
     capacityViolation: CapacityViolation(

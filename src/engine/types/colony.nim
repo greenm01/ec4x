@@ -32,9 +32,7 @@ type
     # Automatic actions
     autoRepair*: bool
     autoLoadMarines*: bool
-    autoLoadFighters*: bool
-    autoJoinFleets*: bool
-    autoLoadingEnabled*: bool  # Auto-load newly commissioned fighters to carriers
+    autoLoadFighters*: bool  # Auto-load newly commissioned fighters to carriers
 
   Colonies* = object
     entities*: EntityManager[ColonyId, Colony]

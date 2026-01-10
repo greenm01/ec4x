@@ -147,13 +147,12 @@ TURN N - COMMAND PHASE (CMD)
 │
 ├─ 4. Colony Automation
 │  └─ For each colony:
-│     ├─ If colony.autoJoinFleets = true:
-│     │  └─ Auto-assign newly commissioned ships to fleets
-│     │     └─ Includes: New ships + repaired ships
-│     ├─ If colony.autoLoadMarines = true:
+│     ├─ 4a. Auto-assign ships to fleets (always enabled, in CMD2)
+│     │  └─ NOTE: Implemented in CMD2 commissioning, not here
+│     ├─ 4b. If colony.autoLoadMarines = true:
 │     │  └─ Auto-load marines onto troop transports
-│     ├─ If colony.autoLoadFighters = true:
-│     └─ Auto-load fighters onto carriers (Active stationary only)
+│     └─ 4c. Auto-load fighters onto carriers (in CMD2c)
+│        └─ NOTE: Implemented in CMD2c commissioning, not here
 │
 ├─ 5. Player Submission Window (24-hour window)
 │  ├─ 5a. Zero-Turn Administrative Commands (immediate)
@@ -852,6 +851,9 @@ On victory:
   - Neorias (Spaceports, Shipyards, Drydocks - production facilities)
 - **No validation needed:** If colony exists, it survived/remained owned
 - Conquered colonies had queues cleared in CON2
+- **Auto-load fighters:** After commissioning fighters, immediately load onto
+  carriers with available hangar space (if `colony.autoLoadFighters = true`).
+  This implements CMD4c at commissioning time for efficiency.
 
 **Result:** All surviving pending assets commissioned, dock capacity freed, assets ready for automation
 
@@ -883,11 +885,15 @@ On victory:
 
 **Operations:** For each colony (player-configurable flags):
 
-**4a. Auto-Assign Ships to Fleets** (`colony.autoJoinFleets`, default: true)
+**4a. Auto-Assign Ships to Fleets** (always enabled, implemented in CMD2)
+- **NOTE:** This step is implemented during CMD2 Unified Commissioning, not CMD4.
+- Ships are always auto-assigned to fleets during commissioning.
 - Newly commissioned ships (from Spaceports/Shipyards)
 - Repaired ships (from Drydocks)
 - Logic: Join existing fleet at colony OR create new fleet
-- Applies to all ship types (combat ships, scouts, auxiliary vessels)
+- Scouts join pure scout fleets (for mesh network bonuses)
+- All other ships join combat fleets
+- There is no toggle for this behavior.
 
 **4b. Auto-Load Marines** (`colony.autoLoadMarines`, default: true)
 - Newly commissioned marines → Load onto troop transports
@@ -895,14 +901,12 @@ On victory:
 - Transports at same colony
 
 **4c. Auto-Load Fighters** (`colony.autoLoadFighters`, default: true)
-- Newly commissioned fighters → Load onto carriers
+- **NOTE:** This step is implemented during CMD2c commissioning, not CMD4.
+- Fighters are auto-loaded immediately after commissioning, before CMD4 runs.
+- This ensures fighters load onto carriers already present at the colony.
 - Only load to Active stationary carriers (Hold/Guard orders or no orders)
 - Skip moving carriers and Reserve/Mothballed fleets
 - Respect carrier hangar capacity (ACO tech-based limits)
-
-**4d. Auto-Balance Fleets** (always enabled, not toggleable)
-- Balance fleet compositions automatically
-- Ensures optimal fleet organization
 
 **Result:** Players see organized fleets and loaded cargo in submission window
 
