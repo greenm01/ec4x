@@ -73,6 +73,7 @@ type
     theater*: CombatTheater
     systemId*: SystemId
     detectionResult*: DetectionResult
+    attackerWonDetection*: bool  # True if attacker won detection, false if defender won
     hasDefenderStarbase*: bool
     attackerRetreatedFleets*: seq[FleetId]
     defenderRetreatedFleets*: seq[FleetId]
@@ -87,6 +88,11 @@ type
     targetHouse*: HouseId
     fireProportion*: float  # 0.0-1.0, sum to 1.0 per shooter
 
+  DetectionOutcome* = object
+    ## Detection result for one house in multi-house combat
+    result*: DetectionResult
+    wonDetection*: bool  # True if this house won its detection roll
+
   MultiHouseBattle* = object
     ## Single battle with N participants using targeting matrix
     ## Replaces pairwise Battle bucketing for 3+ house scenarios
@@ -95,7 +101,7 @@ type
     theater*: CombatTheater
     participants*: seq[HouseCombatForce]
     targeting*: Table[HouseId, seq[TargetingPriority]]
-    detection*: Table[HouseId, DetectionResult]  # One per house
+    detection*: Table[HouseId, DetectionOutcome]  # One per house
     hasStarbase*: Table[HouseId, bool]  # Per defending house
     retreatedFleets*: seq[FleetId]
 

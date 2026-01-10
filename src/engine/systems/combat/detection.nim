@@ -56,9 +56,13 @@ proc rollDetection*(
   defender: HouseCombatForce,
   hasDefenderStarbase: bool,
   rng: var Rand
-): DetectionResult =
+): tuple[result: DetectionResult, attackerWon: bool] =
   ## Roll opposed detection to determine first-strike advantage
   ## Per docs/specs/07-combat.md Section 7.3.1
+  ##
+  ## Returns: (DetectionResult, attackerWon)
+  ## - result: Ambush/Surprise/Intercept
+  ## - attackerWon: true if attacker won detection, false if defender won
   ##
   ## **Detection vs Combat Occurrence:**
   ## - Detection determines WHO gets first-strike advantage
@@ -73,9 +77,9 @@ proc rollDetection*(
   let attackerHasRaiders = hasRaiders(state, attacker)
   let defenderHasRaiders = hasRaiders(state, defender)
 
-  # Case 1: Neither side has raiders → Intercept
+  # Case 1: Neither side has raiders → Intercept (no winner)
   if not attackerHasRaiders and not defenderHasRaiders:
-    return DetectionResult.Intercept
+    return (DetectionResult.Intercept, true)  # No detection roll, default to attacker
 
   # Calculate detection modifiers
   let attackerMod = calculateDetectionModifiers(attacker, false, false)
@@ -91,21 +95,21 @@ proc rollDetection*(
   if attackerHasRaiders and not defenderHasRaiders:
     let margin = attackerRoll - defenderRoll
     if margin >= 5:
-      return DetectionResult.Ambush
+      return (DetectionResult.Ambush, true)  # Attacker won
     elif margin >= 1:
-      return DetectionResult.Surprise
+      return (DetectionResult.Surprise, true)  # Attacker won
     else:
-      return DetectionResult.Intercept
+      return (DetectionResult.Intercept, true)  # Defender detected, attacker by convention
 
   # Case 3: Only defender has raiders
   if defenderHasRaiders and not attackerHasRaiders:
     let margin = defenderRoll - attackerRoll
     if margin >= 5:
-      return DetectionResult.Ambush
+      return (DetectionResult.Ambush, false)  # Defender won
     elif margin >= 1:
-      return DetectionResult.Surprise
+      return (DetectionResult.Surprise, false)  # Defender won
     else:
-      return DetectionResult.Intercept
+      return (DetectionResult.Intercept, false)  # Attacker detected, defender by convention
 
   # Case 4: Both have raiders → Roll-off
   if attackerHasRaiders and defenderHasRaiders:
@@ -114,21 +118,25 @@ proc rollDetection*(
     if attackerRoll > defenderRoll:
       # Attacker wins detection
       if margin >= 5:
-        return DetectionResult.Ambush
+        return (DetectionResult.Ambush, true)  # Attacker won
       elif margin >= 1:
-        return DetectionResult.Surprise
+        return (DetectionResult.Surprise, true)  # Attacker won
+      else:
+        return (DetectionResult.Intercept, true)  # Should not reach, but attacker by default
     elif defenderRoll > attackerRoll:
       # Defender wins detection
       if margin >= 5:
-        return DetectionResult.Ambush
+        return (DetectionResult.Ambush, false)  # Defender won
       elif margin >= 1:
-        return DetectionResult.Surprise
+        return (DetectionResult.Surprise, false)  # Defender won
+      else:
+        return (DetectionResult.Intercept, false)  # Should not reach, but defender by default
 
     # Tie detection roll → Intercept (no advantage)
-    return DetectionResult.Intercept
+    return (DetectionResult.Intercept, true)  # Tie, default to attacker
 
   # Fallback (should never reach here)
-  return DetectionResult.Intercept
+  return (DetectionResult.Intercept, true)
 
 ## Design Notes:
 ##

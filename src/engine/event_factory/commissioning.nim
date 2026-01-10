@@ -110,3 +110,21 @@ proc repairLostToCombat*(
     description: &"Repair of {targetDesc} lost - drydock was damaged in combat",
     systemId: none(SystemId), # Can be filled by caller
   )
+
+proc repairStalled*(
+    houseId: HouseId,
+    shipClass: ShipClass,
+    colonyId: ColonyId,
+    cost: int32,
+): event_types.GameEvent =
+  ## Create event for repair stalled due to insufficient funds (CMD2b)
+  ## Per ec4x_canonical_turn_cycle.md CMD2b: Repairs with insufficient funds
+  ## are marked Stalled and remain in queue occupying dock space
+  event_types.GameEvent(
+    eventType: event_types.GameEventType.RepairStalled,
+    houseId: some(houseId),
+    description: &"Repair of {shipClass} stalled - insufficient funds ({cost} PP required)",
+    systemId: none(SystemId), # Can be filled if needed
+    shipClass: some(shipClass),
+    details: some(&"ShipClass: {shipClass}, Cost: {cost} PP, Reason: insufficient_funds"),
+  )

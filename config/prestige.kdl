@@ -25,16 +25,12 @@ dynamicScaling {
 }
 
 // --- Morale System ---
+// NOTE: Morale tiers are now calculated RELATIVE to the leading house's prestige
+// See combat.kdl retreat.moraleRoeModifiers for percentage thresholds
+// See combat.kdl moraleChecks for CER bonuses per tier
+// This section kept for future use if needed
 morale {
-    (docs)"docs/specs/07-combat.md#section-7-2-1"
-    // Note: Morale check mechanics (d20 thresholds, CER bonuses) defined in combat.kdl moraleChecks section
-    tier "Crisis" { maxPrestige 0 }     // Collapsing house
-    tier "VeryLow" { maxPrestige 10 }   // Near collapse
-    tier "Low" { maxPrestige 20 }       // Struggling
-    tier "Average" { maxPrestige 60 }   // Normal/stable
-    tier "Good" { maxPrestige 80 }      // Strong
-    tier "High" { maxPrestige 100 }     // Very strong
-    // 101+ is VeryHigh (Elite)
+    (docs)"docs/specs/07-combat.md#section-7-2-3"
 }
 
 // ============================================================================

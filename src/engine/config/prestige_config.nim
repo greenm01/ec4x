@@ -28,30 +28,10 @@ proc parseDynamicScaling(node: KdlNode, ctx: var KdlConfigContext): DynamicPrest
   )
 
 proc parseMorale(node: KdlNode, ctx: var KdlConfigContext): MoraleConfig =
-  ## Parse morale { tier "Crisis" { maxPrestige 0 } ... }
-  var crisisMax, veryLowMax, lowMax, averageMax, goodMax, highMax: int32
-  highMax = 999  # VeryHigh is implicit (>highMax)
-
-  for child in node.children:
-    if child.name == "tier" and child.args.len > 0:
-      let tierName = child.args[0].getString()
-      let maxPrestige = child.requireInt32("maxPrestige", ctx)
-      case tierName
-      of "Crisis": crisisMax = maxPrestige
-      of "VeryLow": veryLowMax = maxPrestige
-      of "Low": lowMax = maxPrestige
-      of "Average": averageMax = maxPrestige
-      of "Good": goodMax = maxPrestige
-      of "High": highMax = maxPrestige
-      else: discard
-
+  ## Parse morale section (now a placeholder, thresholds moved to combat.kdl)
+  ## Morale tiers are calculated relative to leading house
   result = MoraleConfig(
-    crisisMax: crisisMax,
-    veryLowMax: veryLowMax,
-    lowMax: lowMax,
-    averageMax: averageMax,
-    goodMax: goodMax,
-    highMax: highMax
+    placeholder: true
   )
 
 proc parsePrestigeEvents(node: KdlNode, ctx: var KdlConfigContext): tuple[

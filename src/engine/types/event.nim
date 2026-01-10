@@ -37,6 +37,7 @@ type
     UnitRecruited # Ground unit recruited
     RepairQueued # Manual repair order queued
     RepairCompleted # Repair completed
+    RepairStalled # Repair stalled due to insufficient funds (CMD2b)
     RepairCancelled # Repair order cancelled by player
     UnitDisbanded # Unit disbanded
     FleetDisbanded # Fleet disbanded (maintenance shortfall)
@@ -173,12 +174,12 @@ type
       colonyEventType*: Option[string]
         # "Established", "Lost", "Damage", "BuildingCompleted", "UnitRecruited", "UnitDisbanded", "TerraformComplete", "RepairQueued", "RepairCompleted", "RepairCancelled"
     of Fleet, FleetDestroyed, ShipCommissioned, ScoutDestroyed, FleetDisbanded,
-        SquadronDisbanded, SquadronScrapped:
+        SquadronDisbanded, SquadronScrapped, RepairStalled:
       ## Fleet events (fleetId/details in common fields, reason in common fields)
       fleetEventType*: Option[string]
-        # "Created", "Destroyed", "Crippled", "Repaired", "Disbanded", "Scrapped" for generic Fleet
+        # "Created", "Destroyed", "Crippled", "Repaired", "Disbanded", "Scrapped", "RepairStalled" for generic Fleet
       shipClass*: Option[ShipClass]
-        # For fleet creation/destruction/crippling/commissioning/scout destruction
+        # For fleet creation/destruction/crippling/commissioning/scout destruction/repair stalled
       salvageValue*: Option[int]
         # Salvage value recovered (25% for maintenance, 50% for capitals, 0% for auto-disband)
     of Intelligence, IntelGathered, ScoutDetected:

@@ -40,8 +40,11 @@ proc resolveScoutDetection*(
     let colony = colonyOpt.get()
     starbaseBonus = if state.countStarbasesAtColony(colony.id) > 0: 2 else: 0
 
-  # Calculate target number
-  let targetNumber = 15 - scoutCount + (defenderELI + starbaseBonus)
+  # Calculate target number per spec: roll + ELI + starbaseBonus >= 15 + scoutCount
+  # Rearranged: roll >= 15 + scoutCount - ELI - starbaseBonus
+  # This means: More scouts = harder to detect (correct)
+  #             Higher defender ELI/starbase = easier to detect (correct)
+  let targetNumber = 15 + scoutCount - (defenderELI + starbaseBonus)
 
   # Roll 1d20 (result 1-20)
   let roll = int32(rng.rand(1 .. 20))

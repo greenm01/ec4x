@@ -10,6 +10,7 @@ import ../../types/[core, game_state, combat, fleet, ship]
 import ../../state/engine
 import ./strength
 import ./screened
+import ./morale
 
 proc applyRetreatLossesToScreenedUnits*(state: var GameState, fleetId: FleetId) =
   ## Apply proportional losses to screened units during retreat
@@ -119,7 +120,12 @@ proc checkFleetRetreats*(
       continue
 
     let ratio = float(fleetAS) / float(defenderAS)
-    let threshold = getROEThreshold(fleet.roe)
+    
+    # Apply morale modifier to effective ROE (per spec 7.2.3)
+    # Morale based on relative standing to leading house
+    let moraleModifier = getMoraleROEModifier(state, fleet.houseId)
+    let effectiveROE = fleet.roe + moraleModifier
+    let threshold = getROEThreshold(effectiveROE)
 
     if ratio < threshold:
       # Fleet retreats
@@ -145,7 +151,12 @@ proc checkFleetRetreats*(
       continue
 
     let ratio = float(fleetAS) / float(attackerAS)
-    let threshold = getROEThreshold(fleet.roe)
+    
+    # Apply morale modifier to effective ROE (per spec 7.2.3)
+    # Morale based on relative standing to leading house
+    let moraleModifier = getMoraleROEModifier(state, fleet.houseId)
+    let effectiveROE = fleet.roe + moraleModifier
+    let threshold = getROEThreshold(effectiveROE)
 
     # Homeworld defense override: NEVER retreat
     if battle.defender.isDefendingHomeworld:

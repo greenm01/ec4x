@@ -158,15 +158,32 @@ Set your fleet's aggression level with Rules of Engagement—a 0-10 scale determ
 
 **Morale Modifies Effective ROE:**
 
-Your house's prestige affects fleet morale, modifying effective ROE during combat:
+Your house's morale is determined by your **relative standing to the leading house**. Morale affects effective ROE during combat:
 
-| Prestige  | Morale Modifier | Effect on ROE                                     |
-|-----------|-----------------|---------------------------------------------------|
-| 0 or less | -2              | Fleets retreat much earlier (ROE 8 becomes ROE 6) |
-| 1-20      | -1              | Fleets retreat earlier (ROE 8 becomes ROE 7)      |
-| 21-60     | 0               | No change                                         |
-| 61-80     | +1              | Fleets fight longer (ROE 6 becomes ROE 7)         |
-| 81+       | +2              | Fleets fight much longer (ROE 6 becomes ROE 8)    |
+| Morale Tier | % of Leader's Prestige | ROE Modifier | Effect on ROE                                     |
+|-------------|------------------------|--------------|---------------------------------------------------|
+| Crisis      | ≤10%                   | -2           | Fleets retreat much earlier (ROE 8 becomes ROE 6) |
+| VeryLow     | ≤25%                   | -1           | Fleets retreat earlier (ROE 8 becomes ROE 7)      |
+| Low         | ≤40%                   | -1           | Fleets retreat earlier (ROE 8 becomes ROE 7)      |
+| Average     | ≤60%                   | 0            | No change                                         |
+| Good        | ≤80%                   | +1           | Fleets fight longer (ROE 6 becomes ROE 7)         |
+| High        | ≤95%                   | +2           | Fleets fight much longer (ROE 6 becomes ROE 8)    |
+| VeryHigh    | >95%                   | +2           | Fleets fight much longer (ROE 6 becomes ROE 8)    |
+
+**Relative Morale System:**
+
+- Your morale tier = `your_prestige / max_prestige_among_all_houses × 100`
+- The leading house (highest prestige) is always at 100% = VeryHigh morale
+- Houses close to the leader maintain high morale
+- Houses far behind the leader suffer morale penalties
+- Naturally scales with zero-sum competition and map size
+- Configuration: `config/combat.kdl` retreat.moraleRoeModifiers section
+
+**Examples:**
+
+- **Turn 1:** All houses at 100 prestige → Everyone at 100% = VeryHigh morale
+- **Mid-game:** Leader at 500, you at 300 → 60% of leader = Average morale
+- **Late-game:** Leader at 10,000, you at 1,500 → 15% of leader = VeryLow morale (-1 ROE)
 
 **Homeworld Defense Exception**: Fleets defending their homeworld NEVER retreat regardless of ROE or losses.
 

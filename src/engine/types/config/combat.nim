@@ -39,10 +39,27 @@ type
     squadronFightsAsUnit*: bool
     destroyAfterAllCrippled*: bool
 
+  MoraleTierThreshold* = object
+    ## Single morale tier configuration
+    maxPercent*: int32      # Max % of leader's prestige (0-100), omit for highest tier
+    roeModifier*: int32     # ROE adjustment for this tier
+
+  MoraleRoeModifiersConfig* = object
+    ## ROE modifiers based on morale tier relative to leading house (per spec 7.2.3)
+    ## Each tier defines percentage threshold and ROE modifier
+    crisis*: MoraleTierThreshold
+    veryLow*: MoraleTierThreshold
+    low*: MoraleTierThreshold
+    average*: MoraleTierThreshold
+    good*: MoraleTierThreshold
+    high*: MoraleTierThreshold
+    veryHigh*: MoraleTierThreshold  # No maxPercent, applies to >high threshold
+
   RetreatRulesConfig* = object
     fightersNeverRetreat*: bool
     spaceliftDestroyedIfEscortLost*: bool
     retreatToNearestFriendly*: bool
+    moraleRoeModifiers*: MoraleRoeModifiersConfig
 
   BlockadeConfig* = object
     blockadePrestigePenalty*: int32

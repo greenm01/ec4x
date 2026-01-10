@@ -1,11 +1,14 @@
 ## Research Cost Calculation
 ##
-## Calculate RP costs and PP conversion per economy.md:4.0
+## Calculate PP to RP conversion per ec4x_canonical_turn_cycle.md CMD6e
 ##
-## Cost formulas:
-## - ERP: (5 + log(GHO)) PP per ERP
-## - SRP: Similar scaling
-## - TRP: Varies by tech field
+## Conversion formulas (logarithmic scaling - spec is source of truth):
+## - ERP: PP * (1 + log₁₀(GHO)/3) * (1 + SL/10)
+## - SRP: PP * (1 + log₁₀(GHO)/4) * (1 + SL/5)
+## - TRP: PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)
+##
+## Logarithmic scaling provides diminishing returns on economic scale,
+## preventing runaway snowball effects while still rewarding growth.
 
 import std/[math, tables]
 import ../../types/tech
@@ -13,17 +16,21 @@ import ../../globals
 
 export tech.ResearchAllocation
 
-## Economic Research Points (economy.md:4.2)
+## Economic Research Points (CMD6e)
 
-proc calculateERPCost*(gho: int): float =
-  ## Calculate PP cost per ERP
-  ## Formula: 1 ERP = (5 + log(GHO)) PP
-  result = 5.0 + log10(float(gho))
-
-proc convertPPToERP*(pp: int32, gho: int32): int32 =
-  ## Convert PP to ERP
-  let costPerERP = calculateERPCost(gho.int)
-  result = int32(float(pp) / costPerERP)
+proc convertPPToERP*(pp: int32, gho: int32, slLevel: int32): int32 =
+  ## Convert PP to ERP using logarithmic scaling
+  ## Per ec4x_canonical_turn_cycle.md CMD6e:
+  ## ERP = PP * (1 + log₁₀(GHO)/3) * (1 + SL/10)
+  ##
+  ## Logarithmic scaling ensures economic growth provides meaningful
+  ## advantages without creating unrecoverable leads.
+  let ghoModifier = if gho > 0:
+    1.0 + (log10(float(gho)) / 3.0)
+  else:
+    1.0  # No bonus if GHO is zero
+  let slModifier = 1.0 + (float(slLevel) / 10.0)
+  result = int32(float(pp) * ghoModifier * slModifier)
 
 proc getELUpgradeCost*(currentLevel: int32): int32 =
   ## Get ERP cost to advance Economic Level
@@ -50,17 +57,21 @@ proc getELModifier*(level: int32): float32 =
     let bonus = min(float32(level) * 0.05, 0.50)
     return 1.0 + bonus
 
-## Science Research Points (economy.md:4.3)
+## Science Research Points (CMD6e)
 
-proc calculateSRPCost*(currentSL: int): float =
-  ## Calculate PP cost per SRP
-  ## Formula per economy.md:4.3: 1 SRP = 2 + SL(0.5) PP
-  result = 2.0 + float(currentSL) * 0.5
-
-proc convertPPToSRP*(pp: int32, currentSL: int32): int32 =
-  ## Convert PP to SRP
-  let costPerSRP = calculateSRPCost(currentSL.int)
-  result = int32(float(pp) / costPerSRP)
+proc convertPPToSRP*(pp: int32, gho: int32, slLevel: int32): int32 =
+  ## Convert PP to SRP using logarithmic scaling
+  ## Per ec4x_canonical_turn_cycle.md CMD6e:
+  ## SRP = PP * (1 + log₁₀(GHO)/4) * (1 + SL/5)
+  ##
+  ## Moderate GHO scaling (weaker than ERP), strong SL scaling.
+  ## Science research benefits heavily from scientific infrastructure.
+  let ghoModifier = if gho > 0:
+    1.0 + (log10(float(gho)) / 4.0)
+  else:
+    1.0  # No bonus if GHO is zero
+  let slModifier = 1.0 + (float(slLevel) / 5.0)
+  result = int32(float(pp) * ghoModifier * slModifier)
 
 proc getSLUpgradeCost*(currentLevel: int32): int32 =
   ## Get SRP cost to advance Science Level
@@ -84,24 +95,21 @@ proc getSLModifier*(level: int): float =
   ## This modifier is 5% per SL level (baseline 1.0 at SL0)
   result = 1.0 + (float(level) * 0.05)
 
-## Technology Research Points (economy.md:4.4)
+## Technology Research Points (CMD6e)
 
-proc getTRPCost*(techField: TechField, slLevel: int, gho: int): float =
-  ## Get PP cost per TRP for specific tech field
-  ## Formula per economy.md:4.4: 1 TRP = (5 + 4(SL))/10 + log(GHO) * 0.5 PP
+proc convertPPToTRP*(pp: int32, gho: int32, slLevel: int32): int32 =
+  ## Convert PP to TRP using logarithmic scaling
+  ## Per ec4x_canonical_turn_cycle.md CMD6e:
+  ## TRP = PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)
   ##
-  ## Args:
-  ##   techField: The technology being researched
-  ##   slLevel: Current Science Level
-  ##   gho: Gross House Output
-  result = (5.0 + 4.0 * float(slLevel)) / 10.0 + log10(float(gho)) * 0.5
-
-proc convertPPToTRP*(
-    pp: int32, techField: TechField, slLevel: int32, gho: int32
-): int32 =
-  ## Convert PP to TRP for specific tech field
-  let costPerTRP = getTRPCost(techField, slLevel.int, gho.int)
-  result = int32(float(pp) / costPerTRP)
+  ## Moderate GHO scaling, modest SL scaling (5% per level).
+  ## Advanced research infrastructure provides some benefit to military tech.
+  let ghoModifier = if gho > 0:
+    1.0 + (log10(float(gho)) / 3.5)
+  else:
+    1.0  # No bonus if GHO is zero
+  let slModifier = 1.0 + (float(slLevel) / 20.0)
+  result = int32(float(pp) * ghoModifier * slModifier)
 
 proc getTechUpgradeCost*(techField: TechField, currentLevel: int32): int32 =
   ## Get TRP cost to advance tech level
@@ -155,28 +163,28 @@ proc getTechUpgradeCost*(techField: TechField, currentLevel: int32): int32 =
 proc allocateResearch*(
     allocation: ResearchAllocation, gho: int32, slLevel: int32
 ): ResearchPoints =
-  ## Convert PP allocations to RP
+  ## Convert PP allocations to RP per CMD6e (logarithmic scaling)
   ##
   ## Args:
   ##   allocation: PP allocated to each category
   ##   gho: Gross House Output (for RP conversion)
-  ##   slLevel: Science Level (affects TRP costs)
+  ##   slLevel: Science Level (affects all conversion rates)
 
   result =
     ResearchPoints(economic: 0, science: 0, technology: initTable[TechField, int32]())
 
-  # Convert economic allocation
+  # Convert economic allocation: ERP = PP * (1 + log₁₀(GHO)/3) * (1 + SL/10)
   if allocation.economic > 0:
-    result.economic = convertPPToERP(allocation.economic, gho)
+    result.economic = convertPPToERP(allocation.economic, gho, slLevel)
 
-  # Convert science allocation
+  # Convert science allocation: SRP = PP * (1 + log₁₀(GHO)/4) * (1 + SL/5)
   if allocation.science > 0:
-    result.science = convertPPToSRP(allocation.science, slLevel)
+    result.science = convertPPToSRP(allocation.science, gho, slLevel)
 
-  # Convert technology allocations
+  # Convert technology allocations: TRP = PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)
   for field, pp in allocation.technology:
     if pp > 0:
-      result.technology[field] = convertPPToTRP(pp, field, slLevel, gho)
+      result.technology[field] = convertPPToTRP(pp, gho, slLevel)
 
 proc calculateTotalRPInvested*(allocation: ResearchAllocation): int =
   ## Calculate total RP invested (for breakthrough calculation)

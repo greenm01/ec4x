@@ -432,13 +432,33 @@ proc calculateAndDeductMaintenanceUpkeep*(
         applyMaintenanceShortfall(updatedColony, shortfall)
         state.updateColony(colony.id, updatedColony)
 
-      # Update house: increment shortfall counter, zero treasury
+      # Update house: increment shortfall counter, zero treasury, apply prestige penalty
       let houseOptForShortfall = state.house(houseId)
       if houseOptForShortfall.isSome:
         var updatedHouse = houseOptForShortfall.get()
         updatedHouse.consecutiveShortfallTurns += 1
         updatedHouse.treasury = 0  # Zero treasury after shortfall
+        
+        # Apply escalating prestige penalty per INC6c
+        # Base: -5 prestige (turn 1), Escalates: -2 per consecutive turn (-5, -7, -9, -11, ...)
+        let basePenalty = gameConfig.prestige.penalties.maintenanceShortfallBase  # int32: -5
+        let escalation = gameConfig.prestige.penalties.maintenanceShortfallIncrement  # int32: -2
+        let prestigePenalty: int32 = basePenalty + (escalation * int32(updatedHouse.consecutiveShortfallTurns - 1))
+        updatedHouse.prestige += prestigePenalty  # prestigePenalty is negative
+        
         state.updateHouse(houseId, updatedHouse)
+        
+        # Generate prestige penalty event
+        events.add(
+          event.GameEvent(
+            eventType: event.GameEventType.PrestigeLost,
+            turn: state.turn,
+            houseId: some(houseId),
+            description: "Maintenance shortfall prestige penalty: " & $prestigePenalty & " (turn " & $updatedHouse.consecutiveShortfallTurns & " of shortfall)",
+            changeAmount: some(int(prestigePenalty)),
+            details: some("MaintenanceShortfallPrestige"),
+          )
+        )
 
       # Emit detailed shortfall event
       let paymentPct = int(paymentRatio * 100.0)

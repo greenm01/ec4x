@@ -17,12 +17,9 @@ type
     maxMultiplier*: float32
 
   MoraleConfig* = object
-    crisisMax*: int32
-    veryLowMax*: int32
-    lowMax*: int32
-    averageMax*: int32
-    goodMax*: int32
-    highMax*: int32
+    ## Placeholder for future morale-related configuration
+    ## Morale tier thresholds are now relative to leader (see combat.kdl)
+    placeholder*: bool  # Keep struct non-empty for config parsing
 
   IuMilestoneData* = object
     ## Prestige reward for reaching an IU milestone

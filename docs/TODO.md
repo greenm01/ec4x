@@ -1,6 +1,6 @@
 # EC4X TODO & Roadmap
 
-**Last Updated:** 2025-12-25
+**Last Updated:** 2026-01-09
 **Branch:** refactor-engine
 **Current Phase:** Phase 1 - Engine Refactoring (90% complete)
 **Test Status:** KDL config migration complete, integration tests passing
@@ -98,6 +98,76 @@ turns. Development priorities focus on:
    - Comprehensive validation for all input data
    - Clear error messages with context
    - Graceful degradation for invalid state
+
+7. **Systems Compliance Audit Fixes** (2026-01-09 audit)
+   
+   **Critical (spec violations affecting game mechanics):**
+   - [x] `production/commissioning.nim`: Implement repair payment at commissioning (CMD2b) ✅
+     - Added treasury check before commissioning repaired ships
+     - Deduct repair cost (25% build cost) from house treasury
+     - Mark repairs as Stalled if insufficient funds
+     - Generate RepairStalled event
+     - **Location:** `commissionRepairedShips()` lines 844-933
+   - [x] `espionage/spy_resolution.nim`: Fix scout detection formula (inverted signs) ✅
+     - **Spec:** `1d20 + ELI + starbaseBonus vs 15 + scoutCount`
+     - **Fixed:** `roll >= 15 + scoutCount - (ELI + starbase)` (correct signs)
+     - Detection probabilities now match spec intent
+     - **Location:** Lines 44-49
+   - [x] `tech/costs.nim`: Implement logarithmic PP→RP conversion formulas ✅
+     - **New:** `ERP = PP * (1 + log₁₀(GHO)/3) * (1 + SL/10)`
+     - **New:** `SRP = PP * (1 + log₁₀(GHO)/4) * (1 + SL/5)`
+     - **New:** `TRP = PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)`
+     - Logarithmic scaling prevents runaway snowballing
+     - Updated spec and canonical doc to match
+     - **Location:** Lines 18-104
+   
+   **Medium (game works but behavior differs from spec):**
+   - [x] `income/engine.nim`: Add prestige penalty for maintenance shortfall (INC6c) ✅
+     - Config exists: `prestige.kdl` maintenanceShortfall { basePenalty -5; escalationPerTurn -2 }
+     - Apply escalating penalty: -5, -7, -9, -11... during shortfall processing
+     - **COMPLETED:** Added prestige penalty calculation and event generation (lines 442-461)
+     - **Location:** Shortfall block around line 237-463
+   - [x] `combat/planetary.nim`: Verify bombardment round limit (3 vs spec's 20) ✅
+     - **Spec 7.7.3:** "Maximum 20 rounds" refers to space/orbital combat
+     - **Current:** `maxRounds = 3` at line 571 is **CORRECT** - 3 rounds per turn for balance
+     - **Rationale:** Bombardment per turn (pacing), not continuous like space combat (20 rounds total)
+     - **VERIFIED:** Intentional design choice, not a spec violation
+     - Determine if 3-round limit is intentional per-turn limit or deviation
+   - [x] `combat/retreat.nim`: Implement morale modifier to ROE threshold ✅
+     - **Spec 7.2.3:** Morale affects effective ROE threshold (e.g., ROE 8 → ROE 6 at Crisis morale)
+     - **COMPLETED:** Implemented relative morale system (prestige relative to leading house)
+     - **Config:** Added `retreat.moraleRoeModifiers` with percentage thresholds to `combat.kdl`
+     - **Module:** Created `combat/morale.nim` with `getMoraleROEModifier()` and `getMoraleTier()`
+     - **Zero-Sum Aware:** Morale = `your_prestige / leader_prestige × 100` (scales naturally)
+     - **Spec Updated:** Documented relative morale system with percentage thresholds
+   - [x] `combat/drm.nim`: Fix detection bonus to apply to winner (not attacker only) ✅
+     - **Spec 7.3.2:** Detection winner (either side) gets bonus
+     - **COMPLETED:** Added `attackerWonDetection` field to Battle type
+     - **Updated:** detection.nim returns tuple with winner info
+     - **Updated:** drm.nim applies bonus to detection winner (attacker OR defender)
+     - **Updated:** MultiHouseBattle uses DetectionOutcome to track winner per house
+   - [ ] `fleet/dispatcher.nim`: Enforce reactivation timing
+     - **Spec:** Reserve→Active: 1 turn, Mothball→Active: 3 turns
+     - **Current:** Applies Active status immediately (lines 1828-1864)
+     - Add `reactivationTurnsRemaining` counter to Fleet type
+   
+   **Minor (enhancements, cleanup):**
+   - [ ] `combat/hits.nim`: Implement Critical Hit mechanic (natural 9 bypasses cripple-first)
+     - **Spec 7.2.2 Rule 2:** Natural 9 can bypass cripple-all-first protection
+     - Noted in code as "Phase 6 enhancement"
+   - [ ] `tech/advancement.nim`: Implement breakthrough % scaling
+     - **Spec:** Base 5% + 1% per 100 RP invested, capped at 15%
+     - **Current:** Fixed 5% chance (line 100 hardcodes `successfulRolls = 1`)
+   - [ ] `capacity/sc_fleet_count.nim`: Replace placeholder map scaling values
+     - Lines 137-139, 202-203: `totalSystems = 100`, `playerCount = 4` hardcoded
+     - Integrate with `state.starmap` for actual values
+   - [ ] `colony/colonization.nim`: Move hardcoded `StrengthWeight` to config
+     - Line 26: `StrengthWeight = 2` should be in config per CLAUDE.md guideline
+   - [ ] `diplomacy/proposals.nim`: Verify/implement proposal expiration logic
+     - Proposal expiration may be missing or implemented elsewhere
+   - [ ] `combat/cleanup.nim`: Verify crippled facility queue clearing (CON2c)
+     - Spec requires clearing queues from crippled (not just destroyed) facilities
+     - May need explicit `cleanupCrippledNeorias()` function
 
 **Estimated Completion:** 1-2 weeks
 

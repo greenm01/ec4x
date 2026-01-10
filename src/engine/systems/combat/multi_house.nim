@@ -338,7 +338,7 @@ proc buildMultiHouseBattle*(
 
   # Step 6: Roll detection for each house
   # Each house rolls detection, compared against best enemy roll
-  var detection: Table[HouseId, DetectionResult]
+  var detection: Table[HouseId, DetectionOutcome]
   var detectionRolls: Table[HouseId, int32]
 
   # First pass: Roll for each house
@@ -385,19 +385,34 @@ proc buildMultiHouseBattle*(
     # Determine detection result
     if myRoll == 0 and not anyEnemyHasRaiders:
       # Neither side has raiders
-      detection[participant.houseId] = DetectionResult.Intercept
+      detection[participant.houseId] = DetectionOutcome(
+        result: DetectionResult.Intercept,
+        wonDetection: false
+      )
     elif myRoll > bestEnemyRoll:
       # This house wins detection
       let margin = myRoll - bestEnemyRoll
       if margin >= 5:
-        detection[participant.houseId] = DetectionResult.Ambush
+        detection[participant.houseId] = DetectionOutcome(
+          result: DetectionResult.Ambush,
+          wonDetection: true
+        )
       elif margin >= 1:
-        detection[participant.houseId] = DetectionResult.Surprise
+        detection[participant.houseId] = DetectionOutcome(
+          result: DetectionResult.Surprise,
+          wonDetection: true
+        )
       else:
-        detection[participant.houseId] = DetectionResult.Intercept
+        detection[participant.houseId] = DetectionOutcome(
+          result: DetectionResult.Intercept,
+          wonDetection: true
+        )
     else:
       # Enemy wins or ties detection
-      detection[participant.houseId] = DetectionResult.Intercept
+      detection[participant.houseId] = DetectionOutcome(
+        result: DetectionResult.Intercept,
+        wonDetection: false
+      )
 
   return some(MultiHouseBattle(
     systemId: systemId,
@@ -513,10 +528,14 @@ proc resolveMultiHouseBattle*(
 
       # Calculate DRM (simplified - would need full DRM calculation)
       var drm = participant.morale
-      if battle.detection[participant.houseId] == DetectionResult.Ambush and round == 1:
-        drm += 4
-      elif battle.detection[participant.houseId] == DetectionResult.Surprise and round == 1:
-        drm += 3
+      
+      # Detection bonus (first round only, applies to winner)
+      let detectionOutcome = battle.detection[participant.houseId]
+      if detectionOutcome.wonDetection and round == 1:
+        if detectionOutcome.result == DetectionResult.Ambush:
+          drm += 4
+        elif detectionOutcome.result == DetectionResult.Surprise:
+          drm += 3
 
       # Roll CER
       let cer = rollCER(rng, drm, battle.theater)

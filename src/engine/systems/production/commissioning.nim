@@ -844,17 +844,20 @@ proc clearDamagedFacilityQueues*(state: var GameState, events: var seq[GameEvent
 proc commissionRepairedShips*(
     state: var GameState, completedRepairs: seq[RepairProject], events: var seq[GameEvent]
 ) =
-  ## Commission repaired ships back to fleets
-  ## Called during Production Phase Step 2c (after repair advancement)
-  ## Repaired ships are immediately operational (no delay)
+  ## Commission repaired ships back to fleets (CMD2b)
+  ## Per ec4x_canonical_turn_cycle.md CMD2b (lines 122-128):
+  ## - Check treasury (once per turn, here at commissioning)
+  ## - If sufficient: Pay repair cost, commission ship, free dock
+  ## - If insufficient: Mark repair Stalled (stays in queue, occupies dock)
   ##
   ## **Process:**
-  ## 1. Restore ship to Undamaged state
-  ## 2. Group ships by colony and add to single fleet per colony
-  ## 3. Generate ShipCommissioned event
-  ## 4. Dock space already freed by completeRepairProject()
+  ## 1. Check house treasury for repair cost
+  ## 2. If sufficient: Deduct cost, restore ship to Undamaged state
+  ## 3. If insufficient: Mark repair Stalled (ship stays crippled in queue)
+  ## 4. Group commissioned ships by colony and add to fleets
+  ## 5. Generate ShipCommissioned or RepairStalled events
   
-  # Group repaired ships by colony
+  # Group repaired ships by colony (only successfully paid repairs)
   var shipsByColony: Table[ColonyId, seq[ShipId]]
   
   for repair in completedRepairs:
@@ -881,11 +884,60 @@ proc commissionRepairedShips*(
     
     var ship = shipOpt.get()
     
+    # Get colony to find owner
+    let colonyOpt = state.colony(repair.colonyId)
+    if colonyOpt.isNone:
+      logWarn(
+        "Commissioning", "Colony not found for repair",
+        " colonyId=", repair.colonyId, " repairId=", repair.id,
+      )
+      continue
+    
+    let colony = colonyOpt.get()
+    let houseId = colony.owner
+    
+    # Check treasury for repair cost
+    var house = state.house(houseId).get()
+    
+    if house.treasury < repair.cost:
+      # Insufficient funds - mark repair as Stalled
+      # Ship stays crippled in queue, occupies dock
+      logWarn(
+        "Commissioning", "Insufficient funds for ship repair - marked Stalled",
+        " houseId=", houseId,
+        " shipId=", shipId,
+        " cost=", repair.cost, " PP",
+        " treasury=", house.treasury, " PP",
+      )
+      
+      # Generate RepairStalled event
+      events.add(event_factory.repairStalled(
+        houseId,
+        ship.shipClass,
+        repair.colonyId,
+        repair.cost,
+      ))
+      
+      # Ship stays in repair queue (not commissioned)
+      continue
+    
+    # Sufficient funds - deduct cost and commission ship
+    house.treasury -= repair.cost
+    state.updateHouse(houseId, house)
+    
+    logInfo(
+      "Commissioning", "Paid repair cost",
+      " houseId=", houseId,
+      " shipId=", shipId,
+      " cost=", repair.cost, " PP",
+      " treasury_after=", house.treasury, " PP",
+    )
+    
     # Restore ship to operational state
     ship.state = CombatState.Undamaged
     state.updateShip(shipId, ship)
     
-    # Add to colony group
+    # Add to colony group for fleet assignment
     if not shipsByColony.hasKey(repair.colonyId):
       shipsByColony[repair.colonyId] = @[]
     shipsByColony[repair.colonyId].add(shipId)

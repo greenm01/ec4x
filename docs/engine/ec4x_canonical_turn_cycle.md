@@ -983,10 +983,11 @@ Players see:
   - Example: 80 PP treasury, 100 PP research → scale to 80% (80 PP total)
 - Deduct research cost from treasury (competes with builds)
 - Calculate GHO (Gross House Output) from colony production
-- **Convert PP → RP** using GHO and Science Level:
-  - ERP (Economic Research Points): `PP * (1 + GHO/1000) * (1 + SL/10)`
-  - SRP (Science Research Points): `PP * (1 + GHO/2000) * (1 + SL/5)`
-  - TRP (Technology Research Points): `PP * (1 + GHO/1500)` per field
+- **Convert PP → RP** using GHO and Science Level (logarithmic scaling):
+  - ERP (Economic Research Points): `PP * (1 + log₁₀(GHO)/3) * (1 + SL/10)`
+  - SRP (Science Research Points): `PP * (1 + log₁₀(GHO)/4) * (1 + SL/5)`
+  - TRP (Technology Research Points): `PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)` per field
+  - **Rationale**: Logarithmic GHO scaling provides diminishing returns, preventing runaway economic snowballing while still rewarding growth. TRP now scales with SL (modest 5% per level) to reflect advanced research infrastructure.
 - **Accumulate RP** in `house.techTree.accumulated`:
   - `accumulated.economic += earnedRP.economic`
   - `accumulated.science += earnedRP.science`

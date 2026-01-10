@@ -73,17 +73,21 @@ proc calculateDRM*(
 
   case battle.theater
   of CombatTheater.Space, CombatTheater.Orbital:
-    # Detection bonus (first round only, attacker only)
-    if round == 1 and isAttacker:
-      let detectionBonus =
-        case battle.detectionResult
-        of DetectionResult.Ambush:
-          4'i32
-        of DetectionResult.Surprise:
-          3'i32
-        of DetectionResult.Intercept:
-          0'i32
-      result += detectionBonus
+    # Detection bonus (first round only, applies to winner of detection roll)
+    # Per spec 7.3.2: Detection winner (either side) gets bonus
+    if round == 1:
+      let wonDetection = (isAttacker and battle.attackerWonDetection) or 
+                         (not isAttacker and not battle.attackerWonDetection)
+      if wonDetection:
+        let detectionBonus =
+          case battle.detectionResult
+          of DetectionResult.Ambush:
+            4'i32
+          of DetectionResult.Surprise:
+            3'i32
+          of DetectionResult.Intercept:
+            0'i32
+        result += detectionBonus
 
     # Fighter Superiority (recalculated each round)
     result += calculateFighterSuperiority(state, force, enemyForce)

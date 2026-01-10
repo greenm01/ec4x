@@ -50,8 +50,8 @@ cer {
 moraleChecks {
     (docs)"docs/specs/07-combat.md#section-7-3-3"
     // 1d20 roll required to succeed morale check, CER bonus applied on success
-    // Note: Morale tiers (collapsing/veryLow/low/normal/high/veryHigh) defined in prestige.kdl morale section
-    // Morale tier is determined by current prestige value
+    // Morale tier calculated relative to leading house (see retreat.moraleRoeModifiers for thresholds)
+    // Morale tier is determined by: your_prestige / max_prestige * 100
 
     collapsing {
         threshold 21              // Never succeeds (roll can't exceed 20)
@@ -121,10 +121,22 @@ starbase {
 }
 
 retreat {
-    (docs)"docs/specs/07-combat.md#section-7-3-6"
+    (docs)"docs/specs/07-combat.md#section-7-2-3"
     fightersNeverRetreat #true
     spaceliftDestroyedIfEscortLost #true
     retreatToNearestFriendly #true
+    
+    // Morale tiers relative to leading house's prestige (per Section 7.2.3)
+    // Each tier defines max % of leader's prestige and ROE modifier
+    moraleRoeModifiers {
+        crisis { maxPercent 10; roeModifier -2 }      // ≤10% of leader: Fleets retreat much earlier
+        veryLow { maxPercent 25; roeModifier -1 }     // ≤25% of leader: Fleets retreat earlier
+        low { maxPercent 40; roeModifier -1 }         // ≤40% of leader: Fleets retreat earlier
+        average { maxPercent 60; roeModifier 0 }      // ≤60% of leader: No change
+        good { maxPercent 80; roeModifier 1 }         // ≤80% of leader: Fleets fight longer
+        high { maxPercent 95; roeModifier 2 }         // ≤95% of leader: Fleets fight much longer
+        veryHigh { roeModifier 2 }                    // >95% of leader: Fleets fight much longer
+    }
 }
 
 // --- Blockade Mechanics ---
