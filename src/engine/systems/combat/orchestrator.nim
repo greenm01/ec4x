@@ -3,15 +3,20 @@
 ## Enforces Space → Orbital → Planetary combat sequence per spec 07-combat.md
 ## Single entry point for all combat in a system called by turn_cycle.
 ##
-## **New Combat System Integration:**
+## **Combat System Integration:**
 ## - Uses multi_house.nim for space combat resolution
 ## - Uses planetary.nim for ground combat
 ## - Handles theater progression and victory conditions
+##
+## **Architecture Compliance** (per src/engine/architecture.md):
+## - Uses state layer APIs (UFCS pattern)
+## - Uses iterators for fleet access (no arrivedOrders table)
+## - Uses entity ops for mutations
+## - Uses common/logger for logging
 
 import std/[tables, options, random, sequtils]
 import ../../../common/logger
-import ../../types/[core, game_state, command, combat, event, fleet, diplomacy, prestige]
-import ../../types/resolution as res_types
+import ../../types/[core, game_state, combat, event, fleet, diplomacy, prestige]
 import ../../state/[engine, iterators]
 import ../../event_factory/init as event_factory
 import ../../prestige/engine as prestige_app
@@ -34,11 +39,93 @@ type
     orbitalResult*: Option[TheaterResult]
     planetaryAttacks*: int
 
+  AssaultIntent = object
+    ## Internal type for planetary assault tracking
+    houseId: HouseId
+    fleetId: FleetId
+    assaultType: FleetCommandType
+
+proc collectAssaultIntents(
+  state: GameState,
+  systemId: SystemId
+): tuple[bombardments: seq[AssaultIntent], invasions: seq[AssaultIntent]] =
+  ## Collect planetary assault intents from arrived fleets at this system
+  ## Uses iterator pattern instead of arrivedOrders table
+  ## Per docs/engine/ec4x_canonical_turn_cycle.md CON1d
+  ##
+  ## Filters:
+  ## - Fleet at this system (location == systemId)
+  ## - Fleet arrived (missionState == Executing)
+  ## - Fleet has assault command targeting this system
+  ## - Fleet still exists (survived space combat)
+
+  result.bombardments = @[]
+  result.invasions = @[]
+
+  for fleet in state.fleetsInSystem(systemId):
+    # Only fleets that have arrived at their target
+    if fleet.missionState != MissionState.Executing:
+      continue
+
+    # Check if command targets this system
+    let cmd = fleet.command
+    if cmd.targetSystem.isNone or cmd.targetSystem.get() != systemId:
+      continue
+
+    case cmd.commandType
+    of FleetCommandType.Bombard:
+      result.bombardments.add(AssaultIntent(
+        houseId: fleet.houseId,
+        fleetId: fleet.id,
+        assaultType: cmd.commandType
+      ))
+    of FleetCommandType.Invade, FleetCommandType.Blitz:
+      result.invasions.add(AssaultIntent(
+        houseId: fleet.houseId,
+        fleetId: fleet.id,
+        assaultType: cmd.commandType
+      ))
+    else:
+      discard
+
+proc collectBlockadeIntents(
+  state: GameState,
+  systemId: SystemId,
+  colonyOwner: HouseId
+): seq[tuple[houseId: HouseId, fleetId: FleetId]] =
+  ## Collect blockade intents from arrived fleets at this system
+  ## Uses iterator pattern instead of arrivedOrders table
+  ## Per docs/specs/06-operations.md Section 6.3.8
+
+  result = @[]
+
+  for fleet in state.fleetsInSystem(systemId):
+    # Skip if blockading own colony
+    if fleet.houseId == colonyOwner:
+      continue
+
+    # Only fleets that have arrived at their target
+    if fleet.missionState != MissionState.Executing:
+      continue
+
+    # Check if command is Blockade targeting this system
+    let cmd = fleet.command
+    if cmd.commandType != FleetCommandType.Blockade:
+      continue
+
+    if cmd.targetSystem.isNone or cmd.targetSystem.get() != systemId:
+      continue
+
+    # Check diplomatic status (must be hostile or enemy)
+    if (fleet.houseId, colonyOwner) in state.diplomaticRelation:
+      let relation = state.diplomaticRelation[(fleet.houseId, colonyOwner)]
+      if relation.state in [DiplomaticState.Hostile, DiplomaticState.Enemy]:
+        result.add((houseId: fleet.houseId, fleetId: fleet.id))
+
 proc resolveBlockades(
   state: var GameState,
   systemId: SystemId,
   colonyId: ColonyId,
-  arrivedOrders: Table[HouseId, CommandPacket],
   events: var seq[GameEvent]
 ) =
   ## Resolve simultaneous blockades after planetary combat
@@ -54,31 +141,14 @@ proc resolveBlockades(
   let colony = colonyOpt.get()
   let colonyOwner = colony.owner
 
-  # Collect all blockade intents from arrived orders
-  type BlockaderInfo = tuple[houseId: HouseId, fleetId: FleetId]
-  var blockaderInfo: seq[BlockaderInfo] = @[]
+  # Collect all blockade intents using iterator pattern
+  let blockadeIntents = collectBlockadeIntents(state, systemId, colonyOwner)
+
+  # Extract unique blockading houses
   var blockaders: seq[HouseId] = @[]
-
-  for houseId, commandPacket in arrivedOrders:
-    # Skip if blockading own colony
-    if houseId == colonyOwner:
-      continue
-
-    for cmd in commandPacket.fleetCommands:
-      if cmd.commandType == FleetCommandType.Blockade:
-        if cmd.targetSystem.isSome and cmd.targetSystem.get() == systemId:
-          # Verify fleet exists and is at system
-          let fleetOpt = state.fleet(cmd.fleetId)
-          if fleetOpt.isSome:
-            let fleet = fleetOpt.get()
-            if fleet.location == systemId:
-              # Check diplomatic status (must be hostile or enemy)
-              if (houseId, colonyOwner) in state.diplomaticRelation:
-                let relation = state.diplomaticRelation[(houseId, colonyOwner)]
-                if relation.state in [DiplomaticState.Hostile, DiplomaticState.Enemy]:
-                  blockaderInfo.add((houseId: houseId, fleetId: cmd.fleetId))
-                  if houseId notin blockaders:
-                    blockaders.add(houseId)
+  for intent in blockadeIntents:
+    if intent.houseId notin blockaders:
+      blockaders.add(intent.houseId)
 
   if blockaders.len == 0:
     # No successful blockaders - clear blockade status
@@ -106,12 +176,12 @@ proc resolveBlockades(
   state.updateColony(colonyId, updatedColony)
 
   # Generate blockade events for each blockading house
-  for info in blockaderInfo:
+  for intent in blockadeIntents:
     events.add(event_factory.blockadeSuccessful(
-      blockadingHouse = info.houseId,
+      blockadingHouse = intent.houseId,
       targetColony = systemId,
       colonyOwner = colonyOwner,
-      fleetId = info.fleetId,
+      fleetId = intent.fleetId,
       blockadeTurn = updatedColony.blockadeTurns,
       totalBlockaders = blockaders.len
     ))
@@ -190,21 +260,20 @@ proc determineTheaterOutcome(
 proc resolveSystemCombat*(
   state: var GameState,
   systemId: SystemId,
-  orders: Table[HouseId, CommandPacket],
-  arrivedOrders: Table[HouseId, CommandPacket],
-  combatReports: var seq[res_types.CombatReport],
   events: var seq[GameEvent],
   rng: var Rand,
-) =
+): seq[CombatResult] =
   ## Single entry point for all combat in a system
   ## Called by turn_cycle/conflict_phase.nim
   ##
+  ## Returns seq[CombatResult] with details of all combat in this system.
   ## Enforces theater progression: Space → Orbital → Planetary
   ##
-  ## **Integration Note:**
-  ## This maintains the legacy interface for turn_cycle compatibility
-  ## while using the new spec-compliant combat system internally
+  ## **Architecture Note:**
+  ## Uses iterator pattern for fleet access instead of arrivedOrders table.
+  ## Fleets with missionState == Executing have arrived at targets.
 
+  result = @[]
   logCombat("[THEATER] Resolving combat", " system=", $systemId)
 
   let colonyOpt = state.colonyBySystem(systemId)
@@ -214,16 +283,12 @@ proc resolveSystemCombat*(
     else:
       none(HouseId)
 
-  # THEATER 1: Space Combat
+  # ===================================================================
+  # THEATER 1: SPACE COMBAT
+  # ===================================================================
   # Use new multi-house combat system
   let spaceCombatResults = multi_house.resolveSystemCombat(state, systemId, rng)
-
-  # Convert CombatResult to legacy CombatReport format for turn_cycle
-  # TODO: Update turn_cycle to use new CombatResult format
-  for result in spaceCombatResults:
-    # For now, create minimal report
-    # Full conversion will happen when turn_cycle is updated
-    discard
+  result.add(spaceCombatResults)
 
   # Determine theater outcome
   let spaceOutcome = determineTheaterOutcome(
@@ -246,49 +311,34 @@ proc resolveSystemCombat*(
     # Combat occurred - check outcome
     attackersAchievedOrbitalSupremacy = spaceOutcome.attackersWon
 
-  # THEATER 2: Planetary Combat
+  # ===================================================================
+  # THEATER 2: ORBITAL COMBAT (handled by multi_house.nim)
+  # ===================================================================
+  # Note: Orbital combat is currently part of space combat resolution
+  # Future: Separate orbital combat theater if needed
+
+  # ===================================================================
+  # THEATER 3: PLANETARY COMBAT
+  # ===================================================================
   # Only proceed if attackers achieved orbital supremacy
   if not attackersAchievedOrbitalSupremacy:
     logCombat(
       "[THEATER] Attackers did not achieve orbital supremacy",
       " system=", $systemId
     )
+    # Still run cleanup for space combat effects
+    cleanup.cleanupPostCombat(state, systemId)
     return
 
   if colonyOpt.isNone:
-    return # No colony to assault
+    # No colony to assault - just cleanup and return
+    cleanup.cleanupPostCombat(state, systemId)
+    return
 
   let colonyId = colonyOpt.get().id
 
-  # Collect all planetary assault commands targeting this colony
-  type AssaultIntent = object
-    houseId: HouseId
-    fleetId: FleetId
-    assaultType: FleetCommandType
-
-  var bombardments: seq[AssaultIntent] = @[]
-  var invasions: seq[AssaultIntent] = @[]
-
-  for houseId, commandPacket in arrivedOrders:
-    for cmd in commandPacket.fleetCommands:
-      if cmd.targetSystem.isSome and cmd.targetSystem.get() == systemId:
-        # Verify fleet still exists and survived space combat
-        if state.fleet(cmd.fleetId).isSome:
-          case cmd.commandType
-          of FleetCommandType.Bombard:
-            bombardments.add(AssaultIntent(
-              houseId: houseId,
-              fleetId: cmd.fleetId,
-              assaultType: cmd.commandType
-            ))
-          of FleetCommandType.Invade, FleetCommandType.Blitz:
-            invasions.add(AssaultIntent(
-              houseId: houseId,
-              fleetId: cmd.fleetId,
-              assaultType: cmd.commandType
-            ))
-          else:
-            discard
+  # Collect assault intents using iterator pattern
+  let (bombardments, invasions) = collectAssaultIntents(state, systemId)
 
   # PHASE 1: Execute all bombardments sequentially (wear down defenses)
   if bombardments.len > 0:
@@ -309,108 +359,114 @@ proc resolveSystemCombat*(
       )
 
   # PHASE 2: Simultaneous invasion/blitz resolution (compete for capture)
-  if invasions.len == 0:
-    return # No invasion attempts
+  if invasions.len > 0:
+    # Randomize order for fairness
+    var shuffledInvasions = invasions
+    for i in countdown(shuffledInvasions.len - 1, 1):
+      let j = rand(rng, 0..i)
+      swap(shuffledInvasions[i], shuffledInvasions[j])
 
-  # Randomize command for fairness
-  for i in countdown(invasions.len - 1, 1):
-    let j = rand(rng, 0..i)
-    swap(invasions[i], invasions[j])
+    logCombat(
+      "[THEATER] Processing invasions/blitz (simultaneous)",
+      " system=", $systemId,
+      " total_attempts=", $shuffledInvasions.len
+    )
 
-  logCombat(
-    "[THEATER] Processing invasions/blitz (simultaneous)",
-    " system=", $systemId,
-    " total_attempts=", $invasions.len
-  )
+    # Try each invasion/blitz in random order until one succeeds
+    var colonyCaptured = false
+    for intent in shuffledInvasions:
+      if colonyCaptured:
+        # Colony already captured by another house - this assault fails
+        let assaultTypeName = if intent.assaultType == FleetCommandType.Invade:
+          "Invade" else: "Blitz"
 
-  # Try each invasion/blitz in random command until one succeeds
-  var colonyCaptured = false
-  for intent in invasions:
-    if colonyCaptured:
-      # Colony already captured by another house - this assault fails
-      let assaultTypeName = if intent.assaultType == FleetCommandType.Invade:
-        "Invade" else: "Blitz"
+        events.add(event_factory.commandFailed(
+          intent.houseId,
+          intent.fleetId,
+          assaultTypeName,
+          reason = "colony already captured by another house",
+          systemId = some(systemId)
+        ))
 
-      events.add(event_factory.commandFailed(
-        intent.houseId,
-        intent.fleetId,
-        assaultTypeName,
-        reason = "colony already captured by another house",
-        systemId = some(systemId)
-      ))
+        logCombat(
+          "[THEATER] Invasion failed - colony already captured",
+          " system=", $systemId,
+          " house=", $intent.houseId
+        )
+        continue
 
-      logCombat(
-        "[THEATER] Invasion failed - colony already captured",
-        " system=", $systemId,
-        " house=", $intent.houseId
-      )
-      continue
+      # Attempt invasion/blitz
+      var invasionResult: CombatResult
+      case intent.assaultType
+      of FleetCommandType.Invade:
+        invasionResult = planetary.resolveInvasion(state, @[intent.fleetId], colonyId, rng)
+      of FleetCommandType.Blitz:
+        invasionResult = planetary.resolveBlitz(state, @[intent.fleetId], colonyId, rng)
+      else:
+        continue
 
-    # Attempt invasion/blitz
-    var result: CombatResult
-    case intent.assaultType
-    of FleetCommandType.Invade:
-      result = planetary.resolveInvasion(state, @[intent.fleetId], colonyId, rng)
-    of FleetCommandType.Blitz:
-      result = planetary.resolveBlitz(state, @[intent.fleetId], colonyId, rng)
-    else:
-      continue
+      # Check invasion validation failure (batteries not cleared)
+      # If rounds == 0 and attacker didn't survive, validation failed
+      # Per planetary.nim resolveInvasion: returns early if batteries operational
+      if not invasionResult.attackerSurvived and invasionResult.rounds == 0:
+        let assaultTypeName = if intent.assaultType == FleetCommandType.Invade:
+          "Invade" else: "Blitz"
 
-    # Check invasion validation failure (batteries not cleared)
-    # If rounds == 0 and attacker didn't survive, validation failed
-    # Per planetary.nim resolveInvasion: returns early if batteries operational
-    if not result.attackerSurvived and result.rounds == 0:
-      let assaultTypeName = if intent.assaultType == FleetCommandType.Invade:
-        "Invade" else: "Blitz"
+        events.add(event_factory.commandFailed(
+          intent.houseId,
+          intent.fleetId,
+          assaultTypeName,
+          reason = "ground batteries still operational - bombardment required",
+          systemId = some(systemId)
+        ))
 
-      events.add(event_factory.commandFailed(
-        intent.houseId,
-        intent.fleetId,
-        assaultTypeName,
-        reason = "ground batteries still operational - bombardment required",
-        systemId = some(systemId)
-      ))
+        logCombat(
+          "[THEATER] Invasion failed - batteries operational",
+          " system=", $systemId,
+          " house=", $intent.houseId,
+          " assault_type=", assaultTypeName
+        )
+        continue # Next house gets their chance
 
-      logCombat(
-        "[THEATER] Invasion failed - batteries operational",
-        " system=", $systemId,
-        " house=", $intent.houseId,
-        " assault_type=", assaultTypeName
-      )
-      continue # Next house gets their chance
+      # Check if invasion succeeded (attacker survived and defender didn't)
+      if invasionResult.attackerSurvived and not invasionResult.defenderSurvived:
+        colonyCaptured = true
+        logCombat(
+          "[THEATER] Colony captured",
+          " system=", $systemId,
+          " victor=", $intent.houseId
+        )
+      # If invasion failed in ground combat, next house gets their chance
 
-    # Check if invasion succeeded (attacker survived and defender didn't)
-    if result.attackerSurvived and not result.defenderSurvived:
-      colonyCaptured = true
-      logCombat(
-        "[THEATER] Colony captured",
-        " system=", $systemId,
-        " victor=", $intent.houseId
-      )
-    # If invasion failed in ground combat, next house gets their chance
-
-  # THEATER 4: Blockade (Simultaneous)
+  # ===================================================================
+  # THEATER 4: BLOCKADE RESOLUTION
+  # ===================================================================
   # Multiple houses can blockade, but penalty applies only once per turn
   if colonyOpt.isSome and attackersAchievedOrbitalSupremacy:
-    resolveBlockades(state, systemId, colonyOpt.get().id, arrivedOrders, events)
+    resolveBlockades(state, systemId, colonyOpt.get().id, events)
 
-  # CLEANUP: Remove destroyed entities and clear queues
+  # ===================================================================
+  # CON2: CLEANUP - Immediate Combat Effects
+  # ===================================================================
+  # Remove destroyed entities and clear queues
   # Called after all combat resolution and reporting complete
+  logCombat("[CON2] Post-combat cleanup", " system=", $systemId)
   cleanup.cleanupPostCombat(state, systemId)
 
 ## Design Notes:
 ##
-## **New Combat System:**
+## **Architecture Compliance:**
+## - Uses iterator pattern for fleet access (no arrivedOrders table)
+## - Fleets with missionState == Executing have arrived at targets
+## - UFCS style throughout (state.fleetsInSystem, etc.)
+## - Delegates to specialized modules (multi_house, planetary, cleanup)
+##
+## **Combat System:**
 ## - multi_house.nim handles all space combat with proper diplomatic escalation
 ## - planetary.nim handles bombardment/invasion/blitz
-## - No more squadrons, task forces, or bucket targeting
-##
-## **Turn Cycle Integration:**
-## - Maintains legacy interface (resolveSystemCombat with orders/reports)
-## - Converts between new CombatResult and legacy CombatReport
-## - Turn cycle eventually needs updating to use new format directly
+## - cleanup.nim handles CON2 (Immediate Combat Effects)
 ##
 ## **Theater Progression:**
 ## - Space combat resolves all hostile pairs simultaneously
 ## - Attackers must win space combat to proceed to planetary
-## - Planetary combat only for fleets that have arrived
+## - Planetary combat only for fleets that have arrived (Executing state)

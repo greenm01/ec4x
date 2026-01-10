@@ -120,8 +120,10 @@ proc destroyScreenedUnitsInFleet*(state: var GameState, fleetId: FleetId) =
   ## Per docs/specs/07-combat.md Section 7.6.1
   ##
   ## Called when:
-  ## - Fleet is destroyed in combat
-  ## - Fleet retreats (screened units destroyed proportionally - TODO)
+  ## - Fleet is destroyed in combat (all screened units destroyed)
+  ##
+  ## Note: Fleet retreat uses applyRetreatLossesToScreenedUnits() from
+  ## retreat.nim which applies proportional losses based on escort casualties.
 
   let screenedShips = getScreenedShipsInFleet(state, fleetId)
 
@@ -206,9 +208,9 @@ proc destroyScreenedUnitsAtColony*(state: var GameState, colonyId: ColonyId) =
 ## **Screened Unit Lifecycle:**
 ## 1. Do NOT contribute AS/DS during combat (excluded from strength calculations)
 ## 2. Do NOT receive hits during combat (excluded from hit application)
-## 3. Retreat with fleet if fleet retreats (TODO: proportional losses)
-## 4. Destroyed if fleet destroyed
-## 5. Destroyed if defenders eliminated (orbital combat only)
+## 3. Proportional losses during fleet retreat (see retreat.applyRetreatLossesToScreenedUnits)
+## 4. Destroyed if fleet destroyed (see destroyScreenedUnitsInFleet)
+## 5. Destroyed if defenders eliminated (orbital combat only, see destroyScreenedUnitsAtColony)
 ##
 ## **Strategic Implications:**
 ## - Defenders should evacuate auxiliary vessels before combat
@@ -217,6 +219,5 @@ proc destroyScreenedUnitsAtColony*(state: var GameState, colonyId: ColonyId) =
 ## - High stakes for defending fortress colonies
 ##
 ## **Future Enhancements:**
-## - Proportional screened unit losses during fleet retreat
 ## - Screened unit evacuation mechanics
 ## - Screened unit capture vs destruction (blitz operations)

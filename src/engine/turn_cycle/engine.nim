@@ -21,7 +21,7 @@
 import std/[tables, random, strformat]
 import ../../common/logger
 import ../types/[
-  core, game_state, command, event, resolution as res_types, victory
+  core, game_state, command, event, combat, victory
 ]
 import ./[conflict_phase, income_phase, command_phase, production_phase]
 import ../victory/engine as victory_engine
@@ -30,7 +30,7 @@ type
   TurnResult* = object
     ## Result of turn resolution
     events*: seq[GameEvent]
-    combatReports*: seq[res_types.CombatReport]
+    combatResults*: seq[CombatResult]
     victoryCheck*: VictoryCheck
     turnAdvanced*: bool
 
@@ -58,7 +58,7 @@ proc resolveTurn*(
   logInfo("TurnCycle", &"=== Turn {state.turn} Resolution Begin ===")
 
   result.events = @[]
-  result.combatReports = @[]
+  result.combatResults = @[]
   result.victoryCheck = VictoryCheck(victoryOccurred: false)
   result.turnAdvanced = false
 
@@ -68,7 +68,7 @@ proc resolveTurn*(
   # Resolves combat, espionage, and colonization for fleets that arrived
   # at their targets. Uses commands stored in Fleet.command from last turn.
   logInfo("TurnCycle", "[Phase 1/4] Conflict Phase")
-  resolveConflictPhase(state, orders, result.combatReports, result.events, rng)
+  resolveConflictPhase(state, orders, result.combatResults, result.events, rng)
 
   # =========================================================================
   # PHASE 2: INCOME PHASE
@@ -131,7 +131,7 @@ proc resolveTurn*(
 
   logInfo("TurnCycle", &"=== Turn {state.turn - 1} Resolution Complete ===")
   logInfo("TurnCycle",
-    &"  Events: {result.events.len}, Combat Reports: {result.combatReports.len}")
+    &"  Events: {result.events.len}, Combat Results: {result.combatResults.len}")
 
 proc resolveTurnWithSeed*(
     state: var GameState,

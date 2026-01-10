@@ -4,13 +4,6 @@ import std/options
 import ./[core, espionage, tech, diplomacy, ship]
 
 type
-  # Stub CombatReport for turn_cycle compatibility
-  # TODO: Remove when turn_cycle is updated to use new combat system
-  CombatReport* = object
-    turn*: int32
-    systemId*: SystemId
-    description*: string
-
   # Base event data (common to all events)
   BaseEvent* = object
     turn*: int32
