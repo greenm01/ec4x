@@ -120,7 +120,8 @@ Spaceports are large ground based facilities that launch heavy-lift ships and eq
 **Construction Cost**: 20 PP  
 **Construction Time**: 1 turn  
 **Base Capacity**: 5 docks  
-**Capacity Scaling**: Dock capacity increases with CST tech (see [Section 4.5](04-research_development.md#45-construction-cst))
+**Capacity Scaling**: Dock capacity increases with CST tech (see [Section 4.5](04-research_development.md#45-construction-cst))  
+**Limit**: One spaceport per colony
 
 **Planet-side Ship Construction**: Ships built at spaceports incur a **100% PP cost penalty** due to orbital launch requirements. See [Section 5.2](05-construction.md#52-planet-side-construction) for construction rules.
 
@@ -431,6 +432,7 @@ Starbases (SB) are powerful orbital fortresses that facilitate planetary defense
 **Prerequisite**: Requires operational Spaceport
 **Construction Location**: Built at colonies using Spaceport infrastructure
 **Mobility**: Fixed in orbit, cannot move out of home system
+**Limit**: Maximum three starbases per colony
 
 **Detection Capabilities**:
 
