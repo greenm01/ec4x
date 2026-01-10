@@ -84,29 +84,71 @@ client submit game-123 orders.toml
 # Client encrypts to moderator, publishes EventKindOrderPacket to relay
 ```
 
-**5. Zero-Turn Commands Execute Immediately**
+**5. Zero-Turn Command Flow**
 
-Before orders are written to pending queue, zero-turn administrative commands execute immediately:
+Zero-turn commands are administrative operations that execute during order submission (CMD5), not during turn resolution. They allow players to reorganize fleets and manage cargo before committing operational orders.
+
+### Execution Timeline
 
 ```
 Order Submission Flow:
   ↓
-Parse orders.toml
+Parse CommandPacket
   ↓
-Identify zero-turn commands (DetachShips, LoadCargo, etc.)
+Extract zero-turn commands
   ↓
 Execute zero-turn commands sequentially
   - Validate each command
-  - Modify game state immediately
-  - Return success/failure
+  - Modify GameState immediately
+  - Return ZeroTurnResult per command
   ↓
-Write operational orders to pending queue
+Queue operational orders for turn resolution
 ```
 
-**Zero-turn commands include:**
-- Fleet reorganization: DetachShips, TransferShips, MergeFleets
-- Cargo operations: LoadCargo, UnloadCargo
-- Squadron management: TransferShipBetweenSquadrons, AssignSquadronToFleet
+### Client/Server Interaction
+
+**Client Workflow:**
+1. Load `PlayerState` from SQLite (or receive from server)
+2. Player builds zero-turn commands (UI preview optional)
+3. Submit `CommandPacket` containing zero-turn commands + operational orders
+4. Receive `ZeroTurnResult`s for immediate feedback
+5. Updated `PlayerState` saved to SQLite after processing
+
+**Server Workflow:**
+1. Receive `CommandPacket` from client
+2. Extract zero-turn commands
+3. Execute via `submitZeroTurnCommand(state, cmd, events)`
+4. Emit `GameEvent`s for telemetry
+5. Queue remaining operational orders
+6. Save updated `PlayerState` to SQLite for player retrieval
+
+### PlayerState Persistence
+
+After zero-turn command execution, the server generates `PlayerState` for each house:
+- Full entity data for owned assets (colonies, fleets, ships)
+- Fog-of-war filtered intel for visible enemy assets
+- Saved to SQLite `player_states` table
+
+**Claude Testing:** Claude reads `PlayerState` directly from SQLite to analyze game state and submit orders via KDL.
+
+### Zero-turn command types (9):
+
+**Fleet Organization (no colony required):**
+- DetachShips - Split ships to create new fleet
+- TransferShips - Move ships between fleets
+- MergeFleets - Combine entire fleet into another
+
+**Cargo Operations (requires colony):**
+- LoadCargo - Load marines/colonists onto transports
+- UnloadCargo - Unload cargo at colony
+
+**Fighter Operations:**
+- LoadFighters - Load fighters from colony onto carrier (requires colony)
+- UnloadFighters - Unload fighters from carrier to colony (requires colony)
+- TransferFighters - Transfer fighters between carriers (no colony required)
+
+**Status Changes (requires colony):**
+- Reactivate - Return Reserve/Mothballed fleet to Active
 
 **Key characteristic:** Execute during order submission, not during turn resolution. State changes take effect immediately—operational orders submitted in same batch see the updated state.
 
@@ -116,6 +158,8 @@ Write operational orders to pending queue
 3. Order 07: Invade Planet — queued for turn resolution
 
 When turn resolves, invasion fleet already has marines loaded and merged composition.
+
+**See:** [docs/engine/zero_turn.md](../engine/zero_turn.md) for complete API reference and location requirements.
 
 ### Data Flow (Localhost)
 

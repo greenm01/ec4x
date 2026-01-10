@@ -22,11 +22,7 @@ import ../../prestige/engine
 import ../../../common/logger
 import ../../globals
 
-# Conflict resolution tuning
-const StrengthWeight = 2
-  ## Weight for fleet AS in conflict resolution
-  ## Formula: score = random(1..100) + (fleetAS * StrengthWeight)
-  ## Higher values make strength more influential vs luck
+# Conflict resolution tuning (loaded from config/gameplay.kdl)
 
 proc canColonize*(state: GameState, systemId: SystemId): bool =
   ## Check if a system can be colonized (no existing colony)
@@ -174,13 +170,14 @@ proc resolveConflict(
 
   for intent in conflict.intents:
     let randomFactor = rng.rand(1 .. 100)
-    let strengthFactor = intent.fleetStrength * StrengthWeight
+    let strengthWeight = gameConfig.gameplay.colonization.strengthWeight
+    let strengthFactor = intent.fleetStrength * strengthWeight
     let totalScore = randomFactor + strengthFactor
 
     logDebug(
       "Colonization",
       &"  Fleet {intent.fleetId}: roll={randomFactor} + " &
-        &"(AS={intent.fleetStrength} × {StrengthWeight}) = {totalScore}",
+        &"(AS={intent.fleetStrength} × {strengthWeight}) = {totalScore}",
     )
 
     if totalScore > bestScore:

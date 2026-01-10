@@ -173,8 +173,7 @@ Explicit commands that execute until completed or overridden:
 | 16  | Salvage        | Friendly colony system                   |
 | 17  | Reserve        | At friendly colony                       |
 | 18  | Mothball       | At friendly colony with Spaceport        |
-| 19  | Reactivate     | Reserve or Mothballed fleet              |
-| 20  | View           | Any ship type                            |
+| 19  | View           | Any ship type                            |
 
 **Command Defaults and Lifecycle:**
 
@@ -492,23 +491,9 @@ Instantly places a fleet into **Mothballed** status during the Command Phase.
 
 **Use Mothball to:**
 - Store valuable ships at minimal cost during peacetime.
-- Preserve hull assets for future mobilization (requires Reactivate command).
+- Preserve hull assets for future mobilization (requires Reactivate zero-turn command).
 
-### 6.3.21 Reactivate (19)
-
-Issues an order to reactivate a fleet from Reserve or Mothballed status, returning it to full operational readiness.
-
-**Reactivation Effects:**
-- **From Reserve**: Takes **1 full turn**. After completion, fleet is Active.
-- **From Mothball**: Takes **3 full turns**. After completion, fleet is Active.
-- Upon reactivation, the fleet returns to 100% CC and 100% Maintenance Cost.
-- The fleet can once again move, fight, and receive auto-assigned ships.
-
-**Use Reactivate to:**
-- Mobilize reserves in response to a threat.
-- Bring stored fleets back into service for a major offensive.
-
-### 6.3.22 View (20)
+### 6.3.21 View (19)
 
 Send a fleet to perform long-range reconnaissance on a planet from the edge of a solar system. This is a primary, non-consumable mission for Scouts, allowing them to gather basic intelligence without being detected or destroyed.
 
@@ -539,7 +524,7 @@ Reorganize your forces instantly during command submission. Zero-turn administra
 **Administrative Commands (0 turns):**
 - Fleet reorganization (detach ships, transfer ships, merge fleets)
 - Cargo operations (load/unload troops and colonists)
-- Ship status changes (Reserve/Mothball)
+- Fleet reactivation (return Reserve/Mothballed fleets to Active status)
 - Execute **immediately** during command submission
 - No turn cost—prepare forces and execute strategy in the same turn
 
@@ -612,6 +597,31 @@ Combine two fleets into a single unified force.
 - Fleet composition limits still apply
 
 **Example:** 3 cruiser fleets return to home system. Merge all into single battle fleet → one unified command, simplified management, ready for coordinated offensive.
+
+#### Reactivate
+
+Return a Reserve or Mothballed fleet to Active status instantly.
+
+**Use cases:**
+- Rapidly mobilize reserves when threats emerge
+- Respond to surprise attacks without turn delay
+- Bring mothballed fleets back into service for major offensives
+- Prepare stored fleets for immediate deployment
+
+**Requirements:**
+- Fleet must be Reserve or Mothballed status
+- Fleet must be at friendly colony (Reserve/Mothball fleets are always at colonies)
+
+**Effects:**
+- Fleet status becomes Active immediately (0 turns)
+- Fleet command set to Hold (ready for new orders same turn)
+- Fleet resumes 100% maintenance and CC costs
+- Fleet can receive operational commands in the same turn
+- Fleet can move, fight, and receive auto-assigned ships
+
+**Strategic Value:** Instant reactivation enables rapid emergency response—detect threat, reactivate reserves, and issue combat orders all in the same turn.
+
+**Example:** Enemy fleet detected approaching home system. Reactivate 3 mothballed battleship fleets instantly → issue Patrol orders → fleets begin defensive operations same turn.
 
 ### 6.4.3 Cargo Operations
 

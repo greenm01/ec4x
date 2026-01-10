@@ -39,6 +39,11 @@ proc parseDefensiveCollapseBehavior(node: KdlNode, ctx: var KdlConfigContext): D
     permanentElimination: node.requireBool("permanentElimination", ctx)
   )
 
+proc parseColonization(node: KdlNode, ctx: var KdlConfigContext): ColonizationConfig =
+  result = ColonizationConfig(
+    strengthWeight: node.requireInt32("strengthWeight", ctx)
+  )
+
 proc loadGameplayConfig*(configPath: string): GameplayConfig =
   ## Load gameplay configuration from KDL file
   ## Uses kdl_config_helpers for type-safe parsing
@@ -60,5 +65,9 @@ proc loadGameplayConfig*(configPath: string): GameplayConfig =
   ctx.withNode("defensiveCollapseBehavior"):
     let defCollapseNode = doc.requireNode("defensiveCollapseBehavior", ctx)
     result.defensiveCollapseBehavior = parseDefensiveCollapseBehavior(defCollapseNode, ctx)
+
+  ctx.withNode("colonization"):
+    let colonizationNode = doc.requireNode("colonization", ctx)
+    result.colonization = parseColonization(colonizationNode, ctx)
 
   logInfo("Config", "Loaded gameplay configuration", "path=", configPath)

@@ -44,6 +44,21 @@ proc validateOwnership*(state: GameState, houseId: HouseId): ValidationResult =
     return ValidationResult(valid: false, error: "House does not exist")
   return ValidationResult(valid: true, error: "")
 
+proc validateFleetOwnership*(
+    state: GameState, fleetId: FleetId, houseId: HouseId
+): ValidationResult =
+  ## DRY: Validate fleet exists and is owned by house (no location requirement)
+  ## Used by fleet org commands that can happen anywhere (DetachShips, etc.)
+  let fleetOpt = state.fleet(fleetId)
+  if fleetOpt.isNone:
+    return ValidationResult(valid: false, error: "Fleet not found")
+
+  let fleet = fleetOpt.get()
+  if fleet.houseId != houseId:
+    return ValidationResult(valid: false, error: "Fleet not owned by house")
+
+  return ValidationResult(valid: true, error: "")
+
 proc validateFleetAtFriendlyColony*(
     state: GameState, fleetId: FleetId, houseId: HouseId
 ): ValidationResult =
@@ -133,17 +148,29 @@ proc validateZeroTurnCommand*(
   if not result.valid:
     return result
 
-  # Layer 2: Fleet operations validation (requires colony)
+  # Layer 2a: Commands requiring friendly colony (cargo/fighter ops, reactivate)
   if cmd.commandType in {
-    ZeroTurnCommandType.DetachShips, ZeroTurnCommandType.TransferShips,
-    ZeroTurnCommandType.MergeFleets, ZeroTurnCommandType.LoadCargo,
-    ZeroTurnCommandType.UnloadCargo, ZeroTurnCommandType.LoadFighters,
-    ZeroTurnCommandType.UnloadFighters,
+    ZeroTurnCommandType.LoadCargo, ZeroTurnCommandType.UnloadCargo,
+    ZeroTurnCommandType.LoadFighters, ZeroTurnCommandType.UnloadFighters,
+    ZeroTurnCommandType.Reactivate,
   }:
     if cmd.sourceFleetId.isNone:
       return ValidationResult(valid: false, error: "Source fleet ID required")
 
     result = validateFleetAtFriendlyColony(state, cmd.sourceFleetId.get(), cmd.houseId)
+    if not result.valid:
+      return result
+
+  # Layer 2b: Commands requiring fleet ownership only (fleet org commands)
+  # DetachShips, TransferShips, MergeFleets can happen anywhere (no colony needed)
+  if cmd.commandType in {
+    ZeroTurnCommandType.DetachShips, ZeroTurnCommandType.TransferShips,
+    ZeroTurnCommandType.MergeFleets,
+  }:
+    if cmd.sourceFleetId.isNone:
+      return ValidationResult(valid: false, error: "Source fleet ID required")
+
+    result = validateFleetOwnership(state, cmd.sourceFleetId.get(), cmd.houseId)
     if not result.valid:
       return result
 
@@ -303,6 +330,15 @@ proc validateZeroTurnCommand*(
     let sourceFleet = sourceFleetOpt.get()
     # Find both carriers and ensure they're in same fleet or adjacent fleets at same location
     # (detailed validation in execute function)
+
+  of ZeroTurnCommandType.Reactivate:
+    # Validate fleet status (must be Reserve or Mothballed)
+    let fleetOpt = state.fleet(cmd.sourceFleetId.get())
+    if fleetOpt.isNone:
+      return ValidationResult(valid: false, error: "Fleet not found")
+    let fleet = fleetOpt.get()
+    if fleet.status == FleetStatus.Active:
+      return ValidationResult(valid: false, error: "Fleet is already Active")
 
   return ValidationResult(valid: true, error: "")
 
@@ -1211,6 +1247,56 @@ proc executeTransferFighters*(
   )
 
 # ============================================================================
+# Zero-Turn Status Change: Reactivate
+# ============================================================================
+
+proc executeReactivate*(
+    state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
+): ZeroTurnResult =
+  ## Return Reserve or Mothballed fleet to Active status instantly
+  ## Fleet status changes immediately during order submission (0 turns)
+  ##
+  ## Effects:
+  ##   - Fleet status → Active
+  ##   - Fleet command → Hold (ready for new orders)
+  ##   - 100% maintenance and CC costs resume
+  ##
+  ## No events emitted (immediate status toggle, ZeroTurnResult is sufficient)
+
+  let fleetId = cmd.sourceFleetId.get()
+  let fleetOpt = state.fleet(fleetId)
+  if fleetOpt.isNone:
+    return ZeroTurnResult(
+      success: false,
+      error: "Fleet not found",
+    )
+
+  var fleet = fleetOpt.get()
+
+  # Validate fleet is Reserve or Mothballed
+  if fleet.status == FleetStatus.Active:
+    return ZeroTurnResult(
+      success: false,
+      error: "Fleet is already Active",
+    )
+
+  # Change status to Active
+  fleet.status = FleetStatus.Active
+
+  # Set command to Hold (ready for new orders)
+  fleet.command.commandType = FleetCommandType.Hold
+
+  # Update fleet in entity manager
+  state.updateFleet(fleetId, fleet)
+
+  logFleet(&"Reactivate: Fleet {fleetId} reactivated to Active status")
+
+  return ZeroTurnResult(
+    success: true,
+    error: "",
+  )
+
+# ============================================================================
 # Main API Entry Point
 # ============================================================================
 
@@ -1263,6 +1349,8 @@ proc submitZeroTurnCommand*(
     return executeUnloadFighters(state, cmd, events)
   of ZeroTurnCommandType.TransferFighters:
     return executeTransferFighters(state, cmd, events)
+  of ZeroTurnCommandType.Reactivate:
+    return executeReactivate(state, cmd, events)
 
 # Export main types
 export ZeroTurnCommandType, ZeroTurnCommand, ZeroTurnResult, ValidationResult

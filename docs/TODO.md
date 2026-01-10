@@ -146,10 +146,12 @@ turns. Development priorities focus on:
      - **Updated:** detection.nim returns tuple with winner info
      - **Updated:** drm.nim applies bonus to detection winner (attacker OR defender)
      - **Updated:** MultiHouseBattle uses DetectionOutcome to track winner per house
-   - [ ] `fleet/dispatcher.nim`: Enforce reactivation timing
-     - **Spec:** Reserve→Active: 1 turn, Mothball→Active: 3 turns
-     - **Current:** Applies Active status immediately (lines 1828-1864)
-     - Add `reactivationTurnsRemaining` counter to Fleet type
+   - [x] `fleet/dispatcher.nim` → `fleet/logistics.nim`: Reactivate as zero-turn command ✅
+     - **REDESIGNED:** Reactivate is now instant (zero-turn), not persistent command
+     - **Rationale:** Reserve/Mothball fleets already at colony; reactivation is status toggle
+     - **Implementation:** Added to ZeroTurnCommandType, removed from FleetCommandType
+     - **Files Modified:** types/zero_turn.nim, types/fleet.nim, systems/fleet/logistics.nim, systems/fleet/dispatcher.nim
+     - **Docs Updated:** specs/06-operations.md, engine/orders.md, engine/ec4x_canonical_turn_cycle.md
    
    **Minor (enhancements, cleanup):**
    - [ ] `combat/hits.nim`: Implement Critical Hit mechanic (natural 9 bypasses cripple-first)

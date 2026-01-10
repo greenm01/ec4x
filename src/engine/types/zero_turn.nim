@@ -21,6 +21,9 @@ type
     UnloadFighters ## Unload fighter ships from carrier to colony
     TransferFighters ## Transfer fighter ships between carriers
 
+    # Fleet status changes
+    Reactivate ## Return Reserve/Mothballed fleet to Active status instantly
+
   ZeroTurnCommand* = object
     ## Immediate-execution administrative command
     ## Executes synchronously during command submission (NOT in OrderPacket)

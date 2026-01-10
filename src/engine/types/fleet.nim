@@ -59,7 +59,6 @@ type
     Salvage # Scrap fleet and reclaim production points (25%)
     Reserve # Place fleet on reserve status (50% maint, half AS/DS, can't move)
     Mothball # Mothball fleet (0% maint, offline, screened in combat)
-    Reactivate # Return reserve/mothballed fleet to active duty
     View # Long-range reconnaissance 
 
   FleetCommand* = object
@@ -116,6 +115,5 @@ const CommandThreatLevels* = {
   FleetCommandType.Salvage: ThreatLevel.Benign,
   FleetCommandType.Reserve: ThreatLevel.Benign,
   FleetCommandType.Mothball: ThreatLevel.Benign,
-  FleetCommandType.Reactivate: ThreatLevel.Benign,
   FleetCommandType.View: ThreatLevel.Benign,
 }.toTable

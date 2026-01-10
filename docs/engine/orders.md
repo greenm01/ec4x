@@ -140,8 +140,7 @@ Once ships are in fleets, players control them via **fleet commands**.
 | 16 | Salvage | Disband fleet for 50% PP | INC5 |
 | 17 | Reserve | 50% maintenance, reduced combat | PRD1c |
 | 18 | Mothball | 0% maintenance, offline storage | PRD1c |
-| 19 | Reactivate | Return to Active status | PRD1c |
-| 20 | View | Long-range reconnaissance | PRD1c |
+| 19 | View | Long-range reconnaissance | PRD1c |
 
 **Command Restrictions:**
 - **Reserve/Mothballed fleets**: Cannot execute movement orders (stationed at colony)
@@ -161,6 +160,7 @@ Execute immediately during CMD5 (Player Submission Window):
 | MergeFleets | Combine two fleets |
 | LoadCargo | Load marines/colonists onto transports |
 | UnloadCargo | Unload marines/colonists to colony |
+| Reactivate | Return Reserve/Mothballed fleet to Active status |
 
 **Why Zero-Turn Commands?**
 - **Immediate preparation**: Reorganize before issuing operational commands
@@ -217,10 +217,10 @@ Fleets can be in one of three operational states:
 - **Purpose**: Long-term storage, preserving fleet for future mobilization
 
 **Transition Rules:**
-- Active → Reserve: Issue `Reserve` order (instant)
-- Active → Mothballed: Issue `Mothball` order (instant)
-- Reserve → Active: Issue `Reactivate` order (1 turn)
-- Mothballed → Active: Issue `Reactivate` order (1 turn)
+- Active → Reserve: Issue `Reserve` fleet command (fleet travels to colony if needed)
+- Active → Mothballed: Issue `Mothball` fleet command (fleet travels to colony if needed)
+- Reserve → Active: Use `Reactivate` zero-turn command (instant)
+- Mothballed → Active: Use `Reactivate` zero-turn command (instant)
 
 ---
 

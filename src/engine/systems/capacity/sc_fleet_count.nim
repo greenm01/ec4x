@@ -133,10 +133,8 @@ proc analyzeFleetCountCapacity*(
   let scLevel = house.techTree.levels.sc
 
   # Get map parameters for scaling
-  # TODO: These should come from game state or config
-  # For now, use placeholder values - needs integration with starmap
-  let totalSystems = 100'i32 # Placeholder
-  let playerCount = 4'i32 # Placeholder
+  let totalSystems = int32(state.systems.entities.data.len)
+  let playerCount = int32(state.houses.entities.data.len)
 
   let maximum = getStrategicCommandMaxFleets(scLevel, totalSystems, playerCount)
   let current = countCombatFleets(state, houseId)
@@ -199,8 +197,8 @@ proc canCreateCombatFleet*(
   let scLevel = house.techTree.levels.sc
 
   # Get map parameters
-  let totalSystems = 100'i32 # Placeholder
-  let playerCount = 4'i32 # Placeholder
+  let totalSystems = int32(state.systems.entities.data.len)
+  let playerCount = int32(state.houses.entities.data.len)
 
   let maximum = getStrategicCommandMaxFleets(scLevel, totalSystems, playerCount)
   let current = countCombatFleets(state, houseId)

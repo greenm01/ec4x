@@ -34,3 +34,11 @@ defensiveCollapseBehavior {
     economyCeases #true              // No income, R&D, or maintenance
     permanentElimination #true       // Cannot rejoin game
 }
+
+colonization {
+    (docs)"docs/specs/06-operations.md#section-6-3-12"
+    // Conflict resolution parameters when multiple fleets colonize same system
+    strengthWeight 2                 // Multiplier for fleet AS in conflict resolution
+                                     // Formula: score = random(1..100) + (fleetAS × strengthWeight)
+                                     // Higher values make strength more influential vs luck
+}

@@ -1,10 +1,11 @@
 ## EC4X Game Engine
 ## Public API for game initialization, turn processing, and state queries
-import types/[game_state, command]
+import types/[game_state, command, player_state]
 import init/engine
 
 export game_state.GameState
 export command.CommandPacket
+export player_state.PlayerState
 
 # Game lifecycle
 proc newGame*(
@@ -39,10 +40,10 @@ proc resolveTurn*(
   result = turn_executor.executeTurnCycle(state, commands)
   saveGame(state) # Auto-save after each turn
 
-# Player views
-proc getPlayerView*(state: GameState, houseId: HouseId): PlayerView =
-  ## Get fog-of-war filtered view for specific house
-  fog_of_war.generatePlayerView(state, houseId)
+# Player state
+proc getPlayerState*(state: GameState, houseId: HouseId): PlayerState =
+  ## Get complete fog-of-war filtered state with full entity data
+  fog_of_war.createPlayerState(state, houseId)
 
 # State queries (convenience methods)
 proc getHouse*(state: GameState, houseId: HouseId): House =

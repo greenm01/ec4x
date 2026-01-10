@@ -944,12 +944,13 @@ Players see:
 - DetachShips, TransferShips, MergeFleets
 - LoadCargo, UnloadCargo
 - LoadFighters, UnloadFighters, TransferFighters
-- **NOT included:** JoinFleet, Rendezvous, Reserve, Mothball, Reactivate (these are persistent)
+- Reactivate
+- **NOT included:** JoinFleet, Rendezvous, Reserve, Mothball (these are persistent)
 
 **6b. Persistent fleet commands**: Validate and store in `Fleet.command` field (entity-manager pattern)
 - ALL FleetCommandType entries follow lifecycle: Submit → Validate → Travel → Execute
 - Categorized by PRIMARY EFFECT (not by whether they encounter combat):
-  - **Production Phase commands**: Travel completion (Move, Hold, SeekHome, JoinFleet, Rendezvous) + Admin (Reserve, Mothball, Reactivate, View)
+  - **Production Phase commands**: Travel completion (Move, Hold, SeekHome, JoinFleet, Rendezvous) + Admin (Reserve, Mothball, View)
   - **Conflict Phase commands**: Combat ops (Patrol, Guard*, Blockade, Bombard, Invade, Blitz) + Colonization + Scout Intelligence (ScoutColony, ScoutSystem, HackStarbase)
   - **Income Phase commands**: Economic (Salvage)
 
@@ -1016,7 +1017,7 @@ Players see:
 - Follow multi-turn lifecycle: Submit (CMD6) → Travel (PRD1) → Execute (PRD/CON/INC)
 - **ALL** FleetCommandType entries are persistent, including:
   - JoinFleet, Rendezvous (can require travel to target)
-  - Reserve, Mothball, Reactivate (status changes, Reactivate default: 1 turn)
+  - Reserve, Mothball (status changes, may require travel to colony)
   - Move, Hold, SeekHome (travel completion)
   - Patrol, Bombard, Invade, Colonize, Scout missions, Salvage
 
@@ -1024,7 +1025,7 @@ Players see:
 
 Commands categorized by their PRIMARY EFFECT, not by whether they encounter combat:
 
-- **Production Phase (PRD)**: Travel completion (Move, Hold, SeekHome, JoinFleet, Rendezvous) + Administrative (Reserve, Mothball, Reactivate, View)
+- **Production Phase (PRD)**: Travel completion (Move, Hold, SeekHome, JoinFleet, Rendezvous) + Administrative (Reserve, Mothball, View)
 - **Conflict Phase (CON)**: Combat operations (Patrol, Guard*, Blockade, Bombard, Invade, Blitz) + Colonization + Scout Intelligence (ScoutColony, ScoutSystem, HackStarbase)
 - **Income Phase (INC)**: Economic operations (Salvage)
 
@@ -1079,7 +1080,7 @@ Commands categorized by their PRIMARY EFFECT, not by whether they encounter comb
 - Handle administrative completion for commands that finish during/after travel
 - **Travel completion**: Move, Hold, SeekHome, Rendezvous (mark complete after arrival)
 - **Fleet merging**: JoinFleet (merge fleets, mark complete)
-- **Status changes**: Reserve, Mothball, Reactivate (apply status, mark complete)
+- **Status changes**: Reserve, Mothball (apply status, mark complete)
 - **Reconnaissance**: View (mark complete after edge-of-system scan)
 - Uses category filter: `isProductionCommand()`
 - Generate GameEvents (CommandCompleted, FleetMerged, StatusChanged, etc.)
@@ -1237,10 +1238,9 @@ Process tech advancements using accumulated RP from Command Phase. Per economy.m
 | 16    | Salvage          | INC5            | Disband fleet for 50% PP                 |
 | 17    | Place on Reserve | PRD1c           | Fleet status change                      |
 | 18    | Mothball Fleet   | PRD1c           | Fleet status change                      |
-| 19    | Reactivate Fleet | PRD1c           | Fleet status change                      |
-| 20    | View Planet      | PRD1c           | Movement + reconnaissance                |
+| 19    | View Planet      | PRD1c           | Movement + reconnaissance                |
 
-### Zero-Turn Administrative Commands (5 types)
+### Zero-Turn Administrative Commands (9 types)
 
 Execute immediately during CMD5 player window:
 
@@ -1251,6 +1251,10 @@ Execute immediately during CMD5 player window:
 | MergeFleets     | CMD5            | Execute immediately during command submission   |
 | LoadCargo       | CMD5            | Execute immediately during command submission   |
 | UnloadCargo     | CMD5            | Execute immediately during command submission   |
+| LoadFighters    | CMD5            | Execute immediately during command submission   |
+| UnloadFighters  | CMD5            | Execute immediately during command submission   |
+| TransferFighters| CMD5            | Execute immediately during command submission   |
+| Reactivate      | CMD5            | Return Reserve/Mothballed fleet to Active status|
 
 **Key Property:** All zero-turn administrative commands execute BEFORE operational orders in same turn, allowing players to reorganize fleets and load cargo before issuing movement/combat orders.
 

@@ -154,13 +154,6 @@ proc executeMothballCommand(
   events: var seq[GameEvent],
 ): OrderOutcome
 
-proc executeReactivateCommand(
-  state: var GameState,
-  fleet: Fleet,
-  command: FleetCommand,
-  events: var seq[GameEvent],
-): OrderOutcome
-
 proc executeViewCommand(
   state: var GameState,
   fleet: Fleet,
@@ -250,8 +243,6 @@ proc executeFleetCommand*(
     return executeReserveCommand(state, fleet, command, events)
   of FleetCommandType.Mothball:
     return executeMothballCommand(state, fleet, command, events)
-  of FleetCommandType.Reactivate:
-    return executeReactivateCommand(state, fleet, command, events)
   of FleetCommandType.View:
     return executeViewCommand(state, fleet, command, events)
 
@@ -1819,44 +1810,6 @@ proc executeMothballCommand(
       fleet.id,
       "Mothball",
       details = "mothballed",
-      systemId = some(fleet.location),
-    )
-  )
-
-  return OrderOutcome.Success
-
-proc executeReactivateCommand(
-    state: var GameState,
-    fleet: Fleet,
-    command: FleetCommand,
-    events: var seq[GameEvent],
-): OrderOutcome =
-  ## Return reserve or mothballed fleet to active duty
-
-  if fleet.status == FleetStatus.Active:
-    events.add(
-      event_factory.commandFailed(
-        houseId = fleet.houseId,
-        fleetId = fleet.id,
-        orderType = "Reactivate",
-        reason = "fleet already active",
-        systemId = some(fleet.location),
-      )
-    )
-    return OrderOutcome.Failed
-
-  # Change status to Active
-  var updatedFleet = fleet
-  updatedFleet.status = FleetStatus.Active
-  state.updateFleet(fleet.id, updatedFleet)
-
-  # Generate OrderCompleted event for state change
-  events.add(
-    event_factory.commandCompleted(
-      fleet.houseId,
-      fleet.id,
-      "Reactivate",
-      details = "reactivated",
       systemId = some(fleet.location),
     )
   )
