@@ -5,7 +5,7 @@
 ##
 ## Per docs/specs/07-combat.md Section 7.2.1
 
-import std/[options]
+import std/[options, sets]
 import ../../types/[core, game_state, combat, ship]
 import ../../state/engine
 import ./strength
@@ -17,14 +17,32 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
   ## **Hit Application Rules:**
   ## 1. Must cripple all undamaged ships before destroying any
   ## 2. Fighters skip Crippled state (go directly Undamaged → Destroyed)
-  ## 3. Critical Hits (natural 9) bypass rule #1 - can destroy crippled ships immediately
+  ## 3. Critical Hits (natural 9) bypass rule #1 - can destroy crippled ships
+  ##    that were ALREADY crippled (not ships crippled this round)
   ## 4. Excess hits are lost
   ##
   ## **Algorithm:**
+  ## - Snapshot ship states BEFORE applying damage
   ## - Phase 1: Cripple all undamaged ships (if enough hits)
-  ## - Phase 2: Destroy crippled ships (only if no undamaged remain OR critical hit)
+  ## - Phase 2: Destroy crippled ships:
+  ##   - Normal hits: only if no undamaged ships at START
+  ##   - Critical hits: can destroy ships that were crippled at START
 
   var remainingHits = hits
+
+  # Snapshot ship states BEFORE Phase 1 modifies anything
+  # This determines Phase 2 eligibility and valid targets
+  var hadUndamagedAtStart = false
+  var wasCrippledAtStart: HashSet[ShipId]
+  
+  for shipId in targetShips:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isSome:
+      let ship = shipOpt.get()
+      if ship.state == CombatState.Undamaged:
+        hadUndamagedAtStart = true
+      elif ship.state == CombatState.Crippled:
+        wasCrippledAtStart.incl(shipId)
 
   # Phase 1: Cripple all undamaged ships
   for shipId in targetShips:
@@ -54,41 +72,47 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
       remainingHits -= hitsNeeded
       state.updateShip(shipId, ship)
 
-  # Phase 2: Destroy crippled ships (only if no undamaged remain OR critical hit)
-  let hasUndamaged =
-    block:
-      var found = false
+  # Phase 2: Destroy crippled ships
+  # Normal hits: only if no undamaged ships at START (protection rule)
+  # Critical hits: can bypass protection to destroy originally-crippled ships
+  #
+  # Key insight: Critical hits don't allow "double damage" to ships we just
+  # crippled - they only bypass protection to destroy ships that were ALREADY
+  # crippled before this hit application started.
+  
+  if remainingHits > 0:
+    # Determine which ships are valid Phase 2 targets
+    let canDestroyAnyCrippled = not hadUndamagedAtStart
+    let canDestroyOriginallyCrippled = isCriticalHit
+
+    if canDestroyAnyCrippled or canDestroyOriginallyCrippled:
       for shipId in targetShips:
-        let shipOpt = state.ship(shipId)
-        if shipOpt.isSome and shipOpt.get().state == CombatState.Undamaged:
-          found = true
+        if remainingHits <= 0:
           break
-      found
 
-  # Critical hits bypass "cripple all first" protection
-  # Can destroy crippled ships even with undamaged ships present
-  if (not hasUndamaged or isCriticalHit) and remainingHits > 0:
-    for shipId in targetShips:
-      if remainingHits <= 0:
-        break
+        let shipOpt = state.ship(shipId)
+        if shipOpt.isNone:
+          continue
 
-      let shipOpt = state.ship(shipId)
-      if shipOpt.isNone:
-        continue
+        var ship = shipOpt.get()
 
-      var ship = shipOpt.get()
+        # Skip if not crippled
+        if ship.state != CombatState.Crippled:
+          continue
 
-      # Skip if not crippled
-      if ship.state != CombatState.Crippled:
-        continue
+        # For critical hits with undamaged ships at start:
+        # Only destroy ships that were ALREADY crippled, not newly crippled
+        if hadUndamagedAtStart and isCriticalHit:
+          if shipId notin wasCrippledAtStart:
+            continue  # Skip ships we just crippled in Phase 1
 
-      # Crippled ships have 50% DS
-      let hitsNeeded = calculateShipDS(state, ship)
+        # Crippled ships have 50% DS
+        let hitsNeeded = calculateShipDS(state, ship)
 
-      if remainingHits >= hitsNeeded:
-        ship.state = CombatState.Destroyed
-        remainingHits -= hitsNeeded
-        state.updateShip(shipId, ship)
+        if remainingHits >= hitsNeeded:
+          ship.state = CombatState.Destroyed
+          remainingHits -= hitsNeeded
+          state.updateShip(shipId, ship)
 
 ## Design Notes:
 ##
@@ -112,9 +136,11 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
 ## - Calculated by calculateShipDS() in strength.nim
 ## - Easier to finish off crippled ships
 ##
-## **Critical Hits (Future):**
-## - Critical hits may bypass cripple-all-first rule
-## - Not yet implemented (Phase 6 enhancement)
+## **Critical Hits:**
+## - Critical hits (natural 9) bypass cripple-all-first rule
+## - Can destroy ships that were ALREADY crippled at round start
+## - Cannot "double damage" ships crippled in the same round
+## - Per docs/specs/07-combat.md Section 7.2.2 Rule 2
 ##
 ## **Target Selection:**
 ## - Caller determines target ships (all ships from losing side)

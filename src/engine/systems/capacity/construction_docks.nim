@@ -23,6 +23,7 @@
 import std/[strutils, algorithm, options, math]
 import ../../types/[capacity, core, game_state, ship, production, facilities, colony, combat]
 import ../../state/[engine, iterators]
+import ../../entities/project_ops
 import ../../../common/logger
 
 export capacity.CapacityViolation, capacity.ViolationSeverity
@@ -278,23 +279,21 @@ proc assignAndQueueProject*(
 
   let (facilityId, _) = assignment.get()
 
-  # Create project with facility assignment (if applicable)
-  var assignedProject = project
-  # Note: ConstructionProject doesn't have facilityId/facilityType fields in current implementation
-  # These are tracked by which facility queue the project is in
-
-  # Add to facility queue
+  # Verify facility exists
   let neoriaId = facilityId
   let neoriaOpt = state.neoria(neoriaId)
   if neoriaOpt.isNone:
     logWarn("Economy", "Failed to find neoria", " facility=", $facilityId)
     return false
 
-  var neoria = neoriaOpt.get()
-  neoria.constructionQueue.add(assignedProject.id)
+  # Create project with facility assignment and register with entity manager
+  # queueConstructionProject generates ID, adds to entity manager, and adds to
+  # the neoria's constructionQueue (when neoriaId is set)
+  var assignedProject = project
+  assignedProject.neoriaId = some(neoriaId)
+  discard state.queueConstructionProject(colonyId, assignedProject)
 
-  state.updateNeoria(neoriaId, neoria)
-
+  let neoria = neoriaOpt.get()
   logDebug(
     "Economy",
     "Project queued to facility",

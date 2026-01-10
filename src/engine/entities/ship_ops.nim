@@ -84,7 +84,7 @@ proc createShip*(
   )
 
   # 1. Add to entity manager
-  state.updateShip(shipId, newShip)
+  state.addShip(shipId, newShip)
 
   # 2. Update indexes
   if fleetId != FleetId(0):

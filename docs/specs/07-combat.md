@@ -861,10 +861,12 @@ Attacker fleets check ROE:
 
 **Repeat Rounds:**
 
-Continue bombardment rounds until:
+Bombardment is limited to **3 rounds per turn**. Continue until:
 - All ground batteries destroyed (bombardment successful)
 - Attacker retreats (ROE triggered by heavy losses)
-- Maximum 20 rounds (rare—usually batteries destroyed or attacker retreats)
+- 3 rounds completed (bombardment continues next turn if fleet remains)
+
+Unlike space combat where fleets can retreat mid-engagement, bombardment operates as a sustained siege. Fleets check ROE between turns and may withdraw if casualties mount.
 
 ### 7.7.4 Planetary Shields
 
@@ -1027,9 +1029,7 @@ Both sides apply hits to ground units:
 
 **Step 7: Repeat Rounds**
 
-Continue ground combat rounds until:
-- One side eliminated (winner captures/holds colony)
-- Maximum 20 rounds (rare—ground combat usually decisive within few rounds)
+Continue ground combat rounds until one side is eliminated. Marines are committed once landed—there is no retreat or evacuation. Ground combat is decisive and brutal, typically resolving within a few rounds.
 
 **Outcome:**
 

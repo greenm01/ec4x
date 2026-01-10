@@ -64,11 +64,13 @@ proc getConstructionCapacityMultiplier*(cstLevel: int): float =
 
 proc getDockCapacityMultiplier*(cstLevel: int): float =
   ## Get dock capacity multiplier from CST tech
-  ## Per economy.md:4.5: +10% per level (dock count increases)
-  ## Formula: effectiveDocks = baseDocks × (1.0 + (CST - 1) × multiplier)
-  ## Pulls multiplier from config/tech.kdl
-  let multiplierPerLevel = gameConfig.tech.cst.capacityMultiplierPerLevel
-  result = 1.0 + (float(cstLevel - 1) * multiplierPerLevel)
+  ## Per docs/specs/04-research_development.md Section 4.4.2
+  ## CST I = 1.0x, CST II = 1.1x, ... CST X = 1.9x
+  ## Formula: multiplier = baseModifier + (CST - 1) × incrementPerLevel
+  ## Pulls from config/tech.kdl [construction] section
+  let base = gameConfig.tech.cst.baseModifier
+  let increment = gameConfig.tech.cst.incrementPerLevel
+  result = float(base) + (float(cstLevel - 1) * float(increment))
 
 proc calculateEffectiveDocks*(baseDocks: int32, cstLevel: int32): int32 =
   ## Calculate effective dock capacity based on CST technology

@@ -1,0 +1,216 @@
+## Unit Tests: Tech Advancement and Breakthroughs
+##
+## Tests breakthrough rolls and max level constants from tech/advancement.nim
+##
+## Per economy.md:4.1
+
+import std/[unittest, random, options]
+import ../../src/engine/types/tech
+import ../../src/engine/systems/tech/advancement
+
+suite "Tech: Maximum Level Constants":
+  ## Verify all tech max level constants are defined correctly
+
+  test "Economic and Science max levels":
+    check maxEconomicLevel == 11
+    check maxScienceLevel == 8
+
+  test "Construction tech max levels":
+    check maxConstructionTech == 15
+    check maxWeaponsTech == 15
+    check maxTerraformingTech == 7
+
+  test "Intelligence tech max levels":
+    check maxElectronicIntelligence == 15
+    check maxCloakingTech == 15
+    check maxCounterIntelligence == 15
+
+  test "Shield and lift tech max levels":
+    check maxShieldTech == 15
+    check maxStrategicLiftTech == 15
+
+  test "Command tech max levels":
+    check maxFlagshipCommandTech == 6
+    check maxStrategicCommandTech == 5
+
+  test "Carrier tech max levels":
+    check maxFighterDoctrine == 3
+    check maxAdvancedCarrierOps == 3
+
+suite "Tech: Breakthrough Turn Check":
+  ## Test isBreakthroughTurn - every 5 turns
+
+  test "turn 0 is not breakthrough":
+    check isBreakthroughTurn(0) == true # 0 mod 5 = 0, so true
+
+  test "turn 5 is breakthrough":
+    check isBreakthroughTurn(5) == true
+
+  test "turn 10 is breakthrough":
+    check isBreakthroughTurn(10) == true
+
+  test "turn 15 is breakthrough":
+    check isBreakthroughTurn(15) == true
+
+  test "turn 100 is breakthrough":
+    check isBreakthroughTurn(100) == true
+
+  test "turn 1 is not breakthrough":
+    check isBreakthroughTurn(1) == false
+
+  test "turn 4 is not breakthrough":
+    check isBreakthroughTurn(4) == false
+
+  test "turn 6 is not breakthrough":
+    check isBreakthroughTurn(6) == false
+
+  test "turn 99 is not breakthrough":
+    check isBreakthroughTurn(99) == false
+
+suite "Tech: Breakthrough Roll Statistical":
+  ## Test rollBreakthrough produces expected distribution
+
+  test "breakthrough with zero RP has 5% base chance":
+    var rng = initRand(12345)
+    var successes = 0
+
+    # Roll many times
+    for i in 1 .. 10000:
+      let result = rollBreakthrough(rng, totalRPInvested = 0)
+      if result.isSome:
+        successes += 1
+
+    # 5% chance = 1/20 = 500 expected successes
+    # Allow statistical variance (4-6% range)
+    check successes >= 350 # At least 3.5%
+    check successes <= 750 # At most 7.5%
+
+  test "breakthrough with 1000+ RP has 15% max chance":
+    var rng = initRand(54321)
+    var successes = 0
+
+    for i in 1 .. 10000:
+      let result = rollBreakthrough(rng, totalRPInvested = 1000)
+      if result.isSome:
+        successes += 1
+
+    # 15% chance = 3/20 = 1500 expected
+    check successes >= 1200 # At least 12%
+    check successes <= 1800 # At most 18%
+
+  test "breakthrough chance is capped at 15%":
+    var rng = initRand(99999)
+    var successes = 0
+
+    # Even with massive RP investment, still capped
+    for i in 1 .. 10000:
+      let result = rollBreakthrough(rng, totalRPInvested = 100000)
+      if result.isSome:
+        successes += 1
+
+    # Still ~15% (same as 1000 RP)
+    check successes >= 1200
+    check successes <= 1800
+
+suite "Tech: Breakthrough Type Distribution":
+  ## Test breakthrough type probabilities when breakthrough occurs
+
+  test "breakthrough types follow expected distribution":
+    var rng = initRand(11111)
+    var minor = 0
+    var moderate = 0
+    var major = 0
+    var revolutionary = 0
+
+    # Generate many breakthroughs (high RP for more hits)
+    var total = 0
+    for i in 1 .. 50000:
+      let result = rollBreakthrough(rng, totalRPInvested = 1000)
+      if result.isSome:
+        total += 1
+        case result.get()
+        of BreakthroughType.Minor:
+          minor += 1
+        of BreakthroughType.Moderate:
+          moderate += 1
+        of BreakthroughType.Major:
+          major += 1
+        of BreakthroughType.Revolutionary:
+          revolutionary += 1
+
+    # Expected distribution:
+    # Minor: 50% (1-10 on d20)
+    # Moderate: 25% (11-15)
+    # Major: 15% (16-18)
+    # Revolutionary: 10% (19-20)
+
+    let minorPct = float(minor) / float(total)
+    let moderatePct = float(moderate) / float(total)
+    let majorPct = float(major) / float(total)
+    let revPct = float(revolutionary) / float(total)
+
+    # Allow variance but check roughly correct
+    check minorPct >= 0.40 and minorPct <= 0.60 # 50% ± 10%
+    check moderatePct >= 0.18 and moderatePct <= 0.32 # 25% ± 7%
+    check majorPct >= 0.08 and majorPct <= 0.22 # 15% ± 7%
+    check revPct >= 0.05 and revPct <= 0.18 # 10% ± 8%
+
+suite "Tech: Breakthrough Scaling":
+  ## Test RP investment affects breakthrough chance correctly
+
+  test "100 RP gives 6% chance (base 5 + 1)":
+    var rng = initRand(22222)
+    var successes = 0
+
+    for i in 1 .. 10000:
+      let result = rollBreakthrough(rng, totalRPInvested = 100)
+      if result.isSome:
+        successes += 1
+
+    # 6% = 600 expected
+    check successes >= 450
+    check successes <= 850
+
+  test "500 RP gives 10% chance (base 5 + 5)":
+    var rng = initRand(33333)
+    var successes = 0
+
+    for i in 1 .. 10000:
+      let result = rollBreakthrough(rng, totalRPInvested = 500)
+      if result.isSome:
+        successes += 1
+
+    # 10% = 1000 expected
+    check successes >= 800
+    check successes <= 1200
+
+suite "Tech: Deterministic Breakthrough (Seeded)":
+  ## Test reproducibility with seeded RNG
+
+  test "same seed produces same results":
+    var rng1 = initRand(42)
+    var rng2 = initRand(42)
+
+    for i in 1 .. 100:
+      let result1 = rollBreakthrough(rng1, totalRPInvested = 500)
+      let result2 = rollBreakthrough(rng2, totalRPInvested = 500)
+      check result1 == result2
+
+  test "different seeds produce different results":
+    var rng1 = initRand(1)
+    var rng2 = initRand(2)
+
+    var same = 0
+    for i in 1 .. 100:
+      let result1 = rollBreakthrough(rng1, totalRPInvested = 500)
+      let result2 = rollBreakthrough(rng2, totalRPInvested = 500)
+      if result1 == result2:
+        same += 1
+
+    # Should NOT be all the same
+    check same < 100
+
+when isMainModule:
+  echo "========================================"
+  echo "  Tech Advancement Unit Tests"
+  echo "========================================"

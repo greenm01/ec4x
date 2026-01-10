@@ -5,7 +5,7 @@
 ##
 ## Per docs/specs/07-combat.md Section 7.7-7.8
 
-import std/[random, options, tables, sequtils]
+import std/[random, options, tables, sequtils, strformat]
 import ../../types/[core, game_state, combat, ship, facilities, colony, ground_unit]
 import ../../state/engine
 import ../../globals
@@ -767,6 +767,16 @@ proc resolveInvasion*(
 
     round += 1
 
+  # Safety check: ground combat must resolve to elimination
+  # If we hit max rounds with survivors on both sides, something is wrong
+  if result.attackerSurvived and result.defenderSurvived:
+    let attackerAS = calculateMarineAS(state, attackerFleets)
+    let defenderAS = calculateGroundForceAS(state, targetColony)
+    raise newException(Defect,
+      &"Ground combat stalemate after {maxRounds} rounds: " &
+      &"colony={targetColony}, attackerAS={attackerAS}, defenderAS={defenderAS}. " &
+      "Marines cannot retreat - combat must resolve to elimination.")
+
   # If attackers won, 50% infrastructure destroyed
   if not result.defenderSurvived and result.attackerSurvived:
     let colonyOpt = state.colony(targetColony)
@@ -968,6 +978,17 @@ proc resolveBlitz*(
     applyHitsToGroundUnits(state, marineIds, defenderHits_round)
 
     round += 1
+
+  # Safety check: ground combat must resolve to elimination
+  # If we hit max rounds with survivors on both sides, something is wrong
+  if result.attackerSurvived and result.defenderSurvived:
+    let marineAS = calculateMarineAS(state, attackerFleets)
+    let groundAS = calculateGroundForceAS(state, targetColony)
+    let batteryAS = calculateGroundBatteryAS(state, targetColony)
+    raise newException(Defect,
+      &"Blitz ground combat stalemate after {maxRounds} rounds: " &
+      &"colony={targetColony}, marineAS={marineAS}, groundAS={groundAS}, " &
+      &"batteryAS={batteryAS}. Marines cannot retreat - combat must resolve to elimination.")
 
   # If attackers won, 0% infrastructure destroyed (captured intact!)
   # This is the key advantage of blitz

@@ -46,9 +46,13 @@ proc resolveBattle*(
   let maxRounds = 20
 
   while round <= maxRounds:
-    # Calculate total AS for each side (sum all ships from all fleets)
+    # Calculate total AS for each side
+    # Attacker: ships only (no starbase bonus)
+    # Defender: ships + Kastras in orbital combat (per 7.6.3)
     let attackerAS = calculateHouseAS(state, battle.attacker)
-    let defenderAS = calculateHouseAS(state, battle.defender)
+    let defenderAS = calculateDefenderAS(
+      state, battle.defender, battle.systemId, battle.theater
+    )
 
     # Calculate DRM for each side (theater-specific)
     let attackerDRM = calculateDRM(state, battle, isAttacker = true, round)

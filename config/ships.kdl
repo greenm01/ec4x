@@ -159,7 +159,7 @@ auxiliary {
 // ============================================================================
 fighters {
     // Note: Fighter capacity limits based on IU defined in limits.kdl fighterCapacity
-    fighterSquadron {
+    fighter {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 1
         buildCost 5

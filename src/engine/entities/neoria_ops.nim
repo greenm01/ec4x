@@ -36,30 +36,37 @@ proc newNeoria*(
   )
 
 proc createNeoria*(
-    state: GameState, colonyId: ColonyId, neoriaClass: NeoriaClass
+    state: GameState, colonyId: ColonyId, neoriaClass: NeoriaClass,
+    ownerHouseId: HouseId = HouseId(0)
 ): Neoria =
   ## Creates a new neoria (production facility), adds it to the entity manager,
   ## and links it to a colony.
   ## Initializes baseDocks from config and calculates effectiveDocks using owner's CST level
+  ##
+  ## Parameters:
+  ##   ownerHouseId: Optional house ID to look up CST level. If not provided (0),
+  ##                 will look up via colony's owner. Use this when creating neorias
+  ##                 during homeworld initialization before colony exists in state.
   let neoriaId = state.generateNeoriaId()
 
-  # Get colony owner and CST level
-  let colonyOpt = state.colony(colonyId)
-  if colonyOpt.isNone:
-    # Fallback if colony not found - shouldn't happen
-    let newNeoria = newNeoria(
-      neoriaId, neoriaClass, colonyId, state.turn, baseDocks = 5, effectiveDocks = 5
-    )
-    state.addNeoria(neoriaId, newNeoria)
-    return newNeoria
+  # Determine CST level from owner house
+  var cstLevel = 1.int32
+  var colonyOwner = ownerHouseId
 
-  let colony = colonyOpt.get()
-  let houseOpt = state.house(colony.owner)
-  let cstLevel =
+  if ownerHouseId != HouseId(0):
+    # Use provided house ID directly
+    let houseOpt = state.house(ownerHouseId)
     if houseOpt.isSome:
-      houseOpt.get().techTree.levels.cst
-    else:
-      1.int32
+      cstLevel = houseOpt.get().techTree.levels.cst
+  else:
+    # Look up via colony
+    let colonyOpt = state.colony(colonyId)
+    if colonyOpt.isSome:
+      let colony = colonyOpt.get()
+      colonyOwner = colony.owner
+      let houseOpt = state.house(colony.owner)
+      if houseOpt.isSome:
+        cstLevel = houseOpt.get().techTree.levels.cst
 
   # Get baseDocks from config based on neoriaClass
   let facilityClass =
@@ -80,10 +87,12 @@ proc createNeoria*(
   state.addNeoria(neoriaId, newNeoria)
   state.neorias.byColony.mgetOrPut(colonyId, @[]).add(neoriaId)
 
-  # Update colony's neoriaIds list (reuse colony from above)
-  var colonyMut = colony
-  colonyMut.neoriaIds.add(neoriaId)
-  state.updateColony(colonyId, colonyMut)
+  # Update colony's neoriaIds list if colony exists
+  let colonyOpt = state.colony(colonyId)
+  if colonyOpt.isSome:
+    var colonyMut = colonyOpt.get()
+    colonyMut.neoriaIds.add(neoriaId)
+    state.updateColony(colonyId, colonyMut)
 
   return newNeoria
 

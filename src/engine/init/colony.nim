@@ -25,15 +25,16 @@ proc createHomeWorld*(
   var groundUnitIds = newSeq[GroundUnitId]()
 
   # Create unified Neorias (production facilities)
+  # Note: Pass owner HouseId explicitly since colony doesn't exist in state yet
   var neoriaIds = newSeq[NeoriaId]()
   for i in 0 ..< gameSetup.startingFacilities.spaceports:
-    let neoria = createNeoria(state, colonyId, NeoriaClass.Spaceport)
+    let neoria = createNeoria(state, colonyId, NeoriaClass.Spaceport, owner)
     neoriaIds.add(neoria.id)
   for i in 0 ..< gameSetup.startingFacilities.shipyards:
-    let neoria = createNeoria(state, colonyId, NeoriaClass.Shipyard)
+    let neoria = createNeoria(state, colonyId, NeoriaClass.Shipyard, owner)
     neoriaIds.add(neoria.id)
   for i in 0 ..< gameSetup.startingFacilities.drydocks:
-    let neoria = createNeoria(state, colonyId, NeoriaClass.Drydock)
+    let neoria = createNeoria(state, colonyId, NeoriaClass.Drydock, owner)
     neoriaIds.add(neoria.id)
 
   # Create Kastras (defensive facilities) with WEP-modified stats

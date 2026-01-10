@@ -113,11 +113,11 @@ targeting {
 
 // --- Starbase Combat Bonuses ---
 starbase {
-    (docs)"docs/specs/07-combat.md#section-7-4"
+    (docs)"docs/specs/07-combat.md#section-7-6-3"
     // Also see: docs/specs/02-assets.md#section-2-4-4
     detectionBonus 2        // +2 detection roll bonus against cloaked Raiders
     criticalReroll #true    // Starbases reroll first critical hit against them
-    dieModifier 2           // +2 die roll modifier for starbases in combat
+    dieModifier 1           // +1 DRM for sensor coordination (per spec 7.6.3)
 }
 
 retreat {
