@@ -208,7 +208,7 @@ proc validateRepairRequest*(
   result.cost = cost
   result.message = "Repair approved"
 
-proc repairShip*(state: var GameState, fleetId: FleetId, shipId: ShipId): bool =
+proc repairShip*(state: GameState, fleetId: FleetId, shipId: ShipId): bool =
   ## Immediately repair a crippled ship at a friendly shipyard
   ## Deducts repair cost from house treasury
   ## Returns true if repair successful
@@ -262,7 +262,7 @@ proc repairShip*(state: var GameState, fleetId: FleetId, shipId: ShipId): bool =
   return true
 
 proc repairStarbase*(
-    state: var GameState, systemId: SystemId, starbaseIndex: int
+    state: GameState, systemId: SystemId, starbaseIndex: int
 ): bool =
   ## Immediately repair a crippled starbase at colony shipyard
   ## Deducts repair cost from house treasury

@@ -64,7 +64,7 @@ proc allBatteriesDestroyed*(state: GameState, colonyId: ColonyId): bool =
 
   return true # No operational batteries found
 
-proc destroyShields*(state: var GameState, colonyId: ColonyId) =
+proc destroyShields*(state: GameState, colonyId: ColonyId) =
   ## Destroy planetary shields when marines land during standard invasion
   ## Per docs/specs/07-combat.md Section 7.8.1
   ## "Shields and spaceports immediately destroyed upon marine landing"
@@ -78,7 +78,7 @@ proc destroyShields*(state: var GameState, colonyId: ColonyId) =
       updatedUnit.state = CombatState.Destroyed
       state.updateGroundUnit(unit.id, updatedUnit)
 
-proc destroySpaceports*(state: var GameState, colonyId: ColonyId) =
+proc destroySpaceports*(state: GameState, colonyId: ColonyId) =
   ## Destroy all spaceports when marines land during invasion
   ## Per docs/specs/07-combat.md Section 7.8.1
   ## "Shields and spaceports immediately destroyed upon marine landing"
@@ -91,7 +91,7 @@ proc destroySpaceports*(state: var GameState, colonyId: ColonyId) =
       state.updateNeoria(neoria.id, updatedNeoria)
 
 proc applyInfrastructureDamage*(
-  state: var GameState, colonyId: ColonyId, damage: int32
+  state: GameState, colonyId: ColonyId, damage: int32
 ) =
   ## Apply infrastructure damage to colony
   ## Per docs/specs/07-combat.md Section 7.7
@@ -107,7 +107,7 @@ proc applyInfrastructureDamage*(
   state.updateColony(colonyId, colony)
 
 proc applyBombardmentExcessHits*(
-  state: var GameState, colonyId: ColonyId, excessHits: int32
+  state: GameState, colonyId: ColonyId, excessHits: int32
 ) =
   ## Distribute bombardment excess hits (after batteries destroyed)
   ## Damages: Spaceports → Ground forces → Infrastructure/Population
@@ -244,7 +244,7 @@ proc applyBombardmentExcessHits*(
       state.updateColony(colonyId, colony)
 
 proc applyHitsToBatteries*(
-  state: var GameState, colonyId: ColonyId, hits: int32
+  state: GameState, colonyId: ColonyId, hits: int32
 ): int32 =
   ## Apply hits to ground batteries
   ## Returns remaining hits after all batteries destroyed
@@ -328,7 +328,7 @@ proc calculateGroundBatteryAS*(state: GameState, colonyId: ColonyId): int32 =
     result += int32(float32(baseAS) * multiplier)
 
 proc propagateTransportDamageToMarines*(
-  state: var GameState,
+  state: GameState,
   oldShipStates: Table[ShipId, CombatState],
   ships: seq[ShipId]
 ) =
@@ -436,7 +436,7 @@ proc calculateMarineAS*(state: GameState, fleets: seq[FleetId]): int32 =
               result += int32(float32(baseAS) * multiplier)
 
 proc applyHitsToGroundUnits*(
-  state: var GameState,
+  state: GameState,
   groundUnitIds: seq[GroundUnitId],
   hits: int32
 ) =
@@ -550,7 +550,7 @@ proc calculateGroundForceAS*(state: GameState, colonyId: ColonyId): int32 =
         result += int32(float32(baseAS) * multiplier)
 
 proc resolveBombardment*(
-  state: var GameState,
+  state: GameState,
   attackerFleets: seq[FleetId],
   targetColony: ColonyId,
   rng: var Rand
@@ -661,7 +661,7 @@ proc resolveBombardment*(
   return result
 
 proc resolveInvasion*(
-  state: var GameState,
+  state: GameState,
   attackerFleets: seq[FleetId],
   targetColony: ColonyId,
   rng: var Rand
@@ -778,7 +778,7 @@ proc resolveInvasion*(
   return result
 
 proc resolveBlitz*(
-  state: var GameState,
+  state: GameState,
   attackerFleets: seq[FleetId],
   targetColony: ColonyId,
   rng: var Rand

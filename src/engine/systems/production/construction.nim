@@ -32,7 +32,7 @@ import ./[projects, accessors]
 import ../../event_factory/economic
 
 proc resolveBuildOrders*(
-    state: var GameState, packet: CommandPacket, events: var seq[GameEvent]
+    state: GameState, packet: CommandPacket, events: var seq[GameEvent]
 ) =
   ## Process construction commands for a house with budget validation
   ## Prevents overspending by tracking committed costs

@@ -7,7 +7,7 @@ import ../state/[engine, id_gen]
 import ../types/[core, game_state, ship, fleet]
 import ../systems/ship/entity
 
-proc registerShipIndexes*(state: var GameState, shipId: ShipId) =
+proc registerShipIndexes*(state: GameState, shipId: ShipId) =
   ## Register an existing ship in the byFleet, byCarrier, and byHouse indexes
   ## Use this when a ship is created outside the normal createShip() flow
   ## (e.g., during commissioning where fleet doesn't exist yet)
@@ -58,7 +58,7 @@ proc newShip*(
   )
 
 proc createShip*(
-    state: var GameState, owner: HouseId, fleetId: FleetId, shipClass: ShipClass
+    state: GameState, owner: HouseId, fleetId: FleetId, shipClass: ShipClass
 ): Ship =
   ## Creates a new ship, adds it to a fleet, and updates all indexes.
   ## If fleetId = 0, ship is unassigned (colony-based fighters)
@@ -99,7 +99,7 @@ proc createShip*(
 
   return newShip
 
-proc destroyShip*(state: var GameState, shipId: ShipId) =
+proc destroyShip*(state: GameState, shipId: ShipId) =
   ## Destroys a ship, removing it from all collections and indexes.
   let shipOpt = state.ship(shipId)
   if shipOpt.isNone:
@@ -137,7 +137,7 @@ proc destroyShip*(state: var GameState, shipId: ShipId) =
   # 4. Delete from entity manager
   state.delShip(shipId)
 
-proc assignShipToFleet*(state: var GameState, shipId: ShipId, newFleetId: FleetId) =
+proc assignShipToFleet*(state: GameState, shipId: ShipId, newFleetId: FleetId) =
   ## Moves a ship from one fleet to another (or assigns unassigned ship to fleet).
   let shipOpt = state.ship(shipId)
   if shipOpt.isNone:
@@ -177,11 +177,11 @@ proc assignShipToFleet*(state: var GameState, shipId: ShipId, newFleetId: FleetI
   ship.fleetId = newFleetId
   state.updateShip(shipId, ship)
 
-proc unassignShipFromFleet*(state: var GameState, shipId: ShipId) =
+proc unassignShipFromFleet*(state: GameState, shipId: ShipId) =
   ## Removes ship from its fleet (sets fleetId to 0)
   assignShipToFleet(state, shipId, FleetId(0))
 
-proc assignFighterToCarrier*(state: var GameState, fighterId: ShipId, carrierId: ShipId) =
+proc assignFighterToCarrier*(state: GameState, fighterId: ShipId, carrierId: ShipId) =
   ## Embarks a fighter onto a carrier
   let fighterOpt = state.ship(fighterId)
   let carrierOpt = state.ship(carrierId)
@@ -203,7 +203,7 @@ proc assignFighterToCarrier*(state: var GameState, fighterId: ShipId, carrierId:
   # Update byCarrier index
   state.ships.byCarrier.mgetOrPut(carrierId, @[]).add(fighterId)
 
-proc unassignFighterFromCarrier*(state: var GameState, fighterId: ShipId) =
+proc unassignFighterFromCarrier*(state: GameState, fighterId: ShipId) =
   ## Disembarks a fighter from its carrier
   let fighterOpt = state.ship(fighterId)
   if fighterOpt.isNone:

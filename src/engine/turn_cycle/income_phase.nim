@@ -44,7 +44,7 @@ import ../systems/fleet/execution
 # INC1: Apply Ongoing Espionage Effects
 # =============================================================================
 
-proc applyOngoingEspionageEffects(state: var GameState): int =
+proc applyOngoingEspionageEffects(state: GameState): int =
   ## [INC1] Filter active espionage effects, apply modifiers
   ## Returns count of active effects
   logInfo("Income", "[INC1] Applying ongoing espionage effects...")
@@ -70,7 +70,7 @@ proc applyOngoingEspionageEffects(state: var GameState): int =
 # =============================================================================
 
 proc processEBPCIPInvestment(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
 ): int =
@@ -124,7 +124,7 @@ proc processEBPCIPInvestment(
 # =============================================================================
 
 proc calculateBaseProduction(
-    state: var GameState,
+    state: GameState,
 ): IncomePhaseReport =
   ## [INC3] Calculate GCO, apply blockades (via income_engine)
   ## Returns income report with per-house and per-colony details
@@ -160,7 +160,7 @@ proc countBlockadedColonies(state: GameState): int =
 # =============================================================================
 
 proc executeSalvageCommands(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
 ): int =
@@ -204,7 +204,7 @@ proc executeSalvageCommands(
 # =============================================================================
 
 proc processMaintenancePhase(
-    state: var GameState,
+    state: GameState,
     events: var seq[GameEvent],
 ) =
   ## [INC6] Calculate and deduct maintenance upkeep
@@ -225,7 +225,7 @@ proc processMaintenancePhase(
 # =============================================================================
 
 proc enforceCapacityLimits(
-    state: var GameState,
+    state: GameState,
     events: var seq[GameEvent],
 ) =
   ## [INC7] Enforce capacity limits post-combat
@@ -266,7 +266,7 @@ proc enforceCapacityLimits(
 # =============================================================================
 
 proc collectResources(
-    state: var GameState,
+    state: GameState,
     incomeReport: IncomePhaseReport,
 ) =
   ## [INC8] Store income reports and update colony production fields
@@ -301,7 +301,7 @@ proc collectResources(
 # =============================================================================
 
 proc calculatePrestige(
-    state: var GameState,
+    state: GameState,
     incomeReport: IncomePhaseReport,
     events: var seq[GameEvent],
 ) =
@@ -347,7 +347,7 @@ proc calculatePrestige(
 # =============================================================================
 
 proc processEliminationChecks(
-    state: var GameState,
+    state: GameState,
     events: var seq[GameEvent],
 ): int =
   ## [INC10a] Check and process house eliminations
@@ -434,7 +434,7 @@ proc processEliminationChecks(
 # =============================================================================
 
 proc checkVictoryConditions(
-    state: var GameState,
+    state: GameState,
     events: var seq[GameEvent],
 ): victory.VictoryCheck =
   ## [INC10b] Check victory conditions after eliminations processed
@@ -462,7 +462,7 @@ proc checkVictoryConditions(
 # INC11: Advance Timers
 # =============================================================================
 
-proc advanceTimers(state: var GameState, events: var seq[GameEvent]): int =
+proc advanceTimers(state: GameState, events: var seq[GameEvent]): int =
   ## [INC11] Decrement effect timers, expire diplomatic proposals
   ## Returns count of expired proposals
   logInfo("Income", "[INC11] Advancing timers...")
@@ -528,7 +528,7 @@ proc advanceTimers(state: var GameState, events: var seq[GameEvent]): int =
 # =============================================================================
 
 proc resolveIncomePhase*(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
     rng: var Rand,

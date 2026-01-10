@@ -142,7 +142,7 @@ proc checkViolations*(state: GameState): seq[capacity.CapacityViolation] =
         result.add(status)
 
 proc updateViolationTracking*(
-    state: var GameState, violation: capacity.CapacityViolation
+    state: GameState, violation: capacity.CapacityViolation
 ) =
   ## Update violation tracking for a colony
   ## Explicit mutation - applies tracking state changes
@@ -270,7 +270,7 @@ proc planEnforcement*(
     $violation.entity.colonyId & " (capacity violation)"
 
 proc applyEnforcement*(
-    state: var GameState, action: capacity.EnforcementAction, events: var seq[GameEvent]
+    state: GameState, action: capacity.EnforcementAction, events: var seq[GameEvent]
 ) =
   ## Apply enforcement actions
   ## Explicit mutation - disbands fighters and clears violation
@@ -346,7 +346,7 @@ proc applyEnforcement*(
   )
 
 proc processCapacityEnforcement*(
-    state: var GameState, events: var seq[GameEvent]
+    state: GameState, events: var seq[GameEvent]
 ): seq[capacity.EnforcementAction] =
   ## Main entry point - batch process all capacity violations
   ## Called during Maintenance phase

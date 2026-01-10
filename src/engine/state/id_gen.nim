@@ -1,7 +1,7 @@
 import ../types/[core, game_state]
 
 template defineIdHelpers(IdType: typedesc, counterField: untyped) =
-  proc `generate IdType`*(state: var GameState): IdType =
+  proc `generate IdType`*(state: GameState): IdType =
     result = IdType(state.counters.counterField)
     inc state.counters.counterField
 

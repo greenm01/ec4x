@@ -24,7 +24,7 @@ import ./movement # For findPath
 import ./entity
 
 proc completeFleetCommand*(
-    state: var GameState,
+    state: GameState,
     fleetId: FleetId,
     orderType: string,
     details: string = "",
@@ -269,7 +269,7 @@ var movementCallDepth {.global.} = 0
 # =============================================================================
 
 proc resolveMovementCommand*(
-    state: var GameState,
+    state: GameState,
     houseId: HouseId,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -549,7 +549,7 @@ proc resolveMovementCommand*(
     # This just logs the encounter
 
 proc resolveColonizationCommand*(
-    state: var GameState,
+    state: GameState,
     houseId: HouseId,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -773,7 +773,7 @@ proc resolveColonizationCommand*(
   )
 
 proc resolveViewWorldCommand*(
-    state: var GameState,
+    state: GameState,
     houseId: HouseId,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -886,7 +886,7 @@ proc resolveViewWorldCommand*(
   # Cleanup handled by Command Phase
 
 proc autoLoadMarines(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     colony: Colony,
     colonyId: ColonyId,
@@ -959,7 +959,7 @@ proc autoLoadMarines(
     )
 
 proc autoLoadColonists(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     colony: Colony,
     colonyId: ColonyId,
@@ -1029,7 +1029,7 @@ proc autoLoadColonists(
     logDebug("AutoLoad", &"Auto-loaded {totalLoaded} PTU onto fleet {fleet.id}")
 
 proc autoLoadCargo*(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
 ) =

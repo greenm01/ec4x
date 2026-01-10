@@ -28,12 +28,12 @@ proc newFleet*(
     missionStartTurn: 0,
   )
 
-proc registerFleetLocation*(state: var GameState, fleetId: FleetId, sysId: SystemId) =
+proc registerFleetLocation*(state: GameState, fleetId: FleetId, sysId: SystemId) =
   ## Add a fleet to the system index
   state.fleets.bySystem.mgetOrPut(sysId, @[]).add(fleetId)
 
 proc unregisterFleetLocation*(
-    state: var GameState, fleetId: FleetId, sysId: SystemId
+    state: GameState, fleetId: FleetId, sysId: SystemId
 ) =
   ## Remove a fleet from the system index
   if state.fleets.bySystem.contains(sysId):
@@ -42,11 +42,11 @@ proc unregisterFleetLocation*(
         id != fleetId
     )
 
-proc registerFleetOwner*(state: var GameState, fleetId: FleetId, owner: HouseId) =
+proc registerFleetOwner*(state: GameState, fleetId: FleetId, owner: HouseId) =
   ## Add a fleet to the owner index
   state.fleets.byOwner.mgetOrPut(owner, @[]).add(fleetId)
 
-proc unregisterFleetOwner*(state: var GameState, fleetId: FleetId, owner: HouseId) =
+proc unregisterFleetOwner*(state: GameState, fleetId: FleetId, owner: HouseId) =
   ## Remove a fleet from the owner index
   if state.fleets.byOwner.contains(owner):
     state.fleets.byOwner[owner].keepIf(
@@ -54,7 +54,7 @@ proc unregisterFleetOwner*(state: var GameState, fleetId: FleetId, owner: HouseI
         id != fleetId
     )
 
-proc createFleet*(state: var GameState, owner: HouseId, location: SystemId): Fleet =
+proc createFleet*(state: GameState, owner: HouseId, location: SystemId): Fleet =
   ## Creates a new, empty fleet and adds it to the game state.
   let fleetId = state.generateFleetId()
 
@@ -78,7 +78,7 @@ proc createFleet*(state: var GameState, owner: HouseId, location: SystemId): Fle
 
   return newFleet
 
-proc destroyFleet*(state: var GameState, fleetId: FleetId) =
+proc destroyFleet*(state: GameState, fleetId: FleetId) =
   ## Destroys a fleet and all ships within it.
   let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
@@ -99,7 +99,7 @@ proc destroyFleet*(state: var GameState, fleetId: FleetId) =
   # 4. Remove from entity manager
   state.delFleet(fleetId)
 
-proc moveFleet*(state: var GameState, fleetId: FleetId, destId: SystemId) =
+proc moveFleet*(state: GameState, fleetId: FleetId, destId: SystemId) =
   ## Moves a fleet to a new system, updating the spatial index.
   let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
@@ -119,7 +119,7 @@ proc moveFleet*(state: var GameState, fleetId: FleetId, destId: SystemId) =
   fleet.location = destId
   state.updateFleet(fleetId, fleet)
 
-proc changeFleetOwner*(state: var GameState, fleetId: FleetId, newOwner: HouseId) =
+proc changeFleetOwner*(state: GameState, fleetId: FleetId, newOwner: HouseId) =
   ## Transfers ownership of a fleet, updating the byOwner index
   let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
@@ -152,9 +152,9 @@ proc changeFleetOwner*(state: var GameState, fleetId: FleetId, newOwner: HouseId
 # ============================================================================
 
 # Forward declaration
-proc removeShipFromFleet*(state: var GameState, fleetId: FleetId, shipId: ShipId)
+proc removeShipFromFleet*(state: GameState, fleetId: FleetId, shipId: ShipId)
 
-proc addShipToFleet*(state: var GameState, fleetId: FleetId, shipId: ShipId) =
+proc addShipToFleet*(state: GameState, fleetId: FleetId, shipId: ShipId) =
   ## Add a ship to a fleet - maintains all indexes
   ## NOTE: Caller must validate compatibility (Intel/combat mixing rules)
   ##       Use systems/fleet/entity.canAddShip() before calling
@@ -182,7 +182,7 @@ proc addShipToFleet*(state: var GameState, fleetId: FleetId, shipId: ShipId) =
   # 3. Update byFleet index
   state.ships.byFleet.mgetOrPut(fleetId, @[]).add(shipId)
 
-proc removeShipFromFleet*(state: var GameState, fleetId: FleetId, shipId: ShipId) =
+proc removeShipFromFleet*(state: GameState, fleetId: FleetId, shipId: ShipId) =
   ## Remove a ship from a fleet - maintains all indexes
   let fleetOpt = state.fleet(fleetId)
   let shipOpt = state.ship(shipId)
@@ -205,7 +205,7 @@ proc removeShipFromFleet*(state: var GameState, fleetId: FleetId, shipId: ShipId
   if state.ships.byFleet.contains(fleetId):
     state.ships.byFleet[fleetId].keepIf(proc(id: ShipId): bool = id != shipId)
 
-proc clearFleetShips*(state: var GameState, fleetId: FleetId) =
+proc clearFleetShips*(state: GameState, fleetId: FleetId) =
   ## Remove all ships from a fleet - maintains all indexes
   let fleetOpt = state.fleet(fleetId)
   if fleetOpt.isNone:
@@ -229,7 +229,7 @@ proc clearFleetShips*(state: var GameState, fleetId: FleetId) =
     state.ships.byFleet[fleetId].setLen(0)
 
 proc mergeFleets*(
-    state: var GameState, sourceFleetId: FleetId, targetFleetId: FleetId
+    state: GameState, sourceFleetId: FleetId, targetFleetId: FleetId
 ) =
   ## Merge source fleet into target fleet - maintains all indexes
   ## NOTE: Caller must validate compatibility (see systems/fleet/entity.canMergeWith)
@@ -264,7 +264,7 @@ proc mergeFleets*(
   destroyFleet(state, sourceFleetId)
 
 proc splitFleet*(
-    state: var GameState,
+    state: GameState,
     sourceFleetId: FleetId,
     shipIds: seq[ShipId],
     newFleetLocation: SystemId,

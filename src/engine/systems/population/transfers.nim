@@ -63,7 +63,7 @@ proc calculateTransferCost*(
 # =============================================================================
 
 proc createTransferInitiation*(
-    state: var GameState,
+    state: GameState,
     houseId: HouseId,
     sourceSystem: SystemId,
     destSystem: SystemId,
@@ -208,7 +208,7 @@ proc processArrivingTransfer(
     result.actualDestination = none(SystemId)
 
 proc applyTransferCompletion*(
-    state: var GameState, transferId: PopulationTransferId, completion: TransferCompletion
+    state: GameState, transferId: PopulationTransferId, completion: TransferCompletion
 ) =
   ## Apply transfer completion to state
   ## Mutates state using entity patterns
@@ -244,7 +244,7 @@ proc applyTransferCompletion*(
 # Batch Processing
 # =============================================================================
 
-proc processTransfers*(state: var GameState): seq[TransferCompletion] =
+proc processTransfers*(state: GameState): seq[TransferCompletion] =
   ## Batch process all active transfers arriving this turn
   result = @[]
   var completedIds: seq[PopulationTransferId] = @[]
@@ -321,7 +321,7 @@ proc generateTransferEvents*(
 # =============================================================================
 
 proc resolvePopulationTransfers*(
-    state: var GameState, packet: CommandPacket, events: var seq[GameEvent]
+    state: GameState, packet: CommandPacket, events: var seq[GameEvent]
 ) =
   ## Process population transfer commands - initiate new transfers
   ## Called from Command Phase CMD5

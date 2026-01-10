@@ -68,7 +68,7 @@ proc newKastra*(
   )
 
 proc createKastra*(
-    state: var GameState, colonyId: ColonyId, kastraClass: KastraClass, wepLevel: int32
+    state: GameState, colonyId: ColonyId, kastraClass: KastraClass, wepLevel: int32
 ): Kastra =
   ## Creates a new kastra (defensive facility), adds it to the entity manager,
   ## and links it to a colony.
@@ -89,7 +89,7 @@ proc createKastra*(
 
   return newKastra
 
-proc destroyKastra*(state: var GameState, kastraId: KastraId) =
+proc destroyKastra*(state: GameState, kastraId: KastraId) =
   ## Destroys a kastra, removing it from all collections.
   ## Uses O(1) lookup via kastra.colonyId (no iteration needed!)
   let kastraOpt = state.kastra(kastraId)

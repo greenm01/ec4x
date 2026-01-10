@@ -2,7 +2,7 @@
 ##
 ## Creates starting fleets with specified compositions per game setup configuration.
 
-import std/[options, tables, strutils]
+import std/[options, strutils]
 import ../types/[core, game_state, fleet, ship]
 import ../types/config/game_setup
 import ../state/[engine, id_gen]
@@ -10,7 +10,7 @@ import ../entities/[fleet_ops, ship_ops]
 import ../utils
 
 proc createStartingFleets*(
-    state: var GameState,
+    state: GameState,
     owner: HouseId,
     location: SystemId,
     fleetConfigs: seq[FleetConfig],

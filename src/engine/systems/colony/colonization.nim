@@ -30,7 +30,7 @@ proc canColonize*(state: GameState, systemId: SystemId): bool =
   state.colonyBySystem(systemId).isNone
 
 proc establishColony*(
-    state: var GameState,
+    state: GameState,
     houseId: HouseId,
     systemId: SystemId,
     planetClass: PlanetClass,
@@ -195,7 +195,7 @@ proc resolveConflict(
 # ============================================================================
 
 proc establishColonyForFleet(
-    state: var GameState, intent: ColonizationIntent, events: var seq[GameEvent]
+    state: GameState, intent: ColonizationIntent, events: var seq[GameEvent]
 ): ColonizationResult =
   ## Establish colony for winning fleet
   ## Returns result with outcome and details
@@ -343,7 +343,7 @@ proc establishColonyForFleet(
 # ============================================================================
 
 proc resolveColonization*(
-    state: var GameState, rng: var Rand, events: var seq[GameEvent]
+    state: GameState, rng: var Rand, events: var seq[GameEvent]
 ): seq[ColonizationResult] =
   ## Main entry point: Resolve all colonization attempts simultaneously
   ## No fallback behavior - players manage their fleets

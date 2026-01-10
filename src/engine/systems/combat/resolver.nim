@@ -27,7 +27,7 @@ proc determineOutcome*(state: GameState, battle: Battle): CombatResult =
   )
 
 proc resolveBattle*(
-  state: var GameState, battle: var Battle, rng: var Rand
+  state: GameState, battle: var Battle, rng: var Rand
 ): CombatResult =
   ## Main combat resolution - works for Space, Orbital, or Planetary
   ## Per docs/specs/07-combat.md Section 7.4

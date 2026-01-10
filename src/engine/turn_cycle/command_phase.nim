@@ -38,7 +38,7 @@ import ../event_factory/init
 # CMD1: ORDER CLEANUP
 # =============================================================================
 
-proc cleanupCompletedCommands(state: var GameState, events: seq[GameEvent]) =
+proc cleanupCompletedCommands(state: GameState, events: seq[GameEvent]) =
   ## [CMD1] Reset completed/failed/aborted commands to Hold + MissionState.None
   ##
   ## Scans events for CommandCompleted/Failed/Aborted and resets those fleets.
@@ -75,7 +75,7 @@ proc cleanupCompletedCommands(state: var GameState, events: seq[GameEvent]) =
 # CMD2: UNIFIED COMMISSIONING
 # =============================================================================
 
-proc commissionEntities(state: var GameState, events: var seq[GameEvent]) =
+proc commissionEntities(state: GameState, events: var seq[GameEvent]) =
   ## [CMD2] Commission ALL pending assets that survived Conflict Phase
   ##
   ## Per canonical spec:
@@ -158,7 +158,7 @@ proc commissionEntities(state: var GameState, events: var seq[GameEvent]) =
 # CMD3: AUTO-REPAIR SUBMISSION
 # =============================================================================
 
-proc submitAutoRepairs(state: var GameState, events: var seq[GameEvent]) =
+proc submitAutoRepairs(state: GameState, events: var seq[GameEvent]) =
   ## [CMD3] Auto-submit repair orders for colonies with autoRepair=true
   ##
   ## Per canonical spec:
@@ -186,7 +186,7 @@ proc submitAutoRepairs(state: var GameState, events: var seq[GameEvent]) =
 # =============================================================================
 
 proc processColonyAutomation(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent]
 ) =
@@ -222,7 +222,7 @@ proc processColonyAutomation(
 # =============================================================================
 
 proc processPlayerSubmissions(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent]
 ) =
@@ -255,7 +255,7 @@ proc processPlayerSubmissions(
 # =============================================================================
 
 proc processResearchAllocation(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent]
 ) =
@@ -342,7 +342,7 @@ proc processResearchAllocation(
     state.updateHouse(houseId, house)
 
 proc processOrderValidation(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent]
 ) =
@@ -421,7 +421,7 @@ proc processOrderValidation(
 # =============================================================================
 
 proc resolveCommandPhase*(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
     rng: var Rand,

@@ -22,140 +22,140 @@ type OrderOutcome* {.pure.} = enum
 # =============================================================================
 
 proc executeHoldCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeMoveCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeSeekHomeCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executePatrolCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeGuardStarbaseCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeGuardColonyCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeBlockadeCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeBombardCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeInvadeCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeBlitzCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeScoutColonyCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeHackStarbaseCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeScoutSystemCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeColonizeCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeJoinFleetCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeRendezvousCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeSalvageCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeReserveCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeMothballCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
 ): OrderOutcome
 
 proc executeViewCommand(
-  state: var GameState,
+  state: GameState,
   fleet: Fleet,
   command: FleetCommand,
   events: var seq[GameEvent],
@@ -166,7 +166,7 @@ proc executeViewCommand(
 # =============================================================================
 
 proc executeFleetCommand*(
-    state: var GameState,
+    state: GameState,
     houseId: HouseId,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -274,7 +274,7 @@ proc findNearestColonyFromList(
 # =============================================================================
 
 proc executeHoldCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -290,7 +290,7 @@ proc executeHoldCommand(
 # =============================================================================
 
 proc executeMoveCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -318,7 +318,7 @@ proc executeMoveCommand(
 # =============================================================================
 
 proc executeSeekHomeCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -382,7 +382,7 @@ proc executeSeekHomeCommand(
 # =============================================================================
 
 proc executePatrolCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -430,7 +430,7 @@ proc executePatrolCommand(
 # =============================================================================
 
 proc executeGuardStarbaseCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -515,7 +515,7 @@ proc executeGuardStarbaseCommand(
 # =============================================================================
 
 proc executeGuardColonyCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -573,7 +573,7 @@ proc executeGuardColonyCommand(
   return OrderOutcome.Success
 
 proc executeBlockadeCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -668,7 +668,7 @@ proc executeBlockadeCommand(
 # =============================================================================
 
 proc executeBombardCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -710,7 +710,7 @@ proc executeBombardCommand(
 # =============================================================================
 
 proc executeInvadeCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -758,7 +758,7 @@ proc executeInvadeCommand(
 # =============================================================================
 
 proc executeBlitzCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -801,7 +801,7 @@ proc executeBlitzCommand(
 # =============================================================================
 
 proc executeScoutColonyCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -923,7 +923,7 @@ proc executeScoutColonyCommand(
 # =============================================================================
 
 proc executeHackStarbaseCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -1068,7 +1068,7 @@ proc executeHackStarbaseCommand(
 # =============================================================================
 
 proc executeScoutSystemCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -1189,7 +1189,7 @@ proc executeScoutSystemCommand(
 # =============================================================================
 
 proc executeColonizeCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -1229,7 +1229,7 @@ proc executeColonizeCommand(
 # =============================================================================
 
 proc executeJoinFleetCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -1387,7 +1387,7 @@ proc executeJoinFleetCommand(
 # =============================================================================
 
 proc executeRendezvousCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -1547,7 +1547,7 @@ proc executeRendezvousCommand(
 # =============================================================================
 
 proc executeSalvageCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -1638,7 +1638,7 @@ proc executeSalvageCommand(
 # =============================================================================
 
 proc executeReserveCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -1727,7 +1727,7 @@ proc executeReserveCommand(
   return OrderOutcome.Success
 
 proc executeMothballCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],
@@ -1821,7 +1821,7 @@ proc executeMothballCommand(
 # =============================================================================
 
 proc executeViewCommand(
-    state: var GameState,
+    state: GameState,
     fleet: Fleet,
     command: FleetCommand,
     events: var seq[GameEvent],

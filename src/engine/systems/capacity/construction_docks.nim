@@ -258,7 +258,7 @@ proc getColonyTotalCapacity*(
       result.maximum += facility.maxDocks
 
 proc assignAndQueueProject*(
-    state: var GameState, colonyId: ColonyId, project: ConstructionProject
+    state: GameState, colonyId: ColonyId, project: ConstructionProject
 ): bool =
   ## Assign project to best available facility and add to its queue
   ## Returns true if successful, false if no capacity

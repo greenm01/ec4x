@@ -38,7 +38,7 @@ import ./[engine, executor]
 
 # Forward declaration helper
 proc generateMissionIntel(
-    state: var GameState,
+    state: GameState,
     missionType: FleetCommandType,
     targetSystem: SystemId,
     ownerHouse: HouseId,
@@ -46,7 +46,7 @@ proc generateMissionIntel(
 )
 
 proc resolveScoutMissions*(
-    state: var GameState,
+    state: GameState,
     rng: var Rand,
     events: var seq[event.GameEvent]
 ) =
@@ -236,7 +236,7 @@ proc resolveScoutMissions*(
     " existing_missions=", existingMissionsProcessed)
 
 proc generateMissionIntel(
-    state: var GameState,
+    state: GameState,
     missionType: FleetCommandType,
     targetSystem: SystemId,
     ownerHouse: HouseId,
@@ -298,7 +298,7 @@ proc wasEspionageHandled*(
   return false
 
 proc processEspionageActions*(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     rng: var Rand,
     events: var seq[event.GameEvent],

@@ -16,7 +16,7 @@ import ../../entities/project_ops
 import ../../../common/logger
 
 proc clearFacilityQueues*(
-    state: var GameState, colony: var Colony, facilityType: facilities.FacilityClass
+    state: GameState, colony: var Colony, facilityType: facilities.FacilityClass
 ) =
   ## Clear construction and repair queues for a specific facility type
   ## Called when a facility is destroyed or crippled
@@ -63,7 +63,7 @@ proc clearFacilityQueues*(
       " count=", destroyedRepairs,
     )
 
-proc clearAllConstructionQueues*(state: var GameState, colony: var Colony) =
+proc clearAllConstructionQueues*(state: GameState, colony: var Colony) =
   ## Clear ALL construction queues when colony has no remaining shipyards or spaceports
   ## Called when last facility is destroyed
   ##
@@ -107,7 +107,7 @@ proc clearAllConstructionQueues*(state: var GameState, colony: var Colony) =
     )
 
 proc handleFacilityDestruction*(
-    state: var GameState, colony: var Colony, facilityType: facilities.FacilityClass
+    state: GameState, colony: var Colony, facilityType: facilities.FacilityClass
 ) =
   ## Handle facility destruction: clear queues and check if any facilities remain
   ##

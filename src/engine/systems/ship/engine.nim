@@ -129,7 +129,7 @@ proc unloadShipCargo*(ship: var Ship, amount: int32): CargoTransferResult =
     )
 
 proc transferCargoFromColony*(
-    state: var GameState,
+    state: GameState,
     shipId: ShipId,
     colonyId: SystemId,
     cargoType: CargoClass,
@@ -156,7 +156,7 @@ proc transferCargoFromColony*(
   )
 
 proc transferCargoToColony*(
-    state: var GameState, shipId: ShipId, colonyId: SystemId, amount: int32
+    state: GameState, shipId: ShipId, colonyId: SystemId, amount: int32
 ): CargoTransferResult =
   ## Transfer cargo from ship to colony
   ## Amount=0 unloads all cargo
@@ -186,7 +186,7 @@ type RepairResult* = object ## Result of ship repair operation
   turnsRequired*: int32
 
 proc repairShip*(
-    state: var GameState, shipId: ShipId, colonyId: SystemId
+    state: GameState, shipId: ShipId, colonyId: SystemId
 ): RepairResult =
   ## Coordinate ship repair via drydock at colony
   ##
@@ -211,7 +211,7 @@ proc repairShip*(
   )
 
 proc upgradeShipWEP*(
-    state: var GameState, shipId: ShipId, newWEPLevel: int32
+    state: GameState, shipId: ShipId, newWEPLevel: int32
 ): RepairResult =
   ## Upgrade ship to new WEP tech level
   ##

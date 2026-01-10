@@ -32,7 +32,7 @@ proc applyPrestigeMultiplier*(baseValue: int32): int32 =
   ## Apply the dynamic multiplier to a base prestige value
   result = int32(float32(baseValue) * prestigeMultiplier())
 
-proc applyPrestigeEvent*(state: var GameState, houseId: HouseId, event: PrestigeEvent) =
+proc applyPrestigeEvent*(state: GameState, houseId: HouseId, event: PrestigeEvent) =
   ## Apply a single prestige event to a house
   ##
   ## This is the ONLY function that should mutate house.prestige
@@ -52,7 +52,7 @@ proc applyPrestigeEvent*(state: var GameState, houseId: HouseId, event: Prestige
   state.updateHouse(houseId, house)
 
 proc applyPrestigeEvents*(
-    state: var GameState, houseId: HouseId, events: seq[PrestigeEvent]
+    state: GameState, houseId: HouseId, events: seq[PrestigeEvent]
 ) =
   ## Apply multiple prestige events to a house
   ##

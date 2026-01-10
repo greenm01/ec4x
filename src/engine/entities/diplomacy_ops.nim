@@ -7,7 +7,7 @@ import std/tables
 import ../types/[core, diplomacy, game_state]
 
 proc setDiplomaticRelation*(
-    state: var GameState,
+    state: GameState,
     sourceHouse: HouseId,
     targetHouse: HouseId,
     newState: DiplomaticState,

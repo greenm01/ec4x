@@ -1,7 +1,9 @@
 ## EC4X Game Engine
 ## Public API for game initialization, turn processing, and state queries
-import types/[game_state, command, player_state]
+import std/[random, tables]
+import types/[core, game_state, command, player_state]
 import init/engine
+import turn_cycle/engine
 
 export game_state.GameState
 export command.CommandPacket
@@ -23,6 +25,14 @@ proc newGame*(
   ##   dataDir: Root directory for per-game databases
   result = initGameState(scenarioPath, gameName, gameDescription, "config", dataDir)
 
+# Turn execution
+proc resolve*(
+    state: GameState, commands: Table[HouseId, CommandPacket], rng: var Rand
+): TurnResult =
+  ## Execute complete turn cycle and return results
+  result = resolveTurn(state, commands, rng)
+  #saveGame(state) # TODO: Auto-save after each turn
+
 #[
 proc loadGame*(gameId: int32): GameState =
   ## Load existing game from database
@@ -31,14 +41,6 @@ proc loadGame*(gameId: int32): GameState =
 proc saveGame*(state: GameState) =
   ## Persist game state to database
   save.saveGameState(state)
-
-# Turn execution
-proc resolveTurn*(
-    state: var GameState, commands: Table[HouseId, CommandPacket]
-): TurnReport =
-  ## Execute complete turn cycle and return results
-  result = turn_executor.executeTurnCycle(state, commands)
-  saveGame(state) # Auto-save after each turn
 
 # Player state
 proc getPlayerState*(state: GameState, houseId: HouseId): PlayerState =

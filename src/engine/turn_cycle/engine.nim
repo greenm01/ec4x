@@ -5,7 +5,7 @@
 ## **Phase Order:**
 ## 1. Conflict Phase (CON) - Combat, espionage, colonization
 ## 2. Income Phase (INC) - Economics, maintenance, victory checks
-## 3. Command Phase (CMD) - Commissioning, player orders, validation
+## 3. Command Phase (CMD) - Commissioning, player commands, validation
 ## 4. Production Phase (PRD) - Movement, construction, research
 ##
 ## **Key Timing Principle:**
@@ -35,15 +35,15 @@ type
     turnAdvanced*: bool
 
 proc resolveTurn*(
-    state: var GameState,
-    orders: Table[HouseId, CommandPacket],
+    state: GameState,
+    commands: Table[HouseId, CommandPacket],
     rng: var Rand
 ): TurnResult =
   ## Execute complete turn cycle per canonical spec
   ##
   ## Args:
   ##   state: Game state to mutate in-place
-  ##   orders: Command packets from all houses for this turn
+  ##   commands: Command packets from all houses for this turn
   ##   rng: Random number generator for stochastic resolution
   ##
   ## Returns:
@@ -52,7 +52,7 @@ proc resolveTurn*(
   ## **Phase Execution Order:**
   ## 1. Conflict - Resolves combat from commands stored last turn
   ## 2. Income - Calculates economics, checks victory conditions
-  ## 3. Command - Commissions assets, processes new player orders
+  ## 3. Command - Commissions assets, processes new player commands
   ## 4. Production - Moves fleets, advances construction, research
 
   logInfo("TurnCycle", &"=== Turn {state.turn} Resolution Begin ===")
@@ -68,7 +68,7 @@ proc resolveTurn*(
   # Resolves combat, espionage, and colonization for fleets that arrived
   # at their targets. Uses commands stored in Fleet.command from last turn.
   logInfo("TurnCycle", "[Phase 1/4] Conflict Phase")
-  resolveConflictPhase(state, orders, result.combatResults, result.events, rng)
+  resolveConflictPhase(state, commands, result.combatResults, result.events, rng)
 
   # =========================================================================
   # PHASE 2: INCOME PHASE
@@ -76,7 +76,7 @@ proc resolveTurn*(
   # Calculates production, applies blockades, processes maintenance,
   # enforces capacity limits, collects resources, checks victory conditions.
   logInfo("TurnCycle", "[Phase 2/4] Income Phase")
-  state.resolveIncomePhase(orders, result.events, rng)
+  state.resolveIncomePhase(commands, result.events, rng)
 
   # Check victory conditions after Income Phase (INC10b)
   # Victory condition configuration - use defaults if not specified
@@ -100,9 +100,9 @@ proc resolveTurn*(
   # PHASE 3: COMMAND PHASE
   # =========================================================================
   # Commissions completed assets, processes auto-repair, colony automation,
-  # then processes player-submitted orders for this turn.
+  # then processes player-submitted commands for this turn.
   logInfo("TurnCycle", "[Phase 3/4] Command Phase")
-  resolveCommandPhase(state, orders, result.events, rng)
+  resolveCommandPhase(state, commands, result.events, rng)
 
   # =========================================================================
   # PHASE 4: PRODUCTION PHASE
@@ -112,7 +112,7 @@ proc resolveTurn*(
   # and research advancement.
   logInfo("TurnCycle", "[Phase 4/4] Production Phase")
   let completedProjects = resolveProductionPhase(
-    state, result.events, orders, rng
+    state, result.events, commands, rng
   )
 
   # Store completed military projects for next turn's Command Phase
@@ -134,8 +134,8 @@ proc resolveTurn*(
     &"  Events: {result.events.len}, Combat Results: {result.combatResults.len}")
 
 proc resolveTurnWithSeed*(
-    state: var GameState,
-    orders: Table[HouseId, CommandPacket],
+    state: GameState,
+    commands: Table[HouseId, CommandPacket],
     seed: int64
 ): TurnResult =
   ## Execute turn with specific RNG seed for reproducibility
@@ -145,15 +145,15 @@ proc resolveTurnWithSeed*(
   ## - Replay functionality
   ## - Debug reproduction
   var rng = initRand(seed)
-  result = resolveTurn(state, orders, rng)
+  result = resolveTurn(state, commands, rng)
 
 proc resolveTurnDeterministic*(
-    state: var GameState,
-    orders: Table[HouseId, CommandPacket]
+    state: GameState,
+    commands: Table[HouseId, CommandPacket]
 ): TurnResult =
   ## Execute turn with turn-number-based seed for deterministic replay
   ##
   ## Uses state.turn as seed, ensuring same results for same game state.
   ## Recommended for normal gameplay to enable replay/debugging.
   var rng = initRand(state.turn)
-  result = resolveTurn(state, orders, rng)
+  result = resolveTurn(state, commands, rng)

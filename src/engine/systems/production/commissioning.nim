@@ -103,7 +103,7 @@ proc countGroundUnits(state: GameState, colony: Colony, unitType: GroundClass): 
 # getTotalConstructionDocks and hasSpaceport moved to DoD versions above
 
 proc autoLoadFightersToCarriers(
-    state: var GameState,
+    state: GameState,
     modifiedColonies: Table[ColonyId, Colony],
     events: var seq[GameEvent],
 ) =
@@ -215,7 +215,7 @@ proc autoLoadFightersToCarriers(
       )
 
 proc commissionPlanetaryDefense*(
-    state: var GameState,
+    state: GameState,
     completedProjects: seq[CompletedProject],
     events: var seq[GameEvent],
 ) =
@@ -627,7 +627,7 @@ proc isCombatFleet(state: GameState, fleet: Fleet): bool =
 # =============================================================================
 
 proc commissionShip(
-    state: var GameState,
+    state: GameState,
     owner: HouseId,
     systemId: SystemId,
     shipClass: ShipClass,
@@ -680,7 +680,7 @@ proc commissionShip(
   events.add(shipCommissioned(owner, shipClass, systemId))
 
 proc commissionShips*(
-    state: var GameState,
+    state: GameState,
     completedProjects: seq[CompletedProject],
     events: var seq[GameEvent],
 ) =
@@ -756,7 +756,7 @@ proc commissionShips*(
     except ValueError:
       logError("Economy", &"Invalid ship class: {completed.itemId}")
 
-proc clearDamagedFacilityQueues*(state: var GameState, events: var seq[GameEvent]) =
+proc clearDamagedFacilityQueues*(state: GameState, events: var seq[GameEvent]) =
   ## Clear construction and repair queues for crippled/destroyed facilities
   ## Called during Command Phase Part A (before ship commissioning)
   ## Ensures ships don't commission from facilities that were destroyed in combat
@@ -842,7 +842,7 @@ proc clearDamagedFacilityQueues*(state: var GameState, events: var seq[GameEvent
       updatedNeoria.repairQueue = @[]
 
 proc commissionRepairedShips*(
-    state: var GameState, completedRepairs: seq[RepairProject], events: var seq[GameEvent]
+    state: GameState, completedRepairs: seq[RepairProject], events: var seq[GameEvent]
 ) =
   ## Commission repaired ships back to fleets (CMD2b)
   ## Per ec4x_canonical_turn_cycle.md CMD2b (lines 122-128):

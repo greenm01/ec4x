@@ -13,7 +13,7 @@ export
 ## Diplomatic State Changes
 
 proc declareWar*(
-    state: var GameState, sourceHouse: HouseId, targetHouse: HouseId, turn: int32
+    state: GameState, sourceHouse: HouseId, targetHouse: HouseId, turn: int32
 ): DiplomaticEvent =
   ## Declare war on another house
   let key = (sourceHouse, targetHouse)
@@ -44,7 +44,7 @@ proc declareWar*(
   )
 
 proc setNeutral*(
-    state: var GameState, sourceHouse: HouseId, targetHouse: HouseId, turn: int32
+    state: GameState, sourceHouse: HouseId, targetHouse: HouseId, turn: int32
 ): DiplomaticEvent =
   ## Set diplomatic state to neutral (peace/ceasefire)
   let key = (sourceHouse, targetHouse)
@@ -75,7 +75,7 @@ proc setNeutral*(
   )
 
 proc setHostile*(
-    state: var GameState, sourceHouse: HouseId, targetHouse: HouseId, turn: int32
+    state: GameState, sourceHouse: HouseId, targetHouse: HouseId, turn: int32
 ): DiplomaticEvent =
   ## Set diplomatic state to hostile
   let key = (sourceHouse, targetHouse)

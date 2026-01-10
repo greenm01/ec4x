@@ -34,7 +34,7 @@ proc newConstructionProject*(
   )
 
 proc queueConstructionProject*(
-    state: var GameState, colonyId: ColonyId, project: var ConstructionProject
+    state: GameState, colonyId: ColonyId, project: var ConstructionProject
 ): ConstructionProject =
   ## Queues a new construction project, adding it to all relevant collections and indexes.
   let projectId = state.generateConstructionProjectId()
@@ -61,7 +61,7 @@ proc queueConstructionProject*(
   return project
 
 proc completeConstructionProject*(
-    state: var GameState, projectId: ConstructionProjectId
+    state: GameState, projectId: ConstructionProjectId
 ) =
   ## Completes a construction project, removing it from active queues and indexes.
   let projectOpt = state.constructionProject(projectId)
@@ -134,7 +134,7 @@ proc newRepairProject*(
   )
 
 proc queueRepairProject*(
-    state: var GameState, colonyId: ColonyId, project: var RepairProject
+    state: GameState, colonyId: ColonyId, project: var RepairProject
 ): RepairProject =
   let projectId = state.generateRepairProjectId()
   project.id = projectId
@@ -155,7 +155,7 @@ proc queueRepairProject*(
 
   return project
 
-proc completeRepairProject*(state: var GameState, projectId: RepairProjectId) =
+proc completeRepairProject*(state: GameState, projectId: RepairProjectId) =
   let projectOpt = state.repairProject(projectId)
   if projectOpt.isNone:
     return

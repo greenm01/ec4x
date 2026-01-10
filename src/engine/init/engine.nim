@@ -13,8 +13,7 @@ import ../state/[engine, id_gen]
 import ../persistence/schema
 import ../types/[
   core, game_state, intel, diplomacy,
-  resolution, starmap, command, fleet,
-  house
+  resolution, starmap, house
 ]
 import ./house
 import ./colony
@@ -87,7 +86,7 @@ proc initPerGameDatabase(
 
   return dbPath
 
-proc initializeHousesAndHomeworlds*(state: var GameState) =
+proc initializeHousesAndHomeworlds*(state: GameState) =
   ## Initialize houses, homeworlds, and starting fleets for all players
   ## Per game setup rules (e.g., docs/specs/05-gameplay.md:1.3)
   ##

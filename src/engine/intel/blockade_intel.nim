@@ -13,7 +13,7 @@ import ../types/[core, game_state, intel, combat]
 import ../globals  # For gameConfig to get GCO reduction %
 
 proc generateBlockadeEstablishedIntel*(
-    state: var GameState,
+    state: GameState,
     systemId: SystemId,
     blockadingFleetIds: seq[FleetId],
     turn: int32,
@@ -76,7 +76,7 @@ proc generateBlockadeEstablishedIntel*(
       state.intel[house] = intel
 
 proc generateBlockadeLiftedIntel*(
-    state: var GameState,
+    state: GameState,
     systemId: SystemId,
     previousBlockadingFleetIds: seq[FleetId],
     turn: int32,

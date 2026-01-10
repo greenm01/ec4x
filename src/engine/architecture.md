@@ -136,10 +136,11 @@ import ../entities/fleet_ops
 let colonyOpt = state.colony(colonyId)
 let fleetOpt = state.fleet(fleetId)
 state.updateHouse(houseId, house)
-fleet_ops.createFleet(state, houseId, systemId)
+state.createFleet(houseId, systemId)
 
 # ❌ Function style (don't use)
 let colonyOpt = colony(state, colonyId)  # Wrong!
+fleet_ops.createFleet(state, houseId, systemId)  # Wrong!
 ```
 
 ## Reading Entities
@@ -214,7 +215,7 @@ if state.hasLoadedMarines(fleet):
 # Fleet compatibility
 let mergeCheck = state.canMergeWith(fleet1, fleet2)
 if mergeCheck.canMerge:
-  fleet_ops.mergeFleets(state, fleet1.id, fleet2.id)
+  state.mergeFleets(fleet1.id, fleet2.id)
 
 # Fleet strength
 let totalAS = state.calculateFleetAS(fleet)
@@ -239,15 +240,15 @@ if fleetOpt.isSome:
 ```nim
 import ../entities/[fleet_ops, colony_ops]
 
-# Create/destroy (maintains all indexes)
-let fleetId = fleet_ops.createFleet(state, houseId, systemId)
-colony_ops.destroyColony(state, colonyId, events)
+# Create/destroy (maintains all indexes) - use UFCS
+let fleet = state.createFleet(houseId, systemId)
+state.destroyColony(colonyId, events)
 
 # Move (updates bySystem index)
-fleet_ops.moveFleet(state, fleetId, newSystemId)
+state.moveFleet(fleetId, newSystemId)
 
 # Change owner (updates byOwner index)
-fleet_ops.changeFleetOwner(state, fleetId, newHouseId)
+state.changeFleetOwner(fleetId, newHouseId)
 ```
 
 ## Common Patterns
@@ -314,8 +315,8 @@ var fleet = state.fleet(fleetId).get()
 fleet.location = newSystem  # Breaks bySystem index!
 state.updateFleet(fleetId, fleet)
 
-# ✅ Use entity ops
-fleet_ops.moveFleet(state, fleetId, newSystem)
+# ✅ Use entity ops (UFCS style)
+state.moveFleet(fleetId, newSystem)
 
 # ❌ Don't use verbose index pattern
 if state.colonies.bySystem.hasKey(systemId):
@@ -326,15 +327,15 @@ if state.colonies.bySystem.hasKey(systemId):
 let colony = state.colonyBySystem(systemId)
 
 # ❌ Don't write business logic in entity_ops
-proc moveFleet*(state: var GameState, ...) =
+proc moveFleet*(state: GameState, ...) =
   if fuelRemaining < distance:  # Business logic doesn't belong here!
     return
 
-# ✅ Validate in systems layer, mutate via entity_ops
-proc executeMove(state: var GameState, ...):
+# ✅ Validate in systems layer, mutate via entity_ops (UFCS)
+proc executeMove(state: GameState, ...):
   if fleet.fuelRemaining < distance:  # Business logic in systems/
     return
-  fleet_ops.moveFleet(state, ...)      # Mutation via entity_ops
+  state.moveFleet(...)                 # Mutation via entity_ops (UFCS)
 ```
 
 ## Module Import Guide

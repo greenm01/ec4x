@@ -109,7 +109,7 @@ proc shouldCombatOccur*(
     return threatLevel == ThreatLevel.Attack
 
 proc areHostile*(
-  state: var GameState, houseA: HouseId, houseB: HouseId, systemId: SystemId,
+  state: GameState, houseA: HouseId, houseB: HouseId, systemId: SystemId,
   events: var seq[GameEvent]
 ): bool =
   ## Check if two houses should fight at this system
@@ -299,7 +299,7 @@ proc hasStarbaseInSystem*(
   return colony.owner == houseId and colony.kastraIds.len > 0
 
 proc buildMultiHouseBattle*(
-  state: var GameState, systemId: SystemId, rng: var Rand,
+  state: GameState, systemId: SystemId, rng: var Rand,
   events: var seq[GameEvent]
 ): Option[MultiHouseBattle] =
   ## Build a multi-house battle structure with targeting matrix
@@ -528,7 +528,7 @@ proc calculateCasualties(
   )
 
 proc resolveMultiHouseBattle*(
-  state: var GameState, battle: var MultiHouseBattle, rng: var Rand,
+  state: GameState, battle: var MultiHouseBattle, rng: var Rand,
   events: var seq[GameEvent]
 ): seq[CombatResult] =
   ## Resolve one round of multi-house combat using targeting matrix
@@ -694,7 +694,7 @@ proc resolveMultiHouseBattle*(
   )]
 
 proc resolveSystemCombat*(
-  state: var GameState, systemId: SystemId, rng: var Rand,
+  state: GameState, systemId: SystemId, rng: var Rand,
   events: var seq[GameEvent]
 ): seq[CombatResult] =
   ## Single entry point for multi-house combat

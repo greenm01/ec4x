@@ -45,7 +45,7 @@ import ../starmap
 # =============================================================================
 
 proc processFleetTravel(
-    state: var GameState,
+    state: GameState,
     events: var seq[GameEvent],
     completedFleetCommands: HashSet[FleetId],
 ) =
@@ -150,7 +150,7 @@ proc processFleetTravel(
 # =============================================================================
 
 proc detectFleetArrivals(
-    state: var GameState,
+    state: GameState,
     events: var seq[GameEvent],
 ) =
   ## PRD1b: Detect fleets that arrived at command targets
@@ -203,7 +203,7 @@ proc detectFleetArrivals(
 # =============================================================================
 
 proc processAdministrativeCompletion(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
     rng: var Rand,
@@ -235,7 +235,7 @@ proc processAdministrativeCompletion(
 # =============================================================================
 
 proc processScoutDetection(
-    state: var GameState,
+    state: GameState,
     events: var seq[GameEvent],
     rng: var Rand,
 ) =
@@ -337,7 +337,7 @@ proc processScoutDetection(
 # =============================================================================
 
 proc advanceQueues(
-    state: var GameState,
+    state: GameState,
 ): tuple[projects: seq[CompletedProject], repairs: seq[RepairProject]] =
   ## PRD2a+2b: Advance all construction and repair queues
   ##
@@ -360,7 +360,7 @@ proc advanceQueues(
 # =============================================================================
 
 proc processDiplomacy(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
 ) =
@@ -381,7 +381,7 @@ proc processDiplomacy(
 # =============================================================================
 
 proc processPopulationTransfers(
-    state: var GameState,
+    state: GameState,
     events: var seq[GameEvent],
 ) =
   ## PRD4: Process Space Guild population transfers
@@ -401,7 +401,7 @@ proc processPopulationTransfers(
 # =============================================================================
 
 proc processTerraforming(
-    state: var GameState,
+    state: GameState,
     events: var seq[GameEvent],
 ) =
   ## PRD5: Advance terraforming projects
@@ -418,7 +418,7 @@ proc processTerraforming(
 # PRD6: CLEANUP AND PREPARATION
 # =============================================================================
 
-proc performCleanup(state: var GameState) =
+proc performCleanup(state: GameState) =
   ## PRD6: Cleanup and preparation for next turn
   ##
   ## - Remove destroyed entities (handled implicitly by combat)
@@ -440,7 +440,7 @@ proc performCleanup(state: var GameState) =
 # =============================================================================
 
 proc processResearchAdvancement(
-    state: var GameState,
+    state: GameState,
     events: var seq[GameEvent],
     rng: var Rand,
 ) =
@@ -548,7 +548,7 @@ proc processResearchAdvancement(
 # =============================================================================
 
 proc resolveProductionPhase*(
-    state: var GameState,
+    state: GameState,
     events: var seq[GameEvent],
     orders: Table[HouseId, CommandPacket],
     rng: var Rand,

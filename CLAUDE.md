@@ -43,7 +43,7 @@ When Claude is in **plan mode** (user has requested planning before execution), 
    - ❌ WRONG: `fleet_ops.createFleet(state, owner, location)`
    - ✅ CORRECT: `state.destroyShip(shipId)`
    - ❌ WRONG: `ship_ops.destroyShip(state, shipId)`
-   - Apply to ALL functions where first parameter is `state: var GameState` or `state: GameState`
+   - Apply to ALL functions where first parameter is `state: GameState`
 9. **Follow entity patterns** from `src/engine/architecture.md`
 
 **Reference:** `docs/api/api.json` contains src tree API for efficient context.
@@ -63,7 +63,7 @@ type GameState = object
   fleets: Table[FleetId, Fleet]
   colonies: Table[ColonyId, Colony]
 
-proc processFleets(state: var GameState) =
+proc processFleets(state: GameState) =
   for fleet in state.allFleets():
     # Process fleet logic
 ```

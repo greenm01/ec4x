@@ -39,7 +39,7 @@ export multipliers  # Export economic multipliers (popGrowthMultiplier, etc.)
 ##   * Eliminated 25+ lines of parameter building and passing
 
 proc resolveIncomePhase*(
-    state: var GameState, baseGrowthRate: float32 = 0.015
+    state: GameState, baseGrowthRate: float32 = 0.015
 ): IncomePhaseReport =
   ## Resolve income phase for all houses
   ##
@@ -103,7 +103,7 @@ proc resolveIncomePhase*(
 ## Auto-Salvage System (economy.md:3.9.1)
 
 proc processCrippledShipSalvage*(
-    state: var GameState, events: var seq[event.GameEvent]
+    state: GameState, events: var seq[event.GameEvent]
 ): Table[HouseId, int32] =
   ## Process auto-salvage for ships crippled for 2+ turns
   ## Ships crippled for 2 consecutive turns are auto-salvaged at 50% of build cost
@@ -168,7 +168,7 @@ proc processCrippledShipSalvage*(
 ## Income Phase Step 3: Maintenance Upkeep Deduction (ec4x_canonical_turn_cycle.md:156-160)
 
 proc calculateAndDeductMaintenanceUpkeep*(
-    state: var GameState, events: var seq[event.GameEvent]
+    state: GameState, events: var seq[event.GameEvent]
 ): Table[HouseId, int32] =
   ## Calculate and deduct maintenance upkeep costs from house treasuries
   ## This implements Income Phase Step 3 (after Conflict Phase, before resource collection)

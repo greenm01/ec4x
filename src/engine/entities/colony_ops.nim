@@ -64,7 +64,7 @@ proc newColony*(
   )
 
 proc establishColony*(
-    state: var GameState,
+    state: GameState,
     systemId: SystemId,
     owner: HouseId,
     planetClass: PlanetClass,
@@ -89,7 +89,7 @@ proc establishColony*(
 
   result = colonyId
 
-proc destroyColony*(state: var GameState, colonyId: ColonyId) =
+proc destroyColony*(state: GameState, colonyId: ColonyId) =
   ## Destroys a colony, removing it from the entity manager and all indexes.
   let colonyOpt = state.colony(colonyId)
   if colonyOpt.isNone:
@@ -109,7 +109,7 @@ proc destroyColony*(state: var GameState, colonyId: ColonyId) =
 
   state.delColony(colonyId)
 
-proc changeColonyOwner*(state: var GameState, colonyId: ColonyId, newOwner: HouseId) =
+proc changeColonyOwner*(state: GameState, colonyId: ColonyId, newOwner: HouseId) =
   ## Transfers ownership of a colony, updating the `byOwner` index.
   let colonyOpt = state.colony(colonyId)
   if colonyOpt.isNone:

@@ -7,21 +7,18 @@ import std/[options, tables]
 import
   ../types/[core, colony, production, capacity, facilities, ground_unit, game_state]
 import ../state/[engine, id_gen]
-import ../systems/tech/effects
-import ../entities/[neoria_ops, kastra_ops, ground_unit_ops, colony_ops]
+import ../entities/[neoria_ops, ground_unit_ops]
 import ../globals
-import ../utils
 
 proc createHomeWorld*(
-    state: var GameState, systemId: SystemId, owner: HouseId
+    state: GameState, systemId: SystemId, owner: HouseId
 ): ColonyId =
   ## Create a starting homeworld colony per gameplay.md:1.2
   ## Loads configuration from scenarios/*.kdl
+  ##
+  ## Note: Planet class and resource rating are properties of the System,
+  ## not the Colony. These are set during starmap generation in starmap.nim.
   let homeworldCfg = gameSetup.homeworld
-
-  # Parse planet class and resources from config
-  let planetClass = parsePlanetClass(homeworldCfg.planetClass)
-  let resources = parseResourceRating(homeworldCfg.rawQuality)
 
   let colonyId = state.generateColonyId()
 

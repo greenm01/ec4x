@@ -167,7 +167,7 @@ proc getAvailableFleetCapacity*(state: GameState, fleetId: FleetId): int32 =
 
   return max(0'i32, maximum - current)
 
-proc processCapacityEnforcement*(state: var GameState): seq[capacity.CapacityViolation] =
+proc processCapacityEnforcement*(state: GameState): seq[capacity.CapacityViolation] =
   ## Main entry point - check all fleets for ship count violations
   ## Called during Maintenance phase
   ##

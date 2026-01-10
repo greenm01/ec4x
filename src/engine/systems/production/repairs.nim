@@ -68,7 +68,7 @@ proc calculateRepairCost*(shipClass: ShipClass): int32 =
   result = (buildCost.float32 * 0.25'f32).int32
 
 proc extractCrippledShip*(
-    state: var GameState, fleetId: FleetId, shipId: ShipId, drydockId: NeoriaId
+    state: GameState, fleetId: FleetId, shipId: ShipId, drydockId: NeoriaId
 ): Option[production.RepairProject] =
   ## Extract a crippled ship from a fleet and create repair project assigned to a drydock
   ## Works with entity IDs for DoD compliance
@@ -143,7 +143,7 @@ proc extractCrippledShip*(
 
   return some(repair)
 
-proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
+proc submitAutomaticStarbaseRepairs*(state: GameState, systemId: SystemId) =
   ## Automatically submit repair requests for crippled starbases at colony
   ## Starbases use spaceport facilities and do NOT consume dock space
   ## Per architecture: Starbases are facilities that require Spaceports
@@ -215,7 +215,7 @@ proc submitAutomaticStarbaseRepairs*(state: var GameState, systemId: SystemId) =
   if modified:
     state.updateColony(colonyId, colony)
 
-proc submitAutomaticRepairs*(state: var GameState, systemId: SystemId) =
+proc submitAutomaticRepairs*(state: GameState, systemId: SystemId) =
   ## Automatically submit repair requests for fleets with crippled ships at this colony
   ## Ship repairs require drydocks (spaceports and shipyards cannot repair)
   ## Called during turn resolution after fleet movements
@@ -316,7 +316,7 @@ proc calculateGroundUnitRepairCost*(groundClass: GroundClass): int32 =
   result = (buildCost.float32 * 0.25'f32).int32
 
 proc submitAutomaticGroundUnitRepairs*(
-    state: var GameState, systemId: SystemId
+    state: GameState, systemId: SystemId
 ) =
   ## Automatically submit repair requests for crippled ground units at colony
   ## Ground units are repaired via colony infrastructure (no facility required)
@@ -411,7 +411,7 @@ proc hasOperationalSpaceport(state: GameState, colonyId: ColonyId): bool =
   return false
 
 proc submitAutomaticFacilityRepairs*(
-    state: var GameState, systemId: SystemId
+    state: GameState, systemId: SystemId
 ) =
   ## Automatically submit repair requests for crippled facilities at colony
   ## Repair prerequisites per design decisions:
@@ -497,7 +497,7 @@ proc submitAutomaticFacilityRepairs*(
   if modified:
     state.updateColony(colonyId, colony)
 
-proc submitAllAutomaticRepairs*(state: var GameState, systemId: SystemId) =
+proc submitAllAutomaticRepairs*(state: GameState, systemId: SystemId) =
   ## Master function to submit all automatic repairs for a colony
   ## Called during Command Phase Part A, Step 2 (Colony Automation)
   ##
@@ -540,7 +540,7 @@ proc submitAllAutomaticRepairs*(state: var GameState, systemId: SystemId) =
   )
 
 proc processManualRepairCommand*(
-    state: var GameState, cmd: RepairCommand
+    state: GameState, cmd: RepairCommand
 ): bool =
   ## Process a single manual repair command
   ## Called during Command Phase Part C (after validation)
@@ -683,7 +683,7 @@ proc processManualRepairCommand*(
   return true
 
 proc processManualRepairCommands*(
-    state: var GameState, houseId: HouseId, commands: seq[RepairCommand]
+    state: GameState, houseId: HouseId, commands: seq[RepairCommand]
 ) =
   ## Process all manual repair commands for a house
   ## Called during Command Phase Part C (after player submission window)

@@ -31,7 +31,7 @@ proc newPopulationInTransit*(
   )
 
 proc startTransfer*(
-    state: var GameState,
+    state: GameState,
     houseId: HouseId,
     sourceColonyId: ColonyId,
     destColonyId: ColonyId,
@@ -61,7 +61,7 @@ proc startTransfer*(
   return newTransfer
 
 proc deliverTransfer*(
-    state: var GameState, transferId: PopulationTransferId, destColonyId: ColonyId
+    state: GameState, transferId: PopulationTransferId, destColonyId: ColonyId
 ) =
   ## Deliver a population transfer to a specific colony (for smart delivery/redirect)
   ## Does NOT remove the transfer - call completeTransfer() after delivery
@@ -75,7 +75,7 @@ proc deliverTransfer*(
   destColony.souls += transfer.ptuAmount * gameConfig.economy.ptuDefinition.soulsPerPtu
   state.updateColony(destColonyId, destColony)
 
-proc completeTransfer*(state: var GameState, transferId: PopulationTransferId) =
+proc completeTransfer*(state: GameState, transferId: PopulationTransferId) =
   ## Completes a population transfer, removing it from active lists and indexes.
   ## Does NOT deliver population - call deliverTransfer() first if needed
   let transferOpt = state.populationTransfer(transferId)

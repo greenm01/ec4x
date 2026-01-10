@@ -152,7 +152,7 @@ proc generateStarbaseSurveillance*(
 
   return some(report)
 
-proc processAllStarbaseSurveillance*(state: var GameState, turn: int32, rng: var Rand) =
+proc processAllStarbaseSurveillance*(state: GameState, turn: int32, rng: var Rand) =
   ## Process surveillance for ALL starbases in the game
   ## Called once per turn during intelligence phase
   ## Reports are stored in state.intelligence Table

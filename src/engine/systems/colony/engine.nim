@@ -21,7 +21,7 @@ import ./[colonization, terraforming]
 
 export colonization, terraforming
 
-proc resolveColonyCommands*(state: var GameState, packet: CommandPacket) =
+proc resolveColonyCommands*(state: GameState, packet: CommandPacket) =
   ## Process colony management commands - tax rates, auto-repair toggles
   ## Per architecture.md: Colony system owns colony operations
   ##

@@ -13,7 +13,7 @@ import ../../entities/[ship_ops, fleet_ops, neoria_ops, ground_unit_ops, kastra_
 import ../../entities/project_ops
 import ../../event_factory/init
 
-proc cleanupDestroyedShips*(state: var GameState, systemId: SystemId) =
+proc cleanupDestroyedShips*(state: GameState, systemId: SystemId) =
   ## Remove all ships with CombatState.Destroyed from fleets in this system
   ## Called after combat resolution
   ##
@@ -32,7 +32,7 @@ proc cleanupDestroyedShips*(state: var GameState, systemId: SystemId) =
     logCombat("[CLEANUP] Destroying ship ", $shipId)
     state.destroyShip(shipId)
 
-proc cleanupEmptyFleets*(state: var GameState, systemId: SystemId) =
+proc cleanupEmptyFleets*(state: GameState, systemId: SystemId) =
   ## Remove fleets with no ships remaining at this system
   ## Called after ship cleanup
   ##
@@ -50,7 +50,7 @@ proc cleanupEmptyFleets*(state: var GameState, systemId: SystemId) =
     logCombat("[CLEANUP] Destroying empty fleet ", $fleetId)
     state.destroyFleet(fleetId)
 
-proc cleanupCrippledNeorias*(state: var GameState, systemId: SystemId) =
+proc cleanupCrippledNeorias*(state: GameState, systemId: SystemId) =
   ## Clear construction/repair queues from crippled neorias
   ## Per spec: Crippled facilities lose all queued projects (not paused)
   ## Called after combat resolution
@@ -110,7 +110,7 @@ proc cleanupCrippledNeorias*(state: var GameState, systemId: SystemId) =
       neoriaToUpdate.repairQueue = @[]
       state.updateNeoria(neoria.id, neoriaToUpdate)
 
-proc cleanupDestroyedNeorias*(state: var GameState, systemId: SystemId) =
+proc cleanupDestroyedNeorias*(state: GameState, systemId: SystemId) =
   ## Remove destroyed neorias and clear their construction/repair queues
   ## Called after combat resolution
   ##
@@ -176,7 +176,7 @@ proc cleanupDestroyedNeorias*(state: var GameState, systemId: SystemId) =
     # Finally, destroy the facility (will remove from all indexes)
     state.destroyNeoria(neoriaId)
 
-proc cleanupDestroyedGroundUnits*(state: var GameState, systemId: SystemId) =
+proc cleanupDestroyedGroundUnits*(state: GameState, systemId: SystemId) =
   ## Remove all ground units with CombatState.Destroyed at colonies in this system
   ## Called after combat resolution
   ##
@@ -201,7 +201,7 @@ proc cleanupDestroyedGroundUnits*(state: var GameState, systemId: SystemId) =
     logCombat("[CLEANUP] Destroying ground unit ", $unitId)
     state.destroyGroundUnit(unitId)
 
-proc cleanupDestroyedKastras*(state: var GameState, systemId: SystemId) =
+proc cleanupDestroyedKastras*(state: GameState, systemId: SystemId) =
   ## Remove destroyed starbases at colonies in this system
   ## Called after combat resolution
   ##
@@ -228,7 +228,7 @@ proc cleanupDestroyedKastras*(state: var GameState, systemId: SystemId) =
     state.destroyKastra(kastraId)
 
 proc clearColonyConstructionQueue*(
-  state: var GameState, colonyId: ColonyId, generateEvent: bool, events: var seq[GameEvent]
+  state: GameState, colonyId: ColonyId, generateEvent: bool, events: var seq[GameEvent]
 ) =
   ## Clear all construction and repair projects from colony queue
   ## Used during bombardment (with event) or invasion (without event)
@@ -295,7 +295,7 @@ proc clearColonyConstructionQueue*(
     )
 
 proc clearColonyConstructionOnConquest*(
-  state: var GameState, colonyId: ColonyId, newOwner: HouseId
+  state: GameState, colonyId: ColonyId, newOwner: HouseId
 ) =
   ## Clear colony construction queue when colony is conquered
   ## No event generated - conqueror inherits the colony without projects
@@ -306,7 +306,7 @@ proc clearColonyConstructionOnConquest*(
   clearColonyConstructionQueue(state, colonyId, generateEvent = false, dummyEvents)
 
 proc clearColonyConstructionOnBombardment*(
-  state: var GameState, colonyId: ColonyId, events: var seq[GameEvent]
+  state: GameState, colonyId: ColonyId, events: var seq[GameEvent]
 ) =
   ## Clear colony construction queue when bombardment damages infrastructure
   ## Generates event indicating projects were lost
@@ -315,7 +315,7 @@ proc clearColonyConstructionOnBombardment*(
 
   clearColonyConstructionQueue(state, colonyId, generateEvent = true, events)
 
-proc cleanupPostCombat*(state: var GameState, systemId: SystemId) =
+proc cleanupPostCombat*(state: GameState, systemId: SystemId) =
   ## Master cleanup function - call after combat resolution in a system
   ## Handles all destroyed entities and queue cleanup
   ##

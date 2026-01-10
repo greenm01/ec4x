@@ -42,7 +42,7 @@ type QueueAdvancementResult* = object ## Results from advancing a facility's que
   completedRepairs*: seq[production.RepairProject]
 
 proc advanceSpaceportQueue*(
-    state: var GameState, spaceport: var Neoria, colonyId: ColonyId
+    state: GameState, spaceport: var Neoria, colonyId: ColonyId
 ): QueueAdvancementResult =
   ## Advance spaceport construction queue (FIFO)
   ## Uses state layer APIs to access construction projects by ID
@@ -120,7 +120,7 @@ proc advanceSpaceportQueue*(
       pulled += 1
 
 proc advanceDrydockQueue*(
-    state: var GameState, drydock: var Neoria, colonyId: ColonyId
+    state: GameState, drydock: var Neoria, colonyId: ColonyId
 ): QueueAdvancementResult =
   ## Advance drydock repair queue (repair-only facility)
   ## Uses state layer APIs to access repair projects by ID
@@ -173,7 +173,7 @@ proc advanceDrydockQueue*(
     pulled += 1
 
 proc advanceShipyardQueue*(
-    state: var GameState, shipyard: var Neoria, colonyId: ColonyId
+    state: GameState, shipyard: var Neoria, colonyId: ColonyId
 ): QueueAdvancementResult =
   ## Advance shipyard construction queue (construction-only facility)
   ## Uses state layer APIs to access construction projects by ID
@@ -254,7 +254,7 @@ proc advanceShipyardQueue*(
       pulled += 1
 
 proc advanceColonyQueues*(
-    state: var GameState, colonyId: ColonyId
+    state: GameState, colonyId: ColonyId
 ): QueueAdvancementResult =
   ## Advance all facility queues at colony using entity managers
   ## Returns combined results from all facilities
@@ -312,7 +312,7 @@ proc isPlanetaryDefense*(project: production.CompletedProject): bool =
   return false
 
 proc advanceAllQueues*(
-    state: var GameState
+    state: GameState
 ): tuple[
   projects: seq[production.CompletedProject], repairs: seq[production.RepairProject]
 ] =
@@ -347,7 +347,7 @@ proc advanceAllQueues*(
 ## NOW REFACTORED to use entity managers properly.
 
 proc startConstruction*(
-    state: var GameState, colony: var Colony, project: ConstructionProject
+    state: GameState, colony: var Colony, project: ConstructionProject
 ): bool =
   ## Start new construction project at colony using entity managers
   ## Returns true if started successfully
@@ -371,7 +371,7 @@ proc startConstruction*(
   return true
 
 proc advanceConstruction*(
-    state: var GameState, colony: var Colony
+    state: GameState, colony: var Colony
 ): Option[production.CompletedProject] =
   ## Advance colony construction by one turn using entity managers
   ## Returns completed project if finished

@@ -12,7 +12,7 @@ import ./strength
 import ./screened
 import ./morale
 
-proc applyRetreatLossesToScreenedUnits*(state: var GameState, fleetId: FleetId) =
+proc applyRetreatLossesToScreenedUnits*(state: GameState, fleetId: FleetId) =
   ## Apply proportional losses to screened units during retreat
   ## Screened units take same casualty rate as combat ships
   ## Per screened.nim design notes
@@ -95,7 +95,7 @@ proc getROEThreshold*(roe: int32): float =
     1.0 # Default to even odds
 
 proc checkFleetRetreats*(
-  state: var GameState, battle: var Battle, attackerAS: int32, defenderAS: int32
+  state: GameState, battle: var Battle, attackerAS: int32, defenderAS: int32
 ) =
   ## Check retreat for each fleet individually
   ## Per docs/specs/07-combat.md Section 7.2.3

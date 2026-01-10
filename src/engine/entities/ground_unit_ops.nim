@@ -28,7 +28,7 @@ proc newGroundUnit*(
   )
 
 proc createGroundUnit*(
-    state: var GameState, owner: HouseId, colonyId: ColonyId, unitType: GroundClass
+    state: GameState, owner: HouseId, colonyId: ColonyId, unitType: GroundClass
 ): GroundUnit =
   ## Creates a new ground unit, adds it to the entity manager, and links it to a colony.
   let unitId = state.generateGroundUnitId()
@@ -47,7 +47,7 @@ proc createGroundUnit*(
 
   return newUnit
 
-proc destroyGroundUnit*(state: var GameState, unitId: GroundUnitId) =
+proc destroyGroundUnit*(state: GameState, unitId: GroundUnitId) =
   ## Destroys a ground unit, removing it from all collections.
   let unitOpt = state.groundUnit(unitId)
   if unitOpt.isNone:

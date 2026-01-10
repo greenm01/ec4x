@@ -41,7 +41,7 @@ proc canCreateFleet*(
   return (true, "")
 
 proc createFleetCoordinated*(
-    state: var GameState, houseId: HouseId, location: SystemId
+    state: GameState, houseId: HouseId, location: SystemId
 ): FleetOperationResult =
   ## High-level fleet creation with validation
   ##
@@ -98,7 +98,7 @@ proc canMergeFleets*(
   return (true, "")
 
 proc mergeFleets*(
-    state: var GameState, sourceId: FleetId, targetId: FleetId
+    state: GameState, sourceId: FleetId, targetId: FleetId
 ): FleetOperationResult =
   ## High-level fleet merge with validation
   ##
@@ -167,7 +167,7 @@ proc canSplitFleet*(
   return (true, "")
 
 proc splitFleet*(
-    state: var GameState, fleetId: FleetId, shipIndices: seq[int]
+    state: GameState, fleetId: FleetId, shipIndices: seq[int]
 ): FleetOperationResult =
   ## High-level fleet split with validation
   ##

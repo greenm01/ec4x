@@ -25,7 +25,7 @@ export
 
 ## CST Tech Upgrade Helpers
 
-proc updateNeoriaDocks(state: var GameState, neoriaId: NeoriaId, effectiveDocks: int32) =
+proc updateNeoriaDocks(state: GameState, neoriaId: NeoriaId, effectiveDocks: int32) =
   ## Helper to update neoria effective docks using DoD pattern
   ## Works for all neoria types (Spaceport, Shipyard, Drydock)
   let neoriaOpt = state.neoria(neoriaId)
@@ -34,7 +34,7 @@ proc updateNeoriaDocks(state: var GameState, neoriaId: NeoriaId, effectiveDocks:
     neoria.effectiveDocks = effectiveDocks
     state.updateNeoria(neoriaId, neoria)
 
-proc applyDockCapacityUpgrade(state: var GameState, houseId: HouseId) =
+proc applyDockCapacityUpgrade(state: GameState, houseId: HouseId) =
   ## Recalculate all facility dock capacities when CST tech advances
   ## Called automatically after CST level increases
   ## Updates stored effectiveDocks values for all facilities owned by house
@@ -254,7 +254,7 @@ proc attemptSLAdvancement*(
   return none(ResearchAdvancement)
 
 proc attemptTechAdvancement*(
-    state: var GameState, houseId: HouseId, tree: var TechTree, field: TechField
+    state: GameState, houseId: HouseId, tree: var TechTree, field: TechField
 ): Option[ResearchAdvancement] =
   ## Attempt to advance specific tech field
   ## Returns advancement if successful

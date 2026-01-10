@@ -107,7 +107,7 @@ proc updateCombatReportOutcome*(
   report.survived = survived
 
 proc updatePostCombatIntelligence*(
-    state: var GameState,
+    state: GameState,
     systemId: SystemId,
     phase: CombatTheater,
     fleetsBeforeCombat: seq[(FleetId, Fleet)],
@@ -220,7 +220,7 @@ proc updatePostCombatIntelligence*(
     state.intel[houseId] = intel
 
 proc generateBlitzIntelligence*(
-    state: var GameState,
+    state: GameState,
     systemId: SystemId,
     attackingHouse: HouseId,
     defendingHouse: HouseId,
@@ -355,7 +355,7 @@ proc generateBlitzIntelligence*(
     state.intel[defendingHouse] = intel
 
 proc generateInvasionIntelligence*(
-    state: var GameState,
+    state: GameState,
     systemId: SystemId,
     attackingHouse: HouseId,
     defendingHouse: HouseId,
@@ -481,7 +481,7 @@ proc generateInvasionIntelligence*(
     state.intel[defendingHouse] = intel
 
 proc generateBombardmentIntelligence*(
-    state: var GameState,
+    state: GameState,
     systemId: SystemId,
     attackingHouse: HouseId,
     attackingFleetId: FleetId,

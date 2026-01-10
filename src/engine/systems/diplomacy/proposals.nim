@@ -62,7 +62,7 @@ proc canProposeDeescalation*(
     return false
 
 proc createDeescalationProposal*(
-    state: var GameState,
+    state: GameState,
     proposer: HouseId,
     target: HouseId,
     targetState: DiplomaticState,

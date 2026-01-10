@@ -115,7 +115,7 @@ proc getScreenedNeoriasAtColony*(
     if neoria.neoriaClass in [NeoriaClass.Shipyard, NeoriaClass.Drydock]:
       result.add(neoria.id)
 
-proc destroyScreenedUnitsInFleet*(state: var GameState, fleetId: FleetId) =
+proc destroyScreenedUnitsInFleet*(state: GameState, fleetId: FleetId) =
   ## Destroy all screened units when fleet is destroyed
   ## Per docs/specs/07-combat.md Section 7.6.1
   ##
@@ -136,7 +136,7 @@ proc destroyScreenedUnitsInFleet*(state: var GameState, fleetId: FleetId) =
     ship.state = CombatState.Destroyed
     state.updateShip(shipId, ship)
 
-proc destroyScreenedUnitsAtColony*(state: var GameState, colonyId: ColonyId) =
+proc destroyScreenedUnitsAtColony*(state: GameState, colonyId: ColonyId) =
   ## Destroy screened units when colony defenders are eliminated in orbital combat
   ## Per docs/specs/07-combat.md Section 7.6.5
   ##

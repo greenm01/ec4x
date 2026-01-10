@@ -15,7 +15,7 @@ import ../../intel/diplomatic_intel
 import ../../event_factory/init
 
 proc resolveDiplomaticActions*(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[event.GameEvent],
 ) =
@@ -280,7 +280,7 @@ proc resolveDiplomaticActions*(
           logInfo("Diplomacy", "Proposal rejected", "id=", $proposalId)
 
 proc resolveScoutDetectionEscalations*(
-    state: var GameState, events: var seq[event.GameEvent]
+    state: GameState, events: var seq[event.GameEvent]
 ) =
   ## Process scout loss events and trigger appropriate diplomatic escalations
   ## NOTE: After Scout System Unification, only CombatLoss and TravelIntercepted remain

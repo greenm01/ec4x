@@ -15,7 +15,7 @@ import ../../event_factory/init
 import ../../../common/logger
 
 proc resolveTerraformCommands*(
-    state: var GameState, packet: CommandPacket, events: var seq[GameEvent]
+    state: GameState, packet: CommandPacket, events: var seq[GameEvent]
 ) =
   ## Process terraforming commands - initiate new terraforming projects
   ## Per economy.md Section 4.7
@@ -117,7 +117,7 @@ proc resolveTerraformCommands*(
       )
     )
 
-proc processTerraformingProjects*(state: var GameState, events: var seq[GameEvent]) =
+proc processTerraformingProjects*(state: GameState, events: var seq[GameEvent]) =
   ## Process active terraforming projects for all houses
   ## Per economy.md Section 4.7
 

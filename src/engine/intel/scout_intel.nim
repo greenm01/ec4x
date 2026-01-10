@@ -17,7 +17,7 @@ import corruption
 import generator # Use refactored report generation functions
 
 proc processScoutIntelligence*(
-    state: var GameState, scoutFleetId: FleetId, scoutOwner: HouseId, systemId: SystemId
+    state: GameState, scoutFleetId: FleetId, scoutOwner: HouseId, systemId: SystemId
 ) =
   ## Process all intelligence gathering for a scout at a system
   ## Scouts automatically generate Spy-quality intelligence:

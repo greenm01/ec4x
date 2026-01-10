@@ -231,7 +231,7 @@ proc getAvailableFleetCapacity*(
   return max(0'i32, maximum - current)
 
 proc processCapacityEnforcement*(
-    state: var GameState
+    state: GameState
 ): seq[capacity.CapacityViolation] =
   ## Main entry point - check all houses for combat fleet count violations
   ## Called during Maintenance phase

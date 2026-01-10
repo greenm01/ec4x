@@ -214,7 +214,7 @@ proc isIncomeCommand*(cmdType: FleetCommandType): bool =
   result = cmdType == FleetCommandType.Salvage
 
 proc performCommandMaintenance*(
-    state: var GameState,
+    state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
     rng: var Rand,

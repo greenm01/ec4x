@@ -151,7 +151,7 @@ proc planEnforcement*(
     $violation.entity.houseId & " (colony loss, no salvage)"
 
 proc applyEnforcement*(
-    state: var GameState, action: capacity.EnforcementAction, events: var seq[GameEvent]
+    state: GameState, action: capacity.EnforcementAction, events: var seq[GameEvent]
 ) =
   ## Apply enforcement actions
   ## Explicit mutation - scraps planet-breakers (no salvage value)
@@ -205,7 +205,7 @@ proc applyEnforcement*(
   )
 
 proc processCapacityEnforcement*(
-    state: var GameState, events: var seq[GameEvent]
+    state: GameState, events: var seq[GameEvent]
 ): seq[capacity.EnforcementAction] =
   ## Main entry point - batch process all planet-breaker capacity violations
   ## Called during Maintenance phase

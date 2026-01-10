@@ -12,7 +12,7 @@ import ../types/[core, game_state, intel]
 import ../state/engine
 
 proc generateHostilityDeclarationIntel*(
-    state: var GameState, declaringHouse: HouseId, targetHouse: HouseId, turn: int32
+    state: GameState, declaringHouse: HouseId, targetHouse: HouseId, turn: int32
 ) =
   ## Generate intel reports when hostility is declared
   ## All houses receive this intel (public event)
@@ -54,7 +54,7 @@ proc generateHostilityDeclarationIntel*(
       state.intel[houseId] = intel
 
 proc generateWarDeclarationIntel*(
-    state: var GameState, declaringHouse: HouseId, targetHouse: HouseId, turn: int32
+    state: GameState, declaringHouse: HouseId, targetHouse: HouseId, turn: int32
 ) =
   ## Generate intel reports when war is declared
   ## All houses receive this intel (public event)
@@ -96,7 +96,7 @@ proc generateWarDeclarationIntel*(
       state.intel[houseId] = intel
 
 proc generatePeaceTreatyIntel*(
-    state: var GameState, house1: HouseId, house2: HouseId, turn: int32
+    state: GameState, house1: HouseId, house2: HouseId, turn: int32
 ) =
   ## Generate intel reports when peace treaty is signed
   ## All houses receive this intel (public event)
@@ -136,7 +136,7 @@ proc generatePeaceTreatyIntel*(
       state.intel[houseId] = intel
 
 proc generateAllianceFormedIntel*(
-    state: var GameState, house1: HouseId, house2: HouseId, turn: int32
+    state: GameState, house1: HouseId, house2: HouseId, turn: int32
 ) =
   ## Generate intel reports when alliance is formed
   ## All houses receive this intel (public event)
@@ -176,7 +176,7 @@ proc generateAllianceFormedIntel*(
       state.intel[houseId] = intel
 
 proc generatePactFormedIntel*(
-    state: var GameState, house1: HouseId, house2: HouseId, pactType: string, turn: int32
+    state: GameState, house1: HouseId, house2: HouseId, pactType: string, turn: int32
 ) =
   ## Generate intel reports when pact is formed
   ## All houses receive this intel (public event)
@@ -216,7 +216,7 @@ proc generatePactFormedIntel*(
       state.intel[houseId] = intel
 
 proc generateDiplomaticBreakIntel*(
-    state: var GameState,
+    state: GameState,
     house1: HouseId,
     house2: HouseId,
     relationshipType: string, # "alliance", "pact", etc.
@@ -260,7 +260,7 @@ proc generateDiplomaticBreakIntel*(
       state.intel[houseId] = intel
 
 proc generateAutomaticHostilityEscalationIntel*(
-    state: var GameState,
+    state: GameState,
     houseA: HouseId,
     houseB: HouseId,
     systemId: SystemId,
@@ -315,7 +315,7 @@ proc generateAutomaticHostilityEscalationIntel*(
       state.intel[houseId] = intel
 
 proc generateAutomaticWarEscalationIntel*(
-    state: var GameState,
+    state: GameState,
     houseA: HouseId,
     houseB: HouseId,
     systemId: SystemId,

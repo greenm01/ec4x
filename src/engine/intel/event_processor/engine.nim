@@ -11,7 +11,7 @@ import ../../types/[core, game_state, event, intel]
 import ./[visibility, converters]
 
 proc processEventsForIntelligence*(
-    state: var GameState, events: seq[GameEvent], turn: int32
+    state: GameState, events: seq[GameEvent], turn: int32
 ) =
   ## Main entry point: Convert all events to intelligence reports
   ## Distributes to houses based on fog-of-war visibility

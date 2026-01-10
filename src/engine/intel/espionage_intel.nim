@@ -7,7 +7,7 @@ import std/[tables, options, strformat]
 import ../types/[core, game_state, intel, espionage]
 
 proc generateEspionageIntelligence*(
-    state: var GameState, result: EspionageResult, turn: int32
+    state: GameState, result: EspionageResult, turn: int32
 ) =
   ## Generate intelligence reports for espionage operations
   ## Both attacker and target receive reports (if detected)

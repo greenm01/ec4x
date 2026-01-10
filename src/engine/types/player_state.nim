@@ -12,7 +12,7 @@
 ## - Used by zero-turn command system for client-side preview
 
 import std/[tables, options]
-import ./[core, colony, fleet, ship, starmap, diplomacy, progression, ground_unit]
+import ./[core, colony, fleet, ship, diplomacy, progression, ground_unit]
 
 type
   VisibilityLevel* {.pure.} = enum

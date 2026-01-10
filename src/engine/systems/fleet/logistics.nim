@@ -346,7 +346,7 @@ proc validateZeroTurnCommand*(
 # Shared Cleanup Helper (DRY)
 # ============================================================================
 
-proc cleanupEmptyFleet*(state: var GameState, fleetId: FleetId) =
+proc cleanupEmptyFleet*(state: GameState, fleetId: FleetId) =
   ## DRY: Remove fleet and cleanup all associated orders
   ## Used by TransferShips, MergeFleets, AssignSquadronToFleet, DetachShips
   ## NOTE: Caller must ensure fleet should be deleted (this doesn't check isEmpty)
@@ -362,7 +362,7 @@ proc cleanupEmptyFleet*(state: var GameState, fleetId: FleetId) =
 # ============================================================================
 
 proc executeDetachShips*(
-    state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
+    state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
   ## Split ships from source fleet to create new fleet
   ## Both fleets remain at same location
@@ -440,7 +440,7 @@ proc executeDetachShips*(
   )
 
 proc executeTransferShips*(
-    state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
+    state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
   ## Move ships from source fleet to target fleet
   ## If source becomes empty, it's deleted
@@ -530,7 +530,7 @@ proc executeTransferShips*(
   )
 
 proc executeMergeFleets*(
-    state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
+    state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
   ## Merge entire source fleet into target fleet (0 turns, at colony)
   ## Source fleet is deleted, all ships transferred to target
@@ -604,7 +604,7 @@ proc executeMergeFleets*(
 # ============================================================================
 
 proc executeLoadCargo*(
-    state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
+    state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
   ## Load marines or colonists onto transport squadrons at colony
   ## Source: economy_resolution.nim:409-501
@@ -798,7 +798,7 @@ proc executeLoadCargo*(
   )
 
 proc executeUnloadCargo*(
-    state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
+    state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
   ## Unload cargo from transport squadrons at colony
   ## Source: economy_resolution.nim:503-547
@@ -920,7 +920,7 @@ proc executeUnloadCargo*(
 # ============================================================================
 
 proc executeLoadFighters*(
-    state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
+    state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
   ## Load fighter ships from colony onto carrier
   ## Requires: Fleet at friendly colony, carrier with available hangar space
@@ -1029,7 +1029,7 @@ proc executeLoadFighters*(
   )
 
 proc executeUnloadFighters*(
-    state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
+    state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
   ## Unload fighter ships from carrier to colony
   ## Requires: Fleet at friendly colony
@@ -1115,7 +1115,7 @@ proc executeUnloadFighters*(
   )
 
 proc executeTransferFighters*(
-    state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
+    state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
   ## Transfer fighter ships between carriers (mobile operations)
   ## Can happen anywhere - both carriers must be in same system and owned by same house
@@ -1251,7 +1251,7 @@ proc executeTransferFighters*(
 # ============================================================================
 
 proc executeReactivate*(
-    state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
+    state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
   ## Return Reserve or Mothballed fleet to Active status instantly
   ## Fleet status changes immediately during order submission (0 turns)
@@ -1301,7 +1301,7 @@ proc executeReactivate*(
 # ============================================================================
 
 proc submitZeroTurnCommand*(
-    state: var GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
+    state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
   ## Main entry point for zero-turn administrative commands
   ## Validates and executes command immediately (0 turns)

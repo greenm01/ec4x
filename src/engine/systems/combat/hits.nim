@@ -10,7 +10,7 @@ import ../../types/[core, game_state, combat, ship]
 import ../../state/engine
 import ./strength
 
-proc applyHits*(state: var GameState, targetShips: seq[ShipId], hits: int32, isCriticalHit: bool = false) =
+proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriticalHit: bool = false) =
   ## Apply hits to ships following hit application rules
   ## Per docs/specs/07-combat.md Section 7.2.1 and 7.2.2
   ##

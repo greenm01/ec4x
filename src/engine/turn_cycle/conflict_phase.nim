@@ -38,7 +38,7 @@ import ../systems/fleet/execution
 # =============================================================================
 
 proc identifyCombatSystems(
-    state: var GameState,
+    state: GameState,
     rng: var Rand,
     events: var seq[event.GameEvent]
 ): seq[SystemId] =
@@ -82,7 +82,7 @@ proc identifyCombatSystems(
 # =============================================================================
 
 proc resolveConflictPhase*(
-    state: var GameState,
+    state: GameState,
     commands: Table[HouseId, command.CommandPacket],
     combatResults: var seq[CombatResult],
     events: var seq[event.GameEvent],

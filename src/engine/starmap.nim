@@ -129,16 +129,16 @@ proc totalSystems*(houseCount: int32): int32 =
 
 # Forward declarations for helper functions used by generateStarMap
 proc generateHexGrid(
-  starMap: var StarMap, state: var GameState, playerCount: int32,
+  starMap: var StarMap, state: GameState, playerCount: int32,
   numRings: uint32, seed: int64
 )
 proc assignSystemNames*(
-  starMap: var StarMap, state: var GameState, seed: int64
+  starMap: var StarMap, state: GameState, seed: int64
 )
 proc assignHouseHomeworlds(
-  starMap: var StarMap, state: var GameState, playerCount: int32, seed: int64
+  starMap: var StarMap, state: GameState, playerCount: int32, seed: int64
 )
-proc generateLanes(starMap: var StarMap, state: var GameState, seed: int64)
+proc generateLanes(starMap: var StarMap, state: GameState, seed: int64)
 proc buildDistanceMatrix(starMap: var StarMap, state: GameState)
 proc validateConnectivity*(starMap: StarMap, state: GameState): bool
 proc validateHomeworldLanes*(
@@ -146,7 +146,7 @@ proc validateHomeworldLanes*(
 ): seq[string]
 
 proc generateStarMap*(
-  state: var GameState,
+  state: GameState,
   playerCount: int32,
   numRings: uint32
 ): StarMap =
@@ -205,7 +205,7 @@ proc pickWeighted*[T: enum](rng: var Rand, weights: openArray[float]): T =
   return T.high
 
 proc newSystem(
-    state: var GameState, coords: Hex, ring: uint32, house: Option[HouseId], seed: int64
+    state: GameState, coords: Hex, ring: uint32, house: Option[HouseId], seed: int64
 ): System =
   let id = state.generateSystemId()
 
@@ -316,7 +316,7 @@ proc countHexNeighbors*(starMap: StarMap, state: GameState, coords: Hex): int32 
       count += 1
   return count
 
-proc generateHexGrid(starMap: var StarMap, state: var GameState, playerCount: int32, numRings: uint32, seed: int64) =
+proc generateHexGrid(starMap: var StarMap, state: GameState, playerCount: int32, numRings: uint32, seed: int64) =
   ## Generate hexagonal grid following game specification
   let center = hex(0, 0)
 
@@ -335,7 +335,7 @@ proc generateHexGrid(starMap: var StarMap, state: var GameState, playerCount: in
     let system = state.newSystem(hexCoord, ring, none(HouseId), seed)
     state.addSystem(system.id, system)
 
-proc assignHouseHomeworlds(starMap: var StarMap, state: var GameState, playerCount: int32, seed: int64) =
+proc assignHouseHomeworlds(starMap: var StarMap, state: GameState, playerCount: int32, seed: int64) =
   ## Assign house homeworlds following game specification
   ## Homeworlds can be placed on any ring (except hub ring 0) using distance maximization
   let maxVertexHouses: int32 = 4  # Hex grids only have 4 true vertices
@@ -513,7 +513,7 @@ proc connectRemainingSystem(starMap: var StarMap, state: GameState, rng: var Ran
         JumpLane(source: system.id, destination: neighborId, laneType: laneType)
       starMap.addLane(state, lane)
 
-proc generateLanes(starMap: var StarMap, state: var GameState, seed: int64) =
+proc generateLanes(starMap: var StarMap, state: GameState, seed: int64) =
   ## Generate all jump lanes following game specification
   # Create RNG with seed for deterministic lane generation
   var rng = initRand(seed)
@@ -609,7 +609,7 @@ proc buildDistanceMatrix(starMap: var StarMap, state: GameState) =
       if sys1.id != sys2.id:
         starMap.distanceMatrix[(sys1.id, sys2.id)] = distance(sys1.coords, sys2.coords)
 
-proc assignSystemNames*(starMap: var StarMap, state: var GameState, seed: int64) =
+proc assignSystemNames*(starMap: var StarMap, state: GameState, seed: int64) =
   ## Assign names to systems from the configured name pool
   ## Names are drawn sequentially from the pool
   ## If pool is exhausted, uses fallback pattern: "System-{id}"

@@ -179,7 +179,7 @@ proc canLoadFighters*(
   return availableSpace >= fightersToLoad
 
 proc processCapacityEnforcement*(
-    state: var GameState
+    state: GameState
 ): seq[capacity.EnforcementAction] =
   ## Main entry point - check all carriers for hangar capacity violations
   ## Called during Maintenance phase

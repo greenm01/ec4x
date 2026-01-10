@@ -36,7 +36,7 @@ proc newNeoria*(
   )
 
 proc createNeoria*(
-    state: var GameState, colonyId: ColonyId, neoriaClass: NeoriaClass
+    state: GameState, colonyId: ColonyId, neoriaClass: NeoriaClass
 ): Neoria =
   ## Creates a new neoria (production facility), adds it to the entity manager,
   ## and links it to a colony.
@@ -87,7 +87,7 @@ proc createNeoria*(
 
   return newNeoria
 
-proc destroyNeoria*(state: var GameState, neoriaId: NeoriaId) =
+proc destroyNeoria*(state: GameState, neoriaId: NeoriaId) =
   ## Destroys a neoria, removing it from all collections.
   ## Uses O(1) lookup via neoria.colonyId (no iteration needed!)
   let neoriaOpt = state.neoria(neoriaId)

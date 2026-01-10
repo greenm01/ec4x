@@ -123,7 +123,7 @@ proc collectBlockadeIntents(
         result.add((houseId: fleet.houseId, fleetId: fleet.id))
 
 proc resolveBlockades(
-  state: var GameState,
+  state: GameState,
   systemId: SystemId,
   colonyId: ColonyId,
   events: var seq[GameEvent]
@@ -258,7 +258,7 @@ proc determineTheaterOutcome(
       result.wasStalemate = true
 
 proc resolveSystemCombat*(
-  state: var GameState,
+  state: GameState,
   systemId: SystemId,
   events: var seq[GameEvent],
   rng: var Rand,
