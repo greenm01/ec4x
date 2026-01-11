@@ -162,7 +162,7 @@ suite "Construction: Build Order Processing":
 
     # Ensure house has enough treasury
     var house = houseOpt.get()
-    let cost = accessors.getShipConstructionCost(ShipClass.Destroyer)
+    let cost = accessors.shipConstructionCost(ShipClass.Destroyer)
     if house.treasury < cost:
       house.treasury = cost * 2
       game.updateHouse(owner, house)
@@ -450,11 +450,11 @@ suite "Construction: Cost Calculations":
 
   test "ship costs match spec hierarchy":
     # Per spec: larger ships cost more
-    let ddCost = accessors.getShipConstructionCost(ShipClass.Destroyer)
-    let clCost = accessors.getShipConstructionCost(ShipClass.LightCruiser)
-    let caCost = accessors.getShipConstructionCost(ShipClass.Cruiser)
-    let bcCost = accessors.getShipConstructionCost(ShipClass.Battlecruiser)
-    let bbCost = accessors.getShipConstructionCost(ShipClass.Battleship)
+    let ddCost = accessors.shipConstructionCost(ShipClass.Destroyer)
+    let clCost = accessors.shipConstructionCost(ShipClass.LightCruiser)
+    let caCost = accessors.shipConstructionCost(ShipClass.Cruiser)
+    let bcCost = accessors.shipConstructionCost(ShipClass.Battlecruiser)
+    let bbCost = accessors.shipConstructionCost(ShipClass.Battleship)
 
     check clCost > ddCost
     check caCost > clCost
@@ -462,10 +462,10 @@ suite "Construction: Cost Calculations":
     check bbCost > bcCost
 
   test "facility costs match spec hierarchy":
-    let spaceportCost = accessors.getBuildingCost(FacilityClass.Spaceport)
-    let shipyardCost = accessors.getBuildingCost(FacilityClass.Shipyard)
-    let drydockCost = accessors.getBuildingCost(FacilityClass.Drydock)
-    let starbaseCost = accessors.getBuildingCost(FacilityClass.Starbase)
+    let spaceportCost = accessors.buildingCost(FacilityClass.Spaceport)
+    let shipyardCost = accessors.buildingCost(FacilityClass.Shipyard)
+    let drydockCost = accessors.buildingCost(FacilityClass.Drydock)
+    let starbaseCost = accessors.buildingCost(FacilityClass.Starbase)
 
     # Per spec: Facilities have increasing cost hierarchy
     check shipyardCost > spaceportCost
@@ -474,7 +474,7 @@ suite "Construction: Cost Calculations":
 
   test "repair costs are 25% of build cost":
     # Per spec: Repair cost = 25% of construction cost
-    let ddBuildCost = accessors.getShipConstructionCost(ShipClass.Destroyer)
+    let ddBuildCost = accessors.shipConstructionCost(ShipClass.Destroyer)
     let ddRepairCost = repairs.calculateRepairCost(ShipClass.Destroyer)
 
     # Allow for rounding
@@ -503,7 +503,7 @@ suite "Construction: Treasury Deduction":
     game.updateHouse(owner, house)
 
     # Get ship cost
-    let cost = accessors.getShipConstructionCost(ShipClass.Destroyer)
+    let cost = accessors.shipConstructionCost(ShipClass.Destroyer)
 
     # Create command packet
     let packet = CommandPacket(
@@ -1040,7 +1040,7 @@ suite "Construction: Multi-Turn Queue Advancement":
       break
     
     # Create ship project with known build time
-    let buildTime = accessors.getShipBaseBuildTime(ShipClass.Destroyer)
+    let buildTime = accessors.shipBaseBuildTime(ShipClass.Destroyer)
     let project = createShipProject(ShipClass.Destroyer)
     check project.turnsRemaining == buildTime
     
@@ -1051,10 +1051,10 @@ suite "Construction: Multi-Turn Queue Advancement":
     let game = newGame()
     
     # Check build times for all facilities
-    let spaceportTime = accessors.getBuildingTime(FacilityClass.Spaceport)
-    let shipyardTime = accessors.getBuildingTime(FacilityClass.Shipyard)
-    let drydockTime = accessors.getBuildingTime(FacilityClass.Drydock)
-    let starbaseTime = accessors.getBuildingTime(FacilityClass.Starbase)
+    let spaceportTime = accessors.buildingTime(FacilityClass.Spaceport)
+    let shipyardTime = accessors.buildingTime(FacilityClass.Shipyard)
+    let drydockTime = accessors.buildingTime(FacilityClass.Drydock)
+    let starbaseTime = accessors.buildingTime(FacilityClass.Starbase)
     
     # All should have valid build times
     check spaceportTime >= 1
@@ -1066,10 +1066,10 @@ suite "Construction: Multi-Turn Queue Advancement":
     let game = newGame()
     
     # Check build times for all ground units
-    let armyTime = accessors.getGroundUnitBuildTime(GroundClass.Army)
-    let marineTime = accessors.getGroundUnitBuildTime(GroundClass.Marine)
-    let batteryTime = accessors.getGroundUnitBuildTime(GroundClass.GroundBattery)
-    let shieldTime = accessors.getGroundUnitBuildTime(GroundClass.PlanetaryShield)
+    let armyTime = accessors.groundUnitBuildTime(GroundClass.Army)
+    let marineTime = accessors.groundUnitBuildTime(GroundClass.Marine)
+    let batteryTime = accessors.groundUnitBuildTime(GroundClass.GroundBattery)
+    let shieldTime = accessors.groundUnitBuildTime(GroundClass.PlanetaryShield)
     
     # All should have valid build times
     check armyTime >= 1
@@ -1093,7 +1093,7 @@ suite "Construction: Insufficient Resources":
       break
     
     # Get destroyer cost
-    let destroyerCost = accessors.getShipConstructionCost(ShipClass.Destroyer)
+    let destroyerCost = accessors.shipConstructionCost(ShipClass.Destroyer)
     
     # Verify cost is positive and can cause insufficient funds
     check destroyerCost > 0
