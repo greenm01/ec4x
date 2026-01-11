@@ -2,11 +2,10 @@
 ## Validates diplomatic state transitions and proposal system
 ## Per docs/specs/08-diplomacy.md
 
-import std/[tables, options]
 import unittest
 import ../../src/engine/engine
-import ../../src/engine/types/[core, house, diplomacy, game_state]
-import ../../src/engine/state/[engine, iterators]
+import ../../src/engine/types/[core, diplomacy]
+import ../../src/engine/state/iterators
 
 suite "Diplomacy: Proposal System (Section 8.1)":
 

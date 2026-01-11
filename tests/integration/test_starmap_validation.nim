@@ -5,11 +5,11 @@
 ## All tests verify compliance with the official game rules.
 
 import unittest
-import std/[tables, math, times, options, strutils]
+import std/[tables, math, times, strutils]
 import ../../src/engine/starmap
 import ../../src/engine/types/[
-  starmap as starmap_types, core, game_state, resolution, espionage,
-  diplomacy, player_state, command, fleet
+  starmap as starmap_types, core, game_state, resolution,
+  diplomacy, player_state
 ]
 import ../../src/engine/config/[engine as engine_config, game_setup_config]
 import ../../src/engine/globals
@@ -101,7 +101,7 @@ suite "EC4X Game Specification Validation":
 
   test "system count matches game specification":
     for playerCount in [2, 3, 4, 5, 6, 8, 10, 12]:
-      let (state, starMap) = createTestGame(playerCount.int32)
+      let (state, _) = createTestGame(playerCount.int32)
       let expected = expectedGameBehavior(playerCount)
 
       check state.systems.entities.data.len == expected.systemCount
@@ -110,7 +110,7 @@ suite "EC4X Game Specification Validation":
 
   test "ring distribution matches hexagonal grid specification":
     for playerCount in [3, 4, 6]:
-      let (state, starMap) = createTestGame(playerCount.int32)
+      let (state, _) = createTestGame(playerCount.int32)
       let expected = expectedGameBehavior(playerCount)
 
       # Count systems by ring
@@ -266,7 +266,7 @@ suite "EC4X Game Specification Validation":
 
   test "lane type distribution follows game specification":
     for playerCount in [3, 4, 6]:
-      let (state, starMap) = createTestGame(playerCount.int32)
+      let (_, starMap) = createTestGame(playerCount.int32)
 
       # Count lane types
       var laneTypeCounts = [0, 0, 0]  # Major, Minor, Restricted
@@ -398,7 +398,7 @@ suite "EC4X Game Specification Validation":
 
     # Valid bounds should work
     for rings in [2'u32, 4'u32, 8'u32, 12'u32]:
-      let (state, starMap) = createTestGame(4, rings)
+      let (state, _) = createTestGame(4, rings)
       check state.systems.entities.data.len > 0
       echo "Rings ", rings, ": ✓ Valid"
 
@@ -438,19 +438,19 @@ suite "EC4X Game Specification Validation":
     # Test small/medium/large map classifications
 
     # Small maps (2-4 rings)
-    let (state_small, starMap_small) = createTestGame(4, 3'u32)
+    let (state_small, _) = createTestGame(4, 3'u32)
     check state_small.systems.entities.data.len == 37  # 3*9 + 3*3 + 1
     echo "Small map (3 rings): ", state_small.systems.entities.data.len,
       " systems"
 
     # Medium maps (5-8 rings)
-    let (state_medium, starMap_medium) = createTestGame(4, 6'u32)
+    let (state_medium, _) = createTestGame(4, 6'u32)
     check state_medium.systems.entities.data.len == 127  # 3*36 + 3*6 + 1
     echo "Medium map (6 rings): ", state_medium.systems.entities.data.len,
       " systems"
 
     # Large maps (9-12 rings)
-    let (state_large, starMap_large) = createTestGame(4, 10'u32)
+    let (state_large, _) = createTestGame(4, 10'u32)
     check state_large.systems.entities.data.len == 331  # 3*100 + 3*10 + 1
     echo "Large map (10 rings): ", state_large.systems.entities.data.len,
       " systems"
@@ -465,7 +465,7 @@ suite "EC4X Game Specification Validation":
     ]
 
     for tc in testCases:
-      let (state, starMap) = createTestGame(tc.players, tc.rings)
+      let (state, _) = createTestGame(tc.players, tc.rings)
       let actualRatio = state.systems.entities.data.len.float /
         tc.players.float
 

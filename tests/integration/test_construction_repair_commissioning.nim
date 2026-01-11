@@ -9,10 +9,10 @@
 ##
 ## Per docs/specs/05-construction.md
 
-import std/[unittest, options, tables, sequtils]
+import std/[unittest, options, sequtils]
 import ../../src/engine/engine
 import ../../src/engine/types/[
-  core, game_state, house, colony, facilities, ship, fleet,
+  core, house, colony, facilities, ship, fleet,
   production, command, event, combat, ground_unit
 ]
 import ../../src/engine/state/[engine, iterators]
@@ -25,7 +25,7 @@ import ../../src/engine/systems/production/[
 # Initialize config once for all tests (needed for tests that don't call newGame)
 gameConfig = config_engine.loadGameConfig()
 import ../../src/engine/systems/capacity/construction_docks
-import ../../src/engine/entities/[ship_ops, fleet_ops, neoria_ops]
+
 
 # Helper to create a build command
 proc makeBuildCommand(
@@ -1032,8 +1032,7 @@ suite "Construction: Multi-Turn Queue Advancement":
 
   test "Ship construction completes after correct number of turns":
     let game = newGame()
-    var events: seq[GameEvent] = @[]
-    
+
     var colony: Colony
     for c in game.allColonies():
       colony = c
@@ -1048,8 +1047,6 @@ suite "Construction: Multi-Turn Queue Advancement":
     # (actual multi-turn simulation tested in integration)
 
   test "Facility construction completes after correct number of turns":
-    let game = newGame()
-    
     # Check build times for all facilities
     let spaceportTime = accessors.buildingTime(FacilityClass.Spaceport)
     let shipyardTime = accessors.buildingTime(FacilityClass.Shipyard)
@@ -1063,8 +1060,6 @@ suite "Construction: Multi-Turn Queue Advancement":
     check starbaseTime >= 1
 
   test "Ground unit construction completes after correct number of turns":
-    let game = newGame()
-    
     # Check build times for all ground units
     let armyTime = accessors.groundUnitBuildTime(GroundClass.Army)
     let marineTime = accessors.groundUnitBuildTime(GroundClass.Marine)

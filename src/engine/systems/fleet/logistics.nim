@@ -898,7 +898,7 @@ proc executeUnloadCargo*(
     of CargoClass.Marines:
       # Create ground unit entities for each marine
       for i in 0 ..< quantity:
-        discard ground_unit_ops.createGroundUnit(state, fleet.houseId, colony.id, GroundClass.Marine)
+        discard state.createGroundUnit(fleet.houseId, colony.id, GroundClass.Marine)
       logDebug("Economy", &"Unloaded {quantity} Marines from ship {shipId} to colony {colony.id}")
     of CargoClass.Colonists:
       # Colonists are delivered to population: 1 PTU = 50k souls

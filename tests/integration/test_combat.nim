@@ -15,7 +15,7 @@
 ## 10. Blitz mechanics
 ## 11. Diplomacy escalation (threat levels, grace periods)
 
-import std/[unittest, options, tables, sequtils, random]
+import std/[unittest, options, tables, random]
 import ../../src/engine/engine
 import ../../src/engine/types/[
   core, game_state, house, colony, ship, fleet, combat, ground_unit,
@@ -25,9 +25,9 @@ import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/globals
 import ../../src/engine/config/engine as config_engine
 import ../../src/engine/systems/combat/[
-  cer, hits, retreat, detection, strength, resolver, planetary
+  cer, hits, retreat, detection, strength
 ]
-import ../../src/engine/entities/[ship_ops, fleet_ops, ground_unit_ops]
+import ../../src/engine/entities/[ship_ops, fleet_ops]
 
 # Initialize config once for all tests
 gameConfig = config_engine.loadGameConfig()
@@ -46,18 +46,6 @@ proc createTestShip(
     ship.state = combatState
     state.updateShip(ship.id, ship)
   return ship
-
-proc shipsByState(state: GameState, fleetId: FleetId, 
-                     targetState: CombatState): seq[Ship] =
-  ## Get all ships in a fleet with a specific combat state
-  result = @[]
-  for ship in state.shipsInFleet(fleetId):
-    if ship.state == targetState:
-      result.add(ship)
-
-proc countShipsByState(state: GameState, fleetId: FleetId, 
-                       targetState: CombatState): int =
-  shipsByState(state, fleetId, targetState).len
 
 # =============================================================================
 # Section 7.2.1: Ship Status Tests
@@ -679,8 +667,7 @@ suite "Combat: Starbase Combat (Section 7.6.3)":
     # Orbital combat: Kastra AS should be included
     let orbitalAS = calculateDefenderAS(game, force, colonySystemId,
                                          CombatTheater.Orbital)
-    let kastraAS = calculateColonyKastraAS(game, ColonyId(1))
-    
+
     # orbitalAS should be baseAS + kastraAS (if any kastras exist)
     check orbitalAS >= baseAS
 

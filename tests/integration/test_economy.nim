@@ -2,13 +2,13 @@
 ## Validates income calculation, maintenance, treasury management
 ## Per docs/specs/03-economy.md
 
-import std/[tables, options, sequtils, random]
+import std/[tables, options, random]
 import unittest
-import ../../src/engine/engine
-import ../../src/engine/types/[core, house, command, tech, colony, ship, facilities]
+import ../../src/engine/engine # Provides newGame function
+import ../../src/engine/types/[core, house, command, tech, colony, ship]
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/turn_cycle/engine
-import ../../src/engine/systems/income/[maintenance, engine]
+import ../../src/engine/systems/income/maintenance
 import ../../src/engine/systems/production/accessors
 import ../../src/engine/systems/tech/effects
 
@@ -72,8 +72,7 @@ suite "Economy: Maintenance (Section 3.4)":
 
   test "Ship maintenance scales by fleet status":
     ## Active = 100%, Reserve = 50%, Mothball = 10%
-    var game = newGame()
-    
+
     # Ships have maintenance cost from config
     let ddMaintenance = shipMaintenanceCost(ShipClass.Destroyer)
     check ddMaintenance > 0
@@ -139,7 +138,7 @@ suite "Economy: Full Turn Income Flow":
       )
     
     # Resolve turn
-    let result = game.resolveTurn(commands, rng)
+    discard game.resolveTurn(commands, rng)
     
     # Treasury should have changed (income - maintenance)
     let finalTreasury = game.house(houseId).get().treasury

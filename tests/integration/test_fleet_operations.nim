@@ -16,11 +16,11 @@
 ## NOTE: Capacity limits (dock counts, fleet counts, C2 pool, cargo capacity)
 ## are tested separately in test_capacity_limits.nim
 
-import std/[unittest, options, tables, sequtils, sets]
+import std/[unittest, options, sequtils]
 import ../../src/engine/engine
 import ../../src/engine/types/[
   core, game_state, house, colony, ship, fleet, combat, ground_unit,
-  facilities, command, production, starmap
+  facilities, starmap
 ]
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/entities/[ship_ops, fleet_ops, ground_unit_ops, neoria_ops, kastra_ops]
@@ -102,7 +102,7 @@ suite "Fleet Operations - Ship Commissioning & Assignment":
     let initialShipCount = fleetShipCount(game, fleet.id)
     
     # Commission a new ship at the colony
-    let newShip = game.createShip(houseId, fleet.id, ShipClass.Cruiser)
+    discard game.createShip(houseId, fleet.id, ShipClass.Cruiser)
     
     # Verify ship was added to existing fleet
     check fleetShipCount(game, fleet.id) == initialShipCount + 1
@@ -764,11 +764,11 @@ suite "Fleet Operations - Zero-Turn Admin: Cargo Operations":
     let marine = game.createGroundUnit(houseId, colony.id, GroundClass.Marine)
     
     # Create fleet with transport
-    let fleet = createTestFleet(
+    discard createTestFleet(
       game, houseId, colony.systemId,
       @[ShipClass.TroopTransport]
     )
-    
+
     # Verify marine exists at colony
     check game.groundUnit(marine.id).isSome
     check game.groundUnit(marine.id).get().garrison.colonyId == colony.id
@@ -1087,9 +1087,6 @@ suite "Fleet Operations - Fleet Salvage Command":
     for ship in game.shipsInFleet(fleet.id):
       let buildCost = gameConfig.ships.ships[ship.shipClass].productionCost
       totalBuildCost += buildCost
-    
-    # Expected salvage: 50% of build cost
-    let expectedSalvage = int32(float32(totalBuildCost) * gameConfig.ships.salvage.salvageValueMultiplier)
     
     # Verify salvage multiplier from config
     check gameConfig.ships.salvage.salvageValueMultiplier == 0.5

@@ -16,11 +16,11 @@
 ## - Anti-destruction protection (combat mechanic, not capacity system)
 ## - Multi-turn grace period mechanics (deferred to separate test file)
 
-import std/[unittest, options, tables, sequtils, math]
+import std/[unittest, options, tables, math]
 import ../../src/engine/engine
 import ../../src/engine/types/[
   core, game_state, house, colony, facilities, ship, fleet,
-  production, command, event, combat, ground_unit, capacity
+  production, ground_unit, capacity
 ]
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/globals
@@ -37,13 +37,10 @@ import ../../src/engine/systems/capacity/[
 
 # Import entity operations
 import ../../src/engine/entities/[
-  ship_ops, fleet_ops, colony_ops, neoria_ops, kastra_ops, ground_unit_ops
+  ship_ops, fleet_ops, kastra_ops, ground_unit_ops
 ]
 
-# Import production systems
-import ../../src/engine/systems/production/[
-  construction, projects, commissioning
-]
+
 
 # Helper to get a system from a house's colonies
 proc houseSystem(game: GameState, houseId: HouseId): SystemId =
@@ -534,7 +531,7 @@ suite "Capacity Limits: Per-Colony Facilities":
     check canBuildPlanetaryShield(game, colony) == true
     
     # Add a planetary shield
-    let shield = game.createGroundUnit(houseId, colony.id, GroundClass.PlanetaryShield)
+    discard game.createGroundUnit(houseId, colony.id, GroundClass.PlanetaryShield)
     # Note: createGroundUnit automatically adds to colony.groundUnitIds
     
     # Reload colony

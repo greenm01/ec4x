@@ -7,17 +7,17 @@
 ##
 ## Tests sample tech levels (1, 3, 5, 10) rather than all levels
 
-import std/[unittest, options, tables, random, math, sequtils]
+import std/[unittest, options, math, sequtils]
 import ../../src/engine/engine
 import ../../src/engine/types/[
-  core, game_state, house, colony, facilities, ship, fleet, tech
+  game_state, house, colony, facilities, ship, fleet, tech
 ]
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/globals
 import ../../src/engine/config/engine as config_engine
 import ../../src/engine/systems/ship/entity
 import ../../src/engine/systems/tech/[effects, advancement]
-import ../../src/engine/entities/[ship_ops, fleet_ops, neoria_ops, kastra_ops]
+import ../../src/engine/entities/[ship_ops, neoria_ops, kastra_ops]
 import ../../src/engine/systems/tech/advancement as tech_advancement
 
 # Initialize config
@@ -49,7 +49,6 @@ suite "Tech Integration: WEP Applied to Ships":
   test "New ship at WEP 1 has base AS/DS from config":
     let state = createTestGameWithTech(wepLevel = 1)
     let house = state.allHouses().toSeq[0]
-    let homeColony = state.coloniesOwned(house.id).toSeq[0]
     let fleet = state.fleetsOwned(house.id).toSeq[0]
     
     # Create destroyer at WEP 1
@@ -325,8 +324,6 @@ suite "Tech Integration: WEP Applied to Starbases":
 suite "Tech Integration: EL Applied to Economy":
   
   test "EL 5 gives 25% production bonus":
-    let state = createTestGameWithTech(elLevel = 5)
-    
     # EL bonus calculation
     let bonus = effects.economicBonus(5)
     
@@ -334,8 +331,6 @@ suite "Tech Integration: EL Applied to Economy":
     check bonus == 0.25
   
   test "EL 10 gives 50% production bonus (cap)":
-    let state = createTestGameWithTech(elLevel = 10)
-    
     let bonus = effects.economicBonus(10)
     check bonus == 0.50
     
