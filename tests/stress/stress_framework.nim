@@ -80,9 +80,9 @@ proc checkStateInvariants*(
   ## Updated for new entity manager architecture
   var violations: seq[InvariantViolation] = @[]
 
-  # Build valid house IDs set
+  # Build valid house IDs set (includes eliminated houses - they still exist)
   var validHouses: HashSet[HouseId]
-  for (houseId, _) in state.activeHousesWithId():
+  for (houseId, _) in state.allHousesWithId():
     validHouses.incl(houseId)
 
   # Build valid system IDs set

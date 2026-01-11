@@ -15,44 +15,44 @@ import ../../src/engine/config/engine as config_engine
 gameConfig = config_engine.loadGameConfig()
 
 suite "Maintenance: Ship Costs by Class":
-  ## Test getShipMaintenanceCost for different ship classes
+  ## Test shipMaintenanceCost for different ship classes
 
   test "destroyer has maintenance cost":
-    let cost = getShipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged)
+    let cost = shipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged)
     check cost > 0
 
   test "battleship costs more than destroyer":
-    let ddCost = getShipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged)
-    let bbCost = getShipMaintenanceCost(ShipClass.Battleship, CombatState.Undamaged)
+    let ddCost = shipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged)
+    let bbCost = shipMaintenanceCost(ShipClass.Battleship, CombatState.Undamaged)
     check bbCost > ddCost
 
   test "dreadnought costs more than battleship":
-    let bbCost = getShipMaintenanceCost(ShipClass.Battleship, CombatState.Undamaged)
-    let dnCost = getShipMaintenanceCost(ShipClass.Dreadnought, CombatState.Undamaged)
+    let bbCost = shipMaintenanceCost(ShipClass.Battleship, CombatState.Undamaged)
+    let dnCost = shipMaintenanceCost(ShipClass.Dreadnought, CombatState.Undamaged)
     check dnCost > bbCost
 
   test "all ship classes have positive maintenance":
     for shipClass in ShipClass:
-      let cost = getShipMaintenanceCost(shipClass, CombatState.Undamaged)
+      let cost = shipMaintenanceCost(shipClass, CombatState.Undamaged)
       check cost >= 0 # Some auxiliary might be 0
 
 suite "Maintenance: Combat State Modifiers":
   ## Test how damage affects maintenance
 
   test "crippled ships have reduced maintenance":
-    let undamagedCost = getShipMaintenanceCost(
+    let undamagedCost = shipMaintenanceCost(
       ShipClass.Cruiser, CombatState.Undamaged
     )
-    let crippledCost = getShipMaintenanceCost(
+    let crippledCost = shipMaintenanceCost(
       ShipClass.Cruiser, CombatState.Crippled
     )
     check crippledCost < undamagedCost
 
   test "crippled maintenance is ~50% of base":
-    let baseCost = getShipMaintenanceCost(
+    let baseCost = shipMaintenanceCost(
       ShipClass.Battlecruiser, CombatState.Undamaged
     )
-    let crippledCost = getShipMaintenanceCost(
+    let crippledCost = shipMaintenanceCost(
       ShipClass.Battlecruiser, CombatState.Crippled
     )
     # Should be around 50% (config: crippledMaintenanceMultiplier)
@@ -62,51 +62,51 @@ suite "Maintenance: Combat State Modifiers":
   test "destroyed ships still need some cost handling":
     # Destroyed ships typically have 0 maintenance
     # but we test the function doesn't crash
-    let cost = getShipMaintenanceCost(ShipClass.Destroyer, CombatState.Destroyed)
+    let cost = shipMaintenanceCost(ShipClass.Destroyer, CombatState.Destroyed)
     check cost >= 0
 
 suite "Maintenance: Fleet Status Modifiers":
   ## Test Active/Reserve/Mothballed fleet maintenance
 
   test "active fleet has full maintenance":
-    let activeCost = getShipMaintenanceCost(
+    let activeCost = shipMaintenanceCost(
       ShipClass.Cruiser, CombatState.Undamaged, FleetStatus.Active
     )
     check activeCost > 0
 
   test "reserve fleet has reduced maintenance":
-    let activeCost = getShipMaintenanceCost(
+    let activeCost = shipMaintenanceCost(
       ShipClass.Cruiser, CombatState.Undamaged, FleetStatus.Active
     )
-    let reserveCost = getShipMaintenanceCost(
+    let reserveCost = shipMaintenanceCost(
       ShipClass.Cruiser, CombatState.Undamaged, FleetStatus.Reserve
     )
     check reserveCost < activeCost
 
   test "reserve is ~50% of active":
-    let activeCost = getShipMaintenanceCost(
+    let activeCost = shipMaintenanceCost(
       ShipClass.Battleship, CombatState.Undamaged, FleetStatus.Active
     )
-    let reserveCost = getShipMaintenanceCost(
+    let reserveCost = shipMaintenanceCost(
       ShipClass.Battleship, CombatState.Undamaged, FleetStatus.Reserve
     )
     let ratio = float(reserveCost) / float(activeCost)
     check ratio >= 0.4 and ratio <= 0.6
 
   test "mothballed fleet has minimal maintenance":
-    let activeCost = getShipMaintenanceCost(
+    let activeCost = shipMaintenanceCost(
       ShipClass.Cruiser, CombatState.Undamaged, FleetStatus.Active
     )
-    let mothballedCost = getShipMaintenanceCost(
+    let mothballedCost = shipMaintenanceCost(
       ShipClass.Cruiser, CombatState.Undamaged, FleetStatus.Mothballed
     )
     check mothballedCost < activeCost
 
   test "mothballed is ~10% of active":
-    let activeCost = getShipMaintenanceCost(
+    let activeCost = shipMaintenanceCost(
       ShipClass.Dreadnought, CombatState.Undamaged, FleetStatus.Active
     )
-    let mothballedCost = getShipMaintenanceCost(
+    let mothballedCost = shipMaintenanceCost(
       ShipClass.Dreadnought, CombatState.Undamaged, FleetStatus.Mothballed
     )
     let ratio = float(mothballedCost) / float(activeCost)
@@ -122,7 +122,7 @@ suite "Maintenance: Fleet Total Calculation":
   test "single ship fleet":
     let ships = @[(ShipClass.Destroyer, CombatState.Undamaged)]
     let total = calculateFleetMaintenance(ships)
-    let expected = getShipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged)
+    let expected = shipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged)
     check total == expected
 
   test "multiple ships sum correctly":
@@ -133,8 +133,8 @@ suite "Maintenance: Fleet Total Calculation":
     ]
     let total = calculateFleetMaintenance(ships)
     let expected =
-      getShipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged) * 2 +
-      getShipMaintenanceCost(ShipClass.Cruiser, CombatState.Undamaged)
+      shipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged) * 2 +
+      shipMaintenanceCost(ShipClass.Cruiser, CombatState.Undamaged)
     check total == expected
 
   test "mixed damage states":
@@ -143,53 +143,53 @@ suite "Maintenance: Fleet Total Calculation":
       (ShipClass.Battleship, CombatState.Crippled)
     ]
     let total = calculateFleetMaintenance(ships)
-    let undamaged = getShipMaintenanceCost(ShipClass.Battleship, CombatState.Undamaged)
-    let crippled = getShipMaintenanceCost(ShipClass.Battleship, CombatState.Crippled)
+    let undamaged = shipMaintenanceCost(ShipClass.Battleship, CombatState.Undamaged)
+    let crippled = shipMaintenanceCost(ShipClass.Battleship, CombatState.Crippled)
     check total == undamaged + crippled
 
 suite "Maintenance: Facility Upkeep":
   ## Test facility maintenance costs
 
   test "spaceport has upkeep":
-    let upkeep = getSpaceportUpkeep()
+    let upkeep = spaceportUpkeep()
     check upkeep > 0
 
   test "shipyard has upkeep":
-    let upkeep = getShipyardUpkeep()
+    let upkeep = shipyardUpkeep()
     check upkeep > 0
 
   test "starbase has upkeep":
-    let upkeep = getStarbaseUpkeep()
+    let upkeep = starbaseUpkeep()
     check upkeep > 0
 
   test "drydock has upkeep":
-    let upkeep = getDrydockUpkeep()
+    let upkeep = drydockUpkeep()
     check upkeep > 0
 
   test "shipyard costs at least as much as spaceport":
     # Both facilities have upkeep, shipyard >= spaceport
-    check getShipyardUpkeep() >= getSpaceportUpkeep()
+    check shipyardUpkeep() >= spaceportUpkeep()
 
   test "starbase is most expensive":
-    check getStarbaseUpkeep() > getShipyardUpkeep()
+    check starbaseUpkeep() > shipyardUpkeep()
 
 suite "Maintenance: Ground Unit Upkeep":
   ## Test ground unit maintenance
 
   test "army has upkeep":
-    let upkeep = getArmyUpkeep()
+    let upkeep = armyUpkeep()
     check upkeep >= 0
 
   test "marine has upkeep":
-    let upkeep = getMarineUpkeep()
+    let upkeep = marineUpkeep()
     check upkeep >= 0
 
   test "ground battery has no upkeep":
     # Defensive installations are free to maintain
-    check getGroundBatteryUpkeep() == 0
+    check groundBatteryUpkeep() == 0
 
   test "planetary shield has no upkeep":
-    check getPlanetaryShieldUpkeep() == 0
+    check planetaryShieldUpkeep() == 0
 
 suite "Maintenance: Infrastructure Repair":
   ## Test repair cost calculations

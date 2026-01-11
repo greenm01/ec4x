@@ -33,10 +33,10 @@ suite "Simple Stress: State Integrity":
         commands[houseId] = CommandPacket(
           houseId: houseId,
           turn: turn.int32,
-          treasury: house.treasury.int32,
           fleetCommands: @[],
           buildCommands: @[],
           repairCommands: @[],
+          scrapCommands: @[],
           researchAllocation: ResearchAllocation(),
           diplomaticCommand: @[],
           populationTransfers: @[],
@@ -123,10 +123,10 @@ suite "Simple Stress: State Integrity":
       var packet = CommandPacket(
         houseId: houseId,
         turn: 1.int32,
-        treasury: house.treasury.int32,
         fleetCommands: @[],
         buildCommands: @[],
         repairCommands: @[],
+        scrapCommands: @[],
         researchAllocation: ResearchAllocation(),
         diplomaticCommand: @[],
         populationTransfers: @[],

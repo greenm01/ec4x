@@ -75,24 +75,24 @@ suite "Tech Effects: Construction Tech (CST)":
   ## Test CST capacity multipliers per economy.md:4.5
 
   test "CST 1 gives 1.0x multiplier (base)":
-    check abs(getConstructionCapacityMultiplier(1) - 1.0) < 0.001
+    check abs(constructionCapacityMultiplier(1) - 1.0) < 0.001
 
   test "CST 2 gives 1.1x multiplier":
-    check abs(getConstructionCapacityMultiplier(2) - 1.10) < 0.001
+    check abs(constructionCapacityMultiplier(2) - 1.10) < 0.001
 
   test "CST 5 gives 1.4x multiplier":
-    check abs(getConstructionCapacityMultiplier(5) - 1.40) < 0.001
+    check abs(constructionCapacityMultiplier(5) - 1.40) < 0.001
 
   test "CST 10 gives 1.9x multiplier":
-    check abs(getConstructionCapacityMultiplier(10) - 1.90) < 0.001
+    check abs(constructionCapacityMultiplier(10) - 1.90) < 0.001
 
   test "dock capacity multiplier uses config":
     # Per spec: CST I = 1.0x, CST II = 1.1x, ... CST X = 1.9x
     # Formula: baseModifier + (CST - 1) * incrementPerLevel
     # Config: baseModifier=1.0, incrementPerLevel=0.10
-    let mult1 = getDockCapacityMultiplier(1)
-    let mult2 = getDockCapacityMultiplier(2)
-    let mult5 = getDockCapacityMultiplier(5)
+    let mult1 = dockCapacityMultiplier(1)
+    let mult2 = dockCapacityMultiplier(2)
+    let mult5 = dockCapacityMultiplier(5)
     check abs(mult1 - 1.0) < 0.001 # CST 1 = 1.0x
     check abs(mult2 - 1.1) < 0.001 # CST 2 = 1.1x
     check mult5 > mult2 # Higher CST = higher multiplier
@@ -109,20 +109,20 @@ suite "Tech Effects: Terraforming (TER)":
   ## Test terraforming costs and requirements per economy.md:4.7
 
   test "terraforming base costs by planet class":
-    check getTerraformingBaseCost(1) == 60 # Extreme -> Desolate
-    check getTerraformingBaseCost(2) == 180 # Desolate -> Hostile
-    check getTerraformingBaseCost(3) == 500 # Hostile -> Harsh
-    check getTerraformingBaseCost(4) == 1000 # Harsh -> Benign
-    check getTerraformingBaseCost(5) == 1500 # Benign -> Lush
-    check getTerraformingBaseCost(6) == 2000 # Lush -> Eden
+    check terraformingBaseCost(1) == 60 # Extreme -> Desolate
+    check terraformingBaseCost(2) == 180 # Desolate -> Hostile
+    check terraformingBaseCost(3) == 500 # Hostile -> Harsh
+    check terraformingBaseCost(4) == 1000 # Harsh -> Benign
+    check terraformingBaseCost(5) == 1500 # Benign -> Lush
+    check terraformingBaseCost(6) == 2000 # Lush -> Eden
 
   test "Eden (class 7) cannot be improved":
-    check getTerraformingBaseCost(7) == 0
+    check terraformingBaseCost(7) == 0
 
   test "terraforming speed is always 1 turn":
-    check getTerraformingSpeed(1) == 1
-    check getTerraformingSpeed(5) == 1
-    check getTerraformingSpeed(7) == 1
+    check terraformingSpeed(1) == 1
+    check terraformingSpeed(5) == 1
+    check terraformingSpeed(7) == 1
 
   test "canTerraform requires TER level >= target class":
     # Need TER 2 to terraform class 1 -> 2
@@ -145,63 +145,63 @@ suite "Tech Effects: Electronic Intelligence (ELI)":
   ## Test ELI counter-cloak bonus
 
   test "ELI counter-cloak bonus":
-    check getELICounterCloakBonus(0) == 0
-    check getELICounterCloakBonus(1) == 0 # 1 div 2 = 0
-    check getELICounterCloakBonus(2) == 1 # 2 div 2 = 1
-    check getELICounterCloakBonus(4) == 2
-    check getELICounterCloakBonus(10) == 5
-    check getELICounterCloakBonus(15) == 7
+    check eliCounterCloakBonus(0) == 0
+    check eliCounterCloakBonus(1) == 0 # 1 div 2 = 0
+    check eliCounterCloakBonus(2) == 1 # 2 div 2 = 1
+    check eliCounterCloakBonus(4) == 2
+    check eliCounterCloakBonus(10) == 5
+    check eliCounterCloakBonus(15) == 7
 
 suite "Tech Effects: Carrier Operations (ACO)":
   ## Test carrier capacity by ACO level per economy.md:4.13
 
   test "CV capacity by ACO level":
-    check getCarrierCapacityCV(1) == 3 # ACO I
-    check getCarrierCapacityCV(2) == 4 # ACO II
-    check getCarrierCapacityCV(3) == 5 # ACO III
+    check carrierCapacityCV(1) == 3 # ACO I
+    check carrierCapacityCV(2) == 4 # ACO II
+    check carrierCapacityCV(3) == 5 # ACO III
 
   test "CX capacity by ACO level":
-    check getCarrierCapacityCX(1) == 5 # ACO I
-    check getCarrierCapacityCX(2) == 6 # ACO II
-    check getCarrierCapacityCX(3) == 8 # ACO III
+    check carrierCapacityCX(1) == 5 # ACO I
+    check carrierCapacityCX(2) == 6 # ACO II
+    check carrierCapacityCX(3) == 8 # ACO III
 
   test "ACO beyond level 3 uses level 3 values":
-    check getCarrierCapacityCV(4) == 5
-    check getCarrierCapacityCV(10) == 5
-    check getCarrierCapacityCX(4) == 8
-    check getCarrierCapacityCX(10) == 8
+    check carrierCapacityCV(4) == 5
+    check carrierCapacityCV(10) == 5
+    check carrierCapacityCX(4) == 8
+    check carrierCapacityCX(10) == 8
 
 suite "Tech Effects: Strategic Command (SC)":
   ## Test SC fleet limit calculations per docs/specs/04-research_development.md
 
   test "SC scales with map size":
     # Small map
-    let smallFleets = getMaxCombatFleets(scLevel = 5, totalSystems = 36,
+    let smallFleets = maxCombatFleets(scLevel = 5, totalSystems = 36,
         playerCount = 4)
     # Medium map
-    let mediumFleets = getMaxCombatFleets(scLevel = 5, totalSystems = 92,
+    let mediumFleets = maxCombatFleets(scLevel = 5, totalSystems = 92,
         playerCount = 4)
     # Large map
-    let largeFleets = getMaxCombatFleets(scLevel = 5, totalSystems = 156,
+    let largeFleets = maxCombatFleets(scLevel = 5, totalSystems = 156,
         playerCount = 4)
 
     check mediumFleets > smallFleets
     check largeFleets > mediumFleets
 
   test "SC level affects base fleet count":
-    let sc1 = getMaxCombatFleets(scLevel = 1, totalSystems = 92, playerCount = 4)
-    let sc3 = getMaxCombatFleets(scLevel = 3, totalSystems = 92, playerCount = 4)
-    let sc5 = getMaxCombatFleets(scLevel = 5, totalSystems = 92, playerCount = 4)
+    let sc1 = maxCombatFleets(scLevel = 1, totalSystems = 92, playerCount = 4)
+    let sc3 = maxCombatFleets(scLevel = 3, totalSystems = 92, playerCount = 4)
+    let sc5 = maxCombatFleets(scLevel = 5, totalSystems = 92, playerCount = 4)
 
     check sc3 > sc1
     check sc5 > sc3
 
   test "more players reduces systems per player":
-    let twoPlayers = getMaxCombatFleets(scLevel = 3, totalSystems = 92,
+    let twoPlayers = maxCombatFleets(scLevel = 3, totalSystems = 92,
         playerCount = 2)
-    let fourPlayers = getMaxCombatFleets(scLevel = 3, totalSystems = 92,
+    let fourPlayers = maxCombatFleets(scLevel = 3, totalSystems = 92,
         playerCount = 4)
-    let eightPlayers = getMaxCombatFleets(scLevel = 3, totalSystems = 92,
+    let eightPlayers = maxCombatFleets(scLevel = 3, totalSystems = 92,
         playerCount = 8)
 
     # More players = fewer systems each = lower fleet limit
@@ -209,7 +209,7 @@ suite "Tech Effects: Strategic Command (SC)":
     check eightPlayers < fourPlayers
 
   test "invalid SC level returns fallback":
-    let result = getMaxCombatFleets(scLevel = 99, totalSystems = 92,
+    let result = maxCombatFleets(scLevel = 99, totalSystems = 92,
         playerCount = 4)
     check result == 10 # Fallback to SC I base
 

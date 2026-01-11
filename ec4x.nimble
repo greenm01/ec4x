@@ -18,9 +18,8 @@ requires "db_connector"
 # COMMON FLAGS
 # ==============================================================================
 
-const sqliteFlag = "--passL:-lsqlite3"
-const releaseFlags = "-d:release --opt:speed " & sqliteFlag
-const debugFlags = "-d:debug --debuginfo --linedir:on " & sqliteFlag
+const releaseFlags = "-d:release --opt:speed"
+const debugFlags = "-d:debug --debuginfo --linedir:on"
 
 # ==============================================================================
 # BUILD TASKS
@@ -82,28 +81,28 @@ task testUnit, "Run unit tests":
   for file in listFiles("tests/unit"):
     if file.endsWith(".nim"):
       echo "  " & file
-      exec "nim c -r " & sqliteFlag & " " & file
+      exec "nim c -r " & file
 
 task testIntegration, "Run integration tests":
   echo "Running integration tests..."
-  exec "nim c -r " & sqliteFlag & " tests/integration/test_game_initialization.nim"
+  exec "nim c -r tests/integration/test_game_initialization.nim"
   exec "nim c -r tests/integration/test_starmap_validation.nim"
   exec "nim c -r tests/integration/test_tech_integration.nim"
   exec "nim c -r tests/integration/test_intel_espionage.nim"
 
 task testStress, "Run all stress tests (takes several minutes)":
   echo "Running stress test suite..."
-  exec "nim c -r " & sqliteFlag & " tests/stress/test_simple_stress.nim"
-  exec "nim c -r " & sqliteFlag & " tests/stress/test_engine_stress.nim"
-  exec "nim c -r " & sqliteFlag & " tests/stress/test_state_corruption.nim"
-  exec "nim c -r " & sqliteFlag & " tests/stress/test_pathological_inputs.nim"
-  exec "nim c -r " & sqliteFlag & " tests/stress/test_performance_regression.nim"
-  exec "nim c -r " & sqliteFlag & " tests/stress/test_unknown_unknowns.nim"
+  exec "nim c -r tests/stress/test_simple_stress.nim"
+  exec "nim c -r tests/stress/test_engine_stress.nim"
+  exec "nim c -r tests/stress/test_state_corruption.nim"
+  exec "nim c -r tests/stress/test_pathological_inputs.nim"
+  exec "nim c -r tests/stress/test_performance_regression.nim"
+  exec "nim c -r tests/stress/test_unknown_unknowns.nim"
   echo "All stress tests completed!"
 
 task testStressQuick, "Run quick stress tests (~30 seconds)":
   echo "Running quick stress tests..."
-  exec "nim c -r " & sqliteFlag & " tests/stress/test_simple_stress.nim"
+  exec "nim c -r tests/stress/test_simple_stress.nim"
   exec "nim c -r tests/stress/test_quick_demo.nim"
   echo "Quick stress tests completed!"
 
@@ -112,13 +111,13 @@ task testCER, "Run CER unit tests":
   exec "nim c -r tests/unit/test_cer.nim"
 
 task testTechCosts, "Run tech costs unit tests":
-  exec "nim c -r " & sqliteFlag & " tests/unit/test_tech_costs.nim"
+  exec "nim c -r tests/unit/test_tech_costs.nim"
 
 task testDiplomacy, "Run diplomacy unit tests":
-  exec "nim c -r " & sqliteFlag & " tests/unit/test_diplomacy.nim"
+  exec "nim c -r tests/unit/test_diplomacy.nim"
 
 task testDetection, "Run detection modifier unit tests":
-  exec "nim c -r " & sqliteFlag & " tests/unit/test_detection.nim"
+  exec "nim c -r tests/unit/test_detection.nim"
 
 task testRetreat, "Run ROE retreat unit tests":
   exec "nim c -r tests/unit/test_retreat.nim"
@@ -127,13 +126,13 @@ task testTechAdvancement, "Run tech advancement unit tests":
   exec "nim c -r tests/unit/test_tech_advancement.nim"
 
 task testTechEffects, "Run tech effects unit tests":
-  exec "nim c -r " & sqliteFlag & " tests/unit/test_tech_effects.nim"
+  exec "nim c -r tests/unit/test_tech_effects.nim"
 
 task testHex, "Run hex grid unit tests":
-  exec "nim c -r " & sqliteFlag & " tests/unit/test_hex.nim"
+  exec "nim c -r tests/unit/test_hex.nim"
 
 task testMaintenance, "Run maintenance cost unit tests":
-  exec "nim c -r " & sqliteFlag & " tests/unit/test_maintenance.nim"
+  exec "nim c -r tests/unit/test_maintenance.nim"
 
 # ==============================================================================
 # DEVELOPMENT TASKS
@@ -141,13 +140,13 @@ task testMaintenance, "Run maintenance cost unit tests":
 
 task check, "Check engine compiles":
   echo "Checking engine compilation..."
-  exec "nim check " & sqliteFlag & " src/engine/turn_cycle/engine.nim"
+  exec "nim check src/engine/turn_cycle/engine.nim"
   echo "Engine compiles successfully!"
 
 task checkAll, "Check all source files compile":
   echo "Checking all sources..."
-  exec "nim check " & sqliteFlag & " src/engine/engine.nim"
-  exec "nim check " & sqliteFlag & " src/moderator/moderator.nim"
+  exec "nim check src/engine/engine.nim"
+  exec "nim check src/moderator/moderator.nim"
   echo "All sources compile!"
 
 task docs, "Generate documentation":

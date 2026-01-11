@@ -114,10 +114,11 @@ proc createNoOpCommands(
     result[houseId] = CommandPacket(
       houseId: houseId,
       turn: turn.int32,
-      treasury: house.treasury.int32,
+      
       fleetCommands: @[],
       buildCommands: @[],
       repairCommands: @[],
+      scrapCommands: @[],
       researchAllocation: ResearchAllocation(),
       diplomaticCommand: @[],
       populationTransfers: @[],

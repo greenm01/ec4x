@@ -220,25 +220,25 @@ suite "Tech Costs: EL/SL Modifiers":
   ## Tests for Economic/Science Level modifier functions
 
   test "EL modifier at level 0 is 1.0":
-    check getELModifier(0) == 1.0
+    check elModifier(0) == 1.0
 
   test "EL modifier increases 5% per level":
-    check getELModifier(1) > 1.0
-    check getELModifier(2) > getELModifier(1)
+    check elModifier(1) > 1.0
+    check elModifier(2) > elModifier(1)
 
   test "EL modifier caps at 50% bonus":
     # At level 10+, bonus should cap at 50% (1.5 multiplier)
-    let mod10 = getELModifier(10)
-    let mod15 = getELModifier(15)
+    let mod10 = elModifier(10)
+    let mod15 = elModifier(15)
     check mod10 == 1.5 or mod10 > 1.4  # Allow config variance
     check mod15 <= 1.5 or mod15 > 1.4  # Cap or near cap
 
   test "SL modifier at level 0 is 1.0":
-    check getSLModifier(0) == 1.0
+    check slModifier(0) == 1.0
 
   test "SL modifier increases 5% per level":
-    check getSLModifier(1) > getSLModifier(0)
-    check getSLModifier(5) > getSLModifier(1)
+    check slModifier(1) > slModifier(0)
+    check slModifier(5) > slModifier(1)
 
 when isMainModule:
   echo "========================================"
