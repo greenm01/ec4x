@@ -40,22 +40,25 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 
 ## Development Status
 
-**v0.2 - Engine Refactoring in Progress**
+**Engine Stable - Building Player Client**
+
+✅ **Engine Status:**
+- Core game engine stable and tested (343+ tests passing)
+- All 13 game systems operational
+- KDL-based configuration (14 config files)
+- Full turn cycle tested (Conflict → Income → Command → Production)
 
 🔄 **Current Work:**
-- Refactoring core game engine
-- Rebuilding test coverage
-- Config/spec system cleanup and alignment
-- KDL-based configuration (14 config files)
+- Building localhost game server for testing
+- Building player client for human playtesting
+- Preparing for initial playtesting sessions
 
-📋 **Next Steps:**
-1. Complete engine refactor and establish test coverage
-2. Build player client for human playtesting
-3. Playtest and iterate on game balance
-4. Collect training data from human games
-5. Train ML-based AI (AlphaGo-style approach)
+📋 **Test Coverage:**
+- Unit Tests: 9 suites passing
+- Integration Tests: 310 tests passing
+- Stress Tests: 24 tests passing
 
-**Game Systems (In Refactor):**
+**Game Systems (Operational):**
 - Combat system (space battles, ground combat, starbases)
 - Economy system (production, construction, maintenance)
 - Research system (tech trees, science levels)
@@ -129,9 +132,19 @@ nix develop
 
 This provides nim, nimble, and git in an isolated environment.
 
-### Quick Start
+### Quick Start (Developers)
+
+**Run tests:**
 ```bash
-nimble build
-./bin/moderator new my_game
-./bin/client offline --players=4
+nimble testUnit           # Unit tests (9 suites)
+nimble testIntegration    # Integration tests (310 tests)
+nimble testStress         # Stress tests (24 tests)
 ```
+
+**Build engine:**
+```bash
+nimble buildAll           # All binaries
+nimble checkAll           # Verify compilation
+```
+
+**Note:** Player client not yet implemented. See [docs/TODO.md](docs/TODO.md) for roadmap.

@@ -1,614 +1,77 @@
-# EC4X TODO & Roadmap
+# EC4X Roadmap
 
 **Last Updated:** 2026-01-10
-**Branch:** refactor-engine
-**Current Phase:** Phase 1 - Engine Refactoring (100% complete) ✅
-**Test Status:** All systems operational, 215+ tests passing, code style compliant, production-ready
+
+## Engine Status
+
+The game engine is stable and tested. Ready for client development and playtesting.
+
+**Test Coverage:**
+- Unit Tests: 9 suites passing
+- Integration Tests: 310 tests passing
+- Stress Tests: 24 tests passing
+- **Total: 343+ tests passing**
+
+**What Works:**
+- Full turn cycle (Conflict → Income → Command → Production)
+- All 13 game systems operational (combat, economy, research, diplomacy, etc.)
+- Config-driven architecture (KDL format, no hardcoded values)
+- Fog-of-war intelligence system
+- Entity management (houses, colonies, fleets, ships, facilities, ground units)
+- Command validation and execution
+- State persistence ready (GameState structure stable)
+
+**Known Gaps:**
+- No AI opponents (by design - social game for humans first)
+- Balance untested (needs playtesting with real games)
+- Some edge cases may surface during play (stress tests found several we fixed)
+
+## What's Next
+
+Building the infrastructure to actually play the game:
+
+1. **Localhost game server** - Simple turn runner for testing/development
+2. **Player client** - Human interface for viewing state and submitting commands
+3. **Playtesting** - Run actual games to validate mechanics and balance
+
+Once we can play real games, we'll know what needs adjustment.
+
+## Future (Post-Playtesting)
+
+- **Nostr protocol** - Decentralized multiplayer over Nostr relays
+- **AI opponents** - Neural network trained on human games (only if warranted)
 
 ---
 
-## Overview
+## Documentation
 
-EC4X is a **social game** designed for human players interacting over asynchronous
-turns. Development priorities focus on:
-
-1. **Core Engine** - Clean, tested, config-driven game logic
-2. **Network Protocol** - Nostr-based multiplayer infrastructure
-3. **Game Server** - Daemon for turn processing
-4. **Player Client** - Human interface (terminal or web)
-5. **Play-Testing** - Claude-based validation (future)
-6. **AI Opponents** - Optional, only if warranted (future)
-
-**See:** [docs/README.md](README.md) for complete documentation structure
+- **Game Rules:** [docs/specs/index.md](specs/index.md) - Complete gameplay specification
+- **Architecture:** [docs/architecture/](architecture/) - System design
+- **Engine Details:** [docs/engine/](engine/) - Implementation details
+- **Play-Testing:** [docs/play_testing/](play_testing/) - Testing approach
 
 ---
 
-## Development Phases
+## Recent Major Work
 
-| Phase | Status | Progress | Deliverable |
-|-------|--------|----------|-------------|
-| **Phase 1** | ✅ Complete | 100% | Engine refactoring complete |
-| **Phase 2** | ⏳ Next | 0% | Nostr network protocol |
-| **Phase 3** | ⏳ TODO | 0% | Game server (daemon) |
-| **Phase 4** | ⏳ TODO | 0% | Player client |
-| **Phase 5** | ⏳ TODO | 0% | Play-testing framework |
-| **Phase 6** | ⏳ Future | 0% | AI opponents (optional) |
+**Code Style Cleanup (2026-01-10):**
+- Removed 130+ `get` prefixes from function names (NEP-1 compliance)
+- Fixed all UFCS violations (uniform function call syntax)
+- Removed all unnecessary import aliases
+- Updated CLAUDE.md with enforced style guidelines
 
----
+**Test Suite Expansion (2026-01-10):**
+- Added 4 missing integration test suites (234 tests)
+- Created 3 new integration tests (economy, diplomacy, elimination)
+- Fixed stress test framework false positive (eliminated house validation)
+- Expanded from 51 to 310 integration tests (6x increase)
 
-## Phase 1: Engine Refactoring ✅ Complete (100%)
-
-**Goal:** Clean, tested, config-driven engine following DoD principles
-
-**Completion Date:** 2026-01-10 (Polish complete)
-
-### ✅ Complete
-
-- **Config system migration to KDL** (2025-12-25)
-  - All 18+ config files converted from TOML to KDL
-  - `kdl_config_helpers.nim` with macro-based parsing
-  - Integration tests: `test_kdl_tech.nim`, `test_kdl_economy.nim` passing
-  - Boolean syntax fixed (`#true`/`#false`)
-  - Float type handling for all KDL variants
-
-- **Data-Oriented Design patterns established**
-  - Types in `src/engine/types/`
-  - State management in `src/engine/state/`
-  - Entity mutators in `src/engine/entities/`
-  - Game logic in `src/engine/systems/`
-
-- **13 core engine systems operational**
-  - Economy, research, construction, combat, diplomacy, etc.
-  - Fog-of-war integrated
-  - Turn cycle orchestration
-
-- **PlayerState architecture** (2026-01-09)
-  - Replaced `PlayerView` with `PlayerState` containing full entity data
-  - Created `src/engine/types/player_state.nim` and `src/engine/state/player_state.nim`
-  - Enables client-side zero-turn command preview
-  - SQLite persistence for Claude testing
-  - Removed deprecated `player_view.nim`
-
-- **Zero-turn command system** (2026-01-09)
-  - Fixed validation bug (colony-required vs same-location commands)
-  - Created comprehensive documentation: `docs/engine/zero_turn.md`
-  - Updated architecture docs: `docs/architecture/dataflow.md`
-  - All 9 command types documented with correct location requirements
-
-- **Systems compliance audit complete** (2026-01-09)
-  - All critical, medium, and minor items resolved
-  - Critical hit mechanic implemented (natural 9 bypasses cripple-first)
-  - Breakthrough % scaling (5% + 1%/100RP, cap 15%)
-  - Dynamic system/player counts (no hardcoded values)
-  - Config-driven colonization strength weight
-  - Proposal expiration and de-escalation system
-  - Crippled facility queue clearing
-
-- **Code style compliance audit** (2026-01-10)
-  - ✅ Fixed 71 UFCS violations across 15 files
-    - Pattern: `module.func(state, ...)` → `state.func(...)`
-    - Highest impact: cleanup.nim (24), fleet_queries.nim (11), repairs.nim (6)
-  - ✅ Removed ALL 50 unnecessary import aliases (100% compliance)
-    - Zero tolerance: NO import aliases unless module names conflict
-    - Removed: `event_types`, `event_factory`, `state_helpers`, `*_engine`, `*_entity`, `cmd_helpers`
-    - Only acceptable: Aliases to resolve actual naming conflicts
-  - ✅ Updated CLAUDE.md with enforced UFCS and import style guidelines
-  - ✅ Updated pre-commit checklist
-  - **Actual effort:** 4 hours (more efficient than estimated 6-9 hours)
-
-- **Phase 1 polish complete** (2026-01-10)
-  - **Capacity limits testing:** 42/42 tests passing
-    - Created `test_capacity_limits.nim` (619 lines, 8 suites)
-    - Created `systems/capacity/starbases.nim` (starbase build validation)
-    - All limits from spec §10.5 tested: C2, fleets, ships, fighters, carriers, PBs, facilities, docks
-  - **Critical bug fixes:**
-    - Intel access restored (`fleet/mechanics.nim:70-84`) - uncommented working fog-of-war code
-    - Starbase cost config fix (`production/repairs.nim:184`) - removed hardcoded `300` value
-    - Drydock capacity check clarified (`fleet/salvage.nim:203`) - pointed to existing implementation
-  - **TODO cleanup:** 8 outdated/misleading comments updated across engine systems
-  - **Test status:** 215+ integration tests passing (173 core + 42 capacity)
-  - **Remaining TODOs:** 34 non-blocking (20 telemetry, 6 enhancements, 4 comments, 4 future)
-  - **TODO inventory:** Created comprehensive `docs/engine/TODO_INVENTORY.md` with effort estimates
-
-### 📋 Optional Cleanup Items (Non-Blocking)
-
-**All critical work complete. Engine is production-ready.**
-
-**Remaining TODOs: 34 total** (see `docs/engine/TODO_INVENTORY.md` for complete details)
-
-1. **Telemetry Event Extraction (20 items, ~29 hours)**
-   - Extract event details for analytics (CLK rolls, critical hits, deficits, etc.)
-   - Calculate 6-turn averages for metrics
-   - Add missing event types (RepairCompleted, ColonyAbandoned, etc.)
-   - **Impact:** Zero gameplay effect - analytics only
-   - **Recommendation:** Defer to post-launch
-
-2. **Minor Enhancements (6 items, ~24 hours)**
-   - Marine ground unit entities (6h) - Proper entity system for marines
-   - Fleet merge compatibility checks (3h) - Validation enhancement
-   - Critical hit tracking per house (2h) - Analytics detail
-   - Population transfer simulation (4h) - Defensive validation
-   - Over-investment penalty (3h) - Not in spec, future feature
-   - Cloaking detection logic (6h) - Future expansion feature
-   - **Impact:** Nice-to-have features, not blocking
-   - **Recommendation:** Phase 2+ or as-needed
-
-3. **Code Cleanup (4 items, ~30 minutes)**
-   - Remove obsolete TODO comments in `intel/generator.nim`
-   - Keep future feature placeholders in `starmap.nim`
-   - **Impact:** Documentation clarity only
-   - **Recommendation:** Next refactor pass
-
-4. **Performance Optimization (Defer to post-launch)**
-   - Profile turn cycle execution
-   - Optimize hot paths if needed
-   - Benchmark config loading
-
-**Total Optional Work:** ~53.5 hours (~1 week)
-
-**See:** `docs/engine/TODO_INVENTORY.md` for detailed breakdown with effort estimates and priority recommendations.
-
-### Systems Compliance Audit (MOVED TO COMPLETE SECTION ABOVE)
-   
-   **Critical (spec violations affecting game mechanics):**
-   - [x] `production/commissioning.nim`: Implement repair payment at commissioning (CMD2b) ✅
-     - Added treasury check before commissioning repaired ships
-     - Deduct repair cost (25% build cost) from house treasury
-     - Mark repairs as Stalled if insufficient funds
-     - Generate RepairStalled event
-     - **Location:** `commissionRepairedShips()` lines 844-933
-   - [x] `espionage/spy_resolution.nim`: Fix scout detection formula (inverted signs) ✅
-     - **Spec:** `1d20 + ELI + starbaseBonus vs 15 + scoutCount`
-     - **Fixed:** `roll >= 15 + scoutCount - (ELI + starbase)` (correct signs)
-     - Detection probabilities now match spec intent
-     - **Location:** Lines 44-49
-   - [x] `tech/costs.nim`: Implement logarithmic PP→RP conversion formulas ✅
-     - **New:** `ERP = PP * (1 + log₁₀(GHO)/3) * (1 + SL/10)`
-     - **New:** `SRP = PP * (1 + log₁₀(GHO)/4) * (1 + SL/5)`
-     - **New:** `TRP = PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)`
-     - Logarithmic scaling prevents runaway snowballing
-     - Updated spec and canonical doc to match
-     - **Location:** Lines 18-104
-   
-   **Medium (game works but behavior differs from spec):**
-   - [x] `income/engine.nim`: Add prestige penalty for maintenance shortfall (INC6c) ✅
-     - Config exists: `prestige.kdl` maintenanceShortfall { basePenalty -5; escalationPerTurn -2 }
-     - Apply escalating penalty: -5, -7, -9, -11... during shortfall processing
-     - **COMPLETED:** Added prestige penalty calculation and event generation (lines 442-461)
-     - **Location:** Shortfall block around line 237-463
-   - [x] `combat/planetary.nim`: Verify bombardment round limit (3 vs spec's 20) ✅
-     - **Spec 7.7.3:** "Maximum 20 rounds" refers to space/orbital combat
-     - **Current:** `maxRounds = 3` at line 571 is **CORRECT** - 3 rounds per turn for balance
-     - **Rationale:** Bombardment per turn (pacing), not continuous like space combat (20 rounds total)
-     - **VERIFIED:** Intentional design choice, not a spec violation
-     - Determine if 3-round limit is intentional per-turn limit or deviation
-   - [x] `combat/retreat.nim`: Implement morale modifier to ROE threshold ✅
-     - **Spec 7.2.3:** Morale affects effective ROE threshold (e.g., ROE 8 → ROE 6 at Crisis morale)
-     - **COMPLETED:** Implemented relative morale system (prestige relative to leading house)
-     - **Config:** Added `retreat.moraleRoeModifiers` with percentage thresholds to `combat.kdl`
-     - **Module:** Created `combat/morale.nim` with `getMoraleROEModifier()` and `getMoraleTier()`
-     - **Zero-Sum Aware:** Morale = `your_prestige / leader_prestige × 100` (scales naturally)
-     - **Spec Updated:** Documented relative morale system with percentage thresholds
-   - [x] `combat/drm.nim`: Fix detection bonus to apply to winner (not attacker only) ✅
-     - **Spec 7.3.2:** Detection winner (either side) gets bonus
-     - **COMPLETED:** Added `attackerWonDetection` field to Battle type
-     - **Updated:** detection.nim returns tuple with winner info
-     - **Updated:** drm.nim applies bonus to detection winner (attacker OR defender)
-     - **Updated:** MultiHouseBattle uses DetectionOutcome to track winner per house
-   - [x] `fleet/dispatcher.nim` → `fleet/logistics.nim`: Reactivate as zero-turn command ✅
-     - **REDESIGNED:** Reactivate is now instant (zero-turn), not persistent command
-     - **Rationale:** Reserve/Mothball fleets already at colony; reactivation is status toggle
-     - **Implementation:** Added to ZeroTurnCommandType, removed from FleetCommandType
-     - **Files Modified:** types/zero_turn.nim, types/fleet.nim, systems/fleet/logistics.nim, systems/fleet/dispatcher.nim
-     - **Docs Updated:** specs/06-operations.md, engine/orders.md, engine/ec4x_canonical_turn_cycle.md
-   
-   **Minor (enhancements, cleanup):**
-   - [x] `combat/hits.nim`: Implement Critical Hit mechanic (natural 9 bypasses cripple-first) ✅
-     - **Spec 7.2.2 Rule 2:** Natural 9 can bypass cripple-all-first protection
-     - **COMPLETED:** Moved `CERResult` type to `types/combat.nim` (data/code separation)
-     - **Implementation:** `rollCER()` returns `CERResult{cer, isCriticalHit}`
-     - **Logic:** Natural 9 on d10 (before DRM) bypasses "cripple all first" rule
-     - **Updated:** `applyHits()` accepts `isCriticalHit` parameter
-     - **Fixed:** All callers in resolver.nim, planetary.nim (10 locations), multi_house.nim
-   - [x] `tech/advancement.nim`: Implement breakthrough % scaling ✅
-     - **Spec:** Base 5% + 1% per 100 RP invested, capped at 15%
-     - **Formula:** `totalPercent = min(15, 5 + (totalRP div 100))`
-     - **Updated:** `rollBreakthrough()` accepts `totalRPInvested` parameter
-     - **Location:** Lines 89-116
-   - [x] `capacity/sc_fleet_count.nim`: Replace placeholder map scaling values ✅
-     - Replaced `totalSystems = 100` → `state.systems.entities.data.len`
-     - Replaced `playerCount = 4` → `state.houses.entities.data.len`
-     - **Location:** Lines 138-139, 202-203
-   - [x] `colony/colonization.nim`: Move hardcoded `StrengthWeight` to config ✅
-     - Added `colonization` section to `config/gameplay.kdl`
-     - Created `ColonizationCombatConfig` type (renamed to avoid economy config conflict)
-     - Updated `gameplay_config.nim` loader
-     - Removed `const StrengthWeight = 2` from colonization.nim
-   - [x] `diplomacy/proposals.nim`: Implement proposal expiration + de-escalation ✅
-     - **Expiration:** Added `expireProposals()` and `getExpiredProposals()`
-     - **De-escalation:** Updated `ProposalType` (removed trade/alliance/tech - not in game)
-     - **Added:** `DeescalateToNeutral`, `DeescalateToHostile` proposal types
-     - **Helpers:** `canProposeDeescalation()`, `createDeescalationProposal()`
-     - **System:** Enemy→Hostile→Neutral ladder with 3-turn default expiration
-   - [x] `combat/cleanup.nim`: Implement crippled facility queue clearing (CON2c) ✅
-     - **Added:** `cleanupCrippledNeorias()` function
-     - **Logic:** Clears all construction/repair queues from crippled facilities
-     - **Updated:** `cleanupPostCombat()` Phase 3 now clears crippled queues
-     - **Spec Compliance:** Crippled facilities lose queued projects (not paused)
-
-**Status:** ✅ PRODUCTION-READY (2026-01-10)
-
-**Achievements:**
-- 215+ integration tests passing (100% success rate)
-- Zero critical TODOs remaining
-- All spec violations resolved
-- Code style 100% compliant (UFCS, no unnecessary aliases)
-- Config-driven architecture (no hardcoded values)
-- Fog-of-war system operational
-- Data-oriented design patterns established
-- Ready for Phase 2 (Nostr protocol)
+**Stress Test Fixes (2026-01-10):**
+- Removed SQLite dependencies from all nimble tasks (no longer needed)
+- Fixed CommandPacket structure in stress tests
+- Fixed turn validation logic in test_engine_stress.nim
+- All 24 stress tests now passing
 
 ---
 
-## Phase 2: Nostr Network Protocol ⏳ Next (0%)
-
-**Goal:** Implement decentralized multiplayer infrastructure over Nostr
-
-**See:** [docs/architecture/transport.md](architecture/transport.md) for design
-
-### Key Components
-
-1. **Order submission protocol**
-   - Cryptographic signing of orders
-   - Order format (likely KDL-based)
-   - Verification and validation
-
-2. **Relay communication**
-   - Connect to Nostr relays
-   - Publish orders as events
-   - Subscribe to game events
-
-3. **Turn coordination**
-   - Detect when all players have submitted orders
-   - Trigger turn resolution
-   - Broadcast results
-
-4. **Security**
-   - Public key authentication
-   - Order tamper detection
-   - Replay attack prevention
-
-### Implementation Steps
-
-1. Choose Nim Nostr library or implement protocol
-2. Design order event format (NIP specification)
-3. Implement signing and verification
-4. Test with local relay
-5. Test with public relays
-
-**Estimated Effort:** 3-4 weeks
-
----
-
-## Phase 3: Game Server (Daemon) ⏳ TODO (0%)
-
-**Goal:** Server that processes turns and maintains authoritative game state
-
-**See:** [docs/architecture/daemon.md](architecture/daemon.md) for design
-
-### Key Components
-
-1. **Turn processor**
-   - Accept orders from all players via Nostr
-   - Execute turn cycle
-   - Generate result events
-
-2. **State management**
-   - SQLite persistence
-   - State snapshots per turn
-   - Fog-of-war views per player
-
-3. **Order validation**
-   - Verify order signatures
-   - Validate game rules
-   - Reject invalid orders with clear messages
-
-4. **Game lifecycle**
-   - New game creation
-   - Player registration
-   - Victory detection
-   - Game archival
-
-### Implementation Steps
-
-1. Design daemon architecture (event loop vs service)
-2. Implement order queue and validation
-3. Integrate with engine turn cycle
-4. Implement state persistence (SQLite)
-5. Add fog-of-war state export per player
-6. Create admin interface for game management
-
-**Estimated Effort:** 4-6 weeks
-
----
-
-## Phase 4: Player Client ⏳ TODO (0%)
-
-**Goal:** Human interface for submitting orders and viewing game state
-
-### Options
-
-**Option A: Terminal UI (TUI)**
-- Nim-based (nimwave, illwill, or custom)
-- Fast, lightweight
-- Works over SSH
-
-**Option B: Web Interface**
-- Backend: Nim + Jester/Prologue
-- Frontend: HTMX or simple JS
-- Better visualization
-- More accessible
-
-**Option C: Both**
-- TUI for advanced players
-- Web for casual players
-
-### Key Features
-
-1. **Game state viewing**
-   - Fog-of-war filtered view
-   - Colony management
-   - Fleet status
-   - Research progress
-   - Diplomatic relations
-
-2. **Order submission**
-   - Fleet movement orders
-   - Construction queues
-   - Research allocation
-   - Diplomatic actions
-   - Espionage operations
-
-3. **Order validation**
-   - Client-side validation (fast feedback)
-   - Preview order effects
-   - Confirm before submission
-
-4. **Turn history**
-   - Review past turns
-   - View combat reports
-   - Track prestige changes
-
-### Implementation Steps
-
-1. Choose UI approach (TUI vs web)
-2. Design UX flow (screens, navigation)
-3. Implement state viewer (read-only first)
-4. Implement order builder
-5. Integrate with Nostr protocol
-6. Add order submission and confirmation
-
-**Estimated Effort:** 6-8 weeks (TUI) or 8-12 weeks (web)
-
----
-
-## Phase 5: Play-Testing Framework ⏳ TODO (0%)
-
-**Goal:** Validate game mechanics and balance without building AI first
-
-**See:** [docs/play_testing/README.md](play_testing/README.md) for overview
-
-### Approach: Claude as Opponent
-
-Use KDL-formatted orders with fog-of-war state exports to play against Claude.
-
-**See:** [docs/play_testing/claude_opponent.md](play_testing/claude_opponent.md)
-
-**Benefits:**
-- Zero AI development time
-- Intelligent, strategic play
-- Explained reasoning for decisions
-- Fast iteration on balance changes
-- Transparent debugging
-
-### Implementation Requirements
-
-1. **State export tool**
-   - Export fog-of-war view from SQLite
-   - Text format for Claude to analyze
-   - Include: colonies, fleets, intel, resources
-
-2. **Orders parser**
-   - Parse KDL orders format
-   - Validate order syntax and legality
-   - Clear error messages
-
-3. **Orders executor**
-   - Submit orders to game server
-   - Execute turn
-   - Generate results report
-
-4. **Workflow automation**
-   - Script to: export state → share with Claude → parse orders → execute turn
-   - Iterate quickly through test games
-
-### Testing Focus
-
-- Game balance (economy, combat, research pacing)
-- Victory condition tuning
-- Strategic depth (multiple viable paths to victory)
-- Diplomatic system validation
-- Espionage system validation
-
-**Estimated Effort:** 1 week implementation + ongoing play-testing
-
----
-
-## Phase 6: AI Opponents ⏳ Future (0%)
-
-**Goal:** Optional AI opponents for single-player or mixed multiplayer games
-
-**Status:** On hold until play-testing phase complete
-
-### Approach: Neural Network Training
-
-Train neural networks using game data from Claude play-testing sessions.
-
-**See:** [docs/play_testing/neural_network_training.md](play_testing/neural_network_training.md)
-
-**Why this approach:**
-- Train from expert demonstrations (Claude's games)
-- 10-20 games enough to bootstrap
-- Self-play generates unlimited additional training data
-- Proven approach (AlphaGo, AlphaZero)
-- 6-8 weeks to strong AI vs 8-12 weeks with RBA
-
-**Prerequisites:**
-- 10-20 complete Claude games
-- SQLite diagnostics with state-action-outcome data
-- PyTorch/ML infrastructure
-
-**Decision point:** Only build if warranted after play-testing reveals need
-
----
-
-## Current Tasks (This Week)
-
-### 1. 🎯 HIGH - Verify Config Migration
-- [ ] Run full integration test suite
-- [ ] Test all engine systems with KDL configs
-- [ ] Fix any remaining config loading issues
-
-### 2. 📝 MEDIUM - Documentation Review
-- [ ] Update architecture docs to reflect current state
-- [ ] Archive obsolete AI/RBA docs (move to `docs/archive/2025-12/`)
-- [ ] Verify all links in documentation work
-
-### 3. 🧹 LOW - Repository Cleanup
-- [ ] Remove obsolete files shown in git status
-- [ ] Clean up build artifacts
-- [ ] Verify `.gitignore` is complete
-
----
-
-## Recent Completions
-
-### KDL Config Migration (2025-12-25)
-
-**Complete:**
-- ✅ Created `kdl_config_helpers.nim` with macro-based parsing
-- ✅ Migrated `ships_config.nim` to KDL (reference implementation)
-- ✅ Converted all 18+ TOML config files to KDL format
-- ✅ Fixed boolean syntax (`true` → `#true`, `false` → `#false`)
-- ✅ Fixed float type handling (KFloat, KFloat32, KFloat64)
-- ✅ Created integration tests: `test_kdl_tech.nim`, `test_kdl_economy.nim`
-- ✅ All tests passing (395+ config fields verified)
-
-### Documentation Cleanup (2025-12-25)
-
-**Complete:**
-- ✅ Removed AI-focused docs from `docs/architecture/`
-- ✅ Removed directories: `docs/ai/`, `docs/testing/`, `docs/balance/`
-- ✅ Merged `docs/architecture/engine/` into `docs/engine/`
-- ✅ Completely rewrote `docs/README.md` for refactor-engine branch
-- ✅ Created `docs/play_testing/` with Claude opponent design
-- ✅ Documented neural network training approach
-
----
-
-## Branch Strategy
-
-**Current Branch:** `refactor-engine`
-
-**Goal:** When engine refactoring is complete and tested, this branch will
-replace `main` as the canonical version.
-
-**Why separate branch:**
-- Main branch has old RBA/AI code we're removing
-- Clean slate for architecture improvements
-- Freedom to make breaking changes
-- Merge when ready, not incrementally
-
-**Criteria for merge to main:**
-- Engine refactoring 100% complete
-- All integration tests passing
-- Config system fully migrated and tested
-- Documentation up to date
-- No AI dependencies in core engine
-
----
-
-## Documentation Organization
-
-**See:** [docs/README.md](README.md) for complete structure
-
-### Key Documentation
-
-- **Specifications:** `docs/specs/*.md` - Game rules (preserve)
-- **Architecture:** `docs/architecture/*.md` - System design
-  - `transport.md` - Nostr protocol ⭐
-  - `daemon.md` - Game server ⭐
-  - `storage.md` - Persistence
-  - `dataflow.md` - Turn resolution
-- **Engine Details:** `docs/engine/**/*.md` - Implementation
-  - `architecture/turn-cycle.md` - Turn execution
-  - `mechanics/*.md` - Game mechanics
-  - `telemetry/*.md` - Diagnostics system
-- **Play-Testing:** `docs/play_testing/*.md` - Testing approach
-
----
-
-## Design Philosophy
-
-**Data-Oriented Design:**
-- Separate data (types) from behavior (procs)
-- Use `Table[Id, Entity]` for all game entities
-- Pure functions for game logic
-- State mutations through entity operations
-
-**Configuration-Driven:**
-- All game balance values in KDL configs
-- No hardcoded magic numbers
-- Easy tuning without recompilation
-- Reload configs for rapid iteration
-
-**Fog-of-War Enforcement:**
-- Engine provides filtered views per player
-- AI/clients only see what they should
-- No omniscient state access
-- Intelligence system tracks visibility
-
-**Multiplayer-First:**
-- Core experience is human vs human
-- Asynchronous turn-based gameplay
-- Decentralized Nostr protocol
-- No trusted central authority required
-
-**AI is Optional:**
-- Build playable game first
-- Validate with Claude play-testing
-- Only add AI if needed
-- Train from expert demonstrations
-
----
-
-## Notes
-
-**When refactor-engine is complete:**
-1. Merge to main (or make refactor-engine the new main)
-2. Archive old main branch for reference
-3. Update README.md at project root
-4. Tag release: v2.0.0 (clean architecture)
-
-**This branch will become the canonical version when:**
-- Engine systems are fully tested and stable
-- Config migration is complete and verified
-- Documentation reflects current architecture
-- Ready to begin Phase 2 (Nostr protocol)
-
----
-
-**For historical context:**
-- See `docs/archive/` for previous versions of TODO.md
-- Previous focus was on AI development (RBA, GOAP, neural networks)
-- New focus is on core engine + network + multiplayer
+**For detailed history:** See git log - this file focuses on current status and next steps.
