@@ -9,7 +9,7 @@ import std/[tables, math, times, options, strutils]
 import ../../src/engine/starmap
 import ../../src/engine/types/[
   starmap as starmap_types, core, game_state, resolution, espionage,
-  diplomacy, intel, command, fleet
+  diplomacy, player_state, command, fleet
 ]
 import ../../src/engine/config/[engine as engine_config, game_setup_config]
 import ../../src/engine/globals
