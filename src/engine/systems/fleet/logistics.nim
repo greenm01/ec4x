@@ -242,12 +242,47 @@ proc validateZeroTurnCommand*(
         return
           ValidationResult(valid: false, error: "Both fleets must be at same location")
 
-      # Check scout/combat fleet mixing (validate after transfer would occur)
-      # TODO: This is a simplified check - ideally we'd simulate the transfer
-      # and check if the result would mix scouts with combat ships
-      let mergeCheck = state.canMergeWith(fleet, targetFleet)
-      if not mergeCheck.canMerge:
-        return ValidationResult(valid: false, error: mergeCheck.reason)
+      # Simulate the transfer to validate resulting fleet compositions
+      # We need to check both fleets AFTER transfer to catch edge cases
+      # Example: Transferring scouts from mixed fleet to combat fleet
+      let shipIdsToTransfer = cmd.shipIds.get()
+
+      # Simulate source fleet after transfer (remove transferred ships)
+      var sourceShipsAfter = fleet.ships
+      for shipId in shipIdsToTransfer:
+        let idx = sourceShipsAfter.find(shipId)
+        if idx >= 0:
+          sourceShipsAfter.delete(idx)
+
+      # Simulate target fleet after transfer (add transferred ships)
+      var targetShipsAfter = targetFleet.ships
+      for shipId in shipIdsToTransfer:
+        targetShipsAfter.add(shipId)
+
+      # Check if source fleet composition is valid after transfer
+      # (Empty fleet is valid - all ships transferred)
+      if sourceShipsAfter.len > 0:
+        # Create temporary fleet object for validation
+        var sourceAfter = fleet
+        sourceAfter.ships = sourceShipsAfter
+        let sourceHasScouts = state.hasScouts(sourceAfter)
+        let sourceHasNonScouts = state.hasNonScoutShips(sourceAfter)
+        if sourceHasScouts and sourceHasNonScouts:
+          return ValidationResult(
+            valid: false,
+            error: "Transfer would create invalid source fleet (scout/combat mixing)"
+          )
+
+      # Check if target fleet composition is valid after transfer
+      var targetAfter = targetFleet
+      targetAfter.ships = targetShipsAfter
+      let targetHasScouts = state.hasScouts(targetAfter)
+      let targetHasNonScouts = state.hasNonScoutShips(targetAfter)
+      if targetHasScouts and targetHasNonScouts:
+        return ValidationResult(
+          valid: false,
+          error: "Transfer would create invalid target fleet (scout/combat mixing)"
+        )
   of ZeroTurnCommandType.MergeFleets:
     # Validate target fleet
     if cmd.targetFleetId.isNone:

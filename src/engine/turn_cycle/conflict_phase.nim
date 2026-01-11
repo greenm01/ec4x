@@ -31,6 +31,7 @@ import ../systems/combat/multi_house  # For buildMultiHouseBattle (UFCS)
 import ../systems/espionage/resolution
 import ../systems/colony/colonization
 import ../systems/fleet/execution
+import ../intel/starbase_surveillance
 
 # =============================================================================
 # HELPER PROCS
@@ -155,14 +156,13 @@ proc resolveConflictPhase*(
   logInfo("Espionage", "[CON1f.iii] Space Guild espionage complete")
 
   # CON1f.iv: Starbase Surveillance (continuous monitoring)
-  # DISABLED: Removed dead code (starbase_surveillance.nim)
-  # TODO: Re-implement if needed for starbase passive detection
   # Automatic intelligence gathering from friendly starbases
   # No player action required (passive system)
-  # logInfo("Espionage", "[CON1f.iv] Starbase surveillance...")
-  # var survRng = initRand(state.turn.int64 + 12345)
-  # state.processAllStarbaseSurveillance(state.turn, survRng)
-  # logInfo("Espionage", "[CON1f.iv] Starbase surveillance complete")
+  # Per docs/specs/09-intel-espionage.md Section 9.1.4
+  logInfo("Espionage", "[CON1f.iv] Starbase surveillance...")
+  var survRng = initRand(state.turn.int64 + 12345)
+  state.processStarbaseSurveillance(state.turn, survRng)
+  logInfo("Espionage", "[CON1f.iv] Starbase surveillance complete")
 
   # ===================================================================
   # CON1g: ADMINISTRATIVE COMPLETION
