@@ -282,7 +282,7 @@ proc calculateAndDeductMaintenanceUpkeep*(
             let ship = shipOpt.get()
             if ship.state != CombatState.Crippled:
               let maintenanceCost =
-                getShipMaintenanceCost(ship.shipClass, CombatState.Undamaged, fleet.status)
+                shipMaintenanceCost(ship.shipClass, CombatState.Undamaged, fleet.status)
               activeShips.add((ship.id, ship.shipClass, maintenanceCost))
 
       # Sort by ShipId (oldest first - lower IDs = older ships)
@@ -331,9 +331,9 @@ proc calculateAndDeductMaintenanceUpkeep*(
               let neoria = neoriaOpt.get()
               if neoria.state != CombatState.Crippled:
                 let upkeepCost = case neoria.neoriaClass
-                  of NeoriaClass.Spaceport: getSpaceportUpkeep()
-                  of NeoriaClass.Shipyard: getShipyardUpkeep()
-                  of NeoriaClass.Drydock: getDrydockUpkeep()
+                  of NeoriaClass.Spaceport: spaceportUpkeep()
+                  of NeoriaClass.Shipyard: shipyardUpkeep()
+                  of NeoriaClass.Drydock: drydockUpkeep()
                 activeFacilities.add((neoriaId, upkeepCost))
 
           # Collect operational Kastras (Starbases)
@@ -342,7 +342,7 @@ proc calculateAndDeductMaintenanceUpkeep*(
             if kastraOpt.isSome:
               let kastra = kastraOpt.get()
               if kastra.state != CombatState.Crippled:
-                activeKastras.add((kastraId, getStarbaseUpkeep()))
+                activeKastras.add((kastraId, starbaseUpkeep()))
 
         # Cripple facilities until maintenance covered
         let houseOptForFacilities = state.house(houseId)
@@ -398,10 +398,10 @@ proc calculateAndDeductMaintenanceUpkeep*(
               let unit = unitOpt.get()
               if unit.state != CombatState.Crippled:
                 let upkeepCost = case unit.stats.unitType
-                  of GroundClass.Army: getArmyUpkeep()
-                  of GroundClass.Marine: getMarineUpkeep()
-                  of GroundClass.GroundBattery: getGroundBatteryUpkeep()
-                  of GroundClass.PlanetaryShield: getPlanetaryShieldUpkeep()
+                  of GroundClass.Army: armyUpkeep()
+                  of GroundClass.Marine: marineUpkeep()
+                  of GroundClass.GroundBattery: groundBatteryUpkeep()
+                  of GroundClass.PlanetaryShield: planetaryShieldUpkeep()
                 activeGroundUnits.add((groundUnitId, upkeepCost))
 
         # Cripple ground units until maintenance covered

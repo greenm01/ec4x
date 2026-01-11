@@ -5,7 +5,7 @@
 import ../types/prestige
 import ../globals
 
-proc getPrestigeValue*(source: PrestigeSource): int32 =
+proc prestigeValue*(source: PrestigeSource): int32 =
   ## Get prestige value from configuration for given source
   ## Maps PrestigeSource enum to config values
   case source

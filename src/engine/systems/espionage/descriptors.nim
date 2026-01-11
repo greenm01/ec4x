@@ -45,7 +45,7 @@ type ActionDescriptor* = object ## Data describing an espionage action's effects
 
 ## Action Descriptor Table
 
-proc getActionDescriptor*(action: EspionageAction): ActionDescriptor =
+proc actionDescriptor*(action: EspionageAction): ActionDescriptor =
   ## Get action-specific data for execution
   ## Pure function - all action mechanics defined here
 

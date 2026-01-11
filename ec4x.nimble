@@ -88,6 +88,8 @@ task testIntegration, "Run integration tests":
   echo "Running integration tests..."
   exec "nim c -r " & sqliteFlag & " tests/integration/test_game_initialization.nim"
   exec "nim c -r tests/integration/test_starmap_validation.nim"
+  exec "nim c -r tests/integration/test_tech_integration.nim"
+  exec "nim c -r tests/integration/test_intel_espionage.nim"
 
 task testStress, "Run all stress tests (takes several minutes)":
   echo "Running stress test suite..."

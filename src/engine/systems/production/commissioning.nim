@@ -66,7 +66,7 @@ proc completedProjectDesc*(p: CompletedProject): string =
   return "unknown"
 
 # Helper functions using DoD patterns
-proc getOperationalStarbaseCount*(state: GameState, colonyId: ColonyId): int =
+proc operationalStarbaseCount*(state: GameState, colonyId: ColonyId): int =
   ## Count non-crippled kastra (starbases) for a colony using DoD entity manager
   result = 0
   let colonyOpt = state.colony(colonyId)
@@ -81,10 +81,10 @@ proc getOperationalStarbaseCount*(state: GameState, colonyId: ColonyId): int =
       if kastra.state != CombatState.Crippled:
         result += 1
 
-proc getStarbaseGrowthBonus*(state: GameState, colonyId: ColonyId): float =
+proc starbaseGrowthBonus*(state: GameState, colonyId: ColonyId): float =
   ## Calculate growth bonus from operational starbases
   ## Per specs: Each operational starbase provides growth bonus
-  let operationalCount = getOperationalStarbaseCount(state, colonyId)
+  let operationalCount = operationalStarbaseCount(state, colonyId)
   result = operationalCount.float * 0.05 # 5% per starbase
 
 proc hasSpaceport*(state: GameState, colonyId: ColonyId): bool =
@@ -101,7 +101,7 @@ proc hasSpaceport*(state: GameState, colonyId: ColonyId): bool =
 
   return false
 
-proc getShieldBlockChance*(shieldLevel: int): float =
+proc shieldBlockChance*(shieldLevel: int): float =
   ## Calculate block chance for planetary shield level
   ## SLD1=10%, SLD2=20%, ..., SLD6=60%
   result = shieldLevel.float * 0.10
@@ -177,7 +177,7 @@ proc autoLoadFightersToCarriers(
           continue
 
         # Check available hangar space
-        let availableSpace = getAvailableHangarSpace(state, shipId)
+        let availableSpace = availableHangarSpace(state, shipId)
         if availableSpace > 0:
           carriersWithSpace.add((shipId, availableSpace))
 
@@ -329,8 +329,8 @@ proc commissionPlanetaryDefense*(
         logInfo(
           "Economy",
           &"Commissioned kastra {kastra.id} at {completed.colonyId} " &
-            &"(Total operational: {getOperationalStarbaseCount(state, completed.colonyId)}, " &
-            &"Growth bonus: {int(getStarbaseGrowthBonus(state, completed.colonyId) * 100.0)}%)",
+            &"(Total operational: {operationalStarbaseCount(state, completed.colonyId)}, " &
+            &"Growth bonus: {int(starbaseGrowthBonus(state, completed.colonyId) * 100.0)}%)",
         )
 
         # Generate event
@@ -489,7 +489,7 @@ proc commissionPlanetaryDefense*(
         logInfo(
           "Economy",
           &"Deployed planetary shield SLD{sldLevel} at {completed.colonyId} " &
-            &"(Block chance: {int(getShieldBlockChance(sldLevel) * 100.0)}%)",
+            &"(Block chance: {int(shieldBlockChance(sldLevel) * 100.0)}%)",
         )
 
         events.add(

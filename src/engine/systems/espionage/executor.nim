@@ -129,7 +129,7 @@ proc executeEspionageAction*(
 
 ## Detection Helpers (exported for use in engine.nim)
 
-proc getDetectionThreshold*(cicLevel: CICLevel): int =
+proc detectionThreshold*(cicLevel: CICLevel): int =
   ## Get detection threshold for CIC level from config
   let config = gameConfig.espionage.detection
   let key = int32(ord(cicLevel))
@@ -138,7 +138,7 @@ proc getDetectionThreshold*(cicLevel: CICLevel): int =
   else:
     15  # Default threshold if not found
 
-proc getCIPModifier*(cipPoints: int): int =
+proc cipModifier*(cipPoints: int): int =
   ## Convert CIP (Counter-Intelligence Points) to detection roll modifier
   ## Uses tiered modifiers from espionage config
   let config = gameConfig.espionage.detection
@@ -166,14 +166,14 @@ proc executeEspionage*(
   ## This is the only public function - replaces old executeEspionage
 
   # Get action descriptor (pure lookup)
-  let descriptor = getActionDescriptor(attempt.action)
+  let descriptor = actionDescriptor(attempt.action)
 
   # Import detection from engine.nim (we'll need to expose it)
   # For now, inline the detection logic
   var detected = false
   if defenderCICLevel != CICLevel.CIC0:
-    let threshold = getDetectionThreshold(defenderCICLevel)
-    let modifier = getCIPModifier(defenderCIPPoints)
+    let threshold = detectionThreshold(defenderCICLevel)
+    let modifier = cipModifier(defenderCIPPoints)
     let roll = rng.rand(1 .. 20)
     detected = (roll + modifier) >= threshold
 

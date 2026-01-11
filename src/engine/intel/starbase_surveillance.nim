@@ -39,7 +39,7 @@ proc countRaidersInFleet(state: GameState, fleet: Fleet): int32 =
       if ship.shipClass == ShipClass.Raider:
         result += 1
 
-proc getFleetCLKLevel(state: GameState, fleet: Fleet): int32 =
+proc fleetCLKLevel(state: GameState, fleet: Fleet): int32 =
   ## Get the highest CLK tech level in a fleet (for raider stealth)
   result = 0
   let fleetOwnerOpt = state.house(fleet.houseId)
@@ -87,7 +87,7 @@ proc detectFleetByStarbase(
   let raiderCount = state.countRaidersInFleet(fleet)
   if raiderCount > 0:
     # Raider detection: Attacker rolls 1d10 + CLK vs Defender rolls 1d10 + ELI
-    let attackerCLK = state.getFleetCLKLevel(fleet)
+    let attackerCLK = state.fleetCLKLevel(fleet)
     let starbaseBonus = 2
     let detectionResult = detectRaider(
       int(attackerCLK), int(defenderELI), starbaseBonus, rng

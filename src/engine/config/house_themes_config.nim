@@ -27,7 +27,7 @@ proc toHouseTheme(entry: ThemeEntry): HouseTheme =
 proc parseThemeEntry(node: KdlNode, ctx: var KdlConfigContext): ThemeEntry =
   ## Parse a single theme entry from KDL node
   ## Per types-guide.md: Use Table[int32, T] for numbered sequences
-  let nameAttr = node.getStringAttribute("name", ctx)
+  let nameAttr = node.stringAttribute("name", ctx)
   if nameAttr.isNone:
     let path = ctx.nodePath.join(".")
     raise newConfigError(

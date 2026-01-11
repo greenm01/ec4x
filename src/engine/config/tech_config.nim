@@ -257,7 +257,7 @@ proc parseConstructionTech(
         # Parse unlocks property (can have multiple values)
         var unlocks: seq[string] = @[]
         try:
-          let unlocksNode = child.getProperty("unlocks")
+          let unlocksNode = child.property("unlocks")
           if unlocksNode.isSome:
             let val = unlocksNode.get()
             if val.kind == KValKind.KString:

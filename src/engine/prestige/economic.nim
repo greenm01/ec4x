@@ -53,7 +53,7 @@ proc applyBlockadePenalty*(houseId: HouseId, blockadedColonies: int): PrestigeEv
   ## Apply prestige penalty for blockaded colonies
   ## Per operations.md:6.2.6: -2 prestige per blockaded colony per turn
   let penalty =
-    applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.BlockadePenalty)) *
+    applyPrestigeMultiplier(prestigeValue(PrestigeSource.BlockadePenalty)) *
     int32(blockadedColonies)
 
   return createPrestigeEvent(

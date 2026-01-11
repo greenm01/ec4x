@@ -213,7 +213,7 @@ proc parseMoraleTier(node: KdlNode, ctx: var KdlConfigContext): MoraleTierConfig
     threshold: node.requireInt32("threshold", ctx),
     cerBonus: cerBonus,
     appliesTo: parseMoraleEffectTarget(appliesTo),
-    criticalAutoSuccess: node.getBool("criticalAutoSuccess", false)
+    criticalAutoSuccess: node.boolVal("criticalAutoSuccess", false)
   )
 
 proc parseMoraleChecks(node: KdlNode, ctx: var KdlConfigContext): MoraleChecksConfig =

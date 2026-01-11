@@ -125,7 +125,7 @@ proc processFleetTravel(
         for i in 0 ..< min(2, pathResult.path.len - 1):
           let fromSys = pathResult.path[i]
           let toSys = pathResult.path[i + 1]
-          let laneType = state.starMap.getLaneType(fromSys, toSys)
+          let laneType = state.starMap.laneType(fromSys, toSys)
           if laneType.isNone or laneType.get() != LaneClass.Major:
             nextTwoAreMajor = false
             break

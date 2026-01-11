@@ -46,7 +46,7 @@ type FacilityCapacity* = object ## Capacity status for a single facility
   constructionProjects*: int32 # Active construction count
   repairProjects*: int32 # Active repair count
 
-proc getFacilityCapacity*(neoria: Neoria): FacilityCapacity =
+proc facilityCapacity*(neoria: Neoria): FacilityCapacity =
   ## Get capacity status for a neoria (uses pre-calculated effectiveDocks)
   let used = int32(neoria.activeConstructions.len + neoria.activeRepairs.len)
   let isCrippled = neoria.state == CombatState.Crippled
@@ -78,7 +78,7 @@ proc analyzeColonyCapacity*(
   for neoriaId in colony.neoriaIds:
     let neoriaOpt = state.neoria(neoriaId)
     if neoriaOpt.isSome:
-      result.add(getFacilityCapacity(neoriaOpt.get()))
+      result.add(facilityCapacity(neoriaOpt.get()))
 
 proc checkColonyViolation*(
     state: GameState, colonyId: ColonyId
@@ -131,7 +131,7 @@ proc checkAllViolations*(state: GameState): seq[capacity.CapacityViolation] =
       if violation.isSome:
         result.add(violation.get())
 
-proc getAvailableFacilities*(
+proc availableFacilities*(
     state: GameState, colonyId: ColonyId, projectType: BuildType
 ): seq[tuple[facilityId: string, facilityType: NeoriaClass, availableDocks: int32]] =
   ## Get list of facilities with available dock capacity at colony
@@ -217,7 +217,7 @@ proc assignFacility*(
     return none(tuple[facilityId: NeoriaId, facilityType: NeoriaClass])
 
   # Normal case: find facility with available capacity
-  let available = getAvailableFacilities(state, colonyId, projectType)
+  let available = availableFacilities(state, colonyId, projectType)
 
   if available.len == 0:
     return none(tuple[facilityId: NeoriaId, facilityType: NeoriaClass])
@@ -257,7 +257,7 @@ proc shipRequiresDock*(shipClass: ShipClass): bool =
   ## All other ships require dock space at spaceport or shipyard
   return shipClass != ShipClass.Fighter
 
-proc getColonyTotalCapacity*(
+proc colonyTotalCapacity*(
     state: GameState, colonyId: ColonyId
 ): tuple[current: int32, maximum: int32] =
   ## Get total dock capacity for colony (sum of all facilities)
@@ -338,7 +338,7 @@ proc assignAndQueueProject*(
 ## **Integration Points:**
 ## - Call assignFacility() when player submits build command
 ## - Call processCapacityReporting() in Maintenance phase (should find nothing)
-## - Check getAvailableFacilities() to show player available capacity
+## - Check availableFacilities() to show player available capacity
 ##
 ## **Spaceport Cost Penalty:**
 ## Ships built at spaceports cost 2x PP (handled in construction cost calculation)

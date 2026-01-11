@@ -85,7 +85,7 @@ suite "Diplomacy: Proposal Search":
     check findProposalIndex(proposals, ProposalId(3)) == 2
 
 suite "Diplomacy: Proposal Expiration":
-  ## Tests for expireProposals and getExpiredProposals
+  ## Tests for expireProposals and expiredProposals
 
   test "expireProposals removes expired pending proposals":
     var proposals = @[
@@ -122,7 +122,7 @@ suite "Diplomacy: Proposal Expiration":
     expireProposals(proposals, 10)
     check proposals.len == 0
 
-  test "getExpiredProposals returns proposals expiring this turn":
+  test "expiredProposals returns proposals expiring this turn":
     let proposals = @[
       PendingProposal(id: ProposalId(1), proposer: HouseId(1), target: HouseId(2),
         proposalType: ProposalType.DeescalateToNeutral, submittedTurn: 2,
@@ -135,20 +135,20 @@ suite "Diplomacy: Proposal Expiration":
         status: ProposalStatus.Pending, expiresOnTurn: 5)   # Also expires turn 5
     ]
     
-    let expired = getExpiredProposals(proposals, 5)
+    let expired = expiredProposals(proposals, 5)
     
     check expired.len == 2
     check expired[0].id == ProposalId(1)
     check expired[1].id == ProposalId(3)
 
-  test "getExpiredProposals ignores non-pending":
+  test "expiredProposals ignores non-pending":
     let proposals = @[
       PendingProposal(id: ProposalId(1), proposer: HouseId(1), target: HouseId(2),
         proposalType: ProposalType.DeescalateToNeutral, submittedTurn: 2,
         status: ProposalStatus.Accepted, expiresOnTurn: 5)  # Already accepted
     ]
     
-    let expired = getExpiredProposals(proposals, 5)
+    let expired = expiredProposals(proposals, 5)
     check expired.len == 0
 
 suite "Diplomacy: De-escalation Validation":

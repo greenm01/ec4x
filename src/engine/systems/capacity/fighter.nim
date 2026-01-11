@@ -35,7 +35,7 @@ import ../../../common/logger
 export
   capacity.CapacityViolation, capacity.EnforcementAction, capacity.ViolationSeverity
 
-proc getFighterDoctrineMultiplier(fdLevel: int32): float32 =
+proc fighterDoctrineMultiplier(fdLevel: int32): float32 =
   ## Get Fighter Doctrine tech multiplier per assets.md:2.4.1
   ## Reads from gameConfig.tech.fd.levels
   let cfg = gameConfig.tech.fd
@@ -50,7 +50,7 @@ proc calculateMaxFighterCapacity*(industrialUnits: int32, fdLevel: int32): int32
   ## Formula: Max Fighters = floor(IU / divisor) × FD Tech Multiplier
   ## Per assets.md:2.4.1 and economy.md:3.10
   ## Reads divisor from gameConfig.limits.fighterCapacity
-  let fdMult = getFighterDoctrineMultiplier(fdLevel)
+  let fdMult = fighterDoctrineMultiplier(fdLevel)
   let divisor = gameConfig.limits.fighterCapacity.iuDivisor
   return int32(floor(float32(industrialUnits) / float32(divisor)) * fdMult)
 

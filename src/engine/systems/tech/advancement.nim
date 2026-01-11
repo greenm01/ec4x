@@ -34,7 +34,7 @@ proc updateNeoriaDocks(state: GameState, neoriaId: NeoriaId, effectiveDocks: int
     neoria.effectiveDocks = effectiveDocks
     state.updateNeoria(neoriaId, neoria)
 
-proc applyDockCapacityUpgrade(state: GameState, houseId: HouseId) =
+proc applyDockCapacityUpgrade*(state: GameState, houseId: HouseId) =
   ## Recalculate all facility dock capacities when CST tech advances
   ## Called automatically after CST level increases
   ## Updates stored effectiveDocks values for all facilities owned by house
@@ -183,7 +183,7 @@ proc attemptELAdvancement*(
   if currentEL >= maxEconomicLevel:
     return none(ResearchAdvancement)
 
-  let cost = getELUpgradeCost(int32(currentEL))
+  let cost = elUpgradeCost(int32(currentEL))
 
   if tree.accumulated.economic >= int32(cost):
     # Spend RP
@@ -223,7 +223,7 @@ proc attemptSLAdvancement*(
   if currentSL >= maxScienceLevel:
     return none(ResearchAdvancement)
 
-  let cost = getSLUpgradeCost(int32(currentSL))
+  let cost = slUpgradeCost(int32(currentSL))
 
   if tree.accumulated.science >= int32(cost):
     # Spend SRP
@@ -294,7 +294,7 @@ proc attemptTechAdvancement*(
   if currentLevel >= maxLevel:
     return none(ResearchAdvancement)
 
-  let cost = getTechUpgradeCost(field, currentLevel)
+  let cost = techUpgradeCost(field, currentLevel)
 
   # Check if enough TRP accumulated
   if field notin tree.accumulated.technology or

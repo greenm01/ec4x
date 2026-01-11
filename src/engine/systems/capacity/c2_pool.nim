@@ -32,7 +32,7 @@ export capacity.C2PoolAnalysis
 
 ## Pure Calculation Functions
 
-proc getScTechC2Bonus(scLevel: int32): int32 =
+proc scTechC2Bonus(scLevel: int32): int32 =
   ## Get Strategic Command tech C2 Pool bonus per assets.md:2.3.3.3
   ## Reads from gameConfig.tech.sc.levels
   let cfg = gameConfig.tech.sc
@@ -47,10 +47,10 @@ proc calculateC2Pool*(totalHouseIU: int32, scLevel: int32): int32 =
   ## Per assets.md:2.3.3.3 and config/limits.kdl c2ConversionRatio
   let ratio = gameConfig.limits.c2Limits.c2ConversionRatio
   let iuContribution = float32(totalHouseIU) * ratio
-  let scBonus = getScTechC2Bonus(scLevel)
+  let scBonus = scTechC2Bonus(scLevel)
   return int32(floor(iuContribution)) + scBonus
 
-proc getFleetStatusCCModifier(status: FleetStatus): float32 =
+proc fleetStatusCCModifier(status: FleetStatus): float32 =
   ## Get CC multiplier for fleet status per assets.md:2.3.3.5
   ## Active: 100%, Reserve: 50%, Mothballed: 0%
   case status
@@ -76,7 +76,7 @@ proc calculateShipCC(
   let baseCC = shipStats.commandCost
 
   # Apply fleet status modifier
-  let modifier = getFleetStatusCCModifier(fleetStatus)
+  let modifier = fleetStatusCCModifier(fleetStatus)
   return int32(floor(float32(baseCC) * modifier))
 
 proc calculateFleetCC(state: GameState, fleetId: FleetId): int32 =
@@ -135,7 +135,7 @@ proc analyzeC2Capacity*(state: GameState, houseId: HouseId): C2PoolAnalysis =
   # Calculate components
   let totalIU = calculateTotalHouseIU(state, houseId)
   let scLevel = house.techTree.levels.sc
-  let scBonus = getScTechC2Bonus(scLevel)
+  let scBonus = scTechC2Bonus(scLevel)
   let c2Pool = calculateC2Pool(totalIU, scLevel)
   let totalFleetCC = calculateTotalFleetCC(state, houseId)
   let excess = max(0'i32, totalFleetCC - c2Pool)

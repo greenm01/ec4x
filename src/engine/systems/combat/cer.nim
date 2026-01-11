@@ -54,7 +54,7 @@ proc rollCER*(rng: var Rand, drm: int32, theater: CombatTheater): CERResult =
     else:
       result.cer = 2.0
 
-proc getCERDescription*(cer: float32, theater: CombatTheater): string =
+proc cerDescription*(cer: float32, theater: CombatTheater): string =
   ## Get human-readable description of CER result
   ## Used for combat reports and logging
 

@@ -26,8 +26,8 @@ proc attemptDetection*(attempt: DetectionAttempt, rng: var Rand): DetectionResul
     return DetectionResult(detected: false, roll: 0, threshold: 21, modifier: 0)
 
   # Get threshold and modifier
-  let threshold = getDetectionThreshold(attempt.cicLevel)
-  let modifier = getCIPModifier(attempt.cipPoints)
+  let threshold = detectionThreshold(attempt.cicLevel)
+  let modifier = cipModifier(attempt.cipPoints)
 
   # Roll d20
   let roll = rng.rand(1 .. 20)
@@ -47,7 +47,7 @@ proc attemptDetection*(attempt: DetectionAttempt, rng: var Rand): DetectionResul
 
 ## Action Cost Lookup
 
-proc getActionCost*(action: EspionageAction): int =
+proc actionCost*(action: EspionageAction): int =
   ## Get EBP cost for action from config
   let config = gameConfig.espionage.costs
   case action
@@ -82,12 +82,12 @@ proc purchaseCIP*(budget: var EspionageBudget, ppSpent: int): int =
 
 proc canAffordAction*(budget: EspionageBudget, action: EspionageAction): bool =
   ## Check if have enough EBP for action
-  return budget.ebpPoints >= int32(getActionCost(action))
+  return budget.ebpPoints >= int32(actionCost(action))
 
 proc spendEBP*(budget: var EspionageBudget, action: EspionageAction): bool =
   ## Spend EBP on action
   ## Returns true if successful
-  let cost = getActionCost(action)
+  let cost = actionCost(action)
   if budget.ebpPoints >= int32(cost):
     budget.ebpPoints -= int32(cost)
     return true

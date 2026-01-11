@@ -39,13 +39,13 @@ proc setupTestGame(): GameState =
   ## Create a standard 4-player game for testing
   result = newGame()
 
-proc getFirstHouse(state: GameState): HouseId =
+proc firstHouse(state: GameState): HouseId =
   ## Get the first house ID for testing
   for house in state.allHouses():
     return house.id
   raise newException(ValueError, "No houses in game")
 
-proc getHouseColony(state: GameState, houseId: HouseId): Colony =
+proc houseColony(state: GameState, houseId: HouseId): Colony =
   ## Get the first colony owned by a house
   for colony in state.coloniesOwned(houseId):
     return colony
@@ -73,7 +73,7 @@ proc createTestFleetWithCommand(
   state.updateFleet(fleet.id, fleet)
   result = state.fleet(fleet.id).get()
 
-proc getFleetShipCount(state: GameState, fleetId: FleetId): int =
+proc fleetShipCount(state: GameState, fleetId: FleetId): int =
   ## Count ships in a fleet
   state.shipsInFleet(fleetId).toSeq.len
 
@@ -92,62 +92,62 @@ suite "Fleet Operations - Ship Commissioning & Assignment":
 
   test "Combat ships join stationary fleets with Hold command":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create a stationary fleet with Hold command
     let fleet = createTestFleetWithCommand(
       game, houseId, colony.systemId, @[ShipClass.Destroyer], FleetCommandType.Hold
     )
-    let initialShipCount = getFleetShipCount(game, fleet.id)
+    let initialShipCount = fleetShipCount(game, fleet.id)
     
     # Commission a new ship at the colony
     let newShip = game.createShip(houseId, fleet.id, ShipClass.Cruiser)
     
     # Verify ship was added to existing fleet
-    check getFleetShipCount(game, fleet.id) == initialShipCount + 1
+    check fleetShipCount(game, fleet.id) == initialShipCount + 1
     check hasShipClass(game, fleet.id, ShipClass.Cruiser)
 
   test "Combat ships join fleets with Guard command":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet with GuardColony command
     let fleet = createTestFleetWithCommand(
       game, houseId, colony.systemId, @[ShipClass.Destroyer], 
       FleetCommandType.GuardColony
     )
-    let initialShipCount = getFleetShipCount(game, fleet.id)
+    let initialShipCount = fleetShipCount(game, fleet.id)
     
     # Commission a new ship
     discard game.createShip(houseId, fleet.id, ShipClass.Frigate)
     
     # Verify ship joined guarding fleet
-    check getFleetShipCount(game, fleet.id) == initialShipCount + 1
+    check fleetShipCount(game, fleet.id) == initialShipCount + 1
 
   test "Combat ships join fleets with Patrol command":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create patrol fleet
     let fleet = createTestFleetWithCommand(
       game, houseId, colony.systemId, @[ShipClass.LightCruiser],
       FleetCommandType.Patrol
     )
-    let initialShipCount = getFleetShipCount(game, fleet.id)
+    let initialShipCount = fleetShipCount(game, fleet.id)
     
     # Commission ship
     discard game.createShip(houseId, fleet.id, ShipClass.Destroyer)
     
     # Verify joined patrol fleet
-    check getFleetShipCount(game, fleet.id) == initialShipCount + 1
+    check fleetShipCount(game, fleet.id) == initialShipCount + 1
 
   test "Combat ships create new fleet if none exists":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Count initial fleets
     let initialFleetCount = game.fleetsOwned(houseId).toSeq.len
@@ -158,12 +158,12 @@ suite "Fleet Operations - Ship Commissioning & Assignment":
     
     # Verify new fleet was created
     check game.fleetsOwned(houseId).toSeq.len == initialFleetCount + 1
-    check getFleetShipCount(game, newFleet.id) == 1
+    check fleetShipCount(game, newFleet.id) == 1
 
   test "Scouts form scout-only fleets":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create scout-only fleet
     let scoutFleet = createTestFleet(
@@ -178,12 +178,12 @@ suite "Fleet Operations - Ship Commissioning & Assignment":
         break
     
     check allScouts == true
-    check getFleetShipCount(game, scoutFleet.id) == 2
+    check fleetShipCount(game, scoutFleet.id) == 2
 
   test "Fighters remain colony-assigned":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    var colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    var colony = houseColony(game, houseId)
     
     # Fighters are stored in colony.fighterSquadrons, not in fleets
     # This test verifies fighters don't get added to fleet rosters
@@ -204,8 +204,8 @@ suite "Fleet Operations - Movement & Positioning":
 
   test "Hold (00): Fleet remains at current location":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     let initialLocation = colony.systemId
     
     let fleet = createTestFleetWithCommand(
@@ -220,8 +220,8 @@ suite "Fleet Operations - Movement & Positioning":
 
   test "Hold (00): Default command for new fleets":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create new fleet without specifying command
     let fleet = game.createFleet(houseId, colony.systemId)
@@ -231,8 +231,8 @@ suite "Fleet Operations - Movement & Positioning":
 
   test "Move (01): Fleet command type set correctly":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.Destroyer]
@@ -249,8 +249,8 @@ suite "Fleet Operations - Movement & Positioning":
 
   test "SeekHome (02): Command type set correctly":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.Cruiser]
@@ -265,8 +265,8 @@ suite "Fleet Operations - Movement & Positioning":
 
   test "Patrol (03): Fleet maintains system presence":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     let fleet = createTestFleetWithCommand(
       game, houseId, colony.systemId, @[ShipClass.LightCruiser],
@@ -284,8 +284,8 @@ suite "Fleet Operations - Guard & Defense":
 
   test "GuardStarbase (04): Command set correctly":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.Battleship]
@@ -299,8 +299,8 @@ suite "Fleet Operations - Guard & Defense":
 
   test "GuardColony (05): Orbital defense positioning":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     let fleet = createTestFleetWithCommand(
       game, houseId, colony.systemId, @[ShipClass.Dreadnought],
@@ -312,8 +312,8 @@ suite "Fleet Operations - Guard & Defense":
 
   test "Blockade (06): Command set correctly":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.Cruiser, ShipClass.Destroyer]
@@ -335,8 +335,8 @@ suite "Fleet Operations - Offensive Operations":
 
   test "Bombard (07): Command configuration":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, 
@@ -352,8 +352,8 @@ suite "Fleet Operations - Offensive Operations":
 
   test "Invade (08): Requires combat ships":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet with combat ships and transports
     let fleet = createTestFleet(
@@ -378,8 +378,8 @@ suite "Fleet Operations - Offensive Operations":
 
   test "Blitz (09): Combined assault command":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId,
@@ -401,8 +401,8 @@ suite "Fleet Operations - Expansion & Intelligence":
 
   test "Colonize (10): Requires ETAC ship":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     let fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.ETAC]
@@ -425,8 +425,8 @@ suite "Fleet Operations - Expansion & Intelligence":
 
   test "ScoutColony (11): Scout-only fleet requirement":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create scout-only fleet
     var fleet = createTestFleet(
@@ -450,8 +450,8 @@ suite "Fleet Operations - Expansion & Intelligence":
 
   test "ScoutSystem (12): Fleet intelligence gathering":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.Scout]
@@ -465,8 +465,8 @@ suite "Fleet Operations - Expansion & Intelligence":
 
   test "HackStarbase (13): Cyber warfare operation":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.Scout, ShipClass.Scout]
@@ -480,8 +480,8 @@ suite "Fleet Operations - Expansion & Intelligence":
 
   test "View (19): Safe reconnaissance":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.Scout]
@@ -502,8 +502,8 @@ suite "Fleet Operations - Fleet Management":
 
   test "JoinFleet (14): Source merges into target":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create source and target fleets
     let sourceFleet = createTestFleet(
@@ -522,8 +522,8 @@ suite "Fleet Operations - Fleet Management":
 
   test "Rendezvous (15): Fleet travels to designated system":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.Battleship]
@@ -537,8 +537,8 @@ suite "Fleet Operations - Fleet Management":
 
   test "Salvage (16): Fleet disbands for PP recovery":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, 
@@ -552,8 +552,8 @@ suite "Fleet Operations - Fleet Management":
 
   test "Reserve (17): 50% costs and effectiveness":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.Cruiser]
@@ -566,8 +566,8 @@ suite "Fleet Operations - Fleet Management":
 
   test "Mothball (18): 0 CC, 10% maintenance":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.Battleship]
@@ -586,8 +586,8 @@ suite "Fleet Operations - Command Lifecycle & Integration":
 
   test "Fleets always have a command (never commandless)":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     let fleet = game.createFleet(houseId, colony.systemId)
     
@@ -596,7 +596,7 @@ suite "Fleet Operations - Command Lifecycle & Integration":
 
   test "New fleets default to Hold":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
+    let houseId = firstHouse(game)
     
     for fleet in game.fleetsOwned(houseId):
       # All new/unassigned fleets should have Hold
@@ -604,8 +604,8 @@ suite "Fleet Operations - Command Lifecycle & Integration":
 
   test "Player commands override current command":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleetWithCommand(
       game, houseId, colony.systemId, @[ShipClass.Destroyer],
@@ -621,8 +621,8 @@ suite "Fleet Operations - Command Lifecycle & Integration":
 
   test "ROE configuration: 0-10 scale":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     var fleet = createTestFleet(
       game, houseId, colony.systemId, @[ShipClass.Destroyer]
@@ -643,8 +643,8 @@ suite "Fleet Operations - Zero-Turn Admin: Fleet Reorganization":
 
   test "DetachShips: Create new fleet from subset":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet with multiple ships
     let fleet = createTestFleet(
@@ -652,7 +652,7 @@ suite "Fleet Operations - Zero-Turn Admin: Fleet Reorganization":
       @[ShipClass.Battleship, ShipClass.Cruiser, ShipClass.Destroyer]
     )
     
-    let initialShipCount = getFleetShipCount(game, fleet.id)
+    let initialShipCount = fleetShipCount(game, fleet.id)
     check initialShipCount == 3
     
     # In actual implementation, DetachShips would be a zero-turn command
@@ -661,8 +661,8 @@ suite "Fleet Operations - Zero-Turn Admin: Fleet Reorganization":
 
   test "TransferShips: Move ships between fleets":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create source and target fleets
     let sourceFleet = createTestFleet(
@@ -679,15 +679,15 @@ suite "Fleet Operations - Zero-Turn Admin: Fleet Reorganization":
     check game.fleet(targetFleet.id).get().location == colony.systemId
     
     # Both fleets at same colony - ready for transfer
-    let sourceCount = getFleetShipCount(game, sourceFleet.id)
-    let targetCount = getFleetShipCount(game, targetFleet.id)
+    let sourceCount = fleetShipCount(game, sourceFleet.id)
+    let targetCount = fleetShipCount(game, targetFleet.id)
     check sourceCount == 2
     check targetCount == 1
 
   test "MergeFleets: Combine two fleets":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create two fleets to merge
     let fleet1 = createTestFleet(
@@ -708,8 +708,8 @@ suite "Fleet Operations - Zero-Turn Admin: Fleet Reorganization":
 
   test "Reactivate: Instant Reserve to Active":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet in Reserve status
     var fleet = createTestFleetWithCommand(
@@ -730,8 +730,8 @@ suite "Fleet Operations - Zero-Turn Admin: Fleet Reorganization":
 
   test "Reactivate: Instant Mothball to Active":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create mothballed fleet
     var fleet = createTestFleetWithCommand(
@@ -757,8 +757,8 @@ suite "Fleet Operations - Zero-Turn Admin: Cargo Operations":
 
   test "LoadCargo Marines: From garrison to Troop Transports":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    var colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    var colony = houseColony(game, houseId)
     
     # Create ground unit at colony
     let marine = game.createGroundUnit(houseId, colony.id, GroundClass.Marine)
@@ -775,8 +775,8 @@ suite "Fleet Operations - Zero-Turn Admin: Cargo Operations":
 
   test "LoadCargo PTUs: From population to ETACs":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create ETAC fleet
     let fleet = createTestFleet(
@@ -794,8 +794,8 @@ suite "Fleet Operations - Zero-Turn Admin: Cargo Operations":
 
   test "UnloadCargo Marines: To colony garrison":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create transport fleet at colony
     let fleet = createTestFleet(
@@ -808,8 +808,8 @@ suite "Fleet Operations - Zero-Turn Admin: Cargo Operations":
 
   test "Workflow: LoadCargo + Invade same turn":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create invasion fleet with transports
     let fleet = createTestFleet(
@@ -837,8 +837,8 @@ suite "Fleet Operations - Zero-Turn Admin: Limitations":
 
   test "Requires friendly colony for reorganization":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet at friendly colony
     let fleet = createTestFleet(
@@ -854,8 +854,8 @@ suite "Fleet Operations - Zero-Turn Admin: Limitations":
 
   test "Cannot reorganize during combat (verified via location)":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Fleet at friendly colony - can reorganize
     let fleet = createTestFleet(
@@ -868,8 +868,8 @@ suite "Fleet Operations - Zero-Turn Admin: Limitations":
 
   test "Commands validated before execution":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet
     var fleet = createTestFleet(
@@ -886,8 +886,8 @@ suite "Fleet Operations - Zero-Turn Admin: Limitations":
 
   test "State changes are atomic":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet
     let fleet = createTestFleet(
@@ -915,8 +915,8 @@ suite "Fleet Operations - Zero-Turn Admin: Entity Scrapping":
 
   test "ScrapCommand: Ships at colony can be scrapped":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet at colony
     let fleet = createTestFleet(
@@ -936,8 +936,8 @@ suite "Fleet Operations - Zero-Turn Admin: Entity Scrapping":
 
   test "ScrapCommand: Ground units can be scrapped":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create a ground unit
     let unit = game.createGroundUnit(
@@ -951,8 +951,8 @@ suite "Fleet Operations - Zero-Turn Admin: Entity Scrapping":
 
   test "ScrapCommand: Neorias (facilities) can be scrapped":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    var colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    var colony = houseColony(game, houseId)
     
     # Verify colony has neorias that could be scrapped
     check colony.neoriaIds.len > 0
@@ -964,8 +964,8 @@ suite "Fleet Operations - Zero-Turn Admin: Entity Scrapping":
 
   test "ScrapCommand: Starbases can be scrapped":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    var colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    var colony = houseColony(game, houseId)
     
     # Get house's WEP level for starbase stats
     let house = game.house(houseId).get()
@@ -975,7 +975,7 @@ suite "Fleet Operations - Zero-Turn Admin: Entity Scrapping":
     let starbase = game.createKastra(colony.id, KastraClass.Starbase, wepLevel)
     
     # Refresh colony to get updated kastraIds
-    colony = getHouseColony(game, houseId)
+    colony = houseColony(game, houseId)
     
     # Verify starbase exists
     let kastraOpt = game.kastra(starbase.id)
@@ -984,8 +984,8 @@ suite "Fleet Operations - Zero-Turn Admin: Entity Scrapping":
 
   test "ScrapCommand: 50% salvage value policy":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create ship for scrapping
     let fleet = createTestFleet(
@@ -1007,8 +1007,8 @@ suite "Fleet Operations - Zero-Turn Admin: Entity Scrapping":
 
   test "ScrapCommand: Validation - ownership check":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create entity owned by this house
     let fleet = createTestFleet(
@@ -1025,8 +1025,8 @@ suite "Fleet Operations - Zero-Turn Admin: Entity Scrapping":
 
   test "ScrapCommand: Validation - location check":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create ground unit at colony
     let unit = game.createGroundUnit(
@@ -1039,8 +1039,8 @@ suite "Fleet Operations - Zero-Turn Admin: Entity Scrapping":
 
   test "ScrapCommand: Facility queue acknowledgment requirement":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Get a facility that might have queues
     if colony.neoriaIds.len > 0:
@@ -1058,8 +1058,8 @@ suite "Fleet Operations - Fleet Salvage Command":
 
   test "Fleet Salvage (16): PP recovery on disbanding":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet for salvage
     var fleet = createTestFleet(
@@ -1074,8 +1074,8 @@ suite "Fleet Operations - Fleet Salvage Command":
 
   test "Fleet Salvage: 50% PP recovery from config":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet with known ship type
     let fleet = createTestFleet(
@@ -1096,8 +1096,8 @@ suite "Fleet Operations - Fleet Salvage Command":
 
   test "Fleet Salvage: Vulnerable to interception":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet that will travel to salvage location
     var fleet = createTestFleet(
@@ -1120,8 +1120,8 @@ suite "Fleet Operations - Repairs":
 
   test "Ship repairs require drydocks":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create a damaged ship
     let fleet = createTestFleet(
@@ -1143,8 +1143,8 @@ suite "Fleet Operations - Repairs":
 
   test "Drydocks provide repair docks from config":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create a drydock (baseDocks calculated from config automatically)
     let expectedDocks = gameConfig.facilities.facilities[FacilityClass.Drydock].docks
@@ -1162,7 +1162,7 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Major lanes: 2 jumps per turn through controlled space":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
+    let houseId = firstHouse(game)
     
     # Find three connected systems via major lanes
     # This test verifies the pathfinding algorithm considers major lanes as cost 1
@@ -1184,8 +1184,8 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Minor lanes: 1 jump per turn (cost 2)":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet
     let fleet = createTestFleet(
@@ -1199,8 +1199,8 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Restricted lanes: ONLY non-crippled ETACs allowed":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create ETAC fleet (only ship type that can use restricted lanes)
     let etacFleet = createTestFleet(
@@ -1218,8 +1218,8 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Crippled ships cannot traverse restricted lanes":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet with a destroyer
     let fleet = createTestFleet(
@@ -1247,8 +1247,8 @@ suite "Fleet Operations - Jump Lane Movement":
     # Per spec §6.1.3: "ETACs can traverse all lane types when not crippled"
     # Design rationale: Enables early game colonization via restricted lanes
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create solo ETAC fleet
     let fleet = createTestFleet(
@@ -1262,8 +1262,8 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Combat ships cannot traverse restricted lanes":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Test multiple combat ship types
     let destroyerFleet = createTestFleet(
@@ -1283,8 +1283,8 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Mixed fleet: combat ships block ETAC from using restricted lanes":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create mixed fleet: ETAC (can use restricted) + Destroyer (blocks restricted)
     let fleet = createTestFleet(
@@ -1301,8 +1301,8 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Multiple ETACs can traverse restricted lanes together":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet with multiple ETACs
     let fleet = createTestFleet(
@@ -1317,8 +1317,8 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Scouts and fighters cannot traverse restricted lanes":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create scout and fighter fleets
     let scoutFleet = createTestFleet(
@@ -1334,8 +1334,8 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Pathfinding respects lane restrictions":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create ETAC fleet (cannot use restricted lanes)
     let etacFleet = createTestFleet(
@@ -1356,7 +1356,7 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "ETA calculation: conservative 1 jump per turn estimate":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
+    let houseId = firstHouse(game)
     
     # Get two systems
     var testSystems: seq[SystemId] = @[]
@@ -1379,8 +1379,8 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Pathfinding: lane costs affect route selection":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create ETAC fleet (can use all lanes)
     let etacFleet = createTestFleet(
@@ -1407,8 +1407,8 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Systems in range: findPathsInRange respects lane costs":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
-    let colony = getHouseColony(game, houseId)
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
     
     # Create fleet
     let fleet = createTestFleet(
@@ -1423,7 +1423,7 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Multi-fleet ETA: coordination planning":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
+    let houseId = firstHouse(game)
     
     # Get three systems
     var testSystems: seq[SystemId] = @[]
@@ -1452,7 +1452,7 @@ suite "Fleet Operations - Jump Lane Movement":
 
   test "Path cost calculation: validates traversability":
     let game = setupTestGame()
-    let houseId = getFirstHouse(game)
+    let houseId = firstHouse(game)
     
     # Get two connected systems
     var testSystems: seq[SystemId] = @[]
@@ -1468,7 +1468,7 @@ suite "Fleet Operations - Jump Lane Movement":
     
     # Calculate cost for a simple path
     let path = @[testSystems[0], testSystems[1]]
-    let cost = getPathCost(game, path, fleet)
+    let cost = pathCost(game, path, fleet)
     
     # Cost should be valid (not uint32.high which means invalid)
     # Actual value depends on lane type between systems

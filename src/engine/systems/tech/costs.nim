@@ -32,7 +32,7 @@ proc convertPPToERP*(pp: int32, gho: int32, slLevel: int32): int32 =
   let slModifier = 1.0 + (float(slLevel) / 10.0)
   result = int32(float(pp) * ghoModifier * slModifier)
 
-proc getELUpgradeCost*(currentLevel: int32): int32 =
+proc elUpgradeCost*(currentLevel: int32): int32 =
   ## Get ERP cost to advance Economic Level
   ## Per economy.md:4.2 and config/tech.kdl
   ## Uses Table pattern for levels
@@ -42,7 +42,7 @@ proc getELUpgradeCost*(currentLevel: int32): int32 =
   else:
     return 0 # Level not found or at max
 
-proc getELModifier*(level: int32): float32 =
+proc elModifier*(level: int32): float32 =
   ## Get EL economic modifier (as multiplier)
   ## Per economy.md:4.2: +5% per level, capped at 50%
   ## Returns multiplier (e.g., 1.05 for EL1, 1.50 for EL10+)
@@ -73,7 +73,7 @@ proc convertPPToSRP*(pp: int32, gho: int32, slLevel: int32): int32 =
   let slModifier = 1.0 + (float(slLevel) / 5.0)
   result = int32(float(pp) * ghoModifier * slModifier)
 
-proc getSLUpgradeCost*(currentLevel: int32): int32 =
+proc slUpgradeCost*(currentLevel: int32): int32 =
   ## Get SRP cost to advance Science Level
   ## Per economy.md:4.3 and config/tech.kdl
   ## Uses Table pattern for levels
@@ -85,7 +85,7 @@ proc getSLUpgradeCost*(currentLevel: int32): int32 =
   else:
     return 0 # Level not found or at max
 
-proc getSLModifier*(level: int): float =
+proc slModifier*(level: int): float =
   ## Get SL research modifier
   ## Affects TRP costs per economy.md:4.4
   ##
@@ -111,7 +111,7 @@ proc convertPPToTRP*(pp: int32, gho: int32, slLevel: int32): int32 =
   let slModifier = 1.0 + (float(slLevel) / 20.0)
   result = int32(float(pp) * ghoModifier * slModifier)
 
-proc getTechUpgradeCost*(techField: TechField, currentLevel: int32): int32 =
+proc techUpgradeCost*(techField: TechField, currentLevel: int32): int32 =
   ## Get TRP cost to advance tech level
   ## Per economy.md:4.4-4.12 and config/tech.kdl
   ## Uses Table pattern for levels

@@ -18,7 +18,7 @@ proc calculateGroundBatteryAS*(state: GameState, colonyId: ColonyId): int32
 proc calculateMarineAS*(state: GameState, fleets: seq[FleetId]): int32
 proc calculateGroundForceAS*(state: GameState, colonyId: ColonyId): int32
 
-proc getShieldReduction*(state: GameState, colonyId: ColonyId): float32 =
+proc shieldReduction*(state: GameState, colonyId: ColonyId): float32 =
   ## Calculate damage reduction from planetary shields
   ## Per docs/specs/reference.md Section 9.3
   ## Shields are house-level tech - if colony has operational shield unit, use house's SLD level
@@ -627,7 +627,7 @@ proc resolveBombardment*(
       result.defenderSurvived = false
       return
 
-    let shieldReduction = getShieldReduction(state, targetColony)
+    let shieldReduction = shieldReduction(state, targetColony)
     let regularHits =
       int32(float32(regularAS) * attackerCER.cer * (1.0 - shieldReduction))
 
@@ -848,7 +848,7 @@ proc resolveBlitz*(
   let defenderCER = rollCER(rng, defenderDRM, CombatTheater.Orbital)
 
   # Calculate hits (Planet-Breaker bypasses shields)
-  let shieldReduction = getShieldReduction(state, targetColony)
+  let shieldReduction = shieldReduction(state, targetColony)
 
   let planetBreakerHits = int32(float32(planetBreakerAS) * attackerCER.cer)
   let regularHits = int32(float32(regularAS) * attackerCER.cer * (1.0 - shieldReduction))

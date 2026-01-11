@@ -11,7 +11,7 @@ import ../state/[engine, id_gen]
 import ../types/[game_state, core, facilities, colony, combat]
 import ../globals
 
-proc getKastraStats*(kastraClass: KastraClass, weaponsTech: int32 = 1): KastraStats =
+proc kastraStats*(kastraClass: KastraClass, weaponsTech: int32 = 1): KastraStats =
   ## Calculate WEP-modified stats for a kastra class
   ## Returns instance-specific stats (AS, DS, WEP level)
   ##
@@ -74,7 +74,7 @@ proc createKastra*(
   ## and links it to a colony.
   ## Applies WEP tech modifiers to combat stats at construction time.
   let kastraId = state.generateKastraId()
-  let stats = getKastraStats(kastraClass, wepLevel)
+  let stats = kastraStats(kastraClass, wepLevel)
   let newKastra = newKastra(kastraId, kastraClass, colonyId, state.turn, stats)
 
   state.addKastra(kastraId, newKastra)

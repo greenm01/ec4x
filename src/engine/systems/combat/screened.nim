@@ -50,7 +50,7 @@ proc isScreenedShip*(state: GameState, shipId: ShipId): bool =
 
   return false
 
-proc getScreenedShipsInFleet*(state: GameState, fleetId: FleetId): seq[ShipId] =
+proc screenedShipsInFleet*(state: GameState, fleetId: FleetId): seq[ShipId] =
   ## Get all screened ships in a fleet
   ## Per docs/specs/07-combat.md Section 7.6.1
   result = @[]
@@ -73,7 +73,7 @@ proc getScreenedShipsInFleet*(state: GameState, fleetId: FleetId): seq[ShipId] =
       if isAuxiliaryVessel(ship.shipClass):
         result.add(shipId)
 
-proc getCombatShipsInFleet*(state: GameState, fleetId: FleetId): seq[ShipId] =
+proc combatShipsInFleet*(state: GameState, fleetId: FleetId): seq[ShipId] =
   ## Get all combat-capable ships in fleet (excludes screened units)
   ## Per docs/specs/07-combat.md Section 7.6.1
   result = @[]
@@ -96,7 +96,7 @@ proc getCombatShipsInFleet*(state: GameState, fleetId: FleetId): seq[ShipId] =
       if not isAuxiliaryVessel(ship.shipClass):
         result.add(shipId)
 
-proc getScreenedNeoriasAtColony*(
+proc screenedNeoriasAtColony*(
   state: GameState, colonyId: ColonyId
 ): seq[NeoriaId] =
   ## Get orbital Neoria facilities that are screened at colony
@@ -125,7 +125,7 @@ proc destroyScreenedUnitsInFleet*(state: GameState, fleetId: FleetId) =
   ## Note: Fleet retreat uses applyRetreatLossesToScreenedUnits() from
   ## retreat.nim which applies proportional losses based on escort casualties.
 
-  let screenedShips = getScreenedShipsInFleet(state, fleetId)
+  let screenedShips = screenedShipsInFleet(state, fleetId)
 
   for shipId in screenedShips:
     let shipOpt = state.ship(shipId)
@@ -153,7 +153,7 @@ proc destroyScreenedUnitsAtColony*(state: GameState, colonyId: ColonyId) =
   ## Significant economic loss - defenders should evacuate before combat
 
   # Destroy all screened neorias
-  let screenedNeorias = getScreenedNeoriasAtColony(state, colonyId)
+  let screenedNeorias = screenedNeoriasAtColony(state, colonyId)
 
   for neoriaId in screenedNeorias:
     let neoriaOpt = state.neoria(neoriaId)

@@ -684,7 +684,7 @@ proc initCommandValidationContext*(treasury: int32): CommandValidationContext =
     availableTreasury: treasury, committedSpending: 0, rejectedCommands: 0
   )
 
-proc getRemainingBudget*(ctx: CommandValidationContext): int32 =
+proc remainingBudget*(ctx: CommandValidationContext): int32 =
   ## Get remaining budget after committed spending
   result = ctx.availableTreasury - ctx.committedSpending
 
@@ -710,7 +710,7 @@ proc calculateBuildCommandCost*(
   of BuildType.Ship:
     if cmd.shipClass.isSome:
       let shipClass = cmd.shipClass.get()
-      let baseCost = accessors.getShipConstructionCost(shipClass) * cmd.quantity
+      let baseCost = accessors.shipConstructionCost(shipClass) * cmd.quantity
 
       # Apply spaceport commission penalty if building planet-side
       # Per economy.md:5.1 - "Ships (excluding fighter squadrons) constructed planet-side incur a 100% PC increase"
@@ -760,13 +760,13 @@ proc calculateBuildCommandCost*(
       # Buildings never have spaceport penalty (planet-side industry)
       # Shipyard/Starbase are built in orbit and don't get penalty
       let facilityClass = cmd.facilityClass.get()
-      result = accessors.getBuildingCost(facilityClass) * cmd.quantity
+      result = accessors.buildingCost(facilityClass) * cmd.quantity
   of BuildType.Industrial, BuildType.Infrastructure:
     # Infrastructure cost depends on colony state
     let colonyOpt = state.colony(cmd.colonyId)
     if colonyOpt.isSome:
       let colony = colonyOpt.get()
-      result = getIndustrialUnitCost(colony) * cmd.industrialUnits
+      result = industrialUnitCost(colony) * cmd.industrialUnits
   else:
     discard
 
@@ -944,7 +944,7 @@ proc validateBuildCommandWithBudget*(
     )
 
   # Check budget
-  let remaining = ctx.getRemainingBudget()
+  let remaining = ctx.remainingBudget()
   if cost > remaining:
     ctx.rejectedCommands += 1
     logInfo(
@@ -961,7 +961,7 @@ proc validateBuildCommandWithBudget*(
   ctx.committedSpending += cost
   logDebug(
     "Economy",
-    &"Build command validated: {cost} PP committed, {ctx.getRemainingBudget()} PP remaining",
+    &"Build command validated: {cost} PP committed, {ctx.remainingBudget()} PP remaining",
   )
 
   return ValidationResult(valid: true, error: "")

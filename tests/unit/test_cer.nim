@@ -227,15 +227,15 @@ suite "CER: Description Strings":
   ## Test human-readable CER descriptions
 
   test "Space CER descriptions":
-    check getCERDescription(0.25, CombatTheater.Space) == "Poor (0.25×)"
-    check getCERDescription(0.50, CombatTheater.Space) == "Fair (0.50×)"
-    check getCERDescription(1.00, CombatTheater.Space) == "Good (1.00×)"
+    check cerDescription(0.25, CombatTheater.Space) == "Poor (0.25×)"
+    check cerDescription(0.50, CombatTheater.Space) == "Fair (0.50×)"
+    check cerDescription(1.00, CombatTheater.Space) == "Good (1.00×)"
 
   test "Ground CER descriptions":
-    check getCERDescription(0.5, CombatTheater.Planetary) == "Poor (0.5×)"
-    check getCERDescription(1.0, CombatTheater.Planetary) == "Fair (1.0×)"
-    check getCERDescription(1.5, CombatTheater.Planetary) == "Good (1.5×)"
-    check getCERDescription(2.0, CombatTheater.Planetary) == "Excellent (2.0×)"
+    check cerDescription(0.5, CombatTheater.Planetary) == "Poor (0.5×)"
+    check cerDescription(1.0, CombatTheater.Planetary) == "Fair (1.0×)"
+    check cerDescription(1.5, CombatTheater.Planetary) == "Good (1.5×)"
+    check cerDescription(2.0, CombatTheater.Planetary) == "Excellent (2.0×)"
 
 when isMainModule:
   echo "========================================"

@@ -22,7 +22,7 @@ proc applyRetreatLossesToScreenedUnits*(state: GameState, fleetId: FleetId) =
     return
 
   # Get combat ships (exclude screened)
-  let combatShips = getCombatShipsInFleet(state, fleetId)
+  let combatShips = combatShipsInFleet(state, fleetId)
   if combatShips.len == 0:
     return
 
@@ -39,7 +39,7 @@ proc applyRetreatLossesToScreenedUnits*(state: GameState, fleetId: FleetId) =
   let casualtyRate = float(casualties) / float(combatShips.len)
 
   # Apply same rate to screened units
-  let screenedShips = getScreenedShipsInFleet(state, fleetId)
+  let screenedShips = screenedShipsInFleet(state, fleetId)
   let screenedCasualties = int(float(screenedShips.len) * casualtyRate)
 
   # Destroy proportional number of screened units
@@ -51,7 +51,7 @@ proc applyRetreatLossesToScreenedUnits*(state: GameState, fleetId: FleetId) =
       ship.state = CombatState.Destroyed
       state.updateShip(shipId, ship)
 
-proc getROEThreshold*(roe: int32): float =
+proc roeThreshold*(roe: int32): float =
   ## Get retreat threshold from ROE level
   ## Per docs/specs/07-combat.md Section 7.2.3
   ##
@@ -123,9 +123,9 @@ proc checkFleetRetreats*(
     
     # Apply morale modifier to effective ROE (per spec 7.2.3)
     # Morale based on relative standing to leading house
-    let moraleModifier = getMoraleROEModifier(state, fleet.houseId)
+    let moraleModifier = moraleROEModifier(state, fleet.houseId)
     let effectiveROE = fleet.roe + moraleModifier
-    let threshold = getROEThreshold(effectiveROE)
+    let threshold = roeThreshold(effectiveROE)
 
     if ratio < threshold:
       # Fleet retreats
@@ -154,9 +154,9 @@ proc checkFleetRetreats*(
     
     # Apply morale modifier to effective ROE (per spec 7.2.3)
     # Morale based on relative standing to leading house
-    let moraleModifier = getMoraleROEModifier(state, fleet.houseId)
+    let moraleModifier = moraleROEModifier(state, fleet.houseId)
     let effectiveROE = fleet.roe + moraleModifier
-    let threshold = getROEThreshold(effectiveROE)
+    let threshold = roeThreshold(effectiveROE)
 
     # Homeworld defense override: NEVER retreat
     if battle.defender.isDefendingHomeworld:

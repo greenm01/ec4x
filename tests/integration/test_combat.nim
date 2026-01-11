@@ -47,7 +47,7 @@ proc createTestShip(
     state.updateShip(ship.id, ship)
   return ship
 
-proc getShipsByState(state: GameState, fleetId: FleetId, 
+proc shipsByState(state: GameState, fleetId: FleetId, 
                      targetState: CombatState): seq[Ship] =
   ## Get all ships in a fleet with a specific combat state
   result = @[]
@@ -57,7 +57,7 @@ proc getShipsByState(state: GameState, fleetId: FleetId,
 
 proc countShipsByState(state: GameState, fleetId: FleetId, 
                        targetState: CombatState): int =
-  getShipsByState(state, fleetId, targetState).len
+  shipsByState(state, fleetId, targetState).len
 
 # =============================================================================
 # Section 7.2.1: Ship Status Tests
@@ -298,28 +298,28 @@ suite "Combat: ROE Thresholds (Section 7.2.3)":
 
   test "ROE 0 means never engage (threshold 0)":
     # ROE 0 = avoid all hostile forces
-    check getROEThreshold(0) == 0.0
+    check roeThreshold(0) == 0.0
 
   test "ROE 1 means only engage defenseless":
     # ROE 1 = extreme caution, requires overwhelming advantage
-    check getROEThreshold(1) > 10.0  # Very high threshold
+    check roeThreshold(1) > 10.0  # Very high threshold
 
   test "ROE 6 is standard engagement (fight if equal)":
     # ROE 6 = default, engage if AS ratio >= 1.0
-    check getROEThreshold(6) == 1.0
+    check roeThreshold(6) == 1.0
 
   test "ROE 10 means never retreat (threshold 0)":
     # ROE 10 = fight to the death
-    check getROEThreshold(10) == 0.0
+    check roeThreshold(10) == 0.0
 
   test "higher ROE means more aggressive (lower threshold)":
     # Higher ROE = lower threshold = more willing to fight at disadvantage
     for roe in 2'i32 .. 9'i32:
-      check getROEThreshold(roe) > getROEThreshold(roe + 1)
+      check roeThreshold(roe) > roeThreshold(roe + 1)
 
   test "ROE thresholds are non-negative":
     for roe in 0'i32 .. 10'i32:
-      check getROEThreshold(roe) >= 0.0
+      check roeThreshold(roe) >= 0.0
 
 # =============================================================================
 # Section 7.4.1: CER Tables
@@ -474,7 +474,7 @@ suite "Combat: Bombardment (Section 7.7)":
   test "shields always active - no activation roll":
     # Per spec Section 7.7.3: "Shields are ALWAYS active"
     # No dice roll needed to activate shields
-    # Verified by code - getShieldReduction() returns value directly
+    # Verified by code - shieldReduction() returns value directly
     check true  # Design verification
 
   test "shields do not degrade during bombardment":

@@ -26,43 +26,43 @@ export tech.TechLevel
 
 ## Economic Level Effects (economy.md:4.2)
 
-proc getEconomicBonus*(elLevel: int): float =
+proc economicBonus*(elLevel: int): float =
   ## Get GCO bonus from Economic Level
   ## Per economy.md:4.2: +5% per level, max 50%
   result = min(float(elLevel) * 0.05, 0.50)
 
 proc applyEconomicBonus*(gco: int, elLevel: int): int =
   ## Apply EL bonus to GCO
-  let bonus = getEconomicBonus(elLevel)
+  let bonus = economicBonus(elLevel)
   result = int(float(gco) * (1.0 + bonus))
 
 ## Weapons Tech Effects (economy.md:4.6)
 
-proc getWeaponsBonus*(wepLevel: int): float =
+proc weaponsBonus*(wepLevel: int): float =
   ## Get AS/DS bonus from Weapons tech
   ## Per economy.md:4.6: +10% per level
   result = float(wepLevel) * 0.10
 
 proc applyWeaponsBonus*(baseAS: int, wepLevel: int): int =
   ## Apply WEP bonus to Attack Strength
-  let bonus = getWeaponsBonus(wepLevel)
+  let bonus = weaponsBonus(wepLevel)
   result = int(float(baseAS) * (1.0 + bonus))
 
 proc applyDefenseBonus*(baseDS: int, wepLevel: int): int =
   ## Apply WEP bonus to Defense Strength
   ## Note: WEP affects both AS and DS
-  let bonus = getWeaponsBonus(wepLevel)
+  let bonus = weaponsBonus(wepLevel)
   result = int(float(baseDS) * (1.0 + bonus))
 
 ## Construction Tech Effects (economy.md:4.5)
 
-proc getConstructionCapacityMultiplier*(cstLevel: int): float =
+proc constructionCapacityMultiplier*(cstLevel: int): float =
   ## Get production capacity multiplier from CST tech
   ## Per economy.md:4.5: +10% per level (construction capacity increases)
   ## This affects GCO calculation by boosting industrial output
   result = 1.0 + (float(cstLevel - 1) * 0.10)
 
-proc getDockCapacityMultiplier*(cstLevel: int): float =
+proc dockCapacityMultiplier*(cstLevel: int): float =
   ## Get dock capacity multiplier from CST tech
   ## Per docs/specs/04-research_development.md Section 4.4.2
   ## CST I = 1.0x, CST II = 1.1x, ... CST X = 1.9x
@@ -75,21 +75,21 @@ proc getDockCapacityMultiplier*(cstLevel: int): float =
 proc calculateEffectiveDocks*(baseDocks: int32, cstLevel: int32): int32 =
   ## Calculate effective dock capacity based on CST technology
   ## Per economy.md:4.5 - Dock Count = base_docks × CST_MULTIPLIER (rounded down)
-  let multiplier = getDockCapacityMultiplier(cstLevel.int)
+  let multiplier = dockCapacityMultiplier(cstLevel.int)
   result = int32(float(baseDocks) * multiplier)
 
 ## Electronic Intelligence Effects (economy.md:4.8)
 ## NOTE: Full ELI detection system implemented in intelligence/detection.nim
 ## This module does not provide ELI functions - use intelligence/detection.nim
 
-proc getELICounterCloakBonus*(eliLevel: int): int =
+proc eliCounterCloakBonus*(eliLevel: int): int =
   ## Get bonus to detect cloaked raiders
   ## Used for quick calculations where full detection system not needed
   result = eliLevel div 2 # +1 per 2 levels
 
 ## Terraforming Effects (economy.md:4.7)
 
-proc getTerraformingBaseCost*(currentClass: int): int =
+proc terraformingBaseCost*(currentClass: int): int =
   ## Get base PP cost for terraforming to next class
   ## Per economy.md Section 4.7 and config/tech.kdl
   ##
@@ -122,7 +122,7 @@ proc getTerraformingBaseCost*(currentClass: int): int =
   else:
     0 # Already Eden or invalid
 
-proc getTerraformingSpeed*(terLevel: int): int =
+proc terraformingSpeed*(terLevel: int): int =
   ## Terraforming completes instantly (1 turn)
   ## Per new time narrative: turns represent variable time periods (1-15 years)
   ## TER level affects cost only, not duration
@@ -151,7 +151,7 @@ proc canTerraform*(currentClass: int, terLevel: int): bool =
 ## Fighter Doctrine Effects (economy.md:4.12)
 ## NOTE: Fighter capacity multiplier system implemented in economy/capacity/fighter.nim
 ## Formula: Max FS = floor(IU / 100) × FD Multiplier (IU-based, not PU-based)
-## Use getFighterDoctrineMultiplier() for capacity calculations
+## Use fighterDoctrineMultiplier() for capacity calculations
 
 ## Advanced Carrier Operations Effects (economy.md:4.13)
 ## NOTE: Full ACO carrier capacity system implemented in squadron.nim
@@ -162,7 +162,7 @@ proc canTerraform*(currentClass: int, terLevel: int): bool =
 ## - ACO II: CV=4FS, CX=6FS
 ## - ACO III: CV=5FS, CX=8FS
 
-proc getCarrierCapacityCV*(acoLevel: int): int =
+proc carrierCapacityCV*(acoLevel: int): int =
   ## Get Carrier (CV) fighter capacity for ACO tech level
   ## Per economy.md:4.13
   case acoLevel
@@ -175,7 +175,7 @@ proc getCarrierCapacityCV*(acoLevel: int): int =
   else:
     5 # ACO III+
 
-proc getCarrierCapacityCX*(acoLevel: int): int =
+proc carrierCapacityCX*(acoLevel: int): int =
   ## Get Super Carrier (CX) fighter capacity for ACO tech level
   ## Per economy.md:4.13
   case acoLevel
@@ -190,7 +190,7 @@ proc getCarrierCapacityCX*(acoLevel: int): int =
 
 ## Strategic Command Effects (economy.md:4.11)
 
-proc getMaxCombatFleets*(
+proc maxCombatFleets*(
   scLevel: int32, totalSystems: int32, playerCount: int32
 ): int32 =
   ## Calculate maximum combat fleets based on SC tech level and map density

@@ -26,7 +26,7 @@ import ../../../common/logger
 
 export capacity.CapacityViolation, capacity.ViolationSeverity
 
-proc getFleetCommandMaxShips*(fcLevel: int32): int32 =
+proc fleetCommandMaxShips*(fcLevel: int32): int32 =
   ## Get max ships per fleet based on FC tech level
   ## Returns maximum ship count from config/tech.kdl fc levels
   let cfg = gameConfig.tech.fc
@@ -36,7 +36,7 @@ proc getFleetCommandMaxShips*(fcLevel: int32): int32 =
     # Default to FC I if level not found
     return cfg.levels[1'i32].maxShipsPerFleet
 
-proc getCurrentFleetSize*(state: GameState, fleetId: FleetId): int32 =
+proc currentFleetSize*(state: GameState, fleetId: FleetId): int32 =
   ## Get current number of ships in fleet
   ## Pure function - just counts fleet.ships
   let fleetOpt = state.fleet(fleetId)
@@ -71,8 +71,8 @@ proc analyzeFleetCapacity*(
     return none(capacity.CapacityViolation)
 
   let fcLevel = houseOpt.get().techTree.levels.fc
-  let maximum = getFleetCommandMaxShips(fcLevel)
-  let current = getCurrentFleetSize(state, fleetId)
+  let maximum = fleetCommandMaxShips(fcLevel)
+  let current = currentFleetSize(state, fleetId)
   let excess = max(0'i32, current - maximum)
 
   # FC has no grace period - immediate critical if over
@@ -138,12 +138,12 @@ proc canAddShipsToFleet*(
     return false
 
   let fcLevel = houseOpt.get().techTree.levels.fc
-  let maximum = getFleetCommandMaxShips(fcLevel)
-  let current = getCurrentFleetSize(state, fleetId)
+  let maximum = fleetCommandMaxShips(fcLevel)
+  let current = currentFleetSize(state, fleetId)
 
   return current + shipsToAdd <= maximum
 
-proc getAvailableFleetCapacity*(state: GameState, fleetId: FleetId): int32 =
+proc availableFleetCapacity*(state: GameState, fleetId: FleetId): int32 =
   ## Get remaining ship capacity for fleet
   ## Returns: maximum - current
   ## Returns 0 if fleet doesn't exist
@@ -162,8 +162,8 @@ proc getAvailableFleetCapacity*(state: GameState, fleetId: FleetId): int32 =
     return 0'i32
 
   let fcLevel = houseOpt.get().techTree.levels.fc
-  let maximum = getFleetCommandMaxShips(fcLevel)
-  let current = getCurrentFleetSize(state, fleetId)
+  let maximum = fleetCommandMaxShips(fcLevel)
+  let current = currentFleetSize(state, fleetId)
 
   return max(0'i32, maximum - current)
 
@@ -217,7 +217,7 @@ proc processCapacityEnforcement*(state: GameState): seq[capacity.CapacityViolati
 ## Design Notes:
 ##
 ## **Data-Oriented Pattern:**
-## 1. getFleetCommandMaxShips() - Pure calculation of max capacity by FC level
+## 1. fleetCommandMaxShips() - Pure calculation of max capacity by FC level
 ## 2. analyzeFleetCapacity() - Pure analysis of single fleet status
 ## 3. checkViolations() - Batch analyze all fleets (pure)
 ## 4. canAddShipsToFleet() - Pure check if adding is allowed
@@ -239,7 +239,7 @@ proc processCapacityEnforcement*(state: GameState): seq[capacity.CapacityViolati
 ## - Call canAddShipsToFleet(state, fleetId, count) before allowing ship
 ##   assignments to fleets
 ## - Call processCapacityEnforcement() in Maintenance phase (debugging only)
-## - Use getAvailableFleetCapacity(state, fleetId) to show available capacity
+## - Use availableFleetCapacity(state, fleetId) to show available capacity
 ##   to players
 ##
 ## **Special Cases:**

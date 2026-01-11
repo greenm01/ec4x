@@ -14,7 +14,7 @@ import ../../types/[core, game_state, combat, config, house]
 import ../../state/[engine, iterators]
 import ../../globals
 
-proc getMaxPrestige*(state: GameState): int32 =
+proc maxPrestige*(state: GameState): int32 =
   ## Get the highest prestige among all active houses
   ## Returns at least 1 to avoid division by zero
   result = 1'i32  # Floor to avoid division by zero
@@ -23,7 +23,7 @@ proc getMaxPrestige*(state: GameState): int32 =
     if house.prestige > result:
       result = house.prestige
 
-proc getMoraleROEModifier*(state: GameState, houseId: HouseId): int32 =
+proc moraleROEModifier*(state: GameState, houseId: HouseId): int32 =
   ## Calculate ROE modifier based on house's morale tier
   ## Morale tier determined by house prestige relative to leading house
   ## Per docs/specs/07-combat.md Section 7.2.3
@@ -33,7 +33,7 @@ proc getMoraleROEModifier*(state: GameState, houseId: HouseId): int32 =
     return 0'i32
   
   let house = houseOpt.get()
-  let maxPrestige = getMaxPrestige(state)
+  let maxPrestige = maxPrestige(state)
   
   # Calculate percentage of leader's prestige
   let percentOfLeader = int32((float32(house.prestige) / float32(maxPrestige)) * 100.0)
@@ -57,7 +57,7 @@ proc getMoraleROEModifier*(state: GameState, houseId: HouseId): int32 =
   else:  # Above high threshold = VeryHigh
     return config.veryHigh.roeModifier
 
-proc getMoraleTier*(state: GameState, houseId: HouseId): MoraleTier =
+proc moraleTier*(state: GameState, houseId: HouseId): MoraleTier =
   ## Get the morale tier for a house based on relative prestige
   ## Used for CER morale bonuses in combat
   
@@ -66,7 +66,7 @@ proc getMoraleTier*(state: GameState, houseId: HouseId): MoraleTier =
     return MoraleTier.Collapsing
   
   let house = houseOpt.get()
-  let maxPrestige = getMaxPrestige(state)
+  let maxPrestige = maxPrestige(state)
   
   # Calculate percentage of leader's prestige
   let percentOfLeader = int32((float32(house.prestige) / float32(maxPrestige)) * 100.0)

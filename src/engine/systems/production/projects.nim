@@ -28,7 +28,7 @@ export production.ConstructionProject, production.CompletedProject, production.B
 
 ## Industrial Unit Investment (economy.md:3.4)
 
-proc getIndustrialUnitCost*(colony: Colony): int32 =
+proc industrialUnitCost*(colony: Colony): int32 =
   ## Calculate cost for next IU investment
   ## Cost scales based on IU percentage relative to PU (economy.md:3.4)
   ## Reads scaling tiers from config/economy.kdl
@@ -61,8 +61,8 @@ proc createShipProject*(sc: ShipClass, cstLevel: int = 1): ConstructionProject =
   ## Create ship construction project with upfront payment model
   ## Per economy.md:5.0 - full cost must be paid upfront
   ## Per construction.kdl: all ships build in 1 turn
-  let cost = accessors.getShipConstructionCost(sc)
-  let turns = accessors.getShipBaseBuildTime(sc)
+  let cost = accessors.shipConstructionCost(sc)
+  let turns = accessors.shipBaseBuildTime(sc)
 
   result = project_ops.newConstructionProject(
     id = ConstructionProjectId(0), # ID assigned by entity manager
@@ -79,8 +79,8 @@ proc createBuildingProject*(fc: FacilityClass): ConstructionProject =
   ## Create building construction project with upfront payment
   ## Per economy.md:5.0 - full cost must be paid upfront
   ## Per construction.kdl: all facilities build in 1 turn
-  let cost = accessors.getBuildingCost(fc)
-  let turns = accessors.getBuildingTime(fc)
+  let cost = accessors.buildingCost(fc)
+  let turns = accessors.buildingTime(fc)
 
   result = project_ops.newConstructionProject(
     id = ConstructionProjectId(0), # ID assigned by entity manager
@@ -96,7 +96,7 @@ proc createBuildingProject*(fc: FacilityClass): ConstructionProject =
 proc createIndustrialProject*(colony: Colony, units: int): ConstructionProject =
   ## Create IU investment project with upfront payment
   ## Per economy.md:5.0 - full cost must be paid upfront
-  let costPerUnit = getIndustrialUnitCost(colony)
+  let costPerUnit = industrialUnitCost(colony)
   let totalCost = int32(costPerUnit * units)
 
   result = project_ops.newConstructionProject(
@@ -118,8 +118,8 @@ proc createGroundUnitProject*(gc: GroundClass): ConstructionProject =
   ## Build time from ground_units.kdl (typically 1 turn)
   ##
   ## Commissioning system handles actual unit creation and population costs
-  let cost = accessors.getGroundUnitCost(gc)
-  let turns = accessors.getGroundUnitBuildTime(gc)
+  let cost = accessors.groundUnitCost(gc)
+  let turns = accessors.groundUnitBuildTime(gc)
 
   result = project_ops.newConstructionProject(
     id = ConstructionProjectId(0), # ID assigned by entity manager

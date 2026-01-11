@@ -214,7 +214,7 @@ proc findPathsInRange*(
 
   return result
 
-proc getPathCost*(
+proc pathCost*(
     state: GameState,
     path: seq[SystemId],
     fleet: Fleet,

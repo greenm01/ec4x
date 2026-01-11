@@ -19,11 +19,11 @@ proc parseShipStats(node: KdlNode, ctx: var KdlConfigContext): ShipStatsConfig =
     minCST: node.requireRangeInt32("minCST", 1, 10, ctx),
     productionCost: buildCost,
     maintenanceCost: maintenanceCost,
-    attackStrength: node.getInt32("attackStrength", 0),
-    defenseStrength: node.getInt32("defenseStrength", 0),
-    commandCost: node.getInt32("c2Cost", 0),
-    carryLimit: node.getInt32("carryLimit", 0),
-    buildTime: node.getInt32("buildTime", 0)
+    attackStrength: node.int32Val("attackStrength", 0),
+    defenseStrength: node.int32Val("defenseStrength", 0),
+    commandCost: node.int32Val("c2Cost", 0),
+    carryLimit: node.int32Val("carryLimit", 0),
+    buildTime: node.int32Val("buildTime", 0)
   )
 
 proc parseSalvage(node: KdlNode, ctx: var KdlConfigContext): SalvageConfig =

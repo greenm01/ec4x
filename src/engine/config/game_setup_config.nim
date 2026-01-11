@@ -12,9 +12,9 @@ import ../types/config
 proc parseGameParameters(node: KdlNode, ctx: var KdlConfigContext): GameParametersConfig =
   result = GameParametersConfig(
     scenarioName: node.requireString("scenarioName", ctx),
-    scenarioDescription: node.getString("scenarioDescription", ""),
+    scenarioDescription: node.stringVal("scenarioDescription", ""),
     playerCount: node.requireInt32("playerCount", ctx),
-    gameSeed: node.getInt64Opt("gameSeed")
+    gameSeed: node.int64Opt("gameSeed")
   )
 
 proc parseVictoryConditions(node: KdlNode, ctx: var KdlConfigContext): VictoryConditionsConfig =

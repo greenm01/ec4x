@@ -89,7 +89,7 @@ proc hasIntelDatabase*(state: GameState, houseId: HouseId): bool =
   ## Check if a house has an intelligence database
   return state.intel.contains(houseId)
 
-proc getIntelDatabase*(
+proc intelDatabase*(
     state: GameState, houseId: HouseId
 ): Option[IntelDatabase] =
   ## Retrieve a house's intelligence database
@@ -119,7 +119,7 @@ proc hasIntelCorruption*(
 # Utility Functions
 # ============================================================================
 
-proc getIntelStaleness*(gatheredTurn: int32, currentTurn: int32): int32 =
+proc intelStaleness*(gatheredTurn: int32, currentTurn: int32): int32 =
   ## Calculate how many turns old intelligence is
   ##
   ## Returns:
@@ -131,7 +131,7 @@ proc isIntelStale*(gatheredTurn: int32, currentTurn: int32, threshold: int32 = 3
   ## Check if intelligence is stale (older than threshold)
   ##
   ## Default threshold: 3 turns
-  return getIntelStaleness(gatheredTurn, currentTurn) > threshold
+  return intelStaleness(gatheredTurn, currentTurn) > threshold
 
 # ============================================================================
 # Design Notes

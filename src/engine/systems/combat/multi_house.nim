@@ -16,7 +16,7 @@ import ./hits
 import ./detection
 import ./retreat
 
-proc getHousesInSystem*(state: GameState, systemId: SystemId): seq[HouseId] =
+proc housesInSystem*(state: GameState, systemId: SystemId): seq[HouseId] =
   ## Get all houses with fleets in this system
   result = @[]
   var seen: Table[HouseId, bool]
@@ -25,7 +25,7 @@ proc getHousesInSystem*(state: GameState, systemId: SystemId): seq[HouseId] =
       seen[fleet.houseId] = true
       result.add(fleet.houseId)
 
-proc getFleetThreatLevel*(
+proc fleetThreatLevel*(
   state: GameState, fleet: Fleet, systemId: SystemId
 ): ThreatLevel =
   ## Determine threat level of fleet in this system
@@ -54,7 +54,7 @@ proc getFleetThreatLevel*(
   else:
     return ThreatLevel.Benign
 
-proc getSystemOwner*(state: GameState, systemId: SystemId): Option[HouseId] =
+proc systemOwner*(state: GameState, systemId: SystemId): Option[HouseId] =
   ## Get the house that owns this system (via colony presence)
   for colony in state.allColonies():
     if colony.systemId == systemId:
@@ -125,7 +125,7 @@ proc areHostile*(
   let currentStatus = relation.state
 
   # Get system ownership
-  let systemOwner = getSystemOwner(state, systemId)
+  let systemOwner = systemOwner(state, systemId)
 
   # Determine highest threat level from either house's fleets
   var maxThreatLevel = ThreatLevel.Benign
@@ -140,7 +140,7 @@ proc areHostile*(
         none(HouseId)
 
     if threatenedHouse.isSome:
-      let fleetThreat = getFleetThreatLevel(state, fleet, systemId)
+      let fleetThreat = fleetThreatLevel(state, fleet, systemId)
       if fleetThreat > maxThreatLevel:
         maxThreatLevel = fleetThreat
 
@@ -209,7 +209,7 @@ proc selectTargets*(
     let dipStatus = relation.state
 
     # Get system ownership for threat evaluation
-    let systemOwner = getSystemOwner(state, systemId)
+    let systemOwner = systemOwner(state, systemId)
 
     # Determine max threat level from this house's fleets
     var maxThreat = ThreatLevel.Benign
@@ -222,7 +222,7 @@ proc selectTargets*(
             none(HouseId)
 
         if threatenedHouse.isSome:
-          let threat = getFleetThreatLevel(state, fleet, systemId)
+          let threat = fleetThreatLevel(state, fleet, systemId)
           if threat > maxThreat:
             maxThreat = threat
 
@@ -264,7 +264,7 @@ proc selectTargets*(
       fireProportion: float(enemy.effectiveAS) / float(totalEnemyAS)
     ))
 
-proc getFleetsInSystem*(
+proc fleetsInSystem*(
   state: GameState, systemId: SystemId, houseId: HouseId
 ): seq[FleetId] =
   ## Get all fleets belonging to a house in this system
@@ -292,7 +292,7 @@ proc buildMultiHouseBattle*(
   ## Returns none if no combat should occur
 
   # Step 1: Identify all houses with fleets in system
-  let housesPresent = getHousesInSystem(state, systemId)
+  let housesPresent = housesInSystem(state, systemId)
 
   if housesPresent.len < 2:
     return none(MultiHouseBattle)
@@ -302,7 +302,7 @@ proc buildMultiHouseBattle*(
   let homeworldOwner = state.starMap.homeWorlds.getOrDefault(systemId)
 
   for houseId in housesPresent:
-    let fleets = getFleetsInSystem(state, systemId, houseId)
+    let fleets = fleetsInSystem(state, systemId, houseId)
     if fleets.len == 0:
       continue
 
@@ -314,7 +314,7 @@ proc buildMultiHouseBattle*(
     let house = houseOpt.get()
 
     # Calculate morale modifier from prestige
-    let morale = getMoraleCERModifier(house.prestige.int)
+    let morale = moraleCERModifier(house.prestige.int)
 
     participants.add(HouseCombatForce(
       houseId: houseId,
@@ -583,7 +583,7 @@ proc resolveMultiHouseBattle*(
         var targetShips: seq[ShipId] = @[]
         for participant in battle.participants:
           if participant.houseId == target.targetHouse:
-            targetShips = getAllShips(state, participant.fleets)
+            targetShips = allShips(state, participant.fleets)
             break
 
         # Apply hits using existing hit application system with critical hit flag
@@ -619,7 +619,7 @@ proc resolveMultiHouseBattle*(
 
         # Calculate ratio: fleet AS / total enemy AS
         let ratio = float(fleetAS) / float(totalEnemyAS)
-        let threshold = getROEThreshold(fleet.roe)
+        let threshold = roeThreshold(fleet.roe)
 
         # Homeworld defense override
         if participant.isDefendingHomeworld:

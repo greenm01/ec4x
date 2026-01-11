@@ -65,7 +65,7 @@ proc findAvailableDrydock*(
 proc calculateRepairCost*(shipClass: ShipClass): int32 =
   ## Calculate repair cost for a ship
   ## Per economy.md:5.4 - All repairs require drydocks, cost is 25% of build cost
-  let buildCost = accessors.getShipConstructionCost(shipClass)
+  let buildCost = accessors.shipConstructionCost(shipClass)
   result = (buildCost.float32 * 0.25'f32).int32
 
 proc extractCrippledShip*(
@@ -306,13 +306,13 @@ proc calculateGroundUnitRepairCost*(groundClass: GroundClass): int32 =
   ## Ground units are repaired via colony infrastructure (no facility required)
   let buildCost = case groundClass
     of GroundClass.Army:
-      accessors.getArmyBuildCost()
+      accessors.armyBuildCost()
     of GroundClass.Marine:
-      accessors.getMarineBuildCost()
+      accessors.marineBuildCost()
     of GroundClass.GroundBattery:
-      accessors.getGroundBatteryBuildCost()
+      accessors.groundBatteryBuildCost()
     of GroundClass.PlanetaryShield:
-      accessors.getPlanetaryShieldCost(1) # Base cost for SLD I
+      accessors.planetaryShieldCost(1) # Base cost for SLD I
   result = (buildCost.float32 * 0.25'f32).int32
 
 proc submitAutomaticGroundUnitRepairs*(
@@ -386,11 +386,11 @@ proc calculateFacilityRepairCost*(facilityClass: NeoriaClass): int32 =
   ##   - Drydock: Requires non-crippled spaceport
   let buildCost = case facilityClass
     of NeoriaClass.Spaceport:
-      accessors.getBuildingCost(FacilityClass.Spaceport)
+      accessors.buildingCost(FacilityClass.Spaceport)
     of NeoriaClass.Shipyard:
-      accessors.getBuildingCost(FacilityClass.Shipyard)
+      accessors.buildingCost(FacilityClass.Shipyard)
     of NeoriaClass.Drydock:
-      accessors.getBuildingCost(FacilityClass.Drydock)
+      accessors.buildingCost(FacilityClass.Drydock)
   result = (buildCost.float32 * 0.25'f32).int32
 
 proc hasOperationalSpaceport(state: GameState, colonyId: ColonyId): bool =

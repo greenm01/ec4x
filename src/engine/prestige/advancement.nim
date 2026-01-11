@@ -18,7 +18,7 @@ proc awardColonyPrestige*(
   if source notin ValidSources:
     raise newException(ValueError, "Not a colony event")
     
-  let amount = applyPrestigeMultiplier(getPrestigeValue(source))
+  let amount = applyPrestigeMultiplier(prestigeValue(source))
 
   result.attackerEvent =
     createPrestigeEvent(source, amount, $attackerId & " " & $source & " colony")
@@ -39,7 +39,7 @@ proc awardTechPrestige*(
     houseId: HouseId, techField: TechField, level: int
 ): PrestigeEvent =
   ## Award prestige for tech advancement
-  let amount = applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.TechAdvancement))
+  let amount = applyPrestigeMultiplier(prestigeValue(PrestigeSource.TechAdvancement))
 
   return createPrestigeEvent(
     PrestigeSource.TechAdvancement,

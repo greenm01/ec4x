@@ -36,7 +36,7 @@ proc expireProposals*(proposals: var seq[PendingProposal], currentTurn: int32) =
     else:
       i += 1
 
-proc getExpiredProposals*(proposals: seq[PendingProposal], currentTurn: int32): seq[PendingProposal] =
+proc expiredProposals*(proposals: seq[PendingProposal], currentTurn: int32): seq[PendingProposal] =
   ## Get list of proposals that have expired this turn
   ## For event generation
   result = @[]

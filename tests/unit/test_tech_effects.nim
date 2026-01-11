@@ -19,22 +19,22 @@ suite "Tech Effects: Economic Level (EL)":
   ## Test EL bonus calculations per economy.md:4.2
 
   test "EL 0 gives 0% bonus":
-    check getEconomicBonus(0) == 0.0
+    check economicBonus(0) == 0.0
 
   test "EL 1 gives 5% bonus":
-    check abs(getEconomicBonus(1) - 0.05) < 0.001
+    check abs(economicBonus(1) - 0.05) < 0.001
 
   test "EL 5 gives 25% bonus":
-    check abs(getEconomicBonus(5) - 0.25) < 0.001
+    check abs(economicBonus(5) - 0.25) < 0.001
 
   test "EL 10 gives 50% bonus (cap)":
-    check abs(getEconomicBonus(10) - 0.50) < 0.001
+    check abs(economicBonus(10) - 0.50) < 0.001
 
   test "EL 11 is capped at 50%":
-    check abs(getEconomicBonus(11) - 0.50) < 0.001
+    check abs(economicBonus(11) - 0.50) < 0.001
 
   test "EL 20 is still capped at 50%":
-    check abs(getEconomicBonus(20) - 0.50) < 0.001
+    check abs(economicBonus(20) - 0.50) < 0.001
 
   test "applyEconomicBonus multiplies correctly":
     check applyEconomicBonus(100, 0) == 100 # 100 * 1.0
@@ -46,19 +46,19 @@ suite "Tech Effects: Weapons Tech (WEP)":
   ## Test WEP bonus calculations per economy.md:4.6
 
   test "WEP 0 gives 0% bonus":
-    check getWeaponsBonus(0) == 0.0
+    check weaponsBonus(0) == 0.0
 
   test "WEP 1 gives 10% bonus":
-    check abs(getWeaponsBonus(1) - 0.10) < 0.001
+    check abs(weaponsBonus(1) - 0.10) < 0.001
 
   test "WEP 5 gives 50% bonus":
-    check abs(getWeaponsBonus(5) - 0.50) < 0.001
+    check abs(weaponsBonus(5) - 0.50) < 0.001
 
   test "WEP 10 gives 100% bonus":
-    check abs(getWeaponsBonus(10) - 1.00) < 0.001
+    check abs(weaponsBonus(10) - 1.00) < 0.001
 
   test "WEP 15 gives 150% bonus":
-    check abs(getWeaponsBonus(15) - 1.50) < 0.001
+    check abs(weaponsBonus(15) - 1.50) < 0.001
 
   test "applyWeaponsBonus to Attack Strength":
     check applyWeaponsBonus(100, 0) == 100 # 100 * 1.0

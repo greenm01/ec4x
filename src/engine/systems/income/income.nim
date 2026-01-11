@@ -53,7 +53,7 @@ proc calculateTaxBonus*(taxRate: int, colonyCount: int): int =
 
   return bonusPerColony * colonyCount
 
-proc getPopulationGrowthMultiplier*(taxRate: int): float =
+proc populationGrowthMultiplier*(taxRate: int): float =
   ## Get population growth multiplier from tax rate
   ## Per economy.md:3.2.2
   if taxRate >= 41:
@@ -194,7 +194,7 @@ proc calculateHouseIncome*(
 
 ## Population Growth
 
-proc getPlanetCapacity*(planetClass: PlanetClass): int =
+proc planetCapacity*(planetClass: PlanetClass): int =
   ## Get maximum population capacity for planet class
   ## Per planets.nim comments and economy.md:3.6
   case planetClass
@@ -235,10 +235,10 @@ proc applyPopulationGrowth*(
   if systemOpt.isNone:
     return 0.0  # No growth if system not found
   let starSystem = systemOpt.get()
-  let capacity = float(getPlanetCapacity(starSystem.planetClass))
+  let capacity = float(planetCapacity(starSystem.planetClass))
 
   # Calculate effective growth rate with tax modifier, starbase bonus, and map scaling
-  let taxMultiplier = getPopulationGrowthMultiplier(taxRate)
+  let taxMultiplier = populationGrowthMultiplier(taxRate)
   let starbaseBonus = state.starbaseGrowthBonus(colony)
     # 5% per operational starbase, max 15%
   let mapScaleMultiplier = popGrowthMultiplier()
@@ -298,7 +298,7 @@ proc applyIndustrialGrowth*(
 
   # Apply same tax and starbase modifiers as population
   # Low taxes → more economic freedom → faster industrialization
-  let taxMultiplier = getPopulationGrowthMultiplier(taxRate)
+  let taxMultiplier = populationGrowthMultiplier(taxRate)
   let starbaseBonus = state.starbaseGrowthBonus(colony)
   let effectiveGrowth = baseIndustrialGrowth * taxMultiplier * (1.0 + starbaseBonus)
 

@@ -7,9 +7,49 @@ import std/[times, strformat, tables, options, sequtils, stats, random]
 import unittest
 import stress_framework
 import ../../src/engine/engine
-import ../../src/engine/types/[core, command, house, tech, espionage]
-import ../../src/engine/state/iterators
+import ../../src/engine/types/[core, command, house, tech, espionage, game_state, ship, fleet, facilities]
+import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/turn_cycle/engine
+
+# Validation function for deep state checks
+proc validateGameState(state: GameState, turn: int) =
+  ## Validate game state consistency after turn resolution
+  ## Called every 5th turn during stress tests
+  
+  # 1. All ships have valid WEP (>= 1)
+  for ship in state.allShips():
+    if ship.stats.wep < 1:
+      echo &"  VIOLATION: Ship {ship.id} has invalid WEP level: {ship.stats.wep}"
+      check ship.stats.wep >= 1
+  
+  # 2. All facilities have effectiveDocks >= baseDocks
+  for colony in state.allColonies():
+    for neoriaId in colony.neoriaIds:
+      let neoriaOpt = state.neoria(neoriaId)
+      if neoriaOpt.isSome:
+        let neoria = neoriaOpt.get()
+        if neoria.effectiveDocks < neoria.baseDocks:
+          echo &"  VIOLATION: Neoria {neoriaId} has effectiveDocks < baseDocks"
+          check neoria.effectiveDocks >= neoria.baseDocks
+  
+  # 3. Treasury doesn't go catastrophically negative
+  for house in state.allHouses():
+    if house.treasury < -10000:
+      echo &"  VIOLATION: House {house.id} treasury catastrophically negative: {house.treasury}"
+      check house.treasury >= -10000
+  
+  # 4. Turn counter matches
+  if state.turn != turn.int32:
+    echo &"  VIOLATION: Turn counter mismatch - expected {turn}, got {state.turn}"
+    check state.turn == turn.int32
+  
+  # 5. No orphaned entities (ships in deleted fleets)
+  for ship in state.allShips():
+    if ship.fleetId != FleetId(0):
+      let fleetOpt = state.fleet(ship.fleetId)
+      if fleetOpt.isNone:
+        echo &"  VIOLATION: Ship {ship.id} in non-existent fleet {ship.fleetId}"
+        check fleetOpt.isSome
 
 suite "Engine Stress: State Integrity":
 
@@ -33,10 +73,10 @@ suite "Engine Stress: State Integrity":
         commands[houseId] = CommandPacket(
           houseId: houseId,
           turn: turn.int32,
-          treasury: house.treasury.int32,
           fleetCommands: @[],
           buildCommands: @[],
           repairCommands: @[],
+          scrapCommands: @[],
           researchAllocation: ResearchAllocation(),
           diplomaticCommand: @[],
           populationTransfers: @[],
@@ -63,6 +103,10 @@ suite "Engine Stress: State Integrity":
 
       let elapsed = (cpuTime() - startTime) * 1000.0
       turnTimes.add(elapsed)
+
+      # Deep validation every 5th turn
+      if turn mod 5 == 0:
+        validateGameState(game, turn)
 
       # Check state integrity every 10 turns
       if turn mod 10 == 0:
@@ -129,7 +173,7 @@ suite "Engine Stress: State Integrity":
         commands[houseId] = CommandPacket(
           houseId: houseId,
           turn: turn.int32,
-          treasury: house.treasury.int32,
+
           fleetCommands: @[],
           buildCommands: @[],
           repairCommands: @[],
@@ -201,7 +245,7 @@ suite "Engine Stress: Performance Scaling":
           commands[houseId] = CommandPacket(
             houseId: houseId,
             turn: turn.int32,
-            treasury: house.treasury.int32,
+  
             fleetCommands: @[],
             buildCommands: @[],
             repairCommands: @[],

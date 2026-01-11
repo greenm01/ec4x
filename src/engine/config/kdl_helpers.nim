@@ -38,9 +38,9 @@ proc findChildNode*(parent: KdlNode, name: string): Option[KdlNode] =
       return some(child)
   none(KdlNode)
 
-proc getChild*(node: KdlNode, childName: string): Option[KdlVal] =
+proc child*(node: KdlNode, childName: string): Option[KdlVal] =
   ## Get first argument value from child node
-  ## Example: ship { attackStrength 10 } → getChild("attackStrength") = 10
+  ## Example: ship { attackStrength 10 } → child("attackStrength") = 10
   for child in node.children:
     if child.name == childName and child.args.len > 0:
       return some(child.args[0])
@@ -57,18 +57,18 @@ proc hasChild*(node: KdlNode, childName: string): bool =
 # Property/Attribute Helpers
 # ============================================================================
 
-proc getProperty*(node: KdlNode, propName: string): Option[KdlVal] =
+proc property*(node: KdlNode, propName: string): Option[KdlVal] =
   ## Get property value from node (properties are key-value pairs on node line)
-  ## Example: ship name="Destroyer" → getProperty("name") = "Destroyer"
+  ## Example: ship name="Destroyer" → property("name") = "Destroyer"
   if propName in node.props:
     return some(node.props[propName])
   none(KdlVal)
 
-proc getStringAttribute*(
+proc stringAttribute*(
     node: KdlNode, attrName: string, ctx: KdlConfigContext
 ): Option[string] =
   ## Get string property/attribute from node
-  let propOpt = node.getProperty(attrName)
+  let propOpt = node.property(attrName)
   if propOpt.isNone:
     return none(string)
 
@@ -101,7 +101,7 @@ proc requireChildNode*(parent: KdlNode, name: string, ctx: KdlConfigContext): Kd
 
 proc requireInt32*(node: KdlNode, childName: string, ctx: KdlConfigContext): int32 =
   ## Get required integer value from child node
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     let path = ctx.nodePath.join(".")
     raise newConfigError(
@@ -120,7 +120,7 @@ proc requireInt32*(node: KdlNode, childName: string, ctx: KdlConfigContext): int
 
 proc requireFloat32*(node: KdlNode, childName: string, ctx: KdlConfigContext): float32 =
   ## Get required float value from child node
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     let path = ctx.nodePath.join(".")
     raise newConfigError(
@@ -139,7 +139,7 @@ proc requireFloat32*(node: KdlNode, childName: string, ctx: KdlConfigContext): f
 
 proc requireString*(node: KdlNode, childName: string, ctx: KdlConfigContext): string =
   ## Get required string value from child node
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     let path = ctx.nodePath.join(".")
     raise newConfigError(
@@ -154,7 +154,7 @@ proc requireString*(node: KdlNode, childName: string, ctx: KdlConfigContext): st
 
 proc requireBool*(node: KdlNode, childName: string, ctx: KdlConfigContext): bool =
   ## Get required boolean value from child node
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     let path = ctx.nodePath.join(".")
     raise newConfigError(
@@ -171,9 +171,9 @@ proc requireBool*(node: KdlNode, childName: string, ctx: KdlConfigContext): bool
 # Optional Field Extraction (returns Option or default value)
 # ============================================================================
 
-proc getInt32*(node: KdlNode, childName: string, default: int32): int32 =
+proc int32Val*(node: KdlNode, childName: string, default: int32): int32 =
   ## Get optional int32 value with default
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     return default
 
@@ -185,9 +185,9 @@ proc getInt32*(node: KdlNode, childName: string, default: int32): int32 =
   else:
     default
 
-proc getFloat32*(node: KdlNode, childName: string, default: float32): float32 =
+proc float32Val*(node: KdlNode, childName: string, default: float32): float32 =
   ## Get optional float32 value with default
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     return default
 
@@ -200,9 +200,9 @@ proc getFloat32*(node: KdlNode, childName: string, default: float32): float32 =
   else:
     default
 
-proc getString*(node: KdlNode, childName: string, default: string): string =
+proc stringVal*(node: KdlNode, childName: string, default: string): string =
   ## Get optional string value with default
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     return default
   
@@ -212,9 +212,9 @@ proc getString*(node: KdlNode, childName: string, default: string): string =
   else:
     default
 
-proc getBool*(node: KdlNode, childName: string, default: bool): bool =
+proc boolVal*(node: KdlNode, childName: string, default: bool): bool =
   ## Get optional boolean value with default
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     return default
   
@@ -224,9 +224,9 @@ proc getBool*(node: KdlNode, childName: string, default: bool): bool =
   else:
     default
 
-proc getInt32Opt*(node: KdlNode, childName: string): Option[int32] =
+proc int32Opt*(node: KdlNode, childName: string): Option[int32] =
   ## Get optional integer as Option[int32]
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     return none(int32)
 
@@ -238,9 +238,9 @@ proc getInt32Opt*(node: KdlNode, childName: string): Option[int32] =
   else:
     none(int32)
 
-proc getInt64Opt*(node: KdlNode, childName: string): Option[int64] =
+proc int64Opt*(node: KdlNode, childName: string): Option[int64] =
   ## Get optional integer as Option[int64]
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     return none(int64)
 
@@ -252,9 +252,9 @@ proc getInt64Opt*(node: KdlNode, childName: string): Option[int64] =
   else:
     none(int64)
     
-proc getFloat32Opt*(node: KdlNode, childName: string): Option[float32] =
+proc float32Opt*(node: KdlNode, childName: string): Option[float32] =
   ## Get optional float as Option[float32]
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     return none(float32)
 
@@ -267,9 +267,9 @@ proc getFloat32Opt*(node: KdlNode, childName: string): Option[float32] =
   else:
     none(float32)
 
-proc getStringOpt*(node: KdlNode, childName: string): Option[string] =
+proc stringOpt*(node: KdlNode, childName: string): Option[string] =
   ## Get optional string as Option[string]
-  let valOpt = node.getChild(childName)
+  let valOpt = node.child(childName)
   if valOpt.isNone:
     return none(string)
   
@@ -357,13 +357,13 @@ template withNode*(ctx: var KdlConfigContext, nodeName: string, body: untyped) =
 # Collection Helpers
 # ============================================================================
 
-proc getAllChildren*(node: KdlNode): seq[KdlNode] =
+proc allChildren*(node: KdlNode): seq[KdlNode] =
   ## Get all child nodes
   result = @[]
   for child in node.children:
     result.add(child)
 
-proc getChildrenByName*(parent: KdlNode, name: string): seq[KdlNode] =
+proc childrenByName*(parent: KdlNode, name: string): seq[KdlNode] =
   ## Get all children with given name
   result = @[]
   for child in parent.children:

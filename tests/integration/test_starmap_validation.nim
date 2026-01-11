@@ -134,7 +134,7 @@ suite "EC4X Game Specification Validation":
       let expected = expectedGameBehavior(playerCount)
 
       # Hub should have exactly 6 connections
-      let hubConnections = starMap.getAdjacentSystems(starMap.hubId)
+      let hubConnections = starMap.adjacentSystems(starMap.hubId)
       check hubConnections.len == expected.hubConnections
 
       # All hub connections should be to ring 1
@@ -182,7 +182,7 @@ suite "EC4X Game Specification Validation":
 
       # Each player should have exactly 3 connections
       for systemId in starMap.houseSystemIds:
-        let connections = starMap.getAdjacentSystems(systemId)
+        let connections = starMap.adjacentSystems(systemId)
         check connections.len == expected.playerConnections
 
         # Player can be on any ring except hub (ring 0)

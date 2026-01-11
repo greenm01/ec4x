@@ -69,8 +69,8 @@ proc resolveTerraformCommands*(
 
     # Calculate costs and duration
     let targetClass = currentClass + 1
-    let ppCost = getTerraformingBaseCost(currentClass)
-    let turnsRequired = getTerraformingSpeed(terLevel)
+    let ppCost = terraformingBaseCost(currentClass)
+    let turnsRequired = terraformingSpeed(terLevel)
 
     # Check house treasury has sufficient PP
     if house.treasury < ppCost:

@@ -13,7 +13,7 @@ proc checkDefensiveCollapse*(prestige: int, turnsBelow: int): bool =
   ## Per gameplay.md:1.4.1: Prestige < 0 for 3 consecutive turns
   return prestige < 0 and turnsBelow >= 3
 
-proc getMoraleROEModifier*(prestige: int): int =
+proc moraleROEModifier*(prestige: int): int =
   ## Get morale modifier to ROE from prestige
   ## Per operations.md:7.1.4
   if prestige <= 0:
@@ -27,8 +27,8 @@ proc getMoraleROEModifier*(prestige: int): int =
   else:
     return +2 # Elite (81+)
 
-proc getMoraleCERModifier*(prestige: int): int =
+proc moraleCERModifier*(prestige: int): int =
   ## Get morale modifier to CER from prestige
   ## Per operations.md:7.1.4
   ## Note: Requires turn-based morale check roll (not implemented here)
-  return getMoraleROEModifier(prestige)
+  return moraleROEModifier(prestige)

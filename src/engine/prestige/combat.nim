@@ -25,7 +25,7 @@ proc awardCombatPrestige*(
 
   # Combat victory (zero-sum)
   let victoryPrestige =
-    applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.CombatVictory))
+    applyPrestigeMultiplier(prestigeValue(PrestigeSource.CombatVictory))
   result.victorEvents.add(
     createPrestigeEvent(
       PrestigeSource.CombatVictory, victoryPrestige, $victor & " defeated " & $defeated
@@ -42,7 +42,7 @@ proc awardCombatPrestige*(
   # Task force destroyed (zero-sum)
   if taskForceDestroyed:
     let tfPrestige =
-      applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.TaskForceDestroyed))
+      applyPrestigeMultiplier(prestigeValue(PrestigeSource.TaskForceDestroyed))
     result.victorEvents.add(
       createPrestigeEvent(
         PrestigeSource.TaskForceDestroyed,
@@ -61,7 +61,7 @@ proc awardCombatPrestige*(
   # Squadrons destroyed (zero-sum)
   if squadronsDestroyed > 0:
     let squadronPrestige =
-      applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.SquadronDestroyed)) *
+      applyPrestigeMultiplier(prestigeValue(PrestigeSource.SquadronDestroyed)) *
       int32(squadronsDestroyed)
     result.victorEvents.add(
       createPrestigeEvent(
@@ -81,7 +81,7 @@ proc awardCombatPrestige*(
   # Forced retreat (zero-sum)
   if forcedRetreat:
     let retreatPrestige =
-      applyPrestigeMultiplier(getPrestigeValue(PrestigeSource.FleetRetreated))
+      applyPrestigeMultiplier(prestigeValue(PrestigeSource.FleetRetreated))
     result.victorEvents.add(
       createPrestigeEvent(
         PrestigeSource.FleetRetreated,

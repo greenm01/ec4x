@@ -100,7 +100,7 @@ proc resolveBuildOrders*(
       if assignedFacility.isNone:
         # No facility capacity available
         let (current, maximum) =
-          construction_docks.getColonyTotalCapacity(state, command.colonyId)
+          construction_docks.colonyTotalCapacity(state, command.colonyId)
         let errorMsg =
           &"Colony {command.colonyId} at capacity ({current}/{maximum} docks used) - cannot accept more projects"
         logWarn(
@@ -113,19 +113,19 @@ proc resolveBuildOrders*(
     let projectCost = case command.buildType
       of BuildType.Ship:
         if command.shipClass.isSome:
-          accessors.getShipConstructionCost(command.shipClass.get())
+          accessors.shipConstructionCost(command.shipClass.get())
         else:
           0'i32
       of BuildType.Facility:
         if command.facilityClass.isSome:
-          accessors.getBuildingCost(command.facilityClass.get())
+          accessors.buildingCost(command.facilityClass.get())
         else:
           0'i32
       of BuildType.Industrial, BuildType.Infrastructure:
-        projects.getIndustrialUnitCost(colony) * command.industrialUnits
+        projects.industrialUnitCost(colony) * command.industrialUnits
       of BuildType.Ground:
         if command.groundClass.isSome:
-          accessors.getGroundUnitCost(command.groundClass.get())
+          accessors.groundUnitCost(command.groundClass.get())
         else:
           0'i32
 

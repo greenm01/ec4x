@@ -377,7 +377,7 @@ proc processEspionageActions*(
         continue
 
       # Check if attacker has sufficient EBP
-      let actionCost = getActionCost(attempt.action)
+      let actionCost = actionCost(attempt.action)
       if not canAffordAction(house.espionageBudget, attempt.action):
         logDebug(
           "Espionage",

@@ -60,7 +60,7 @@ type
 ## controlled by the salvaging house. The FleetOrder.Salvage should validate
 ## system ownership before allowing salvage to proceed.
 
-proc getSalvageValue*(shipClass: ShipClass, salvageType: SalvageType): int32 =
+proc salvageValue*(shipClass: ShipClass, salvageType: SalvageType): int32 =
   ## Calculate salvage value for destroyed ship
   ## Per config/ships.kdl and docs/specs/05-construction.md:
   ## - Salvage: 50% of build cost (PC recovery)
@@ -79,7 +79,7 @@ proc salvageShip*(shipClass: ShipClass, salvageType: SalvageType): SalvageResult
   ## Salvage a destroyed ship for resources
   ## Returns resources based on ship class and salvage type
 
-  let resourcesRecovered = getSalvageValue(shipClass, salvageType)
+  let resourcesRecovered = salvageValue(shipClass, salvageType)
 
   result = SalvageResult(
     shipClass: shipClass,
@@ -101,7 +101,7 @@ proc salvageDestroyedShips*(
 
 ## Repair Operations
 
-proc getShipRepairCost*(shipClass: ShipClass): int32 =
+proc shipRepairCost*(shipClass: ShipClass): int32 =
   ## Calculate repair cost for crippled ship
   ## Per construction.kdl: 25% of build cost
 
@@ -111,7 +111,7 @@ proc getShipRepairCost*(shipClass: ShipClass): int32 =
 
   return int32(float32(buildCost) * multiplier)
 
-proc getStarbaseRepairCost*(): int32 =
+proc starbaseRepairCost*(): int32 =
   ## Calculate repair cost for crippled starbase
   ## Per construction.kdl: 25% of build cost
 
@@ -120,7 +120,7 @@ proc getStarbaseRepairCost*(): int32 =
 
   return int32(float32(buildCost) * multiplier)
 
-proc getRepairTurns*(): int32 =
+proc repairTurns*(): int32 =
   ## Get number of turns required for repair
   ## Per construction.toml: ship_repair_turns
 
@@ -184,9 +184,9 @@ proc validateRepairRequest*(
       if request.shipClass.isNone:
         result.message = "Ship class required for cost calculation"
         return
-      getShipRepairCost(request.shipClass.get())
+      shipRepairCost(request.shipClass.get())
     of RepairTargetType.Starbase:
-      getStarbaseRepairCost()
+      starbaseRepairCost()
 
   # Check house can afford (use proper state accessor per architecture.md)
   let houseOpt = state.house(request.requestingHouse)
@@ -317,16 +317,16 @@ proc repairStarbase*(
 
 ## Helper Functions
 
-proc getFleetSalvageValue*(
+proc fleetSalvageValue*(
     state: GameState, fleet: Fleet, salvageType: SalvageType
 ): int =
   ## Calculate total salvage value for an entire fleet
   result = 0
   for shipId in fleet.ships:
     let ship = state.ship(shipId).get()
-    result += getSalvageValue(ship.shipClass, salvageType)
+    result += salvageValue(ship.shipClass, salvageType)
 
-proc getCrippledShips*(state: GameState, fleet: Fleet): seq[(ShipId, ShipClass)] =
+proc crippledShips*(state: GameState, fleet: Fleet): seq[(ShipId, ShipClass)] =
   ## Get list of crippled ships in fleet
   ## Returns (ship ID, ship class) pairs
   result = @[]
@@ -335,7 +335,7 @@ proc getCrippledShips*(state: GameState, fleet: Fleet): seq[(ShipId, ShipClass)]
     if ship.state == CombatState.Crippled:
       result.add((shipId, ship.shipClass))
 
-proc getCrippledStarbases*(state: GameState, colony: Colony): seq[(int, KastraId)] =
+proc crippledStarbases*(state: GameState, colony: Colony): seq[(int, KastraId)] =
   ## Get list of crippled starbases (kastras) at colony
   ## Returns (starbase index, kastra ID) pairs
   result = @[]

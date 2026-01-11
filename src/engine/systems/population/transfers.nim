@@ -35,7 +35,7 @@ type
 # Cost Calculation
 # =============================================================================
 
-proc getPlanetClassBaseCost(planetClass: PlanetClass): int32 =
+proc planetClassBaseCost(planetClass: PlanetClass): int32 =
   ## Get base transfer cost per PTU for planet class
   ## Per spec economy.md:3.5 (Space Guild transfer costs)
   ## Reads from config/economy.kdl
@@ -55,7 +55,7 @@ proc calculateTransferCost*(
   ## Note: sourcePlanetClass and distance parameters kept for API compatibility
   ## but are not used per spec
 
-  let destCost = getPlanetClassBaseCost(destPlanetClass)
+  let destCost = planetClassBaseCost(destPlanetClass)
   return destCost * int32(ptuAmount)
 
 # =============================================================================

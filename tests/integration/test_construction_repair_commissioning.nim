@@ -1160,7 +1160,7 @@ suite "Construction: Capacity Limits":
       break
     
     # Get available facilities at colony
-    let availableFacilities = construction_docks.getAvailableFacilities(game, colony.id, BuildType.Ship)
+    let availableFacilities = construction_docks.availableFacilities(game, colony.id, BuildType.Ship)
     
     # Capacity limits enforced by facility availability
     # (actual enforcement tested via build validation)

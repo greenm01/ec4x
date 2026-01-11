@@ -67,8 +67,8 @@ proc resolveBattle*(
     let defenderHits = int32(float32(defenderAS) * defenderCERResult.cer)
 
     # Apply hits (changes ship.state across all fleets)
-    let attackerShips = getAllShips(state, battle.attacker.fleets)
-    let defenderShips = getAllShips(state, battle.defender.fleets)
+    let attackerShips = allShips(state, battle.attacker.fleets)
+    let defenderShips = allShips(state, battle.defender.fleets)
 
     applyHits(state, defenderShips, attackerHits, attackerCERResult.isCriticalHit)
     applyHits(state, attackerShips, defenderHits, defenderCERResult.isCriticalHit)

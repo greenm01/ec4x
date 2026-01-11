@@ -84,7 +84,7 @@ proc calculateMapScaleFactor*(
   let logComponent = log2(systemsPerPlayer / divisor)
   return 1.0'f32 + (logComponent * scaleFactor)
 
-proc getStrategicCommandMaxFleets*(
+proc strategicCommandMaxFleets*(
     scLevel: int32, totalSystems: int32, playerCount: int32
 ): int32 =
   ## Get max combat fleets for house based on SC tech level and map size
@@ -136,7 +136,7 @@ proc analyzeFleetCountCapacity*(
   let totalSystems = int32(state.systems.entities.data.len)
   let playerCount = int32(state.houses.entities.data.len)
 
-  let maximum = getStrategicCommandMaxFleets(scLevel, totalSystems, playerCount)
+  let maximum = strategicCommandMaxFleets(scLevel, totalSystems, playerCount)
   let current = countCombatFleets(state, houseId)
   let excess = max(0'i32, current - maximum)
 
@@ -200,12 +200,12 @@ proc canCreateCombatFleet*(
   let totalSystems = int32(state.systems.entities.data.len)
   let playerCount = int32(state.houses.entities.data.len)
 
-  let maximum = getStrategicCommandMaxFleets(scLevel, totalSystems, playerCount)
+  let maximum = strategicCommandMaxFleets(scLevel, totalSystems, playerCount)
   let current = countCombatFleets(state, houseId)
 
   return current < maximum
 
-proc getAvailableFleetCapacity*(
+proc availableFleetCapacity*(
     state: GameState, houseId: HouseId
 ): int32 =
   ## Get remaining combat fleet capacity for house
@@ -225,7 +225,7 @@ proc getAvailableFleetCapacity*(
   let totalSystems = 100'i32 # Placeholder
   let playerCount = 4'i32 # Placeholder
 
-  let maximum = getStrategicCommandMaxFleets(scLevel, totalSystems, playerCount)
+  let maximum = strategicCommandMaxFleets(scLevel, totalSystems, playerCount)
   let current = countCombatFleets(state, houseId)
 
   return max(0'i32, maximum - current)
@@ -287,7 +287,7 @@ proc processCapacityEnforcement*(
 ## **Data-Oriented Pattern:**
 ## 1. isCombatFleet() - Pure check if fleet contains combat ships
 ## 2. calculateMapScaleFactor() - Pure calculation of logarithmic scale
-## 3. getStrategicCommandMaxFleets() - Pure calculation by SC level + map
+## 3. strategicCommandMaxFleets() - Pure calculation by SC level + map
 ## 4. countCombatFleets() - Pure count of combat fleets for house
 ## 5. analyzeFleetCountCapacity() - Pure analysis of house status
 ## 6. checkViolations() - Batch analyze all houses (pure)
@@ -312,7 +312,7 @@ proc processCapacityEnforcement*(
 ## - Call canCreateCombatFleet(state, houseId) before allowing fleet creation
 ##   (only for fleets that will contain combat ships)
 ## - Call processCapacityEnforcement() in Maintenance phase (debugging only)
-## - Use getAvailableFleetCapacity(state, houseId) to show capacity to players
+## - Use availableFleetCapacity(state, houseId) to show capacity to players
 ## - When converting auxiliary fleet to combat (adding combat ships), check
 ##   capacity first
 ##

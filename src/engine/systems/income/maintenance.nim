@@ -17,7 +17,7 @@ export combat.CombatState
 
 ## Ship Maintenance Costs (economy.md:3.9)
 
-proc getShipMaintenanceCost*(
+proc shipMaintenanceCost*(
     shipClass: ShipClass,
     state: CombatState,
     fleetStatus: FleetStatus = FleetStatus.Active,
@@ -59,51 +59,51 @@ proc calculateFleetMaintenance*(ships: seq[(ShipClass, CombatState)]): int32 =
   ## Args: seq of (ship class, combat state)
   result = 0
   for (shipClass, shipState) in ships:
-    result += getShipMaintenanceCost(shipClass, shipState)
+    result += shipMaintenanceCost(shipClass, shipState)
 
 ## Building and Facility Maintenance
 
-proc getSpaceportUpkeep*(): int32 =
+proc spaceportUpkeep*(): int32 =
   ## Get upkeep cost for spaceport per turn
   ## Per facilities.kdl: maintenance = buildCost * maintenancePercent
   let facility = gameConfig.facilities.facilities[FacilityClass.Spaceport]
   return int32(float32(facility.buildCost) * facility.maintenancePercent)
 
-proc getShipyardUpkeep*(): int32 =
+proc shipyardUpkeep*(): int32 =
   ## Get upkeep cost for shipyard per turn
   ## Per facilities.kdl: maintenance = buildCost * maintenancePercent
   let facility = gameConfig.facilities.facilities[FacilityClass.Shipyard]
   return int32(float32(facility.buildCost) * facility.maintenancePercent)
 
-proc getStarbaseUpkeep*(): int32 =
+proc starbaseUpkeep*(): int32 =
   ## Get upkeep cost for starbase per turn
   ## Per facilities.kdl: maintenance = buildCost * maintenancePercent
   let facility = gameConfig.facilities.facilities[FacilityClass.Starbase]
   return int32(float32(facility.buildCost) * facility.maintenancePercent)
 
-proc getDrydockUpkeep*(): int32 =
+proc drydockUpkeep*(): int32 =
   ## Get upkeep cost for drydock per turn
   ## Per facilities.kdl: maintenance = buildCost * maintenancePercent
   ## Drydock: 150 PP * 5% = 7.5 PP/turn
   let facility = gameConfig.facilities.facilities[FacilityClass.Drydock]
   return int32(float32(facility.buildCost) * facility.maintenancePercent)
 
-proc getGroundBatteryUpkeep*(): int32 =
+proc groundBatteryUpkeep*(): int32 =
   ## Get upkeep cost for ground battery per turn
   ## Ground batteries have no maintenance cost (defensive installations)
   return 0
 
-proc getPlanetaryShieldUpkeep*(): int32 =
+proc planetaryShieldUpkeep*(): int32 =
   ## Get upkeep cost for planetary shield per turn
   ## Planetary shields have no maintenance cost (passive defense)
   return 0
 
-proc getArmyUpkeep*(): int32 =
+proc armyUpkeep*(): int32 =
   ## Get upkeep cost for army division per turn
   ## Per ground_units.kdl
   return gameConfig.groundUnits.units[GroundClass.Army].maintenanceCost
 
-proc getMarineUpkeep*(): int32 =
+proc marineUpkeep*(): int32 =
   ## Get upkeep cost for marine division per turn
   ## Per ground_units.kdl
   return gameConfig.groundUnits.units[GroundClass.Marine].maintenanceCost
@@ -120,17 +120,17 @@ proc calculateColonyUpkeep*(state: GameState, colony: Colony): int32 =
       let neoria = neoriaOpt.get()
       case neoria.neoriaClass
       of NeoriaClass.Spaceport:
-        result += getSpaceportUpkeep()
+        result += spaceportUpkeep()
       of NeoriaClass.Shipyard:
-        result += getShipyardUpkeep()
+        result += shipyardUpkeep()
       of NeoriaClass.Drydock:
-        result += getDrydockUpkeep()
+        result += drydockUpkeep()
 
   # Kastra upkeep (Starbases)
   for kastraId in colony.kastraIds:
     let kastraOpt = state.kastra(kastraId)
     if kastraOpt.isSome:
-      result += getStarbaseUpkeep()
+      result += starbaseUpkeep()
 
   # Ground unit upkeep
   for groundUnitId in colony.groundUnitIds:
@@ -139,13 +139,13 @@ proc calculateColonyUpkeep*(state: GameState, colony: Colony): int32 =
       let unit = unitOpt.get()
       case unit.stats.unitType
       of GroundClass.Army:
-        result += getArmyUpkeep()
+        result += armyUpkeep()
       of GroundClass.Marine:
-        result += getMarineUpkeep()
+        result += marineUpkeep()
       of GroundClass.GroundBattery:
-        result += getGroundBatteryUpkeep()
+        result += groundBatteryUpkeep()
       of GroundClass.PlanetaryShield:
-        result += getPlanetaryShieldUpkeep()
+        result += planetaryShieldUpkeep()
 
 proc calculateHouseMaintenanceCost*(state: GameState, houseId: HouseId): int32 =
   ## Calculate total maintenance cost for a house (fleets + colonies)

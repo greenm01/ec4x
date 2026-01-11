@@ -25,7 +25,7 @@ import ../../entities/[fleet_ops, ground_unit_ops]
 import ../fleet/entity
 import ../ship/entity
 import ../capacity/carrier_hangar
-  # For isCarrier, getCarrierMaxCapacity, canLoadFighters
+  # For isCarrier, carrierMaxCapacity, canLoadFighters
 import ../../utils # For soulsPerPtu(), ptuSizeMillions()
 import ../../event_factory/init
 import ../../../common/logger
@@ -1007,7 +1007,7 @@ proc executeLoadFighters*(
     return ZeroTurnResult(success: false, error: "House not found", warnings: @[])
 
   let acoLevel = houseOpt.get().techTree.levels.aco
-  let maxCapacity = getCarrierMaxCapacity(carrier.shipClass, acoLevel)
+  let maxCapacity = carrierMaxCapacity(carrier.shipClass, acoLevel)
   let currentLoad = carrier.embarkedFighters.len
 
   # Load fighters one at a time until capacity full or all requested loaded
@@ -1226,7 +1226,7 @@ proc executeTransferFighters*(
     return ZeroTurnResult(success: false, error: "House not found", warnings: @[])
 
   let acoLevel = houseOpt.get().techTree.levels.aco
-  let targetMaxCapacity = getCarrierMaxCapacity(targetCarrier.shipClass, acoLevel)
+  let targetMaxCapacity = carrierMaxCapacity(targetCarrier.shipClass, acoLevel)
   let targetCurrentLoad = targetCarrier.embarkedFighters.len
 
   # Transfer fighters

@@ -23,19 +23,19 @@ import ./[engine, iterators]
 # Helper Procs (Visibility Tracking)
 # ============================================================================
 
-proc getOwnedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
+proc ownedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   ## Get all systems where this house has a colony
   result = initHashSet[SystemId]()
   for colony in state.coloniesOwned(houseId):
     result.incl(colony.systemId)
 
-proc getOccupiedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
+proc occupiedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   ## Get all systems where this house has fleet(s)
   result = initHashSet[SystemId]()
   for fleet in state.fleetsOwned(houseId):
     result.incl(fleet.location)
 
-proc getAdjacentSystems(
+proc adjacentSystems(
     state: GameState, knownSystems: HashSet[SystemId]
 ): HashSet[SystemId] =
   ## Get all systems one jump away from known systems
@@ -46,7 +46,7 @@ proc getAdjacentSystems(
         if adjId notin knownSystems:
           result.incl(adjId)
 
-proc getScoutedSystems(
+proc scoutedSystems(
     state: GameState, houseId: HouseId, ownedSystems, occupiedSystems: HashSet[SystemId]
 ): HashSet[SystemId] =
   ## Get systems with stale intel from intelligence database
@@ -133,10 +133,10 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
   result.turn = state.turn
 
   # === Visibility Tracking ===
-  let ownedSystems = state.getOwnedSystems(houseId)
-  let occupiedSystems = state.getOccupiedSystems(houseId)
-  let scoutedSystems = state.getScoutedSystems(houseId, ownedSystems, occupiedSystems)
-  let adjacentSystems = state.getAdjacentSystems(ownedSystems + occupiedSystems)
+  let ownedSystems = state.ownedSystems(houseId)
+  let occupiedSystems = state.occupiedSystems(houseId)
+  let scoutedSystems = state.scoutedSystems(houseId, ownedSystems, occupiedSystems)
+  let adjacentSystems = state.adjacentSystems(ownedSystems + occupiedSystems)
 
   # === Owned Assets (Full Entity Data) ===
   # Colonies

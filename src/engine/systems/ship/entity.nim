@@ -22,16 +22,16 @@ export ShipClass, ShipRole, ShipStats, Ship, ShipCargo, CargoClass, ShipId, Comb
 
 ## Config Data Access (non-WEP stats)
 
-proc getShipConfigStats(shipClass: ShipClass): ShipStatsConfig =
+proc shipConfigStats(shipClass: ShipClass): ShipStatsConfig =
   ## Get full config stats for a ship class from config/ships.kdl
   ## Used for looking up non-WEP stats (role, costs, CC, CR, carry limit)
   ## Direct array access - O(1) lookup
   gameConfig.ships.ships[shipClass]
 
-proc getShipStats*(shipClass: ShipClass, weaponsTech: int32 = 1): ShipStats =
+proc shipStats*(shipClass: ShipClass, weaponsTech: int32 = 1): ShipStats =
   ## Calculate WEP-modified stats for a ship class
   ## Returns instance-specific stats (AS, DS, WEP level)
-  ## All other stats looked up via getShipConfigStats()
+  ## All other stats looked up via shipConfigStats()
   ##
   ## Per docs/specs/04-research_development.md Section 4.3:
   ## "Each WEP tier increases AS and DS by 10% per level"
@@ -42,7 +42,7 @@ proc getShipStats*(shipClass: ShipClass, weaponsTech: int32 = 1): ShipStats =
   ## WEP III (level 3) = +21% (compound)
   ## etc.
 
-  let configStats = getShipConfigStats(shipClass)
+  let configStats = shipConfigStats(shipClass)
   let baseAS = configStats.attackStrength
   let baseDS = configStats.defenseStrength
 
@@ -81,20 +81,20 @@ proc role*(ship: Ship): ShipRole =
 
 proc commandCost*(ship: Ship): int32 =
   ## Get command cost (CC) from config
-  getShipConfigStats(ship.shipClass).commandCost
+  shipConfigStats(ship.shipClass).commandCost
 
 proc buildCost*(ship: Ship): int32 =
   ## Get build cost (PC) from config
-  getShipConfigStats(ship.shipClass).productionCost
+  shipConfigStats(ship.shipClass).productionCost
 
 proc upkeepCost*(ship: Ship): int32 =
   ## Get maintenance cost (MC) from config
-  getShipConfigStats(ship.shipClass).maintenanceCost
+  shipConfigStats(ship.shipClass).maintenanceCost
 
 proc baseCarryLimit*(ship: Ship): int32 =
   ## Get base carry limit from config (for carriers/transports)
   ## Modified at runtime by ACO/STL tech levels
-  getShipConfigStats(ship.shipClass).carryLimit
+  shipConfigStats(ship.shipClass).carryLimit
 
 ## Ship Capability Queries
 

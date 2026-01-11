@@ -211,14 +211,14 @@ proc calculateDefenderDS*(
         result += calculateColonyKastraDS(state, colony.id)
         break  # Only one colony per system
 
-proc getAllShips*(state: GameState, fleets: seq[FleetId]): seq[ShipId] =
+proc allShips*(state: GameState, fleets: seq[FleetId]): seq[ShipId] =
   ## Get all combat-capable ship IDs from multiple fleets
   ## Excludes screened units (auxiliary vessels, mothballed ships)
   ## Used for hit application across all ships in house combat force
 
   result = @[]
   for fleetId in fleets:
-    let combatShips = getCombatShipsInFleet(state, fleetId)
+    let combatShips = combatShipsInFleet(state, fleetId)
     result.add(combatShips)
 
 proc countOperationalShips*(state: GameState, fleets: seq[FleetId]): int =

@@ -126,7 +126,7 @@ proc hasProjectsInQueue*(
 
   return false
 
-proc getQueuedProjectsForNeoria*(
+proc queuedProjectsForNeoria*(
     state: GameState, colonyId: ColonyId, neoriaId: NeoriaId
 ): tuple[construction: seq[ConstructionProjectId], repairs: seq[RepairProjectId]] =
   ## Get all projects queued at a specific neoria
@@ -162,11 +162,11 @@ proc getQueuedProjectsForNeoria*(
 # Salvage Value Calculation
 # =============================================================================
 
-proc getSalvageMultiplier(): float32 =
+proc salvageMultiplier(): float32 =
   ## Get salvage value multiplier from config (default 0.5 = 50%)
   gameConfig.ships.salvage.salvageValueMultiplier
 
-proc getShipSalvageValue*(state: GameState, shipId: ShipId): int32 =
+proc shipSalvageValue*(state: GameState, shipId: ShipId): int32 =
   ## Calculate salvage value for a ship (50% of build cost)
   let shipOpt = state.ship(shipId)
   if shipOpt.isNone:
@@ -174,9 +174,9 @@ proc getShipSalvageValue*(state: GameState, shipId: ShipId): int32 =
 
   let ship = shipOpt.get()
   let buildCost = gameConfig.ships.ships[ship.shipClass].productionCost
-  return int32(float32(buildCost) * getSalvageMultiplier())
+  return int32(float32(buildCost) * salvageMultiplier())
 
-proc getGroundUnitSalvageValue*(state: GameState, unitId: GroundUnitId): int32 =
+proc groundUnitSalvageValue*(state: GameState, unitId: GroundUnitId): int32 =
   ## Calculate salvage value for a ground unit (50% of build cost)
   let unitOpt = state.groundUnit(unitId)
   if unitOpt.isNone:
@@ -184,9 +184,9 @@ proc getGroundUnitSalvageValue*(state: GameState, unitId: GroundUnitId): int32 =
 
   let unit = unitOpt.get()
   let buildCost = gameConfig.groundUnits.units[unit.stats.unitType].productionCost
-  return int32(float32(buildCost) * getSalvageMultiplier())
+  return int32(float32(buildCost) * salvageMultiplier())
 
-proc getNeoriaSalvageValue*(state: GameState, neoriaId: NeoriaId): int32 =
+proc neoriaSalvageValue*(state: GameState, neoriaId: NeoriaId): int32 =
   ## Calculate salvage value for a neoria (50% of build cost)
   let neoriaOpt = state.neoria(neoriaId)
   if neoriaOpt.isNone:
@@ -199,16 +199,16 @@ proc getNeoriaSalvageValue*(state: GameState, neoriaId: NeoriaId): int32 =
     of NeoriaClass.Drydock: FacilityClass.Drydock
 
   let buildCost = gameConfig.facilities.facilities[facilityClass].buildCost
-  return int32(float32(buildCost) * getSalvageMultiplier())
+  return int32(float32(buildCost) * salvageMultiplier())
 
-proc getKastraSalvageValue*(state: GameState, kastraId: KastraId): int32 =
+proc kastraSalvageValue*(state: GameState, kastraId: KastraId): int32 =
   ## Calculate salvage value for a kastra/starbase (50% of build cost)
   let kastraOpt = state.kastra(kastraId)
   if kastraOpt.isNone:
     return 0
 
   let buildCost = gameConfig.facilities.facilities[FacilityClass.Starbase].buildCost
-  return int32(float32(buildCost) * getSalvageMultiplier())
+  return int32(float32(buildCost) * salvageMultiplier())
 
 # =============================================================================
 # Scrap Command Validation
@@ -343,7 +343,7 @@ proc destroyQueuedProjects*(
     return
 
   var colony = colonyOpt.get()
-  let queued = state.getQueuedProjectsForNeoria(colonyId, neoriaId)
+  let queued = state.queuedProjectsForNeoria(colonyId, neoriaId)
 
   # Destroy construction projects
   for projectId in queued.construction:
@@ -431,7 +431,7 @@ proc executeScrapCommand*(
   case cmd.targetType
   of ScrapTargetType.Ship:
     let shipId = ShipId(cmd.targetId)
-    let salvageValue = state.getShipSalvageValue(shipId)
+    let salvageValue = state.shipSalvageValue(shipId)
     let shipOpt = state.ship(shipId)
     if shipOpt.isNone:
       return false
@@ -466,7 +466,7 @@ proc executeScrapCommand*(
 
   of ScrapTargetType.GroundUnit:
     let unitId = GroundUnitId(cmd.targetId)
-    let salvageValue = state.getGroundUnitSalvageValue(unitId)
+    let salvageValue = state.groundUnitSalvageValue(unitId)
     let unitOpt = state.groundUnit(unitId)
     if unitOpt.isNone:
       return false
@@ -501,7 +501,7 @@ proc executeScrapCommand*(
 
   of ScrapTargetType.Neoria:
     let neoriaId = NeoriaId(cmd.targetId)
-    let salvageValue = state.getNeoriaSalvageValue(neoriaId)
+    let salvageValue = state.neoriaSalvageValue(neoriaId)
     let neoriaOpt = state.neoria(neoriaId)
     if neoriaOpt.isNone:
       return false
@@ -539,7 +539,7 @@ proc executeScrapCommand*(
 
   of ScrapTargetType.Kastra:
     let kastraId = KastraId(cmd.targetId)
-    let salvageValue = state.getKastraSalvageValue(kastraId)
+    let salvageValue = state.kastraSalvageValue(kastraId)
     let kastraOpt = state.kastra(kastraId)
     if kastraOpt.isNone:
       return false

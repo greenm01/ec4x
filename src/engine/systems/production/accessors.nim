@@ -13,33 +13,33 @@ import ../../globals
 
 ## Ship Config Accessors
 
-proc getShipConstructionCost*(shipClass: ShipClass): int32 =
+proc shipConstructionCost*(shipClass: ShipClass): int32 =
   ## Get construction cost (PP) for ship class from ships.kdl
   ## Direct array access - no case statement needed
   gameConfig.ships.ships[shipClass].productionCost
 
-proc getShipBaseBuildTime*(shipClass: ShipClass): int32 =
+proc shipBaseBuildTime*(shipClass: ShipClass): int32 =
   ## Get base construction time from construction.kdl
   ## Per KDL config: all ships build in 1 turn
   gameConfig.construction.construction.shipTurns
 
-proc getShipCSTRequirement*(shipClass: ShipClass): int32 =
+proc shipCSTRequirement*(shipClass: ShipClass): int32 =
   ## Get CST tech level required to build ship class
   ## Per economy.md:4.5 - CST unlocks new ship classes
   gameConfig.ships.ships[shipClass].minCST
 
-proc getShipMaintenanceCost*(shipClass: ShipClass): int32 =
+proc shipMaintenanceCost*(shipClass: ShipClass): int32 =
   ## Get maintenance cost (PP/turn) for ship class
   gameConfig.ships.ships[shipClass].maintenanceCost
 
 ## Facility Config Accessors
 
-proc getBuildingCost*(buildingType: FacilityClass): int32 =
+proc buildingCost*(buildingType: FacilityClass): int32 =
   ## Get construction cost (PP) for facility from facilities.kdl
   ## Direct array access - no case statement needed
   gameConfig.facilities.facilities[buildingType].buildCost
 
-proc getBuildingTime*(buildingType: FacilityClass): int32 =
+proc buildingTime*(buildingType: FacilityClass): int32 =
   ## Get construction time for facility
   ## Per construction.kdl: all facilities build in 1 turn
   case buildingType
@@ -52,7 +52,7 @@ proc getBuildingTime*(buildingType: FacilityClass): int32 =
   of FacilityClass.Starbase:
     gameConfig.construction.construction.starbaseTurns
 
-proc getBuildingCSTRequirement*(buildingType: FacilityClass): int32 =
+proc buildingCSTRequirement*(buildingType: FacilityClass): int32 =
   ## Get CST tech level required to build facility
   ## Returns minCST from facilities.kdl (e.g., Starbase requires CST3)
   gameConfig.facilities.facilities[buildingType].minCST
@@ -77,19 +77,19 @@ proc requiresShipyard*(buildingType: string): bool =
 
 ## Ground Unit Config Accessors
 
-proc getArmyBuildCost*(): int32 =
+proc armyBuildCost*(): int32 =
   ## Get construction cost for army division
   gameConfig.groundUnits.units[GroundClass.Army].productionCost
 
-proc getMarineBuildCost*(): int32 =
+proc marineBuildCost*(): int32 =
   ## Get construction cost for marine division
   gameConfig.groundUnits.units[GroundClass.Marine].productionCost
 
-proc getGroundBatteryBuildCost*(): int32 =
+proc groundBatteryBuildCost*(): int32 =
   ## Get construction cost for ground battery
   gameConfig.groundUnits.units[GroundClass.GroundBattery].productionCost
 
-proc getPlanetaryShieldCost*(sldLevel: int32): int32 =
+proc planetaryShieldCost*(sldLevel: int32): int32 =
   ## Get construction cost for planetary shield
   ## Note: Currently uses base cost; SLD level affects strength, not cost
   ## Note: Simple per-unit cost model used (no tiered pricing in spec)
@@ -97,38 +97,39 @@ proc getPlanetaryShieldCost*(sldLevel: int32): int32 =
 
 ## Generic Ground Unit Accessors
 
-proc getGroundUnitCost*(groundClass: GroundClass): int32 =
+proc groundUnitCost*(groundClass: GroundClass): int32 =
   ## Get construction cost (PP) for any ground unit type
   gameConfig.groundUnits.units[groundClass].productionCost
 
-proc getGroundUnitBuildTime*(groundClass: GroundClass): int32 =
+proc groundUnitBuildTime*(groundClass: GroundClass): int32 =
   ## Get construction time (turns) for any ground unit type
   gameConfig.groundUnits.units[groundClass].buildTime
 
-proc getGroundUnitCSTRequirement*(groundClass: GroundClass): int32 =
+proc groundUnitCSTRequirement*(groundClass: GroundClass): int32 =
   ## Get CST tech level required to build ground unit type
   gameConfig.groundUnits.units[groundClass].minCST
 
-proc getGroundUnitPopulationCost*(groundClass: GroundClass): int32 =
+proc groundUnitPopulationCost*(groundClass: GroundClass): int32 =
   ## Get population cost for recruiting ground unit (Army/Marine only)
   gameConfig.groundUnits.units[groundClass].populationCost
 
 ## Construction Modifier Accessors
 
-proc getPlanetsideConstructionMultiplier*(): float32 =
+proc planetsideConstructionMultiplier*(): float32 =
   ## Get cost multiplier for planet-side ship construction
   ## Per construction.kdl: 2.0 = +100% cost penalty
   gameConfig.construction.modifiers.planetsideConstructionCostMultiplier
 
 ## Export all public procs
-export getShipConstructionCost, getShipBaseBuildTime, getShipCSTRequirement,
-  getShipMaintenanceCost
-export getBuildingCost, getBuildingTime, getBuildingCSTRequirement,
+export shipConstructionCost, shipBaseBuildTime, shipCSTRequirement,
+  shipMaintenanceCost
+export buildingCost, buildingTime, buildingCSTRequirement,
   requiresSpaceport, requiresShipyard
-export getArmyBuildCost, getMarineBuildCost, getGroundBatteryBuildCost,
-  getPlanetaryShieldCost, getGroundUnitCost, getGroundUnitBuildTime,
-  getGroundUnitCSTRequirement, getGroundUnitPopulationCost
-export getPlanetsideConstructionMultiplier
+export armyBuildCost, marineBuildCost, groundBatteryBuildCost,
+  planetaryShieldCost
+export groundUnitCost, groundUnitBuildTime,
+  groundUnitCSTRequirement, groundUnitPopulationCost
+export planetsideConstructionMultiplier
 
 ## Design Notes:
 ##

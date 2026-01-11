@@ -305,7 +305,7 @@ proc weightedSample[T](
   # Fallback (should never reach here with valid weights)
   return items[^1]
 
-proc getAdjacentSystems*(starMap: StarMap, systemId: SystemId): seq[SystemId] =
+proc adjacentSystems*(starMap: StarMap, systemId: SystemId): seq[SystemId] =
   starMap.lanes.neighbors.getOrDefault(systemId, @[])
 
 proc countHexNeighbors*(starMap: StarMap, state: GameState, coords: Hex): int32 =
@@ -460,7 +460,7 @@ proc connectHouseSystems(starMap: var StarMap, state: GameState, rng: var Rand) 
         neighbors.add(neighborIdOpt.get)
 
     # Remove already connected neighbors
-    let existing = starMap.getAdjacentSystems(houseId)
+    let existing = starMap.adjacentSystems(houseId)
     neighbors = neighbors.filterIt(it notin existing)
 
     # Connect to exactly N neighbors (configurable)
@@ -491,14 +491,14 @@ proc connectRemainingSystem(starMap: var StarMap, state: GameState, rng: var Ran
       if neighborIdOpt.isSome:
         neighbors.add(neighborIdOpt.get)
 
-    let existing = starMap.getAdjacentSystems(system.id)
+    let existing = starMap.adjacentSystems(system.id)
     neighbors = neighbors.filterIt(it notin existing)
 
     # Connect to available neighbors with random lane types
     for neighborId in neighbors:
       # Check if neighbor is a house system that already has 3 connections
       if neighborId in starMap.houseSystemIds:
-        let neighborConnections = starMap.getAdjacentSystems(neighborId)
+        let neighborConnections = starMap.adjacentSystems(neighborId)
         if neighborConnections.len >= 3:
           continue  # Skip connecting to house systems that already have 3 connections
 
@@ -540,7 +540,7 @@ proc validateConnectivity*(starMap: StarMap, state: GameState): bool =
 
   while queue.len > 0:
     let current = queue.pop()
-    for neighbor in starMap.getAdjacentSystems(current):
+    for neighbor in starMap.adjacentSystems(current):
       if neighbor notin visited:
         visited.incl(neighbor)
         queue.add(neighbor)
@@ -585,7 +585,7 @@ proc weight*(laneType: LaneClass): uint32 =
   of LaneClass.Restricted:
     3 # Highest cost (most restrictive)
 
-proc getLaneType*(
+proc laneType*(
     starMap: StarMap, fromSystem: SystemId, toSystem: SystemId
 ): Option[LaneClass] =
   ## Efficient lane type lookup between two systems
@@ -655,7 +655,7 @@ proc verifyGameRules*(starMap: StarMap, state: GameState): bool =
   ## Verify starmap follows all game specification rules per assets.md
   try:
     # 1. Hub should have exactly 6 lanes
-    let hubConnections = starMap.getAdjacentSystems(starMap.hubId)
+    let hubConnections = starMap.adjacentSystems(starMap.hubId)
     if hubConnections.len != 6:
       return false
 

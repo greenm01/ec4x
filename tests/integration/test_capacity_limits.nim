@@ -46,7 +46,7 @@ import ../../src/engine/systems/production/[
 ]
 
 # Helper to get a system from a house's colonies
-proc getHouseSystem(game: GameState, houseId: HouseId): SystemId =
+proc houseSystem(game: GameState, houseId: HouseId): SystemId =
   for colony in game.coloniesOwned(houseId):
     return colony.systemId
   return SystemId(0)  # Fallback (shouldn't happen)
@@ -99,29 +99,29 @@ suite "Capacity Limits: C2 Pool (Soft Cap)":
 
 suite "Capacity Limits: Fleet Count (SC Tech)":
 
-  test "getStrategicCommandMaxFleets SC I base capacity":
+  test "strategicCommandMaxFleets SC I base capacity":
     # SC I = 10 fleets on small map (8 systems per player baseline)
-    let maxFleets = getStrategicCommandMaxFleets(
+    let maxFleets = strategicCommandMaxFleets(
       scLevel = 1, totalSystems = 32, playerCount = 4
     )
     check maxFleets >= 10  # At least base capacity
 
-  test "getStrategicCommandMaxFleets scales with SC tech":
+  test "strategicCommandMaxFleets scales with SC tech":
     let sys = 32'i32
     let players = 4'i32
-    let sc1 = getStrategicCommandMaxFleets(1, sys, players)
-    let sc3 = getStrategicCommandMaxFleets(3, sys, players)
-    let sc6 = getStrategicCommandMaxFleets(6, sys, players)
+    let sc1 = strategicCommandMaxFleets(1, sys, players)
+    let sc3 = strategicCommandMaxFleets(3, sys, players)
+    let sc6 = strategicCommandMaxFleets(6, sys, players)
     # Higher SC should allow more fleets
     check sc3 > sc1
     check sc6 > sc3
 
-  test "getStrategicCommandMaxFleets scales with map size":
+  test "strategicCommandMaxFleets scales with map size":
     let scLevel = 6'i32
     let players = 4'i32
-    let smallMap = getStrategicCommandMaxFleets(scLevel, 32, players)
-    let mediumMap = getStrategicCommandMaxFleets(scLevel, 92, players)
-    let largeMap = getStrategicCommandMaxFleets(scLevel, 156, players)
+    let smallMap = strategicCommandMaxFleets(scLevel, 32, players)
+    let mediumMap = strategicCommandMaxFleets(scLevel, 92, players)
+    let largeMap = strategicCommandMaxFleets(scLevel, 156, players)
     # Larger maps should allow more fleets
     check mediumMap > smallMap
     check largeMap > mediumMap
@@ -146,7 +146,7 @@ suite "Capacity Limits: Fleet Count (SC Tech)":
     for _ in game.allSystems():
       systemCount += 1
     
-    let maxFleets = getStrategicCommandMaxFleets(
+    let maxFleets = strategicCommandMaxFleets(
       scLevel = 1,
       totalSystems = systemCount,
       playerCount = 4  # Standard scenario has 4 players
@@ -156,7 +156,7 @@ suite "Capacity Limits: Fleet Count (SC Tech)":
   test "countCombatFleets excludes auxiliary-only fleets":
     var game = newGame()
     let houseId = HouseId(1)
-    let systemId = getHouseSystem(game, houseId)
+    let systemId = houseSystem(game, houseId)
     
     # Count initial combat fleets (game init creates 4 starting fleets)
     let initialCombatCount = countCombatFleets(game, houseId)
@@ -175,25 +175,25 @@ suite "Capacity Limits: Fleet Count (SC Tech)":
 
 suite "Capacity Limits: Ships Per Fleet (FC Tech)":
 
-  test "getFleetCommandMaxShips FC I base capacity":
-    let maxShips = getFleetCommandMaxShips(fcLevel = 1)
+  test "fleetCommandMaxShips FC I base capacity":
+    let maxShips = fleetCommandMaxShips(fcLevel = 1)
     let expected = gameConfig.tech.fc.levels[1].maxShipsPerFleet
     check maxShips == expected
 
-  test "getFleetCommandMaxShips scales with FC tech":
-    let fc1 = getFleetCommandMaxShips(1)
-    let fc3 = getFleetCommandMaxShips(3)
-    let fc6 = getFleetCommandMaxShips(6)
+  test "fleetCommandMaxShips scales with FC tech":
+    let fc1 = fleetCommandMaxShips(1)
+    let fc3 = fleetCommandMaxShips(3)
+    let fc6 = fleetCommandMaxShips(6)
     # Higher FC should allow more ships per fleet
     check fc3 > fc1
     check fc6 > fc3
     let expectedFC6 = gameConfig.tech.fc.levels[6].maxShipsPerFleet
     check fc6 == expectedFC6
 
-  test "getCurrentFleetSize counts ships correctly":
+  test "currentFleetSize counts ships correctly":
     var game = newGame()
     let houseId = HouseId(1)
-    let systemId = getHouseSystem(game, houseId)
+    let systemId = houseSystem(game, houseId)
     
     # Create fleet with 3 ships
     let fleet = game.createFleet(houseId, systemId)
@@ -201,13 +201,13 @@ suite "Capacity Limits: Ships Per Fleet (FC Tech)":
     discard game.createShip(houseId, fleet.id, ShipClass.Frigate)
     discard game.createShip(houseId, fleet.id, ShipClass.Destroyer)
     
-    let size = getCurrentFleetSize(game, fleet.id)
+    let size = currentFleetSize(game, fleet.id)
     check size == 3
 
   test "canAddShipsToFleet respects FC tech limit":
     var game = newGame()
     let houseId = HouseId(1)
-    let systemId = getHouseSystem(game, houseId)
+    let systemId = houseSystem(game, houseId)
     
     # Set FC tech to level 1 (10 ships max)
     var house = game.house(houseId).get()
@@ -225,10 +225,10 @@ suite "Capacity Limits: Ships Per Fleet (FC Tech)":
     # Should NOT be able to add 3 more (8 + 3 = 11, over limit)
     check canAddShipsToFleet(game, fleet.id, shipsToAdd = 3) == false
 
-  test "getAvailableFleetCapacity returns correct remaining space":
+  test "availableFleetCapacity returns correct remaining space":
     var game = newGame()
     let houseId = HouseId(1)
-    let systemId = getHouseSystem(game, houseId)
+    let systemId = houseSystem(game, houseId)
     
     # Set FC tech to level 1 (10 ships max)
     var house = game.house(houseId).get()
@@ -241,7 +241,7 @@ suite "Capacity Limits: Ships Per Fleet (FC Tech)":
       discard game.createShip(houseId, fleet.id, ShipClass.Corvette)
     
     # Available capacity should be 10 - 7 = 3
-    let available = getAvailableFleetCapacity(game, fleet.id)
+    let available = availableFleetCapacity(game, fleet.id)
     check available == 3
 
 suite "Capacity Limits: Fighter Capacity":
@@ -322,11 +322,11 @@ suite "Capacity Limits: Carrier Hangars":
     check isCarrier(ShipClass.Destroyer) == false
     check isCarrier(ShipClass.Battleship) == false
 
-  test "getCarrierMaxCapacity CV scales with ACO tech":
+  test "carrierMaxCapacity CV scales with ACO tech":
     # CV capacity from config
-    let aco1 = getCarrierMaxCapacity(ShipClass.Carrier, acoLevel = 1)
-    let aco2 = getCarrierMaxCapacity(ShipClass.Carrier, acoLevel = 2)
-    let aco3 = getCarrierMaxCapacity(ShipClass.Carrier, acoLevel = 3)
+    let aco1 = carrierMaxCapacity(ShipClass.Carrier, acoLevel = 1)
+    let aco2 = carrierMaxCapacity(ShipClass.Carrier, acoLevel = 2)
+    let aco3 = carrierMaxCapacity(ShipClass.Carrier, acoLevel = 3)
     
     let expectedAco1 = gameConfig.tech.aco.levels[1].cvCapacity
     let expectedAco2 = gameConfig.tech.aco.levels[2].cvCapacity
@@ -336,11 +336,11 @@ suite "Capacity Limits: Carrier Hangars":
     check aco2 == expectedAco2
     check aco3 == expectedAco3
 
-  test "getCarrierMaxCapacity CX scales with ACO tech":
+  test "carrierMaxCapacity CX scales with ACO tech":
     # CX capacity from config
-    let aco1 = getCarrierMaxCapacity(ShipClass.SuperCarrier, acoLevel = 1)
-    let aco2 = getCarrierMaxCapacity(ShipClass.SuperCarrier, acoLevel = 2)
-    let aco3 = getCarrierMaxCapacity(ShipClass.SuperCarrier, acoLevel = 3)
+    let aco1 = carrierMaxCapacity(ShipClass.SuperCarrier, acoLevel = 1)
+    let aco2 = carrierMaxCapacity(ShipClass.SuperCarrier, acoLevel = 2)
+    let aco3 = carrierMaxCapacity(ShipClass.SuperCarrier, acoLevel = 3)
     
     let expectedAco1 = gameConfig.tech.aco.levels[1].cxCapacity
     let expectedAco2 = gameConfig.tech.aco.levels[2].cxCapacity
@@ -350,14 +350,14 @@ suite "Capacity Limits: Carrier Hangars":
     check aco2 == expectedAco2
     check aco3 == expectedAco3
 
-  test "getCarrierMaxCapacity non-carriers return zero":
-    let capacity = getCarrierMaxCapacity(ShipClass.Destroyer, acoLevel = 3)
+  test "carrierMaxCapacity non-carriers return zero":
+    let capacity = carrierMaxCapacity(ShipClass.Destroyer, acoLevel = 3)
     check capacity == 0
 
-  test "getCurrentHangarLoad counts embarked fighters":
+  test "currentHangarLoad counts embarked fighters":
     var game = newGame()
     let houseId = HouseId(1)
-    let systemId = getHouseSystem(game, houseId)
+    let systemId = houseSystem(game, houseId)
     
     # Create carrier with CST tech level 3
     var house = game.house(houseId).get()
@@ -374,13 +374,13 @@ suite "Capacity Limits: Carrier Hangars":
     game.updateShip(carrier.id, carrierShip)
     
     # Count should be 2
-    let load = getCurrentHangarLoad(carrierShip)
+    let load = currentHangarLoad(carrierShip)
     check load == 2
 
   test "canLoadFighters respects ACO tech capacity":
     var game = newGame()
     let houseId = HouseId(1)
-    let systemId = getHouseSystem(game, houseId)
+    let systemId = houseSystem(game, houseId)
     
     # Set ACO tech to level 1 (CV = 3 fighters)
     var house = game.house(houseId).get()
@@ -403,10 +403,10 @@ suite "Capacity Limits: Carrier Hangars":
     # Should NOT be able to load 2 more (2 + 2 = 4, over capacity)
     check canLoadFighters(game, carrier.id, fightersToLoad = 2) == false
 
-  test "getAvailableHangarSpace returns correct remaining capacity":
+  test "availableHangarSpace returns correct remaining capacity":
     var game = newGame()
     let houseId = HouseId(1)
-    let systemId = getHouseSystem(game, houseId)
+    let systemId = houseSystem(game, houseId)
     
     # Set ACO tech to level 2 (CV = 4 fighters)
     var house = game.house(houseId).get()
@@ -423,7 +423,7 @@ suite "Capacity Limits: Carrier Hangars":
     game.updateShip(carrier.id, carrierShip)
     
     # Available space should be 4 - 1 = 3
-    let space = getAvailableHangarSpace(game, carrier.id)
+    let space = availableHangarSpace(game, carrier.id)
     check space == 3
 
 suite "Capacity Limits: Planet Breakers":
@@ -440,7 +440,7 @@ suite "Capacity Limits: Planet Breakers":
   test "countPlanetBreakersInFleets counts across all house fleets":
     var game = newGame()
     let houseId = HouseId(1)
-    let systemId = getHouseSystem(game, houseId)
+    let systemId = houseSystem(game, houseId)
     
     # Set CST to level 10 (can build PB)
     var house = game.house(houseId).get()
@@ -461,7 +461,7 @@ suite "Capacity Limits: Planet Breakers":
   test "analyzeCapacity detects PB violations":
     var game = newGame()
     let houseId = HouseId(1)
-    let systemId = getHouseSystem(game, houseId)
+    let systemId = houseSystem(game, houseId)
     
     # Set CST to level 10
     var house = game.house(houseId).get()
@@ -612,7 +612,7 @@ suite "Capacity Limits: Per-Colony Facilities":
 
 suite "Capacity Limits: Construction Docks":
 
-  test "getFacilityCapacity reports correct dock counts":
+  test "facilityCapacity reports correct dock counts":
     var game = newGame()
     let houseId = HouseId(1)
     
@@ -627,7 +627,7 @@ suite "Capacity Limits: Construction Docks":
     if colony.neoriaIds.len > 0:
       let neoriaId = colony.neoriaIds[0]
       let neoria = game.neoria(neoriaId).get()
-      let capacity = getFacilityCapacity(neoria)
+      let capacity = facilityCapacity(neoria)
       
       # Spaceport has 5 docks, shipyard has 10
       check capacity.maxDocks > 0
@@ -638,7 +638,7 @@ suite "Capacity Limits: Construction Docks":
     check shipRequiresDock(ShipClass.Destroyer) == true
     check shipRequiresDock(ShipClass.Carrier) == true
 
-  test "getColonyTotalCapacity sums all facilities":
+  test "colonyTotalCapacity sums all facilities":
     var game = newGame()
     let houseId = HouseId(1)
     
@@ -648,7 +648,7 @@ suite "Capacity Limits: Construction Docks":
       colony = c
       break
     
-    let (current, maximum) = getColonyTotalCapacity(game, colony.id)
+    let (current, maximum) = colonyTotalCapacity(game, colony.id)
     
     # Should have some capacity from initial facilities
     check maximum >= 0
