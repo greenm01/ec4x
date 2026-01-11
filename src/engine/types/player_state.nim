@@ -10,18 +10,141 @@
 ## - Filtered visibility for enemy assets (intel-based)
 ## - Persisted to SQLite for client retrieval
 ## - Used by zero-turn command system for client-side preview
+##
+## Architecture Note:
+## - Engine stores fog-of-war observations (what each house has seen, when)
+## - Engine does NOT generate narrative reports (client responsibility)
+## - Client generates human-readable reports from PlayerState deltas + GameEvents
 
 import std/[tables, options]
-import ./[core, colony, fleet, ship, diplomacy, progression, ground_unit]
+import ./[core, colony, fleet, ship, diplomacy, progression, ground_unit, tech]
 
 type
+  # =============================================================================
+  # Scout Detection Events
+  # =============================================================================
+
+  DetectionEventType* {.pure.} = enum
+    CombatLoss
+    TravelIntercepted
+
+  ScoutLossEvent* = object
+    scoutFleetId*: FleetId
+    owner*: HouseId
+    location*: SystemId
+    detectorHouse*: HouseId
+    eventType*: DetectionEventType
+    turn*: int32
+
+  # =============================================================================
+  # Intel Quality and Observations (Fog-of-War Storage)
+  # =============================================================================
+
+  IntelQuality* {.pure.} = enum
+    Visual # Fleet-on-fleet encounters
+    Scan # View a World Fleet Command
+    Perfect # Scout missions (full intel)
+
+  ColonyObservation* = object
+    ## What we observed about an enemy colony (fog-of-war data)
+    ## Gathered from Scout missions
+    colonyId*: ColonyId
+    targetOwner*: HouseId
+    gatheredTurn*: int32
+    quality*: IntelQuality
+    population*: int32
+    infrastructure*: int32 # Infrastructure level (0-10)
+    spaceportCount*: int32 # Ground-to-orbit facilities
+    armyCount*: int32 # Ground armies
+    marineCount*: int32 # Marine units
+    groundBatteryCount*: int32 # Planetary defense batteries
+    planetaryShieldLevel*: int32 # Planetary shield strength
+    colonyConstructionQueue*: seq[ConstructionProjectId] # Perfect quality
+    spaceportDockQueue*: seq[ConstructionProjectId] # Perfect quality
+    grossOutput*: Option[int32] # Economic data (Perfect quality)
+    taxRevenue*: Option[int32] # Economic data (Perfect quality)
+
+  OrbitalObservation* = object
+    ## What we observed about enemy orbital assets
+    ## Gathered from approach/orbital missions
+    colonyId*: ColonyId
+    targetOwner*: HouseId
+    gatheredTurn*: int32
+    quality*: IntelQuality
+    starbaseCount*: int32 # Orbital stations
+    shipyardCount*: int32 # Orbital construction
+    drydockCount*: int32 # Orbital repair/refit
+    reserveFleetCount*: int32 # Fleets in reserve status
+    mothballedFleetCount*: int32 # Fleets in mothballed status
+    guardFleetIds*: seq[FleetId] # Fleets with Guard commands
+    blockadeFleetIds*: seq[FleetId] # Fleets with Blockade commands
+    fighterIds*: seq[ShipId] # Fighters stationed at colony
+
+  FleetObservation* = object
+    ## What we observed about an enemy fleet
+    fleetId*: FleetId
+    owner*: HouseId
+    location*: SystemId
+    shipCount*: int32
+    shipIds*: seq[ShipId] # Store IDs, not details
+
+  ShipObservation* = object
+    ## What we observed about an enemy ship
+    shipId*: ShipId
+    shipClass*: string
+    techLevel*: int32
+    hullIntegrity*: Option[int32]
+
+  SystemObservation* = object
+    ## What we observed in an enemy system
+    systemId*: SystemId
+    gatheredTurn*: int32
+    quality*: IntelQuality
+    detectedFleetIds*: seq[FleetId] # Store IDs, lookup from FleetObservation
+
+  SystemIntelPackage* = object
+    ## Complete intelligence package from system surveillance
+    ## Includes the system report plus detailed fleet/ship intel
+    report*: SystemObservation
+    fleetObservations*: seq[tuple[fleetId: FleetId, intel: FleetObservation]]
+    shipObservations*: seq[tuple[shipId: ShipId, intel: ShipObservation]]
+
+  StarbaseObservation* = object
+    ## What we observed from HackStarbase missions (economic intel)
+    kastraId*: KastraId # Defensive facility (Starbase)
+    targetOwner*: HouseId
+    gatheredTurn*: int32
+    quality*: IntelQuality
+    treasuryBalance*: Option[int32]
+    grossIncome*: Option[int32]
+    netIncome*: Option[int32]
+    taxRate*: Option[float32]
+    researchAllocations*: Option[tuple[erp: int32, srp: int32, trp: int32]]
+    currentResearch*: Option[string]
+    techLevels*: Option[TechLevel]
+
+  IntelDatabase* = object
+    ## Per-house fog-of-war storage
+    ## Tracks what each house has observed about enemy assets
+    houseId*: HouseId # Back-reference
+    colonyObservations*: Table[ColonyId, ColonyObservation]
+    orbitalObservations*: Table[ColonyId, OrbitalObservation]
+    systemObservations*: Table[SystemId, SystemObservation]
+    starbaseObservations*: Table[KastraId, StarbaseObservation]
+    fleetObservations*: Table[FleetId, FleetObservation]
+    shipObservations*: Table[ShipId, ShipObservation]
+
+  # =============================================================================
+  # Client-Facing Views (Generated per Turn, Sent to Client)
+  # =============================================================================
+
   VisibilityLevel* {.pure.} = enum
     ## How much a house knows about a system
-    None        # Unexplored
-    Adjacent    # Knows it exists (adjacent to known system)
-    Scouted     # Visited by scout or fleet
-    Occupied    # Has fleet present
-    Owned       # Has colony
+    None # Unexplored
+    Adjacent # Knows it exists (adjacent to known system)
+    Scouted # Visited by scout or fleet
+    Occupied # Has fleet present
+    Owned # Has colony
 
   VisibleSystem* = object
     ## System visibility from fog-of-war perspective

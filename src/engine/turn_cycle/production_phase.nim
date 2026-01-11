@@ -24,8 +24,8 @@
 import std/[tables, options, strformat, random, sets, hashes]
 import ../../common/logger
 import ../types/[
-  core, game_state, fleet, event, command, production, starmap, tech, intel,
-  house,
+  core, game_state, fleet, event, command, production, starmap, tech,
+  player_state, house,
 ]
 import ../state/[engine, iterators, fleet_queries]
 import ../entities/fleet_ops
@@ -312,18 +312,18 @@ proc processScoutDetection(
           ))
           
           # Generate Visual quality intel
-          let intelReport = generateSystemIntelReport(
+          let intelReport = generateSystemObservation(
             state, observer.owner, systemId, IntelQuality.Visual
           )
           
           if intelReport.isSome:
             var observerHouse = state.house(observer.owner).get()
             let package = intelReport.get()
-            observerHouse.intel.systemReports[systemId] = package.report
-            for (fleetId, fleetIntel) in package.fleetIntel:
-              observerHouse.intel.fleetIntel[fleetId] = fleetIntel
-            for (shipId, shipIntel) in package.shipIntel:
-              observerHouse.intel.shipIntel[shipId] = shipIntel
+            observerHouse.intel.systemObservations[systemId] = package.report
+            for (fleetId, fleetIntel) in package.fleetObservations:
+              observerHouse.intel.fleetObservations[fleetId] = fleetIntel
+            for (shipId, shipIntel) in package.shipObservations:
+              observerHouse.intel.shipObservations[shipId] = shipIntel
             state.updateHouse(observer.owner, observerHouse)
           
           detectionCount += 1

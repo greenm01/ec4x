@@ -15,7 +15,7 @@
 import std/[options]
 import
   ../../types/[core, game_state, facilities, production, colony]
-import ../../state/[engine, iterators]
+import ../../state/engine
 import ../../globals
 import ../../../common/logger
 

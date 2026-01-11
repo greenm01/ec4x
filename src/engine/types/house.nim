@@ -1,5 +1,5 @@
 import std/[tables, options]
-import ./[core, tech, espionage, income, intel]
+import ./[core, tech, espionage, income, player_state]
 
 type
   HouseStatus* {.pure.} = enum

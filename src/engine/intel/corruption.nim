@@ -8,7 +8,7 @@
 ## - No state access needed (pure data transformation)
 
 import std/[random, options]
-import ../types/[core, intel, espionage]
+import ../types/[core, player_state, espionage]
 
 ## Corruption Detection
 
@@ -47,9 +47,9 @@ proc corruptIntOption*(
 
 ## Fleet Intelligence Corruption
 
-proc corruptFleetIntel*(
-    fleet: FleetIntel, magnitude: float, rng: var Rand
-): FleetIntel =
+proc corruptFleetObservation*(
+    fleet: FleetObservation, magnitude: float, rng: var Rand
+): FleetObservation =
   ## Corrupt fleet intelligence data
   result = fleet
 
@@ -59,8 +59,8 @@ proc corruptFleetIntel*(
 ## Colony Intelligence Corruption
 
 proc corruptColonyIntel*(
-    colony: ColonyIntelReport, magnitude: float, rng: var Rand
-): ColonyIntelReport =
+    colony: ColonyObservation, magnitude: float, rng: var Rand
+): ColonyObservation =
   ## Corrupt colony intelligence data (ground/planetary assets)
   result = colony
 
@@ -82,8 +82,8 @@ proc corruptColonyIntel*(
 ## Orbital Intelligence Corruption
 
 proc corruptOrbitalIntel*(
-    orbital: OrbitalIntelReport, magnitude: float, rng: var Rand
-): OrbitalIntelReport =
+    orbital: OrbitalObservation, magnitude: float, rng: var Rand
+): OrbitalObservation =
   ## Corrupt orbital intelligence data (space assets)
   result = orbital
 
@@ -95,13 +95,13 @@ proc corruptOrbitalIntel*(
   result.mothballedFleetCount = corruptInt(orbital.mothballedFleetCount, magnitude, rng)
 
   # NOTE: IDs not corrupted - these are references (guardFleetIds, blockadeFleetIds, fighterSquadronIds)
-  # Fleet and squadron details should be corrupted separately via FleetIntel/SquadronIntel reports
+  # Fleet and squadron details should be corrupted separately via FleetObservation/SquadronIntel reports
 
 ## Starbase Intelligence Corruption
 
 proc corruptStarbaseIntel*(
-    starbase: StarbaseIntelReport, magnitude: float, rng: var Rand
-): StarbaseIntelReport =
+    starbase: StarbaseObservation, magnitude: float, rng: var Rand
+): StarbaseObservation =
   ## Corrupt starbase intelligence data (economic/R&D intel)
   result = starbase
 
@@ -127,29 +127,12 @@ proc corruptStarbaseIntel*(
 ## System Intelligence Corruption
 
 proc corruptSystemIntel*(
-    system: SystemIntelReport, magnitude: float, rng: var Rand
-): SystemIntelReport =
+    system: SystemObservation, magnitude: float, rng: var Rand
+): SystemObservation =
   ## Corrupt system intelligence data (fleet sightings)
   result = system
 
   # NOTE: detectedFleetIds not corrupted - these are references
-  # Fleet details should be corrupted separately via FleetIntel reports
+  # Fleet details should be corrupted separately via FleetObservation reports
   # System-level corruption is minimal - presence/absence data is hard to corrupt
 
-## Scout Encounter Report Corruption
-
-proc corruptScoutEncounter*(
-    report: ScoutEncounterReport, magnitude: float, rng: var Rand
-): ScoutEncounterReport =
-  ## Corrupt scout encounter report
-  result = report
-
-  # NOTE: observedFleetIds and colonyId not corrupted - these are references
-  # Fleet and colony details should be corrupted separately via their intel reports
-  # Scout encounters primarily record presence/movement which is hard to corrupt
-
-  # Significance could be corrupted to make events seem more/less important
-  result.significance = corruptInt(report.significance, magnitude, rng)
-
-  # NOTE: fleetMovements, description, observedHouses NOT corrupted
-  # These are observational data that's difficult to misreport convincingly

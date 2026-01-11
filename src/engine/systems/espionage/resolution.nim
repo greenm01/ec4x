@@ -25,7 +25,7 @@
 ## - Uses common/logger for logging
 
 import std/[tables, options, random]
-import ../../types/[core, game_state, command, fleet, espionage, intel, event]
+import ../../types/[core, game_state, command, fleet, espionage, player_state, event]
 import ../../state/[engine, iterators, fleet_queries]
 import ../../entities/fleet_ops
 import ../command/commands
@@ -248,7 +248,7 @@ proc generateMissionIntel(
   case missionType
   of FleetCommandType.ScoutColony:
     # Generate colony intel (Perfect quality)
-    let intelReport = generateColonyIntelReport(
+    let intelReport = generateColonyObservation(
       state, ownerHouse, targetSystem, IntelQuality.Perfect
     )
     if intelReport.isSome:
@@ -256,12 +256,12 @@ proc generateMissionIntel(
       let houseOpt = state.house(ownerHouse)
       if houseOpt.isSome:
         var house = houseOpt.get()
-        house.intel.colonyReports[report.colonyId] = report
+        house.intel.colonyObservations[report.colonyId] = report
         state.updateHouse(ownerHouse, house)
 
   of FleetCommandType.ScoutSystem:
     # Generate system intel (Perfect quality)
-    let systemIntel = generateSystemIntelReport(
+    let systemIntel = generateSystemObservation(
       state, ownerHouse, targetSystem, IntelQuality.Perfect
     )
     if systemIntel.isSome:
@@ -269,12 +269,12 @@ proc generateMissionIntel(
       let houseOpt = state.house(ownerHouse)
       if houseOpt.isSome:
         var house = houseOpt.get()
-        house.intel.systemReports[targetSystem] = package.report
+        house.intel.systemObservations[targetSystem] = package.report
         state.updateHouse(ownerHouse, house)
 
   of FleetCommandType.HackStarbase:
     # Generate starbase intel (Perfect quality)
-    let intelReport = generateStarbaseIntelReport(
+    let intelReport = generateStarbaseObservation(
       state, ownerHouse, targetSystem, IntelQuality.Perfect
     )
     if intelReport.isSome:
@@ -282,7 +282,7 @@ proc generateMissionIntel(
       let houseOpt = state.house(ownerHouse)
       if houseOpt.isSome:
         var house = houseOpt.get()
-        house.intel.starbaseReports[report.kastraId] = report
+        house.intel.starbaseObservations[report.kastraId] = report
         state.updateHouse(ownerHouse, house)
 
   else:

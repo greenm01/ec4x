@@ -5,16 +5,16 @@
 ## Per intel.md and operations.md specifications
 
 import std/[options, random, tables]
-import ../types/[core, game_state, intel, fleet, combat, ground_unit, ship]
+import ../types/[core, game_state, player_state, fleet, combat, ground_unit, ship]
 import ../state/[engine, iterators]
 import corruption
 
-proc generateColonyIntelReport*(
+proc generateColonyObservation*(
     state: GameState,
     scoutOwner: HouseId,
     targetSystem: SystemId,
     quality: IntelQuality,
-): Option[ColonyIntelReport] =
+): Option[ColonyObservation] =
   ## Generate colony intelligence report from Scout missions
   ## Reports on ground/planetary assets and colony construction pipeline:
   ## - Population and infrastructure
@@ -27,13 +27,13 @@ proc generateColonyIntelReport*(
   # Use safe accessor
   let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isNone:
-    return none(ColonyIntelReport)
+    return none(ColonyObservation)
 
   let colony = colonyOpt.get()
 
   # Don't spy on your own colonies
   if colony.owner == scoutOwner:
-    return none(ColonyIntelReport)
+    return none(ColonyObservation)
 
   # Count ground units from consolidated groundUnitIds
   var armyCount, marineCount, groundBatteryCount, shieldLevel = 0i32
@@ -57,7 +57,7 @@ proc generateColonyIntelReport*(
   # Count spaceport facilities specifically (not all neorias)
   let spaceportCount = state.countSpaceportsAtColony(colony.id)
 
-  var report = ColonyIntelReport(
+  var report = ColonyObservation(
     colonyId: colonyOpt.get().id,  # Use actual colony ID
     targetOwner: colony.owner,
     gatheredTurn: state.turn,
@@ -111,12 +111,12 @@ proc generateColonyIntelReport*(
 
   return some(report)
 
-proc generateOrbitalIntelReport*(
+proc generateOrbitalObservation*(
     state: GameState,
     scoutOwner: HouseId,
     targetSystem: SystemId,
     quality: IntelQuality,
-): Option[OrbitalIntelReport] =
+): Option[OrbitalObservation] =
   ## Generate orbital intelligence report from approach/orbital missions
   ## Reports on orbital/space assets:
   ## - Starbases
@@ -128,13 +128,13 @@ proc generateOrbitalIntelReport*(
   # Use safe accessor
   let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isNone:
-    return none(OrbitalIntelReport)
+    return none(OrbitalObservation)
 
   let colony = colonyOpt.get()
 
   # Don't spy on your own colonies
   if colony.owner == scoutOwner:
-    return none(OrbitalIntelReport)
+    return none(OrbitalObservation)
 
   # Count fleet statuses and identify guard/blockade fleets
   var reserveFleets: int32 = 0
@@ -166,7 +166,7 @@ proc generateOrbitalIntelReport*(
   # Collect fighter IDs from colony
   var fighterIds: seq[ShipId] = colony.fighterIds
 
-  var report = OrbitalIntelReport(
+  var report = OrbitalObservation(
     colonyId: colonyOpt.get().id,  # Use actual colony ID
     targetOwner: colony.owner,
     gatheredTurn: state.turn,
@@ -192,7 +192,7 @@ proc generateOrbitalIntelReport*(
 
   return some(report)
 
-proc generateSystemIntelReport*(
+proc generateSystemObservation*(
     state: GameState,
     scoutOwner: HouseId,
     targetSystem: SystemId,
@@ -209,8 +209,8 @@ proc generateSystemIntelReport*(
   ## - Perfect: Tech levels, hull integrity, embarked fighters (scout missions)
 
   var detectedFleetIds: seq[FleetId] = @[]
-  var fleetIntelData: seq[tuple[fleetId: FleetId, intel: FleetIntel]] = @[]
-  var shipIntelData: seq[tuple[shipId: ShipId, intel: ShipIntel]] = @[]
+  var fleetIntelData: seq[tuple[fleetId: FleetId, intel: FleetObservation]] = @[]
+  var shipIntelData: seq[tuple[shipId: ShipId, intel: ShipObservation]] = @[]
 
   # Find all fleets in this system that are not owned by the gathering house
   for fleet in state.fleetsAtSystem(targetSystem):
@@ -218,7 +218,7 @@ proc generateSystemIntelReport*(
       detectedFleetIds.add(fleet.id)
 
       # Build detailed fleet intelligence
-      let fleetIntel = FleetIntel(
+      let fleetIntel = FleetObservation(
         fleetId: fleet.id,
         owner: fleet.houseId,
         location: targetSystem,
@@ -236,7 +236,7 @@ proc generateSystemIntelReport*(
 
         let ship = shipOpt.get()
 
-        let shipIntel = ShipIntel(
+        let shipIntel = ShipObservation(
           shipId: shipId,
           shipClass: $ship.shipClass,
           # Tech level and hull integrity only for Perfect quality
@@ -263,7 +263,7 @@ proc generateSystemIntelReport*(
 
             let fighterShip = fighterShipOpt.get()
 
-            let fighterIntel = ShipIntel(
+            let fighterIntel = ShipObservation(
               shipId: fighterShipId,
               shipClass: $fighterShip.shipClass,
               techLevel: fighterShip.stats.wep,
@@ -290,7 +290,7 @@ proc generateSystemIntelReport*(
 
         let fighterShip = fighterShipOpt.get()
 
-        let fighterIntel = ShipIntel(
+        let fighterIntel = ShipObservation(
           shipId: fighterShipId,
           shipClass: $fighterShip.shipClass,
           # Tech level and hull integrity only for Perfect quality
@@ -312,7 +312,7 @@ proc generateSystemIntelReport*(
   if detectedFleetIds.len == 0 and shipIntelData.len == 0:
     return none(SystemIntelPackage)
 
-  var report = SystemIntelReport(
+  var report = SystemObservation(
     systemId: targetSystem,
     gatheredTurn: state.turn,
     quality: quality,
@@ -330,44 +330,44 @@ proc generateSystemIntelReport*(
     # Also corrupt fleet intel (ship intel corruption not implemented)
     for i in 0 ..< fleetIntelData.len:
       let (fleetId, intel) = fleetIntelData[i]
-      fleetIntelData[i] = (fleetId, corruption.corruptFleetIntel(intel, magnitude, rng))
+      fleetIntelData[i] = (fleetId, corruption.corruptFleetObservation(intel, magnitude, rng))
 
   # Return complete intelligence package
   # Caller is responsible for storing in intelligence database
   return some(
     SystemIntelPackage(
-      report: report, fleetIntel: fleetIntelData, shipIntel: shipIntelData
+      report: report, fleetObservations: fleetIntelData, shipObservations: shipIntelData
     )
   )
 
-proc generateStarbaseIntelReport*(
+proc generateStarbaseObservation*(
     state: GameState,
     scoutOwner: HouseId,
     targetSystem: SystemId,
     quality: IntelQuality,
-): Option[StarbaseIntelReport] =
+): Option[StarbaseObservation] =
   ## Generate starbase intelligence report from HackStarbase mission
   ## Per intel.md and operations.md:6.2.11 - "economic and R&D intelligence"
 
   # Use safe accessor
   let colonyOpt = state.colonyBySystem(targetSystem)
   if colonyOpt.isNone:
-    return none(StarbaseIntelReport)
+    return none(StarbaseObservation)
 
   let colony = colonyOpt.get()
 
   # Don't hack your own starbases
   if colony.owner == scoutOwner:
-    return none(StarbaseIntelReport)
+    return none(StarbaseObservation)
 
   # No starbase to hack
   if state.countStarbasesAtColony(colony.id) == 0:
-    return none(StarbaseIntelReport)
+    return none(StarbaseObservation)
 
   # Get target house data
   let targetHouseOpt = state.house(colony.owner)
   if targetHouseOpt.isNone:
-    return none(StarbaseIntelReport)
+    return none(StarbaseObservation)
 
   let targetHouse = targetHouseOpt.get()
 
@@ -375,7 +375,7 @@ proc generateStarbaseIntelReport*(
   let kastras = state.kastrasAtColony(colony.id)
   let kastraId = if kastras.len > 0: kastras[0].id else: KastraId(0)
 
-  var report = StarbaseIntelReport(
+  var report = StarbaseObservation(
     kastraId: kastraId,
     targetOwner: colony.owner,
     gatheredTurn: state.turn,

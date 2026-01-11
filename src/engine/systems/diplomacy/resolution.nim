@@ -11,7 +11,6 @@ import ../../state/iterators
 import ../../../common/logger
 import ./engine
 import ./proposals
-import ../../intel/diplomatic_intel
 import ../../event_factory/init
 
 proc resolveDiplomaticActions*(
@@ -48,11 +47,6 @@ proc resolveDiplomaticActions*(
               "Hostility declared",
             )
           )
-
-          # Generate hostility declaration intelligence
-          diplomatic_intel.generateHostilityDeclarationIntel(
-            state, houseId, action.targetHouse, state.turn
-          )
         of DiplomaticActionType.DeclareEnemy:
           logInfo("Diplomacy", "Declared Enemy",
             "declarer=", $houseId, " target=", $action.targetHouse)
@@ -62,11 +56,6 @@ proc resolveDiplomaticActions*(
 
           # Emit WarDeclared event (Phase 7d)
           events.add(warDeclared(houseId, action.targetHouse))
-
-          # Generate war declaration intelligence
-          diplomatic_intel.generateWarDeclarationIntel(
-            state, houseId, action.targetHouse, state.turn
-          )
         of DiplomaticActionType.SetNeutral:
           logInfo("Diplomacy", "Set to Neutral",
             "house=", $houseId, " target=", $action.targetHouse)
@@ -76,11 +65,6 @@ proc resolveDiplomaticActions*(
 
           # Emit PeaceSigned event (Phase 7d)
           events.add(peaceSigned(houseId, action.targetHouse))
-
-          # Generate peace treaty intelligence
-          diplomatic_intel.generatePeaceTreatyIntel(
-            state, houseId, action.targetHouse, state.turn
-          )
         
         of DiplomaticActionType.ProposeDeescalation:
           logInfo("Diplomacy", "Propose De-escalation",
@@ -222,20 +206,6 @@ proc resolveDiplomaticActions*(
               "De-escalation proposal accepted",
             )
           )
-          
-          # Generate intel
-          case newState
-          of DiplomaticState.Neutral:
-            diplomatic_intel.generatePeaceTreatyIntel(
-              state, proposal.proposer, proposal.target, state.turn
-            )
-          of DiplomaticState.Hostile:
-            # Use hostility intel but with different message
-            diplomatic_intel.generateHostilityDeclarationIntel(
-              state, proposal.proposer, proposal.target, state.turn
-            )
-          else:
-            discard
           
           logInfo("Diplomacy", "Proposal accepted",
             "id=", $proposalId, " ", $oldState, " -> ", $newState)

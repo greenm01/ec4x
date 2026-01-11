@@ -506,9 +506,167 @@ moderator intel <game-id> --house=Alpha --show-staleness
 # Display Player Alpha's complete intel picture
 ```
 
+## Architecture Decision: Intel Reports vs Raw Data (Jan 2026)
+
+### Problem
+
+The original design had the engine generating **human-readable narrative reports** (e.g., "Your scout detected 5 enemy ships at Alpha Centauri") and storing them in `IntelDatabase.scoutEncounters`, `.combatReports`, etc. This created several issues:
+
+1. **Bandwidth waste**: Sending narrative reports over Nostr was expensive
+2. **Presentation coupling**: Engine contained UI-layer logic (report formatting)
+3. **Dead code**: ~1,880 lines of report generation code that was never used
+4. **Duplication**: Reports duplicated information already in `GameEvent` stream
+
+### Solution
+
+**Engine responsibility:**
+- Track fog-of-war observations (what each house has seen, when)
+- Store structured observation data in `IntelDatabase`:
+  - `ColonyObservation` - Enemy colony data from last scout
+  - `FleetObservation` - Enemy fleet data from last detection
+  - `SystemObservation` - System surveillance data
+  - `StarbaseObservation` - Economic intel from HackStarbase
+- Generate `PlayerState` (filtered game state view per house)
+- Emit `GameEvent` stream (structured events: who, what, where, when)
+
+**Client responsibility:**
+- Receive `PlayerState` deltas (KDL format)
+- Receive filtered `GameEvent` stream
+- Generate human-readable reports from:
+  - PlayerState changes (diff detection)
+  - GameEvent narrative (e.g., "House Atreides declared war on House Harkonnen")
+  - Localization, formatting, verbosity preferences
+
+### Data Flow Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          SERVER (Daemon)                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐    │
+│  │   Game Engine   │───▶│   SQLite Store   │───▶│  Fog-of-War Filter  │    │
+│  │  (Full State)   │    │  (Single Truth)  │    │ (Per-House Views)   │    │
+│  └─────────────────┘    └──────────────────┘    └──────────┬──────────┘    │
+│                                                            │               │
+│                         ┌──────────────────────────────────┴───┐           │
+│                         ▼                                      ▼           │
+│              ┌────────────────────┐              ┌────────────────────┐    │
+│              │   Localhost Mode   │              │    Nostr Mode      │    │
+│              │   (File System)    │              │   (Encrypted)      │    │
+│              └─────────┬──────────┘              └─────────┬──────────┘    │
+└────────────────────────┼──────────────────────────────────┼────────────────┘
+                         │                                  │
+                         ▼                                  ▼
+              ┌────────────────────┐              ┌────────────────────┐
+              │  houses/<house>/   │              │  NIP-44 Encrypted  │
+              │  turn_results/     │              │  Event (30002)     │
+              │  turn_N.kdl        │              │  Per-Player Delta  │
+              └─────────┬──────────┘              └─────────┬──────────┘
+                         │                                  │
+                         ▼                                  ▼
+              ┌────────────────────────────────────────────────────────┐
+              │                     CLIENT                             │
+              │  Receives: PlayerState (KDL)                          │
+              │  - Full entity data for owned assets                  │
+              │  - Limited intel for enemy assets                     │
+              │  - Visibility levels for systems                      │
+              └────────────────────────────────────────────────────────┘
+```
+
+**PlayerState Structure:**
+```nim
+PlayerState = object
+  viewingHouse: HouseId
+  turn: int32
+  
+  # === Owned Assets (Full Entity Data) ===
+  ownColonies: seq[Colony]        # Complete colony objects
+  ownFleets: seq[Fleet]           # Complete fleet objects
+  ownShips: seq[Ship]             # Complete ship objects
+  ownGroundUnits: seq[GroundUnit] # Complete ground unit objects
+  
+  # === Visible Systems (Fog of War) ===
+  visibleSystems: Table[SystemId, VisibleSystem]  # Visibility level per system
+  
+  # === Enemy Assets (Limited Intel) ===
+  visibleColonies: seq[VisibleColony]  # Partial data based on intel
+  visibleFleets: seq[VisibleFleet]     # Detection-based, stale data possible
+  
+  # === Public Information ===
+  housePrestige: Table[HouseId, int32]
+  houseColonyCounts: Table[HouseId, int32]
+  diplomaticRelations: Table[(HouseId, HouseId), DiplomaticState]
+  eliminatedHouses: seq[HouseId]
+  actProgression: ActProgressionState
+```
+
+**Bandwidth Optimization:**
+- **Turn 1**: Full PlayerState sent (complete snapshot)
+- **Turn 2+**: Delta format sent (only changes)
+```kdl
+turn 42
+delta {
+  fleet-moved id="fleet-1" from="sys-A" to="sys-B"
+  ship-damaged id="ship-5" hp=8
+  colony-updated id="col-3" industry=12
+}
+```
+
+### Types Consolidated into player_state.nim
+
+**Fog-of-war observation types** (engine stores what was observed):
+- `IntelQuality` {Visual, Scan, Perfect} - How intel was gathered
+- `ColonyObservation` - Colony intel (population, infrastructure, etc.)
+- `OrbitalObservation` - Orbital asset intel (starbases, shipyards)
+- `SystemObservation` - System surveillance (detected fleets)
+- `FleetObservation` / `ShipObservation` - Fleet/ship details
+- `StarbaseObservation` - Economic intel (treasury, tax rate, research)
+- `IntelDatabase` - Per-house storage (trimmed to 6 fields)
+
+**Client-facing view types** (generated per turn, sent to client):
+- `VisibilityLevel` {None, Adjacent, Scouted, Occupied, Owned}
+- `VisibleSystem` - System visibility status
+- `VisibleColony` - Enemy colony with limited intel
+- `VisibleFleet` - Enemy fleet with limited intel
+- `PlayerState` - Complete filtered state for a house
+
+### Removed Dead Code
+
+**Deleted files** (~1,880 lines):
+- `intel/combat_intel.nim` - Generated combat narrative reports (never read)
+- `intel/blockade_intel.nim` - Generated blockade reports (never read)
+- `intel/scout_intel.nim` - Generated scout encounter reports (never read)
+- `intel/espionage_intel.nim` - Generated espionage reports (never read)
+- `intel/diplomatic_intel.nim` - Redundant with GameEvents
+- `intel/starbase_surveillance.nim` - Wrote to unused field
+- `intel/event_processor/` - Event→Report conversion (never called)
+
+**Removed types** (~400 lines):
+- `ScoutEncounterReport`, `CombatEncounterReport`, `BlockadeReport`
+- `StarbaseSurveillanceReport`, `EspionageActivityReport`
+- `FleetMovementHistory`, `ConstructionActivityReport`
+- `PopulationTransferStatusReport`
+
+**Total reduction**: ~2,280 lines
+
+### Benefits
+
+1. **Bandwidth efficient**: Transport sends delta format (KDL) with minimal data
+2. **Clear separation**: Engine = data, Client = presentation
+3. **Flexibility**: Different clients can format reports differently
+4. **Maintainability**: No duplicate logic between GameEvents and intel reports
+5. **Simpler fog-of-war**: Single source of truth (IntelDatabase observations)
+
+### Implementation Notes
+
+- `PlayerState` is regenerated each turn by filtering current `GameState` through `IntelDatabase`
+- Staleness is tracked via `gatheredTurn` field on observations
+- Transport layer (Nostr) delivers encrypted `PlayerState` + `GameEvent` stream per player
+- Client diffs PlayerState to detect changes and generate narrative
+
 ## Related Documentation
 
 - [Storage Schema](./storage.md) - Intel table definitions
 - [Data Flow](./dataflow.md) - When intel is updated
 - [Daemon Design](./daemon.md) - Intel update process
-- [Transport Layer](./transport.md) - How filtered views are delivered
+- [Transport Layer](./transport.md) - How filtered views are delivered (KDL format)

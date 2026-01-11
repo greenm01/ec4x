@@ -1,7 +1,7 @@
 import std/tables
 import./[
   core, house, starmap, colony, fleet, ship, ground_unit,
-  intel, diplomacy, facilities, production, espionage,
+  player_state, diplomacy, facilities, production, espionage,
   population, resolution, progression, event
 ]
 

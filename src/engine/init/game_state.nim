@@ -13,7 +13,7 @@ import ../[globals, starmap]
 import ../config/engine
 import ../state/[engine, id_gen]
 import ../types/[
-  core, game_state, intel, diplomacy,
+  core, game_state, player_state, diplomacy,
   resolution, starmap, house
 ]
 import ./house

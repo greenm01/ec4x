@@ -62,14 +62,14 @@ proc getScoutedSystems(
     colonyIdToSystemId[colony.id] = colony.systemId
 
   # Systems with colony intel
-  for colonyId, report in intel.colonyReports:
+  for colonyId, report in intel.colonyObservations:
     if colonyIdToSystemId.contains(colonyId):
       let systemId = colonyIdToSystemId[colonyId]
       if systemId notin ownedSystems and systemId notin occupiedSystems:
         result.incl(systemId)
 
   # Systems with system intel
-  for systemId, report in intel.systemReports:
+  for systemId, report in intel.systemObservations:
     if systemId notin ownedSystems and systemId notin occupiedSystems:
       result.incl(systemId)
 
@@ -80,8 +80,8 @@ proc getScoutedSystems(
 proc createVisibleColony(
     state: GameState,
     colony: Colony,
-    colonyIntel: Option[ColonyIntelReport],
-    orbitalIntel: Option[OrbitalIntelReport],
+    colonyIntel: Option[ColonyObservation],
+    orbitalIntel: Option[OrbitalObservation],
 ): VisibleColony =
   ## Create a visible enemy colony with limited intel
   result.colonyId = colony.id
@@ -106,7 +106,7 @@ proc createVisibleFleet(
     state: GameState,
     fleet: Fleet,
     location: SystemId,
-    intelReport: Option[SystemIntelReport],
+    intelReport: Option[SystemObservation],
     currentTurn: int32,
 ): VisibleFleet =
   ## Create a visible enemy fleet with limited intel
@@ -208,8 +208,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
       let system = systemOpt.get()
       let coords = (q: system.coords.q, r: system.coords.r)
       var lastTurn: int32 = 0
-      if intel.systemReports.contains(systemId):
-        lastTurn = max(lastTurn, intel.systemReports[systemId].gatheredTurn)
+      if intel.systemObservations.contains(systemId):
+        lastTurn = max(lastTurn, intel.systemObservations[systemId].gatheredTurn)
       result.visibleSystems[systemId] = VisibleSystem(
         systemId: systemId,
         visibility: VisibilityLevel.Scouted,
@@ -236,14 +236,14 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
     if colony.owner != houseId:
       let systemId = colony.systemId
       var isVisible = false
-      var colonyIntel: Option[ColonyIntelReport]
-      var orbitalIntel: Option[OrbitalIntelReport]
-      if intel.colonyReports.contains(colony.id):
+      var colonyIntel: Option[ColonyObservation]
+      var orbitalIntel: Option[OrbitalObservation]
+      if intel.colonyObservations.contains(colony.id):
         isVisible = true
-        colonyIntel = some(intel.colonyReports[colony.id])
-      if intel.orbitalReports.contains(colony.id):
+        colonyIntel = some(intel.colonyObservations[colony.id])
+      if intel.orbitalObservations.contains(colony.id):
         isVisible = true
-        orbitalIntel = some(intel.orbitalReports[colony.id])
+        orbitalIntel = some(intel.orbitalObservations[colony.id])
       if systemId in ownedSystems or systemId in occupiedSystems:
         isVisible = true
       if isVisible:
@@ -257,9 +257,9 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
       let isVisible =
         fleet.location in ownedSystems or fleet.location in occupiedSystems
       if isVisible:
-        var systemIntel: Option[SystemIntelReport]
-        if intel.systemReports.contains(fleet.location):
-          systemIntel = some(intel.systemReports[fleet.location])
+        var systemIntel: Option[SystemObservation]
+        if intel.systemObservations.contains(fleet.location):
+          systemIntel = some(intel.systemObservations[fleet.location])
         result.visibleFleets.add(
           createVisibleFleet(state, fleet, fleet.location, systemIntel, state.turn)
         )

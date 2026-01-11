@@ -23,7 +23,7 @@
 
 import std/[options, strformat]
 import ../../types/[core, game_state, production, command, event]
-import ../../types/[colony, facilities, ground_unit]
+import ../../types/[colony, facilities]
 import ../../state/engine
 import ../../../common/logger
 import ../capacity/construction_docks

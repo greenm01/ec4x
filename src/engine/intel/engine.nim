@@ -10,7 +10,7 @@
 ## - Maintains separation between intel gathering and intel storage
 
 import std/[tables, options]
-import ../types/[game_state, core, intel, fleet, espionage]
+import ../types/[game_state, core, player_state, fleet, espionage]
 import ./[generator, corruption]
 
 export generator  # Re-export common report generation functions
@@ -38,48 +38,48 @@ proc gatherSystemIntel*(
   ## - Scout missions (Perfect quality)
   ## - Visual encounters (Visual quality)
   ## - Espionage operations (Perfect quality)
-  return generator.generateSystemIntelReport(state, houseId, systemId, quality)
+  return generator.generateSystemObservation(state, houseId, systemId, quality)
 
 proc gatherColonyIntel*(
     state: GameState, systemId: SystemId, houseId: HouseId, quality: IntelQuality
-): Option[ColonyIntelReport] =
+): Option[ColonyObservation] =
   ## Gather intelligence about a colony's ground assets and economy
   ##
   ## Returns:
-  ## - ColonyIntelReport with population, infrastructure, ground forces
+  ## - ColonyObservation with population, infrastructure, ground forces
   ## - Perfect quality includes construction queue and economic data
   ## - None if no colony or gathering own colony
   ##
   ## Used by:
   ## - Scout missions (Perfect quality)
-  return generator.generateColonyIntelReport(state, houseId, systemId, quality)
+  return generator.generateColonyObservation(state, houseId, systemId, quality)
 
 proc gatherOrbitalIntel*(
     state: GameState, systemId: SystemId, houseId: HouseId, quality: IntelQuality
-): Option[OrbitalIntelReport] =
+): Option[OrbitalObservation] =
   ## Gather intelligence about orbital assets at a colony
   ##
   ## Returns:
-  ## - OrbitalIntelReport with starbases, shipyards, fighter squadrons
+  ## - OrbitalObservation with starbases, shipyards, fighter squadrons
   ## - Perfect quality includes guard/blockade fleet identification
   ## - None if no colony or gathering own colony
   ##
   ## Used by:
   ## - Scout missions (Perfect quality)
-  return generator.generateOrbitalIntelReport(state, houseId, systemId, quality)
+  return generator.generateOrbitalObservation(state, houseId, systemId, quality)
 
 proc gatherStarbaseIntel*(
     state: GameState, systemId: SystemId, houseId: HouseId, quality: IntelQuality
-): Option[StarbaseIntelReport] =
+): Option[StarbaseObservation] =
   ## Gather economic and R&D intelligence from starbase
   ##
   ## Returns:
-  ## - StarbaseIntelReport with treasury, income, tech levels, research
+  ## - StarbaseObservation with treasury, income, tech levels, research
   ## - None if no starbase or gathering own starbase
   ##
   ## Used by:
   ## - HackStarbase missions (Perfect quality)
-  return generator.generateStarbaseIntelReport(state, houseId, systemId, quality)
+  return generator.generateStarbaseObservation(state, houseId, systemId, quality)
 
 # ============================================================================
 # Intelligence Database Access
@@ -118,14 +118,6 @@ proc hasIntelCorruption*(
 # ============================================================================
 # Utility Functions
 # ============================================================================
-
-proc isScoutFleet*(fleet: Fleet): bool =
-  ## Check if a fleet is a scout fleet
-  ## Scout fleets automatically gather Perfect-quality intelligence
-  ##
-  ## Future: Implement proper fleet role detection
-  ## For now, placeholder returns false
-  return false
 
 proc getIntelStaleness*(gatheredTurn: int32, currentTurn: int32): int32 =
   ## Calculate how many turns old intelligence is

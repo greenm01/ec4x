@@ -2,7 +2,7 @@ import std/[tables, options]
 import
   ../types/[
     core, game_state, fleet, ship, ground_unit, house, colony, facilities,
-    production, intel, starmap, population, combat,
+    production, player_state, starmap, population, combat,
   ]
 
 export GameState

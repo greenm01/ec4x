@@ -10,7 +10,6 @@ import ../../types/[core, game_state, combat, diplomacy, fleet, event]
 import ../../state/[engine, iterators]
 import ../../prestige/effects
 import ../../event_factory/init
-import ../../intel/diplomatic_intel
 import ./strength
 import ./cer
 import ./hits
@@ -167,19 +166,6 @@ proc areHostile*(
         houseA, houseB, oldState, newStatus, reason
       )
     )
-
-    # Generate intel for all houses
-    case newStatus
-    of DiplomaticState.Enemy:
-      diplomatic_intel.generateAutomaticWarEscalationIntel(
-        state, houseA, houseB, systemId, state.turn
-      )
-    of DiplomaticState.Hostile:
-      diplomatic_intel.generateAutomaticHostilityEscalationIntel(
-        state, houseA, houseB, systemId, state.turn
-      )
-    else:
-      discard
 
   # Determine if combat occurs this turn
   return shouldCombatOccur(relation.state, maxThreatLevel)
