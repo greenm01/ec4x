@@ -147,7 +147,7 @@ task testMaintenance, "Run maintenance cost unit tests":
 
 task check, "Check engine compiles":
   echo "Checking engine compilation..."
-  exec "nim check src/engine/turn_cycle/engine.nim"
+  exec "nim check src/engine/engine.nim"
   echo "Engine compiles successfully!"
 
 task checkAll, "Check all source files compile":
