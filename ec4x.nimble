@@ -18,8 +18,8 @@ requires "db_connector"
 # COMMON FLAGS
 # ==============================================================================
 
-const releaseFlags = "-d:release --opt:speed"
-const debugFlags = "-d:debug --debuginfo --linedir:on"
+const releaseFlags = "-d:release --opt:speed --deepcopy:on"
+const debugFlags = "-d:debug --debuginfo --linedir:on --deepcopy:on"
 
 # ==============================================================================
 # BUILD TASKS
@@ -49,11 +49,18 @@ task buildDaemon, "Build daemon (release)":
   exec "nim c " & releaseFlags & " -o:bin/ec4x-daemon src/daemon/daemon.nim"
   echo "Daemon build completed!"
 
+task buildClient, "Build player client":
+  echo "Building EC4X Player Client..."
+  mkDir "bin"
+  exec "nim c " & releaseFlags & " -o:bin/ec4x-client --passC:-Isrc/client/vendor --passC:\"-Wno-incompatible-pointer-types\" src/client/main.nim"
+  echo "Client build completed!"
+
 task buildAll, "Build all binaries (release)":
   echo "Building all EC4X binaries..."
   mkDir "bin"
   exec "nim c " & releaseFlags & " -o:bin/ec4x src/moderator/moderator.nim"
   exec "nim c " & releaseFlags & " -o:bin/ec4x-daemon src/daemon/daemon.nim"
+  exec "nim c " & releaseFlags & " -o:bin/ec4x-client --passC:-Isrc/client/vendor --passC:\"-Wno-incompatible-pointer-types\" src/client/main.nim"
   echo "All builds completed!"
 
 task tidy, "Clean build artifacts":
