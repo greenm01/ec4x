@@ -9,6 +9,8 @@
 !*.nims
 !*.nimble
 !*.md
+!*.h
+!*.c
 
 # Whitelist config and scripts
 !*.kdl

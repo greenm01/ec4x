@@ -1,0 +1,21 @@
+#define SOKOL_IMPL
+#define SOKOL_GLCORE
+#define SOKOL_GLCORE33
+#define SOKOL_NO_ENTRY
+#define NK_IMPLEMENTATION
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+#define NK_INCLUDE_FONT_BAKING
+#define NK_INCLUDE_DEFAULT_FONT
+
+#include "vendor/sokol_app.h"
+#include "vendor/sokol_gfx.h"
+#include "vendor/sokol_gl.h"
+#include "vendor/sokol_glue.h"
+#include "vendor/sokol_time.h"
+#include "vendor/sokol_log.h"
+#include "vendor/nuklear.h"
+#include "vendor/sokol_nuklear.h"
