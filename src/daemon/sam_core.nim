@@ -59,13 +59,16 @@ proc process*[M](sam: SamLoop[M]) =
 
   var modelChanged = false
 
-  # Acceptors (Mutation)
-  for proposal in sam.proposalQueue.mitems:
-    for acceptor in sam.acceptors:
-      if acceptor(sam.model, proposal):
-        modelChanged = true
+  # Take a snapshot of the current queue to allow new proposals during processing
+  let currentProposals = sam.proposalQueue
+  sam.proposalQueue = @[]
 
-  sam.proposalQueue.setLen(0)
+  # Acceptors (Mutation)
+  for proposal in currentProposals:
+    var p = proposal # copy to allow mutation in acceptor if needed
+    for acceptor in sam.acceptors:
+      if acceptor(sam.model, p):
+        modelChanged = true
 
   # Reactors (Side effects)
   let dispatch = proc(p: Proposal[M]) = sam.present(p)

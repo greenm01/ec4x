@@ -14,7 +14,7 @@
 import std/os
 import db_connector/db_sqlite
 
-const SchemaVersion* = 2  # Incremented for new unified schema
+const SchemaVersion* = 4  # Incremented for new unified schema
 
 ## ============================================================================
 ## Core Game State Tables
@@ -52,9 +52,12 @@ CREATE TABLE IF NOT EXISTS houses (
   name TEXT NOT NULL,               -- "House Alpha", "Empire Beta"
   nostr_pubkey TEXT,                -- npub/hex (NULL for localhost)
   prestige INTEGER NOT NULL DEFAULT 0,
+  treasury INTEGER NOT NULL DEFAULT 0,
   eliminated BOOLEAN NOT NULL DEFAULT 0,
   home_system_id TEXT,
   color TEXT,                       -- Hex color code for UI
+  tech_json TEXT,                   -- JSON: TechTree
+  state_json TEXT,                  -- JSON: Extra state (espionage, policies, etc.)
   created_at INTEGER NOT NULL,
   FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
   UNIQUE(game_id, name)
@@ -73,6 +76,8 @@ CREATE TABLE IF NOT EXISTS systems (
   hex_q INTEGER NOT NULL,           -- Hex coordinate Q
   hex_r INTEGER NOT NULL,           -- Hex coordinate R
   ring INTEGER NOT NULL,            -- Distance from center (0 = center)
+  planet_class INTEGER,             -- Enum value
+  resource_rating INTEGER,          -- Enum value
   owner_house_id TEXT,              -- NULL if unowned
   created_at INTEGER NOT NULL,
   FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
@@ -116,7 +121,10 @@ CREATE TABLE IF NOT EXISTS colonies (
   industry INTEGER NOT NULL DEFAULT 0,
   defenses INTEGER NOT NULL DEFAULT 0,
   starbase_level INTEGER NOT NULL DEFAULT 0,
+  tax_rate INTEGER NOT NULL DEFAULT 50,
+  auto_repair BOOLEAN NOT NULL DEFAULT 0,
   under_siege BOOLEAN NOT NULL DEFAULT 0,
+  state_json TEXT,                  -- JSON: Queues, ground units, settings
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
@@ -137,6 +145,7 @@ CREATE TABLE IF NOT EXISTS fleets (
   owner_house_id TEXT NOT NULL,
   location_system_id TEXT NOT NULL,
   name TEXT,                        -- Optional fleet name
+  state_json TEXT,                  -- JSON: Cargo, orders, etc.
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
@@ -156,6 +165,7 @@ CREATE TABLE IF NOT EXISTS ships (
   ship_type TEXT NOT NULL,          -- 'Military', 'Spacelift', etc.
   hull_points INTEGER NOT NULL,     -- Current HP
   max_hull_points INTEGER NOT NULL, -- Max HP
+  state_json TEXT,                  -- JSON: Fighters, exp, etc.
   created_at INTEGER NOT NULL,
   FOREIGN KEY (fleet_id) REFERENCES fleets(id) ON DELETE CASCADE
 );
@@ -169,19 +179,17 @@ CREATE TABLE IF NOT EXISTS commands (
   game_id TEXT NOT NULL,
   house_id TEXT NOT NULL,
   turn INTEGER NOT NULL,
-  fleet_id TEXT NOT NULL,
-  command_type TEXT NOT NULL,         -- Fleet command type
-  target_system_id TEXT,            -- For movement/patrol commands
-  target_fleet_id TEXT,             -- For join/rendezvous commands
-  params TEXT,                      -- JSON blob for command-specific data
+  fleet_id TEXT,                     -- NULL for non-fleet commands
+  colony_id TEXT,                    -- Set for build/repair/scrap/colony
+  command_type TEXT NOT NULL,        -- Command category or fleet cmd type
+  target_system_id TEXT,            
+  target_fleet_id TEXT,             
+  params TEXT,                      -- JSON blob for all command data
   submitted_at INTEGER NOT NULL,    -- Unix timestamp
   processed BOOLEAN NOT NULL DEFAULT 0,
   FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
   FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE,
-  FOREIGN KEY (fleet_id) REFERENCES fleets(id) ON DELETE CASCADE,
-  FOREIGN KEY (target_system_id) REFERENCES systems(id) ON DELETE SET NULL,
-  FOREIGN KEY (target_fleet_id) REFERENCES fleets(id) ON DELETE SET NULL,
-  UNIQUE(game_id, turn, fleet_id)   -- One command per fleet per turn
+  UNIQUE(game_id, turn, house_id, fleet_id, colony_id, command_type)
 );
 
 CREATE INDEX IF NOT EXISTS idx_commands_turn ON commands(game_id, turn);

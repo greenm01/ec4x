@@ -13,6 +13,7 @@ import ../../common/logger
 import ../../engine/types/game_state
 import ../../engine/globals
 import ./schema
+import ./writer
 
 proc createGameDatabase*(state: GameState, dataDir: string): string =
   ## Create per-game database and persist initial game state
@@ -24,6 +25,7 @@ proc createGameDatabase*(state: GameState, dataDir: string): string =
   ## Returns: Path to created database file
 
   let (dbPath, gameDir) = defaultDBConfig(state.gameId, dataDir)
+  state.dbPath = dbPath # Set dbPath on state object
 
   # Create game directory
   createDir(gameDir)
@@ -57,8 +59,7 @@ proc createGameDatabase*(state: GameState, dataDir: string): string =
   logInfo("Persistence", "Initialized database: ", dbPath)
   logInfo("Persistence", "Game: ", state.gameName, " (", state.gameId, ")")
 
-  # TODO: Persist houses, systems, colonies, fleets, etc.
-  # For now, we just create the schema and metadata.
-  # Full state serialization will be added when needed.
+  # Persist full initial state (houses, systems, colonies, fleets, etc.)
+  saveFullState(state)
 
   return dbPath
