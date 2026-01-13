@@ -70,29 +70,33 @@ sudo cp bin/moderator bin/client /opt/ec4x/bin/
 
 ### 1.3 Configuration File
 
-Create `/opt/ec4x/config/daemon.toml`:
+Create `/opt/ec4x/config/daemon.kdl`:
 
-```toml
-[daemon]
-games_dir = "/opt/ec4x/games"
-archive_dir = "/opt/ec4x/archives"
-turn_schedule = "0 0 * * *"  # Midnight daily (cron format)
-http_port = 8080
-bind_address = "127.0.0.1"   # Local only
+```kdl
+daemon {
+  games_dir "/opt/ec4x/games"
+  archive_dir "/opt/ec4x/archives"
+  turn_schedule "0 0 * * *"  // Midnight daily (cron format)
+  http_port 8080
+  bind_address "127.0.0.1"   // Local only
+}
 
-[discord_bot]
-enabled = true
-webhook_url = "http://localhost:8081/turn_done"
-token_file = "/opt/ec4x/config/.discord_token"
+discord_bot {
+  enabled #true
+  webhook_url "http://localhost:8081/turn_done"
+  token_file "/opt/ec4x/config/.discord_token"
+}
 
-[ssh]
-authorized_keys = "/home/ec4x/.ssh/authorized_keys"
-forced_command = "/opt/ec4x/bin/client"
+ssh {
+  authorized_keys "/home/ec4x/.ssh/authorized_keys"
+  forced_command "/opt/ec4x/bin/client"
+}
 
-[turn_processing]
-auto_process = true
-grace_period_hours = 0
-max_concurrent_games = 10
+turn_processing {
+  auto_process #true
+  grace_period_hours 0
+  max_concurrent_games 10
+}
 ```
 
 ---

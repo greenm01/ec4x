@@ -1,0 +1,4 @@
+daemon {
+    data_dir "data"
+    poll_interval 30
+}

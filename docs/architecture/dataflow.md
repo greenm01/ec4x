@@ -56,31 +56,29 @@ client view game-123 --house=Alpha
 
 **3. Player Writes Orders**
 
-orders.toml:
-```toml
-[[order]]
-fleet_id = "fleet-alpha-1"
-type = "Move"
-target_system = "system-delta"
-
-[[order]]
-fleet_id = "fleet-alpha-2"
-type = "Bombard"
-target_system = "system-beta"
-target_planet = "planet-1"
+orders.kdl:
+```kdl
+orders turn=42 house=(HouseId)1 {
+  fleet (FleetId)1 {
+    move to=(SystemId)5 roe=7
+  }
+  fleet (FleetId)2 {
+    bombard system=(SystemId)10
+  }
+}
 ```
 
 **4. Player Submits Orders**
 
 Localhost:
 ```bash
-client submit my_game orders.toml
+client submit my_game orders.kdl
 # Client writes to houses/house_alpha/orders_pending.json
 ```
 
 Nostr:
 ```bash
-client submit game-123 orders.toml
+client submit game-123 orders.kdl
 # Client encrypts to moderator, publishes EventKindOrderPacket to relay
 ```
 
@@ -164,7 +162,7 @@ When turn resolves, invasion fleet already has marines loaded and merged composi
 ### Data Flow (Localhost)
 
 ```
-Player's orders.toml
+Player's orders.kdl
   ↓
 Client validates format
   ↓
@@ -191,7 +189,7 @@ Format:
 ### Data Flow (Nostr)
 
 ```
-Player's orders.toml
+Player's orders.kdl
   ↓
 Client validates format
   ↓

@@ -7,6 +7,7 @@ import std/[os, tables, sets, times, asyncdispatch, options]
 import cligen
 import ../common/logger
 import ./sam_core
+import ./config
 import ../daemon/persistence/reader
 import ../daemon/persistence/writer
 import ./transport/localhost/watcher
@@ -209,16 +210,26 @@ proc mainLoop(dataDir: string, pollInterval: int) {.async.} =
 
 proc start(
     dataDir: string = "data",
-    pollInterval: int = 30
+    pollInterval: int = 30,
+    configKdl: string = ""
 ): int =
   ## Start the EC4X daemon
+  var finalDataDir = dataDir
+  var finalPollInterval = pollInterval
+
+  if configKdl.len > 0:
+    logInfo("Daemon", "Loading config from: ", configKdl)
+    let cfg = parseDaemonKdl(configKdl)
+    finalDataDir = cfg.data_dir
+    finalPollInterval = cfg.poll_interval
+
   logInfo("Daemon", "EC4X Daemon starting...")
 
-  if not dirExists(dataDir):
-    logError("Daemon", "Data directory does not exist: ", dataDir)
+  if not dirExists(finalDataDir):
+    logError("Daemon", "Data directory does not exist: ", finalDataDir)
     return 1
 
-  waitFor mainLoop(dataDir, pollInterval)
+  waitFor mainLoop(finalDataDir, finalPollInterval)
   return 0
 
 proc resolve(gameId: string, dataDir: string = "data"): int =

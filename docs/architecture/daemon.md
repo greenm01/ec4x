@@ -82,11 +82,12 @@ The **daemon** is the autonomous turn processing service that powers EC4X. It mo
 ```
 
 **Configuration:**
-```toml
-[daemon]
-games_root = "/var/ec4x/games"
-poll_interval = 30  # seconds
-discovery_interval = 300  # re-scan for new games every 5 min
+```kdl
+daemon {
+  games_root "/var/ec4x/games"
+  poll_interval 30
+  discovery_interval 300  // re-scan for new games every 5 min
+}
 ```
 
 ### 2. Order Collection
@@ -267,7 +268,7 @@ Publish loop (separate thread):
 
 **Startup:**
 ```bash
-daemon start --config=/etc/ec4x/daemon.toml
+daemon start --config-kdl=/etc/ec4x/daemon.kdl
 ```
 
 1. Load configuration
@@ -324,7 +325,7 @@ Type=simple
 User=ec4x
 Group=ec4x
 WorkingDirectory=/var/ec4x
-ExecStart=/usr/local/bin/daemon start --config=/etc/ec4x/daemon.toml
+ExecStart=/usr/local/bin/daemon start --config-kdl=/etc/ec4x/daemon.kdl
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=10
@@ -358,11 +359,12 @@ Per-game resource usage:
 - Mitigation: Parallelize turn resolution across games
 
 **Resource Limits:**
-```toml
-[daemon]
-max_concurrent_resolutions = 4  # Process 4 turns in parallel
-max_games = 100                 # Refuse to monitor more than 100 games
-memory_limit_mb = 2048          # Restart if exceeds 2 GB
+```kdl
+daemon {
+  max_concurrent_resolutions 4  // Process 4 turns in parallel
+  max_games 100                 // Refuse to monitor more than 100 games
+  memory_limit_mb 2048          // Restart if exceeds 2 GB
+}
 ```
 
 ### Event Loop Architecture (SAM Pattern)
@@ -730,41 +732,47 @@ ec4x_turn_resolution_seconds_bucket{le="+Inf"} 50
 
 ## Configuration
 
-### daemon.toml
+### daemon.kdl
 
-```toml
-[daemon]
-db_path = "/var/ec4x/games.db"
-poll_interval = 30              # Check for orders every 30s
-discovery_interval = 300        # Re-scan for games every 5 min
-max_concurrent_resolutions = 4  # Process 4 turns in parallel
+```kdl
+daemon {
+  db_path "/var/ec4x/games.db"
+  poll_interval 30              // Check for orders every 30s
+  discovery_interval 300        // Re-scan for games every 5 min
+  max_concurrent_resolutions 4  // Process 4 turns in parallel
+}
 
-[localhost]
-game_root = "/var/ec4x/games"   # Root directory for localhost games
-poll_interval = 30              # Override main poll_interval
+localhost {
+  game_root "/var/ec4x/games"   // Root directory for localhost games
+  poll_interval 30              // Override main poll_interval
+}
 
-[nostr]
-timeout_seconds = 30
-max_relays = 5
-reconnect_delay_seconds = 5
-publish_batch_size = 10
-publish_rate_limit = 10         # Events per second per relay
+nostr {
+  timeout_seconds 30
+  max_relays 5
+  reconnect_delay_seconds 5
+  publish_batch_size 10
+  publish_rate_limit 10         // Events per second per relay
+}
 
-[logging]
-level = "INFO"
-file = "/var/log/ec4x/daemon.log"
-max_size_mb = 100
-max_backups = 5
+logging {
+  level "INFO"
+  file "/var/log/ec4x/daemon.log"
+  max_size_mb 100
+  max_backups 5
+}
 
-[metrics]
-enabled = true
-port = 9090
-path = "/metrics"
+metrics {
+  enabled #true
+  port 9090
+  path "/metrics"
+}
 
-[health]
-enabled = true
-port = 8080
-path = "/health"
+health {
+  enabled #true
+  port 8080
+  path "/health"
+}
 ```
 
 ## Error Handling
