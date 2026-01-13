@@ -8,25 +8,19 @@
 
 ## Overview
 
-Instead of building a Rule-Based AI (RBA) to generate training data, we can train neural networks directly from high-quality games played against Claude. This approach leverages modern imitation learning techniques pioneered by AlphaGo and similar systems.
+We can train neural networks directly from high-quality games played against Claude. This approach leverages modern imitation learning techniques pioneered by AlphaGo and similar systems.
 
 **Key Insight:** You don't need millions of expert games. Start with 10-20 high-quality Claude games, then bootstrap via self-play.
 
 ---
 
-## Why Claude Games Beat RBA Training Data
+## Why Claude Games?
 
-| Factor | Claude Games | RBA-Generated Data |
-|--------|--------------|-------------------|
-| **Quality** | Expert-level strategic play | Depends on rule quality |
-| **Reasoning** | Explicit (KDL comments explain WHY) | Implicit (hidden in rules) |
-| **Adaptability** | Claude adjusts to your strategies | RBA follows fixed patterns |
-| **Diversity** | Varied approaches to same situation | Deterministic responses |
-| **Play-test value** | High (you test engine balance too!) | None (just automated games) |
-| **Data volume** | Small initial (10-20 games) | Large (10,000+ games) |
-| **Development time** | Already doing for play-testing | 4-6 weeks to build + debug RBA |
-
-**Bottom Line:** Claude games provide high-quality "expert demonstrations" for imitation learning, while also serving as engine validation.
+Claude games provide high-quality "expert demonstrations" for imitation learning, while also serving as engine validation. They offer:
+- Expert-level strategic play
+- Explicit reasoning (KDL comments explain WHY)
+- Varied approaches to same situations
+- High play-test value (validates engine balance)
 
 ---
 
@@ -979,28 +973,19 @@ if __name__ == '__main__':
 
 ---
 
-## Comparison: Neural Network vs RBA
+## Development Path
 
-### Development Path
-
-| Milestone | Neural Network | RBA |
-|-----------|---------------|-----|
-| **Play-testable opponent** | Day 0 (Claude) | Week 6-8 (after RBA built) |
-| **Training data collection** | Week 2-3 (play-testing) | Week 8-10 (automated games) |
-| **First working AI** | Week 4 (behavioral cloning) | Week 6-8 (RBA complete) |
-| **Strong AI** | Week 6-8 (self-play) | Unknown (depends on rules) |
-| **Total time to strong AI** | **6-8 weeks** | **8-12 weeks** |
+| Milestone | Neural Network |
+|-----------|---------------|
+| **Play-testable opponent** | Day 0 (Claude) |
+| **Training data collection** | Week 2-3 (play-testing) |
+| **First working AI** | Week 4 (behavioral cloning) |
+| **Strong AI** | Week 6-8 (self-play) |
+| **Total time to strong AI** | **6-8 weeks** |
 
 ### Quality Comparison
 
-| Factor | Neural Network | RBA |
-|--------|---------------|-----|
-| **Strategic depth** | Learns from expert play | Limited by rules |
-| **Adaptability** | Adapts to opponent | Deterministic |
-| **Explainability** | Black box (unless multi-task) | Transparent rules |
-| **Tuning** | Automatic (via training) | Manual (config weights) |
-| **Compute** | GPU for training, CPU ok for inference | CPU only |
-| **Bugs** | Gradual degradation | Hard crashes |
+Neural networks offer expert strategic depth by learning from high-quality play, adapt to opponents dynamically, and can be automatically tuned via training.
 
 ### Why Neural Network Wins
 
@@ -1185,10 +1170,10 @@ python3 scripts/neural/inference_server.py \
 
 ## Conclusion
 
-Training neural networks from Claude games is not only feasible, it's actually **smarter** than building RBA first:
+Training neural networks from Claude games is highly effective:
 
-✅ **Faster to strong AI** (6-8 weeks vs 8-12 weeks)
-✅ **Better data quality** (expert demonstrations vs rule-based)
+✅ **Faster to strong AI** (6-8 weeks)
+✅ **Better data quality** (expert demonstrations)
 ✅ **Play-testing synergy** (same games validate engine + provide training data)
 ✅ **Modern ML techniques** (AlphaGo approach is proven)
 ✅ **Scales naturally** (self-play generates unlimited data)
@@ -1199,8 +1184,6 @@ Training neural networks from Claude games is not only feasible, it's actually *
 3. Train initial network (behavioral cloning, 1 week)
 4. Self-play bootstrapping (automated, 2-3 weeks)
 5. Deploy as AI opponent
-
-RBA can still be useful as a **baseline** or **fallback**, but doesn't need to be built first for training data.
 
 ---
 

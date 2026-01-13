@@ -40,7 +40,7 @@ File-based transport using direct filesystem access and SQLite queries.
 /var/ec4x/games/
 └── game-123/
     ├── ec4x.db                   # SQLite database
-    ├── config.toml               # Game configuration
+    ├── config.kdl               # Game configuration
     ├── houses/
     │   ├── house_alpha/
     │   │   ├── orders_pending.json
@@ -62,7 +62,7 @@ File-based transport using direct filesystem access and SQLite queries.
 #### Join Game
 ```
 1. Client receives game directory path
-2. Read config.toml for game metadata
+2. Read config.kdl for game metadata
 3. Connect to ec4x.db (read-only)
 4. Query for house assignment
 5. Return GameInfo
@@ -124,7 +124,7 @@ File-based transport using direct filesystem access and SQLite queries.
 
 ### Configuration
 
-**config.toml:**
+**config.kdl:**
 ```toml
 [game]
 id = "game-123"

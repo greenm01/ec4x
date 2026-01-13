@@ -29,11 +29,11 @@ Play against Claude using KDL-formatted orders and fog-of-war SQLite state expor
 
 **Status:** Design Document (Post Play-Testing Phase)
 
-Train neural networks using game data from Claude play-testing sessions. Uses modern imitation learning techniques (AlphaGo-style) to create strong AI opponents without building RBA first.
+Train neural networks using game data from Claude play-testing sessions. Uses modern imitation learning techniques (AlphaGo-style) to create strong AI opponents.
 
 **Key Benefits:**
 - Train from expert demonstrations (Claude's games)
-- Faster to strong AI than RBA approach (6-8 weeks vs 8-12 weeks)
+- Faster path to strong AI
 - Self-play bootstrapping (network improves beyond initial training)
 - Leverages play-testing data (dual-purpose effort)
 - Modern ML techniques (proven approach)

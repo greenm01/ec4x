@@ -41,8 +41,8 @@ The validation system provides comprehensive parameter and configuration validat
 │ starmap.nim       │ │ validators.nim        │  - Each module owns its
 │ gamestate.nim     │ │ - Reusable utilities  │    invariants
 │ core.nim          │ │ - Range, ratio, sum   │  - Fine-grained validation
-│ rba/config.nim    │ │ - Common patterns     │  - Domain-specific rules
-└──────────────────┘ └───────────────────────┘
+│                   │ │ - Common patterns     │  - Domain-specific rules
+└───────────────────┘ └───────────────────────┘
 ```
 
 ## Key Components
@@ -113,34 +113,6 @@ Most validators support configurable severity (defaults to `vError`).
 
 #### `src/engine/starmap.nim:validateMapRings()`
 
-**Purpose**: Domain-specific validation for map ring configuration
-
-```nim
-proc validateMapRings*(rings: int, playerCount: int = 0): seq[string]
-```
-
-**Validates**:
-- Zero rings explicitly not allowed (user requirement)
-- Reasonable bounds (1-20 rings)
-- No requirement that rings >= players (flexible combinations allowed)
-
-**Design Note**: Returns list of errors rather than raising exceptions, allowing caller to collect multiple validation errors.
-
-#### `src/ai/rba/config.nim:validateRBAConfig()`
-
-**Purpose**: Validates RBA AI configuration after loading from TOML
-
-**Validates**:
-- Strategy personality traits (all 0.0-1.0)
-- Budget allocations per act (sum to 1.0)
-- Fleet composition ratios (sum to 1.0)
-- Tactical/strategic thresholds (ratios)
-- Orders parameters (positive integers, ratios)
-- Logistics parameters (positive values, ratios)
-- Economic parameters (positive costs)
-
-**Integration**: Called automatically in `loadRBAConfig()` after TOML deserialization.
-
 ## Usage Examples
 
 ### Entry Point (Layer 3)
@@ -190,11 +162,7 @@ validateGameSetupOrQuit(params, "run_simulation")
 ### Config Validation
 
 ```nim
-# src/ai/rba/config.nim
-
-proc loadRBAConfig*(configPath: string): RBAConfig =
-  result = Toml.decode(readFile(configPath), RBAConfig)
-  validateRBAConfig(result)  # Automatic validation
+# (Example of config validation)
 ```
 
 ## Validation Rules
@@ -209,17 +177,6 @@ proc loadRBAConfig*(configPath: string): RBAConfig =
 | `seed` | any int64 | No validation needed |
 
 **Important**: No requirement that `mapRings >= numPlayers`. User requirement allows flexible combinations like 2 players on a 12-ring map.
-
-### RBA Configuration
-
-| Parameter Type | Validation |
-|----------------|------------|
-| Strategy traits | All ratios (0.0-1.0) |
-| Budget allocations | Sum to 1.0 per act (±0.01 tolerance) |
-| Fleet composition | Sum to 1.0 per doctrine (±0.01 tolerance) |
-| Strategic thresholds | Ratios (0.0-1.0) |
-| Tactical parameters | Positive integers |
-| Economic costs | Positive integers |
 
 ## Error Handling
 
@@ -245,8 +202,7 @@ All validation errors include:
 
 Examples:
 - `"Invalid player count: 1 (must be 2-12)"`
-- `"budget_act1_land_grab must sum to 1.0 (got 0.95, tolerance 0.01)"`
-- `"strategies_aggressive.aggression must be between 0.0 and 1.0, got 1.5"`
+- `"Map rings must be >= 1 (zero rings not supported)"`
 
 ## Testing
 
@@ -337,7 +293,7 @@ if errors.len > 0:
 **For new config validation**:
 1. Use utilities from `validators.nim`
 2. Add validation proc to config module
-3. Call after TOML load
+3. Call after KDL load
 4. Add unit tests
 
 ## Future Enhancements
@@ -359,8 +315,7 @@ if errors.len > 0:
 ## Related Documentation
 
 - **Testing Methodology**: `docs/BALANCE_TESTING_METHODOLOGY.md`
-- **RBA AI System**: `docs/architecture/ai-system.md`
-- **Configuration Files**: `config/*.toml`
+- **Configuration Files**: `config/*.kdl`
 - **Style Guide**: `docs/STYLE_GUIDE.md`
 
 ## Change Log
@@ -368,7 +323,6 @@ if errors.len > 0:
 **2025-11-27**: Initial implementation
 - Created 3-tier validation architecture
 - Implemented game setup validation
-- Added RBA config validation
 - 36 unit tests, all passing
 - Blocks zero-ring games per user requirement
 - Supports flexible map/player combinations

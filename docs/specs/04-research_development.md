@@ -82,7 +82,7 @@ Science Level represents your House's overall technological sophistication and r
 | 9   | 52           | 60           | 112               | 431           |
 | 10  | 68           | 78           | 146               | 577           |
 
-*Source: config/tech.toml [science_levels] section*
+*Source: config/tech.kdl [science_levels] section*
 
 <!-- SL_TABLE_END -->
 
@@ -113,7 +113,7 @@ Economic Level multiplies Industrial Unit output in the GCO formula, representin
 | EL IX      | EL VIII       | 52       | 9           | 5.0x                |
 | EL X       | EL IX         | 68       | 10          | 5.5x                |
 
-*Source: config/tech.toml [economic_level] section*
+*Source: config/tech.kdl [economic_level] section*
 
 <!-- EL_TABLE_END -->
 
@@ -154,7 +154,7 @@ Weapons technology improves ship combat statistics across all hull classes. Each
 
 *Formula: stat × (1.10 ^ (WEP_level - 1)), rounded down*
 
-*Source: config/tech.toml [weapons_technology] section*
+*Source: config/tech.kdl [weapons_technology] section*
 
 <!-- WEP_TABLE_END -->
 
@@ -195,7 +195,7 @@ Shield technology protects colonies from orbital bombardment, absorbing incoming
 | SLD V      | SLD IV        | 27       | 6           | 55%          | 50        |
 | SLD VI     | SLD V         | 35       | 7           | 65%          | 60        |
 
-*Source: config/tech.toml [shields] section*
+*Source: config/tech.kdl [shields] section*
 
 <!-- SLD_TABLE_END -->
 
@@ -243,7 +243,7 @@ Construction technology gates access to advanced hull classes, increases shipyar
 | CST IX     | CST VIII      | 52       | 9           | 1.8x                | -              |
 | CST X      | CST IX        | 68       | 10          | 1.9x                | PB             |
 
-*Source: config/tech.toml [construction] section*
+*Source: config/tech.kdl [construction] section*
 
 <!-- CST_TABLE_END -->
 
@@ -312,7 +312,7 @@ Terraforming technology allows colonies to upgrade their planet class, increasin
 | TER V      | TER IV        | 46       | 8           | 300 PP         | Benign → Lush      |
 | TER VI     | TER V         | 60       | 9           | 350 PP         | Lush → Eden        |
 
-*Source: config/tech.toml [terraforming] section*
+*Source: config/tech.kdl [terraforming] section*
 
 <!-- TER_TABLE_END -->
 
@@ -348,7 +348,7 @@ Cloaking technology allows a Raider to grant stealth to its entire assigned flee
 | CLK IV     | CLK III       | 21       | 5           | Superior             |
 | CLK V      | CLK IV        | 27       | 6           | Elite                |
 
-*Source: config/tech.toml [cloaking] section*
+*Source: config/tech.kdl [cloaking] section*
 
 <!-- CLK_TABLE_END -->
 
@@ -395,7 +395,7 @@ Electronic Intelligence represents your house's empire-wide sensor, signals anal
 | ELI IV     | ELI III       | 21       | 5           | Superior             |
 | ELI V      | ELI IV        | 27       | 6           | Elite                |
 
-*Source: config/tech.toml [electronic_intelligence] section*
+*Source: config/tech.kdl [electronic_intelligence] section*
 
 <!-- ELI_TABLE_END -->
 
@@ -431,7 +431,7 @@ Strategic Lift improves Troop Transports, increasing their carry capacity for Ma
 | STL IV     | STL III       | 16       | 4           | 4 MD               |
 | STL V      | STL IV        | 21       | 5           | 5 MD               |
 
-*Source: config/tech.toml [strategic_lift] section*
+*Source: config/tech.kdl [strategic_lift] section*
 
 <!-- STL_TABLE_END -->
 
@@ -468,7 +468,7 @@ Fleet Command improves the tactical doctrine and command systems used by your fl
 | FC V       | FC IV         | 25       | 6           | 26 ships                |
 | FC VI      | FC V          | 32       | 8           | 30 ships                |
 
-*Source: config/tech.toml [fleet_command] section*
+*Source: config/tech.kdl [fleet_command] section*
 
 <!-- FC_TABLE_REVISED_END -->
 
@@ -501,7 +501,7 @@ Strategic Command represents your House's investment in its high-level naval sta
 | SC V       | SC IV         | 28       | 7           | 18                     | 25                      | 31                     |
 | SC VI      | SC V          | 36       | 9           | 20                     | 28                      | 36                     |
 
-*Source: config/tech.toml [strategic_command] section*
+*Source: config/tech.kdl [strategic_command] section*
 
 **Map Size Classifications:**
 - **Small Maps**: 8-10 systems per player
@@ -569,7 +569,7 @@ Fighter Doctrine improves organizational efficiency and training throughput, inc
 | FD II      | FD I          | 15       | 2           | 1.5x                |
 | FD III     | FD II         | 17       | 3           | 2.0x                |
 
-*Source: config/tech.toml [fighter_doctrine] section*
+*Source: config/tech.kdl [fighter_doctrine] section*
 
 <!-- FD_TABLE_END -->
 
@@ -613,7 +613,7 @@ Advanced Carrier Operations improves carrier efficiency, allowing greater Fighte
 | ACO II     | ACO I         | 20       | 4           | 4 Fighters   | 6 Fighters   |
 | ACO III    | ACO II        | 22       | 5           | 5 Fighters   | 8 Fighters   |
 
-*Source: config/tech.toml [advanced_carrier_operations] section*
+*Source: config/tech.kdl [advanced_carrier_operations] section*
 
 <!-- ACO_TABLE_END -->
 

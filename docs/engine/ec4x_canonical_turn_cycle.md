@@ -601,7 +601,7 @@ for fleet in state.allFleets():
 
 **2. Process EBP/CIP Investment**
 - Purchase EBP (Espionage Budget Points) and CIP (Counter-Intelligence Points)
-- Cost: 40 PP each (from `espionage.toml`)
+- Cost: 40 PP each (from `espionage.kdl`)
 - Add purchased points to `house.espionageBudget`
 - Deduct PP cost from house treasury
 - Check over-investment penalty:

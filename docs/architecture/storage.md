@@ -503,7 +503,6 @@ CREATE INDEX idx_diagnostics_act ON diagnostic_metrics(game_id, act);
 
 **Usage:**
 - Balance testing: Run 100+ games, analyze with Python + polars
-- AI tuning: Genetic algorithms optimize RBA weights
 - Regression detection: Compare metrics across code changes
 - Performance analysis: Identify outlier games
 

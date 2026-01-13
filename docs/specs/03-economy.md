@@ -139,7 +139,7 @@ To reward benevolent or populist rule, colonies grant bonuses in the same Income
 | 11 – 20 %          | ×1.15 (+14 %)                                           | +2                                  |
 | 0 – 10 %           | ×1.20 (+19 %)                                           | +3                                  |
 
-*Source: config/prestige.toml [tax_incentives] and config/economy.kdl [taxPopulationGrowth] sections*
+*Source: config/prestige.kdl [tax_incentives] and config/economy.kdl [taxPopulationGrowth] sections*
 
 <!-- TAX_INCENTIVE_TABLE_END -->
 

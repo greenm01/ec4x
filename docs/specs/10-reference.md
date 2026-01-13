@@ -64,7 +64,7 @@ Unique strategic units with special capacity rules.
 |:-----:| -------------- |:---:|:---:|:---:|:--:|:--:|:--:| ---------------------------- |
 | PB    | Planet Breaker | 10  | 400 | 10% | 50 | 20 | 6  | Max 1 per owned colony       |
 
-*Source: config/ships.toml*
+*Source: config/ships.kdl*
 
 **Note:** Starbases are **facilities** (not ships) and are documented in [Section 2.4.4](02-assets.md#244-starbases). They are built via the Colony pipeline and stored at colonies, never assigned to fleets.
 
@@ -88,7 +88,7 @@ This reflects the game's time narrative where turns represent variable time peri
 | ----------- | --------- | ----------------- |
 | All Classes | All Ships | 1 turn            |
 
-*Source: config/ships.toml [construction] section*
+*Source: config/ships.kdl [construction] section*
 
 <!-- CONSTRUCTION_TIMES_TABLE_END -->
 
@@ -103,7 +103,7 @@ This reflects the game's time narrative where turns represent variable time peri
 | AA        | Armies           | 1   | 15  | 2%  | 3   | 5   |
 | MD        | Space Marines    | 1   | 25  | 2%  | 6   | 6   |
 
-*Source: config/ground_units.toml*
+*Source: config/ground_units.kdl*
 
 <!-- GROUND_UNITS_TABLE_END -->
 
@@ -117,7 +117,7 @@ Orbital facilities are infrastructure built at colonies that provide combat, eco
 | --------- | -------- |:---:|:---:|:---:|:---:|:---:|:----------:|
 | SB        | Starbase | 3   | 300 | 5%  | 45  | 50  | 3 turns    |
 
-*Source: config/facilities.toml*
+*Source: config/facilities.kdl*
 
 **Notes:**
 
@@ -146,7 +146,7 @@ Orbital facilities are infrastructure built at colonies that provide combat, eco
 - All dock counts scale with CST technology (+10% per level)
 - Starbase repairs use Spaceports (not Drydocks) and don't consume dock capacity
 
-*Source: config/facilities.toml*
+*Source: config/facilities.kdl*
 
 <!-- CONSTRUCTION_FACILITIES_TABLE_END -->
 
@@ -174,7 +174,7 @@ Small maps (8-10 systems/player) use the baseline multiplier. Larger maps scale 
 - **Medium maps** (15-20 systems/player): 3.0-4.0x multiplier (scaled down) → ~40-50 turn games
 - **Large maps** (30+ systems/player): 2.0-2.5x multiplier (scaled down) → ~60-80 turn games
 
-*Configuration: config/prestige.toml [dynamic_scaling] section*
+*Configuration: config/prestige.kdl [dynamic_scaling] section*
 
 ### Zero-Sum Competition Mechanics
 
@@ -219,7 +219,7 @@ The zero-sum system ensures **losers actively decline** rather than merely slowi
 | House Eliminated                   | `HouseEliminated`      | +3    | Zero-Sum     |
 | Victory Achieved                   | `VictoryAchieved`      | +5    | Absolute     |
 
-*Source: config/prestige.toml [economic], [military], and [espionage] sections*
+*Source: config/prestige.kdl [economic], [military], and [espionage] sections*
 
 **Notes:**
 
@@ -255,7 +255,7 @@ Penalty mechanics describe how prestige is deducted based on player actions and 
 Colonies without ground defense incur additional prestige penalties when lost to invasion or blitz operations:
 
 - **Check**: Colony has 0 armies AND 0 marines AND 0 ground batteries
-- **Penalty**: Base prestige loss × 1.5 (configured in prestige.toml as `undefended_colony_penalty_multiplier`)
+- **Penalty**: Base prestige loss × 1.5 (configured in prestige.kdl as `undefended_colony_penalty_multiplier`)
 - **Example**: Losing undefended colony = -10 (base) × 1.5 = -15 prestige (before dynamic multiplier)
 - **Rationale**: Represents the dishonor of leaving citizens defenseless
 
@@ -274,8 +274,8 @@ Ground units received 33% cost reductions to make defensive investments more acc
 - **Ground Batteries**: 13 PP (was 20)
 - **Planetary Shields**: 50 PP (was 100, then 67)
 
-*Configuration: config/prestige.toml [military].undefended_colony_penalty_multiplier*
-*Configuration: config/ground_units.toml [*].build_cost*
+*Configuration: config/prestige.kdl [military].undefended_colony_penalty_multiplier*
+*Configuration: config/ground_units.kdl [*].build_cost*
 
 ## 10.5 Game Limits Summary (Anti-Spam / Anti-Cheese Caps)
 

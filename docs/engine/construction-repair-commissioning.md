@@ -1192,7 +1192,7 @@ EventType.TerraformingCanceled:
 
 **Queue clearing thresholds:**
 
-**File:** `config/combat.toml`
+**File:** `config/combat.kdl`
 
 ```toml
 [facilities]
@@ -1834,7 +1834,7 @@ proc resolveConflictPhase(state: var GameState):
 
 ### Dock Capacity
 
-**File:** `config/facilities.toml`
+**File:** `config/facilities.kdl`
 
 ```toml
 [spaceport]

@@ -95,7 +95,7 @@ If you invest more than 5% of your turn budget into EBP, you lose Prestige point
 | Intelligence Theft         | 8            | Steal target's entire intelligence database.                         | +40                        | -20                        |
 | Plant Disinformation       | 6            | Corrupt target's intelligence with false data.                       | +15                        | -15                        |
 
-*Source: config/prestige.toml [espionage] and [espionage_victim] sections; config/espionage.toml [costs]*
+*Source: config/prestige.kdl [espionage] and [espionage_victim] sections; config/espionage.kdl [costs]*
 <!-- ESPIONAGE_PRESTIGE_TABLE_END -->
 
 ### **9.2.1 Espionage Mechanics**
@@ -192,7 +192,7 @@ The modifier is determined based on the total **CIP points** held by the player 
 | 16-20            | +4                                   |
 | 21+              | +5 (maximum)                         |
 
-*Source: config/espionage.toml [detection] section*
+*Source: config/espionage.kdl [detection] section*
 <!-- CIC_MODIFIER_TABLE_END -->
 
 ### Espionage Detection Table:
@@ -206,7 +206,7 @@ The modifier is determined based on the total **CIP points** held by the player 
 | CIC4      | > 7            | 65% → 70-90%                                    |
 | CIC5      | > 4            | 80% → 85-95%                                    |
 
-*Source: config/espionage.toml [detection] section*
+*Source: config/espionage.kdl [detection] section*
 <!-- CIC_THRESHOLD_TABLE_END -->
 
 **Example**:

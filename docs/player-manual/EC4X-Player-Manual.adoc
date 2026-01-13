@@ -935,7 +935,7 @@ Where:
 | Very Rich | 140% | 120% | 100% | 80% | 76% | 72% | 68%
 |===
 
-*Source: config/economy.toml [raw_material_efficiency] section*
+*Source: config/economy.kdl [raw_material_efficiency] section*
 
 Look up the Raw Material classification of your colony's system in the RAW column, and cross index with the planet's habitable conditions.
 
@@ -966,7 +966,7 @@ Every Income Phase the game calculates the *average tax rate over the current tu
 | 91 – 100 % | -11
 |===
 
-*Source: config/prestige.toml [tax_penalties] section*
+*Source: config/prestige.kdl [tax_penalties] section*
 
 This penalty is applied every turn the qualifying average is met and cannot be avoided by short-term cycling.
 
@@ -985,7 +985,7 @@ To reward benevolent or populist rule, colonies grant bonuses in the same Income
 | 0 – 10 % | ×1.20 (+19 %) | +3
 |===
 
-*Source: config/prestige.toml [tax_incentives] and config/economy.toml [tax_population_growth] sections*
+*Source: config/prestige.kdl [tax_incentives] and config/economy.kdl [tax_population_growth] sections*
 
 With multiple big colonies, low taxes become a legitimate prestige-farming strategy that can outpace military victories in the late game.
 
@@ -1266,7 +1266,7 @@ Shield technology protects colonies from orbital bombardment, absorbing incoming
 | SLD VI | SLD V | 35 | 7 | 65% | 60
 |===
 
-*Source: config/tech.toml [shields] section*
+*Source: config/tech.kdl [shields] section*
 
 *Planetary Shield Construction:*
 
@@ -1311,7 +1311,7 @@ Construction technology increases shipyard and spaceport capacity, enables advan
 | CST X | CST IX | 68 | 10 | 1.9x | PB
 |===
 
-*Source: config/tech.toml [construction] section*
+*Source: config/tech.kdl [construction] section*
 
 *Facility Capacity:*
 
@@ -3949,7 +3949,7 @@ Investing too much in espionage can erode the prestige of your House over time, 
 
 Each turn that espionage investments exceed 5% of your budget, your House loses 2 prestige points for every additional 1% invested over the 5% threshold. This penalty reflects the growing skepticism of your peers and the erosion of your House's noble reputation.
 
-*Configuration: `over_invest_espionage = -2` in config/prestige.toml [penalties] section*
+*Configuration: `over_invest_espionage = -2` in config/prestige.kdl [penalties] section*
 
 Repeated over-investment in espionage actions compounds the loss of prestige, as the Empire’s nobility becomes increasingly suspicious of your methods. Over time, this can severely impact your standing, making it difficult to assert dominance and achieve key diplomatic or military objectives.
 
@@ -4076,7 +4076,7 @@ Small maps (8-10 systems/player) use the baseline multiplier. Larger maps scale 
 - *Medium maps* (15-20 systems/player): 3.0-4.0x multiplier (scaled down) → ~40-50 turn games
 - *Large maps* (30+ systems/player): 2.0-2.5x multiplier (scaled down) → ~60-80 turn games
 
-*Configuration: config/prestige.toml [dynamic_scaling] section*
+*Configuration: config/prestige.kdl [dynamic_scaling] section*
 
 === Base Prestige Values
 

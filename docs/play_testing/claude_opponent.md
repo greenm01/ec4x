@@ -8,14 +8,14 @@
 
 ## Overview
 
-EC4X is fundamentally a **social game** focused on human interaction, diplomacy, and strategy. Rather than investing months in AI development (RBA or neural networks) before the engine is stable, we can play-test immediately using Claude as an intelligent opponent.
+EC4X is fundamentally a **social game** focused on human interaction, diplomacy, and strategy. We can play-test immediately using Claude as an intelligent opponent.
 
 This approach provides:
-- ✅ **Zero AI coding** - No RBA debugging, no neural network training
+- ✅ **Zero AI coding** - No complex AI debugging or training needed yet
 - ✅ **Intelligent opposition** - Claude understands strategy, not random behavior
 - ✅ **Explained reasoning** - Every decision comes with strategic commentary
 - ✅ **Fast iteration** - Test balance changes immediately
-- ✅ **Fog-of-war enforcement** - Claude only sees what House 1 should see
+- ✅ **Fog-of-war enforcement** - Claude only sees what its house should see
 - ✅ **Transparent debugging** - All orders in human-readable KDL format
 
 ---
@@ -496,15 +496,7 @@ proc executeHouseOrders*(game: var GameState, orders: HouseOrders) =
 
 ### Advantages Over Immediate AI Development
 
-| Factor | Claude-as-Opponent | RBA AI Development |
-|--------|-------------------|-------------------|
-| **Time to playable** | 2-3 days | 4-6 weeks |
-| **Intelligence quality** | Excellent (human-level) | Unknown (needs tuning) |
-| **Balance testing** | Immediate feedback | Requires AI to work first |
-| **Debugging** | Transparent (see reasoning) | Black box (config weights) |
-| **Iteration speed** | Instant | Slow (recompile + retune) |
-| **Strategic variety** | Claude can play any style | Limited by rule implementation |
-| **Focus on core game** | Engine refinement | AI debugging |
+Using Claude as an initial opponent allows for excellent intelligence quality, immediate balance feedback, and transparent reasoning during the early stages of development.
 
 ### Why Delay AI Development?
 
@@ -522,14 +514,6 @@ proc executeHouseOrders*(game: var GameState, orders: HouseOrders) =
 - ✅ Balance is reasonably tuned
 - ✅ You have dozens of complete games under your belt
 - ✅ You understand what "good play" looks like
-
-**AI Development Order (Future):**
-1. **Dummy AI** - Random/scripted for load testing
-2. **Rule-based AI** - Simple heuristics (if it works)
-3. **RBA AI** - Complex rule system (if needed)
-4. **Neural Networks** - Machine learning (if warranted)
-
----
 
 ## Integration with Existing Systems
 
@@ -609,8 +593,7 @@ Claude can play 2-3 opponent houses simultaneously:
 Only after 20-30 complete games via Claude play-testing:
 1. Analyze common strategies from Claude's orders
 2. Identify patterns worth automating
-3. Build simple rule-based AI (if needed)
-4. Consider RBA/neural networks (if warranted)
+3. Consider future AI development (neural networks, etc.)
 
 ---
 
