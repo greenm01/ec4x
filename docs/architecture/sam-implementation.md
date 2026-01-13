@@ -1,12 +1,12 @@
-# TEA Pattern Implementation Guide
+# SAM Pattern Implementation Guide
 
 ## Overview
 
-This guide explains how to implement **The Elm Architecture (TEA)** pattern in Nim for both the EC4X client and daemon. TEA provides a predictable, testable, and maintainable architecture for managing application state.
+This guide explains how to implement **State-Action-Model (SAM)** pattern in Nim for both the EC4X client and daemon. SAM provides a predictable, testable, and maintainable architecture for managing application state.
 
-## What is TEA?
+## What is SAM?
 
-**The Elm Architecture** is a pattern for building applications with three core components:
+**State-Action-Model** is a pattern for building applications with three core components:
 
 1. **Model** - Application state (data)
 2. **Message** - Events that describe state changes
@@ -16,7 +16,7 @@ Additionally:
 - **Commands** - Async effects that produce messages
 - **View** - Renders the model (for UI applications)
 
-## Why TEA for EC4X?
+## Why SAM for EC4X?
 
 **Benefits:**
 - ✅ **Predictable**: All state changes go through one function
@@ -28,7 +28,7 @@ Additionally:
 
 ## Core Pattern
 
-### Minimal TEA Loop
+### Minimal SAM Loop
 
 ```nim
 import asyncdispatch, options
@@ -588,7 +588,7 @@ proc clientMain() {.async.} =
     await sleepAsync(16)  # ~60 FPS for UI
 ```
 
-## Testing TEA Applications
+## Testing SAM Applications
 
 ### Unit Testing Update Function
 
@@ -717,6 +717,6 @@ type Msg = object
 
 ## Related Documentation
 
-- [Daemon Design](./daemon.md) - Daemon-specific TEA implementation
+- [Daemon Design](./daemon.md) - Daemon-specific SAM implementation
 - [Architecture Overview](./overview.md) - High-level system design
 - [Data Flow](./dataflow.md) - How messages flow through the system

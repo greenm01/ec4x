@@ -365,11 +365,11 @@ max_games = 100                 # Refuse to monitor more than 100 games
 memory_limit_mb = 2048          # Restart if exceeds 2 GB
 ```
 
-### Event Loop Architecture (TEA Pattern)
+### Event Loop Architecture (SAM Pattern)
 
-The daemon uses **The Elm Architecture (TEA)** pattern with async/await for non-blocking concurrency.
+The daemon uses **State-Action-Model (SAM)** pattern with async/await for non-blocking concurrency.
 
-#### Why TEA?
+#### Why SAM?
 
 **Benefits:**
 - **Predictable State**: All state changes go through pure `update()` function
@@ -378,7 +378,7 @@ The daemon uses **The Elm Architecture (TEA)** pattern with async/await for non-
 - **Non-Blocking**: Async I/O doesn't block the event loop
 - **Concurrent**: Multiple games resolve simultaneously without threads
 
-#### TEA Components
+#### SAM Components
 
 **Model (Application State):**
 ```nim

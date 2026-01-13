@@ -16,10 +16,16 @@ proc newSubscriber*(relays: seq[string]): Subscriber =
     gameIds: @[]
   )
 
-proc subscribeToGame*(sub: Subscriber, gameId: string, currentTurn: int) {.async.} =
-  ## Subscribe to order events for a specific game
-  ## TODO: Implement subscription to game orders
-  raise newException(CatchableError, "Not yet implemented")
+proc subscribeToGame*(sub: Subscriber, gameId: string, currentTurn: int): Proposal[DaemonModel] {.async.} =
+  ## Stub sub → order Proposal
+  logInfo(\"Nostr subscriber\", \"Stub subscribed game \", gameId, \" turn \", $currentTurn)
+  Proposal[DaemonModel](
+    name: \"order_received_nostr\",
+    payload: proc(model: var DaemonModel) =
+      model.pendingOrders[gameId] += 1  # Stub 1 order
+      if model.pendingOrders[gameId] >= 4:  # Stub ready
+        daemonLoop.queueCmd(resolveTurnCmd(gameId))
+  )
 
 proc start*(sub: Subscriber) {.async.} =
   ## Start listening for events

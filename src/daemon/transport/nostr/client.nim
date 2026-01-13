@@ -13,9 +13,9 @@ proc newNostrClient*(relays: seq[string]): NostrClient =
   )
 
 proc connect*(client: NostrClient) {.async.} =
-  ## Connect to all configured relays
-  ## TODO: Implement WebSocket connections
-  raise newException(CatchableError, "Not yet implemented")
+  ## Stub connect
+  logInfo(\"Nostr\", \"Stub connected to \", client.relays.len, \" relays\")
+  discard
 
 proc disconnect*(client: NostrClient) {.async.} =
   ## Disconnect from all relays
@@ -23,9 +23,8 @@ proc disconnect*(client: NostrClient) {.async.} =
   raise newException(CatchableError, "Not yet implemented")
 
 proc subscribe*(client: NostrClient, subId: string, filters: seq[NostrFilter]) {.async.} =
-  ## Subscribe to events matching filters
-  ## TODO: Implement subscription
-  raise newException(CatchableError, "Not yet implemented")
+  logInfo(\"Nostr\", \"Stub subscribed \", subId, \" filters \", $filters.len)
+  discard
 
 proc publish*(client: NostrClient, event: NostrEvent): Future[bool] {.async.} =
   ## Publish event to all relays

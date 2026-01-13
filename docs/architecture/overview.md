@@ -24,7 +24,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
               ↑ imports
 ┌─────────────────────────────────────┐
 │       Daemon (src/daemon/)          │
-│  • TEA event loop                   │
+│  • SAM event loop                   │
 │  • Persistence (SQLite per game)    │
 │  • Transport handlers               │
 │  • Turn resolution orchestration    │
@@ -82,7 +82,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - Publishes results via appropriate transport
 
 **Architecture**:
-- TEA (The Elm Architecture) pattern
+- SAM (The Elm Architecture) pattern
 - Single-threaded async event loop
 - Non-blocking concurrent operations
 - Manages all active games in one process
