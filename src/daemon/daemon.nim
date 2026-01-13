@@ -15,6 +15,19 @@ import std/[os, tables, sets, times, asyncdispatch, options]
 import cligen
 import ../common/logger
 import ./sam_core
+import ../daemon/persistence/reader
+
+# =============================================================================
+# Core Types
+# =============================================================================
+type
+  GameId* = string
+  GameInfo* = object
+    id*: GameId
+    dbPath*: string
+    turn*: int
+    phase*: string
+    transportMode*: string # e.g. "localhost", "nostr"
 
 # =============================================================================
 # TEA Model (Application State)
@@ -43,7 +56,7 @@ type
 # TEA Commands (Async Effects)
 # =============================================================================
 
-type DaemonCmd* = () -> Future[Proposal[DaemonModel]]
+type DaemonCmd* = proc (): Future[Proposal[DaemonModel]]
 
 # =============================================================================
 # TEA Update (Pure State Transitions)
@@ -57,13 +70,19 @@ type DaemonCmd* = () -> Future[Proposal[DaemonModel]]
 # =============================================================================
 
 proc executeCmd(cmd: DaemonCmd): Future[Proposal[DaemonModel]] {.async.} =
-  cmd()
+  await cmd()
+
+# =============================================================================
+# Global State
+# =============================================================================
+
+var daemonLoop* {.global.}: DaemonLoop
 
 # =============================================================================
 # Main Event Loop
 # =============================================================================
 
-proc initModel(dataDir: string, pollInterval: int): DaemonModel =
+proc initModel*(dataDir: string, pollInterval: int): DaemonModel =
   result = DaemonModel(
     games: initTable[GameId, GameInfo](),
     resolving: initHashSet[GameId](),
@@ -78,66 +97,76 @@ proc newDaemonLoop(dataDir: string, pollInterval: int): DaemonLoop =
   # Add reactors (impl later)
   # result.addReactor(tickReactor)
 
+proc collectOrdersCmd(gameId: GameId): DaemonCmd =
+  proc (): Future[Proposal[DaemonModel]] {.async.} =
+    # Stub for collecting orders
+    logDebug("Daemon", "Collecting orders stub for game: ", gameId)
+    # This should return a proposal like OrderReceived, or a discovery_complete type.
+    # For now, just return a dummy proposal
+    Proposal[DaemonModel](
+      name: "collect_orders_complete",
+      payload: proc(model: var DaemonModel) = discard
+    )
+
+proc scheduleNextTickCmd(delayMs: int): DaemonCmd =
+  proc (): Future[Proposal[DaemonModel]] {.async.} =
+    await sleepAsync(delayMs)
+    tickProposal()
+
+proc tickProposal(): Proposal[DaemonModel] =
+  Proposal[DaemonModel](
+    name: "tick",
+    payload: proc(model: var DaemonModel) =
+      logDebug("Daemon", "Tick")
+      daemonLoop.queueCmd(discoverGamesCmd(model.dataDir))
+      for id in daemonLoop.model.games.keys.toSeq:
+        if id notin daemonLoop.model.resolving:
+          daemonLoop.queueCmd(collectOrdersCmd(id))
+      daemonLoop.queueCmd(scheduleNextTickCmd(daemonLoop.model.pollInterval * 1000))
+  )
+
 proc discoverGamesCmd(dir: string): DaemonCmd =
-  () => async:
-    let gamesDir = dir / \"games\"
-    var proposals = newSeq[Proposal[DaemonModel]]()
+  proc (): Future[Proposal[DaemonModel]] {.async.} =
+    let gamesDir = dir / "games"
+    var gameDiscoveredProposals = newSeq[Proposal[DaemonModel]]()
     if dirExists(gamesDir):
       for kind, path in walkDir(gamesDir):
         if kind == pcDir:
-          let dbPath = path / \"ec4x.db\"
+          let dbPath = path / "ec4x.db"
           if fileExists(dbPath):
             let gameId = path.splitFile.name
-            let reader = persistence.reader
             let state = reader.loadGameState(dbPath)
-            proposals.add Proposal[DaemonModel](
-              name: \"game_discovered\",
+            gameDiscoveredProposals.add Proposal[DaemonModel](
+              name: "game_discovered",
               payload: proc(model: var DaemonModel) =
                 model.games[gameId] = GameInfo(
                   id: gameId,
                   dbPath: dbPath,
                   turn: state.turn,
                   phase: state.phase,
-                  transportMode: Localhost,  # Stub
-                )
-            )
-    let discoverP = Proposal[DaemonModel](
-      name: \"discover_complete\",
-      payload: proc(model: var DaemonModel) = discard
+                  transportMode: "localhost", # Stub
     )
-    discoverP
-
-proc tickProposal(pollInterval: int): Proposal[DaemonModel] =
-  Proposal[DaemonModel](
-    name: \"tick\",
-    payload: proc(model: var DaemonModel) =
-      logDebug(\"Daemon\", \"Tick\")
-      model.loop.queueCmd(discoverGamesCmd(model.dataDir))
-      for id in model.games.keys.toSeq:
-        if id notin model.resolving:
-          model.loop.queueCmd(collectOrdersCmd(id))
-      model.loop.queueCmd(scheduleNextTickCmd(model.pollInterval * 1000))
-  )
-
-proc scheduleTickCmd(delayMs: int): DaemonCmd =
-  () => async:
-    await sleepAsync(delayMs)
-    tickProposal(delayMs div 1000)
+            )
+    Proposal[DaemonModel](
+      name: "discovery_complete",
+      payload: proc(model: var DaemonModel) =
+        for p in gameDiscoveredProposals:
+          daemonLoop.present(p)
+    )
 
 proc mainLoop(dataDir: string, pollInterval: int) {.async.} =
   ## SAM daemon loop
-  var daemonLoop {.global.}: DaemonLoop
-daemonLoop = newSamLoop(initModel(dataDir, pollInterval))
+  daemonLoop = newDaemonLoop(dataDir, pollInterval)
   
   logInfo("Daemon", "Starting SAM daemon...")
   logInfo("Daemon", "Data directory: ", dataDir)
   logInfo("Daemon", "Poll interval: ", pollInterval, " seconds")
 
   # Start tick chain
-  loop.queueCmd(scheduleTickCmd(0, pollInterval))  # Initial immediate
+  daemonLoop.queueCmd(scheduleNextTickCmd(0))  # Initial immediate
 
-  while loop.model.running:
-    loop.process()
+  while daemonLoop.model.running:
+    daemonLoop.process()
     await sleepAsync(100)  # Non-block poll
 
   logInfo("Daemon", "Daemon stopped")
