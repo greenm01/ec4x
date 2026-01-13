@@ -52,7 +52,19 @@ proc calculateMaxFighterCapacity*(industrialUnits: int32, fdLevel: int32): int32
   ## Reads divisor from gameConfig.limits.fighterCapacity
   let fdMult = fighterDoctrineMultiplier(fdLevel)
   let divisor = gameConfig.limits.fighterCapacity.iuDivisor
-  return int32(floor(float32(industrialUnits) / float32(divisor)) * fdMult)
+
+  # Prevent division by zero
+  if divisor == 0:
+    return 0'i32
+
+  # Avoid overflow by using int64 for intermediate calculation
+  let baseCapacity = industrialUnits div divisor
+  let bonusCapacity = int64(float32(industrialUnits mod divisor) / float32(divisor) * fdMult)
+  let totalCapacity = int64(float32(baseCapacity) * fdMult) + bonusCapacity
+
+  # Clamp to int32 range to prevent overflow
+  let clamped = min(totalCapacity, int64(high(int32)))
+  return int32(max(0'i64, clamped))
 
 proc analyzeCapacity*(
     state: GameState, colony: Colony, houseId: HouseId

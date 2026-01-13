@@ -13,6 +13,8 @@ import ../daemon/persistence/writer
 import ./transport/localhost/watcher
 import ../engine/turn_cycle/engine
 import ../engine/state/engine as state_ops
+import ../engine/config/engine
+import ../engine/globals
 
 # =============================================================================
 # Core Types
@@ -237,20 +239,23 @@ proc resolve(gameId: string, dataDir: string = "data"): int =
   let gamesDir = dataDir / "games"
   let gameDir = gamesDir / gameId
   let dbPath = gameDir / "ec4x.db"
-  
+
   if not fileExists(dbPath):
     logError("Daemon", "Game database not found: ", dbPath)
     return 1
-    
+
   logInfo("Daemon", "Manually resolving game: ", gameId)
-  
+
+  # Load game config (required for calculations)
+  gameConfig = loadGameConfig("config")
+
   # Initialize global loop if needed (some cmds might use it)
   daemonLoop = newDaemonLoop(dataDir, 30)
-  
+
   # Load state
   let state = loadFullState(dbPath)
   let commands = loadOrders(dbPath, state.turn)
-  
+
   # Resolve
   let result = resolveTurnDeterministic(state, commands)
   

@@ -1,0 +1,5 @@
+client {
+  data_dir "data"
+  server_url "http://localhost:8080"
+  house_id "house1"
+}
