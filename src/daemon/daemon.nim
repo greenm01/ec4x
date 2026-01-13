@@ -11,6 +11,7 @@ import ./config
 import ../daemon/persistence/reader
 import ../daemon/persistence/writer
 import ./transport/localhost/watcher
+import ./transport/localhost/exporter
 import ../engine/turn_cycle/engine
 import ../engine/state/engine as state_ops
 import ../engine/config/engine
@@ -263,6 +264,9 @@ proc resolve(gameId: string, dataDir: string = "data"): int =
   saveFullState(state)
   saveGameEvents(state, result.events)
   markCommandsProcessed(dbPath, gameId, state.turn - 1)
+
+  # Export turn results for clients
+  exportTurnResults(gameDir, state.turn, state)
   
   logInfo("Daemon", "Resolution complete. Now at turn ", $state.turn)
   return 0

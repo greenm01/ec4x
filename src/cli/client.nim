@@ -9,7 +9,9 @@ import ../common/logger
 proc submitOrders(gameId: string, ordersFile: string, houseId = "", configPath = "config/client.kdl") =
   ## Submit orders from KDL file to daemon
   let config = loadClientConfig(configPath)
-  let hid = if houseId != "": houseId else: config.houseId
+  let hidStr = if houseId != "": houseId else: config.houseId
+  # Extract numeric ID from house ID string (e.g., "house1" -> "1")
+  let hid = if hidStr.startsWith("house"): hidStr[5..^1] else: hidStr
   let gameDir = config.dataDir / "games" / gameId
   let ordersDir = gameDir / "orders"
 
@@ -23,7 +25,9 @@ proc submitOrders(gameId: string, ordersFile: string, houseId = "", configPath =
 proc viewState(gameId: string, houseId = "", turn = -1, configPath = "config/client.kdl") =
   ## View game state for house
   let config = loadClientConfig(configPath)
-  let hid = if houseId != "": houseId else: config.houseId
+  let hidStr = if houseId != "": houseId else: config.houseId
+  # Extract numeric ID from house ID string (e.g., "house1" -> "1")
+  let hid = if hidStr.startsWith("house"): hidStr[5..^1] else: hidStr
   let turnDir = config.dataDir / "games" / gameId / "houses" / hid / "turn_results"
 
   if not dirExists(turnDir):

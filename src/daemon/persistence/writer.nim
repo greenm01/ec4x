@@ -12,7 +12,7 @@
 ## DRY Principle: Single implementation for each entity type
 ## DoD Principle: Pure functions operating on GameState data
 
-import std/[options, strutils, tables, json, jsonutils]
+import std/[options, strutils, tables, json, jsonutils, times]
 import db_connector/db_sqlite
 import ../../common/logger
 import ../../engine/types/[event, game_state, core, house, starmap, colony, fleet, ship, diplomacy, command, tech, espionage]
@@ -338,8 +338,8 @@ proc saveGameEvents*(state: GameState, events: seq[GameEvent]) =
       sql"""
       INSERT INTO game_events (
         game_id, turn, event_type, house_id, fleet_id, system_id,
-        command_type, description, reason, event_data
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        command_type, description, reason, event_data, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
       state.gameId,
       $event.turn,
@@ -351,6 +351,7 @@ proc saveGameEvents*(state: GameState, events: seq[GameEvent]) =
       event.description,
       "",
       eventDataJson,
+      $epochTime(),
     )
   db.exec(sql"COMMIT")
 
