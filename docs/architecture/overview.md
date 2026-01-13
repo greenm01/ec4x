@@ -38,6 +38,14 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 │ • Direct DB │          │ • Relays    │
 │ • Testing   │          │ • P2P       │
 └─────────────┘          └─────────────┘
+         ↑                      ↑
+┌───────────────────────────────────────────────────┐
+│              Client (src/client/)                 │
+│  • GUI player interface (bin/ec4x-client)         │
+│  • SAM architecture with Sokol+Nuklear            │
+│  • Starmap rendering, order submission            │
+│  • Turn report viewing                            │
+└───────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────┐
 │     Moderator (src/moderator/)      │
@@ -48,28 +56,30 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 ```
 
 **Import Rules:**
-- `engine/` → imports NOTHING from `daemon/` or `moderator/`
+- `engine/` → imports NOTHING from other modules (pure library)
 - `daemon/` → imports from `engine/` (types, resolveTurn)
 - `moderator/` → imports from `engine/` and `daemon/persistence/`
+- `client/` → imports from `engine/types/` (player_state for data structures)
 
 ## Components
 
 ### Client (Player Interface)
-**Binary**: `bin/client`
-**Role**: Player's game interface
+**Binary**: `bin/ec4x-client`
+**Source**: `src/client/`
+**Role**: Player's game interface (GUI)
 **Capabilities**:
 - Join games (localhost or Nostr)
 - View game state (filtered by intel)
-- Submit orders
-- View turn history
-- Generate human-readable turn reports from structured data
+- Submit orders via KDL format
+- View turn history and reports
+- Starmap visualization with hex grid
 
-**Transport Support**: Auto-detects from game config
+**Architecture**: SAM pattern with Sokol (graphics) + Nuklear (UI)
 
 **Report Generation**: Client-side formatting of TurnResult data
 - Engine sends structured TurnResult (events, combatReports)
 - Client generates formatted reports with hex coordinates
-- Different clients can format differently (CLI, web, mobile)
+- Future clients (web, mobile) can format differently
 - Minimizes network traffic (no formatted text sent over wire)
 
 ### Daemon (Turn Processor)

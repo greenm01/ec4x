@@ -35,17 +35,14 @@ This document traces the complete data flow through an EC4X turn cycle, from ord
 
 **1. Player Reviews Game State**
 
-Localhost:
-```bash
-client view my_game --house=Alpha
-# Reads ec4x.db, shows filtered view based on intel
-```
+Players use the GUI client (`bin/ec4x-client`) to view game state:
+- Starmap visualization shows known systems
+- Fleet and colony panels show owned assets
+- Intel panel shows known enemy positions
 
-Nostr:
-```bash
-client view game-123 --house=Alpha
-# Queries local cache from received EventKindStateDelta
-```
+Internally:
+- Localhost: Reads ec4x.db, shows filtered view based on intel
+- Nostr: Queries local cache from received EventKindStateDelta
 
 **2. Player Plans Orders**
 
@@ -70,10 +67,12 @@ orders turn=42 house=(HouseId)1 {
 
 **4. Player Submits Orders**
 
+Players submit orders through the GUI client or by placing KDL files directly.
+
 Localhost:
 ```bash
-client submit my_game orders.kdl
-# Client writes to houses/house_alpha/orders_pending.json
+# GUI client writes to orders directory, or player drops file directly:
+cp orders.kdl data/games/{game_id}/orders/
 ```
 
 Nostr:
@@ -601,24 +600,21 @@ Publishing loop (async):
 ### Localhost
 
 ```
-Player runs:
-  client view my_game --house=Alpha
+Player opens GUI client (bin/ec4x-client):
 
-Client:
-  1. Check for new turn results:
-     ls houses/house_alpha/turn_results/
+Client automatically:
+  1. Checks for new turn results in:
+     data/games/{game_id}/houses/{house}/turn_results/
 
-  2. Read latest turn file:
-     cat turn_43.json
+  2. Reads latest turn file (turn_43.json)
 
-  3. Parse and display:
-     - Updated game state
-     - Movement results
-     - Combat reports
-     - Intel updates
+  3. Displays:
+     - Updated starmap with new positions
+     - Movement results in event log
+     - Combat reports with animations
+     - Intel updates highlighted
 
-  4. Show summary:
-     cat turn_43.txt
+  4. Turn report panel shows summary
 ```
 
 ### Nostr
@@ -648,9 +644,7 @@ On EVENT received:
   6. Update local SQLite cache
   7. Notify player: "Turn 42 results received"
 
-Player views results:
-  client view game-123 --house=Alpha
-  # Reads from local cache, shows updated state
+GUI client automatically refreshes to show updated state from local cache.
 ```
 
 ## Complete Flow Diagram
@@ -687,7 +681,7 @@ Player A                     Daemon                      Player B
    │                           │   (different view)         │
    │                           │                            │
    │ 12. View results          │                            │
-   │    client view            │                            │
+   │    (GUI client)           │                            │
    │                           │                 13. View   │
    │                           │                    results │
    │                           │                            │

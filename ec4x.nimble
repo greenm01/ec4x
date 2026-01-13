@@ -55,19 +55,12 @@ task buildClient, "Build GUI player client":
   exec "nim c " & releaseFlags & " -o:bin/ec4x-client --passC:-Isrc/client/vendor --passC:\"-Wno-incompatible-pointer-types\" src/client/main.nim"
   echo "GUI Client build completed!"
 
-task buildPlayerClient, "Build CLI player client":
-  echo "Building EC4X CLI Player Client..."
-  mkDir "bin"
-  exec "nim c " & releaseFlags & " -o:bin/ec4x-player src/cli/client.nim"
-  echo "CLI Player Client build completed!"
-
 task buildAll, "Build all binaries (release)":
   echo "Building all EC4X binaries..."
   mkDir "bin"
   exec "nim c " & releaseFlags & " -o:bin/ec4x src/moderator/moderator.nim"
   exec "nim c " & releaseFlags & " -o:bin/ec4x-daemon src/daemon/daemon.nim"
   exec "nim c " & releaseFlags & " -o:bin/ec4x-client --passC:-Isrc/client/vendor --passC:\"-Wno-incompatible-pointer-types\" src/client/main.nim"
-  exec "nim c " & releaseFlags & " -o:bin/ec4x-player src/cli/client.nim"
   echo "All builds completed!"
 
 task tidy, "Clean build artifacts":
