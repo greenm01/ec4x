@@ -43,19 +43,36 @@ The Terminal User Interface (TUI) for EC4X is built and ready for integration wi
 ```nim
 import player/tui/adapters
 
-# Convert engine GameState to widget MapData
+# WITHOUT FOG-OF-WAR (debug/testing mode - shows all systems)
 let mapData = toMapData(gameState, viewingHouseId)
-
-# Create detail panel data for cursor position
 let detailData = toDetailPanelData(cursorCoord, gameState, viewingHouseId)
+
+# WITH FOG-OF-WAR (production mode - respects visibility)
+let mapData = toFogOfWarMapData(gameState, viewingHouseId)
+let detailData = toFogOfWarDetailPanelData(cursorCoord, gameState, viewingHouseId)
 ```
 
-**Adapter Functions:**
-- `toMapData(state, viewingHouse)` - Convert full game state to map data
-- `toDetailPanelData(coord, state, viewingHouse)` - Get system details
+**Adapter Functions (Basic):**
+- `toMapData(state, viewingHouse)` - Convert full game state (no fog-of-war)
+- `toDetailPanelData(coord, state, viewingHouse)` - Get system details (no fog-of-war)
 - `toSystemInfo(system, state)` - Convert individual system
 - `getJumpLanes(systemId, state)` - Get jump lane info
 - `getFleetsInSystem(systemId, state, viewingHouse)` - Get fleet list
+
+**Adapter Functions (Fog-of-War):**
+- `toFogOfWarMapData(state, viewingHouse)` - Map with visibility filtering
+- `toFogOfWarDetailPanelData(coord, state, viewingHouse)` - Details with fog filtering
+- `toSystemInfoFromPlayerState(visibleSys, playerState, state)` - Convert from PlayerState
+
+**Fog-of-War Behavior:**
+- `Owned` systems - Full information (your colonies)
+- `Occupied` systems - Full planet info (your fleets present)
+- `Scouted` systems - Limited info from past intelligence
+- `Adjacent` systems - Knows exists, shows as "Unknown"
+- `None` systems - Hidden, shows as "Unknown"
+- Unknown systems show "?" symbol
+- Enemy fleets only visible in Owned/Occupied systems
+- Jump lanes only shown for Scouted+ systems
 
 ### 2. Main Event Loop Pattern
 
@@ -169,29 +186,54 @@ let helpArea = rows[1]     # Help bar
 - 'h': Jump to homeworld
 - 'q': Quit
 
-## Next Steps
+## Running the TUI Player
 
-### Immediate Integration Tasks
+The TUI player is now **fully integrated** and ready to use!
 
-1. **Wire into game loop** - Replace mock data with real `GameState`
-   - File: Create `src/player/tui_player.nim`
-   - Use adapters to convert engine types
-   - Handle turn processing
+### Build and Run
 
-2. **Add fog-of-war** - Filter visible systems
-   - Extend adapters with `toFogOfWarMapData()`
-   - Show `?` for unknown systems
-   - Hide enemy fleets in unexplored space
+```bash
+# Build TUI player
+nimble buildTui
 
-3. **Action panel** - Handle user commands
+# Run (requires real terminal)
+./bin/ec4x-tui
+```
+
+**Controls:**
+- Arrow keys: Navigate starmap
+- Enter: Select system
+- Tab: Cycle to next colony
+- 'h': Jump to homeworld
+- 'q': Quit
+
+### Current Features (v1.0)
+
+✅ **Complete:**
+- Full game initialization (4-player standard scenario)
+- Fog-of-war map rendering (respects visibility levels)
+- Status bar (turn, treasury, prestige, house name)
+- Scrollable hex starmap with viewport
+- System detail panel (info, jump lanes, fleets)
+- Keyboard navigation with Tab cycling
+- Help bar
+
+### Next Steps
+
+1. **Action panel** - Handle user commands
    - Fleet orders (Move, Patrol, Attack)
    - Colony management
    - Production queue
 
-4. **Turn display** - Show current turn, phase, active house
-   - Add status bar at top
-   - Display resources, income
-   - Turn end button
+2. **Turn processing** - End turn and run resolution
+   - Submit orders
+   - Run turn executor
+   - Display turn report
+
+3. **Fleet orders UI** - Issue movement/combat commands
+   - Select fleet
+   - Choose destination
+   - Set patrol/attack orders
 
 ### Future Enhancements
 
@@ -222,26 +264,29 @@ let helpArea = rows[1]     # Help bar
 ## File Organization
 
 ```
-src/player/tui/
-├── term/               # Terminal primitives (ANSI sequences)
-├── buffer.nim          # Screen buffer with dirty tracking
-├── events.nim          # Input event types
-├── input.nim           # Input parser
-├── tty.nim             # Raw mode control
-├── signals.nim         # SIGWINCH handler
-├── layout/             # Constraint-based layouts
-├── widget/             # Core widgets (Frame, Paragraph, List)
-│   ├── text/           # Text rendering system
-│   └── hexmap/         # Hex map starmap widget
-├── adapters.nim        # Engine ↔ Widget type converters
-└── tui-architecture.md # Full architecture documentation
+src/player/
+├── tui_player.nim      # ✅ MAIN ENTRY POINT - Full game integration
+├── tui/
+│   ├── term/           # Terminal primitives (ANSI sequences)
+│   ├── buffer.nim      # Screen buffer with dirty tracking
+│   ├── events.nim      # Input event types
+│   ├── input.nim       # Input parser
+│   ├── tty.nim         # Raw mode control
+│   ├── signals.nim     # SIGWINCH handler
+│   ├── layout/         # Constraint-based layouts
+│   ├── widget/         # Core widgets (Frame, Paragraph, List)
+│   │   ├── text/       # Text rendering system
+│   │   └── hexmap/     # Hex map starmap widget
+│   ├── adapters.nim    # Engine ↔ Widget type converters
+│   └── tui-architecture.md # Full architecture documentation
 
 tests/tui/
-├── demo_hexmap.nim     # Interactive demo (works!)
+├── demo_hexmap.nim     # Interactive demo (mock data)
 ├── tbuffer.nim         # Buffer tests (15 passing)
 ├── tlayout.nim         # Layout tests (41 passing)
 ├── twidget.nim         # Widget tests (38 passing)
-└── thexmap.nim         # Hex map tests (33 passing)
+├── thexmap.nim         # Hex map tests (33 passing)
+└── test_fog_adapters.nim # Fog-of-war tests (3 passing)
 ```
 
 ## Performance Notes

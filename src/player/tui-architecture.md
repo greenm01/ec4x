@@ -859,7 +859,14 @@ The right panel shows context-sensitive information:
 3. **Message Log** - Turn events, combat results
 4. **Resource Bar** - Income, expenses, warnings
 
-**Deliverable**: ✅ Hex map widget complete, integration pending
+**Fog-of-War Integration:** ✅ Complete
+- Adapters use engine's `createPlayerState()` for proper visibility filtering
+- `toFogOfWarMapData()` respects visibility levels (Owned/Occupied/Scouted/Adjacent/None)
+- Unknown systems show "?" symbol
+- Enemy assets hidden unless detected
+- 3 fog-of-war adapter tests passing
+
+**Deliverable**: ✅ Hex map widget complete with fog-of-war support
 
 ---
 

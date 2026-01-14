@@ -358,7 +358,7 @@ proc main() =
   
   # Output initial frame
   for y in 0 ..< buf.h:
-    stdout.write(cursorPosition(1, y + 1))
+    stdout.write(cursorPosition(y + 1, 1))  # row, col (1-based)
     for x in 0 ..< buf.w:
       let (str, style, _) = buf.get(x, y)
       # Simple output - full frame
@@ -398,7 +398,7 @@ proc main() =
     
     # Output frame (simple full redraw for demo)
     for y in 0 ..< buf.h:
-      stdout.write(cursorPosition(1, y + 1))
+      stdout.write(cursorPosition(y + 1, 1))  # row, col (1-based)
       for x in 0 ..< buf.w:
         let (str, style, _) = buf.get(x, y)
         if not style.fg.isNone:
