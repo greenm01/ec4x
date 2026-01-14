@@ -53,6 +53,13 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 │  • Game creation from scenarios     │
 │  • Game management (pause/resume)   │
 └─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│     Dev Player (src/player/)        │
+│  • TUI/CLI tool (bin/ec4x-play)     │
+│  • Menu-driven order entry          │
+│  • Order validation for LLMs        │
+└─────────────────────────────────────┘
 ```
 
 **Import Rules:**
@@ -60,6 +67,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - `daemon/` → imports from `engine/` (types, resolveTurn)
 - `moderator/` → imports from `engine/` and `daemon/persistence/`
 - `client/` → imports from `engine/types/` (player_state for data structures)
+- `player/` → imports from `engine/` (validation) and `daemon/persistence/` (SQLite)
 
 ## Components
 
@@ -99,13 +107,37 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 
 ### Moderator (Admin Tool)
 **Binary**: `bin/ec4x`
+**Source**: `src/moderator/`
 **Role**: Game administration and management
 **Capabilities**:
 - Create new games (localhost or Nostr mode)
 - Start/pause/stop games
+- Force turn resolution (`ec4x resolve <game-id>`)
 - View game statistics
 - Manage player roster
-- Convert between transport modes
+
+### Dev Player (Playtesting Tool)
+**Binary**: `bin/ec4x-play`
+**Source**: `src/player/`
+**Role**: Lightweight dev tool for playtesting without GUI
+**Documentation**: `docs/tools/ec4x-play.md`
+
+**Two Modes**:
+- **TUI Mode**: Menu-driven terminal interface for human playtesting
+- **CLI Mode**: Order validation for Claude/LLM workflows
+
+**Capabilities**:
+- View fog-of-war filtered game state
+- Enter orders via menu navigation
+- Generate KDL order files
+- Validate orders before submission
+- Submit orders to daemon
+
+**Claude/LLM Integration**:
+- LLMs read game state directly from SQLite
+- Generate KDL orders per `docs/engine/kdl-commands.md`
+- Validate with `ec4x-play validate <game-id> orders.kdl --house=N`
+- Drop validated orders to `data/games/{id}/orders/`
 
 ## Validation System
 

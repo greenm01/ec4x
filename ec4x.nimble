@@ -55,6 +55,12 @@ task buildClient, "Build GUI player client":
   exec "nim c " & releaseFlags & " -o:bin/ec4x-client --passC:-Isrc/client/vendor --passC:\"-Wno-incompatible-pointer-types\" src/client/main.nim"
   echo "GUI Client build completed!"
 
+task buildPlayer, "Build dev player CLI/TUI":
+  echo "Building EC4X Dev Player CLI/TUI..."
+  mkDir "bin"
+  exec "nim c " & releaseFlags & " -o:bin/ec4x-play src/player/player.nim"
+  echo "Dev Player build completed!"
+
 task buildAll, "Build all binaries (release)":
   echo "Building all EC4X binaries..."
   mkDir "bin"

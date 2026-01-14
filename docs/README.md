@@ -60,12 +60,15 @@ Located in `engine/`:
 - **refactor/** - Current refactoring work
   - `2025-12-19-refactor-notes.md` - Latest refactor notes
 
-### Play-Testing & AI (Future)
+### Dev Tools
 
-Located in `play_testing/`:
-- **[README.md](play_testing/README.md)** - Play-testing overview and philosophy
-- **[claude_opponent.md](play_testing/claude_opponent.md)** - KDL-based play-testing with Claude
-- **[neural_network_training.md](play_testing/neural_network_training.md)** - Train neural networks from Claude game data (AlphaGo-style)
+Located in `tools/`:
+- **[ec4x-play.md](tools/ec4x-play.md)** - Dev player CLI/TUI for playtesting and Claude/LLM integration
+
+### AI (Future)
+
+Located in `ai/`:
+- **[neural_network_training.md](ai/neural_network_training.md)** - Train neural networks from game data (AlphaGo-style)
 
 ### Features & Development
 
