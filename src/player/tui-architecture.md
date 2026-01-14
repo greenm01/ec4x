@@ -107,42 +107,43 @@ term/
 
 ### Screen Management (`src/player/tui/buffer.nim`)
 
-**❌ NOT YET IMPLEMENTED** - Planned for Phase 1.5
+**✅ IMPLEMENTED** - Phase 1.5 complete (2026-01-14)
 
-#### Double Buffering
-- **Current Buffer**: What's displayed on screen
-- **Next Buffer**: Frame being constructed
-- **Diff Algorithm**: Compare buffers, emit only changes
-- **Reduces Flicker**: Minimizes terminal output
+#### Dirty Tracking (tcell-style)
+- Each cell stores both **current** and **last** state
+- Dirty flag: `lastStr != currStr || lastStyle != currStyle`
+- Only dirty cells are re-rendered
+- More efficient than full double-buffering for turn-based games
 
-#### Screen Buffer Structure
+#### Screen Buffer Structure (Actual Implementation)
 ```nim
 type
-  Cell = object
-    rune: Rune        # UTF-8 character
-    fg: Color         # Foreground color (from term/types/core.nim)
-    bg: Color         # Background color
-    attrs: set[StyleAttr]  # From term/types/style.nim
+  CellStyle = object
+    fg, bg: Color                 # From term/types/core.nim
+    attrs: set[StyleAttr]         # From term/types/style.nim
   
-  ScreenBuffer = object
-    width: int
-    height: int
-    cells: seq[Cell]  # width * height array
+  Cell = object
+    currStr, lastStr: string      # Current vs last grapheme (for dirty check)
+    currStyle, lastStyle: CellStyle
+    width: int                    # Display width (1 or 2 for wide chars)
+    locked: bool                  # Prevent redraw (for graphics regions)
+  
+  CellBuffer = object
+    w, h: int
+    cells: seq[Cell]              # Flat array: w * h
 ```
 
-**Note**: This is separate from `term/types/style.nim`'s `Style` type. `Style` is for building styled strings, while `Cell` is for the screen buffer grid.
+**Features Implemented:**
+- ✅ Wide character support (East Asian, emoji width=2)
+- ✅ Cell locking for special regions
+- ✅ Dirty tracking with O(1) checks
+- ✅ Bounds checking on all operations
+- ✅ Resize with content preservation
+- ✅ Fill and clear operations
 
-#### Diff/Patch Algorithm
-- Simple cell-by-cell comparison (sufficient for turn-based game)
-- Group consecutive changes for efficiency
-- Track cursor position to minimize movement
-- Only emit differences to terminal using `term/` primitives
-
-#### Alternate Screen Control
-- Use `term/screen.altScreen()` on startup
-- Game doesn't pollute terminal history
-- Use `term/screen.exitAltScreen()` on quit
-- Handle cleanup on crashes/signals
+**Test Coverage:**
+- 15 unit tests passing (`tests/tui/tbuffer.nim`)
+- Tests: init, put/get, dirty tracking, locking, resize, wide chars
 
 ---
 
