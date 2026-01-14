@@ -11,11 +11,9 @@
 ## - Client state synchronization
 
 import std/[tables, options, sets]
-import ../types/intel
 import
   ../types/[
-    colony, core, diplomacy, fleet, game_state, house, player_state, starmap, ship,
-    ground_unit
+    colony, core, diplomacy, fleet, game_state, house, player_state, starmap
   ]
 import ./[engine, iterators]
 

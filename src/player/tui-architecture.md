@@ -670,70 +670,196 @@ complex constraint relationships needed.
 
 ### Phase 3: Core Widget Library
 
-**Goal**: Reusable widget implementations
+**Status**: ✅ **COMPLETE** (2026-01-14)
 
-1. **Panel/Border Widget**
-   - Box drawing
-   - Title rendering
-   - Content area calculation
+**Implemented:**
+- ✅ Frame widget (borders with titles, multiple border styles)
+- ✅ Text system: Span → Line → Text hierarchy
+- ✅ Paragraph widget (text display with alignment)
+- ✅ List widget (scrollable, selectable, StatefulWidget pattern)
+- ✅ Widget concept documentation
+- ✅ Buffer helper methods (setString, setStyle, fillArea)
+- ✅ 38 tests passing
 
-2. **Text Widget**
-   - Word wrapping
-   - Style support
-   - Scrolling
+**Files created:**
+```
+src/player/tui/widget/
+├── widget_pkg.nim       # Main export module
+├── widget.nim           # Widget concept documentation
+├── borders.nim          # Border types and character sets
+├── frame.nim            # Container widget with borders/titles
+├── paragraph.nim        # Text display widget
+├── list.nim             # Scrollable list with selection
+└── text/
+    ├── text_pkg.nim     # Text exports
+    ├── span.nim         # Styled text unit
+    ├── line.nim         # Line of spans with alignment
+    └── text.nim         # Multi-line text
+```
 
-3. **List Widget**
-   - Item rendering
-   - Selection highlight
-   - Scroll viewport
-   - Keyboard navigation
+**Key Design Decisions:**
+- **Frame** instead of Block (Nim keyword conflict)
+- **Consuming render pattern**: Widgets consumed on render, created fresh each frame
+- **StatefulWidget pattern**: Separate state object for widgets needing persistence
 
-4. **Status Display**
-   - Key-value formatting
-   - Icon + text layout
-   - Progress bars
-
-5. **Menu Widget**
-   - Vertical/horizontal layout
-   - Selection handling
-   - Shortcut display
-
-**Deliverable**: Widget library that can build complex UIs
+**Deliverable**: ✅ Widget library that can build complex UIs
 
 ---
 
-### Phase 4: Game-Specific Widgets
+### Phase 4: Game-Specific Widgets - Hex Map
 
-**Goal**: EC4X gameplay widgets
+**Status**: ✅ **COMPLETE** (2026-01-14)
 
-1. **Map Widget**
-   - Grid rendering
-   - Unit display
-   - Terrain glyphs
-   - Selection indicators
-   - Fog of war
+**Implemented:**
+- ✅ Hex map widget with scrollable viewport
+- ✅ Axial coordinate system (flat-top hexes)
+- ✅ Keyboard navigation (arrows, Tab cycling, selection)
+- ✅ Detail panel for system information
+- ✅ Fog-of-war aware rendering
+- ✅ Unicode and ASCII symbol support
+- ✅ 33 tests passing
 
-2. **Unit Info Panel**
-   - Unit details
-   - Action icons
-   - Status indicators
+**Files created:**
+```
+src/player/tui/widget/hexmap/
+├── hexmap_pkg.nim       # Package exports
+├── coords.nim           # Axial coordinate math (~220 lines)
+├── symbols.nim          # Visual constants, colors (~180 lines)
+├── hexmap.nim           # Main widget + state (~240 lines)
+├── detail.nim           # Detail panel rendering (~170 lines)
+└── navigation.nim       # Keyboard handling (~180 lines)
+```
 
-3. **City Panel**
-   - City stats
-   - Production queue
-   - Building list
+**Total: ~1,000 lines of production code + 310 lines tests**
 
-4. **Resource Display**
-   - Resource counters
-   - Income/expense
-   - Warnings
+---
 
-5. **Message Log**
-   - Event history
-   - Color coding
-   - Scrolling
+## Starmap Dashboard Layout Design
 
-**Deliverable**: Complete game UI widgets
+### Approved Layout: Context-Sensitive Split View
+
+The starmap dashboard uses a **permanent split-view layout** where the hex map
+is always visible on the left, providing spatial context while the right panel
+shows contextual information based on selection.
+
+```
+┌─ Starmap ─────────────────────────────┬─ System Info ──────────────┐
+│                                       │                            │
+│         ·   ·   ·   ·   ·             │  ◆ SOL-01                  │
+│       ·   ·   ○   ○   ·   ·           │  ═══════════════════════   │
+│         ·   ○   ●   ●   ○   ·         │  Grid: [0,0] Ring: Hub     │
+│       ·   ●   ●  [◆]  ●   ●   ·       │  Owner: House Atreides     │
+│         ·   ●   ●   ●   ●   ·         │                            │
+│       ·   ·   ○   ●   ○   ·   ·       │  Planet: Lush (Level VI)   │
+│         ·   ·   ·   ·   ·             │  Population: 1,234 PU      │
+│                                       │                            │
+│                                       │  ─── Jump Lanes ───        │
+│                                       │  ● ALP-02 [0,1] Major      │
+│                                       │  ○ GAM-04 [1,-1] Minor     │
+├───────────────────────────────────────┤                            │
+│ [←↑↓→] Move  [Enter] Select  [q] Quit │  ─── Fleets ───            │
+│ [Tab] Next Colony  [F] Find  [?] Help │  ▲ 1st Fleet (5 ships)     │
+└───────────────────────────────────────┴────────────────────────────┘
+```
+
+### Layout Rationale
+
+1. **Map always visible**: Spatial context is critical in 4X games. Players
+   always need to know "where am I?" relative to other systems.
+
+2. **Dense hex grid**: EC4X uses a fully-packed hex grid (no gaps). Re-orienting
+   after hiding the map would be expensive.
+
+3. **Terminal width**: Standard 80-120+ column terminals provide enough space
+   for split view without cramping.
+
+4. **Context switching**: Tab navigation between colonies only makes sense if
+   the map shows the cursor moving.
+
+### Layout Split Ratios
+
+```nim
+# Target layout ratios
+let cols = horizontal()
+  .constraints(fill(), length(30))  # Map: fill, Detail: 30 cols min
+  .spacing(1)
+  .split(contentArea)
+```
+
+- **Map panel**: ~60% width (minimum 40 columns)
+- **Detail panel**: ~40% width (minimum 30 columns)
+- **Full-screen fallback**: Only if terminal < 70 columns wide
+
+### Symbol Legend
+
+| Symbol | Meaning              | Color         |
+|--------|----------------------|---------------|
+| `◆`    | Hub system           | Bright yellow |
+| `★`    | Your homeworld       | Bright green  |
+| `●`    | Your colony          | Cyan/blue     |
+| `○`    | Enemy colony         | Red           |
+| `·`    | Neutral/Uncolonized  | Light gray    |
+| `?`    | Unknown (fog of war) | Dark gray     |
+| `[X]`  | Selected/cursor hex  | White bold    |
+
+### Navigation Keys
+
+| Key          | Action                        |
+|--------------|-------------------------------|
+| Arrow keys   | Move cursor between hexes     |
+| Enter        | Select system at cursor       |
+| Escape       | Deselect / go back            |
+| Tab          | Cycle to next owned colony    |
+| Shift+Tab    | Cycle to previous colony      |
+| Home / 'h'   | Jump to homeworld             |
+| 'q'          | Quit map view                 |
+
+### Detail Panel Content
+
+The right panel shows context-sensitive information:
+
+**System Selected:**
+- System name with status symbol
+- Coordinates (q, r) and ring number
+- Owner (or "Uncolonized")
+- Planet class with habitability level
+- Resource rating
+- Jump lanes list with lane types
+- Fleets present (if any)
+
+**Future Extensions:**
+- Fleet orders panel (when fleet selected)
+- Colony management panel (when colony selected)
+- Production queue display
+- Diplomatic status for enemy systems
+
+### Implementation Notes
+
+**Coordinate System:**
+- Axial coordinates (q, r) with hub at (0, 0)
+- Flat-top hex orientation
+- Screen mapping: `x = q*2 + r`, `y = r`
+
+**Viewport Scrolling:**
+- Viewport tracks cursor position
+- Auto-scrolls to keep cursor visible with 2-cell margin
+- Smooth scroll prevents disorientation
+
+**Fog of War:**
+- Widget receives `FogOfWarView`, not raw `GameState`
+- Only visible systems rendered
+- Unknown hexes show `?` symbol
+
+---
+
+### Remaining Phase 4 Widgets (Future)
+
+1. **Fleet Panel** - Fleet composition, movement orders
+2. **Colony Panel** - Population, infrastructure, production
+3. **Message Log** - Turn events, combat results
+4. **Resource Bar** - Income, expenses, warnings
+
+**Deliverable**: ✅ Hex map widget complete, integration pending
 
 ---
 
@@ -974,20 +1100,26 @@ src/player/
 │   │   ├── rect.nim               # Rect type and operations
 │   │   ├── constraint.nim         # Constraint types
 │   │   └── layout.nim             # Layout solver
-│   ├── widget/                    # ❌ Phase 3: Core widgets
-│   │   ├── core.nim
-│   │   ├── panel.nim
-│   │   ├── text.nim
-│   │   ├── list.nim
-│   │   ├── menu.nim
-│   │   └── progress.nim
-│   ├── game_widgets/              # ❌ Phase 4: Game-specific widgets
-│   │   ├── map.nim
-│   │   ├── unit_info.nim
-│   │   ├── city.nim
-│   │   ├── resources.nim
-│   │   └── message_log.nim
-│   └── tui-architecture.md        # This document
+│   ├── widget/                    # ✅ Phase 3: Core widgets
+│   │   ├── widget_pkg.nim         # Main export module
+│   │   ├── widget.nim             # Widget concept documentation
+│   │   ├── borders.nim            # Border types and character sets
+│   │   ├── frame.nim              # Container widget with borders/titles
+│   │   ├── paragraph.nim          # Text display widget
+│   │   ├── list.nim               # Scrollable list with selection
+│   │   ├── text/                  # Text rendering system
+│   │   │   ├── text_pkg.nim       # Text exports
+│   │   │   ├── span.nim           # Styled text unit
+│   │   │   ├── line.nim           # Line of spans
+│   │   │   └── text.nim           # Multi-line text
+│   │   └── hexmap/                # ✅ Phase 4: Hex map widget
+│   │       ├── hexmap_pkg.nim     # Package exports
+│   │       ├── coords.nim         # Axial coordinate math
+│   │       ├── symbols.nim        # Visual constants, colors
+│   │       ├── hexmap.nim         # Main widget + state
+│   │       ├── detail.nim         # Detail panel rendering
+│   │       └── navigation.nim     # Keyboard handling
+│   └── tui-architecture.md        # This document (in src/player/)
 ├── sam/                           # ❌ Phase 5: SAM pattern implementation
 │   ├── state.nim
 │   ├── action.nim
@@ -1017,17 +1149,36 @@ src/player/
 - Constraint types: Length, Min, Max, Percentage, Ratio, Fill
 - Layout solver with fluent builder API (`layout/layout.nim`)
 - Margin, spacing, and flex mode support
-- 41 tests passing (100% feature coverage)
+- 41 tests passing (100% coverage of features)
 - ~720 lines of layout code
 
+**✅ Phase 3 - Core Widget Library (Complete):**
+- Frame widget with borders and titles
+- Text system (Span, Line, Text)
+- Paragraph and List widgets
+- StatefulWidget pattern for persistent state
+- 38 tests passing
+- ~800 lines of widget code
+
+**✅ Phase 4 - Hex Map Widget (Complete):**
+- Axial coordinate system with screen conversion
+- Scrollable hex map with viewport management
+- Symbol rendering with fog-of-war awareness
+- Detail panel with system information
+- Keyboard navigation (arrows, Tab, selection)
+- 33 tests passing
+- ~1,000 lines of hexmap code
+
+**⏳ In Progress:**
+- Phase 4.5: Dashboard integration (layout composition, event loop)
+- Game state connection to hex map widget
+
 **❌ Not Started:**
-- Phase 3: Widget library (Panel, Text, List, Menu, etc.)
-- Phase 4: Game-specific widgets (Map, Units, Cities, etc.)
 - Phase 5: SAM integration (State-Action-Model)
 - Phase 6: Polish & features
 
-**Total Lines of Code:** ~2,144 lines (Phase 1 + 1.5 + 2)
-**Total Tests:** 88 passing (32 term + 15 buffer + 41 layout)
+**Total Lines of Code:** ~5,400 lines (Phase 1 through 4)
+**Total Tests:** 159 passing (32 term + 15 buffer + 41 layout + 38 widget + 33 hexmap)
 
 ### Key Type Definitions
 
