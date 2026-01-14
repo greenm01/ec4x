@@ -50,33 +50,64 @@ while gameRunning:
 
 ## Terminal Layer Stack
 
-### Foundation: termenv-style Primitives
+### Foundation: termenv Port (`src/player/tui/term/`)
 
-**Integrated directly into EC4X codebase, not a separate library.**
+**✅ IMPLEMENTED** - Ported from Go's termenv library.
 
-#### Capability Detection
-- Query terminal for supported features
-- Detect color support: truecolor (16M), 256-color, 16-color, monochrome
-- Detect terminal size
-- Handle terminal resize events
-- Feature negotiation (alternate screen, mouse support if desired)
+**Module Structure:**
+```
+term/
+├── term.nim                 # Main export module
+├── types/
+│   ├── core.nim             # Profile enum, Color variants, error types
+│   ├── style.nim            # Style type definition
+│   └── screen.nim           # EraseMode, MouseMode, CursorStyle enums
+├── constants/
+│   ├── escape.nim           # ESC, CSI, OSC, ST, SGR codes
+│   ├── ansi.nim             # 256-color palette with hex lookup table
+│   └── sequences.nim        # Screen/cursor sequence templates
+├── color.nim                # Color parsing, conversion, sequence generation
+├── style.nim                # Fluent builder API for text styling
+├── screen.nim               # Screen/cursor operations (functions)
+├── output.nim               # Output type with terminal operations
+└── platform.nim             # Profile detection from environment variables
+```
 
-#### ANSI Sequence Generation
-- Cursor positioning (absolute and relative)
-- Color setting (foreground/background)
-- Text attributes (bold, dim, italic, underline)
-- Screen clearing
-- Alternate screen buffer control
+**Design Decisions:**
+- **Data-oriented**: Types separated from logic (types/ vs implementation files)
+- **Object variants**: Color uses discriminated unions instead of interfaces
+- **UFCS throughout**: All functions use Uniform Function Call Syntax
+- **No external dependencies**: Uses only Nim stdlib (`std/streams`, `std/unicode`, `std/terminal`)
+- **Modular**: Largest file is ~380 lines, clean separation of concerns
 
-#### Styled Output
-- High-level API for emitting styled text
-- Automatic color degradation based on terminal capability
-- UTF-8 glyph support
-- Example: `output(x, y, "Commander", style(fg=Blue, bold=true))`
+#### ✅ Capability Detection
+- **Profile detection** via environment variables (`COLORTERM`, `TERM`, `NO_COLOR`)
+- **Color profiles**: `TrueColor` (24-bit), `Ansi256` (8-bit), `Ansi` (4-bit), `Ascii` (none)
+- **Automatic degradation**: Colors converted to terminal's capability level
+- **Terminal size**: Uses `std/terminal.terminalWidth/Height()`
+- ⚠️ **Resize events**: SIGWINCH handler not yet implemented
+
+#### ✅ ANSI Sequence Generation
+- **Cursor control**: Positioning, movement, save/restore, visibility, styles
+- **Color sequences**: Foreground/background for all color types
+- **Text attributes**: Bold, faint, italic, underline, blink, reverse, crossout, overline
+- **Screen operations**: Clearing, scrolling, line operations
+- **Alternate screen**: Enter/exit with proper cleanup sequences
+
+#### ✅ Styled Output
+- **Fluent API**: Immutable builder pattern for text styling
+  ```nim
+  output.newStyle("Commander").bold().fg("#0000ff").bg(Red)
+  ```
+- **Automatic degradation**: Colors downgrade based on profile
+- **UTF-8 support**: Full Unicode via `std/unicode`
+- **Width calculation**: Visual width calculation for layout
 
 ---
 
-### Screen Management
+### Screen Management (`src/player/tui/buffer.nim`)
+
+**❌ NOT YET IMPLEMENTED** - Planned for Phase 1.5
 
 #### Double Buffering
 - **Current Buffer**: What's displayed on screen
@@ -89,9 +120,9 @@ while gameRunning:
 type
   Cell = object
     rune: Rune        # UTF-8 character
-    fg: Color         # Foreground color
+    fg: Color         # Foreground color (from term/types/core.nim)
     bg: Color         # Background color
-    attrs: set[Attr]  # Bold, dim, italic, etc.
+    attrs: set[StyleAttr]  # From term/types/style.nim
   
   ScreenBuffer = object
     width: int
@@ -99,24 +130,29 @@ type
     cells: seq[Cell]  # width * height array
 ```
 
+**Note**: This is separate from `term/types/style.nim`'s `Style` type. `Style` is for building styled strings, while `Cell` is for the screen buffer grid.
+
 #### Diff/Patch Algorithm
 - Simple cell-by-cell comparison (sufficient for turn-based game)
 - Group consecutive changes for efficiency
 - Track cursor position to minimize movement
-- Only emit differences to terminal
+- Only emit differences to terminal using `term/` primitives
 
 #### Alternate Screen Control
-- Enter alternate buffer on startup
+- Use `term/screen.altScreen()` on startup
 - Game doesn't pollute terminal history
-- Exit on quit, restoring previous content
+- Use `term/screen.exitAltScreen()` on quit
 - Handle cleanup on crashes/signals
 
 ---
 
-### Input Handling
+### Input Handling (`src/player/tui/input.nim`)
+
+**❌ NOT YET IMPLEMENTED** - Planned for Phase 1.5
 
 #### Keyboard Input
 - Blocking read from stdin
+- Raw mode setup/teardown using termios
 - Parse escape sequences for special keys
 - Arrow keys: `←↑→↓`
 - Function keys: `F1-F12`
@@ -440,38 +476,46 @@ Damaged:      ◍ (half-filled)
 
 ### Phase 1: Terminal Foundation
 
-**Goal**: Basic terminal control and rendering
+**Status**: ✅ **Primitive Layer Complete**, ⚠️ **Buffer/Input Pending**
 
-1. **Capability Detection**
-   - Query terminal type
-   - Detect color support
-   - Get terminal size
-   - Handle SIGWINCH (resize signal)
+#### ✅ 1. Terminal Primitives (`term/`) - COMPLETE
+- ✅ **Capability Detection**
+  - ✅ Profile detection via environment variables
+  - ✅ Color support: TrueColor, ANSI256, ANSI, Ascii
+  - ✅ Terminal size via `std/terminal`
+  - ❌ SIGWINCH handler (planned)
 
-2. **ANSI Output**
-   - Cursor movement functions
-   - Color setting functions
-   - Style attribute functions
-   - Screen clearing
+- ✅ **ANSI Output**
+  - ✅ Cursor movement functions
+  - ✅ Color setting functions  
+  - ✅ Style attribute functions
+  - ✅ Screen clearing
 
-3. **Screen Buffer**
-   - Cell structure definition
-   - Buffer allocation
-   - Basic diff algorithm
-   - Rendering pipeline
+- ✅ **Styled Text API**
+  - ✅ Fluent builder pattern
+  - ✅ Automatic color degradation
+  - ✅ UTF-8 support with width calculation
 
-4. **Alternate Screen**
-   - Enter/exit functions
-   - Cleanup on exit
-   - Signal handling
+- ✅ **Alternate Screen**
+  - ✅ Enter/exit sequences
+  - ⚠️ Cleanup on signals (planned)
 
-5. **Input Reading**
-   - Blocking stdin read
-   - Raw mode setup
-   - Basic key parsing
-   - Escape sequence handling
+#### ❌ 2. Screen Buffer (`buffer.nim`) - PLANNED
+- Cell structure definition
+- Buffer allocation
+- Basic diff algorithm
+- Rendering pipeline using `term/` primitives
 
-**Deliverable**: Can render colored text, read keyboard input, handle terminal resize
+#### ❌ 3. Input Reading (`input.nim`) - PLANNED
+- Blocking stdin read
+- Raw mode setup/teardown
+- Basic key parsing
+- Escape sequence handling
+
+**Current Deliverable**: Can generate all ANSI sequences, style text with automatic degradation  
+**Next Deliverable**: Can render frames and read keyboard input
+
+**Tests**: 32 tests passing across 4 test files + visual color chart demo
 
 ---
 
@@ -779,58 +823,116 @@ while gameRunning:
 
 ## Code Organization
 
-### Module Structure
+### Module Structure (Actual Implementation)
+
 ```
-ec4x/
-├── terminal/
-│   ├── capability.nim     # Terminal detection
-│   ├── ansi.nim           # ANSI sequence generation
-│   ├── screen.nim         # Screen buffer & diff
-│   ├── input.nim          # Keyboard input
-│   └── color.nim          # Color types & management
-├── layout/
-│   ├── constraint.nim     # Constraint types
-│   ├── tree.nim           # Layout tree structure
-│   └── solver.nim         # Layout algorithm
-├── widget/
-│   ├── core.nim           # Base widget types
-│   ├── panel.nim          # Panel/border widget
-│   ├── text.nim           # Text display
-│   ├── list.nim           # List widget
-│   ├── menu.nim           # Menu widget
-│   └── progress.nim       # Progress bar
-├── game_widgets/
-│   ├── map.nim            # Map display
-│   ├── unit_info.nim      # Unit information
-│   ├── city.nim           # City panel
-│   ├── resources.nim      # Resource display
-│   └── message_log.nim    # Message log
-├── sam/
-│   ├── state.nim          # Game state types
-│   ├── action.nim         # Action types
-│   ├── model.nim          # Model (game rules)
-│   └── view.nim           # View function
-├── game/
-│   ├── rules.nim          # Core game rules
-│   ├── ai.nim             # AI decision making
-│   └── scenarios.nim      # Game scenarios
-└── main.nim               # Entry point & main loop
+src/player/
+├── tui/
+│   ├── term/                      # ✅ Phase 1: Terminal primitives (termenv port)
+│   │   ├── term.nim               # Main export module
+│   │   ├── types/
+│   │   │   ├── core.nim           # Profile, Color variants, errors
+│   │   │   ├── style.nim          # Style type
+│   │   │   └── screen.nim         # Screen operation enums
+│   │   ├── constants/
+│   │   │   ├── escape.nim         # ANSI escape codes
+│   │   │   ├── ansi.nim           # 256-color palette
+│   │   │   └── sequences.nim      # Escape sequence templates
+│   │   ├── color.nim              # Parsing, conversion
+│   │   ├── style.nim              # Fluent builder API
+│   │   ├── screen.nim             # Screen/cursor operations
+│   │   ├── output.nim             # Output type
+│   │   └── platform.nim           # Profile detection
+│   ├── buffer.nim                 # ❌ Phase 1.5: Screen buffer & diff
+│   ├── input.nim                  # ❌ Phase 1.5: Keyboard input
+│   ├── layout/                    # ❌ Phase 2: Layout system
+│   │   ├── constraint.nim
+│   │   ├── tree.nim
+│   │   └── solver.nim
+│   ├── widget/                    # ❌ Phase 3: Core widgets
+│   │   ├── core.nim
+│   │   ├── panel.nim
+│   │   ├── text.nim
+│   │   ├── list.nim
+│   │   ├── menu.nim
+│   │   └── progress.nim
+│   ├── game_widgets/              # ❌ Phase 4: Game-specific widgets
+│   │   ├── map.nim
+│   │   ├── unit_info.nim
+│   │   ├── city.nim
+│   │   ├── resources.nim
+│   │   └── message_log.nim
+│   └── tui-architecture.md        # This document
+├── sam/                           # ❌ Phase 5: SAM pattern implementation
+│   ├── state.nim
+│   ├── action.nim
+│   ├── model.nim
+│   └── view.nim
+└── player.nim                     # Entry point (will integrate TUI)
 ```
 
+### Current Implementation Status
+
+**✅ Completed:**
+- Terminal primitives layer (`tui/term/`)
+- 32 passing tests across 4 test suites
+- Visual color chart demo
+- Full termenv feature parity
+
+**⚠️ In Progress:**
+- Documentation updates (this file)
+
+**❌ Not Started:**
+- Screen buffer & diffing
+- Input handling
+- Layout system
+- Widget library
+- SAM integration
+
 ### Key Type Definitions
+
 ```nim
-# terminal/screen.nim
+# term/types/core.nim (✅ IMPLEMENTED)
 type
-  Color = object
+  Profile {.pure.} = enum
+    TrueColor = 0  # 24-bit RGB
+    Ansi256 = 1    # 8-bit (256 colors)
+    Ansi = 2       # 4-bit (16 colors)
+    Ascii = 3      # No color support
+  
+  AnsiColor = distinct range[0..15]
+  Ansi256Color = distinct range[0..255]
+  
+  RgbColor = object
     r, g, b: uint8
   
-  Attribute = enum
-    Bold, Dim, Italic, Underline, Inverse
+  ColorKind {.pure.} = enum
+    None, Ansi, Ansi256, Rgb
   
+  Color = object  # Discriminated union
+    case kind: ColorKind
+    of ColorKind.None: discard
+    of ColorKind.Ansi: ansi: AnsiColor
+    of ColorKind.Ansi256: ansi256: Ansi256Color
+    of ColorKind.Rgb: rgb: RgbColor
+
+# term/types/style.nim (✅ IMPLEMENTED)
+type
+  StyleAttr {.pure.} = enum
+    Bold, Faint, Italic, Underline, Blink, Reverse, CrossOut, Overline
+  
+  Style = object
+    profile: Profile
+    text: string
+    fg, bg: Color
+    attrs: set[StyleAttr]
+
+# buffer.nim (❌ NOT YET IMPLEMENTED)
+type
   Cell = object
     rune: Rune
-    fg, bg: Color
-    attrs: set[Attribute]
+    fg, bg: Color           # From term/types/core.nim
+    attrs: set[StyleAttr]   # From term/types/style.nim
   
   ScreenBuffer = object
     width, height: int
@@ -853,7 +955,7 @@ type
   Rect = object
     x, y, width, height: int
 
-# widget/core.nim
+# widget/core.nim (❌ NOT YET IMPLEMENTED)
 type
   RenderContext = object
     buffer: var ScreenBuffer
