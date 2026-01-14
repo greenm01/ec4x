@@ -147,92 +147,198 @@ type
 
 ---
 
-### Input Handling (`src/player/tui/input.nim`)
+### Input Handling (`src/player/tui/input.nim`, `tty.nim`, `events.nim`, `signals.nim`)
 
-**❌ NOT YET IMPLEMENTED** - Planned for Phase 1.5
+**✅ IMPLEMENTED** - Phase 1.5 complete (2026-01-14)
 
-#### Keyboard Input
-- Blocking read from stdin
-- Raw mode setup/teardown using termios
-- Parse escape sequences for special keys
-- Arrow keys: `←↑→↓`
-- Function keys: `F1-F12`
-- Modifiers: `Ctrl`, `Shift`, `Alt` combinations
-- Character input: letters, numbers, symbols
+#### TTY Control (`tty.nim`)
+- ✅ Raw mode via termios (disables line buffering, echo, signals)
+- ✅ Terminal state save/restore
+- ✅ Window size query via ioctl (TIOCGWINSZ)
+- ✅ Fallback to COLUMNS/LINES env vars
+- ✅ Byte reading (blocking)
 
-#### Command Parsing
-- Map key presses to game actions
-- Context-sensitive bindings (e.g., 'm' = move unit when unit selected)
-- Modal input if desired (command mode vs normal mode)
-- Help overlay showing available commands
+#### Event System (`events.nim`)
+- ✅ Unified `Event` type: Key, Resize, Error
+- ✅ `Key` enum: 50+ keys (arrows, F1-F20, Ctrl-A through Z, etc.)
+- ✅ `ModMask`: Shift, Ctrl, Alt, Meta
+- ✅ String representation for debugging
 
-#### Input Processing
-```nim
-proc parseCommand(input: Key, uiState: UIState): Action =
-  case uiState.mode:
-  of NormalMode:
-    case input:
-    of Key_M: MoveUnit(uiState.selectedUnit)
-    of Key_E: EndTurn()
-    of Key_Escape: OpenMenu(MainMenu)
-    # ...
-  of MenuMode:
-    # Handle menu navigation
-```
+#### Input Parser (`input.nim`)
+- ✅ State machine for escape sequences (Init, Esc, CSI, SS3)
+- ✅ CSI key mapping (xterm conventions)
+- ✅ SS3 function key support
+- ✅ Control character handling (Ctrl-A through Z)
+- ✅ UTF-8 rune decoding
+- ✅ Alt+key modifier support
+
+#### Signal Handling (`signals.nim`)
+- ✅ SIGWINCH (window resize) handler
+- ✅ Atomic flag for async-signal-safe communication
+- ✅ Safe to install multiple times
+
+**Demo Program:**
+- `tests/tui/demo_input_simple.nim` - Interactive key tester
+- Shows real-time key events, modifiers, and resize detection
+- Press 'q' or ESC to quit
 
 ---
 
-### Layout System
+### Layout System (`src/player/tui/layout/`)
 
-#### Constraint-Based Layout Tree
+**✅ IMPLEMENTED** - Phase 2 complete (2026-01-14)
 
-Start with simple fixed/flex model, add cassowary if needed.
+**Module Structure:**
+```
+layout/
+├── layout_pkg.nim      # Main export module
+├── rect.nim            # Rect type with operations (~240 lines)
+├── constraint.nim      # Constraint types (~200 lines)
+└── layout.nim          # Layout solver (~280 lines)
+```
 
-#### Layout Primitives
-- **Fixed Size**: Specified width/height in cells
-- **Flex Size**: Grows/shrinks to fill available space
-- **Min/Max Constraints**: Bounds on flexible sizing
-- **Percentage**: Size relative to parent
-- **Direction**: Horizontal or vertical splits
-
-#### Layout Tree Structure
+#### ✅ Constraint Types (Actual Implementation)
 ```nim
 type
-  LayoutConstraint = enum
-    Fixed, Flex, Percentage, Min, Max
-  
-  LayoutNode = object
-    constraint: LayoutConstraint
-    value: int  # size value, depends on constraint
-    direction: Direction  # Horizontal or Vertical
-    children: seq[LayoutNode]
+  ConstraintKind = enum
+    Length      ## Fixed size in cells
+    Min         ## Minimum size (can grow)
+    Max         ## Maximum size (can shrink)
+    Percentage  ## Percentage of available space (0-100)
+    Ratio       ## Ratio relative to total (numerator/denominator)
+    Fill        ## Fill remaining space (weighted)
+
+  Constraint = object
+    case kind: ConstraintKind
+    of Length: length: int
+    of Min: minVal: int
+    of Max: maxVal: int
+    of Percentage: percent: int
+    of Ratio: numerator, denominator: int
+    of Fill: weight: int
 ```
 
-#### Layout Examples
+**Constructor functions:**
+- `length(n)` / `len(n)` - Fixed size
+- `min(n)` - Minimum size
+- `max(n)` - Maximum size  
+- `percentage(n)` / `pct(n)` - Percentage (0-100)
+- `ratio(num, denom)` - Proportional sizing
+- `fill(weight=1)` - Fill remaining space
+
+#### ✅ Layout Builder API
+```nim
+# Fluent builder pattern
+let areas = horizontal()
+  .constraints(length(10), fill(), percentage(30))
+  .margin(1)
+  .spacing(2)
+  .flex(Flex.Center)
+  .split(terminalRect)
+
+# Convenience functions
+let areas = hsplit(rect, @[length(20), fill()])
+let areas = vsplit(rect, 3)  # Split into 3 equal parts
+```
+
+**Flex modes for extra space distribution:**
+- `Flex.Start` - Pack at start (default)
+- `Flex.End` - Pack at end
+- `Flex.Center` - Center segments
+- `Flex.SpaceBetween` - Space between segments
+- `Flex.SpaceAround` - Space around segments
+
+#### ✅ Constraint Solver Algorithm
+
+**Priority order (highest to lowest):**
+1. **Length** - Fixed sizes allocated first
+2. **Percentage** - Calculated from available space
+3. **Ratio** - Proportional allocation
+4. **Min** - Minimum size enforced, can grow with Fill
+5. **Fill** - Gets remaining space (weighted)
+6. **Max** - Gets leftover space up to maximum
+
+**Algorithm steps:**
+1. Calculate fixed sizes (Length, Percentage, Ratio)
+2. Subtract from available space
+3. Distribute remaining to Fill constraints by weight
+4. Enforce Min constraints (already set as base)
+5. Allocate leftovers to Max constraints (up to limit)
+6. Handle overflow by shrinking flexible segments
+
+#### ✅ Rect Type Features
+
+**Operations implemented:**
+- Construction: `rect(x, y, w, h)`, `rect(w, h)`
+- Properties: `right`, `bottom`, `area`, `isEmpty`, `isValid`
+- Position checks: `contains(x, y)`, `contains(rect)`, `intersects`
+- Transformations: `offset`, `moveTo`, `resize`, `inflate`, `shrink`
+- Set operations: `intersection`, `union`
+- Splitting: `splitHorizontal`, `splitVertical`, `split`
+- Inner regions: `inner` (for borders/padding)
+- Clipping: `clampTo`
+- Iteration: `positions`, `rows`, `columns`
+
+#### Layout Examples (Implemented)
 ```
 ┌─────────────────────────────────┐
-│ Status Bar (Fixed: 1 row)       │
+│ Status Bar (length(1))          │
 ├─────────────┬───────────────────┤
 │             │                   │
 │ Map View    │ Unit Info         │
-│ (Flex)      │ (Fixed: 30 cols)  │
+│ (fill())    │ (percentage(30))  │
 │             │                   │
 ├─────────────┴───────────────────┤
-│ Message Log (Fixed: 5 rows)     │
+│ Message Log (length(5))         │
 └─────────────────────────────────┘
 ```
 
-#### Constraint Solving
-- **Simple Approach**: Two-pass algorithm (measure, then layout)
-- **Cassowary Integration**: If complex constraints needed
-  - Use existing Nim cassowary library if available
-  - Otherwise, port minimal solver
-  - Expose simplified API (like ratatui)
+```nim
+let term = rect(80, 24)
+let rows = vertical()
+  .constraints(length(1), fill(), length(5))
+  .split(term)
 
-#### Responsive Layout
-- Recalculate on terminal resize
-- Minimum terminal size enforcement (e.g., 80x24)
-- Graceful degradation for small terminals
+let cols = horizontal()
+  .constraints(fill(), percentage(30))
+  .split(rows[1])
+```
+
+#### Test Coverage
+- **41 tests passing** (`tests/tui/tlayout.nim`)
+- Tests cover: rect ops, constraints, margins, spacing, flex modes, 
+  edge cases, overflow, nested layouts, real-world examples
+
+#### FUTURE CASSOWARY INTEGRATION NOTES
+
+**Migration path designed into API:**
+
+All constraint types map directly to Cassowary constraints when using
+amoeba library (https://github.com/starwing/amoeba):
+
+```nim
+# Current: Simple solver
+Length(n)     -> fixed arithmetic
+Min(n)        -> max(n, allocated)
+Max(n)        -> min(n, leftover)
+
+# Future: Cassowary solver (amoeba FFI)
+Length(n)     -> am_Constraint: var == n (AM_REQUIRED)
+Min(n)        -> am_Constraint: var >= n (AM_REQUIRED)  
+Max(n)        -> am_Constraint: var <= n (AM_REQUIRED)
+Percentage(p) -> am_Constraint: var == parent * p/100 (AM_STRONG)
+Ratio(n, d)   -> am_Constraint: var == total * n/d (AM_STRONG)
+Fill(w)       -> am_Constraint: var == remain * w/sum (AM_MEDIUM)
+```
+
+**When to migrate:**
+- If complex inter-segment relationships needed
+- Example: "Panel A width = Panel B width + 10"
+- Example: "Sidebar min 20%, max 40%, equal to header height"
+
+**API remains stable** - only solver implementation changes.
+The `Layout.split()` method would delegate to CassowaryLayoutSolver
+instead of SimpleLayoutSolver.
 
 ---
 
