@@ -583,14 +583,13 @@ Damaged:      ◍ (half-filled)
 
 ### Phase 1: Terminal Foundation
 
-**Status**: ✅ **Primitive Layer Complete**, ⚠️ **Buffer/Input Pending**
+**Status**: ✅ **COMPLETE** (Phase 1 + Phase 1.5)
 
 #### ✅ 1. Terminal Primitives (`term/`) - COMPLETE
 - ✅ **Capability Detection**
   - ✅ Profile detection via environment variables
   - ✅ Color support: TrueColor, ANSI256, ANSI, Ascii
   - ✅ Terminal size via `std/terminal`
-  - ❌ SIGWINCH handler (planned)
 
 - ✅ **ANSI Output**
   - ✅ Cursor movement functions
@@ -605,52 +604,67 @@ Damaged:      ◍ (half-filled)
 
 - ✅ **Alternate Screen**
   - ✅ Enter/exit sequences
-  - ⚠️ Cleanup on signals (planned)
-
-#### ❌ 2. Screen Buffer (`buffer.nim`) - PLANNED
-- Cell structure definition
-- Buffer allocation
-- Basic diff algorithm
-- Rendering pipeline using `term/` primitives
-
-#### ❌ 3. Input Reading (`input.nim`) - PLANNED
-- Blocking stdin read
-- Raw mode setup/teardown
-- Basic key parsing
-- Escape sequence handling
-
-**Current Deliverable**: Can generate all ANSI sequences, style text with automatic degradation  
-**Next Deliverable**: Can render frames and read keyboard input
 
 **Tests**: 32 tests passing across 4 test files + visual color chart demo
+
+#### ✅ 2. Screen Buffer (`buffer.nim`) - COMPLETE (Phase 1.5)
+- ✅ Cell structure with dirty tracking (tcell-style)
+- ✅ Buffer allocation and management
+- ✅ Wide character support
+- ✅ Cell locking for special regions
+- ✅ Resize with content preservation
+
+**Tests**: 15 tests passing
+
+#### ✅ 3. Input Handling - COMPLETE (Phase 1.5)
+- ✅ `tty.nim` - Raw mode via termios, window size queries
+- ✅ `events.nim` - Event types (Key, Resize, Error)
+- ✅ `input.nim` - Input parser with escape sequences
+- ✅ `signals.nim` - SIGWINCH resize handler
+
+**Demo**: `tests/tui/demo_input_simple.nim` - Interactive key tester
+
+**Deliverable**: ✅ Can generate ANSI sequences, render frames, read input
 
 ---
 
 ### Phase 2: Layout System
 
-**Goal**: Flexible panel layout management
+**Status**: ✅ **COMPLETE** (2026-01-14)
 
-1. **Layout Tree Structure**
-   - Define layout node types
-   - Tree building API
-   - Bounds calculation
+**Implemented:**
+- ✅ Rect type with full set of operations (240 lines)
+- ✅ Constraint types: Length, Min, Max, Percentage, Ratio, Fill
+- ✅ Layout builder API with fluent interface
+- ✅ Constraint solver with priority-based allocation
+- ✅ Margin and spacing support
+- ✅ Flex modes: Start, End, Center, SpaceBetween, SpaceAround
+- ✅ Horizontal and vertical splits
+- ✅ Nested layouts support
+- ✅ 41 tests passing (100% coverage of features)
 
-2. **Simple Constraints**
-   - Fixed sizing
-   - Flex sizing
-   - Min/max enforcement
+**Files created:**
+- `src/player/tui/layout/rect.nim` - Rect operations
+- `src/player/tui/layout/constraint.nim` - Constraint definitions
+- `src/player/tui/layout/layout.nim` - Layout solver
+- `src/player/tui/layout/layout_pkg.nim` - Export module
+- `tests/tui/tlayout.nim` - Comprehensive tests
 
-3. **Layout Algorithm**
-   - Two-pass layout (measure, arrange)
-   - Handle parent/child relationships
-   - Distribute available space
+**Deliverable**: ✅ Can define and render complex multi-panel layouts
 
-4. **Layout Testing**
-   - Unit tests for common layouts
-   - Edge cases (very small terminals)
-   - Resize behavior
+**Example usage:**
+```nim
+let term = rect(80, 24)
+let rows = vertical()
+  .constraints(length(1), fill(), length(5))
+  .margin(1)
+  .spacing(2)
+  .split(term)
+```
 
-**Deliverable**: Can define and render multi-panel layouts
+**Future Cassowary integration:** API designed to be solver-agnostic.
+Can swap simple solver for amoeba/Cassowary without API changes if
+complex constraint relationships needed.
 
 ---
 
@@ -950,12 +964,16 @@ src/player/
 │   │   ├── screen.nim             # Screen/cursor operations
 │   │   ├── output.nim             # Output type
 │   │   └── platform.nim           # Profile detection
-│   ├── buffer.nim                 # ❌ Phase 1.5: Screen buffer & diff
-│   ├── input.nim                  # ❌ Phase 1.5: Keyboard input
-│   ├── layout/                    # ❌ Phase 2: Layout system
-│   │   ├── constraint.nim
-│   │   ├── tree.nim
-│   │   └── solver.nim
+│   ├── buffer.nim                 # ✅ Phase 1.5: Screen buffer with dirty tracking
+│   ├── events.nim                 # ✅ Phase 1.5: Event types (Key, Resize, Error)
+│   ├── input.nim                  # ✅ Phase 1.5: Input parser with escape sequences
+│   ├── tty.nim                    # ✅ Phase 1.5: Raw mode terminal control
+│   ├── signals.nim                # ✅ Phase 1.5: SIGWINCH handler
+│   ├── layout/                    # ✅ Phase 2: Layout system
+│   │   ├── layout_pkg.nim         # Main export
+│   │   ├── rect.nim               # Rect type and operations
+│   │   ├── constraint.nim         # Constraint types
+│   │   └── layout.nim             # Layout solver
 │   ├── widget/                    # ❌ Phase 3: Core widgets
 │   │   ├── core.nim
 │   │   ├── panel.nim
@@ -978,23 +996,38 @@ src/player/
 └── player.nim                     # Entry point (will integrate TUI)
 ```
 
-### Current Implementation Status
+### Current Implementation Status (2026-01-14)
 
-**✅ Completed:**
+**✅ Phase 1 - Terminal Primitives (Complete):**
 - Terminal primitives layer (`tui/term/`)
 - 32 passing tests across 4 test suites
 - Visual color chart demo
 - Full termenv feature parity
 
-**⚠️ In Progress:**
-- Documentation updates (this file)
+**✅ Phase 1.5 - Screen Buffer & Input (Complete):**
+- Screen buffer with dirty tracking (`buffer.nim`)
+- Event system (`events.nim`)
+- Input parser with escape sequences (`input.nim`)
+- TTY control and raw mode (`tty.nim`)
+- SIGWINCH signal handling (`signals.nim`)
+- 15 buffer tests + interactive demo
+
+**✅ Phase 2 - Layout System (Complete):**
+- Rect type with operations (`layout/rect.nim`)
+- Constraint types: Length, Min, Max, Percentage, Ratio, Fill
+- Layout solver with fluent builder API (`layout/layout.nim`)
+- Margin, spacing, and flex mode support
+- 41 tests passing (100% feature coverage)
+- ~720 lines of layout code
 
 **❌ Not Started:**
-- Screen buffer & diffing
-- Input handling
-- Layout system
-- Widget library
-- SAM integration
+- Phase 3: Widget library (Panel, Text, List, Menu, etc.)
+- Phase 4: Game-specific widgets (Map, Units, Cities, etc.)
+- Phase 5: SAM integration (State-Action-Model)
+- Phase 6: Polish & features
+
+**Total Lines of Code:** ~2,144 lines (Phase 1 + 1.5 + 2)
+**Total Tests:** 88 passing (32 term + 15 buffer + 41 layout)
 
 ### Key Type Definitions
 

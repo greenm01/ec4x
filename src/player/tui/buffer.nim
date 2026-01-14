@@ -6,6 +6,7 @@
 
 import std/unicode
 import term/types/[core, style]
+import layout/rect
 
 
 # Width calculation for runes
@@ -258,3 +259,67 @@ proc fill*(cb: var CellBuffer, r: Rune, style: CellStyle) =
 proc clear*(cb: var CellBuffer) =
   ## Clear the buffer (fill with spaces and default style).
   cb.fill(Rune(' '), defaultStyle())
+
+# -----------------------------------------------------------------------------
+# Helper methods for widget rendering
+# -----------------------------------------------------------------------------
+
+proc setString*(cb: var CellBuffer, x, y: int, s: string, 
+                style: CellStyle): int =
+  ## Write a string at the given position with style.
+  ## Returns the number of cells written (accounting for wide chars).
+  ## Out-of-bounds text is clipped.
+  result = 0
+  var currentX = x
+  for rune in s.runes:
+    if currentX >= cb.w:
+      break
+    let width = cb.put(currentX, y, $rune, style)
+    currentX += width
+    result += width
+
+proc setStyle*(cb: var CellBuffer, x, y, width, height: int, 
+               style: CellStyle) =
+  ## Apply style to a rectangular region.
+  ## Only modifies style, not content.
+  for dy in 0..<height:
+    let row = y + dy
+    if row < 0 or row >= cb.h:
+      continue
+    for dx in 0..<width:
+      let col = x + dx
+      if col < 0 or col >= cb.w:
+        continue
+      let idx = (row * cb.w) + col
+      var cell = addr cb.cells[idx]
+      
+      # Merge style (respecting None colors)
+      if not style.fg.isNone:
+        cell.currStyle.fg = style.fg
+      if not style.bg.isNone:
+        cell.currStyle.bg = style.bg
+      # Attrs are additive
+      cell.currStyle.attrs = cell.currStyle.attrs + style.attrs
+
+proc fillArea*(cb: var CellBuffer, x, y, width, height: int, 
+               char: string, style: CellStyle) =
+  ## Fill a rectangular region with a character and style.
+  for dy in 0..<height:
+    let row = y + dy
+    if row < 0 or row >= cb.h:
+      continue
+    for dx in 0..<width:
+      let col = x + dx
+      if col < 0 or col >= cb.w:
+        continue
+      discard cb.put(col, row, char, style)
+
+# Rect-based overloads for convenience
+proc setStyle*(cb: var CellBuffer, area: Rect, style: CellStyle) {.inline.} =
+  ## Apply style to a rectangular region (using Rect).
+  cb.setStyle(area.x, area.y, area.width, area.height, style)
+
+proc fillArea*(cb: var CellBuffer, area: Rect, char: string, 
+               style: CellStyle) {.inline.} =
+  ## Fill a rectangular region (using Rect).
+  cb.fillArea(area.x, area.y, area.width, area.height, char, style)
