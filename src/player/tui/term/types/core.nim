@@ -62,6 +62,10 @@ type
     of ColorKind.Rgb:
       rgb*: RgbColor
 
+# Equality operators for distinct types
+proc `==`*(a, b: AnsiColor): bool = int(a) == int(b)
+proc `==`*(a, b: Ansi256Color): bool = int(a) == int(b)
+
 
 # Constructors for Color variant
 proc noColor*(): Color {.inline.} =
@@ -105,7 +109,6 @@ proc supportsTrueColor*(p: Profile): bool {.inline.} =
 
 
 # AnsiColor utilities
-proc `==`*(a, b: AnsiColor): bool {.borrow.}
 proc `$`*(c: AnsiColor): string = $int(c)
 
 proc isBright*(c: AnsiColor): bool {.inline.} =
@@ -114,7 +117,6 @@ proc isBright*(c: AnsiColor): bool {.inline.} =
 
 
 # Ansi256Color utilities
-proc `==`*(a, b: Ansi256Color): bool {.borrow.}
 proc `$`*(c: Ansi256Color): string = $int(c)
 
 proc isStandard*(c: Ansi256Color): bool {.inline.} =
@@ -179,9 +181,9 @@ proc `==`*(a, b: Color): bool =
     return false
   case a.kind
   of ColorKind.None: true
-  of ColorKind.Ansi: a.ansi == b.ansi
-  of ColorKind.Ansi256: a.ansi256 == b.ansi256
-  of ColorKind.Rgb: a.rgb == b.rgb
+  of ColorKind.Ansi: int(a.ansi) == int(b.ansi)
+  of ColorKind.Ansi256: int(a.ansi256) == int(b.ansi256)
+  of ColorKind.Rgb: a.rgb.r == b.rgb.r and a.rgb.g == b.rgb.g and a.rgb.b == b.rgb.b
 
 proc isNone*(c: Color): bool {.inline.} =
   c.kind == ColorKind.None

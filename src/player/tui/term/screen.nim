@@ -51,7 +51,7 @@ proc moveCursor*(row, col: int): string {.inline.} =
 
 proc cursorHome*(): string =
   ## Move cursor to home position (1,1).
-  CSI & "H"
+  CSI & "1;1H"
 
 
 # =============================================================================

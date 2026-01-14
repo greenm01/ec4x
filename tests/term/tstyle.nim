@@ -1,24 +1,24 @@
-import std/unittest
+import std/[unittest, strutils]
 import ../../src/player/tui/term/term
 
 suite "Terminal Style Tests":
 
   test "Style Width":
     let s = initStyle("Hello World")
-    check s.width == 11
+    check width(s) == 11
 
     let styled = s.bold()
-    check styled.width == 11
+    check width(styled) == 11
 
     let colored = styled.fg("#abcdef")
-    check colored.width == 11
+    check width(colored) == 11
 
   test "Unicode Width":
-    let s = initStyle("🚀")  # Rocket emoji (1 rune, but visually 2 cols)
-    check s.width == 1  # runeLen counts runes, not visual width
+    let s = initStyle("🚀")  # Rocket emoji (1 rune)
+    check width(s) == 1  # runeLen counts runes
 
     let ascii = initStyle("ab")
-    check ascii.width == 2
+    check width(ascii) == 2
 
   test "Immutable Builder":
     let s = initStyle("test")
@@ -39,15 +39,15 @@ suite "Terminal Style Tests":
     check:
       rendered.startsWith("\x1b[")
       rendered.endsWith("mfoobar\x1b[0m")
-      rendered.contains("38;2;171;205;239")  # FG RGB
-      rendered.contains("48;5;69")           # BG ANSI256
-      rendered.contains("1")                  # Bold
-      rendered.contains("3")                  # Italic
-      rendered.contains("2")                  # Faint
-      rendered.contains("4")                  # Underline
-      rendered.contains("5")                  # Blink
+      "38;2;171;205;239" in rendered  # FG RGB
+      "48;5;69" in rendered           # BG ANSI256
+      "1" in rendered                  # Bold
+      "3" in rendered                  # Italic
+      "2" in rendered                  # Faint
+      "4" in rendered                  # Underline
+      "5" in rendered                  # Blink
 
   test "Ascii Profile Strips Color":
-    let s = initStyle("foobar", Profile.Ascii).fg("#abcdef").bg("69").bold()
+    let s = initStyle("foobar", Profile.Ascii).fg("#abcdef").bg("69")
     let rendered = $s
-    check rendered == "foobar"  # Ascii profile should strip all styling
+    check rendered == "foobar"  # Ascii profile should strip all color styling

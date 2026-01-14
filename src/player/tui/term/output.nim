@@ -350,7 +350,7 @@ proc copyPrimary*(o: var Output, text: string) =
 
 proc hyperlink*(o: Output, url, text: string): string =
   ## Create OSC 8 hyperlink.
-  OSC & "8;;" & url & $BEL & text & OSC & "8;;" & $BEL
+  OSC & "8;;" & url & ST & text & OSC & "8;;" & ST
 
 proc notify*(o: var Output, title, body: string) =
   ## Send notification via OSC 777.

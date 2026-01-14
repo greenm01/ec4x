@@ -72,7 +72,8 @@ export stylemod.bold, stylemod.faint, stylemod.italic, stylemod.underline
 export stylemod.blink, stylemod.reverse, stylemod.crossOut, stylemod.overline
 export stylemod.strikethrough
 export stylemod.renderSequence, stylemod.render, stylemod.styled
-export stylemod.styledText, stylemod.newStyle
+export stylemod.styledText, stylemod.newStyle, stylemod.width
+export stylemod.`$`
 
 # Re-export screen operations
 import screen as screenmod
@@ -112,11 +113,13 @@ export screenmod.queryTermCursorColor
 export screenmod.reset, screenmod.softReset, screenmod.hardReset
 
 # Re-export output
-import output
-export output.Output, output.initOutput, output.newOutput
-export output.newStdoutOutput, output.newStderrOutput
-export output.colorProfile
-# Note: Output methods are not re-exported; use Output object directly
+import output as outputMod
+export outputMod.Output, outputMod.initOutput, outputMod.newOutput
+export outputMod.newStdoutOutput, outputMod.newStderrOutput
+export outputMod.colorProfile, outputMod.write, outputMod.writeLine, outputMod.flush
+export outputMod.clearScreen, outputMod.moveCursor, outputMod.showCursor
+export outputMod.newStyle, outputMod.hyperlink, outputMod.notify
+# Note: Other Output methods are not re-exported; use Output object directly
 
 # Re-export platform detection
 import platform
