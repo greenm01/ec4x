@@ -57,6 +57,9 @@ proc listEmptyRedirectNap*(model: TuiModel): Option[Proposal] =
     discard
   of ViewMode.Map:
     discard
+  of ViewMode.Systems:
+    # Systems list is derived from game state, should always have entries
+    discard
   
   none(Proposal)
 

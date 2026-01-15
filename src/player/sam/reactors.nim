@@ -10,7 +10,7 @@
 ##
 ## Reactor signature: proc(model: var M)
 
-import std/[strformat, options]
+import std/[strformat, options, tables]
 import ./types
 import ./tui_model
 
@@ -107,6 +107,9 @@ proc statusMessageReactor*(model: var TuiModel) =
         model.statusMessage = &"{model.orders.len} pending orders"
       else:
         model.statusMessage = "No orders"
+    
+    of ViewMode.Systems:
+      model.statusMessage = &"{model.systems.len} systems"
 
 # ============================================================================
 # Clear Transient State Reactor

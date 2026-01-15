@@ -12,6 +12,7 @@ import ../../buffer
 import ../../layout/rect
 import ../../term/term
 import ../../term/types/core
+import ../../hex_labels
 
 # Helper to create Color from ANSI 256-color index
 proc colorAnsi(n: int): Color {.inline.} =
@@ -126,10 +127,11 @@ proc renderDetailPanel*(area: Rect, buf: var CellBuffer,
                         headerStyle)
   y += 2
   
-  # Grid coordinates
-  let coordStr = fmt"[{sys.coords.q},{sys.coords.r}]"
+  # Coordinates - use ring+position label
+  let coordLabel = coordLabel(sys.coords.q, sys.coords.r)
+  let coordStr = fmt"{coordLabel} [{sys.coords.q},{sys.coords.r}]"
   let ringStr = if sys.ring == 0: "Hub" else: fmt"Ring {sys.ring}"
-  y = renderLabelValue(buf, x, y, width, "Grid", coordStr, labelStyle, valueStyle)
+  y = renderLabelValue(buf, x, y, width, "Coord", coordStr, labelStyle, valueStyle)
   y = renderLabelValue(buf, x, y, width, "Ring", ringStr, labelStyle, valueStyle)
   y += 1
   

@@ -17,6 +17,7 @@ type
     Colonies   ## Colony list
     Fleets     ## Fleet list
     Orders     ## Pending orders
+    Systems    ## System list with connectivity
 
   # Re-export hex coordinate for convenience
   HexCoord* = tuple[q, r: int]
@@ -88,6 +89,11 @@ type
     running*: bool                ## Application running
     needsResize*: bool            ## Terminal was resized
     statusMessage*: string        ## Status bar message
+    
+    # Map export flags (processed by main loop with GameState access)
+    exportMapRequested*: bool     ## Export SVG starmap
+    openMapRequested*: bool       ## Export and open in viewer
+    lastExportPath*: string       ## Path to last exported SVG
     
     # -------------
     # Game Data (View Layer - decoupled from engine)
@@ -172,6 +178,7 @@ proc currentListLength*(model: TuiModel): int =
   of ViewMode.Colonies: model.colonies.len
   of ViewMode.Fleets: model.fleets.len
   of ViewMode.Orders: model.orders.len
+  of ViewMode.Systems: model.systems.len
   of ViewMode.Map: 0
 
 proc systemAt*(model: TuiModel, coord: HexCoord): Option[SystemInfo] =

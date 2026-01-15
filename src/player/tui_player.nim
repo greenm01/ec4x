@@ -38,7 +38,9 @@ import ./tui/layout/layout_pkg
 import ./tui/widget/[widget_pkg, frame, paragraph]
 import ./tui/widget/hexmap/hexmap_pkg
 import ./tui/adapters
+import ./tui/widget/system_list
 import ./sam/sam_pkg
+import ./svg/svg_pkg
 
 # =============================================================================
 # Bridge: Convert Engine Data to SAM Model
@@ -127,6 +129,9 @@ proc mapKeyEvent(event: KeyEvent, model: TuiModel): Option[Proposal] =
     of "m", "M": keyCode = KeyCode.KeyM
     of "e", "E": keyCode = KeyCode.KeyE
     of "h", "H": keyCode = KeyCode.KeyH
+    of "x", "X": keyCode = KeyCode.KeyX
+    of "s", "S": keyCode = KeyCode.KeyS
+    of "l", "L": keyCode = KeyCode.KeyL
     else: discard
   
   of Key.Up: keyCode = KeyCode.KeyUp
@@ -151,9 +156,7 @@ proc mapKeyEvent(event: KeyEvent, model: TuiModel): Option[Proposal] =
 # =============================================================================
 
 const
-  MapWidth = 24      ## Fixed width for small map panel
   MenuWidth = 16     ## Fixed width for menu panel
-  MapHeight = 12     ## Fixed height for map panel
 
 proc dimStyle(): CellStyle =
   CellStyle(fg: color(Ansi256Color(245)), attrs: {})
@@ -203,6 +206,7 @@ proc renderStatusBar(area: Rect, buf: var CellBuffer, model: TuiModel) =
     of ViewMode.Colonies: "[COLONIES]"
     of ViewMode.Fleets: "[FLEETS]"
     of ViewMode.Orders: "[ORDERS]"
+    of ViewMode.Systems: "[SYSTEMS]"
   discard buf.setString(x, y, modeStr, headerStyle())
   
   # House name (right-aligned)
@@ -222,7 +226,11 @@ proc renderMenuPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     (key: "F", label: "Fleets", mode: ViewMode.Fleets),
     (key: "O", label: "Orders", mode: ViewMode.Orders),
     (key: "M", label: "Map", mode: ViewMode.Map),
+    (key: "L", label: "Systems", mode: ViewMode.Systems),
   ]
+  
+  # Note: Map mode will show coordinate info, not render the starmap
+  # Use external SVG export for visual starmap reference
   
   for item in items:
     if y >= inner.bottom:
@@ -260,6 +268,7 @@ proc renderContextPanel(area: Rect, buf: var CellBuffer, model: TuiModel,
     of ViewMode.Colonies: "Colony Details"
     of ViewMode.Fleets: "Fleet Details"
     of ViewMode.Orders: "Order Details"
+    of ViewMode.Systems: "System Details"
   
   let frame = bordered().title(title).borderType(BorderType.Rounded)
   frame.render(area, buf)
@@ -323,13 +332,15 @@ proc renderFleetList(area: Rect, buf: var CellBuffer, model: TuiModel) =
   if idx == 0:
     discard buf.setString(area.x, y, "No fleets", dimStyle())
 
-proc renderListPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
+proc renderListPanel(area: Rect, buf: var CellBuffer, model: TuiModel,
+                     state: GameState, viewingHouse: HouseId) =
   ## Render the main list panel based on current mode
   let title = case model.mode
     of ViewMode.Colonies: "Your Colonies"
     of ViewMode.Fleets: "Your Fleets"
     of ViewMode.Orders: "Pending Orders"
     of ViewMode.Map: "Navigation"
+    of ViewMode.Systems: "Systems & Lanes"
   
   let frame = bordered().title(title).borderType(BorderType.Rounded)
   frame.render(area, buf)
@@ -344,13 +355,21 @@ proc renderListPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     discard buf.setString(inner.x, inner.y, "No pending orders", dimStyle())
   of ViewMode.Map:
     var y = inner.y
-    discard buf.setString(inner.x, y, "Arrow keys: Move cursor", normalStyle())
+    discard buf.setString(inner.x, y, "SVG EXPORT:", headerStyle())
+    y += 2
+    discard buf.setString(inner.x, y, "[X] Export map", normalStyle())
     y += 1
+    discard buf.setString(inner.x, y, "[S] Export & open", normalStyle())
+    y += 2
+    discard buf.setString(inner.x, y, "NAVIGATION:", headerStyle())
+    y += 2
     discard buf.setString(inner.x, y, "Tab: Next colony", normalStyle())
     y += 1
     discard buf.setString(inner.x, y, "H: Jump to homeworld", normalStyle())
-    y += 1
-    discard buf.setString(inner.x, y, "Enter: Select system", normalStyle())
+  of ViewMode.Systems:
+    # Render system list with connectivity
+    let sysListData = toSystemListData(state, viewingHouse, model.selectedIdx)
+    renderSystemList(inner, buf, sysListData)
 
 proc renderDashboard(buf: var CellBuffer, model: TuiModel, 
                      state: GameState, viewingHouse: HouseId) =
@@ -364,7 +383,7 @@ proc renderDashboard(buf: var CellBuffer, model: TuiModel,
   let contentArea = mainRows[0]
   let statusArea = mainRows[1]
   
-  let leftWidth = max(MapWidth, MenuWidth) + 2
+  let leftWidth = MenuWidth + 2
   let mainCols = horizontal()
     .constraints(length(leftWidth), fill())
     .split(contentArea)
@@ -372,12 +391,8 @@ proc renderDashboard(buf: var CellBuffer, model: TuiModel,
   let leftCol = mainCols[0]
   let rightCol = mainCols[1]
   
-  let leftRows = vertical()
-    .constraints(length(MapHeight + 2), fill())
-    .split(leftCol)
-  
-  let mapArea = leftRows[0]
-  let menuArea = leftRows[1]
+  # Left column is just menu now (no map widget)
+  let menuArea = leftCol
   
   let contextHeight = max(8, contentArea.height div 3)
   let rightRows = vertical()
@@ -387,24 +402,10 @@ proc renderDashboard(buf: var CellBuffer, model: TuiModel,
   let contextArea = rightRows[0]
   let listArea = rightRows[1]
   
-  # Create map data from model for rendering
-  let mapData = toFogOfWarMapData(state, viewingHouse)
-  
-  # Create hex map state from SAM model
-  var hexState = newHexMapState(coords.hexCoord(model.mapState.cursor.q, model.mapState.cursor.r))
-  hexState.viewportOrigin = coords.hexCoord(model.mapState.viewportOrigin.q, model.mapState.viewportOrigin.r)
-  if model.mapState.selected.isSome:
-    hexState.selected = some(coords.hexCoord(model.mapState.selected.get.q, model.mapState.selected.get.r))
-  
-  # Render small map
-  let mapFrame = bordered().title("Map").borderType(BorderType.Rounded)
-  let map = hexMap(mapData).block(mapFrame)
-  map.render(mapArea, buf, hexState)
-  
   # Render panels
   renderMenuPanel(menuArea, buf, model)
   renderContextPanel(contextArea, buf, model, state, viewingHouse)
-  renderListPanel(listArea, buf, model)
+  renderListPanel(listArea, buf, model, state, viewingHouse)
   renderStatusBar(statusArea, buf, model)
 
 # =============================================================================
@@ -530,6 +531,24 @@ proc main() =
         let proposalOpt = mapKeyEvent(event.keyEvent, sam.state)
         if proposalOpt.isSome:
           sam.present(proposalOpt.get)
+    
+    # Handle map export requests (needs GameState access)
+    if sam.model.exportMapRequested:
+      let gameId = "game_" & $gameState.seed  # Use seed as game ID
+      let svg = generateStarmap(gameState, viewingHouse)
+      let path = exportSvg(svg, gameId, gameState.turn)
+      sam.model.lastExportPath = path
+      sam.model.statusMessage = "Exported: " & path
+      
+      if sam.model.openMapRequested:
+        discard openInViewer(path)
+        sam.model.statusMessage = "Opened: " & path
+      
+      sam.model.exportMapRequested = false
+      sam.model.openMapRequested = false
+      
+      # Re-render to show status
+      sam.present(emptyProposal())
   
   # =========================================================================
   # Cleanup

@@ -30,6 +30,8 @@ const
   ActionJumpHome* = "jumpHome"
   ActionCycleColony* = "cycleColony"
   ActionResize* = "resize"
+  ActionExportMap* = "exportMap"
+  ActionOpenMap* = "openMap"
 
 # ============================================================================
 # Navigation Actions
@@ -175,6 +177,18 @@ proc actionEndTurn*(): Proposal =
   endTurnProposal()
 
 # ============================================================================
+# Map Export Actions
+# ============================================================================
+
+proc actionExportMap*(): Proposal =
+  ## Export SVG starmap to file
+  gameActionProposal(ActionExportMap, "")
+
+proc actionOpenMap*(): Proposal =
+  ## Export SVG starmap and open in viewer
+  gameActionProposal(ActionOpenMap, "")
+
+# ============================================================================
 # System Actions
 # ============================================================================
 
@@ -195,7 +209,7 @@ type
   KeyCode* = enum
     ## Simplified key codes for mapping
     KeyNone
-    KeyQ, KeyC, KeyF, KeyO, KeyM, KeyE, KeyH
+    KeyQ, KeyC, KeyF, KeyO, KeyM, KeyE, KeyH, KeyX, KeyS, KeyL
     KeyUp, KeyDown, KeyLeft, KeyRight
     KeyEnter, KeyEscape, KeyTab, KeyShiftTab
     KeyHome
@@ -216,6 +230,8 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     return some(actionSwitchMode(ViewMode.Orders))
   of KeyM:
     return some(actionSwitchMode(ViewMode.Map))
+  of KeyL:
+    return some(actionSwitchMode(ViewMode.Systems))
   of KeyE:
     return some(actionEndTurn())
   else:
@@ -234,9 +250,11 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     of KeyTab:   return some(actionCycleColony(false))
     of KeyShiftTab: return some(actionCycleColony(true))
     of KeyH, KeyHome: return some(actionJumpHome())
+    of KeyX:     return some(actionExportMap())
+    of KeyS:     return some(actionOpenMap())
     else: discard
   
-  of ViewMode.Colonies, ViewMode.Fleets, ViewMode.Orders:
+  of ViewMode.Colonies, ViewMode.Fleets, ViewMode.Orders, ViewMode.Systems:
     case key
     of KeyUp:    return some(actionListUp())
     of KeyDown:  return some(actionListDown())

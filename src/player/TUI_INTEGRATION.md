@@ -1,11 +1,13 @@
 # EC4X TUI Integration Guide
 
-**Status:** Phase 4 Complete - Ready for Integration  
-**Last Updated:** 2026-01-14
+**Status:** Phase 4 Complete + SVG Export Pivot  
+**Last Updated:** 2026-01-15
 
 ## Overview
 
 The Terminal User Interface (TUI) for EC4X is built and ready for integration with the game engine. All foundational layers are complete, tested, and documented.
+
+**Important Design Change:** The TUI no longer displays an embedded hex map widget in the main dashboard. Instead, it focuses on data display (lists, status, commands) while players use an **SVG export** for visual starmap reference. See `SVG_STARMAP_SPEC.md` for details.
 
 ## Completed Components
 
@@ -25,12 +27,24 @@ The Terminal User Interface (TUI) for EC4X is built and ready for integration wi
 - **38 tests passing** - Rendering, scrolling, selection
 - **Files:** `src/player/tui/widget/`
 
-### Phase 4: Hex Map Widget ✅
+### Phase 4: Hex Map Widget ✅ (Preserved, not in main UI)
 - **Scrollable hex starmap** - Axial coordinates, viewport management
 - **Navigation** - Arrow keys, Tab cycling, selection
-- **Detail panel** - System info, jump lanes, fleet list
+- **Detail panel** - System info, jump lanes, fleet list (still used!)
 - **33 tests passing** - Coordinates, navigation, rendering
 - **Files:** `src/player/tui/widget/hexmap/`
+- **Status:** Widget exists but removed from main dashboard due to poor ANSI rendering
+
+### Phase 5: Coordinate Labels ✅
+- **Ring+position labels** - Human-friendly coordinates (`H`, `A1-A6`, `B1-B12`)
+- **Conversion utilities** - Axial ↔ ring+position
+- **Files:** `src/player/tui/hex_labels.nim`
+
+### Phase 6: SVG Starmap Export 🚧 IN PROGRESS
+- **Specification complete** - See `SVG_STARMAP_SPEC.md`
+- **Coordinate system** - Ring+position labels implemented
+- **TUI integration** - Detail panel shows labels
+- **TODO:** SVG generation, file export, command integration
 
 ### Adapter Layer ✅
 - **Type conversions** - Engine → Widget types
@@ -261,12 +275,79 @@ nimble buildTui
 - Each ~1,000 lines, well-documented
 - Clear responsibility boundaries
 
+## SVG Starmap Export + TUI System List
+
+The TUI provides two ways to view starmap topology:
+
+1. **SVG Export** - Node-edge graph for visual reference (open in browser)
+2. **System List** - Text-mode connectivity display (in TUI)
+
+### SVG Node-Edge Graph
+
+The SVG renders systems as **positioned circles** connected by **styled lines**
+(not hex polygons - cleaner, less visual noise).
+
+```
+map export    # Generate SVG for current turn, print file path
+map open      # Generate + open in default viewer
+```
+
+### TUI System List
+
+Text-mode view showing system connectivity:
+
+```
+═══ Systems ════════════════════════════════════════════
+ H   Hub         ━━ A1 A2 A3 A4 A5 A6
+ A1  Arcturus    ━━ H ┄┄ A2 A6 ━━ B1 ·· B2    [Valerian]
+ A2  Vega        ┄┄ H A1 A3 ━━ B2 B3
+```
+
+Lane symbols: `━━` Major, `┄┄` Minor, `··` Restricted
+
+### Coordinate Labels
+
+Systems use human-friendly ring+position labels:
+
+- Hub: `H`
+- Ring 1: `A1` through `A6`
+- Ring 2: `B1` through `B12`
+- etc.
+
+These labels appear in:
+- SVG starmap (below each node)
+- TUI system list and detail panel
+- Command input (future: "move fleet to B7")
+
+### Example Workflow
+
+1. Run `map export` in TUI to generate SVG
+2. Open `~/.ec4x/maps/game_abc123/turn_5.svg` in browser
+3. Use TUI system list (`S` key) for quick connectivity checks
+4. Reference labels when entering fleet orders
+
+### Implementation Status
+
+- ✅ Coordinate label conversion (`hex_labels.nim`)
+- ✅ Detail panel integration (shows ring+position labels)
+- ✅ Specification complete (`SVG_STARMAP_SPEC.md`)
+- [ ] SVG node-edge graph generation
+- [ ] TUI system list view
+- [ ] File export and directory management
+- [ ] TUI command integration
+
+See `SVG_STARMAP_SPEC.md` for complete design specification.
+
+---
+
 ## File Organization
 
 ```
 src/player/
 ├── tui_player.nim      # ✅ MAIN ENTRY POINT - Full game integration
+├── SVG_STARMAP_SPEC.md # ✅ SVG export specification
 ├── tui/
+│   ├── hex_labels.nim  # ✅ Ring+position coordinate labels
 │   ├── term/           # Terminal primitives (ANSI sequences)
 │   ├── buffer.nim      # Screen buffer with dirty tracking
 │   ├── events.nim      # Input event types
@@ -276,9 +357,13 @@ src/player/
 │   ├── layout/         # Constraint-based layouts
 │   ├── widget/         # Core widgets (Frame, Paragraph, List)
 │   │   ├── text/       # Text rendering system
-│   │   └── hexmap/     # Hex map starmap widget
+│   │   └── hexmap/     # Hex map widget (preserved, not in main UI)
 │   ├── adapters.nim    # Engine ↔ Widget type converters
 │   └── tui-architecture.md # Full architecture documentation
+├── svg/                # 🚧 TODO: SVG generation
+│   ├── starmap_export.nim
+│   ├── svg_builder.nim
+│   └── export.nim
 
 tests/tui/
 ├── demo_hexmap.nim     # Interactive demo (mock data)

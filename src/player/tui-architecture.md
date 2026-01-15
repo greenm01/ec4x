@@ -708,9 +708,9 @@ src/player/tui/widget/
 
 ### Phase 4: Game-Specific Widgets - Hex Map
 
-**Status**: ✅ **COMPLETE** (2026-01-14)
+**Status**: ✅ **COMPLETE** (2026-01-14) - **PIVOT TO SVG** (2026-01-15)
 
-**Implemented:**
+**Original Implementation:**
 - ✅ Hex map widget with scrollable viewport
 - ✅ Axial coordinate system (flat-top hexes)
 - ✅ Keyboard navigation (arrows, Tab cycling, selection)
@@ -719,28 +719,75 @@ src/player/tui/widget/
 - ✅ Unicode and ASCII symbol support
 - ✅ 33 tests passing
 
-**Files created:**
+**Design Pivot:**
+
+The hex map widget remains in the codebase but has been **removed from the main TUI dashboard**. After implementation, we realized that **hex grids don't render well in ANSI/UTF-8 terminals**:
+
+- Character grid constraints make it impossible to show actual hexagon shapes
+- Jump lane connections require actual lines, not character approximations
+- Labels overlap and readability suffers at scale
+
+**New Approach: SVG Node-Edge Graph + TUI System List**
+
+The TUI now focuses on what terminals do best: **data, lists, status**. For 
+spatial visualization, players export an SVG starmap as a **node-edge graph**:
+
+- Systems as positioned circles (not hex polygons - cleaner, less noise)
+- Jump lanes as styled lines connecting nodes
+- Human-friendly ring+position coordinates (`H`, `A1-A6`, `B1-B12`)
+- Fog-of-war aware information display
+
+The TUI also provides a **text-mode system list** showing connectivity:
+
 ```
-src/player/tui/widget/hexmap/
-├── hexmap_pkg.nim       # Package exports
-├── coords.nim           # Axial coordinate math (~220 lines)
-├── symbols.nim          # Visual constants, colors (~180 lines)
-├── hexmap.nim           # Main widget + state (~240 lines)
-├── detail.nim           # Detail panel rendering (~170 lines)
-└── navigation.nim       # Keyboard handling (~180 lines)
+═══ Systems ════════════════════════════════════════════
+ H   Hub         ━━ A1 A2 A3 A4 A5 A6
+ A1  Arcturus    ━━ H ┄┄ A2 A6 ━━ B1 ·· B2    [Valerian]
+ A2  Vega        ┄┄ H A1 A3 ━━ B2 B3
 ```
 
-**Total: ~1,000 lines of production code + 310 lines tests**
+See `SVG_STARMAP_SPEC.md` for complete specification.
+
+**Files created:**
+```
+src/player/tui/widget/hexmap/   # Preserved for reference
+├── hexmap_pkg.nim              # Package exports
+├── coords.nim                  # Axial coordinate math
+├── symbols.nim                 # Visual constants, colors
+├── hexmap.nim                  # Main widget + state
+├── detail.nim                  # Detail panel (still used!)
+└── navigation.nim              # Keyboard handling
+
+src/player/tui/
+└── hex_labels.nim              # NEW: Ring+position labels
+
+src/player/svg/                 # TODO: SVG generation
+├── starmap_export.nim          # Main SVG generation
+├── node_layout.nim             # Hex-to-pixel positioning
+├── svg_builder.nim             # SVG string utilities
+└── export.nim                  # File I/O
+```
+
+**What's Preserved:**
+- Detail panel rendering (still displays system info)
+- Coordinate math and fog-of-war adapters (reused by SVG)
+- Ring+position labeling system (new, used in detail panel + SVG)
+
+**What's Removed:**
+- Hex map widget from main TUI dashboard (map panel removed)
+- Visual grid rendering in terminal (delegated to SVG)
 
 ---
 
-## Starmap Dashboard Layout Design
+## Dashboard Layout Design
 
-### Approved Layout: Context-Sensitive Split View
+### Current Layout: Data-First Dashboard
 
-The starmap dashboard uses a **permanent split-view layout** where the hex map
-is always visible on the left, providing spatial context while the right panel
-shows contextual information based on selection.
+**Note:** The original split-view with embedded hex map has been replaced with a data-first approach. The TUI focuses on lists, status, and commands. Visual starmap reference is provided via SVG export.
+
+### Original Concept (Deprecated)
+
+The original design used a **permanent split-view layout** where the hex map was always visible on the left, providing spatial context while the right panel showed contextual information.
 
 ```
 ┌─ Starmap ─────────────────────────────┬─ System Info ──────────────┐
@@ -946,27 +993,43 @@ while sam.state.running:
 
 **Goal**: Refinement and quality of life
 
-1. **Performance**
+1. **SVG Starmap Export + TUI System List** ⭐ **IN PROGRESS**
+   - ✅ Ring+position coordinate labels (`hex_labels.nim`)
+   - ✅ Detail panel integration
+   - ✅ Hexmap widget removed from main UI
+   - ✅ Specification complete (`SVG_STARMAP_SPEC.md`)
+   - [ ] SVG node-edge graph generation (`src/player/svg/`)
+   - [ ] Hex-to-pixel node positioning
+   - [ ] File export and directory management
+   - [ ] SAM action/acceptor for export command
+   - [ ] TUI system list view (text-mode connectivity display)
+   - [ ] TUI keyboard shortcut integration
+   
+   **Design**: Node-edge graph (not hex polygons). Systems as circles, lanes
+   as styled lines. Cleaner than drawing hex outlines. TUI provides text-mode
+   system list showing connectivity for in-terminal reference.
+
+2. **Performance**
    - Profile rendering
    - Optimize diff algorithm
    - Reduce allocations
 
-2. **Help System**
+3. **Help System**
    - Command help overlay
    - Tutorial messages
    - Tooltips
 
-3. **Configuration**
+4. **Configuration**
    - Key binding customization
    - Color scheme selection
    - UI layout preferences
 
-4. **Accessibility**
+5. **Accessibility**
    - High contrast mode
    - Colorblind-friendly palettes
    - Screen reader considerations
 
-5. **Testing**
+6. **Testing**
    - Unit tests for widgets
    - Integration tests
    - Playtesting

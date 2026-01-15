@@ -86,7 +86,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Select hex at cursor
       model.mapState.selected = some(model.mapState.cursor)
     
-    of ViewMode.Colonies, ViewMode.Fleets, ViewMode.Orders:
+    of ViewMode.Colonies, ViewMode.Fleets, ViewMode.Orders, ViewMode.Systems:
       # Select current list item (idx is already set)
       if proposal.selectIdx >= 0:
         model.selectedIdx = proposal.selectIdx
@@ -147,8 +147,17 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     model.running = false
   
   of pkGameAction:
-    # Handle game-specific actions (build, move fleet, etc.)
-    model.statusMessage = "Action: " & proposal.gameActionType
+    # Handle game-specific actions
+    case proposal.gameActionType
+    of ActionExportMap:
+      model.exportMapRequested = true
+      model.statusMessage = "Exporting starmap..."
+    of ActionOpenMap:
+      model.exportMapRequested = true
+      model.openMapRequested = true
+      model.statusMessage = "Exporting and opening starmap..."
+    else:
+      model.statusMessage = "Action: " & proposal.gameActionType
   
   else:
     discard

@@ -103,7 +103,10 @@ proc neighbors*(h: HexCoord): array[6, HexCoord] =
 # Screen coordinate conversion
 # -----------------------------------------------------------------------------
 
-proc axialToScreen*(hex: HexCoord, origin: HexCoord = hexCoord(0, 0)): ScreenPos =
+proc axialToScreen*(
+  hex: HexCoord,
+  origin: HexCoord = hexCoord(0, 0)
+): ScreenPos =
   ## Convert axial hex coordinate to screen character position
   ##
   ## Flat-top hex layout in ASCII:
@@ -113,17 +116,21 @@ proc axialToScreen*(hex: HexCoord, origin: HexCoord = hexCoord(0, 0)): ScreenPos
   ## Each hex is 2 chars wide, rows are 1 char tall.
   ## The offset pattern creates the hex stagger effect.
   let rel = hex - origin
+  let rowOffset = if (hex.r and 1) != 0: 1 else: 0
   
   # Base x position: q * 2 (each hex is 2 chars wide)
-  # Add r offset for stagger (r adds 1 char offset per row)
-  let x = rel.q * HexWidth + rel.r
+  # Add row offset for stagger
+  let x = rel.q * HexWidth + rowOffset
   
   # y position is simply r (one row per r increment)
   let y = rel.r
   
   screenPos(x, y)
 
-proc screenToAxial*(pos: ScreenPos, origin: HexCoord = hexCoord(0, 0)): HexCoord =
+proc screenToAxial*(
+  pos: ScreenPos,
+  origin: HexCoord = hexCoord(0, 0)
+): HexCoord =
   ## Convert screen position back to axial coordinate (approximate)
   ##
   ## Note: This gives the hex containing or nearest to the screen position.
@@ -131,10 +138,12 @@ proc screenToAxial*(pos: ScreenPos, origin: HexCoord = hexCoord(0, 0)): HexCoord
   
   # y directly maps to r
   let r = pos.y
+  let absR = origin.r + r
+  let rowOffset = if (absR and 1) != 0: 1 else: 0
   
-  # x = q * 2 + r, so q = (x - r) / 2
+  # x = q * 2 + rowOffset, so q = (x - rowOffset) / 2
   # Use integer division, rounding toward nearest hex
-  let q = (pos.x - r + 1) div HexWidth
+  let q = (pos.x - rowOffset + 1) div HexWidth
   
   hexCoord(q + origin.q, r + origin.r)
 
@@ -190,6 +199,22 @@ proc viewportForHex*(
     newOrigin.r += pos.y - viewHeight + margin + 1
   
   newOrigin
+
+proc centerViewportOnHex*(hex: HexCoord, viewWidth, viewHeight: int): HexCoord =
+  ## Calculate viewport origin to center the hex in the view
+  let centerX = viewWidth div 2
+  let centerY = viewHeight div 2
+  let rowOffset = if (hex.r and 1) != 0: 1 else: 0
+  var alignedCenterX = centerX
+  if (centerX - rowOffset) mod HexWidth != 0:
+    if centerX > 0:
+      alignedCenterX -= 1
+    elif viewWidth > 1:
+      alignedCenterX += 1
+  hexCoord(
+    hex.q - (alignedCenterX - rowOffset) div HexWidth,
+    hex.r - centerY
+  )
 
 # -----------------------------------------------------------------------------
 # Ring iteration

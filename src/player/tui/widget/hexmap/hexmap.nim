@@ -157,64 +157,60 @@ proc getHexStyle(m: HexMap, coord: HexCoord, state: HexMapState): CellStyle =
 # -----------------------------------------------------------------------------
 
 proc updateViewport(state: var HexMapState, contentArea: Rect) =
-  ## Ensure cursor is visible, adjusting viewport if needed
-  let margin = 2
-  state.viewportOrigin = viewportForHex(
+  ## Center viewport on current cursor
+  state.viewportOrigin = centerViewportOnHex(
     state.cursor,
-    contentArea.width div HexWidth,
-    contentArea.height,
-    state.viewportOrigin,
-    margin
+    contentArea.width,
+    contentArea.height
   )
 
 proc render*(m: HexMap, area: Rect, buf: var CellBuffer,
-             state: var HexMapState) =
+              state: var HexMapState) =
   ## Render the hex map to the buffer
   if area.isEmpty:
     return
-  
+
   # Render optional frame
   var contentArea = area
   if m.blk.isSome:
     let blk = m.blk.get()
     blk.render(area, buf)
     contentArea = blk.inner(area)
-  
+
   if contentArea.isEmpty:
     return
-  
+
   # Update viewport to keep cursor visible
   state.updateViewport(contentArea)
-  
+
+
   # Render hex grid
   # We iterate through screen positions and convert to hex coords
   for screenY in 0 ..< contentArea.height:
     let absY = contentArea.y + screenY
-    
+
     # Calculate hex row (r coordinate)
     let r = state.viewportOrigin.r + screenY
-    
+
     # Determine x offset for this row (odd r values offset right)
     let rowOffset = if (r and 1) != 0: 1 else: 0
-    
+
     var screenX = rowOffset
     while screenX < contentArea.width:
       let absX = contentArea.x + screenX
-      
+
       # Convert screen position to hex coordinate
       let q = state.viewportOrigin.q + (screenX - rowOffset) div HexWidth
       let coord = hexCoord(q, r)
-      
+
       # Get symbol and style for this hex
       let sym = m.getHexSymbol(coord)
       let symStr = sym.symbol(m.ascii)
       let style = m.getHexStyle(coord, state)
-      
-      # Check if this hex is selected or under cursor
+
+      # Check if this hex is selected or at screen center
       let isSelected = state.selected.isSome and state.selected.get() == coord
-      let isCursor = coord == state.cursor
-      
-      if isSelected or isCursor:
+      if isSelected or coord == state.cursor:
         # Render with selection brackets: [X]
         if absX > contentArea.x:
           discard buf.put(absX - 1, absY, SelectLeft, style)
@@ -224,7 +220,8 @@ proc render*(m: HexMap, area: Rect, buf: var CellBuffer,
       else:
         # Render just the symbol
         discard buf.put(absX, absY, symStr, style)
-      
+
+
       screenX += HexWidth
 
 # -----------------------------------------------------------------------------

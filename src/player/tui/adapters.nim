@@ -4,11 +4,13 @@
 ## and TUI widget types. Maintains separation between engine (game logic)
 ## and presentation (TUI) layers.
 
-import std/[options, tables]
+import std/[options, tables, algorithm]
 import ../../engine/types/[core, starmap, colony, fleet, player_state]
 import ../../engine/state/engine
 import ../../engine/state/fog_of_war
 import ./widget/hexmap/hexmap_pkg
+import ./widget/system_list
+import ./hex_labels
 
 # -----------------------------------------------------------------------------
 # Coordinate conversions
@@ -412,4 +414,96 @@ proc toFogOfWarDetailPanelData*(
     system: some(systemInfo),
     jumpLanes: jumpLanes,
     fleets: fleets
+  )
+
+# -----------------------------------------------------------------------------
+# System list data conversion
+# -----------------------------------------------------------------------------
+
+proc toSystemListData*(state: GameState, viewingHouse: HouseId,
+                       selectedIdx: int = 0): SystemListData =
+  ## Convert GameState to SystemListData for the system list widget
+  ##
+  ## Systems are sorted by ring (hub first) then by position within ring.
+  let playerState = createPlayerState(state, viewingHouse)
+  
+  var entries: seq[SystemListEntry] = @[]
+  
+  for systemId, visibleSys in playerState.visibleSystems.pairs:
+    # Only include systems we've scouted (know the name)
+    if visibleSys.visibility < VisibilityLevel.Scouted:
+      continue
+    
+    let sysOpt = state.system(systemId)
+    if sysOpt.isNone:
+      continue
+    
+    let sys = sysOpt.get()
+    let q = int(sys.coords.q)
+    let r = int(sys.coords.r)
+    let label = coordLabel(q, r)
+    
+    # Build connection list
+    var connections: seq[tuple[label: string, laneType: int]] = @[]
+    for neighborId in visibleSys.jumpLaneIds:
+      let destSysOpt = state.system(neighborId)
+      if destSysOpt.isSome:
+        let destSys = destSysOpt.get()
+        let destLabel = coordLabel(int(destSys.coords.q), int(destSys.coords.r))
+        var laneType = 0  # Default to major
+        if state.starmap.lanes.connectionInfo.hasKey((systemId, neighborId)):
+          laneType = ord(state.starmap.lanes.connectionInfo[(systemId, neighborId)])
+        connections.add((label: destLabel, laneType: laneType))
+    
+    # Sort connections by lane type (major first) then by label
+    connections.sort(proc(a, b: tuple[label: string, laneType: int]): int =
+      if a.laneType != b.laneType:
+        a.laneType - b.laneType
+      else:
+        cmp(a.label, b.label)
+    )
+    
+    # Determine owner
+    var ownerName = none(string)
+    var isOwned = false
+    for colony in playerState.ownColonies:
+      if colony.systemId == systemId:
+        let houseOpt = state.house(colony.owner)
+        if houseOpt.isSome:
+          ownerName = some(houseOpt.get().name)
+          isOwned = true
+        break
+    
+    if ownerName.isNone:
+      for visCol in playerState.visibleColonies:
+        if visCol.systemId == systemId:
+          let houseOpt = state.house(visCol.owner)
+          if houseOpt.isSome:
+            ownerName = some(houseOpt.get().name)
+          break
+    
+    entries.add(SystemListEntry(
+      id: int(systemId),
+      name: sys.name,
+      coordLabel: label,
+      q: q,
+      r: r,
+      connections: connections,
+      ownerName: ownerName,
+      isOwned: isOwned
+    ))
+  
+  # Sort by ring then position (H first, then A1, A2, ..., B1, B2, ...)
+  entries.sort(proc(a, b: SystemListEntry): int =
+    let ringA = max(abs(a.q), max(abs(a.r), abs(a.q + a.r)))
+    let ringB = max(abs(b.q), max(abs(b.r), abs(b.q + b.r)))
+    if ringA != ringB:
+      ringA - ringB
+    else:
+      cmp(a.coordLabel, b.coordLabel)
+  )
+  
+  SystemListData(
+    systems: entries,
+    selectedIdx: selectedIdx
   )
