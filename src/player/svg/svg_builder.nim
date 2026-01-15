@@ -94,6 +94,9 @@ proc svgHeader*(width, height: int): string =
       .label-name {{ font-size: 11px; font-weight: bold; }}
       .label-coord {{ fill: {ColorLightGray}; font-size: 9px; }}
       .label-info {{ fill: {ColorMediumGray}; font-size: 8px; }}
+      .label-inside {{ fill: {ColorWhite}; font-family: monospace;
+                      font-size: 9px; font-weight: bold;
+                      text-anchor: middle; dominant-baseline: central; }}
       
       /* Legend styles */
       .legend-text {{ fill: {ColorWhite}; font-family: monospace; 
@@ -174,12 +177,13 @@ proc nodeClass*(nodeType: NodeType): string =
 
 proc nodeRadius*(nodeType: NodeType, isHomeworld: bool = false): float =
   ## Get radius for node type
+  ## Sized to fit "EX-A" text inside (about 5 chars at ~7px = 35px width)
   case nodeType
-  of NodeType.Hub: 14.0
+  of NodeType.Hub: 22.0
   of NodeType.OwnColony:
-    if isHomeworld: 12.0 else: 10.0
-  of NodeType.EnemyColony: 10.0
-  of NodeType.Neutral: 6.0
+    if isHomeworld: 20.0 else: 18.0
+  of NodeType.EnemyColony: 18.0
+  of NodeType.Neutral: 14.0
 
 # -----------------------------------------------------------------------------
 # Build complete SVG

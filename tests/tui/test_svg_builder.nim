@@ -137,6 +137,13 @@ suite "SVG Builder: Node Types":
     let regR = nodeRadius(NodeType.OwnColony, isHomeworld = false)
     check homeR > regR
 
+  test "node radius large enough for text":
+    # Nodes should be large enough to fit "EX-VR" (~5 chars)
+    # At 9px font, need about 35px width = 17.5px radius minimum
+    check nodeRadius(NodeType.Neutral) >= 14.0
+    check nodeRadius(NodeType.OwnColony) >= 17.0
+    check nodeRadius(NodeType.Hub) >= 20.0
+
 suite "SVG Builder: Complete Build":
 
   test "builder creates valid SVG":
@@ -157,6 +164,7 @@ suite "SVG Builder: Complete Build":
     check ".lane-major" in svg
     check ".node-hub" in svg
     check ".label" in svg
+    check ".label-inside" in svg  # For text inside nodes
 
   test "builder includes explicit background rect":
     var builder = initSvgBuilder(800, 600)

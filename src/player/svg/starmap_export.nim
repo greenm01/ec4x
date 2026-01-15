@@ -54,10 +54,11 @@ proc resourceCode(resourceRating: int): string =
     ""
 
 proc infoCode(planetClass, resourceRating: int): string =
+  ## Generate compact info code like "EX-A" for Extreme/Average
   let pc = planetCode(planetClass)
   let rc = resourceCode(resourceRating)
   if pc.len > 0 and rc.len > 0:
-    pc & "/" & rc
+    pc & "-" & rc
   elif pc.len > 0:
     pc
   elif rc.len > 0:
@@ -188,7 +189,7 @@ proc renderLanes(builder: var SvgBuilder, lanes: seq[LaneEdge]) =
   builder.add(svgGroup("lanes", lanesSvg))
 
 proc renderNodes(builder: var SvgBuilder, systems: seq[SystemNode]) =
-  ## Render all system nodes
+  ## Render all system nodes with planet/resource info inside
   var nodesSvg = ""
   for sys in systems:
     let class = nodeClass(sys.nodeType)
@@ -201,14 +202,23 @@ proc renderNodes(builder: var SvgBuilder, systems: seq[SystemNode]) =
     elif sys.nodeType == NodeType.EnemyColony and sys.ownerHouseId.isSome:
       style = &"stroke: {houseColor(sys.ownerHouseId.get)}"
     
+    # Circle
     nodesSvg.add(svgCircle(sys.position.x, sys.position.y, radius,
                            class, style))
     nodesSvg.add("\n")
+    
+    # Planet/resource code inside circle (e.g., "EX-A")
+    let info = infoCode(sys.planetClass, sys.resourceRating)
+    if info.len > 0:
+      nodesSvg.add(svgText(sys.position.x, sys.position.y,
+                           info, "label-inside"))
+      nodesSvg.add("\n")
   
   builder.add(svgGroup("nodes", nodesSvg))
 
 proc renderLabels(builder: var SvgBuilder, systems: seq[SystemNode]) =
-  ## Render all system labels
+  ## Render system labels (name and coordinate below circle)
+  ## Planet/resource info is rendered inside the circle by renderNodes
   var labelsSvg = ""
   for sys in systems:
     let x = sys.position.x
@@ -221,12 +231,6 @@ proc renderLabels(builder: var SvgBuilder, systems: seq[SystemNode]) =
     # Coordinate
     labelsSvg.add(svgText(x, y + 12.0, sys.coordLabel, "label label-coord"))
     labelsSvg.add("\n")
-    
-    # Planet info (if known)
-    let info = infoCode(sys.planetClass, sys.resourceRating)
-    if info.len > 0:
-      labelsSvg.add(svgText(x, y + 22.0, info, "label label-info"))
-      labelsSvg.add("\n")
   
   builder.add(svgGroup("labels", labelsSvg))
 
@@ -255,29 +259,35 @@ proc renderLegend(builder: var SvgBuilder, width, height: int,
   
   # Node types
   legendSvg.add(svgText(0.0, y, "Systems:", "legend-text"))
-  y += 15.0
-  legendSvg.add(svgCircle(10.0, y, 8.0, "node-hub", ""))
-  legendSvg.add(svgText(40.0, y + 4.0, "Hub", "legend-text"))
-  y += 20.0
-  legendSvg.add(svgCircle(10.0, y, 6.0, "node-own", &"fill: {HouseColors[0]}"))
-  legendSvg.add(svgText(40.0, y + 4.0, "Your Colony", "legend-text"))
-  y += 20.0
-  legendSvg.add(svgCircle(10.0, y, 6.0, "node-enemy",
+  y += 18.0
+  legendSvg.add(svgCircle(12.0, y, 12.0, "node-hub", ""))
+  legendSvg.add(svgText(36.0, y + 4.0, "Hub", "legend-text"))
+  y += 28.0
+  legendSvg.add(svgCircle(12.0, y, 10.0, "node-own", &"fill: {HouseColors[0]}"))
+  legendSvg.add(svgText(36.0, y + 4.0, "Your Colony", "legend-text"))
+  y += 26.0
+  legendSvg.add(svgCircle(12.0, y, 10.0, "node-enemy",
                           &"stroke: {HouseColors[1]}"))
-  legendSvg.add(svgText(40.0, y + 4.0, "Enemy Colony", "legend-text"))
-  y += 20.0
-  legendSvg.add(svgCircle(10.0, y, 4.0, "node-neutral", ""))
-  legendSvg.add(svgText(40.0, y + 4.0, "Neutral", "legend-text"))
-  y += 25.0
+  legendSvg.add(svgText(36.0, y + 4.0, "Enemy Colony", "legend-text"))
+  y += 26.0
+  legendSvg.add(svgCircle(12.0, y, 8.0, "node-neutral", ""))
+  legendSvg.add(svgText(36.0, y + 4.0, "Neutral", "legend-text"))
+  y += 28.0
+  
+  # Info code format explanation
+  legendSvg.add(svgText(0.0, y, "Node text: Planet-Resource", "legend-text"))
+  y += 18.0
+  legendSvg.add(svgText(0.0, y, "e.g. HO-R = Hostile/Rich", "legend-text"))
+  y += 22.0
   
   # Planet codes
-  legendSvg.add(svgText(0.0, y, "Planet:", "legend-text"))
+  legendSvg.add(svgText(0.0, y, "Planet codes:", "legend-text"))
   y += 15.0
   legendSvg.add(svgText(0.0, y, "EX DE HO HA BE LU ED", "legend-text"))
-  y += 20.0
+  y += 18.0
   
   # Resource codes
-  legendSvg.add(svgText(0.0, y, "Resources:", "legend-text"))
+  legendSvg.add(svgText(0.0, y, "Resource codes:", "legend-text"))
   y += 15.0
   legendSvg.add(svgText(0.0, y, "VP P A R VR", "legend-text"))
   y += 25.0
