@@ -1,19 +1,24 @@
-## EC4X TUI Player - Terminal User Interface
+## EC4X TUI Player - SAM Pattern Implementation
 ##
-## Main entry point for the TUI player client. Displays game state
-## with fog-of-war and provides interactive control interface.
+## Main entry point for the TUI player client using the SAM pattern.
+## This replaces the original event-driven approach with a proper
+## State-Action-Model architecture.
+##
+## SAM Flow:
+##   Input Event -> Action -> Proposal -> Present -> Acceptors -> 
+##   Reactors -> NAPs -> Render
 ##
 ## Layout:
-##   ┌─ Map ────────┬─ Context ────────────────────────┐
-##   │  (small)     │ System/Fleet/Colony details      │
-##   ├──────────────┼──────────────────────────────────┤
-##   │ [C]olonies   │ List of items based on mode      │
-##   │ [F]leets     │                                  │
-##   │ [O]rders     │                                  │
-##   │ [E]nd Turn   │                                  │
-##   ├──────────────┴──────────────────────────────────┤
-##   │ Status bar                                      │
-##   └─────────────────────────────────────────────────┘
+##   +- Map --------+- Context ----------------------+
+##   |  (small)     | System/Fleet/Colony details   |
+##   +--------------+-------------------------------+
+##   | [C]olonies   | List of items based on mode   |
+##   | [F]leets     |                               |
+##   | [O]rders     |                               |
+##   | [E]nd Turn   |                               |
+##   +--------------+-------------------------------+
+##   | Status bar                                   |
+##   +----------------------------------------------+
 ##
 ## Run: nimble buildTui && ./bin/ec4x-tui
 
@@ -23,7 +28,7 @@ import ../engine/init/game_state
 import ../engine/types/[core, game_state, colony, fleet]
 import ../engine/state/[engine, fog_of_war, iterators]
 import ./tui/term/term
-import ./tui/term/types/core
+import ./tui/term/types/core as termcore
 import ./tui/buffer
 import ./tui/events
 import ./tui/input
@@ -33,22 +38,117 @@ import ./tui/layout/layout_pkg
 import ./tui/widget/[widget_pkg, frame, paragraph]
 import ./tui/widget/hexmap/hexmap_pkg
 import ./tui/adapters
+import ./sam/sam_pkg
 
-type
-  ViewMode* {.pure.} = enum
-    Map        ## Navigating the starmap
-    Colonies   ## Colony list
-    Fleets     ## Fleet list
-    Orders     ## Pending orders
+# =============================================================================
+# Bridge: Convert Engine Data to SAM Model
+# =============================================================================
+
+proc syncGameStateToModel(model: var TuiModel, state: GameState, 
+                          viewingHouse: HouseId) =
+  ## Sync game state into the SAM TuiModel
+  let house = state.house(viewingHouse).get()
   
-  TuiState* = object
-    mode*: ViewMode
-    mapState*: HexMapState
-    selectedIdx*: int  ## Index in current list
+  model.turn = state.turn
+  model.viewingHouse = int(viewingHouse)
+  model.houseName = house.name
+  model.treasury = house.treasury
+  model.prestige = house.prestige
+  
+  # Build systems table from fog-of-war map data
+  let mapData = toFogOfWarMapData(state, viewingHouse)
+  model.systems.clear()
+  model.maxRing = mapData.maxRing
+  
+  for coord, sysInfo in mapData.systems.pairs:
+    let samSys = sam_pkg.SystemInfo(
+      id: sysInfo.id,
+      name: sysInfo.name,
+      coords: (coord.q, coord.r),
+      ring: sysInfo.ring,
+      planetClass: sysInfo.planetClass,
+      resourceRating: sysInfo.resourceRating,
+      owner: sysInfo.owner,
+      isHomeworld: sysInfo.isHomeworld,
+      isHub: sysInfo.isHub,
+      fleetCount: sysInfo.fleetCount
+    )
+    model.systems[(coord.q, coord.r)] = samSys
+    
+    # Track homeworld
+    if sysInfo.isHomeworld and sysInfo.owner.isSome and 
+       sysInfo.owner.get == int(viewingHouse):
+      model.homeworld = some((coord.q, coord.r))
+  
+  # Build colonies list
+  model.colonies = @[]
+  for colony in state.coloniesOwned(viewingHouse):
+    let sysOpt = state.system(colony.systemId)
+    let sysName = if sysOpt.isSome: sysOpt.get().name else: "???"
+    model.colonies.add(sam_pkg.ColonyInfo(
+      systemId: int(colony.systemId),
+      systemName: sysName,
+      population: colony.population,
+      production: colony.production,
+      owner: int(viewingHouse)
+    ))
+  
+  # Build fleets list
+  model.fleets = @[]
+  for fleet in state.fleetsOwned(viewingHouse):
+    let sysOpt = state.system(fleet.location)
+    let locName = if sysOpt.isSome: sysOpt.get().name else: "???"
+    model.fleets.add(sam_pkg.FleetInfo(
+      id: int(fleet.id),
+      location: int(fleet.location),
+      locationName: locName,
+      shipCount: fleet.ships.len,
+      owner: int(viewingHouse)
+    ))
 
-# -----------------------------------------------------------------------------
+# =============================================================================
+# Input Mapping: Key Events to SAM Actions
+# =============================================================================
+
+proc mapKeyEvent(event: KeyEvent, model: TuiModel): Option[Proposal] =
+  ## Map raw key events to SAM actions
+  
+  # Map key to KeyCode
+  var keyCode = KeyCode.KeyNone
+  
+  case event.key
+  of Key.Rune:
+    let ch = $event.rune
+    case ch
+    of "q", "Q": keyCode = KeyCode.KeyQ
+    of "c", "C": keyCode = KeyCode.KeyC
+    of "f", "F": keyCode = KeyCode.KeyF
+    of "o", "O": keyCode = KeyCode.KeyO
+    of "m", "M": keyCode = KeyCode.KeyM
+    of "e", "E": keyCode = KeyCode.KeyE
+    of "h", "H": keyCode = KeyCode.KeyH
+    else: discard
+  
+  of Key.Up: keyCode = KeyCode.KeyUp
+  of Key.Down: keyCode = KeyCode.KeyDown
+  of Key.Left: keyCode = KeyCode.KeyLeft
+  of Key.Right: keyCode = KeyCode.KeyRight
+  of Key.Enter: keyCode = KeyCode.KeyEnter
+  of Key.Escape: keyCode = KeyCode.KeyEscape
+  of Key.Tab:
+    if (event.modifiers and ModShift) != ModNone:
+      keyCode = KeyCode.KeyShiftTab
+    else:
+      keyCode = KeyCode.KeyTab
+  of Key.Home: keyCode = KeyCode.KeyHome
+  else: discard
+  
+  # Use SAM action mapper
+  mapKeyToAction(keyCode, model)
+
+# =============================================================================
 # Styles
-# -----------------------------------------------------------------------------
+# =============================================================================
 
 const
   MapWidth = 24      ## Fixed width for small map panel
@@ -70,38 +170,35 @@ proc selectedStyle(): CellStyle =
 proc headerStyle(): CellStyle =
   CellStyle(fg: color(Ansi256Color(117)), attrs: {StyleAttr.Bold})
 
-# -----------------------------------------------------------------------------
-# Status Bar (Bottom)
-# -----------------------------------------------------------------------------
+# =============================================================================
+# Rendering (View Functions)
+# =============================================================================
 
-proc renderStatusBar(area: Rect, buf: var CellBuffer, state: GameState, 
-                     viewingHouse: HouseId, tuiState: TuiState) =
-  ## Render bottom status bar with game info
-  let house = state.house(viewingHouse).get()
-  
+proc renderStatusBar(area: Rect, buf: var CellBuffer, model: TuiModel) =
+  ## Render bottom status bar from SAM model
   var x = area.x + 1
   let y = area.y
   
   # Turn
   discard buf.setString(x, y, "Turn: ", dimStyle())
   x += 6
-  discard buf.setString(x, y, $state.turn, highlightStyle())
-  x += ($state.turn).len + 3
+  discard buf.setString(x, y, $model.turn, highlightStyle())
+  x += ($model.turn).len + 3
   
   # Treasury
   discard buf.setString(x, y, "Treasury: ", dimStyle())
   x += 10
-  discard buf.setString(x, y, $house.treasury & " MCr", highlightStyle())
-  x += ($house.treasury).len + 7
+  discard buf.setString(x, y, $model.treasury & " MCr", highlightStyle())
+  x += ($model.treasury).len + 7
   
   # Prestige
   discard buf.setString(x, y, "Prestige: ", dimStyle())
   x += 10
-  discard buf.setString(x, y, $house.prestige, highlightStyle())
-  x += ($house.prestige).len + 3
+  discard buf.setString(x, y, $model.prestige, highlightStyle())
+  x += ($model.prestige).len + 3
   
   # Current mode
-  let modeStr = case tuiState.mode
+  let modeStr = case model.mode
     of ViewMode.Map: "[MAP]"
     of ViewMode.Colonies: "[COLONIES]"
     of ViewMode.Fleets: "[FLEETS]"
@@ -109,14 +206,10 @@ proc renderStatusBar(area: Rect, buf: var CellBuffer, state: GameState,
   discard buf.setString(x, y, modeStr, headerStyle())
   
   # House name (right-aligned)
-  let nameX = area.x + area.width - house.name.len - 2
-  discard buf.setString(nameX, y, house.name, highlightStyle())
+  let nameX = area.x + area.width - model.houseName.len - 2
+  discard buf.setString(nameX, y, model.houseName, highlightStyle())
 
-# -----------------------------------------------------------------------------
-# Menu Panel (Left side, below map)
-# -----------------------------------------------------------------------------
-
-proc renderMenuPanel(area: Rect, buf: var CellBuffer, tuiState: TuiState) =
+proc renderMenuPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render the menu shortcuts panel
   let frame = bordered().title("Menu").borderType(BorderType.Rounded)
   frame.render(area, buf)
@@ -124,7 +217,6 @@ proc renderMenuPanel(area: Rect, buf: var CellBuffer, tuiState: TuiState) =
   
   var y = inner.y
   
-  # Menu items with highlight for current mode
   let items = [
     (key: "C", label: "Colonies", mode: ViewMode.Colonies),
     (key: "F", label: "Fleets", mode: ViewMode.Fleets),
@@ -136,7 +228,7 @@ proc renderMenuPanel(area: Rect, buf: var CellBuffer, tuiState: TuiState) =
     if y >= inner.bottom:
       break
     
-    let isActive = tuiState.mode == item.mode
+    let isActive = model.mode == item.mode
     let style = if isActive: selectedStyle() else: normalStyle()
     let keyStyle = if isActive: selectedStyle() else: highlightStyle()
     
@@ -146,7 +238,6 @@ proc renderMenuPanel(area: Rect, buf: var CellBuffer, tuiState: TuiState) =
     discard buf.setString(inner.x + 4, y, item.label, style)
     y += 1
   
-  # Separator
   y += 1
   if y < inner.bottom:
     discard buf.setString(inner.x, y, "[", dimStyle())
@@ -161,14 +252,10 @@ proc renderMenuPanel(area: Rect, buf: var CellBuffer, tuiState: TuiState) =
     discard buf.setString(inner.x + 2, y, "] ", dimStyle())
     discard buf.setString(inner.x + 4, y, "Quit", normalStyle())
 
-# -----------------------------------------------------------------------------
-# Context Panel (Top right - shows details)
-# -----------------------------------------------------------------------------
-
-proc renderContextPanel(area: Rect, buf: var CellBuffer, state: GameState,
-                        viewingHouse: HouseId, tuiState: TuiState) =
+proc renderContextPanel(area: Rect, buf: var CellBuffer, model: TuiModel,
+                        state: GameState, viewingHouse: HouseId) =
   ## Render context-sensitive detail panel
-  let title = case tuiState.mode
+  let title = case model.mode
     of ViewMode.Map: "System Info"
     of ViewMode.Colonies: "Colony Details"
     of ViewMode.Fleets: "Fleet Details"
@@ -178,34 +265,30 @@ proc renderContextPanel(area: Rect, buf: var CellBuffer, state: GameState,
   frame.render(area, buf)
   let inner = frame.inner(area)
   
-  # For now, show system info from map cursor
+  # Get detail data using existing adapters
   let detailData = toFogOfWarDetailPanelData(
-    tuiState.mapState.cursor, state, viewingHouse
+    coords.hexCoord(model.mapState.cursor.q, model.mapState.cursor.r),
+    state, viewingHouse
   )
-  renderDetailPanel(inner, buf, detailData, tuiState.mapState.colors)
+  
+  # Use existing detail renderer
+  let colors = defaultColors()
+  renderDetailPanel(inner, buf, detailData, colors)
 
-# -----------------------------------------------------------------------------
-# List Panel (Bottom right - shows lists)
-# -----------------------------------------------------------------------------
-
-proc renderColonyList(area: Rect, buf: var CellBuffer, state: GameState,
-                      viewingHouse: HouseId, selectedIdx: int) =
-  ## Render list of player's colonies
+proc renderColonyList(area: Rect, buf: var CellBuffer, model: TuiModel) =
+  ## Render list of player's colonies from SAM model
   var y = area.y
   var idx = 0
   
-  for colony in state.coloniesOwned(viewingHouse):
+  for colony in model.colonies:
     if y >= area.bottom:
       break
     
-    let isSelected = idx == selectedIdx
+    let isSelected = idx == model.selectedIdx
     let style = if isSelected: selectedStyle() else: normalStyle()
-    let sysOpt = state.system(colony.systemId)
-    let name = if sysOpt.isSome: sysOpt.get().name else: "???"
     
-    # Format: "  Name          PP:xxx  Pop:xxx"
     let prefix = if isSelected: "> " else: "  "
-    let line = prefix & name.alignLeft(14) & " PP:" & 
+    let line = prefix & colony.systemName.alignLeft(14) & " PP:" & 
                align($colony.production, 4) & 
                " Pop:" & align($colony.population, 5)
     
@@ -216,26 +299,22 @@ proc renderColonyList(area: Rect, buf: var CellBuffer, state: GameState,
   if idx == 0:
     discard buf.setString(area.x, y, "No colonies", dimStyle())
 
-proc renderFleetList(area: Rect, buf: var CellBuffer, state: GameState,
-                     viewingHouse: HouseId, selectedIdx: int) =
-  ## Render list of player's fleets
+proc renderFleetList(area: Rect, buf: var CellBuffer, model: TuiModel) =
+  ## Render list of player's fleets from SAM model
   var y = area.y
   var idx = 0
   
-  for fleet in state.fleetsOwned(viewingHouse):
+  for fleet in model.fleets:
     if y >= area.bottom:
       break
     
-    let isSelected = idx == selectedIdx
+    let isSelected = idx == model.selectedIdx
     let style = if isSelected: selectedStyle() else: normalStyle()
-    let sysOpt = state.system(fleet.location)
-    let locName = if sysOpt.isSome: sysOpt.get().name else: "???"
     
-    # Format: "  Fleet #ID    @ Location    Ships:x"
     let prefix = if isSelected: "> " else: "  "
-    let fleetName = "Fleet #" & $int(fleet.id)
+    let fleetName = "Fleet #" & $fleet.id
     let line = prefix & fleetName.alignLeft(12) & " @ " & 
-               locName.alignLeft(10) & " Ships:" & $fleet.ships.len
+               fleet.locationName.alignLeft(10) & " Ships:" & $fleet.shipCount
     
     discard buf.setString(area.x, y, line[0 ..< min(line.len, area.width)], style)
     y += 1
@@ -244,10 +323,9 @@ proc renderFleetList(area: Rect, buf: var CellBuffer, state: GameState,
   if idx == 0:
     discard buf.setString(area.x, y, "No fleets", dimStyle())
 
-proc renderListPanel(area: Rect, buf: var CellBuffer, state: GameState,
-                     viewingHouse: HouseId, tuiState: TuiState) =
+proc renderListPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render the main list panel based on current mode
-  let title = case tuiState.mode
+  let title = case model.mode
     of ViewMode.Colonies: "Your Colonies"
     of ViewMode.Fleets: "Your Fleets"
     of ViewMode.Orders: "Pending Orders"
@@ -257,15 +335,14 @@ proc renderListPanel(area: Rect, buf: var CellBuffer, state: GameState,
   frame.render(area, buf)
   let inner = frame.inner(area)
   
-  case tuiState.mode
+  case model.mode
   of ViewMode.Colonies:
-    renderColonyList(inner, buf, state, viewingHouse, tuiState.selectedIdx)
+    renderColonyList(inner, buf, model)
   of ViewMode.Fleets:
-    renderFleetList(inner, buf, state, viewingHouse, tuiState.selectedIdx)
+    renderFleetList(inner, buf, model)
   of ViewMode.Orders:
     discard buf.setString(inner.x, inner.y, "No pending orders", dimStyle())
   of ViewMode.Map:
-    # Show map navigation help
     var y = inner.y
     discard buf.setString(inner.x, y, "Arrow keys: Move cursor", normalStyle())
     y += 1
@@ -275,30 +352,11 @@ proc renderListPanel(area: Rect, buf: var CellBuffer, state: GameState,
     y += 1
     discard buf.setString(inner.x, y, "Enter: Select system", normalStyle())
 
-# -----------------------------------------------------------------------------
-# Main Dashboard
-# -----------------------------------------------------------------------------
-
-proc renderDashboard(buf: var CellBuffer, state: GameState, 
-                     tuiState: var TuiState, viewingHouse: HouseId,
-                     termWidth, termHeight: int) =
-  ## Render the complete TUI dashboard
-  ##
-  ## Layout:
-  ##   ┌─ Map ────────┬─ Context ─────────────────────┐
-  ##   │  (small)     │ System/Fleet/Colony details   │
-  ##   ├──────────────┼───────────────────────────────┤
-  ##   │ [C]olonies   │ List panel                    │
-  ##   │ [F]leets     │                               │
-  ##   │ [M]ap        │                               │
-  ##   │ [E]nd Turn   │                               │
-  ##   ├──────────────┴───────────────────────────────┤
-  ##   │ Status bar                                   │
-  ##   └──────────────────────────────────────────────┘
+proc renderDashboard(buf: var CellBuffer, model: TuiModel, 
+                     state: GameState, viewingHouse: HouseId) =
+  ## Render the complete TUI dashboard using SAM model
+  let termRect = rect(0, 0, model.termWidth, model.termHeight)
   
-  let termRect = rect(0, 0, termWidth, termHeight)
-  
-  # Main vertical split: content area + status bar at bottom
   let mainRows = vertical()
     .constraints(fill(), length(1))
     .split(termRect)
@@ -306,8 +364,7 @@ proc renderDashboard(buf: var CellBuffer, state: GameState,
   let contentArea = mainRows[0]
   let statusArea = mainRows[1]
   
-  # Left column (map + menu) vs right column (context + list)
-  let leftWidth = max(MapWidth, MenuWidth) + 2  # +2 for borders
+  let leftWidth = max(MapWidth, MenuWidth) + 2
   let mainCols = horizontal()
     .constraints(length(leftWidth), fill())
     .split(contentArea)
@@ -315,16 +372,13 @@ proc renderDashboard(buf: var CellBuffer, state: GameState,
   let leftCol = mainCols[0]
   let rightCol = mainCols[1]
   
-  # Left column: map (top) + menu (bottom)
   let leftRows = vertical()
-    .constraints(length(MapHeight + 2), fill())  # +2 for borders
+    .constraints(length(MapHeight + 2), fill())
     .split(leftCol)
   
   let mapArea = leftRows[0]
   let menuArea = leftRows[1]
   
-  # Right column: context (top) + list (bottom)
-  # Context panel is ~1/3 of height, list gets rest
   let contextHeight = max(8, contentArea.height div 3)
   let rightRows = vertical()
     .constraints(length(contextHeight), fill())
@@ -333,34 +387,34 @@ proc renderDashboard(buf: var CellBuffer, state: GameState,
   let contextArea = rightRows[0]
   let listArea = rightRows[1]
   
-  # Create map data with fog-of-war
+  # Create map data from model for rendering
   let mapData = toFogOfWarMapData(state, viewingHouse)
+  
+  # Create hex map state from SAM model
+  var hexState = newHexMapState(coords.hexCoord(model.mapState.cursor.q, model.mapState.cursor.r))
+  hexState.viewportOrigin = coords.hexCoord(model.mapState.viewportOrigin.q, model.mapState.viewportOrigin.r)
+  if model.mapState.selected.isSome:
+    hexState.selected = some(coords.hexCoord(model.mapState.selected.get.q, model.mapState.selected.get.r))
   
   # Render small map
   let mapFrame = bordered().title("Map").borderType(BorderType.Rounded)
   let map = hexMap(mapData).block(mapFrame)
-  map.render(mapArea, buf, tuiState.mapState)
+  map.render(mapArea, buf, hexState)
   
-  # Render menu panel
-  renderMenuPanel(menuArea, buf, tuiState)
-  
-  # Render context panel (details)
-  renderContextPanel(contextArea, buf, state, viewingHouse, tuiState)
-  
-  # Render list panel
-  renderListPanel(listArea, buf, state, viewingHouse, tuiState)
-  
-  # Render status bar
-  renderStatusBar(statusArea, buf, state, viewingHouse, tuiState)
+  # Render panels
+  renderMenuPanel(menuArea, buf, model)
+  renderContextPanel(contextArea, buf, model, state, viewingHouse)
+  renderListPanel(listArea, buf, model)
+  renderStatusBar(statusArea, buf, model)
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Output
-# -----------------------------------------------------------------------------
+# =============================================================================
 
 proc outputBuffer(buf: CellBuffer) =
-  ## Output buffer to terminal (simple full redraw)
+  ## Output buffer to terminal
   for y in 0 ..< buf.h:
-    stdout.write(cursorPosition(y + 1, 1))  # row, col (1-based)
+    stdout.write(cursorPosition(y + 1, 1))
     for x in 0 ..< buf.w:
       let (str, style, _) = buf.get(x, y)
       if not style.fg.isNone:
@@ -372,150 +426,96 @@ proc outputBuffer(buf: CellBuffer) =
       if StyleAttr.Faint in style.attrs:
         stdout.write(CSI & SgrFaint & "m")
       stdout.write(str)
-      stdout.write(CSI & "0m")  # Reset
+      stdout.write(CSI & "0m")
   stdout.flushFile()
 
-# -----------------------------------------------------------------------------
-# Input Handling
-# -----------------------------------------------------------------------------
-
-proc handleInput(tuiState: var TuiState, event: KeyEvent, 
-                 mapData: MapData, state: GameState, 
-                 viewingHouse: HouseId): bool =
-  ## Handle keyboard input. Returns false if should quit.
-  
-  # Global keys (work in any mode)
-  if event.key == Key.Rune:
-    let ch = $event.rune
-    case ch
-    of "q", "Q":
-      return false
-    of "c", "C":
-      tuiState.mode = ViewMode.Colonies
-      tuiState.selectedIdx = 0
-      return true
-    of "f", "F":
-      tuiState.mode = ViewMode.Fleets
-      tuiState.selectedIdx = 0
-      return true
-    of "o", "O":
-      tuiState.mode = ViewMode.Orders
-      tuiState.selectedIdx = 0
-      return true
-    of "m", "M":
-      tuiState.mode = ViewMode.Map
-      return true
-    of "e", "E":
-      # TODO: End turn
-      return true
-    else:
-      discard
-  
-  # Mode-specific input
-  case tuiState.mode
-  of ViewMode.Map:
-    # Map navigation
-    let navResult = processNavigation(tuiState.mapState, event, mapData)
-    if navResult.action == NavAction.Quit:
-      return false
-  
-  of ViewMode.Colonies, ViewMode.Fleets:
-    # List navigation
-    case event.key
-    of Key.Up:
-      if tuiState.selectedIdx > 0:
-        tuiState.selectedIdx -= 1
-    of Key.Down:
-      tuiState.selectedIdx += 1
-      # TODO: Clamp to list length
-    of Key.Enter:
-      # TODO: Select item, show details or actions
-      discard
-    else:
-      discard
-  
-  of ViewMode.Orders:
-    discard
-  
-  return true
-
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Main Entry Point
-# -----------------------------------------------------------------------------
+# =============================================================================
 
 proc main() =
-  logInfo("TUI Player", "Starting EC4X TUI Player...")
+  logInfo("TUI Player SAM", "Starting EC4X TUI Player with SAM pattern...")
   
   # Initialize game state
-  logInfo("TUI Player", "Creating new game...")
-  var state = initGameState(
+  logInfo("TUI Player SAM", "Creating new game...")
+  var gameState = initGameState(
     setupPath = "scenarios/standard-4-player.kdl",
     gameName = "TUI Test Game",
     configDir = "config",
     dataDir = "data"
   )
   
-  logInfo("TUI Player", &"Game created: {state.housesCount()} houses, {state.systemsCount()} systems")
+  logInfo("TUI Player SAM", &"Game created: {gameState.housesCount()} houses, {gameState.systemsCount()} systems")
   
-  # Player is house 1
   let viewingHouse = HouseId(1)
   
   # Initialize terminal
   var tty = openTty()
   if not tty.start():
-    logError("TUI Player", "Failed to enter raw mode")
+    logError("TUI Player SAM", "Failed to enter raw mode")
     quit(1)
   
-  # Install resize handler
   setupResizeHandler()
-  
-  # Get initial size
   var (termWidth, termHeight) = tty.windowSize()
-  logInfo("TUI Player", &"Terminal size: {termWidth}x{termHeight}")
+  logInfo("TUI Player SAM", &"Terminal size: {termWidth}x{termHeight}")
   
-  # Create screen buffer
   var buf = initBuffer(termWidth, termHeight)
   
-  # Find player homeworld for initial cursor position
-  var initialCoord = hexCoord(0, 0)
-  for systemId, houseId in state.starMap.homeWorlds.pairs():
-    if houseId == viewingHouse:
-      let sys = state.system(systemId).get()
-      initialCoord = toHexCoord(sys.coords)
-      break
+  # =========================================================================
+  # SAM Setup
+  # =========================================================================
   
-  # Create TUI state
-  var tuiState = TuiState(
-    mode: ViewMode.Colonies,  # Start in colonies view
-    mapState: newHexMapState(initialCoord),
-    selectedIdx: 0
+  # Create SAM instance with history (for potential undo)
+  var sam = initTuiSam(withHistory = true, maxHistory = 50)
+  
+  # Create initial model
+  var initialModel = initTuiModel()
+  initialModel.termWidth = termWidth
+  initialModel.termHeight = termHeight
+  initialModel.viewingHouse = int(viewingHouse)
+  initialModel.mode = ViewMode.Colonies
+  
+  # Sync game state to model
+  syncGameStateToModel(initialModel, gameState, viewingHouse)
+  
+  # Set cursor to homeworld if available
+  if initialModel.homeworld.isSome:
+    initialModel.mapState.cursor = initialModel.homeworld.get
+  
+  # Set render function (closure captures buf and gameState)
+  sam.setRender(proc(model: TuiModel) =
+    buf.clear()
+    renderDashboard(buf, model, gameState, viewingHouse)
+    outputBuffer(buf)
   )
   
-  logInfo("TUI Player", &"Initial cursor position: {initialCoord.q}, {initialCoord.r}")
+  # Set initial state (this triggers initial render)
+  sam.setInitialState(initialModel)
   
-  # Create input parser
-  var parser = initParser()
-  
-  logInfo("TUI Player", "Entering TUI mode...")
+  logInfo("TUI Player SAM", "SAM initialized, entering TUI mode...")
   
   # Enter alternate screen
   stdout.write(altScreen())
   stdout.write(hideCursor())
   stdout.flushFile()
   
-  var running = true
+  # Create input parser
+  var parser = initParser()
   
   # Initial render
-  buf.clear()
-  renderDashboard(buf, state, tuiState, viewingHouse, termWidth, termHeight)
-  outputBuffer(buf)
+  sam.present(emptyProposal())
   
-  while running:
+  # =========================================================================
+  # Main Loop (SAM-based)
+  # =========================================================================
+  
+  while sam.state.running:
     # Check for resize
     if checkResize():
       (termWidth, termHeight) = tty.windowSize()
       buf.resize(termWidth, termHeight)
       buf.invalidate()
+      sam.present(actionResize(termWidth, termHeight))
     
     # Read input (blocking)
     let inputByte = tty.readByte()
@@ -526,24 +526,22 @@ proc main() =
     
     for event in events:
       if event.kind == EventKind.Key:
-        let mapData = toFogOfWarMapData(state, viewingHouse)
-        if not handleInput(tuiState, event.keyEvent, mapData, state, viewingHouse):
-          running = false
-          break
-    
-    # Re-render
-    buf.clear()
-    renderDashboard(buf, state, tuiState, viewingHouse, termWidth, termHeight)
-    outputBuffer(buf)
+        # Map key event to SAM action
+        let proposalOpt = mapKeyEvent(event.keyEvent, sam.state)
+        if proposalOpt.isSome:
+          sam.present(proposalOpt.get)
   
+  # =========================================================================
   # Cleanup
+  # =========================================================================
+  
   stdout.write(showCursor())
   stdout.write(exitAltScreen())
   stdout.flushFile()
   discard tty.stop()
   tty.close()
   
-  echo "TUI Player exited."
+  echo "TUI Player (SAM) exited."
 
 when isMainModule:
   main()

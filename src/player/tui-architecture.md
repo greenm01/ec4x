@@ -872,39 +872,73 @@ The right panel shows context-sensitive information:
 
 ### Phase 5: SAM Integration
 
-**Goal**: Connect UI to game logic
+**Status**: ✅ **COMPLETE** (2026-01-15)
 
-1. **State Structure**
-   - Define complete game state
-   - Define UI state
-   - Serialization support
+SAM (State-Action-Model) pattern fully implemented and integrated as the default TUI architecture.
 
-2. **Action Definitions**
-   - All player commands
-   - AI action types
-   - Validation rules
+**Implemented:**
+- ✅ Core SAM types: Proposal, AcceptorProc, ReactorProc, NapProc, History
+- ✅ SAM instance with `present()`, time travel, safety conditions
+- ✅ TuiModel - single source of truth combining UI + game state
+- ✅ Pure action functions creating proposals from input events
+- ✅ Acceptors for navigation, selection, viewport, game actions
+- ✅ Reactors for viewport auto-scroll, selection bounds, status messages
+- ✅ NAPs (Next-Action Predicates) for automatic state transitions
+- ✅ Time travel/history support with configurable depth
+- ✅ Key mapping from raw events to semantic actions
+- ✅ Bridge layer connecting SAM model to engine GameState
+- ✅ 48 tests passing
 
-3. **Model Implementation**
-   - Action validation
-   - State transitions
-   - Game rules enforcement
+**Files created:**
+```
+src/player/sam/
+├── types.nim          # Core SAM types (~240 lines)
+├── instance.nim       # SAM instance + present() (~260 lines)
+├── tui_model.nim      # TuiModel - single source of truth (~160 lines)
+├── actions.nim        # Pure action creators (~220 lines)
+├── acceptors.nim      # State mutation functions (~180 lines)
+├── reactors.nim       # Derived state computation (~140 lines)
+├── naps.nim           # Next-Action Predicates (~90 lines)
+├── bridge.nim         # Engine integration (~100 lines)
+└── sam_pkg.nim        # Package exports (~60 lines)
 
-4. **View Function**
-   - Render complete UI from state
-   - Handle all display modes
-   - Transition animations
+tests/sam/
+└── tsam.nim           # 48 comprehensive unit tests
+```
 
-5. **Input Mapping**
-   - Key bindings
-   - Command parsing
-   - Context-sensitive input
+**SAM Data Flow:**
+```
+Input Event → Action → Proposal → present() → Acceptors → Reactors → NAPs → Render
+                                      ↓                                    ↑
+                                 History Snapshot ─────────────────────────┘
+```
 
-6. **Main Loop**
-   - Game loop integration
-   - Turn processing
-   - AI execution
+**Key Benefits Realized:**
+- **Single Source of Truth**: All state in `TuiModel`
+- **Time Travel**: Built-in undo/history via `sam.travelPrev()`
+- **Testability**: 48 unit tests for pure functions
+- **Predictable Flow**: Unidirectional data, no scattered mutations
+- **Decoupled View**: TuiModel separate from engine's GameState
 
-**Deliverable**: Playable game with complete TUI
+**Usage Example:**
+```nim
+import sam/sam_pkg
+
+var sam = initTuiSam(withHistory = true)
+sam.setRender(proc(model: TuiModel) =
+  buf.clear()
+  renderDashboard(buf, model)
+  outputBuffer(buf)
+)
+sam.setInitialState(initialModel)
+
+while sam.state.running:
+  let proposal = mapKeyEvent(event, sam.state)
+  if proposal.isSome:
+    sam.present(proposal.get)
+```
+
+**Deliverable**: ✅ TUI now uses SAM pattern by default (`tui_player.nim`)
 
 ---
 
@@ -1127,15 +1161,20 @@ src/player/
 │   │       ├── detail.nim         # Detail panel rendering
 │   │       └── navigation.nim     # Keyboard handling
 │   └── tui-architecture.md        # This document (in src/player/)
-├── sam/                           # ❌ Phase 5: SAM pattern implementation
-│   ├── state.nim
-│   ├── action.nim
-│   ├── model.nim
-│   └── view.nim
+├── sam/                           # ✅ Phase 5: SAM pattern implementation
+│   ├── types.nim              # Core SAM types (Proposal, Acceptor, etc.)
+│   ├── instance.nim           # SAM instance with present(), history
+│   ├── tui_model.nim          # TuiModel - single source of truth
+│   ├── actions.nim            # Pure action creators
+│   ├── acceptors.nim          # State mutation functions
+│   ├── reactors.nim           # Derived state computation
+│   ├── naps.nim               # Next-Action Predicates
+│   ├── bridge.nim             # Engine integration layer
+│   └── sam_pkg.nim            # Package exports
 └── player.nim                     # Entry point (will integrate TUI)
 ```
 
-### Current Implementation Status (2026-01-14)
+### Current Implementation Status (2026-01-15)
 
 **✅ Phase 1 - Terminal Primitives (Complete):**
 - Terminal primitives layer (`tui/term/`)
@@ -1176,16 +1215,23 @@ src/player/
 - 33 tests passing
 - ~1,000 lines of hexmap code
 
+**✅ Phase 5 - SAM Integration (Complete):**
+- Core SAM types and instance management
+- TuiModel as single source of truth
+- Actions, Acceptors, Reactors, NAPs
+- Time travel/history support
+- Input mapping and bridge layer
+- 48 tests passing
+- ~1,450 lines of SAM code
+
 **⏳ In Progress:**
 - Phase 4.5: Dashboard integration (layout composition, event loop)
-- Game state connection to hex map widget
 
 **❌ Not Started:**
-- Phase 5: SAM integration (State-Action-Model)
 - Phase 6: Polish & features
 
-**Total Lines of Code:** ~5,400 lines (Phase 1 through 4)
-**Total Tests:** 159 passing (32 term + 15 buffer + 41 layout + 38 widget + 33 hexmap)
+**Total Lines of Code:** ~6,850 lines (Phase 1 through 5)
+**Total Tests:** 207 passing (32 term + 15 buffer + 41 layout + 38 widget + 33 hexmap + 48 SAM)
 
 ### Key Type Definitions
 
