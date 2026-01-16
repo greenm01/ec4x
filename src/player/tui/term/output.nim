@@ -335,26 +335,26 @@ proc setTermCursorColor*(o: var Output, color: string) =
 
 
 # =============================================================================
-# OSC Features (Stubs - Need platform-specific implementation)
+# osc Features (Stubs - Need platform-specific implementation)
 # =============================================================================
 
 proc copy*(o: var Output, text: string) =
-  ## Copy text to clipboard via OSC 52.
-  ## TODO: Implement OSC 52 clipboard support.
+  ## Copy text to clipboard via osc 52.
+  ## TODO: Implement osc 52 clipboard support.
   discard
 
 proc copyPrimary*(o: var Output, text: string) =
-  ## Copy text to primary selection via OSC 52.
-  ## TODO: Implement OSC 52 clipboard support.
+  ## Copy text to primary selection via osc 52.
+  ## TODO: Implement osc 52 clipboard support.
   discard
 
 proc hyperlink*(o: Output, url, text: string): string =
-  ## Create OSC 8 hyperlink.
-  OSC & "8;;" & url & ST & text & OSC & "8;;" & ST
+  ## Create osc 8 hyperlink.
+  osc & "8;;" & url & st & text & osc & "8;;" & st
 
 proc notify*(o: var Output, title, body: string) =
-  ## Send notification via OSC 777.
-  o.write(OSC & "777;notify;" & title & ";" & body & $BEL)
+  ## Send notification via osc 777.
+  o.write(osc & "777;notify;" & title & ";" & body & $bel)
 
 
 # =============================================================================

@@ -44,7 +44,7 @@ proc actionQuit*(): Proposal =
 proc actionSwitchMode*(mode: ViewMode): Proposal =
   ## Switch to a different view mode
   Proposal(
-    kind: pkNavigation,
+    kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
     actionName: ActionNavigateMode,
     navMode: ord(mode),
@@ -55,7 +55,7 @@ proc actionMoveCursor*(dir: HexDirection): Proposal =
   ## Move map cursor in direction
   # We encode direction in navMode field (reused creatively)
   Proposal(
-    kind: pkNavigation,
+    kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
     actionName: ActionMoveCursor,
     navMode: ord(dir),  # Direction encoded here
@@ -65,7 +65,7 @@ proc actionMoveCursor*(dir: HexDirection): Proposal =
 proc actionMoveCursorTo*(coord: HexCoord): Proposal =
   ## Move cursor directly to a coordinate
   Proposal(
-    kind: pkNavigation,
+    kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
     actionName: ActionMoveCursor,
     navMode: -1,        # -1 means direct coordinate, not direction
@@ -75,7 +75,7 @@ proc actionMoveCursorTo*(coord: HexCoord): Proposal =
 proc actionJumpHome*(): Proposal =
   ## Jump cursor to homeworld
   Proposal(
-    kind: pkNavigation,
+    kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
     actionName: ActionJumpHome,
     navMode: -2,        # Special marker for jump home
@@ -89,7 +89,7 @@ proc actionJumpHome*(): Proposal =
 proc actionSelect*(): Proposal =
   ## Select current item (cursor position in map, or list item)
   Proposal(
-    kind: pkSelection,
+    kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
     actionName: ActionSelect,
     selectIdx: -1,      # -1 means "use current"
@@ -99,7 +99,7 @@ proc actionSelect*(): Proposal =
 proc actionSelectIndex*(idx: int): Proposal =
   ## Select specific index in list
   Proposal(
-    kind: pkSelection,
+    kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
     actionName: ActionSelect,
     selectIdx: idx,
@@ -109,7 +109,7 @@ proc actionSelectIndex*(idx: int): Proposal =
 proc actionSelectCoord*(coord: HexCoord): Proposal =
   ## Select specific coordinate on map
   Proposal(
-    kind: pkSelection,
+    kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
     actionName: ActionSelect,
     selectIdx: -1,
@@ -119,7 +119,7 @@ proc actionSelectCoord*(coord: HexCoord): Proposal =
 proc actionDeselect*(): Proposal =
   ## Clear selection
   Proposal(
-    kind: pkSelection,
+    kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
     actionName: ActionDeselect,
     selectIdx: -2,      # -2 means deselect
@@ -133,7 +133,7 @@ proc actionDeselect*(): Proposal =
 proc actionListUp*(): Proposal =
   ## Move selection up in list
   Proposal(
-    kind: pkSelection,
+    kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
     actionName: ActionListUp,
     selectIdx: -3,      # -3 means "move up"
@@ -143,7 +143,7 @@ proc actionListUp*(): Proposal =
 proc actionListDown*(): Proposal =
   ## Move selection down in list
   Proposal(
-    kind: pkSelection,
+    kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
     actionName: ActionListDown,
     selectIdx: -4,      # -4 means "move down"
@@ -153,7 +153,7 @@ proc actionListDown*(): Proposal =
 proc actionCycleColony*(reverse: bool = false): Proposal =
   ## Cycle to next/prev owned colony on map
   Proposal(
-    kind: pkNavigation,
+    kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
     actionName: ActionCycleColony,
     navMode: if reverse: 1 else: 0,
@@ -195,7 +195,7 @@ proc actionOpenMap*(): Proposal =
 proc actionResize*(width, height: int): Proposal =
   ## Handle terminal resize
   Proposal(
-    kind: pkViewportScroll,  # Reuse for resize data
+    kind: ProposalKind.pkViewportScroll,  # Reuse for resize data
     timestamp: getTime().toUnix(),
     actionName: ActionResize,
     scrollDelta: (width, height)  # Store new dimensions
@@ -206,7 +206,7 @@ proc actionResize*(width, height: int): Proposal =
 # ============================================================================
 
 type
-  KeyCode* = enum
+  KeyCode* {.pure.} = enum
     ## Simplified key codes for mapping
     KeyNone
     KeyQ, KeyC, KeyF, KeyO, KeyM, KeyE, KeyH, KeyX, KeyS, KeyL
@@ -220,19 +220,19 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   
   # Global keys (work in any mode)
   case key
-  of KeyQ:
+  of KeyCode.KeyQ:
     return some(actionQuit())
-  of KeyC:
+  of KeyCode.KeyC:
     return some(actionSwitchMode(ViewMode.Colonies))
-  of KeyF:
+  of KeyCode.KeyF:
     return some(actionSwitchMode(ViewMode.Fleets))
-  of KeyO:
+  of KeyCode.KeyO:
     return some(actionSwitchMode(ViewMode.Orders))
-  of KeyM:
+  of KeyCode.KeyM:
     return some(actionSwitchMode(ViewMode.Map))
-  of KeyL:
+  of KeyCode.KeyL:
     return some(actionSwitchMode(ViewMode.Systems))
-  of KeyE:
+  of KeyCode.KeyE:
     return some(actionEndTurn())
   else:
     discard
@@ -241,25 +241,25 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   case model.mode
   of ViewMode.Map:
     case key
-    of KeyUp:    return some(actionMoveCursor(HexDirection.NorthWest))
-    of KeyDown:  return some(actionMoveCursor(HexDirection.SouthEast))
-    of KeyLeft:  return some(actionMoveCursor(HexDirection.West))
-    of KeyRight: return some(actionMoveCursor(HexDirection.East))
-    of KeyEnter: return some(actionSelect())
-    of KeyEscape: return some(actionDeselect())
-    of KeyTab:   return some(actionCycleColony(false))
-    of KeyShiftTab: return some(actionCycleColony(true))
-    of KeyH, KeyHome: return some(actionJumpHome())
-    of KeyX:     return some(actionExportMap())
-    of KeyS:     return some(actionOpenMap())
+    of KeyCode.KeyUp:    return some(actionMoveCursor(HexDirection.NorthWest))
+    of KeyCode.KeyDown:  return some(actionMoveCursor(HexDirection.SouthEast))
+    of KeyCode.KeyLeft:  return some(actionMoveCursor(HexDirection.West))
+    of KeyCode.KeyRight: return some(actionMoveCursor(HexDirection.East))
+    of KeyCode.KeyEnter: return some(actionSelect())
+    of KeyCode.KeyEscape: return some(actionDeselect())
+    of KeyCode.KeyTab:   return some(actionCycleColony(false))
+    of KeyCode.KeyShiftTab: return some(actionCycleColony(true))
+    of KeyCode.KeyH, KeyCode.KeyHome: return some(actionJumpHome())
+    of KeyCode.KeyX:     return some(actionExportMap())
+    of KeyCode.KeyS:     return some(actionOpenMap())
     else: discard
   
   of ViewMode.Colonies, ViewMode.Fleets, ViewMode.Orders, ViewMode.Systems:
     case key
-    of KeyUp:    return some(actionListUp())
-    of KeyDown:  return some(actionListDown())
-    of KeyEnter: return some(actionSelect())
-    of KeyEscape: return some(actionDeselect())
+    of KeyCode.KeyUp:    return some(actionListUp())
+    of KeyCode.KeyDown:  return some(actionListDown())
+    of KeyCode.KeyEnter: return some(actionSelect())
+    of KeyCode.KeyEscape: return some(actionDeselect())
     else: discard
   
   none(Proposal)

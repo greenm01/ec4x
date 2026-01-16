@@ -15,35 +15,35 @@ export screen.BracketedPasteState
 
 proc cursorUp*(n: int = 1): string =
   ## Move cursor up N lines.
-  CSI & $n & "A"
+  csi & $n & "A"
 
 proc cursorDown*(n: int = 1): string =
   ## Move cursor down N lines.
-  CSI & $n & "B"
+  csi & $n & "B"
 
 proc cursorForward*(n: int = 1): string =
   ## Move cursor forward N columns.
-  CSI & $n & "C"
+  csi & $n & "C"
 
 proc cursorBack*(n: int = 1): string =
   ## Move cursor back N columns.
-  CSI & $n & "D"
+  csi & $n & "D"
 
 proc cursorNextLine*(n: int = 1): string =
   ## Move cursor to beginning of line N lines down.
-  CSI & $n & "E"
+  csi & $n & "E"
 
 proc cursorPrevLine*(n: int = 1): string =
   ## Move cursor to beginning of line N lines up.
-  CSI & $n & "F"
+  csi & $n & "F"
 
 proc cursorColumn*(col: int): string =
   ## Move cursor to column (1-based).
-  CSI & $col & "G"
+  csi & $col & "G"
 
 proc cursorPosition*(row, col: int): string =
   ## Move cursor to position (1-based).
-  CSI & $row & ";" & $col & "H"
+  csi & $row & ";" & $col & "H"
 
 proc moveCursor*(row, col: int): string {.inline.} =
   ## Alias for cursorPosition.
@@ -51,7 +51,7 @@ proc moveCursor*(row, col: int): string {.inline.} =
 
 proc cursorHome*(): string =
   ## Move cursor to home position (1,1).
-  CSI & "1;1H"
+  csi & "1;1H"
 
 
 # =============================================================================
@@ -89,7 +89,7 @@ proc hideCursor*(): string =
 
 proc setCursorStyle*(style: CursorStyle): string =
   ## Set cursor style.
-  CSI & $ord(style) & " q"
+  csi & $ord(style) & " q"
 
 
 # =============================================================================
@@ -98,7 +98,7 @@ proc setCursorStyle*(style: CursorStyle): string =
 
 proc eraseDisplay*(mode: EraseMode = EraseMode.Entire): string =
   ## Erase display.
-  CSI & $ord(mode) & "J"
+  csi & $ord(mode) & "J"
 
 proc clearScreen*(): string =
   ## Clear entire screen and move cursor home.
@@ -118,7 +118,7 @@ proc clearScrollback*(): string =
 
 proc eraseLine*(mode: EraseMode = EraseMode.Entire): string =
   ## Erase line.
-  CSI & $ord(mode) & "K"
+  csi & $ord(mode) & "K"
 
 proc clearLine*(): string =
   ## Clear entire line.
@@ -146,15 +146,15 @@ proc clearLines*(n: int): string =
 
 proc scrollUp*(n: int = 1): string =
   ## Scroll screen up N lines.
-  CSI & $n & "S"
+  csi & $n & "S"
 
 proc scrollDown*(n: int = 1): string =
   ## Scroll screen down N lines.
-  CSI & $n & "T"
+  csi & $n & "T"
 
 proc setScrollRegion*(top, bottom: int): string =
   ## Set scrolling region (1-based, inclusive).
-  CSI & $top & ";" & $bottom & "r"
+  csi & $top & ";" & $bottom & "r"
 
 proc resetScrollRegion*(): string =
   ## Reset scrolling region to full screen.
@@ -167,19 +167,19 @@ proc resetScrollRegion*(): string =
 
 proc insertLines*(n: int = 1): string =
   ## Insert N blank lines at cursor.
-  CSI & $n & "L"
+  csi & $n & "L"
 
 proc deleteLines*(n: int = 1): string =
   ## Delete N lines at cursor.
-  CSI & $n & "M"
+  csi & $n & "M"
 
 proc insertChars*(n: int = 1): string =
   ## Insert N blank characters at cursor.
-  CSI & $n & "@"
+  csi & $n & "@"
 
 proc deleteChars*(n: int = 1): string =
   ## Delete N characters at cursor.
-  CSI & $n & "P"
+  csi & $n & "P"
 
 
 # =============================================================================
@@ -296,15 +296,15 @@ proc disableFocusEvents*(): string =
 
 proc setWindowTitle*(title: string): string =
   ## Set window title.
-  OSC & "2;" & title & $BEL
+  osc & "2;" & title & $bel
 
 proc setIconName*(name: string): string =
   ## Set icon name.
-  OSC & "1;" & name & $BEL
+  osc & "1;" & name & $bel
 
 proc setWindowTitleAndIcon*(title: string): string =
   ## Set both window title and icon name.
-  OSC & "0;" & title & $BEL
+  osc & "0;" & title & $bel
 
 
 # =============================================================================
@@ -313,15 +313,15 @@ proc setWindowTitleAndIcon*(title: string): string =
 
 proc setTermForeground*(color: string): string =
   ## Set terminal foreground color (color is hex or name).
-  OSC & "10;" & color & $BEL
+  osc & "10;" & color & $bel
 
 proc setTermBackground*(color: string): string =
   ## Set terminal background color.
-  OSC & "11;" & color & $BEL
+  osc & "11;" & color & $bel
 
 proc setTermCursorColor*(color: string): string =
   ## Set terminal cursor color.
-  OSC & "12;" & color & $BEL
+  osc & "12;" & color & $bel
 
 proc queryTermForeground*(): string =
   ## Query terminal foreground color.
@@ -342,11 +342,11 @@ proc queryTermCursorColor*(): string =
 
 proc reset*(): string =
   ## Reset all text attributes.
-  ResetSeq
+  resetSeq
 
 proc softReset*(): string =
   ## Soft terminal reset (DECSTR).
-  CSI & "!p"
+  csi & "!p"
 
 proc hardReset*(): string =
   ## Full terminal reset (RIS).

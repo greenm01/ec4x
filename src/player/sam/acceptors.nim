@@ -19,7 +19,7 @@ export types, tui_model, actions
 
 proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
   ## Handle navigation proposals (mode changes, cursor movement)
-  if proposal.kind != pkNavigation:
+  if proposal.kind != ProposalKind.pkNavigation:
     return
   
   case proposal.actionName
@@ -75,7 +75,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
 
 proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
   ## Handle selection proposals (list selection, map selection)
-  if proposal.kind != pkSelection:
+  if proposal.kind != ProposalKind.pkSelection:
     return
   
   case proposal.actionName
@@ -112,7 +112,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
 
 proc viewportAcceptor*(model: var TuiModel, proposal: Proposal) =
   ## Handle viewport/scroll proposals
-  if proposal.kind != pkViewportScroll:
+  if proposal.kind != ProposalKind.pkViewportScroll:
     return
   
   case proposal.actionName
@@ -139,14 +139,14 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
   ## Handle game action proposals
   case proposal.kind
   
-  of pkEndTurn:
+  of ProposalKind.pkEndTurn:
     model.statusMessage = "Turn ended. Processing..."
     # Actual turn processing would be done elsewhere (integration with engine)
   
-  of pkQuit:
+  of ProposalKind.pkQuit:
     model.running = false
   
-  of pkGameAction:
+  of ProposalKind.pkGameAction:
     # Handle game-specific actions
     case proposal.gameActionType
     of ActionExportMap:
@@ -168,7 +168,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
 
 proc errorAcceptor*(model: var TuiModel, proposal: Proposal) =
   ## Handle error proposals
-  if proposal.kind == pkError:
+  if proposal.kind == ProposalKind.pkError:
     model.statusMessage = "Error: " & proposal.errorMsg
 
 # ============================================================================

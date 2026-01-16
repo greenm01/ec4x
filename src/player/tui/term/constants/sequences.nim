@@ -6,114 +6,114 @@
 import escape
 
 const
-  # Cursor movement (CSI sequences)
-  CursorUpSeq* = CSI & "$1A"           ## Move cursor up N lines
-  CursorDownSeq* = CSI & "$1B"         ## Move cursor down N lines
-  CursorForwardSeq* = CSI & "$1C"      ## Move cursor forward N columns
-  CursorBackSeq* = CSI & "$1D"         ## Move cursor back N columns
-  CursorNextLineSeq* = CSI & "$1E"     ## Move to beginning of line N down
-  CursorPrevLineSeq* = CSI & "$1F"     ## Move to beginning of line N up
-  CursorColumnSeq* = CSI & "$1G"       ## Move to column N
-  CursorPositionSeq* = CSI & "$1;$2H"  ## Move to row;col
+  # Cursor movement (csi sequences)
+  CursorUpSeq* = csi & "$1A"           ## Move cursor up N lines
+  CursorDownSeq* = csi & "$1B"         ## Move cursor down N lines
+  CursorForwardSeq* = csi & "$1C"      ## Move cursor forward N columns
+  CursorBackSeq* = csi & "$1D"         ## Move cursor back N columns
+  CursorNextLineSeq* = csi & "$1E"     ## Move to beginning of line N down
+  CursorPrevLineSeq* = csi & "$1F"     ## Move to beginning of line N up
+  CursorColumnSeq* = csi & "$1G"       ## Move to column N
+  CursorPositionSeq* = csi & "$1;$2H"  ## Move to row;col
 
   # Cursor save/restore
-  SaveCursorSeq* = CSI & "s"           ## Save cursor position
-  RestoreCursorSeq* = CSI & "u"        ## Restore cursor position
+  SaveCursorSeq* = csi & "s"           ## Save cursor position
+  RestoreCursorSeq* = csi & "u"        ## Restore cursor position
   SaveCursorDECSeq* = "\x1b7"          ## Save cursor (DEC private)
   RestoreCursorDECSeq* = "\x1b8"       ## Restore cursor (DEC private)
 
   # Cursor visibility
-  ShowCursorSeq* = CSI & "?25h"        ## Show cursor
-  HideCursorSeq* = CSI & "?25l"        ## Hide cursor
+  ShowCursorSeq* = csi & "?25h"        ## Show cursor
+  HideCursorSeq* = csi & "?25l"        ## Hide cursor
 
   # Cursor style (DECSCUSR)
-  CursorStyleSeq* = CSI & "$1 q"       ## Set cursor style
+  CursorStyleSeq* = csi & "$1 q"       ## Set cursor style
 
   # Screen erase
-  EraseDisplaySeq* = CSI & "$1J"       ## Erase display (mode 0-2)
-  EraseLineSeq* = CSI & "$1K"          ## Erase line (mode 0-2)
+  EraseDisplaySeq* = csi & "$1J"       ## Erase display (mode 0-2)
+  EraseLineSeq* = csi & "$1K"          ## Erase line (mode 0-2)
 
   # Specific erase shortcuts
-  EraseToEndSeq* = CSI & "0J"          ## Erase to end of screen
-  EraseToStartSeq* = CSI & "1J"        ## Erase to start of screen
-  EraseScreenSeq* = CSI & "2J"         ## Erase entire screen
-  EraseScrollbackSeq* = CSI & "3J"     ## Erase scrollback buffer
+  EraseToEndSeq* = csi & "0J"          ## Erase to end of screen
+  EraseToStartSeq* = csi & "1J"        ## Erase to start of screen
+  EraseScreenSeq* = csi & "2J"         ## Erase entire screen
+  EraseScrollbackSeq* = csi & "3J"     ## Erase scrollback buffer
 
-  EraseLineRightSeq* = CSI & "0K"      ## Erase from cursor to end of line
-  EraseLineLeftSeq* = CSI & "1K"       ## Erase from start of line to cursor
-  EraseEntireLineSeq* = CSI & "2K"     ## Erase entire line
+  EraseLineRightSeq* = csi & "0K"      ## Erase from cursor to end of line
+  EraseLineLeftSeq* = csi & "1K"       ## Erase from start of line to cursor
+  EraseEntireLineSeq* = csi & "2K"     ## Erase entire line
 
   # Scrolling
-  ScrollUpSeq* = CSI & "$1S"           ## Scroll up N lines
-  ScrollDownSeq* = CSI & "$1T"         ## Scroll down N lines
-  ScrollRegionSeq* = CSI & "$1;$2r"    ## Set scroll region (top;bottom)
-  ResetScrollRegionSeq* = CSI & "r"    ## Reset scroll region
+  ScrollUpSeq* = csi & "$1S"           ## Scroll up N lines
+  ScrollDownSeq* = csi & "$1T"         ## Scroll down N lines
+  ScrollRegionSeq* = csi & "$1;$2r"    ## Set scroll region (top;bottom)
+  ResetScrollRegionSeq* = csi & "r"    ## Reset scroll region
 
   # Line insertion/deletion
-  InsertLineSeq* = CSI & "$1L"         ## Insert N lines
-  DeleteLineSeq* = CSI & "$1M"         ## Delete N lines
-  InsertCharSeq* = CSI & "$1@"         ## Insert N characters
-  DeleteCharSeq* = CSI & "$1P"         ## Delete N characters
+  InsertLineSeq* = csi & "$1L"         ## Insert N lines
+  DeleteLineSeq* = csi & "$1M"         ## Delete N lines
+  InsertCharSeq* = csi & "$1@"         ## Insert N characters
+  DeleteCharSeq* = csi & "$1P"         ## Delete N characters
 
   # Alternate screen buffer
-  AltScreenSeq* = CSI & "?1049h"       ## Enter alternate screen
-  ExitAltScreenSeq* = CSI & "?1049l"   ## Exit alternate screen
-  SaveScreenSeq* = CSI & "?47h"        ## Save screen (legacy)
-  RestoreScreenSeq* = CSI & "?47l"     ## Restore screen (legacy)
+  AltScreenSeq* = csi & "?1049h"       ## Enter alternate screen
+  ExitAltScreenSeq* = csi & "?1049l"   ## Exit alternate screen
+  SaveScreenSeq* = csi & "?47h"        ## Save screen (legacy)
+  RestoreScreenSeq* = csi & "?47l"     ## Restore screen (legacy)
 
   # Mouse tracking
-  EnableMousePressSeq* = CSI & "?9h"         ## X10 mouse
-  DisableMousePressSeq* = CSI & "?9l"
-  EnableMouseSeq* = CSI & "?1000h"           ## VT200 mouse
-  DisableMouseSeq* = CSI & "?1000l"
-  EnableMouseHiliteSeq* = CSI & "?1001h"     ## VT200 highlight
-  DisableMouseHiliteSeq* = CSI & "?1001l"
-  EnableMouseCellMotionSeq* = CSI & "?1002h" ## Button-event tracking
-  DisableMouseCellMotionSeq* = CSI & "?1002l"
-  EnableMouseAllMotionSeq* = CSI & "?1003h"  ## Any-event tracking
-  DisableMouseAllMotionSeq* = CSI & "?1003l"
-  EnableMouseSgrSeq* = CSI & "?1006h"        ## SGR extended mode
-  DisableMouseSgrSeq* = CSI & "?1006l"
-  EnableMousePixelsSeq* = CSI & "?1016h"     ## SGR pixels mode
-  DisableMousePixelsSeq* = CSI & "?1016l"
+  EnableMousePressSeq* = csi & "?9h"         ## X10 mouse
+  DisableMousePressSeq* = csi & "?9l"
+  EnableMouseSeq* = csi & "?1000h"           ## VT200 mouse
+  DisableMouseSeq* = csi & "?1000l"
+  EnableMouseHiliteSeq* = csi & "?1001h"     ## VT200 highlight
+  DisableMouseHiliteSeq* = csi & "?1001l"
+  EnableMouseCellMotionSeq* = csi & "?1002h" ## Button-event tracking
+  DisableMouseCellMotionSeq* = csi & "?1002l"
+  EnableMouseAllMotionSeq* = csi & "?1003h"  ## Any-event tracking
+  DisableMouseAllMotionSeq* = csi & "?1003l"
+  EnableMouseSgrSeq* = csi & "?1006h"        ## SGR extended mode
+  DisableMouseSgrSeq* = csi & "?1006l"
+  EnableMousePixelsSeq* = csi & "?1016h"     ## SGR pixels mode
+  DisableMousePixelsSeq* = csi & "?1016l"
 
   # Bracketed paste
-  EnableBracketedPasteSeq* = CSI & "?2004h"
-  DisableBracketedPasteSeq* = CSI & "?2004l"
-  BracketedPasteStartSeq* = CSI & "200~"
-  BracketedPasteEndSeq* = CSI & "201~"
+  EnableBracketedPasteSeq* = csi & "?2004h"
+  DisableBracketedPasteSeq* = csi & "?2004l"
+  BracketedPasteStartSeq* = csi & "200~"
+  BracketedPasteEndSeq* = csi & "201~"
 
   # Focus events
-  EnableFocusSeq* = CSI & "?1004h"
-  DisableFocusSeq* = CSI & "?1004l"
+  EnableFocusSeq* = csi & "?1004h"
+  DisableFocusSeq* = csi & "?1004l"
 
-  # OSC sequences (Operating System Commands)
-  SetWindowTitleSeq* = OSC & "2;$1" & BEL    ## Set window title
-  SetIconNameSeq* = OSC & "1;$1" & BEL       ## Set icon name
-  SetBothTitleSeq* = OSC & "0;$1" & BEL      ## Set both title and icon
+  # osc sequences (Operating System Commands)
+  SetWindowTitleSeq* = osc & "2;$1" & bel    ## Set window title
+  SetIconNameSeq* = osc & "1;$1" & bel       ## Set icon name
+  SetBothTitleSeq* = osc & "0;$1" & bel      ## Set both title and icon
 
-  # Terminal colors (OSC 10-19)
-  SetForegroundColorSeq* = OSC & "10;$1" & BEL
-  SetBackgroundColorSeq* = OSC & "11;$1" & BEL
-  SetCursorColorSeq* = OSC & "12;$1" & BEL
-  QueryForegroundColorSeq* = OSC & "10;?" & BEL
-  QueryBackgroundColorSeq* = OSC & "11;?" & BEL
-  QueryCursorColorSeq* = OSC & "12;?" & BEL
+  # Terminal colors (osc 10-19)
+  SetForegroundColorSeq* = osc & "10;$1" & bel
+  SetBackgroundColorSeq* = osc & "11;$1" & bel
+  SetCursorColorSeq* = osc & "12;$1" & bel
+  QueryForegroundColorSeq* = osc & "10;?" & bel
+  QueryBackgroundColorSeq* = osc & "11;?" & bel
+  QueryCursorColorSeq* = osc & "12;?" & bel
 
-  # OSC 52 - Clipboard
-  ClipboardSetSeq* = OSC & "52;$1;$2" & BEL  ## $1=target, $2=base64 data
-  ClipboardClearSeq* = OSC & "52;$1;" & BEL
+  # osc 52 - Clipboard
+  ClipboardSetSeq* = osc & "52;$1;$2" & bel  ## $1=target, $2=base64 data
+  ClipboardClearSeq* = osc & "52;$1;" & bel
 
-  # OSC 8 - Hyperlinks
-  HyperlinkStartSeq* = OSC & "8;$1;$2" & BEL ## $1=params, $2=URL
-  HyperlinkEndSeq* = OSC & "8;;" & BEL
+  # osc 8 - Hyperlinks
+  HyperlinkStartSeq* = osc & "8;$1;$2" & bel ## $1=params, $2=URL
+  HyperlinkEndSeq* = osc & "8;;" & bel
 
-  # OSC 777 - Notifications (iTerm2, some other terminals)
-  NotifySeq* = OSC & "777;notify;$1;$2" & BEL  ## $1=title, $2=body
+  # osc 777 - Notifications (iTerm2, some other terminals)
+  NotifySeq* = osc & "777;notify;$1;$2" & bel  ## $1=title, $2=body
 
-  # OSC 9 - Notifications (ConEmu, Windows Terminal)
-  NotifyConEmuSeq* = OSC & "9;$1" & BEL
+  # osc 9 - Notifications (ConEmu, Windows Terminal)
+  NotifyConEmuSeq* = osc & "9;$1" & bel
 
   # Device status reports
-  DeviceStatusReportSeq* = CSI & "6n"        ## Query cursor position
-  DeviceAttributesSeq* = CSI & "c"           ## Query device attributes
+  DeviceStatusReportSeq* = csi & "6n"        ## Query cursor position
+  DeviceAttributesSeq* = csi & "c"           ## Query device attributes

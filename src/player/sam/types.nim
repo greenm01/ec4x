@@ -21,7 +21,7 @@ type
   # Core SAM Types
   # ============================================================================
   
-  ProposalKind* = enum
+  ProposalKind* {.pure.} = enum
     ## Discriminator for proposal types
     pkNone           ## Empty/no-op proposal
     pkError          ## Error condition
@@ -38,24 +38,24 @@ type
     timestamp*: int64           ## When proposal was created
     actionName*: string         ## Name of action that created this (for debugging)
     case kind*: ProposalKind
-    of pkNone:
+    of ProposalKind.pkNone:
       discard
-    of pkError:
+    of ProposalKind.pkError:
       errorMsg*: string
-    of pkNavigation:
+    of ProposalKind.pkNavigation:
       navMode*: int             ## ViewMode enum value
       navCursor*: tuple[q, r: int]  ## Hex coordinate for cursor
-    of pkSelection:
+    of ProposalKind.pkSelection:
       selectIdx*: int           ## Index in current list
       selectCoord*: Option[tuple[q, r: int]]  ## Hex coordinate if applicable
-    of pkGameAction:
+    of ProposalKind.pkGameAction:
       gameActionType*: string   ## Type of game action
       gameActionData*: string   ## JSON-encoded action data
-    of pkViewportScroll:
+    of ProposalKind.pkViewportScroll:
       scrollDelta*: tuple[dx, dy: int]
-    of pkEndTurn:
+    of ProposalKind.pkEndTurn:
       discard
-    of pkQuit:
+    of ProposalKind.pkQuit:
       discard
 
   AcceptorProc*[M] = proc(model: var M, proposal: Proposal) {.nimcall.}
@@ -121,7 +121,7 @@ type
 proc emptyProposal*(): Proposal =
   ## Create an empty/no-op proposal
   Proposal(
-    kind: pkNone,
+    kind: ProposalKind.pkNone,
     timestamp: getTime().toUnix(),
     actionName: "none"
   )
@@ -129,7 +129,7 @@ proc emptyProposal*(): Proposal =
 proc errorProposal*(msg: string): Proposal =
   ## Create an error proposal
   Proposal(
-    kind: pkError,
+    kind: ProposalKind.pkError,
     timestamp: getTime().toUnix(),
     actionName: "error",
     errorMsg: msg
@@ -138,7 +138,7 @@ proc errorProposal*(msg: string): Proposal =
 proc navigationProposal*(mode: int, name: string = "navigate"): Proposal =
   ## Create a navigation mode change proposal
   Proposal(
-    kind: pkNavigation,
+    kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
     actionName: name,
     navMode: mode,
@@ -148,7 +148,7 @@ proc navigationProposal*(mode: int, name: string = "navigate"): Proposal =
 proc cursorProposal*(q, r: int, name: string = "cursor"): Proposal =
   ## Create a cursor move proposal
   Proposal(
-    kind: pkNavigation,
+    kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
     actionName: name,
     navMode: -1,  # -1 means don't change mode
@@ -158,7 +158,7 @@ proc cursorProposal*(q, r: int, name: string = "cursor"): Proposal =
 proc selectionProposal*(idx: int, name: string = "select"): Proposal =
   ## Create a selection change proposal
   Proposal(
-    kind: pkSelection,
+    kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
     actionName: name,
     selectIdx: idx,
@@ -168,7 +168,7 @@ proc selectionProposal*(idx: int, name: string = "select"): Proposal =
 proc coordSelectionProposal*(q, r: int, name: string = "selectCoord"): Proposal =
   ## Create a coordinate selection proposal
   Proposal(
-    kind: pkSelection,
+    kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
     actionName: name,
     selectIdx: -1,
@@ -178,7 +178,7 @@ proc coordSelectionProposal*(q, r: int, name: string = "selectCoord"): Proposal 
 proc scrollProposal*(dx, dy: int, name: string = "scroll"): Proposal =
   ## Create a viewport scroll proposal
   Proposal(
-    kind: pkViewportScroll,
+    kind: ProposalKind.pkViewportScroll,
     timestamp: getTime().toUnix(),
     actionName: name,
     scrollDelta: (dx, dy)
@@ -187,7 +187,7 @@ proc scrollProposal*(dx, dy: int, name: string = "scroll"): Proposal =
 proc endTurnProposal*(): Proposal =
   ## Create an end turn proposal
   Proposal(
-    kind: pkEndTurn,
+    kind: ProposalKind.pkEndTurn,
     timestamp: getTime().toUnix(),
     actionName: "endTurn"
   )
@@ -195,7 +195,7 @@ proc endTurnProposal*(): Proposal =
 proc quitProposal*(): Proposal =
   ## Create a quit proposal
   Proposal(
-    kind: pkQuit,
+    kind: ProposalKind.pkQuit,
     timestamp: getTime().toUnix(),
     actionName: "quit"
   )
@@ -203,7 +203,7 @@ proc quitProposal*(): Proposal =
 proc gameActionProposal*(actionType, data: string): Proposal =
   ## Create a game action proposal
   Proposal(
-    kind: pkGameAction,
+    kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
     actionName: actionType,
     gameActionType: actionType,

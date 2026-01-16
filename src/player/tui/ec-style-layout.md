@@ -13,8 +13,8 @@ for strategic, planetary, and fleet interactions.
    minimalist transitions reminiscent of BBS terminals while reducing modal friction through
    flattened navigation and batch operations.
 
-2. **Always-On Awareness**: Present empire-critical data at all times (turn status, idle
-   assets, alerts) so players never lose context when drilling into submenus.
+2. **Always-On Awareness**: Present empire-critical data at all times (turn status, prestige,
+   idle assets, alerts) so players never lose context when drilling into submenus.
 
 3. **Command Fluidity**: Support keyboard-driven hotkeys (digits, letter mnemonics) and
    Expert Mode command palette (`:` prefix) for power users, with inline discoverability for
@@ -42,24 +42,39 @@ long fields with ellipsis. Status bar items prioritized left-to-right (most crit
 ```
 +------------------------------------------------------------------------------+
 | HUD STRIP (2 lines)                                                          |
-|   Left: Empire badge + turn    Center: Treasury/Prod/Dip    Right: Alerts    |
+|   Left: Empire + Turn    Center: Prestige/Treasury/Prod/C2    Right: Alerts  |
 +------------------------------------------------------------------------------+
 | BREADCRUMB LINE (1 line)                                                     |
 |   Home > Fleets > Alpha Patrol                                               |
 +------------------------------------------------------------------------------+
 |                                                                              |
 | MAIN CANVAS (variable height)                                                |
-|   - Swappable panels: Overview, Planets, Fleets, Reports, Messages, Settings |
+|   - Swappable panels for 9 primary views                                     |
 |   - Double-line borders (══) for primary contexts                            |
 |   - Single-line borders (──) for dialogs and overlays                        |
 |                                                                              |
 +------------------------------------------------------------------------------+
 | COMMAND DOCK (2-3 lines)                                                     |
-|   Primary: [1] Overview [2] Planets [3] Fleets [4] Reports [5] Msgs [Q] Quit |
+|   Primary: [1-9] Views  [Q] Quit                                             |
 |   Context: Dynamic actions based on current view                             |
 |   Expert:  `: ` command palette prompt when active                           |
 +------------------------------------------------------------------------------+
 ```
+
+### Primary Views (9 Total)
+
+| Key | View       | Description                                      |
+|-----|------------|--------------------------------------------------|
+| `1` | Overview   | Empire dashboard, leaderboard, alerts            |
+| `2` | Planets    | Colony list and detail management                |
+| `3` | Fleets     | Fleet management (system view, list, details)    |
+| `4` | Research   | Tech levels, ERP/SRP/TRP allocation              |
+| `5` | Espionage  | EBP/CIP budget, intelligence operations          |
+| `6` | Economy    | House tax rate, treasury, income breakdown       |
+| `7` | Reports    | Turn summaries, combat/intel reports             |
+| `8` | Messages   | Diplomacy, inter-house communication             |
+| `9` | Settings   | Display options, colony automation defaults      |
+| `Q` | Quit       | Exit game                                        |
 
 ---
 
@@ -76,6 +91,7 @@ long fields with ellipsis. Status bar items prioritized left-to-right (most crit
 | Disabled/fog      | Dark gray   | —           | 90          |
 | Positive delta    | Green       | —           | 92          |
 | Negative delta    | Red         | —           | 91          |
+| Prestige          | Yellow      | —           | 93          |
 
 ### Borders & Typography
 
@@ -87,16 +103,18 @@ long fields with ellipsis. Status bar items prioritized left-to-right (most crit
 
 ### Glyphs & Icons
 
-| Glyph | Meaning                  |
-|-------|--------------------------|
-| `●`   | OK / Undamaged           |
-| `⚠`   | Needs Attention (idle OR crippled) |
-| `RSV` | Reserve status           |
-| `MTB` | Mothballed status        |
-| `▲▼`  | Trend up/down            |
-| `✉`   | Unread message/report    |
-| `⌚`   | ETA indicator            |
-| `▓░`  | Progress bar             |
+| Glyph | Meaning                            |
+|-------|------------------------------------|
+| `★`   | Prestige                           |
+| `●`   | OK / Neutral diplomatic status     |
+| `⚠`   | Needs Attention / Hostile status   |
+| `⚔`   | Enemy diplomatic status            |
+| `☠`   | Eliminated                         |
+| `RSV` | Reserve status                     |
+| `MTB` | Mothballed status                  |
+| `▲▼`  | Trend up/down                      |
+| `✉`   | Unread message/report              |
+| `▓░`  | Progress bar                       |
 
 ---
 
@@ -105,12 +123,13 @@ long fields with ellipsis. Status bar items prioritized left-to-right (most crit
 ### Navigation Hierarchy
 
 ```
-[1-6]           Switch primary views (Overview, Planets, Fleets, Reports, Msgs, Settings)
+[1-9]           Switch primary views
 [Tab/S-Tab]     Cycle focusable widgets within view
 [Enter]         Drill into selected item / confirm action
 [Backspace]     Step up breadcrumb history
 [Esc]           Cancel overlay / exit command mode
 [?]             Show context help overlay
+[L]             Diplomatic matrix overlay (from Overview)
 ```
 
 ### Letter Mnemonics (Legacy EC Style)
@@ -126,24 +145,49 @@ Within views, single-letter hotkeys trigger common actions:
 | `R` | Fleet selected    | ROE picker overlay                  |
 | `J` | Fleet selected    | Join fleet                          |
 | `B` | Colony selected   | Build (construction queue)          |
-| `T` | Colony selected   | Tax rate adjustment                 |
-| `A` | Any view          | Toggle automation / autopilot       |
+| `T` | Economy view      | Adjust tax rate                     |
+| `L` | Overview          | Diplomatic matrix overlay           |
 | `D` | Reports           | Delete selected report              |
 | `X` | Multi-select      | Toggle selection on current row     |
+| `A` | Proposals         | Accept proposal                     |
+| `R` | Proposals         | Reject proposal                     |
 
 ### Expert Mode (Command Palette)
 
 Typing `:` enters command mode. Supports vim-style direct commands:
 
 ```
+# Fleet Commands
 :move alpha B7          Move fleet "alpha" to system B7
 :patrol delta           Set fleet "delta" to patrol current system
-:tax bigun 55           Set colony "bigun" tax rate to 55%
 :roe sigma 8            Set fleet "sigma" ROE to 8
 :join alpha beta        Join fleet "alpha" into fleet "beta"
-:build bigun cruiser 3  Queue 3 cruisers at colony "bigun"
 :reserve omega          Put fleet "omega" into reserve
 :mothball gamma         Mothball fleet "gamma"
+
+# Colony Commands
+:build bigun cruiser 3  Queue 3 cruisers at colony "bigun"
+
+# Economy Commands
+:tax 45                 Set house-wide tax rate to 45%
+
+# Research Commands
+:research erp 50        Allocate 50 PP to Economic Research Pool
+:research srp 30        Allocate 30 PP to Scientific Research Pool
+:research trp 20        Allocate 20 PP to Technical Research Pool
+
+# Espionage Commands
+:buy ebp 3              Purchase 3 EBP (120 PP)
+:buy cip 2              Purchase 2 CIP (80 PP)
+:spy techtheft stratos nova    Tech theft on House Stratos at Nova
+
+# Diplomacy Commands
+:propose hostile stratos       Propose de-escalation to Hostile
+:propose neutral stratos       Propose de-escalation to Neutral
+:accept 1                      Accept pending proposal #1
+:reject 1                      Reject pending proposal #1
+:declare hostile stratos       Escalate to Hostile
+:declare enemy stratos         Declare war (Enemy)
 ```
 
 **Tab completion**: Fleet names, colony names, ship types, commands auto-complete.
@@ -157,32 +201,78 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦   ⚠ 3 Alerts   ✉ 2 New Reports          ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Overview
 ┌────────────────────────────┬──────────────────────────────────────────┬───────────────────────────────────────────────┐
-│ RECENT EVENTS              │ EMPIRE STATUS                            │ ACTION QUEUE                                  │
-├────────────────────────────┤                                          │                                               │
-│[T42] Fleet Sigma repelled  │  COLONIES          FLEETS                │ ⚠ 1 Idle shipyard at Bigun         [jump 2]   │
-│      pirates @ Thera Gate  │  Owned   12  ▲2    Active    8           │ ⚠ 2 Fleets without orders           [jump 3]  │
-│[T42] Colony Bigun starbase │  Raw      3  ▬0    Reserve   3           │ ✉ 1 Unread combat report            [jump 4]  │
-│      construction complete │  Morale  87%       Mothball  2           │                                               │
-│[T41] Scout Lambda spotted  │                                          │ CHECKLIST                                     │
-│      warps @ sector 17,5   │  DIPLOMACY         INTEL                 │ ■ Shipyard A at Bigun idle                    │
-│[T41] Taxes raised to 58%   │  Treaties   2      Known Systems  44     │ ■ Fleet Omicron awaiting orders               │
-│      empire-wide           │  NAPs       1      Fogged         12     │ ■ Fleet Tau awaiting orders                   │
-│[T40] Enemy fleet detected  │  Tension ▓▓▓░░░    Scout Missions  3     │ ■ Report: Zeta skirmish (unread)              │
-│      approaching Ymir      │                                          │                                               │
-└────────────────────────────┴──────────────────────────────────────────┴───────────────────────────────────────────────┘
+│ RECENT EVENTS              │ EMPIRE STATUS                            │ LEADERBOARD                                   │
+├────────────────────────────┤                                          ├───────────────────────────────────────────────┤
+│[T42] Fleet Sigma repelled  │  COLONIES          FLEETS                │  #  HOUSE       ★PRESTIGE  COLONIES  STATUS  │
+│      pirates @ Thera Gate  │  Owned   12  ▲2    Active    8           │  1. Valerian       487       12       YOU    │
+│[T42] Colony Bigun starbase │  Growth +1.4 PU    Reserve   3           │  2. Stratos        412        9       ⚔ ENM  │
+│      construction complete │  Tax Rate  52%     Mothball  2           │  3. Corvus         356        8       ● NEU  │
+│[T41] Scout Lambda spotted  │                                          │  4. Lyra           298        7       ● NEU  │
+│      warps @ sector 17,5   │  DIPLOMACY         INTEL                 │  5. Aquila         201        5       ⚠ HOS  │
+│[T41] Research breakthrough │  Neutral    3      Known Systems  44     │  6. Draco         ELIM        0       ☠      │
+│      WEP 2 → 3             │  Hostile    1      Fogged         12     │                                               │
+│[T40] Enemy fleet detected  │  Enemy      1      Scout Missions  3     │  Map: 41/64 systems colonized                 │
+│      approaching Ymir      │  Proposals  2                            │  [L] Diplomatic matrix                        │
+├────────────────────────────┴──────────────────────────────────────────┼───────────────────────────────────────────────┤
+│ ACTION QUEUE                                                          │ CHECKLIST                                     │
+│                                                                       │                                               │
+│ ⚠ 1 Idle shipyard at Bigun                                  [jump 2] │ ■ Shipyard A at Bigun idle                    │
+│ ⚠ 2 Fleets without orders                                   [jump 3] │ ■ Fleet Omicron awaiting orders               │
+│ ✉ 1 Unread combat report                                    [jump 7] │ ■ Fleet Tau awaiting orders                   │
+│                                                                       │ ■ Report: Zeta skirmish (unread)              │
+└───────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [1] Overview  [2] Planets  [3] Fleets  [4] Reports  [5] Messages  [6] Settings  [Q] Quit
- [2-4] Jump to checklist item                                                     [: ] Expert Mode
+ [1]Ovrvw [2]Planets [3]Fleets [4]Research [5]Espionage [6]Economy [7]Reports [8]Msgs [9]Settings [Q]Quit
+ [2,3,7] Jump to action item    [L] Diplomatic matrix                                          [: ] Expert Mode
 ```
 
-**Layout**: Three columns (20% / 40% / 40%)
-- **Recent Events**: Rolling log with turn tags, most recent at top
-- **Empire Status**: Card grid (Colonies, Fleets, Diplomacy, Intel)
-- **Action Queue**: Prioritized list of items needing attention with jump hotkeys
+**HUD Strip Elements:**
+- `★ 487 (2nd)` - Prestige with standing (rank among all houses)
+- `CR: 1,820` - Treasury (credits/production points)
+- `PROD: 640` - Net House Value (total production income)
+- `C2: 82/120 ●` - Command capacity (used/total) with status indicator
+  - `●` = OK (within capacity)
+  - `⚠` = STRAIN (over capacity, logistical penalties)
+
+**Leaderboard Status Column:**
+- `YOU` - Your house
+- `● NEU` - Neutral relations with you
+- `⚠ HOS` - Hostile relations with you
+- `⚔ ENM` - Enemy (at war) with you
+- `☠` - Eliminated from game
+
+### 5.1.1 Diplomatic Matrix Overlay
+
+Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ DIPLOMATIC RELATIONS MATRIX                                    Legend: ● Neutral  ⚠ Hostile  ⚔ Enemy  ☠ Eliminated │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                                      │
+│                    Valerian   Stratos    Corvus     Lyra       Aquila     Draco                                      │
+│  ─────────────────────────────────────────────────────────────────────────────────                                   │
+│  Valerian (YOU)       —         ⚔          ●          ●          ⚠          ☠                                       │
+│  Stratos              ⚔         —          ●          ⚠          ●          ☠                                       │
+│  Corvus               ●         ●          —          ●          ●          ☠                                       │
+│  Lyra                 ●         ⚠          ●          —          ⚔          ☠                                       │
+│  Aquila               ⚠         ●          ●          ⚔          —          ☠                                       │
+│  Draco                ☠         ☠          ☠          ☠          ☠          —                                       │
+│                                                                                                                      │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ PENDING PROPOSALS                                                                                                    │
+│                                                                                                                      │
+│  FROM         TO           PROPOSAL                          SUBMITTED   EXPIRES                                     │
+│  Stratos  →  Valerian     De-escalate Enemy → Hostile        Turn 41     Turn 44                                     │
+│  Lyra     →  Aquila       De-escalate Enemy → Neutral        Turn 40     Turn 43                                     │
+│                                                                                                                      │
+│  [A] Accept proposal to you    [Esc] Close                                                                           │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ### 5.2 Planet Manager (120 columns)
 
@@ -190,40 +280,43 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Planets
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ COLONY                SECTOR   CLASS    POP    IU   PROD   TAX   MORALE   FACILITIES          STATUS                 │
+│ COLONY                SECTOR   CLASS    POP    IU    GCO    NCV   GROWTH    FACILITIES          STATUS              │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Valeria Prime (HW)    A3       Lush     48     52    104   45%   ▓▓▓▓▓▓░  SP SY SY DD DD SB   ●                      │
-│ Bigun                 B7       Benign   32     38     76   55%   ▓▓▓▓▓░░  SP SY DD SB         ⚠ Idle shipyard        │
-│ Thera Gate            C4       Hostile  18     22     44   40%   ▓▓▓▓░░░  SP SY DD            ●                      │
-│ Ymir Relay            D2       Benign   24     28     56   50%   ▓▓▓▓▓░░  SP DD               ⚠ Under blockade       │
-│ Nova Station          E9       Lush     28     34     68   50%   ▓▓▓▓▓▓░  SP SY DD            ●                      │
-│ Frontier VII          F1       Hostile  12     15     30   35%   ▓▓▓░░░░  SP                  ●                      │
-│                                                                                                                      │
+│ Valeria Prime (HW)    A3       Lush     48     52    104     54   +1.4 PU   SP SY SY DD DD SB   ●                    │
+│ Bigun                 B7       Benign   32     38     80     42   +0.8 PU   SP SY DD SB         ⚠ Idle shipyard     │
+│ Thera Gate            C4       Hostile  18     22     44     23   +0.4 PU   SP SY DD            ●                    │
+│ Ymir Relay            D2       Benign   24     28     56     15   +0.6 PU   SP DD               ⚠ Blockaded (-60%)  │
+│ Nova Station          E9       Lush     28     34     68     35   +0.7 PU   SP SY DD            ●                    │
+│ Frontier VII          F1       Hostile  12     15     30     16   +0.3 PU   SP                  ●                    │
 │                                                                                                                      │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
- 12 colonies total  |  3 idle facilities  |  640 total production
+ 12 colonies  |  GHO: 640 PP  |  NHV: 333 PP (52% tax)  |  3 idle facilities
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [↑/↓] Select  [Enter] View Colony  [T] Set Tax  [B] Build  [S] Sort  [F] Filter           [: ] Expert Mode
+ [↑/↓] Select  [Enter] View Colony  [B] Build  [S] Sort  [F] Filter  [6] Economy view          [: ] Expert Mode
 ```
 
-**Facility codes**: SP=Spaceport, SY=Shipyard, DD=Drydock, SB=Starbase
+**Column definitions:**
+- `GCO` - Gross Colony Output (total production before tax)
+- `NCV` - Net Colony Value (GCO × tax rate, your income from this colony)
+- `GROWTH` - Population growth rate (PU/turn)
+- **Facility codes**: SP=Spaceport, SY=Shipyard, DD=Drydock, SB=Starbase
 
 #### 5.2.2 Planet Detail View - Summary Tab
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Planets > Bigun
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │  [Summary]  Economy   Construction   Defense   Settings                                                              │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ COLONY: Bigun                                                                                                        │
-│ Location: Sector B7 (Benign)       Efficiency: 95.9%       Max Prod: 80       Current: 76       Stored: 63 PP        │
+│ Location: Sector B7    Class: Benign    RAW Index: Abundant (0.80)                                                   │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ SURFACE                                        │ ORBITAL                                                             │
 │   Population:  32 PU (1.6M souls)              │   Starbase:    1 (Undamaged)                                        │
@@ -232,59 +325,73 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 │   Batteries:   6 emplacements                  │   Spaceport:   1 (5 docks)                                          │
 │   Shields:     SLD-4 (40% reduction)           │                                                                     │
 │                                                │   Docked Fleets:                                                    │
-│                                                │     Alpha Patrol (8 ships)                                          │
-│                                                │     Supply Wing (3 transports)                                      │
+│                                                │     Alpha Patrol (8 ships)                                         │
+│                                                │     Supply Wing (3 transports)                                     │
 ├────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────┤
 │ ECONOMY SNAPSHOT                               │ CONSTRUCTION QUEUE                                                  │
-│   Tax Rate:   55%                              │   1. Cruiser      ▓▓▓░░ (3/5)   ETA 2 turns                         │
-│   Revenue:    42 PP/turn                       │   2. Battleship   ▓░░░░░░ (1/7)   ETA 6 turns                       │
-│   Morale:     ▓▓▓▓▓░░ (Stable)                 │   3. Army         DONE - ready to deploy                            │
-│   Growth:     +0.8 PU/turn                     │                                                                     │
+│   House Tax Rate: 52% (set in [6] Economy)     │   1. Cruiser      ▓▓▓░░ (3/5)   ETA 2 turns                         │
+│   GCO: 80 PP    NCV: 42 PP                     │   2. Battleship   ▓░░░░░░ (1/7)   ETA 6 turns                       │
+│   PU Growth:  +0.8/turn                        │   3. Army         DONE - ready to deploy                            │
+│   IU Growth:  +0.3/turn                        │                                                                     │
+│   Starbase Bonus: +5%                          │                                                                     │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [Tab] Next section  [1-5] Switch tab  [B] Build  [T] Tax  [G] Garrison  [Backspace] Back   [: ] Expert Mode
+ [Tab] Next section  [1-5] Switch tab  [B] Build  [G] Garrison  [Backspace] Back              [: ] Expert Mode
 ```
 
 #### 5.2.3 Planet Detail View - Economy Tab
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Planets > Bigun > Economy
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │   Summary  [Economy]  Construction   Defense   Settings                                                              │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ TAX RATE                                                                                                             │
+│ COLONY REVENUE                                                                                                       │
 │                                                                                                                      │
-│   Current: 55%    Revenue: 42 PP/turn    Morale Impact: -2%/turn                                                     │
+│   Gross Colony Output (GCO):    80 PP                                                                                │
+│     Population contribution:    26 PP  (32 PU × 0.80 RAW index)                                                      │
+│     Industrial contribution:    54 PP  (38 IU × 1.26 EL modifier × 1.02 productivity)                                │
 │                                                                                                                      │
-│   0%       20%       40%       60%       80%      100%                                                               │
-│   ├─────────┼─────────┼─────────┼─────────┼─────────┤                                                                │
-│   ░░░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▓▓▓▓▓▓▓▓█                                                                           │
-│                               ▲                                                                                      │
-│   [←/→] Adjust    [Enter] Confirm    [Esc] Cancel                                                                    │
+│   House Tax Rate:               52%  (set in [6] Economy view)                                                       │
+│   Net Colony Value (NCV):       42 PP  (GCO × tax rate, rounded up)                                                  │
+│                                                                                                                      │
+│   Starbase Economic Bonus:      +5%  (1 starbase, max 15% from 3)                                                    │
 │                                                                                                                      │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ REVENUE FORECAST                               │ MORALE PROJECTION                                                   │
+│ GROWTH PROJECTIONS                                                                                                   │
+│                                                                                                                      │
+│   POPULATION GROWTH                            │ INDUSTRIAL GROWTH                                                   │
 │                                                │                                                                     │
-│   Gross Output:     80 PP                      │   Current:    ▓▓▓▓▓░░ 71%                                           │
-│   Tax Collection:   44 PP (55%)                │   Next Turn:  ▓▓▓▓▓░░ 69% (▼2%)                                     │
-│   Maintenance:      -2 PP                      │   Trend:      Declining (tax > 50%)                                 │
-│   Net Revenue:      42 PP                      │                                                                     │
-│                                                │   Warning: Morale below 50% triggers unrest                         │
-│   If tax = 40%:     32 PP (+0.5% morale)       │                                                                     │
-│   If tax = 60%:     48 PP (-3.0% morale)       │                                                                     │
+│   Base rate:        30%/turn                   │ Base rate:       +2 IU/turn (floor(PU/50))                          │
+│   Tax modifier:     ×0.95 (52% rate)           │ Tax modifier:    ×0.48 (1 - tax rate)                               │
+│   Starbase bonus:   ×1.05 (+5%)                │ Starbase bonus:  ×1.05 (+5%)                                        │
+│   ─────────────────────────────────────────    │ ─────────────────────────────────────────                           │
+│   Projected:        +0.8 PU next turn          │ Projected:       +1 IU next turn                                    │
+│                                                │                                                                     │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ TAX RATE IMPACT (House-wide: 52%)                                                                                    │
+│                                                                                                                      │
+│   Current bracket:  51-100% — No growth bonus, prestige penalty applies                                              │
+│   Prestige impact:  -1/turn house-wide (high tax penalty, rate > 50%)                                                │
+│                                                                                                                      │
+│   Lower tax benefits:                                                                                                │
+│     ≤40%: +5% pop growth, no penalty          ≤30%: +10% pop growth, +1 prestige/colony                              │
+│     ≤20%: +15% pop growth, +2 prestige/colony ≤10%: +20% pop growth, +3 prestige/colony                              │
+│                                                                                                                      │
+│   [6] Go to Economy view to adjust House tax rate                                                                    │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [Tab] Next section  [1-5] Switch tab  [T] Quick tax input  [Backspace] Back                [: ] Expert Mode
+ [Tab] Next section  [1-5] Switch tab  [6] Economy view  [Backspace] Back                     [: ] Expert Mode
 ```
 
 #### 5.2.4 Planet Detail View - Construction Tab
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Planets > Bigun > Construction
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -294,35 +401,40 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 │ Shipyard: 7/10 docks in use                    │ Drydock: 2/10 bays in use                                           │
 │                                                │                                                                     │
 │  #  PROJECT       COST   PROGRESS      ETA     │  #  SHIP            COST   STATUS                                   │
-│  1. Cruiser        35    ▓▓▓░░ (3/5)   2 trn   │  1. DD Falcon        8     Repairing (1 turn)                       │
-│  2. Battleship     70    ▓░░░░░░ (1/7)   6 trn │  2. CR Hawk         12     Repairing (1 turn)                       │
-│  3. Destroyer      20    Queued         3 trn  │                                                                     │
-│  4. Destroyer      20    Queued         3 trn  │                                                                     │
+│  1. Cruiser        35    ▓▓▓░░ (3/5)   2 trn   │  1. DD Falcon        5     Repairing (1 turn)                       │
+│  2. Battleship     70    ▓░░░░░░ (1/7) 6 trn   │  2. CR Hawk          9     Repairing (1 turn)                       │
+│  3. Destroyer      20    Queued        3 trn   │                                                                     │
+│  4. Destroyer      20    Queued        3 trn   │                                                                     │
 │  ─────────────────────────────────────────     │                                                                     │
 │  [+] Add project                               │  [+] Add to repair queue                                            │
 │                                                │                                                                     │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ AVAILABLE TO BUILD                                                                                                   │
 │                                                                                                                      │
-│  TYPE           COST   TIME   DOCKS   DESCRIPTION                                                                    │
-│  Scout            8     1       1     Reconnaissance vessel, intel missions                                          │
-│  Destroyer       20     3       1     Fast escort, anti-fighter                                                      │
-│  Cruiser         35     5       2     Balanced warship, patrol duty                                                  │
-│  Battleship      70     7       3     Heavy capital ship, fleet actions                                              │
-│  Dreadnought    120    10       4     Flagship class, devastating firepower                                          │
-│  Troop Transp    25     3       2     Marine carrier, invasion ops                                                   │
-│  ETAC            40     4       3     Colony ship, carries PTUs                                                      │
+│  TYPE           COST   TIME   DOCKS   DESCRIPTION                               CST REQ                              │
+│  Scout            8     1       1     Reconnaissance, intel missions             1                                   │
+│  Corvette        20     2       1     Light escort, screening                    1                                   │
+│  Frigate         25     2       1     Anti-fighter escort                        1                                   │
+│  Destroyer       30     3       1     Fast escort, patrol duty                   1                                   │
+│  Light Cruiser   40     4       2     Light capital ship                         2                                   │
+│  Cruiser         50     5       2     Balanced warship                           2                                   │
+│  Battlecruiser   70     6       2     Heavy cruiser                              3                                   │
+│  Battleship      90     7       3     Capital ship, fleet actions                3                                   │
+│  Dreadnought    120     9       4     Heavy capital, devastating firepower       4                                   │
+│  Carrier         80     6       3     Fighter platform                           3                                   │
+│  Troop Transport 30     3       2     Marine carrier, invasion ops               1                                   │
+│  ETAC            50     4       3     Colony ship, carries PTUs                  2                                   │
 │                                                                                                                      │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [↑/↓] Select  [Enter] Build  [D] Delete from queue  [P] Prioritize  [Backspace] Back      [: ] Expert Mode
+ [↑/↓] Select  [Enter] Build  [D] Delete from queue  [P] Prioritize  [Backspace] Back        [: ] Expert Mode
 ```
 
 #### 5.2.5 Planet Detail View - Defense Tab
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Planets > Bigun > Defense
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -349,17 +461,16 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 │  Planetary Defense Rating:  ██████░░░░  Moderate (shields + batteries + garrison)                                    │
 │  Invasion Resistance:       ██████████  High (+2 DRM prepared defenses)                                              │
 │                                                                                                                      │
-│  Recommendation: Consider adding 2 more batteries for balanced defense                                               │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [Tab] Next section  [1-5] Switch tab  [G] Manage garrison  [Backspace] Back                [: ] Expert Mode
+ [Tab] Next section  [1-5] Switch tab  [G] Manage garrison  [Backspace] Back                  [: ] Expert Mode
 ```
 
 #### 5.2.6 Planet Detail View - Settings Tab
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Planets > Bigun > Settings
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -367,30 +478,29 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ COLONY AUTOMATION                                                                                                    │
 │                                                                                                                      │
-│  These settings control automatic actions for this colony. Override global defaults.                                 │
+│  These settings control automatic actions for this colony. Override global defaults from [9] Settings.               │
 │                                                                                                                      │
 │  ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐ │
-│  │  SETTING                COLONY VALUE    GLOBAL DEFAULT    DESCRIPTION                                           │ │
+│  │  SETTING                COLONY VALUE    GLOBAL DEFAULT    DESCRIPTION                                          │ │
 │  ├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤ │
-│  │  Auto-Repair Ships      [ON ]           ON                Automatically queue crippled ships for repair         │ │
-│  │  Auto-Load Marines      [OFF]           ON                Load marines onto docked troop transports             │ │
-│  │  Auto-Load Fighters     [ON ]           OFF               Load fighters onto docked carriers                    │ │
+│  │  Auto-Repair Ships      [ON ]           ON                Automatically queue crippled ships for repair        │ │
+│  │  Auto-Load Marines      [OFF]           ON                Load marines onto docked troop transports            │ │
+│  │  Auto-Load Fighters     [ON ]           OFF               Load fighters onto docked carriers                   │ │
 │  └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘ │
 │                                                                                                                      │
-│  [Space] Toggle selected    [R] Reset to global default    [A] Apply to all colonies                                 │
+│  [Space] Toggle selected    [R] Reset to global default    [A] Apply to all colonies                                │
 │                                                                                                                      │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ COLONY NOTES                                                                                                         │
 │                                                                                                                      │
 │  Player notes for this colony (optional):                                                                            │
 │  ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐ │
-│  │ Main shipbuilding hub. Keep 2 cruisers in reserve for emergency response.                                       │ │
-│  │ Priority: battleship production until T50.                                                                      │ │
+│  │ Main shipbuilding hub. Priority: battleship production until T50.                                              │ │
 │  └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘ │
 │  [E] Edit notes                                                                                                      │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [Tab] Next section  [1-5] Switch tab  [Backspace] Back                                     [: ] Expert Mode
+ [Tab] Next section  [1-5] Switch tab  [Backspace] Back                                       [: ] Expert Mode
 ```
 
 ### 5.3 Fleet Console (120 columns)
@@ -399,7 +509,7 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640           ⚠ Fleet Omega idle  ⚠ Fleet Tau idle      ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Fleets (System View)
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -407,8 +517,8 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ SYSTEM: Thera Gate (C4) ─────────────────────────────────────────────────────────────────────────────────────────────│
 │                                                                                                                      │
-│  ► Fleet Sigma         12 ships    Command: Patrol         ETA: ▓▓▓░░ to D5 (2 turns)                    ● OK        │
-│      DD×6  CR×4  BS×2   Morale 82%   ROE: 6                                                                          │
+│  ► Fleet Sigma         12 ships    Command: Patrol         ETA: ▓▓▓░░ to D5 (2 turns)                    ● OK       │
+│      DD×6  CR×4  BS×2   ROE: 6                                                                                       │
 │      Last contact: Enemy scouts detected (Fog 48%)                                                                   │
 │                                                                                                                      │
 │    Fleet Tau            4 ships    Command: Hold            Status: Idle                                 ⚠ IDLE      │
@@ -416,14 +526,14 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 │                                                                                                                      │
 │ SYSTEM: Ymir Relay (D2) ─────────────────────────────────────────────────────────────────────────────────────────────│
 │                                                                                                                      │
-│    Fleet Lambda         1 scout    Command: Scout System    ETA: ▓░░░░ to E3 (4 turns)                   ●           │
-│    Fleet Petra          5 ships    Command: Colonize        ETA: ▓▓░░░ to F1 (3 turns)                   ●           │
+│    Fleet Lambda         1 scout    Command: Scout System    ETA: ▓░░░░ to E3 (4 turns)                   ●          │
+│    Fleet Petra          5 ships    Command: Colonize        ETA: ▓▓░░░ to F1 (3 turns)                   ●          │
 │      TT×3  ETAC×2                                                                                                    │
 │                                                                                                                      │
 │ SYSTEM: Bigun (B7) ──────────────────────────────────────────────────────────────────────────────────────────────────│
 │                                                                                                                      │
-│    Fleet Alpha          8 ships    Command: Guard Colony    Status: Docked                               ●           │
-│    Fleet Beta           4 ships    Command: Reserve         Status: 50% readiness                        RSV         │
+│    Fleet Alpha          8 ships    Command: Guard Colony    Status: Docked                               ●          │
+│    Fleet Beta           4 ships    Command: Reserve         Status: 50% readiness                        RSV        │
 │                                                                                                                      │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
  13 fleets  |  52 ships  |  2 idle fleets  |  3 in transit
@@ -435,27 +545,27 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640           ⚠ Fleet Omega idle  ⚠ Fleet Tau idle      ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Fleets (List View)
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │  System View  [List View]                                                                        [X] Multi-select: 2 │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ [ ] FLEET           LOCATION       SHIPS  AS    COMMAND         DESTINATION    ETA    ROE   STATUS                   │
+│ [ ] FLEET           LOCATION       SHIPS  AS    COMMAND         DESTINATION    ETA    ROE   STATUS                  │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│     Alpha           Bigun (B7)        8    64   Guard Colony    —              —       6    ●                        │
-│     Beta            Bigun (B7)        4    24   Reserve         —              —       8    RSV                      │
-│ ►►► Sigma           Thera (C4)       12    96   Patrol          D5             2 trn   6    ●                        │
-│ [X] Tau             Thera (C4)        4    32   Hold            —              —       6    ⚠ IDLE                   │
-│ [X] Omega           Thera (C4)        8    64   (none)          —              —       6    ⚠ IDLE                   │
-│     Lambda          Ymir (D2)         1     4   Scout System    E3             4 trn   2    ●                        │
-│     Petra           Ymir (D2)         5    20   Colonize        F1             3 trn   6    ●                        │
-│     Gamma           Valeria (A3)      6    48   Mothball        —              —       —    MTB                      │
-│     Delta           Valeria (A3)      3    18   Patrol          —              —       7    ●                        │
-│     Epsilon         Nova (E9)         4    28   Guard Starbase  —              —       8    ●                        │
-│     Zeta            Nova (E9)         2    12   Hold            —              —       6    ⚠ CRIPPLED               │
-│     Eta             Frontier (F1)     3    16   Patrol          —              —       5    ●                        │
-│     Theta           In Transit        7    56   Move            Thera (C4)     1 trn   6    ●                        │
+│     Alpha           Bigun (B7)        8    64   Guard Colony    —              —       6    ●                       │
+│     Beta            Bigun (B7)        4    24   Reserve         —              —       8    RSV                     │
+│ ►►► Sigma           Thera (C4)       12    96   Patrol          D5             2 trn   6    ●                       │
+│ [X] Tau             Thera (C4)        4    32   Hold            —              —       6    ⚠ IDLE                  │
+│ [X] Omega           Thera (C4)        8    64   (none)          —              —       6    ⚠ IDLE                  │
+│     Lambda          Ymir (D2)         1     4   Scout System    E3             4 trn   2    ●                       │
+│     Petra           Ymir (D2)         5    20   Colonize        F1             3 trn   6    ●                       │
+│     Gamma           Valeria (A3)      6    48   Mothball        —              —       —    MTB                     │
+│     Delta           Valeria (A3)      3    18   Patrol          —              —       7    ●                       │
+│     Epsilon         Nova (E9)         4    28   Guard Starbase  —              —       8    ●                       │
+│     Zeta            Nova (E9)         2    12   Hold            —              —       6    ⚠ CRIPPLED              │
+│     Eta             Frontier (F1)     3    16   Patrol          —              —       5    ●                       │
+│     Theta           In Transit        7    56   Move            Thera (C4)     1 trn   6    ●                       │
 │                                                                                                                      │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
  13 fleets  |  2 selected  |  Batch: [M] Move  [J] Join  [V] Rendezvous
@@ -465,11 +575,10 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 ```
 
 **Multi-select rules**:
-- `[X]` toggles selection on current row (bounce bar)
+- `[X]` toggles selection on current row
 - Selected fleets shown with `[X]` prefix
 - Current cursor shown with `►►►`
 - Batch commands limited to: **Move**, **Join**, **Rendezvous**
-- All other commands require single fleet selection
 
 **Status column legend**:
 - `●` = OK (Undamaged, has valid command)
@@ -482,7 +591,7 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Fleets > Sigma
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -494,10 +603,10 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 │                                                │                                                                     │
 │  SHIP CLASS      QTY   STATUS       AS    DS   │  Total Attack Strength:    96                                       │
 │  Destroyer        6    Undamaged    24    18   │  Total Defense Strength:   72                                       │
-│  Cruiser          4    Undamaged    32    28   │  Fleet Morale:             82%                                      │
-│  Battleship       2    Undamaged    40    26   │                                                                     │
-│  ────────────────────────────────────────────  │  Maintenance Cost:         12 PP/turn                               │
-│  TOTAL           12                 96    72   │  Command Cost (CC):        8                                        │
+│  Cruiser          4    Undamaged    32    28   │                                                                     │
+│  Battleship       2    Undamaged    40    26   │  Maintenance Cost:         12 PP/turn                               │
+│  ────────────────────────────────────────────  │  Command Cost (CC):        8                                        │
+│  TOTAL           12                 96    72   │                                                                     │
 │                                                │                                                                     │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ COMMAND HISTORY                                │ INTEL                                                               │
@@ -506,21 +615,158 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 │  T41: Engaged pirates at C4 (victory)          │  Enemy scouts detected at C4                                        │
 │  T40: Move from B7 to C4                       │  Fog level: 48% (limited visibility)                                │
 │  T39: Guard Colony at Bigun                    │                                                                     │
-│                                                │  Nearby threats: Unknown fleet at D6 (suspected)                    │
+│                                                │  Nearby threats: Unknown fleet at D6 (suspected)                   │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  [M] Move  [P] Patrol  [H] Hold  [G] Guard  [R] ROE  [J] Join  [D] Detach ships  [Backspace] Back  [: ] Expert Mode
 ```
 
-### 5.4 Reports Inbox (120 columns)
-
-Email-style 3-column layout with folder/category sidebar, report list, and preview pane.
-
-#### 5.4.1 Reports Inbox - Main View
+### 5.4 Research & Technology (120 columns)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦              ✉ 3 Unread Reports         ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+ Home > Research
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ RESEARCH ALLOCATION                                          │ CURRENT TECH LEVELS                                  │
+│                                                              │                                                      │
+│ Treasury: 1,820 PP    Allocate this turn: [120] PP           │  FOUNDATION           COMBAT            SPECIAL      │
+│ GHO: 640 PP (research efficiency bonus: +100%)               │  ─────────────────────────────────────────────────   │
+│                                                              │  EL  Economic Lv    3  WEP Weapons     3  TER Terraform 1│
+│ Economic Pool (ERP):     ▓▓▓▓░░░░░░  40 PP   [E+][E-]        │  SL  Science Lv     2  ELI Electronics 2  CLK Cloaking  1│
+│   → Improves: EL (Economic Level)                            │                        SLD Shields     2  CIC Counter-Int 1│
+│   → Current: 120 ERP accumulated, 200 for next level         │                                                      │
+│                                                              │  LOGISTICS            DOCTRINE                       │
+│ Scientific Pool (SRP):   ▓▓▓▓▓▓░░░░  60 PP   [S+][S-]        │  ─────────────────────────────────────────────────   │
+│   → Improves: SL (Science Level)                             │  STL Strategic Lift 1  FC  Fleet Cmd    2            │
+│   → Gates all other tech research                            │  SC  Strategic Cmd  2  FD  Fighter Doc  1            │
+│   → Current: 80 SRP accumulated, 150 for next level          │  CST Construction   2  ACO Adv Carrier  0            │
+│                                                              │                                                      │
+│ Technical Pool (TRP):    ▓▓░░░░░░░░  20 PP   [T+][T-]        │                                                      │
+│   → Improves: WEP, CST, TER, ELI, CLK, SLD, CIC,             │                                                      │
+│               STL, FC, SC, FD, ACO                           │                                                      │
+│   → Current: 45 TRP accumulated                              │                                                      │
+│                                                              │                                                      │
+├──────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────┤
+│ RECENT BREAKTHROUGHS                                                                                                 │
+│                                                                                                                      │
+│  T41: Minor breakthrough in Weapons Tech (WEP 2 → 3)  — +10% AS/DS for all ships                                     │
+│  T38: Moderate breakthrough in Science (SL 1 → 2)  — New tech trees unlocked                                         │
+│  T35: Revolutionary breakthrough in Construction (CST 1 → 2)  — Light Cruiser class unlocked                         │
+│                                                                                                                      │
+│ TECH EFFECTS SUMMARY                                                                                                 │
+│  EL 3: +30% industrial output modifier    WEP 3: +30% AS/DS (compound)    CST 2: +10% dock capacity                  │
+│  SL 2: Enables all tech research          ELI 2: +2 detection rolls       SLD 2: 30% bombardment reduction           │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ [E/S/T] Adjust pools  [Enter] Confirm allocation  [?] Tech tree details                      [: ] Expert Mode
+```
+
+### 5.5 Espionage (120 columns)
+
+```
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+ Home > Espionage
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ ESPIONAGE BUDGET                                             │ COUNTER-INTELLIGENCE                                 │
+│                                                              │                                                      │
+│ Espionage Budget Points (EBP): 5 available                   │ CIC Tech Level: 1                                    │
+│ Purchase EBP: [___] @ 40 PP each    [B] Buy                  │ Counter-Intel Points (CIP): 3                        │
+│                                                              │ Purchase CIP: [___] @ 40 PP each    [C] Buy          │
+│ Note: Spending >5% of income on espionage incurs             │                                                      │
+│       prestige penalty                                       │ Detection Threshold: 5 (CIC 1 + CIP 3 + base 1)      │
+│                                                              │ Enemy ops need to roll > 5 to succeed                │
+├──────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────┤
+│ AVAILABLE OPERATIONS                                                                                                 │
+│                                                                                                                      │
+│  OPERATION               COST   TARGET          EFFECT                                                               │
+│  ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────   │
+│► Tech Theft               5     Enemy Colony    Steal 10 SRP from target house                                       │
+│  Sabotage (Low)           2     Enemy Colony    Deal 1d6 IU damage to colony infrastructure                          │
+│  Sabotage (High)          7     Enemy Colony    Deal 1d20 IU damage to colony infrastructure                         │
+│  Assassination           10     Enemy House     Reduce target SRP gain by 50% for 1 turn                             │
+│  Cyber Attack             6     Enemy Starbase  Cripple target starbase                                              │
+│  Economic Manipulation    6     Enemy Colony    Halve Net Colony Value for 1 turn                                    │
+│  Psyops Campaign          3     Enemy Colony    Reduce tax revenue by 25% for 1 turn                                 │
+│  Counter-Intel Sweep      4     Self            Block enemy intel operations for 1 turn                              │
+│  Intel Theft              8     Enemy House     Steal intel database (copy their fog-of-war data)                    │
+│  Plant Disinformation     6     Enemy House     Add 20-40% variance to their intel for 2 turns                       │
+│                                                                                                                      │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ QUEUED OPERATIONS THIS TURN                                                                                          │
+│                                                                                                                      │
+│  #   OPERATION          TARGET                    COST                                                               │
+│  1.  Tech Theft         House Stratos @ Nova       5 EBP                                                             │
+│                                                                                                                      │
+│  Total EBP committed: 5    Remaining: 0                                                                              │
+│  [+] Add operation    [D] Delete selected                                                                            │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ [↑/↓] Select  [Enter] Queue operation  [T] Select target  [B] Buy EBP  [C] Buy CIP           [: ] Expert Mode
+```
+
+### 5.6 Empire Economy (120 columns)
+
+```
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+ Home > Economy
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ HOUSE TAX RATE                                                                                                       │
+│                                                                                                                      │
+│   Current Rate: 52%         Gross House Output (GHO): 640 PP         Net House Value (NHV): 333 PP                   │
+│                                                                                                                      │
+│   0%       20%       40%       60%       80%      100%                                                               │
+│   ├─────────┼─────────┼─────────┼─────────┼─────────┤                                                                │
+│   ░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▓▓▓▓▓▓▓▓▓█░░░░░░░░░░              50% ↑ penalty threshold                            │
+│                             ▲                                                                                        │
+│   [←/→] Adjust    [Enter] Confirm    [Esc] Cancel                                                                    │
+│                                                                                                                      │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ TAX RATE EFFECTS                                             │ TREASURY & INCOME                                    │
+│                                                              │                                                      │
+│ CURRENT (52%):                                               │ Treasury Balance:     1,820 PP                       │
+│   Prestige:     -1/turn (high tax penalty)                   │                                                      │
+│   Pop Growth:   ×0.95 modifier                               │ LAST TURN:                                           │
+│   IU Growth:    ×0.48 modifier (1 - rate)                    │   Tax Collection:     +333 PP                        │
+│                                                              │   Maintenance:        -142 PP                        │
+│ IF 40%:                                                      │   Research:           -120 PP                        │
+│   Revenue:      256 PP (-77 PP)                              │   Construction:       -200 PP                        │
+│   Prestige:     No penalty                                   │   ──────────────────────────────                     │
+│   Pop Growth:   ×1.05 (+5% bonus)                            │   Net Change:         -129 PP                        │
+│                                                              │                                                      │
+│ IF 30%:                                                      │ PROJECTED THIS TURN:                                 │
+│   Revenue:      192 PP (-141 PP)                             │   Income:             +333 PP                        │
+│   Prestige:     +12/turn (+1 per colony)                     │   Commitments:        -280 PP                        │
+│   Pop Growth:   ×1.10 (+10% bonus)                           │   Ending Treasury:    ~1,873 PP                      │
+│                                                              │                                                      │
+├──────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────┤
+│ COLONY INCOME BREAKDOWN                                                                                              │
+│                                                                                                                      │
+│  COLONY                GCO      NCV     PU GROWTH    IU GROWTH    STATUS                                             │
+│  ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────   │
+│  Valeria Prime (HW)    104       54     +1.4/turn    +0.5/turn    ●                                                  │
+│  Bigun                  80       42     +0.8/turn    +0.3/turn    ●                                                  │
+│  Thera Gate             44       23     +0.4/turn    +0.2/turn    ●                                                  │
+│  Ymir Relay             56       15     +0.6/turn    +0.2/turn    ⚠ Blockaded (-60% NCV)                             │
+│  Nova Station           68       35     +0.7/turn    +0.3/turn    ●                                                  │
+│  ... (6 more)          288      164                                                                                  │
+│  ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────   │
+│  TOTAL                 640      333                              12 colonies                                         │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ [←/→] Adjust tax  [Enter] Confirm  [I] Industrial investment  [G] Guild transfer             [: ] Expert Mode
+```
+
+### 5.7 Reports Inbox (120 columns)
+
+```
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Reports
 ┌───────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -531,214 +777,120 @@ Email-style 3-column layout with folder/category sidebar, report list, and previ
 │  ────────     │  ──────────────────────────────────────────────────────────────────────────────────────────────────  │
 │  Turn Sum (1) │  ✉  42   Turn Summary  Turn 42 Summary - 3 events, 2 alerts                 Today                    │
 │  Combat   (2) │  ✉  42   Combat        Victory at Thera Gate - Fleet Sigma                  Today                    │
-│  Intel    (3) │  ✉  42   Intel         Scout Report: Enemy fleet detected at D6             Today                    │
+│  Intel    (3) │     42   Intel         Scout Report: Enemy fleet detected at D6             Today                    │
+│  Research (1) │     42   Research      Breakthrough: WEP 2 → 3                              Today                    │
 │  Construct(4) │     42   Construction  Starbase completed at Bigun                          Today                    │
 │  Colony   (2) │     41   Combat        Skirmish at Ymir - Fleet Zeta damaged                Yesterday                │
 │  Diplomacy(1) │     41   Intel         Recon Report: System E3 surveyed                     Yesterday                │
-│  Alerts   (2) │     41   Colony        Population growth at Nova Station (+2 PU)            Yesterday                │
+│  Alerts   (1) │     41   Colony        Population growth at Nova Station (+2 PU)            Yesterday                │
 │               │     40   Construction  Cruiser commissioned at Valeria Prime                2 days ago               │
-│  ────────     │     40   Diplomacy     House Stratos proposes trade agreement               2 days ago               │
-│  Archive  (8) │     40   Alert         Fleet Omega low on fuel - requires attention         2 days ago               │
-│               │     39   Intel         Scout mission failed at F4                           3 days ago               │
-│               │     39   Construction  Battleship commissioned at Bigun                     3 days ago               │
-│               │                                                                                                      │
-│               │                                                                                                      │
+│  ────────     │     40   Diplomacy     House Stratos proposes de-escalation                 2 days ago               │
+│  Archive  (8) │     40   Alert         Fleet Omega idle - requires orders                   2 days ago               │
 │               │                                                                                                      │
 └───────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────┘
- 15 reports  |  3 unread  |  Filter: All
+ 15 reports  |  2 unread  |  Filter: All
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  [↑/↓] Select  [Enter] View Report  [D] Delete  [A] Archive  [M] Mark read/unread            [: ] Expert Mode
 ```
 
-**Category sidebar**:
-- Turn Summary - Auto-generated each turn (auto-opens on new turn)
-- Combat - Battle reports, skirmishes
-- Intel - Scout reports, recon data
-- Construction - Build completions, repairs
-- Colony - Population, morale, economic events
-- Diplomacy - Treaties, proposals, violations
-- Alerts - Items requiring attention
-- Archive - Manually archived reports
-
-**Report lifecycle**:
-- Reports kept forever until manually deleted or archived
-- Unread reports marked with `✉`
-- Turn Summary auto-opens when player first views Reports on a new turn
-
-#### 5.4.2 Turn Summary Report (Auto-opens on new turn)
+#### 5.7.1 Turn Summary Report
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Reports > Turn 42 Summary
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ TURN 42 SUMMARY                                                                          Generated: 2342.042.1800 UTC│
+│ TURN 42 SUMMARY                                                                                                      │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ EMPIRE OVERVIEW                                                                                                      │
 │                                                                                                                      │
 │  Colonies: 12 (+2)      Treasury: 1,820 PP (+142)     Prestige: 487 (+12)     Standing: 2nd of 6                     │
-│  Fleets:   13           Production: 640 PP/turn       Morale: Good                                                   │
+│  Fleets:   13           Production: 640 PP/turn       Tax Rate: 52%                                                  │
 │                                                                                                                      │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ KEY EVENTS THIS TURN                                                                                                 │
 │                                                                                                                      │
 │  COMBAT                                                                                                              │
-│    ● Victory at Thera Gate - Fleet Sigma repelled pirate raiders                              [View Full Report]     │
-│    ● Skirmish at Ymir Relay - Fleet Zeta took damage, enemy retreated                         [View Full Report]     │
+│    ● Victory at Thera Gate - Fleet Sigma repelled pirate raiders                              [View Report]          │
+│                                                                                                                      │
+│  RESEARCH                                                                                                            │
+│    ● Breakthrough: Weapons Tech WEP 2 → 3 (+10% AS/DS for all ships)                          [View Report]          │
 │                                                                                                                      │
 │  CONSTRUCTION                                                                                                        │
 │    ● Starbase completed at Bigun                                                                                     │
 │    ● Cruiser "Hawk" commissioned at Valeria Prime                                                                    │
 │                                                                                                                      │
 │  INTEL                                                                                                               │
-│    ● Scout Lambda detected enemy fleet massing at D6 (est. 8-12 ships)                        [View Full Report]     │
-│    ● System E3 surveyed: Benign planet, suitable for colonization                                                    │
+│    ● Scout Lambda detected enemy fleet massing at D6 (est. 8-12 ships)                        [View Report]          │
 │                                                                                                                      │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ ACTION REQUIRED                                                                                                      │
 │                                                                                                                      │
-│  ⚠ 2 fleets awaiting orders (Tau, Omega)                                              [Jump to Fleet Console]        │
-│  ⚠ 1 idle shipyard at Bigun                                                           [Jump to Colony]               │
-│  ⚠ Fleet Zeta has crippled ships - consider repair orders                             [Jump to Fleet Details]        │
+│  ⚠ 2 fleets awaiting orders (Tau, Omega)                                              [3] Fleet Console              │
+│  ⚠ 1 idle shipyard at Bigun                                                           [2] Planet Manager             │
+│  ⚠ Fleet Zeta has crippled ships - consider repair orders                             [3] Fleet Details              │
 │                                                                                                                      │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [1-3] Jump to action item  [N] Next unread report  [Backspace] Back to inbox               [: ] Expert Mode
+ [2,3] Jump to action  [N] Next report  [Backspace] Back to inbox                             [: ] Expert Mode
 ```
 
-#### 5.4.3 Combat Report Detail
-
-```
-╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
-╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
- Home > Reports > Combat Report: Victory at Thera Gate
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ COMBAT REPORT: Victory at Thera Gate                                                         Turn 42 - Space Combat  │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ ENGAGEMENT SUMMARY                                                                                                   │
-│                                                                                                                      │
-│  Location:    Thera Gate (C4)                                                                                        │
-│  Date:        Turn 42, Phase 3 (Combat Resolution)                                                                   │
-│  Result:      VICTORY - Enemy forces destroyed                                                                       │
-│  Prestige:    +8 (combat victory)                                                                                    │
-│                                                                                                                      │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ FORCES ENGAGED                                                                                                       │
-│                                                                                                                      │
-│  YOUR FORCES (Fleet Sigma)                     │ ENEMY FORCES (Pirate Raiders)                                       │
-│  ─────────────────────────────────────────     │ ─────────────────────────────────────────                           │
-│  Destroyer       6    Undamaged                │  Raider          4    Destroyed                                     │
-│  Cruiser         4    Undamaged                │  Corsair         2    Destroyed                                     │
-│  Battleship      2    Undamaged                │                                                                     │
-│  ─────────────────────────────────────────     │ ─────────────────────────────────────────                           │
-│  Total AS:      96                             │  Total AS:       32                                                 │
-│  Losses:        None                           │  Losses:         All destroyed                                      │
-│                                                │                                                                     │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ COMBAT LOG                                                                                                           │
-│                                                                                                                      │
-│  Round 1: Detection check - Intercept (no surprise)                                                                  │
-│           Your roll: 7 + DRM 0 = 7 (CER 1.0x) → 96 hits                                                              │
-│           Enemy roll: 3 + DRM 0 = 3 (CER 0.5x) → 16 hits                                                             │
-│           Result: 4 Raiders crippled, by our fire. 2 Destroyers take minor damage.                                   │
-│                                                                                                                      │
-│  Round 2: Enemy AS reduced to 16 (all crippled)                                                                      │
-│           Your roll: 8 (CER 1.0x) → 96 hits. Enemy destroyed.                                                        │
-│           Combat ends - Victory                                                                                      │
-│                                                                                                                      │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [J] Jump to Fleet Sigma  [N] Next report  [D] Delete  [A] Archive  [Backspace] Back        [: ] Expert Mode
-```
-
-#### 5.4.4 Scout Intel Report Detail
+### 5.8 Messages & Diplomacy (120 columns)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
-╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
- Home > Reports > Intel Report: Enemy Fleet at D6
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ INTEL REPORT: Enemy Fleet Detected                                                           Turn 42 - Scout Colony  │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ MISSION SUMMARY                                                                                                      │
-│                                                                                                                      │
-│  Mission Type:   Scout System (Command 12)                                                                           │
-│  Target:         System D6 (House Stratos territory)                                                                 │
-│  Agent:          Fleet Lambda (1 scout)                                                                              │
-│  Result:         SUCCESS - Scout undetected, intelligence gathered                                                   │
-│  Scout Status:   Consumed (per mission rules)                                                                        │
-│                                                                                                                      │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ INTELLIGENCE GATHERED (Perfect Quality)                                                                              │
-│                                                                                                                      │
-│  FLEET COMPOSITION AT D6                                                                                             │
-│  ───────────────────────────────────────────────────────────────────────────────────────────────────────────────     │
-│  Fleet Name       Ships    Composition                    Command           Status                                   │
-│  ───────────────────────────────────────────────────────────────────────────────────────────────────────────────     │
-│  Stratos Prime      8      DD×4, CR×3, BS×1               Hold              Stationary                               │
-│  Stratos Aux        4      TT×3, ETAC×1                   Hold              Loaded (marines detected)                │
-│                                                                                                                      │
-│  ASSESSMENT                                                                                                          │
-│    Total AS: ~72        Threat Level: MODERATE                                                                       │
-│    Likely Intent: Staging for invasion (troop transports loaded)                                                     │
-│    Recommended Action: Reinforce Thera Gate (C4), closest friendly system                                            │
-│                                                                                                                      │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ CONFIDENCE                                                                                                           │
-│                                                                                                                      │
-│  Data Quality:   ████████████ Perfect (undetected scout)                                                             │
-│  Data Age:       Current (Turn 42)                                                                                   │
-│  Decay:          Intel degrades 20% per turn without refresh                                                         │
-│                                                                                                                      │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [J] Jump to target system on map  [N] Next report  [D] Delete  [A] Archive  [Backspace] Back  [: ] Expert Mode
-```
-
-### 5.5 Messages & Diplomacy (120 columns)
-
-```
-╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Messages
 ┌───────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ HOUSES        │ CONVERSATION: House Stratos                                                                          │
+│ HOUSES        │ HOUSE STRATOS                                                                                        │
 ├───────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │               │                                                                                                      │
-│  Stratos  (3) │  DIPLOMATIC STATUS: Hostile                                                                          │
-│  ────────     │  Treaties: None                   NAPs: None                    Trade: None                          │
-│  Corvus   (1) │                                                                                                      │
-│  Lyra     (0) │  ────────────────────────────────────────────────────────────────────────────────────────────────    │
-│  Aquila   (0) │                                                                                                      │
-│  Draco    (0) │  [T40] FROM STRATOS:                                                                                 │
-│               │  "Your scouts have been detected in our territory. Consider this a warning.                          │
+│► Stratos  ⚔   │  DIPLOMATIC STATUS: Enemy (since Turn 38)                                                            │
+│  Corvus   ●   │  Pending Proposals: 1 received                                                                       │
+│  Lyra     ●   │                                                                                                      │
+│  Aquila   ⚠   │  ────────────────────────────────────────────────────────────────────────────────────────────────    │
+│  Draco    ☠   │  PENDING PROPOSAL (Turn 41, expires Turn 44):                                                        │
+│               │  House Stratos proposes: De-escalate Enemy → Hostile                                                 │
+│               │                                                                                                      │
+│               │  [A] Accept    [R] Reject                                                                            │
+│               │  ────────────────────────────────────────────────────────────────────────────────────────────────    │
+│               │                                                                                                      │
+│               │  MESSAGE HISTORY                                                                                     │
+│               │                                                                                                      │
+│               │  [T40] FROM STRATOS:                                                                                 │
+│               │  "Your scouts have been detected in our territory. Consider this a warning.                         │
 │               │   Further incursions will be met with force."                                                        │
 │               │                                                                                                      │
 │               │  [T40] TO STRATOS:                                                                                   │
 │               │  "We seek only to ensure the security of our borders. Perhaps we can discuss                         │
-│               │   a mutual non-aggression arrangement?"                                                              │
+│               │   a mutual arrangement?"                                                                             │
 │               │                                                                                                      │
-│               │  [T42] FROM STRATOS:                                                                                 │
-│               │  "Your 'security concerns' look suspiciously like preparation for war.                               │
-│               │   We are mobilizing. You have been warned."                                                          │
+│               │  [T41] FROM STRATOS:                                                                                 │
+│               │  "Your 'security concerns' brought war. We offer a cease-fire. Consider it."                        │
 │               │                                                                                                      │
 │               │  ────────────────────────────────────────────────────────────────────────────────────────────────    │
-│               │  [C] Compose reply    [T] Propose treaty    [W] Declare war                                          │
-│               │                                                                                                      │
+│               │  [C] Compose message    [P] Propose de-escalation    [N] Set Neutral    [W] Declare Enemy            │
 └───────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [↑/↓] Select house  [Enter] View conversation  [C] Compose  [T] Treaty  [Backspace] Back   [: ] Expert Mode
+ [↑/↓] Select house  [L] Diplomatic matrix  [C] Compose  [P] Propose  [A] Accept             [: ] Expert Mode
 ```
 
-### 5.6 Game Settings (120 columns)
+**Diplomatic Actions:**
+- `[C]` Compose message - Send text message to house
+- `[P]` Propose de-escalation - Offer to reduce hostility (Enemy→Hostile or Hostile→Neutral)
+- `[A]` Accept proposal - Accept pending de-escalation proposal
+- `[R]` Reject proposal - Reject pending proposal
+- `[H]` Declare Hostile - Escalate from Neutral to Hostile
+- `[W]` Declare Enemy - Escalate to full war (Enemy status)
+- `[N]` Set Neutral - Unilaterally de-escalate (if conditions allow)
+
+### 5.9 Settings (120 columns)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ EMPIRE: House Valerian  ▸ Turn 42         CR: 1,820  ⚙ PROD: 640  ⚖ DIP: ••◦                                         ║
+║ EMPIRE: House Valerian  ▸ Turn 42       ★ 487 (2nd)    CR: 1,820    PROD: 640    C2: 82/120 ●       ⚠ 3    ✉ 2     ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
  Home > Settings
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -759,7 +911,6 @@ Email-style 3-column layout with folder/category sidebar, report list, and previ
 │    Color Theme              [Classic EC]    Classic EC / High Contrast / Monochrome                                  │
 │    Show Coordinates         [ON ]           Display sector coordinates in fleet/colony views                         │
 │    Compact Tables           [OFF]           Reduce row spacing in list views                                         │
-│    Animation Speed          [Normal]        Off / Slow / Normal / Fast                                               │
 │                                                                                                                      │
 │  NOTIFICATION PREFERENCES                                                                                            │
 │  ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────   │
@@ -866,7 +1017,7 @@ From `src/engine/types/colony.nim`:
 | `autoLoadFighters` | OFF     | Load fighters onto docked carriers                 |
 
 **Configuration hierarchy**:
-1. Global defaults in Game Settings (apply to new colonies)
+1. Global defaults in [9] Settings (apply to new colonies)
 2. Per-colony overrides in Planet Manager > Settings tab
 
 ---
@@ -881,32 +1032,46 @@ Panels consume read-only snapshots via UFCS patterns:
 - `state.coloniesOwned(houseId)` - Iterator over house colonies
 - `state.colony(colonyId)` - Single colony access
 - `state.fleet(fleetId)` - Single fleet access
+- `generateLeaderboard(state)` - Public rankings with prestige/colonies
 
-### Event Bus
+### Public Information (No Fog-of-War)
 
-UI subscribes to `TurnEvents` channel for real-time updates:
-- Construction completion
-- Combat resolution
-- Intel changes
-- Diplomatic status changes
+Available to all players via `PlayerTurnState`:
+- `housePrestige: Table[HouseId, int32]` - All house prestige
+- `houseColonyCounts: Table[HouseId, int32]` - All house colony counts
+- `diplomaticRelations: Table[(HouseId, HouseId), DiplomaticState]` - All relations
+- `eliminatedHouses: seq[HouseId]` - Eliminated houses
 
 ### Configuration
 
-Colors, hotkeys, animation toggles from `config/ui.toml`:
-```toml
-[colors]
-hud_background = "navy"
-hud_foreground = "amber"
-alert = "red"
-selected = "cyan"
+Colors, hotkeys, animation toggles from `config/ui.kdl`:
 
-[hotkeys]
-move = "m"
-patrol = "p"
-hold = "h"
+```kdl
+colors {
+    hud_background "navy"
+    hud_foreground "amber"
+    alert "red"
+    selected "cyan"
+    prestige "yellow"
+}
 
-[animations]
-speed = "normal"  # off, slow, normal, fast
+hotkeys {
+    move "m"
+    patrol "p"
+    hold "h"
+    guard "g"
+    roe "r"
+}
+
+animations {
+    speed "normal"  // off, slow, normal, fast
+}
+
+notifications {
+    auto_open_turn_summary true
+    alert_idle_fleets true
+    alert_idle_facilities true
+}
 ```
 
 ### Testing Harness
@@ -918,21 +1083,23 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
 ## 11. Milestones
 
 1. **Widget Library** (Sprint 1-2)
-   - HUD Strip component
+   - HUD Strip component with prestige/C2 display
    - Panel with borders (double/single)
-   - Command Dock
+   - Command Dock with 9 views
    - Table with multi-select
+   - Leaderboard component
 
 2. **Strategic Overview MVP** (Sprint 3)
-   - Three-column layout
+   - Three-column layout with leaderboard
    - Recent events ticker
-   - Empire status cards
+   - Empire status cards (no morale)
    - Action queue with jump hotkeys
+   - Diplomatic matrix overlay
 
 3. **Planet Manager MVP** (Sprint 4-5)
-   - Colony list view
+   - Colony list view (GCO, NCV, Growth columns)
    - Detail view with all 5 tabs
-   - Tax slider interaction
+   - Economy tab with growth projections
    - Construction queue management
 
 4. **Fleet Console MVP** (Sprint 6-7)
@@ -941,23 +1108,40 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
    - Fleet detail panel
    - ROE picker overlay
 
-5. **Reports Inbox MVP** (Sprint 8)
+5. **Research Screen MVP** (Sprint 8)
+   - Tech level display grid
+   - ERP/SRP/TRP allocation controls
+   - Breakthrough history
+
+6. **Espionage Screen MVP** (Sprint 9)
+   - EBP/CIP budget management
+   - Operation queue
+   - Target selection
+
+7. **Economy Screen MVP** (Sprint 10)
+   - House tax rate slider with impact preview
+   - Treasury and income breakdown
+   - Colony income table
+   - Industrial investment interface
+
+8. **Reports Inbox MVP** (Sprint 11)
    - Email-style 3-column layout
    - Category filtering
    - Turn summary auto-open
    - Report detail views
 
-6. **Expert Mode** (Sprint 9)
-   - Command palette (`:` prefix)
-   - Tab completion
-   - Command history
-   - Error feedback
+9. **Messages & Diplomacy MVP** (Sprint 12)
+   - House list with status icons
+   - Conversation history
+   - De-escalation proposals
+   - Diplomatic actions
 
-7. **Polish & Nostalgia Pass** (Sprint 10)
-   - Animation system
-   - Sound effects (optional)
-   - Classic layout toggle
-   - Accessibility review
+10. **Expert Mode & Polish** (Sprint 13-14)
+    - Command palette (`:` prefix)
+    - Tab completion
+    - Command history
+    - 80-column fallback layouts
+    - Accessibility review
 
 ---
 
@@ -970,16 +1154,18 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
 | 80-col degradation        | Explicit fallback layouts tested, column stacking       |
 | Legacy expectations       | Classic Layout toggle, legacy hotkey support            |
 | Expert mode complexity    | Tab completion, inline help, error messages             |
+| 9 views too many          | Clear categorization, hotkey shortcuts, breadcrumbs     |
 
 ---
 
 ## 13. Success Metrics
 
-1. **Onboarding**: New players complete full turn (taxes + fleet orders) without manual
+1. **Onboarding**: New players complete full turn (set tax, research, fleet orders) without manual
 2. **Recognition**: EC veterans identify classic references (colors, stat slabs, hotkeys)
 3. **Responsiveness**: <100ms feedback on all input actions
 4. **Readability**: Interface legible on 80x24 terminals without horizontal scrolling
 5. **Expert efficiency**: Power users issue 5+ commands/minute via Expert Mode
+6. **Strategic awareness**: Players can assess competitive standing (leaderboard) at a glance
 
 ---
 
@@ -989,51 +1175,79 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
 
 ```
 ╔════════════════════════════════════════════════════════════════════════════╗
-║ VALERIAN ▸ T42    CR:1820  PROD:640  DIP:••◦   ⚠3 Alerts  ✉2 Reports      ║
+║ VALERIAN ▸ T42  ★487 (2nd)  CR:1820  PROD:640  C2:82/120●  ⚠3  ✉2        ║
 ╚════════════════════════════════════════════════════════════════════════════╝
  Home > Overview
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ EMPIRE STATUS                          │ ACTION QUEUE                        │
-│                                        │                                     │
-│ Colonies: 12  Fleets: 13               │ ⚠ 1 Idle shipyard        [jump 2]   │
-│ Treasury: 1,820 PP  Prod: 640/turn     │ ⚠ 2 Fleets w/o orders    [jump 3]   │
-│ Prestige: 487 (2nd)  Morale: Good      │ ✉ 1 Unread combat rpt    [jump 4]   │
-│                                        │                                     │
-│ RECENT EVENTS                          │ CHECKLIST                           │
-│ [T42] Victory at Thera Gate            │ ■ Shipyard A idle                   │
-│ [T42] Starbase completed @ Bigun       │ ■ Fleet Omega - no orders           │
-│ [T41] Scout detected enemy @ D6        │ ■ Fleet Tau - no orders             │
+│ LEADERBOARD              │ EMPIRE STATUS                                     │
+│ 1.Valerian ★487 12 YOU   │ Colonies: 12    Fleets: 13                        │
+│ 2.Stratos  ★412  9 ⚔ENM  │ Tax: 52%        Growth: +1.4 PU/turn              │
+│ 3.Corvus   ★356  8 ●NEU  │ Neutral:3 Hostile:1 Enemy:1                       │
+│ 4.Lyra     ★298  7 ●NEU  │                                                   │
+│ 5.Aquila   ★201  5 ⚠HOS  │ ACTION QUEUE                                      │
+│ 6.Draco    ELIM  0 ☠     │ ⚠ 1 Idle shipyard             [2]                 │
+│ Map: 41/64 colonized     │ ⚠ 2 Fleets w/o orders         [3]                 │
+│ [L] Diplomatic matrix    │ ✉ 1 Unread report             [7]                 │
 └──────────────────────────────────────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [1]Ovrvw [2]Planets [3]Fleets [4]Rpts [5]Msgs [6]Set [Q]Quit  [:] Expert
+ [1-9] Views  [Q]Quit  [L]Diplo Matrix                        [:] Expert Mode
 ```
 
 ### Fleet List (80 columns)
 
 ```
 ╔════════════════════════════════════════════════════════════════════════════╗
-║ VALERIAN ▸ T42                              ⚠ Omega idle  ⚠ Tau idle       ║
+║ VALERIAN ▸ T42  ★487 (2nd)  CR:1820  PROD:640  C2:82/120●  ⚠3  ✉2        ║
 ╚════════════════════════════════════════════════════════════════════════════╝
- Home > Fleets (List)
+ Home > Fleets
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ FLEET        LOC      SHIPS  AS   COMMAND      DEST     ETA  ROE  STATUS     │
+│ FLEET        LOC      SHIPS  AS   COMMAND      DEST   ETA  ROE  STATUS      │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ Alpha        B7          8   64   Guard Col    —        —     6   ●          │
-│ Beta         B7          4   24   Reserve      —        —     8   RSV        │
-│►►Sigma       C4         12   96   Patrol       D5       2t    6   ●          │
-│[X]Tau        C4          4   32   Hold         —        —     6   ⚠IDLE      │
-│[X]Omega      C4          8   64   (none)       —        —     6   ⚠IDLE      │
-│ Lambda       D2          1    4   Scout Sys    E3       4t    2   ●          │
-│ Petra        D2          5   20   Colonize     F1       3t    6   ●          │
-│ Gamma        A3          6   48   Mothball     —        —     —   MTB        │
+│ Alpha        B7          8   64   Guard Col    —      —     6   ●           │
+│ Beta         B7          4   24   Reserve      —      —     8   RSV         │
+│►►Sigma       C4         12   96   Patrol       D5     2t    6   ●           │
+│[X]Tau        C4          4   32   Hold         —      —     6   ⚠IDLE       │
+│[X]Omega      C4          8   64   (none)       —      —     6   ⚠IDLE       │
+│ Lambda       D2          1    4   Scout Sys    E3     4t    2   ●           │
+│ Petra        D2          5   20   Colonize     F1     3t    6   ●           │
+│ Gamma        A3          6   48   Mothball     —      —     —   MTB         │
 └──────────────────────────────────────────────────────────────────────────────┘
  13 fleets | 2 selected | Batch: [M]Move [J]Join [V]Rndzvs
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [↑↓]Sel [X]Toggle [Enter]Details [S]Sort [F]Filter        [:] Expert
+ [↑↓]Sel [X]Toggle [Enter]Details [S]Sort [F]Filter           [:] Expert Mode
+```
+
+### Economy View (80 columns)
+
+```
+╔════════════════════════════════════════════════════════════════════════════╗
+║ VALERIAN ▸ T42  ★487 (2nd)  CR:1820  PROD:640  C2:82/120●  ⚠3  ✉2        ║
+╚════════════════════════════════════════════════════════════════════════════╝
+ Home > Economy
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ HOUSE TAX RATE: 52%           GHO: 640 PP       NHV: 333 PP                  │
+│ 0%━━━━━━━20%━━━━━━━40%━━━━━━━60%━━━━━━━80%━━━━━100%                          │
+│ ░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▓▓▓▓▓▓▓█░░░░░░░░░░░    [←/→] Adjust              │
+│                         ▲ 50% penalty threshold                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ EFFECTS (52%):                 │ TREASURY:                                   │
+│   Prestige: -1/turn penalty    │   Balance:    1,820 PP                      │
+│   Pop Growth: ×0.95            │   Last turn:  -129 PP                       │
+│   IU Growth: ×0.48             │   Projected:  +53 PP                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ COLONY          GCO   NCV  GROWTH  STATUS                                    │
+│ Valeria Prime   104    54  +1.4    ●                                         │
+│ Bigun            80    42  +0.8    ●                                         │
+│ Thera Gate       44    23  +0.4    ●                                         │
+│ ... (9 more)    412   214                                                    │
+│ TOTAL           640   333          12 colonies                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ [←/→]Tax [Enter]Confirm [I]Invest [G]Guild                   [:] Expert Mode
 ```
 
 ---
 
 **Document Version**: 2.0
 **Last Updated**: 2026-01-15
-**Status**: Design specification ready for implementation
+**Status**: Design specification - revised with accurate game systems

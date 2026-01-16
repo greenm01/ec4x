@@ -5,37 +5,37 @@
 
 const
   # Basic escape characters
-  ESC* = '\x1b'              ## Escape character
-  BEL* = '\a'                ## Bell character
-  CSI* = "\x1b["             ## Control Sequence Introducer
-  OSC* = "\x1b]"             ## Operating System Command
-  ST* = "\x1b\\"             ## String Terminator
-  DCS* = "\x1bP"             ## Device Control String
-  APC* = "\x1b_"             ## Application Program Command
+  esc* = '\x1b'              ## Escape character
+  bel* = '\a'                ## Bell character
+  csi* = "\x1b["             ## Control Sequence Introducer
+  osc* = "\x1b]"             ## Operating System Command
+  st* = "\x1b\\"             ## String Terminator
+  dcs* = "\x1bP"             ## Device Control String
+  apc* = "\x1b_"             ## Application Program Command
 
   # Reset sequence
-  ResetSeq* = CSI & "0m"     ## Reset all attributes
+  resetSeq* = csi & "0m"     ## Reset all attributes
 
   # SGR (Select Graphic Rendition) parameters
-  SgrForeground* = "38"      ## Foreground color prefix
-  SgrBackground* = "48"      ## Background color prefix
+  sgrForeground* = "38"      ## Foreground color prefix
+  sgrBackground* = "48"      ## Background color prefix
 
   # Style sequences (SGR parameters)
-  SgrReset* = "0"
-  SgrBold* = "1"
-  SgrFaint* = "2"
-  SgrItalic* = "3"
-  SgrUnderline* = "4"
-  SgrBlink* = "5"
-  SgrReverse* = "7"
-  SgrCrossOut* = "9"
-  SgrOverline* = "53"
+  sgrReset* = "0"
+  sgrBold* = "1"
+  sgrFaint* = "2"
+  sgrItalic* = "3"
+  sgrUnderline* = "4"
+  sgrBlink* = "5"
+  sgrReverse* = "7"
+  sgrCrossOut* = "9"
+  sgrOverline* = "53"
 
   # Style reset sequences
-  SgrBoldOff* = "22"         ## Also resets faint
-  SgrItalicOff* = "23"
-  SgrUnderlineOff* = "24"
-  SgrBlinkOff* = "25"
-  SgrReverseOff* = "27"
-  SgrCrossOutOff* = "29"
-  SgrOverlineOff* = "55"
+  sgrBoldOff* = "22"         ## Also resets faint
+  sgrItalicOff* = "23"
+  sgrUnderlineOff* = "24"
+  sgrBlinkOff* = "25"
+  sgrReverseOff* = "27"
+  sgrCrossOutOff* = "29"
+  sgrOverlineOff* = "55"

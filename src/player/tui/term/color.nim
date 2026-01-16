@@ -33,13 +33,13 @@ proc sequence*(c: AnsiColor, background: bool = false): string =
 proc sequence*(c: Ansi256Color, background: bool = false): string =
   ## Generate ANSI escape sequence for 256-color.
   ## Format: 38;5;N (fg) or 48;5;N (bg)
-  let prefix = if background: SgrBackground else: SgrForeground
+  let prefix = if background: sgrBackground else: sgrForeground
   result = prefix & ";5;" & $int(c)
 
 proc sequence*(c: RgbColor, background: bool = false): string =
   ## Generate ANSI escape sequence for true color RGB.
   ## Format: 38;2;R;G;B (fg) or 48;2;R;G;B (bg)
-  let prefix = if background: SgrBackground else: SgrForeground
+  let prefix = if background: sgrBackground else: sgrForeground
   result = prefix & ";2;" & $c.r & ";" & $c.g & ";" & $c.b
 
 proc sequence*(c: Color, background: bool = false): string =

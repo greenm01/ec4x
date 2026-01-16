@@ -135,12 +135,12 @@ proc envColorProfile*(): Profile =
 # =============================================================================
 
 proc queryForegroundColor*(): Color =
-  ## Query terminal foreground color via OSC 10.
+  ## Query terminal foreground color via osc 10.
   ## TODO: Implement terminal query protocol.
   noColor()
 
 proc queryBackgroundColor*(): Color =
-  ## Query terminal background color via OSC 11.
+  ## Query terminal background color via osc 11.
   ## TODO: Implement terminal query protocol.
   noColor()
 

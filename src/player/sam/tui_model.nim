@@ -22,7 +22,7 @@ type
   # Re-export hex coordinate for convenience
   HexCoord* = tuple[q, r: int]
   
-  HexDirection* = enum
+  HexDirection* {.pure.} = enum
     ## Movement directions on hex grid
     East, NorthEast, NorthWest, West, SouthWest, SouthEast
 

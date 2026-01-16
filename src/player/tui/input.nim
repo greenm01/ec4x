@@ -13,9 +13,9 @@ type
   InputState {.pure.} = enum
     ## Parser state machine states.
     Init    # Normal input
-    Esc     # Saw ESC byte (0x1b)
-    Csi     # In CSI sequence (ESC [)
-    Ss3     # In SS3 sequence (ESC O)
+    Esc     # Saw esc byte (0x1b)
+    Csi     # In csi sequence (esc [)
+    Ss3     # In SS3 sequence (esc O)
 
   InputParser* = object
     ## State machine for parsing input byte stream into events.
@@ -24,7 +24,7 @@ type
     utf8buf: string        # Accumulated UTF-8 bytes
 
 
-# CSI key mapping: (final byte, param) -> (Key, ModMask)
+# csi key mapping: (final byte, param) -> (Key, ModMask)
 # Based on xterm conventions
 const csiKeyMap = {
   # Simple cursor keys
@@ -69,7 +69,7 @@ const csiKeyMap = {
   ('~', 34): (Key.F20, ModNone),
 }.toTable
 
-# SS3 key mapping: ESC O <char>
+# SS3 key mapping: esc O <char>
 const ss3KeyMap = {
   'A': Key.Up,
   'B': Key.Down,
@@ -99,7 +99,7 @@ proc reset(p: var InputParser) =
   p.utf8buf.setLen(0)
 
 proc parseCSI(p: var InputParser): Event =
-  ## Parse accumulated CSI sequence (ESC [ ...).
+  ## Parse accumulated csi sequence (esc [ ...).
   ## Returns a key event or error event.
   
   if p.buf.len == 0:
@@ -130,7 +130,7 @@ proc parseCSI(p: var InputParser): Event =
   return newKeyEvent(Key.Escape)
 
 proc parseSS3(p: var InputParser): Event =
-  ## Parse accumulated SS3 sequence (ESC O <char>).
+  ## Parse accumulated SS3 sequence (esc O <char>).
   
   if p.buf.len != 1:
     p.reset()
@@ -187,7 +187,7 @@ proc feedByte*(p: var InputParser, b: byte): seq[Event] =
   case p.state
   of InputState.Init:
     # Normal state - check what we got
-    if b == 0x1B:  # ESC
+    if b == 0x1B:  # esc
       p.state = InputState.Esc
       p.buf.setLen(0)
     elif b == 0x7F:  # DEL (often Backspace)
@@ -208,15 +208,15 @@ proc feedByte*(p: var InputParser, b: byte): seq[Event] =
         discard
   
   of InputState.Esc:
-    # After ESC - determine sequence type
-    if b == ord('['):  # CSI
+    # After esc - determine sequence type
+    if b == ord('['):  # csi
       p.state = InputState.Csi
       p.buf.setLen(0)
     elif b == ord('O'):  # SS3
       p.state = InputState.Ss3
       p.buf.setLen(0)
     else:
-      # Alt+key or lone ESC followed by key
+      # Alt+key or lone esc followed by key
       # For simplicity, treat as Alt+key if printable
       if b >= 0x20 and b < 0x7F:
         result.add(newKeyEvent(Key.Rune, Rune(b), ModAlt))
@@ -227,7 +227,7 @@ proc feedByte*(p: var InputParser, b: byte): seq[Event] =
       p.reset()
   
   of InputState.Csi:
-    # Accumulating CSI sequence
+    # Accumulating csi sequence
     p.buf.add(b)
     # Check if this is a final byte (0x40-0x7E)
     if b >= 0x40 and b <= 0x7E:

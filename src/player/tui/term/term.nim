@@ -6,8 +6,8 @@
 ## - Text styling (bold, italic, underline, etc.)
 ## - Screen and cursor operations
 ## - Mouse tracking
-## - Clipboard (OSC 52)
-## - Hyperlinks (OSC 8)
+## - Clipboard (osc 52)
+## - Hyperlinks (osc 8)
 ##
 ## Usage:
 ##   import term
@@ -43,12 +43,12 @@ export screen.BracketedPasteState
 
 # Re-export constants
 import constants/escape
-export escape.ESC, escape.BEL, escape.CSI, escape.OSC, escape.ST
-export escape.ResetSeq
-export escape.SgrForeground, escape.SgrBackground
-export escape.SgrReset, escape.SgrBold, escape.SgrFaint, escape.SgrItalic
-export escape.SgrUnderline, escape.SgrBlink, escape.SgrReverse
-export escape.SgrCrossOut, escape.SgrOverline
+export escape.esc, escape.bel, escape.csi, escape.osc, escape.st
+export escape.resetSeq
+export escape.sgrForeground, escape.sgrBackground
+export escape.sgrReset, escape.sgrBold, escape.sgrFaint, escape.sgrItalic
+export escape.sgrUnderline, escape.sgrBlink, escape.sgrReverse
+export escape.sgrCrossOut, escape.sgrOverline
 
 import constants/ansi
 export ansi.Black, ansi.Red, ansi.Green, ansi.Yellow

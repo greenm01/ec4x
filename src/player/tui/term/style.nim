@@ -140,17 +140,17 @@ proc strikethrough*(s: Style): Style {.inline.} = s.crossOut()
 proc attrSequence(attr: StyleAttr): string =
   ## Get SGR code for attribute.
   case attr
-  of StyleAttr.Bold: SgrBold
-  of StyleAttr.Faint: SgrFaint
-  of StyleAttr.Italic: SgrItalic
-  of StyleAttr.Underline: SgrUnderline
-  of StyleAttr.Blink: SgrBlink
-  of StyleAttr.Reverse: SgrReverse
-  of StyleAttr.CrossOut: SgrCrossOut
-  of StyleAttr.Overline: SgrOverline
+  of StyleAttr.Bold: sgrBold
+  of StyleAttr.Faint: sgrFaint
+  of StyleAttr.Italic: sgrItalic
+  of StyleAttr.Underline: sgrUnderline
+  of StyleAttr.Blink: sgrBlink
+  of StyleAttr.Reverse: sgrReverse
+  of StyleAttr.CrossOut: sgrCrossOut
+  of StyleAttr.Overline: sgrOverline
 
 proc renderSequence*(s: Style): string =
-  ## Generate the SGR sequence string (without CSI prefix or 'm' suffix).
+  ## Generate the SGR sequence string (without csi prefix or 'm' suffix).
   ## Returns empty string if no styling.
   var parts: seq[string]
 
@@ -174,14 +174,14 @@ proc render*(s: Style): string =
   let seq = renderSequence(s)
   if seq.len == 0:
     return ""
-  CSI & seq & "m"
+  csi & seq & "m"
 
 proc styled*(s: Style, text: string): string =
   ## Apply this style to arbitrary text.
   ## Returns text wrapped in ANSI sequences.
   if s.isEmpty:
     return text
-  render(s) & text & ResetSeq
+  render(s) & text & resetSeq
 
 proc `$`*(s: Style): string =
   ## Render the styled text.
