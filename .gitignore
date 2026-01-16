@@ -39,6 +39,9 @@
 !LICENSE*
 !README*
 
+# Whitelist hooks (for pre-commit)
+!hooks/pre-commit
+
 # Re-ignore build/temp directories
 nimcache/
 nimblecache/
