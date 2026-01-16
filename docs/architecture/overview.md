@@ -17,7 +17,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 │     Game Engine (src/engine/)       │
 │  • PURE game logic (no I/O)         │
 │  • Turn-based resolution            │
-│  • Order validation                 │
+│  • Command validation                 │
 │  • Combat & economy systems         │
 │  • Telemetry metrics collection     │
 └─────────────────────────────────────┘
@@ -43,7 +43,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 │              Client (src/client/)                 │
 │  • GUI player interface (bin/ec4x-client)         │
 │  • SAM architecture with Sokol+Nuklear            │
-│  • Starmap rendering, order submission            │
+│  • Starmap rendering, command submission            │
 │  • Turn report viewing                            │
 └───────────────────────────────────────────────────┘
 
@@ -57,8 +57,8 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 ┌─────────────────────────────────────┐
 │     Dev Player (src/player/)        │
 │  • TUI/CLI tool (bin/ec4x-play)     │
-│  • Menu-driven order entry          │
-│  • Order validation for LLMs        │
+│  • Menu-driven command entry          │
+│  • Command validation for LLMs        │
 └─────────────────────────────────────┘
 ```
 
@@ -78,7 +78,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 **Capabilities**:
 - Join games (localhost or Nostr)
 - View game state (filtered by intel)
-- Submit orders via KDL format
+- Submit commands via KDL format
 - View turn history and reports
 - Starmap visualization with hex grid
 
@@ -95,7 +95,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 **Role**: Autonomous turn processing service
 **Capabilities**:
 - Monitors multiple games simultaneously
-- Collects orders from both transports
+- Collects commands from both transports
 - Resolves turns on deadline or completion
 - Publishes results via appropriate transport
 
@@ -124,20 +124,20 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 
 **Two Modes**:
 - **TUI Mode**: Menu-driven terminal interface for human playtesting
-- **CLI Mode**: Order validation for Claude/LLM workflows
+- **CLI Mode**: Command validation for Claude/LLM workflows
 
 **Capabilities**:
 - View fog-of-war filtered game state
-- Enter orders via menu navigation
-- Generate KDL order files
-- Validate orders before submission
-- Submit orders to daemon
+- Enter commands via menu navigation
+- Generate KDL command files
+- Validate commands before submission
+- Submit commands to daemon
 
 **Claude/LLM Integration**:
 - LLMs read game state directly from SQLite
-- Generate KDL orders per `docs/engine/kdl-commands.md`
-- Validate with `ec4x-play validate <game-id> orders.kdl --house=N`
-- Drop validated orders to `data/games/{id}/orders/`
+- Generate KDL commands per `docs/engine/kdl-commands.md`
+- Validate with `ec4x-play validate <game-id> commands.kdl --house=N`
+- Drop validated commands to `data/games/{id}/commands/`
 
 ## Validation System
 
@@ -172,7 +172,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - Offline play
 
 **Transport**:
-- Orders: JSON files in game directory
+- Commands: JSON files in game directory
 - State: Direct SQLite access
 - Results: JSON exports per player
 
@@ -180,7 +180,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - No network required
 - Instant feedback
 - Easy inspection with sqlite3 CLI
-- Simple file-based order submission
+- Simple file-based command submission
 
 ### Nostr Mode
 **Use Cases**:
@@ -190,7 +190,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - Privacy-focused multiplayer
 
 **Transport**:
-- Orders: Encrypted Nostr events to moderator
+- Commands: Encrypted Nostr events to moderator
 - State: Encrypted per-player deltas from relay
 - Results: Public turn summaries + private deltas
 
@@ -205,11 +205,11 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 ### Turn Cycle
 
 ```
-1. Order Submission Phase
+1. Command Submission Phase
    Players → [Transport] → Daemon → SQLite
 
 2. Turn Deadline
-   Daemon checks: all orders received OR deadline passed
+   Daemon checks: all commands received OR deadline passed
 
 3. Turn Resolution
    Daemon → Load State → Game Engine → Resolve Turn
@@ -224,22 +224,22 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
    Daemon → Generate per-player deltas → [Transport] → Players
 ```
 
-### Order Collection (Both Modes)
+### Command Collection (Both Modes)
 
 **Localhost:**
 ```
-Player edits orders.kdl
+Player edits commands.kdl
   ↓
 Client writes orders_pending.json
   ↓
 Daemon polls game directory
   ↓
-Orders saved to SQLite
+Commands saved to SQLite
 ```
 
 **Nostr:**
 ```
-Player edits orders.kdl
+Player edits commands.kdl
   ↓
 Client encrypts to moderator pubkey
   ↓
@@ -302,8 +302,8 @@ See [transport.md](./transport.md) for implementation details.
 **Abstraction Layer**:
 ```
 Transport Interface:
-  - submitOrders(orders)
-  - collectOrders() → OrderPacket[]
+  - submitCommands(commands)
+  - collectCommands() → OrderPacket[]
   - publishResults(deltas)
   - getGameState() → GameState
 ```
@@ -385,7 +385,7 @@ See [daemon.md](./daemon.md) for operational details.
 
 ### Additional Transports
 - WebSocket (direct client-server)
-- Discord bot (orders via DM)
+- Discord bot (commands via DM)
 - Email (ultra-slow async)
 - Matrix protocol
 

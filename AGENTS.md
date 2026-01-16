@@ -1,12 +1,12 @@
 # EC4X Development Context for Claude
 
-**Quick start:** `@CLAUDE.md` `@docs/TODO.md` `@docs/STYLE_GUIDE.md`
+**Quick start:** `@AGENTS.md` `@docs/TODO.md` `@docs/STYLE_GUIDE.md`
 
 ---
 
 ## Plan Mode System Reminder
 
-When Claude is in **plan mode** (user has requested planning before execution), STRICTLY enforce:
+When in **plan mode** (user has requested planning before execution), STRICTLY enforce:
 
 **CRITICAL: Plan mode ACTIVE - READ-ONLY phase. STRICTLY FORBIDDEN:**
 - ANY file edits, modifications, or system changes

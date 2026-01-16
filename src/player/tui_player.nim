@@ -22,11 +22,11 @@
 ##
 ## Run: nimble buildTui && ./bin/ec4x-tui
 
-import std/[options, strformat, tables, strutils, unicode]
+import std/[options, strformat, tables, strutils, unicode, parseopt, os]
 import ../common/logger
 import ../engine/init/game_state
-import ../engine/types/[core, game_state, colony, fleet]
-import ../engine/state/[engine, fog_of_war, iterators]
+import ../engine/types/[core, game_state, colony, fleet, player_state as ps_types, diplomacy]
+import ../engine/state/[engine, fog_of_war, iterators, player_state]
 import ./tui/term/term
 import ./tui/term/types/core as termcore
 import ./tui/buffer
@@ -39,6 +39,9 @@ import ./tui/widget/[widget_pkg, frame, paragraph]
 import ./tui/widget/hexmap/hexmap_pkg
 import ./tui/adapters
 import ./tui/widget/system_list
+import ./tui/widget/overview
+import ./tui/widget/[hud, breadcrumb, command_dock]
+import ./tui/launcher
 import ./sam/sam_pkg
 import ./svg/svg_pkg
 
@@ -107,6 +110,110 @@ proc syncGameStateToModel(model: var TuiModel, state: GameState,
       shipCount: fleet.ships.len,
       owner: int(viewingHouse)
     ))
+
+proc syncPlayerStateToOverview(ps: ps_types.PlayerState, state: GameState): OverviewData =
+  ## Convert PlayerState to Overview widget data
+  result = initOverviewData()
+  
+  # === Leaderboard (from public information) ===
+  for houseId, prestige in ps.housePrestige.pairs:
+    let houseOpt = state.house(houseId)
+    if houseOpt.isNone: continue
+    let house = houseOpt.get()
+    
+    # Determine diplomatic status
+    var status = DiplomaticStatus.Neutral
+    if houseId == ps.viewingHouse:
+      status = DiplomaticStatus.Self
+    elif houseId in ps.eliminatedHouses:
+      status = DiplomaticStatus.Eliminated
+    else:
+      # Check diplomatic relations
+      let key = (ps.viewingHouse, houseId)
+      if ps.diplomaticRelations.hasKey(key):
+        let dipState = ps.diplomaticRelations[key]
+        case dipState
+        of DiplomaticState.Enemy:
+          status = DiplomaticStatus.Enemy
+        of DiplomaticState.Hostile:
+          status = DiplomaticStatus.Hostile
+        of DiplomaticState.Neutral:
+          status = DiplomaticStatus.Neutral
+    
+    result.leaderboard.addEntry(
+      name = house.name,
+      prestige = prestige.int,
+      colonies = ps.houseColonyCounts.getOrDefault(houseId, 0).int,
+      status = status,
+      isPlayer = (houseId == ps.viewingHouse)
+    )
+  
+  result.leaderboard.sortAndRank()
+  result.leaderboard.totalSystems = state.systemsCount().int
+  
+  # Calculate total colonized systems
+  var totalColonized = 0
+  for count in ps.houseColonyCounts.values:
+    totalColonized += count.int
+  result.leaderboard.colonizedSystems = totalColonized
+  
+  # === Empire Status ===
+  result.empireStatus.coloniesOwned = ps.ownColonies.len
+  
+  # Get house data for tax rate
+  let houseOpt = state.house(ps.viewingHouse)
+  if houseOpt.isSome:
+    result.empireStatus.taxRate = houseOpt.get().taxPolicy.currentRate.int
+  
+  # Fleet counts by status
+  for fleet in ps.ownFleets:
+    case fleet.status
+    of FleetStatus.Active:
+      result.empireStatus.fleetsActive.inc
+    of FleetStatus.Reserve:
+      result.empireStatus.fleetsReserve.inc
+    of FleetStatus.Mothballed:
+      result.empireStatus.fleetsMothballed.inc
+  
+  # Intel - count known vs fogged systems
+  for systemId, visSys in ps.visibleSystems.pairs:
+    case visSys.visibility
+    of VisibilityLevel.None:
+      result.empireStatus.foggedSystems.inc
+    else:
+      result.empireStatus.knownSystems.inc
+  
+  # Diplomacy counts
+  for (pair, dipState) in ps.diplomaticRelations.pairs:
+    if pair[0] != ps.viewingHouse:
+      continue
+    case dipState
+    of DiplomaticState.Neutral:
+      result.empireStatus.neutralHouses.inc
+    of DiplomaticState.Hostile:
+      result.empireStatus.hostileHouses.inc
+    of DiplomaticState.Enemy:
+      result.empireStatus.enemyHouses.inc
+  
+  # === Action Queue - detect idle fleets ===
+  var idleFleets: seq[Fleet] = @[]
+  for fleet in ps.ownFleets:
+    if fleet.command.commandType == FleetCommandType.Hold and 
+       fleet.status == FleetStatus.Active:
+      idleFleets.add(fleet)
+      result.actionQueue.addChecklistItem(
+        description = "Fleet #" & $fleet.id.int & " awaiting orders",
+        isDone = false,
+        priority = ActionPriority.Warning
+      )
+  
+  if idleFleets.len > 0:
+    result.actionQueue.addAction(
+      description = $idleFleets.len & " fleet(s) awaiting orders",
+      priority = ActionPriority.Warning,
+      jumpView = 3,
+      jumpLabel = "3"
+    )
 
 # =============================================================================
 # Input Mapping: Key Events to SAM Actions
@@ -202,11 +309,18 @@ proc renderStatusBar(area: Rect, buf: var CellBuffer, model: TuiModel) =
   
   # Current mode
   let modeStr = case model.mode
-    of ViewMode.Map: "[MAP]"
-    of ViewMode.Colonies: "[COLONIES]"
+    of ViewMode.Overview: "[OVERVIEW]"
+    of ViewMode.Planets: "[PLANETS]"
     of ViewMode.Fleets: "[FLEETS]"
-    of ViewMode.Orders: "[ORDERS]"
-    of ViewMode.Systems: "[SYSTEMS]"
+    of ViewMode.Research: "[RESEARCH]"
+    of ViewMode.Espionage: "[ESPIONAGE]"
+    of ViewMode.Economy: "[ECONOMY]"
+    of ViewMode.Reports: "[REPORTS]"
+    of ViewMode.Messages: "[MESSAGES]"
+    of ViewMode.Settings: "[SETTINGS]"
+    of ViewMode.PlanetDetail: "[PLANET]"
+    of ViewMode.FleetDetail: "[FLEET]"
+    of ViewMode.ReportDetail: "[REPORT]"
   discard buf.setString(x, y, modeStr, headerStyle())
   
   # House name (right-aligned)
@@ -222,11 +336,11 @@ proc renderMenuPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   var y = inner.y
   
   let items = [
-    (key: "C", label: "Colonies", mode: ViewMode.Colonies),
+    (key: "C", label: "Colonies", mode: ViewMode.Planets),
     (key: "F", label: "Fleets", mode: ViewMode.Fleets),
-    (key: "O", label: "Orders", mode: ViewMode.Orders),
-    (key: "M", label: "Map", mode: ViewMode.Map),
-    (key: "L", label: "Systems", mode: ViewMode.Systems),
+    (key: "O", label: "Orders", mode: ViewMode.Fleets),
+    (key: "M", label: "Map", mode: ViewMode.Overview),
+    (key: "L", label: "Systems", mode: ViewMode.Overview),
   ]
   
   # Note: Map mode will show coordinate info, not render the starmap
@@ -264,11 +378,18 @@ proc renderContextPanel(area: Rect, buf: var CellBuffer, model: TuiModel,
                         state: GameState, viewingHouse: HouseId) =
   ## Render context-sensitive detail panel
   let title = case model.mode
-    of ViewMode.Map: "System Info"
-    of ViewMode.Colonies: "Colony Details"
+    of ViewMode.Overview: "Overview Details"
+    of ViewMode.Planets: "Colony Details"
     of ViewMode.Fleets: "Fleet Details"
-    of ViewMode.Orders: "Order Details"
-    of ViewMode.Systems: "System Details"
+    of ViewMode.Research: "Research Details"
+    of ViewMode.Espionage: "Intel Details"
+    of ViewMode.Economy: "Economy Details"
+    of ViewMode.Reports: "Report Details"
+    of ViewMode.Messages: "Message Details"
+    of ViewMode.Settings: "Settings"
+    of ViewMode.PlanetDetail: "Planet Details"
+    of ViewMode.FleetDetail: "Fleet Details"
+    of ViewMode.ReportDetail: "Report Content"
   
   let frame = bordered().title(title).borderType(BorderType.Rounded)
   frame.render(area, buf)
@@ -336,40 +457,69 @@ proc renderListPanel(area: Rect, buf: var CellBuffer, model: TuiModel,
                      state: GameState, viewingHouse: HouseId) =
   ## Render the main list panel based on current mode
   let title = case model.mode
-    of ViewMode.Colonies: "Your Colonies"
+    of ViewMode.Overview: "Empire Status"
+    of ViewMode.Planets: "Your Colonies"
     of ViewMode.Fleets: "Your Fleets"
-    of ViewMode.Orders: "Pending Orders"
-    of ViewMode.Map: "Navigation"
-    of ViewMode.Systems: "Systems & Lanes"
+    of ViewMode.Research: "Research Progress"
+    of ViewMode.Espionage: "Intel Operations"
+    of ViewMode.Economy: "Treasury & Income"
+    of ViewMode.Reports: "Reports Inbox"
+    of ViewMode.Messages: "Diplomatic Messages"
+    of ViewMode.Settings: "Game Settings"
+    of ViewMode.PlanetDetail: "Planet Info"
+    of ViewMode.FleetDetail: "Fleet Info"
+    of ViewMode.ReportDetail: "Report"
   
   let frame = bordered().title(title).borderType(BorderType.Rounded)
   frame.render(area, buf)
   let inner = frame.inner(area)
   
   case model.mode
-  of ViewMode.Colonies:
+  of ViewMode.Overview:
+    # Overview placeholder - will show empire dashboard in Phase 2
+    var y = inner.y
+    discard buf.setString(inner.x, y, "STRATEGIC OVERVIEW", headerStyle())
+    y += 2
+    discard buf.setString(inner.x, y, "Turn: " & $model.turn, normalStyle())
+    y += 1
+    discard buf.setString(inner.x, y, "Colonies: " & $model.colonies.len, normalStyle())
+    y += 1
+    discard buf.setString(inner.x, y, "Fleets: " & $model.fleets.len, normalStyle())
+    y += 2
+    discard buf.setString(inner.x, y, "[1-9] Switch views  [Q] Quit", dimStyle())
+  
+  of ViewMode.Planets:
     renderColonyList(inner, buf, model)
+  
   of ViewMode.Fleets:
     renderFleetList(inner, buf, model)
-  of ViewMode.Orders:
-    discard buf.setString(inner.x, inner.y, "No pending orders", dimStyle())
-  of ViewMode.Map:
-    var y = inner.y
-    discard buf.setString(inner.x, y, "SVG EXPORT:", headerStyle())
-    y += 2
-    discard buf.setString(inner.x, y, "[X] Export map", normalStyle())
-    y += 1
-    discard buf.setString(inner.x, y, "[S] Export & open", normalStyle())
-    y += 2
-    discard buf.setString(inner.x, y, "NAVIGATION:", headerStyle())
-    y += 2
-    discard buf.setString(inner.x, y, "Tab: Next colony", normalStyle())
-    y += 1
-    discard buf.setString(inner.x, y, "H: Jump to homeworld", normalStyle())
-  of ViewMode.Systems:
-    # Render system list with connectivity
-    let sysListData = toSystemListData(state, viewingHouse, model.selectedIdx)
-    renderSystemList(inner, buf, sysListData)
+  
+  of ViewMode.Research:
+    discard buf.setString(inner.x, inner.y, "Research view (TODO)", dimStyle())
+  
+  of ViewMode.Espionage:
+    discard buf.setString(inner.x, inner.y, "Espionage view (TODO)", dimStyle())
+  
+  of ViewMode.Economy:
+    discard buf.setString(inner.x, inner.y, "Economy view (TODO)", dimStyle())
+  
+  of ViewMode.Reports:
+    discard buf.setString(inner.x, inner.y, "Reports view (TODO)", dimStyle())
+  
+  of ViewMode.Messages:
+    discard buf.setString(inner.x, inner.y, "Messages view (TODO)", dimStyle())
+  
+  of ViewMode.Settings:
+    discard buf.setString(inner.x, inner.y, "Settings view (TODO)", dimStyle())
+  
+  of ViewMode.PlanetDetail:
+    discard buf.setString(inner.x, inner.y, "Planet detail (TODO)", dimStyle())
+  
+  of ViewMode.FleetDetail:
+    discard buf.setString(inner.x, inner.y, "Fleet detail (TODO)", dimStyle())
+  
+  of ViewMode.ReportDetail:
+    discard buf.setString(inner.x, inner.y, "Report detail (TODO)", dimStyle())
 
 proc renderDashboard(buf: var CellBuffer, model: TuiModel, 
                      state: GameState, viewingHouse: HouseId) =
@@ -413,28 +563,69 @@ proc renderDashboard(buf: var CellBuffer, model: TuiModel,
 # =============================================================================
 
 proc outputBuffer(buf: CellBuffer) =
-  ## Output buffer to terminal
+  ## Output buffer to terminal with proper ANSI escape sequences
+  var lastStyle = defaultStyle()
+  
   for y in 0 ..< buf.h:
-    stdout.write(cursorPosition(y + 1, 1))
+    # Position cursor at start of line (1-based ANSI coordinates)
+    stdout.write("\e[", y + 1, ";1H")
+    
     for x in 0 ..< buf.w:
       let (str, style, _) = buf.get(x, y)
-      if not style.fg.isNone:
-        stdout.write(CSI & style.fg.sequence(false) & "m")
-      if not style.bg.isNone:
-        stdout.write(CSI & style.bg.sequence(true) & "m")
-      if StyleAttr.Bold in style.attrs:
-        stdout.write(CSI & SgrBold & "m")
-      if StyleAttr.Faint in style.attrs:
-        stdout.write(CSI & SgrFaint & "m")
+      
+      # Only emit style changes when needed (optimization)
+      if style != lastStyle:
+        # Build ANSI SGR codes
+        var codes: seq[string] = @[]
+        
+        # Reset if needed
+        if style.fg.isNone and style.bg.isNone and style.attrs.len == 0:
+          stdout.write("\e[0m")
+        else:
+          # Attributes
+          if StyleAttr.Bold in style.attrs:
+            codes.add("1")
+          if StyleAttr.Italic in style.attrs:
+            codes.add("3")
+          if StyleAttr.Underline in style.attrs:
+            codes.add("4")
+          
+          # Foreground color (24-bit RGB)
+          if style.fg.kind == termcore.ColorKind.Rgb:
+            let rgb = style.fg.rgb
+            codes.add("38;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b)
+          elif style.fg.kind == ColorKind.Ansi256:
+            codes.add("38;5;" & $int(style.fg.ansi256))
+          elif style.fg.kind == ColorKind.Ansi:
+            codes.add("38;5;" & $int(style.fg.ansi))
+          
+          # Background color (24-bit RGB)
+          if style.bg.kind == ColorKind.Rgb:
+            let rgb = style.bg.rgb
+            codes.add("48;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b)
+          elif style.bg.kind == ColorKind.Ansi256:
+            codes.add("48;5;" & $int(style.bg.ansi256))
+          elif style.bg.kind == ColorKind.Ansi:
+            codes.add("48;5;" & $int(style.bg.ansi))
+          
+          # Emit codes
+          if codes.len > 0:
+            stdout.write("\e[0m\e[", codes.join(";"), "m")
+        
+        lastStyle = style
+      
       stdout.write(str)
-      stdout.write(CSI & "0m")
+  
+  # Reset at end
+  stdout.write("\e[0m")
   stdout.flushFile()
 
 # =============================================================================
 # Main Entry Point
 # =============================================================================
 
-proc main() =
+proc runTui() =
+  ## Main TUI execution (called from main() or from new terminal window)
   logInfo("TUI Player SAM", "Starting EC4X TUI Player with SAM pattern...")
   
   # Initialize game state
@@ -449,6 +640,11 @@ proc main() =
   logInfo("TUI Player SAM", &"Game created: {gameState.housesCount()} houses, {gameState.systemsCount()} systems")
   
   let viewingHouse = HouseId(1)
+  
+  # Generate PlayerState (fog-of-war filtered view)
+  logInfo("TUI Player SAM", "Generating PlayerState for viewing house...")
+  var playerState = createPlayerState(gameState, viewingHouse)
+  logInfo("TUI Player SAM", &"PlayerState created: {playerState.ownColonies.len} colonies, {playerState.ownFleets.len} fleets")
   
   # Initialize terminal
   var tty = openTty()
@@ -474,7 +670,7 @@ proc main() =
   initialModel.termWidth = termWidth
   initialModel.termHeight = termHeight
   initialModel.viewingHouse = int(viewingHouse)
-  initialModel.mode = ViewMode.Colonies
+  initialModel.mode = ViewMode.Planets
   
   # Sync game state to model
   syncGameStateToModel(initialModel, gameState, viewingHouse)
@@ -562,5 +758,82 @@ proc main() =
   
   echo "TUI Player (SAM) exited."
 
+proc parseCommandLine(): tuple[spawnWindow: bool, showHelp: bool] =
+  ## Parse command line arguments
+  result = (spawnWindow: true, showHelp: false)
+  
+  var p = initOptParser()
+  while true:
+    p.next()
+    case p.kind
+    of cmdEnd: break
+    of cmdLongOption, cmdShortOption:
+      case p.key
+      of "no-spawn-window":
+        result.spawnWindow = false
+      of "spawn-window":
+        result.spawnWindow = if p.val == "": true else: parseBool(p.val)
+      of "help", "h":
+        result.showHelp = true
+      else:
+        echo "Unknown option: --", p.key
+        result.showHelp = true
+    of cmdArgument:
+      echo "Unexpected argument: ", p.key
+      result.showHelp = true
+
+proc showHelp() =
+  echo """
+EC4X TUI Player
+
+Usage: ec4x-tui [options]
+
+Options:
+  --spawn-window        Launch in new terminal window (default: true)
+  --no-spawn-window     Run in current terminal
+  --help, -h            Show this help message
+
+Controls:
+  [1-9]    Switch views
+  [Q]      Quit
+  [C]      Colonies view
+  [F]      Fleets view
+  [M]      Map view
+  [:]      Expert mode (vim-style commands)
+  
+See docs/tools/ec4x-play.md for full documentation.
+"""
+
 when isMainModule:
-  main()
+  let opts = parseCommandLine()
+  
+  if opts.showHelp:
+    showHelp()
+    quit(0)
+  
+  # Launcher integration: spawn new window if enabled and possible
+  if opts.spawnWindow and shouldLaunchInNewWindow():
+    let binary = getAppFilename()
+    if launchInNewWindow(binary & " --no-spawn-window"):
+      # Parent process exits, child runs TUI
+      quit(0)
+    else:
+      # Launcher failed (no emulator found)
+      echo "Warning: No terminal emulator found, running in current terminal"
+      echo ""
+  
+  # Check terminal size before proceeding
+  let (w, h) = getCurrentTerminalSize()
+  let (ok, msg) = isTerminalSizeOk(w, h)
+  if not ok:
+    echo "Error: ", msg
+    echo ""
+    echo "Minimum terminal size: 80x24 (compact)"
+    echo "Recommended size: 120x32 (full layout)"
+    quit(1)
+  elif "smaller than optimal" in msg:
+    echo "Note: ", msg
+    echo ""
+  
+  # Run TUI
+  runTui()

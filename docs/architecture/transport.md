@@ -18,13 +18,13 @@ All transport implementations must support these operations:
 
 **For Players (Client):**
 - `joinGame(gameId)` → GameInfo
-- `submitOrders(orders)` → Confirmation
-- `fetchGameState()` → FilteredGameState
+- `submitCommands(commands)` → Confirmation
+- `fetchGameState()` → PlayerState
 - `fetchTurnHistory(startTurn, endTurn)` → TurnEvents[]
 
 **For Server (Daemon):**
 - `discoverGames()` → GameConfig[]
-- `listenForOrders(gameId)` → OrderStream
+- `listenForCommands(gameId)` → CommandStream
 - `publishResults(gameId, deltas)` → PublishStatus
 - `publishTurnSummary(gameId, summary)` → PublishStatus
 
@@ -40,16 +40,15 @@ File-based transport using direct filesystem access and SQLite queries.
 /var/ec4x/games/
 └── game-123/
     ├── ec4x.db                   # SQLite database
-    ├── config.kdl               # Game configuration
-    ├── houses/
-    │   ├── house_alpha/
-    │   │   ├── orders_pending.json
-    │   │   └── turn_results/
-    │   │       ├── turn_1.json
-    │   │       ├── turn_2.json
-    │   │       └── ...
-    │   └── house_beta/
-    │       └── ...
+    ├── config.kdl                # Game configuration
+    ├── commands/                 # Pending commands
+    │   ├── turn_1_house_1.kdl
+    │   ├── turn_1_house_2.kdl
+    │   └── ...
+    ├── responses/                # Command responses
+    │   ├── turn_1_house_1.kdl
+    │   ├── turn_1_house_2.kdl
+    │   └── ...
     └── public/
         ├── turn_summaries/
         │   ├── turn_1.txt
@@ -68,11 +67,12 @@ File-based transport using direct filesystem access and SQLite queries.
 5. Return GameInfo
 ```
 
-#### Submit Orders
+#### Submit Commands
 ```
-1. Client writes orders as JSON to houses/<house>/orders_pending.json
-2. Optionally validate against schema
-3. Return confirmation (file write success)
+1. Client generates KDL command file per command-format.md spec
+2. Write to commands/turn_{N}_house_{H}.kdl
+3. Optionally validate against schema
+4. Return confirmation (file write success)
 ```
 
 #### Fetch Game State
@@ -95,23 +95,25 @@ File-based transport using direct filesystem access and SQLite queries.
 3. Return list of GameConfig
 ```
 
-#### Listen for Orders
+#### Listen for Commands
 ```
-1. Poll houses/*/orders_pending.json every N seconds
+1. Poll commands/*.kdl every N seconds
 2. When file found:
-   - Parse JSON
-   - Validate against schema
-   - Insert into orders table
-   - Delete orders_pending.json
-3. Check if all orders received or deadline passed
+   - Parse KDL
+   - Validate against schema (command-format.md)
+   - Insert into commands table
+   - Delete command file
+   - Write response to responses/turn_{N}_house_{H}.kdl
+3. Check if all commands received or deadline passed
 ```
 
 #### Publish Results
 ```
 1. For each house:
    - Query state_deltas for house_id
-   - Generate filtered GameState
-   - Write to houses/<house>/turn_results/turn_N.json
+   - Generate filtered PlayerState
+   - Serialize to JSON
+   - Save to database (player_states table)
 2. Update updated_at timestamp
 ```
 

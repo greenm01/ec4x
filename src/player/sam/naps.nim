@@ -44,21 +44,18 @@ proc turnEndNap*(model: TuiModel): Option[Proposal] =
 # ============================================================================
 
 proc listEmptyRedirectNap*(model: TuiModel): Option[Proposal] =
-  ## If viewing an empty list, redirect to map view
+  ## If viewing an empty list, redirect to overview
+  ## NOTE: Disabled for now - let users see empty views
   case model.mode
-  of ViewMode.Colonies:
+  of ViewMode.Planets:
     if model.colonies.len == 0:
-      return some(actionSwitchMode(ViewMode.Map))
+      # Don't auto-redirect - let players see "No colonies"
+      discard
   of ViewMode.Fleets:
     if model.fleets.len == 0:
-      return some(actionSwitchMode(ViewMode.Map))
-  of ViewMode.Orders:
-    # Orders can be empty - that's fine
-    discard
-  of ViewMode.Map:
-    discard
-  of ViewMode.Systems:
-    # Systems list is derived from game state, should always have entries
+      # Don't auto-redirect
+      discard
+  else:
     discard
   
   none(Proposal)

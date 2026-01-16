@@ -82,15 +82,10 @@ proc statusMessageReactor*(model: var TuiModel) =
   ## Only updates if not already set by an action
   if model.statusMessage.len == 0:
     case model.mode
-    of ViewMode.Map:
-      let cursor = model.mapState.cursor
-      let sysOpt = model.systemAt(cursor)
-      if sysOpt.isSome:
-        model.statusMessage = sysOpt.get.name
-      else:
-        model.statusMessage = &"[{cursor.q},{cursor.r}]"
+    of ViewMode.Overview:
+      model.statusMessage = "Strategic Overview"
     
-    of ViewMode.Colonies:
+    of ViewMode.Planets:
       if model.colonies.len > 0:
         model.statusMessage = &"{model.colonies.len} colonies"
       else:
@@ -102,14 +97,32 @@ proc statusMessageReactor*(model: var TuiModel) =
       else:
         model.statusMessage = "No fleets"
     
-    of ViewMode.Orders:
-      if model.orders.len > 0:
-        model.statusMessage = &"{model.orders.len} pending orders"
-      else:
-        model.statusMessage = "No orders"
+    of ViewMode.Research:
+      model.statusMessage = "Research & Technology"
     
-    of ViewMode.Systems:
-      model.statusMessage = &"{model.systems.len} systems"
+    of ViewMode.Espionage:
+      model.statusMessage = "Espionage Operations"
+    
+    of ViewMode.Economy:
+      model.statusMessage = "Empire Economy"
+    
+    of ViewMode.Reports:
+      model.statusMessage = "Reports Inbox"
+    
+    of ViewMode.Messages:
+      model.statusMessage = "Diplomatic Messages"
+    
+    of ViewMode.Settings:
+      model.statusMessage = "Game Settings"
+    
+    of ViewMode.PlanetDetail:
+      model.statusMessage = "Planet Details"
+    
+    of ViewMode.FleetDetail:
+      model.statusMessage = "Fleet Details"
+    
+    of ViewMode.ReportDetail:
+      model.statusMessage = "Report Details"
 
 # ============================================================================
 # Clear Transient State Reactor

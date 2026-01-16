@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document traces the complete data flow through an EC4X turn cycle, from order submission to result delivery, showing how data moves between components in both transport modes.
+This document traces the complete data flow through an EC4X turn cycle, from command submission to result delivery, showing how data moves between components in both transport modes.
 
 ## Turn Cycle Overview
 
@@ -11,7 +11,7 @@ This document traces the complete data flow through an EC4X turn cycle, from ord
 │                   EC4X Turn Cycle                           │
 │                                                             │
 │  ┌────────────┐     ┌──────────┐     ┌──────────────┐     │
-│  │   Order    │────▶│  Turn    │────▶│   Result     │     │
+│  │  Command   │────▶│  Turn    │────▶│   Result     │     │
 │  │ Submission │     │Resolution│     │ Distribution │     │
 │  │  (Players) │     │ (Daemon) │     │  (Daemon)    │     │
 │  └────────────┘     └──────────┘     └──────────────┘     │
@@ -25,11 +25,11 @@ This document traces the complete data flow through an EC4X turn cycle, from ord
 
 **Timing:**
 - Turn length: 24-72 hours (configurable)
-- Order deadline: Before turn resolution
+- Command deadline: Before turn resolution
 - Resolution: Atomic (seconds to minutes)
 - Distribution: Immediate after resolution
 
-## Phase 1: Order Submission
+## Phase 1: Command Submission
 
 ### Player Perspective
 
@@ -44,18 +44,18 @@ Internally:
 - Localhost: Reads ec4x.db, shows filtered view based on intel
 - Nostr: Queries local cache from received EventKindStateDelta
 
-**2. Player Plans Orders**
+**2. Player Plans Commands**
 
 - Review available fleets
 - Check movement options (pathfinding)
 - Plan attacks, colonization, spy operations
 - Consider diplomacy
 
-**3. Player Writes Orders**
+**3. Player Writes Commands**
 
-orders.kdl:
+commands.kdl:
 ```kdl
-orders turn=42 house=(HouseId)1 {
+commands turn=42 house=(HouseId)1 {
   fleet (FleetId)1 {
     move to=(SystemId)5 roe=7
   }
@@ -65,30 +65,30 @@ orders turn=42 house=(HouseId)1 {
 }
 ```
 
-**4. Player Submits Orders**
+**4. Player Submits Commands**
 
-Players submit orders through the GUI client or by placing KDL files directly.
+Players submit commands through the TUI client or by placing KDL files directly.
 
 Localhost:
 ```bash
-# GUI client writes to orders directory, or player drops file directly:
-cp orders.kdl data/games/{game_id}/orders/
+# TUI client writes to commands directory, or player drops file directly:
+cp turn_42_house_1.kdl data/games/{game_id}/commands/
 ```
 
 Nostr:
 ```bash
-client submit game-123 orders.kdl
-# Client encrypts to moderator, publishes EventKindOrderPacket to relay
+client submit game-123 turn_42_house_1.kdl
+# Client encrypts to moderator, publishes EventKindCommandPacket to relay
 ```
 
 **5. Zero-Turn Command Flow**
 
-Zero-turn commands are administrative operations that execute during order submission (CMD5), not during turn resolution. They allow players to reorganize fleets and manage cargo before committing operational orders.
+Zero-turn commands are administrative operations that execute during command submission, not during turn resolution. They allow players to reorganize fleets and manage cargo before committing operational commands.
 
 ### Execution Timeline
 
 ```
-Order Submission Flow:
+Command Submission Flow:
   ↓
 Parse CommandPacket
   ↓
@@ -99,7 +99,7 @@ Execute zero-turn commands sequentially
   - Modify GameState immediately
   - Return ZeroTurnResult per command
   ↓
-Queue operational orders for turn resolution
+Queue operational commands for turn resolution
 ```
 
 ### Client/Server Interaction
@@ -116,7 +116,7 @@ Queue operational orders for turn resolution
 2. Extract zero-turn commands
 3. Execute via `submitZeroTurnCommand(state, cmd, events)`
 4. Emit `GameEvent`s for telemetry
-5. Queue remaining operational orders
+5. Queue remaining operational commands
 6. Save updated `PlayerState` to SQLite for player retrieval
 
 ### PlayerState Persistence
@@ -126,7 +126,7 @@ After zero-turn command execution, the server generates `PlayerState` for each h
 - Fog-of-war filtered intel for visible enemy assets
 - Saved to SQLite `player_states` table
 
-**Claude Testing:** Claude reads `PlayerState` directly from SQLite to analyze game state and submit orders via KDL.
+**Claude Testing:** Claude reads `PlayerState` directly from SQLite to analyze game state and submit commands via KDL.
 
 ### Zero-turn command types (9):
 
@@ -147,12 +147,12 @@ After zero-turn command execution, the server generates `PlayerState` for each h
 **Status Changes (requires colony):**
 - Reactivate - Return Reserve/Mothballed fleet to Active
 
-**Key characteristic:** Execute during order submission, not during turn resolution. State changes take effect immediately—operational orders submitted in same batch see the updated state.
+**Key characteristic:** Execute during command submission, not during turn resolution. State changes take effect immediately—operational commands submitted in same batch see the updated state.
 
 **Example:** Player submits:
 1. LoadCargo (marines onto fleet) — executes immediately
 2. MergeFleets (combine two fleets) — executes immediately
-3. Order 07: Invade Planet — queued for turn resolution
+3. Invade command — queued for turn resolution
 
 When turn resolves, invasion fleet already has marines loaded and merged composition.
 
@@ -161,55 +161,43 @@ When turn resolves, invasion fleet already has marines loaded and merged composi
 ### Data Flow (Localhost)
 
 ```
-Player's orders.kdl
+Player's commands.kdl
   ↓
 Client validates format
   ↓
-Client writes JSON to:
-  /var/ec4x/games/my_game/houses/house_alpha/orders_pending.json
+Client writes KDL to:
+  /var/ec4x/games/my_game/commands/turn_42_house_1.kdl
 
-Format:
-{
-  "game_id": "my_game",
-  "house_id": "house-alpha",
-  "turn": 42,
-  "orders": [
-    {
-      "fleet_id": "fleet-1",
-      "order_type": "Move",
-      "target_system_id": "system-5",
-      "params": {}
-    }
-  ],
-  "submitted_at": 1705416000
+Format (per command-format.md):
+commands turn=42 house=(HouseId)1 {
+  fleet (FleetId)1 {
+    move to=(SystemId)5 roe=7
+  }
+  fleet (FleetId)2 {
+    bombard system=(SystemId)10
+  }
 }
 ```
 
 ### Data Flow (Nostr)
 
 ```
-Player's orders.kdl
+Player's commands.kdl
   ↓
 Client validates format
   ↓
-Client serializes to JSON:
-{
-  "game_id": "game-123",
-  "house_id": "house-alpha",
-  "turn": 42,
-  "orders": [...]
-}
+Client serializes KDL to string
   ↓
-Client encrypts JSON with NIP-44:
+Client encrypts KDL with NIP-44:
   recipient = moderator_pubkey
-  encrypted_content = nip44_encrypt(json, moderator_pubkey, player_privkey)
+  encrypted_content = nip44_encrypt(kdl_string, moderator_pubkey, player_privkey)
   ↓
 Client creates Nostr event:
 {
-  "kind": 30001,  // EventKindOrderPacket
+  "kind": 30001,  // EventKindCommandPacket
   "pubkey": "player_pubkey",
   "created_at": 1705416000,
-  "content": "encrypted_json_here",
+  "content": "encrypted_kdl_here",
   "tags": [
     ["g", "game-123"],
     ["h", "house-alpha"],
@@ -225,7 +213,7 @@ Client publishes to relay WebSocket:
 Relay broadcasts to subscribers
 ```
 
-## Phase 2: Order Collection (Daemon)
+## Phase 2: Command Collection (Daemon)
 
 ### Daemon Monitoring Loop
 
@@ -235,23 +223,23 @@ Relay broadcasts to subscribers
 For each active game:
   Check transport mode
   If localhost:
-    Scan for orders_pending.json files
+    Scan for commands/*.kdl files
   If nostr:
     Process received Nostr events from subscription
 
-  Insert valid orders into SQLite
+  Insert valid commands into SQLite
   Check if turn is ready for resolution
 ```
 
-### Localhost Order Collection
+### Localhost Command Collection
 
 ```
 Daemon polls:
-  /var/ec4x/games/my_game/houses/*/orders_pending.json
+  /var/ec4x/games/my_game/houses/*/turn_{N}_house_{H}.kdl
 
 If file exists:
   1. Read and parse JSON
-  2. Validate order packet structure
+  2. Validate command packet structure
   3. Validate orders against game rules:
      - Fleet exists and owned by house
      - Target systems valid
@@ -259,11 +247,11 @@ If file exists:
   4. Insert into SQLite:
      INSERT INTO orders (game_id, house_id, turn, fleet_id, order_type, ...)
      VALUES (...);
-  5. Delete orders_pending.json (consumed)
+  5. Delete turn_{N}_house_{H}.kdl (consumed)
   6. Log: "Orders received from House Alpha for turn 42"
 ```
 
-### Nostr Order Collection
+### Nostr Command Collection
 
 ```
 Daemon maintains WebSocket subscription:
@@ -279,7 +267,7 @@ On EVENT received:
   2. Check if already processed (check nostr_events cache)
   3. Decrypt content:
      decrypted_json = nip44_decrypt(event.content, moderator_privkey, player_pubkey)
-  4. Parse and validate order packet
+  4. Parse and validate command packet
   5. Validate orders against game rules
   6. Insert into SQLite orders table
   7. Cache event in nostr_events table:
@@ -732,7 +720,7 @@ Hour 48: Turn 43 resolves
 - Localhost: Instant (file write)
 - Nostr: 1-30 seconds (per player, encryption + publish)
 
-**Order Collection Latency:**
+**Command Collection Latency:**
 - Localhost: Up to poll_interval (e.g., 30 seconds)
 - Nostr: 1-10 seconds (relay propagation)
 

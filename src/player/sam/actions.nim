@@ -20,6 +20,8 @@ export types, tui_model
 const
   ActionQuit* = "quit"
   ActionNavigateMode* = "navigateMode"
+  ActionSwitchView* = "switchView"       ## Switch to primary view [1-9]
+  ActionBreadcrumbBack* = "breadcrumbBack"  ## Navigate up breadcrumb
   ActionMoveCursor* = "moveCursor"
   ActionSelect* = "select"
   ActionDeselect* = "deselect"
@@ -32,6 +34,11 @@ const
   ActionResize* = "resize"
   ActionExportMap* = "exportMap"
   ActionOpenMap* = "openMap"
+  ActionEnterExpertMode* = "enterExpertMode"
+  ActionExitExpertMode* = "exitExpertMode"
+  ActionToggleFleetSelect* = "toggleFleetSelect"
+  ActionSwitchPlanetTab* = "switchPlanetTab"
+  ActionSwitchFleetView* = "switchFleetView"
 
 # ============================================================================
 # Navigation Actions
@@ -42,13 +49,34 @@ proc actionQuit*(): Proposal =
   quitProposal()
 
 proc actionSwitchMode*(mode: ViewMode): Proposal =
-  ## Switch to a different view mode
+  ## Switch to a different view mode (legacy)
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
     actionName: ActionNavigateMode,
     navMode: ord(mode),
     navCursor: (0, 0)  # Not used for mode switch
+  )
+
+proc actionSwitchView*(viewNum: int): Proposal =
+  ## Switch to primary view by number [1-9]
+  ## This resets breadcrumbs to the primary view level
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionName: ActionSwitchView,
+    navMode: viewNum,
+    navCursor: (0, 0)
+  )
+
+proc actionBreadcrumbBack*(): Proposal =
+  ## Navigate up the breadcrumb trail (Backspace)
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionName: ActionBreadcrumbBack,
+    navMode: 0,
+    navCursor: (0, 0)
   )
 
 proc actionMoveCursor*(dir: HexDirection): Proposal =
@@ -189,6 +217,56 @@ proc actionOpenMap*(): Proposal =
   gameActionProposal(ActionOpenMap, "")
 
 # ============================================================================
+# Expert Mode Actions
+# ============================================================================
+
+proc actionEnterExpertMode*(): Proposal =
+  ## Enter expert mode (: prompt)
+  gameActionProposal(ActionEnterExpertMode, "")
+
+proc actionExitExpertMode*(): Proposal =
+  ## Exit expert mode
+  gameActionProposal(ActionExitExpertMode, "")
+
+# ============================================================================
+# Fleet Multi-Select Actions
+# ============================================================================
+
+proc actionToggleFleetSelect*(fleetId: int): Proposal =
+  ## Toggle fleet selection for batch operations
+  Proposal(
+    kind: ProposalKind.pkSelection,
+    timestamp: getTime().toUnix(),
+    actionName: ActionToggleFleetSelect,
+    selectIdx: fleetId,
+    selectCoord: none(tuple[q, r: int])
+  )
+
+# ============================================================================
+# Sub-View Navigation Actions
+# ============================================================================
+
+proc actionSwitchPlanetTab*(tab: int): Proposal =
+  ## Switch planet detail tab (1-5)
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionName: ActionSwitchPlanetTab,
+    navMode: tab,
+    navCursor: (0, 0)
+  )
+
+proc actionSwitchFleetView*(): Proposal =
+  ## Toggle between fleet System View and List View
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionName: ActionSwitchFleetView,
+    navMode: 0,
+    navCursor: (0, 0)
+  )
+
+# ============================================================================
 # System Actions
 # ============================================================================
 
@@ -209,57 +287,170 @@ type
   KeyCode* {.pure.} = enum
     ## Simplified key codes for mapping
     KeyNone
+    # Number keys for view switching
+    Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9
+    # Letter keys
     KeyQ, KeyC, KeyF, KeyO, KeyM, KeyE, KeyH, KeyX, KeyS, KeyL
+    KeyB, KeyG, KeyR, KeyJ, KeyD, KeyP, KeyV, KeyN, KeyW, KeyI, KeyT, KeyA
+    # Navigation
     KeyUp, KeyDown, KeyLeft, KeyRight
     KeyEnter, KeyEscape, KeyTab, KeyShiftTab
-    KeyHome
+    KeyHome, KeyBackspace
+    # Special
+    KeyColon  # Expert mode trigger
 
 proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   ## Map a key code to an action based on current model state
   ## Returns None if no action should be taken
   
+  # Expert mode has its own input handling
+  if model.expertModeActive:
+    case key
+    of KeyCode.KeyEscape:
+      return some(actionExitExpertMode())
+    of KeyCode.KeyEnter:
+      # Would submit expert command - handled elsewhere
+      return some(actionExitExpertMode())
+    else:
+      # Other keys add to input buffer - handled by acceptor
+      return none(Proposal)
+  
   # Global keys (work in any mode)
   case key
-  of KeyCode.KeyQ:
-    return some(actionQuit())
-  of KeyCode.KeyC:
-    return some(actionSwitchMode(ViewMode.Colonies))
-  of KeyCode.KeyF:
-    return some(actionSwitchMode(ViewMode.Fleets))
-  of KeyCode.KeyO:
-    return some(actionSwitchMode(ViewMode.Orders))
-  of KeyCode.KeyM:
-    return some(actionSwitchMode(ViewMode.Map))
-  of KeyCode.KeyL:
-    return some(actionSwitchMode(ViewMode.Systems))
-  of KeyCode.KeyE:
-    return some(actionEndTurn())
+  # Number keys [1-9] switch primary views
+  of KeyCode.Key1: return some(actionSwitchView(1))
+  of KeyCode.Key2: return some(actionSwitchView(2))
+  of KeyCode.Key3: return some(actionSwitchView(3))
+  of KeyCode.Key4: return some(actionSwitchView(4))
+  of KeyCode.Key5: return some(actionSwitchView(5))
+  of KeyCode.Key6: return some(actionSwitchView(6))
+  of KeyCode.Key7: return some(actionSwitchView(7))
+  of KeyCode.Key8: return some(actionSwitchView(8))
+  of KeyCode.Key9: return some(actionSwitchView(9))
+  # Quit
+  of KeyCode.KeyQ: return some(actionQuit())
+  # Backspace goes up breadcrumb
+  of KeyCode.KeyBackspace: return some(actionBreadcrumbBack())
+  # Colon enters expert mode
+  of KeyCode.KeyColon: return some(actionEnterExpertMode())
   else:
     discard
   
   # Mode-specific keys
   case model.mode
-  of ViewMode.Map:
+  of ViewMode.Overview:
     case key
-    of KeyCode.KeyUp:    return some(actionMoveCursor(HexDirection.NorthWest))
-    of KeyCode.KeyDown:  return some(actionMoveCursor(HexDirection.SouthEast))
-    of KeyCode.KeyLeft:  return some(actionMoveCursor(HexDirection.West))
-    of KeyCode.KeyRight: return some(actionMoveCursor(HexDirection.East))
-    of KeyCode.KeyEnter: return some(actionSelect())
-    of KeyCode.KeyEscape: return some(actionDeselect())
-    of KeyCode.KeyTab:   return some(actionCycleColony(false))
-    of KeyCode.KeyShiftTab: return some(actionCycleColony(true))
-    of KeyCode.KeyH, KeyCode.KeyHome: return some(actionJumpHome())
-    of KeyCode.KeyX:     return some(actionExportMap())
-    of KeyCode.KeyS:     return some(actionOpenMap())
+    of KeyCode.KeyL:     return some(actionSwitchMode(ViewMode.Overview))  # TODO: Diplomatic matrix overlay
+    of KeyCode.KeyUp:    return some(actionListUp())
+    of KeyCode.KeyDown:  return some(actionListDown())
+    of KeyCode.KeyEnter: return some(actionSelect())  # Jump to action item
     else: discard
   
-  of ViewMode.Colonies, ViewMode.Fleets, ViewMode.Orders, ViewMode.Systems:
+  of ViewMode.Planets:
     case key
     of KeyCode.KeyUp:    return some(actionListUp())
     of KeyCode.KeyDown:  return some(actionListDown())
-    of KeyCode.KeyEnter: return some(actionSelect())
-    of KeyCode.KeyEscape: return some(actionDeselect())
+    of KeyCode.KeyEnter: return some(actionSelect())  # View colony
+    of KeyCode.KeyB:     return some(actionSelect())  # Build (same as Enter for now)
+    of KeyCode.KeyS:     return some(actionSelect())  # Sort - TODO
+    of KeyCode.KeyF:     return some(actionSelect())  # Filter - TODO
+    else: discard
+  
+  of ViewMode.Fleets:
+    case key
+    of KeyCode.KeyUp:    return some(actionListUp())
+    of KeyCode.KeyDown:  return some(actionListDown())
+    of KeyCode.KeyEnter: return some(actionSelect())  # Fleet details
+    of KeyCode.KeyX:     return some(actionToggleFleetSelect(model.selectedIdx))
+    of KeyCode.KeyL:     return some(actionSwitchFleetView())  # Toggle List/System view
+    of KeyCode.KeyM:     return some(actionSelect())  # Move
+    of KeyCode.KeyP:     return some(actionSelect())  # Patrol
+    of KeyCode.KeyH:     return some(actionSelect())  # Hold
+    of KeyCode.KeyR:     return some(actionSelect())  # ROE
+    else: discard
+  
+  of ViewMode.Research:
+    case key
+    of KeyCode.KeyE:     return some(actionSelect())  # Adjust ERP
+    of KeyCode.KeyS:     return some(actionSelect())  # Adjust SRP
+    of KeyCode.KeyT:     return some(actionSelect())  # Adjust TRP
+    of KeyCode.KeyEnter: return some(actionSelect())  # Confirm allocation
+    else: discard
+  
+  of ViewMode.Espionage:
+    case key
+    of KeyCode.KeyUp:    return some(actionListUp())
+    of KeyCode.KeyDown:  return some(actionListDown())
+    of KeyCode.KeyEnter: return some(actionSelect())  # Queue operation
+    of KeyCode.KeyT:     return some(actionSelect())  # Select target
+    of KeyCode.KeyB:     return some(actionSelect())  # Buy EBP
+    of KeyCode.KeyC:     return some(actionSelect())  # Buy CIP
+    else: discard
+  
+  of ViewMode.Economy:
+    case key
+    of KeyCode.KeyLeft:  return some(actionSelect())  # Decrease tax
+    of KeyCode.KeyRight: return some(actionSelect())  # Increase tax
+    of KeyCode.KeyEnter: return some(actionSelect())  # Confirm
+    of KeyCode.KeyI:     return some(actionSelect())  # Industrial investment
+    of KeyCode.KeyG:     return some(actionSelect())  # Guild transfer
+    else: discard
+  
+  of ViewMode.Reports:
+    case key
+    of KeyCode.KeyUp:    return some(actionListUp())
+    of KeyCode.KeyDown:  return some(actionListDown())
+    of KeyCode.KeyEnter: return some(actionSelect())  # View report
+    of KeyCode.KeyD:     return some(actionSelect())  # Delete
+    of KeyCode.KeyA:     return some(actionSelect())  # Archive
+    of KeyCode.KeyM:     return some(actionSelect())  # Mark read/unread
+    else: discard
+  
+  of ViewMode.Messages:
+    case key
+    of KeyCode.KeyUp:    return some(actionListUp())
+    of KeyCode.KeyDown:  return some(actionListDown())
+    of KeyCode.KeyL:     return some(actionSelect())  # Diplomatic matrix
+    of KeyCode.KeyC:     return some(actionSelect())  # Compose
+    of KeyCode.KeyP:     return some(actionSelect())  # Propose
+    of KeyCode.KeyA:     return some(actionSelect())  # Accept
+    of KeyCode.KeyR:     return some(actionSelect())  # Reject
+    else: discard
+  
+  of ViewMode.Settings:
+    case key
+    of KeyCode.KeyUp:    return some(actionListUp())
+    of KeyCode.KeyDown:  return some(actionListDown())
+    of KeyCode.KeyEnter: return some(actionSelect())  # Change value
+    of KeyCode.KeyR:     return some(actionSelect())  # Reset to defaults
+    else: discard
+  
+  of ViewMode.PlanetDetail:
+    case key
+    of KeyCode.KeyTab:   return some(actionSelect())  # Next section
+    of KeyCode.Key1:     return some(actionSwitchPlanetTab(1))  # Summary
+    of KeyCode.Key2:     return some(actionSwitchPlanetTab(2))  # Economy
+    of KeyCode.Key3:     return some(actionSwitchPlanetTab(3))  # Construction
+    of KeyCode.Key4:     return some(actionSwitchPlanetTab(4))  # Defense
+    of KeyCode.Key5:     return some(actionSwitchPlanetTab(5))  # Settings
+    of KeyCode.KeyB:     return some(actionSelect())  # Build
+    of KeyCode.KeyG:     return some(actionSelect())  # Garrison
+    else: discard
+  
+  of ViewMode.FleetDetail:
+    case key
+    of KeyCode.KeyM:     return some(actionSelect())  # Move
+    of KeyCode.KeyP:     return some(actionSelect())  # Patrol
+    of KeyCode.KeyH:     return some(actionSelect())  # Hold
+    of KeyCode.KeyG:     return some(actionSelect())  # Guard
+    of KeyCode.KeyR:     return some(actionSelect())  # ROE
+    of KeyCode.KeyJ:     return some(actionSelect())  # Join
+    of KeyCode.KeyD:     return some(actionSelect())  # Detach ships
+    else: discard
+  
+  of ViewMode.ReportDetail:
+    case key
+    of KeyCode.KeyN:     return some(actionSelect())  # Next report
     else: discard
   
   none(Proposal)

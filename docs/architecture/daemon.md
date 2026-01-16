@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **daemon** is the autonomous turn processing service that powers EC4X. It monitors active games, collects player orders, resolves turns, and publishes results—all without human intervention.
+The **daemon** is the autonomous turn processing service that powers EC4X. It monitors active games, collects player commands, resolves turns, and publishes results—all without human intervention.
 
 **Key Design**: Single process manages all games across both transport modes.
 
@@ -31,7 +31,7 @@ The **daemon** is the autonomous turn processing service that powers EC4X. It mo
 │  └────────────────────────────────────────┘  │
 │  ┌────────────────────────────────────────┐  │
 │  │       Turn Resolution Engine           │  │
-│  │  • Validate orders                     │  │
+│  │  • Validate commands                     │  │
 │  │  • Resolve 4-phase turn cycle          │  │
 │  │  • Update game state                   │  │
 │  │  • Generate deltas                     │  │
@@ -90,7 +90,7 @@ daemon {
 }
 ```
 
-### 2. Order Collection
+### 2. Command Collection
 
 **Localhost Mode:**
 ```
@@ -100,9 +100,9 @@ Loop every poll_interval:
       Check houses/<house>/orders_pending.json
       If exists:
         Parse and validate JSON
-        Insert into orders table
+        Insert into commands table
         Delete orders_pending.json
-        Log order receipt
+        Log command receipt
 ```
 
 **Nostr Mode:**
@@ -113,11 +113,11 @@ Maintain WebSocket subscription:
 On EVENT received:
   Verify signature
   Decrypt with moderator's private key
-  Parse order packet
+  Parse command packet
   Validate against game rules
-  Insert into orders table
+  Insert into commands table
   Cache in nostr_events table
-  Log order receipt
+  Log command receipt
 ```
 
 **Multi-Game Efficiency:**
@@ -128,25 +128,25 @@ On EVENT received:
 
 **Conditions for Turn Resolution:**
 
-**Condition A: All Orders Received**
+**Condition A: All Commands Received**
 ```sql
 SELECT
   (SELECT COUNT(*) FROM houses WHERE game_id = ?id AND eliminated = 0) as expected,
-  (SELECT COUNT(DISTINCT house_id) FROM orders WHERE game_id = ?id AND turn = ?turn) as received;
--- If expected == received, all orders in
+  (SELECT COUNT(DISTINCT house_id) FROM commands WHERE game_id = ?id AND turn = ?turn) as received;
+-- If expected == received, all commands in
 ```
 
 **Condition B: Deadline Passed**
 ```sql
 SELECT turn_deadline FROM games WHERE id = ?id;
--- If turn_deadline < current_time, resolve with available orders
+-- If turn_deadline < current_time, resolve with available commands
 ```
 
 **Policy Options:**
-- Strict: Wait for all orders (no deadline)
+- Strict: Wait for all commands (no deadline)
 - Deadline: Auto-resolve on deadline
-- Hybrid: Wait up to deadline, then resolve with available orders
-- Grace period: X minutes after last order received
+- Hybrid: Wait up to deadline, then resolve with available commands
+- Grace period: X minutes after last command received
 
 ### 4. Turn Resolution
 
@@ -163,13 +163,13 @@ BEGIN TRANSACTION;
    - Current diplomatic relations
    - Active construction/research
 
-3. Load orders for current turn
-   - All submitted orders
-   - Default "Hold" orders for missing submissions
+3. Load commands for current turn
+   - All submitted commands
+   - Default "Hold" commands for missing submissions
 
 4. Run game engine resolution (4 phases)
    a. Income Phase: Calculate production, prestige
-   b. Command Phase: Execute orders (movement, colonization)
+   b. Command Phase: Execute commands (movement, colonization)
    c. Conflict Phase: Resolve combat
    d. Maintenance Phase: Construction, research, upkeep
 
@@ -198,8 +198,8 @@ BEGIN TRANSACTION;
    - Calculate next deadline (e.g., +48 hours)
    - Update games table
 
-10. Mark orders as processed
-    UPDATE orders SET processed = 1 WHERE game_id = ?id AND turn = ?turn;
+10. Mark commands as processed
+    UPDATE commands SET processed = 1 WHERE game_id = ?id AND turn = ?turn;
 
 11. Commit game state
     UPDATE games SET phase = 'Active', turn = turn + 1, updated_at = ?now WHERE id = ?id;
@@ -282,7 +282,7 @@ daemon start --config-kdl=/etc/ec4x/daemon.kdl
 ```
 Loop forever (every poll_interval seconds):
   1. Check for new/changed games (hot reload)
-  2. Collect orders from all transports
+  2. Collect commands from all transports
   3. Check turn readiness for each game
   4. Resolve turns for ready games
   5. Distribute results via transports
@@ -389,7 +389,7 @@ type
     games: Table[GameId, GameInfo]        # All managed games
     resolving: HashSet[GameId]            # Currently resolving games
     transports: Table[GameId, Transport]  # Transport handlers
-    pendingOrders: Table[GameId, seq[Order]]
+    pendingCommands: Table[GameId, seq[Command]]
     deadlines: Table[GameId, Deadline]
     nostrConnections: Table[RelayUrl, WebSocket]
 ```
@@ -402,8 +402,8 @@ type
     Tick(timestamp: Time)
     DeadlineReached(gameId: GameId)
 
-    # Order events
-    OrderReceived(gameId: GameId, houseId: HouseId, order: Order)
+    # Command events
+    OrderReceived(gameId: GameId, houseId: HouseId, command: Command)
 
     # Turn resolution events
     TurnResolving(gameId: GameId)
@@ -431,7 +431,7 @@ proc update(msg: DaemonMsg, model: DaemonModel): (DaemonModel, seq[Cmd]) =
 
   of OrderReceived:
     var newModel = model
-    newModel.pendingOrders[msg.gameId].add(msg.order)
+    newModel.pendingCommands[msg.gameId].add(msg.command)
 
     # Check if ready to resolve
     if isReadyForResolution(newModel, msg.gameId):
@@ -469,10 +469,10 @@ type
 proc resolveTurnAsync(gameId: GameId): Future[TurnResult] {.async.} =
   let db = await openDbAsync(gameId)
   let state = await db.loadGameState()
-  let orders = await db.loadOrders()
+  let commands = await db.loadCommands()
 
   # Pure game engine (fast)
-  let result = engine.resolveTurn(state, orders)
+  let result = engine.resolveTurn(state, commands)
 
   # Save results
   await db.saveGameState(result.newState)
@@ -576,12 +576,12 @@ proc listenNostr(msgQueue: AsyncQueue[DaemonMsg]) {.async.} =
     let packet = await ws.receiveStrPacket()  # Non-blocking
     let event = parseNostrEvent(packet)
 
-    if event.kind == 30001:  # Order packet
-      let order = decryptOrder(event)
+    if event.kind == 30001:  # Command packet
+      let command = decryptCommand(event)
       await msgQueue.send(Msg(
         kind: OrderReceived,
         gameId: extractGameId(event),
-        order: order
+        command: command
       ))
 ```
 
@@ -598,11 +598,11 @@ proc watchFilesystem(msgQueue: AsyncQueue[DaemonMsg]) {.async.} =
 
     for event in events:
       if event.name.endsWith("orders_pending.json"):
-        let order = parseOrderFile(event.path)
+        let command = parseOrderFile(event.path)
         await msgQueue.send(Msg(
           kind: OrderReceived,
           gameId: extractGameId(event.path),
-          order: order
+          command: command
         ))
 ```
 
@@ -624,16 +624,16 @@ proc watchFilesystem(msgQueue: AsyncQueue[DaemonMsg]) {.async.} =
 **Pure update function:**
 ```nim
 # Easy to unit test!
-test "order received triggers resolution when ready":
+test "command received triggers resolution when ready":
   let model = DaemonModel(
-    games: {"game-1": gameWithOrders(4)}.toTable,
-    pendingOrders: {"game-1": @[]}.toTable
+    games: {"game-1": gameWithCommands(4)}.toTable,
+    pendingCommands: {"game-1": @[]}.toTable
   )
 
-  let msg = Msg(kind: OrderReceived, gameId: "game-1", order: order5)
+  let msg = Msg(kind: OrderReceived, gameId: "game-1", command: order5)
   let (newModel, cmds) = update(msg, model)
 
-  check newModel.pendingOrders["game-1"].len == 5
+  check newModel.pendingCommands["game-1"].len == 5
   check cmds.len == 1  # Should trigger resolution
   check cmds[0] is TurnResolving
 ```
@@ -665,7 +665,7 @@ curl http://localhost:8080/health
 
 **Key Metrics to Track:**
 - Games monitored (total, by transport mode)
-- Orders received per minute
+- Commands received per minute
 - Turns resolved per hour
 - Turn resolution latency (p50, p95, p99)
 - Nostr events sent/received per minute
@@ -690,9 +690,9 @@ ec4x_turn_resolution_seconds_bucket{le="+Inf"} 50
 ### Logging
 
 **Log Levels:**
-- DEBUG: Order receipt, state queries, transport details
+- DEBUG: Command receipt, state queries, transport details
 - INFO: Turn resolution start/complete, game discovery
-- WARN: Missing orders on deadline, retry attempts
+- WARN: Missing commands on deadline, retry attempts
 - ERROR: Turn resolution failures, database errors, Nostr connection loss
 
 **Structured Logging:**
@@ -726,7 +726,7 @@ ec4x_turn_resolution_seconds_bucket{le="+Inf"} 50
 
 **Warning Alerts:**
 - Turn resolution taking > 10 seconds
-- Game missing orders on deadline
+- Game missing commands on deadline
 - Nostr relay latency > 5 seconds
 - Disk space low
 
@@ -737,7 +737,7 @@ ec4x_turn_resolution_seconds_bucket{le="+Inf"} 50
 ```kdl
 daemon {
   db_path "/var/ec4x/games.db"
-  poll_interval 30              // Check for orders every 30s
+  poll_interval 30              // Check for commands every 30s
   discovery_interval 300        // Re-scan for games every 5 min
   max_concurrent_resolutions 4  // Process 4 turns in parallel
 }
@@ -800,15 +800,15 @@ health {
 4. Fetch missed events (if relay supports)
 5. If all relays fail: Alert moderator, continue with cached state
 
-### Order Validation Failure
+### Command Validation Failure
 
-**Scenario**: Player submits invalid order
+**Scenario**: Player submits invalid command
 
 **Response:**
 1. Log validation error
-2. Reject order (don't insert into orders table)
+2. Reject command (don't insert into commands table)
 3. Send error notification to player (Nostr: EventKindError)
-4. On turn deadline: Resolve with valid orders, treat invalid as "Hold"
+4. On turn deadline: Resolve with valid commands, treat invalid as "Hold"
 
 ### Database Corruption
 
@@ -825,7 +825,7 @@ health {
 ### Moderator Key Protection
 
 **Critical**: Moderator's private key can:
-- Decrypt all player orders
+- Decrypt all player commands
 - Sign game state updates
 - Impersonate the game server
 
@@ -836,20 +836,20 @@ health {
 - Use secure key derivation (argon2)
 - Consider HSM for production
 
-### Order Validation
+### Command Validation
 
 **Prevent Cheating:**
-- Validate all orders against game rules
+- Validate all commands against game rules
 - Check fleet ownership
 - Verify target validity
-- Rate limit order submissions (Nostr)
+- Rate limit command submissions (Nostr)
 - Detect replayed/forged Nostr events
 
 ### Denial of Service
 
 **Mitigations:**
 - Rate limit Nostr event processing
-- Reject oversized order packets
+- Reject oversized command packets
 - Limit max games per daemon
 - Timeout slow queries
 - Circuit breaker for failing relays
@@ -859,13 +859,13 @@ health {
 ### Unit Tests
 
 - Turn resolution logic
-- Order validation
+- Command validation
 - Delta generation
 - Intel updates
 
 ### Integration Tests
 
-- Localhost order collection and resolution
+- Localhost command collection and resolution
 - Nostr event encryption/decryption
 - Multi-game management
 - Error handling and recovery
@@ -873,7 +873,7 @@ health {
 ### Load Tests
 
 - 100 concurrent games
-- 1000 orders per minute
+- 1000 commands per minute
 - Large map sizes (500+ systems)
 - Turn resolution under load
 
@@ -881,7 +881,7 @@ health {
 
 - Random relay disconnections
 - Simulated database errors
-- Corrupted order packets
+- Corrupted command packets
 - Concurrent turn resolution attempts
 
 ## Future Enhancements

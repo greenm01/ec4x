@@ -82,11 +82,14 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
   
   of ActionSelect:
     case model.mode
-    of ViewMode.Map:
-      # Select hex at cursor
-      model.mapState.selected = some(model.mapState.cursor)
+    of ViewMode.Overview:
+      # Overview selection (action queue items)
+      if proposal.selectIdx >= 0:
+        model.selectedIdx = proposal.selectIdx
     
-    of ViewMode.Colonies, ViewMode.Fleets, ViewMode.Orders, ViewMode.Systems:
+    of ViewMode.Planets, ViewMode.Fleets, ViewMode.Research, ViewMode.Espionage,
+       ViewMode.Economy, ViewMode.Reports, ViewMode.Messages, ViewMode.Settings,
+       ViewMode.PlanetDetail, ViewMode.FleetDetail, ViewMode.ReportDetail:
       # Select current list item (idx is already set)
       if proposal.selectIdx >= 0:
         model.selectedIdx = proposal.selectIdx
