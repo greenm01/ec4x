@@ -8,11 +8,13 @@
 ##   Input Event -> Action -> Proposal -> Present -> Acceptors -> 
 ##   Reactors -> NAPs -> Render
 ##
-import std/[options, strformat, tables, strutils, unicode, parseopt, os, algorithm]
+import std/[options, strformat, tables, strutils, unicode,
+  parseopt, os, algorithm]
 import ../common/logger
 import ../engine/init/game_state
 import
-  ../engine/types/[core, game_state, colony, fleet, player_state as ps_types, diplomacy]
+  ../engine/types/[core, game_state, colony, fleet,
+    player_state as ps_types, diplomacy]
 import ../engine/state/[engine, fog_of_war, iterators, player_state]
 import ../engine/systems/capacity/c2_pool
 import ./tui/term/term
@@ -375,7 +377,9 @@ proc highlightStyle(): CellStyle =
 
 proc selectedStyle(): CellStyle =
   CellStyle(
-    fg: color(Ansi256Color(16)), bg: color(Ansi256Color(226)), attrs: {StyleAttr.Bold}
+    fg: color(Ansi256Color(16)),
+    bg: color(Ansi256Color(226)),
+    attrs: {StyleAttr.Bold}
   )
 
 proc headerStyle(): CellStyle =
@@ -540,8 +544,9 @@ proc renderColonyList(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
     let prefix = if isSelected: "> " else: "  "
     let line =
-      prefix & colony.systemName.alignLeft(14) & " PP:" & align($colony.production, 4) &
-      " Pop:" & align($colony.population, 5)
+      prefix & colony.systemName.alignLeft(14) & " PP:" &
+      align($colony.production, 4) & " Pop:" &
+      align($colony.population, 5)
     let clipped = line[0 ..< min(line.len, area.width)]
     discard buf.setString(area.x, y, clipped, style)
     y += 1
@@ -569,8 +574,8 @@ proc renderFleetList(area: Rect, buf: var CellBuffer, model: TuiModel) =
     let prefix = if isSelected: "> " else: "  "
     let fleetName = "Fleet #" & $fleet.id
     let line =
-      prefix & fleetName.alignLeft(12) & " @ " & fleet.locationName.alignLeft(10) &
-      " Ships:" & $fleet.shipCount
+      prefix & fleetName.alignLeft(12) & " @ " &
+      fleet.locationName.alignLeft(10) & " Ships:" & $fleet.shipCount
     let clipped = line[0 ..< min(line.len, area.width)]
     discard buf.setString(area.x, y, clipped, style)
     y += 1
@@ -578,6 +583,139 @@ proc renderFleetList(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
   if idx == 0:
     discard buf.setString(area.x, y, "No fleets", dimStyle())
+
+proc reportCategoryGlyph(category: ReportCategory): string =
+  ## Glyph for report category
+  case category
+  of ReportCategory.Combat: "⚔"
+  of ReportCategory.Intelligence: "✦"
+  of ReportCategory.Economy: "¤"
+  of ReportCategory.Diplomacy: "●"
+  of ReportCategory.Operations: "✚"
+  of ReportCategory.Summary: "★"
+  of ReportCategory.Other: "■"
+
+proc reportCategoryStyle(category: ReportCategory): CellStyle =
+  ## Style for report category glyph
+  case category
+  of ReportCategory.Combat:
+    CellStyle(
+      fg: color(EnemyStatusColor),
+      attrs: {StyleAttr.Bold}
+    )
+  of ReportCategory.Intelligence:
+    CellStyle(
+      fg: color(PrestigeColor),
+      attrs: {StyleAttr.Bold}
+    )
+  of ReportCategory.Economy:
+    CellStyle(
+      fg: color(ProductionColor),
+      attrs: {StyleAttr.Bold}
+    )
+  of ReportCategory.Diplomacy:
+    CellStyle(
+      fg: color(NeutralStatusColor),
+      attrs: {StyleAttr.Bold}
+    )
+  of ReportCategory.Operations:
+    CellStyle(
+      fg: color(HostileStatusColor),
+      attrs: {StyleAttr.Bold}
+    )
+  of ReportCategory.Summary:
+    CellStyle(
+      fg: color(PrestigeColor),
+      attrs: {StyleAttr.Bold}
+    )
+  of ReportCategory.Other:
+    CellStyle(
+      fg: color(CanvasDimColor),
+      attrs: {}
+    )
+
+proc renderReportsList(area: Rect, buf: var CellBuffer, model: TuiModel) =
+  ## Render the reports inbox list
+  if area.height < 3 or area.width < 20:
+    return
+
+  let reports = model.filteredReports()
+  var y = area.y
+  let headerStyle = canvasHeaderStyle()
+  let dimStyle = canvasDimStyle()
+  let normalStyle = canvasStyle()
+  let selectedStyle = selectedStyle()
+
+  let filterLabel = reportCategoryLabel(model.reportFilter)
+  let filterKey = reportCategoryKey(model.reportFilter)
+  let filterLine = "Filter [Tab]: " & filterLabel & " [" & $filterKey & "]"
+  discard buf.setString(area.x, y, filterLine, headerStyle)
+  y += 2
+
+  if reports.len == 0:
+    discard buf.setString(area.x, y, "No reports in this category", dimStyle)
+    return
+
+  var idx = 0
+  for report in reports:
+    if y >= area.bottom:
+      break
+
+    let isSelected = idx == model.selectedIdx
+    let rowStyle = if isSelected: selectedStyle else: normalStyle
+    let marker = if isSelected: ">" else: " "
+    let unread = if report.isUnread: GlyphUnread else: " "
+    let glyph = reportCategoryGlyph(report.category)
+    let glyphStyle = reportCategoryStyle(report.category)
+
+    discard buf.setString(area.x, y, marker & " ", rowStyle)
+    discard buf.setString(area.x + 2, y, glyph & " ", glyphStyle)
+    discard buf.setString(area.x + 4, y, unread & " ", rowStyle)
+
+    let titlePrefix = "T" & $report.turn & " "
+    let maxTitle = area.width - 10
+    let title = if report.title.len > maxTitle:
+                  report.title[0 ..< maxTitle - 3] & "..."
+                else:
+                  report.title
+    discard buf.setString(area.x + 6, y, titlePrefix & title, rowStyle)
+    y += 1
+    idx += 1
+
+proc renderReportDetail(area: Rect, buf: var CellBuffer, model: TuiModel) =
+  ## Render full-screen report detail view
+  if area.height < 6 or area.width < 30:
+    return
+
+  let reportOpt = model.selectedReport()
+  if reportOpt.isNone:
+    discard buf.setString(area.x, area.y, "No report selected", dimStyle())
+    return
+
+  let report = reportOpt.get()
+  let headerStyle = canvasHeaderStyle()
+  let dimStyle = canvasDimStyle()
+  let normalStyle = canvasStyle()
+
+  var y = area.y
+  let titleLine = "T" & $report.turn & " " & report.title
+  discard buf.setString(area.x, y, titleLine, headerStyle)
+  y += 1
+  let summaryLine = report.summary
+  discard buf.setString(area.x, y, summaryLine, normalStyle)
+  y += 2
+
+  for line in report.detail:
+    if y >= area.bottom - 2:
+      break
+    discard buf.setString(area.x, y, "- " & line, normalStyle)
+    y += 1
+
+  if report.linkLabel.len > 0:
+    let linkLine = "Jump [Enter]: " & report.linkLabel
+    discard buf.setString(area.x, area.bottom - 2, linkLine, dimStyle)
+  let backLine = "Backspace: Inbox  Tab: Filter"
+  discard buf.setString(area.x, area.bottom - 1, backLine, dimStyle)
 
 proc renderListPanel(
     area: Rect,
@@ -612,13 +750,17 @@ proc renderListPanel(
     var y = inner.y
     discard buf.setString(inner.x, y, "STRATEGIC OVERVIEW", headerStyle())
     y += 2
-    discard buf.setString(inner.x, y, "Turn: " & $model.turn, normalStyle())
+    discard buf.setString(inner.x, y,
+      "Turn: " & $model.turn, normalStyle())
     y += 1
-    discard buf.setString(inner.x, y, "Colonies: " & $model.colonies.len, normalStyle())
+    discard buf.setString(inner.x, y,
+      "Colonies: " & $model.colonies.len, normalStyle())
     y += 1
-    discard buf.setString(inner.x, y, "Fleets: " & $model.fleets.len, normalStyle())
+    discard buf.setString(inner.x, y,
+      "Fleets: " & $model.fleets.len, normalStyle())
     y += 2
-    discard buf.setString(inner.x, y, "[1-9] Switch views  [Q] Quit", dimStyle())
+    discard buf.setString(inner.x, y,
+      "[1-9] Switch views  [Q] Quit", dimStyle())
   of ViewMode.Planets:
     renderColonyList(inner, buf, model)
   of ViewMode.Fleets:
@@ -630,7 +772,7 @@ proc renderListPanel(
   of ViewMode.Economy:
     discard buf.setString(inner.x, inner.y, "Economy view (TODO)", dimStyle())
   of ViewMode.Reports:
-    discard buf.setString(inner.x, inner.y, "Reports view (TODO)", dimStyle())
+    renderReportsList(inner, buf, model)
   of ViewMode.Messages:
     discard buf.setString(inner.x, inner.y, "Messages view (TODO)", dimStyle())
   of ViewMode.Settings:
@@ -640,10 +782,7 @@ proc renderListPanel(
   of ViewMode.FleetDetail:
     discard buf.setString(inner.x, inner.y, "Fleet detail (TODO)", dimStyle())
   of ViewMode.ReportDetail:
-    discard buf.setString(inner.x, inner.y, "Report detail (TODO)", dimStyle())
-    if inner.height > 2:
-      discard
-        buf.setString(inner.x, inner.y + 1, "Press Backspace to return", dimStyle())
+    renderReportDetail(inner, buf, model)
 
 proc buildHudData(model: TuiModel): HudData =
   ## Build HUD data from TUI model
@@ -714,7 +853,9 @@ proc buildCommandDockData(model: TuiModel): CommandDockData =
   of ViewMode.Economy:
     result.contextActions = economyContextActions()
   of ViewMode.Reports:
-    result.contextActions = reportsContextActions(false)
+    result.contextActions = reportsContextActions(
+      model.currentListLength() > 0
+    )
   of ViewMode.Messages:
     result.contextActions = messagesContextActions(false)
   of ViewMode.Settings:
@@ -724,7 +865,9 @@ proc buildCommandDockData(model: TuiModel): CommandDockData =
   of ViewMode.FleetDetail:
     result.contextActions = fleetDetailContextActions()
   of ViewMode.ReportDetail:
-    result.contextActions = reportsContextActions(false)
+    result.contextActions = reportsContextActions(
+      model.currentListLength() > 0
+    )
 
 proc renderDashboard(
     buf: var CellBuffer,
@@ -737,8 +880,9 @@ proc renderDashboard(
   let termRect = rect(0, 0, model.termWidth, model.termHeight)
 
   # Layout: HUD (2), Breadcrumb (1), Main Canvas (fill), Command Dock (3)
-  let rows =
-    vertical().constraints(length(3), length(1), fill(), length(3)).split(termRect)
+  let rows = vertical()
+    .constraints(length(3), length(1), fill(), length(3))
+    .split(termRect)
 
   let hudArea = rows[0]
   let breadcrumbArea = rows[1]

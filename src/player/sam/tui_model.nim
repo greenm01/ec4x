@@ -73,7 +73,7 @@ proc commandLabel*(cmdNum: int): string =
 type
   ViewMode* {.pure.} = enum
     ## Current UI view (maps to hotkey number)
-    ## 
+    ##
     ## Primary views [1-9]:
     Overview = 1      ## [1] Strategic dashboard
     Planets = 2       ## [2] Colony management
@@ -99,7 +99,7 @@ const
 type
   # Re-export hex coordinate for convenience
   HexCoord* = tuple[q, r: int]
-  
+
   HexDirection* {.pure.} = enum
     ## Movement directions on hex grid
     East, NorthEast, NorthWest, West, SouthWest, SouthEast
@@ -195,7 +195,7 @@ type
 
   TuiModel* = object
     ## Complete application state for TUI player
-    
+
     # -------------
     # UI State
     # -------------
@@ -203,36 +203,36 @@ type
     previousMode*: ViewMode       ## Previous mode (for back navigation)
     selectedIdx*: int             ## Selected index in current list
     mapState*: MapState           ## Hex map navigation state
-    
+
     # Breadcrumb navigation
     breadcrumbs*: seq[BreadcrumbItem]
-    
+
     # Sub-view state
     planetDetailTab*: PlanetDetailTab   ## Current tab in planet detail
     fleetViewMode*: FleetViewMode       ## System view vs List view
     selectedFleetIds*: seq[int]         ## Multi-select for fleet batch ops
-    
+
     # Expert mode state
     expertModeActive*: bool       ## Expert mode (: prompt) active
     expertModeInput*: string      ## Current expert mode input
     expertModeHistory*: seq[string]  ## Command history
     expertModeHistoryIdx*: int    ## Current history position
     expertModeFeedback*: string   ## Feedback for expert commands
-    
+
     # Terminal dimensions
     termWidth*: int
     termHeight*: int
-    
+
     # Status flags
     running*: bool                ## Application running
     needsResize*: bool            ## Terminal was resized
     statusMessage*: string        ## Status bar message
-    
+
     # Map export flags (processed by main loop with GameState access)
     exportMapRequested*: bool     ## Export SVG starmap
     openMapRequested*: bool       ## Export and open in viewer
     lastExportPath*: string       ## Path to last exported SVG
-    
+
     # -------------
     # Game Data (View Layer - decoupled from engine)
     # -------------
@@ -249,16 +249,16 @@ type
     alertCount*: int              ## Number of alerts/warnings
     unreadReports*: int           ## Unread reports
     unreadMessages*: int          ## Unread diplomatic messages
-    
+
     # Collections for display
     systems*: Table[HexCoord, SystemInfo]
     colonies*: seq[ColonyInfo]
     fleets*: seq[FleetInfo]
     commands*: seq[CommandInfo]    ## Fleet commands (renamed from orders)
-    
+
     maxRing*: int                 ## Max ring for starmap
     homeworld*: Option[HexCoord]  ## Player's homeworld location
-    
+
     # Detail view entity tracking
     selectedColonyId*: int        ## Colony ID for planet detail view
     selectedFleetId*: int         ## Fleet ID for fleet detail view
@@ -266,9 +266,9 @@ type
     reportFilter*: ReportCategory ## Active report filter
     reports*: seq[ReportEntry]    ## Report inbox entries
 
-# ============================================================================
+# =============================================================================
 # Model Initialization
-# ============================================================================
+# =============================================================================
 
 proc hexCoord*(q, r: int): HexCoord =
   ## Create a hex coordinate
@@ -282,7 +282,7 @@ proc initMapState*(cursor: HexCoord = (0, 0)): MapState =
     viewportOrigin: (0, 0)
   )
 
-proc initBreadcrumb*(label: string, mode: ViewMode, 
+proc initBreadcrumb*(label: string, mode: ViewMode,
                      entityId: int = 0): BreadcrumbItem =
   ## Create a breadcrumb item
   BreadcrumbItem(label: label, viewMode: mode, entityId: entityId)
@@ -331,12 +331,88 @@ proc initTuiModel*(): TuiModel =
     selectedFleetId: 0,
     selectedReportId: 0,
     reportFilter: ReportCategory.Summary,
-    reports: @[]
+    reports: @[
+      ReportEntry(
+        id: 1,
+        turn: 42,
+        category: ReportCategory.Combat,
+        title: "Skirmish at Thera Gate",
+        summary: "Fleet Sigma repelled pirates near Thera Gate.",
+        detail: @[
+          "Fleet Sigma intercepted pirate raiders.",
+          "2 enemy ships destroyed, no losses.",
+          "System remains secure."
+        ],
+        isUnread: true,
+        linkView: 3,
+        linkLabel: "Fleets"
+      ),
+      ReportEntry(
+        id: 2,
+        turn: 42,
+        category: ReportCategory.Economy,
+        title: "Income Report",
+        summary: "Net income 640 PP. Tax rate 52%.",
+        detail: @[
+          "Gross colony output: 1,180 PP.",
+          "Net house value: 640 PP.",
+          "High tax rate penalty applied."
+        ],
+        isUnread: false,
+        linkView: 6,
+        linkLabel: "Economy"
+      ),
+      ReportEntry(
+        id: 3,
+        turn: 41,
+        category: ReportCategory.Intelligence,
+        title: "Scout Report: Nova",
+        summary: "Scout Lambda reports enemy activity in Nova.",
+        detail: @[
+          "Detected 2 enemy fleets in orbit.",
+          "Starbase level estimated at 1.",
+          "Further intel recommended."
+        ],
+        isUnread: true,
+        linkView: 7,
+        linkLabel: "Reports"
+      ),
+      ReportEntry(
+        id: 4,
+        turn: 41,
+        category: ReportCategory.Diplomacy,
+        title: "Proposal: De-escalation",
+        summary: "House Lyra requests neutral status.",
+        detail: @[
+          "Proposal to de-escalate from Hostile to Neutral.",
+          "Expires on turn 43.",
+          "Open diplomacy screen to respond."
+        ],
+        isUnread: false,
+        linkView: 8,
+        linkLabel: "Messages"
+      ),
+      ReportEntry(
+        id: 5,
+        turn: 40,
+        category: ReportCategory.Summary,
+        title: "Turn Summary",
+        summary: "3 fleets awaiting orders. 1 idle shipyard.",
+        detail: @[
+          "Bigun shipyard idle.",
+          "Fleet Omicron awaiting orders.",
+          "Fleet Tau awaiting orders."
+        ],
+        isUnread: false,
+        linkView: 1,
+        linkLabel: "Overview"
+      )
+    ]
   )
 
-# ============================================================================
+# =============================================================================
 # Hex Navigation Helpers
-# ============================================================================
+# =============================================================================
 
 proc neighbor*(coord: HexCoord, dir: HexDirection): HexCoord =
   ## Get neighboring hex in given direction
@@ -349,9 +425,51 @@ proc neighbor*(coord: HexCoord, dir: HexDirection): HexCoord =
   of HexDirection.SouthEast:  (coord.q, coord.r + 1)
   of HexDirection.SouthWest:  (coord.q - 1, coord.r + 1)
 
-# ============================================================================
+# =============================================================================
 # Model Queries
-# ============================================================================
+# =============================================================================
+
+proc reportCategoryLabel*(category: ReportCategory): string =
+  ## Label for report category
+  case category
+  of ReportCategory.Summary: "Summary"
+  of ReportCategory.Combat: "Combat"
+  of ReportCategory.Intelligence: "Intel"
+  of ReportCategory.Economy: "Economy"
+  of ReportCategory.Diplomacy: "Diplomacy"
+  of ReportCategory.Operations: "Ops"
+  of ReportCategory.Other: "Other"
+
+proc reportCategoryKey*(category: ReportCategory): char =
+  ## Short key hint for report category
+  case category
+  of ReportCategory.Summary: 'S'
+  of ReportCategory.Combat: 'C'
+  of ReportCategory.Intelligence: 'I'
+  of ReportCategory.Economy: 'E'
+  of ReportCategory.Diplomacy: 'D'
+  of ReportCategory.Operations: 'O'
+  of ReportCategory.Other: 'X'
+
+proc filteredReports*(model: TuiModel): seq[ReportEntry] =
+  ## Filter reports by active category
+  result = @[]
+  for report in model.reports:
+    if report.category == model.reportFilter:
+      result.add(report)
+
+proc selectedReport*(model: TuiModel): Option[ReportEntry] =
+  ## Get selected report by index
+  let reports = model.filteredReports()
+  if reports.len == 0:
+    return none(ReportEntry)
+  if model.selectedReportId != 0:
+    for report in reports:
+      if report.id == model.selectedReportId:
+        return some(report)
+  if model.selectedIdx < reports.len:
+    return some(reports[model.selectedIdx])
+  none(ReportEntry)
 
 proc currentListLength*(model: TuiModel): int =
   ## Get length of current list based on mode
@@ -362,7 +480,7 @@ proc currentListLength*(model: TuiModel): int =
   of ViewMode.Research: 0  # Research has no list
   of ViewMode.Espionage: 0  # Espionage operations list (TODO)
   of ViewMode.Economy: 0   # Economy has no list
-  of ViewMode.Reports: model.reports.len
+  of ViewMode.Reports: model.filteredReports().len
   of ViewMode.Messages: 0  # TODO: messages list
   of ViewMode.Settings: 0  # TODO: settings list
   of ViewMode.PlanetDetail: 0
@@ -408,9 +526,9 @@ proc ownedColonyCoords*(model: TuiModel): seq[HexCoord] =
     if sys.owner.isSome and sys.owner.get == model.viewingHouse:
       result.add(sys.coords)
 
-# ============================================================================
+# =============================================================================
 # View Mode Helpers
-# ============================================================================
+# =============================================================================
 
 proc viewModeKey*(mode: ViewMode): char =
   ## Get the hotkey for a view mode
@@ -466,9 +584,9 @@ proc isDetailView*(mode: ViewMode): bool =
   ## Check if mode is a detail/drill-down view
   mode in {ViewMode.PlanetDetail, ViewMode.FleetDetail, ViewMode.ReportDetail}
 
-# ============================================================================
+# =============================================================================
 # Breadcrumb Helpers
-# ============================================================================
+# =============================================================================
 
 proc pushBreadcrumb*(model: var TuiModel, label: string, mode: ViewMode,
                      entityId: int = 0) =
@@ -485,7 +603,8 @@ proc popBreadcrumb*(model: var TuiModel): bool =
 proc resetBreadcrumbs*(model: var TuiModel, mode: ViewMode) =
   ## Reset breadcrumbs to a primary view
   model.breadcrumbs = @[initBreadcrumb("Home", ViewMode.Overview)]
-  model.breadcrumbs.add(initBreadcrumb(mode.viewModeLabel, mode))
+  if mode != ViewMode.Overview:
+    model.breadcrumbs.add(initBreadcrumb(mode.viewModeLabel, mode))
 
 proc currentBreadcrumb*(model: TuiModel): BreadcrumbItem =
   ## Get the current (last) breadcrumb
@@ -498,9 +617,9 @@ proc breadcrumbDepth*(model: TuiModel): int =
   ## Get breadcrumb depth
   model.breadcrumbs.len
 
-# ============================================================================
+# =============================================================================
 # Multi-Select Helpers (for Fleet batch operations)
-# ============================================================================
+# =============================================================================
 
 proc toggleFleetSelection*(model: var TuiModel, fleetId: int) =
   ## Toggle fleet selection for batch operations
@@ -522,9 +641,9 @@ proc selectedFleetCount*(model: TuiModel): int =
   ## Get number of selected fleets
   model.selectedFleetIds.len
 
-# ============================================================================
+# =============================================================================
 # Expert Mode Helpers
-# ============================================================================
+# =============================================================================
 
 proc clearExpertFeedback*(model: var TuiModel) =
   ## Clear expert mode feedback message

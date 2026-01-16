@@ -492,6 +492,8 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       return some(actionBreadcrumbBack())
     of KeyCode.KeyN:
       return some(actionSelect())  # Next report
+    of KeyCode.KeyEnter:
+      return some(actionSelect())  # Jump to linked view
     else: discard
 
   none(Proposal)

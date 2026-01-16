@@ -173,7 +173,11 @@ proc espionageContextActions*(hasSelection: bool): seq[ContextAction] =
       label: "Queue operation",
       enabled: hasSelection
     ),
-    ContextAction(key: "T", label: "Select target", enabled: hasSelection),
+    ContextAction(
+      key: "T",
+      label: "Select target",
+      enabled: hasSelection
+    ),
     ContextAction(key: "B", label: "Buy EBP", enabled: true),
     ContextAction(key: "C", label: "Buy CIP", enabled: true),
   ]
@@ -190,7 +194,12 @@ proc economyContextActions*(): seq[ContextAction] =
 proc reportsContextActions*(hasSelection: bool): seq[ContextAction] =
   ## Context actions for Reports (View 7)
   @[
-    ContextAction(key: "Enter", label: "View Report", enabled: hasSelection),
+    ContextAction(
+      key: "Enter",
+      label: "View Report",
+      enabled: hasSelection
+    ),
+    ContextAction(key: "Tab", label: "Filter", enabled: true),
     ContextAction(key: "D", label: "Delete", enabled: hasSelection),
     ContextAction(key: "A", label: "Archive", enabled: hasSelection),
     ContextAction(key: "M", label: "Mark read/unread", enabled: hasSelection),

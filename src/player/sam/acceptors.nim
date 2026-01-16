@@ -32,6 +32,13 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
     model.resetBreadcrumbs(newMode)
     model.statusMessage = ""
     model.clearExpertFeedback()
+  of ActionSwitchView:
+    # Primary view switch
+    let newMode = ViewMode(proposal.navMode)
+    model.mode = newMode
+    model.selectedIdx = 0
+    model.resetBreadcrumbs(newMode)
+    model.statusMessage = ""
     model.clearExpertFeedback()
   of ActionBreadcrumbBack:
     if model.popBreadcrumb():
@@ -84,6 +91,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       (ord(ReportCategory.Other) + 1)
     model.reportFilter = ReportCategory(nextFilter)
     model.selectedIdx = 0
+    model.selectedReportId = 0
     model.statusMessage = ""
   else:
     discard
@@ -105,25 +113,44 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Overview selection (action queue items)
       if proposal.selectIdx >= 0:
         model.selectedIdx = proposal.selectIdx
-    of ViewMode.Planets, ViewMode.Fleets, ViewMode.Research, ViewMode.Espionage,
-        ViewMode.Economy, ViewMode.Reports, ViewMode.Messages, ViewMode.Settings,
-        ViewMode.PlanetDetail, ViewMode.FleetDetail, ViewMode.ReportDetail:
+    of ViewMode.Planets, ViewMode.Fleets, ViewMode.Research,
+       ViewMode.Espionage, ViewMode.Economy, ViewMode.Reports,
+       ViewMode.Messages, ViewMode.Settings, ViewMode.PlanetDetail,
+       ViewMode.FleetDetail, ViewMode.ReportDetail:
       # Select current list item (idx is already set)
       if proposal.selectIdx >= 0:
         model.selectedIdx = proposal.selectIdx
 
     if model.mode == ViewMode.Reports:
-      model.mode = ViewMode.ReportDetail
-      model.selectedReportId = model.selectedIdx
-      model.pushBreadcrumb(
-        "Report " & $(model.selectedIdx + 1),
-        ViewMode.ReportDetail,
-        model.selectedReportId,
-      )
-      model.statusMessage = ""
-      model.clearExpertFeedback()
+      let reports = model.filteredReports()
+      if model.selectedIdx < reports.len:
+        model.selectedReportId = reports[model.selectedIdx].id
+        model.mode = ViewMode.ReportDetail
+        model.pushBreadcrumb(
+          "Report " & $(model.selectedIdx + 1),
+          ViewMode.ReportDetail,
+          model.selectedReportId,
+        )
+        model.statusMessage = ""
+        model.clearExpertFeedback()
+      else:
+        model.statusMessage = "No reports in this category"
     elif model.mode == ViewMode.ReportDetail:
-      model.statusMessage = ""
+      let reportOpt = model.selectedReport()
+      let reports = model.filteredReports()
+      if reportOpt.isSome:
+        let report = reportOpt.get()
+        let target = report.linkView
+        if target >= 1 and target <= 9:
+          let nextMode = ViewMode(target)
+          model.mode = nextMode
+          model.resetBreadcrumbs(nextMode)
+          model.statusMessage = "Jumped to " & report.linkLabel
+        else:
+          if model.selectedIdx + 1 < reports.len:
+            model.selectedIdx += 1
+            model.selectedReportId = reports[model.selectedIdx].id
+          model.statusMessage = ""
       model.clearExpertFeedback()
   of ActionToggleFleetSelect:
     if model.mode == ViewMode.Fleets:
