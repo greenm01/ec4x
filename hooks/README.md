@@ -4,11 +4,16 @@ This directory contains git hooks that should be installed in your local reposit
 
 ## Installation
 
-To install the pre-commit hook:
+The pre-commit hook is version-controlled in this directory. To install on a new machine:
 
 ```bash
 cp hooks/pre-commit .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
+```
+
+Or use the one-liner:
+```bash
+cp hooks/pre-commit .git/hooks/ && chmod +x .git/hooks/pre-commit
 ```
 
 ## Pre-Commit Hook
