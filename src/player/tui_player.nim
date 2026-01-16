@@ -29,7 +29,7 @@ import ./tui/widget/hexmap/hexmap_pkg
 import ./tui/adapters
 import ./tui/widget/system_list
 import ./tui/widget/overview
-import ./tui/widget/[hud, breadcrumb, command_dock]
+import ./tui/widget/[hud, breadcrumb, command_dock, scrollbar]
 import ./tui/launcher
 import ./sam/sam_pkg
 import ./svg/svg_pkg
@@ -636,51 +636,171 @@ proc reportCategoryStyle(category: ReportCategory): CellStyle =
 
 proc renderReportsList(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render the reports inbox list
-  if area.height < 3 or area.width < 20:
+  if area.height < 5 or area.width < 40:
     return
 
-  let reports = model.filteredReports()
-  var y = area.y
   let headerStyle = canvasHeaderStyle()
   let dimStyle = canvasDimStyle()
   let normalStyle = canvasStyle()
-  let selectedStyle = selectedStyle()
+  let highlightStyle = selectedStyle()
+  let focusLabel = reportPaneLabel(model.reportFocus)
 
   let filterLabel = reportCategoryLabel(model.reportFilter)
   let filterKey = reportCategoryKey(model.reportFilter)
   let filterLine = "Filter [Tab]: " & filterLabel & " [" & $filterKey & "]"
-  discard buf.setString(area.x, y, filterLine, headerStyle)
-  y += 2
+  discard buf.setString(area.x, area.y, filterLine, headerStyle)
 
-  if reports.len == 0:
-    discard buf.setString(area.x, y, "No reports in this category", dimStyle)
+  let bodyArea = rect(area.x, area.y + 1, area.width, area.height - 1)
+  if bodyArea.isEmpty:
     return
 
-  var idx = 0
-  for report in reports:
-    if y >= area.bottom:
-      break
+  let columns = horizontal()
+    .constraints(length(16), length(34), fill())
+    .split(bodyArea)
 
-    let isSelected = idx == model.selectedIdx
-    let rowStyle = if isSelected: selectedStyle else: normalStyle
+  let turnArea = columns[0]
+  let subjectArea = columns[1]
+  let bodyPaneArea = columns[2]
+
+  let turnTitle = if model.reportFocus == ReportPaneFocus.TurnList:
+                    "TURNS *"
+                  else:
+                    "TURNS"
+  let subjectTitle = if model.reportFocus == ReportPaneFocus.SubjectList:
+                       "SUBJECTS *"
+                     else:
+                       "SUBJECTS"
+  let bodyTitle = if model.reportFocus == ReportPaneFocus.BodyPane:
+                    "REPORT *"
+                  else:
+                    "REPORT"
+  let turnFrame = bordered()
+    .title(turnTitle)
+    .borderType(BorderType.Rounded)
+  let subjectFrame = bordered()
+    .title(subjectTitle)
+    .borderType(BorderType.Rounded)
+  let bodyFrame = bordered()
+    .title(bodyTitle)
+    .borderType(BorderType.Rounded)
+
+  turnFrame.render(turnArea, buf)
+  subjectFrame.render(subjectArea, buf)
+  bodyFrame.render(bodyPaneArea, buf)
+
+  let turnInner = turnFrame.inner(turnArea)
+  let subjectInner = subjectFrame.inner(subjectArea)
+  let bodyInner = bodyFrame.inner(bodyPaneArea)
+
+  let buckets = model.reportsByTurn()
+  var y = turnInner.y
+  let turnCount = buckets.len
+  var turnScroll = model.reportTurnScroll
+  turnScroll.contentLength = turnCount
+  turnScroll.viewportLength = turnInner.height
+  turnScroll.clampOffsets()
+  let turnStart = turnScroll.verticalOffset
+  let turnEnd = min(turnCount, turnStart + turnInner.height)
+  for idx in turnStart ..< turnEnd:
+    if y >= turnInner.bottom:
+      break
+    let bucket = buckets[idx]
+    let isSelected = idx == model.reportTurnIdx
+    let rowStyle = if isSelected: highlightStyle else: normalStyle
+    let prefix = if isSelected: ">" else: " "
+    let unreadLabel = if bucket.unreadCount > 0:
+                        "(" & $bucket.unreadCount & ")"
+                      else:
+                        ""
+    let rowText = prefix & " T" & $bucket.turn & " " & unreadLabel
+    let clipped = rowText[0 ..< min(rowText.len, turnInner.width)]
+    if y >= turnInner.y:
+      discard buf.setString(turnInner.x, y, clipped, rowStyle)
+    y += 1
+
+  var subjectY = subjectInner.y
+  let reports = model.currentTurnReports()
+  var subjectScroll = model.reportSubjectScroll
+  subjectScroll.contentLength = reports.len
+  subjectScroll.viewportLength = subjectInner.height
+  subjectScroll.clampOffsets()
+  let subjectStart = subjectScroll.verticalOffset
+  let subjectEnd = min(reports.len, subjectStart + subjectInner.height)
+  for idx in subjectStart ..< subjectEnd:
+    if subjectY >= subjectInner.bottom:
+      break
+    let report = reports[idx]
+    let isSelected = idx == model.reportSubjectIdx
+    let rowStyle = if isSelected: highlightStyle else: normalStyle
     let marker = if isSelected: ">" else: " "
     let unread = if report.isUnread: GlyphUnread else: " "
     let glyph = reportCategoryGlyph(report.category)
     let glyphStyle = reportCategoryStyle(report.category)
+    discard buf.setString(subjectInner.x, subjectY, marker & " ", rowStyle)
+    discard buf.setString(subjectInner.x + 2, subjectY, glyph & " ", glyphStyle)
+    discard buf.setString(subjectInner.x + 4, subjectY, unread & " ", rowStyle)
 
-    discard buf.setString(area.x, y, marker & " ", rowStyle)
-    discard buf.setString(area.x + 2, y, glyph & " ", glyphStyle)
-    discard buf.setString(area.x + 4, y, unread & " ", rowStyle)
-
-    let titlePrefix = "T" & $report.turn & " "
-    let maxTitle = area.width - 10
-    let title = if report.title.len > maxTitle:
-                  report.title[0 ..< maxTitle - 3] & "..."
+    let titleMax = subjectInner.width - 8
+    let title = if report.title.len > titleMax:
+                  report.title[0 ..< max(0, titleMax - 3)] & "..."
                 else:
                   report.title
-    discard buf.setString(area.x + 6, y, titlePrefix & title, rowStyle)
-    y += 1
-    idx += 1
+    discard buf.setString(subjectInner.x + 6, subjectY, title, rowStyle)
+    subjectY += 1
+
+  let reportOpt = model.currentReport()
+  if reportOpt.isSome:
+    let report = reportOpt.get()
+    let lines = @[
+      line("T" & $report.turn & " " & report.title),
+      line(report.summary),
+      line(""),
+    ]
+    var detailLines: seq[Line] = @[]
+    for entry in report.detail:
+      detailLines.add(line("- " & entry))
+    let bodyText = text(lines & detailLines)
+    let bodyContent = bodyInner
+    var bodyScroll = model.reportBodyScroll
+    bodyScroll.contentLength = bodyText.lines.len
+    bodyScroll.viewportLength = bodyContent.height
+    bodyScroll.clampOffsets()
+
+    let bodyParagraph = paragraph(bodyText)
+      .wrap(Wrap(trim: true))
+      .scrollState(bodyScroll)
+    bodyParagraph.render(bodyContent, buf)
+  else:
+    let emptyText = text("No report selected")
+    let emptyParagraph = paragraph(emptyText)
+      .wrap(Wrap(trim: true))
+    emptyParagraph.render(bodyInner, buf)
+
+  let turnScrollbar = ScrollbarState(
+    contentLength: turnScroll.contentLength,
+    position: turnScroll.verticalOffset,
+    viewportLength: turnScroll.viewportLength
+  )
+  renderScrollbar(turnInner, buf, turnScrollbar,
+    ScrollbarOrientation.VerticalRight)
+
+  let subjectScrollbar = ScrollbarState(
+    contentLength: subjectScroll.contentLength,
+    position: subjectScroll.verticalOffset,
+    viewportLength: subjectScroll.viewportLength
+  )
+  renderScrollbar(subjectInner, buf, subjectScrollbar,
+    ScrollbarOrientation.VerticalRight)
+
+  let bodyScrollbar = ScrollbarState(
+    contentLength: model.reportBodyScroll.contentLength,
+    position: model.reportBodyScroll.verticalOffset,
+    viewportLength: model.reportBodyScroll.viewportLength
+  )
+  renderScrollbar(bodyInner, buf, bodyScrollbar,
+    ScrollbarOrientation.VerticalRight)
+
+  discard buf.setString(area.x + 1, area.y, focusLabel, dimStyle)
 
 proc renderReportDetail(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render full-screen report detail view
@@ -695,27 +815,42 @@ proc renderReportDetail(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let report = reportOpt.get()
   let headerStyle = canvasHeaderStyle()
   let dimStyle = canvasDimStyle()
-  let normalStyle = canvasStyle()
 
-  var y = area.y
-  let titleLine = "T" & $report.turn & " " & report.title
-  discard buf.setString(area.x, y, titleLine, headerStyle)
-  y += 1
-  let summaryLine = report.summary
-  discard buf.setString(area.x, y, summaryLine, normalStyle)
-  y += 2
+  let detailFrame = bordered()
+    .title("REPORT DETAIL")
+    .borderType(BorderType.Rounded)
+  detailFrame.render(area, buf)
+  let detailInner = detailFrame.inner(area)
 
-  for line in report.detail:
-    if y >= area.bottom - 2:
-      break
-    discard buf.setString(area.x, y, "- " & line, normalStyle)
-    y += 1
+  var detailLines: seq[Line] = @[]
+  detailLines.add(line("T" & $report.turn & " " & report.title))
+  detailLines.add(line(report.summary))
+  detailLines.add(line(""))
+  for entry in report.detail:
+    detailLines.add(line("- " & entry))
 
-  if report.linkLabel.len > 0:
-    let linkLine = "Jump [Enter]: " & report.linkLabel
-    discard buf.setString(area.x, area.bottom - 2, linkLine, dimStyle)
-  let backLine = "Backspace: Inbox  Tab: Filter"
-  discard buf.setString(area.x, area.bottom - 1, backLine, dimStyle)
+  let detailText = text(detailLines)
+  var detailScroll = model.reportBodyScroll
+  detailScroll.contentLength = detailText.lines.len
+  detailScroll.viewportLength = detailInner.height
+  detailScroll.clampOffsets()
+
+  let detailParagraph = paragraph(detailText)
+    .wrap(Wrap(trim: true))
+    .scrollState(detailScroll)
+  detailParagraph.render(detailInner, buf)
+
+  let detailScrollbar = ScrollbarState(
+    contentLength: detailScroll.contentLength,
+    position: detailScroll.verticalOffset,
+    viewportLength: detailScroll.viewportLength
+  )
+  renderScrollbar(detailInner, buf, detailScrollbar,
+    ScrollbarOrientation.VerticalRight)
+
+  let hintLine = "Enter: Jump  Backspace: Inbox"
+  discard buf.setString(detailInner.x, detailInner.bottom - 1,
+    hintLine, dimStyle)
 
 proc renderListPanel(
     area: Rect,

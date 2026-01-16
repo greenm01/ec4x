@@ -17,7 +17,8 @@
 ##   8. Messages   - Diplomacy, inter-house communication
 ##   9. Settings   - Display options, automation defaults
 
-import std/[options, tables]
+import std/[options, tables, algorithm]
+import ../tui/widget/scroll_state
 
 # =============================================================================
 # Fleet Command Constants (from 06-operations.md)
@@ -189,6 +190,18 @@ type
     linkView*: int
     linkLabel*: string
 
+  TurnBucket* = object
+    ## Reports grouped by turn for inbox display
+    turn*: int
+    unreadCount*: int
+    reports*: seq[ReportEntry]
+
+  ReportPaneFocus* {.pure.} = enum
+    ## Focused pane in reports view
+    TurnList
+    SubjectList
+    BodyPane
+
   # ============================================================================
   # The Complete TUI Model
   # ============================================================================
@@ -265,6 +278,12 @@ type
     selectedReportId*: int        ## Report ID for report detail view
     reportFilter*: ReportCategory ## Active report filter
     reports*: seq[ReportEntry]    ## Report inbox entries
+    reportFocus*: ReportPaneFocus ## Focused reports pane
+    reportTurnIdx*: int           ## Selected turn index
+    reportSubjectIdx*: int        ## Selected subject index
+    reportTurnScroll*: ScrollState
+    reportSubjectScroll*: ScrollState
+    reportBodyScroll*: ScrollState
 
 # =============================================================================
 # Model Initialization
@@ -331,6 +350,12 @@ proc initTuiModel*(): TuiModel =
     selectedFleetId: 0,
     selectedReportId: 0,
     reportFilter: ReportCategory.Summary,
+    reportFocus: ReportPaneFocus.TurnList,
+    reportTurnIdx: 0,
+    reportSubjectIdx: 0,
+    reportTurnScroll: initScrollState(),
+    reportSubjectScroll: initScrollState(),
+    reportBodyScroll: initScrollState(),
     reports: @[
       ReportEntry(
         id: 1,
@@ -440,6 +465,64 @@ proc reportCategoryLabel*(category: ReportCategory): string =
   of ReportCategory.Operations: "Ops"
   of ReportCategory.Other: "Other"
 
+proc reportPaneLabel*(focus: ReportPaneFocus): string =
+  ## Label for focused report pane
+  case focus
+  of ReportPaneFocus.TurnList: "Turns"
+  of ReportPaneFocus.SubjectList: "Subjects"
+  of ReportPaneFocus.BodyPane: "Body"
+
+proc filteredReports*(model: TuiModel): seq[ReportEntry] =
+  ## Filter reports by active category
+  result = @[]
+  for report in model.reports:
+    if report.category == model.reportFilter:
+      result.add(report)
+
+proc reportsByTurn*(model: TuiModel): seq[TurnBucket] =
+  ## Group reports by turn (newest first).
+  var buckets = initTable[int, TurnBucket]()
+  for report in model.filteredReports():
+    if not buckets.hasKey(report.turn):
+      buckets[report.turn] = TurnBucket(
+        turn: report.turn,
+        unreadCount: 0,
+        reports: @[]
+      )
+    var bucket = buckets[report.turn]
+    bucket.reports.add(report)
+    if report.isUnread:
+      bucket.unreadCount += 1
+    buckets[report.turn] = bucket
+
+  result = @[]
+  for turn, bucket in buckets.pairs:
+    result.add(bucket)
+  result.sort(proc(a, b: TurnBucket): int =
+    if a.turn == b.turn:
+      0
+    elif a.turn > b.turn:
+      -1
+    else:
+      1
+  )
+
+proc currentTurnReports*(model: TuiModel): seq[ReportEntry] =
+  ## Reports for the selected turn.
+  let buckets = model.reportsByTurn()
+  if buckets.len == 0:
+    return @[]
+  let turnIdx = max(0, min(model.reportTurnIdx, buckets.len - 1))
+  result = buckets[turnIdx].reports
+
+proc currentReport*(model: TuiModel): Option[ReportEntry] =
+  ## Current report based on subject selection.
+  let reports = model.currentTurnReports()
+  if reports.len == 0:
+    return none(ReportEntry)
+  let subjectIdx = max(0, min(model.reportSubjectIdx, reports.len - 1))
+  some(reports[subjectIdx])
+
 proc reportCategoryKey*(category: ReportCategory): char =
   ## Short key hint for report category
   case category
@@ -450,13 +533,6 @@ proc reportCategoryKey*(category: ReportCategory): char =
   of ReportCategory.Diplomacy: 'D'
   of ReportCategory.Operations: 'O'
   of ReportCategory.Other: 'X'
-
-proc filteredReports*(model: TuiModel): seq[ReportEntry] =
-  ## Filter reports by active category
-  result = @[]
-  for report in model.reports:
-    if report.category == model.reportFilter:
-      result.add(report)
 
 proc selectedReport*(model: TuiModel): Option[ReportEntry] =
   ## Get selected report by index

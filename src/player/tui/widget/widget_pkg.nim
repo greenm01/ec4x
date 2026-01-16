@@ -18,6 +18,8 @@ import ./widget
 import ./frame
 import ./paragraph
 import ./list
+import ./scroll_state
+import ./scrollbar
 
 # Re-export everything
 export text_pkg
@@ -26,3 +28,5 @@ export widget
 export frame
 export paragraph
 export list
+export scroll_state
+export scrollbar

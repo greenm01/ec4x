@@ -10,6 +10,7 @@ import std/[options, strutils]
 import ./types
 import ./tui_model
 import ./actions
+import ../tui/widget/scroll_state
 
 export types, tui_model, actions
 
@@ -40,6 +41,13 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
     model.resetBreadcrumbs(newMode)
     model.statusMessage = ""
     model.clearExpertFeedback()
+    if newMode == ViewMode.Reports:
+      model.reportFocus = ReportPaneFocus.TurnList
+      model.reportTurnIdx = 0
+      model.reportSubjectIdx = 0
+      model.reportTurnScroll = initScrollState()
+      model.reportSubjectScroll = initScrollState()
+      model.reportBodyScroll = initScrollState()
   of ActionBreadcrumbBack:
     if model.popBreadcrumb():
       let current = model.currentBreadcrumb()
@@ -92,7 +100,44 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
     model.reportFilter = ReportCategory(nextFilter)
     model.selectedIdx = 0
     model.selectedReportId = 0
+    model.reportTurnIdx = 0
+    model.reportSubjectIdx = 0
+    model.reportTurnScroll = initScrollState()
+    model.reportSubjectScroll = initScrollState()
+    model.reportBodyScroll = initScrollState()
     model.statusMessage = ""
+  of ActionReportFocusNext:
+    case model.reportFocus
+    of ReportPaneFocus.TurnList:
+      model.reportFocus = ReportPaneFocus.SubjectList
+    of ReportPaneFocus.SubjectList:
+      model.reportFocus = ReportPaneFocus.BodyPane
+    of ReportPaneFocus.BodyPane:
+      model.reportFocus = ReportPaneFocus.TurnList
+  of ActionReportFocusPrev:
+    case model.reportFocus
+    of ReportPaneFocus.TurnList:
+      model.reportFocus = ReportPaneFocus.BodyPane
+    of ReportPaneFocus.SubjectList:
+      model.reportFocus = ReportPaneFocus.TurnList
+    of ReportPaneFocus.BodyPane:
+      model.reportFocus = ReportPaneFocus.SubjectList
+  of ActionReportFocusLeft:
+    case model.reportFocus
+    of ReportPaneFocus.TurnList:
+      discard
+    of ReportPaneFocus.SubjectList:
+      model.reportFocus = ReportPaneFocus.TurnList
+    of ReportPaneFocus.BodyPane:
+      model.reportFocus = ReportPaneFocus.SubjectList
+  of ActionReportFocusRight:
+    case model.reportFocus
+    of ReportPaneFocus.TurnList:
+      model.reportFocus = ReportPaneFocus.SubjectList
+    of ReportPaneFocus.SubjectList:
+      model.reportFocus = ReportPaneFocus.BodyPane
+    of ReportPaneFocus.BodyPane:
+      discard
   else:
     discard
 
@@ -122,22 +167,21 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.selectedIdx = proposal.selectIdx
 
     if model.mode == ViewMode.Reports:
-      let reports = model.filteredReports()
-      if model.selectedIdx < reports.len:
-        model.selectedReportId = reports[model.selectedIdx].id
+      let reports = model.currentTurnReports()
+      if model.reportSubjectIdx < reports.len:
+        model.selectedReportId = reports[model.reportSubjectIdx].id
         model.mode = ViewMode.ReportDetail
         model.pushBreadcrumb(
-          "Report " & $(model.selectedIdx + 1),
+          "Report " & $(model.reportSubjectIdx + 1),
           ViewMode.ReportDetail,
           model.selectedReportId,
         )
         model.statusMessage = ""
         model.clearExpertFeedback()
       else:
-        model.statusMessage = "No reports in this category"
+        model.statusMessage = "No reports in this turn"
     elif model.mode == ViewMode.ReportDetail:
       let reportOpt = model.selectedReport()
-      let reports = model.filteredReports()
       if reportOpt.isSome:
         let report = reportOpt.get()
         let target = report.linkView
@@ -146,11 +190,6 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.mode = nextMode
           model.resetBreadcrumbs(nextMode)
           model.statusMessage = "Jumped to " & report.linkLabel
-        else:
-          if model.selectedIdx + 1 < reports.len:
-            model.selectedIdx += 1
-            model.selectedReportId = reports[model.selectedIdx].id
-          model.statusMessage = ""
       model.clearExpertFeedback()
   of ActionToggleFleetSelect:
     if model.mode == ViewMode.Fleets:
@@ -170,13 +209,50 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.clearExpertFeedback()
     else:
       model.statusMessage = ""
+      model.clearExpertFeedback()
   of ActionListUp:
-    if model.selectedIdx > 0:
+    if model.mode == ViewMode.Reports:
+      case model.reportFocus
+      of ReportPaneFocus.TurnList:
+        if model.reportTurnIdx > 0:
+          model.reportTurnIdx -= 1
+          model.reportSubjectIdx = 0
+          model.reportBodyScroll = initScrollState()
+        model.reportTurnScroll.ensureVisible(model.reportTurnIdx)
+      of ReportPaneFocus.SubjectList:
+        if model.reportSubjectIdx > 0:
+          model.reportSubjectIdx -= 1
+          model.reportBodyScroll = initScrollState()
+        model.reportSubjectScroll.ensureVisible(model.reportSubjectIdx)
+      of ReportPaneFocus.BodyPane:
+        if model.reportBodyScroll.verticalOffset > 0:
+          model.reportBodyScroll.verticalOffset -= 1
+    elif model.selectedIdx > 0:
       model.selectedIdx -= 1
   of ActionListDown:
-    let maxIdx = model.currentListLength() - 1
-    if model.selectedIdx < maxIdx:
-      model.selectedIdx += 1
+    if model.mode == ViewMode.Reports:
+      case model.reportFocus
+      of ReportPaneFocus.TurnList:
+        let buckets = model.reportsByTurn()
+        let maxIdx = buckets.len - 1
+        if model.reportTurnIdx < maxIdx:
+          model.reportTurnIdx += 1
+          model.reportSubjectIdx = 0
+          model.reportBodyScroll = initScrollState()
+        model.reportTurnScroll.ensureVisible(model.reportTurnIdx)
+      of ReportPaneFocus.SubjectList:
+        let reports = model.currentTurnReports()
+        let maxIdx = reports.len - 1
+        if model.reportSubjectIdx < maxIdx:
+          model.reportSubjectIdx += 1
+          model.reportBodyScroll = initScrollState()
+        model.reportSubjectScroll.ensureVisible(model.reportSubjectIdx)
+      of ReportPaneFocus.BodyPane:
+        model.reportBodyScroll.verticalOffset += 1
+    else:
+      let maxIdx = model.currentListLength() - 1
+      if model.selectedIdx < maxIdx:
+        model.selectedIdx += 1
   else:
     discard
 

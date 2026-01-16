@@ -43,6 +43,10 @@ const
   ActionSwitchPlanetTab* = "switchPlanetTab"
   ActionSwitchFleetView* = "switchFleetView"
   ActionCycleReportFilter* = "cycleReportFilter"
+  ActionReportFocusNext* = "reportFocusNext"
+  ActionReportFocusPrev* = "reportFocusPrev"
+  ActionReportFocusLeft* = "reportFocusLeft"
+  ActionReportFocusRight* = "reportFocusRight"
 
 # ============================================================================
 # Navigation Actions
@@ -292,6 +296,46 @@ proc actionCycleReportFilter*(): Proposal =
     navCursor: (0, 0)
   )
 
+proc actionReportFocusNext*(): Proposal =
+  ## Cycle report focus forward
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionName: ActionReportFocusNext,
+    navMode: 0,
+    navCursor: (0, 0)
+  )
+
+proc actionReportFocusPrev*(): Proposal =
+  ## Cycle report focus backward
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionName: ActionReportFocusPrev,
+    navMode: 0,
+    navCursor: (0, 0)
+  )
+
+proc actionReportFocusLeft*(): Proposal =
+  ## Move report focus left
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionName: ActionReportFocusLeft,
+    navMode: 0,
+    navCursor: (0, 0)
+  )
+
+proc actionReportFocusRight*(): Proposal =
+  ## Move report focus right
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionName: ActionReportFocusRight,
+    navMode: 0,
+    navCursor: (0, 0)
+  )
+
 # ============================================================================
 # System Actions
 # ============================================================================
@@ -441,7 +485,13 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     of KeyCode.KeyM:
       return some(actionSelect())  # Mark read/unread
     of KeyCode.KeyTab:
-      return some(actionCycleReportFilter())
+      return some(actionReportFocusNext())
+    of KeyCode.KeyShiftTab:
+      return some(actionReportFocusPrev())
+    of KeyCode.KeyLeft:
+      return some(actionReportFocusLeft())
+    of KeyCode.KeyRight:
+      return some(actionReportFocusRight())
     else: discard
   
   of ViewMode.Messages:

@@ -32,7 +32,8 @@ type
   ListState* = object
     ## Persistent state for list selection and scrolling.
     selected*: Option[int]
-    offset*: int  ## Scroll offset
+    offset*: int  ## Vertical scroll offset
+    horizontalOffset*: int
 
 # -----------------------------------------------------------------------------
 # ListItem constructors
@@ -116,7 +117,8 @@ proc newListState*(): ListState =
   ## Create a new list state with no selection.
   ListState(
     selected: none(int),
-    offset: 0
+    offset: 0,
+    horizontalOffset: 0
   )
 
 proc select*(state: var ListState, idx: int) =
@@ -146,7 +148,7 @@ proc deselect*(state: var ListState) =
 # Rendering
 # -----------------------------------------------------------------------------
 
-proc render*(l: List, area: Rect, buf: var CellBuffer, 
+proc render*(l: List, area: Rect, buf: var CellBuffer,
              state: var ListState) =
   ## Render the list to the buffer with state.
   ## Implements StatefulWidget.render.
@@ -159,17 +161,17 @@ proc render*(l: List, area: Rect, buf: var CellBuffer,
     buf.setStyle(area, l.style)
   
   # Render optional block
-  var contentArea = area
+  var innerArea = area
   if l.blk.isSome:
     let blk = l.blk.get()
     blk.render(area, buf)
-    contentArea = blk.inner(area)
+    innerArea = blk.inner(area)
   
-  if contentArea.isEmpty or l.items.len == 0:
+  if innerArea.isEmpty or l.items.len == 0:
     return
   
   # Calculate which items to show
-  let visibleHeight = contentArea.height
+  let visibleHeight = innerArea.height
   let maxOffset = max(0, l.items.len - visibleHeight)
   
   # Ensure offset is valid
@@ -185,44 +187,39 @@ proc render*(l: List, area: Rect, buf: var CellBuffer,
       state.offset = selectedIdx - visibleHeight + 1
   
   # Render visible items
-  var y = contentArea.y
+  var y = innerArea.y
   let startIdx = state.offset
   let endIdx = min(l.items.len, startIdx + visibleHeight)
   
   for i in startIdx ..< endIdx:
-    if y >= contentArea.bottom:
+    if y >= innerArea.bottom:
       break
     
     let item = l.items[i]
     let isSelected = state.selected.isSome and state.selected.get() == i
     
-    var x = contentArea.x
+    var x = innerArea.x - state.horizontalOffset
     
-    # Render highlight symbol if selected
+    # Render highlight symbol for selected item
     if isSelected and l.highlightSymbol.isSome:
       let sym = l.highlightSymbol.get()
       discard buf.setString(x, y, sym, l.highlightStyle)
       x += sym.len
     
-    # Render item content (first line only for now)
-    if item.content.lines.len > 0:
-      let line = item.content.lines[0]
+    # Render item content
+    let style = if isSelected: l.highlightStyle else: item.style
+    for line in item.content.lines:
+      if y >= innerArea.bottom:
+        break
       
-      # Use highlight style if selected, otherwise item style
-      let itemStyle = if isSelected: l.highlightStyle else: item.style
-      
+      var offsetX = x
+      if offsetX < innerArea.x:
+        offsetX = innerArea.x
       for span in line.spans:
-        if x >= contentArea.right:
+        if offsetX >= innerArea.right:
           break
-        
-        # Merge styles
-        var spanStyle = span.style
-        if spanStyle.fg.isNone:
-          spanStyle.fg = itemStyle.fg
-        if spanStyle.bg.isNone:
-          spanStyle.bg = itemStyle.bg
-        
-        let written = buf.setString(x, y, span.content, spanStyle)
-        x += written
-    
-    y += 1
+        let written = buf.setString(offsetX, y, span.content, style)
+        offsetX += written
+      y += 1
+  
+
