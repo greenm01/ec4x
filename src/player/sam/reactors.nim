@@ -81,6 +81,9 @@ proc statusMessageReactor*(model: var TuiModel) =
   ## Update status message based on current state
   ## Only updates if not already set by an action
   if model.statusMessage.len == 0:
+    if model.expertModeFeedback.len > 0:
+      model.statusMessage = model.expertModeFeedback
+      return
     case model.mode
     of ViewMode.Overview:
       model.statusMessage = "Strategic Overview"
@@ -133,6 +136,8 @@ proc clearTransientReactor*(model: var TuiModel) =
   model.needsResize = false
   # Don't clear statusMessage here - let it persist until next action
   # It will be cleared at the start of the next present() cycle
+  if not model.expertModeActive:
+    model.clearExpertFeedback()
 
 # ============================================================================
 # Context Data Reactor  

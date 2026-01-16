@@ -148,8 +148,8 @@ proc renderEmpireStatus*(area: Rect, buf: var CellBuffer,
     discard buf.setString(inner.x + 10, y, $data.taxRate & "%", normalStyle)
     
     # Fleets mothballed
-    discard buf.setString(inner.x + 19, y, "Mothball", dimStyle)
-    discard buf.setString(inner.x + 27, y, $data.fleetsMothballed, normalStyle)
+    discard buf.setString(inner.x + 19, y, "Mothball ", dimStyle)
+    discard buf.setString(inner.x + 28, y, $data.fleetsMothballed, normalStyle)
     y += 1
   
   # Blank line
@@ -184,8 +184,8 @@ proc renderEmpireStatus*(area: Rect, buf: var CellBuffer,
     discard buf.setString(inner.x, y, "Enemy    ", dimStyle)
     discard buf.setString(inner.x + 9, y, $data.enemyHouses, normalStyle)
     
-    discard buf.setString(inner.x + 19, y, "Scout Missions", dimStyle)
-    discard buf.setString(inner.x + 33, y, $data.scoutMissions, normalStyle)
+    discard buf.setString(inner.x + 19, y, "Scout Missions ", dimStyle)
+    discard buf.setString(inner.x + 34, y, $data.scoutMissions, normalStyle)
     y += 1
   
   # Proposals

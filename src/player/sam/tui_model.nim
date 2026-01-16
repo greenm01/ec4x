@@ -167,6 +167,28 @@ type
     SystemView    ## Grouped by location
     ListView      ## Flat list with multi-select
 
+  ReportCategory* {.pure.} = enum
+    ## Report category for inbox filtering
+    Summary
+    Combat
+    Intelligence
+    Economy
+    Diplomacy
+    Operations
+    Other
+
+  ReportEntry* = object
+    ## Narrative report entry for Reports view
+    id*: int
+    turn*: int
+    category*: ReportCategory
+    title*: string
+    summary*: string
+    detail*: seq[string]
+    isUnread*: bool
+    linkView*: int
+    linkLabel*: string
+
   # ============================================================================
   # The Complete TUI Model
   # ============================================================================
@@ -195,6 +217,7 @@ type
     expertModeInput*: string      ## Current expert mode input
     expertModeHistory*: seq[string]  ## Command history
     expertModeHistoryIdx*: int    ## Current history position
+    expertModeFeedback*: string   ## Feedback for expert commands
     
     # Terminal dimensions
     termWidth*: int
@@ -240,6 +263,8 @@ type
     selectedColonyId*: int        ## Colony ID for planet detail view
     selectedFleetId*: int         ## Fleet ID for fleet detail view
     selectedReportId*: int        ## Report ID for report detail view
+    reportFilter*: ReportCategory ## Active report filter
+    reports*: seq[ReportEntry]    ## Report inbox entries
 
 # ============================================================================
 # Model Initialization
@@ -277,6 +302,7 @@ proc initTuiModel*(): TuiModel =
     expertModeInput: "",
     expertModeHistory: @[],
     expertModeHistoryIdx: 0,
+    expertModeFeedback: "",
     termWidth: 80,
     termHeight: 24,
     running: true,
@@ -303,7 +329,9 @@ proc initTuiModel*(): TuiModel =
     homeworld: none(HexCoord),
     selectedColonyId: 0,
     selectedFleetId: 0,
-    selectedReportId: 0
+    selectedReportId: 0,
+    reportFilter: ReportCategory.Summary,
+    reports: @[]
   )
 
 # ============================================================================
@@ -334,7 +362,7 @@ proc currentListLength*(model: TuiModel): int =
   of ViewMode.Research: 0  # Research has no list
   of ViewMode.Espionage: 0  # Espionage operations list (TODO)
   of ViewMode.Economy: 0   # Economy has no list
-  of ViewMode.Reports: 0   # TODO: reports list
+  of ViewMode.Reports: model.reports.len
   of ViewMode.Messages: 0  # TODO: messages list
   of ViewMode.Settings: 0  # TODO: settings list
   of ViewMode.PlanetDetail: 0
@@ -457,8 +485,7 @@ proc popBreadcrumb*(model: var TuiModel): bool =
 proc resetBreadcrumbs*(model: var TuiModel, mode: ViewMode) =
   ## Reset breadcrumbs to a primary view
   model.breadcrumbs = @[initBreadcrumb("Home", ViewMode.Overview)]
-  if mode != ViewMode.Overview:
-    model.breadcrumbs.add(initBreadcrumb(mode.viewModeLabel, mode))
+  model.breadcrumbs.add(initBreadcrumb(mode.viewModeLabel, mode))
 
 proc currentBreadcrumb*(model: TuiModel): BreadcrumbItem =
   ## Get the current (last) breadcrumb
@@ -499,15 +526,24 @@ proc selectedFleetCount*(model: TuiModel): int =
 # Expert Mode Helpers
 # ============================================================================
 
+proc clearExpertFeedback*(model: var TuiModel) =
+  ## Clear expert mode feedback message
+  model.expertModeFeedback = ""
+
 proc enterExpertMode*(model: var TuiModel) =
   ## Enter expert mode
   model.expertModeActive = true
   model.expertModeInput = ""
+  model.clearExpertFeedback()
 
 proc exitExpertMode*(model: var TuiModel) =
   ## Exit expert mode
   model.expertModeActive = false
   model.expertModeInput = ""
+
+proc setExpertFeedback*(model: var TuiModel, message: string) =
+  ## Update expert mode feedback message
+  model.expertModeFeedback = message
 
 proc addToExpertHistory*(model: var TuiModel, command: string) =
   ## Add command to expert mode history

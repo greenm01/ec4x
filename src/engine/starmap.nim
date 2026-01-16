@@ -11,10 +11,8 @@ import types/[starmap, core, game_state]
 import state/[id_gen, iterators, engine]
 import globals
 import utils
-import std/[
-  tables, sequtils, random, math, algorithm, sets,
-  strutils, heapqueue, options
-]
+import
+  std/[tables, sequtils, random, math, algorithm, sets, strutils, heapqueue, options]
 
 # Hex coordinate utilities
 proc hex*(q, r: int32): Hex =
@@ -28,10 +26,8 @@ proc distance*(a, b: Hex): uint32 =
   let ds = abs(a.q + a.r - b.q - b.r)
   return max(dq, max(dr, ds)).uint32
 
-const HexDirections = [
-  hex(1, 0), hex(1, -1), hex(0, -1),
-  hex(-1, 0), hex(-1, 1), hex(0, 1)
-]
+const HexDirections =
+  [hex(1, 0), hex(1, -1), hex(0, -1), hex(-1, 0), hex(-1, 1), hex(0, 1)]
 
 proc neighbor*(h: Hex, direction: int): Hex =
   ## Get neighbor in given direction (0-5)
@@ -47,7 +43,9 @@ proc withinRadius*(center: Hex, radius: int32): seq[Hex] =
     for r in r1 .. r2:
       result.add(hex(center.q + q, center.r + r))
 
-proc findSystemByCoords(starMap: StarMap, state: GameState, coords: Hex): Option[SystemId] =
+proc findSystemByCoords(
+    starMap: StarMap, state: GameState, coords: Hex
+): Option[SystemId] =
   ## Find a system by its hex coordinates
   ## Returns the SystemId if found, none if not found
   for system in state.allSystems():
@@ -77,8 +75,7 @@ proc validateHouseCount(count: int32) =
   let maxHouses: int32 = 12
   if count < minHouses or count > maxHouses:
     raise newException(
-      StarMapError,
-      "House count must be between " & $minHouses & " and " & $maxHouses,
+      StarMapError, "House count must be between " & $minHouses & " and " & $maxHouses
     )
 
 proc validateMapRings*(rings: int, houseCount: int = 0): seq[string] =
@@ -129,27 +126,24 @@ proc totalSystems*(houseCount: int32): int32 =
 
 # Forward declarations for helper functions used by generateStarMap
 proc generateHexGrid(
-  starMap: var StarMap, state: GameState, playerCount: int32,
-  numRings: uint32, seed: int64
+  starMap: var StarMap,
+  state: GameState,
+  playerCount: int32,
+  numRings: uint32,
+  seed: int64,
 )
-proc assignSystemNames*(
-  starMap: var StarMap, state: GameState, seed: int64
-)
+
+proc assignSystemNames*(starMap: var StarMap, state: GameState, seed: int64)
 proc assignHouseHomeworlds(
   starMap: var StarMap, state: GameState, playerCount: int32, seed: int64
 )
+
 proc generateLanes(starMap: var StarMap, state: GameState, seed: int64)
 proc buildDistanceMatrix(starMap: var StarMap, state: GameState)
 proc validateConnectivity*(starMap: StarMap, state: GameState): bool
-proc validateHomeworldLanes*(
-  starMap: StarMap, state: GameState
-): seq[string]
+proc validateHomeworldLanes*(starMap: StarMap, state: GameState): seq[string]
 
-proc generateStarMap*(
-  state: GameState,
-  playerCount: int32,
-  numRings: uint32
-): StarMap =
+proc generateStarMap*(state: GameState, playerCount: int32, numRings: uint32): StarMap =
   ## Generates complete starmap, populating state.systems with System entities
   ## Returns StarMap with lanes, distances, and homeworld references
   ## Uses state.seed for deterministic generation
@@ -162,12 +156,12 @@ proc generateStarMap*(
     lanes: JumpLanes(
       data: @[],
       neighbors: initTable[SystemId, seq[SystemId]](),
-      connectionInfo: initTable[(SystemId, SystemId), LaneClass]()
+      connectionInfo: initTable[(SystemId, SystemId), LaneClass](),
     ),
     distanceMatrix: initTable[(SystemId, SystemId), uint32](),
     hubId: 0.SystemId,
     homeWorlds: initTable[SystemId, HouseId](),
-    houseSystemIds: @[]
+    houseSystemIds: @[],
   )
 
   # Generate systems and populate state.systems
@@ -193,13 +187,13 @@ proc generateStarMap*(
 proc pickWeighted*[T: enum](rng: var Rand, weights: openArray[float]): T =
   let total = sum(weights)
   var choice = rng.rand(total)
-  
+
   for item in T:
     let w = weights[item.ord]
     if choice < w:
       return item
     choice -= w
-    
+
   # If we reach here, there's a precision issue or weights sum to 0
   assert false, "Weighted choice failed: choice=" & $choice & " total=" & $total
   return T.high
@@ -216,7 +210,7 @@ proc newSystem(
   var rng = initRand(seed + id.int64)
 
   # --- GAME SPEC BALANCED WEIGHTS, per 03-economy.md ---
-  
+
   # PLANET CLASS WEIGHTS
   # Logic: The 'Raw Index Table' shows a linear progression in efficiency.
   # To force the "Population Transfer" mechanics (moving people from full worlds 
@@ -231,7 +225,7 @@ proc newSystem(
     0.15, # Harsh    (Level IV)
     0.15, # Benign   (Level V)   - The "Standard" habitable world
     0.08, # Lush     (Level VI)  - High value target
-    0.02  # Eden     (Level VII) - Strategic objective (Very Rare)
+    0.02, # Eden     (Level VII) - Strategic objective (Very Rare)
   ]
 
   # RESOURCE WEIGHTS
@@ -243,7 +237,7 @@ proc newSystem(
     0.25, # Poor
     0.35, # Abundant - Standard (100% eff on Eden)
     0.15, # Rich
-    0.05  # VeryRich - 140% efficiency ceiling
+    0.05, # VeryRich - 140% efficiency ceiling
   ]
 
   System(
@@ -252,26 +246,22 @@ proc newSystem(
     coords: coords,
     ring: ring,
     planetClass: pickWeighted[PlanetClass](rng, PlanetWeights),
-    resourceRating: pickWeighted[ResourceRating](rng, ResourceWeights)
+    resourceRating: pickWeighted[ResourceRating](rng, ResourceWeights),
   )
-
 
 proc addLane(starMap: var StarMap, state: GameState, lane: JumpLane) =
   # Validate lane endpoints exist
-  if state.system(lane.source).isNone or
-     state.system(lane.destination).isNone:
+  if state.system(lane.source).isNone or state.system(lane.destination).isNone:
     raise newException(StarMapError, "Lane endpoints must exist in starmap")
 
   # Prevent duplicate lanes
   for existingLane in starMap.lanes.data:
     if (
-      existingLane.source == lane.source and
-      existingLane.destination == lane.destination
+      existingLane.source == lane.source and existingLane.destination == lane.destination
     ) or (
-      existingLane.source == lane.destination and
-      existingLane.destination == lane.source
+      existingLane.source == lane.destination and existingLane.destination == lane.source
     ):
-      return  # Lane already exists
+      return # Lane already exists
 
   starMap.lanes.data.add(lane)
 
@@ -316,7 +306,13 @@ proc countHexNeighbors*(starMap: StarMap, state: GameState, coords: Hex): int32 
       count += 1
   return count
 
-proc generateHexGrid(starMap: var StarMap, state: GameState, playerCount: int32, numRings: uint32, seed: int64) =
+proc generateHexGrid(
+    starMap: var StarMap,
+    state: GameState,
+    playerCount: int32,
+    numRings: uint32,
+    seed: int64,
+) =
   ## Generate hexagonal grid following game specification
   let center = hex(0, 0)
 
@@ -335,10 +331,12 @@ proc generateHexGrid(starMap: var StarMap, state: GameState, playerCount: int32,
     let system = state.newSystem(hexCoord, ring, none(HouseId), seed)
     state.addSystem(system.id, system)
 
-proc assignHouseHomeworlds(starMap: var StarMap, state: GameState, playerCount: int32, seed: int64) =
+proc assignHouseHomeworlds(
+    starMap: var StarMap, state: GameState, playerCount: int32, seed: int64
+) =
   ## Assign house homeworlds following game specification
   ## Homeworlds can be placed on any ring (except hub ring 0) using distance maximization
-  let maxVertexHouses: int32 = 4  # Hex grids only have 4 true vertices
+  let maxVertexHouses: int32 = 4 # Hex grids only have 4 true vertices
   var allSystems: seq[System] = @[]
   for system in state.allSystems():
     # Exclude hub (ring 0), allow all other rings
@@ -362,8 +360,7 @@ proc assignHouseHomeworlds(starMap: var StarMap, state: GameState, playerCount: 
     let vertices = allSystems.filterIt(starMap.countHexNeighbors(state, it.coords) == 3)
 
     # Choose candidate pool: prefer vertices if enough, otherwise use all systems
-    let candidateSystems =
-      if vertices.len >= playerCount: vertices else: allSystems
+    let candidateSystems = if vertices.len >= playerCount: vertices else: allSystems
 
     # Apply distance-maximization to candidate pool for fair spacing
     # Shuffle candidates for randomized but fair initial placement
@@ -371,7 +368,7 @@ proc assignHouseHomeworlds(starMap: var StarMap, state: GameState, playerCount: 
     var shuffledCandidates = candidateSystems
     rng.shuffle(shuffledCandidates)
 
-    selectedSystems = @[shuffledCandidates[0]]  # Start with random first system
+    selectedSystems = @[shuffledCandidates[0]] # Start with random first system
 
     for i in 1 ..< playerCount:
       var bestSystem = shuffledCandidates[1]
@@ -405,10 +402,8 @@ proc assignHouseHomeworlds(starMap: var StarMap, state: GameState, playerCount: 
     var updatedSystem = state.system(system.id).get()
 
     # Override with configured homeworld characteristics
-    updatedSystem.planetClass =
-      parsePlanetClass(gameSetup.homeworld.planetClass)
-    updatedSystem.resourceRating =
-      parseResourceRating(gameSetup.homeworld.rawQuality)
+    updatedSystem.planetClass = parsePlanetClass(gameSetup.homeworld.planetClass)
+    updatedSystem.resourceRating = parseResourceRating(gameSetup.homeworld.rawQuality)
 
     state.updateSystem(updatedSystem.id, updatedSystem)
 
@@ -445,8 +440,10 @@ proc connectHouseSystems(starMap: var StarMap, state: GameState, rng: var Rand) 
 
   # Debug: Check config value
   when not defined(release):
-    logDebug("Starmap", "connectHouseSystems laneCount=", laneCount,
-             " houses=", starMap.houseSystemIds.len)
+    logDebug(
+      "Starmap", "connectHouseSystems laneCount=", laneCount, " houses=",
+      starMap.houseSystemIds.len,
+    )
 
   for houseId in starMap.houseSystemIds:
     let system = state.system(houseId).get()
@@ -481,7 +478,7 @@ proc connectRemainingSystem(starMap: var StarMap, state: GameState, rng: var Ran
   ## Connect all remaining systems with random lane types
   for system in state.allSystems():
     if system.ring == 0 or system.id in starMap.homeWorlds:
-      continue  # Skip hub and house homeworld systems
+      continue # Skip hub and house homeworld systems
 
     # Find unconnected neighbors
     var neighbors: seq[SystemId] = @[]
@@ -500,7 +497,7 @@ proc connectRemainingSystem(starMap: var StarMap, state: GameState, rng: var Ran
       if neighborId in starMap.houseSystemIds:
         let neighborConnections = starMap.adjacentSystems(neighborId)
         if neighborConnections.len >= 3:
-          continue  # Skip connecting to house systems that already have 3 connections
+          continue # Skip connecting to house systems that already have 3 connections
 
       # Use weighted lane type selection for balanced gameplay
       let weights = gameConfig.starmap.laneWeights

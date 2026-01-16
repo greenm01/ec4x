@@ -58,7 +58,7 @@ const
 
 # Command Dock Colors
 const
-  DockBgColor* = Ansi256Color(234)    ## Very dark gray background
+  DockBgColor* = Ansi256Color(16)     ## Black background
   DockFgColor* = Ansi256Color(252)    ## Light gray text
   DockKeyColor* = Ansi256Color(226)   ## Yellow for hotkey letters
   DockSeparatorColor* = Ansi256Color(240) ## Dim separator line

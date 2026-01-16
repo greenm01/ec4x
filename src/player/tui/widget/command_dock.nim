@@ -38,6 +38,7 @@ type
     expertModeActive*: bool           ## Expert mode (: prompt) active
     expertModeInput*: string          ## Current expert mode input
     showQuit*: bool                   ## Show quit option
+    feedback*: string                 ## Status/feedback text
 
 # =============================================================================
 # Command Dock Data Construction
@@ -50,7 +51,8 @@ proc initCommandDockData*(): CommandDockData =
     contextActions: @[],
     expertModeActive: false,
     expertModeInput: "",
-    showQuit: true
+    showQuit: true,
+    feedback: ""
   )
 
 proc addView*(data: var CommandDockData, key: char, label: string, 
@@ -61,7 +63,11 @@ proc addView*(data: var CommandDockData, key: char, label: string,
 proc addContextAction*(data: var CommandDockData, key, label: string,
                        enabled: bool = true) =
   ## Add a context action
-  data.contextActions.add(ContextAction(key: key, label: label, enabled: enabled))
+  data.contextActions.add(ContextAction(
+    key: key,
+    label: label,
+    enabled: enabled
+  ))
 
 proc clearContextActions*(data: var CommandDockData) =
   ## Clear all context actions
@@ -129,7 +135,11 @@ proc fleetsContextActions*(hasSelection: bool,
   else:
     @[
       ContextAction(key: "X", label: "Toggle select", enabled: hasSelection),
-      ContextAction(key: "Enter", label: "Fleet Details", enabled: hasSelection),
+      ContextAction(
+      key: "Enter",
+      label: "Fleet Details",
+      enabled: hasSelection
+    ),
       ContextAction(key: "S", label: "Sort", enabled: true),
       ContextAction(key: "F", label: "Filter", enabled: true),
     ]
@@ -158,7 +168,11 @@ proc researchContextActions*(): seq[ContextAction] =
 proc espionageContextActions*(hasSelection: bool): seq[ContextAction] =
   ## Context actions for Espionage (View 5)
   @[
-    ContextAction(key: "Enter", label: "Queue operation", enabled: hasSelection),
+    ContextAction(
+      key: "Enter",
+      label: "Queue operation",
+      enabled: hasSelection
+    ),
     ContextAction(key: "T", label: "Select target", enabled: hasSelection),
     ContextAction(key: "B", label: "Buy EBP", enabled: true),
     ContextAction(key: "C", label: "Buy CIP", enabled: true),
@@ -265,8 +279,11 @@ proc renderContextActions*(area: Rect, buf: var CellBuffer,
   let dimStyle = dockDimStyle()
   let keyStyle = dockKeyStyle()
   let normalStyle = dockStyle()
-  let disabledStyle = CellStyle(fg: color(DisabledColor), bg: color(DockBgColor), 
-                                 attrs: {})
+  let disabledStyle = CellStyle(
+    fg: color(DisabledColor),
+    bg: color(DockBgColor),
+    attrs: {}
+  )
   
   for action in actions:
     # Check if we have room
@@ -327,6 +344,7 @@ proc renderCommandDock*(area: Rect, buf: var CellBuffer,
   ##   Row 0: Separator line (━━━)
   ##   Row 1: View tabs [1-9] [Q]uit
   ##   Row 2: Context actions + Expert mode indicator
+  ##
   
   if area.height < 2 or area.width < 40:
     return
@@ -340,10 +358,24 @@ proc renderCommandDock*(area: Rect, buf: var CellBuffer,
   # Row 0: Separator line
   renderSeparatorLine(rect(area.x, area.y, area.width, 1), buf)
   
-  # Row 1: View tabs
+  # Row 1: View tabs or feedback
   if area.height >= 2:
-    renderViewTabs(rect(area.x, area.y + 1, area.width, 1), buf, 
-                   data.views, data.showQuit)
+    let tabArea = rect(area.x, area.y + 1, area.width, 1)
+    if data.feedback.len > 0:
+      let dimStyle = dockDimStyle()
+      let normalStyle = dockStyle()
+      let label = "Status: "
+      discard buf.setString(tabArea.x + 1, tabArea.y, label, dimStyle)
+      let maxLen = tabArea.width - label.len - 3
+      if maxLen > 0:
+        let text = if data.feedback.len > maxLen:
+                     data.feedback[0 ..< maxLen - 3] & "..."
+                   else:
+                     data.feedback
+        discard buf.setString(tabArea.x + 1 + label.len, tabArea.y,
+          text, normalStyle)
+    else:
+      renderViewTabs(tabArea, buf, data.views, data.showQuit)
   
   # Row 2: Context actions + Expert mode
   if area.height >= 3:
@@ -351,6 +383,7 @@ proc renderCommandDock*(area: Rect, buf: var CellBuffer,
     renderContextActions(contextArea, buf, data.contextActions)
     renderExpertModeIndicator(contextArea, buf, 
                                data.expertModeActive, data.expertModeInput)
+
 
 # =============================================================================
 # Compact Command Dock (80 columns)
@@ -363,6 +396,7 @@ proc renderCommandDockCompact*(area: Rect, buf: var CellBuffer,
   ## Layout (2 lines):
   ##   Row 0: Separator + abbreviated view tabs
   ##   Row 1: Key context actions + Expert mode
+  ##
   
   if area.height < 2 or area.width < 40:
     return
@@ -381,23 +415,34 @@ proc renderCommandDockCompact*(area: Rect, buf: var CellBuffer,
   let dimStyle = dockDimStyle()
   let keyStyle = dockKeyStyle()
   
-  for view in data.views:
-    if x + 4 > area.right - 8:
-      break
-    discard buf.setString(x, y0, "[", dimStyle)
-    if view.isActive:
-      discard buf.setString(x + 1, y0, $view.key, selectedStyle())
-    else:
-      discard buf.setString(x + 1, y0, $view.key, keyStyle)
-    discard buf.setString(x + 2, y0, "]", dimStyle)
-    x += 3
-  
-  # [Q] at end of row 0
-  if data.showQuit:
-    let quitX = area.right - 4
-    discard buf.setString(quitX, y0, "[", dimStyle)
-    discard buf.setString(quitX + 1, y0, "Q", keyStyle)
-    discard buf.setString(quitX + 2, y0, "]", dimStyle)
+  if data.feedback.len > 0:
+    let label = "Status: "
+    discard buf.setString(x, y0, label, dimStyle)
+    let maxLen = area.width - label.len - 6
+    if maxLen > 0:
+      let text = if data.feedback.len > maxLen:
+                   data.feedback[0 ..< maxLen - 3] & "..."
+                 else:
+                   data.feedback
+      discard buf.setString(x + label.len, y0, text, dockStyle())
+  else:
+    for view in data.views:
+      if x + 4 > area.right - 8:
+        break
+      discard buf.setString(x, y0, "[", dimStyle)
+      if view.isActive:
+        discard buf.setString(x + 1, y0, $view.key, selectedStyle())
+      else:
+        discard buf.setString(x + 1, y0, $view.key, keyStyle)
+      discard buf.setString(x + 2, y0, "]", dimStyle)
+      x += 3
+    
+    # [Q] at end of row 0
+    if data.showQuit:
+      let quitX = area.right - 4
+      discard buf.setString(quitX, y0, "[", dimStyle)
+      discard buf.setString(quitX + 1, y0, "Q", keyStyle)
+      discard buf.setString(quitX + 2, y0, "]", dimStyle)
   
   # Row 1: Context actions
   if area.height >= 2:
@@ -410,3 +455,4 @@ proc renderCommandDockCompact*(area: Rect, buf: var CellBuffer,
     renderContextActions(contextArea, buf, limitedActions)
     renderExpertModeIndicator(contextArea, buf,
                                data.expertModeActive, data.expertModeInput)
+

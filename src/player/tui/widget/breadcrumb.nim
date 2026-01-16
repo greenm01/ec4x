@@ -196,7 +196,7 @@ proc renderBreadcrumbWithBackground*(area: Rect, buf: var CellBuffer,
   # Fill with subtle background
   let bgStyle = CellStyle(
     fg: color(CanvasDimColor),
-    bg: color(Ansi256Color(235)),  # Very dark gray
+    bg: color(CanvasBgColor),
     attrs: {}
   )
   
@@ -209,17 +209,17 @@ proc renderBreadcrumbWithBackground*(area: Rect, buf: var CellBuffer,
   
   let inactiveStyle = CellStyle(
     fg: color(BreadcrumbFgColor),
-    bg: color(Ansi256Color(235)),
+    bg: color(CanvasBgColor),
     attrs: {}
   )
   let activeStyle = CellStyle(
     fg: color(BreadcrumbActiveColor),
-    bg: color(Ansi256Color(235)),
+    bg: color(CanvasBgColor),
     attrs: {}
   )
   let sepStyle = CellStyle(
     fg: color(BreadcrumbSeparatorColor),
-    bg: color(Ansi256Color(235)),
+    bg: color(CanvasBgColor),
     attrs: {}
   )
   

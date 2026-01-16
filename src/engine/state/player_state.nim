@@ -12,9 +12,7 @@
 
 import std/[tables, options, sets]
 import
-  ../types/[
-    colony, core, diplomacy, fleet, game_state, house, player_state, starmap
-  ]
+  ../types/[colony, core, diplomacy, fleet, game_state, house, player_state, starmap]
 import ./[engine, iterators]
 
 # ============================================================================
@@ -32,17 +30,6 @@ proc occupiedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   result = initHashSet[SystemId]()
   for fleet in state.fleetsOwned(houseId):
     result.incl(fleet.location)
-
-proc adjacentSystems(
-    state: GameState, knownSystems: HashSet[SystemId]
-): HashSet[SystemId] =
-  ## Get all systems one jump away from known systems
-  result = initHashSet[SystemId]()
-  for systemId in knownSystems:
-    if state.starMap.lanes.neighbors.contains(systemId):
-      for adjId in state.starMap.lanes.neighbors[systemId]:
-        if adjId notin knownSystems:
-          result.incl(adjId)
 
 proc scoutedSystems(
     state: GameState, houseId: HouseId, ownedSystems, occupiedSystems: HashSet[SystemId]
@@ -134,7 +121,6 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
   let ownedSystems = state.ownedSystems(houseId)
   let occupiedSystems = state.occupiedSystems(houseId)
   let scoutedSystems = state.scoutedSystems(houseId, ownedSystems, occupiedSystems)
-  let adjacentSystems = state.adjacentSystems(ownedSystems + occupiedSystems)
 
   # === Owned Assets (Full Entity Data) ===
   # Colonies

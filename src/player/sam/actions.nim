@@ -36,9 +36,13 @@ const
   ActionOpenMap* = "openMap"
   ActionEnterExpertMode* = "enterExpertMode"
   ActionExitExpertMode* = "exitExpertMode"
+  ActionExpertInputAppend* = "expertInputAppend"
+  ActionExpertInputBackspace* = "expertInputBackspace"
+  ActionExpertSubmit* = "expertSubmit"
   ActionToggleFleetSelect* = "toggleFleetSelect"
   ActionSwitchPlanetTab* = "switchPlanetTab"
   ActionSwitchFleetView* = "switchFleetView"
+  ActionCycleReportFilter* = "cycleReportFilter"
 
 # ============================================================================
 # Navigation Actions
@@ -228,6 +232,18 @@ proc actionExitExpertMode*(): Proposal =
   ## Exit expert mode
   gameActionProposal(ActionExitExpertMode, "")
 
+proc actionExpertInputAppend*(value: string): Proposal =
+  ## Append input to expert mode buffer
+  gameActionProposal(ActionExpertInputAppend, value)
+
+proc actionExpertInputBackspace*(): Proposal =
+  ## Remove last character from expert mode buffer
+  gameActionProposal(ActionExpertInputBackspace, "")
+
+proc actionExpertSubmit*(): Proposal =
+  ## Submit expert mode command
+  gameActionProposal(ActionExpertSubmit, "")
+
 # ============================================================================
 # Fleet Multi-Select Actions
 # ============================================================================
@@ -262,6 +278,16 @@ proc actionSwitchFleetView*(): Proposal =
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
     actionName: ActionSwitchFleetView,
+    navMode: 0,
+    navCursor: (0, 0)
+  )
+
+proc actionCycleReportFilter*(): Proposal =
+  ## Cycle the Reports view filter
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionName: ActionCycleReportFilter,
     navMode: 0,
     navCursor: (0, 0)
   )
@@ -309,8 +335,9 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     of KeyCode.KeyEscape:
       return some(actionExitExpertMode())
     of KeyCode.KeyEnter:
-      # Would submit expert command - handled elsewhere
-      return some(actionExitExpertMode())
+      return some(actionExpertSubmit())
+    of KeyCode.KeyBackspace:
+      return some(actionExpertInputBackspace())
     else:
       # Other keys add to input buffer - handled by acceptor
       return none(Proposal)
@@ -340,7 +367,8 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   case model.mode
   of ViewMode.Overview:
     case key
-    of KeyCode.KeyL:     return some(actionSwitchMode(ViewMode.Overview))  # TODO: Diplomatic matrix overlay
+    of KeyCode.KeyL:
+      return some(actionSwitchMode(ViewMode.Overview))
     of KeyCode.KeyUp:    return some(actionListUp())
     of KeyCode.KeyDown:  return some(actionListDown())
     of KeyCode.KeyEnter: return some(actionSelect())  # Jump to action item
@@ -351,7 +379,8 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     of KeyCode.KeyUp:    return some(actionListUp())
     of KeyCode.KeyDown:  return some(actionListDown())
     of KeyCode.KeyEnter: return some(actionSelect())  # View colony
-    of KeyCode.KeyB:     return some(actionSelect())  # Build (same as Enter for now)
+    of KeyCode.KeyB:
+      return some(actionSelect())
     of KeyCode.KeyS:     return some(actionSelect())  # Sort - TODO
     of KeyCode.KeyF:     return some(actionSelect())  # Filter - TODO
     else: discard
@@ -362,7 +391,8 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     of KeyCode.KeyDown:  return some(actionListDown())
     of KeyCode.KeyEnter: return some(actionSelect())  # Fleet details
     of KeyCode.KeyX:     return some(actionToggleFleetSelect(model.selectedIdx))
-    of KeyCode.KeyL:     return some(actionSwitchFleetView())  # Toggle List/System view
+    of KeyCode.KeyL:
+      return some(actionSwitchFleetView())
     of KeyCode.KeyM:     return some(actionSelect())  # Move
     of KeyCode.KeyP:     return some(actionSelect())  # Patrol
     of KeyCode.KeyH:     return some(actionSelect())  # Hold
@@ -398,12 +428,20 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   
   of ViewMode.Reports:
     case key
-    of KeyCode.KeyUp:    return some(actionListUp())
-    of KeyCode.KeyDown:  return some(actionListDown())
-    of KeyCode.KeyEnter: return some(actionSelect())  # View report
-    of KeyCode.KeyD:     return some(actionSelect())  # Delete
-    of KeyCode.KeyA:     return some(actionSelect())  # Archive
-    of KeyCode.KeyM:     return some(actionSelect())  # Mark read/unread
+    of KeyCode.KeyUp:
+      return some(actionListUp())
+    of KeyCode.KeyDown:
+      return some(actionListDown())
+    of KeyCode.KeyEnter:
+      return some(actionSelect())  # View report
+    of KeyCode.KeyD:
+      return some(actionSelect())  # Delete
+    of KeyCode.KeyA:
+      return some(actionSelect())  # Archive
+    of KeyCode.KeyM:
+      return some(actionSelect())  # Mark read/unread
+    of KeyCode.KeyTab:
+      return some(actionCycleReportFilter())
     else: discard
   
   of ViewMode.Messages:
@@ -450,7 +488,11 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   
   of ViewMode.ReportDetail:
     case key
-    of KeyCode.KeyN:     return some(actionSelect())  # Next report
+    of KeyCode.KeyBackspace:
+      return some(actionBreadcrumbBack())
+    of KeyCode.KeyN:
+      return some(actionSelect())  # Next report
     else: discard
-  
+
   none(Proposal)
+

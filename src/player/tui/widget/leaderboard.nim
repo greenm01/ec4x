@@ -38,6 +38,7 @@ type
   HouseEntry* = object
     ## A house entry in the leaderboard
     rank*: int                    ## Position (1st, 2nd, etc.)
+    houseId*: int                 ## House ID for stable sorting
     houseName*: string            ## House name
     prestige*: int                ## Prestige score
     colonyCount*: int             ## Number of colonies
@@ -62,11 +63,13 @@ proc initLeaderboardData*(): LeaderboardData =
     colonizedSystems: 0
   )
 
-proc addEntry*(data: var LeaderboardData, name: string, prestige: int,
-               colonies: int, status: DiplomaticStatus, isPlayer: bool = false) =
+proc addEntry*(data: var LeaderboardData, houseId: int, name: string, 
+               prestige: int, colonies: int, status: DiplomaticStatus, 
+               isPlayer: bool = false) =
   ## Add a house entry to the leaderboard
   data.entries.add(HouseEntry(
     rank: 0,  # Will be assigned after sorting
+    houseId: houseId,
     houseName: name,
     prestige: prestige,
     colonyCount: colonies,
@@ -77,10 +80,12 @@ proc addEntry*(data: var LeaderboardData, name: string, prestige: int,
 proc sortAndRank*(data: var LeaderboardData) =
   ## Sort entries by prestige (descending) and assign ranks
   data.entries.sort(proc(a, b: HouseEntry): int =
-    # Sort by prestige descending, then by colony count descending
+    # Sort by prestige descending, then colonies, then house id
     if a.prestige != b.prestige:
       return b.prestige - a.prestige
-    return b.colonyCount - a.colonyCount
+    if a.colonyCount != b.colonyCount:
+      return b.colonyCount - a.colonyCount
+    return a.houseId - b.houseId
   )
   
   # Assign ranks
