@@ -507,7 +507,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     of KeyCode.KeyUp:    return some(actionListUp())
     of KeyCode.KeyDown:  return some(actionListDown())
     of KeyCode.KeyEnter: return some(actionSelect())  # Jump to action item
-    of KeyCode.KeyJ:     return some(actionJoinSubmit())
+    of KeyCode.KeyJ:     return some(actionJoinRefresh())
     of KeyCode.KeyY:     return some(actionJoinEditPubkey())
     of KeyCode.KeyU:     return some(actionJoinEditName())
     of KeyCode.KeyR:     return some(actionJoinRefresh())

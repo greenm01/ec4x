@@ -336,10 +336,15 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.exitExpertMode()
     of ActionJoinRefresh:
       model.joinGames = loadJoinGames("data")
-      model.joinStatus = JoinStatus.SelectingGame
       model.joinSelectedIdx = 0
       model.joinError = ""
-      model.statusMessage = "Select a game to join"
+      if model.joinGames.len == 0:
+        model.joinStatus = JoinStatus.Failed
+        model.joinError = "No available games"
+        model.statusMessage = model.joinError
+      else:
+        model.joinStatus = JoinStatus.SelectingGame
+        model.statusMessage = "Select a game to join"
     of ActionJoinEditPubkey:
       model.joinStatus = JoinStatus.EnteringPubkey
       model.joinPubkeyInput = ""
