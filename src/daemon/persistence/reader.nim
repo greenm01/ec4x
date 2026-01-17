@@ -6,6 +6,54 @@ import ../../common/logger
 import ../../engine/types/[game_state, core, house, starmap, colony, fleet, ship, diplomacy, command, tech, production]
 import ../../engine/state/engine
 import ./schema
+import ./player_state_snapshot
+
+proc getHousePubkey*(dbPath: string, gameId: string, houseId: HouseId): Option[string] =
+  ## Get a house's Nostr pubkey from database
+  ## Returns None if house not found or pubkey not set
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+  
+  let row = db.getRow(
+    sql"SELECT nostr_pubkey FROM houses WHERE game_id = ? AND id = ?",
+    gameId,
+    $houseId.uint32
+  )
+  
+  if row[0] != "":
+    return some(row[0])
+  else:
+    return none(string)
+
+proc loadPlayerStateSnapshot*(
+  dbPath: string,
+  gameId: string,
+  houseId: HouseId,
+  turn: int32
+): Option[PlayerStateSnapshot] =
+  ## Load a per-house PlayerState snapshot from the database
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let row = db.getRow(
+    sql"""
+    SELECT state_json
+    FROM player_state_snapshots
+    WHERE game_id = ? AND house_id = ? AND turn = ?
+  """,
+    gameId,
+    $houseId.uint32,
+    $turn
+  )
+
+  if row[0] == "":
+    return none(PlayerStateSnapshot)
+
+  try:
+    return some(snapshotFromJson(row[0]))
+  except CatchableError:
+    logError("Persistence", "Failed to parse player state snapshot: ", getCurrentExceptionMsg())
+    return none(PlayerStateSnapshot)
 
 proc loadHouses(db: DbConn, state: GameState) =
   let rows = db.getAllRows(sql"SELECT state_json FROM houses")

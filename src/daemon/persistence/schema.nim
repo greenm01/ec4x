@@ -7,14 +7,15 @@
 ##               commands, diplomacy
 ##   Intel: intel_systems, intel_fleets, intel_colonies
 ##   Events: game_events
+##   Snapshots: player_state_snapshots
 ##
-## Design: Events-only (no snapshots, no fleet_tracking)
+## Design: Events-only + player state snapshots
 ## Storage: ~5-10MB per 100-turn game
 
 import std/os
 import db_connector/db_sqlite
 
-const SchemaVersion* = 4  # Incremented for new unified schema
+const SchemaVersion* = 5  # Incremented for new unified schema
 
 ## ============================================================================
 ## Core Game State Tables
@@ -324,6 +325,21 @@ CREATE INDEX IF NOT EXISTS idx_events_fleet ON game_events(fleet_id)
   WHERE fleet_id IS NOT NULL;
 """
 
+const CreatePlayerStateSnapshotsTable* = """
+CREATE TABLE IF NOT EXISTS player_state_snapshots (
+  game_id TEXT NOT NULL,
+  house_id TEXT NOT NULL,
+  turn INTEGER NOT NULL,
+  state_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (game_id, house_id, turn),
+  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_state_house
+  ON player_state_snapshots(game_id, house_id);
+"""
+
 ## ============================================================================
 ## Schema Initialization
 ## ============================================================================
@@ -350,6 +366,9 @@ proc createAllTables*(db: DbConn) =
 
   # Event history
   db.exec(sql CreateGameEventsTable)
+
+  # Player state snapshots
+  db.exec(sql CreatePlayerStateSnapshotsTable)
 
   # Schema version tracking
   db.exec(sql"""

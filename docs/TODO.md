@@ -1,6 +1,6 @@
 # EC4X Roadmap
 
-**Last Updated:** 2026-01-10
+**Last Updated:** 2026-01-17
 
 ## Engine Status
 
@@ -30,15 +30,13 @@ The game engine is stable and tested. Ready for client development and playtesti
 
 Building the infrastructure to actually play the game:
 
-1. **Localhost game server** - Simple turn runner for testing/development
-2. **Player client** - Human interface for viewing state and submitting commands
-3. **Playtesting** - Run actual games to validate mechanics and balance
+1. **Player client** - Human interface for viewing state and submitting commands
+2. **Playtesting** - Run actual games to validate mechanics and balance
 
 Once we can play real games, we'll know what needs adjustment.
 
 ## Future (Post-Playtesting)
 
-- **Nostr protocol** - Decentralized multiplayer over Nostr relays
 - **AI opponents** - Neural network trained on human games (only if warranted)
 
 ---
@@ -53,6 +51,11 @@ Once we can play real games, we'll know what needs adjustment.
 ---
 
 ## Recent Major Work
+
+**Nostr Transport Integration (2026-01-17):**
+- Wired daemon to Nostr relays with encrypted command ingestion and delta publishing
+- Added slot claim handling with pubkey persistence in houses table
+- Implemented PlayerState snapshot persistence + diff-based delta KDL generation
 
 **Code Style Cleanup (2026-01-10):**
 - Removed 130+ `get` prefixes from function names (NEP-1 compliance)

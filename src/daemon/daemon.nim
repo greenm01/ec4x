@@ -13,6 +13,7 @@ import ./transport/nostr/[types, client, wire, events, filter, crypto]
 import ../daemon/persistence/reader
 import ../daemon/persistence/writer
 import ../daemon/parser/kdl_orders
+import ./transport/nostr/delta_kdl
 import ../engine/turn_cycle/engine
 import ../engine/config/engine
 import ../engine/globals
@@ -179,17 +180,34 @@ proc hexToBytes32(hexStr: string): array[32, byte] =
 
 proc getPlayerPubkey(gameInfo: GameInfo, houseId: HouseId): string =
   ## Get player's Nostr pubkey for a house
-  ## TODO: This needs to be stored when player claims slot
-  ## For now, return empty string (will need to implement slot claim storage)
-  ""
+  let pubkeyOpt = getHousePubkey(gameInfo.dbPath, gameInfo.id, houseId)
+  if pubkeyOpt.isSome:
+    return pubkeyOpt.get()
+  else:
+    return ""
 
-proc buildDeltaKdl(state: GameState, houseId: HouseId): string =
+proc buildDeltaKdl(gameInfo: GameInfo, state: GameState, houseId: HouseId): string =
   ## Build fog-of-war filtered delta KDL for a house
-  ## TODO: Implement proper delta extraction with fog-of-war filtering
-  ## For now, return minimal KDL structure
-  result = "delta house=(HouseId)" & $houseId.uint32 & " turn=" & $state.turn & " {\n"
-  result.add("  // TODO: Add fog-of-war filtered game events\n")
-  result.add("}\n")
+  let previousTurn = state.turn - 1
+  let previousSnapshot = loadPlayerStateSnapshot(
+    gameInfo.dbPath,
+    gameInfo.id,
+    houseId,
+    previousTurn
+  )
+
+  let currentSnapshot = buildPlayerStateSnapshot(state, houseId)
+  let delta = diffPlayerState(previousSnapshot, currentSnapshot)
+
+  savePlayerStateSnapshot(
+    gameInfo.dbPath,
+    gameInfo.id,
+    houseId,
+    state.turn,
+    currentSnapshot
+  )
+
+  formatPlayerStateDeltaKdl(gameInfo.id, delta)
 
 proc publishTurnResults(gameId: string, state: GameState) {.async.} =
   ## Publish turn results to all players via Nostr
@@ -205,7 +223,7 @@ proc publishTurnResults(gameId: string, state: GameState) {.async.} =
         continue
       
       # Build fog-of-war filtered delta
-      let deltaKdl = buildDeltaKdl(state, houseId)
+      let deltaKdl = buildDeltaKdl(gameInfo, state, houseId)
       
       # Encrypt and encode
       let playerPub = hexToBytes32(playerPubkey)
@@ -270,6 +288,61 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
   except CatchableError as e:
     logError("Nostr", "Failed to process command: ", e.msg)
 
+proc processSlotClaim(event: NostrEvent) {.async.} =
+  ## Process a slot claim event (30401) from a player
+  try:
+    let gameIdOpt = event.getGameId()
+    let inviteCodeOpt = event.getInviteCode()
+    
+    if gameIdOpt.isNone or inviteCodeOpt.isNone:
+      logError("Nostr", "Slot claim event missing game ID or invite code")
+      return
+    
+    let gameId = gameIdOpt.get()
+    let inviteCode = inviteCodeOpt.get()
+    let playerPubkey = event.pubkey
+    
+    # Get game info
+    if not daemonLoop.model.games.hasKey(gameId):
+      logWarn("Nostr", "Slot claim for unknown game: ", gameId)
+      return
+    
+    let gameInfo = daemonLoop.model.games[gameId]
+    
+    # TODO: Validate invite code against stored codes
+    # For now, assign player to first available house
+    # This is a simplified implementation - full version should:
+    # 1. Validate invite code hash
+    # 2. Check if already claimed
+    # 3. Assign specific house based on invite code
+    # 4. Publish updated game definition (30400)
+    
+    # Load current state to find an available house
+    let state = loadFullState(gameInfo.dbPath)
+    
+    # Find first house without a pubkey
+    var assignedHouse: Option[HouseId] = none(HouseId)
+    for (houseId, house) in state.allHousesWithId():
+      let existingPubkey = getPlayerPubkey(gameInfo, houseId)
+      if existingPubkey.len == 0:
+        assignedHouse = some(houseId)
+        break
+    
+    if assignedHouse.isNone:
+      logWarn("Nostr", "No available houses for game: ", gameId)
+      return
+    
+    let houseId = assignedHouse.get()
+    
+    # Update house with player pubkey
+    updateHousePubkey(gameInfo.dbPath, gameId, houseId, playerPubkey)
+    
+    logInfo("Nostr", "Slot claimed for game=", gameId, 
+            " house=", $houseId, " player=", playerPubkey[0..7], "...")
+    
+  except CatchableError as e:
+    logError("Nostr", "Failed to process slot claim: ", e.msg)
+
 # =============================================================================
 # Main Event Loop
 # =============================================================================
@@ -315,8 +388,12 @@ proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string]) {.asyn
   daemonLoop.model.nostrClient.onEvent = proc(subId: string, event: NostrEvent) =
     logDebug("Nostr", "Received event: kind=", $event.kind, " from=", event.pubkey[0..7])
     
+    # Handle slot claim events (30401)
+    if event.kind == EventKindPlayerSlotClaim:
+      asyncCheck processSlotClaim(event)
+    
     # Handle turn command events (30402)
-    if event.kind == EventKindTurnCommands:
+    elif event.kind == EventKindTurnCommands:
       let gameIdOpt = event.getGameId()
       if gameIdOpt.isNone:
         logError("Nostr", "Command event missing game ID")

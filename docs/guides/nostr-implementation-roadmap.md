@@ -1,5 +1,8 @@
 # EC4X Nostr Implementation Roadmap
 
+## Changelog
+- 2026-01-17: Added PlayerState snapshot persistence and diff-based delta publishing.
+
 This document details the technical implementation plan for full Nostr
 transport in EC4X. It covers the phases, code changes, and testing
 strategies needed to complete the integration.
@@ -8,19 +11,26 @@ strategies needed to complete the integration.
 
 **Completed:**
 - Schema: `nostr_pubkey` field in `houses` table
-- Schema: `state_deltas` table for delta persistence
+- Schema: `player_state_snapshots` table for per-house delta baselines
 - Dependencies: `ws`, `zippy`, `nimcrypto` added to nimble
 - KDL parser: Command parsing implemented (`kdl_orders.nim`)
-- Daemon: Basic structure with game discovery
+- Nostr transport: client, filters, event builders, NIP-01 parsing
+- NIP-44 encryption/decryption + wire compression helpers
+- Daemon: relay connection, command ingestion, slot claim handling
+- Delta system: PlayerState diff + KDL serialization (`delta_kdl.nim`)
 - Protocol spec: `docs/architecture/nostr-protocol.md`
 
+**Recent Updates (2026-01-17):**
+- Added PlayerState snapshot persistence + diff-based delta generation
+- Published deltas with full object updates + compact removals
+- Added slot claim handler and house pubkey persistence
+
 **Stubbed/TODO:**
-- Nostr client: WebSocket connection, subscribe, publish
-- NIP-44 encryption/decryption
-- Delta generation and serialization to KDL
-- Command serialization from packet to KDL
-- Full state serialization to KDL
-- Player client Nostr integration
+- Command serialization from packet to KDL (player submit side)
+- Full state serialization to KDL (30405)
+- Player client Nostr integration + delta applicator
+- Slot claim validation against invite codes + 30400 updates
+- Turn resolution trigger when all orders received
 
 ---
 
@@ -458,78 +468,18 @@ proc decode*(decoder: WireDecoder, content: string, senderPubkey: string): strin
 
 **Goal:** Generate and apply state deltas in KDL format.
 
-### 4.1 Delta Generator (`src/engine/state/delta_generator.nim`)
+### 4.1 Delta Generator (Implemented)
 
-```nim
-## Generate KDL deltas from state changes
+The engine now uses a PlayerState diff approach to generate deltas. The daemon
+creates a per-house PlayerState snapshot each turn, diffs against the previous
+snapshot, and serializes a KDL delta. The diff is stored in
+`src/daemon/transport/nostr/delta_kdl.nim` and persisted via
+`player_state_snapshots` in the per-game database.
 
-import std/[tables, options, strutils]
-import kdl
-import ../types/[game_state, core, fleet, colony, ship]
-
-type
-  DeltaType* {.pure.} = enum
-    FleetMoved
-    FleetDestroyed
-    ColonyUpdated
-    ColonyCaptured
-    TechAdvance
-    RelationChanged
-    ShipCommissioned
-    ShipDestroyed
-    CombatResult
-
-proc generateDelta*(
-  prevState: GameState,
-  newState: GameState,
-  houseId: HouseId
-): string =
-  ## Generate KDL delta for a specific house's view
-  var doc = newKdlDocument()
-  var root = newKdlNode("delta")
-  root.props["turn"] = newKdlVal(newState.turn)
-  root.props["game"] = newKdlVal(newState.gameId)
-  
-  # Fleet movements
-  for fleetId, fleet in newState.allFleets():
-    if fleet.owner == houseId or fleet.isVisibleTo(houseId, newState):
-      let prevFleet = prevState.fleet(fleetId)
-      if prevFleet.isSome:
-        if prevFleet.get().location != fleet.location:
-          var node = newKdlNode("fleet-moved")
-          node.props["id"] = newKdlVal(fleetId.uint32.int64)
-          node.props["from"] = newKdlVal(prevFleet.get().location.uint32.int64)
-          node.props["to"] = newKdlVal(fleet.location.uint32.int64)
-          root.children.add(node)
-  
-  # Colony updates
-  for colonyId, colony in newState.allColonies():
-    if colony.owner == houseId:
-      let prevColony = prevState.colony(colonyId)
-      if prevColony.isSome:
-        let pc = prevColony.get()
-        if pc.population != colony.population or pc.industry != colony.industry:
-          var node = newKdlNode("colony-updated")
-          node.props["id"] = newKdlVal(colonyId.uint32.int64)
-          var details = newKdlNode("_")
-          details.props["population"] = newKdlVal(colony.population.int64)
-          details.props["industry"] = newKdlVal(colony.industry.int64)
-          node.children.add(details)
-          root.children.add(node)
-  
-  # Events visible to this house
-  var eventsNode = newKdlNode("events")
-  for event in newState.lastTurnEvents:
-    if event.isVisibleTo(houseId):
-      var eventNode = newKdlNode("event")
-      eventNode.props["type"] = newKdlVal($event.eventType)
-      eventNode.props["description"] = newKdlVal(event.description)
-      eventsNode.children.add(eventNode)
-  root.children.add(eventsNode)
-  
-  doc.add(root)
-  result = $doc
-```
+Key components:
+- `src/daemon/persistence/player_state_snapshot.nim` (snapshot serialization)
+- `src/daemon/transport/nostr/delta_kdl.nim` (diff + KDL formatting)
+- `src/daemon/daemon.nim` (integration + snapshot persistence)
 
 ### 4.2 Delta Applicator (`src/player/state/delta_applicator.nim`)
 
@@ -961,15 +911,18 @@ echo "E2E test complete"
 - [ ] Test compression ratio
 
 ### Phase 4: Delta System
-- [ ] `src/engine/state/delta_generator.nim` - Generate KDL deltas
+- [x] PlayerState diff + KDL formatting (`src/daemon/transport/nostr/delta_kdl.nim`)
+- [x] Snapshot persistence (`src/daemon/persistence/player_state_snapshot.nim`)
 - [ ] `src/player/state/delta_applicator.nim` - Apply deltas
-- [ ] `src/daemon/persistence/delta_writer.nim` - Persist deltas
 - [ ] Rename `kdl_orders.nim` to `kdl_commands.nim`
 
 ### Phase 5: Daemon Integration
-- [ ] `src/daemon/subscriber.nim` - Command subscription
-- [ ] `src/daemon/publisher.nim` - State publishing
-- [ ] Update `daemon.nim` main loop
+- [x] `daemon.nim` main loop: relay connection + subscriptions
+- [x] Command ingestion + persistence via 30402
+- [x] Slot claim handling (30401) with house pubkey assignment
+- [x] Turn results publishing (30403) with PlayerState deltas
+- [ ] `src/daemon/subscriber.nim` - Optional refactor
+- [ ] `src/daemon/publisher.nim` - Optional refactor
 
 ### Phase 6: Player Client
 - [ ] `src/player/nostr/client.nim` - Player Nostr client

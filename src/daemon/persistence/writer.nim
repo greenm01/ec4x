@@ -16,6 +16,7 @@ import std/[options, strutils, tables, json, jsonutils, times]
 import db_connector/db_sqlite
 import ../../common/logger
 import ../../engine/types/[event, game_state, core, house, starmap, colony, fleet, ship, diplomacy, command, tech, espionage]
+import ./player_state_snapshot
 
 # ============================================================================
 # JSON Helpers for Distinct Types
@@ -63,6 +64,33 @@ proc updateHousePubkey*(dbPath: string, gameId: string, houseId: HouseId, pubkey
     $houseId.uint32,
   )
   logInfo("Persistence", "Updated house ", $houseId, " with pubkey ", pubkey)
+
+proc savePlayerStateSnapshot*(
+  dbPath: string,
+  gameId: string,
+  houseId: HouseId,
+  turn: int32,
+  snapshot: PlayerStateSnapshot
+) =
+  ## Persist per-house PlayerState snapshot for delta generation
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let stateJson = snapshotToJson(snapshot)
+  db.exec(
+    sql"""
+    INSERT INTO player_state_snapshots (
+      game_id, house_id, turn, state_json, created_at
+    ) VALUES (?, ?, ?, ?, unixepoch())
+    ON CONFLICT(game_id, house_id, turn) DO UPDATE SET
+      state_json=excluded.state_json
+    """,
+    gameId,
+    $houseId.uint32,
+    $turn,
+    stateJson
+  )
+  logDebug("Persistence", "Saved player state snapshot for house ", $houseId, " turn ", $turn)
 
 proc saveHouses(db: DbConn, state: GameState) =
   for house in state.houses.entities.data:
