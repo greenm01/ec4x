@@ -1,6 +1,6 @@
 ## Core Nostr types and constants for EC4X transport layer
 
-import std/[json, tables, times, options]
+import std/[json, tables, options]
 
 type
   NostrEvent* = object
@@ -9,17 +9,25 @@ type
     created_at*: int64             # Unix timestamp
     kind*: int                     # Event type
     tags*: seq[seq[string]]        # Indexed tags
-    content*: string               # Arbitrary content (often JSON)
+    content*: string               # Arbitrary content
     sig*: string                   # 64-byte hex signature
 
   NostrFilter* = object
     ids*: seq[string]              # Event IDs
     authors*: seq[string]          # Pubkeys
     kinds*: seq[int]               # Event kinds
-    tags*: Table[string, seq[string]]  # Tag filters (e.g., #g for game)
+    tags*: Table[string, seq[string]]  # Tag filters (#d, #p, etc.)
     since*: Option[int64]          # Unix timestamp
     until*: Option[int64]          # Unix timestamp
     limit*: Option[int]            # Max results
+
+  RelayMessageKind* {.pure.} = enum
+    Event
+    Ok
+    Eose
+    Closed
+    Notice
+    Auth      # NIP-42
 
   RelayMessage* = object
     case kind*: RelayMessageKind
@@ -31,40 +39,66 @@ type
       accepted*: bool
       message*: string
     of RelayMessageKind.Eose:
-      subId*: string
+      eoseSubId*: string
     of RelayMessageKind.Closed:
       closedSubId*: string
       reason*: string
     of RelayMessageKind.Notice:
       notice*: string
-
-  RelayMessageKind* {.pure.} = enum
-    Event, Ok, Eose, Closed, Notice
-
-  NostrClient* = ref object
-    relays*: seq[string]           # WebSocket URLs
-    # connections*: Table[string, WebSocket]  # TODO: Add when WebSocket impl ready
-    subscriptions*: Table[string, NostrFilter]
-    eventCallback*: proc(event: NostrEvent)
-    eoseCallback*: proc(subId: string)
+    of RelayMessageKind.Auth:
+      challenge*: string
 
   KeyPair* = object
-    privateKey*: array[32, byte]
-    publicKey*: array[32, byte]
+    privateKey*: string   # 32-byte hex private key
+    publicKey*: string    # 32-byte hex public key (x-only)
+    npub*: string         # bech32 npub (for display)
+    nsec*: string         # bech32 nsec (for display)
 
-# EC4X Custom Event Kinds
-const
-  EventKindOrderPacket* = 30001      # Player order submission
-  EventKindGameState* = 30002        # Per-player game state view
-  EventKindTurnComplete* = 30003     # Turn resolution announcement
-  EventKindGameMeta* = 30004         # Game metadata (lobby, config)
-  EventKindDiplomacy* = 30005        # Private diplomatic messages
-  EventKindSpectate* = 30006         # Public spectator feed
+  ConnectionState* {.pure.} = enum
+    Disconnected
+    Connecting
+    Connected
+    Reconnecting
 
-# Standard tag names
+# =============================================================================
+# EC4X Custom Event Kinds (per nostr-protocol.md)
+# =============================================================================
+
 const
-  TagGame* = "g"          # Game ID
-  TagHouse* = "h"         # Player's house name
-  TagTurn* = "t"          # Turn number
-  TagPlayer* = "p"        # Player pubkey (for encryption target)
-  TagGamePhase* = "phase" # Game phase (setup, active, completed)
+  # Parameterized replaceable events (30xxx range)
+  EventKindGameDefinition* = 30400   # Admin: Game metadata, slot status
+  EventKindPlayerSlotClaim* = 30401  # Player: Claims invite code
+  EventKindTurnCommands* = 30402     # Player: Commands for a turn
+  EventKindTurnResults* = 30403      # Server: Delta from turn resolution
+  EventKindGameState* = 30405        # Server: Full current state
+
+# =============================================================================
+# Standard Nostr Tag Names
+# =============================================================================
+
+const
+  TagD* = "d"             # Unique identifier (for replaceable events)
+  TagP* = "p"             # Pubkey (recipient for encryption)
+  TagE* = "e"             # Event reference
+  TagName* = "name"       # Human-readable name
+  TagStatus* = "status"   # Game status
+  TagTurn* = "turn"       # Turn number
+  TagSlot* = "slot"       # Player slot
+  TagCode* = "code"       # Invite code
+
+# =============================================================================
+# Game Status Values
+# =============================================================================
+
+const
+  GameStatusSetup* = "setup"
+  GameStatusActive* = "active"
+  GameStatusFinished* = "finished"
+
+# =============================================================================
+# Slot Status Values
+# =============================================================================
+
+const
+  SlotStatusPending* = "pending"
+  SlotStatusClaimed* = "claimed"

@@ -15,7 +15,9 @@ requires "nimkdl >= 2.0.6"
 requires "db_connector"
 requires "ws >= 0.5.0"           # WebSocket client for Nostr relay
 requires "zippy >= 0.10.0"       # Compression for Nostr payloads
-requires "nimcrypto >= 0.6.0"    # Cryptography for NIP-44 encryption
+requires "nimcrypto >= 0.6.0"    # Cryptography for SHA/HMAC
+requires "secp256k1"             # Schnorr signing + ECDH
+requires "nim_chacha20_poly1305" # ChaCha20 stream cipher
 
 # ==============================================================================
 # COMMON FLAGS
