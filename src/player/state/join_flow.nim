@@ -1,10 +1,9 @@
-## Join flow helpers for localhost TUI
+## Join flow state helpers for TUI
 
-import std/[json, jsonutils, options, os, strutils, times]
+import std/[json, jsonutils, options, os, strutils]
 import db_connector/db_sqlite
 import kdl
 
-import ../../common/kdl_join
 import ../../common/logger
 import ../../daemon/persistence/reader
 import ../../daemon/transport/nostr/nip19
@@ -78,27 +77,6 @@ proc loadGameInfo*(dataDir: string, gameId: string): Option[JoinGameInfo] =
   except CatchableError as e:
     logError("JoinFlow", "Failed to load game: ", gameId, " ", e.msg)
     none(JoinGameInfo)
-
-proc writeJoinRequest*(gameDir: string, request: JoinRequest): string =
-  let requestsDir = gameDir / "requests"
-  createDir(requestsDir)
-  let stamp = $getTime().toUnix() & "_" & $getCurrentProcessId()
-  let requestPath = requestsDir / ("join_" & stamp & ".kdl")
-  writeFile(requestPath, formatJoinRequest(request))
-  requestPath
-
-proc responsePathForRequest*(gameDir: string, requestPath: string): string =
-  let base = requestPath.extractFilename
-  let responseName = base.replace("join_", "join-response_")
-  gameDir / "responses" / responseName
-
-proc readJoinResponse*(gameDir: string, requestPath: string): Option[JoinResponse] =
-  let responsePath = responsePathForRequest(gameDir, requestPath)
-  if not fileExists(responsePath):
-    return none(JoinResponse)
-  let response = parseJoinResponseFile(responsePath)
-  discard tryRemoveFile(responsePath)
-  some(response)
 
 proc normalizePubkey*(pubkey: string): Option[string] =
   try:

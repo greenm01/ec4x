@@ -3,18 +3,14 @@
 ## The daemon monitors active games, collects player orders, resolves turns,
 ## and publishes results—all without human intervention.
 
-import std/[os, tables, sets, times, asyncdispatch, options]
+import std/[os, tables, sets, times, asyncdispatch]
 import cligen
 import ../common/logger
 import ./sam_core
 import ./config
 import ../daemon/persistence/reader
 import ../daemon/persistence/writer
-import ./transport/localhost/watcher
-import ./transport/localhost/exporter
-import ./transport/localhost/join_watcher
 import ../engine/turn_cycle/engine
-import ../engine/state/engine as state_ops
 import ../engine/config/engine
 import ../engine/globals
 
@@ -28,7 +24,7 @@ type
     dbPath*: string
     turn*: int
     phase*: string
-    transportMode*: string # e.g. "localhost", "nostr"
+    transportMode*: string # e.g. "nostr"
 
 type
   DaemonModel* = object
@@ -58,24 +54,6 @@ type DaemonCmd* = proc (): Future[Proposal[DaemonModel]]
 # =============================================================================
 # Command Helpers
 # =============================================================================
-
-proc collectOrdersCmd(gameId: GameId): DaemonCmd =
-  proc (): Future[Proposal[DaemonModel]] {.async.} =
-    logInfo("Daemon", "Collecting orders for game: ", gameId)
-    let gameInfo = daemonLoop.model.games[gameId]
-    let packets = collectOrdersLocal(gameInfo.dbPath.parentDir)
-    
-    for packet in packets:
-      saveCommandPacket(gameInfo.dbPath, gameId, packet)
-    
-    return Proposal[DaemonModel](
-      name: "collect_orders_complete",
-      payload: proc(model: var DaemonModel) =
-        if packets.len > 0:
-          if not model.pendingOrders.hasKey(gameId):
-            model.pendingOrders[gameId] = 0
-          model.pendingOrders[gameId] += packets.len
-    )
 
 proc resolveTurnCmd(gameId: GameId): DaemonCmd =
   proc (): Future[Proposal[DaemonModel]] {.async.} =
@@ -116,7 +94,7 @@ proc createGameDiscoveredProposal(gameId, dbPath, phase: string, turn: int32): P
         dbPath: dbP,
         turn: turnNum.int,
         phase: phaseStr,
-        transportMode: "localhost", # Stub
+        transportMode: "nostr",
       )
   )
 
@@ -153,13 +131,11 @@ proc tickProposal(): Proposal[DaemonModel] =
   return Proposal[DaemonModel](
     name: "tick",
     payload: proc(model: var DaemonModel) =
-      logInfo("Daemon", "Tick - checking for updates. Managed games: ", $model.games.len)
+      logInfo("Daemon", "Tick - checking for updates. Managed games: ",
+        $model.games.len)
       daemonLoop.queueCmd(discoverGamesCmd(model.dataDir))
-      for id in model.games.keys:
-        if id notin model.resolving:
-          daemonLoop.queueCmd(collectOrdersCmd(id))
-          let gameInfo = model.games[id]
-          collectJoinRequestsLocal(gameInfo.dbPath.parentDir)
+      # TODO: Implement Nostr-based order collection
+      # Previously used collectOrdersCmd and collectJoinRequestsLocal
       daemonLoop.queueCmd(scheduleNextTickCmd(model.pollInterval * 1000))
   )
 
@@ -241,8 +217,7 @@ proc start(
 proc resolve(gameId: string, dataDir: string = "data"): int =
   ## Manually trigger turn resolution for a game
   let gamesDir = dataDir / "games"
-  let gameDir = gamesDir / gameId
-  let dbPath = gameDir / "ec4x.db"
+  let dbPath = gamesDir / gameId / "ec4x.db"
 
   if not fileExists(dbPath):
     logError("Daemon", "Game database not found: ", dbPath)
@@ -268,8 +243,7 @@ proc resolve(gameId: string, dataDir: string = "data"): int =
   saveGameEvents(state, result.events)
   markCommandsProcessed(dbPath, gameId, state.turn - 1)
 
-  # Export turn results for clients
-  exportTurnResults(gameDir, state.turn, state)
+  # TODO: Publish turn results via Nostr (previously used exportTurnResults)
   
   logInfo("Daemon", "Resolution complete. Now at turn ", $state.turn)
   return 0

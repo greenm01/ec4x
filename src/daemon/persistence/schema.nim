@@ -30,14 +30,13 @@ CREATE TABLE IF NOT EXISTS games (
   month INTEGER NOT NULL DEFAULT 1,
   phase TEXT NOT NULL,              -- 'Setup', 'Active', 'Paused', 'Completed'
   turn_deadline INTEGER,            -- Unix timestamp (NULL = no deadline)
-  transport_mode TEXT NOT NULL,     -- 'localhost' or 'nostr'
+  transport_mode TEXT NOT NULL,     -- Transport mode (e.g., 'nostr')
   transport_config TEXT,            -- JSON: mode-specific config
   game_setup_json TEXT NOT NULL,    -- GameSetup snapshot (fixed at creation)
   game_config_json TEXT NOT NULL,   -- GameConfig snapshot (fixed at creation)
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
-  CHECK(phase IN ('Setup', 'Active', 'Paused', 'Completed')),
-  CHECK(transport_mode IN ('localhost', 'nostr'))
+  CHECK(phase IN ('Setup', 'Active', 'Paused', 'Completed'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_games_phase ON games(phase);
@@ -50,7 +49,7 @@ CREATE TABLE IF NOT EXISTS houses (
   id TEXT PRIMARY KEY,              -- UUID v4
   game_id TEXT NOT NULL,
   name TEXT NOT NULL,               -- "House Alpha", "Empire Beta"
-  nostr_pubkey TEXT,                -- npub/hex (NULL for localhost)
+  nostr_pubkey TEXT,                -- npub/hex (NULL until assigned)
   prestige INTEGER NOT NULL DEFAULT 0,
   treasury INTEGER NOT NULL DEFAULT 0,
   eliminated BOOLEAN NOT NULL DEFAULT 0,

@@ -49,7 +49,7 @@ proc createGameDatabase*(state: GameState, dataDir: string): string =
       game_setup_json, game_config_json,
       created_at, updated_at
     ) VALUES (
-      ?, ?, ?, 1, 2001, 1, 'Active', 'localhost',
+      ?, ?, ?, 1, 2001, 1, 'Active', 'nostr',
       ?, ?,
       unixepoch(), unixepoch()
     )

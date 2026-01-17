@@ -13,7 +13,6 @@ import ./actions
 import ../tui/widget/scroll_state
 import ../state/join_flow
 import ../state/lobby_profile
-import ../../common/kdl_join
 import ../../common/wordlist
 
 export types, tui_model, actions
@@ -392,41 +391,18 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.lobbyJoinStatus = JoinStatus.EnteringName
           model.statusMessage = "Enter player name (optional)"
       elif model.lobbyJoinStatus == JoinStatus.EnteringName:
-        let gameDir = "data/games/" & model.lobbyGameId
-        let request = JoinRequest(
-          gameId: model.lobbyGameId,
-          pubkey: model.lobbyProfilePubkey,
-          name: if model.lobbyProfileName.len > 0: some(model.lobbyProfileName)
-                else: none(string)
-        )
-        model.lobbyJoinRequestPath = writeJoinRequest(gameDir, request)
-        model.lobbyJoinStatus = JoinStatus.WaitingResponse
-        model.statusMessage = "Waiting for join response..."
+        # TODO: Implement Nostr-based join flow
+        # Should publish a 30401 event (Player Slot Claim) with invite code
+        # Then subscribe to 30400 updates to detect slot assignment
+        # For now, show a stub message
+        model.lobbyJoinStatus = JoinStatus.Failed
+        model.lobbyJoinError = "Nostr join not yet implemented"
+        model.statusMessage = "TODO: Nostr join flow"
     of ActionLobbyJoinPoll:
-      if model.lobbyJoinStatus == JoinStatus.WaitingResponse:
-        let gameDir = "data/games/" & model.lobbyGameId
-        let responseOpt = readJoinResponse(gameDir, model.lobbyJoinRequestPath)
-        if responseOpt.isSome:
-          let response = responseOpt.get()
-          if response.status == JoinResponseStatus.Accepted:
-            if response.houseId.isSome:
-              let houseId = response.houseId.get()
-              writeJoinCache("data", model.lobbyProfilePubkey,
-                model.lobbyGameId, houseId)
-              saveProfile("data", model.lobbyProfilePubkey,
-                model.lobbyProfileName, model.lobbySessionKeyActive)
-              model.lobbyJoinStatus = JoinStatus.Joined
-              model.statusMessage = "Joined game as house " &
-                $houseId.uint32
-              model.lobbyActiveGames = loadActiveGamesData("data",
-                model.lobbyProfilePubkey)
-            else:
-              model.lobbyJoinError = "Join response missing house"
-              model.lobbyJoinStatus = JoinStatus.Failed
-          else:
-            model.lobbyJoinError = response.reason.get("Join rejected")
-            model.lobbyJoinStatus = JoinStatus.Failed
-            model.statusMessage = model.lobbyJoinError
+      # TODO: Implement Nostr-based join polling
+      # Should check for 30400 updates where our npub appears in a slot
+      # Since join is stubbed, this is a no-op for now
+      discard
     of ActionLobbyReturn:
       model.appPhase = AppPhase.Lobby
       model.statusMessage = "Returned to lobby"
