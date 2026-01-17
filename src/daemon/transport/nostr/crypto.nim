@@ -50,7 +50,8 @@ proc derivePublicKeyHex*(privateHex: string): string =
 
 proc sha256Hash*(data: string): string =
   ## Compute SHA256 hash and return hex
-  $sha256.digest(data).toLowerAscii()
+  let hash = sha256.digest(data)
+  hash.data.toHex().toLowerAscii()
 
 proc toHex*(data: openArray[byte]): string =
   ## Convert bytes to lowercase hex
@@ -141,8 +142,8 @@ proc conversationKey(privKey: array[32, byte],
 
   let pubkey = SkPublicKey.fromRaw(compressed).get()
   let shared = seckey.ecdh(pubkey)
-  let salt = Nip44Salt.toOpenArrayByte(0, Nip44Salt.len - 1)
-  hkdfExtractSha256(shared.data, salt)
+  let salt = Nip44Salt
+  hkdfExtractSha256(shared.data, salt.toOpenArrayByte(0, salt.len - 1))
 
 proc messageKeys(conversationKey: array[32, byte],
     nonce: array[32, byte]):
@@ -252,18 +253,17 @@ proc decryptNIP44*(ciphertext: string, recipientPrivKey: array[32, byte],
     raise newException(ValueError, "Invalid payload length")
 
   let decoded = base64.decode(ciphertext)
-  let decodedBytes = decoded.toOpenArrayByte(0, decoded.len - 1)
-  if decodedBytes.len < 99 or decodedBytes.len > 65603:
+  if decoded.len < 99 or decoded.len > 65603:
     raise newException(ValueError, "Invalid decoded length")
 
-  if decodedBytes[0] != Nip44Version:
+  if cast[ptr byte](unsafeAddr decoded[0])[] != Nip44Version:
     raise newException(ValueError, "Unsupported encryption version")
 
   var nonce: array[32, byte]
   for i in 0..<32:
-    nonce[i] = decodedBytes[1 + i]
+    nonce[i] = cast[ptr byte](unsafeAddr decoded[1 + i])[]
 
-  let macStart = decodedBytes.len - 32
+  let macStart = decoded.len - 32
   let cipherStart = 1 + 32
   let cipherLen = macStart - cipherStart
   if cipherLen <= 0:
@@ -271,11 +271,11 @@ proc decryptNIP44*(ciphertext: string, recipientPrivKey: array[32, byte],
 
   var cipherBytes = newSeq[byte](cipherLen)
   for i in 0..<cipherLen:
-    cipherBytes[i] = decodedBytes[cipherStart + i]
+    cipherBytes[i] = cast[ptr byte](unsafeAddr decoded[cipherStart + i])[]
 
   var macExpected: array[32, byte]
   for i in 0..<32:
-    macExpected[i] = decodedBytes[macStart + i]
+    macExpected[i] = cast[ptr byte](unsafeAddr decoded[macStart + i])[]
 
   let convKey = conversationKey(recipientPrivKey, senderPubKey)
   let keys = messageKeys(convKey, nonce)

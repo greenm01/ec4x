@@ -3,16 +3,21 @@
 ## The daemon monitors active games, collects player orders, resolves turns,
 ## and publishes results—all without human intervention.
 
-import std/[os, tables, sets, times, asyncdispatch]
+import std/[os, tables, sets, times, asyncdispatch, strutils, options]
 import cligen
 import ../common/logger
 import ./sam_core
 import ./config
+import ./identity
+import ./transport/nostr/[types, client, wire, events, filter, crypto]
 import ../daemon/persistence/reader
 import ../daemon/persistence/writer
+import ../daemon/parser/kdl_orders
 import ../engine/turn_cycle/engine
 import ../engine/config/engine
 import ../engine/globals
+import ../engine/types/[core, house, command, event, game_state]
+import ../engine/state/iterators
 
 # =============================================================================
 # Core Types
@@ -35,6 +40,9 @@ type
     running*: bool                         # Main loop control
     dataDir*: string                       # Root data directory
     pollInterval*: int                     # Seconds between polls
+    identity*: DaemonIdentity              # Nostr keypair
+    nostrClient*: NostrClient              # Nostr relay client
+    relayUrls*: seq[string]                # Relay URLs from config
 
 type
   DaemonLoop* = SamLoop[DaemonModel]
@@ -55,6 +63,9 @@ type DaemonCmd* = proc (): Future[Proposal[DaemonModel]]
 # Command Helpers
 # =============================================================================
 
+# Forward declarations
+proc publishTurnResults(gameId: string, state: GameState) {.async.}
+
 proc resolveTurnCmd(gameId: GameId): DaemonCmd =
   proc (): Future[Proposal[DaemonModel]] {.async.} =
     logInfo("Daemon", "Resolving turn for game: ", gameId)
@@ -71,6 +82,9 @@ proc resolveTurnCmd(gameId: GameId): DaemonCmd =
     saveFullState(state) # Saves NEW turn number and updated entities
     saveGameEvents(state, result.events)
     markCommandsProcessed(gameInfo.dbPath, gameId, state.turn - 1)
+    
+    # 4. Publish turn results via Nostr
+    await publishTurnResults(gameId, state)
     
     return Proposal[DaemonModel](
       name: "turn_resolved",
@@ -134,8 +148,15 @@ proc tickProposal(): Proposal[DaemonModel] =
       logInfo("Daemon", "Tick - checking for updates. Managed games: ",
         $model.games.len)
       daemonLoop.queueCmd(discoverGamesCmd(model.dataDir))
-      # TODO: Implement Nostr-based order collection
-      # Previously used collectOrdersCmd and collectJoinRequestsLocal
+      
+      # Subscribe to commands for all active games
+      for gameId, gameInfo in model.games:
+        if model.nostrClient != nil and model.nostrClient.isConnected():
+          let subId = "daemon:" & gameId
+          if subId notin model.nostrClient.subscriptions:
+            asyncCheck model.nostrClient.subscribeDaemon(gameId, model.identity.publicKeyHex)
+            logDebug("Nostr", "Subscribed to commands for game: ", gameId)
+      
       daemonLoop.queueCmd(scheduleNextTickCmd(model.pollInterval * 1000))
   )
 
@@ -145,21 +166,130 @@ proc scheduleNextTickCmd(delayMs: int): DaemonCmd =
     return tickProposal()
 
 # =============================================================================
+# Nostr Event Processing Helpers
+# =============================================================================
+
+proc hexToBytes32(hexStr: string): array[32, byte] =
+  ## Convert hex string to 32-byte array
+  if hexStr.len != 64:
+    raise newException(ValueError, "Invalid hex length: expected 64, got " & $hexStr.len)
+  for i in 0..<32:
+    let hexByte = hexStr[i*2..i*2+1]
+    result[i] = byte(parseHexInt(hexByte))
+
+proc getPlayerPubkey(gameInfo: GameInfo, houseId: HouseId): string =
+  ## Get player's Nostr pubkey for a house
+  ## TODO: This needs to be stored when player claims slot
+  ## For now, return empty string (will need to implement slot claim storage)
+  ""
+
+proc buildDeltaKdl(state: GameState, houseId: HouseId): string =
+  ## Build fog-of-war filtered delta KDL for a house
+  ## TODO: Implement proper delta extraction with fog-of-war filtering
+  ## For now, return minimal KDL structure
+  result = "delta house=(HouseId)" & $houseId.uint32 & " turn=" & $state.turn & " {\n"
+  result.add("  // TODO: Add fog-of-war filtered game events\n")
+  result.add("}\n")
+
+proc publishTurnResults(gameId: string, state: GameState) {.async.} =
+  ## Publish turn results to all players via Nostr
+  try:
+    let gameInfo = daemonLoop.model.games[gameId]
+    let daemonPriv = hexToBytes32(daemonLoop.model.identity.privateKeyHex)
+    
+    # Publish delta for each house
+    for (houseId, house) in state.allHousesWithId():
+      let playerPubkey = getPlayerPubkey(gameInfo, houseId)
+      if playerPubkey.len == 0:
+        logWarn("Nostr", "No player pubkey for house ", $houseId, " - skipping delta publish")
+        continue
+      
+      # Build fog-of-war filtered delta
+      let deltaKdl = buildDeltaKdl(state, houseId)
+      
+      # Encrypt and encode
+      let playerPub = hexToBytes32(playerPubkey)
+      let encryptedPayload = encodePayload(deltaKdl, daemonPriv, playerPub)
+      
+      # Create and sign event
+      var event = createTurnResults(
+        gameId = gameId,
+        turn = state.turn.int,
+        encryptedPayload = encryptedPayload,
+        playerPubkey = playerPubkey,
+        daemonPubkey = daemonLoop.model.identity.publicKeyHex
+      )
+      signEvent(event, daemonPriv)
+      
+      # Publish to relays
+      let published = await daemonLoop.model.nostrClient.publish(event)
+      if published:
+        logInfo("Nostr", "Published turn ", $state.turn, " delta for house ", $houseId)
+      else:
+        logError("Nostr", "Failed to publish delta for house ", $houseId)
+    
+  except CatchableError as e:
+    logError("Nostr", "Failed to publish turn results: ", e.msg)
+
+proc processIncomingCommand(event: NostrEvent) {.async.} =
+  ## Process a turn command event (30402) from a player
+  try:
+    let gameIdOpt = event.getGameId()
+    let turnOpt = event.getTurn()
+    
+    if gameIdOpt.isNone or turnOpt.isNone:
+      logError("Nostr", "Command event missing game ID or turn")
+      return
+    
+    let gameId = gameIdOpt.get()
+    let turn = turnOpt.get()
+    
+    # Get game info
+    if not daemonLoop.model.games.hasKey(gameId):
+      logWarn("Nostr", "Command for unknown game: ", gameId)
+      return
+    
+    let gameInfo = daemonLoop.model.games[gameId]
+    
+    # Decrypt command payload
+    let daemonPriv = hexToBytes32(daemonLoop.model.identity.privateKeyHex)
+    let senderPub = hexToBytes32(event.pubkey)
+    let kdlCommands = decodePayload(event.content, daemonPriv, senderPub)
+    
+    # Parse KDL into CommandPacket
+    let commandPacket = parseOrdersString(kdlCommands)
+    
+    # Save to database
+    saveCommandPacket(gameInfo.dbPath, gameId, commandPacket)
+    
+    logInfo("Nostr", "Received and saved commands for game=", gameId, 
+            " turn=", $turn, " house=", $commandPacket.houseId)
+    
+    # TODO: Check if all players have submitted, trigger turn resolution
+    
+  except CatchableError as e:
+    logError("Nostr", "Failed to process command: ", e.msg)
+
+# =============================================================================
 # Main Event Loop
 # =============================================================================
 
-proc initModel*(dataDir: string, pollInterval: int): DaemonModel =
+proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string]): DaemonModel =
   result = DaemonModel(
     games: initTable[GameId, GameInfo](),
     resolving: initHashSet[GameId](),
     pendingOrders: initTable[GameId, int](),
     running: true,
     dataDir: dataDir,
-    pollInterval: pollInterval
+    pollInterval: pollInterval,
+    identity: ensureIdentity(),
+    nostrClient: nil,  # Will be initialized in mainLoop
+    relayUrls: relayUrls
   )
+  logInfo("Daemon", "Initialized with identity: ", result.identity.npub())
 
-proc newDaemonLoop(dataDir: string, pollInterval: int): DaemonLoop =
-  result = newSamLoop(initModel(dataDir, pollInterval))
+proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string]): DaemonLoop =
+  result = newSamLoop(initModel(dataDir, pollInterval, relayUrls))
   # Add generic acceptor to execute proposal payloads
   result.addAcceptor(proc(model: var DaemonModel, proposal: Proposal[DaemonModel]): bool =
     if proposal.payload == nil:
@@ -169,13 +299,46 @@ proc newDaemonLoop(dataDir: string, pollInterval: int): DaemonLoop =
     return true
   )
 
-proc mainLoop(dataDir: string, pollInterval: int) {.async.} =
+proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string]) {.async.} =
   ## SAM daemon loop
-  daemonLoop = newDaemonLoop(dataDir, pollInterval)
+  daemonLoop = newDaemonLoop(dataDir, pollInterval, relayUrls)
   
   logInfo("Daemon", "Starting SAM daemon...")
   logInfo("Daemon", "Data directory: ", dataDir)
   logInfo("Daemon", "Poll interval: ", pollInterval, " seconds")
+  logInfo("Daemon", "Daemon pubkey: ", daemonLoop.model.identity.npub())
+
+  # Initialize and connect Nostr client
+  daemonLoop.model.nostrClient = newNostrClient(relayUrls)
+  
+  # Set up event callback for incoming commands
+  daemonLoop.model.nostrClient.onEvent = proc(subId: string, event: NostrEvent) =
+    logDebug("Nostr", "Received event: kind=", $event.kind, " from=", event.pubkey[0..7])
+    
+    # Handle turn command events (30402)
+    if event.kind == EventKindTurnCommands:
+      let gameIdOpt = event.getGameId()
+      if gameIdOpt.isNone:
+        logError("Nostr", "Command event missing game ID")
+        return
+      
+      let gameId = gameIdOpt.get()
+      if not daemonLoop.model.games.hasKey(gameId):
+        logWarn("Nostr", "Received commands for unknown game: ", gameId)
+        return
+      
+      # Queue async command processing
+      asyncCheck processIncomingCommand(event)
+  
+  # Connect to relays
+  await daemonLoop.model.nostrClient.connect()
+  
+  if not daemonLoop.model.nostrClient.isConnected():
+    logError("Daemon", "Failed to connect to any relay")
+    return
+  
+  # Start listening for events (non-blocking)
+  asyncCheck daemonLoop.model.nostrClient.listen()
 
   # Start tick chain
   daemonLoop.queueCmd(scheduleNextTickCmd(0))  # Initial immediate
@@ -198,12 +361,17 @@ proc start(
   ## Start the EC4X daemon
   var finalDataDir = dataDir
   var finalPollInterval = pollInterval
+  var finalRelayUrls: seq[string] = @[]
 
   if configKdl.len > 0:
     logInfo("Daemon", "Loading config from: ", configKdl)
     let cfg = parseDaemonKdl(configKdl)
     finalDataDir = cfg.data_dir
     finalPollInterval = cfg.poll_interval
+    finalRelayUrls = cfg.relay_urls
+  else:
+    # Default relay
+    finalRelayUrls = @["ws://localhost:8080"]
 
   logInfo("Daemon", "EC4X Daemon starting...")
 
@@ -211,7 +379,7 @@ proc start(
     logError("Daemon", "Data directory does not exist: ", finalDataDir)
     return 1
 
-  waitFor mainLoop(finalDataDir, finalPollInterval)
+  waitFor mainLoop(finalDataDir, finalPollInterval, finalRelayUrls)
   return 0
 
 proc resolve(gameId: string, dataDir: string = "data"): int =
@@ -229,7 +397,7 @@ proc resolve(gameId: string, dataDir: string = "data"): int =
   gameConfig = loadGameConfig("config")
 
   # Initialize global loop if needed (some cmds might use it)
-  daemonLoop = newDaemonLoop(dataDir, 30)
+  daemonLoop = newDaemonLoop(dataDir, 30, @["ws://localhost:8080"])
 
   # Load state
   let state = loadFullState(dbPath)
@@ -243,7 +411,11 @@ proc resolve(gameId: string, dataDir: string = "data"): int =
   saveGameEvents(state, result.events)
   markCommandsProcessed(dbPath, gameId, state.turn - 1)
 
-  # TODO: Publish turn results via Nostr (previously used exportTurnResults)
+  # Publish turn results via Nostr (if connected)
+  if daemonLoop.model.nostrClient != nil:
+    waitFor publishTurnResults(gameId, state)
+  else:
+    logWarn("Daemon", "No Nostr client - skipping result publishing")
   
   logInfo("Daemon", "Resolution complete. Now at turn ", $state.turn)
   return 0

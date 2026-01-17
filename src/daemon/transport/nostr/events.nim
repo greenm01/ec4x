@@ -7,7 +7,7 @@
 ## - 30403: Turn results/deltas (encrypted)
 ## - 30405: Full game state (encrypted)
 
-import std/[json, times, options, strutils]
+import std/[json, times, options, strutils, sequtils]
 import types, nip01
 
 # =============================================================================

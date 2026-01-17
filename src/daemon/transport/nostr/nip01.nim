@@ -3,7 +3,7 @@
 ## Implements event creation, serialization, parsing, and ID computation.
 ## https://github.com/nostr-protocol/nips/blob/master/01.md
 
-import std/[json, strutils, times, sequtils]
+import std/[json, strutils, times, sequtils, options]
 import nimcrypto/[sha2, utils]
 import types
 
@@ -23,9 +23,8 @@ proc computeEventId*(event: NostrEvent): string =
     event.content
   ])
   
-  var hash: array[32, byte]
-  sha256.digest(serialized.cstring, serialized.len.uint, hash)
-  result = hash.toHex().toLowerAscii()
+  let hash = sha256.digest(serialized)
+  result = hash.data.toHex().toLowerAscii()
 
 proc serializeForSigning*(event: NostrEvent): string =
   ## Serialize event for Schnorr signing (same as ID computation input)

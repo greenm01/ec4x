@@ -3,7 +3,7 @@
 ## Manages Nostr keypair generation, storage, and loading.
 ## Storage location: ~/.local/share/ec4x/daemon_identity.kdl
 
-import std/[os, times, options]
+import std/[os, times, options, strutils]
 import kdl
 
 import transport/nostr/crypto
@@ -67,7 +67,7 @@ proc loadIdentity*(): Option[DaemonIdentity] =
       else:
         derivePublicKeyHex(nsecHex)
     let identityType =
-      if node.props.getOrDefault("type", "local") == "imported":
+      if node.props.hasKey("type") and node.props["type"].getString() == "imported":
         IdentityType.Imported
       else:
         IdentityType.Local

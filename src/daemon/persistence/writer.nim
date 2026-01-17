@@ -47,6 +47,23 @@ proc updateGameMetadata*(state: GameState) =
     state.gameId,
   )
 
+proc updateHousePubkey*(dbPath: string, gameId: string, houseId: HouseId, pubkey: string) =
+  ## Update a house's Nostr pubkey (for slot claims)
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  db.exec(
+    sql"""
+    UPDATE houses
+    SET nostr_pubkey = ?
+    WHERE game_id = ? AND id = ?
+  """,
+    pubkey,
+    gameId,
+    $houseId.uint32,
+  )
+  logInfo("Persistence", "Updated house ", $houseId, " with pubkey ", pubkey)
+
 proc saveHouses(db: DbConn, state: GameState) =
   for house in state.houses.entities.data:
     let techJson = $toJson(house.techTree)

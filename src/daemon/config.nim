@@ -5,6 +5,7 @@ type
   DaemonConfig* = object
     data_dir*: string
     poll_interval*: int
+    relay_urls*: seq[string]
 
 proc parseDaemonKdl*(path: string): DaemonConfig =
   let content = readFile(path)
@@ -24,6 +25,10 @@ proc parseDaemonKdl*(path: string): DaemonConfig =
     of "poll_interval":
       if child.args.len > 0:
         result.poll_interval = child.args[0].getInt().int
+    of "relay_urls":
+      for urlNode in child.children:
+        if urlNode.name == "url" and urlNode.args.len > 0:
+          result.relay_urls.add(urlNode.args[0].getString())
     else:
       discard
 
@@ -32,3 +37,5 @@ proc parseDaemonKdl*(path: string): DaemonConfig =
     result.data_dir = "data"
   if result.poll_interval == 0:
     result.poll_interval = 30
+  if result.relay_urls.len == 0:
+    result.relay_urls = @["ws://localhost:8080"]
