@@ -13,6 +13,9 @@ requires "nim >= 2.0.0"
 requires "cligen >= 1.7.0"
 requires "nimkdl >= 2.0.6"
 requires "db_connector"
+requires "ws >= 0.5.0"           # WebSocket client for Nostr relay
+requires "zippy >= 0.10.0"       # Compression for Nostr payloads
+requires "nimcrypto >= 0.6.0"    # Cryptography for NIP-44 encryption
 
 # ==============================================================================
 # COMMON FLAGS

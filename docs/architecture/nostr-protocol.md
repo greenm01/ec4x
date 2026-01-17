@@ -299,9 +299,9 @@ The server validates:
 4. Assigns random house
 5. Updates game definition (30400)
 
-### 30402: Turn Orders
+### 30402: Turn Commands
 
-Published by Player when submitting orders for a turn.
+Published by Player when submitting commands for a turn.
 
 ```json
 {
@@ -310,59 +310,96 @@ Published by Player when submitting orders for a turn.
   "created_at": 1705500200,
   "tags": [
     ["d", "<game-id>"],
-    ["turn", "5"]
+    ["turn", "5"],
+    ["p", "<daemon-npub>"]
   ],
-  "content": "<orders-payload>",
+  "content": "<encrypted-compressed-kdl>",
   "sig": "..."
 }
 ```
 
-The orders payload format is defined in the game engine specification.
+The content field contains: `base64(NIP-44-encrypt(zippy-compress(kdl)))`
+
+See [KDL Payload Formats](#kdl-payload-formats) for the KDL structure.
 
 ### 30403: Turn Results
 
-Published by Server after resolving a turn.
+Published by Server after resolving a turn. One event per player,
+encrypted to that player's pubkey.
 
 ```json
 {
   "kind": 30403,
-  "pubkey": "<server-npub>",
+  "pubkey": "<daemon-npub>",
   "created_at": 1705500300,
   "tags": [
     ["d", "<game-id>"],
-    ["turn", "5"]
+    ["turn", "5"],
+    ["p", "<player-npub>"]
   ],
-  "content": "<delta-payload>",
+  "content": "<encrypted-compressed-kdl>",
   "sig": "..."
 }
 ```
 
-The delta contains only the changes from this turn, not full state.
-Clients apply deltas to their local state cache.
+The content field contains: `base64(NIP-44-encrypt(zippy-compress(kdl)))`
+
+The delta contains only the changes from this turn, filtered by fog of
+war for the target player. Clients apply deltas to their local state.
+
+See [KDL Payload Formats](#kdl-payload-formats) for the KDL structure.
 
 ### 30405: Game State
 
-Published by Server, contains full current game state.
+Published by Server, contains full current game state for a player.
+Encrypted to that player's pubkey with fog-of-war filtering.
 
 ```json
 {
   "kind": 30405,
-  "pubkey": "<server-npub>",
+  "pubkey": "<daemon-npub>",
   "created_at": 1705500300,
   "tags": [
     ["d", "<game-id>"],
-    ["turn", "5"]
+    ["turn", "5"],
+    ["p", "<player-npub>"]
   ],
-  "content": "<full-state-payload>",
+  "content": "<encrypted-compressed-kdl>",
   "sig": "..."
 }
 ```
+
+The content field contains: `base64(NIP-44-encrypt(zippy-compress(kdl)))`
 
 Clients request this when:
 
 - First connecting to a game
 - Local state is corrupted or missing
 - Manual resync requested
+
+See [KDL Payload Formats](#kdl-payload-formats) for the KDL structure.
+
+---
+
+## Wire Format
+
+All encrypted payloads use this format:
+
+```
+KDL string -> zippy compress -> NIP-44 encrypt -> base64 encode
+```
+
+**Encoding (sender):**
+1. Generate KDL string from game data
+2. Compress with zippy (gzip)
+3. Encrypt with NIP-44 to recipient's pubkey
+4. Base64 encode for Nostr content field
+
+**Decoding (receiver):**
+1. Base64 decode content field
+2. Decrypt with NIP-44 using own private key
+3. Decompress with zippy
+4. Parse KDL string
 
 ---
 
@@ -527,3 +564,347 @@ For games requiring hidden information:
 - Read-only access to game state
 - Could use a separate "spectator" invite code type
 - Delayed state (fog of war for spectators)
+
+---
+
+## KDL Payload Formats
+
+All encrypted event payloads use KDL format. This section defines the
+KDL schemas for commands, deltas, and full state.
+
+### Command Packet (30402)
+
+Player commands submitted each turn. Parsed by `kdl_orders.nim`.
+
+```kdl
+commands house=(HouseId)1 turn=5 {
+  // Fleet commands - movement, combat, colonization
+  fleet (FleetId)123 {
+    move to=(SystemId)456 priority=1 roe=3
+  }
+  fleet (FleetId)789 hold
+  fleet (FleetId)101 {
+    colonize at=(SystemId)200
+  }
+  fleet (FleetId)102 {
+    patrol from=(SystemId)10 to=(SystemId)20
+  }
+  fleet (FleetId)103 {
+    join-fleet target=(FleetId)123
+  }
+
+  // Build commands - ships, facilities, ground units
+  build (ColonyId)1 {
+    ship Destroyer quantity=2
+    ship Cruiser quantity=1
+    facility Shipyard
+    ground Marine quantity=5
+    industrial units=10
+  }
+
+  // Scrap commands - salvage entities for PP
+  scrap (ColonyId)1 {
+    ship (ShipId)99 acknowledge-queue-loss=false
+    ground-unit (GroundUnitId)50
+  }
+
+  // Research allocation
+  research {
+    economic 100
+    science 50
+    tech {
+      weapons 40
+      shields 20
+      construction 10
+    }
+  }
+
+  // Diplomacy
+  diplomacy {
+    declare-hostile target=(HouseId)3
+    propose-alliance target=(HouseId)2
+    accept-proposal id=(ProposalId)5
+  }
+
+  // Espionage
+  espionage {
+    invest ebp=200 cip=80
+    tech-theft target=(HouseId)2
+    sabotage-high target=(HouseId)3 system=(SystemId)50
+  }
+
+  // Population transfers
+  transfer from=(ColonyId)1 to=(ColonyId)2 ptu=50
+
+  // Terraforming
+  terraform colony=(ColonyId)3
+
+  // Colony management
+  colony (ColonyId)1 {
+    tax-rate 60
+    auto-repair true
+    auto-load-fighters true
+    auto-load-marines false
+  }
+}
+```
+
+### Turn Delta (30403)
+
+State changes from turn resolution, filtered by fog of war.
+
+```kdl
+delta turn=5 game="550e8400-e29b-41d4-a716-446655440000" {
+  // Fleet movements visible to this house
+  fleet-moved id=(FleetId)123 from=(SystemId)100 to=(SystemId)101
+  fleet-moved id=(FleetId)456 from=(SystemId)200 to=(SystemId)201
+
+  // Fleet destroyed
+  fleet-destroyed id=(FleetId)789 at=(SystemId)101 by=(HouseId)2
+
+  // Combat results
+  combat at=(SystemId)101 {
+    attacker house=(HouseId)1 fleet=(FleetId)123
+    defender house=(HouseId)2 fleet=(FleetId)789
+    result "attacker-victory"
+    losses attacker=2 defender=5
+  }
+
+  // Colony updates (own colonies get full detail)
+  colony-updated id=(ColonyId)1 {
+    population 850
+    industry 430
+    treasury-contribution 215
+  }
+
+  // Colony captured
+  colony-captured id=(ColonyId)99 {
+    system=(SystemId)50
+    old-owner=(HouseId)3
+    new-owner=(HouseId)1
+  }
+
+  // Tech advancement
+  tech-advance house=(HouseId)1 field="weapons" level=3 breakthrough="minor"
+
+  // Diplomatic changes
+  relation-changed from=(HouseId)1 to=(HouseId)3 {
+    old-status "hostile"
+    new-status "war"
+    reason "Declaration of war"
+  }
+
+  // Ship commissioned
+  ship-commissioned colony=(ColonyId)1 {
+    ship-class "Destroyer"
+    fleet=(FleetId)500
+  }
+
+  // Intel gathered (what we learned about enemies)
+  intel {
+    fleet-detected id=(FleetId)999 owner=(HouseId)2 {
+      location=(SystemId)30
+      estimated-ships=5
+    }
+    colony-intel id=(ColonyId)88 owner=(HouseId)3 {
+      system=(SystemId)40
+      estimated-population=600
+      estimated-industry=300
+    }
+  }
+
+  // Events visible to this house
+  events {
+    event type="ShipCommissioned" {
+      description "Destroyer commissioned at Alpha Prime"
+      colony=(ColonyId)1
+      ship-class "Destroyer"
+    }
+    event type="BattleOccurred" {
+      description "Battle at Tau Ceti - House Alpha victorious"
+      system=(SystemId)101
+      outcome "attacker-victory"
+    }
+    event type="TechAdvance" {
+      description "Weapons technology advanced to level 3"
+      tech-field "weapons"
+      new-level 3
+    }
+    event type="SpyMissionSucceeded" {
+      description "Intelligence gathered on House Beta colony"
+      target=(HouseId)2
+    }
+  }
+}
+```
+
+### Full State (30405)
+
+Complete game state for initial sync or resync.
+
+```kdl
+state turn=5 game="550e8400-e29b-41d4-a716-446655440000" {
+  viewing-house id=(HouseId)1 name="House Alpha"
+
+  // Own house info (full detail)
+  house {
+    treasury 5000
+    prestige 250
+    eliminated false
+    tech {
+      economic 2
+      science 1
+      weapons 3
+      shields 2
+      construction 2
+      terraforming 1
+      electronic-intelligence 1
+      cloaking 1
+      strategic-lift 1
+      counter-intelligence 1
+      flagship-command 1
+      strategic-command 1
+      fighter-doctrine 1
+      advanced-carrier-operations 1
+    }
+  }
+
+  // Owned colonies (full detail)
+  colonies {
+    colony id=(ColonyId)1 system=(SystemId)10 name="Alpha Prime" {
+      population 840
+      industry 420
+      tax-rate 50
+      auto-repair true
+      under-siege false
+      facilities {
+        spaceport 1
+        shipyard 2
+        drydock 1
+        starbase 1
+      }
+      ground-units {
+        army 10
+        marine 5
+        ground-battery 3
+        planetary-shield 1
+      }
+      construction-queue {
+        project type="ship" class="Cruiser" progress=50 cost=100
+        project type="facility" class="Shipyard" progress=0 cost=200
+      }
+    }
+    colony id=(ColonyId)2 system=(SystemId)15 name="New Terra" {
+      population 200
+      industry 100
+      tax-rate 50
+    }
+  }
+
+  // Owned fleets (full detail)
+  fleets {
+    fleet id=(FleetId)1 location=(SystemId)10 name="Alpha Fleet" {
+      command type="guard-colony"
+      ship id=(ShipId)100 class="Destroyer" hp=10 max-hp=10 tech-level=2
+      ship id=(ShipId)101 class="Cruiser" hp=15 max-hp=15 tech-level=2
+      ship id=(ShipId)102 class="ETAC" hp=5 max-hp=5 {
+        cargo ptu=3
+      }
+    }
+    fleet id=(FleetId)2 location=(SystemId)20 name="Scout Wing" {
+      command type="scout-system" target=(SystemId)25
+      ship id=(ShipId)200 class="Destroyer" hp=10 max-hp=10
+    }
+  }
+
+  // Visible systems (fog of war filtered)
+  systems {
+    system id=(SystemId)10 name="Alpha Centauri" {
+      visibility "owned"
+      coords q=0 r=0
+      ring 0
+      planet-class "Eden"
+      resource-rating "Abundant"
+      lanes (SystemId)11 (SystemId)12 (SystemId)15
+    }
+    system id=(SystemId)11 name="Tau Ceti" {
+      visibility "scouted"
+      last-scouted 4
+      coords q=1 r=0
+      ring 1
+      lanes (SystemId)10 (SystemId)20
+    }
+    system id=(SystemId)20 name="Unknown System" {
+      visibility "adjacent"
+      coords q=2 r=0
+      ring 2
+    }
+  }
+
+  // Enemy intel (fog of war - what we've observed)
+  intel {
+    fleets {
+      fleet id=(FleetId)999 owner=(HouseId)2 {
+        location=(SystemId)30
+        detected-turn 4
+        estimated-ships 5
+        quality "visual"
+      }
+    }
+    colonies {
+      colony id=(ColonyId)99 owner=(HouseId)3 {
+        system=(SystemId)40
+        intel-turn 3
+        estimated-population 500
+        estimated-industry 250
+        quality "scan"
+      }
+    }
+    systems {
+      system id=(SystemId)30 {
+        last-scouted 4
+        owner=(HouseId)2
+      }
+    }
+  }
+
+  // Public information (all players see this)
+  standings {
+    house id=(HouseId)1 name="House Alpha" prestige=250 colonies=2
+    house id=(HouseId)2 name="House Beta" prestige=180 colonies=2
+    house id=(HouseId)3 name="House Gamma" prestige=200 colonies=3
+    house id=(HouseId)4 name="House Delta" prestige=150 colonies=2 eliminated=true
+  }
+
+  diplomacy {
+    relation (HouseId)1 (HouseId)2 status="peace" since-turn=1
+    relation (HouseId)1 (HouseId)3 status="war" since-turn=3
+    relation (HouseId)2 (HouseId)3 status="hostile" since-turn=2
+  }
+
+  // Pending diplomatic proposals
+  proposals {
+    proposal id=(ProposalId)1 {
+      from=(HouseId)2
+      to=(HouseId)1
+      type "alliance"
+      expires-turn 6
+    }
+  }
+}
+```
+
+### KDL Type Annotations
+
+EC4X uses KDL type annotations for entity IDs:
+
+| Type | Example | Description |
+|------|---------|-------------|
+| `(HouseId)` | `(HouseId)1` | House/faction identifier |
+| `(FleetId)` | `(FleetId)123` | Fleet identifier |
+| `(ShipId)` | `(ShipId)456` | Ship identifier |
+| `(ColonyId)` | `(ColonyId)789` | Colony identifier |
+| `(SystemId)` | `(SystemId)10` | Star system identifier |
+| `(ProposalId)` | `(ProposalId)5` | Diplomatic proposal ID |
+
+These are parsed by `nimkdl` and converted to the appropriate Nim types.
