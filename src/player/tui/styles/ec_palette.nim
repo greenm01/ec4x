@@ -17,57 +17,57 @@ export core, style, buffer
 # The EC palette uses ANSI 256 colors for maximum terminal compatibility.
 # These map to the classic EC color scheme from the spec.
 
-# HUD Colors (navy background, amber text)
+# HUD Colors (Tokyo Night)
 const
-  HudBgColor* = Ansi256Color(17)      ## Navy blue background
-  HudFgColor* = Ansi256Color(214)     ## Amber/gold foreground
-  HudBorderColor* = Ansi256Color(24)  ## Darker navy for borders
+  HudBgColor* = Ansi256Color(17)      ## Tokyo Night background (#1a1b26)
+  HudFgColor* = Ansi256Color(251)     ## Tokyo Night foreground (#c0caf5)
+  HudBorderColor* = Ansi256Color(60)  ## Tokyo Night border (#414868)
 
-# Main Canvas Colors (white/gray on black)
+# Main Canvas Colors
 const
-  CanvasBgColor* = Ansi256Color(16)   ## True black background
-  CanvasFgColor* = Ansi256Color(252)  ## Bright white/gray foreground
-  CanvasDimColor* = Ansi256Color(245) ## Dim gray for secondary text
-  CanvasFogColor* = Ansi256Color(240) ## Dark gray for fog-of-war
+  CanvasBgColor* = Ansi256Color(17)   ## Tokyo Night background
+  CanvasFgColor* = Ansi256Color(251)  ## Tokyo Night foreground
+  CanvasDimColor* = Ansi256Color(60)  ## Muted text (#414868)
+  CanvasFogColor* = Ansi256Color(60)  ## Fog of war
 
 # Status Colors
 const
-  AlertColor* = Ansi256Color(196)     ## Bright red for alerts/warnings
-  SelectedBgColor* = Ansi256Color(30) ## Cyan background for selection
-  SelectedFgColor* = Ansi256Color(16) ## Black text on selection
-  DisabledColor* = Ansi256Color(240)  ## Dark gray for disabled items
+  AlertColor* = Ansi256Color(203)     ## Red (#f7768e)
+  SelectedBgColor* = Ansi256Color(75) ## Bright accent (#7aa2f7)
+  SelectedFgColor* = Ansi256Color(17) ## Background text
+  DisabledColor* = Ansi256Color(60)   ## Muted
 
 # Delta/Change Colors
 const
-  PositiveColor* = Ansi256Color(46)   ## Bright green for positive changes
-  NegativeColor* = Ansi256Color(196)  ## Bright red for negative changes
-  NeutralColor* = Ansi256Color(252)   ## White for neutral
+  PositiveColor* = Ansi256Color(115)  ## Green (#9ece6a)
+  NegativeColor* = Ansi256Color(203)  ## Red (#f7768e)
+  NeutralColor* = Ansi256Color(251)   ## Foreground
 
 # Special Status Colors
 const
-  PrestigeColor* = Ansi256Color(226)  ## Bright yellow for prestige
-  TreasuryColor* = Ansi256Color(214)  ## Gold/amber for treasury
-  ProductionColor* = Ansi256Color(117) ## Light blue for production
+  PrestigeColor* = Ansi256Color(223)  ## Yellow (#e0af68)
+  TreasuryColor* = Ansi256Color(223)  ## Yellow
+  ProductionColor* = Ansi256Color(110) ## Cyan (#7dcfff)
 
 # Diplomatic Status Colors
 const
-  NeutralStatusColor* = Ansi256Color(252)  ## White dot for neutral
-  HostileStatusColor* = Ansi256Color(208)  ## Orange/yellow for hostile
-  EnemyStatusColor* = Ansi256Color(196)    ## Red crossed swords for enemy
-  EliminatedColor* = Ansi256Color(240)     ## Dark gray skull for eliminated
+  NeutralStatusColor* = Ansi256Color(251)  ## Foreground
+  HostileStatusColor* = Ansi256Color(223)  ## Yellow
+  EnemyStatusColor* = Ansi256Color(203)    ## Red
+  EliminatedColor* = Ansi256Color(60)      ## Muted
 
 # Command Dock Colors
 const
-  DockBgColor* = Ansi256Color(16)     ## Black background
-  DockFgColor* = Ansi256Color(252)    ## Light gray text
-  DockKeyColor* = Ansi256Color(226)   ## Yellow for hotkey letters
-  DockSeparatorColor* = Ansi256Color(240) ## Dim separator line
+  DockBgColor* = Ansi256Color(17)     ## Background
+  DockFgColor* = Ansi256Color(251)    ## Foreground
+  DockKeyColor* = Ansi256Color(110)   ## Cyan accent
+  DockSeparatorColor* = Ansi256Color(60) ## Muted
 
 # Breadcrumb Colors
 const
-  BreadcrumbFgColor* = Ansi256Color(245)  ## Dim gray for path
-  BreadcrumbActiveColor* = Ansi256Color(252) ## Bright for current
-  BreadcrumbSeparatorColor* = Ansi256Color(240)
+  BreadcrumbFgColor* = Ansi256Color(60)  ## Muted
+  BreadcrumbActiveColor* = Ansi256Color(251) ## Foreground
+  BreadcrumbSeparatorColor* = Ansi256Color(60)
 
 # =============================================================================
 # CellStyle Presets

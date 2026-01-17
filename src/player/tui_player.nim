@@ -11,11 +11,10 @@
 import std/[options, strformat, tables, strutils, unicode,
   parseopt, os, algorithm]
 import ../common/logger
-import ../engine/init/game_state
 import
-  ../engine/types/[core, game_state, colony, fleet,
+  ../engine/types/[core, colony, fleet,
     player_state as ps_types, diplomacy]
-import ../engine/state/[engine, fog_of_war, iterators, player_state]
+import ../engine/state/[engine, iterators]
 import ../engine/systems/capacity/c2_pool
 import ./tui/term/term
 import ./tui/buffer
@@ -27,11 +26,12 @@ import ./tui/layout/layout_pkg
 import ./tui/widget/[widget_pkg, frame, paragraph]
 import ./tui/widget/hexmap/hexmap_pkg
 import ./tui/adapters
-import ./tui/widget/system_list
 import ./tui/widget/overview
 import ./tui/widget/[hud, breadcrumb, command_dock, scrollbar]
 import ./tui/launcher
 import ./sam/sam_pkg
+import ./state/join_flow
+import ./state/lobby_profile
 import ./svg/svg_pkg
 
 # =============================================================================
@@ -354,6 +354,8 @@ proc mapKeyEvent(event: KeyEvent, model: TuiModel): Option[Proposal] =
       keyCode = KeyCode.KeyShiftTab
     else:
       keyCode = KeyCode.KeyTab
+  of Key.CtrlL:
+    keyCode = KeyCode.KeyCtrlL
   of Key.Home:
     keyCode = KeyCode.KeyHome
   of Key.Backspace:
@@ -371,23 +373,17 @@ proc mapKeyEvent(event: KeyEvent, model: TuiModel): Option[Proposal] =
 const MenuWidth = 16 ## Fixed width for menu panel
 
 proc dimStyle(): CellStyle =
-  CellStyle(fg: color(Ansi256Color(245)), attrs: {})
+  canvasDimStyle()
 
 proc normalStyle(): CellStyle =
-  CellStyle(fg: color(Ansi256Color(252)), attrs: {})
+  canvasStyle()
 
 proc highlightStyle(): CellStyle =
-  CellStyle(fg: color(Ansi256Color(226)), attrs: {StyleAttr.Bold})
-
-proc selectedStyle(): CellStyle =
-  CellStyle(
-    fg: color(Ansi256Color(16)),
-    bg: color(Ansi256Color(226)),
-    attrs: {StyleAttr.Bold}
-  )
+  selectedStyle()
 
 proc headerStyle(): CellStyle =
-  CellStyle(fg: color(Ansi256Color(117)), attrs: {StyleAttr.Bold})
+  canvasHeaderStyle()
+
 
 # =============================================================================
 # Rendering (View Functions)
@@ -856,66 +852,112 @@ proc renderReportDetail(area: Rect, buf: var CellBuffer, model: TuiModel) =
   discard buf.setString(detailInner.x, detailInner.bottom - 1,
     hintLine, dimStyle)
 
-proc renderJoinPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
-  let frame = bordered().title("Join Game").borderType(BorderType.Rounded)
+proc renderLobbyPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
+  let frame = bordered().title("Lobby").borderType(BorderType.Rounded)
   frame.render(area, buf)
   let inner = frame.inner(area)
 
-  var y = inner.y
-  discard buf.setString(inner.x, y, "LOCALHOST JOIN", headerStyle())
-  y += 2
+  let columns = horizontal()
+    .constraints(length(inner.width div 3), length(inner.width div 3), fill())
+    .split(inner)
 
-  if model.joinStatus == JoinStatus.SelectingGame:
-    discard buf.setString(inner.x, y, "Select a game:", normalStyle())
+  let profileArea = columns[0]
+  let activeArea = columns[1]
+  let joinArea = columns[2]
+
+  let profileFrame = bordered().title("PROFILE").borderType(BorderType.Rounded)
+  let activeFrame = bordered().title("ACTIVE GAMES").borderType(BorderType.Rounded)
+  let joinFrame = bordered().title("JOIN GAME").borderType(BorderType.Rounded)
+
+  profileFrame.render(profileArea, buf)
+  activeFrame.render(activeArea, buf)
+  joinFrame.render(joinArea, buf)
+
+  let profileInner = profileFrame.inner(profileArea)
+  let activeInner = activeFrame.inner(activeArea)
+  let joinInner = joinFrame.inner(joinArea)
+
+  let headerStyle = canvasHeaderStyle()
+  let dimStyle = canvasDimStyle()
+  let normalStyle = canvasStyle()
+  let highlightStyle = selectedStyle()
+
+  var y = profileInner.y
+  discard buf.setString(profileInner.x, y, "Nostr Pubkey:", headerStyle)
+  y += 1
+  let pubkeyLine = if model.lobbyProfilePubkey.len > 0:
+                     model.lobbyProfilePubkey
+                   else:
+                     "(none)"
+  discard buf.setString(profileInner.x, y, pubkeyLine, normalStyle)
+  y += 2
+  discard buf.setString(profileInner.x, y, "Player Name:", headerStyle)
+  y += 1
+  let nameLine = if model.lobbyProfileName.len > 0:
+                   model.lobbyProfileName
+                 else:
+                   "(optional)"
+  discard buf.setString(profileInner.x, y, nameLine, normalStyle)
+  y += 2
+  if model.lobbySessionKeyActive:
+    discard buf.setString(profileInner.x, y, "Session-only key active",
+      alertStyle())
     y += 1
-    for idx, game in model.joinGames:
-      if y >= inner.bottom:
-        break
-      let marker = if idx == model.joinSelectedIdx: ">" else: " "
-      let label = game.name & " (" & game.phase & ")"
-      let count = $game.assignedCount & "/" & $game.playerCount
-      let lineText = marker & " " & label & " [" & count & "]"
-      let style = if idx == model.joinSelectedIdx: selectedStyle()
-                  else: normalStyle()
-      discard buf.setString(inner.x, y, lineText, style)
-      y += 1
-    y += 1
-    discard buf.setString(inner.x, y,
-      "Enter: Choose  R: Refresh  Y: Pubkey  U: Name",
-      dimStyle())
-  elif model.joinStatus == JoinStatus.EnteringPubkey:
-    discard buf.setString(inner.x, y, "Enter Nostr pubkey:", normalStyle())
-    y += 1
-    discard buf.setString(inner.x, y, model.joinPubkeyInput, highlightStyle())
-    y += 2
-    discard buf.setString(inner.x, y, "Enter: Continue  Backspace: Delete",
-      dimStyle())
-  elif model.joinStatus == JoinStatus.EnteringName:
-    discard buf.setString(inner.x, y, "Enter player name (optional):",
-      normalStyle())
-    y += 1
-    discard buf.setString(inner.x, y, model.joinPlayerName, highlightStyle())
-    y += 2
-    discard buf.setString(inner.x, y, "Enter: Submit  Backspace: Delete",
-      dimStyle())
-  elif model.joinStatus == JoinStatus.WaitingResponse:
-    discard buf.setString(inner.x, y, "Waiting for daemon response...",
-      normalStyle())
-    y += 1
-    discard buf.setString(inner.x, y, "Press R to refresh", dimStyle())
-  elif model.joinStatus == JoinStatus.Joined:
-    discard buf.setString(inner.x, y, "Join complete.", normalStyle())
-    y += 1
-    discard buf.setString(inner.x, y, model.statusMessage, highlightStyle())
-  elif model.joinStatus == JoinStatus.Failed:
-    discard buf.setString(inner.x, y, "Join failed:", normalStyle())
-    y += 1
-    discard buf.setString(inner.x, y, model.joinError, highlightStyle())
-    y += 1
-    discard buf.setString(inner.x, y, "R: Retry", dimStyle())
+  if model.lobbyWarning.len > 0:
+    discard buf.setString(profileInner.x, y, model.lobbyWarning, dimStyle)
+
+  var ay = activeInner.y
+  if model.lobbyActiveGames.len == 0:
+    discard buf.setString(activeInner.x, ay, "No active games", dimStyle)
   else:
-    discard buf.setString(inner.x, y, "Press J to join a game.",
-      dimStyle())
+    for idx, game in model.lobbyActiveGames:
+      if ay >= activeInner.bottom:
+        break
+      let marker = if idx == model.lobbySelectedIdx: ">" else: " "
+      let lineText = marker & " " & game.name & " T" & $game.turn
+      let style = if idx == model.lobbySelectedIdx: highlightStyle
+                  else: normalStyle
+      discard buf.setString(activeInner.x, ay, lineText, style)
+      ay += 1
+    if ay < activeInner.bottom:
+      discard buf.setString(activeInner.x, ay, "Enter: Open game", dimStyle)
+
+  var jy = joinInner.y
+  if model.lobbyJoinStatus == JoinStatus.SelectingGame:
+    for idx, game in model.lobbyJoinGames:
+      if jy >= joinInner.bottom:
+        break
+      let marker = if idx == model.lobbyJoinSelectedIdx: ">" else: " "
+      let count = $game.assignedCount & "/" & $game.playerCount
+      let lineText = marker & " " & game.name & " [" & count & "]"
+      let style = if idx == model.lobbyJoinSelectedIdx: highlightStyle
+                  else: normalStyle
+      discard buf.setString(joinInner.x, jy, lineText, style)
+      jy += 1
+  elif model.lobbyJoinStatus == JoinStatus.EnteringPubkey:
+    discard buf.setString(joinInner.x, jy, "Enter pubkey:", headerStyle)
+    jy += 1
+    discard buf.setString(joinInner.x, jy, model.lobbyProfilePubkey, normalStyle)
+  elif model.lobbyJoinStatus == JoinStatus.EnteringName:
+    discard buf.setString(joinInner.x, jy, "Enter name:", headerStyle)
+    jy += 1
+    discard buf.setString(joinInner.x, jy, model.lobbyProfileName, normalStyle)
+    jy += 1
+    discard buf.setString(joinInner.x, jy, "Enter: Submit", dimStyle)
+  elif model.lobbyJoinStatus == JoinStatus.WaitingResponse:
+    discard buf.setString(joinInner.x, jy, "Waiting for response...",
+      dimStyle)
+  elif model.lobbyJoinStatus == JoinStatus.Failed:
+    discard buf.setString(joinInner.x, jy, "Join failed:", alertStyle())
+    jy += 1
+    discard buf.setString(joinInner.x, jy, model.lobbyJoinError, normalStyle)
+  elif model.lobbyJoinStatus == JoinStatus.Joined:
+    discard buf.setString(joinInner.x, jy, "Joined game!", normalStyle)
+  else:
+    discard buf.setString(joinInner.x, jy, "Press R to refresh", dimStyle)
+
+  let hintLine = "Tab: Next Pane  Y: Pubkey  U: Name  G: Session Key  R: Refresh"
+  discard buf.setString(inner.x, inner.bottom - 1, hintLine, dimStyle)
 
 proc renderListPanel(
     area: Rect,
@@ -925,9 +967,6 @@ proc renderListPanel(
     viewingHouse: HouseId,
 ) =
   ## Render the main list panel based on current mode
-  if model.joinStatus != JoinStatus.Idle and model.mode == ViewMode.Overview:
-    renderJoinPanel(area, buf, model)
-    return
 
   let title =
     case model.mode
@@ -1044,7 +1083,7 @@ proc buildCommandDockData(model: TuiModel): CommandDockData =
 
   case model.mode
   of ViewMode.Overview:
-    let joinActive = model.joinStatus != JoinStatus.Idle
+    let joinActive = model.appPhase == AppPhase.Lobby
     result.contextActions = overviewContextActions(joinActive)
   of ViewMode.Planets:
     result.contextActions = planetsContextActions(model.colonies.len > 0)
@@ -1085,33 +1124,40 @@ proc renderDashboard(
   let termRect = rect(0, 0, model.termWidth, model.termHeight)
 
   # Layout: HUD (2), Breadcrumb (1), Main Canvas (fill), Command Dock (3)
-  let rows = vertical()
-    .constraints(length(3), length(1), fill(), length(3))
-    .split(termRect)
+  let rows = if model.appPhase == AppPhase.InGame:
+               vertical().constraints(length(3), length(1), fill(), length(3))
+             else:
+               vertical().constraints(length(0), length(0), fill(), length(3))
+  let rowAreas = rows.split(termRect)
 
-  let hudArea = rows[0]
-  let breadcrumbArea = rows[1]
-  let canvasArea = rows[2]
-  let dockArea = rows[3]
+  let hudArea = rowAreas[0]
+  let breadcrumbArea = rowAreas[1]
+  let canvasArea = rowAreas[2]
+  let dockArea = rowAreas[3]
 
   # Base background (black)
   buf.fill(Rune(' '), canvasStyle())
 
   # Render HUD
-  let hudData = buildHudData(model)
-  renderHud(hudArea, buf, hudData)
+  if model.appPhase == AppPhase.InGame:
+    let hudData = buildHudData(model)
+    renderHud(hudArea, buf, hudData)
 
   # Render Breadcrumb
-  let breadcrumbData = buildBreadcrumbData(model)
-  renderBreadcrumbWithBackground(breadcrumbArea, buf, breadcrumbData)
+  if model.appPhase == AppPhase.InGame:
+    let breadcrumbData = buildBreadcrumbData(model)
+    renderBreadcrumbWithBackground(breadcrumbArea, buf, breadcrumbData)
 
   # Render main content based on view
-  case model.mode
-  of ViewMode.Overview:
-    let overviewData = syncPlayerStateToOverview(playerState, state)
-    renderOverview(canvasArea, buf, overviewData)
+  if model.appPhase == AppPhase.Lobby:
+    renderLobbyPanel(canvasArea, buf, model)
   else:
-    renderListPanel(canvasArea, buf, model, state, viewingHouse)
+    case model.mode
+    of ViewMode.Overview:
+      let overviewData = syncPlayerStateToOverview(playerState, state)
+      renderOverview(canvasArea, buf, overviewData)
+    else:
+      renderListPanel(canvasArea, buf, model, state, viewingHouse)
 
   # Render Command Dock
   let dockData = buildCommandDockData(model)
@@ -1186,35 +1232,15 @@ proc outputBuffer(buf: CellBuffer) =
 # Main Entry Point
 # =============================================================================
 
-proc runTui() =
+proc runTui(gameId: string = "") =
   ## Main TUI execution (called from main() or from new terminal window)
   logInfo("TUI Player SAM", "Starting EC4X TUI Player with SAM pattern...")
 
   # Initialize game state
-  logInfo("TUI Player SAM", "Creating new game...")
-  var gameState = initGameState(
-    setupPath = "scenarios/standard-4-player.kdl",
-    gameName = "TUI Test Game",
-    configDir = "config",
-    dataDir = "data",
-  )
-
-  logInfo(
-    "TUI Player SAM",
-    &"Game created: {gameState.housesCount()} houses, " &
-      &"{gameState.systemsCount()} systems",
-  )
-
-  let viewingHouse = HouseId(1)
-
-  # Generate PlayerState (fog-of-war filtered view)
-  logInfo("TUI Player SAM", "Generating PlayerState for viewing house...")
-  var playerState = createPlayerState(gameState, viewingHouse)
-  logInfo(
-    "TUI Player SAM",
-    &"PlayerState created: {playerState.ownColonies.len} colonies, " &
-      &"{playerState.ownFleets.len} fleets",
-  )
+  var gameState = GameState()
+  var playerState = ps_types.PlayerState()
+  var viewingHouse = HouseId(1)
+  var activeGameId = gameId
 
   # Initialize terminal
   var tty = openTty()
@@ -1242,15 +1268,37 @@ proc runTui() =
   initialModel.viewingHouse = int(viewingHouse)
   initialModel.mode = ViewMode.Overview
 
-  # Sync game state to model
-  syncGameStateToModel(initialModel, gameState, viewingHouse)
+  if gameId.len > 0:
+    initialModel.appPhase = AppPhase.InGame
+    activeGameId = gameId
+    let infoOpt = loadGameInfo("data", gameId)
+    if infoOpt.isSome:
+      let gameInfo = infoOpt.get()
+      initialModel.turn = gameInfo.turn
+      initialModel.houseName = gameInfo.name
+    else:
+      initialModel.statusMessage = "Game not found"
 
-  # Ensure breadcrumbs reflect current mode
-  initialModel.resetBreadcrumbs(initialModel.mode)
+  if initialModel.lobbyProfilePubkey.len > 0:
+    initialModel.lobbyActiveGames = loadActiveGamesData("data",
+      initialModel.lobbyProfilePubkey)
+  else:
+    let profiles = loadProfiles("data")
+    if profiles.len > 0:
+      initialModel.lobbyProfilePubkey = profiles[0]
+      let profileInfo = loadProfile("data", initialModel.lobbyProfilePubkey)
+      initialModel.lobbyProfileName = profileInfo.name
+      initialModel.lobbySessionKeyActive = profileInfo.session
+      initialModel.lobbyActiveGames = loadActiveGamesData("data",
+        initialModel.lobbyProfilePubkey)
 
-  # Set cursor to homeworld if available
-  if initialModel.homeworld.isSome:
-    initialModel.mapState.cursor = initialModel.homeworld.get
+  # Sync game state to model (only after joining a game)
+  if initialModel.appPhase == AppPhase.InGame:
+    syncGameStateToModel(initialModel, gameState, viewingHouse)
+    initialModel.resetBreadcrumbs(initialModel.mode)
+
+    if initialModel.homeworld.isSome:
+      initialModel.mapState.cursor = initialModel.homeworld.get
 
   # Set render function (closure captures buf and gameState)
   sam.setRender(
@@ -1332,9 +1380,9 @@ proc runTui() =
 
   echo "TUI Player (SAM) exited."
 
-proc parseCommandLine(): tuple[spawnWindow: bool, showHelp: bool] =
+proc parseCommandLine(): tuple[spawnWindow: bool, showHelp: bool, gameId: string] =
   ## Parse command line arguments
-  result = (spawnWindow: true, showHelp: false)
+  result = (spawnWindow: true, showHelp: false, gameId: "")
 
   var p = initOptParser()
   while true:
@@ -1352,6 +1400,8 @@ proc parseCommandLine(): tuple[spawnWindow: bool, showHelp: bool] =
             true
           else:
             parseBool(p.val)
+      of "game":
+        result.gameId = p.val
       of "help", "h":
         result.showHelp = true
       else:
@@ -1370,6 +1420,7 @@ Usage: ec4x-tui [options]
 Options:
   --spawn-window        Launch in new terminal window (default: true)
   --no-spawn-window     Run in current terminal
+  --game <id>           Enter a game directly
   --help, -h            Show this help message
 
 Controls:
@@ -1415,4 +1466,4 @@ when isMainModule:
     echo ""
 
   # Run TUI
-  runTui()
+  runTui(opts.gameId)

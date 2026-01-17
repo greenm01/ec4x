@@ -190,6 +190,20 @@ type
     linkView*: int
     linkLabel*: string
 
+  AppPhase* {.pure.} = enum
+    Lobby
+    InGame
+
+  LobbyPane* {.pure.} = enum
+    Profile
+    ActiveGames
+    JoinGames
+
+  LobbyInputMode* {.pure.} = enum
+    None
+    Pubkey
+    Name
+
   JoinGameInfo* = object
     id*: string
     name*: string
@@ -197,6 +211,13 @@ type
     phase*: string
     playerCount*: int
     assignedCount*: int
+
+  ActiveGameInfo* = object
+    id*: string
+    name*: string
+    turn*: int
+    phase*: string
+    houseId*: int
 
   JoinStatus* {.pure.} = enum
     Idle
@@ -229,10 +250,27 @@ type
     # -------------
     # UI State
     # -------------
+    appPhase*: AppPhase           ## Lobby or in-game mode
     mode*: ViewMode               ## Current view mode
     previousMode*: ViewMode       ## Previous mode (for back navigation)
     selectedIdx*: int             ## Selected index in current list
     mapState*: MapState           ## Hex map navigation state
+
+    # Lobby state
+    lobbyPane*: LobbyPane
+    lobbyInputMode*: LobbyInputMode
+    lobbySelectedIdx*: int
+    lobbyProfilePubkey*: string
+    lobbyProfileName*: string
+    lobbySessionKeyActive*: bool
+    lobbyWarning*: string
+    lobbyActiveGames*: seq[ActiveGameInfo]
+    lobbyJoinGames*: seq[JoinGameInfo]
+    lobbyJoinSelectedIdx*: int
+    lobbyJoinStatus*: JoinStatus
+    lobbyJoinError*: string
+    lobbyJoinRequestPath*: string
+    lobbyGameId*: string
 
     # Breadcrumb navigation
     breadcrumbs*: seq[BreadcrumbItem]
@@ -302,15 +340,6 @@ type
     reportSubjectScroll*: ScrollState
     reportBodyScroll*: ScrollState
 
-    # Join flow state
-    joinStatus*: JoinStatus
-    joinGames*: seq[JoinGameInfo]
-    joinSelectedIdx*: int
-    joinPubkeyInput*: string
-    joinPlayerName*: string
-    joinGameId*: string
-    joinRequestPath*: string
-    joinError*: string
 
 # =============================================================================
 # Model Initialization
@@ -336,11 +365,26 @@ proc initBreadcrumb*(label: string, mode: ViewMode,
 proc initTuiModel*(): TuiModel =
   ## Create initial TUI model with defaults
   TuiModel(
+    appPhase: AppPhase.Lobby,
     mode: ViewMode.Overview,
     previousMode: ViewMode.Overview,
     selectedIdx: 0,
     mapState: initMapState(),
     breadcrumbs: @[initBreadcrumb("Home", ViewMode.Overview)],
+    lobbyPane: LobbyPane.Profile,
+    lobbyInputMode: LobbyInputMode.None,
+    lobbySelectedIdx: 0,
+    lobbyProfilePubkey: "",
+    lobbyProfileName: "",
+    lobbySessionKeyActive: false,
+    lobbyWarning: "",
+    lobbyActiveGames: @[],
+    lobbyJoinGames: @[],
+    lobbyJoinSelectedIdx: 0,
+    lobbyJoinStatus: JoinStatus.Idle,
+    lobbyJoinError: "",
+    lobbyJoinRequestPath: "",
+    lobbyGameId: "",
     planetDetailTab: PlanetDetailTab.Summary,
     fleetViewMode: FleetViewMode.ListView,
     selectedFleetIds: @[],
@@ -383,14 +427,6 @@ proc initTuiModel*(): TuiModel =
     reportTurnScroll: initScrollState(),
     reportSubjectScroll: initScrollState(),
     reportBodyScroll: initScrollState(),
-    joinStatus: JoinStatus.Idle,
-    joinGames: @[],
-    joinSelectedIdx: 0,
-    joinPubkeyInput: "",
-    joinPlayerName: "",
-    joinGameId: "",
-    joinRequestPath: "",
-    joinError: "",
     reports: @[
       ReportEntry(
         id: 1,
@@ -584,8 +620,14 @@ proc selectedReport*(model: TuiModel): Option[ReportEntry] =
 
 proc currentListLength*(model: TuiModel): int =
   ## Get length of current list based on mode
-  if model.joinStatus == JoinStatus.SelectingGame:
-    return model.joinGames.len
+  if model.appPhase == AppPhase.Lobby:
+    case model.lobbyPane
+    of LobbyPane.ActiveGames:
+      return model.lobbyActiveGames.len
+    of LobbyPane.JoinGames:
+      return model.lobbyJoinGames.len
+    of LobbyPane.Profile:
+      return 0
   case model.mode
   of ViewMode.Overview: 0  # Overview has no list selection
   of ViewMode.Planets: model.colonies.len

@@ -6,12 +6,13 @@
 ##
 ## Acceptor signature: proc(model: var M, proposal: Proposal)
 
-import std/[options, strutils]
+import std/[options, times]
 import ./types
 import ./tui_model
 import ./actions
 import ../tui/widget/scroll_state
 import ../state/join_flow
+import ../state/lobby_profile
 import ../../common/kdl_join
 
 export types, tui_model, actions
@@ -213,9 +214,13 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.statusMessage = ""
       model.clearExpertFeedback()
   of ActionListUp:
-    if model.joinStatus == JoinStatus.SelectingGame:
-      if model.joinSelectedIdx > 0:
-        model.joinSelectedIdx -= 1
+    if model.appPhase == AppPhase.Lobby:
+      if model.lobbyPane == LobbyPane.ActiveGames and
+          model.lobbySelectedIdx > 0:
+        model.lobbySelectedIdx -= 1
+      elif model.lobbyPane == LobbyPane.JoinGames and
+          model.lobbyJoinSelectedIdx > 0:
+        model.lobbyJoinSelectedIdx -= 1
     elif model.mode == ViewMode.Reports:
       case model.reportFocus
       of ReportPaneFocus.TurnList:
@@ -235,10 +240,15 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.selectedIdx > 0:
       model.selectedIdx -= 1
   of ActionListDown:
-    if model.joinStatus == JoinStatus.SelectingGame:
-      let maxIdx = model.joinGames.len - 1
-      if model.joinSelectedIdx < maxIdx:
-        model.joinSelectedIdx += 1
+    if model.appPhase == AppPhase.Lobby:
+      if model.lobbyPane == LobbyPane.ActiveGames:
+        let maxIdx = model.lobbyActiveGames.len - 1
+        if model.lobbySelectedIdx < maxIdx:
+          model.lobbySelectedIdx += 1
+      elif model.lobbyPane == LobbyPane.JoinGames:
+        let maxIdx = model.lobbyJoinGames.len - 1
+        if model.lobbyJoinSelectedIdx < maxIdx:
+          model.lobbyJoinSelectedIdx += 1
     elif model.mode == ViewMode.Reports:
       case model.reportFocus
       of ReportPaneFocus.TurnList:
@@ -296,129 +306,185 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
   ## Handle game action proposals
   model.clearExpertFeedback()
   case proposal.kind
-  of ProposalKind.pkEndTurn:
-    model.statusMessage = "Turn ended. Processing..."
-    # Actual turn processing would be done elsewhere (integration with engine)
-  of ProposalKind.pkQuit:
-    model.running = false
-  of ProposalKind.pkGameAction:
-    # Handle game-specific actions
-    case proposal.gameActionType
-    of ActionExportMap:
-      model.exportMapRequested = true
-      model.statusMessage = "Exporting starmap..."
-    of ActionOpenMap:
-      model.exportMapRequested = true
-      model.openMapRequested = true
-      model.statusMessage = "Exporting and opening starmap..."
-    of ActionEnterExpertMode:
-      model.enterExpertMode()
-    of ActionExitExpertMode:
-      model.exitExpertMode()
-    of ActionExpertInputAppend:
-      if model.expertModeActive:
-        model.expertModeInput.add(proposal.gameActionData)
-      elif model.joinStatus == JoinStatus.EnteringPubkey:
-        model.joinPubkeyInput.add(proposal.gameActionData)
-      elif model.joinStatus == JoinStatus.EnteringName:
-        model.joinPlayerName.add(proposal.gameActionData)
-    of ActionExpertInputBackspace:
-      if model.expertModeActive and model.expertModeInput.len > 0:
-        model.expertModeInput.setLen(model.expertModeInput.len - 1)
-    of ActionExpertSubmit:
-      if model.expertModeActive:
-        let command = model.expertModeInput.strip()
-        model.addToExpertHistory(command)
-        if command.len == 0:
-          model.setExpertFeedback("Expert mode: no command entered")
-        else:
-          model.setExpertFeedback("Expert mode: " & command)
-        model.exitExpertMode()
-    of ActionJoinRefresh:
-      model.joinGames = loadJoinGames("data")
-      model.joinSelectedIdx = 0
-      model.joinError = ""
-      if model.joinGames.len == 0:
-        model.joinStatus = JoinStatus.Failed
-        model.joinError = "No available games"
-        model.statusMessage = model.joinError
-      else:
-        model.joinStatus = JoinStatus.SelectingGame
-        model.statusMessage = "Select a game to join"
-    of ActionJoinEditPubkey:
-      model.joinStatus = JoinStatus.EnteringPubkey
-      model.joinPubkeyInput = ""
-      model.joinError = ""
-      model.statusMessage = "Enter Nostr pubkey"
-    of ActionJoinEditName:
-      model.joinStatus = JoinStatus.EnteringName
-      model.joinPlayerName = ""
-      model.joinError = ""
-      model.statusMessage = "Enter player name"
-    of ActionJoinBackspace:
-      case model.joinStatus
-      of JoinStatus.EnteringPubkey:
-        if model.joinPubkeyInput.len > 0:
-          model.joinPubkeyInput.setLen(model.joinPubkeyInput.len - 1)
-      of JoinStatus.EnteringName:
-        if model.joinPlayerName.len > 0:
-          model.joinPlayerName.setLen(model.joinPlayerName.len - 1)
+  of ProposalKind.pkNavigation:
+    let target = proposal.navMode
+    # Special handling for detail views (mode 2/3 are dynamic)
+    if target == 2:
+      model.previousMode = model.mode
+      model.mode = ViewMode.PlanetDetail
+      model.resetBreadcrumbs(model.mode)
+      model.selectedColonyId = model.colonies[model.selectedIdx].systemId
+    elif target == 3:
+      model.previousMode = model.mode
+      model.mode = ViewMode.FleetDetail
+      model.resetBreadcrumbs(model.mode)
+      model.selectedFleetId = model.fleets[model.selectedIdx].id
+    else:
+      if target >= 1 and target <= 9:
+        model.previousMode = model.mode
+        model.mode = ViewMode(target)
+        model.resetBreadcrumbs(model.mode)
+      elif target == 0:
+        model.mode = ViewMode.Overview
+        model.resetBreadcrumbs(model.mode)
       else:
         discard
-    of ActionJoinSubmit:
-      if model.joinStatus == JoinStatus.SelectingGame:
-        if model.joinSelectedIdx < model.joinGames.len:
-          let game = model.joinGames[model.joinSelectedIdx]
-          model.joinGameId = game.id
-          model.joinStatus = JoinStatus.EnteringPubkey
+
+  of ProposalKind.pkGameAction:
+    case proposal.gameActionType
+    of ActionLobbyGenerateKey:
+      model.lobbySessionKeyActive = true
+      model.lobbyWarning = "Session-only key: not saved"
+      model.lobbyProfilePubkey = "session-" & $getTime().toUnix()
+      model.statusMessage = "Generated session key (not stored)"
+      if model.lobbyProfilePubkey.len > 0:
+        model.lobbyActiveGames = loadActiveGamesData("data",
+          model.lobbyProfilePubkey)
+    of ActionLobbyJoinRefresh:
+      model.lobbyJoinGames = loadJoinGames("data")
+      model.lobbyJoinSelectedIdx = 0
+      model.lobbyJoinStatus = if model.lobbyJoinGames.len == 0:
+                                JoinStatus.Failed
+                              else:
+                                JoinStatus.SelectingGame
+      model.lobbyJoinError = if model.lobbyJoinGames.len == 0:
+                               "No available games"
+                             else:
+                               ""
+    of ActionLobbyJoinSubmit:
+      if model.lobbyInputMode == LobbyInputMode.Pubkey:
+        let normalized = normalizePubkey(model.lobbyProfilePubkey)
+        if normalized.isNone:
+          model.lobbyJoinError = "Invalid pubkey"
+          model.statusMessage = model.lobbyJoinError
+        else:
+          model.lobbyProfilePubkey = normalized.get()
+          model.lobbyInputMode = LobbyInputMode.None
+          saveProfile("data", model.lobbyProfilePubkey,
+            model.lobbyProfileName, model.lobbySessionKeyActive)
+          model.lobbyActiveGames = loadActiveGamesData("data",
+            model.lobbyProfilePubkey)
+      elif model.lobbyInputMode == LobbyInputMode.Name:
+        model.lobbyInputMode = LobbyInputMode.None
+        saveProfile("data", model.lobbyProfilePubkey,
+          model.lobbyProfileName, model.lobbySessionKeyActive)
+      elif model.lobbyJoinStatus == JoinStatus.SelectingGame:
+        if model.lobbyJoinSelectedIdx < model.lobbyJoinGames.len:
+          let game = model.lobbyJoinGames[model.lobbyJoinSelectedIdx]
+          model.lobbyGameId = game.id
+          model.lobbyJoinStatus = JoinStatus.EnteringPubkey
           model.statusMessage = "Enter Nostr pubkey"
         else:
-          model.joinError = "No game selected"
-      elif model.joinStatus == JoinStatus.EnteringPubkey:
-        let normalized = normalizePubkey(model.joinPubkeyInput)
+          model.lobbyJoinError = "No game selected"
+      elif model.lobbyJoinStatus == JoinStatus.EnteringPubkey:
+        let normalized = normalizePubkey(model.lobbyProfilePubkey)
         if normalized.isNone:
-          model.joinError = "Invalid pubkey"
-          model.statusMessage = model.joinError
+          model.lobbyJoinError = "Invalid pubkey"
+          model.statusMessage = model.lobbyJoinError
         else:
-          model.joinPubkeyInput = normalized.get()
-          model.joinStatus = JoinStatus.EnteringName
+          model.lobbyProfilePubkey = normalized.get()
+          model.lobbyJoinStatus = JoinStatus.EnteringName
           model.statusMessage = "Enter player name (optional)"
-      elif model.joinStatus == JoinStatus.EnteringName:
-        let gameDir = "data/games/" & model.joinGameId
+      elif model.lobbyJoinStatus == JoinStatus.EnteringName:
+        let gameDir = "data/games/" & model.lobbyGameId
         let request = JoinRequest(
-          gameId: model.joinGameId,
-          pubkey: model.joinPubkeyInput,
-          name: if model.joinPlayerName.len > 0: some(model.joinPlayerName)
+          gameId: model.lobbyGameId,
+          pubkey: model.lobbyProfilePubkey,
+          name: if model.lobbyProfileName.len > 0: some(model.lobbyProfileName)
                 else: none(string)
         )
-        model.joinRequestPath = writeJoinRequest(gameDir, request)
-        model.joinStatus = JoinStatus.WaitingResponse
+        model.lobbyJoinRequestPath = writeJoinRequest(gameDir, request)
+        model.lobbyJoinStatus = JoinStatus.WaitingResponse
         model.statusMessage = "Waiting for join response..."
-    of ActionJoinPoll:
-      if model.joinStatus == JoinStatus.WaitingResponse:
-        let gameDir = "data/games/" & model.joinGameId
-        let responseOpt = readJoinResponse(gameDir, model.joinRequestPath)
+    of ActionLobbyJoinPoll:
+      if model.lobbyJoinStatus == JoinStatus.WaitingResponse:
+        let gameDir = "data/games/" & model.lobbyGameId
+        let responseOpt = readJoinResponse(gameDir, model.lobbyJoinRequestPath)
         if responseOpt.isSome:
           let response = responseOpt.get()
           if response.status == JoinResponseStatus.Accepted:
             if response.houseId.isSome:
               let houseId = response.houseId.get()
-              writeJoinCache("data", model.joinPubkeyInput,
-                model.joinGameId, houseId)
-              model.joinStatus = JoinStatus.Joined
+              writeJoinCache("data", model.lobbyProfilePubkey,
+                model.lobbyGameId, houseId)
+              saveProfile("data", model.lobbyProfilePubkey,
+                model.lobbyProfileName, model.lobbySessionKeyActive)
+              model.lobbyJoinStatus = JoinStatus.Joined
               model.statusMessage = "Joined game as house " &
                 $houseId.uint32
+              model.lobbyActiveGames = loadActiveGamesData("data",
+                model.lobbyProfilePubkey)
             else:
-              model.joinError = "Join response missing house"
-              model.joinStatus = JoinStatus.Failed
+              model.lobbyJoinError = "Join response missing house"
+              model.lobbyJoinStatus = JoinStatus.Failed
           else:
-            model.joinError = response.reason.get("Join rejected")
-            model.joinStatus = JoinStatus.Failed
-            model.statusMessage = model.joinError
+            model.lobbyJoinError = response.reason.get("Join rejected")
+            model.lobbyJoinStatus = JoinStatus.Failed
+            model.statusMessage = model.lobbyJoinError
+    of ActionLobbyReturn:
+      model.appPhase = AppPhase.Lobby
+      model.statusMessage = "Returned to lobby"
+      if model.lobbyProfilePubkey.len > 0:
+        model.lobbyActiveGames = loadActiveGamesData("data",
+          model.lobbyProfilePubkey)
+    of ActionLobbyEditPubkey:
+      model.lobbyInputMode = LobbyInputMode.Pubkey
+      model.statusMessage = "Enter Nostr pubkey"
+      if model.lobbyProfilePubkey.len > 0:
+        model.lobbyActiveGames = loadActiveGamesData("data",
+          model.lobbyProfilePubkey)
+    of ActionLobbyEditName:
+      model.lobbyInputMode = LobbyInputMode.Name
+      model.statusMessage = "Enter player name"
+    of ActionLobbyBackspace:
+      case model.lobbyInputMode
+      of LobbyInputMode.Pubkey:
+        if model.lobbyProfilePubkey.len > 0:
+          model.lobbyProfilePubkey.setLen(model.lobbyProfilePubkey.len - 1)
+        if model.lobbyProfilePubkey.len > 0:
+          model.lobbyActiveGames = loadActiveGamesData("data",
+            model.lobbyProfilePubkey)
+        else:
+          model.lobbyActiveGames = @[]
+      of LobbyInputMode.Name:
+        if model.lobbyProfileName.len > 0:
+          model.lobbyProfileName.setLen(model.lobbyProfileName.len - 1)
+      else:
+        discard
     else:
       model.statusMessage = "Action: " & proposal.gameActionType
+  of ProposalKind.pkSelection:
+    if proposal.actionName == ActionLobbyEnterGame:
+      if model.lobbySelectedIdx < model.lobbyActiveGames.len:
+        model.appPhase = AppPhase.InGame
+        model.statusMessage = "Entering game..."
+        model.lobbyInputMode = LobbyInputMode.None
+    elif model.mode == ViewMode.Reports and proposal.selectIdx == -1:
+      model.mode = ViewMode.ReportDetail
+      let report = model.currentReport()
+      if report.isSome:
+        model.selectedReportId = report.get().id
+    elif model.mode == ViewMode.Planets and proposal.selectIdx == -1:
+      model.previousMode = model.mode
+      model.mode = ViewMode.PlanetDetail
+      model.selectedColonyId = model.colonies[model.selectedIdx].systemId
+      model.resetBreadcrumbs(model.mode)
+    elif model.mode == ViewMode.Fleets and proposal.selectIdx == -1:
+      model.previousMode = model.mode
+      model.mode = ViewMode.FleetDetail
+      model.selectedFleetId = model.fleets[model.selectedIdx].id
+      model.resetBreadcrumbs(model.mode)
+    elif model.mode == ViewMode.ReportDetail and proposal.selectIdx == -1:
+      let report = model.currentReport()
+      if report.isSome and report.get().linkView > 0:
+        model.previousMode = model.mode
+        model.mode = ViewMode(report.get().linkView)
+        model.resetBreadcrumbs(model.mode)
+    else:
+      discard
   else:
     discard
+
 
 # ============================================================================
 # Error Acceptor

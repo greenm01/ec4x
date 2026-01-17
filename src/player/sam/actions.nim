@@ -54,6 +54,16 @@ const
   ActionJoinBackspace* = "joinBackspace"
   ActionJoinSubmit* = "joinSubmit"
   ActionJoinPoll* = "joinPoll"
+  ActionLobbySwitchPane* = "lobbySwitchPane"
+  ActionLobbyEnterGame* = "lobbyEnterGame"
+  ActionLobbyEditPubkey* = "lobbyEditPubkey"
+  ActionLobbyEditName* = "lobbyEditName"
+  ActionLobbyGenerateKey* = "lobbyGenerateKey"
+  ActionLobbyJoinRefresh* = "lobbyJoinRefresh"
+  ActionLobbyJoinSubmit* = "lobbyJoinSubmit"
+  ActionLobbyJoinPoll* = "lobbyJoinPoll"
+  ActionLobbyBackspace* = "lobbyBackspace"
+  ActionLobbyReturn* = "lobbyReturn"
 
 # ============================================================================
 # Navigation Actions
@@ -411,12 +421,106 @@ proc actionJoinPoll*(): Proposal =
   )
 
 # ============================================================================
+# Lobby Actions
+# ============================================================================
+
+proc actionLobbySwitchPane*(pane: LobbyPane): Proposal =
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionName: ActionLobbySwitchPane,
+    navMode: int(pane),
+    navCursor: (0, 0)
+  )
+
+proc actionLobbyEnterGame*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkSelection,
+    timestamp: getTime().toUnix(),
+    actionName: ActionLobbyEnterGame,
+    selectIdx: -1,
+    selectCoord: none(tuple[q, r: int])
+  )
+
+proc actionLobbyEditPubkey*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionLobbyEditPubkey,
+    gameActionType: ActionLobbyEditPubkey,
+    gameActionData: ""
+  )
+
+proc actionLobbyEditName*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionLobbyEditName,
+    gameActionType: ActionLobbyEditName,
+    gameActionData: ""
+  )
+
+proc actionLobbyGenerateKey*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionLobbyGenerateKey,
+    gameActionType: ActionLobbyGenerateKey,
+    gameActionData: ""
+  )
+
+proc actionLobbyJoinRefresh*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionLobbyJoinRefresh,
+    gameActionType: ActionLobbyJoinRefresh,
+    gameActionData: ""
+  )
+
+proc actionLobbyJoinSubmit*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionLobbyJoinSubmit,
+    gameActionType: ActionLobbyJoinSubmit,
+    gameActionData: ""
+  )
+
+proc actionLobbyJoinPoll*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionLobbyJoinPoll,
+    gameActionType: ActionLobbyJoinPoll,
+    gameActionData: ""
+  )
+
+proc actionLobbyBackspace*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionLobbyBackspace,
+    gameActionType: ActionLobbyBackspace,
+    gameActionData: ""
+  )
+
+proc actionLobbyReturn*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionLobbyReturn,
+    gameActionType: ActionLobbyReturn,
+    gameActionData: ""
+  )
+
+# ============================================================================
 # System Actions
 # ============================================================================
 
 proc actionResize*(width, height: int): Proposal =
   ## Handle terminal resize
-  Proposal(
+  result = Proposal(
     kind: ProposalKind.pkViewportScroll,  # Reuse for resize data
     timestamp: getTime().toUnix(),
     actionName: ActionResize,
@@ -429,20 +533,22 @@ proc actionResize*(width, height: int): Proposal =
 
 type
   KeyCode* {.pure.} = enum
-    ## Simplified key codes for mapping
-    KeyNone
-    # Number keys for view switching
-    Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9
-    # Letter keys
-    KeyQ, KeyC, KeyF, KeyO, KeyM, KeyE, KeyH, KeyX, KeyS, KeyL
-    KeyB, KeyG, KeyR, KeyJ, KeyD, KeyP, KeyV, KeyN, KeyW, KeyI, KeyT, KeyA
-    KeyY, KeyU
-    # Navigation
-    KeyUp, KeyDown, KeyLeft, KeyRight
-    KeyEnter, KeyEscape, KeyTab, KeyShiftTab
-    KeyHome, KeyBackspace
-    # Special
-    KeyColon  # Expert mode trigger
+      ## Simplified key codes for mapping
+      KeyNone
+      # Number keys for view switching
+      Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9
+      # Letter keys
+      KeyQ, KeyC, KeyF, KeyO, KeyM, KeyE, KeyH, KeyX, KeyS, KeyL
+      KeyB, KeyG, KeyR, KeyJ, KeyD, KeyP, KeyV, KeyN, KeyW, KeyI, KeyT, KeyA
+      KeyY, KeyU
+      # Navigation
+      KeyUp, KeyDown, KeyLeft, KeyRight
+      KeyEnter, KeyEscape, KeyTab, KeyShiftTab
+      KeyHome, KeyBackspace
+      # Special
+      KeyColon  # Expert mode trigger
+      KeyCtrlL
+
 
 proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   ## Map a key code to an action based on current model state
@@ -461,22 +567,51 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       # Other keys add to input buffer - handled by acceptor
       return none(Proposal)
 
-  if model.joinStatus in {JoinStatus.EnteringPubkey, JoinStatus.EnteringName, JoinStatus.SelectingGame}:
+  if model.appPhase == AppPhase.Lobby:
     case key
+    of KeyCode.KeyCtrlL:
+      return none(Proposal)
+    of KeyCode.KeyQ:
+      return some(actionQuit())
+    of KeyCode.KeyTab:
+      let nextPane = case model.lobbyPane
+        of LobbyPane.Profile: LobbyPane.ActiveGames
+        of LobbyPane.ActiveGames: LobbyPane.JoinGames
+        of LobbyPane.JoinGames: LobbyPane.Profile
+      return some(actionLobbySwitchPane(nextPane))
+    of KeyCode.KeyShiftTab:
+      let prevPane = case model.lobbyPane
+        of LobbyPane.Profile: LobbyPane.JoinGames
+        of LobbyPane.ActiveGames: LobbyPane.Profile
+        of LobbyPane.JoinGames: LobbyPane.ActiveGames
+      return some(actionLobbySwitchPane(prevPane))
+    of KeyCode.KeyUp:
+      return some(actionListUp())
+    of KeyCode.KeyDown:
+      return some(actionListDown())
     of KeyCode.KeyEnter:
-      return some(actionJoinSubmit())
+      if model.lobbyInputMode != LobbyInputMode.None:
+        return some(actionLobbyJoinSubmit())
+      if model.lobbyPane == LobbyPane.ActiveGames:
+        return some(actionLobbyEnterGame())
+      return some(actionLobbyJoinSubmit())
     of KeyCode.KeyBackspace:
-      return some(actionJoinBackspace())
+      return some(actionLobbyBackspace())
+    of KeyCode.KeyY:
+      return some(actionLobbyEditPubkey())
+    of KeyCode.KeyU:
+      return some(actionLobbyEditName())
+    of KeyCode.KeyG:
+      return some(actionLobbyGenerateKey())
+    of KeyCode.KeyR:
+      return some(actionLobbyJoinRefresh())
     else:
       return none(Proposal)
 
-  if model.joinStatus == JoinStatus.WaitingResponse:
-    case key
-    of KeyCode.KeyR:
-      return some(actionJoinPoll())
-    else:
-      return none(Proposal)
-  
+  if model.appPhase == AppPhase.InGame:
+    if key == KeyCode.KeyCtrlL:
+      return some(actionLobbyReturn())
+
   # Global keys (work in any mode)
   case key
   # Number keys [1-9] switch primary views
@@ -507,11 +642,8 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     of KeyCode.KeyUp:    return some(actionListUp())
     of KeyCode.KeyDown:  return some(actionListDown())
     of KeyCode.KeyEnter: return some(actionSelect())  # Jump to action item
-    of KeyCode.KeyJ:     return some(actionJoinRefresh())
-    of KeyCode.KeyY:     return some(actionJoinEditPubkey())
-    of KeyCode.KeyU:     return some(actionJoinEditName())
-    of KeyCode.KeyR:     return some(actionJoinRefresh())
     else: discard
+
   
   of ViewMode.Planets:
     case key

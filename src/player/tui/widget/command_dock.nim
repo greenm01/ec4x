@@ -100,16 +100,18 @@ proc overviewContextActions*(joinActive: bool): seq[ContextAction] =
   ## Context actions for Overview (View 1)
   if joinActive:
     @[
-      ContextAction(key: "J", label: "Join game", enabled: true),
-      ContextAction(key: "R", label: "Refresh list", enabled: true),
+      ContextAction(key: "Tab", label: "Next pane", enabled: true),
+      ContextAction(key: "Shift-Tab", label: "Prev pane", enabled: true),
       ContextAction(key: "Y", label: "Edit pubkey", enabled: true),
       ContextAction(key: "U", label: "Edit name", enabled: true),
+      ContextAction(key: "G", label: "Session key", enabled: true),
+      ContextAction(key: "R", label: "Refresh join list", enabled: true),
+      ContextAction(key: "Enter", label: "Select", enabled: true),
     ]
   else:
     @[
       ContextAction(key: "L", label: "Diplomatic matrix", enabled: true),
       ContextAction(key: "2,3,7", label: "Jump to action", enabled: true),
-      ContextAction(key: "J", label: "Join game", enabled: true),
     ]
 
 proc planetsContextActions*(hasSelection: bool): seq[ContextAction] =
