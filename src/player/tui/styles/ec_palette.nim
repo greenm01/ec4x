@@ -29,6 +29,7 @@ const
   CanvasFgColor* = Ansi256Color(251)  ## Tokyo Night foreground
   CanvasDimColor* = Ansi256Color(60)  ## Muted text (#414868)
   CanvasFogColor* = Ansi256Color(60)  ## Fog of war
+  TrueBlackColor* = Ansi256Color(16)  ## True black for modals
 
 # Status Colors
 const
@@ -126,6 +127,30 @@ proc canvasDimStyle*(): CellStyle =
   CellStyle(
     fg: color(CanvasDimColor),
     bg: color(CanvasBgColor),
+    attrs: {}
+  )
+
+proc modalBgStyle*(): CellStyle =
+  ## Modal background style (true black)
+  CellStyle(
+    fg: color(CanvasFgColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+
+proc modalDimStyle*(): CellStyle =
+  ## Modal dim/secondary text (true black bg)
+  CellStyle(
+    fg: color(CanvasDimColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+
+proc modalBorderStyle*(): CellStyle =
+  ## Modal border style (true black bg)
+  CellStyle(
+    fg: color(HudBorderColor),
+    bg: color(TrueBlackColor),
     attrs: {}
   )
 

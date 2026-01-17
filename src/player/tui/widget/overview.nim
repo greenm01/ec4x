@@ -151,6 +151,9 @@ proc renderOverview*(area: Rect, buf: var CellBuffer, data: OverviewData) =
     .constraints(percentage(60), fill())
     .split(area)
   
+  if topBottomSplit.len < 2:
+    return
+  
   let topArea = topBottomSplit[0]
   let bottomArea = topBottomSplit[1]
   
@@ -159,6 +162,9 @@ proc renderOverview*(area: Rect, buf: var CellBuffer, data: OverviewData) =
     .constraints(percentage(30), percentage(35), fill())
     .spacing(1)
     .split(topArea)
+  
+  if topCols.len < 3:
+    return
   
   let eventsArea = topCols[0]
   let statusArea = topCols[1]
@@ -169,6 +175,9 @@ proc renderOverview*(area: Rect, buf: var CellBuffer, data: OverviewData) =
     .constraints(percentage(50), fill())
     .spacing(1)
     .split(bottomArea)
+  
+  if bottomCols.len < 2:
+    return
   
   let actionQueueArea = bottomCols[0]
   let checklistArea = bottomCols[1]

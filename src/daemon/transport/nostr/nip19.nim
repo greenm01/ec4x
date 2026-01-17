@@ -115,3 +115,58 @@ proc normalizeNostrPubkey*(value: string): string =
   if trimmed.startsWith("npub"):
     return decodeNpubToHex(trimmed)
   normalizeHex(trimmed)
+
+proc bech32CreateChecksum(hrp: string, data: seq[int]): seq[int] =
+  let values = bech32HrpExpand(hrp) & data & @[0, 0, 0, 0, 0, 0]
+  let polymod = bech32Polymod(values) xor 1
+  result = newSeq[int](6)
+  for i in 0..<6:
+    result[i] = (polymod shr (5 * (5 - i))) and 31
+
+proc bech32Encode*(hrp: string, data: seq[int]): string =
+  let checksum = bech32CreateChecksum(hrp, data)
+  result = hrp & "1"
+  for value in data & checksum:
+    result.add(Charset[value])
+
+proc hexToBytes(hexStr: string): seq[int] =
+  result = newSeq[int](hexStr.len div 2)
+  for i in 0..<result.len:
+    result[i] = parseHexInt(hexStr[i*2..i*2+1])
+
+proc encodeNpub*(pubkeyHex: string): string =
+  ## Encode a 32-byte hex public key as npub
+  if pubkeyHex.len != 64:
+    raise newException(ValueError, "Public key must be 64 hex chars")
+  let bytes = hexToBytes(pubkeyHex)
+  let data = convertBits(bytes, 8, 5, true)
+  bech32Encode("npub", data)
+
+proc encodeNsec*(privkeyHex: string): string =
+  ## Encode a 32-byte hex private key as nsec
+  if privkeyHex.len != 64:
+    raise newException(ValueError, "Private key must be 64 hex chars")
+  let bytes = hexToBytes(privkeyHex)
+  let data = convertBits(bytes, 8, 5, true)
+  bech32Encode("nsec", data)
+
+proc decodeNsecToHex*(nsec: string): string =
+  ## Decode an nsec to 32-byte hex private key
+  let decoded = bech32Decode(nsec)
+  if decoded.hrp != "nsec":
+    raise newException(ValueError, "Expected nsec prefix")
+  if decoded.data.len < 6:
+    raise newException(ValueError, "Invalid NIP-19 payload")
+
+  let payload = decoded.data[0 ..< decoded.data.len - 6]
+  let bytes = convertBits(payload, 5, 8, false)
+  if bytes.len != 32:
+    raise newException(ValueError, "Invalid NIP-19 payload length")
+
+  bytesToHex(bytes)
+
+proc truncateNpub*(npub: string, prefixLen: int = 9, suffixLen: int = 4): string =
+  ## Truncate npub for display: npub1q3z...7xkf
+  if npub.len <= prefixLen + suffixLen + 3:
+    return npub
+  npub[0..<prefixLen] & "..." & npub[^suffixLen..^1]

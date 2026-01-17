@@ -19,6 +19,11 @@
 
 import std/[options, tables, algorithm]
 import ../tui/widget/scroll_state
+import ../tui/widget/entry_modal
+import ../state/identity
+
+export entry_modal
+export identity
 
 # =============================================================================
 # Fleet Command Constants (from 06-operations.md)
@@ -272,6 +277,10 @@ type
     lobbyJoinRequestPath*: string
     lobbyGameId*: string
 
+    loadGameRequested*: bool
+    loadGameId*: string
+    loadHouseId*: int
+
     # Breadcrumb navigation
     breadcrumbs*: seq[BreadcrumbItem]
 
@@ -286,6 +295,18 @@ type
     expertModeHistory*: seq[string]  ## Command history
     expertModeHistoryIdx*: int    ## Current history position
     expertModeFeedback*: string   ## Feedback for expert commands
+
+    # Order entry state (for keybindings + target selection flow)
+    orderEntryActive*: bool       ## In target selection mode for order
+    orderEntryFleetId*: int       ## Fleet being given orders
+    orderEntryCommandType*: int   ## Command type (CmdMove, CmdPatrol, etc.)
+    orderEntryPreviousMode*: ViewMode  ## Mode to return to on cancel/confirm
+
+    # Pending order (set by acceptor, processed by main loop)
+    pendingFleetOrderFleetId*: int
+    pendingFleetOrderCommandType*: int
+    pendingFleetOrderTargetSystemId*: int  ## 0 = no target (for Hold)
+    pendingFleetOrderReady*: bool          ## True when order ready to write
 
     # Terminal dimensions
     termWidth*: int
@@ -340,6 +361,9 @@ type
     reportSubjectScroll*: ScrollState
     reportBodyScroll*: ScrollState
 
+    # Entry modal state (replaces legacy lobby UI)
+    entryModal*: EntryModalState
+
 
 # =============================================================================
 # Model Initialization
@@ -385,6 +409,9 @@ proc initTuiModel*(): TuiModel =
     lobbyJoinError: "",
     lobbyJoinRequestPath: "",
     lobbyGameId: "",
+    loadGameRequested: false,
+    loadGameId: "",
+    loadHouseId: 0,
     planetDetailTab: PlanetDetailTab.Summary,
     fleetViewMode: FleetViewMode.ListView,
     selectedFleetIds: @[],
@@ -393,6 +420,14 @@ proc initTuiModel*(): TuiModel =
     expertModeHistory: @[],
     expertModeHistoryIdx: 0,
     expertModeFeedback: "",
+    orderEntryActive: false,
+    orderEntryFleetId: 0,
+    orderEntryCommandType: 0,
+    orderEntryPreviousMode: ViewMode.Fleets,
+    pendingFleetOrderFleetId: 0,
+    pendingFleetOrderCommandType: 0,
+    pendingFleetOrderTargetSystemId: 0,
+    pendingFleetOrderReady: false,
     termWidth: 80,
     termHeight: 24,
     running: true,
@@ -427,6 +462,7 @@ proc initTuiModel*(): TuiModel =
     reportTurnScroll: initScrollState(),
     reportSubjectScroll: initScrollState(),
     reportBodyScroll: initScrollState(),
+    entryModal: newEntryModalState(),
     reports: @[
       ReportEntry(
         id: 1,
@@ -824,3 +860,54 @@ proc addToExpertHistory*(model: var TuiModel, command: string) =
   if command.len > 0:
     model.expertModeHistory.add(command)
     model.expertModeHistoryIdx = model.expertModeHistory.len
+
+# =============================================================================
+# Order Entry Helpers
+# =============================================================================
+
+proc startOrderEntry*(model: var TuiModel, fleetId: int, cmdType: int) =
+  ## Begin order entry mode for a fleet
+  model.orderEntryActive = true
+  model.orderEntryFleetId = fleetId
+  model.orderEntryCommandType = cmdType
+  model.orderEntryPreviousMode = model.mode
+  # Switch to Overview (map) for target selection
+  model.mode = ViewMode.Overview
+  model.statusMessage = "Select target: [arrows] move | [Enter] confirm | [Esc] cancel"
+
+proc cancelOrderEntry*(model: var TuiModel) =
+  ## Cancel order entry and return to previous view
+  model.orderEntryActive = false
+  model.mode = model.orderEntryPreviousMode
+  model.mapState.selected = none(HexCoord)
+  model.statusMessage = "Order cancelled"
+
+proc confirmOrderEntry*(model: var TuiModel, targetSystemId: int) =
+  ## Confirm order entry and queue the order for writing
+  model.pendingFleetOrderFleetId = model.orderEntryFleetId
+  model.pendingFleetOrderCommandType = model.orderEntryCommandType
+  model.pendingFleetOrderTargetSystemId = targetSystemId
+  model.pendingFleetOrderReady = true
+  model.orderEntryActive = false
+  model.mode = model.orderEntryPreviousMode
+  model.mapState.selected = none(HexCoord)
+
+proc queueImmediateOrder*(model: var TuiModel, fleetId: int, cmdType: int) =
+  ## Queue an immediate order (no target needed, like Hold)
+  model.pendingFleetOrderFleetId = fleetId
+  model.pendingFleetOrderCommandType = cmdType
+  model.pendingFleetOrderTargetSystemId = 0
+  model.pendingFleetOrderReady = true
+
+proc clearPendingOrder*(model: var TuiModel) =
+  ## Clear the pending order after it's been processed
+  model.pendingFleetOrderReady = false
+  model.pendingFleetOrderFleetId = 0
+  model.pendingFleetOrderCommandType = 0
+  model.pendingFleetOrderTargetSystemId = 0
+
+proc orderEntryNeedsTarget*(cmdType: int): bool =
+  ## Check if a command type needs target selection
+  cmdType in [CmdMove, CmdPatrol, CmdBlockade, CmdBombard, CmdInvade,
+              CmdBlitz, CmdColonize, CmdScoutColony, CmdScoutSystem,
+              CmdJoinFleet, CmdRendezvous]

@@ -195,9 +195,175 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 
 ---
 
-## 5. Primary Views
+## 5. Entry Screen Modal
 
-### 5.1 Strategic Overview (120 columns)
+The entry screen modal is a centered overlay that appears on application launch. It handles
+identity management and game selection before the player enters the main game interface.
+
+### 5.1 Design Principles
+
+- **Centered modal**: DOS/BBS-era index card aesthetic, single-line borders
+- **Persistent identity**: Auto-generated keypair on first launch, persists across sessions
+- **Minimal friction**: One-click to join a game or resume existing game
+- **No game creation**: Only the moderator can create games (via `bin/ec4x`)
+
+### 5.2 Identity Model
+
+Players are identified by Nostr keypairs (secp256k1). Two identity types:
+
+| Type       | Description                                      | Label      |
+|------------|--------------------------------------------------|------------|
+| `local`    | Auto-generated on first launch, stored locally   | (local)    |
+| `imported` | User-provided nsec from existing Nostr identity  | (imported) |
+
+**Storage location**: `~/.local/share/ec4x/identity.kdl`
+
+```kdl
+identity {
+  nsec "nsec1..."
+  type "local"
+  created "2026-01-17T12:00:00Z"
+}
+```
+
+**Display format**: Truncated npub with ellipsis: `npub1q3z...7xkf`
+
+### 5.3 Modal Layout (72 columns max)
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                              E C 4 X                                   │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  ███████╗ ██████╗██╗  ██╗██╗  ██╗                                      │
+│  ██╔════╝██╔════╝██║  ██║╚██╗██╔╝                                      │
+│  █████╗  ██║     ███████║ ╚███╔╝                                       │
+│  ██╔══╝  ██║     ╚════██║ ██╔██╗                                       │
+│  ███████╗╚██████╗     ██║██╔╝ ██╗                                      │
+│  ╚══════╝ ╚═════╝     ╚═╝╚═╝  ╚═╝                                      │
+│                                                                        │
+│  IDENTITY ─────────────────────────────────────────────────────────    │
+│  npub1q3z...7xkf (local)                          [I] Import nsec      │
+│                                                                        │
+│  YOUR GAMES ───────────────────────────────────────────────────────    │
+│► Alpha Campaign    T42   House Valerian                                │
+│  Beta Skirmish     T18   House Stratos                                 │
+│                                                                        │
+│  OPEN LOBBIES ─────────────────────────────────────────────────────    │
+│  New Galaxy        (3/6 players)                                       │
+│                                                                        │
+├────────────────────────────────────────────────────────────────────────┤
+│  [↑/↓] Select   [Enter] Play   [I] Import   [Q] Quit       v0.1.0      │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+**Responsive width**: `min(termWidth - 4, 72)`
+
+### 5.4 Modal Sections
+
+#### Header
+- Title bar: "E C 4 X" centered with letter spacing
+- ASCII art logo using Unicode block characters (██, ╗, ╔, etc.)
+
+#### Identity Section
+- Truncated npub display with type label in parentheses
+- `[I]` hotkey hint for import action (right-aligned)
+
+#### Your Games List
+- Games where player's identity is already registered
+- Columns: Game name, Turn number (T##), House name
+- `►` cursor indicates selected row
+- Empty state: "No active games" (dimmed)
+
+#### Open Lobbies List
+- Games accepting new players
+- Columns: Game name, Player count (current/max)
+- Empty state: "No open lobbies" (dimmed)
+
+#### Footer
+- Hotkey reference: `[↑/↓] Select   [Enter] Play   [I] Import   [Q] Quit`
+- Version number right-aligned
+
+### 5.5 Input Handling
+
+| Key      | Action                                           |
+|----------|--------------------------------------------------|
+| `↑`/`↓`  | Navigate game list (Your Games, then Lobbies)   |
+| `Enter`  | Play selected game / Join selected lobby         |
+| `I`      | Open nsec import dialog                          |
+| `Q`      | Quit application                                 |
+
+### 5.6 Import Flow
+
+When `[I]` is pressed:
+
+1. Modal displays inline input field: `Enter nsec: _______________`
+2. User pastes/types nsec (Bech32 format starting with `nsec1`)
+3. On Enter:
+   - Validate nsec format
+   - If valid: Save to identity.kdl with type "imported", refresh display
+   - If invalid: Show error message, return to input
+4. Escape cancels import, returns to main modal
+
+### 5.7 State Transitions
+
+```
+┌─────────────────┐
+│  App Launch     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐     identity.kdl exists?
+│  Load Identity  │────────────────────────────┐
+└────────┬────────┘                            │
+         │ No                                  │ Yes
+         ▼                                     ▼
+┌─────────────────┐                  ┌─────────────────┐
+│ Generate Keypair│                  │ Read Keypair    │
+│ Save as "local" │                  │ from file       │
+└────────┬────────┘                  └────────┬────────┘
+         │                                    │
+         └──────────────┬─────────────────────┘
+                        ▼
+              ┌─────────────────┐
+              │ Fetch Game List │
+              │ from Relay      │
+              └────────┬────────┘
+                       ▼
+              ┌─────────────────┐
+              │ Show Entry Modal│
+              └────────┬────────┘
+                       │
+         ┌─────────────┼─────────────┐
+         ▼             ▼             ▼
+    [I] Import    [Enter] Play   [Q] Quit
+```
+
+### 5.8 Color Palette
+
+Uses Tokyo Night palette from `ec_palette.nim`:
+
+| Element              | Color                              |
+|----------------------|------------------------------------|
+| Modal border         | `tokyoFg` (foreground)             |
+| Modal background     | `tokyoBgDark` (dark background)    |
+| Title                | `tokyoCyan` (accent)               |
+| ASCII logo           | `tokyoBlue` (primary)              |
+| Section headers      | `tokyoFg` with horizontal rule     |
+| Identity npub        | `tokyoGreen` (success/identity)    |
+| Type label           | `tokyoComment` (dimmed)            |
+| Selected row `►`     | `tokyoCyan` cursor                 |
+| Game names           | `tokyoFg`                          |
+| Turn/house info      | `tokyoComment` (secondary)         |
+| Empty state text     | `tokyoComment` (dimmed italic)     |
+| Hotkeys `[X]`        | `tokyoYellow` (action)             |
+| Version number       | `tokyoComment`                     |
+
+---
+
+## 6. Primary Views
+
+### 6.1 Strategic Overview (120 columns)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -245,7 +411,7 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 - `⚔ ENM` - Enemy (at war) with you
 - `☠` - Eliminated from game
 
-### 5.1.1 Diplomatic Matrix Overlay
+### 6.1.1 Diplomatic Matrix Overlay
 
 Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
 
@@ -274,7 +440,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 Planet Manager (120 columns)
+### 6.2 Planet Manager (120 columns)
 
 #### 5.2.1 Planet List View
 
@@ -503,7 +669,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [Tab] Next section  [1-5] Switch tab  [Backspace] Back                                       [: ] Expert Mode
 ```
 
-### 5.3 Fleet Console (120 columns)
+### 6.3 Fleet Console (120 columns)
 
 #### 5.3.1 Fleet Console - System View
 
@@ -621,7 +787,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [M] Move  [P] Patrol  [H] Hold  [G] Guard  [R] ROE  [J] Join  [D] Detach ships  [Backspace] Back  [: ] Expert Mode
 ```
 
-### 5.4 Research & Technology (120 columns)
+### 6.4 Research & Technology (120 columns)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -663,7 +829,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [E/S/T] Adjust pools  [Enter] Confirm allocation  [?] Tech tree details                      [: ] Expert Mode
 ```
 
-### 5.5 Espionage (120 columns)
+### 6.5 Espionage (120 columns)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -708,7 +874,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [↑/↓] Select  [Enter] Queue operation  [T] Select target  [B] Buy EBP  [C] Buy CIP           [: ] Expert Mode
 ```
 
-### 5.6 Empire Economy (120 columns)
+### 6.6 Empire Economy (120 columns)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -762,7 +928,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [←/→] Adjust tax  [Enter] Confirm  [I] Industrial investment  [G] Guild transfer             [: ] Expert Mode
 ```
 
-### 5.7 Reports Inbox (120 columns)
+### 6.7 Reports Inbox (120 columns)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -836,7 +1002,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [2,3] Jump to action  [N] Next report  [Backspace] Back to inbox                             [: ] Expert Mode
 ```
 
-### 5.8 Messages & Diplomacy (120 columns)
+### 6.8 Messages & Diplomacy (120 columns)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -886,7 +1052,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
 - `[W]` Declare Enemy - Escalate to full war (Enemy status)
 - `[N]` Set Neutral - Unilaterally de-escalate (if conditions allow)
 
-### 5.9 Settings (120 columns)
+### 6.9 Settings (120 columns)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -926,7 +1092,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
 
 ---
 
-## 6. Fleet Commands Reference
+## 7. Fleet Commands Reference
 
 All 20 fleet commands from `docs/specs/06-operations.md`:
 
@@ -957,7 +1123,7 @@ All 20 fleet commands from `docs/specs/06-operations.md`:
 
 ---
 
-## 7. Zero-Turn Administrative Commands
+## 8. Zero-Turn Administrative Commands
 
 Execute instantly during command submission (before turn resolution):
 
@@ -973,7 +1139,7 @@ Execute instantly during command submission (before turn resolution):
 
 ---
 
-## 8. ROE Quick Picker Overlay
+## 9. ROE Quick Picker Overlay
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────┐
@@ -1006,7 +1172,7 @@ Execute instantly during command submission (before turn resolution):
 
 ---
 
-## 9. Colony Automation Flags
+## 10. Colony Automation Flags
 
 From `src/engine/types/colony.nim`:
 
@@ -1022,7 +1188,7 @@ From `src/engine/types/colony.nim`:
 
 ---
 
-## 10. Data & Engine Hooks
+## 11. Data & Engine Hooks
 
 ### State Inputs
 
@@ -1080,7 +1246,7 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
 
 ---
 
-## 11. Milestones
+## 12. Milestones
 
 1. **Widget Library** (Sprint 1-2)
    - HUD Strip component with prestige/C2 display
@@ -1145,7 +1311,7 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
 
 ---
 
-## 12. Risks & Mitigations
+## 13. Risks & Mitigations
 
 | Risk                      | Mitigation                                              |
 |---------------------------|---------------------------------------------------------|
@@ -1158,7 +1324,7 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
 
 ---
 
-## 13. Success Metrics
+## 14. Success Metrics
 
 1. **Onboarding**: New players complete full turn (set tax, research, fleet orders) without manual
 2. **Recognition**: EC veterans identify classic references (colors, stat slabs, hotkeys)
@@ -1248,6 +1414,6 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
 
 ---
 
-**Document Version**: 2.0
-**Last Updated**: 2026-01-15
-**Status**: Design specification - revised with accurate game systems
+**Document Version**: 2.1
+**Last Updated**: 2026-01-17
+**Status**: Design specification - added Entry Screen Modal (Section 5)

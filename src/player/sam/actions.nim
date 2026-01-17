@@ -64,6 +64,45 @@ const
   ActionLobbyJoinPoll* = "lobbyJoinPoll"
   ActionLobbyBackspace* = "lobbyBackspace"
   ActionLobbyReturn* = "lobbyReturn"
+  ActionLobbyInputAppend* = "lobbyInputAppend"
+  # Order entry actions
+  ActionStartOrderMove* = "startOrderMove"
+  ActionStartOrderPatrol* = "startOrderPatrol"
+  ActionStartOrderHold* = "startOrderHold"
+  ActionConfirmOrder* = "confirmOrder"
+  ActionCancelOrder* = "cancelOrder"
+  # Entry modal actions
+  ActionEntryUp* = "entryUp"
+  ActionEntryDown* = "entryDown"
+  ActionEntrySelect* = "entrySelect"
+  ActionEntryImport* = "entryImport"
+  ActionEntryImportConfirm* = "entryImportConfirm"
+  ActionEntryImportCancel* = "entryImportCancel"
+  ActionEntryImportAppend* = "entryImportAppend"
+  ActionEntryImportBackspace* = "entryImportBackspace"
+  ActionEntryInviteAppend* = "entryInviteAppend"
+  ActionEntryInviteBackspace* = "entryInviteBackspace"
+  ActionEntryInviteSubmit* = "entryInviteSubmit"
+  # Admin actions
+  ActionEntryAdminSelect* = "entryAdminSelect"
+  ActionEntryAdminCreateGame* = "entryAdminCreateGame"
+  ActionEntryAdminManageGames* = "entryAdminManageGames"
+  # Relay URL actions
+  ActionEntryRelayEdit* = "entryRelayEdit"
+  ActionEntryRelayAppend* = "entryRelayAppend"
+  ActionEntryRelayBackspace* = "entryRelayBackspace"
+  ActionEntryRelayConfirm* = "entryRelayConfirm"
+  # Game creation actions
+  ActionCreateGameUp* = "createGameUp"
+  ActionCreateGameDown* = "createGameDown"
+  ActionCreateGameLeft* = "createGameLeft"
+  ActionCreateGameRight* = "createGameRight"
+  ActionCreateGameAppend* = "createGameAppend"
+  ActionCreateGameBackspace* = "createGameBackspace"
+  ActionCreateGameConfirm* = "createGameConfirm"
+  ActionCreateGameCancel* = "createGameCancel"
+  # Manage games actions
+  ActionManageGamesCancel* = "manageGamesCancel"
 
 # ============================================================================
 # Navigation Actions
@@ -505,12 +544,354 @@ proc actionLobbyBackspace*(): Proposal =
     gameActionData: ""
   )
 
+proc actionLobbyInputAppend*(value: string): Proposal =
+  ## Append character to lobby input (pubkey or name)
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionLobbyInputAppend,
+    gameActionType: ActionLobbyInputAppend,
+    gameActionData: value
+  )
+
 proc actionLobbyReturn*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
     actionName: ActionLobbyReturn,
     gameActionType: ActionLobbyReturn,
+    gameActionData: ""
+  )
+
+# ============================================================================
+# Entry Modal Actions
+# ============================================================================
+
+proc actionEntryUp*(): Proposal =
+  ## Move selection up in entry modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryUp,
+    gameActionType: ActionEntryUp,
+    gameActionData: ""
+  )
+
+proc actionEntryDown*(): Proposal =
+  ## Move selection down in entry modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryDown,
+    gameActionType: ActionEntryDown,
+    gameActionData: ""
+  )
+
+proc actionEntrySelect*(): Proposal =
+  ## Select current game/lobby in entry modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntrySelect,
+    gameActionType: ActionEntrySelect,
+    gameActionData: ""
+  )
+
+proc actionEntryImport*(): Proposal =
+  ## Start nsec import in entry modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryImport,
+    gameActionType: ActionEntryImport,
+    gameActionData: ""
+  )
+
+proc actionEntryImportConfirm*(): Proposal =
+  ## Confirm nsec import
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryImportConfirm,
+    gameActionType: ActionEntryImportConfirm,
+    gameActionData: ""
+  )
+
+proc actionEntryImportCancel*(): Proposal =
+  ## Cancel nsec import
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryImportCancel,
+    gameActionType: ActionEntryImportCancel,
+    gameActionData: ""
+  )
+
+proc actionEntryImportAppend*(value: string): Proposal =
+  ## Append character to import buffer
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryImportAppend,
+    gameActionType: ActionEntryImportAppend,
+    gameActionData: value
+  )
+
+proc actionEntryImportBackspace*(): Proposal =
+  ## Backspace in import buffer
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryImportBackspace,
+    gameActionType: ActionEntryImportBackspace,
+    gameActionData: ""
+  )
+
+proc actionEntryInviteAppend*(value: string): Proposal =
+  ## Append character to invite code
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryInviteAppend,
+    gameActionType: ActionEntryInviteAppend,
+    gameActionData: value
+  )
+
+proc actionEntryInviteBackspace*(): Proposal =
+  ## Backspace in invite code
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryInviteBackspace,
+    gameActionType: ActionEntryInviteBackspace,
+    gameActionData: ""
+  )
+
+proc actionEntryInviteSubmit*(): Proposal =
+  ## Submit invite code to join game
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryInviteSubmit,
+    gameActionType: ActionEntryInviteSubmit,
+    gameActionData: ""
+  )
+
+proc actionEntryAdminSelect*(): Proposal =
+  ## Select current admin menu item
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryAdminSelect,
+    gameActionType: ActionEntryAdminSelect,
+    gameActionData: ""
+  )
+
+proc actionEntryAdminCreateGame*(): Proposal =
+  ## Start creating a new game (admin only)
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryAdminCreateGame,
+    gameActionType: ActionEntryAdminCreateGame,
+    gameActionData: ""
+  )
+
+proc actionEntryAdminManageGames*(): Proposal =
+  ## Open manage games panel (admin only)
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryAdminManageGames,
+    gameActionType: ActionEntryAdminManageGames,
+    gameActionData: ""
+  )
+
+proc actionEntryRelayEdit*(): Proposal =
+  ## Start editing relay URL
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryRelayEdit,
+    gameActionType: ActionEntryRelayEdit,
+    gameActionData: ""
+  )
+
+proc actionEntryRelayAppend*(value: string): Proposal =
+  ## Append character to relay URL
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryRelayAppend,
+    gameActionType: ActionEntryRelayAppend,
+    gameActionData: value
+  )
+
+proc actionEntryRelayBackspace*(): Proposal =
+  ## Backspace in relay URL
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryRelayBackspace,
+    gameActionType: ActionEntryRelayBackspace,
+    gameActionData: ""
+  )
+
+proc actionEntryRelayConfirm*(): Proposal =
+  ## Confirm relay URL edit
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionEntryRelayConfirm,
+    gameActionType: ActionEntryRelayConfirm,
+    gameActionData: ""
+  )
+
+# ============================================================================
+# Game Creation Actions
+# ============================================================================
+
+proc actionCreateGameUp*(): Proposal =
+  ## Move up in create game form
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionCreateGameUp,
+    gameActionType: ActionCreateGameUp,
+    gameActionData: ""
+  )
+
+proc actionCreateGameDown*(): Proposal =
+  ## Move down in create game form
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionCreateGameDown,
+    gameActionType: ActionCreateGameDown,
+    gameActionData: ""
+  )
+
+proc actionCreateGameLeft*(): Proposal =
+  ## Decrease value in create game form (player count)
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionCreateGameLeft,
+    gameActionType: ActionCreateGameLeft,
+    gameActionData: ""
+  )
+
+proc actionCreateGameRight*(): Proposal =
+  ## Increase value in create game form (player count)
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionCreateGameRight,
+    gameActionType: ActionCreateGameRight,
+    gameActionData: ""
+  )
+
+proc actionCreateGameAppend*(value: string): Proposal =
+  ## Append character to game name
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionCreateGameAppend,
+    gameActionType: ActionCreateGameAppend,
+    gameActionData: value
+  )
+
+proc actionCreateGameBackspace*(): Proposal =
+  ## Backspace in game name
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionCreateGameBackspace,
+    gameActionType: ActionCreateGameBackspace,
+    gameActionData: ""
+  )
+
+proc actionCreateGameConfirm*(): Proposal =
+  ## Confirm game creation
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionCreateGameConfirm,
+    gameActionType: ActionCreateGameConfirm,
+    gameActionData: ""
+  )
+
+proc actionCreateGameCancel*(): Proposal =
+  ## Cancel game creation
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionCreateGameCancel,
+    gameActionType: ActionCreateGameCancel,
+    gameActionData: ""
+  )
+
+proc actionManageGamesCancel*(): Proposal =
+  ## Cancel manage games mode
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionManageGamesCancel,
+    gameActionType: ActionManageGamesCancel,
+    gameActionData: ""
+  )
+
+# ============================================================================
+# Order Entry Actions
+# ============================================================================
+
+proc actionStartOrderMove*(fleetId: int): Proposal =
+  ## Start order entry for Move command
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionStartOrderMove,
+    gameActionType: ActionStartOrderMove,
+    gameActionData: $fleetId
+  )
+
+proc actionStartOrderPatrol*(fleetId: int): Proposal =
+  ## Start order entry for Patrol command
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionStartOrderPatrol,
+    gameActionType: ActionStartOrderPatrol,
+    gameActionData: $fleetId
+  )
+
+proc actionStartOrderHold*(fleetId: int): Proposal =
+  ## Start order entry for Hold command (immediate, no target)
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionStartOrderHold,
+    gameActionType: ActionStartOrderHold,
+    gameActionData: $fleetId
+  )
+
+proc actionConfirmOrder*(targetSystemId: int): Proposal =
+  ## Confirm order with target system
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionConfirmOrder,
+    gameActionType: ActionConfirmOrder,
+    gameActionData: $targetSystemId
+  )
+
+proc actionCancelOrder*(): Proposal =
+  ## Cancel order entry
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionCancelOrder,
+    gameActionType: ActionCancelOrder,
     gameActionData: ""
   )
 
@@ -554,6 +935,28 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   ## Map a key code to an action based on current model state
   ## Returns None if no action should be taken
   
+  # Order entry mode: target selection on map
+  if model.orderEntryActive:
+    case key
+    of KeyCode.KeyEscape:
+      return some(actionCancelOrder())
+    of KeyCode.KeyEnter:
+      # Confirm with current cursor position - need to look up system ID
+      # The acceptor will resolve the cursor coord to system ID
+      return some(actionConfirmOrder(-1))  # -1 = use cursor
+    of KeyCode.KeyUp:
+      return some(actionMoveCursor(HexDirection.NorthWest))
+    of KeyCode.KeyDown:
+      return some(actionMoveCursor(HexDirection.SouthEast))
+    of KeyCode.KeyLeft:
+      return some(actionMoveCursor(HexDirection.West))
+    of KeyCode.KeyRight:
+      return some(actionMoveCursor(HexDirection.East))
+    of KeyCode.KeyQ:
+      return some(actionCancelOrder())  # Q also cancels
+    else:
+      return none(Proposal)
+  
   # Expert mode has its own input handling
   if model.expertModeActive:
     case key
@@ -568,45 +971,85 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       return none(Proposal)
 
   if model.appPhase == AppPhase.Lobby:
-    case key
-    of KeyCode.KeyCtrlL:
-      return none(Proposal)
-    of KeyCode.KeyQ:
-      return some(actionQuit())
-    of KeyCode.KeyTab:
-      let nextPane = case model.lobbyPane
-        of LobbyPane.Profile: LobbyPane.ActiveGames
-        of LobbyPane.ActiveGames: LobbyPane.JoinGames
-        of LobbyPane.JoinGames: LobbyPane.Profile
-      return some(actionLobbySwitchPane(nextPane))
-    of KeyCode.KeyShiftTab:
-      let prevPane = case model.lobbyPane
-        of LobbyPane.Profile: LobbyPane.JoinGames
-        of LobbyPane.ActiveGames: LobbyPane.Profile
-        of LobbyPane.JoinGames: LobbyPane.ActiveGames
-      return some(actionLobbySwitchPane(prevPane))
-    of KeyCode.KeyUp:
-      return some(actionListUp())
-    of KeyCode.KeyDown:
-      return some(actionListDown())
-    of KeyCode.KeyEnter:
-      if model.lobbyInputMode != LobbyInputMode.None:
-        return some(actionLobbyJoinSubmit())
-      if model.lobbyPane == LobbyPane.ActiveGames:
-        return some(actionLobbyEnterGame())
-      return some(actionLobbyJoinSubmit())
-    of KeyCode.KeyBackspace:
-      return some(actionLobbyBackspace())
-    of KeyCode.KeyY:
-      return some(actionLobbyEditPubkey())
-    of KeyCode.KeyU:
-      return some(actionLobbyEditName())
-    of KeyCode.KeyG:
-      return some(actionLobbyGenerateKey())
-    of KeyCode.KeyR:
-      return some(actionLobbyJoinRefresh())
+    # Entry modal keybindings
+    if model.entryModal.mode == EntryModalMode.ImportNsec:
+      # Import mode: typing nsec
+      case key
+      of KeyCode.KeyEnter:
+        return some(actionEntryImportConfirm())
+      of KeyCode.KeyEscape:
+        return some(actionEntryImportCancel())
+      of KeyCode.KeyBackspace:
+        return some(actionEntryImportBackspace())
+      else:
+        return none(Proposal)  # Character input handled separately
+    elif model.entryModal.editingRelay:
+      # Relay URL editing mode
+      case key
+      of KeyCode.KeyEnter, KeyCode.KeyEscape:
+        return some(actionEntryRelayConfirm())
+      of KeyCode.KeyBackspace:
+        return some(actionEntryRelayBackspace())
+      else:
+        return none(Proposal)  # Character input handled separately
+    elif model.entryModal.mode == EntryModalMode.CreateGame:
+      # Create game mode
+      case key
+      of KeyCode.KeyEscape:
+        return some(actionCreateGameCancel())
+      of KeyCode.KeyUp:
+        return some(actionCreateGameUp())
+      of KeyCode.KeyDown:
+        return some(actionCreateGameDown())
+      of KeyCode.KeyLeft:
+        return some(actionCreateGameLeft())
+      of KeyCode.KeyRight:
+        return some(actionCreateGameRight())
+      of KeyCode.KeyEnter:
+        return some(actionCreateGameConfirm())
+      of KeyCode.KeyBackspace:
+        return some(actionCreateGameBackspace())
+      else:
+        return none(Proposal)  # Character input handled separately
+    elif model.entryModal.mode == EntryModalMode.ManageGames:
+      # Manage games mode - for now just allow escape to exit
+      case key
+      of KeyCode.KeyEscape:
+        return some(actionManageGamesCancel())
+      else:
+        return none(Proposal)
     else:
-      return none(Proposal)
+      # Normal entry modal mode
+      case key
+      of KeyCode.KeyQ:
+        return some(actionQuit())
+      of KeyCode.KeyUp:
+        return some(actionEntryUp())
+      of KeyCode.KeyDown:
+        return some(actionEntryDown())
+      of KeyCode.KeyEnter:
+        case model.entryModal.focus
+        of EntryModalFocus.InviteCode:
+          return some(actionEntryInviteSubmit())
+        of EntryModalFocus.AdminMenu:
+          return some(actionEntryAdminSelect())
+        of EntryModalFocus.GameList:
+          return some(actionEntrySelect())
+        of EntryModalFocus.RelayUrl:
+          return some(actionEntryRelayEdit())
+      of KeyCode.KeyBackspace:
+        if model.entryModal.focus == EntryModalFocus.InviteCode:
+          return some(actionEntryInviteBackspace())
+        elif model.entryModal.focus == EntryModalFocus.RelayUrl:
+          return some(actionEntryRelayBackspace())
+        else:
+          return none(Proposal)
+      of KeyCode.KeyI:
+        return some(actionEntryImport())
+      of KeyCode.KeyCtrlL:
+        return none(Proposal)
+      else:
+        return none(Proposal)
 
   if model.appPhase == AppPhase.InGame:
     if key == KeyCode.KeyCtrlL:
@@ -754,9 +1197,18 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   
   of ViewMode.FleetDetail:
     case key
-    of KeyCode.KeyM:     return some(actionSelect())  # Move
-    of KeyCode.KeyP:     return some(actionSelect())  # Patrol
-    of KeyCode.KeyH:     return some(actionSelect())  # Hold
+    of KeyCode.KeyM:
+      # Move command - start order entry with target selection
+      if model.selectedFleetId > 0:
+        return some(actionStartOrderMove(model.selectedFleetId))
+    of KeyCode.KeyP:
+      # Patrol command - start order entry with target selection
+      if model.selectedFleetId > 0:
+        return some(actionStartOrderPatrol(model.selectedFleetId))
+    of KeyCode.KeyH:
+      # Hold command - immediate, no target needed
+      if model.selectedFleetId > 0:
+        return some(actionStartOrderHold(model.selectedFleetId))
     of KeyCode.KeyG:     return some(actionSelect())  # Guard
     of KeyCode.KeyR:     return some(actionSelect())  # ROE
     of KeyCode.KeyJ:     return some(actionSelect())  # Join

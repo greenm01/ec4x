@@ -6,7 +6,7 @@
 ##
 ## Acceptor signature: proc(model: var M, proposal: Proposal)
 
-import std/[options, times]
+import std/[options, times, strutils]
 import ./types
 import ./tui_model
 import ./actions
@@ -14,6 +14,7 @@ import ../tui/widget/scroll_state
 import ../state/join_flow
 import ../state/lobby_profile
 import ../../common/kdl_join
+import ../../common/wordlist
 
 export types, tui_model, actions
 
@@ -141,6 +142,9 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.reportFocus = ReportPaneFocus.BodyPane
     of ReportPaneFocus.BodyPane:
       discard
+  of ActionLobbySwitchPane:
+    if proposal.navMode >= 0 and proposal.navMode <= 2:
+      model.lobbyPane = LobbyPane(proposal.navMode)
   else:
     discard
 
@@ -313,12 +317,14 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.previousMode = model.mode
       model.mode = ViewMode.PlanetDetail
       model.resetBreadcrumbs(model.mode)
-      model.selectedColonyId = model.colonies[model.selectedIdx].systemId
+      if model.selectedIdx < model.colonies.len:
+        model.selectedColonyId = model.colonies[model.selectedIdx].systemId
     elif target == 3:
       model.previousMode = model.mode
       model.mode = ViewMode.FleetDetail
       model.resetBreadcrumbs(model.mode)
-      model.selectedFleetId = model.fleets[model.selectedIdx].id
+      if model.selectedIdx < model.fleets.len:
+        model.selectedFleetId = model.fleets[model.selectedIdx].id
     else:
       if target >= 1 and target <= 9:
         model.previousMode = model.mode
@@ -451,13 +457,159 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.lobbyProfileName.setLen(model.lobbyProfileName.len - 1)
       else:
         discard
+    of ActionLobbyInputAppend:
+      case model.lobbyInputMode
+      of LobbyInputMode.Pubkey:
+        model.lobbyProfilePubkey.add(proposal.gameActionData)
+      of LobbyInputMode.Name:
+        model.lobbyProfileName.add(proposal.gameActionData)
+      else:
+        discard
+    # Entry modal actions
+    of ActionEntryUp:
+      model.entryModal.moveUp()
+    of ActionEntryDown:
+      model.entryModal.moveDown()
+    of ActionEntrySelect:
+      # Enter selected game from game list
+      let gameOpt = model.entryModal.selectedGame()
+      if gameOpt.isSome:
+        let game = gameOpt.get()
+        model.loadGameRequested = true
+        model.loadGameId = game.id
+        # TODO: Need to get houseId from game info
+        model.statusMessage = "Loading game..."
+    of ActionEntryImport:
+      model.entryModal.startImport()
+      model.statusMessage = "Enter nsec to import identity"
+    of ActionEntryImportConfirm:
+      if model.entryModal.confirmImport():
+        model.statusMessage = "Identity imported successfully"
+      else:
+        model.statusMessage = "Import failed: " & model.entryModal.importError
+    of ActionEntryImportCancel:
+      model.entryModal.cancelImport()
+      model.statusMessage = ""
+    of ActionEntryImportAppend:
+      if proposal.gameActionData.len > 0:
+        discard model.entryModal.importInput.appendChar(
+          proposal.gameActionData[0])
+    of ActionEntryImportBackspace:
+      model.entryModal.importInput.backspace()
+    of ActionEntryInviteAppend:
+      if proposal.gameActionData.len > 0:
+        # Validate: only allow lowercase letters and hyphen
+        let ch = proposal.gameActionData[0].toLowerAscii()
+        if ch in 'a'..'z' or ch == '-':
+          discard model.entryModal.inviteInput.appendChar(ch)
+          model.entryModal.inviteError = ""
+    of ActionEntryInviteBackspace:
+      model.entryModal.inviteInput.backspace()
+      model.entryModal.inviteError = ""
+    of ActionEntryInviteSubmit:
+      # Submit invite code to server
+      if model.entryModal.inviteInput.isEmpty():
+        model.entryModal.setInviteError("Enter an invite code")
+      else:
+        let code = normalizeInviteCode(model.entryModal.inviteCode())
+        if not isValidInviteCode(code):
+          model.entryModal.setInviteError("Invalid code format")
+        else:
+          # Valid format - submit to server
+          # TODO: Send kind 30401 event to server for claim
+          model.statusMessage = "Joining with code: " & code
+          model.entryModal.clearInviteCode()
+    of ActionEntryAdminSelect:
+      # Dispatch based on selected admin menu item
+      let menuItem = model.entryModal.selectedAdminMenuItem()
+      if menuItem.isSome:
+        case menuItem.get()
+        of AdminMenuItem.CreateGame:
+          # Switch to game creation mode
+          model.entryModal.mode = EntryModalMode.CreateGame
+          model.statusMessage = "Create a new game"
+        of AdminMenuItem.ManageGames:
+          # Switch to manage games mode
+          model.entryModal.mode = EntryModalMode.ManageGames
+          model.statusMessage = "Manage your games"
+    of ActionEntryAdminCreateGame:
+      # Direct action to enter game creation mode
+      model.entryModal.mode = EntryModalMode.CreateGame
+      model.statusMessage = "Create a new game"
+    of ActionEntryAdminManageGames:
+      # Direct action to enter manage games mode
+      model.entryModal.mode = EntryModalMode.ManageGames
+      model.statusMessage = "Manage your games"
+    of ActionEntryRelayEdit:
+      # Start editing relay URL
+      model.entryModal.startEditingRelay()
+      model.statusMessage = "Edit relay URL"
+    of ActionEntryRelayAppend:
+      # Append character to relay URL
+      if proposal.gameActionData.len > 0:
+        discard model.entryModal.relayInput.appendChar(
+          proposal.gameActionData[0])
+    of ActionEntryRelayBackspace:
+      # Backspace in relay URL
+      model.entryModal.relayInput.backspace()
+    of ActionEntryRelayConfirm:
+      # Confirm relay URL edit
+      model.entryModal.stopEditingRelay()
+      model.statusMessage = "Relay: " & model.entryModal.relayUrl()
+    # Game creation actions
+    of ActionCreateGameUp:
+      model.entryModal.createFieldUp()
+    of ActionCreateGameDown:
+      model.entryModal.createFieldDown()
+    of ActionCreateGameLeft:
+      if model.entryModal.createField == CreateGameField.PlayerCount:
+        model.entryModal.decrementPlayerCount()
+    of ActionCreateGameRight:
+      if model.entryModal.createField == CreateGameField.PlayerCount:
+        model.entryModal.incrementPlayerCount()
+    of ActionCreateGameAppend:
+      if model.entryModal.createField == CreateGameField.GameName:
+        if proposal.gameActionData.len > 0:
+          if model.entryModal.createNameInput.appendChar(
+               proposal.gameActionData[0]):
+            model.entryModal.createError = ""
+    of ActionCreateGameBackspace:
+      if model.entryModal.createField == CreateGameField.GameName:
+        model.entryModal.createNameInput.backspace()
+        model.entryModal.createError = ""
+    of ActionCreateGameConfirm:
+      if model.entryModal.createField == CreateGameField.ConfirmCreate:
+        # Validate and create game
+        if model.entryModal.createNameInput.isEmpty():
+          model.entryModal.setCreateError("Game name is required")
+        else:
+          # TODO: Send kind 30400 event to create game
+          model.statusMessage = "Creating game: " &
+            model.entryModal.createGameName() &
+            " (" & $model.entryModal.createPlayerCount & " players)"
+          model.entryModal.cancelGameCreation()
+      elif model.entryModal.createField == CreateGameField.PlayerCount:
+        # Enter on player count field moves to next field
+        model.entryModal.createFieldDown()
+      elif model.entryModal.createField == CreateGameField.GameName:
+        # Enter on game name field moves to next field
+        model.entryModal.createFieldDown()
+    of ActionCreateGameCancel:
+      model.entryModal.cancelGameCreation()
+      model.statusMessage = "Game creation cancelled"
+    of ActionManageGamesCancel:
+      model.entryModal.mode = EntryModalMode.Normal
+      model.statusMessage = ""
     else:
       model.statusMessage = "Action: " & proposal.gameActionType
   of ProposalKind.pkSelection:
     if proposal.actionName == ActionLobbyEnterGame:
       if model.lobbySelectedIdx < model.lobbyActiveGames.len:
-        model.appPhase = AppPhase.InGame
-        model.statusMessage = "Entering game..."
+        let game = model.lobbyActiveGames[model.lobbySelectedIdx]
+        model.loadGameRequested = true
+        model.loadGameId = game.id
+        model.loadHouseId = game.houseId
+        model.statusMessage = "Loading game..."
         model.lobbyInputMode = LobbyInputMode.None
     elif model.mode == ViewMode.Reports and proposal.selectIdx == -1:
       model.mode = ViewMode.ReportDetail
@@ -465,15 +617,17 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if report.isSome:
         model.selectedReportId = report.get().id
     elif model.mode == ViewMode.Planets and proposal.selectIdx == -1:
-      model.previousMode = model.mode
-      model.mode = ViewMode.PlanetDetail
-      model.selectedColonyId = model.colonies[model.selectedIdx].systemId
-      model.resetBreadcrumbs(model.mode)
+      if model.selectedIdx < model.colonies.len:
+        model.previousMode = model.mode
+        model.mode = ViewMode.PlanetDetail
+        model.selectedColonyId = model.colonies[model.selectedIdx].systemId
+        model.resetBreadcrumbs(model.mode)
     elif model.mode == ViewMode.Fleets and proposal.selectIdx == -1:
-      model.previousMode = model.mode
-      model.mode = ViewMode.FleetDetail
-      model.selectedFleetId = model.fleets[model.selectedIdx].id
-      model.resetBreadcrumbs(model.mode)
+      if model.selectedIdx < model.fleets.len:
+        model.previousMode = model.mode
+        model.mode = ViewMode.FleetDetail
+        model.selectedFleetId = model.fleets[model.selectedIdx].id
+        model.resetBreadcrumbs(model.mode)
     elif model.mode == ViewMode.ReportDetail and proposal.selectIdx == -1:
       let report = model.currentReport()
       if report.isSome and report.get().linkView > 0:
@@ -496,6 +650,49 @@ proc errorAcceptor*(model: var TuiModel, proposal: Proposal) =
     model.statusMessage = "Error: " & proposal.errorMsg
 
 # ============================================================================
+# Order Entry Acceptor
+# ============================================================================
+
+proc orderEntryAcceptor*(model: var TuiModel, proposal: Proposal) =
+  ## Handle order entry proposals (Move/Patrol/Hold commands)
+  if proposal.kind != ProposalKind.pkGameAction:
+    return
+
+  case proposal.gameActionType
+  of ActionStartOrderMove:
+    let fleetId = try: parseInt(proposal.gameActionData) except: 0
+    if fleetId > 0:
+      model.startOrderEntry(fleetId, CmdMove)
+  of ActionStartOrderPatrol:
+    let fleetId = try: parseInt(proposal.gameActionData) except: 0
+    if fleetId > 0:
+      model.startOrderEntry(fleetId, CmdPatrol)
+  of ActionStartOrderHold:
+    let fleetId = try: parseInt(proposal.gameActionData) except: 0
+    if fleetId > 0:
+      # Hold is immediate - no target selection needed
+      model.queueImmediateOrder(fleetId, CmdHold)
+      model.statusMessage = "Hold order queued for fleet " & $fleetId
+  of ActionConfirmOrder:
+    if model.orderEntryActive:
+      # Look up system ID at cursor position
+      let cursorCoord = model.mapState.cursor
+      let sysOpt = model.systemAt(cursorCoord)
+      if sysOpt.isSome:
+        let targetSystemId = sysOpt.get().id
+        model.confirmOrderEntry(targetSystemId)
+        let cmdLabel = commandLabel(model.pendingFleetOrderCommandType)
+        model.statusMessage = cmdLabel & " order queued to system " &
+          sysOpt.get().name
+      else:
+        model.statusMessage = "No system at cursor position"
+  of ActionCancelOrder:
+    if model.orderEntryActive:
+      model.cancelOrderEntry()
+  else:
+    discard
+
+# ============================================================================
 # Create All Acceptors
 # ============================================================================
 
@@ -503,5 +700,5 @@ proc createAcceptors*(): seq[AcceptorProc[TuiModel]] =
   ## Create the standard set of acceptors for the TUI
   @[
     navigationAcceptor, selectionAcceptor, viewportAcceptor, gameActionAcceptor,
-    errorAcceptor,
+    orderEntryAcceptor, errorAcceptor,
   ]

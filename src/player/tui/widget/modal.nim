@@ -1,0 +1,147 @@
+## Modal - Centered overlay modal widget
+##
+## A modal is a centered overlay that appears on top of other content.
+## Used for dialogs, entry screens, and confirmations.
+##
+## Features:
+## - Automatically centers within the given area
+## - Single-line border (dialog style per ec-style-layout.md)
+## - Optional title bar with centered title
+## - Calculates max width as min(termWidth - 4, maxWidth)
+
+import std/options
+import ./frame
+import ./borders
+import ./text/text_pkg
+import ../buffer
+import ../layout/rect
+import ../styles/ec_palette
+
+type
+  Modal* = object
+    ## Centered modal overlay widget.
+    title: Option[string]
+    titleStyle: CellStyle
+    borderStyle: CellStyle
+    bgStyle: CellStyle
+    maxWidth: int
+    minWidth: int
+    minHeight: int
+
+proc newModal*(): Modal =
+  ## Create a new modal with default styling.
+  Modal(
+    title: none(string),
+    titleStyle: canvasHeaderStyle(),
+    borderStyle: modalBorderStyle(),
+    bgStyle: modalBgStyle(),
+    maxWidth: 72,
+    minWidth: 40,
+    minHeight: 10
+  )
+
+# Builder methods (fluent API)
+
+proc title*(m: Modal, t: string): Modal =
+  ## Set the modal title.
+  result = m
+  result.title = some(t)
+
+proc titleStyle*(m: Modal, s: CellStyle): Modal =
+  ## Set the title style.
+  result = m
+  result.titleStyle = s
+
+proc borderStyle*(m: Modal, s: CellStyle): Modal =
+  ## Set the border style.
+  result = m
+  result.borderStyle = s
+
+proc bgStyle*(m: Modal, s: CellStyle): Modal =
+  ## Set the background style.
+  result = m
+  result.bgStyle = s
+
+proc maxWidth*(m: Modal, w: int): Modal =
+  ## Set maximum width.
+  result = m
+  result.maxWidth = w
+
+proc minWidth*(m: Modal, w: int): Modal =
+  ## Set minimum width.
+  result = m
+  result.minWidth = w
+
+proc minHeight*(m: Modal, h: int): Modal =
+  ## Set minimum height.
+  result = m
+  result.minHeight = h
+
+proc calculateArea*(m: Modal, viewport: Rect, contentHeight: int): Rect =
+  ## Calculate the modal's area within the viewport.
+  ## Centers the modal and respects min/max constraints.
+  
+  # Calculate width: min(viewport.width - 4, maxWidth), clamped to minWidth
+  let effectiveMaxWidth = min(viewport.width - 4, m.maxWidth)
+  let width = max(m.minWidth, effectiveMaxWidth)
+  
+  # Calculate height: contentHeight + 2 for borders, clamped to minHeight
+  let height = max(m.minHeight, contentHeight + 2)
+  
+  # Center within viewport
+  let x = viewport.x + (viewport.width - width) div 2
+  let y = viewport.y + (viewport.height - height) div 2
+  
+  rect(x, y, width, height)
+
+proc inner*(m: Modal, modalArea: Rect): Rect =
+  ## Get the inner content area (excluding borders).
+  rect(
+    modalArea.x + 1,
+    modalArea.y + 1,
+    modalArea.width - 2,
+    modalArea.height - 2
+  )
+
+proc render*(m: Modal, area: Rect, buf: var CellBuffer) =
+  ## Render the modal frame (border and background).
+  ## Content should be rendered separately in the inner area.
+  
+  if area.isEmpty:
+    return
+  
+  # Fill background
+  for pos in area.positions:
+    discard buf.put(pos.x, pos.y, " ", m.bgStyle)
+  
+  # Create frame with single-line border
+  var frame = bordered()
+    .borderStyle(m.borderStyle)
+    .borderType(BorderType.Plain)
+  
+  # Add title if present
+  if m.title.isSome:
+    let titleLine = line(span(" " & m.title.get & " ", m.titleStyle)).center()
+    frame = frame.title(titleLine)
+  
+  frame.render(area, buf)
+
+proc renderWithSeparator*(m: Modal, area: Rect, buf: var CellBuffer,
+                          footerHeight: int) =
+  ## Render the modal with a horizontal separator above the footer.
+  ## footerHeight is the number of rows for the footer section.
+  
+  m.render(area, buf)
+  
+  if footerHeight > 0 and area.height > footerHeight + 2:
+    # Draw separator line
+    let sepY = area.bottom - footerHeight - 1
+    let bs = PlainBorderSet
+    
+    # Left junction
+    discard buf.put(area.x, sepY, "├", m.borderStyle)
+    # Horizontal line
+    for x in (area.x + 1)..<(area.right - 1):
+      discard buf.put(x, sepY, bs.horizontal, m.borderStyle)
+    # Right junction
+    discard buf.put(area.right - 1, sepY, "┤", m.borderStyle)

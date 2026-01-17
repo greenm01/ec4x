@@ -32,6 +32,7 @@ import ./tui/launcher
 import ./sam/sam_pkg
 import ./state/join_flow
 import ./state/lobby_profile
+import ./state/order_builder
 import ./svg/svg_pkg
 
 # =============================================================================
@@ -264,6 +265,25 @@ proc mapKeyEvent(event: KeyEvent, model: TuiModel): Option[Proposal] =
     if model.expertModeActive:
       if event.rune.int >= 0x20:
         return some(actionExpertInputAppend($event.rune))
+      return none(Proposal)
+    # Entry modal import mode: append characters to nsec buffer
+    if model.appPhase == AppPhase.Lobby and
+        model.entryModal.mode == EntryModalMode.ImportNsec:
+      if event.rune.int >= 0x20:
+        return some(actionEntryImportAppend($event.rune))
+      return none(Proposal)
+    # Entry modal invite code input: append characters
+    if model.appPhase == AppPhase.Lobby and
+        model.entryModal.mode == EntryModalMode.Normal and
+        model.entryModal.focus == EntryModalFocus.InviteCode:
+      if event.rune.int >= 0x20:
+        return some(actionEntryInviteAppend($event.rune))
+      return none(Proposal)
+    # Lobby input mode: append characters to pubkey/name
+    if model.appPhase == AppPhase.Lobby and
+        model.lobbyInputMode != LobbyInputMode.None:
+      if event.rune.int >= 0x20:
+        return some(actionLobbyInputAppend($event.rune))
       return none(Proposal)
     let ch = $event.rune
     case ch
@@ -857,9 +877,17 @@ proc renderLobbyPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   frame.render(area, buf)
   let inner = frame.inner(area)
 
+  if inner.width < 30 or inner.height < 10:
+    discard buf.setString(inner.x, inner.y, "Terminal too small", dimStyle())
+    return
+
   let columns = horizontal()
     .constraints(length(inner.width div 3), length(inner.width div 3), fill())
     .split(inner)
+
+  if columns.len < 3:
+    discard buf.setString(inner.x, inner.y, "Layout error", dimStyle())
+    return
 
   let profileArea = columns[0]
   let activeArea = columns[1]
@@ -1046,6 +1074,10 @@ proc buildHudData(model: TuiModel): HudData =
 proc buildBreadcrumbData(model: TuiModel): BreadcrumbData =
   ## Build breadcrumb data from TUI model
   result = initBreadcrumbData()
+  if model.breadcrumbs.len == 0:
+    # Safety: should never happen, but handle gracefully
+    result.add("Home", 1)
+    return
   if model.breadcrumbs.len == 1 and model.breadcrumbs[0].label == "Home":
     result.add("Home", 1)
     result.add(model.mode.viewModeLabel, int(model.mode))
@@ -1080,6 +1112,11 @@ proc buildCommandDockData(model: TuiModel): CommandDockData =
     result.feedback = model.expertModeFeedback
   else:
     result.feedback = model.statusMessage
+
+  # Order entry mode has special context actions
+  if model.orderEntryActive:
+    result.contextActions = orderEntryContextActions(model.orderEntryCommandType)
+    return
 
   case model.mode
   of ViewMode.Overview:
@@ -1130,6 +1167,10 @@ proc renderDashboard(
                vertical().constraints(length(0), length(0), fill(), length(3))
   let rowAreas = rows.split(termRect)
 
+  if rowAreas.len < 4:
+    discard buf.setString(0, 0, "Layout error: terminal too small", dimStyle())
+    return
+
   let hudArea = rowAreas[0]
   let breadcrumbArea = rowAreas[1]
   let canvasArea = rowAreas[2]
@@ -1150,7 +1191,9 @@ proc renderDashboard(
 
   # Render main content based on view
   if model.appPhase == AppPhase.Lobby:
-    renderLobbyPanel(canvasArea, buf, model)
+    # Entry modal renders over entire viewport (it's a centered modal)
+    let viewport = rect(0, 0, buf.w, buf.h)
+    model.entryModal.render(viewport, buf)
   else:
     case model.mode
     of ViewMode.Overview:
@@ -1292,6 +1335,12 @@ proc runTui(gameId: string = "") =
       initialModel.lobbyActiveGames = loadActiveGamesData("data",
         initialModel.lobbyProfilePubkey)
 
+  # Auto-load join games on lobby entry
+  if initialModel.appPhase == AppPhase.Lobby:
+    initialModel.lobbyJoinGames = loadJoinGames("data")
+    if initialModel.lobbyJoinGames.len > 0:
+      initialModel.lobbyJoinStatus = JoinStatus.SelectingGame
+
   # Sync game state to model (only after joining a game)
   if initialModel.appPhase == AppPhase.InGame:
     syncGameStateToModel(initialModel, gameState, viewingHouse)
@@ -1350,6 +1399,35 @@ proc runTui(gameId: string = "") =
         if proposalOpt.isSome:
           sam.present(proposalOpt.get)
 
+    # Poll for join response when waiting
+    if sam.model.appPhase == AppPhase.Lobby and
+        sam.model.lobbyJoinStatus == JoinStatus.WaitingResponse:
+      sam.present(actionLobbyJoinPoll())
+
+    if sam.model.loadGameRequested:
+      let gameId = sam.model.loadGameId
+      let houseId = HouseId(sam.model.loadHouseId.uint32)
+      let dbPath = "data/games/" & gameId & "/ec4x.db"
+      if fileExists(dbPath):
+        try:
+          gameState = loadGameStateForHouse(dbPath, houseId)
+          viewingHouse = houseId
+          playerState = loadPlayerState(gameState, houseId)
+          sam.model.appPhase = AppPhase.InGame
+          sam.model.viewingHouse = int(houseId)
+          sam.model.mode = ViewMode.Overview
+          syncGameStateToModel(sam.model, gameState, viewingHouse)
+          sam.model.resetBreadcrumbs(sam.model.mode)
+          sam.model.statusMessage = "Loaded game " & gameId
+        except CatchableError as e:
+          sam.model.statusMessage = "Load failed: " & e.msg
+      else:
+        sam.model.statusMessage = "Game DB not found"
+      sam.model.loadGameRequested = false
+
+      # Re-render to show status
+      sam.present(emptyProposal())
+
     # Handle map export requests (needs GameState access)
     if sam.model.exportMapRequested:
       let gameId = "game_" & $gameState.seed # Use seed as game ID
@@ -1365,6 +1443,20 @@ proc runTui(gameId: string = "") =
       sam.model.exportMapRequested = false
       sam.model.openMapRequested = false
 
+      # Re-render to show status
+      sam.present(emptyProposal())
+
+    # Handle pending fleet orders (write to KDL files)
+    if sam.model.pendingFleetOrderReady and activeGameId.len > 0:
+      let gameDir = "data/games/" & activeGameId
+      let orderPath = writeFleetOrderFromModel(gameDir, sam.model)
+      if orderPath.len > 0:
+        let cmdLabel = commandLabel(sam.model.pendingFleetOrderCommandType)
+        sam.model.statusMessage = cmdLabel & " order written: " &
+          extractFilename(orderPath)
+        logInfo("TUI Player SAM", "Fleet order written: " & orderPath)
+      sam.model.clearPendingOrder()
+      
       # Re-render to show status
       sam.present(emptyProposal())
 

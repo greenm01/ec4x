@@ -9,6 +9,8 @@
 ## - Block: Container widget with borders/titles
 ## - Paragraph: Text display widget
 ## - List: Scrollable list with selection
+## - Modal: Centered overlay dialog
+## - Entry Modal: Launch screen for identity and game selection
 ##
 ## Inspired by ratatui's widget system.
 
@@ -20,6 +22,9 @@ import ./paragraph
 import ./list
 import ./scroll_state
 import ./scrollbar
+import ./modal
+import ./entry_modal
+import ./text_input
 
 # Re-export everything
 export text_pkg
@@ -30,3 +35,6 @@ export paragraph
 export list
 export scroll_state
 export scrollbar
+export modal
+export entry_modal
+export text_input
