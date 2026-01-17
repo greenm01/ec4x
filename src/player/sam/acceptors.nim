@@ -11,6 +11,8 @@ import ./types
 import ./tui_model
 import ./actions
 import ../tui/widget/scroll_state
+import ../state/join_flow
+import ../../common/kdl_join
 
 export types, tui_model, actions
 
@@ -211,7 +213,10 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.statusMessage = ""
       model.clearExpertFeedback()
   of ActionListUp:
-    if model.mode == ViewMode.Reports:
+    if model.joinStatus == JoinStatus.SelectingGame:
+      if model.joinSelectedIdx > 0:
+        model.joinSelectedIdx -= 1
+    elif model.mode == ViewMode.Reports:
       case model.reportFocus
       of ReportPaneFocus.TurnList:
         if model.reportTurnIdx > 0:
@@ -230,7 +235,11 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.selectedIdx > 0:
       model.selectedIdx -= 1
   of ActionListDown:
-    if model.mode == ViewMode.Reports:
+    if model.joinStatus == JoinStatus.SelectingGame:
+      let maxIdx = model.joinGames.len - 1
+      if model.joinSelectedIdx < maxIdx:
+        model.joinSelectedIdx += 1
+    elif model.mode == ViewMode.Reports:
       case model.reportFocus
       of ReportPaneFocus.TurnList:
         let buckets = model.reportsByTurn()
@@ -309,6 +318,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionExpertInputAppend:
       if model.expertModeActive:
         model.expertModeInput.add(proposal.gameActionData)
+      elif model.joinStatus == JoinStatus.EnteringPubkey:
+        model.joinPubkeyInput.add(proposal.gameActionData)
+      elif model.joinStatus == JoinStatus.EnteringName:
+        model.joinPlayerName.add(proposal.gameActionData)
     of ActionExpertInputBackspace:
       if model.expertModeActive and model.expertModeInput.len > 0:
         model.expertModeInput.setLen(model.expertModeInput.len - 1)
@@ -321,6 +334,82 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         else:
           model.setExpertFeedback("Expert mode: " & command)
         model.exitExpertMode()
+    of ActionJoinRefresh:
+      model.joinGames = loadJoinGames("data")
+      model.joinStatus = JoinStatus.SelectingGame
+      model.joinSelectedIdx = 0
+      model.joinError = ""
+      model.statusMessage = "Select a game to join"
+    of ActionJoinEditPubkey:
+      model.joinStatus = JoinStatus.EnteringPubkey
+      model.joinPubkeyInput = ""
+      model.joinError = ""
+      model.statusMessage = "Enter Nostr pubkey"
+    of ActionJoinEditName:
+      model.joinStatus = JoinStatus.EnteringName
+      model.joinPlayerName = ""
+      model.joinError = ""
+      model.statusMessage = "Enter player name"
+    of ActionJoinBackspace:
+      case model.joinStatus
+      of JoinStatus.EnteringPubkey:
+        if model.joinPubkeyInput.len > 0:
+          model.joinPubkeyInput.setLen(model.joinPubkeyInput.len - 1)
+      of JoinStatus.EnteringName:
+        if model.joinPlayerName.len > 0:
+          model.joinPlayerName.setLen(model.joinPlayerName.len - 1)
+      else:
+        discard
+    of ActionJoinSubmit:
+      if model.joinStatus == JoinStatus.SelectingGame:
+        if model.joinSelectedIdx < model.joinGames.len:
+          let game = model.joinGames[model.joinSelectedIdx]
+          model.joinGameId = game.id
+          model.joinStatus = JoinStatus.EnteringPubkey
+          model.statusMessage = "Enter Nostr pubkey"
+        else:
+          model.joinError = "No game selected"
+      elif model.joinStatus == JoinStatus.EnteringPubkey:
+        let normalized = normalizePubkey(model.joinPubkeyInput)
+        if normalized.isNone:
+          model.joinError = "Invalid pubkey"
+          model.statusMessage = model.joinError
+        else:
+          model.joinPubkeyInput = normalized.get()
+          model.joinStatus = JoinStatus.EnteringName
+          model.statusMessage = "Enter player name (optional)"
+      elif model.joinStatus == JoinStatus.EnteringName:
+        let gameDir = "data/games/" & model.joinGameId
+        let request = JoinRequest(
+          gameId: model.joinGameId,
+          pubkey: model.joinPubkeyInput,
+          name: if model.joinPlayerName.len > 0: some(model.joinPlayerName)
+                else: none(string)
+        )
+        model.joinRequestPath = writeJoinRequest(gameDir, request)
+        model.joinStatus = JoinStatus.WaitingResponse
+        model.statusMessage = "Waiting for join response..."
+    of ActionJoinPoll:
+      if model.joinStatus == JoinStatus.WaitingResponse:
+        let gameDir = "data/games/" & model.joinGameId
+        let responseOpt = readJoinResponse(gameDir, model.joinRequestPath)
+        if responseOpt.isSome:
+          let response = responseOpt.get()
+          if response.status == JoinResponseStatus.Accepted:
+            if response.houseId.isSome:
+              let houseId = response.houseId.get()
+              writeJoinCache("data", model.joinPubkeyInput,
+                model.joinGameId, houseId)
+              model.joinStatus = JoinStatus.Joined
+              model.statusMessage = "Joined game as house " &
+                $houseId.uint32
+            else:
+              model.joinError = "Join response missing house"
+              model.joinStatus = JoinStatus.Failed
+          else:
+            model.joinError = response.reason.get("Join rejected")
+            model.joinStatus = JoinStatus.Failed
+            model.statusMessage = model.joinError
     else:
       model.statusMessage = "Action: " & proposal.gameActionType
   else:

@@ -329,6 +329,10 @@ proc mapKeyEvent(event: KeyEvent, model: TuiModel): Option[Proposal] =
       keyCode = KeyCode.KeyT
     of "a", "A":
       keyCode = KeyCode.KeyA
+    of "y", "Y":
+      keyCode = KeyCode.KeyY
+    of "u", "U":
+      keyCode = KeyCode.KeyU
     of ":":
       keyCode = KeyCode.KeyColon
     else:
@@ -852,6 +856,67 @@ proc renderReportDetail(area: Rect, buf: var CellBuffer, model: TuiModel) =
   discard buf.setString(detailInner.x, detailInner.bottom - 1,
     hintLine, dimStyle)
 
+proc renderJoinPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
+  let frame = bordered().title("Join Game").borderType(BorderType.Rounded)
+  frame.render(area, buf)
+  let inner = frame.inner(area)
+
+  var y = inner.y
+  discard buf.setString(inner.x, y, "LOCALHOST JOIN", headerStyle())
+  y += 2
+
+  if model.joinStatus == JoinStatus.SelectingGame:
+    discard buf.setString(inner.x, y, "Select a game:", normalStyle())
+    y += 1
+    for idx, game in model.joinGames:
+      if y >= inner.bottom:
+        break
+      let marker = if idx == model.joinSelectedIdx: ">" else: " "
+      let label = game.name & " (" & game.phase & ")"
+      let count = $game.assignedCount & "/" & $game.playerCount
+      let lineText = marker & " " & label & " [" & count & "]"
+      let style = if idx == model.joinSelectedIdx: selectedStyle()
+                  else: normalStyle()
+      discard buf.setString(inner.x, y, lineText, style)
+      y += 1
+    y += 1
+    discard buf.setString(inner.x, y,
+      "Enter: Choose  R: Refresh  Y: Pubkey  U: Name",
+      dimStyle())
+  elif model.joinStatus == JoinStatus.EnteringPubkey:
+    discard buf.setString(inner.x, y, "Enter Nostr pubkey:", normalStyle())
+    y += 1
+    discard buf.setString(inner.x, y, model.joinPubkeyInput, highlightStyle())
+    y += 2
+    discard buf.setString(inner.x, y, "Enter: Continue  Backspace: Delete",
+      dimStyle())
+  elif model.joinStatus == JoinStatus.EnteringName:
+    discard buf.setString(inner.x, y, "Enter player name (optional):",
+      normalStyle())
+    y += 1
+    discard buf.setString(inner.x, y, model.joinPlayerName, highlightStyle())
+    y += 2
+    discard buf.setString(inner.x, y, "Enter: Submit  Backspace: Delete",
+      dimStyle())
+  elif model.joinStatus == JoinStatus.WaitingResponse:
+    discard buf.setString(inner.x, y, "Waiting for daemon response...",
+      normalStyle())
+    y += 1
+    discard buf.setString(inner.x, y, "Press R to refresh", dimStyle())
+  elif model.joinStatus == JoinStatus.Joined:
+    discard buf.setString(inner.x, y, "Join complete.", normalStyle())
+    y += 1
+    discard buf.setString(inner.x, y, model.statusMessage, highlightStyle())
+  elif model.joinStatus == JoinStatus.Failed:
+    discard buf.setString(inner.x, y, "Join failed:", normalStyle())
+    y += 1
+    discard buf.setString(inner.x, y, model.joinError, highlightStyle())
+    y += 1
+    discard buf.setString(inner.x, y, "R: Retry", dimStyle())
+  else:
+    discard buf.setString(inner.x, y, "Press J to join a game.",
+      dimStyle())
+
 proc renderListPanel(
     area: Rect,
     buf: var CellBuffer,
@@ -860,6 +925,10 @@ proc renderListPanel(
     viewingHouse: HouseId,
 ) =
   ## Render the main list panel based on current mode
+  if model.joinStatus != JoinStatus.Idle and model.mode == ViewMode.Overview:
+    renderJoinPanel(area, buf, model)
+    return
+
   let title =
     case model.mode
     of ViewMode.Overview: "Empire Status"
@@ -895,7 +964,7 @@ proc renderListPanel(
       "Fleets: " & $model.fleets.len, normalStyle())
     y += 2
     discard buf.setString(inner.x, y,
-      "[1-9] Switch views  [Q] Quit", dimStyle())
+      "[1-9] Switch views  [Q] Quit  [J] Join", dimStyle())
   of ViewMode.Planets:
     renderColonyList(inner, buf, model)
   of ViewMode.Fleets:
@@ -975,7 +1044,8 @@ proc buildCommandDockData(model: TuiModel): CommandDockData =
 
   case model.mode
   of ViewMode.Overview:
-    result.contextActions = overviewContextActions()
+    let joinActive = model.joinStatus != JoinStatus.Idle
+    result.contextActions = overviewContextActions(joinActive)
   of ViewMode.Planets:
     result.contextActions = planetsContextActions(model.colonies.len > 0)
   of ViewMode.Fleets:

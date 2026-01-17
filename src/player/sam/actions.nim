@@ -47,6 +47,13 @@ const
   ActionReportFocusPrev* = "reportFocusPrev"
   ActionReportFocusLeft* = "reportFocusLeft"
   ActionReportFocusRight* = "reportFocusRight"
+  ActionJoinRefresh* = "joinRefresh"
+  ActionJoinSelect* = "joinSelect"
+  ActionJoinEditPubkey* = "joinEditPubkey"
+  ActionJoinEditName* = "joinEditName"
+  ActionJoinBackspace* = "joinBackspace"
+  ActionJoinSubmit* = "joinSubmit"
+  ActionJoinPoll* = "joinPoll"
 
 # ============================================================================
 # Navigation Actions
@@ -337,6 +344,73 @@ proc actionReportFocusRight*(): Proposal =
   )
 
 # ============================================================================
+# Join Actions
+# ============================================================================
+
+proc actionJoinRefresh*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionJoinRefresh,
+    gameActionType: ActionJoinRefresh,
+    gameActionData: ""
+  )
+
+proc actionJoinSelect*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkSelection,
+    timestamp: getTime().toUnix(),
+    actionName: ActionJoinSelect,
+    selectIdx: -1,
+    selectCoord: none(tuple[q, r: int])
+  )
+
+proc actionJoinEditPubkey*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionJoinEditPubkey,
+    gameActionType: ActionJoinEditPubkey,
+    gameActionData: ""
+  )
+
+proc actionJoinEditName*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionJoinEditName,
+    gameActionType: ActionJoinEditName,
+    gameActionData: ""
+  )
+
+proc actionJoinBackspace*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionJoinBackspace,
+    gameActionType: ActionJoinBackspace,
+    gameActionData: ""
+  )
+
+proc actionJoinSubmit*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionJoinSubmit,
+    gameActionType: ActionJoinSubmit,
+    gameActionData: ""
+  )
+
+proc actionJoinPoll*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionName: ActionJoinPoll,
+    gameActionType: ActionJoinPoll,
+    gameActionData: ""
+  )
+
+# ============================================================================
 # System Actions
 # ============================================================================
 
@@ -362,6 +436,7 @@ type
     # Letter keys
     KeyQ, KeyC, KeyF, KeyO, KeyM, KeyE, KeyH, KeyX, KeyS, KeyL
     KeyB, KeyG, KeyR, KeyJ, KeyD, KeyP, KeyV, KeyN, KeyW, KeyI, KeyT, KeyA
+    KeyY, KeyU
     # Navigation
     KeyUp, KeyDown, KeyLeft, KeyRight
     KeyEnter, KeyEscape, KeyTab, KeyShiftTab
@@ -384,6 +459,22 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       return some(actionExpertInputBackspace())
     else:
       # Other keys add to input buffer - handled by acceptor
+      return none(Proposal)
+
+  if model.joinStatus in {JoinStatus.EnteringPubkey, JoinStatus.EnteringName, JoinStatus.SelectingGame}:
+    case key
+    of KeyCode.KeyEnter:
+      return some(actionJoinSubmit())
+    of KeyCode.KeyBackspace:
+      return some(actionJoinBackspace())
+    else:
+      return none(Proposal)
+
+  if model.joinStatus == JoinStatus.WaitingResponse:
+    case key
+    of KeyCode.KeyR:
+      return some(actionJoinPoll())
+    else:
       return none(Proposal)
   
   # Global keys (work in any mode)
@@ -416,6 +507,10 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     of KeyCode.KeyUp:    return some(actionListUp())
     of KeyCode.KeyDown:  return some(actionListDown())
     of KeyCode.KeyEnter: return some(actionSelect())  # Jump to action item
+    of KeyCode.KeyJ:     return some(actionJoinSubmit())
+    of KeyCode.KeyY:     return some(actionJoinEditPubkey())
+    of KeyCode.KeyU:     return some(actionJoinEditName())
+    of KeyCode.KeyR:     return some(actionJoinRefresh())
     else: discard
   
   of ViewMode.Planets:

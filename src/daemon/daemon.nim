@@ -12,6 +12,7 @@ import ../daemon/persistence/reader
 import ../daemon/persistence/writer
 import ./transport/localhost/watcher
 import ./transport/localhost/exporter
+import ./transport/localhost/join_watcher
 import ../engine/turn_cycle/engine
 import ../engine/state/engine as state_ops
 import ../engine/config/engine
@@ -157,6 +158,8 @@ proc tickProposal(): Proposal[DaemonModel] =
       for id in model.games.keys:
         if id notin model.resolving:
           daemonLoop.queueCmd(collectOrdersCmd(id))
+          let gameInfo = model.games[id]
+          collectJoinRequestsLocal(gameInfo.dbPath.parentDir)
       daemonLoop.queueCmd(scheduleNextTickCmd(model.pollInterval * 1000))
   )
 

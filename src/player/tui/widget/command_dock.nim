@@ -96,12 +96,21 @@ proc standardViews*(): seq[ViewTab] =
     ViewTab(key: '9', label: "Settings", isActive: false),
   ]
 
-proc overviewContextActions*(): seq[ContextAction] =
+proc overviewContextActions*(joinActive: bool): seq[ContextAction] =
   ## Context actions for Overview (View 1)
-  @[
-    ContextAction(key: "L", label: "Diplomatic matrix", enabled: true),
-    ContextAction(key: "2,3,7", label: "Jump to action", enabled: true),
-  ]
+  if joinActive:
+    @[
+      ContextAction(key: "J", label: "Join game", enabled: true),
+      ContextAction(key: "R", label: "Refresh list", enabled: true),
+      ContextAction(key: "Y", label: "Edit pubkey", enabled: true),
+      ContextAction(key: "U", label: "Edit name", enabled: true),
+    ]
+  else:
+    @[
+      ContextAction(key: "L", label: "Diplomatic matrix", enabled: true),
+      ContextAction(key: "2,3,7", label: "Jump to action", enabled: true),
+      ContextAction(key: "J", label: "Join game", enabled: true),
+    ]
 
 proc planetsContextActions*(hasSelection: bool): seq[ContextAction] =
   ## Context actions for Planets list (View 2)

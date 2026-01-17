@@ -190,6 +190,23 @@ type
     linkView*: int
     linkLabel*: string
 
+  JoinGameInfo* = object
+    id*: string
+    name*: string
+    turn*: int
+    phase*: string
+    playerCount*: int
+    assignedCount*: int
+
+  JoinStatus* {.pure.} = enum
+    Idle
+    SelectingGame
+    EnteringPubkey
+    EnteringName
+    WaitingResponse
+    Joined
+    Failed
+
   TurnBucket* = object
     ## Reports grouped by turn for inbox display
     turn*: int
@@ -285,6 +302,16 @@ type
     reportSubjectScroll*: ScrollState
     reportBodyScroll*: ScrollState
 
+    # Join flow state
+    joinStatus*: JoinStatus
+    joinGames*: seq[JoinGameInfo]
+    joinSelectedIdx*: int
+    joinPubkeyInput*: string
+    joinPlayerName*: string
+    joinGameId*: string
+    joinRequestPath*: string
+    joinError*: string
+
 # =============================================================================
 # Model Initialization
 # =============================================================================
@@ -356,6 +383,14 @@ proc initTuiModel*(): TuiModel =
     reportTurnScroll: initScrollState(),
     reportSubjectScroll: initScrollState(),
     reportBodyScroll: initScrollState(),
+    joinStatus: JoinStatus.Idle,
+    joinGames: @[],
+    joinSelectedIdx: 0,
+    joinPubkeyInput: "",
+    joinPlayerName: "",
+    joinGameId: "",
+    joinRequestPath: "",
+    joinError: "",
     reports: @[
       ReportEntry(
         id: 1,
@@ -549,6 +584,8 @@ proc selectedReport*(model: TuiModel): Option[ReportEntry] =
 
 proc currentListLength*(model: TuiModel): int =
   ## Get length of current list based on mode
+  if model.joinStatus == JoinStatus.SelectingGame:
+    return model.joinGames.len
   case model.mode
   of ViewMode.Overview: 0  # Overview has no list selection
   of ViewMode.Planets: model.colonies.len
