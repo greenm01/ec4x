@@ -1407,12 +1407,26 @@ proc runTui(gameId: string = "") =
     if sam.model.loadGameRequested:
       let gameId = sam.model.loadGameId
       let houseId = HouseId(sam.model.loadHouseId.uint32)
-      let dbPath = "data/games/" & gameId & "/ec4x.db"
+      let dataDir = "data"
+      let dbPath = dataDir / "games" / gameId / "ec4x.db"
+      sam.model.playerStateLoaded = false
       if fileExists(dbPath):
         try:
           gameState = loadGameStateForHouse(dbPath, houseId)
           viewingHouse = houseId
-          playerState = loadPlayerState(gameState, houseId)
+          let pubkey = sam.model.lobbyProfilePubkey
+          if pubkey.len > 0:
+            let cachedOpt = loadCachedPlayerState(dataDir, pubkey, gameId,
+              houseId)
+            if cachedOpt.isSome:
+              playerState = cachedOpt.get()
+            else:
+              playerState = loadPlayerState(gameState, houseId)
+              cachePlayerState(dataDir, pubkey, gameId, playerState)
+            sam.model.playerStateLoaded = true
+          else:
+            playerState = loadPlayerState(gameState, houseId)
+            sam.model.playerStateLoaded = true
           sam.model.appPhase = AppPhase.InGame
           sam.model.viewingHouse = int(houseId)
           sam.model.mode = ViewMode.Overview

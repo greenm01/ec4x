@@ -11,6 +11,8 @@ import ../../engine/globals as engine_globals
 import ../../engine/state/player_state
 import ../../engine/types/[config, core, game_state, player_state as ps_types]
 import ../sam/tui_model
+import ./delta_applicator
+import ./player_state_cache
 
 const
   JoinCacheNode = "join-cache"
@@ -131,3 +133,34 @@ proc loadGameStateForHouse*(dbPath: string, houseId: HouseId): GameState =
 
 proc loadPlayerState*(state: GameState, houseId: HouseId): ps_types.PlayerState =
   createPlayerState(state, houseId)
+
+proc cachePlayerState*(
+  dataDir: string,
+  pubkey: string,
+  gameId: string,
+  state: ps_types.PlayerState
+) =
+  savePlayerStateSnapshot(dataDir, pubkey, gameId, state.viewingHouse, state.turn, state)
+
+proc loadCachedPlayerState*(
+  dataDir: string,
+  pubkey: string,
+  gameId: string,
+  houseId: HouseId
+): Option[ps_types.PlayerState] =
+  loadLatestPlayerState(dataDir, pubkey, gameId, houseId)
+
+proc applyDeltaToCachedState*(
+  dataDir: string,
+  pubkey: string,
+  gameId: string,
+  state: var ps_types.PlayerState,
+  deltaKdl: string
+): Option[int32] =
+  let turnOpt = applyDeltaToPlayerState(state, deltaKdl)
+  if turnOpt.isSome:
+    savePlayerStateSnapshot(dataDir, pubkey, gameId, state.viewingHouse, state.turn, state)
+  turnOpt
+
+proc parseFullStateKdl*(kdlState: string): Option[ps_types.PlayerState] =
+  applyFullStateKdl(kdlState)

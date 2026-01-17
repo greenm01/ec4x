@@ -1,6 +1,7 @@
 ## PlayerState delta generation and KDL formatting
 
 import std/[options, tables, strutils, json, jsonutils]
+import kdl
 import ../../../engine/types/[core, colony, fleet, ship, ground_unit, player_state,
   progression]
 import ../../../engine/types/game_state
@@ -218,14 +219,38 @@ proc diffPlayerState*(
   result.ownColonies = diffColonies(oldSnapshot.ownColonies, current.ownColonies)
   result.ownFleets = diffFleets(oldSnapshot.ownFleets, current.ownFleets)
   result.ownShips = diffShips(oldSnapshot.ownShips, current.ownShips)
-  result.ownGroundUnits = diffGroundUnits(oldSnapshot.ownGroundUnits, current.ownGroundUnits)
-  result.visibleSystems = diffVisibleSystems(oldSnapshot.visibleSystems, current.visibleSystems)
-  result.visibleColonies = diffVisibleColonies(oldSnapshot.visibleColonies, current.visibleColonies)
-  result.visibleFleets = diffVisibleFleets(oldSnapshot.visibleFleets, current.visibleFleets)
-  result.housePrestige = diffHouseValues(oldSnapshot.housePrestige, current.housePrestige)
-  result.houseColonyCounts = diffHouseCounts(oldSnapshot.houseColonyCounts, current.houseColonyCounts)
-  result.diplomaticRelations = diffRelations(oldSnapshot.diplomaticRelations, current.diplomaticRelations)
-  result.eliminatedHouses = diffHouseIds(oldSnapshot.eliminatedHouses, current.eliminatedHouses)
+  result.ownGroundUnits = diffGroundUnits(
+    oldSnapshot.ownGroundUnits,
+    current.ownGroundUnits
+  )
+  result.visibleSystems = diffVisibleSystems(
+    oldSnapshot.visibleSystems,
+    current.visibleSystems
+  )
+  result.visibleColonies = diffVisibleColonies(
+    oldSnapshot.visibleColonies,
+    current.visibleColonies
+  )
+  result.visibleFleets = diffVisibleFleets(
+    oldSnapshot.visibleFleets,
+    current.visibleFleets
+  )
+  result.housePrestige = diffHouseValues(
+    oldSnapshot.housePrestige,
+    current.housePrestige
+  )
+  result.houseColonyCounts = diffHouseCounts(
+    oldSnapshot.houseColonyCounts,
+    current.houseColonyCounts
+  )
+  result.diplomaticRelations = diffRelations(
+    oldSnapshot.diplomaticRelations,
+    current.diplomaticRelations
+  )
+  result.eliminatedHouses = diffHouseIds(
+    oldSnapshot.eliminatedHouses,
+    current.eliminatedHouses
+  )
 
   if oldSnapshot.actProgression != current.actProgression:
     result.actProgressionChanged = true
@@ -235,337 +260,430 @@ proc diffPlayerState*(
 # KDL Formatting
 # =============================================================================
 
-proc kdlEsc(value: string): string =
-  value.multiReplace({
-    "\\": "\\\\",
-    "\"": "\\\"",
-    "\n": "\\n",
-    "\r": "\\r",
-    "\t": "\\t",
-  })
+proc kdlEnum(value: string): string =
+  value.toLowerAscii().replace("_", "-")
 
-proc kdlString(value: string): string =
-  "\"" & kdlEsc(value) & "\""
+proc idVal(id: HouseId): KdlVal =
+  initKVal(id.uint32, some("HouseId"))
 
-proc addLine(lines: var seq[string], indent: int, content: string) =
-  lines.add("  ".repeat(indent) & content)
+proc idVal(id: SystemId): KdlVal =
+  initKVal(id.uint32, some("SystemId"))
 
-proc formatColonies(delta: EntityDelta[Colony], lines: var seq[string], indent: int) =
+proc idVal(id: ColonyId): KdlVal =
+  initKVal(id.uint32, some("ColonyId"))
+
+proc idVal(id: FleetId): KdlVal =
+  initKVal(id.uint32, some("FleetId"))
+
+proc idVal(id: ShipId): KdlVal =
+  initKVal(id.uint32, some("ShipId"))
+
+proc idVal(id: GroundUnitId): KdlVal =
+  initKVal(id.uint32, some("GroundUnitId"))
+
+proc nodeWithArg(name: string, arg: KdlVal): KdlNode =
+  initKNode(name, args = @[arg])
+
+proc entryNode(name: string, kind: string, props: Table[string, KdlVal]): KdlNode =
+  initKNode(name, args = @[initKVal(kind)], props = props)
+
+proc formatColonies(delta: EntityDelta[Colony]): Option[KdlNode] =
   if delta.added.len == 0 and delta.updated.len == 0 and delta.removed.len == 0:
-    return
+    return none(KdlNode)
 
-  addLine(lines, indent, "colonies {")
+  var node = initKNode("colonies")
   for colony in delta.added:
-    addLine(lines, indent + 1,
-      "added colony id=(ColonyId)" & $colony.id.uint32 &
-      " system=(SystemId)" & $colony.systemId.uint32 &
-      " owner=(HouseId)" & $colony.owner.uint32 &
-      " population=" & $colony.population &
-      " industry=" & $colony.industrial.units &
-      " tax-rate=" & $colony.taxRate &
-      " under-siege=" & $(colony.blockaded))
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(colony.id)
+    props["system"] = idVal(colony.systemId)
+    props["owner"] = idVal(colony.owner)
+    props["population"] = initKVal(colony.population)
+    props["industry"] = initKVal(colony.industrial.units)
+    props["tax-rate"] = initKVal(colony.taxRate)
+    props["under-siege"] = initKVal(colony.blockaded)
+    props["data"] = initKVal($toJson(colony))
+    node.children.add(entryNode("added", "colony", props))
   for colony in delta.updated:
-    addLine(lines, indent + 1,
-      "updated colony id=(ColonyId)" & $colony.id.uint32 &
-      " system=(SystemId)" & $colony.systemId.uint32 &
-      " owner=(HouseId)" & $colony.owner.uint32 &
-      " population=" & $colony.population &
-      " industry=" & $colony.industrial.units &
-      " tax-rate=" & $colony.taxRate &
-      " under-siege=" & $(colony.blockaded))
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(colony.id)
+    props["system"] = idVal(colony.systemId)
+    props["owner"] = idVal(colony.owner)
+    props["population"] = initKVal(colony.population)
+    props["industry"] = initKVal(colony.industrial.units)
+    props["tax-rate"] = initKVal(colony.taxRate)
+    props["under-siege"] = initKVal(colony.blockaded)
+    props["data"] = initKVal($toJson(colony))
+    node.children.add(entryNode("updated", "colony", props))
   for colonyId in delta.removed:
-    addLine(lines, indent + 1,
-      "removed colony id=(ColonyId)" & $colonyId)
-  addLine(lines, indent, "}")
+    var props = initTable[string, KdlVal]()
+    props["id"] = initKVal(colonyId, some("ColonyId"))
+    node.children.add(entryNode("removed", "colony", props))
 
-proc formatFleets(delta: EntityDelta[Fleet], lines: var seq[string], indent: int) =
+  some(node)
+
+proc formatFleets(delta: EntityDelta[Fleet]): Option[KdlNode] =
   if delta.added.len == 0 and delta.updated.len == 0 and delta.removed.len == 0:
-    return
+    return none(KdlNode)
 
-  addLine(lines, indent, "fleets {")
+  var node = initKNode("fleets")
   for fleet in delta.added:
-    addLine(lines, indent + 1,
-      "added fleet id=(FleetId)" & $fleet.id.uint32 &
-      " owner=(HouseId)" & $fleet.houseId.uint32 &
-      " location=(SystemId)" & $fleet.location.uint32 &
-      " status=" & $fleet.status)
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(fleet.id)
+    props["owner"] = idVal(fleet.houseId)
+    props["location"] = idVal(fleet.location)
+    props["status"] = initKVal(kdlEnum($fleet.status))
+    props["data"] = initKVal($toJson(fleet))
+    node.children.add(entryNode("added", "fleet", props))
   for fleet in delta.updated:
-    addLine(lines, indent + 1,
-      "updated fleet id=(FleetId)" & $fleet.id.uint32 &
-      " owner=(HouseId)" & $fleet.houseId.uint32 &
-      " location=(SystemId)" & $fleet.location.uint32 &
-      " status=" & $fleet.status)
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(fleet.id)
+    props["owner"] = idVal(fleet.houseId)
+    props["location"] = idVal(fleet.location)
+    props["status"] = initKVal(kdlEnum($fleet.status))
+    props["data"] = initKVal($toJson(fleet))
+    node.children.add(entryNode("updated", "fleet", props))
   for fleetId in delta.removed:
-    addLine(lines, indent + 1,
-      "removed fleet id=(FleetId)" & $fleetId)
-  addLine(lines, indent, "}")
+    var props = initTable[string, KdlVal]()
+    props["id"] = initKVal(fleetId, some("FleetId"))
+    node.children.add(entryNode("removed", "fleet", props))
 
-proc formatShips(delta: EntityDelta[Ship], lines: var seq[string], indent: int) =
+  some(node)
+
+proc formatShips(delta: EntityDelta[Ship]): Option[KdlNode] =
   if delta.added.len == 0 and delta.updated.len == 0 and delta.removed.len == 0:
-    return
+    return none(KdlNode)
 
-  addLine(lines, indent, "ships {")
+  var node = initKNode("ships")
   for ship in delta.added:
-    addLine(lines, indent + 1,
-      "added ship id=(ShipId)" & $ship.id.uint32 &
-      " class=" & $ship.shipClass &
-      " house=(HouseId)" & $ship.houseId.uint32 &
-      " fleet=(FleetId)" & $ship.fleetId.uint32)
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(ship.id)
+    props["class"] = initKVal($ship.shipClass)
+    props["house"] = idVal(ship.houseId)
+    props["fleet"] = idVal(ship.fleetId)
+    props["data"] = initKVal($toJson(ship))
+    node.children.add(entryNode("added", "ship", props))
   for ship in delta.updated:
-    addLine(lines, indent + 1,
-      "updated ship id=(ShipId)" & $ship.id.uint32 &
-      " class=" & $ship.shipClass &
-      " house=(HouseId)" & $ship.houseId.uint32 &
-      " fleet=(FleetId)" & $ship.fleetId.uint32)
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(ship.id)
+    props["class"] = initKVal($ship.shipClass)
+    props["house"] = idVal(ship.houseId)
+    props["fleet"] = idVal(ship.fleetId)
+    props["data"] = initKVal($toJson(ship))
+    node.children.add(entryNode("updated", "ship", props))
   for shipId in delta.removed:
-    addLine(lines, indent + 1,
-      "removed ship id=(ShipId)" & $shipId)
-  addLine(lines, indent, "}")
+    var props = initTable[string, KdlVal]()
+    props["id"] = initKVal(shipId, some("ShipId"))
+    node.children.add(entryNode("removed", "ship", props))
 
-proc formatGroundUnits(
-  delta: EntityDelta[GroundUnit],
-  lines: var seq[string],
-  indent: int
-) =
+  some(node)
+
+proc formatGroundUnits(delta: EntityDelta[GroundUnit]): Option[KdlNode] =
   if delta.added.len == 0 and delta.updated.len == 0 and delta.removed.len == 0:
-    return
+    return none(KdlNode)
 
-  addLine(lines, indent, "ground-units {")
+  var node = initKNode("ground-units")
   for unit in delta.added:
-    var locationInfo = ""
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(unit.id)
+    props["house"] = idVal(unit.houseId)
+    props["type"] = initKVal(kdlEnum($unit.stats.unitType))
+    props["data"] = initKVal($toJson(unit))
     case unit.garrison.locationType
     of GroundUnitLocation.OnColony:
-      locationInfo = " colony=(ColonyId)" & $unit.garrison.colonyId.uint32
+      props["colony"] = idVal(unit.garrison.colonyId)
     of GroundUnitLocation.OnTransport:
-      locationInfo = " transport=(ShipId)" & $unit.garrison.shipId.uint32
-    addLine(lines, indent + 1,
-      "added unit id=(GroundUnitId)" & $unit.id.uint32 &
-      " house=(HouseId)" & $unit.houseId.uint32 &
-      " type=" & $unit.stats.unitType &
-      locationInfo)
+      props["transport"] = idVal(unit.garrison.shipId)
+    node.children.add(entryNode("added", "unit", props))
   for unit in delta.updated:
-    var locationInfo = ""
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(unit.id)
+    props["house"] = idVal(unit.houseId)
+    props["type"] = initKVal(kdlEnum($unit.stats.unitType))
+    props["data"] = initKVal($toJson(unit))
     case unit.garrison.locationType
     of GroundUnitLocation.OnColony:
-      locationInfo = " colony=(ColonyId)" & $unit.garrison.colonyId.uint32
+      props["colony"] = idVal(unit.garrison.colonyId)
     of GroundUnitLocation.OnTransport:
-      locationInfo = " transport=(ShipId)" & $unit.garrison.shipId.uint32
-    addLine(lines, indent + 1,
-      "updated unit id=(GroundUnitId)" & $unit.id.uint32 &
-      " house=(HouseId)" & $unit.houseId.uint32 &
-      " type=" & $unit.stats.unitType &
-      locationInfo)
+      props["transport"] = idVal(unit.garrison.shipId)
+    node.children.add(entryNode("updated", "unit", props))
   for unitId in delta.removed:
-    addLine(lines, indent + 1,
-      "removed unit id=(GroundUnitId)" & $unitId)
-  addLine(lines, indent, "}")
+    var props = initTable[string, KdlVal]()
+    props["id"] = initKVal(unitId, some("GroundUnitId"))
+    node.children.add(entryNode("removed", "unit", props))
 
-proc formatVisibleSystems(
-  delta: EntityDelta[VisibleSystem],
-  lines: var seq[string],
-  indent: int
-) =
+  some(node)
+
+proc formatVisibleSystems(delta: EntityDelta[VisibleSystem]): Option[KdlNode] =
   if delta.added.len == 0 and delta.updated.len == 0 and delta.removed.len == 0:
-    return
+    return none(KdlNode)
 
-  addLine(lines, indent, "visible-systems {")
+  var node = initKNode("visible-systems")
   for system in delta.added:
-    addLine(lines, indent + 1,
-      "added system id=(SystemId)" & $system.systemId.uint32 &
-      " visibility=" & $system.visibility)
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(system.systemId)
+    props["visibility"] = initKVal(kdlEnum($system.visibility))
+    props["data"] = initKVal($toJson(system))
+    node.children.add(entryNode("added", "system", props))
   for system in delta.updated:
-    addLine(lines, indent + 1,
-      "updated system id=(SystemId)" & $system.systemId.uint32 &
-      " visibility=" & $system.visibility)
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(system.systemId)
+    props["visibility"] = initKVal(kdlEnum($system.visibility))
+    props["data"] = initKVal($toJson(system))
+    node.children.add(entryNode("updated", "system", props))
   for systemId in delta.removed:
-    addLine(lines, indent + 1,
-      "removed system id=(SystemId)" & $systemId)
-  addLine(lines, indent, "}")
+    var props = initTable[string, KdlVal]()
+    props["id"] = initKVal(systemId, some("SystemId"))
+    node.children.add(entryNode("removed", "system", props))
 
-proc formatVisibleColonies(
-  delta: EntityDelta[VisibleColony],
-  lines: var seq[string],
-  indent: int
-) =
+  some(node)
+
+proc formatVisibleColonies(delta: EntityDelta[VisibleColony]): Option[KdlNode] =
   if delta.added.len == 0 and delta.updated.len == 0 and delta.removed.len == 0:
-    return
+    return none(KdlNode)
 
-  addLine(lines, indent, "visible-colonies {")
+  var node = initKNode("visible-colonies")
   for colony in delta.added:
-    addLine(lines, indent + 1,
-      "added colony id=(ColonyId)" & $colony.colonyId.uint32 &
-      " system=(SystemId)" & $colony.systemId.uint32 &
-      " owner=(HouseId)" & $colony.owner.uint32)
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(colony.colonyId)
+    props["system"] = idVal(colony.systemId)
+    props["owner"] = idVal(colony.owner)
+    props["data"] = initKVal($toJson(colony))
+    node.children.add(entryNode("added", "colony", props))
   for colony in delta.updated:
-    addLine(lines, indent + 1,
-      "updated colony id=(ColonyId)" & $colony.colonyId.uint32 &
-      " system=(SystemId)" & $colony.systemId.uint32 &
-      " owner=(HouseId)" & $colony.owner.uint32)
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(colony.colonyId)
+    props["system"] = idVal(colony.systemId)
+    props["owner"] = idVal(colony.owner)
+    props["data"] = initKVal($toJson(colony))
+    node.children.add(entryNode("updated", "colony", props))
   for colonyId in delta.removed:
-    addLine(lines, indent + 1,
-      "removed colony id=(ColonyId)" & $colonyId)
-  addLine(lines, indent, "}")
+    var props = initTable[string, KdlVal]()
+    props["id"] = initKVal(colonyId, some("ColonyId"))
+    node.children.add(entryNode("removed", "colony", props))
 
-proc formatVisibleFleets(
-  delta: EntityDelta[VisibleFleet],
-  lines: var seq[string],
-  indent: int
-) =
+  some(node)
+
+proc formatVisibleFleets(delta: EntityDelta[VisibleFleet]): Option[KdlNode] =
   if delta.added.len == 0 and delta.updated.len == 0 and delta.removed.len == 0:
-    return
+    return none(KdlNode)
 
-  addLine(lines, indent, "visible-fleets {")
+  var node = initKNode("visible-fleets")
   for fleet in delta.added:
-    addLine(lines, indent + 1,
-      "added fleet id=(FleetId)" & $fleet.fleetId.uint32 &
-      " owner=(HouseId)" & $fleet.owner.uint32 &
-      " location=(SystemId)" & $fleet.location.uint32)
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(fleet.fleetId)
+    props["owner"] = idVal(fleet.owner)
+    props["location"] = idVal(fleet.location)
+    props["data"] = initKVal($toJson(fleet))
+    node.children.add(entryNode("added", "fleet", props))
   for fleet in delta.updated:
-    addLine(lines, indent + 1,
-      "updated fleet id=(FleetId)" & $fleet.fleetId.uint32 &
-      " owner=(HouseId)" & $fleet.owner.uint32 &
-      " location=(SystemId)" & $fleet.location.uint32)
+    var props = initTable[string, KdlVal]()
+    props["id"] = idVal(fleet.fleetId)
+    props["owner"] = idVal(fleet.owner)
+    props["location"] = idVal(fleet.location)
+    props["data"] = initKVal($toJson(fleet))
+    node.children.add(entryNode("updated", "fleet", props))
   for fleetId in delta.removed:
-    addLine(lines, indent + 1,
-      "removed fleet id=(FleetId)" & $fleetId)
-  addLine(lines, indent, "}")
+    var props = initTable[string, KdlVal]()
+    props["id"] = initKVal(fleetId, some("FleetId"))
+    node.children.add(entryNode("removed", "fleet", props))
 
-proc formatHousePrestige(
-  delta: EntityDelta[HouseValue],
-  lines: var seq[string],
-  indent: int
-) =
+  some(node)
+
+proc formatHousePrestige(delta: EntityDelta[HouseValue]): Option[KdlNode] =
   if delta.added.len == 0 and delta.updated.len == 0 and delta.removed.len == 0:
-    return
+    return none(KdlNode)
 
-  addLine(lines, indent, "house-prestige {")
+  var node = initKNode("house-prestige")
   for entry in delta.added:
-    addLine(lines, indent + 1,
-      "added house=(HouseId)" & $entry.houseId.uint32 & " value=" & $entry.value)
+    var props = initTable[string, KdlVal]()
+    props["house"] = idVal(entry.houseId)
+    props["value"] = initKVal(entry.value)
+    props["data"] = initKVal($toJson(entry))
+    node.children.add(entryNode("added", "prestige", props))
   for entry in delta.updated:
-    addLine(lines, indent + 1,
-      "updated house=(HouseId)" & $entry.houseId.uint32 & " value=" & $entry.value)
+    var props = initTable[string, KdlVal]()
+    props["house"] = idVal(entry.houseId)
+    props["value"] = initKVal(entry.value)
+    props["data"] = initKVal($toJson(entry))
+    node.children.add(entryNode("updated", "prestige", props))
   for houseId in delta.removed:
-    addLine(lines, indent + 1,
-      "removed house=(HouseId)" & $houseId)
-  addLine(lines, indent, "}")
+    var props = initTable[string, KdlVal]()
+    props["house"] = initKVal(houseId, some("HouseId"))
+    node.children.add(entryNode("removed", "prestige", props))
 
-proc formatHouseColonyCounts(
-  delta: EntityDelta[HouseCount],
-  lines: var seq[string],
-  indent: int
-) =
+  some(node)
+
+proc formatHouseColonyCounts(delta: EntityDelta[HouseCount]): Option[KdlNode] =
   if delta.added.len == 0 and delta.updated.len == 0 and delta.removed.len == 0:
-    return
+    return none(KdlNode)
 
-  addLine(lines, indent, "house-colony-counts {")
+  var node = initKNode("house-colony-counts")
   for entry in delta.added:
-    addLine(lines, indent + 1,
-      "added house=(HouseId)" & $entry.houseId.uint32 & " count=" & $entry.count)
+    var props = initTable[string, KdlVal]()
+    props["house"] = idVal(entry.houseId)
+    props["count"] = initKVal(entry.count)
+    props["data"] = initKVal($toJson(entry))
+    node.children.add(entryNode("added", "count", props))
   for entry in delta.updated:
-    addLine(lines, indent + 1,
-      "updated house=(HouseId)" & $entry.houseId.uint32 & " count=" & $entry.count)
+    var props = initTable[string, KdlVal]()
+    props["house"] = idVal(entry.houseId)
+    props["count"] = initKVal(entry.count)
+    props["data"] = initKVal($toJson(entry))
+    node.children.add(entryNode("updated", "count", props))
   for houseId in delta.removed:
-    addLine(lines, indent + 1,
-      "removed house=(HouseId)" & $houseId)
-  addLine(lines, indent, "}")
+    var props = initTable[string, KdlVal]()
+    props["house"] = initKVal(houseId, some("HouseId"))
+    node.children.add(entryNode("removed", "count", props))
+
+  some(node)
 
 proc formatDiplomaticRelations(
-  delta: EntityDelta[RelationSnapshot],
-  lines: var seq[string],
-  indent: int
-) =
+  delta: EntityDelta[RelationSnapshot]
+): Option[KdlNode] =
   if delta.added.len == 0 and delta.updated.len == 0 and delta.removed.len == 0:
-    return
+    return none(KdlNode)
 
-  addLine(lines, indent, "diplomacy {")
+  var node = initKNode("diplomacy")
   for entry in delta.added:
-    addLine(lines, indent + 1,
-      "added from=(HouseId)" & $entry.sourceHouse.uint32 &
-      " to=(HouseId)" & $entry.targetHouse.uint32 &
-      " state=" & $entry.state)
+    var props = initTable[string, KdlVal]()
+    props["from"] = idVal(entry.sourceHouse)
+    props["to"] = idVal(entry.targetHouse)
+    props["state"] = initKVal(kdlEnum($entry.state))
+    props["data"] = initKVal($toJson(entry))
+    node.children.add(entryNode("added", "relation", props))
   for entry in delta.updated:
-    addLine(lines, indent + 1,
-      "updated from=(HouseId)" & $entry.sourceHouse.uint32 &
-      " to=(HouseId)" & $entry.targetHouse.uint32 &
-      " state=" & $entry.state)
+    var props = initTable[string, KdlVal]()
+    props["from"] = idVal(entry.sourceHouse)
+    props["to"] = idVal(entry.targetHouse)
+    props["state"] = initKVal(kdlEnum($entry.state))
+    props["data"] = initKVal($toJson(entry))
+    node.children.add(entryNode("updated", "relation", props))
   for relationId in delta.removed:
     let sourceId = relationId shr 16
     let targetId = relationId and 0xFFFF'u32
-    addLine(lines, indent + 1,
-      "removed from=(HouseId)" & $sourceId &
-      " to=(HouseId)" & $targetId)
-  addLine(lines, indent, "}")
+    var props = initTable[string, KdlVal]()
+    props["from"] = initKVal(sourceId, some("HouseId"))
+    props["to"] = initKVal(targetId, some("HouseId"))
+    node.children.add(entryNode("removed", "relation", props))
 
-proc formatEliminatedHouses(
-  delta: EntityDelta[HouseId],
-  lines: var seq[string],
-  indent: int
-) =
+  some(node)
+
+proc formatEliminatedHouses(delta: EntityDelta[HouseId]): Option[KdlNode] =
   if delta.added.len == 0 and delta.updated.len == 0 and delta.removed.len == 0:
-    return
+    return none(KdlNode)
 
-  addLine(lines, indent, "eliminated-houses {")
+  var node = initKNode("eliminated-houses")
   for houseId in delta.added:
-    addLine(lines, indent + 1,
-      "added house=(HouseId)" & $houseId.uint32)
+    var props = initTable[string, KdlVal]()
+    props["house"] = idVal(houseId)
+    node.children.add(entryNode("added", "house", props))
   for houseId in delta.removed:
-    addLine(lines, indent + 1,
-      "removed house=(HouseId)" & $houseId.uint32)
-  addLine(lines, indent, "}")
+    var props = initTable[string, KdlVal]()
+    props["house"] = initKVal(houseId, some("HouseId"))
+    node.children.add(entryNode("removed", "house", props))
 
-proc formatActProgression(
-  delta: PlayerStateDelta,
-  lines: var seq[string],
-  indent: int
-) =
+  some(node)
+
+proc formatActProgression(delta: PlayerStateDelta): Option[KdlNode] =
   if not delta.actProgressionChanged or delta.actProgression.isNone:
-    return
+    return none(KdlNode)
 
   let progression = delta.actProgression.get()
-  addLine(lines, indent, "act-progression {")
-  addLine(lines, indent + 1, "current-act=" & $progression.currentAct)
-  addLine(lines, indent + 1, "act-start-turn=" & $progression.actStartTurn)
-  addLine(lines, indent + 1,
-    "colonization-percent=" & $progression.lastColonizationPercent)
-  addLine(lines, indent + 1, "total-prestige=" & $progression.lastTotalPrestige)
+  var node = initKNode("act-progression")
+  node.children.add(
+    nodeWithArg("current-act", initKVal(kdlEnum($progression.currentAct)))
+  )
+  node.children.add(
+    nodeWithArg("act-start-turn", initKVal(progression.actStartTurn))
+  )
+  node.children.add(
+    nodeWithArg("colonization-percent", initKVal(
+      progression.lastColonizationPercent
+    ))
+  )
+  node.children.add(
+    nodeWithArg("total-prestige", initKVal(
+      progression.lastTotalPrestige
+    ))
+  )
+  node.children.add(
+    nodeWithArg("data", initKVal($toJson(progression)))
+  )
   if progression.act2TopThreeHouses.len > 0:
-    var houses: seq[string] = @[]
+    var houseArgs: seq[KdlVal] = @[]
     for houseId in progression.act2TopThreeHouses:
-      houses.add("(HouseId)" & $houseId.uint32)
-    addLine(lines, indent + 1, "act2-top-houses=" & houses.join(","))
+      houseArgs.add(idVal(houseId))
+    node.children.add(initKNode("act2-top-houses", args = houseArgs))
   if progression.act2TopThreePrestige.len > 0:
-    var prestigeValues: seq[string] = @[]
-    for prestige in progression.act2TopThreePrestige:
-      prestigeValues.add($prestige)
-    addLine(lines, indent + 1, "act2-top-prestige=" & prestigeValues.join(","))
-  addLine(lines, indent, "}")
+    var prestigeArgs: seq[KdlVal] = @[]
+    for value in progression.act2TopThreePrestige:
+      prestigeArgs.add(initKVal(value))
+    node.children.add(initKNode("act2-top-prestige", args = prestigeArgs))
+
+  some(node)
 
 proc formatPlayerStateDeltaKdl*(
   gameId: string,
   delta: PlayerStateDelta
 ): string =
-  var lines: seq[string] = @[]
-  addLine(lines, 0,
-    "delta version=1 turn=" & $delta.turn &
-    " game=" & kdlString(gameId) &
-    " house=(HouseId)" & $delta.viewingHouse.uint32 & " {")
+  var props = initTable[string, KdlVal]()
+  props["version"] = initKVal(1)
+  props["turn"] = initKVal(delta.turn)
+  props["game"] = initKVal(gameId)
+  props["house"] = idVal(delta.viewingHouse)
 
-  formatColonies(delta.ownColonies, lines, 1)
-  formatFleets(delta.ownFleets, lines, 1)
-  formatShips(delta.ownShips, lines, 1)
-  formatGroundUnits(delta.ownGroundUnits, lines, 1)
-  formatVisibleSystems(delta.visibleSystems, lines, 1)
-  formatVisibleColonies(delta.visibleColonies, lines, 1)
-  formatVisibleFleets(delta.visibleFleets, lines, 1)
-  formatHousePrestige(delta.housePrestige, lines, 1)
-  formatHouseColonyCounts(delta.houseColonyCounts, lines, 1)
-  formatDiplomaticRelations(delta.diplomaticRelations, lines, 1)
-  formatEliminatedHouses(delta.eliminatedHouses, lines, 1)
-  formatActProgression(delta, lines, 1)
+  var root = initKNode("delta", props = props)
 
-  addLine(lines, 0, "}")
-  result = lines.join("\n") & "\n"
+  let coloniesOpt = formatColonies(delta.ownColonies)
+  if coloniesOpt.isSome:
+    root.children.add(coloniesOpt.get())
+
+  let fleetsOpt = formatFleets(delta.ownFleets)
+  if fleetsOpt.isSome:
+    root.children.add(fleetsOpt.get())
+
+  let shipsOpt = formatShips(delta.ownShips)
+  if shipsOpt.isSome:
+    root.children.add(shipsOpt.get())
+
+  let unitsOpt = formatGroundUnits(delta.ownGroundUnits)
+  if unitsOpt.isSome:
+    root.children.add(unitsOpt.get())
+
+  let systemsOpt = formatVisibleSystems(delta.visibleSystems)
+  if systemsOpt.isSome:
+    root.children.add(systemsOpt.get())
+
+  let visibleColoniesOpt = formatVisibleColonies(delta.visibleColonies)
+  if visibleColoniesOpt.isSome:
+    root.children.add(visibleColoniesOpt.get())
+
+  let visibleFleetsOpt = formatVisibleFleets(delta.visibleFleets)
+  if visibleFleetsOpt.isSome:
+    root.children.add(visibleFleetsOpt.get())
+
+  let prestigeOpt = formatHousePrestige(delta.housePrestige)
+  if prestigeOpt.isSome:
+    root.children.add(prestigeOpt.get())
+
+  let countsOpt = formatHouseColonyCounts(delta.houseColonyCounts)
+  if countsOpt.isSome:
+    root.children.add(countsOpt.get())
+
+  let diplomacyOpt = formatDiplomaticRelations(delta.diplomaticRelations)
+  if diplomacyOpt.isSome:
+    root.children.add(diplomacyOpt.get())
+
+  let eliminatedOpt = formatEliminatedHouses(delta.eliminatedHouses)
+  if eliminatedOpt.isSome:
+    root.children.add(eliminatedOpt.get())
+
+  let actOpt = formatActProgression(delta)
+  if actOpt.isSome:
+    root.children.add(actOpt.get())
+
+  let doc: KdlDoc = @[root]
+  doc.pretty()
 
 # =============================================================================
 # Snapshot Helpers

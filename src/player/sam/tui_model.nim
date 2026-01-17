@@ -322,6 +322,9 @@ type
     openMapRequested*: bool       ## Export and open in viewer
     lastExportPath*: string       ## Path to last exported SVG
 
+    # PlayerState cache (local, fog-of-war filtered)
+    playerStateLoaded*: bool
+
     # -------------
     # Game Data (View Layer - decoupled from engine)
     # -------------
@@ -433,6 +436,7 @@ proc initTuiModel*(): TuiModel =
     running: true,
     needsResize: false,
     statusMessage: "",
+    playerStateLoaded: false,
     turn: 1,
     viewingHouse: 1,
     houseName: "Unknown",

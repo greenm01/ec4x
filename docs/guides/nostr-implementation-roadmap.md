@@ -1,7 +1,7 @@
 # EC4X Nostr Implementation Roadmap
 
 ## Changelog
-- 2026-01-17: Added PlayerState snapshot persistence and diff-based delta publishing.
+- 2026-01-17: Added PlayerState snapshot persistence, diff-based delta publishing, and 30405 full-state serialization.
 
 This document details the technical implementation plan for full Nostr
 transport in EC4X. It covers the phases, code changes, and testing
@@ -27,7 +27,6 @@ strategies needed to complete the integration.
 
 **Stubbed/TODO:**
 - Command serialization from packet to KDL (player submit side)
-- Full state serialization to KDL (30405)
 - Player client Nostr integration + delta applicator
 - Slot claim validation against invite codes + 30400 updates
 - Turn resolution trigger when all orders received
@@ -479,6 +478,7 @@ snapshot, and serializes a KDL delta. The diff is stored in
 Key components:
 - `src/daemon/persistence/player_state_snapshot.nim` (snapshot serialization)
 - `src/daemon/transport/nostr/delta_kdl.nim` (diff + KDL formatting)
+- `src/daemon/transport/nostr/state_kdl.nim` (full-state serialization)
 - `src/daemon/daemon.nim` (integration + snapshot persistence)
 
 ### 4.2 Delta Applicator (`src/player/state/delta_applicator.nim`)

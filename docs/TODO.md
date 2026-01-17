@@ -56,6 +56,7 @@ Once we can play real games, we'll know what needs adjustment.
 - Wired daemon to Nostr relays with encrypted command ingestion and delta publishing
 - Added slot claim handling with pubkey persistence in houses table
 - Implemented PlayerState snapshot persistence + diff-based delta KDL generation
+- Added 30405 full-state serialization + publish-on-claim
 
 **Code Style Cleanup (2026-01-10):**
 - Removed 130+ `get` prefixes from function names (NEP-1 compliance)

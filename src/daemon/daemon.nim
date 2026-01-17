@@ -14,6 +14,7 @@ import ../daemon/persistence/reader
 import ../daemon/persistence/writer
 import ../daemon/parser/kdl_orders
 import ./transport/nostr/delta_kdl
+import ./transport/nostr/state_kdl
 import ../engine/turn_cycle/engine
 import ../engine/config/engine
 import ../engine/globals
@@ -65,6 +66,7 @@ type DaemonCmd* = proc (): Future[Proposal[DaemonModel]]
 # =============================================================================
 
 # Forward declarations
+proc publishFullState(gameId: string, state: GameState, houseId: HouseId) {.async.}
 proc publishTurnResults(gameId: string, state: GameState) {.async.}
 
 proc resolveTurnCmd(gameId: GameId): DaemonCmd =
@@ -209,6 +211,38 @@ proc buildDeltaKdl(gameInfo: GameInfo, state: GameState, houseId: HouseId): stri
 
   formatPlayerStateDeltaKdl(gameInfo.id, delta)
 
+proc publishFullState(gameId: string, state: GameState, houseId: HouseId) {.async.} =
+  ## Publish full state (30405) to a specific house
+  try:
+    let gameInfo = daemonLoop.model.games[gameId]
+    let playerPubkey = getPlayerPubkey(gameInfo, houseId)
+    if playerPubkey.len == 0:
+      logWarn("Nostr", "No player pubkey for house ", $houseId, " - skipping state publish")
+      return
+
+    let daemonPriv = hexToBytes32(daemonLoop.model.identity.privateKeyHex)
+    let playerPub = hexToBytes32(playerPubkey)
+    let stateKdl = formatPlayerStateKdl(gameId, state, houseId)
+    let encryptedPayload = encodePayload(stateKdl, daemonPriv, playerPub)
+
+    var event = createGameState(
+      gameId = gameId,
+      turn = state.turn.int,
+      encryptedPayload = encryptedPayload,
+      playerPubkey = playerPubkey,
+      daemonPubkey = daemonLoop.model.identity.publicKeyHex
+    )
+    signEvent(event, daemonPriv)
+
+    let published = await daemonLoop.model.nostrClient.publish(event)
+    if published:
+      logInfo("Nostr", "Published full state for house ", $houseId)
+    else:
+      logError("Nostr", "Failed to publish full state for house ", $houseId)
+
+  except CatchableError as e:
+    logError("Nostr", "Failed to publish full state: ", e.msg)
+
 proc publishTurnResults(gameId: string, state: GameState) {.async.} =
   ## Publish turn results to all players via Nostr
   try:
@@ -336,6 +370,9 @@ proc processSlotClaim(event: NostrEvent) {.async.} =
     
     # Update house with player pubkey
     updateHousePubkey(gameInfo.dbPath, gameId, houseId, playerPubkey)
+
+    # Publish full state immediately after slot claim
+    await publishFullState(gameId, state, houseId)
     
     logInfo("Nostr", "Slot claimed for game=", gameId, 
             " house=", $houseId, " player=", playerPubkey[0..7], "...")
