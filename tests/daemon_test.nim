@@ -5,13 +5,13 @@ import ../src/daemon/persistence/reader
 import ../src/engine/state/engine
 
 test "initModel":
-  let model = initModel("data", 30)
+  let model = initModel("data", 30, @["ws://localhost:8080"], 2, 7, true)
   check model.running
   check tables.len(model.games) == 0
   check model.pollInterval == 30
 
 test "samProcess":
-  let loop = newSamLoop(initModel("data", 30))
+  let loop = newSamLoop(initModel("data", 30, @["ws://localhost:8080"], 2, 7, true))
   let testProposal = Proposal[DaemonModel](
     name: "test",
     payload: proc(model: var DaemonModel) =

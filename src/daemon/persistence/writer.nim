@@ -16,7 +16,9 @@ import std/[options, strutils, tables, json, jsonutils, times]
 import db_connector/db_sqlite
 import ../../common/logger
 import ../../engine/types/[event, game_state, core, house, starmap, colony, fleet, ship, diplomacy, command, tech, espionage]
+import ../transport/nostr/types
 import ./player_state_snapshot
+import ./reader
 
 # ============================================================================
 # JSON Helpers for Distinct Types
@@ -109,6 +111,59 @@ proc savePlayerStateSnapshot*(
     stateJson
   )
   logDebug("Persistence", "Saved player state snapshot for house ", $houseId, " turn ", $turn)
+
+proc insertProcessedEvent*(dbPath: string, gameId: string, turn: int32,
+  kind: int, eventId: string, direction: reader.ReplayDirection) =
+  ## Record a processed event id
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  db.exec(
+    sql"""
+    INSERT OR IGNORE INTO nostr_event_log (
+      game_id, turn, kind, event_id, direction, created_at
+    ) VALUES (?, ?, ?, ?, ?, unixepoch())
+    """,
+    gameId,
+    $turn,
+    $kind,
+    eventId,
+    $(direction.ord)
+  )
+
+proc cleanupProcessedEvents*(dbPath: string, gameId: string, currentTurn: int32,
+  commandRetentionTurns: int, eventRetentionDays: int) =
+  ## Remove old replay protection entries.
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  if commandRetentionTurns <= 0 or eventRetentionDays <= 0:
+    logWarn("Persistence", "Replay retention not applied for game ", gameId)
+    return
+
+  let minTurn = currentTurn - int32(commandRetentionTurns - 1)
+  let eventCutoff = getTime().toUnix() -
+    int64(eventRetentionDays * 24 * 60 * 60)
+
+  db.exec(
+    sql"""
+    DELETE FROM nostr_event_log
+    WHERE game_id = ? AND kind = ? AND turn < ?
+    """,
+    gameId,
+    $EventKindTurnCommands,
+    $minTurn
+  )
+
+  db.exec(
+    sql"""
+    DELETE FROM nostr_event_log
+    WHERE game_id = ? AND kind != ? AND created_at < ?
+    """,
+    gameId,
+    $EventKindTurnCommands,
+    $eventCutoff
+  )
 
 proc saveHouses(db: DbConn, state: GameState) =
   for house in state.houses.entities.data:

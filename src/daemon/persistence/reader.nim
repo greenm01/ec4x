@@ -8,6 +8,12 @@ import ../../engine/state/engine
 import ./schema
 import ./player_state_snapshot
 
+# Replay protection
+
+type ReplayDirection* {.pure.} = enum
+  Inbound = 0
+  Outbound = 1
+
 proc getHousePubkey*(dbPath: string, gameId: string, houseId: HouseId): Option[string] =
   ## Get a house's Nostr pubkey from database
   ## Returns None if house not found or pubkey not set
@@ -134,6 +140,26 @@ proc loadPlayerStateSnapshot*(
   except CatchableError:
     logError("Persistence", "Failed to parse player state snapshot: ", getCurrentExceptionMsg())
     return none(PlayerStateSnapshot)
+
+proc hasProcessedEvent*(dbPath: string, gameId: string, kind: int,
+  eventId: string, direction: ReplayDirection): bool =
+  ## Returns true if an event id was already processed
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let row = db.getRow(
+    sql"""
+    SELECT event_id
+    FROM nostr_event_log
+    WHERE game_id = ? AND kind = ? AND event_id = ? AND direction = ?
+  """,
+    gameId,
+    $kind,
+    eventId,
+    $(direction.ord)
+  )
+
+  return row[0] != ""
 
 proc loadHouses(db: DbConn, state: GameState) =
   let rows = db.getAllRows(sql"SELECT state_json FROM houses")

@@ -1,6 +1,8 @@
 daemon {
     data_dir "data"
     poll_interval 30
+    replay_retention_turns 2
+    replay_retention_days 7
     relay_urls {
         url "ws://localhost:8080"
     }

@@ -23,6 +23,11 @@ strategies needed to complete the integration.
 - Delta system: PlayerState diff + KDL serialization (`delta_kdl.nim`)
 - Protocol spec: `docs/architecture/nostr-protocol.md`
 
+**Recent Updates (2026-01-18):**
+- Added replay protection log retention with turn/time cleanup.
+- Added replay protection tests for insert/cleanup behavior.
+- Added slot claim validation against invite codes + 30400 updates.
+
 **Recent Updates (2026-01-17):**
 - Added PlayerState snapshot persistence + diff-based delta generation
 - Published deltas with full object updates + compact removals
@@ -39,7 +44,6 @@ strategies needed to complete the integration.
 - Archived auto-resolve report in `docs/archive/2026-01-18/AUTO_RESOLVE_IMPLEMENTATION.md`
 
 **Stubbed/TODO:**
-- Slot claim validation against invite codes + 30400 updates
 - Optional refactor into subscriber/publisher modules
 - Timeout/deadline-based auto-resolve
 
@@ -855,6 +859,12 @@ nim c -r tests/unit/test_delta_generator.nim
 # Test full flow
 nim c -r tests/integration/test_nostr_transport.nim
 
+# Slot claim validation
+nim c -r tests/integration/test_slot_claim.nim
+
+# Replay protection persistence
+nim c -r tests/daemon/test_replay_protection.nim
+
 # Test with real relay
 RELAY_URL=ws://localhost:8080 nim c -r tests/integration/test_relay_connection.nim
 ```
@@ -934,6 +944,7 @@ echo "E2E test complete"
 - [x] Slot claim handling (30401) with house pubkey assignment
 - [x] Turn results publishing (30403) with PlayerState deltas
 - [x] Auto-resolve when all human players submit commands
+- [x] Replay protection log retention (turn + time)
 - [ ] `src/daemon/subscriber.nim` - Optional refactor
 - [ ] `src/daemon/publisher.nim` - Optional refactor
 

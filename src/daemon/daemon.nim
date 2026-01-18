@@ -13,6 +13,9 @@ import ./transport/nostr/[types, client, wire, events, filter, crypto]
 import ../daemon/persistence/reader
 import ../daemon/persistence/writer
 import ../common/wordlist
+
+# Replay protection
+
 import ../daemon/parser/kdl_commands
 import ./transport/nostr/delta_kdl
 import ./transport/nostr/state_kdl
@@ -43,10 +46,13 @@ type
     running*: bool                         # Main loop control
     dataDir*: string                       # Root data directory
     pollInterval*: int                     # Seconds between polls
+    replayRetentionTurns*: int             # Replay log turns retention
+    replayRetentionDays*: int              # Replay log days retention
     identity*: DaemonIdentity              # Nostr keypair
     nostrClient*: NostrClient              # Nostr relay client
     relayUrls*: seq[string]                # Relay URLs from config
     readyLogged*: bool                     # Ready log emitted
+
 
 type
   DaemonLoop* = SamLoop[DaemonModel]
@@ -137,6 +143,10 @@ proc resolveTurnCmd(gameId: GameId): DaemonCmd =
 
       # 4. Publish turn results via Nostr
       await publishTurnResults(gameId, state)
+
+      writer.cleanupProcessedEvents(gameInfo.dbPath, gameId, state.turn.int32,
+        daemonLoop.model.replayRetentionTurns,
+        daemonLoop.model.replayRetentionDays)
 
       return Proposal[DaemonModel](
         name: "turn_resolved",
@@ -302,9 +312,17 @@ proc publishFullState(gameId: string, state: GameState, houseId: HouseId) {.asyn
     )
     signEvent(event, daemonPriv)
 
+    if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
+        event.kind, event.id, reader.ReplayDirection.Outbound):
+      logDebug("Nostr", "Skipping duplicate full state publish for house ",
+        $houseId)
+      return
+
     let published = await daemonLoop.model.nostrClient.publish(event)
     if published:
       logInfo("Nostr", "Published full state for house ", $houseId)
+      writer.insertProcessedEvent(gameInfo.dbPath, gameId,
+        state.turn.int32, event.kind, event.id, reader.ReplayDirection.Outbound)
     else:
       logError("Nostr", "Failed to publish full state for house ", $houseId)
 
@@ -344,9 +362,16 @@ proc publishGameDefinition(gameId: string, state: GameState) {.async.} =
     let daemonPriv = hexToBytes32(daemonLoop.model.identity.privateKeyHex)
     signEvent(event, daemonPriv)
 
+    if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
+        event.kind, event.id, reader.ReplayDirection.Outbound):
+      logDebug("Nostr", "Skipping duplicate game definition for game=", gameId)
+      return
+
     let published = await daemonLoop.model.nostrClient.publish(event)
     if published:
       logInfo("Nostr", "Published game definition for game=", gameId)
+      writer.insertProcessedEvent(gameInfo.dbPath, gameId,
+        0, event.kind, event.id, reader.ReplayDirection.Outbound)
     else:
       logError("Nostr", "Failed to publish game definition for game=", gameId)
   except CatchableError as e:
@@ -382,10 +407,17 @@ proc publishTurnResults(gameId: string, state: GameState) {.async.} =
       )
       signEvent(event, daemonPriv)
       
+      if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
+          event.kind, event.id, reader.ReplayDirection.Outbound):
+        logDebug("Nostr", "Skipping duplicate delta publish for house ", $houseId)
+        continue
+
       # Publish to relays
       let published = await daemonLoop.model.nostrClient.publish(event)
       if published:
         logInfo("Nostr", "Published turn ", $state.turn, " delta for house ", $houseId)
+        writer.insertProcessedEvent(gameInfo.dbPath, gameId,
+          state.turn.int32, event.kind, event.id, reader.ReplayDirection.Outbound)
       else:
         logError("Nostr", "Failed to publish delta for house ", $houseId)
     
@@ -418,6 +450,11 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
     
     let gameInfo = daemonLoop.model.games[gameId]
 
+    if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
+        event.kind, event.id, reader.ReplayDirection.Inbound):
+      logWarn("Nostr", "Duplicate command event ignored: ", event.id[0..7])
+      return
+
     # Validate turn matches current game turn
     if turn != gameInfo.turn:
       logWarn("Nostr", "Command for wrong turn: event has turn=", $turn,
@@ -440,6 +477,9 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
 
     # Check if all players have submitted, trigger turn resolution
     checkAndTriggerResolution(gameId)
+
+    writer.insertProcessedEvent(gameInfo.dbPath, gameId,
+      turn.int32, event.kind, event.id, reader.ReplayDirection.Inbound)
     
   except CatchableError as e:
     logError("Nostr", "Failed to process command: ", e.msg)
@@ -472,6 +512,11 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
     
     let gameInfo = daemonLoop.model.games[gameId]
 
+    if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
+        event.kind, event.id, reader.ReplayDirection.Inbound):
+      logWarn("Nostr", "Duplicate slot claim ignored: ", event.id[0..7])
+      return
+
     if not isValidInviteCode(inviteCode):
       let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
       logWarn("Nostr", "Invalid invite code for game=", gameId,
@@ -503,6 +548,9 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
     
     logInfo("Nostr", "Slot claimed for game=", gameId,
             " house=", $houseId, " player=", playerPubkey[0..7], "...")
+
+    writer.insertProcessedEvent(gameInfo.dbPath, gameId,
+      0, event.kind, event.id, reader.ReplayDirection.Inbound)
     
   except CatchableError as e:
     logError("Nostr", "Failed to process slot claim: ", e.msg)
@@ -512,6 +560,7 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
 # =============================================================================
 
 proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
+  replayRetentionTurns: int, replayRetentionDays: int,
   allowIdentityRegen: bool): DaemonModel =
   result = DaemonModel(
     games: initTable[GameId, GameInfo](),
@@ -520,6 +569,8 @@ proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
     running: true,
     dataDir: dataDir,
     pollInterval: pollInterval,
+    replayRetentionTurns: replayRetentionTurns,
+    replayRetentionDays: replayRetentionDays,
     identity: ensureIdentity(allowIdentityRegen),
     nostrClient: nil,  # Will be initialized in mainLoop
     relayUrls: relayUrls,
@@ -528,9 +579,10 @@ proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
   logInfo("Daemon", "Initialized with identity: ", result.identity.npub())
 
 proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
+  replayRetentionTurns: int, replayRetentionDays: int,
   allowIdentityRegen: bool): DaemonLoop =
   result = newSamLoop(initModel(dataDir, pollInterval, relayUrls,
-    allowIdentityRegen))
+    replayRetentionTurns, replayRetentionDays, allowIdentityRegen))
   # Add generic acceptor to execute proposal payloads
   result.addAcceptor(proc(model: var DaemonModel, proposal: Proposal[DaemonModel]): bool =
     if proposal.payload == nil:
@@ -541,13 +593,14 @@ proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   )
 
 proc initTestDaemonLoop*(dataDir: string): DaemonLoop =
-  result = newDaemonLoop(dataDir, 30, @[], true)
+  result = newDaemonLoop(dataDir, 30, @[], 2, 7, true)
 
 proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
+  replayRetentionTurns: int, replayRetentionDays: int,
   allowIdentityRegen: bool) {.async.} =
   ## SAM daemon loop
   daemonLoop = newDaemonLoop(dataDir, pollInterval, relayUrls,
-    allowIdentityRegen)
+    replayRetentionTurns, replayRetentionDays, allowIdentityRegen)
   
   logInfo("Daemon", "Starting SAM daemon...")
   logInfo("Daemon", "Data directory: ", dataDir)
@@ -640,6 +693,8 @@ proc start(
   var finalDataDir = dataDir
   var finalPollInterval = pollInterval
   var finalRelayUrls: seq[string] = @[]
+  var replayRetentionTurns = 2
+  var replayRetentionDays = 7
 
   if configKdl.len > 0:
     logInfo("Daemon", "Loading config from: ", configKdl)
@@ -647,6 +702,8 @@ proc start(
     finalDataDir = cfg.data_dir
     finalPollInterval = cfg.poll_interval
     finalRelayUrls = cfg.relay_urls
+    replayRetentionTurns = cfg.replay_retention_turns
+    replayRetentionDays = cfg.replay_retention_days
   else:
     # Default relay
     finalRelayUrls = @["ws://localhost:8080"]
@@ -678,7 +735,7 @@ proc start(
 
   try:
     waitFor mainLoop(finalDataDir, finalPollInterval, finalRelayUrls,
-      allowIdentityRegen)
+      replayRetentionTurns, replayRetentionDays, allowIdentityRegen)
   except CatchableError as e:
     logError("Daemon", "Failed to start daemon: ", e.msg)
     return 1
@@ -700,7 +757,7 @@ proc resolve(gameId: string, dataDir: string = "data"): int =
   gameConfig = loadGameConfig("config")
 
   # Initialize global loop if needed (some cmds might use it)
-  daemonLoop = newDaemonLoop(dataDir, 30, @["ws://localhost:8080"], true)
+  daemonLoop = newDaemonLoop(dataDir, 30, @["ws://localhost:8080"], 2, 7, true)
 
   # Load state
   let state = loadFullState(dbPath)

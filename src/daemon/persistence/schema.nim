@@ -15,7 +15,7 @@
 import std/os
 import db_connector/db_sqlite
 
-const SchemaVersion* = 6  # Incremented for new unified schema
+const SchemaVersion* = 7  # Incremented for new unified schema
 
 ## ============================================================================
 ## Core Game State Tables
@@ -343,6 +343,23 @@ CREATE INDEX IF NOT EXISTS idx_player_state_house
   ON player_state_snapshots(game_id, house_id);
 """
 
+const CreateNostrEventLogTable* = """
+CREATE TABLE IF NOT EXISTS nostr_event_log (
+  game_id TEXT NOT NULL,
+  turn INTEGER NOT NULL,
+  kind INTEGER NOT NULL,
+  event_id TEXT NOT NULL,
+  direction INTEGER NOT NULL,        -- 0=inbound, 1=outbound
+  created_at INTEGER NOT NULL,
+  UNIQUE(game_id, kind, event_id, direction)
+);
+
+CREATE INDEX IF NOT EXISTS idx_nostr_event_log_game_turn
+  ON nostr_event_log(game_id, turn, kind, direction);
+CREATE INDEX IF NOT EXISTS idx_nostr_event_log_created
+  ON nostr_event_log(created_at);
+"""
+
 ## ============================================================================
 ## Schema Initialization
 ## ============================================================================
@@ -372,6 +389,9 @@ proc createAllTables*(db: DbConn) =
 
   # Player state snapshots
   db.exec(sql CreatePlayerStateSnapshotsTable)
+
+  # Replay protection
+  db.exec(sql CreateNostrEventLogTable)
 
   # Schema version tracking
   db.exec(sql"""
