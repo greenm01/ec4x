@@ -35,6 +35,7 @@ strategies needed to complete the integration.
 - Auto-resolve triggers when all human players submit orders
 - Slot claim publishing reloads state to include assigned pubkey
 - Added turn mismatch validation and resolution error handling
+- Added daemon hardening: identity fail-fast, startup validation, backoff, and ready log
 - Archived auto-resolve report in `docs/archive/2026-01-18/AUTO_RESOLVE_IMPLEMENTATION.md`
 
 **Stubbed/TODO:**

@@ -63,7 +63,11 @@ proc loadIdentity*(): Option[DaemonIdentity] =
 
     let publicHex =
       if node.props.hasKey("npub"):
-        normalizeHex(node.props["npub"].getString())
+        let npubValue = node.props["npub"].getString()
+        if npubValue.startsWith("npub"):
+          decodeNpubToHex(npubValue)
+        else:
+          normalizeHex(npubValue)
       else:
         derivePublicKeyHex(nsecHex)
     let identityType =
@@ -136,12 +140,19 @@ proc importIdentity*(nsec: string): DaemonIdentity =
   saveIdentity(result)
   logInfo("DaemonIdentity", "Imported daemon identity")
 
-proc ensureIdentity*(): DaemonIdentity =
+proc ensureIdentity*(allowRegen: bool): DaemonIdentity =
   ## Load existing identity or create a new local one
   let existing = loadIdentity()
   if existing.isSome:
     return existing.get()
+  if not allowRegen:
+    raise newException(CatchableError,
+      "Daemon identity missing or invalid; set EC4X_REGEN_IDENTITY=1 to regenerate")
   createLocalIdentity()
+
+proc ensureIdentity*(): DaemonIdentity =
+  ## Backwards-compatible default (regen allowed)
+  ensureIdentity(true)
 
 proc npub*(identity: DaemonIdentity): string =
   ## Get bech32-encoded public key

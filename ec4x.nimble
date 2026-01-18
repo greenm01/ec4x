@@ -54,6 +54,13 @@ task buildDaemon, "Build daemon (release)":
   exec "nim c " & releaseFlags & " -o:bin/ec4x-daemon src/daemon/daemon.nim"
   echo "Daemon build completed!"
 
+task installDaemon, "Install daemon binary to /usr/local/bin":
+  echo "Installing EC4X daemon..."
+  mkDir "bin"
+  exec "nim c " & releaseFlags & " -o:bin/ec4x-daemon src/daemon/daemon.nim"
+  exec "install -m 755 bin/ec4x-daemon /usr/local/bin/ec4x-daemon"
+  echo "Daemon installed to /usr/local/bin/ec4x-daemon"
+
 task buildClient, "Build GUI player client":
   echo "Building EC4X GUI Player Client..."
   mkDir "bin"
@@ -121,6 +128,7 @@ task testIntegration, "Run integration tests":
   exec "nim c -r tests/integration/test_economy.nim"
   exec "nim c -r tests/integration/test_diplomacy.nim"
   exec "nim c -r tests/integration/test_elimination.nim"
+  exec "nim c -r tests/integration/test_slot_claim.nim"
   echo "Running daemon tests..."
   exec "nimble testDaemon"
 

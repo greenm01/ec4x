@@ -46,9 +46,12 @@ type
     identity*: DaemonIdentity              # Nostr keypair
     nostrClient*: NostrClient              # Nostr relay client
     relayUrls*: seq[string]                # Relay URLs from config
+    readyLogged*: bool                     # Ready log emitted
 
 type
   DaemonLoop* = SamLoop[DaemonModel]
+
+var shutdownRequested {.global.}: bool = false
 
 # =============================================================================
 # Global State
@@ -194,7 +197,13 @@ proc discoverGamesCmd(dir: string): DaemonCmd =
       name: "discovery_complete",
       payload: proc(model: var DaemonModel) =
         for p in gameDiscoveredProposals:
-          daemonLoop.present(p)
+          if p.payload != nil:
+            p.payload(model)
+        if not model.readyLogged and model.nostrClient != nil and
+            model.nostrClient.isConnected():
+          if model.games.len > 0:
+            logInfo("Daemon", "Ready - managing ", $model.games.len, " games")
+            model.readyLogged = true
     )
 
 proc scheduleNextTickCmd(delayMs: int): DaemonCmd
@@ -212,9 +221,10 @@ proc tickProposal(): Proposal[DaemonModel] =
         if model.nostrClient != nil and model.nostrClient.isConnected():
           let subId = "daemon:" & gameId
           if subId notin model.nostrClient.subscriptions:
-            asyncCheck model.nostrClient.subscribeDaemon(gameId, model.identity.publicKeyHex)
+            asyncCheck model.nostrClient.subscribeDaemon(gameId,
+              model.identity.publicKeyHex)
             logDebug("Nostr", "Subscribed to commands for game: ", gameId)
-      
+
       daemonLoop.queueCmd(scheduleNextTickCmd(model.pollInterval * 1000))
   )
 
@@ -223,11 +233,14 @@ proc scheduleNextTickCmd(delayMs: int): DaemonCmd =
     await sleepAsync(delayMs)
     return tickProposal()
 
+proc requestShutdown() {.noconv.} =
+  shutdownRequested = true
+
 # =============================================================================
 # Nostr Event Processing Helpers
 # =============================================================================
 
-proc hexToBytes32(hexStr: string): array[32, byte] =
+proc hexToBytes32*(hexStr: string): array[32, byte] =
   ## Convert hex string to 32-byte array
   if hexStr.len != 64:
     raise newException(ValueError, "Invalid hex length: expected 64, got " & $hexStr.len)
@@ -391,6 +404,12 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
     
     let gameId = gameIdOpt.get()
     let turn = turnOpt.get()
+
+    if not verifyEvent(event):
+      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
+      logWarn("Nostr", "Invalid command signature for game=", gameId,
+        " event=", eventId)
+      return
     
     # Get game info
     if not daemonLoop.model.games.hasKey(gameId):
@@ -402,7 +421,7 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
     # Validate turn matches current game turn
     if turn != gameInfo.turn:
       logWarn("Nostr", "Command for wrong turn: event has turn=", $turn,
-              " but game is on turn=", $gameInfo.turn, " - ignoring")
+        " but game is on turn=", $gameInfo.turn, " - ignoring")
       return
 
     # Decrypt command payload
@@ -425,7 +444,7 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
   except CatchableError as e:
     logError("Nostr", "Failed to process command: ", e.msg)
 
-proc processSlotClaim(event: NostrEvent) {.async.} =
+proc processSlotClaim*(event: NostrEvent) {.async.} =
   ## Process a slot claim event (30401) from a player
   try:
     let gameIdOpt = event.getGameId()
@@ -440,6 +459,12 @@ proc processSlotClaim(event: NostrEvent) {.async.} =
     let inviteCode = normalizeInviteCode(inviteCodeRaw)
     let playerPubkey = event.pubkey
 
+    if not verifyEvent(event):
+      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
+      logWarn("Nostr", "Invalid slot claim signature for game=", gameId,
+        " event=", eventId)
+      return
+
     # Get game info
     if not daemonLoop.model.games.hasKey(gameId):
       logWarn("Nostr", "Slot claim for unknown game: ", gameId)
@@ -448,16 +473,22 @@ proc processSlotClaim(event: NostrEvent) {.async.} =
     let gameInfo = daemonLoop.model.games[gameId]
 
     if not isValidInviteCode(inviteCode):
-      logWarn("Nostr", "Invalid invite code for game=", gameId)
+      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
+      logWarn("Nostr", "Invalid invite code for game=", gameId,
+        " event=", eventId)
       return
 
     let houseOpt = getHouseByInviteCode(gameInfo.dbPath, gameId, inviteCode)
     if houseOpt.isNone:
-      logWarn("Nostr", "Unknown invite code for game=", gameId)
+      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
+      logWarn("Nostr", "Unknown invite code for game=", gameId,
+        " event=", eventId)
       return
 
     if isInviteCodeClaimed(gameInfo.dbPath, gameId, inviteCode):
-      logWarn("Nostr", "Invite code already claimed for game=", gameId)
+      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
+      logWarn("Nostr", "Invite code already claimed for game=", gameId,
+        " event=", eventId)
       return
 
     let houseId = houseOpt.get()
@@ -480,7 +511,8 @@ proc processSlotClaim(event: NostrEvent) {.async.} =
 # Main Event Loop
 # =============================================================================
 
-proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string]): DaemonModel =
+proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
+  allowIdentityRegen: bool): DaemonModel =
   result = DaemonModel(
     games: initTable[GameId, GameInfo](),
     resolving: initHashSet[GameId](),
@@ -488,14 +520,17 @@ proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string]): Dae
     running: true,
     dataDir: dataDir,
     pollInterval: pollInterval,
-    identity: ensureIdentity(),
+    identity: ensureIdentity(allowIdentityRegen),
     nostrClient: nil,  # Will be initialized in mainLoop
-    relayUrls: relayUrls
+    relayUrls: relayUrls,
+    readyLogged: false
   )
   logInfo("Daemon", "Initialized with identity: ", result.identity.npub())
 
-proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string]): DaemonLoop =
-  result = newSamLoop(initModel(dataDir, pollInterval, relayUrls))
+proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
+  allowIdentityRegen: bool): DaemonLoop =
+  result = newSamLoop(initModel(dataDir, pollInterval, relayUrls,
+    allowIdentityRegen))
   # Add generic acceptor to execute proposal payloads
   result.addAcceptor(proc(model: var DaemonModel, proposal: Proposal[DaemonModel]): bool =
     if proposal.payload == nil:
@@ -505,9 +540,14 @@ proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string]): 
     return true
   )
 
-proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string]) {.async.} =
+proc initTestDaemonLoop*(dataDir: string): DaemonLoop =
+  result = newDaemonLoop(dataDir, 30, @[], true)
+
+proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
+  allowIdentityRegen: bool) {.async.} =
   ## SAM daemon loop
-  daemonLoop = newDaemonLoop(dataDir, pollInterval, relayUrls)
+  daemonLoop = newDaemonLoop(dataDir, pollInterval, relayUrls,
+    allowIdentityRegen)
   
   logInfo("Daemon", "Starting SAM daemon...")
   logInfo("Daemon", "Data directory: ", dataDir)
@@ -519,30 +559,49 @@ proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string]) {.asyn
   
   # Set up event callback for incoming commands
   daemonLoop.model.nostrClient.onEvent = proc(subId: string, event: NostrEvent) =
-    logDebug("Nostr", "Received event: kind=", $event.kind, " from=", event.pubkey[0..7])
-    
-    # Handle slot claim events (30401)
-    if event.kind == EventKindPlayerSlotClaim:
-      asyncCheck processSlotClaim(event)
-    
-    # Handle turn command events (30402)
-    elif event.kind == EventKindTurnCommands:
-      let gameIdOpt = event.getGameId()
-      if gameIdOpt.isNone:
-        logError("Nostr", "Command event missing game ID")
-        return
-      
-      let gameId = gameIdOpt.get()
-      if not daemonLoop.model.games.hasKey(gameId):
-        logWarn("Nostr", "Received commands for unknown game: ", gameId)
-        return
-      
-      # Queue async command processing
-      asyncCheck processIncomingCommand(event)
+    try:
+      logDebug("Nostr", "Received event: kind=", $event.kind, " from=",
+        event.pubkey[0..7])
+    except CatchableError:
+      logDebug("Nostr", "Received event: kind=", $event.kind)
+
+    try:
+      # Handle slot claim events (30401)
+      if event.kind == EventKindPlayerSlotClaim:
+        asyncCheck processSlotClaim(event)
+
+      # Handle turn command events (30402)
+      elif event.kind == EventKindTurnCommands:
+        let gameIdOpt = event.getGameId()
+        if gameIdOpt.isNone:
+          logError("Nostr", "Command event missing game ID")
+          return
+
+        let gameId = gameIdOpt.get()
+        if not daemonLoop.model.games.hasKey(gameId):
+          logWarn("Nostr", "Received commands for unknown game: ", gameId)
+          return
+
+        # Queue async command processing
+        asyncCheck processIncomingCommand(event)
+    except CatchableError as e:
+      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
+      logError("Nostr", "Event handler failed: kind=", $event.kind,
+        " id=", eventId, " error=", e.msg)
   
-  # Connect to relays
-  await daemonLoop.model.nostrClient.connect()
-  
+  # Connect to relays with backoff
+  var backoffMs = 1000
+  let maxBackoffMs = 10000
+  logInfo("Daemon", "Connecting to relays (backoff enabled)")
+  while not shutdownRequested:
+    await daemonLoop.model.nostrClient.connect()
+    if daemonLoop.model.nostrClient.isConnected():
+      break
+    logWarn("Daemon", "Failed to connect to any relay; retrying in ",
+      $backoffMs, "ms")
+    await sleepAsync(backoffMs)
+    backoffMs = min(backoffMs * 2, maxBackoffMs)
+
   if not daemonLoop.model.nostrClient.isConnected():
     logError("Daemon", "Failed to connect to any relay")
     return
@@ -553,11 +612,20 @@ proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string]) {.asyn
   # Start tick chain
   daemonLoop.queueCmd(scheduleNextTickCmd(0))  # Initial immediate
 
-  while daemonLoop.model.running:
+  while daemonLoop.model.running and not shutdownRequested:
     daemonLoop.process()
     await sleepAsync(100)  # Non-block poll
 
+  if shutdownRequested:
+    logInfo("Daemon", "Shutdown requested")
+    daemonLoop.model.running = false
+
+  if daemonLoop.model.nostrClient != nil:
+    await daemonLoop.model.nostrClient.disconnect()
+
   logInfo("Daemon", "Daemon stopped")
+
+  shutdownRequested = false
 
 # =============================================================================
 # CLI Entry Point
@@ -585,11 +653,36 @@ proc start(
 
   logInfo("Daemon", "EC4X Daemon starting...")
 
+  if finalDataDir.len == 0:
+    logError("Daemon", "Data directory is empty")
+    return 1
+
   if not dirExists(finalDataDir):
     logError("Daemon", "Data directory does not exist: ", finalDataDir)
     return 1
 
-  waitFor mainLoop(finalDataDir, finalPollInterval, finalRelayUrls)
+  if finalRelayUrls.len == 0:
+    logError("Daemon", "No relay URLs configured")
+    return 1
+
+  for url in finalRelayUrls:
+    if url.len == 0:
+      logError("Daemon", "Relay URL is empty")
+      return 1
+
+  setControlCHook(requestShutdown)
+
+  let allowIdentityRegen = getEnv("EC4X_REGEN_IDENTITY") == "1"
+  if allowIdentityRegen:
+    logWarn("DaemonIdentity", "Regenerating identity enabled via env")
+
+  try:
+    waitFor mainLoop(finalDataDir, finalPollInterval, finalRelayUrls,
+      allowIdentityRegen)
+  except CatchableError as e:
+    logError("Daemon", "Failed to start daemon: ", e.msg)
+    return 1
+
   return 0
 
 proc resolve(gameId: string, dataDir: string = "data"): int =
@@ -607,7 +700,7 @@ proc resolve(gameId: string, dataDir: string = "data"): int =
   gameConfig = loadGameConfig("config")
 
   # Initialize global loop if needed (some cmds might use it)
-  daemonLoop = newDaemonLoop(dataDir, 30, @["ws://localhost:8080"])
+  daemonLoop = newDaemonLoop(dataDir, 30, @["ws://localhost:8080"], true)
 
   # Load state
   let state = loadFullState(dbPath)
