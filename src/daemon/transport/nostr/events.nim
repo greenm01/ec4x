@@ -8,7 +8,8 @@
 ## - 30405: Full game state (encrypted)
 
 import std/[json, options, strutils, sequtils]
-import types, nip01
+import types, nip01, crypto
+import ../../../common/wordlist
 
 # =============================================================================
 # Game Definition Events (30400)
@@ -17,7 +18,7 @@ import types, nip01
 type
   SlotInfo* = object
     index*: int
-    code*: string        # Invite code
+    code*: string        # Invite code hash
     status*: string      # "pending" or "claimed"
     pubkey*: string      # Player pubkey if claimed
 
@@ -25,6 +26,12 @@ type
     name*: string
     maxPlayers*: int
     slots*: seq[SlotInfo]
+
+proc inviteCodeHash(code: string): string =
+  let normalized = normalizeInviteCode(code)
+  if normalized.len == 0:
+    return ""
+  sha256Hash(normalized)
 
 proc createGameDefinition*(
   gameId: string,
@@ -47,13 +54,16 @@ proc createGameDefinition*(
     @[TagStatus, status]
   ]
   
-  # Add slot tags with invite codes (for pending) or pubkeys (for claimed)
+  # Add slot tags with invite code hashes and pubkeys
   for slot in slots:
-    if slot.status == SlotStatusClaimed:
-      tags.add(@[TagSlot, $slot.index, slot.status, slot.pubkey])
+    let slotHash = if slot.code.len > 0:
+      inviteCodeHash(slot.code)
     else:
-      let slotCode = if slot.code.len > 0: slot.code else: "-"
-      tags.add(@[TagSlot, $slot.index, slot.status, slotCode])
+      "-"
+    if slot.status == SlotStatusClaimed:
+      tags.add(@[TagSlot, $slot.index, slotHash, slot.pubkey, slot.status])
+    else:
+      tags.add(@[TagSlot, $slot.index, slotHash, "", slot.status])
   
   result = newEvent(
     kind = EventKindGameDefinition,
@@ -233,7 +243,15 @@ proc getSlots*(event: NostrEvent): seq[SlotInfo] =
   ## Extract slot info from game definition event
   result = @[]
   for tag in event.getTags(TagSlot):
-    if tag.len >= 3:
+    if tag.len >= 5:
+      var slot = SlotInfo(
+        index: parseInt(tag[1]),
+        status: tag[4]
+      )
+      slot.code = tag[2]
+      slot.pubkey = tag[3]
+      result.add(slot)
+    elif tag.len >= 3:
       var slot = SlotInfo(
         index: parseInt(tag[1]),
         status: tag[2]

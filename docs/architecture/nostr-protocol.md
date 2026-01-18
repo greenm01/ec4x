@@ -234,7 +234,9 @@ EC4X uses the 304xx range for parameterized replaceable events.
 
 | Kind | Name | Publisher | Description |
 |------|------|-----------|-------------|
-| 30400 | Game Definition | Admin | Game metadata, slot status |
+| 30400 | Game Definition | Server | Game metadata, slot status |
+
+Note: server pubkey is authoritative for 30400/30403/30405 events.
 | 30401 | Player Slot Claim | Player | Player claims invite code |
 | 30402 | Turn Orders | Player | Player's orders for a turn |
 | 30403 | Turn Results | Server | Delta from turn resolution |
@@ -242,12 +244,12 @@ EC4X uses the 304xx range for parameterized replaceable events.
 
 ### 30400: Game Definition
 
-Published by Admin when creating or updating a game.
+Published by the server when creating or updating a game.
 
 ```json
 {
   "kind": 30400,
-  "pubkey": "<admin-npub>",
+  "pubkey": "<server-npub>",
   "created_at": 1705500000,
   "tags": [
     ["d", "<game-id>"],
@@ -258,7 +260,7 @@ Published by Admin when creating or updating a game.
     ["slot", "3", "<invite-code-hash>", "<player-npub>", "claimed"],
     ["slot", "4", "<invite-code-hash>", "", "pending"]
   ],
-  "content": "{\"config\": {...}}",
+  "content": "{\"name\": \"Friday Night Game\", \"slots\": 4, \"claimed\": 1}",
   "sig": "..."
 }
 ```
@@ -269,6 +271,8 @@ Published by Admin when creating or updating a game.
 - `name`: Human-readable game name
 - `status`: `setup`, `active`, or `finished`
 - `slot`: `[index, invite-code-hash, npub-or-empty, status]`
+
+Invite codes are normalized (lowercase, trimmed) before hashing with SHA-256.
 
 Invite codes are stored as hashes to prevent leaking codes in public
 events. The server validates the actual code on claim.
@@ -325,7 +329,8 @@ See [KDL Payload Formats](#kdl-payload-formats) for the KDL structure.
 ### 30403: Turn Results
 
 Published by Server after resolving a turn. One event per player,
-encrypted to that player's pubkey.
+encrypted to that player's pubkey. Clients must ignore events with
+missing or non-numeric turn tags and treat the newest turn as authoritative.
 
 ```json
 {
@@ -352,7 +357,9 @@ See [KDL Payload Formats](#kdl-payload-formats) for the KDL structure.
 ### 30405: Game State
 
 Published by Server, contains full current game state for a player.
-Encrypted to that player's pubkey with fog-of-war filtering.
+Encrypted to that player's pubkey with fog-of-war filtering. Clients must
+ignore events with missing or non-numeric turn tags and treat the newest
+turn as authoritative.
 
 ```json
 {

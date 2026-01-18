@@ -1392,6 +1392,21 @@ proc runTui(gameId: string = "") =
         try:
           if event.kind == EventKindGameState or
               event.kind == EventKindTurnResults:
+            let turnOpt = event.getTurn()
+            if turnOpt.isNone:
+              sam.model.statusMessage = "Ignored event: missing turn"
+              return
+            if sam.model.playerStateLoaded and
+                turnOpt.get() <= sam.model.turn:
+              sam.model.statusMessage = "Ignored event: stale turn"
+              return
+
+            if event.pubkey.len > 0 and
+                nostrDaemonPubkey.len > 0 and
+                event.pubkey != nostrDaemonPubkey:
+              sam.model.statusMessage = "Ignored event: unknown server"
+              return
+
             let payload = decodePayload(event.content, privOpt.get(),
               pubOpt.get())
             if event.kind == EventKindGameState:
@@ -1408,10 +1423,10 @@ proc runTui(gameId: string = "") =
                 if sam.model.appPhase == AppPhase.Lobby:
                   sam.model.appPhase = AppPhase.InGame
             elif event.kind == EventKindTurnResults:
-              let turnOpt = applyDeltaToCachedState("data",
+              let appliedTurnOpt = applyDeltaToCachedState("data",
                 identity.npubHex, activeGameId, playerState, payload)
-              if turnOpt.isSome:
-                sam.model.turn = int(turnOpt.get())
+              if appliedTurnOpt.isSome:
+                sam.model.turn = int(appliedTurnOpt.get())
                 sam.model.playerStateLoaded = true
                 sam.model.statusMessage = "Delta applied"
 
@@ -1437,7 +1452,8 @@ proc runTui(gameId: string = "") =
               if not updated:
                 sam.model.entryModal.activeGames.add(gameInfo)
               if gameId == activeGameId and
-                  event.pubkey.len > 0:
+                  event.pubkey.len > 0 and
+                  nostrDaemonPubkey.len == 0:
                 nostrDaemonPubkey = event.pubkey
             if (sam.model.nostrJoinRequested or sam.model.nostrJoinSent) and
                 sam.model.nostrJoinGameId.len > 0:
