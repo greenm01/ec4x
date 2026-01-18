@@ -3,6 +3,8 @@
 ## Changelog
 - 2026-01-17: Added PlayerState snapshot persistence, diff-based delta publishing, and 30405 full-state serialization.
 - 2026-01-17: Canonical-only KDL payloads for 30405/30403 with child-node lists and pure-enum parsing fixes.
+- 2026-01-17: TUI Nostr integration for join flow, state sync, and command submission.
+- 2026-01-17: Auto-resolve when all human players submit commands.
 
 This document details the technical implementation plan for full Nostr
 transport in EC4X. It covers the phases, code changes, and testing
@@ -29,12 +31,15 @@ strategies needed to complete the integration.
 - Delta list fields now emit as child nodes (omitted when empty)
 - Player-side KDL parsing updated for pure enums
 - Renamed `kdl_orders.nim` to `kdl_commands.nim`
+- TUI now connects to Nostr for lobby/game sync, join, and command submit
+- Auto-resolve triggers when all human players submit orders
+- Slot claim publishing reloads state to include assigned pubkey
+- Added turn mismatch validation and resolution error handling
 
 **Stubbed/TODO:**
-- Command serialization from packet to KDL (player submit side)
-- Player client Nostr integration + delta applicator
 - Slot claim validation against invite codes + 30400 updates
-- Turn resolution trigger when all orders received
+- Optional refactor into subscriber/publisher modules
+- Timeout/deadline-based auto-resolve
 
 ---
 
@@ -926,13 +931,14 @@ echo "E2E test complete"
 - [x] Command ingestion + persistence via 30402
 - [x] Slot claim handling (30401) with house pubkey assignment
 - [x] Turn results publishing (30403) with PlayerState deltas
+- [x] Auto-resolve when all human players submit commands
 - [ ] `src/daemon/subscriber.nim` - Optional refactor
 - [ ] `src/daemon/publisher.nim` - Optional refactor
 
 ### Phase 6: Player Client
 - [ ] `src/player/nostr/client.nim` - Player Nostr client
-- [ ] Update TUI to use Nostr for state sync
-- [ ] Implement command submission UI
+- [x] Update TUI to use Nostr for state sync
+- [x] Implement command submission UI
 
 ### Phase 7: Testing
 - [ ] Unit tests for each module

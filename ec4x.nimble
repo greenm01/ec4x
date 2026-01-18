@@ -121,6 +121,16 @@ task testIntegration, "Run integration tests":
   exec "nim c -r tests/integration/test_economy.nim"
   exec "nim c -r tests/integration/test_diplomacy.nim"
   exec "nim c -r tests/integration/test_elimination.nim"
+  echo "Running daemon tests..."
+  exec "nimble testDaemon"
+
+task testDaemon, "Run daemon integration tests":
+  echo "Running daemon tests..."
+  exec "nim c -r tests/daemon/kdl_parser_test.nim"
+  exec "nim c -r tests/daemon/test_state_kdl.nim"
+  exec "nim c -r tests/daemon/test_delta_kdl.nim"
+  exec "nim c -r tests/daemon/test_auto_resolve.nim"
+  echo "Daemon tests completed!"
 
 task testStress, "Run all stress tests (takes several minutes)":
   echo "Running stress test suite..."
