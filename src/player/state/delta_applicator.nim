@@ -1,10 +1,10 @@
 ## Apply PlayerState deltas to local PlayerState cache
 
-import std/[options]
+import std/[options, strutils]
 import kdl
 import ../../common/logger
 import ../../engine/types/[core, player_state, colony, fleet, ship, ground_unit,
-  diplomacy, progression, capacity, production]
+  diplomacy, progression, capacity, production, combat]
 import ../../daemon/persistence/player_state_snapshot
 import ./kdl_player_state
 
@@ -106,6 +106,8 @@ proc parseValSeq[T](val: KdlVal, parser: proc(item: KdlVal): Option[T]): seq[T] 
   let parsed = parser(val)
   if parsed.isSome:
     result.add(parsed.get())
+
+proc nodeChild(node: KdlNode, name: string): Option[KdlNode]
 
 proc parseChildSeq[T](node: KdlNode, name: string,
   parser: proc(item: KdlVal): Option[T]): seq[T] =

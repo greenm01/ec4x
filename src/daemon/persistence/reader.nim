@@ -307,3 +307,31 @@ proc loadFullState*(dbPath: string): GameState =
     logError("Persistence", "Failed to load full state: ", getCurrentExceptionMsg())
     raise
 
+proc countExpectedPlayers*(dbPath: string, gameId: string): int =
+  ## Count houses with assigned Nostr pubkeys (human players)
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let row = db.getRow(
+    sql"SELECT COUNT(*) FROM houses WHERE game_id = ? AND nostr_pubkey IS NOT NULL",
+    gameId
+  )
+  result = parseInt(row[0])
+
+proc countPlayersSubmitted*(dbPath: string, gameId: string, turn: int32): int =
+  ## Count distinct houses that have submitted commands for a turn
+  ## Returns number of houses with at least one unprocessed command
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let row = db.getRow(
+    sql"""
+    SELECT COUNT(DISTINCT house_id)
+    FROM commands
+    WHERE game_id = ? AND turn = ? AND processed = 0
+    """,
+    gameId,
+    $turn
+  )
+  result = parseInt(row[0])
+

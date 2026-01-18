@@ -1,10 +1,10 @@
 ## PlayerState KDL parsing helpers for 30405
 
-import std/[options, tables]
+import std/[options, tables, strutils]
 import kdl
 import ../../common/logger
 import ../../engine/types/[core, player_state, colony, fleet, ship, ground_unit,
-  diplomacy, progression, production, capacity]
+  diplomacy, progression, production, capacity, combat]
 import ../../daemon/persistence/player_state_snapshot
 
 proc parseEnumFromStr[T: enum](value: string): Option[T] =
@@ -826,11 +826,11 @@ proc parseOwnedGroundUnits(node: KdlNode): seq[GroundUnit] =
         let houseOpt = parseHouseId(unitNode.props["house"])
         if houseOpt.isSome:
           unit.houseId = houseOpt.get()
-       if unitNode.props.hasKey("type"):
-         let parsedOpt = parseEnumPureFromStr[GroundClass](
-           unitNode.props["type"].getString())
-         if parsedOpt.isSome:
-           unit.stats.unitType = parsedOpt.get()
+      if unitNode.props.hasKey("type"):
+        let parsedOpt = parseEnumPureFromStr[GroundClass](
+          unitNode.props["type"].getString())
+        if parsedOpt.isSome:
+          unit.stats.unitType = parsedOpt.get()
 
 
       let attackOpt = childVal(unitNode, "attack")
@@ -882,37 +882,35 @@ proc parsePlayerStateKdl*(kdlState: string): Option[PlayerState] =
 
     if root.children.len > 0:
       for child in root.children:
-    if child.name == "viewing-house" and child.props.hasKey("id"):
-      let idOpt = parseHouseId(child.props["id"])
-      if idOpt.isSome:
-        state.viewingHouse = idOpt.get()
+        if child.name == "viewing-house" and child.props.hasKey("id"):
+          let idOpt = parseHouseId(child.props["id"])
+          if idOpt.isSome:
+            state.viewingHouse = idOpt.get()
 
-
-  for child in root.children:
-    case child.name
-    of "colonies":
-      state.ownColonies = parseOwnedColonies(child)
-    of "fleets":
-      state.ownFleets = parseOwnedFleets(child)
-      state.ownShips = parseOwnedShips(child)
-    of "ground-units":
-      state.ownGroundUnits = parseOwnedGroundUnits(child)
-    of "systems":
-      state.visibleSystems = parseVisibleSystems(child)
-    of "intel":
-      for intelChild in child.children:
-        case intelChild.name
+      for child in root.children:
+        case child.name
         of "colonies":
-          state.visibleColonies = parseVisibleColonies(intelChild)
+          state.ownColonies = parseOwnedColonies(child)
         of "fleets":
-          state.visibleFleets = parseVisibleFleets(intelChild)
+          state.ownFleets = parseOwnedFleets(child)
+          state.ownShips = parseOwnedShips(child)
+        of "ground-units":
+          state.ownGroundUnits = parseOwnedGroundUnits(child)
+        of "systems":
+          state.visibleSystems = parseVisibleSystems(child)
+        of "intel":
+          for intelChild in child.children:
+            case intelChild.name
+            of "colonies":
+              state.visibleColonies = parseVisibleColonies(intelChild)
+            of "fleets":
+              state.visibleFleets = parseVisibleFleets(intelChild)
+            else:
+              discard
+        of "public":
+          parsePublicSection(child, state)
         else:
           discard
-    of "public":
-      parsePublicSection(child, state)
-    else:
-      discard
-
 
     some(state)
   except CatchableError as e:

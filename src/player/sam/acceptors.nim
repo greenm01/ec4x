@@ -391,18 +391,36 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.lobbyJoinStatus = JoinStatus.EnteringName
           model.statusMessage = "Enter player name (optional)"
       elif model.lobbyJoinStatus == JoinStatus.EnteringName:
-        # TODO: Implement Nostr-based join flow
-        # Should publish a 30401 event (Player Slot Claim) with invite code
-        # Then subscribe to 30400 updates to detect slot assignment
-        # For now, show a stub message
-        model.lobbyJoinStatus = JoinStatus.Failed
-        model.lobbyJoinError = "Nostr join not yet implemented"
-        model.statusMessage = "TODO: Nostr join flow"
+        let normalized = normalizePubkey(model.lobbyProfilePubkey)
+        if normalized.isNone:
+          model.lobbyJoinError = "Invalid pubkey"
+          model.statusMessage = model.lobbyJoinError
+        else:
+          model.lobbyProfilePubkey = normalized.get()
+          saveProfile("data", model.lobbyProfilePubkey,
+            model.lobbyProfileName, model.lobbySessionKeyActive)
+          let inviteCode = normalizeInviteCode(
+            model.entryModal.inviteCode()
+          )
+          if inviteCode.len == 0:
+            model.lobbyJoinStatus = JoinStatus.Failed
+            model.lobbyJoinError = "Invite code required"
+            model.statusMessage = model.lobbyJoinError
+          elif model.lobbyGameId.len == 0:
+            model.lobbyJoinStatus = JoinStatus.Failed
+            model.lobbyJoinError = "Game ID missing"
+            model.statusMessage = model.lobbyJoinError
+          else:
+            model.nostrJoinRequested = true
+            model.nostrJoinSent = false
+            model.nostrJoinInviteCode = inviteCode
+            model.nostrJoinGameId = model.lobbyGameId
+            model.nostrJoinPubkey = model.lobbyProfilePubkey
+            model.lobbyJoinStatus = JoinStatus.WaitingResponse
+            model.statusMessage = "Submitting join request"
     of ActionLobbyJoinPoll:
-      # TODO: Implement Nostr-based join polling
-      # Should check for 30400 updates where our npub appears in a slot
-      # Since join is stubbed, this is a no-op for now
-      discard
+      if model.lobbyJoinStatus == JoinStatus.WaitingResponse:
+        model.statusMessage = "Waiting for join response..."
     of ActionLobbyReturn:
       model.appPhase = AppPhase.Lobby
       model.statusMessage = "Returned to lobby"
@@ -491,10 +509,17 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         if not isValidInviteCode(code):
           model.entryModal.setInviteError("Invalid code format")
         else:
-          # Valid format - submit to server
-          # TODO: Send kind 30401 event to server for claim
-          model.statusMessage = "Joining with code: " & code
+          let identity = model.entryModal.identity
+          model.nostrJoinRequested = true
+          model.nostrJoinSent = false
+          model.nostrJoinInviteCode = code
+          model.nostrJoinGameId = ""
+          model.nostrJoinPubkey = identity.npubHex
+          model.entryModal.setInviteError("Join request sent")
           model.entryModal.clearInviteCode()
+          model.lobbyJoinStatus = JoinStatus.WaitingResponse
+          model.statusMessage = "Submitting join request"
+
     of ActionEntryAdminSelect:
       # Dispatch based on selected admin menu item
       let menuItem = model.entryModal.selectedAdminMenuItem()

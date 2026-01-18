@@ -68,34 +68,87 @@ type DaemonCmd* = proc (): Future[Proposal[DaemonModel]]
 # Forward declarations
 proc publishFullState(gameId: string, state: GameState, houseId: HouseId) {.async.}
 proc publishTurnResults(gameId: string, state: GameState) {.async.}
+proc resolveTurnCmd(gameId: GameId): DaemonCmd
+
+proc checkAndTriggerResolution(gameId: GameId) =
+  ## Check if all expected players have submitted orders
+  ## If so, automatically queue turn resolution
+  let gameInfo = daemonLoop.model.games[gameId]
+  let currentTurn = gameInfo.turn
+
+  # Only auto-resolve games in Active phase
+  if gameInfo.phase != "Active":
+    logDebug("Daemon", "Game ", gameId, " in phase ", gameInfo.phase, " - skipping auto-resolve")
+    return
+
+  let expectedPlayers = countExpectedPlayers(gameInfo.dbPath, gameId)
+
+  # Edge case: No human players yet (all slots unclaimed)
+  if expectedPlayers == 0:
+    logDebug("Daemon", "No human players assigned yet for game ", gameId)
+    return
+
+  let submittedPlayers = countPlayersSubmitted(gameInfo.dbPath, gameId, currentTurn.int32)
+
+  logDebug("Daemon", "Turn readiness check: ", $submittedPlayers, "/", $expectedPlayers,
+           " players submitted for game=", gameId, " turn=", $currentTurn)
+
+  # Check if all players ready
+  if submittedPlayers >= expectedPlayers:
+    logInfo("Daemon", "All players submitted! Auto-triggering resolution for game=",
+            gameId, " turn=", $currentTurn)
+
+    # Guard: Don't queue if already resolving
+    if gameId in daemonLoop.model.resolving:
+      logWarn("Daemon", "Turn already resolving for game ", gameId, " - skipping")
+      return
+
+    daemonLoop.queueCmd(resolveTurnCmd(gameId))
+  else:
+    logDebug("Daemon", "Waiting for ", $(expectedPlayers - submittedPlayers),
+             " more player(s) for turn ", $currentTurn)
 
 proc resolveTurnCmd(gameId: GameId): DaemonCmd =
   proc (): Future[Proposal[DaemonModel]] {.async.} =
     logInfo("Daemon", "Resolving turn for game: ", gameId)
-    let gameInfo = daemonLoop.model.games[gameId]
-    
-    # 1. Load state and orders
-    let state = loadFullState(gameInfo.dbPath)
-    let commands = loadOrders(gameInfo.dbPath, state.turn)
-    
-    # 2. Resolve turn (deterministic)
-    let result = resolveTurnDeterministic(state, commands)
-    
-    # 3. Persist results
-    saveFullState(state) # Saves NEW turn number and updated entities
-    saveGameEvents(state, result.events)
-    markCommandsProcessed(gameInfo.dbPath, gameId, state.turn - 1)
-    
-    # 4. Publish turn results via Nostr
-    await publishTurnResults(gameId, state)
-    
-    return Proposal[DaemonModel](
-      name: "turn_resolved",
-      payload: proc(model: var DaemonModel) =
-        model.games[gameId].turn = state.turn
-        model.resolving.excl(gameId)
-        model.pendingOrders[gameId] = 0
-    )
+
+    # Mark as resolving
+    daemonLoop.model.resolving.incl(gameId)
+
+    try:
+      let gameInfo = daemonLoop.model.games[gameId]
+
+      # 1. Load state and orders
+      let state = loadFullState(gameInfo.dbPath)
+      let commands = loadOrders(gameInfo.dbPath, state.turn)
+
+      # 2. Resolve turn (deterministic)
+      let result = resolveTurnDeterministic(state, commands)
+
+      # 3. Persist results
+      saveFullState(state) # Saves NEW turn number and updated entities
+      saveGameEvents(state, result.events)
+      markCommandsProcessed(gameInfo.dbPath, gameId, state.turn - 1)
+
+      # 4. Publish turn results via Nostr
+      await publishTurnResults(gameId, state)
+
+      return Proposal[DaemonModel](
+        name: "turn_resolved",
+        payload: proc(model: var DaemonModel) =
+          model.games[gameId].turn = state.turn
+          model.resolving.excl(gameId)
+          model.pendingOrders[gameId] = 0
+      )
+
+    except CatchableError as e:
+      logError("Daemon", "Turn resolution failed for game ", gameId, ": ", e.msg)
+      # Critical: Clear resolving flag even on failure
+      return Proposal[DaemonModel](
+        name: "resolution_failed",
+        payload: proc(model: var DaemonModel) =
+          model.resolving.excl(gameId)
+      )
 
 proc createGameDiscoveredProposal(gameId, dbPath, phase: string, turn: int32): Proposal[DaemonModel] =
   let gId = gameId
@@ -302,22 +355,29 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
       return
     
     let gameInfo = daemonLoop.model.games[gameId]
-    
+
+    # Validate turn matches current game turn
+    if turn != gameInfo.turn:
+      logWarn("Nostr", "Command for wrong turn: event has turn=", $turn,
+              " but game is on turn=", $gameInfo.turn, " - ignoring")
+      return
+
     # Decrypt command payload
     let daemonPriv = hexToBytes32(daemonLoop.model.identity.privateKeyHex)
     let senderPub = hexToBytes32(event.pubkey)
     let kdlCommands = decodePayload(event.content, daemonPriv, senderPub)
-    
+
     # Parse KDL into CommandPacket
     let commandPacket = parseOrdersString(kdlCommands)
-    
+
     # Save to database
     saveCommandPacket(gameInfo.dbPath, gameId, commandPacket)
-    
-    logInfo("Nostr", "Received and saved commands for game=", gameId, 
+
+    logInfo("Nostr", "Received and saved commands for game=", gameId,
             " turn=", $turn, " house=", $commandPacket.houseId)
-    
-    # TODO: Check if all players have submitted, trigger turn resolution
+
+    # Check if all players have submitted, trigger turn resolution
+    checkAndTriggerResolution(gameId)
     
   except CatchableError as e:
     logError("Nostr", "Failed to process command: ", e.msg)
@@ -372,9 +432,10 @@ proc processSlotClaim(event: NostrEvent) {.async.} =
     updateHousePubkey(gameInfo.dbPath, gameId, houseId, playerPubkey)
 
     # Publish full state immediately after slot claim
-    await publishFullState(gameId, state, houseId)
+    let updatedState = loadFullState(gameInfo.dbPath)
+    await publishFullState(gameId, updatedState, houseId)
     
-    logInfo("Nostr", "Slot claimed for game=", gameId, 
+    logInfo("Nostr", "Slot claimed for game=", gameId,
             " house=", $houseId, " player=", playerPubkey[0..7], "...")
     
   except CatchableError as e:

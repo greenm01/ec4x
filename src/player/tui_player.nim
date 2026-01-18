@@ -16,7 +16,8 @@ import
     player_state as ps_types, diplomacy]
 import ../engine/state/[engine, iterators]
 import ../engine/systems/capacity/c2_pool
-import ../daemon/transport/nostr/[client, types, events, nip19, wire]
+import ../daemon/transport/nostr/[client, types, events, nip01, nip19, wire,
+  filter, crypto]
 import ./tui/term/term
 import ./tui/buffer
 import ./tui/events
@@ -1303,6 +1304,9 @@ proc runTui(gameId: string = "") =
   var activeGameId = gameId
   var nostrClient: NostrClient = nil
   var nostrRelayUrl = ""
+  var nostrListenerStarted = false
+  var nostrSubscriptions: seq[string] = @[]
+  var nostrDaemonPubkey = ""
 
   # Initialize terminal
   var tty = openTty()
@@ -1371,8 +1375,7 @@ proc runTui(gameId: string = "") =
     if initialModel.homeworld.isSome:
       initialModel.mapState.cursor = initialModel.homeworld.get
 
-  if initialModel.nostrRelayUrl.len > 0 and
-      activeGameId.len > 0:
+  if initialModel.nostrRelayUrl.len > 0:
     try:
       let identity = initialModel.entryModal.identity
       let relayList = @[initialModel.nostrRelayUrl]
@@ -1387,25 +1390,86 @@ proc runTui(gameId: string = "") =
           sam.present(emptyProposal())
           return
         try:
-          let payload = decodePayload(event.content, privOpt.get(), pubOpt.get())
-          if event.kind == EventKindGameState:
-            let stateOpt = parseFullStateKdl(payload)
-            if stateOpt.isSome:
-              playerState = stateOpt.get()
-              sam.model.playerStateLoaded = true
-              viewingHouse = playerState.viewingHouse
-              sam.model.viewingHouse = int(viewingHouse)
-              sam.model.turn = int(playerState.turn)
-              sam.model.statusMessage = "Full state received"
-              if sam.model.nostrEnabled:
-                sam.model.nostrStatus = "connected"
-          elif event.kind == EventKindTurnResults:
-            let turnOpt = applyDeltaToCachedState("data",
-              identity.npubHex, activeGameId, playerState, payload)
-            if turnOpt.isSome:
-              sam.model.turn = int(turnOpt.get())
-              sam.model.playerStateLoaded = true
-              sam.model.statusMessage = "Delta applied"
+          if event.kind == EventKindGameState or
+              event.kind == EventKindTurnResults:
+            let payload = decodePayload(event.content, privOpt.get(),
+              pubOpt.get())
+            if event.kind == EventKindGameState:
+              let stateOpt = parseFullStateKdl(payload)
+              if stateOpt.isSome:
+                playerState = stateOpt.get()
+                sam.model.playerStateLoaded = true
+                viewingHouse = playerState.viewingHouse
+                sam.model.viewingHouse = int(viewingHouse)
+                sam.model.turn = int(playerState.turn)
+                sam.model.statusMessage = "Full state received"
+                if sam.model.nostrEnabled:
+                  sam.model.nostrStatus = "connected"
+                if sam.model.appPhase == AppPhase.Lobby:
+                  sam.model.appPhase = AppPhase.InGame
+            elif event.kind == EventKindTurnResults:
+              let turnOpt = applyDeltaToCachedState("data",
+                identity.npubHex, activeGameId, playerState, payload)
+              if turnOpt.isSome:
+                sam.model.turn = int(turnOpt.get())
+                sam.model.playerStateLoaded = true
+                sam.model.statusMessage = "Delta applied"
+
+
+          elif event.kind == EventKindGameDefinition:
+            let gameIdOpt = event.getGameId()
+            if gameIdOpt.isSome:
+              let gameId = gameIdOpt.get()
+              let nameTag = event.getTagValue(TagName)
+              let turnOpt = event.getTurn()
+              let gameInfo = EntryActiveGameInfo(
+                id: gameId,
+                name: if nameTag.isSome: nameTag.get() else: gameId,
+                turn: if turnOpt.isSome: turnOpt.get() else: 0,
+                houseName: ""
+              )
+              var updated = false
+              for idx in 0..<sam.model.entryModal.activeGames.len:
+                if sam.model.entryModal.activeGames[idx].id == gameId:
+                  sam.model.entryModal.activeGames[idx] = gameInfo
+                  updated = true
+                  break
+              if not updated:
+                sam.model.entryModal.activeGames.add(gameInfo)
+              if gameId == activeGameId and
+                  event.pubkey.len > 0:
+                nostrDaemonPubkey = event.pubkey
+            if (sam.model.nostrJoinRequested or sam.model.nostrJoinSent) and
+                sam.model.nostrJoinGameId.len > 0:
+              let slots = event.getSlots()
+              for slot in slots:
+                if slot.status == SlotStatusClaimed and
+                    slot.pubkey == sam.model.nostrJoinPubkey:
+                  let joinPubkey = sam.model.nostrJoinPubkey
+                  let joinGameId = sam.model.nostrJoinGameId
+                  let gameName = event.getTagValue(TagName)
+                  let houseId = if slot.index > 0:
+                                 HouseId((slot.index - 1).uint32)
+                               else:
+                                 HouseId(slot.index.uint32)
+                  writeJoinCache("data", joinPubkey, joinGameId, houseId)
+                  if gameName.isSome:
+                    saveProfile("data", joinPubkey,
+                      sam.model.lobbyProfileName,
+                      sam.model.lobbySessionKeyActive)
+                  sam.model.lobbyActiveGames = loadActiveGamesData("data",
+                    joinPubkey)
+                  sam.model.lobbyJoinStatus = JoinStatus.Joined
+                  sam.model.lobbyJoinError = ""
+                  sam.model.statusMessage = "Joined game " & joinGameId
+                  sam.model.nostrJoinRequested = false
+                  sam.model.nostrJoinSent = false
+                  sam.model.nostrJoinInviteCode = ""
+                  sam.model.nostrJoinGameId = ""
+                  sam.model.nostrJoinPubkey = ""
+                  sam.model.entryModal.inviteInput.clear()
+                  sam.model.entryModal.inviteError = ""
+                  break
           sam.present(emptyProposal())
         except CatchableError as e:
           sam.model.nostrLastError = e.msg
@@ -1470,24 +1534,102 @@ proc runTui(gameId: string = "") =
         if proposalOpt.isSome:
           sam.present(proposalOpt.get)
 
-    if sam.model.nostrEnabled and nostrClient != nil:
-      if sam.model.nostrStatus == "connecting" and
-          nostrClient.isConnected():
-        let playerPubHex = sam.model.entryModal.identity.npubHex
-        asyncCheck nostrClient.subscribeGame(activeGameId, playerPubHex)
-        asyncCheck nostrClient.listen()
-        sam.model.nostrStatus = "connected"
-        sam.model.statusMessage = "Nostr connected"
-      elif sam.model.nostrStatus == "connected" and
-          not nostrClient.isConnected():
-        sam.model.nostrStatus = "error"
-        sam.model.nostrLastError = "Relay disconnected"
-        sam.model.nostrEnabled = false
+      if sam.model.nostrEnabled and nostrClient != nil:
+        if sam.model.nostrStatus == "connecting" and
+            nostrClient.isConnected():
+          if not nostrListenerStarted:
+            asyncCheck nostrClient.listen()
+            nostrListenerStarted = true
+          let lobbyFilter = newFilter()
+            .withKinds(@[EventKindGameDefinition])
+          asyncCheck nostrClient.subscribe("lobby:games", @[lobbyFilter])
+          nostrSubscriptions.add("lobby:games")
+          sam.model.nostrStatus = "connected"
+          sam.model.statusMessage = "Nostr connected"
+        elif sam.model.nostrStatus == "connected" and
+            sam.model.entryModal.relayUrl() != sam.model.nostrRelayUrl:
+          sam.model.nostrRelayUrl = sam.model.entryModal.relayUrl()
+          sam.model.nostrStatus = "error"
+          sam.model.nostrLastError = "Relay URL changed - restart required"
+          sam.model.nostrEnabled = false
+          nostrListenerStarted = false
+          nostrSubscriptions.setLen(0)
+          nostrDaemonPubkey = ""
+        elif sam.model.nostrStatus == "connected" and
+            sam.model.appPhase == AppPhase.InGame and
+            activeGameId.len > 0 and
+            ("game:" & activeGameId) notin nostrSubscriptions:
+          let playerPubHex = sam.model.entryModal.identity.npubHex
+          asyncCheck nostrClient.subscribeGame(activeGameId, playerPubHex)
+          nostrSubscriptions.add("game:" & activeGameId)
+          sam.model.statusMessage = "Nostr subscribed"
+        elif sam.model.nostrStatus == "connected" and
+            sam.model.nostrJoinRequested and
+            not sam.model.nostrJoinSent and
+            sam.model.nostrJoinInviteCode.len > 0:
+          let identity = sam.model.entryModal.identity
+          let privOpt = hexToBytes32Safe(identity.nsecHex)
+          if privOpt.isSome:
+            let gameId =
+              if sam.model.nostrJoinGameId.len > 0:
+                sam.model.nostrJoinGameId
+              elif sam.model.entryModal.selectedGame().isSome:
+                sam.model.entryModal.selectedGame().get().id
+              else:
+                ""
+            if gameId.len > 0:
+              var event = createSlotClaim(
+                gameId = gameId,
+                inviteCode = sam.model.nostrJoinInviteCode,
+                playerPubkey = identity.npubHex
+              )
+              signEvent(event, privOpt.get())
+              asyncCheck nostrClient.publish(event)
+              sam.model.statusMessage = "Join request sent"
+              sam.model.nostrJoinSent = true
+              sam.model.nostrJoinRequested = false
+              sam.model.nostrJoinGameId = gameId
+              sam.model.nostrJoinInviteCode = ""
+            else:
+              sam.model.lobbyJoinStatus = JoinStatus.Failed
+              sam.model.lobbyJoinError = "Select a game first"
+              sam.model.statusMessage = sam.model.lobbyJoinError
+              sam.model.nostrJoinRequested = false
+              sam.model.nostrJoinSent = false
+              sam.model.nostrJoinInviteCode = ""
+              sam.model.nostrJoinGameId = ""
+              sam.model.nostrJoinPubkey = ""
+          else:
+            sam.model.lobbyJoinStatus = JoinStatus.Failed
+            sam.model.lobbyJoinError = "Invalid signing key"
+            sam.model.statusMessage = sam.model.lobbyJoinError
+            sam.model.nostrJoinRequested = false
+            sam.model.nostrJoinSent = false
+            sam.model.nostrJoinInviteCode = ""
+            sam.model.nostrJoinGameId = ""
+            sam.model.nostrJoinPubkey = ""
+        elif sam.model.nostrStatus == "connected" and
+            not nostrClient.isConnected():
+          sam.model.nostrStatus = "error"
+          sam.model.nostrLastError = "Relay disconnected"
+          sam.model.nostrEnabled = false
+          nostrListenerStarted = false
+          nostrSubscriptions.setLen(0)
+          nostrDaemonPubkey = ""
+
+
 
     # Poll for join response when waiting
     if sam.model.appPhase == AppPhase.Lobby and
         sam.model.lobbyJoinStatus == JoinStatus.WaitingResponse:
       sam.present(actionLobbyJoinPoll())
+
+    if sam.model.entryModal.activeGames.len > 0 and
+        sam.model.entryModal.selectedIdx >=
+        sam.model.entryModal.activeGames.len:
+      sam.model.entryModal.selectedIdx =
+        sam.model.entryModal.activeGames.len - 1
+
 
     if sam.model.loadGameRequested:
       let gameId = sam.model.loadGameId
@@ -1547,17 +1689,54 @@ proc runTui(gameId: string = "") =
 
     # Handle pending fleet orders (write to KDL files)
     if sam.model.pendingFleetOrderReady and activeGameId.len > 0:
-      let gameDir = "data/games/" & activeGameId
-      let orderPath = writeFleetOrderFromModel(gameDir, sam.model)
-      if orderPath.len > 0:
-        let cmdLabel = commandLabel(sam.model.pendingFleetOrderCommandType)
-        sam.model.statusMessage = cmdLabel & " order written: " &
-          extractFilename(orderPath)
-        logInfo("TUI Player SAM", "Fleet order written: " & orderPath)
+      if sam.model.nostrEnabled and nostrClient != nil and
+          nostrClient.isConnected():
+        let identity = sam.model.entryModal.identity
+        let privOpt = hexToBytes32Safe(identity.nsecHex)
+        if privOpt.isSome:
+          if nostrDaemonPubkey.len > 0:
+            let daemonOpt = hexToBytes32Safe(nostrDaemonPubkey)
+            if daemonOpt.isSome:
+              let order = FleetOrder(
+                fleetId: sam.model.pendingFleetOrderFleetId,
+                commandType: sam.model.pendingFleetOrderCommandType,
+                targetSystemId: sam.model.pendingFleetOrderTargetSystemId
+              )
+              let kdlCommands = formatFleetOrderKdl(order, sam.model.turn,
+                sam.model.viewingHouse)
+              let encrypted = encodePayload(kdlCommands, privOpt.get(),
+                daemonOpt.get())
+              var event = createTurnCommands(
+                gameId = activeGameId,
+                turn = sam.model.turn,
+                encryptedPayload = encrypted,
+                daemonPubkey = nostrDaemonPubkey,
+                playerPubkey = identity.npubHex
+              )
+              signEvent(event, privOpt.get())
+              asyncCheck nostrClient.publish(event)
+              let cmdLabel = commandLabel(
+                sam.model.pendingFleetOrderCommandType)
+              sam.model.statusMessage = cmdLabel & " order submitted"
+            else:
+              sam.model.statusMessage = "Invalid daemon pubkey"
+          else:
+            sam.model.statusMessage = "Waiting for daemon pubkey"
+        else:
+          sam.model.statusMessage = "Invalid signing key"
+      else:
+        let gameDir = "data/games/" & activeGameId
+        let orderPath = writeFleetOrderFromModel(gameDir, sam.model)
+        if orderPath.len > 0:
+          let cmdLabel = commandLabel(sam.model.pendingFleetOrderCommandType)
+          sam.model.statusMessage = cmdLabel & " order written: " &
+            extractFilename(orderPath)
+          logInfo("TUI Player SAM", "Fleet order written: " & orderPath)
       sam.model.clearPendingOrder()
       
       # Re-render to show status
       sam.present(emptyProposal())
+
 
   # =========================================================================
   # Cleanup

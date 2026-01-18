@@ -330,6 +330,11 @@ type
     nostrRelayUrl*: string
     nostrLastError*: string
     nostrStatus*: string
+    nostrJoinRequested*: bool
+    nostrJoinSent*: bool
+    nostrJoinInviteCode*: string
+    nostrJoinGameId*: string
+    nostrJoinPubkey*: string
 
     # -------------
     # Game Data (View Layer - decoupled from engine)
@@ -448,6 +453,11 @@ proc initTuiModel*(): TuiModel =
     nostrRelayUrl: "",
     nostrLastError: "",
     nostrStatus: "idle",
+    nostrJoinRequested: false,
+    nostrJoinSent: false,
+    nostrJoinInviteCode: "",
+    nostrJoinGameId: "",
+    nostrJoinPubkey: "",
     turn: 1,
     viewingHouse: 1,
     houseName: "Unknown",
