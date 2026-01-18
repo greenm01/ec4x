@@ -176,10 +176,10 @@ proc parseCapacityViolationProps(node: KdlNode): CapacityViolation =
     if valOpt.isSome:
       violation.excess = valOpt.get()
   if node.props.hasKey("capacity-violation-severity"):
-    let enumOpt = parseEnumPureFromStr[ViolationSeverity](
+    let parsedOpt = parseEnumPureFromStr[ViolationSeverity](
       node.props["capacity-violation-severity"].getString())
-    if enumOpt.isSome:
-      violation.severity = enumOpt.get()
+    if parsedOpt.isSome:
+      violation.severity = parsedOpt.get()
   if node.props.hasKey("capacity-violation-grace"):
     let valOpt = parseIntVal(node.props["capacity-violation-grace"])
     if valOpt.isSome:
@@ -342,19 +342,19 @@ proc parseFleetFromEntry(entry: KdlNode): Fleet =
     if idOpt.isSome:
       fleet.location = idOpt.get()
   if entry.props.hasKey("status"):
-    let enumOpt = parseEnumPureFromStr[FleetStatus](
+    let parsedOpt = parseEnumPureFromStr[FleetStatus](
       entry.props["status"].getString())
-    if enumOpt.isSome:
-      fleet.status = enumOpt.get()
+    if parsedOpt.isSome:
+      fleet.status = parsedOpt.get()
   if entry.props.hasKey("roe"):
     let valOpt = parseIntVal(entry.props["roe"])
     if valOpt.isSome:
       fleet.roe = valOpt.get()
   if entry.props.hasKey("mission-state"):
-    let enumOpt = parseEnumPureFromStr[MissionState](
+    let parsedOpt = parseEnumPureFromStr[MissionState](
       entry.props["mission-state"].getString())
-    if enumOpt.isSome:
-      fleet.missionState = enumOpt.get()
+    if parsedOpt.isSome:
+      fleet.missionState = parsedOpt.get()
   if entry.props.hasKey("mission-target"):
     let idOpt = parseSystemId(entry.props["mission-target"])
     if idOpt.isSome:
@@ -403,15 +403,15 @@ proc parseShipFromEntry(entry: KdlNode): Ship =
     if idOpt.isSome:
       ship.fleetId = idOpt.get()
   if entry.props.hasKey("class"):
-    let enumOpt = parseEnumPureFromStr[ShipClass](
+    let parsedOpt = parseEnumPureFromStr[ShipClass](
       entry.props["class"].getString())
-    if enumOpt.isSome:
-      ship.shipClass = enumOpt.get()
+    if parsedOpt.isSome:
+      ship.shipClass = parsedOpt.get()
   if entry.props.hasKey("state"):
-    let enumOpt = parseEnumPureFromStr[CombatState](
+    let parsedOpt = parseEnumPureFromStr[CombatState](
       entry.props["state"].getString())
-    if enumOpt.isSome:
-      ship.state = enumOpt.get()
+    if parsedOpt.isSome:
+      ship.state = parsedOpt.get()
   if entry.props.hasKey("attack"):
     let valOpt = parseIntVal(entry.props["attack"])
     if valOpt.isSome:
@@ -425,10 +425,10 @@ proc parseShipFromEntry(entry: KdlNode): Ship =
     if valOpt.isSome:
       ship.stats.wep = valOpt.get()
   if entry.props.hasKey("cargo-type"):
-    let enumOpt = parseEnumPureFromStr[CargoClass](
+    let parsedOpt = parseEnumPureFromStr[CargoClass](
       entry.props["cargo-type"].getString())
-    if enumOpt.isSome:
-      ship.cargo = some(ShipCargo(cargoType: enumOpt.get()))
+    if parsedOpt.isSome:
+      ship.cargo = some(ShipCargo(cargoType: parsedOpt.get()))
   if entry.props.hasKey("cargo-quantity"):
     if ship.cargo.isNone:
       ship.cargo = some(ShipCargo())
@@ -463,10 +463,10 @@ proc parseGroundUnitFromEntry(entry: KdlNode): GroundUnit =
     if idOpt.isSome:
       unit.houseId = idOpt.get()
   if entry.props.hasKey("type"):
-    let enumOpt = parseEnumPureFromStr[GroundClass](
+    let parsedOpt = parseEnumPureFromStr[GroundClass](
       entry.props["type"].getString())
-    if enumOpt.isSome:
-      unit.stats.unitType = enumOpt.get()
+    if parsedOpt.isSome:
+      unit.stats.unitType = parsedOpt.get()
   if entry.props.hasKey("attack"):
     let valOpt = parseIntVal(entry.props["attack"])
     if valOpt.isSome:
@@ -476,10 +476,10 @@ proc parseGroundUnitFromEntry(entry: KdlNode): GroundUnit =
     if valOpt.isSome:
       unit.stats.defenseStrength = valOpt.get()
   if entry.props.hasKey("state"):
-    let enumOpt = parseEnumPureFromStr[CombatState](
+    let parsedOpt = parseEnumPureFromStr[CombatState](
       entry.props["state"].getString())
-    if enumOpt.isSome:
-      unit.state = enumOpt.get()
+    if parsedOpt.isSome:
+      unit.state = parsedOpt.get()
   if entry.props.hasKey("colony"):
     let idOpt = parseColonyId(entry.props["colony"])
     if idOpt.isSome:
@@ -501,10 +501,10 @@ proc parseVisibleSystemFromEntry(entry: KdlNode): VisibleSystem =
     if idOpt.isSome:
       system.systemId = idOpt.get()
   if entry.props.hasKey("visibility"):
-    let enumOpt = parseEnumPureFromStr[VisibilityLevel](
+    let parsedOpt = parseEnumPureFromStr[VisibilityLevel](
       entry.props["visibility"].getString())
-    if enumOpt.isSome:
-      system.visibility = enumOpt.get()
+    if parsedOpt.isSome:
+      system.visibility = parsedOpt.get()
   if entry.props.hasKey("last-scouted"):
     let valOpt = parseIntVal(entry.props["last-scouted"])
     if valOpt.isSome:
@@ -724,10 +724,10 @@ proc applyActProgressionDelta(parent: KdlNode, state: var PlayerState) =
       continue
     var progression = ActProgressionState()
     if child.props.hasKey("current-act"):
-      let enumOpt = parseEnumPureFromStr[GameAct](
+      let parsedOpt = parseEnumPureFromStr[GameAct](
         child.props["current-act"].getString())
-      if enumOpt.isSome:
-        progression.currentAct = enumOpt.get()
+      if parsedOpt.isSome:
+        progression.currentAct = parsedOpt.get()
     if child.props.hasKey("act-start-turn"):
       let valOpt = parseIntVal(child.props["act-start-turn"])
       if valOpt.isSome:
