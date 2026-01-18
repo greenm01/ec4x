@@ -25,6 +25,86 @@ proc getHousePubkey*(dbPath: string, gameId: string, houseId: HouseId): Option[s
   else:
     return none(string)
 
+proc getHouseByInviteCode*(dbPath: string, gameId: string,
+  inviteCode: string): Option[HouseId] =
+  ## Get house id by invite code
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let row = db.getRow(
+    sql"SELECT id FROM houses WHERE game_id = ? AND invite_code = ?",
+    gameId,
+    inviteCode
+  )
+
+  if row[0] == "":
+    return none(HouseId)
+
+  try:
+    return some(HouseId(parseInt(row[0]).uint32))
+  except CatchableError:
+    logError("Persistence", "Failed to parse house id for invite code")
+    return none(HouseId)
+
+proc getHouseInviteCode*(dbPath: string, gameId: string,
+  houseId: HouseId): Option[string] =
+  ## Get invite code for a house
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let row = db.getRow(
+    sql"SELECT invite_code FROM houses WHERE game_id = ? AND id = ?",
+    gameId,
+    $houseId.uint32
+  )
+
+  if row[0] != "":
+    return some(row[0])
+  else:
+    return none(string)
+
+proc isInviteCodeClaimed*(dbPath: string, gameId: string,
+  inviteCode: string): bool =
+  ## Returns true if invite code already assigned a pubkey
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let row = db.getRow(
+    sql"""
+    SELECT nostr_pubkey
+    FROM houses
+    WHERE game_id = ? AND invite_code = ?
+  """,
+    gameId,
+    inviteCode
+  )
+
+  if row[0] == "":
+    return false
+  else:
+    return true
+
+proc isInviteCodeAssigned*(dbPath: string, gameId: string,
+  inviteCode: string): bool =
+  ## Returns true if invite code is already assigned to a house
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let row = db.getRow(
+    sql"""
+    SELECT id
+    FROM houses
+    WHERE game_id = ? AND invite_code = ?
+  """,
+    gameId,
+    inviteCode
+  )
+
+  if row[0] == "":
+    return false
+  else:
+    return true
+
 proc loadPlayerStateSnapshot*(
   dbPath: string,
   gameId: string,

@@ -10,9 +10,11 @@ import std/[os, json, jsonutils]
 import db_connector/db_sqlite
 
 import ../../common/logger
+import ../../common/wordlist
 import ../../engine/types/game_state
 import ../../engine/globals
 import ./schema
+import ./reader
 import ./writer
 
 proc createGameDatabase*(state: GameState, dataDir: string): string =
@@ -61,5 +63,18 @@ proc createGameDatabase*(state: GameState, dataDir: string): string =
 
   # Persist full initial state (houses, systems, colonies, fleets, etc.)
   saveFullState(state)
+
+  for house in state.houses.entities.data:
+    var code = generateInviteCode()
+    var retries = 0
+    while isInviteCodeAssigned(dbPath, state.gameId, code) and retries < 5:
+      code = generateInviteCode()
+      retries += 1
+    if retries == 5 and isInviteCodeAssigned(dbPath, state.gameId, code):
+      logError("Persistence", "Failed to generate unique invite code for ",
+        house.name)
+      continue
+    updateHouseInviteCode(dbPath, state.gameId, house.id, code)
+    logInfo("Persistence", "Generated invite code for ", house.name, " (code hidden)")
 
   return dbPath

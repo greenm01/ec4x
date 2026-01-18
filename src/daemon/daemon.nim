@@ -12,6 +12,7 @@ import ./identity
 import ./transport/nostr/[types, client, wire, events, filter, crypto]
 import ../daemon/persistence/reader
 import ../daemon/persistence/writer
+import ../common/wordlist
 import ../daemon/parser/kdl_commands
 import ./transport/nostr/delta_kdl
 import ./transport/nostr/state_kdl
@@ -67,6 +68,7 @@ type DaemonCmd* = proc (): Future[Proposal[DaemonModel]]
 
 # Forward declarations
 proc publishFullState(gameId: string, state: GameState, houseId: HouseId) {.async.}
+proc publishGameDefinition(gameId: string, state: GameState) {.async.}
 proc publishTurnResults(gameId: string, state: GameState) {.async.}
 proc resolveTurnCmd(gameId: GameId): DaemonCmd
 
@@ -296,6 +298,47 @@ proc publishFullState(gameId: string, state: GameState, houseId: HouseId) {.asyn
   except CatchableError as e:
     logError("Nostr", "Failed to publish full state: ", e.msg)
 
+proc publishGameDefinition(gameId: string, state: GameState) {.async.} =
+  ## Publish game definition (30400) for lobby updates
+  try:
+    let gameInfo = daemonLoop.model.games[gameId]
+    var slots: seq[SlotInfo] = @[]
+
+    for (houseId, house) in state.allHousesWithId():
+      let codeOpt = getHouseInviteCode(gameInfo.dbPath, gameId, houseId)
+      let code = if codeOpt.isSome: codeOpt.get() else: ""
+      let pubkey = getPlayerPubkey(gameInfo, houseId)
+      let status = if pubkey.len > 0:
+                    SlotStatusClaimed
+                  else:
+                    SlotStatusPending
+      let index = int(houseId.uint32)
+      slots.add(SlotInfo(
+        index: index,
+        code: code,
+        status: status,
+        pubkey: pubkey
+      ))
+
+    var event = createGameDefinition(
+      gameId = gameId,
+      name = state.gameName,
+      status = gameInfo.phase,
+      slots = slots,
+      daemonPubkey = daemonLoop.model.identity.publicKeyHex
+    )
+
+    let daemonPriv = hexToBytes32(daemonLoop.model.identity.privateKeyHex)
+    signEvent(event, daemonPriv)
+
+    let published = await daemonLoop.model.nostrClient.publish(event)
+    if published:
+      logInfo("Nostr", "Published game definition for game=", gameId)
+    else:
+      logError("Nostr", "Failed to publish game definition for game=", gameId)
+  except CatchableError as e:
+    logError("Nostr", "Failed to publish game definition: ", e.msg)
+
 proc publishTurnResults(gameId: string, state: GameState) {.async.} =
   ## Publish turn results to all players via Nostr
   try:
@@ -393,40 +436,31 @@ proc processSlotClaim(event: NostrEvent) {.async.} =
       return
     
     let gameId = gameIdOpt.get()
-    let inviteCode = inviteCodeOpt.get()
+    let inviteCodeRaw = inviteCodeOpt.get()
+    let inviteCode = normalizeInviteCode(inviteCodeRaw)
     let playerPubkey = event.pubkey
-    
+
     # Get game info
     if not daemonLoop.model.games.hasKey(gameId):
       logWarn("Nostr", "Slot claim for unknown game: ", gameId)
       return
     
     let gameInfo = daemonLoop.model.games[gameId]
-    
-    # TODO: Validate invite code against stored codes
-    # For now, assign player to first available house
-    # This is a simplified implementation - full version should:
-    # 1. Validate invite code hash
-    # 2. Check if already claimed
-    # 3. Assign specific house based on invite code
-    # 4. Publish updated game definition (30400)
-    
-    # Load current state to find an available house
-    let state = loadFullState(gameInfo.dbPath)
-    
-    # Find first house without a pubkey
-    var assignedHouse: Option[HouseId] = none(HouseId)
-    for (houseId, house) in state.allHousesWithId():
-      let existingPubkey = getPlayerPubkey(gameInfo, houseId)
-      if existingPubkey.len == 0:
-        assignedHouse = some(houseId)
-        break
-    
-    if assignedHouse.isNone:
-      logWarn("Nostr", "No available houses for game: ", gameId)
+
+    if not isValidInviteCode(inviteCode):
+      logWarn("Nostr", "Invalid invite code for game=", gameId)
       return
-    
-    let houseId = assignedHouse.get()
+
+    let houseOpt = getHouseByInviteCode(gameInfo.dbPath, gameId, inviteCode)
+    if houseOpt.isNone:
+      logWarn("Nostr", "Unknown invite code for game=", gameId)
+      return
+
+    if isInviteCodeClaimed(gameInfo.dbPath, gameId, inviteCode):
+      logWarn("Nostr", "Invite code already claimed for game=", gameId)
+      return
+
+    let houseId = houseOpt.get()
     
     # Update house with player pubkey
     updateHousePubkey(gameInfo.dbPath, gameId, houseId, playerPubkey)
@@ -434,6 +468,7 @@ proc processSlotClaim(event: NostrEvent) {.async.} =
     # Publish full state immediately after slot claim
     let updatedState = loadFullState(gameInfo.dbPath)
     await publishFullState(gameId, updatedState, houseId)
+    await publishGameDefinition(gameId, updatedState)
     
     logInfo("Nostr", "Slot claimed for game=", gameId,
             " house=", $houseId, " player=", playerPubkey[0..7], "...")

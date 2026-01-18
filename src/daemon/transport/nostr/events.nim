@@ -52,7 +52,8 @@ proc createGameDefinition*(
     if slot.status == SlotStatusClaimed:
       tags.add(@[TagSlot, $slot.index, slot.status, slot.pubkey])
     else:
-      tags.add(@[TagSlot, $slot.index, slot.status, slot.code])
+      let slotCode = if slot.code.len > 0: slot.code else: "-"
+      tags.add(@[TagSlot, $slot.index, slot.status, slotCode])
   
   result = newEvent(
     kind = EventKindGameDefinition,

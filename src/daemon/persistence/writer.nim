@@ -65,6 +65,24 @@ proc updateHousePubkey*(dbPath: string, gameId: string, houseId: HouseId, pubkey
   )
   logInfo("Persistence", "Updated house ", $houseId, " with pubkey ", pubkey)
 
+proc updateHouseInviteCode*(dbPath: string, gameId: string, houseId: HouseId,
+  code: string) =
+  ## Update a house invite code
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  db.exec(
+    sql"""
+    UPDATE houses
+    SET invite_code = ?
+    WHERE game_id = ? AND id = ?
+  """,
+    code,
+    gameId,
+    $houseId.uint32,
+  )
+  logDebug("Persistence", "Updated invite code for house ", $houseId)
+
 proc savePlayerStateSnapshot*(
   dbPath: string,
   gameId: string,

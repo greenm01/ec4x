@@ -1448,10 +1448,7 @@ proc runTui(gameId: string = "") =
                   let joinPubkey = sam.model.nostrJoinPubkey
                   let joinGameId = sam.model.nostrJoinGameId
                   let gameName = event.getTagValue(TagName)
-                  let houseId = if slot.index > 0:
-                                 HouseId((slot.index - 1).uint32)
-                               else:
-                                 HouseId(slot.index.uint32)
+                  let houseId = HouseId(slot.index.uint32)
                   writeJoinCache("data", joinPubkey, joinGameId, houseId)
                   if gameName.isSome:
                     saveProfile("data", joinPubkey,

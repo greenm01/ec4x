@@ -15,7 +15,7 @@
 import std/os
 import db_connector/db_sqlite
 
-const SchemaVersion* = 5  # Incremented for new unified schema
+const SchemaVersion* = 6  # Incremented for new unified schema
 
 ## ============================================================================
 ## Core Game State Tables
@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS houses (
   game_id TEXT NOT NULL,
   name TEXT NOT NULL,               -- "House Alpha", "Empire Beta"
   nostr_pubkey TEXT,                -- npub/hex (NULL until assigned)
+  invite_code TEXT,                 -- Human invite code (NULL until generated)
   prestige INTEGER NOT NULL DEFAULT 0,
   treasury INTEGER NOT NULL DEFAULT 0,
   eliminated BOOLEAN NOT NULL DEFAULT 0,
@@ -66,6 +67,8 @@ CREATE TABLE IF NOT EXISTS houses (
 CREATE INDEX IF NOT EXISTS idx_houses_game ON houses(game_id);
 CREATE INDEX IF NOT EXISTS idx_houses_pubkey ON houses(nostr_pubkey)
   WHERE nostr_pubkey IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_houses_invite_code ON houses(invite_code)
+  WHERE invite_code IS NOT NULL;
 """
 
 const CreateSystemsTable* = """
