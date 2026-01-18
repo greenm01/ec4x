@@ -1,5 +1,5 @@
 import kdl
-import std/[strutils, options, tables, sequtils, logging, os]
+import std/[strutils, options, tables, os]
 import ../../engine/types/[command, core, fleet, production, tech, diplomacy, colony, espionage, ship, facilities, ground_unit]
 import ../../common/logger
 
@@ -38,11 +38,6 @@ proc getArg(node: KdlNode, index: int, name: string): KdlVal =
   if index < node.args.len:
     return node.args[index]
   raise newException(KdlParseError, "Missing argument '" & name & "' for node " & node.name)
-
-proc getProp(node: KdlNode, key: string): Option[KdlVal] =
-  if node.props.hasKey(key):
-    return some(node.props[key])
-  return none(KdlVal)
 
 proc getPropOrErr(node: KdlNode, key: string): KdlVal =
   if node.props.hasKey(key):

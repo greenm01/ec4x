@@ -3,7 +3,7 @@
 ## Implements event creation, serialization, parsing, and ID computation.
 ## https://github.com/nostr-protocol/nips/blob/master/01.md
 
-import std/[json, strutils, times, sequtils, options]
+import std/[json, strutils, times, options]
 import nimcrypto/[sha2, utils]
 import types
 

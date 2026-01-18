@@ -15,7 +15,7 @@
 import std/[options, strutils, tables, json, jsonutils, times]
 import db_connector/db_sqlite
 import ../../common/logger
-import ../../engine/types/[event, game_state, core, house, starmap, colony, fleet, ship, diplomacy, command, tech, espionage]
+import ../../engine/types/[event, game_state, core, house, starmap, colony, fleet, ship, command, tech, espionage]
 import ../transport/nostr/types
 import ./player_state_snapshot
 import ./reader
@@ -132,18 +132,29 @@ proc insertProcessedEvent*(dbPath: string, gameId: string, turn: int32,
   )
 
 proc cleanupProcessedEvents*(dbPath: string, gameId: string, currentTurn: int32,
-  commandRetentionTurns: int, eventRetentionDays: int) =
+  commandRetentionTurns: int, eventRetentionDays: int,
+  definitionRetentionDays: int, stateRetentionDays: int) =
   ## Remove old replay protection entries.
   let db = open(dbPath, "", "", "")
   defer: db.close()
 
-  if commandRetentionTurns <= 0 or eventRetentionDays <= 0:
+  if commandRetentionTurns <= 0:
     logWarn("Persistence", "Replay retention not applied for game ", gameId)
     return
 
+  let effectiveEventDays = if eventRetentionDays > 0: eventRetentionDays else: 0
+  let effectiveDefinitionDays = if definitionRetentionDays > 0:
+    definitionRetentionDays
+  else:
+    0
+  let effectiveStateDays = if stateRetentionDays > 0: stateRetentionDays else: 0
+
   let minTurn = currentTurn - int32(commandRetentionTurns - 1)
-  let eventCutoff = getTime().toUnix() -
-    int64(eventRetentionDays * 24 * 60 * 60)
+  let nowUnix = getTime().toUnix()
+  let eventCutoff = nowUnix - int64(effectiveEventDays * 24 * 60 * 60)
+  let definitionCutoff = nowUnix -
+    int64(effectiveDefinitionDays * 24 * 60 * 60)
+  let stateCutoff = nowUnix - int64(effectiveStateDays * 24 * 60 * 60)
 
   db.exec(
     sql"""
@@ -155,15 +166,39 @@ proc cleanupProcessedEvents*(dbPath: string, gameId: string, currentTurn: int32,
     $minTurn
   )
 
-  db.exec(
-    sql"""
-    DELETE FROM nostr_event_log
-    WHERE game_id = ? AND kind != ? AND created_at < ?
-    """,
-    gameId,
-    $EventKindTurnCommands,
-    $eventCutoff
-  )
+  if effectiveEventDays > 0:
+    db.exec(
+      sql"""
+      DELETE FROM nostr_event_log
+      WHERE game_id = ? AND kind NOT IN (?, ?) AND created_at < ?
+      """,
+      gameId,
+      $EventKindGameDefinition,
+      $EventKindGameState,
+      $eventCutoff
+    )
+
+  if effectiveDefinitionDays > 0:
+    db.exec(
+      sql"""
+      DELETE FROM nostr_event_log
+      WHERE game_id = ? AND kind = ? AND created_at < ?
+      """,
+      gameId,
+      $EventKindGameDefinition,
+      $definitionCutoff
+    )
+
+  if effectiveStateDays > 0:
+    db.exec(
+      sql"""
+      DELETE FROM nostr_event_log
+      WHERE game_id = ? AND kind = ? AND created_at < ?
+      """,
+      gameId,
+      $EventKindGameState,
+      $stateCutoff
+    )
 
 proc saveHouses(db: DbConn, state: GameState) =
   for house in state.houses.entities.data:

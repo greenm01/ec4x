@@ -3,7 +3,6 @@
 ## Format:
 ##   KDL string -> zippy compress -> NIP-44 encrypt -> base64 string
 
-import types
 import crypto
 import compression
 

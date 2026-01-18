@@ -1,4 +1,3 @@
-import std/os
 import kdl
 
 type
@@ -8,6 +7,8 @@ type
     relay_urls*: seq[string]
     replay_retention_turns*: int
     replay_retention_days*: int
+    replay_retention_days_definition*: int
+    replay_retention_days_state*: int
 
 proc parseDaemonKdl*(path: string): DaemonConfig =
   let content = readFile(path)
@@ -37,6 +38,12 @@ proc parseDaemonKdl*(path: string): DaemonConfig =
     of "replay_retention_days":
       if child.args.len > 0:
         result.replay_retention_days = child.args[0].getInt().int
+    of "replay_retention_days_definition":
+      if child.args.len > 0:
+        result.replay_retention_days_definition = child.args[0].getInt().int
+    of "replay_retention_days_state":
+      if child.args.len > 0:
+        result.replay_retention_days_state = child.args[0].getInt().int
     else:
       discard
 
@@ -51,3 +58,7 @@ proc parseDaemonKdl*(path: string): DaemonConfig =
     result.replay_retention_turns = 2
   if result.replay_retention_days == 0:
     result.replay_retention_days = 7
+  if result.replay_retention_days_definition == 0:
+    result.replay_retention_days_definition = result.replay_retention_days
+  if result.replay_retention_days_state == 0:
+    result.replay_retention_days_state = result.replay_retention_days

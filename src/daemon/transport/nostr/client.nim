@@ -3,7 +3,7 @@
 ## Uses treeform/ws library for WebSocket connections.
 ## Supports multiple relays with automatic reconnection.
 
-import std/[asyncdispatch, tables, json, strutils, options, sequtils]
+import std/[asyncdispatch, tables, strutils, sequtils]
 import ws
 import types, nip01, filter
 import ../../../common/logger

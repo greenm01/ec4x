@@ -1,6 +1,6 @@
 ## Core Nostr types and constants for EC4X transport layer
 
-import std/[json, tables, options]
+import std/[tables, options]
 
 type
   NostrEvent* = object

@@ -69,8 +69,13 @@ suite "Replay Protection":
       $oldTimestamp,
       "evt-stale"
     )
+    db.exec(
+      sql"UPDATE nostr_event_log SET created_at = ? WHERE event_id = ?",
+      $oldTimestamp,
+      "evt-stale-def"
+    )
 
-    writer.cleanupProcessedEvents(dbPath, gameId, 3, 2, 7)
+    writer.cleanupProcessedEvents(dbPath, gameId, 3, 2, 7, 30, 14)
 
     check not reader.hasProcessedEvent(
       dbPath, gameId, EventKindTurnCommands, "evt-old",
@@ -80,6 +85,18 @@ suite "Replay Protection":
       dbPath, gameId, EventKindTurnCommands, "evt-keep",
       reader.ReplayDirection.Inbound
     )
+    check reader.hasProcessedEvent(
+      dbPath, gameId, EventKindGameDefinition, "evt-stale",
+      reader.ReplayDirection.Outbound
+    )
+
+    writer.cleanupProcessedEvents(dbPath, gameId, 3, 2, 0, 0, 0)
+    check reader.hasProcessedEvent(
+      dbPath, gameId, EventKindGameDefinition, "evt-stale",
+      reader.ReplayDirection.Outbound
+    )
+
+    writer.cleanupProcessedEvents(dbPath, gameId, 3, 2, 0, 1, 0)
     check not reader.hasProcessedEvent(
       dbPath, gameId, EventKindGameDefinition, "evt-stale",
       reader.ReplayDirection.Outbound

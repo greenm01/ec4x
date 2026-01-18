@@ -862,14 +862,18 @@ nim c -r tests/integration/test_nostr_transport.nim
 # Slot claim validation
 nim c -r tests/integration/test_slot_claim.nim
 
-# Replay protection persistence
-nim c -r tests/daemon/test_replay_protection.nim
-
 # Test with real relay
 RELAY_URL=ws://localhost:8080 nim c -r tests/integration/test_relay_connection.nim
 ```
 
-### 7.3 End-to-End Test Script
+### 7.3 Daemon Tests
+
+```bash
+# Replay protection persistence
+nim c -r tests/daemon/test_replay_protection.nim
+```
+
+### 7.4 End-to-End Test Script
 
 ```bash
 #!/bin/bash

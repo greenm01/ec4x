@@ -3,9 +3,8 @@
 import std/[tables, options, json, strutils, jsonutils, os]
 import db_connector/db_sqlite
 import ../../common/logger
-import ../../engine/types/[game_state, core, house, starmap, colony, fleet, ship, diplomacy, command, tech, production]
+import ../../engine/types/[game_state, core, house, starmap, colony, fleet, ship, command, tech, production]
 import ../../engine/state/engine
-import ./schema
 import ./player_state_snapshot
 
 # Replay protection
@@ -174,7 +173,7 @@ proc loadSystems(db: DbConn, state: GameState) =
   let rows = db.getAllRows(sql"SELECT id, name, hex_q, hex_r, ring, planet_class, resource_rating FROM systems")
   for row in rows:
     try:
-      let id = SystemId(parseInt(row[0]).uint32) # Wait, IDs are usually distinct uint32, but stored as string?
+      let systemId = SystemId(parseInt(row[0]).uint32) # Wait, IDs are usually distinct uint32, but stored as string?
       # writer.nim uses `$system.id`. If ID is 1, string is "1".
       # parseInt("1") -> 1.
       # If ID is UUID string?
@@ -186,7 +185,7 @@ proc loadSystems(db: DbConn, state: GameState) =
       # So `parseInt` is correct.
       
       let system = System(
-        id: SystemId(parseInt(row[0]).uint32),
+        id: systemId,
         name: row[1],
         coords: Hex(q: int32(parseInt(row[2])), r: int32(parseInt(row[3]))),
         ring: uint32(parseInt(row[4])),
@@ -343,6 +342,7 @@ proc loadOrders*(dbPath: string, turn: int): Table[HouseId, CommandPacket] =
     
     let fleetIdStr = row[1]
     let colonyIdStr = row[2]
+    discard colonyIdStr
     let cmdType = row[3]
     let params = parseJson(row[6])
     

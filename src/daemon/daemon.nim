@@ -3,13 +3,13 @@
 ## The daemon monitors active games, collects player orders, resolves turns,
 ## and publishes results—all without human intervention.
 
-import std/[os, tables, sets, times, asyncdispatch, strutils, options]
+import std/[os, tables, sets, asyncdispatch, strutils, options]
 import cligen
 import ../common/logger
 import ./sam_core
 import ./config
 import ./identity
-import ./transport/nostr/[types, client, wire, events, filter, crypto]
+import ./transport/nostr/[types, client, wire, events, crypto]
 import ../daemon/persistence/reader
 import ../daemon/persistence/writer
 import ../common/wordlist
@@ -22,7 +22,7 @@ import ./transport/nostr/state_kdl
 import ../engine/turn_cycle/engine
 import ../engine/config/engine
 import ../engine/globals
-import ../engine/types/[core, house, command, event, game_state]
+import ../engine/types/[core, command, game_state]
 import ../engine/state/iterators
 
 # =============================================================================
@@ -48,6 +48,8 @@ type
     pollInterval*: int                     # Seconds between polls
     replayRetentionTurns*: int             # Replay log turns retention
     replayRetentionDays*: int              # Replay log days retention
+    replayRetentionDaysDefinition*: int    # Game definition retention
+    replayRetentionDaysState*: int         # State publish retention
     identity*: DaemonIdentity              # Nostr keypair
     nostrClient*: NostrClient              # Nostr relay client
     relayUrls*: seq[string]                # Relay URLs from config
@@ -146,7 +148,9 @@ proc resolveTurnCmd(gameId: GameId): DaemonCmd =
 
       writer.cleanupProcessedEvents(gameInfo.dbPath, gameId, state.turn.int32,
         daemonLoop.model.replayRetentionTurns,
-        daemonLoop.model.replayRetentionDays)
+        daemonLoop.model.replayRetentionDays,
+        daemonLoop.model.replayRetentionDaysDefinition,
+        daemonLoop.model.replayRetentionDaysState)
 
       return Proposal[DaemonModel](
         name: "turn_resolved",
@@ -226,6 +230,12 @@ proc tickProposal(): Proposal[DaemonModel] =
         $model.games.len)
       daemonLoop.queueCmd(discoverGamesCmd(model.dataDir))
       
+      for gameId, gameInfo in model.games:
+        writer.cleanupProcessedEvents(gameInfo.dbPath, gameId,
+          gameInfo.turn.int32, model.replayRetentionTurns,
+          model.replayRetentionDays, model.replayRetentionDaysDefinition,
+          model.replayRetentionDaysState)
+
       # Subscribe to commands for all active games
       for gameId, gameInfo in model.games:
         if model.nostrClient != nil and model.nostrClient.isConnected():
@@ -561,6 +571,7 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
 
 proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
   replayRetentionTurns: int, replayRetentionDays: int,
+  replayRetentionDaysDefinition: int, replayRetentionDaysState: int,
   allowIdentityRegen: bool): DaemonModel =
   result = DaemonModel(
     games: initTable[GameId, GameInfo](),
@@ -571,6 +582,8 @@ proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
     pollInterval: pollInterval,
     replayRetentionTurns: replayRetentionTurns,
     replayRetentionDays: replayRetentionDays,
+    replayRetentionDaysDefinition: replayRetentionDaysDefinition,
+    replayRetentionDaysState: replayRetentionDaysState,
     identity: ensureIdentity(allowIdentityRegen),
     nostrClient: nil,  # Will be initialized in mainLoop
     relayUrls: relayUrls,
@@ -580,9 +593,11 @@ proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
 
 proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   replayRetentionTurns: int, replayRetentionDays: int,
+  replayRetentionDaysDefinition: int, replayRetentionDaysState: int,
   allowIdentityRegen: bool): DaemonLoop =
   result = newSamLoop(initModel(dataDir, pollInterval, relayUrls,
-    replayRetentionTurns, replayRetentionDays, allowIdentityRegen))
+    replayRetentionTurns, replayRetentionDays,
+    replayRetentionDaysDefinition, replayRetentionDaysState, allowIdentityRegen))
   # Add generic acceptor to execute proposal payloads
   result.addAcceptor(proc(model: var DaemonModel, proposal: Proposal[DaemonModel]): bool =
     if proposal.payload == nil:
@@ -593,14 +608,16 @@ proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   )
 
 proc initTestDaemonLoop*(dataDir: string): DaemonLoop =
-  result = newDaemonLoop(dataDir, 30, @[], 2, 7, true)
+  result = newDaemonLoop(dataDir, 30, @[], 2, 7, 30, 14, true)
 
 proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   replayRetentionTurns: int, replayRetentionDays: int,
+  replayRetentionDaysDefinition: int, replayRetentionDaysState: int,
   allowIdentityRegen: bool) {.async.} =
   ## SAM daemon loop
   daemonLoop = newDaemonLoop(dataDir, pollInterval, relayUrls,
-    replayRetentionTurns, replayRetentionDays, allowIdentityRegen)
+    replayRetentionTurns, replayRetentionDays,
+    replayRetentionDaysDefinition, replayRetentionDaysState, allowIdentityRegen)
   
   logInfo("Daemon", "Starting SAM daemon...")
   logInfo("Daemon", "Data directory: ", dataDir)
@@ -684,7 +701,7 @@ proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
 # CLI Entry Point
 # =============================================================================
 
-proc start(
+proc start*(
     dataDir: string = "data",
     pollInterval: int = 30,
     configKdl: string = ""
@@ -695,6 +712,8 @@ proc start(
   var finalRelayUrls: seq[string] = @[]
   var replayRetentionTurns = 2
   var replayRetentionDays = 7
+  var replayRetentionDaysDefinition = 30
+  var replayRetentionDaysState = 14
 
   if configKdl.len > 0:
     logInfo("Daemon", "Loading config from: ", configKdl)
@@ -704,6 +723,8 @@ proc start(
     finalRelayUrls = cfg.relay_urls
     replayRetentionTurns = cfg.replay_retention_turns
     replayRetentionDays = cfg.replay_retention_days
+    replayRetentionDaysDefinition = cfg.replay_retention_days_definition
+    replayRetentionDaysState = cfg.replay_retention_days_state
   else:
     # Default relay
     finalRelayUrls = @["ws://localhost:8080"]
@@ -735,14 +756,16 @@ proc start(
 
   try:
     waitFor mainLoop(finalDataDir, finalPollInterval, finalRelayUrls,
-      replayRetentionTurns, replayRetentionDays, allowIdentityRegen)
+      replayRetentionTurns, replayRetentionDays,
+      replayRetentionDaysDefinition, replayRetentionDaysState,
+      allowIdentityRegen)
   except CatchableError as e:
     logError("Daemon", "Failed to start daemon: ", e.msg)
     return 1
 
   return 0
 
-proc resolve(gameId: string, dataDir: string = "data"): int =
+proc resolve*(gameId: string, dataDir: string = "data"): int =
   ## Manually trigger turn resolution for a game
   let gamesDir = dataDir / "games"
   let dbPath = gamesDir / gameId / "ec4x.db"
@@ -757,18 +780,22 @@ proc resolve(gameId: string, dataDir: string = "data"): int =
   gameConfig = loadGameConfig("config")
 
   # Initialize global loop if needed (some cmds might use it)
-  daemonLoop = newDaemonLoop(dataDir, 30, @["ws://localhost:8080"], 2, 7, true)
+  let daemonConfig = parseDaemonKdl("config/daemon.kdl")
+  daemonLoop = newDaemonLoop(dataDir, 30, daemonConfig.relay_urls,
+    daemonConfig.replay_retention_turns, daemonConfig.replay_retention_days,
+    daemonConfig.replay_retention_days_definition,
+    daemonConfig.replay_retention_days_state, true)
 
   # Load state
   let state = loadFullState(dbPath)
   let commands = loadOrders(dbPath, state.turn)
 
   # Resolve
-  let result = resolveTurnDeterministic(state, commands)
+  let resolution = resolveTurnDeterministic(state, commands)
   
   # Save
   saveFullState(state)
-  saveGameEvents(state, result.events)
+  saveGameEvents(state, resolution.events)
   markCommandsProcessed(dbPath, gameId, state.turn - 1)
 
   # Publish turn results via Nostr (if connected)
@@ -780,15 +807,15 @@ proc resolve(gameId: string, dataDir: string = "data"): int =
   logInfo("Daemon", "Resolution complete. Now at turn ", $state.turn)
   return 0
 
-proc stop(): int =
+proc stop*(): int =
   echo "Stop command not yet implemented"
   return 0
 
-proc status(): int =
+proc status*(): int =
   echo "Status command not yet implemented"
   return 0
 
-proc version(): int =
+proc version*(): int =
   echo "EC4X Daemon v0.1.0"
   return 0
 

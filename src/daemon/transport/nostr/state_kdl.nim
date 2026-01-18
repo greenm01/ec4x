@@ -8,7 +8,6 @@ import ../../../engine/types/[core, colony, fleet, ship, ground_unit, player_sta
   production, progression, capacity]
 import ../../../engine/types/tech
 import ../../../engine/types/game_state
-import ../../persistence/player_state_snapshot
 
 proc kdlEnum(value: string): string =
   value.toLowerAscii().replace("_", "-")

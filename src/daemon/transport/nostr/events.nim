@@ -7,7 +7,7 @@
 ## - 30403: Turn results/deltas (encrypted)
 ## - 30405: Full game state (encrypted)
 
-import std/[json, times, options, strutils, sequtils]
+import std/[json, options, strutils, sequtils]
 import types, nip01
 
 # =============================================================================
@@ -245,10 +245,3 @@ proc getSlots*(event: NostrEvent): seq[SlotInfo] =
           slot.code = tag[3]
       result.add(slot)
 
-# Helper for filterIt used above
-template filterIt[T](s: openArray[T], pred: untyped): seq[T] =
-  var result: seq[T] = @[]
-  for it {.inject.} in s:
-    if pred:
-      result.add(it)
-  result

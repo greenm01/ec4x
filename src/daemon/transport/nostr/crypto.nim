@@ -5,7 +5,7 @@ import std/[base64, strutils, sysrand]
 import nimcrypto/[sha2, hmac]
 import secp256k1
 import stew/byteutils
-import nim_chacha20_poly1305/[common, chacha20, helpers]
+import nim_chacha20_poly1305/[chacha20, helpers]
 
 import types
 import nip01
@@ -57,11 +57,6 @@ proc toHex*(data: openArray[byte]): string =
   ## Convert bytes to lowercase hex
   data.toHex().toLowerAscii()
 
-proc toBytes(hexStr: string): seq[byte] =
-  let resultValue = seq[byte].fromHex(hexStr)
-  if resultValue.isErr:
-    raise newException(ValueError, $resultValue.error)
-  resultValue.get()
 
 # =============================================================================
 # Event Signing

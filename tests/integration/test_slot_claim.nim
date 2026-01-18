@@ -3,7 +3,7 @@
 
 import std/[asyncdispatch, options, os, times, unittest, tables]
 import ../../src/daemon/daemon
-import ../../src/daemon/transport/nostr/[events, crypto, nip01, client]
+import ../../src/daemon/transport/nostr/[events, crypto, client]
 import ../../src/daemon/persistence/[init, reader]
 import ../../src/engine/init/game_state
 import ../../src/engine/types/core
