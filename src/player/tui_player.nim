@@ -1422,6 +1422,8 @@ proc runTui(gameId: string = "") =
                   sam.model.nostrStatus = "connected"
                 if sam.model.appPhase == AppPhase.Lobby:
                   sam.model.appPhase = AppPhase.InGame
+              else:
+                sam.model.statusMessage = "Invalid full state payload"
             elif event.kind == EventKindTurnResults:
               let appliedTurnOpt = applyDeltaToCachedState("data",
                 identity.npubHex, activeGameId, playerState, payload)
@@ -1429,6 +1431,8 @@ proc runTui(gameId: string = "") =
                 sam.model.turn = int(appliedTurnOpt.get())
                 sam.model.playerStateLoaded = true
                 sam.model.statusMessage = "Delta applied"
+              else:
+                sam.model.statusMessage = "Invalid delta payload"
 
 
           elif event.kind == EventKindGameDefinition:
@@ -1456,7 +1460,9 @@ proc runTui(gameId: string = "") =
                   nostrDaemonPubkey.len == 0:
                 nostrDaemonPubkey = event.pubkey
             if (sam.model.nostrJoinRequested or sam.model.nostrJoinSent) and
-                sam.model.nostrJoinGameId.len > 0:
+                sam.model.nostrJoinGameId.len > 0 and
+                event.pubkey.len > 0 and
+                sam.model.nostrJoinPubkey.len > 0:
               let slots = event.getSlots()
               for slot in slots:
                 if slot.status == SlotStatusClaimed and

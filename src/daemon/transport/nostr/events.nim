@@ -27,7 +27,7 @@ type
     maxPlayers*: int
     slots*: seq[SlotInfo]
 
-proc inviteCodeHash(code: string): string =
+proc inviteCodeHash*(code: string): string =
   let normalized = normalizeInviteCode(code)
   if normalized.len == 0:
     return ""
