@@ -9,13 +9,14 @@
 ##   Reactors -> NAPs -> Render
 ##
 import std/[options, strformat, tables, strutils, unicode,
-  parseopt, os, algorithm]
+  parseopt, os, algorithm, asyncdispatch]
 import ../common/logger
 import
   ../engine/types/[core, colony, fleet,
     player_state as ps_types, diplomacy]
 import ../engine/state/[engine, iterators]
 import ../engine/systems/capacity/c2_pool
+import ../daemon/transport/nostr/[client, types, events, nip19, wire]
 import ./tui/term/term
 import ./tui/buffer
 import ./tui/events
@@ -1275,6 +1276,22 @@ proc outputBuffer(buf: CellBuffer) =
 # Main Entry Point
 # =============================================================================
 
+proc hexToBytes32(hexStr: string): array[32, byte] =
+  ## Convert hex string to 32-byte array
+  if hexStr.len != 64:
+    raise newException(ValueError, "Invalid hex length: expected 64, got " &
+      $hexStr.len)
+  for i in 0..<32:
+    let hexByte = hexStr[i * 2 .. i * 2 + 1]
+    result[i] = byte(parseHexInt(hexByte))
+
+proc hexToBytes32Safe(hexStr: string): Option[array[32, byte]] =
+  ## Convert hex string to bytes without raising
+  try:
+    some(hexToBytes32(hexStr))
+  except CatchableError:
+    none(array[32, byte])
+
 proc runTui(gameId: string = "") =
   ## Main TUI execution (called from main() or from new terminal window)
   logInfo("TUI Player SAM", "Starting EC4X TUI Player with SAM pattern...")
@@ -1284,6 +1301,8 @@ proc runTui(gameId: string = "") =
   var playerState = ps_types.PlayerState()
   var viewingHouse = HouseId(1)
   var activeGameId = gameId
+  var nostrClient: NostrClient = nil
+  var nostrRelayUrl = ""
 
   # Initialize terminal
   var tty = openTty()
@@ -1341,6 +1360,9 @@ proc runTui(gameId: string = "") =
     if initialModel.lobbyJoinGames.len > 0:
       initialModel.lobbyJoinStatus = JoinStatus.SelectingGame
 
+  if initialModel.entryModal.relayUrl().len > 0:
+    initialModel.nostrRelayUrl = initialModel.entryModal.relayUrl()
+
   # Sync game state to model (only after joining a game)
   if initialModel.appPhase == AppPhase.InGame:
     syncGameStateToModel(initialModel, gameState, viewingHouse)
@@ -1348,6 +1370,55 @@ proc runTui(gameId: string = "") =
 
     if initialModel.homeworld.isSome:
       initialModel.mapState.cursor = initialModel.homeworld.get
+
+  if initialModel.nostrRelayUrl.len > 0 and
+      activeGameId.len > 0:
+    try:
+      let identity = initialModel.entryModal.identity
+      let relayList = @[initialModel.nostrRelayUrl]
+      nostrClient = newNostrClient(relayList)
+      nostrClient.onEvent = proc(subId: string, event: NostrEvent) =
+        let privOpt = hexToBytes32Safe(identity.nsecHex)
+        let pubOpt = hexToBytes32Safe(event.pubkey)
+        if privOpt.isNone or pubOpt.isNone:
+          sam.model.nostrLastError = "Invalid key material"
+          sam.model.nostrStatus = "error"
+          sam.model.nostrEnabled = false
+          sam.present(emptyProposal())
+          return
+        try:
+          let payload = decodePayload(event.content, privOpt.get(), pubOpt.get())
+          if event.kind == EventKindGameState:
+            let stateOpt = parseFullStateKdl(payload)
+            if stateOpt.isSome:
+              playerState = stateOpt.get()
+              sam.model.playerStateLoaded = true
+              viewingHouse = playerState.viewingHouse
+              sam.model.viewingHouse = int(viewingHouse)
+              sam.model.turn = int(playerState.turn)
+              sam.model.statusMessage = "Full state received"
+              if sam.model.nostrEnabled:
+                sam.model.nostrStatus = "connected"
+          elif event.kind == EventKindTurnResults:
+            let turnOpt = applyDeltaToCachedState("data",
+              identity.npubHex, activeGameId, playerState, payload)
+            if turnOpt.isSome:
+              sam.model.turn = int(turnOpt.get())
+              sam.model.playerStateLoaded = true
+              sam.model.statusMessage = "Delta applied"
+          sam.present(emptyProposal())
+        except CatchableError as e:
+          sam.model.nostrLastError = e.msg
+          sam.model.nostrStatus = "error"
+          sam.model.nostrEnabled = false
+          sam.present(emptyProposal())
+      asyncCheck nostrClient.connect()
+      initialModel.nostrStatus = "connecting"
+      initialModel.nostrEnabled = true
+    except CatchableError as e:
+      initialModel.nostrLastError = e.msg
+      initialModel.nostrStatus = "error"
+      initialModel.nostrEnabled = false
 
   # Set render function (closure captures buf and gameState)
   sam.setRender(
@@ -1398,6 +1469,20 @@ proc runTui(gameId: string = "") =
         let proposalOpt = mapKeyEvent(event.keyEvent, sam.state)
         if proposalOpt.isSome:
           sam.present(proposalOpt.get)
+
+    if sam.model.nostrEnabled and nostrClient != nil:
+      if sam.model.nostrStatus == "connecting" and
+          nostrClient.isConnected():
+        let playerPubHex = sam.model.entryModal.identity.npubHex
+        asyncCheck nostrClient.subscribeGame(activeGameId, playerPubHex)
+        asyncCheck nostrClient.listen()
+        sam.model.nostrStatus = "connected"
+        sam.model.statusMessage = "Nostr connected"
+      elif sam.model.nostrStatus == "connected" and
+          not nostrClient.isConnected():
+        sam.model.nostrStatus = "error"
+        sam.model.nostrLastError = "Relay disconnected"
+        sam.model.nostrEnabled = false
 
     # Poll for join response when waiting
     if sam.model.appPhase == AppPhase.Lobby and

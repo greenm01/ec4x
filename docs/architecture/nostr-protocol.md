@@ -574,7 +574,7 @@ KDL schemas for commands, deltas, and full state.
 
 ### Command Packet (30402)
 
-Player commands submitted each turn. Parsed by `kdl_orders.nim`.
+Player commands submitted each turn. Parsed by `kdl_commands.nim`.
 
 ```kdl
 commands house=(HouseId)1 turn=5 {

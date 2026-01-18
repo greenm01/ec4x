@@ -325,6 +325,12 @@ type
     # PlayerState cache (local, fog-of-war filtered)
     playerStateLoaded*: bool
 
+    # Nostr sync
+    nostrEnabled*: bool
+    nostrRelayUrl*: string
+    nostrLastError*: string
+    nostrStatus*: string
+
     # -------------
     # Game Data (View Layer - decoupled from engine)
     # -------------
@@ -392,6 +398,7 @@ proc initBreadcrumb*(label: string, mode: ViewMode,
 proc initTuiModel*(): TuiModel =
   ## Create initial TUI model with defaults
   TuiModel(
+
     appPhase: AppPhase.Lobby,
     mode: ViewMode.Overview,
     previousMode: ViewMode.Overview,
@@ -437,6 +444,10 @@ proc initTuiModel*(): TuiModel =
     needsResize: false,
     statusMessage: "",
     playerStateLoaded: false,
+    nostrEnabled: false,
+    nostrRelayUrl: "",
+    nostrLastError: "",
+    nostrStatus: "idle",
     turn: 1,
     viewingHouse: 1,
     houseName: "Unknown",

@@ -12,7 +12,7 @@ import ./identity
 import ./transport/nostr/[types, client, wire, events, filter, crypto]
 import ../daemon/persistence/reader
 import ../daemon/persistence/writer
-import ../daemon/parser/kdl_orders
+import ../daemon/parser/kdl_commands
 import ./transport/nostr/delta_kdl
 import ./transport/nostr/state_kdl
 import ../engine/turn_cycle/engine

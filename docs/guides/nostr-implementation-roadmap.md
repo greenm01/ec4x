@@ -2,6 +2,7 @@
 
 ## Changelog
 - 2026-01-17: Added PlayerState snapshot persistence, diff-based delta publishing, and 30405 full-state serialization.
+- 2026-01-17: Canonical-only KDL payloads for 30405/30403 with child-node lists and pure-enum parsing fixes.
 
 This document details the technical implementation plan for full Nostr
 transport in EC4X. It covers the phases, code changes, and testing
@@ -13,7 +14,7 @@ strategies needed to complete the integration.
 - Schema: `nostr_pubkey` field in `houses` table
 - Schema: `player_state_snapshots` table for per-house delta baselines
 - Dependencies: `ws`, `zippy`, `nimcrypto` added to nimble
-- KDL parser: Command parsing implemented (`kdl_orders.nim`)
+- KDL parser: Command parsing implemented (`kdl_commands.nim`)
 - Nostr transport: client, filters, event builders, NIP-01 parsing
 - NIP-44 encryption/decryption + wire compression helpers
 - Daemon: relay connection, command ingestion, slot claim handling
@@ -24,6 +25,10 @@ strategies needed to complete the integration.
 - Added PlayerState snapshot persistence + diff-based delta generation
 - Published deltas with full object updates + compact removals
 - Added slot claim handler and house pubkey persistence
+- Canonical-only KDL payloads for 30405/30403 (no embedded JSON)
+- Delta list fields now emit as child nodes (omitted when empty)
+- Player-side KDL parsing updated for pure enums
+- Renamed `kdl_orders.nim` to `kdl_commands.nim`
 
 **Stubbed/TODO:**
 - Command serialization from packet to KDL (player submit side)
@@ -576,7 +581,7 @@ proc loadDelta*(
 import std/[asyncdispatch, tables]
 import transport/nostr/[client, types, filter, wire]
 import persistence/[reader, writer]
-import parser/kdl_orders
+import parser/kdl_commands
 import ../common/logger
 
 type
@@ -913,8 +918,8 @@ echo "E2E test complete"
 ### Phase 4: Delta System
 - [x] PlayerState diff + KDL formatting (`src/daemon/transport/nostr/delta_kdl.nim`)
 - [x] Snapshot persistence (`src/daemon/persistence/player_state_snapshot.nim`)
-- [ ] `src/player/state/delta_applicator.nim` - Apply deltas
-- [ ] Rename `kdl_orders.nim` to `kdl_commands.nim`
+- [x] `src/player/state/delta_applicator.nim` - Apply deltas
+- [x] Rename `kdl_orders.nim` to `kdl_commands.nim`
 
 ### Phase 5: Daemon Integration
 - [x] `daemon.nim` main loop: relay connection + subscriptions

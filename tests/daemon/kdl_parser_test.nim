@@ -1,6 +1,6 @@
 import unittest
 import std/[options]
-import ../../src/daemon/parser/kdl_orders
+import ../../src/daemon/parser/kdl_commands
 import ../../src/engine/types/[command, fleet, core, production]
 
 test "Parse Fleet Command":
