@@ -6,7 +6,7 @@
 ## The engine (src/engine/) is pure - it generates GameState in memory.
 ## This module persists that state to SQLite.
 
-import std/[os, json, jsonutils]
+import std/[os, json, jsonutils, random]
 import db_connector/db_sqlite
 
 import ../../common/logger
@@ -26,8 +26,17 @@ proc createGameDatabase*(state: GameState, dataDir: string): string =
   ##
   ## Returns: Path to created database file
 
-  let (dbPath, gameDir) = defaultDBConfig(state.gameId, dataDir)
+  var gameSlug = ""
+  randomize()
+  while true:
+    gameSlug = generateGameSlug()
+    let (_, gameDir) = defaultDBConfig(state.gameId, gameSlug, dataDir)
+    if not dirExists(gameDir):
+      break
+
+  let (dbPath, gameDir) = defaultDBConfig(state.gameId, gameSlug, dataDir)
   state.dbPath = dbPath # Set dbPath on state object
+  state.gameName = gameSlug
 
   # Create game directory
   createDir(gameDir)
@@ -47,15 +56,15 @@ proc createGameDatabase*(state: GameState, dataDir: string): string =
   # Insert game metadata
   db.exec(sql"""
     INSERT INTO games (
-      id, name, description, turn, year, month, phase, transport_mode,
+      id, name, description, slug, turn, year, month, phase, transport_mode,
       game_setup_json, game_config_json,
       created_at, updated_at
     ) VALUES (
-      ?, ?, ?, 1, 2001, 1, 'Active', 'nostr',
+      ?, ?, ?, ?, 1, 2001, 1, 'Active', 'nostr',
       ?, ?,
       unixepoch(), unixepoch()
     )
-  """, state.gameId, state.gameName, state.gameDescription,
+  """, state.gameId, state.gameName, state.gameDescription, gameSlug,
        setupJson, configJson)
 
   logInfo("Persistence", "Initialized database: ", dbPath)

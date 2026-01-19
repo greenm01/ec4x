@@ -1,7 +1,7 @@
 ## Per-Game Database Writer
 ##
 ## Unified persistence layer for per-game databases.
-## Each game has its own database at data/games/{uuid}/ec4x.db
+## Each game has its own database at data/games/{slug}/ec4x.db
 ##
 ## Architecture:
 ## - Schema created by createGameDatabase() in daemon/persistence/init.nim

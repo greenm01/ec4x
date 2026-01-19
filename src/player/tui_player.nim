@@ -1647,21 +1647,23 @@ proc runTui(gameId: string = "") =
       let gameId = sam.model.loadGameId
       let houseId = HouseId(sam.model.loadHouseId.uint32)
       let dataDir = "data"
-      let dbPath = dataDir / "games" / gameId / "ec4x.db"
+      let infoOpt = loadGameInfo(dataDir, gameId)
       sam.model.playerStateLoaded = false
-      if fileExists(dbPath):
+      if infoOpt.isSome:
+        let info = infoOpt.get()
+        let dbPath = dataDir / "games" / info.name / "ec4x.db"
         try:
           gameState = loadGameStateForHouse(dbPath, houseId)
           viewingHouse = houseId
           let pubkey = sam.model.lobbyProfilePubkey
           if pubkey.len > 0:
-            let cachedOpt = loadCachedPlayerState(dataDir, pubkey, gameId,
+            let cachedOpt = loadCachedPlayerState(dataDir, pubkey, info.id,
               houseId)
             if cachedOpt.isSome:
               playerState = cachedOpt.get()
             else:
               playerState = loadPlayerState(gameState, houseId)
-              cachePlayerState(dataDir, pubkey, gameId, playerState)
+              cachePlayerState(dataDir, pubkey, info.id, playerState)
             sam.model.playerStateLoaded = true
           else:
             playerState = loadPlayerState(gameState, houseId)
@@ -1671,11 +1673,12 @@ proc runTui(gameId: string = "") =
           sam.model.mode = ViewMode.Overview
           syncGameStateToModel(sam.model, gameState, viewingHouse)
           sam.model.resetBreadcrumbs(sam.model.mode)
-          sam.model.statusMessage = "Loaded game " & gameId
+          sam.model.statusMessage = "Loaded game " & info.name
+          activeGameId = info.id
         except CatchableError as e:
           sam.model.statusMessage = "Load failed: " & e.msg
       else:
-        sam.model.statusMessage = "Game DB not found"
+        sam.model.statusMessage = "Game not found"
       sam.model.loadGameRequested = false
 
       # Re-render to show status
@@ -1718,7 +1721,7 @@ proc runTui(gameId: string = "") =
         else:
           sam.model.statusMessage = "Waiting for daemon pubkey"
       else:
-        let gameDir = "data/games/" & activeGameId
+        let gameDir = "data/games/" & sam.model.houseName
         let orderPath = writeFleetOrderFromModel(gameDir, sam.model)
         if orderPath.len > 0:
           let cmdLabel = commandLabel(sam.model.pendingFleetOrderCommandType)
@@ -1751,7 +1754,7 @@ proc runTui(gameId: string = "") =
         logInfo("TUI Player SAM", "Turn submitted via Nostr")
       elif activeGameId.len > 0:
         # Write to local file
-        let gameDir = "data/games/" & activeGameId
+        let gameDir = "data/games/" & sam.model.houseName
         createDir(gameDir & "/orders")
         let orderPath = gameDir & "/orders/turn_" & $gameState.turn & ".kdl"
         try:

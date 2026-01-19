@@ -252,6 +252,13 @@ proc generateInviteCode*(rng: var Rand): string =
   let idx2 = rng.rand(Wordlist.len - 1)
   Wordlist[idx1] & "-" & Wordlist[idx2]
 
+proc generateGameSlug*(): string =
+  ## Generate a random 3-word game slug
+  let idx1 = rand(Wordlist.len - 1)
+  let idx2 = rand(Wordlist.len - 1)
+  let idx3 = rand(Wordlist.len - 1)
+  Wordlist[idx1] & "-" & Wordlist[idx2] & "-" & Wordlist[idx3]
+
 proc isValidInviteCode*(code: string): bool =
   ## Check if a string is a valid invite code format
   ## Must be two words separated by hyphen, both in wordlist

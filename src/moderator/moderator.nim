@@ -15,25 +15,71 @@
 ##   ec4x list
 ##   ec4x status <game-id>
 
-import std/[os, strutils]
+import std/[os, strutils, options]
+import db_connector/db_sqlite
 import cligen
 import ../engine/init/game_state
 import ../engine/types/game_state
 import ../engine/state/engine
 import ../daemon/persistence/init as db_init
 import ../daemon/persistence/reader
-import ../common/wordlist
+
+type GameMeta = object
+  id: string
+  name: string
+  slug: string
+  turn: int
+  phase: string
+  dbPath: string
+
+proc loadGameMeta(dbPath: string): Option[GameMeta] =
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+  let row = db.getRow(
+    sql"SELECT id, name, slug, turn, phase FROM games LIMIT 1"
+  )
+  if row[0].len == 0:
+    return none(GameMeta)
+  some(GameMeta(
+    id: row[0],
+    name: row[1],
+    slug: row[2],
+    turn: parseInt(row[3]),
+    phase: row[4],
+    dbPath: dbPath
+  ))
+
+proc collectGameMetas(dataDir: string): seq[GameMeta] =
+  result = @[]
+  let gamesDir = dataDir / "games"
+  if not dirExists(gamesDir):
+    return
+  for kind, path in walkDir(gamesDir):
+    if kind != pcDir:
+      continue
+    let dbPath = path / "ec4x.db"
+    if not fileExists(dbPath):
+      continue
+    let metaOpt = loadGameMeta(dbPath)
+    if metaOpt.isSome:
+      result.add(metaOpt.get())
+
+proc findGameMeta(dataDir: string, token: string): Option[GameMeta] =
+  for meta in collectGameMetas(dataDir):
+    if meta.id == token or meta.slug == token or meta.name == token:
+      return some(meta)
+  none(GameMeta)
 
 proc newGame(
-    name: string = "",
     scenario: string = "scenarios/standard-4-player.kdl",
     configDir: string = "config",
     dataDir: string = "data"
 ): int =
   ## Create a new EC4X game from a scenario file
   ##
+  ## Name/slug is auto-generated from the wordlist.
+  ##
   ## Args:
-  ##   name: Human-readable game name (default: use scenario name)
   ##   scenario: Path to scenario KDL file
   ##   configDir: Directory containing config files
   ##   dataDir: Directory for game data
@@ -47,13 +93,11 @@ proc newGame(
   # Generate initial game state (pure function, no I/O)
   let state = initGameState(
     setupPath = scenario,
-    gameName = name,
     configDir = configDir,
     dataDir = dataDir
   )
 
   echo "  Game ID: ", state.gameId
-  echo "  Name: ", state.gameName
   echo "  Systems: ", state.systemsCount()
   echo "  Houses: ", state.housesCount()
 
@@ -62,8 +106,11 @@ proc newGame(
 
   echo ""
   echo "Game created successfully!"
+  echo "Name: ", state.gameName
+  echo "Slug: ", state.gameName
   echo "Database: ", dbPath
   return 0
+
 
 proc listGames(dataDir: string = "data"): int =
   ## List all games in the data directory
@@ -73,18 +120,20 @@ proc listGames(dataDir: string = "data"): int =
     echo "No games found in ", gamesDir
     return 0
 
+  let metas = collectGameMetas(dataDir)
+  if metas.len == 0:
+    echo "No games found in ", gamesDir
+    return 0
+
   echo "Games in ", gamesDir, ":"
   echo ""
 
-  for kind, path in walkDir(gamesDir):
-    if kind == pcDir:
-      let dbPath = path / "ec4x.db"
-      if fileExists(dbPath):
-        let gameId = path.lastPathPart
-        # TODO: Query DB for game name and status
-        echo "  ", gameId
+  for meta in metas:
+    echo "  ", meta.slug, " (id: ", meta.id, ") turn ",
+      meta.turn, " [", meta.phase, "]"
 
   return 0
+
 
 proc status(gameId: string, dataDir: string = "data"): int =
   ## Show status of a specific game
@@ -92,18 +141,19 @@ proc status(gameId: string, dataDir: string = "data"): int =
     echo "Error: Game ID is required"
     return 1
 
-  let dbPath = dataDir / "games" / gameId / "ec4x.db"
-
-  if not fileExists(dbPath):
+  let metaOpt = findGameMeta(dataDir, gameId)
+  if metaOpt.isNone:
     echo "Error: Game not found: ", gameId
     return 1
 
-  # TODO: Load game state and display status
-  echo "Game: ", gameId
-  echo "Database: ", dbPath
-  echo "Status: (not yet implemented)"
-
+  let meta = metaOpt.get()
+  echo "Game: ", meta.slug
+  echo "ID: ", meta.id
+  echo "Turn: ", meta.turn
+  echo "Phase: ", meta.phase
+  echo "Database: ", meta.dbPath
   return 0
+
 
 proc pause(gameId: string, dataDir: string = "data"): int =
   ## Pause a game
@@ -139,14 +189,21 @@ proc winner(gameId: string, houseId: string, dataDir: string = "data"): int =
   echo "(not yet implemented)"
   return 0
 
-proc invite(GAMEID: string, dataDir = "data"): int =
+proc invite(GAMEID: seq[string], dataDir = "data"): int =
   ## Query all invite codes for a game, show claimed status
-  let dbPath = dataDir / "games" / gameId / "ec4x.db"
-  if not fileExists(dbPath):
-    echo "No game: ", gameId
+  if GAMEID.len == 0:
+    echo "Error: Game ID required"
     return 1
-  
-  let houses = dbGetHousesWithInvites(dbPath, gameId)
+  let gameToken = GAMEID[0]
+  let metaOpt = findGameMeta(dataDir, gameToken)
+  if metaOpt.isNone:
+    echo "No game: ", gameToken
+    return 1
+
+  let meta = metaOpt.get()
+  let dbPath = meta.dbPath
+
+  let houses = dbGetHousesWithInvites(dbPath, meta.id)
   if houses.len == 0:
     echo "No houses with invites found"
     return 0
@@ -159,6 +216,19 @@ proc invite(GAMEID: string, dataDir = "data"): int =
     echo "House ", h.name, " (", $h.id.uint32, "): ", h.invite_code, " [", status, "]"
   0
 
+proc ids(dataDir: string = "data"): int =
+  ## Show slug and UUID mapping for all games
+  let metas = collectGameMetas(dataDir)
+  if metas.len == 0:
+    echo "No games found in ", dataDir / "games"
+    return 0
+
+  echo "Game IDs:"
+  echo ""
+  for meta in metas:
+    echo "  ", meta.slug, " -> ", meta.id
+  0
+
 proc version(): int =
   ## Display version information
   echo "EC4X Moderator v0.1.0"
@@ -168,10 +238,13 @@ when isMainModule:
   dispatchMulti(
     [newGame, cmdName = "new", help = "Create a new game from scenario"],
     [listGames, cmdName = "list", help = "List all games"],
+    [ids, cmdName = "ids", help = "Show slug to UUID mapping"],
     [status, help = "Show game status"],
     [pause, help = "Pause a game"],
     [resume, help = "Resume a paused game"],
     [winner, help = "Declare game winner"],
-    [invite, cmdName = "invite", help = "Query invite codes + status"],
+    [invite, cmdName = "invite", positional = "GAMEID", help = "Query invite codes + status"],
+    [invite, cmdName = "i", positional = "GAMEID", help = "Query invite codes + status"],
     [version, help = "Show version"]
   )
+

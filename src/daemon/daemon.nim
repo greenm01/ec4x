@@ -263,12 +263,12 @@ proc discoverGamesCmd(dir: string): DaemonCmd =
         if kind == pcDir:
           let dbPath = path / "ec4x.db"
           if fileExists(dbPath):
-            let gameId = path.extractFilename
             let state = reader.loadGameState(dbPath)
             if state == nil:
               logError("Daemon", "Failed to load game state for: ", path)
               continue
 
+            let gameId = state.gameId
             let phase = reader.loadGamePhase(dbPath)
             let phaseStr = if phase.len > 0: phase else: $state.phase
             let deadline = reader.loadGameDeadline(dbPath)

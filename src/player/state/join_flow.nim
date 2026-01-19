@@ -59,26 +59,35 @@ proc loadJoinGames*(dataDir: string): seq[JoinGameInfo] =
       logError("JoinFlow", "Failed to load game info: ", path, " ", e.msg)
 
 proc loadGameInfo*(dataDir: string, gameId: string): Option[JoinGameInfo] =
-  let dbPath = dataDir / "games" / gameId / "ec4x.db"
-  if not fileExists(dbPath):
+  let gamesDir = dataDir / "games"
+  if not dirExists(gamesDir):
     return none(JoinGameInfo)
-  try:
-    let db = open(dbPath, "", "", "")
-    defer: db.close()
-    let row = db.getRow(sql"SELECT id, name, turn, phase, game_setup_json FROM games LIMIT 1")
-    let assignedRow = db.getRow(sql"SELECT COUNT(*) FROM houses WHERE nostr_pubkey IS NOT NULL")
-    let playerCount = parsePlayerCount(row[4])
-    some(JoinGameInfo(
-      id: row[0],
-      name: row[1],
-      turn: parseInt(row[2]),
-      phase: row[3],
-      playerCount: playerCount,
-      assignedCount: parseInt(assignedRow[0])
-    ))
-  except CatchableError as e:
-    logError("JoinFlow", "Failed to load game: ", gameId, " ", e.msg)
-    none(JoinGameInfo)
+  
+  for kind, path in walkDir(gamesDir):
+    if kind != pcDir:
+      continue
+    let dbPath = path / "ec4x.db"
+    if not fileExists(dbPath):
+      continue
+    try:
+      let db = open(dbPath, "", "", "")
+      defer: db.close()
+      let row = db.getRow(sql"SELECT id, name, turn, phase, game_setup_json FROM games LIMIT 1")
+      if row[0] != gameId and row[1] != gameId:
+        continue
+      let assignedRow = db.getRow(sql"SELECT COUNT(*) FROM houses WHERE nostr_pubkey IS NOT NULL")
+      let playerCount = parsePlayerCount(row[4])
+      return some(JoinGameInfo(
+        id: row[0],
+        name: row[1],
+        turn: parseInt(row[2]),
+        phase: row[3],
+        playerCount: playerCount,
+        assignedCount: parseInt(assignedRow[0])
+      ))
+    except CatchableError as e:
+      logError("JoinFlow", "Failed to load game: ", dbPath, " ", e.msg)
+  none(JoinGameInfo)
 
 proc normalizePubkey*(pubkey: string): Option[string] =
   try:

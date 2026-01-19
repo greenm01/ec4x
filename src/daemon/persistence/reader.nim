@@ -336,7 +336,7 @@ proc loadGameState*(dbPath: string): GameState =
     gameId: metadata[0],
     gameName: metadata[1],
     gameDescription: metadata[2],
-    turn: int32(parseInt(metadata[3])),
+    turn: int32(parseInt(metadata[4])),
     phase: GamePhase.Conflict,
     dbPath: dbPath
   )
@@ -522,7 +522,7 @@ proc loadFullState*(dbPath: string): GameState =
     gameId: metadata[0],
     gameName: metadata[1],
     gameDescription: metadata[2],
-    turn: int32(parseInt(metadata[3])),
+    turn: int32(parseInt(metadata[4])),
     phase: GamePhase.Conflict, 
     dbPath: dbPath,
     dataDir: dbPath.parentDir.parentDir.parentDir # ../../../data

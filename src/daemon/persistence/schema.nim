@@ -1,6 +1,6 @@
 ## Unified Per-Game Database Schema
 ##
-## Architecture: One SQLite database per game at: {dataDir}/games/{gameId}/ec4x.db
+## Architecture: One SQLite database per game at: {dataDir}/games/{slug}/ec4x.db
 ##
 ## Tables:
 ##   Core State: games, houses, systems, lanes, colonies, fleets, ships,
@@ -15,7 +15,7 @@
 import std/os
 import db_connector/db_sqlite
 
-const SchemaVersion* = 7  # Incremented for new unified schema
+const SchemaVersion* = 8  # Incremented for new unified schema
 
 ## ============================================================================
 ## Core Game State Tables
@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS games (
   id TEXT PRIMARY KEY,              -- UUID v4 (auto-generated)
   name TEXT NOT NULL,               -- Human-readable game name
   description TEXT,                 -- Optional admin notes
+  slug TEXT NOT NULL UNIQUE,        -- Human-friendly slug
   turn INTEGER NOT NULL DEFAULT 0,
   year INTEGER NOT NULL DEFAULT 2001,
   month INTEGER NOT NULL DEFAULT 1,
@@ -402,12 +403,13 @@ proc createAllTables*(db: DbConn) =
   """)
   db.exec(sql"INSERT OR IGNORE INTO schema_version VALUES (?, unixepoch())", SchemaVersion)
 
-proc defaultDBConfig*(gameId: string, dataDir: string = "data"): tuple[
+proc defaultDBConfig*(gameId: string, gameSlug: string,
+  dataDir: string = "data"): tuple[
   dbPath: string,
   gameDir: string
 ] =
   ## Generate per-game database path
   ## Returns: (dbPath, gameDir)
-  let gameDirPath = dataDir / "games" / gameId
+  let gameDirPath = dataDir / "games" / gameSlug
   let dbFilePath = gameDirPath / "ec4x.db"
   return (dbFilePath, gameDirPath)
