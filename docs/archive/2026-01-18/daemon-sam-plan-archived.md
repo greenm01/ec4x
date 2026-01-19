@@ -1,3 +1,15 @@
+# Archived: EC4X Daemon SAM Plan
+
+This document was archived on 2026-01-18.
+
+Superseded by:
+- docs/architecture/daemon-sam.md
+- docs/architecture/daemon-todo-audit.md
+
+Original file: docs/temp/daemon-sam-plan.md
+
+---
+
 # EC4X Daemon: SAM Refactor + Basic Turn Progress Plan (v1.1)
 
 ## Goal
@@ -13,7 +25,7 @@ Daemon autonomous turn for localhost (KDL files) + nostr (NIP44 events).
 ## POC Test
 1. `./bin/ec4x new --name test --scenario scenarios/standard-4-player.kdl`
 2. mkdir houses/house_1; echo 'orders { }' > orders_pending.kdl
-3. `nim r src/daemon/daemon.nim start --poll 1` → discover/collect/resolve stub logs.
+3. `nim r src/daemon/daemon.nim start --poll 1` -> discover/collect/resolve stub logs.
 
 ## Phases Complete
 - 0-3 ✅

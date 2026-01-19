@@ -1,17 +1,30 @@
-# Daemon Module - NOT NEEDED FOR M1
+# EC4X Daemon - Autonomous Turn Processing
 
-**Skip this for Milestone 1!**
+This directory contains the automated turn processing daemon, implemented
+with the SAM (State-Action-Model) pattern for predictable async state
+management.
 
-This directory contains the automated turn processing daemon.
+## Architecture
 
-## When to implement:
-- **Milestone 3:** Simple daemon with polling
-- **Milestone 4:** Refactor to SAM pattern
+- SAM core: `src/daemon/sam_core.nim`
+- Main loop: `src/daemon/daemon.nim`
+- Nostr transport: `src/daemon/transport/nostr/`
+- Persistence: `src/daemon/persistence/`
+- Command parsing: `src/daemon/parser/kdl_commands.nim`
 
-## For M1:
-Use manual turn resolution via moderator commands instead:
+See `docs/architecture/daemon-sam.md` for the full SAM design and flow
+examples.
+
+## Running
+
 ```bash
-./bin/moderator resolve game1
+./bin/ec4x-daemon start
+./bin/ec4x-daemon resolve --gameId <id>
 ```
 
-See: `docs/INCREMENTAL_ROADMAP.md` Milestone 3
+## Configuration
+
+- Daemon config: `config/daemon.kdl`
+- Nostr config: `config/nostr.kdl`
+
+See `docs/guides/daemon-setup.md` for setup details.
