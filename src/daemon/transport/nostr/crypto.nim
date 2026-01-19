@@ -54,6 +54,15 @@ proc sha256Hash*(data: string): string =
   let hash = sha256.digest(data)
   hash.data.toHex().toLowerAscii()
 
+proc hexToBytes32*(hexStr: string): array[32, byte] =
+  ## Convert hex string to 32-byte array
+  if hexStr.len != 64:
+    raise newException(ValueError, "Invalid hex length: expected 64, got " &
+      $hexStr.len)
+  for i in 0..<32:
+    let hexByte = hexStr[i * 2 .. i * 2 + 1]
+    result[i] = byte(parseHexInt(hexByte))
+
 proc toHex*(data: openArray[byte]): string =
   ## Convert bytes to lowercase hex
   var parts: seq[string] = @[]

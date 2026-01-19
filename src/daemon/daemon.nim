@@ -10,6 +10,8 @@ import ./sam_core
 import ./config
 import ./identity
 import ./transport/nostr/[types, client, wire, events, crypto]
+import ./subscriber
+import ./publisher
 import ../daemon/persistence/reader
 import ../daemon/persistence/writer
 import ../common/wordlist
@@ -17,13 +19,10 @@ import ../common/wordlist
 # Replay protection
 
 import ../daemon/parser/kdl_commands
-import ./transport/nostr/delta_kdl
-import ./transport/nostr/state_kdl
 import ../engine/turn_cycle/engine
 import ../engine/config/engine
 import ../engine/globals
 import ../engine/types/[core, command, game_state]
-import ../engine/state/iterators
 
 # =============================================================================
 # Core Types
@@ -52,6 +51,8 @@ type
     replayRetentionDaysState*: int         # State publish retention
     identity*: DaemonIdentity              # Nostr keypair
     nostrClient*: NostrClient              # Nostr relay client
+    nostrSubscriber*: Subscriber           # Nostr subscriber wrapper
+    nostrPublisher*: Publisher             # Nostr publisher wrapper
     relayUrls*: seq[string]                # Relay URLs from config
     readyLogged*: bool                     # Ready log emitted
 
@@ -78,10 +79,8 @@ type DaemonCmd* = proc (): Future[Proposal[DaemonModel]]
 # =============================================================================
 
 # Forward declarations
-proc publishFullState(gameId: string, state: GameState, houseId: HouseId) {.async.}
-proc publishGameDefinition(gameId: string, state: GameState) {.async.}
-proc publishTurnResults(gameId: string, state: GameState) {.async.}
 proc resolveTurnCmd(gameId: GameId): DaemonCmd
+
 
 proc checkAndTriggerResolution(gameId: GameId) =
   ## Check if all expected players have submitted orders
@@ -91,7 +90,8 @@ proc checkAndTriggerResolution(gameId: GameId) =
 
   # Only auto-resolve games in Active phase
   if gameInfo.phase != "Active":
-    logDebug("Daemon", "Game ", gameId, " in phase ", gameInfo.phase, " - skipping auto-resolve")
+    logDebug("Daemon", "Game ", gameId, " in phase ", gameInfo.phase,
+      " - skipping auto-resolve")
     return
 
   let expectedPlayers = countExpectedPlayers(gameInfo.dbPath, gameId)
@@ -101,15 +101,17 @@ proc checkAndTriggerResolution(gameId: GameId) =
     logDebug("Daemon", "No human players assigned yet for game ", gameId)
     return
 
-  let submittedPlayers = countPlayersSubmitted(gameInfo.dbPath, gameId, currentTurn.int32)
+  let submittedPlayers = countPlayersSubmitted(gameInfo.dbPath, gameId,
+    currentTurn.int32)
 
-  logDebug("Daemon", "Turn readiness check: ", $submittedPlayers, "/", $expectedPlayers,
-           " players submitted for game=", gameId, " turn=", $currentTurn)
+  logDebug("Daemon", "Turn readiness check: ", $submittedPlayers, "/",
+    $expectedPlayers, " players submitted for game=", gameId,
+    " turn=", $currentTurn)
 
   # Check if all players ready
   if submittedPlayers >= expectedPlayers:
     logInfo("Daemon", "All players submitted! Auto-triggering resolution for game=",
-            gameId, " turn=", $currentTurn)
+      gameId, " turn=", $currentTurn)
 
     # Guard: Don't queue if already resolving
     if gameId in daemonLoop.model.resolving:
@@ -119,7 +121,7 @@ proc checkAndTriggerResolution(gameId: GameId) =
     daemonLoop.queueCmd(resolveTurnCmd(gameId))
   else:
     logDebug("Daemon", "Waiting for ", $(expectedPlayers - submittedPlayers),
-             " more player(s) for turn ", $currentTurn)
+      " more player(s) for turn ", $currentTurn)
 
 proc resolveTurnCmd(gameId: GameId): DaemonCmd =
   proc (): Future[Proposal[DaemonModel]] {.async.} =
@@ -144,7 +146,12 @@ proc resolveTurnCmd(gameId: GameId): DaemonCmd =
       markCommandsProcessed(gameInfo.dbPath, gameId, state.turn - 1)
 
       # 4. Publish turn results via Nostr
-      await publishTurnResults(gameId, state)
+      if daemonLoop.model.nostrPublisher != nil:
+        await daemonLoop.model.nostrPublisher.publishTurnResults(
+          gameInfo.id,
+          gameInfo.dbPath,
+          state
+        )
 
       writer.cleanupProcessedEvents(gameInfo.dbPath, gameId, state.turn.int32,
         daemonLoop.model.replayRetentionTurns,
@@ -238,10 +245,10 @@ proc tickProposal(): Proposal[DaemonModel] =
 
       # Subscribe to commands for all active games
       for gameId, gameInfo in model.games:
-        if model.nostrClient != nil and model.nostrClient.isConnected():
+        if model.nostrSubscriber != nil and model.nostrClient.isConnected():
           let subId = "daemon:" & gameId
           if subId notin model.nostrClient.subscriptions:
-            asyncCheck model.nostrClient.subscribeDaemon(gameId,
+            asyncCheck model.nostrSubscriber.subscribeDaemon(gameId,
               model.identity.publicKeyHex)
             logDebug("Nostr", "Subscribed to commands for game: ", gameId)
 
@@ -260,179 +267,6 @@ proc requestShutdown() {.noconv.} =
 # Nostr Event Processing Helpers
 # =============================================================================
 
-proc hexToBytes32*(hexStr: string): array[32, byte] =
-  ## Convert hex string to 32-byte array
-  if hexStr.len != 64:
-    raise newException(ValueError, "Invalid hex length: expected 64, got " & $hexStr.len)
-  for i in 0..<32:
-    let hexByte = hexStr[i*2..i*2+1]
-    result[i] = byte(parseHexInt(hexByte))
-
-proc getPlayerPubkey(gameInfo: GameInfo, houseId: HouseId): string =
-  ## Get player's Nostr pubkey for a house
-  let pubkeyOpt = getHousePubkey(gameInfo.dbPath, gameInfo.id, houseId)
-  if pubkeyOpt.isSome:
-    return pubkeyOpt.get()
-  else:
-    return ""
-
-proc buildDeltaKdl(gameInfo: GameInfo, state: GameState, houseId: HouseId): string =
-  ## Build fog-of-war filtered delta KDL for a house
-  let previousTurn = state.turn - 1
-  let previousSnapshot = loadPlayerStateSnapshot(
-    gameInfo.dbPath,
-    gameInfo.id,
-    houseId,
-    previousTurn
-  )
-
-  let currentSnapshot = buildPlayerStateSnapshot(state, houseId)
-  let delta = diffPlayerState(previousSnapshot, currentSnapshot)
-
-  savePlayerStateSnapshot(
-    gameInfo.dbPath,
-    gameInfo.id,
-    houseId,
-    state.turn,
-    currentSnapshot
-  )
-
-  formatPlayerStateDeltaKdl(gameInfo.id, delta)
-
-proc publishFullState(gameId: string, state: GameState, houseId: HouseId) {.async.} =
-  ## Publish full state (30405) to a specific house
-  try:
-    let gameInfo = daemonLoop.model.games[gameId]
-    let playerPubkey = getPlayerPubkey(gameInfo, houseId)
-    if playerPubkey.len == 0:
-      logWarn("Nostr", "No player pubkey for house ", $houseId, " - skipping state publish")
-      return
-
-    let daemonPriv = hexToBytes32(daemonLoop.model.identity.privateKeyHex)
-    let playerPub = hexToBytes32(playerPubkey)
-    let stateKdl = formatPlayerStateKdl(gameId, state, houseId)
-    let encryptedPayload = encodePayload(stateKdl, daemonPriv, playerPub)
-
-    var event = createGameState(
-      gameId = gameId,
-      turn = state.turn.int,
-      encryptedPayload = encryptedPayload,
-      playerPubkey = playerPubkey,
-      daemonPubkey = daemonLoop.model.identity.publicKeyHex
-    )
-    signEvent(event, daemonPriv)
-
-    if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
-        event.kind, event.id, reader.ReplayDirection.Outbound):
-      logDebug("Nostr", "Skipping duplicate full state publish for house ",
-        $houseId)
-      return
-
-    let published = await daemonLoop.model.nostrClient.publish(event)
-    if published:
-      logInfo("Nostr", "Published full state for house ", $houseId)
-      writer.insertProcessedEvent(gameInfo.dbPath, gameId,
-        state.turn.int32, event.kind, event.id, reader.ReplayDirection.Outbound)
-    else:
-      logError("Nostr", "Failed to publish full state for house ", $houseId)
-
-  except CatchableError as e:
-    logError("Nostr", "Failed to publish full state: ", e.msg)
-
-proc publishGameDefinition(gameId: string, state: GameState) {.async.} =
-  ## Publish game definition (30400) for lobby updates
-  try:
-    let gameInfo = daemonLoop.model.games[gameId]
-    var slots: seq[SlotInfo] = @[]
-
-    for (houseId, house) in state.allHousesWithId():
-      let codeOpt = getHouseInviteCode(gameInfo.dbPath, gameId, houseId)
-      let code = if codeOpt.isSome: codeOpt.get() else: ""
-      let pubkey = getPlayerPubkey(gameInfo, houseId)
-      let status = if pubkey.len > 0:
-                    SlotStatusClaimed
-                  else:
-                    SlotStatusPending
-      let index = int(houseId.uint32)
-      slots.add(SlotInfo(
-        index: index,
-        code: code,
-        status: status,
-        pubkey: pubkey
-      ))
-
-    var event = createGameDefinition(
-      gameId = gameId,
-      name = state.gameName,
-      status = gameInfo.phase,
-      slots = slots,
-      daemonPubkey = daemonLoop.model.identity.publicKeyHex
-    )
-
-    let daemonPriv = hexToBytes32(daemonLoop.model.identity.privateKeyHex)
-    signEvent(event, daemonPriv)
-
-    if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
-        event.kind, event.id, reader.ReplayDirection.Outbound):
-      logDebug("Nostr", "Skipping duplicate game definition for game=", gameId)
-      return
-
-    let published = await daemonLoop.model.nostrClient.publish(event)
-    if published:
-      logInfo("Nostr", "Published game definition for game=", gameId)
-      writer.insertProcessedEvent(gameInfo.dbPath, gameId,
-        0, event.kind, event.id, reader.ReplayDirection.Outbound)
-    else:
-      logError("Nostr", "Failed to publish game definition for game=", gameId)
-  except CatchableError as e:
-    logError("Nostr", "Failed to publish game definition: ", e.msg)
-
-proc publishTurnResults(gameId: string, state: GameState) {.async.} =
-  ## Publish turn results to all players via Nostr
-  try:
-    let gameInfo = daemonLoop.model.games[gameId]
-    let daemonPriv = hexToBytes32(daemonLoop.model.identity.privateKeyHex)
-    
-    # Publish delta for each house
-    for (houseId, house) in state.allHousesWithId():
-      let playerPubkey = getPlayerPubkey(gameInfo, houseId)
-      if playerPubkey.len == 0:
-        logWarn("Nostr", "No player pubkey for house ", $houseId, " - skipping delta publish")
-        continue
-      
-      # Build fog-of-war filtered delta
-      let deltaKdl = buildDeltaKdl(gameInfo, state, houseId)
-      
-      # Encrypt and encode
-      let playerPub = hexToBytes32(playerPubkey)
-      let encryptedPayload = encodePayload(deltaKdl, daemonPriv, playerPub)
-      
-      # Create and sign event
-      var event = createTurnResults(
-        gameId = gameId,
-        turn = state.turn.int,
-        encryptedPayload = encryptedPayload,
-        playerPubkey = playerPubkey,
-        daemonPubkey = daemonLoop.model.identity.publicKeyHex
-      )
-      signEvent(event, daemonPriv)
-      
-      if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
-          event.kind, event.id, reader.ReplayDirection.Outbound):
-        logDebug("Nostr", "Skipping duplicate delta publish for house ", $houseId)
-        continue
-
-      # Publish to relays
-      let published = await daemonLoop.model.nostrClient.publish(event)
-      if published:
-        logInfo("Nostr", "Published turn ", $state.turn, " delta for house ", $houseId)
-        writer.insertProcessedEvent(gameInfo.dbPath, gameId,
-          state.turn.int32, event.kind, event.id, reader.ReplayDirection.Outbound)
-      else:
-        logError("Nostr", "Failed to publish delta for house ", $houseId)
-    
-  except CatchableError as e:
-    logError("Nostr", "Failed to publish turn results: ", e.msg)
 
 proc processIncomingCommand(event: NostrEvent) {.async.} =
   ## Process a turn command event (30402) from a player
@@ -472,8 +306,8 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
       return
 
     # Decrypt command payload
-    let daemonPriv = hexToBytes32(daemonLoop.model.identity.privateKeyHex)
-    let senderPub = hexToBytes32(event.pubkey)
+    let daemonPriv = crypto.hexToBytes32(daemonLoop.model.identity.privateKeyHex)
+    let senderPub = crypto.hexToBytes32(event.pubkey)
     let kdlCommands = decodePayload(event.content, daemonPriv, senderPub)
 
     # Parse KDL into CommandPacket
@@ -553,8 +387,19 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
 
     # Publish full state immediately after slot claim
     let updatedState = loadFullState(gameInfo.dbPath)
-    await publishFullState(gameId, updatedState, houseId)
-    await publishGameDefinition(gameId, updatedState)
+    if daemonLoop.model.nostrPublisher != nil:
+      await daemonLoop.model.nostrPublisher.publishFullState(
+        gameInfo.id,
+        gameInfo.dbPath,
+        updatedState,
+        houseId
+      )
+      await daemonLoop.model.nostrPublisher.publishGameDefinition(
+        gameInfo.id,
+        gameInfo.dbPath,
+        gameInfo.phase,
+        updatedState
+      )
     
     logInfo("Nostr", "Slot claimed for game=", gameId,
             " house=", $houseId, " player=", playerPubkey[0..7], "...")
@@ -586,6 +431,8 @@ proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
     replayRetentionDaysState: replayRetentionDaysState,
     identity: ensureIdentity(allowIdentityRegen),
     nostrClient: nil,  # Will be initialized in mainLoop
+    nostrSubscriber: nil,
+    nostrPublisher: nil,
     relayUrls: relayUrls,
     readyLogged: false
   )
@@ -626,38 +473,40 @@ proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
 
   # Initialize and connect Nostr client
   daemonLoop.model.nostrClient = newNostrClient(relayUrls)
-  
+  daemonLoop.model.nostrPublisher = newPublisher(
+    daemonLoop.model.nostrClient,
+    daemonLoop.model.identity.publicKeyHex,
+    crypto.hexToBytes32(daemonLoop.model.identity.privateKeyHex)
+  )
+
   # Set up event callback for incoming commands
-  daemonLoop.model.nostrClient.onEvent = proc(subId: string, event: NostrEvent) =
+  daemonLoop.model.nostrSubscriber = newSubscriber(daemonLoop.model.nostrClient)
+  daemonLoop.model.nostrSubscriber.onSlotClaim = proc(event: NostrEvent) =
     try:
-      logDebug("Nostr", "Received event: kind=", $event.kind, " from=",
-        event.pubkey[0..7])
-    except CatchableError:
-      logDebug("Nostr", "Received event: kind=", $event.kind)
-
+      asyncCheck processSlotClaim(event)
+    except CatchableError as e:
+      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
+      logError("Nostr", "Slot claim handler failed: kind=", $event.kind,
+        " id=", eventId, " error=", e.msg)
+  daemonLoop.model.nostrSubscriber.onCommand = proc(event: NostrEvent) =
     try:
-      # Handle slot claim events (30401)
-      if event.kind == EventKindPlayerSlotClaim:
-        asyncCheck processSlotClaim(event)
+      let gameIdOpt = event.getGameId()
+      if gameIdOpt.isNone:
+        logError("Nostr", "Command event missing game ID")
+        return
 
-      # Handle turn command events (30402)
-      elif event.kind == EventKindTurnCommands:
-        let gameIdOpt = event.getGameId()
-        if gameIdOpt.isNone:
-          logError("Nostr", "Command event missing game ID")
-          return
+      let gameId = gameIdOpt.get()
+      if not daemonLoop.model.games.hasKey(gameId):
+        logWarn("Nostr", "Received commands for unknown game: ", gameId)
+        return
 
-        let gameId = gameIdOpt.get()
-        if not daemonLoop.model.games.hasKey(gameId):
-          logWarn("Nostr", "Received commands for unknown game: ", gameId)
-          return
-
-        # Queue async command processing
-        asyncCheck processIncomingCommand(event)
+      asyncCheck processIncomingCommand(event)
     except CatchableError as e:
       let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
       logError("Nostr", "Event handler failed: kind=", $event.kind,
         " id=", eventId, " error=", e.msg)
+  daemonLoop.model.nostrSubscriber.attachHandlers()
+
   
   # Connect to relays with backoff
   var backoffMs = 1000
@@ -785,6 +634,12 @@ proc resolve*(gameId: string, dataDir: string = "data"): int =
     daemonConfig.replay_retention_turns, daemonConfig.replay_retention_days,
     daemonConfig.replay_retention_days_definition,
     daemonConfig.replay_retention_days_state, true)
+  daemonLoop.model.nostrClient = newNostrClient(daemonConfig.relay_urls)
+  daemonLoop.model.nostrPublisher = newPublisher(
+    daemonLoop.model.nostrClient,
+    daemonLoop.model.identity.publicKeyHex,
+    crypto.hexToBytes32(daemonLoop.model.identity.privateKeyHex)
+  )
 
   # Load state
   let state = loadFullState(dbPath)
@@ -799,10 +654,15 @@ proc resolve*(gameId: string, dataDir: string = "data"): int =
   markCommandsProcessed(dbPath, gameId, state.turn - 1)
 
   # Publish turn results via Nostr (if connected)
-  if daemonLoop.model.nostrClient != nil:
-    waitFor publishTurnResults(gameId, state)
+  if daemonLoop.model.nostrPublisher != nil:
+    let gameInfo = daemonLoop.model.games[gameId]
+    waitFor daemonLoop.model.nostrPublisher.publishTurnResults(
+      gameInfo.id,
+      gameInfo.dbPath,
+      state
+    )
   else:
-    logWarn("Daemon", "No Nostr client - skipping result publishing")
+    logWarn("Daemon", "No Nostr publisher - skipping result publishing")
   
   logInfo("Daemon", "Resolution complete. Now at turn ", $state.turn)
   return 0

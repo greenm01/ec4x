@@ -1,38 +1,38 @@
-## Daemon subscriber - listens for order events on Nostr relays
+## Daemon subscriber - listens for Nostr relay events
 
 import std/asyncdispatch
-import ../transport/nostr/[types, client, filter]
+import ../common/logger
+import ./transport/nostr/[types, client]
 
 type
   Subscriber* = ref object
     client*: NostrClient
-    gameIds*: seq[string]
-    onOrderReceived*: proc(event: NostrEvent)
+    onCommand*: proc(event: NostrEvent) {.closure.}
+    onSlotClaim*: proc(event: NostrEvent) {.closure.}
 
-proc newSubscriber*(relays: seq[string]): Subscriber =
-  ## Create new subscriber for game events
-  result = Subscriber(
-    client: newNostrClient(relays),
-    gameIds: @[]
-  )
+proc newSubscriber*(client: NostrClient): Subscriber =
+  ## Create new subscriber wrapper for a Nostr client
+  result = Subscriber(client: client)
 
-proc subscribeToGame*(sub: Subscriber, gameId: string, currentTurn: int): Proposal[DaemonModel] {.async.} =
-  ## Stub sub → order Proposal
-  logInfo(\"Nostr subscriber\", \"Stub subscribed game \", gameId, \" turn \", $currentTurn)
-  Proposal[DaemonModel](
-    name: \"order_received_nostr\",
-    payload: proc(model: var DaemonModel) =
-      model.pendingOrders[gameId] += 1  # Stub 1 order
-      if model.pendingOrders[gameId] >= 4:  # Stub ready
-        daemonLoop.queueCmd(resolveTurnCmd(gameId))
-  )
+proc attachHandlers*(sub: Subscriber) =
+  ## Attach event handler to client
+  ## Attach event handler to client
+  sub.client.onEvent = proc(subId: string, event: NostrEvent) =
+    try:
+      logDebug("Nostr", "Received event: kind=", $event.kind, " sub=", subId,
+        " pubkey=", event.pubkey[0..7])
+    except CatchableError:
+      logDebug("Nostr", "Received event: kind=", $event.kind, " sub=", subId)
 
-proc start*(sub: Subscriber) {.async.} =
-  ## Start listening for events
-  ## TODO: Implement event listening loop
-  raise newException(CatchableError, "Not yet implemented")
+    if event.kind == EventKindPlayerSlotClaim:
+      if sub.onSlotClaim != nil:
+        sub.onSlotClaim(event)
+    elif event.kind == EventKindTurnCommands:
+      if sub.onCommand != nil:
+        sub.onCommand(event)
 
-proc stop*(sub: Subscriber) {.async.} =
-  ## Stop subscriber and disconnect
-  ## TODO: Implement graceful shutdown
-  raise newException(CatchableError, "Not yet implemented")
+proc subscribeDaemon*(sub: Subscriber, gameId: string,
+  daemonPubkey: string) {.async.} =
+  ## Subscribe to command + slot claim events for a game
+  await sub.client.subscribeDaemon(gameId, daemonPubkey)
+
