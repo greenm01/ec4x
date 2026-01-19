@@ -3,7 +3,7 @@
 import std/[tables, options, json, strutils, jsonutils, os]
 import db_connector/db_sqlite
 import ../../common/logger
-import ../../engine/types/[game_state, core, house, starmap, colony, fleet, ship, command, tech, production]
+import ../../engine/types/[game_state, core, house, starmap, colony, fleet, ship, command, tech, production, diplomacy, espionage, player_state]
 import ../../engine/state/engine
 import ./player_state_snapshot
 
@@ -340,6 +340,76 @@ proc loadGamePhase*(dbPath: string): string =
     return ""
   row[0]
 
+proc loadDiplomacy(db: DbConn, state: GameState) =
+  ## Load diplomatic relations from diplomacy table
+  let rows = db.getAllRows(sql"""
+    SELECT house_a_id, house_b_id, relation, turn_established
+    FROM diplomacy
+  """)
+  for row in rows:
+    try:
+      let houseA = HouseId(parseInt(row[0]).uint32)
+      let houseB = HouseId(parseInt(row[1]).uint32)
+      let relationStr = row[2]
+      let sinceTurn = parseInt(row[3]).int32
+
+      # Parse relation string to DiplomaticState
+      let dipState = case relationStr
+        of "Neutral": DiplomaticState.Neutral
+        of "Hostile": DiplomaticState.Hostile
+        of "Enemy": DiplomaticState.Enemy
+        else: DiplomaticState.Neutral
+
+      let relation = DiplomaticRelation(
+        sourceHouse: houseA,
+        targetHouse: houseB,
+        state: dipState,
+        sinceTurn: sinceTurn
+      )
+      state.diplomaticRelation[(houseA, houseB)] = relation
+    except:
+      logError("Persistence", "Failed to load diplomacy: ",
+        getCurrentExceptionMsg())
+
+proc loadIntel(db: DbConn, state: GameState) =
+  ## Load intelligence databases from intel_* tables
+  ## Note: This is a basic implementation that loads system intel only
+  ## Fleet and colony intel can be added when needed
+  let rows = db.getAllRows(sql"""
+    SELECT house_id, system_id, last_scouted_turn, visibility_level
+    FROM intel_systems
+  """)
+  for row in rows:
+    try:
+      let houseId = HouseId(parseInt(row[0]).uint32)
+      let systemId = SystemId(parseInt(row[1]).uint32)
+      let gatheredTurn = parseInt(row[2]).int32
+      discard row[3]  # visibility_level not used in SystemObservation
+
+      # Initialize IntelDatabase for house if not exists
+      if not state.intel.hasKey(houseId):
+        state.intel[houseId] = IntelDatabase(
+          houseId: houseId,
+          colonyObservations: initTable[ColonyId, ColonyObservation](),
+          orbitalObservations: initTable[ColonyId, OrbitalObservation](),
+          systemObservations: initTable[SystemId, SystemObservation](),
+          starbaseObservations: initTable[KastraId, StarbaseObservation](),
+          fleetObservations: initTable[FleetId, FleetObservation](),
+          shipObservations: initTable[ShipId, ShipObservation]()
+        )
+
+      # Create basic system observation (quality can be inferred from db later)
+      let sysObs = SystemObservation(
+        systemId: systemId,
+        gatheredTurn: gatheredTurn,
+        quality: IntelQuality.Visual,  # Default quality
+        detectedFleetIds: @[]
+      )
+      state.intel[houseId].systemObservations[systemId] = sysObs
+    except:
+      logError("Persistence", "Failed to load intel: ",
+        getCurrentExceptionMsg())
+
 proc loadOrders*(dbPath: string, turn: int): Table[HouseId, CommandPacket] =
   ## Load all command packets for a specific turn from the database
   let db = open(dbPath, "", "", "")
@@ -388,8 +458,31 @@ proc loadOrders*(dbPath: string, turn: int): Table[HouseId, CommandPacket] =
       # Build command
       let cmd = params.jsonTo(BuildCommand)
       result[houseId].buildCommands.add(cmd)
-    # TODO: Other command types
-    
+    elif cmdType == "Research":
+      # Research allocation (manual deserialization for enum-keyed table)
+      var alloc = ResearchAllocation(
+        economic: params["economic"].getInt().int32,
+        science: params["science"].getInt().int32,
+        technology: initTable[TechField, int32]()
+      )
+      if params.hasKey("technology") and params["technology"].kind == JObject:
+        for fieldStr, pointsNode in params["technology"].pairs:
+          let field = parseEnum[TechField](fieldStr)
+          alloc.technology[field] = pointsNode.getInt().int32
+      result[houseId].researchAllocation = alloc
+    elif cmdType == "EspionageBudget":
+      # Espionage budget investment
+      result[houseId].ebpInvestment = params["ebpInvestment"].getInt().int32
+      result[houseId].cipInvestment = params["cipInvestment"].getInt().int32
+    elif cmdType == "EspionageAction":
+      # Espionage action
+      let action = params.jsonTo(EspionageAttempt)
+      result[houseId].espionageActions.add(action)
+    elif cmdType == "Diplomatic":
+      # Diplomatic command
+      let cmd = params.jsonTo(DiplomaticCommand)
+      result[houseId].diplomaticCommand.add(cmd)
+
   logInfo("Persistence", "Loaded ", $result.len, " command packets for turn ", $turn)
 
 proc loadFullState*(dbPath: string): GameState =
@@ -432,7 +525,9 @@ proc loadFullState*(dbPath: string): GameState =
     loadColonies(db, result)
     loadFleets(db, result)
     loadShips(db, result)
-    # TODO: Load diplomacy, intel, ground units
+    loadDiplomacy(db, result)
+    loadIntel(db, result)
+    # Note: Ground units are loaded as part of colony state_json
     logInfo("Persistence", "Loaded full state", "turn=", $result.turn)
   except:
     logError("Persistence", "Failed to load full state: ", getCurrentExceptionMsg())

@@ -6,7 +6,7 @@ This directory contains the automated turn processing daemon.
 
 ## When to implement:
 - **Milestone 3:** Simple daemon with polling
-- **Milestone 4:** Refactor to TEA pattern
+- **Milestone 4:** Refactor to SAM pattern
 
 ## For M1:
 Use manual turn resolution via moderator commands instead:

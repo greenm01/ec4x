@@ -482,8 +482,79 @@ proc saveCommandPacket*(dbPath: string, gameId: string, packet: CommandPacket) =
         gameId, $packet.houseId, packet.turn, $cmd.colonyId, $params
       )
 
-    # TODO: Other command types (Research, Espionage, etc.)
-    
+    # 3. Research Allocation
+    if packet.researchAllocation.economic > 0 or
+        packet.researchAllocation.science > 0 or
+        packet.researchAllocation.technology.len > 0:
+      # Manual JSON construction for enum-keyed table
+      var techJson = newJObject()
+      for field, points in packet.researchAllocation.technology:
+        techJson[$field] = %points
+      let params = %*{
+        "economic": packet.researchAllocation.economic,
+        "science": packet.researchAllocation.science,
+        "technology": techJson
+      }
+      db.exec(sql"""
+        INSERT INTO commands (
+          game_id, house_id, turn, command_type, params, submitted_at
+        ) VALUES (?, ?, ?, 'Research', ?, unixepoch())
+        ON CONFLICT(game_id, turn, house_id, fleet_id, colony_id, command_type)
+        DO UPDATE SET
+          params=excluded.params,
+          submitted_at=excluded.submitted_at
+      """,
+        gameId, $packet.houseId, packet.turn, $params
+      )
+
+    # 4. Espionage Budget
+    if packet.ebpInvestment > 0 or packet.cipInvestment > 0:
+      let params = %*{
+        "ebpInvestment": packet.ebpInvestment,
+        "cipInvestment": packet.cipInvestment
+      }
+      db.exec(sql"""
+        INSERT INTO commands (
+          game_id, house_id, turn, command_type, params, submitted_at
+        ) VALUES (?, ?, ?, 'EspionageBudget', ?, unixepoch())
+        ON CONFLICT(game_id, turn, house_id, fleet_id, colony_id, command_type)
+        DO UPDATE SET
+          params=excluded.params,
+          submitted_at=excluded.submitted_at
+      """,
+        gameId, $packet.houseId, packet.turn, $params
+      )
+
+    # 5. Espionage Actions
+    for action in packet.espionageActions:
+      let params = %*action
+      db.exec(sql"""
+        INSERT INTO commands (
+          game_id, house_id, turn, command_type, params, submitted_at
+        ) VALUES (?, ?, ?, 'EspionageAction', ?, unixepoch())
+        ON CONFLICT(game_id, turn, house_id, fleet_id, colony_id, command_type)
+        DO UPDATE SET
+          params=excluded.params,
+          submitted_at=excluded.submitted_at
+      """,
+        gameId, $packet.houseId, packet.turn, $params
+      )
+
+    # 6. Diplomatic Commands
+    for cmd in packet.diplomaticCommand:
+      let params = %*cmd
+      db.exec(sql"""
+        INSERT INTO commands (
+          game_id, house_id, turn, command_type, params, submitted_at
+        ) VALUES (?, ?, ?, 'Diplomatic', ?, unixepoch())
+        ON CONFLICT(game_id, turn, house_id, fleet_id, colony_id, command_type)
+        DO UPDATE SET
+          params=excluded.params,
+          submitted_at=excluded.submitted_at
+      """,
+        gameId, $packet.houseId, packet.turn, $params
+      )
+
     db.exec(sql"COMMIT")
     logInfo("Persistence", "Saved command packet for house ", $packet.houseId, " turn ", $packet.turn)
   except:

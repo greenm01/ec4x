@@ -38,12 +38,25 @@ proc addReactor*[M](sam: SamLoop[M], reactor: Reactor[M]) =
   sam.reactors.add(reactor)
 
 proc present*[M](sam: SamLoop[M], proposal: Proposal[M]) =
+  ## Queue a proposal for processing in the next SAM loop iteration.
+  ## Proposals are processed FIFO and trigger acceptors + reactors.
   sam.proposalQueue.add(proposal)
 
 proc queueCmd*[M](sam: SamLoop[M], cmd: Cmd[M]) =
+  ## Queue an async command (effect) for background execution.
+  ## When the Cmd completes, its returned Proposal is automatically queued.
+  ## Commands are polled each iteration and removed when finished.
   sam.cmdQueue.add(cmd())
 
 proc process*[M](sam: SamLoop[M]) =
+  ## Main SAM loop iteration - processes all pending work in order:
+  ## 1. Poll async Cmds - collect completed Future[Proposal]s
+  ## 2. Process all queued Proposals through Acceptors (model mutations)
+  ## 3. Trigger Reactors (side effects like queueing new Cmds)
+  ##
+  ## This should be called repeatedly in your main loop (e.g., every 100ms).
+  ## Safe to call even when no work is pending.
+
   # Poll completed cmds
   var i = 0
   while i < sam.cmdQueue.len:

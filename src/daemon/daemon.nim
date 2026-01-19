@@ -57,6 +57,11 @@ type
     nostrPublisher*: Publisher             # Nostr publisher wrapper
     relayUrls*: seq[string]                # Relay URLs from config
     readyLogged*: bool                     # Ready log emitted
+    # Reactor triggers (SAM side effects)
+    resolutionRequested*: HashSet[GameId]  # Games requesting turn resolution
+    discoveryRequested*: bool              # Request game discovery
+    maintenanceRequested*: bool            # Request maintenance (cleanup, deadlines)
+    tickRequested*: bool                   # Request next tick
 
 
 type
@@ -71,7 +76,7 @@ var shutdownRequested {.global.}: bool = false
 var daemonLoop* {.global.}: DaemonLoop
 
 # =============================================================================
-# TEA Commands (Async Effects)
+# SAM Commands (Async Effects)
 # =============================================================================
 
 type DaemonCmd* = proc (): Future[Proposal[DaemonModel]]
@@ -109,7 +114,15 @@ proc checkDeadlineResolution(gameId: GameId) =
 
   logInfo("Daemon", "Turn deadline reached; auto-resolving game=", gameId,
     " turn=", $gameInfo.turn)
-  daemonLoop.queueCmd(resolveTurnCmd(gameId))
+
+  # Request turn resolution via proposal (reactor will queue the Cmd)
+  let gId = gameId
+  daemonLoop.present(Proposal[DaemonModel](
+    name: "request_turn_resolution",
+    payload: proc(m: var DaemonModel) =
+      m.resolving.incl(gId)
+      m.resolutionRequested.incl(gId)
+  ))
 
 proc checkAndTriggerResolution(gameId: GameId) =
   ## Check if all expected players have submitted orders
@@ -152,7 +165,14 @@ proc checkAndTriggerResolution(gameId: GameId) =
       logWarn("Daemon", "Turn already resolving for game ", gameId, " - skipping")
       return
 
-    daemonLoop.queueCmd(resolveTurnCmd(gameId))
+    # Request turn resolution via proposal (reactor will queue the Cmd)
+    let gId = gameId
+    daemonLoop.present(Proposal[DaemonModel](
+      name: "request_turn_resolution",
+      payload: proc(m: var DaemonModel) =
+        m.resolving.incl(gId)
+        m.resolutionRequested.incl(gId)
+    ))
   else:
     logDebug("Daemon", "Waiting for ", $(expectedPlayers - submittedPlayers),
       " more player(s) for turn ", $currentTurn)
@@ -161,9 +181,7 @@ proc resolveTurnCmd(gameId: GameId): DaemonCmd =
   proc (): Future[Proposal[DaemonModel]] {.async.} =
     logInfo("Daemon", "Resolving turn for game: ", gameId)
 
-    # Mark as resolving
-    daemonLoop.model.resolving.incl(gameId)
-
+    # Game is already marked as resolving by the requesting proposal
     try:
       let gameInfo = daemonLoop.model.games[gameId]
 
@@ -276,41 +294,72 @@ proc discoverGamesCmd(dir: string): DaemonCmd =
 
 proc scheduleNextTickCmd(delayMs: int): DaemonCmd
 
+proc tickMaintenanceCmd(): DaemonCmd =
+  ## Async maintenance: cleanup old events, set deadlines, subscribe to games
+  proc (): Future[Proposal[DaemonModel]] {.async.} =
+    try:
+      # Gather game info for maintenance
+      var deadlineUpdates = initTable[GameId, Option[int64]]()
+
+      for gameId, gameInfo in daemonLoop.model.games:
+        # Cleanup old events
+        writer.cleanupProcessedEvents(gameInfo.dbPath, gameId,
+          gameInfo.turn.int32, daemonLoop.model.replayRetentionTurns,
+          daemonLoop.model.replayRetentionDays,
+          daemonLoop.model.replayRetentionDaysDefinition,
+          daemonLoop.model.replayRetentionDaysState)
+
+        # Set turn deadlines for games that need them
+        if daemonLoop.model.turnDeadlineMinutes > 0 and
+            gameInfo.phase == "Active" and gameInfo.turnDeadline.isNone:
+          let deadline = calculateTurnDeadline(
+            daemonLoop.model.turnDeadlineMinutes)
+          updateTurnDeadline(gameInfo.dbPath, gameInfo.id, deadline)
+          deadlineUpdates[gameId] = deadline
+          if deadline.isSome:
+            logInfo("Daemon", "Set turn deadline for game=", gameId,
+              " at ", $deadline.get())
+
+        # Subscribe to commands for active games
+        if daemonLoop.model.nostrSubscriber != nil and
+            daemonLoop.model.nostrClient.isConnected():
+          let subId = "daemon:" & gameId
+          if subId notin daemonLoop.model.nostrClient.subscriptions:
+            asyncCheck daemonLoop.model.nostrSubscriber.subscribeDaemon(gameId,
+              daemonLoop.model.identity.publicKeyHex)
+            logDebug("Nostr", "Subscribed to commands for game: ", gameId)
+
+      return Proposal[DaemonModel](
+        name: "maintenance_complete",
+        payload: proc(m: var DaemonModel) =
+          # Update model with new deadlines
+          for gameId, deadline in deadlineUpdates:
+            m.games[gameId].turnDeadline = deadline
+      )
+    except CatchableError as e:
+      logError("Daemon", "Maintenance failed: ", e.msg)
+      return Proposal[DaemonModel](
+        name: "maintenance_failed",
+        payload: proc(m: var DaemonModel) = discard
+      )
+
 proc tickProposal(): Proposal[DaemonModel] =
   return Proposal[DaemonModel](
     name: "tick",
     payload: proc(model: var DaemonModel) =
       logInfo("Daemon", "Tick - checking for updates. Managed games: ",
         $model.games.len)
-      daemonLoop.queueCmd(discoverGamesCmd(model.dataDir))
 
-      for gameId, gameInfo in model.games:
-        writer.cleanupProcessedEvents(gameInfo.dbPath, gameId,
-          gameInfo.turn.int32, model.replayRetentionTurns,
-          model.replayRetentionDays, model.replayRetentionDaysDefinition,
-          model.replayRetentionDaysState)
+      # Request async operations via reactor
+      model.discoveryRequested = true
+      model.maintenanceRequested = true
 
-        if model.turnDeadlineMinutes > 0 and gameInfo.phase == "Active" and
-            gameInfo.turnDeadline.isNone:
-          let deadline = calculateTurnDeadline(model.turnDeadlineMinutes)
-          updateTurnDeadline(gameInfo.dbPath, gameInfo.id, deadline)
-          model.games[gameId].turnDeadline = deadline
-          if deadline.isSome:
-            logInfo("Daemon", "Set turn deadline for game=", gameId,
-              " at ", $deadline.get())
-
+      # Check deadline resolutions (pure logic, no I/O)
+      for gameId in model.games.keys:
         checkDeadlineResolution(gameId)
 
-      # Subscribe to commands for all active games
-      for gameId, gameInfo in model.games:
-        if model.nostrSubscriber != nil and model.nostrClient.isConnected():
-          let subId = "daemon:" & gameId
-          if subId notin model.nostrClient.subscriptions:
-            asyncCheck model.nostrSubscriber.subscribeDaemon(gameId,
-              model.identity.publicKeyHex)
-            logDebug("Nostr", "Subscribed to commands for game: ", gameId)
-
-      daemonLoop.queueCmd(scheduleNextTickCmd(model.pollInterval * 1000))
+      # Request next tick
+      model.tickRequested = true
   )
 
 proc scheduleNextTickCmd(delayMs: int): DaemonCmd =
@@ -493,7 +542,11 @@ proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
     nostrSubscriber: nil,
     nostrPublisher: nil,
     relayUrls: relayUrls,
-    readyLogged: false
+    readyLogged: false,
+    resolutionRequested: initHashSet[GameId](),
+    discoveryRequested: false,
+    maintenanceRequested: false,
+    tickRequested: false
   )
   logInfo("Daemon", "Initialized with identity: ", result.identity.npub())
 
@@ -506,12 +559,63 @@ proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
     replayRetentionDaysDefinition, replayRetentionDaysState,
     turnDeadlineMinutes, allowIdentityRegen))
   # Add generic acceptor to execute proposal payloads
-  result.addAcceptor(proc(model: var DaemonModel, proposal: Proposal[DaemonModel]): bool =
+  result.addAcceptor(proc(model: var DaemonModel,
+      proposal: Proposal[DaemonModel]): bool =
     if proposal.payload == nil:
       logError("Daemon", "Received proposal with nil payload: ", proposal.name)
       return false
     proposal.payload(model)
     return true
+  )
+
+  # Add reactor to handle side effects (SAM pattern)
+  result.addReactor(proc(model: DaemonModel,
+      dispatch: proc(p: Proposal[DaemonModel])) =
+    # Handle turn resolution requests
+    for gameId in model.resolutionRequested:
+      if gameId notin model.resolving:
+        logDebug("Daemon", "Reactor queueing turn resolution for ", gameId)
+        daemonLoop.queueCmd(resolveTurnCmd(gameId))
+
+    # Clear resolution requests via proposal
+    if model.resolutionRequested.len > 0:
+      let requestedGames = model.resolutionRequested
+      dispatch(Proposal[DaemonModel](
+        name: "clear_resolution_requests",
+        payload: proc(m: var DaemonModel) =
+          for gameId in requestedGames:
+            m.resolutionRequested.excl(gameId)
+      ))
+
+    # Handle game discovery requests
+    if model.discoveryRequested:
+      logDebug("Daemon", "Reactor queueing game discovery")
+      daemonLoop.queueCmd(discoverGamesCmd(model.dataDir))
+      dispatch(Proposal[DaemonModel](
+        name: "clear_discovery_request",
+        payload: proc(m: var DaemonModel) =
+          m.discoveryRequested = false
+      ))
+
+    # Handle maintenance requests
+    if model.maintenanceRequested:
+      logDebug("Daemon", "Reactor queueing maintenance")
+      daemonLoop.queueCmd(tickMaintenanceCmd())
+      dispatch(Proposal[DaemonModel](
+        name: "clear_maintenance_request",
+        payload: proc(m: var DaemonModel) =
+          m.maintenanceRequested = false
+      ))
+
+    # Handle tick requests
+    if model.tickRequested:
+      logDebug("Daemon", "Reactor queueing next tick")
+      daemonLoop.queueCmd(scheduleNextTickCmd(model.pollInterval * 1000))
+      dispatch(Proposal[DaemonModel](
+        name: "clear_tick_request",
+        payload: proc(m: var DaemonModel) =
+          m.tickRequested = false
+      ))
   )
 
 proc initTestDaemonLoop*(dataDir: string): DaemonLoop =
