@@ -16,7 +16,7 @@ import
     player_state as ps_types, diplomacy]
 import ../engine/state/[engine, iterators]
 import ../engine/systems/capacity/c2_pool
-import ../daemon/transport/nostr/[types, events, filter, crypto]
+import ../daemon/transport/nostr/[types, events, filter, crypto, nip01]
 import ./nostr/client
 import ./tui/term/term
 import ./tui/buffer

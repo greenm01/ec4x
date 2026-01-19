@@ -1,6 +1,7 @@
 # EC4X Nostr Implementation Roadmap
 
 ## Changelog
+- 2026-01-18: Completed player Nostr client extraction, relay tests, E2E script, and compression benchmarks.
 - 2026-01-18: Added deadline-based auto-resolve and relay reconnect + resubscribe backoff.
 - 2026-01-18: Added NIP-44 test vectors, crypto/wire/identity tests, and daemon test fixes.
 - 2026-01-18: Refactored daemon Nostr subscriber/publisher modules.
@@ -51,8 +52,7 @@ strategies needed to complete the integration.
 - Archived auto-resolve report in `docs/archive/2026-01-18/AUTO_RESOLVE_IMPLEMENTATION.md`
 
 **Stubbed/TODO:**
-- Player client module extraction (optional; TUI integration exists)
-- E2E and relay integration tests
+- None (implementation and validation tooling complete)
 
 ---
 
@@ -941,7 +941,7 @@ echo "E2E test complete"
 ### Phase 3: Compression Layer
 - [x] `src/daemon/transport/nostr/compression.nim` - zippy integration
 - [x] `src/daemon/transport/nostr/wire.nim` - Wire format encoding
-- [ ] Test compression ratio
+- [x] Test compression ratio
 
 ### Phase 4: Delta System
 - [x] PlayerState diff + KDL formatting (`src/daemon/transport/nostr/delta_kdl.nim`)
@@ -961,25 +961,22 @@ echo "E2E test complete"
 - [x] `src/daemon/publisher.nim` - Publisher module refactor
 
 ### Phase 6: Player Client
-- [ ] `src/player/nostr/client.nim` - Player Nostr client
+- [x] `src/player/nostr/client.nim` - Player Nostr client
 - [x] Update TUI to use Nostr for state sync
 - [x] Implement command submission UI
 
 ### Phase 7: Testing
 - [x] Unit tests for crypto + identity
 - [x] Integration tests for NIP-44 vectors + wire format
-- [ ] Integration tests with local relay
-- [ ] E2E test script
-- [ ] Test against public relay
+- [x] Integration tests with local relay
+- [x] E2E test script
+- [x] Test against public relay
 
 ---
 
 ## Remaining Work
 
-- Player Nostr client module extraction (if we want a standalone client beyond the TUI wiring)
-- Relay-backed integration tests (local relay + public relay validation)
-- E2E script for full daemon/player relay flow
-- Compression ratio benchmark and thresholds
+- None. All roadmap items implemented; validation tooling is in place.
 
 ---
 
@@ -995,7 +992,7 @@ echo "E2E test complete"
 | 6. Player Client | 2-3 days | Phases 1-5 |
 | 7. Testing | 2-3 days | All phases |
 
-**Total: 2-3 weeks**
+**Total: 2-3 weeks (completed)**
 
 ---
 

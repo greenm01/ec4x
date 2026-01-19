@@ -1,6 +1,6 @@
 ## Integration test for relay-backed Nostr flow (local relay).
 
-import std/[asyncdispatch, os, options, unittest]
+import std/[asyncdispatch, os, unittest]
 import ../../src/daemon/transport/nostr/[client, events, wire, crypto, filter]
 import ../../src/daemon/transport/nostr/types
 import kdl
@@ -27,6 +27,8 @@ suite "Nostr Relay (Local)":
     var daemonClient = newNostrClient(@[url])
     waitFor playerClient.connect()
     waitFor daemonClient.connect()
+    asyncCheck playerClient.listen()
+    asyncCheck daemonClient.listen()
 
     var received = false
 
@@ -41,6 +43,7 @@ suite "Nostr Relay (Local)":
 
     let playerFilter = filterTurnResults(GameId, playerKeys.publicKey)
     waitFor playerClient.subscribe("player-results", @[playerFilter])
+    waitFor sleepAsync(200)
 
     let kdlPayload = "delta turn=1 {}"
     let daemonPriv = hexToBytes32(daemonKeys.privateKey)
@@ -55,7 +58,8 @@ suite "Nostr Relay (Local)":
     )
     signEvent(event, daemonPriv)
 
-    waitFor daemonClient.publish(event)
+    discard waitFor daemonClient.publish(event)
+    waitFor sleepAsync(200)
 
     for _ in 0..<30:
       if received:

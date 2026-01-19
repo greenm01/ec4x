@@ -1,6 +1,6 @@
 ## Smoke test for public relay connectivity (optional).
 
-import std/[asyncdispatch, os, options, unittest]
+import std/[asyncdispatch, os, unittest]
 import ../../src/daemon/transport/nostr/[client, events, crypto, filter]
 import ../../src/daemon/transport/nostr/types
 
@@ -26,6 +26,8 @@ suite "Nostr Relay (Public)":
     var daemonClient = newNostrClient(@[url])
     waitFor playerClient.connect()
     waitFor daemonClient.connect()
+    asyncCheck playerClient.listen()
+    asyncCheck daemonClient.listen()
 
     var received = false
 
@@ -35,6 +37,7 @@ suite "Nostr Relay (Public)":
 
     let playerFilter = filterTurnResults(GameId, playerKeys.publicKey)
     waitFor playerClient.subscribe("player-results", @[playerFilter])
+    waitFor sleepAsync(200)
 
     var event = createTurnResults(
       gameId = GameId,
@@ -46,7 +49,8 @@ suite "Nostr Relay (Public)":
     let daemonPriv = hexToBytes32(daemonKeys.privateKey)
     signEvent(event, daemonPriv)
 
-    waitFor daemonClient.publish(event)
+    discard waitFor daemonClient.publish(event)
+    waitFor sleepAsync(200)
 
     for _ in 0..<30:
       if received:

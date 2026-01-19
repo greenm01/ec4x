@@ -15,7 +15,7 @@
 # Whitelist config and scripts
 !*.kdl
 !*.fish
-!*.nix
+!*.sh
 
 # Whitelist assets
 !*.png

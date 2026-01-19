@@ -818,6 +818,7 @@ proc resolve*(gameId: string, dataDir: string = "data"): int =
     daemonLoop.model.identity.publicKeyHex,
     crypto.hexToBytes32(daemonLoop.model.identity.privateKeyHex)
   )
+  waitFor daemonLoop.model.nostrClient.connect()
 
   # Load state
   let state = loadFullState(dbPath)
@@ -833,7 +834,14 @@ proc resolve*(gameId: string, dataDir: string = "data"): int =
 
   # Publish turn results via Nostr (if connected)
   if daemonLoop.model.nostrPublisher != nil:
-    let gameInfo = daemonLoop.model.games[gameId]
+    let gameInfo = GameInfo(
+      id: gameId,
+      dbPath: dbPath,
+      turn: state.turn,
+      phase: reader.loadGamePhase(dbPath),
+      transportMode: "nostr",
+      turnDeadline: reader.loadGameDeadline(dbPath)
+    )
     waitFor daemonLoop.model.nostrPublisher.publishTurnResults(
       gameInfo.id,
       gameInfo.dbPath,
