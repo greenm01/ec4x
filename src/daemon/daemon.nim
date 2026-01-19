@@ -329,6 +329,10 @@ proc tickMaintenanceCmd(): DaemonCmd =
               daemonLoop.model.identity.publicKeyHex)
             logDebug("Nostr", "Subscribed to commands for game: ", gameId)
 
+          if "daemon:invite" notin daemonLoop.model.nostrClient.subscriptions:
+            asyncCheck daemonLoop.model.nostrSubscriber.subscribeInviteClaims()
+            logDebug("Nostr", "Subscribed to invite slot claims")
+
       return Proposal[DaemonModel](
         name: "maintenance_complete",
         payload: proc(m: var DaemonModel) =

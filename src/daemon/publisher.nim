@@ -149,6 +149,24 @@ proc publishGameDefinition*(pub: Publisher, gameId: string, dbPath: string,
   except CatchableError as e:
     logError("Nostr", "Failed to publish game definition: ", e.msg)
 
+proc publishJoinError*(pub: Publisher, playerPubkey: string,
+  message: string) {.async.} =
+  ## Publish join error to a player
+  try:
+    let playerPub = crypto.hexToBytes32(playerPubkey)
+    let encrypted = encodePayload(message, pub.daemonPriv, playerPub)
+
+    var event = createJoinError(pub.daemonPubkey, playerPubkey, encrypted)
+    signEvent(event, pub.daemonPriv)
+
+    let published = await pub.client.publish(event)
+    if published:
+      logInfo("Nostr", "Published join error")
+    else:
+      logError("Nostr", "Failed to publish join error")
+  except CatchableError as e:
+    logError("Nostr", "Failed to publish join error: ", e.msg)
+
 proc publishTurnResults*(pub: Publisher, gameId: string, dbPath: string,
   state: GameState) {.async.} =
   ## Publish turn results to all players via Nostr

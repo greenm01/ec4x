@@ -6,7 +6,7 @@
 ## The engine (src/engine/) is pure - it generates GameState in memory.
 ## This module persists that state to SQLite.
 
-import std/[os, json, jsonutils, random]
+import std/[os, json, jsonutils, random, sets]
 import db_connector/db_sqlite
 
 import ../../common/logger

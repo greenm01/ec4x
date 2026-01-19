@@ -98,6 +98,25 @@ proc createSlotClaim*(
   result.id = computeEventId(result)
 
 # =============================================================================
+# Join Error Events (30404)
+# =============================================================================
+
+proc createJoinError*(daemonPubkey: string, playerPubkey: string,
+  encryptedMessage: string): NostrEvent =
+  ## Create join error event (30404)
+  let tags = @[
+    @[TagP, playerPubkey]
+  ]
+
+  result = newEvent(
+    kind = EventKindJoinError,
+    content = encryptedMessage,
+    tags = tags,
+    pubkey = daemonPubkey
+  )
+  result.id = computeEventId(result)
+
+# =============================================================================
 # Turn Commands Events (30402)
 # =============================================================================
 

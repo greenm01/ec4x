@@ -12,6 +12,7 @@ type
     onDelta*: proc(event: NostrEvent, kdl: string) {.closure.}
     onFullState*: proc(event: NostrEvent, kdl: string) {.closure.}
     onEvent*: proc(subId: string, event: NostrEvent) {.closure.}
+    onJoinError*: proc(message: string) {.closure.}
     onError*: proc(message: string) {.closure.}
 
   PlayerNostrClient* = ref object
@@ -36,7 +37,8 @@ proc hexToBytes32Safe*(hexStr: string): Option[array[32, byte]] =
 
 proc handleEvent*(pc: PlayerNostrClient, subId: string, event: NostrEvent) =
   if event.kind == EventKindTurnResults or
-      event.kind == EventKindGameState:
+      event.kind == EventKindGameState or
+      event.kind == EventKindJoinError:
     let privOpt = hexToBytes32Safe(pc.playerPrivHex)
     let pubOpt = hexToBytes32Safe(event.pubkey)
     if privOpt.isNone or pubOpt.isNone:
@@ -47,9 +49,12 @@ proc handleEvent*(pc: PlayerNostrClient, subId: string, event: NostrEvent) =
       if event.kind == EventKindTurnResults:
         if pc.handlers.onDelta != nil:
           pc.handlers.onDelta(event, payload)
-      else:
+      elif event.kind == EventKindGameState:
         if pc.handlers.onFullState != nil:
           pc.handlers.onFullState(event, payload)
+      else:
+        if pc.handlers.onJoinError != nil:
+          pc.handlers.onJoinError(payload)
     except CatchableError as e:
       pc.handleError("Failed to decode payload: " & e.msg)
   else:

@@ -2,7 +2,7 @@
 
 import std/asyncdispatch
 import ../common/logger
-import ./transport/nostr/[types, client]
+import ./transport/nostr/[types, client, filter]
 
 type
   Subscriber* = ref object
@@ -35,4 +35,11 @@ proc subscribeDaemon*(sub: Subscriber, gameId: string,
   daemonPubkey: string) {.async.} =
   ## Subscribe to command + slot claim events for a game
   await sub.client.subscribeDaemon(gameId, daemonPubkey)
+
+proc subscribeInviteClaims*(sub: Subscriber) {.async.} =
+  ## Subscribe to invite-only slot claims
+  let filter = newFilter()
+    .withKinds(@[EventKindPlayerSlotClaim])
+    .withTag(TagD, @["invite"])
+  await sub.client.subscribe("daemon:invite", @[filter])
 

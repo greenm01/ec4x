@@ -1474,11 +1474,24 @@ proc runTui(gameId: string = "") =
           sam.model.nostrEnabled = false
           sam.present(emptyProposal())
 
+      nostrHandlers.onJoinError = proc(message: string) =
+        if sam.model.lobbyJoinStatus == JoinStatus.WaitingResponse:
+          sam.model.lobbyJoinStatus = JoinStatus.Failed
+          sam.model.lobbyJoinError = message
+          sam.model.statusMessage = message
+          sam.model.nostrJoinRequested = false
+          sam.model.nostrJoinSent = false
+          sam.model.nostrJoinInviteCode = ""
+          sam.model.nostrJoinGameId = ""
+        sam.present(emptyProposal())
+
       nostrHandlers.onError = proc(message: string) =
         sam.model.nostrLastError = message
         sam.model.nostrStatus = "error"
         sam.model.nostrEnabled = false
         sam.present(emptyProposal())
+
+
 
       nostrClient = newPlayerNostrClient(
         relayList,
@@ -1557,6 +1570,14 @@ proc runTui(gameId: string = "") =
             .withKinds(@[EventKindGameDefinition])
           asyncCheck nostrClient.subscribe("lobby:games", @[lobbyFilter])
           nostrSubscriptions.add("lobby:games")
+          let joinPubkey = sam.model.entryModal.identity.npubHex
+          if joinPubkey.len > 0:
+            let joinErrorFilter = newFilter()
+              .withKinds(@[EventKindJoinError])
+              .withTag(TagP, @[joinPubkey])
+            asyncCheck nostrClient.subscribe("lobby:join-errors",
+              @[joinErrorFilter])
+            nostrSubscriptions.add("lobby:join-errors")
           sam.model.nostrStatus = "connected"
           sam.model.statusMessage = "Nostr connected"
         elif sam.model.nostrStatus == "connected" and

@@ -70,6 +70,7 @@ const
   EventKindPlayerSlotClaim* = 30401  # Player: Claims invite code
   EventKindTurnCommands* = 30402     # Player: Commands for a turn
   EventKindTurnResults* = 30403      # Server: Delta from turn resolution
+  EventKindJoinError* = 30404        # Server: Join errors
   EventKindGameState* = 30405        # Server: Full current state
 
 # =============================================================================
@@ -85,6 +86,7 @@ const
   TagTurn* = "turn"       # Turn number
   TagSlot* = "slot"       # Player slot
   TagCode* = "code"       # Invite code
+  TagError* = "error"     # Error message
 
 # =============================================================================
 # Game Status Values
