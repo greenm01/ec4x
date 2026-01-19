@@ -51,6 +51,18 @@ proc getHouseByInviteCode*(dbPath: string, gameId: string,
     logError("Persistence", "Failed to parse house id for invite code")
     return none(HouseId)
 
+proc inviteCodeMatches*(dbPath: string, inviteCode: string): bool =
+  ## Check if invite code exists in this game database
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let row = db.getRow(
+    sql"SELECT id FROM houses WHERE invite_code = ? LIMIT 1",
+    inviteCode
+  )
+
+  row[0].len > 0
+
 proc getHouseInviteCode*(dbPath: string, gameId: string,
   houseId: HouseId): Option[string] =
   ## Get invite code for a house

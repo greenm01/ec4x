@@ -1589,28 +1589,21 @@ proc runTui(gameId: string = "") =
                 sam.model.entryModal.selectedGame().get().id
               else:
                 ""
-            if gameId.len > 0:
-              var event = createSlotClaim(
-                gameId = gameId,
-                inviteCode = sam.model.nostrJoinInviteCode,
-                playerPubkey = identity.npubHex
-              )
-              signEvent(event, privOpt.get())
-              asyncCheck nostrClient.publish(event)
-              sam.model.statusMessage = "Join request sent"
-              sam.model.nostrJoinSent = true
-              sam.model.nostrJoinRequested = false
-              sam.model.nostrJoinGameId = gameId
-              sam.model.nostrJoinInviteCode = ""
-            else:
-              sam.model.lobbyJoinStatus = JoinStatus.Failed
-              sam.model.lobbyJoinError = "Select a game first"
-              sam.model.statusMessage = sam.model.lobbyJoinError
-              sam.model.nostrJoinRequested = false
-              sam.model.nostrJoinSent = false
-              sam.model.nostrJoinInviteCode = ""
-              sam.model.nostrJoinGameId = ""
-              sam.model.nostrJoinPubkey = ""
+            let joinTarget = if gameId.len > 0: gameId else: "invite"
+            var event = createSlotClaim(
+              gameId = joinTarget,
+              inviteCode = sam.model.nostrJoinInviteCode,
+              playerPubkey = identity.npubHex
+            )
+            signEvent(event, privOpt.get())
+            asyncCheck nostrClient.publish(event)
+            sam.model.statusMessage = "Join request sent"
+            sam.model.nostrJoinSent = true
+            sam.model.nostrJoinRequested = false
+            sam.model.nostrJoinGameId = gameId
+            sam.model.nostrJoinInviteCode = ""
+            if gameId.len == 0:
+              sam.model.nostrJoinGameId = "invite"
           else:
             sam.model.lobbyJoinStatus = JoinStatus.Failed
             sam.model.lobbyJoinError = "Invalid signing key"

@@ -456,41 +456,69 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
         " event=", eventId)
       return
 
-    # Get game info
-    if not daemonLoop.model.games.hasKey(gameId):
-      logWarn("Nostr", "Slot claim for unknown game: ", gameId)
-      return
-    
-    let gameInfo = daemonLoop.model.games[gameId]
+    var resolvedGameId = gameId
+    var gameInfoOpt = none(GameInfo)
+    if gameId == "invite":
+      var matches: seq[GameInfo] = @[]
+      for _, info in daemonLoop.model.games:
+        if reader.inviteCodeMatches(info.dbPath, inviteCode):
+          matches.add(info)
+      if matches.len == 1:
+        gameInfoOpt = some(matches[0])
+        resolvedGameId = matches[0].id
+      elif matches.len == 0:
+        logWarn("Nostr", "Invite code not found in any game")
+        if daemonLoop.model.nostrPublisher != nil:
+          await daemonLoop.model.nostrPublisher.publishJoinError(
+            event.pubkey,
+            "Invite code not found"
+          )
+        return
+      else:
+        logWarn("Nostr", "Invite code matches multiple games")
+        if daemonLoop.model.nostrPublisher != nil:
+          await daemonLoop.model.nostrPublisher.publishJoinError(
+            event.pubkey,
+            "Invite code matches multiple games"
+          )
+        return
+    else:
+      if not daemonLoop.model.games.hasKey(gameId):
+        logWarn("Nostr", "Slot claim for unknown game: ", gameId)
+        return
+      gameInfoOpt = some(daemonLoop.model.games[gameId])
 
-    if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
+    let gameInfo = gameInfoOpt.get()
+
+    if reader.hasProcessedEvent(gameInfo.dbPath, resolvedGameId,
         event.kind, event.id, reader.ReplayDirection.Inbound):
       logWarn("Nostr", "Duplicate slot claim ignored: ", event.id[0..7])
       return
 
     if not isValidInviteCode(inviteCode):
       let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
-      logWarn("Nostr", "Invalid invite code for game=", gameId,
+      logWarn("Nostr", "Invalid invite code for game=", resolvedGameId,
         " event=", eventId)
       return
-
-    let houseOpt = getHouseByInviteCode(gameInfo.dbPath, gameId, inviteCode)
+ 
+    let houseOpt = getHouseByInviteCode(gameInfo.dbPath, resolvedGameId,
+      inviteCode)
     if houseOpt.isNone:
       let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
-      logWarn("Nostr", "Unknown invite code for game=", gameId,
+      logWarn("Nostr", "Unknown invite code for game=", resolvedGameId,
         " event=", eventId)
       return
 
-    if isInviteCodeClaimed(gameInfo.dbPath, gameId, inviteCode):
+    if isInviteCodeClaimed(gameInfo.dbPath, resolvedGameId, inviteCode):
       let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
-      logWarn("Nostr", "Invite code already claimed for game=", gameId,
+      logWarn("Nostr", "Invite code already claimed for game=", resolvedGameId,
         " event=", eventId)
       return
 
     let houseId = houseOpt.get()
-    
+
     # Update house with player pubkey
-    updateHousePubkey(gameInfo.dbPath, gameId, houseId, playerPubkey)
+    updateHousePubkey(gameInfo.dbPath, resolvedGameId, houseId, playerPubkey)
 
     # Publish full state immediately after slot claim
     let updatedState = loadFullState(gameInfo.dbPath)
@@ -507,12 +535,14 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
         gameInfo.phase,
         updatedState
       )
-    
-    logInfo("Nostr", "Slot claimed for game=", gameId,
+
+    logInfo("Nostr", "Slot claimed for game=", resolvedGameId,
             " house=", $houseId, " player=", playerPubkey[0..7], "...")
 
-    writer.insertProcessedEvent(gameInfo.dbPath, gameId,
+    writer.insertProcessedEvent(gameInfo.dbPath, resolvedGameId,
       0, event.kind, event.id, reader.ReplayDirection.Inbound)
+
+
     
   except CatchableError as e:
     logError("Nostr", "Failed to process slot claim: ", e.msg)

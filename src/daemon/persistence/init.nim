@@ -73,17 +73,41 @@ proc createGameDatabase*(state: GameState, dataDir: string): string =
   # Persist full initial state (houses, systems, colonies, fleets, etc.)
   saveFullState(state)
 
+  var existingCodes = initHashSet[string]()
+  let gamesDir = dataDir / "games"
+  if dirExists(gamesDir):
+    for kind, path in walkDir(gamesDir):
+      if kind != pcDir:
+        continue
+      let otherDbPath = path / "ec4x.db"
+      if not fileExists(otherDbPath):
+        continue
+      try:
+        let db = open(otherDbPath, "", "", "")
+        defer: db.close()
+        let rows = db.getAllRows(
+          sql"SELECT invite_code FROM houses WHERE invite_code IS NOT NULL"
+        )
+        for row in rows:
+          if row[0].len > 0:
+            existingCodes.incl(row[0])
+      except CatchableError:
+        logWarn("Persistence", "Failed to scan invite codes from ", otherDbPath)
+
   for house in state.houses.entities.data:
     var code = generateInviteCode()
     var retries = 0
-    while isInviteCodeAssigned(dbPath, state.gameId, code) and retries < 5:
+    while (isInviteCodeAssigned(dbPath, state.gameId, code) or
+        code in existingCodes) and retries < 25:
       code = generateInviteCode()
       retries += 1
-    if retries == 5 and isInviteCodeAssigned(dbPath, state.gameId, code):
+    if retries == 25 and (isInviteCodeAssigned(dbPath, state.gameId, code) or
+        code in existingCodes):
       logError("Persistence", "Failed to generate unique invite code for ",
         house.name)
       continue
     updateHouseInviteCode(dbPath, state.gameId, house.id, code)
+    existingCodes.incl(code)
     logInfo("Persistence", "Generated invite code for ", house.name, " (code hidden)")
 
   return dbPath
