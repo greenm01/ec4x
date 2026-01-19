@@ -193,19 +193,6 @@ proc toDetailPanelData*(systemCoord: HexCoord, state: GameState,
 # Fog-of-War conversions using PlayerState
 # -----------------------------------------------------------------------------
 
-proc visibilityToSymbol(visibility: VisibilityLevel): HexSymbol =
-  ## Map visibility level to hex symbol type
-  case visibility
-  of VisibilityLevel.None:
-    HexSymbol.Unknown
-  of VisibilityLevel.Adjacent:
-    HexSymbol.Unknown  # Shows as "?" - knows it exists but no details
-  of VisibilityLevel.Scouted:
-    HexSymbol.Neutral  # Shows as "·" - has been explored
-  of VisibilityLevel.Occupied:
-    HexSymbol.Neutral  # Will be overridden if colony present
-  of VisibilityLevel.Owned:
-    HexSymbol.Colony   # Will be overridden by isHomeworld check
 
 proc toSystemInfoFromPlayerState*(
     visibleSys: VisibleSystem,

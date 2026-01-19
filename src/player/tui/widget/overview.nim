@@ -12,7 +12,6 @@
 ##
 ## Reference: ec-style-layout.md Section 5.1
 
-import std/strutils
 import ../buffer
 import ../layout/layout_pkg
 import ../styles/ec_palette

@@ -17,6 +17,35 @@ import ../../common/wordlist
 
 export types, tui_model, actions
 
+proc viewModeFromInt(value: int): Option[ViewMode] =
+  case value
+  of 1:
+    some(ViewMode.Overview)
+  of 2:
+    some(ViewMode.Planets)
+  of 3:
+    some(ViewMode.Fleets)
+  of 4:
+    some(ViewMode.Research)
+  of 5:
+    some(ViewMode.Espionage)
+  of 6:
+    some(ViewMode.Economy)
+  of 7:
+    some(ViewMode.Reports)
+  of 8:
+    some(ViewMode.Messages)
+  of 9:
+    some(ViewMode.Settings)
+  of 20:
+    some(ViewMode.PlanetDetail)
+  of 30:
+    some(ViewMode.FleetDetail)
+  of 70:
+    some(ViewMode.ReportDetail)
+  else:
+    none(ViewMode)
+
 # ============================================================================
 # Navigation Acceptor
 # ============================================================================
@@ -30,27 +59,31 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
   case proposal.actionName
   of ActionNavigateMode:
     # Mode switch
-    let newMode = ViewMode(proposal.navMode)
-    model.mode = newMode
-    model.selectedIdx = 0 # Reset selection when switching modes
-    model.resetBreadcrumbs(newMode)
-    model.statusMessage = ""
-    model.clearExpertFeedback()
+    let newMode = viewModeFromInt(proposal.navMode)
+    if newMode.isSome:
+      let selectedMode = newMode.get()
+      model.mode = selectedMode
+      model.selectedIdx = 0 # Reset selection when switching modes
+      model.resetBreadcrumbs(selectedMode)
+      model.statusMessage = ""
+      model.clearExpertFeedback()
   of ActionSwitchView:
     # Primary view switch
-    let newMode = ViewMode(proposal.navMode)
-    model.mode = newMode
-    model.selectedIdx = 0
-    model.resetBreadcrumbs(newMode)
-    model.statusMessage = ""
-    model.clearExpertFeedback()
-    if newMode == ViewMode.Reports:
-      model.reportFocus = ReportPaneFocus.TurnList
-      model.reportTurnIdx = 0
-      model.reportSubjectIdx = 0
-      model.reportTurnScroll = initScrollState()
-      model.reportSubjectScroll = initScrollState()
-      model.reportBodyScroll = initScrollState()
+    let newMode = viewModeFromInt(proposal.navMode)
+    if newMode.isSome:
+      let selectedMode = newMode.get()
+      model.mode = selectedMode
+      model.selectedIdx = 0
+      model.resetBreadcrumbs(selectedMode)
+      model.statusMessage = ""
+      model.clearExpertFeedback()
+      if selectedMode == ViewMode.Reports:
+        model.reportFocus = ReportPaneFocus.TurnList
+        model.reportTurnIdx = 0
+        model.reportSubjectIdx = 0
+        model.reportTurnScroll = initScrollState()
+        model.reportSubjectScroll = initScrollState()
+        model.reportBodyScroll = initScrollState()
   of ActionBreadcrumbBack:
     if model.popBreadcrumb():
       let current = model.currentBreadcrumb()
@@ -191,10 +224,11 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if reportOpt.isSome:
         let report = reportOpt.get()
         let target = report.linkView
-        if target >= 1 and target <= 9:
-          let nextMode = ViewMode(target)
-          model.mode = nextMode
-          model.resetBreadcrumbs(nextMode)
+        let nextMode = viewModeFromInt(target)
+        if nextMode.isSome:
+          let selectedMode = nextMode.get()
+          model.mode = selectedMode
+          model.resetBreadcrumbs(selectedMode)
           model.statusMessage = "Jumped to " & report.linkLabel
       model.clearExpertFeedback()
   of ActionToggleFleetSelect:
@@ -325,9 +359,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.selectedIdx < model.fleets.len:
         model.selectedFleetId = model.fleets[model.selectedIdx].id
     else:
-      if target >= 1 and target <= 9:
+      let nextMode = viewModeFromInt(target)
+      if nextMode.isSome:
         model.previousMode = model.mode
-        model.mode = ViewMode(target)
+        model.mode = nextMode.get()
         model.resetBreadcrumbs(model.mode)
       elif target == 0:
         model.mode = ViewMode.Overview
@@ -631,10 +666,12 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.resetBreadcrumbs(model.mode)
     elif model.mode == ViewMode.ReportDetail and proposal.selectIdx == -1:
       let report = model.currentReport()
-      if report.isSome and report.get().linkView > 0:
-        model.previousMode = model.mode
-        model.mode = ViewMode(report.get().linkView)
-        model.resetBreadcrumbs(model.mode)
+      if report.isSome:
+        let nextMode = viewModeFromInt(report.get().linkView)
+        if nextMode.isSome:
+          model.previousMode = model.mode
+          model.mode = nextMode.get()
+          model.resetBreadcrumbs(model.mode)
     else:
       discard
   else:

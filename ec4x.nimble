@@ -1,11 +1,11 @@
 # Package
 
-version       = "0.1.0"
-author        = "Mason Austin Green"
-description   = "EC4X - Asynchronous turn-based 4X wargame"
-license       = "MIT"
-srcDir        = "src"
-binDir        = "bin"
+version = "0.1.0"
+author = "Mason Austin Green"
+description = "EC4X - Asynchronous turn-based 4X wargame"
+license = "MIT"
+srcDir = "src"
+binDir = "bin"
 
 # Dependencies
 
@@ -13,10 +13,10 @@ requires "nim >= 2.0.0"
 requires "cligen >= 1.7.0"
 requires "nimkdl >= 2.0.6"
 requires "db_connector"
-requires "ws >= 0.5.0"           # WebSocket client for Nostr relay
-requires "zippy >= 0.10.0"       # Compression for Nostr payloads
-requires "nimcrypto >= 0.6.0"    # Cryptography for SHA/HMAC
-requires "secp256k1"             # Schnorr signing + ECDH
+requires "ws >= 0.5.0" # WebSocket client for Nostr relay
+requires "zippy >= 0.10.0" # Compression for Nostr payloads
+requires "nimcrypto >= 0.6.0" # Cryptography for SHA/HMAC
+requires "secp256k1" # Schnorr signing + ECDH
 requires "nim_chacha20_poly1305" # ChaCha20 stream cipher
 
 # ==============================================================================
@@ -64,7 +64,8 @@ task installDaemon, "Install daemon binary to /usr/local/bin":
 task buildClient, "Build GUI player client":
   echo "Building EC4X GUI Player Client..."
   mkDir "bin"
-  exec "nim c " & releaseFlags & " -o:bin/ec4x-client --passC:-Isrc/client/vendor --passC:\"-Wno-incompatible-pointer-types\" src/client/main.nim"
+  exec "nim c " & releaseFlags &
+    " -o:bin/ec4x-client --passC:-Isrc/client/vendor --passC:\"-Wno-incompatible-pointer-types\" src/client/main.nim"
   echo "GUI Client build completed!"
 
 task buildPlayer, "Build dev player CLI/TUI":
@@ -84,7 +85,7 @@ task buildAll, "Build all binaries (release)":
   mkDir "bin"
   exec "nim c " & releaseFlags & " -o:bin/ec4x src/moderator/moderator.nim"
   exec "nim c " & releaseFlags & " -o:bin/ec4x-daemon src/daemon/daemon.nim"
-  exec "nim c " & releaseFlags & " -o:bin/ec4x-client --passC:-Isrc/client/vendor --passC:\"-Wno-incompatible-pointer-types\" src/client/main.nim"
+  #exec "nim c " & releaseFlags & " -o:bin/ec4x-client --passC:-Isrc/client/vendor --passC:\"-Wno-incompatible-pointer-types\" src/client/main.nim"
   exec "nim c " & releaseFlags & " -o:bin/ec4x-tui src/player/tui_player.nim"
   echo "All builds completed!"
 

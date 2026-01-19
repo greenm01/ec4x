@@ -3,10 +3,7 @@
 import std/[options, os, json, jsonutils]
 import db_connector/db_sqlite
 import ../../common/logger
-import ../../engine/types/[core, player_state, colony, fleet, ship, ground_unit,
-  diplomacy, progression]
-
-const SnapshotTable = "player_state_snapshots"
+import ../../engine/types/[core, player_state]
 
 proc playerDbDir*(dataDir: string, pubkey: string, gameId: string): string =
   dataDir / "players" / pubkey / "games" / gameId

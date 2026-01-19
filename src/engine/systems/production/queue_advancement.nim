@@ -29,7 +29,7 @@
 ## Ships built at spaceports cost 2x PP (applied at command submission time)
 ## Exception: Shipyard/Starbase buildings (orbital construction, no penalty)
 
-import std/[options, sequtils, strutils]
+import std/[options, sequtils]
 import ../../types/[core, production, facilities, colony, combat, game_state, ship]
 import ../../state/[engine, iterators]
 import ../../entities/project_ops

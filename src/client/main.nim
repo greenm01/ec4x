@@ -4,7 +4,7 @@ import ./model/state
 import ./logic/[acceptors, reactors, actions]
 import ./ui/view
 import ./bindings/[sokol, sokol_nuklear, sokol_gl]
-import ./starmap/[hex_math, camera, theme, renderer, input]
+import ./starmap/[hex_math, theme, renderer, input]
 
 # --- Global State ---
 # Sokol callbacks are C-style and don't accept closures/context, so we need a global

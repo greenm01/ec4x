@@ -26,7 +26,6 @@ import ./tui/tty
 import ./tui/signals
 import ./tui/layout/layout_pkg
 import ./tui/widget/[widget_pkg, frame, paragraph]
-import ./tui/widget/hexmap/hexmap_pkg
 import ./tui/adapters
 import ./tui/widget/overview
 import ./tui/widget/[hud, breadcrumb, command_dock, scrollbar]
@@ -392,161 +391,16 @@ proc mapKeyEvent(event: KeyEvent, model: TuiModel): Option[Proposal] =
 # Styles
 # =============================================================================
 
-const MenuWidth = 16 ## Fixed width for menu panel
-
 proc dimStyle(): CellStyle =
   canvasDimStyle()
 
 proc normalStyle(): CellStyle =
   canvasStyle()
 
-proc highlightStyle(): CellStyle =
-  selectedStyle()
-
-proc headerStyle(): CellStyle =
-  canvasHeaderStyle()
-
 
 # =============================================================================
 # Rendering (View Functions)
 # =============================================================================
-
-proc renderStatusBar(area: Rect, buf: var CellBuffer, model: TuiModel) =
-  ## Render bottom status bar from SAM model
-  var x = area.x + 1
-  let y = area.y
-
-  # Turn
-  discard buf.setString(x, y, "Turn: ", dimStyle())
-  x += 6
-  discard buf.setString(x, y, $model.turn, highlightStyle())
-  x += ($model.turn).len + 3
-
-  # Treasury
-  discard buf.setString(x, y, "Treasury: ", dimStyle())
-  x += 10
-  discard buf.setString(x, y, $model.treasury & " MCr", highlightStyle())
-  x += ($model.treasury).len + 7
-
-  # Prestige
-  discard buf.setString(x, y, "Prestige: ", dimStyle())
-  x += 10
-  discard buf.setString(x, y, $model.prestige, highlightStyle())
-  x += ($model.prestige).len + 3
-
-  # Current mode
-  let modeStr =
-    case model.mode
-    of ViewMode.Overview: "[OVERVIEW]"
-    of ViewMode.Planets: "[PLANETS]"
-    of ViewMode.Fleets: "[FLEETS]"
-    of ViewMode.Research: "[RESEARCH]"
-    of ViewMode.Espionage: "[ESPIONAGE]"
-    of ViewMode.Economy: "[ECONOMY]"
-    of ViewMode.Reports: "[REPORTS]"
-    of ViewMode.Messages: "[MESSAGES]"
-    of ViewMode.Settings: "[SETTINGS]"
-    of ViewMode.PlanetDetail: "[PLANET]"
-    of ViewMode.FleetDetail: "[FLEET]"
-    of ViewMode.ReportDetail: "[REPORT]"
-  discard buf.setString(x, y, modeStr, headerStyle())
-
-  # House name (right-aligned)
-  let nameX = area.x + area.width - model.houseName.len - 2
-  discard buf.setString(nameX, y, model.houseName, highlightStyle())
-
-proc renderMenuPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
-  ## Render the menu shortcuts panel
-  let frame = bordered().title("Menu").borderType(BorderType.Rounded)
-  frame.render(area, buf)
-  let inner = frame.inner(area)
-
-  var y = inner.y
-
-  let items = [
-    (key: "C", label: "Colonies", mode: ViewMode.Planets),
-    (key: "F", label: "Fleets", mode: ViewMode.Fleets),
-    (key: "O", label: "Orders", mode: ViewMode.Fleets),
-    (key: "M", label: "Map", mode: ViewMode.Overview),
-    (key: "L", label: "Systems", mode: ViewMode.Overview),
-  ]
-
-  # Note: Map mode will show coordinate info, not render the starmap
-  # Use external SVG export for visual starmap reference
-
-  for item in items:
-    if y >= inner.bottom:
-      break
-
-    let isActive = model.mode == item.mode
-    let style =
-      if isActive:
-        selectedStyle()
-      else:
-        normalStyle()
-    let keyStyle =
-      if isActive:
-        selectedStyle()
-      else:
-        highlightStyle()
-
-    discard buf.setString(inner.x, y, "[", dimStyle())
-    discard buf.setString(inner.x + 1, y, item.key, keyStyle)
-    discard buf.setString(inner.x + 2, y, "] ", dimStyle())
-    discard buf.setString(inner.x + 4, y, item.label, style)
-    y += 1
-
-  y += 1
-  if y < inner.bottom:
-    discard buf.setString(inner.x, y, "[", dimStyle())
-    discard buf.setString(inner.x + 1, y, "E", highlightStyle())
-    discard buf.setString(inner.x + 2, y, "] ", dimStyle())
-    discard buf.setString(inner.x + 4, y, "End Turn", normalStyle())
-    y += 1
-
-  if y < inner.bottom:
-    discard buf.setString(inner.x, y, "[", dimStyle())
-    discard buf.setString(inner.x + 1, y, "Q", highlightStyle())
-    discard buf.setString(inner.x + 2, y, "] ", dimStyle())
-    discard buf.setString(inner.x + 4, y, "Quit", normalStyle())
-
-proc renderContextPanel(
-    area: Rect,
-    buf: var CellBuffer,
-    model: TuiModel,
-    state: GameState,
-    viewingHouse: HouseId,
-) =
-  ## Render context-sensitive detail panel
-  let title =
-    case model.mode
-    of ViewMode.Overview: "Overview Details"
-    of ViewMode.Planets: "Colony Details"
-    of ViewMode.Fleets: "Fleet Details"
-    of ViewMode.Research: "Research Details"
-    of ViewMode.Espionage: "Intel Details"
-    of ViewMode.Economy: "Economy Details"
-    of ViewMode.Reports: "Report Details"
-    of ViewMode.Messages: "Message Details"
-    of ViewMode.Settings: "Settings"
-    of ViewMode.PlanetDetail: "Planet Details"
-    of ViewMode.FleetDetail: "Fleet Details"
-    of ViewMode.ReportDetail: "Report Content"
-
-  let frame = bordered().title(title).borderType(BorderType.Rounded)
-  frame.render(area, buf)
-  let inner = frame.inner(area)
-
-  # Get detail data using existing adapters
-  let detailData = toFogOfWarDetailPanelData(
-    coords.hexCoord(model.mapState.cursor.q, model.mapState.cursor.r),
-    state,
-    viewingHouse,
-  )
-
-  # Use existing detail renderer
-  let colors = defaultColors()
-  renderDetailPanel(inner, buf, detailData, colors)
 
 proc renderColonyList(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render list of player's colonies from SAM model
@@ -661,16 +515,14 @@ proc renderReportsList(area: Rect, buf: var CellBuffer, model: TuiModel) =
   if area.height < 5 or area.width < 40:
     return
 
-  let headerStyle = canvasHeaderStyle()
   let dimStyle = canvasDimStyle()
   let normalStyle = canvasStyle()
-  let highlightStyle = selectedStyle()
   let focusLabel = reportPaneLabel(model.reportFocus)
 
   let filterLabel = reportCategoryLabel(model.reportFilter)
   let filterKey = reportCategoryKey(model.reportFilter)
   let filterLine = "Filter [Tab]: " & filterLabel & " [" & $filterKey & "]"
-  discard buf.setString(area.x, area.y, filterLine, headerStyle)
+  discard buf.setString(area.x, area.y, filterLine, canvasHeaderStyle())
 
   let bodyArea = rect(area.x, area.y + 1, area.width, area.height - 1)
   if bodyArea.isEmpty:
@@ -728,8 +580,9 @@ proc renderReportsList(area: Rect, buf: var CellBuffer, model: TuiModel) =
       break
     let bucket = buckets[idx]
     let isSelected = idx == model.reportTurnIdx
-    let rowStyle = if isSelected: highlightStyle else: normalStyle
+    let rowStyle = if isSelected: selectedStyle() else: normalStyle
     let prefix = if isSelected: ">" else: " "
+
     let unreadLabel = if bucket.unreadCount > 0:
                         "(" & $bucket.unreadCount & ")"
                       else:
@@ -753,7 +606,7 @@ proc renderReportsList(area: Rect, buf: var CellBuffer, model: TuiModel) =
       break
     let report = reports[idx]
     let isSelected = idx == model.reportSubjectIdx
-    let rowStyle = if isSelected: highlightStyle else: normalStyle
+    let rowStyle = if isSelected: selectedStyle() else: normalStyle
     let marker = if isSelected: ">" else: " "
     let unread = if report.isUnread: GlyphUnread else: " "
     let glyph = reportCategoryGlyph(report.category)
@@ -835,7 +688,6 @@ proc renderReportDetail(area: Rect, buf: var CellBuffer, model: TuiModel) =
     return
 
   let report = reportOpt.get()
-  let headerStyle = canvasHeaderStyle()
   let dimStyle = canvasDimStyle()
 
   let detailFrame = bordered()
@@ -874,121 +726,6 @@ proc renderReportDetail(area: Rect, buf: var CellBuffer, model: TuiModel) =
   discard buf.setString(detailInner.x, detailInner.bottom - 1,
     hintLine, dimStyle)
 
-proc renderLobbyPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
-  let frame = bordered().title("Lobby").borderType(BorderType.Rounded)
-  frame.render(area, buf)
-  let inner = frame.inner(area)
-
-  if inner.width < 30 or inner.height < 10:
-    discard buf.setString(inner.x, inner.y, "Terminal too small", dimStyle())
-    return
-
-  let columns = horizontal()
-    .constraints(length(inner.width div 3), length(inner.width div 3), fill())
-    .split(inner)
-
-  if columns.len < 3:
-    discard buf.setString(inner.x, inner.y, "Layout error", dimStyle())
-    return
-
-  let profileArea = columns[0]
-  let activeArea = columns[1]
-  let joinArea = columns[2]
-
-  let profileFrame = bordered().title("PROFILE").borderType(BorderType.Rounded)
-  let activeFrame = bordered().title("ACTIVE GAMES").borderType(BorderType.Rounded)
-  let joinFrame = bordered().title("JOIN GAME").borderType(BorderType.Rounded)
-
-  profileFrame.render(profileArea, buf)
-  activeFrame.render(activeArea, buf)
-  joinFrame.render(joinArea, buf)
-
-  let profileInner = profileFrame.inner(profileArea)
-  let activeInner = activeFrame.inner(activeArea)
-  let joinInner = joinFrame.inner(joinArea)
-
-  let headerStyle = canvasHeaderStyle()
-  let dimStyle = canvasDimStyle()
-  let normalStyle = canvasStyle()
-  let highlightStyle = selectedStyle()
-
-  var y = profileInner.y
-  discard buf.setString(profileInner.x, y, "Nostr Pubkey:", headerStyle)
-  y += 1
-  let pubkeyLine = if model.lobbyProfilePubkey.len > 0:
-                     model.lobbyProfilePubkey
-                   else:
-                     "(none)"
-  discard buf.setString(profileInner.x, y, pubkeyLine, normalStyle)
-  y += 2
-  discard buf.setString(profileInner.x, y, "Player Name:", headerStyle)
-  y += 1
-  let nameLine = if model.lobbyProfileName.len > 0:
-                   model.lobbyProfileName
-                 else:
-                   "(optional)"
-  discard buf.setString(profileInner.x, y, nameLine, normalStyle)
-  y += 2
-  if model.lobbySessionKeyActive:
-    discard buf.setString(profileInner.x, y, "Session-only key active",
-      alertStyle())
-    y += 1
-  if model.lobbyWarning.len > 0:
-    discard buf.setString(profileInner.x, y, model.lobbyWarning, dimStyle)
-
-  var ay = activeInner.y
-  if model.lobbyActiveGames.len == 0:
-    discard buf.setString(activeInner.x, ay, "No active games", dimStyle)
-  else:
-    for idx, game in model.lobbyActiveGames:
-      if ay >= activeInner.bottom:
-        break
-      let marker = if idx == model.lobbySelectedIdx: ">" else: " "
-      let lineText = marker & " " & game.name & " T" & $game.turn
-      let style = if idx == model.lobbySelectedIdx: highlightStyle
-                  else: normalStyle
-      discard buf.setString(activeInner.x, ay, lineText, style)
-      ay += 1
-    if ay < activeInner.bottom:
-      discard buf.setString(activeInner.x, ay, "Enter: Open game", dimStyle)
-
-  var jy = joinInner.y
-  if model.lobbyJoinStatus == JoinStatus.SelectingGame:
-    for idx, game in model.lobbyJoinGames:
-      if jy >= joinInner.bottom:
-        break
-      let marker = if idx == model.lobbyJoinSelectedIdx: ">" else: " "
-      let count = $game.assignedCount & "/" & $game.playerCount
-      let lineText = marker & " " & game.name & " [" & count & "]"
-      let style = if idx == model.lobbyJoinSelectedIdx: highlightStyle
-                  else: normalStyle
-      discard buf.setString(joinInner.x, jy, lineText, style)
-      jy += 1
-  elif model.lobbyJoinStatus == JoinStatus.EnteringPubkey:
-    discard buf.setString(joinInner.x, jy, "Enter pubkey:", headerStyle)
-    jy += 1
-    discard buf.setString(joinInner.x, jy, model.lobbyProfilePubkey, normalStyle)
-  elif model.lobbyJoinStatus == JoinStatus.EnteringName:
-    discard buf.setString(joinInner.x, jy, "Enter name:", headerStyle)
-    jy += 1
-    discard buf.setString(joinInner.x, jy, model.lobbyProfileName, normalStyle)
-    jy += 1
-    discard buf.setString(joinInner.x, jy, "Enter: Submit", dimStyle)
-  elif model.lobbyJoinStatus == JoinStatus.WaitingResponse:
-    discard buf.setString(joinInner.x, jy, "Waiting for response...",
-      dimStyle)
-  elif model.lobbyJoinStatus == JoinStatus.Failed:
-    discard buf.setString(joinInner.x, jy, "Join failed:", alertStyle())
-    jy += 1
-    discard buf.setString(joinInner.x, jy, model.lobbyJoinError, normalStyle)
-  elif model.lobbyJoinStatus == JoinStatus.Joined:
-    discard buf.setString(joinInner.x, jy, "Joined game!", normalStyle)
-  else:
-    discard buf.setString(joinInner.x, jy, "Press R to refresh", dimStyle)
-
-  let hintLine = "Tab: Next Pane  Y: Pubkey  U: Name  G: Session Key  R: Refresh"
-  discard buf.setString(inner.x, inner.bottom - 1, hintLine, dimStyle)
-
 proc renderListPanel(
     area: Rect,
     buf: var CellBuffer,
@@ -1021,7 +758,8 @@ proc renderListPanel(
   of ViewMode.Overview:
     # Overview placeholder - will show empire dashboard in Phase 2
     var y = inner.y
-    discard buf.setString(inner.x, y, "STRATEGIC OVERVIEW", headerStyle())
+    discard buf.setString(inner.x, y, "STRATEGIC OVERVIEW",
+      canvasHeaderStyle())
     y += 2
     discard buf.setString(inner.x, y,
       "Turn: " & $model.turn, normalStyle())
@@ -1288,7 +1026,6 @@ proc runTui(gameId: string = "") =
   var viewingHouse = HouseId(1)
   var activeGameId = gameId
   var nostrClient: PlayerNostrClient = nil
-  var nostrRelayUrl = ""
   var nostrListenerStarted = false
   var nostrSubscriptions: seq[string] = @[]
   var nostrDaemonPubkey = ""

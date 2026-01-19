@@ -248,7 +248,6 @@ proc renderLeaderboardCompact*(area: Rect, buf: var CellBuffer,
       line.add(" (" & $entry.colonyCount & ")")
     
     let statusText = " " & statusLabel(entry.diplomaticStatus)
-    let maxLen = min(line.len + statusText.len, area.width)
     
     discard buf.setString(area.x, y, line[0 ..< min(line.len, area.width - 8)], 
                          entryStyle)

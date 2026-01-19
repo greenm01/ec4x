@@ -5,15 +5,7 @@ import kdl
 import ../../common/logger
 import ../../engine/types/[core, player_state, colony, fleet, ship, ground_unit,
   diplomacy, progression, capacity, production, combat]
-import ../../daemon/persistence/player_state_snapshot
 import ./kdl_player_state
-
-proc parseEnumFromStr[T: enum](value: string): Option[T] =
-  let normalized = value.toLowerAscii().replace("-", "")
-  for enumVal in T:
-    if ($enumVal).toLowerAscii() == normalized:
-      return some(enumVal)
-  return none(T)
 
 proc parseEnumPureFromStr[T: enum](value: string): Option[T] =
   let normalized = value.toLowerAscii().replace("-", "")
@@ -101,11 +93,6 @@ proc parseKastraId(val: KdlVal): Option[KastraId] =
   except CatchableError:
     return none(KastraId)
 
-proc parseValSeq[T](val: KdlVal, parser: proc(item: KdlVal): Option[T]): seq[T] =
-  result = @[]
-  let parsed = parser(val)
-  if parsed.isSome:
-    result.add(parsed.get())
 
 proc nodeChild(node: KdlNode, name: string): Option[KdlNode]
 
@@ -125,14 +112,6 @@ proc nodeChild(node: KdlNode, name: string): Option[KdlNode] =
     if child.name == name:
       return some(child)
   none(KdlNode)
-
-proc childVal(node: KdlNode, name: string): Option[KdlVal] =
-  let childOpt = nodeChild(node, name)
-  if childOpt.isNone:
-    return none(KdlVal)
-  if childOpt.get().args.len == 0:
-    return none(KdlVal)
-  some(childOpt.get().args[0])
 
 proc removeFromSeqById[T, Id](
   items: var seq[T],

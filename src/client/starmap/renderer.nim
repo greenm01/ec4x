@@ -37,10 +37,7 @@ type
     selectedSystem*: Option[HexCoord]
 
 const
-  HexLineWidth = 2.0f
   LaneLineWidth = 3.0f
-  SelectionLineWidth = 4.0f
-  HexVertexCount = 6
 
 # --- Color Application ---
 
@@ -53,6 +50,7 @@ proc drawLine*(p1, p2: Vec2, col: Color, width: float32 = 1.0f) =
   ## Draw a line between two points.
   ## Note: sokol_gl doesn't support line width directly,
   ## so we draw as a thin quad for thicker lines if needed.
+  discard width
   setColor(col)
   sgl_begin_lines()
   sgl_v2f(p1.x, p1.y)

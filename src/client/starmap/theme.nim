@@ -3,7 +3,7 @@
 ## Loads house colors and starmap colors for rendering.
 ## Simplified loader that doesn't depend on engine config system.
 
-import std/[strutils, tables]
+import std/strutils
 
 type
   Color* = object

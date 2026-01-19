@@ -1,7 +1,7 @@
 ## Player-side Nostr client wrapper for EC4X.
 
 import std/[asyncdispatch, options]
-import ../../daemon/transport/nostr/[client, types, events, wire, crypto, filter]
+import ../../daemon/transport/nostr/[client, types, events, wire, crypto]
 import ../../common/logger
 
 export types

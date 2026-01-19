@@ -22,7 +22,6 @@
 ##
 ## Reference: ec-style-layout.md Section 5.1
 
-import std/[strformat, strutils]
 import ../buffer
 import ../layout/rect
 import ../styles/ec_palette

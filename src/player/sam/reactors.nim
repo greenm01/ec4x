@@ -10,7 +10,7 @@
 ##
 ## Reactor signature: proc(model: var M)
 
-import std/[strformat, options, tables]
+import std/strformat
 import ./types
 import ./tui_model
 

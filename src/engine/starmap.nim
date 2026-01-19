@@ -6,7 +6,8 @@
 ## - Prioritizes correctness over complex optimizations
 ## - Implements actual game rules for lane traversal
 ## - Provides fast, reliable starmap generation and pathfinding
-import ../common/logger
+when not defined(release):
+  import ../common/logger
 import types/[starmap, core, game_state]
 import state/[id_gen, iterators, engine]
 import globals
