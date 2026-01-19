@@ -25,6 +25,9 @@ import ./scrollbar
 import ./modal
 import ./entry_modal
 import ./text_input
+import ./progress_bar
+import ./tabs
+import ./table
 
 # Re-export everything
 export text_pkg
@@ -38,3 +41,6 @@ export scrollbar
 export modal
 export entry_modal
 export text_input
+export progress_bar
+export tabs
+export table
