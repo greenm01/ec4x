@@ -21,6 +21,7 @@ import std/[options, tables, algorithm]
 import ../tui/widget/scroll_state
 import ../tui/widget/entry_modal
 import ../state/identity
+import ../../engine/types/[fleet, production, command]
 
 export entry_modal
 export identity
@@ -308,6 +309,13 @@ type
     pendingFleetOrderTargetSystemId*: int  ## 0 = no target (for Hold)
     pendingFleetOrderReady*: bool          ## True when order ready to write
 
+    # Staged commands (for turn submission)
+    stagedFleetCommands*: seq[FleetCommand]     ## Fleet orders staged for submission
+    stagedBuildCommands*: seq[BuildCommand]     ## Build orders staged for submission
+    stagedRepairCommands*: seq[RepairCommand]   ## Repair orders staged for submission
+    stagedScrapCommands*: seq[ScrapCommand]     ## Scrap orders staged for submission
+    turnSubmissionRequested*: bool              ## True when player requests turn submit
+
     # Terminal dimensions
     termWidth*: int
     termHeight*: int
@@ -443,6 +451,11 @@ proc initTuiModel*(): TuiModel =
     pendingFleetOrderCommandType: 0,
     pendingFleetOrderTargetSystemId: 0,
     pendingFleetOrderReady: false,
+    stagedFleetCommands: @[],
+    stagedBuildCommands: @[],
+    stagedRepairCommands: @[],
+    stagedScrapCommands: @[],
+    turnSubmissionRequested: false,
     termWidth: 80,
     termHeight: 24,
     running: true,
@@ -885,6 +898,13 @@ proc addToExpertHistory*(model: var TuiModel, command: string) =
   if command.len > 0:
     model.expertModeHistory.add(command)
     model.expertModeHistoryIdx = model.expertModeHistory.len
+
+proc stagedCommandCount*(model: TuiModel): int =
+  ## Get total number of staged commands
+  model.stagedFleetCommands.len + 
+    model.stagedBuildCommands.len + 
+    model.stagedRepairCommands.len + 
+    model.stagedScrapCommands.len
 
 # =============================================================================
 # Order Entry Helpers

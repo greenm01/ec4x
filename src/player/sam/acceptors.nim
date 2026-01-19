@@ -10,6 +10,7 @@ import std/[options, times, strutils]
 import ./types
 import ./tui_model
 import ./actions
+import ./command_parser
 import ../tui/widget/scroll_state
 import ../state/join_flow
 import ../state/lobby_profile
@@ -247,6 +248,16 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       else:
         model.statusMessage = ""
         model.clearExpertFeedback()
+    elif model.mode == ViewMode.FleetDetail:
+      # Return to fleet list
+      model.mode = ViewMode.Fleets
+      model.statusMessage = ""
+      model.clearExpertFeedback()
+    elif model.mode == ViewMode.PlanetDetail:
+      # Return to colony list
+      model.mode = ViewMode.Planets
+      model.statusMessage = ""
+      model.clearExpertFeedback()
     else:
       model.statusMessage = ""
       model.clearExpertFeedback()
@@ -636,6 +647,44 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionManageGamesCancel:
       model.entryModal.mode = EntryModalMode.Normal
       model.statusMessage = ""
+    of ActionEnterExpertMode:
+      model.enterExpertMode()
+      model.statusMessage = "Expert mode active (type command, ESC to cancel)"
+    of ActionExitExpertMode:
+      model.exitExpertMode()
+      model.statusMessage = ""
+    of ActionExpertSubmit:
+      # Parse and execute expert mode command
+      let result = parseExpertCommand(model.expertModeInput)
+      if result.success:
+        # Add command to staged commands
+        if result.fleetCommand.isSome:
+          model.stagedFleetCommands.add(result.fleetCommand.get())
+          model.setExpertFeedback(
+            "Fleet command staged (total: " & 
+            $model.stagedFleetCommands.len & ")"
+          )
+          model.addToExpertHistory(model.expertModeInput)
+        elif result.buildCommand.isSome:
+          model.stagedBuildCommands.add(result.buildCommand.get())
+          model.setExpertFeedback(
+            "Build command staged (total: " & 
+            $model.stagedBuildCommands.len & ")"
+          )
+          model.addToExpertHistory(model.expertModeInput)
+        else:
+          model.setExpertFeedback("No command generated")
+      else:
+        model.setExpertFeedback("Error: " & result.error)
+      # Keep expert mode active after submit
+      model.expertModeInput = ""
+    of ActionExpertInputAppend:
+      # Append character to expert mode input
+      model.expertModeInput.add(proposal.gameActionData)
+    of ActionExpertInputBackspace:
+      # Remove last character
+      if model.expertModeInput.len > 0:
+        model.expertModeInput.setLen(model.expertModeInput.len - 1)
     else:
       model.statusMessage = "Action: " & proposal.gameActionType
   of ProposalKind.pkSelection:

@@ -5,8 +5,9 @@
 ## and presentation (TUI) layers.
 
 import std/[options, tables, algorithm]
-import ../../engine/types/[core, starmap, colony, fleet, player_state]
+import ../../engine/types/[core, starmap, colony, fleet, player_state, ship, combat, production]
 import ../../engine/state/engine
+import ../../engine/state/iterators
 import ../../engine/state/fog_of_war
 import ./widget/hexmap/hexmap_pkg
 import ./widget/system_list
@@ -494,3 +495,313 @@ proc toSystemListData*(state: GameState, viewingHouse: HouseId,
     systems: entries,
     selectedIdx: selectedIdx
   )
+
+# -----------------------------------------------------------------------------
+# Fleet Detail conversions
+# -----------------------------------------------------------------------------
+
+type
+  ShipDetailRow* = object
+    ## Single ship entry for fleet detail view
+    name*: string           # Ship name (e.g., "Alpha-1", "Beta-2")
+    class*: string          # Ship class name (e.g., "Destroyer")
+    hp*: string             # HP percentage (e.g., "100%", "50%", "0%")
+    attack*: string         # Attack strength (e.g., "45")
+    defense*: string        # Defense strength (e.g., "38")
+    isDestroyed*: bool      # For rendering (destroyed ships grayed out)
+    isCrippled*: bool       # For rendering (crippled ships in yellow/red)
+
+  FleetDetailData* = object
+    ## Complete fleet detail information for rendering
+    fleetId*: int
+    location*: string       # System name (e.g., "Homeworld")
+    systemId*: int          # For navigation to system detail
+    shipCount*: int         # Total ships in fleet
+    totalAttack*: int       # Sum of all ship AS
+    totalDefense*: int      # Sum of all ship DS
+    command*: string        # Human-readable command (e.g., "Hold")
+    commandType*: int       # FleetCommandType as int for logic
+    status*: string         # "Active", "Reserve", "Mothballed"
+    roe*: int               # Rules of engagement 0-10
+    ships*: seq[ShipDetailRow]
+
+proc fleetToDetailData*(
+  state: GameState,
+  fleetId: FleetId,
+  houseId: HouseId
+): FleetDetailData =
+  ## Convert engine Fleet to FleetDetailData for TUI rendering
+  ## Uses engine accessors and iterators (no direct EntityManager access)
+  
+  # Get fleet (crash if missing - should never happen in practice)
+  let fleet = state.fleet(fleetId).get()
+  
+  # Get location name
+  var locationName = "Unknown"
+  let systemOpt = state.system(fleet.location)
+  if systemOpt.isSome:
+    locationName = systemOpt.get().name
+  
+  # Convert command to string
+  var commandStr = "Hold"
+  case fleet.command.commandType:
+  of FleetCommandType.Hold:
+    commandStr = "Hold (awaiting orders)"
+  of FleetCommandType.Move:
+    if fleet.command.targetSystem.isSome:
+      let targetOpt = state.system(fleet.command.targetSystem.get())
+      if targetOpt.isSome:
+        commandStr = "Move to " & targetOpt.get().name
+      else:
+        commandStr = "Move to System " & $fleet.command.targetSystem.get()
+    else:
+      commandStr = "Move (no target)"
+  of FleetCommandType.SeekHome:
+    commandStr = "Seek Home"
+  of FleetCommandType.Patrol:
+    commandStr = "Patrol"
+  of FleetCommandType.GuardStarbase:
+    commandStr = "Guard Starbase"
+  of FleetCommandType.GuardColony:
+    commandStr = "Guard Colony"
+  of FleetCommandType.Blockade:
+    commandStr = "Blockade"
+  of FleetCommandType.Bombard:
+    commandStr = "Bombard"
+  of FleetCommandType.Invade:
+    commandStr = "Invade"
+  of FleetCommandType.Blitz:
+    commandStr = "Blitz"
+  of FleetCommandType.Colonize:
+    commandStr = "Colonize"
+  of FleetCommandType.ScoutColony:
+    commandStr = "Scout Colony"
+  of FleetCommandType.ScoutSystem:
+    commandStr = "Scout System"
+  of FleetCommandType.HackStarbase:
+    commandStr = "Hack Starbase"
+  of FleetCommandType.JoinFleet:
+    commandStr = "Join Fleet"
+  of FleetCommandType.Rendezvous:
+    commandStr = "Rendezvous"
+  of FleetCommandType.Salvage:
+    commandStr = "Salvage"
+  of FleetCommandType.Reserve:
+    commandStr = "Reserve"
+  of FleetCommandType.Mothball:
+    commandStr = "Mothball"
+  of FleetCommandType.View:
+    commandStr = "View"
+  
+  # Convert status to string
+  var statusStr = "Active"
+  case fleet.status:
+  of FleetStatus.Active:
+    statusStr = "Active"
+  of FleetStatus.Reserve:
+    statusStr = "Reserve"
+  of FleetStatus.Mothballed:
+    statusStr = "Mothballed"
+  
+  # Build ship rows using shipsInFleet iterator
+  var shipRows: seq[ShipDetailRow] = @[]
+  var totalAS = 0
+  var totalDS = 0
+  var shipIdx = 0
+  
+  for ship in state.shipsInFleet(fleetId):
+    shipIdx += 1
+    
+    # Generate ship name (Alpha-1, Alpha-2, ..., Zulu-26, etc.)
+    let groupIdx = (shipIdx - 1) div 26
+    let letterIdx = (shipIdx - 1) mod 26
+    let groupName = 
+      if groupIdx == 0: "Alpha"
+      elif groupIdx == 1: "Beta"
+      elif groupIdx == 2: "Gamma"
+      elif groupIdx == 3: "Delta"
+      elif groupIdx == 4: "Echo"
+      elif groupIdx == 5: "Foxtrot"
+      elif groupIdx == 6: "Golf"
+      elif groupIdx == 7: "Hotel"
+      elif groupIdx == 8: "India"
+      elif groupIdx == 9: "Juliet"
+      elif groupIdx == 10: "Kilo"
+      elif groupIdx == 11: "Lima"
+      elif groupIdx == 12: "Mike"
+      elif groupIdx == 13: "November"
+      elif groupIdx == 14: "Oscar"
+      elif groupIdx == 15: "Papa"
+      elif groupIdx == 16: "Quebec"
+      elif groupIdx == 17: "Romeo"
+      elif groupIdx == 18: "Sierra"
+      elif groupIdx == 19: "Tango"
+      elif groupIdx == 20: "Uniform"
+      elif groupIdx == 21: "Victor"
+      elif groupIdx == 22: "Whiskey"
+      elif groupIdx == 23: "X-ray"
+      elif groupIdx == 24: "Yankee"
+      else: "Zulu"
+    let shipName = groupName & "-" & $(letterIdx + 1)
+    
+    # Get ship class name
+    let className = $ship.shipClass
+    
+    # Calculate HP based on CombatState
+    var hpStr = "100%"
+    var isDestroyed = false
+    var isCrippled = false
+    case ship.state:
+    of CombatState.Undamaged:
+      hpStr = "100%"
+    of CombatState.Crippled:
+      hpStr = "50%"
+      isCrippled = true
+    of CombatState.Destroyed:
+      hpStr = "0%"
+      isDestroyed = true
+    
+    # Add to totals (only if not destroyed)
+    if not isDestroyed:
+      totalAS += int(ship.stats.attackStrength)
+      totalDS += int(ship.stats.defenseStrength)
+    
+    shipRows.add(ShipDetailRow(
+      name: shipName,
+      class: className,
+      hp: hpStr,
+      attack: $ship.stats.attackStrength,
+      defense: $ship.stats.defenseStrength,
+      isDestroyed: isDestroyed,
+      isCrippled: isCrippled
+    ))
+  
+  FleetDetailData(
+    fleetId: int(fleetId),
+    location: locationName,
+    systemId: int(fleet.location),
+    shipCount: shipRows.len,
+    totalAttack: totalAS,
+    totalDefense: totalDS,
+    command: commandStr,
+    commandType: int(fleet.command.commandType),
+    status: statusStr,
+    roe: int(fleet.roe),
+    ships: shipRows
+  )
+
+# -----------------------------------------------------------------------------
+# Planet Detail conversions
+# -----------------------------------------------------------------------------
+
+type
+  ConstructionQueueItem* = object
+    ## Single item in construction queue
+    projectId*: int
+    name*: string              # "Cruiser", "Shipyard", "Army"
+    costTotal*: int
+    costPaid*: int
+    turnsRemaining*: int
+    progressPercent*: int      # 0-100
+    status*: string            # "In Progress", "Queued"
+
+  PlanetDetailData* = object
+    ## Complete planet detail information
+    colonyId*: int
+    systemName*: string
+    population*: int
+    production*: int
+    treasury*: int             # Colony-local treasury (if applicable)
+    constructionQueue*: seq[ConstructionQueueItem]
+    repairQueue*: seq[ConstructionQueueItem]  # Reuse same type
+    availableDocks*: int       # Free production docks
+    totalDocks*: int           # Total production capacity
+
+proc colonyToDetailData*(
+  state: GameState,
+  colonyId: ColonyId,
+  houseId: HouseId
+): PlanetDetailData =
+  ## Convert engine Colony to PlanetDetailData for TUI rendering
+  
+  # Get colony (crash if missing)
+  let colony = state.colony(colonyId).get()
+  
+  # Get system name
+  var systemName = "Unknown"
+  let systemOpt = state.system(colony.systemId)
+  if systemOpt.isSome:
+    systemName = systemOpt.get().name
+  
+  # Get construction projects for this colony
+  var constructionQueue: seq[ConstructionQueueItem] = @[]
+  for project in state.constructionProjectsAtColony(colonyId):
+    let progressPercent = 
+      if project.costTotal > 0:
+        int((float(project.costPaid) / float(project.costTotal)) * 100.0)
+      else:
+        0
+    
+    # Determine project name
+    var projectName = "Unknown"
+    case project.projectType:
+    of BuildType.Ship:
+      if project.shipClass.isSome:
+        projectName = $project.shipClass.get()
+    of BuildType.Facility:
+      if project.facilityClass.isSome:
+        projectName = $project.facilityClass.get()
+    of BuildType.Ground:
+      if project.groundClass.isSome:
+        projectName = $project.groundClass.get()
+    of BuildType.Industrial:
+      projectName = "Industrial Units"
+    of BuildType.Infrastructure:
+      projectName = "Infrastructure"
+    
+    let status = 
+      if project.costPaid > 0:
+        "In Progress"
+      else:
+        "Queued"
+    
+    constructionQueue.add(ConstructionQueueItem(
+      projectId: int(project.id),
+      name: projectName,
+      costTotal: int(project.costTotal),
+      costPaid: int(project.costPaid),
+      turnsRemaining: int(project.turnsRemaining),
+      progressPercent: progressPercent,
+      status: status
+    ))
+  
+  # Get repair projects (reuse ConstructionQueueItem type)
+  var repairQueue: seq[ConstructionQueueItem] = @[]
+  for repair in state.repairProjectsAtColony(colonyId):
+    repairQueue.add(ConstructionQueueItem(
+      projectId: int(repair.id),
+      name: $repair.targetType & " Repair",
+      costTotal: int(repair.cost),
+      costPaid: 0,  # Repairs don't track paid amount
+      turnsRemaining: int(repair.turnsRemaining),
+      progressPercent: 0,  # Repairs don't show progress %
+      status: "Repairing"
+    ))
+  
+  # Calculate dock capacity (simplified - would need neoria data)
+  let totalDocks = 10  # TODO: Calculate from neoria
+  let usedDocks = min(constructionQueue.len, totalDocks)
+  let availableDocks = totalDocks - usedDocks
+  
+  PlanetDetailData(
+    colonyId: int(colonyId),
+    systemName: systemName,
+    population: int(colony.population),
+    production: 0,  # TODO: Calculate from engine
+    treasury: 0,    # TODO: Get from house treasury
+    constructionQueue: constructionQueue,
+    repairQueue: repairQueue,
+    availableDocks: availableDocks,
+    totalDocks: totalDocks
+  )
+

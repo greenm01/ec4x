@@ -80,6 +80,13 @@ proc selectionBoundsReactor*(model: var TuiModel) =
 proc statusMessageReactor*(model: var TuiModel) =
   ## Update status message based on current state
   ## Only updates if not already set by an action
+  
+  # Show staged command count if we have any
+  let stagedCount = model.stagedCommandCount()
+  if stagedCount > 0 and model.statusMessage.len == 0:
+    model.statusMessage = &"{stagedCount} command(s) staged | Ctrl+E to submit turn"
+    return
+  
   if model.statusMessage.len == 0:
     if model.expertModeFeedback.len > 0:
       model.statusMessage = model.expertModeFeedback

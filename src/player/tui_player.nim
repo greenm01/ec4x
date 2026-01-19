@@ -460,6 +460,226 @@ proc renderFleetList(area: Rect, buf: var CellBuffer, model: TuiModel) =
   if idx == 0:
     discard buf.setString(area.x, y, "No fleets", dimStyle())
 
+proc renderFleetDetail(
+  area: Rect,
+  buf: var CellBuffer,
+  model: TuiModel,
+  state: GameState,
+  viewingHouse: HouseId
+) =
+  ## Render detailed fleet view with ship list table
+  if model.selectedFleetId <= 0:
+    discard buf.setString(
+      area.x, area.y, "No fleet selected", dimStyle()
+    )
+    return
+  
+  # Convert engine data to display data using adapter
+  let fleetData = fleetToDetailData(
+    state,
+    FleetId(model.selectedFleetId),
+    viewingHouse
+  )
+  
+  var y = area.y
+  
+  # Header: Fleet location and command
+  discard buf.setString(
+    area.x, y,
+    "Fleet #" & $fleetData.fleetId & " @ " & fleetData.location,
+    canvasHeaderStyle()
+  )
+  y += 1
+  
+  discard buf.setString(
+    area.x, y,
+    "Command: " & fleetData.command,
+    normalStyle()
+  )
+  y += 1
+  
+  discard buf.setString(
+    area.x, y,
+    "Status: " & fleetData.status & "  ROE: " & $fleetData.roe,
+    normalStyle()
+  )
+  y += 2
+  
+  # Ships table header
+  discard buf.setString(
+    area.x, y,
+    "Ships (" & $fleetData.shipCount & "):",
+    canvasHeaderStyle()
+  )
+  y += 1
+  
+  # Build table widget for ships
+  if fleetData.ships.len > 0:
+    var shipTable = table([
+      tableColumn("Name", 12, table.Alignment.Left),
+      tableColumn("Class", 16, table.Alignment.Left),
+      tableColumn("HP", 6, table.Alignment.Right),
+      tableColumn("Attack", 7, table.Alignment.Right),
+      tableColumn("Defense", 7, table.Alignment.Right)
+    ])
+    
+    # Add ship rows
+    for ship in fleetData.ships:
+      shipTable.addRow(@[
+        ship.name,
+        ship.class,
+        ship.hp,
+        ship.attack,
+        ship.defense
+      ])
+    
+    # Render table
+    let tableArea = rect(area.x, y, area.width, area.height - (y - area.y))
+    shipTable.render(tableArea, buf)
+    y += fleetData.ships.len + 3  # Table height
+  else:
+    discard buf.setString(area.x, y, "  No ships", dimStyle())
+    y += 1
+  
+  # Totals footer
+  y += 1
+  if y < area.bottom:
+    discard buf.setString(
+      area.x, y,
+      "Total Attack: " & $fleetData.totalAttack &
+        "  Total Defense: " & $fleetData.totalDefense,
+      CellStyle(fg: color(PrestigeColor), attrs: {StyleAttr.Bold})
+    )
+
+proc renderPlanetDetail(
+  area: Rect,
+  buf: var CellBuffer,
+  model: TuiModel,
+  state: GameState,
+  viewingHouse: HouseId
+) =
+  ## Render detailed planet view with construction queue
+  if model.selectedColonyId <= 0:
+    discard buf.setString(
+      area.x, area.y, "No colony selected", dimStyle()
+    )
+    return
+  
+  # Convert engine data to display data using adapter
+  let planetData = colonyToDetailData(
+    state,
+    ColonyId(model.selectedColonyId),
+    viewingHouse
+  )
+  
+  var y = area.y
+  
+  # Header: Planet name and basic info
+  discard buf.setString(
+    area.x, y,
+    planetData.systemName & " (Colony)",
+    canvasHeaderStyle()
+  )
+  y += 1
+  
+  discard buf.setString(
+    area.x, y,
+    "Pop: " & $planetData.population & "  Production: " & $planetData.production,
+    normalStyle()
+  )
+  y += 2
+  
+  # Tabs (for Phase 2+ - just show active tab for now)
+  discard buf.setString(
+    area.x, y,
+    "[Construction]  Economy  Defense  Settings",
+    canvasHeaderStyle()
+  )
+  y += 2
+  
+  # Construction Queue section
+  discard buf.setString(
+    area.x, y,
+    "CONSTRUCTION QUEUE (Docks: " & $planetData.availableDocks & "/" & 
+      $planetData.totalDocks & " available)",
+    canvasHeaderStyle()
+  )
+  y += 1
+  
+  if planetData.constructionQueue.len > 0:
+    # Table header
+    discard buf.setString(
+      area.x, y,
+      "#  Project         Cost  Progress       ETA",
+      CellStyle(fg: color(CanvasFgColor), attrs: {StyleAttr.Bold})
+    )
+    y += 1
+    
+    # Construction items with progress bars
+    var idx = 1
+    for item in planetData.constructionQueue:
+      if y >= area.bottom - 5:
+        break
+      
+      # Item number and name
+      let itemLine = 
+        align($idx, 2) & ". " &
+        item.name.alignLeft(15) &
+        align($item.costTotal, 5) & "  "
+      discard buf.setString(area.x, y, itemLine, normalStyle())
+      
+      # Progress bar
+      let barX = area.x + itemLine.len
+      let barWidth = 10
+      let progress = progressBar(item.costPaid, item.costTotal, barWidth)
+        .label("")
+        .showPercent(false)
+        .showRemaining(false)
+      
+      progress.render(rect(barX, y, barWidth + 15, 1), buf)
+      
+      # Progress percentage manually
+      let pctStr = " " & $item.progressPercent & "%"
+      discard buf.setString(
+        barX + barWidth + 1, y,
+        pctStr,
+        dimStyle()
+      )
+      # ETA
+      let etaStr = $item.turnsRemaining & " trn"
+      discard buf.setString(
+        barX + barWidth + 2, y,
+        etaStr,
+        normalStyle()
+      )
+      
+      y += 1
+      idx += 1
+  else:
+    discard buf.setString(area.x, y, "  No projects queued", dimStyle())
+    y += 1
+  
+  y += 1
+  
+  # Repair Queue section
+  if planetData.repairQueue.len > 0:
+    discard buf.setString(
+      area.x, y,
+      "REPAIR QUEUE",
+      canvasHeaderStyle()
+    )
+    y += 1
+    
+    for repair in planetData.repairQueue:
+      if y >= area.bottom:
+        break
+      let repairLine = 
+        "  " & repair.name.alignLeft(20) & 
+        " Cost: " & align($repair.costTotal, 4) &
+        " ETA: " & $repair.turnsRemaining & " trn"
+      discard buf.setString(area.x, y, repairLine, normalStyle())
+      y += 1
+
 proc reportCategoryGlyph(category: ReportCategory): string =
   ## Glyph for report category
   case category
@@ -789,9 +1009,9 @@ proc renderListPanel(
   of ViewMode.Settings:
     discard buf.setString(inner.x, inner.y, "Settings view (TODO)", dimStyle())
   of ViewMode.PlanetDetail:
-    discard buf.setString(inner.x, inner.y, "Planet detail (TODO)", dimStyle())
+    renderPlanetDetail(inner, buf, model, state, viewingHouse)
   of ViewMode.FleetDetail:
-    discard buf.setString(inner.x, inner.y, "Fleet detail (TODO)", dimStyle())
+    renderFleetDetail(inner, buf, model, state, viewingHouse)
   of ViewMode.ReportDetail:
     renderReportDetail(inner, buf, model)
 
