@@ -16,8 +16,8 @@ import
     player_state as ps_types, diplomacy]
 import ../engine/state/[engine, iterators]
 import ../engine/systems/capacity/c2_pool
-import ../daemon/transport/nostr/[client, types, events, nip01, nip19, wire,
-  filter, crypto]
+import ../daemon/transport/nostr/[types, events, filter, crypto]
+import ./nostr/client
 import ./tui/term/term
 import ./tui/buffer
 import ./tui/events
@@ -1277,21 +1277,6 @@ proc outputBuffer(buf: CellBuffer) =
 # Main Entry Point
 # =============================================================================
 
-proc hexToBytes32(hexStr: string): array[32, byte] =
-  ## Convert hex string to 32-byte array
-  if hexStr.len != 64:
-    raise newException(ValueError, "Invalid hex length: expected 64, got " &
-      $hexStr.len)
-  for i in 0..<32:
-    let hexByte = hexStr[i * 2 .. i * 2 + 1]
-    result[i] = byte(parseHexInt(hexByte))
-
-proc hexToBytes32Safe(hexStr: string): Option[array[32, byte]] =
-  ## Convert hex string to bytes without raising
-  try:
-    some(hexToBytes32(hexStr))
-  except CatchableError:
-    none(array[32, byte])
 
 proc runTui(gameId: string = "") =
   ## Main TUI execution (called from main() or from new terminal window)
@@ -1302,12 +1287,14 @@ proc runTui(gameId: string = "") =
   var playerState = ps_types.PlayerState()
   var viewingHouse = HouseId(1)
   var activeGameId = gameId
-  var nostrClient: NostrClient = nil
+  var nostrClient: PlayerNostrClient = nil
   var nostrRelayUrl = ""
   var nostrListenerStarted = false
   var nostrSubscriptions: seq[string] = @[]
   var nostrDaemonPubkey = ""
   var nostrGameDefinitionSeen = initTable[string, int64]()
+
+  var nostrHandlers = PlayerNostrHandlers()
 
   # Initialize terminal
   var tty = openTty()
@@ -1380,63 +1367,76 @@ proc runTui(gameId: string = "") =
     try:
       let identity = initialModel.entryModal.identity
       let relayList = @[initialModel.nostrRelayUrl]
-      nostrClient = newNostrClient(relayList)
-      nostrClient.onEvent = proc(subId: string, event: NostrEvent) =
-        let privOpt = hexToBytes32Safe(identity.nsecHex)
-        let pubOpt = hexToBytes32Safe(event.pubkey)
-        if privOpt.isNone or pubOpt.isNone:
-          sam.model.nostrLastError = "Invalid key material"
+
+      nostrHandlers.onDelta = proc(event: NostrEvent, payload: string) =
+        try:
+          let turnOpt = event.getTurn()
+          if turnOpt.isNone:
+            sam.model.statusMessage = "Ignored event: missing turn"
+            return
+          if sam.model.playerStateLoaded and
+              turnOpt.get() <= sam.model.turn:
+            sam.model.statusMessage = "Ignored event: stale turn"
+            return
+          if event.pubkey.len > 0 and
+              nostrDaemonPubkey.len > 0 and
+              event.pubkey != nostrDaemonPubkey:
+            sam.model.statusMessage = "Ignored event: unknown server"
+            return
+          let appliedTurnOpt = applyDeltaToCachedState("data",
+            identity.npubHex, activeGameId, playerState, payload)
+          if appliedTurnOpt.isSome:
+            sam.model.turn = int(appliedTurnOpt.get())
+            sam.model.playerStateLoaded = true
+            sam.model.statusMessage = "Delta applied"
+          else:
+            sam.model.statusMessage = "Invalid delta payload"
+          sam.present(emptyProposal())
+        except CatchableError as e:
+          sam.model.nostrLastError = e.msg
           sam.model.nostrStatus = "error"
           sam.model.nostrEnabled = false
           sam.present(emptyProposal())
-          return
+
+      nostrHandlers.onFullState = proc(event: NostrEvent, payload: string) =
         try:
-          if event.kind == EventKindGameState or
-              event.kind == EventKindTurnResults:
-            let turnOpt = event.getTurn()
-            if turnOpt.isNone:
-              sam.model.statusMessage = "Ignored event: missing turn"
-              return
-            if sam.model.playerStateLoaded and
-                turnOpt.get() <= sam.model.turn:
-              sam.model.statusMessage = "Ignored event: stale turn"
-              return
+          let turnOpt = event.getTurn()
+          if turnOpt.isNone:
+            sam.model.statusMessage = "Ignored event: missing turn"
+            return
+          if sam.model.playerStateLoaded and
+              turnOpt.get() <= sam.model.turn:
+            sam.model.statusMessage = "Ignored event: stale turn"
+            return
+          if event.pubkey.len > 0 and
+              nostrDaemonPubkey.len > 0 and
+              event.pubkey != nostrDaemonPubkey:
+            sam.model.statusMessage = "Ignored event: unknown server"
+            return
+          let stateOpt = parseFullStateKdl(payload)
+          if stateOpt.isSome:
+            playerState = stateOpt.get()
+            sam.model.playerStateLoaded = true
+            viewingHouse = playerState.viewingHouse
+            sam.model.viewingHouse = int(viewingHouse)
+            sam.model.turn = int(playerState.turn)
+            sam.model.statusMessage = "Full state received"
+            if sam.model.nostrEnabled:
+              sam.model.nostrStatus = "connected"
+            if sam.model.appPhase == AppPhase.Lobby:
+              sam.model.appPhase = AppPhase.InGame
+          else:
+            sam.model.statusMessage = "Invalid full state payload"
+          sam.present(emptyProposal())
+        except CatchableError as e:
+          sam.model.nostrLastError = e.msg
+          sam.model.nostrStatus = "error"
+          sam.model.nostrEnabled = false
+          sam.present(emptyProposal())
 
-            if event.pubkey.len > 0 and
-                nostrDaemonPubkey.len > 0 and
-                event.pubkey != nostrDaemonPubkey:
-              sam.model.statusMessage = "Ignored event: unknown server"
-              return
-
-            let payload = decodePayload(event.content, privOpt.get(),
-              pubOpt.get())
-            if event.kind == EventKindGameState:
-              let stateOpt = parseFullStateKdl(payload)
-              if stateOpt.isSome:
-                playerState = stateOpt.get()
-                sam.model.playerStateLoaded = true
-                viewingHouse = playerState.viewingHouse
-                sam.model.viewingHouse = int(viewingHouse)
-                sam.model.turn = int(playerState.turn)
-                sam.model.statusMessage = "Full state received"
-                if sam.model.nostrEnabled:
-                  sam.model.nostrStatus = "connected"
-                if sam.model.appPhase == AppPhase.Lobby:
-                  sam.model.appPhase = AppPhase.InGame
-              else:
-                sam.model.statusMessage = "Invalid full state payload"
-            elif event.kind == EventKindTurnResults:
-              let appliedTurnOpt = applyDeltaToCachedState("data",
-                identity.npubHex, activeGameId, playerState, payload)
-              if appliedTurnOpt.isSome:
-                sam.model.turn = int(appliedTurnOpt.get())
-                sam.model.playerStateLoaded = true
-                sam.model.statusMessage = "Delta applied"
-              else:
-                sam.model.statusMessage = "Invalid delta payload"
-
-
-          elif event.kind == EventKindGameDefinition:
+      nostrHandlers.onEvent = proc(subId: string, event: NostrEvent) =
+        try:
+          if event.kind == EventKindGameDefinition:
             let gameIdOpt = event.getGameId()
             if gameIdOpt.isSome:
               let gameId = gameIdOpt.get()
@@ -1475,6 +1475,8 @@ proc runTui(gameId: string = "") =
                   event.pubkey.len > 0 and
                   nostrDaemonPubkey.len == 0:
                 nostrDaemonPubkey = event.pubkey
+                if nostrClient != nil:
+                  nostrClient.setDaemonPubkey(nostrDaemonPubkey)
             if (sam.model.nostrJoinRequested or sam.model.nostrJoinSent) and
                 sam.model.nostrJoinGameId.len > 0 and
                 event.pubkey.len > 0 and
@@ -1511,7 +1513,23 @@ proc runTui(gameId: string = "") =
           sam.model.nostrStatus = "error"
           sam.model.nostrEnabled = false
           sam.present(emptyProposal())
-      asyncCheck nostrClient.connect()
+
+      nostrHandlers.onError = proc(message: string) =
+        sam.model.nostrLastError = message
+        sam.model.nostrStatus = "error"
+        sam.model.nostrEnabled = false
+        sam.present(emptyProposal())
+
+      nostrClient = newPlayerNostrClient(
+        relayList,
+        activeGameId,
+        identity.nsecHex,
+        identity.npubHex,
+        nostrDaemonPubkey,
+        nostrHandlers
+      )
+
+      asyncCheck nostrClient.start()
       initialModel.nostrStatus = "connecting"
       initialModel.nostrEnabled = true
     except CatchableError as e:
@@ -1594,8 +1612,7 @@ proc runTui(gameId: string = "") =
             sam.model.appPhase == AppPhase.InGame and
             activeGameId.len > 0 and
             ("game:" & activeGameId) notin nostrSubscriptions:
-          let playerPubHex = sam.model.entryModal.identity.npubHex
-          asyncCheck nostrClient.subscribeGame(activeGameId, playerPubHex)
+          asyncCheck nostrClient.subscribeGame(activeGameId)
           nostrSubscriptions.add("game:" & activeGameId)
           sam.model.statusMessage = "Nostr subscribed"
         elif sam.model.nostrStatus == "connected" and
@@ -1726,39 +1743,20 @@ proc runTui(gameId: string = "") =
     if sam.model.pendingFleetOrderReady and activeGameId.len > 0:
       if sam.model.nostrEnabled and nostrClient != nil and
           nostrClient.isConnected():
-        let identity = sam.model.entryModal.identity
-        let privOpt = hexToBytes32Safe(identity.nsecHex)
-        if privOpt.isSome:
-          if nostrDaemonPubkey.len > 0:
-            let daemonOpt = hexToBytes32Safe(nostrDaemonPubkey)
-            if daemonOpt.isSome:
-              let order = FleetOrder(
-                fleetId: sam.model.pendingFleetOrderFleetId,
-                commandType: sam.model.pendingFleetOrderCommandType,
-                targetSystemId: sam.model.pendingFleetOrderTargetSystemId
-              )
-              let kdlCommands = formatFleetOrderKdl(order, sam.model.turn,
-                sam.model.viewingHouse)
-              let encrypted = encodePayload(kdlCommands, privOpt.get(),
-                daemonOpt.get())
-              var event = createTurnCommands(
-                gameId = activeGameId,
-                turn = sam.model.turn,
-                encryptedPayload = encrypted,
-                daemonPubkey = nostrDaemonPubkey,
-                playerPubkey = identity.npubHex
-              )
-              signEvent(event, privOpt.get())
-              asyncCheck nostrClient.publish(event)
-              let cmdLabel = commandLabel(
-                sam.model.pendingFleetOrderCommandType)
-              sam.model.statusMessage = cmdLabel & " order submitted"
-            else:
-              sam.model.statusMessage = "Invalid daemon pubkey"
-          else:
-            sam.model.statusMessage = "Waiting for daemon pubkey"
+        if nostrDaemonPubkey.len > 0:
+          let order = FleetOrder(
+            fleetId: sam.model.pendingFleetOrderFleetId,
+            commandType: sam.model.pendingFleetOrderCommandType,
+            targetSystemId: sam.model.pendingFleetOrderTargetSystemId
+          )
+          let kdlCommands = formatFleetOrderKdl(order, sam.model.turn,
+            sam.model.viewingHouse)
+          asyncCheck nostrClient.submitCommands(kdlCommands, sam.model.turn)
+          let cmdLabel = commandLabel(
+            sam.model.pendingFleetOrderCommandType)
+          sam.model.statusMessage = cmdLabel & " order submitted"
         else:
-          sam.model.statusMessage = "Invalid signing key"
+          sam.model.statusMessage = "Waiting for daemon pubkey"
       else:
         let gameDir = "data/games/" & activeGameId
         let orderPath = writeFleetOrderFromModel(gameDir, sam.model)
@@ -1771,6 +1769,7 @@ proc runTui(gameId: string = "") =
       
       # Re-render to show status
       sam.present(emptyProposal())
+
 
 
   # =========================================================================

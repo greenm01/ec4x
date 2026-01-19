@@ -1,6 +1,9 @@
 # EC4X Nostr Implementation Roadmap
 
 ## Changelog
+- 2026-01-18: Added deadline-based auto-resolve and relay reconnect + resubscribe backoff.
+- 2026-01-18: Added NIP-44 test vectors, crypto/wire/identity tests, and daemon test fixes.
+- 2026-01-18: Refactored daemon Nostr subscriber/publisher modules.
 - 2026-01-17: Added PlayerState snapshot persistence, diff-based delta publishing, and 30405 full-state serialization.
 - 2026-01-17: Canonical-only KDL payloads for 30405/30403 with child-node lists and pure-enum parsing fixes.
 - 2026-01-17: TUI Nostr integration for join flow, state sync, and command submission.
@@ -24,6 +27,10 @@ strategies needed to complete the integration.
 - Protocol spec: `docs/architecture/nostr-protocol.md`
 
 **Recent Updates (2026-01-18):**
+- Added deadline-based auto-resolve + persisted turn deadlines.
+- Added relay reconnect backoff + resubscribe flow.
+- Added NIP-44 vectors with crypto/wire/identity tests.
+- Refactored daemon Nostr subscriber/publisher modules.
 - Added replay protection log retention with turn/time cleanup.
 - Added replay protection tests for insert/cleanup behavior.
 - Added slot claim validation against invite codes + 30400 updates.
@@ -44,8 +51,8 @@ strategies needed to complete the integration.
 - Archived auto-resolve report in `docs/archive/2026-01-18/AUTO_RESOLVE_IMPLEMENTATION.md`
 
 **Stubbed/TODO:**
-- Optional refactor into subscriber/publisher modules
-- Timeout/deadline-based auto-resolve
+- Player client module extraction (optional; TUI integration exists)
+- E2E and relay integration tests
 
 ---
 
@@ -921,19 +928,19 @@ echo "E2E test complete"
 ## Implementation Checklist
 
 ### Phase 1: Nostr Client Foundation
-- [ ] `src/daemon/transport/nostr/client.nim` - WebSocket client
-- [ ] `src/daemon/transport/nostr/nip01.nim` - Event handling
-- [ ] `src/daemon/transport/nostr/filter.nim` - Subscription filters
-- [ ] `src/daemon/transport/nostr/types.nim` - Type definitions
+- [x] `src/daemon/transport/nostr/client.nim` - WebSocket client
+- [x] `src/daemon/transport/nostr/nip01.nim` - Event handling
+- [x] `src/daemon/transport/nostr/filter.nim` - Subscription filters
+- [x] `src/daemon/transport/nostr/types.nim` - Type definitions
 
 ### Phase 2: NIP-44 Encryption
-- [ ] `src/daemon/transport/nostr/crypto.nim` - ECDH + ChaCha20
-- [ ] `src/daemon/identity.nim` - Keypair management
-- [ ] Test encryption/decryption roundtrip
+- [x] `src/daemon/transport/nostr/crypto.nim` - ECDH + ChaCha20
+- [x] `src/daemon/identity.nim` - Keypair management
+- [x] Test encryption/decryption roundtrip
 
 ### Phase 3: Compression Layer
-- [ ] `src/daemon/transport/nostr/compression.nim` - zippy integration
-- [ ] `src/daemon/transport/nostr/wire.nim` - Wire format encoding
+- [x] `src/daemon/transport/nostr/compression.nim` - zippy integration
+- [x] `src/daemon/transport/nostr/wire.nim` - Wire format encoding
 - [ ] Test compression ratio
 
 ### Phase 4: Delta System
@@ -948,9 +955,10 @@ echo "E2E test complete"
 - [x] Slot claim handling (30401) with house pubkey assignment
 - [x] Turn results publishing (30403) with PlayerState deltas
 - [x] Auto-resolve when all human players submit commands
+- [x] Auto-resolve via turn deadlines
 - [x] Replay protection log retention (turn + time)
-- [ ] `src/daemon/subscriber.nim` - Optional refactor
-- [ ] `src/daemon/publisher.nim` - Optional refactor
+- [x] `src/daemon/subscriber.nim` - Subscriber module refactor
+- [x] `src/daemon/publisher.nim` - Publisher module refactor
 
 ### Phase 6: Player Client
 - [ ] `src/player/nostr/client.nim` - Player Nostr client
@@ -958,10 +966,20 @@ echo "E2E test complete"
 - [x] Implement command submission UI
 
 ### Phase 7: Testing
-- [ ] Unit tests for each module
+- [x] Unit tests for crypto + identity
+- [x] Integration tests for NIP-44 vectors + wire format
 - [ ] Integration tests with local relay
 - [ ] E2E test script
 - [ ] Test against public relay
+
+---
+
+## Remaining Work
+
+- Player Nostr client module extraction (if we want a standalone client beyond the TUI wiring)
+- Relay-backed integration tests (local relay + public relay validation)
+- E2E script for full daemon/player relay flow
+- Compression ratio benchmark and thresholds
 
 ---
 

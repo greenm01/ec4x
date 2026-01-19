@@ -1,0 +1,4 @@
+nostr {
+  compression_min_ratio 0.5
+  compression_max_raw_bytes 65535
+}

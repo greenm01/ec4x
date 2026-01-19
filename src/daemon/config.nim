@@ -11,6 +11,10 @@ type
     replay_retention_days_state*: int
     turn_deadline_minutes*: int
 
+  NostrConfig* = object
+    compression_min_ratio*: float
+    compression_max_raw_bytes*: int
+
 
 proc parseDaemonKdl*(path: string): DaemonConfig =
   let content = readFile(path)
@@ -71,3 +75,29 @@ proc parseDaemonKdl*(path: string): DaemonConfig =
     result.turn_deadline_minutes = 0
   if result.turn_deadline_minutes == 0:
     result.turn_deadline_minutes = 60
+
+proc parseNostrKdl*(path: string): NostrConfig =
+  let content = readFile(path)
+  let doc = parseKdl(content)
+  if doc.len == 0:
+    raise newException(ValueError, "Empty or invalid KDL config")
+
+  let root = doc[0]
+  if root.name != "nostr":
+    raise newException(ValueError, "Root node must be 'nostr'")
+
+  for child in root.children:
+    case child.name
+    of "compression_min_ratio":
+      if child.args.len > 0:
+        result.compression_min_ratio = child.args[0].getFloat()
+    of "compression_max_raw_bytes":
+      if child.args.len > 0:
+        result.compression_max_raw_bytes = child.args[0].getInt().int
+    else:
+      discard
+
+  if result.compression_min_ratio <= 0:
+    result.compression_min_ratio = 0.5
+  if result.compression_max_raw_bytes <= 0:
+    result.compression_max_raw_bytes = 65535
