@@ -657,23 +657,71 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Parse and execute expert mode command
       let result = parseExpertCommand(model.expertModeInput)
       if result.success:
-        # Add command to staged commands
-        if result.fleetCommand.isSome:
-          model.stagedFleetCommands.add(result.fleetCommand.get())
+        # Handle meta commands first
+        case result.metaCommand
+        of MetaCommandType.Help:
           model.setExpertFeedback(
-            "Fleet command staged (total: " & 
-            $model.stagedFleetCommands.len & ")"
+            "Commands: :01/:move fleet <id> to <system> | :00/:hold fleet <id> | " &
+            ":build colony <id> ship <class> | :list/:ls :drop/:rm <n> :clear :submit"
           )
           model.addToExpertHistory(model.expertModeInput)
-        elif result.buildCommand.isSome:
-          model.stagedBuildCommands.add(result.buildCommand.get())
-          model.setExpertFeedback(
-            "Build command staged (total: " & 
-            $model.stagedBuildCommands.len & ")"
-          )
+        of MetaCommandType.Clear:
+          let count = model.stagedCommandCount()
+          model.stagedFleetCommands.setLen(0)
+          model.stagedBuildCommands.setLen(0)
+          model.stagedRepairCommands.setLen(0)
+          model.stagedScrapCommands.setLen(0)
+          model.turnSubmissionConfirmed = false
+          model.setExpertFeedback("Cleared " & $count & " staged commands")
           model.addToExpertHistory(model.expertModeInput)
-        else:
-          model.setExpertFeedback("No command generated")
+        of MetaCommandType.List:
+          model.setExpertFeedback(model.stagedCommandsSummary())
+          model.addToExpertHistory(model.expertModeInput)
+        of MetaCommandType.Drop:
+          if result.metaIndex.isNone:
+            model.setExpertFeedback("Usage: :drop <index>")
+          else:
+            let dropIdx = result.metaIndex.get()
+            let entries = model.stagedCommandEntries()
+            if dropIdx <= 0 or dropIdx > entries.len:
+              model.setExpertFeedback("Invalid command index")
+            else:
+              let entry = entries[dropIdx - 1]
+              if model.dropStagedCommand(entry):
+                model.turnSubmissionConfirmed = false
+                model.setExpertFeedback("Dropped command " & $dropIdx)
+              else:
+                model.setExpertFeedback("Failed to drop command")
+          model.addToExpertHistory(model.expertModeInput)
+        of MetaCommandType.Submit:
+          if model.stagedCommandCount() > 0:
+            model.turnSubmissionRequested = true
+            model.turnSubmissionConfirmed = true  # Bypass confirmation
+            let count = model.stagedCommandCount()
+            model.setExpertFeedback("Submitting " & $count & " commands...")
+          else:
+            model.setExpertFeedback("No commands to submit")
+          model.addToExpertHistory(model.expertModeInput)
+        of MetaCommandType.None:
+          # Regular command - add to staged commands
+          if result.fleetCommand.isSome:
+            model.stagedFleetCommands.add(result.fleetCommand.get())
+            model.turnSubmissionConfirmed = false
+            model.setExpertFeedback(
+              "Fleet command staged (total: " & 
+              $model.stagedFleetCommands.len & ")"
+            )
+            model.addToExpertHistory(model.expertModeInput)
+          elif result.buildCommand.isSome:
+            model.stagedBuildCommands.add(result.buildCommand.get())
+            model.turnSubmissionConfirmed = false
+            model.setExpertFeedback(
+              "Build command staged (total: " & 
+              $model.stagedBuildCommands.len & ")"
+            )
+            model.addToExpertHistory(model.expertModeInput)
+          else:
+            model.setExpertFeedback("No command generated")
       else:
         model.setExpertFeedback("Error: " & result.error)
       # Keep expert mode active after submit
@@ -685,6 +733,29 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Remove last character
       if model.expertModeInput.len > 0:
         model.expertModeInput.setLen(model.expertModeInput.len - 1)
+    of ActionExpertHistoryPrev:
+      if model.expertModeHistory.len > 0:
+        if model.expertModeHistoryIdx > 0:
+          model.expertModeHistoryIdx -= 1
+        let idx = max(0, min(model.expertModeHistory.len - 1,
+          model.expertModeHistoryIdx))
+        model.expertModeInput = model.expertModeHistory[idx]
+    of ActionExpertHistoryNext:
+      if model.expertModeHistory.len > 0:
+        if model.expertModeHistoryIdx < model.expertModeHistory.len:
+          model.expertModeHistoryIdx += 1
+        if model.expertModeHistoryIdx >= model.expertModeHistory.len:
+          model.expertModeInput = ""
+        else:
+          model.expertModeInput =
+            model.expertModeHistory[model.expertModeHistoryIdx]
+    of ActionSubmitTurn:
+      # Set flag for reactor/main loop to handle
+      if model.stagedCommandCount() > 0:
+        model.turnSubmissionRequested = true
+      else:
+        model.statusMessage = "No commands staged - nothing to submit"
+        model.turnSubmissionConfirmed = false
     else:
       model.statusMessage = "Action: " & proposal.gameActionType
   of ProposalKind.pkSelection:

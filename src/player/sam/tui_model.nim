@@ -17,11 +17,11 @@
 ##   8. Messages   - Diplomacy, inter-house communication
 ##   9. Settings   - Display options, automation defaults
 
-import std/[options, tables, algorithm]
+import std/[options, tables, algorithm, strutils]
 import ../tui/widget/scroll_state
 import ../tui/widget/entry_modal
 import ../state/identity
-import ../../engine/types/[fleet, production, command]
+import ../../engine/types/[core, fleet, production, command, tech]
 
 export entry_modal
 export identity
@@ -77,6 +77,42 @@ proc commandLabel*(cmdNum: int): string =
   of CmdView: "View"
   else: "Unknown"
 
+proc fleetCommandNumber*(cmdType: FleetCommandType): int =
+  ## Map FleetCommandType to command number
+  case cmdType
+  of FleetCommandType.Hold: CmdHold
+  of FleetCommandType.Move: CmdMove
+  of FleetCommandType.SeekHome: CmdSeekHome
+  of FleetCommandType.Patrol: CmdPatrol
+  of FleetCommandType.GuardStarbase: CmdGuardStarbase
+  of FleetCommandType.GuardColony: CmdGuardColony
+  of FleetCommandType.Blockade: CmdBlockade
+  of FleetCommandType.Bombard: CmdBombard
+  of FleetCommandType.Invade: CmdInvade
+  of FleetCommandType.Blitz: CmdBlitz
+  of FleetCommandType.Colonize: CmdColonize
+  of FleetCommandType.ScoutColony: CmdScoutColony
+  of FleetCommandType.ScoutSystem: CmdScoutSystem
+  of FleetCommandType.HackStarbase: CmdHackStarbase
+  of FleetCommandType.JoinFleet: CmdJoinFleet
+  of FleetCommandType.Rendezvous: CmdRendezvous
+  of FleetCommandType.Salvage: CmdSalvage
+  of FleetCommandType.Reserve: CmdReserve
+  of FleetCommandType.Mothball: CmdMothball
+  of FleetCommandType.View: CmdView
+
+proc fleetCommandCode*(cmdType: FleetCommandType): string =
+  ## Get two-digit command code
+  let cmdNum = fleetCommandNumber(cmdType)
+  if cmdNum < 10:
+    "0" & $cmdNum
+  else:
+    $cmdNum
+
+proc fleetCommandLabel*(cmdType: FleetCommandType): string =
+  ## Get label for fleet command type
+  commandLabel(fleetCommandNumber(cmdType))
+
 type
   ViewMode* {.pure.} = enum
     ## Current UI view (maps to hotkey number)
@@ -104,6 +140,16 @@ const
   Systems* = ViewMode.Overview    ## Legacy: Systems (now part of Overview)
 
 type
+  StagedCommandKind* {.pure.} = enum
+    Fleet
+    Build
+    Repair
+    Scrap
+
+  StagedCommandEntry* = object
+    kind*: StagedCommandKind
+    index*: int
+
   # Re-export hex coordinate for convenience
   HexCoord* = tuple[q, r: int]
 
@@ -315,6 +361,8 @@ type
     stagedRepairCommands*: seq[RepairCommand]   ## Repair orders staged for submission
     stagedScrapCommands*: seq[ScrapCommand]     ## Scrap orders staged for submission
     turnSubmissionRequested*: bool              ## True when player requests turn submit
+    turnSubmissionPending*: bool                ## True when turn submit ready for main loop
+    turnSubmissionConfirmed*: bool              ## True when player confirms submission
 
     # Terminal dimensions
     termWidth*: int
@@ -456,6 +504,8 @@ proc initTuiModel*(): TuiModel =
     stagedRepairCommands: @[],
     stagedScrapCommands: @[],
     turnSubmissionRequested: false,
+    turnSubmissionPending: false,
+    turnSubmissionConfirmed: false,
     termWidth: 80,
     termHeight: 24,
     running: true,
@@ -901,10 +951,99 @@ proc addToExpertHistory*(model: var TuiModel, command: string) =
 
 proc stagedCommandCount*(model: TuiModel): int =
   ## Get total number of staged commands
-  model.stagedFleetCommands.len + 
-    model.stagedBuildCommands.len + 
-    model.stagedRepairCommands.len + 
+  model.stagedFleetCommands.len +
+    model.stagedBuildCommands.len +
+    model.stagedRepairCommands.len +
     model.stagedScrapCommands.len
+
+proc stagedCommandEntries*(model: TuiModel): seq[StagedCommandEntry] =
+  ## Get flattened list of staged commands in display order
+  result = @[]
+  for idx in 0 ..< model.stagedFleetCommands.len:
+    result.add(StagedCommandEntry(kind: StagedCommandKind.Fleet, index: idx))
+  for idx in 0 ..< model.stagedBuildCommands.len:
+    result.add(StagedCommandEntry(kind: StagedCommandKind.Build, index: idx))
+  for idx in 0 ..< model.stagedRepairCommands.len:
+    result.add(StagedCommandEntry(kind: StagedCommandKind.Repair, index: idx))
+  for idx in 0 ..< model.stagedScrapCommands.len:
+    result.add(StagedCommandEntry(kind: StagedCommandKind.Scrap, index: idx))
+
+proc formatFleetOrder*(cmd: FleetCommand): string =
+  ## Format a fleet command for display
+  result = "Fleet " & $cmd.fleetId & ": "
+  let code = fleetCommandCode(cmd.commandType)
+  let label = fleetCommandLabel(cmd.commandType)
+  result.add(code & " " & label)
+  if cmd.targetSystem.isSome:
+    result.add(" -> System " & $cmd.targetSystem.get())
+  if cmd.targetFleet.isSome:
+    result.add(" -> Fleet " & $cmd.targetFleet.get())
+  if cmd.roe.isSome:
+    result.add(" (ROE " & $cmd.roe.get() & ")")
+
+proc formatBuildOrder*(cmd: BuildCommand): string =
+  ## Format a build command for display
+  result = "Colony " & $cmd.colonyId & ": Build "
+  case cmd.buildType
+  of BuildType.Ship:
+    if cmd.shipClass.isSome:
+      result.add($cmd.shipClass.get())
+  of BuildType.Facility:
+    if cmd.facilityClass.isSome:
+      result.add($cmd.facilityClass.get())
+  of BuildType.Ground:
+    if cmd.groundClass.isSome:
+      result.add($cmd.groundClass.get())
+  of BuildType.Industrial:
+    result.add("Industrial Units")
+  of BuildType.Infrastructure:
+    result.add("Infrastructure")
+
+  if cmd.quantity != 1:
+    result.add(" x" & $cmd.quantity)
+
+proc stagedCommandsSummary*(model: TuiModel): string =
+  ## Summarize staged commands with numbered list
+  let entries = model.stagedCommandEntries()
+  if entries.len == 0:
+    return "No commands staged"
+
+  var lines: seq[string] = @[]
+  lines.add("Staged commands (" & $entries.len & "):")
+  for idx, entry in entries:
+    let label =
+      case entry.kind
+      of StagedCommandKind.Fleet:
+        formatFleetOrder(model.stagedFleetCommands[entry.index])
+      of StagedCommandKind.Build:
+        formatBuildOrder(model.stagedBuildCommands[entry.index])
+      of StagedCommandKind.Repair:
+        "Repair command " & $entry.index
+      of StagedCommandKind.Scrap:
+        "Scrap command " & $entry.index
+    lines.add("  " & $(idx + 1) & ". " & label)
+  lines.join(" | ")
+
+proc dropStagedCommand*(model: var TuiModel, entry: StagedCommandEntry): bool =
+  ## Remove staged command by entry
+  case entry.kind
+  of StagedCommandKind.Fleet:
+    if entry.index < model.stagedFleetCommands.len:
+      model.stagedFleetCommands.delete(entry.index)
+      return true
+  of StagedCommandKind.Build:
+    if entry.index < model.stagedBuildCommands.len:
+      model.stagedBuildCommands.delete(entry.index)
+      return true
+  of StagedCommandKind.Repair:
+    if entry.index < model.stagedRepairCommands.len:
+      model.stagedRepairCommands.delete(entry.index)
+      return true
+  of StagedCommandKind.Scrap:
+    if entry.index < model.stagedScrapCommands.len:
+      model.stagedScrapCommands.delete(entry.index)
+      return true
+  false
 
 # =============================================================================
 # Order Entry Helpers
@@ -956,3 +1095,34 @@ proc orderEntryNeedsTarget*(cmdType: int): bool =
   cmdType in [CmdMove, CmdPatrol, CmdBlockade, CmdBombard, CmdInvade,
               CmdBlitz, CmdColonize, CmdScoutColony, CmdScoutSystem,
               CmdJoinFleet, CmdRendezvous]
+
+# =============================================================================
+# Command Packet Builder
+# =============================================================================
+
+proc buildCommandPacket*(model: TuiModel, turn: int32,
+                         houseId: HouseId): CommandPacket =
+  ## Build CommandPacket from staged commands
+  ## Used by main loop to submit turn to engine/Nostr
+  
+  CommandPacket(
+    houseId: houseId,
+    turn: turn,
+    fleetCommands: model.stagedFleetCommands,
+    buildCommands: model.stagedBuildCommands,
+    repairCommands: model.stagedRepairCommands,
+    scrapCommands: model.stagedScrapCommands,
+    # Empty/default values for other command types (Phase 2+)
+    researchAllocation: ResearchAllocation(
+      economic: 0,
+      science: 0,
+      technology: initTable[TechField, int32]()
+    ),
+    diplomaticCommand: @[],
+    populationTransfers: @[],
+    terraformCommands: @[],
+    colonyManagement: @[],
+    espionageActions: @[],
+    ebpInvestment: 0,
+    cipInvestment: 0
+  )

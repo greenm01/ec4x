@@ -38,7 +38,10 @@ const
   ActionExitExpertMode* = "exitExpertMode"
   ActionExpertInputAppend* = "expertInputAppend"
   ActionExpertInputBackspace* = "expertInputBackspace"
+  ActionExpertHistoryPrev* = "expertHistoryPrev"
+  ActionExpertHistoryNext* = "expertHistoryNext"
   ActionExpertSubmit* = "expertSubmit"
+  ActionSubmitTurn* = "submitTurn"
   ActionToggleFleetSelect* = "toggleFleetSelect"
   ActionSwitchPlanetTab* = "switchPlanetTab"
   ActionSwitchFleetView* = "switchFleetView"
@@ -303,6 +306,18 @@ proc actionExpertInputBackspace*(): Proposal =
 proc actionExpertSubmit*(): Proposal =
   ## Submit expert mode command
   gameActionProposal(ActionExpertSubmit, "")
+
+proc actionExpertHistoryPrev*(): Proposal =
+  ## Previous command from expert mode history
+  gameActionProposal(ActionExpertHistoryPrev, "")
+
+proc actionExpertHistoryNext*(): Proposal =
+  ## Next command from expert mode history
+  gameActionProposal(ActionExpertHistoryNext, "")
+
+proc actionSubmitTurn*(): Proposal =
+  ## Submit turn with all staged commands
+  gameActionProposal(ActionSubmitTurn, "")
 
 # ============================================================================
 # Fleet Multi-Select Actions
@@ -928,6 +943,7 @@ type
       KeyHome, KeyBackspace
       # Special
       KeyColon  # Expert mode trigger
+      KeyCtrlE  # Turn submission
       KeyCtrlL
 
 
@@ -966,6 +982,10 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       return some(actionExpertSubmit())
     of KeyCode.KeyBackspace:
       return some(actionExpertInputBackspace())
+    of KeyCode.KeyUp:
+      return some(actionExpertHistoryPrev())
+    of KeyCode.KeyDown:
+      return some(actionExpertHistoryNext())
     else:
       # Other keys add to input buffer - handled by acceptor
       return none(Proposal)
@@ -1073,6 +1093,8 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   of KeyCode.KeyBackspace: return some(actionBreadcrumbBack())
   # Colon enters expert mode
   of KeyCode.KeyColon: return some(actionEnterExpertMode())
+  # Ctrl+E submits turn
+  of KeyCode.KeyCtrlE: return some(actionSubmitTurn())
   else:
     discard
   

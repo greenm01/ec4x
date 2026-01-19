@@ -602,6 +602,7 @@ Once your local environment is working:
 2. **Test commands** - Submit commands via TUI, resolve turns
 3. **Implement features** - Add missing Nostr integration pieces
 4. **Test against public relay** - Try `wss://relay.damus.io`
+5. **Remote Admin** - [Manage via Chat Bot](game-management-chatbot.md)
 
 See also:
 - [Nostr Implementation Roadmap](nostr-implementation-roadmap.md)

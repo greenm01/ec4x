@@ -42,6 +42,7 @@ Once we can play real games, we'll know what needs adjustment.
 ---
 
 ## Documentation
+- **Game Management**: [Chat Bot Admin Guide](guides/game-management-chatbot.md)
 
 - **Game Rules:** [docs/specs/index.md](specs/index.md) - Complete gameplay specification
 - **Architecture:** [docs/architecture/](architecture/) - System design

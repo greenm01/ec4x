@@ -21,6 +21,8 @@ import ../engine/init/game_state
 import ../engine/types/game_state
 import ../engine/state/engine
 import ../daemon/persistence/init as db_init
+import ../daemon/persistence/reader
+import ../common/wordlist
 
 proc newGame(
     name: string = "",
@@ -137,6 +139,26 @@ proc winner(gameId: string, houseId: string, dataDir: string = "data"): int =
   echo "(not yet implemented)"
   return 0
 
+proc invite(GAMEID: string, dataDir = "data"): int =
+  ## Query all invite codes for a game, show claimed status
+  let dbPath = dataDir / "games" / gameId / "ec4x.db"
+  if not fileExists(dbPath):
+    echo "No game: ", gameId
+    return 1
+  
+  let houses = dbGetHousesWithInvites(dbPath, gameId)
+  if houses.len == 0:
+    echo "No houses with invites found"
+    return 0
+  
+  for h in houses:
+    let status = if h.nostr_pubkey.len > 0:
+      "CLAIMED " & h.nostr_pubkey[0..10] & "..."
+    else:
+      "PENDING"
+    echo "House ", h.name, " (", $h.id.uint32, "): ", h.invite_code, " [", status, "]"
+  0
+
 proc version(): int =
   ## Display version information
   echo "EC4X Moderator v0.1.0"
@@ -150,5 +172,6 @@ when isMainModule:
     [pause, help = "Pause a game"],
     [resume, help = "Resume a paused game"],
     [winner, help = "Declare game winner"],
+    [invite, cmdName = "invite", help = "Query invite codes + status"],
     [version, help = "Show version"]
   )

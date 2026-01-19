@@ -34,6 +34,7 @@ import ./sam/sam_pkg
 import ./state/join_flow
 import ./state/lobby_profile
 import ./state/order_builder
+import ./state/kdl_serializer
 import ./svg/svg_pkg
 
 # =============================================================================
@@ -377,6 +378,8 @@ proc mapKeyEvent(event: KeyEvent, model: TuiModel): Option[Proposal] =
       keyCode = KeyCode.KeyTab
   of Key.CtrlL:
     keyCode = KeyCode.KeyCtrlL
+  of Key.CtrlE:
+    keyCode = KeyCode.KeyCtrlE
   of Key.Home:
     keyCode = KeyCode.KeyHome
   of Key.Backspace:
@@ -1723,6 +1726,53 @@ proc runTui(gameId: string = "") =
             extractFilename(orderPath)
           logInfo("TUI Player SAM", "Fleet order written: " & orderPath)
       sam.model.clearPendingOrder()
+      
+      # Re-render to show status
+      sam.present(emptyProposal())
+
+    # Handle turn submission (Ctrl+E pressed)
+    if sam.model.turnSubmissionPending:
+      # Build command packet from staged commands
+      let packet = sam.model.buildCommandPacket(
+        gameState.turn.int32,
+        viewingHouse
+      )
+      
+      # Serialize to KDL
+      let kdl = commandPacketToKdl(packet)
+      
+      var submittedOk = false
+      # Write to file or send via Nostr
+      if sam.model.nostrEnabled and nostrClient != nil and
+          nostrClient.isConnected():
+        # Submit via Nostr (commands retained until confirmed)
+        asyncCheck nostrClient.submitCommands(kdl, sam.model.turn)
+        sam.model.statusMessage = "Turn submitted via Nostr (retained)"
+        logInfo("TUI Player SAM", "Turn submitted via Nostr")
+      elif activeGameId.len > 0:
+        # Write to local file
+        let gameDir = "data/games/" & activeGameId
+        createDir(gameDir & "/orders")
+        let orderPath = gameDir & "/orders/turn_" & $gameState.turn & ".kdl"
+        try:
+          writeFile(orderPath, kdl)
+          sam.model.statusMessage = "Turn submitted: " &
+            extractFilename(orderPath)
+          logInfo("TUI Player SAM", "Turn written: " & orderPath)
+          submittedOk = true
+        except IOError as e:
+          sam.model.statusMessage = "Error writing turn: " & e.msg
+          logError("TUI Player SAM", "Failed to write turn: " & e.msg)
+      else:
+        sam.model.statusMessage = "No game loaded - cannot submit turn"
+      
+      if submittedOk:
+        # Clear staged commands
+        sam.model.stagedFleetCommands.setLen(0)
+        sam.model.stagedBuildCommands.setLen(0)
+        sam.model.stagedRepairCommands.setLen(0)
+        sam.model.stagedScrapCommands.setLen(0)
+      sam.model.turnSubmissionPending = false
       
       # Re-render to show status
       sam.present(emptyProposal())

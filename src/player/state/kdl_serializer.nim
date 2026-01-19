@@ -1,6 +1,5 @@
 import std/[options, strformat, strutils, tables]
-import ../../engine/types/[command, core, fleet, production, facilities, ground_unit,
-  ship]
+import ../../engine/types/[command, core, fleet, production]
 
 proc fleetCommandName(cmdType: FleetCommandType): string =
   case cmdType
@@ -70,8 +69,8 @@ proc buildCommandLine(cmd: BuildCommand): Option[string] =
 
   some(parts.join(" "))
 
-proc groupBuildCommandsByColony(commands: seq[BuildCommand])
-    : Table[ColonyId, seq[BuildCommand]] =
+proc groupBuildCommandsByColony(
+    commands: seq[BuildCommand]): Table[ColonyId, seq[BuildCommand]] =
   result = initTable[ColonyId, seq[BuildCommand]]()
   for cmd in commands:
     if not result.hasKey(cmd.colonyId):

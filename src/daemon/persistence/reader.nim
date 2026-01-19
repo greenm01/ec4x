@@ -110,6 +110,32 @@ proc isInviteCodeAssigned*(dbPath: string, gameId: string,
   else:
     return true
 
+type
+  HouseInvite* = object
+    id*: HouseId
+    name*: string
+    invite_code*: string
+    nostr_pubkey*: string
+
+proc dbGetHousesWithInvites*(dbPath, gameId: string): seq[HouseInvite] =
+  ## Get all houses with invite codes and claim status for a game
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+  
+  let rows = db.getAllRows(sql"""
+    SELECT id, name, invite_code, nostr_pubkey
+    FROM houses
+    WHERE game_id = ?
+  """, gameId)
+  
+  for row in rows:
+    result.add HouseInvite(
+      id: HouseId(parseUInt(row[0]).uint32),
+      name: row[1],
+      invite_code: row[2],
+      nostr_pubkey: row[3]
+    )
+
 proc loadPlayerStateSnapshot*(
   dbPath: string,
   gameId: string,

@@ -156,6 +156,27 @@ proc contextDataReactor*(model: var TuiModel) =
   discard  # Placeholder for future expansion
 
 # ============================================================================
+# Turn Submission Reactor
+# ============================================================================
+
+proc turnSubmissionReactor*(model: var TuiModel) =
+  ## Handle turn submission flag set by acceptor
+  ## Requires confirmation before setting turnSubmissionPending
+  if model.turnSubmissionRequested:
+    # Check if already confirmed (via :submit command or second Ctrl+E)
+    if model.turnSubmissionConfirmed:
+      model.turnSubmissionPending = true
+      model.turnSubmissionRequested = false
+      model.turnSubmissionConfirmed = false
+    else:
+      # First press - ask for confirmation
+      let count = model.stagedCommandCount()
+      model.statusMessage = "Press Ctrl+E again to confirm submitting " &
+        $count & " commands, or :clear to cancel"
+      model.turnSubmissionConfirmed = true
+      model.turnSubmissionRequested = false
+
+# ============================================================================
 # Create All Reactors
 # ============================================================================
 
@@ -165,6 +186,7 @@ proc createReactors*(): seq[ReactorProc[TuiModel]] =
     viewportReactor,
     selectionBoundsReactor,
     statusMessageReactor,
+    turnSubmissionReactor,
     # clearTransientReactor,  # Run last if needed
     # contextDataReactor,
   ]
