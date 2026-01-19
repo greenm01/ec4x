@@ -1307,6 +1307,7 @@ proc runTui(gameId: string = "") =
   var nostrListenerStarted = false
   var nostrSubscriptions: seq[string] = @[]
   var nostrDaemonPubkey = ""
+  var nostrGameDefinitionSeen = initTable[string, int64]()
 
   # Initialize terminal
   var tty = openTty()
@@ -1439,6 +1440,21 @@ proc runTui(gameId: string = "") =
             let gameIdOpt = event.getGameId()
             if gameIdOpt.isSome:
               let gameId = gameIdOpt.get()
+              let lastSeen = if nostrGameDefinitionSeen.hasKey(gameId):
+                nostrGameDefinitionSeen[gameId]
+                else:
+                  0'i64
+              if event.created_at <= lastSeen:
+                sam.model.statusMessage = "Ignored game definition: stale"
+                return
+              nostrGameDefinitionSeen[gameId] = event.created_at
+
+              if event.pubkey.len > 0 and
+                  nostrDaemonPubkey.len > 0 and
+                  event.pubkey != nostrDaemonPubkey:
+                sam.model.statusMessage = "Ignored game definition: unknown server"
+                return
+
               let nameTag = event.getTagValue(TagName)
               let turnOpt = event.getTurn()
               let gameInfo = EntryActiveGameInfo(

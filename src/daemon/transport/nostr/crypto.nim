@@ -4,6 +4,7 @@
 import std/[base64, strutils, sysrand]
 import nimcrypto/[sha2, hmac]
 import secp256k1
+import secp256k1/abi
 import stew/byteutils
 import nim_chacha20_poly1305/[chacha20, helpers]
 
@@ -55,7 +56,19 @@ proc sha256Hash*(data: string): string =
 
 proc toHex*(data: openArray[byte]): string =
   ## Convert bytes to lowercase hex
-  data.toHex().toLowerAscii()
+  var parts: seq[string] = @[]
+  for value in data:
+    parts.add(value.toHex(2))
+  result = parts.join("").toLowerAscii()
+
+proc constantTimeEqualsFixed*(a: openArray[byte], b: openArray[byte]): bool =
+  ## Constant-time compare for equal-length byte arrays
+  if a.len != b.len:
+    return false
+  var diff: byte = 0
+  for i in 0..<a.len:
+    diff = diff or (a[i] xor b[i])
+  diff == 0
 
 
 # =============================================================================
@@ -124,10 +137,31 @@ proc hkdfExpandSha256(prk: array[32, byte], info: openArray[byte],
 
   output
 
-proc conversationKey(privKey: array[32, byte],
+proc nip44EcdhHash(
+    output: ptr byte,
+    x32: ptr byte,
+    y32: ptr byte,
+    data: pointer
+  ): cint {.cdecl, raises: [].} =
+  discard y32
+  discard data
+  let outBytes = cast[ptr UncheckedArray[byte]](output)
+  let xBytes = cast[ptr UncheckedArray[byte]](x32)
+  for i in 0..<32:
+    outBytes[i] = xBytes[i]
+  1
+
+proc conversationKey*(privKey: array[32, byte],
     pubKey: array[32, byte]): array[32, byte] =
-  let seckey = SkSecretKey.fromRaw(privKey).get()
-  let xonly = SkXOnlyPublicKey.fromRaw(pubKey).get()
+  let seckeyResult = SkSecretKey.fromRaw(privKey)
+  if seckeyResult.isErr:
+    raise newException(ValueError, $seckeyResult.error)
+  let xonlyResult = SkXOnlyPublicKey.fromRaw(pubKey)
+  if xonlyResult.isErr:
+    raise newException(ValueError, $xonlyResult.error)
+
+  let seckey = seckeyResult.get()
+  let xonly = xonlyResult.get()
 
   var compressed: array[33, byte]
   compressed[0] = 0x02'u8
@@ -135,12 +169,19 @@ proc conversationKey(privKey: array[32, byte],
   for i in 0..<32:
     compressed[1 + i] = xOnlyRaw[i]
 
-  let pubkey = SkPublicKey.fromRaw(compressed).get()
-  let shared = seckey.ecdh(pubkey)
-  let salt = Nip44Salt
-  hkdfExtractSha256(shared.data, salt.toOpenArrayByte(0, salt.len - 1))
+  let pubkeyResult = SkPublicKey.fromRaw(compressed)
+  if pubkeyResult.isErr:
+    raise newException(ValueError, $pubkeyResult.error)
+  let pubkey = pubkeyResult.get()
 
-proc messageKeys(conversationKey: array[32, byte],
+  let sharedResult = ecdh[32](seckey, pubkey, nip44EcdhHash, nil)
+  if sharedResult.isErr:
+    raise newException(ValueError, $sharedResult.error)
+  let sharedX = sharedResult.get()
+  let salt = Nip44Salt
+  hkdfExtractSha256(sharedX, salt.toOpenArrayByte(0, salt.len - 1))
+
+proc messageKeys*(conversationKey: array[32, byte],
     nonce: array[32, byte]):
     tuple[chachaKey: array[32, byte], chachaNonce: array[12, byte],
           hmacKey: array[32, byte]] =
@@ -162,7 +203,7 @@ proc nextPowerOfTwo(n: int): int =
     power = power shl 1
   power
 
-proc calcPaddedLen(unpaddedLen: int): int =
+proc calcPaddedLen*(unpaddedLen: int): int =
   if unpaddedLen <= 32:
     return 32
 
@@ -170,7 +211,7 @@ proc calcPaddedLen(unpaddedLen: int): int =
   let chunk = if nextPower <= 256: 32 else: nextPower div 8
   chunk * ((unpaddedLen - 1) div chunk + 1)
 
-proc padPlaintext(plaintext: string): seq[byte] =
+proc padPlaintext*(plaintext: string): seq[byte] =
   let bytes = cast[seq[byte]](plaintext)
   let len = bytes.len
   if len < MinPlaintextSize or len > MaxPlaintextSize:
@@ -183,7 +224,7 @@ proc padPlaintext(plaintext: string): seq[byte] =
   for i in 0..<len:
     result[2 + i] = bytes[i]
 
-proc unpadPlaintext(padded: openArray[byte]): string =
+proc unpadPlaintext*(padded: openArray[byte]): string =
   if padded.len < 2:
     raise newException(ValueError, "Invalid padded plaintext")
 
