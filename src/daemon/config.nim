@@ -9,6 +9,8 @@ type
     replay_retention_days*: int
     replay_retention_days_definition*: int
     replay_retention_days_state*: int
+    turn_deadline_minutes*: int
+
 
 proc parseDaemonKdl*(path: string): DaemonConfig =
   let content = readFile(path)
@@ -44,6 +46,9 @@ proc parseDaemonKdl*(path: string): DaemonConfig =
     of "replay_retention_days_state":
       if child.args.len > 0:
         result.replay_retention_days_state = child.args[0].getInt().int
+    of "turn_deadline_minutes":
+      if child.args.len > 0:
+        result.turn_deadline_minutes = child.args[0].getInt().int
     else:
       discard
 
@@ -62,3 +67,7 @@ proc parseDaemonKdl*(path: string): DaemonConfig =
     result.replay_retention_days_definition = result.replay_retention_days
   if result.replay_retention_days_state == 0:
     result.replay_retention_days_state = result.replay_retention_days
+  if result.turn_deadline_minutes < 0:
+    result.turn_deadline_minutes = 0
+  if result.turn_deadline_minutes == 0:
+    result.turn_deadline_minutes = 60

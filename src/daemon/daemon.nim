@@ -3,7 +3,7 @@
 ## The daemon monitors active games, collects player orders, resolves turns,
 ## and publishes results—all without human intervention.
 
-import std/[os, tables, sets, asyncdispatch, strutils, options]
+import std/[os, tables, sets, asyncdispatch, strutils, options, times]
 import cligen
 import ../common/logger
 import ./sam_core
@@ -35,6 +35,7 @@ type
     turn*: int
     phase*: string
     transportMode*: string # e.g. "nostr"
+    turnDeadline*: Option[int64]
 
 type
   DaemonModel* = object
@@ -49,6 +50,7 @@ type
     replayRetentionDays*: int              # Replay log days retention
     replayRetentionDaysDefinition*: int    # Game definition retention
     replayRetentionDaysState*: int         # State publish retention
+    turnDeadlineMinutes*: int              # Auto-resolve deadline length
     identity*: DaemonIdentity              # Nostr keypair
     nostrClient*: NostrClient              # Nostr relay client
     nostrSubscriber*: Subscriber           # Nostr subscriber wrapper
@@ -82,6 +84,33 @@ type DaemonCmd* = proc (): Future[Proposal[DaemonModel]]
 proc resolveTurnCmd(gameId: GameId): DaemonCmd
 
 
+proc calculateTurnDeadline(minutes: int): Option[int64] =
+  ## Calculate deadline timestamp for current turn
+  if minutes <= 0:
+    return none(int64)
+  let nowUnix = getTime().toUnix()
+  some(nowUnix + int64(minutes * 60))
+
+proc checkDeadlineResolution(gameId: GameId) =
+  ## Auto-resolve when deadline expires
+  let gameInfo = daemonLoop.model.games[gameId]
+  if gameInfo.phase != "Active":
+    return
+  let deadlineOpt = gameInfo.turnDeadline
+  if deadlineOpt.isNone:
+    return
+  if gameId in daemonLoop.model.resolving:
+    return
+
+  let deadline = deadlineOpt.get()
+  let nowUnix = getTime().toUnix()
+  if nowUnix < deadline:
+    return
+
+  logInfo("Daemon", "Turn deadline reached; auto-resolving game=", gameId,
+    " turn=", $gameInfo.turn)
+  daemonLoop.queueCmd(resolveTurnCmd(gameId))
+
 proc checkAndTriggerResolution(gameId: GameId) =
   ## Check if all expected players have submitted orders
   ## If so, automatically queue turn resolution
@@ -107,6 +136,11 @@ proc checkAndTriggerResolution(gameId: GameId) =
   logDebug("Daemon", "Turn readiness check: ", $submittedPlayers, "/",
     $expectedPlayers, " players submitted for game=", gameId,
     " turn=", $currentTurn)
+
+  let deadlineOpt = gameInfo.turnDeadline
+  if deadlineOpt.isSome:
+    let deadline = deadlineOpt.get()
+    logDebug("Daemon", "Turn deadline at ", $deadline, " for game=", gameId)
 
   # Check if all players ready
   if submittedPlayers >= expectedPlayers:
@@ -145,6 +179,11 @@ proc resolveTurnCmd(gameId: GameId): DaemonCmd =
       saveGameEvents(state, result.events)
       markCommandsProcessed(gameInfo.dbPath, gameId, state.turn - 1)
 
+      let nextDeadline = calculateTurnDeadline(
+        daemonLoop.model.turnDeadlineMinutes
+      )
+      updateTurnDeadline(gameInfo.dbPath, gameInfo.id, nextDeadline)
+
       # 4. Publish turn results via Nostr
       if daemonLoop.model.nostrPublisher != nil:
         await daemonLoop.model.nostrPublisher.publishTurnResults(
@@ -163,6 +202,7 @@ proc resolveTurnCmd(gameId: GameId): DaemonCmd =
         name: "turn_resolved",
         payload: proc(model: var DaemonModel) =
           model.games[gameId].turn = state.turn
+          model.games[gameId].turnDeadline = nextDeadline
           model.resolving.excl(gameId)
           model.pendingOrders[gameId] = 0
       )
@@ -176,7 +216,8 @@ proc resolveTurnCmd(gameId: GameId): DaemonCmd =
           model.resolving.excl(gameId)
       )
 
-proc createGameDiscoveredProposal(gameId, dbPath, phase: string, turn: int32): Proposal[DaemonModel] =
+proc createGameDiscoveredProposal(gameId, dbPath, phase: string, turn: int32,
+  deadline: Option[int64]): Proposal[DaemonModel] =
   let gId = gameId
   let dbP = dbPath
   let turnNum = turn
@@ -191,6 +232,7 @@ proc createGameDiscoveredProposal(gameId, dbPath, phase: string, turn: int32): P
         turn: turnNum.int,
         phase: phaseStr,
         transportMode: "nostr",
+        turnDeadline: deadline
       )
   )
 
@@ -208,11 +250,16 @@ proc discoverGamesCmd(dir: string): DaemonCmd =
             if state == nil:
               logError("Daemon", "Failed to load game state for: ", path)
               continue
-            
-            logInfo("Daemon", "Discovered game: ", state.gameName, " (ID: ", gameId, ") turn: ", $state.turn)
-            
+
+            let phase = reader.loadGamePhase(dbPath)
+            let phaseStr = if phase.len > 0: phase else: $state.phase
+            let deadline = reader.loadGameDeadline(dbPath)
+
+            logInfo("Daemon", "Discovered game: ", state.gameName, " (ID: ",
+              gameId, ") turn: ", $state.turn)
+
             gameDiscoveredProposals.add createGameDiscoveredProposal(
-              gameId, dbPath, $state.phase, state.turn
+              gameId, dbPath, phaseStr, state.turn, deadline
             )
     return Proposal[DaemonModel](
       name: "discovery_complete",
@@ -236,12 +283,23 @@ proc tickProposal(): Proposal[DaemonModel] =
       logInfo("Daemon", "Tick - checking for updates. Managed games: ",
         $model.games.len)
       daemonLoop.queueCmd(discoverGamesCmd(model.dataDir))
-      
+
       for gameId, gameInfo in model.games:
         writer.cleanupProcessedEvents(gameInfo.dbPath, gameId,
           gameInfo.turn.int32, model.replayRetentionTurns,
           model.replayRetentionDays, model.replayRetentionDaysDefinition,
           model.replayRetentionDaysState)
+
+        if model.turnDeadlineMinutes > 0 and gameInfo.phase == "Active" and
+            gameInfo.turnDeadline.isNone:
+          let deadline = calculateTurnDeadline(model.turnDeadlineMinutes)
+          updateTurnDeadline(gameInfo.dbPath, gameInfo.id, deadline)
+          model.games[gameId].turnDeadline = deadline
+          if deadline.isSome:
+            logInfo("Daemon", "Set turn deadline for game=", gameId,
+              " at ", $deadline.get())
+
+        checkDeadlineResolution(gameId)
 
       # Subscribe to commands for all active games
       for gameId, gameInfo in model.games:
@@ -417,7 +475,7 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
 proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
   replayRetentionTurns: int, replayRetentionDays: int,
   replayRetentionDaysDefinition: int, replayRetentionDaysState: int,
-  allowIdentityRegen: bool): DaemonModel =
+  turnDeadlineMinutes: int, allowIdentityRegen: bool): DaemonModel =
   result = DaemonModel(
     games: initTable[GameId, GameInfo](),
     resolving: initHashSet[GameId](),
@@ -429,6 +487,7 @@ proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
     replayRetentionDays: replayRetentionDays,
     replayRetentionDaysDefinition: replayRetentionDaysDefinition,
     replayRetentionDaysState: replayRetentionDaysState,
+    turnDeadlineMinutes: turnDeadlineMinutes,
     identity: ensureIdentity(allowIdentityRegen),
     nostrClient: nil,  # Will be initialized in mainLoop
     nostrSubscriber: nil,
@@ -441,10 +500,11 @@ proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
 proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   replayRetentionTurns: int, replayRetentionDays: int,
   replayRetentionDaysDefinition: int, replayRetentionDaysState: int,
-  allowIdentityRegen: bool): DaemonLoop =
+  turnDeadlineMinutes: int, allowIdentityRegen: bool): DaemonLoop =
   result = newSamLoop(initModel(dataDir, pollInterval, relayUrls,
     replayRetentionTurns, replayRetentionDays,
-    replayRetentionDaysDefinition, replayRetentionDaysState, allowIdentityRegen))
+    replayRetentionDaysDefinition, replayRetentionDaysState,
+    turnDeadlineMinutes, allowIdentityRegen))
   # Add generic acceptor to execute proposal payloads
   result.addAcceptor(proc(model: var DaemonModel, proposal: Proposal[DaemonModel]): bool =
     if proposal.payload == nil:
@@ -455,16 +515,17 @@ proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   )
 
 proc initTestDaemonLoop*(dataDir: string): DaemonLoop =
-  result = newDaemonLoop(dataDir, 30, @[], 2, 7, 30, 14, true)
+  result = newDaemonLoop(dataDir, 30, @[], 2, 7, 30, 14, 60, true)
 
 proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   replayRetentionTurns: int, replayRetentionDays: int,
   replayRetentionDaysDefinition: int, replayRetentionDaysState: int,
-  allowIdentityRegen: bool) {.async.} =
+  turnDeadlineMinutes: int, allowIdentityRegen: bool) {.async.} =
   ## SAM daemon loop
   daemonLoop = newDaemonLoop(dataDir, pollInterval, relayUrls,
     replayRetentionTurns, replayRetentionDays,
-    replayRetentionDaysDefinition, replayRetentionDaysState, allowIdentityRegen)
+    replayRetentionDaysDefinition, replayRetentionDaysState,
+    turnDeadlineMinutes, allowIdentityRegen)
   
   logInfo("Daemon", "Starting SAM daemon...")
   logInfo("Daemon", "Data directory: ", dataDir)
@@ -524,15 +585,25 @@ proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   if not daemonLoop.model.nostrClient.isConnected():
     logError("Daemon", "Failed to connect to any relay")
     return
-  
+
   # Start listening for events (non-blocking)
   asyncCheck daemonLoop.model.nostrClient.listen()
 
   # Start tick chain
   daemonLoop.queueCmd(scheduleNextTickCmd(0))  # Initial immediate
 
+  var reconnectBackoffMs = 1000
+
   while daemonLoop.model.running and not shutdownRequested:
     daemonLoop.process()
+
+    if not daemonLoop.model.nostrClient.isConnected():
+      logWarn("Daemon", "Relay connection lost; reconnecting")
+      reconnectBackoffMs = await daemonLoop.model.nostrClient
+        .reconnectWithBackoff(reconnectBackoffMs, maxBackoffMs)
+      if daemonLoop.model.nostrClient.isConnected():
+        asyncCheck daemonLoop.model.nostrClient.listen()
+
     await sleepAsync(100)  # Non-block poll
 
   if shutdownRequested:
@@ -563,6 +634,7 @@ proc start*(
   var replayRetentionDays = 7
   var replayRetentionDaysDefinition = 30
   var replayRetentionDaysState = 14
+  var turnDeadlineMinutes = 60
 
   if configKdl.len > 0:
     logInfo("Daemon", "Loading config from: ", configKdl)
@@ -574,6 +646,7 @@ proc start*(
     replayRetentionDays = cfg.replay_retention_days
     replayRetentionDaysDefinition = cfg.replay_retention_days_definition
     replayRetentionDaysState = cfg.replay_retention_days_state
+    turnDeadlineMinutes = cfg.turn_deadline_minutes
   else:
     # Default relay
     finalRelayUrls = @["ws://localhost:8080"]
@@ -607,7 +680,7 @@ proc start*(
     waitFor mainLoop(finalDataDir, finalPollInterval, finalRelayUrls,
       replayRetentionTurns, replayRetentionDays,
       replayRetentionDaysDefinition, replayRetentionDaysState,
-      allowIdentityRegen)
+      turnDeadlineMinutes, allowIdentityRegen)
   except CatchableError as e:
     logError("Daemon", "Failed to start daemon: ", e.msg)
     return 1
@@ -633,7 +706,8 @@ proc resolve*(gameId: string, dataDir: string = "data"): int =
   daemonLoop = newDaemonLoop(dataDir, 30, daemonConfig.relay_urls,
     daemonConfig.replay_retention_turns, daemonConfig.replay_retention_days,
     daemonConfig.replay_retention_days_definition,
-    daemonConfig.replay_retention_days_state, true)
+    daemonConfig.replay_retention_days_state, daemonConfig.turn_deadline_minutes,
+    true)
   daemonLoop.model.nostrClient = newNostrClient(daemonConfig.relay_urls)
   daemonLoop.model.nostrPublisher = newPublisher(
     daemonLoop.model.nostrClient,

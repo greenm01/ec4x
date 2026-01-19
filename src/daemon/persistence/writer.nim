@@ -50,6 +50,33 @@ proc updateGameMetadata*(state: GameState) =
     state.gameId,
   )
 
+proc updateTurnDeadline*(dbPath: string, gameId: string,
+  deadline: Option[int64]) =
+  ## Update the per-turn deadline timestamp (unix seconds)
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let deadlineValue = if deadline.isSome: $deadline.get() else: "NULL"
+  if deadline.isSome:
+    db.exec(
+      sql"""
+      UPDATE games
+      SET turn_deadline = ?, updated_at = unixepoch()
+      WHERE id = ?
+    """,
+      deadlineValue,
+      gameId
+    )
+  else:
+    db.exec(
+      sql"""
+      UPDATE games
+      SET turn_deadline = NULL, updated_at = unixepoch()
+      WHERE id = ?
+    """,
+      gameId
+    )
+
 proc updateHousePubkey*(dbPath: string, gameId: string, houseId: HouseId, pubkey: string) =
   ## Update a house's Nostr pubkey (for slot claims)
   let db = open(dbPath, "", "", "")

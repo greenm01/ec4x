@@ -311,9 +311,34 @@ proc loadGameState*(dbPath: string): GameState =
     gameName: metadata[1],
     gameDescription: metadata[2],
     turn: int32(parseInt(metadata[3])),
-    phase: GamePhase.Conflict, 
+    phase: GamePhase.Conflict,
     dbPath: dbPath
   )
+
+proc loadGameDeadline*(dbPath: string): Option[int64] =
+  ## Load turn deadline timestamp (unix seconds) for a game
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let row = db.getRow(sql"SELECT turn_deadline FROM games LIMIT 1")
+  if row[0] == "" or row[0] == "NULL":
+    return none(int64)
+
+  try:
+    return some(parseInt(row[0]).int64)
+  except CatchableError:
+    logError("Persistence", "Failed to parse turn_deadline")
+    none(int64)
+
+proc loadGamePhase*(dbPath: string): string =
+  ## Load game phase string
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let row = db.getRow(sql"SELECT phase FROM games LIMIT 1")
+  if row[0].len == 0:
+    return ""
+  row[0]
 
 proc loadOrders*(dbPath: string, turn: int): Table[HouseId, CommandPacket] =
   ## Load all command packets for a specific turn from the database

@@ -5,6 +5,7 @@ daemon {
     replay_retention_days 7
     replay_retention_days_definition 30
     replay_retention_days_state 14
+    turn_deadline_minutes 60
     relay_urls {
         url "ws://localhost:8080"
     }

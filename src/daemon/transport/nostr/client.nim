@@ -110,10 +110,10 @@ proc subscribe*(client: NostrClient, subId: string,
     filters: seq[NostrFilter]) {.async.} =
   ## Subscribe to events matching filters on all connected relays
   client.subscriptions[subId] = filters
-  
+
   let filterJsons = filters.mapIt(it.toJson())
   let reqMsg = makeReqMessage(subId, filterJsons)
-  
+
   for url, conn in client.connections.mpairs:
     if conn.state == ConnectionState.Connected:
       try:
@@ -122,6 +122,28 @@ proc subscribe*(client: NostrClient, subId: string,
       except CatchableError as e:
         logError("Nostr", "Failed to subscribe on ", url, ": ", e.msg)
         conn.state = ConnectionState.Disconnected
+
+proc resubscribeAll*(client: NostrClient) {.async.} =
+  ## Re-send subscriptions to all connected relays
+  for subId, filters in client.subscriptions.pairs:
+    await client.subscribe(subId, filters)
+
+proc reconnectWithBackoff*(client: NostrClient, backoffMs: int,
+  maxBackoffMs: int): Future[int] {.async.} =
+  ## Reconnect with backoff, returning next backoff delay
+  var delayMs = backoffMs
+  if delayMs <= 0:
+    delayMs = 1000
+
+  await client.connect()
+  if client.isConnected():
+    await client.resubscribeAll()
+    logInfo("Nostr", "Reconnected to relays and resubscribed")
+    return 1000
+
+  logWarn("Nostr", "Reconnect failed; retrying in ", $delayMs, "ms")
+  await sleepAsync(delayMs)
+  min(delayMs * 2, maxBackoffMs)
 
 proc unsubscribe*(client: NostrClient, subId: string) {.async.} =
   ## Unsubscribe from a subscription on all relays
