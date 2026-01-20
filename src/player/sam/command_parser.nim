@@ -16,8 +16,9 @@
 ##
 ## Reference: AGENTS.md and KDL serializer for command structure
 
-import std/[strutils, options, parseutils]
-import ../../engine/types/[core, fleet, production, ship, facilities, ground_unit]
+import std/[algorithm, options, parseutils, strutils]
+import ../../engine/types/[core, fleet, production, ship, facilities,
+  ground_unit]
 
 # =============================================================================
 # Parser Result Types
@@ -40,6 +41,19 @@ type
     buildCommand*: Option[BuildCommand]
     metaCommand*: MetaCommandType = MetaCommandType.None
     metaIndex*: Option[int] = none(int)
+
+  ExpertCommandInfo* = object
+    name*: string
+    aliases*: seq[string]
+    synopsis*: string
+    description*: string
+    isMeta*: bool
+
+  ExpertCommandMatch* = object
+    command*: ExpertCommandInfo
+    label*: string
+    score*: int
+    matchIndices*: seq[int]
 
 # =============================================================================
 # Helper Procs
@@ -76,6 +90,276 @@ proc normalizeCommandToken(token: string): string =
   of "ls": "list"
   of "rm": "drop"
   else: lower
+
+proc normalizeExpertInput*(input: string): string =
+  ## Normalize expert mode input to a command string (no leading colon)
+  let trimmed = input.strip()
+  if trimmed.len == 0:
+    return ""
+  if trimmed.startsWith(":"):
+    return trimmed[1..^1].strip()
+  trimmed
+
+proc expertCommandCatalog*(): seq[ExpertCommandInfo] =
+  ## Expert mode command catalog for help and suggestions
+  @[
+    ExpertCommandInfo(
+      name: "help",
+      aliases: @["?"],
+      synopsis: "",
+      description: "Show expert command help.",
+      isMeta: true
+    ),
+    ExpertCommandInfo(
+      name: "clear",
+      aliases: @[],
+      synopsis: "",
+      description: "Clear all staged commands.",
+      isMeta: true
+    ),
+    ExpertCommandInfo(
+      name: "list",
+      aliases: @["ls", "show"],
+      synopsis: "",
+      description: "List staged commands.",
+      isMeta: true
+    ),
+    ExpertCommandInfo(
+      name: "drop",
+      aliases: @["rm"],
+      synopsis: "<index>",
+      description: "Drop staged command by index.",
+      isMeta: true
+    ),
+    ExpertCommandInfo(
+      name: "submit",
+      aliases: @[],
+      synopsis: "",
+      description: "Submit all staged commands.",
+      isMeta: true
+    ),
+    ExpertCommandInfo(
+      name: "move",
+      aliases: @["01", "m"],
+      synopsis: "fleet <id> to <system> " &
+        "[roe <0-10>]",
+      description: "Move a fleet to a target system.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "hold",
+      aliases: @["00", "h"],
+      synopsis: "fleet <id> [roe <0-10>]",
+      description: "Hold position.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "patrol",
+      aliases: @["03", "p"],
+      synopsis: "fleet <id>",
+      description: "Patrol current system.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "seek",
+      aliases: @["02"],
+      synopsis: "fleet <id>",
+      description: "Seek hostile forces.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "guard",
+      aliases: @["05"],
+      synopsis: "fleet <id>",
+      description: "Guard a colony.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "guard-starbase",
+      aliases: @["04"],
+      synopsis: "fleet <id>",
+      description: "Guard a starbase.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "blockade",
+      aliases: @["06"],
+      synopsis: "fleet <id> to <system>",
+      description: "Blockade a system.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "bombard",
+      aliases: @["07"],
+      synopsis: "fleet <id> to <system>",
+      description: "Bombard a colony.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "invade",
+      aliases: @["08"],
+      synopsis: "fleet <id> to <system>",
+      description: "Invade a colony.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "blitz",
+      aliases: @["09"],
+      synopsis: "fleet <id> to <system>",
+      description: "Blitz a colony.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "colonize",
+      aliases: @["10"],
+      synopsis: "fleet <id> to <system>",
+      description: "Colonize a system.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "scout-colony",
+      aliases: @["11"],
+      synopsis: "fleet <id> to <system>",
+      description: "Scout a colony.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "scout-system",
+      aliases: @["12"],
+      synopsis: "fleet <id> to <system>",
+      description: "Scout a system.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "hack",
+      aliases: @["13"],
+      synopsis: "fleet <id> to <system>",
+      description: "Hack a starbase.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "join",
+      aliases: @["14"],
+      synopsis: "fleet <id> to <fleet>",
+      description: "Join another fleet.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "rendezvous",
+      aliases: @["15"],
+      synopsis: "fleet <id> to <system>",
+      description: "Rendezvous at system.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "salvage",
+      aliases: @["16"],
+      synopsis: "fleet <id>",
+      description: "Salvage debris.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "reserve",
+      aliases: @["17"],
+      synopsis: "fleet <id>",
+      description: "Reserve the fleet.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "mothball",
+      aliases: @["18"],
+      synopsis: "fleet <id>",
+      description: "Mothball the fleet.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "view",
+      aliases: @["19"],
+      synopsis: "fleet <id> to <system>",
+      description: "View a system.",
+      isMeta: false
+    ),
+    ExpertCommandInfo(
+      name: "build",
+      aliases: @["b"],
+      synopsis: "colony <id> ship/facility <type>",
+      description: "Queue ship or facility build.",
+      isMeta: false
+    ),
+  ]
+
+proc expertCommandLabel*(cmd: ExpertCommandInfo): string =
+  ## Label to display for a command, including aliases
+  if cmd.aliases.len == 0:
+    return cmd.name
+  cmd.name & " [" & cmd.aliases.join(", ") & "]"
+
+proc expertCommandHint*(cmd: ExpertCommandInfo): string =
+  ## Summary text shown next to command label
+  if cmd.synopsis.len > 0:
+    return cmd.synopsis
+  cmd.description
+
+proc expertCommandHelpText*(): string =
+  ## Single-line help summary built from catalog
+  var meta: seq[string] = @[]
+  var commands: seq[string] = @[]
+  for cmd in expertCommandCatalog():
+    if cmd.isMeta:
+      if cmd.name == "drop":
+        meta.add(cmd.name & " <n>")
+      else:
+        meta.add(cmd.name)
+    else:
+      commands.add(cmd.name)
+  "Commands: " & commands.join(", ") & " | Meta: " & meta.join(", ")
+
+proc fuzzyMatchIndices(query: string, target: string):
+  Option[tuple[score: int, indices: seq[int]]] =
+  ## Fuzzy subsequence match (case-insensitive) with simple scoring
+  let normalizedQuery = query.toLowerAscii()
+  if normalizedQuery.len == 0:
+    return some((score: 0, indices: newSeq[int]()))
+  let normalizedTarget = target.toLowerAscii()
+  var indices: seq[int] = @[]
+  var lastIdx = -1
+  var totalGap = 0
+  for ch in normalizedQuery:
+    var found = false
+    for i in (lastIdx + 1) ..< normalizedTarget.len:
+      if normalizedTarget[i] == ch:
+        indices.add(i)
+        if lastIdx >= 0:
+          totalGap += i - lastIdx - 1
+        lastIdx = i
+        found = true
+        break
+    if not found:
+      return none(tuple[score: int, indices: seq[int]])
+  let firstIdx = indices[0]
+  let score = 1000 - (totalGap * 5) - firstIdx
+  some((score: score, indices: indices))
+
+proc matchExpertCommands*(input: string): seq[ExpertCommandMatch] =
+  ## Fuzzy-match expert commands for suggestions
+  let query = normalizeExpertInput(input)
+  for cmd in expertCommandCatalog():
+    let label = expertCommandLabel(cmd)
+    let matchOpt = fuzzyMatchIndices(query, label)
+    if matchOpt.isSome:
+      let match = matchOpt.get()
+      result.add(ExpertCommandMatch(
+        command: cmd,
+        label: label,
+        score: match.score,
+        matchIndices: match.indices
+      ))
+  result.sort(proc(a, b: ExpertCommandMatch): int =
+    if a.score == b.score:
+      cmp(a.label, b.label)
+    else:
+      cmp(b.score, a.score)
+  )
 
 proc parseShipClass(s: string): Option[ShipClass] =
   ## Parse ship class name (case-insensitive)
@@ -495,26 +779,12 @@ proc parseBuildFacility(tokens: seq[string]): ParseResult =
 
 proc parseExpertCommand*(input: string): ParseResult =
   ## Parse expert mode command string
-  ## Commands must start with : prefix
-  
-  # Remove leading/trailing whitespace
-  let trimmed = input.strip()
-  
-  # Must start with :
-  if not trimmed.startsWith(":"):
-    return ParseResult(
-      success: false,
-      error: "Commands must start with :"
-    )
-  
-  # Remove : prefix and tokenize
-  let cmdStr = trimmed[1..^1].strip()
+  ## Commands may be typed with or without the leading :
+
+  let cmdStr = normalizeExpertInput(input)
   if cmdStr.len == 0:
-    return ParseResult(
-      success: false,
-      error: "Empty command"
-    )
-  
+    return ParseResult(success: false, error: "Empty command")
+
   var tokens = cmdStr.splitWhitespace()
   if tokens.len == 0:
     return ParseResult(

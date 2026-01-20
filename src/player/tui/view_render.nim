@@ -7,6 +7,7 @@ import std/[options, unicode]
 import ../../engine/types/[core, player_state as ps_types]
 import ../../engine/state/engine
 import ../sam/sam_pkg
+import ../sam/command_parser
 import ../tui/buffer
 import ../tui/layout/layout_pkg
 import ../tui/widget/[widget_pkg, frame, paragraph]
@@ -19,11 +20,106 @@ import ../tui/styles/ec_palette
 import ../tui/adapters
 import ./sync
 
+const
+  ExpertPaletteMaxRows = 8
+  ExpertPaletteMinWidth = 40
+  ExpertPaletteMaxWidth = 80
+
 proc dimStyle*(): CellStyle =
   canvasDimStyle()
 
 proc normalStyle*(): CellStyle =
   canvasStyle()
+
+proc buildMatchSpans(label: string, matchIndices: seq[int],
+                     normalStyle: CellStyle, matchStyle: CellStyle):
+                     seq[Span] =
+  ## Build spans with highlighted match indices
+  var spans: seq[Span] = @[]
+  var current = ""
+  var currentStyle = normalStyle
+  var matchIdx = 0
+
+  for i in 0 ..< label.len:
+    let isMatch = matchIdx < matchIndices.len and
+      matchIndices[matchIdx] == i
+    if isMatch:
+      matchIdx += 1
+    let nextStyle = if isMatch: matchStyle else: normalStyle
+    if nextStyle != currentStyle and current.len > 0:
+      spans.add(span(current, currentStyle))
+      current = ""
+    if nextStyle != currentStyle:
+      currentStyle = nextStyle
+    current.add(label[i])
+
+  if current.len > 0:
+    spans.add(span(current, currentStyle))
+
+  spans
+
+proc renderExpertPalette*(buf: var CellBuffer, canvasArea: Rect,
+                          dockArea: Rect, model: TuiModel) =
+  ## Render helix-style expert command palette above the dock
+  if not model.expertModeActive:
+    return
+
+  let matches = matchExpertCommands(model.expertModeInput)
+  if matches.len == 0:
+    return
+
+  let visibleRows = min(ExpertPaletteMaxRows, matches.len)
+  let paletteHeight = visibleRows + 2
+  if dockArea.y - paletteHeight < canvasArea.y:
+    return
+
+  let width = min(ExpertPaletteMaxWidth, canvasArea.width)
+  if width < ExpertPaletteMinWidth:
+    return
+
+  let x = canvasArea.x + (canvasArea.width - width) div 2
+  let y = dockArea.y - paletteHeight
+  let paletteArea = rect(x, y, width, paletteHeight)
+
+  let frame = bordered()
+    .title("Commands")
+    .borderType(BorderType.Plain)
+    .borderStyle(modalBorderStyle())
+    .style(modalBgStyle())
+  frame.render(paletteArea, buf)
+  let inner = frame.inner(paletteArea)
+  if inner.isEmpty:
+    return
+
+  let normalStyle = modalBgStyle()
+  let dimStyle = modalDimStyle()
+  let matchStyle = prestigeStyle()
+
+  var items: seq[ListItem] = @[]
+  for match in matches:
+    let labelSpans = buildMatchSpans(
+      match.label,
+      match.matchIndices,
+      normalStyle,
+      matchStyle
+    )
+    var lineSpans = labelSpans
+    let hint = expertCommandHint(match.command)
+    if hint.len > 0:
+      lineSpans.add(span("  ", dimStyle))
+      lineSpans.add(span(hint, dimStyle))
+    items.add(listItem(text(line(lineSpans))))
+
+  var palette = list(items)
+    .style(modalBgStyle())
+    .highlightStyle(selectedStyle())
+    .highlightSymbol("")
+
+  var state = newListState()
+  if model.expertPaletteSelection >= 0 and
+      model.expertPaletteSelection < matches.len:
+    state.select(model.expertPaletteSelection)
+  palette.render(inner, buf, state)
 
 proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render list of player's colonies from SAM model
@@ -792,6 +888,9 @@ proc renderDashboard*(
       renderOverview(canvasArea, buf, overviewData)
     else:
       renderListPanel(canvasArea, buf, model, state, viewingHouse)
+
+  if model.expertModeActive:
+    renderExpertPalette(buf, canvasArea, dockArea, model)
 
   # Render Command Dock
   let dockData = buildCommandDockData(model)

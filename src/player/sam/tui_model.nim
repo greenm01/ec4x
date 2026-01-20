@@ -342,6 +342,7 @@ type
     expertModeHistory*: seq[string]  ## Command history
     expertModeHistoryIdx*: int    ## Current history position
     expertModeFeedback*: string   ## Feedback for expert commands
+    expertPaletteSelection*: int  ## Command palette selection
 
     # Order entry state (for keybindings + target selection flow)
     orderEntryActive*: bool       ## In target selection mode for order
@@ -492,6 +493,7 @@ proc initTuiModel*(): TuiModel =
     expertModeHistory: @[],
     expertModeHistoryIdx: 0,
     expertModeFeedback: "",
+    expertPaletteSelection: -1,
     orderEntryActive: false,
     orderEntryFleetId: 0,
     orderEntryCommandType: 0,
@@ -934,12 +936,14 @@ proc enterExpertMode*(model: var TuiModel) =
   ## Enter expert mode
   model.expertModeActive = true
   model.expertModeInput = ""
+  model.expertPaletteSelection = 0
   model.clearExpertFeedback()
 
 proc exitExpertMode*(model: var TuiModel) =
   ## Exit expert mode
   model.expertModeActive = false
   model.expertModeInput = ""
+  model.expertPaletteSelection = -1
 
 proc setExpertFeedback*(model: var TuiModel, message: string) =
   ## Update expert mode feedback message

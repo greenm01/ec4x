@@ -347,7 +347,7 @@ proc renderContextActions*(area: Rect, buf: var CellBuffer,
 
 proc renderExpertModeIndicator*(area: Rect, buf: var CellBuffer,
                                  isActive: bool, input: string) =
-  ## Render the expert mode indicator (right-aligned)
+  ## Render the expert mode indicator
   let y = area.y
   let dimStyle = dockDimStyle()
   let keyStyle = dockKeyStyle()
@@ -355,8 +355,7 @@ proc renderExpertModeIndicator*(area: Rect, buf: var CellBuffer,
   
   if isActive:
     # Show ": <input>" prompt
-    let promptStr = ": " & input
-    let promptX = area.right - promptStr.len - 2
+    let promptX = area.x + 1
     discard buf.setString(promptX, y, ": ", keyStyle)
     discard buf.setString(promptX + 2, y, input, normalStyle)
     # Show cursor position
@@ -415,9 +414,13 @@ proc renderCommandDock*(area: Rect, buf: var CellBuffer,
   # Row 2: Context actions + Expert mode
   if area.height >= 3:
     let contextArea = rect(area.x, area.y + 2, area.width, 1)
-    renderContextActions(contextArea, buf, data.contextActions)
-    renderExpertModeIndicator(contextArea, buf, 
-                               data.expertModeActive, data.expertModeInput)
+    if data.expertModeActive:
+      renderExpertModeIndicator(contextArea, buf,
+        data.expertModeActive, data.expertModeInput)
+    else:
+      renderContextActions(contextArea, buf, data.contextActions)
+      renderExpertModeIndicator(contextArea, buf,
+        data.expertModeActive, data.expertModeInput)
 
 
 # =============================================================================
@@ -482,12 +485,15 @@ proc renderCommandDockCompact*(area: Rect, buf: var CellBuffer,
   # Row 1: Context actions
   if area.height >= 2:
     let contextArea = rect(area.x, area.y + 1, area.width, 1)
-    # Render fewer actions in compact mode
-    let limitedActions = if data.contextActions.len > 4: 
-                           data.contextActions[0 ..< 4] 
-                         else: 
-                           data.contextActions
-    renderContextActions(contextArea, buf, limitedActions)
-    renderExpertModeIndicator(contextArea, buf,
-                               data.expertModeActive, data.expertModeInput)
-
+    if data.expertModeActive:
+      renderExpertModeIndicator(contextArea, buf,
+        data.expertModeActive, data.expertModeInput)
+    else:
+      # Render fewer actions in compact mode
+      let limitedActions = if data.contextActions.len > 4:
+                             data.contextActions[0 ..< 4]
+                           else:
+                             data.contextActions
+      renderContextActions(contextArea, buf, limitedActions)
+      renderExpertModeIndicator(contextArea, buf,
+        data.expertModeActive, data.expertModeInput)

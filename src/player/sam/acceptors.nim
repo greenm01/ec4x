@@ -47,6 +47,23 @@ proc viewModeFromInt(value: int): Option[ViewMode] =
   else:
     none(ViewMode)
 
+proc resetExpertPaletteSelection(model: var TuiModel) =
+  let matches = matchExpertCommands(model.expertModeInput)
+  if matches.len == 0:
+    model.expertPaletteSelection = -1
+  else:
+    model.expertPaletteSelection = 0
+
+proc clampExpertPaletteSelection(model: var TuiModel) =
+  let matches = matchExpertCommands(model.expertModeInput)
+  if matches.len == 0:
+    model.expertPaletteSelection = -1
+    return
+  if model.expertPaletteSelection < 0:
+    model.expertPaletteSelection = 0
+  elif model.expertPaletteSelection >= matches.len:
+    model.expertPaletteSelection = matches.len - 1
+
 # ============================================================================
 # Navigation Acceptor
 # ============================================================================
@@ -647,16 +664,31 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.exitExpertMode()
       model.statusMessage = ""
     of ActionExpertSubmit:
+      let matches = matchExpertCommands(model.expertModeInput)
+      if matches.len > 0:
+        clampExpertPaletteSelection(model)
+        let selection = model.expertPaletteSelection
+        if selection >= 0 and selection < matches.len:
+          let chosen = matches[selection]
+          let normalized = normalizeExpertInput(model.expertModeInput)
+          let tokens = normalized.splitWhitespace()
+          let commandToken = if tokens.len > 0: tokens[0] else: ""
+          if commandToken.toLowerAscii() !=
+              chosen.command.name.toLowerAscii():
+            var newInput = chosen.command.name
+            if tokens.len > 1:
+              newInput.add(" " & tokens[1..^1].join(" "))
+            model.expertModeInput = newInput
+            model.clearExpertFeedback()
+            model.expertPaletteSelection = 0
+            return
       # Parse and execute expert mode command
       let result = parseExpertCommand(model.expertModeInput)
       if result.success:
         # Handle meta commands first
         case result.metaCommand
         of MetaCommandType.Help:
-          model.setExpertFeedback(
-            "Commands: :01/:move fleet <id> to <system> | :00/:hold fleet <id> | " &
-            ":build colony <id> ship <class> | :list/:ls :drop/:rm <n> :clear :submit"
-          )
+          model.setExpertFeedback(expertCommandHelpText())
           model.addToExpertHistory(model.expertModeInput)
         of MetaCommandType.Clear:
           let count = model.stagedCommandCount()
@@ -701,7 +733,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.stagedFleetCommands.add(result.fleetCommand.get())
             model.turnSubmissionConfirmed = false
             model.setExpertFeedback(
-              "Fleet command staged (total: " & 
+              "Fleet command staged (total: " &
               $model.stagedFleetCommands.len & ")"
             )
             model.addToExpertHistory(model.expertModeInput)
@@ -709,7 +741,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.stagedBuildCommands.add(result.buildCommand.get())
             model.turnSubmissionConfirmed = false
             model.setExpertFeedback(
-              "Build command staged (total: " & 
+              "Build command staged (total: " &
               $model.stagedBuildCommands.len & ")"
             )
             model.addToExpertHistory(model.expertModeInput)
@@ -719,29 +751,27 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.setExpertFeedback("Error: " & result.error)
       # Keep expert mode active after submit
       model.expertModeInput = ""
+      resetExpertPaletteSelection(model)
     of ActionExpertInputAppend:
       # Append character to expert mode input
       model.expertModeInput.add(proposal.gameActionData)
+      resetExpertPaletteSelection(model)
     of ActionExpertInputBackspace:
       # Remove last character
       if model.expertModeInput.len > 0:
         model.expertModeInput.setLen(model.expertModeInput.len - 1)
+      resetExpertPaletteSelection(model)
     of ActionExpertHistoryPrev:
-      if model.expertModeHistory.len > 0:
-        if model.expertModeHistoryIdx > 0:
-          model.expertModeHistoryIdx -= 1
-        let idx = max(0, min(model.expertModeHistory.len - 1,
-          model.expertModeHistoryIdx))
-        model.expertModeInput = model.expertModeHistory[idx]
+      clampExpertPaletteSelection(model)
+      if model.expertPaletteSelection > 0:
+        model.expertPaletteSelection -= 1
     of ActionExpertHistoryNext:
-      if model.expertModeHistory.len > 0:
-        if model.expertModeHistoryIdx < model.expertModeHistory.len:
-          model.expertModeHistoryIdx += 1
-        if model.expertModeHistoryIdx >= model.expertModeHistory.len:
-          model.expertModeInput = ""
-        else:
-          model.expertModeInput =
-            model.expertModeHistory[model.expertModeHistoryIdx]
+      clampExpertPaletteSelection(model)
+      let matches = matchExpertCommands(model.expertModeInput)
+      if matches.len == 0:
+        model.expertPaletteSelection = -1
+      elif model.expertPaletteSelection < matches.len - 1:
+        model.expertPaletteSelection += 1
     of ActionSubmitTurn:
       # Set flag for reactor/main loop to handle
       if model.stagedCommandCount() > 0:
