@@ -279,4 +279,20 @@ proc isValidInviteCode*(code: string): bool =
 
 proc normalizeInviteCode*(code: string): string =
   ## Normalize an invite code to lowercase with hyphen
+  ## Note: This only normalizes the code portion, not relay
+  ## For full invite parsing, use invite_code.parseInviteCode()
   code.toLowerAscii().strip()
+
+proc formatInviteWithRelay*(code: string, host: string, port: int = 0): string =
+  ## Format an invite code with relay for sharing
+  ## 
+  ## Examples:
+  ##   formatInviteWithRelay("velvet-mountain", "play.ec4x.io") 
+  ##     -> "velvet-mountain@play.ec4x.io"
+  ##   formatInviteWithRelay("velvet-mountain", "play.ec4x.io", 8080)
+  ##     -> "velvet-mountain@play.ec4x.io:8080"
+  ##   formatInviteWithRelay("velvet-mountain", "localhost", 8080)
+  ##     -> "velvet-mountain@localhost:8080"
+  result = code & "@" & host
+  if port != 0 and port != 443 and port != 80:
+    result.add(":" & $port)

@@ -27,6 +27,7 @@ type
     name*: string
     turn*: int
     houseName*: string
+    houseId*: int
 
 const
   ModalMaxWidth = 72

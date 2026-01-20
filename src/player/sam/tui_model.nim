@@ -389,6 +389,7 @@ type
     nostrJoinRequested*: bool
     nostrJoinSent*: bool
     nostrJoinInviteCode*: string
+    nostrJoinRelayUrl*: string        ## Relay URL parsed from invite code
     nostrJoinGameId*: string
     nostrJoinPubkey*: string
 
@@ -519,6 +520,7 @@ proc initTuiModel*(): TuiModel =
     nostrJoinRequested: false,
     nostrJoinSent: false,
     nostrJoinInviteCode: "",
+    nostrJoinRelayUrl: "",
     nostrJoinGameId: "",
     nostrJoinPubkey: "",
     turn: 1,

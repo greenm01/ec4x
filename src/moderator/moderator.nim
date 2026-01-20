@@ -23,6 +23,9 @@ import ../engine/types/game_state
 import ../engine/state/engine
 import ../daemon/persistence/init as db_init
 import ../daemon/persistence/reader
+import ../daemon/config
+import ../common/wordlist
+import ../common/invite_code
 
 type GameMeta = object
   id: string
@@ -189,8 +192,10 @@ proc winner(gameId: string, houseId: string, dataDir: string = "data"): int =
   echo "(not yet implemented)"
   return 0
 
-proc invite(GAMEID: seq[string], dataDir = "data"): int =
+proc invite(GAMEID: seq[string], dataDir = "data",
+            configPath = "config/daemon.kdl"): int =
   ## Query all invite codes for a game, show claimed status
+  ## Invite codes include relay URL for easy sharing
   if GAMEID.len == 0:
     echo "Error: Game ID required"
     return 1
@@ -203,17 +208,38 @@ proc invite(GAMEID: seq[string], dataDir = "data"): int =
   let meta = metaOpt.get()
   let dbPath = meta.dbPath
 
+  # Load relay URL from daemon config
+  var relayHost = "localhost"
+  var relayPort = 8080
+  if fileExists(configPath):
+    try:
+      let cfg = parseDaemonKdl(configPath)
+      if cfg.relay_urls.len > 0:
+        let parsed = parseInviteCode("dummy@" & cfg.relay_urls[0].replace(
+          "ws://", "").replace("wss://", ""))
+        if parsed.host.len > 0:
+          relayHost = parsed.host
+          if parsed.port != 0:
+            relayPort = parsed.port
+    except CatchableError:
+      discard  # Use defaults
+
   let houses = dbGetHousesWithInvites(dbPath, meta.id)
   if houses.len == 0:
     echo "No houses with invites found"
     return 0
+  
+  echo "Game: ", meta.name, " (", meta.slug, ")"
+  echo "Relay: ", relayHost, ":", relayPort
+  echo ""
   
   for h in houses:
     let status = if h.nostr_pubkey.len > 0:
       "CLAIMED " & h.nostr_pubkey[0..10] & "..."
     else:
       "PENDING"
-    echo "House ", h.name, " (", $h.id.uint32, "): ", h.invite_code, " [", status, "]"
+    let fullCode = formatInviteWithRelay(h.invite_code, relayHost, relayPort)
+    echo "  ", h.name, " (", $h.id.uint32, "): ", fullCode, " [", status, "]"
   0
 
 proc ids(dataDir: string = "data"): int =

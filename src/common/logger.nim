@@ -15,7 +15,7 @@
 ##   nim c -d:logLevel=ERROR   # Show ERROR only
 ##   nim c -d:release          # Disables DEBUG logs automatically
 
-import std/[times, strformat, terminal, strutils]
+import std/[os, times, strformat, terminal, strutils]
 
 type
   LogLevel* {.pure.} = enum
@@ -58,6 +58,19 @@ proc getLevelStr(level: LogLevel): string =
   of LogLevel.ERROR: "ERROR"
 
 # Core logging function (runtime check removed - filtering done in templates)
+var logFileEnabled = false
+var logFile: File
+
+proc enableFileLogging*(path: string) =
+  try:
+    let dir = path.parentDir
+    if dir.len > 0:
+      createDir(dir)
+    logFile = open(path, fmAppend)
+    logFileEnabled = true
+  except CatchableError as e:
+    stderr.writeLine("Logger: failed to open log file: ", e.msg)
+
 proc log*(level: LogLevel, module: string, message: string, details: string = "") =
   ## Core logging function - use log* templates instead (they handle compile-time filtering)
   let timestamp = now().format("HH:mm:ss")
@@ -72,6 +85,14 @@ proc log*(level: LogLevel, module: string, message: string, details: string = ""
     stdout.styledWriteLine(fgCyan, &" | {details}")
   else:
     stdout.write("\n")
+
+  if logFileEnabled:
+    let logLine = if details.len > 0:
+      &"[{timestamp}] [{levelStr}] [{module:12}] {message} | {details}"
+    else:
+      &"[{timestamp}] [{levelStr}] [{module:12}] {message}"
+    logFile.writeLine(logLine)
+    flushFile(logFile)
 
   flushFile(stdout)
 

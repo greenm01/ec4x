@@ -14,7 +14,7 @@ import ./command_parser
 import ../tui/widget/scroll_state
 import ../state/join_flow
 import ../state/lobby_profile
-import ../../common/wordlist
+import ../../common/invite_code
 
 export types, tui_model, actions
 
@@ -445,7 +445,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.lobbyProfilePubkey = normalized.get()
           saveProfile("data", model.lobbyProfilePubkey,
             model.lobbyProfileName, model.lobbySessionKeyActive)
-          let inviteCode = normalizeInviteCode(
+          let inviteCode = invite_code.normalizeInviteCode(
             model.entryModal.inviteCode()
           )
           if inviteCode.len == 0:
@@ -517,7 +517,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         let game = gameOpt.get()
         model.loadGameRequested = true
         model.loadGameId = game.id
-        # TODO: Need to get houseId from game info
+        model.loadHouseId = game.houseId
         model.statusMessage = "Loading game..."
     of ActionEntryImport:
       model.entryModal.startImport()
@@ -538,9 +538,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.entryModal.importInput.backspace()
     of ActionEntryInviteAppend:
       if proposal.gameActionData.len > 0:
-        # Validate: only allow lowercase letters and hyphen
+        # Validate: allow lowercase letters, hyphen, @, :, ., and digits
+        # Format: code@host:port (e.g., velvet-mountain@play.ec4x.io:8080)
         let ch = proposal.gameActionData[0].toLowerAscii()
-        if ch in 'a'..'z' or ch == '-':
+        if ch in 'a'..'z' or ch in '0'..'9' or ch in {'-', '@', ':', '.'}:
           discard model.entryModal.inviteInput.appendChar(ch)
           model.entryModal.inviteError = ""
     of ActionEntryInviteBackspace:
@@ -548,23 +549,32 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.entryModal.inviteError = ""
     of ActionEntryInviteSubmit:
       # Submit invite code to server
+      # Format: code@host:port (e.g., velvet-mountain@play.ec4x.io:8080)
       if model.entryModal.inviteInput.isEmpty():
         model.entryModal.setInviteError("Enter an invite code")
       else:
-        let code = normalizeInviteCode(model.entryModal.inviteCode())
-        if not isValidInviteCode(code):
+        let input = model.entryModal.inviteCode()
+        let parsed = parseInviteCode(input)
+        
+        if not isValidInviteCodeFormat(parsed.code):
           model.entryModal.setInviteError("Invalid code format")
+        elif not parsed.hasRelay() and model.nostrRelayUrl.len == 0:
+          model.entryModal.setInviteError("No relay in code, none configured")
         else:
           let identity = model.entryModal.identity
           model.nostrJoinRequested = true
           model.nostrJoinSent = false
-          model.nostrJoinInviteCode = code
+          model.nostrJoinInviteCode = parsed.code
+          model.nostrJoinRelayUrl = if parsed.hasRelay(): 
+            parsed.relayUrl 
+          else: 
+            model.nostrRelayUrl
           model.nostrJoinGameId = ""
           model.nostrJoinPubkey = identity.npubHex
           model.entryModal.setInviteError("Join request sent")
           model.entryModal.clearInviteCode()
           model.lobbyJoinStatus = JoinStatus.WaitingResponse
-          model.statusMessage = "Submitting join request"
+          model.statusMessage = "Joining via " & model.nostrJoinRelayUrl
 
     of ActionEntryAdminSelect:
       # Dispatch based on selected admin menu item
