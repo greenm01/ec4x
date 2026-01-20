@@ -9,6 +9,7 @@
 ## Reference: docs/architecture/nostr-protocol.md
 
 import std/[strutils, options]
+import ../../../common/logger
 import ./modal
 import ./text/text_pkg
 import ./text_input
@@ -30,7 +31,7 @@ type
 const
   ModalMaxWidth = 72
   ModalMinWidth = 50
-  ModalMinHeight = 20
+  ModalMinHeight = 24  # Increased to ensure relay section is visible
   FooterHeight = 1
   
   # ASCII art logo using Unicode block characters
@@ -47,6 +48,8 @@ const
   LogoHeight = 6
 
   Version* = "v0.1.0"
+
+var relayRenderLogged = false
 
 type
   EntryModalFocus* {.pure.} = enum
@@ -122,7 +125,7 @@ proc newEntryModalState*(): EntryModalState =
     createField: CreateGameField.GameName
   )
   # Set default relay URL
-  result.relayInput.setText("wss://relay.ec4x.com")
+  result.relayInput.setText("ws://localhost:8080")
 
 # -----------------------------------------------------------------------------
 # Navigation
@@ -672,12 +675,16 @@ proc renderRelaySection(buf: var CellBuffer, area: Rect,
     discard buf.setString(area.x, area.y + 1, cursor, cursorStyle)
     
     # Prompt
-    let prompt = "URL: "
+    let prompt = "URL:"
     discard buf.setString(area.x + 2, area.y + 1, prompt, promptStyle)
     
     # Use TextInputWidget for bounded display
-    let inputX = area.x + 2 + prompt.len
-    let inputWidth = area.width - 2 - prompt.len - 2
+    let inputX = area.x + 2 + prompt.len + 1
+    let inputWidth = area.width - 2 - prompt.len - 1
+    if not relayRenderLogged:
+      relayRenderLogged = true
+      logInfo("EntryModal", "Relay input layout: area=", $area.width,
+              " input=", $inputWidth, " value=", relayInput.value())
     let inputArea = rect(inputX, area.y + 1, inputWidth, 1)
     let widget = newTextInput()
       .style(inputStyle)

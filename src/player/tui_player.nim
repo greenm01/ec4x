@@ -1546,8 +1546,15 @@ proc runTui(gameId: string = "") =
       buf.invalidate()
       sam.present(actionResize(termWidth, termHeight))
 
-    # Read input (blocking)
-    let inputByte = tty.readByte()
+    # Process async operations (Nostr events, etc.)
+    if hasPendingOperations():
+      poll(0)
+
+    # Read input with timeout (non-blocking to allow async processing)
+    let inputByte = tty.readByteTimeout(50)  # 50ms timeout
+    if inputByte == -2:
+      # Timeout - no input, but continue to process async events
+      continue
     if inputByte < 0:
       continue
 
@@ -1872,7 +1879,7 @@ when isMainModule:
   # Launcher integration: spawn new window if enabled and possible
   if opts.spawnWindow and shouldLaunchInNewWindow():
     let binary = getAppFilename()
-    if launchInNewWindow(binary & " --no-spawn-window"):
+    if launchInNewWindow(binary, @["--no-spawn-window"]):
       # Parent process exits, child runs TUI
       quit(0)
     else:

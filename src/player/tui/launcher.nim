@@ -65,64 +65,83 @@ proc detectTerminal*(): TerminalEmulator =
   
   return TerminalEmulator.None
 
-proc launchInNewWindow*(binaryPath: string, width: int = OptimalWidth,
+proc launchInNewWindow*(binaryPath: string, args: seq[string] = @[],
+                        width: int = OptimalWidth,
                         height: int = OptimalHeight): bool =
   ## Launch the TUI binary in a new terminal window
   ## Returns true if successfully launched in new window, false if fallback needed
-  
+  let childArgs = @[binaryPath] & args
   let terminal = detectTerminal()
-  
+
   case terminal
   of TerminalEmulator.Foot:
-    let cmd = &"foot --window-size-chars={width}x{height} {binaryPath}"
-    discard startProcess(cmd, options = {poUsePath, poParentStreams})
+    let termArgs = @[&"--window-size-chars={width}x{height}"] & childArgs
+    discard startProcess("foot", args = termArgs,
+                         options = {poUsePath, poParentStreams})
     return true
-  
+
   of TerminalEmulator.Ghostty:
-    let cmd = &"ghostty --window-width={width} --window-height={height} {binaryPath}"
-    discard startProcess(cmd, options = {poUsePath, poParentStreams})
+    let termArgs = @[&"--window-width={width}", &"--window-height={height}"] &
+                   childArgs
+    discard startProcess("ghostty", args = termArgs,
+                         options = {poUsePath, poParentStreams})
     return true
-  
+
   of TerminalEmulator.WezTerm:
     # WezTerm uses a config override approach
-    let cmd = &"wezterm start --position 0,0 -- {binaryPath}"
+    let termArgs = @["start", "--position", "0,0", "--"] & childArgs
     # Note: WezTerm doesn't easily support CLI geometry, rely on user config
-    discard startProcess(cmd, options = {poUsePath, poParentStreams})
+    discard startProcess("wezterm", args = termArgs,
+                         options = {poUsePath, poParentStreams})
     return true
-  
+
   of TerminalEmulator.GnomeTerminal:
-    let cmd = &"gnome-terminal --geometry={width}x{height} -- {binaryPath}"
-    discard startProcess(cmd, options = {poUsePath, poParentStreams})
+    let termArgs = @[&"--geometry={width}x{height}", "--"] & childArgs
+    discard startProcess("gnome-terminal", args = termArgs,
+                         options = {poUsePath, poParentStreams})
     return true
-  
+
   of TerminalEmulator.Konsole:
-    let cmd = &"konsole --geometry {width}x{height} -e {binaryPath}"
-    discard startProcess(cmd, options = {poUsePath, poParentStreams})
+    let termArgs = @["--geometry", &"{width}x{height}", "-e"] & childArgs
+    discard startProcess("konsole", args = termArgs,
+                         options = {poUsePath, poParentStreams})
     return true
-  
+
   of TerminalEmulator.Xterm:
-    let cmd = &"xterm -geometry {width}x{height} -e {binaryPath}"
-    discard startProcess(cmd, options = {poUsePath, poParentStreams})
+    let termArgs = @["-geometry", &"{width}x{height}", "-e"] & childArgs
+    discard startProcess("xterm", args = termArgs,
+                         options = {poUsePath, poParentStreams})
     return true
-  
+
   of TerminalEmulator.Alacritty:
-    let cmd = &"alacritty --option window.dimensions.columns={width} " &
-              &"--option window.dimensions.lines={height} -e {binaryPath}"
-    discard startProcess(cmd, options = {poUsePath, poParentStreams})
+    let termArgs = @[
+      "--option", &"window.dimensions.columns={width}",
+      "--option", &"window.dimensions.lines={height}",
+      "-e"
+    ] & childArgs
+    discard startProcess("alacritty", args = termArgs,
+                         options = {poUsePath, poParentStreams})
     return true
-  
+
   of TerminalEmulator.Kitty:
-    let cmd = &"kitty --override initial_window_width={width}c " &
-              &"--override initial_window_height={height}c {binaryPath}"
-    discard startProcess(cmd, options = {poUsePath, poParentStreams})
+    let termArgs = @[
+      &"--override", &"initial_window_width={width}c",
+      "--override", &"initial_window_height={height}c"
+    ] & childArgs
+    discard startProcess("kitty", args = termArgs,
+                         options = {poUsePath, poParentStreams})
     return true
-  
+
   of TerminalEmulator.TerminalApp:
     # macOS Terminal.app via AppleScript
+    var cmdLine = binaryPath.quoteShell
+    for arg in args:
+      cmdLine.add(" ")
+      cmdLine.add(arg.quoteShell)
     let script = &"""
 tell application "Terminal"
   activate
-  set newTab to do script "cd '{getCurrentDir()}' && '{binaryPath}'"
+  set newTab to do script "cd '{getCurrentDir()}' && {cmdLine}"
   set number of columns of window 1 to {width}
   set number of rows of window 1 to {height}
 end tell

@@ -107,6 +107,28 @@ proc readByte*(tty: Tty): int =
   else:
     return -1
 
+proc readByteTimeout*(tty: Tty, timeoutMs: int): int =
+  ## Read a single byte from the terminal with timeout.
+  ## Returns the byte value (0-255), -1 on error/EOF, or -2 on timeout.
+  var pfd: TPollfd
+  pfd.fd = tty.fd
+  pfd.events = POLLIN
+  pfd.revents = 0
+  
+  let ret = poll(addr pfd, 1, cint(timeoutMs))
+  if ret < 0:
+    return -1  # Error
+  elif ret == 0:
+    return -2  # Timeout
+  else:
+    # Data available, read it
+    var c: char
+    let n = read(tty.fd, addr c, 1)
+    if n == 1:
+      return ord(c)
+    else:
+      return -1
+
 proc readBytes*(tty: Tty, buf: var openArray[byte], maxBytes: int): int =
   ## Read up to maxBytes from terminal into buffer.
   ## Returns number of bytes read, or -1 on error.

@@ -10,7 +10,7 @@
 import std/[os, times, options, strutils, sysrand]
 import kdl
 
-import ../../daemon/transport/nostr/nip19
+import ../../daemon/transport/nostr/[nip19, crypto]
 import ../../common/logger
 
 type
@@ -45,19 +45,8 @@ proc bytesToHex(data: openArray[byte]): string =
     result.add(b.toHex().toLowerAscii())
 
 proc derivePublicKey(privkeyHex: string): string =
-  ## Derive public key from private key
-  ## TODO: Implement proper secp256k1 derivation
-  ## For now, we use a deterministic hash-like derivation (NOT cryptographically correct)
-  ## This is a placeholder until we add a proper secp256k1 library
-  ##
-  ## IMPORTANT: This is NOT a real public key derivation!
-  ## Real Nostr clients will not recognize this as valid.
-  ## Replace with proper secp256k1 when adding nimcrypto/libsecp256k1.
-  var bytes: array[32, byte]
-  for i in 0..<32:
-    let hexByte = privkeyHex[i*2..i*2+1]
-    bytes[i] = byte(parseHexInt(hexByte) xor 0x5A)  # Simple XOR placeholder
-  bytesToHex(bytes)
+  ## Derive public key from private key using secp256k1
+  derivePublicKeyHex(privkeyHex)
 
 proc generateKeyPair*(): tuple[nsecHex: string, npubHex: string] =
   ## Generate a new random keypair
