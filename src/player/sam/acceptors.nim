@@ -388,20 +388,12 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.lobbyWarning = "Session-only key: not saved"
       model.lobbyProfilePubkey = "session-" & $getTime().toUnix()
       model.statusMessage = "Generated session key (not stored)"
-      if model.lobbyProfilePubkey.len > 0:
-        model.lobbyActiveGames = loadActiveGamesData("data",
-          model.lobbyProfilePubkey)
+      # Active games populated from Nostr events, not filesystem
     of ActionLobbyJoinRefresh:
-      model.lobbyJoinGames = loadJoinGames("data")
+      # Games now discovered via Nostr events (30400), not filesystem scan
+      # This action triggers a UI refresh; actual data comes from Nostr
       model.lobbyJoinSelectedIdx = 0
-      model.lobbyJoinStatus = if model.lobbyJoinGames.len == 0:
-                                JoinStatus.Failed
-                              else:
-                                JoinStatus.SelectingGame
-      model.lobbyJoinError = if model.lobbyJoinGames.len == 0:
-                               "No available games"
-                             else:
-                               ""
+      model.statusMessage = "Refreshing game list from relay..."
     of ActionLobbyJoinSubmit:
       if model.lobbyInputMode == LobbyInputMode.Pubkey:
         let normalized = normalizePubkey(model.lobbyProfilePubkey)
@@ -413,8 +405,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.lobbyInputMode = LobbyInputMode.None
           saveProfile("data", model.lobbyProfilePubkey,
             model.lobbyProfileName, model.lobbySessionKeyActive)
-          model.lobbyActiveGames = loadActiveGamesData("data",
-            model.lobbyProfilePubkey)
+          # Active games populated from TUI cache, not filesystem
       elif model.lobbyInputMode == LobbyInputMode.Name:
         model.lobbyInputMode = LobbyInputMode.None
         saveProfile("data", model.lobbyProfilePubkey,
@@ -470,15 +461,11 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionLobbyReturn:
       model.appPhase = AppPhase.Lobby
       model.statusMessage = "Returned to lobby"
-      if model.lobbyProfilePubkey.len > 0:
-        model.lobbyActiveGames = loadActiveGamesData("data",
-          model.lobbyProfilePubkey)
+      # Active games already in model from TUI cache
     of ActionLobbyEditPubkey:
       model.lobbyInputMode = LobbyInputMode.Pubkey
       model.statusMessage = "Enter Nostr pubkey"
-      if model.lobbyProfilePubkey.len > 0:
-        model.lobbyActiveGames = loadActiveGamesData("data",
-          model.lobbyProfilePubkey)
+      # Active games already in model from TUI cache
     of ActionLobbyEditName:
       model.lobbyInputMode = LobbyInputMode.Name
       model.statusMessage = "Enter player name"
@@ -487,11 +474,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       of LobbyInputMode.Pubkey:
         if model.lobbyProfilePubkey.len > 0:
           model.lobbyProfilePubkey.setLen(model.lobbyProfilePubkey.len - 1)
-        if model.lobbyProfilePubkey.len > 0:
-          model.lobbyActiveGames = loadActiveGamesData("data",
-            model.lobbyProfilePubkey)
-        else:
-          model.lobbyActiveGames = @[]
+        # Active games filtered by pubkey from TUI cache
       of LobbyInputMode.Name:
         if model.lobbyProfileName.len > 0:
           model.lobbyProfileName.setLen(model.lobbyProfileName.len - 1)

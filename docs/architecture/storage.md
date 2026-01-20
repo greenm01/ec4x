@@ -746,6 +746,105 @@ proc saveFogOfWarViewToFile*(state: GameState, houseId: HouseId, filePath: strin
 - **1000-turn game:** ~50-100 MB total
 - **No full state snapshots** = dramatic space savings
 
+## TUI Client-Side Cache
+
+The TUI player maintains a separate SQLite cache for client-side data,
+independent from the daemon's authoritative database. This enables the
+TUI to run on a remote machine without direct filesystem access to the
+daemon's data directory.
+
+### Cache Location
+
+```
+~/.local/share/ec4x/cache.db
+```
+
+### Schema
+
+```sql
+-- Global settings
+CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+-- Game metadata from Nostr events
+CREATE TABLE games (
+    game_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    turn INTEGER NOT NULL DEFAULT 0,
+    phase TEXT NOT NULL DEFAULT 'setup',
+    relay_url TEXT,
+    daemon_pubkey TEXT,
+    last_updated INTEGER NOT NULL
+);
+
+-- Player's house assignments per game
+CREATE TABLE player_slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id TEXT NOT NULL,
+    player_pubkey TEXT NOT NULL,
+    house_index INTEGER NOT NULL,
+    joined_at INTEGER NOT NULL,
+    UNIQUE(game_id, player_pubkey)
+);
+
+-- PlayerState snapshots per game/turn
+CREATE TABLE player_states (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id TEXT NOT NULL,
+    player_pubkey TEXT NOT NULL,
+    turn INTEGER NOT NULL,
+    state_json TEXT NOT NULL,
+    cached_at INTEGER NOT NULL,
+    UNIQUE(game_id, player_pubkey, turn)
+);
+
+-- Nostr event deduplication
+CREATE TABLE received_events (
+    event_id TEXT PRIMARY KEY,
+    game_id TEXT,
+    kind INTEGER NOT NULL,
+    received_at INTEGER NOT NULL
+);
+```
+
+### Data Flow
+
+1. TUI connects to relay and subscribes to game definition events (30400)
+2. When events arrive, cache updates via `upsertGame()`
+3. TUI displays games from cache via `listPlayerGames()`
+4. When player joins a game, `insertPlayerSlot()` records the assignment
+5. PlayerState snapshots cached locally for offline viewing
+
+### Migration
+
+The cache module includes `migrateOldJoinCache()` to import legacy KDL
+join files from `data/players/{pubkey}/games/*.kdl`.
+
+### Implementation
+
+- Cache module: `src/player/state/tui_cache.nim`
+- Config module: `src/player/state/tui_config.nim`
+- Initialization: `openTuiCache()` creates/opens the cache
+
+## TUI Configuration
+
+Player preferences stored at `~/.config/ec4x/config.kdl`:
+
+```kdl
+config {
+  default-relay "wss://relay.ec4x.io"
+  
+  relay-aliases {
+    home "ws://192.168.1.50:8080"
+    work "wss://relay.work.example.com"
+  }
+}
+```
+
+The config file is optional. If absent, the TUI uses built-in defaults.
+
 ## Related Documentation
 
 - [Architecture Overview](./overview.md)

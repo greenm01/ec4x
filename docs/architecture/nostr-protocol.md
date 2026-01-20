@@ -140,14 +140,30 @@ provided by the Game Admin.
 ### Format
 
 Invite codes consist of two words from the Monero mnemonic wordlist,
-hyphenated and lowercase:
+hyphenated and lowercase. Codes may optionally include a relay URL:
+
+**Basic format:** `code` or `code@host[:port]`
 
 ```
-velvet-mountain
-copper-sunrise
-silent-harbor
-crystal-thunder
+velvet-mountain                      # Bare code, uses default relay
+velvet-mountain@play.ec4x.io         # Code with relay (wss port 443)
+velvet-mountain@play.ec4x.io:8080    # Code with custom port
+velvet-mountain@localhost:8080       # Local relay (ws port 8080)
 ```
+
+**TLS detection (automatic):**
+- Localhost, 127.0.0.1, 192.168.*, 10.*, 172.16-31.* -> `ws://`
+- All other hosts -> `wss://`
+
+When the moderator generates invite codes, they include the relay URL:
+
+```bash
+$ ec4x invite friday-night
+House 1: velvet-mountain@play.ec4x.io
+House 2: copper-sunrise@play.ec4x.io
+```
+
+**Implementation:** `src/common/invite_code.nim`
 
 The wordlist contains 1626 words, giving ~2.6 million combinations.
 This is sufficient entropy for private invite codes that are not

@@ -1,12 +1,10 @@
 ## Lobby profile persistence
 
-import std/[options, os, strutils]
+import std/[os, strutils]
 import kdl
 
 import ../../engine/types/core
-import ../sam/tui_model
 import ../../common/logger
-import ./join_flow
 
 const
   ProfileNode = "profile"
@@ -86,17 +84,4 @@ proc loadActiveGames*(dataDir, pubkey: string): seq[(string, HouseId)] =
     except CatchableError as e:
       logError("LobbyProfile", "Failed to load game cache: ", path, " ", e.msg)
 
-proc loadActiveGamesData*(dataDir, pubkey: string): seq[ActiveGameInfo] =
-  result = @[]
-  for (gameId, houseId) in loadActiveGames(dataDir, pubkey):
-    let infoOpt = loadGameInfo(dataDir, gameId)
-    if infoOpt.isNone:
-      continue
-    let info = infoOpt.get()
-    result.add(ActiveGameInfo(
-      id: info.id,
-      name: info.name,
-      turn: info.turn,
-      phase: info.phase,
-      houseId: int(houseId)
-    ))
+

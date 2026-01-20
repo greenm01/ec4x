@@ -28,36 +28,6 @@ proc parsePlayerCount(gameSetupJson: string): int =
     raise newException(ValueError, "Missing playerCount in setup")
   params["playerCount"].getInt()
 
-proc loadJoinGames*(dataDir: string): seq[JoinGameInfo] =
-  result = @[]
-  let gamesDir = dataDir / "games"
-  if not dirExists(gamesDir):
-    return
-
-  for kind, path in walkDir(gamesDir):
-    if kind != pcDir:
-      continue
-    let dbPath = path / "ec4x.db"
-    if not fileExists(dbPath):
-      continue
-
-    try:
-      let db = open(dbPath, "", "", "")
-      defer: db.close()
-      let row = db.getRow(sql"SELECT id, name, turn, phase, game_setup_json FROM games LIMIT 1")
-      let assignedRow = db.getRow(sql"SELECT COUNT(*) FROM houses WHERE nostr_pubkey IS NOT NULL")
-      let playerCount = parsePlayerCount(row[4])
-      result.add(JoinGameInfo(
-        id: row[0],
-        name: row[1],
-        turn: parseInt(row[2]),
-        phase: row[3],
-        playerCount: playerCount,
-        assignedCount: parseInt(assignedRow[0])
-      ))
-    except CatchableError as e:
-      logError("JoinFlow", "Failed to load game info: ", path, " ", e.msg)
-
 proc loadGameInfo*(dataDir: string, gameId: string): Option[JoinGameInfo] =
   let gamesDir = dataDir / "games"
   if not dirExists(gamesDir):
