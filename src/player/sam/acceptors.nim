@@ -779,6 +779,13 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       else:
         model.statusMessage = "No commands staged - nothing to submit"
         model.turnSubmissionConfirmed = false
+    of ActionQuitConfirm:
+      model.running = false
+      model.quitConfirmationActive = false
+      model.statusMessage = "Exiting..."
+    of ActionQuitCancel:
+      model.quitConfirmationActive = false
+      model.statusMessage = "Quit cancelled"
     else:
       model.statusMessage = "Action: " & proposal.gameActionType
   of ProposalKind.pkSelection:
@@ -829,6 +836,13 @@ proc errorAcceptor*(model: var TuiModel, proposal: Proposal) =
   ## Handle error proposals
   if proposal.kind == ProposalKind.pkError:
     model.statusMessage = "Error: " & proposal.errorMsg
+
+proc quitAcceptor*(model: var TuiModel, proposal: Proposal) =
+  ## Handle quit proposals by showing confirmation
+  if proposal.kind != ProposalKind.pkQuit:
+    return
+  model.quitConfirmationActive = true
+  model.statusMessage = "Quit? (Y/N)"
 
 # ============================================================================
 # Order Entry Acceptor
@@ -881,5 +895,5 @@ proc createAcceptors*(): seq[AcceptorProc[TuiModel]] =
   ## Create the standard set of acceptors for the TUI
   @[
     navigationAcceptor, selectionAcceptor, viewportAcceptor, gameActionAcceptor,
-    orderEntryAcceptor, errorAcceptor,
+    orderEntryAcceptor, quitAcceptor, errorAcceptor,
   ]

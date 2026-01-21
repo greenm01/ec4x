@@ -1,7 +1,7 @@
 ## Command Dock Widget
 ##
 ## The Command Dock is the bottom action bar showing:
-## - Primary row: View shortcuts [1-9] and [Q]uit
+## - Primary row: View shortcuts [1-9] and [Ctrl-Q] quit
 ## - Context row: Dynamic actions based on current view
 ## - Expert mode indicator (: prompt when active)
 ##
@@ -295,15 +295,21 @@ proc renderViewTabs*(area: Rect, buf: var CellBuffer, views: seq[ViewTab],
       discard buf.setString(x, y, view.label, normalStyle)
     x += view.label.len + 1
   
-  # [Q]uit at the end (right-aligned)
+  # [Ctrl-Q]uit at the end (right-aligned)
   if showQuit:
-    let quitStr = "[Q]Quit"
+    let quitLabel = "Ctrl-Q"
+    let quitStr = "[" & quitLabel & "]Quit"
     let quitX = area.right - quitStr.len - 1
     if quitX > x + 2:
       discard buf.setString(quitX, y, "[", dimStyle)
-      discard buf.setString(quitX + 1, y, "Q", keyStyle)
-      discard buf.setString(quitX + 2, y, "]", dimStyle)
-      discard buf.setString(quitX + 3, y, "Quit", normalStyle)
+      discard buf.setString(quitX + 1, y, quitLabel, keyStyle)
+      discard buf.setString(quitX + quitLabel.len + 1, y, "]", dimStyle)
+      discard buf.setString(
+        quitX + quitLabel.len + 2,
+        y,
+        "Quit",
+        normalStyle
+      )
 
 proc renderContextActions*(area: Rect, buf: var CellBuffer, 
                            actions: seq[ContextAction]) =
@@ -376,7 +382,7 @@ proc renderCommandDock*(area: Rect, buf: var CellBuffer,
   ##
   ## Layout:
   ##   Row 0: Separator line (━━━)
-  ##   Row 1: View tabs [1-9] [Q]uit
+  ##   Row 1: View tabs [1-9] [Ctrl-Q] quit
   ##   Row 2: Context actions + Expert mode indicator
   ##
   
@@ -475,12 +481,14 @@ proc renderCommandDockCompact*(area: Rect, buf: var CellBuffer,
       discard buf.setString(x + 2, y0, "]", dimStyle)
       x += 3
     
-    # [Q] at end of row 0
-    if data.showQuit:
-      let quitX = area.right - 4
-      discard buf.setString(quitX, y0, "[", dimStyle)
-      discard buf.setString(quitX + 1, y0, "Q", keyStyle)
-      discard buf.setString(quitX + 2, y0, "]", dimStyle)
+  # [Ctrl-Q] at end of row 0
+  if data.showQuit:
+    let quitLabel = "^Q"
+    let quitStr = "[" & quitLabel & "]"
+    let quitX = area.right - quitStr.len - 1
+    discard buf.setString(quitX, y0, "[", dimStyle)
+    discard buf.setString(quitX + 1, y0, quitLabel, keyStyle)
+    discard buf.setString(quitX + quitLabel.len + 1, y0, "]", dimStyle)
   
   # Row 1: Context actions
   if area.height >= 2:

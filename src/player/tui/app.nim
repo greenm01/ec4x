@@ -475,6 +475,14 @@ proc runTui*(gameId: string = "") =
     let inputByte = tty.readByteTimeout(50)  # 50ms timeout
     if inputByte == -2:
       # Timeout - no input, but continue to process async events
+      let pending = parser.flushPending()
+      if pending.len == 0:
+        continue
+      for event in pending:
+        if event.kind == EventKind.Key:
+          let proposalOpt = mapKeyEvent(event.keyEvent, sam.model)
+          if proposalOpt.isSome:
+            sam.present(proposalOpt.get)
       continue
     if inputByte < 0:
       continue
@@ -484,7 +492,7 @@ proc runTui*(gameId: string = "") =
     for event in events:
       if event.kind == EventKind.Key:
         # Map key event to SAM action
-        let proposalOpt = mapKeyEvent(event.keyEvent, sam.state)
+        let proposalOpt = mapKeyEvent(event.keyEvent, sam.model)
         if proposalOpt.isSome:
           sam.present(proposalOpt.get)
 
@@ -801,7 +809,8 @@ Options:
 
 Controls:
   [1-9]    Switch views
-  [Q]      Quit
+  [Ctrl-Q] Quit
+  [Esc]    Back
   [C]      Colonies view
   [F]      Fleets view
   [M]      Map view

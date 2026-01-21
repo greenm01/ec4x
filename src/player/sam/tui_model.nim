@@ -373,6 +373,7 @@ type
     running*: bool                ## Application running
     needsResize*: bool            ## Terminal was resized
     statusMessage*: string        ## Status bar message
+    quitConfirmationActive*: bool ## Quit confirmation modal active
 
     # Map export flags (processed by main loop with GameState access)
     exportMapRequested*: bool     ## Export SVG starmap
@@ -514,6 +515,7 @@ proc initTuiModel*(): TuiModel =
     running: true,
     needsResize: false,
     statusMessage: "",
+    quitConfirmationActive: false,
     playerStateLoaded: false,
     nostrEnabled: false,
     nostrRelayUrl: "",

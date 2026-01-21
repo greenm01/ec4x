@@ -222,8 +222,10 @@ proc feedByte*(p: var InputParser, b: byte): seq[Event] =
         result.add(newKeyEvent(Key.Rune, Rune(b), ModAlt))
       else:
         result.add(newKeyEvent(Key.Escape))
-        # Re-process this byte
+        p.reset()
+        # Re-process this byte in initial state
         result.add(p.feedByte(b))
+        return
       p.reset()
   
   of InputState.Csi:
@@ -237,6 +239,16 @@ proc feedByte*(p: var InputParser, b: byte): seq[Event] =
     # Accumulating SS3 sequence (expect exactly one more byte)
     p.buf.add(b)
     result.add(p.parseSS3())
+
+proc flushPending*(p: var InputParser): seq[Event] =
+  ## Flush pending escape sequences (used on read timeout).
+  result = @[]
+  case p.state
+  of InputState.Esc, InputState.Csi, InputState.Ss3:
+    result.add(newKeyEvent(Key.Escape))
+    p.reset()
+  of InputState.Init:
+    discard
 
 proc readEvent*(tty: Tty, parser: var InputParser): Event =
   ## Read and parse a single event from the terminal (blocking).

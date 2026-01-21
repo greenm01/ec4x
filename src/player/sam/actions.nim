@@ -19,6 +19,8 @@ export types, tui_model
 
 const
   ActionQuit* = "quit"
+  ActionQuitConfirm* = "quitConfirm"
+  ActionQuitCancel* = "quitCancel"
   ActionNavigateMode* = "navigateMode"
   ActionSwitchView* = "switchView"       ## Switch to primary view [1-9]
   ActionBreadcrumbBack* = "breadcrumbBack"  ## Navigate up breadcrumb
@@ -115,6 +117,14 @@ proc actionQuit*(): Proposal =
   ## Create quit action
   quitProposal()
 
+proc actionQuitConfirm*(): Proposal =
+  ## Confirm quit action
+  gameActionProposal(ActionQuitConfirm, "")
+
+proc actionQuitCancel*(): Proposal =
+  ## Cancel quit action
+  gameActionProposal(ActionQuitCancel, "")
+
 proc actionSwitchMode*(mode: ViewMode): Proposal =
   ## Switch to a different view mode (legacy)
   Proposal(
@@ -137,7 +147,7 @@ proc actionSwitchView*(viewNum: int): Proposal =
   )
 
 proc actionBreadcrumbBack*(): Proposal =
-  ## Navigate up the breadcrumb trail (Backspace)
+  ## Navigate up the breadcrumb trail
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
@@ -944,12 +954,25 @@ type
       # Special
       KeyColon  # Expert mode trigger
       KeyCtrlE  # Turn submission
+      KeyCtrlQ
       KeyCtrlL
 
 
 proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   ## Map a key code to an action based on current model state
   ## Returns None if no action should be taken
+
+  if model.quitConfirmationActive:
+    case key
+    of KeyCode.KeyY:
+      return some(actionQuitConfirm())
+    of KeyCode.KeyN, KeyCode.KeyEscape:
+      return some(actionQuitCancel())
+    else:
+      return none(Proposal)
+
+  if key == KeyCode.KeyCtrlQ:
+    return some(actionQuit())
   
   # Order entry mode: target selection on map
   if model.orderEntryActive:
@@ -1041,8 +1064,6 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     else:
       # Normal entry modal mode
       case key
-      of KeyCode.KeyQ:
-        return some(actionQuit())
       of KeyCode.KeyUp:
         return some(actionEntryUp())
       of KeyCode.KeyDown:
@@ -1087,10 +1108,8 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   of KeyCode.Key7: return some(actionSwitchView(7))
   of KeyCode.Key8: return some(actionSwitchView(8))
   of KeyCode.Key9: return some(actionSwitchView(9))
-  # Quit
-  of KeyCode.KeyQ: return some(actionQuit())
-  # Backspace goes up breadcrumb
-  of KeyCode.KeyBackspace: return some(actionBreadcrumbBack())
+  # Escape goes up breadcrumb
+  of KeyCode.KeyEscape: return some(actionBreadcrumbBack())
   # Colon enters expert mode
   of KeyCode.KeyColon: return some(actionEnterExpertMode())
   # Ctrl+E submits turn
@@ -1248,4 +1267,3 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     else: discard
 
   none(Proposal)
-

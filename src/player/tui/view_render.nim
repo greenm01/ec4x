@@ -91,6 +91,8 @@ proc renderExpertPalette*(buf: var CellBuffer, canvasArea: Rect,
   if inner.isEmpty:
     return
 
+  buf.fillArea(inner, " ", modalBgStyle())
+
   let normalStyle = modalBgStyle()
   let dimStyle = modalDimStyle()
   let matchStyle = prestigeStyle()
@@ -120,6 +122,62 @@ proc renderExpertPalette*(buf: var CellBuffer, canvasArea: Rect,
       model.expertPaletteSelection < matches.len:
     state.select(model.expertPaletteSelection)
   palette.render(inner, buf, state)
+
+proc renderQuitConfirmation*(buf: var CellBuffer, model: TuiModel) =
+  ## Render quit confirmation modal
+  if not model.quitConfirmationActive:
+    return
+
+  if model.termWidth < 30 or model.termHeight < 7:
+    return
+
+  let width = min(56, model.termWidth - 4)
+  let height = 7
+  let x = (model.termWidth - width) div 2
+  let y = (model.termHeight - height) div 2
+  let modalArea = rect(x, y, width, height)
+
+  buf.fillArea(modalArea, " ", modalBgStyle())
+
+  let frame = bordered()
+    .title("Confirm Quit")
+    .borderType(BorderType.Plain)
+    .borderStyle(modalBorderStyle())
+    .style(modalBgStyle())
+  frame.render(modalArea, buf)
+  let inner = frame.inner(modalArea)
+  if inner.isEmpty:
+    return
+
+  let messageX = inner.x + 2
+  var currentY = inner.y + 1
+  discard buf.setString(
+    messageX, currentY,
+    "Are you sure you want to quit?",
+    modalBgStyle()
+  )
+  currentY += 2
+
+  let stagedCount = model.stagedCommandCount()
+  if stagedCount > 0 and currentY < inner.bottom - 2:
+    let warningStyle = CellStyle(
+      fg: color(AlertColor),
+      bg: color(TrueBlackColor),
+      attrs: {StyleAttr.Bold}
+    )
+    discard buf.setString(
+      messageX, currentY,
+      "You have " & $stagedCount & " staged command(s).",
+      warningStyle
+    )
+    currentY += 1
+
+  if currentY < inner.bottom:
+    discard buf.setString(
+      messageX, currentY,
+      "[Y] Quit  [N] Stay",
+      modalBgStyle()
+    )
 
 proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render list of player's colonies from SAM model
@@ -711,7 +769,7 @@ proc renderListPanel*(
       "Fleets: " & $model.fleets.len, normalStyle())
     y += 2
     discard buf.setString(inner.x, y,
-      "[1-9] Switch views  [Q] Quit  [J] Join", dimStyle())
+      "[1-9] Switch views  [Ctrl-Q] Quit  [J] Join", dimStyle())
   of ViewMode.Planets:
     renderColonyList(inner, buf, model)
   of ViewMode.Fleets:
@@ -898,3 +956,6 @@ proc renderDashboard*(
     renderCommandDock(dockArea, buf, dockData)
   else:
     renderCommandDockCompact(dockArea, buf, dockData)
+
+  if model.quitConfirmationActive:
+    renderQuitConfirmation(buf, model)

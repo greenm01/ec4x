@@ -131,6 +131,8 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     keyCode = KeyCode.KeyCtrlL
   of Key.CtrlE:
     keyCode = KeyCode.KeyCtrlE
+  of Key.CtrlQ:
+    keyCode = KeyCode.KeyCtrlQ
   of Key.Home:
     keyCode = KeyCode.KeyHome
   of Key.Backspace:
