@@ -56,7 +56,7 @@ proc connectToRelay(client: NostrClient, url: string) {.async.} =
       socket: socket,
       state: ConnectionState.Connected
     )
-    logInfo("Nostr", "Connected to relay: ", url)
+    logDebug("Nostr", "Connected to relay: ", url)
   except CatchableError as e:
     logError("Nostr", "Failed to connect to relay: ", url, " - ", e.msg)
     client.connections[url] = RelayConnection(
@@ -77,7 +77,7 @@ proc connect*(client: NostrClient) {.async.} =
   let connected = client.connections.values.toSeq.filterIt(
     it.state == ConnectionState.Connected
   ).len
-  logInfo("Nostr", "Connected to ", $connected, "/", $client.relays.len,
+  logDebug("Nostr", "Connected to ", $connected, "/", $client.relays.len,
     " relays")
 
 proc disconnect*(client: NostrClient) {.async.} =

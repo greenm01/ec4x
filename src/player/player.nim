@@ -10,6 +10,7 @@ import ./tui/launcher
 
 when isMainModule:
   enableFileLogging("data/logs/tui.log")
+  disableStdoutLogging()
   let opts = parseCommandLine()
 
   if opts.showHelp:

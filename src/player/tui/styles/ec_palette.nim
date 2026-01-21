@@ -1,9 +1,7 @@
 ## EC4X TUI Color Palette
 ##
-## Classic Esterian Conquest (EC) ANSI color palette for the TUI.
-## Navy-on-black foundations with amber accents, reminiscent of BBS terminals.
-##
-## Reference: ec-style-layout.md Section 3 "Visual Language"
+## Tokyo Night Night palette for the TUI.
+## TrueColor-first with ANSI 256 fallback via term color conversion.
 
 import ../term/types/[core, style]
 import ../buffer
@@ -11,64 +9,61 @@ import ../buffer
 export core, style, buffer
 
 # =============================================================================
-# ANSI 256-Color Definitions
+# Tokyo Night Night Palette
 # =============================================================================
-#
-# The EC palette uses ANSI 256 colors for maximum terminal compatibility.
-# These map to the classic EC color scheme from the spec.
 
 # HUD Colors (Tokyo Night)
 const
-  HudBgColor* = Ansi256Color(17)      ## Tokyo Night background (#1a1b26)
-  HudFgColor* = Ansi256Color(251)     ## Tokyo Night foreground (#c0caf5)
-  HudBorderColor* = Ansi256Color(60)  ## Tokyo Night border (#414868)
+  HudBgColor* = RgbColor(r: 26, g: 27, b: 38)   ## #1a1b26
+  HudFgColor* = RgbColor(r: 192, g: 202, b: 245) ## #c0caf5
+  HudBorderColor* = RgbColor(r: 65, g: 72, b: 104) ## #414868
 
 # Main Canvas Colors
 const
-  CanvasBgColor* = Ansi256Color(17)   ## Tokyo Night background
-  CanvasFgColor* = Ansi256Color(251)  ## Tokyo Night foreground
-  CanvasDimColor* = Ansi256Color(60)  ## Muted text (#414868)
-  CanvasFogColor* = Ansi256Color(60)  ## Fog of war
-  TrueBlackColor* = Ansi256Color(16)  ## True black for modals
+  CanvasBgColor* = RgbColor(r: 26, g: 27, b: 38)   ## #1a1b26
+  CanvasFgColor* = RgbColor(r: 192, g: 202, b: 245) ## #c0caf5
+  CanvasDimColor* = RgbColor(r: 86, g: 95, b: 137)  ## #565f89
+  CanvasFogColor* = RgbColor(r: 65, g: 72, b: 104)  ## #414868
+  TrueBlackColor* = RgbColor(r: 22, g: 22, b: 30)   ## #16161e
 
 # Status Colors
 const
-  AlertColor* = Ansi256Color(203)     ## Red (#f7768e)
-  SelectedBgColor* = Ansi256Color(75) ## Bright accent (#7aa2f7)
-  SelectedFgColor* = Ansi256Color(17) ## Background text
-  DisabledColor* = Ansi256Color(60)   ## Muted
+  AlertColor* = RgbColor(r: 247, g: 118, b: 142)    ## #f7768e
+  SelectedBgColor* = RgbColor(r: 122, g: 162, b: 247) ## #7aa2f7
+  SelectedFgColor* = RgbColor(r: 26, g: 27, b: 38)  ## #1a1b26
+  DisabledColor* = RgbColor(r: 86, g: 95, b: 137)   ## #565f89
 
 # Delta/Change Colors
 const
-  PositiveColor* = Ansi256Color(115)  ## Green (#9ece6a)
-  NegativeColor* = Ansi256Color(203)  ## Red (#f7768e)
-  NeutralColor* = Ansi256Color(251)   ## Foreground
+  PositiveColor* = RgbColor(r: 158, g: 206, b: 106) ## #9ece6a
+  NegativeColor* = RgbColor(r: 247, g: 118, b: 142) ## #f7768e
+  NeutralColor* = RgbColor(r: 192, g: 202, b: 245)  ## #c0caf5
 
 # Special Status Colors
 const
-  PrestigeColor* = Ansi256Color(223)  ## Yellow (#e0af68)
-  TreasuryColor* = Ansi256Color(223)  ## Yellow
-  ProductionColor* = Ansi256Color(110) ## Cyan (#7dcfff)
+  PrestigeColor* = RgbColor(r: 224, g: 175, b: 104) ## #e0af68
+  TreasuryColor* = RgbColor(r: 224, g: 175, b: 104) ## #e0af68
+  ProductionColor* = RgbColor(r: 125, g: 207, b: 255) ## #7dcfff
 
 # Diplomatic Status Colors
 const
-  NeutralStatusColor* = Ansi256Color(251)  ## Foreground
-  HostileStatusColor* = Ansi256Color(223)  ## Yellow
-  EnemyStatusColor* = Ansi256Color(203)    ## Red
-  EliminatedColor* = Ansi256Color(60)      ## Muted
+  NeutralStatusColor* = RgbColor(r: 192, g: 202, b: 245) ## #c0caf5
+  HostileStatusColor* = RgbColor(r: 224, g: 175, b: 104) ## #e0af68
+  EnemyStatusColor* = RgbColor(r: 247, g: 118, b: 142)   ## #f7768e
+  EliminatedColor* = RgbColor(r: 86, g: 95, b: 137)      ## #565f89
 
 # Command Dock Colors
 const
-  DockBgColor* = Ansi256Color(17)     ## Background
-  DockFgColor* = Ansi256Color(251)    ## Foreground
-  DockKeyColor* = Ansi256Color(110)   ## Cyan accent
-  DockSeparatorColor* = Ansi256Color(60) ## Muted
+  DockBgColor* = RgbColor(r: 26, g: 27, b: 38)   ## #1a1b26
+  DockFgColor* = RgbColor(r: 192, g: 202, b: 245) ## #c0caf5
+  DockKeyColor* = RgbColor(r: 125, g: 207, b: 255) ## #7dcfff
+  DockSeparatorColor* = RgbColor(r: 65, g: 72, b: 104) ## #414868
 
 # Breadcrumb Colors
 const
-  BreadcrumbFgColor* = Ansi256Color(60)  ## Muted
-  BreadcrumbActiveColor* = Ansi256Color(251) ## Foreground
-  BreadcrumbSeparatorColor* = Ansi256Color(60)
+  BreadcrumbFgColor* = RgbColor(r: 86, g: 95, b: 137)    ## #565f89
+  BreadcrumbActiveColor* = RgbColor(r: 192, g: 202, b: 245) ## #c0caf5
+  BreadcrumbSeparatorColor* = RgbColor(r: 86, g: 95, b: 137) ## #565f89
 
 # =============================================================================
 # CellStyle Presets
@@ -93,7 +88,7 @@ proc hudBoldStyle*(): CellStyle =
 proc hudDimStyle*(): CellStyle =
   ## HUD strip dim style for labels
   CellStyle(
-    fg: color(Ansi256Color(180)),  ## Dimmer amber
+    fg: color(CanvasDimColor),
     bg: color(HudBgColor),
     attrs: {}
   )
@@ -131,7 +126,7 @@ proc canvasDimStyle*(): CellStyle =
   )
 
 proc modalBgStyle*(): CellStyle =
-  ## Modal background style (true black)
+  ## Modal background style (Tokyo Night darker bg)
   CellStyle(
     fg: color(CanvasFgColor),
     bg: color(TrueBlackColor),
@@ -139,7 +134,7 @@ proc modalBgStyle*(): CellStyle =
   )
 
 proc modalDimStyle*(): CellStyle =
-  ## Modal dim/secondary text (true black bg)
+  ## Modal dim/secondary text (darker bg)
   CellStyle(
     fg: color(CanvasDimColor),
     bg: color(TrueBlackColor),
@@ -147,7 +142,7 @@ proc modalDimStyle*(): CellStyle =
   )
 
 proc modalBorderStyle*(): CellStyle =
-  ## Modal border style (true black bg)
+  ## Modal border style (darker bg)
   CellStyle(
     fg: color(HudBorderColor),
     bg: color(TrueBlackColor),
@@ -165,7 +160,7 @@ proc canvasBoldStyle*(): CellStyle =
 proc canvasHeaderStyle*(): CellStyle =
   ## Canvas section header style
   CellStyle(
-    fg: color(Ansi256Color(117)),  ## Light cyan/blue
+    fg: color(SelectedBgColor),
     bg: color(CanvasBgColor),
     attrs: {StyleAttr.Bold}
   )
@@ -225,7 +220,7 @@ proc dockKeyStyle*(): CellStyle =
 proc dockDimStyle*(): CellStyle =
   ## Command dock dim style for brackets
   CellStyle(
-    fg: color(Ansi256Color(240)),
+    fg: color(CanvasDimColor),
     bg: color(DockBgColor),
     attrs: {}
   )
@@ -266,14 +261,14 @@ proc hudBorderStyle*(): CellStyle =
 proc primaryBorderStyle*(): CellStyle =
   ## Primary panel border (double-line)
   CellStyle(
-    fg: color(Ansi256Color(240)),
+    fg: color(HudBorderColor),
     attrs: {}
   )
 
 proc dialogBorderStyle*(): CellStyle =
   ## Dialog/overlay border (single-line)
   CellStyle(
-    fg: color(Ansi256Color(245)),
+    fg: color(CanvasDimColor),
     attrs: {}
   )
 

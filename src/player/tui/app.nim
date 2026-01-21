@@ -439,15 +439,15 @@ proc runTui*(gameId: string = "") =
       outputBuffer(buf)
   )
 
+  # Enter alternate screen before initial render
+  stdout.write(altScreen())
+  stdout.write(hideCursor())
+  stdout.flushFile()
+
   # Set initial state (this triggers initial render)
   sam.setInitialState(initialModel)
 
   logInfo("TUI Player SAM", "SAM initialized, entering TUI mode...")
-
-  # Enter alternate screen
-  stdout.write(altScreen())
-  stdout.write(hideCursor())
-  stdout.flushFile()
 
   # Create input parser
   var parser = initParser()

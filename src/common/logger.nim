@@ -59,6 +59,7 @@ proc getLevelStr(level: LogLevel): string =
 
 # Core logging function (runtime check removed - filtering done in templates)
 var logFileEnabled = false
+var logStdoutEnabled = true
 var logFile: File
 
 proc enableFileLogging*(path: string) =
@@ -71,20 +72,24 @@ proc enableFileLogging*(path: string) =
   except CatchableError as e:
     stderr.writeLine("Logger: failed to open log file: ", e.msg)
 
+proc disableStdoutLogging*() =
+  logStdoutEnabled = false
+
 proc log*(level: LogLevel, module: string, message: string, details: string = "") =
   ## Core logging function - use log* templates instead (they handle compile-time filtering)
   let timestamp = now().format("HH:mm:ss")
   let levelStr = getLevelStr(level)
   let color = getLevelColor(level)
 
-  stdout.styledWrite(fgWhite, &"[{timestamp}] ")
-  stdout.styledWrite(color, &"[{levelStr}] ")
-  stdout.styledWrite(fgWhite, &"[{module:12}] ", message)
+  if logStdoutEnabled:
+    stdout.styledWrite(fgWhite, &"[{timestamp}] ")
+    stdout.styledWrite(color, &"[{levelStr}] ")
+    stdout.styledWrite(fgWhite, &"[{module:12}] ", message)
 
-  if details.len > 0:
-    stdout.styledWriteLine(fgCyan, &" | {details}")
-  else:
-    stdout.write("\n")
+    if details.len > 0:
+      stdout.styledWriteLine(fgCyan, &" | {details}")
+    else:
+      stdout.write("\n")
 
   if logFileEnabled:
     let logLine = if details.len > 0:
@@ -94,7 +99,8 @@ proc log*(level: LogLevel, module: string, message: string, details: string = ""
     logFile.writeLine(logLine)
     flushFile(logFile)
 
-  flushFile(stdout)
+  if logStdoutEnabled:
+    flushFile(stdout)
 
 # Convenience templates with compile-time filtering
 template logDebug*(module: string, message: string, details: varargs[string, `$`]) =
