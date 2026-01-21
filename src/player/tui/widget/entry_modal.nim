@@ -427,14 +427,18 @@ proc renderGameList(buf: var CellBuffer, area: Rect,
   let headerLine = headerText & repeat("─", ruleLen)
   discard buf.setString(area.x, area.y, headerLine, headerStyle)
   
-  if games.len == 0:
+  var joinedGames: seq[EntryActiveGameInfo] = @[]
+  for game in games:
+    if game.houseId > 0:
+      joinedGames.add(game)
+  if joinedGames.len == 0:
     if area.height > 1:
       discard buf.setString(area.x + 2, area.y + 1,
-                            "No active games", emptyStyle)
+                            "None", emptyStyle)
     return
   
   var y = area.y + 1
-  for i, game in games:
+  for i, game in joinedGames:
     if y >= area.bottom:
       break
     

@@ -1002,8 +1002,9 @@ proc renderDashboard*(
     renderExpertPalette(buf, canvasArea, statusBarArea, model)
 
   # Render Zellij-style status bar (1 line)
-  let statusBarData = buildStatusBarData(model, statusBarArea.width)
-  renderStatusBar(statusBarArea, buf, statusBarData)
+  if model.appPhase == AppPhase.InGame:
+    let statusBarData = buildStatusBarData(model, statusBarArea.width)
+    renderStatusBar(statusBarArea, buf, statusBarData)
 
   if model.quitConfirmationActive:
     renderQuitConfirmation(buf, model)

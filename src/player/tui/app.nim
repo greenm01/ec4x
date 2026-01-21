@@ -94,6 +94,20 @@ proc runTui*(gameId: string = "") =
     else:
       initialModel.statusMessage = "Game not found in cache"
 
+  proc isPlaceholderGame(game: CachedGame, houseId: int): bool =
+    if game.id == "invite":
+      return true
+    if game.status == "placeholder" or game.status == "invite":
+      return true
+    if game.relayUrl.len == 0 and game.daemonPubkey.len == 0 and
+        game.turn == 0 and houseId == 0:
+      return true
+    false
+
+  proc isRemovablePlaceholder(game: CachedGame): bool =
+    game.id == "invite" or game.status == "placeholder" or
+      game.status == "invite"
+
   if initialModel.lobbyProfilePubkey.len > 0:
     # Run migration from old KDL join cache files
     tuiCache.runMigrations("data", initialModel.lobbyProfilePubkey)
@@ -101,6 +115,11 @@ proc runTui*(gameId: string = "") =
     # Load games from cache instead of daemon's DB
     let cachedGames = tuiCache.listPlayerGames(initialModel.lobbyProfilePubkey)
     for (game, houseId) in cachedGames:
+      if isPlaceholderGame(game, houseId):
+        if isRemovablePlaceholder(game):
+          tuiCache.deletePlayerSlot(game.id, initialModel.lobbyProfilePubkey)
+          tuiCache.deleteGame(game.id)
+        continue
       initialModel.lobbyActiveGames.add(ActiveGameInfo(
         id: game.id,
         name: game.name,
@@ -120,6 +139,11 @@ proc runTui*(gameId: string = "") =
       tuiCache.runMigrations("data", initialModel.lobbyProfilePubkey)
       let cachedGames = tuiCache.listPlayerGames(initialModel.lobbyProfilePubkey)
       for (game, houseId) in cachedGames:
+        if isPlaceholderGame(game, houseId):
+          if isRemovablePlaceholder(game):
+            tuiCache.deletePlayerSlot(game.id, initialModel.lobbyProfilePubkey)
+            tuiCache.deleteGame(game.id)
+          continue
         initialModel.lobbyActiveGames.add(ActiveGameInfo(
           id: game.id,
           name: game.name,
@@ -274,27 +298,49 @@ proc runTui*(gameId: string = "") =
               let houseIdFromCache = if slotOpt.isSome:
                 slotOpt.get().houseId else: 0
 
-              let gameInfo = EntryActiveGameInfo(
-                id: gameId,
-                name: gameNameStr,
-                turn: turnNum,
-                houseName: "",
-                houseId: houseIdFromCache
-              )
-              var updated = false
-              for idx in 0..<sam.model.entryModal.activeGames.len:
-                if sam.model.entryModal.activeGames[idx].id == gameId:
-                  # Preserve houseId if we had one
-                  let existingHouseId =
-                    sam.model.entryModal.activeGames[idx].houseId
-                  sam.model.entryModal.activeGames[idx] = gameInfo
-                  if existingHouseId != 0:
-                    sam.model.entryModal.activeGames[idx].houseId =
-                      existingHouseId
-                  updated = true
-                  break
-              if not updated:
-                sam.model.entryModal.activeGames.add(gameInfo)
+              if houseIdFromCache > 0:
+                let gameInfo = EntryActiveGameInfo(
+                  id: gameId,
+                  name: gameNameStr,
+                  turn: turnNum,
+                  houseName: "",
+                  houseId: houseIdFromCache
+                )
+                var updated = false
+                for idx in 0..<sam.model.entryModal.activeGames.len:
+                  if sam.model.entryModal.activeGames[idx].id == gameId:
+                    # Preserve houseId if we had one
+                    let existingHouseId =
+                      sam.model.entryModal.activeGames[idx].houseId
+                    sam.model.entryModal.activeGames[idx] = gameInfo
+                    if existingHouseId != 0:
+                      sam.model.entryModal.activeGames[idx].houseId =
+                        existingHouseId
+                    updated = true
+                    break
+                if not updated:
+                  sam.model.entryModal.activeGames.add(gameInfo)
+
+                var lobbyUpdated = false
+                for idx in 0..<sam.model.lobbyActiveGames.len:
+                  if sam.model.lobbyActiveGames[idx].id == gameId:
+                    sam.model.lobbyActiveGames[idx] = ActiveGameInfo(
+                      id: gameId,
+                      name: gameNameStr,
+                      turn: turnNum,
+                      phase: "active",
+                      houseId: houseIdFromCache
+                    )
+                    lobbyUpdated = true
+                    break
+                if not lobbyUpdated:
+                  sam.model.lobbyActiveGames.add(ActiveGameInfo(
+                    id: gameId,
+                    name: gameNameStr,
+                    turn: turnNum,
+                    phase: "active",
+                    houseId: houseIdFromCache
+                  ))
               if gameId == activeGameId and
                   event.pubkey.len > 0 and
                   nostrDaemonPubkey.len == 0:
@@ -605,6 +651,30 @@ proc runTui*(gameId: string = "") =
     if sam.model.appPhase == AppPhase.Lobby and
         sam.model.lobbyJoinStatus == JoinStatus.WaitingResponse:
       sam.present(actionLobbyJoinPoll())
+
+    let selectedId =
+      if sam.model.entryModal.selectedIdx >= 0 and
+          sam.model.entryModal.selectedIdx <
+          sam.model.entryModal.activeGames.len:
+        sam.model.entryModal.activeGames[sam.model.entryModal.selectedIdx].id
+      else:
+        ""
+    var joinedGames: seq[EntryActiveGameInfo] = @[]
+    for game in sam.model.entryModal.activeGames:
+      if game.houseId > 0:
+        joinedGames.add(game)
+    if joinedGames.len != sam.model.entryModal.activeGames.len:
+      sam.model.entryModal.activeGames = joinedGames
+      if joinedGames.len == 0:
+        sam.model.entryModal.selectedIdx = 0
+      else:
+        var newIdx = 0
+        if selectedId.len > 0:
+          for idx, game in joinedGames:
+            if game.id == selectedId:
+              newIdx = idx
+              break
+        sam.model.entryModal.selectedIdx = newIdx
 
     if sam.model.entryModal.activeGames.len > 0 and
         sam.model.entryModal.selectedIdx >=
