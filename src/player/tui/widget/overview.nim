@@ -20,9 +20,12 @@ import ./frame
 import ./leaderboard
 import ./empire_status
 import ./action_queue
+import ./view_modal
+import ./scroll_state
 
 export ec_palette
 export leaderboard, empire_status, action_queue
+export view_modal, scroll_state
 
 type
   RecentEvent* = object
@@ -187,3 +190,25 @@ proc renderOverview*(area: Rect, buf: var CellBuffer, data: OverviewData) =
   renderLeaderboard(leaderboardArea, buf, data.leaderboard)
   renderActionQueue(actionQueueArea, buf, data.actionQueue)
   renderChecklist(checklistArea, buf, data.actionQueue)
+
+# =============================================================================
+# Modal Wrapper for Centered Floating View
+# =============================================================================
+
+proc renderOverviewModal*(canvas: Rect, buf: var CellBuffer,
+                          data: OverviewData, scroll: ScrollState) =
+  ## Render overview as centered floating modal.
+  ## This is the modal variant used when Overview is rendered as a primary view.
+
+  let vm = newViewModal("STRATEGIC OVERVIEW").maxWidth(120).minWidth(80)
+
+  # Overview has a relatively fixed layout height
+  # Top row needs ~10 lines, bottom row needs ~8-10 lines, plus spacing
+  let contentHeight = 22
+
+  let modalArea = vm.calculateViewArea(canvas, contentHeight)
+  vm.render(modalArea, buf)
+
+  # Render the overview content in the inner area
+  let innerArea = vm.innerArea(modalArea)
+  renderOverview(innerArea, buf, data)

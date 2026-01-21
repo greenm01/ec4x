@@ -439,6 +439,16 @@ type
     reportSubjectScroll*: ScrollState
     reportBodyScroll*: ScrollState
 
+    # Scroll states for primary views (for modal rendering)
+    overviewScroll*: ScrollState
+    planetsScroll*: ScrollState
+    fleetsScroll*: ScrollState
+    researchScroll*: ScrollState
+    espionageScroll*: ScrollState
+    economyScroll*: ScrollState
+    messagesScroll*: ScrollState
+    settingsScroll*: ScrollState
+
     # Entry modal state (replaces legacy lobby UI)
     entryModal*: EntryModalState
 
@@ -562,6 +572,14 @@ proc initTuiModel*(): TuiModel =
     reportTurnScroll: initScrollState(),
     reportSubjectScroll: initScrollState(),
     reportBodyScroll: initScrollState(),
+    overviewScroll: initScrollState(),
+    planetsScroll: initScrollState(),
+    fleetsScroll: initScrollState(),
+    researchScroll: initScrollState(),
+    espionageScroll: initScrollState(),
+    economyScroll: initScrollState(),
+    messagesScroll: initScrollState(),
+    settingsScroll: initScrollState(),
     entryModal: newEntryModalState(),
     reports: @[
       ReportEntry(

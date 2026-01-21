@@ -17,6 +17,7 @@ import ../tui/widget/breadcrumb
 import ../tui/widget/command_dock
 import ../tui/widget/status_bar
 import ../tui/widget/scrollbar
+import ../tui/widget/view_modal
 import ../sam/bindings
 import ../tui/styles/ec_palette
 import ../tui/adapters
@@ -777,6 +778,96 @@ proc renderReportDetail*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   discard buf.setString(detailInner.x, detailInner.bottom - 1,
     hintLine, dimStyle)
 
+# =============================================================================
+# Modal Wrappers for Primary Views
+# =============================================================================
+
+proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
+                         model: TuiModel, scroll: ScrollState) =
+  ## Render planets view as centered floating modal
+  let vm = newViewModal("YOUR COLONIES").maxWidth(120).minWidth(80)
+  let contentHeight = max(10, model.colonies.len + 4)
+  let modalArea = vm.calculateViewArea(canvas, contentHeight)
+  vm.render(modalArea, buf)
+  let innerArea = vm.innerArea(modalArea)
+  renderColonyList(innerArea, buf, model)
+
+proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
+                        model: TuiModel, scroll: ScrollState) =
+  ## Render fleets view as centered floating modal
+  let vm = newViewModal("YOUR FLEETS").maxWidth(120).minWidth(80)
+  let contentHeight = max(10, model.fleets.len + 4)
+  let modalArea = vm.calculateViewArea(canvas, contentHeight)
+  vm.render(modalArea, buf)
+  let innerArea = vm.innerArea(modalArea)
+  renderFleetList(innerArea, buf, model)
+
+proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
+                          model: TuiModel, scroll: ScrollState) =
+  ## Render research view as centered floating modal
+  let vm = newViewModal("RESEARCH PROGRESS").maxWidth(120).minWidth(80)
+  let contentHeight = 15
+  let modalArea = vm.calculateViewArea(canvas, contentHeight)
+  vm.render(modalArea, buf)
+  let innerArea = vm.innerArea(modalArea)
+  discard buf.setString(innerArea.x, innerArea.y,
+    "Research view (TODO)", dimStyle())
+
+proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
+                           model: TuiModel, scroll: ScrollState) =
+  ## Render espionage view as centered floating modal
+  let vm = newViewModal("INTEL OPERATIONS").maxWidth(120).minWidth(80)
+  let contentHeight = 12
+  let modalArea = vm.calculateViewArea(canvas, contentHeight)
+  vm.render(modalArea, buf)
+  let innerArea = vm.innerArea(modalArea)
+  discard buf.setString(innerArea.x, innerArea.y,
+    "Espionage view (TODO)", dimStyle())
+
+proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
+                         model: TuiModel, scroll: ScrollState) =
+  ## Render economy view as centered floating modal
+  let vm = newViewModal("TREASURY & INCOME").maxWidth(120).minWidth(80)
+  let contentHeight = 12
+  let modalArea = vm.calculateViewArea(canvas, contentHeight)
+  vm.render(modalArea, buf)
+  let innerArea = vm.innerArea(modalArea)
+  discard buf.setString(innerArea.x, innerArea.y,
+    "Economy view (TODO)", dimStyle())
+
+proc renderReportsModal*(canvas: Rect, buf: var CellBuffer,
+                         model: TuiModel, scroll: ScrollState) =
+  ## Render reports view as centered floating modal
+  let vm = newViewModal("REPORTS INBOX").maxWidth(120).minWidth(80)
+  # Reports view height is dynamic based on content
+  let contentHeight = max(15, 20)  # Use scrolling for long lists
+  let modalArea = vm.calculateViewArea(canvas, contentHeight)
+  vm.render(modalArea, buf)
+  let innerArea = vm.innerArea(modalArea)
+  renderReportsList(innerArea, buf, model)
+
+proc renderMessagesModal*(canvas: Rect, buf: var CellBuffer,
+                          model: TuiModel, scroll: ScrollState) =
+  ## Render messages view as centered floating modal
+  let vm = newViewModal("DIPLOMATIC MESSAGES").maxWidth(120).minWidth(80)
+  let contentHeight = 12
+  let modalArea = vm.calculateViewArea(canvas, contentHeight)
+  vm.render(modalArea, buf)
+  let innerArea = vm.innerArea(modalArea)
+  discard buf.setString(innerArea.x, innerArea.y,
+    "Messages view (TODO)", dimStyle())
+
+proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
+                          model: TuiModel, scroll: ScrollState) =
+  ## Render settings view as centered floating modal
+  let vm = newViewModal("GAME SETTINGS").maxWidth(120).minWidth(80)
+  let contentHeight = 10
+  let modalArea = vm.calculateViewArea(canvas, contentHeight)
+  vm.render(modalArea, buf)
+  let innerArea = vm.innerArea(modalArea)
+  discard buf.setString(innerArea.x, innerArea.y,
+    "Settings view (TODO)", dimStyle())
+
 proc renderListPanel*(
     area: Rect,
     buf: var CellBuffer,
@@ -994,11 +1085,31 @@ proc renderDashboard*(
     let viewport = rect(0, 0, buf.w, buf.h)
     model.entryModal.render(viewport, buf)
   else:
+    # Fill canvas with dark background (modals will render centered on top)
+    buf.fillArea(canvasArea, " ", canvasStyle())
+
     case model.mode
     of ViewMode.Overview:
       let overviewData = syncPlayerStateToOverview(playerState, state)
-      renderOverview(canvasArea, buf, overviewData)
+      renderOverviewModal(canvasArea, buf, overviewData, model.overviewScroll)
+    of ViewMode.Planets:
+      renderPlanetsModal(canvasArea, buf, model, model.planetsScroll)
+    of ViewMode.Fleets:
+      renderFleetsModal(canvasArea, buf, model, model.fleetsScroll)
+    of ViewMode.Research:
+      renderResearchModal(canvasArea, buf, model, model.researchScroll)
+    of ViewMode.Espionage:
+      renderEspionageModal(canvasArea, buf, model, model.espionageScroll)
+    of ViewMode.Economy:
+      renderEconomyModal(canvasArea, buf, model, model.economyScroll)
+    of ViewMode.Reports:
+      renderReportsModal(canvasArea, buf, model, model.reportTurnScroll)
+    of ViewMode.Messages:
+      renderMessagesModal(canvasArea, buf, model, model.messagesScroll)
+    of ViewMode.Settings:
+      renderSettingsModal(canvasArea, buf, model, model.settingsScroll)
     else:
+      # Detail views still use full-canvas rendering
       renderListPanel(canvasArea, buf, model, state, viewingHouse)
 
   if model.expertModeActive:
