@@ -31,6 +31,7 @@ import ./types
 import ./instance
 import ./tui_model
 import ./actions
+import ./bindings
 import ./acceptors
 import ./reactors
 import ./naps
@@ -39,6 +40,7 @@ export types
 export instance
 export tui_model
 export actions
+export bindings
 export acceptors
 export reactors
 export naps

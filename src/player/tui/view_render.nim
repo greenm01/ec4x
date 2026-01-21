@@ -15,7 +15,9 @@ import ../tui/widget/overview
 import ../tui/widget/hud
 import ../tui/widget/breadcrumb
 import ../tui/widget/command_dock
+import ../tui/widget/status_bar
 import ../tui/widget/scrollbar
+import ../sam/bindings
 import ../tui/styles/ec_palette
 import ../tui/adapters
 import ./sync
@@ -905,11 +907,12 @@ proc renderDashboard*(
   ## Render the complete TUI dashboard using EC-style layout
   let termRect = rect(0, 0, model.termWidth, model.termHeight)
 
-  # Layout: HUD (2), Breadcrumb (1), Main Canvas (fill), Command Dock (3)
+  # Layout: HUD (3), Breadcrumb (1), Main Canvas (fill), Status Bar (1)
+  # Changed from 3-line dock to 1-line Zellij-style status bar
   let rows = if model.appPhase == AppPhase.InGame:
-               vertical().constraints(length(3), length(1), fill(), length(3))
+               vertical().constraints(length(3), length(1), fill(), length(1))
              else:
-               vertical().constraints(length(0), length(0), fill(), length(3))
+               vertical().constraints(length(0), length(0), fill(), length(1))
   let rowAreas = rows.split(termRect)
 
   if rowAreas.len < 4:
@@ -919,7 +922,7 @@ proc renderDashboard*(
   let hudArea = rowAreas[0]
   let breadcrumbArea = rowAreas[1]
   let canvasArea = rowAreas[2]
-  let dockArea = rowAreas[3]
+  let statusBarArea = rowAreas[3]
 
   # Base background (black)
   buf.fill(Rune(' '), canvasStyle())
@@ -948,14 +951,11 @@ proc renderDashboard*(
       renderListPanel(canvasArea, buf, model, state, viewingHouse)
 
   if model.expertModeActive:
-    renderExpertPalette(buf, canvasArea, dockArea, model)
+    renderExpertPalette(buf, canvasArea, statusBarArea, model)
 
-  # Render Command Dock
-  let dockData = buildCommandDockData(model)
-  if dockArea.width >= 100:
-    renderCommandDock(dockArea, buf, dockData)
-  else:
-    renderCommandDockCompact(dockArea, buf, dockData)
+  # Render Zellij-style status bar (1 line)
+  let statusBarData = buildStatusBarData(model, statusBarArea.width)
+  renderStatusBar(statusBarArea, buf, statusBarData)
 
   if model.quitConfirmationActive:
     renderQuitConfirmation(buf, model)

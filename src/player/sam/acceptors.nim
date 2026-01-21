@@ -372,31 +372,26 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
   model.clearExpertFeedback()
   case proposal.kind
   of ProposalKind.pkNavigation:
+    # Skip - navigation is handled by navigationAcceptor
+    # Only process detail view transitions triggered by game actions
+    if proposal.actionName in [ActionSwitchView, ActionNavigateMode,
+        ActionBreadcrumbBack, ActionMoveCursor, ActionJumpHome,
+        ActionCycleColony]:
+      return
     let target = proposal.navMode
-    # Special handling for detail views (mode 2/3 are dynamic)
-    if target == 2:
+    # Special handling for detail views (mode 20/30 are dynamic)
+    if target == 20:
       model.previousMode = model.mode
       model.mode = ViewMode.PlanetDetail
       model.resetBreadcrumbs(model.mode)
       if model.selectedIdx < model.colonies.len:
         model.selectedColonyId = model.colonies[model.selectedIdx].systemId
-    elif target == 3:
+    elif target == 30:
       model.previousMode = model.mode
       model.mode = ViewMode.FleetDetail
       model.resetBreadcrumbs(model.mode)
       if model.selectedIdx < model.fleets.len:
         model.selectedFleetId = model.fleets[model.selectedIdx].id
-    else:
-      let nextMode = viewModeFromInt(target)
-      if nextMode.isSome:
-        model.previousMode = model.mode
-        model.mode = nextMode.get()
-        model.resetBreadcrumbs(model.mode)
-      elif target == 0:
-        model.mode = ViewMode.Overview
-        model.resetBreadcrumbs(model.mode)
-      else:
-        discard
 
   of ProposalKind.pkGameAction:
     case proposal.gameActionType

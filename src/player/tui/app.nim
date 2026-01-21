@@ -19,6 +19,7 @@ import ../tui/signals
 import ../tui/widget/overview
 import ../tui/widget/[hud, breadcrumb, command_dock]
 import ../sam/sam_pkg
+import ../sam/bindings
 import ../state/join_flow
 import ../state/lobby_profile
 import ../state/order_builder
@@ -34,6 +35,9 @@ import ./output
 proc runTui*(gameId: string = "") =
   ## Main TUI execution (called from player entry point)
   logInfo("TUI Player SAM", "Starting EC4X TUI Player with SAM pattern...")
+
+  # Initialize keybinding registry (single source of truth)
+  initBindings()
 
   # Initialize TUI cache (client-side SQLite)
   var tuiCache = openTuiCache()

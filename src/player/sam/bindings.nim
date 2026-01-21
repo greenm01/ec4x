@@ -1,0 +1,1100 @@
+## Keybinding Registry - Single Source of Truth
+##
+## This module defines all keybindings for the TUI. Both the status bar
+## display and the input handler use this registry, ensuring they stay
+## in sync. Inspired by Zellij's keybinding system.
+##
+## Key concepts:
+## - Bindings are defined once and used for both display and input
+## - Each binding has a context (where it's active)
+## - Bindings have long and short labels for adaptive width rendering
+## - Common modifiers (e.g., Ctrl) can be factored out in display
+
+import std/[algorithm, options, sequtils]
+import ./types
+import ./tui_model
+import ./actions
+
+export types, tui_model, actions
+
+# =============================================================================
+# Types
+# =============================================================================
+
+type
+  KeyModifier* {.pure.} = enum
+    None
+    Ctrl
+    Alt
+    Shift
+
+  BindingContext* {.pure.} = enum
+    ## Where a binding is active
+    Global        ## Available everywhere (view tabs, quit, expert mode)
+    Overview      ## Overview-specific actions
+    Planets       ## Planets list
+    PlanetDetail  ## Planet detail view
+    Fleets        ## Fleets list
+    FleetDetail   ## Fleet detail view
+    Research      ## Research view
+    Espionage     ## Espionage view
+    Economy       ## Economy view
+    Reports       ## Reports list
+    ReportDetail  ## Report detail view
+    Messages      ## Messages view
+    Settings      ## Settings view
+    Lobby         ## Entry screen / lobby
+    OrderEntry    ## Order entry mode (target selection)
+    ExpertMode    ## Expert command mode
+
+  Binding* = object
+    key*: KeyCode
+    modifier*: KeyModifier
+    actionName*: string       ## SAM action identifier
+    longLabel*: string        ## Full label: "VIEW COLONY"
+    shortLabel*: string       ## Short label: "VIEW"
+    context*: BindingContext
+    priority*: int            ## Display order (lower = first)
+    enabledCheck*: string     ## Name of condition check (empty = always)
+
+  BarItemMode* {.pure.} = enum
+    Unselected
+    UnselectedAlt   ## Alternating background for visual rhythm
+    Selected        ## Currently active/highlighted
+    Disabled        ## Greyed out
+
+  BarItem* = object
+    keyDisplay*: string       ## Formatted key: "1", "Enter", "↑↓"
+    label*: string            ## Current label (adapts to width)
+    longLabel*: string        ## Full label for width calculation
+    shortLabel*: string       ## Short label for narrow terminals
+    mode*: BarItemMode
+    binding*: Binding         ## Source binding
+
+# =============================================================================
+# Global Registry
+# =============================================================================
+
+var gBindings: seq[Binding] = @[]
+
+proc clearBindings*() =
+  ## Clear all bindings (for testing)
+  gBindings = @[]
+
+proc registerBinding*(b: Binding) =
+  ## Add a binding to the registry
+  gBindings.add(b)
+
+proc getAllBindings*(): seq[Binding] =
+  ## Get all registered bindings
+  gBindings
+
+# =============================================================================
+# Key Formatting
+# =============================================================================
+
+proc formatKeyCode*(key: KeyCode): string =
+  ## Format a key code for display (without modifier)
+  case key
+  of KeyCode.Key1: "1"
+  of KeyCode.Key2: "2"
+  of KeyCode.Key3: "3"
+  of KeyCode.Key4: "4"
+  of KeyCode.Key5: "5"
+  of KeyCode.Key6: "6"
+  of KeyCode.Key7: "7"
+  of KeyCode.Key8: "8"
+  of KeyCode.Key9: "9"
+  of KeyCode.KeyQ: "q"
+  of KeyCode.KeyC: "c"
+  of KeyCode.KeyF: "f"
+  of KeyCode.KeyO: "o"
+  of KeyCode.KeyM: "m"
+  of KeyCode.KeyE: "e"
+  of KeyCode.KeyH: "h"
+  of KeyCode.KeyX: "x"
+  of KeyCode.KeyS: "s"
+  of KeyCode.KeyL: "l"
+  of KeyCode.KeyB: "b"
+  of KeyCode.KeyG: "g"
+  of KeyCode.KeyR: "r"
+  of KeyCode.KeyJ: "j"
+  of KeyCode.KeyD: "d"
+  of KeyCode.KeyP: "p"
+  of KeyCode.KeyV: "v"
+  of KeyCode.KeyN: "n"
+  of KeyCode.KeyW: "w"
+  of KeyCode.KeyI: "i"
+  of KeyCode.KeyT: "t"
+  of KeyCode.KeyA: "a"
+  of KeyCode.KeyY: "y"
+  of KeyCode.KeyU: "u"
+  of KeyCode.KeyUp: "↑"
+  of KeyCode.KeyDown: "↓"
+  of KeyCode.KeyLeft: "←"
+  of KeyCode.KeyRight: "→"
+  of KeyCode.KeyEnter: "Enter"
+  of KeyCode.KeyEscape: "Esc"
+  of KeyCode.KeyTab: "Tab"
+  of KeyCode.KeyShiftTab: "S-Tab"
+  of KeyCode.KeyHome: "Home"
+  of KeyCode.KeyBackspace: "Bksp"
+  of KeyCode.KeyColon: ":"
+  of KeyCode.KeyCtrlE: "e"
+  of KeyCode.KeyCtrlQ: "q"
+  of KeyCode.KeyCtrlL: "l"
+  of KeyCode.KeyNone: ""
+
+proc formatModifier*(m: KeyModifier): string =
+  ## Format a modifier for display
+  case m
+  of KeyModifier.None: ""
+  of KeyModifier.Ctrl: "Ctrl"
+  of KeyModifier.Alt: "Alt"
+  of KeyModifier.Shift: "Shift"
+
+proc formatKey*(key: KeyCode, modifier: KeyModifier): string =
+  ## Format a key with modifier for display
+  ## Returns "Ctrl+q" or just "Enter" etc.
+  let keyStr = formatKeyCode(key)
+  if modifier == KeyModifier.None:
+    keyStr
+  else:
+    formatModifier(modifier) & "+" & keyStr
+
+proc formatKeyAngle*(key: KeyCode, modifier: KeyModifier): string =
+  ## Format a key with angle brackets: "<1>" or "<Ctrl+q>"
+  "<" & formatKey(key, modifier) & ">"
+
+# =============================================================================
+# Context Mapping
+# =============================================================================
+
+proc viewModeToContext*(mode: ViewMode): BindingContext =
+  ## Map a ViewMode to its binding context
+  case mode
+  of ViewMode.Overview: BindingContext.Overview
+  of ViewMode.Planets: BindingContext.Planets
+  of ViewMode.Fleets: BindingContext.Fleets
+  of ViewMode.Research: BindingContext.Research
+  of ViewMode.Espionage: BindingContext.Espionage
+  of ViewMode.Economy: BindingContext.Economy
+  of ViewMode.Reports: BindingContext.Reports
+  of ViewMode.Messages: BindingContext.Messages
+  of ViewMode.Settings: BindingContext.Settings
+  of ViewMode.PlanetDetail: BindingContext.PlanetDetail
+  of ViewMode.FleetDetail: BindingContext.FleetDetail
+  of ViewMode.ReportDetail: BindingContext.ReportDetail
+
+proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
+  ## Map a binding context to ViewMode (if applicable)
+  case ctx
+  of BindingContext.Overview: some(ViewMode.Overview)
+  of BindingContext.Planets: some(ViewMode.Planets)
+  of BindingContext.Fleets: some(ViewMode.Fleets)
+  of BindingContext.Research: some(ViewMode.Research)
+  of BindingContext.Espionage: some(ViewMode.Espionage)
+  of BindingContext.Economy: some(ViewMode.Economy)
+  of BindingContext.Reports: some(ViewMode.Reports)
+  of BindingContext.Messages: some(ViewMode.Messages)
+  of BindingContext.Settings: some(ViewMode.Settings)
+  of BindingContext.PlanetDetail: some(ViewMode.PlanetDetail)
+  of BindingContext.FleetDetail: some(ViewMode.FleetDetail)
+  of BindingContext.ReportDetail: some(ViewMode.ReportDetail)
+  else: none(ViewMode)
+
+# =============================================================================
+# Binding Queries
+# =============================================================================
+
+proc getBindingsForContext*(ctx: BindingContext): seq[Binding] =
+  ## Get all bindings for a specific context, sorted by priority
+  result = gBindings.filterIt(it.context == ctx)
+  result.sort(proc(a, b: Binding): int = cmp(a.priority, b.priority))
+
+proc getGlobalBindings*(): seq[Binding] =
+  ## Get all global bindings (view tabs, quit, expert mode)
+  getBindingsForContext(BindingContext.Global)
+
+proc findBinding*(key: KeyCode, modifier: KeyModifier,
+    ctx: BindingContext): Option[Binding] =
+  ## Find a binding by key, modifier, and context
+  for b in gBindings:
+    if b.key == key and b.modifier == modifier and b.context == ctx:
+      return some(b)
+  none(Binding)
+
+proc findGlobalBinding*(key: KeyCode, modifier: KeyModifier): Option[Binding] =
+  ## Find a global binding by key and modifier
+  findBinding(key, modifier, BindingContext.Global)
+
+# =============================================================================
+# Enabled Checks
+# =============================================================================
+
+proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
+  ## Check if a binding is enabled based on model state
+  if b.enabledCheck.len == 0:
+    return true
+
+  case b.enabledCheck
+  of "hasColonies":
+    model.colonies.len > 0
+  of "hasFleets":
+    model.fleets.len > 0
+  of "hasSelection":
+    model.selectedIdx >= 0
+  of "hasFleetSelection":
+    model.selectedFleetIds.len > 0
+  of "inGame":
+    model.appPhase == AppPhase.InGame
+  of "inLobby":
+    model.appPhase == AppPhase.Lobby
+  else:
+    true
+
+# =============================================================================
+# Binding Definitions
+# =============================================================================
+
+proc initBindings*() =
+  ## Initialize all keybindings
+  ## Called once at startup
+
+  clearBindings()
+
+  # =========================================================================
+  # Global Bindings (View Tabs) - Always visible in game
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.Key1, modifier: KeyModifier.None,
+    actionName: ActionSwitchView, context: BindingContext.Global,
+    longLabel: "OVERVIEW", shortLabel: "Ovrw", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.Key2, modifier: KeyModifier.None,
+    actionName: ActionSwitchView, context: BindingContext.Global,
+    longLabel: "PLANETS", shortLabel: "Plan", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.Key3, modifier: KeyModifier.None,
+    actionName: ActionSwitchView, context: BindingContext.Global,
+    longLabel: "FLEETS", shortLabel: "Flt", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.Key4, modifier: KeyModifier.None,
+    actionName: ActionSwitchView, context: BindingContext.Global,
+    longLabel: "RESEARCH", shortLabel: "Res", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.Key5, modifier: KeyModifier.None,
+    actionName: ActionSwitchView, context: BindingContext.Global,
+    longLabel: "ESPIONAGE", shortLabel: "Esp", priority: 5))
+
+  registerBinding(Binding(
+    key: KeyCode.Key6, modifier: KeyModifier.None,
+    actionName: ActionSwitchView, context: BindingContext.Global,
+    longLabel: "ECONOMY", shortLabel: "Econ", priority: 6))
+
+  registerBinding(Binding(
+    key: KeyCode.Key7, modifier: KeyModifier.None,
+    actionName: ActionSwitchView, context: BindingContext.Global,
+    longLabel: "REPORTS", shortLabel: "Rpt", priority: 7))
+
+  registerBinding(Binding(
+    key: KeyCode.Key8, modifier: KeyModifier.None,
+    actionName: ActionSwitchView, context: BindingContext.Global,
+    longLabel: "MESSAGES", shortLabel: "Msg", priority: 8))
+
+  registerBinding(Binding(
+    key: KeyCode.Key9, modifier: KeyModifier.None,
+    actionName: ActionSwitchView, context: BindingContext.Global,
+    longLabel: "SETTINGS", shortLabel: "Set", priority: 9))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyColon, modifier: KeyModifier.None,
+    actionName: ActionEnterExpertMode, context: BindingContext.Global,
+    longLabel: "EXPERT", shortLabel: "Exp", priority: 100))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyCtrlQ, modifier: KeyModifier.Ctrl,
+    actionName: ActionQuit, context: BindingContext.Global,
+    longLabel: "QUIT", shortLabel: "Quit", priority: 101))
+
+  # =========================================================================
+  # Overview Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionName: ActionListUp, context: BindingContext.Overview,
+    longLabel: "NAV", shortLabel: "Nav", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionName: ActionListDown, context: BindingContext.Overview,
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Overview,
+    longLabel: "JUMP", shortLabel: "Jump", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionName: ActionNavigateMode, context: BindingContext.Overview,
+    longLabel: "DIPLOMACY", shortLabel: "Dipl", priority: 20))
+
+  # =========================================================================
+  # Planets Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionName: ActionListUp, context: BindingContext.Planets,
+    longLabel: "NAV", shortLabel: "Nav", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionName: ActionListDown, context: BindingContext.Planets,
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Planets,
+    longLabel: "VIEW", shortLabel: "View", priority: 10,
+    enabledCheck: "hasColonies"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyB, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Planets,
+    longLabel: "BUILD", shortLabel: "Bld", priority: 20,
+    enabledCheck: "hasColonies"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionBreadcrumbBack, context: BindingContext.Planets,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
+  # Planet Detail Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.PlanetDetail,
+    longLabel: "NEXT TAB", shortLabel: "Tab", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyB, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.PlanetDetail,
+    longLabel: "BUILD", shortLabel: "Bld", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyG, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.PlanetDetail,
+    longLabel: "GARRISON", shortLabel: "Gar", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionBreadcrumbBack, context: BindingContext.PlanetDetail,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
+  # Fleets Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionName: ActionListUp, context: BindingContext.Fleets,
+    longLabel: "NAV", shortLabel: "Nav", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionName: ActionListDown, context: BindingContext.Fleets,
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Fleets,
+    longLabel: "VIEW", shortLabel: "View", priority: 10,
+    enabledCheck: "hasFleets"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyX, modifier: KeyModifier.None,
+    actionName: ActionToggleFleetSelect, context: BindingContext.Fleets,
+    longLabel: "SELECT", shortLabel: "Sel", priority: 15,
+    enabledCheck: "hasFleets"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionName: ActionSwitchFleetView, context: BindingContext.Fleets,
+    longLabel: "LIST/MAP", shortLabel: "L/M", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionBreadcrumbBack, context: BindingContext.Fleets,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
+  # Fleet Detail Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyM, modifier: KeyModifier.None,
+    actionName: ActionStartOrderMove, context: BindingContext.FleetDetail,
+    longLabel: "MOVE", shortLabel: "Move", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyP, modifier: KeyModifier.None,
+    actionName: ActionStartOrderPatrol, context: BindingContext.FleetDetail,
+    longLabel: "PATROL", shortLabel: "Ptrl", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionName: ActionStartOrderHold, context: BindingContext.FleetDetail,
+    longLabel: "HOLD", shortLabel: "Hold", priority: 30))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyR, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.FleetDetail,
+    longLabel: "ROE", shortLabel: "ROE", priority: 40))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionBreadcrumbBack, context: BindingContext.FleetDetail,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
+  # Research Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyE, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Research,
+    longLabel: "ERP", shortLabel: "ERP", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyS, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Research,
+    longLabel: "SRP", shortLabel: "SRP", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyT, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Research,
+    longLabel: "TRP", shortLabel: "TRP", priority: 30))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Research,
+    longLabel: "CONFIRM", shortLabel: "OK", priority: 40))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionBreadcrumbBack, context: BindingContext.Research,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
+  # Espionage Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionName: ActionListUp, context: BindingContext.Espionage,
+    longLabel: "NAV", shortLabel: "Nav", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionName: ActionListDown, context: BindingContext.Espionage,
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyB, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Espionage,
+    longLabel: "BUY EBP", shortLabel: "EBP", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyC, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Espionage,
+    longLabel: "BUY CIP", shortLabel: "CIP", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionBreadcrumbBack, context: BindingContext.Espionage,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
+  # Economy Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Economy,
+    longLabel: "TAX-", shortLabel: "-", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Economy,
+    longLabel: "TAX+", shortLabel: "+", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Economy,
+    longLabel: "CONFIRM", shortLabel: "OK", priority: 30))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionBreadcrumbBack, context: BindingContext.Economy,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
+  # Reports Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionName: ActionListUp, context: BindingContext.Reports,
+    longLabel: "NAV", shortLabel: "Nav", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionName: ActionListDown, context: BindingContext.Reports,
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Reports,
+    longLabel: "VIEW", shortLabel: "View", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionName: ActionReportFocusNext, context: BindingContext.Reports,
+    longLabel: "FOCUS", shortLabel: "Foc", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionBreadcrumbBack, context: BindingContext.Reports,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
+  # Report Detail Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.ReportDetail,
+    longLabel: "JUMP", shortLabel: "Jump", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyN, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.ReportDetail,
+    longLabel: "NEXT", shortLabel: "Next", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionBreadcrumbBack, context: BindingContext.ReportDetail,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
+  # Messages Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionName: ActionListUp, context: BindingContext.Messages,
+    longLabel: "NAV", shortLabel: "Nav", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionName: ActionListDown, context: BindingContext.Messages,
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Messages,
+    longLabel: "DIPLOMACY", shortLabel: "Dipl", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyC, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Messages,
+    longLabel: "COMPOSE", shortLabel: "Comp", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionBreadcrumbBack, context: BindingContext.Messages,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
+  # Settings Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionName: ActionListUp, context: BindingContext.Settings,
+    longLabel: "NAV", shortLabel: "Nav", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionName: ActionListDown, context: BindingContext.Settings,
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Settings,
+    longLabel: "CHANGE", shortLabel: "Chg", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyR, modifier: KeyModifier.None,
+    actionName: ActionSelect, context: BindingContext.Settings,
+    longLabel: "RESET", shortLabel: "Rst", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionBreadcrumbBack, context: BindingContext.Settings,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
+  # Order Entry Context (Target Selection)
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionName: ActionMoveCursor, context: BindingContext.OrderEntry,
+    longLabel: "MOVE", shortLabel: "Mov", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionName: ActionMoveCursor, context: BindingContext.OrderEntry,
+    longLabel: "MOVE", shortLabel: "Mov", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionName: ActionMoveCursor, context: BindingContext.OrderEntry,
+    longLabel: "MOVE", shortLabel: "Mov", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionName: ActionMoveCursor, context: BindingContext.OrderEntry,
+    longLabel: "MOVE", shortLabel: "Mov", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionName: ActionConfirmOrder, context: BindingContext.OrderEntry,
+    longLabel: "CONFIRM", shortLabel: "OK", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
+    actionName: ActionCancelOrder, context: BindingContext.OrderEntry,
+    longLabel: "CANCEL", shortLabel: "Esc", priority: 90))
+
+  # =========================================================================
+  # Expert Mode Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionName: ActionExpertSubmit, context: BindingContext.ExpertMode,
+    longLabel: "SUBMIT", shortLabel: "OK", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
+    actionName: ActionExitExpertMode, context: BindingContext.ExpertMode,
+    longLabel: "CANCEL", shortLabel: "Esc", priority: 90))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionName: ActionExpertHistoryPrev, context: BindingContext.ExpertMode,
+    longLabel: "HISTORY", shortLabel: "Hist", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionName: ActionExpertHistoryNext, context: BindingContext.ExpertMode,
+    longLabel: "HISTORY", shortLabel: "Hist", priority: 21))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    actionName: ActionExpertInputBackspace, context: BindingContext.ExpertMode,
+    longLabel: "DELETE", shortLabel: "Del", priority: 30))
+
+# =============================================================================
+# Action Dispatch
+# =============================================================================
+
+proc dispatchAction*(b: Binding, model: TuiModel,
+    key: KeyCode): Option[Proposal] =
+  ## Dispatch an action based on the binding's action name
+  ## Some actions need parameters derived from key or model state
+
+  case b.actionName
+  # View switching
+  of ActionSwitchView:
+    let viewNum = case key
+      of KeyCode.Key1: 1
+      of KeyCode.Key2: 2
+      of KeyCode.Key3: 3
+      of KeyCode.Key4: 4
+      of KeyCode.Key5: 5
+      of KeyCode.Key6: 6
+      of KeyCode.Key7: 7
+      of KeyCode.Key8: 8
+      of KeyCode.Key9: 9
+      else: 0
+    if viewNum > 0:
+      return some(actionSwitchView(viewNum))
+
+  # Navigation
+  of ActionListUp:
+    return some(actionListUp())
+  of ActionListDown:
+    return some(actionListDown())
+  of ActionBreadcrumbBack:
+    return some(actionBreadcrumbBack())
+  of ActionNavigateMode:
+    return some(actionSwitchMode(ViewMode.Overview))
+
+  # Cursor movement
+  of ActionMoveCursor:
+    let dir = case key
+      of KeyCode.KeyUp: HexDirection.NorthWest
+      of KeyCode.KeyDown: HexDirection.SouthEast
+      of KeyCode.KeyLeft: HexDirection.West
+      of KeyCode.KeyRight: HexDirection.East
+      else: HexDirection.East
+    return some(actionMoveCursor(dir))
+
+  # Selection
+  of ActionSelect:
+    return some(actionSelect())
+  of ActionDeselect:
+    return some(actionDeselect())
+  of ActionToggleFleetSelect:
+    return some(actionToggleFleetSelect(model.selectedIdx))
+
+  # Expert mode
+  of ActionEnterExpertMode:
+    return some(actionEnterExpertMode())
+  of ActionExitExpertMode:
+    return some(actionExitExpertMode())
+  of ActionExpertSubmit:
+    return some(actionExpertSubmit())
+  of ActionExpertInputBackspace:
+    return some(actionExpertInputBackspace())
+  of ActionExpertHistoryPrev:
+    return some(actionExpertHistoryPrev())
+  of ActionExpertHistoryNext:
+    return some(actionExpertHistoryNext())
+
+  # Order entry
+  of ActionConfirmOrder:
+    return some(actionConfirmOrder(-1))  # -1 = use cursor
+  of ActionCancelOrder:
+    return some(actionCancelOrder())
+  of ActionStartOrderMove:
+    if model.selectedFleetId > 0:
+      return some(actionStartOrderMove(model.selectedFleetId))
+  of ActionStartOrderPatrol:
+    if model.selectedFleetId > 0:
+      return some(actionStartOrderPatrol(model.selectedFleetId))
+  of ActionStartOrderHold:
+    if model.selectedFleetId > 0:
+      return some(actionStartOrderHold(model.selectedFleetId))
+
+  # Quit
+  of ActionQuit:
+    return some(actionQuit())
+  of ActionQuitConfirm:
+    return some(actionQuitConfirm())
+  of ActionQuitCancel:
+    return some(actionQuitCancel())
+
+  # Turn submission
+  of ActionSubmitTurn:
+    return some(actionSubmitTurn())
+
+  # View-specific tabs
+  of ActionSwitchPlanetTab:
+    let tab = case key
+      of KeyCode.Key1: 1
+      of KeyCode.Key2: 2
+      of KeyCode.Key3: 3
+      of KeyCode.Key4: 4
+      of KeyCode.Key5: 5
+      else: 0
+    if tab > 0:
+      return some(actionSwitchPlanetTab(tab))
+  of ActionSwitchFleetView:
+    return some(actionSwitchFleetView())
+  of ActionCycleReportFilter:
+    return some(actionCycleReportFilter())
+  of ActionReportFocusNext:
+    return some(actionReportFocusNext())
+  of ActionReportFocusPrev:
+    return some(actionReportFocusPrev())
+  of ActionReportFocusLeft:
+    return some(actionReportFocusLeft())
+  of ActionReportFocusRight:
+    return some(actionReportFocusRight())
+
+  # Lobby actions (handled separately in mapKeyToAction)
+  of ActionLobbyReturn:
+    return some(actionLobbyReturn())
+
+  else:
+    discard
+
+  none(Proposal)
+
+proc lookupAndDispatch*(key: KeyCode, modifier: KeyModifier,
+    ctx: BindingContext, model: TuiModel): Option[Proposal] =
+  ## Look up a binding and dispatch the action if found
+  let binding = findBinding(key, modifier, ctx)
+  if binding.isSome:
+    let b = binding.get()
+    if isBindingEnabled(b, model):
+      return dispatchAction(b, model, key)
+  none(Proposal)
+
+proc lookupGlobalAndDispatch*(key: KeyCode, modifier: KeyModifier,
+    model: TuiModel): Option[Proposal] =
+  ## Look up a global binding and dispatch the action if found
+  lookupAndDispatch(key, modifier, BindingContext.Global, model)
+
+# =============================================================================
+# Key Mapping (Single Source of Truth)
+# =============================================================================
+
+proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
+  ## Map a key code to an action based on current model state
+  ## Uses the binding registry as the single source of truth for key mappings.
+  ## Returns None if no action should be taken.
+  ##
+  ## Special modes (quit confirmation, lobby text input) are handled separately
+  ## since they don't fit the registry pattern well.
+
+  # Quit confirmation modal - takes precedence over everything
+  if model.quitConfirmationActive:
+    case key
+    of KeyCode.KeyY:
+      return some(actionQuitConfirm())
+    of KeyCode.KeyN, KeyCode.KeyEscape:
+      return some(actionQuitCancel())
+    else:
+      return none(Proposal)
+
+  # Ctrl+Q always quits (global)
+  if key == KeyCode.KeyCtrlQ:
+    return some(actionQuit())
+
+  # Order entry mode: use registry
+  if model.orderEntryActive:
+    let orderResult = lookupAndDispatch(key, KeyModifier.None,
+        BindingContext.OrderEntry, model)
+    if orderResult.isSome:
+      return orderResult
+    # Q also cancels (not in registry for cleanliness)
+    if key == KeyCode.KeyQ:
+      return some(actionCancelOrder())
+    return none(Proposal)
+
+  # Expert mode: use registry
+  if model.expertModeActive:
+    let expertResult = lookupAndDispatch(key, KeyModifier.None,
+        BindingContext.ExpertMode, model)
+    if expertResult.isSome:
+      return expertResult
+    # Other keys add to input buffer - handled by acceptor
+    return none(Proposal)
+
+  # Lobby phase: special handling for text input modes
+  if model.appPhase == AppPhase.Lobby:
+    if model.entryModal.mode == EntryModalMode.ImportNsec:
+      case key
+      of KeyCode.KeyEnter:
+        return some(actionEntryImportConfirm())
+      of KeyCode.KeyEscape:
+        return some(actionEntryImportCancel())
+      of KeyCode.KeyBackspace:
+        return some(actionEntryImportBackspace())
+      else:
+        return none(Proposal)
+
+    elif model.entryModal.editingRelay:
+      case key
+      of KeyCode.KeyEnter, KeyCode.KeyEscape:
+        return some(actionEntryRelayConfirm())
+      of KeyCode.KeyBackspace:
+        return some(actionEntryRelayBackspace())
+      else:
+        return none(Proposal)
+
+    elif model.entryModal.mode == EntryModalMode.CreateGame:
+      case key
+      of KeyCode.KeyEscape:
+        return some(actionCreateGameCancel())
+      of KeyCode.KeyUp:
+        return some(actionCreateGameUp())
+      of KeyCode.KeyDown:
+        return some(actionCreateGameDown())
+      of KeyCode.KeyLeft:
+        return some(actionCreateGameLeft())
+      of KeyCode.KeyRight:
+        return some(actionCreateGameRight())
+      of KeyCode.KeyEnter:
+        return some(actionCreateGameConfirm())
+      of KeyCode.KeyBackspace:
+        return some(actionCreateGameBackspace())
+      else:
+        return none(Proposal)
+
+    elif model.entryModal.mode == EntryModalMode.ManageGames:
+      case key
+      of KeyCode.KeyEscape:
+        return some(actionManageGamesCancel())
+      else:
+        return none(Proposal)
+
+    else:
+      # Normal entry modal mode
+      case key
+      of KeyCode.KeyUp:
+        return some(actionEntryUp())
+      of KeyCode.KeyDown:
+        return some(actionEntryDown())
+      of KeyCode.KeyEnter:
+        case model.entryModal.focus
+        of EntryModalFocus.InviteCode:
+          return some(actionEntryInviteSubmit())
+        of EntryModalFocus.AdminMenu:
+          return some(actionEntryAdminSelect())
+        of EntryModalFocus.GameList:
+          return some(actionEntrySelect())
+        of EntryModalFocus.RelayUrl:
+          return some(actionEntryRelayEdit())
+      of KeyCode.KeyBackspace:
+        if model.entryModal.focus == EntryModalFocus.InviteCode:
+          return some(actionEntryInviteBackspace())
+        elif model.entryModal.focus == EntryModalFocus.RelayUrl:
+          return some(actionEntryRelayBackspace())
+        else:
+          return none(Proposal)
+      of KeyCode.KeyI:
+        return some(actionEntryImport())
+      else:
+        return none(Proposal)
+
+  # In-game Ctrl+L returns to lobby
+  if model.appPhase == AppPhase.InGame:
+    if key == KeyCode.KeyCtrlL:
+      return some(actionLobbyReturn())
+
+  # Global bindings (view switching, expert mode, etc.)
+  let globalResult = lookupGlobalAndDispatch(key, KeyModifier.None, model)
+  if globalResult.isSome:
+    return globalResult
+
+  # Context-specific bindings based on current view mode
+  let ctx = viewModeToContext(model.mode)
+  let ctxResult = lookupAndDispatch(key, KeyModifier.None, ctx, model)
+  if ctxResult.isSome:
+    return ctxResult
+
+  none(Proposal)
+
+# =============================================================================
+# Bar Item Building
+# =============================================================================
+
+proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
+  ## Build bar items based on current model state
+  ## If in Overview, show global view tabs
+  ## Otherwise, show context-specific actions
+
+  result = @[]
+
+  # Determine which bindings to show
+  let showGlobalTabs = model.appPhase == AppPhase.InGame and
+      model.mode == ViewMode.Overview and
+      not model.expertModeActive and
+      not model.orderEntryActive
+
+  if showGlobalTabs:
+    # Show view tabs [1-9] + expert mode hint
+    let globalBindings = getGlobalBindings()
+    var idx = 0
+    for b in globalBindings:
+      # Skip quit in normal tab display (it's always Ctrl+Q)
+      if b.actionName == ActionQuit:
+        continue
+
+      let label = if useShortLabels: b.shortLabel else: b.longLabel
+      let isSelected = case b.key
+        of KeyCode.Key1: model.mode == ViewMode.Overview
+        of KeyCode.Key2: model.mode == ViewMode.Planets
+        of KeyCode.Key3: model.mode == ViewMode.Fleets
+        of KeyCode.Key4: model.mode == ViewMode.Research
+        of KeyCode.Key5: model.mode == ViewMode.Espionage
+        of KeyCode.Key6: model.mode == ViewMode.Economy
+        of KeyCode.Key7: model.mode == ViewMode.Reports
+        of KeyCode.Key8: model.mode == ViewMode.Messages
+        of KeyCode.Key9: model.mode == ViewMode.Settings
+        else: false
+
+      let mode = if isSelected: BarItemMode.Selected
+                 elif idx mod 2 == 1: BarItemMode.UnselectedAlt
+                 else: BarItemMode.Unselected
+
+      result.add(BarItem(
+        keyDisplay: formatKeyCode(b.key),
+        label: label,
+        longLabel: b.longLabel,
+        shortLabel: b.shortLabel,
+        mode: mode,
+        binding: b
+      ))
+      idx.inc
+  else:
+    # Show context-specific actions
+    let ctx = if model.expertModeActive: BindingContext.ExpertMode
+              elif model.orderEntryActive: BindingContext.OrderEntry
+              else: viewModeToContext(model.mode)
+
+    let bindings = getBindingsForContext(ctx)
+
+    # Group arrow keys together as ↑↓ or ←→
+    var seenNavUp = false
+    var seenNavLeft = false
+
+    var idx = 0
+    for b in bindings:
+      # Skip duplicate nav keys - combine ↑↓ and ←→
+      if b.key == KeyCode.KeyDown and seenNavUp:
+        continue
+      if b.key == KeyCode.KeyRight and seenNavLeft:
+        continue
+      if b.key == KeyCode.KeyUp:
+        seenNavUp = true
+      if b.key == KeyCode.KeyLeft:
+        seenNavLeft = true
+
+      let enabled = isBindingEnabled(b, model)
+      let label = if useShortLabels: b.shortLabel else: b.longLabel
+
+      # Format key display - combine arrows if nav
+      let keyDisp = if b.key == KeyCode.KeyUp: "↑↓"
+                    elif b.key == KeyCode.KeyLeft: "←→"
+                    else: formatKey(b.key, b.modifier)
+
+      let mode = if not enabled: BarItemMode.Disabled
+                 elif idx mod 2 == 1: BarItemMode.UnselectedAlt
+                 else: BarItemMode.Unselected
+
+      result.add(BarItem(
+        keyDisplay: keyDisp,
+        label: label,
+        longLabel: b.longLabel,
+        shortLabel: b.shortLabel,
+        mode: mode,
+        binding: b
+      ))
+      idx.inc
