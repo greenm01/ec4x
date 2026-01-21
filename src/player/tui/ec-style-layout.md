@@ -34,8 +34,8 @@ for strategic, planetary, and fleet interactions.
 | **Primary**   | 120     | 32+   | Full information density, ASCII mockups  |
 | **Fallback**  | 80      | 24    | Graceful degradation, column stacking    |
 
-**Responsive behavior**: At 80 columns, multi-column layouts stack vertically. Tables truncate
-long fields with ellipsis. Status bar items prioritized left-to-right (most critical first).
+**Responsive behavior**: At 80 columns, multi-column layouts stack vertically. Tables
+truncate long fields with ellipsis. Status bar uses shortened labels (OVR, PLN, FLT).
 
 ### Screen Regions
 
@@ -49,15 +49,12 @@ long fields with ellipsis. Status bar items prioritized left-to-right (most crit
 +------------------------------------------------------------------------------+
 |                                                                              |
 | MAIN CANVAS (variable height)                                                |
-|   - Swappable panels for 9 primary views                                     |
-|   - Double-line borders (══) for primary contexts                            |
-|   - Single-line borders (──) for dialogs and overlays                        |
+|   - Centered floating modals for 9 primary views                             |
+|   - Single-line borders (──) for modals and overlays                         |
 |                                                                              |
 +------------------------------------------------------------------------------+
-| COMMAND DOCK (2-3 lines)                                                     |
-|   Primary: [1-9] Views  [Q] Quit                                             |
-|   Context: Dynamic actions based on current view                             |
-|   Expert:  `: ` command palette prompt when active                           |
+| STATUS BAR (1 line) - Zellij/Helix hybrid                                    |
+|   <1> OVR  <2> PLN  <3> FLT ... <:> EXPERT    or    :command input_          |
 +------------------------------------------------------------------------------+
 ```
 
@@ -154,7 +151,9 @@ Within views, single-letter hotkeys trigger common actions:
 
 ### Expert Mode (Command Palette)
 
-Typing `:` enters command mode. Supports vim-style direct commands:
+Typing `:` enters command mode in the status bar. The input appears in the bottom
+status bar line, with a helix-style completion palette floating above. Supports
+vim-style direct commands:
 
 ```
 # Fleet Commands
@@ -190,8 +189,66 @@ Typing `:` enters command mode. Supports vim-style direct commands:
 :declare enemy stratos         Declare war (Enemy)
 ```
 
+**UI Behavior**:
+- Status bar switches from keybinding hints to `:` prompt
+- Expert palette renders above status bar (max 8 rows)
+- Tab completion with fuzzy matching
+- Up/down arrows navigate command history
+- Escape returns to normal mode
+
 **Tab completion**: Fleet names, colony names, ship types, commands auto-complete.
 **History**: Up/down arrows navigate command history.
+
+### Status Bar Design (Zellij/Helix Hybrid)
+
+A single-line status bar at the bottom of the screen combining Zellij-style keybinding
+hints with Helix-style expert mode input.
+
+#### Normal Mode Layout
+
+```
+ <1> OVERVIEW  <2> PLANETS  <3> FLEETS  <4> RESEARCH  ... <:> EXPERT
+```
+
+| Element | Description |
+|---------|-------------|
+| `<key>` | Angle-bracketed key in cyan/highlighted color |
+| `LABEL` | Action label in standard text |
+| `` | Powerline arrow separator between segments |
+| Selection | Current view highlighted with inverted colors |
+
+#### Expert Mode Layout
+
+When `:` is pressed, the status bar switches to command input:
+
+```
+:move alpha B7_
+```
+
+- Prompt (`:`) in key color
+- Input text in standard color
+- Blinking cursor at end
+
+The expert palette (helix-style completion menu) renders **above** the status bar,
+floating over the canvas area.
+
+#### Progressive Width Adaptation
+
+| Width | Format |
+|-------|--------|
+| Full (120+) | `<1> OVERVIEW  <2> PLANETS  <3> FLEETS ...` |
+| Medium (80-120) | `<1> OVR  <2> PLN  <3> FLT ...` |
+| Narrow (<80) | Truncate from right, keeping `:` expert hint |
+
+#### Color Scheme
+
+| Element | Foreground | Background |
+|---------|------------|------------|
+| Bar background | #c0caf5 | #24283b |
+| Key highlight | #7dcfff (cyan) | #24283b |
+| Selected item | #1a1b26 | #7aa2f7 (blue) |
+| Disabled | #565f89 | #24283b |
+| Cursor | #24283b | #7dcfff |
 
 ---
 
@@ -442,7 +499,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
 
 ### 6.2 Planet Manager (120 columns)
 
-#### 5.2.1 Planet List View
+#### 6.2.1 Planet List View
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -471,7 +528,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
 - `GROWTH` - Population growth rate (PU/turn)
 - **Facility codes**: SP=Spaceport, SY=Shipyard, DD=Drydock, SB=Starbase
 
-#### 5.2.2 Planet Detail View - Summary Tab
+#### 6.2.2 Planet Detail View - Summary Tab
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -505,7 +562,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [Tab] Next section  [1-5] Switch tab  [B] Build  [G] Garrison  [Backspace] Back              [: ] Expert Mode
 ```
 
-#### 5.2.3 Planet Detail View - Economy Tab
+#### 6.2.3 Planet Detail View - Economy Tab
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -553,7 +610,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [Tab] Next section  [1-5] Switch tab  [6] Economy view  [Backspace] Back                     [: ] Expert Mode
 ```
 
-#### 5.2.4 Planet Detail View - Construction Tab
+#### 6.2.4 Planet Detail View - Construction Tab
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -596,7 +653,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [↑/↓] Select  [Enter] Build  [D] Delete from queue  [P] Prioritize  [Backspace] Back        [: ] Expert Mode
 ```
 
-#### 5.2.5 Planet Detail View - Defense Tab
+#### 6.2.5 Planet Detail View - Defense Tab
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -632,7 +689,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [Tab] Next section  [1-5] Switch tab  [G] Manage garrison  [Backspace] Back                  [: ] Expert Mode
 ```
 
-#### 5.2.6 Planet Detail View - Settings Tab
+#### 6.2.6 Planet Detail View - Settings Tab
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -671,7 +728,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
 
 ### 6.3 Fleet Console (120 columns)
 
-#### 5.3.1 Fleet Console - System View
+#### 6.3.1 Fleet Console - System View
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -707,7 +764,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [↑/↓] Select  [Enter] Fleet Details  [L] List View  [M] Move  [P] Patrol  [H] Hold  [R] ROE  [: ] Expert Mode
 ```
 
-#### 5.3.2 Fleet Console - List View (Table with Multi-Select)
+#### 6.3.2 Fleet Console - List View (Table with Multi-Select)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -753,7 +810,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
 - `RSV` = Reserve status (50% readiness)
 - `MTB` = Mothballed status (offline)
 
-#### 5.3.3 Fleet Details Panel
+#### 6.3.3 Fleet Details Panel
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -959,7 +1016,7 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
  [↑/↓] Select  [Enter] View Report  [D] Delete  [A] Archive  [M] Mark read/unread            [: ] Expert Mode
 ```
 
-#### 5.7.1 Turn Summary Report
+#### 6.7.1 Turn Summary Report
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
@@ -1251,7 +1308,7 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
 1. **Widget Library** (Sprint 1-2)
    - HUD Strip component with prestige/C2 display
    - Panel with borders (double/single)
-   - Command Dock with 9 views
+   - Status Bar with 9 view keybindings
    - Table with multi-select
    - Leaderboard component
 

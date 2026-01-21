@@ -3,17 +3,14 @@
 ## Displays houses ranked by prestige with diplomatic status indicators.
 ##
 ## Layout:
-## ┌─────────────────────────────────────────────┐
-## │ LEADERBOARD                                 │
-## ├─────────────────────────────────────────────┤
-## │  #  HOUSE       ★PRESTIGE  COLONIES  STATUS │
-## │  1. Valerian       487       12       YOU   │
-## │  2. Stratos        412        9       ⚔ ENM │
-## │  3. Corvus         356        8       ● NEU │
-## │  4. Lyra           298        7       ● NEU │
-## │  5. Aquila         201        5       ⚠ HOS │
-## │  6. Draco         ELIM        0       ☠     │
-## └─────────────────────────────────────────────┘
+## ┌───────────────────────────────────────┐
+## │ LEADERBOARD                           │
+## ├───────────────────────────────────────┤
+## │  #  HOUSE       ★PRESTIGE  COLONIES   │
+## │  1. Valerian       487       12       │
+## │  2. Stratos        412        9       │
+## │  ...                                  │
+## └───────────────────────────────────────┘
 ##
 ## Reference: ec-style-layout.md Section 5.1
 
@@ -156,12 +153,11 @@ proc renderLeaderboard*(area: Rect, buf: var CellBuffer,
     discard buf.setString(inner.x, y, " #  HOUSE       ", headerStyle)
     discard buf.setString(inner.x + 16, y, GlyphPrestige & "PRESTIGE  ", headerStyle)
     discard buf.setString(inner.x + 27, y, "COLONIES  ", headerStyle)
-    discard buf.setString(inner.x + 37, y, "STATUS", headerStyle)
     y += 1
   
   # Separator line
   if y < inner.bottom:
-    for x in inner.x ..< min(inner.right, inner.x + 45):
+    for x in inner.x ..< min(inner.right, inner.x + 37):
       discard buf.put(x, y, "─", dimStyle)
     y += 1
   
@@ -194,23 +190,13 @@ proc renderLeaderboard*(area: Rect, buf: var CellBuffer,
                  else:
                    $entry.colonyCount
     discard buf.setString(inner.x + 27, y, colStr.alignLeft(10), entryStyle)
-    
-    # Status
-    let statusGlyph = statusGlyph(entry.diplomaticStatus)
-    let statusText = statusLabel(entry.diplomaticStatus)
-    let statStyle = statusStyle(entry.diplomaticStatus)
-    
-    if statusGlyph.len > 0:
-      discard buf.setString(inner.x + 37, y, statusGlyph & " " & statusText, statStyle)
-    else:
-      discard buf.setString(inner.x + 37, y, statusText, statStyle)
-    
+
     y += 1
   
   # Footer with map progress
   y = inner.bottom - 2
   if y > inner.y and data.totalSystems > 0:
-    discard buf.setString(inner.x, y, "─" .repeat(min(45, inner.width)), dimStyle)
+    discard buf.setString(inner.x, y, "─" .repeat(min(37, inner.width)), dimStyle)
     y += 1
     
     let progressStr = &"Map: {data.colonizedSystems}/{data.totalSystems} systems colonized"
