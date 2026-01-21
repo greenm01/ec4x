@@ -6,16 +6,15 @@
 ## IMPORTANT: This module is PURE - no I/O, no database operations.
 ## Database persistence is handled by src/daemon/persistence/init.nim
 
-import std/[tables, monotimes, options, strutils, random]
+import std/[tables, monotimes, options, strutils, random, sets]
 
 import ../../common/logger
 import ../[globals, starmap]
 import ../config/engine
 import ../state/[engine, id_gen]
-import ../types/[
-  core, game_state, player_state, diplomacy,
-  resolution, starmap, house
-]
+import
+  ../types/
+    [core, game_state, player_state, diplomacy, resolution, starmap, house, config]
 import ./house
 import ./colony
 import ./fleet
@@ -42,11 +41,31 @@ proc generateGameId(): string =
 
   # UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
   # where y is 8, 9, A, or B
-  result = hexBytes(4) & "-" & hexBytes(2) & "-4" & hexBytes(1)[1..1] &
-           hexBytes(1) & "-" & ["8", "9", "a", "b"][rand(3)] &
-           hexBytes(1)[1..1] & hexBytes(1) & "-" & hexBytes(6)
+  result =
+    hexBytes(4) & "-" & hexBytes(2) & "-4" & hexBytes(1)[1 .. 1] & hexBytes(1) & "-" &
+    ["8", "9", "a", "b"][rand(3)] & hexBytes(1)[1 .. 1] & hexBytes(1) & "-" & hexBytes(
+      6
+    )
 
-proc initializeHousesAndHomeworlds*(state: GameState) =
+proc collectHouseNames(theme: HouseTheme): seq[string] =
+  result = @[]
+  for houseData in theme.houses:
+    result.add(houseData.name)
+
+proc validateHouseNames(names: seq[string], playerCount: int32) =
+  if names.len < playerCount:
+    raise newException(
+      ValueError,
+      "House theme has insufficient names: " & $names.len & " for " & $playerCount &
+        " players",
+    )
+  var nameSet = initHashSet[string]()
+  for name in names:
+    if nameSet.contains(name):
+      raise newException(ValueError, "House theme has duplicate name: " & name)
+    nameSet.incl(name)
+
+proc initializeHousesAndHomeworlds*(state: GameState, playerCount: int32) =
   ## Initialize houses, homeworlds, and starting fleets for all players
   ## Per game setup rules (e.g., docs/specs/05-gameplay.md:1.3)
   ##
@@ -57,15 +76,23 @@ proc initializeHousesAndHomeworlds*(state: GameState) =
 
   logInfo("Initialization", "Initializing houses and homeworlds...")
 
-  let playerCount = gameSetup.gameParameters.playerCount
-
   # Verify we have enough homeworld systems
   if state.starMap.houseSystemIds.len != playerCount:
     raise newException(
       ValueError,
-      "Homeworld count mismatch: expected " & $playerCount &
-      " but got " & $state.starMap.houseSystemIds.len
+      "Homeworld count mismatch: expected " & $playerCount & " but got " &
+        $state.starMap.houseSystemIds.len,
     )
+
+  let themesConfig = globals.gameConfig.themes
+  let activeThemeName = themesConfig.activeTheme
+  if not themesConfig.themes.hasKey(activeThemeName):
+    raise newException(ValueError, "Missing house theme: " & activeThemeName)
+  let activeTheme = themesConfig.themes[activeThemeName]
+  var houseNames = collectHouseNames(activeTheme)
+  validateHouseNames(houseNames, playerCount)
+  var rng = initRand(state.seed)
+  rng.shuffle(houseNames)
 
   # Create each house with homeworld and starting forces
   for playerIndex in 0 ..< playerCount:
@@ -73,31 +100,29 @@ proc initializeHousesAndHomeworlds*(state: GameState) =
     let homeworldSystemId = state.starMap.houseSystemIds[playerIndex]
 
     # 1. Create House entity
-    let houseName = "House " & $(playerIndex + 1)
+    let houseName = houseNames[playerIndex]
     let house = initHouse(houseId, houseName)
     state.addHouse(houseId, house)
 
     logInfo(
-      "Initialization",
-      "Created ", houseName, " (ID: ", houseId, ") at system ",
-      homeworldSystemId
+      "Initialization", "Created ", houseName, " (ID: ", houseId, ") at system ",
+      homeworldSystemId,
     )
 
     # 2. Create homeworld colony
     let colonyId = createHomeWorld(state, homeworldSystemId, houseId)
 
     logInfo(
-      "Initialization",
-      "Established homeworld colony (ID: ", colonyId, ") for ", houseName
+      "Initialization", "Established homeworld colony (ID: ", colonyId, ") for ",
+      houseName,
     )
 
     # 3. Create starting fleets
-    let fleetConfigs = gameSetup.startingFleets.fleets
+    let fleetConfigs = globals.gameSetup.startingFleets.fleets
     createStartingFleets(state, houseId, homeworldSystemId, fleetConfigs)
 
     logInfo(
-      "Initialization",
-      "Created ", fleetConfigs.len, " starting fleets for ", houseName
+      "Initialization", "Created ", fleetConfigs.len, " starting fleets for ", houseName
     )
 
     # 4. Initialize empty intelligence database
@@ -112,7 +137,7 @@ proc initializeHousesAndHomeworlds*(state: GameState) =
           sourceHouse: houseId,
           targetHouse: otherHouseId,
           state: DiplomaticState.Neutral,
-          sinceTurn: 1
+          sinceTurn: 1,
         )
 
     # 6. Initialize violation history (empty at start)
@@ -120,15 +145,17 @@ proc initializeHousesAndHomeworlds*(state: GameState) =
 
   logInfo(
     "Initialization",
-    "Game initialization complete: ", playerCount, " houses, ",
-    state.coloniesCount(), " colonies, ",
-    state.fleetsCount(), " fleets"
+    "Game initialization complete: ",
+    playerCount,
+    " houses, ",
+    state.coloniesCount(),
+    " colonies, ",
+    state.fleetsCount(),
+    " fleets",
   )
 
 proc createEmptyGameState(
-    gameId: string,
-    seed: int64,
-    dataDir: string = ""
+    gameId: string, seed: int64, dataDir: string = ""
 ): GameState =
   ## Create an empty GameState with initialized collections
   ## This is a pure helper - no I/O
@@ -136,7 +163,7 @@ proc createEmptyGameState(
     gameId: gameId,
     seed: seed,
     turn: 1,
-    dbPath: "",  # Set by daemon after DB creation
+    dbPath: "", # Set by daemon after DB creation
     dataDir: dataDir,
     counters: IdCounters(
       nextHouseId: 1,
@@ -153,16 +180,12 @@ proc createEmptyGameState(
     ),
     # Initialize empty entity collections
     houses: Houses(
-      entities: EntityManager[HouseId, House](
-        data: @[],
-        index: initTable[HouseId, int]()
-      )
+      entities:
+        EntityManager[HouseId, House](data: @[], index: initTable[HouseId, int]())
     ),
     systems: Systems(
-      entities: EntityManager[SystemId, System](
-        data: @[],
-        index: initTable[SystemId, int]()
-      )
+      entities:
+        EntityManager[SystemId, System](data: @[], index: initTable[SystemId, int]())
     ),
     # Initialize Tables (Sequences initialize to @[] automatically)
     intel: initTable[HouseId, IntelDatabase](),
@@ -173,11 +196,11 @@ proc createEmptyGameState(
   )
 
 proc initGameState*(
-  setupPath: string = "scenarios/standard-4-player.kdl",
-  gameName: string = "",
-  gameDescription: string = "",
-  configDir: string = "config",
-  dataDir: string = "data"
+    setupPath: string = "scenarios/standard-4-player.kdl",
+    gameName: string = "",
+    gameDescription: string = "",
+    configDir: string = "config",
+    dataDir: string = "data",
 ): GameState =
   ## Create a new game from a scenario file - PURE function, no I/O
   ##
@@ -192,14 +215,14 @@ proc initGameState*(
   ##   dataDir: Root data directory
 
   # Load configs
-  gameConfig = loadGameConfig(configDir)
-  gameSetup = loadGameSetup(setupPath)
+  globals.gameConfig = loadGameConfig(configDir)
+  globals.gameSetup = loadGameSetup(setupPath)
 
   # Extract parameters
-  let params = gameSetup.gameParameters
+  let params = globals.gameSetup.gameParameters
   let seed = params.gameSeed.get(initGameSeed(none(int64)))
   let playerCount = params.playerCount
-  let numRings = gameSetup.mapGeneration.numRings
+  let numRings = globals.gameSetup.mapGeneration.numRings
 
   # Generate UUID for game
   let gameId = generateGameId()
@@ -209,9 +232,10 @@ proc initGameState*(
 
   # Validate map configuration
   if numRings < 2 or numRings > 12:
-    raise newException(ValueError,
+    raise newException(
+      ValueError,
       "numRings must be 2-12 (got " & $numRings & "). " &
-      "See docs/guides/map-sizing-guide.md for systems-per-player guidance."
+        "See docs/guides/map-sizing-guide.md for systems-per-player guidance.",
     )
 
   # Log setup
@@ -219,13 +243,18 @@ proc initGameState*(
   let systemsPerPlayer = totalSystems.float / playerCount.float
   logInfo(
     "Initialization",
-    "Map size: ", numRings, " rings = ", totalSystems, " systems (",
-    systemsPerPlayer.formatFloat(ffDecimal, 1), " per player)"
+    "Map size: ",
+    numRings,
+    " rings = ",
+    totalSystems,
+    " systems (",
+    systemsPerPlayer.formatFloat(ffDecimal, 1),
+    " per player)",
   )
 
   logInfo(
     "Initialization", "Creating game ", gameId, ": ", playerCount, " players, ",
-    numRings, " rings, seed ", seed
+    numRings, " rings, seed ", seed,
   )
 
   # Create empty state
@@ -235,8 +264,7 @@ proc initGameState*(
 
   # Generate starmap
   result.starMap = generateStarMap(result, playerCount, numRings.uint32)
-  logInfo("Initialization", "Generated map with ", result.systemsCount(),
-          " systems")
+  logInfo("Initialization", "Generated map with ", result.systemsCount(), " systems")
 
   # Initialize dynamic multipliers
   let numSystems = result.systemsCount()
@@ -244,4 +272,4 @@ proc initGameState*(
   initPopulationGrowthMultiplier(numSystems, playerCount.int32)
 
   # Initialize houses, homeworlds, and starting fleets
-  initializeHousesAndHomeworlds(result)
+  initializeHousesAndHomeworlds(result, playerCount)

@@ -114,7 +114,7 @@ proc loadGameSetupConfig*(setupPath: string): GameSetup =
 
   ctx.withNode("gameParameters"):
     let node = doc.requireNode("gameParameters", ctx)
-    result.gameparameters = parseGameParameters(node, ctx)
+    result.gameParameters = parseGameParameters(node, ctx)
 
   ctx.withNode("mapGeneration"):
     let node = doc.requireNode("mapGeneration", ctx)

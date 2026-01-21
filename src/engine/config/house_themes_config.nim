@@ -64,5 +64,7 @@ proc loadThemesConfig*(configPath: string): ThemesConfig =
       ctx.withNode("theme"):
         let entry = parseThemeEntry(node, ctx)
         result.themes[entry.name] = toHouseTheme(entry)
+        if result.activeTheme.len == 0:
+          result.activeTheme = entry.name
 
   logInfo("Config", "Loaded themes configuration", "path=", configPath)

@@ -43,4 +43,3 @@ type
     ## Context for error reporting during config parsing
     filepath*: string
     nodePath*: seq[string]  # Track nested node path for errors
-
