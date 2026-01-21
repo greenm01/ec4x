@@ -422,7 +422,7 @@ proc shipDamaged*(
     squadronId: string,
     houseId: HouseId,
     damage: int,
-    newState: string, # "Crippled" or "Undamaged"
+    newState: string, # "Crippled" or "Nominal"
     remainingDs: int,
     systemId: SystemId,
 ): event.GameEvent =

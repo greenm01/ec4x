@@ -37,7 +37,7 @@ type
     neoriaClass*: NeoriaClass
     colonyId*: ColonyId
     commissionedTurn*: int32
-    state*: CombatState  # Combat damage state (Undamaged, Crippled, Destroyed)
+    state*: CombatState  # Combat damage state (Nominal, Crippled, Destroyed)
     baseDocks*: int32  # Base dock capacity from config (immutable)
     effectiveDocks*: int32  # CST-modified dock capacity (updated on tech changes)
     constructionQueue*: seq[ConstructionProjectId]
@@ -56,7 +56,7 @@ type
     colonyId*: ColonyId
     commissionedTurn*: int32
     stats*: KastraStats
-    state*: CombatState  # Combat damage state (Undamaged, Crippled, Destroyed)
+    state*: CombatState  # Combat damage state (Nominal, Crippled, Destroyed)
 
   Kastras* = object
     entities*: EntityManager[KastraId, Kastra]

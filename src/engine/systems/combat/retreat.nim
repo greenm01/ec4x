@@ -210,7 +210,7 @@ proc noCombatantsRemain*(state: GameState, battle: Battle): bool =
 ##
 ## **Combat Termination:**
 ## - Combat ends when one side has no operational ships
-## - Operational = Undamaged or Crippled (not Destroyed)
+## - Combat-capable = Nominal or Crippled (not Destroyed)
 ## - Empty fleets (all ships destroyed) don't prevent retreat checks
 ##
 ## **Special Cases:**

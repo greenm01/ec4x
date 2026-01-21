@@ -7,7 +7,7 @@
 ## - Ships fight directly in fleets (no squadrons)
 ## - Task force is conceptual (all ships from one house's fleets)
 ## - Combat aggregates at house level
-## - Only persistent state is ship.state (Undamaged/Crippled/Destroyed)
+## - Only persistent state is ship.state (Nominal/Crippled/Destroyed)
 
 import std/[options, tables]
 import ./core
@@ -20,7 +20,7 @@ type
   CombatState* {.pure.} = enum
     ## Ship/starbase combat state (persistent)
     ## Only three states - no damage tracking between rounds
-    Undamaged
+    Nominal
     Crippled
     Destroyed
 
@@ -243,7 +243,7 @@ type
 ## 2. Task force is conceptual (just all ships from house's fleets)
 ## 3. Combat aggregates at house level (sum all AS from all house fleets)
 ## 4. Each fleet checks own ROE for retreat
-## 5. Only persistent state is ship.state (Undamaged/Crippled/Destroyed)
+## 5. Only persistent state is ship.state (Nominal/Crippled/Destroyed)
 ## 6. No damage tracking between rounds
 ## 7. Two CER tables: Space/Orbital vs Ground
 ##

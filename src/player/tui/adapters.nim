@@ -505,10 +505,9 @@ type
     ## Single ship entry for fleet detail view
     name*: string           # Ship name (e.g., "Alpha-1", "Beta-2")
     class*: string          # Ship class name (e.g., "Destroyer")
-    hp*: string             # HP percentage (e.g., "100%", "50%", "0%")
+    state*: string          # Combat state label (e.g., "Nominal")
     attack*: string         # Attack strength (e.g., "45")
     defense*: string        # Defense strength (e.g., "38")
-    isDestroyed*: bool      # For rendering (destroyed ships grayed out)
     isCrippled*: bool       # For rendering (crippled ships in yellow/red)
 
   FleetDetailData* = object
@@ -647,32 +646,31 @@ proc fleetToDetailData*(
     # Get ship class name
     let className = $ship.shipClass
     
-    # Calculate HP based on CombatState
-    var hpStr = "100%"
+    # Calculate combat state display
+    var stateLabel = "Nominal"
     var isDestroyed = false
     var isCrippled = false
     case ship.state:
-    of CombatState.Undamaged:
-      hpStr = "100%"
+    of CombatState.Nominal:
+      stateLabel = "Nominal"
     of CombatState.Crippled:
-      hpStr = "50%"
+      stateLabel = "Crippled"
       isCrippled = true
     of CombatState.Destroyed:
-      hpStr = "0%"
       isDestroyed = true
-    
-    # Add to totals (only if not destroyed)
-    if not isDestroyed:
-      totalAS += int(ship.stats.attackStrength)
-      totalDS += int(ship.stats.defenseStrength)
-    
+
+    if isDestroyed:
+      continue
+
+    totalAS += int(ship.stats.attackStrength)
+    totalDS += int(ship.stats.defenseStrength)
+
     shipRows.add(ShipDetailRow(
       name: shipName,
       class: className,
-      hp: hpStr,
+      state: stateLabel,
       attack: $ship.stats.attackStrength,
       defense: $ship.stats.defenseStrength,
-      isDestroyed: isDestroyed,
       isCrippled: isCrippled
     ))
   
@@ -804,4 +802,3 @@ proc colonyToDetailData*(
     availableDocks: availableDocks,
     totalDocks: totalDocks
   )
-

@@ -18,7 +18,7 @@ proc calculateShipAS*(state: GameState, ship: Ship): int32 =
   ## - Screened ships have 0 AS (auxiliary vessels, mothballed ships)
   ## - Destroyed ships have 0 AS
   ## - Crippled ships have 50% AS
-  ## - Undamaged ships have 100% AS
+  ## - Nominal ships have 100% AS
 
   # Screened units do not contribute AS
   if isScreenedShip(state, ship.id):
@@ -44,7 +44,7 @@ proc calculateShipDS*(state: GameState, ship: Ship): int32 =
   ## - Screened ships have 0 DS (not targetable in combat)
   ## - Destroyed ships have 0 DS
   ## - Crippled ships have 50% DS
-  ## - Undamaged ships have 100% DS
+  ## - Nominal ships have 100% DS
 
   # Screened units do not contribute DS (not targetable)
   if isScreenedShip(state, ship.id):
@@ -69,7 +69,7 @@ proc calculateKastraAS*(state: GameState, kastra: Kastra): int32 =
   ## **Rules:**
   ## - Destroyed Kastras have 0 AS
   ## - Crippled Kastras have 50% AS
-  ## - Undamaged Kastras have 100% AS
+  ## - Nominal Kastras have 100% AS
   
   if kastra.state == CombatState.Destroyed:
     return 0
@@ -90,7 +90,7 @@ proc calculateKastraDS*(state: GameState, kastra: Kastra): int32 =
   ## **Rules:**
   ## - Destroyed Kastras have 0 DS
   ## - Crippled Kastras have 50% DS
-  ## - Undamaged Kastras have 100% DS
+  ## - Nominal Kastras have 100% DS
   
   if kastra.state == CombatState.Destroyed:
     return 0
@@ -222,7 +222,7 @@ proc allShips*(state: GameState, fleets: seq[FleetId]): seq[ShipId] =
     result.add(combatShips)
 
 proc countOperationalShips*(state: GameState, fleets: seq[FleetId]): int =
-  ## Count ships that can still fight (Undamaged or Crippled)
+  ## Count ships that can still fight (Nominal or Crippled)
   ## Used for combat termination checks
 
   result = 0
@@ -258,7 +258,7 @@ proc countOperationalShips*(state: GameState, fleets: seq[FleetId]): int =
 ## - Starbases cannot retreat - fight to destruction or victory
 ##
 ## **Special Cases:**
-## - Fighters: Skip Crippled state (go directly Undamaged → Destroyed)
+## - Fighters: Skip Crippled state (go directly Nominal → Destroyed)
 ## - Carriers: Embarked fighters don't participate in fleet combat
 ## - Cloaked fleets: Handled by detection system (not strength calculation)
 ## - Starbases: Only participate in orbital combat

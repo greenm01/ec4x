@@ -309,7 +309,7 @@ proc commissionRepairedShips(state: var GameState, drydock: var Drydock):
       
       # Commission ship
       let ship = state.ships[repair.targetShipId]
-      ship.status = Undamaged
+      ship.status = Nominal
       ship.commissioning.turnCommissioned = state.turn
       
       # Remove from queue, free dock
@@ -629,7 +629,7 @@ proc advanceRepairQueues(state: var GameState):
           
           # Commission immediately
           let ship = state.ships[repair.targetShipId]
-          ship.status = Undamaged
+          ship.status = Nominal
           createFleetForRepairedShip(state, ship, drydock.colonyId)
           
           # Remove from queue, free dock

@@ -345,20 +345,23 @@ proc renderFleetDetail*(
     var shipTable = table([
       tableColumn("Name", 12, table.Alignment.Left),
       tableColumn("Class", 16, table.Alignment.Left),
-      tableColumn("HP", 6, table.Alignment.Right),
+      tableColumn("State", 9, table.Alignment.Left),
       tableColumn("Attack", 7, table.Alignment.Right),
       tableColumn("Defense", 7, table.Alignment.Right)
     ])
 
     # Add ship rows
+    let stateColumn = 2
+    let crippledStyle = CellStyle(fg: color(PrestigeColor), attrs: {})
     for ship in fleetData.ships:
+      let stateStyle = if ship.isCrippled: crippledStyle else: positiveStyle()
       shipTable.addRow(@[
         ship.name,
         ship.class,
-        ship.hp,
+        ship.state,
         ship.attack,
         ship.defense
-      ])
+      ], stateStyle, stateColumn)
 
     # Render table
     let tableArea = rect(area.x, y, area.width, area.height - (y - area.y))

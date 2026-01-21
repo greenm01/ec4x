@@ -6,7 +6,7 @@
 ## Per economy.md:3.9
 
 import std/[unittest]
-import ../../src/engine/types/[ship, fleet, facilities, ground_unit, combat]
+import ../../src/engine/types/[ship, fleet, combat]
 import ../../src/engine/systems/income/maintenance
 import ../../src/engine/globals
 import ../../src/engine/config/engine as config_engine
@@ -18,22 +18,22 @@ suite "Maintenance: Ship Costs by Class":
   ## Test shipMaintenanceCost for different ship classes
 
   test "destroyer has maintenance cost":
-    let cost = shipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged)
+    let cost = shipMaintenanceCost(ShipClass.Destroyer, CombatState.Nominal)
     check cost > 0
 
   test "battleship costs more than destroyer":
-    let ddCost = shipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged)
-    let bbCost = shipMaintenanceCost(ShipClass.Battleship, CombatState.Undamaged)
+    let ddCost = shipMaintenanceCost(ShipClass.Destroyer, CombatState.Nominal)
+    let bbCost = shipMaintenanceCost(ShipClass.Battleship, CombatState.Nominal)
     check bbCost > ddCost
 
   test "dreadnought costs more than battleship":
-    let bbCost = shipMaintenanceCost(ShipClass.Battleship, CombatState.Undamaged)
-    let dnCost = shipMaintenanceCost(ShipClass.Dreadnought, CombatState.Undamaged)
+    let bbCost = shipMaintenanceCost(ShipClass.Battleship, CombatState.Nominal)
+    let dnCost = shipMaintenanceCost(ShipClass.Dreadnought, CombatState.Nominal)
     check dnCost > bbCost
 
   test "all ship classes have positive maintenance":
     for shipClass in ShipClass:
-      let cost = shipMaintenanceCost(shipClass, CombatState.Undamaged)
+      let cost = shipMaintenanceCost(shipClass, CombatState.Nominal)
       check cost >= 0 # Some auxiliary might be 0
 
 suite "Maintenance: Combat State Modifiers":
@@ -41,7 +41,7 @@ suite "Maintenance: Combat State Modifiers":
 
   test "crippled ships have reduced maintenance":
     let undamagedCost = shipMaintenanceCost(
-      ShipClass.Cruiser, CombatState.Undamaged
+      ShipClass.Cruiser, CombatState.Nominal
     )
     let crippledCost = shipMaintenanceCost(
       ShipClass.Cruiser, CombatState.Crippled
@@ -50,7 +50,7 @@ suite "Maintenance: Combat State Modifiers":
 
   test "crippled maintenance is ~50% of base":
     let baseCost = shipMaintenanceCost(
-      ShipClass.Battlecruiser, CombatState.Undamaged
+      ShipClass.Battlecruiser, CombatState.Nominal
     )
     let crippledCost = shipMaintenanceCost(
       ShipClass.Battlecruiser, CombatState.Crippled
@@ -70,44 +70,44 @@ suite "Maintenance: Fleet Status Modifiers":
 
   test "active fleet has full maintenance":
     let activeCost = shipMaintenanceCost(
-      ShipClass.Cruiser, CombatState.Undamaged, FleetStatus.Active
+      ShipClass.Cruiser, CombatState.Nominal, FleetStatus.Active
     )
     check activeCost > 0
 
   test "reserve fleet has reduced maintenance":
     let activeCost = shipMaintenanceCost(
-      ShipClass.Cruiser, CombatState.Undamaged, FleetStatus.Active
+      ShipClass.Cruiser, CombatState.Nominal, FleetStatus.Active
     )
     let reserveCost = shipMaintenanceCost(
-      ShipClass.Cruiser, CombatState.Undamaged, FleetStatus.Reserve
+      ShipClass.Cruiser, CombatState.Nominal, FleetStatus.Reserve
     )
     check reserveCost < activeCost
 
   test "reserve is ~50% of active":
     let activeCost = shipMaintenanceCost(
-      ShipClass.Battleship, CombatState.Undamaged, FleetStatus.Active
+      ShipClass.Battleship, CombatState.Nominal, FleetStatus.Active
     )
     let reserveCost = shipMaintenanceCost(
-      ShipClass.Battleship, CombatState.Undamaged, FleetStatus.Reserve
+      ShipClass.Battleship, CombatState.Nominal, FleetStatus.Reserve
     )
     let ratio = float(reserveCost) / float(activeCost)
     check ratio >= 0.4 and ratio <= 0.6
 
   test "mothballed fleet has minimal maintenance":
     let activeCost = shipMaintenanceCost(
-      ShipClass.Cruiser, CombatState.Undamaged, FleetStatus.Active
+      ShipClass.Cruiser, CombatState.Nominal, FleetStatus.Active
     )
     let mothballedCost = shipMaintenanceCost(
-      ShipClass.Cruiser, CombatState.Undamaged, FleetStatus.Mothballed
+      ShipClass.Cruiser, CombatState.Nominal, FleetStatus.Mothballed
     )
     check mothballedCost < activeCost
 
   test "mothballed is ~10% of active":
     let activeCost = shipMaintenanceCost(
-      ShipClass.Dreadnought, CombatState.Undamaged, FleetStatus.Active
+      ShipClass.Dreadnought, CombatState.Nominal, FleetStatus.Active
     )
     let mothballedCost = shipMaintenanceCost(
-      ShipClass.Dreadnought, CombatState.Undamaged, FleetStatus.Mothballed
+      ShipClass.Dreadnought, CombatState.Nominal, FleetStatus.Mothballed
     )
     let ratio = float(mothballedCost) / float(activeCost)
     check ratio >= 0.05 and ratio <= 0.15
@@ -120,30 +120,30 @@ suite "Maintenance: Fleet Total Calculation":
     check calculateFleetMaintenance(ships) == 0
 
   test "single ship fleet":
-    let ships = @[(ShipClass.Destroyer, CombatState.Undamaged)]
+    let ships = @[(ShipClass.Destroyer, CombatState.Nominal)]
     let total = calculateFleetMaintenance(ships)
-    let expected = shipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged)
+    let expected = shipMaintenanceCost(ShipClass.Destroyer, CombatState.Nominal)
     check total == expected
 
   test "multiple ships sum correctly":
     let ships = @[
-      (ShipClass.Destroyer, CombatState.Undamaged),
-      (ShipClass.Destroyer, CombatState.Undamaged),
-      (ShipClass.Cruiser, CombatState.Undamaged)
+      (ShipClass.Destroyer, CombatState.Nominal),
+      (ShipClass.Destroyer, CombatState.Nominal),
+      (ShipClass.Cruiser, CombatState.Nominal)
     ]
     let total = calculateFleetMaintenance(ships)
     let expected =
-      shipMaintenanceCost(ShipClass.Destroyer, CombatState.Undamaged) * 2 +
-      shipMaintenanceCost(ShipClass.Cruiser, CombatState.Undamaged)
+      shipMaintenanceCost(ShipClass.Destroyer, CombatState.Nominal) * 2 +
+      shipMaintenanceCost(ShipClass.Cruiser, CombatState.Nominal)
     check total == expected
 
   test "mixed damage states":
     let ships = @[
-      (ShipClass.Battleship, CombatState.Undamaged),
+      (ShipClass.Battleship, CombatState.Nominal),
       (ShipClass.Battleship, CombatState.Crippled)
     ]
     let total = calculateFleetMaintenance(ships)
-    let undamaged = shipMaintenanceCost(ShipClass.Battleship, CombatState.Undamaged)
+    let undamaged = shipMaintenanceCost(ShipClass.Battleship, CombatState.Nominal)
     let crippled = shipMaintenanceCost(ShipClass.Battleship, CombatState.Crippled)
     check total == undamaged + crippled
 

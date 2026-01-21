@@ -266,7 +266,7 @@ type
     of ShipDamaged:
       damagedSquadronId*: Option[string] # Squadron that took damage
       damageAmount*: Option[int] # Damage taken
-      shipNewState*: Option[string] # "Crippled" or "Undamaged"
+      shipNewState*: Option[string] # "Crippled" or "Nominal"
       remainingDs*: Option[int] # Remaining defense strength
     of ShipDestroyed:
       destroyedSquadronId*: Option[string] # Squadron destroyed

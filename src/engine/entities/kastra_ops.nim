@@ -64,7 +64,7 @@ proc newKastra*(
     colonyId: colonyId,
     commissionedTurn: commissionedTurn,
     stats: stats,
-    state: CombatState.Undamaged,
+    state: CombatState.Nominal,
   )
 
 proc createKastra*(

@@ -15,8 +15,8 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
   ## Per docs/specs/07-combat.md Section 7.2.1 and 7.2.2
   ##
   ## **Hit Application Rules:**
-  ## 1. Must cripple all undamaged ships before destroying any
-  ## 2. Fighters skip Crippled state (go directly Undamaged → Destroyed)
+  ## 1. Must cripple all nominal ships before destroying any
+  ## 2. Fighters skip Crippled state (go directly Nominal → Destroyed)
   ## 3. Critical Hits (natural 9) bypass rule #1 - can destroy crippled ships
   ##    that were ALREADY crippled (not ships crippled this round)
   ## 4. Excess hits are lost
@@ -32,15 +32,15 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
 
   # Snapshot ship states BEFORE Phase 1 modifies anything
   # This determines Phase 2 eligibility and valid targets
-  var hadUndamagedAtStart = false
+  var hadNominalAtStart = false
   var wasCrippledAtStart: HashSet[ShipId]
   
   for shipId in targetShips:
     let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
-      if ship.state == CombatState.Undamaged:
-        hadUndamagedAtStart = true
+      if ship.state == CombatState.Nominal:
+        hadNominalAtStart = true
       elif ship.state == CombatState.Crippled:
         wasCrippledAtStart.incl(shipId)
 
@@ -56,7 +56,7 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
     var ship = shipOpt.get()
 
     # Skip if not undamaged
-    if ship.state != CombatState.Undamaged:
+    if ship.state != CombatState.Nominal:
       continue
 
     # Calculate hits needed to cripple this ship
@@ -82,7 +82,7 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
   
   if remainingHits > 0:
     # Determine which ships are valid Phase 2 targets
-    let canDestroyAnyCrippled = not hadUndamagedAtStart
+    let canDestroyAnyCrippled = not hadNominalAtStart
     let canDestroyOriginallyCrippled = isCriticalHit
 
     if canDestroyAnyCrippled or canDestroyOriginallyCrippled:
@@ -102,7 +102,7 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
 
         # For critical hits with undamaged ships at start:
         # Only destroy ships that were ALREADY crippled, not newly crippled
-        if hadUndamagedAtStart and isCriticalHit:
+        if hadNominalAtStart and isCriticalHit:
           if shipId notin wasCrippledAtStart:
             continue  # Skip ships we just crippled in Phase 1
 
@@ -121,14 +121,14 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
 ## - docs/specs/07-combat.md Section 7.2.1 - Fighter Exception
 ##
 ## **Hit Application Order:**
-## 1. Target all undamaged ships first
+  ## 1. Target all nominal ships first
 ## 2. Apply hits based on DS (hits needed = current DS)
 ## 3. Only after ALL undamaged are crippled, start destroying crippled ships
 ## 4. Excess hits are lost (no carry-over)
 ##
 ## **Fighter Special Rule:**
 ## - Fighters have no Crippled state
-## - Undamaged → Destroyed (instant destruction)
+## - Nominal → Destroyed (instant destruction)
 ## - Makes fighters fragile but high-value targets
 ##
 ## **Crippled Ship DS:**

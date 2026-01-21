@@ -26,7 +26,7 @@ proc newNeoria*(
     neoriaClass: neoriaClass,
     colonyId: colonyId,
     commissionedTurn: commissionedTurn,
-    state: CombatState.Undamaged,
+    state: CombatState.Nominal,
     baseDocks: baseDocks,
     effectiveDocks: effectiveDocks,
     constructionQueue: @[],

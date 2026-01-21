@@ -38,11 +38,11 @@ gameConfig = config_engine.loadGameConfig()
 
 proc createTestShip(
     state: GameState, owner: HouseId, fleetId: FleetId, 
-    shipClass: ShipClass, combatState: CombatState = CombatState.Undamaged
+    shipClass: ShipClass, combatState: CombatState = CombatState.Nominal
 ): Ship =
   ## Create a test ship with specified state
   var ship = state.createShip(owner, fleetId, shipClass)
-  if combatState != CombatState.Undamaged:
+  if combatState != CombatState.Nominal:
     ship.state = combatState
     state.updateShip(ship.id, ship)
   return ship
@@ -53,7 +53,7 @@ proc createTestShip(
 
 suite "Combat: Ship Status (Section 7.2.1)":
 
-  test "undamaged ships have full AS and DS":
+  test "nominal ships have full AS and DS":
     let game = newGame()
     var owner: HouseId
     var fleetId: FleetId
@@ -65,7 +65,7 @@ suite "Combat: Ship Status (Section 7.2.1)":
       break
     
     let ship = createTestShip(game, owner, fleetId, ShipClass.Destroyer, 
-                               CombatState.Undamaged)
+                               CombatState.Nominal)
     
     let baseAS = ship.stats.attackStrength
     let baseDS = ship.stats.defenseStrength
@@ -121,7 +121,7 @@ suite "Combat: Ship Status (Section 7.2.1)":
 
 suite "Combat: Hit Application Rules (Section 7.2.2)":
 
-  test "must cripple all undamaged before destroying crippled":
+  test "must cripple all nominal before destroying crippled":
     let game = newGame()
     var owner: HouseId
     var fleetId: FleetId
@@ -133,29 +133,29 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     let fleet = game.createFleet(owner, SystemId(1))
     fleetId = fleet.id
     
-    # Add ships: 2 undamaged destroyers, 1 crippled destroyer
+    # Add ships: 2 nominal destroyers, 1 crippled destroyer
     let dd1 = createTestShip(game, owner, fleetId, ShipClass.Destroyer, 
-                              CombatState.Undamaged)
+                              CombatState.Nominal)
     let dd2 = createTestShip(game, owner, fleetId, ShipClass.Destroyer,
-                              CombatState.Undamaged)
+                              CombatState.Nominal)
     let dd3 = createTestShip(game, owner, fleetId, ShipClass.Destroyer,
                               CombatState.Crippled)
     
     # Get DS of destroyers (need enough to cripple one but not all)
     let destroyerDS = dd1.stats.defenseStrength
     
-    # Apply enough hits to cripple one undamaged ship but not enough to 
+    # Apply enough hits to cripple one nominal ship but not enough to 
     # destroy any crippled ships (should be blocked by protection rule)
     let shipIds = @[dd1.id, dd2.id, dd3.id]
     applyHits(game, shipIds, destroyerDS, isCriticalHit = false)
     
-    # dd1 should be crippled, dd2 undamaged, dd3 still crippled (not destroyed)
+    # dd1 should be crippled, dd2 nominal, dd3 still crippled (not destroyed)
     let dd1After = game.ship(dd1.id).get()
     let dd2After = game.ship(dd2.id).get()
     let dd3After = game.ship(dd3.id).get()
     
     check dd1After.state == CombatState.Crippled
-    check dd2After.state == CombatState.Undamaged
+    check dd2After.state == CombatState.Nominal
     check dd3After.state == CombatState.Crippled  # Protected by undamaged ships
 
   test "can destroy crippled after all undamaged crippled":
@@ -167,7 +167,7 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     
     let fleet = game.createFleet(owner, SystemId(1))
     
-    # All ships crippled - no undamaged protection
+    # All ships crippled - no nominal protection
     let dd1 = createTestShip(game, owner, fleet.id, ShipClass.Destroyer,
                               CombatState.Crippled)
     let dd2 = createTestShip(game, owner, fleet.id, ShipClass.Destroyer,
@@ -197,9 +197,9 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     
     let fleet = game.createFleet(owner, SystemId(1))
     
-    # Mix of undamaged and crippled
+    # Mix of nominal and crippled
     let dd1 = createTestShip(game, owner, fleet.id, ShipClass.Destroyer,
-                              CombatState.Undamaged)
+                               CombatState.Nominal)
     let dd2 = createTestShip(game, owner, fleet.id, ShipClass.Destroyer,
                               CombatState.Crippled)
     
@@ -214,7 +214,7 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     let dd1After = game.ship(dd1.id).get()
     let dd2After = game.ship(dd2.id).get()
     
-    # Undamaged becomes crippled, crippled becomes destroyed (critical hit)
+    # Nominal becomes crippled, crippled becomes destroyed (critical hit)
     check dd1After.state == CombatState.Crippled
     check dd2After.state == CombatState.Destroyed
 
@@ -229,7 +229,7 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     
     # Single ship
     let dd1 = createTestShip(game, owner, fleet.id, ShipClass.Destroyer,
-                              CombatState.Undamaged)
+                               CombatState.Nominal)
     
     let destroyerDS = dd1.stats.defenseStrength
     
@@ -264,7 +264,7 @@ suite "Combat: Fighter Exception (Section 7.2.1)":
     
     # Create fighter in the test fleet
     let fighter = createTestShip(game, owner, fleet.id, ShipClass.Fighter,
-                                  CombatState.Undamaged)
+                                   CombatState.Nominal)
     
     let fighterDS = fighter.stats.defenseStrength
     check fighterDS > 0  # Sanity check - fighter should have DS
@@ -588,7 +588,7 @@ suite "Combat: Starbase Combat (Section 7.6.3)":
     if kastras.len > 0:
       let kastra = kastras[0]
       let expectedAS = kastra.stats.attackStrength
-      check kastra.state == CombatState.Undamaged
+      check kastra.state == CombatState.Nominal
       check calculateKastraAS(game, kastra) == expectedAS
     else:
       # No starbase at start - that's okay, test passes vacuously
@@ -647,7 +647,7 @@ suite "Combat: Starbase Combat (Section 7.6.3)":
     
     let fleet = game.createFleet(owner, colonySystemId)
     discard createTestShip(game, owner, fleet.id, ShipClass.Destroyer,
-                            CombatState.Undamaged)
+                             CombatState.Nominal)
     
     let force = HouseCombatForce(
       houseId: owner,
@@ -693,7 +693,7 @@ suite "Combat: Resolution Integration":
     
     # Add multiple ships
     let dd1 = createTestShip(game, owner, fleet.id, ShipClass.Destroyer,
-                              CombatState.Undamaged)
+                               CombatState.Nominal)
     let dd2 = createTestShip(game, owner, fleet.id, ShipClass.Destroyer,
                               CombatState.Crippled)
     
@@ -715,9 +715,9 @@ suite "Combat: Resolution Integration":
     let fleet2 = game.createFleet(owner, SystemId(1))
     
     discard createTestShip(game, owner, fleet1.id, ShipClass.Destroyer,
-                            CombatState.Undamaged)
+                             CombatState.Nominal)
     discard createTestShip(game, owner, fleet2.id, ShipClass.Destroyer,
-                            CombatState.Undamaged)
+                             CombatState.Nominal)
     
     let force = HouseCombatForce(
       houseId: owner,

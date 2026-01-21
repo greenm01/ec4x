@@ -58,7 +58,7 @@ type
     fleetId*: FleetId  # Direct fleet assignment (0 if unassigned/colony-based)
     shipClass*: ShipClass
     stats*: ShipStats
-    state*: CombatState  # Combat damage state (Undamaged, Crippled, Destroyed)
+    state*: CombatState  # Combat damage state (Nominal, Crippled, Destroyed)
     cargo*: Option[ShipCargo]
     # Fighter-specific fields:
     assignedToCarrier*: Option[ShipId]  # If this fighter is embarked on a carrier
@@ -91,4 +91,3 @@ const ShipClassRoles*: array[ShipClass, ShipRole] = [
   Fighter: ShipRole.Fighter,
   PlanetBreaker: ShipRole.SpecialWeapon,
 ]
-

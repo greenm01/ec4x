@@ -4,15 +4,15 @@
 ## Used for ship lists, fleet lists, and other tabular data.
 ##
 ## Example output:
-##   Name         Class        HP    Attack  Defense
+##   Name         Class        State Attack  Defense
 ##   ─────────────────────────────────────────────────
-##   Alpha-1      Destroyer    100%  45      38
-##   Alpha-2      Destroyer    100%  45      38
-## > Beta-1       Frigate       82%  28      22    <- selected
+##   Alpha-1      Destroyer    Nominal 45     38
+##   Alpha-2      Destroyer    Nominal 45     38
+## > Beta-1       Frigate      Crippled 28   22    <- selected
 ##
 ## Reference: ec-style-layout.md Fleet Detail View
 
-import std/strutils
+import std/[strutils, options]
 import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
@@ -31,8 +31,10 @@ type
     align*: Alignment     ## Content alignment
     minWidth*: int        ## Minimum width if auto
 
-  TableRow* = seq[string]
+  TableRow* = object
     ## A single row of cell values.
+    cells*: seq[string]
+    cellStyles*: seq[Option[CellStyle]]
 
   Table* = object
     ## Table widget configuration.
@@ -96,6 +98,19 @@ proc rows*(t: Table, rows: openArray[TableRow]): Table =
 proc addRow*(t: var Table, row: TableRow) =
   ## Add a row to the table.
   t.rows.add(row)
+
+proc addRow*(t: var Table, cells: openArray[string]) =
+  ## Add a row from cell values.
+  t.rows.add(TableRow(cells: @cells, cellStyles: @[]))
+
+proc addRow*(t: var Table, cells: openArray[string],
+             style: CellStyle, styleColumn: int) =
+  ## Add a row with a custom style for one column.
+  var cellStyles: seq[Option[CellStyle]] = @[]
+  cellStyles.setLen(cells.len)
+  if styleColumn >= 0 and styleColumn < cellStyles.len:
+    cellStyles[styleColumn] = some(style)
+  t.rows.add(TableRow(cells: @cells, cellStyles: cellStyles))
 
 proc selectedIdx*(t: Table, idx: int): Table =
   ## Set selected row index (-1 for no selection).
@@ -235,7 +250,7 @@ proc renderToStrings*(t: Table, width: int = 60): seq[string] =
       else:
         rowLine.add("  ")
     
-    for colIdx, cell in row:
+    for colIdx, cell in row.cells:
       if colIdx >= t.columns.len:
         break
       if colIdx > 0:
@@ -320,16 +335,21 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
       x += 2
     
     # Row cells
-    for colIdx, cell in row:
+    for colIdx, cell in row.cells:
       if colIdx >= t.columns.len or x >= area.right:
         break
+      let cellStyle =
+        if colIdx < row.cellStyles.len and row.cellStyles[colIdx].isSome:
+          row.cellStyles[colIdx].get()
+        else:
+          style
       if colIdx > 0:
-        discard buf.setString(x, y, " ", style)
+        discard buf.setString(x, y, " ", cellStyle)
         x += 1
       
       let col = t.columns[colIdx]
       let aligned = alignText(cell, colWidths[colIdx], col.align)
-      discard buf.setString(x, y, aligned, style)
+      discard buf.setString(x, y, aligned, cellStyle)
       x += colWidths[colIdx]
     
     y.inc
@@ -343,7 +363,7 @@ proc shipListTable*(): Table =
   table([
     tableColumn("Name", width = 12, align = Alignment.Left),
     tableColumn("Class", width = 12, align = Alignment.Left),
-    tableColumn("HP", width = 5, align = Alignment.Right),
+    tableColumn("State", width = 9, align = Alignment.Left),
     tableColumn("Atk", width = 5, align = Alignment.Right),
     tableColumn("Def", width = 5, align = Alignment.Right)
   ])

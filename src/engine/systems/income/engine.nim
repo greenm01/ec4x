@@ -282,7 +282,7 @@ proc calculateAndDeductMaintenanceUpkeep*(
             let ship = shipOpt.get()
             if ship.state != CombatState.Crippled:
               let maintenanceCost =
-                shipMaintenanceCost(ship.shipClass, CombatState.Undamaged, fleet.status)
+                shipMaintenanceCost(ship.shipClass, CombatState.Nominal, fleet.status)
               activeShips.add((ship.id, ship.shipClass, maintenanceCost))
 
       # Sort by ShipId (oldest first - lower IDs = older ships)

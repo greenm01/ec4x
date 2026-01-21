@@ -396,7 +396,7 @@ proc countStarbasesAtColony*(state: GameState, colonyId: ColonyId): int32 =
 
 proc countOperationalNeoriasAtColony*(state: GameState, colonyId: ColonyId): int32 =
   ## Count operational (non-crippled) production facilities at a colony
-  ## Returns: number of Neorias in Undamaged state
+  ## Returns: number of Neorias in Nominal state
   result = 0
   for neoria in state.neoriasAtColony(colonyId):
     if neoria.state != CombatState.Crippled:
@@ -404,7 +404,7 @@ proc countOperationalNeoriasAtColony*(state: GameState, colonyId: ColonyId): int
 
 proc countOperationalKastrasAtColony*(state: GameState, colonyId: ColonyId): int32 =
   ## Count operational (non-crippled) defensive facilities at a colony
-  ## Returns: number of Kastras in Undamaged state
+  ## Returns: number of Kastras in Nominal state
   result = 0
   for kastra in state.kastrasAtColony(colonyId):
     if kastra.state != CombatState.Crippled:

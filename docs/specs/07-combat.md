@@ -76,7 +76,7 @@ Every engagement follows consistent rules governing combat resolution, damage ap
 
 Ships exist in three combat states determining effectiveness:
 
-**Undamaged** (Full Effectiveness)
+**Nominal** (Full Effectiveness)
 - Ship operates at full Attack Strength (AS) and Defense Strength (DS)
 - Contributes full combat power to task force
 - Can execute all missions
@@ -97,7 +97,7 @@ Ships exist in three combat states determining effectiveness:
 **Fighter Exception (Glass Cannons):**
 
 Fighter ships skip the Crippled state entirely:
-- Undamaged (100% AS/DS) → Destroyed
+- Nominal (100% AS/DS) → Destroyed
 - Represents their fragility in combat
 - Cannot be repaired once damaged
 - Must be replaced through production
@@ -112,7 +112,7 @@ All full-strength ships must be crippled before any crippled ships can be destro
 
 Example:
 ```
-Task force: 3 Battleships (Undamaged), 2 Cruisers (Crippled)
+Task force: 3 Battleships (Nominal), 2 Cruisers (Crippled)
 Receives: 120 hits
 
 Hit application:
@@ -916,7 +916,7 @@ Excess bombardment hits (after all batteries destroyed) cascade through three ta
 Large planetary spaceport facilities are visible and targetable from orbit:
 - Each spaceport has Defense Strength (DS) based on facility class
 - Bombardment follows standard damage model:
-  - Undamaged → Crippled (requires DS hits)
+  - Nominal → Crippled (requires DS hits)
   - Crippled → Destroyed (requires 50% DS hits)
 - Spaceports are hardened targets requiring sustained bombardment
 - Hits consumed destroying spaceports do not carry over to next phase
@@ -926,7 +926,7 @@ Large planetary spaceport facilities are visible and targetable from orbit:
 Remaining hits target dispersed ground forces (armies and marines stationed at colony):
 - Ground forces are mobile and dispersed, harder to target precisely from orbit
 - Bombardment follows standard damage model:
-  - Undamaged → Crippled (requires unit DS hits)
+  - Nominal → Crippled (requires unit DS hits)
   - Crippled → Destroyed (requires 50% unit DS hits)
 - Must cripple all undamaged units before destroying crippled units
 - Weakens garrison before invasion attempts

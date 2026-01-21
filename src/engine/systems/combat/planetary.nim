@@ -147,7 +147,7 @@ proc applyBombardmentExcessHits*(
       let spaceportDS = gameConfig.facilities.facilities[facilityClass].defenseStrength
 
       var updatedNeoria = neoria
-      if neoria.state == CombatState.Undamaged:
+      if neoria.state == CombatState.Nominal:
         # Need DS hits to cripple
         if remainingHits >= spaceportDS:
           updatedNeoria.state = CombatState.Crippled
@@ -173,7 +173,7 @@ proc applyBombardmentExcessHits*(
       if unit.stats.unitType notin [GroundClass.Army, GroundClass.Marine]:
         continue
 
-      if unit.state != CombatState.Undamaged:
+      if unit.state != CombatState.Nominal:
         continue
 
       let hitsNeeded =
@@ -189,17 +189,17 @@ proc applyBombardmentExcessHits*(
         state.updateGroundUnit(unit.id, updatedUnit)
 
     # Second pass: Destroy crippled ground forces (only if no undamaged remain)
-    let hasUndamagedGroundForces =
+    let hasNominalGroundForces =
       block:
         var found = false
         for unit in state.groundUnitsAtColony(colonyId):
           if unit.stats.unitType in [GroundClass.Army, GroundClass.Marine] and
-             unit.state == CombatState.Undamaged:
+             unit.state == CombatState.Nominal:
             found = true
             break
         found
 
-    if not hasUndamagedGroundForces and remainingHits > 0:
+    if not hasNominalGroundForces and remainingHits > 0:
       for unit in state.groundUnitsAtColony(colonyId):
         if remainingHits <= 0:
           break
@@ -261,7 +261,7 @@ proc applyHitsToBatteries*(
     if unit.stats.unitType != GroundClass.GroundBattery:
       continue
 
-    if unit.state != CombatState.Undamaged:
+    if unit.state != CombatState.Nominal:
       continue
 
     let hitsNeeded = gameConfig.groundUnits.units[GroundClass.GroundBattery].defenseStrength
@@ -272,17 +272,17 @@ proc applyHitsToBatteries*(
       state.updateGroundUnit(unit.id, updatedUnit)
 
   # Phase 2: Destroy crippled batteries
-  let hasUndamaged =
+  let hasNominal =
     block:
       var found = false
       for unit in state.groundUnitsAtColony(colonyId):
         if unit.stats.unitType == GroundClass.GroundBattery and
-           unit.state == CombatState.Undamaged:
+           unit.state == CombatState.Nominal:
           found = true
           break
       found
 
-  if not hasUndamaged and remainingHits > 0:
+  if not hasNominal and remainingHits > 0:
     for unit in state.groundUnitsAtColony(colonyId):
       if remainingHits <= 0:
         break
@@ -366,7 +366,7 @@ proc propagateTransportDamageToMarines*(
       continue
 
     # Check if transport state changed during combat
-    let oldState = oldShipStates.getOrDefault(shipId, CombatState.Undamaged)
+    let oldState = oldShipStates.getOrDefault(shipId, CombatState.Nominal)
     if oldState == ship.state:
       continue # No damage, skip
 
@@ -381,7 +381,7 @@ proc propagateTransportDamageToMarines*(
       if ship.state == CombatState.Destroyed:
         # Transport destroyed → all marines destroyed
         updatedUnit.state = CombatState.Destroyed
-      elif ship.state == CombatState.Crippled and unit.state == CombatState.Undamaged:
+      elif ship.state == CombatState.Crippled and unit.state == CombatState.Nominal:
         # Transport crippled → undamaged marines become crippled
         # (Already crippled marines stay crippled, not destroyed)
         updatedUnit.state = CombatState.Crippled
@@ -461,7 +461,7 @@ proc applyHitsToGroundUnits*(
     if unit.stats.unitType notin [GroundClass.Army, GroundClass.Marine]:
       continue
 
-    if unit.state != CombatState.Undamaged:
+    if unit.state != CombatState.Nominal:
       continue
 
     let hitsNeeded =
@@ -476,7 +476,7 @@ proc applyHitsToGroundUnits*(
       state.updateGroundUnit(groundUnitId, unit)
 
   # Phase 2: Destroy crippled units (only if no undamaged remain)
-  let hasUndamaged =
+  let hasNominal =
     block:
       var found = false
       for groundUnitId in groundUnitIds:
@@ -484,12 +484,12 @@ proc applyHitsToGroundUnits*(
         if unitOpt.isSome:
           let unit = unitOpt.get()
           if unit.stats.unitType in [GroundClass.Army, GroundClass.Marine] and
-             unit.state == CombatState.Undamaged:
+             unit.state == CombatState.Nominal:
             found = true
             break
       found
 
-  if not hasUndamaged and remainingHits > 0:
+  if not hasNominal and remainingHits > 0:
     for groundUnitId in groundUnitIds:
       if remainingHits <= 0:
         break

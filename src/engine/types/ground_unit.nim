@@ -33,7 +33,7 @@ type
     id*: GroundUnitId
     houseId*: HouseId
     stats*: GroundUnitStats
-    state*: CombatState  # Combat damage state (Undamaged, Crippled, Destroyed)
+    state*: CombatState  # Combat damage state (Nominal, Crippled, Destroyed)
     garrison*: GroundUnitGarrison
 
   GroundUnits* = object

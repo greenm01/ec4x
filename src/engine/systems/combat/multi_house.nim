@@ -471,7 +471,7 @@ proc calculateCasualties(
         continue
 
       let ship = shipOpt.get()
-      let initialState = initialStates.getOrDefault(shipId, CombatState.Undamaged)
+      let initialState = initialStates.getOrDefault(shipId, CombatState.Nominal)
 
       # Get ship class name as string
       let className = $ship.shipClass
@@ -483,7 +483,7 @@ proc calculateCasualties(
       # Track state changes (destroyed or newly crippled)
       if ship.state == CombatState.Destroyed and initialState != CombatState.Destroyed:
         lossesByClass[className].destroyed += 1
-      elif ship.state == CombatState.Crippled and initialState == CombatState.Undamaged:
+      elif ship.state == CombatState.Crippled and initialState == CombatState.Nominal:
         lossesByClass[className].crippled += 1
 
   # Convert to seq of ShipLossesByClass

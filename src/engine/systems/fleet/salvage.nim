@@ -257,7 +257,7 @@ proc repairShip*(state: GameState, fleetId: FleetId, shipId: ShipId): bool =
   state.updateHouse(fleet.houseId, house)
 
   # Repair ship
-  ship.state = CombatState.Undamaged
+  ship.state = CombatState.Nominal
   state.updateShip(shipId, ship)
 
   return true
@@ -310,7 +310,7 @@ proc repairStarbase*(
   state.updateHouse(colony.owner, house)
 
   # Repair kastra (starbase)
-  kastra.state = CombatState.Undamaged
+  kastra.state = CombatState.Nominal
   state.updateKastra(kastra.id, kastra)
 
   return true

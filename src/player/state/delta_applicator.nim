@@ -390,7 +390,8 @@ proc parseShipFromEntry(entry: KdlNode): Ship =
       ship.shipClass = parsedOpt.get()
   if entry.props.hasKey("state"):
     let parsedOpt = parseEnumPureFromStr[CombatState](
-      entry.props["state"].getString())
+      entry.props["state"].getString()
+    )
     if parsedOpt.isSome:
       ship.state = parsedOpt.get()
   if entry.props.hasKey("attack"):
@@ -458,7 +459,8 @@ proc parseGroundUnitFromEntry(entry: KdlNode): GroundUnit =
       unit.stats.defenseStrength = valOpt.get()
   if entry.props.hasKey("state"):
     let parsedOpt = parseEnumPureFromStr[CombatState](
-      entry.props["state"].getString())
+      entry.props["state"].getString()
+    )
     if parsedOpt.isSome:
       unit.state = parsedOpt.get()
   if entry.props.hasKey("colony"):

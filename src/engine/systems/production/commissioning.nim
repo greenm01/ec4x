@@ -881,7 +881,7 @@ proc commissionRepairedShips*(
   ##
   ## **Process:**
   ## 1. Check house treasury for repair cost
-  ## 2. If sufficient: Deduct cost, restore ship to Undamaged state
+  ## 2. If sufficient: Deduct cost, restore ship to Nominal state
   ## 3. If insufficient: Mark repair Stalled (ship stays crippled in queue)
   ## 4. Group commissioned ships by colony and add to fleets
   ## 5. Generate ShipCommissioned or RepairStalled events
@@ -936,17 +936,17 @@ proc commissionRepairedShips*(
       of RepairTargetType.Starbase:
         if repair.kastraId.isSome:
           var kastra = state.kastra(repair.kastraId.get()).get()
-          kastra.state = CombatState.Undamaged
+          kastra.state = CombatState.Nominal
           state.updateKastra(repair.kastraId.get(), kastra)
       of RepairTargetType.GroundUnit:
         if repair.groundUnitId.isSome:
           var unit = state.groundUnit(repair.groundUnitId.get()).get()
-          unit.state = CombatState.Undamaged
+          unit.state = CombatState.Nominal
           state.updateGroundUnit(repair.groundUnitId.get(), unit)
       of RepairTargetType.Facility:
         if repair.neoriaId.isSome:
           var neoria = state.neoria(repair.neoriaId.get()).get()
-          neoria.state = CombatState.Undamaged
+          neoria.state = CombatState.Nominal
           state.updateNeoria(repair.neoriaId.get(), neoria)
       else:
         discard
@@ -1028,7 +1028,7 @@ proc commissionRepairedShips*(
     )
     
     # Restore ship to operational state
-    ship.state = CombatState.Undamaged
+    ship.state = CombatState.Nominal
     state.updateShip(shipId, ship)
     
     # Generate RepairCompleted event

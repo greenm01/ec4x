@@ -406,7 +406,7 @@ proc hasOperationalSpaceport(state: GameState, colonyId: ColonyId): bool =
     if neoriaOpt.isSome:
       let neoria = neoriaOpt.get()
       if neoria.neoriaClass == NeoriaClass.Spaceport and
-          neoria.state == CombatState.Undamaged:
+          neoria.state == CombatState.Nominal:
         return true
   return false
 

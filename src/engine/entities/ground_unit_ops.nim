@@ -23,7 +23,7 @@ proc newGroundUnit*(
       attackStrength: 5,
       defenseStrength: 5,
     ),
-    state: CombatState.Undamaged,
+    state: CombatState.Nominal,
     garrison: GroundUnitGarrison(locationType: GroundUnitLocation.OnColony, colonyId: colonyId),
   )
 

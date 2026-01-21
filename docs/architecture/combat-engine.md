@@ -93,7 +93,7 @@ Test Analysis / JSON Export (Boundary)
 #### 6. Squadron Damage System
 **File:** `src/engine/combat_damage.nim`
 - Apply damage to squadrons
-- State transitions: Undamaged → Crippled → Destroyed
+- State transitions: Nominal → Crippled → Destroyed
 - Destruction protection (can't skip states in same round)
 - Critical hit bypass
 - AS reduction when crippled (÷2)
