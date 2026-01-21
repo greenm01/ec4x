@@ -28,6 +28,7 @@ const
   ActionQuit* = "quit"
   ActionQuitConfirm* = "quitConfirm"
   ActionQuitCancel* = "quitCancel"
+  ActionQuitToggle* = "quitToggle"
   ActionNavigateMode* = "navigateMode"
   ActionSwitchView* = "switchView"       ## Switch to primary view [1-9]
   ActionBreadcrumbBack* = "breadcrumbBack"  ## Navigate up breadcrumb
@@ -131,6 +132,10 @@ proc actionQuitConfirm*(): Proposal =
 proc actionQuitCancel*(): Proposal =
   ## Cancel quit action
   gameActionProposal(ActionQuitCancel, "")
+
+proc actionQuitToggle*(): Proposal =
+  ## Toggle quit confirmation selection
+  gameActionProposal(ActionQuitToggle, "")
 
 proc actionSwitchMode*(mode: ViewMode): Proposal =
   ## Switch to a different view mode (legacy)
@@ -963,6 +968,3 @@ type
       KeyCtrlE  # Turn submission
       KeyCtrlQ
       KeyCtrlL
-
-# NOTE: mapKeyToAction has been moved to bindings.nim where it uses the
-# binding registry as the single source of truth for key mappings.

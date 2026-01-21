@@ -872,6 +872,10 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   ## Special modes (quit confirmation, lobby text input) are handled separately
   ## since they don't fit the registry pattern well.
 
+  # Ctrl+Q always quits (global)
+  if key == KeyCode.KeyCtrlQ:
+    return some(actionQuit())
+
   # Quit confirmation modal - takes precedence over everything
   if model.quitConfirmationActive:
     case key
@@ -879,12 +883,16 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       return some(actionQuitConfirm())
     of KeyCode.KeyN, KeyCode.KeyEscape:
       return some(actionQuitCancel())
+    of KeyCode.KeyLeft, KeyCode.KeyRight:
+      return some(actionQuitToggle())
+    of KeyCode.KeyH, KeyCode.KeyL:
+      return some(actionQuitToggle())
+    of KeyCode.KeyEnter:
+      if model.quitConfirmationChoice == QuitConfirmationChoice.QuitExit:
+        return some(actionQuitConfirm())
+      return some(actionQuitCancel())
     else:
       return none(Proposal)
-
-  # Ctrl+Q always quits (global)
-  if key == KeyCode.KeyCtrlQ:
-    return some(actionQuit())
 
   # Order entry mode: use registry
   if model.orderEntryActive:

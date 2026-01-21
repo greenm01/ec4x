@@ -15,29 +15,30 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
 
   case event.key
   of Key.Rune:
-    if model.expertModeActive:
-      if event.rune.int >= 0x20:
-        return some(actionExpertInputAppend($event.rune))
-      return none(Proposal)
-    # Entry modal import mode: append characters to nsec buffer
-    if model.appPhase == AppPhase.Lobby and
-        model.entryModal.mode == EntryModalMode.ImportNsec:
-      if event.rune.int >= 0x20:
-        return some(actionEntryImportAppend($event.rune))
-      return none(Proposal)
-    # Entry modal invite code input: append characters
-    if model.appPhase == AppPhase.Lobby and
-        model.entryModal.mode == EntryModalMode.Normal and
-        model.entryModal.focus == EntryModalFocus.InviteCode:
-      if event.rune.int >= 0x20:
-        return some(actionEntryInviteAppend($event.rune))
-      return none(Proposal)
-    # Lobby input mode: append characters to pubkey/name
-    if model.appPhase == AppPhase.Lobby and
-        model.lobbyInputMode != LobbyInputMode.None:
-      if event.rune.int >= 0x20:
-        return some(actionLobbyInputAppend($event.rune))
-      return none(Proposal)
+    if not model.quitConfirmationActive:
+      if model.expertModeActive:
+        if event.rune.int >= 0x20:
+          return some(actionExpertInputAppend($event.rune))
+        return none(Proposal)
+      # Entry modal import mode: append characters to nsec buffer
+      if model.appPhase == AppPhase.Lobby and
+          model.entryModal.mode == EntryModalMode.ImportNsec:
+        if event.rune.int >= 0x20:
+          return some(actionEntryImportAppend($event.rune))
+        return none(Proposal)
+      # Entry modal invite code input: append characters
+      if model.appPhase == AppPhase.Lobby and
+          model.entryModal.mode == EntryModalMode.Normal and
+          model.entryModal.focus == EntryModalFocus.InviteCode:
+        if event.rune.int >= 0x20:
+          return some(actionEntryInviteAppend($event.rune))
+        return none(Proposal)
+      # Lobby input mode: append characters to pubkey/name
+      if model.appPhase == AppPhase.Lobby and
+          model.lobbyInputMode != LobbyInputMode.None:
+        if event.rune.int >= 0x20:
+          return some(actionLobbyInputAppend($event.rune))
+        return none(Proposal)
     let ch = $event.rune
     case ch
     of "1":

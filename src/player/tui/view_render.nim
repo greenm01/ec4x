@@ -175,11 +175,59 @@ proc renderQuitConfirmation*(buf: var CellBuffer, model: TuiModel) =
     currentY += 1
 
   if currentY < inner.bottom:
-    discard buf.setString(
-      messageX, currentY,
-      "[Y] Quit  [N] Stay",
-      modalBgStyle()
-    )
+    let choice = model.quitConfirmationChoice
+    let normalStyle = modalDimStyle()
+    let highlightStyle = selectedStyle()
+    let quitStyle =
+      if choice == QuitConfirmationChoice.QuitExit:
+        highlightStyle
+      else:
+        normalStyle
+    let stayStyle =
+      if choice == QuitConfirmationChoice.QuitStay:
+        highlightStyle
+      else:
+        normalStyle
+    let quitMarkerLeft =
+      if choice == QuitConfirmationChoice.QuitExit:
+        ">"
+      else:
+        " "
+    let quitMarkerRight =
+      if choice == QuitConfirmationChoice.QuitExit:
+        "<"
+      else:
+        " "
+    let stayMarkerLeft =
+      if choice == QuitConfirmationChoice.QuitStay:
+        ">"
+      else:
+        " "
+    let stayMarkerRight =
+      if choice == QuitConfirmationChoice.QuitStay:
+        "<"
+      else:
+        " "
+    let line =
+      "[Y] " & quitMarkerLeft & "Quit" & quitMarkerRight &
+      "  [N] " & stayMarkerLeft & "Stay" & stayMarkerRight
+    let lineX = inner.x + max(0, (inner.width - line.len) div 2)
+    var x = lineX
+    discard buf.setString(x, currentY, "[Y] ", normalStyle)
+    x += 4
+    discard buf.setString(x, currentY, quitMarkerLeft, quitStyle)
+    x += 1
+    discard buf.setString(x, currentY, "Quit", quitStyle)
+    x += 4
+    discard buf.setString(x, currentY, quitMarkerRight, quitStyle)
+    x += 1
+    discard buf.setString(x, currentY, "  [N] ", normalStyle)
+    x += 6
+    discard buf.setString(x, currentY, stayMarkerLeft, stayStyle)
+    x += 1
+    discard buf.setString(x, currentY, "Stay", stayStyle)
+    x += 4
+    discard buf.setString(x, currentY, stayMarkerRight, stayStyle)
 
 proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render list of player's colonies from SAM model

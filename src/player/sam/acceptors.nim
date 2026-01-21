@@ -777,10 +777,17 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionQuitConfirm:
       model.running = false
       model.quitConfirmationActive = false
+      model.quitConfirmationChoice = QuitConfirmationChoice.QuitStay
       model.statusMessage = "Exiting..."
     of ActionQuitCancel:
       model.quitConfirmationActive = false
+      model.quitConfirmationChoice = QuitConfirmationChoice.QuitStay
       model.statusMessage = "Quit cancelled"
+    of ActionQuitToggle:
+      if model.quitConfirmationChoice == QuitConfirmationChoice.QuitStay:
+        model.quitConfirmationChoice = QuitConfirmationChoice.QuitExit
+      else:
+        model.quitConfirmationChoice = QuitConfirmationChoice.QuitStay
     else:
       model.statusMessage = "Action: " & proposal.gameActionType
   of ProposalKind.pkSelection:
@@ -837,6 +844,7 @@ proc quitAcceptor*(model: var TuiModel, proposal: Proposal) =
   if proposal.kind != ProposalKind.pkQuit:
     return
   model.quitConfirmationActive = true
+  model.quitConfirmationChoice = QuitConfirmationChoice.QuitStay
   model.statusMessage = "Quit? (Y/N)"
 
 # ============================================================================

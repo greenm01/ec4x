@@ -256,6 +256,10 @@ type
     Pubkey
     Name
 
+  QuitConfirmationChoice* {.pure.} = enum
+    QuitStay
+    QuitExit
+
   JoinGameInfo* = object
     id*: string
     name*: string
@@ -374,6 +378,7 @@ type
     needsResize*: bool            ## Terminal was resized
     statusMessage*: string        ## Status bar message
     quitConfirmationActive*: bool ## Quit confirmation modal active
+    quitConfirmationChoice*: QuitConfirmationChoice ## Quit confirm selection
 
     # Map export flags (processed by main loop with GameState access)
     exportMapRequested*: bool     ## Export SVG starmap
@@ -516,6 +521,7 @@ proc initTuiModel*(): TuiModel =
     needsResize: false,
     statusMessage: "",
     quitConfirmationActive: false,
+    quitConfirmationChoice: QuitStay,
     playerStateLoaded: false,
     nostrEnabled: false,
     nostrRelayUrl: "",
