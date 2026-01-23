@@ -7,9 +7,6 @@ import ../../daemon/transport/nostr/nip19
 import ../../engine/types/[core, player_state as ps_types]
 import ./delta_applicator
 
-const
-  JoinCacheNode = "join-cache"
-
 proc normalizePubkey*(pubkey: string): Option[string] =
   try:
     some(normalizeNostrPubkey(pubkey))

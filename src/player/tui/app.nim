@@ -529,14 +529,19 @@ proc runTui*(gameId: string = "") =
         poll(100)
         if nostrClient.isConnected():
           logInfo("Nostr", "Connection established after ", $((i+1)*100), "ms")
+          initialModel.nostrStatus = "connected"
           break
       
       if not nostrClient.isConnected():
         logWarn("Nostr", "Connection not established within timeout")
+        initialModel.nostrStatus = "error"
     except CatchableError as e:
       initialModel.nostrLastError = e.msg
       initialModel.nostrStatus = "error"
       initialModel.nostrEnabled = false
+  
+  # Sync initial nostr status to entry modal
+  initialModel.entryModal.nostrStatus = initialModel.nostrStatus
 
   # Set render function (closure captures buf and gameState)
   sam.setRender(
@@ -686,6 +691,9 @@ proc runTui*(gameId: string = "") =
       poll(0)
 
     processNostr()
+    
+    # Sync nostr status to entry modal for display
+    sam.model.entryModal.nostrStatus = sam.model.nostrStatus
 
     # Read input with timeout (non-blocking to allow async processing)
     let inputByte = tty.readByteTimeout(50)  # 50ms timeout

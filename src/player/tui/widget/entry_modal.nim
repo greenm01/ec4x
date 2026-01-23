@@ -100,6 +100,7 @@ type
     adminSelectedIdx*: int         ## Selected item in Admin menu
     managedGamesCount*: int        ## Number of games this admin manages
     editingRelay*: bool            ## Whether relay URL is being edited
+    nostrStatus*: string           ## Nostr connection status
     # Game creation state
     createPlayerCount*: int        ## Number of players (2-8)
     createField*: CreateGameField  ## Currently selected field
@@ -123,6 +124,7 @@ proc newEntryModalState*(): EntryModalState =
     adminSelectedIdx: 0,
     managedGamesCount: 0,
     editingRelay: false,
+    nostrStatus: "idle",
     createPlayerCount: 4,  # Default 4 players
     createField: CreateGameField.GameName
   )
@@ -677,7 +679,7 @@ proc renderAdminSection(buf: var CellBuffer, area: Rect,
 
 proc renderRelaySection(buf: var CellBuffer, area: Rect,
                         relayInput: TextInputState, editing: bool,
-                        hasFocus: bool) =
+                        hasFocus: bool, nostrStatus: string) =
   ## Render the relay URL configuration section
   let headerStyle = modalBgStyle()
   let promptStyle = modalDimStyle()
@@ -692,11 +694,30 @@ proc renderRelaySection(buf: var CellBuffer, area: Rect,
     attrs: {}
   )
   
-  # Section header
+  # Connection status indicator and color (using ASCII text for visibility)
+  let (statusText, statusColor) = case nostrStatus
+    of "connected": ("[OK]", color(PositiveColor))
+    of "connecting": ("[...]", color(Ansi256Color(220)))  # Yellow
+    of "error": ("[ERR]", color(AlertColor))
+    else: ("[--]", color(DisabledColor))  # idle/unknown
+  
+  let statusStyle = CellStyle(
+    fg: statusColor,
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  
+  # Section header with status
+  # Render: "RELAY ────────────────────────────────────────────── [OK]"
   let headerText = "RELAY "
-  let ruleLen = area.width - headerText.len - 1
+  let statusSuffix = " " & statusText
+  let ruleLen = area.width - headerText.len - statusSuffix.len - 1
   let headerLine = headerText & repeat("─", ruleLen)
+  # Render header (RELAY + dashes) in default style
   discard buf.setString(area.x, area.y, headerLine, headerStyle)
+  # Render status suffix in colored style at visual position (not byte position)
+  let statusX = area.x + headerText.len + ruleLen
+  discard buf.setString(statusX, area.y, statusSuffix, statusStyle)
   
   if area.height > 1:
     # Focus cursor
@@ -944,7 +965,7 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     # Relay section
     let relayArea = rect(inner.x, y, inner.width, 2)
     renderRelaySection(buf, relayArea, state.relayInput, state.editingRelay,
-                       state.focus == EntryModalFocus.RelayUrl)
+                       state.focus == EntryModalFocus.RelayUrl, state.nostrStatus)
     
     # Footer
     let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
