@@ -7,11 +7,38 @@ import std/[os, strutils]
 import ../common/logger
 import ./tui/app
 import ./tui/launcher
+import ./state/tui_cache
 
 when isMainModule:
   enableFileLogging("data/logs/tui.log")
   disableStdoutLogging()
   let opts = parseCommandLine()
+
+  if opts.cleanCache.len > 0:
+    let mode = opts.cleanCache
+    if mode == "all" or mode == "":
+      let removed = deleteCacheFile()
+      if removed:
+        stdout.write("Cache cleared: removed cache.db\n")
+      else:
+        stdout.write("Cache already empty\n")
+      quit(0)
+    elif mode == "games":
+      if clearCacheGames():
+        stdout.write("Cache cleared: games\n")
+      else:
+        stdout.write("Cache not found\n")
+      quit(0)
+    elif mode.startsWith("game:"):
+      let gameId = mode.split(":", 1)[1]
+      if clearCacheGame(gameId):
+        stdout.write("Cache cleared for game: " & gameId & "\n")
+      else:
+        stdout.write("Cache not found or invalid game id\n")
+      quit(0)
+    else:
+      stdout.write("Unknown clean-cache mode: " & mode & "\n")
+      quit(1)
 
   if opts.showHelp:
     showHelp()

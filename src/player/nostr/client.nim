@@ -36,6 +36,10 @@ proc hexToBytes32Safe*(hexStr: string): Option[array[32, byte]] =
     none(array[32, byte])
 
 proc handleEvent*(pc: PlayerNostrClient, subId: string, event: NostrEvent) =
+  logDebug("Nostr/Player", "handleEvent",
+    "subId=", subId,
+    "kind=", $event.kind,
+    "eventId=", event.id[0..min(15, event.id.len-1)])
   if event.kind == EventKindTurnResults or
       event.kind == EventKindGameState or
       event.kind == EventKindJoinError:

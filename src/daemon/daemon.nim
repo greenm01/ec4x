@@ -282,6 +282,7 @@ proc discoverGamesCmd(dir: string): DaemonCmd =
   proc (): Future[Proposal[DaemonModel]] {.async.} =
     let gamesDir = dir / "games"
     var gameDiscoveredProposals = newSeq[Proposal[DaemonModel]]()
+    var discoveredGameIds = initHashSet[GameId]()
     if dirExists(gamesDir):
       for kind, path in walkDir(gamesDir):
         if kind == pcDir:
@@ -293,6 +294,7 @@ proc discoverGamesCmd(dir: string): DaemonCmd =
               continue
 
             let gameId = state.gameId
+            discoveredGameIds.incl(gameId)
             let phase = reader.loadGamePhase(dbPath)
             let phaseStr = if phase.len > 0: phase else: $state.phase
             let deadline = reader.loadGameDeadline(dbPath)
@@ -303,9 +305,23 @@ proc discoverGamesCmd(dir: string): DaemonCmd =
             gameDiscoveredProposals.add createGameDiscoveredProposal(
               gameId, dbPath, phaseStr, state.turn, deadline
             )
+    let discoveredIds = discoveredGameIds  # Capture for closure
     return Proposal[DaemonModel](
       name: "discovery_complete",
       payload: proc(model: var DaemonModel) =
+        # Remove stale games that no longer exist on disk
+        var staleIds: seq[GameId] = @[]
+        for gameId in model.games.keys:
+          if gameId notin discoveredIds:
+            staleIds.add(gameId)
+        for gameId in staleIds:
+          logInfo("Daemon", "Removing stale game from model: ", gameId)
+          model.games.del(gameId)
+          model.resolving.excl(gameId)
+          model.resolutionRequested.excl(gameId)
+          if model.pendingOrders.hasKey(gameId):
+            model.pendingOrders.del(gameId)
+        # Add/update discovered games
         for p in gameDiscoveredProposals:
           if p.payload != nil:
             p.payload(model)

@@ -168,6 +168,38 @@ proc close*(cache: TuiCache) =
   if cache != nil and cache.db != nil:
     cache.db.close()
 
+proc deleteCacheFile*(): bool =
+  ## Delete cache database file if it exists
+  let path = getCachePath()
+  if fileExists(path):
+    removeFile(path)
+    return true
+  false
+
+proc clearCacheGames*(): bool =
+  ## Clear game-related tables while keeping settings
+  if not fileExists(getCachePath()):
+    return false
+  let cache = openTuiCache()
+  defer: cache.close()
+  cache.db.exec(sql"DELETE FROM player_states")
+  cache.db.exec(sql"DELETE FROM player_slots")
+  cache.db.exec(sql"DELETE FROM games")
+  cache.db.exec(sql"DELETE FROM received_events")
+  true
+
+proc clearCacheGame*(gameId: string): bool =
+  ## Clear a specific game from the cache
+  if gameId.len == 0 or not fileExists(getCachePath()):
+    return false
+  let cache = openTuiCache()
+  defer: cache.close()
+  cache.db.exec(sql"DELETE FROM player_states WHERE game_id = ?", gameId)
+  cache.db.exec(sql"DELETE FROM player_slots WHERE game_id = ?", gameId)
+  cache.db.exec(sql"DELETE FROM games WHERE id = ?", gameId)
+  cache.db.exec(sql"DELETE FROM received_events WHERE game_id = ?", gameId)
+  true
+
 # =============================================================================
 # Settings Operations
 # =============================================================================

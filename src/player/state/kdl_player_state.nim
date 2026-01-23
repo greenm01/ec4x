@@ -693,8 +693,7 @@ proc parseOwnedFleets(node: KdlNode): seq[Fleet] =
         if valueOpt.isSome:
           fleet.command.roe = some(valueOpt.get())
       fleet.command.fleetId = fleet.id
-    let missionStateOpt = childVal(child, "mission-state")
-    if missionStateOpt.isSome:
+    if child.props.hasKey("mission-state"):
       let parsedOpt = parseEnumPureFromStr[MissionState](
         child.props["mission-state"].kString())
       if parsedOpt.isSome:

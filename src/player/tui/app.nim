@@ -42,6 +42,11 @@ proc runTui*(gameId: string = "") =
   # Initialize TUI cache (client-side SQLite)
   var tuiCache = openTuiCache()
   var tuiConfig = loadTuiConfig()
+  
+  # Enable file logging for TUI (stdout goes to terminal buffer)
+  let logDir = getHomeDir() / ".config" / "ec4x"
+  enableFileLogging(logDir / "tui.log")
+  disableStdoutLogging()
 
   # Initialize game state
   var gameState = GameState()
@@ -220,9 +225,13 @@ proc runTui*(gameId: string = "") =
 
       nostrHandlers.onFullState = proc(event: NostrEvent, payload: string) =
         try:
+          logDebug("TUI/State", "onFullState called",
+            "eventId=", event.id[0..min(15, event.id.len-1)],
+            "payloadLen=", $payload.len)
           let turnOpt = event.getTurn()
           if turnOpt.isNone:
             sam.model.statusMessage = "Ignored event: missing turn"
+            logDebug("TUI/State", "Missing turn tag in event")
             return
           if sam.model.playerStateLoaded and
               turnOpt.get() <= sam.model.turn:
@@ -233,8 +242,13 @@ proc runTui*(gameId: string = "") =
               event.pubkey != nostrDaemonPubkey:
             sam.model.statusMessage = "Ignored event: unknown server"
             return
+          logDebug("TUI/State", "Parsing full state KDL",
+            "payloadLen=", $payload.len)
           let stateOpt = parseFullStateKdl(payload)
           if stateOpt.isSome:
+            logDebug("TUI/State", "State parsed successfully",
+              "turn=", $stateOpt.get().turn,
+              "houseId=", $stateOpt.get().viewingHouse)
             playerState = stateOpt.get()
             sam.model.playerStateLoaded = true
             viewingHouse = playerState.viewingHouse
@@ -243,10 +257,22 @@ proc runTui*(gameId: string = "") =
             sam.model.statusMessage = "Full state received"
             if sam.model.nostrEnabled:
               sam.model.nostrStatus = "connected"
+            # Sync PlayerState to model
+            syncPlayerStateToModel(sam.model, playerState)
+            sam.model.resetBreadcrumbs(sam.model.mode)
+            if sam.model.homeworld.isSome:
+              sam.model.mapState.cursor = sam.model.homeworld.get
             if sam.model.appPhase == AppPhase.Lobby:
               sam.model.appPhase = AppPhase.InGame
+              sam.model.mode = ViewMode.Overview
+            # Cache the received state for future sessions
+            if activeGameId.len > 0:
+              tuiCache.savePlayerState(activeGameId, int(viewingHouse),
+                playerState.turn, playerState)
           else:
             sam.model.statusMessage = "Invalid full state payload"
+            logDebug("TUI/State", "Failed to parse state KDL",
+              "firstChars=", payload[0..min(100, payload.len-1)])
           sam.present(emptyProposal())
         except CatchableError as e:
           sam.model.nostrLastError = e.msg
@@ -497,6 +523,16 @@ proc runTui*(gameId: string = "") =
       asyncCheck nostrClient.start()
       initialModel.nostrStatus = "connecting"
       initialModel.nostrEnabled = true
+      
+      # Wait for connection to establish (up to 5 seconds)
+      for i in 0..50:
+        poll(100)
+        if nostrClient.isConnected():
+          logInfo("Nostr", "Connection established after ", $((i+1)*100), "ms")
+          break
+      
+      if not nostrClient.isConnected():
+        logWarn("Nostr", "Connection not established within timeout")
     except CatchableError as e:
       initialModel.nostrLastError = e.msg
       initialModel.nostrStatus = "error"
@@ -526,6 +562,113 @@ proc runTui*(gameId: string = "") =
   # Initial render
   sam.present(emptyProposal())
 
+  proc processNostr() =
+    if sam.model.nostrEnabled and nostrClient != nil:
+      if sam.model.nostrStatus == "connecting" and
+          nostrClient.isConnected():
+        if not nostrListenerStarted:
+          asyncCheck nostrClient.listen()
+          nostrListenerStarted = true
+        let lobbyFilter = newFilter()
+          .withKinds(@[EventKindGameDefinition])
+        asyncCheck nostrClient.subscribe("lobby:games", @[lobbyFilter])
+        nostrSubscriptions.add("lobby:games")
+        let joinPubkey = sam.model.entryModal.identity.npubHex
+        if joinPubkey.len > 0:
+          let joinErrorFilter = newFilter()
+            .withKinds(@[EventKindJoinError])
+            .withTag(TagP, @[joinPubkey])
+          asyncCheck nostrClient.subscribe("lobby:join-errors",
+            @[joinErrorFilter])
+          nostrSubscriptions.add("lobby:join-errors")
+        sam.model.nostrStatus = "connected"
+        sam.model.statusMessage = "Nostr connected"
+
+      if sam.model.nostrStatus == "connected" and
+          sam.model.entryModal.relayUrl() != sam.model.nostrRelayUrl:
+        sam.model.nostrRelayUrl = sam.model.entryModal.relayUrl()
+        sam.model.nostrStatus = "error"
+        sam.model.nostrLastError = "Relay URL changed - restart required"
+        sam.model.nostrEnabled = false
+        nostrListenerStarted = false
+        nostrSubscriptions.setLen(0)
+        nostrDaemonPubkey = ""
+
+      # Subscribe to game events when we have an activeGameId
+      # (either in-game or waiting for state in lobby)
+      if sam.model.nostrStatus == "connected" and
+          activeGameId.len > 0 and
+          ("game:" & activeGameId) notin nostrSubscriptions:
+        asyncCheck nostrClient.subscribeGame(activeGameId)
+        nostrSubscriptions.add("game:" & activeGameId)
+        sam.model.statusMessage = "Subscribed to game updates"
+
+      if sam.model.nostrJoinRequested and
+          not sam.model.nostrJoinSent and
+          sam.model.nostrJoinInviteCode.len > 0:
+        # Check if we need to connect to a different relay for this join
+        let joinRelay = sam.model.nostrJoinRelayUrl
+        if joinRelay.len > 0 and joinRelay != sam.model.nostrRelayUrl:
+          # Need to reconnect to the relay specified in the invite code
+          sam.model.statusMessage = "Connecting to " & joinRelay
+          sam.model.nostrRelayUrl = joinRelay
+          # Trigger reconnection by resetting client state
+          if nostrClient != nil:
+            asyncCheck nostrClient.stop()
+            nostrClient = nil
+          nostrListenerStarted = false
+          nostrSubscriptions.setLen(0)
+          nostrDaemonPubkey = ""
+          sam.model.nostrStatus = "idle"
+          sam.model.nostrEnabled = false
+          # Will reconnect on next loop iteration
+        elif sam.model.nostrStatus == "connected":
+          let identity = sam.model.entryModal.identity
+          let privOpt = hexToBytes32Safe(identity.nsecHex)
+          if privOpt.isSome:
+            let gameId =
+              if sam.model.nostrJoinGameId.len > 0:
+                sam.model.nostrJoinGameId
+              elif sam.model.entryModal.selectedGame().isSome:
+                sam.model.entryModal.selectedGame().get().id
+              else:
+                ""
+            let joinTarget = if gameId.len > 0: gameId else: "invite"
+            var event = createSlotClaim(
+              gameId = joinTarget,
+              inviteCode = sam.model.nostrJoinInviteCode,
+              playerPubkey = identity.npubHex
+            )
+            signEvent(event, privOpt.get())
+            asyncCheck nostrClient.publish(event)
+            sam.model.statusMessage = "Join request sent"
+            sam.model.nostrJoinSent = true
+            sam.model.nostrJoinRequested = false
+            sam.model.nostrJoinGameId = gameId
+            sam.model.nostrJoinInviteCode = ""
+            sam.model.nostrJoinRelayUrl = ""
+            if gameId.len == 0:
+              sam.model.nostrJoinGameId = "invite"
+          else:
+            sam.model.lobbyJoinStatus = JoinStatus.Failed
+            sam.model.lobbyJoinError = "Invalid signing key"
+            sam.model.statusMessage = sam.model.lobbyJoinError
+            sam.model.nostrJoinRequested = false
+            sam.model.nostrJoinSent = false
+            sam.model.nostrJoinInviteCode = ""
+            sam.model.nostrJoinRelayUrl = ""
+            sam.model.nostrJoinGameId = ""
+            sam.model.nostrJoinPubkey = ""
+
+      if sam.model.nostrStatus == "connected" and
+          not nostrClient.isConnected():
+        sam.model.nostrStatus = "error"
+        sam.model.nostrLastError = "Relay disconnected"
+        sam.model.nostrEnabled = false
+        nostrListenerStarted = false
+        nostrSubscriptions.setLen(0)
+        nostrDaemonPubkey = ""
+
   # =========================================================================
   # Main Loop (SAM-based)
   # =========================================================================
@@ -541,6 +684,8 @@ proc runTui*(gameId: string = "") =
     # Process async operations (Nostr events, etc.)
     if hasPendingOperations():
       poll(0)
+
+    processNostr()
 
     # Read input with timeout (non-blocking to allow async processing)
     let inputByte = tty.readByteTimeout(50)  # 50ms timeout
@@ -566,107 +711,6 @@ proc runTui*(gameId: string = "") =
         let proposalOpt = mapKeyEvent(event.keyEvent, sam.model)
         if proposalOpt.isSome:
           sam.present(proposalOpt.get)
-
-      if sam.model.nostrEnabled and nostrClient != nil:
-        if sam.model.nostrStatus == "connecting" and
-            nostrClient.isConnected():
-          if not nostrListenerStarted:
-            asyncCheck nostrClient.listen()
-            nostrListenerStarted = true
-          let lobbyFilter = newFilter()
-            .withKinds(@[EventKindGameDefinition])
-          asyncCheck nostrClient.subscribe("lobby:games", @[lobbyFilter])
-          nostrSubscriptions.add("lobby:games")
-          let joinPubkey = sam.model.entryModal.identity.npubHex
-          if joinPubkey.len > 0:
-            let joinErrorFilter = newFilter()
-              .withKinds(@[EventKindJoinError])
-              .withTag(TagP, @[joinPubkey])
-            asyncCheck nostrClient.subscribe("lobby:join-errors",
-              @[joinErrorFilter])
-            nostrSubscriptions.add("lobby:join-errors")
-          sam.model.nostrStatus = "connected"
-          sam.model.statusMessage = "Nostr connected"
-        elif sam.model.nostrStatus == "connected" and
-            sam.model.entryModal.relayUrl() != sam.model.nostrRelayUrl:
-          sam.model.nostrRelayUrl = sam.model.entryModal.relayUrl()
-          sam.model.nostrStatus = "error"
-          sam.model.nostrLastError = "Relay URL changed - restart required"
-          sam.model.nostrEnabled = false
-          nostrListenerStarted = false
-          nostrSubscriptions.setLen(0)
-          nostrDaemonPubkey = ""
-        elif sam.model.nostrStatus == "connected" and
-            sam.model.appPhase == AppPhase.InGame and
-            activeGameId.len > 0 and
-            ("game:" & activeGameId) notin nostrSubscriptions:
-          asyncCheck nostrClient.subscribeGame(activeGameId)
-          nostrSubscriptions.add("game:" & activeGameId)
-          sam.model.statusMessage = "Nostr subscribed"
-        elif sam.model.nostrJoinRequested and
-            not sam.model.nostrJoinSent and
-            sam.model.nostrJoinInviteCode.len > 0:
-          # Check if we need to connect to a different relay for this join
-          let joinRelay = sam.model.nostrJoinRelayUrl
-          if joinRelay.len > 0 and joinRelay != sam.model.nostrRelayUrl:
-            # Need to reconnect to the relay specified in the invite code
-            sam.model.statusMessage = "Connecting to " & joinRelay
-            sam.model.nostrRelayUrl = joinRelay
-            # Trigger reconnection by resetting client state
-            if nostrClient != nil:
-              asyncCheck nostrClient.stop()
-              nostrClient = nil
-            nostrListenerStarted = false
-            nostrSubscriptions.setLen(0)
-            nostrDaemonPubkey = ""
-            sam.model.nostrStatus = "idle"
-            sam.model.nostrEnabled = false
-            # Will reconnect on next loop iteration
-          elif sam.model.nostrStatus == "connected":
-            let identity = sam.model.entryModal.identity
-            let privOpt = hexToBytes32Safe(identity.nsecHex)
-            if privOpt.isSome:
-              let gameId =
-                if sam.model.nostrJoinGameId.len > 0:
-                  sam.model.nostrJoinGameId
-                elif sam.model.entryModal.selectedGame().isSome:
-                  sam.model.entryModal.selectedGame().get().id
-                else:
-                  ""
-              let joinTarget = if gameId.len > 0: gameId else: "invite"
-              var event = createSlotClaim(
-                gameId = joinTarget,
-                inviteCode = sam.model.nostrJoinInviteCode,
-                playerPubkey = identity.npubHex
-              )
-              signEvent(event, privOpt.get())
-              asyncCheck nostrClient.publish(event)
-              sam.model.statusMessage = "Join request sent"
-              sam.model.nostrJoinSent = true
-              sam.model.nostrJoinRequested = false
-              sam.model.nostrJoinGameId = gameId
-              sam.model.nostrJoinInviteCode = ""
-              sam.model.nostrJoinRelayUrl = ""
-              if gameId.len == 0:
-                sam.model.nostrJoinGameId = "invite"
-            else:
-              sam.model.lobbyJoinStatus = JoinStatus.Failed
-              sam.model.lobbyJoinError = "Invalid signing key"
-              sam.model.statusMessage = sam.model.lobbyJoinError
-              sam.model.nostrJoinRequested = false
-              sam.model.nostrJoinSent = false
-              sam.model.nostrJoinInviteCode = ""
-              sam.model.nostrJoinRelayUrl = ""
-              sam.model.nostrJoinGameId = ""
-              sam.model.nostrJoinPubkey = ""
-        elif sam.model.nostrStatus == "connected" and
-            not nostrClient.isConnected():
-          sam.model.nostrStatus = "error"
-          sam.model.nostrLastError = "Relay disconnected"
-          sam.model.nostrEnabled = false
-          nostrListenerStarted = false
-          nostrSubscriptions.setLen(0)
-          nostrDaemonPubkey = ""
 
     # Poll for join response when waiting
     if sam.model.appPhase == AppPhase.Lobby and
@@ -705,7 +749,6 @@ proc runTui*(gameId: string = "") =
 
     if sam.model.loadGameRequested:
       let gameId = sam.model.loadGameId
-      let dataDir = "data"
       sam.model.playerStateLoaded = false
 
       # Check for valid houseId
@@ -714,37 +757,41 @@ proc runTui*(gameId: string = "") =
         sam.model.loadGameRequested = false
       else:
         let houseId = HouseId(sam.model.loadHouseId.uint32)
-        let infoOpt = loadGameInfo(dataDir, gameId)
-        if infoOpt.isSome:
-          let info = infoOpt.get()
-          let dbPath = dataDir / "games" / info.name / "ec4x.db"
-          try:
-            gameState = loadGameStateForHouse(dbPath, houseId)
-            viewingHouse = houseId
-            let pubkey = sam.model.lobbyProfilePubkey
-            if pubkey.len > 0:
-              let cachedOpt = loadCachedPlayerState(dataDir, pubkey, info.id,
-                houseId)
-              if cachedOpt.isSome:
-                playerState = cachedOpt.get()
-              else:
-                playerState = loadPlayerState(gameState, houseId)
-                cachePlayerState(dataDir, pubkey, info.id, playerState)
-              sam.model.playerStateLoaded = true
-            else:
-              playerState = loadPlayerState(gameState, houseId)
-              sam.model.playerStateLoaded = true
-            sam.model.appPhase = AppPhase.InGame
-            sam.model.viewingHouse = int(houseId)
-            sam.model.mode = ViewMode.Overview
-            syncGameStateToModel(sam.model, gameState, viewingHouse)
-            sam.model.resetBreadcrumbs(sam.model.mode)
-            sam.model.statusMessage = "Loaded game " & info.name
-            activeGameId = info.id
-          except CatchableError as e:
-            sam.model.statusMessage = "Load failed: " & e.msg
+        
+        # Try to load from TUI cache first (for Nostr games)
+        let cachedStateOpt = tuiCache.loadLatestPlayerState(gameId,
+          int(houseId))
+        if cachedStateOpt.isSome:
+          playerState = cachedStateOpt.get()
+          viewingHouse = houseId
+          sam.model.playerStateLoaded = true
+          sam.model.appPhase = AppPhase.InGame
+          sam.model.viewingHouse = int(houseId)
+          sam.model.turn = playerState.turn
+          sam.model.mode = ViewMode.Overview
+          # Sync PlayerState to model (for Nostr games)
+          syncPlayerStateToModel(sam.model, playerState)
+          sam.model.resetBreadcrumbs(sam.model.mode)
+          if sam.model.homeworld.isSome:
+            sam.model.mapState.cursor = sam.model.homeworld.get
+          let cachedGame = tuiCache.getGame(gameId)
+          let gameName = if cachedGame.isSome: cachedGame.get().name
+                         else: gameId
+          sam.model.statusMessage = "Loaded game " & gameName
+          sam.model.houseName = gameName
+          activeGameId = gameId
         else:
-          sam.model.statusMessage = "Game not found"
+          # No cached state - set up for Nostr subscription
+          # The game will load when full state arrives via onFullState handler
+          activeGameId = gameId
+          viewingHouse = houseId
+          sam.model.viewingHouse = int(houseId)
+          let cachedGame = tuiCache.getGame(gameId)
+          let gameName = if cachedGame.isSome: cachedGame.get().name
+                         else: gameId
+          sam.model.houseName = gameName
+          sam.model.statusMessage = "Waiting for game state..."
+          # Don't switch to InGame yet - wait for state via Nostr
         sam.model.loadGameRequested = false
 
       # Re-render to show status
@@ -858,9 +905,11 @@ proc runTui*(gameId: string = "") =
 
   logInfo("TUI Player SAM", "TUI Player exited.")
 
-proc parseCommandLine*(): tuple[spawnWindow: bool, showHelp: bool, gameId: string] =
+proc parseCommandLine*(): tuple[spawnWindow: bool, showHelp: bool,
+    gameId: string, cleanCache: string] =
   ## Parse command line arguments
-  result = (spawnWindow: true, showHelp: false, gameId: "")
+  result = (spawnWindow: true, showHelp: false, gameId: "",
+    cleanCache: "")
 
   var p = initOptParser()
   while true:
@@ -880,6 +929,8 @@ proc parseCommandLine*(): tuple[spawnWindow: bool, showHelp: bool, gameId: strin
             parseBool(p.val)
       of "game":
         result.gameId = p.val
+      of "clean-cache":
+        result.cleanCache = p.val
       of "help", "h":
         result.showHelp = true
       else:
@@ -900,6 +951,7 @@ Options:
   --spawn-window        Launch in new terminal window (default: true)
   --no-spawn-window     Run in current terminal
   --game <id>           Enter a game directly
+  --clean-cache[=mode]  Clear cache (all|games|game:<id>)
   --help, -h            Show this help message
 
 Controls:

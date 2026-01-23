@@ -233,3 +233,115 @@ proc syncPlayerStateToOverview*(
   # Placeholder recent events
   if result.recentEvents.len == 0:
     result.addEvent(ps.turn, "No recent events", false)
+
+proc syncPlayerStateToModel*(
+    model: var TuiModel,
+    ps: ps_types.PlayerState
+) =
+  ## Sync PlayerState (fog-of-war filtered) into the SAM TuiModel
+  ## Used for Nostr games where we only have PlayerState, not full GameState
+  ##
+  ## Note: PlayerState has limited visibility data. Some model fields
+  ## (treasury, production, system names/details) may not be available.
+  
+  model.turn = ps.turn
+  model.viewingHouse = int(ps.viewingHouse)
+  model.treasury = 0  # Not available in PlayerState
+  model.prestige = ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
+  model.alertCount = 0
+  model.unreadReports = 0
+  model.unreadMessages = 0
+  model.production = 0  # Would need income report
+  
+  # Build systems table from visible systems
+  # VisibleSystem only has: systemId, visibility, lastScoutedTurn, coordinates
+  model.systems.clear()
+  model.maxRing = 0
+  
+  for sysId, visSys in ps.visibleSystems.pairs:
+    if visSys.coordinates.isNone:
+      continue  # Skip systems without coordinates
+    let coords = visSys.coordinates.get()
+    let hexQ = int(coords.q)
+    let hexR = int(coords.r)
+    let ring = max(abs(hexQ), max(abs(hexR), abs(-hexQ - hexR)))
+    if ring > model.maxRing:
+      model.maxRing = ring
+    
+    # Limited info from VisibleSystem
+    let samSys = sam_pkg.SystemInfo(
+      id: int(sysId),
+      name: "System " & $sysId.uint32,  # Name not in VisibleSystem
+      coords: (hexQ, hexR),
+      ring: ring,
+      planetClass: 0,  # Not in VisibleSystem
+      resourceRating: 0,  # Not in VisibleSystem
+      owner: none(int),  # Not in VisibleSystem
+      isHomeworld: false,  # Not in VisibleSystem
+      isHub: false,
+      fleetCount: 0,  # Not in VisibleSystem
+    )
+    model.systems[(hexQ, hexR)] = samSys
+  
+  # Build colonies list from own colonies
+  model.colonies = @[]
+  for colony in ps.ownColonies:
+    var sysName = "System " & $colony.systemId.uint32
+    if ps.visibleSystems.hasKey(colony.systemId):
+      let visSys = ps.visibleSystems[colony.systemId]
+      if visSys.coordinates.isSome:
+        let coords = visSys.coordinates.get()
+        sysName = "(" & $coords.q & "," & $coords.r & ")"
+    model.colonies.add(
+      sam_pkg.ColonyInfo(
+        systemId: int(colony.systemId),
+        systemName: sysName,
+        population: colony.population.int,
+        production: colony.production.int,
+        owner: int(ps.viewingHouse),
+      )
+    )
+  
+  # Build fleets list from own fleets
+  model.fleets = @[]
+  for fleet in ps.ownFleets:
+    var locName = "System " & $fleet.location.uint32
+    if ps.visibleSystems.hasKey(fleet.location):
+      let visSys = ps.visibleSystems[fleet.location]
+      if visSys.coordinates.isSome:
+        let coords = visSys.coordinates.get()
+        locName = "(" & $coords.q & "," & $coords.r & ")"
+    let cmdType = int(fleet.command.commandType)
+    model.fleets.add(
+      sam_pkg.FleetInfo(
+        id: int(fleet.id),
+        location: int(fleet.location),
+        locationName: locName,
+        shipCount: fleet.ships.len,
+        owner: int(ps.viewingHouse),
+        command: cmdType,
+        commandLabel: sam_pkg.commandLabel(cmdType),
+        isIdle: fleet.command.commandType == FleetCommandType.Hold,
+      )
+    )
+  
+  # Prestige rank
+  var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]
+  for houseId, prestige in ps.housePrestige.pairs:
+    prestigeList.add((id: houseId, prestige: prestige))
+  prestigeList.sort(
+    proc(a, b: tuple[id: HouseId, prestige: int32]): int =
+      result = cmp(b.prestige, a.prestige)
+      if result == 0:
+        result = cmp(int(a.id), int(b.id))
+  )
+  model.totalHouses = prestigeList.len
+  model.prestigeRank = 0
+  for i, entry in prestigeList:
+    if entry.id == ps.viewingHouse:
+      model.prestigeRank = i + 1
+      break
+  
+  # Command capacity (not available in PlayerState)
+  model.commandUsed = 0
+  model.commandMax = 0
