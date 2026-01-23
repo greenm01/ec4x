@@ -1,22 +1,13 @@
 ## Player state snapshot persistence helpers
 ##
 ## Stores per-house PlayerState snapshots for delta generation.
+## Migration: Switched from JSON to msgpack for faster serialization.
 
-import std/[tables, json, jsonutils]
+import std/[tables, base64]
+import msgpack4nim
 import ../../engine/types/player_state
 import ../../engine/types/[core, colony, fleet, ship, ground_unit, diplomacy, progression]
-
-proc `%`*(id: HouseId): JsonNode = %(id.uint32)
-proc `%`*(id: SystemId): JsonNode = %(id.uint32)
-proc `%`*(id: ColonyId): JsonNode = %(id.uint32)
-proc `%`*(id: FleetId): JsonNode = %(id.uint32)
-proc `%`*(id: ShipId): JsonNode = %(id.uint32)
-proc `%`*(id: GroundUnitId): JsonNode = %(id.uint32)
-proc `%`*(id: ConstructionProjectId): JsonNode = %(id.uint32)
-proc `%`*(id: RepairProjectId): JsonNode = %(id.uint32)
-proc `%`*(id: NeoriaId): JsonNode = %(id.uint32)
-proc `%`*(id: KastraId): JsonNode = %(id.uint32)
-proc `%`*(id: ProposalId): JsonNode = %(id.uint32)
+import ./msgpack_state
 
 # =============================================================================
 # Snapshot Types
@@ -80,8 +71,14 @@ proc snapshotFromPlayerState*(ps: PlayerState): PlayerStateSnapshot =
   result.eliminatedHouses = ps.eliminatedHouses
   result.actProgression = ps.actProgression
 
-proc snapshotToJson*(snapshot: PlayerStateSnapshot): string =
-  $toJson(snapshot)
+proc snapshotToMsgpack*(snapshot: PlayerStateSnapshot): string =
+  ## Serialize PlayerStateSnapshot to msgpack binary
+  ## Returns base64-encoded msgpack data for safe SQLite storage
+  let binary = pack(snapshot)
+  result = encode(binary)
 
-proc snapshotFromJson*(content: string): PlayerStateSnapshot =
-  parseJson(content).jsonTo(PlayerStateSnapshot)
+proc snapshotFromMsgpack*(data: string): PlayerStateSnapshot =
+  ## Deserialize PlayerStateSnapshot from msgpack binary
+  ## Expects base64-encoded msgpack data
+  let binary = decode(data)
+  unpack(binary, PlayerStateSnapshot)

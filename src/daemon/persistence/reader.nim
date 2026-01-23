@@ -1,10 +1,17 @@
 ## Persistence Reader: Load GameState from DB
+##
+## Migration: Switched from JSON to msgpack for GameState persistence
+## - Entity tables (houses, systems, colonies, fleets, ships) removed
+## - GameState loaded directly from games.state_msgpack blob
+## - Intel data included in GameState.intel
+## - Faster deserialization and type safety
 
 import std/[tables, options, json, strutils, jsonutils, os]
 import db_connector/db_sqlite
 import ../../common/logger
-import ../../engine/types/[game_state, core, house, starmap, colony, fleet, ship, command, tech, production, diplomacy, espionage, player_state]
+import ../../engine/types/[game_state, core, house, fleet, command, tech, production, diplomacy, espionage]
 import ../../engine/state/engine
+import ./msgpack_state
 import ./player_state_snapshot
 
 # Replay protection
@@ -13,114 +20,68 @@ type ReplayDirection* {.pure.} = enum
   Inbound = 0
   Outbound = 1
 
+# Forward declaration for loadFullState (defined later)
+proc loadFullState*(dbPath: string): GameState
+
+# Note: House pubkey and invite code queries now load from GameState
+# These procs are kept for backward compatibility and query the msgpack blob.
+
 proc getHousePubkey*(dbPath: string, gameId: string, houseId: HouseId): Option[string] =
-  ## Get a house's Nostr pubkey from database
-  ## Returns None if house not found or pubkey not set
-  let db = open(dbPath, "", "", "")
-  defer: db.close()
-  
-  let row = db.getRow(
-    sql"SELECT nostr_pubkey FROM houses WHERE game_id = ? AND id = ?",
-    gameId,
-    $houseId.uint32
-  )
-  
-  if row[0] != "":
-    return some(row[0])
-  else:
-    return none(string)
+  ## Get a house's Nostr pubkey from GameState
+  ## Note: Now loads from msgpack blob instead of houses table
+  let state = loadFullState(dbPath)
+  if state.houses.entities.index.hasKey(houseId):
+    let idx = state.houses.entities.index[houseId]
+    let house = state.houses.entities.data[idx]
+    if house.nostrPubkey.len > 0:
+      return some(house.nostrPubkey)
+  return none(string)
 
 proc getHouseByInviteCode*(dbPath: string, gameId: string,
   inviteCode: string): Option[HouseId] =
-  ## Get house id by invite code
-  let db = open(dbPath, "", "", "")
-  defer: db.close()
-
-  let row = db.getRow(
-    sql"SELECT id FROM houses WHERE game_id = ? AND invite_code = ?",
-    gameId,
-    inviteCode
-  )
-
-  if row[0] == "":
-    return none(HouseId)
-
-  try:
-    return some(HouseId(parseInt(row[0]).uint32))
-  except CatchableError:
-    logError("Persistence", "Failed to parse house id for invite code")
-    return none(HouseId)
+  ## Get house id by invite code from GameState
+  let state = loadFullState(dbPath)
+  for house in state.houses.entities.data:
+    if house.inviteCode == inviteCode:
+      return some(house.id)
+  return none(HouseId)
 
 proc inviteCodeMatches*(dbPath: string, inviteCode: string): bool =
   ## Check if invite code exists in this game database
-  let db = open(dbPath, "", "", "")
-  defer: db.close()
-
-  let row = db.getRow(
-    sql"SELECT id FROM houses WHERE invite_code = ? LIMIT 1",
-    inviteCode
-  )
-
-  row[0].len > 0
+  let state = loadFullState(dbPath)
+  for house in state.houses.entities.data:
+    if house.inviteCode == inviteCode:
+      return true
+  return false
 
 proc getHouseInviteCode*(dbPath: string, gameId: string,
   houseId: HouseId): Option[string] =
-  ## Get invite code for a house
-  let db = open(dbPath, "", "", "")
-  defer: db.close()
-
-  let row = db.getRow(
-    sql"SELECT invite_code FROM houses WHERE game_id = ? AND id = ?",
-    gameId,
-    $houseId.uint32
-  )
-
-  if row[0] != "":
-    return some(row[0])
-  else:
-    return none(string)
+  ## Get invite code for a house from GameState
+  let state = loadFullState(dbPath)
+  if state.houses.entities.index.hasKey(houseId):
+    let idx = state.houses.entities.index[houseId]
+    let house = state.houses.entities.data[idx]
+    if house.inviteCode.len > 0:
+      return some(house.inviteCode)
+  return none(string)
 
 proc isInviteCodeClaimed*(dbPath: string, gameId: string,
   inviteCode: string): bool =
   ## Returns true if invite code already assigned a pubkey
-  let db = open(dbPath, "", "", "")
-  defer: db.close()
-
-  let row = db.getRow(
-    sql"""
-    SELECT nostr_pubkey
-    FROM houses
-    WHERE game_id = ? AND invite_code = ?
-  """,
-    gameId,
-    inviteCode
-  )
-
-  if row[0] == "":
-    return false
-  else:
-    return true
+  let state = loadFullState(dbPath)
+  for house in state.houses.entities.data:
+    if house.inviteCode == inviteCode and house.nostrPubkey.len > 0:
+      return true
+  return false
 
 proc isInviteCodeAssigned*(dbPath: string, gameId: string,
   inviteCode: string): bool =
   ## Returns true if invite code is already assigned to a house
-  let db = open(dbPath, "", "", "")
-  defer: db.close()
-
-  let row = db.getRow(
-    sql"""
-    SELECT id
-    FROM houses
-    WHERE game_id = ? AND invite_code = ?
-  """,
-    gameId,
-    inviteCode
-  )
-
-  if row[0] == "":
-    return false
-  else:
-    return true
+  let state = loadFullState(dbPath)
+  for house in state.houses.entities.data:
+    if house.inviteCode == inviteCode:
+      return true
+  return false
 
 type
   HouseInvite* = object
@@ -131,21 +92,13 @@ type
 
 proc dbGetHousesWithInvites*(dbPath, gameId: string): seq[HouseInvite] =
   ## Get all houses with invite codes and claim status for a game
-  let db = open(dbPath, "", "", "")
-  defer: db.close()
-  
-  let rows = db.getAllRows(sql"""
-    SELECT id, name, invite_code, nostr_pubkey
-    FROM houses
-    WHERE game_id = ?
-  """, gameId)
-  
-  for row in rows:
+  let state = loadFullState(dbPath)
+  for house in state.houses.entities.data:
     result.add HouseInvite(
-      id: HouseId(parseUInt(row[0]).uint32),
-      name: row[1],
-      invite_code: row[2],
-      nostr_pubkey: row[3]
+      id: house.id,
+      name: house.name,
+      invite_code: house.inviteCode,
+      nostr_pubkey: house.nostrPubkey
     )
 
 proc loadPlayerStateSnapshot*(
@@ -160,7 +113,7 @@ proc loadPlayerStateSnapshot*(
 
   let row = db.getRow(
     sql"""
-    SELECT state_json
+    SELECT state_msgpack
     FROM player_state_snapshots
     WHERE game_id = ? AND house_id = ? AND turn = ?
   """,
@@ -173,7 +126,7 @@ proc loadPlayerStateSnapshot*(
     return none(PlayerStateSnapshot)
 
   try:
-    return some(snapshotFromJson(row[0]))
+    return some(snapshotFromMsgpack(row[0]))
   except CatchableError:
     logError("Persistence", "Failed to parse player state snapshot: ", getCurrentExceptionMsg())
     return none(PlayerStateSnapshot)
@@ -198,157 +151,21 @@ proc hasProcessedEvent*(dbPath: string, gameId: string, kind: int,
 
   return row[0] != ""
 
-proc loadHouses(db: DbConn, state: GameState) =
-  let rows = db.getAllRows(sql"SELECT state_json FROM houses")
-  for row in rows:
-    try:
-      let house = parseJson(row[0]).jsonTo(House)
-      state.addHouse(house.id, house)
-    except:
-      logError("Persistence", "Failed to load house: ", getCurrentExceptionMsg())
-
-proc loadSystems(db: DbConn, state: GameState) =
-  let rows = db.getAllRows(sql"SELECT id, name, hex_q, hex_r, ring, planet_class, resource_rating FROM systems")
-  for row in rows:
-    try:
-      let systemId = SystemId(parseInt(row[0]).uint32) # Wait, IDs are usually distinct uint32, but stored as string?
-      # writer.nim uses `$system.id`. If ID is 1, string is "1".
-      # parseInt("1") -> 1.
-      # If ID is UUID string?
-      # src/engine/types/core.nim: SystemId* = distinct uint32.
-      # So it IS integer based.
-      # But `generateGameId` returns UUID string.
-      # `generateHouseId` returns uint32.
-      # System IDs generated by `generateStarMap` are integers (counters).
-      # So `parseInt` is correct.
-      
-      let system = System(
-        id: systemId,
-        name: row[1],
-        coords: Hex(q: int32(parseInt(row[2])), r: int32(parseInt(row[3]))),
-        ring: uint32(parseInt(row[4])),
-        planetClass: PlanetClass(parseInt(row[5])),
-        resourceRating: ResourceRating(parseInt(row[6]))
-      )
-      state.addSystem(system.id, system)
-    except:
-      logError("Persistence", "Failed to load system: ", getCurrentExceptionMsg())
-
-proc loadLanes(db: DbConn, state: GameState) =
-  let rows = db.getAllRows(sql"SELECT from_system_id, to_system_id, lane_type FROM lanes")
-  # We need to populate state.starMap.lanes
-  # starMap.lanes is JumpLanes object.
-  # We should use a helper or manual population.
-  # JumpLanes has `data`, `neighbors`, `connectionInfo`.
-  # Engine doesn't seem to have `addLane`?
-  # state/engine.nim doesn't have `addLane`.
-  # We might need to manually construct `state.starMap.lanes`.
-  # Or use `starmap` module helpers?
-  # For now, I'll populate `data` and then I should probably rebuild indices?
-  # `starmap.nim` defines `JumpLanes`.
-  
-  state.starMap.lanes = JumpLanes(
-    data: @[],
-    neighbors: initTable[SystemId, seq[SystemId]](),
-    connectionInfo: initTable[(SystemId, SystemId), LaneClass]()
-  )
-  
-  for row in rows:
-    try:
-      let source = SystemId(parseInt(row[0]).uint32)
-      let dest = SystemId(parseInt(row[1]).uint32)
-      let laneTypeStr = row[2]
-      let laneType = parseEnum[LaneClass](laneTypeStr)
-      
-      let lane = JumpLane(source: source, destination: dest, laneType: laneType)
-      state.starMap.lanes.data.add(lane)
-      
-      # Rebuild neighbors
-      if not state.starMap.lanes.neighbors.hasKey(source):
-        state.starMap.lanes.neighbors[source] = @[]
-      state.starMap.lanes.neighbors[source].add(dest)
-      
-      # Rebuild connectionInfo
-      state.starMap.lanes.connectionInfo[(source, dest)] = laneType
-    except:
-      logError("Persistence", "Failed to load lane: ", getCurrentExceptionMsg())
-
-proc loadColonies(db: DbConn, state: GameState) =
-  let rows = db.getAllRows(sql"SELECT state_json FROM colonies")
-  for row in rows:
-    try:
-      let colony = parseJson(row[0]).jsonTo(Colony)
-      state.addColony(colony.id, colony)
-      
-      # Also update indices? addColony handles entities.
-      # But `state.colonies` has `bySystem` and `byOwner`.
-      # `addColony` (from state/engine.nim) only updates `entities`.
-      # I check `state/engine.nim`: `state.colonies.entities.addEntity(id, colony)`.
-      # It does NOT update `bySystem` / `byOwner`.
-      # I must update them manually.
-      
-      state.colonies.bySystem[colony.systemId] = colony.id
-      if not state.colonies.byOwner.hasKey(colony.owner):
-        state.colonies.byOwner[colony.owner] = @[]
-      state.colonies.byOwner[colony.owner].add(colony.id)
-    except:
-      logError("Persistence", "Failed to load colony: ", getCurrentExceptionMsg())
-
-proc loadFleets(db: DbConn, state: GameState) =
-  let rows = db.getAllRows(sql"SELECT state_json FROM fleets")
-  for row in rows:
-    try:
-      let fleet = parseJson(row[0]).jsonTo(Fleet)
-      state.addFleet(fleet.id, fleet)
-      
-      # Update indices
-      if not state.fleets.bySystem.hasKey(fleet.location):
-        state.fleets.bySystem[fleet.location] = @[]
-      state.fleets.bySystem[fleet.location].add(fleet.id)
-      
-      if not state.fleets.byOwner.hasKey(fleet.houseId):
-        state.fleets.byOwner[fleet.houseId] = @[]
-      state.fleets.byOwner[fleet.houseId].add(fleet.id)
-    except:
-      logError("Persistence", "Failed to load fleet: ", getCurrentExceptionMsg())
-
-proc loadShips(db: DbConn, state: GameState) =
-  let rows = db.getAllRows(sql"SELECT state_json FROM ships")
-  for row in rows:
-    try:
-      let ship = parseJson(row[0]).jsonTo(Ship)
-      state.addShip(ship.id, ship)
-      
-      # Update indices
-      if not state.ships.byHouse.hasKey(ship.houseId):
-        state.ships.byHouse[ship.houseId] = @[]
-      state.ships.byHouse[ship.houseId].add(ship.id)
-      
-      if ship.fleetId.uint32 != 0: # Check if assigned to fleet
-        if not state.ships.byFleet.hasKey(ship.fleetId):
-          state.ships.byFleet[ship.fleetId] = @[]
-        state.ships.byFleet[ship.fleetId].add(ship.id)
-        
-      # byCarrier index?
-      # If ship is fighter/assigned? 
-      # `assignedToCarrier` option.
-      # Not critical for now, but good to have.
-    except:
-      logError("Persistence", "Failed to load ship: ", getCurrentExceptionMsg())
+# Entity loading functions removed - entities now loaded from msgpack blob
 
 proc loadGameState*(dbPath: string): GameState =
   ## Load lightweight GameState (metadata only) from per-game DB
-  ## Used for daemon discovery
+  ## Used for daemon discovery - loads minimal metadata without full state
   let db = open(dbPath, "", "", "")
   defer: db.close()
 
-  # Load metadata
-  let metadata = db.getRow(sql"SELECT * FROM games LIMIT 1")
+  # Load only basic metadata (id, name, description, turn)
+  let metadata = db.getRow(sql"SELECT id, name, description, turn FROM games LIMIT 1")
   result = GameState(
     gameId: metadata[0],
     gameName: metadata[1],
     gameDescription: metadata[2],
-    turn: int32(parseInt(metadata[4])),
+    turn: int32(parseInt(metadata[3])),
     phase: GamePhase.Conflict,
     dbPath: dbPath
   )
@@ -378,75 +195,7 @@ proc loadGamePhase*(dbPath: string): string =
     return ""
   row[0]
 
-proc loadDiplomacy(db: DbConn, state: GameState) =
-  ## Load diplomatic relations from diplomacy table
-  let rows = db.getAllRows(sql"""
-    SELECT house_a_id, house_b_id, relation, turn_established
-    FROM diplomacy
-  """)
-  for row in rows:
-    try:
-      let houseA = HouseId(parseInt(row[0]).uint32)
-      let houseB = HouseId(parseInt(row[1]).uint32)
-      let relationStr = row[2]
-      let sinceTurn = parseInt(row[3]).int32
-
-      # Parse relation string to DiplomaticState
-      let dipState = case relationStr
-        of "Neutral": DiplomaticState.Neutral
-        of "Hostile": DiplomaticState.Hostile
-        of "Enemy": DiplomaticState.Enemy
-        else: DiplomaticState.Neutral
-
-      let relation = DiplomaticRelation(
-        sourceHouse: houseA,
-        targetHouse: houseB,
-        state: dipState,
-        sinceTurn: sinceTurn
-      )
-      state.diplomaticRelation[(houseA, houseB)] = relation
-    except:
-      logError("Persistence", "Failed to load diplomacy: ",
-        getCurrentExceptionMsg())
-
-proc loadIntel(db: DbConn, state: GameState) =
-  ## Load intelligence databases from intel_* tables
-  ## Note: This is a basic implementation that loads system intel only
-  ## Fleet and colony intel can be added when needed
-  let rows = db.getAllRows(sql"""
-    SELECT house_id, system_id, last_scouted_turn, visibility_level
-    FROM intel_systems
-  """)
-  for row in rows:
-    try:
-      let houseId = HouseId(parseInt(row[0]).uint32)
-      let systemId = SystemId(parseInt(row[1]).uint32)
-      let gatheredTurn = parseInt(row[2]).int32
-      discard row[3]  # visibility_level not used in SystemObservation
-
-      # Initialize IntelDatabase for house if not exists
-      if not state.intel.hasKey(houseId):
-        state.intel[houseId] = IntelDatabase(
-          houseId: houseId,
-          colonyObservations: initTable[ColonyId, ColonyObservation](),
-          orbitalObservations: initTable[ColonyId, OrbitalObservation](),
-          systemObservations: initTable[SystemId, SystemObservation](),
-          starbaseObservations: initTable[KastraId, StarbaseObservation](),
-          fleetObservations: initTable[FleetId, FleetObservation](),
-          shipObservations: initTable[ShipId, ShipObservation]()
-        )
-
-      # Create basic system observation (quality can be inferred from db later)
-      let sysObs = SystemObservation(
-        systemId: systemId,
-        gatheredTurn: gatheredTurn,
-        quality: IntelQuality.Visual,  # Default quality
-        detectedFleetIds: @[]
-      )
-      state.intel[houseId].systemObservations[systemId] = sysObs
-    except:
-      logError("Persistence", "Failed to load intel: ",
-        getCurrentExceptionMsg())
+# Diplomacy and intel loading removed - included in GameState msgpack blob
 
 proc loadOrders*(dbPath: string, turn: int): Table[HouseId, CommandPacket] =
   ## Load all command packets for a specific turn from the database
@@ -525,62 +274,35 @@ proc loadOrders*(dbPath: string, turn: int): Table[HouseId, CommandPacket] =
 
 proc loadFullState*(dbPath: string): GameState =
   ## Load full GameState from per-game DB
+  ## Deserializes complete state from msgpack blob
   let db = open(dbPath, "", "", "")
   defer: db.close()
 
-  # Load metadata
-  let metadata = db.getRow(sql"SELECT * FROM games LIMIT 1")
-  result = GameState(
-    gameId: metadata[0],
-    gameName: metadata[1],
-    gameDescription: metadata[2],
-    turn: int32(parseInt(metadata[4])),
-    phase: GamePhase.Conflict, 
-    dbPath: dbPath,
-    dataDir: dbPath.parentDir.parentDir.parentDir # ../../../data
-  )
-  
-  # Init collections
-  result.houses.entities.index = initTable[HouseId, int]()
-  result.systems.entities.index = initTable[SystemId, int]()
-  result.colonies.entities.index = initTable[ColonyId, int]()
-  result.fleets.entities.index = initTable[FleetId, int]()
-  result.ships.entities.index = initTable[ShipId, int]()
-  
-  result.colonies.bySystem = initTable[SystemId, ColonyId]()
-  result.colonies.byOwner = initTable[HouseId, seq[ColonyId]]()
-  result.fleets.bySystem = initTable[SystemId, seq[FleetId]]()
-  result.fleets.byOwner = initTable[HouseId, seq[FleetId]]()
-  result.ships.byHouse = initTable[HouseId, seq[ShipId]]()
-  result.ships.byFleet = initTable[FleetId, seq[ShipId]]()
-  result.ships.byCarrier = initTable[ShipId, seq[ShipId]]()
-  
-  # Load entities
   try:
-    loadSystems(db, result)
-    loadLanes(db, result)
-    loadHouses(db, result)
-    loadColonies(db, result)
-    loadFleets(db, result)
-    loadShips(db, result)
-    loadDiplomacy(db, result)
-    loadIntel(db, result)
-    # Note: Ground units are loaded as part of colony state_json
-    logInfo("Persistence", "Loaded full state", "turn=", $result.turn)
+    # Load msgpack blob from database
+    let row = db.getRow(sql"SELECT state_msgpack FROM games LIMIT 1")
+    if row[0] == "":
+      logError("Persistence", "No state_msgpack found in database")
+      raise newException(ValueError, "Empty state_msgpack in database")
+
+    # Deserialize GameState from msgpack
+    result = deserializeGameState(row[0])
+
+    # Restore runtime fields not serialized
+    result.dbPath = dbPath
+    result.dataDir = dbPath.parentDir.parentDir.parentDir # ../../../data
+
+    logInfo("Persistence", "Loaded full state (msgpack)", "turn=", $result.turn, " size=", $row[0].len, " bytes")
   except:
     logError("Persistence", "Failed to load full state: ", getCurrentExceptionMsg())
     raise
 
 proc countExpectedPlayers*(dbPath: string, gameId: string): int =
   ## Count houses with assigned Nostr pubkeys (human players)
-  let db = open(dbPath, "", "", "")
-  defer: db.close()
-
-  let row = db.getRow(
-    sql"SELECT COUNT(*) FROM houses WHERE game_id = ? AND nostr_pubkey IS NOT NULL",
-    gameId
-  )
-  result = parseInt(row[0])
+  let state = loadFullState(dbPath)
+  for house in state.houses.entities.data:
+    if house.nostrPubkey.len > 0:
+      result += 1
 
 proc countPlayersSubmitted*(dbPath: string, gameId: string, turn: int32): int =
   ## Count distinct houses that have submitted commands for a turn

@@ -15,7 +15,7 @@
 import std/os
 import db_connector/db_sqlite
 
-const SchemaVersion* = 8  # Incremented for new unified schema
+const SchemaVersion* = 9  # Incremented for msgpack migration
 
 ## ============================================================================
 ## Core Game State Tables
@@ -34,8 +34,7 @@ CREATE TABLE IF NOT EXISTS games (
   turn_deadline INTEGER,            -- Unix timestamp (NULL = no deadline)
   transport_mode TEXT NOT NULL,     -- Transport mode (e.g., 'nostr')
   transport_config TEXT,            -- JSON: mode-specific config
-  game_setup_json TEXT NOT NULL,    -- GameSetup snapshot (fixed at creation)
-  game_config_json TEXT NOT NULL,   -- GameConfig snapshot (fixed at creation)
+  state_msgpack TEXT,               -- Full GameState as base64-encoded msgpack
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   CHECK(phase IN ('Setup', 'Active', 'Paused', 'Completed'))
@@ -46,136 +45,9 @@ CREATE INDEX IF NOT EXISTS idx_games_deadline ON games(turn_deadline)
   WHERE phase = 'Active';
 """
 
-const CreateHousesTable* = """
-CREATE TABLE IF NOT EXISTS houses (
-  id TEXT PRIMARY KEY,              -- UUID v4
-  game_id TEXT NOT NULL,
-  name TEXT NOT NULL,               -- "House Alpha", "Empire Beta"
-  nostr_pubkey TEXT,                -- npub/hex (NULL until assigned)
-  invite_code TEXT,                 -- Human invite code (NULL until generated)
-  prestige INTEGER NOT NULL DEFAULT 0,
-  treasury INTEGER NOT NULL DEFAULT 0,
-  eliminated BOOLEAN NOT NULL DEFAULT 0,
-  home_system_id TEXT,
-  color TEXT,                       -- Hex color code for UI
-  tech_json TEXT,                   -- JSON: TechTree
-  state_json TEXT,                  -- JSON: Extra state (espionage, policies, etc.)
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-  UNIQUE(game_id, name)
-);
-
-CREATE INDEX IF NOT EXISTS idx_houses_game ON houses(game_id);
-CREATE INDEX IF NOT EXISTS idx_houses_pubkey ON houses(nostr_pubkey)
-  WHERE nostr_pubkey IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_houses_invite_code ON houses(invite_code)
-  WHERE invite_code IS NOT NULL;
-"""
-
-const CreateSystemsTable* = """
-CREATE TABLE IF NOT EXISTS systems (
-  id TEXT PRIMARY KEY,              -- UUID v4
-  game_id TEXT NOT NULL,
-  name TEXT NOT NULL,               -- "Alpha Centauri", "Sol"
-  hex_q INTEGER NOT NULL,           -- Hex coordinate Q
-  hex_r INTEGER NOT NULL,           -- Hex coordinate R
-  ring INTEGER NOT NULL,            -- Distance from center (0 = center)
-  planet_class INTEGER,             -- Enum value
-  resource_rating INTEGER,          -- Enum value
-  owner_house_id TEXT,              -- NULL if unowned
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-  FOREIGN KEY (owner_house_id) REFERENCES houses(id) ON DELETE SET NULL,
-  UNIQUE(game_id, hex_q, hex_r)
-);
-
-CREATE INDEX IF NOT EXISTS idx_systems_game ON systems(game_id);
-CREATE INDEX IF NOT EXISTS idx_systems_coords ON systems(game_id, hex_q, hex_r);
-CREATE INDEX IF NOT EXISTS idx_systems_owner ON systems(owner_house_id)
-  WHERE owner_house_id IS NOT NULL;
-"""
-
-const CreateLanesTable* = """
-CREATE TABLE IF NOT EXISTS lanes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  game_id TEXT NOT NULL,
-  from_system_id TEXT NOT NULL,
-  to_system_id TEXT NOT NULL,
-  lane_type TEXT NOT NULL,          -- 'Major', 'Minor', 'Restricted'
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-  FOREIGN KEY (from_system_id) REFERENCES systems(id) ON DELETE CASCADE,
-  FOREIGN KEY (to_system_id) REFERENCES systems(id) ON DELETE CASCADE,
-  UNIQUE(game_id, from_system_id, to_system_id),
-  CHECK(lane_type IN ('Major', 'Minor', 'Restricted'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_lanes_game ON lanes(game_id);
-CREATE INDEX IF NOT EXISTS idx_lanes_from ON lanes(from_system_id);
-CREATE INDEX IF NOT EXISTS idx_lanes_to ON lanes(to_system_id);
-"""
-
-const CreateColoniesTable* = """
-CREATE TABLE IF NOT EXISTS colonies (
-  id TEXT PRIMARY KEY,              -- UUID v4
-  game_id TEXT NOT NULL,
-  system_id TEXT NOT NULL,
-  owner_house_id TEXT NOT NULL,
-  population INTEGER NOT NULL DEFAULT 0,
-  industry INTEGER NOT NULL DEFAULT 0,
-  defenses INTEGER NOT NULL DEFAULT 0,
-  starbase_level INTEGER NOT NULL DEFAULT 0,
-  tax_rate INTEGER NOT NULL DEFAULT 50,
-  auto_repair BOOLEAN NOT NULL DEFAULT 0,
-  under_siege BOOLEAN NOT NULL DEFAULT 0,
-  state_json TEXT,                  -- JSON: Queues, ground units, settings
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-  FOREIGN KEY (system_id) REFERENCES systems(id) ON DELETE CASCADE,
-  FOREIGN KEY (owner_house_id) REFERENCES houses(id) ON DELETE CASCADE,
-  UNIQUE(game_id, system_id)        -- One colony per system
-);
-
-CREATE INDEX IF NOT EXISTS idx_colonies_game ON colonies(game_id);
-CREATE INDEX IF NOT EXISTS idx_colonies_owner ON colonies(owner_house_id);
-CREATE INDEX IF NOT EXISTS idx_colonies_system ON colonies(system_id);
-"""
-
-const CreateFleetsTable* = """
-CREATE TABLE IF NOT EXISTS fleets (
-  id TEXT PRIMARY KEY,              -- UUID v4
-  game_id TEXT NOT NULL,
-  owner_house_id TEXT NOT NULL,
-  location_system_id TEXT NOT NULL,
-  name TEXT,                        -- Optional fleet name
-  state_json TEXT,                  -- JSON: Cargo, orders, etc.
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-  FOREIGN KEY (owner_house_id) REFERENCES houses(id) ON DELETE CASCADE,
-  FOREIGN KEY (location_system_id) REFERENCES systems(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_fleets_game ON fleets(game_id);
-CREATE INDEX IF NOT EXISTS idx_fleets_owner ON fleets(owner_house_id);
-CREATE INDEX IF NOT EXISTS idx_fleets_location ON fleets(location_system_id);
-"""
-
-const CreateShipsTable* = """
-CREATE TABLE IF NOT EXISTS ships (
-  id TEXT PRIMARY KEY,              -- UUID v4
-  fleet_id TEXT NOT NULL,
-  ship_type TEXT NOT NULL,          -- 'Military', 'Spacelift', etc.
-  hull_points INTEGER NOT NULL,     -- Current HP
-  max_hull_points INTEGER NOT NULL, -- Max HP
-  state_json TEXT,                  -- JSON: Fighters, exp, etc.
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (fleet_id) REFERENCES fleets(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_ships_fleet ON ships(fleet_id);
-"""
+# Entity tables removed - now stored in games.state_msgpack blob
+# This includes: houses, systems, lanes, colonies, fleets, ships
+# All entity data is serialized as msgpack and stored in games.state_msgpack
 
 const CreateCommandsTable* = """
 CREATE TABLE IF NOT EXISTS commands (
@@ -202,104 +74,13 @@ CREATE INDEX IF NOT EXISTS idx_commands_unprocessed ON commands(game_id, turn, p
   WHERE processed = 0;
 """
 
-const CreateDiplomacyTable* = """
-CREATE TABLE IF NOT EXISTS diplomacy (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  game_id TEXT NOT NULL,
-  house_a_id TEXT NOT NULL,
-  house_b_id TEXT NOT NULL,
-  relation TEXT NOT NULL,           -- 'War', 'Peace', 'Alliance', 'NAP'
-  turn_established INTEGER NOT NULL,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-  FOREIGN KEY (house_a_id) REFERENCES houses(id) ON DELETE CASCADE,
-  FOREIGN KEY (house_b_id) REFERENCES houses(id) ON DELETE CASCADE,
-  UNIQUE(game_id, house_a_id, house_b_id),
-  CHECK(relation IN ('War', 'Peace', 'Alliance', 'NAP')),
-  CHECK(house_a_id < house_b_id)    -- Enforce ordering to prevent duplicates
-);
-
-CREATE INDEX IF NOT EXISTS idx_diplomacy_game ON diplomacy(game_id);
-CREATE INDEX IF NOT EXISTS idx_diplomacy_houses ON diplomacy(house_a_id, house_b_id);
-"""
+# Diplomacy table removed - diplomatic relations stored in GameState.diplomaticRelation
 
 ## ============================================================================
 ## Intel System Tables (Fog of War)
 ## ============================================================================
-
-const CreateIntelSystemsTable* = """
-CREATE TABLE IF NOT EXISTS intel_systems (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  game_id TEXT NOT NULL,
-  house_id TEXT NOT NULL,           -- Who has this intel
-  system_id TEXT NOT NULL,          -- What system
-  last_scouted_turn INTEGER NOT NULL,
-  visibility_level TEXT NOT NULL,   -- 'owned', 'occupied', 'scouted', 'adjacent'
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-  FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE,
-  FOREIGN KEY (system_id) REFERENCES systems(id) ON DELETE CASCADE,
-  UNIQUE(game_id, house_id, system_id),
-  CHECK(visibility_level IN ('owned', 'occupied', 'scouted', 'adjacent'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_intel_systems_house ON intel_systems(game_id, house_id);
-CREATE INDEX IF NOT EXISTS idx_intel_systems_system ON intel_systems(system_id);
-"""
-
-const CreateIntelFleetsTable* = """
-CREATE TABLE IF NOT EXISTS intel_fleets (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  game_id TEXT NOT NULL,
-  house_id TEXT NOT NULL,           -- Who detected this
-  fleet_id TEXT NOT NULL,           -- Enemy fleet
-  detected_turn INTEGER NOT NULL,   -- Last seen
-  detected_system_id TEXT NOT NULL, -- Where it was seen
-  ship_count INTEGER,               -- Approximate count
-  ship_types TEXT,                  -- JSON: {"Military": 5, "Spacelift": 2}
-  intel_quality TEXT NOT NULL,      -- 'visual', 'scan', 'spy'
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-  FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE,
-  FOREIGN KEY (fleet_id) REFERENCES fleets(id) ON DELETE CASCADE,
-  FOREIGN KEY (detected_system_id) REFERENCES systems(id) ON DELETE CASCADE,
-  UNIQUE(game_id, house_id, fleet_id),
-  CHECK(intel_quality IN ('visual', 'scan', 'spy'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_intel_fleets_house ON intel_fleets(game_id, house_id);
-CREATE INDEX IF NOT EXISTS idx_intel_fleets_fleet ON intel_fleets(fleet_id);
-CREATE INDEX IF NOT EXISTS idx_intel_fleets_staleness ON intel_fleets(game_id, detected_turn);
-"""
-
-const CreateIntelColoniesTable* = """
-CREATE TABLE IF NOT EXISTS intel_colonies (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  game_id TEXT NOT NULL,
-  house_id TEXT NOT NULL,           -- Who has this intel
-  colony_id TEXT NOT NULL,          -- Target colony
-  intel_turn INTEGER NOT NULL,      -- When intel was gathered
-  population INTEGER,               -- NULL if unknown
-  industry INTEGER,
-  defenses INTEGER,
-  starbase_level INTEGER,
-  intel_source TEXT NOT NULL,       -- 'spy', 'capture', 'scan'
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-  FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE,
-  FOREIGN KEY (colony_id) REFERENCES colonies(id) ON DELETE CASCADE,
-  UNIQUE(game_id, house_id, colony_id),
-  CHECK(intel_source IN ('spy', 'capture', 'scan'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_intel_colonies_house ON intel_colonies(game_id, house_id);
-CREATE INDEX IF NOT EXISTS idx_intel_colonies_colony ON intel_colonies(colony_id);
-CREATE INDEX IF NOT EXISTS idx_intel_colonies_staleness ON intel_colonies(game_id, intel_turn);
-"""
+# Intel tables removed - intelligence data now stored in GameState.intel
+# (per-house IntelDatabase in the msgpack blob)
 
 ## ============================================================================
 ## Event History Table
@@ -334,7 +115,7 @@ CREATE TABLE IF NOT EXISTS player_state_snapshots (
   game_id TEXT NOT NULL,
   house_id TEXT NOT NULL,
   turn INTEGER NOT NULL,
-  state_json TEXT NOT NULL,
+  state_msgpack TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   PRIMARY KEY (game_id, house_id, turn),
   FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
@@ -368,27 +149,18 @@ CREATE INDEX IF NOT EXISTS idx_nostr_event_log_created
 proc createAllTables*(db: DbConn) =
   ## Create all tables for a new game database
   ## Call this once when initializing a new game
+  ##
+  ## Note: Entity tables (houses, systems, colonies, fleets, ships, intel)
+  ## are no longer created. All entity data is stored in games.state_msgpack.
 
-  # Core game state
+  # Core game state (with msgpack blob)
   db.exec(sql CreateGamesTable)
-  db.exec(sql CreateHousesTable)
-  db.exec(sql CreateSystemsTable)
-  db.exec(sql CreateLanesTable)
-  db.exec(sql CreateColoniesTable)
-  db.exec(sql CreateFleetsTable)
-  db.exec(sql CreateShipsTable)
   db.exec(sql CreateCommandsTable)
-  db.exec(sql CreateDiplomacyTable)
-
-  # Intel system
-  db.exec(sql CreateIntelSystemsTable)
-  db.exec(sql CreateIntelFleetsTable)
-  db.exec(sql CreateIntelColoniesTable)
 
   # Event history
   db.exec(sql CreateGameEventsTable)
 
-  # Player state snapshots
+  # Player state snapshots (with msgpack blob)
   db.exec(sql CreatePlayerStateSnapshotsTable)
 
   # Replay protection

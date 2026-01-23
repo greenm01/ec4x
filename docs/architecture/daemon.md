@@ -158,10 +158,10 @@ BEGIN TRANSACTION;
 1. Lock game row (prevent concurrent resolution)
    UPDATE games SET phase = 'Resolving' WHERE id = ?id;
 
-2. Load game state from SQLite
-   - All systems, lanes, colonies, fleets, ships
-   - Current diplomatic relations
-   - Active construction/research
+2. Load game state from SQLite (msgpack deserialization)
+   - Single query: SELECT state_msgpack FROM games
+   - Deserialize complete GameState object (<1ms)
+   - All entities, diplomacy, intel included
 
 3. Load commands for current turn
    - All submitted commands
@@ -173,10 +173,10 @@ BEGIN TRANSACTION;
    c. Conflict Phase: Resolve combat
    d. Maintenance Phase: Construction, research, upkeep
 
-5. Save new game state to SQLite
-   - Update all changed entities
-   - Increment turn counter
-   - Update year/month calendar
+5. Save new game state to SQLite (msgpack serialization)
+   - Serialize complete GameState to msgpack (<1ms)
+   - Single UPDATE: UPDATE games SET state_msgpack = ?, turn = ?
+   - Atomic state update
 
 6. Generate turn log events
    - Movement events

@@ -9,6 +9,14 @@ import ../../src/engine/types/[core, command, game_state, fleet]
 import ../../src/engine/state/engine
 import ../../src/daemon/persistence/[init, reader, writer, schema]
 
+# Helper to update house pubkey (replaces removed setHousePubkey)
+proc setHousePubkey(dbPath: string, gameId: string, houseId: HouseId, pubkey: string) =
+  var state = loadFullState(dbPath)
+  if state.houses.entities.index.hasKey(houseId):
+    let idx = state.houses.entities.index[houseId]
+    state.houses.entities.data[idx].nostrPubkey = pubkey
+    saveFullState(state)
+
 # Test helper: Create a test game database with N houses
 proc createTestGame(playerCount: int, phase: string = "Active"): tuple[dbPath: string, gameId: string, state: GameState] =
   let testDir = getTempDir() / "ec4x_test_auto_resolve_" & $epochTime().int
@@ -56,8 +64,8 @@ suite "Auto-Resolve: Query Functions":
     defer: cleanupTestGame(dbPath)
 
     # Assign pubkeys to 2 houses
-    updateHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
-    updateHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
+    setHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
+    setHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
 
     let expected = countExpectedPlayers(dbPath, gameId)
     check expected == 2
@@ -67,9 +75,9 @@ suite "Auto-Resolve: Query Functions":
     defer: cleanupTestGame(dbPath)
 
     # Assign pubkeys to all houses
-    updateHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
-    updateHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
-    updateHousePubkey(dbPath, gameId, HouseId(3), "pubkey3")
+    setHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
+    setHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
+    setHousePubkey(dbPath, gameId, HouseId(3), "pubkey3")
 
     let expected = countExpectedPlayers(dbPath, gameId)
     check expected == 3
@@ -200,8 +208,8 @@ suite "Auto-Resolve: Readiness Detection":
     defer: cleanupTestGame(dbPath)
 
     # Assign pubkeys to both houses
-    updateHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
-    updateHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
+    setHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
+    setHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
 
     check countExpectedPlayers(dbPath, gameId) == 2
     check countPlayersSubmitted(dbPath, gameId, 1) == 0
@@ -257,9 +265,9 @@ suite "Auto-Resolve: Readiness Detection":
     defer: cleanupTestGame(dbPath)
 
     # Assign pubkeys to all 3 houses
-    updateHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
-    updateHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
-    updateHousePubkey(dbPath, gameId, HouseId(3), "pubkey3")
+    setHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
+    setHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
+    setHousePubkey(dbPath, gameId, HouseId(3), "pubkey3")
 
     # Only 2 houses submit
     let packet1 = CommandPacket(
@@ -309,8 +317,8 @@ suite "Auto-Resolve: Readiness Detection":
     defer: cleanupTestGame(dbPath)
 
     # Assign pubkeys
-    updateHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
-    updateHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
+    setHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
+    setHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
 
     # House 1 submits
     let packet1 = CommandPacket(
@@ -363,8 +371,8 @@ suite "Auto-Resolve: Phase Gating":
     defer: cleanupTestGame(dbPath)
 
     # Even with all players ready, Setup games shouldn't trigger
-    updateHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
-    updateHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
+    setHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
+    setHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
 
     let packet1 = CommandPacket(
       houseId: HouseId(1),
@@ -418,8 +426,8 @@ suite "Auto-Resolve: Phase Gating":
     let (dbPath, gameId, state) = createTestGame(2, "Paused")
     defer: cleanupTestGame(dbPath)
 
-    updateHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
-    updateHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
+    setHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
+    setHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
 
     let db = open(dbPath, "", "", "")
     defer: db.close()
@@ -442,9 +450,9 @@ suite "Auto-Resolve: Mixed Human/AI Games":
     defer: cleanupTestGame(dbPath)
 
     # Only 3 houses get pubkeys (4th is AI)
-    updateHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
-    updateHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
-    updateHousePubkey(dbPath, gameId, HouseId(3), "pubkey3")
+    setHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
+    setHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
+    setHousePubkey(dbPath, gameId, HouseId(3), "pubkey3")
     # HouseId(4) has no pubkey (AI)
 
     check countExpectedPlayers(dbPath, gameId) == 3

@@ -31,6 +31,9 @@ type
     maintenanceShortfallGroundUnits*: Table[GroundUnitId, int32]
     # Special assets
     planetBreakerCount*: int32
+    # Nostr/multiplayer fields (persisted in msgpack)
+    nostrPubkey*: string # Nostr public key (hex or npub format)
+    inviteCode*: string # Human-readable invite code for slot claim
 
   Houses* = object
     entities*: EntityManager[HouseId, House] # Core storage

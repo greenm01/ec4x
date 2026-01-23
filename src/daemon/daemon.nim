@@ -522,10 +522,13 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
     let houseId = houseOpt.get()
 
     # Update house with player pubkey
-    updateHousePubkey(gameInfo.dbPath, resolvedGameId, houseId, playerPubkey)
+    let updatedState = loadFullState(gameInfo.dbPath)
+    if updatedState.houses.entities.index.hasKey(houseId):
+      let idx = updatedState.houses.entities.index[houseId]
+      updatedState.houses.entities.data[idx].nostrPubkey = playerPubkey
+      saveFullState(updatedState)
 
     # Publish full state immediately after slot claim
-    let updatedState = loadFullState(gameInfo.dbPath)
     if daemonLoop.model.nostrPublisher != nil:
       await daemonLoop.model.nostrPublisher.publishFullState(
         gameInfo.id,

@@ -315,9 +315,13 @@ BEGIN TRANSACTION;
 -- Step 1: Lock game
 UPDATE games SET phase = 'Resolving' WHERE id = 'game-123';
 
--- Step 2: Load game state (queries)
+-- Step 2: Load game state (msgpack deserialization)
+SELECT state_msgpack FROM games WHERE id = 'game-123';
+-- Deserialize msgpack → GameState object (<1ms)
+
 -- Step 3: Run game engine (in memory)
--- Step 4: Save new state (updates/inserts)
+-- Step 4: Save new state (msgpack serialization)
+UPDATE games SET state_msgpack = ?, turn = ?, updated_at = ? WHERE id = 'game-123';
 
 -- Step 5: Increment turn
 UPDATE games SET
@@ -363,24 +367,22 @@ For each house:
 For each order in orders (by priority):
   1. Validate order still valid (fleet exists, etc.)
 
-  2. Execute order:
+  2. Execute order (in-memory GameState):
      - Move: Update fleet location, check for encounters
      - Colonize: Create new colony
      - Join Fleet: Merge fleets
      - Patrol: Set patrol route
      - Spy: Roll for intel success
 
-  3. Update entities in SQLite:
-     UPDATE fleets SET location_system_id = ? WHERE id = ?;
-     INSERT INTO colonies (...) VALUES (...);
+  3. Entities updated in GameState object (no SQL yet)
 
-  4. Log movement events:
-     INSERT INTO turn_log (game_id, turn, phase, event_type, data, visible_to_house_id)
-     VALUES ('game-123', 42, 'Command', 'FleetMoved', json({
-       "fleet_id": "fleet-1",
-       "from": "system-3",
-       "to": "system-5"
-     }), house_id);
+  4. Log movement events to events list:
+     events.add(GameEvent(
+       eventType: FleetMoved,
+       fleetId: fleet.id,
+       fromSystem: system3,
+       toSystem: system5
+     ))
 ```
 
 #### Phase 3: Conflict
@@ -391,47 +393,44 @@ For each system with multiple hostile fleets:
   2. Run combat resolution:
      result = resolve_combat(fleets_in_system)
 
-  3. Apply damage:
+  3. Apply damage (in-memory GameState):
      For each damaged ship:
-       UPDATE ships SET hull_points = ? WHERE id = ?;
+       ship.hullPoints -= damage
 
      For each destroyed ship:
-       DELETE FROM ships WHERE id = ?;
+       Remove from GameState.ships
 
      For each empty fleet:
-       DELETE FROM fleets WHERE id = ? AND (SELECT COUNT(*) FROM ships WHERE fleet_id = id) = 0;
+       Remove from GameState.fleets
 
-  4. Log combat events:
-     INSERT INTO turn_log (game_id, turn, phase, event_type, data, visible_to_house_id)
-     VALUES ('game-123', 42, 'Conflict', 'Combat', json({
-       "system": "system-5",
-       "attacker": "house-alpha",
-       "defender": "house-beta",
-       "losses": {...}
-     }), NULL);  -- Visible to both combatants (query filters later)
+  4. Log combat events to events list:
+     events.add(GameEvent(
+       eventType: Combat,
+       systemId: system5,
+       attackerHouse: houseAlpha,
+       defenderHouse: houseBeta,
+       losses: combatResult.losses
+     ))
 ```
 
 #### Phase 4: Maintenance
 
 ```
 For each colony:
-  1. Process construction queue:
+  1. Process construction queue (in-memory GameState):
      If construction_complete:
-       colony.starbase_level += 1
-       UPDATE colonies SET starbase_level = ? WHERE id = ?;
+       colony.starbaseLevel += 1
 
   2. Process research:
      If research_complete:
-       house.tech_level += 1
-       UPDATE houses SET tech_level = ? WHERE id = ?;
+       house.techLevel += 1
 
   3. Apply upkeep costs:
      house.prestige -= calculate_upkeep(house)
-     UPDATE houses SET prestige = ? WHERE id = ?;
 
   4. Check elimination:
      If house has no colonies and no fleets:
-       UPDATE houses SET eliminated = 1 WHERE id = ?;
+       house.isEliminated = true
        Log elimination event
 ```
 
@@ -441,25 +440,21 @@ For each colony:
 
 ```
 For each house in game:
-  1. Update system visibility:
+  1. Update system visibility (in GameState.intel[houseId]):
      - Mark owned systems (has colony)
      - Mark occupied systems (has fleet)
      - Keep scouted systems (visited before)
      - Add adjacent systems (one jump away)
 
-     INSERT OR REPLACE INTO intel_systems (...)
-
   2. Update fleet detection:
      - Detect enemy fleets in same systems as own fleets
      - Record ship counts and types
-
-     INSERT OR REPLACE INTO intel_fleets (...)
 
   3. Update colony intel:
      - Apply spy operation results
      - Update captured colony intel
 
-     INSERT OR REPLACE INTO intel_colonies (...)
+All intel updates stored in GameState.intel (per-house IntelDatabase)
 ```
 
 ### Delta Generation
@@ -467,42 +462,22 @@ For each house in game:
 **For each house:**
 
 ```
-1. Query changes since last turn:
-   - Fleets that moved
-   - Ships damaged/destroyed
-   - Colonies gained/lost
-   - Combat results visible to house
-   - Intel updates
+1. Generate filtered PlayerState from GameState:
+   - Extract entities owned by house
+   - Filter intel based on house's IntelDatabase
+   - Include visible events from events list
 
-2. Construct delta JSON:
-   {
-     "turn": 42,
-     "deltas": [
-       {
-         "type": "fleet_moved",
-         "fleet_id": "fleet-1",
-         "from": "system-3",
-         "to": "system-5",
-         "ships": [...]  // Only if HP changed
-       },
-       {
-         "type": "combat",
-         "system": "system-5",
-         "participants": ["house-alpha", "house-beta"],
-         "result": "attacker_victory",
-         "losses": {...}
-       },
-       {
-         "type": "intel_update",
-         "detected_fleets": [...],
-         "scouted_systems": [...]
-       }
-     ]
-   }
+2. Serialize to msgpack:
+   let snapshot = PlayerStateSnapshot.fromPlayerState(playerState)
+   let msgpackData = serializePlayerStateSnapshot(snapshot)
 
-3. Store delta:
-   INSERT INTO state_deltas (game_id, turn, house_id, delta_type, data)
-   VALUES ('game-123', 42, 'house-alpha', 'turn_complete', json);
+3. Store snapshot:
+   INSERT INTO player_state_snapshots (game_id, house_id, turn, state_msgpack, created_at)
+   VALUES ('game-123', 'house-alpha', 42, msgpackData, unixepoch())
+
+4. Generate KDL delta (for Nostr distribution):
+   Compare snapshot with previous turn's snapshot
+   Generate KDL with only changed entities
 ```
 
 ## Phase 5: Result Distribution

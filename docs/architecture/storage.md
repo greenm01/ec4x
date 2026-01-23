@@ -2,58 +2,60 @@
 
 ## Overview
 
-EC4X uses **SQLite** as its single source of truth for all game state. This design provides:
+EC4X uses **msgpack + SQLite** for game state persistence. This hybrid design provides:
 
 - **Simplicity**: One file per game, no complex setup
 - **Portability**: Copy database file = copy entire game
-- **Queryability**: SQL for complex game state queries
+- **Performance**: ~80% smaller than JSON, instant serialization
+- **Type Safety**: msgpack4nim ensures correct deserialization
+- **Queryability**: SQL for event log and command history
 - **Transactions**: ACID guarantees for turn resolution
-- **Performance**: Indexed queries for fast lookups
 - **Universality**: Works for both localhost and Nostr modes
-- **Event Sourcing**: GameEvents as single source of truth (~5-10MB per 100 turns)
+
+## Architecture Philosophy
+
+**msgpack for GameState, SQL for Events**
+
+- **GameState**: Serialized as single msgpack blob (base64-encoded TEXT)
+- **Events**: Stored as queryable SQL rows for reports
+- **Commands**: Stored as SQL rows with JSON params
+
+This hybrid approach balances:
+- Fast state snapshots (msgpack)
+- Queryable history (SQL)
+- Efficient storage (~10 MB per 100-turn game)
 
 ## Database Structure
 
-### One Database Per Game (Recommended)
+### One Database Per Game
 
 **EC4X uses separate SQLite files for each game:**
 
 ```
 data/games/
-├── 550e8400-e29b-41d4-a716-446655440000/
+├── lucky-tiger-jukebox/
 │   └── ec4x.db          # Game 1's database
-├── 7c9e6679-7425-40de-944b-e07fc1f90ae7/
+├── jingle-nylon-afoot/
 │   └── ec4x.db          # Game 2's database
-└── 123e4567-e89b-12d3-a456-426614174000/
+└── broken-dash-educated/
     └── ec4x.db          # Game 3's database
 ```
 
-**Directory naming:** UUID v4 for technical identity (e.g., `550e8400-e29b-41d4-a716-446655440000`)
-
-**Human names:** Stored in `games.name` field within database (e.g., "Alpha Test Game")
+**Directory naming:** Human-readable slug (e.g., `lucky-tiger-jukebox`)
 
 **Benefits:**
 - **Isolation**: Corruption in one game doesn't affect others
-- **Scalability**: No single large file (each game ~5-10 MB for 100 turns with event sourcing)
+- **Scalability**: No single large file (each game ~10-15 MB for 100 turns)
 - **Portability**: Copy game directory = copy entire game
 - **Backup**: Backup individual games independently
 - **Concurrency**: No write contention across games
 - **Archival**: Easy to archive/delete completed games
-- **Scenario Templates**: Reusable game setups separate from instance identity
 
 **Daemon Discovery**: Scan `data/games/*/ec4x.db` to find active games.
 
 **Implementation:** Database initialized by `createGameDatabase()` in `src/daemon/persistence/init.nim`
 
 ## Core Schema
-
-**Note on game_id:** Since each game has its own database file, the `game_id` foreign key in tables below is technically redundant (each database contains only one game). However, it's retained for:
-- Consistency with queries and code
-- Potential future consolidation if needed
-- Clarity in data model
-- Simplified multi-game queries if databases are attached
-
-In practice, each `ec4x.db` file will have exactly one row in the `games` table.
 
 ### games
 
@@ -64,6 +66,7 @@ CREATE TABLE games (
     id TEXT PRIMARY KEY,              -- UUID v4 (auto-generated)
     name TEXT NOT NULL,               -- Human-readable game name
     description TEXT,                 -- Optional admin notes
+    slug TEXT NOT NULL UNIQUE,        -- Human-friendly slug
     turn INTEGER NOT NULL DEFAULT 0,
     year INTEGER NOT NULL DEFAULT 2001,
     month INTEGER NOT NULL DEFAULT 1,
@@ -71,8 +74,7 @@ CREATE TABLE games (
     turn_deadline INTEGER,            -- Unix timestamp (NULL = no deadline)
     transport_mode TEXT NOT NULL,     -- 'localhost' or 'nostr'
     transport_config TEXT,            -- JSON: mode-specific config
-    game_setup_json TEXT NOT NULL,    -- Snapshot of GameSetup (scenario config)
-    game_config_json TEXT NOT NULL,   -- Snapshot of GameConfig (balance params)
+    state_msgpack TEXT,               -- Full GameState as base64-encoded msgpack
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
@@ -81,677 +83,355 @@ CREATE INDEX idx_games_phase ON games(phase);
 CREATE INDEX idx_games_deadline ON games(turn_deadline) WHERE phase = 'Active';
 ```
 
-**New fields:**
-- `name`: Human-readable identifier (default: scenario name)
-- `description`: Optional admin notes for this instance
-- `game_setup_json`: Immutable snapshot of scenario configuration at game creation
-- `game_config_json`: Immutable snapshot of balance parameters at game creation
+**Key Field:**
+- `state_msgpack`: Complete GameState serialized as msgpack, base64-encoded for safe SQLite storage
 
-**Scenario vs Instance:** Scenarios (`scenarios/*.kdl`) are reusable templates. Each game instance gets a unique UUID and can override the scenario name.
+**What's in the msgpack blob:**
+- All houses (with tech trees, espionage budgets, nostr pubkeys, invite codes)
+- All systems (coordinates, planet class, resource rating)
+- All jump lanes
+- All colonies (population, industry, infrastructure, build queues, ground units)
+- All fleets (location, cargo, ROE, orders)
+- All ships (class, hull points, fighters, experience)
+- All diplomatic relations
+- All intelligence databases (per-house intel)
+- All facilities (neorias, kastras)
+- All production projects (construction, repairs)
+- All ID counters
+- All ongoing effects and pending proposals
 
-**transport_config JSON examples:**
+**Performance:**
+- Typical 4-player game: ~100-140 KB (msgpack)
+- vs JSON: ~500 KB (79% reduction)
+- Serialization: <1ms
+- Deserialization: <1ms
 
-**Localhost mode:**
-```json
-{
-  "data_dir": "data/games/550e8400-e29b-41d4-a716-446655440000",
-  "poll_interval": 30
-}
-```
+### commands
 
-**Nostr mode (primary multiplayer transport):**
-```json
-{
-  "relay": "wss://relay.damus.io",
-  "moderator_pubkey": "npub1...",
-  "fallback_relays": ["wss://relay.nostr.band"],
-  "game_event_kind": 30000
-}
-```
-
-Both modes use the same per-game database structure. Transport mode only affects how orders and state updates are communicated between players.
-
-### houses
-
-Player factions in a game.
+Player command batches for turn resolution.
 
 ```sql
-CREATE TABLE houses (
-    id TEXT PRIMARY KEY,              -- UUID v4
-    game_id TEXT NOT NULL,
-    name TEXT NOT NULL,               -- "House Alpha", "Empire Beta"
-    nostr_pubkey TEXT,                -- npub/hex (NULL for localhost)
-    prestige INTEGER NOT NULL DEFAULT 0,
-    eliminated BOOLEAN NOT NULL DEFAULT 0,
-    home_system_id TEXT,
-    color TEXT,                       -- Hex color code for UI
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    UNIQUE(game_id, name)
-);
-
-CREATE INDEX idx_houses_game ON houses(game_id);
-CREATE INDEX idx_houses_pubkey ON houses(nostr_pubkey) WHERE nostr_pubkey IS NOT NULL;
-```
-
-### systems
-
-Star systems on the map.
-
-```sql
-CREATE TABLE systems (
-    id TEXT PRIMARY KEY,              -- UUID v4
-    game_id TEXT NOT NULL,
-    name TEXT NOT NULL,               -- "Alpha Centauri", "Sol"
-    hex_q INTEGER NOT NULL,           -- Hex coordinate Q
-    hex_r INTEGER NOT NULL,           -- Hex coordinate R
-    ring INTEGER NOT NULL,            -- Distance from center (0 = center)
-    owner_house_id TEXT,              -- NULL if unowned
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (owner_house_id) REFERENCES houses(id) ON DELETE SET NULL,
-    UNIQUE(game_id, hex_q, hex_r)
-);
-
-CREATE INDEX idx_systems_game ON systems(game_id);
-CREATE INDEX idx_systems_coords ON systems(game_id, hex_q, hex_r);
-CREATE INDEX idx_systems_owner ON systems(owner_house_id) WHERE owner_house_id IS NOT NULL;
-```
-
-### lanes
-
-Jump lanes connecting systems.
-
-```sql
-CREATE TABLE lanes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    game_id TEXT NOT NULL,
-    from_system_id TEXT NOT NULL,
-    to_system_id TEXT NOT NULL,
-    lane_type TEXT NOT NULL,          -- 'Major', 'Minor', 'Restricted'
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (from_system_id) REFERENCES systems(id) ON DELETE CASCADE,
-    FOREIGN KEY (to_system_id) REFERENCES systems(id) ON DELETE CASCADE,
-    UNIQUE(game_id, from_system_id, to_system_id),
-    CHECK(lane_type IN ('Major', 'Minor', 'Restricted'))
-);
-
-CREATE INDEX idx_lanes_game ON lanes(game_id);
-CREATE INDEX idx_lanes_from ON lanes(from_system_id);
-CREATE INDEX idx_lanes_to ON lanes(to_system_id);
-```
-
-### colonies
-
-Player colonies on planets.
-
-```sql
-CREATE TABLE colonies (
-    id TEXT PRIMARY KEY,              -- UUID v4
-    game_id TEXT NOT NULL,
-    system_id TEXT NOT NULL,
-    owner_house_id TEXT NOT NULL,
-    population INTEGER NOT NULL DEFAULT 0,
-    industry INTEGER NOT NULL DEFAULT 0,
-    defenses INTEGER NOT NULL DEFAULT 0,
-    starbase_level INTEGER NOT NULL DEFAULT 0,
-    under_siege BOOLEAN NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (system_id) REFERENCES systems(id) ON DELETE CASCADE,
-    FOREIGN KEY (owner_house_id) REFERENCES houses(id) ON DELETE CASCADE,
-    UNIQUE(game_id, system_id)        -- One colony per system
-);
-
-CREATE INDEX idx_colonies_game ON colonies(game_id);
-CREATE INDEX idx_colonies_owner ON colonies(owner_house_id);
-CREATE INDEX idx_colonies_system ON colonies(system_id);
-```
-
-### fleets
-
-Collections of ships.
-
-```sql
-CREATE TABLE fleets (
-    id TEXT PRIMARY KEY,              -- UUID v4
-    game_id TEXT NOT NULL,
-    owner_house_id TEXT NOT NULL,
-    location_system_id TEXT NOT NULL,
-    name TEXT,                        -- Optional fleet name
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (owner_house_id) REFERENCES houses(id) ON DELETE CASCADE,
-    FOREIGN KEY (location_system_id) REFERENCES systems(id) ON DELETE CASCADE
-);
-
-CREATE INDEX idx_fleets_game ON fleets(game_id);
-CREATE INDEX idx_fleets_owner ON fleets(owner_house_id);
-CREATE INDEX idx_fleets_location ON fleets(location_system_id);
-```
-
-### ships
-
-Individual ships in fleets.
-
-```sql
-CREATE TABLE ships (
-    id TEXT PRIMARY KEY,              -- UUID v4
-    fleet_id TEXT NOT NULL,
-    ship_type TEXT NOT NULL,          -- 'Military', 'Spacelift'
-    hull_points INTEGER NOT NULL,     -- Current HP
-    max_hull_points INTEGER NOT NULL, -- Max HP
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (fleet_id) REFERENCES fleets(id) ON DELETE CASCADE,
-    CHECK(ship_type IN ('Military', 'Spacelift'))
-);
-
-CREATE INDEX idx_ships_fleet ON ships(fleet_id);
-```
-
-### orders
-
-Player orders for fleets each turn.
-
-```sql
-CREATE TABLE orders (
+CREATE TABLE commands (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     game_id TEXT NOT NULL,
     house_id TEXT NOT NULL,
     turn INTEGER NOT NULL,
-    fleet_id TEXT NOT NULL,
-    order_type TEXT NOT NULL,         -- Fleet order type (see gamestate.nim)
-    target_system_id TEXT,            -- For movement/patrol orders
-    target_fleet_id TEXT,             -- For join/rendezvous orders
-    params TEXT,                      -- JSON blob for order-specific data
-    submitted_at INTEGER NOT NULL,    -- Unix timestamp
+    fleet_id TEXT,                     -- NULL for non-fleet commands
+    colony_id TEXT,                    -- Set for build/repair/scrap/colony
+    command_type TEXT NOT NULL,        -- Command category or fleet cmd type
+    target_system_id TEXT,
+    target_fleet_id TEXT,
+    params TEXT,                       -- JSON blob for all command data
+    submitted_at INTEGER NOT NULL,     -- Unix timestamp
     processed BOOLEAN NOT NULL DEFAULT 0,
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE,
-    FOREIGN KEY (fleet_id) REFERENCES fleets(id) ON DELETE CASCADE,
-    FOREIGN KEY (target_system_id) REFERENCES systems(id) ON DELETE SET NULL,
-    FOREIGN KEY (target_fleet_id) REFERENCES fleets(id) ON DELETE SET NULL,
-    UNIQUE(game_id, turn, fleet_id)   -- One order per fleet per turn
+    UNIQUE(game_id, turn, house_id, fleet_id, colony_id, command_type)
 );
 
-CREATE INDEX idx_orders_turn ON orders(game_id, turn);
-CREATE INDEX idx_orders_house_turn ON orders(house_id, turn);
-CREATE INDEX idx_orders_unprocessed ON orders(game_id, turn, processed)
+CREATE INDEX idx_commands_turn ON commands(game_id, turn);
+CREATE INDEX idx_commands_house_turn ON commands(house_id, turn);
+CREATE INDEX idx_commands_unprocessed ON commands(game_id, turn, processed)
     WHERE processed = 0;
 ```
 
-### diplomacy
-
-Relations between houses.
-
-```sql
-CREATE TABLE diplomacy (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    game_id TEXT NOT NULL,
-    house_a_id TEXT NOT NULL,
-    house_b_id TEXT NOT NULL,
-    relation TEXT NOT NULL,           -- 'War', 'Peace', 'Alliance', 'NAP'
-    turn_established INTEGER NOT NULL,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (house_a_id) REFERENCES houses(id) ON DELETE CASCADE,
-    FOREIGN KEY (house_b_id) REFERENCES houses(id) ON DELETE CASCADE,
-    UNIQUE(game_id, house_a_id, house_b_id),
-    CHECK(relation IN ('War', 'Peace', 'Alliance', 'NAP')),
-    CHECK(house_a_id < house_b_id)    -- Enforce ordering to prevent duplicates
-);
-
-CREATE INDEX idx_diplomacy_game ON diplomacy(game_id);
-CREATE INDEX idx_diplomacy_houses ON diplomacy(house_a_id, house_b_id);
-```
-
-### turn_log
-
-Event history for each turn.
-
-```sql
-CREATE TABLE turn_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    game_id TEXT NOT NULL,
-    turn INTEGER NOT NULL,
-    phase TEXT NOT NULL,              -- 'Income', 'Command', 'Conflict', 'Maintenance'
-    event_type TEXT NOT NULL,         -- 'Movement', 'Combat', 'Construction', etc.
-    data TEXT NOT NULL,               -- JSON event data
-    visible_to_house_id TEXT,         -- NULL = public, else private to house
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (visible_to_house_id) REFERENCES houses(id) ON DELETE CASCADE
-);
-
-CREATE INDEX idx_turn_log_game_turn ON turn_log(game_id, turn);
-CREATE INDEX idx_turn_log_visibility ON turn_log(visible_to_house_id)
-    WHERE visible_to_house_id IS NOT NULL;
-```
-
-## Intel Schema
-
-### intel_systems
-
-Tracks which systems each player has knowledge of.
-
-```sql
-CREATE TABLE intel_systems (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    game_id TEXT NOT NULL,
-    house_id TEXT NOT NULL,           -- Who has this intel
-    system_id TEXT NOT NULL,          -- What system
-    last_scouted_turn INTEGER NOT NULL,
-    visibility_level TEXT NOT NULL,   -- 'owned', 'occupied', 'scouted', 'adjacent'
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE,
-    FOREIGN KEY (system_id) REFERENCES systems(id) ON DELETE CASCADE,
-    UNIQUE(game_id, house_id, system_id),
-    CHECK(visibility_level IN ('owned', 'occupied', 'scouted', 'adjacent'))
-);
-
-CREATE INDEX idx_intel_systems_house ON intel_systems(game_id, house_id);
-CREATE INDEX idx_intel_systems_system ON intel_systems(system_id);
-```
-
-**Visibility levels:**
-- `owned`: Player has colony here (full visibility)
-- `occupied`: Player has fleet here (current visibility)
-- `scouted`: Player visited recently (may be stale)
-- `adjacent`: System is one jump away (limited intel)
-
-### intel_fleets
-
-Tracks detected enemy fleets.
-
-```sql
-CREATE TABLE intel_fleets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    game_id TEXT NOT NULL,
-    house_id TEXT NOT NULL,           -- Who detected this
-    fleet_id TEXT NOT NULL,           -- Enemy fleet
-    detected_turn INTEGER NOT NULL,   -- Last seen
-    detected_system_id TEXT NOT NULL, -- Where it was seen
-    ship_count INTEGER,               -- Approximate count
-    ship_types TEXT,                  -- JSON: {"Military": 5, "Spacelift": 2}
-    intel_quality TEXT NOT NULL,      -- 'visual', 'scan', 'spy'
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE,
-    FOREIGN KEY (fleet_id) REFERENCES fleets(id) ON DELETE CASCADE,
-    FOREIGN KEY (detected_system_id) REFERENCES systems(id) ON DELETE CASCADE,
-    UNIQUE(game_id, house_id, fleet_id),
-    CHECK(intel_quality IN ('visual', 'scan', 'spy'))
-);
-
-CREATE INDEX idx_intel_fleets_house ON intel_fleets(game_id, house_id);
-CREATE INDEX idx_intel_fleets_fleet ON intel_fleets(fleet_id);
-CREATE INDEX idx_intel_fleets_staleness ON intel_fleets(game_id, detected_turn);
-```
-
-**Intel quality:**
-- `visual`: Saw fleet in same system (ship count visible)
-- `scan`: Active sensor scan (ship types visible)
-- `spy`: Espionage operation (full details)
-
-### intel_colonies
-
-Tracks known enemy colony details.
-
-```sql
-CREATE TABLE intel_colonies (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    game_id TEXT NOT NULL,
-    house_id TEXT NOT NULL,           -- Who has this intel
-    colony_id TEXT NOT NULL,          -- Target colony
-    intel_turn INTEGER NOT NULL,      -- When intel was gathered
-    population INTEGER,               -- NULL if unknown
-    industry INTEGER,
-    defenses INTEGER,
-    starbase_level INTEGER,
-    intel_source TEXT NOT NULL,       -- 'spy', 'capture', 'scan'
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE,
-    FOREIGN KEY (colony_id) REFERENCES colonies(id) ON DELETE CASCADE,
-    UNIQUE(game_id, house_id, colony_id),
-    CHECK(intel_source IN ('spy', 'capture', 'scan'))
-);
-
-CREATE INDEX idx_intel_colonies_house ON intel_colonies(game_id, house_id);
-CREATE INDEX idx_intel_colonies_colony ON intel_colonies(colony_id);
-CREATE INDEX idx_intel_colonies_staleness ON intel_colonies(game_id, intel_turn);
-```
-
-## Telemetry & Events Schema
+**Note:** Commands use JSON for params (not msgpack) because:
+- Need queryable command history
+- Params are small (<1 KB typically)
+- Flexibility for command-specific data
 
 ### game_events
 
-Event history using event-sourcing pattern. Single source of truth for all game occurrences.
+Event history for turn reports.
 
 ```sql
 CREATE TABLE game_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     game_id TEXT NOT NULL,
     turn INTEGER NOT NULL,
-    event_type TEXT NOT NULL,         -- GameEventType enum (e.g., 'Battle', 'OrderCompleted')
-    house_id TEXT,                    -- Primary actor (NULL for system events)
-    fleet_id TEXT,                    -- Related fleet (NULL if not fleet-related)
-    system_id TEXT,                   -- Related system (NULL if not location-specific)
-    order_type TEXT,                  -- Order type if order-related
-    description TEXT NOT NULL,        -- Human-readable event description
-    reason TEXT,                      -- Failure reason for rejected orders
-    event_data TEXT,                  -- JSON: event-specific data
+    event_type TEXT NOT NULL,
+    house_id TEXT,
+    fleet_id TEXT,
+    system_id TEXT,
+    command_type TEXT,
+    description TEXT NOT NULL,
+    reason TEXT,
+    event_data TEXT,                  -- JSON blob for event-specific data
     created_at INTEGER NOT NULL,
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_events_game_turn ON game_events(game_id, turn);
-CREATE INDEX idx_events_house ON game_events(house_id) WHERE house_id IS NOT NULL;
-CREATE INDEX idx_events_type ON game_events(game_id, event_type);
+CREATE INDEX idx_events_game ON game_events(game_id);
+CREATE INDEX idx_events_turn ON game_events(game_id, turn);
+CREATE INDEX idx_events_type ON game_events(event_type);
+CREATE INDEX idx_events_fleet ON game_events(fleet_id)
+    WHERE fleet_id IS NOT NULL;
 ```
 
-**Event Sourcing Benefits:**
-- Single source of truth for all game occurrences
-- Can reconstruct game state from events
-- Enables replay and debugging
-- Dramatically smaller than full state snapshots (~5-10MB vs 500MB per 100 turns)
+**Purpose:** Queryable event log for generating turn reports
 
-**Visibility:** Events respect fog-of-war. Use `shouldHouseSeeEvent()` from `src/engine/intel/event_processor/visibility.nim` to filter.
+**Visibility:** Events respect fog-of-war. Use `shouldHouseSeeEvent()` to filter.
 
-### diagnostic_metrics
+### player_state_snapshots
 
-Comprehensive per-house per-turn metrics for balance testing and AI tuning.
+Per-house PlayerState snapshots for delta generation.
 
 ```sql
-CREATE TABLE diagnostic_metrics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE player_state_snapshots (
     game_id TEXT NOT NULL,
-    turn INTEGER NOT NULL,
-    act INTEGER NOT NULL,             -- Game chapter/phase
-    rank INTEGER NOT NULL,            -- House ranking this turn
     house_id TEXT NOT NULL,
-
-    -- 200+ metric columns covering:
-    -- - Economy (treasury, production, population, IU/PU/PTU)
-    -- - Technology (all tech levels, research points)
-    -- - Military (ship counts by type, combat performance)
-    -- - Diplomacy (relation counts, violations)
-    -- - Espionage (mission counts, detection)
-    -- - Capacity (fighter/squadron limits, violations)
-    -- - Production (build queue depth, commissioning)
-    -- - Fleet Activity (movement, colonization, stuck fleets)
-    -- - Event Counts (order outcomes, combat events)
-    -- - Computed Ratios (force projection, fleet readiness)
-
+    turn INTEGER NOT NULL,
+    state_msgpack TEXT NOT NULL,
     created_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    UNIQUE(game_id, turn, house_id)
-);
-
-CREATE INDEX idx_diagnostics_game_turn ON diagnostic_metrics(game_id, turn);
-CREATE INDEX idx_diagnostics_house ON diagnostic_metrics(game_id, house_id);
-CREATE INDEX idx_diagnostics_act ON diagnostic_metrics(game_id, act);
-```
-
-**Usage:**
-- Balance testing: Run 100+ games, analyze with Python + polars
-- Regression detection: Compare metrics across code changes
-- Performance analysis: Identify outlier games
-
-**Collection:** Orchestrated by `src/engine/telemetry/orchestrator.nim`, saved via `src/engine/persistence/writer.nim`
-
-**Full schema:** See `src/engine/persistence/schema.nim` for complete 200+ column definition.
-
-## Nostr Transport Schema
-
-The game operates on both localhost and Nostr protocols. These tables enable Nostr-based multiplayer.
-
-### nostr_events
-
-Cache of received Nostr events for asynchronous processing.
-
-```sql
-CREATE TABLE nostr_events (
-    id TEXT PRIMARY KEY,              -- Nostr event ID (hex)
-    game_id TEXT NOT NULL,
-    kind INTEGER NOT NULL,
-    pubkey TEXT NOT NULL,
-    created_at INTEGER NOT NULL,      -- Nostr timestamp
-    content TEXT NOT NULL,
-    tags TEXT NOT NULL,               -- JSON array
-    sig TEXT NOT NULL,
-    processed BOOLEAN NOT NULL DEFAULT 0,
-    received_at INTEGER NOT NULL,     -- Local timestamp
+    PRIMARY KEY (game_id, house_id, turn),
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_nostr_events_game_kind ON nostr_events(game_id, kind);
-CREATE INDEX idx_nostr_events_unprocessed ON nostr_events(processed, game_id)
-    WHERE processed = 0;
-CREATE INDEX idx_nostr_events_turn ON nostr_events(game_id, json_extract(tags, '$[?(@[0]=="t")][1]'));
+CREATE INDEX idx_player_state_house
+    ON player_state_snapshots(game_id, house_id);
 ```
 
-### nostr_outbox
+**Purpose:** Store per-house fog-of-war filtered state for computing deltas between turns
 
-Queue of Nostr events to publish.
+**Format:** msgpack (base64-encoded) for consistency with GameState serialization
 
-```sql
-CREATE TABLE nostr_outbox (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    game_id TEXT NOT NULL,
-    event_kind INTEGER NOT NULL,
-    recipient_pubkey TEXT,            -- NULL for public events
-    content TEXT NOT NULL,            -- Unencrypted or pre-encrypted
-    tags TEXT NOT NULL,               -- JSON array
-    sent BOOLEAN NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL,
-    sent_at INTEGER,                  -- NULL until sent
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
-);
+### nostr_event_log
 
-CREATE INDEX idx_nostr_outbox_unsent ON nostr_outbox(sent, game_id)
-    WHERE sent = 0;
-```
-
-**Note:** Nostr tables are included in the per-game database schema. Each game tracks its own Nostr events and outbox queue, enabling proper isolation for concurrent multiplayer games.
-
-## State Deltas Schema
-
-### state_deltas
-
-Tracks changes each turn for efficient delta generation.
+Replay protection for Nostr events.
 
 ```sql
-CREATE TABLE state_deltas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE nostr_event_log (
     game_id TEXT NOT NULL,
     turn INTEGER NOT NULL,
-    house_id TEXT,                    -- NULL = public delta
-    delta_type TEXT NOT NULL,         -- 'fleet_moved', 'combat', 'colony_built', etc.
-    entity_id TEXT,                   -- Fleet/colony/system ID
-    data TEXT NOT NULL,               -- JSON of changed fields only
+    kind INTEGER NOT NULL,
+    event_id TEXT NOT NULL,
+    direction INTEGER NOT NULL,        -- 0=inbound, 1=outbound
     created_at INTEGER NOT NULL,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE
+    UNIQUE(game_id, kind, event_id, direction)
 );
 
-CREATE INDEX idx_deltas_turn ON state_deltas(game_id, turn, house_id);
-CREATE INDEX idx_deltas_type ON state_deltas(game_id, delta_type);
+CREATE INDEX idx_nostr_event_log_game_turn
+    ON nostr_event_log(game_id, turn, kind, direction);
+CREATE INDEX idx_nostr_event_log_created
+    ON nostr_event_log(created_at);
 ```
 
-**Example delta data:**
-```json
-{
-  "type": "fleet_moved",
-  "id": "fleet-123",
-  "from": "system-A",
-  "to": "system-B",
-  "ships_damaged": [{"id": "ship-1", "hp": 8}]
-}
+**Purpose:** Prevent replay attacks and duplicate event processing
+
+## Removed Tables (Now in msgpack blob)
+
+**The following tables were removed in favor of msgpack serialization:**
+
+- ❌ `houses` - House data now in GameState.houses
+- ❌ `systems` - System data now in GameState.systems
+- ❌ `lanes` - Lane data now in GameState.starMap.lanes
+- ❌ `colonies` - Colony data now in GameState.colonies
+- ❌ `fleets` - Fleet data now in GameState.fleets
+- ❌ `ships` - Ship data now in GameState.ships
+- ❌ `diplomacy` - Diplomatic relations now in GameState.diplomaticRelation
+- ❌ `intel_systems` - Intel now in GameState.intel (per-house IntelDatabase)
+- ❌ `intel_fleets` - Intel now in GameState.intel
+- ❌ `intel_colonies` - Intel now in GameState.intel
+
+**Benefits of removal:**
+- **79% storage reduction** vs JSON entity tables
+- **Simplified schema** (6 tables instead of 15)
+- **Atomic state updates** (entire state in one blob)
+- **No index maintenance** (no bySystem/byOwner tables)
+- **Single source of truth** (GameState object is authoritative)
+
+## Migration from JSON (v8 → v9)
+
+**Schema version 9** introduced msgpack persistence:
+
+**Changes:**
+1. Added `state_msgpack TEXT` to `games` table
+2. Changed `state_json` → `state_msgpack` in `player_state_snapshots` table
+3. Removed 9 entity tables (houses, systems, lanes, colonies, fleets, ships, diplomacy, intel_*)
+4. Removed `game_setup_json`, `game_config_json` from games table
+
+**Breaking Change:** No backward compatibility. Games created with schema v8 cannot be loaded with v9.
+
+**Mitigation:** This is pre-release software. Existing games must be recreated.
+
+## Persistence Layer Implementation
+
+### Writer Module (`src/daemon/persistence/writer.nim`)
+
+Unified persistence layer for per-game databases.
+
+**Core API:**
+```nim
+proc saveFullState*(state: GameState)
+  # Serializes entire GameState to msgpack, saves to games.state_msgpack
+
+proc savePlayerStateSnapshot*(dbPath: string, gameId: string,
+                              houseId: HouseId, turn: int32,
+                              snapshot: PlayerStateSnapshot)
+  # Saves per-house fog-of-war state for delta generation
+
+proc saveCommandPacket*(dbPath: string, gameId: string,
+                       packet: CommandPacket)
+  # Saves player commands to commands table (JSON params)
+
+proc saveGameEvents*(state: GameState, events: seq[GameEvent])
+  # Batch insert events to game_events table
 ```
+
+**Design:**
+- Single `saveFullState()` call replaces 6+ entity save procs
+- Transaction per state save (atomic)
+- base64 encoding for safe binary storage
+
+### Reader Module (`src/daemon/persistence/reader.nim`)
+
+Load GameState from msgpack blob.
+
+**Core API:**
+```nim
+proc loadFullState*(dbPath: string): GameState
+  # Loads complete GameState from games.state_msgpack
+  # Deserializes msgpack → GameState object
+  # Restores runtime fields (dbPath, dataDir)
+
+proc loadPlayerStateSnapshot*(dbPath: string, gameId: string,
+                             houseId: HouseId, turn: int32):
+                             Option[PlayerStateSnapshot]
+  # Loads per-house state snapshot from msgpack
+
+proc loadOrders*(dbPath: string, turn: int): Table[HouseId, CommandPacket]
+  # Loads command packets from commands table (JSON deserialization)
+```
+
+**Performance:**
+- `loadFullState()`: <1ms for typical game
+- No complex queries or joins
+- No index rebuilding
+
+### msgpack Serialization Module (`src/daemon/persistence/msgpack_state.nim`)
+
+Custom msgpack serialization for EC4X types.
+
+**Custom Type Handlers:**
+```nim
+# All distinct ID types (HouseId, SystemId, ColonyId, FleetId, ShipId,
+# GroundUnitId, NeoriaId, KastraId, ConstructionProjectId, RepairProjectId,
+# PopulationTransferId, ProposalId) have custom pack_type/unpack_type procs
+
+proc pack_type*[S](s: S, x: HouseId) = s.pack(x.uint32)
+proc unpack_type*[S](s: S, x: var HouseId) =
+  var v: uint32
+  s.unpack(v)
+  x = HouseId(v)
+
+# ... similar for all ID types
+```
+
+**Core API:**
+```nim
+proc serializeGameState*(state: GameState): string
+  # GameState → msgpack binary → base64 string
+
+proc deserializeGameState*(data: string): GameState
+  # base64 string → msgpack binary → GameState
+
+proc serializePlayerState*(state: PlayerState): string
+proc deserializePlayerState*(data: string): PlayerState
+```
+
+**Why base64?**
+- SQLite parameter binding safety
+- Avoids binary string escaping issues
+- ~33% overhead acceptable (still 72% smaller than JSON)
 
 ## Query Patterns
 
-### Get Player's Visible Game State
+### Load Game State
+
+```nim
+# Single call loads entire game
+let state = loadFullState(dbPath)
+
+# Access any entity directly
+let house = state.houses.entities.data[idx]
+let colony = state.colonies.entities.data[idx]
+let fleet = state.fleets.entities.data[idx]
+```
+
+### Query Event History
 
 ```sql
--- Own colonies
-SELECT c.* FROM colonies c
-WHERE c.owner_house_id = ?house_id;
+-- Get all events for a turn
+SELECT * FROM game_events
+WHERE game_id = ? AND turn = ?
+ORDER BY id;
 
--- Known systems
-SELECT s.* FROM systems s
-JOIN intel_systems i ON s.id = i.system_id
-WHERE i.game_id = ?game_id AND i.house_id = ?house_id;
-
--- Detected enemy fleets (with staleness)
-SELECT f.id, i.detected_system_id, i.ship_count,
-       (?current_turn - i.detected_turn) as turns_stale
-FROM intel_fleets i
-JOIN fleets f ON i.fleet_id = f.id
-WHERE i.game_id = ?game_id AND i.house_id = ?house_id;
+-- Get events visible to a house (filtered by engine)
+SELECT * FROM game_events
+WHERE game_id = ? AND turn = ?
+  AND (house_id = ? OR house_id IS NULL);
 ```
 
 ### Check Turn Readiness
 
 ```sql
--- Count submitted orders vs expected
+-- Count submitted commands vs expected
 SELECT
-    (SELECT COUNT(*) FROM houses WHERE game_id = ?game_id AND eliminated = 0) as expected,
-    (SELECT COUNT(DISTINCT house_id) FROM orders
-     WHERE game_id = ?game_id AND turn = ?turn) as submitted;
-```
-
-### Get Turn Deltas for Player
-
-```sql
-SELECT * FROM state_deltas
-WHERE game_id = ?game_id
-  AND turn = ?turn
-  AND (house_id = ?house_id OR house_id IS NULL)
-ORDER BY id;
-```
-
-## Migration Strategy
-
-### From Current File-Based System
-
-1. Create SQLite schema
-2. Parse existing `systems.txt`, `lanes.txt`, `game_info.txt`
-3. Insert into appropriate tables
-4. Update game engine to query SQLite
-5. Keep file exports for backward compatibility (optional)
-
-### Schema Versioning
-
-```sql
-CREATE TABLE schema_version (
-    version INTEGER PRIMARY KEY,
-    applied_at INTEGER NOT NULL
-);
-
-INSERT INTO schema_version VALUES (1, unixepoch());
+    (SELECT COUNT(*) FROM houses WHERE eliminated = 0) as expected,
+    (SELECT COUNT(DISTINCT house_id) FROM commands
+     WHERE game_id = ? AND turn = ? AND processed = 0) as submitted;
 ```
 
 ## Backup and Recovery
 
 ### Backup
+
 ```bash
-# Full database backup
-sqlite3 ec4x.db ".backup /backup/ec4x_$(date +%Y%m%d).db"
+# Full database backup (includes msgpack state)
+sqlite3 data/games/lucky-tiger-jukebox/ec4x.db ".backup /backup/game_$(date +%Y%m%d).db"
 
 # Per-game backup
-sqlite3 ec4x.db "SELECT * FROM games WHERE id='game-123'" | ...
+cp -r data/games/lucky-tiger-jukebox /backup/games/
 ```
 
 ### Recovery
+
 ```bash
 # Restore from backup
-cp /backup/ec4x_20250116.db ec4x.db
-
-# Export single game
-sqlite3 ec4x.db ".dump" | grep "game-123" > game-123.sql
+cp /backup/game_20250122.db data/games/lucky-tiger-jukebox/ec4x.db
 ```
-
-## Persistence Layer Implementation
-
-### Writer Module (`src/engine/persistence/writer.nim`)
-
-Unified persistence layer for per-game databases. All write operations go through this module.
-
-**Core API:**
-```nim
-proc updateGameMetadata*(state: GameState)
-proc saveDiagnosticMetrics*(state: GameState, metrics: DiagnosticMetrics)
-proc saveGameEvent*(state: GameState, event: GameEvent)
-proc saveGameEvents*(state: GameState, events: seq[GameEvent])
-```
-
-**Design principles:**
-- Uses `GameState.dbPath` for per-game isolation
-- No global database management
-- Schema creation handled by `initPerGameDatabase()`
-- Batch operations use transactions for atomicity
-
-### Fog-of-War Exports (`src/engine/intel/fog_of_war_export.nim`)
-
-Generate filtered game state views for AI opponents (Claude play-testing).
-
-**API:**
-```nim
-proc exportFogOfWarView*(state: GameState, houseId: HouseId): FogOfWarView
-proc exportFogOfWarViewToJson*(state: GameState, houseId: HouseId): JsonNode
-proc saveFogOfWarViewToFile*(state: GameState, houseId: HouseId, filePath: string)
-```
-
-**Exported data:**
-- Own entities (full visibility): colonies, fleets, house data
-- Intelligence reports: known systems, fleets, colonies
-- Diplomatic relations
-- Visible events (filtered by `shouldHouseSeeEvent()`)
-
-**Use case:** Generate per-house JSON files for Claude to analyze and submit orders.
 
 ## Performance Considerations
 
-### Index Strategy
-- Primary keys on all ID columns
-- Composite indexes on (game_id, turn) for orders/deltas/events
-- Partial indexes for active games and unprocessed records
-- Event type index for fast event filtering
+### Storage Growth
 
-### Query Optimization
-- Use prepared statements for repeated queries
-- Batch inserts in transactions (especially for events)
-- VACUUM periodically to reclaim space
-- Event sourcing reduces storage by 100x vs full snapshots
+**With msgpack serialization:**
+- Initial state: ~100-150 KB
+- Per-turn growth: ~10-20 KB (commands + events)
+- 100-turn game: ~10-15 MB total
+- 1000-turn game: ~100-150 MB total
+
+**Comparison to JSON (v8):**
+- Initial state: ~500 KB (JSON) vs ~150 KB (msgpack base64) = **70% reduction**
+- 100-turn game: ~50 MB (JSON) vs ~15 MB (msgpack) = **70% reduction**
 
 ### Write Patterns
-- Turn resolution in single transaction
-- Batch event writes (200+ events per turn)
-- Diagnostic metrics written once per house per turn
-- Intel updates batch-processed after turn resolution
 
-### Storage Growth
-- **With event sourcing:** ~50-100KB per turn (typical 4-player game)
-- **100-turn game:** ~5-10 MB total
-- **1000-turn game:** ~50-100 MB total
-- **No full state snapshots** = dramatic space savings
+- Turn resolution in single transaction
+- One `UPDATE games SET state_msgpack = ?` per turn
+- Batch event writes (100-200 events per turn)
+- Commands written incrementally as submitted
+
+### Read Patterns
+
+- Single query loads entire state: `SELECT state_msgpack FROM games`
+- Deserialize msgpack: <1ms
+- No complex joins or index rebuilding
+- Events queried separately for reports
 
 ## TUI Client-Side Cache
 
 The TUI player maintains a separate SQLite cache for client-side data,
-independent from the daemon's authoritative database. This enables the
-TUI to run on a remote machine without direct filesystem access to the
-daemon's data directory.
+independent from the daemon's authoritative database.
 
 ### Cache Location
 
@@ -789,13 +469,13 @@ CREATE TABLE player_slots (
     UNIQUE(game_id, player_pubkey)
 );
 
--- PlayerState snapshots per game/turn
+-- PlayerState snapshots per game/turn (msgpack)
 CREATE TABLE player_states (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     game_id TEXT NOT NULL,
     player_pubkey TEXT NOT NULL,
     turn INTEGER NOT NULL,
-    state_json TEXT NOT NULL,
+    state_msgpack TEXT NOT NULL,
     cached_at INTEGER NOT NULL,
     UNIQUE(game_id, player_pubkey, turn)
 );
@@ -809,18 +489,7 @@ CREATE TABLE received_events (
 );
 ```
 
-### Data Flow
-
-1. TUI connects to relay and subscribes to game definition events (30400)
-2. When events arrive, cache updates via `upsertGame()`
-3. TUI displays games from cache via `listPlayerGames()`
-4. When player joins a game, `insertPlayerSlot()` records the assignment
-5. PlayerState snapshots cached locally for offline viewing
-
-### Migration
-
-The cache module includes `migrateOldJoinCache()` to import legacy KDL
-join files from `data/players/{pubkey}/games/*.kdl`.
+**Note:** Client cache also uses msgpack for PlayerState snapshots (consistency)
 
 ### Implementation
 
@@ -835,7 +504,7 @@ Player preferences stored at `~/.config/ec4x/config.kdl`:
 ```kdl
 config {
   default-relay "wss://relay.ec4x.io"
-  
+
   relay-aliases {
     home "ws://192.168.1.50:8080"
     work "wss://relay.work.example.com"
@@ -843,13 +512,13 @@ config {
 }
 ```
 
-The config file is optional. If absent, the TUI uses built-in defaults.
-
 ## Related Documentation
 
 - [Architecture Overview](./overview.md)
 - [Intel System](./intel.md)
 - [Transport Layer](./transport.md)
-- Schema implementation: `src/engine/persistence/schema.nim`
-- Writer implementation: `src/engine/persistence/writer.nim`
-- Fog-of-war exports: `src/engine/intel/fog_of_war_export.nim`
+- Schema implementation: `src/daemon/persistence/schema.nim`
+- Writer implementation: `src/daemon/persistence/writer.nim`
+- Reader implementation: `src/daemon/persistence/reader.nim`
+- msgpack module: `src/daemon/persistence/msgpack_state.nim`
+- Migration results: `MSGPACK_MIGRATION_RESULTS.md`
