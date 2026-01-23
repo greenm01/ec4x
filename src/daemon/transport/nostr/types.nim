@@ -96,6 +96,9 @@ const
   GameStatusSetup* = "setup"
   GameStatusActive* = "active"
   GameStatusFinished* = "finished"
+  GameStatusCompleted* = "completed"
+  GameStatusCancelled* = "cancelled"
+  GameStatusRemoved* = "removed"
 
 # =============================================================================
 # Slot Status Values

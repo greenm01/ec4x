@@ -30,14 +30,14 @@ CREATE TABLE IF NOT EXISTS games (
   turn INTEGER NOT NULL DEFAULT 0,
   year INTEGER NOT NULL DEFAULT 2001,
   month INTEGER NOT NULL DEFAULT 1,
-  phase TEXT NOT NULL,              -- 'Setup', 'Active', 'Paused', 'Completed'
+  phase TEXT NOT NULL,              -- 'Setup', 'Active', 'Paused', 'Completed', 'Cancelled'
   turn_deadline INTEGER,            -- Unix timestamp (NULL = no deadline)
   transport_mode TEXT NOT NULL,     -- Transport mode (e.g., 'nostr')
   transport_config TEXT,            -- JSON: mode-specific config
   state_msgpack TEXT,               -- Full GameState as base64-encoded msgpack
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
-  CHECK(phase IN ('Setup', 'Active', 'Paused', 'Completed'))
+  CHECK(phase IN ('Setup', 'Active', 'Paused', 'Completed', 'Cancelled'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_games_phase ON games(phase);

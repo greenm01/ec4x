@@ -28,6 +28,7 @@ type
     turn*: int
     houseName*: string
     houseId*: int
+    status*: string
 
 const
   ModalMaxWidth = 72
@@ -427,18 +428,26 @@ proc renderGameList(buf: var CellBuffer, area: Rect,
   let headerLine = headerText & repeat("─", ruleLen)
   discard buf.setString(area.x, area.y, headerLine, headerStyle)
   
-  var joinedGames: seq[EntryActiveGameInfo] = @[]
+  var activeGames: seq[EntryActiveGameInfo] = @[]
+  var archivedGames: seq[EntryActiveGameInfo] = @[]
   for game in games:
-    if game.houseId > 0:
-      joinedGames.add(game)
-  if joinedGames.len == 0:
+    if game.houseId <= 0:
+      continue
+    if game.status == "completed":
+      archivedGames.add(game)
+    else:
+      activeGames.add(game)
+  if activeGames.len == 0 and archivedGames.len == 0:
     if area.height > 1:
       discard buf.setString(area.x + 2, area.y + 1,
                             "None", emptyStyle)
     return
   
   var y = area.y + 1
-  for i, game in joinedGames:
+  if activeGames.len == 0:
+    discard buf.setString(area.x + 2, y, "None", emptyStyle)
+    y += 1
+  for i, game in activeGames:
     if y >= area.bottom:
       break
     
@@ -462,6 +471,21 @@ proc renderGameList(buf: var CellBuffer, area: Rect,
     # House name
     discard buf.setString(area.x + 34, y, game.houseName, infoStyle)
     
+    y += 1
+
+  if archivedGames.len > 0 and y < area.bottom:
+    let archivedHeader = "ARCHIVED "
+    let archivedRule = area.width - archivedHeader.len - 1
+    let archivedLine = archivedHeader & repeat("─", archivedRule)
+    discard buf.setString(area.x, y, archivedLine, headerStyle)
+    y += 1
+  for game in archivedGames:
+    if y >= area.bottom:
+      break
+    discard buf.setString(area.x + 2, y, game.name, emptyStyle)
+    let turnStr = "T" & $game.turn
+    discard buf.setString(area.x + 28, y, turnStr, emptyStyle)
+    discard buf.setString(area.x + 34, y, game.houseName, emptyStyle)
     y += 1
 
 proc renderInviteCodeSection(buf: var CellBuffer, area: Rect,
@@ -837,7 +861,18 @@ proc calculateContentHeight(state: EntryModalState): int =
   # 1 (space after title) + Logo + blank + identity section + blank +
   # games section + blank + invite code section + (admin section if admin) +
   # relay section
-  let gamesHeight = max(2, state.activeGames.len + 1)
+  var activeCount = 0
+  var archivedCount = 0
+  for game in state.activeGames:
+    if game.houseId <= 0:
+      continue
+    if game.status == "completed":
+      archivedCount += 1
+    else:
+      activeCount += 1
+  let activeRows = if activeCount > 0: activeCount else: 1
+  let archivedRows = if archivedCount > 0: archivedCount + 1 else: 0
+  let gamesHeight = 1 + activeRows + archivedRows
   let inviteHeight = 3  # header + input + error line
   let adminHeight = if state.isAdmin: 4 else: 0  # header + 2 items + blank
   let relayHeight = 2  # header + input

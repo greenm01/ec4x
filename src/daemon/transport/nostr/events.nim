@@ -73,6 +73,34 @@ proc createGameDefinition*(
   )
   result.id = computeEventId(result)
 
+proc createGameDefinitionNoSlots*(
+  gameId: string,
+  name: string,
+  status: string,
+  daemonPubkey: string
+): NostrEvent =
+  ## Create game definition event without slot tags
+  let content = %*{
+    "name": name,
+    "slots": 0,
+    "claimed": 0
+  }
+
+  let tags: seq[seq[string]] = @[
+    @[TagD, gameId],
+    @[TagName, name],
+    @[TagStatus, status]
+  ]
+
+  result = newEvent(
+    kind = EventKindGameDefinition,
+    content = $content,
+    tags = tags,
+    pubkey = daemonPubkey
+  )
+  result.id = computeEventId(result)
+
+
 # =============================================================================
 # Slot Claim Events (30401)
 # =============================================================================
@@ -281,4 +309,3 @@ proc getSlots*(event: NostrEvent): seq[SlotInfo] =
         else:
           slot.code = tag[3]
       result.add(slot)
-

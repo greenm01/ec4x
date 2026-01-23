@@ -209,6 +209,30 @@ proc resolveTurnCmd(gameId: GameId): DaemonCmd =
           gameInfo.dbPath,
           state
         )
+        if result.victoryCheck.victoryOccurred:
+          await daemonLoop.model.nostrPublisher.publishGameStatus(
+            gameInfo.id,
+            state.gameName,
+            GameStatusCompleted
+          )
+          writer.updateGamePhase(gameInfo.dbPath, gameInfo.id, "Completed")
+          let gameDir = gameInfo.dbPath.parentDir
+          let archiveDir = daemonLoop.model.dataDir / "archive"
+          try:
+            createDir(archiveDir)
+            let timestamp = getTime().format("yyyy-MM-dd")
+            let archiveName = timestamp & "-" & gameDir.splitPath.tail
+            let destDir = archiveDir / archiveName
+            createDir(destDir)
+            let dbPath = gameInfo.dbPath
+            if fileExists(dbPath):
+              let destDb = destDir / (archiveName & ".db")
+              moveFile(dbPath, destDb)
+            if dirExists(gameDir):
+              removeDir(gameDir)
+            logInfo("Daemon", "Archived game to ", destDir)
+          except CatchableError as e:
+            logWarn("Daemon", "Failed to archive game: ", e.msg)
 
       writer.cleanupProcessedEvents(gameInfo.dbPath, gameId, state.turn.int32,
         daemonLoop.model.replayRetentionTurns,

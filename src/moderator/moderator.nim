@@ -15,7 +15,7 @@
 ##   ec4x list
 ##   ec4x status <game-id>
 
-import std/[os, strutils, options]
+import std/[os, strutils, options, times, asyncdispatch]
 import db_connector/db_sqlite
 import cligen
 import ../engine/init/game_state
@@ -23,6 +23,10 @@ import ../engine/types/game_state
 import ../engine/state/engine
 import ../daemon/persistence/init as db_init
 import ../daemon/persistence/reader
+import ../daemon/persistence/writer
+import ../daemon/identity
+import ../daemon/publisher
+import ../daemon/transport/nostr/[types, client, crypto]
 import ../daemon/config
 import ../common/wordlist
 import ../common/invite_code
@@ -180,6 +184,99 @@ proc resume(gameId: string, dataDir: string = "data"): int =
   echo "(not yet implemented)"
   return 0
 
+proc archiveGameDir(gameDir: string, archiveDir: string): string =
+  ## Move game directory into archive with timestamp
+  createDir(archiveDir)
+  let baseName = gameDir.splitPath.tail
+  let timestamp = now().format("yyyy-MM-dd")
+  let archiveName = timestamp & "-" & baseName
+  let destDir = archiveDir / archiveName
+  createDir(destDir)
+  let dbPath = gameDir / "ec4x.db"
+  if fileExists(dbPath):
+    let destDb = destDir / (archiveName & ".db")
+    moveFile(dbPath, destDb)
+  if dirExists(gameDir):
+    removeDir(gameDir)
+  destDir
+
+proc publishGameStatus(gameId: string, name: string, status: string,
+    configPath: string): bool =
+  ## Publish game status update over Nostr
+  var identityOpt = loadIdentity()
+  if identityOpt.isNone:
+    echo "Error: daemon identity missing; start daemon once to create it"
+    return false
+  let identity = identityOpt.get()
+  var relayUrls = @["ws://localhost:8080"]
+  if fileExists(configPath):
+    try:
+      let cfg = parseDaemonKdl(configPath)
+      if cfg.relay_urls.len > 0:
+        relayUrls = cfg.relay_urls
+    except CatchableError:
+      discard
+  let client = newNostrClient(relayUrls)
+  let publisher = newPublisher(
+    client,
+    identity.publicKeyHex,
+    crypto.hexToBytes32(identity.privateKeyHex)
+  )
+  waitFor client.connect()
+  waitFor publisher.publishGameStatus(gameId, name, status)
+  waitFor client.disconnect()
+  true
+
+proc cancel(gameId: string, dataDir: string = "data",
+            archiveDir: string = "data/archive",
+            configPath: string = "config/daemon.kdl"): int =
+  ## Cancel a game, archive it, and broadcast status
+  if gameId.len == 0:
+    echo "Error: Game ID is required"
+    return 1
+
+  let metaOpt = findGameMeta(dataDir, gameId)
+  if metaOpt.isNone:
+    echo "Error: Game not found: ", gameId
+    return 1
+
+  let meta = metaOpt.get()
+  updateGamePhase(meta.dbPath, meta.id, "Cancelled")
+  if not publishGameStatus(meta.id, meta.name, GameStatusCancelled,
+      configPath):
+    return 1
+
+  let gameDir = meta.dbPath.parentDir
+  let archivedTo = archiveGameDir(gameDir, archiveDir)
+
+  echo "Cancelled game: ", meta.slug
+  echo "Archived to: ", archivedTo
+  return 0
+
+proc deleteGame(gameId: string, dataDir: string = "data",
+                configPath: string = "config/daemon.kdl"): int =
+  ## Delete a game and broadcast status
+  if gameId.len == 0:
+    echo "Error: Game ID is required"
+    return 1
+
+  let metaOpt = findGameMeta(dataDir, gameId)
+  if metaOpt.isNone:
+    echo "Error: Game not found: ", gameId
+    return 1
+
+  let meta = metaOpt.get()
+  if not publishGameStatus(meta.id, meta.name, GameStatusRemoved,
+      configPath):
+    return 1
+
+  let gameDir = meta.dbPath.parentDir
+  if dirExists(gameDir):
+    removeDir(gameDir)
+
+  echo "Deleted game: ", meta.slug
+  return 0
+
 proc winner(gameId: string, houseId: string, dataDir: string = "data"): int =
   ## Declare the winner of a game
   if gameId.len == 0 or houseId.len == 0:
@@ -266,6 +363,9 @@ when isMainModule:
     [listGames, cmdName = "list", help = "List all games"],
     [ids, cmdName = "ids", help = "Show slug to UUID mapping"],
     [status, help = "Show game status"],
+    [cancel, help = "Cancel and archive a game"],
+    [deleteGame, cmdName = "delete",
+      help = "Delete a game and notify clients"],
     [pause, help = "Pause a game"],
     [resume, help = "Resume a paused game"],
     [winner, help = "Declare game winner"],
@@ -273,4 +373,3 @@ when isMainModule:
     [invite, cmdName = "i", positional = "GAMEID", help = "Query invite codes + status"],
     [version, help = "Show version"]
   )
-

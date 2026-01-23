@@ -3,7 +3,7 @@
 ## Main SAM-based TUI loop and event handling.
 
 import std/[options, strformat, tables, strutils, parseopt, os,
-  asyncdispatch]
+  asyncdispatch, sequtils]
 
 import ../../common/logger
 import ../../engine/types/[core, player_state as ps_types]
@@ -161,7 +161,8 @@ proc runTui*(gameId: string = "") =
       name: game.name,
       turn: game.turn,
       houseName: "",
-      houseId: game.houseId
+      houseId: game.houseId,
+      status: game.phase
     ))
 
   # Note: lobbyJoinGames (available games to join) now comes from Nostr events
@@ -286,12 +287,26 @@ proc runTui*(gameId: string = "") =
                 return
 
               let nameTag = event.getTagValue(TagName)
+              let statusTag = event.getStatus()
               let turnOpt = event.getTurn()
               let gameNameStr = if nameTag.isSome: nameTag.get() else: gameId
               let turnNum = if turnOpt.isSome: turnOpt.get() else: 0
+              let gameStatus = if statusTag.isSome: statusTag.get() else: "active"
+
+              if gameStatus == GameStatusCancelled or
+                  gameStatus == GameStatusRemoved:
+                tuiCache.deletePlayerSlot(gameId, sam.model.lobbyProfilePubkey)
+                tuiCache.deleteGame(gameId)
+                sam.model.lobbyActiveGames =
+                  sam.model.lobbyActiveGames.filterIt(it.id != gameId)
+                sam.model.entryModal.activeGames =
+                  sam.model.entryModal.activeGames.filterIt(it.id != gameId)
+                if gameId == activeGameId:
+                  sam.model.statusMessage = "Game removed"
+                return
 
               # Update cache with game metadata from Nostr event
-              tuiCache.upsertGame(gameId, gameNameStr, turnNum, "active",
+              tuiCache.upsertGame(gameId, gameNameStr, turnNum, gameStatus,
                 sam.model.nostrRelayUrl, event.pubkey)
 
               # Check if player has a slot in this game
@@ -306,7 +321,8 @@ proc runTui*(gameId: string = "") =
                   name: gameNameStr,
                   turn: turnNum,
                   houseName: "",
-                  houseId: houseIdFromCache
+                  houseId: houseIdFromCache,
+                  status: gameStatus
                 )
                 var updated = false
                 for idx in 0..<sam.model.entryModal.activeGames.len:
@@ -318,6 +334,7 @@ proc runTui*(gameId: string = "") =
                     if existingHouseId != 0:
                       sam.model.entryModal.activeGames[idx].houseId =
                         existingHouseId
+                    sam.model.entryModal.activeGames[idx].status = gameStatus
                     updated = true
                     break
                 if not updated:
@@ -330,7 +347,7 @@ proc runTui*(gameId: string = "") =
                       id: gameId,
                       name: gameNameStr,
                       turn: turnNum,
-                      phase: "active",
+                      phase: gameStatus,
                       houseId: houseIdFromCache
                     )
                     lobbyUpdated = true
@@ -340,7 +357,7 @@ proc runTui*(gameId: string = "") =
                     id: gameId,
                     name: gameNameStr,
                     turn: turnNum,
-                    phase: "active",
+                    phase: gameStatus,
                     houseId: houseIdFromCache
                   ))
               if gameId == activeGameId and
@@ -419,6 +436,7 @@ proc runTui*(gameId: string = "") =
                     if sam.model.entryModal.activeGames[idx].id == joinGameId:
                       sam.model.entryModal.activeGames[idx].houseId =
                         int(houseId)
+                      sam.model.entryModal.activeGames[idx].status = "active"
                       foundGame = true
                       break
                   if not foundGame:
@@ -428,7 +446,8 @@ proc runTui*(gameId: string = "") =
                       name: gameNameStr,
                       turn: turnNum,
                       houseName: "",
-                      houseId: int(houseId)
+                      houseId: int(houseId),
+                      status: "active"
                     ))
                   sam.model.lobbyJoinStatus = JoinStatus.Joined
                   sam.model.lobbyJoinError = ""

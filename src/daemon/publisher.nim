@@ -149,6 +149,29 @@ proc publishGameDefinition*(pub: Publisher, gameId: string, dbPath: string,
   except CatchableError as e:
     logError("Nostr", "Failed to publish game definition: ", e.msg)
 
+proc publishGameStatus*(pub: Publisher, gameId: string, name: string,
+  status: string) {.async.} =
+  ## Publish game status update (30400) without slots
+  try:
+    var event = createGameDefinitionNoSlots(
+      gameId = gameId,
+      name = name,
+      status = status,
+      daemonPubkey = pub.daemonPubkey
+    )
+
+    signEvent(event, pub.daemonPriv)
+
+    let published = await pub.client.publish(event)
+    if published:
+      logInfo("Nostr", "Published game status for game=", gameId,
+        " status=", status)
+    else:
+      logError("Nostr", "Failed to publish game status for game=", gameId,
+        " status=", status)
+  except CatchableError as e:
+    logError("Nostr", "Failed to publish game status: ", e.msg)
+
 proc publishJoinError*(pub: Publisher, playerPubkey: string,
   message: string) {.async.} =
   ## Publish join error to a player

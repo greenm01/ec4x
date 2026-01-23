@@ -56,6 +56,21 @@ proc updateGameMetadata*(state: GameState) =
     state.gameId,
   )
 
+proc updateGamePhase*(dbPath: string, gameId: string, phase: string) =
+  ## Update game phase string
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  db.exec(
+    sql"""
+    UPDATE games
+    SET phase = ?, updated_at = unixepoch()
+    WHERE id = ?
+  """,
+    phase,
+    gameId
+  )
+
 proc updateTurnDeadline*(dbPath: string, gameId: string,
   deadline: Option[int64]) =
   ## Update the per-turn deadline timestamp (unix seconds)

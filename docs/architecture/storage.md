@@ -53,6 +53,13 @@ data/games/
 
 **Daemon Discovery**: Scan `data/games/*/ec4x.db` to find active games.
 
+**Moderator lifecycle**:
+- `ec4x cancel <game-id>` archives to `data/archive/` and publishes status
+  `cancelled`.
+- `ec4x delete <game-id>` removes the game directory and publishes status
+  `removed`.
+- Victory resolution publishes status `completed` and archives the game.
+
 **Implementation:** Database initialized by `createGameDatabase()` in `src/daemon/persistence/init.nim`
 
 ## Core Schema
@@ -70,7 +77,7 @@ CREATE TABLE games (
     turn INTEGER NOT NULL DEFAULT 0,
     year INTEGER NOT NULL DEFAULT 2001,
     month INTEGER NOT NULL DEFAULT 1,
-    phase TEXT NOT NULL,              -- 'Setup', 'Active', 'Paused', 'Completed'
+    phase TEXT NOT NULL,              -- 'Setup', 'Active', 'Paused', 'Completed', 'Cancelled'
     turn_deadline INTEGER,            -- Unix timestamp (NULL = no deadline)
     transport_mode TEXT NOT NULL,     -- 'localhost' or 'nostr'
     transport_config TEXT,            -- JSON: mode-specific config
