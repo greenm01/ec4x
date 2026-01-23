@@ -73,7 +73,7 @@ proc parsePrestigeEvents(node: KdlNode, ctx: var KdlConfigContext): tuple[
     # Military events - defender side (penalties)
     of "planetLost": military.losePlanet = child.requireInt32("value", ctx)
     of "undefendedColonyMultiplier":
-      military.undefendedColonyPenaltyMultiplier = child.args[0].getFloat()
+      military.undefendedColonyPenaltyMultiplier = child.args[0].kFloat()
 
     # Espionage events - attacker
     of "techTheft":
@@ -132,7 +132,7 @@ proc parseTaxIncentives(node: KdlNode, ctx: var KdlConfigContext): TaxIncentives
 
   for child in node.children:
     if child.name == "tier" and child.args.len > 0:
-      let tierNum = int32(child.args[0].getInt())
+      let tierNum = int32(child.args[0].kInt())
       if tierNum >= 1 and tierNum <= 5:
         tiers[tierNum] = TaxIncentiveTierData(
           minRate: child.requireInt32("minRate", ctx),

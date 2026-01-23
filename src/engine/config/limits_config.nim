@@ -60,7 +60,7 @@ proc parsePlanetCapacity(
   ctx: var KdlConfigContext
 ): PlanetCapacityConfig =
   ## Parse: planetClass "Extreme" { puMax 20 }
-  let planetClass = node.args[0].getString()
+  let planetClass = node.args[0].kString()
   let puMax = node.requireInt32("puMax", ctx)
 
   result = PlanetCapacityConfig(planetClass: planetClass, puMax: puMax)

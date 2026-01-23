@@ -23,11 +23,11 @@ proc loadProfile*(dataDir, pubkey: string): tuple[name: string, session: bool] =
       return (name: "", session: false)
     let node = doc[0]
     let name = if node.props.hasKey("name"):
-                 node.props["name"].getString()
+                 node.props["name"].kString()
                else:
                  ""
     let session = if node.props.hasKey("session_only"):
-                    node.props["session_only"].getBool()
+                    node.props["session_only"].kBool()
                   else:
                     false
     (name: name, session: session)
@@ -78,8 +78,8 @@ proc loadActiveGames*(dataDir, pubkey: string): seq[(string, HouseId)] =
       let node = doc[0]
       if not node.props.hasKey("game") or not node.props.hasKey("house"):
         continue
-      let gameId = node.props["game"].getString()
-      let houseId = HouseId(node.props["house"].getInt().uint32)
+      let gameId = node.props["game"].kString()
+      let houseId = HouseId(node.props["house"].kInt().uint32)
       result.add((gameId, houseId))
     except CatchableError as e:
       logError("LobbyProfile", "Failed to load game cache: ", path, " ", e.msg)

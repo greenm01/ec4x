@@ -69,11 +69,11 @@ proc loadTuiConfig*(): TuiConfig =
         case child.name
         of "default-relay":
           if child.args.len > 0:
-            result.defaultRelay = child.args[0].getString()
+            result.defaultRelay = child.args[0].kString()
         of "relay-aliases":
           for aliasNode in child.children:
             if aliasNode.args.len > 0:
-              result.relayAliases[aliasNode.name] = aliasNode.args[0].getString()
+              result.relayAliases[aliasNode.name] = aliasNode.args[0].kString()
         else:
           discard
   except CatchableError as e:

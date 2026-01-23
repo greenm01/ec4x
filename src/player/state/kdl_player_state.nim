@@ -16,79 +16,79 @@ proc parseEnumPureFromStr[T: enum](value: string): Option[T] =
 
 proc parseBoolVal(val: KdlVal): Option[bool] =
   try:
-    return some(val.getBool())
+    return some(val.kBool())
   except CatchableError:
     return none(bool)
 
 proc parseIntVal(val: KdlVal): Option[int32] =
   try:
-    return some(val.getInt().int32)
+    return some(val.kInt().int32)
   except CatchableError:
     return none(int32)
 
 proc parseFloatVal(val: KdlVal): Option[float32] =
   try:
-    return some(val.getFloat().float32)
+    return some(val.kFloat().float32)
   except CatchableError:
     return none(float32)
 
 proc parseHouseId(val: KdlVal): Option[HouseId] =
   try:
-    return some(HouseId(val.getInt().uint32))
+    return some(HouseId(val.kInt().uint32))
   except CatchableError:
     return none(HouseId)
 
 proc parseSystemId(val: KdlVal): Option[SystemId] =
   try:
-    return some(SystemId(val.getInt().uint32))
+    return some(SystemId(val.kInt().uint32))
   except CatchableError:
     return none(SystemId)
 
 proc parseColonyId(val: KdlVal): Option[ColonyId] =
   try:
-    return some(ColonyId(val.getInt().uint32))
+    return some(ColonyId(val.kInt().uint32))
   except CatchableError:
     return none(ColonyId)
 
 proc parseFleetId(val: KdlVal): Option[FleetId] =
   try:
-    return some(FleetId(val.getInt().uint32))
+    return some(FleetId(val.kInt().uint32))
   except CatchableError:
     return none(FleetId)
 
 proc parseShipId(val: KdlVal): Option[ShipId] =
   try:
-    return some(ShipId(val.getInt().uint32))
+    return some(ShipId(val.kInt().uint32))
   except CatchableError:
     return none(ShipId)
 
 proc parseGroundUnitId(val: KdlVal): Option[GroundUnitId] =
   try:
-    return some(GroundUnitId(val.getInt().uint32))
+    return some(GroundUnitId(val.kInt().uint32))
   except CatchableError:
     return none(GroundUnitId)
 
 proc parseConstructionProjectId(val: KdlVal): Option[ConstructionProjectId] =
   try:
-    return some(ConstructionProjectId(val.getInt().uint32))
+    return some(ConstructionProjectId(val.kInt().uint32))
   except CatchableError:
     return none(ConstructionProjectId)
 
 proc parseRepairProjectId(val: KdlVal): Option[RepairProjectId] =
   try:
-    return some(RepairProjectId(val.getInt().uint32))
+    return some(RepairProjectId(val.kInt().uint32))
   except CatchableError:
     return none(RepairProjectId)
 
 proc parseNeoriaId(val: KdlVal): Option[NeoriaId] =
   try:
-    return some(NeoriaId(val.getInt().uint32))
+    return some(NeoriaId(val.kInt().uint32))
   except CatchableError:
     return none(NeoriaId)
 
 proc parseKastraId(val: KdlVal): Option[KastraId] =
   try:
-    return some(KastraId(val.getInt().uint32))
+    return some(KastraId(val.kInt().uint32))
   except CatchableError:
     return none(KastraId)
 
@@ -113,7 +113,7 @@ proc parseCapacityViolation(node: KdlNode): Option[CapacityViolation] =
   var violation = CapacityViolation()
   if node.props.hasKey("type"):
     let typeOpt = parseEnumPureFromStr[CapacityType](
-      node.props["type"].getString())
+      node.props["type"].kString())
     if typeOpt.isSome:
       violation.capacityType = typeOpt.get()
   if node.props.hasKey("current"):
@@ -130,7 +130,7 @@ proc parseCapacityViolation(node: KdlNode): Option[CapacityViolation] =
       violation.excess = excessOpt.get()
   if node.props.hasKey("severity"):
     let severityOpt = parseEnumPureFromStr[ViolationSeverity](
-      node.props["severity"].getString())
+      node.props["severity"].kString())
     if severityOpt.isSome:
       violation.severity = severityOpt.get()
   if node.props.hasKey("grace-turns"):
@@ -176,7 +176,7 @@ proc parseVisibleSystems(node: KdlNode): Table[SystemId, VisibleSystem] =
     let visibilityOpt = childVal(child, "visibility")
     if visibilityOpt.isSome:
       let parsedOpt = parseEnumPureFromStr[VisibilityLevel](
-        visibilityOpt.get().getString())
+        visibilityOpt.get().kString())
       if parsedOpt.isSome:
         system.visibility = parsedOpt.get()
 
@@ -334,7 +334,7 @@ proc parseDiplomacy(node: KdlNode): Table[(HouseId, HouseId), DiplomaticState] =
       let sourceOpt = parseHouseId(child.props["from"])
       let targetOpt = parseHouseId(child.props["to"])
       let stateOpt = parseEnumPureFromStr[DiplomaticState](
-        child.props["state"].getString())
+        child.props["state"].kString())
       if sourceOpt.isSome and targetOpt.isSome and stateOpt.isSome:
         result[(sourceOpt.get(), targetOpt.get())] = stateOpt.get()
 
@@ -352,7 +352,7 @@ proc parseActProgression(node: KdlNode): Option[ActProgressionState] =
   var progression = ActProgressionState()
   let actOpt = childVal(node, "current-act")
   if actOpt.isSome:
-    let parsedOpt = parseEnumPureFromStr[GameAct](actOpt.get().getString())
+    let parsedOpt = parseEnumPureFromStr[GameAct](actOpt.get().kString())
     if parsedOpt.isSome:
       progression.currentAct = parsedOpt.get()
   let startOpt = childVal(node, "act-start-turn")
@@ -581,7 +581,7 @@ proc parseOwnedColonies(node: KdlNode): seq[Colony] =
       if child.props.hasKey("capacity-violation-type"):
         var violation = CapacityViolation()
         let typeOpt = parseEnumPureFromStr[CapacityType](
-          child.props["capacity-violation-type"].getString())
+          child.props["capacity-violation-type"].kString())
         if typeOpt.isSome:
           violation.capacityType = typeOpt.get()
         if child.props.hasKey("capacity-violation-current"):
@@ -598,7 +598,7 @@ proc parseOwnedColonies(node: KdlNode): seq[Colony] =
             violation.excess = valOpt.get()
         if child.props.hasKey("capacity-violation-severity"):
           let parsedOpt = parseEnumPureFromStr[ViolationSeverity](
-            child.props["capacity-violation-severity"].getString())
+            child.props["capacity-violation-severity"].kString())
           if parsedOpt.isSome:
             violation.severity = parsedOpt.get()
         if child.props.hasKey("capacity-violation-grace"):
@@ -654,7 +654,7 @@ proc parseOwnedFleets(node: KdlNode): seq[Fleet] =
         fleet.location = idOpt.get()
     let statusOpt = childVal(child, "status")
     if statusOpt.isSome:
-      let parsedOpt = parseEnumPureFromStr[FleetStatus](statusOpt.get().getString())
+      let parsedOpt = parseEnumPureFromStr[FleetStatus](statusOpt.get().kString())
       if parsedOpt.isSome:
         fleet.status = parsedOpt.get()
     let roeOpt = childVal(child, "roe")
@@ -673,7 +673,7 @@ proc parseOwnedFleets(node: KdlNode): seq[Fleet] =
       let commandNode = commandNodeOpt.get()
       if commandNode.props.hasKey("type"):
         let parsedOpt = parseEnumPureFromStr[FleetCommandType](
-          commandNode.props["type"].getString())
+          commandNode.props["type"].kString())
         if parsedOpt.isSome:
           fleet.command.commandType = parsedOpt.get()
       if commandNode.props.hasKey("priority"):
@@ -696,7 +696,7 @@ proc parseOwnedFleets(node: KdlNode): seq[Fleet] =
     let missionStateOpt = childVal(child, "mission-state")
     if missionStateOpt.isSome:
       let parsedOpt = parseEnumPureFromStr[MissionState](
-        child.props["mission-state"].getString())
+        child.props["mission-state"].kString())
       if parsedOpt.isSome:
         fleet.missionState = parsedOpt.get()
 
@@ -728,13 +728,13 @@ proc parseOwnedShips(node: KdlNode): seq[Ship] =
       if shipNode.props.hasKey("class"):
        if shipNode.props.hasKey("class"):
          let parsedOpt = parseEnumPureFromStr[ShipClass](
-           shipNode.props["class"].getString())
+           shipNode.props["class"].kString())
          if parsedOpt.isSome:
            ship.shipClass = parsedOpt.get()
 
        if shipNode.props.hasKey("state"):
          let parsedOpt = parseEnumPureFromStr[CombatState](
-           shipNode.props["state"].getString())
+           shipNode.props["state"].kString())
          if parsedOpt.isSome:
            ship.state = parsedOpt.get()
 
@@ -769,7 +769,7 @@ proc parseOwnedShips(node: KdlNode): seq[Ship] =
         let cargoNode = cargoNodeOpt.get()
         if cargoNode.props.hasKey("type"):
           let parsedOpt = parseEnumPureFromStr[CargoClass](
-            cargoNode.props["type"].getString())
+            cargoNode.props["type"].kString())
           if parsedOpt.isSome:
             ship.cargo = some(ShipCargo(cargoType: parsedOpt.get()))
         if ship.cargo.isSome:
@@ -815,7 +815,7 @@ proc parseOwnedGroundUnits(node: KdlNode): seq[GroundUnit] =
           unit.houseId = houseOpt.get()
       if unitNode.props.hasKey("type"):
         let parsedOpt = parseEnumPureFromStr[GroundClass](
-          unitNode.props["type"].getString())
+          unitNode.props["type"].kString())
         if parsedOpt.isSome:
           unit.stats.unitType = parsedOpt.get()
 
@@ -833,7 +833,7 @@ proc parseOwnedGroundUnits(node: KdlNode): seq[GroundUnit] =
       let stateOpt = childVal(unitNode, "state")
       if stateOpt.isSome:
         let parsedOpt = parseEnumPureFromStr[CombatState](
-          child.props["state"].getString())
+          child.props["state"].kString())
         if parsedOpt.isSome:
           unit.state = parsedOpt.get()
 
@@ -863,7 +863,7 @@ proc parsePlayerStateKdl*(kdlState: string): Option[PlayerState] =
     var state = PlayerState()
     if root.props.hasKey("turn"):
       try:
-        state.turn = root.props["turn"].getInt().int32
+        state.turn = root.props["turn"].kInt().int32
       except CatchableError:
         discard
 

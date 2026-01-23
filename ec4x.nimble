@@ -11,7 +11,7 @@ binDir = "bin"
 
 requires "nim >= 2.0.0"
 requires "cligen >= 1.7.0"
-requires "nimkdl >= 2.0.6"
+requires "nimkdl >= 2.1.0"
 requires "db_connector"
 requires "ws >= 0.5.0" # WebSocket client for Nostr relay
 requires "zippy >= 0.10.0" # Compression for Nostr payloads

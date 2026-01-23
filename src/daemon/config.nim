@@ -30,29 +30,29 @@ proc parseDaemonKdl*(path: string): DaemonConfig =
     case child.name
     of "data_dir":
       if child.args.len > 0:
-        result.data_dir = child.args[0].getString()
+        result.data_dir = child.args[0].kString()
     of "poll_interval":
       if child.args.len > 0:
-        result.poll_interval = child.args[0].getInt().int
+        result.poll_interval = child.args[0].kInt().int
     of "relay_urls":
       for urlNode in child.children:
         if urlNode.name == "url" and urlNode.args.len > 0:
-          result.relay_urls.add(urlNode.args[0].getString())
+          result.relay_urls.add(urlNode.args[0].kString())
     of "replay_retention_turns":
       if child.args.len > 0:
-        result.replay_retention_turns = child.args[0].getInt().int
+        result.replay_retention_turns = child.args[0].kInt().int
     of "replay_retention_days":
       if child.args.len > 0:
-        result.replay_retention_days = child.args[0].getInt().int
+        result.replay_retention_days = child.args[0].kInt().int
     of "replay_retention_days_definition":
       if child.args.len > 0:
-        result.replay_retention_days_definition = child.args[0].getInt().int
+        result.replay_retention_days_definition = child.args[0].kInt().int
     of "replay_retention_days_state":
       if child.args.len > 0:
-        result.replay_retention_days_state = child.args[0].getInt().int
+        result.replay_retention_days_state = child.args[0].kInt().int
     of "turn_deadline_minutes":
       if child.args.len > 0:
-        result.turn_deadline_minutes = child.args[0].getInt().int
+        result.turn_deadline_minutes = child.args[0].kInt().int
     else:
       discard
 
@@ -90,10 +90,10 @@ proc parseNostrKdl*(path: string): NostrConfig =
     case child.name
     of "compression_min_ratio":
       if child.args.len > 0:
-        result.compression_min_ratio = child.args[0].getFloat()
+        result.compression_min_ratio = child.args[0].kFloat()
     of "compression_max_raw_bytes":
       if child.args.len > 0:
-        result.compression_max_raw_bytes = child.args[0].getInt().int
+        result.compression_max_raw_bytes = child.args[0].kInt().int
     else:
       discard
 

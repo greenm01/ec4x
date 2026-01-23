@@ -458,8 +458,8 @@ proc migrateOldJoinCache*(cache: TuiCache, dataDir: string,
       if not node.props.hasKey("game") or not node.props.hasKey("house"):
         continue
       
-      let gameId = node.props["game"].getString()
-      let houseId = node.props["house"].getInt()
+      let gameId = node.props["game"].kString()
+      let houseId = node.props["house"].kInt()
       
       # Read optional metadata from children
       var name = gameId
@@ -469,13 +469,13 @@ proc migrateOldJoinCache*(cache: TuiCache, dataDir: string,
         case child.name
         of "name":
           if child.args.len > 0:
-            name = child.args[0].getString()
+            name = child.args[0].kString()
         of "turn":
           if child.args.len > 0:
-            turn = child.args[0].getInt()
+            turn = child.args[0].kInt()
         of "status":
           if child.args.len > 0:
-            status = child.args[0].getString()
+            status = child.args[0].kString()
         else:
           discard
       

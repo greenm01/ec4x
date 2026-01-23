@@ -31,17 +31,17 @@ type
 proc kdlString(val: KdlVal): string =
   case val.kind
   of KString:
-    val.getString()
+    val.kString()
   else:
     raise newException(ValueError, "Expected string")
 
 proc parseHouseId(val: KdlVal): HouseId =
   case val.kind
   of KInt, KInt8, KInt16, KInt32, KInt64:
-    HouseId(val.getInt().uint32)
+    HouseId(val.kInt().uint32)
   of KString:
     try:
-      HouseId(parseInt(val.getString()).uint32)
+      HouseId(parseInt(val.kString()).uint32)
     except ValueError:
       raise newException(ValueError, "Invalid house ID")
   else:

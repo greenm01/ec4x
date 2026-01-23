@@ -22,7 +22,7 @@ proc parseEconomicLevel(node: KdlNode, ctx: var KdlConfigContext): ElConfig =
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Store with actual level number as key (2-10)
       if levelNum >= 2 and levelNum <= 10:
@@ -46,7 +46,7 @@ proc parseScienceLevel(node: KdlNode, ctx: var KdlConfigContext): SlConfig =
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Store with actual level number as key (2-10)
       if levelNum >= 2 and levelNum <= 10:
@@ -80,7 +80,7 @@ proc parseElectronicIntelligence(
   # Parse level nodes
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Store with actual level number as key (1-15)
       if levelNum >= 1 and levelNum <= 15:
@@ -114,7 +114,7 @@ proc parseCloaking(
   # Parse level nodes
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Store with actual level number as key (1-15)
       if levelNum >= 1 and levelNum <= 15:
@@ -148,7 +148,7 @@ proc parseCounterIntelligence(
   # Parse level nodes
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Store with actual level number as key (1-15)
       if levelNum >= 1 and levelNum <= 15:
@@ -182,7 +182,7 @@ proc parseStrategicLift(
   # Parse level nodes
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Store with actual level number as key (1-15)
       if levelNum >= 1 and levelNum <= 15:
@@ -211,7 +211,7 @@ proc parseWeaponsTech(node: KdlNode, ctx: var KdlConfigContext): WepConfig =
   # Parse level nodes
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Store with actual level number as key (2-10)
       if levelNum >= 2 and levelNum <= 10:
@@ -250,7 +250,7 @@ proc parseConstructionTech(
   # Parse level nodes
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Store with actual level number as key (2-10)
       if levelNum >= 2 and levelNum <= 10:
@@ -261,12 +261,12 @@ proc parseConstructionTech(
           if unlocksNode.isSome:
             let val = unlocksNode.get()
             if val.kind == KValKind.KString:
-              unlocks.add(val.getString())
+              unlocks.add(val.kString())
           # If there are multiple unlocks as separate properties,
           # they'll be space-separated in KDL, handled by kdl parser
           for arg in child.args:
             if arg.kind == KValKind.KString:
-              let val = arg.getString()
+              let val = arg.kString()
               if val.len == 2 or val.len == 3:  # Ship codes like "BC", "BB"
                 unlocks.add(val)
         except: discard
@@ -297,7 +297,7 @@ proc parseShieldTech(
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Store with actual level number as key (1-6)
       if levelNum >= 1 and levelNum <= 6:
@@ -329,7 +329,7 @@ proc parseTerraformingTech(
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Get target planet class from "upgrades" child
       # Format: upgrades "Extreme" to "Desolate"
@@ -337,7 +337,7 @@ proc parseTerraformingTech(
       for upgradeChild in child.children:
         if upgradeChild.name == "upgrades" and upgradeChild.args.len >= 3:
           # args[2] is the target class (after "to")
-          planetClass = upgradeChild.args[2].getString()
+          planetClass = upgradeChild.args[2].kString()
           break
 
       # Store with actual level number as key (1-6)
@@ -430,7 +430,7 @@ proc parseFleetCommand(
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Store with actual level number as key (1-6)
       if levelNum >= 1 and levelNum <= 6:
@@ -456,7 +456,7 @@ proc parseStrategicCommand(
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Store with actual level number as key (1-6)
       if levelNum >= 1 and levelNum <= 6:
@@ -487,7 +487,7 @@ proc parseFighterDoctrine(
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Optional description field
       var description = ""
@@ -531,7 +531,7 @@ proc parseAdvancedCarrierOps(
 
   for child in node.children:
     if child.name == "level" and child.args.len > 0:
-      let levelNum = child.args[0].getInt().int32
+      let levelNum = child.args[0].kInt().int32
 
       # Optional description field
       var description = ""

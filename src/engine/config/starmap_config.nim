@@ -54,7 +54,7 @@ proc parsePlanetNames(node: KdlNode, ctx: var KdlConfigContext): PlanetNamesConf
       # Each name node has a string argument
       let arg = child.args[0]
       if arg.kind == KValKind.KString:
-        names.add(arg.getString())
+        names.add(arg.kString())
 
   result = PlanetNamesConfig(names: names)
 

@@ -48,7 +48,7 @@ proc parseRawMaterialEfficiency(
   for child in node.children:
     if child.name == "material" and child.args.len > 0:
       # Parse resource rating from string like "Very Poor" -> VeryPoor
-      let materialStr = child.args[0].getString().replace(" ", "")
+      let materialStr = child.args[0].kString().replace(" ", "")
       let quality = parseEnum[ResourceRating](materialStr)
 
       # Parse all planet class values
@@ -84,7 +84,7 @@ proc parseTaxPopulationGrowth(
 
   for child in node.children:
     if child.name == "tier" and child.args.len > 0:
-      let tierNum = child.args[0].getInt().int32
+      let tierNum = child.args[0].kInt().int32
 
       # Store with actual tier number as key (1-5)
       if tierNum >= 1 and tierNum <= 5:
@@ -115,7 +115,7 @@ proc parseIndustrialInvestment(
   # Parse cost scaling tiers
   for child in node.children:
     if child.name == "tier" and child.args.len > 0:
-      let tierNum = child.args[0].getInt().int32
+      let tierNum = child.args[0].kInt().int32
 
       # Store with actual tier number as key (1-5)
       if tierNum >= 1 and tierNum <= 5:

@@ -78,7 +78,7 @@ proc loadIdentity*(): Option[Identity] =
       logError("Identity", "Identity file missing nsec")
       return none(Identity)
 
-    let nsec = node.props["nsec"].getString()
+    let nsec = node.props["nsec"].kString()
     let nsecHex = if nsec.startsWith("nsec"):
                     decodeNsecToHex(nsec)
                   else:
@@ -89,7 +89,7 @@ proc loadIdentity*(): Option[Identity] =
 
     # Type (default to local)
     let typeStr = if node.props.hasKey("type"):
-                    node.props["type"].getString()
+                    node.props["type"].kString()
                   else:
                     "local"
     let identityType = if typeStr == "imported":
@@ -100,7 +100,7 @@ proc loadIdentity*(): Option[Identity] =
     # Created timestamp (optional)
     let created = if node.props.hasKey("created"):
                     try:
-                      parse(node.props["created"].getString(),
+                      parse(node.props["created"].kString(),
                             "yyyy-MM-dd'T'HH:mm:sszzz")
                     except CatchableError:
                       now()

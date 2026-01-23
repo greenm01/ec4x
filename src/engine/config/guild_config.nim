@@ -16,7 +16,7 @@ proc parseTransferCosts(node: KdlNode, ctx: var KdlConfigContext): TransferCosts
   var costs: array[PlanetClass, int32]
   for child in node.children:
     if child.name == "planetClass" and child.args.len > 0:
-      let planetClassName = child.args[0].getString()
+      let planetClassName = child.args[0].kString()
       let planetClass = parsePlanetClass(planetClassName)
       let cost = child.requireInt32("cost", ctx)
       costs[planetClass] = cost

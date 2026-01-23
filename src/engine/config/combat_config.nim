@@ -23,7 +23,7 @@ proc parseCerTable(node: KdlNode, ctx: var KdlConfigContext): CerTableConfig =
 
   for child in node.children:
     if child.name == "tier" and child.args.len > 0:
-      let tierNum = child.args[0].getInt()
+      let tierNum = child.args[0].kInt()
       case tierNum
       of 1:
         tier1 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
@@ -52,7 +52,7 @@ proc parseBombardment(node: KdlNode, ctx: var KdlConfigContext): BombardmentConf
 
   for child in node.children:
     if child.name == "tier" and child.args.len > 0:
-      let tierNum = child.args[0].getInt()
+      let tierNum = child.args[0].kInt()
       case tierNum
       of 1:
         tier1 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))
@@ -76,7 +76,7 @@ proc parseGroundCombat(node: KdlNode, ctx: var KdlConfigContext): GroundCombatCo
 
   for child in node.children:
     if child.name == "tier" and child.args.len > 0:
-      let tierNum = child.args[0].getInt()
+      let tierNum = child.args[0].kInt()
       case tierNum
       of 1:
         tier1 = (child.requireInt32("maxRoll", ctx), child.requireFloat32("multiplier", ctx))

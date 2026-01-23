@@ -14,13 +14,13 @@ proc parseId[T](val: KdlVal): T =
   ## Parse ID from KDL value, handling optional type annotation
   case val.kind
   of KInt, KInt8, KInt16, KInt32, KInt64, KUInt8, KUInt16, KUInt32, KUInt64:
-    return T(val.getInt().uint32)
+    return T(val.kInt().uint32)
   of KString:
     # Some IDs might be strings in future, but distinct uint32 for now
     try:
-      return T(parseInt(val.getString()).uint32)
+      return T(parseInt(val.kString()).uint32)
     except ValueError:
-      raise newException(KdlParseError, "Invalid ID format: " & val.getString())
+      raise newException(KdlParseError, "Invalid ID format: " & val.kString())
   else:
     raise newException(KdlParseError, "ID must be integer or string, got " & $val.kind)
 
@@ -66,7 +66,7 @@ proc parseFleetCommand(node: KdlNode): FleetCommand =
   elif node.args.len > 1:
     # Command is argument: fleet 1 hold
     if node.args[1].kind == KValKind.KString:
-      cmdTypeStr = node.args[1].getString()
+      cmdTypeStr = node.args[1].kString()
     else:
       raise newException(KdlParseError, "Command type must be string")
   else:
@@ -100,11 +100,11 @@ proc parseFleetCommand(node: KdlNode): FleetCommand =
       
     # ROE
     if pNode.props.hasKey("roe"):
-      cmd.roe = some(pNode.props["roe"].getInt().int32)
+      cmd.roe = some(pNode.props["roe"].kInt().int32)
       
     # Priority
     if pNode.props.hasKey("priority"):
-      cmd.priority = pNode.props["priority"].getInt().int32
+      cmd.priority = pNode.props["priority"].kInt().int32
 
   return cmd
 
@@ -121,25 +121,25 @@ proc parseBuildCommand(node: KdlNode, colonyId: ColonyId): seq[BuildCommand] =
     of "ship":
       cmd.buildType = BuildType.Ship
       if child.args.len > 0:
-        cmd.shipClass = some(parseEnumFromStr[ShipClass](child.args[0].getString()))
+        cmd.shipClass = some(parseEnumFromStr[ShipClass](child.args[0].kString()))
       else:
         raise newException(KdlParseError, "Ship build command missing class")
     of "facility":
       cmd.buildType = BuildType.Facility
       if child.args.len > 0:
-        cmd.facilityClass = some(parseEnumFromStr[FacilityClass](child.args[0].getString()))
+        cmd.facilityClass = some(parseEnumFromStr[FacilityClass](child.args[0].kString()))
       else:
         raise newException(KdlParseError, "Facility build command missing class")
     of "ground":
       cmd.buildType = BuildType.Ground
       if child.args.len > 0:
-        cmd.groundClass = some(parseEnumFromStr[GroundClass](child.args[0].getString()))
+        cmd.groundClass = some(parseEnumFromStr[GroundClass](child.args[0].kString()))
       else:
         raise newException(KdlParseError, "Ground unit build command missing class")
     of "industrial":
       cmd.buildType = BuildType.Industrial
       if child.props.hasKey("units"):
-        cmd.industrialUnits = child.props["units"].getInt().int32
+        cmd.industrialUnits = child.props["units"].kInt().int32
       else:
         # Default to quantity if units not specified? Spec says units=10
         cmd.industrialUnits = 1
@@ -149,7 +149,7 @@ proc parseBuildCommand(node: KdlNode, colonyId: ColonyId): seq[BuildCommand] =
 
     # Common params
     if child.props.hasKey("quantity"):
-      cmd.quantity = child.props["quantity"].getInt().int32
+      cmd.quantity = child.props["quantity"].kInt().int32
       
     result.add(cmd)
 
@@ -173,7 +173,7 @@ proc parseScrapCommand(node: KdlNode, colonyId: ColonyId): seq[ScrapCommand] =
       raise newException(KdlParseError, "Scrap command missing ID")
       
     let ack = if child.props.hasKey("acknowledge-queue-loss"): 
-                child.props["acknowledge-queue-loss"].getBool()
+                child.props["acknowledge-queue-loss"].kBool()
               else: false
               
     result.add(ScrapCommand(
@@ -196,16 +196,16 @@ proc parseColonyManagement(node: KdlNode, colonyId: ColonyId): ColonyManagementC
     case child.name.toLowerAscii():
     of "tax-rate":
       if child.args.len > 0:
-        cmd.taxRate = some(child.args[0].getInt().int32)
+        cmd.taxRate = some(child.args[0].kInt().int32)
     of "auto-repair":
       if child.args.len > 0:
-        cmd.autoRepair = child.args[0].getBool()
+        cmd.autoRepair = child.args[0].kBool()
     of "auto-load-fighters":
       if child.args.len > 0:
-        cmd.autoLoadFighters = child.args[0].getBool()
+        cmd.autoLoadFighters = child.args[0].kBool()
     of "auto-load-marines":
       if child.args.len > 0:
-        cmd.autoLoadMarines = child.args[0].getBool()
+        cmd.autoLoadMarines = child.args[0].kBool()
         
   return cmd
 
@@ -221,13 +221,13 @@ proc parseResearch(node: KdlNode): ResearchAllocation =
   for child in node.children:
     case child.name.toLowerAscii():
     of "economic":
-      result.economic = child.args[0].getInt().int32
+      result.economic = child.args[0].kInt().int32
     of "science":
-      result.science = child.args[0].getInt().int32
+      result.science = child.args[0].kInt().int32
     of "tech":
       for techNode in child.children:
         let field = parseEnumFromStr[TechField](techNode.name)
-        let amount = techNode.args[0].getInt().int32
+        let amount = techNode.args[0].kInt().int32
         result.technology[field] = amount
 
 proc parseDiplomacy(node: KdlNode): seq[DiplomaticCommand] =
@@ -249,7 +249,7 @@ proc parseDiplomacy(node: KdlNode): seq[DiplomaticCommand] =
     # Handle 'to' for propose-deescalate
     # to=neutral -> ProposalType (e.g. DeescalateToNeutral)
     if child.props.hasKey("to"):
-      let toState = child.props["to"].getString().toLowerAscii()
+      let toState = child.props["to"].kString().toLowerAscii()
       if toState == "neutral":
         cmd.proposalType = some(ProposalType.DeescalateToNeutral)
       elif toState == "hostile":
@@ -265,8 +265,8 @@ proc parseEspionage(node: KdlNode): tuple[ebp: int32, cip: int32, actions: seq[E
   
   for child in node.children:
     if child.name == "invest":
-      if child.props.hasKey("ebp"): result.ebp = child.props["ebp"].getInt().int32
-      if child.props.hasKey("cip"): result.cip = child.props["cip"].getInt().int32
+      if child.props.hasKey("ebp"): result.ebp = child.props["ebp"].kInt().int32
+      if child.props.hasKey("cip"): result.cip = child.props["cip"].kInt().int32
     else:
       # Operations
       var attempt = EspionageAttempt()
@@ -285,7 +285,7 @@ proc parseTransfer(node: KdlNode): PopulationTransferCommand =
   var cmd = PopulationTransferCommand()
   if node.props.hasKey("from"): cmd.sourceColony = parseId[ColonyId](node.props["from"])
   if node.props.hasKey("to"): cmd.destColony = parseId[ColonyId](node.props["to"])
-  if node.props.hasKey("ptu"): cmd.ptuAmount = node.props["ptu"].getInt().int32
+  if node.props.hasKey("ptu"): cmd.ptuAmount = node.props["ptu"].kInt().int32
   return cmd
 
 proc parseTerraform(node: KdlNode): TerraformCommand =
@@ -309,7 +309,7 @@ proc parseOrdersKdl*(doc: KdlDoc): CommandPacket =
   
   # 2. Extract Header (House & Turn)
   let houseId = parseId[HouseId](getPropOrErr(root, "house"))
-  let turn = getPropOrErr(root, "turn").getInt().int32
+  let turn = getPropOrErr(root, "turn").kInt().int32
   
   # 3. Initialize Packet
   var packet = CommandPacket(

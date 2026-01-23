@@ -55,7 +55,7 @@ proc loadIdentity*(): Option[DaemonIdentity] =
       logError("DaemonIdentity", "Identity file missing nsec")
       return none(DaemonIdentity)
 
-    let nsec = node.props["nsec"].getString()
+    let nsec = node.props["nsec"].kString()
     let nsecHex = if nsec.startsWith("nsec"):
                     decodeNsecToHex(nsec)
                   else:
@@ -63,7 +63,7 @@ proc loadIdentity*(): Option[DaemonIdentity] =
 
     let publicHex =
       if node.props.hasKey("npub"):
-        let npubValue = node.props["npub"].getString()
+        let npubValue = node.props["npub"].kString()
         if npubValue.startsWith("npub"):
           decodeNpubToHex(npubValue)
         else:
@@ -71,14 +71,14 @@ proc loadIdentity*(): Option[DaemonIdentity] =
       else:
         derivePublicKeyHex(nsecHex)
     let identityType =
-      if node.props.hasKey("type") and node.props["type"].getString() == "imported":
+      if node.props.hasKey("type") and node.props["type"].kString() == "imported":
         IdentityType.Imported
       else:
         IdentityType.Local
 
     let created = if node.props.hasKey("created"):
                     try:
-                      parse(node.props["created"].getString(),
+                      parse(node.props["created"].kString(),
                             "yyyy-MM-dd'T'HH:mm:sszzz")
                     except CatchableError:
                       now()

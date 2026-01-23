@@ -60,7 +60,7 @@ proc parseFleetConfig(node: KdlNode, ctx: var KdlConfigContext): FleetConfig =
     # Ships are stored as string arguments
     for arg in shipsNode.args:
       if arg.kind == KValKind.KString:
-        ships.add(arg.getString())
+        ships.add(arg.kString())
 
   result = FleetConfig(ships: ships)
 

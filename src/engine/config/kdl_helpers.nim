@@ -46,13 +46,6 @@ proc child*(node: KdlNode, childName: string): Option[KdlVal] =
       return some(child.args[0])
   none(KdlVal)
 
-proc hasChild*(node: KdlNode, childName: string): bool =
-  ## Check if node has a child with given name
-  for child in node.children:
-    if child.name == childName:
-      return true
-  false
-
 # ============================================================================
 # Property/Attribute Helpers
 # ============================================================================
@@ -74,7 +67,7 @@ proc stringAttribute*(
 
   let val = propOpt.get
   if val.kind == KValKind.KString:
-    return some(val.getString())
+    return some(val.kString())
   else:
     return none(string)
 
@@ -110,9 +103,9 @@ proc requireInt32*(node: KdlNode, childName: string, ctx: KdlConfigContext): int
   let val = valOpt.get
   case val.kind
   of KValKind.KInt, KValKind.KInt8, KValKind.KInt16, KValKind.KInt32, KValKind.KInt64:
-    val.getInt().int32
+    val.kInt().int32
   of KValKind.KUInt8, KValKind.KUInt16, KValKind.KUInt32, KValKind.KUInt64:
-    val.getInt().int32
+    val.kInt().int32
   else:
     let path = ctx.nodePath.join(".")
     raise newConfigError(
@@ -129,9 +122,9 @@ proc requireFloat32*(node: KdlNode, childName: string, ctx: KdlConfigContext): f
   let val = valOpt.get
   case val.kind
   of KValKind.KFloat, KValKind.KFloat32, KValKind.KFloat64:
-    val.getFloat().float32
+    val.kFloat().float32
   of KValKind.KInt, KValKind.KInt32, KValKind.KInt64:
-    val.getInt().float32
+    val.kInt().float32
   else:
     let path = ctx.nodePath.join(".")
     raise newConfigError(
@@ -150,7 +143,7 @@ proc requireString*(node: KdlNode, childName: string, ctx: KdlConfigContext): st
     let path = ctx.nodePath.join(".")
     raise newConfigError(
       &"Field '{childName}' in {path} must be string, got {val.kind} ({ctx.filepath})")
-  val.getString()
+  val.kString()
 
 proc requireBool*(node: KdlNode, childName: string, ctx: KdlConfigContext): bool =
   ## Get required boolean value from child node
@@ -165,7 +158,7 @@ proc requireBool*(node: KdlNode, childName: string, ctx: KdlConfigContext): bool
     let path = ctx.nodePath.join(".")
     raise newConfigError(
       &"Field '{childName}' in {path} must be boolean, got {val.kind} ({ctx.filepath})")
-  val.getBool()
+  val.kBool()
 
 # ============================================================================
 # Optional Field Extraction (returns Option or default value)
@@ -181,7 +174,7 @@ proc int32Val*(node: KdlNode, childName: string, default: int32): int32 =
   case val.kind
   of KValKind.KInt, KValKind.KInt8, KValKind.KInt16, KValKind.KInt32, KValKind.KInt64,
      KValKind.KUInt8, KValKind.KUInt16, KValKind.KUInt32, KValKind.KUInt64:
-    val.getInt().int32
+    val.kInt().int32
   else:
     default
 
@@ -194,9 +187,9 @@ proc float32Val*(node: KdlNode, childName: string, default: float32): float32 =
   let val = valOpt.get
   case val.kind
   of KValKind.KFloat, KValKind.KFloat32, KValKind.KFloat64:
-    val.getFloat().float32
+    val.kFloat().float32
   of KValKind.KInt, KValKind.KInt32, KValKind.KInt64:
-    val.getInt().float32
+    val.kInt().float32
   else:
     default
 
@@ -208,7 +201,7 @@ proc stringVal*(node: KdlNode, childName: string, default: string): string =
   
   let val = valOpt.get
   if val.kind == KValKind.KString:
-    val.getString()
+    val.kString()
   else:
     default
 
@@ -220,7 +213,7 @@ proc boolVal*(node: KdlNode, childName: string, default: bool): bool =
   
   let val = valOpt.get
   if val.kind == KValKind.KBool:
-    val.getBool()
+    val.kBool()
   else:
     default
 
@@ -234,7 +227,7 @@ proc int32Opt*(node: KdlNode, childName: string): Option[int32] =
   case val.kind
   of KValKind.KInt, KValKind.KInt8, KValKind.KInt16, KValKind.KInt32, KValKind.KInt64,
      KValKind.KUInt8, KValKind.KUInt16, KValKind.KUInt32, KValKind.KUInt64:
-    some(val.getInt().int32)
+    some(val.kInt().int32)
   else:
     none(int32)
 
@@ -248,7 +241,7 @@ proc int64Opt*(node: KdlNode, childName: string): Option[int64] =
   case val.kind
   of KValKind.KInt, KValKind.KInt8, KValKind.KInt16, KValKind.KInt32, KValKind.KInt64,
      KValKind.KUInt8, KValKind.KUInt16, KValKind.KUInt32, KValKind.KUInt64:
-    some(val.getInt().int64)
+    some(val.kInt().int64)
   else:
     none(int64)
     
@@ -261,9 +254,9 @@ proc float32Opt*(node: KdlNode, childName: string): Option[float32] =
   let val = valOpt.get
   case val.kind
   of KValKind.KFloat, KValKind.KFloat32, KValKind.KFloat64:
-    some(val.getFloat().float32)
+    some(val.kFloat().float32)
   of KValKind.KInt, KValKind.KInt32, KValKind.KInt64:
-    some(val.getInt().float32)
+    some(val.kInt().float32)
   else:
     none(float32)
 
@@ -275,7 +268,7 @@ proc stringOpt*(node: KdlNode, childName: string): Option[string] =
   
   let val = valOpt.get
   if val.kind == KValKind.KString:
-    some(val.getString())
+    some(val.kString())
   else:
     none(string)
 

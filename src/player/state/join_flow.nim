@@ -93,7 +93,7 @@ proc readJoinCache*(dataDir: string, pubkey: string, gameId: string): Option[Hou
     return none(HouseId)
 
   try:
-    some(HouseId(node.props["house"].getInt().uint32))
+    some(HouseId(node.props["house"].kInt().uint32))
   except CatchableError:
     none(HouseId)
 

@@ -89,7 +89,7 @@ proc loadEspionageConfig*(configPath: string): EspionageConfig =
         detection.cipTiers.add(CIPTierData(maxPoints: 0, modifier: 0))  # 0 CIP tier
         for tier in child.children:
           if tier.name == "tier" and tier.args.len > 0:
-            let tierName = tier.args[0].getString()
+            let tierName = tier.args[0].kString()
             let modifier = tier.requireInt32("modifier", ctx)
             case tierName
             of "1-5": detection.cipTiers.add(CIPTierData(maxPoints: 5, modifier: modifier))
