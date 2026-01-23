@@ -121,7 +121,7 @@ CREATE TABLE commands (
     command_type TEXT NOT NULL,        -- Command category or fleet cmd type
     target_system_id TEXT,
     target_fleet_id TEXT,
-    params TEXT,                       -- JSON blob for all command data
+    params TEXT,                       -- KDL blob for all command data
     submitted_at INTEGER NOT NULL,     -- Unix timestamp
     processed BOOLEAN NOT NULL DEFAULT 0,
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
@@ -134,10 +134,10 @@ CREATE INDEX idx_commands_unprocessed ON commands(game_id, turn, processed)
     WHERE processed = 0;
 ```
 
-**Note:** Commands use JSON for params (not msgpack) because:
-- Need queryable command history
+**Note:** Commands use KDL for params (not msgpack) because:
+- Keeps persistence aligned with KDL-first tooling
 - Params are small (<1 KB typically)
-- Flexibility for command-specific data
+- Easier manual inspection in text form
 
 ### game_events
 

@@ -14,28 +14,27 @@
 ## - Smaller storage (30-50%)
 ## - Type-safe binary format
 
-import std/[options, strutils, tables, json, times]
+import std/[options, strutils, tables, times]
+import kdl
 import db_connector/db_sqlite
 import ../../common/logger
 import ../../engine/types/[event, game_state, core, command, tech, espionage]
+import ./replay
 import ../transport/nostr/types
 import ./msgpack_state
 import ./player_state_snapshot
-import ./reader
 
-# ============================================================================
-# JSON Helpers for Commands (commands table still uses JSON)
-# ============================================================================
+proc paramsKdl(
+    props: Table[string, KdlVal],
+    children: seq[KdlNode] = @[]): string =
+  if props.len == 0 and children.len == 0:
+    return ""
+  let node = initKNode("params", props = props, children = children)
+  let doc: KdlDoc = @[node]
+  $doc
 
-proc `%`*(id: HouseId): JsonNode = %(id.uint32)
-proc `%`*(id: SystemId): JsonNode = %(id.uint32)
-proc `%`*(id: ColonyId): JsonNode = %(id.uint32)
-proc `%`*(id: FleetId): JsonNode = %(id.uint32)
-proc `%`*(id: ShipId): JsonNode = %(id.uint32)
-proc `%`*(id: GroundUnitId): JsonNode = %(id.uint32)
-proc `%`*(id: NeoriaId): JsonNode = %(id.uint32)
-proc `%`*(id: KastraId): JsonNode = %(id.uint32)
-proc `%`*(id: ProposalId): JsonNode = %(id.uint32)
+proc addProp(props: var Table[string, KdlVal], key: string, value: KdlVal) =
+  props[key] = value
 
 # ============================================================================
 # Core State Writers
@@ -115,7 +114,7 @@ proc savePlayerStateSnapshot*(
   logDebug("Persistence", "Saved player state snapshot for house ", $houseId, " turn ", $turn)
 
 proc insertProcessedEvent*(dbPath: string, gameId: string, turn: int32,
-  kind: int, eventId: string, direction: reader.ReplayDirection) =
+  kind: int, eventId: string, direction: ReplayDirection) =
   ## Record a processed event id
   let db = open(dbPath, "", "", "")
   defer: db.close()
@@ -280,10 +279,12 @@ proc saveCommandPacket*(dbPath: string, gameId: string, packet: CommandPacket) =
   try:
     # 1. Fleet Commands
     for cmd in packet.fleetCommands:
-      let params = %*{
-        "roe": cmd.roe,
-        "priority": cmd.priority
-      }
+      var props = initTable[string, KdlVal]()
+      if cmd.roe.isSome:
+        addProp(props, "roe", initKVal(cmd.roe.get()))
+      if cmd.priority != 0:
+        addProp(props, "priority", initKVal(cmd.priority))
+      let params = paramsKdl(props)
       db.exec(sql"""
         INSERT INTO commands (
           game_id, house_id, turn, fleet_id, command_type, 
@@ -305,7 +306,18 @@ proc saveCommandPacket*(dbPath: string, gameId: string, packet: CommandPacket) =
     
     # 2. Build Commands
     for cmd in packet.buildCommands:
-      let params = %*cmd
+      var props = initTable[string, KdlVal]()
+      addProp(props, "buildType", initKVal($cmd.buildType))
+      addProp(props, "quantity", initKVal(cmd.quantity))
+      if cmd.industrialUnits != 0:
+        addProp(props, "industrialUnits", initKVal(cmd.industrialUnits))
+      if cmd.shipClass.isSome:
+        addProp(props, "shipClass", initKVal($cmd.shipClass.get()))
+      if cmd.facilityClass.isSome:
+        addProp(props, "facilityClass", initKVal($cmd.facilityClass.get()))
+      if cmd.groundClass.isSome:
+        addProp(props, "groundClass", initKVal($cmd.groundClass.get()))
+      let params = paramsKdl(props)
       db.exec(sql"""
         INSERT INTO commands (
           game_id, house_id, turn, colony_id, command_type, params, submitted_at
@@ -322,15 +334,18 @@ proc saveCommandPacket*(dbPath: string, gameId: string, packet: CommandPacket) =
     if packet.researchAllocation.economic > 0 or
         packet.researchAllocation.science > 0 or
         packet.researchAllocation.technology.len > 0:
-      # Manual JSON construction for enum-keyed table
-      var techJson = newJObject()
-      for field, points in packet.researchAllocation.technology:
-        techJson[$field] = %points
-      let params = %*{
-        "economic": packet.researchAllocation.economic,
-        "science": packet.researchAllocation.science,
-        "technology": techJson
-      }
+      var props = initTable[string, KdlVal]()
+      addProp(props, "economic", initKVal(packet.researchAllocation.economic))
+      addProp(props, "science", initKVal(packet.researchAllocation.science))
+      var children: seq[KdlNode] = @[]
+      if packet.researchAllocation.technology.len > 0:
+        var techNode = initKNode("technology")
+        for field, points in packet.researchAllocation.technology:
+          techNode.children.add(
+            initKNode($field, args = @[initKVal(points)])
+          )
+        children.add(techNode)
+      let params = paramsKdl(props, children)
       db.exec(sql"""
         INSERT INTO commands (
           game_id, house_id, turn, command_type, params, submitted_at
@@ -345,10 +360,12 @@ proc saveCommandPacket*(dbPath: string, gameId: string, packet: CommandPacket) =
 
     # 4. Espionage Budget
     if packet.ebpInvestment > 0 or packet.cipInvestment > 0:
-      let params = %*{
-        "ebpInvestment": packet.ebpInvestment,
-        "cipInvestment": packet.cipInvestment
-      }
+      var props = initTable[string, KdlVal]()
+      if packet.ebpInvestment > 0:
+        addProp(props, "ebpInvestment", initKVal(packet.ebpInvestment))
+      if packet.cipInvestment > 0:
+        addProp(props, "cipInvestment", initKVal(packet.cipInvestment))
+      let params = paramsKdl(props)
       db.exec(sql"""
         INSERT INTO commands (
           game_id, house_id, turn, command_type, params, submitted_at
@@ -363,7 +380,17 @@ proc saveCommandPacket*(dbPath: string, gameId: string, packet: CommandPacket) =
 
     # 5. Espionage Actions
     for action in packet.espionageActions:
-      let params = %*action
+      var props = initTable[string, KdlVal]()
+      addProp(props, "attacker", initKVal(action.attacker.uint32))
+      addProp(props, "target", initKVal(action.target.uint32))
+      addProp(props, "action", initKVal($action.action))
+      if action.targetSystem.isSome:
+        addProp(
+          props,
+          "targetSystem",
+          initKVal(action.targetSystem.get().uint32)
+        )
+      let params = paramsKdl(props)
       db.exec(sql"""
         INSERT INTO commands (
           game_id, house_id, turn, command_type, params, submitted_at
@@ -378,7 +405,16 @@ proc saveCommandPacket*(dbPath: string, gameId: string, packet: CommandPacket) =
 
     # 6. Diplomatic Commands
     for cmd in packet.diplomaticCommand:
-      let params = %*cmd
+      var props = initTable[string, KdlVal]()
+      addProp(props, "targetHouse", initKVal(cmd.targetHouse.uint32))
+      addProp(props, "actionType", initKVal($cmd.actionType))
+      if cmd.proposalId.isSome:
+        addProp(props, "proposalId", initKVal(cmd.proposalId.get().uint32))
+      if cmd.proposalType.isSome:
+        addProp(props, "proposalType", initKVal($cmd.proposalType.get()))
+      if cmd.message.isSome:
+        addProp(props, "message", initKVal(cmd.message.get()))
+      let params = paramsKdl(props)
       db.exec(sql"""
         INSERT INTO commands (
           game_id, house_id, turn, command_type, params, submitted_at
