@@ -425,6 +425,42 @@ proc pruneOldEvents*(cache: TuiCache, keepCount: int = 1000) =
     )
   """, $keepCount)
 
+proc pruneStaleGames*(
+    cache: TuiCache,
+    maxAgeDays: int,
+    stateGraceDays: int = 30) =
+  ## Remove cached games with no recent updates or player state.
+  if maxAgeDays <= 0:
+    return
+
+  let now = epochTime().int64
+  let maxAgeSeconds = int64(maxAgeDays) * 24 * 60 * 60
+  let stateGraceSeconds = int64(stateGraceDays) * 24 * 60 * 60
+  let cutoff = now - maxAgeSeconds
+  let stateCutoff = now - stateGraceSeconds
+
+  var staleGameIds: seq[string] = @[]
+  for row in cache.db.fastRows(
+      sql"""SELECT id FROM games
+             WHERE last_updated < ?
+             AND id NOT IN (
+               SELECT DISTINCT game_id FROM player_states
+               WHERE created_at >= ?
+             )""",
+      $cutoff,
+      $stateCutoff
+  ):
+    staleGameIds.add(row[0])
+
+  if staleGameIds.len == 0:
+    return
+
+  for gameId in staleGameIds:
+    cache.db.exec(sql"DELETE FROM player_slots WHERE game_id = ?", gameId)
+    cache.db.exec(sql"DELETE FROM games WHERE id = ?", gameId)
+
+  logInfo("TuiCache", "Pruned stale games: ", $staleGameIds.len)
+
 # =============================================================================
 # Migration from Old Format
 # =============================================================================

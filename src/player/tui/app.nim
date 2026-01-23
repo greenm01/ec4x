@@ -111,6 +111,7 @@ proc runTui*(gameId: string = "") =
   if initialModel.lobbyProfilePubkey.len > 0:
     # Run migration from old KDL join cache files
     tuiCache.runMigrations("data", initialModel.lobbyProfilePubkey)
+    tuiCache.pruneStaleGames(30)
 
     # Load games from cache instead of daemon's DB
     let cachedGames = tuiCache.listPlayerGames(initialModel.lobbyProfilePubkey)
@@ -137,6 +138,7 @@ proc runTui*(gameId: string = "") =
 
       # Run migration and load from cache
       tuiCache.runMigrations("data", initialModel.lobbyProfilePubkey)
+      tuiCache.pruneStaleGames(30)
       let cachedGames = tuiCache.listPlayerGames(initialModel.lobbyProfilePubkey)
       for (game, houseId) in cachedGames:
         if isPlaceholderGame(game, houseId):
