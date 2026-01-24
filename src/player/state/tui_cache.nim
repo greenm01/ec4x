@@ -19,7 +19,6 @@ import kdl
 import msgpack4nim
 
 import ../../common/logger
-import ../../common/msgpack_types
 import ../../engine/types/player_state
 
 const

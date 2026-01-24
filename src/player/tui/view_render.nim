@@ -405,7 +405,6 @@ proc renderFleetDetail*(
   state: GameState,
   viewingHouse: HouseId
 ) =
-  ## Render detailed fleet view with ship list table
   if model.selectedFleetId <= 0:
     discard buf.setString(
       area.x, area.y, "No fleet selected", dimStyle()

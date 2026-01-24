@@ -5,6 +5,7 @@
 ## and presentation (TUI) layers.
 
 import std/[options, tables, algorithm]
+import ../../common/logger
 import ../../engine/types/[core, starmap, colony, fleet, player_state, ship,
   combat, production, facilities, ground_unit, tech]
 import ../../engine/state/engine
@@ -540,10 +541,18 @@ proc fleetToDetailData*(
   houseId: HouseId
 ): FleetDetailData =
   ## Convert engine Fleet to FleetDetailData for TUI rendering
-  ## Uses engine accessors and iterators (no direct EntityManager access)
-  
-  # Get fleet (crash if missing - should never happen in practice)
-  let fleet = state.fleet(fleetId).get()
+  let fleetOpt = state.fleet(fleetId)
+  if fleetOpt.isNone:
+    logWarn("TUI", "Fleet ", fleetId, " not found in state (turn ", state.turn, ")")
+    return FleetDetailData(
+      fleetId: int(fleetId),
+      location: "Fleet Missing",
+      shipCount: 0,
+      totalAttack: 0,
+      totalDefense: 0,
+      ships: @[]
+    )
+  let fleet = fleetOpt.get()
   
   # Get location name
   var locationName = "Unknown"
@@ -843,7 +852,21 @@ proc colonyToDetailData*(
   houseId: HouseId
 ): PlanetDetailData =
   ## Convert engine Colony to PlanetDetailData for TUI rendering
-  let colony = state.colony(colonyId).get()
+  let colonyOpt = state.colony(colonyId)
+  if colonyOpt.isNone:
+    logWarn("TUI", "Colony ", colonyId, " not found in state (turn ", state.turn, ")")
+    return PlanetDetailData(
+      colonyId: int(colonyId),
+      systemName: "Colony Missing",
+      sectorLabel: "?",
+      planetClass: "Unknown",
+      populationUnits: 0,
+      industrialUnits: 0,
+      gco: 0,
+      ncv: 0,
+      taxRate: 0
+    )
+  let colony = colonyOpt.get()
 
   var techLevels = defaultTechLevels()
   var taxRate = colony.taxRate

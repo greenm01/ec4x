@@ -280,64 +280,12 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.statusMessage = ""
       model.clearExpertFeedback()
   of ActionListUp:
-    if model.appPhase == AppPhase.Lobby:
-      if model.lobbyPane == LobbyPane.ActiveGames and
-          model.lobbySelectedIdx > 0:
-        model.lobbySelectedIdx -= 1
-      elif model.lobbyPane == LobbyPane.JoinGames and
-          model.lobbyJoinSelectedIdx > 0:
-        model.lobbyJoinSelectedIdx -= 1
-    elif model.mode == ViewMode.Reports:
-      case model.reportFocus
-      of ReportPaneFocus.TurnList:
-        if model.reportTurnIdx > 0:
-          model.reportTurnIdx -= 1
-          model.reportSubjectIdx = 0
-          model.reportBodyScroll = initScrollState()
-        model.reportTurnScroll.ensureVisible(model.reportTurnIdx)
-      of ReportPaneFocus.SubjectList:
-        if model.reportSubjectIdx > 0:
-          model.reportSubjectIdx -= 1
-          model.reportBodyScroll = initScrollState()
-        model.reportSubjectScroll.ensureVisible(model.reportSubjectIdx)
-      of ReportPaneFocus.BodyPane:
-        if model.reportBodyScroll.verticalOffset > 0:
-          model.reportBodyScroll.verticalOffset -= 1
-    elif model.selectedIdx > 0:
-      model.selectedIdx -= 1
+    if model.selectedIdx > 0:
+      model.selectedIdx = max(0, model.selectedIdx - 1)
   of ActionListDown:
-    if model.appPhase == AppPhase.Lobby:
-      if model.lobbyPane == LobbyPane.ActiveGames:
-        let maxIdx = model.lobbyActiveGames.len - 1
-        if model.lobbySelectedIdx < maxIdx:
-          model.lobbySelectedIdx += 1
-      elif model.lobbyPane == LobbyPane.JoinGames:
-        let maxIdx = model.lobbyJoinGames.len - 1
-        if model.lobbyJoinSelectedIdx < maxIdx:
-          model.lobbyJoinSelectedIdx += 1
-    elif model.mode == ViewMode.Reports:
-      case model.reportFocus
-      of ReportPaneFocus.TurnList:
-        let buckets = model.reportsByTurn()
-        let maxIdx = buckets.len - 1
-        if model.reportTurnIdx < maxIdx:
-          model.reportTurnIdx += 1
-          model.reportSubjectIdx = 0
-          model.reportBodyScroll = initScrollState()
-        model.reportTurnScroll.ensureVisible(model.reportTurnIdx)
-      of ReportPaneFocus.SubjectList:
-        let reports = model.currentTurnReports()
-        let maxIdx = reports.len - 1
-        if model.reportSubjectIdx < maxIdx:
-          model.reportSubjectIdx += 1
-          model.reportBodyScroll = initScrollState()
-        model.reportSubjectScroll.ensureVisible(model.reportSubjectIdx)
-      of ReportPaneFocus.BodyPane:
-        model.reportBodyScroll.verticalOffset += 1
-    else:
-      let maxIdx = model.currentListLength() - 1
-      if model.selectedIdx < maxIdx:
-        model.selectedIdx += 1
+    let maxIdx = model.currentListLength() - 1
+    if model.selectedIdx < maxIdx:
+      model.selectedIdx = min(maxIdx, model.selectedIdx + 1)
   else:
     discard
 
@@ -810,17 +758,21 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if report.isSome:
         model.selectedReportId = report.get().id
     elif model.mode == ViewMode.Planets and proposal.selectIdx == -1:
-      if model.selectedIdx < model.colonies.len:
+      if model.selectedIdx >= 0 and model.selectedIdx < model.colonies.len:
         model.previousMode = model.mode
         model.mode = ViewMode.PlanetDetail
         model.selectedColonyId = model.colonies[model.selectedIdx].colonyId
         model.resetBreadcrumbs(model.mode)
+      else:
+        model.statusMessage = "No colony selected"
     elif model.mode == ViewMode.Fleets and proposal.selectIdx == -1:
-      if model.selectedIdx < model.fleets.len:
+      if model.selectedIdx >= 0 and model.selectedIdx < model.fleets.len:
         model.previousMode = model.mode
         model.mode = ViewMode.FleetDetail
         model.selectedFleetId = model.fleets[model.selectedIdx].id
         model.resetBreadcrumbs(model.mode)
+      else:
+        model.statusMessage = "No fleet selected"
     elif model.mode == ViewMode.ReportDetail and proposal.selectIdx == -1:
       let report = model.currentReport()
       if report.isSome:
