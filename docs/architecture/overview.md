@@ -17,7 +17,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 │     Game Engine (src/engine/)       │
 │  • PURE game logic (no I/O)         │
 │  • Turn-based resolution            │
-│  • Command validation                 │
+│  • Command validation               │
 │  • Combat & economy systems         │
 │  • Telemetry metrics collection     │
 └─────────────────────────────────────┘
@@ -26,24 +26,24 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 │       Daemon (src/daemon/)          │
 │  • SAM event loop                   │
 │  • Persistence (SQLite per game)    │
-│  • Transport handlers               │
+│  • Nostr transport                  │
 │  • Turn resolution orchestration    │
 └─────────────────────────────────────┘
-         ↙                    ↘
-┌─────────────┐          ┌─────────────┐
-│ Localhost   │          │   Nostr     │
-│ Transport   │          │  Transport  │
-│             │          │             │
-│ • File I/O  │          │ • Encrypted │
-│ • Direct DB │          │ • Relays    │
-│ • Testing   │          │ • P2P       │
-└─────────────┘          └─────────────┘
-         ↑                      ↑
+                    ↑
+          ┌─────────────────┐
+          │     Nostr       │
+          │   Transport     │
+          │                 │
+          │ • WebSocket     │
+          │ • NIP-44        │
+          │ • Relays        │
+          └─────────────────┘
+                    ↑
 ┌───────────────────────────────────────────────────┐
 │              Client (src/client/)                 │
 │  • GUI player interface (bin/ec4x-client)         │
 │  • SAM architecture with Sokol+Nuklear            │
-│  • Starmap rendering, command submission            │
+│  • Starmap rendering, command submission          │
 │  • Turn report viewing                            │
 └───────────────────────────────────────────────────┘
 
@@ -57,8 +57,8 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 ┌─────────────────────────────────────┐
 │     Dev Player (src/player/)        │
 │  • TUI/CLI tool (bin/ec4x-play)     │
-│  • Menu-driven command entry          │
-│  • Command validation for LLMs        │
+│  • Menu-driven command entry        │
+│  • Command validation for LLMs      │
 └─────────────────────────────────────┘
 ```
 
@@ -76,7 +76,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 **Source**: `src/client/`
 **Role**: Player's game interface (GUI)
 **Capabilities**:
-- Join games (localhost or Nostr)
+- Join games via Nostr relay
 - View game state (filtered by intel)
 - Submit commands via KDL format
 - View turn history and reports
@@ -110,7 +110,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 **Source**: `src/moderator/`
 **Role**: Game administration and management
 **Capabilities**:
-- Create new games (localhost or Nostr mode)
+- Create new games with Nostr transport
 - Start/pause/stop games
 - Force turn resolution (`ec4x resolve <game-id>`)
 - View game statistics
@@ -162,25 +162,7 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - 36 unit tests covering edge cases
 - Blocks invalid configs before game creation
 
-## Game Modes
-
-### Localhost Mode
-**Use Cases**:
-- Single-player testing
-- Hotseat multiplayer
-- Development and debugging
-- Offline play
-
-**Transport**:
-- Commands: JSON files in game directory
-- State: Direct SQLite access
-- Results: JSON exports per player
-
-**Benefits**:
-- No network required
-- Instant feedback
-- Easy inspection with sqlite3 CLI
-- Simple file-based command submission
+## Game Mode
 
 ### Nostr Mode
 **Use Cases**:
@@ -188,9 +170,10 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - Distributed async play
 - Play-by-relay gaming
 - Privacy-focused multiplayer
+- Development and testing
 
 **Transport**:
-- Commands: Encrypted Nostr events to moderator
+- Commands: Encrypted Nostr events to daemon
 - State: Encrypted per-player deltas from relay
 - Results: Public turn summaries + private deltas
 
@@ -224,26 +207,14 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
    Daemon → Generate per-player deltas → [Transport] → Players
 ```
 
-### Command Collection (Both Modes)
+### Command Collection
 
-**Localhost:**
 ```
 Player edits commands.kdl
   ↓
-Client writes orders_pending.json
+Client serializes to msgpack, encrypts to daemon pubkey
   ↓
-Daemon polls game directory
-  ↓
-Commands saved to SQLite
-```
-
-**Nostr:**
-```
-Player edits commands.kdl
-  ↓
-Client encrypts to moderator pubkey
-  ↓
-Client publishes EventKindOrderPacket
+Client publishes EventKindTurnCommands (30402)
   ↓
 Daemon receives via relay subscription
   ↓
@@ -266,7 +237,7 @@ Daemon decrypts and saves to SQLite
 ### Transport Abstraction
 - **Why**: Game logic shouldn't know about networking
 - **Benefit**: Easy to add new transport modes
-- **Implementation**: Interface with LocalTransport and NostrTransport
+- **Implementation**: Nostr transport with WebSocket relay connections
 
 ### State Deltas (Nostr Only)
 - **Why**: Bandwidth efficiency (20-40x reduction)
@@ -308,9 +279,8 @@ Transport Interface:
   - getGameState() → GameState
 ```
 
-**Implementations**:
-- LocalTransport: filesystem + direct SQLite
-- NostrTransport: WebSocket relay + encryption
+**Implementation**:
+- NostrTransport: WebSocket relay + NIP-44 encryption
 
 ## Intel System
 
@@ -332,22 +302,23 @@ See [daemon.md](./daemon.md) for operational details.
 
 **Single Process Architecture**:
 - Auto-discovers games from SQLite
-- Monitors both transports simultaneously
+- Monitors Nostr relay for commands
 - Processes turns atomically
 - Hot-reload for new games
 
 ## Development Workflow
 
 ### Local Development
-1. Create localhost game: `moderator new test_game --mode=localhost`
+1. Create game: `moderator new test_game --relay=ws://localhost:8080`
 2. Start daemon: `daemon start`
-3. Join as player: `client join test_game --house=Alpha`
-4. Test gameplay offline
+3. Start local relay: `docker run -p 8080:8080 nostr-relay`
+4. Join as player: `client join test_game --relay=ws://localhost:8080`
+5. Test gameplay with local relay
 
 ### Production Deployment
-1. Convert to Nostr: `moderator convert test_game --mode=nostr --relay=wss://...`
-2. Players join via Nostr: `client join <game-id> --relay=wss://...`
-3. Same daemon manages both types
+1. Configure production relay: `moderator new prod_game --relay=wss://relay.example.com`
+2. Players join via Nostr: `client join <game-id> --relay=wss://relay.example.com`
+3. Daemon manages games across all configured relays
 
 ## Scalability
 
@@ -359,7 +330,6 @@ See [daemon.md](./daemon.md) for operational details.
 **Daemon Capacity**:
 - One daemon can manage 100+ games
 - Nostr: One WebSocket per relay (shared across games)
-- Localhost: Filesystem polling (configurable interval)
 
 **Bottlenecks**:
 - SQLite write throughput (mitigated by transactions)
@@ -368,14 +338,8 @@ See [daemon.md](./daemon.md) for operational details.
 
 ## Security Model
 
-### Localhost Mode
-- **Trust**: Players trust game moderator
-- **Access**: Direct filesystem and database access
-- **Cheating**: Possible if players access SQLite directly
-- **Mitigation**: Use for testing or trusted groups only
-
 ### Nostr Mode
-- **Trust**: Players trust moderator's daemon
+- **Trust**: Players trust daemon operator
 - **Encryption**: NIP-44 encryption for all private data
 - **Visibility**: Fog of war enforced by server
 - **Cheating**: Players cannot see hidden information
@@ -403,9 +367,8 @@ See [daemon.md](./daemon.md) for operational details.
 ## Related Documentation
 
 - [Storage Architecture](./storage.md) - SQLite schema and queries
-- [Transport Layer](./transport.md) - Localhost and Nostr implementation
+- [Transport Layer](./transport.md) - Nostr transport implementation
+- [Nostr Protocol](./nostr-protocol.md) - Event kinds and protocol details
 - [Intel System](./intel.md) - Fog of war and visibility tracking
 - [Daemon Design](./daemon.md) - Turn processing and monitoring
 - [Data Flow](./dataflow.md) - Complete turn resolution cycle
-- [Nostr Events](../EC4X-Nostr-Events.md) - Event kind specifications
-- [Nostr Implementation](../EC4X-Nostr-Implementation.md) - Protocol details

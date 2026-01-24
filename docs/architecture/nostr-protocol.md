@@ -333,14 +333,14 @@ Published by Player when submitting commands for a turn.
     ["turn", "5"],
     ["p", "<daemon-npub>"]
   ],
-  "content": "<encrypted-compressed-kdl>",
+  "content": "<encrypted-compressed-msgpack>",
   "sig": "..."
 }
 ```
 
-The content field contains: `base64(NIP-44-encrypt(zippy-compress(kdl)))`
+The content field contains: `base64(NIP-44-encrypt(zstd-compress(msgpack)))`
 
-See [KDL Payload Formats](#kdl-payload-formats) for the KDL structure.
+See [Payload Formats](#payload-formats) for the msgpack structure.
 
 ### 30403: Turn Results
 
@@ -358,17 +358,17 @@ missing or non-numeric turn tags and treat the newest turn as authoritative.
     ["turn", "5"],
     ["p", "<player-npub>"]
   ],
-  "content": "<encrypted-compressed-kdl>",
+  "content": "<encrypted-compressed-msgpack>",
   "sig": "..."
 }
 ```
 
-The content field contains: `base64(NIP-44-encrypt(zippy-compress(kdl)))`
+The content field contains: `base64(NIP-44-encrypt(zstd-compress(msgpack)))`
 
 The delta contains only the changes from this turn, filtered by fog of
 war for the target player. Clients apply deltas to their local state.
 
-See [KDL Payload Formats](#kdl-payload-formats) for the KDL structure.
+See [Payload Formats](#payload-formats) for the msgpack structure.
 
 ### 30405: Game State
 
@@ -387,12 +387,12 @@ turn as authoritative.
     ["turn", "5"],
     ["p", "<player-npub>"]
   ],
-  "content": "<encrypted-compressed-kdl>",
+  "content": "<encrypted-compressed-msgpack>",
   "sig": "..."
 }
 ```
 
-The content field contains: `base64(NIP-44-encrypt(zippy-compress(kdl)))`
+The content field contains: `base64(NIP-44-encrypt(zstd-compress(msgpack)))`
 
 Clients request this when:
 
@@ -400,7 +400,7 @@ Clients request this when:
 - Local state is corrupted or missing
 - Manual resync requested
 
-See [KDL Payload Formats](#kdl-payload-formats) for the KDL structure.
+See [Payload Formats](#payload-formats) for the msgpack structure.
 
 ---
 
@@ -409,20 +409,22 @@ See [KDL Payload Formats](#kdl-payload-formats) for the KDL structure.
 All encrypted payloads use this format:
 
 ```
-KDL string -> zippy compress -> NIP-44 encrypt -> base64 encode
+msgpack binary -> zstd compress -> NIP-44 encrypt -> base64 encode
 ```
 
 **Encoding (sender):**
-1. Generate KDL string from game data
-2. Compress with zippy (gzip)
+1. Serialize game data to msgpack binary
+2. Compress with zstd
 3. Encrypt with NIP-44 to recipient's pubkey
 4. Base64 encode for Nostr content field
 
 **Decoding (receiver):**
 1. Base64 decode content field
 2. Decrypt with NIP-44 using own private key
-3. Decompress with zippy
-4. Parse KDL string
+3. Decompress with zstd
+4. Deserialize msgpack binary
+
+**Implementation:** `src/daemon/transport/nostr/wire.nim`
 
 ---
 
@@ -590,14 +592,17 @@ For games requiring hidden information:
 
 ---
 
-## KDL Payload Formats
+## Payload Formats
 
-All encrypted event payloads use KDL format. This section defines the
-KDL schemas for commands, deltas, and full state.
+Event payloads are serialized to msgpack for wire transmission. This section
+documents the logical structure of commands, deltas, and full state.
+
+**Note:** Players write commands in KDL format locally. The client parses
+KDL and serializes to msgpack before encryption and transmission.
 
 ### Command Packet (30402)
 
-Player commands submitted each turn. Parsed by `kdl_commands.nim`.
+Player commands submitted each turn. Written in KDL, serialized to msgpack.
 
 ```kdl
 commands house=(HouseId)1 turn=5 {
@@ -919,7 +924,7 @@ state turn=5 game="550e8400-e29b-41d4-a716-446655440000" {
 
 ### KDL Type Annotations
 
-EC4X uses KDL type annotations for entity IDs:
+EC4X uses KDL type annotations for entity IDs in command files:
 
 | Type | Example | Description |
 |------|---------|-------------|
@@ -930,4 +935,4 @@ EC4X uses KDL type annotations for entity IDs:
 | `(SystemId)` | `(SystemId)10` | Star system identifier |
 | `(ProposalId)` | `(ProposalId)5` | Diplomatic proposal ID |
 
-These are parsed by `nimkdl` and converted to the appropriate Nim types.
+These are parsed by `nimkdl` and converted to msgpack as uint32 values.

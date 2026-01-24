@@ -156,7 +156,7 @@ proc createTurnCommands*(
   playerPubkey: string
 ): NostrEvent =
   ## Create turn commands event (encrypted to daemon)
-  ## Content is: KDL -> compress -> NIP-44 encrypt -> base64
+  ## Content is: msgpack -> zstd -> NIP-44 encrypt -> base64
   let tags = @[
     @[TagD, gameId],
     @[TagP, daemonPubkey],  # Recipient (daemon)
@@ -171,17 +171,6 @@ proc createTurnCommands*(
   )
   result.id = computeEventId(result)
 
-proc createTurnCommandsPlaintext*(
-  gameId: string,
-  turn: int,
-  kdlCommands: string,
-  daemonPubkey: string,
-  playerPubkey: string
-): NostrEvent =
-  ## Create turn commands with plaintext KDL (for testing/dev)
-  ## In production, use createTurnCommands with encrypted payload
-  createTurnCommands(gameId, turn, kdlCommands, daemonPubkey, playerPubkey)
-
 # =============================================================================
 # Turn Results Events (30403)
 # =============================================================================
@@ -194,7 +183,7 @@ proc createTurnResults*(
   daemonPubkey: string
 ): NostrEvent =
   ## Create turn results/delta event (encrypted to player)
-  ## Content is: KDL -> compress -> NIP-44 encrypt -> base64
+  ## Content is: msgpack -> zstd -> NIP-44 encrypt -> base64
   let tags = @[
     @[TagD, gameId],
     @[TagP, playerPubkey],  # Recipient (player)
@@ -209,16 +198,6 @@ proc createTurnResults*(
   )
   result.id = computeEventId(result)
 
-proc createTurnResultsPlaintext*(
-  gameId: string,
-  turn: int,
-  kdlDelta: string,
-  playerPubkey: string,
-  daemonPubkey: string
-): NostrEvent =
-  ## Create turn results with plaintext KDL (for testing/dev)
-  createTurnResults(gameId, turn, kdlDelta, playerPubkey, daemonPubkey)
-
 # =============================================================================
 # Full Game State Events (30405)
 # =============================================================================
@@ -231,7 +210,7 @@ proc createGameState*(
   daemonPubkey: string
 ): NostrEvent =
   ## Create full game state snapshot (encrypted to player)
-  ## Content is: KDL -> compress -> NIP-44 encrypt -> base64
+  ## Content is: msgpack -> zstd -> NIP-44 encrypt -> base64
   let tags = @[
     @[TagD, gameId],
     @[TagP, playerPubkey],  # Recipient (player)
@@ -245,16 +224,6 @@ proc createGameState*(
     pubkey = daemonPubkey
   )
   result.id = computeEventId(result)
-
-proc createGameStatePlaintext*(
-  gameId: string,
-  turn: int,
-  kdlState: string,
-  playerPubkey: string,
-  daemonPubkey: string
-): NostrEvent =
-  ## Create game state with plaintext KDL (for testing/dev)
-  createGameState(gameId, turn, kdlState, playerPubkey, daemonPubkey)
 
 # =============================================================================
 # Event Parsing Helpers

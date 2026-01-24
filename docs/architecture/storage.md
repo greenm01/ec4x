@@ -79,7 +79,7 @@ CREATE TABLE games (
     month INTEGER NOT NULL DEFAULT 1,
     phase TEXT NOT NULL,              -- 'Setup', 'Active', 'Paused', 'Completed', 'Cancelled'
     turn_deadline INTEGER,            -- Unix timestamp (NULL = no deadline)
-    transport_mode TEXT NOT NULL,     -- 'localhost' or 'nostr'
+    transport_mode TEXT NOT NULL,     -- 'nostr'
     transport_config TEXT,            -- JSON: mode-specific config
     state_msgpack TEXT,               -- Full GameState as base64-encoded msgpack
     created_at INTEGER NOT NULL,
@@ -528,4 +528,14 @@ config {
 - Writer implementation: `src/daemon/persistence/writer.nim`
 - Reader implementation: `src/daemon/persistence/reader.nim`
 - msgpack module: `src/daemon/persistence/msgpack_state.nim`
-- Migration results: `MSGPACK_MIGRATION_RESULTS.md`
+
+### Transport Layer Serialization
+
+For Nostr transport, additional msgpack modules handle player-facing state:
+
+- Delta serialization: `src/daemon/transport/nostr/delta_msgpack.nim`
+- State serialization: `src/daemon/transport/nostr/state_msgpack.nim`
+
+These modules serialize `PlayerState` and `PlayerStateDelta` for wire transmission,
+using the same msgpack + base64 pattern as persistence but with zstd compression
+and NIP-44 encryption added. See [Transport Layer](./transport.md) for details.

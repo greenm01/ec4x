@@ -2,19 +2,20 @@
 
 ## Overview
 
-The transport layer abstracts how orders and game state are communicated between players and the game server. This design allows the same game engine to work with multiple transport modes without modification.
+The transport layer handles communication between players and the game daemon
+using the Nostr protocol for decentralized, encrypted messaging.
 
 ## Design Philosophy
 
 **Key Principle**: Game engine is transport-agnostic.
 
-The core game logic in `src/engine/` never directly interacts with networking or file I/O. Instead, it reads from and writes to SQLite, and the transport layer handles moving that data to/from players.
+The core game logic in `src/engine/` never directly interacts with networking.
+Instead, it reads from and writes to SQLite, and the transport layer handles
+moving data to/from players via Nostr relays.
 
 ## Transport Interface
 
 ### Abstract Operations
-
-All transport implementations must support these operations:
 
 **For Players (Client):**
 - `joinGame(gameId)` → GameInfo
@@ -28,147 +29,12 @@ All transport implementations must support these operations:
 - `publishResults(gameId, deltas)` → PublishStatus
 - `publishTurnSummary(gameId, summary)` → PublishStatus
 
-## Localhost Transport
-
-### Design
-
-File-based transport using direct filesystem access and SQLite queries.
-
-### Directory Structure
-
-```
-/var/ec4x/games/
-└── game-123/
-    ├── ec4x.db                   # SQLite database
-    ├── config.kdl                # Game configuration
-    ├── commands/                 # Pending commands
-    │   ├── turn_1_house_1.kdl
-    │   ├── turn_1_house_2.kdl
-    │   └── ...
-    ├── responses/                # Command responses
-    │   ├── turn_1_house_1.kdl
-    │   ├── turn_1_house_2.kdl
-    │   └── ...
-    └── public/
-        ├── turn_summaries/
-        │   ├── turn_1.txt
-        │   └── turn_2.txt
-        └── game_log.txt
-```
-
-### Client Operations
-
-#### Join Game
-```
-1. Client receives game directory path
-2. Read config.kdl for game metadata
-3. Connect to ec4x.db (read-only)
-4. Query for house assignment
-5. Return GameInfo
-```
-
-#### Submit Commands
-```
-1. Client generates KDL command file per command-format.md spec
-2. Write to commands/turn_{N}_house_{H}.kdl
-3. Optionally validate against schema
-4. Return confirmation (file write success)
-```
-
-#### Fetch Game State
-```
-1. Client queries ec4x.db with house_id filter
-2. Read intel tables for visibility
-3. Construct filtered GameState
-4. Return to player
-```
-
-### Daemon Operations
-
-#### Discover Games
-```
-1. Scan configured game directories
-2. For each directory with ec4x.db:
-   - Read games table
-   - Filter by phase = 'Active'
-   - Load transport_config
-3. Return list of GameConfig
-```
-
-#### Listen for Commands
-```
-1. Poll commands/*.kdl every N seconds
-2. When file found:
-   - Parse KDL
-   - Validate against schema (command-format.md)
-   - Insert into commands table
-   - Delete command file
-   - Write response to responses/turn_{N}_house_{H}.kdl
-3. Check if all commands received or deadline passed
-```
-
-#### Publish Results
-```
-1. For each house:
-   - Query state_deltas for house_id
-   - Generate filtered PlayerState
-   - Serialize to JSON
-   - Save to database (player_states table)
-2. Update updated_at timestamp
-```
-
-#### Publish Turn Summary
-```
-1. Generate public summary (no fog of war)
-2. Write to public/turn_summaries/turn_N.txt
-3. Append to public/game_log.txt
-```
-
-### Configuration
-
-**config.kdl:**
-```toml
-[game]
-id = "game-123"
-name = "Test Game"
-mode = "localhost"
-
-[transport]
-type = "localhost"
-poll_interval = 30  # seconds
-
-[houses]
-[[houses.players]]
-id = "house-alpha"
-name = "House Alpha"
-```
-
-### Advantages
-
-- **Simple**: No network complexity
-- **Fast**: No latency
-- **Debuggable**: Inspect files directly
-- **Portable**: Copy directory = copy game
-- **Offline**: No internet required
-
-### Disadvantages
-
-- **Manual sync**: Players must manually share directory
-- **No remote play**: Requires shared filesystem
-- **Limited security**: Players can access SQLite directly
-
-### Use Cases
-
-- Local testing and development
-- Hotseat multiplayer
-- Offline AI testing
-- Rapid iteration
-
 ## Nostr Transport
 
 ### Design
 
-Event-based transport using Nostr protocol for decentralized, encrypted communication.
+Event-based transport using Nostr protocol for decentralized, encrypted
+communication via WebSocket connections to relays.
 
 ### Nostr Primer
 
@@ -179,43 +45,104 @@ Event-based transport using Nostr protocol for decentralized, encrypted communic
 - NIP-44 provides end-to-end encryption
 
 **EC4X Uses:**
-- 6 custom event kinds (30001-30006)
+- 6 custom event kinds (30400-30405)
 - Encrypted private messages (orders, state)
-- Public announcements (turn summaries)
+- Public announcements (game metadata)
 - Relay infrastructure (no custom server needed)
 
 ### Event Kinds
 
-See [EC4X-Nostr-Events.md](../EC4X-Nostr-Events.md) for complete spec.
+| Kind  | Name             | Direction        | Encryption |
+|-------|------------------|------------------|------------|
+| 30400 | GameDefinition   | Admin → Public   | None       |
+| 30401 | PlayerSlotClaim  | Player → Daemon  | None       |
+| 30402 | TurnCommands     | Player → Daemon  | NIP-44     |
+| 30403 | TurnResults      | Daemon → Player  | NIP-44     |
+| 30404 | JoinError        | Daemon → Player  | None       |
+| 30405 | GameState        | Daemon → Player  | NIP-44     |
 
-**Summary:**
-- `30001` OrderPacket: Player → Moderator (encrypted)
-- `30002` GameState: Moderator → Player (encrypted)
-- `30003` TurnComplete: Moderator → Public
-- `30004` GameMeta: Game lobby/config (public)
-- `30005` Diplomacy: Player → Player (encrypted)
-- `30006` Spectate: Public spectator feed
+**Defined in:** `src/daemon/transport/nostr/types.nim:67-74`
+
+### Wire Format
+
+All encrypted payloads use a 4-stage encoding pipeline:
+
+```
+msgpack binary → zstd compress → NIP-44 encrypt → base64 string
+```
+
+**Encoding (sender):**
+1. Serialize data to msgpack binary format
+2. Compress with zstd for bandwidth efficiency
+3. Encrypt with NIP-44 (secp256k1 ECDH + ChaCha20-Poly1305)
+4. Encode as base64 string for Nostr event content
+
+**Decoding (receiver):**
+1. Decode base64 to encrypted bytes
+2. Decrypt with NIP-44 using recipient's private key
+3. Decompress with zstd
+4. Deserialize msgpack to game structures
+
+**Implementation:** `src/daemon/transport/nostr/wire.nim`
+
+### NostrClient API
+
+The `NostrClient` manages WebSocket connections to multiple relays.
+
+```nim
+type NostrClient* = ref object
+  relays*: seq[string]
+  connections*: Table[string, RelayConnection]
+  subscriptions*: Table[string, seq[NostrFilter]]
+  onEvent*: EventCallback
+  onEose*: EoseCallback
+  onOk*: OkCallback
+  onNotice*: NoticeCallback
+  running*: bool
+```
+
+**Core Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `newNostrClient(relays)` | Create client with relay URLs |
+| `connect()` | Connect to all configured relays |
+| `disconnect()` | Close all connections |
+| `isConnected()` | Check if any relay connected |
+| `subscribe(subId, filters)` | Subscribe to event stream |
+| `unsubscribe(subId)` | Cancel subscription |
+| `publish(event)` | Publish event to all relays |
+| `listen()` | Start receiving messages |
+| `reconnectWithBackoff(ms, maxMs)` | Reconnect with exponential backoff |
+
+**Convenience Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `subscribeGame(gameId, playerPubkey)` | Subscribe to game events for player |
+| `subscribeDaemon(gameId, daemonPubkey)` | Subscribe to commands for daemon |
+
+**Implementation:** `src/daemon/transport/nostr/client.nim`
 
 ### Client Operations
 
 #### Join Game
 ```
 1. Client connects to relay WebSocket
-2. Subscribe to EventKindGameMeta with game_id filter
+2. Subscribe to EventKindGameDefinition with game_id filter
 3. Fetch game metadata (players, rules, status)
-4. Subscribe to EventKindGameState/StateDelta for own pubkey
+4. Subscribe to EventKindGameState/TurnResults for own pubkey
 5. Cache state locally in SQLite
 ```
 
-#### Submit Orders
+#### Submit Commands
 ```
-1. Client serializes orders to JSON
-2. Encrypt to moderator's pubkey using NIP-44
-3. Create EventKindOrderPacket with tags:
-   - g: game_id
-   - h: house_name
-   - t: turn
-   - p: moderator_pubkey
+1. Client serializes commands to msgpack
+2. Compress with zstd, encrypt to daemon's pubkey using NIP-44
+3. Create EventKindTurnCommands (30402) with tags:
+   - d: game_id
+   - turn: turn_number
+   - p: daemon_pubkey
 4. Sign event with player's keypair
 5. Publish to relay
 6. Wait for OK/CLOSED response
@@ -223,14 +150,14 @@ See [EC4X-Nostr-Events.md](../EC4X-Nostr-Events.md) for complete spec.
 
 #### Fetch Game State
 ```
-1. Subscribe to EventKindStateDelta with filters:
-   - game_id
-   - turn range
+1. Subscribe to EventKindTurnResults with filters:
+   - d: game_id
+   - turn: range
    - p: own_pubkey (encrypted to me)
 2. Receive delta events from relay
-3. Decrypt using NIP-44
-4. Apply deltas to local cached state
-5. Return filtered GameState
+3. Decrypt using NIP-44, decompress with zstd
+4. Parse msgpack to PlayerStateDelta
+5. Apply deltas to local cached state
 ```
 
 ### Daemon Operations
@@ -241,138 +168,95 @@ See [EC4X-Nostr-Events.md](../EC4X-Nostr-Events.md) for complete spec.
 2. Query SQLite for games where transport_mode = 'nostr'
 3. For each game:
    - Extract relay URL from transport_config
-   - Validate moderator keypair exists
+   - Validate daemon keypair exists
 4. Return list of GameConfig
 ```
 
-#### Listen for Orders
+#### Listen for Commands
 ```
-1. Subscribe to EventKindOrderPacket with filters:
-   - kind: 30001
-   - g: game_id (for all managed games)
-   - p: moderator_pubkey
+1. Subscribe to EventKindTurnCommands (30402) with filters:
+   - d: game_id (for all managed games)
+   - p: daemon_pubkey
 2. Receive events from relay stream
 3. For each event:
    - Verify signature
-   - Decrypt content with moderator's private key
-   - Validate order packet
-   - Insert into orders table
-   - Cache event in nostr_events table
-4. Check if all orders received or deadline passed
+   - Decrypt and decompress content
+   - Parse msgpack to command structure
+   - Validate command packet
+   - Insert into commands table
+4. Check if all commands received or deadline passed
 ```
 
 #### Publish Results
 ```
 1. For each house:
    - Query state_deltas for house_id
-   - Serialize to JSON
+   - Serialize to msgpack
+   - Compress with zstd
    - Encrypt to house's pubkey using NIP-44
-   - Create EventKindStateDelta with tags:
-     - g: game_id
-     - h: house_name
-     - t: turn
+   - Create EventKindTurnResults (30403) with tags:
+     - d: game_id
+     - turn: turn_number
      - p: house_pubkey
-   - Sign with moderator's keypair
-   - Add to nostr_outbox queue
+   - Sign with daemon's keypair
 2. Batch publish to relay
-3. Mark sent in nostr_outbox
 ```
 
-#### Publish Turn Summary
-```
-1. Generate public turn summary (no secrets)
-2. Create EventKindTurnComplete with tags:
-   - g: game_id
-   - t: turn
-   - phase: turn_phase
-3. Sign with moderator's keypair
-4. Publish to relay (unencrypted)
-```
-
-### Configuration
-
-**transport_config JSON in games table:**
-```json
-{
-  "relay": "wss://relay.damus.io",
-  "moderator_pubkey": "npub1abc...",
-  "moderator_privkey_path": "/secure/keys/mod.key",
-  "fallback_relays": [
-    "wss://relay.nostr.band",
-    "wss://nos.lol"
-  ],
-  "publish_retries": 3,
-  "subscription_timeout": 30
-}
-```
-
-### Bandwidth Optimization
-
-#### State Deltas
+### State Deltas
 
 Instead of sending full game state each turn, send only changes:
 
-**Full State** (turn 1 or resync):
-```json
-{
-  "type": "full_state",
-  "turn": 1,
-  "colonies": [...],  // All data
-  "fleets": [...],
-  "systems": [...]
-}
-```
+**Delta Structure (msgpack):**
+```nim
+type EntityDelta*[T] = object
+  added*: seq[T]
+  updated*: seq[T]
+  removed*: seq[EntityId]
 
-**Delta** (normal turns):
-```json
-{
-  "type": "delta",
-  "turn": 42,
-  "deltas": [
-    {"type": "fleet_moved", "id": "fleet-1", "from": "sys-A", "to": "sys-B"},
-    {"type": "ship_damaged", "id": "ship-5", "hp": 8},
-    {"type": "colony_updated", "id": "col-3", "industry": 12}
-  ]
-}
+type PlayerStateDelta* = object
+  turn*: int
+  colonies*: EntityDelta[Colony]
+  fleets*: EntityDelta[Fleet]
+  ships*: EntityDelta[Ship]
+  # ... other entity types
 ```
 
 **Bandwidth Reduction**: 20-40x smaller than full state.
 
-#### Message Chunking
+**Implementation:**
+- `src/daemon/transport/nostr/delta_msgpack.nim`
+- `src/daemon/transport/nostr/state_msgpack.nim`
 
-If delta exceeds 32 KB:
+### Message Chunking
 
-```json
-{
-  "type": "delta_chunk",
-  "turn": 42,
-  "chunk": 1,
-  "total": 3,
-  "hash": "sha256...",  // For verification
-  "data": "..." // Partial delta
-}
+If delta exceeds relay limits (typically 64 KB):
+
+```nim
+type ChunkedMessage = object
+  turn: int
+  chunk: int        # 1-based chunk number
+  total: int        # total chunks
+  hash: string      # SHA-256 of complete data
+  data: string      # Partial msgpack data
 ```
 
 Client reassembles chunks before applying.
-
-**Tags for chunking:**
-- `chunk`: 1-based chunk number
-- `total`: total chunks
-- `hash`: SHA-256 of complete data
 
 ### Security
 
 #### Encryption (NIP-44)
 
-**Orders (Player → Moderator):**
-- Encrypted to moderator's pubkey
-- Only moderator can decrypt
+**Commands (Player → Daemon):**
+- Encrypted to daemon's pubkey
+- Only daemon can decrypt
 - Prevents order snooping
 
-**State (Moderator → Player):**
+**State (Daemon → Player):**
 - Encrypted to each player's pubkey
 - Implements fog of war via encryption
 - Each player receives different content
+
+**Implementation:** `src/daemon/transport/nostr/crypto.nim`
 
 #### Signing
 
@@ -384,17 +268,17 @@ Client reassembles chunks before applying.
 #### Trust Model
 
 **Players trust:**
-- Moderator to enforce rules correctly
+- Daemon to enforce rules correctly
 - Relay to deliver messages (not censor)
 
-**Moderator trusts:**
-- Players to submit valid orders
+**Daemon trusts:**
+- Players to submit valid commands
 - Relay to deliver results
 
 **Mitigation:**
 - Open source daemon (verifiable)
 - Multiple relay fallbacks
-- Order validation on server
+- Command validation on server
 
 ### Relay Selection
 
@@ -409,13 +293,30 @@ Client reassembles chunks before applying.
 - 2-3 fallback relays
 - Monitor relay health in daemon
 
+### Configuration
+
+**transport_config JSON in games table:**
+```json
+{
+  "relay": "wss://relay.damus.io",
+  "daemon_pubkey": "npub1abc...",
+  "daemon_privkey_path": "/secure/keys/daemon.key",
+  "fallback_relays": [
+    "wss://relay.nostr.band",
+    "wss://nos.lol"
+  ],
+  "publish_retries": 3,
+  "subscription_timeout": 30
+}
+```
+
 ### Advantages
 
-- **Decentralized**: No central server
-- **Encrypted**: End-to-end privacy
+- **Decentralized**: No central server needed
+- **Encrypted**: End-to-end privacy via NIP-44
 - **Censorship-resistant**: Multiple relays
 - **Identity**: Use existing Nostr identity
-- **Bandwidth-efficient**: Delta-based sync
+- **Bandwidth-efficient**: msgpack + zstd + deltas
 
 ### Disadvantages
 
@@ -431,46 +332,38 @@ Client reassembles chunks before applying.
 - Privacy-focused play
 - Distributed tournaments
 
-## Transport Comparison
+## Module Reference
 
-| Feature | Localhost | Nostr |
-|---------|-----------|-------|
-| **Setup Complexity** | Simple | Moderate |
-| **Network Required** | No | Yes |
-| **Latency** | Instant | 100-1000ms |
-| **Bandwidth** | N/A | Low (deltas) |
-| **Security** | Filesystem ACLs | NIP-44 encryption |
-| **Privacy** | Local only | End-to-end encrypted |
-| **Scalability** | Single machine | Global |
-| **Debugging** | Easy (inspect files) | Moderate (event logs) |
-| **Use Case** | Development, hotseat | Online multiplayer |
+All transport code lives in `src/daemon/transport/nostr/`:
 
-## Implementation Roadmap
+| Module | Purpose |
+|--------|---------|
+| `types.nim` | Core types, event kinds, constants |
+| `client.nim` | WebSocket client, relay management |
+| `wire.nim` | Encoding pipeline (msgpack→zstd→NIP-44→base64) |
+| `crypto.nim` | NIP-44 encryption, secp256k1 signing |
+| `compression.nim` | zstd compression |
+| `delta_msgpack.nim` | PlayerStateDelta serialization |
+| `state_msgpack.nim` | Full PlayerState serialization |
+| `events.nim` | Event builders for 30400-30405 |
+| `nip01.nim` | Basic Nostr protocol (REQ, EVENT, CLOSE) |
+| `filter.nim` | NostrFilter builder |
 
-### Phase 1: Localhost (Complete)
-- [x] File-based order submission
-- [x] SQLite state storage
-- [x] Directory structure
-- [ ] Daemon polling loop
-- [ ] Result export
+## Implementation Status
 
-### Phase 2: Nostr Foundation
-- [ ] NIP-44 encryption implementation
-- [ ] WebSocket relay client
-- [ ] Event parsing and signing
-- [ ] Filter subscription management
-
-### Phase 3: Nostr Integration
-- [ ] Order receipt and decryption
-- [ ] State delta generation
-- [ ] Delta encryption and publishing
-- [ ] Chunk handling
-
-### Phase 4: Production Hardening
-- [ ] Multi-relay support
-- [ ] Connection resilience
+- [x] NIP-44 encryption implementation
+- [x] WebSocket relay client
+- [x] Event parsing and signing
+- [x] Filter subscription management
+- [x] Command receipt and decryption
+- [x] State delta generation
+- [x] Delta encryption and publishing
+- [x] msgpack serialization
+- [x] zstd compression
+- [ ] Multi-relay failover
+- [ ] Connection resilience / auto-reconnect
 - [ ] Rate limiting
-- [ ] Error recovery
+- [ ] Comprehensive error recovery
 - [ ] Monitoring and metrics
 
 ## Future Transports
@@ -479,16 +372,6 @@ Client reassembles chunks before applying.
 - Client connects directly to daemon
 - Lower latency than Nostr
 - Requires port forwarding/VPS
-
-### Discord Bot
-- Orders via Discord DM
-- Results posted to channels
-- Accessible to Discord users
-
-### Email
-- Ultra-slow async play
-- Orders via email attachment
-- Results via email reply
 
 ### Matrix Protocol
 - Federated messaging
@@ -499,6 +382,5 @@ Client reassembles chunks before applying.
 
 - [Architecture Overview](./overview.md)
 - [Storage Layer](./storage.md)
-- [Nostr Events](../EC4X-Nostr-Events.md)
-- [Nostr Implementation](../EC4X-Nostr-Implementation.md)
+- [Nostr Protocol Details](./nostr-protocol.md)
 - [Daemon Design](./daemon.md)
