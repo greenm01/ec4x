@@ -163,6 +163,7 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
       let coords = (q: system.coords.q, r: system.coords.r)
       result.visibleSystems[systemId] = VisibleSystem(
         systemId: systemId,
+        name: system.name,
         visibility: VisibilityLevel.Owned,
         lastScoutedTurn: some(state.turn),
         coordinates: some(coords),
@@ -178,6 +179,7 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
         let coords = (q: system.coords.q, r: system.coords.r)
         result.visibleSystems[systemId] = VisibleSystem(
           systemId: systemId,
+          name: system.name,
           visibility: VisibilityLevel.Occupied,
           lastScoutedTurn: some(state.turn),
           coordinates: some(coords),
@@ -196,6 +198,7 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
         lastTurn = max(lastTurn, intel.systemObservations[systemId].gatheredTurn)
       result.visibleSystems[systemId] = VisibleSystem(
         systemId: systemId,
+        name: system.name,
         visibility: VisibilityLevel.Scouted,
         lastScoutedTurn: some(lastTurn),
         coordinates: some(coords),
@@ -208,6 +211,7 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
       let coords = (q: system.coords.q, r: system.coords.r)
       result.visibleSystems[system.id] = VisibleSystem(
         systemId: system.id,
+        name: system.name,
         visibility: VisibilityLevel.Adjacent,
         lastScoutedTurn: none(int32),
         coordinates: some(coords),

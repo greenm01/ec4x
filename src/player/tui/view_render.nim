@@ -2,7 +2,7 @@
 ##
 ## Rendering functions for the SAM-based TUI views.
 
-import std/[options, unicode]
+import std/[options, unicode, strutils]
 
 import ../../engine/types/[core, player_state as ps_types]
 import ../../engine/state/engine
@@ -18,6 +18,7 @@ import ../tui/widget/command_dock
 import ../tui/widget/status_bar
 import ../tui/widget/scrollbar
 import ../tui/widget/view_modal
+import ../tui/widget/hexmap/symbols
 import ../sam/bindings
 import ../tui/styles/ec_palette
 import ../tui/adapters
@@ -33,6 +34,19 @@ proc dimStyle*(): CellStyle =
 
 proc normalStyle*(): CellStyle =
   canvasStyle()
+
+proc formatGrowthLabel*(growthOpt: Option[float32]): string =
+  if growthOpt.isNone:
+    return "—"
+  let growth = growthOpt.get()
+  let sign = if growth >= 0: "+" else: ""
+  sign & formatFloat(growth, ffDecimal, 1)
+
+proc dockLabel*(available, total: int): string =
+  if total <= 0:
+    "—"
+  else:
+    $available & "/" & $total
 
 proc buildMatchSpans(label: string, matchIndices: seq[int],
                      normalStyle: CellStyle, matchStyle: CellStyle):
@@ -232,32 +246,128 @@ proc renderQuitConfirmation*(buf: var CellBuffer, model: TuiModel) =
 
 proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render list of player's colonies from SAM model
-  var y = area.y
-  var idx = 0
+  if area.isEmpty:
+    return
 
+  let footerHeight = if area.height >= 4: 1 else: 0
+  let tableHeight = area.height - footerHeight
+  if tableHeight <= 0:
+    return
+
+  let tableArea = rect(area.x, area.y, area.width, tableHeight)
+  let compact = tableArea.width < 100
+  var columns: seq[TableColumn] = @[]
+  if compact:
+    columns = @[
+      tableColumn("Colony", 16, table.Alignment.Left),
+      tableColumn("Sec", 4, table.Alignment.Left),
+      tableColumn("Class", 6, table.Alignment.Left),
+      tableColumn("Pop", 4, table.Alignment.Right),
+      tableColumn("GCO", 5, table.Alignment.Right),
+      tableColumn("NCV", 5, table.Alignment.Right),
+      tableColumn("CDK", 5, table.Alignment.Right),
+      tableColumn("RDK", 5, table.Alignment.Right),
+      tableColumn("Status", 10, table.Alignment.Left)
+    ]
+  else:
+    columns = @[
+      tableColumn("Colony", 18, table.Alignment.Left),
+      tableColumn("Sector", 6, table.Alignment.Left),
+      tableColumn("Class", 8, table.Alignment.Left),
+      tableColumn("Pop", 5, table.Alignment.Right),
+      tableColumn("IU", 5, table.Alignment.Right),
+      tableColumn("GCO", 6, table.Alignment.Right),
+      tableColumn("NCV", 6, table.Alignment.Right),
+      tableColumn("Growth", 7, table.Alignment.Right),
+      tableColumn("CDK", 7, table.Alignment.Right),
+      tableColumn("RDK", 7, table.Alignment.Right),
+      tableColumn("Status", 12, table.Alignment.Left)
+    ]
+
+  var colonyTable = table(columns)
+    .selectedIdx(model.selectedIdx)
+    .zebraStripe(true)
+
+  let statusColumn = columns.len - 1
+  var totalGco = 0
+  var totalNcv = 0
+  var idleCount = 0
   for colony in model.colonies:
-    if y >= area.bottom:
-      break
+    totalGco += colony.grossOutput
+    totalNcv += colony.netValue
+    if colony.idleConstruction:
+      idleCount.inc
 
-    let isSelected = idx == model.selectedIdx
-    let style =
-      if isSelected:
-        selectedStyle()
+    let constructionLabel = dockLabel(
+      colony.constructionDockAvailable,
+      colony.constructionDockTotal
+    )
+    let repairLabel = dockLabel(
+      colony.repairDockAvailable,
+      colony.repairDockTotal
+    )
+    let classLabel =
+      if colony.planetClass >= 0 and
+          colony.planetClass < PlanetClassNames.len:
+        PlanetClassNames[colony.planetClass]
       else:
-        normalStyle()
+        "Unknown"
+    let growthLabel = formatGrowthLabel(colony.populationGrowthPu)
 
-    let prefix = if isSelected: "> " else: "  "
-    let line =
-      prefix & colony.systemName.alignLeft(14) & " PP:" &
-      align($colony.production, 4) & " Pop:" &
-      align($colony.population, 5)
-    let clipped = line[0 ..< min(line.len, area.width)]
-    discard buf.setString(area.x, y, clipped, style)
-    y += 1
-    idx += 1
+    var statusLabel = GlyphOk
+    var statusStyle = normalStyle()
+    if colony.blockaded:
+      statusLabel = GlyphWarning & " Blockade"
+      statusStyle = alertStyle()
+    elif colony.idleConstruction:
+      statusLabel = GlyphWarning & " Idle"
+      statusStyle = alertStyle()
 
-  if idx == 0:
-    discard buf.setString(area.x, y, "No colonies", dimStyle())
+    var row: seq[string] = @[]
+    if compact:
+      row = @[
+        colony.systemName,
+        colony.sectorLabel,
+        classLabel,
+        $colony.populationUnits,
+        $colony.grossOutput,
+        $colony.netValue,
+        constructionLabel,
+        repairLabel,
+        statusLabel
+      ]
+    else:
+      row = @[
+        colony.systemName,
+        colony.sectorLabel,
+        classLabel,
+        $colony.populationUnits,
+        $colony.industrialUnits,
+        $colony.grossOutput,
+        $colony.netValue,
+        growthLabel,
+        constructionLabel,
+        repairLabel,
+        statusLabel
+      ]
+
+    colonyTable.addRow(row, statusStyle, statusColumn)
+
+  colonyTable.render(tableArea, buf)
+
+  if footerHeight > 0 and area.height > 1:
+    let footerY = area.y + tableHeight
+    let taxLabel = if model.houseTaxRate > 0:
+                     $model.houseTaxRate & "% tax"
+                   else:
+                     "tax n/a"
+    let summary =
+      $model.colonies.len & " colonies  |  GHO: " & $totalGco &
+      " PP  |  NHV: " & $totalNcv &
+      " PP (" & taxLabel & ")  |  " &
+      $idleCount & " idle"
+    let clipped = summary[0 ..< min(summary.len, area.width)]
+    discard buf.setString(area.x, footerY, clipped, dimStyle())
 
 proc renderFleetList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render list of player's fleets from SAM model
@@ -382,6 +492,368 @@ proc renderFleetDetail*(
       CellStyle(fg: color(PrestigeColor), attrs: {StyleAttr.Bold})
     )
 
+proc renderPlanetSummaryTab*(
+  area: Rect,
+  buf: var CellBuffer,
+  data: PlanetDetailData
+) =
+  if area.isEmpty:
+    return
+
+  var y = area.y
+  discard buf.setString(
+    area.x, y,
+    "COLONY: " & data.systemName,
+    canvasHeaderStyle()
+  )
+  y += 1
+  if y >= area.bottom:
+    return
+
+  let locationLine =
+    "Location: " & data.sectorLabel & "  Class: " & data.planetClass
+  discard buf.setString(area.x, y, locationLine, normalStyle())
+  y += 1
+  if y >= area.bottom:
+    return
+
+  let rawLabel = formatFloat(data.rawIndex, ffDecimal, 2)
+  let resourceLine =
+    "Resources: " & data.resourceRating & "  RAW: " & rawLabel
+  discard buf.setString(area.x, y, resourceLine, normalStyle())
+  y += 1
+  if y >= area.bottom:
+    return
+
+  let growthLabel = formatGrowthLabel(data.populationGrowthPu)
+  let economyLine =
+    "GCO: " & $data.gco & "  NCV: " & $data.ncv &
+    "  Tax: " & $data.taxRate & "%" &
+    "  Growth: " & growthLabel
+  discard buf.setString(area.x, y, economyLine, normalStyle())
+  y += 1
+  if y >= area.bottom:
+    return
+
+  let columnsArea = rect(area.x, y, area.width, area.bottom - y)
+  if columnsArea.height <= 0:
+    return
+  let columns = horizontal()
+    .constraints(percentage(50), fill())
+    .split(columnsArea)
+
+  let left = columns[0]
+  let right = columns[1]
+
+  var leftY = left.y
+  discard buf.setString(left.x, leftY, "SURFACE", canvasHeaderStyle())
+  leftY += 1
+  if leftY < left.bottom:
+    discard buf.setString(
+      left.x, leftY,
+      "Population: " & $data.populationUnits & " PU",
+      normalStyle()
+    )
+    leftY += 1
+  if leftY < left.bottom:
+    discard buf.setString(
+      left.x, leftY,
+      "Industrial: " & $data.industrialUnits & " IU",
+      normalStyle()
+    )
+    leftY += 1
+  if leftY < left.bottom:
+    discard buf.setString(
+      left.x, leftY,
+      "Armies: " & $data.armies & "  Marines: " & $data.marines,
+      normalStyle()
+    )
+    leftY += 1
+  if leftY < left.bottom:
+    discard buf.setString(
+      left.x, leftY,
+      "Batteries: " & $data.batteries,
+      normalStyle()
+    )
+    leftY += 1
+  if leftY < left.bottom:
+    let shieldLabel = if data.shields > 0: "Present" else: "None"
+    discard buf.setString(
+      left.x, leftY,
+      "Shields: " & shieldLabel,
+      normalStyle()
+    )
+
+  var rightY = right.y
+  discard buf.setString(right.x, rightY, "ORBITAL", canvasHeaderStyle())
+  rightY += 1
+  if rightY < right.bottom:
+    let facilityLine =
+      "Spaceports: " & $data.spaceports &
+      "  Shipyards: " & $data.shipyards
+    discard buf.setString(right.x, rightY, facilityLine, normalStyle())
+    rightY += 1
+  if rightY < right.bottom:
+    let orbitalLine =
+      "Drydocks: " & $data.drydocks &
+      "  Starbases: " & $data.starbases
+    discard buf.setString(right.x, rightY, orbitalLine, normalStyle())
+    rightY += 1
+  if rightY < right.bottom:
+    let dockLine =
+      "Docks: CDK " & dockLabel(
+        data.dockSummary.constructionAvailable,
+        data.dockSummary.constructionTotal
+      ) & "  RDK " & dockLabel(
+        data.dockSummary.repairAvailable,
+        data.dockSummary.repairTotal
+      )
+    discard buf.setString(right.x, rightY, dockLine, normalStyle())
+    rightY += 1
+  if rightY < right.bottom and data.dockedFleets.len > 0:
+    discard buf.setString(right.x, rightY, "Docked Fleets:",
+      canvasHeaderStyle())
+    rightY += 1
+    for fleet in data.dockedFleets:
+      if rightY >= right.bottom:
+        break
+      let fleetLine =
+        "  " & fleet.name &
+        " (" & $fleet.shipCount & " ships)"
+      discard buf.setString(right.x, rightY, fleetLine, normalStyle())
+      rightY += 1
+
+proc renderPlanetEconomyTab*(
+  area: Rect,
+  buf: var CellBuffer,
+  data: PlanetDetailData
+) =
+  if area.isEmpty:
+    return
+
+  var y = area.y
+  discard buf.setString(area.x, y, "COLONY ECONOMY", canvasHeaderStyle())
+  y += 1
+  if y >= area.bottom:
+    return
+
+  let headline =
+    "GCO: " & $data.gco & "  NCV: " & $data.ncv &
+    "  Tax: " & $data.taxRate & "%"
+  discard buf.setString(area.x, y, headline, normalStyle())
+  y += 1
+  if y >= area.bottom:
+    return
+
+  let outputLine =
+    "Population: " & $data.populationOutput &
+    "  Industry: " & $data.industrialOutput
+  discard buf.setString(area.x, y, outputLine, normalStyle())
+  y += 1
+  if y >= area.bottom:
+    return
+
+  let growthLabel = formatGrowthLabel(data.populationGrowthPu)
+  let bonusLine =
+    "Starbase bonus: " & $data.starbaseBonusPct & "%" &
+    "  Growth: " & growthLabel
+  discard buf.setString(area.x, y, bonusLine, normalStyle())
+  y += 1
+
+  if data.blockaded and y < area.bottom:
+    discard buf.setString(
+      area.x, y,
+      "Blockaded: output reduced",
+      alertStyle()
+    )
+
+proc renderPlanetConstructionTab*(
+  area: Rect,
+  buf: var CellBuffer,
+  data: PlanetDetailData
+) =
+  if area.isEmpty:
+    return
+
+  var y = area.y
+  let docksLine =
+    "Construction Docks: " & dockLabel(
+      data.dockSummary.constructionAvailable,
+      data.dockSummary.constructionTotal
+    ) &
+    "  Repair Docks: " & dockLabel(
+      data.dockSummary.repairAvailable,
+      data.dockSummary.repairTotal
+    )
+  discard buf.setString(area.x, y, docksLine, canvasHeaderStyle())
+  y += 1
+  if y >= area.bottom:
+    return
+
+  let contentArea = rect(area.x, y, area.width, area.bottom - y)
+  let sections = vertical()
+    .constraints(percentage(45), fill())
+    .split(contentArea)
+  let queueArea = sections[0]
+  let buildArea = sections[1]
+
+  if queueArea.height > 0:
+    discard buf.setString(queueArea.x, queueArea.y, "QUEUE",
+      canvasHeaderStyle())
+    let queueInner = rect(
+      queueArea.x,
+      queueArea.y + 1,
+      queueArea.width,
+      max(0, queueArea.height - 1)
+    )
+    if queueInner.height > 0:
+      if data.queue.len > 0:
+        var queueTable = table([
+        tableColumn("Type", 6, table.Alignment.Left),
+        tableColumn("Item", 18, table.Alignment.Left),
+        tableColumn("Cost", 6, table.Alignment.Right),
+        tableColumn("Status", 10, table.Alignment.Left)
+        ])
+        queueTable = queueTable.showSelector(false)
+        for item in data.queue:
+          let kindLabel =
+            if item.kind == QueueKind.Construction: "Build" else: "Repair"
+          queueTable.addRow(@[
+            kindLabel,
+            item.name,
+            $item.cost,
+            item.status
+          ])
+        queueTable.render(queueInner, buf)
+      else:
+        discard buf.setString(queueInner.x, queueInner.y,
+          "No queued projects", dimStyle())
+
+  if buildArea.height > 0:
+    discard buf.setString(buildArea.x, buildArea.y, "AVAILABLE TO BUILD",
+      canvasHeaderStyle())
+    let buildInner = rect(
+      buildArea.x,
+      buildArea.y + 1,
+      buildArea.width,
+      max(0, buildArea.height - 1)
+    )
+    if buildInner.height > 0:
+      if data.buildOptions.len > 0:
+        var buildTable = table([
+        tableColumn("Item", 18, table.Alignment.Left),
+        tableColumn("Cost", 6, table.Alignment.Right),
+        tableColumn("CST", 4, table.Alignment.Right),
+        tableColumn("Kind", 8, table.Alignment.Left)
+        ])
+        buildTable = buildTable.showSelector(false)
+        for option in data.buildOptions:
+          let kindLabel =
+            case option.kind
+            of BuildOptionKind.Ship: "Ship"
+            of BuildOptionKind.Ground: "Ground"
+            of BuildOptionKind.Facility: "Facility"
+          buildTable.addRow(@[
+            option.name,
+            $option.cost,
+            $option.cstReq,
+            kindLabel
+          ])
+        buildTable.render(buildInner, buf)
+      else:
+        discard buf.setString(buildInner.x, buildInner.y,
+          "No build options", dimStyle())
+
+proc renderPlanetDefenseTab*(
+  area: Rect,
+  buf: var CellBuffer,
+  data: PlanetDetailData
+) =
+  if area.isEmpty:
+    return
+
+  let columns = horizontal()
+    .constraints(percentage(50), fill())
+    .split(area)
+  let left = columns[0]
+  let right = columns[1]
+
+  var leftY = left.y
+  discard buf.setString(left.x, leftY, "ORBITAL DEFENSES",
+    canvasHeaderStyle())
+  leftY += 1
+  if leftY < left.bottom:
+    discard buf.setString(left.x, leftY,
+      "Starbases: " & $data.starbases, normalStyle())
+    leftY += 1
+  if leftY < left.bottom:
+    discard buf.setString(left.x, leftY,
+      "Shipyards: " & $data.shipyards, normalStyle())
+    leftY += 1
+  if leftY < left.bottom:
+    discard buf.setString(left.x, leftY,
+      "Drydocks: " & $data.drydocks, normalStyle())
+
+  var rightY = right.y
+  discard buf.setString(right.x, rightY, "PLANETARY DEFENSES",
+    canvasHeaderStyle())
+  rightY += 1
+  if rightY < right.bottom:
+    let shieldLabel = if data.shields > 0: "Present" else: "None"
+    discard buf.setString(right.x, rightY,
+      "Shields: " & shieldLabel, normalStyle())
+    rightY += 1
+  if rightY < right.bottom:
+    discard buf.setString(right.x, rightY,
+      "Batteries: " & $data.batteries, normalStyle())
+    rightY += 1
+  if rightY < right.bottom:
+    let garrisonLine =
+      "Armies: " & $data.armies & "  Marines: " & $data.marines
+    discard buf.setString(right.x, rightY, garrisonLine, normalStyle())
+    rightY += 1
+  if rightY < right.bottom and data.dockedFleets.len > 0:
+    discard buf.setString(right.x, rightY, "Guard Fleets:",
+      canvasHeaderStyle())
+    rightY += 1
+    for fleet in data.dockedFleets:
+      if rightY >= right.bottom:
+        break
+      let fleetLine =
+        "  " & fleet.name &
+        " (" & $fleet.shipCount & " ships)"
+      discard buf.setString(right.x, rightY, fleetLine, normalStyle())
+      rightY += 1
+
+proc renderPlanetSettingsTab*(
+  area: Rect,
+  buf: var CellBuffer,
+  data: PlanetDetailData
+) =
+  if area.isEmpty:
+    return
+
+  var y = area.y
+  discard buf.setString(area.x, y, "COLONY AUTOMATION",
+    canvasHeaderStyle())
+  y += 1
+  if y >= area.bottom:
+    return
+
+  let repairLabel = if data.autoRepair: "ON" else: "OFF"
+  let marinesLabel = if data.autoLoadMarines: "ON" else: "OFF"
+  let fightersLabel = if data.autoLoadFighters: "ON" else: "OFF"
+  let repairLine = "Auto-Repair Ships: " & repairLabel
+  discard buf.setString(area.x, y, repairLine, normalStyle())
+  y += 1
+  if y < area.bottom:
+    let marinesLine = "Auto-Load Marines: " & marinesLabel
+    discard buf.setString(area.x, y, marinesLine, normalStyle())
+    y += 1
+  if y < area.bottom:
+    let fightersLine = "Auto-Load Fighters: " & fightersLabel
+    discard buf.setString(area.x, y, fightersLine, normalStyle())
+
 proc renderPlanetDetail*(
   area: Rect,
   buf: var CellBuffer,
@@ -389,128 +861,43 @@ proc renderPlanetDetail*(
   state: GameState,
   viewingHouse: HouseId
 ) =
-  ## Render detailed planet view with construction queue
+  ## Render detailed planet view with tabs
   if model.selectedColonyId <= 0:
     discard buf.setString(
       area.x, area.y, "No colony selected", dimStyle()
     )
     return
 
-  # Convert engine data to display data using adapter
   let planetData = colonyToDetailData(
     state,
     ColonyId(model.selectedColonyId),
     viewingHouse
   )
 
+  if area.isEmpty:
+    return
+
   var y = area.y
-
-  # Header: Planet name and basic info
-  discard buf.setString(
-    area.x, y,
-    planetData.systemName & " (Colony)",
-    canvasHeaderStyle()
-  )
-  y += 1
-
-  discard buf.setString(
-    area.x, y,
-    "Pop: " & $planetData.population & "  Production: " &
-      $planetData.production,
-    normalStyle()
-  )
+  let tabArea = rect(area.x, y, area.width, 1)
+  let activeIdx = ord(model.planetDetailTab) - 1
+  let tabs = planetDetailTabs(activeIdx)
+  tabs.render(tabArea, buf)
   y += 2
+  if y >= area.bottom:
+    return
 
-  # Tabs (for Phase 2+ - just show active tab for now)
-  discard buf.setString(
-    area.x, y,
-    "[Construction]  Economy  Defense  Settings",
-    canvasHeaderStyle()
-  )
-  y += 2
-
-  # Construction Queue section
-  discard buf.setString(
-    area.x, y,
-    "CONSTRUCTION QUEUE (Docks: " & $planetData.availableDocks & "/" &
-      $planetData.totalDocks & " available)",
-    canvasHeaderStyle()
-  )
-  y += 1
-
-  if planetData.constructionQueue.len > 0:
-    # Table header
-    discard buf.setString(
-      area.x, y,
-      "#  Project         Cost  Progress       ETA",
-      CellStyle(fg: color(CanvasFgColor), attrs: {StyleAttr.Bold})
-    )
-    y += 1
-
-    # Construction items with progress bars
-    var idx = 1
-    for item in planetData.constructionQueue:
-      if y >= area.bottom - 5:
-        break
-
-      # Item number and name
-      let itemLine =
-        align($idx, 2) & ". " &
-        item.name.alignLeft(15) &
-        align($item.costTotal, 5) & "  "
-      discard buf.setString(area.x, y, itemLine, normalStyle())
-
-      # Progress bar
-      let barX = area.x + itemLine.len
-      let barWidth = 10
-      let progress = progressBar(item.costPaid, item.costTotal, barWidth)
-        .label("")
-        .showPercent(false)
-        .showRemaining(false)
-
-      progress.render(rect(barX, y, barWidth + 15, 1), buf)
-
-      # Progress percentage manually
-      let pctStr = " " & $item.progressPercent & "%"
-      discard buf.setString(
-        barX + barWidth + 1, y,
-        pctStr,
-        dimStyle()
-      )
-      # ETA
-      let etaStr = $item.turnsRemaining & " trn"
-      discard buf.setString(
-        barX + barWidth + 2, y,
-        etaStr,
-        normalStyle()
-      )
-
-      y += 1
-      idx += 1
-  else:
-    discard buf.setString(area.x, y, "  No projects queued", dimStyle())
-    y += 1
-
-  y += 1
-
-  # Repair Queue section
-  if planetData.repairQueue.len > 0:
-    discard buf.setString(
-      area.x, y,
-      "REPAIR QUEUE",
-      canvasHeaderStyle()
-    )
-    y += 1
-
-    for repair in planetData.repairQueue:
-      if y >= area.bottom:
-        break
-      let repairLine =
-        "  " & repair.name.alignLeft(20) &
-        " Cost: " & align($repair.costTotal, 4) &
-        " ETA: " & $repair.turnsRemaining & " trn"
-      discard buf.setString(area.x, y, repairLine, normalStyle())
-      y += 1
+  let contentArea = rect(area.x, y, area.width, area.bottom - y)
+  case model.planetDetailTab
+  of PlanetDetailTab.Summary:
+    renderPlanetSummaryTab(contentArea, buf, planetData)
+  of PlanetDetailTab.Economy:
+    renderPlanetEconomyTab(contentArea, buf, planetData)
+  of PlanetDetailTab.Construction:
+    renderPlanetConstructionTab(contentArea, buf, planetData)
+  of PlanetDetailTab.Defense:
+    renderPlanetDefenseTab(contentArea, buf, planetData)
+  of PlanetDetailTab.Settings:
+    renderPlanetSettingsTab(contentArea, buf, planetData)
 
 proc reportCategoryGlyph*(category: ReportCategory): string =
   ## Glyph for report category

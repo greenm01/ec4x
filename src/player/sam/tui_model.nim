@@ -172,10 +172,22 @@ type
 
   ColonyInfo* = object
     ## Colony info for list display
+    colonyId*: int
     systemId*: int
     systemName*: string
-    population*: int
-    production*: int
+    sectorLabel*: string
+    planetClass*: int
+    populationUnits*: int
+    industrialUnits*: int
+    grossOutput*: int
+    netValue*: int
+    populationGrowthPu*: Option[float32]
+    constructionDockAvailable*: int
+    constructionDockTotal*: int
+    repairDockAvailable*: int
+    repairDockTotal*: int
+    blockaded*: bool
+    idleConstruction*: bool
     owner*: int
 
   FleetInfo* = object
@@ -411,6 +423,7 @@ type
     prestigeRank*: int            ## Rank among all houses (1=first)
     totalHouses*: int             ## Total number of houses in game
     production*: int              ## Net House Value (production income)
+    houseTaxRate*: int            ## House-wide tax rate
     commandUsed*: int             ## Current command capacity used
     commandMax*: int              ## Maximum command capacity
     alertCount*: int              ## Number of alerts/warnings
@@ -551,6 +564,7 @@ proc initTuiModel*(): TuiModel =
     prestigeRank: 0,
     totalHouses: 0,
     production: 0,
+    houseTaxRate: 0,
     commandUsed: 0,
     commandMax: 0,
     alertCount: 0,

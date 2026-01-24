@@ -381,9 +381,9 @@ proc formatSystems(
     if sysOpt.isSome:
       let sys = sysOpt.get()
       ring = sys.ring
+      name = sys.name
       if visibleSys.visibility != VisibilityLevel.Adjacent and
          visibleSys.visibility != VisibilityLevel.None:
-        name = sys.name
         planetClass = kdlEnum($sys.planetClass)
         resourceRating = kdlEnum($sys.resourceRating)
 

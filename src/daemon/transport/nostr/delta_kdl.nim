@@ -539,6 +539,8 @@ proc addGroundUnitProps(props: var Table[string, KdlVal], unit: GroundUnit) =
 
 proc addVisibleSystemProps(props: var Table[string, KdlVal], system: VisibleSystem) =
   props["id"] = idVal(system.systemId)
+  if system.name.len > 0:
+    props["name"] = initKVal(system.name)
   props["visibility"] = initKVal(kdlEnum($system.visibility))
   if system.lastScoutedTurn.isSome:
     props["last-scouted"] = initKVal(system.lastScoutedTurn.get())

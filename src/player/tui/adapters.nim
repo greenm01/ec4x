@@ -5,13 +5,19 @@
 ## and presentation (TUI) layers.
 
 import std/[options, tables, algorithm]
-import ../../engine/types/[core, starmap, colony, fleet, player_state, ship, combat, production]
+import ../../engine/types/[core, starmap, colony, fleet, player_state, ship,
+  combat, production, facilities, ground_unit, tech]
 import ../../engine/state/engine
 import ../../engine/state/iterators
 import ../../engine/state/fog_of_war
+import ../../engine/systems/capacity/[construction_docks, fighter,
+  planet_breakers, planetary_shields, spaceports, starbases]
+import ../../engine/systems/production/engine as production_engine
+import ../../engine/globals
 import ./widget/hexmap/hexmap_pkg
 import ./widget/system_list
 import ./hex_labels
+import ./widget/hexmap/symbols
 
 # -----------------------------------------------------------------------------
 # Coordinate conversions
@@ -206,9 +212,14 @@ proc toSystemInfoFromPlayerState*(
   let sysOpt = state.system(visibleSys.systemId)
   if sysOpt.isNone:
     # System not found - return minimal unknown info
+    let fallbackName =
+      if visibleSys.name.len > 0:
+        visibleSys.name
+      else:
+        "???"
     return SystemInfo(
       id: int(visibleSys.systemId),
-      name: "???",
+      name: fallbackName,
       coords: hexCoord(
         int(visibleSys.coordinates.get((q: 0'i32, r: 0'i32)).q),
         int(visibleSys.coordinates.get((q: 0'i32, r: 0'i32)).r)
@@ -228,6 +239,11 @@ proc toSystemInfoFromPlayerState*(
   var fleetCount = 0
   var planetClass = 0
   var resourceRating = 0
+  let systemName =
+    if visibleSys.name.len > 0:
+      visibleSys.name
+    else:
+      sys.name
   
   # Determine what we know based on visibility level
   case visibleSys.visibility
@@ -292,8 +308,7 @@ proc toSystemInfoFromPlayerState*(
   
   SystemInfo(
     id: int(sys.id),
-    name: if visibleSys.visibility >= VisibilityLevel.Scouted: sys.name 
-          else: "Unknown",
+    name: systemName,
     coords: toHexCoord(sys.coords),
     ring: int(sys.ring),
     planetClass: planetClass,
@@ -308,7 +323,7 @@ proc toFogOfWarMapData*(state: GameState, viewingHouse: HouseId): MapData =
   ## Convert GameState to widget MapData with fog-of-war filtering
   ##
   ## Uses PlayerState to determine what the viewing house can see.
-  ## Systems below Scouted visibility show as "?" (unknown).
+  ## Planet details stay hidden until systems are scouted.
   let playerState = createPlayerState(state, viewingHouse)
   
   var systems = initTable[HexCoord, SystemInfo]()
@@ -362,20 +377,19 @@ proc toFogOfWarDetailPanelData*(
   let visibleSys = playerState.visibleSystems[systemId]
   let systemInfo = toSystemInfoFromPlayerState(visibleSys, playerState, state)
   
-  # Get jump lanes (only if we've scouted the system)
+  # Get jump lanes
   var jumpLanes: seq[JumpLaneInfo] = @[]
-  if visibleSys.visibility >= VisibilityLevel.Scouted:
-    for neighborId in visibleSys.jumpLaneIds:
-      if state.starmap.lanes.connectionInfo.hasKey((systemId, neighborId)):
-        let laneType = state.starmap.lanes.connectionInfo[(systemId, neighborId)]
-        let destSysOpt = state.system(neighborId)
-        if destSysOpt.isSome:
-          let destSys = destSysOpt.get()
-          jumpLanes.add(JumpLaneInfo(
-            targetName: destSys.name,
-            targetCoord: toHexCoord(destSys.coords),
-            laneClass: ord(laneType)
-          ))
+  for neighborId in visibleSys.jumpLaneIds:
+    if state.starmap.lanes.connectionInfo.hasKey((systemId, neighborId)):
+      let laneType = state.starmap.lanes.connectionInfo[(systemId, neighborId)]
+      let destSysOpt = state.system(neighborId)
+      if destSysOpt.isSome:
+        let destSys = destSysOpt.get()
+        jumpLanes.add(JumpLaneInfo(
+          targetName: destSys.name,
+          targetCoord: toHexCoord(destSys.coords),
+          laneClass: ord(laneType)
+        ))
   
   # Get fleet info
   var fleets: seq[FleetInfo] = @[]
@@ -418,10 +432,6 @@ proc toSystemListData*(state: GameState, viewingHouse: HouseId,
   var entries: seq[SystemListEntry] = @[]
   
   for systemId, visibleSys in playerState.visibleSystems.pairs:
-    # Only include systems we've scouted (know the name)
-    if visibleSys.visibility < VisibilityLevel.Scouted:
-      continue
-    
     let sysOpt = state.system(systemId)
     if sysOpt.isNone:
       continue
@@ -693,27 +703,139 @@ proc fleetToDetailData*(
 # -----------------------------------------------------------------------------
 
 type
-  ConstructionQueueItem* = object
-    ## Single item in construction queue
-    projectId*: int
-    name*: string              # "Cruiser", "Shipyard", "Army"
-    costTotal*: int
-    costPaid*: int
-    turnsRemaining*: int
-    progressPercent*: int      # 0-100
-    status*: string            # "In Progress", "Queued"
+  QueueKind* {.pure.} = enum
+    Construction
+    Repair
+
+  QueueItem* = object
+    kind*: QueueKind
+    name*: string
+    cost*: int
+    status*: string
+
+  BuildOptionKind* {.pure.} = enum
+    Ship
+    Ground
+    Facility
+
+  BuildOption* = object
+    kind*: BuildOptionKind
+    name*: string
+    cost*: int
+    cstReq*: int
+
+  DockSummary* = object
+    constructionAvailable*: int
+    constructionTotal*: int
+    repairAvailable*: int
+    repairTotal*: int
+
+  DockedFleetInfo* = object
+    name*: string
+    shipCount*: int
 
   PlanetDetailData* = object
-    ## Complete planet detail information
     colonyId*: int
     systemName*: string
-    population*: int
-    production*: int
-    treasury*: int             # Colony-local treasury (if applicable)
-    constructionQueue*: seq[ConstructionQueueItem]
-    repairQueue*: seq[ConstructionQueueItem]  # Reuse same type
-    availableDocks*: int       # Free production docks
-    totalDocks*: int           # Total production capacity
+    sectorLabel*: string
+    planetClass*: string
+    resourceRating*: string
+    rawIndex*: float32
+    populationUnits*: int
+    industrialUnits*: int
+    populationOutput*: int
+    industrialOutput*: int
+    gco*: int
+    ncv*: int
+    populationGrowthPu*: Option[float32]
+    taxRate*: int
+    starbaseBonusPct*: int
+    blockaded*: bool
+    spaceports*: int
+    shipyards*: int
+    drydocks*: int
+    starbases*: int
+    dockSummary*: DockSummary
+    armies*: int
+    marines*: int
+    batteries*: int
+    shields*: int
+    dockedFleets*: seq[DockedFleetInfo]
+    queue*: seq[QueueItem]
+    buildOptions*: seq[BuildOption]
+    autoRepair*: bool
+    autoLoadMarines*: bool
+    autoLoadFighters*: bool
+
+proc defaultTechLevels(): TechLevel =
+  TechLevel(
+    el: 1,
+    sl: 1,
+    cst: 1,
+    wep: 1,
+    ter: 1,
+    eli: 1,
+    clk: 1,
+    sld: 1,
+    cic: 1,
+    stl: 1,
+    fc: 1,
+    sc: 1,
+    fd: 1,
+    aco: 1
+  )
+
+proc humanizeEnum(name: string): string =
+  result = ""
+  for idx, ch in name:
+    if idx > 0 and ch >= 'A' and ch <= 'Z':
+      let prev = name[idx - 1]
+      if prev >= 'a' and prev <= 'z':
+        result.add(' ')
+    result.add(ch)
+
+proc hasOperationalFacility(
+    state: GameState, colony: Colony, target: NeoriaClass
+): bool =
+  for neoriaId in colony.neoriaIds:
+    let neoriaOpt = state.neoria(neoriaId)
+    if neoriaOpt.isSome:
+      let neoria = neoriaOpt.get()
+      if neoria.neoriaClass == target and
+          neoria.state != CombatState.Crippled:
+        return true
+  false
+
+proc dockSummary(state: GameState, colonyId: ColonyId): DockSummary =
+  let capacities = state.analyzeColonyCapacity(colonyId)
+  var constructionTotal = 0
+  var constructionUsed = 0
+  var repairTotal = 0
+  var repairUsed = 0
+
+  for facility in capacities:
+    let maxDocks =
+      if facility.isCrippled:
+        0'i32
+      else:
+        facility.maxDocks
+    let usedDocks = min(facility.usedDocks, maxDocks)
+    case facility.facilityType
+    of NeoriaClass.Spaceport, NeoriaClass.Shipyard:
+      constructionTotal += int(maxDocks)
+      constructionUsed += int(usedDocks)
+    of NeoriaClass.Drydock:
+      repairTotal += int(maxDocks)
+      repairUsed += int(usedDocks)
+
+  let constructionAvailable = max(0, constructionTotal - constructionUsed)
+  let repairAvailable = max(0, repairTotal - repairUsed)
+  DockSummary(
+    constructionAvailable: constructionAvailable,
+    constructionTotal: constructionTotal,
+    repairAvailable: repairAvailable,
+    repairTotal: repairTotal,
+  )
 
 proc colonyToDetailData*(
   state: GameState,
@@ -721,84 +843,247 @@ proc colonyToDetailData*(
   houseId: HouseId
 ): PlanetDetailData =
   ## Convert engine Colony to PlanetDetailData for TUI rendering
-  
-  # Get colony (crash if missing)
   let colony = state.colony(colonyId).get()
-  
-  # Get system name
+
+  var techLevels = defaultTechLevels()
+  var taxRate = colony.taxRate
+  var populationGrowthPu = none(float32)
+  let houseOpt = state.house(houseId)
+  if houseOpt.isSome:
+    let house = houseOpt.get()
+    techLevels = house.techTree.levels
+    if taxRate <= 0:
+      taxRate = house.taxPolicy.currentRate
+    if house.latestIncomeReport.isSome:
+      for report in house.latestIncomeReport.get().colonies:
+        if report.colonyId == colonyId:
+          let growth = float32(colony.populationUnits) *
+            (report.populationGrowth / 100.0'f32)
+          populationGrowthPu = some(growth)
+          break
+
   var systemName = "Unknown"
+  var sectorLabel = "?"
+  var planetClassName = "Unknown"
+  var resourceName = "Unknown"
+  var rawIdx = 0.0'f32
   let systemOpt = state.system(colony.systemId)
   if systemOpt.isSome:
-    systemName = systemOpt.get().name
-  
-  # Get construction projects for this colony
-  var constructionQueue: seq[ConstructionQueueItem] = @[]
+    let system = systemOpt.get()
+    systemName = system.name
+    sectorLabel = coordLabel(int(system.coords.q), int(system.coords.r))
+    let classOrd = ord(system.planetClass)
+    if classOrd >= 0 and classOrd < PlanetClassNames.len:
+      planetClassName = PlanetClassNames[classOrd]
+    let resourceOrd = ord(system.resourceRating)
+    if resourceOrd >= 0 and resourceOrd < ResourceRatingNames.len:
+      resourceName = ResourceRatingNames[resourceOrd]
+    rawIdx =
+      gameConfig.economy.rawMaterialEfficiency.multipliers[
+        system.resourceRating][system.planetClass]
+
+  let starbaseBonus = state.starbaseGrowthBonus(colony)
+  let elMod = production_engine.economicLevelModifier(techLevels.el)
+  let cstMod = 1.0 + (float32(techLevels.cst - 1) * 0.10)
+  let prodGrowth = production_engine.productivityGrowth(taxRate)
+  let populationOutput = int32(float32(colony.populationUnits) * rawIdx)
+  let industrialOutput = int32(
+    float32(colony.industrial.units) * elMod * cstMod *
+      (1.0 + prodGrowth + starbaseBonus)
+  )
+  var gco = populationOutput + industrialOutput
+  if colony.blockaded:
+    gco = int32(float32(gco) * 0.4)
+  let ncv = production_engine.calculateNetValue(gco, taxRate)
+  let starbaseBonusPct = int(starbaseBonus * 100.0)
+
+  let dockInfo = dockSummary(state, colonyId)
+  let spaceports = state.countSpaceportsAtColony(colonyId).int
+  let shipyards = state.countShipyardsAtColony(colonyId).int
+  let drydocks = state.countDrydocksAtColony(colonyId).int
+  let starbasesCount = state.countStarbasesAtColony(colonyId).int
+
+  var armies = 0
+  var marines = 0
+  var batteries = 0
+  var shields = 0
+  for unit in state.groundUnitsAtColony(colonyId):
+    case unit.stats.unitType
+    of GroundClass.Army:
+      armies.inc
+    of GroundClass.Marine:
+      marines.inc
+    of GroundClass.GroundBattery:
+      batteries.inc
+    of GroundClass.PlanetaryShield:
+      shields.inc
+
+  var dockedFleets: seq[DockedFleetInfo] = @[]
+  for fleet in state.fleetsInSystem(colony.systemId):
+    if fleet.houseId != houseId:
+      continue
+    dockedFleets.add(DockedFleetInfo(
+      name: "Fleet #" & $fleet.id,
+      shipCount: fleet.ships.len
+    ))
+
+  var queue: seq[QueueItem] = @[]
   for project in state.constructionProjectsAtColony(colonyId):
-    let progressPercent = 
-      if project.costTotal > 0:
-        int((float(project.costPaid) / float(project.costTotal)) * 100.0)
-      else:
-        0
-    
-    # Determine project name
     var projectName = "Unknown"
-    case project.projectType:
+    case project.projectType
     of BuildType.Ship:
       if project.shipClass.isSome:
-        projectName = $project.shipClass.get()
+        projectName = humanizeEnum($project.shipClass.get())
     of BuildType.Facility:
       if project.facilityClass.isSome:
-        projectName = $project.facilityClass.get()
+        projectName = humanizeEnum($project.facilityClass.get())
     of BuildType.Ground:
       if project.groundClass.isSome:
-        projectName = $project.groundClass.get()
+        projectName = humanizeEnum($project.groundClass.get())
     of BuildType.Industrial:
       projectName = "Industrial Units"
     of BuildType.Infrastructure:
       projectName = "Infrastructure"
-    
-    let status = 
-      if project.costPaid > 0:
-        "In Progress"
-      else:
-        "Queued"
-    
-    constructionQueue.add(ConstructionQueueItem(
-      projectId: int(project.id),
+
+    let status = if project.costPaid > 0: "Active" else: "Queued"
+    queue.add(QueueItem(
+      kind: QueueKind.Construction,
       name: projectName,
-      costTotal: int(project.costTotal),
-      costPaid: int(project.costPaid),
-      turnsRemaining: int(project.turnsRemaining),
-      progressPercent: progressPercent,
+      cost: int(project.costTotal),
       status: status
     ))
-  
-  # Get repair projects (reuse ConstructionQueueItem type)
-  var repairQueue: seq[ConstructionQueueItem] = @[]
+
   for repair in state.repairProjectsAtColony(colonyId):
-    repairQueue.add(ConstructionQueueItem(
-      projectId: int(repair.id),
-      name: $repair.targetType & " Repair",
-      costTotal: int(repair.cost),
-      costPaid: 0,  # Repairs don't track paid amount
-      turnsRemaining: int(repair.turnsRemaining),
-      progressPercent: 0,  # Repairs don't show progress %
+    var repairName = "Repair"
+    case repair.targetType
+    of RepairTargetType.Ship:
+      if repair.shipClass.isSome:
+        repairName = humanizeEnum($repair.shipClass.get())
+      else:
+        repairName = "Ship"
+    of RepairTargetType.Starbase:
+      repairName = "Starbase"
+    of RepairTargetType.GroundUnit:
+      repairName = "Ground Unit"
+    of RepairTargetType.Facility:
+      repairName = "Facility"
+    queue.add(QueueItem(
+      kind: QueueKind.Repair,
+      name: repairName,
+      cost: int(repair.cost),
       status: "Repairing"
     ))
-  
-  # Calculate dock capacity (simplified - would need neoria data)
-  let totalDocks = 10  # TODO: Calculate from neoria
-  let usedDocks = min(constructionQueue.len, totalDocks)
-  let availableDocks = totalDocks - usedDocks
-  
+
+  var buildOptions: seq[BuildOption] = @[]
+  let hasSpaceport =
+    hasOperationalFacility(state, colony, NeoriaClass.Spaceport)
+  let hasShipyard =
+    hasOperationalFacility(state, colony, NeoriaClass.Shipyard)
+
+  for shipClass in ShipClass:
+    let cstReq =
+      gameConfig.ships.ships[shipClass].minCST.int
+    if techLevels.cst < cstReq:
+      continue
+    if shipClass == ShipClass.Fighter:
+      if not state.canCommissionFighter(colony):
+        continue
+    if shipClass == ShipClass.PlanetBreaker:
+      if not state.canBuildPlanetBreaker(houseId):
+        continue
+    let requiresDock = construction_docks.shipRequiresDock(shipClass)
+    if requiresDock and dockInfo.constructionAvailable <= 0:
+      continue
+    if requiresDock and dockInfo.constructionTotal <= 0:
+      continue
+    let cost = int(
+      gameConfig.ships.ships[shipClass].productionCost
+    )
+    buildOptions.add(BuildOption(
+      kind: BuildOptionKind.Ship,
+      name: humanizeEnum($shipClass),
+      cost: cost,
+      cstReq: cstReq
+    ))
+
+  for groundClass in GroundClass:
+    let cstReq =
+      gameConfig.groundUnits.units[groundClass].minCST.int
+    if techLevels.cst < cstReq:
+      continue
+    if groundClass == GroundClass.PlanetaryShield:
+      if not state.canBuildPlanetaryShield(colony):
+        continue
+    let cost = int(
+      gameConfig.groundUnits.units[groundClass].productionCost
+    )
+    buildOptions.add(BuildOption(
+      kind: BuildOptionKind.Ground,
+      name: humanizeEnum($groundClass),
+      cost: cost,
+      cstReq: cstReq
+    ))
+
+  for facilityClass in FacilityClass:
+    let cstReq =
+      gameConfig.facilities.facilities[facilityClass].minCST.int
+    if techLevels.cst < cstReq:
+      continue
+    if facilityClass == FacilityClass.Spaceport:
+      if not state.canBuildSpaceport(colony):
+        continue
+    if facilityClass == FacilityClass.Starbase:
+      if not state.canBuildStarbase(colony):
+        continue
+      if gameConfig.construction.construction.starbaseRequiresShipyard and
+          not hasShipyard:
+        continue
+    if facilityClass in {FacilityClass.Shipyard, FacilityClass.Drydock}:
+      if gameConfig.construction.construction.shipyardRequiresSpaceport and
+          not hasSpaceport:
+        continue
+    if facilityClass == FacilityClass.Starbase and not hasSpaceport:
+      continue
+    let cost = int(
+      gameConfig.facilities.facilities[facilityClass].buildCost
+    )
+    buildOptions.add(BuildOption(
+      kind: BuildOptionKind.Facility,
+      name: humanizeEnum($facilityClass),
+      cost: cost,
+      cstReq: cstReq
+    ))
+
   PlanetDetailData(
     colonyId: int(colonyId),
     systemName: systemName,
-    population: int(colony.population),
-    production: 0,  # TODO: Calculate from engine
-    treasury: 0,    # TODO: Get from house treasury
-    constructionQueue: constructionQueue,
-    repairQueue: repairQueue,
-    availableDocks: availableDocks,
-    totalDocks: totalDocks
+    sectorLabel: sectorLabel,
+    planetClass: planetClassName,
+    resourceRating: resourceName,
+    rawIndex: rawIdx,
+    populationUnits: colony.populationUnits.int,
+    industrialUnits: colony.industrial.units.int,
+    populationOutput: populationOutput.int,
+    industrialOutput: industrialOutput.int,
+    gco: gco.int,
+    ncv: ncv.int,
+    populationGrowthPu: populationGrowthPu,
+    taxRate: taxRate.int,
+    starbaseBonusPct: starbaseBonusPct,
+    blockaded: colony.blockaded,
+    spaceports: spaceports,
+    shipyards: shipyards,
+    drydocks: drydocks,
+    starbases: starbasesCount,
+    dockSummary: dockInfo,
+    armies: armies,
+    marines: marines,
+    batteries: batteries,
+    shields: shields,
+    dockedFleets: dockedFleets,
+    queue: queue,
+    buildOptions: buildOptions,
+    autoRepair: colony.autoRepair,
+    autoLoadMarines: colony.autoLoadMarines,
+    autoLoadFighters: colony.autoLoadFighters
   )

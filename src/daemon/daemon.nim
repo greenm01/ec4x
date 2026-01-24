@@ -18,7 +18,7 @@ import ../common/wordlist
 
 # Replay protection
 
-import ../daemon/parser/kdl_commands
+import ../daemon/parser/msgpack_commands
 import ../engine/turn_cycle/engine
 import ../engine/config/engine
 import ../engine/globals
@@ -456,13 +456,13 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
         " but game is on turn=", $gameInfo.turn, " - ignoring")
       return
 
-    # Decrypt command payload
+    # Decrypt command payload (msgpack binary)
     let daemonPriv = crypto.hexToBytes32(daemonLoop.model.identity.privateKeyHex)
     let senderPub = crypto.hexToBytes32(event.pubkey)
-    let kdlCommands = decodePayload(event.content, daemonPriv, senderPub)
+    let msgpackCommands = decodePayload(event.content, daemonPriv, senderPub)
 
-    # Parse KDL into CommandPacket
-    let commandPacket = parseOrdersString(kdlCommands)
+    # Parse msgpack into CommandPacket
+    let commandPacket = parseOrdersMsgpack(msgpackCommands)
 
     # Save to database
     saveCommandPacket(gameInfo.dbPath, gameId, commandPacket)

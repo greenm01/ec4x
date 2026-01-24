@@ -8,8 +8,8 @@ import ../engine/state/iterators
 import ./transport/nostr/[types, client, events, crypto, wire]
 import ./persistence/reader
 import ./persistence/writer
-import ./transport/nostr/delta_kdl
-import ./transport/nostr/state_kdl
+import ./transport/nostr/delta_msgpack
+import ./transport/nostr/state_msgpack
 
 type
   Publisher* = ref object
@@ -35,9 +35,9 @@ proc getPlayerPubkey(dbPath: string, gameId: string,
   else:
     return ""
 
-proc buildDeltaKdl(dbPath: string, gameId: string, state: GameState,
+proc buildDeltaMsgpack(dbPath: string, gameId: string, state: GameState,
   houseId: HouseId): string =
-  ## Build fog-of-war filtered delta KDL for a house
+  ## Build fog-of-war filtered delta msgpack for a house
   let previousTurn = state.turn - 1
   let previousSnapshot = loadPlayerStateSnapshot(
     dbPath,
@@ -57,7 +57,7 @@ proc buildDeltaKdl(dbPath: string, gameId: string, state: GameState,
     currentSnapshot
   )
 
-  formatPlayerStateDeltaKdl(gameId, delta)
+  formatPlayerStateDeltaMsgpack(gameId, delta)
 
 proc publishFullState*(pub: Publisher, gameId: string, dbPath: string,
   state: GameState, houseId: HouseId) {.async.} =
@@ -70,8 +70,8 @@ proc publishFullState*(pub: Publisher, gameId: string, dbPath: string,
       return
 
     let playerPub = crypto.hexToBytes32(playerPubkey)
-    let stateKdl = formatPlayerStateKdl(gameId, state, houseId)
-    let encryptedPayload = encodePayload(stateKdl, pub.daemonPriv, playerPub)
+    let stateMsgpack = formatPlayerStateMsgpack(gameId, state, houseId)
+    let encryptedPayload = encodePayload(stateMsgpack, pub.daemonPriv, playerPub)
 
     var event = createGameState(
       gameId = gameId,
@@ -202,9 +202,9 @@ proc publishTurnResults*(pub: Publisher, gameId: string, dbPath: string,
           " - skipping delta publish")
         continue
 
-      let deltaKdl = buildDeltaKdl(dbPath, gameId, state, houseId)
+      let deltaMsgpack = buildDeltaMsgpack(dbPath, gameId, state, houseId)
       let playerPub = crypto.hexToBytes32(playerPubkey)
-      let encryptedPayload = encodePayload(deltaKdl, pub.daemonPriv, playerPub)
+      let encryptedPayload = encodePayload(deltaMsgpack, pub.daemonPriv, playerPub)
 
       var event = createTurnResults(
         gameId = gameId,

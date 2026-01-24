@@ -149,6 +149,7 @@ type
   VisibleSystem* = object
     ## System visibility from fog-of-war perspective
     systemId*: SystemId
+    name*: string
     visibility*: VisibilityLevel
     lastScoutedTurn*: Option[int32]
     coordinates*: Option[tuple[q: int32, r: int32]]

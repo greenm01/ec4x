@@ -385,7 +385,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.mode = ViewMode.PlanetDetail
       model.resetBreadcrumbs(model.mode)
       if model.selectedIdx < model.colonies.len:
-        model.selectedColonyId = model.colonies[model.selectedIdx].systemId
+        model.selectedColonyId = model.colonies[model.selectedIdx].colonyId
     elif target == 30:
       model.previousMode = model.mode
       model.mode = ViewMode.FleetDetail
@@ -808,7 +808,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.selectedIdx < model.colonies.len:
         model.previousMode = model.mode
         model.mode = ViewMode.PlanetDetail
-        model.selectedColonyId = model.colonies[model.selectedIdx].systemId
+        model.selectedColonyId = model.colonies[model.selectedIdx].colonyId
         model.resetBreadcrumbs(model.mode)
     elif model.mode == ViewMode.Fleets and proposal.selectIdx == -1:
       if model.selectedIdx < model.fleets.len:

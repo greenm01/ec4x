@@ -9,8 +9,8 @@ export crypto
 
 type
   PlayerNostrHandlers* = object
-    onDelta*: proc(event: NostrEvent, kdl: string) {.closure.}
-    onFullState*: proc(event: NostrEvent, kdl: string) {.closure.}
+    onDelta*: proc(event: NostrEvent, payload: string) {.closure.}
+    onFullState*: proc(event: NostrEvent, payload: string) {.closure.}
     onEvent*: proc(subId: string, event: NostrEvent) {.closure.}
     onJoinError*: proc(message: string) {.closure.}
     onError*: proc(message: string) {.closure.}
@@ -117,9 +117,11 @@ proc setGameId*(pc: PlayerNostrClient, gameId: string) =
 
 proc submitCommands*(
   pc: PlayerNostrClient,
-  commandKdl: string,
+  commandMsgpack: string,
   turn: int
 ): Future[bool] {.async.} =
+  ## Submit commands to the daemon
+  ## commandMsgpack: msgpack-serialized CommandPacket (binary string)
   if pc.daemonPubkey.len == 0:
     pc.handleError("Missing daemon pubkey")
     return false
@@ -133,7 +135,7 @@ proc submitCommands*(
     pc.handleError("Invalid key material")
     return false
 
-  let encrypted = encodePayload(commandKdl, privOpt.get(), daemonOpt.get())
+  let encrypted = encodePayload(commandMsgpack, privOpt.get(), daemonOpt.get())
   var event = createTurnCommands(
     gameId = pc.gameId,
     turn = turn,

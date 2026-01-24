@@ -89,18 +89,42 @@ proc toSamSystemInfo*(
   )
 
 proc toSamColonyInfo*(
-  systemId: int,
-  systemName: string,
-  population: int,
-  production: int,
-  owner: int
+    colonyId: int,
+    systemId: int,
+    systemName: string,
+    sectorLabel: string = "",
+    planetClass: int = 0,
+    populationUnits: int = 0,
+    industrialUnits: int = 0,
+    grossOutput: int = 0,
+    netValue: int = 0,
+    populationGrowthPu: Option[float32] = none(float32),
+    constructionDockAvailable: int = 0,
+    constructionDockTotal: int = 0,
+    repairDockAvailable: int = 0,
+    repairDockTotal: int = 0,
+    blockaded: bool = false,
+    idleConstruction: bool = false,
+    owner: int = 0,
 ): ColonyInfo =
   ## Convert colony data to SAM ColonyInfo
   ColonyInfo(
+    colonyId: colonyId,
     systemId: systemId,
     systemName: systemName,
-    population: population,
-    production: production,
+    sectorLabel: sectorLabel,
+    planetClass: planetClass,
+    populationUnits: populationUnits,
+    industrialUnits: industrialUnits,
+    grossOutput: grossOutput,
+    netValue: netValue,
+    populationGrowthPu: populationGrowthPu,
+    constructionDockAvailable: constructionDockAvailable,
+    constructionDockTotal: constructionDockTotal,
+    repairDockAvailable: repairDockAvailable,
+    repairDockTotal: repairDockTotal,
+    blockaded: blockaded,
+    idleConstruction: idleConstruction,
     owner: owner
   )
 

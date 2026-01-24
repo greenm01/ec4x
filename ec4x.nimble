@@ -14,7 +14,7 @@ requires "cligen >= 1.7.0"
 requires "nimkdl >= 2.1.0"
 requires "db_connector"
 requires "ws >= 0.5.0" # WebSocket client for Nostr relay
-requires "zippy >= 0.10.0" # Compression for Nostr payloads
+# Note: Uses system libzstd for compression (apt install libzstd-dev)
 requires "nimcrypto >= 0.6.0" # Cryptography for SHA/HMAC
 requires "secp256k1" # Schnorr signing + ECDH
 requires "nim_chacha20_poly1305" # ChaCha20 stream cipher

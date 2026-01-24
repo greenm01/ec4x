@@ -6,7 +6,7 @@ import std/[options, strformat, tables, strutils, parseopt, os,
   asyncdispatch, sequtils]
 
 import ../../common/logger
-import ../../engine/types/[core, player_state as ps_types]
+import ../../engine/types/[core, fleet, player_state as ps_types]
 import ../../engine/state/engine
 import ../../daemon/transport/nostr/[types, events, filter, crypto, nip01]
 import ../nostr/client
@@ -23,7 +23,8 @@ import ../sam/bindings
 import ../state/join_flow
 import ../state/lobby_profile
 import ../state/order_builder
-import ../state/kdl_serializer
+import ../state/msgpack_serializer
+import ../state/msgpack_state
 import ../state/tui_cache
 import ../state/tui_config
 import ../svg/svg_pkg
@@ -208,12 +209,17 @@ proc runTui*(gameId: string = "") =
               event.pubkey != nostrDaemonPubkey:
             sam.model.statusMessage = "Ignored event: unknown server"
             return
-          let appliedTurnOpt = applyDeltaToCachedState("data",
-            identity.npubHex, activeGameId, playerState, payload)
+          let appliedTurnOpt = applyDeltaMsgpack(playerState, payload)
           if appliedTurnOpt.isSome:
             sam.model.turn = int(appliedTurnOpt.get())
             sam.model.playerStateLoaded = true
             sam.model.statusMessage = "Delta applied"
+            # Sync PlayerState to model after delta
+            syncPlayerStateToModel(sam.model, playerState)
+            # Cache the updated state
+            if activeGameId.len > 0:
+              tuiCache.savePlayerState(activeGameId, int(viewingHouse),
+                playerState.turn, playerState)
           else:
             sam.model.statusMessage = "Invalid delta payload"
           sam.present(emptyProposal())
@@ -242,9 +248,9 @@ proc runTui*(gameId: string = "") =
               event.pubkey != nostrDaemonPubkey:
             sam.model.statusMessage = "Ignored event: unknown server"
             return
-          logDebug("TUI/State", "Parsing full state KDL",
+          logDebug("TUI/State", "Parsing full state msgpack",
             "payloadLen=", $payload.len)
-          let stateOpt = parseFullStateKdl(payload)
+          let stateOpt = parseFullStateMsgpack(payload)
           if stateOpt.isSome:
             logDebug("TUI/State", "State parsed successfully",
               "turn=", $stateOpt.get().turn,
@@ -271,8 +277,8 @@ proc runTui*(gameId: string = "") =
                 playerState.turn, playerState)
           else:
             sam.model.statusMessage = "Invalid full state payload"
-            logDebug("TUI/State", "Failed to parse state KDL",
-              "firstChars=", payload[0..min(100, payload.len-1)])
+            logDebug("TUI/State", "Failed to parse state msgpack",
+              "payloadLen=", $payload.len)
           sam.present(emptyProposal())
         except CatchableError as e:
           sam.model.nostrLastError = e.msg
@@ -823,19 +829,18 @@ proc runTui*(gameId: string = "") =
       # Re-render to show status
       sam.present(emptyProposal())
 
-    # Handle pending fleet orders (write to KDL files)
+    # Handle pending fleet orders (send via msgpack)
     if sam.model.pendingFleetOrderReady and activeGameId.len > 0:
       if sam.model.nostrEnabled and nostrClient != nil and
           nostrClient.isConnected():
         if nostrDaemonPubkey.len > 0:
-          let order = FleetOrder(
-            fleetId: sam.model.pendingFleetOrderFleetId,
-            commandType: sam.model.pendingFleetOrderCommandType,
-            targetSystemId: sam.model.pendingFleetOrderTargetSystemId
-          )
-          let kdlCommands = formatFleetOrderKdl(order, sam.model.turn,
+          let msgpackCommands = formatFleetOrderMsgpack(
+            FleetId(sam.model.pendingFleetOrderFleetId.uint32),
+            FleetCommandType(sam.model.pendingFleetOrderCommandType),
+            SystemId(sam.model.pendingFleetOrderTargetSystemId.uint32),
+            sam.model.turn,
             sam.model.viewingHouse)
-          asyncCheck nostrClient.submitCommands(kdlCommands, sam.model.turn)
+          asyncCheck nostrClient.submitCommands(msgpackCommands, sam.model.turn)
           let cmdLabel = commandLabel(
             sam.model.pendingFleetOrderCommandType)
           sam.model.statusMessage = cmdLabel & " order submitted"
@@ -862,40 +867,21 @@ proc runTui*(gameId: string = "") =
         viewingHouse
       )
 
-      # Serialize to KDL
-      let kdl = commandPacketToKdl(packet)
-
-      var submittedOk = false
-      # Write to file or send via Nostr
+      # Send via Nostr (only supported transport)
       if sam.model.nostrEnabled and nostrClient != nil and
           nostrClient.isConnected():
-        # Submit via Nostr (commands retained until confirmed)
-        asyncCheck nostrClient.submitCommands(kdl, sam.model.turn)
-        sam.model.statusMessage = "Turn submitted via Nostr (retained)"
+        let msgpack = serializeCommandPacket(packet)
+        asyncCheck nostrClient.submitCommands(msgpack, sam.model.turn)
+        sam.model.statusMessage = "Turn submitted"
         logInfo("TUI Player SAM", "Turn submitted via Nostr")
-      elif activeGameId.len > 0:
-        # Write to local file
-        let gameDir = "data/games/" & sam.model.houseName
-        createDir(gameDir & "/orders")
-        let orderPath = gameDir & "/orders/turn_" & $gameState.turn & ".kdl"
-        try:
-          writeFile(orderPath, kdl)
-          sam.model.statusMessage = "Turn submitted: " &
-            extractFilename(orderPath)
-          logInfo("TUI Player SAM", "Turn written: " & orderPath)
-          submittedOk = true
-        except IOError as e:
-          sam.model.statusMessage = "Error writing turn: " & e.msg
-          logError("TUI Player SAM", "Failed to write turn: " & e.msg)
-      else:
-        sam.model.statusMessage = "No game loaded - cannot submit turn"
-
-      if submittedOk:
-        # Clear staged commands
+        # Clear staged commands on successful submission
         sam.model.stagedFleetCommands.setLen(0)
         sam.model.stagedBuildCommands.setLen(0)
         sam.model.stagedRepairCommands.setLen(0)
         sam.model.stagedScrapCommands.setLen(0)
+      else:
+        sam.model.statusMessage = "Cannot submit: not connected to relay"
+
       sam.model.turnSubmissionPending = false
 
       # Re-render to show status

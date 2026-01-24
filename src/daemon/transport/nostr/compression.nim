@@ -1,15 +1,15 @@
 ## Compression helpers for Nostr payloads
-## Uses zippy (gzip) for payload compression.
+## Uses zstd for payload compression.
+##
+## Zstd provides better compression ratios and faster decompression
+## than gzip, making it ideal for real-time game state sync.
 
-import zippy
-
-const
-  DefaultFormat = dfGzip
+import ../../../common/zstd
 
 proc compressPayload*(payload: string): string =
-  ## Compress a KDL payload into gzip bytes (binary string)
-  compress(payload, dataFormat = DefaultFormat)
+  ## Compress a binary payload using zstd
+  compress(payload)
 
 proc decompressPayload*(payload: string): string =
-  ## Decompress a gzip payload into KDL string
-  uncompress(payload, dataFormat = DefaultFormat)
+  ## Decompress a zstd payload back to binary
+  decompress(payload)

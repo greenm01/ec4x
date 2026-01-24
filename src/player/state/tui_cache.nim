@@ -10,18 +10,20 @@
 ##   - settings: Global settings (default relay, schema version)
 ##   - games: Game metadata from Nostr events
 ##   - player_slots: Player's house assignments per game
-##   - player_states: PlayerState snapshots per game/turn
+##   - player_states: PlayerState snapshots per game/turn (msgpack encoded)
 ##   - received_events: Nostr event deduplication
 
-import std/[os, options, times, json, jsonutils, strutils]
+import std/[os, options, times, strutils, base64]
 import db_connector/db_sqlite
 import kdl
+import msgpack4nim
 
 import ../../common/logger
+import ../../common/msgpack_types
 import ../../engine/types/player_state
 
 const
-  SchemaVersion* = 1
+  SchemaVersion* = 2  # Bumped for msgpack migration
   DefaultCacheDir* = ".local/share/ec4x"
   CacheFileName* = "cache.db"
 
@@ -62,7 +64,36 @@ proc getCachePath*(): string =
 # Schema Management
 # =============================================================================
 
-proc initSchema(db: DbConn) =
+proc checkAndMigrateSchema(db: DbConn): bool =
+  ## Check schema version and migrate if needed.
+  ## Returns true if a fresh schema was created (old data cleared).
+  var needsReset = false
+  
+  try:
+    let row = db.getRow(
+      sql"SELECT value FROM settings WHERE key = 'schema_version'"
+    )
+    if row[0] != "":
+      let version = parseInt(row[0])
+      if version < SchemaVersion:
+        logInfo("TuiCache", "Schema version ", $version, " -> ", $SchemaVersion,
+          ", clearing old data")
+        needsReset = true
+  except CatchableError:
+    # Table doesn't exist yet, will be created fresh
+    needsReset = false
+  
+  if needsReset:
+    # Drop old tables before recreating
+    db.exec(sql"DROP TABLE IF EXISTS player_states")
+    db.exec(sql"DROP TABLE IF EXISTS received_events")
+    db.exec(sql"DROP TABLE IF EXISTS player_slots")
+    db.exec(sql"DROP TABLE IF EXISTS games")
+    db.exec(sql"DROP TABLE IF EXISTS settings")
+  
+  needsReset
+
+proc initSchema(db: DbConn, forceInit: bool = false) =
   ## Initialize the cache database schema
   
   # Settings table
@@ -98,13 +129,13 @@ proc initSchema(db: DbConn) =
     )
   """)
   
-  # Player states table
+  # Player states table (msgpack blob stored as base64)
   db.exec(sql"""
     CREATE TABLE IF NOT EXISTS player_states (
       game_id TEXT NOT NULL,
       house_id INTEGER NOT NULL,
       turn INTEGER NOT NULL,
-      state_json TEXT NOT NULL,
+      state_msgpack TEXT NOT NULL,
       created_at INTEGER NOT NULL,
       PRIMARY KEY (game_id, house_id, turn)
     )
@@ -152,14 +183,16 @@ proc initSchema(db: DbConn) =
 # =============================================================================
 
 proc openTuiCache*(): TuiCache =
-  ## Open the TUI cache database, creating it if necessary
+  ## Open the TUI cache database, creating it if necessary.
+  ## Automatically handles schema migrations (clears old data if needed).
   let cacheDir = getCacheDir()
   createDir(cacheDir)
   
   let cachePath = getCachePath()
   let db = open(cachePath, "", "", "")
   
-  initSchema(db)
+  let wasReset = checkAndMigrateSchema(db)
+  initSchema(db, wasReset)
   
   TuiCache(db: db, path: cachePath)
 
@@ -369,21 +402,22 @@ proc deletePlayerSlot*(cache: TuiCache, gameId, playerPubkey: string) =
 
 proc savePlayerState*(cache: TuiCache, gameId: string, houseId: int,
                       turn: int, state: PlayerState) =
-  ## Save a PlayerState snapshot
+  ## Save a PlayerState snapshot using msgpack serialization
   let now = epochTime().int64
-  let payload = $toJson(state)
+  let binary = pack(state)
+  let payload = encode(binary)  # base64 for SQLite text storage
   cache.db.exec(sql"""
-    INSERT INTO player_states (game_id, house_id, turn, state_json, created_at)
+    INSERT INTO player_states (game_id, house_id, turn, state_msgpack, created_at)
     VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(game_id, house_id, turn) DO UPDATE SET
-      state_json = excluded.state_json
+      state_msgpack = excluded.state_msgpack
   """, gameId, $houseId, $turn, payload, $now)
 
 proc loadPlayerState*(cache: TuiCache, gameId: string, houseId: int,
                       turn: int): Option[PlayerState] =
   ## Load a specific PlayerState snapshot
   let row = cache.db.getRow(
-    sql"""SELECT state_json FROM player_states
+    sql"""SELECT state_msgpack FROM player_states
           WHERE game_id = ? AND house_id = ? AND turn = ?""",
     gameId, $houseId, $turn
   )
@@ -391,7 +425,8 @@ proc loadPlayerState*(cache: TuiCache, gameId: string, houseId: int,
     return none(PlayerState)
   
   try:
-    some(parseJson(row[0]).jsonTo(PlayerState))
+    let binary = decode(row[0])
+    some(unpack(binary, PlayerState))
   except CatchableError as e:
     logError("TuiCache", "Failed to parse player state: ", e.msg)
     none(PlayerState)
@@ -400,7 +435,7 @@ proc loadLatestPlayerState*(cache: TuiCache, gameId: string,
                             houseId: int): Option[PlayerState] =
   ## Load the latest PlayerState snapshot for a game/house
   let row = cache.db.getRow(
-    sql"""SELECT state_json FROM player_states
+    sql"""SELECT state_msgpack FROM player_states
           WHERE game_id = ? AND house_id = ?
           ORDER BY turn DESC LIMIT 1""",
     gameId, $houseId
@@ -409,7 +444,8 @@ proc loadLatestPlayerState*(cache: TuiCache, gameId: string,
     return none(PlayerState)
   
   try:
-    some(parseJson(row[0]).jsonTo(PlayerState))
+    let binary = decode(row[0])
+    some(unpack(binary, PlayerState))
   except CatchableError as e:
     logError("TuiCache", "Failed to parse player state: ", e.msg)
     none(PlayerState)
@@ -565,14 +601,15 @@ proc migrateOldJoinCache*(cache: TuiCache, dataDir: string,
 proc migrateOldPlayerStateDb*(cache: TuiCache, dataDir: string,
                               playerPubkey: string) =
   ## Migrate old per-game player_state.db files to the new cache.db
+  ## NOTE: Old JSON format is no longer compatible - we just delete old files.
   ##
   ## Old format: data/players/{pubkey}/games/{gameId}/player_state.db
-  ## New format: cache.db player_states table
+  ## New format: cache.db player_states table (msgpack)
   let gamesDir = dataDir / "players" / playerPubkey / "games"
   if not dirExists(gamesDir):
     return
   
-  var migratedCount = 0
+  var deletedCount = 0
   
   for kind, gameDirPath in walkDir(gamesDir):
     if kind != pcDir:
@@ -582,46 +619,23 @@ proc migrateOldPlayerStateDb*(cache: TuiCache, dataDir: string,
     if not fileExists(oldDbPath):
       continue
     
-    let gameId = gameDirPath.extractFilename
-    
+    # Just delete old incompatible databases
     try:
-      let oldDb = open(oldDbPath, "", "", "")
-      defer: oldDb.close()
-      
-      # Copy all snapshots
-      for row in oldDb.fastRows(
-        sql"""SELECT game_id, house_id, turn, state_json
-              FROM player_state_snapshots"""
-      ):
-        let actualGameId = row[0]
-        let houseId = parseInt(row[1])
-        let turn = parseInt(row[2])
-        let stateJson = row[3]
-        
-        cache.db.exec(sql"""
-          INSERT OR IGNORE INTO player_states
-            (game_id, house_id, turn, state_json, created_at)
-          VALUES (?, ?, ?, ?, ?)
-        """, actualGameId, $houseId, $turn, stateJson, $epochTime().int64)
-        
-        migratedCount += 1
-      
-      logInfo("TuiCache", "Migrated player state DB: ", gameId)
-      
-      # Delete old database after successful migration
       removeFile(oldDbPath)
+      deletedCount += 1
+      logInfo("TuiCache", "Deleted old player state DB: ", oldDbPath)
       
       # Try to remove empty game directory
       try:
         removeDir(gameDirPath)
-      except:
+      except CatchableError:
         discard  # Directory not empty, that's fine
     except CatchableError as e:
-      logWarn("TuiCache", "Failed to migrate player state: ", 
+      logWarn("TuiCache", "Failed to delete old player state: ", 
               oldDbPath, " ", e.msg)
   
-  if migratedCount > 0:
-    logInfo("TuiCache", "Migrated ", $migratedCount, " player state snapshots")
+  if deletedCount > 0:
+    logInfo("TuiCache", "Deleted ", $deletedCount, " old player state DBs")
 
 proc runMigrations*(cache: TuiCache, dataDir: string, playerPubkey: string) =
   ## Run all migrations from old formats

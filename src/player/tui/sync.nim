@@ -4,13 +4,15 @@
 
 import std/[options, tables, algorithm]
 
-import ../../engine/types/[core, colony, fleet, player_state as ps_types,
-  diplomacy]
+import ../../engine/types/[core, colony, fleet, facilities, player_state as
+  ps_types, diplomacy]
 import ../../engine/state/[engine, iterators]
-import ../../engine/systems/capacity/c2_pool
+import ../../engine/systems/capacity/[c2_pool, construction_docks]
+import ../../engine/systems/production/engine as production_engine
 import ../sam/sam_pkg
 import ../tui/adapters
 import ../tui/widget/overview
+import ../tui/hex_labels
 
 proc syncGameStateToModel*(
     model: var TuiModel,
@@ -34,6 +36,13 @@ proc syncGameStateToModel*(
     model.production = house.latestIncomeReport.get().totalNet.int
   else:
     model.production = 0
+
+  model.houseTaxRate = house.taxPolicy.currentRate.int
+
+  var colonyReports = initTable[ColonyId, ColonyIncomeReport]()
+  if house.latestIncomeReport.isSome:
+    for report in house.latestIncomeReport.get().colonies:
+      colonyReports[report.colonyId] = report
 
   # Command capacity (C2 pool)
   let c2Analysis = analyzeC2Capacity(state, viewingHouse)
@@ -86,17 +95,84 @@ proc syncGameStateToModel*(
   model.colonies = @[]
   for colony in state.coloniesOwned(viewingHouse):
     let sysOpt = state.system(colony.systemId)
-    let sysName =
-      if sysOpt.isSome:
-        sysOpt.get().name
+    var sysName = "???"
+    var sectorLabel = "?"
+    var planetClass = 0
+    if sysOpt.isSome:
+      let sys = sysOpt.get()
+      sysName = sys.name
+      sectorLabel = coordLabel(int(sys.coords.q), int(sys.coords.r))
+      planetClass = ord(sys.planetClass)
+
+    let taxRate =
+      if colony.taxRate > 0:
+        colony.taxRate
       else:
-        "???"
+        house.taxPolicy.currentRate
+
+    var colonyWithTax = colony
+    colonyWithTax.taxRate = taxRate
+    let gco = state.calculateGrossOutput(
+      colonyWithTax,
+      house.techTree.levels.el,
+      house.techTree.levels.cst
+    )
+    let ncv = production_engine.calculateNetValue(gco, taxRate)
+
+    var growthPu = none(float32)
+    if colonyReports.hasKey(colony.id):
+      let report = colonyReports[colony.id]
+      let growth = float32(colony.populationUnits) *
+        (report.populationGrowth / 100.0'f32)
+      growthPu = some(growth)
+
+    let capacities = state.analyzeColonyCapacity(colony.id)
+    var constructionTotal = 0
+    var constructionUsed = 0
+    var repairTotal = 0
+    var repairUsed = 0
+    for facility in capacities:
+      let maxDocks =
+        if facility.isCrippled:
+          0'i32
+        else:
+          facility.maxDocks
+      let usedDocks = min(facility.usedDocks, maxDocks)
+      case facility.facilityType
+      of NeoriaClass.Spaceport, NeoriaClass.Shipyard:
+        constructionTotal += int(maxDocks)
+        constructionUsed += int(usedDocks)
+      of NeoriaClass.Drydock:
+        repairTotal += int(maxDocks)
+        repairUsed += int(usedDocks)
+
+    let constructionAvailable =
+      max(0, constructionTotal - constructionUsed)
+    let repairAvailable = max(0, repairTotal - repairUsed)
+    let hasConstruction =
+      state.constructionProjectsAtColony(colony.id).len > 0
+    let idleConstruction =
+      constructionAvailable > 0 and constructionTotal > 0 and
+      not hasConstruction
+
     model.colonies.add(
       sam_pkg.ColonyInfo(
+        colonyId: int(colony.id),
         systemId: int(colony.systemId),
         systemName: sysName,
-        population: colony.population.int,
-        production: colony.production.int,
+        sectorLabel: sectorLabel,
+        planetClass: planetClass,
+        populationUnits: colony.populationUnits.int,
+        industrialUnits: colony.industrial.units.int,
+        grossOutput: gco.int,
+        netValue: ncv.int,
+        populationGrowthPu: growthPu,
+        constructionDockAvailable: constructionAvailable,
+        constructionDockTotal: constructionTotal,
+        repairDockAvailable: repairAvailable,
+        repairDockTotal: repairTotal,
+        blockaded: colony.blockaded,
+        idleConstruction: idleConstruction,
         owner: int(viewingHouse),
       )
     )
@@ -252,9 +328,10 @@ proc syncPlayerStateToModel*(
   model.unreadReports = 0
   model.unreadMessages = 0
   model.production = 0  # Would need income report
+  model.houseTaxRate = 0
   
   # Build systems table from visible systems
-  # VisibleSystem only has: systemId, visibility, lastScoutedTurn, coordinates
+  # VisibleSystem only has: id, name, visibility, lastScoutedTurn, coordinates
   model.systems.clear()
   model.maxRing = 0
   
@@ -269,9 +346,14 @@ proc syncPlayerStateToModel*(
       model.maxRing = ring
     
     # Limited info from VisibleSystem
+    let sysName =
+      if visSys.name.len > 0:
+        visSys.name
+      else:
+        "System " & $sysId.uint32
     let samSys = sam_pkg.SystemInfo(
       id: int(sysId),
-      name: "System " & $sysId.uint32,  # Name not in VisibleSystem
+      name: sysName,
       coords: (hexQ, hexR),
       ring: ring,
       planetClass: 0,  # Not in VisibleSystem
@@ -287,17 +369,34 @@ proc syncPlayerStateToModel*(
   model.colonies = @[]
   for colony in ps.ownColonies:
     var sysName = "System " & $colony.systemId.uint32
+    var sectorLabel = "?"
     if ps.visibleSystems.hasKey(colony.systemId):
       let visSys = ps.visibleSystems[colony.systemId]
       if visSys.coordinates.isSome:
         let coords = visSys.coordinates.get()
-        sysName = "(" & $coords.q & "," & $coords.r & ")"
+        if visSys.name.len > 0:
+          sysName = visSys.name
+        else:
+          sysName = "(" & $coords.q & "," & $coords.r & ")"
+        sectorLabel = coordLabel(int(coords.q), int(coords.r))
     model.colonies.add(
       sam_pkg.ColonyInfo(
+        colonyId: int(colony.id),
         systemId: int(colony.systemId),
         systemName: sysName,
-        population: colony.population.int,
-        production: colony.production.int,
+        sectorLabel: sectorLabel,
+        planetClass: -1,
+        populationUnits: colony.populationUnits.int,
+        industrialUnits: colony.industrial.units.int,
+        grossOutput: colony.grossOutput.int,
+        netValue: 0,
+        populationGrowthPu: none(float32),
+        constructionDockAvailable: 0,
+        constructionDockTotal: 0,
+        repairDockAvailable: 0,
+        repairDockTotal: 0,
+        blockaded: colony.blockaded,
+        idleConstruction: false,
         owner: int(ps.viewingHouse),
       )
     )
@@ -310,7 +409,10 @@ proc syncPlayerStateToModel*(
       let visSys = ps.visibleSystems[fleet.location]
       if visSys.coordinates.isSome:
         let coords = visSys.coordinates.get()
-        locName = "(" & $coords.q & "," & $coords.r & ")"
+        if visSys.name.len > 0:
+          locName = visSys.name
+        else:
+          locName = "(" & $coords.q & "," & $coords.r & ")"
     let cmdType = int(fleet.command.commandType)
     model.fleets.add(
       sam_pkg.FleetInfo(

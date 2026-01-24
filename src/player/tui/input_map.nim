@@ -128,6 +128,9 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     keyCode = KeyCode.KeyRight
   of Key.Enter:
     keyCode = KeyCode.KeyEnter
+  of Key.CtrlJ:
+    # Some terminals send LF (Ctrl-J) for Enter
+    keyCode = KeyCode.KeyEnter
   of Key.Escape:
     keyCode = KeyCode.KeyEscape
   of Key.Tab:
