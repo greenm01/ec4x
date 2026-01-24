@@ -287,6 +287,8 @@ proc runTui*(gameId: string = "") =
           sam.present(emptyProposal())
 
       nostrHandlers.onEvent = proc(subId: string, event: NostrEvent) =
+        logInfo("EVENT", "Received event: subId=", subId, " kind=", event.kind,
+          " id=", event.id[0..min(8, event.id.len-1)])
         try:
           if event.kind == EventKindGameDefinition:
             let joinRequested = sam.model.nostrJoinRequested
@@ -398,11 +400,15 @@ proc runTui*(gameId: string = "") =
                 nostrDaemonPubkey = event.pubkey
                 if nostrClient != nil:
                   nostrClient.setDaemonPubkey(nostrDaemonPubkey)
+            logInfo("JOIN", "GameDef event: gameId=", if gameIdOpt.isSome: gameIdOpt.get() else: "none",
+              " joinReq=", sam.model.nostrJoinRequested, " joinSent=", sam.model.nostrJoinSent,
+              " joinGameId=", sam.model.nostrJoinGameId, " joinPubkey=", sam.model.nostrJoinPubkey[0..min(16, sam.model.nostrJoinPubkey.len-1)])
             if (sam.model.nostrJoinRequested or sam.model.nostrJoinSent) and
                 sam.model.nostrJoinGameId.len > 0 and
                 event.pubkey.len > 0 and
                 sam.model.nostrJoinPubkey.len > 0 and
                 gameIdOpt.isSome:
+              logInfo("JOIN", "Passed join handler checks, looking for claimed slot...")
               let slots = event.getSlots()
               logDebug("TUI/Join", "Slots received",
                 "count=", $slots.len)
@@ -433,18 +439,20 @@ proc runTui*(gameId: string = "") =
                   let gameName = event.getTagValue(TagName)
                   let turnOpt = event.getTurn()
                   let houseId = HouseId(slot.index.uint32)
-                  logDebug("TUI/Join", "Join match",
-                    "game=", joinGameId,
-                    "house=", $houseId)
+                  logInfo("JOIN", "★★★ FOUND MATCH! Adding game to cache",
+                    " game=", joinGameId, " house=", $houseId)
 
                   # Update TUI cache with joined game
                   let gameNameStr = if gameName.isSome: gameName.get()
                                     else: joinGameId
                   let turnNum = if turnOpt.isSome: turnOpt.get() else: 0
+                  logInfo("JOIN", "Writing to cache: game=", joinGameId, " name=", gameNameStr,
+                    " turn=", turnNum, " relay=", sam.model.nostrRelayUrl)
                   tuiCache.upsertGame(joinGameId, gameNameStr, turnNum,
                     "active", sam.model.nostrRelayUrl, event.pubkey)
                   tuiCache.insertPlayerSlot(joinGameId, joinPubkey,
                     int(houseId))
+                  logInfo("JOIN", "Cache updated successfully")
 
                   # Also write legacy join cache for backward compat
                   writeJoinCache("data", joinPubkey, joinGameId, houseId)
@@ -470,8 +478,10 @@ proc runTui*(gameId: string = "") =
                         int(houseId)
                       sam.model.entryModal.activeGames[idx].status = "active"
                       foundGame = true
+                      logInfo("JOIN", "Updated existing game in entryModal")
                       break
                   if not foundGame:
+                    logInfo("JOIN", "Adding new game to entryModal")
                     # Add the game if not already in entry modal
                     sam.model.entryModal.activeGames.add(EntryActiveGameInfo(
                       id: joinGameId,
@@ -492,6 +502,7 @@ proc runTui*(gameId: string = "") =
                   sam.model.nostrJoinPubkey = ""
                   sam.model.entryModal.inviteInput.clear()
                   sam.model.entryModal.inviteError = ""
+                  logInfo("JOIN", "★★★ JOIN COMPLETE! Game should now appear in YOUR GAMES")
                   break
             sam.present(emptyProposal())
         except CatchableError as e:
@@ -512,9 +523,11 @@ proc runTui*(gameId: string = "") =
         sam.present(emptyProposal())
 
       nostrHandlers.onError = proc(message: string) =
+        # Log error but don't disable the entire client
+        # Individual event decode errors shouldn't kill the connection
+        logWarn("Nostr/Error", message)
         sam.model.nostrLastError = message
-        sam.model.nostrStatus = "error"
-        sam.model.nostrEnabled = false
+        # Don't change status or disable - keep processing other events
         sam.present(emptyProposal())
 
       nostrClient = newPlayerNostrClient(
@@ -536,8 +549,25 @@ proc runTui*(gameId: string = "") =
         if nostrClient.isConnected():
           logInfo("Nostr", "Connection established after ", $((i+1)*100), "ms")
           initialModel.nostrStatus = "connected"
+
+          # Start listening and subscribe to lobby games
+          asyncCheck nostrClient.listen()
+          nostrListenerStarted = true
+          let lobbyFilter = newFilter().withKinds(@[EventKindGameDefinition])
+          asyncCheck nostrClient.subscribe("lobby:games", @[lobbyFilter])
+          nostrSubscriptions.add("lobby:games")
+          logInfo("Nostr", "Subscribed to lobby:games")
+
+          # Subscribe to join errors for this player
+          if identity.npubHex.len > 0:
+            let joinErrorFilter = newFilter()
+              .withKinds(@[EventKindJoinError])
+              .withTag(TagP, @[identity.npubHex])
+            asyncCheck nostrClient.subscribe("lobby:join-errors", @[joinErrorFilter])
+            nostrSubscriptions.add("lobby:join-errors")
+            logInfo("Nostr", "Subscribed to lobby:join-errors")
           break
-      
+
       if not nostrClient.isConnected():
         logWarn("Nostr", "Connection not established within timeout")
         initialModel.nostrStatus = "error"
@@ -574,6 +604,84 @@ proc runTui*(gameId: string = "") =
   sam.present(emptyProposal())
 
   proc processNostr() =
+    # DEBUG: Check join state
+    if sam.model.nostrJoinRequested:
+      logInfo("JOIN", "processNostr: joinRequested=true, inviteCode=", sam.model.nostrJoinInviteCode,
+        " relayUrl=", sam.model.nostrJoinRelayUrl, " client=", if nostrClient == nil: "nil" else: "exists",
+        " status=", sam.model.nostrStatus)
+
+    # Handle disconnected client that needs reconnection
+    if sam.model.nostrJoinRequested and
+        sam.model.nostrJoinRelayUrl.len > 0 and
+        nostrClient != nil and
+        not nostrClient.isConnected():
+      logInfo("Nostr/Join", "Reconnecting for invite: ",
+        sam.model.nostrJoinRelayUrl)
+      asyncCheck nostrClient.stop()
+      nostrListenerStarted = false
+      nostrSubscriptions.setLen(0)
+      nostrDaemonPubkey = ""
+      nostrClient = nil
+      sam.model.nostrEnabled = false
+      sam.model.nostrStatus = "idle"
+
+    # Handle invite join when no client exists
+    if sam.model.nostrJoinRequested and
+        sam.model.nostrJoinRelayUrl.len > 0 and
+        nostrClient == nil:
+      logInfo("Nostr/Join", "Creating client for invite relay: ",
+        sam.model.nostrJoinRelayUrl)
+      sam.model.nostrRelayUrl = sam.model.nostrJoinRelayUrl
+
+      let identity = sam.model.entryModal.identity
+      let relayList = @[sam.model.nostrJoinRelayUrl]
+      nostrClient = newPlayerNostrClient(
+        relayList, activeGameId,
+        identity.nsecHex, identity.npubHex,
+        nostrDaemonPubkey, nostrHandlers)
+      asyncCheck nostrClient.start()
+      sam.model.nostrStatus = "connecting"
+      sam.model.nostrEnabled = true
+
+      # Wait for connection (up to 3 seconds)
+      for i in 0..30:
+        poll(100)
+        if nostrClient.isConnected():
+          logInfo("Nostr/Join", "Connected after ", $((i+1)*100), "ms")
+          sam.model.nostrStatus = "connected"
+          asyncCheck nostrClient.listen()
+          nostrListenerStarted = true
+          let lobbyFilter = newFilter().withKinds(@[EventKindGameDefinition])
+          asyncCheck nostrClient.subscribe("lobby:games", @[lobbyFilter])
+          nostrSubscriptions.add("lobby:games")
+          let joinPubkey = identity.npubHex
+          if joinPubkey.len > 0:
+            let joinErrorFilter = newFilter()
+              .withKinds(@[EventKindJoinError])
+              .withTag(TagP, @[joinPubkey])
+            asyncCheck nostrClient.subscribe("lobby:join-errors",
+              @[joinErrorFilter])
+            nostrSubscriptions.add("lobby:join-errors")
+          break
+
+      if not nostrClient.isConnected():
+        logWarn("Nostr/Join", "Failed to connect: ",
+          sam.model.nostrJoinRelayUrl)
+        sam.model.nostrStatus = "error"
+        sam.model.nostrLastError = "Failed to connect to " &
+          sam.model.nostrJoinRelayUrl
+        sam.model.lobbyJoinStatus = JoinStatus.Failed
+        sam.model.lobbyJoinError = "Failed to connect to relay"
+        sam.model.statusMessage = sam.model.lobbyJoinError
+        sam.model.entryModal.setInviteError(sam.model.lobbyJoinError)
+        sam.model.nostrJoinRequested = false
+        sam.model.nostrJoinSent = false
+        sam.model.nostrJoinInviteCode = ""
+        sam.model.nostrJoinRelayUrl = ""
+        nostrClient = nil
+        sam.model.nostrEnabled = false
+        return
+
     if sam.model.nostrEnabled and nostrClient != nil:
       if sam.model.nostrStatus == "connecting" and
           nostrClient.isConnected():
@@ -621,18 +729,71 @@ proc runTui*(gameId: string = "") =
         let joinRelay = sam.model.nostrJoinRelayUrl
         if joinRelay.len > 0 and joinRelay != sam.model.nostrRelayUrl:
           # Need to reconnect to the relay specified in the invite code
+          logInfo("Nostr/Join", "Switching relay for join: ",
+            sam.model.nostrRelayUrl, " -> ", joinRelay)
           sam.model.statusMessage = "Connecting to " & joinRelay
           sam.model.nostrRelayUrl = joinRelay
-          # Trigger reconnection by resetting client state
+          
+          # Stop existing client
           if nostrClient != nil:
             asyncCheck nostrClient.stop()
-            nostrClient = nil
           nostrListenerStarted = false
           nostrSubscriptions.setLen(0)
           nostrDaemonPubkey = ""
-          sam.model.nostrStatus = "idle"
-          sam.model.nostrEnabled = false
-          # Will reconnect on next loop iteration
+          
+          # Create new client for the new relay
+          let identity = sam.model.entryModal.identity
+          let relayList = @[joinRelay]
+          nostrClient = newPlayerNostrClient(
+            relayList,
+            activeGameId,
+            identity.nsecHex,
+            identity.npubHex,
+            nostrDaemonPubkey,
+            nostrHandlers
+          )
+          asyncCheck nostrClient.start()
+          sam.model.nostrStatus = "connecting"
+          sam.model.nostrEnabled = true
+          
+          # Wait for connection (up to 3 seconds)
+          for i in 0..30:
+            poll(100)
+            if nostrClient.isConnected():
+              logInfo("Nostr/Join", "Connected to new relay after ",
+                $((i+1)*100), "ms")
+              sam.model.nostrStatus = "connected"
+              # Start listener and subscribe
+              asyncCheck nostrClient.listen()
+              nostrListenerStarted = true
+              let lobbyFilter = newFilter()
+                .withKinds(@[EventKindGameDefinition])
+              asyncCheck nostrClient.subscribe("lobby:games", @[lobbyFilter])
+              nostrSubscriptions.add("lobby:games")
+              let joinPubkey = identity.npubHex
+              if joinPubkey.len > 0:
+                let joinErrorFilter = newFilter()
+                  .withKinds(@[EventKindJoinError])
+                  .withTag(TagP, @[joinPubkey])
+                asyncCheck nostrClient.subscribe("lobby:join-errors",
+                  @[joinErrorFilter])
+                nostrSubscriptions.add("lobby:join-errors")
+              break
+          
+          if not nostrClient.isConnected():
+            logWarn("Nostr/Join", "Failed to connect to ", joinRelay)
+            sam.model.nostrStatus = "error"
+            sam.model.nostrLastError = "Failed to connect to " & joinRelay
+            sam.model.lobbyJoinStatus = JoinStatus.Failed
+            sam.model.lobbyJoinError = "Failed to connect to relay"
+            sam.model.statusMessage = sam.model.lobbyJoinError
+            sam.model.nostrJoinRequested = false
+            sam.model.nostrJoinSent = false
+            sam.model.nostrJoinInviteCode = ""
+            sam.model.nostrJoinRelayUrl = ""
+            # Don't proceed with slot claim
+          # If connected, fall through to publish slot claim on next iteration
+          
         elif sam.model.nostrStatus == "connected":
           let identity = sam.model.entryModal.identity
           let privOpt = hexToBytes32Safe(identity.nsecHex)
@@ -651,15 +812,38 @@ proc runTui*(gameId: string = "") =
               playerPubkey = identity.npubHex
             )
             signEvent(event, privOpt.get())
-            asyncCheck nostrClient.publish(event)
-            sam.model.statusMessage = "Join request sent"
-            sam.model.nostrJoinSent = true
-            sam.model.nostrJoinRequested = false
-            sam.model.nostrJoinGameId = gameId
-            sam.model.nostrJoinInviteCode = ""
-            sam.model.nostrJoinRelayUrl = ""
-            if gameId.len == 0:
-              sam.model.nostrJoinGameId = "invite"
+            
+            logInfo("Nostr/Join", "Publishing slot claim",
+              " gameId=", joinTarget,
+              " inviteCode=", sam.model.nostrJoinInviteCode,
+              " eventId=", event.id[0..min(15, event.id.len-1)])
+            
+            # Publish and wait for result
+            let publishFuture = nostrClient.publish(event)
+            var published = false
+            # Poll for up to 3 seconds for publish result
+            for i in 0..30:
+              poll(100)
+              if publishFuture.finished:
+                published = publishFuture.read()
+                break
+            
+            if published:
+              logInfo("Nostr/Join", "Slot claim published successfully")
+              sam.model.statusMessage = "Join request sent"
+              sam.model.nostrJoinSent = true
+              sam.model.nostrJoinRequested = false
+              sam.model.nostrJoinGameId = if gameId.len > 0: gameId else: "invite"
+              sam.model.nostrJoinInviteCode = ""
+              sam.model.nostrJoinRelayUrl = ""
+            else:
+              logWarn("Nostr/Join", "Failed to publish slot claim")
+              sam.model.lobbyJoinStatus = JoinStatus.Failed
+              sam.model.lobbyJoinError = "Failed to send join request"
+              sam.model.statusMessage = "Join failed - check relay connection"
+              sam.model.nostrJoinRequested = false
+              sam.model.nostrJoinSent = false
+              # Keep invite code so user can retry
           else:
             sam.model.lobbyJoinStatus = JoinStatus.Failed
             sam.model.lobbyJoinError = "Invalid signing key"

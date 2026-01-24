@@ -32,7 +32,7 @@ When in **plan mode** (user has requested planning before execution), STRICTLY e
 ## Critical Rules
 
 1. **All enums MUST be `{.pure.}`** (NEP-1 requirement)
-2. **No hardcoded values** - use TOML configs from `config/`
+2. **No hardcoded values** - use KDL configs from `config/`
 3. **Follow DRY** - check existing patterns before duplicating
 4. **Follow DoD** - data-oriented design (see below)
 5. **Use `std/logging`** NOT echo (disappears in release builds)
@@ -181,7 +181,7 @@ income.processRevenue()  # Qualifies income/engine
 
 ### Configuration System
 
-**All tunable values from TOML:**
+**All tunable values from KDL:**
 ```nim
 # ❌ BAD - hardcoded
 result.prestige = 2
@@ -193,10 +193,10 @@ let attackThreshold = gameConfig.rba.strategic.attack_threshold
 ```
 
 **Key configs:**
-- `config/rba.toml` - AI weights, budgets, thresholds
-- `config/prestige.toml` - Prestige rewards
-- `config/economy.toml` - Economic parameters
-- `config/ships.toml` - Ship stats
+- `config/tech.kdl` - AI weights, budgets, thresholds
+- `config/prestige.kdl` - Prestige rewards
+- `config/tech.kdl` - Economic parameters
+- `config/ships.kdl` - Ship stats
 
 ---
 
@@ -301,7 +301,7 @@ Current:
 ## Common Gotchas
 
 - **Stale binaries:** Use `nimble buildSimulation` (full clean)
-- **Config changes:** Edit TOML files, NOT source code
+- **Config changes:** Edit kdl files, NOT source code
 - **Seeds:** Use `--seed` for reproducible testing
 - **Entity access:** Use public API (`state.colony()`), never `entity_manager` directly
 - **Facility types:** Neoria (shipyards/spaceports/drydocks), Kastra (starbases)

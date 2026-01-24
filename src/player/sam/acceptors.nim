@@ -15,6 +15,7 @@ import ../tui/widget/scroll_state
 import ../state/join_flow
 import ../state/lobby_profile
 import ../../common/invite_code
+import ../../common/logger
 
 export types, tui_model, actions
 
@@ -539,6 +540,8 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         if ch in 'a'..'z' or ch in '0'..'9' or ch in {'-', '@', ':', '.'}:
           discard model.entryModal.inviteInput.appendChar(ch)
           model.entryModal.inviteError = ""
+          # Focus invite code field when typing starts
+          model.entryModal.focusInviteCode()
     of ActionEntryInviteBackspace:
       model.entryModal.inviteInput.backspace()
       model.entryModal.inviteError = ""
@@ -550,7 +553,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       else:
         let input = model.entryModal.inviteCode()
         let parsed = parseInviteCode(input)
-        
+
         if not isValidInviteCodeFormat(parsed.code):
           model.entryModal.setInviteError("Invalid code format")
         elif not parsed.hasRelay() and model.nostrRelayUrl.len == 0:
@@ -560,12 +563,14 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.nostrJoinRequested = true
           model.nostrJoinSent = false
           model.nostrJoinInviteCode = parsed.code
-          model.nostrJoinRelayUrl = if parsed.hasRelay(): 
-            parsed.relayUrl 
-          else: 
+          model.nostrJoinRelayUrl = if parsed.hasRelay():
+            parsed.relayUrl
+          else:
             model.nostrRelayUrl
-          model.nostrJoinGameId = ""
+          model.nostrJoinGameId = "invite"
           model.nostrJoinPubkey = identity.npubHex
+          logInfo("JOIN", "FLAGS SET: requested=true, inviteCode=", model.nostrJoinInviteCode,
+            " relayUrl=", model.nostrJoinRelayUrl, " gameId=", model.nostrJoinGameId)
           model.entryModal.setInviteError("Join request sent")
           model.entryModal.clearInviteCode()
           model.lobbyJoinStatus = JoinStatus.WaitingResponse

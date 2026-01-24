@@ -369,9 +369,13 @@ proc tickMaintenanceCmd(): DaemonCmd =
               daemonLoop.model.identity.publicKeyHex)
             logDebug("Nostr", "Subscribed to commands for game: ", gameId)
 
-          if "daemon:invite" notin daemonLoop.model.nostrClient.subscriptions:
-            asyncCheck daemonLoop.model.nostrSubscriber.subscribeInviteClaims()
-            logDebug("Nostr", "Subscribed to invite slot claims")
+      # Subscribe to invite claims (must be outside loop - runs even with no
+      # games so players can join new lobbies)
+      if daemonLoop.model.nostrSubscriber != nil and
+          daemonLoop.model.nostrClient.isConnected():
+        if "daemon:invite" notin daemonLoop.model.nostrClient.subscriptions:
+          asyncCheck daemonLoop.model.nostrSubscriber.subscribeInviteClaims()
+          logDebug("Nostr", "Subscribed to invite slot claims")
 
       return Proposal[DaemonModel](
         name: "maintenance_complete",
