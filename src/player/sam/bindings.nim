@@ -50,7 +50,7 @@ type
   Binding* = object
     key*: KeyCode
     modifier*: KeyModifier
-    actionName*: string       ## SAM action identifier
+    actionKind*: ActionKind   ## Enum-based action identifier
     longLabel*: string        ## Full label: "VIEW COLONY"
     shortLabel*: string       ## Short label: "VIEW"
     context*: BindingContext
@@ -81,9 +81,30 @@ proc clearBindings*() =
   ## Clear all bindings (for testing)
   gBindings = @[]
 
+proc hasColonies*(model: TuiModel): bool = model.colonies.len > 0
+proc hasFleets*(model: TuiModel): bool = model.fleets.len > 0
+proc hasSelection*(model: TuiModel): bool = model.selectedIdx >= 0
+proc hasFleetSelection*(model: TuiModel): bool = model.selectedFleetIds.len > 0
+proc inGame*(model: TuiModel): bool = model.appPhase == AppPhase.InGame
+proc inLobby*(model: TuiModel): bool = model.appPhase == AppPhase.Lobby
+
 proc registerBinding*(b: Binding) =
-  ## Add a binding to the registry
+  ## Legacy overload for Binding constructor
   gBindings.add(b)
+
+proc registerBinding*(key: KeyCode, modifier: KeyModifier = KeyModifier.None, actionKind: ActionKind, context: BindingContext, longLabel: string, shortLabel: string = "", priority: int = 0, enabledCheck: string = "") =
+  ## Register a new binding using enum actionKind (new signature)
+  gBindings.add(Binding(
+    key: key,
+    modifier: modifier,
+    actionKind: actionKind,
+    longLabel: longLabel,
+    shortLabel: shortLabel,
+    context: context,
+    priority: priority,
+    enabledCheck: enabledCheck
+  ))
+
 
 proc getAllBindings*(): seq[Binding] =
   ## Get all registered bindings
@@ -269,57 +290,68 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.Key1, modifier: KeyModifier.None,
-    actionName: ActionSwitchView, context: BindingContext.Global,
+    actionKind: ActionKind.switchView,
+    context: BindingContext.Global,
     longLabel: "OVERVIEW", shortLabel: "Ovrw", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.Key2, modifier: KeyModifier.None,
-    actionName: ActionSwitchView, context: BindingContext.Global,
+    actionKind: ActionKind.switchView,
+    context: BindingContext.Global,
     longLabel: "PLANETS", shortLabel: "Plan", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.Key3, modifier: KeyModifier.None,
-    actionName: ActionSwitchView, context: BindingContext.Global,
+    actionKind: ActionKind.switchView,
+    context: BindingContext.Global,
     longLabel: "FLEETS", shortLabel: "Flt", priority: 3))
 
   registerBinding(Binding(
     key: KeyCode.Key4, modifier: KeyModifier.None,
-    actionName: ActionSwitchView, context: BindingContext.Global,
+    actionKind: ActionKind.switchView,
+    context: BindingContext.Global,
     longLabel: "RESEARCH", shortLabel: "Res", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.Key5, modifier: KeyModifier.None,
-    actionName: ActionSwitchView, context: BindingContext.Global,
+    actionKind: ActionKind.switchView,
+    context: BindingContext.Global,
     longLabel: "ESPIONAGE", shortLabel: "Esp", priority: 5))
 
   registerBinding(Binding(
     key: KeyCode.Key6, modifier: KeyModifier.None,
-    actionName: ActionSwitchView, context: BindingContext.Global,
+    actionKind: ActionKind.switchView,
+    context: BindingContext.Global,
     longLabel: "ECONOMY", shortLabel: "Econ", priority: 6))
 
   registerBinding(Binding(
     key: KeyCode.Key7, modifier: KeyModifier.None,
-    actionName: ActionSwitchView, context: BindingContext.Global,
+    actionKind: ActionKind.switchView,
+    context: BindingContext.Global,
     longLabel: "REPORTS", shortLabel: "Rpt", priority: 7))
 
   registerBinding(Binding(
     key: KeyCode.Key8, modifier: KeyModifier.None,
-    actionName: ActionSwitchView, context: BindingContext.Global,
+    actionKind: ActionKind.switchView,
+    context: BindingContext.Global,
     longLabel: "MESSAGES", shortLabel: "Msg", priority: 8))
 
   registerBinding(Binding(
     key: KeyCode.Key9, modifier: KeyModifier.None,
-    actionName: ActionSwitchView, context: BindingContext.Global,
+    actionKind: ActionKind.switchView,
+    context: BindingContext.Global,
     longLabel: "SETTINGS", shortLabel: "Set", priority: 9))
 
   registerBinding(Binding(
     key: KeyCode.KeyColon, modifier: KeyModifier.None,
-    actionName: ActionEnterExpertMode, context: BindingContext.Global,
+    actionKind: ActionKind.enterExpertMode,
+    context: BindingContext.Global,
     longLabel: "EXPERT", shortLabel: "Exp", priority: 100))
 
   registerBinding(Binding(
     key: KeyCode.KeyCtrlQ, modifier: KeyModifier.Ctrl,
-    actionName: ActionQuit, context: BindingContext.Global,
+    actionKind: ActionKind.quit,
+    context: BindingContext.Global,
     longLabel: "QUIT", shortLabel: "Quit", priority: 101))
 
   # =========================================================================
@@ -328,22 +360,26 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionName: ActionListUp, context: BindingContext.Overview,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Overview,
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionName: ActionListDown, context: BindingContext.Overview,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Overview,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Overview,
+    actionKind: ActionKind.select,
+    context: BindingContext.Overview,
     longLabel: "JUMP", shortLabel: "Jump", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyL, modifier: KeyModifier.None,
-    actionName: ActionNavigateMode, context: BindingContext.Overview,
+    actionKind: ActionKind.navigateMode,
+    context: BindingContext.Overview,
     longLabel: "DIPLOMACY", shortLabel: "Dipl", priority: 20))
 
   # =========================================================================
@@ -352,29 +388,34 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionName: ActionListUp, context: BindingContext.Planets,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Planets,
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionName: ActionListDown, context: BindingContext.Planets,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Planets,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Planets,
+    actionKind: ActionKind.select,
+    context: BindingContext.Planets,
     longLabel: "VIEW", shortLabel: "View", priority: 10,
     enabledCheck: "hasColonies"))
 
   registerBinding(Binding(
     key: KeyCode.KeyB, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Planets,
+    actionKind: ActionKind.select,
+    context: BindingContext.Planets,
     longLabel: "BUILD", shortLabel: "Bld", priority: 20,
     enabledCheck: "hasColonies"))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionBreadcrumbBack, context: BindingContext.Planets,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.Planets,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
@@ -383,22 +424,26 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyTab, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.PlanetDetail,
+    actionKind: ActionKind.select,
+    context: BindingContext.PlanetDetail,
     longLabel: "NEXT TAB", shortLabel: "Tab", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.KeyB, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.PlanetDetail,
+    actionKind: ActionKind.select,
+    context: BindingContext.PlanetDetail,
     longLabel: "BUILD", shortLabel: "Bld", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyG, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.PlanetDetail,
+    actionKind: ActionKind.select,
+    context: BindingContext.PlanetDetail,
     longLabel: "GARRISON", shortLabel: "Gar", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionBreadcrumbBack, context: BindingContext.PlanetDetail,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.PlanetDetail,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
@@ -407,34 +452,40 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionName: ActionListUp, context: BindingContext.Fleets,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Fleets,
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionName: ActionListDown, context: BindingContext.Fleets,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Fleets,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Fleets,
+    actionKind: ActionKind.select,
+    context: BindingContext.Fleets,
     longLabel: "VIEW", shortLabel: "View", priority: 10,
     enabledCheck: "hasFleets"))
 
   registerBinding(Binding(
     key: KeyCode.KeyX, modifier: KeyModifier.None,
-    actionName: ActionToggleFleetSelect, context: BindingContext.Fleets,
+    actionKind: ActionKind.toggleFleetSelect,
+    context: BindingContext.Fleets,
     longLabel: "SELECT", shortLabel: "Sel", priority: 15,
     enabledCheck: "hasFleets"))
 
   registerBinding(Binding(
     key: KeyCode.KeyL, modifier: KeyModifier.None,
-    actionName: ActionSwitchFleetView, context: BindingContext.Fleets,
+    actionKind: ActionKind.switchFleetView,
+    context: BindingContext.Fleets,
     longLabel: "LIST/MAP", shortLabel: "L/M", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionBreadcrumbBack, context: BindingContext.Fleets,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.Fleets,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
@@ -443,27 +494,32 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyM, modifier: KeyModifier.None,
-    actionName: ActionStartOrderMove, context: BindingContext.FleetDetail,
+    actionKind: ActionKind.startOrderMove,
+    context: BindingContext.FleetDetail,
     longLabel: "MOVE", shortLabel: "Move", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyP, modifier: KeyModifier.None,
-    actionName: ActionStartOrderPatrol, context: BindingContext.FleetDetail,
+    actionKind: ActionKind.startOrderPatrol,
+    context: BindingContext.FleetDetail,
     longLabel: "PATROL", shortLabel: "Ptrl", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyH, modifier: KeyModifier.None,
-    actionName: ActionStartOrderHold, context: BindingContext.FleetDetail,
+    actionKind: ActionKind.startOrderHold,
+    context: BindingContext.FleetDetail,
     longLabel: "HOLD", shortLabel: "Hold", priority: 30))
 
   registerBinding(Binding(
     key: KeyCode.KeyR, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.FleetDetail,
+    actionKind: ActionKind.select,
+    context: BindingContext.FleetDetail,
     longLabel: "ROE", shortLabel: "ROE", priority: 40))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionBreadcrumbBack, context: BindingContext.FleetDetail,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.FleetDetail,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
@@ -472,27 +528,32 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyE, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Research,
+    actionKind: ActionKind.select,
+    context: BindingContext.Research,
     longLabel: "ERP", shortLabel: "ERP", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyS, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Research,
+    actionKind: ActionKind.select,
+    context: BindingContext.Research,
     longLabel: "SRP", shortLabel: "SRP", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyT, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Research,
+    actionKind: ActionKind.select,
+    context: BindingContext.Research,
     longLabel: "TRP", shortLabel: "TRP", priority: 30))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Research,
+    actionKind: ActionKind.select,
+    context: BindingContext.Research,
     longLabel: "CONFIRM", shortLabel: "OK", priority: 40))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionBreadcrumbBack, context: BindingContext.Research,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.Research,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
@@ -501,27 +562,32 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionName: ActionListUp, context: BindingContext.Espionage,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Espionage,
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionName: ActionListDown, context: BindingContext.Espionage,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Espionage,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyB, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Espionage,
+    actionKind: ActionKind.select,
+    context: BindingContext.Espionage,
     longLabel: "BUY EBP", shortLabel: "EBP", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyC, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Espionage,
+    actionKind: ActionKind.select,
+    context: BindingContext.Espionage,
     longLabel: "BUY CIP", shortLabel: "CIP", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionBreadcrumbBack, context: BindingContext.Espionage,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.Espionage,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
@@ -530,22 +596,26 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyLeft, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Economy,
+    actionKind: ActionKind.select,
+    context: BindingContext.Economy,
     longLabel: "TAX-", shortLabel: "-", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyRight, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Economy,
+    actionKind: ActionKind.select,
+    context: BindingContext.Economy,
     longLabel: "TAX+", shortLabel: "+", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Economy,
+    actionKind: ActionKind.select,
+    context: BindingContext.Economy,
     longLabel: "CONFIRM", shortLabel: "OK", priority: 30))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionBreadcrumbBack, context: BindingContext.Economy,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.Economy,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
@@ -554,27 +624,32 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionName: ActionListUp, context: BindingContext.Reports,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Reports,
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionName: ActionListDown, context: BindingContext.Reports,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Reports,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Reports,
+    actionKind: ActionKind.select,
+    context: BindingContext.Reports,
     longLabel: "VIEW", shortLabel: "View", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyTab, modifier: KeyModifier.None,
-    actionName: ActionReportFocusNext, context: BindingContext.Reports,
+    actionKind: ActionKind.reportFocusNext,
+    context: BindingContext.Reports,
     longLabel: "FOCUS", shortLabel: "Foc", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionBreadcrumbBack, context: BindingContext.Reports,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.Reports,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
@@ -583,17 +658,20 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.ReportDetail,
+    actionKind: ActionKind.select,
+    context: BindingContext.ReportDetail,
     longLabel: "JUMP", shortLabel: "Jump", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyN, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.ReportDetail,
+    actionKind: ActionKind.select,
+    context: BindingContext.ReportDetail,
     longLabel: "NEXT", shortLabel: "Next", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionBreadcrumbBack, context: BindingContext.ReportDetail,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.ReportDetail,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
@@ -602,27 +680,32 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionName: ActionListUp, context: BindingContext.Messages,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Messages,
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionName: ActionListDown, context: BindingContext.Messages,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Messages,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyL, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Messages,
+    actionKind: ActionKind.select,
+    context: BindingContext.Messages,
     longLabel: "DIPLOMACY", shortLabel: "Dipl", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyC, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Messages,
+    actionKind: ActionKind.select,
+    context: BindingContext.Messages,
     longLabel: "COMPOSE", shortLabel: "Comp", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionBreadcrumbBack, context: BindingContext.Messages,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.Messages,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
@@ -631,27 +714,32 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionName: ActionListUp, context: BindingContext.Settings,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Settings,
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionName: ActionListDown, context: BindingContext.Settings,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Settings,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Settings,
+    actionKind: ActionKind.select,
+    context: BindingContext.Settings,
     longLabel: "CHANGE", shortLabel: "Chg", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyR, modifier: KeyModifier.None,
-    actionName: ActionSelect, context: BindingContext.Settings,
+    actionKind: ActionKind.select,
+    context: BindingContext.Settings,
     longLabel: "RESET", shortLabel: "Rst", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionBreadcrumbBack, context: BindingContext.Settings,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.Settings,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
@@ -660,32 +748,38 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionName: ActionMoveCursor, context: BindingContext.OrderEntry,
+    actionKind: ActionKind.moveCursor,
+    context: BindingContext.OrderEntry,
     longLabel: "MOVE", shortLabel: "Mov", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionName: ActionMoveCursor, context: BindingContext.OrderEntry,
+    actionKind: ActionKind.moveCursor,
+    context: BindingContext.OrderEntry,
     longLabel: "MOVE", shortLabel: "Mov", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyLeft, modifier: KeyModifier.None,
-    actionName: ActionMoveCursor, context: BindingContext.OrderEntry,
+    actionKind: ActionKind.moveCursor,
+    context: BindingContext.OrderEntry,
     longLabel: "MOVE", shortLabel: "Mov", priority: 3))
 
   registerBinding(Binding(
     key: KeyCode.KeyRight, modifier: KeyModifier.None,
-    actionName: ActionMoveCursor, context: BindingContext.OrderEntry,
+    actionKind: ActionKind.moveCursor,
+    context: BindingContext.OrderEntry,
     longLabel: "MOVE", shortLabel: "Mov", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionName: ActionConfirmOrder, context: BindingContext.OrderEntry,
+    actionKind: ActionKind.confirmOrder,
+    context: BindingContext.OrderEntry,
     longLabel: "CONFIRM", shortLabel: "OK", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionName: ActionCancelOrder, context: BindingContext.OrderEntry,
+    actionKind: ActionKind.cancelOrder,
+    context: BindingContext.OrderEntry,
     longLabel: "CANCEL", shortLabel: "Esc", priority: 90))
 
   # =========================================================================
@@ -694,27 +788,32 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionName: ActionExpertSubmit, context: BindingContext.ExpertMode,
+    actionKind: ActionKind.expertSubmit,
+    context: BindingContext.ExpertMode,
     longLabel: "SUBMIT", shortLabel: "OK", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionName: ActionExitExpertMode, context: BindingContext.ExpertMode,
+    actionKind: ActionKind.exitExpertMode,
+    context: BindingContext.ExpertMode,
     longLabel: "CANCEL", shortLabel: "Esc", priority: 90))
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionName: ActionExpertHistoryPrev, context: BindingContext.ExpertMode,
+    actionKind: ActionKind.expertHistoryPrev,
+    context: BindingContext.ExpertMode,
     longLabel: "HISTORY", shortLabel: "Hist", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionName: ActionExpertHistoryNext, context: BindingContext.ExpertMode,
+    actionKind: ActionKind.expertHistoryNext,
+    context: BindingContext.ExpertMode,
     longLabel: "HISTORY", shortLabel: "Hist", priority: 21))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
-    actionName: ActionExpertInputBackspace, context: BindingContext.ExpertMode,
+    actionKind: ActionKind.expertInputBackspace,
+    context: BindingContext.ExpertMode,
     longLabel: "DELETE", shortLabel: "Del", priority: 30))
 
 # =============================================================================
@@ -726,9 +825,9 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   ## Dispatch an action based on the binding's action name
   ## Some actions need parameters derived from key or model state
 
-  case b.actionName
+  case b.actionKind
   # View switching
-  of ActionSwitchView:
+  of ActionKind.switchView:
     let viewNum = case key
       of KeyCode.Key1: 1
       of KeyCode.Key2: 2
@@ -744,17 +843,17 @@ proc dispatchAction*(b: Binding, model: TuiModel,
       return some(actionSwitchView(viewNum))
 
   # Navigation
-  of ActionListUp:
+  of ActionKind.listUp:
     return some(actionListUp())
-  of ActionListDown:
+  of ActionKind.listDown:
     return some(actionListDown())
-  of ActionBreadcrumbBack:
+  of ActionKind.breadcrumbBack:
     return some(actionBreadcrumbBack())
-  of ActionNavigateMode:
+  of ActionKind.navigateMode:
     return some(actionSwitchMode(ViewMode.Overview))
 
   # Cursor movement
-  of ActionMoveCursor:
+  of ActionKind.moveCursor:
     let dir = case key
       of KeyCode.KeyUp: HexDirection.NorthWest
       of KeyCode.KeyDown: HexDirection.SouthEast
@@ -764,56 +863,56 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionMoveCursor(dir))
 
   # Selection
-  of ActionSelect:
+  of ActionKind.select:
     return some(actionSelect())
-  of ActionDeselect:
+  of ActionKind.deselect:
     return some(actionDeselect())
-  of ActionToggleFleetSelect:
+  of ActionKind.toggleFleetSelect:
     return some(actionToggleFleetSelect(model.selectedIdx))
 
   # Expert mode
-  of ActionEnterExpertMode:
+  of ActionKind.enterExpertMode:
     return some(actionEnterExpertMode())
-  of ActionExitExpertMode:
+  of ActionKind.exitExpertMode:
     return some(actionExitExpertMode())
-  of ActionExpertSubmit:
+  of ActionKind.expertSubmit:
     return some(actionExpertSubmit())
-  of ActionExpertInputBackspace:
+  of ActionKind.expertInputBackspace:
     return some(actionExpertInputBackspace())
-  of ActionExpertHistoryPrev:
+  of ActionKind.expertHistoryPrev:
     return some(actionExpertHistoryPrev())
-  of ActionExpertHistoryNext:
+  of ActionKind.expertHistoryNext:
     return some(actionExpertHistoryNext())
 
   # Order entry
-  of ActionConfirmOrder:
+  of ActionKind.confirmOrder:
     return some(actionConfirmOrder(-1))  # -1 = use cursor
-  of ActionCancelOrder:
+  of ActionKind.cancelOrder:
     return some(actionCancelOrder())
-  of ActionStartOrderMove:
+  of ActionKind.startOrderMove:
     if model.selectedFleetId > 0:
       return some(actionStartOrderMove(model.selectedFleetId))
-  of ActionStartOrderPatrol:
+  of ActionKind.startOrderPatrol:
     if model.selectedFleetId > 0:
       return some(actionStartOrderPatrol(model.selectedFleetId))
-  of ActionStartOrderHold:
+  of ActionKind.startOrderHold:
     if model.selectedFleetId > 0:
       return some(actionStartOrderHold(model.selectedFleetId))
 
   # Quit
-  of ActionQuit:
+  of ActionKind.quit:
     return some(actionQuit())
-  of ActionQuitConfirm:
+  of ActionKind.quitConfirm:
     return some(actionQuitConfirm())
-  of ActionQuitCancel:
+  of ActionKind.quitCancel:
     return some(actionQuitCancel())
 
   # Turn submission
-  of ActionSubmitTurn:
+  of ActionKind.submitTurn:
     return some(actionSubmitTurn())
 
   # View-specific tabs
-  of ActionSwitchPlanetTab:
+  of ActionKind.switchPlanetTab:
     let tab = case key
       of KeyCode.Key1: 1
       of KeyCode.Key2: 2
@@ -823,21 +922,21 @@ proc dispatchAction*(b: Binding, model: TuiModel,
       else: 0
     if tab > 0:
       return some(actionSwitchPlanetTab(tab))
-  of ActionSwitchFleetView:
+  of ActionKind.switchFleetView:
     return some(actionSwitchFleetView())
-  of ActionCycleReportFilter:
+  of ActionKind.cycleReportFilter:
     return some(actionCycleReportFilter())
-  of ActionReportFocusNext:
+  of ActionKind.reportFocusNext:
     return some(actionReportFocusNext())
-  of ActionReportFocusPrev:
+  of ActionKind.reportFocusPrev:
     return some(actionReportFocusPrev())
-  of ActionReportFocusLeft:
+  of ActionKind.reportFocusLeft:
     return some(actionReportFocusLeft())
-  of ActionReportFocusRight:
+  of ActionKind.reportFocusRight:
     return some(actionReportFocusRight())
 
   # Lobby actions (handled separately in mapKeyToAction)
-  of ActionLobbyReturn:
+  of ActionKind.lobbyReturn:
     return some(actionLobbyReturn())
 
   else:
@@ -1032,7 +1131,7 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
     var idx = 0
     for b in globalBindings:
       # Skip quit in normal tab display (it's always Ctrl+Q)
-      if b.actionName == ActionQuit:
+      if b.actionKind == ActionKind.quit:
         continue
 
       let label = if useShortLabels: b.shortLabel else: b.longLabel

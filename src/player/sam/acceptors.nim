@@ -75,8 +75,8 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
     return
 
   model.clearExpertFeedback()
-  case proposal.actionName
-  of ActionNavigateMode:
+  case proposal.actionKind
+  of ActionKind.navigateMode:
     # Mode switch
     let newMode = viewModeFromInt(proposal.navMode)
     if newMode.isSome:
@@ -86,7 +86,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.resetBreadcrumbs(selectedMode)
       model.statusMessage = ""
       model.clearExpertFeedback()
-  of ActionSwitchView:
+  of ActionKind.switchView:
     # Primary view switch
     let newMode = viewModeFromInt(proposal.navMode)
     if newMode.isSome:
@@ -103,12 +103,12 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.reportTurnScroll = initScrollState()
         model.reportSubjectScroll = initScrollState()
         model.reportBodyScroll = initScrollState()
-  of ActionBreadcrumbBack:
+  of ActionKind.breadcrumbBack:
     if model.popBreadcrumb():
       let current = model.currentBreadcrumb()
       model.mode = current.viewMode
       model.statusMessage = ""
-  of ActionMoveCursor:
+  of ActionKind.moveCursor:
     if proposal.navMode >= 0:
       # Direction-based movement
       let dir = HexDirection(proposal.navMode)
@@ -116,10 +116,10 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
     else:
       # Direct coordinate movement
       model.mapState.cursor = proposal.navCursor
-  of ActionJumpHome:
+  of ActionKind.jumpHome:
     if model.homeworld.isSome:
       model.mapState.cursor = model.homeworld.get
-  of ActionCycleColony:
+  of ActionKind.cycleColony:
     let coords = model.ownedColonyCoords()
     if coords.len > 0:
       # Find current cursor in owned colonies
@@ -141,15 +141,15 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.mapState.cursor = coords[0]
         else:
           model.mapState.cursor = coords[currentIdx + 1]
-  of ActionSwitchPlanetTab:
+  of ActionKind.switchPlanetTab:
     let tabValue = max(1, min(5, proposal.navMode))
     model.planetDetailTab = PlanetDetailTab(tabValue)
-  of ActionSwitchFleetView:
+  of ActionKind.switchFleetView:
     if model.fleetViewMode == FleetViewMode.SystemView:
       model.fleetViewMode = FleetViewMode.ListView
     else:
       model.fleetViewMode = FleetViewMode.SystemView
-  of ActionCycleReportFilter:
+  of ActionKind.cycleReportFilter:
     let nextFilter = (ord(model.reportFilter) + 1) mod
       (ord(ReportCategory.Other) + 1)
     model.reportFilter = ReportCategory(nextFilter)
@@ -161,7 +161,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
     model.reportSubjectScroll = initScrollState()
     model.reportBodyScroll = initScrollState()
     model.statusMessage = ""
-  of ActionReportFocusNext:
+  of ActionKind.reportFocusNext:
     case model.reportFocus
     of ReportPaneFocus.TurnList:
       model.reportFocus = ReportPaneFocus.SubjectList
@@ -169,7 +169,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.reportFocus = ReportPaneFocus.BodyPane
     of ReportPaneFocus.BodyPane:
       model.reportFocus = ReportPaneFocus.TurnList
-  of ActionReportFocusPrev:
+  of ActionKind.reportFocusPrev:
     case model.reportFocus
     of ReportPaneFocus.TurnList:
       model.reportFocus = ReportPaneFocus.BodyPane
@@ -177,7 +177,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.reportFocus = ReportPaneFocus.TurnList
     of ReportPaneFocus.BodyPane:
       model.reportFocus = ReportPaneFocus.SubjectList
-  of ActionReportFocusLeft:
+  of ActionKind.reportFocusLeft:
     case model.reportFocus
     of ReportPaneFocus.TurnList:
       discard
@@ -185,7 +185,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.reportFocus = ReportPaneFocus.TurnList
     of ReportPaneFocus.BodyPane:
       model.reportFocus = ReportPaneFocus.SubjectList
-  of ActionReportFocusRight:
+  of ActionKind.reportFocusRight:
     case model.reportFocus
     of ReportPaneFocus.TurnList:
       model.reportFocus = ReportPaneFocus.SubjectList
@@ -193,7 +193,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.reportFocus = ReportPaneFocus.BodyPane
     of ReportPaneFocus.BodyPane:
       discard
-  of ActionLobbySwitchPane:
+  of ActionKind.lobbySwitchPane:
     if proposal.navMode >= 0 and proposal.navMode <= 2:
       model.lobbyPane = LobbyPane(proposal.navMode)
   else:
@@ -209,8 +209,8 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     return
 
   model.clearExpertFeedback()
-  case proposal.actionName
-  of ActionSelect:
+  case proposal.actionKind
+  of ActionKind.select:
     case model.mode
     of ViewMode.Overview:
       # Overview selection (action queue items)
@@ -250,12 +250,12 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.resetBreadcrumbs(selectedMode)
           model.statusMessage = "Jumped to " & report.linkLabel
       model.clearExpertFeedback()
-  of ActionToggleFleetSelect:
+  of ActionKind.toggleFleetSelect:
     if model.mode == ViewMode.Fleets:
       if model.selectedIdx < model.fleets.len:
         let fleetId = model.fleets[model.selectedIdx].id
         model.toggleFleetSelection(fleetId)
-  of ActionDeselect:
+  of ActionKind.deselect:
     model.mapState.selected = none(HexCoord)
     if model.mode == ViewMode.ReportDetail:
       if model.popBreadcrumb():
@@ -279,10 +279,10 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     else:
       model.statusMessage = ""
       model.clearExpertFeedback()
-  of ActionListUp:
+  of ActionKind.listUp:
     if model.selectedIdx > 0:
       model.selectedIdx = max(0, model.selectedIdx - 1)
-  of ActionListDown:
+  of ActionKind.listDown:
     let maxIdx = model.currentListLength() - 1
     if model.selectedIdx < maxIdx:
       model.selectedIdx = min(maxIdx, model.selectedIdx + 1)
@@ -299,13 +299,13 @@ proc viewportAcceptor*(model: var TuiModel, proposal: Proposal) =
     return
 
   model.clearExpertFeedback()
-  case proposal.actionName
-  of ActionScroll:
+  case proposal.actionKind
+  of ActionKind.scroll:
     model.mapState.viewportOrigin = (
       model.mapState.viewportOrigin.q + proposal.scrollDelta.dx,
       model.mapState.viewportOrigin.r + proposal.scrollDelta.dy,
     )
-  of ActionResize:
+  of ActionKind.resize:
     model.termWidth = proposal.scrollDelta.dx
     model.termHeight = proposal.scrollDelta.dy
     model.needsResize = true
@@ -323,9 +323,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
   of ProposalKind.pkNavigation:
     # Skip - navigation is handled by navigationAcceptor
     # Only process detail view transitions triggered by game actions
-    if proposal.actionName in [ActionSwitchView, ActionNavigateMode,
-        ActionBreadcrumbBack, ActionMoveCursor, ActionJumpHome,
-        ActionCycleColony]:
+    if proposal.actionKind in [ActionKind.switchView, ActionKind.navigateMode,
+        ActionKind.breadcrumbBack, ActionKind.moveCursor, ActionKind.jumpHome,
+        ActionKind.cycleColony]:
       return
     let target = proposal.navMode
     # Special handling for detail views (mode 20/30 are dynamic)
@@ -343,19 +343,19 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.selectedFleetId = model.fleets[model.selectedIdx].id
 
   of ProposalKind.pkGameAction:
-    case proposal.gameActionType
-    of ActionLobbyGenerateKey:
+    case proposal.actionKind
+    of ActionKind.lobbyGenerateKey:
       model.lobbySessionKeyActive = true
       model.lobbyWarning = "Session-only key: not saved"
       model.lobbyProfilePubkey = "session-" & $getTime().toUnix()
       model.statusMessage = "Generated session key (not stored)"
       # Active games populated from Nostr events, not filesystem
-    of ActionLobbyJoinRefresh:
+    of ActionKind.lobbyJoinRefresh:
       # Games now discovered via Nostr events (30400), not filesystem scan
       # This action triggers a UI refresh; actual data comes from Nostr
       model.lobbyJoinSelectedIdx = 0
       model.statusMessage = "Refreshing game list from relay..."
-    of ActionLobbyJoinSubmit:
+    of ActionKind.lobbyJoinSubmit:
       if model.lobbyInputMode == LobbyInputMode.Pubkey:
         let normalized = normalizePubkey(model.lobbyProfilePubkey)
         if normalized.isNone:
@@ -416,21 +416,21 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.nostrJoinPubkey = model.lobbyProfilePubkey
             model.lobbyJoinStatus = JoinStatus.WaitingResponse
             model.statusMessage = "Submitting join request"
-    of ActionLobbyJoinPoll:
+    of ActionKind.lobbyJoinPoll:
       if model.lobbyJoinStatus == JoinStatus.WaitingResponse:
         model.statusMessage = "Waiting for join response..."
-    of ActionLobbyReturn:
+    of ActionKind.lobbyReturn:
       model.appPhase = AppPhase.Lobby
       model.statusMessage = "Returned to lobby"
       # Active games already in model from TUI cache
-    of ActionLobbyEditPubkey:
+    of ActionKind.lobbyEditPubkey:
       model.lobbyInputMode = LobbyInputMode.Pubkey
       model.statusMessage = "Enter Nostr pubkey"
       # Active games already in model from TUI cache
-    of ActionLobbyEditName:
+    of ActionKind.lobbyEditName:
       model.lobbyInputMode = LobbyInputMode.Name
       model.statusMessage = "Enter player name"
-    of ActionLobbyBackspace:
+    of ActionKind.lobbyBackspace:
       case model.lobbyInputMode
       of LobbyInputMode.Pubkey:
         if model.lobbyProfilePubkey.len > 0:
@@ -441,7 +441,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.lobbyProfileName.setLen(model.lobbyProfileName.len - 1)
       else:
         discard
-    of ActionLobbyInputAppend:
+    of ActionKind.lobbyInputAppend:
       case model.lobbyInputMode
       of LobbyInputMode.Pubkey:
         model.lobbyProfilePubkey.add(proposal.gameActionData)
@@ -450,11 +450,11 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       else:
         discard
     # Entry modal actions
-    of ActionEntryUp:
+    of ActionKind.entryUp:
       model.entryModal.moveUp()
-    of ActionEntryDown:
+    of ActionKind.entryDown:
       model.entryModal.moveDown()
-    of ActionEntrySelect:
+    of ActionKind.entrySelect:
       # Enter selected game from game list
       let gameOpt = model.entryModal.selectedGame()
       if gameOpt.isSome:
@@ -463,24 +463,24 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.loadGameId = game.id
         model.loadHouseId = game.houseId
         model.statusMessage = "Loading game..."
-    of ActionEntryImport:
+    of ActionKind.entryImport:
       model.entryModal.startImport()
       model.statusMessage = "Enter nsec to import identity"
-    of ActionEntryImportConfirm:
+    of ActionKind.entryImportConfirm:
       if model.entryModal.confirmImport():
         model.statusMessage = "Identity imported successfully"
       else:
         model.statusMessage = "Import failed: " & model.entryModal.importError
-    of ActionEntryImportCancel:
+    of ActionKind.entryImportCancel:
       model.entryModal.cancelImport()
       model.statusMessage = ""
-    of ActionEntryImportAppend:
+    of ActionKind.entryImportAppend:
       if proposal.gameActionData.len > 0:
         discard model.entryModal.importInput.appendChar(
           proposal.gameActionData[0])
-    of ActionEntryImportBackspace:
+    of ActionKind.entryImportBackspace:
       model.entryModal.importInput.backspace()
-    of ActionEntryInviteAppend:
+    of ActionKind.entryInviteAppend:
       if proposal.gameActionData.len > 0:
         # Validate: allow lowercase letters, hyphen, @, :, ., and digits
         # Format: code@host:port (e.g., velvet-mountain@play.ec4x.io:8080)
@@ -490,10 +490,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.entryModal.inviteError = ""
           # Focus invite code field when typing starts
           model.entryModal.focusInviteCode()
-    of ActionEntryInviteBackspace:
+    of ActionKind.entryInviteBackspace:
       model.entryModal.inviteInput.backspace()
       model.entryModal.inviteError = ""
-    of ActionEntryInviteSubmit:
+    of ActionKind.entryInviteSubmit:
       # Submit invite code to server
       # Format: code@host:port (e.g., velvet-mountain@play.ec4x.io:8080)
       if model.entryModal.inviteInput.isEmpty():
@@ -524,7 +524,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.lobbyJoinStatus = JoinStatus.WaitingResponse
           model.statusMessage = "Joining via " & model.nostrJoinRelayUrl
 
-    of ActionEntryAdminSelect:
+    of ActionKind.entryAdminSelect:
       # Dispatch based on selected admin menu item
       let menuItem = model.entryModal.selectedAdminMenuItem()
       if menuItem.isSome:
@@ -537,52 +537,52 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           # Switch to manage games mode
           model.entryModal.mode = EntryModalMode.ManageGames
           model.statusMessage = "Manage your games"
-    of ActionEntryAdminCreateGame:
+    of ActionKind.entryAdminCreateGame:
       # Direct action to enter game creation mode
       model.entryModal.mode = EntryModalMode.CreateGame
       model.statusMessage = "Create a new game"
-    of ActionEntryAdminManageGames:
+    of ActionKind.entryAdminManageGames:
       # Direct action to enter manage games mode
       model.entryModal.mode = EntryModalMode.ManageGames
       model.statusMessage = "Manage your games"
-    of ActionEntryRelayEdit:
+    of ActionKind.entryRelayEdit:
       # Start editing relay URL
       model.entryModal.startEditingRelay()
       model.statusMessage = "Edit relay URL"
-    of ActionEntryRelayAppend:
+    of ActionKind.entryRelayAppend:
       # Append character to relay URL
       if proposal.gameActionData.len > 0:
         discard model.entryModal.relayInput.appendChar(
           proposal.gameActionData[0])
-    of ActionEntryRelayBackspace:
+    of ActionKind.entryRelayBackspace:
       # Backspace in relay URL
       model.entryModal.relayInput.backspace()
-    of ActionEntryRelayConfirm:
+    of ActionKind.entryRelayConfirm:
       # Confirm relay URL edit
       model.entryModal.stopEditingRelay()
       model.statusMessage = "Relay: " & model.entryModal.relayUrl()
     # Game creation actions
-    of ActionCreateGameUp:
+    of ActionKind.createGameUp:
       model.entryModal.createFieldUp()
-    of ActionCreateGameDown:
+    of ActionKind.createGameDown:
       model.entryModal.createFieldDown()
-    of ActionCreateGameLeft:
+    of ActionKind.createGameLeft:
       if model.entryModal.createField == CreateGameField.PlayerCount:
         model.entryModal.decrementPlayerCount()
-    of ActionCreateGameRight:
+    of ActionKind.createGameRight:
       if model.entryModal.createField == CreateGameField.PlayerCount:
         model.entryModal.incrementPlayerCount()
-    of ActionCreateGameAppend:
+    of ActionKind.createGameAppend:
       if model.entryModal.createField == CreateGameField.GameName:
         if proposal.gameActionData.len > 0:
           if model.entryModal.createNameInput.appendChar(
                proposal.gameActionData[0]):
             model.entryModal.createError = ""
-    of ActionCreateGameBackspace:
+    of ActionKind.createGameBackspace:
       if model.entryModal.createField == CreateGameField.GameName:
         model.entryModal.createNameInput.backspace()
         model.entryModal.createError = ""
-    of ActionCreateGameConfirm:
+    of ActionKind.createGameConfirm:
       if model.entryModal.createField == CreateGameField.ConfirmCreate:
         # Validate and create game
         if model.entryModal.createNameInput.isEmpty():
@@ -599,19 +599,19 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       elif model.entryModal.createField == CreateGameField.GameName:
         # Enter on game name field moves to next field
         model.entryModal.createFieldDown()
-    of ActionCreateGameCancel:
+    of ActionKind.createGameCancel:
       model.entryModal.cancelGameCreation()
       model.statusMessage = "Game creation cancelled"
-    of ActionManageGamesCancel:
+    of ActionKind.manageGamesCancel:
       model.entryModal.mode = EntryModalMode.Normal
       model.statusMessage = ""
-    of ActionEnterExpertMode:
+    of ActionKind.enterExpertMode:
       model.enterExpertMode()
       model.statusMessage = "Expert mode active (type command, ESC to cancel)"
-    of ActionExitExpertMode:
+    of ActionKind.exitExpertMode:
       model.exitExpertMode()
       model.statusMessage = ""
-    of ActionExpertSubmit:
+    of ActionKind.expertSubmit:
       let matches = matchExpertCommands(model.expertModeInput)
       if matches.len > 0:
         clampExpertPaletteSelection(model)
@@ -700,51 +700,51 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Keep expert mode active after submit
       model.expertModeInput = ""
       resetExpertPaletteSelection(model)
-    of ActionExpertInputAppend:
+    of ActionKind.expertInputAppend:
       # Append character to expert mode input
       model.expertModeInput.add(proposal.gameActionData)
       resetExpertPaletteSelection(model)
-    of ActionExpertInputBackspace:
+    of ActionKind.expertInputBackspace:
       # Remove last character
       if model.expertModeInput.len > 0:
         model.expertModeInput.setLen(model.expertModeInput.len - 1)
       resetExpertPaletteSelection(model)
-    of ActionExpertHistoryPrev:
+    of ActionKind.expertHistoryPrev:
       clampExpertPaletteSelection(model)
       if model.expertPaletteSelection > 0:
         model.expertPaletteSelection -= 1
-    of ActionExpertHistoryNext:
+    of ActionKind.expertHistoryNext:
       clampExpertPaletteSelection(model)
       let matches = matchExpertCommands(model.expertModeInput)
       if matches.len == 0:
         model.expertPaletteSelection = -1
       elif model.expertPaletteSelection < matches.len - 1:
         model.expertPaletteSelection += 1
-    of ActionSubmitTurn:
+    of ActionKind.submitTurn:
       # Set flag for reactor/main loop to handle
       if model.stagedCommandCount() > 0:
         model.turnSubmissionRequested = true
       else:
         model.statusMessage = "No commands staged - nothing to submit"
         model.turnSubmissionConfirmed = false
-    of ActionQuitConfirm:
+    of ActionKind.quitConfirm:
       model.running = false
       model.quitConfirmationActive = false
       model.quitConfirmationChoice = QuitConfirmationChoice.QuitStay
       model.statusMessage = "Exiting..."
-    of ActionQuitCancel:
+    of ActionKind.quitCancel:
       model.quitConfirmationActive = false
       model.quitConfirmationChoice = QuitConfirmationChoice.QuitStay
       model.statusMessage = "Quit cancelled"
-    of ActionQuitToggle:
+    of ActionKind.quitToggle:
       if model.quitConfirmationChoice == QuitConfirmationChoice.QuitStay:
         model.quitConfirmationChoice = QuitConfirmationChoice.QuitExit
       else:
         model.quitConfirmationChoice = QuitConfirmationChoice.QuitStay
     else:
-      model.statusMessage = "Action: " & proposal.gameActionType
+      model.statusMessage = "Action: " & actionKindToStr(proposal.actionKind)
   of ProposalKind.pkSelection:
-    if proposal.actionName == ActionLobbyEnterGame:
+    if proposal.actionKind == ActionKind.lobbyEnterGame:
       if model.lobbySelectedIdx < model.lobbyActiveGames.len:
         let game = model.lobbyActiveGames[model.lobbySelectedIdx]
         model.loadGameRequested = true
@@ -813,22 +813,22 @@ proc orderEntryAcceptor*(model: var TuiModel, proposal: Proposal) =
   if proposal.kind != ProposalKind.pkGameAction:
     return
 
-  case proposal.gameActionType
-  of ActionStartOrderMove:
+  case proposal.actionKind
+  of ActionKind.startOrderMove:
     let fleetId = try: parseInt(proposal.gameActionData) except: 0
     if fleetId > 0:
       model.startOrderEntry(fleetId, CmdMove)
-  of ActionStartOrderPatrol:
+  of ActionKind.startOrderPatrol:
     let fleetId = try: parseInt(proposal.gameActionData) except: 0
     if fleetId > 0:
       model.startOrderEntry(fleetId, CmdPatrol)
-  of ActionStartOrderHold:
+  of ActionKind.startOrderHold:
     let fleetId = try: parseInt(proposal.gameActionData) except: 0
     if fleetId > 0:
       # Hold is immediate - no target selection needed
       model.queueImmediateOrder(fleetId, CmdHold)
       model.statusMessage = "Hold order queued for fleet " & $fleetId
-  of ActionConfirmOrder:
+  of ActionKind.confirmOrder:
     if model.orderEntryActive:
       # Look up system ID at cursor position
       let cursorCoord = model.mapState.cursor
@@ -841,7 +841,7 @@ proc orderEntryAcceptor*(model: var TuiModel, proposal: Proposal) =
           sysOpt.get().name
       else:
         model.statusMessage = "No system at cursor position"
-  of ActionCancelOrder:
+  of ActionKind.cancelOrder:
     if model.orderEntryActive:
       model.cancelOrderEntry()
   else:

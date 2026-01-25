@@ -10,7 +10,6 @@
 ## NOTE: The main key mapping function `mapKeyToAction` has been moved to
 ## bindings.nim where it uses the binding registry as the single source of
 ## truth. This file still contains:
-## - Action name constants
 ## - Proposal creation functions
 ## - KeyCode enum
 
@@ -19,103 +18,6 @@ import ./types
 import ./tui_model
 
 export types, tui_model
-
-# ============================================================================
-# Action Names (for allowed/disallowed filtering)
-# ============================================================================
-
-const
-  ActionQuit* = "quit"
-  ActionQuitConfirm* = "quitConfirm"
-  ActionQuitCancel* = "quitCancel"
-  ActionQuitToggle* = "quitToggle"
-  ActionNavigateMode* = "navigateMode"
-  ActionSwitchView* = "switchView"       ## Switch to primary view [1-9]
-  ActionBreadcrumbBack* = "breadcrumbBack"  ## Navigate up breadcrumb
-  ActionMoveCursor* = "moveCursor"
-  ActionSelect* = "select"
-  ActionDeselect* = "deselect"
-  ActionListUp* = "listUp"
-  ActionListDown* = "listDown"
-  ActionEndTurn* = "endTurn"
-  ActionScroll* = "scroll"
-  ActionJumpHome* = "jumpHome"
-  ActionCycleColony* = "cycleColony"
-  ActionResize* = "resize"
-  ActionExportMap* = "exportMap"
-  ActionOpenMap* = "openMap"
-  ActionEnterExpertMode* = "enterExpertMode"
-  ActionExitExpertMode* = "exitExpertMode"
-  ActionExpertInputAppend* = "expertInputAppend"
-  ActionExpertInputBackspace* = "expertInputBackspace"
-  ActionExpertHistoryPrev* = "expertHistoryPrev"
-  ActionExpertHistoryNext* = "expertHistoryNext"
-  ActionExpertSubmit* = "expertSubmit"
-  ActionSubmitTurn* = "submitTurn"
-  ActionToggleFleetSelect* = "toggleFleetSelect"
-  ActionSwitchPlanetTab* = "switchPlanetTab"
-  ActionSwitchFleetView* = "switchFleetView"
-  ActionCycleReportFilter* = "cycleReportFilter"
-  ActionReportFocusNext* = "reportFocusNext"
-  ActionReportFocusPrev* = "reportFocusPrev"
-  ActionReportFocusLeft* = "reportFocusLeft"
-  ActionReportFocusRight* = "reportFocusRight"
-  ActionJoinRefresh* = "joinRefresh"
-  ActionJoinSelect* = "joinSelect"
-  ActionJoinEditPubkey* = "joinEditPubkey"
-  ActionJoinEditName* = "joinEditName"
-  ActionJoinBackspace* = "joinBackspace"
-  ActionJoinSubmit* = "joinSubmit"
-  ActionJoinPoll* = "joinPoll"
-  ActionLobbySwitchPane* = "lobbySwitchPane"
-  ActionLobbyEnterGame* = "lobbyEnterGame"
-  ActionLobbyEditPubkey* = "lobbyEditPubkey"
-  ActionLobbyEditName* = "lobbyEditName"
-  ActionLobbyGenerateKey* = "lobbyGenerateKey"
-  ActionLobbyJoinRefresh* = "lobbyJoinRefresh"
-  ActionLobbyJoinSubmit* = "lobbyJoinSubmit"
-  ActionLobbyJoinPoll* = "lobbyJoinPoll"
-  ActionLobbyBackspace* = "lobbyBackspace"
-  ActionLobbyReturn* = "lobbyReturn"
-  ActionLobbyInputAppend* = "lobbyInputAppend"
-  # Order entry actions
-  ActionStartOrderMove* = "startOrderMove"
-  ActionStartOrderPatrol* = "startOrderPatrol"
-  ActionStartOrderHold* = "startOrderHold"
-  ActionConfirmOrder* = "confirmOrder"
-  ActionCancelOrder* = "cancelOrder"
-  # Entry modal actions
-  ActionEntryUp* = "entryUp"
-  ActionEntryDown* = "entryDown"
-  ActionEntrySelect* = "entrySelect"
-  ActionEntryImport* = "entryImport"
-  ActionEntryImportConfirm* = "entryImportConfirm"
-  ActionEntryImportCancel* = "entryImportCancel"
-  ActionEntryImportAppend* = "entryImportAppend"
-  ActionEntryImportBackspace* = "entryImportBackspace"
-  ActionEntryInviteAppend* = "entryInviteAppend"
-  ActionEntryInviteBackspace* = "entryInviteBackspace"
-  ActionEntryInviteSubmit* = "entryInviteSubmit"
-  # Admin actions
-  ActionEntryAdminSelect* = "entryAdminSelect"
-  ActionEntryAdminCreateGame* = "entryAdminCreateGame"
-  ActionEntryAdminManageGames* = "entryAdminManageGames"
-  # Relay URL actions
-  ActionEntryRelayEdit* = "entryRelayEdit"
-  ActionEntryRelayAppend* = "entryRelayAppend"
-  ActionEntryRelayBackspace* = "entryRelayBackspace"
-  ActionEntryRelayConfirm* = "entryRelayConfirm"
-  # Game creation actions
-  ActionCreateGameUp* = "createGameUp"
-  ActionCreateGameDown* = "createGameDown"
-  ActionCreateGameLeft* = "createGameLeft"
-  ActionCreateGameRight* = "createGameRight"
-  ActionCreateGameAppend* = "createGameAppend"
-  ActionCreateGameBackspace* = "createGameBackspace"
-  ActionCreateGameConfirm* = "createGameConfirm"
-  ActionCreateGameCancel* = "createGameCancel"
-  # Manage games actions
-  ActionManageGamesCancel* = "manageGamesCancel"
 
 # ============================================================================
 # Navigation Actions
@@ -127,22 +29,22 @@ proc actionQuit*(): Proposal =
 
 proc actionQuitConfirm*(): Proposal =
   ## Confirm quit action
-  gameActionProposal(ActionQuitConfirm, "")
+  gameActionProposal(ActionKind.quitConfirm, "")
 
 proc actionQuitCancel*(): Proposal =
   ## Cancel quit action
-  gameActionProposal(ActionQuitCancel, "")
+  gameActionProposal(ActionKind.quitCancel, "")
 
 proc actionQuitToggle*(): Proposal =
   ## Toggle quit confirmation selection
-  gameActionProposal(ActionQuitToggle, "")
+  gameActionProposal(ActionKind.quitToggle, "")
 
 proc actionSwitchMode*(mode: ViewMode): Proposal =
   ## Switch to a different view mode (legacy)
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionNavigateMode,
+    actionKind: ActionKind.navigateMode,
     navMode: ord(mode),
     navCursor: (0, 0)  # Not used for mode switch
   )
@@ -153,7 +55,7 @@ proc actionSwitchView*(viewNum: int): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionSwitchView,
+    actionKind: ActionKind.switchView,
     navMode: viewNum,
     navCursor: (0, 0)
   )
@@ -163,7 +65,7 @@ proc actionBreadcrumbBack*(): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionBreadcrumbBack,
+    actionKind: ActionKind.breadcrumbBack,
     navMode: 0,
     navCursor: (0, 0)
   )
@@ -174,7 +76,7 @@ proc actionMoveCursor*(dir: HexDirection): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionMoveCursor,
+    actionKind: ActionKind.moveCursor,
     navMode: ord(dir),  # Direction encoded here
     navCursor: (0, 0)   # Will be computed by acceptor
   )
@@ -184,7 +86,7 @@ proc actionMoveCursorTo*(coord: HexCoord): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionMoveCursor,
+    actionKind: ActionKind.moveCursor,
     navMode: -1,        # -1 means direct coordinate, not direction
     navCursor: coord
   )
@@ -194,7 +96,7 @@ proc actionJumpHome*(): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionJumpHome,
+    actionKind: ActionKind.jumpHome,
     navMode: -2,        # Special marker for jump home
     navCursor: (0, 0)   # Will be set by acceptor from model.homeworld
   )
@@ -208,7 +110,7 @@ proc actionSelect*(): Proposal =
   Proposal(
     kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
-    actionName: ActionSelect,
+    actionKind: ActionKind.select,
     selectIdx: -1,      # -1 means "use current"
     selectCoord: none(tuple[q, r: int])
   )
@@ -218,7 +120,7 @@ proc actionSelectIndex*(idx: int): Proposal =
   Proposal(
     kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
-    actionName: ActionSelect,
+    actionKind: ActionKind.select,
     selectIdx: idx,
     selectCoord: none(tuple[q, r: int])
   )
@@ -228,7 +130,7 @@ proc actionSelectCoord*(coord: HexCoord): Proposal =
   Proposal(
     kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
-    actionName: ActionSelect,
+    actionKind: ActionKind.select,
     selectIdx: -1,
     selectCoord: some(coord)
   )
@@ -238,7 +140,7 @@ proc actionDeselect*(): Proposal =
   Proposal(
     kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
-    actionName: ActionDeselect,
+    actionKind: ActionKind.deselect,
     selectIdx: -2,      # -2 means deselect
     selectCoord: none(tuple[q, r: int])
   )
@@ -252,7 +154,7 @@ proc actionListUp*(): Proposal =
   Proposal(
     kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
-    actionName: ActionListUp,
+    actionKind: ActionKind.listUp,
     selectIdx: -3,      # -3 means "move up"
     selectCoord: none(tuple[q, r: int])
   )
@@ -262,7 +164,7 @@ proc actionListDown*(): Proposal =
   Proposal(
     kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
-    actionName: ActionListDown,
+    actionKind: ActionKind.listDown,
     selectIdx: -4,      # -4 means "move down"
     selectCoord: none(tuple[q, r: int])
   )
@@ -272,7 +174,7 @@ proc actionCycleColony*(reverse: bool = false): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionCycleColony,
+    actionKind: ActionKind.cycleColony,
     navMode: if reverse: 1 else: 0,
     navCursor: (0, 0)
   )
@@ -283,7 +185,7 @@ proc actionCycleColony*(reverse: bool = false): Proposal =
 
 proc actionScroll*(dx, dy: int): Proposal =
   ## Scroll viewport
-  scrollProposal(dx, dy, ActionScroll)
+  scrollProposal(dx, dy)
 
 # ============================================================================
 # Game Actions
@@ -299,11 +201,11 @@ proc actionEndTurn*(): Proposal =
 
 proc actionExportMap*(): Proposal =
   ## Export SVG starmap to file
-  gameActionProposal(ActionExportMap, "")
+  gameActionProposal(ActionKind.exportMap, "")
 
 proc actionOpenMap*(): Proposal =
   ## Export SVG starmap and open in viewer
-  gameActionProposal(ActionOpenMap, "")
+  gameActionProposal(ActionKind.openMap, "")
 
 # ============================================================================
 # Expert Mode Actions
@@ -311,35 +213,35 @@ proc actionOpenMap*(): Proposal =
 
 proc actionEnterExpertMode*(): Proposal =
   ## Enter expert mode (: prompt)
-  gameActionProposal(ActionEnterExpertMode, "")
+  gameActionProposal(ActionKind.enterExpertMode, "")
 
 proc actionExitExpertMode*(): Proposal =
   ## Exit expert mode
-  gameActionProposal(ActionExitExpertMode, "")
+  gameActionProposal(ActionKind.exitExpertMode, "")
 
 proc actionExpertInputAppend*(value: string): Proposal =
   ## Append input to expert mode buffer
-  gameActionProposal(ActionExpertInputAppend, value)
+  gameActionProposal(ActionKind.expertInputAppend, value)
 
 proc actionExpertInputBackspace*(): Proposal =
   ## Remove last character from expert mode buffer
-  gameActionProposal(ActionExpertInputBackspace, "")
+  gameActionProposal(ActionKind.expertInputBackspace, "")
 
 proc actionExpertSubmit*(): Proposal =
   ## Submit expert mode command
-  gameActionProposal(ActionExpertSubmit, "")
+  gameActionProposal(ActionKind.expertSubmit, "")
 
 proc actionExpertHistoryPrev*(): Proposal =
   ## Previous command from expert mode history
-  gameActionProposal(ActionExpertHistoryPrev, "")
+  gameActionProposal(ActionKind.expertHistoryPrev, "")
 
 proc actionExpertHistoryNext*(): Proposal =
   ## Next command from expert mode history
-  gameActionProposal(ActionExpertHistoryNext, "")
+  gameActionProposal(ActionKind.expertHistoryNext, "")
 
 proc actionSubmitTurn*(): Proposal =
   ## Submit turn with all staged commands
-  gameActionProposal(ActionSubmitTurn, "")
+  gameActionProposal(ActionKind.submitTurn, "")
 
 # ============================================================================
 # Fleet Multi-Select Actions
@@ -350,7 +252,7 @@ proc actionToggleFleetSelect*(fleetId: int): Proposal =
   Proposal(
     kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
-    actionName: ActionToggleFleetSelect,
+    actionKind: ActionKind.toggleFleetSelect,
     selectIdx: fleetId,
     selectCoord: none(tuple[q, r: int])
   )
@@ -364,7 +266,7 @@ proc actionSwitchPlanetTab*(tab: int): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionSwitchPlanetTab,
+    actionKind: ActionKind.switchPlanetTab,
     navMode: tab,
     navCursor: (0, 0)
   )
@@ -374,7 +276,7 @@ proc actionSwitchFleetView*(): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionSwitchFleetView,
+    actionKind: ActionKind.switchFleetView,
     navMode: 0,
     navCursor: (0, 0)
   )
@@ -384,7 +286,7 @@ proc actionCycleReportFilter*(): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionCycleReportFilter,
+    actionKind: ActionKind.cycleReportFilter,
     navMode: 0,
     navCursor: (0, 0)
   )
@@ -394,7 +296,7 @@ proc actionReportFocusNext*(): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionReportFocusNext,
+    actionKind: ActionKind.reportFocusNext,
     navMode: 0,
     navCursor: (0, 0)
   )
@@ -404,7 +306,7 @@ proc actionReportFocusPrev*(): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionReportFocusPrev,
+    actionKind: ActionKind.reportFocusPrev,
     navMode: 0,
     navCursor: (0, 0)
   )
@@ -414,7 +316,7 @@ proc actionReportFocusLeft*(): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionReportFocusLeft,
+    actionKind: ActionKind.reportFocusLeft,
     navMode: 0,
     navCursor: (0, 0)
   )
@@ -424,7 +326,7 @@ proc actionReportFocusRight*(): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionReportFocusRight,
+    actionKind: ActionKind.reportFocusRight,
     navMode: 0,
     navCursor: (0, 0)
   )
@@ -437,8 +339,7 @@ proc actionJoinRefresh*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionJoinRefresh,
-    gameActionType: ActionJoinRefresh,
+    actionKind: ActionKind.joinRefresh,
     gameActionData: ""
   )
 
@@ -446,7 +347,7 @@ proc actionJoinSelect*(): Proposal =
   Proposal(
     kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
-    actionName: ActionJoinSelect,
+    actionKind: ActionKind.joinSelect,
     selectIdx: -1,
     selectCoord: none(tuple[q, r: int])
   )
@@ -455,8 +356,7 @@ proc actionJoinEditPubkey*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionJoinEditPubkey,
-    gameActionType: ActionJoinEditPubkey,
+    actionKind: ActionKind.joinEditPubkey,
     gameActionData: ""
   )
 
@@ -464,8 +364,7 @@ proc actionJoinEditName*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionJoinEditName,
-    gameActionType: ActionJoinEditName,
+    actionKind: ActionKind.joinEditName,
     gameActionData: ""
   )
 
@@ -473,8 +372,7 @@ proc actionJoinBackspace*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionJoinBackspace,
-    gameActionType: ActionJoinBackspace,
+    actionKind: ActionKind.joinBackspace,
     gameActionData: ""
   )
 
@@ -482,8 +380,7 @@ proc actionJoinSubmit*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionJoinSubmit,
-    gameActionType: ActionJoinSubmit,
+    actionKind: ActionKind.joinSubmit,
     gameActionData: ""
   )
 
@@ -491,8 +388,7 @@ proc actionJoinPoll*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionJoinPoll,
-    gameActionType: ActionJoinPoll,
+    actionKind: ActionKind.joinPoll,
     gameActionData: ""
   )
 
@@ -504,7 +400,7 @@ proc actionLobbySwitchPane*(pane: LobbyPane): Proposal =
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: ActionLobbySwitchPane,
+    actionKind: ActionKind.lobbySwitchPane,
     navMode: int(pane),
     navCursor: (0, 0)
   )
@@ -513,7 +409,7 @@ proc actionLobbyEnterGame*(): Proposal =
   Proposal(
     kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
-    actionName: ActionLobbyEnterGame,
+    actionKind: ActionKind.lobbyEnterGame,
     selectIdx: -1,
     selectCoord: none(tuple[q, r: int])
   )
@@ -522,8 +418,7 @@ proc actionLobbyEditPubkey*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionLobbyEditPubkey,
-    gameActionType: ActionLobbyEditPubkey,
+    actionKind: ActionKind.lobbyEditPubkey,
     gameActionData: ""
   )
 
@@ -531,8 +426,7 @@ proc actionLobbyEditName*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionLobbyEditName,
-    gameActionType: ActionLobbyEditName,
+    actionKind: ActionKind.lobbyEditName,
     gameActionData: ""
   )
 
@@ -540,8 +434,7 @@ proc actionLobbyGenerateKey*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionLobbyGenerateKey,
-    gameActionType: ActionLobbyGenerateKey,
+    actionKind: ActionKind.lobbyGenerateKey,
     gameActionData: ""
   )
 
@@ -549,8 +442,7 @@ proc actionLobbyJoinRefresh*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionLobbyJoinRefresh,
-    gameActionType: ActionLobbyJoinRefresh,
+    actionKind: ActionKind.lobbyJoinRefresh,
     gameActionData: ""
   )
 
@@ -558,8 +450,7 @@ proc actionLobbyJoinSubmit*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionLobbyJoinSubmit,
-    gameActionType: ActionLobbyJoinSubmit,
+    actionKind: ActionKind.lobbyJoinSubmit,
     gameActionData: ""
   )
 
@@ -567,8 +458,7 @@ proc actionLobbyJoinPoll*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionLobbyJoinPoll,
-    gameActionType: ActionLobbyJoinPoll,
+    actionKind: ActionKind.lobbyJoinPoll,
     gameActionData: ""
   )
 
@@ -576,8 +466,7 @@ proc actionLobbyBackspace*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionLobbyBackspace,
-    gameActionType: ActionLobbyBackspace,
+    actionKind: ActionKind.lobbyBackspace,
     gameActionData: ""
   )
 
@@ -586,8 +475,7 @@ proc actionLobbyInputAppend*(value: string): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionLobbyInputAppend,
-    gameActionType: ActionLobbyInputAppend,
+    actionKind: ActionKind.lobbyInputAppend,
     gameActionData: value
   )
 
@@ -595,8 +483,7 @@ proc actionLobbyReturn*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionLobbyReturn,
-    gameActionType: ActionLobbyReturn,
+    actionKind: ActionKind.lobbyReturn,
     gameActionData: ""
   )
 
@@ -609,8 +496,7 @@ proc actionEntryUp*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryUp,
-    gameActionType: ActionEntryUp,
+    actionKind: ActionKind.entryUp,
     gameActionData: ""
   )
 
@@ -619,8 +505,7 @@ proc actionEntryDown*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryDown,
-    gameActionType: ActionEntryDown,
+    actionKind: ActionKind.entryDown,
     gameActionData: ""
   )
 
@@ -629,8 +514,7 @@ proc actionEntrySelect*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntrySelect,
-    gameActionType: ActionEntrySelect,
+    actionKind: ActionKind.entrySelect,
     gameActionData: ""
   )
 
@@ -639,8 +523,7 @@ proc actionEntryImport*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryImport,
-    gameActionType: ActionEntryImport,
+    actionKind: ActionKind.entryImport,
     gameActionData: ""
   )
 
@@ -649,8 +532,7 @@ proc actionEntryImportConfirm*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryImportConfirm,
-    gameActionType: ActionEntryImportConfirm,
+    actionKind: ActionKind.entryImportConfirm,
     gameActionData: ""
   )
 
@@ -659,8 +541,7 @@ proc actionEntryImportCancel*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryImportCancel,
-    gameActionType: ActionEntryImportCancel,
+    actionKind: ActionKind.entryImportCancel,
     gameActionData: ""
   )
 
@@ -669,8 +550,7 @@ proc actionEntryImportAppend*(value: string): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryImportAppend,
-    gameActionType: ActionEntryImportAppend,
+    actionKind: ActionKind.entryImportAppend,
     gameActionData: value
   )
 
@@ -679,8 +559,7 @@ proc actionEntryImportBackspace*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryImportBackspace,
-    gameActionType: ActionEntryImportBackspace,
+    actionKind: ActionKind.entryImportBackspace,
     gameActionData: ""
   )
 
@@ -689,8 +568,7 @@ proc actionEntryInviteAppend*(value: string): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryInviteAppend,
-    gameActionType: ActionEntryInviteAppend,
+    actionKind: ActionKind.entryInviteAppend,
     gameActionData: value
   )
 
@@ -699,8 +577,7 @@ proc actionEntryInviteBackspace*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryInviteBackspace,
-    gameActionType: ActionEntryInviteBackspace,
+    actionKind: ActionKind.entryInviteBackspace,
     gameActionData: ""
   )
 
@@ -709,8 +586,7 @@ proc actionEntryInviteSubmit*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryInviteSubmit,
-    gameActionType: ActionEntryInviteSubmit,
+    actionKind: ActionKind.entryInviteSubmit,
     gameActionData: ""
   )
 
@@ -719,8 +595,7 @@ proc actionEntryAdminSelect*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryAdminSelect,
-    gameActionType: ActionEntryAdminSelect,
+    actionKind: ActionKind.entryAdminSelect,
     gameActionData: ""
   )
 
@@ -729,8 +604,7 @@ proc actionEntryAdminCreateGame*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryAdminCreateGame,
-    gameActionType: ActionEntryAdminCreateGame,
+    actionKind: ActionKind.entryAdminCreateGame,
     gameActionData: ""
   )
 
@@ -739,8 +613,7 @@ proc actionEntryAdminManageGames*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryAdminManageGames,
-    gameActionType: ActionEntryAdminManageGames,
+    actionKind: ActionKind.entryAdminManageGames,
     gameActionData: ""
   )
 
@@ -749,8 +622,7 @@ proc actionEntryRelayEdit*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryRelayEdit,
-    gameActionType: ActionEntryRelayEdit,
+    actionKind: ActionKind.entryRelayEdit,
     gameActionData: ""
   )
 
@@ -759,8 +631,7 @@ proc actionEntryRelayAppend*(value: string): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryRelayAppend,
-    gameActionType: ActionEntryRelayAppend,
+    actionKind: ActionKind.entryRelayAppend,
     gameActionData: value
   )
 
@@ -769,8 +640,7 @@ proc actionEntryRelayBackspace*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryRelayBackspace,
-    gameActionType: ActionEntryRelayBackspace,
+    actionKind: ActionKind.entryRelayBackspace,
     gameActionData: ""
   )
 
@@ -779,8 +649,7 @@ proc actionEntryRelayConfirm*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionEntryRelayConfirm,
-    gameActionType: ActionEntryRelayConfirm,
+    actionKind: ActionKind.entryRelayConfirm,
     gameActionData: ""
   )
 
@@ -793,8 +662,7 @@ proc actionCreateGameUp*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionCreateGameUp,
-    gameActionType: ActionCreateGameUp,
+    actionKind: ActionKind.createGameUp,
     gameActionData: ""
   )
 
@@ -803,8 +671,7 @@ proc actionCreateGameDown*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionCreateGameDown,
-    gameActionType: ActionCreateGameDown,
+    actionKind: ActionKind.createGameDown,
     gameActionData: ""
   )
 
@@ -813,8 +680,7 @@ proc actionCreateGameLeft*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionCreateGameLeft,
-    gameActionType: ActionCreateGameLeft,
+    actionKind: ActionKind.createGameLeft,
     gameActionData: ""
   )
 
@@ -823,8 +689,7 @@ proc actionCreateGameRight*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionCreateGameRight,
-    gameActionType: ActionCreateGameRight,
+    actionKind: ActionKind.createGameRight,
     gameActionData: ""
   )
 
@@ -833,8 +698,7 @@ proc actionCreateGameAppend*(value: string): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionCreateGameAppend,
-    gameActionType: ActionCreateGameAppend,
+    actionKind: ActionKind.createGameAppend,
     gameActionData: value
   )
 
@@ -843,8 +707,7 @@ proc actionCreateGameBackspace*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionCreateGameBackspace,
-    gameActionType: ActionCreateGameBackspace,
+    actionKind: ActionKind.createGameBackspace,
     gameActionData: ""
   )
 
@@ -853,8 +716,7 @@ proc actionCreateGameConfirm*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionCreateGameConfirm,
-    gameActionType: ActionCreateGameConfirm,
+    actionKind: ActionKind.createGameConfirm,
     gameActionData: ""
   )
 
@@ -863,8 +725,7 @@ proc actionCreateGameCancel*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionCreateGameCancel,
-    gameActionType: ActionCreateGameCancel,
+    actionKind: ActionKind.createGameCancel,
     gameActionData: ""
   )
 
@@ -873,8 +734,7 @@ proc actionManageGamesCancel*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionManageGamesCancel,
-    gameActionType: ActionManageGamesCancel,
+    actionKind: ActionKind.manageGamesCancel,
     gameActionData: ""
   )
 
@@ -887,8 +747,7 @@ proc actionStartOrderMove*(fleetId: int): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionStartOrderMove,
-    gameActionType: ActionStartOrderMove,
+    actionKind: ActionKind.startOrderMove,
     gameActionData: $fleetId
   )
 
@@ -897,8 +756,7 @@ proc actionStartOrderPatrol*(fleetId: int): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionStartOrderPatrol,
-    gameActionType: ActionStartOrderPatrol,
+    actionKind: ActionKind.startOrderPatrol,
     gameActionData: $fleetId
   )
 
@@ -907,8 +765,7 @@ proc actionStartOrderHold*(fleetId: int): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionStartOrderHold,
-    gameActionType: ActionStartOrderHold,
+    actionKind: ActionKind.startOrderHold,
     gameActionData: $fleetId
   )
 
@@ -917,8 +774,7 @@ proc actionConfirmOrder*(targetSystemId: int): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionConfirmOrder,
-    gameActionType: ActionConfirmOrder,
+    actionKind: ActionKind.confirmOrder,
     gameActionData: $targetSystemId
   )
 
@@ -927,8 +783,7 @@ proc actionCancelOrder*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: ActionCancelOrder,
-    gameActionType: ActionCancelOrder,
+    actionKind: ActionKind.cancelOrder,
     gameActionData: ""
   )
 
@@ -941,7 +796,7 @@ proc actionResize*(width, height: int): Proposal =
   result = Proposal(
     kind: ProposalKind.pkViewportScroll,  # Reuse for resize data
     timestamp: getTime().toUnix(),
-    actionName: ActionResize,
+    actionKind: ActionKind.resize,
     scrollDelta: (width, height)  # Store new dimensions
   )
 

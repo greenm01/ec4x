@@ -134,7 +134,7 @@ proc fitItemsToWidth*(model: TuiModel, maxWidth: int,
   # Still too wide - progressively drop items from the end (except expert)
   while items.len > 1 and calcTotalWidth(items, useArrows) > maxWidth:
     # Keep the last item if it's expert mode hint
-    if items[^1].binding.actionName == ActionEnterExpertMode:
+    if items[^1].binding.actionKind == ActionKind.enterExpertMode:
       if items.len > 2:
         items.delete(items.len - 2)
       else:

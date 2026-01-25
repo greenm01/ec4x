@@ -58,7 +58,7 @@ proc setInitialState*[M](sam: var SamInstance[M], initialState: M) =
   sam.model = initialState
   if sam.history.isSome:
     var h = sam.history.get
-    h.snap(sam.model, "initialState")
+    h.snap(sam.model)
     sam.history = some(h)
 
 proc addAcceptor*[M](sam: var SamInstance[M], acceptor: AcceptorProc[M]) =
@@ -81,14 +81,16 @@ proc setRender*[M](sam: var SamInstance[M], render: RenderProc[M]) =
   ## Set the render function
   sam.render = render
 
-proc allowActions*[M](sam: var SamInstance[M], actions: varargs[string]) =
-  ## Set list of allowed action names
+proc allowActions*[M](sam: var SamInstance[M],
+    actions: varargs[ActionKind]) =
+  ## Set list of allowed action kinds
   for action in actions:
     if action notin sam.allowedActions:
       sam.allowedActions.add(action)
 
-proc disallowActions*[M](sam: var SamInstance[M], actions: varargs[string]) =
-  ## Set list of disallowed action names
+proc disallowActions*[M](sam: var SamInstance[M],
+    actions: varargs[ActionKind]) =
+  ## Set list of disallowed action kinds
   for action in actions:
     if action notin sam.disallowedActions:
       sam.disallowedActions.add(action)
@@ -113,19 +115,19 @@ proc doNotRender*[M](sam: var SamInstance[M]) =
 # Action Validation
 # ============================================================================
 
-proc isAllowed*[M](sam: SamInstance[M], actionName: string): bool =
+proc isAllowed*[M](sam: SamInstance[M], actionKind: ActionKind): bool =
   ## Check if an action is allowed to execute
   # If no restrictions, allow all
   if not sam.blockUnexpectedActions and sam.allowedActions.len == 0:
     return true
   
   # Check if explicitly disallowed
-  if actionName in sam.disallowedActions:
+  if actionKind in sam.disallowedActions:
     return false
   
   # If we have an allowed list and blocking is on, check against it
   if sam.allowedActions.len > 0:
-    return actionName in sam.allowedActions
+    return actionKind in sam.allowedActions
   
   true
 
@@ -188,23 +190,28 @@ proc present*[M](sam: var SamInstance[M], proposal: Proposal) =
   ## 5. Checks NAPs for automatic next actions
   ## 6. Renders if no NAP triggered
   
+  let normalized = proposal
+
   # Check if action is allowed
-  if not sam.isAllowed(proposal.actionName):
-    sam.lastError = some("Action not allowed: " & proposal.actionName)
+  if not sam.isAllowed(normalized.actionKind):
+    sam.lastError = some(
+      "Action not allowed: " & actionKindToStr(normalized.actionKind)
+    )
     return
   
   # Check for out-of-order proposals (optional timestamp check)
-  if proposal.timestamp > 0 and proposal.timestamp < sam.lastProposalTimestamp:
+  if normalized.timestamp > 0 and
+      normalized.timestamp < sam.lastProposalTimestamp:
     # Out of order, ignore
     return
-  sam.lastProposalTimestamp = proposal.timestamp
+  sam.lastProposalTimestamp = normalized.timestamp
   
   # Clear any previous error
   sam.lastError = none(string)
   
   # Run acceptors to mutate model
   for acceptor in sam.acceptors:
-    acceptor(sam.model, proposal)
+    acceptor(sam.model, normalized)
   
   # Run reactors to derive state
   sam.computeState()
@@ -222,7 +229,7 @@ proc present*[M](sam: var SamInstance[M], proposal: Proposal) =
   # Take history snapshot after successful mutation
   if sam.history.isSome:
     var h = sam.history.get
-    h.snap(sam.model, proposal.actionName)
+    h.snap(sam.model, normalized.actionKind)
     sam.history = some(h)
   
   # Check NAPs - if any returns a proposal, call present recursively

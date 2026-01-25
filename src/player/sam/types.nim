@@ -18,9 +18,100 @@ import std/[tables, options, times]
 
 type
   # ============================================================================
+  # ActionKind Enum
+  # ============================================================================
+
+  ActionKind* {.pure.} = enum
+    quit
+    quitConfirm
+    quitCancel
+    quitToggle
+    navigateMode
+    switchView
+    breadcrumbBack
+    moveCursor
+    select
+    deselect
+    listUp
+    listDown
+    endTurn
+    scroll
+    jumpHome
+    cycleColony
+    resize
+    exportMap
+    openMap
+    enterExpertMode
+    exitExpertMode
+    expertInputAppend
+    expertInputBackspace
+    expertHistoryPrev
+    expertHistoryNext
+    expertSubmit
+    submitTurn
+    toggleFleetSelect
+    switchPlanetTab
+    switchFleetView
+    cycleReportFilter
+    reportFocusNext
+    reportFocusPrev
+    reportFocusLeft
+    reportFocusRight
+    joinRefresh
+    joinSelect
+    joinEditPubkey
+    joinEditName
+    joinBackspace
+    joinSubmit
+    joinPoll
+    lobbySwitchPane
+    lobbyEnterGame
+    lobbyEditPubkey
+    lobbyEditName
+    lobbyGenerateKey
+    lobbyJoinRefresh
+    lobbyJoinSubmit
+    lobbyJoinPoll
+    lobbyBackspace
+    lobbyReturn
+    lobbyInputAppend
+    startOrderMove
+    startOrderPatrol
+    startOrderHold
+    confirmOrder
+    cancelOrder
+    entryUp
+    entryDown
+    entrySelect
+    entryImport
+    entryImportConfirm
+    entryImportCancel
+    entryImportAppend
+    entryImportBackspace
+    entryInviteAppend
+    entryInviteBackspace
+    entryInviteSubmit
+    entryAdminSelect
+    entryAdminCreateGame
+    entryAdminManageGames
+    entryRelayEdit
+    entryRelayAppend
+    entryRelayBackspace
+    entryRelayConfirm
+    createGameUp
+    createGameDown
+    createGameLeft
+    createGameRight
+    createGameAppend
+    createGameBackspace
+    createGameConfirm
+    createGameCancel
+    manageGamesCancel
+
+  # ============================================================================
   # Core SAM Types
   # ============================================================================
-  
+
   ProposalKind* {.pure.} = enum
     ## Discriminator for proposal types
     pkNone           ## Empty/no-op proposal
@@ -36,7 +127,7 @@ type
     ## A proposal represents an intent to change state.
     ## Proposals are immutable data - they don't cause side effects directly.
     timestamp*: int64           ## When proposal was created
-    actionName*: string         ## Name of action that created this (for debugging)
+    actionKind*: ActionKind     ## Enum-based action identifier
     case kind*: ProposalKind
     of ProposalKind.pkNone:
       discard
@@ -49,7 +140,6 @@ type
       selectIdx*: int           ## Index in current list
       selectCoord*: Option[tuple[q, r: int]]  ## Hex coordinate if applicable
     of ProposalKind.pkGameAction:
-      gameActionType*: string   ## Type of game action
       gameActionData*: string   ## JSON-encoded action data
     of ProposalKind.pkViewportScroll:
       scrollDelta*: tuple[dx, dy: int]
@@ -86,7 +176,7 @@ type
     ## A snapshot of model state at a point in time
     state*: M
     timestamp*: int64
-    actionName*: string
+    actionKind*: ActionKind
   
   History*[M] = object
     ## Time travel support - stores state snapshots
@@ -108,11 +198,18 @@ type
     render*: RenderProc[M]
     history*: Option[History[M]]
     lastProposalTimestamp*: int64
-    allowedActions*: seq[string]
-    disallowedActions*: seq[string]
+    allowedActions*: seq[ActionKind]
+    disallowedActions*: seq[ActionKind]
     blockUnexpectedActions*: bool
     shouldRender*: bool
     lastError*: Option[string]
+
+# ============================================================================
+# ActionKind Conversion
+# ============================================================================
+
+proc actionKindToStr*(kind: ActionKind): string =
+  $kind
 
 # ============================================================================
 # Proposal Constructors
@@ -123,7 +220,7 @@ proc emptyProposal*(): Proposal =
   Proposal(
     kind: ProposalKind.pkNone,
     timestamp: getTime().toUnix(),
-    actionName: "none"
+    actionKind: ActionKind.navigateMode
   )
 
 proc errorProposal*(msg: string): Proposal =
@@ -131,56 +228,56 @@ proc errorProposal*(msg: string): Proposal =
   Proposal(
     kind: ProposalKind.pkError,
     timestamp: getTime().toUnix(),
-    actionName: "error",
+    actionKind: ActionKind.navigateMode,
     errorMsg: msg
   )
 
-proc navigationProposal*(mode: int, name: string = "navigate"): Proposal =
+proc navigationProposal*(mode: int): Proposal =
   ## Create a navigation mode change proposal
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: name,
+    actionKind: ActionKind.navigateMode,
     navMode: mode,
     navCursor: (0, 0)
   )
 
-proc cursorProposal*(q, r: int, name: string = "cursor"): Proposal =
+proc cursorProposal*(q, r: int): Proposal =
   ## Create a cursor move proposal
   Proposal(
     kind: ProposalKind.pkNavigation,
     timestamp: getTime().toUnix(),
-    actionName: name,
-    navMode: -1,  # -1 means don't change mode
+    actionKind: ActionKind.moveCursor,
+    navMode: -1,
     navCursor: (q, r)
   )
 
-proc selectionProposal*(idx: int, name: string = "select"): Proposal =
+proc selectionProposal*(idx: int): Proposal =
   ## Create a selection change proposal
   Proposal(
     kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
-    actionName: name,
+    actionKind: ActionKind.select,
     selectIdx: idx,
     selectCoord: none(tuple[q, r: int])
   )
 
-proc coordSelectionProposal*(q, r: int, name: string = "selectCoord"): Proposal =
+proc coordSelectionProposal*(q, r: int): Proposal =
   ## Create a coordinate selection proposal
   Proposal(
     kind: ProposalKind.pkSelection,
     timestamp: getTime().toUnix(),
-    actionName: name,
+    actionKind: ActionKind.select,
     selectIdx: -1,
     selectCoord: some((q, r))
   )
 
-proc scrollProposal*(dx, dy: int, name: string = "scroll"): Proposal =
+proc scrollProposal*(dx, dy: int): Proposal =
   ## Create a viewport scroll proposal
   Proposal(
     kind: ProposalKind.pkViewportScroll,
     timestamp: getTime().toUnix(),
-    actionName: name,
+    actionKind: ActionKind.scroll,
     scrollDelta: (dx, dy)
   )
 
@@ -189,7 +286,7 @@ proc endTurnProposal*(): Proposal =
   Proposal(
     kind: ProposalKind.pkEndTurn,
     timestamp: getTime().toUnix(),
-    actionName: "endTurn"
+    actionKind: ActionKind.endTurn
   )
 
 proc quitProposal*(): Proposal =
@@ -197,16 +294,15 @@ proc quitProposal*(): Proposal =
   Proposal(
     kind: ProposalKind.pkQuit,
     timestamp: getTime().toUnix(),
-    actionName: "quit"
+    actionKind: ActionKind.quit
   )
 
-proc gameActionProposal*(actionType, data: string): Proposal =
+proc gameActionProposal*(actionKind: ActionKind, data: string): Proposal =
   ## Create a game action proposal
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionName: actionType,
-    gameActionType: actionType,
+    actionKind: actionKind,
     gameActionData: data
   )
 
@@ -222,7 +318,8 @@ proc initHistory*[M](maxEntries: int = 100): History[M] =
     maxEntries: maxEntries
   )
 
-proc snap*[M](h: var History[M], state: M, actionName: string = "") =
+proc snap*[M](h: var History[M], state: M,
+    actionKind: ActionKind = ActionKind.navigateMode) =
   ## Take a snapshot of current state
   # If we're not at the end, truncate forward history
   if h.currentIdx >= 0 and h.currentIdx < h.entries.len - 1:
@@ -231,7 +328,7 @@ proc snap*[M](h: var History[M], state: M, actionName: string = "") =
   let entry = HistoryEntry[M](
     state: state,
     timestamp: getTime().toUnix(),
-    actionName: actionName
+    actionKind: actionKind
   )
   
   h.entries.add(entry)

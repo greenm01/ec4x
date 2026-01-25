@@ -90,7 +90,8 @@ proc runTui*(gameId: string = "") =
   const MaxProposalQueue = 100
  
   proc proposalSignature(p: Proposal): string =
-    $p.kind & ":" & p.actionName & ":" & $p.timestamp
+    $p.kind & ":" & actionKindToStr(p.actionKind) & ":" &
+      $p.timestamp
  
   proc enqueueProposal(p: Proposal) =
     let sig = proposalSignature(p)

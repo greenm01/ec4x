@@ -17,45 +17,49 @@ suite "SAM Types":
   test "create empty proposal":
     let p = emptyProposal()
     check p.kind == pkNone
-    check p.actionName == "none"
+    check p.actionKind == ActionKind.navigateMode
   
   test "create quit proposal":
     let p = quitProposal()
     check p.kind == pkQuit
-    check p.actionName == "quit"
+    check p.actionKind == ActionKind.quit
   
   test "create navigation proposal":
-    let p = navigationProposal(ord(ViewMode.Map), "switchToMap")
+    let p = navigationProposal(ord(ViewMode.Overview))
     check p.kind == pkNavigation
-    check p.navMode == ord(ViewMode.Map)
-    check p.actionName == "switchToMap"
+    check p.navMode == ord(ViewMode.Overview)
+    check p.actionKind == ActionKind.navigateMode
   
   test "create cursor proposal":
-    let p = cursorProposal(5, -3, "moveCursor")
+    let p = cursorProposal(5, -3)
     check p.kind == pkNavigation
     check p.navCursor == (5, -3)
+    check p.actionKind == ActionKind.moveCursor
   
   test "create selection proposal":
-    let p = selectionProposal(3, "selectItem")
+    let p = selectionProposal(3)
     check p.kind == pkSelection
     check p.selectIdx == 3
+    check p.actionKind == ActionKind.select
   
   test "create scroll proposal":
-    let p = scrollProposal(2, -1, "scroll")
+    let p = scrollProposal(2, -1)
     check p.kind == pkViewportScroll
     check p.scrollDelta == (2, -1)
+    check p.actionKind == ActionKind.scroll
   
   test "create game action proposal":
-    let p = gameActionProposal("buildShip", "{\"shipType\":\"destroyer\"}")
+    let p = gameActionProposal(ActionKind.startOrderMove,
+      "{\"shipType\":\"destroyer\"}")
     check p.kind == pkGameAction
-    check p.gameActionType == "buildShip"
+    check p.actionKind == ActionKind.startOrderMove
     check p.gameActionData == "{\"shipType\":\"destroyer\"}"
 
 suite "TUI Model":
   
   test "init model with defaults":
     let model = initTuiModel()
-    check model.mode == ViewMode.Colonies
+    check model.mode == ViewMode.Planets
     check model.selectedIdx == 0
     check model.running == true
     check model.turn == 1
@@ -91,8 +95,15 @@ suite "TUI Model":
   
   test "current list length - colonies":
     var model = initTuiModel()
-    model.mode = ViewMode.Colonies
-    model.colonies.add(ColonyInfo(systemId: 1, systemName: "Test", population: 100, production: 10, owner: 1))
+    model.mode = ViewMode.Planets
+    model.colonies.add(ColonyInfo(
+      colonyId: 1,
+      systemId: 1,
+      systemName: "Test",
+      populationUnits: 100,
+      industrialUnits: 10,
+      owner: 1
+    ))
     check model.currentListLength() == 1
   
   test "system at coordinate":
@@ -143,12 +154,12 @@ suite "Acceptors":
   
   test "navigation acceptor - mode switch":
     var model = initTuiModel()
-    model.mode = ViewMode.Colonies
+    model.mode = ViewMode.Planets
     
-    let proposal = actionSwitchMode(ViewMode.Map)
+    let proposal = actionSwitchMode(ViewMode.Overview)
     navigationAcceptor(model, proposal)
     
-    check model.mode == ViewMode.Map
+    check model.mode == ViewMode.Overview
     check model.selectedIdx == 0
   
   test "navigation acceptor - cursor move by direction":
@@ -172,7 +183,7 @@ suite "Acceptors":
   
   test "selection acceptor - select in map mode":
     var model = initTuiModel()
-    model.mode = ViewMode.Map
+    model.mode = ViewMode.Overview
     model.mapState.cursor = (3, -1)
     
     let proposal = actionSelect()
@@ -202,9 +213,30 @@ suite "Acceptors":
   test "selection acceptor - list down":
     var model = initTuiModel()
     model.selectedIdx = 1
-    model.colonies.add(ColonyInfo(systemId: 1, systemName: "A", population: 100, production: 10, owner: 1))
-    model.colonies.add(ColonyInfo(systemId: 2, systemName: "B", population: 100, production: 10, owner: 1))
-    model.colonies.add(ColonyInfo(systemId: 3, systemName: "C", population: 100, production: 10, owner: 1))
+    model.colonies.add(ColonyInfo(
+      colonyId: 1,
+      systemId: 1,
+      systemName: "A",
+      populationUnits: 100,
+      industrialUnits: 10,
+      owner: 1
+    ))
+    model.colonies.add(ColonyInfo(
+      colonyId: 2,
+      systemId: 2,
+      systemName: "B",
+      populationUnits: 100,
+      industrialUnits: 10,
+      owner: 1
+    ))
+    model.colonies.add(ColonyInfo(
+      colonyId: 3,
+      systemId: 3,
+      systemName: "C",
+      populationUnits: 100,
+      industrialUnits: 10,
+      owner: 1
+    ))
     
     let proposal = actionListDown()
     selectionAcceptor(model, proposal)
@@ -224,10 +256,24 @@ suite "Reactors":
   
   test "selection bounds reactor - clamp high":
     var model = initTuiModel()
-    model.mode = ViewMode.Colonies
+    model.mode = ViewMode.Planets
     model.selectedIdx = 10
-    model.colonies.add(ColonyInfo(systemId: 1, systemName: "A", population: 100, production: 10, owner: 1))
-    model.colonies.add(ColonyInfo(systemId: 2, systemName: "B", population: 100, production: 10, owner: 1))
+    model.colonies.add(ColonyInfo(
+      colonyId: 1,
+      systemId: 1,
+      systemName: "A",
+      populationUnits: 100,
+      industrialUnits: 10,
+      owner: 1
+    ))
+    model.colonies.add(ColonyInfo(
+      colonyId: 2,
+      systemId: 2,
+      systemName: "B",
+      populationUnits: 100,
+      industrialUnits: 10,
+      owner: 1
+    ))
     
     selectionBoundsReactor(model)
     
@@ -253,7 +299,7 @@ suite "History/Time Travel":
     var h = initHistory[TuiModel](10)
     var model = initTuiModel()
     model.turn = 1
-    h.snap(model, "init")
+    h.snap(model, ActionKind.navigateMode)
     
     check h.entries.len == 1
     check h.currentIdx == 0
@@ -262,11 +308,11 @@ suite "History/Time Travel":
     var h = initHistory[TuiModel](10)
     var model1 = initTuiModel()
     model1.turn = 1
-    h.snap(model1, "t1")
+    h.snap(model1, ActionKind.navigateMode)
     
     var model2 = initTuiModel()
     model2.turn = 2
-    h.snap(model2, "t2")
+    h.snap(model2, ActionKind.navigateMode)
     
     let state = h.travel(0)
     check state.isSome
@@ -275,9 +321,9 @@ suite "History/Time Travel":
   test "has next/prev":
     var h = initHistory[TuiModel](10)
     var model = initTuiModel()
-    h.snap(model, "t1")
-    h.snap(model, "t2")
-    h.snap(model, "t3")
+    h.snap(model, ActionKind.navigateMode)
+    h.snap(model, ActionKind.navigateMode)
+    h.snap(model, ActionKind.navigateMode)
     
     check h.hasNext == false  # at end
     discard h.travel(1)
@@ -292,7 +338,7 @@ suite "History/Time Travel":
     
     for i in 1..5:
       model.turn = i
-      h.snap(model, "t" & $i)
+      h.snap(model, ActionKind.navigateMode)
     
     check h.entries.len == 3
     check h.entries[0].state.turn == 3  # oldest remaining
@@ -302,21 +348,21 @@ suite "Full SAM Present Cycle":
   test "present updates model via acceptor":
     var sam = initSam[TuiModel]()
     var model = initTuiModel()
-    model.mode = ViewMode.Colonies
+    model.mode = ViewMode.Planets
     
     sam.addAcceptor(navigationAcceptor)
     sam.setInitialState(model)
     
-    let proposal = actionSwitchMode(ViewMode.Map)
+    let proposal = actionSwitchMode(ViewMode.Overview)
     sam.present(proposal)
     
-    check sam.state.mode == ViewMode.Map
+    check sam.state.mode == ViewMode.Overview
   
   test "present runs reactors after acceptors":
     var sam = initSam[TuiModel]()
     var model = initTuiModel()
     model.selectedIdx = 100
-    model.mode = ViewMode.Colonies
+    model.mode = ViewMode.Planets
     
     sam.addReactor(selectionBoundsReactor)
     sam.setInitialState(model)
@@ -336,8 +382,8 @@ suite "Full SAM Present Cycle":
     sam.setInitialState(model)
     
     # Present a few actions
-    sam.present(actionSwitchMode(ViewMode.Map))
-    sam.present(actionSwitchMode(ViewMode.Colonies))
+    sam.present(actionSwitchMode(ViewMode.Overview))
+    sam.present(actionSwitchMode(ViewMode.Planets))
     
     check sam.history.get.entries.len == 3  # initial + 2 actions
 
@@ -347,24 +393,24 @@ suite "Action Creators":
     let p = actionSwitchMode(ViewMode.Fleets)
     check p.kind == pkNavigation
     check p.navMode == ord(ViewMode.Fleets)
-    check p.actionName == ActionNavigateMode
+    check p.actionKind == ActionKind.navigateMode
   
   test "actionMoveCursor creates correct proposal":
     let p = actionMoveCursor(HexDirection.NorthWest)
     check p.kind == pkNavigation
     check p.navMode == ord(HexDirection.NorthWest)
-    check p.actionName == ActionMoveCursor
+    check p.actionKind == ActionKind.moveCursor
   
   test "actionEndTurn creates correct proposal":
     let p = actionEndTurn()
     check p.kind == pkEndTurn
-    check p.actionName == "endTurn"
+    check p.actionKind == ActionKind.endTurn
   
   test "actionResize creates correct proposal":
     let p = actionResize(120, 40)
     check p.kind == pkViewportScroll
     check p.scrollDelta == (120, 40)
-    check p.actionName == ActionResize
+    check p.actionKind == ActionKind.resize
 
 suite "Key Mapping":
   
@@ -379,33 +425,33 @@ suite "Key Mapping":
     
     var result = mapKeyToAction(KeyCode.KeyC, model)
     check result.isSome
-    check result.get.navMode == ord(ViewMode.Colonies)
+    check result.get.navMode == ord(ViewMode.Planets)
     
     result = mapKeyToAction(KeyCode.KeyF, model)
     check result.get.navMode == ord(ViewMode.Fleets)
     
     result = mapKeyToAction(KeyCode.KeyM, model)
-    check result.get.navMode == ord(ViewMode.Map)
+    check result.get.navMode == ord(ViewMode.Overview)
   
   test "map arrow keys in map mode":
     var model = initTuiModel()
-    model.mode = ViewMode.Map
+    model.mode = ViewMode.Overview
     
     let result = mapKeyToAction(KeyCode.KeyRight, model)
     check result.isSome
-    check result.get.actionName == ActionMoveCursor
+    check result.get.actionKind == ActionKind.moveCursor
   
   test "map arrow keys in list mode":
     var model = initTuiModel()
-    model.mode = ViewMode.Colonies
+    model.mode = ViewMode.Planets
     
     let upResult = mapKeyToAction(KeyCode.KeyUp, model)
     check upResult.isSome
-    check upResult.get.actionName == ActionListUp
+    check upResult.get.actionKind == ActionKind.listUp
     
     let downResult = mapKeyToAction(KeyCode.KeyDown, model)
     check downResult.isSome
-    check downResult.get.actionName == ActionListDown
+    check downResult.get.actionKind == ActionKind.listDown
 
 when isMainModule:
   # Run all tests
