@@ -81,12 +81,13 @@ proc clearBindings*() =
   ## Clear all bindings (for testing)
   gBindings = @[]
 
-proc hasColonies*(model: TuiModel): bool = model.colonies.len > 0
-proc hasFleets*(model: TuiModel): bool = model.fleets.len > 0
-proc hasSelection*(model: TuiModel): bool = model.selectedIdx >= 0
-proc hasFleetSelection*(model: TuiModel): bool = model.selectedFleetIds.len > 0
-proc inGame*(model: TuiModel): bool = model.appPhase == AppPhase.InGame
-proc inLobby*(model: TuiModel): bool = model.appPhase == AppPhase.Lobby
+proc hasColonies*(model: TuiModel): bool = model.view.colonies.len > 0
+proc hasFleets*(model: TuiModel): bool = model.view.fleets.len > 0
+proc hasSelection*(model: TuiModel): bool = model.ui.selectedIdx >= 0
+proc hasFleetSelection*(model: TuiModel): bool =
+  model.ui.selectedFleetIds.len > 0
+proc inGame*(model: TuiModel): bool = model.ui.appPhase == AppPhase.InGame
+proc inLobby*(model: TuiModel): bool = model.ui.appPhase == AppPhase.Lobby
 
 proc registerBinding*(b: Binding) =
   ## Legacy overload for Binding constructor
@@ -260,17 +261,17 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
 
   case b.enabledCheck
   of "hasColonies":
-    model.colonies.len > 0
+    model.view.colonies.len > 0
   of "hasFleets":
-    model.fleets.len > 0
+    model.view.fleets.len > 0
   of "hasSelection":
-    model.selectedIdx >= 0
+    model.ui.selectedIdx >= 0
   of "hasFleetSelection":
-    model.selectedFleetIds.len > 0
+    model.ui.selectedFleetIds.len > 0
   of "inGame":
-    model.appPhase == AppPhase.InGame
+    model.ui.appPhase == AppPhase.InGame
   of "inLobby":
-    model.appPhase == AppPhase.Lobby
+    model.ui.appPhase == AppPhase.Lobby
   else:
     true
 
@@ -868,7 +869,7 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.deselect:
     return some(actionDeselect())
   of ActionKind.toggleFleetSelect:
-    return some(actionToggleFleetSelect(model.selectedIdx))
+    return some(actionToggleFleetSelect(model.ui.selectedIdx))
 
   # Expert mode
   of ActionKind.enterExpertMode:
@@ -890,14 +891,14 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.cancelOrder:
     return some(actionCancelOrder())
   of ActionKind.startOrderMove:
-    if model.selectedFleetId > 0:
-      return some(actionStartOrderMove(model.selectedFleetId))
+    if model.ui.selectedFleetId > 0:
+      return some(actionStartOrderMove(model.ui.selectedFleetId))
   of ActionKind.startOrderPatrol:
-    if model.selectedFleetId > 0:
-      return some(actionStartOrderPatrol(model.selectedFleetId))
+    if model.ui.selectedFleetId > 0:
+      return some(actionStartOrderPatrol(model.ui.selectedFleetId))
   of ActionKind.startOrderHold:
-    if model.selectedFleetId > 0:
-      return some(actionStartOrderHold(model.selectedFleetId))
+    if model.ui.selectedFleetId > 0:
+      return some(actionStartOrderHold(model.ui.selectedFleetId))
 
   # Quit
   of ActionKind.quit:
@@ -976,7 +977,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     return some(actionQuit())
 
   # Quit confirmation modal - takes precedence over everything
-  if model.quitConfirmationActive:
+  if model.ui.quitConfirmationActive:
     case key
     of KeyCode.KeyY:
       return some(actionQuitConfirm())
@@ -987,14 +988,14 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     of KeyCode.KeyH, KeyCode.KeyL:
       return some(actionQuitToggle())
     of KeyCode.KeyEnter:
-      if model.quitConfirmationChoice == QuitConfirmationChoice.QuitExit:
+      if model.ui.quitConfirmationChoice == QuitConfirmationChoice.QuitExit:
         return some(actionQuitConfirm())
       return some(actionQuitCancel())
     else:
       return none(Proposal)
 
   # Order entry mode: use registry
-  if model.orderEntryActive:
+  if model.ui.orderEntryActive:
     let orderResult = lookupAndDispatch(key, KeyModifier.None,
         BindingContext.OrderEntry, model)
     if orderResult.isSome:
@@ -1005,7 +1006,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     return none(Proposal)
 
   # Expert mode: use registry
-  if model.expertModeActive:
+  if model.ui.expertModeActive:
     let expertResult = lookupAndDispatch(key, KeyModifier.None,
         BindingContext.ExpertMode, model)
     if expertResult.isSome:
@@ -1014,8 +1015,8 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     return none(Proposal)
 
   # Lobby phase: special handling for text input modes
-  if model.appPhase == AppPhase.Lobby:
-    if model.entryModal.mode == EntryModalMode.ImportNsec:
+  if model.ui.appPhase == AppPhase.Lobby:
+    if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
       case key
       of KeyCode.KeyEnter:
         return some(actionEntryImportConfirm())
@@ -1026,7 +1027,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       else:
         return none(Proposal)
 
-    elif model.entryModal.editingRelay:
+    elif model.ui.entryModal.editingRelay:
       case key
       of KeyCode.KeyEnter, KeyCode.KeyEscape:
         return some(actionEntryRelayConfirm())
@@ -1035,7 +1036,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       else:
         return none(Proposal)
 
-    elif model.entryModal.mode == EntryModalMode.CreateGame:
+    elif model.ui.entryModal.mode == EntryModalMode.CreateGame:
       case key
       of KeyCode.KeyEscape:
         return some(actionCreateGameCancel())
@@ -1054,7 +1055,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       else:
         return none(Proposal)
 
-    elif model.entryModal.mode == EntryModalMode.ManageGames:
+    elif model.ui.entryModal.mode == EntryModalMode.ManageGames:
       case key
       of KeyCode.KeyEscape:
         return some(actionManageGamesCancel())
@@ -1069,7 +1070,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       of KeyCode.KeyDown:
         return some(actionEntryDown())
       of KeyCode.KeyEnter:
-        case model.entryModal.focus
+        case model.ui.entryModal.focus
         of EntryModalFocus.InviteCode:
           return some(actionEntryInviteSubmit())
         of EntryModalFocus.AdminMenu:
@@ -1079,9 +1080,9 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
         of EntryModalFocus.RelayUrl:
           return some(actionEntryRelayEdit())
       of KeyCode.KeyBackspace:
-        if model.entryModal.focus == EntryModalFocus.InviteCode:
+        if model.ui.entryModal.focus == EntryModalFocus.InviteCode:
           return some(actionEntryInviteBackspace())
-        elif model.entryModal.focus == EntryModalFocus.RelayUrl:
+        elif model.ui.entryModal.focus == EntryModalFocus.RelayUrl:
           return some(actionEntryRelayBackspace())
         else:
           return none(Proposal)
@@ -1091,7 +1092,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
         return none(Proposal)
 
   # In-game Ctrl+L returns to lobby
-  if model.appPhase == AppPhase.InGame:
+  if model.ui.appPhase == AppPhase.InGame:
     if key == KeyCode.KeyCtrlL:
       return some(actionLobbyReturn())
 
@@ -1101,7 +1102,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     return globalResult
 
   # Context-specific bindings based on current view mode
-  let ctx = viewModeToContext(model.mode)
+  let ctx = viewModeToContext(model.ui.mode)
   let ctxResult = lookupAndDispatch(key, KeyModifier.None, ctx, model)
   if ctxResult.isSome:
     return ctxResult
@@ -1120,10 +1121,10 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
   result = @[]
 
   # Determine which bindings to show
-  let showGlobalTabs = model.appPhase == AppPhase.InGame and
-      model.mode == ViewMode.Overview and
-      not model.expertModeActive and
-      not model.orderEntryActive
+  let showGlobalTabs = model.ui.appPhase == AppPhase.InGame and
+      model.ui.mode == ViewMode.Overview and
+      not model.ui.expertModeActive and
+      not model.ui.orderEntryActive
 
   if showGlobalTabs:
     # Show view tabs [1-9] + expert mode hint
@@ -1136,15 +1137,15 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
 
       let label = if useShortLabels: b.shortLabel else: b.longLabel
       let isSelected = case b.key
-        of KeyCode.Key1: model.mode == ViewMode.Overview
-        of KeyCode.Key2: model.mode == ViewMode.Planets
-        of KeyCode.Key3: model.mode == ViewMode.Fleets
-        of KeyCode.Key4: model.mode == ViewMode.Research
-        of KeyCode.Key5: model.mode == ViewMode.Espionage
-        of KeyCode.Key6: model.mode == ViewMode.Economy
-        of KeyCode.Key7: model.mode == ViewMode.Reports
-        of KeyCode.Key8: model.mode == ViewMode.Messages
-        of KeyCode.Key9: model.mode == ViewMode.Settings
+        of KeyCode.Key1: model.ui.mode == ViewMode.Overview
+        of KeyCode.Key2: model.ui.mode == ViewMode.Planets
+        of KeyCode.Key3: model.ui.mode == ViewMode.Fleets
+        of KeyCode.Key4: model.ui.mode == ViewMode.Research
+        of KeyCode.Key5: model.ui.mode == ViewMode.Espionage
+        of KeyCode.Key6: model.ui.mode == ViewMode.Economy
+        of KeyCode.Key7: model.ui.mode == ViewMode.Reports
+        of KeyCode.Key8: model.ui.mode == ViewMode.Messages
+        of KeyCode.Key9: model.ui.mode == ViewMode.Settings
         else: false
 
       let mode = if isSelected: BarItemMode.Selected
@@ -1162,9 +1163,9 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
       idx.inc
   else:
     # Show context-specific actions
-    let ctx = if model.expertModeActive: BindingContext.ExpertMode
-              elif model.orderEntryActive: BindingContext.OrderEntry
-              else: viewModeToContext(model.mode)
+    let ctx = if model.ui.expertModeActive: BindingContext.ExpertMode
+              elif model.ui.orderEntryActive: BindingContext.OrderEntry
+              else: viewModeToContext(model.ui.mode)
 
     let bindings = getBindingsForContext(ctx)
 

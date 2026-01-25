@@ -78,10 +78,10 @@ proc buildMatchSpans(label: string, matchIndices: seq[int],
 proc renderExpertPalette*(buf: var CellBuffer, canvasArea: Rect,
                           dockArea: Rect, model: TuiModel) =
   ## Render helix-style expert command palette above the dock
-  if not model.expertModeActive:
+  if not model.ui.expertModeActive:
     return
 
-  let matches = matchExpertCommands(model.expertModeInput)
+  let matches = matchExpertCommands(model.ui.expertModeInput)
   if matches.len == 0:
     return
 
@@ -135,23 +135,23 @@ proc renderExpertPalette*(buf: var CellBuffer, canvasArea: Rect,
     .highlightSymbol("")
 
   var state = newListState()
-  if model.expertPaletteSelection >= 0 and
-      model.expertPaletteSelection < matches.len:
-    state.select(model.expertPaletteSelection)
+  if model.ui.expertPaletteSelection >= 0 and
+      model.ui.expertPaletteSelection < matches.len:
+    state.select(model.ui.expertPaletteSelection)
   palette.render(inner, buf, state)
 
 proc renderQuitConfirmation*(buf: var CellBuffer, model: TuiModel) =
   ## Render quit confirmation modal
-  if not model.quitConfirmationActive:
+  if not model.ui.quitConfirmationActive:
     return
 
-  if model.termWidth < 30 or model.termHeight < 7:
+  if model.ui.termWidth < 30 or model.ui.termHeight < 7:
     return
 
-  let width = min(56, model.termWidth - 4)
+  let width = min(56, model.ui.termWidth - 4)
   let height = 7
-  let x = (model.termWidth - width) div 2
-  let y = (model.termHeight - height) div 2
+  let x = (model.ui.termWidth - width) div 2
+  let y = (model.ui.termHeight - height) div 2
   let modalArea = rect(x, y, width, height)
 
   buf.fillArea(modalArea, " ", modalBgStyle())
@@ -190,7 +190,7 @@ proc renderQuitConfirmation*(buf: var CellBuffer, model: TuiModel) =
     currentY += 1
 
   if currentY < inner.bottom:
-    let choice = model.quitConfirmationChoice
+    let choice = model.ui.quitConfirmationChoice
     let normalStyle = modalDimStyle()
     let highlightStyle = selectedStyle()
     let quitStyle =
@@ -285,14 +285,14 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     ]
 
   var colonyTable = table(columns)
-    .selectedIdx(model.selectedIdx)
+    .selectedIdx(model.ui.selectedIdx)
     .zebraStripe(true)
 
   let statusColumn = columns.len - 1
   var totalGco = 0
   var totalNcv = 0
   var idleCount = 0
-  for colony in model.colonies:
+  for colony in model.view.colonies:
     totalGco += colony.grossOutput
     totalNcv += colony.netValue
     if colony.idleConstruction:
@@ -357,12 +357,12 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
   if footerHeight > 0 and area.height > 1:
     let footerY = area.y + tableHeight
-    let taxLabel = if model.houseTaxRate > 0:
-                     $model.houseTaxRate & "% tax"
+    let taxLabel = if model.view.houseTaxRate > 0:
+                     $model.view.houseTaxRate & "% tax"
                    else:
                      "tax n/a"
     let summary =
-      $model.colonies.len & " colonies  |  GHO: " & $totalGco &
+      $model.view.colonies.len & " colonies  |  GHO: " & $totalGco &
       " PP  |  NHV: " & $totalNcv &
       " PP (" & taxLabel & ")  |  " &
       $idleCount & " idle"
@@ -374,11 +374,11 @@ proc renderFleetList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   var y = area.y
   var idx = 0
 
-  for fleet in model.fleets:
+  for fleet in model.view.fleets:
     if y >= area.bottom:
       break
 
-    let isSelected = idx == model.selectedIdx
+    let isSelected = idx == model.ui.selectedIdx
     let style =
       if isSelected:
         selectedStyle()
@@ -405,7 +405,7 @@ proc renderFleetDetail*(
   state: GameState,
   viewingHouse: HouseId
 ) =
-  if model.selectedFleetId <= 0:
+  if model.ui.selectedFleetId <= 0:
     discard buf.setString(
       area.x, area.y, "No fleet selected", dimStyle()
     )
@@ -414,7 +414,7 @@ proc renderFleetDetail*(
   # Convert engine data to display data using adapter
   let fleetData = fleetToDetailData(
     state,
-    FleetId(model.selectedFleetId),
+    FleetId(model.ui.selectedFleetId),
     viewingHouse
   )
 
@@ -861,7 +861,7 @@ proc renderPlanetDetail*(
   viewingHouse: HouseId
 ) =
   ## Render detailed planet view with tabs
-  if model.selectedColonyId <= 0:
+  if model.ui.selectedColonyId <= 0:
     discard buf.setString(
       area.x, area.y, "No colony selected", dimStyle()
     )
@@ -869,7 +869,7 @@ proc renderPlanetDetail*(
 
   let planetData = colonyToDetailData(
     state,
-    ColonyId(model.selectedColonyId),
+    ColonyId(model.ui.selectedColonyId),
     viewingHouse
   )
 
@@ -878,7 +878,7 @@ proc renderPlanetDetail*(
 
   var y = area.y
   let tabArea = rect(area.x, y, area.width, 1)
-  let activeIdx = ord(model.planetDetailTab) - 1
+  let activeIdx = ord(model.ui.planetDetailTab) - 1
   let tabs = planetDetailTabs(activeIdx)
   tabs.render(tabArea, buf)
   y += 2
@@ -886,7 +886,7 @@ proc renderPlanetDetail*(
     return
 
   let contentArea = rect(area.x, y, area.width, area.bottom - y)
-  case model.planetDetailTab
+  case model.ui.planetDetailTab
   of PlanetDetailTab.Summary:
     renderPlanetSummaryTab(contentArea, buf, planetData)
   of PlanetDetailTab.Economy:
@@ -955,10 +955,10 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
   let dimStyle = canvasDimStyle()
   let normalStyle = canvasStyle()
-  let focusLabel = reportPaneLabel(model.reportFocus)
+  let focusLabel = reportPaneLabel(model.ui.reportFocus)
 
-  let filterLabel = reportCategoryLabel(model.reportFilter)
-  let filterKey = reportCategoryKey(model.reportFilter)
+  let filterLabel = reportCategoryLabel(model.ui.reportFilter)
+  let filterKey = reportCategoryKey(model.ui.reportFilter)
   let filterLine = "Filter [Tab]: " & filterLabel & " [" & $filterKey & "]"
   discard buf.setString(area.x, area.y, filterLine, canvasHeaderStyle())
 
@@ -974,15 +974,15 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let subjectArea = columns[1]
   let bodyPaneArea = columns[2]
 
-  let turnTitle = if model.reportFocus == ReportPaneFocus.TurnList:
+  let turnTitle = if model.ui.reportFocus == ReportPaneFocus.TurnList:
                     "TURNS *"
                   else:
                     "TURNS"
-  let subjectTitle = if model.reportFocus == ReportPaneFocus.SubjectList:
+  let subjectTitle = if model.ui.reportFocus == ReportPaneFocus.SubjectList:
                        "SUBJECTS *"
                      else:
                        "SUBJECTS"
-  let bodyTitle = if model.reportFocus == ReportPaneFocus.BodyPane:
+  let bodyTitle = if model.ui.reportFocus == ReportPaneFocus.BodyPane:
                     "REPORT *"
                   else:
                     "REPORT"
@@ -1007,7 +1007,7 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let buckets = model.reportsByTurn()
   var y = turnInner.y
   let turnCount = buckets.len
-  var turnScroll = model.reportTurnScroll
+  var turnScroll = model.ui.reportTurnScroll
   turnScroll.contentLength = turnCount
   turnScroll.viewportLength = turnInner.height
   turnScroll.clampOffsets()
@@ -1017,7 +1017,7 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     if y >= turnInner.bottom:
       break
     let bucket = buckets[idx]
-    let isSelected = idx == model.reportTurnIdx
+    let isSelected = idx == model.ui.reportTurnIdx
     let rowStyle = if isSelected: selectedStyle() else: normalStyle
     let prefix = if isSelected: ">" else: " "
 
@@ -1033,7 +1033,7 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
   var subjectY = subjectInner.y
   let reports = model.currentTurnReports()
-  var subjectScroll = model.reportSubjectScroll
+  var subjectScroll = model.ui.reportSubjectScroll
   subjectScroll.contentLength = reports.len
   subjectScroll.viewportLength = subjectInner.height
   subjectScroll.clampOffsets()
@@ -1043,7 +1043,7 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     if subjectY >= subjectInner.bottom:
       break
     let report = reports[idx]
-    let isSelected = idx == model.reportSubjectIdx
+    let isSelected = idx == model.ui.reportSubjectIdx
     let rowStyle = if isSelected: selectedStyle() else: normalStyle
     let marker = if isSelected: ">" else: " "
     let unread = if report.isUnread: GlyphUnread else: " "
@@ -1074,7 +1074,7 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
       detailLines.add(line("- " & entry))
     let bodyText = text(lines & detailLines)
     let bodyContent = bodyInner
-    var bodyScroll = model.reportBodyScroll
+    var bodyScroll = model.ui.reportBodyScroll
     bodyScroll.contentLength = bodyText.lines.len
     bodyScroll.viewportLength = bodyContent.height
     bodyScroll.clampOffsets()
@@ -1106,9 +1106,9 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     ScrollbarOrientation.VerticalRight)
 
   let bodyScrollbar = ScrollbarState(
-    contentLength: model.reportBodyScroll.contentLength,
-    position: model.reportBodyScroll.verticalOffset,
-    viewportLength: model.reportBodyScroll.viewportLength
+    contentLength: model.ui.reportBodyScroll.contentLength,
+    position: model.ui.reportBodyScroll.verticalOffset,
+    viewportLength: model.ui.reportBodyScroll.viewportLength
   )
   renderScrollbar(bodyInner, buf, bodyScrollbar,
     ScrollbarOrientation.VerticalRight)
@@ -1142,7 +1142,7 @@ proc renderReportDetail*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     detailLines.add(line("- " & entry))
 
   let detailText = text(detailLines)
-  var detailScroll = model.reportBodyScroll
+  var detailScroll = model.ui.reportBodyScroll
   detailScroll.contentLength = detailText.lines.len
   detailScroll.viewportLength = detailInner.height
   detailScroll.clampOffsets()
@@ -1172,7 +1172,7 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
   ## Render planets view as centered floating modal
   let vm = newViewModal("YOUR COLONIES").maxWidth(120).minWidth(80)
-  let contentHeight = max(10, model.colonies.len + 4)
+  let contentHeight = max(10, model.view.colonies.len + 4)
   let modalArea = vm.calculateViewArea(canvas, contentHeight)
   vm.render(modalArea, buf)
   let innerArea = vm.innerArea(modalArea)
@@ -1182,7 +1182,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
                         model: TuiModel, scroll: ScrollState) =
   ## Render fleets view as centered floating modal
   let vm = newViewModal("YOUR FLEETS").maxWidth(120).minWidth(80)
-  let contentHeight = max(10, model.fleets.len + 4)
+  let contentHeight = max(10, model.view.fleets.len + 4)
   let modalArea = vm.calculateViewArea(canvas, contentHeight)
   vm.render(modalArea, buf)
   let innerArea = vm.innerArea(modalArea)
@@ -1264,7 +1264,7 @@ proc renderListPanel*(
   ## Render the main list panel based on current mode
 
   let title =
-    case model.mode
+    case model.ui.mode
     of ViewMode.Overview: "Empire Status"
     of ViewMode.Planets: "Your Colonies"
     of ViewMode.Fleets: "Your Fleets"
@@ -1282,7 +1282,7 @@ proc renderListPanel*(
   frame.render(area, buf)
   let inner = frame.inner(area)
 
-  case model.mode
+  case model.ui.mode
   of ViewMode.Overview:
     # Overview placeholder - will show empire dashboard in Phase 2
     var y = inner.y
@@ -1290,13 +1290,13 @@ proc renderListPanel*(
       canvasHeaderStyle())
     y += 2
     discard buf.setString(inner.x, y,
-      "Turn: " & $model.turn, normalStyle())
+      "Turn: " & $model.view.turn, normalStyle())
     y += 1
     discard buf.setString(inner.x, y,
-      "Colonies: " & $model.colonies.len, normalStyle())
+      "Colonies: " & $model.view.colonies.len, normalStyle())
     y += 1
     discard buf.setString(inner.x, y,
-      "Fleets: " & $model.fleets.len, normalStyle())
+      "Fleets: " & $model.view.fleets.len, normalStyle())
     y += 2
     discard buf.setString(inner.x, y,
       "[1-9] Switch views  [Ctrl-Q] Quit  [J] Join", dimStyle())
@@ -1331,31 +1331,32 @@ proc renderListPanel*(
 proc buildHudData*(model: TuiModel): HudData =
   ## Build HUD data from TUI model
   HudData(
-    houseName: model.houseName,
-    turn: model.turn,
-    prestige: model.prestige,
-    prestigeRank: model.prestigeRank,
-    totalHouses: model.totalHouses,
-    treasury: model.treasury,
-    production: model.production,
-    commandUsed: model.commandUsed,
-    commandMax: model.commandMax,
-    alertCount: model.alertCount,
-    unreadMessages: model.unreadMessages,
+    houseName: model.view.houseName,
+    turn: model.view.turn,
+    prestige: model.view.prestige,
+    prestigeRank: model.view.prestigeRank,
+    totalHouses: model.view.totalHouses,
+    treasury: model.view.treasury,
+    production: model.view.production,
+    commandUsed: model.view.commandUsed,
+    commandMax: model.view.commandMax,
+    alertCount: model.view.alertCount,
+    unreadMessages: model.view.unreadMessages,
   )
 
 proc buildBreadcrumbData*(model: TuiModel): BreadcrumbData =
   ## Build breadcrumb data from TUI model
   result = initBreadcrumbData()
-  if model.breadcrumbs.len == 0:
+  if model.ui.breadcrumbs.len == 0:
     # Safety: should never happen, but handle gracefully
     result.add("Home", 1)
     return
-  if model.breadcrumbs.len == 1 and model.breadcrumbs[0].label == "Home":
+  if model.ui.breadcrumbs.len == 1 and
+      model.ui.breadcrumbs[0].label == "Home":
     result.add("Home", 1)
-    result.add(model.mode.viewModeLabel, int(model.mode))
+    result.add(model.ui.mode.viewModeLabel, int(model.ui.mode))
   else:
-    for item in model.breadcrumbs:
+    for item in model.ui.breadcrumbs:
       result.add(item.label, int(item.viewMode), item.entityId)
 
 proc activeViewKey*(mode: ViewMode): char =
@@ -1377,31 +1378,34 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
   ## Build command dock data from TUI model
   result = initCommandDockData()
   result.views = standardViews()
-  result.setActiveView(activeViewKey(model.mode))
-  result.expertModeActive = model.expertModeActive
-  result.expertModeInput = model.expertModeInput
+  result.setActiveView(activeViewKey(model.ui.mode))
+  result.expertModeActive = model.ui.expertModeActive
+  result.expertModeInput = model.ui.expertModeInput
   result.showQuit = true
-  if model.expertModeFeedback.len > 0:
-    result.feedback = model.expertModeFeedback
+  if model.ui.expertModeFeedback.len > 0:
+    result.feedback = model.ui.expertModeFeedback
   else:
-    result.feedback = model.statusMessage
+    result.feedback = model.ui.statusMessage
 
   # Order entry mode has special context actions
-  if model.orderEntryActive:
+  if model.ui.orderEntryActive:
     result.contextActions = orderEntryContextActions(
-      model.orderEntryCommandType
+      model.ui.orderEntryCommandType
     )
     return
 
-  case model.mode
+  case model.ui.mode
   of ViewMode.Overview:
-    let joinActive = model.appPhase == AppPhase.Lobby
+    let joinActive = model.ui.appPhase == AppPhase.Lobby
     result.contextActions = overviewContextActions(joinActive)
   of ViewMode.Planets:
-    result.contextActions = planetsContextActions(model.colonies.len > 0)
+    result.contextActions = planetsContextActions(
+      model.view.colonies.len > 0
+    )
   of ViewMode.Fleets:
     result.contextActions =
-      fleetsContextActions(model.fleets.len > 0, model.selectedFleetIds.len)
+      fleetsContextActions(model.view.fleets.len > 0,
+        model.ui.selectedFleetIds.len)
   of ViewMode.Research:
     result.contextActions = researchContextActions()
   of ViewMode.Espionage:
@@ -1433,11 +1437,11 @@ proc renderDashboard*(
     playerState: ps_types.PlayerState,
 ) =
   ## Render the complete TUI dashboard using EC-style layout
-  let termRect = rect(0, 0, model.termWidth, model.termHeight)
+  let termRect = rect(0, 0, model.ui.termWidth, model.ui.termHeight)
 
   # Layout: HUD (3), Breadcrumb (1), Main Canvas (fill), Status Bar (1)
   # Changed from 3-line dock to 1-line Zellij-style status bar
-  let rows = if model.appPhase == AppPhase.InGame:
+  let rows = if model.ui.appPhase == AppPhase.InGame:
                vertical().constraints(length(3), length(1), fill(), length(1))
              else:
                vertical().constraints(length(0), length(0), fill(), length(1))
@@ -1456,55 +1460,56 @@ proc renderDashboard*(
   buf.fill(Rune(' '), canvasStyle())
 
   # Render HUD
-  if model.appPhase == AppPhase.InGame:
+  if model.ui.appPhase == AppPhase.InGame:
     let hudData = buildHudData(model)
     renderHud(hudArea, buf, hudData)
 
   # Render Breadcrumb
-  if model.appPhase == AppPhase.InGame:
+  if model.ui.appPhase == AppPhase.InGame:
     let breadcrumbData = buildBreadcrumbData(model)
     renderBreadcrumbWithBackground(breadcrumbArea, buf, breadcrumbData)
 
   # Render main content based on view
-  if model.appPhase == AppPhase.Lobby:
+  if model.ui.appPhase == AppPhase.Lobby:
     # Entry modal renders over entire viewport (it's a centered modal)
     let viewport = rect(0, 0, buf.w, buf.h)
-    model.entryModal.render(viewport, buf)
+    model.ui.entryModal.render(viewport, buf)
   else:
     # Fill canvas with dark background (modals will render centered on top)
     buf.fillArea(canvasArea, " ", canvasStyle())
 
-    case model.mode
+    case model.ui.mode
     of ViewMode.Overview:
       let overviewData = syncPlayerStateToOverview(playerState, state)
-      renderOverviewModal(canvasArea, buf, overviewData, model.overviewScroll)
+      renderOverviewModal(canvasArea, buf, overviewData,
+        model.ui.overviewScroll)
     of ViewMode.Planets:
-      renderPlanetsModal(canvasArea, buf, model, model.planetsScroll)
+      renderPlanetsModal(canvasArea, buf, model, model.ui.planetsScroll)
     of ViewMode.Fleets:
-      renderFleetsModal(canvasArea, buf, model, model.fleetsScroll)
+      renderFleetsModal(canvasArea, buf, model, model.ui.fleetsScroll)
     of ViewMode.Research:
-      renderResearchModal(canvasArea, buf, model, model.researchScroll)
+      renderResearchModal(canvasArea, buf, model, model.ui.researchScroll)
     of ViewMode.Espionage:
-      renderEspionageModal(canvasArea, buf, model, model.espionageScroll)
+      renderEspionageModal(canvasArea, buf, model, model.ui.espionageScroll)
     of ViewMode.Economy:
-      renderEconomyModal(canvasArea, buf, model, model.economyScroll)
+      renderEconomyModal(canvasArea, buf, model, model.ui.economyScroll)
     of ViewMode.Reports:
-      renderReportsModal(canvasArea, buf, model, model.reportTurnScroll)
+      renderReportsModal(canvasArea, buf, model, model.ui.reportTurnScroll)
     of ViewMode.Messages:
-      renderMessagesModal(canvasArea, buf, model, model.messagesScroll)
+      renderMessagesModal(canvasArea, buf, model, model.ui.messagesScroll)
     of ViewMode.Settings:
-      renderSettingsModal(canvasArea, buf, model, model.settingsScroll)
+      renderSettingsModal(canvasArea, buf, model, model.ui.settingsScroll)
     else:
       # Detail views still use full-canvas rendering
       renderListPanel(canvasArea, buf, model, state, viewingHouse)
 
-  if model.expertModeActive:
+  if model.ui.expertModeActive:
     renderExpertPalette(buf, canvasArea, statusBarArea, model)
 
   # Render Zellij-style status bar (1 line)
-  if model.appPhase == AppPhase.InGame:
+  if model.ui.appPhase == AppPhase.InGame:
     let statusBarData = buildStatusBarData(model, statusBarArea.width)
     renderStatusBar(statusBarArea, buf, statusBarData)
 
-  if model.quitConfirmationActive:
+  if model.ui.quitConfirmationActive:
     renderQuitConfirmation(buf, model)

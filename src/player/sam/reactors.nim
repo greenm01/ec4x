@@ -30,12 +30,12 @@ proc viewportReactor*(model: var TuiModel) =
   
   # Calculate visible hex range based on terminal size
   # Reserve some space for UI (status bar, panels)
-  let visibleWidth = max(1, (model.termWidth - 40) div HexWidth)
-  let visibleHeight = max(1, model.termHeight - 10)
+  let visibleWidth = max(1, (model.ui.termWidth - 40) div HexWidth)
+  let visibleHeight = max(1, model.ui.termHeight - 10)
   
   # Get current cursor and viewport
-  let cursor = model.mapState.cursor
-  let vpOrigin = model.mapState.viewportOrigin
+  let cursor = model.ui.mapState.cursor
+  let vpOrigin = model.ui.mapState.viewportOrigin
   
   # Calculate cursor position relative to viewport
   let relQ = cursor.q - vpOrigin.q
@@ -57,7 +57,7 @@ proc viewportReactor*(model: var TuiModel) =
   elif relR > visibleHeight - ViewportMargin - 1:
     newR = cursor.r - visibleHeight + ViewportMargin + 1
   
-  model.mapState.viewportOrigin = (newQ, newR)
+  model.ui.mapState.viewportOrigin = (newQ, newR)
 
 # ============================================================================
 # Selection Bounds Reactor
@@ -67,11 +67,11 @@ proc selectionBoundsReactor*(model: var TuiModel) =
   ## Clamp selection index to valid range
   let maxIdx = model.currentListLength() - 1
   if maxIdx < 0:
-    model.selectedIdx = 0
-  elif model.selectedIdx > maxIdx:
-    model.selectedIdx = maxIdx
-  elif model.selectedIdx < 0:
-    model.selectedIdx = 0
+    model.ui.selectedIdx = 0
+  elif model.ui.selectedIdx > maxIdx:
+    model.ui.selectedIdx = maxIdx
+  elif model.ui.selectedIdx < 0:
+    model.ui.selectedIdx = 0
 
 # ============================================================================
 # Status Message Reactor
@@ -83,56 +83,57 @@ proc statusMessageReactor*(model: var TuiModel) =
   
   # Show staged command count if we have any
   let stagedCount = model.stagedCommandCount()
-  if stagedCount > 0 and model.statusMessage.len == 0:
-    model.statusMessage = &"{stagedCount} command(s) staged | Ctrl+E to submit turn"
+  if stagedCount > 0 and model.ui.statusMessage.len == 0:
+    model.ui.statusMessage =
+      &"{stagedCount} command(s) staged | Ctrl+E to submit turn"
     return
   
-  if model.statusMessage.len == 0:
-    if model.expertModeFeedback.len > 0:
-      model.statusMessage = model.expertModeFeedback
+  if model.ui.statusMessage.len == 0:
+    if model.ui.expertModeFeedback.len > 0:
+      model.ui.statusMessage = model.ui.expertModeFeedback
       return
-    case model.mode
+    case model.ui.mode
     of ViewMode.Overview:
-      model.statusMessage = "Strategic Overview"
+      model.ui.statusMessage = "Strategic Overview"
     
     of ViewMode.Planets:
-      if model.colonies.len > 0:
-        model.statusMessage = &"{model.colonies.len} colonies"
+      if model.view.colonies.len > 0:
+        model.ui.statusMessage = &"{model.view.colonies.len} colonies"
       else:
-        model.statusMessage = "No colonies"
+        model.ui.statusMessage = "No colonies"
     
     of ViewMode.Fleets:
-      if model.fleets.len > 0:
-        model.statusMessage = &"{model.fleets.len} fleets"
+      if model.view.fleets.len > 0:
+        model.ui.statusMessage = &"{model.view.fleets.len} fleets"
       else:
-        model.statusMessage = "No fleets"
+        model.ui.statusMessage = "No fleets"
     
     of ViewMode.Research:
-      model.statusMessage = "Research & Technology"
+      model.ui.statusMessage = "Research & Technology"
     
     of ViewMode.Espionage:
-      model.statusMessage = "Espionage Operations"
+      model.ui.statusMessage = "Espionage Operations"
     
     of ViewMode.Economy:
-      model.statusMessage = "Empire Economy"
+      model.ui.statusMessage = "Empire Economy"
     
     of ViewMode.Reports:
-      model.statusMessage = "Reports Inbox"
+      model.ui.statusMessage = "Reports Inbox"
     
     of ViewMode.Messages:
-      model.statusMessage = "Diplomatic Messages"
+      model.ui.statusMessage = "Diplomatic Messages"
     
     of ViewMode.Settings:
-      model.statusMessage = "Game Settings"
+      model.ui.statusMessage = "Game Settings"
     
     of ViewMode.PlanetDetail:
-      model.statusMessage = "Planet Details"
+      model.ui.statusMessage = "Planet Details"
     
     of ViewMode.FleetDetail:
-      model.statusMessage = "Fleet Details"
+      model.ui.statusMessage = "Fleet Details"
     
     of ViewMode.ReportDetail:
-      model.statusMessage = "Report Details"
+      model.ui.statusMessage = "Report Details"
 
 # ============================================================================
 # Clear Transient State Reactor
@@ -140,10 +141,10 @@ proc statusMessageReactor*(model: var TuiModel) =
 
 proc clearTransientReactor*(model: var TuiModel) =
   ## Clear transient state flags
-  model.needsResize = false
+  model.ui.needsResize = false
   # Don't clear statusMessage here - let it persist until next action
   # It will be cleared at the start of the next present() cycle
-  if not model.expertModeActive:
+  if not model.ui.expertModeActive:
     model.clearExpertFeedback()
 
 # ============================================================================
@@ -162,19 +163,19 @@ proc contextDataReactor*(model: var TuiModel) =
 proc turnSubmissionReactor*(model: var TuiModel) =
   ## Handle turn submission flag set by acceptor
   ## Requires confirmation before setting turnSubmissionPending
-  if model.turnSubmissionRequested:
+  if model.ui.turnSubmissionRequested:
     # Check if already confirmed (via :submit command or second Ctrl+E)
-    if model.turnSubmissionConfirmed:
-      model.turnSubmissionPending = true
-      model.turnSubmissionRequested = false
-      model.turnSubmissionConfirmed = false
+    if model.ui.turnSubmissionConfirmed:
+      model.ui.turnSubmissionPending = true
+      model.ui.turnSubmissionRequested = false
+      model.ui.turnSubmissionConfirmed = false
     else:
       # First press - ask for confirmation
       let count = model.stagedCommandCount()
-      model.statusMessage = "Press Ctrl+E again to confirm submitting " &
+      model.ui.statusMessage = "Press Ctrl+E again to confirm submitting " &
         $count & " commands, or :clear to cancel"
-      model.turnSubmissionConfirmed = true
-      model.turnSubmissionRequested = false
+      model.ui.turnSubmissionConfirmed = true
+      model.ui.turnSubmissionRequested = false
 
 # ============================================================================
 # Create All Reactors

@@ -59,10 +59,10 @@ suite "TUI Model":
   
   test "init model with defaults":
     let model = initTuiModel()
-    check model.mode == ViewMode.Planets
-    check model.selectedIdx == 0
-    check model.running == true
-    check model.turn == 1
+    check model.ui.mode == ViewMode.Planets
+    check model.ui.selectedIdx == 0
+    check model.ui.running == true
+    check model.view.turn == 1
   
   test "hex coordinate operations":
     let coord = hexCoord(3, -2)
@@ -95,8 +95,8 @@ suite "TUI Model":
   
   test "current list length - colonies":
     var model = initTuiModel()
-    model.mode = ViewMode.Planets
-    model.colonies.add(ColonyInfo(
+    model.ui.mode = ViewMode.Planets
+    model.view.colonies.add(ColonyInfo(
       colonyId: 1,
       systemId: 1,
       systemName: "Test",
@@ -108,7 +108,12 @@ suite "TUI Model":
   
   test "system at coordinate":
     var model = initTuiModel()
-    model.systems[(0, 0)] = SystemInfo(id: 1, name: "Sol", coords: (0, 0), ring: 0)
+    model.view.systems[(0, 0)] = SystemInfo(
+      id: 1,
+      name: "Sol",
+      coords: (0, 0),
+      ring: 0
+    )
     
     let found = model.systemAt((0, 0))
     check found.isSome
@@ -131,9 +136,9 @@ suite "SAM Instance":
   test "set initial state":
     var sam = initSam[TuiModel]()
     var model = initTuiModel()
-    model.turn = 5
+    model.view.turn = 5
     sam.setInitialState(model)
-    check sam.state.turn == 5
+    check sam.state.view.turn == 5
   
   test "add acceptor":
     var sam = initSam[TuiModel]()
@@ -154,66 +159,66 @@ suite "Acceptors":
   
   test "navigation acceptor - mode switch":
     var model = initTuiModel()
-    model.mode = ViewMode.Planets
+    model.ui.mode = ViewMode.Planets
     
     let proposal = actionSwitchMode(ViewMode.Overview)
     navigationAcceptor(model, proposal)
     
-    check model.mode == ViewMode.Overview
-    check model.selectedIdx == 0
+    check model.ui.mode == ViewMode.Overview
+    check model.ui.selectedIdx == 0
   
   test "navigation acceptor - cursor move by direction":
     var model = initTuiModel()
-    model.mapState.cursor = (0, 0)
+    model.ui.mapState.cursor = (0, 0)
     
     let proposal = actionMoveCursor(HexDirection.East)
     navigationAcceptor(model, proposal)
     
-    check model.mapState.cursor == (1, 0)
+    check model.ui.mapState.cursor == (1, 0)
   
   test "navigation acceptor - jump home":
     var model = initTuiModel()
-    model.mapState.cursor = (5, 5)
-    model.homeworld = some((0, 0))
+    model.ui.mapState.cursor = (5, 5)
+    model.view.homeworld = some((0, 0))
     
     let proposal = actionJumpHome()
     navigationAcceptor(model, proposal)
     
-    check model.mapState.cursor == (0, 0)
+    check model.ui.mapState.cursor == (0, 0)
   
   test "selection acceptor - select in map mode":
     var model = initTuiModel()
-    model.mode = ViewMode.Overview
-    model.mapState.cursor = (3, -1)
+    model.ui.mode = ViewMode.Overview
+    model.ui.mapState.cursor = (3, -1)
     
     let proposal = actionSelect()
     selectionAcceptor(model, proposal)
     
-    check model.mapState.selected.isSome
-    check model.mapState.selected.get == (3, -1)
+    check model.ui.mapState.selected.isSome
+    check model.ui.mapState.selected.get == (3, -1)
   
   test "selection acceptor - deselect":
     var model = initTuiModel()
-    model.mapState.selected = some((1, 2))
+    model.ui.mapState.selected = some((1, 2))
     
     let proposal = actionDeselect()
     selectionAcceptor(model, proposal)
     
-    check model.mapState.selected.isNone
+    check model.ui.mapState.selected.isNone
   
   test "selection acceptor - list up":
     var model = initTuiModel()
-    model.selectedIdx = 3
+    model.ui.selectedIdx = 3
     
     let proposal = actionListUp()
     selectionAcceptor(model, proposal)
     
-    check model.selectedIdx == 2
+    check model.ui.selectedIdx == 2
   
   test "selection acceptor - list down":
     var model = initTuiModel()
-    model.selectedIdx = 1
-    model.colonies.add(ColonyInfo(
+    model.ui.selectedIdx = 1
+    model.view.colonies.add(ColonyInfo(
       colonyId: 1,
       systemId: 1,
       systemName: "A",
@@ -221,7 +226,7 @@ suite "Acceptors":
       industrialUnits: 10,
       owner: 1
     ))
-    model.colonies.add(ColonyInfo(
+    model.view.colonies.add(ColonyInfo(
       colonyId: 2,
       systemId: 2,
       systemName: "B",
@@ -229,7 +234,7 @@ suite "Acceptors":
       industrialUnits: 10,
       owner: 1
     ))
-    model.colonies.add(ColonyInfo(
+    model.view.colonies.add(ColonyInfo(
       colonyId: 3,
       systemId: 3,
       systemName: "C",
@@ -241,24 +246,24 @@ suite "Acceptors":
     let proposal = actionListDown()
     selectionAcceptor(model, proposal)
     
-    check model.selectedIdx == 2
+    check model.ui.selectedIdx == 2
   
   test "game action acceptor - quit":
     var model = initTuiModel()
-    model.running = true
+    model.ui.running = true
     
     let proposal = quitProposal()
     gameActionAcceptor(model, proposal)
     
-    check model.running == false
+    check model.ui.running == false
 
 suite "Reactors":
   
   test "selection bounds reactor - clamp high":
     var model = initTuiModel()
-    model.mode = ViewMode.Planets
-    model.selectedIdx = 10
-    model.colonies.add(ColonyInfo(
+    model.ui.mode = ViewMode.Planets
+    model.ui.selectedIdx = 10
+    model.view.colonies.add(ColonyInfo(
       colonyId: 1,
       systemId: 1,
       systemName: "A",
@@ -266,7 +271,7 @@ suite "Reactors":
       industrialUnits: 10,
       owner: 1
     ))
-    model.colonies.add(ColonyInfo(
+    model.view.colonies.add(ColonyInfo(
       colonyId: 2,
       systemId: 2,
       systemName: "B",
@@ -277,15 +282,15 @@ suite "Reactors":
     
     selectionBoundsReactor(model)
     
-    check model.selectedIdx == 1  # clamped to max index
+    check model.ui.selectedIdx == 1  # clamped to max index
   
   test "selection bounds reactor - clamp low":
     var model = initTuiModel()
-    model.selectedIdx = -5
+    model.ui.selectedIdx = -5
     
     selectionBoundsReactor(model)
     
-    check model.selectedIdx == 0
+    check model.ui.selectedIdx == 0
 
 suite "History/Time Travel":
   
@@ -298,7 +303,7 @@ suite "History/Time Travel":
   test "snap state":
     var h = initHistory[TuiModel](10)
     var model = initTuiModel()
-    model.turn = 1
+    model.view.turn = 1
     h.snap(model, ActionKind.navigateMode)
     
     check h.entries.len == 1
@@ -307,16 +312,16 @@ suite "History/Time Travel":
   test "travel to index":
     var h = initHistory[TuiModel](10)
     var model1 = initTuiModel()
-    model1.turn = 1
+    model1.view.turn = 1
     h.snap(model1, ActionKind.navigateMode)
     
     var model2 = initTuiModel()
-    model2.turn = 2
+    model2.view.turn = 2
     h.snap(model2, ActionKind.navigateMode)
     
     let state = h.travel(0)
     check state.isSome
-    check state.get.turn == 1
+    check state.get.view.turn == 1
   
   test "has next/prev":
     var h = initHistory[TuiModel](10)
@@ -337,18 +342,18 @@ suite "History/Time Travel":
     var model = initTuiModel()
     
     for i in 1..5:
-      model.turn = i
+      model.view.turn = i
       h.snap(model, ActionKind.navigateMode)
     
     check h.entries.len == 3
-    check h.entries[0].state.turn == 3  # oldest remaining
+    check h.entries[0].state.view.turn == 3  # oldest remaining
 
 suite "Full SAM Present Cycle":
   
   test "present updates model via acceptor":
     var sam = initSam[TuiModel]()
     var model = initTuiModel()
-    model.mode = ViewMode.Planets
+    model.ui.mode = ViewMode.Planets
     
     sam.addAcceptor(navigationAcceptor)
     sam.setInitialState(model)
@@ -356,28 +361,28 @@ suite "Full SAM Present Cycle":
     let proposal = actionSwitchMode(ViewMode.Overview)
     sam.present(proposal)
     
-    check sam.state.mode == ViewMode.Overview
+    check sam.state.ui.mode == ViewMode.Overview
   
   test "present runs reactors after acceptors":
     var sam = initSam[TuiModel]()
     var model = initTuiModel()
-    model.selectedIdx = 100
-    model.mode = ViewMode.Planets
+    model.ui.selectedIdx = 100
+    model.ui.mode = ViewMode.Planets
     
     sam.addReactor(selectionBoundsReactor)
     sam.setInitialState(model)
     sam.present(emptyProposal())
     
-    check sam.state.selectedIdx == 0  # clamped
+    check sam.state.ui.selectedIdx == 0  # clamped
   
   test "present records history":
     var sam = initSamWithHistory[TuiModel](10)
     var model = initTuiModel()
-    model.turn = 1
+    model.view.turn = 1
     
     sam.addAcceptor(proc(m: var TuiModel, p: Proposal) =
       if p.kind == pkNavigation:
-        m.turn += 1
+        m.view.turn += 1
     )
     sam.setInitialState(model)
     
@@ -435,7 +440,7 @@ suite "Key Mapping":
   
   test "map arrow keys in map mode":
     var model = initTuiModel()
-    model.mode = ViewMode.Overview
+    model.ui.mode = ViewMode.Overview
     
     let result = mapKeyToAction(KeyCode.KeyRight, model)
     check result.isSome
@@ -443,7 +448,7 @@ suite "Key Mapping":
   
   test "map arrow keys in list mode":
     var model = initTuiModel()
-    model.mode = ViewMode.Planets
+    model.ui.mode = ViewMode.Planets
     
     let upResult = mapKeyToAction(KeyCode.KeyUp, model)
     check upResult.isSome

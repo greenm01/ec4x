@@ -80,13 +80,14 @@ proc writeFleetOrderFromModel*(gameDir: string, model: TuiModel): string =
   ## Write pending fleet order from model to msgpack file
   ## Returns the path to the written file, or empty string if no order pending
   
-  if not model.pendingFleetOrderReady:
+  if not model.ui.pendingFleetOrderReady:
     return ""
   
   let order = FleetOrder(
-    fleetId: model.pendingFleetOrderFleetId,
-    commandType: model.pendingFleetOrderCommandType,
-    targetSystemId: model.pendingFleetOrderTargetSystemId
+    fleetId: model.ui.pendingFleetOrderFleetId,
+    commandType: model.ui.pendingFleetOrderCommandType,
+    targetSystemId: model.ui.pendingFleetOrderTargetSystemId
   )
   
-  return writeFleetOrder(gameDir, order, model.turn, model.viewingHouse)
+  return writeFleetOrder(gameDir, order, model.view.turn,
+    model.view.viewingHouse)

@@ -22,22 +22,22 @@ proc syncGameStateToModel*(
   ## Sync game state into the SAM TuiModel
   let house = state.house(viewingHouse).get()
 
-  model.turn = state.turn
-  model.viewingHouse = int(viewingHouse)
-  model.houseName = house.name
-  model.treasury = house.treasury.int
-  model.prestige = house.prestige.int
-  model.alertCount = 0
-  model.unreadReports = 0
-  model.unreadMessages = 0
+  model.view.turn = state.turn
+  model.view.viewingHouse = int(viewingHouse)
+  model.view.houseName = house.name
+  model.view.treasury = house.treasury.int
+  model.view.prestige = house.prestige.int
+  model.view.alertCount = 0
+  model.view.unreadReports = 0
+  model.view.unreadMessages = 0
 
   # Production (from last income report if available)
   if house.latestIncomeReport.isSome:
-    model.production = house.latestIncomeReport.get().totalNet.int
+    model.view.production = house.latestIncomeReport.get().totalNet.int
   else:
-    model.production = 0
+    model.view.production = 0
 
-  model.houseTaxRate = house.taxPolicy.currentRate.int
+  model.view.houseTaxRate = house.taxPolicy.currentRate.int
 
   var colonyReports = initTable[ColonyId, ColonyIncomeReport]()
   if house.latestIncomeReport.isSome:
@@ -46,8 +46,8 @@ proc syncGameStateToModel*(
 
   # Command capacity (C2 pool)
   let c2Analysis = analyzeC2Capacity(state, viewingHouse)
-  model.commandUsed = c2Analysis.totalFleetCC.int
-  model.commandMax = c2Analysis.c2Pool.int
+  model.view.commandUsed = c2Analysis.totalFleetCC.int
+  model.view.commandMax = c2Analysis.c2Pool.int
 
   # Prestige rank and total houses
   var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]
@@ -59,17 +59,17 @@ proc syncGameStateToModel*(
       if result == 0:
         result = cmp(int(a.id), int(b.id))
   )
-  model.totalHouses = prestigeList.len
-  model.prestigeRank = 0
+  model.view.totalHouses = prestigeList.len
+  model.view.prestigeRank = 0
   for i, entry in prestigeList:
     if entry.id == viewingHouse:
-      model.prestigeRank = i + 1
+      model.view.prestigeRank = i + 1
       break
 
   # Build systems table from fog-of-war map data
   let mapData = toFogOfWarMapData(state, viewingHouse)
-  model.systems.clear()
-  model.maxRing = mapData.maxRing
+  model.view.systems.clear()
+  model.view.maxRing = mapData.maxRing
 
   for coord, sysInfo in mapData.systems.pairs:
     let samSys = sam_pkg.SystemInfo(
@@ -84,15 +84,15 @@ proc syncGameStateToModel*(
       isHub: sysInfo.isHub,
       fleetCount: sysInfo.fleetCount,
     )
-    model.systems[(coord.q, coord.r)] = samSys
+    model.view.systems[(coord.q, coord.r)] = samSys
 
     # Track homeworld
     if sysInfo.isHomeworld and sysInfo.owner.isSome and
         sysInfo.owner.get == int(viewingHouse):
-      model.homeworld = some((coord.q, coord.r))
+      model.view.homeworld = some((coord.q, coord.r))
 
   # Build colonies list
-  model.colonies = @[]
+  model.view.colonies = @[]
   for colony in state.coloniesOwned(viewingHouse):
     let sysOpt = state.system(colony.systemId)
     var sysName = "???"
@@ -155,7 +155,7 @@ proc syncGameStateToModel*(
       constructionAvailable > 0 and constructionTotal > 0 and
       not hasConstruction
 
-    model.colonies.add(
+    model.view.colonies.add(
       sam_pkg.ColonyInfo(
         colonyId: int(colony.id),
         systemId: int(colony.systemId),
@@ -178,7 +178,7 @@ proc syncGameStateToModel*(
     )
 
   # Build fleets list
-  model.fleets = @[]
+  model.view.fleets = @[]
   for fleet in state.fleetsOwned(viewingHouse):
     let sysOpt = state.system(fleet.location)
     let locName =
@@ -187,7 +187,7 @@ proc syncGameStateToModel*(
       else:
         "???"
     let cmdType = int(fleet.command.commandType)
-    model.fleets.add(
+    model.view.fleets.add(
       sam_pkg.FleetInfo(
         id: int(fleet.id),
         location: int(fleet.location),
@@ -320,20 +320,21 @@ proc syncPlayerStateToModel*(
   ## Note: PlayerState has limited visibility data. Some model fields
   ## (treasury, production, system names/details) may not be available.
   
-  model.turn = ps.turn
-  model.viewingHouse = int(ps.viewingHouse)
-  model.treasury = 0  # Not available in PlayerState
-  model.prestige = ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
-  model.alertCount = 0
-  model.unreadReports = 0
-  model.unreadMessages = 0
-  model.production = 0  # Would need income report
-  model.houseTaxRate = 0
+  model.view.turn = ps.turn
+  model.view.viewingHouse = int(ps.viewingHouse)
+  model.view.treasury = 0  # Not available in PlayerState
+  model.view.prestige =
+    ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
+  model.view.alertCount = 0
+  model.view.unreadReports = 0
+  model.view.unreadMessages = 0
+  model.view.production = 0  # Would need income report
+  model.view.houseTaxRate = 0
   
   # Build systems table from visible systems
   # VisibleSystem only has: id, name, visibility, lastScoutedTurn, coordinates
-  model.systems.clear()
-  model.maxRing = 0
+  model.view.systems.clear()
+  model.view.maxRing = 0
   
   for sysId, visSys in ps.visibleSystems.pairs:
     if visSys.coordinates.isNone:
@@ -342,8 +343,8 @@ proc syncPlayerStateToModel*(
     let hexQ = int(coords.q)
     let hexR = int(coords.r)
     let ring = max(abs(hexQ), max(abs(hexR), abs(-hexQ - hexR)))
-    if ring > model.maxRing:
-      model.maxRing = ring
+    if ring > model.view.maxRing:
+      model.view.maxRing = ring
     
     # Limited info from VisibleSystem
     let sysName =
@@ -363,10 +364,10 @@ proc syncPlayerStateToModel*(
       isHub: false,
       fleetCount: 0,  # Not in VisibleSystem
     )
-    model.systems[(hexQ, hexR)] = samSys
+    model.view.systems[(hexQ, hexR)] = samSys
   
   # Build colonies list from own colonies
-  model.colonies = @[]
+  model.view.colonies = @[]
   for colony in ps.ownColonies:
     var sysName = "System " & $colony.systemId.uint32
     var sectorLabel = "?"
@@ -379,7 +380,7 @@ proc syncPlayerStateToModel*(
         else:
           sysName = "(" & $coords.q & "," & $coords.r & ")"
         sectorLabel = coordLabel(int(coords.q), int(coords.r))
-    model.colonies.add(
+    model.view.colonies.add(
       sam_pkg.ColonyInfo(
         colonyId: int(colony.id),
         systemId: int(colony.systemId),
@@ -402,7 +403,7 @@ proc syncPlayerStateToModel*(
     )
   
   # Build fleets list from own fleets
-  model.fleets = @[]
+  model.view.fleets = @[]
   for fleet in ps.ownFleets:
     var locName = "System " & $fleet.location.uint32
     if ps.visibleSystems.hasKey(fleet.location):
@@ -414,7 +415,7 @@ proc syncPlayerStateToModel*(
         else:
           locName = "(" & $coords.q & "," & $coords.r & ")"
     let cmdType = int(fleet.command.commandType)
-    model.fleets.add(
+    model.view.fleets.add(
       sam_pkg.FleetInfo(
         id: int(fleet.id),
         location: int(fleet.location),
@@ -437,13 +438,13 @@ proc syncPlayerStateToModel*(
       if result == 0:
         result = cmp(int(a.id), int(b.id))
   )
-  model.totalHouses = prestigeList.len
-  model.prestigeRank = 0
+  model.view.totalHouses = prestigeList.len
+  model.view.prestigeRank = 0
   for i, entry in prestigeList:
     if entry.id == ps.viewingHouse:
-      model.prestigeRank = i + 1
+      model.view.prestigeRank = i + 1
       break
   
   # Command capacity (not available in PlayerState)
-  model.commandUsed = 0
-  model.commandMax = 0
+  model.view.commandUsed = 0
+  model.view.commandMax = 0
