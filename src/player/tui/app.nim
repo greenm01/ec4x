@@ -3,7 +3,7 @@
 ## Main SAM-based TUI loop and event handling.
 
 import std/[options, strformat, tables, strutils, parseopt, os,
-  asyncdispatch, sequtils]
+  asyncdispatch, sequtils, sets]
 
 import ../../common/logger
 import ../../engine/types/[core, fleet, player_state as ps_types]
@@ -80,6 +80,35 @@ proc runTui*(gameId: string = "") =
 
   # Create SAM instance with history (for potential undo)
   var sam = initTuiSam(withHistory = true, maxHistory = 50)
+
+  # ============================================================================
+  # Proposal Queue (async-safe)
+  # ============================================================================
+ 
+  var proposalQueue: seq[Proposal] = @[]
+  var recentProposals: HashSet[string] = initHashSet[string]()
+  const MaxProposalQueue = 100
+ 
+  proc proposalSignature(p: Proposal): string =
+    $p.kind & ":" & p.actionName & ":" & $p.timestamp
+ 
+  proc enqueueProposal(p: Proposal) =
+    let sig = proposalSignature(p)
+    if sig in recentProposals:
+      return
+    if proposalQueue.len >= MaxProposalQueue:
+      let old = proposalQueue[0]
+      let oldSig = proposalSignature(old)
+      recentProposals.excl(oldSig)
+      proposalQueue.delete(0)
+    proposalQueue.add(p)
+    recentProposals.incl(sig)
+ 
+  proc drainProposalQueue() =
+    while proposalQueue.len > 0:
+      let p = proposalQueue[0]
+      proposalQueue.delete(0)
+      sam.present(p)
 
   # Create initial model
   var initialModel = initTuiModel()
@@ -222,12 +251,12 @@ proc runTui*(gameId: string = "") =
                 playerState.turn, playerState)
           else:
             sam.model.statusMessage = "Invalid delta payload"
-          sam.present(emptyProposal())
+          enqueueProposal(emptyProposal())
         except CatchableError as e:
           sam.model.nostrLastError = e.msg
           sam.model.nostrStatus = "error"
           sam.model.nostrEnabled = false
-          sam.present(emptyProposal())
+          enqueueProposal(emptyProposal())
 
       nostrHandlers.onFullState = proc(event: NostrEvent, payload: string) =
         try:
@@ -279,12 +308,12 @@ proc runTui*(gameId: string = "") =
             sam.model.statusMessage = "Invalid full state payload"
             logDebug("TUI/State", "Failed to parse state msgpack",
               "payloadLen=", $payload.len)
-          sam.present(emptyProposal())
+          enqueueProposal(emptyProposal())
         except CatchableError as e:
           sam.model.nostrLastError = e.msg
           sam.model.nostrStatus = "error"
           sam.model.nostrEnabled = false
-          sam.present(emptyProposal())
+          enqueueProposal(emptyProposal())
 
       nostrHandlers.onEvent = proc(subId: string, event: NostrEvent) =
         logInfo("EVENT", "Received event: subId=", subId, " kind=", event.kind,
@@ -504,12 +533,12 @@ proc runTui*(gameId: string = "") =
                   sam.model.entryModal.inviteError = ""
                   logInfo("JOIN", "★★★ JOIN COMPLETE! Game should now appear in YOUR GAMES")
                   break
-            sam.present(emptyProposal())
+            enqueueProposal(emptyProposal())
         except CatchableError as e:
           sam.model.nostrLastError = e.msg
           sam.model.nostrStatus = "error"
           sam.model.nostrEnabled = false
-          sam.present(emptyProposal())
+          enqueueProposal(emptyProposal())
 
       nostrHandlers.onJoinError = proc(message: string) =
         if sam.model.lobbyJoinStatus == JoinStatus.WaitingResponse:
@@ -520,7 +549,7 @@ proc runTui*(gameId: string = "") =
           sam.model.nostrJoinSent = false
           sam.model.nostrJoinInviteCode = ""
           sam.model.nostrJoinGameId = ""
-        sam.present(emptyProposal())
+        enqueueProposal(emptyProposal())
 
       nostrHandlers.onError = proc(message: string) =
         # Log error but don't disable the entire client
@@ -528,7 +557,7 @@ proc runTui*(gameId: string = "") =
         logWarn("Nostr/Error", message)
         sam.model.nostrLastError = message
         # Don't change status or disable - keep processing other events
-        sam.present(emptyProposal())
+        enqueueProposal(emptyProposal())
 
       nostrClient = newPlayerNostrClient(
         relayList,
@@ -869,6 +898,9 @@ proc runTui*(gameId: string = "") =
   # =========================================================================
 
   while sam.state.running:
+    # Drain async proposals first (prevents reentrancy)
+    drainProposalQueue()
+
     # Check for resize
     if checkResize():
       (termWidth, termHeight) = tty.windowSize()
