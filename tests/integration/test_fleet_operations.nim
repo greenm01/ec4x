@@ -25,6 +25,7 @@ import ../../src/engine/types/[
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/entities/[ship_ops, fleet_ops, ground_unit_ops, neoria_ops, kastra_ops]
 import ../../src/engine/systems/fleet/movement
+import ../../src/engine/starmap
 import ../../src/engine/globals
 import ../../src/engine/config/engine as config_engine
 
@@ -1454,9 +1455,12 @@ suite "Fleet Operations - Jump Lane Movement":
     # Get two connected systems
     var testSystems: seq[SystemId] = @[]
     for system in game.allSystems():
-      testSystems.add(system.id)
-      if testSystems.len >= 2:
-        break
+      let neighbors = game.starMap.adjacentSystems(system.id)
+      if neighbors.len == 0:
+        continue
+      testSystems = @[system.id, neighbors[0]]
+      break
+    check testSystems.len == 2
     
     # Create fleet
     let fleet = createTestFleet(

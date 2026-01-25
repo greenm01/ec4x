@@ -6,13 +6,12 @@
 ## - Intel data included in GameState.intel
 ## - Faster deserialization and type safety
 
-import std/[tables, options, strutils, os]
-import kdl
+import std/[tables, options, strutils, os, base64]
 import db_connector/db_sqlite
 import ../../common/logger
-import ../../engine/types/[game_state, core, house, fleet, command, tech,
-  production, diplomacy, espionage, ship, facilities, ground_unit]
+import ../../engine/types/[game_state, core, command]
 import ../../engine/state/engine
+import ../parser/msgpack_commands
 import ./msgpack_state
 import ./player_state_snapshot
 import ./replay
@@ -202,145 +201,28 @@ proc loadOrders*(dbPath: string, turn: int): Table[HouseId, CommandPacket] =
   ## Load all command packets for a specific turn from the database
   let db = open(dbPath, "", "", "")
   defer: db.close()
-  
+
   result = initTable[HouseId, CommandPacket]()
-  
-  # Group commands by house_id
+
   let rows = db.getAllRows(sql"""
-    SELECT house_id, fleet_id, colony_id, command_type, target_system_id, target_fleet_id, params
+    SELECT house_id, command_msgpack
     FROM commands
     WHERE turn = ? AND processed = 0
   """, $turn)
-  
+
   for row in rows:
     let houseId = HouseId(parseInt(row[0]).uint32)
-    if not result.hasKey(houseId):
-      result[houseId] = CommandPacket(
-        houseId: houseId,
-        turn: turn.int32,
-        fleetCommands: @[],
-        buildCommands: @[],
-        # ... init other fields
-      )
-    
-    let fleetIdStr = row[1]
-    let colonyIdStr = row[2]
-    discard colonyIdStr
-    let cmdType = row[3]
-    let paramsText = row[6]
-    var paramsNode = none(KdlNode)
-    if paramsText.len > 0:
-      let doc = parseKdl(paramsText)
-      if doc.len > 0:
-        paramsNode = some(doc[0])
-    
-    if fleetIdStr != "":
-      # Fleet command
-      var cmd = FleetCommand(
-        fleetId: FleetId(parseInt(fleetIdStr).uint32),
-        commandType: parseEnum[FleetCommandType](cmdType)
-      )
-      if row[4] != "": cmd.targetSystem = some(SystemId(parseInt(row[4]).uint32))
-      if row[5] != "": cmd.targetFleet = some(FleetId(parseInt(row[5]).uint32))
-      if paramsNode.isSome:
-        let props = paramsNode.get().props
-        if props.hasKey("roe"):
-          cmd.roe = some(props["roe"].kInt().int32)
-        if props.hasKey("priority"):
-          cmd.priority = props["priority"].kInt().int32
-      result[houseId].fleetCommands.add(cmd)
-    elif cmdType == "Build":
-      # Build command
-      if paramsNode.isSome:
-        let props = paramsNode.get().props
-        var cmd = BuildCommand(
-          colonyId: ColonyId(parseInt(colonyIdStr).uint32),
-          quantity: 1,
-          industrialUnits: 0
-        )
-        if props.hasKey("buildType"):
-          cmd.buildType = parseEnum[BuildType](props["buildType"].kString())
-        if props.hasKey("quantity"):
-          cmd.quantity = props["quantity"].kInt().int32
-        if props.hasKey("industrialUnits"):
-          cmd.industrialUnits = props["industrialUnits"].kInt().int32
-        if props.hasKey("shipClass"):
-          cmd.shipClass = some(parseEnum[ShipClass](props["shipClass"].kString()))
-        if props.hasKey("facilityClass"):
-          cmd.facilityClass =
-            some(parseEnum[FacilityClass](props["facilityClass"].kString()))
-        if props.hasKey("groundClass"):
-          cmd.groundClass =
-            some(parseEnum[GroundClass](props["groundClass"].kString()))
-        result[houseId].buildCommands.add(cmd)
-    elif cmdType == "Research":
-      # Research allocation (manual deserialization for enum-keyed table)
-      var alloc = ResearchAllocation(
-        economic: 0,
-        science: 0,
-        technology: initTable[TechField, int32]()
-      )
-      if paramsNode.isSome:
-        let props = paramsNode.get().props
-        if props.hasKey("economic"):
-          alloc.economic = props["economic"].kInt().int32
-        if props.hasKey("science"):
-          alloc.science = props["science"].kInt().int32
-        for child in paramsNode.get().children:
-          if child.name != "technology":
-            continue
-          for techNode in child.children:
-            if techNode.args.len == 0:
-              continue
-            let field = parseEnum[TechField](techNode.name)
-            alloc.technology[field] = techNode.args[0].kInt().int32
-      result[houseId].researchAllocation = alloc
-    elif cmdType == "EspionageBudget":
-      # Espionage budget investment
-      if paramsNode.isSome:
-        let props = paramsNode.get().props
-        if props.hasKey("ebpInvestment"):
-          result[houseId].ebpInvestment =
-            props["ebpInvestment"].kInt().int32
-        if props.hasKey("cipInvestment"):
-          result[houseId].cipInvestment =
-            props["cipInvestment"].kInt().int32
-    elif cmdType == "EspionageAction":
-      # Espionage action
-      if paramsNode.isSome:
-        let props = paramsNode.get().props
-        var action = EspionageAttempt(attacker: houseId)
-        if props.hasKey("attacker"):
-          action.attacker = HouseId(props["attacker"].kInt().uint32)
-        if props.hasKey("target"):
-          action.target = HouseId(props["target"].kInt().uint32)
-        if props.hasKey("action"):
-          action.action = parseEnum[EspionageAction](props["action"].kString())
-        if props.hasKey("targetSystem"):
-          action.targetSystem =
-            some(SystemId(props["targetSystem"].kInt().uint32))
-        result[houseId].espionageActions.add(action)
-    elif cmdType == "Diplomatic":
-      # Diplomatic command
-      if paramsNode.isSome:
-        let props = paramsNode.get().props
-        var cmd = DiplomaticCommand(houseId: houseId)
-        if props.hasKey("targetHouse"):
-          cmd.targetHouse = HouseId(props["targetHouse"].kInt().uint32)
-        if props.hasKey("actionType"):
-          cmd.actionType =
-            parseEnum[DiplomaticActionType](props["actionType"].kString())
-        if props.hasKey("proposalId"):
-          cmd.proposalId =
-            some(ProposalId(props["proposalId"].kInt().uint32))
-        if props.hasKey("proposalType"):
-          cmd.proposalType =
-            some(parseEnum[ProposalType](props["proposalType"].kString()))
-        if props.hasKey("message"):
-          cmd.message = some(props["message"].kString())
-        result[houseId].diplomaticCommand.add(cmd)
+    let binary = decode(row[1])
+    let packet = parseOrdersMsgpack(binary)
+    result[houseId] = packet
 
-  logInfo("Persistence", "Loaded ", $result.len, " command packets for turn ", $turn)
+  logInfo(
+    "Persistence",
+    "Loaded ",
+    $result.len,
+    " command packets for turn ",
+    $turn
+  )
 
 proc loadFullState*(dbPath: string): GameState =
   ## Load full GameState from per-game DB

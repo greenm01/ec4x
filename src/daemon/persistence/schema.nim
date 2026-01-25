@@ -15,7 +15,7 @@
 import std/os
 import db_connector/db_sqlite
 
-const SchemaVersion* = 9  # Incremented for msgpack migration
+const SchemaVersion* = 10  # Incremented for msgpack commands
 
 ## ============================================================================
 ## Core Game State Tables
@@ -51,21 +51,14 @@ CREATE INDEX IF NOT EXISTS idx_games_deadline ON games(turn_deadline)
 
 const CreateCommandsTable* = """
 CREATE TABLE IF NOT EXISTS commands (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
   game_id TEXT NOT NULL,
   house_id TEXT NOT NULL,
   turn INTEGER NOT NULL,
-  fleet_id TEXT,                     -- NULL for non-fleet commands
-  colony_id TEXT,                    -- Set for build/repair/scrap/colony
-  command_type TEXT NOT NULL,        -- Command category or fleet cmd type
-  target_system_id TEXT,            
-  target_fleet_id TEXT,             
-  params TEXT,                      -- JSON blob for all command data
-  submitted_at INTEGER NOT NULL,    -- Unix timestamp
+  command_msgpack TEXT NOT NULL,     -- Base64-encoded msgpack CommandPacket
+  submitted_at INTEGER NOT NULL,     -- Unix timestamp
   processed BOOLEAN NOT NULL DEFAULT 0,
   FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-  FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE,
-  UNIQUE(game_id, turn, house_id, fleet_id, colony_id, command_type)
+  PRIMARY KEY (game_id, turn, house_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_commands_turn ON commands(game_id, turn);

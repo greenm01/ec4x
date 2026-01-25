@@ -14,27 +14,15 @@
 ## - Smaller storage (30-50%)
 ## - Type-safe binary format
 
-import std/[options, strutils, tables, times]
-import kdl
+import std/[options, times, base64]
 import db_connector/db_sqlite
 import ../../common/logger
-import ../../engine/types/[event, game_state, core, command, tech, espionage]
+import ../../engine/types/[event, game_state, core, command]
 import ./replay
 import ../transport/nostr/types
+import ../parser/msgpack_commands
 import ./msgpack_state
 import ./player_state_snapshot
-
-proc paramsKdl(
-    props: Table[string, KdlVal],
-    children: seq[KdlNode] = @[]): string =
-  if props.len == 0 and children.len == 0:
-    return ""
-  let node = initKNode("params", props = props, children = children)
-  let doc: KdlDoc = @[node]
-  $doc
-
-proc addProp(props: var Table[string, KdlVal], key: string, value: KdlVal) =
-  props[key] = value
 
 # ============================================================================
 # Core State Writers
@@ -289,164 +277,43 @@ proc saveCommandPacket*(dbPath: string, gameId: string, packet: CommandPacket) =
   ## Persist a command packet to the database
   let db = open(dbPath, "", "", "")
   defer: db.close()
-  
+
+  let msgpack = serializeCommandPacket(packet)
+  let payload = encode(msgpack)
+
   db.exec(sql"BEGIN TRANSACTION")
   try:
-    # 1. Fleet Commands
-    for cmd in packet.fleetCommands:
-      var props = initTable[string, KdlVal]()
-      if cmd.roe.isSome:
-        addProp(props, "roe", initKVal(cmd.roe.get()))
-      if cmd.priority != 0:
-        addProp(props, "priority", initKVal(cmd.priority))
-      let params = paramsKdl(props)
-      db.exec(sql"""
-        INSERT INTO commands (
-          game_id, house_id, turn, fleet_id, command_type, 
-          target_system_id, target_fleet_id, params, submitted_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
-        ON CONFLICT(game_id, turn, house_id, fleet_id, colony_id, command_type) 
-        DO UPDATE SET
-          command_type=excluded.command_type,
-          target_system_id=excluded.target_system_id,
-          target_fleet_id=excluded.target_fleet_id,
-          params=excluded.params,
-          submitted_at=excluded.submitted_at
-      """,
-        gameId, $packet.houseId, packet.turn, $cmd.fleetId, $cmd.commandType,
-        if cmd.targetSystem.isSome: $cmd.targetSystem.get else: "",
-        if cmd.targetFleet.isSome: $cmd.targetFleet.get else: "",
-        $params
-      )
-    
-    # 2. Build Commands
-    for cmd in packet.buildCommands:
-      var props = initTable[string, KdlVal]()
-      addProp(props, "buildType", initKVal($cmd.buildType))
-      addProp(props, "quantity", initKVal(cmd.quantity))
-      if cmd.industrialUnits != 0:
-        addProp(props, "industrialUnits", initKVal(cmd.industrialUnits))
-      if cmd.shipClass.isSome:
-        addProp(props, "shipClass", initKVal($cmd.shipClass.get()))
-      if cmd.facilityClass.isSome:
-        addProp(props, "facilityClass", initKVal($cmd.facilityClass.get()))
-      if cmd.groundClass.isSome:
-        addProp(props, "groundClass", initKVal($cmd.groundClass.get()))
-      let params = paramsKdl(props)
-      db.exec(sql"""
-        INSERT INTO commands (
-          game_id, house_id, turn, colony_id, command_type, params, submitted_at
-        ) VALUES (?, ?, ?, ?, 'Build', ?, unixepoch())
-        ON CONFLICT(game_id, turn, house_id, fleet_id, colony_id, command_type)
-        DO UPDATE SET
-          params=excluded.params,
-          submitted_at=excluded.submitted_at
-      """,
-        gameId, $packet.houseId, packet.turn, $cmd.colonyId, $params
-      )
-
-    # 3. Research Allocation
-    if packet.researchAllocation.economic > 0 or
-        packet.researchAllocation.science > 0 or
-        packet.researchAllocation.technology.len > 0:
-      var props = initTable[string, KdlVal]()
-      addProp(props, "economic", initKVal(packet.researchAllocation.economic))
-      addProp(props, "science", initKVal(packet.researchAllocation.science))
-      var children: seq[KdlNode] = @[]
-      if packet.researchAllocation.technology.len > 0:
-        var techNode = initKNode("technology")
-        for field, points in packet.researchAllocation.technology:
-          techNode.children.add(
-            initKNode($field, args = @[initKVal(points)])
-          )
-        children.add(techNode)
-      let params = paramsKdl(props, children)
-      db.exec(sql"""
-        INSERT INTO commands (
-          game_id, house_id, turn, command_type, params, submitted_at
-        ) VALUES (?, ?, ?, 'Research', ?, unixepoch())
-        ON CONFLICT(game_id, turn, house_id, fleet_id, colony_id, command_type)
-        DO UPDATE SET
-          params=excluded.params,
-          submitted_at=excluded.submitted_at
-      """,
-        gameId, $packet.houseId, packet.turn, $params
-      )
-
-    # 4. Espionage Budget
-    if packet.ebpInvestment > 0 or packet.cipInvestment > 0:
-      var props = initTable[string, KdlVal]()
-      if packet.ebpInvestment > 0:
-        addProp(props, "ebpInvestment", initKVal(packet.ebpInvestment))
-      if packet.cipInvestment > 0:
-        addProp(props, "cipInvestment", initKVal(packet.cipInvestment))
-      let params = paramsKdl(props)
-      db.exec(sql"""
-        INSERT INTO commands (
-          game_id, house_id, turn, command_type, params, submitted_at
-        ) VALUES (?, ?, ?, 'EspionageBudget', ?, unixepoch())
-        ON CONFLICT(game_id, turn, house_id, fleet_id, colony_id, command_type)
-        DO UPDATE SET
-          params=excluded.params,
-          submitted_at=excluded.submitted_at
-      """,
-        gameId, $packet.houseId, packet.turn, $params
-      )
-
-    # 5. Espionage Actions
-    for action in packet.espionageActions:
-      var props = initTable[string, KdlVal]()
-      addProp(props, "attacker", initKVal(action.attacker.uint32))
-      addProp(props, "target", initKVal(action.target.uint32))
-      addProp(props, "action", initKVal($action.action))
-      if action.targetSystem.isSome:
-        addProp(
-          props,
-          "targetSystem",
-          initKVal(action.targetSystem.get().uint32)
-        )
-      let params = paramsKdl(props)
-      db.exec(sql"""
-        INSERT INTO commands (
-          game_id, house_id, turn, command_type, params, submitted_at
-        ) VALUES (?, ?, ?, 'EspionageAction', ?, unixepoch())
-        ON CONFLICT(game_id, turn, house_id, fleet_id, colony_id, command_type)
-        DO UPDATE SET
-          params=excluded.params,
-          submitted_at=excluded.submitted_at
-      """,
-        gameId, $packet.houseId, packet.turn, $params
-      )
-
-    # 6. Diplomatic Commands
-    for cmd in packet.diplomaticCommand:
-      var props = initTable[string, KdlVal]()
-      addProp(props, "targetHouse", initKVal(cmd.targetHouse.uint32))
-      addProp(props, "actionType", initKVal($cmd.actionType))
-      if cmd.proposalId.isSome:
-        addProp(props, "proposalId", initKVal(cmd.proposalId.get().uint32))
-      if cmd.proposalType.isSome:
-        addProp(props, "proposalType", initKVal($cmd.proposalType.get()))
-      if cmd.message.isSome:
-        addProp(props, "message", initKVal(cmd.message.get()))
-      let params = paramsKdl(props)
-      db.exec(sql"""
-        INSERT INTO commands (
-          game_id, house_id, turn, command_type, params, submitted_at
-        ) VALUES (?, ?, ?, 'Diplomatic', ?, unixepoch())
-        ON CONFLICT(game_id, turn, house_id, fleet_id, colony_id, command_type)
-        DO UPDATE SET
-          params=excluded.params,
-          submitted_at=excluded.submitted_at
-      """,
-        gameId, $packet.houseId, packet.turn, $params
-      )
+    db.exec(sql"""
+      INSERT INTO commands (
+        game_id, house_id, turn, command_msgpack, submitted_at
+      ) VALUES (?, ?, ?, ?, unixepoch())
+      ON CONFLICT(game_id, turn, house_id)
+      DO UPDATE SET
+        command_msgpack=excluded.command_msgpack,
+        submitted_at=excluded.submitted_at,
+        processed=0
+    """,
+      gameId,
+      $packet.houseId,
+      packet.turn,
+      payload
+    )
 
     db.exec(sql"COMMIT")
-    logInfo("Persistence", "Saved command packet for house ", $packet.houseId, " turn ", $packet.turn)
+    logInfo(
+      "Persistence",
+      "Saved command packet for house ",
+      $packet.houseId,
+      " turn ",
+      $packet.turn
+    )
   except:
     db.exec(sql"ROLLBACK")
-    logError("Persistence", "Failed to save command packet: ", getCurrentExceptionMsg())
+    logError(
+      "Persistence",
+      "Failed to save command packet: ",
+      getCurrentExceptionMsg()
+    )
     raise
 
 proc markCommandsProcessed*(dbPath: string, gameId: string, turn: int32) =

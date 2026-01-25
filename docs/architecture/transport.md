@@ -178,12 +178,12 @@ type NostrClient* = ref object
    - d: game_id (for all managed games)
    - p: daemon_pubkey
 2. Receive events from relay stream
-3. For each event:
-   - Verify signature
-   - Decrypt and decompress content
-   - Parse msgpack to command structure
-   - Validate command packet
-   - Insert into commands table
+  3. For each event:
+    - Verify signature
+    - Decrypt and decompress content
+    - Parse msgpack to command structure
+    - Validate command packet
+    - Insert base64 msgpack packet into commands table
 4. Check if all commands received or deadline passed
 ```
 
@@ -372,11 +372,6 @@ All transport code lives in `src/daemon/transport/nostr/`:
 - Client connects directly to daemon
 - Lower latency than Nostr
 - Requires port forwarding/VPS
-
-### Matrix Protocol
-- Federated messaging
-- Similar to Nostr approach
-- Different encryption (Olm/Megolm)
 
 ## Related Documentation
 

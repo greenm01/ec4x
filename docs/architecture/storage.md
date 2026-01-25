@@ -18,7 +18,7 @@ EC4X uses **msgpack + SQLite** for game state persistence. This hybrid design pr
 
 - **GameState**: Serialized as single msgpack blob (base64-encoded TEXT)
 - **Events**: Stored as queryable SQL rows for reports
-- **Commands**: Stored as SQL rows with JSON params
+- **Commands**: Stored as SQL rows with base64 msgpack packets
 
 This hybrid approach balances:
 - Fast state snapshots (msgpack)
@@ -119,20 +119,14 @@ Player command batches for turn resolution.
 
 ```sql
 CREATE TABLE commands (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
     game_id TEXT NOT NULL,
     house_id TEXT NOT NULL,
     turn INTEGER NOT NULL,
-    fleet_id TEXT,                     -- NULL for non-fleet commands
-    colony_id TEXT,                    -- Set for build/repair/scrap/colony
-    command_type TEXT NOT NULL,        -- Command category or fleet cmd type
-    target_system_id TEXT,
-    target_fleet_id TEXT,
-    params TEXT,                       -- KDL blob for all command data
+    command_msgpack TEXT NOT NULL,     -- Base64 msgpack CommandPacket
     submitted_at INTEGER NOT NULL,     -- Unix timestamp
     processed BOOLEAN NOT NULL DEFAULT 0,
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    UNIQUE(game_id, turn, house_id, fleet_id, colony_id, command_type)
+    PRIMARY KEY (game_id, turn, house_id)
 );
 
 CREATE INDEX idx_commands_turn ON commands(game_id, turn);
@@ -141,10 +135,8 @@ CREATE INDEX idx_commands_unprocessed ON commands(game_id, turn, processed)
     WHERE processed = 0;
 ```
 
-**Note:** Commands use KDL for params (not msgpack) because:
-- Keeps persistence aligned with KDL-first tooling
-- Params are small (<1 KB typically)
-- Easier manual inspection in text form
+**Note:** Commands use msgpack (base64) to align with transport and
+CommandPacket serialization. Each row stores one house's full packet.
 
 ### game_events
 
@@ -256,7 +248,14 @@ CREATE INDEX idx_nostr_event_log_created
 3. Removed 9 entity tables (houses, systems, lanes, colonies, fleets, ships, diplomacy, intel_*)
 4. Removed `game_setup_json`, `game_config_json` from games table
 
-**Breaking Change:** No backward compatibility. Games created with schema v8 cannot be loaded with v9.
+**Schema version 10** stores CommandPacket blobs as msgpack:
+
+**Changes:**
+1. Replaced per-command rows with one row per house/turn
+2. Added `command_msgpack` base64 blob to commands table
+
+**Breaking Change:** No backward compatibility. Games created with schema v9
+cannot be loaded with v10.
 
 **Mitigation:** This is pre-release software. Existing games must be recreated.
 
@@ -278,7 +277,7 @@ proc savePlayerStateSnapshot*(dbPath: string, gameId: string,
 
 proc saveCommandPacket*(dbPath: string, gameId: string,
                        packet: CommandPacket)
-  # Saves player commands to commands table (JSON params)
+  # Saves player commands to commands table (msgpack base64)
 
 proc saveGameEvents*(state: GameState, events: seq[GameEvent])
   # Batch insert events to game_events table
@@ -306,7 +305,7 @@ proc loadPlayerStateSnapshot*(dbPath: string, gameId: string,
   # Loads per-house state snapshot from msgpack
 
 proc loadOrders*(dbPath: string, turn: int): Table[HouseId, CommandPacket]
-  # Loads command packets from commands table (JSON deserialization)
+  # Loads command packets from commands table (msgpack deserialization)
 ```
 
 **Performance:**
