@@ -557,20 +557,64 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
         " event=", eventId)
       return
 
-    if isInviteCodeClaimed(gameInfo.dbPath, resolvedGameId, inviteCode):
-      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
-      logWarn("Nostr", "Invite code already claimed for game=", resolvedGameId,
-        " event=", eventId)
-      return
-
     let houseId = houseOpt.get()
 
-    # Update house with player pubkey
+    # Load state for claim validation + update
     let updatedState = loadFullState(gameInfo.dbPath)
-    if updatedState.houses.entities.index.hasKey(houseId):
-      let idx = updatedState.houses.entities.index[houseId]
-      updatedState.houses.entities.data[idx].nostrPubkey = playerPubkey
-      saveFullState(updatedState)
+    if not updatedState.houses.entities.index.hasKey(houseId):
+      logError("Nostr", "House not found for invite code in game=",
+        resolvedGameId)
+      return
+
+    let idx = updatedState.houses.entities.index[houseId]
+    let currentPubkey = updatedState.houses.entities.data[idx].nostrPubkey
+    if currentPubkey.len > 0:
+      if currentPubkey == playerPubkey:
+        logInfo("Nostr", "Idempotent slot claim for game=", resolvedGameId,
+          " house=", $houseId)
+
+        if daemonLoop.model.nostrPublisher != nil:
+          await daemonLoop.model.nostrPublisher.publishFullState(
+            gameInfo.id,
+            gameInfo.dbPath,
+            updatedState,
+            houseId
+          )
+          await daemonLoop.model.nostrPublisher.publishGameDefinition(
+            gameInfo.id,
+            gameInfo.dbPath,
+            gameInfo.phase,
+            updatedState
+          )
+
+        writer.insertProcessedEvent(gameInfo.dbPath, resolvedGameId,
+          0, event.kind, event.id, reader.ReplayDirection.Inbound)
+        return
+
+      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
+      logWarn("Nostr", "Invite code already claimed for game=",
+        resolvedGameId, " event=", eventId)
+      if daemonLoop.model.nostrPublisher != nil:
+        await daemonLoop.model.nostrPublisher.publishJoinError(
+          event.pubkey,
+          "Invite code already claimed"
+        )
+      return
+
+    for house in updatedState.houses.entities.data:
+      if house.nostrPubkey == playerPubkey and house.id != houseId:
+        logWarn("Nostr", "Player already claimed slot for game=",
+          resolvedGameId, " player=", playerPubkey[0..7], "...")
+        if daemonLoop.model.nostrPublisher != nil:
+          await daemonLoop.model.nostrPublisher.publishJoinError(
+            event.pubkey,
+            "Player already claimed a slot"
+          )
+        return
+
+    # Update house with player pubkey
+    updatedState.houses.entities.data[idx].nostrPubkey = playerPubkey
+    saveFullState(updatedState)
 
     # Publish full state immediately after slot claim
     if daemonLoop.model.nostrPublisher != nil:

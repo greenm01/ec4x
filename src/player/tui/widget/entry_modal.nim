@@ -13,6 +13,7 @@ import ../../../common/logger
 import ./modal
 import ./text/text_pkg
 import ./text_input
+import ./scrollbar
 import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
@@ -429,6 +430,10 @@ proc renderGameList(buf: var CellBuffer, area: Rect,
   let ruleLen = area.width - headerText.len - 1
   let headerLine = headerText & repeat("─", ruleLen)
   discard buf.setString(area.x, area.y, headerLine, headerStyle)
+
+  let listHeight = area.height - 1
+  if listHeight <= 0:
+    return
   
   var activeGames: seq[EntryActiveGameInfo] = @[]
   var archivedGames: seq[EntryActiveGameInfo] = @[]
@@ -446,34 +451,62 @@ proc renderGameList(buf: var CellBuffer, area: Rect,
     return
   
   var y = area.y + 1
+  var renderedActive = 0
   if activeGames.len == 0:
     discard buf.setString(area.x + 2, y, "None", emptyStyle)
+    renderedActive = 1
     y += 1
-  for i, game in activeGames:
-    if y >= area.bottom:
-      break
-    
-    let isSelected = hasFocus and i == selectedIdx
-    
-    # Cursor
-    let cursor = if isSelected: "►" else: " "
-    discard buf.setString(area.x, y, cursor, cursorStyle)
-    
-    # Game name (truncate if needed)
-    let maxNameLen = 24
-    var name = game.name
-    if name.len > maxNameLen:
-      name = name[0..<maxNameLen-1] & "…"
-    discard buf.setString(area.x + 2, y, name, nameStyle)
-    
-    # Turn info
-    let turnStr = "T" & $game.turn
-    discard buf.setString(area.x + 28, y, turnStr, infoStyle)
-    
-    # House name
-    discard buf.setString(area.x + 34, y, game.houseName, infoStyle)
-    
-    y += 1
+  else:
+    var boundedSelected = selectedIdx
+    if boundedSelected < 0:
+      boundedSelected = 0
+    if boundedSelected >= activeGames.len:
+      boundedSelected = activeGames.len - 1
+    let maxStart = max(0, activeGames.len - listHeight)
+    var startIdx = 0
+    if activeGames.len > listHeight:
+      startIdx = boundedSelected - listHeight + 1
+      if startIdx < 0:
+        startIdx = 0
+      if startIdx > maxStart:
+        startIdx = maxStart
+
+    let endIdx = min(activeGames.len, startIdx + listHeight)
+    for i in startIdx..<endIdx:
+      let row = area.y + 1 + (i - startIdx)
+      let game = activeGames[i]
+      let isSelected = hasFocus and i == selectedIdx
+
+      # Cursor
+      let cursor = if isSelected: "►" else: " "
+      discard buf.setString(area.x, row, cursor, cursorStyle)
+
+      # Game name (truncate if needed)
+      let maxNameLen = 24
+      var name = game.name
+      if name.len > maxNameLen:
+        name = name[0..<maxNameLen-1] & "…"
+      discard buf.setString(area.x + 2, row, name, nameStyle)
+
+      # Turn info
+      let turnStr = "T" & $game.turn
+      discard buf.setString(area.x + 28, row, turnStr, infoStyle)
+
+      # House name
+      discard buf.setString(area.x + 34, row, game.houseName, infoStyle)
+
+    renderedActive = endIdx - startIdx
+    y = area.y + 1 + renderedActive
+
+    if activeGames.len > listHeight and listHeight > 1:
+      let listArea = rect(area.x, area.y + 1, area.width, listHeight)
+      let scrollbarState = ScrollbarState(
+        contentLength: activeGames.len,
+        position: startIdx,
+        viewportLength: listHeight
+      )
+      renderScrollbar(listArea, buf, scrollbarState,
+        ScrollbarOrientation.VerticalRight)
 
   if archivedGames.len > 0 and y < area.bottom:
     let archivedHeader = "ARCHIVED "
@@ -877,11 +910,8 @@ proc renderCreateGameMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
                         "[↑/↓] Navigate  [←/→] Adjust  [Enter] Select  [Esc] Cancel",
                         footerStyle)
 
-proc calculateContentHeight(state: EntryModalState): int =
-  ## Calculate the content height needed
-  # 1 (space after title) + Logo + blank + identity section + blank +
-  # games section + blank + invite code section + (admin section if admin) +
-  # relay section
+proc desiredGamesHeight(state: EntryModalState): int =
+  ## Calculate the games section height with all rows
   var activeCount = 0
   var archivedCount = 0
   for game in state.activeGames:
@@ -893,12 +923,20 @@ proc calculateContentHeight(state: EntryModalState): int =
       activeCount += 1
   let activeRows = if activeCount > 0: activeCount else: 1
   let archivedRows = if archivedCount > 0: archivedCount + 1 else: 0
-  let gamesHeight = 1 + activeRows + archivedRows
+  1 + activeRows + archivedRows
+
+proc calculateContentHeight(state: EntryModalState, gamesHeight: int): int =
+  ## Calculate content height with a specific games section size
   let inviteHeight = 3  # header + input + error line
   let adminHeight = if state.isAdmin: 4 else: 0  # header + 2 items + blank
   let relayHeight = 2  # header + input
   1 + LogoHeight + 1 + 3 + 1 + gamesHeight + 1 + inviteHeight + adminHeight +
     relayHeight
+
+proc calculateContentHeight(state: EntryModalState): int =
+  ## Calculate the content height needed
+  let gamesHeight = desiredGamesHeight(state)
+  calculateContentHeight(state, gamesHeight)
 
 proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
   ## Render the complete entry modal
@@ -908,7 +946,15 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     .minWidth(ModalMinWidth)
     .minHeight(ModalMinHeight)
   
-  let contentHeight = state.calculateContentHeight
+  let desiredHeight = desiredGamesHeight(state)
+  let fixedHeight = calculateContentHeight(state, 0)
+  let minGamesHeight = 2
+  let maxContentHeight = viewport.height - FooterHeight - 2
+  let availableForGames = maxContentHeight - fixedHeight
+  let maxGamesHeight = max(minGamesHeight, availableForGames)
+  let gamesHeight = max(minGamesHeight,
+    min(desiredHeight, maxGamesHeight))
+  let contentHeight = fixedHeight + gamesHeight
   let modalArea = modal.calculateArea(viewport, contentHeight + FooterHeight)
   
   # Render modal frame with footer separator
@@ -941,7 +987,6 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     y += 3 + 1
     
     # Your Games section
-    let gamesHeight = max(2, state.activeGames.len + 1)
     let gamesArea = rect(inner.x, y, inner.width, gamesHeight)
     renderGameList(buf, gamesArea, state.activeGames, state.selectedIdx,
                    state.focus == EntryModalFocus.GameList)

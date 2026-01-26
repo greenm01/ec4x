@@ -70,6 +70,46 @@ suite "Slot Claim Integration":
 
     removeDir(tempRoot)
 
+  test "repeat claim idempotent, second slot rejected":
+    let tempRoot = getTempDir() / "ec4x_test_slot_claim_repeat_" &
+      $epochTime().int
+    createDir(tempRoot)
+    let previousXdg = prepareXdg(tempRoot)
+    defer: restoreXdg(previousXdg)
+    let (dbPath, gameId) = createTestGame(tempRoot)
+    setupDaemon(tempRoot, gameId, dbPath)
+
+    let inviteOpt = getHouseInviteCode(dbPath, gameId, HouseId(1))
+    let inviteOtherOpt = getHouseInviteCode(dbPath, gameId, HouseId(2))
+    check inviteOpt.isSome
+    check inviteOtherOpt.isSome
+    let inviteCode = inviteOpt.get()
+    let inviteOther = inviteOtherOpt.get()
+
+    let playerKeys = generateKeyPair()
+    var event = createSlotClaim(gameId, inviteCode, playerKeys.publicKey)
+    let privBytes = hexToBytes32(playerKeys.privateKey)
+    signEvent(event, privBytes)
+    waitFor processSlotClaim(event)
+
+    var repeatEvent = createSlotClaim(gameId, inviteCode,
+      playerKeys.publicKey)
+    signEvent(repeatEvent, privBytes)
+    waitFor processSlotClaim(repeatEvent)
+
+    var otherEvent = createSlotClaim(gameId, inviteOther,
+      playerKeys.publicKey)
+    signEvent(otherEvent, privBytes)
+    waitFor processSlotClaim(otherEvent)
+
+    let pubkeyOpt = getHousePubkey(dbPath, gameId, HouseId(1))
+    let otherPubkeyOpt = getHousePubkey(dbPath, gameId, HouseId(2))
+    check pubkeyOpt.isSome
+    check pubkeyOpt.get() == playerKeys.publicKey
+    check otherPubkeyOpt.isNone
+
+    removeDir(tempRoot)
+
   test "invalid invite code is rejected":
     let tempRoot = getTempDir() / "ec4x_test_slot_claim_invalid_" & $epochTime().int
     createDir(tempRoot)
