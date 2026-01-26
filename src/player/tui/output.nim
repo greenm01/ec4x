@@ -2,21 +2,29 @@
 ##
 ## Handles rendering the cell buffer to the terminal.
 
-import std/[strutils]
+import std/[strutils, unicode]
 
 import ../tui/buffer
 import ../tui/term/term
 
-proc outputBuffer*(buf: CellBuffer) =
+proc outputBuffer*(buf: var CellBuffer) =
   ## Output buffer to terminal with proper ANSI escape sequences
   var lastStyle = defaultStyle()
 
   for y in 0 ..< buf.h:
+    var lineDirty = false
+    for x in 0 ..< buf.w:
+      if buf.dirty(x, y):
+        lineDirty = true
+        break
+    if not lineDirty:
+      continue
+
     # Position cursor at start of line (1-based ANSI coordinates)
     stdout.write("\e[", y + 1, ";1H")
 
     for x in 0 ..< buf.w:
-      let (str, style, _) = buf.get(x, y)
+      let (rune, style, _) = buf.getRune(x, y)
 
       # Only emit style changes when needed (optimization)
       if style != lastStyle:
@@ -59,7 +67,11 @@ proc outputBuffer*(buf: CellBuffer) =
 
         lastStyle = style
 
-      stdout.write(str)
+      if rune.int < 0x80:
+        stdout.write(char(rune.int))
+      else:
+        stdout.write(rune.toUTF8)
+      buf.setDirty(x, y, false)
 
   # Reset at end
   stdout.write("\e[0m")

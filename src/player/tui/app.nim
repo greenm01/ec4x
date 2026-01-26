@@ -85,13 +85,22 @@ proc runTui*(gameId: string = "") =
   # Proposal Queue (async-safe)
   # ============================================================================
  
+  type ProposalSignature = tuple[
+    kind: ProposalKind,
+    actionKind: ActionKind,
+    timestamp: int64
+  ]
+
   var proposalQueue: seq[Proposal] = @[]
-  var recentProposals: HashSet[string] = initHashSet[string]()
+  var recentProposals = initHashSet[ProposalSignature]()
   const MaxProposalQueue = 100
- 
-  proc proposalSignature(p: Proposal): string =
-    $p.kind & ":" & actionKindToStr(p.actionKind) & ":" &
-      $p.timestamp
+  
+  proc proposalSignature(p: Proposal): ProposalSignature =
+    (
+      kind: p.kind,
+      actionKind: p.actionKind,
+      timestamp: p.timestamp
+    )
  
   proc enqueueProposal(p: Proposal) =
     let sig = proposalSignature(p)

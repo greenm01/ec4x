@@ -38,6 +38,9 @@ proc runeWidth(r: Rune): int =
   return 1
 
 
+const
+  SpaceRune = Rune(ord(' '))
+
 type
   CellStyle* = object
     ## Style for a single cell in the buffer.
@@ -48,8 +51,8 @@ type
 
   Cell* = object
     ## A single character cell with current and last state for dirty tracking.
-    currStr*: string          # Current grapheme cluster (UTF-8)
-    lastStr*: string          # Last rendered content
+    currRune*: Rune           # Current rune
+    lastRune*: Rune           # Last rendered rune
     currStyle*: CellStyle     # Current style
     lastStyle*: CellStyle     # Last rendered style
     width*: int               # Display width (1 or 2 for wide chars)
@@ -82,11 +85,12 @@ proc setDirty(c: var Cell, dirty: bool) =
   ## Mark cell as dirty or clean.
   ## Dirty means content differs from last render.
   if dirty:
-    c.lastStr = ""
+    c.lastRune = Rune(0)
   else:
-    if c.currStr == "":
-      c.currStr = " "
-    c.lastStr = c.currStr
+    if c.currRune.int == 0:
+      c.currRune = SpaceRune
+      c.width = 1
+    c.lastRune = c.currRune
     c.lastStyle = c.currStyle
 
 proc isDirty*(c: Cell): bool {.inline.} =
@@ -95,7 +99,7 @@ proc isDirty*(c: Cell): bool {.inline.} =
     return false
   if c.lastStyle != c.currStyle:
     return true
-  if c.lastStr != c.currStr:
+  if c.lastRune != c.currRune:
     return true
   return false
 
@@ -109,8 +113,8 @@ proc initBuffer*(w, h: int): CellBuffer =
   result.cells = newSeq[Cell](w * h)
   # Initialize all cells
   for i in 0..<result.cells.len:
-    result.cells[i].currStr = " "
-    result.cells[i].lastStr = ""
+    result.cells[i].currRune = SpaceRune
+    result.cells[i].lastRune = Rune(0)
     result.cells[i].currStyle = defaultStyle()
     result.cells[i].width = 1
 
@@ -118,7 +122,8 @@ proc size*(cb: CellBuffer): tuple[w, h: int] {.inline.} =
   ## Returns the (width, height) in cells of the buffer.
   (cb.w, cb.h)
 
-proc put*(cb: var CellBuffer, x, y: int, str: string, style: CellStyle): int =
+proc put*(cb: var CellBuffer, x, y: int, str: string,
+          style: CellStyle): int =
   ## Put a single styled grapheme at the given location.
   ## Only the first grapheme in the string will be displayed.
   ## Returns the width used (1 or 2 for wide characters).
@@ -129,15 +134,18 @@ proc put*(cb: var CellBuffer, x, y: int, str: string, style: CellStyle): int =
     let c = addr cb.cells[idx]
     
     # Extract first grapheme and determine width
-    var width = 0
-    var cluster = ""
-    
-    if str.len > 0:
+    var width = 1
+    var rune = SpaceRune
+
+    if str.len == 1 and ord(str[0]) < 0x80:
+      rune = Rune(ord(str[0]))
+      width = 1
+    elif str.len > 0:
       # Get first rune to determine width
       let r = str.runeAt(0)
       width = r.runeWidth()
-      cluster = $r
-      
+      rune = r
+
       # For safety, ensure width is 1 or 2
       if width < 1:
         width = 1
@@ -145,13 +153,13 @@ proc put*(cb: var CellBuffer, x, y: int, str: string, style: CellStyle): int =
         width = 2
     
     # Mark wide character cells dirty if content changes
-    if width > 0 and cluster != c.currStr:
+    if width > 0 and rune != c.currRune:
       c[].setDirty(true)
       for i in 1..<width:
         if x + i < cb.w:
           cb.cells[idx + i].setDirty(true)
-    
-    c.currStr = cluster
+
+    c.currRune = rune
     c.width = width
     
     # Merge colors: ColorNone means keep current
@@ -164,12 +172,16 @@ proc put*(cb: var CellBuffer, x, y: int, str: string, style: CellStyle): int =
     c.currStyle = newStyle
     result = width
 
-proc get*(cb: CellBuffer, x, y: int): tuple[str: string, style: CellStyle, width: int] =
+proc get*(cb: CellBuffer, x, y: int): tuple[str: string,
+    style: CellStyle, width: int] =
   ## Get the contents of a character cell.
   ## Returns empty content for out-of-bounds coordinates.
   if x >= 0 and y >= 0 and x < cb.w and y < cb.h:
     let c = cb.cells[(y * cb.w) + x]
-    var str = c.currStr
+    var str = if c.currRune.int == 0:
+                " "
+              else:
+                c.currRune.toUTF8
     var width = c.width
     if width == 0 or str == "":
       width = 1
@@ -177,6 +189,21 @@ proc get*(cb: CellBuffer, x, y: int): tuple[str: string, style: CellStyle, width
     result = (str, c.currStyle, width)
   else:
     result = ("", defaultStyle(), 0)
+
+proc getRune*(cb: CellBuffer, x, y: int): tuple[r: Rune,
+    style: CellStyle, width: int] =
+  ## Get the contents of a character cell.
+  ## Returns empty content for out-of-bounds coordinates.
+  if x >= 0 and y >= 0 and x < cb.w and y < cb.h:
+    let c = cb.cells[(y * cb.w) + x]
+    let rune = if c.currRune.int == 0:
+                 SpaceRune
+               else:
+                 c.currRune
+    let width = if c.width == 0: 1 else: c.width
+    result = (rune, c.currStyle, width)
+  else:
+    result = (SpaceRune, defaultStyle(), 0)
 
 proc dirty*(cb: CellBuffer, x, y: int): bool =
   ## Check if a character at the given location needs to be refreshed.
@@ -196,7 +223,7 @@ proc invalidate*(cb: var CellBuffer) =
   ## Mark all characters within the buffer as dirty.
   ## Forces full screen redraw on next render.
   for i in 0..<cb.cells.len:
-    cb.cells[i].lastStr = ""
+    cb.cells[i].lastRune = Rune(0)
 
 proc lockCell*(cb: var CellBuffer, x, y: int) =
   ## Lock a cell from being drawn.
@@ -221,8 +248,8 @@ proc resize*(cb: var CellBuffer, w, h: int) =
   
   # Initialize new cells
   for i in 0..<newCells.len:
-    newCells[i].currStr = " "
-    newCells[i].lastStr = ""
+    newCells[i].currRune = SpaceRune
+    newCells[i].lastRune = Rune(0)
     newCells[i].currStyle = defaultStyle()
     newCells[i].width = 1
   
@@ -231,10 +258,10 @@ proc resize*(cb: var CellBuffer, w, h: int) =
     for x in 0..<min(w, cb.w):
       let oldIdx = (y * cb.w) + x
       let newIdx = (y * w) + x
-      newCells[newIdx].currStr = cb.cells[oldIdx].currStr
+      newCells[newIdx].currRune = cb.cells[oldIdx].currRune
       newCells[newIdx].currStyle = cb.cells[oldIdx].currStyle
       newCells[newIdx].width = cb.cells[oldIdx].width
-      # Mark as dirty (lastStr remains empty)
+      # Mark as dirty (lastRune remains empty)
   
   cb.cells = newCells
   cb.h = h
@@ -244,10 +271,9 @@ proc fill*(cb: var CellBuffer, r: Rune, style: CellStyle) =
   ## Fill the entire buffer with a character and style.
   ## Typically used with ' ' to clear the screen.
   ## Does not support combining characters or width > 1.
-  let str = $r
   for i in 0..<cb.cells.len:
     let c = addr cb.cells[i]
-    c.currStr = str
+    c.currRune = r
     var newStyle = style
     if style.fg.isNone:
       newStyle.fg = c.currStyle.fg
@@ -274,7 +300,7 @@ proc setString*(cb: var CellBuffer, x, y: int, s: string,
   for rune in s.runes:
     if currentX >= cb.w:
       break
-    let width = cb.put(currentX, y, $rune, style)
+    let width = cb.put(currentX, y, rune.toUTF8, style)
     currentX += width
     result += width
 

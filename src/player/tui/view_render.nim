@@ -29,6 +29,51 @@ const
   ExpertPaletteMinWidth = 40
   ExpertPaletteMaxWidth = 80
 
+var
+  cachedExpertInput = ""
+  cachedExpertMatches: seq[ExpertCommandMatch] = @[]
+  cachedReportFilter = ReportCategory.Summary
+  cachedReportSignature = 0'u64
+  cachedReportCount = 0
+  cachedReportBuckets: seq[TurnBucket] = @[]
+
+proc reportSignature(reports: seq[ReportEntry]): uint64 =
+  var sig = 1469598103934665603'u64
+  for report in reports:
+    sig = sig xor uint64(report.id)
+    sig = sig * 1099511628211'u64
+    sig = sig xor uint64(report.turn)
+    sig = sig * 1099511628211'u64
+    sig = sig xor uint64(ord(report.category))
+    sig = sig * 1099511628211'u64
+    sig = sig xor (if report.isUnread: 1'u64 else: 0'u64)
+    sig = sig * 1099511628211'u64
+  sig
+
+proc expertMatchesCached(input: string): seq[ExpertCommandMatch] =
+  if input != cachedExpertInput:
+    cachedExpertInput = input
+    cachedExpertMatches = matchExpertCommands(input)
+  cachedExpertMatches
+
+proc reportsByTurnCached(model: TuiModel): seq[TurnBucket] =
+  let sig = reportSignature(model.view.reports)
+  if sig != cachedReportSignature or
+      cachedReportFilter != model.ui.reportFilter or
+      cachedReportCount != model.view.reports.len:
+    cachedReportSignature = sig
+    cachedReportFilter = model.ui.reportFilter
+    cachedReportCount = model.view.reports.len
+    cachedReportBuckets = model.reportsByTurn()
+  cachedReportBuckets
+
+proc currentTurnReportsFromBuckets(model: TuiModel,
+    buckets: seq[TurnBucket]): seq[ReportEntry] =
+  if buckets.len == 0:
+    return @[]
+  let turnIdx = max(0, min(model.ui.reportTurnIdx, buckets.len - 1))
+  buckets[turnIdx].reports
+
 proc dimStyle*(): CellStyle =
   canvasDimStyle()
 
@@ -81,7 +126,7 @@ proc renderExpertPalette*(buf: var CellBuffer, canvasArea: Rect,
   if not model.ui.expertModeActive:
     return
 
-  let matches = matchExpertCommands(model.ui.expertModeInput)
+  let matches = expertMatchesCached(model.ui.expertModeInput)
   if matches.len == 0:
     return
 
@@ -1004,7 +1049,7 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let subjectInner = subjectFrame.inner(subjectArea)
   let bodyInner = bodyFrame.inner(bodyPaneArea)
 
-  let buckets = model.reportsByTurn()
+  let buckets = reportsByTurnCached(model)
   var y = turnInner.y
   let turnCount = buckets.len
   var turnScroll = model.ui.reportTurnScroll
@@ -1032,7 +1077,7 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     y += 1
 
   var subjectY = subjectInner.y
-  let reports = model.currentTurnReports()
+  let reports = currentTurnReportsFromBuckets(model, buckets)
   var subjectScroll = model.ui.reportSubjectScroll
   subjectScroll.contentLength = reports.len
   subjectScroll.viewportLength = subjectInner.height
