@@ -49,7 +49,8 @@ export naps
 # Convenience: Create Fully Configured SAM Instance
 # ============================================================================
 
-proc initTuiSam*(withHistory: bool = true, maxHistory: int = 100): SamInstance[TuiModel] =
+proc initTuiSam*(withHistory: bool = false,
+  maxHistory: int = 100): SamInstance[TuiModel] =
   ## Create a fully configured SAM instance for the TUI
   if withHistory:
     result = initSamWithHistory[TuiModel](maxHistory)

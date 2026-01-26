@@ -78,8 +78,8 @@ proc runTui*(gameId: string = "") =
   # SAM Setup
   # =========================================================================
 
-  # Create SAM instance with history (for potential undo)
-  var sam = initTuiSam(withHistory = true, maxHistory = 50)
+  # Create SAM instance (history disabled)
+  var sam = initTuiSam()
 
   # ============================================================================
   # Proposal Queue (async-safe)

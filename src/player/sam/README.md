@@ -310,8 +310,9 @@ sam/
 ```nim
 import sam/sam_pkg
 
-# Create instance with history
-var sam = initTuiSam(withHistory = true, maxHistory = 50)
+# Create instance (history disabled by default)
+# Use initTuiSam(withHistory = true) to enable time travel.
+var sam = initTuiSam()
 
 # Set render function
 sam.setRender(proc(model: TuiModel) =

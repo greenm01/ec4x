@@ -962,7 +962,7 @@ Input Event → Action → Proposal → present() → Acceptors → Reactors →
 
 **Key Benefits Realized:**
 - **Single Source of Truth**: All state in `TuiModel`
-- **Time Travel**: Built-in undo/history via `sam.travelPrev()`
+- **Time Travel**: Optional undo/history when enabled
 - **Testability**: 48 unit tests for pure functions
 - **Predictable Flow**: Unidirectional data, no scattered mutations
 - **Decoupled View**: TuiModel separate from engine's GameState
@@ -971,7 +971,7 @@ Input Event → Action → Proposal → present() → Acceptors → Reactors →
 ```nim
 import sam/sam_pkg
 
-var sam = initTuiSam(withHistory = true)
+var sam = initTuiSam()
 sam.setRender(proc(model: TuiModel) =
   buf.clear()
   renderDashboard(buf, model)
