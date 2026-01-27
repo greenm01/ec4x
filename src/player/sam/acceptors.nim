@@ -771,15 +771,18 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if report.isSome:
         model.ui.selectedReportId = report.get().id
     elif model.ui.mode == ViewMode.Planets and proposal.selectIdx == -1:
-      if model.ui.selectedIdx >= 0 and
-          model.ui.selectedIdx < model.view.colonies.len:
-        model.ui.previousMode = model.ui.mode
-        model.ui.mode = ViewMode.PlanetDetail
-        model.ui.selectedColonyId =
-          model.view.colonies[model.ui.selectedIdx].colonyId
-        model.resetBreadcrumbs(model.ui.mode)
-      else:
+      if model.ui.selectedIdx < 0 or
+          model.ui.selectedIdx >= model.view.planetsRows.len:
         model.ui.statusMessage = "No colony selected"
+      else:
+        let row = model.view.planetsRows[model.ui.selectedIdx]
+        if row.colonyId.isSome and row.isOwned:
+          model.ui.previousMode = model.ui.mode
+          model.ui.mode = ViewMode.PlanetDetail
+          model.ui.selectedColonyId = row.colonyId.get()
+          model.resetBreadcrumbs(model.ui.mode)
+        else:
+          model.ui.statusMessage = "No colony selected"
     elif model.ui.mode == ViewMode.Fleets and proposal.selectIdx == -1:
       if model.ui.selectedIdx >= 0 and
           model.ui.selectedIdx < model.view.fleets.len:

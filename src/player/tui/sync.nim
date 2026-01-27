@@ -5,7 +5,7 @@
 import std/[options, tables, algorithm]
 
 import ../../engine/types/[core, colony, fleet, facilities, player_state as
-  ps_types, diplomacy]
+  ps_types, diplomacy, starmap]
 import ../../engine/state/[engine, iterators]
 import ../../engine/systems/capacity/[c2_pool, construction_docks]
 import ../../engine/systems/production/engine as production_engine
@@ -13,6 +13,7 @@ import ../sam/sam_pkg
 import ../tui/adapters
 import ../tui/widget/overview
 import ../tui/hex_labels
+import ../tui/widget/hexmap/symbols
 
 proc syncGameStateToModel*(
     model: var TuiModel,
@@ -201,18 +202,15 @@ proc syncGameStateToModel*(
     )
 
 proc syncPlayerStateToOverview*(
-    ps: ps_types.PlayerState,
-    state: GameState
+    ps: ps_types.PlayerState
 ): OverviewData =
   ## Convert PlayerState to Overview widget data
   result = initOverviewData()
 
   # === Leaderboard (from public information) ===
   for houseId, prestige in ps.housePrestige.pairs:
-    let houseOpt = state.house(houseId)
-    if houseOpt.isNone:
-      continue
-    let house = houseOpt.get()
+    # Use houseNames from PlayerState instead of querying GameState
+    let houseName = ps.houseNames.getOrDefault(houseId, "Unknown")
 
     # Determine diplomatic status
     var status = DiplomaticStatus.Neutral
@@ -235,7 +233,7 @@ proc syncPlayerStateToOverview*(
 
     result.leaderboard.addEntry(
       houseId = int(houseId),
-      name = house.name,
+      name = houseName,
       prestige = prestige.int,
       colonies = ps.houseColonyCounts.getOrDefault(houseId, 0).int,
       status = status,
@@ -243,18 +241,19 @@ proc syncPlayerStateToOverview*(
     )
 
   result.leaderboard.sortAndRank()
-  result.leaderboard.totalSystems = state.systemsCount().int
+  result.leaderboard.totalSystems = ps.visibleSystems.len
 
-  # Calculate total colonized systems
-  result.leaderboard.colonizedSystems = state.coloniesCount().int
+  # Calculate total colonized systems (sum of all house colony counts)
+  var totalColonized = 0
+  for _, count in ps.houseColonyCounts.pairs:
+    totalColonized += count.int
+  result.leaderboard.colonizedSystems = totalColonized
 
   # === Empire Status ===
   result.empireStatus.coloniesOwned = ps.ownColonies.len
 
-  # Get house data for tax rate
-  let houseOpt = state.house(ps.viewingHouse)
-  if houseOpt.isSome:
-    result.empireStatus.taxRate = houseOpt.get().taxPolicy.currentRate.int
+  # Tax rate not available in PlayerState
+  result.empireStatus.taxRate = 0
 
   # Fleet counts by status
   for fleet in ps.ownFleets:
@@ -448,3 +447,148 @@ proc syncPlayerStateToModel*(
   # Command capacity (not available in PlayerState)
   model.view.commandUsed = 0
   model.view.commandMax = 0
+
+  # Sync planets table data
+  syncPlanetsRows(model, ps)
+
+# =============================================================================
+# Planets Table Sync (PlayerState-only)
+# =============================================================================
+
+proc formatLtu[K](table: Table[K, int32], key: K, currentTurn: int32): string =
+  ## Format Last Turn Updated as "T##" or "---"
+  if table.hasKey(key):
+    "T" & $table[key]
+  else:
+    "---"
+
+proc planetClassName(classValue: int32): string =
+  ## Get planet class name from int32 value
+  let idx = int(classValue)
+  if idx >= 0 and idx < PlanetClassNames.len:
+    PlanetClassNames[idx]
+  else:
+    "???"
+
+proc resourceRatingName(ratingValue: int32): string =
+  ## Get resource rating name from int32 value
+  let idx = int(ratingValue)
+  if idx >= 0 and idx < ResourceRatingNames.len:
+    ResourceRatingNames[idx]
+  else:
+    "???"
+
+proc buildStatusLabel(colony: Colony): string =
+  ## Build status label for colony (blockaded, etc.)
+  if colony.blockaded:
+    "BLOCKADED"
+  else:
+    "---"
+
+proc hasOwnColonyAt(ps: PlayerState, systemId: SystemId): bool =
+  ## Check if player has a colony at this system
+  for colony in ps.ownColonies:
+    if colony.systemId == systemId:
+      return true
+  false
+
+proc buildOwnColonyRow(ps: PlayerState, colony: Colony): PlanetRow =
+  ## Build PlanetRow from owned colony data
+  let visSys = ps.visibleSystems.getOrDefault(colony.systemId)
+  let coords = visSys.coordinates.get((0'i32, 0'i32))
+  let ring = max(abs(coords.q), max(abs(coords.r), abs(-coords.q - coords.r)))
+
+  result = PlanetRow(
+    systemId: colony.systemId.int,
+    colonyId: some(colony.id.int),
+    systemName: visSys.name,
+    sectorLabel: coordLabel(coords.q.int, coords.r.int),
+    ownerName: ps.houseNames.getOrDefault(colony.owner, "???"),
+    classLabel: planetClassName(visSys.planetClass),
+    resourceLabel: resourceRatingName(visSys.resourceRating),
+    pop: some(colony.populationUnits.int),
+    iu: some(colony.industrial.units.int),
+    gco: some(colony.grossOutput.int),
+    ncv: none(int),  # Requires tax rate calculation not in PlayerState
+    growthLabel: "---",  # Would need income report
+    cdTotal: some(colony.constructionDocks.int),
+    rdTotal: some(colony.repairDocks.int),
+    ltuLabel: formatLtu(ps.ltuColonies, colony.id, ps.turn),
+    statusLabel: buildStatusLabel(colony),
+    isOwned: true,
+    isHomeworld: ps.homeworldSystemId == some(colony.systemId),
+    ring: ring.int,
+    coordLabel: coordLabel(coords.q.int, coords.r.int),
+    hasAlert: colony.blockaded,
+  )
+
+proc buildSystemRow(ps: PlayerState, visSys: VisibleSystem): PlanetRow =
+  ## Build PlanetRow for non-owned system
+  let coords = visSys.coordinates.get((0'i32, 0'i32))
+  let ring = max(abs(coords.q), max(abs(coords.r), abs(-coords.q - coords.r)))
+
+  # Check for enemy colony
+  var ownerName = "---"
+  var colonyId: Option[int] = none(int)
+  var pop, iu, gco: Option[int]
+  for vc in ps.visibleColonies:
+    if vc.systemId == visSys.systemId:
+      colonyId = some(vc.colonyId.int)
+      ownerName = ps.houseNames.getOrDefault(vc.owner, "Unknown")
+      pop = vc.estimatedPopulation.map(proc(x: int32): int = x.int)
+      iu = vc.estimatedIndustry.map(proc(x: int32): int = x.int)
+      break
+
+  result = PlanetRow(
+    systemId: visSys.systemId.int,
+    colonyId: colonyId,
+    systemName: visSys.name,
+    sectorLabel: coordLabel(coords.q.int, coords.r.int),
+    ownerName: ownerName,
+    classLabel: if visSys.visibility >= Scouted:
+                  planetClassName(visSys.planetClass) else: "??",
+    resourceLabel: if visSys.visibility >= Scouted:
+                     resourceRatingName(visSys.resourceRating) else: "??",
+    pop: pop,
+    iu: iu,
+    gco: gco,
+    ncv: none(int),
+    growthLabel: "---",
+    cdTotal: none(int),
+    rdTotal: none(int),
+    ltuLabel: formatLtu(ps.ltuSystems, visSys.systemId, ps.turn),
+    statusLabel: "---",
+    isOwned: false,
+    isHomeworld: false,
+    ring: ring.int,
+    coordLabel: coordLabel(coords.q.int, coords.r.int),
+    hasAlert: false,
+  )
+
+proc syncPlanetsRows*(model: var TuiModel, ps: PlayerState) =
+  ## Build planetsRows from PlayerState only
+  ## Order: homeworld first, then owned alpha, then non-owned alpha
+  model.view.planetsRows = @[]
+  var homeRow: Option[PlanetRow]
+  var ownedRows, otherRows: seq[PlanetRow]
+
+  # 1. Own colonies (full data)
+  for colony in ps.ownColonies:
+    let row = buildOwnColonyRow(ps, colony)
+    if row.isHomeworld:
+      homeRow = some(row)
+    else:
+      ownedRows.add(row)
+
+  # 2. Visible systems without owned colony
+  for sysId, visSys in ps.visibleSystems.pairs:
+    if not ps.hasOwnColonyAt(sysId):
+      otherRows.add(buildSystemRow(ps, visSys))
+
+  # 3. Sort and merge
+  ownedRows.sort(proc(a, b: PlanetRow): int = cmp(a.systemName, b.systemName))
+  otherRows.sort(proc(a, b: PlanetRow): int = cmp(a.systemName, b.systemName))
+
+  if homeRow.isSome: model.view.planetsRows.add(homeRow.get)
+  model.view.planetsRows &= ownedRows
+  model.view.planetsRows &= otherRows

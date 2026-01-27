@@ -48,7 +48,7 @@ proc listEmptyRedirectNap*(model: TuiModel): Option[Proposal] =
   ## NOTE: Disabled for now - let users see empty views
   case model.ui.mode
   of ViewMode.Planets:
-    if model.view.colonies.len == 0:
+    if model.view.planetsRows.len == 0:
       # Don't auto-redirect - let players see "No colonies"
       discard
   of ViewMode.Fleets:

@@ -26,6 +26,8 @@ type
   PlayerStateDelta* = object
     viewingHouse*: HouseId
     turn*: int32
+    homeworldSystemIdChanged*: bool
+    homeworldSystemId*: Option[SystemId]
     ownColonies*: EntityDelta[Colony]
     ownFleets*: EntityDelta[Fleet]
     ownShips*: EntityDelta[Ship]
@@ -33,8 +35,12 @@ type
     visibleSystems*: EntityDelta[VisibleSystem]
     visibleColonies*: EntityDelta[VisibleColony]
     visibleFleets*: EntityDelta[VisibleFleet]
+    ltuSystems*: EntityDelta[LtuSystem]
+    ltuColonies*: EntityDelta[LtuColony]
+    ltuFleets*: EntityDelta[LtuFleet]
     housePrestige*: EntityDelta[HouseValue]
     houseColonyCounts*: EntityDelta[HouseCount]
+    houseNames*: EntityDelta[HouseNameEntry]
     diplomaticRelations*: EntityDelta[RelationSnapshot]
     eliminatedHouses*: EntityDelta[HouseId]
     actProgressionChanged*: bool
@@ -178,6 +184,42 @@ proc diffVisibleFleets(
     proc(a: VisibleFleet, b: VisibleFleet): bool = a == b
   )
 
+proc diffLtuSystems(
+  oldItems: seq[LtuSystem],
+  newItems: seq[LtuSystem]
+): EntityDelta[LtuSystem] =
+  diffById(
+    oldItems,
+    newItems,
+    proc(item: LtuSystem): SystemId = item.systemId,
+    proc(id: SystemId): uint32 = id.uint32,
+    proc(a: LtuSystem, b: LtuSystem): bool = a.turn == b.turn
+  )
+
+proc diffLtuColonies(
+  oldItems: seq[LtuColony],
+  newItems: seq[LtuColony]
+): EntityDelta[LtuColony] =
+  diffById(
+    oldItems,
+    newItems,
+    proc(item: LtuColony): ColonyId = item.colonyId,
+    proc(id: ColonyId): uint32 = id.uint32,
+    proc(a: LtuColony, b: LtuColony): bool = a.turn == b.turn
+  )
+
+proc diffLtuFleets(
+  oldItems: seq[LtuFleet],
+  newItems: seq[LtuFleet]
+): EntityDelta[LtuFleet] =
+  diffById(
+    oldItems,
+    newItems,
+    proc(item: LtuFleet): FleetId = item.fleetId,
+    proc(id: FleetId): uint32 = id.uint32,
+    proc(a: LtuFleet, b: LtuFleet): bool = a.turn == b.turn
+  )
+
 proc diffHouseValues(
   oldItems: seq[HouseValue],
   newItems: seq[HouseValue]
@@ -230,6 +272,18 @@ proc diffHouseIds(
     proc(item: HouseId): HouseId = item,
     proc(id: HouseId): uint32 = id.uint32,
     proc(a: HouseId, b: HouseId): bool = a == b
+  )
+
+proc diffHouseNames(
+  oldItems: seq[HouseNameEntry],
+  newItems: seq[HouseNameEntry]
+): EntityDelta[HouseNameEntry] =
+  diffById(
+    oldItems,
+    newItems,
+    proc(item: HouseNameEntry): HouseId = item.houseId,
+    proc(id: HouseId): uint32 = id.uint32,
+    proc(a: HouseNameEntry, b: HouseNameEntry): bool = a.name == b.name
   )
 
 proc diffColonies(
@@ -292,12 +346,18 @@ proc diffPlayerState*(
     result.visibleSystems.added = current.visibleSystems
     result.visibleColonies.added = current.visibleColonies
     result.visibleFleets.added = current.visibleFleets
+    result.ltuSystems.added = current.ltuSystems
+    result.ltuColonies.added = current.ltuColonies
+    result.ltuFleets.added = current.ltuFleets
     result.housePrestige.added = current.housePrestige
     result.houseColonyCounts.added = current.houseColonyCounts
+    result.houseNames.added = current.houseNames
     result.diplomaticRelations.added = current.diplomaticRelations
     result.eliminatedHouses.added = current.eliminatedHouses
     result.actProgressionChanged = true
     result.actProgression = some(current.actProgression)
+    result.homeworldSystemIdChanged = true
+    result.homeworldSystemId = current.homeworldSystemId
     return
 
   let oldSnapshot = oldSnapshotOpt.get()
@@ -320,6 +380,18 @@ proc diffPlayerState*(
     oldSnapshot.visibleFleets,
     current.visibleFleets
   )
+  result.ltuSystems = diffLtuSystems(
+    oldSnapshot.ltuSystems,
+    current.ltuSystems
+  )
+  result.ltuColonies = diffLtuColonies(
+    oldSnapshot.ltuColonies,
+    current.ltuColonies
+  )
+  result.ltuFleets = diffLtuFleets(
+    oldSnapshot.ltuFleets,
+    current.ltuFleets
+  )
   result.housePrestige = diffHouseValues(
     oldSnapshot.housePrestige,
     current.housePrestige
@@ -327,6 +399,10 @@ proc diffPlayerState*(
   result.houseColonyCounts = diffHouseCounts(
     oldSnapshot.houseColonyCounts,
     current.houseColonyCounts
+  )
+  result.houseNames = diffHouseNames(
+    oldSnapshot.houseNames,
+    current.houseNames
   )
   result.diplomaticRelations = diffRelations(
     oldSnapshot.diplomaticRelations,
@@ -340,6 +416,10 @@ proc diffPlayerState*(
   if oldSnapshot.actProgression != current.actProgression:
     result.actProgressionChanged = true
     result.actProgression = some(current.actProgression)
+
+  if oldSnapshot.homeworldSystemId != current.homeworldSystemId:
+    result.homeworldSystemIdChanged = true
+    result.homeworldSystemId = current.homeworldSystemId
 
 # =============================================================================
 # Msgpack Serialization

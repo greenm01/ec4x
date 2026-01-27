@@ -190,6 +190,30 @@ type
     idleConstruction*: bool
     owner*: int
 
+  PlanetRow* = object
+    ## Planet/system row for Planets view table
+    systemId*: int
+    colonyId*: Option[int]
+    systemName*: string
+    sectorLabel*: string
+    ownerName*: string
+    classLabel*: string
+    resourceLabel*: string
+    pop*: Option[int]
+    iu*: Option[int]
+    gco*: Option[int]
+    ncv*: Option[int]
+    growthLabel*: string
+    cdTotal*: Option[int]
+    rdTotal*: Option[int]
+    ltuLabel*: string
+    statusLabel*: string
+    isOwned*: bool
+    isHomeworld*: bool
+    ring*: int
+    coordLabel*: string
+    hasAlert*: bool
+
   FleetInfo* = object
     ## Fleet info for list display
     id*: int
@@ -453,6 +477,7 @@ type
     # Collections for display
     systems*: Table[HexCoord, SystemInfo]
     colonies*: seq[ColonyInfo]
+    planetsRows*: seq[PlanetRow]
     fleets*: seq[FleetInfo]
     commands*: seq[CommandInfo]
     reports*: seq[ReportEntry]
@@ -603,6 +628,7 @@ proc initTuiViewState*(): TuiViewState =
     unreadMessages: 0,
     systems: initTable[HexCoord, SystemInfo](),
     colonies: @[],
+    planetsRows: @[],
     fleets: @[],
     commands: @[],
     reports: @[
@@ -819,7 +845,7 @@ proc currentListLength*(model: TuiModel): int =
       return 0
   case model.ui.mode
   of ViewMode.Overview: 0  # Overview has no list selection
-  of ViewMode.Planets: model.view.colonies.len
+  of ViewMode.Planets: model.view.planetsRows.len
   of ViewMode.Fleets: model.view.fleets.len
   of ViewMode.Research: 0  # Research has no list
   of ViewMode.Espionage: 0  # Espionage operations list (TODO)
@@ -851,11 +877,19 @@ proc cursorSystem*(model: TuiModel): Option[SystemInfo] =
 
 proc selectedColony*(model: TuiModel): Option[ColonyInfo] =
   ## Get selected colony
-  if model.ui.mode == ViewMode.Planets and
-      model.ui.selectedIdx < model.view.colonies.len:
-    some(model.view.colonies[model.ui.selectedIdx])
-  else:
-    none(ColonyInfo)
+  if model.ui.mode != ViewMode.Planets:
+    return none(ColonyInfo)
+  if model.ui.selectedIdx < 0 or
+      model.ui.selectedIdx >= model.view.planetsRows.len:
+    return none(ColonyInfo)
+  let row = model.view.planetsRows[model.ui.selectedIdx]
+  if row.colonyId.isNone:
+    return none(ColonyInfo)
+  let colonyId = row.colonyId.get()
+  for colony in model.view.colonies:
+    if colony.colonyId == colonyId:
+      return some(colony)
+  none(ColonyInfo)
 
 proc selectedFleet*(model: TuiModel): Option[FleetInfo] =
   ## Get selected fleet

@@ -414,6 +414,69 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     let clipped = summary[0 ..< min(summary.len, area.width)]
     discard buf.setString(area.x, footerY, clipped, dimStyle())
 
+proc renderPlanetsTable*(area: Rect, buf: var CellBuffer,
+                         model: TuiModel, scroll: ScrollState) =
+  ## Render Planets table per spec: 14 columns, box borders, scrolling
+  if area.isEmpty:
+    return
+
+  # 14 column layout per spec
+  let columns = @[
+    tableColumn("System", 18, table.Alignment.Left),
+    tableColumn("Sector", 5, table.Alignment.Center),
+    tableColumn("Owner", 10, table.Alignment.Left),
+    tableColumn("Class", 7, table.Alignment.Left),
+    tableColumn("Res", 5, table.Alignment.Left),
+    tableColumn("Pop", 5, table.Alignment.Right),
+    tableColumn("IU", 5, table.Alignment.Right),
+    tableColumn("GCO", 6, table.Alignment.Right),
+    tableColumn("NCV", 6, table.Alignment.Right),
+    tableColumn("Growth", 7, table.Alignment.Right),
+    tableColumn("CD", 3, table.Alignment.Right),
+    tableColumn("RD", 3, table.Alignment.Right),
+    tableColumn("LTU", 4, table.Alignment.Right),
+    tableColumn("Status", 0, table.Alignment.Left)  # Fill remaining space
+  ]
+
+  var planetsTable = table(columns)
+    .selectedIdx(model.ui.selectedIdx)
+    .zebraStripe(true)
+
+  for row in model.view.planetsRows:
+    let popLabel = if row.pop.isSome: $row.pop.get else: "—"
+    let iuLabel = if row.iu.isSome: $row.iu.get else: "—"
+    let gcoLabel = if row.gco.isSome: $row.gco.get else: "—"
+    let ncvLabel = if row.ncv.isSome: $row.ncv.get else: "—"
+    let cdLabel = if row.cdTotal.isSome: $row.cdTotal.get else: "—"
+    let rdLabel = if row.rdTotal.isSome: $row.rdTotal.get else: "—"
+
+    var statusStyle = normalStyle()
+    var statusLabel = row.statusLabel
+    if row.hasAlert:
+      statusStyle = alertStyle()
+      statusLabel = GlyphWarning & " " & statusLabel
+
+    let dataRow = @[
+      row.systemName,
+      row.sectorLabel,
+      row.ownerName,
+      row.classLabel,
+      row.resourceLabel,
+      popLabel,
+      iuLabel,
+      gcoLabel,
+      ncvLabel,
+      row.growthLabel,
+      cdLabel,
+      rdLabel,
+      row.ltuLabel,
+      statusLabel
+    ]
+
+    planetsTable.addRow(dataRow, statusStyle, 13)  # Status column for style
+
+  planetsTable.render(area, buf)
+
 proc renderFleetList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render list of player's fleets from SAM model
   var y = area.y
@@ -1216,12 +1279,19 @@ proc renderReportDetail*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
   ## Render planets view as centered floating modal
-  let vm = newViewModal("YOUR COLONIES").maxWidth(120).minWidth(80)
-  let contentHeight = max(10, model.view.colonies.len + 4)
+  let vm = newViewModal("PLANETS").maxWidth(120).minWidth(100)
+  let contentHeight = model.view.planetsRows.len + 3
   let modalArea = vm.calculateViewArea(canvas, contentHeight)
   vm.render(modalArea, buf)
   let innerArea = vm.innerArea(modalArea)
-  renderColonyList(innerArea, buf, model)
+
+  # Create local copy for scroll calculations
+  var localScroll = scroll
+  localScroll.contentLength = model.view.planetsRows.len
+  localScroll.viewportLength = innerArea.height - 2
+  localScroll.clampOffsets()
+
+  renderPlanetsTable(innerArea, buf, model, localScroll)
 
 proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
                         model: TuiModel, scroll: ScrollState) =
@@ -1445,7 +1515,7 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
     result.contextActions = overviewContextActions(joinActive)
   of ViewMode.Planets:
     result.contextActions = planetsContextActions(
-      model.view.colonies.len > 0
+      model.hasColonySelection()
     )
   of ViewMode.Fleets:
     result.contextActions =
@@ -1477,8 +1547,6 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
 proc renderDashboard*(
     buf: var CellBuffer,
     model: TuiModel,
-    state: GameState,
-    viewingHouse: HouseId,
     playerState: ps_types.PlayerState,
 ) =
   ## Render the complete TUI dashboard using EC-style layout
@@ -1525,7 +1593,7 @@ proc renderDashboard*(
 
     case model.ui.mode
     of ViewMode.Overview:
-      let overviewData = syncPlayerStateToOverview(playerState, state)
+      let overviewData = syncPlayerStateToOverview(playerState)
       renderOverviewModal(canvasArea, buf, overviewData,
         model.ui.overviewScroll)
     of ViewMode.Planets:
@@ -1545,8 +1613,9 @@ proc renderDashboard*(
     of ViewMode.Settings:
       renderSettingsModal(canvasArea, buf, model, model.ui.settingsScroll)
     else:
-      # Detail views still use full-canvas rendering
-      renderListPanel(canvasArea, buf, model, state, viewingHouse)
+      # Detail views still use full-canvas rendering (stubbed for PlayerState-only)
+      discard buf.setString(canvasArea.x, canvasArea.y,
+        "Detail view requires full game state (not available in Nostr mode)", dimStyle())
 
   if model.ui.expertModeActive:
     renderExpertPalette(buf, canvasArea, statusBarArea, model)

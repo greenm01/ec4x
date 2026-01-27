@@ -152,6 +152,8 @@ type
     name*: string
     visibility*: VisibilityLevel
     lastScoutedTurn*: Option[int32]
+    planetClass*: int32
+    resourceRating*: int32
     coordinates*: Option[tuple[q: int32, r: int32]]
     jumpLaneIds*: seq[SystemId]
 
@@ -187,6 +189,7 @@ type
     ## Contains full entity data (not just IDs) for client-side operations
     viewingHouse*: HouseId
     turn*: int32
+    homeworldSystemId*: Option[SystemId]
 
     # === Owned Assets (Full Entity Data) ===
     # Players get complete information about their own assets
@@ -203,10 +206,16 @@ type
     visibleColonies*: seq[VisibleColony]
     visibleFleets*: seq[VisibleFleet]
 
+    # === Intel Freshness (LTU) ===
+    ltuSystems*: Table[SystemId, int32]
+    ltuColonies*: Table[ColonyId, int32]
+    ltuFleets*: Table[FleetId, int32]
+
     # === Public Information ===
     # Information visible to all players
     housePrestige*: Table[HouseId, int32]
     houseColonyCounts*: Table[HouseId, int32]
+    houseNames*: Table[HouseId, string]
     diplomaticRelations*: Table[(HouseId, HouseId), DiplomaticState]
     eliminatedHouses*: seq[HouseId]
     actProgression*: ActProgressionState

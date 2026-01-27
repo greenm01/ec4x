@@ -29,6 +29,9 @@ type
     blockaded*: bool
     blockadedBy*: seq[HouseId]
     blockadeTurns*: int32
+    # Dock capacity (for TUI display)
+    constructionDocks*: int32  ## Total CD from shipyards + spaceports
+    repairDocks*: int32        ## Total RD from drydocks
     # Automatic actions
     autoRepair*: bool
     autoLoadMarines*: bool

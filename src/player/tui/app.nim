@@ -49,8 +49,7 @@ proc runTui*(gameId: string = "") =
   enableFileLogging(logDir / "tui.log")
   disableStdoutLogging()
 
-  # Initialize game state
-  var gameState = GameState()
+  # Initialize player state (TUI now uses PlayerState only, not GameState)
   var playerState = ps_types.PlayerState()
   var viewingHouse = HouseId(1)
   var activeGameId = gameId
@@ -217,9 +216,8 @@ proc runTui*(gameId: string = "") =
       status: game.phase
     ))
 
-  # Note: lobbyJoinGames (available games to join) now comes from Nostr events
-  # We don't scan daemon's DB anymore - games appear when their definition
-  # events arrive from the relay
+  # Note: lobbyJoinGames (available games to join) comes from Nostr events
+  # games appear when their definition events arrive from the relay
 
   # Set default relay URL from config if not provided via entry modal
   if initialModel.ui.entryModal.relayUrl().len > 0:
@@ -227,9 +225,9 @@ proc runTui*(gameId: string = "") =
   elif tuiConfig.defaultRelay.len > 0:
     initialModel.ui.nostrRelayUrl = tuiConfig.defaultRelay
 
-  # Sync game state to model (only after joining a game)
+  # Sync player state to model (only after joining a game)
   if initialModel.ui.appPhase == AppPhase.InGame:
-    syncGameStateToModel(initialModel, gameState, viewingHouse)
+    syncPlayerStateToModel(initialModel, playerState)
     initialModel.resetBreadcrumbs(initialModel.ui.mode)
 
     if initialModel.view.homeworld.isSome:
@@ -643,7 +641,7 @@ proc runTui*(gameId: string = "") =
   sam.setRender(
     proc(model: TuiModel) =
       buf.clear()
-      renderDashboard(buf, model, gameState, viewingHouse, playerState)
+      renderDashboard(buf, model, playerState)
       outputBuffer(buf)
   )
 
@@ -1064,18 +1062,9 @@ proc runTui*(gameId: string = "") =
       # Re-render to show status
       sam.present(emptyProposal())
 
-    # Handle map export requests (needs GameState access)
+    # Handle map export requests (disabled - requires full GameState)
     if sam.model.ui.exportMapRequested:
-      let gameId = "game_" & $gameState.seed # Use seed as game ID
-      let svg = generateStarmap(gameState, viewingHouse)
-      let path = exportSvg(svg, gameId, gameState.turn)
-      sam.model.ui.lastExportPath = path
-      sam.model.ui.statusMessage = "Exported: " & path
-
-      if sam.model.ui.openMapRequested:
-        discard openInViewer(path)
-        sam.model.ui.statusMessage = "Opened: " & path
-
+      sam.model.ui.statusMessage = "Map export requires local game (not available in Nostr mode)"
       sam.model.ui.exportMapRequested = false
       sam.model.ui.openMapRequested = false
 
@@ -1117,7 +1106,7 @@ proc runTui*(gameId: string = "") =
     if sam.model.ui.turnSubmissionPending:
       # Build command packet from staged commands
       let packet = sam.model.buildCommandPacket(
-        gameState.turn.int32,
+        playerState.turn,
         viewingHouse
       )
 

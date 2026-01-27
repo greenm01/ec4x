@@ -1110,3 +1110,176 @@ proc colonyToDetailData*(
     autoLoadMarines: colony.autoLoadMarines,
     autoLoadFighters: colony.autoLoadFighters
   )
+
+# -----------------------------------------------------------------------------
+# PlayerState-Only Detail Adapters (for Nostr mode)
+# -----------------------------------------------------------------------------
+
+proc shipToRow(ship: Ship): ShipDetailRow =
+  ## Convert Ship to ShipDetailRow (simple version for PS-only mode)
+  let shipName = "Ship #" & $ship.id
+  let className = $ship.shipClass
+  var stateLabel = "Nominal"
+  var isCrippled = false
+  case ship.state:
+  of CombatState.Nominal:
+    stateLabel = "Nominal"
+  of CombatState.Crippled:
+    stateLabel = "Crippled"
+    isCrippled = true
+  of CombatState.Destroyed:
+    stateLabel = "Destroyed"
+
+  ShipDetailRow(
+    name: shipName,
+    class: className,
+    state: stateLabel,
+    attack: $ship.stats.attackStrength,
+    defense: $ship.stats.defenseStrength,
+    isCrippled: isCrippled
+  )
+
+proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailData =
+  ## Build FleetDetailData from PlayerState only
+  ## Limited data compared to full GameState version
+  for fleet in ps.ownFleets:
+    if fleet.id == fleetId:
+      # Get location name
+      var locationName = "Unknown"
+      if ps.visibleSystems.hasKey(fleet.location):
+        locationName = ps.visibleSystems[fleet.location].name
+
+      # Build command string
+      var commandStr = $fleet.command.commandType
+      case fleet.command.commandType:
+      of FleetCommandType.Hold:
+        commandStr = "Hold (awaiting orders)"
+      of FleetCommandType.Move:
+        if fleet.command.targetSystem.isSome:
+          let targetId = fleet.command.targetSystem.get()
+          if ps.visibleSystems.hasKey(targetId):
+            commandStr = "Move to " & ps.visibleSystems[targetId].name
+          else:
+            commandStr = "Move to System " & $targetId
+        else:
+          commandStr = "Move (no target)"
+      else:
+        commandStr = $fleet.command.commandType
+
+      # Build status string
+      var statusStr = "Active"
+      case fleet.status:
+      of FleetStatus.Active:
+        statusStr = "Active"
+      of FleetStatus.Reserve:
+        statusStr = "Reserve"
+      of FleetStatus.Mothballed:
+        statusStr = "Mothballed"
+
+      # Build ship rows
+      var shipRows: seq[ShipDetailRow] = @[]
+      var totalAS = 0
+      var totalDS = 0
+      for shipId in fleet.ships:
+        for ship in ps.ownShips:
+          if ship.id == shipId:
+            if ship.state != CombatState.Destroyed:
+              shipRows.add(shipToRow(ship))
+              totalAS += ship.stats.attackStrength.int
+              totalDS += ship.stats.defenseStrength.int
+            break
+
+      return FleetDetailData(
+        fleetId: fleetId.int,
+        location: locationName,
+        systemId: fleet.location.int,
+        shipCount: shipRows.len,
+        totalAttack: totalAS,
+        totalDefense: totalDS,
+        command: commandStr,
+        commandType: fleet.command.commandType.int,
+        status: statusStr,
+        roe: fleet.roe.int,
+        ships: shipRows
+      )
+
+  # Fleet not found
+  FleetDetailData(
+    fleetId: fleetId.int,
+    location: "Fleet Not Found",
+    shipCount: 0,
+    totalAttack: 0,
+    totalDefense: 0,
+    ships: @[]
+  )
+
+proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetailData =
+  ## Build PlanetDetailData from PlayerState only
+  ## Limited data compared to full GameState version (no build options, etc.)
+  for colony in ps.ownColonies:
+    if colony.id == colonyId:
+      # Get system info
+      var systemName = "Unknown"
+      var sectorLabel = "?"
+      var planetClassName = "Unknown"
+      var resourceName = "Unknown"
+      if ps.visibleSystems.hasKey(colony.systemId):
+        let visSys = ps.visibleSystems[colony.systemId]
+        systemName = visSys.name
+        if visSys.coordinates.isSome:
+          let coords = visSys.coordinates.get()
+          sectorLabel = coordLabel(coords.q.int, coords.r.int)
+        planetClassName = planetClassName(visSys.planetClass)
+        resourceName = resourceRatingName(visSys.resourceRating)
+
+      return PlanetDetailData(
+        colonyId: colonyId.int,
+        systemName: systemName,
+        sectorLabel: sectorLabel,
+        planetClass: planetClassName,
+        resourceRating: resourceName,
+        rawIndex: 0.0,  # Not available in PlayerState
+        populationUnits: colony.populationUnits.int,
+        industrialUnits: colony.industrial.units.int,
+        populationOutput: 0,  # Not calculated in PlayerState
+        industrialOutput: 0,  # Not calculated in PlayerState
+        gco: colony.grossOutput.int,
+        ncv: 0,  # Would need tax rate
+        populationGrowthPu: none(float32),
+        taxRate: colony.taxRate.int,
+        starbaseBonusPct: 0,
+        blockaded: colony.blockaded,
+        spaceports: 0,  # Would need to count from neoriaIds
+        shipyards: 0,
+        drydocks: 0,
+        starbases: 0,
+        dockSummary: DockSummary(
+          constructionAvailable: 0,  # Would need construction project data
+          constructionTotal: colony.constructionDocks.int,
+          repairAvailable: 0,
+          repairTotal: colony.repairDocks.int,
+        ),
+        armies: 0,  # Would need ground unit data
+        marines: 0,
+        batteries: 0,
+        shields: 0,
+        dockedFleets: @[],  # Could build from ps.ownFleets
+        queue: @[],  # Construction queue not fully detailed in PlayerState
+        buildOptions: @[],  # Would need full GameState to compute
+        autoRepair: colony.autoRepair,
+        autoLoadMarines: colony.autoLoadMarines,
+        autoLoadFighters: colony.autoLoadFighters
+      )
+
+  # Colony not found
+  PlanetDetailData(
+    colonyId: colonyId.int,
+    systemName: "Colony Not Found",
+    sectorLabel: "?",
+    planetClass: "Unknown",
+    populationUnits: 0,
+    industrialUnits: 0,
+    gco: 0,
+    ncv: 0,
+    taxRate: 0
+  )

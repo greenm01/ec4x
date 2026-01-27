@@ -84,6 +84,14 @@ proc clearBindings*() =
 proc hasColonies*(model: TuiModel): bool = model.view.colonies.len > 0
 proc hasFleets*(model: TuiModel): bool = model.view.fleets.len > 0
 proc hasSelection*(model: TuiModel): bool = model.ui.selectedIdx >= 0
+proc hasColonySelection*(model: TuiModel): bool =
+  if model.ui.mode != ViewMode.Planets:
+    return false
+  if model.ui.selectedIdx < 0 or
+      model.ui.selectedIdx >= model.view.planetsRows.len:
+    return false
+  let row = model.view.planetsRows[model.ui.selectedIdx]
+  row.colonyId.isSome and row.isOwned
 proc hasFleetSelection*(model: TuiModel): bool =
   model.ui.selectedFleetIds.len > 0
 proc inGame*(model: TuiModel): bool = model.ui.appPhase == AppPhase.InGame
@@ -262,6 +270,8 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
   case b.enabledCheck
   of "hasColonies":
     model.view.colonies.len > 0
+  of "hasColonySelection":
+    model.hasColonySelection()
   of "hasFleets":
     model.view.fleets.len > 0
   of "hasSelection":
@@ -404,14 +414,14 @@ proc initBindings*() =
     actionKind: ActionKind.select,
     context: BindingContext.Planets,
     longLabel: "VIEW", shortLabel: "View", priority: 10,
-    enabledCheck: "hasColonies"))
+    enabledCheck: "hasColonySelection"))
 
   registerBinding(Binding(
     key: KeyCode.KeyB, modifier: KeyModifier.None,
     actionKind: ActionKind.select,
     context: BindingContext.Planets,
     longLabel: "BUILD", shortLabel: "Bld", priority: 20,
-    enabledCheck: "hasColonies"))
+    enabledCheck: "hasColonySelection"))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,

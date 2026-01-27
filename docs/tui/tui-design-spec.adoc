@@ -48,6 +48,7 @@ Example (narrow terminal):
 +------------------------------------------------------------------------------+
 |                                                                              |
 | MAIN CANVAS (variable height)                                                |
+|   - All windows in the main canvas are modal overlays                         |
 |   - Centered floating modals for 9 primary views                             |
 |   - Single-line borders (--) for modals and overlays                         |
 |                                                                              |
@@ -56,6 +57,35 @@ Example (narrow terminal):
 |   <1> OVR  <2> PLN  <3> FLT ... <:> EXPERT    or    :command input_          |
 +------------------------------------------------------------------------------+
 ----
+
+== Shared Systems
+
+=== Intel Freshness (LTU)
+LTU tracks intel freshness for the player view (fog-of-war), not authoritative
+game state.
+
+LTU storage in PlayerState:
+* ltuSystems: Table[SystemId, int32]
+* ltuColonies: Table[ColonyId, int32]
+* ltuFleets: Table[FleetId, int32]
+* No ship-level LTU
+
+LTU rules:
+* Owned assets: LTU = current turn.
+* Uncolonized systems: use ltuSystems[systemId] or "—".
+* Colonized systems: use ltuColonies[colonyId] if present, else fall back to
+  ltuSystems[systemId].
+
+LTU implementation checklist:
+* PlayerState includes ltuSystems, ltuColonies, ltuFleets
+* ltuSystems populated from VisibleSystem.lastScoutedTurn
+* ltuColonies populated from VisibleColony.intelTurn
+* ltuFleets populated from VisibleFleet.intelTurn
+* Owned assets set to current turn
+* LTU serialized in full snapshot + delta
+* Planets view uses colony LTU with system fallback
+* Fleets view uses fleet LTU
+* Display format T##, missing shows "—"
 
 == Primary Views
 * `1` Overview
@@ -69,8 +99,12 @@ Example (narrow terminal):
 * `9` Settings
 * `Q` Quit
 
+=== Fleets View (Draft)
+See Intel Freshness (LTU) for LTU rules (fleet rows use ltuFleets).
+
 === Planets View (Draft)
-Intent: a single full-width table in the Main Canvas, no modal.
+Intent: a single full-width modal table in the Main Canvas.
+See Intel Freshness (LTU) for LTU rules.
 
 Ordering:
 * Owned systems pinned to the top.

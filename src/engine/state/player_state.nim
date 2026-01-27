@@ -12,8 +12,9 @@
 
 import std/[tables, options, sets]
 import
-  ../types/[colony, core, diplomacy, fleet, game_state, house, player_state, starmap]
+  ../types/[colony, core, diplomacy, fleet, game_state, house, player_state, starmap, facilities]
 import ./[engine, iterators]
+import ../systems/capacity/construction_docks
 
 # ============================================================================
 # Helper Procs (Visibility Tracking)
@@ -116,8 +117,22 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
   ## Contains full entity data for owned assets and filtered intel for enemies
   result.viewingHouse = houseId
   result.turn = state.turn
+  result.homeworldSystemId = none(SystemId)
+  result.ltuSystems = initTable[SystemId, int32]()
+  result.ltuColonies = initTable[ColonyId, int32]()
+  result.ltuFleets = initTable[FleetId, int32]()
+
+  proc updateLtu[T](table: var Table[T, int32], key: T, turn: int32) =
+    if table.hasKey(key):
+      table[key] = max(table[key], turn)
+    else:
+      table[key] = turn
 
   # === Visibility Tracking ===
+  for systemId, owner in state.starMap.homeWorlds.pairs:
+    if owner == houseId:
+      result.homeworldSystemId = some(systemId)
+      break
   let ownedSystems = state.ownedSystems(houseId)
   let occupiedSystems = state.occupiedSystems(houseId)
   let scoutedSystems = state.scoutedSystems(houseId, ownedSystems, occupiedSystems)
@@ -125,11 +140,35 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
   # === Owned Assets (Full Entity Data) ===
   # Colonies
   for colony in state.coloniesOwned(houseId):
-    result.ownColonies.add(colony)
+    var colonyWithDocks = colony
+
+    # Calculate dock counts for TUI display
+    let capacities = state.analyzeColonyCapacity(colony.id)
+    var cdTotal = 0'i32
+    var rdTotal = 0'i32
+    for facility in capacities:
+      let maxDocks =
+        if facility.isCrippled:
+          0'i32
+        else:
+          facility.maxDocks
+      case facility.facilityType
+      of NeoriaClass.Spaceport, NeoriaClass.Shipyard:
+        cdTotal += maxDocks
+      of NeoriaClass.Drydock:
+        rdTotal += maxDocks
+
+    colonyWithDocks.constructionDocks = cdTotal
+    colonyWithDocks.repairDocks = rdTotal
+
+    result.ownColonies.add(colonyWithDocks)
+    result.ltuColonies.updateLtu(colony.id, state.turn)
+    result.ltuSystems.updateLtu(colony.systemId, state.turn)
 
   # Fleets
   for fleet in state.fleetsOwned(houseId):
     result.ownFleets.add(fleet)
+    result.ltuFleets.updateLtu(fleet.id, state.turn)
 
   # Ships (all ships in owned fleets + fighters at colonies)
   for fleet in result.ownFleets:
@@ -169,6 +208,7 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
         coordinates: some(coords),
         jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId),
       )
+      result.ltuSystems.updateLtu(systemId, state.turn)
 
   # Occupied systems
   for systemId in occupiedSystems:
@@ -185,6 +225,7 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
           coordinates: some(coords),
           jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId),
         )
+        result.ltuSystems.updateLtu(systemId, state.turn)
 
   # Scouted systems
   let intel = state.intel.getOrDefault(houseId)
@@ -204,6 +245,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
         coordinates: some(coords),
         jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId),
       )
+      if lastTurn > 0:
+        result.ltuSystems.updateLtu(systemId, lastTurn)
 
   # Universal map awareness (all systems visible at Adjacent level)
   for system in state.allSystems():
@@ -235,9 +278,16 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
       if systemId in ownedSystems or systemId in occupiedSystems:
         isVisible = true
       if isVisible:
-        result.visibleColonies.add(
-          state.createVisibleColony(colony, colonyIntel, orbitalIntel)
+        let visibleColony = state.createVisibleColony(
+          colony,
+          colonyIntel,
+          orbitalIntel
         )
+        result.visibleColonies.add(visibleColony)
+        if visibleColony.intelTurn.isSome:
+          let intelTurn = visibleColony.intelTurn.get()
+          result.ltuColonies.updateLtu(colony.id, intelTurn)
+          result.ltuSystems.updateLtu(colony.systemId, intelTurn)
 
   # Visible enemy fleets
   for fleet in state.allFleets():
@@ -248,9 +298,19 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
         var systemIntel: Option[SystemObservation]
         if intel.systemObservations.contains(fleet.location):
           systemIntel = some(intel.systemObservations[fleet.location])
-        result.visibleFleets.add(
-          createVisibleFleet(state, fleet, fleet.location, systemIntel, state.turn)
+        let visibleFleet = createVisibleFleet(
+          state,
+          fleet,
+          fleet.location,
+          systemIntel,
+          state.turn
         )
+        result.visibleFleets.add(visibleFleet)
+        if visibleFleet.intelTurn.isSome:
+          result.ltuFleets.updateLtu(
+            fleet.id,
+            visibleFleet.intelTurn.get()
+          )
 
   # === Public Information ===
   result.actProgression = state.actProgression
@@ -261,6 +321,7 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
   for house in state.allHouses():
     result.housePrestige[house.id] = house.prestige
     result.houseColonyCounts[house.id] = colonyCounts.getOrDefault(house.id)
+    result.houseNames[house.id] = house.name
     if house.isEliminated:
       result.eliminatedHouses.add(house.id)
 

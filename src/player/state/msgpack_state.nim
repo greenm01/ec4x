@@ -36,6 +36,8 @@ proc applyDeltaToPlayerState*(
   # Update metadata
   state.turn = delta.turn
   state.viewingHouse = delta.viewingHouse
+  if delta.homeworldSystemIdChanged:
+    state.homeworldSystemId = delta.homeworldSystemId
   
   # Apply ownColonies delta
   for colony in delta.ownColonies.added:
@@ -209,6 +211,51 @@ proc applyDeltaToPlayerState*(
         break
     if idx >= 0:
       state.visibleFleets.delete(idx)
+
+  # Apply ltuSystems delta
+  if state.ltuSystems.len == 0 and
+      (delta.ltuSystems.added.len > 0 or
+       delta.ltuSystems.updated.len > 0 or
+       delta.ltuSystems.removed.len > 0):
+    state.ltuSystems = initTable[SystemId, int32]()
+  for entry in delta.ltuSystems.added:
+    state.ltuSystems[entry.systemId] = entry.turn
+
+  for entry in delta.ltuSystems.updated:
+    state.ltuSystems[entry.systemId] = entry.turn
+
+  for removedId in delta.ltuSystems.removed:
+    state.ltuSystems.del(SystemId(removedId))
+
+  # Apply ltuColonies delta
+  if state.ltuColonies.len == 0 and
+      (delta.ltuColonies.added.len > 0 or
+       delta.ltuColonies.updated.len > 0 or
+       delta.ltuColonies.removed.len > 0):
+    state.ltuColonies = initTable[ColonyId, int32]()
+  for entry in delta.ltuColonies.added:
+    state.ltuColonies[entry.colonyId] = entry.turn
+
+  for entry in delta.ltuColonies.updated:
+    state.ltuColonies[entry.colonyId] = entry.turn
+
+  for removedId in delta.ltuColonies.removed:
+    state.ltuColonies.del(ColonyId(removedId))
+
+  # Apply ltuFleets delta
+  if state.ltuFleets.len == 0 and
+      (delta.ltuFleets.added.len > 0 or
+       delta.ltuFleets.updated.len > 0 or
+       delta.ltuFleets.removed.len > 0):
+    state.ltuFleets = initTable[FleetId, int32]()
+  for entry in delta.ltuFleets.added:
+    state.ltuFleets[entry.fleetId] = entry.turn
+
+  for entry in delta.ltuFleets.updated:
+    state.ltuFleets[entry.fleetId] = entry.turn
+
+  for removedId in delta.ltuFleets.removed:
+    state.ltuFleets.del(FleetId(removedId))
   
   # Apply housePrestige delta
   for entry in delta.housePrestige.added:
@@ -223,13 +270,23 @@ proc applyDeltaToPlayerState*(
   # Apply houseColonyCounts delta
   for entry in delta.houseColonyCounts.added:
     state.houseColonyCounts[entry.houseId] = entry.count
-  
+
   for entry in delta.houseColonyCounts.updated:
     state.houseColonyCounts[entry.houseId] = entry.count
-  
+
   for removedId in delta.houseColonyCounts.removed:
     state.houseColonyCounts.del(HouseId(removedId))
-  
+
+  # Apply houseNames delta
+  for entry in delta.houseNames.added:
+    state.houseNames[entry.houseId] = entry.name
+
+  for entry in delta.houseNames.updated:
+    state.houseNames[entry.houseId] = entry.name
+
+  for removedId in delta.houseNames.removed:
+    state.houseNames.del(HouseId(removedId))
+
   # Apply diplomaticRelations delta
   for entry in delta.diplomaticRelations.added:
     state.diplomaticRelations[(entry.sourceHouse, entry.targetHouse)] = entry.state

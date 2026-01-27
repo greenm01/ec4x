@@ -72,7 +72,7 @@ task buildClient, "Build GUI player client":
 task buildTui, "Build TUI player (terminal interface)":
   echo "Building EC4X TUI Player..."
   mkDir "bin"
-  exec "nim c " & releaseFlags & " -o:bin/ec4x-tui src/player/player.nim"
+  exec "nim c " & releaseFlags & " -o:bin/tui src/player/player.nim"
   echo "TUI Player build completed!"
 
 task buildAll, "Build all binaries (release)":
@@ -81,7 +81,7 @@ task buildAll, "Build all binaries (release)":
   exec "nim c " & releaseFlags & " -o:bin/ec4x src/moderator/moderator.nim"
   exec "nim c " & releaseFlags & " -o:bin/ec4x-daemon src/daemon/daemon.nim"
   #exec "nim c " & releaseFlags & " -o:bin/ec4x-client --passC:-Isrc/client/vendor --passC:\"-Wno-incompatible-pointer-types\" src/client/main.nim"
-  exec "nim c " & releaseFlags & " -o:bin/ec4x-tui src/player/player.nim"
+  exec "nim c " & releaseFlags & " -o:bin/tui src/player/player.nim"
   echo "All builds completed!"
 
 task tidy, "Clean build artifacts":
