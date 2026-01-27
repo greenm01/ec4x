@@ -1222,6 +1222,24 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
         if resourceIdx >= 0 and resourceIdx < ResourceRatingNames.len:
           resourceLabel = ResourceRatingNames[resourceIdx]
 
+      # Count facilities by type
+      var spaceports, shipyards, drydocks, starbases = 0
+
+      for neoriaId in colony.neoriaIds:
+        for neoria in ps.ownNeorias:
+          if neoria.id == neoriaId:
+            case neoria.neoriaClass
+            of NeoriaClass.Spaceport: spaceports.inc
+            of NeoriaClass.Shipyard: shipyards.inc
+            of NeoriaClass.Drydock: drydocks.inc
+            break
+
+      for kastraId in colony.kastraIds:
+        for kastra in ps.ownKastras:
+          if kastra.id == kastraId:
+            starbases.inc
+            break
+
       return PlanetDetailData(
         colonyId: colonyId.int,
         systemName: systemName,
@@ -1239,10 +1257,10 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
         taxRate: colony.taxRate.int,
         starbaseBonusPct: 0,
         blockaded: colony.blockaded,
-        spaceports: 0,  # Would need to count from neoriaIds
-        shipyards: 0,
-        drydocks: 0,
-        starbases: 0,
+        spaceports: spaceports,
+        shipyards: shipyards,
+        drydocks: drydocks,
+        starbases: starbases,
         dockSummary: DockSummary(
           constructionAvailable: 0,  # Would need construction project data
           constructionTotal: colony.constructionDocks.int,

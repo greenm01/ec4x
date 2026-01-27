@@ -191,6 +191,20 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
       if unitOpt.isSome:
         result.ownGroundUnits.add(unitOpt.get())
 
+  # Neorias (production facilities)
+  for colony in result.ownColonies:
+    for neoriaId in colony.neoriaIds:
+      let neoriaOpt = state.neoria(neoriaId)
+      if neoriaOpt.isSome:
+        result.ownNeorias.add(neoriaOpt.get())
+
+  # Kastras (defensive facilities)
+  for colony in result.ownColonies:
+    for kastraId in colony.kastraIds:
+      let kastraOpt = state.kastra(kastraId)
+      if kastraOpt.isSome:
+        result.ownKastras.add(kastraOpt.get())
+
   # === Visible Systems (Fog of War) ===
   result.visibleSystems = initTable[SystemId, VisibleSystem]()
 

@@ -17,7 +17,7 @@
 ## - Client generates human-readable reports from PlayerState deltas + GameEvents
 
 import std/[tables, options]
-import ./[core, colony, fleet, ship, diplomacy, progression, ground_unit, tech]
+import ./[core, colony, fleet, ship, diplomacy, progression, ground_unit, tech, facilities]
 
 type
   # =============================================================================
@@ -197,6 +197,8 @@ type
     ownFleets*: seq[Fleet]
     ownShips*: seq[Ship]
     ownGroundUnits*: seq[GroundUnit]
+    ownNeorias*: seq[Neoria]      # Production facilities
+    ownKastras*: seq[Kastra]      # Defensive facilities (starbases)
 
     # === Visible Systems (Fog of War) ===
     visibleSystems*: Table[SystemId, VisibleSystem]
