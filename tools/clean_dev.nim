@@ -159,18 +159,12 @@ proc createNewGame(scenario: string = "scenarios/standard-4-player.kdl"): tuple[
     echo output
     return (false, "")
 
-  # Extract game slug from output (format: "Game created: {slug}")
+  # Extract game slug from output (format: "Slug: {slug}")
   var gameSlug = ""
   for line in output.splitLines():
-    if line.startsWith("Game created:"):
+    if line.startsWith("Slug:"):
       gameSlug = line.split(":", 1)[1].strip()
       break
-
-  if gameSlug.len == 0:
-    # Try to find the last line with a game name
-    let lines = output.strip().splitLines()
-    if lines.len > 0:
-      gameSlug = lines[^1].strip()
 
   if gameSlug.len > 0:
     echo "✓ Game created: " & gameSlug

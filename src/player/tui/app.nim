@@ -978,6 +978,9 @@ proc runTui*(gameId: string = "") =
         let proposalOpt = mapKeyEvent(event.keyEvent, sam.model)
         if proposalOpt.isSome:
           sam.present(proposalOpt.get)
+          # Sync build modal data if modal is active (populates options and dock info)
+          if sam.model.ui.buildModal.active:
+            syncBuildModalData(sam.model, playerState)
 
     # Poll for join response when waiting
     if sam.model.ui.appPhase == AppPhase.Lobby and
