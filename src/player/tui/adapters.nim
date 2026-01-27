@@ -1221,23 +1221,29 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
       # Get system info
       var systemName = "Unknown"
       var sectorLabel = "?"
-      var planetClassName = "Unknown"
-      var resourceName = "Unknown"
+      var planetClassLabel = "Unknown"
+      var resourceLabel = "Unknown"
       if ps.visibleSystems.hasKey(colony.systemId):
         let visSys = ps.visibleSystems[colony.systemId]
         systemName = visSys.name
         if visSys.coordinates.isSome:
           let coords = visSys.coordinates.get()
           sectorLabel = coordLabel(coords.q.int, coords.r.int)
-        planetClassName = planetClassName(visSys.planetClass)
-        resourceName = resourceRatingName(visSys.resourceRating)
+        # Get planet class name
+        let classIdx = int(visSys.planetClass)
+        if classIdx >= 0 and classIdx < PlanetClassNames.len:
+          planetClassLabel = PlanetClassNames[classIdx]
+        # Get resource rating name
+        let resourceIdx = int(visSys.resourceRating)
+        if resourceIdx >= 0 and resourceIdx < ResourceRatingNames.len:
+          resourceLabel = ResourceRatingNames[resourceIdx]
 
       return PlanetDetailData(
         colonyId: colonyId.int,
         systemName: systemName,
         sectorLabel: sectorLabel,
-        planetClass: planetClassName,
-        resourceRating: resourceName,
+        planetClass: planetClassLabel,
+        resourceRating: resourceLabel,
         rawIndex: 0.0,  # Not available in PlayerState
         populationUnits: colony.populationUnits.int,
         industrialUnits: colony.industrial.units.int,

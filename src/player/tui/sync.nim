@@ -15,6 +15,9 @@ import ../tui/widget/overview
 import ../tui/hex_labels
 import ../tui/widget/hexmap/symbols
 
+# Forward declaration for PlayerState sync helper
+proc syncPlanetsRows*(model: var TuiModel, ps: PlayerState)
+
 proc syncGameStateToModel*(
     model: var TuiModel,
     state: GameState,
