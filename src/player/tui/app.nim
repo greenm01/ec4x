@@ -1051,7 +1051,6 @@ proc runTui*(gameId: string = "") =
           let gameName = if cachedGame.isSome: cachedGame.get().name
                          else: gameId
           sam.model.ui.statusMessage = "Loaded game " & gameName
-          sam.model.view.houseName = gameName
           activeGameId = gameId
         else:
           # No cached state - set up for Nostr subscription

@@ -324,6 +324,8 @@ proc syncPlayerStateToModel*(
   
   model.view.turn = ps.turn
   model.view.viewingHouse = int(ps.viewingHouse)
+  model.view.houseName =
+    ps.houseNames.getOrDefault(ps.viewingHouse, "Unknown")
   model.view.treasury = 0  # Not available in PlayerState
   model.view.prestige =
     ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int

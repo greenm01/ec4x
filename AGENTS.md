@@ -238,9 +238,10 @@ error "Invalid order from ", houseId, ": ", reason
 
 ```bash
 # Development
-nimble buildSimulation      # Primary build (C API, parallel)
 nimble buildAll             # All binaries
-nimble buildDebug           # With debug symbols
+nimble buildTui             # Player text user interface (tui)
+nimble buildModerator       # Game moderator
+nimble buildDaemon          # game server daemon
 
 # Testing
 nimble testBalanceQuick     # 20 games, ~10s
@@ -300,7 +301,7 @@ Current:
 
 ## Common Gotchas
 
-- **Stale binaries:** Use `nimble buildSimulation` (full clean)
+- **Stale binaries:** Use `nimble buildAll` (full clean)
 - **Config changes:** Edit kdl files, NOT source code
 - **Seeds:** Use `--seed` for reproducible testing
 - **Entity access:** Use public API (`state.colony()`), never `entity_manager` directly
