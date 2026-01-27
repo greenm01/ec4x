@@ -460,22 +460,52 @@ proc initBindings*() =
   # =========================================================================
 
   registerBinding(Binding(
-    key: KeyCode.KeyTab, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.switchPlanetTab,
     context: BindingContext.PlanetDetail,
-    longLabel: "NEXT TAB", shortLabel: "Tab", priority: 1))
+    longLabel: "PREV TAB", shortLabel: "←", priority: 1))
 
   registerBinding(Binding(
-    key: KeyCode.KeyB, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.switchPlanetTab,
     context: BindingContext.PlanetDetail,
-    longLabel: "BUILD", shortLabel: "Bld", priority: 10))
+    longLabel: "NEXT TAB", shortLabel: "→", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.switchPlanetTab,
+    context: BindingContext.PlanetDetail,
+    longLabel: "NEXT TAB", shortLabel: "Tab", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyS, modifier: KeyModifier.None,
+    actionKind: ActionKind.switchPlanetTab,
+    context: BindingContext.PlanetDetail,
+    longLabel: "SUMMARY", shortLabel: "Sum", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyE, modifier: KeyModifier.None,
+    actionKind: ActionKind.switchPlanetTab,
+    context: BindingContext.PlanetDetail,
+    longLabel: "ECONOMY", shortLabel: "Eco", priority: 11))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyC, modifier: KeyModifier.None,
+    actionKind: ActionKind.switchPlanetTab,
+    context: BindingContext.PlanetDetail,
+    longLabel: "CONSTRUCTION", shortLabel: "Con", priority: 12))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyD, modifier: KeyModifier.None,
+    actionKind: ActionKind.switchPlanetTab,
+    context: BindingContext.PlanetDetail,
+    longLabel: "DEFENSE", shortLabel: "Def", priority: 13))
 
   registerBinding(Binding(
     key: KeyCode.KeyG, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    actionKind: ActionKind.switchPlanetTab,
     context: BindingContext.PlanetDetail,
-    longLabel: "GARRISON", shortLabel: "Gar", priority: 20))
+    longLabel: "SETTINGS", shortLabel: "Set", priority: 14))
 
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
@@ -1020,8 +1050,16 @@ proc dispatchAction*(b: Binding, model: TuiModel,
       of KeyCode.Key3: 3
       of KeyCode.Key4: 4
       of KeyCode.Key5: 5
+      of KeyCode.KeyLeft: -1  # Previous tab
+      of KeyCode.KeyRight: 1  # Next tab
+      of KeyCode.KeyTab: 1  # Next tab
+      of KeyCode.KeyS: 1  # Summary
+      of KeyCode.KeyE: 2  # Economy
+      of KeyCode.KeyC: 3  # Construction
+      of KeyCode.KeyD: 4  # Defense
+      of KeyCode.KeyG: 5  # Settings (confiG)
       else: 0
-    if tab > 0:
+    if tab != 0:
       return some(actionSwitchPlanetTab(tab))
   of ActionKind.switchFleetView:
     return some(actionSwitchFleetView())

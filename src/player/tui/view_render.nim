@@ -1498,6 +1498,25 @@ proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
   discard buf.setString(innerArea.x, innerArea.y,
     "Settings view (TODO)", dimStyle())
 
+proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
+                               model: TuiModel, ps: PlayerState) =
+  ## Render planet detail view as centered floating modal
+  if model.ui.selectedColonyId <= 0:
+    return
+
+  # Get colony data for title
+  let planetData = colonyToDetailDataFromPS(ps, ColonyId(model.ui.selectedColonyId))
+  let title = "COLONY: " & planetData.systemName.toUpperAscii()
+
+  let vm = newViewModal(title).maxWidth(120).minWidth(100)
+  let contentHeight = 25  # Enough for tabs + content
+  let modalArea = vm.calculateViewArea(canvas, contentHeight)
+  vm.render(modalArea, buf)
+  let innerArea = vm.innerArea(modalArea)
+
+  # Render planet detail inside the modal
+  renderPlanetDetailFromPS(innerArea, buf, model, ps)
+
 proc renderListPanel*(
     area: Rect,
     buf: var CellBuffer,
@@ -1742,7 +1761,7 @@ proc renderDashboard*(
     of ViewMode.Settings:
       renderSettingsModal(canvasArea, buf, model, model.ui.settingsScroll)
     of ViewMode.PlanetDetail:
-      renderPlanetDetailFromPS(canvasArea, buf, model, playerState)
+      renderPlanetDetailModal(canvasArea, buf, model, playerState)
     of ViewMode.FleetDetail:
       renderFleetDetailFromPS(canvasArea, buf, model, playerState)
     of ViewMode.ReportDetail:
