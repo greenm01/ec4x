@@ -286,6 +286,13 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     let maxIdx = model.currentListLength() - 1
     if model.ui.selectedIdx < maxIdx:
       model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + 1)
+  of ActionKind.listPageUp:
+    let pageSize = max(1, model.ui.termHeight - 10)
+    model.ui.selectedIdx = max(0, model.ui.selectedIdx - pageSize)
+  of ActionKind.listPageDown:
+    let maxIdx = model.currentListLength() - 1
+    let pageSize = max(1, model.ui.termHeight - 10)
+    model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + pageSize)
   else:
     discard
 

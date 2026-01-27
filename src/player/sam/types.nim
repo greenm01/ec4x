@@ -34,6 +34,8 @@ type
     deselect
     listUp
     listDown
+    listPageUp
+    listPageDown
     endTurn
     scroll
     jumpHome

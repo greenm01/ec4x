@@ -169,6 +169,8 @@ proc formatKeyCode*(key: KeyCode): string =
   of KeyCode.KeyShiftTab: "S-Tab"
   of KeyCode.KeyHome: "Home"
   of KeyCode.KeyBackspace: "Bksp"
+  of KeyCode.KeyPageUp: "PgUp"
+  of KeyCode.KeyPageDown: "PgDn"
   of KeyCode.KeyColon: ":"
   of KeyCode.KeyCtrlE: "e"
   of KeyCode.KeyCtrlQ: "q"
@@ -382,6 +384,18 @@ proc initBindings*() =
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageUp,
+    context: BindingContext.Overview,
+    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageDown,
+    context: BindingContext.Overview,
+    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 4))
+
+  registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
     actionKind: ActionKind.select,
     context: BindingContext.Overview,
@@ -408,6 +422,18 @@ proc initBindings*() =
     actionKind: ActionKind.listDown,
     context: BindingContext.Planets,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageUp,
+    context: BindingContext.Planets,
+    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageDown,
+    context: BindingContext.Planets,
+    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
@@ -472,6 +498,18 @@ proc initBindings*() =
     actionKind: ActionKind.listDown,
     context: BindingContext.Fleets,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageUp,
+    context: BindingContext.Fleets,
+    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageDown,
+    context: BindingContext.Fleets,
+    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
@@ -584,6 +622,18 @@ proc initBindings*() =
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageUp,
+    context: BindingContext.Espionage,
+    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageDown,
+    context: BindingContext.Espionage,
+    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 4))
+
+  registerBinding(Binding(
     key: KeyCode.KeyB, modifier: KeyModifier.None,
     actionKind: ActionKind.select,
     context: BindingContext.Espionage,
@@ -646,6 +696,18 @@ proc initBindings*() =
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageUp,
+    context: BindingContext.Reports,
+    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageDown,
+    context: BindingContext.Reports,
+    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 4))
+
+  registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
     actionKind: ActionKind.select,
     context: BindingContext.Reports,
@@ -702,6 +764,18 @@ proc initBindings*() =
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageUp,
+    context: BindingContext.Messages,
+    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageDown,
+    context: BindingContext.Messages,
+    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 4))
+
+  registerBinding(Binding(
     key: KeyCode.KeyL, modifier: KeyModifier.None,
     actionKind: ActionKind.select,
     context: BindingContext.Messages,
@@ -734,6 +808,18 @@ proc initBindings*() =
     actionKind: ActionKind.listDown,
     context: BindingContext.Settings,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageUp,
+    context: BindingContext.Settings,
+    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageDown,
+    context: BindingContext.Settings,
+    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
@@ -858,6 +944,10 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionListUp())
   of ActionKind.listDown:
     return some(actionListDown())
+  of ActionKind.listPageUp:
+    return some(actionListPageUp())
+  of ActionKind.listPageDown:
+    return some(actionListPageDown())
   of ActionKind.breadcrumbBack:
     return some(actionBreadcrumbBack())
   of ActionKind.navigateMode:

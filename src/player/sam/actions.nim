@@ -169,6 +169,26 @@ proc actionListDown*(): Proposal =
     selectCoord: none(tuple[q, r: int])
   )
 
+proc actionListPageUp*(): Proposal =
+  ## Move selection up by page in list
+  Proposal(
+    kind: ProposalKind.pkSelection,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.listPageUp,
+    selectIdx: -5,      # -5 means "page up"
+    selectCoord: none(tuple[q, r: int])
+  )
+
+proc actionListPageDown*(): Proposal =
+  ## Move selection down by page in list
+  Proposal(
+    kind: ProposalKind.pkSelection,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.listPageDown,
+    selectIdx: -6,      # -6 means "page down"
+    selectCoord: none(tuple[q, r: int])
+  )
+
 proc actionCycleColony*(reverse: bool = false): Proposal =
   ## Cycle to next/prev owned colony on map
   Proposal(
@@ -818,6 +838,7 @@ type
       KeyUp, KeyDown, KeyLeft, KeyRight
       KeyEnter, KeyEscape, KeyTab, KeyShiftTab
       KeyHome, KeyBackspace
+      KeyPageUp, KeyPageDown
       # Special
       KeyColon  # Expert mode trigger
       KeyCtrlE  # Turn submission
