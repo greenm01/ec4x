@@ -109,6 +109,19 @@ type
     createGameConfirm
     createGameCancel
     manageGamesCancel
+    openBuildModal
+    closeBuildModal
+    buildCategorySwitch
+    buildListUp
+    buildListDown
+    buildQueueUp
+    buildQueueDown
+    buildFocusSwitch
+    buildAddToQueue
+    buildRemoveFromQueue
+    buildConfirmQueue
+    buildQuantityInc
+    buildQuantityDec
 
   # ============================================================================
   # Core SAM Types

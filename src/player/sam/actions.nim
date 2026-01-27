@@ -759,6 +759,127 @@ proc actionManageGamesCancel*(): Proposal =
   )
 
 # ============================================================================
+# Build Modal Actions
+# ============================================================================
+
+proc actionOpenBuildModal*(colonyId: int): Proposal =
+  ## Open build modal for colony
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.openBuildModal,
+    gameActionData: $colonyId
+  )
+
+proc actionCloseBuildModal*(): Proposal =
+  ## Close build modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.closeBuildModal,
+    gameActionData: ""
+  )
+
+proc actionBuildCategorySwitch*(): Proposal =
+  ## Switch build category (Ships -> Facilities -> Ground -> Ships)
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildCategorySwitch,
+    gameActionData: ""
+  )
+
+proc actionBuildListUp*(): Proposal =
+  ## Navigate up in build list
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildListUp,
+    gameActionData: ""
+  )
+
+proc actionBuildListDown*(): Proposal =
+  ## Navigate down in build list
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildListDown,
+    gameActionData: ""
+  )
+
+proc actionBuildQueueUp*(): Proposal =
+  ## Navigate up in queue list
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildQueueUp,
+    gameActionData: ""
+  )
+
+proc actionBuildQueueDown*(): Proposal =
+  ## Navigate down in queue list
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildQueueDown,
+    gameActionData: ""
+  )
+
+proc actionBuildFocusSwitch*(): Proposal =
+  ## Switch focus between build list and queue list
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildFocusSwitch,
+    gameActionData: ""
+  )
+
+proc actionBuildAddToQueue*(): Proposal =
+  ## Add selected item to queue
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildAddToQueue,
+    gameActionData: ""
+  )
+
+proc actionBuildRemoveFromQueue*(): Proposal =
+  ## Remove selected item from queue
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildRemoveFromQueue,
+    gameActionData: ""
+  )
+
+proc actionBuildConfirmQueue*(): Proposal =
+  ## Confirm queue and stage build commands
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildConfirmQueue,
+    gameActionData: ""
+  )
+
+proc actionBuildQuantityInc*(): Proposal =
+  ## Increase build quantity
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildQuantityInc,
+    gameActionData: ""
+  )
+
+proc actionBuildQuantityDec*(): Proposal =
+  ## Decrease build quantity
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildQuantityDec,
+    gameActionData: ""
+  )
+
+# ============================================================================
 # Order Entry Actions
 # ============================================================================
 

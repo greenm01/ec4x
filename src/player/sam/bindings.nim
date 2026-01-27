@@ -46,6 +46,7 @@ type
     Lobby         ## Entry screen / lobby
     OrderEntry    ## Order entry mode (target selection)
     ExpertMode    ## Expert command mode
+    BuildModal    ## Build command modal
 
   Binding* = object
     key*: KeyCode
@@ -508,6 +509,12 @@ proc initBindings*() =
     longLabel: "SETTINGS", shortLabel: "Set", priority: 14))
 
   registerBinding(Binding(
+    key: KeyCode.KeyB, modifier: KeyModifier.None,
+    actionKind: ActionKind.openBuildModal,
+    context: BindingContext.PlanetDetail,
+    longLabel: "BUILD", shortLabel: "Bld", priority: 20))
+
+  registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.PlanetDetail,
@@ -870,6 +877,76 @@ proc initBindings*() =
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
+  # Build Modal Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildCategorySwitch,
+    context: BindingContext.BuildModal,
+    longLabel: "CATEGORY", shortLabel: "Cat", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildListUp,
+    context: BindingContext.BuildModal,
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildListDown,
+    context: BindingContext.BuildModal,
+    longLabel: "NAV", shortLabel: "Nav", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildFocusSwitch,
+    context: BindingContext.BuildModal,
+    longLabel: "FOCUS", shortLabel: "Foc", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildFocusSwitch,
+    context: BindingContext.BuildModal,
+    longLabel: "FOCUS", shortLabel: "Foc", priority: 5))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildAddToQueue,
+    context: BindingContext.BuildModal,
+    longLabel: "ADD", shortLabel: "Add", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyX, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildRemoveFromQueue,
+    context: BindingContext.BuildModal,
+    longLabel: "REMOVE", shortLabel: "Rem", priority: 15))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildQuantityInc,
+    context: BindingContext.BuildModal,
+    longLabel: "QTY+", shortLabel: "+", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildQuantityDec,
+    context: BindingContext.BuildModal,
+    longLabel: "QTY-", shortLabel: "-", priority: 21))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyQ, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildConfirmQueue,
+    context: BindingContext.BuildModal,
+    longLabel: "CONFIRM", shortLabel: "OK", priority: 30))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
+    actionKind: ActionKind.closeBuildModal,
+    context: BindingContext.BuildModal,
+    longLabel: "CANCEL", shortLabel: "Esc", priority: 90))
+
+  # =========================================================================
   # Order Entry Context (Target Selection)
   # =========================================================================
 
@@ -1078,6 +1155,35 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.lobbyReturn:
     return some(actionLobbyReturn())
 
+  # Build modal actions
+  of ActionKind.openBuildModal:
+    # Will be handled in acceptor to get colony ID
+    return some(actionOpenBuildModal(0))
+  of ActionKind.closeBuildModal:
+    return some(actionCloseBuildModal())
+  of ActionKind.buildCategorySwitch:
+    return some(actionBuildCategorySwitch())
+  of ActionKind.buildListUp:
+    return some(actionBuildListUp())
+  of ActionKind.buildListDown:
+    return some(actionBuildListDown())
+  of ActionKind.buildQueueUp:
+    return some(actionBuildQueueUp())
+  of ActionKind.buildQueueDown:
+    return some(actionBuildQueueDown())
+  of ActionKind.buildFocusSwitch:
+    return some(actionBuildFocusSwitch())
+  of ActionKind.buildAddToQueue:
+    return some(actionBuildAddToQueue())
+  of ActionKind.buildRemoveFromQueue:
+    return some(actionBuildRemoveFromQueue())
+  of ActionKind.buildConfirmQueue:
+    return some(actionBuildConfirmQueue())
+  of ActionKind.buildQuantityInc:
+    return some(actionBuildQuantityInc())
+  of ActionKind.buildQuantityDec:
+    return some(actionBuildQuantityDec())
+
   else:
     discard
 
@@ -1131,6 +1237,14 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       return some(actionQuitCancel())
     else:
       return none(Proposal)
+
+  # Build modal mode: use registry
+  if model.ui.buildModal.active:
+    let buildResult = lookupAndDispatch(key, KeyModifier.None,
+        BindingContext.BuildModal, model)
+    if buildResult.isSome:
+      return buildResult
+    return none(Proposal)
 
   # Order entry mode: use registry
   if model.ui.orderEntryActive:

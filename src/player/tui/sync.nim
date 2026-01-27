@@ -595,3 +595,26 @@ proc syncPlanetsRows*(model: var TuiModel, ps: PlayerState) =
   if homeRow.isSome: model.view.planetsRows.add(homeRow.get)
   model.view.planetsRows &= ownedRows
   model.view.planetsRows &= otherRows
+
+proc syncBuildModalData*(
+    model: var TuiModel,
+    ps: PlayerState
+) =
+  ## Populate build modal availableOptions and dockSummary
+  ## Called when build modal is active
+  if not model.ui.buildModal.active:
+    return
+
+  let colonyId = ColonyId(model.ui.buildModal.colonyId)
+
+  # Get colony name from PlayerState
+  for colony in ps.ownColonies:
+    if colony.id == colonyId:
+      let visSys = ps.visibleSystems.getOrDefault(colony.systemId)
+      model.ui.buildModal.colonyName = visSys.name
+      break
+
+  # Compute build options and dock summary
+  let result = computeBuildOptionsFromPS(ps, colonyId)
+  model.ui.buildModal.availableOptions = result.options
+  model.ui.buildModal.dockSummary = result.dockSummary

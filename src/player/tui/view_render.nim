@@ -18,6 +18,7 @@ import ../tui/widget/command_dock
 import ../tui/widget/status_bar
 import ../tui/widget/scrollbar
 import ../tui/widget/view_modal
+import ../tui/widget/build_modal
 import ../tui/widget/hexmap/symbols
 import ../sam/bindings
 import ../tui/styles/ec_palette
@@ -1766,6 +1767,11 @@ proc renderDashboard*(
       renderFleetDetailFromPS(canvasArea, buf, model, playerState)
     of ViewMode.ReportDetail:
       renderReportDetail(canvasArea, buf, model)
+
+  # Render build modal if active
+  if model.ui.buildModal.active:
+    let buildModalWidget = newBuildModalWidget()
+    buildModalWidget.render(model.ui.buildModal, canvasArea, buf)
 
   if model.ui.expertModeActive:
     renderExpertPalette(buf, canvasArea, statusBarArea, model)

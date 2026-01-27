@@ -21,7 +21,8 @@ import std/[options, tables, algorithm, strutils]
 import ../tui/widget/scroll_state
 import ../tui/widget/entry_modal
 import ../state/identity
-import ../../engine/types/[core, fleet, production, command, tech]
+import ../../engine/types/[core, fleet, production, command, tech, ship,
+  facilities, ground_unit]
 
 export entry_modal
 export identity
@@ -114,6 +115,53 @@ proc fleetCommandLabel*(cmdType: FleetCommandType): string =
   commandLabel(fleetCommandNumber(cmdType))
 
 type
+  BuildOptionKind* {.pure.} = enum
+    Ship
+    Ground
+    Facility
+
+  BuildOption* = object
+    kind*: BuildOptionKind
+    name*: string
+    cost*: int
+    cstReq*: int
+
+  DockSummary* = object
+    constructionAvailable*: int
+    constructionTotal*: int
+    repairAvailable*: int
+    repairTotal*: int
+
+  BuildCategory* {.pure.} = enum
+    Ships, Facilities, Ground
+
+  BuildModalFocus* {.pure.} = enum
+    CategoryTabs, BuildList, QueueList
+
+  PendingBuildItem* = object
+    buildType*: BuildType
+    name*: string
+    cost*: int
+    quantity*: int
+    shipClass*: Option[ShipClass]
+    facilityClass*: Option[FacilityClass]
+    groundClass*: Option[GroundClass]
+
+  BuildModalState* = object
+    active*: bool
+    colonyId*: int
+    colonyName*: string
+    category*: BuildCategory
+    focus*: BuildModalFocus
+    selectedBuildIdx*: int
+    selectedQueueIdx*: int
+    pendingQueue*: seq[PendingBuildItem]
+    quantityInput*: int  # For ship quantity (1-99)
+    availableOptions*: seq[BuildOption]
+    dockSummary*: DockSummary
+    buildListScroll*: ScrollState
+    queueScroll*: ScrollState
+
   ViewMode* {.pure.} = enum
     ## Current UI view (maps to hotkey number)
     ##
@@ -451,6 +499,9 @@ type
     # Entry modal state (replaces legacy lobby UI)
     entryModal*: EntryModalState
 
+    # Build modal state
+    buildModal*: BuildModalState
+
   # ============================================================================
   # View State (render-only data)
   # ============================================================================
@@ -605,7 +656,21 @@ proc initTuiUiState*(): TuiUiState =
     economyScroll: initScrollState(),
     messagesScroll: initScrollState(),
     settingsScroll: initScrollState(),
-    entryModal: newEntryModalState()
+    entryModal: newEntryModalState(),
+    buildModal: BuildModalState(
+      active: false,
+      colonyId: 0,
+      colonyName: "",
+      category: BuildCategory.Ships,
+      focus: BuildModalFocus.BuildList,
+      selectedBuildIdx: 0,
+      selectedQueueIdx: 0,
+      pendingQueue: @[],
+      quantityInput: 1,
+      availableOptions: @[],
+      buildListScroll: initScrollState(),
+      queueScroll: initScrollState()
+    )
   )
 
 proc initTuiViewState*(): TuiViewState =

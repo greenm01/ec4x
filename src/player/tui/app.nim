@@ -228,6 +228,7 @@ proc runTui*(gameId: string = "") =
   # Sync player state to model (only after joining a game)
   if initialModel.ui.appPhase == AppPhase.InGame:
     syncPlayerStateToModel(initialModel, playerState)
+    syncBuildModalData(initialModel, playerState)
     initialModel.resetBreadcrumbs(initialModel.ui.mode)
 
     if initialModel.view.homeworld.isSome:
@@ -260,6 +261,8 @@ proc runTui*(gameId: string = "") =
             sam.model.ui.statusMessage = "Delta applied"
             # Sync PlayerState to model after delta
             syncPlayerStateToModel(sam.model, playerState)
+            # Sync build modal data if active
+            syncBuildModalData(sam.model, playerState)
             # Cache the updated state
             if activeGameId.len > 0:
               tuiCache.savePlayerState(activeGameId, int(viewingHouse),
@@ -309,6 +312,7 @@ proc runTui*(gameId: string = "") =
               sam.model.ui.nostrStatus = "connected"
             # Sync PlayerState to model
             syncPlayerStateToModel(sam.model, playerState)
+            syncBuildModalData(sam.model, playerState)
             sam.model.resetBreadcrumbs(sam.model.ui.mode)
             if sam.model.view.homeworld.isSome:
               sam.model.ui.mapState.cursor = sam.model.view.homeworld.get
@@ -1036,6 +1040,7 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.mode = ViewMode.Overview
           # Sync PlayerState to model (for Nostr games)
           syncPlayerStateToModel(sam.model, playerState)
+          syncBuildModalData(sam.model, playerState)
           sam.model.resetBreadcrumbs(sam.model.ui.mode)
           if sam.model.view.homeworld.isSome:
             sam.model.ui.mapState.cursor = sam.model.view.homeworld.get

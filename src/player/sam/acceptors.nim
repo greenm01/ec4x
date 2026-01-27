@@ -16,6 +16,7 @@ import ../state/join_flow
 import ../state/lobby_profile
 import ../../common/invite_code
 import ../../common/logger
+import ../../engine/types/[core, production, ship, facilities, ground_unit]
 
 export types, tui_model, actions
 
@@ -891,6 +892,158 @@ proc orderEntryAcceptor*(model: var TuiModel, proposal: Proposal) =
     discard
 
 # ============================================================================
+# Build Modal Acceptor
+# ============================================================================
+
+proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
+  ## Handle build modal proposals
+  if proposal.kind != ProposalKind.pkGameAction:
+    return
+
+  case proposal.actionKind
+  of ActionKind.openBuildModal:
+    # Open the build modal for the currently selected colony
+    if model.ui.mode == ViewMode.PlanetDetail:
+      model.ui.buildModal.active = true
+      model.ui.buildModal.colonyId = model.ui.selectedColonyId
+      model.ui.buildModal.category = BuildCategory.Ships
+      model.ui.buildModal.focus = BuildModalFocus.BuildList
+      model.ui.buildModal.selectedBuildIdx = 0
+      model.ui.buildModal.selectedQueueIdx = 0
+      model.ui.buildModal.pendingQueue = @[]
+      model.ui.buildModal.quantityInput = 1
+      # Note: availableOptions and dockSummary will be populated by the reactor
+      model.ui.statusMessage = "Build modal opened"
+  of ActionKind.closeBuildModal:
+    model.ui.buildModal.active = false
+    model.ui.buildModal.pendingQueue = @[]
+    model.ui.statusMessage = "Build modal closed"
+  of ActionKind.buildCategorySwitch:
+    # Cycle through categories: Ships -> Facilities -> Ground -> Ships
+    case model.ui.buildModal.category
+    of BuildCategory.Ships:
+      model.ui.buildModal.category = BuildCategory.Facilities
+    of BuildCategory.Facilities:
+      model.ui.buildModal.category = BuildCategory.Ground
+    of BuildCategory.Ground:
+      model.ui.buildModal.category = BuildCategory.Ships
+    model.ui.buildModal.selectedBuildIdx = 0
+    # Note: availableOptions will be refreshed by reactor
+  of ActionKind.buildListUp:
+    if model.ui.buildModal.focus == BuildModalFocus.BuildList:
+      if model.ui.buildModal.selectedBuildIdx > 0:
+        model.ui.buildModal.selectedBuildIdx -= 1
+  of ActionKind.buildListDown:
+    if model.ui.buildModal.focus == BuildModalFocus.BuildList:
+      let maxIdx = model.ui.buildModal.availableOptions.len - 1
+      if model.ui.buildModal.selectedBuildIdx < maxIdx:
+        model.ui.buildModal.selectedBuildIdx += 1
+    elif model.ui.buildModal.focus == BuildModalFocus.QueueList:
+      if model.ui.buildModal.selectedQueueIdx > 0:
+        model.ui.buildModal.selectedQueueIdx -= 1
+  of ActionKind.buildQueueUp:
+    if model.ui.buildModal.focus == BuildModalFocus.QueueList:
+      if model.ui.buildModal.selectedQueueIdx > 0:
+        model.ui.buildModal.selectedQueueIdx -= 1
+  of ActionKind.buildQueueDown:
+    if model.ui.buildModal.focus == BuildModalFocus.QueueList:
+      let maxIdx = model.ui.buildModal.pendingQueue.len - 1
+      if model.ui.buildModal.selectedQueueIdx < maxIdx:
+        model.ui.buildModal.selectedQueueIdx += 1
+  of ActionKind.buildFocusSwitch:
+    # Toggle between BuildList and QueueList
+    if model.ui.buildModal.focus == BuildModalFocus.BuildList:
+      if model.ui.buildModal.pendingQueue.len > 0:
+        model.ui.buildModal.focus = BuildModalFocus.QueueList
+    else:
+      model.ui.buildModal.focus = BuildModalFocus.BuildList
+  of ActionKind.buildAddToQueue:
+    # Add selected build option to pending queue
+    if model.ui.buildModal.selectedBuildIdx < model.ui.buildModal.availableOptions.len:
+      let option = model.ui.buildModal.availableOptions[model.ui.buildModal.selectedBuildIdx]
+      var buildItem = PendingBuildItem(
+        name: option.name,
+        cost: option.cost,
+        quantity: model.ui.buildModal.quantityInput
+      )
+
+      # Set build type and class based on option kind
+      case option.kind
+      of BuildOptionKind.Ship:
+        buildItem.buildType = BuildType.Ship
+        # Parse ship class from name
+        try:
+          buildItem.shipClass = some(parseEnum[ShipClass](option.name.replace(" ", "")))
+        except:
+          # If parsing fails, skip this item
+          model.ui.statusMessage = "Failed to parse ship class: " & option.name
+          return
+      of BuildOptionKind.Facility:
+        buildItem.buildType = BuildType.Facility
+        buildItem.quantity = 1  # Facilities are always quantity 1
+        # Parse facility class from name
+        try:
+          buildItem.facilityClass = some(parseEnum[FacilityClass](option.name.replace(" ", "")))
+        except:
+          model.ui.statusMessage = "Failed to parse facility class: " & option.name
+          return
+      of BuildOptionKind.Ground:
+        buildItem.buildType = BuildType.Ground
+        buildItem.quantity = 1  # Ground units are always quantity 1
+        # Parse ground class from name
+        try:
+          buildItem.groundClass = some(parseEnum[GroundClass](option.name.replace(" ", "")))
+        except:
+          model.ui.statusMessage = "Failed to parse ground class: " & option.name
+          return
+
+      model.ui.buildModal.pendingQueue.add(buildItem)
+      model.ui.statusMessage = "Added " & option.name & " to queue"
+  of ActionKind.buildRemoveFromQueue:
+    # Remove selected item from pending queue
+    if model.ui.buildModal.focus == BuildModalFocus.QueueList and
+       model.ui.buildModal.selectedQueueIdx < model.ui.buildModal.pendingQueue.len:
+      let item = model.ui.buildModal.pendingQueue[model.ui.buildModal.selectedQueueIdx]
+      model.ui.buildModal.pendingQueue.delete(model.ui.buildModal.selectedQueueIdx)
+      model.ui.statusMessage = "Removed " & item.name & " from queue"
+      # Adjust selection if needed
+      if model.ui.buildModal.selectedQueueIdx >= model.ui.buildModal.pendingQueue.len:
+        model.ui.buildModal.selectedQueueIdx = max(0, model.ui.buildModal.pendingQueue.len - 1)
+      # Switch focus back to build list if queue is now empty
+      if model.ui.buildModal.pendingQueue.len == 0:
+        model.ui.buildModal.focus = BuildModalFocus.BuildList
+  of ActionKind.buildConfirmQueue:
+    # Convert pending queue to staged build commands
+    for item in model.ui.buildModal.pendingQueue:
+      let cmd = BuildCommand(
+        colonyId: ColonyId(model.ui.buildModal.colonyId),
+        buildType: item.buildType,
+        quantity: int32(item.quantity),
+        shipClass: item.shipClass,
+        facilityClass: item.facilityClass,
+        groundClass: item.groundClass,
+        industrialUnits: 0
+      )
+      model.ui.stagedBuildCommands.add(cmd)
+
+    let count = model.ui.buildModal.pendingQueue.len
+    model.ui.statusMessage = "Staged " & $count & " build command(s)"
+    model.ui.buildModal.active = false
+    model.ui.buildModal.pendingQueue = @[]
+  of ActionKind.buildQuantityInc:
+    # Only for ships
+    if model.ui.buildModal.category == BuildCategory.Ships:
+      if model.ui.buildModal.quantityInput < 99:
+        model.ui.buildModal.quantityInput += 1
+  of ActionKind.buildQuantityDec:
+    # Only for ships
+    if model.ui.buildModal.category == BuildCategory.Ships:
+      if model.ui.buildModal.quantityInput > 1:
+        model.ui.buildModal.quantityInput -= 1
+  else:
+    discard
+
+# ============================================================================
 # Create All Acceptors
 # ============================================================================
 
@@ -898,5 +1051,5 @@ proc createAcceptors*(): seq[AcceptorProc[TuiModel]] =
   ## Create the standard set of acceptors for the TUI
   @[
     navigationAcceptor, selectionAcceptor, viewportAcceptor, gameActionAcceptor,
-    orderEntryAcceptor, quitAcceptor, errorAcceptor,
+    orderEntryAcceptor, buildModalAcceptor, quitAcceptor, errorAcceptor,
   ]

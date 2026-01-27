@@ -19,6 +19,7 @@ import ./widget/hexmap/hexmap_pkg
 import ./widget/system_list
 import ./hex_labels
 import ./widget/hexmap/symbols
+from ../sam/tui_model import BuildOption, BuildOptionKind, DockSummary
 
 # -----------------------------------------------------------------------------
 # Coordinate conversions
@@ -722,23 +723,6 @@ type
     cost*: int
     status*: string
 
-  BuildOptionKind* {.pure.} = enum
-    Ship
-    Ground
-    Facility
-
-  BuildOption* = object
-    kind*: BuildOptionKind
-    name*: string
-    cost*: int
-    cstReq*: int
-
-  DockSummary* = object
-    constructionAvailable*: int
-    constructionTotal*: int
-    repairAvailable*: int
-    repairTotal*: int
-
   DockedFleetInfo* = object
     name*: string
     shipCount*: int
@@ -1289,3 +1273,109 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
     ncv: 0,
     taxRate: 0
   )
+
+# -----------------------------------------------------------------------------
+# Build Options from PlayerState (for Nostr mode)
+# -----------------------------------------------------------------------------
+
+proc computeBuildOptionsFromPS*(ps: PlayerState,
+                               colonyId: ColonyId): tuple[
+                                 options: seq[BuildOption],
+                                 dockSummary: DockSummary] =
+  ## Compute build options from PlayerState + gameConfig
+  ## Used in Nostr mode where full GameState is not available
+  ##
+  ## TODO: Get tech levels from PlayerState (currently using defaults)
+
+  # Find colony in PlayerState
+  var colony: Option[Colony] = none(Colony)
+  for col in ps.ownColonies:
+    if col.id == colonyId:
+      colony = some(col)
+      break
+
+  if colony.isNone:
+    return (
+      options: @[],
+      dockSummary: DockSummary(
+        constructionAvailable: 0,
+        constructionTotal: 0,
+        repairAvailable: 0,
+        repairTotal: 0
+      )
+    )
+
+  let col = colony.get()
+
+  # TODO: Get tech levels from PlayerState
+  # For now, use default tech levels (CST=1)
+  # This means only basic builds will be available
+  var techLevels = defaultTechLevels()
+
+  # Get dock summary from colony data
+  let dockInfo = DockSummary(
+    constructionAvailable: max(0, col.constructionDocks.int),
+    constructionTotal: col.constructionDocks.int,
+    repairAvailable: max(0, col.repairDocks.int),
+    repairTotal: col.repairDocks.int
+  )
+
+  # Compute available build options
+  var options: seq[BuildOption] = @[]
+
+  # Note: Some checks like hasOperationalFacility, canCommissionFighter, etc.
+  # require GameState. For now, we skip those checks in PS-only mode.
+  # TODO: Add facility counts to PlayerState or compute from neoria counts
+
+  # Ships
+  for shipClass in ShipClass:
+    let cstReq = gameConfig.ships.ships[shipClass].minCST.int
+    if techLevels.cst < cstReq:
+      continue
+    # Skip fighters and planet breakers for now (need special checks)
+    if shipClass in {ShipClass.Fighter, ShipClass.PlanetBreaker}:
+      continue
+    let requiresDock = construction_docks.shipRequiresDock(shipClass)
+    if requiresDock and dockInfo.constructionTotal <= 0:
+      continue
+    let cost = int(gameConfig.ships.ships[shipClass].productionCost)
+    options.add(BuildOption(
+      kind: BuildOptionKind.Ship,
+      name: humanizeEnum($shipClass),
+      cost: cost,
+      cstReq: cstReq
+    ))
+
+  # Ground units
+  for groundClass in GroundClass:
+    let cstReq = gameConfig.groundUnits.units[groundClass].minCST.int
+    if techLevels.cst < cstReq:
+      continue
+    # Skip planetary shields for now (needs special check)
+    if groundClass == GroundClass.PlanetaryShield:
+      continue
+    let cost = int(gameConfig.groundUnits.units[groundClass].productionCost)
+    options.add(BuildOption(
+      kind: BuildOptionKind.Ground,
+      name: humanizeEnum($groundClass),
+      cost: cost,
+      cstReq: cstReq
+    ))
+
+  # Facilities
+  for facilityClass in FacilityClass:
+    let cstReq = gameConfig.facilities.facilities[facilityClass].minCST.int
+    if techLevels.cst < cstReq:
+      continue
+    # Skip spaceport and starbase for now (need special checks)
+    if facilityClass in {FacilityClass.Spaceport, FacilityClass.Starbase}:
+      continue
+    let cost = int(gameConfig.facilities.facilities[facilityClass].buildCost)
+    options.add(BuildOption(
+      kind: BuildOptionKind.Facility,
+      name: humanizeEnum($facilityClass),
+      cost: cost,
+      cstReq: cstReq
+    ))
+
+  (options: options, dockSummary: dockInfo)
