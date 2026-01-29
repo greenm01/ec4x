@@ -48,13 +48,13 @@ Example (narrow terminal):
 +------------------------------------------------------------------------------+
 |                                                                              |
 | MAIN CANVAS (variable height)                                                |
-|   - All windows in the main canvas are modal overlays                         |
+|   - All windows in the main canvas are modal overlays                        |
 |   - Centered floating modals for 9 primary views                             |
 |   - Single-line borders (--) for modals and overlays                         |
 |                                                                              |
 +------------------------------------------------------------------------------+
 | STATUS BAR (1 line)                                                          |
-|   <1> OVR  <2> PLN  <3> FLT ... <:> EXPERT    or    :command input_          |
+|   <O> OVR  <C> CLN  <F> FLT ... <:> EXPERT    or    :command input_          |
 +------------------------------------------------------------------------------+
 ----
 
@@ -76,45 +76,52 @@ LTU rules:
 * Colonized systems: use ltuColonies[colonyId] if present, else fall back to
   ltuSystems[systemId].
 
-LTU implementation checklist:
-* PlayerState includes ltuSystems, ltuColonies, ltuFleets
-* ltuSystems populated from VisibleSystem.lastScoutedTurn
-* ltuColonies populated from VisibleColony.intelTurn
-* ltuFleets populated from VisibleFleet.intelTurn
-* Owned assets set to current turn
-* LTU serialized in full snapshot + delta
-* Planets view uses colony LTU with system fallback
-* Fleets view uses fleet LTU
-* Display format T##, missing shows "—"
+== Primary Views (Global Alt+Key)
+* `Alt+O` Overview     (Info Dashboard)
+* `Alt+R` Reports      (Turn Reports / Event Inbox)
+* `Alt+G` General      (Diplomacy & Empire Policy)
+* `Alt+C` Colony       (Colony Management)
+* `Alt+F` Fleet        (Fleet Operations)
+* `Alt+T` Tech         (Research & Development)
+* `Alt+E` Espionage    (Intel Operations & Budget)
+* `Alt+I` Intel db     (Starmap Database)
+* `Alt+S` Settings     (Client Configuration)
+* `Alt+Q` Quit
 
-== Primary Views
-* `1` Overview
-* `2` Planets
-* `3` Fleets
-* `4` Research
-* `5` Espionage
-* `6` Economy
-* `7` Reports
-* `8` Messages
-* `9` Settings
-* `Q` Quit
+=== Overview (`O`)
+Dashboard summary of the current turn state.
+* **Vital Signs**: Treasury (PP), Prestige, Current Turn.
+* **Aggregates**: Total Population (PU), Total Colony Count, Total Ships.
+* **Standing**: Current Rank (from Leaderboard).
+* **Alerts**: Critical warnings (Invasions, Shortfalls).
 
-=== Fleets View (Draft)
-See Intel Freshness (LTU) for LTU rules (fleet rows use ltuFleets).
+=== Reports (`R`)
+Comprehensive inbox of all `GameEvent`s generated during the turn resolution.
+* Categories: Combat, Economy, Diplomacy, Espionage, Tech, General.
+* Functionality: Filter by category, Mark Read, Delete.
+* Detail view for complex events (Combat Reports).
 
-=== Planets View (Draft)
+=== General (`G`)
+Empire-wide management and foreign policy.
+* **Diplomacy**:
+  - View diplomatic status (Neutral/Hostile/Enemy) with other Houses.
+  - Issue `DiplomaticCommand`: Declare War, Propose Peace, Accept/Reject Treaties.
+* **Empire Policy**:
+  - Global Tax Rate: Slider that generates `ColonyManagementCommand` updates for all colonies.
+  - Policy Defaults: Global toggles for Auto-Repair, Auto-Load (applied to all colonies).
+
+=== Colony View (`C`)
+Management of owned and administered colonies.
 Intent: a single full-width modal table in the Main Canvas.
-See Intel Freshness (LTU) for LTU rules.
+Note: LTU is not shown here as owned colonies always have perfect, real-time intel.
 
 Ordering:
-* Owned systems pinned to the top.
-* Homeworld first, then owned systems alphabetical by system name.
-* Remaining systems alphabetical by system name.
+* Homeworld pinned to the top.
+* Remaining owned systems alphabetical by system name.
 
 Columns (120 cols target):
 * System (name)
 * Sector (system coords)
-* Owner (house name or "Unknown")
 * Class (planet class)
 * Resources (resource rating)
 * Pop (PU)
@@ -124,18 +131,17 @@ Columns (120 cols target):
 * Growth
 * CD (construction dock capacity)
 * RD (repair dock capacity)
-* LTU (last turn updated, format `T##`)
-* Status (BLK/CAP/CN/TF)
-
-Capacity notes:
-* CD: total construction dock capacity from production facilities.
-* RD: total repair dock capacity from drydocks.
+* FLT (fleets in system)
+* SB (starbases)
+* GND (ground units: armies + marines)
+* GB (ground batteries)
+* SLD (planetary shield: Y/N)
+* Status (comma-separated flags)
 
 Column budget (120 cols target):
 * System: 18
 * Sector: 5
-* Owner: 10
-* Class: 7
+* Class: 5
 * Res: 5
 * Pop: 5
 * IU: 5
@@ -144,15 +150,18 @@ Column budget (120 cols target):
 * Growth: 7
 * CD: 3
 * RD: 3
-* LTU: 4
-* Status: 21 (expand to fill remaining width)
+* FLT: 3
+* SB: 3
+* GND: 3
+* GB: 3
+* SLD: 3
+* Status: 37 (expand to fill remaining width)
 
 Column alignment spec:
 ----
 System: width=18  align=left   truncate=ellipsis
 Sector: width=5   align=center truncate=none
-Owner:  width=10  align=left   truncate=ellipsis
-Class:  width=7   align=left   truncate=none
+Class:  width=5   align=left   truncate=none
 Res:    width=5   align=left   truncate=none
 Pop:    width=5   align=right  truncate=none
 IU:     width=5   align=right  truncate=none
@@ -161,58 +170,52 @@ NCV:    width=6   align=right  truncate=none
 Growth: width=7   align=right  truncate=none
 CD:     width=3   align=right  truncate=none
 RD:     width=3   align=right  truncate=none
-LTU:    width=4   align=right  truncate=none
+FLT:    width=3   align=right  truncate=none
+SB:     width=3   align=right  truncate=none
+GND:    width=3   align=right  truncate=none
+GB:     width=3   align=right  truncate=none
+SLD:    width=3   align=center truncate=none
 Status: width=fill align=left  truncate=ellipsis
 ----
-
-Truncation note:
-* Use ASCII `...` in code for predictable width.
 
 Table sketch (full separators):
 ----
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│SYSTEM            │SECTR│OWNER     │CLASS  │RES  │ POP │ IU  │ GCO │ NCV │GROWTH│CD │RD │LTU │STATUS                  │
+│SYSTEM            │SECTR│CLASS│RES  │ POP │ IU  │ GCO │ NCV │GROWTH│CD │RD │FLT│SB │GND│GB │SLD│STATUS                │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│Caladan           │A01  │Atreides  │Benign │Rich │ 120 │  80 │  400│  220│  +1.2│ 10│  8│ T12│OK                      │
-│Arrakis           │C03  │Atreides  │Harsh  │Abnd │  60 │  40 │  180│   96│  +0.6│  6│  4│ T12│CN                      │
-│Ix                │B09  │Unknown   │Lush   │Rich │  90 │  70 │  320│  180│  +0.9│  8│  6│ T10│BLK CAP                 │
-│Spatharokandidatos│D07  │—         │Desol  │Poor │  —  │  —  │   — │   — │   —  │  —│  —│  — │—                       │
+│Caladan           │ A01 │BEN  │RIC  │ 120 │  80 │  400│  220│  +1.2│ 10│  8│  2│ 1 │ 20│ 5 │ Y │OK                    │
+│Arrakis           │ C03 │HAR  │ABD  │  60 │  40 │  180│   96│  +0.6│  6│  4│  5│ 0 │  0│ 2 │ N │CN, TF                │
+│Ix                │ B09 │LUS  │RIC  │  90 │  70 │  320│  180│  +0.9│  8│  6│  0│ 1 │  5│ 2 │ Y │BLK, CAP, DMG         │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ----
 
-Status legend:
-* OK: no special status
-* BLK: blockaded
-* CAP: capacity violation
-* CN: construction active
-* TF: terraforming active
+Status legend (prioritized):
+* BLK: Blockaded (Critical)
+* CAP: Capacity Violation (Hangar/Garrison)
+* DMG: Infrastructure/Facility Damage
+* RPR: Repairing
+* TF:  Terraforming active
+* CN:  Construction active
+* OK:  Nominal
 
-Summary row (below table):
-* Owned: N | Colonized: N | GCO: N | NCV: N | Alerts: N
+* **Commands**:
+  - `BuildCommand`: Ships, Facilities, Ground Units.
+  - `ScrapCommand`: Recycling assets.
+  - `RepairCommand`: Manual repairs.
+  - `TerraformCommand`: Planetary engineering.
+  - `PopulationTransferCommand`: Migration.
+  - `ColonyManagementCommand`: Tax rates, auto-repair toggles (per-colony override).
 
-Owner visibility:
-* "Unknown" when fog-of-war hides the owner.
-* "—" for uncolonized systems.
+=== Fleet View (`F`)
+Command and Control for fleets.
+* **Table View**: Lists fleets with location, composition, and orders.
+* **Detail View**: Ship-level status and cargo.
+* **Commands**:
+  - `FleetCommand`: Move, Patrol, Hold, Guard, Attack (Bombard/Invade/Blockade/Blitz),
+    Colonize, Scout, Merge, Split.
+  - `ZeroTurn`: Rename, Scrap ships.
 
-LTU definition:
-* Last Turn Updated in the player's intel view (fog-of-war freshness).
-
-Filters (draft):
-* Owned only
-* Colonized only
-* Facilities present
-* Alerts only
-
-Key map (draft):
-* `Enter` View system/colony details
-* `B` Build (if facilities allow)
-* `S` Sort
-* `F` Filter
-* `X` Toggle selection
-* `A` Apply (bulk)
-* `?` Help
-
-=== Fleet Command Console (Draft)
+=== Fleet Command Console (`F` - Detailed)
 Intent: fast, multi-fleet command and per-ship zero-turn management.
 
 Layout sketch:
@@ -263,19 +266,64 @@ Key map (draft):
 * `Z` Zero Turn (apply to selected ships)
 * `X` Toggle selection (fleet list or ship list)
 
+=== Tech View (`T`)
+Research and Development management.
+* **Allocation**: Slider/Input for `ResearchAllocation` (Economic vs Science vs Tech Fields).
+* **Tree Status**: View current levels and progress towards next level.
+* **Breakthroughs**: View recent tech breakthroughs.
+
+=== Espionage View (`E`)
+Intelligence and Counter-Intelligence operations.
+* **Budget**: Set `ebpInvestment` (Offensive) and `cipInvestment` (Defensive).
+* **Operations**: Issue `EspionageAttempt` orders (Spy, Sabotage, Steal Tech).
+* **Network**: View infiltration status on target Houses.
+
+=== Intel db (`I`)
+Read-only database of the known galaxy. Complements the SVG Starmap.
+
+Note on LTU: This view HEAVILY relies on `PlayerState.ltuSystems` and `ltuColonies`.
+Data shown here reflects the *last known state* of a system, not the current engine state.
+Users should check the LTU column to judge the staleness of the intelligence.
+
+* **Scope**: All known systems (Owned, Enemy, Neutral, Unexplored).
+* **Data**: Planet Class, Resource Rating, Star Type, Coordinates.
+* **Function**: Reference for planning colonization or conquest.
+* **LTU Display**: All rows must clearly show the turn of the last update.
+
+Columns (Draft):
+* System (Name)
+* Sector (Coords)
+* Known Owner (Last seen owner)
+* Intel (Scan/Vis/Full)
+* LTU (Turn number of last update)
+* Notes (Artifacts, anomalies, etc.)
+
+=== Settings (`S`)
+Client-side configuration.
+* TUI Theme/Colors.
+* Keybindings.
+* Notification preferences.
+
 == Visual Language
 
-=== Palette (Classic EC ANSI)
+=== Theme Strategy
+The TUI uses a semantic theme system rather than hardcoded colors.
+Target Aesthetic: **Tokyo Night** (Deep charcoal backgrounds, slate borders, high-contrast accents).
+
 |===
-| Element | Foreground | Background | ANSI
-| HUD background | Amber | Navy | 33 on 44
-| Main canvas | White/Gray | Black | 37/90 on 40
-| Alert glyph | Red | - | 91
-| Selected row | Black | Cyan | 30 on 46
-| Disabled/fog | Dark gray | - | 90
-| Positive delta | Green | - | 92
-| Negative delta | Red | - | 91
-| Prestige | Yellow | - | 93
+| Semantic Role | Default "Tokyo Night" | Usage
+| `Surface.Main`      | #1a1b26 (Charcoal) | Main window backgrounds
+| `Surface.Panel`     | #24283b (Deep Blue)| Sidebars, headers
+| `Surface.Overlay`   | #2f334d (Slate)    | Modals, dropdowns
+| `Border.Primary`    | #565f89 (Blue-Grey)| Active window borders
+| `Border.Dim`        | #414868 (Dark Grey)| Inactive borders
+| `Text.Primary`      | #c0caf5 (White-ish)| Standard text
+| `Text.Muted`        | #565f89 (Grey)     | Labels, hints
+| `State.Info`        | #7aa2f7 (Blue)     | Info, selection
+| `State.Success`     | #9ece6a (Green)    | Growth, positive delta, safe
+| `State.Warning`     | #e0af68 (Orange)   | Warnings, low supplies
+| `State.Error`       | #f7768e (Red)      | Alerts, damage, enemies
+| `State.Accent`      | #bb9af7 (Purple)   | Prestige, key focus items
 |===
 
 === Borders and Typography
@@ -304,33 +352,31 @@ Key map (draft):
 
 === Navigation
 ----
-[1-9]           Switch primary views
-[Tab/S-Tab]     Cycle focusable widgets within view
-[Enter]         Drill into selected item / confirm action
-[Backspace]     Step up breadcrumb history
-[Esc]           Cancel overlay / exit command mode
-[?]             Show context help overlay
-[L]             Diplomatic matrix overlay (from Overview)
+[Alt + Key]       Switch primary views (e.g., Alt+F for Fleets)
+[Tab/S-Tab]       Cycle focusable widgets within view
+[Enter]           Drill into selected item / confirm action
+[Esc]             Step up breadcrumb / Cancel overlay / Exit mode
+[?]               Show context help overlay
 ----
 
-=== Letter Mnemonics
-Within views, single-letter hotkeys trigger common actions:
+=== Context Commands
+Within views, single-letter hotkeys trigger actions on the *selected item*:
 
 |===
 | Key | Context | Action
-| `M` | Fleet selected | Move command
-| `P` | Fleet selected | Patrol command
-| `H` | Fleet selected | Hold command
-| `G` | Fleet selected | Guard (colony or starbase)
-| `R` | Fleet selected | ROE picker overlay
-| `J` | Fleet selected | Join fleet
-| `B` | Colony selected | Build (construction queue)
-| `T` | Economy view | Adjust tax rate
-| `L` | Overview | Diplomatic matrix overlay
-| `D` | Reports | Delete selected report
-| `X` | Multi-select | Toggle selection on current row
-| `A` | Proposals | Accept proposal
-| `R` | Proposals | Reject proposal
+| `m` | Fleet selected | Move command
+| `p` | Fleet selected | Patrol command
+| `h` | Fleet selected | Hold command
+| `g` | Fleet selected | Guard (colony or starbase)
+| `r` | Fleet selected | ROE picker overlay
+| `j` | Fleet selected | Join fleet
+| `b` | Colony selected | Build (construction queue)
+| `t` | Colony selected | Adjust tax rate
+| `l` | General | Diplomatic matrix overlay
+| `d` | Reports | Delete selected report
+| `x` | Multi-select | Toggle selection on current row
+| `a` | Proposals | Accept proposal
+| `r` | Proposals | Reject proposal
 |===
 
 === Expert Mode
@@ -378,25 +424,14 @@ Example commands:
 └────────────────────────────────────────────────────────────────────────┘
 ----
 
-=== Sections
-* Identity: truncated npub + type label, import hint right-aligned.
-* Your Games: game name, turn, house name, cursor for selection.
-* Open Lobbies: game name, player count.
-* Footer: hotkey hints + version.
-
 == Status Bar
 
 === Normal Mode
 ----
-<1> OVERVIEW  <2> PLANETS  <3> FLEETS  <4> RESEARCH  ... <:> EXPERT
+<Alt+O> OVR  <Alt+C> CLN  <Alt+F> FLT  <Alt+T> TECH  ... <:> EXPERT
 ----
 
 === Expert Mode
 ----
 :move alpha B7_
 ----
-
-== Open Questions
-* Final list of view-specific hotkeys per screen.
-* Which views require dual-column vs single-column at 80 columns.
-* Confirm whether OPEN LOBBIES appears in entry modal (current TUI does not).
