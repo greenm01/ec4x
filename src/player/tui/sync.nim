@@ -471,18 +471,32 @@ proc formatLtu[K](table: Table[K, int32], key: K): string =
     "---"
 
 proc planetClassName(classValue: int32): string =
-  ## Get planet class name from int32 value
+  ## Get planet class acronym from int32 value
   let idx = int(classValue)
   if idx >= 0 and idx < PlanetClassNames.len:
-    PlanetClassNames[idx]
+    case PlanetClassNames[idx]
+    of "Eden": "EDN"
+    of "Lush": "LSH"
+    of "Benign": "BEN"
+    of "Harsh": "HRH"
+    of "Hostile": "HOS"
+    of "Desolate": "DES"
+    of "Extreme": "EXT"
+    else: "???"
   else:
     "???"
 
 proc resourceRatingName(ratingValue: int32): string =
-  ## Get resource rating name from int32 value
+  ## Get resource rating acronym from int32 value
   let idx = int(ratingValue)
   if idx >= 0 and idx < ResourceRatingNames.len:
-    ResourceRatingNames[idx]
+    case ResourceRatingNames[idx]
+    of "Very Poor": "VPR"
+    of "Poor": "POR"
+    of "Abundant": "ABN"
+    of "Rich": "RCH"
+    of "Very Rich": "VRH"
+    else: "???"
   else:
     "???"
 
@@ -616,12 +630,23 @@ proc visibilityLabel(vis: VisibilityLevel, isOwned: bool): string =
   of VisibilityLevel.None:
     "---"
 
+type
+  IntelOwnerInfo = tuple[
+    colonyId: Option[ColonyId],
+    ownerName: string,
+    isOwned: bool
+  ]
+
 proc syncIntelRows*(model: var TuiModel, ps: PlayerState) =
   ## Build Intel DB rows from PlayerState
   model.view.intelRows = @[]
 
-  var colonyOwners = initTable[SystemId,
-    tuple[colonyId: Option[ColonyId], ownerName: string, isOwned: bool]]()
+  var colonyOwners = initTable[SystemId, IntelOwnerInfo]()
+  let defaultOwner = (
+    colonyId: none(ColonyId),
+    ownerName: "---",
+    isOwned: false
+  )
 
   for colony in ps.ownColonies:
     let ownerName = ps.houseNames.getOrDefault(colony.owner, "You")
@@ -648,10 +673,10 @@ proc syncIntelRows*(model: var TuiModel, ps: PlayerState) =
         visSys.name
       else:
         "System " & $systemId.uint32
-    let ownerInfo = colonyOwners.getOrDefault(systemId,
-      (colonyId: none(ColonyId), ownerName: "---", isOwned: false))
+    let ownerInfo = colonyOwners.getOrDefault(systemId, defaultOwner)
     let ltuLabel = ltuLabelForSystem(
-      ps, systemId, ownerInfo.colonyId, ownerInfo.isOwned)
+      ps, systemId, ownerInfo.colonyId, ownerInfo.isOwned
+    )
     var notes = ""
     if ownerInfo.isOwned and ps.homeworldSystemId == some(systemId):
       notes = "Homeworld"
@@ -667,7 +692,36 @@ proc syncIntelRows*(model: var TuiModel, ps: PlayerState) =
     ))
 
   model.view.intelRows.sort(proc(a, b: IntelRow): int =
-    cmp(a.systemName, b.systemName))
+    let sysA = SystemId(a.systemId.uint32)
+    let sysB = SystemId(b.systemId.uint32)
+    let infoA = colonyOwners.getOrDefault(sysA, defaultOwner)
+    let infoB = colonyOwners.getOrDefault(sysB, defaultOwner)
+    let visA = ps.visibleSystems.getOrDefault(sysA)
+    let visB = ps.visibleSystems.getOrDefault(sysB)
+    let rankA =
+      if infoA.isOwned:
+        0
+      else:
+        case visA.visibility
+        of VisibilityLevel.Occupied: 1
+        of VisibilityLevel.Scouted: 2
+        of VisibilityLevel.Adjacent: 3
+        of VisibilityLevel.None: 4
+        of VisibilityLevel.Owned: 1
+    let rankB =
+      if infoB.isOwned:
+        0
+      else:
+        case visB.visibility
+        of VisibilityLevel.Occupied: 1
+        of VisibilityLevel.Scouted: 2
+        of VisibilityLevel.Adjacent: 3
+        of VisibilityLevel.None: 4
+        of VisibilityLevel.Owned: 1
+    result = cmp(rankA, rankB)
+    if result == 0:
+      result = cmp(a.systemName, b.systemName)
+  )
 
 proc syncBuildModalData*(
     model: var TuiModel,

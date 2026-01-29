@@ -75,13 +75,13 @@ Where:
 
 <!-- RAW_MATERIAL_TABLE_START -->
 
-| RAW       | Eden | Lush | Benign | Harsh | Hostile | Desolate | Extreme |
-| --------- |:----:|:----:|:------:|:-----:|:-------:|:--------:|:-------:|
-| Very Poor | 60%  | 60%  | 60%    | 60%   | 60%     | 60%      | 60%     |
-| Poor      | 80%  | 75%  | 70%    | 65%   | 64%     | 63%      | 62%     |
-| Abundant  | 100% | 90%  | 80%    | 70%   | 68%     | 66%      | 64%     |
-| Rich      | 120% | 105% | 90%    | 75%   | 72%     | 69%      | 66%     |
-| Very Rich | 140% | 120% | 100%   | 80%   | 76%     | 72%      | 68%     |
+| RAW       | RAW ACR | Eden (EDN) | Lush (LSH) | Benign (BEN) | Harsh (HRH) | Hostile (HOS) | Desolate (DES) | Extreme (EXT) |
+| --------- |:------:|:----------:|:----------:|:-----------:|:----------:|:------------:|:-------------:|:------------:|
+| Very Poor | VPR    | 60%        | 60%        | 60%         | 60%        | 60%          | 60%           | 60%          |
+| Poor      | POR    | 80%        | 75%        | 70%         | 65%        | 64%          | 63%           | 62%          |
+| Abundant  | ABN    | 100%       | 90%        | 80%         | 70%        | 68%          | 66%           | 64%          |
+| Rich      | RCH    | 120%       | 105%       | 90%         | 75%        | 72%          | 69%           | 66%          |
+| Very Rich | VRH    | 140%       | 120%       | 100%        | 80%        | 76%          | 72%           | 68%          |
 
 *Source: config/economy.kdl [rawMaterialEfficiency] section*
 

@@ -4,15 +4,16 @@
 ## Used for ship lists, fleet lists, and other tabular data.
 ##
 ## Example output:
-##   Name         Class        State Attack  Defense
-##   ─────────────────────────────────────────────────
-##   Alpha-1      Destroyer    Nominal 45     38
-##   Alpha-2      Destroyer    Nominal 45     38
-## > Beta-1       Frigate      Crippled 28   22    <- selected
+##   ┌─────────┬─────┬──────┐
+##   │ Name    │ Age │ City │
+##   ├─────────┼─────┼──────┤
+##   │ Alice   │  30 │ PDX  │
+##   │ Bob     │  25 │ SEA  │
+##   └─────────┴─────┴──────┘
 ##
 ## Reference: ec-style-layout.md Fleet Detail View
 
-import std/[strutils, options]
+import std/[strutils, options, unicode]
 import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
@@ -48,7 +49,6 @@ type
     separatorStyle*: CellStyle  ## Style for separator line
     showHeader*: bool           ## Show header row
     showSeparator*: bool        ## Show separator line under header
-    showSelector*: bool         ## Show > marker for selected row
     zebraStripe*: bool          ## Alternate row colors
 
 # -----------------------------------------------------------------------------
@@ -82,7 +82,6 @@ proc table*(columns: openArray[TableColumn]): Table =
     separatorStyle: canvasDimStyle(),
     showHeader: true,
     showSeparator: true,
-    showSelector: true,
     zebraStripe: false
   )
 
@@ -142,11 +141,6 @@ proc showSeparator*(t: Table, show: bool): Table =
   result = t
   result.showSeparator = show
 
-proc showSelector*(t: Table, show: bool): Table =
-  ## Toggle > selector marker for selected row.
-  result = t
-  result.showSelector = show
-
 proc zebraStripe*(t: Table, enable: bool): Table =
   ## Enable alternating row colors.
   result = t
@@ -166,26 +160,67 @@ proc calculateColumnWidths*(t: Table, availableWidth: int): seq[int] =
   result = newSeq[int](t.columns.len)
   var totalFixed = 0
   var autoColumns = 0
+  var minWidths = newSeq[int](t.columns.len)
+  var minTotal = 0
+  var minAutoTotal = 0
+  var fixedIndices: seq[int] = @[]
+  var autoIndices: seq[int] = @[]
   
-  # First pass: count fixed widths and auto columns
+  # First pass: collect fixed widths, min widths, and auto columns
   for i, col in t.columns:
+    let minWidth = max(1, col.minWidth)
+    minWidths[i] = minWidth
+    minTotal += minWidth
     if col.width > 0:
-      result[i] = col.width
-      totalFixed += col.width
+      result[i] = max(col.width, minWidth)
+      totalFixed += result[i]
+      fixedIndices.add(i)
     else:
+      result[i] = minWidth
       autoColumns.inc
+      minAutoTotal += minWidth
+      autoIndices.add(i)
   
-  # Account for selector column and spacing
-  let selectorWidth = if t.showSelector: 2 else: 0
-  let spacing = t.columns.len - 1  # Space between columns
-  let remaining = availableWidth - totalFixed - selectorWidth - spacing
+  # Account for borders and padding (box table)
+  let borderWidth = t.columns.len + 1  # vertical separators
+  let paddingWidth = t.columns.len * 2  # left/right padding per cell
+  let availableContent = availableWidth - borderWidth - paddingWidth
+  if availableContent <= 0:
+    for i in 0 ..< t.columns.len:
+      result[i] = 1
+    return
+  if availableContent < minTotal:
+    for i in 0 ..< t.columns.len:
+      result[i] = 1
+    return
+
+  let availableForFixed = availableContent - minAutoTotal
+  if totalFixed > availableForFixed:
+    var overflow = totalFixed - availableForFixed
+    var canReduce = true
+    while overflow > 0 and canReduce:
+      canReduce = false
+      for idx in fixedIndices:
+        let minWidth = minWidths[idx]
+        if result[idx] > minWidth and overflow > 0:
+          result[idx].dec
+          overflow.dec
+          canReduce = true
+    totalFixed = 0
+    for idx in fixedIndices:
+      totalFixed += result[idx]
+
+  let remaining = availableContent - (totalFixed + minAutoTotal)
   
   # Second pass: distribute remaining space to auto columns
   if autoColumns > 0 and remaining > 0:
     let autoWidth = remaining div autoColumns
-    for i, col in t.columns:
-      if col.width == 0:
-        result[i] = max(col.minWidth, autoWidth)
+    var extra = remaining mod autoColumns
+    for idx in autoIndices:
+      result[idx] += autoWidth
+      if extra > 0:
+        result[idx].inc
+        extra.dec
 
 # -----------------------------------------------------------------------------
 # Text alignment helper
@@ -216,49 +251,42 @@ proc renderToStrings*(t: Table, width: int = 60): seq[string] =
   ## Render table to sequence of strings.
   result = @[]
   let colWidths = t.calculateColumnWidths(width)
-  
-  # Header row
-  if t.showHeader:
-    var headerLine = ""
-    if t.showSelector:
-      headerLine.add("  ")  # Empty selector space
-    for i, col in t.columns:
+
+  if t.columns.len == 0:
+    return
+
+  proc borderLine(left, mid, right: string): string =
+    var line = left
+    for i, w in colWidths:
       if i > 0:
-        headerLine.add(" ")
-      headerLine.add(alignText(col.header, colWidths[i], col.align))
+        line.add(mid)
+      line.add("\u2500".repeat(w + 2))
+    line.add(right)
+    line
+
+  result.add(borderLine("\u250c", "\u252c", "\u2510"))
+
+  if t.showHeader:
+    var headerLine = "\u2502"
+    for i, col in t.columns:
+      let aligned = alignText(col.header, colWidths[i], col.align)
+      headerLine.add(" " & aligned & " ")
+      headerLine.add("\u2502")
     result.add(headerLine)
-    
-    # Separator
+
     if t.showSeparator:
-      var sepLine = ""
-      if t.showSelector:
-        sepLine.add("  ")
-      for i, w in colWidths:
-        if i > 0:
-          sepLine.add(" ")
-        sepLine.add('-'.repeat(w))
-      result.add(sepLine)
-  
-  # Data rows
-  for rowIdx, row in t.rows:
-    var rowLine = ""
-    let isSelected = rowIdx == t.selectedIdx
-    
-    if t.showSelector:
-      if isSelected:
-        rowLine.add("> ")
-      else:
-        rowLine.add("  ")
-    
-    for colIdx, cell in row.cells:
-      if colIdx >= t.columns.len:
-        break
-      if colIdx > 0:
-        rowLine.add(" ")
-      let col = t.columns[colIdx]
-      rowLine.add(alignText(cell, colWidths[colIdx], col.align))
-    
+      result.add(borderLine("\u251c", "\u253c", "\u2524"))
+
+  for row in t.rows:
+    var rowLine = "\u2502"
+    for colIdx, col in t.columns:
+      let cell = if colIdx < row.cells.len: row.cells[colIdx] else: ""
+      let aligned = alignText(cell, colWidths[colIdx], col.align)
+      rowLine.add(" " & aligned & " ")
+      rowLine.add("\u2502")
     result.add(rowLine)
+
+  result.add(borderLine("\u2514", "\u2534", "\u2518"))
 
 # -----------------------------------------------------------------------------
 # Buffer rendering
@@ -268,55 +296,59 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
   ## Render table to buffer at given area.
   if area.isEmpty or t.columns.len == 0:
     return
-  
+
   let colWidths = t.calculateColumnWidths(area.width)
   var y = area.y
-  
-  # Header row
-  if t.showHeader and y < area.bottom:
-    var x = area.x
-    
-    if t.showSelector:
-      discard buf.setString(x, y, "  ", t.headerStyle)
-      x += 2
-    
-    for i, col in t.columns:
-      if x >= area.right:
-        break
-      if i > 0:
-        discard buf.setString(x, y, " ", t.headerStyle)
-        x += 1
-      let aligned = alignText(col.header, colWidths[i], col.align)
-      discard buf.setString(x, y, aligned, t.headerStyle)
-      x += colWidths[i]
-    
-    y.inc
-    
-    # Separator line
-    if t.showSeparator and y < area.bottom:
-      x = area.x
-      if t.showSelector:
-        discard buf.setString(x, y, "  ", t.separatorStyle)
-        x += 2
-      
-      for i, w in colWidths:
-        if x >= area.right:
+
+  template putSegment(xVar: var int, segment: string, style: CellStyle) =
+    if xVar >= area.right:
+      discard
+    else:
+      var currentX = xVar
+      for rune in segment.runes:
+        if currentX >= area.right:
           break
-        if i > 0:
-          discard buf.setString(x, y, " ", t.separatorStyle)
-          x += 1
-        # Use box drawing light horizontal line
-        let sep = "\u2500".repeat(w)
-        discard buf.setString(x, y, sep, t.separatorStyle)
-        x += w
-      
+        let width = buf.put(currentX, y, rune.toUTF8, style)
+        currentX += width
+      xVar = currentX
+
+  template drawBorderLine(left, mid, right: string) =
+    if y >= area.bottom:
+      discard
+    else:
+      var x = area.x
+      putSegment(x, left, t.separatorStyle)
+      for i, w in colWidths:
+        for _ in 0 ..< w + 2:
+          putSegment(x, "\u2500", t.separatorStyle)
+        if i < colWidths.len - 1:
+          putSegment(x, mid, t.separatorStyle)
+      putSegment(x, right, t.separatorStyle)
       y.inc
-  
-  # Data rows
+
+  drawBorderLine("\u250c", "\u252c", "\u2510")
+  if y >= area.bottom:
+    return
+
+  if t.showHeader:
+    var x = area.x
+    putSegment(x, "\u2502", t.separatorStyle)
+    for i, col in t.columns:
+      let aligned = alignText(col.header, colWidths[i], col.align)
+      putSegment(x, " ", t.headerStyle)
+      putSegment(x, aligned, t.headerStyle)
+      putSegment(x, " ", t.headerStyle)
+      putSegment(x, "\u2502", t.separatorStyle)
+    y.inc
+
+    if t.showSeparator:
+      drawBorderLine("\u251c", "\u253c", "\u2524")
+      if y >= area.bottom:
+        return
+
   for rowIdx, row in t.rows:
     if y >= area.bottom:
       break
-    
     let isSelected = rowIdx == t.selectedIdx
     let isAlternate = t.zebraStripe and rowIdx mod 2 == 1
     let style = if isSelected:
@@ -325,34 +357,27 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
       t.alternateStyle
     else:
       t.rowStyle
-    
+
     var x = area.x
-    
-    # Selector marker
-    if t.showSelector:
-      let marker = if isSelected: "> " else: "  "
-      discard buf.setString(x, y, marker, style)
-      x += 2
-    
-    # Row cells
-    for colIdx, cell in row.cells:
-      if colIdx >= t.columns.len or x >= area.right:
-        break
+    putSegment(x, "\u2502", t.separatorStyle)
+    for colIdx, col in t.columns:
+      let cell = if colIdx < row.cells.len: row.cells[colIdx] else: ""
       let cellStyle =
         if colIdx < row.cellStyles.len and row.cellStyles[colIdx].isSome:
           row.cellStyles[colIdx].get()
         else:
           style
-      if colIdx > 0:
-        discard buf.setString(x, y, " ", cellStyle)
-        x += 1
-      
-      let col = t.columns[colIdx]
       let aligned = alignText(cell, colWidths[colIdx], col.align)
-      discard buf.setString(x, y, aligned, cellStyle)
-      x += colWidths[colIdx]
-    
+      putSegment(x, " ", cellStyle)
+      putSegment(x, aligned, cellStyle)
+      putSegment(x, " ", cellStyle)
+      putSegment(x, "\u2502", t.separatorStyle)
+
     y.inc
+    if y >= area.bottom:
+      break
+
+  drawBorderLine("\u2514", "\u2534", "\u2518")
 
 # -----------------------------------------------------------------------------
 # Convenience constructors for common use cases

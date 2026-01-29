@@ -456,11 +456,26 @@ proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
     tableColumn("Notes", 0, table.Alignment.Left)
   ]
 
+  let startIdx = scroll.verticalOffset
+  let endIdx = min(model.view.intelRows.len,
+    startIdx + scroll.viewportLength)
+  let selectedIdx =
+    if model.ui.selectedIdx >= startIdx and
+        model.ui.selectedIdx < endIdx:
+      model.ui.selectedIdx - startIdx
+    else:
+      -1
+
   var intelTable = table(columns)
-    .selectedIdx(model.ui.selectedIdx)
+    .selectedIdx(selectedIdx)
     .zebraStripe(true)
 
-  for row in model.view.intelRows:
+  if startIdx >= endIdx:
+    intelTable.render(area, buf)
+    return
+
+  for i in startIdx ..< endIdx:
+    let row = model.view.intelRows[i]
     let dataRow = @[
       row.systemName,
       row.sectorLabel,
@@ -817,7 +832,6 @@ proc renderPlanetConstructionTab*(
         tableColumn("Cost", 6, table.Alignment.Right),
         tableColumn("Status", 10, table.Alignment.Left)
         ])
-        queueTable = queueTable.showSelector(false)
         for item in data.queue:
           let kindLabel =
             if item.kind == QueueKind.Construction: "Build" else: "Repair"
@@ -849,7 +863,6 @@ proc renderPlanetConstructionTab*(
         tableColumn("CST", 4, table.Alignment.Right),
         tableColumn("Kind", 8, table.Alignment.Left)
         ])
-        buildTable = buildTable.showSelector(false)
         for option in data.buildOptions:
           let kindLabel =
             case option.kind
@@ -1480,7 +1493,11 @@ proc renderMessagesModal*(canvas: Rect, buf: var CellBuffer,
   let modalArea = vm.calculateViewArea(canvas, contentHeight)
   vm.render(modalArea, buf)
   let innerArea = vm.innerArea(modalArea)
-  renderIntelDbTable(innerArea, buf, model, scroll)
+  var localScroll = scroll
+  localScroll.contentLength = model.view.intelRows.len
+  localScroll.viewportLength = max(0, innerArea.height - 2)
+  localScroll.clampOffsets()
+  renderIntelDbTable(innerArea, buf, model, localScroll)
 
 proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =

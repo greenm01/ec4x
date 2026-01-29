@@ -120,11 +120,10 @@ truncate long fields with ellipsis. Status bar uses shortened labels (OVR, PLN, 
 ### Navigation Hierarchy
 
 ```
-[1-9]           Switch primary views
+[Alt+Key]       Switch primary views
 [Tab/S-Tab]     Cycle focusable widgets within view
 [Enter]         Drill into selected item / confirm action
-[Backspace]     Step up breadcrumb history
-[Esc]           Cancel overlay / exit command mode
+[Esc]           Step up breadcrumb history / cancel overlay
 [?]             Show context help overlay
 [L]             Diplomatic matrix overlay (from Overview)
 ```
@@ -1408,12 +1407,12 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
 │ 3.Corvus   ★356  8 ●NEU  │ Neutral:3 Hostile:1 Enemy:1                       │
 │ 4.Lyra     ★298  7 ●NEU  │                                                   │
 │ 5.Aquila   ★201  5 ⚠HOS  │ ACTION QUEUE                                      │
-│ 6.Draco    ELIM  0 ☠     │ ⚠ 1 Idle shipyard             [2]                 │
-│ Map: 41/64 colonized     │ ⚠ 2 Fleets w/o orders         [3]                 │
-│ [L] Diplomatic matrix    │ ✉ 1 Unread report             [7]                 │
+│ 6.Draco    ELIM  0 ☠     │ ⚠ 1 Idle shipyard             [C]                 │
+│ Map: 41/64 colonized     │ ⚠ 2 Fleets w/o orders         [F]                 │
+│ [L] Diplomatic matrix    │ ✉ 1 Unread report             [R]                 │
 └──────────────────────────────────────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- [1-9] Views  [Q]Quit  [L]Diplo Matrix                        [:] Expert Mode
+ Alt+Key Views  [Alt+Q]Quit  [L]Diplo Matrix                  [:] Expert Mode
 ```
 
 ### Fleet List (80 columns)
