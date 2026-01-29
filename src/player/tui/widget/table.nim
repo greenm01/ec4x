@@ -50,6 +50,8 @@ type
     showHeader*: bool           ## Show header row
     showSeparator*: bool        ## Show separator line under header
     zebraStripe*: bool          ## Alternate row colors
+    cellPadding*: int           ## Cell padding (0 = no padding, 1 = 1 space each side)
+    showBorders*: bool          ## Render box borders and vertical separators
 
 # -----------------------------------------------------------------------------
 # Constructors
@@ -82,7 +84,9 @@ proc table*(columns: openArray[TableColumn]): Table =
     separatorStyle: canvasDimStyle(),
     showHeader: true,
     showSeparator: true,
-    zebraStripe: false
+    zebraStripe: false,
+    cellPadding: 1,
+    showBorders: true
   )
 
 # -----------------------------------------------------------------------------
@@ -151,6 +155,16 @@ proc alternateStyle*(t: Table, style: CellStyle): Table =
   result = t
   result.alternateStyle = style
 
+proc cellPadding*(t: Table, padding: int): Table =
+  ## Set cell padding (0 = no padding, 1 = 1 space each side).
+  result = t
+  result.cellPadding = padding
+
+proc showBorders*(t: Table, show: bool): Table =
+  ## Toggle rendering of box borders and vertical separators.
+  result = t
+  result.showBorders = show
+
 # -----------------------------------------------------------------------------
 # Column width calculation
 # -----------------------------------------------------------------------------
@@ -181,9 +195,10 @@ proc calculateColumnWidths*(t: Table, availableWidth: int): seq[int] =
       minAutoTotal += minWidth
       autoIndices.add(i)
   
-  # Account for borders and padding (box table)
-  let borderWidth = t.columns.len + 1  # vertical separators
-  let paddingWidth = t.columns.len * 2  # left/right padding per cell
+  # Account for borders/separators and padding
+  let borderWidth = if t.showBorders: t.columns.len + 1  # vertical separators including ends
+                    else: (if t.columns.len > 1: t.columns.len - 1 else: 0)  # single-space separators between columns when no borders
+  let paddingWidth = t.columns.len * (t.cellPadding * 2)  # left/right padding per cell
   let availableContent = availableWidth - borderWidth - paddingWidth
   if availableContent <= 0:
     for i in 0 ..< t.columns.len:
@@ -222,17 +237,83 @@ proc calculateColumnWidths*(t: Table, availableWidth: int): seq[int] =
         result[idx].inc
         extra.dec
 
+proc renderWidth*(t: Table, maxWidth: int): int =
+  ## Calculate rendered table width for a maximum width.
+  if t.columns.len == 0:
+    return 0
+  let available = max(1, maxWidth)
+  let colWidths = t.calculateColumnWidths(available)
+  var contentWidth = 0
+  for w in colWidths:
+    contentWidth += w
+  let paddingWidth = t.columns.len * (t.cellPadding * 2)
+  if t.showBorders:
+    result = contentWidth + paddingWidth + t.columns.len + 1
+  else:
+    result = contentWidth + paddingWidth + max(0, t.columns.len - 1)
+  result = min(result, available)
+
+proc renderHeight*(t: Table, rowCount: int): int =
+  ## Calculate rendered table height for a number of rows.
+  var height = 0
+  if t.showBorders:
+    height += 2
+  if t.showHeader:
+    height += 1
+    if t.showSeparator:
+      height += 1
+  height += max(0, rowCount)
+  height
+
 # -----------------------------------------------------------------------------
 # Text alignment helper
 # -----------------------------------------------------------------------------
 
+proc runeDisplayWidth(r: Rune): int =
+  ## Determine display width of a rune (1 or 2 for wide characters).
+  let c = int(r)
+  if c < 0x1100:
+    return 1
+  if (c >= 0x1100 and c <= 0x115F) or
+     (c >= 0x2329 and c <= 0x232A) or
+     (c >= 0x2E80 and c <= 0x303E) or
+     (c >= 0x3040 and c <= 0xA4CF) or
+     (c >= 0xAC00 and c <= 0xD7A3) or
+     (c >= 0xF900 and c <= 0xFAFF) or
+     (c >= 0xFE10 and c <= 0xFE19) or
+     (c >= 0xFE30 and c <= 0xFE6F) or
+     (c >= 0xFF00 and c <= 0xFF60) or
+     (c >= 0xFFE0 and c <= 0xFFE6) or
+     (c >= 0x1F000 and c <= 0x1FFFF) or
+     (c >= 0x20000 and c <= 0x3FFFF):
+    return 2
+  1
+
+proc textDisplayWidth(text: string): int =
+  ## Calculate display width for a string (rune-aware).
+  result = 0
+  for r in text.runes:
+    result += r.runeDisplayWidth()
+
+proc truncateToWidth(text: string, width: int): string =
+  ## Truncate string to display width (rune-aware).
+  if width <= 0:
+    return ""
+  var used = 0
+  for r in text.runes:
+    let w = r.runeDisplayWidth()
+    if used + w > width:
+      break
+    result.add(r.toUTF8)
+    used += w
+
 proc alignText(text: string, width: int, align: Alignment): string =
   ## Align text within a fixed width, truncating if needed.
-  let textLen = text.len
-  if textLen >= width:
-    return text[0 ..< width]
-  
-  let padding = width - textLen
+  let textWidth = text.textDisplayWidth()
+  if textWidth >= width:
+    return text.truncateToWidth(width)
+
+  let padding = width - textWidth
   case align
   of Alignment.Left:
     result = text & ' '.repeat(padding)
@@ -260,33 +341,59 @@ proc renderToStrings*(t: Table, width: int = 60): seq[string] =
     for i, w in colWidths:
       if i > 0:
         line.add(mid)
-      line.add("\u2500".repeat(w + 2))
+      line.add("\u2500".repeat(w + t.cellPadding * 2))
     line.add(right)
     line
 
-  result.add(borderLine("\u250c", "\u252c", "\u2510"))
+  if t.showBorders:
+    result.add(borderLine("\u250c", "\u252c", "\u2510"))
+  else:
+    # When borders are off, don't render top border. Keep content only.
+    discard
 
   if t.showHeader:
-    var headerLine = "\u2502"
+    var headerLine = if t.showBorders: "\u2502" else: ""
+    let pad = " ".repeat(t.cellPadding)
     for i, col in t.columns:
       let aligned = alignText(col.header, colWidths[i], col.align)
-      headerLine.add(" " & aligned & " ")
-      headerLine.add("\u2502")
+      headerLine.add(pad & aligned & pad)
+      if t.showBorders:
+        headerLine.add("\u2502")
+      else:
+        if i < t.columns.len - 1:
+          headerLine.add(" ")
     result.add(headerLine)
 
     if t.showSeparator:
-      result.add(borderLine("\u251c", "\u253c", "\u2524"))
+      if t.showBorders:
+        result.add(borderLine("\u251c", "\u253c", "\u2524"))
+      else:
+        # When borders are off, separator is just a blank line with dashes replaced by spaces
+        var sep = ""
+        for i, w in colWidths:
+          if i > 0:
+            sep.add(" ")
+          sep.add(" ".repeat(w + t.cellPadding * 2))
+        result.add(sep)
 
+  let pad = " ".repeat(t.cellPadding)
   for row in t.rows:
-    var rowLine = "\u2502"
+    var rowLine = if t.showBorders: "\u2502" else: ""
     for colIdx, col in t.columns:
       let cell = if colIdx < row.cells.len: row.cells[colIdx] else: ""
       let aligned = alignText(cell, colWidths[colIdx], col.align)
-      rowLine.add(" " & aligned & " ")
-      rowLine.add("\u2502")
+      rowLine.add(pad & aligned & pad)
+      if t.showBorders:
+        rowLine.add("\u2502")
+      else:
+        if colIdx < t.columns.len - 1:
+          rowLine.add(" ")
     result.add(rowLine)
 
-  result.add(borderLine("\u2514", "\u2534", "\u2518"))
+  if t.showBorders:
+    result.add(borderLine("\u2514", "\u2534", "\u2518"))
+  else:
+    discard
 
 # -----------------------------------------------------------------------------
 # Buffer rendering
@@ -316,36 +423,65 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
     if y >= area.bottom:
       discard
     else:
-      var x = area.x
-      putSegment(x, left, t.separatorStyle)
-      for i, w in colWidths:
-        for _ in 0 ..< w + 2:
-          putSegment(x, "\u2500", t.separatorStyle)
-        if i < colWidths.len - 1:
-          putSegment(x, mid, t.separatorStyle)
-      putSegment(x, right, t.separatorStyle)
+      if t.showBorders:
+        var x = area.x
+        putSegment(x, left, t.separatorStyle)
+        for i, w in colWidths:
+          for _ in 0 ..< w + (t.cellPadding * 2):
+            putSegment(x, "\u2500", t.separatorStyle)
+          if i < colWidths.len - 1:
+            putSegment(x, mid, t.separatorStyle)
+        putSegment(x, right, t.separatorStyle)
+      else:
+        # When borders are off, draw nothing for border lines but still advance y
+        discard
       y.inc
 
-  drawBorderLine("\u250c", "\u252c", "\u2510")
+  if t.showBorders:
+    drawBorderLine("\u250c", "\u252c", "\u2510")
+  else:
+    # No top border when borders are off; do not advance y here
+    discard
   if y >= area.bottom:
     return
 
   if t.showHeader:
     var x = area.x
-    putSegment(x, "\u2502", t.separatorStyle)
+    let pad = " ".repeat(t.cellPadding)
+    if t.showBorders:
+      putSegment(x, "\u2502", t.separatorStyle)
     for i, col in t.columns:
       let aligned = alignText(col.header, colWidths[i], col.align)
-      putSegment(x, " ", t.headerStyle)
+      putSegment(x, pad, t.headerStyle)
       putSegment(x, aligned, t.headerStyle)
-      putSegment(x, " ", t.headerStyle)
-      putSegment(x, "\u2502", t.separatorStyle)
+      putSegment(x, pad, t.headerStyle)
+      if t.showBorders:
+        putSegment(x, "\u2502", t.separatorStyle)
+      else:
+        if i < t.columns.len - 1:
+          putSegment(x, " ", t.headerStyle)
     y.inc
 
     if t.showSeparator:
-      drawBorderLine("\u251c", "\u253c", "\u2524")
-      if y >= area.bottom:
-        return
+      if t.showBorders:
+        drawBorderLine("\u251c", "\u253c", "\u2524")
+        if y >= area.bottom:
+          return
+      else:
+        # When borders are off, render a separator as a blank line composed of spaces
+        if y >= area.bottom:
+          return
+        var sx = area.x
+        for i, w in colWidths:
+          for _ in 0 ..< w + (t.cellPadding * 2):
+            putSegment(sx, " ", t.separatorStyle)
+          if i < colWidths.len - 1:
+            putSegment(sx, " ", t.separatorStyle)
+        y.inc
+        if y >= area.bottom:
+          return
 
+  let pad = " ".repeat(t.cellPadding)
   for rowIdx, row in t.rows:
     if y >= area.bottom:
       break
@@ -358,26 +494,51 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
     else:
       t.rowStyle
 
+    let innerSeparatorStyle =
+      if isSelected:
+        CellStyle(
+          fg: t.separatorStyle.fg,
+          bg: style.bg,
+          attrs: t.separatorStyle.attrs
+        )
+      else:
+        t.separatorStyle
+
     var x = area.x
-    putSegment(x, "\u2502", t.separatorStyle)
+    if t.showBorders:
+      putSegment(x, "\u2502", t.separatorStyle)
     for colIdx, col in t.columns:
       let cell = if colIdx < row.cells.len: row.cells[colIdx] else: ""
       let cellStyle =
-        if colIdx < row.cellStyles.len and row.cellStyles[colIdx].isSome:
+        if isSelected:
+          style
+        elif colIdx < row.cellStyles.len and row.cellStyles[colIdx].isSome:
           row.cellStyles[colIdx].get()
         else:
           style
       let aligned = alignText(cell, colWidths[colIdx], col.align)
-      putSegment(x, " ", cellStyle)
+      putSegment(x, pad, cellStyle)
       putSegment(x, aligned, cellStyle)
-      putSegment(x, " ", cellStyle)
-      putSegment(x, "\u2502", t.separatorStyle)
+      putSegment(x, pad, cellStyle)
+      if t.showBorders:
+        let borderStyle =
+          if isSelected and colIdx < t.columns.len - 1:
+            innerSeparatorStyle
+          else:
+            t.separatorStyle
+        putSegment(x, "\u2502", borderStyle)
+      else:
+        if colIdx < t.columns.len - 1:
+          putSegment(x, " ", cellStyle)
 
     y.inc
     if y >= area.bottom:
       break
 
-  drawBorderLine("\u2514", "\u2534", "\u2518")
+  if t.showBorders:
+    drawBorderLine("\u2514", "\u2534", "\u2518")
+  else:
+    discard
 
 # -----------------------------------------------------------------------------
 # Convenience constructors for common use cases

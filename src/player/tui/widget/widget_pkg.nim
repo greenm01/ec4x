@@ -29,6 +29,7 @@ import ./text_input
 import ./progress_bar
 import ./tabs
 import ./table
+import ./table_modal
 
 # Re-export everything
 export text_pkg
@@ -46,3 +47,4 @@ export text_input
 export progress_bar
 export tabs
 export table
+export table_modal

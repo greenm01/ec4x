@@ -18,6 +18,7 @@ import ../tui/widget/command_dock
 import ../tui/widget/status_bar
 import ../tui/widget/scrollbar
 import ../tui/widget/view_modal
+import ../tui/widget/table_modal
 import ../tui/widget/build_modal
 import ../tui/widget/hexmap/symbols
 import ../sam/bindings
@@ -302,37 +303,38 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
   let tableArea = rect(area.x, area.y, area.width, tableHeight)
   let columns = @[
-    tableColumn("System", 18, table.Alignment.Left),
-    tableColumn("Sector", 5, table.Alignment.Center),
-    tableColumn("Class", 5, table.Alignment.Left),
-    tableColumn("Res", 5, table.Alignment.Left),
-    tableColumn("Pop", 5, table.Alignment.Right),
-    tableColumn("IU", 5, table.Alignment.Right),
-    tableColumn("GCO", 6, table.Alignment.Right),
-    tableColumn("NCV", 6, table.Alignment.Right),
-    tableColumn("Growth", 7, table.Alignment.Right),
-    tableColumn("CD", 3, table.Alignment.Right),
-    tableColumn("RD", 3, table.Alignment.Right),
-    tableColumn("FLT", 3, table.Alignment.Right),
-    tableColumn("SB", 3, table.Alignment.Right),
-    tableColumn("GND", 3, table.Alignment.Right),
-    tableColumn("GB", 3, table.Alignment.Right),
-    tableColumn("SLD", 3, table.Alignment.Center),
-    tableColumn("Status", 0, table.Alignment.Left)
+    tableColumn("System", 14, table.Alignment.Left),
+    tableColumn("Sec", 4, table.Alignment.Center),
+    tableColumn("Cls", 3, table.Alignment.Center),
+    tableColumn("Res", 3, table.Alignment.Center),
+    tableColumn("Pop", 4, table.Alignment.Center),
+    tableColumn("IU", 4, table.Alignment.Center),
+    tableColumn("GCO", 5, table.Alignment.Center),
+    tableColumn("NCV", 5, table.Alignment.Center),
+    tableColumn("Δ", 5, table.Alignment.Center),
+    tableColumn("CD", 2, table.Alignment.Center),
+    tableColumn("RD", 2, table.Alignment.Center),
+    tableColumn("Flt", 2, table.Alignment.Center),
+    tableColumn("SB", 2, table.Alignment.Center),
+    tableColumn("A+M", 2, table.Alignment.Center),
+    tableColumn("GB", 2, table.Alignment.Center),
+    tableColumn("Sld", 3, table.Alignment.Center),
+    tableColumn("Status", 0, table.Alignment.Center, 4)
   ]
 
   var colonyTable = table(columns)
     .selectedIdx(model.ui.selectedIdx)
     .zebraStripe(true)
+    .showBorders(false)
 
   let statusColumn = columns.len - 1
   for row in model.view.planetsRows:
-    let popLabel = if row.pop.isSome: $row.pop.get else: "—"
-    let iuLabel = if row.iu.isSome: $row.iu.get else: "—"
-    let gcoLabel = if row.gco.isSome: $row.gco.get else: "—"
-    let ncvLabel = if row.ncv.isSome: $row.ncv.get else: "—"
-    let cdLabel = if row.cdTotal.isSome: $row.cdTotal.get else: "—"
-    let rdLabel = if row.rdTotal.isSome: $row.rdTotal.get else: "—"
+    let popLabel = if row.pop.isSome: $row.pop.get else: "-"
+    let iuLabel = if row.iu.isSome: $row.iu.get else: "-"
+    let gcoLabel = if row.gco.isSome: $row.gco.get else: "-"
+    let ncvLabel = if row.ncv.isSome: $row.ncv.get else: "-"
+    let cdLabel = if row.cdTotal.isSome: $row.cdTotal.get else: "-"
+    let rdLabel = if row.rdTotal.isSome: $row.rdTotal.get else: "-"
     let shieldLabel = if row.shieldPresent: "Y" else: "N"
 
     var statusStyle = normalStyle()
@@ -371,44 +373,56 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     let clipped = summary[0 ..< min(summary.len, area.width)]
     discard buf.setString(area.x, footerY, clipped, dimStyle())
 
-proc renderPlanetsTable*(area: Rect, buf: var CellBuffer,
-                         model: TuiModel, scroll: ScrollState) =
-  ## Render Colony table per spec
-  if area.isEmpty:
-    return
-
-  # 17 column layout per spec
+proc buildPlanetsTable*(model: TuiModel, scroll: ScrollState): Table =
+  ## Build Colony table per spec (boxed)
+  # 17 column layout per spec (compressed for modal width)
   let columns = @[
-    tableColumn("System", 18, table.Alignment.Left),
-    tableColumn("Sector", 5, table.Alignment.Center),
-    tableColumn("Class", 5, table.Alignment.Left),
-    tableColumn("Res", 5, table.Alignment.Left),
-    tableColumn("Pop", 5, table.Alignment.Right),
-    tableColumn("IU", 5, table.Alignment.Right),
-    tableColumn("GCO", 6, table.Alignment.Right),
-    tableColumn("NCV", 6, table.Alignment.Right),
-    tableColumn("Growth", 7, table.Alignment.Right),
-    tableColumn("CD", 3, table.Alignment.Right),
-    tableColumn("RD", 3, table.Alignment.Right),
-    tableColumn("FLT", 3, table.Alignment.Right),
-    tableColumn("SB", 3, table.Alignment.Right),
-    tableColumn("GND", 3, table.Alignment.Right),
-    tableColumn("GB", 3, table.Alignment.Right),
-    tableColumn("SLD", 3, table.Alignment.Center),
-    tableColumn("Status", 0, table.Alignment.Left)
+    tableColumn("System", 14, table.Alignment.Left),
+    tableColumn("Sec", 4, table.Alignment.Center),
+    tableColumn("Cls", 3, table.Alignment.Left),
+    tableColumn("Res", 3, table.Alignment.Left),
+    tableColumn("Pop", 4, table.Alignment.Right),
+    tableColumn("IU", 4, table.Alignment.Right),
+    tableColumn("GCO", 5, table.Alignment.Right),
+    tableColumn("NCV", 5, table.Alignment.Right),
+    tableColumn("Grw", 5, table.Alignment.Right),
+    tableColumn("CD", 2, table.Alignment.Right),
+    tableColumn("RD", 2, table.Alignment.Right),
+    tableColumn("Flt", 2, table.Alignment.Right),
+    tableColumn("SB", 2, table.Alignment.Right),
+    tableColumn("Gnd", 2, table.Alignment.Right),
+    tableColumn("Bat", 2, table.Alignment.Right),
+    tableColumn("Shd", 3, table.Alignment.Center),
+    tableColumn("Status", 4, table.Alignment.Left)
   ]
 
-  var planetsTable = table(columns)
-    .selectedIdx(model.ui.selectedIdx)
-    .zebraStripe(true)
+  let startIdx = scroll.verticalOffset
+  let endIdx = min(model.view.planetsRows.len,
+    startIdx + scroll.viewportLength)
+  let selectedIdx =
+    if model.ui.selectedIdx >= startIdx and
+        model.ui.selectedIdx < endIdx:
+      model.ui.selectedIdx - startIdx
+    else:
+      -1
 
-  for row in model.view.planetsRows:
+  result = table(columns)
+    .selectedIdx(selectedIdx)
+    .zebraStripe(true)
+    .showBorders(true)
+
+  if startIdx >= endIdx:
+    return
+
+  for i in startIdx ..< endIdx:
+    let row = model.view.planetsRows[i]
     let popLabel = if row.pop.isSome: $row.pop.get else: "—"
     let iuLabel = if row.iu.isSome: $row.iu.get else: "—"
     let gcoLabel = if row.gco.isSome: $row.gco.get else: "—"
     let ncvLabel = if row.ncv.isSome: $row.ncv.get else: "—"
     let cdLabel = if row.cdTotal.isSome: $row.cdTotal.get else: "—"
     let rdLabel = if row.rdTotal.isSome: $row.rdTotal.get else: "—"
+    let shieldLabel = if row.shieldPresent: "Y" else: "N"
 
     var statusStyle = normalStyle()
     var statusLabel = row.statusLabel
@@ -416,7 +430,6 @@ proc renderPlanetsTable*(area: Rect, buf: var CellBuffer,
       statusStyle = alertStyle()
       statusLabel = GlyphWarning & " " & statusLabel
 
-    let shieldLabel = if row.shieldPresent: "Y" else: "N"
     let dataRow = @[
       row.systemName,
       row.sectorLabel,
@@ -437,9 +450,7 @@ proc renderPlanetsTable*(area: Rect, buf: var CellBuffer,
       statusLabel
     ]
 
-    planetsTable.addRow(dataRow, statusStyle, 16)
-
-  planetsTable.render(area, buf)
+    result.addRow(dataRow, statusStyle, 16)
 
 proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
@@ -1416,20 +1427,29 @@ proc renderReportDetail*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
 proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
-  ## Render colony view as centered floating modal
-  let vm = newViewModal("COLONY").maxWidth(120).minWidth(100)
-  let contentHeight = model.view.planetsRows.len + 3
-  let modalArea = vm.calculateViewArea(canvas, contentHeight)
-  vm.render(modalArea, buf)
-  let innerArea = vm.innerArea(modalArea)
+  ## Render colony view as centered table modal
+  let tm = newTableModal("COLONY").maxWidth(148)
+
+  var baseTable = buildPlanetsTable(model, ScrollState())
+  let maxWidth = max(10, min(canvas.width - 2, tm.maxWidth))
+  let tableWidth = baseTable.renderWidth(maxWidth)
+
+  let totalRows = model.view.planetsRows.len
+  let baseHeight = baseTable.renderHeight(0)
+  let maxHeight = max(6, min(canvas.height - 2, totalRows + baseHeight))
+  let visibleRows = max(0, min(totalRows, maxHeight - baseHeight))
 
   # Create local copy for scroll calculations
   var localScroll = scroll
-  localScroll.contentLength = model.view.planetsRows.len
-  localScroll.viewportLength = innerArea.height - 2
+  localScroll.contentLength = totalRows
+  localScroll.viewportLength = visibleRows
   localScroll.clampOffsets()
 
-  renderPlanetsTable(innerArea, buf, model, localScroll)
+  let table = buildPlanetsTable(model, localScroll)
+  let tableHeight = table.renderHeight(visibleRows)
+  let modalArea = tm.calculateArea(canvas, tableWidth, tableHeight)
+
+  tm.render(modalArea, buf, table)
 
 proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
                         model: TuiModel, scroll: ScrollState) =
