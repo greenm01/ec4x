@@ -1,13 +1,13 @@
 ## Command Dock Widget
 ##
 ## The Command Dock is the bottom action bar showing:
-## - Primary row: View shortcuts [1-9] and [Ctrl-Q] quit
+## - Primary row: View shortcuts Alt+Key and Alt+Q quit
 ## - Context row: Dynamic actions based on current view
 ## - Expert mode indicator (: prompt when active)
 ##
 ## Layout (120 columns):
 ## ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-## [1]Ovrvw [2]Planets [3]Fleets [4]Research [5]Espionage [6]Economy [7]Reports...
+## [Alt-O]Ovrvw [Alt-C]Colony [Alt-F]Fleets [Alt-T]Tech [Alt-E]Espionage ...
 ## [M] Move  [P] Patrol  [H] Hold  [G] Guard                        [: ] Expert
 ##
 ## Reference: ec-style-layout.md Section 2 "Screen Regions"
@@ -21,7 +21,7 @@ export ec_palette
 type
   ViewTab* = object
     ## A view tab in the command dock
-    key*: char              ## Hotkey (1-9, Q)
+    key*: char              ## Hotkey (Alt+Key)
     label*: string          ## Short label
     isActive*: bool         ## Currently active view
   
@@ -83,17 +83,17 @@ proc setActiveView*(data: var CommandDockData, viewKey: char) =
 # =============================================================================
 
 proc standardViews*(): seq[ViewTab] =
-  ## Get the standard 9 views + Quit
+  ## Get the standard 9 views
   @[
-    ViewTab(key: '1', label: "Ovrvw", isActive: false),
-    ViewTab(key: '2', label: "Planets", isActive: false),
-    ViewTab(key: '3', label: "Fleets", isActive: false),
-    ViewTab(key: '4', label: "Research", isActive: false),
-    ViewTab(key: '5', label: "Espionage", isActive: false),
-    ViewTab(key: '6', label: "Economy", isActive: false),
-    ViewTab(key: '7', label: "Reports", isActive: false),
-    ViewTab(key: '8', label: "Msgs", isActive: false),
-    ViewTab(key: '9', label: "Settings", isActive: false),
+    ViewTab(key: 'o', label: "Ovrvw", isActive: false),
+    ViewTab(key: 'c', label: "Colony", isActive: false),
+    ViewTab(key: 'f', label: "Fleets", isActive: false),
+    ViewTab(key: 't', label: "Tech", isActive: false),
+    ViewTab(key: 'e', label: "Espionage", isActive: false),
+    ViewTab(key: 'g', label: "General", isActive: false),
+    ViewTab(key: 'r', label: "Reports", isActive: false),
+    ViewTab(key: 'i', label: "Intel", isActive: false),
+    ViewTab(key: 's', label: "Settings", isActive: false),
   ]
 
 proc overviewContextActions*(joinActive: bool): seq[ContextAction] =
@@ -130,7 +130,7 @@ proc planetDetailContextActions*(): seq[ContextAction] =
     ContextAction(key: "1-5", label: "Switch tab", enabled: true),
     ContextAction(key: "B", label: "Build", enabled: true),
     ContextAction(key: "G", label: "Garrison", enabled: true),
-    ContextAction(key: "Bksp", label: "Back", enabled: true),
+    ContextAction(key: "Esc", label: "Back", enabled: true),
   ]
 
 proc fleetsContextActions*(hasSelection: bool, 
@@ -165,7 +165,7 @@ proc fleetDetailContextActions*(): seq[ContextAction] =
     ContextAction(key: "R", label: "ROE", enabled: true),
     ContextAction(key: "J", label: "Join", enabled: true),
     ContextAction(key: "D", label: "Detach ships", enabled: true),
-    ContextAction(key: "Bksp", label: "Back", enabled: true),
+    ContextAction(key: "Esc", label: "Back", enabled: true),
   ]
 
 proc researchContextActions*(): seq[ContextAction] =
@@ -232,7 +232,7 @@ proc settingsContextActions*(): seq[ContextAction] =
     ContextAction(key: "Space", label: "Toggle", enabled: true),
     ContextAction(key: "Enter", label: "Change value", enabled: true),
     ContextAction(key: "R", label: "Reset to defaults", enabled: true),
-    ContextAction(key: "Bksp", label: "Back", enabled: true),
+    ContextAction(key: "Esc", label: "Back", enabled: true),
   ]
 
 proc orderEntryContextActions*(cmdType: int): seq[ContextAction] =
@@ -295,9 +295,9 @@ proc renderViewTabs*(area: Rect, buf: var CellBuffer, views: seq[ViewTab],
       discard buf.setString(x, y, view.label, normalStyle)
     x += view.label.len + 1
   
-  # [Ctrl-Q]uit at the end (right-aligned)
+  # [Alt-Q]uit at the end (right-aligned)
   if showQuit:
-    let quitLabel = "Ctrl-Q"
+    let quitLabel = "Alt-Q"
     let quitStr = "[" & quitLabel & "]Quit"
     let quitX = area.right - quitStr.len - 1
     if quitX > x + 2:
@@ -382,7 +382,7 @@ proc renderCommandDock*(area: Rect, buf: var CellBuffer,
   ##
   ## Layout:
   ##   Row 0: Separator line (━━━)
-  ##   Row 1: View tabs [1-9] [Ctrl-Q] quit
+  ##   Row 1: View tabs [Alt-Key] [Alt-Q] quit
   ##   Row 2: Context actions + Expert mode indicator
   ##
   
@@ -481,9 +481,9 @@ proc renderCommandDockCompact*(area: Rect, buf: var CellBuffer,
       discard buf.setString(x + 2, y0, "]", dimStyle)
       x += 3
     
-  # [Ctrl-Q] at end of row 0
+  # [Alt-Q] at end of row 0
   if data.showQuit:
-    let quitLabel = "^Q"
+    let quitLabel = "Alt-Q"
     let quitStr = "[" & quitLabel & "]"
     let quitX = area.right - quitStr.len - 1
     discard buf.setString(quitX, y0, "[", dimStyle)

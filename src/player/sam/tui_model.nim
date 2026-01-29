@@ -6,16 +6,16 @@
 ##
 ## The model is the single source of truth for the entire application.
 ##
-## EC4X TUI has 9 primary views accessible via number keys [1-9]:
-##   1. Overview   - Empire dashboard, leaderboard, alerts
-##   2. Planets    - Colony list and management
-##   3. Fleets     - Fleet console (system/list view)
-##   4. Research   - Tech levels, ERP/SRP/TRP allocation
-##   5. Espionage  - EBP/CIP budget, intel operations
-##   6. Economy    - Tax rate, treasury, income
-##   7. Reports    - Turn summaries, combat/intel reports
-##   8. Messages   - Diplomacy, inter-house communication
-##   9. Settings   - Display options, automation defaults
+## EC4X TUI has 9 primary views accessible via Alt+Key:
+##   Alt+O Overview - Empire dashboard, leaderboard, alerts
+##   Alt+C Colony   - Colony list and management
+##   Alt+F Fleets   - Fleet console (system/list view)
+##   Alt+T Tech     - Tech levels, ERP/SRP/TRP allocation
+##   Alt+E Espionage- EBP/CIP budget, intel operations
+##   Alt+G General  - Diplomacy, tax, empire policy
+##   Alt+R Reports  - Turn summaries, combat/intel reports
+##   Alt+I Intel DB - Starmap database (LTU-aware)
+##   Alt+S Settings - Display options, automation defaults
 
 import std/[options, tables, algorithm, strutils]
 import ../tui/widget/scroll_state
@@ -163,19 +163,19 @@ type
     queueScroll*: ScrollState
 
   ViewMode* {.pure.} = enum
-    ## Current UI view (maps to hotkey number)
+    ## Current UI view (maps to primary view number)
     ##
-    ## Primary views [1-9]:
-    Overview = 1      ## [1] Strategic dashboard
-    Planets = 2       ## [2] Colony management
-    Fleets = 3        ## [3] Fleet console
-    Research = 4      ## [4] Tech & research
-    Espionage = 5     ## [5] Intel operations
-    Economy = 6       ## [6] Tax & treasury
-    Reports = 7       ## [7] Turn reports
-    Messages = 8      ## [8] Diplomacy
-    Settings = 9      ## [9] Game settings
-    # Sub-views (not directly accessible via number keys)
+    ## Primary views:
+    Overview = 1      ## Alt+O Strategic dashboard
+    Planets = 2       ## Alt+C Colony management
+    Fleets = 3        ## Alt+F Fleet console
+    Research = 4      ## Alt+T Tech & research
+    Espionage = 5     ## Alt+E Intel operations
+    Economy = 6       ## Alt+G General (tax/diplomacy)
+    Reports = 7       ## Alt+R Turn reports
+    Messages = 8      ## Alt+I Intel database
+    Settings = 9      ## Alt+S Game settings
+    # Sub-views (not directly accessible via primary hotkeys)
     PlanetDetail = 20 ## Planet detail (Summary/Economy/Construction/etc.)
     FleetDetail = 30  ## Fleet detail view
     ReportDetail = 70 ## Report detail view
@@ -239,12 +239,11 @@ type
     owner*: int
 
   PlanetRow* = object
-    ## Planet/system row for Planets view table
+    ## Colony row for Colony view table (owned only)
     systemId*: int
     colonyId*: Option[int]
     systemName*: string
     sectorLabel*: string
-    ownerName*: string
     classLabel*: string
     resourceLabel*: string
     pop*: Option[int]
@@ -254,13 +253,27 @@ type
     growthLabel*: string
     cdTotal*: Option[int]
     rdTotal*: Option[int]
-    ltuLabel*: string
+    fleetCount*: int
+    starbaseCount*: int
+    groundCount*: int
+    batteryCount*: int
+    shieldPresent*: bool
     statusLabel*: string
     isOwned*: bool
     isHomeworld*: bool
     ring*: int
     coordLabel*: string
     hasAlert*: bool
+
+  IntelRow* = object
+    ## Intel DB row for starmap database
+    systemId*: int
+    systemName*: string
+    sectorLabel*: string
+    ownerName*: string
+    intelLabel*: string
+    ltuLabel*: string
+    notes*: string
 
   FleetInfo* = object
     ## Fleet info for list display
@@ -529,6 +542,7 @@ type
     systems*: Table[HexCoord, SystemInfo]
     colonies*: seq[ColonyInfo]
     planetsRows*: seq[PlanetRow]
+    intelRows*: seq[IntelRow]
     fleets*: seq[FleetInfo]
     commands*: seq[CommandInfo]
     reports*: seq[ReportEntry]
@@ -694,6 +708,7 @@ proc initTuiViewState*(): TuiViewState =
     systems: initTable[HexCoord, SystemInfo](),
     colonies: @[],
     planetsRows: @[],
+    intelRows: @[],
     fleets: @[],
     commands: @[],
     reports: @[
@@ -916,7 +931,7 @@ proc currentListLength*(model: TuiModel): int =
   of ViewMode.Espionage: 0  # Espionage operations list (TODO)
   of ViewMode.Economy: 0   # Economy has no list
   of ViewMode.Reports: model.filteredReports().len
-  of ViewMode.Messages: 0  # TODO: messages list
+  of ViewMode.Messages: model.view.intelRows.len
   of ViewMode.Settings: 0  # TODO: settings list
   of ViewMode.PlanetDetail: 0
   of ViewMode.FleetDetail: 0
@@ -978,49 +993,49 @@ proc ownedColonyCoords*(model: TuiModel): seq[HexCoord] =
 proc viewModeKey*(mode: ViewMode): char =
   ## Get the hotkey for a view mode
   case mode
-  of ViewMode.Overview: '1'
-  of ViewMode.Planets: '2'
-  of ViewMode.Fleets: '3'
-  of ViewMode.Research: '4'
-  of ViewMode.Espionage: '5'
-  of ViewMode.Economy: '6'
-  of ViewMode.Reports: '7'
-  of ViewMode.Messages: '8'
-  of ViewMode.Settings: '9'
-  of ViewMode.PlanetDetail, ViewMode.FleetDetail, ViewMode.ReportDetail: '0'
+  of ViewMode.Overview: 'o'
+  of ViewMode.Planets: 'c'
+  of ViewMode.Fleets: 'f'
+  of ViewMode.Research: 't'
+  of ViewMode.Espionage: 'e'
+  of ViewMode.Economy: 'g'
+  of ViewMode.Reports: 'r'
+  of ViewMode.Messages: 'i'
+  of ViewMode.Settings: 's'
+  of ViewMode.PlanetDetail, ViewMode.FleetDetail, ViewMode.ReportDetail: 'o'
 
 proc viewModeLabel*(mode: ViewMode): string =
   ## Get the display label for a view mode
   case mode
   of ViewMode.Overview: "Overview"
-  of ViewMode.Planets: "Planets"
+  of ViewMode.Planets: "Colony"
   of ViewMode.Fleets: "Fleets"
-  of ViewMode.Research: "Research"
+  of ViewMode.Research: "Tech"
   of ViewMode.Espionage: "Espionage"
-  of ViewMode.Economy: "Economy"
+  of ViewMode.Economy: "General"
   of ViewMode.Reports: "Reports"
-  of ViewMode.Messages: "Messages"
+  of ViewMode.Messages: "Intel DB"
   of ViewMode.Settings: "Settings"
-  of ViewMode.PlanetDetail: "Planet"
+  of ViewMode.PlanetDetail: "Colony"
   of ViewMode.FleetDetail: "Fleet"
   of ViewMode.ReportDetail: "Report"
 
 proc viewModeFromKey*(key: char): Option[ViewMode] =
   ## Get view mode from hotkey
   case key
-  of '1': some(ViewMode.Overview)
-  of '2': some(ViewMode.Planets)
-  of '3': some(ViewMode.Fleets)
-  of '4': some(ViewMode.Research)
-  of '5': some(ViewMode.Espionage)
-  of '6': some(ViewMode.Economy)
-  of '7': some(ViewMode.Reports)
-  of '8': some(ViewMode.Messages)
-  of '9': some(ViewMode.Settings)
+  of 'o', 'O': some(ViewMode.Overview)
+  of 'c', 'C': some(ViewMode.Planets)
+  of 'f', 'F': some(ViewMode.Fleets)
+  of 't', 'T': some(ViewMode.Research)
+  of 'e', 'E': some(ViewMode.Espionage)
+  of 'g', 'G': some(ViewMode.Economy)
+  of 'r', 'R': some(ViewMode.Reports)
+  of 'i', 'I': some(ViewMode.Messages)
+  of 's', 'S': some(ViewMode.Settings)
   else: none(ViewMode)
 
 proc isPrimaryView*(mode: ViewMode): bool =
-  ## Check if mode is a primary view (accessible via number keys)
+  ## Check if mode is a primary view (accessible via Alt+Key)
   mode in {ViewMode.Overview, ViewMode.Planets, ViewMode.Fleets,
            ViewMode.Research, ViewMode.Espionage, ViewMode.Economy,
            ViewMode.Reports, ViewMode.Messages, ViewMode.Settings}

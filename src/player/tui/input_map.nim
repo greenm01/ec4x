@@ -12,6 +12,13 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
 
   # Map key to KeyCode
   var keyCode = KeyCode.KeyNone
+  var modifier = KeyModifier.None
+  if (event.modifiers and ModAlt) != ModNone:
+    modifier = KeyModifier.Alt
+  elif (event.modifiers and ModCtrl) != ModNone:
+    modifier = KeyModifier.Ctrl
+  elif (event.modifiers and ModShift) != ModNone:
+    modifier = KeyModifier.Shift
 
   case event.key
   of Key.Rune:
@@ -20,7 +27,7 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
           model.ui.entryModal.mode == EntryModalMode.Normal and
           model.ui.entryModal.focus == EntryModalFocus.InviteCode:
         return some(actionEntryInviteSubmit())
-      return mapKeyToAction(KeyCode.KeyEnter, model)
+        return mapKeyToAction(KeyCode.KeyEnter, modifier, model)
     else:
       if not model.ui.quitConfirmationActive:
         if model.ui.expertModeActive:
@@ -149,8 +156,6 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     keyCode = KeyCode.KeyCtrlL
   of Key.CtrlE:
     keyCode = KeyCode.KeyCtrlE
-  of Key.CtrlQ:
-    keyCode = KeyCode.KeyCtrlQ
   of Key.Home:
     keyCode = KeyCode.KeyHome
   of Key.Backspace:
@@ -163,4 +168,4 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     discard
 
   # Use SAM action mapper
-  mapKeyToAction(keyCode, model)
+  mapKeyToAction(keyCode, modifier, model)

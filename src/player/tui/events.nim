@@ -27,7 +27,7 @@ type
     # Control keys (Ctrl+Letter)
     CtrlA, CtrlB, CtrlC, CtrlD, CtrlE, CtrlF, CtrlG
     CtrlH, CtrlI, CtrlJ, CtrlK, CtrlL, CtrlM, CtrlN
-    CtrlO, CtrlP, CtrlQ, CtrlR, CtrlS, CtrlT, CtrlU
+    CtrlO, CtrlP, CtrlR, CtrlS, CtrlT, CtrlU
     CtrlV, CtrlW, CtrlX, CtrlY, CtrlZ
 
   ModMask* = distinct uint8
@@ -158,7 +158,6 @@ proc name*(key: Key): string =
   of Key.CtrlN: "Ctrl-N"
   of Key.CtrlO: "Ctrl-O"
   of Key.CtrlP: "Ctrl-P"
-  of Key.CtrlQ: "Ctrl-Q"
   of Key.CtrlR: "Ctrl-R"
   of Key.CtrlS: "Ctrl-S"
   of Key.CtrlT: "Ctrl-T"

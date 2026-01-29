@@ -1,7 +1,7 @@
 ## Breadcrumb Widget
 ##
 ## Displays navigation path showing where the player is in the UI hierarchy.
-## Players can press Backspace to navigate up the breadcrumb trail.
+## Players can press Esc to navigate up the breadcrumb trail.
 ##
 ## Layout:
 ##   Home > Planets > Bigun > Economy
@@ -74,16 +74,16 @@ proc overviewBreadcrumb*(): BreadcrumbData =
   result.add("Home", 1)
 
 proc planetsBreadcrumb*(): BreadcrumbData =
-  ## Breadcrumb for Planets list (View 2)
+  ## Breadcrumb for Colony list (View 2)
   result = initBreadcrumbData()
   result.add("Home", 1)
-  result.add("Planets", 2)
+  result.add("Colony", 2)
 
 proc planetDetailBreadcrumb*(colonyName: string, colonyId: int): BreadcrumbData =
   ## Breadcrumb for Planet detail view
   result = initBreadcrumbData()
   result.add("Home", 1)
-  result.add("Planets", 2)
+  result.add("Colony", 2)
   result.add(colonyName, 0, colonyId)
 
 proc planetTabBreadcrumb*(colonyName: string, colonyId: int, 
@@ -91,7 +91,7 @@ proc planetTabBreadcrumb*(colonyName: string, colonyId: int,
   ## Breadcrumb for Planet detail tab (Economy, Construction, etc.)
   result = initBreadcrumbData()
   result.add("Home", 1)
-  result.add("Planets", 2)
+  result.add("Colony", 2)
   result.add(colonyName, 0, colonyId)
   result.add(tabName, 0)
 
@@ -109,10 +109,10 @@ proc fleetDetailBreadcrumb*(fleetName: string, fleetId: int): BreadcrumbData =
   result.add(fleetName, 0, fleetId)
 
 proc researchBreadcrumb*(): BreadcrumbData =
-  ## Breadcrumb for Research (View 4)
+  ## Breadcrumb for Tech (View 4)
   result = initBreadcrumbData()
   result.add("Home", 1)
-  result.add("Research", 4)
+  result.add("Tech", 4)
 
 proc espionageBreadcrumb*(): BreadcrumbData =
   ## Breadcrumb for Espionage (View 5)
@@ -121,10 +121,10 @@ proc espionageBreadcrumb*(): BreadcrumbData =
   result.add("Espionage", 5)
 
 proc economyBreadcrumb*(): BreadcrumbData =
-  ## Breadcrumb for Economy (View 6)
+  ## Breadcrumb for General (View 6)
   result = initBreadcrumbData()
   result.add("Home", 1)
-  result.add("Economy", 6)
+  result.add("General", 6)
 
 proc reportsBreadcrumb*(): BreadcrumbData =
   ## Breadcrumb for Reports (View 7)
@@ -133,10 +133,10 @@ proc reportsBreadcrumb*(): BreadcrumbData =
   result.add("Reports", 7)
 
 proc messagesBreadcrumb*(): BreadcrumbData =
-  ## Breadcrumb for Messages (View 8)
+  ## Breadcrumb for Intel DB (View 8)
   result = initBreadcrumbData()
   result.add("Home", 1)
-  result.add("Messages", 8)
+  result.add("Intel DB", 8)
 
 proc settingsBreadcrumb*(): BreadcrumbData =
   ## Breadcrumb for Settings (View 9)

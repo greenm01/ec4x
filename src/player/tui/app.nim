@@ -1199,14 +1199,14 @@ Options:
   --clean-cache[=mode]  Clear cache (all|games|game:<id>)
   --help, -h            Show this help message
 
-Controls:
-  [1-9]    Switch views
-  [Ctrl-Q] Quit
-  [Esc]    Back
-  [C]      Colonies view
-  [F]      Fleets view
-  [M]      Map view
-  [:]      Expert mode (vim-style commands)
+  Controls:
+    Alt+Key  Switch views
+    Alt+Q    Quit
+    Esc      Back
+    Alt+C    Colony view
+    Alt+F    Fleet view
+    Alt+O    Overview
+    :        Expert mode (vim-style commands)
 
 See docs/tools/ec4x-play.md for full documentation.
 """)

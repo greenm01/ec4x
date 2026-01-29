@@ -50,7 +50,7 @@ proc actionSwitchMode*(mode: ViewMode): Proposal =
   )
 
 proc actionSwitchView*(viewNum: int): Proposal =
-  ## Switch to primary view by number [1-9]
+  ## Switch to primary view (mapped from Alt+Key)
   ## This resets breadcrumbs to the primary view level
   Proposal(
     kind: ProposalKind.pkNavigation,
@@ -963,5 +963,4 @@ type
       # Special
       KeyColon  # Expert mode trigger
       KeyCtrlE  # Turn submission
-      KeyCtrlQ
       KeyCtrlL

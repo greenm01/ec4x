@@ -301,132 +301,10 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     return
 
   let tableArea = rect(area.x, area.y, area.width, tableHeight)
-  let compact = tableArea.width < 100
-  var columns: seq[TableColumn] = @[]
-  if compact:
-    columns = @[
-      tableColumn("Colony", 16, table.Alignment.Left),
-      tableColumn("Sec", 4, table.Alignment.Left),
-      tableColumn("Class", 6, table.Alignment.Left),
-      tableColumn("Pop", 4, table.Alignment.Right),
-      tableColumn("GCO", 5, table.Alignment.Right),
-      tableColumn("NCV", 5, table.Alignment.Right),
-      tableColumn("CDK", 5, table.Alignment.Right),
-      tableColumn("RDK", 5, table.Alignment.Right),
-      tableColumn("Status", 10, table.Alignment.Left)
-    ]
-  else:
-    columns = @[
-      tableColumn("Colony", 18, table.Alignment.Left),
-      tableColumn("Sector", 6, table.Alignment.Left),
-      tableColumn("Class", 8, table.Alignment.Left),
-      tableColumn("Pop", 5, table.Alignment.Right),
-      tableColumn("IU", 5, table.Alignment.Right),
-      tableColumn("GCO", 6, table.Alignment.Right),
-      tableColumn("NCV", 6, table.Alignment.Right),
-      tableColumn("Growth", 7, table.Alignment.Right),
-      tableColumn("CDK", 7, table.Alignment.Right),
-      tableColumn("RDK", 7, table.Alignment.Right),
-      tableColumn("Status", 12, table.Alignment.Left)
-    ]
-
-  var colonyTable = table(columns)
-    .selectedIdx(model.ui.selectedIdx)
-    .zebraStripe(true)
-
-  let statusColumn = columns.len - 1
-  var totalGco = 0
-  var totalNcv = 0
-  var idleCount = 0
-  for colony in model.view.colonies:
-    totalGco += colony.grossOutput
-    totalNcv += colony.netValue
-    if colony.idleConstruction:
-      idleCount.inc
-
-    let constructionLabel = dockLabel(
-      colony.constructionDockAvailable,
-      colony.constructionDockTotal
-    )
-    let repairLabel = dockLabel(
-      colony.repairDockAvailable,
-      colony.repairDockTotal
-    )
-    let classLabel =
-      if colony.planetClass >= 0 and
-          colony.planetClass < PlanetClassNames.len:
-        PlanetClassNames[colony.planetClass]
-      else:
-        "Unknown"
-    let growthLabel = formatGrowthLabel(colony.populationGrowthPu)
-
-    var statusLabel = GlyphOk
-    var statusStyle = normalStyle()
-    if colony.blockaded:
-      statusLabel = GlyphWarning & " Blockade"
-      statusStyle = alertStyle()
-    elif colony.idleConstruction:
-      statusLabel = GlyphWarning & " Idle"
-      statusStyle = alertStyle()
-
-    var row: seq[string] = @[]
-    if compact:
-      row = @[
-        colony.systemName,
-        colony.sectorLabel,
-        classLabel,
-        $colony.populationUnits,
-        $colony.grossOutput,
-        $colony.netValue,
-        constructionLabel,
-        repairLabel,
-        statusLabel
-      ]
-    else:
-      row = @[
-        colony.systemName,
-        colony.sectorLabel,
-        classLabel,
-        $colony.populationUnits,
-        $colony.industrialUnits,
-        $colony.grossOutput,
-        $colony.netValue,
-        growthLabel,
-        constructionLabel,
-        repairLabel,
-        statusLabel
-      ]
-
-    colonyTable.addRow(row, statusStyle, statusColumn)
-
-  colonyTable.render(tableArea, buf)
-
-  if footerHeight > 0 and area.height > 1:
-    let footerY = area.y + tableHeight
-    let taxLabel = if model.view.houseTaxRate > 0:
-                     $model.view.houseTaxRate & "% tax"
-                   else:
-                     "tax n/a"
-    let summary =
-      $model.view.colonies.len & " colonies  |  GHO: " & $totalGco &
-      " PP  |  NHV: " & $totalNcv &
-      " PP (" & taxLabel & ")  |  " &
-      $idleCount & " idle"
-    let clipped = summary[0 ..< min(summary.len, area.width)]
-    discard buf.setString(area.x, footerY, clipped, dimStyle())
-
-proc renderPlanetsTable*(area: Rect, buf: var CellBuffer,
-                         model: TuiModel, scroll: ScrollState) =
-  ## Render Planets table per spec: 14 columns, box borders, scrolling
-  if area.isEmpty:
-    return
-
-  # 14 column layout per spec
   let columns = @[
     tableColumn("System", 18, table.Alignment.Left),
     tableColumn("Sector", 5, table.Alignment.Center),
-    tableColumn("Owner", 10, table.Alignment.Left),
-    tableColumn("Class", 7, table.Alignment.Left),
+    tableColumn("Class", 5, table.Alignment.Left),
     tableColumn("Res", 5, table.Alignment.Left),
     tableColumn("Pop", 5, table.Alignment.Right),
     tableColumn("IU", 5, table.Alignment.Right),
@@ -435,8 +313,89 @@ proc renderPlanetsTable*(area: Rect, buf: var CellBuffer,
     tableColumn("Growth", 7, table.Alignment.Right),
     tableColumn("CD", 3, table.Alignment.Right),
     tableColumn("RD", 3, table.Alignment.Right),
-    tableColumn("LTU", 4, table.Alignment.Right),
-    tableColumn("Status", 0, table.Alignment.Left)  # Fill remaining space
+    tableColumn("FLT", 3, table.Alignment.Right),
+    tableColumn("SB", 3, table.Alignment.Right),
+    tableColumn("GND", 3, table.Alignment.Right),
+    tableColumn("GB", 3, table.Alignment.Right),
+    tableColumn("SLD", 3, table.Alignment.Center),
+    tableColumn("Status", 0, table.Alignment.Left)
+  ]
+
+  var colonyTable = table(columns)
+    .selectedIdx(model.ui.selectedIdx)
+    .zebraStripe(true)
+
+  let statusColumn = columns.len - 1
+  for row in model.view.planetsRows:
+    let popLabel = if row.pop.isSome: $row.pop.get else: "—"
+    let iuLabel = if row.iu.isSome: $row.iu.get else: "—"
+    let gcoLabel = if row.gco.isSome: $row.gco.get else: "—"
+    let ncvLabel = if row.ncv.isSome: $row.ncv.get else: "—"
+    let cdLabel = if row.cdTotal.isSome: $row.cdTotal.get else: "—"
+    let rdLabel = if row.rdTotal.isSome: $row.rdTotal.get else: "—"
+    let shieldLabel = if row.shieldPresent: "Y" else: "N"
+
+    var statusStyle = normalStyle()
+    var statusLabel = row.statusLabel
+    if row.hasAlert:
+      statusStyle = alertStyle()
+      statusLabel = GlyphWarning & " " & statusLabel
+
+    let dataRow = @[
+      row.systemName,
+      row.sectorLabel,
+      row.classLabel,
+      row.resourceLabel,
+      popLabel,
+      iuLabel,
+      gcoLabel,
+      ncvLabel,
+      row.growthLabel,
+      cdLabel,
+      rdLabel,
+      $row.fleetCount,
+      $row.starbaseCount,
+      $row.groundCount,
+      $row.batteryCount,
+      shieldLabel,
+      statusLabel
+    ]
+
+    colonyTable.addRow(dataRow, statusStyle, statusColumn)
+
+  colonyTable.render(tableArea, buf)
+
+  if footerHeight > 0 and area.height > 1:
+    let footerY = area.y + tableHeight
+    let summary = $model.view.planetsRows.len & " colonies"
+    let clipped = summary[0 ..< min(summary.len, area.width)]
+    discard buf.setString(area.x, footerY, clipped, dimStyle())
+
+proc renderPlanetsTable*(area: Rect, buf: var CellBuffer,
+                         model: TuiModel, scroll: ScrollState) =
+  ## Render Colony table per spec
+  if area.isEmpty:
+    return
+
+  # 17 column layout per spec
+  let columns = @[
+    tableColumn("System", 18, table.Alignment.Left),
+    tableColumn("Sector", 5, table.Alignment.Center),
+    tableColumn("Class", 5, table.Alignment.Left),
+    tableColumn("Res", 5, table.Alignment.Left),
+    tableColumn("Pop", 5, table.Alignment.Right),
+    tableColumn("IU", 5, table.Alignment.Right),
+    tableColumn("GCO", 6, table.Alignment.Right),
+    tableColumn("NCV", 6, table.Alignment.Right),
+    tableColumn("Growth", 7, table.Alignment.Right),
+    tableColumn("CD", 3, table.Alignment.Right),
+    tableColumn("RD", 3, table.Alignment.Right),
+    tableColumn("FLT", 3, table.Alignment.Right),
+    tableColumn("SB", 3, table.Alignment.Right),
+    tableColumn("GND", 3, table.Alignment.Right),
+    tableColumn("GB", 3, table.Alignment.Right),
+    tableColumn("SLD", 3, table.Alignment.Center),
+    tableColumn("Status", 0, table.Alignment.Left)
   ]
 
   var planetsTable = table(columns)
@@ -457,10 +416,10 @@ proc renderPlanetsTable*(area: Rect, buf: var CellBuffer,
       statusStyle = alertStyle()
       statusLabel = GlyphWarning & " " & statusLabel
 
+    let shieldLabel = if row.shieldPresent: "Y" else: "N"
     let dataRow = @[
       row.systemName,
       row.sectorLabel,
-      row.ownerName,
       row.classLabel,
       row.resourceLabel,
       popLabel,
@@ -470,13 +429,49 @@ proc renderPlanetsTable*(area: Rect, buf: var CellBuffer,
       row.growthLabel,
       cdLabel,
       rdLabel,
-      row.ltuLabel,
+      $row.fleetCount,
+      $row.starbaseCount,
+      $row.groundCount,
+      $row.batteryCount,
+      shieldLabel,
       statusLabel
     ]
 
-    planetsTable.addRow(dataRow, statusStyle, 13)  # Status column for style
+    planetsTable.addRow(dataRow, statusStyle, 16)
 
   planetsTable.render(area, buf)
+
+proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
+                         model: TuiModel, scroll: ScrollState) =
+  ## Render Intel DB table (starmap database)
+  if area.isEmpty:
+    return
+
+  let columns = @[
+    tableColumn("System", 18, table.Alignment.Left),
+    tableColumn("Sector", 5, table.Alignment.Center),
+    tableColumn("Owner", 10, table.Alignment.Left),
+    tableColumn("Intel", 6, table.Alignment.Left),
+    tableColumn("LTU", 4, table.Alignment.Right),
+    tableColumn("Notes", 0, table.Alignment.Left)
+  ]
+
+  var intelTable = table(columns)
+    .selectedIdx(model.ui.selectedIdx)
+    .zebraStripe(true)
+
+  for row in model.view.intelRows:
+    let dataRow = @[
+      row.systemName,
+      row.sectorLabel,
+      row.ownerName,
+      row.intelLabel,
+      row.ltuLabel,
+      row.notes
+    ]
+    intelTable.addRow(dataRow)
+
+  intelTable.render(area, buf)
 
 proc renderFleetList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render list of player's fleets from SAM model
@@ -1398,7 +1393,7 @@ proc renderReportDetail*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   renderScrollbar(detailInner, buf, detailScrollbar,
     ScrollbarOrientation.VerticalRight)
 
-  let hintLine = "Enter: Jump  Backspace: Inbox"
+  let hintLine = "Enter: Jump  Esc: Inbox"
   discard buf.setString(detailInner.x, detailInner.bottom - 1,
     hintLine, dimStyle)
 
@@ -1408,8 +1403,8 @@ proc renderReportDetail*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
 proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
-  ## Render planets view as centered floating modal
-  let vm = newViewModal("PLANETS").maxWidth(120).minWidth(100)
+  ## Render colony view as centered floating modal
+  let vm = newViewModal("COLONY").maxWidth(120).minWidth(100)
   let contentHeight = model.view.planetsRows.len + 3
   let modalArea = vm.calculateViewArea(canvas, contentHeight)
   vm.render(modalArea, buf)
@@ -1436,13 +1431,13 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
 proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
   ## Render research view as centered floating modal
-  let vm = newViewModal("RESEARCH PROGRESS").maxWidth(120).minWidth(80)
+  let vm = newViewModal("TECH PROGRESS").maxWidth(120).minWidth(80)
   let contentHeight = 15
   let modalArea = vm.calculateViewArea(canvas, contentHeight)
   vm.render(modalArea, buf)
   let innerArea = vm.innerArea(modalArea)
   discard buf.setString(innerArea.x, innerArea.y,
-    "Research view (TODO)", dimStyle())
+    "Tech view (TODO)", dimStyle())
 
 proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
                            model: TuiModel, scroll: ScrollState) =
@@ -1457,14 +1452,14 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
 
 proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
-  ## Render economy view as centered floating modal
-  let vm = newViewModal("TREASURY & INCOME").maxWidth(120).minWidth(80)
+  ## Render general view as centered floating modal
+  let vm = newViewModal("GENERAL POLICY").maxWidth(120).minWidth(80)
   let contentHeight = 12
   let modalArea = vm.calculateViewArea(canvas, contentHeight)
   vm.render(modalArea, buf)
   let innerArea = vm.innerArea(modalArea)
   discard buf.setString(innerArea.x, innerArea.y,
-    "Economy view (TODO)", dimStyle())
+    "General view (TODO)", dimStyle())
 
 proc renderReportsModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
@@ -1479,14 +1474,13 @@ proc renderReportsModal*(canvas: Rect, buf: var CellBuffer,
 
 proc renderMessagesModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
-  ## Render messages view as centered floating modal
-  let vm = newViewModal("DIPLOMATIC MESSAGES").maxWidth(120).minWidth(80)
-  let contentHeight = 12
+  ## Render Intel DB view as centered floating modal
+  let vm = newViewModal("INTEL DATABASE").maxWidth(120).minWidth(90)
+  let contentHeight = max(12, model.view.intelRows.len + 3)
   let modalArea = vm.calculateViewArea(canvas, contentHeight)
   vm.render(modalArea, buf)
   let innerArea = vm.innerArea(modalArea)
-  discard buf.setString(innerArea.x, innerArea.y,
-    "Messages view (TODO)", dimStyle())
+  renderIntelDbTable(innerArea, buf, model, scroll)
 
 proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
@@ -1532,11 +1526,11 @@ proc renderListPanel*(
     of ViewMode.Overview: "Empire Status"
     of ViewMode.Planets: "Your Colonies"
     of ViewMode.Fleets: "Your Fleets"
-    of ViewMode.Research: "Research Progress"
+    of ViewMode.Research: "Tech Progress"
     of ViewMode.Espionage: "Intel Operations"
-    of ViewMode.Economy: "Treasury & Income"
+    of ViewMode.Economy: "General Policy"
     of ViewMode.Reports: "Reports Inbox"
-    of ViewMode.Messages: "Diplomatic Messages"
+    of ViewMode.Messages: "Intel Database"
     of ViewMode.Settings: "Game Settings"
     of ViewMode.PlanetDetail: "Planet Info"
     of ViewMode.FleetDetail: "Fleet Info"
@@ -1563,25 +1557,25 @@ proc renderListPanel*(
       "Fleets: " & $model.view.fleets.len, normalStyle())
     y += 2
     discard buf.setString(inner.x, y,
-      "[1-9] Switch views  [Ctrl-Q] Quit  [J] Join", dimStyle())
+      "Alt+Key Switch views  Alt+Q Quit  [J] Join", dimStyle())
   of ViewMode.Planets:
     renderColonyList(inner, buf, model)
   of ViewMode.Fleets:
     renderFleetList(inner, buf, model)
   of ViewMode.Research:
     discard buf.setString(inner.x, inner.y,
-      "Research view (TODO)", dimStyle())
+      "Tech view (TODO)", dimStyle())
   of ViewMode.Espionage:
     discard buf.setString(inner.x, inner.y,
       "Espionage view (TODO)", dimStyle())
   of ViewMode.Economy:
     discard buf.setString(inner.x, inner.y,
-      "Economy view (TODO)", dimStyle())
+      "General view (TODO)", dimStyle())
   of ViewMode.Reports:
     renderReportsList(inner, buf, model)
   of ViewMode.Messages:
     discard buf.setString(inner.x, inner.y,
-      "Messages view (TODO)", dimStyle())
+      "Intel DB view (TODO)", dimStyle())
   of ViewMode.Settings:
     discard buf.setString(inner.x, inner.y,
       "Settings view (TODO)", dimStyle())
@@ -1625,18 +1619,15 @@ proc buildBreadcrumbData*(model: TuiModel): BreadcrumbData =
 
 proc activeViewKey*(mode: ViewMode): char =
   ## Map view mode to dock key
-  let modeInt = int(mode)
-  if modeInt >= 1 and modeInt <= 9:
-    return chr(ord('0') + modeInt)
   case mode
   of ViewMode.PlanetDetail:
-    return '2'
+    return ViewMode.Planets.viewModeKey
   of ViewMode.FleetDetail:
-    return '3'
+    return ViewMode.Fleets.viewModeKey
   of ViewMode.ReportDetail:
-    return '7'
+    return ViewMode.Reports.viewModeKey
   else:
-    return '1'
+    return mode.viewModeKey
 
 proc buildCommandDockData*(model: TuiModel): CommandDockData =
   ## Build command dock data from TUI model

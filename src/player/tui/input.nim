@@ -166,7 +166,6 @@ proc parseControlChar(b: byte): Event =
   of 0x0E: newKeyEvent(Key.CtrlN)
   of 0x0F: newKeyEvent(Key.CtrlO)
   of 0x10: newKeyEvent(Key.CtrlP)
-  of 0x11: newKeyEvent(Key.CtrlQ)
   of 0x12: newKeyEvent(Key.CtrlR)
   of 0x13: newKeyEvent(Key.CtrlS)
   of 0x14: newKeyEvent(Key.CtrlT)

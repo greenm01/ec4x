@@ -49,7 +49,7 @@ type
     BuildModal    ## Build command modal
 
   Binding* = object
-    key*: KeyCode
+    key*: actions.KeyCode
     modifier*: KeyModifier
     actionKind*: ActionKind   ## Enum-based action identifier
     longLabel*: string        ## Full label: "VIEW COLONY"
@@ -102,7 +102,10 @@ proc registerBinding*(b: Binding) =
   ## Legacy overload for Binding constructor
   gBindings.add(b)
 
-proc registerBinding*(key: KeyCode, modifier: KeyModifier = KeyModifier.None, actionKind: ActionKind, context: BindingContext, longLabel: string, shortLabel: string = "", priority: int = 0, enabledCheck: string = "") =
+proc registerBinding*(key: actions.KeyCode,
+    modifier: KeyModifier = KeyModifier.None, actionKind: ActionKind,
+    context: BindingContext, longLabel: string, shortLabel: string = "",
+    priority: int = 0, enabledCheck: string = "") =
   ## Register a new binding using enum actionKind (new signature)
   gBindings.add(Binding(
     key: key,
@@ -124,59 +127,58 @@ proc getAllBindings*(): seq[Binding] =
 # Key Formatting
 # =============================================================================
 
-proc formatKeyCode*(key: KeyCode): string =
+proc formatKeyCode*(key: actions.KeyCode): string =
   ## Format a key code for display (without modifier)
   case key
-  of KeyCode.Key1: "1"
-  of KeyCode.Key2: "2"
-  of KeyCode.Key3: "3"
-  of KeyCode.Key4: "4"
-  of KeyCode.Key5: "5"
-  of KeyCode.Key6: "6"
-  of KeyCode.Key7: "7"
-  of KeyCode.Key8: "8"
-  of KeyCode.Key9: "9"
-  of KeyCode.KeyQ: "q"
-  of KeyCode.KeyC: "c"
-  of KeyCode.KeyF: "f"
-  of KeyCode.KeyO: "o"
-  of KeyCode.KeyM: "m"
-  of KeyCode.KeyE: "e"
-  of KeyCode.KeyH: "h"
-  of KeyCode.KeyX: "x"
-  of KeyCode.KeyS: "s"
-  of KeyCode.KeyL: "l"
-  of KeyCode.KeyB: "b"
-  of KeyCode.KeyG: "g"
-  of KeyCode.KeyR: "r"
-  of KeyCode.KeyJ: "j"
-  of KeyCode.KeyD: "d"
-  of KeyCode.KeyP: "p"
-  of KeyCode.KeyV: "v"
-  of KeyCode.KeyN: "n"
-  of KeyCode.KeyW: "w"
-  of KeyCode.KeyI: "i"
-  of KeyCode.KeyT: "t"
-  of KeyCode.KeyA: "a"
-  of KeyCode.KeyY: "y"
-  of KeyCode.KeyU: "u"
-  of KeyCode.KeyUp: "↑"
-  of KeyCode.KeyDown: "↓"
-  of KeyCode.KeyLeft: "←"
-  of KeyCode.KeyRight: "→"
-  of KeyCode.KeyEnter: "Enter"
-  of KeyCode.KeyEscape: "Esc"
-  of KeyCode.KeyTab: "Tab"
-  of KeyCode.KeyShiftTab: "S-Tab"
-  of KeyCode.KeyHome: "Home"
-  of KeyCode.KeyBackspace: "Bksp"
-  of KeyCode.KeyPageUp: "PgUp"
-  of KeyCode.KeyPageDown: "PgDn"
-  of KeyCode.KeyColon: ":"
-  of KeyCode.KeyCtrlE: "e"
-  of KeyCode.KeyCtrlQ: "q"
-  of KeyCode.KeyCtrlL: "l"
-  of KeyCode.KeyNone: ""
+  of actions.KeyCode.Key1: "1"
+  of actions.KeyCode.Key2: "2"
+  of actions.KeyCode.Key3: "3"
+  of actions.KeyCode.Key4: "4"
+  of actions.KeyCode.Key5: "5"
+  of actions.KeyCode.Key6: "6"
+  of actions.KeyCode.Key7: "7"
+  of actions.KeyCode.Key8: "8"
+  of actions.KeyCode.Key9: "9"
+  of actions.KeyCode.KeyQ: "q"
+  of actions.KeyCode.KeyC: "c"
+  of actions.KeyCode.KeyF: "f"
+  of actions.KeyCode.KeyO: "o"
+  of actions.KeyCode.KeyM: "m"
+  of actions.KeyCode.KeyE: "e"
+  of actions.KeyCode.KeyH: "h"
+  of actions.KeyCode.KeyX: "x"
+  of actions.KeyCode.KeyS: "s"
+  of actions.KeyCode.KeyL: "l"
+  of actions.KeyCode.KeyB: "b"
+  of actions.KeyCode.KeyG: "g"
+  of actions.KeyCode.KeyR: "r"
+  of actions.KeyCode.KeyJ: "j"
+  of actions.KeyCode.KeyD: "d"
+  of actions.KeyCode.KeyP: "p"
+  of actions.KeyCode.KeyV: "v"
+  of actions.KeyCode.KeyN: "n"
+  of actions.KeyCode.KeyW: "w"
+  of actions.KeyCode.KeyI: "i"
+  of actions.KeyCode.KeyT: "t"
+  of actions.KeyCode.KeyA: "a"
+  of actions.KeyCode.KeyY: "y"
+  of actions.KeyCode.KeyU: "u"
+  of actions.KeyCode.KeyUp: "↑"
+  of actions.KeyCode.KeyDown: "↓"
+  of actions.KeyCode.KeyLeft: "←"
+  of actions.KeyCode.KeyRight: "→"
+  of actions.KeyCode.KeyEnter: "Enter"
+  of actions.KeyCode.KeyEscape: "Esc"
+  of actions.KeyCode.KeyTab: "Tab"
+  of actions.KeyCode.KeyShiftTab: "S-Tab"
+  of actions.KeyCode.KeyHome: "Home"
+  of actions.KeyCode.KeyBackspace: "Bksp"
+  of actions.KeyCode.KeyPageUp: "PgUp"
+  of actions.KeyCode.KeyPageDown: "PgDn"
+  of actions.KeyCode.KeyColon: ":"
+  of actions.KeyCode.KeyCtrlE: "e"
+  of actions.KeyCode.KeyCtrlL: "l"
+  of actions.KeyCode.KeyNone: ""
 
 proc formatModifier*(m: KeyModifier): string =
   ## Format a modifier for display
@@ -186,7 +188,7 @@ proc formatModifier*(m: KeyModifier): string =
   of KeyModifier.Alt: "Alt"
   of KeyModifier.Shift: "Shift"
 
-proc formatKey*(key: KeyCode, modifier: KeyModifier): string =
+proc formatKey*(key: actions.KeyCode, modifier: KeyModifier): string =
   ## Format a key with modifier for display
   ## Returns "Ctrl+q" or just "Enter" etc.
   let keyStr = formatKeyCode(key)
@@ -195,7 +197,7 @@ proc formatKey*(key: KeyCode, modifier: KeyModifier): string =
   else:
     formatModifier(modifier) & "+" & keyStr
 
-proc formatKeyAngle*(key: KeyCode, modifier: KeyModifier): string =
+proc formatKeyAngle*(key: actions.KeyCode, modifier: KeyModifier): string =
   ## Format a key with angle brackets: "<1>" or "<Ctrl+q>"
   "<" & formatKey(key, modifier) & ">"
 
@@ -249,7 +251,7 @@ proc getGlobalBindings*(): seq[Binding] =
   ## Get all global bindings (view tabs, quit, expert mode)
   getBindingsForContext(BindingContext.Global)
 
-proc findBinding*(key: KeyCode, modifier: KeyModifier,
+proc findBinding*(key: actions.KeyCode, modifier: KeyModifier,
     ctx: BindingContext): Option[Binding] =
   ## Find a binding by key, modifier, and context
   for b in gBindings:
@@ -257,7 +259,8 @@ proc findBinding*(key: KeyCode, modifier: KeyModifier,
       return some(b)
   none(Binding)
 
-proc findGlobalBinding*(key: KeyCode, modifier: KeyModifier): Option[Binding] =
+proc findGlobalBinding*(key: actions.KeyCode,
+    modifier: KeyModifier): Option[Binding] =
   ## Find a global binding by key and modifier
   findBinding(key, modifier, BindingContext.Global)
 
@@ -303,55 +306,55 @@ proc initBindings*() =
   # =========================================================================
 
   registerBinding(Binding(
-    key: KeyCode.Key1, modifier: KeyModifier.None,
+    key: KeyCode.KeyO, modifier: KeyModifier.Alt,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
     longLabel: "OVERVIEW", shortLabel: "Ovrw", priority: 1))
 
   registerBinding(Binding(
-    key: KeyCode.Key2, modifier: KeyModifier.None,
+    key: KeyCode.KeyC, modifier: KeyModifier.Alt,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "PLANETS", shortLabel: "Plan", priority: 2))
+    longLabel: "COLONY", shortLabel: "Col", priority: 2))
 
   registerBinding(Binding(
-    key: KeyCode.Key3, modifier: KeyModifier.None,
+    key: KeyCode.KeyF, modifier: KeyModifier.Alt,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
     longLabel: "FLEETS", shortLabel: "Flt", priority: 3))
 
   registerBinding(Binding(
-    key: KeyCode.Key4, modifier: KeyModifier.None,
+    key: KeyCode.KeyT, modifier: KeyModifier.Alt,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "RESEARCH", shortLabel: "Res", priority: 4))
+    longLabel: "TECH", shortLabel: "Tech", priority: 4))
 
   registerBinding(Binding(
-    key: KeyCode.Key5, modifier: KeyModifier.None,
+    key: KeyCode.KeyE, modifier: KeyModifier.Alt,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
     longLabel: "ESPIONAGE", shortLabel: "Esp", priority: 5))
 
   registerBinding(Binding(
-    key: KeyCode.Key6, modifier: KeyModifier.None,
+    key: KeyCode.KeyG, modifier: KeyModifier.Alt,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "ECONOMY", shortLabel: "Econ", priority: 6))
+    longLabel: "GENERAL", shortLabel: "Gen", priority: 6))
 
   registerBinding(Binding(
-    key: KeyCode.Key7, modifier: KeyModifier.None,
+    key: KeyCode.KeyR, modifier: KeyModifier.Alt,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
     longLabel: "REPORTS", shortLabel: "Rpt", priority: 7))
 
   registerBinding(Binding(
-    key: KeyCode.Key8, modifier: KeyModifier.None,
+    key: KeyCode.KeyI, modifier: KeyModifier.Alt,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "MESSAGES", shortLabel: "Msg", priority: 8))
+    longLabel: "INTEL DB", shortLabel: "Intel", priority: 8))
 
   registerBinding(Binding(
-    key: KeyCode.Key9, modifier: KeyModifier.None,
+    key: KeyCode.KeyS, modifier: KeyModifier.Alt,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
     longLabel: "SETTINGS", shortLabel: "Set", priority: 9))
@@ -363,7 +366,7 @@ proc initBindings*() =
     longLabel: "EXPERT", shortLabel: "Exp", priority: 100))
 
   registerBinding(Binding(
-    key: KeyCode.KeyCtrlQ, modifier: KeyModifier.Ctrl,
+    key: KeyCode.KeyQ, modifier: KeyModifier.Alt,
     actionKind: ActionKind.quit,
     context: BindingContext.Global,
     longLabel: "QUIT", shortLabel: "Quit", priority: 101))
@@ -451,7 +454,7 @@ proc initBindings*() =
     enabledCheck: "hasColonySelection"))
 
   registerBinding(Binding(
-    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.Planets,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
@@ -515,7 +518,7 @@ proc initBindings*() =
     longLabel: "BUILD", shortLabel: "Bld", priority: 20))
 
   registerBinding(Binding(
-    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.PlanetDetail,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
@@ -569,7 +572,7 @@ proc initBindings*() =
     longLabel: "LIST/MAP", shortLabel: "L/M", priority: 20))
 
   registerBinding(Binding(
-    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.Fleets,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
@@ -603,7 +606,7 @@ proc initBindings*() =
     longLabel: "ROE", shortLabel: "ROE", priority: 40))
 
   registerBinding(Binding(
-    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.FleetDetail,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
@@ -637,7 +640,7 @@ proc initBindings*() =
     longLabel: "CONFIRM", shortLabel: "OK", priority: 40))
 
   registerBinding(Binding(
-    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.Research,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
@@ -683,7 +686,7 @@ proc initBindings*() =
     longLabel: "BUY CIP", shortLabel: "CIP", priority: 20))
 
   registerBinding(Binding(
-    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.Espionage,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
@@ -711,7 +714,7 @@ proc initBindings*() =
     longLabel: "CONFIRM", shortLabel: "OK", priority: 30))
 
   registerBinding(Binding(
-    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.Economy,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
@@ -757,7 +760,7 @@ proc initBindings*() =
     longLabel: "FOCUS", shortLabel: "Foc", priority: 20))
 
   registerBinding(Binding(
-    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.Reports,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
@@ -779,7 +782,7 @@ proc initBindings*() =
     longLabel: "NEXT", shortLabel: "Next", priority: 20))
 
   registerBinding(Binding(
-    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.ReportDetail,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
@@ -825,7 +828,7 @@ proc initBindings*() =
     longLabel: "COMPOSE", shortLabel: "Comp", priority: 20))
 
   registerBinding(Binding(
-    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.Messages,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
@@ -871,7 +874,7 @@ proc initBindings*() =
     longLabel: "RESET", shortLabel: "Rst", priority: 20))
 
   registerBinding(Binding(
-    key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.Settings,
     longLabel: "BACK", shortLabel: "Back", priority: 90))
@@ -1033,15 +1036,15 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   # View switching
   of ActionKind.switchView:
     let viewNum = case key
-      of KeyCode.Key1: 1
-      of KeyCode.Key2: 2
-      of KeyCode.Key3: 3
-      of KeyCode.Key4: 4
-      of KeyCode.Key5: 5
-      of KeyCode.Key6: 6
-      of KeyCode.Key7: 7
-      of KeyCode.Key8: 8
-      of KeyCode.Key9: 9
+      of KeyCode.KeyO: 1
+      of KeyCode.KeyC: 2
+      of KeyCode.KeyF: 3
+      of KeyCode.KeyT: 4
+      of KeyCode.KeyE: 5
+      of KeyCode.KeyG: 6
+      of KeyCode.KeyR: 7
+      of KeyCode.KeyI: 8
+      of KeyCode.KeyS: 9
       else: 0
     if viewNum > 0:
       return some(actionSwitchView(viewNum))
@@ -1208,7 +1211,8 @@ proc lookupGlobalAndDispatch*(key: KeyCode, modifier: KeyModifier,
 # Key Mapping (Single Source of Truth)
 # =============================================================================
 
-proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
+proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
+    model: TuiModel): Option[Proposal] =
   ## Map a key code to an action based on current model state
   ## Uses the binding registry as the single source of truth for key mappings.
   ## Returns None if no action should be taken.
@@ -1216,8 +1220,8 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
   ## Special modes (quit confirmation, lobby text input) are handled separately
   ## since they don't fit the registry pattern well.
 
-  # Ctrl+Q always quits (global)
-  if key == KeyCode.KeyCtrlQ:
+  # Alt+Q always quits (global)
+  if key == KeyCode.KeyQ and modifier == KeyModifier.Alt:
     return some(actionQuit())
 
   # Quit confirmation modal - takes precedence over everything
@@ -1239,7 +1243,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       return none(Proposal)
 
   # Build modal mode: use registry
-  if model.ui.buildModal.active:
+  if model.ui.buildModal.active and modifier == KeyModifier.None:
     let buildResult = lookupAndDispatch(key, KeyModifier.None,
         BindingContext.BuildModal, model)
     if buildResult.isSome:
@@ -1247,7 +1251,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     return none(Proposal)
 
   # Order entry mode: use registry
-  if model.ui.orderEntryActive:
+  if model.ui.orderEntryActive and modifier == KeyModifier.None:
     let orderResult = lookupAndDispatch(key, KeyModifier.None,
         BindingContext.OrderEntry, model)
     if orderResult.isSome:
@@ -1258,7 +1262,7 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
     return none(Proposal)
 
   # Expert mode: use registry
-  if model.ui.expertModeActive:
+  if model.ui.expertModeActive and modifier == KeyModifier.None:
     let expertResult = lookupAndDispatch(key, KeyModifier.None,
         BindingContext.ExpertMode, model)
     if expertResult.isSome:
@@ -1349,15 +1353,16 @@ proc mapKeyToAction*(key: KeyCode, model: TuiModel): Option[Proposal] =
       return some(actionLobbyReturn())
 
   # Global bindings (view switching, expert mode, etc.)
-  let globalResult = lookupGlobalAndDispatch(key, KeyModifier.None, model)
+  let globalResult = lookupGlobalAndDispatch(key, modifier, model)
   if globalResult.isSome:
     return globalResult
 
   # Context-specific bindings based on current view mode
-  let ctx = viewModeToContext(model.ui.mode)
-  let ctxResult = lookupAndDispatch(key, KeyModifier.None, ctx, model)
-  if ctxResult.isSome:
-    return ctxResult
+  if modifier == KeyModifier.None:
+    let ctx = viewModeToContext(model.ui.mode)
+    let ctxResult = lookupAndDispatch(key, KeyModifier.None, ctx, model)
+    if ctxResult.isSome:
+      return ctxResult
 
   none(Proposal)
 
@@ -1379,25 +1384,25 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
       not model.ui.orderEntryActive
 
   if showGlobalTabs:
-    # Show view tabs [1-9] + expert mode hint
+    # Show view tabs (Alt+Key) + expert mode hint
     let globalBindings = getGlobalBindings()
     var idx = 0
     for b in globalBindings:
-      # Skip quit in normal tab display (it's always Ctrl+Q)
+      # Skip quit in normal tab display (it's always Alt+Q)
       if b.actionKind == ActionKind.quit:
         continue
 
       let label = if useShortLabels: b.shortLabel else: b.longLabel
       let isSelected = case b.key
-        of KeyCode.Key1: model.ui.mode == ViewMode.Overview
-        of KeyCode.Key2: model.ui.mode == ViewMode.Planets
-        of KeyCode.Key3: model.ui.mode == ViewMode.Fleets
-        of KeyCode.Key4: model.ui.mode == ViewMode.Research
-        of KeyCode.Key5: model.ui.mode == ViewMode.Espionage
-        of KeyCode.Key6: model.ui.mode == ViewMode.Economy
-        of KeyCode.Key7: model.ui.mode == ViewMode.Reports
-        of KeyCode.Key8: model.ui.mode == ViewMode.Messages
-        of KeyCode.Key9: model.ui.mode == ViewMode.Settings
+        of KeyCode.KeyO: model.ui.mode == ViewMode.Overview
+        of KeyCode.KeyC: model.ui.mode == ViewMode.Planets
+        of KeyCode.KeyF: model.ui.mode == ViewMode.Fleets
+        of KeyCode.KeyT: model.ui.mode == ViewMode.Research
+        of KeyCode.KeyE: model.ui.mode == ViewMode.Espionage
+        of KeyCode.KeyG: model.ui.mode == ViewMode.Economy
+        of KeyCode.KeyR: model.ui.mode == ViewMode.Reports
+        of KeyCode.KeyI: model.ui.mode == ViewMode.Messages
+        of KeyCode.KeyS: model.ui.mode == ViewMode.Settings
         else: false
 
       let mode = if isSelected: BarItemMode.Selected
@@ -1405,7 +1410,7 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
                  else: BarItemMode.Unselected
 
       result.add(BarItem(
-        keyDisplay: formatKeyCode(b.key),
+        keyDisplay: formatKey(b.key, b.modifier),
         label: label,
         longLabel: b.longLabel,
         shortLabel: b.shortLabel,

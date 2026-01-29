@@ -42,7 +42,7 @@ type
     description*: string      ## What needs attention
     priority*: ActionPriority ## How urgent
     jumpView*: int            ## View to jump to (1-9) or 0 for none
-    jumpLabel*: string        ## Jump button label (e.g., "2", "3", "7")
+    jumpLabel*: string        ## Jump button label (e.g., "C", "F", "R")
 
   ChecklistItem* = object
     ## A checklist item (more detailed than action items)

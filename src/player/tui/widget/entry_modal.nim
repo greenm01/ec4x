@@ -648,11 +648,11 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
   discard buf.setString(x, area.y, " Import  ", textStyle)
   x += 9
   
-  # [Ctrl-Q] Quit
+  # [Alt-Q] Quit
   discard buf.setString(x, area.y, "[", dimStyle)
   x += 1
-  discard buf.setString(x, area.y, "Ctrl-Q", keyStyle)
-  x += 6
+  discard buf.setString(x, area.y, "Alt-Q", keyStyle)
+  x += 5
   discard buf.setString(x, area.y, "]", dimStyle)
   x += 1
   discard buf.setString(x, area.y, " Quit", textStyle)

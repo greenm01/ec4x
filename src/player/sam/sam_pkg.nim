@@ -23,7 +23,7 @@
 ##   sam.setInitialState(initTuiModel())
 ##   
 ##   # Main loop - convert events to proposals
-##   let proposal = mapKeyToAction(key, sam.state)
+##   let proposal = mapKeyToAction(key, KeyModifier.None, sam.state)
 ##   if proposal.isSome:
 ##     sam.present(proposal.get)
 
