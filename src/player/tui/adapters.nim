@@ -4,7 +4,7 @@
 ## and TUI widget types. Maintains separation between engine (game logic)
 ## and presentation (TUI) layers.
 
-import std/[options, tables, algorithm]
+import std/[options, tables, algorithm, strutils]
 import ../../common/logger
 import ../../engine/types/[core, starmap, colony, fleet, player_state, ship,
   combat, production, facilities, ground_unit, tech]
@@ -521,6 +521,7 @@ type
     attack*: string         # Attack strength (e.g., "45")
     defense*: string        # Defense strength (e.g., "38")
     isCrippled*: bool       # For rendering (crippled ships in yellow/red)
+    wepLevel*: int          # WEP tech level ship was built at
 
   FleetDetailData* = object
     ## Complete fleet detail information for rendering
@@ -535,6 +536,7 @@ type
     status*: string         # "Active", "Reserve", "Mothballed"
     roe*: int               # Rules of engagement 0-10
     ships*: seq[ShipDetailRow]
+    auxShips*: string       # Auxiliary ships summary (e.g., "2 ETAC, 4 TT")
 
 proc fleetToDetailData*(
   state: GameState,
@@ -551,7 +553,8 @@ proc fleetToDetailData*(
       shipCount: 0,
       totalAttack: 0,
       totalDefense: 0,
-      ships: @[]
+      ships: @[],
+      auxShips: ""
     )
   let fleet = fleetOpt.get()
   
@@ -691,8 +694,32 @@ proc fleetToDetailData*(
       state: stateLabel,
       attack: $ship.stats.attackStrength,
       defense: $ship.stats.defenseStrength,
-      isCrippled: isCrippled
+      isCrippled: isCrippled,
+      wepLevel: int(ship.stats.wep)
     ))
+  
+  # Build auxiliary ships summary
+  var etacCount = 0
+  var ttCount = 0
+  for ship in state.shipsInFleet(fleetId):
+    if ship.state == CombatState.Destroyed:
+      continue
+    case ship.shipClass
+    of ShipClass.ETAC:
+      etacCount += 1
+    of ShipClass.TroopTransport:
+      ttCount += 1
+    else:
+      discard
+  
+  var auxShipsStr = ""
+  if etacCount > 0 or ttCount > 0:
+    var parts: seq[string] = @[]
+    if etacCount > 0:
+      parts.add($etacCount & " ETAC")
+    if ttCount > 0:
+      parts.add($ttCount & " Troop Transport")
+    auxShipsStr = parts.join(", ")
   
   FleetDetailData(
     fleetId: int(fleetId),
@@ -705,7 +732,8 @@ proc fleetToDetailData*(
     commandType: int(fleet.command.commandType),
     status: statusStr,
     roe: int(fleet.roe),
-    ships: shipRows
+    ships: shipRows,
+    auxShips: auxShipsStr
   )
 
 # -----------------------------------------------------------------------------
@@ -1120,7 +1148,8 @@ proc shipToRow(ship: Ship): ShipDetailRow =
     state: stateLabel,
     attack: $ship.stats.attackStrength,
     defense: $ship.stats.defenseStrength,
-    isCrippled: isCrippled
+    isCrippled: isCrippled,
+    wepLevel: int(ship.stats.wep)
   )
 
 proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailData =
@@ -1164,6 +1193,8 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
       var shipRows: seq[ShipDetailRow] = @[]
       var totalAS = 0
       var totalDS = 0
+      var etacCount = 0
+      var ttCount = 0
       for shipId in fleet.ships:
         for ship in ps.ownShips:
           if ship.id == shipId:
@@ -1171,7 +1202,24 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
               shipRows.add(shipToRow(ship))
               totalAS += ship.stats.attackStrength.int
               totalDS += ship.stats.defenseStrength.int
+              case ship.shipClass
+              of ShipClass.ETAC:
+                etacCount += 1
+              of ShipClass.TroopTransport:
+                ttCount += 1
+              else:
+                discard
             break
+      
+      # Build aux ships summary
+      var auxShipsStr = ""
+      if etacCount > 0 or ttCount > 0:
+        var parts: seq[string] = @[]
+        if etacCount > 0:
+          parts.add($etacCount & " ETAC")
+        if ttCount > 0:
+          parts.add($ttCount & " Troop Transport")
+        auxShipsStr = parts.join(", ")
 
       return FleetDetailData(
         fleetId: fleetId.int,
@@ -1184,7 +1232,8 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
         commandType: fleet.command.commandType.int,
         status: statusStr,
         roe: fleet.roe.int,
-        ships: shipRows
+        ships: shipRows,
+        auxShips: auxShipsStr
       )
 
   # Fleet not found
@@ -1194,7 +1243,8 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
     shipCount: 0,
     totalAttack: 0,
     totalDefense: 0,
-    ships: @[]
+    ships: @[],
+    auxShips: ""
   )
 
 proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetailData =

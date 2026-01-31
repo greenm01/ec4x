@@ -122,6 +122,8 @@ type
     buildConfirmQueue
     buildQuantityInc
     buildQuantityDec
+    fleetConsoleNextPane
+    fleetConsolePrevPane
 
   # ============================================================================
   # Core SAM Types

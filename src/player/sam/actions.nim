@@ -929,6 +929,30 @@ proc actionCancelOrder*(): Proposal =
   )
 
 # ============================================================================
+# Fleet Console Actions
+# ============================================================================
+
+proc actionFleetConsoleNextPane*(): Proposal =
+  ## Move focus to next pane in fleet console (SystemView mode)
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.fleetConsoleNextPane,
+    navMode: 0,  # Not used for pane switching
+    navCursor: (0, 0)  # Not used for pane switching
+  )
+
+proc actionFleetConsolePrevPane*(): Proposal =
+  ## Move focus to previous pane in fleet console (SystemView mode)
+  Proposal(
+    kind: ProposalKind.pkNavigation,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.fleetConsolePrevPane,
+    navMode: 0,  # Not used for pane switching
+    navCursor: (0, 0)  # Not used for pane switching
+  )
+
+# ============================================================================
 # System Actions
 # ============================================================================
 

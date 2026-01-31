@@ -167,6 +167,29 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.fleetViewMode = FleetViewMode.ListView
     else:
       model.ui.fleetViewMode = FleetViewMode.SystemView
+  
+  of ActionKind.fleetConsoleNextPane:
+    # Only active in SystemView mode
+    if model.ui.fleetViewMode == FleetViewMode.SystemView:
+      case model.ui.fleetConsoleFocus
+      of FleetConsoleFocus.SystemsPane:
+        model.ui.fleetConsoleFocus = FleetConsoleFocus.FleetsPane
+      of FleetConsoleFocus.FleetsPane:
+        model.ui.fleetConsoleFocus = FleetConsoleFocus.ShipsPane
+      of FleetConsoleFocus.ShipsPane:
+        model.ui.fleetConsoleFocus = FleetConsoleFocus.SystemsPane
+  
+  of ActionKind.fleetConsolePrevPane:
+    # Only active in SystemView mode
+    if model.ui.fleetViewMode == FleetViewMode.SystemView:
+      case model.ui.fleetConsoleFocus
+      of FleetConsoleFocus.SystemsPane:
+        model.ui.fleetConsoleFocus = FleetConsoleFocus.ShipsPane
+      of FleetConsoleFocus.FleetsPane:
+        model.ui.fleetConsoleFocus = FleetConsoleFocus.SystemsPane
+      of FleetConsoleFocus.ShipsPane:
+        model.ui.fleetConsoleFocus = FleetConsoleFocus.FleetsPane
+  
   of ActionKind.cycleReportFilter:
     let nextFilter = (ord(model.ui.reportFilter) + 1) mod
       (ord(ReportCategory.Other) + 1)
@@ -298,12 +321,42 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
   of ActionKind.listUp:
-    if model.ui.selectedIdx > 0:
-      model.ui.selectedIdx = max(0, model.ui.selectedIdx - 1)
+    # Fleet console per-pane navigation
+    if model.ui.mode == ViewMode.Fleets and
+        model.ui.fleetViewMode == FleetViewMode.SystemView:
+      case model.ui.fleetConsoleFocus
+      of FleetConsoleFocus.SystemsPane:
+        if model.ui.fleetConsoleSystemIdx > 0:
+          model.ui.fleetConsoleSystemIdx -= 1
+      of FleetConsoleFocus.FleetsPane:
+        if model.ui.fleetConsoleFleetIdx > 0:
+          model.ui.fleetConsoleFleetIdx -= 1
+      of FleetConsoleFocus.ShipsPane:
+        if model.ui.fleetConsoleShipIdx > 0:
+          model.ui.fleetConsoleShipIdx -= 1
+    else:
+      # Default list navigation
+      if model.ui.selectedIdx > 0:
+        model.ui.selectedIdx = max(0, model.ui.selectedIdx - 1)
+  
   of ActionKind.listDown:
-    let maxIdx = model.currentListLength() - 1
-    if model.ui.selectedIdx < maxIdx:
-      model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + 1)
+    # Fleet console per-pane navigation
+    if model.ui.mode == ViewMode.Fleets and
+        model.ui.fleetViewMode == FleetViewMode.SystemView:
+      # Note: Max bounds checking would require accessing sync data
+      # For now, just increment (rendering will clamp)
+      case model.ui.fleetConsoleFocus
+      of FleetConsoleFocus.SystemsPane:
+        model.ui.fleetConsoleSystemIdx += 1
+      of FleetConsoleFocus.FleetsPane:
+        model.ui.fleetConsoleFleetIdx += 1
+      of FleetConsoleFocus.ShipsPane:
+        model.ui.fleetConsoleShipIdx += 1
+    else:
+      # Default list navigation
+      let maxIdx = model.currentListLength() - 1
+      if model.ui.selectedIdx < maxIdx:
+        model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + 1)
   of ActionKind.listPageUp:
     let pageSize = max(1, model.ui.termHeight - 10)
     model.ui.selectedIdx = max(0, model.ui.selectedIdx - pageSize)

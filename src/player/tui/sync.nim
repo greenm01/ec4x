@@ -4,11 +4,12 @@
 
 import std/[options, tables, algorithm]
 
-import ../../engine/types/[core, colony, fleet, facilities, player_state as
-  ps_types, diplomacy, starmap, capacity, ground_unit]
+import ../../engine/types/[core, colony, fleet, ship, facilities, player_state as
+  ps_types, diplomacy, starmap, capacity, ground_unit, combat]
 import ../../engine/state/[engine, iterators]
 import ../../engine/systems/capacity/[c2_pool, construction_docks]
 import ../../engine/systems/production/engine as production_engine
+import ../../engine/systems/fleet/movement
 import ../sam/sam_pkg
 import ../tui/adapters
 import ../tui/widget/overview
@@ -204,6 +205,145 @@ proc syncGameStateToModel*(
         isIdle: fleet.command.commandType == FleetCommandType.Hold,
       )
     )
+
+# =============================================================================
+# Fleet Console Data Sync (SystemView mode)
+# =============================================================================
+
+type
+  FleetConsoleSystem* = object
+    ## System with fleets for fleet console
+    systemId*: int
+    systemName*: string
+    sectorLabel*: string
+    fleetCount*: int
+
+  FleetConsoleFleet* = object
+    ## Fleet info for console list
+    fleetId*: int
+    shipCount*: int
+    attackStrength*: int
+    defenseStrength*: int
+    troopTransports*: int
+    etacs*: int
+    commandLabel*: string
+    destinationLabel*: string
+    eta*: int
+    roe*: int
+    status*: string
+
+proc syncFleetConsoleSystems*(
+    ps: ps_types.PlayerState
+): seq[FleetConsoleSystem] =
+  ## Get list of systems that have fleets owned by viewing house
+  result = @[]
+  
+  # Build a table of system ID -> fleet count
+  var systemFleetCounts = initTable[SystemId, int]()
+  for fleet in ps.ownFleets:
+    let count = systemFleetCounts.getOrDefault(fleet.location, 0)
+    systemFleetCounts[fleet.location] = count + 1
+  
+  # Convert to sorted list
+  for systemId, count in systemFleetCounts.pairs:
+    if not ps.visibleSystems.hasKey(systemId):
+      continue
+    
+    let sys = ps.visibleSystems[systemId]
+    let sectorLabel = if sys.coordinates.isSome:
+      coordLabel(int(sys.coordinates.get().q), int(sys.coordinates.get().r))
+    else:
+      "?"
+    
+    result.add(FleetConsoleSystem(
+      systemId: int(systemId),
+      systemName: sys.name,
+      sectorLabel: sectorLabel,
+      fleetCount: count
+    ))
+  
+  # Sort by system name
+  result.sort(proc(a, b: FleetConsoleSystem): int =
+    cmp(a.systemName, b.systemName))
+
+proc syncFleetConsoleFleets*(
+    ps: ps_types.PlayerState,
+    systemId: SystemId
+): seq[FleetConsoleFleet] =
+  ## Get list of fleets at a specific system for console
+  result = @[]
+  
+  for fleet in ps.ownFleets:
+    if fleet.location != systemId:
+      continue
+    
+    # Calculate attack/defense strength and count ship types
+    var attackStr = 0
+    var defenseStr = 0
+    var shipCount = 0
+    var ttCount = 0
+    var etacCount = 0
+    
+    for shipId in fleet.ships:
+      for ship in ps.ownShips:
+        if ship.id == shipId and ship.state != CombatState.Destroyed:
+          attackStr += int(ship.stats.attackStrength)
+          defenseStr += int(ship.stats.defenseStrength)
+          shipCount += 1
+          
+          # Count ship types
+          if ship.shipClass == ShipClass.TroopTransport:
+            ttCount += 1
+          elif ship.shipClass == ShipClass.ETAC:
+            etacCount += 1
+          
+          break
+    
+    # Get command label
+    let cmdType = int(fleet.command.commandType)
+    let cmdLabel = sam_pkg.commandLabel(cmdType)
+    
+    # Get destination and ETA
+    var destLabel = ""
+    var eta = 0
+    if fleet.command.targetSystem.isSome:
+      let targetId = fleet.command.targetSystem.get()
+      if ps.visibleSystems.hasKey(targetId):
+        let target = ps.visibleSystems[targetId]
+        if target.coordinates.isSome:
+          destLabel = coordLabel(int(target.coordinates.get().q),
+            int(target.coordinates.get().r))
+      else:
+        destLabel = $targetId
+      # TODO: ETA calculation requires pathfinding (not available in PS-only mode)
+      eta = 0
+    else:
+      # For patrol/hold, show current location
+      if ps.visibleSystems.hasKey(fleet.location):
+        let sys = ps.visibleSystems[fleet.location]
+        if sys.coordinates.isSome:
+          destLabel = coordLabel(int(sys.coordinates.get().q),
+            int(sys.coordinates.get().r))
+    
+    # Map fleet status to short string
+    let statusStr = case fleet.status
+      of FleetStatus.Active: "A"
+      of FleetStatus.Reserve: "R"
+      of FleetStatus.Mothballed: "M"
+    
+    result.add(FleetConsoleFleet(
+      fleetId: int(fleet.id),
+      shipCount: shipCount,
+      attackStrength: attackStr,
+      defenseStrength: defenseStr,
+      troopTransports: ttCount,
+      etacs: etacCount,
+      commandLabel: cmdLabel,
+      destinationLabel: destLabel,
+      eta: eta,
+      roe: int(fleet.roe),
+      status: statusStr
+    ))
 
 proc syncPlayerStateToOverview*(
     ps: ps_types.PlayerState

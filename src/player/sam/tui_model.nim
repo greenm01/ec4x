@@ -317,6 +317,12 @@ type
     SystemView    ## Grouped by location
     ListView      ## Flat list with multi-select
 
+  FleetConsoleFocus* {.pure.} = enum
+    ## Fleet console pane focus (SystemView mode only)
+    SystemsPane   ## Systems with fleets
+    FleetsPane    ## Fleets at selected system
+    ShipsPane     ## Ships in selected fleet
+
   ReportCategory* {.pure.} = enum
     ## Report category for inbox filtering
     Summary
@@ -432,6 +438,15 @@ type
     selectedColonyId*: int
     selectedFleetId*: int
     selectedReportId*: int
+
+    # Fleet console state (SystemView mode)
+    fleetConsoleFocus*: FleetConsoleFocus
+    fleetConsoleSystemIdx*: int
+    fleetConsoleFleetIdx*: int
+    fleetConsoleShipIdx*: int
+    fleetConsoleSystemScroll*: ScrollState
+    fleetConsoleFleetScroll*: ScrollState
+    fleetConsoleShipScroll*: ScrollState
 
     # Reports UI
     reportFilter*: ReportCategory
@@ -614,6 +629,13 @@ proc initTuiUiState*(): TuiUiState =
     selectedColonyId: 0,
     selectedFleetId: 0,
     selectedReportId: 0,
+    fleetConsoleFocus: FleetConsoleFocus.SystemsPane,
+    fleetConsoleSystemIdx: 0,
+    fleetConsoleFleetIdx: 0,
+    fleetConsoleShipIdx: 0,
+    fleetConsoleSystemScroll: initScrollState(),
+    fleetConsoleFleetScroll: initScrollState(),
+    fleetConsoleShipScroll: initScrollState(),
     reportFilter: ReportCategory.Summary,
     reportFocus: ReportPaneFocus.TurnList,
     reportTurnIdx: 0,

@@ -570,6 +570,25 @@ proc initBindings*() =
     actionKind: ActionKind.switchFleetView,
     context: BindingContext.Fleets,
     longLabel: "LIST/MAP", shortLabel: "L/M", priority: 20))
+  
+  # Fleet Console pane navigation (SystemView mode only)
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetConsoleNextPane,
+    context: BindingContext.Fleets,
+    longLabel: "NEXT PANE", shortLabel: "→", priority: 21))
+  
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetConsolePrevPane,
+    context: BindingContext.Fleets,
+    longLabel: "PREV PANE", shortLabel: "←", priority: 22))
+  
+  registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetConsoleNextPane,
+    context: BindingContext.Fleets,
+    longLabel: "NEXT PANE", shortLabel: "Tab", priority: 23))
 
   registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
@@ -1186,6 +1205,12 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionBuildQuantityInc())
   of ActionKind.buildQuantityDec:
     return some(actionBuildQuantityDec())
+  
+  # Fleet console pane navigation
+  of ActionKind.fleetConsoleNextPane:
+    return some(actionFleetConsoleNextPane())
+  of ActionKind.fleetConsolePrevPane:
+    return some(actionFleetConsolePrevPane())
 
   else:
     discard

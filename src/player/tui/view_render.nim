@@ -621,6 +621,209 @@ proc renderFleetDetail*(
       CellStyle(fg: color(PrestigeColor), attrs: {StyleAttr.Bold})
     )
 
+proc renderFleetConsoleSystems(
+  area: Rect,
+  buf: var CellBuffer,
+  systems: seq[FleetConsoleSystem],
+  selectedIdx: int,
+  hasFocus: bool
+) =
+  ## Render systems pane as table (systems with fleets)
+  if area.isEmpty:
+    return
+  
+  # Build table
+  let columns = [
+    tableColumn("System", 0, table.Alignment.Left, 12),
+    tableColumn("Sect", 5, table.Alignment.Center)
+  ]
+  
+  var systemsTable = table(columns)
+    .showBorders(true)
+  
+  # Only show selection if this pane has focus
+  if hasFocus and selectedIdx >= 0 and selectedIdx < systems.len:
+    systemsTable = systemsTable.selectedIdx(selectedIdx)
+  
+  # Add rows
+  for sys in systems:
+    systemsTable.addRow([sys.systemName, sys.sectorLabel])
+  
+  # Render table
+  systemsTable.render(area, buf)
+
+proc renderFleetConsoleFleets(
+  area: Rect,
+  buf: var CellBuffer,
+  fleets: seq[FleetConsoleFleet],
+  selectedIdx: int,
+  hasFocus: bool
+) =
+  ## Render fleets pane as table (fleets at selected system)
+  if area.isEmpty:
+    return
+  
+  # Build table with 11 columns
+  let columns = [
+    tableColumn("Flt", 4, table.Alignment.Right),
+    tableColumn("Ships", 5, table.Alignment.Right),
+    tableColumn("AS", 4, table.Alignment.Right),
+    tableColumn("DS", 4, table.Alignment.Right),
+    tableColumn("TT", 3, table.Alignment.Right),
+    tableColumn("ETAC", 4, table.Alignment.Right),
+    tableColumn("CMD", 6, table.Alignment.Left),
+    tableColumn("TGT", 5, table.Alignment.Left),
+    tableColumn("ETA", 3, table.Alignment.Right),
+    tableColumn("ROE", 3, table.Alignment.Right),
+    tableColumn("STS", 3, table.Alignment.Center)
+  ]
+  
+  var fleetsTable = table(columns)
+    .showBorders(true)
+  
+  # Only show selection if this pane has focus
+  if hasFocus and selectedIdx >= 0 and selectedIdx < fleets.len:
+    fleetsTable = fleetsTable.selectedIdx(selectedIdx)
+  
+  # Add rows
+  for flt in fleets:
+    fleetsTable.addRow([
+      $flt.fleetId,
+      $flt.shipCount,
+      $flt.attackStrength,
+      $flt.defenseStrength,
+      $flt.troopTransports,
+      $flt.etacs,
+      flt.commandLabel,
+      flt.destinationLabel,
+      $flt.eta,
+      $flt.roe,
+      flt.status
+    ])
+  
+  # Render table
+  fleetsTable.render(area, buf)
+
+proc renderFleetConsoleDetail(
+  area: Rect,
+  buf: var CellBuffer,
+  ps: ps_types.PlayerState,
+  fleetId: FleetId,
+  selectedShipIdx: int,
+  hasFocus: bool
+) =
+  ## Render fleet detail pane as table (ship list)
+  if area.isEmpty:
+    return
+  
+  # Get fleet data
+  let fleetData = fleetToDetailDataFromPS(ps, fleetId)
+  
+  # Title line (keep this - useful context)
+  discard buf.setString(area.x, area.y, "Fleet Details", canvasHeaderStyle())
+  
+  # Fleet header info
+  var y = area.y + 1
+  discard buf.setString(area.x, y,
+    "Location: " & fleetData.location & "  Command: " &
+    fleetData.command & "  ROE: " & $fleetData.roe,
+    normalStyle())
+  y += 1
+  
+  # Build ship table
+  let columns = [
+    tableColumn("Ships", 0, table.Alignment.Left, 18),
+    tableColumn("WEP", 4, table.Alignment.Center),
+    tableColumn("AS/DS", 7, table.Alignment.Center),
+    tableColumn("Combat State", 0, table.Alignment.Left, 15)
+  ]
+  
+  var shipsTable = table(columns)
+    .showBorders(true)
+  
+  # Only show selection if this pane has focus
+  if hasFocus and selectedShipIdx >= 0 and selectedShipIdx < fleetData.ships.len:
+    shipsTable = shipsTable.selectedIdx(selectedShipIdx)
+  
+  # Add rows
+  for ship in fleetData.ships:
+    let asDs = ship.attack & "/" & ship.defense
+    shipsTable.addRow([
+      ship.class,
+      $ship.wepLevel,
+      asDs,
+      ship.state
+    ])
+  
+  # Calculate table height based on actual content (tight fit)
+  let tableHeight = shipsTable.renderHeight(fleetData.ships.len)
+  let tableArea = rect(area.x, y, area.width, tableHeight)
+  
+  # Render table
+  shipsTable.render(tableArea, buf)
+
+proc renderFleetConsole*(
+  area: Rect,
+  buf: var CellBuffer,
+  model: TuiModel,
+  ps: ps_types.PlayerState
+) =
+  ## Render 3-pane fleet console (SystemView mode)
+  ## Layout: Top row 50%, bottom row 50%
+  ## Top row: Systems (30%), Fleets (70%)
+  ## Bottom row: Fleet detail (100%)
+  
+  if area.isEmpty or area.height < 6:
+    return
+  
+  # Split area into top (50%) and bottom (50%)
+  let topHeight = area.height div 2
+  let bottomHeight = area.height - topHeight
+  
+  let topRow = rect(area.x, area.y, area.width, topHeight)
+  let bottomRow = rect(area.x, area.y + topHeight, area.width, bottomHeight)
+  
+  # Split top row: Systems (30%), Fleets (70%)
+  let systemsWidth = (area.width * 30) div 100
+  let fleetsWidth = area.width - systemsWidth
+  
+  let systemsPane = rect(topRow.x, topRow.y, systemsWidth, topRow.height)
+  let fleetsPane = rect(topRow.x + systemsWidth, topRow.y,
+    fleetsWidth, topRow.height)
+  
+  # Sync data
+  let systems = syncFleetConsoleSystems(ps)
+  
+  # Determine selected system
+  let systemIdx = clamp(model.ui.fleetConsoleSystemIdx, 0,
+    max(0, systems.len - 1))
+  
+  var fleets: seq[FleetConsoleFleet] = @[]
+  if systems.len > 0:
+    let selectedSystem = systems[systemIdx]
+    fleets = syncFleetConsoleFleets(ps, SystemId(selectedSystem.systemId))
+  
+  # Render systems pane
+  renderFleetConsoleSystems(systemsPane, buf, systems, systemIdx,
+    model.ui.fleetConsoleFocus == FleetConsoleFocus.SystemsPane)
+  
+  # Render fleets pane
+  let fleetIdx = clamp(model.ui.fleetConsoleFleetIdx, 0,
+    max(0, fleets.len - 1))
+  renderFleetConsoleFleets(fleetsPane, buf, fleets, fleetIdx,
+    model.ui.fleetConsoleFocus == FleetConsoleFocus.FleetsPane)
+  
+  # Render fleet detail pane (bottom)
+  if fleets.len > 0 and fleetIdx < fleets.len:
+    let selectedFleet = fleets[fleetIdx]
+    renderFleetConsoleDetail(bottomRow, buf, ps,
+      FleetId(selectedFleet.fleetId),
+      model.ui.fleetConsoleShipIdx,
+      model.ui.fleetConsoleFocus == FleetConsoleFocus.ShipsPane)
+  else:
+    discard buf.setString(bottomRow.x + 2, bottomRow.y + 1,
+      "No fleet selected", dimStyle())
+
 proc renderPlanetSummaryTab*(
   area: Rect,
   buf: var CellBuffer,
@@ -1452,14 +1655,40 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
   tm.render(modalArea, buf, table)
 
 proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
-                        model: TuiModel, scroll: ScrollState) =
+                        model: TuiModel, ps: ps_types.PlayerState,
+                        scroll: ScrollState) =
   ## Render fleets view as centered floating modal
-  let vm = newViewModal("YOUR FLEETS").maxWidth(120).minWidth(80)
-  let contentHeight = max(10, model.view.fleets.len + 4)
-  let modalArea = vm.calculateViewArea(canvas, contentHeight)
-  vm.render(modalArea, buf)
-  let innerArea = vm.innerArea(modalArea)
-  renderFleetList(innerArea, buf, model)
+  ## Dispatches between ListView and SystemView based on fleetViewMode
+  
+  case model.ui.fleetViewMode
+  of FleetViewMode.ListView:
+    # Original list view (modal with flat list)
+    let vm = newViewModal("YOUR FLEETS").maxWidth(120).minWidth(80)
+    let contentHeight = max(10, model.view.fleets.len + 4)
+    let modalArea = vm.calculateViewArea(canvas, contentHeight)
+    vm.render(modalArea, buf)
+    let innerArea = vm.innerArea(modalArea)
+    renderFleetList(innerArea, buf, model)
+  
+  of FleetViewMode.SystemView:
+    # 3-pane fleet console as centered modal with dynamic width
+    # Calculate content-based width:
+    # - Fleets pane needs ~80 chars (11 columns + borders/padding)
+    # - Fleets pane is 70% of total width
+    # - Therefore minimum total: 80 / 0.7 ≈ 115 chars
+    let minContentWidth = 110
+    let maxAvailableWidth = canvas.width - 4
+    let modalWidth = max(minContentWidth, min(maxAvailableWidth, 120))
+    
+    let contentHeight = min(canvas.height - 6, 28)
+    
+    let vm = newViewModal("FLEET COMMAND")
+      .maxWidth(modalWidth)
+      .minWidth(minContentWidth)
+    let modalArea = vm.calculateViewArea(canvas, contentHeight)
+    vm.render(modalArea, buf)
+    let innerArea = vm.innerArea(modalArea)
+    renderFleetConsole(innerArea, buf, model, ps)
 
 proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
@@ -1776,7 +2005,8 @@ proc renderDashboard*(
     of ViewMode.Planets:
       renderPlanetsModal(canvasArea, buf, model, model.ui.planetsScroll)
     of ViewMode.Fleets:
-      renderFleetsModal(canvasArea, buf, model, model.ui.fleetsScroll)
+      renderFleetsModal(canvasArea, buf, model, playerState,
+        model.ui.fleetsScroll)
     of ViewMode.Research:
       renderResearchModal(canvasArea, buf, model, model.ui.researchScroll)
     of ViewMode.Espionage:

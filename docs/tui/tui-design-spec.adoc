@@ -121,73 +121,75 @@ Ordering:
 
 Columns (120 cols target):
 * System (name)
-* Sector (system coords)
-* Class (planet class)
-* Resources (resource rating)
+* Sec (system coords)
+* Cls (planet class)
+* Res (resource rating)
 * Pop (PU)
 * IU
 * GCO
 * NCV
-* Growth
+* Δ (population growth)
 * CD (construction dock capacity)
 * RD (repair dock capacity)
-* FLT (fleets in system)
+* Flt (fleets in system)
 * SB (starbases)
-* GND (ground units: armies + marines)
+* A+M (ground units: armies + marines)
 * GB (ground batteries)
-* SLD (planetary shield: Y/N)
+* Sld (planetary shield: Y/N)
 * Status (comma-separated flags)
 
 Column budget (120 cols target):
-* System: 18
-* Sector: 5
-* Class: 5
-* Res: 5
-* Pop: 5
-* IU: 5
-* GCO: 6
-* NCV: 6
-* Growth: 7
-* CD: 3
-* RD: 3
-* FLT: 3
-* SB: 3
-* GND: 3
-* GB: 3
-* SLD: 3
-* Status: 37 (expand to fill remaining width)
+* System: 14
+* Sec: 4
+* Cls: 3
+* Res: 3
+* Pop: 4
+* IU: 4
+* GCO: 5
+* NCV: 5
+* Δ: 5
+* CD: 2
+* RD: 2
+* Flt: 2
+* SB: 2
+* A+M: 2
+* GB: 2
+* Sld: 3
+* Status: 0 (auto-width, minWidth 4, expands to fill remaining width)
 
 Column alignment spec:
 ----
-System: width=18  align=left   truncate=ellipsis
-Sector: width=5   align=center truncate=none
-Class:  width=5   align=left   truncate=none
-Res:    width=5   align=left   truncate=none
-Pop:    width=5   align=right  truncate=none
-IU:     width=5   align=right  truncate=none
-GCO:    width=6   align=right  truncate=none
-NCV:    width=6   align=right  truncate=none
-Growth: width=7   align=right  truncate=none
-CD:     width=3   align=right  truncate=none
-RD:     width=3   align=right  truncate=none
-FLT:    width=3   align=right  truncate=none
-SB:     width=3   align=right  truncate=none
-GND:    width=3   align=right  truncate=none
-GB:     width=3   align=right  truncate=none
-SLD:    width=3   align=center truncate=none
-Status: width=fill align=left  truncate=ellipsis
+System: width=14  align=left   truncate=ellipsis
+Sec:    width=4   align=center truncate=none
+Cls:    width=3   align=center truncate=none
+Res:    width=3   align=center truncate=none
+Pop:    width=4   align=center truncate=none
+IU:     width=4   align=center truncate=none
+GCO:    width=5   align=center truncate=none
+NCV:    width=5   align=center truncate=none
+Δ:      width=5   align=center truncate=none
+CD:     width=2   align=center truncate=none
+RD:     width=2   align=center truncate=none
+Flt:    width=2   align=center truncate=none
+SB:     width=2   align=center truncate=none
+A+M:    width=2   align=center truncate=none
+GB:     width=2   align=center truncate=none
+Sld:    width=3   align=center truncate=none
+Status: width=0   align=center truncate=ellipsis (auto, minWidth=4)
 ----
 
-Table sketch (full separators):
+Table sketch (borderless zebra-striped):
 ----
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│SYSTEM            │SECTR│CLASS│RES  │ POP │ IU  │ GCO │ NCV │GROWTH│CD │RD │FLT│SB │GND│GB │SLD│STATUS                │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│Caladan           │ A01 │BEN  │RIC  │ 120 │  80 │  400│  220│  +1.2│ 10│  8│  2│ 1 │ 20│ 5 │ Y │OK                    │
-│Arrakis           │ C03 │HAR  │ABD  │  60 │  40 │  180│   96│  +0.6│  6│  4│  5│ 0 │  0│ 2 │ N │CN, TF                │
-│Ix                │ B09 │LUS  │RIC  │  90 │  70 │  320│  180│  +0.9│  8│  6│  0│ 1 │  5│ 2 │ Y │BLK, CAP, DMG         │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+SYSTEM          Sec  Cls Res Pop  IU   GCO   NCV    Δ   CD RD Flt SB A+M GB Sld Status
+─────────────────────────────────────────────────────────────────────────────────────────
+Caladan         A01  BEN RIC 120  80   400   220  +1.2 10  8  2  1  20  5   Y  OK
+Arrakis         C03  HRH ABD  60  40   180    96  +0.6  6  4  5  0   0  2   N  CN, TF
+Ix              B09  LSH RIC  90  70   320   180  +0.9  8  6  0  1   5  2   Y  ⚠ BLK, CAP, DMG
 ----
+
+NOTE: The actual rendering uses `showBorders(false)` and `zebraStripe(true)`, producing
+a compact list view without box characters. Alternate rows receive subtle background tinting
+for readability.
 
 Status legend (prioritized):
 * BLK: Blockaded (Critical)
@@ -197,6 +199,29 @@ Status legend (prioritized):
 * TF:  Terraforming active
 * CN:  Construction active
 * OK:  Nominal
+
+==== Colony Modal Variant
+
+For detail/modal views, a bordered table variant (`buildPlanetsTable`) is available with
+slightly different styling:
+
+* Uses `showBorders(true)` for full box drawing
+* Right-aligns numeric columns (Pop, IU, GCO, NCV, Δ, CD, RD, Flt, SB, Gnd, Bat) instead of center
+* Status column: width=4, left-aligned (fixed width instead of auto)
+* Column headers use "Grw" instead of "Δ", "Gnd" instead of "A+M", "Bat" instead of "GB", "Shd" instead of "Sld"
+
+This variant is used when presenting colony data in a focused modal context where the
+bordered presentation provides better visual separation from surrounding UI elements.
+
+Example (bordered modal):
+----
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│SYSTEM          Sec  Cls Res  Pop   IU   GCO   NCV   Grw CD RD Flt SB Gnd Bat Shd Status│
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│Caladan         A01  BEN RIC  120   80   400   220  +1.2 10  8  2  1  20  5   Y  OK     │
+│Arrakis         C03  HRH ABD   60   40   180    96  +0.6  6  4  5  0   0  2   N  CN     │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+----
 
 * **Commands**:
   - `BuildCommand`: Ships, Facilities, Ground Units.
