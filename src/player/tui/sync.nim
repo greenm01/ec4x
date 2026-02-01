@@ -209,28 +209,7 @@ proc syncGameStateToModel*(
 # =============================================================================
 # Fleet Console Data Sync (SystemView mode)
 # =============================================================================
-
-type
-  FleetConsoleSystem* = object
-    ## System with fleets for fleet console
-    systemId*: int
-    systemName*: string
-    sectorLabel*: string
-    fleetCount*: int
-
-  FleetConsoleFleet* = object
-    ## Fleet info for console list
-    fleetId*: int
-    shipCount*: int
-    attackStrength*: int
-    defenseStrength*: int
-    troopTransports*: int
-    etacs*: int
-    commandLabel*: string
-    destinationLabel*: string
-    eta*: int
-    roe*: int
-    status*: string
+# Type definitions moved to tui_model.nim to support caching
 
 proc syncFleetConsoleSystems*(
     ps: ps_types.PlayerState
@@ -598,6 +577,13 @@ proc syncPlayerStateToModel*(
   syncPlanetsRows(model, ps)
   # Sync intel database data
   syncIntelRows(model, ps)
+  
+  # Sync fleet console cached data for SystemView mode
+  model.ui.fleetConsoleSystems = syncFleetConsoleSystems(ps)
+  model.ui.fleetConsoleFleetsBySystem.clear()
+  for sys in model.ui.fleetConsoleSystems:
+    model.ui.fleetConsoleFleetsBySystem[sys.systemId] = 
+      syncFleetConsoleFleets(ps, SystemId(sys.systemId))
 
 # =============================================================================
 # Planets Table Sync (PlayerState-only)

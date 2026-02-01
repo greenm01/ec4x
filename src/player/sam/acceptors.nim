@@ -6,7 +6,7 @@
 ##
 ## Acceptor signature: proc(model: var M, proposal: Proposal)
 
-import std/[options, times, strutils]
+import std/[options, times, strutils, tables]
 import ./types
 import ./tui_model
 import ./actions
@@ -343,15 +343,25 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     # Fleet console per-pane navigation
     if model.ui.mode == ViewMode.Fleets and
         model.ui.fleetViewMode == FleetViewMode.SystemView:
-      # Note: Max bounds checking would require accessing sync data
-      # For now, just increment (rendering will clamp)
+      # Use cached data for proper bounds checking
       case model.ui.fleetConsoleFocus
       of FleetConsoleFocus.SystemsPane:
-        model.ui.fleetConsoleSystemIdx += 1
+        let maxIdx = max(0, model.ui.fleetConsoleSystems.len - 1)
+        if model.ui.fleetConsoleSystemIdx < maxIdx:
+          model.ui.fleetConsoleSystemIdx += 1
       of FleetConsoleFocus.FleetsPane:
-        model.ui.fleetConsoleFleetIdx += 1
+        # Get fleets for current system to check bounds
+        if model.ui.fleetConsoleSystems.len > 0:
+          let sysIdx = clamp(model.ui.fleetConsoleSystemIdx, 0, 
+            model.ui.fleetConsoleSystems.len - 1)
+          let systemId = model.ui.fleetConsoleSystems[sysIdx].systemId
+          if model.ui.fleetConsoleFleetsBySystem.hasKey(systemId):
+            let fleets = model.ui.fleetConsoleFleetsBySystem[systemId]
+            let maxIdx = max(0, fleets.len - 1)
+            if model.ui.fleetConsoleFleetIdx < maxIdx:
+              model.ui.fleetConsoleFleetIdx += 1
       of FleetConsoleFocus.ShipsPane:
-        model.ui.fleetConsoleShipIdx += 1
+        model.ui.fleetConsoleShipIdx += 1  # Ships bounds checked at render
     else:
       # Default list navigation
       let maxIdx = model.currentListLength() - 1
@@ -1093,18 +1103,31 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   of ActionKind.openFleetDetailModal:
     # Open modal for selected fleet
     if model.ui.mode == ViewMode.Fleets and model.ui.fleetViewMode == FleetViewMode.SystemView:
-      # SystemView: Get fleet from console state
-      # We need to get the selected fleet ID from the fleet console
-      # For now, use selectedFleetId if available
-      if model.ui.selectedFleetId != 0:
-        model.ui.fleetDetailModal.active = true
-        model.ui.fleetDetailModal.fleetId = model.ui.selectedFleetId
-        model.ui.fleetDetailModal.subModal = FleetSubModal.None
-        model.ui.fleetDetailModal.commandCategory = CommandCategory.Movement
-        model.ui.fleetDetailModal.commandIdx = 0
-        model.ui.fleetDetailModal.roeValue = 6  # Standard
-        model.ui.fleetDetailModal.confirmPending = false
-        model.ui.statusMessage = "Fleet detail opened"
+      # SystemView: Get fleet from cached console data
+      let systems = model.ui.fleetConsoleSystems
+      if systems.len > 0:
+        let sysIdx = clamp(model.ui.fleetConsoleSystemIdx, 0, systems.len - 1)
+        let systemId = systems[sysIdx].systemId
+        # Get fleets for that system
+        if model.ui.fleetConsoleFleetsBySystem.hasKey(systemId):
+          let fleets = model.ui.fleetConsoleFleetsBySystem[systemId]
+          let fleetIdx = model.ui.fleetConsoleFleetIdx
+          if fleetIdx >= 0 and fleetIdx < fleets.len:
+            let fleetId = fleets[fleetIdx].fleetId
+            model.ui.fleetDetailModal.active = true
+            model.ui.fleetDetailModal.fleetId = fleetId
+            model.ui.fleetDetailModal.subModal = FleetSubModal.None
+            model.ui.fleetDetailModal.commandCategory = CommandCategory.Movement
+            model.ui.fleetDetailModal.commandIdx = 0
+            model.ui.fleetDetailModal.roeValue = 6  # Standard
+            model.ui.fleetDetailModal.confirmPending = false
+            model.ui.statusMessage = "Fleet detail opened"
+          else:
+            model.ui.statusMessage = "No fleet selected"
+        else:
+          model.ui.statusMessage = "No fleets at this system"
+      else:
+        model.ui.statusMessage = "No systems with fleets"
     elif model.ui.mode == ViewMode.Fleets and model.ui.fleetViewMode == FleetViewMode.ListView:
       # ListView: Get fleet from selected index
       if model.ui.selectedIdx < model.view.fleets.len:

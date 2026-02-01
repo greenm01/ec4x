@@ -3,6 +3,7 @@
 ## Rendering functions for the SAM-based TUI views.
 
 import std/[options, unicode, strutils]
+import std/tables as stdtables
 
 import ../../engine/types/[core, player_state as ps_types, fleet]
 import ../../engine/state/engine
@@ -373,7 +374,7 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     let clipped = summary[0 ..< min(summary.len, area.width)]
     discard buf.setString(area.x, footerY, clipped, dimStyle())
 
-proc buildPlanetsTable*(model: TuiModel, scroll: ScrollState): Table =
+proc buildPlanetsTable*(model: TuiModel, scroll: ScrollState): table.Table =
   ## Build Colony table per spec (boxed)
   # 17 column layout per spec (compressed for modal width)
   let columns = @[
@@ -651,17 +652,19 @@ proc renderFleetConsole*(
   let systemsPane = rect(area.x, area.y, systemsWidth, area.height)
   let fleetsPane = rect(area.x + systemsWidth, area.y, fleetsWidth, area.height)
   
-  # Sync data
-  let systems = syncFleetConsoleSystems(ps)
+  # Use cached data from model (synced in syncPlayerStateToModel)
+  let systems = model.ui.fleetConsoleSystems
   
   # Determine selected system
   let systemIdx = clamp(model.ui.fleetConsoleSystemIdx, 0,
     max(0, systems.len - 1))
   
+  # Get fleets for selected system from cache
   var fleets: seq[FleetConsoleFleet] = @[]
   if systems.len > 0:
-    let selectedSystem = systems[systemIdx]
-    fleets = syncFleetConsoleFleets(ps, SystemId(selectedSystem.systemId))
+    let selectedSystemId = systems[systemIdx].systemId
+    if stdtables.hasKey(model.ui.fleetConsoleFleetsBySystem, selectedSystemId):
+      fleets = model.ui.fleetConsoleFleetsBySystem[selectedSystemId]
   
   # Render systems pane
   renderFleetConsoleSystems(systemsPane, buf, systems, systemIdx,

@@ -162,6 +162,27 @@ type
     buildListScroll*: ScrollState
     queueScroll*: ScrollState
 
+  FleetConsoleSystem* = object
+    ## System with fleets for fleet console (cached from PlayerState)
+    systemId*: int
+    systemName*: string
+    sectorLabel*: string
+    fleetCount*: int
+
+  FleetConsoleFleet* = object
+    ## Fleet info for console list (cached from PlayerState)
+    fleetId*: int
+    shipCount*: int
+    attackStrength*: int
+    defenseStrength*: int
+    troopTransports*: int
+    etacs*: int
+    commandLabel*: string
+    destinationLabel*: string
+    eta*: int
+    roe*: int
+    status*: string
+
   FleetSubModal* {.pure.} = enum
     ## Sub-modal states for fleet detail modal
     None
@@ -476,6 +497,10 @@ type
     fleetConsoleSystemScroll*: ScrollState
     fleetConsoleFleetScroll*: ScrollState
     fleetConsoleShipScroll*: ScrollState
+    
+    # Fleet console cached data (synced from PlayerState)
+    fleetConsoleSystems*: seq[FleetConsoleSystem]
+    fleetConsoleFleetsBySystem*: Table[int, seq[FleetConsoleFleet]]  # systemId -> fleets
 
     # Reports UI
     reportFilter*: ReportCategory
@@ -668,6 +693,8 @@ proc initTuiUiState*(): TuiUiState =
     fleetConsoleSystemScroll: initScrollState(),
     fleetConsoleFleetScroll: initScrollState(),
     fleetConsoleShipScroll: initScrollState(),
+    fleetConsoleSystems: @[],
+    fleetConsoleFleetsBySystem: initTable[int, seq[FleetConsoleFleet]](),
     reportFilter: ReportCategory.Summary,
     reportFocus: ReportPaneFocus.TurnList,
     reportTurnIdx: 0,
