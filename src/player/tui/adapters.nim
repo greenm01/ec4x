@@ -522,6 +522,7 @@ type
     defense*: string        # Defense strength (e.g., "38")
     isCrippled*: bool       # For rendering (crippled ships in yellow/red)
     wepLevel*: int          # WEP tech level ship was built at
+    marines*: string        # Marines carried (e.g., "2" for TT, "-" for others)
 
   FleetDetailData* = object
     ## Complete fleet detail information for rendering
@@ -687,6 +688,14 @@ proc fleetToDetailData*(
 
     totalAS += int(ship.stats.attackStrength)
     totalDS += int(ship.stats.defenseStrength)
+    
+    # Get marine count for TroopTransports
+    var marinesStr = "-"
+    if ship.shipClass == ShipClass.TroopTransport:
+      if ship.cargo.isSome and ship.cargo.get().cargoType == CargoClass.Marines:
+        marinesStr = $ship.cargo.get().quantity
+      else:
+        marinesStr = "0"
 
     shipRows.add(ShipDetailRow(
       name: shipName,
@@ -695,7 +704,8 @@ proc fleetToDetailData*(
       attack: $ship.stats.attackStrength,
       defense: $ship.stats.defenseStrength,
       isCrippled: isCrippled,
-      wepLevel: int(ship.stats.wep)
+      wepLevel: int(ship.stats.wep),
+      marines: marinesStr
     ))
   
   # Build auxiliary ships summary
@@ -1141,7 +1151,15 @@ proc shipToRow(ship: Ship): ShipDetailRow =
     isCrippled = true
   of CombatState.Destroyed:
     stateLabel = "Destroyed"
-
+  
+  # Get marine count for TroopTransports
+  var marinesStr = "-"
+  if ship.shipClass == ShipClass.TroopTransport:
+    if ship.cargo.isSome and ship.cargo.get().cargoType == CargoClass.Marines:
+      marinesStr = $ship.cargo.get().quantity
+    else:
+      marinesStr = "0"
+  
   ShipDetailRow(
     name: shipName,
     class: className,
@@ -1149,7 +1167,8 @@ proc shipToRow(ship: Ship): ShipDetailRow =
     attack: $ship.stats.attackStrength,
     defense: $ship.stats.defenseStrength,
     isCrippled: isCrippled,
-    wepLevel: int(ship.stats.wep)
+    wepLevel: int(ship.stats.wep),
+    marines: marinesStr
   )
 
 proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailData =
@@ -1447,3 +1466,67 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
     ))
 
   (options: options, dockSummary: dockInfo)
+
+# =============================================================================
+# Fleet Command Filtering Helpers
+# =============================================================================
+
+proc fleetHasStagedCommand*(fleetId: int, stagedCommands: seq[FleetCommand]): bool =
+  ## Check if a fleet has a staged command
+  for cmd in stagedCommands:
+    if int(cmd.fleetId) == fleetId:
+      return true
+  false
+
+proc isFleetCommandAvailable*(
+  cmdType: FleetCommandType,
+  fleet: ref Fleet,
+  ps: PlayerState
+): bool =
+  ## Check if a fleet command is available for the given fleet
+  ## Phase 1: Simple checks, Phase 2 will add composition filtering
+  
+  # All movement commands are always available
+  if cmdType in {FleetCommandType.Hold, FleetCommandType.Move,
+                FleetCommandType.SeekHome, FleetCommandType.Patrol}:
+    return true
+  
+  # Status commands are always available
+  if cmdType in {FleetCommandType.Reserve, FleetCommandType.Mothball}:
+    return true
+  
+  # Fleet ops are always available
+  if cmdType in {FleetCommandType.JoinFleet, FleetCommandType.Rendezvous,
+                FleetCommandType.Salvage}:
+    return true
+  
+  # Intel commands - View is always available, others need scouts (TODO Phase 2)
+  if cmdType == FleetCommandType.View:
+    return true
+  
+  if cmdType in {FleetCommandType.ScoutColony, FleetCommandType.ScoutSystem,
+                FleetCommandType.HackStarbase}:
+    # Phase 2: check for scout/EW ships
+    return true
+  
+  # Defense commands - need combat ships (TODO Phase 2)
+  if cmdType in {FleetCommandType.GuardStarbase, FleetCommandType.GuardColony,
+                FleetCommandType.Blockade}:
+    # Phase 2: check for combat ships
+    return true
+  
+  # Combat commands
+  if cmdType == FleetCommandType.Bombard:
+    # Phase 2: check for combat ships
+    return true
+  
+  if cmdType in {FleetCommandType.Invade, FleetCommandType.Blitz}:
+    # Phase 2: check for TroopTransports with marines
+    return true
+  
+  # Colonial commands
+  if cmdType == FleetCommandType.Colonize:
+    # Phase 2: check for ColonyShip
+    return true
+  
+  false

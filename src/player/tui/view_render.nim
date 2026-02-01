@@ -4,7 +4,7 @@
 
 import std/[options, unicode, strutils]
 
-import ../../engine/types/[core, player_state as ps_types]
+import ../../engine/types/[core, player_state as ps_types, fleet]
 import ../../engine/state/engine
 import ../sam/sam_pkg
 import ../sam/command_parser
@@ -20,7 +20,7 @@ import ../tui/widget/scrollbar
 import ../tui/widget/view_modal
 import ../tui/widget/table_modal
 import ../tui/widget/build_modal
-import ../tui/widget/hexmap/symbols
+import ../tui/widget/fleet_detail_modal
 import ../sam/bindings
 import ../tui/styles/ec_palette
 import ../tui/adapters
@@ -657,7 +657,8 @@ proc renderFleetConsoleFleets(
   buf: var CellBuffer,
   fleets: seq[FleetConsoleFleet],
   selectedIdx: int,
-  hasFocus: bool
+  hasFocus: bool,
+  stagedCommands: seq[FleetCommand]
 ) =
   ## Render fleets pane as table (fleets at selected system)
   if area.isEmpty:
@@ -687,8 +688,18 @@ proc renderFleetConsoleFleets(
   
   # Add rows
   for flt in fleets:
+    # Check if this fleet has a staged command
+    var hasStaged = false
+    for cmd in stagedCommands:
+      if int(cmd.fleetId) == flt.fleetId:
+        hasStaged = true
+        break
+    
+    # Add indicator "●" for staged commands
+    let fleetIdStr = if hasStaged: "●" & $flt.fleetId else: $flt.fleetId
+    
     fleetsTable.addRow([
-      $flt.fleetId,
+      fleetIdStr,
       $flt.shipCount,
       $flt.attackStrength,
       $flt.defenseStrength,
@@ -704,92 +715,27 @@ proc renderFleetConsoleFleets(
   # Render table
   fleetsTable.render(area, buf)
 
-proc renderFleetConsoleDetail(
-  area: Rect,
-  buf: var CellBuffer,
-  ps: ps_types.PlayerState,
-  fleetId: FleetId,
-  selectedShipIdx: int,
-  hasFocus: bool
-) =
-  ## Render fleet detail pane as table (ship list)
-  if area.isEmpty:
-    return
-  
-  # Get fleet data
-  let fleetData = fleetToDetailDataFromPS(ps, fleetId)
-  
-  # Title line (keep this - useful context)
-  discard buf.setString(area.x, area.y, "Fleet Details", canvasHeaderStyle())
-  
-  # Fleet header info
-  var y = area.y + 1
-  discard buf.setString(area.x, y,
-    "Location: " & fleetData.location & "  Command: " &
-    fleetData.command & "  ROE: " & $fleetData.roe,
-    normalStyle())
-  y += 1
-  
-  # Build ship table
-  let columns = [
-    tableColumn("Ships", 0, table.Alignment.Left, 18),
-    tableColumn("WEP", 4, table.Alignment.Center),
-    tableColumn("AS/DS", 7, table.Alignment.Center),
-    tableColumn("Combat State", 0, table.Alignment.Left, 15)
-  ]
-  
-  var shipsTable = table(columns)
-    .showBorders(true)
-  
-  # Only show selection if this pane has focus
-  if hasFocus and selectedShipIdx >= 0 and selectedShipIdx < fleetData.ships.len:
-    shipsTable = shipsTable.selectedIdx(selectedShipIdx)
-  
-  # Add rows
-  for ship in fleetData.ships:
-    let asDs = ship.attack & "/" & ship.defense
-    shipsTable.addRow([
-      ship.class,
-      $ship.wepLevel,
-      asDs,
-      ship.state
-    ])
-  
-  # Calculate table height based on actual content (tight fit)
-  let tableHeight = shipsTable.renderHeight(fleetData.ships.len)
-  let tableArea = rect(area.x, y, area.width, tableHeight)
-  
-  # Render table
-  shipsTable.render(tableArea, buf)
-
 proc renderFleetConsole*(
   area: Rect,
   buf: var CellBuffer,
   model: TuiModel,
   ps: ps_types.PlayerState
 ) =
-  ## Render 3-pane fleet console (SystemView mode)
-  ## Layout: Top row 50%, bottom row 50%
-  ## Top row: Systems (30%), Fleets (70%)
-  ## Bottom row: Fleet detail (100%)
+  ## Render 2-pane fleet console (SystemView mode)
+  ## Layout: Full height, two columns
+  ## Left column: Systems (30%)
+  ## Right column: Fleets (70%)
+  ## Detail view is now a popup modal (opened with Enter)
   
   if area.isEmpty or area.height < 6:
     return
   
-  # Split area into top (50%) and bottom (50%)
-  let topHeight = area.height div 2
-  let bottomHeight = area.height - topHeight
-  
-  let topRow = rect(area.x, area.y, area.width, topHeight)
-  let bottomRow = rect(area.x, area.y + topHeight, area.width, bottomHeight)
-  
-  # Split top row: Systems (30%), Fleets (70%)
+  # Split area horizontally: Systems (30%), Fleets (70%)
   let systemsWidth = (area.width * 30) div 100
   let fleetsWidth = area.width - systemsWidth
   
-  let systemsPane = rect(topRow.x, topRow.y, systemsWidth, topRow.height)
-  let fleetsPane = rect(topRow.x + systemsWidth, topRow.y,
-    fleetsWidth, topRow.height)
+  let systemsPane = rect(area.x, area.y, systemsWidth, area.height)
+  let fleetsPane = rect(area.x + systemsWidth, area.y, fleetsWidth, area.height)
   
   # Sync data
   let systems = syncFleetConsoleSystems(ps)
@@ -811,18 +757,8 @@ proc renderFleetConsole*(
   let fleetIdx = clamp(model.ui.fleetConsoleFleetIdx, 0,
     max(0, fleets.len - 1))
   renderFleetConsoleFleets(fleetsPane, buf, fleets, fleetIdx,
-    model.ui.fleetConsoleFocus == FleetConsoleFocus.FleetsPane)
-  
-  # Render fleet detail pane (bottom)
-  if fleets.len > 0 and fleetIdx < fleets.len:
-    let selectedFleet = fleets[fleetIdx]
-    renderFleetConsoleDetail(bottomRow, buf, ps,
-      FleetId(selectedFleet.fleetId),
-      model.ui.fleetConsoleShipIdx,
-      model.ui.fleetConsoleFocus == FleetConsoleFocus.ShipsPane)
-  else:
-    discard buf.setString(bottomRow.x + 2, bottomRow.y + 1,
-      "No fleet selected", dimStyle())
+    model.ui.fleetConsoleFocus == FleetConsoleFocus.FleetsPane,
+    model.ui.stagedFleetCommands)
 
 proc renderPlanetSummaryTab*(
   area: Rect,
@@ -2030,6 +1966,13 @@ proc renderDashboard*(
   if model.ui.buildModal.active:
     let buildModalWidget = newBuildModalWidget()
     buildModalWidget.render(model.ui.buildModal, canvasArea, buf)
+
+  # Render fleet detail modal if active
+  if model.ui.fleetDetailModal.active:
+    let fleetDetailWidget = newFleetDetailModalWidget()
+    # Get fleet data for the selected fleet
+    let fleetData = fleetToDetailDataFromPS(playerState, FleetId(model.ui.fleetDetailModal.fleetId))
+    fleetDetailWidget.render(model.ui.fleetDetailModal, fleetData, canvasArea, buf)
 
   if model.ui.expertModeActive:
     renderExpertPalette(buf, canvasArea, statusBarArea, model)

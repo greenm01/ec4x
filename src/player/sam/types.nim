@@ -124,6 +124,20 @@ type
     buildQuantityDec
     fleetConsoleNextPane
     fleetConsolePrevPane
+    openFleetDetailModal
+    closeFleetDetailModal
+    fleetDetailNextCategory
+    fleetDetailPrevCategory
+    fleetDetailListUp
+    fleetDetailListDown
+    fleetDetailSelectCommand
+    fleetDetailOpenROE
+    fleetDetailCloseROE
+    fleetDetailROEUp
+    fleetDetailROEDown
+    fleetDetailSelectROE
+    fleetDetailConfirm
+    fleetDetailCancel
 
   # ============================================================================
   # Core SAM Types

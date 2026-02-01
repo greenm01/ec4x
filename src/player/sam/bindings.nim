@@ -590,6 +590,13 @@ proc initBindings*() =
     context: BindingContext.Fleets,
     longLabel: "NEXT PANE", shortLabel: "Tab", priority: 23))
 
+  # Open Fleet Detail Modal
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.openFleetDetailModal,
+    context: BindingContext.Fleets,
+    longLabel: "DETAIL", shortLabel: "Enter", priority: 24))
+
   registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
@@ -597,32 +604,85 @@ proc initBindings*() =
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
-  # Fleet Detail Context
+  # Fleet Detail Modal Context
   # =========================================================================
 
+  # Main modal (subModal == None)
   registerBinding(Binding(
-    key: KeyCode.KeyM, modifier: KeyModifier.None,
-    actionKind: ActionKind.startOrderMove,
+    key: KeyCode.KeyC, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailConfirm,  # Opens command picker
     context: BindingContext.FleetDetail,
-    longLabel: "MOVE", shortLabel: "Move", priority: 10))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyP, modifier: KeyModifier.None,
-    actionKind: ActionKind.startOrderPatrol,
-    context: BindingContext.FleetDetail,
-    longLabel: "PATROL", shortLabel: "Ptrl", priority: 20))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyH, modifier: KeyModifier.None,
-    actionKind: ActionKind.startOrderHold,
-    context: BindingContext.FleetDetail,
-    longLabel: "HOLD", shortLabel: "Hold", priority: 30))
+    longLabel: "COMMAND", shortLabel: "Cmd", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyR, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    actionKind: ActionKind.fleetDetailOpenROE,
     context: BindingContext.FleetDetail,
-    longLabel: "ROE", shortLabel: "ROE", priority: 40))
+    longLabel: "ROE", shortLabel: "ROE", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
+    actionKind: ActionKind.closeFleetDetailModal,
+    context: BindingContext.FleetDetail,
+    longLabel: "CLOSE", shortLabel: "Esc", priority: 90))
+
+  # Command Picker sub-modal
+  registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailNextCategory,
+    context: BindingContext.FleetDetail,
+    longLabel: "NEXT CAT", shortLabel: "Tab", priority: 30))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.Shift,
+    actionKind: ActionKind.fleetDetailPrevCategory,
+    context: BindingContext.FleetDetail,
+    longLabel: "PREV CAT", shortLabel: "S-Tab", priority: 31))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailListUp,
+    context: BindingContext.FleetDetail,
+    longLabel: "UP", shortLabel: "↑", priority: 32))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailListDown,
+    context: BindingContext.FleetDetail,
+    longLabel: "DOWN", shortLabel: "↓", priority: 33))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailSelectCommand,
+    context: BindingContext.FleetDetail,
+    longLabel: "SELECT", shortLabel: "Enter", priority: 34))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailCancel,
+    context: BindingContext.FleetDetail,
+    longLabel: "CANCEL", shortLabel: "Esc", priority: 91))
+
+  # ROE Picker sub-modal (shares bindings with command picker for navigation)
+  # Up/Down keys already bound above
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailSelectROE,
+    context: BindingContext.FleetDetail,
+    longLabel: "CONFIRM ROE", shortLabel: "Enter", priority: 35))
+
+  # Confirm dialog (Y/N)
+  registerBinding(Binding(
+    key: KeyCode.KeyY, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailConfirm,
+    context: BindingContext.FleetDetail,
+    longLabel: "YES", shortLabel: "Y", priority: 40))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyN, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailCancel,
+    context: BindingContext.FleetDetail,
+    longLabel: "NO", shortLabel: "N", priority: 41))
 
   registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
@@ -1273,6 +1333,15 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         BindingContext.BuildModal, model)
     if buildResult.isSome:
       return buildResult
+    return none(Proposal)
+
+  # Fleet detail modal mode: use registry
+  if model.ui.fleetDetailModal.active:
+    let fleetDetailResult = lookupAndDispatch(key, modifier,
+        BindingContext.FleetDetail, model)
+    if fleetDetailResult.isSome:
+      return fleetDetailResult
+    # Block other keys when modal is active
     return none(Proposal)
 
   # Order entry mode: use registry

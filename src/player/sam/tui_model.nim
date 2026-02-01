@@ -162,6 +162,35 @@ type
     buildListScroll*: ScrollState
     queueScroll*: ScrollState
 
+  FleetSubModal* {.pure.} = enum
+    ## Sub-modal states for fleet detail modal
+    None
+    CommandPicker
+    ROEPicker
+    ConfirmPrompt
+
+  CommandCategory* {.pure.} = enum
+    ## Command categories for organization in picker
+    Movement    # Hold, Move, Seek Home, Patrol
+    Defense     # Guard Starbase, Guard Colony, Blockade
+    Combat      # Bombard, Invade, Blitz
+    Colonial    # Colonize
+    Intel       # Scout Colony, Scout System, Hack Starbase, View
+    FleetOps    # Join Fleet, Rendezvous, Salvage
+    Status      # Reserve, Mothball
+
+  FleetDetailModalState* = object
+    ## Fleet detail modal state
+    active*: bool
+    fleetId*: int
+    subModal*: FleetSubModal
+    commandCategory*: CommandCategory
+    commandIdx*: int           # Index within filtered commands
+    roeValue*: int             # 0-10
+    confirmPending*: bool
+    confirmMessage*: string
+    pendingCommandType*: FleetCommandType  # For confirmation flow
+
   ViewMode* {.pure.} = enum
     ## Current UI view (maps to primary view number)
     ##
@@ -530,6 +559,9 @@ type
     # Build modal state
     buildModal*: BuildModalState
 
+    # Fleet detail modal state
+    fleetDetailModal*: FleetDetailModalState
+
   # ============================================================================
   # View State (render-only data)
   # ============================================================================
@@ -706,6 +738,17 @@ proc initTuiUiState*(): TuiUiState =
       availableOptions: @[],
       buildListScroll: initScrollState(),
       queueScroll: initScrollState()
+    ),
+    fleetDetailModal: FleetDetailModalState(
+      active: false,
+      fleetId: 0,
+      subModal: FleetSubModal.None,
+      commandCategory: CommandCategory.Movement,
+      commandIdx: 0,
+      roeValue: 6,  # Standard ROE
+      confirmPending: false,
+      confirmMessage: "",
+      pendingCommandType: FleetCommandType.Hold
     )
   )
 
