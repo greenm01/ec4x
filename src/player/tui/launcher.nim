@@ -8,6 +8,9 @@
 
 import std/[os, osproc, strformat, strutils]
 
+when not defined(windows):
+  import std/posix
+
 const
   OptimalWidth* = 120
   OptimalHeight* = 36
@@ -81,11 +84,25 @@ proc launchInNewWindow*(binaryPath: string, args: seq[string] = @[],
     return true
 
   of TerminalEmulator.Ghostty:
-    let termArgs = @[&"--window-width={width}", &"--window-height={height}"] &
-                   childArgs
-    discard startProcess("ghostty", args = termArgs,
-                         options = {poUsePath, poParentStreams})
-    return true
+    when defined(macosx):
+      # macOS: Ghostty CLI doesn't support launching terminal, use 'open' command
+      # Build command line for -e flag
+      var cmdLine = ""
+      for i, arg in childArgs:
+        if i > 0:
+          cmdLine.add(" ")
+        cmdLine.add(arg.quoteShell)
+      
+      let termArgs = @["-na", "Ghostty", "--args", "-e", cmdLine]
+      discard startProcess("open", args = termArgs,
+                           options = {poUsePath, poParentStreams})
+      return true
+    else:
+      # Linux: Ghostty CLI works directly
+      let termArgs = @["-e"] & childArgs
+      discard startProcess("ghostty", args = termArgs,
+                           options = {poUsePath, poParentStreams})
+      return true
 
   of TerminalEmulator.WezTerm:
     # WezTerm uses a config override approach
@@ -177,14 +194,20 @@ proc isTerminalSizeOk*(width, height: int): tuple[ok: bool, msg: string] =
 
 proc shouldLaunchInNewWindow*(): bool =
   ## Determine if we should try to launch in a new window
-  ## Check if we're already in a terminal session or if launched from desktop
+  ## Returns false if we're already in an interactive terminal session
+  
+  # First check: Are we already in a TTY?
+  # If stdin is a TTY, we're likely already in a terminal - don't spawn another
+  when not defined(windows):
+    if isatty(0) != 0:  # stdin (fd 0) is a TTY
+      return false
   
   # If DISPLAY is set (X11) and we have a terminal emulator, launch new window
   when not defined(windows):
     if getEnv("DISPLAY") != "" or getEnv("WAYLAND_DISPLAY") != "":
       return true
   
-  # If on macOS with GUI session
+  # If on macOS with GUI session (and not already in TTY per above check)
   when defined(macosx):
     return true
   
