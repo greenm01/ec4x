@@ -95,15 +95,21 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 
 - **Nim** 2.0+ and **Nimble**
 - **OpenGL** development libraries (for client)
+- **zstd** compression library
+
+**macOS (Homebrew):**
+```bash
+brew install nim zstd
+```
 
 **Arch/CachyOS:**
 ```bash
-sudo pacman -S nim nimble libgl libx11 libxcursor libxi libxrandr
+sudo pacman -S nim nimble zstd libgl libx11 libxcursor libxi libxrandr
 ```
 
 **Ubuntu/Debian:**
 ```bash
-sudo apt install nim libgl-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev
+sudo apt install nim libgl-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libzstd-dev
 ```
 
 ### Quick Start (Developers)

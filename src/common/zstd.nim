@@ -1,9 +1,24 @@
 ## Minimal zstd compression bindings
 ##
 ## Wraps the zstd C library for simple single-shot compression/decompression.
-## Uses the system libzstd (install via: apt install libzstd-dev)
+## 
+## Installation:
+## - macOS: brew install zstd
+## - Ubuntu/Debian: apt install libzstd-dev
+## - Arch: pacman -S zstd
 
-{.passL: "-lzstd".}
+# Platform-specific library paths
+when defined(macosx):
+  # macOS with Homebrew
+  when defined(arm64) or defined(aarch64):
+    # Apple Silicon (M1/M2/M3)
+    {.passL: "-L/opt/homebrew/opt/zstd/lib -lzstd".}
+  else:
+    # Intel Mac
+    {.passL: "-L/usr/local/opt/zstd/lib -lzstd".}
+else:
+  # Linux and other platforms - use system library path
+  {.passL: "-lzstd".}
 
 const
   ZSTD_CONTENTSIZE_UNKNOWN* = high(uint64)
