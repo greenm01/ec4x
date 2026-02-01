@@ -128,3 +128,18 @@ nimble checkAll           # Verify compilation
 ```
 
 **Note:** Player client not yet implemented. See [docs/TODO.md](docs/TODO.md) for roadmap.
+
+### Running the Daemon
+
+The daemon requires a Nostr relay at `ws://localhost:8080` (configurable in `config/daemon.kdl`). We recommend [nostr-rs-relay](https://github.com/scsibug/nostr-rs-relay) - follow their setup guide to install.
+
+**First-time setup** - Generate a daemon identity:
+```bash
+EC4X_REGEN_IDENTITY=1 ./bin/ec4x-daemon start
+```
+
+This creates a Nostr keypair at `~/.local/share/ec4x/daemon_identity.kdl`. Subsequent runs only need:
+
+```bash
+./bin/ec4x-daemon start
+```
