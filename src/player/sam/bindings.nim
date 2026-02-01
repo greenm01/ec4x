@@ -1272,6 +1272,36 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.fleetConsolePrevPane:
     return some(actionFleetConsolePrevPane())
 
+  # Fleet detail modal actions
+  of ActionKind.openFleetDetailModal:
+    return some(actionOpenFleetDetailModal())
+  of ActionKind.closeFleetDetailModal:
+    return some(actionCloseFleetDetailModal())
+  of ActionKind.fleetDetailNextCategory:
+    return some(actionFleetDetailNextCategory())
+  of ActionKind.fleetDetailPrevCategory:
+    return some(actionFleetDetailPrevCategory())
+  of ActionKind.fleetDetailListUp:
+    return some(actionFleetDetailListUp())
+  of ActionKind.fleetDetailListDown:
+    return some(actionFleetDetailListDown())
+  of ActionKind.fleetDetailSelectCommand:
+    return some(actionFleetDetailSelectCommand())
+  of ActionKind.fleetDetailOpenROE:
+    return some(actionFleetDetailOpenROE())
+  of ActionKind.fleetDetailCloseROE:
+    return some(actionFleetDetailCloseROE())
+  of ActionKind.fleetDetailROEUp:
+    return some(actionFleetDetailROEUp())
+  of ActionKind.fleetDetailROEDown:
+    return some(actionFleetDetailROEDown())
+  of ActionKind.fleetDetailSelectROE:
+    return some(actionFleetDetailSelectROE())
+  of ActionKind.fleetDetailConfirm:
+    return some(actionFleetDetailConfirm())
+  of ActionKind.fleetDetailCancel:
+    return some(actionFleetDetailCancel())
+
   else:
     discard
 

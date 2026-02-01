@@ -414,13 +414,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.selectedIdx < model.view.colonies.len:
         model.ui.selectedColonyId =
           model.view.colonies[model.ui.selectedIdx].colonyId
-    elif target == 30:
-      model.ui.previousMode = model.ui.mode
-      model.ui.mode = ViewMode.FleetDetail
-      model.resetBreadcrumbs(model.ui.mode)
-      if model.ui.selectedIdx < model.view.fleets.len:
-        model.ui.selectedFleetId =
-          model.view.fleets[model.ui.selectedIdx].id
+    # NOTE: target == 30 (FleetDetail) removed - now uses popup modal instead of full view
 
   of ProposalKind.pkGameAction:
     case proposal.actionKind
@@ -861,15 +855,8 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.resetBreadcrumbs(model.ui.mode)
         else:
           model.ui.statusMessage = "No colony selected"
-    elif model.ui.mode == ViewMode.Fleets and proposal.selectIdx == -1:
-      if model.ui.selectedIdx >= 0 and
-          model.ui.selectedIdx < model.view.fleets.len:
-        model.ui.previousMode = model.ui.mode
-        model.ui.mode = ViewMode.FleetDetail
-        model.ui.selectedFleetId = model.view.fleets[model.ui.selectedIdx].id
-        model.resetBreadcrumbs(model.ui.mode)
-      else:
-        model.ui.statusMessage = "No fleet selected"
+    # NOTE: Fleet selection now handled by openFleetDetailModal action (Enter key)
+    # Old ViewMode.FleetDetail inline view removed in favor of popup modal
     elif model.ui.mode == ViewMode.ReportDetail and proposal.selectIdx == -1:
       let report = model.currentReport()
       if report.isSome:

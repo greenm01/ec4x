@@ -528,98 +528,12 @@ proc renderFleetList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   if idx == 0:
     discard buf.setString(area.x, y, "No fleets", dimStyle())
 
-proc renderFleetDetail*(
-  area: Rect,
-  buf: var CellBuffer,
-  model: TuiModel,
-  state: GameState,
-  viewingHouse: HouseId
-) =
-  if model.ui.selectedFleetId <= 0:
-    discard buf.setString(
-      area.x, area.y, "No fleet selected", dimStyle()
-    )
-    return
-
-  # Convert engine data to display data using adapter
-  let fleetData = fleetToDetailData(
-    state,
-    FleetId(model.ui.selectedFleetId),
-    viewingHouse
-  )
-
-  var y = area.y
-
-  # Header: Fleet location and command
-  discard buf.setString(
-    area.x, y,
-    "Fleet #" & $fleetData.fleetId & " @ " & fleetData.location,
-    canvasHeaderStyle()
-  )
-  y += 1
-
-  discard buf.setString(
-    area.x, y,
-    "Command: " & fleetData.command,
-    normalStyle()
-  )
-  y += 1
-
-  discard buf.setString(
-    area.x, y,
-    "Status: " & fleetData.status & "  ROE: " & $fleetData.roe,
-    normalStyle()
-  )
-  y += 2
-
-  # Ships table header
-  discard buf.setString(
-    area.x, y,
-    "Ships (" & $fleetData.shipCount & "):",
-    canvasHeaderStyle()
-  )
-  y += 1
-
-  # Build table widget for ships
-  if fleetData.ships.len > 0:
-    var shipTable = table([
-      tableColumn("Name", 12, table.Alignment.Left),
-      tableColumn("Class", 16, table.Alignment.Left),
-      tableColumn("State", 9, table.Alignment.Left),
-      tableColumn("Attack", 7, table.Alignment.Right),
-      tableColumn("Defense", 7, table.Alignment.Right)
-    ])
-
-    # Add ship rows
-    let stateColumn = 2
-    let crippledStyle = CellStyle(fg: color(PrestigeColor), attrs: {})
-    for ship in fleetData.ships:
-      let stateStyle = if ship.isCrippled: crippledStyle else: positiveStyle()
-      shipTable.addRow(@[
-        ship.name,
-        ship.class,
-        ship.state,
-        ship.attack,
-        ship.defense
-      ], stateStyle, stateColumn)
-
-    # Render table
-    let tableArea = rect(area.x, y, area.width, area.height - (y - area.y))
-    shipTable.render(tableArea, buf)
-    y += fleetData.ships.len + 3  # Table height
-  else:
-    discard buf.setString(area.x, y, "  No ships", dimStyle())
-    y += 1
-
-  # Totals footer
-  y += 1
-  if y < area.bottom:
-    discard buf.setString(
-      area.x, y,
-      "Total Attack: " & $fleetData.totalAttack &
-        "  Total Defense: " & $fleetData.totalDefense,
-      CellStyle(fg: color(PrestigeColor), attrs: {StyleAttr.Bold})
-    )
+# ============================================================================
+# Deprecated: Old fleet detail render functions (replaced by modal)
+# ============================================================================
+# renderFleetDetail and renderFleetDetailFromPS have been removed.
+# Fleet details are now shown in a popup modal (fleet_detail_modal.nim)
+# triggered by pressing Enter on a fleet in the Fleets view.
 
 proc renderFleetConsoleSystems(
   area: Rect,
@@ -1205,94 +1119,7 @@ proc renderPlanetDetailFromPS*(
   of PlanetDetailTab.Settings:
     renderPlanetSettingsTab(contentArea, buf, planetData)
 
-proc renderFleetDetailFromPS*(
-  area: Rect,
-  buf: var CellBuffer,
-  model: TuiModel,
-  ps: PlayerState
-) =
-  ## Render fleet detail using PlayerState-only data
-  if model.ui.selectedFleetId <= 0:
-    discard buf.setString(
-      area.x, area.y, "No fleet selected", dimStyle()
-    )
-    return
-
-  # Convert engine data to display data using PS adapter
-  let fleetData = fleetToDetailDataFromPS(ps, FleetId(model.ui.selectedFleetId))
-
-  var y = area.y
-
-  # Header: Fleet location and command
-  discard buf.setString(
-    area.x, y,
-    "Fleet #" & $fleetData.fleetId & " @ " & fleetData.location,
-    canvasHeaderStyle()
-  )
-  y += 1
-
-  discard buf.setString(
-    area.x, y,
-    "Command: " & fleetData.command,
-    normalStyle()
-  )
-  y += 1
-
-  discard buf.setString(
-    area.x, y,
-    "Status: " & fleetData.status & "  ROE: " & $fleetData.roe,
-    normalStyle()
-  )
-  y += 2
-
-  # Ships table header
-  discard buf.setString(
-    area.x, y,
-    "Ships (" & $fleetData.shipCount & "):",
-    canvasHeaderStyle()
-  )
-  y += 1
-
-  # Build table widget for ships
-  if fleetData.ships.len > 0:
-    var shipTable = table([
-      tableColumn("Name", 12, table.Alignment.Left),
-      tableColumn("Class", 16, table.Alignment.Left),
-      tableColumn("State", 9, table.Alignment.Left),
-      tableColumn("Attack", 7, table.Alignment.Right),
-      tableColumn("Defense", 7, table.Alignment.Right)
-    ])
-
-    # Add ship rows
-    let stateColumn = 2
-    let crippledStyle = CellStyle(fg: color(PrestigeColor), attrs: {})
-    for ship in fleetData.ships:
-      let stateStyle = if ship.isCrippled: crippledStyle else: positiveStyle()
-      shipTable.addRow(@[
-        ship.name,
-        ship.class,
-        ship.state,
-        ship.attack,
-        ship.defense
-      ], stateStyle, stateColumn)
-
-    # Render table
-    let tableArea = rect(area.x, y, area.width, area.height - (y - area.y))
-    shipTable.render(tableArea, buf)
-    y += fleetData.ships.len + 3  # Table height
-  else:
-    discard buf.setString(area.x, y, "  No ships", dimStyle())
-    y += 1
-
-  # Totals footer
-  y += 1
-  if y < area.bottom:
-    discard buf.setString(
-      area.x, y,
-      "Total Attack: " & $fleetData.totalAttack &
-        "  Total Defense: " & $fleetData.totalDefense,
-      CellStyle(fg: color(PrestigeColor), attrs: {StyleAttr.Bold})
-    )
+# renderFleetDetailFromPS removed - see deprecated section above
 
 proc reportCategoryGlyph*(category: ReportCategory): string =
   ## Glyph for report category
@@ -1784,7 +1611,9 @@ proc renderListPanel*(
   of ViewMode.PlanetDetail:
     renderPlanetDetail(inner, buf, model, state, viewingHouse)
   of ViewMode.FleetDetail:
-    renderFleetDetail(inner, buf, model, state, viewingHouse)
+    # FleetDetail view mode deprecated - now uses popup modal from Fleets view
+    discard buf.setString(inner.x, inner.y,
+      "Fleet detail modal (press Enter on fleet)", dimStyle())
   of ViewMode.ReportDetail:
     renderReportDetail(inner, buf, model)
 
@@ -1958,7 +1787,9 @@ proc renderDashboard*(
     of ViewMode.PlanetDetail:
       renderPlanetDetailModal(canvasArea, buf, model, playerState)
     of ViewMode.FleetDetail:
-      renderFleetDetailFromPS(canvasArea, buf, model, playerState)
+      # FleetDetail view mode deprecated - now uses popup modal from Fleets view
+      discard buf.setString(canvasArea.x, canvasArea.y,
+        "Fleet detail modal (press Enter on fleet)", dimStyle())
     of ViewMode.ReportDetail:
       renderReportDetail(canvasArea, buf, model)
 

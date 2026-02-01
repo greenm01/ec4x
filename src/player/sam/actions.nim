@@ -953,6 +953,66 @@ proc actionFleetConsolePrevPane*(): Proposal =
   )
 
 # ============================================================================
+# Fleet Detail Modal Actions
+# ============================================================================
+
+proc actionOpenFleetDetailModal*(): Proposal =
+  ## Open fleet detail modal
+  gameActionProposal(ActionKind.openFleetDetailModal, "")
+
+proc actionCloseFleetDetailModal*(): Proposal =
+  ## Close fleet detail modal
+  gameActionProposal(ActionKind.closeFleetDetailModal, "")
+
+proc actionFleetDetailNextCategory*(): Proposal =
+  ## Navigate to next command category in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailNextCategory, "")
+
+proc actionFleetDetailPrevCategory*(): Proposal =
+  ## Navigate to previous command category in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailPrevCategory, "")
+
+proc actionFleetDetailListUp*(): Proposal =
+  ## Move selection up in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailListUp, "")
+
+proc actionFleetDetailListDown*(): Proposal =
+  ## Move selection down in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailListDown, "")
+
+proc actionFleetDetailSelectCommand*(): Proposal =
+  ## Select command in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailSelectCommand, "")
+
+proc actionFleetDetailOpenROE*(): Proposal =
+  ## Open ROE picker in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailOpenROE, "")
+
+proc actionFleetDetailCloseROE*(): Proposal =
+  ## Close ROE picker in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailCloseROE, "")
+
+proc actionFleetDetailROEUp*(): Proposal =
+  ## Increase ROE value in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailROEUp, "")
+
+proc actionFleetDetailROEDown*(): Proposal =
+  ## Decrease ROE value in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailROEDown, "")
+
+proc actionFleetDetailSelectROE*(): Proposal =
+  ## Confirm ROE selection in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailSelectROE, "")
+
+proc actionFleetDetailConfirm*(): Proposal =
+  ## Confirm action in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailConfirm, "")
+
+proc actionFleetDetailCancel*(): Proposal =
+  ## Cancel action in fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailCancel, "")
+
+# ============================================================================
 # System Actions
 # ============================================================================
 
