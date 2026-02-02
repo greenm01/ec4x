@@ -5,6 +5,8 @@
 
 import ./modal
 import ./borders
+import ./table
+import ./scroll_state
 import ./text/text_pkg
 import ../buffer
 import ../layout/rect
@@ -266,16 +268,59 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   ## Render the fleet detail view
   ## NOTE: No longer checks state.active - called only when ViewMode == FleetDetail
   
-  # Calculate modal area
-  let contentHeight = 24
-  let modalArea = widget.modal.calculateArea(viewport, contentHeight)
+  let maxRows = fleetDetailMaxRows(viewport.height)
+  let visibleRows = min(state.shipCount, max(1, maxRows))
+  var renderScroll = state.shipScroll
+  renderScroll.contentLength = state.shipCount
+  renderScroll.viewportLength = max(1, maxRows)
+  renderScroll.clampOffsets()
+
+  let shipTableBase = shipListTable()
+    .showBorders(true)
+    .showHeader(true)
+    .showSeparator(true)
+    .fillHeight(true)
+
+  let maxWidth = max(4, viewport.width - 4)
+  let tableWidth = shipTableBase.renderWidth(maxWidth)
+  let line1 = "Fleet #" & $fleetData.fleetId & " at " & fleetData.location
+  let line2 = "Command: " & fleetData.command & "  ROE: " & $fleetData.roe
+  let line3 = "Ships: " & $state.shipCount & "  AS: " &
+    $fleetData.totalAttack & "  DS: " & $fleetData.totalDefense
+  let shipHeader = "SHIPS (" & $state.shipCount & ")"
+  let infoWidth = max(line1.len,
+    max(line2.len, max(line3.len, shipHeader.len)))
+  let desiredInnerWidth = max(tableWidth, infoWidth)
+  let desiredWidth = min(maxWidth, desiredInnerWidth + 2)
+  let modal = widget.modal
+    .maxWidth(desiredWidth)
+    .minWidth(desiredWidth)
+
+  var shipTable = shipTableBase
+    .scrollOffset(renderScroll.verticalOffset)
+  for ship in fleetData.ships:
+    shipTable.addRow([
+      ship.class,
+      ship.state,
+      ship.attack,
+      ship.defense,
+      $ship.wepLevel,
+      ship.marines
+    ])
+
+  let shipsContentHeight = FleetDetailShipsHeaderHeight +
+    shipTable.renderHeight(visibleRows)
+  let innerContentHeight = FleetDetailInfoHeight +
+    FleetDetailSeparatorHeight + shipsContentHeight + FleetDetailFooterHeight
+  let contentHeight = max(0, innerContentHeight)
+  let modalArea = modal.calculateArea(viewport, contentHeight)
 
   # Render modal frame with title
   let title = "FLEET DETAIL"
-  widget.modal.title(title).renderWithSeparator(modalArea, buf, 2)
+  modal.title(title).renderWithSeparator(modalArea, buf, 2)
 
   # Get inner content area
-  let inner = widget.modal.inner(modalArea)
+  let inner = modal.inner(modalArea)
 
   # Check for sub-modals
   case state.subModal
@@ -289,43 +334,38 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     # Render main fleet detail view
     
     # Fleet info section (top 4 lines)
-    let infoArea = rect(inner.x, inner.y, inner.width, 4)
+    let infoArea = rect(inner.x, inner.y, inner.width,
+      FleetDetailInfoHeight)
     renderFleetInfo(fleetData, infoArea, buf)
     
     # Separator
-    let separatorY = inner.y + 4
+    let separatorY = inner.y + FleetDetailInfoHeight
     let bs = PlainBorderSet
     discard buf.put(modalArea.x, separatorY, "├", modalBorderStyle())
     for x in (modalArea.x + 1)..<(modalArea.right - 1):
       discard buf.put(x, separatorY, bs.horizontal, modalBorderStyle())
     discard buf.put(modalArea.right - 1, separatorY, "┤", modalBorderStyle())
     
-    # Ship list (using existing renderFleetShipsTable)
-    let shipsArea = rect(inner.x, separatorY + 1, inner.width,
-                        inner.height - 7)
-    # Note: We'll need to call the table render from view_render
-    # For now, just show placeholder
-    var y = shipsArea.y
-    let shipHeader = "SHIPS (" & $fleetData.ships.len & ")"
+    # Ship list (boxed table)
+    let shipsHeight = max(1, inner.height - (FleetDetailInfoHeight +
+      FleetDetailSeparatorHeight + FleetDetailFooterHeight))
+    let shipsArea = rect(inner.x, separatorY + 1, inner.width, shipsHeight)
+    let shipHeader = "SHIPS (" & $state.shipCount & ")"
     for i, ch in shipHeader:
       if shipsArea.x + i < shipsArea.right:
-        discard buf.put(shipsArea.x + i, y, $ch, canvasHeaderStyle())
-    y += 1
+        discard buf.put(shipsArea.x + i, shipsArea.y, $ch,
+          canvasHeaderStyle())
     
-    for idx, ship in fleetData.ships:
-      if y >= shipsArea.bottom - 1:
-        break
-      let line = "  " & ship.name & " (" & ship.class & 
-                ") AS:" & ship.attack & " DS:" & ship.defense
-      for i, ch in line:
-        if shipsArea.x + i < shipsArea.right:
-          discard buf.put(shipsArea.x + i, y, $ch, canvasStyle())
-      y += 1
+    let tableArea = rect(shipsArea.x,
+      shipsArea.y + FleetDetailShipsHeaderHeight,
+      shipsArea.width,
+      shipsArea.height - FleetDetailShipsHeaderHeight)
+    shipTable.render(tableArea, buf)
     
     # Footer with action hints
     let footerY = inner.bottom - 1
     if footerY >= inner.y:
-      let hint = "[C]Command [R]ROE [Esc]Close"
+      let hint = "[C]Command [R]ROE [PgUp/PgDn]Scroll [Esc]Close"
       for i, ch in hint:
         if inner.x + i < inner.right:
           discard buf.put(inner.x + i, footerY, $ch, canvasDimStyle())

@@ -52,6 +52,14 @@ const
   CmdMothball* = 18       ## Offline, 10% cost, 0 CC
   CmdView* = 19           ## Long-range recon
 
+const
+  FleetDetailVerticalMargin* = 6
+  FleetDetailInfoHeight* = 4
+  FleetDetailSeparatorHeight* = 1
+  FleetDetailShipsHeaderHeight* = 1
+  FleetDetailFooterHeight* = 2
+  FleetDetailTableBaseHeight* = 4
+
 proc commandLabel*(cmdNum: int): string =
   ## Get human-readable label for fleet command
   case cmdNum
@@ -112,6 +120,14 @@ proc fleetCommandCode*(cmdType: FleetCommandType): string =
 proc fleetCommandLabel*(cmdType: FleetCommandType): string =
   ## Get label for fleet command type
   commandLabel(fleetCommandNumber(cmdType))
+
+proc fleetDetailMaxRows*(termHeight: int): int =
+  let maxModalHeight = max(8, termHeight - FleetDetailVerticalMargin)
+  let maxInnerHeight = max(1, maxModalHeight - 2)
+  let baseInnerHeight = FleetDetailInfoHeight +
+    FleetDetailSeparatorHeight + FleetDetailShipsHeaderHeight +
+    FleetDetailFooterHeight + FleetDetailTableBaseHeight
+  max(0, maxInnerHeight - baseInnerHeight)
 
 type
   BuildOptionKind* {.pure.} = enum
@@ -212,6 +228,8 @@ type
     confirmPending*: bool
     confirmMessage*: string
     pendingCommandType*: FleetCommandType  # For confirmation flow
+    shipScroll*: ScrollState
+    shipCount*: int
 
   ViewMode* {.pure.} = enum
     ## Current UI view (maps to primary view number)
@@ -777,7 +795,9 @@ proc initTuiUiState*(): TuiUiState =
       roeValue: 6,  # Standard ROE
       confirmPending: false,
       confirmMessage: "",
-      pendingCommandType: FleetCommandType.Hold
+      pendingCommandType: FleetCommandType.Hold,
+      shipScroll: initScrollState(),
+      shipCount: 0
     )
   )
 

@@ -47,6 +47,16 @@ proc viewModeFromInt(value: int): Option[ViewMode] =
   else:
     none(ViewMode)
 
+proc updateFleetDetailScroll(model: var TuiModel): tuple[
+    pageSize, maxOffset: int] =
+  let pageSize = max(1, fleetDetailMaxRows(model.ui.termHeight))
+  model.ui.fleetDetailModal.shipScroll.contentLength =
+    model.ui.fleetDetailModal.shipCount
+  model.ui.fleetDetailModal.shipScroll.viewportLength = pageSize
+  model.ui.fleetDetailModal.shipScroll.clampOffsets()
+  let maxOffset = model.ui.fleetDetailModal.shipScroll.maxVerticalOffset()
+  (pageSize, maxOffset)
+
 proc resetExpertPaletteSelection(model: var TuiModel) =
   let matches = matchExpertCommands(model.ui.expertModeInput)
   if matches.len == 0:
@@ -1151,6 +1161,9 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.fleetDetailModal.commandIdx = 0
             model.ui.fleetDetailModal.roeValue = 6  # Standard
             model.ui.fleetDetailModal.confirmPending = false
+            model.ui.fleetDetailModal.shipScroll = initScrollState()
+            model.ui.fleetDetailModal.shipCount = fleets[fleetIdx].shipCount
+            discard model.updateFleetDetailScroll()
             model.ui.statusMessage = "Fleet detail opened"
           else:
             model.ui.statusMessage = "No fleet selected"
@@ -1173,6 +1186,9 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.fleetDetailModal.commandIdx = 0
         model.ui.fleetDetailModal.roeValue = fleet.roe  # Use actual fleet ROE
         model.ui.fleetDetailModal.confirmPending = false
+        model.ui.fleetDetailModal.shipScroll = initScrollState()
+        model.ui.fleetDetailModal.shipCount = fleet.shipCount
+        discard model.updateFleetDetailScroll()
         model.ui.statusMessage = "Fleet detail opened"
   of ActionKind.closeFleetDetailModal:
     # Close fleet detail view (only if no sub-modal active)
@@ -1209,6 +1225,11 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       if model.ui.fleetDetailModal.roeValue > 0:
         model.ui.fleetDetailModal.roeValue -= 1  # Up decreases value (moves toward 0)
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
+      discard model.updateFleetDetailScroll()
+      let scroll = model.ui.fleetDetailModal.shipScroll
+      model.ui.fleetDetailModal.shipScroll.verticalOffset = max(0,
+        scroll.verticalOffset - 1)
   of ActionKind.fleetDetailListDown:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       # Get max index for current category
@@ -1225,6 +1246,11 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       if model.ui.fleetDetailModal.roeValue < 10:
         model.ui.fleetDetailModal.roeValue += 1  # Down increases value (moves toward 10)
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
+      let (_, maxOffset) = model.updateFleetDetailScroll()
+      let scroll = model.ui.fleetDetailModal.shipScroll
+      model.ui.fleetDetailModal.shipScroll.verticalOffset = min(maxOffset,
+        scroll.verticalOffset + 1)
   of ActionKind.fleetDetailSelectCommand:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       # Get selected command from category + index
@@ -1324,6 +1350,18 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       # Cancel ROE picker, go back to main detail view
       model.ui.fleetDetailModal.subModal = FleetSubModal.None
+  of ActionKind.fleetDetailPageUp:
+    if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
+      let (pageSize, _) = model.updateFleetDetailScroll()
+      let scroll = model.ui.fleetDetailModal.shipScroll
+      model.ui.fleetDetailModal.shipScroll.verticalOffset = max(0,
+        scroll.verticalOffset - pageSize)
+  of ActionKind.fleetDetailPageDown:
+    if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
+      let (pageSize, maxOffset) = model.updateFleetDetailScroll()
+      let scroll = model.ui.fleetDetailModal.shipScroll
+      model.ui.fleetDetailModal.shipScroll.verticalOffset = min(maxOffset,
+        scroll.verticalOffset + pageSize)
   else:
     discard
 

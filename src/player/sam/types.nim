@@ -138,6 +138,8 @@ type
     fleetDetailSelectROE
     fleetDetailConfirm
     fleetDetailCancel
+    fleetDetailPageUp
+    fleetDetailPageDown
 
   # ============================================================================
   # Core SAM Types

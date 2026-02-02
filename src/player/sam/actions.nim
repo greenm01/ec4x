@@ -1012,6 +1012,14 @@ proc actionFleetDetailCancel*(): Proposal =
   ## Cancel action in fleet detail modal
   gameActionProposal(ActionKind.fleetDetailCancel, "")
 
+proc actionFleetDetailPageUp*(): Proposal =
+  ## Page up in fleet detail ship list
+  gameActionProposal(ActionKind.fleetDetailPageUp, "")
+
+proc actionFleetDetailPageDown*(): Proposal =
+  ## Page down in fleet detail ship list
+  gameActionProposal(ActionKind.fleetDetailPageDown, "")
+
 # ============================================================================
 # System Actions
 # ============================================================================

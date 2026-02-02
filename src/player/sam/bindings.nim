@@ -276,6 +276,8 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
     model.ui.appPhase == AppPhase.Lobby
   of "noSubModal":
     model.ui.fleetDetailModal.subModal == FleetSubModal.None
+  of "hasSubModal":
+    model.ui.fleetDetailModal.subModal != FleetSubModal.None
   else:
     true
 
@@ -657,7 +659,22 @@ proc initBindings*() =
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetDetailCancel,
     context: BindingContext.FleetDetail,
-    longLabel: "CANCEL", shortLabel: "Esc", priority: 91))
+    longLabel: "CANCEL", shortLabel: "Esc", priority: 91,
+    enabledCheck: "hasSubModal"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailPageUp,
+    context: BindingContext.FleetDetail,
+    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 50,
+    enabledCheck: "noSubModal"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailPageDown,
+    context: BindingContext.FleetDetail,
+    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 51,
+    enabledCheck: "noSubModal"))
 
   # ROE Picker sub-modal (shares bindings with command picker for navigation)
   # Up/Down keys already bound above
@@ -1214,6 +1231,10 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionFleetDetailConfirm())
   of ActionKind.fleetDetailCancel:
     return some(actionFleetDetailCancel())
+  of ActionKind.fleetDetailPageUp:
+    return some(actionFleetDetailPageUp())
+  of ActionKind.fleetDetailPageDown:
+    return some(actionFleetDetailPageDown())
 
   else:
     discard
