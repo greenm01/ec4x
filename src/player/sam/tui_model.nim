@@ -201,8 +201,10 @@ type
     Status      # Reserve, Mothball
 
   FleetDetailModalState* = object
-    ## Fleet detail modal state
-    active*: bool
+    ## Fleet detail view state
+    ## NOTE: 'active' field is deprecated - use ViewMode.FleetDetail instead
+    ## This state object is kept for sub-modal tracking (Command/ROE pickers)
+    active*: bool  # DEPRECATED: Check ViewMode.FleetDetail instead
     fleetId*: int
     subModal*: FleetSubModal
     commandCategory*: CommandCategory

@@ -1671,12 +1671,21 @@ proc buildBreadcrumbData*(model: TuiModel): BreadcrumbData =
     # Safety: should never happen, but handle gracefully
     result.add("Home", 1)
     return
-  if model.ui.breadcrumbs.len == 1 and
-      model.ui.breadcrumbs[0].label == "Home":
-    result.add("Home", 1)
-    result.add(model.ui.mode.viewModeLabel, int(model.ui.mode))
+  
+  # For primary views (depth 1-2 with Home), show just the view name
+  if model.ui.breadcrumbs.len <= 2 and model.ui.breadcrumbs[0].label == "Home":
+    # Primary view: Show just "Fleets" not "Home > Fleets"
+    if model.ui.breadcrumbs.len == 1:
+      result.add(model.ui.mode.viewModeLabel, int(model.ui.mode))
+    else:
+      # Use the last breadcrumb (the actual view)
+      let item = model.ui.breadcrumbs[^1]
+      result.add(item.label, int(item.viewMode), item.entityId)
   else:
-    for item in model.ui.breadcrumbs:
+    # Detail view: Show full path (e.g., "Fleets > Fleet #3")
+    # Skip "Home" and start from the first primary view
+    for i in 1..<model.ui.breadcrumbs.len:
+      let item = model.ui.breadcrumbs[i]
       result.add(item.label, int(item.viewMode), item.entityId)
 
 proc activeViewKey*(mode: ViewMode): char =
