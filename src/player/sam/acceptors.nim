@@ -36,8 +36,6 @@ proc viewModeFromInt(value: int): Option[ViewMode] =
     some(ViewMode.Economy)
   of 7:
     some(ViewMode.Reports)
-  of 8:
-    some(ViewMode.Messages)
   of 9:
     some(ViewMode.Settings)
   of 20:
@@ -259,8 +257,9 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.selectedIdx = proposal.selectIdx
     of ViewMode.Planets, ViewMode.Fleets, ViewMode.Research,
        ViewMode.Espionage, ViewMode.Economy, ViewMode.Reports,
-       ViewMode.Messages, ViewMode.Settings, ViewMode.PlanetDetail,
-       ViewMode.FleetDetail, ViewMode.ReportDetail:
+       ViewMode.Settings, ViewMode.PlanetDetail,
+       ViewMode.FleetDetail, ViewMode.ReportDetail,
+       ViewMode.Messages:
       # Select current list item (idx is already set)
       if proposal.selectIdx >= 0:
         model.ui.selectedIdx = proposal.selectIdx

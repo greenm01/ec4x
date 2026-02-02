@@ -1528,20 +1528,6 @@ proc renderReportsModal*(canvas: Rect, buf: var CellBuffer,
   let innerArea = vm.innerArea(modalArea)
   renderReportsList(innerArea, buf, model)
 
-proc renderMessagesModal*(canvas: Rect, buf: var CellBuffer,
-                          model: TuiModel, scroll: ScrollState) =
-  ## Render Intel DB view as centered floating modal
-  let vm = newViewModal("INTEL DATABASE").maxWidth(120).minWidth(90)
-  let contentHeight = max(12, model.view.intelRows.len + 3)
-  let modalArea = vm.calculateViewArea(canvas, contentHeight)
-  vm.render(modalArea, buf)
-  let innerArea = vm.innerArea(modalArea)
-  var localScroll = scroll
-  localScroll.contentLength = model.view.intelRows.len
-  localScroll.viewportLength = max(0, innerArea.height - 2)
-  localScroll.clampOffsets()
-  renderIntelDbTable(innerArea, buf, model, localScroll)
-
 proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
   ## Render settings view as centered floating modal
@@ -1617,7 +1603,7 @@ proc renderListPanel*(
       "Fleets: " & $model.view.fleets.len, normalStyle())
     y += 2
     discard buf.setString(inner.x, y,
-      "Alt+Key Switch views  Alt+Q Quit  [J] Join", dimStyle())
+      "F1-F8 Switch views  F12 Quit  [J] Join", dimStyle())
   of ViewMode.Planets:
     renderColonyList(inner, buf, model)
   of ViewMode.Fleets:
@@ -1635,7 +1621,7 @@ proc renderListPanel*(
     renderReportsList(inner, buf, model)
   of ViewMode.Messages:
     discard buf.setString(inner.x, inner.y,
-      "Intel DB view (TODO)", dimStyle())
+      "Intel DB view (deprecated)", dimStyle())
   of ViewMode.Settings:
     discard buf.setString(inner.x, inner.y,
       "Settings view (TODO)", dimStyle())
@@ -1688,17 +1674,33 @@ proc buildBreadcrumbData*(model: TuiModel): BreadcrumbData =
       let item = model.ui.breadcrumbs[i]
       result.add(item.label, int(item.viewMode), item.entityId)
 
-proc activeViewKey*(mode: ViewMode): char =
-  ## Map view mode to dock key
+proc activeViewKey*(mode: ViewMode): string =
+  ## Map view mode to dock key label
   case mode
   of ViewMode.PlanetDetail:
-    return ViewMode.Planets.viewModeKey
+    return "F2"
   of ViewMode.FleetDetail:
-    return ViewMode.Fleets.viewModeKey
+    return "F3"
   of ViewMode.ReportDetail:
-    return ViewMode.Reports.viewModeKey
-  else:
-    return mode.viewModeKey
+    return "F7"
+  of ViewMode.Overview:
+    return "F1"
+  of ViewMode.Planets:
+    return "F2"
+  of ViewMode.Fleets:
+    return "F3"
+  of ViewMode.Research:
+    return "F4"
+  of ViewMode.Espionage:
+    return "F5"
+  of ViewMode.Economy:
+    return "F6"
+  of ViewMode.Reports:
+    return "F7"
+  of ViewMode.Settings:
+    return "F8"
+  of ViewMode.Messages:
+    return ""
 
 proc buildCommandDockData*(model: TuiModel): CommandDockData =
   ## Build command dock data from TUI model
@@ -1743,7 +1745,7 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
       model.currentListLength() > 0
     )
   of ViewMode.Messages:
-    result.contextActions = messagesContextActions(false)
+    result.contextActions = @[]
   of ViewMode.Settings:
     result.contextActions = settingsContextActions()
   of ViewMode.PlanetDetail:
@@ -1821,7 +1823,7 @@ proc renderDashboard*(
     of ViewMode.Reports:
       renderReportsModal(canvasArea, buf, model, model.ui.reportTurnScroll)
     of ViewMode.Messages:
-      renderMessagesModal(canvasArea, buf, model, model.ui.messagesScroll)
+      discard
     of ViewMode.Settings:
       renderSettingsModal(canvasArea, buf, model, model.ui.settingsScroll)
     of ViewMode.PlanetDetail:

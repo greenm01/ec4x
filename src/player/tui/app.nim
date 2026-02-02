@@ -1200,12 +1200,11 @@ Options:
   --help, -h            Show this help message
 
   Controls:
-    Alt+Key  Switch views
-    Alt+Q    Quit
+    F1-F8    Switch views
+    F12      Quit
+    Ctrl-C   Quit
+    Ctrl-Q   Quit
     Esc      Back
-    Alt+C    Colony view
-    Alt+F    Fleet view
-    Alt+O    Overview
     :        Expert mode (vim-style commands)
 
 See docs/tools/ec4x-play.md for full documentation.

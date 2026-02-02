@@ -29,7 +29,7 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
         return some(actionEntryInviteSubmit())
         return mapKeyToAction(KeyCode.KeyEnter, modifier, model)
     else:
-      # Allow Alt+key to pass through to global bindings (view switching, quit, etc.)
+      # Allow meta+key to pass through to global bindings
       if modifier != KeyModifier.Alt:
         if not model.ui.quitConfirmationActive:
           if model.ui.expertModeActive:
@@ -160,6 +160,32 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     keyCode = KeyCode.KeyCtrlE
   of Key.CtrlQ:
     keyCode = KeyCode.KeyCtrlQ
+  of Key.CtrlC:
+    keyCode = KeyCode.KeyCtrlC
+  of Key.F1:
+    keyCode = KeyCode.KeyF1
+  of Key.F2:
+    keyCode = KeyCode.KeyF2
+  of Key.F3:
+    keyCode = KeyCode.KeyF3
+  of Key.F4:
+    keyCode = KeyCode.KeyF4
+  of Key.F5:
+    keyCode = KeyCode.KeyF5
+  of Key.F6:
+    keyCode = KeyCode.KeyF6
+  of Key.F7:
+    keyCode = KeyCode.KeyF7
+  of Key.F8:
+    keyCode = KeyCode.KeyF8
+  of Key.F9:
+    keyCode = KeyCode.KeyF9
+  of Key.F10:
+    keyCode = KeyCode.KeyF10
+  of Key.F11:
+    keyCode = KeyCode.KeyF11
+  of Key.F12:
+    keyCode = KeyCode.KeyF12
   of Key.Home:
     keyCode = KeyCode.KeyHome
   of Key.Backspace:

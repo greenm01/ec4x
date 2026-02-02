@@ -121,7 +121,8 @@ proc statusMessageReactor*(model: var TuiModel) =
       model.ui.statusMessage = "Reports Inbox"
     
     of ViewMode.Messages:
-      model.ui.statusMessage = "Diplomatic Messages"
+      model.ui.statusMessage = "Intel Database"
+    
     
     of ViewMode.Settings:
       model.ui.statusMessage = "Game Settings"

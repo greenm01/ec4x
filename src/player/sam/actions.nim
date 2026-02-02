@@ -50,7 +50,7 @@ proc actionSwitchMode*(mode: ViewMode): Proposal =
   )
 
 proc actionSwitchView*(viewNum: int): Proposal =
-  ## Switch to primary view (mapped from Alt+Key)
+  ## Switch to primary view (mapped from F-keys)
   ## This resets breadcrumbs to the primary view level
   Proposal(
     kind: ProposalKind.pkNavigation,
@@ -1044,8 +1044,11 @@ type
       KeyEnter, KeyEscape, KeyTab, KeyShiftTab
       KeyHome, KeyBackspace
       KeyPageUp, KeyPageDown
+      KeyF1, KeyF2, KeyF3, KeyF4, KeyF5, KeyF6
+      KeyF7, KeyF8, KeyF9, KeyF10, KeyF11, KeyF12
       # Special
       KeyColon  # Expert mode trigger
+      KeyCtrlC
       KeyCtrlE  # Turn submission
       KeyCtrlL
       KeyCtrlQ  # Emergency quit

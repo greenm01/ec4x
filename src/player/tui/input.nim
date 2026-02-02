@@ -216,8 +216,8 @@ proc feedByte*(p: var InputParser, b: byte): seq[Event] =
       p.state = InputState.Ss3
       p.buf.setLen(0)
     else:
-      # Alt+key or lone esc followed by key
-      # For simplicity, treat as Alt+key if printable
+      # Meta-prefixed key or lone esc followed by key
+      # For simplicity, treat as meta+key if printable
       if b >= 0x20 and b < 0x7F:
         result.add(newKeyEvent(Key.Rune, Rune(b), ModAlt))
       else:

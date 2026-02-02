@@ -1,13 +1,13 @@
 ## Command Dock Widget
 ##
 ## The Command Dock is the bottom action bar showing:
-## - Primary row: View shortcuts Alt+Key and Alt+Q quit
+## - Primary row: View shortcuts (F-keys) and quit
 ## - Context row: Dynamic actions based on current view
 ## - Expert mode indicator (: prompt when active)
 ##
 ## Layout (120 columns):
 ## ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-## [Alt-O]Ovrvw [Alt-C]Colony [Alt-F]Fleets [Alt-T]Tech [Alt-E]Espionage ...
+## [F1]Ovrvw [F2]Colony [F3]Fleets [F4]Tech [F5]Espionage ...
 ## [M] Move  [P] Patrol  [H] Hold  [G] Guard                        [: ] Expert
 ##
 ## Reference: ec-style-layout.md Section 2 "Screen Regions"
@@ -21,7 +21,7 @@ export ec_palette
 type
   ViewTab* = object
     ## A view tab in the command dock
-    key*: char              ## Hotkey (Alt+Key)
+    key*: string            ## Hotkey (F-key label)
     label*: string          ## Short label
     isActive*: bool         ## Currently active view
   
@@ -55,7 +55,7 @@ proc initCommandDockData*(): CommandDockData =
     feedback: ""
   )
 
-proc addView*(data: var CommandDockData, key: char, label: string, 
+proc addView*(data: var CommandDockData, key: string, label: string, 
               isActive: bool = false) =
   ## Add a view tab
   data.views.add(ViewTab(key: key, label: label, isActive: isActive))
@@ -73,27 +73,26 @@ proc clearContextActions*(data: var CommandDockData) =
   ## Clear all context actions
   data.contextActions.setLen(0)
 
-proc setActiveView*(data: var CommandDockData, viewKey: char) =
+proc setActiveView*(data: var CommandDockData, viewKey: string) =
   ## Set the active view by key
   for i in 0 ..< data.views.len:
-    data.views[i].isActive = (data.views[i].key == viewKey)
+    data.views[i].isActive = (viewKey.len > 0 and data.views[i].key == viewKey)
 
 # =============================================================================
 # Standard Command Dock Configurations
 # =============================================================================
 
 proc standardViews*(): seq[ViewTab] =
-  ## Get the standard 9 views
+  ## Get the standard views
   @[
-    ViewTab(key: 'o', label: "Ovrvw", isActive: false),
-    ViewTab(key: 'c', label: "Colony", isActive: false),
-    ViewTab(key: 'f', label: "Fleets", isActive: false),
-    ViewTab(key: 't', label: "Tech", isActive: false),
-    ViewTab(key: 'e', label: "Espionage", isActive: false),
-    ViewTab(key: 'g', label: "General", isActive: false),
-    ViewTab(key: 'r', label: "Reports", isActive: false),
-    ViewTab(key: 'i', label: "Intel", isActive: false),
-    ViewTab(key: 's', label: "Settings", isActive: false),
+    ViewTab(key: "F1", label: "Ovrvw", isActive: false),
+    ViewTab(key: "F2", label: "Colony", isActive: false),
+    ViewTab(key: "F3", label: "Fleets", isActive: false),
+    ViewTab(key: "F4", label: "Tech", isActive: false),
+    ViewTab(key: "F5", label: "Espionage", isActive: false),
+    ViewTab(key: "F6", label: "General", isActive: false),
+    ViewTab(key: "F7", label: "Reports", isActive: false),
+    ViewTab(key: "F8", label: "Settings", isActive: false),
   ]
 
 proc overviewContextActions*(joinActive: bool): seq[ContextAction] =
@@ -217,15 +216,6 @@ proc reportsContextActions*(hasSelection: bool): seq[ContextAction] =
     ContextAction(key: "M", label: "Mark read/unread", enabled: hasSelection),
   ]
 
-proc messagesContextActions*(hasSelection: bool): seq[ContextAction] =
-  ## Context actions for Messages (View 8)
-  @[
-    ContextAction(key: "L", label: "Diplomatic matrix", enabled: true),
-    ContextAction(key: "C", label: "Compose", enabled: true),
-    ContextAction(key: "P", label: "Propose", enabled: hasSelection),
-    ContextAction(key: "A", label: "Accept", enabled: hasSelection),
-  ]
-
 proc settingsContextActions*(): seq[ContextAction] =
   ## Context actions for Settings (View 9)
   @[
@@ -271,7 +261,7 @@ proc renderViewTabs*(area: Rect, buf: var CellBuffer, views: seq[ViewTab],
   let activeStyle = selectedStyle()
   
   for view in views:
-    if x + view.label.len + 4 > area.right - 10:
+    if x + view.label.len + view.key.len + 3 > area.right - 10:
       # Not enough room, show ellipsis
       discard buf.setString(x, y, "...", dimStyle)
       break
@@ -281,10 +271,10 @@ proc renderViewTabs*(area: Rect, buf: var CellBuffer, views: seq[ViewTab],
     x += 1
     
     if view.isActive:
-      discard buf.setString(x, y, $view.key, activeStyle)
+      discard buf.setString(x, y, view.key, activeStyle)
     else:
-      discard buf.setString(x, y, $view.key, keyStyle)
-    x += 1
+      discard buf.setString(x, y, view.key, keyStyle)
+    x += view.key.len
     
     discard buf.setString(x, y, "]", dimStyle)
     x += 1
@@ -295,9 +285,9 @@ proc renderViewTabs*(area: Rect, buf: var CellBuffer, views: seq[ViewTab],
       discard buf.setString(x, y, view.label, normalStyle)
     x += view.label.len + 1
   
-  # [Alt-Q]uit at the end (right-aligned)
+  # [F12] Quit at the end (right-aligned)
   if showQuit:
-    let quitLabel = "Alt-Q"
+    let quitLabel = "F12"
     let quitStr = "[" & quitLabel & "]Quit"
     let quitX = area.right - quitStr.len - 1
     if quitX > x + 2:
@@ -382,7 +372,7 @@ proc renderCommandDock*(area: Rect, buf: var CellBuffer,
   ##
   ## Layout:
   ##   Row 0: Separator line (━━━)
-  ##   Row 1: View tabs [Alt-Key] [Alt-Q] quit
+  ##   Row 1: View tabs [F-keys] [F12] quit
   ##   Row 2: Context actions + Expert mode indicator
   ##
   
@@ -471,19 +461,19 @@ proc renderCommandDockCompact*(area: Rect, buf: var CellBuffer,
       discard buf.setString(x + label.len, y0, text, dockStyle())
   else:
     for view in data.views:
-      if x + 4 > area.right - 8:
+      if x + view.key.len + 2 > area.right - 8:
         break
       discard buf.setString(x, y0, "[", dimStyle)
       if view.isActive:
-        discard buf.setString(x + 1, y0, $view.key, selectedStyle())
+        discard buf.setString(x + 1, y0, view.key, selectedStyle())
       else:
-        discard buf.setString(x + 1, y0, $view.key, keyStyle)
-      discard buf.setString(x + 2, y0, "]", dimStyle)
-      x += 3
+        discard buf.setString(x + 1, y0, view.key, keyStyle)
+      discard buf.setString(x + 1 + view.key.len, y0, "]", dimStyle)
+      x += 2 + view.key.len
     
-  # [Alt-Q] at end of row 0
+  # [F12] at end of row 0
   if data.showQuit:
-    let quitLabel = "Alt-Q"
+    let quitLabel = "F12"
     let quitStr = "[" & quitLabel & "]"
     let quitX = area.right - quitStr.len - 1
     discard buf.setString(quitX, y0, "[", dimStyle)
