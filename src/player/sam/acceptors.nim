@@ -887,8 +887,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         if row.colonyId.isSome and row.isOwned:
           model.ui.previousMode = model.ui.mode
           model.ui.mode = ViewMode.PlanetDetail
-          model.ui.selectedColonyId = row.colonyId.get()
-          model.resetBreadcrumbs(model.ui.mode)
+          let colonyId = row.colonyId.get()
+          model.ui.selectedColonyId = colonyId
+          # Push breadcrumb with system name (colony at that location)
+          model.pushBreadcrumb(row.systemName, ViewMode.PlanetDetail, colonyId)
         else:
           model.ui.statusMessage = "No colony selected"
     # NOTE: Fleet selection now handled by openFleetDetailModal action (Enter key)
