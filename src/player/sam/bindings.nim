@@ -1355,13 +1355,13 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       return buildResult
     return none(Proposal)
 
-  # Fleet detail modal mode: use registry
-  if model.ui.fleetDetailModal.active:
+  # Fleet detail view mode: use registry
+  if model.ui.mode == ViewMode.FleetDetail:
     let fleetDetailResult = lookupAndDispatch(key, modifier,
         BindingContext.FleetDetail, model)
     if fleetDetailResult.isSome:
       return fleetDetailResult
-    # Block other keys when modal is active
+    # Block other keys when in fleet detail view
     return none(Proposal)
 
   # Order entry mode: use registry

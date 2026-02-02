@@ -1127,7 +1127,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   ## Handle fleet detail modal interactions
   case proposal.actionKind
   of ActionKind.openFleetDetailModal:
-    # Open modal for selected fleet
+    # Open fleet detail view for selected fleet
     if model.ui.mode == ViewMode.Fleets and model.ui.fleetViewMode == FleetViewMode.SystemView:
       # SystemView: Get fleet from cached console data
       let systems = model.ui.fleetConsoleSystems
@@ -1140,7 +1140,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           let fleetIdx = model.ui.fleetConsoleFleetIdx
           if fleetIdx >= 0 and fleetIdx < fleets.len:
             let fleetId = fleets[fleetIdx].fleetId
-            model.ui.fleetDetailModal.active = true
+            # Transition to FleetDetail ViewMode with breadcrumb
+            model.ui.mode = ViewMode.FleetDetail
+            model.pushBreadcrumb("Fleet #" & $fleetId, ViewMode.FleetDetail, fleetId)
+            # Initialize fleet detail state
             model.ui.fleetDetailModal.fleetId = fleetId
             model.ui.fleetDetailModal.subModal = FleetSubModal.None
             model.ui.fleetDetailModal.commandCategory = CommandCategory.Movement
@@ -1158,8 +1161,12 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       # ListView: Get fleet from selected index
       if model.ui.selectedIdx < model.view.fleets.len:
         let fleet = model.view.fleets[model.ui.selectedIdx]
-        model.ui.fleetDetailModal.active = true
-        model.ui.fleetDetailModal.fleetId = fleet.id
+        let fleetId = fleet.id
+        # Transition to FleetDetail ViewMode with breadcrumb
+        model.ui.mode = ViewMode.FleetDetail
+        model.pushBreadcrumb("Fleet #" & $fleetId, ViewMode.FleetDetail, fleetId)
+        # Initialize fleet detail state
+        model.ui.fleetDetailModal.fleetId = fleetId
         model.ui.fleetDetailModal.subModal = FleetSubModal.None
         model.ui.fleetDetailModal.commandCategory = CommandCategory.Movement
         model.ui.fleetDetailModal.commandIdx = 0
@@ -1167,9 +1174,17 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.fleetDetailModal.confirmPending = false
         model.ui.statusMessage = "Fleet detail opened"
   of ActionKind.closeFleetDetailModal:
-    model.ui.fleetDetailModal.active = false
-    model.ui.fleetDetailModal.subModal = FleetSubModal.None
-    model.ui.statusMessage = ""
+    # Close fleet detail view (only if no sub-modal active)
+    if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
+      # Pop breadcrumb to return to parent view
+      if model.popBreadcrumb():
+        # Update mode based on new current breadcrumb
+        let current = model.currentBreadcrumb()
+        model.ui.mode = current.viewMode
+        model.ui.statusMessage = ""
+      else:
+        # No breadcrumb to pop, stay in current view
+        model.ui.statusMessage = "Cannot go back"
   of ActionKind.fleetDetailNextCategory:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       let nextCat = if model.ui.fleetDetailModal.commandCategory == CommandCategory.Status:

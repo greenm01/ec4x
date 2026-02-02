@@ -1818,9 +1818,10 @@ proc renderDashboard*(
     of ViewMode.PlanetDetail:
       renderPlanetDetailModal(canvasArea, buf, model, playerState)
     of ViewMode.FleetDetail:
-      # FleetDetail view mode deprecated - now uses popup modal from Fleets view
-      discard buf.setString(canvasArea.x, canvasArea.y,
-        "Fleet detail modal (press Enter on fleet)", dimStyle())
+      # Render fleet detail as full-screen view
+      let fleetDetailWidget = newFleetDetailModalWidget()
+      let fleetData = fleetToDetailDataFromPS(playerState, FleetId(model.ui.fleetDetailModal.fleetId))
+      fleetDetailWidget.render(model.ui.fleetDetailModal, fleetData, canvasArea, buf)
     of ViewMode.ReportDetail:
       renderReportDetail(canvasArea, buf, model)
 
@@ -1828,13 +1829,6 @@ proc renderDashboard*(
   if model.ui.buildModal.active:
     let buildModalWidget = newBuildModalWidget()
     buildModalWidget.render(model.ui.buildModal, canvasArea, buf)
-
-  # Render fleet detail modal if active
-  if model.ui.fleetDetailModal.active:
-    let fleetDetailWidget = newFleetDetailModalWidget()
-    # Get fleet data for the selected fleet
-    let fleetData = fleetToDetailDataFromPS(playerState, FleetId(model.ui.fleetDetailModal.fleetId))
-    fleetDetailWidget.render(model.ui.fleetDetailModal, fleetData, canvasArea, buf)
 
   if model.ui.expertModeActive:
     renderExpertPalette(buf, canvasArea, statusBarArea, model)
