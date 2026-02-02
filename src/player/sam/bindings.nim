@@ -178,6 +178,7 @@ proc formatKeyCode*(key: actions.KeyCode): string =
   of actions.KeyCode.KeyColon: ":"
   of actions.KeyCode.KeyCtrlE: "e"
   of actions.KeyCode.KeyCtrlL: "l"
+  of actions.KeyCode.KeyCtrlQ: "q"
   of actions.KeyCode.KeyNone: ""
 
 proc formatModifier*(m: KeyModifier): string =
@@ -239,32 +240,6 @@ proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   else: none(ViewMode)
 
 # =============================================================================
-# Binding Queries
-# =============================================================================
-
-proc getBindingsForContext*(ctx: BindingContext): seq[Binding] =
-  ## Get all bindings for a specific context, sorted by priority
-  result = gBindings.filterIt(it.context == ctx)
-  result.sort(proc(a, b: Binding): int = cmp(a.priority, b.priority))
-
-proc getGlobalBindings*(): seq[Binding] =
-  ## Get all global bindings (view tabs, quit, expert mode)
-  getBindingsForContext(BindingContext.Global)
-
-proc findBinding*(key: actions.KeyCode, modifier: KeyModifier,
-    ctx: BindingContext): Option[Binding] =
-  ## Find a binding by key, modifier, and context
-  for b in gBindings:
-    if b.key == key and b.modifier == modifier and b.context == ctx:
-      return some(b)
-  none(Binding)
-
-proc findGlobalBinding*(key: actions.KeyCode,
-    modifier: KeyModifier): Option[Binding] =
-  ## Find a global binding by key and modifier
-  findBinding(key, modifier, BindingContext.Global)
-
-# =============================================================================
 # Enabled Checks
 # =============================================================================
 
@@ -292,6 +267,42 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
     model.ui.fleetDetailModal.subModal == FleetSubModal.None
   else:
     true
+
+# =============================================================================
+# Binding Queries
+# =============================================================================
+
+proc getBindingsForContext*(ctx: BindingContext): seq[Binding] =
+  ## Get all bindings for a specific context, sorted by priority
+  result = gBindings.filterIt(it.context == ctx)
+  result.sort(proc(a, b: Binding): int = cmp(a.priority, b.priority))
+
+proc getGlobalBindings*(): seq[Binding] =
+  ## Get all global bindings (view tabs, quit, expert mode)
+  getBindingsForContext(BindingContext.Global)
+
+proc findBinding*(key: actions.KeyCode, modifier: KeyModifier,
+    ctx: BindingContext, model: TuiModel): Option[Binding] =
+  ## Find the best binding by key, modifier, and context
+  ## Returns the highest-priority enabled binding that matches
+  var bestBinding: Option[Binding] = none(Binding)
+  var bestPriority = -1
+  
+  for b in gBindings:
+    if b.key == key and b.modifier == modifier and b.context == ctx:
+      # Check if this binding is enabled
+      if isBindingEnabled(b, model):
+        # Keep track of highest priority enabled binding
+        if b.priority > bestPriority:
+          bestBinding = some(b)
+          bestPriority = b.priority
+  
+  bestBinding
+
+proc findGlobalBinding*(key: actions.KeyCode,
+    modifier: KeyModifier, model: TuiModel): Option[Binding] =
+  ## Find a global binding by key and modifier
+  findBinding(key, modifier, BindingContext.Global, model)
 
 # =============================================================================
 # Binding Definitions
@@ -1252,11 +1263,11 @@ proc dispatchAction*(b: Binding, model: TuiModel,
 proc lookupAndDispatch*(key: KeyCode, modifier: KeyModifier,
     ctx: BindingContext, model: TuiModel): Option[Proposal] =
   ## Look up a binding and dispatch the action if found
-  let binding = findBinding(key, modifier, ctx)
+  let binding = findBinding(key, modifier, ctx, model)
   if binding.isSome:
     let b = binding.get()
-    if isBindingEnabled(b, model):
-      return dispatchAction(b, model, key)
+    # Note: isBindingEnabled already called in findBinding
+    return dispatchAction(b, model, key)
   none(Proposal)
 
 proc lookupGlobalAndDispatch*(key: KeyCode, modifier: KeyModifier,
@@ -1277,8 +1288,10 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
   ## Special modes (quit confirmation, lobby text input) are handled separately
   ## since they don't fit the registry pattern well.
 
-  # Alt+Q always quits (global)
+  # Alt+Q or Ctrl+Q always quits (global)
   if key == KeyCode.KeyQ and modifier == KeyModifier.Alt:
+    return some(actionQuit())
+  if key == KeyCode.KeyCtrlQ:
     return some(actionQuit())
 
   # Quit confirmation modal - takes precedence over everything
@@ -1313,8 +1326,9 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         BindingContext.FleetDetail, model)
     if fleetDetailResult.isSome:
       return fleetDetailResult
-    # Block other keys when in fleet detail view
-    return none(Proposal)
+    # Allow global bindings (Alt+key) to pass through, block other keys
+    if modifier != KeyModifier.Alt:
+      return none(Proposal)
 
   # Order entry mode: use registry
   if model.ui.orderEntryActive and modifier == KeyModifier.None:
@@ -1347,7 +1361,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyBackspace:
         return some(actionEntryImportBackspace())
       else:
-        return none(Proposal)
+        if modifier != KeyModifier.Alt:
+          return none(Proposal)
 
     elif model.ui.entryModal.editingRelay:
       case key
@@ -1356,7 +1371,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyBackspace:
         return some(actionEntryRelayBackspace())
       else:
-        return none(Proposal)
+        if modifier != KeyModifier.Alt:
+          return none(Proposal)
 
     elif model.ui.entryModal.mode == EntryModalMode.CreateGame:
       case key
@@ -1375,14 +1391,16 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyBackspace:
         return some(actionCreateGameBackspace())
       else:
-        return none(Proposal)
+        if modifier != KeyModifier.Alt:
+          return none(Proposal)
 
     elif model.ui.entryModal.mode == EntryModalMode.ManageGames:
       case key
       of KeyCode.KeyEscape:
         return some(actionManageGamesCancel())
       else:
-        return none(Proposal)
+        if modifier != KeyModifier.Alt:
+          return none(Proposal)
 
     else:
       # Normal entry modal mode
@@ -1411,7 +1429,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyI:
         return some(actionEntryImport())
       else:
-        return none(Proposal)
+        if modifier != KeyModifier.Alt:
+          return none(Proposal)
 
   # In-game Ctrl+L returns to lobby
   if model.ui.appPhase == AppPhase.InGame:

@@ -337,6 +337,7 @@ type
     command*: int           ## Fleet command (0-19, see 06-operations.md)
     commandLabel*: string   ## Human-readable command ("Hold", "Move", "Patrol")
     isIdle*: bool           ## True if command is Hold (00)
+    roe*: int               ## Rules of Engagement (0-10)
 
   CommandInfo* = object
     ## Fleet command info (renamed from OrderInfo)

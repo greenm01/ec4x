@@ -203,6 +203,7 @@ proc syncGameStateToModel*(
         command: cmdType,
         commandLabel: sam_pkg.commandLabel(cmdType),
         isIdle: fleet.command.commandType == FleetCommandType.Hold,
+        roe: int(fleet.roe),
       )
     )
 
@@ -549,6 +550,7 @@ proc syncPlayerStateToModel*(
         command: cmdType,
         commandLabel: sam_pkg.commandLabel(cmdType),
         isIdle: fleet.command.commandType == FleetCommandType.Hold,
+        roe: int(fleet.roe),
       )
     )
   

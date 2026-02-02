@@ -1172,7 +1172,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.fleetDetailModal.subModal = FleetSubModal.None
         model.ui.fleetDetailModal.commandCategory = CommandCategory.Movement
         model.ui.fleetDetailModal.commandIdx = 0
-        model.ui.fleetDetailModal.roeValue = 6  # Standard
+        model.ui.fleetDetailModal.roeValue = fleet.roe  # Use actual fleet ROE
         model.ui.fleetDetailModal.confirmPending = false
         model.ui.statusMessage = "Fleet detail opened"
   of ActionKind.closeFleetDetailModal:
@@ -1208,8 +1208,8 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.fleetDetailModal.commandIdx > 0:
         model.ui.fleetDetailModal.commandIdx -= 1
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
-      if model.ui.fleetDetailModal.roeValue < 10:
-        model.ui.fleetDetailModal.roeValue += 1
+      if model.ui.fleetDetailModal.roeValue > 0:
+        model.ui.fleetDetailModal.roeValue -= 1  # Up decreases value (moves toward 0)
   of ActionKind.fleetDetailListDown:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       # Get max index for current category
@@ -1224,8 +1224,8 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.fleetDetailModal.commandIdx < maxIdx:
         model.ui.fleetDetailModal.commandIdx += 1
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
-      if model.ui.fleetDetailModal.roeValue > 0:
-        model.ui.fleetDetailModal.roeValue -= 1
+      if model.ui.fleetDetailModal.roeValue < 10:
+        model.ui.fleetDetailModal.roeValue += 1  # Down increases value (moves toward 10)
   of ActionKind.fleetDetailSelectCommand:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       # Get selected command from category + index

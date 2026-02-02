@@ -1048,3 +1048,4 @@ type
       KeyColon  # Expert mode trigger
       KeyCtrlE  # Turn submission
       KeyCtrlL
+      KeyCtrlQ  # Emergency quit

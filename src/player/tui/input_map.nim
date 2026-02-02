@@ -29,37 +29,39 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
         return some(actionEntryInviteSubmit())
         return mapKeyToAction(KeyCode.KeyEnter, modifier, model)
     else:
-      if not model.ui.quitConfirmationActive:
-        if model.ui.expertModeActive:
-          if event.rune.int >= 0x20:
-            return some(actionExpertInputAppend($event.rune))
-          return none(Proposal)
-        # Entry modal import mode: append characters to nsec buffer
-        if model.ui.appPhase == AppPhase.Lobby and
-            model.ui.entryModal.mode == EntryModalMode.ImportNsec:
-          if event.rune.int >= 0x20:
-            return some(actionEntryImportAppend($event.rune))
-          return none(Proposal)
-        # Entry modal invite code input: append characters
-        # Auto-focus to InviteCode when typing valid invite characters from GameList
-        if model.ui.appPhase == AppPhase.Lobby and
-            model.ui.entryModal.mode == EntryModalMode.Normal:
-          if model.ui.entryModal.focus == EntryModalFocus.InviteCode:
+      # Allow Alt+key to pass through to global bindings (view switching, quit, etc.)
+      if modifier != KeyModifier.Alt:
+        if not model.ui.quitConfirmationActive:
+          if model.ui.expertModeActive:
             if event.rune.int >= 0x20:
-              return some(actionEntryInviteAppend($event.rune))
+              return some(actionExpertInputAppend($event.rune))
             return none(Proposal)
-          elif model.ui.entryModal.focus == EntryModalFocus.GameList:
-            # Auto-focus to invite code when typing valid invite characters
-            let ch = ($event.rune).toLowerAscii()
-            if ch.len > 0 and (ch[0] in 'a'..'z' or ch[0] in '0'..'9' or ch[0] == '-'):
-              return some(actionEntryInviteAppend($event.rune))
-            # Otherwise fall through to key bindings
-        # Lobby input mode: append characters to pubkey/name
-        if model.ui.appPhase == AppPhase.Lobby and
-            model.ui.lobbyInputMode != LobbyInputMode.None:
-          if event.rune.int >= 0x20:
-            return some(actionLobbyInputAppend($event.rune))
-          return none(Proposal)
+          # Entry modal import mode: append characters to nsec buffer
+          if model.ui.appPhase == AppPhase.Lobby and
+              model.ui.entryModal.mode == EntryModalMode.ImportNsec:
+            if event.rune.int >= 0x20:
+              return some(actionEntryImportAppend($event.rune))
+            return none(Proposal)
+          # Entry modal invite code input: append characters
+          # Auto-focus to InviteCode when typing valid invite characters from GameList
+          if model.ui.appPhase == AppPhase.Lobby and
+              model.ui.entryModal.mode == EntryModalMode.Normal:
+            if model.ui.entryModal.focus == EntryModalFocus.InviteCode:
+              if event.rune.int >= 0x20:
+                return some(actionEntryInviteAppend($event.rune))
+              return none(Proposal)
+            elif model.ui.entryModal.focus == EntryModalFocus.GameList:
+              # Auto-focus to invite code when typing valid invite characters
+              let ch = ($event.rune).toLowerAscii()
+              if ch.len > 0 and (ch[0] in 'a'..'z' or ch[0] in '0'..'9' or ch[0] == '-'):
+                return some(actionEntryInviteAppend($event.rune))
+              # Otherwise fall through to key bindings
+          # Lobby input mode: append characters to pubkey/name
+          if model.ui.appPhase == AppPhase.Lobby and
+              model.ui.lobbyInputMode != LobbyInputMode.None:
+            if event.rune.int >= 0x20:
+              return some(actionLobbyInputAppend($event.rune))
+            return none(Proposal)
       let ch = $event.rune
       case ch
       of "1":
@@ -156,6 +158,8 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     keyCode = KeyCode.KeyCtrlL
   of Key.CtrlE:
     keyCode = KeyCode.KeyCtrlE
+  of Key.CtrlQ:
+    keyCode = KeyCode.KeyCtrlQ
   of Key.Home:
     keyCode = KeyCode.KeyHome
   of Key.Backspace:
