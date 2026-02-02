@@ -455,12 +455,6 @@ proc initBindings*() =
     longLabel: "BUILD", shortLabel: "Bld", priority: 20,
     enabledCheck: "hasColonySelection"))
 
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.breadcrumbBack,
-    context: BindingContext.Planets,
-    longLabel: "BACK", shortLabel: "Back", priority: 90))
-
   # =========================================================================
   # Planet Detail Context
   # =========================================================================
@@ -592,12 +586,6 @@ proc initBindings*() =
     context: BindingContext.Fleets,
     longLabel: "NEXT PANE", shortLabel: "Tab", priority: 23))
 
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.breadcrumbBack,
-    context: BindingContext.Fleets,
-    longLabel: "BACK", shortLabel: "Back", priority: 90))
-
   # =========================================================================
   # Fleet Detail Modal Context
   # =========================================================================
@@ -708,12 +696,6 @@ proc initBindings*() =
     context: BindingContext.Research,
     longLabel: "CONFIRM", shortLabel: "OK", priority: 40))
 
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.breadcrumbBack,
-    context: BindingContext.Research,
-    longLabel: "BACK", shortLabel: "Back", priority: 90))
-
   # =========================================================================
   # Espionage Context
   # =========================================================================
@@ -754,12 +736,6 @@ proc initBindings*() =
     context: BindingContext.Espionage,
     longLabel: "BUY CIP", shortLabel: "CIP", priority: 20))
 
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.breadcrumbBack,
-    context: BindingContext.Espionage,
-    longLabel: "BACK", shortLabel: "Back", priority: 90))
-
   # =========================================================================
   # Economy Context
   # =========================================================================
@@ -781,12 +757,6 @@ proc initBindings*() =
     actionKind: ActionKind.select,
     context: BindingContext.Economy,
     longLabel: "CONFIRM", shortLabel: "OK", priority: 30))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.breadcrumbBack,
-    context: BindingContext.Economy,
-    longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
   # Reports Context
@@ -827,12 +797,6 @@ proc initBindings*() =
     actionKind: ActionKind.reportFocusNext,
     context: BindingContext.Reports,
     longLabel: "FOCUS", shortLabel: "Foc", priority: 20))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.breadcrumbBack,
-    context: BindingContext.Reports,
-    longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
   # Report Detail Context
@@ -896,12 +860,6 @@ proc initBindings*() =
     context: BindingContext.Messages,
     longLabel: "COMPOSE", shortLabel: "Comp", priority: 20))
 
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.breadcrumbBack,
-    context: BindingContext.Messages,
-    longLabel: "BACK", shortLabel: "Back", priority: 90))
-
   # =========================================================================
   # Settings Context
   # =========================================================================
@@ -941,12 +899,6 @@ proc initBindings*() =
     actionKind: ActionKind.select,
     context: BindingContext.Settings,
     longLabel: "RESET", shortLabel: "Rst", priority: 20))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.breadcrumbBack,
-    context: BindingContext.Settings,
-    longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
   # Build Modal Context
