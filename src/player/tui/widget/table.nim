@@ -52,6 +52,8 @@ type
     zebraStripe*: bool          ## Alternate row colors
     cellPadding*: int           ## Cell padding (0 = no padding, 1 = 1 space each side)
     showBorders*: bool          ## Render box borders and vertical separators
+    fillHeight*: bool           ## Extend borders to fill available height
+    scrollOffset*: int          ## Vertical scroll offset for row rendering
 
 # -----------------------------------------------------------------------------
 # Constructors
@@ -86,7 +88,9 @@ proc table*(columns: openArray[TableColumn]): Table =
     showSeparator: true,
     zebraStripe: false,
     cellPadding: 1,
-    showBorders: true
+    showBorders: true,
+    fillHeight: false,
+    scrollOffset: 0
   )
 
 # -----------------------------------------------------------------------------
@@ -164,6 +168,18 @@ proc showBorders*(t: Table, show: bool): Table =
   ## Toggle rendering of box borders and vertical separators.
   result = t
   result.showBorders = show
+
+proc fillHeight*(t: Table, fill: bool): Table =
+  ## Toggle filling available height with borders.
+  ## When enabled, the table extends vertical borders to the bottom of the area.
+  result = t
+  result.fillHeight = fill
+
+proc scrollOffset*(t: Table, offset: int): Table =
+  ## Set vertical scroll offset for rows.
+  ## Rows before this offset will be skipped during rendering.
+  result = t
+  result.scrollOffset = max(0, offset)
 
 # -----------------------------------------------------------------------------
 # Column width calculation
@@ -483,8 +499,13 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
 
   let pad = " ".repeat(t.cellPadding)
   for rowIdx, row in t.rows:
+    # Skip rows before scroll offset
+    if rowIdx < t.scrollOffset:
+      continue
+    
     if y >= area.bottom:
       break
+    
     let isSelected = rowIdx == t.selectedIdx
     let isAlternate = t.zebraStripe and rowIdx mod 2 == 1
     let style = if isSelected:
@@ -534,6 +555,23 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
     y.inc
     if y >= area.bottom:
       break
+
+  # Fill remaining height with empty rows if fillHeight is enabled
+  if t.showBorders and t.fillHeight:
+    while y < area.bottom - 1:
+      if y >= area.bottom:
+        break
+      # Draw empty row with just vertical borders
+      var x = area.x
+      putSegment(x, "\u2502", t.separatorStyle)
+      for i, w in colWidths:
+        for _ in 0 ..< w + (t.cellPadding * 2):
+          putSegment(x, " ", t.rowStyle)
+        if i < colWidths.len - 1:
+          putSegment(x, "\u2502", t.separatorStyle)
+        else:
+          putSegment(x, "\u2502", t.separatorStyle)
+      y.inc
 
   if t.showBorders:
     drawBorderLine("\u2514", "\u2534", "\u2518")

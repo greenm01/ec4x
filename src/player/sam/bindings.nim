@@ -553,9 +553,9 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    actionKind: ActionKind.openFleetDetailModal,
     context: BindingContext.Fleets,
-    longLabel: "VIEW", shortLabel: "View", priority: 10,
+    longLabel: "DETAIL", shortLabel: "Enter", priority: 10,
     enabledCheck: "hasFleets"))
 
   registerBinding(Binding(
@@ -589,13 +589,6 @@ proc initBindings*() =
     actionKind: ActionKind.fleetConsoleNextPane,
     context: BindingContext.Fleets,
     longLabel: "NEXT PANE", shortLabel: "Tab", priority: 23))
-
-  # Open Fleet Detail Modal
-  registerBinding(Binding(
-    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionKind: ActionKind.openFleetDetailModal,
-    context: BindingContext.Fleets,
-    longLabel: "DETAIL", shortLabel: "Enter", priority: 24))
 
   registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,

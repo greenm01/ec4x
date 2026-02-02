@@ -541,7 +541,8 @@ proc renderFleetConsoleSystems(
   buf: var CellBuffer,
   systems: seq[FleetConsoleSystem],
   selectedIdx: int,
-  hasFocus: bool
+  hasFocus: bool,
+  scrollOffset: int = 0
 ) =
   ## Render systems pane as table (systems with fleets)
   if area.isEmpty:
@@ -555,6 +556,8 @@ proc renderFleetConsoleSystems(
   
   var systemsTable = table(columns)
     .showBorders(true)
+    .fillHeight(true)
+    .scrollOffset(scrollOffset)
   
   # Only show selection if this pane has focus
   if hasFocus and selectedIdx >= 0 and selectedIdx < systems.len:
@@ -573,7 +576,8 @@ proc renderFleetConsoleFleets(
   fleets: seq[FleetConsoleFleet],
   selectedIdx: int,
   hasFocus: bool,
-  stagedCommands: seq[FleetCommand]
+  stagedCommands: seq[FleetCommand],
+  scrollOffset: int = 0
 ) =
   ## Render fleets pane as table (fleets at selected system)
   if area.isEmpty:
@@ -596,6 +600,8 @@ proc renderFleetConsoleFleets(
   
   var fleetsTable = table(columns)
     .showBorders(true)
+    .fillHeight(true)
+    .scrollOffset(scrollOffset)
   
   # Only show selection if this pane has focus
   if hasFocus and selectedIdx >= 0 and selectedIdx < fleets.len:
@@ -668,14 +674,16 @@ proc renderFleetConsole*(
   
   # Render systems pane
   renderFleetConsoleSystems(systemsPane, buf, systems, systemIdx,
-    model.ui.fleetConsoleFocus == FleetConsoleFocus.SystemsPane)
+    model.ui.fleetConsoleFocus == FleetConsoleFocus.SystemsPane,
+    model.ui.fleetConsoleSystemScroll.verticalOffset)
   
   # Render fleets pane
   let fleetIdx = clamp(model.ui.fleetConsoleFleetIdx, 0,
     max(0, fleets.len - 1))
   renderFleetConsoleFleets(fleetsPane, buf, fleets, fleetIdx,
     model.ui.fleetConsoleFocus == FleetConsoleFocus.FleetsPane,
-    model.ui.stagedFleetCommands)
+    model.ui.stagedFleetCommands,
+    model.ui.fleetConsoleFleetScroll.verticalOffset)
 
 proc renderPlanetSummaryTab*(
   area: Rect,
@@ -1437,7 +1445,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     renderFleetList(innerArea, buf, model)
   
   of FleetViewMode.SystemView:
-    # 3-pane fleet console as centered modal with dynamic width
+    # 2-pane fleet console as centered modal with dynamic width and height
     # Calculate content-based width:
     # - Fleets pane needs ~80 chars (11 columns + borders/padding)
     # - Fleets pane is 70% of total width
@@ -1446,7 +1454,27 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     let maxAvailableWidth = canvas.width - 4
     let modalWidth = max(minContentWidth, min(maxAvailableWidth, 120))
     
-    let contentHeight = min(canvas.height - 6, 28)
+    # Calculate dynamic height based on content
+    # Get cached data to determine row counts
+    let systems = model.ui.fleetConsoleSystems
+    var maxFleetCount = 0
+    for sys in systems:
+      if stdtables.hasKey(model.ui.fleetConsoleFleetsBySystem, sys.systemId):
+        let fleets = model.ui.fleetConsoleFleetsBySystem[sys.systemId]
+        maxFleetCount = max(maxFleetCount, fleets.len)
+    
+    # Calculate heights
+    # Table height = 2 (top/bottom border) + 1 (header) + 1 (separator) + rows
+    let systemsRowCount = systems.len
+    let fleetsRowCount = maxFleetCount
+    let tableOverhead = 4  # borders + header + separator
+    let maxRows = max(systemsRowCount, fleetsRowCount)
+    let desiredHeight = tableOverhead + maxRows
+    
+    # Apply constraints: min 8, max 75% of screen height
+    let minHeight = 8
+    let maxHeight = (canvas.height * 75) div 100
+    let contentHeight = clamp(desiredHeight, minHeight, maxHeight)
     
     let vm = newViewModal("FLEET COMMAND")
       .maxWidth(modalWidth)

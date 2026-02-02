@@ -328,9 +328,25 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       of FleetConsoleFocus.SystemsPane:
         if model.ui.fleetConsoleSystemIdx > 0:
           model.ui.fleetConsoleSystemIdx -= 1
+          # Update scroll state to keep selection visible
+          let viewportHeight = 15  # Reasonable default viewport
+          model.ui.fleetConsoleSystemScroll.contentLength = model.ui.fleetConsoleSystems.len
+          model.ui.fleetConsoleSystemScroll.viewportLength = viewportHeight
+          model.ui.fleetConsoleSystemScroll.ensureVisible(model.ui.fleetConsoleSystemIdx)
       of FleetConsoleFocus.FleetsPane:
         if model.ui.fleetConsoleFleetIdx > 0:
           model.ui.fleetConsoleFleetIdx -= 1
+          # Update scroll state
+          if model.ui.fleetConsoleSystems.len > 0:
+            let sysIdx = clamp(model.ui.fleetConsoleSystemIdx, 0, 
+              model.ui.fleetConsoleSystems.len - 1)
+            let systemId = model.ui.fleetConsoleSystems[sysIdx].systemId
+            if model.ui.fleetConsoleFleetsBySystem.hasKey(systemId):
+              let fleets = model.ui.fleetConsoleFleetsBySystem[systemId]
+              let viewportHeight = 15
+              model.ui.fleetConsoleFleetScroll.contentLength = fleets.len
+              model.ui.fleetConsoleFleetScroll.viewportLength = viewportHeight
+              model.ui.fleetConsoleFleetScroll.ensureVisible(model.ui.fleetConsoleFleetIdx)
       of FleetConsoleFocus.ShipsPane:
         if model.ui.fleetConsoleShipIdx > 0:
           model.ui.fleetConsoleShipIdx -= 1
@@ -349,6 +365,11 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         let maxIdx = max(0, model.ui.fleetConsoleSystems.len - 1)
         if model.ui.fleetConsoleSystemIdx < maxIdx:
           model.ui.fleetConsoleSystemIdx += 1
+          # Update scroll state to keep selection visible
+          let viewportHeight = 15
+          model.ui.fleetConsoleSystemScroll.contentLength = model.ui.fleetConsoleSystems.len
+          model.ui.fleetConsoleSystemScroll.viewportLength = viewportHeight
+          model.ui.fleetConsoleSystemScroll.ensureVisible(model.ui.fleetConsoleSystemIdx)
       of FleetConsoleFocus.FleetsPane:
         # Get fleets for current system to check bounds
         if model.ui.fleetConsoleSystems.len > 0:
@@ -360,6 +381,11 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
             let maxIdx = max(0, fleets.len - 1)
             if model.ui.fleetConsoleFleetIdx < maxIdx:
               model.ui.fleetConsoleFleetIdx += 1
+              # Update scroll state
+              let viewportHeight = 15
+              model.ui.fleetConsoleFleetScroll.contentLength = fleets.len
+              model.ui.fleetConsoleFleetScroll.viewportLength = viewportHeight
+              model.ui.fleetConsoleFleetScroll.ensureVisible(model.ui.fleetConsoleFleetIdx)
       of FleetConsoleFocus.ShipsPane:
         model.ui.fleetConsoleShipIdx += 1  # Ships bounds checked at render
     else:
