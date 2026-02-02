@@ -263,10 +263,9 @@ proc renderFleetInfo(fleetData: FleetDetailData, area: Rect,
 
 proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
             fleetData: FleetDetailData, viewport: Rect, buf: var CellBuffer) =
-  ## Render the fleet detail modal
-  if not state.active:
-    return
-
+  ## Render the fleet detail view
+  ## NOTE: No longer checks state.active - called only when ViewMode == FleetDetail
+  
   # Calculate modal area
   let contentHeight = 24
   let modalArea = widget.modal.calculateArea(viewport, contentHeight)
