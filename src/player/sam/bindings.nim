@@ -288,6 +288,8 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
     model.ui.appPhase == AppPhase.InGame
   of "inLobby":
     model.ui.appPhase == AppPhase.Lobby
+  of "noSubModal":
+    model.ui.fleetDetailModal.subModal == FleetSubModal.None
   else:
     true
 
@@ -617,7 +619,8 @@ proc initBindings*() =
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.closeFleetDetailModal,
     context: BindingContext.FleetDetail,
-    longLabel: "CLOSE", shortLabel: "Esc", priority: 90))
+    longLabel: "CLOSE", shortLabel: "Esc", priority: 90,
+    enabledCheck: "noSubModal"))
 
   # Command Picker sub-modal
   registerBinding(Binding(
@@ -676,12 +679,6 @@ proc initBindings*() =
     actionKind: ActionKind.fleetDetailCancel,
     context: BindingContext.FleetDetail,
     longLabel: "NO", shortLabel: "N", priority: 41))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.breadcrumbBack,
-    context: BindingContext.FleetDetail,
-    longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
   # Research Context
