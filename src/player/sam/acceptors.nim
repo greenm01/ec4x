@@ -1193,15 +1193,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   of ActionKind.closeFleetDetailModal:
     # Close fleet detail view (only if no sub-modal active)
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
-      # Pop breadcrumb to return to parent view
-      if model.popBreadcrumb():
-        # Update mode based on new current breadcrumb
-        let current = model.currentBreadcrumb()
-        model.ui.mode = current.viewMode
-        model.ui.statusMessage = ""
-      else:
-        # No breadcrumb to pop, stay in current view
-        model.ui.statusMessage = "Cannot go back"
+      # Always navigate back to Fleets view
+      model.ui.mode = ViewMode.Fleets
+      model.resetBreadcrumbs(ViewMode.Fleets)
+      model.ui.statusMessage = ""
   of ActionKind.fleetDetailNextCategory:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       let nextCat = if model.ui.fleetDetailModal.commandCategory == CommandCategory.Status:
@@ -1350,6 +1345,12 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       # Cancel ROE picker, go back to main detail view
       model.ui.fleetDetailModal.subModal = FleetSubModal.None
+    else:
+      # Fallback: treat cancel as close when no sub-modal is active
+      # Always navigate back to Fleets view
+      model.ui.mode = ViewMode.Fleets
+      model.resetBreadcrumbs(ViewMode.Fleets)
+      model.ui.statusMessage = ""
   of ActionKind.fleetDetailPageUp:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       let (pageSize, _) = model.updateFleetDetailScroll()
