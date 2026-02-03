@@ -2,9 +2,14 @@
 ##
 ## Provides low-level terminal operations: entering/exiting raw mode,
 ## reading bytes, and querying window dimensions.
+##
+## Uses STDIN_FILENO (fd 0) for input rather than opening /dev/tty,
+## which ensures correct behavior in both real terminals and PTY
+## environments (script, expect, tmux, etc.)
 
 import std/[posix, os, strutils]
 import posix/termios
+import ../../common/logger
 
 type
   Tty* = object
@@ -12,24 +17,25 @@ type
     fd: cint
     savedState: Termios
     started: bool
+    ownsfd: bool  # True if we opened the fd (vs using stdin)
 
   TtyError* = object of CatchableError
     ## Errors related to TTY operations.
 
 
 proc openTty*(): Tty =
-  ## Open /dev/tty for terminal control.
-  ## Raises TtyError if /dev/tty cannot be opened or is not a terminal.
-  let fd = open("/dev/tty", O_RDWR)
-  if fd < 0:
-    raise newException(TtyError, "Cannot open /dev/tty: " & $strerror(errno))
+  ## Initialize TTY using stdin for input.
+  ## This works correctly in both real terminals and PTY environments.
+  ## Raises TtyError if stdin is not a terminal.
+  let fd = cint(STDIN_FILENO)
   
   if isatty(fd) == 0:
-    discard close(fd)
-    raise newException(TtyError, "/dev/tty is not a terminal")
+    raise newException(TtyError, "stdin is not a terminal")
   
   result.fd = fd
   result.started = false
+  result.ownsfd = false  # stdin, don't close it
+  logInfo("TTY", "Using stdin, fd=", $fd)
 
 proc start*(tty: var Tty): bool =
   ## Enter raw mode and save current terminal state.
@@ -82,6 +88,7 @@ proc start*(tty: var Tty): bool =
     return false
   
   tty.started = true
+  logInfo("TTY", "Raw mode entered, fd=", $tty.fd)
   return true
 
 proc stop*(tty: var Tty): bool =
@@ -115,18 +122,32 @@ proc readByteTimeout*(tty: Tty, timeoutMs: int): int =
   pfd.events = POLLIN
   pfd.revents = 0
   
-  let ret = poll(addr pfd, 1, cint(timeoutMs))
+  let ret = posix.poll(addr pfd, 1, cint(timeoutMs))
+  
   if ret < 0:
+    logWarn("TTY", "poll error, errno=", $errno)
     return -1  # Error
   elif ret == 0:
     return -2  # Timeout
   else:
+    # Check for error conditions in revents
+    if (pfd.revents and POLLNVAL) != 0:
+      logWarn("TTY", "POLLNVAL - fd ", $tty.fd, " is invalid for poll!")
+      return -1
+    if (pfd.revents and POLLERR) != 0:
+      logWarn("TTY", "POLLERR on fd ", $tty.fd)
+      return -1
+    if (pfd.revents and POLLHUP) != 0:
+      logWarn("TTY", "POLLHUP on fd ", $tty.fd)
+      return -1
+      
     # Data available, read it
     var c: char
     let n = read(tty.fd, addr c, 1)
     if n == 1:
       return ord(c)
     else:
+      logWarn("TTY", "read() returned ", $n, " on fd ", $tty.fd)
       return -1
 
 proc readBytes*(tty: Tty, buf: var openArray[byte], maxBytes: int): int =
@@ -175,11 +196,13 @@ proc windowSize*(tty: Tty): tuple[w, h: int] =
     result.h = 24
 
 proc close*(tty: var Tty) =
-  ## Close the terminal device.
+  ## Close the terminal device and restore state.
   if tty.fd >= 0:
     if tty.started:
       discard tty.stop()
-    discard close(tty.fd)
+    # Only close if we own the fd (not stdin)
+    if tty.ownsfd:
+      discard close(tty.fd)
     tty.fd = -1
 
 proc fd*(tty: Tty): cint {.inline.} =

@@ -157,6 +157,7 @@ type
 - ✅ Window size query via ioctl (TIOCGWINSZ)
 - ✅ Fallback to COLUMNS/LINES env vars
 - ✅ Byte reading (blocking)
+- ✅ Uses STDIN_FILENO (not /dev/tty) for PTY compatibility
 
 #### Event System (`events.nim`)
 - ✅ Unified `Event` type: Key, Resize, Error

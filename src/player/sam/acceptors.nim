@@ -57,6 +57,12 @@ proc updateFleetDetailScroll(model: var TuiModel): tuple[
   let maxOffset = model.ui.fleetDetailModal.shipScroll.maxVerticalOffset()
   (pageSize, maxOffset)
 
+proc resetFleetDetailSubModal(model: var TuiModel) =
+  model.ui.fleetDetailModal.subModal = FleetSubModal.None
+  model.ui.fleetDetailModal.confirmPending = false
+  model.ui.fleetDetailModal.confirmMessage = ""
+  model.ui.fleetDetailModal.pendingCommandType = FleetCommandType.Hold
+
 proc resetExpertPaletteSelection(model: var TuiModel) =
   let matches = matchExpertCommands(model.ui.expertModeInput)
   if matches.len == 0:
@@ -1161,6 +1167,8 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.fleetDetailModal.commandIdx = 0
             model.ui.fleetDetailModal.roeValue = 6  # Standard
             model.ui.fleetDetailModal.confirmPending = false
+            model.ui.fleetDetailModal.confirmMessage = ""
+            model.ui.fleetDetailModal.pendingCommandType = FleetCommandType.Hold
             model.ui.fleetDetailModal.shipScroll = initScrollState()
             model.ui.fleetDetailModal.shipCount = fleets[fleetIdx].shipCount
             discard model.updateFleetDetailScroll()
@@ -1186,6 +1194,8 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.fleetDetailModal.commandIdx = 0
         model.ui.fleetDetailModal.roeValue = fleet.roe  # Use actual fleet ROE
         model.ui.fleetDetailModal.confirmPending = false
+        model.ui.fleetDetailModal.confirmMessage = ""
+        model.ui.fleetDetailModal.pendingCommandType = FleetCommandType.Hold
         model.ui.fleetDetailModal.shipScroll = initScrollState()
         model.ui.fleetDetailModal.shipCount = fleet.shipCount
         discard model.updateFleetDetailScroll()
@@ -1194,6 +1204,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     # Close fleet detail view (only if no sub-modal active)
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       # Always navigate back to Fleets view
+      resetFleetDetailSubModal(model)
       model.ui.mode = ViewMode.Fleets
       model.resetBreadcrumbs(ViewMode.Fleets)
       model.ui.statusMessage = ""
@@ -1297,7 +1308,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           )
           model.ui.stagedFleetCommands.add(cmd)
           model.ui.statusMessage = "Staged command: " & $cmdType
-          model.ui.fleetDetailModal.active = false
+          resetFleetDetailSubModal(model)
   of ActionKind.fleetDetailOpenROE:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       model.ui.fleetDetailModal.subModal = FleetSubModal.ROEPicker
@@ -1329,7 +1340,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       )
       model.ui.stagedFleetCommands.add(cmd)
       model.ui.statusMessage = "Staged command: " & $cmdType
-      model.ui.fleetDetailModal.active = false
+      resetFleetDetailSubModal(model)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       # C key from main detail view - open command picker
       model.ui.fleetDetailModal.subModal = FleetSubModal.CommandPicker
@@ -1337,7 +1348,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   of ActionKind.fleetDetailCancel:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.ConfirmPrompt:
       # Cancel confirmation, go back to main detail view
-      model.ui.fleetDetailModal.subModal = FleetSubModal.None
+      resetFleetDetailSubModal(model)
       model.ui.statusMessage = "Action cancelled"
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       # Cancel command picker, go back to main detail view
@@ -1348,6 +1359,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     else:
       # Fallback: treat cancel as close when no sub-modal is active
       # Always navigate back to Fleets view
+      resetFleetDetailSubModal(model)
       model.ui.mode = ViewMode.Fleets
       model.resetBreadcrumbs(ViewMode.Fleets)
       model.ui.statusMessage = ""

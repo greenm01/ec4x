@@ -244,8 +244,10 @@ proc flushPending*(p: var InputParser): seq[Event] =
   ## Flush pending escape sequences (used on read timeout).
   result = @[]
   case p.state
-  of InputState.Esc, InputState.Csi, InputState.Ss3:
+  of InputState.Esc:
     result.add(newKeyEvent(Key.Escape))
+    p.reset()
+  of InputState.Csi, InputState.Ss3:
     p.reset()
   of InputState.Init:
     discard

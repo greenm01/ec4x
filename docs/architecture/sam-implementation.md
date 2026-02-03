@@ -715,8 +715,76 @@ type Msg = object
     orderPtr: ptr Order  # Don't use pointers!
 ```
 
+## TUI-Specific Considerations
+
+### Decoupled Rendering
+
+The TUI client uses SAM for state management but **does not** use SAM's
+automatic render callback. Instead, rendering is controlled explicitly by
+the main loop:
+
+```nim
+# SAM is NOT configured to render automatically
+# sam.setRender() is not called
+
+# Instead, a flag tracks when rendering is needed
+var needsRender = false
+
+# State changes set the flag
+sam.present(proposal)
+needsRender = true
+
+# Render only happens at frame boundaries (60fps)
+if needsRender and (epochTime() - lastRenderTime) * 1000 >= TargetFrameTimeMs:
+  doRender()
+  needsRender = false
+  lastRenderTime = epochTime()
+```
+
+This approach:
+- **Prevents render storms**: Batched input doesn't trigger 60+ renders
+- **Ensures responsiveness**: Input is processed immediately, view updates at fixed rate
+- **Aligns with SAM philosophy**: Rendering is a side effect controlled by the application
+
+### Frame-Based Main Loop
+
+The TUI main loop is structured as a game loop with distinct phases:
+
+1. **Drain async queue**: Process proposals from background operations
+2. **Check resize**: Detect terminal dimension changes
+3. **Process Nostr**: Non-blocking async operation progress checks
+4. **Read input**: Batch read all available input with 0ms timeout
+5. **Process input**: Run each key event through SAM present()
+6. **Maintain state**: Game list updates, loading, etc.
+7. **Render**: If `needsRender` and frame time elapsed
+8. **Sleep**: Wait for next frame or input (whichever first)
+
+### Non-Blocking Async Operations
+
+Long-running operations (Nostr connect, publish) use state machines:
+
+```nim
+type NostrPublishState = enum
+  npsIdle
+  npsPublishing
+  npsComplete
+  npsFailed
+
+# Each loop iteration checks progress without blocking
+if nostrPublishState == npsPublishing:
+  if nostrPublishFuture.finished:
+    nostrPublishState = npsComplete
+  elif epochTime() - nostrPublishStartTime > NostrPublishTimeoutSec:
+    nostrPublishState = npsFailed
+```
+
+This ensures the main loop never blocks waiting for network operations.
+
+See [TUI Design Spec](../tui/tui-design-spec.adoc) for full render loop documentation.
+
 ## Related Documentation
 
 - [Daemon Design](./daemon.md) - Daemon-specific SAM implementation
 - [Architecture Overview](./overview.md) - High-level system design
 - [Data Flow](./dataflow.md) - How messages flow through the system
+- [TUI Design Spec](../tui/tui-design-spec.adoc) - TUI render loop architecture

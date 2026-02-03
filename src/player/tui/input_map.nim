@@ -23,11 +23,8 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
   case event.key
   of Key.Rune:
     if event.rune.int == 0x0D or event.rune.int == 0x0A:
-      if model.ui.appPhase == AppPhase.Lobby and
-          model.ui.entryModal.mode == EntryModalMode.Normal and
-          model.ui.entryModal.focus == EntryModalFocus.InviteCode:
-        return some(actionEntryInviteSubmit())
-        return mapKeyToAction(KeyCode.KeyEnter, modifier, model)
+      # CR/LF maps to Enter key - handled via KeyCode mapping below
+      keyCode = KeyCode.KeyEnter
     else:
       # Allow meta+key to pass through to global bindings
       if modifier != KeyModifier.Alt:

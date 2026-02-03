@@ -419,6 +419,99 @@ Example commands:
 :buy ebp 3
 ----
 
+== Render Loop Architecture
+
+The TUI uses a **frame-based render loop** that decouples rendering from input
+processing. This design follows game loop patterns from professional UI
+frameworks and ensures consistent input responsiveness.
+
+=== Core Principles
+
+1. **Input is never blocked** - Input is read with 0ms timeout (non-blocking)
+2. **All input processed before rendering** - Batched input handling prevents render storms
+3. **Fixed frame rate rendering** - 60fps target (~16.67ms per frame)
+4. **State changes set a flag** - Model mutations set `needsRender = true`, not trigger immediate render
+
+=== Main Loop Structure
+
+The main loop executes these phases in order each iteration:
+
+----
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Phase 1: Drain async proposal queue                                         │
+│          Process any proposals queued from async operations                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Phase 2: Check for terminal resize                                          │
+│          Detect SIGWINCH and update terminal dimensions                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Phase 3: Process async operations (Nostr)                                   │
+│          Non-blocking check of connection state, publish progress           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Phase 4: Read and process all available input                               │
+│          Batch read with 0ms timeout, process each key event through SAM    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Phase 5: Handle game loading and state changes                              │
+│          Load game data when transitioning to game view                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Phase 6: Game list maintenance                                              │
+│          Update lobby game lists from Nostr events                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Phase 7: Frame-based rendering (60fps)                                      │
+│          Render only if needsRender=true AND frame time elapsed             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Phase 8: Frame pacing                                                       │
+│          Sleep until next frame or input available (whichever first)        │
+└─────────────────────────────────────────────────────────────────────────────┘
+----
+
+=== SAM Integration
+
+The SAM pattern is preserved but render control is moved to the application:
+
+* **SAM handles**: State transitions via `present()`, acceptors, reactors, NAPs
+* **Application handles**: Render timing, input batching, frame pacing
+* **Rendering**: Explicit `doRender()` call, not triggered by SAM callbacks
+
+This is more aligned with SAM principles because rendering is a side effect
+that should be controlled by the application, not triggered automatically by
+state changes.
+
+=== Non-Blocking Nostr
+
+The Nostr connection and publish operations use a state machine pattern:
+
+----
+Connection States:
+  Disconnected → Connecting → Connected → Subscribed
+                     ↓
+              (timeout: 3s → Disconnected)
+
+Publish States:
+  Idle → Publishing → Complete/Failed
+              ↓
+        (timeout: 3s → Failed)
+----
+
+Each main loop iteration checks progress without blocking:
+
+* Connection attempts are started and checked for completion
+* Publish operations use async futures checked each frame
+* Timeouts prevent infinite waits on failed operations
+
+=== Frame Pacing
+
+After rendering, the loop calculates sleep time:
+
+----
+sleepTime = max(1, TargetFrameTimeMs - elapsedMs)
+----
+
+The sleep uses `readByteTimeout(sleepTime)` which:
+
+* Returns immediately if input is available (preserving responsiveness)
+* Sleeps up to `sleepTime` ms if no input (saving CPU)
+* Never blocks longer than one frame (~16ms)
+
 == Entry Modal
 
 === Layout (72 columns max)

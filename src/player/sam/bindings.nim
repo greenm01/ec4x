@@ -1256,6 +1256,34 @@ proc lookupGlobalAndDispatch*(key: KeyCode, modifier: KeyModifier,
   ## Look up a global binding and dispatch the action if found
   lookupAndDispatch(key, modifier, BindingContext.Global, model)
 
+proc backActionForState(model: TuiModel): Option[Proposal] =
+  ## Return the layered back action for current state
+  if model.ui.quitConfirmationActive:
+    return some(actionQuitCancel())
+  if model.ui.buildModal.active:
+    return some(actionCloseBuildModal())
+  if model.ui.mode == ViewMode.FleetDetail:
+    if model.ui.fleetDetailModal.subModal != FleetSubModal.None:
+      return some(actionFleetDetailCancel())
+    return some(actionCloseFleetDetailModal())
+  if model.ui.orderEntryActive:
+    return some(actionCancelOrder())
+  if model.ui.expertModeActive:
+    return some(actionExitExpertMode())
+  if model.ui.appPhase == AppPhase.Lobby:
+    if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
+      return some(actionEntryImportCancel())
+    if model.ui.entryModal.editingRelay:
+      return some(actionEntryRelayConfirm())
+    if model.ui.entryModal.mode == EntryModalMode.CreateGame:
+      return some(actionCreateGameCancel())
+    if model.ui.entryModal.mode == EntryModalMode.ManageGames:
+      return some(actionManageGamesCancel())
+  if model.ui.mode == ViewMode.PlanetDetail or
+      model.ui.mode == ViewMode.ReportDetail:
+    return some(actionBreadcrumbBack())
+  none(Proposal)
+
 # =============================================================================
 # Key Mapping (Single Source of Truth)
 # =============================================================================
@@ -1268,6 +1296,11 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
   ##
   ## Special modes (quit confirmation, lobby text input) are handled separately
   ## since they don't fit the registry pattern well.
+
+  if key == KeyCode.KeyEscape and modifier == KeyModifier.None:
+    let backAction = backActionForState(model)
+    if backAction.isSome:
+      return backAction
 
   # Ctrl+C / Ctrl+Q / F12 always quit (global)
   if key == KeyCode.KeyCtrlC:
@@ -1282,7 +1315,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
     case key
     of KeyCode.KeyY:
       return some(actionQuitConfirm())
-    of KeyCode.KeyN, KeyCode.KeyEscape:
+    of KeyCode.KeyN:
       return some(actionQuitCancel())
     of KeyCode.KeyLeft, KeyCode.KeyRight:
       return some(actionQuitToggle())
@@ -1297,41 +1330,45 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
   # Build modal mode: use registry
   if model.ui.buildModal.active and modifier == KeyModifier.None:
-    let buildResult = lookupAndDispatch(key, KeyModifier.None,
-        BindingContext.BuildModal, model)
-    if buildResult.isSome:
-      return buildResult
-    return none(Proposal)
+    if key != KeyCode.KeyEscape:
+      let buildResult = lookupAndDispatch(key, KeyModifier.None,
+          BindingContext.BuildModal, model)
+      if buildResult.isSome:
+        return buildResult
+      return none(Proposal)
 
   # Fleet detail view mode: use registry
   if model.ui.mode == ViewMode.FleetDetail:
-    let fleetDetailResult = lookupAndDispatch(key, modifier,
-        BindingContext.FleetDetail, model)
-    if fleetDetailResult.isSome:
-      return fleetDetailResult
-    # Allow global bindings to pass through, block other keys
-    if modifier != KeyModifier.Alt:
-      return none(Proposal)
+    if key != KeyCode.KeyEscape:
+      let fleetDetailResult = lookupAndDispatch(key, modifier,
+          BindingContext.FleetDetail, model)
+      if fleetDetailResult.isSome:
+        return fleetDetailResult
+      # Allow global bindings to pass through, block other keys
+      if modifier != KeyModifier.Alt:
+        return none(Proposal)
 
   # Order entry mode: use registry
   if model.ui.orderEntryActive and modifier == KeyModifier.None:
-    let orderResult = lookupAndDispatch(key, KeyModifier.None,
-        BindingContext.OrderEntry, model)
-    if orderResult.isSome:
-      return orderResult
-    # Q also cancels (not in registry for cleanliness)
-    if key == KeyCode.KeyQ:
-      return some(actionCancelOrder())
-    return none(Proposal)
+    if key != KeyCode.KeyEscape:
+      let orderResult = lookupAndDispatch(key, KeyModifier.None,
+          BindingContext.OrderEntry, model)
+      if orderResult.isSome:
+        return orderResult
+      # Q also cancels (not in registry for cleanliness)
+      if key == KeyCode.KeyQ:
+        return some(actionCancelOrder())
+      return none(Proposal)
 
   # Expert mode: use registry
   if model.ui.expertModeActive and modifier == KeyModifier.None:
-    let expertResult = lookupAndDispatch(key, KeyModifier.None,
-        BindingContext.ExpertMode, model)
-    if expertResult.isSome:
-      return expertResult
-    # Other keys add to input buffer - handled by acceptor
-    return none(Proposal)
+    if key != KeyCode.KeyEscape:
+      let expertResult = lookupAndDispatch(key, KeyModifier.None,
+          BindingContext.ExpertMode, model)
+      if expertResult.isSome:
+        return expertResult
+      # Other keys add to input buffer - handled by acceptor
+      return none(Proposal)
 
   # Lobby phase: special handling for text input modes
   if model.ui.appPhase == AppPhase.Lobby:
