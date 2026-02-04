@@ -159,9 +159,6 @@ proc put*(cb: var CellBuffer, x, y: int, str: string,
         if x + i < cb.w:
           cb.cells[idx + i].setDirty(true)
 
-    c.currRune = rune
-    c.width = width
-    
     # Merge colors: ColorNone means keep current
     var newStyle = style
     if style.fg.isNone:
@@ -169,7 +166,34 @@ proc put*(cb: var CellBuffer, x, y: int, str: string,
     if style.bg.isNone:
       newStyle.bg = c.currStyle.bg
     
+    c.currRune = rune
+    c.width = width
     c.currStyle = newStyle
+    
+    # Clear continuation cells for wide characters to prevent leftover glyphs
+    if width > 1:
+      for i in 1..<width:
+        if x + i < cb.w:
+          let cont = addr cb.cells[idx + i]
+          cont.currRune = Rune(0)  # Mark as empty/continuation
+          cont.width = 0           # Width 0 indicates continuation cell
+          cont.currStyle = newStyle
+          cont[].setDirty(true)
+    
+    # If placing narrow char, clear any stale continuation from previous wide
+    if width == 1 and c.width > 1:
+      # We're overwriting start of a previous wide char - clear its continuations
+      let oldWidth = c.width
+      for i in 1..<oldWidth:
+        if x + i < cb.w:
+          let cont = addr cb.cells[idx + i]
+          if cont.width == 0 or cont.currRune.int == 0:
+            # This was a continuation - clear it
+            cont.currRune = SpaceRune
+            cont.width = 1
+            cont.currStyle = newStyle
+            cont[].setDirty(true)
+    
     result = width
 
 proc get*(cb: CellBuffer, x, y: int): tuple[str: string,

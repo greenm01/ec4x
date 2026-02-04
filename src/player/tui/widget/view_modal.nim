@@ -87,3 +87,12 @@ proc renderWithScrollbar*(vm: ViewModal, area: Rect, buf: var CellBuffer,
       viewportLength: scroll.viewportLength
     )
     renderScrollbar(inner, buf, scrollbarState, ScrollbarOrientation.VerticalRight)
+
+proc renderFooter*(vm: ViewModal, area: Rect, buf: var CellBuffer,
+                   footerText: string) =
+  ## Render a footer hint line at the bottom of the modal
+  ## Typically used for context-specific keybinding hints
+  let inner = vm.innerArea(area)
+  let footerY = inner.bottom - 1
+  if footerY >= inner.y and footerY < area.bottom:
+    discard buf.setString(inner.x, footerY, footerText, canvasDimStyle())

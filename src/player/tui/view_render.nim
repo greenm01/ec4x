@@ -1427,6 +1427,7 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
   let modalArea = tm.calculateArea(canvas, tableWidth, tableHeight)
 
   tm.render(modalArea, buf, table)
+  tm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll")
 
 proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
                         model: TuiModel, ps: ps_types.PlayerState,
@@ -1443,6 +1444,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     vm.render(modalArea, buf)
     let innerArea = vm.innerArea(modalArea)
     renderFleetList(innerArea, buf, model)
+    vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [x] Select")
   
   of FleetViewMode.SystemView:
     # 2-pane fleet console as centered modal with dynamic width and height
@@ -1483,6 +1485,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     vm.render(modalArea, buf)
     let innerArea = vm.innerArea(modalArea)
     renderFleetConsole(innerArea, buf, model, ps)
+    vm.renderFooter(modalArea, buf, "[↑↓←→] Navigate  [Enter] Details  [Tab] Switch Pane")
 
 proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
@@ -1494,6 +1497,7 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
   let innerArea = vm.innerArea(modalArea)
   discard buf.setString(innerArea.x, innerArea.y,
     "Tech view (TODO)", dimStyle())
+  vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
 
 proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
                            model: TuiModel, scroll: ScrollState) =
@@ -1505,6 +1509,7 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   let innerArea = vm.innerArea(modalArea)
   discard buf.setString(innerArea.x, innerArea.y,
     "Espionage view (TODO)", dimStyle())
+  vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
 
 proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
@@ -1516,6 +1521,7 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
   let innerArea = vm.innerArea(modalArea)
   discard buf.setString(innerArea.x, innerArea.y,
     "General view (TODO)", dimStyle())
+  vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
 
 proc renderReportsModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
@@ -1527,6 +1533,7 @@ proc renderReportsModal*(canvas: Rect, buf: var CellBuffer,
   vm.render(modalArea, buf)
   let innerArea = vm.innerArea(modalArea)
   renderReportsList(innerArea, buf, model)
+  vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll")
 
 proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
@@ -1538,6 +1545,7 @@ proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
   let innerArea = vm.innerArea(modalArea)
   discard buf.setString(innerArea.x, innerArea.y,
     "Settings view (TODO)", dimStyle())
+  vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
 
 proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
                                model: TuiModel, ps: PlayerState) =

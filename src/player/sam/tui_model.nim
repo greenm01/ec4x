@@ -61,22 +61,22 @@ const
   FleetDetailTableBaseHeight* = 4
 
 proc commandLabel*(cmdNum: int): string =
-  ## Get human-readable label for fleet command
+  ## Get human-readable label for fleet command (matches spec 6.3.1)
   case cmdNum
   of CmdHold: "Hold"
   of CmdMove: "Move"
   of CmdSeekHome: "Seek Home"
   of CmdPatrol: "Patrol"
-  of CmdGuardStarbase: "Guard SB"
-  of CmdGuardColony: "Guard Col"
+  of CmdGuardStarbase: "Guard Starbase"
+  of CmdGuardColony: "Guard Colony"
   of CmdBlockade: "Blockade"
   of CmdBombard: "Bombard"
   of CmdInvade: "Invade"
   of CmdBlitz: "Blitz"
   of CmdColonize: "Colonize"
-  of CmdScoutColony: "Scout Col"
-  of CmdScoutSystem: "Scout Sys"
-  of CmdHackStarbase: "Hack SB"
+  of CmdScoutColony: "Scout Colony"
+  of CmdScoutSystem: "Scout System"
+  of CmdHackStarbase: "Hack Starbase"
   of CmdJoinFleet: "Join Fleet"
   of CmdRendezvous: "Rendezvous"
   of CmdSalvage: "Salvage"

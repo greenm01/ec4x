@@ -212,3 +212,4 @@ proc renderOverviewModal*(canvas: Rect, buf: var CellBuffer,
   # Render the overview content in the inner area
   let innerArea = vm.innerArea(modalArea)
   renderOverview(innerArea, buf, data)
+  vm.renderFooter(modalArea, buf, "[F1-F8] Switch Views")

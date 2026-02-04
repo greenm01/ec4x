@@ -84,3 +84,11 @@ proc render*(tm: TableModal, area: Rect, buf: var CellBuffer,
       break
     let width = buf.put(currentX, area.y, r.toUTF8, tm.titleStyle)
     currentX += width
+
+proc renderFooter*(tm: TableModal, area: Rect, buf: var CellBuffer,
+                   footerText: string) =
+  ## Render a footer hint line at the bottom of the modal
+  ## Typically used for context-specific keybinding hints
+  let footerY = area.bottom - 1
+  if footerY >= area.y and footerY < area.bottom:
+    discard buf.setString(area.x + 1, footerY, footerText, canvasDimStyle())

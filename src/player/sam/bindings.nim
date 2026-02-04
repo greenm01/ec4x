@@ -1490,14 +1490,14 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
 proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
   ## Build bar items based on current model state
-  ## If in Overview, show global view tabs
-  ## Otherwise, show context-specific actions
+  ## Always show global F-key tabs (except in expert/order entry mode)
+  ## Modals and views have their own footers for context-specific actions
 
   result = @[]
 
   # Determine which bindings to show
+  # Always show F-keys in all views for consistent navigation
   let showGlobalTabs = model.ui.appPhase == AppPhase.InGame and
-      model.ui.mode == ViewMode.Overview and
       not model.ui.expertModeActive and
       not model.ui.orderEntryActive
 
@@ -1536,10 +1536,9 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
       ))
       idx.inc
   else:
-    # Show context-specific actions
+    # Expert mode or order entry - show their specific actions
     let ctx = if model.ui.expertModeActive: BindingContext.ExpertMode
-              elif model.ui.orderEntryActive: BindingContext.OrderEntry
-              else: viewModeToContext(model.ui.mode)
+              else: BindingContext.OrderEntry
 
     let bindings = getBindingsForContext(ctx)
 
