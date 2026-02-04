@@ -156,12 +156,12 @@ proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
   # Render footer below table
   let footerY = tableArea.bottom + 1
   if footerY < area.bottom:
-    var hint = "[↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel"
-    if state.commandDigitBuffer.len > 0:
-      hint = "Cmd: " & state.commandDigitBuffer & "_ " & hint
-    for i, ch in hint:
-      if area.x + i < area.right:
-        discard buf.put(area.x + i, footerY, $ch, canvasDimStyle())
+    let hint = "[↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel"
+    let fullHint = if state.commandDigitBuffer.len > 0:
+      "Cmd: " & state.commandDigitBuffer & "_ " & hint
+    else:
+      hint
+    discard buf.setString(area.x, footerY, fullHint, canvasDimStyle())
 
 proc renderROEPicker(state: FleetDetailModalState, area: Rect,
                     buf: var CellBuffer) =
@@ -204,9 +204,7 @@ proc renderROEPicker(state: FleetDetailModalState, area: Rect,
   let footerY = area.bottom - 1
   if footerY >= area.y:
     let hint = "[↑↓]Select [Enter]Confirm [Esc]Cancel"
-    for i, ch in hint:
-      if area.x + i < area.right:
-        discard buf.put(area.x + i, footerY, $ch, canvasDimStyle())
+    discard buf.setString(area.x, footerY, hint, canvasDimStyle())
 
 proc renderConfirmDialog(state: FleetDetailModalState, area: Rect,
                         buf: var CellBuffer) =

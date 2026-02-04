@@ -586,15 +586,15 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
   
   var x = area.x
   
-  # [↑/↓] Navigate
-  discard buf.setString(x, area.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, area.y, "↑/↓", keyStyle)
-  x += 3
-  discard buf.setString(x, area.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, area.y, " Nav  ", textStyle)
-  x += 6
+  # [Up/Dn] Navigate
+  let width1 = buf.setString(x, area.y, "[", dimStyle)
+  x += width1
+  let width2 = buf.setString(x, area.y, "↑↓", keyStyle)
+  x += width2
+  let width3 = buf.setString(x, area.y, "]", dimStyle)
+  x += width3
+  let width4 = buf.setString(x, area.y, " Nav  ", textStyle)
+  x += width4
   
   case focus
   of EntryModalFocus.GameList:
@@ -906,9 +906,8 @@ proc renderCreateGameMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   
   # Footer
   let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
-  discard buf.setString(footerArea.x, footerArea.y,
-                        "[↑/↓] Navigate  [←/→] Adjust  [Enter] Select  [Esc] Cancel",
-                        footerStyle)
+  let footerHint = "[↑↓] Navigate  [←→] Adjust  [Enter] Select  [Esc] Cancel"
+  discard buf.setString(footerArea.x, footerArea.y, footerHint, footerStyle)
 
 proc desiredGamesHeight(state: EntryModalState): int =
   ## Calculate the games section height with all rows

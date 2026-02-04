@@ -2,7 +2,7 @@
 ##
 ## Thin entry point that delegates to modular TUI app.
 
-import std/[os, strutils]
+import std/[os, strutils, posix]
 
 import ../common/logger
 import ./tui/app
@@ -10,6 +10,9 @@ import ./tui/launcher
 import ./state/tui_cache
 
 when isMainModule:
+  # Enable UTF-8 locale for proper Unicode rendering
+  discard setlocale(LC_ALL, "")
+
   enableFileLogging("data/logs/tui.log")
   disableStdoutLogging()
   let opts = parseCommandLine()

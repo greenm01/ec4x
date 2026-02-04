@@ -210,7 +210,7 @@ proc reportsContextActions*(hasSelection: bool): seq[ContextAction] =
       enabled: hasSelection
     ),
     ContextAction(key: "Tab", label: "Focus pane", enabled: true),
-    ContextAction(key: "←/→", label: "Switch pane", enabled: true),
+    ContextAction(key: "←→", label: "Switch pane", enabled: true),
     ContextAction(key: "D", label: "Delete", enabled: hasSelection),
     ContextAction(key: "A", label: "Archive", enabled: hasSelection),
     ContextAction(key: "M", label: "Mark read/unread", enabled: hasSelection),
