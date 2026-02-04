@@ -140,6 +140,7 @@ type
     fleetDetailCancel
     fleetDetailPageUp
     fleetDetailPageDown
+    fleetDetailDigitInput
 
   # ============================================================================
   # Core SAM Types

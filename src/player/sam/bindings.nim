@@ -129,6 +129,7 @@ proc getAllBindings*(): seq[Binding] =
 proc formatKeyCode*(key: actions.KeyCode): string =
   ## Format a key code for display (without modifier)
   case key
+  of actions.KeyCode.Key0: "0"
   of actions.KeyCode.Key1: "1"
   of actions.KeyCode.Key2: "2"
   of actions.KeyCode.Key3: "3"
@@ -624,18 +625,8 @@ proc initBindings*() =
     longLabel: "CLOSE", shortLabel: "Esc", priority: 90,
     enabledCheck: "noSubModal"))
 
-  # Command Picker sub-modal
-  registerBinding(Binding(
-    key: KeyCode.KeyTab, modifier: KeyModifier.None,
-    actionKind: ActionKind.fleetDetailNextCategory,
-    context: BindingContext.FleetDetail,
-    longLabel: "NEXT CAT", shortLabel: "Tab", priority: 30))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyTab, modifier: KeyModifier.Shift,
-    actionKind: ActionKind.fleetDetailPrevCategory,
-    context: BindingContext.FleetDetail,
-    longLabel: "PREV CAT", shortLabel: "S-Tab", priority: 31))
+  # Command Picker sub-modal - navigates flat list of 20 commands
+  # Digit keys (0-9) handled specially in bindings for quick entry
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
@@ -1235,6 +1226,9 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionFleetDetailPageUp())
   of ActionKind.fleetDetailPageDown:
     return some(actionFleetDetailPageDown())
+  of ActionKind.fleetDetailDigitInput:
+    # This is handled specially - digit passed via gameActionData
+    return none(Proposal)
 
   else:
     discard
@@ -1339,6 +1333,24 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
   # Fleet detail view mode: use registry
   if model.ui.mode == ViewMode.FleetDetail:
+    # Handle digit keys for quick command entry in CommandPicker sub-modal
+    if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
+      if modifier == KeyModifier.None:
+        let digitChar = case key
+          of KeyCode.Key0: '0'
+          of KeyCode.Key1: '1'
+          of KeyCode.Key2: '2'
+          of KeyCode.Key3: '3'
+          of KeyCode.Key4: '4'
+          of KeyCode.Key5: '5'
+          of KeyCode.Key6: '6'
+          of KeyCode.Key7: '7'
+          of KeyCode.Key8: '8'
+          of KeyCode.Key9: '9'
+          else: '\0'
+        if digitChar != '\0':
+          return some(actionFleetDetailDigitInput(digitChar))
+    
     if key != KeyCode.KeyEscape:
       let fleetDetailResult = lookupAndDispatch(key, modifier,
           BindingContext.FleetDetail, model)

@@ -1209,25 +1209,17 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.resetBreadcrumbs(ViewMode.Fleets)
       model.ui.statusMessage = ""
   of ActionKind.fleetDetailNextCategory:
-    if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
-      let nextCat = if model.ui.fleetDetailModal.commandCategory == CommandCategory.Status:
-        CommandCategory.Movement
-      else:
-        CommandCategory(ord(model.ui.fleetDetailModal.commandCategory) + 1)
-      model.ui.fleetDetailModal.commandCategory = nextCat
-      model.ui.fleetDetailModal.commandIdx = 0
+    # DEPRECATED: Category navigation removed, now using flat list
+    discard
   of ActionKind.fleetDetailPrevCategory:
-    if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
-      let prevCat = if model.ui.fleetDetailModal.commandCategory == CommandCategory.Movement:
-        CommandCategory.Status
-      else:
-        CommandCategory(ord(model.ui.fleetDetailModal.commandCategory) - 1)
-      model.ui.fleetDetailModal.commandCategory = prevCat
-      model.ui.fleetDetailModal.commandIdx = 0
+    # DEPRECATED: Category navigation removed, now using flat list
+    discard
   of ActionKind.fleetDetailListUp:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
+      # Navigate flat list of 20 commands (0-19)
       if model.ui.fleetDetailModal.commandIdx > 0:
         model.ui.fleetDetailModal.commandIdx -= 1
+        model.ui.fleetDetailModal.commandDigitBuffer = ""  # Clear digit buffer on navigation
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       if model.ui.fleetDetailModal.roeValue > 0:
         model.ui.fleetDetailModal.roeValue -= 1  # Up decreases value (moves toward 0)
@@ -1238,17 +1230,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         scroll.verticalOffset - 1)
   of ActionKind.fleetDetailListDown:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
-      # Get max index for current category
-      let maxIdx = case model.ui.fleetDetailModal.commandCategory
-        of CommandCategory.Movement: 3  # 4 commands (0-3)
-        of CommandCategory.Defense: 2   # 3 commands (0-2)
-        of CommandCategory.Combat: 2    # 3 commands (0-2)
-        of CommandCategory.Colonial: 0  # 1 command (0)
-        of CommandCategory.Intel: 3     # 4 commands (0-3)
-        of CommandCategory.FleetOps: 2  # 3 commands (0-2)
-        of CommandCategory.Status: 1    # 2 commands (0-1)
-      if model.ui.fleetDetailModal.commandIdx < maxIdx:
+      # Navigate flat list of 20 commands (0-19)
+      if model.ui.fleetDetailModal.commandIdx < 19:
         model.ui.fleetDetailModal.commandIdx += 1
+        model.ui.fleetDetailModal.commandDigitBuffer = ""  # Clear digit buffer on navigation
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       if model.ui.fleetDetailModal.roeValue < 10:
         model.ui.fleetDetailModal.roeValue += 1  # Down increases value (moves toward 10)
@@ -1259,32 +1244,12 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         scroll.verticalOffset + 1)
   of ActionKind.fleetDetailSelectCommand:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
-      # Get selected command from category + index
-      # This is a simplified version - we'll need proper command list later
+      # Get selected command from flat list (0-19)
+      let commands = allFleetCommands()
+      let idx = model.ui.fleetDetailModal.commandIdx
       
-      let commands = case model.ui.fleetDetailModal.commandCategory
-        of CommandCategory.Movement:
-          @[FleetCommandType.Hold, FleetCommandType.Move, 
-            FleetCommandType.SeekHome, FleetCommandType.Patrol]
-        of CommandCategory.Defense:
-          @[FleetCommandType.GuardStarbase, FleetCommandType.GuardColony,
-            FleetCommandType.Blockade]
-        of CommandCategory.Combat:
-          @[FleetCommandType.Bombard, FleetCommandType.Invade,
-            FleetCommandType.Blitz]
-        of CommandCategory.Colonial:
-          @[FleetCommandType.Colonize]
-        of CommandCategory.Intel:
-          @[FleetCommandType.ScoutColony, FleetCommandType.ScoutSystem,
-            FleetCommandType.HackStarbase, FleetCommandType.View]
-        of CommandCategory.FleetOps:
-          @[FleetCommandType.JoinFleet, FleetCommandType.Rendezvous,
-            FleetCommandType.Salvage]
-        of CommandCategory.Status:
-          @[FleetCommandType.Reserve, FleetCommandType.Mothball]
-      
-      if model.ui.fleetDetailModal.commandIdx < commands.len:
-        let cmdType = commands[model.ui.fleetDetailModal.commandIdx]
+      if idx >= 0 and idx < commands.len:
+        let cmdType = commands[idx]
         
         # Check if command requires confirmation
         if cmdType in {FleetCommandType.Bombard, FleetCommandType.Salvage,
@@ -1375,6 +1340,27 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       let scroll = model.ui.fleetDetailModal.shipScroll
       model.ui.fleetDetailModal.shipScroll.verticalOffset = min(maxOffset,
         scroll.verticalOffset + pageSize)
+  of ActionKind.fleetDetailDigitInput:
+    if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
+      # Handle two-digit quick entry for command selection (00-19)
+      if proposal.kind == ProposalKind.pkGameAction:
+        let digit = if proposal.gameActionData.len > 0: proposal.gameActionData[0] else: '\0'
+        if digit >= '0' and digit <= '9':
+          let now = epochTime()
+          let buffer = model.ui.fleetDetailModal.commandDigitBuffer
+          let lastTime = model.ui.fleetDetailModal.commandDigitTime
+          
+          # Check if previous digit timed out (300ms)
+          if buffer.len == 1 and (now - lastTime) < 0.3:
+            # Second digit - combine with first to get command index
+            let cmdNum = parseInt(buffer & $digit)
+            if cmdNum >= 0 and cmdNum <= 19:
+              model.ui.fleetDetailModal.commandIdx = cmdNum
+            model.ui.fleetDetailModal.commandDigitBuffer = ""
+          else:
+            # First digit - store it and wait for second
+            model.ui.fleetDetailModal.commandDigitBuffer = $digit
+            model.ui.fleetDetailModal.commandDigitTime = now
   else:
     discard
 

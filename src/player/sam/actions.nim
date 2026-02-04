@@ -1020,6 +1020,10 @@ proc actionFleetDetailPageDown*(): Proposal =
   ## Page down in fleet detail ship list
   gameActionProposal(ActionKind.fleetDetailPageDown, "")
 
+proc actionFleetDetailDigitInput*(digit: char): Proposal =
+  ## Handle digit input for quick command selection (00-19)
+  gameActionProposal(ActionKind.fleetDetailDigitInput, $digit)
+
 # ============================================================================
 # System Actions
 # ============================================================================
@@ -1041,8 +1045,8 @@ type
   KeyCode* {.pure.} = enum
       ## Simplified key codes for mapping
       KeyNone
-      # Number keys for view switching
-      Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9
+      # Number keys for view switching and quick entry
+      Key0, Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9
       # Letter keys
       KeyQ, KeyC, KeyF, KeyO, KeyM, KeyE, KeyH, KeyX, KeyS, KeyL
       KeyB, KeyG, KeyR, KeyJ, KeyD, KeyP, KeyV, KeyN, KeyW, KeyI, KeyT, KeyA

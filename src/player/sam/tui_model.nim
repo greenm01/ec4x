@@ -121,6 +121,55 @@ proc fleetCommandLabel*(cmdType: FleetCommandType): string =
   ## Get label for fleet command type
   commandLabel(fleetCommandNumber(cmdType))
 
+proc commandRequirements*(cmdType: FleetCommandType): string =
+  ## Get human-readable requirements text (matches spec 6.3.1)
+  case cmdType
+  of FleetCommandType.Hold: "None"
+  of FleetCommandType.Move: "None"
+  of FleetCommandType.SeekHome: "None"
+  of FleetCommandType.Patrol: "None"
+  of FleetCommandType.GuardStarbase: "Combat ship(s)"
+  of FleetCommandType.GuardColony: "Combat ship(s)"
+  of FleetCommandType.Blockade: "Combat ship(s)"
+  of FleetCommandType.Bombard: "Combat ship(s)"
+  of FleetCommandType.Invade: "Combat ship(s) & loaded Transports"
+  of FleetCommandType.Blitz: "Loaded Troop Transports"
+  of FleetCommandType.Colonize: "One ETAC"
+  of FleetCommandType.ScoutColony: "Scout-only fleet (1+ scouts)"
+  of FleetCommandType.ScoutSystem: "Scout-only fleet (1+ scouts)"
+  of FleetCommandType.HackStarbase: "Scout-only fleet (1+ scouts)"
+  of FleetCommandType.JoinFleet: "None"
+  of FleetCommandType.Rendezvous: "None"
+  of FleetCommandType.Salvage: "Friendly colony system"
+  of FleetCommandType.Reserve: "At friendly colony"
+  of FleetCommandType.Mothball: "At friendly colony w/ Spaceport"
+  of FleetCommandType.View: "Any ship type"
+
+proc allFleetCommands*(): seq[FleetCommandType] =
+  ## Get all fleet commands in order (00-19)
+  @[
+    FleetCommandType.Hold,        # 00
+    FleetCommandType.Move,        # 01
+    FleetCommandType.SeekHome,    # 02
+    FleetCommandType.Patrol,      # 03
+    FleetCommandType.GuardStarbase, # 04
+    FleetCommandType.GuardColony, # 05
+    FleetCommandType.Blockade,    # 06
+    FleetCommandType.Bombard,     # 07
+    FleetCommandType.Invade,      # 08
+    FleetCommandType.Blitz,       # 09
+    FleetCommandType.Colonize,    # 10
+    FleetCommandType.ScoutColony, # 11
+    FleetCommandType.ScoutSystem, # 12
+    FleetCommandType.HackStarbase, # 13
+    FleetCommandType.JoinFleet,   # 14
+    FleetCommandType.Rendezvous,  # 15
+    FleetCommandType.Salvage,     # 16
+    FleetCommandType.Reserve,     # 17
+    FleetCommandType.Mothball,    # 18
+    FleetCommandType.View         # 19
+  ]
+
 proc fleetDetailMaxRows*(termHeight: int): int =
   let maxModalHeight = max(8, termHeight - FleetDetailVerticalMargin)
   let maxInnerHeight = max(1, maxModalHeight - 2)
@@ -222,13 +271,15 @@ type
     active*: bool  # DEPRECATED: Check ViewMode.FleetDetail instead
     fleetId*: int
     subModal*: FleetSubModal
-    commandCategory*: CommandCategory
-    commandIdx*: int           # Index within filtered commands
+    commandCategory*: CommandCategory  # DEPRECATED: now using flat list
+    commandIdx*: int           # Index in flat command list (0-19)
     roeValue*: int             # 0-10
     confirmPending*: bool
     confirmMessage*: string
     pendingCommandType*: FleetCommandType  # For confirmation flow
     shipScroll*: ScrollState
+    commandDigitBuffer*: string  # Buffer for two-digit quick entry (e.g., "0", "07")
+    commandDigitTime*: float     # Time when first digit was entered (for timeout)
     shipCount*: int
 
   ViewMode* {.pure.} = enum

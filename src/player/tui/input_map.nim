@@ -61,6 +61,8 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
             return none(Proposal)
       let ch = $event.rune
       case ch
+      of "0":
+        keyCode = KeyCode.Key0
       of "1":
         keyCode = KeyCode.Key1
       of "2":

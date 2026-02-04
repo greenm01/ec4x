@@ -101,58 +101,64 @@ proc requiresConfirmation*(cmdType: FleetCommandType): bool =
 
 proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
                         buf: var CellBuffer) =
-  ## Render command picker sub-modal
+  ## Render command picker using Table widget
   if area.isEmpty:
     return
 
-  # Category tabs at top
-  var x = area.x
-  let y = area.y
+  # Build table structure
+  var commandTable = table([
+    tableColumn("No", width = 4, align = table.Alignment.Left),
+    tableColumn("Mission", width = 14, align = table.Alignment.Left),
+    tableColumn("Requirements", width = 0, align = table.Alignment.Left,
+                minWidth = 20)
+  ])
+    .showBorders(true)
+    .showHeader(true)
+    .showSeparator(true)
+    .cellPadding(1)
+    .headerStyle(canvasHeaderStyle())
+    .rowStyle(canvasStyle())
+    .selectedStyle(selectedStyle())
 
-  for cat in CommandCategory:
-    let isSelected = state.commandCategory == cat
-    let label = commandCategoryLabel(cat)
-    let style = if isSelected:
-      canvasHeaderStyle()
-    else:
-      canvasDimStyle()
-    
-    let tabText = if isSelected: "[" & label & "]" else: " " & label & " "
-    for i, ch in tabText:
-      if x + i < area.right:
-        discard buf.put(x + i, y, $ch, style)
-    x += tabText.len + 1
-
-  # Command list
-  let listArea = rect(area.x, area.y + 2, area.width, area.height - 3)
-  var listY = listArea.y
-
-  let commands = commandsInCategory(state.commandCategory)
-  for idx, cmdType in commands:
-    if listY >= listArea.bottom:
-      break
-
-    let isSelected = idx == state.commandIdx
-    let prefix = if isSelected: "► " else: "  "
-    let cmdLabel = fleetCommandLabel(cmdType)
+  # Populate with all commands
+  let commands = allFleetCommands()
+  for cmdType in commands:
     let cmdCode = fleetCommandCode(cmdType)
-    let text = prefix & cmdCode & " " & cmdLabel
+    let cmdLabel = fleetCommandLabel(cmdType)
+    let cmdReq = commandRequirements(cmdType)
+    commandTable.addRow([cmdCode, cmdLabel, cmdReq])
 
-    let style = if isSelected:
-      selectedStyle()
-    else:
-      canvasStyle()
+  # Calculate visible rows and scrolling
+  let commandCount = commands.len  # 20
+  let availableHeight = area.height - 2  # Reserve 2 for footer
+  let tableBaseHeight = 4  # header + separator + top/bottom borders
+  let maxVisibleRows = max(1, availableHeight - tableBaseHeight)
 
-    for i, ch in text:
-      if area.x + i < area.right:
-        discard buf.put(area.x + i, listY, $ch, style)
+  # Calculate scroll offset to keep selected item visible
+  var scrollOffset = 0
+  if maxVisibleRows < commandCount:
+    if state.commandIdx >= scrollOffset + maxVisibleRows:
+      scrollOffset = state.commandIdx - maxVisibleRows + 1
+    elif state.commandIdx < scrollOffset:
+      scrollOffset = state.commandIdx
 
-    listY += 1
+  # Apply selection and scrolling
+  commandTable = commandTable
+    .selectedIdx(state.commandIdx)
+    .scrollOffset(scrollOffset)
 
-  # Footer hint
-  let footerY = area.bottom - 1
-  if footerY >= area.y:
-    let hint = "[Tab]Category [↑↓]Select [Enter]Confirm [Esc]Cancel"
+  # Render table
+  let actualVisibleRows = min(commandCount - scrollOffset, maxVisibleRows)
+  let tableHeight = commandTable.renderHeight(actualVisibleRows)
+  let tableArea = rect(area.x, area.y, area.width, tableHeight)
+  commandTable.render(tableArea, buf)
+
+  # Render footer below table
+  let footerY = tableArea.bottom + 1
+  if footerY < area.bottom:
+    var hint = "[↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel"
+    if state.commandDigitBuffer.len > 0:
+      hint = "Cmd: " & state.commandDigitBuffer & "_ " & hint
     for i, ch in hint:
       if area.x + i < area.right:
         discard buf.put(area.x + i, footerY, $ch, canvasDimStyle())
