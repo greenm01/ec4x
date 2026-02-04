@@ -312,11 +312,32 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       ship.marines
     ])
 
-  let shipsContentHeight = FleetDetailShipsHeaderHeight +
-    shipTable.renderHeight(visibleRows)
-  let innerContentHeight = FleetDetailInfoHeight +
-    FleetDetailSeparatorHeight + shipsContentHeight + FleetDetailFooterHeight
-  let contentHeight = max(0, innerContentHeight)
+  # Calculate content height based on active sub-modal
+  let contentHeight = case state.subModal
+    of FleetSubModal.CommandPicker:
+      # Command picker: 20 commands + header + separator + borders + footer
+      # Table base height: 4 (top border + header + separator + bottom border)
+      # Footer: 2 lines
+      let commandCount = 20
+      let tableBaseHeight = 4
+      let footerHeight = 2
+      commandCount + tableBaseHeight + footerHeight
+    of FleetSubModal.ROEPicker:
+      # ROE picker: 11 values (0-10) + header + spacer + footer
+      let roeCount = 11
+      let headerHeight = 2  # "Rules of Engagement" + blank line
+      let footerHeight = 2
+      roeCount + headerHeight + footerHeight
+    of FleetSubModal.ConfirmPrompt:
+      # Confirmation dialog: compact centered message
+      10
+    of FleetSubModal.None:
+      # Normal fleet detail view with ship list
+      let shipsContentHeight = FleetDetailShipsHeaderHeight +
+        shipTable.renderHeight(visibleRows)
+      FleetDetailInfoHeight + FleetDetailSeparatorHeight +
+        shipsContentHeight + FleetDetailFooterHeight
+  
   let modalArea = modal.calculateArea(viewport, contentHeight)
 
   # Render modal frame with title
