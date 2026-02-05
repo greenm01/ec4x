@@ -10,7 +10,7 @@
 ## - Bindings have long and short labels for adaptive width rendering
 ## - Common modifiers (e.g., Ctrl) can be factored out in display
 
-import std/[algorithm, options, sequtils]
+import std/[algorithm, options, sequtils, strutils]
 import ./types
 import ./tui_model
 import ./actions
@@ -27,7 +27,16 @@ type
     Ctrl
     Alt
     Shift
+    CtrlShift  ## For macOS (Ctrl+Shift+Letter)
 
+# Platform detection for view switching hotkeys
+const IsMacOS* = defined(macosx)
+when IsMacOS:
+  const ViewModifier* = KeyModifier.CtrlShift
+else:
+  const ViewModifier* = KeyModifier.Alt
+
+type
   BindingContext* {.pure.} = enum
     ## Where a binding is active
     Global        ## Available everywhere (view tabs, quit, expert mode)
@@ -201,6 +210,7 @@ proc formatModifier*(m: KeyModifier): string =
   of KeyModifier.Ctrl: "Ctrl"
   of KeyModifier.Alt: "Alt"
   of KeyModifier.Shift: "Shift"
+  of KeyModifier.CtrlShift: "Ctrl+Shift"
 
 proc formatKey*(key: actions.KeyCode, modifier: KeyModifier): string =
   ## Format a key with modifier for display
@@ -214,6 +224,14 @@ proc formatKey*(key: actions.KeyCode, modifier: KeyModifier): string =
 proc formatKeyAngle*(key: actions.KeyCode, modifier: KeyModifier): string =
   ## Format a key with angle brackets: "<1>" or "<Ctrl+q>"
   "<" & formatKey(key, modifier) & ">"
+
+proc getViewModifierPrefix*(): string =
+  ## Get the modifier prefix for status bar display
+  ## Returns "Alt+" on Linux/Windows, "Ctrl+Shift+" on macOS
+  when IsMacOS:
+    "Ctrl+Shift+"
+  else:
+    "Alt+"
 
 # =============================================================================
 # Context Mapping
@@ -233,7 +251,7 @@ proc viewModeToContext*(mode: ViewMode): BindingContext =
   of ViewMode.PlanetDetail: BindingContext.PlanetDetail
   of ViewMode.FleetDetail: BindingContext.FleetDetail
   of ViewMode.ReportDetail: BindingContext.ReportDetail
-  of ViewMode.Messages: BindingContext.Settings
+  of ViewMode.IntelDb: BindingContext.Settings
 
 proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   ## Map a binding context to ViewMode (if applicable)
@@ -330,55 +348,68 @@ proc initBindings*() =
 
   # =========================================================================
   # Global Bindings (View Tabs) - Always visible in game
+  # Alt+Letter (Linux/Windows) or Ctrl+Shift+Letter (macOS)
   # =========================================================================
 
   registerBinding(Binding(
-    key: KeyCode.KeyF1, modifier: KeyModifier.None,
+    key: KeyCode.KeyO, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "OVERVIEW", shortLabel: "Ovrw", priority: 1))
+    longLabel: "OVERVIEW", shortLabel: "OVR", priority: 1))
 
   registerBinding(Binding(
-    key: KeyCode.KeyF2, modifier: KeyModifier.None,
+    key: KeyCode.KeyR, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "COLONY", shortLabel: "Col", priority: 2))
+    longLabel: "REPORTS", shortLabel: "RPT", priority: 2))
 
   registerBinding(Binding(
-    key: KeyCode.KeyF3, modifier: KeyModifier.None,
+    key: KeyCode.KeyG, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "FLEETS", shortLabel: "Flt", priority: 3))
+    longLabel: "GENERAL", shortLabel: "GEN", priority: 3))
 
   registerBinding(Binding(
-    key: KeyCode.KeyF4, modifier: KeyModifier.None,
+    key: KeyCode.KeyC, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "TECH", shortLabel: "Tech", priority: 4))
+    longLabel: "COLONY", shortLabel: "CLN", priority: 4))
 
   registerBinding(Binding(
-    key: KeyCode.KeyF5, modifier: KeyModifier.None,
+    key: KeyCode.KeyF, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "ESPIONAGE", shortLabel: "Esp", priority: 5))
+    longLabel: "FLEET", shortLabel: "FLT", priority: 5))
 
   registerBinding(Binding(
-    key: KeyCode.KeyF6, modifier: KeyModifier.None,
+    key: KeyCode.KeyT, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "GENERAL", shortLabel: "Gen", priority: 6))
+    longLabel: "TECH", shortLabel: "TECH", priority: 6))
 
   registerBinding(Binding(
-    key: KeyCode.KeyF7, modifier: KeyModifier.None,
+    key: KeyCode.KeyE, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "REPORTS", shortLabel: "Rpt", priority: 7))
+    longLabel: "ESPIONAGE", shortLabel: "ESP", priority: 7))
 
   registerBinding(Binding(
-    key: KeyCode.KeyF8, modifier: KeyModifier.None,
+    key: KeyCode.KeyI, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "SETTINGS", shortLabel: "Set", priority: 8))
+    longLabel: "INTEL", shortLabel: "INT", priority: 8))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyS, modifier: ViewModifier,
+    actionKind: ActionKind.switchView,
+    context: BindingContext.Global,
+    longLabel: "SETTINGS", shortLabel: "SET", priority: 9))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyQ, modifier: ViewModifier,
+    actionKind: ActionKind.quit,
+    context: BindingContext.Global,
+    longLabel: "QUIT", shortLabel: "QUIT", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyColon, modifier: KeyModifier.None,
@@ -1037,14 +1068,15 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   # View switching
   of ActionKind.switchView:
     let viewNum = case key
-      of KeyCode.KeyF1: 1
-      of KeyCode.KeyF2: 2
-      of KeyCode.KeyF3: 3
-      of KeyCode.KeyF4: 4
-      of KeyCode.KeyF5: 5
-      of KeyCode.KeyF6: 6
-      of KeyCode.KeyF7: 7
-      of KeyCode.KeyF8: 9
+      of KeyCode.KeyO: 1   # Overview
+      of KeyCode.KeyC: 2   # Colony (Planets)
+      of KeyCode.KeyF: 3   # Fleet
+      of KeyCode.KeyT: 4   # Tech (Research)
+      of KeyCode.KeyE: 5   # Espionage
+      of KeyCode.KeyG: 6   # General (Economy)
+      of KeyCode.KeyR: 7   # Reports
+      of KeyCode.KeyI: 8   # Intel db
+      of KeyCode.KeyS: 9   # Settings
       else: 0
     if viewNum > 0:
       return some(actionSwitchView(viewNum))
@@ -1490,44 +1522,44 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
 proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
   ## Build bar items based on current model state
-  ## Always show global F-key tabs (except in expert/order entry mode)
+  ## Always show global view tabs (except in expert/order entry mode)
   ## Modals and views have their own footers for context-specific actions
 
   result = @[]
 
   # Determine which bindings to show
-  # Always show F-keys in all views for consistent navigation
+  # Always show view tabs in all views for consistent navigation
   let showGlobalTabs = model.ui.appPhase == AppPhase.InGame and
       not model.ui.expertModeActive and
       not model.ui.orderEntryActive
 
   if showGlobalTabs:
-    # Show view tabs (F-keys) + expert mode hint
+    # Show view tabs (Alt+Letter or Ctrl+Shift+Letter) + quit + expert mode hint
     let globalBindings = getGlobalBindings()
     var idx = 0
     for b in globalBindings:
-      # Skip quit in normal tab display (quit is separate)
-      if b.actionKind == ActionKind.quit:
-        continue
-
       let label = if useShortLabels: b.shortLabel else: b.longLabel
       let isSelected = case b.key
-        of KeyCode.KeyF1: model.ui.mode == ViewMode.Overview
-        of KeyCode.KeyF2: model.ui.mode == ViewMode.Planets
-        of KeyCode.KeyF3: model.ui.mode == ViewMode.Fleets
-        of KeyCode.KeyF4: model.ui.mode == ViewMode.Research
-        of KeyCode.KeyF5: model.ui.mode == ViewMode.Espionage
-        of KeyCode.KeyF6: model.ui.mode == ViewMode.Economy
-        of KeyCode.KeyF7: model.ui.mode == ViewMode.Reports
-        of KeyCode.KeyF8: model.ui.mode == ViewMode.Settings
+        of KeyCode.KeyO: model.ui.mode == ViewMode.Overview
+        of KeyCode.KeyC: model.ui.mode == ViewMode.Planets
+        of KeyCode.KeyF: model.ui.mode == ViewMode.Fleets
+        of KeyCode.KeyT: model.ui.mode == ViewMode.Research
+        of KeyCode.KeyE: model.ui.mode == ViewMode.Espionage
+        of KeyCode.KeyG: model.ui.mode == ViewMode.Economy
+        of KeyCode.KeyR: model.ui.mode == ViewMode.Reports
+        of KeyCode.KeyI: model.ui.mode == ViewMode.IntelDb
+        of KeyCode.KeyS: model.ui.mode == ViewMode.Settings
         else: false
 
       let mode = if isSelected: BarItemMode.Selected
                  elif idx mod 2 == 1: BarItemMode.UnselectedAlt
                  else: BarItemMode.Unselected
 
+      # Show just the uppercase letter for view tabs (modifier shown as prefix)
+      let keyDisp = formatKeyCode(b.key).toUpperAscii()
+
       result.add(BarItem(
-        keyDisplay: formatKey(b.key, b.modifier),
+        keyDisplay: keyDisp,
         label: label,
         longLabel: b.longLabel,
         shortLabel: b.shortLabel,

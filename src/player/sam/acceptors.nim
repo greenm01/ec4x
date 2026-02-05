@@ -275,7 +275,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
        ViewMode.Espionage, ViewMode.Economy, ViewMode.Reports,
        ViewMode.Settings, ViewMode.PlanetDetail,
        ViewMode.FleetDetail, ViewMode.ReportDetail,
-       ViewMode.Messages:
+       ViewMode.IntelDb:
       # Select current list item (idx is already set)
       if proposal.selectIdx >= 0:
         model.ui.selectedIdx = proposal.selectIdx

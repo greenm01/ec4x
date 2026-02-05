@@ -13,11 +13,20 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
   # Map key to KeyCode
   var keyCode = KeyCode.KeyNone
   var modifier = KeyModifier.None
-  if (event.modifiers and ModAlt) != ModNone:
+  
+  # Detect modifiers using bitmask (supports combos like Ctrl+Shift)
+  let hasCtrl = (event.modifiers and ModCtrl) != ModNone
+  let hasShift = (event.modifiers and ModShift) != ModNone
+  let hasAlt = (event.modifiers and ModAlt) != ModNone
+  
+  # Check for combinations first, then single modifiers
+  if hasCtrl and hasShift:
+    modifier = KeyModifier.CtrlShift
+  elif hasAlt:
     modifier = KeyModifier.Alt
-  elif (event.modifiers and ModCtrl) != ModNone:
+  elif hasCtrl:
     modifier = KeyModifier.Ctrl
-  elif (event.modifiers and ModShift) != ModNone:
+  elif hasShift:
     modifier = KeyModifier.Shift
 
   case event.key

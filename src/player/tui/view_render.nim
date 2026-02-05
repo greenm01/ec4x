@@ -25,6 +25,7 @@ import ../tui/widget/fleet_detail_modal
 import ../sam/bindings
 import ../tui/styles/ec_palette
 import ../tui/adapters
+import ../tui/columns
 import ./sync
 
 const
@@ -376,26 +377,7 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
 proc buildPlanetsTable*(model: TuiModel, scroll: ScrollState): table.Table =
   ## Build Colony table per spec (boxed)
-  # 17 column layout per spec (compressed for modal width)
-  let columns = @[
-    tableColumn("System", 14, table.Alignment.Left),
-    tableColumn("Sec", 4, table.Alignment.Center),
-    tableColumn("Cls", 3, table.Alignment.Left),
-    tableColumn("Res", 3, table.Alignment.Left),
-    tableColumn("Pop", 4, table.Alignment.Right),
-    tableColumn("IU", 4, table.Alignment.Right),
-    tableColumn("GCO", 5, table.Alignment.Right),
-    tableColumn("NCV", 5, table.Alignment.Right),
-    tableColumn("Grw", 5, table.Alignment.Right),
-    tableColumn("CD", 2, table.Alignment.Right),
-    tableColumn("RD", 2, table.Alignment.Right),
-    tableColumn("Flt", 2, table.Alignment.Right),
-    tableColumn("SB", 2, table.Alignment.Right),
-    tableColumn("Gnd", 2, table.Alignment.Right),
-    tableColumn("Bat", 2, table.Alignment.Right),
-    tableColumn("Shd", 3, table.Alignment.Center),
-    tableColumn("Status", 4, table.Alignment.Left)
-  ]
+  let columns = planetsColumns()
 
   let startIdx = scroll.verticalOffset
   let endIdx = min(model.view.planetsRows.len,
@@ -548,11 +530,8 @@ proc renderFleetConsoleSystems(
   if area.isEmpty:
     return
   
-  # Build table
-  let columns = [
-    tableColumn("System", 0, table.Alignment.Left, 12),
-    tableColumn("Sect", 5, table.Alignment.Center)
-  ]
+  # Build table using shared column definitions
+  let columns = fleetConsoleSystemsColumns()
   
   var systemsTable = table(columns)
     .showBorders(true)
@@ -583,20 +562,8 @@ proc renderFleetConsoleFleets(
   if area.isEmpty:
     return
   
-  # Build table with 11 columns
-  let columns = [
-    tableColumn("Flt", 4, table.Alignment.Right),
-    tableColumn("Ships", 5, table.Alignment.Right),
-    tableColumn("AS", 4, table.Alignment.Right),
-    tableColumn("DS", 4, table.Alignment.Right),
-    tableColumn("TT", 3, table.Alignment.Right),
-    tableColumn("ETAC", 4, table.Alignment.Right),
-    tableColumn("CMD", 6, table.Alignment.Left),
-    tableColumn("TGT", 5, table.Alignment.Left),
-    tableColumn("ETA", 3, table.Alignment.Right),
-    tableColumn("ROE", 3, table.Alignment.Right),
-    tableColumn("STS", 3, table.Alignment.Center)
-  ]
+  # Build table using shared column definitions
+  let columns = fleetConsoleFleetsColumns()
   
   var fleetsTable = table(columns)
     .showBorders(true)
@@ -643,17 +610,19 @@ proc renderFleetConsole*(
   ps: ps_types.PlayerState
 ) =
   ## Render 2-pane fleet console (SystemView mode)
-  ## Layout: Full height, two columns
-  ## Left column: Systems (30%)
-  ## Right column: Fleets (70%)
+  ## Layout: Full height, two columns side-by-side
+  ## Left column: Systems pane (exact width needed)
+  ## Right column: Fleets pane (exact width needed)
   ## Detail view is now a popup modal (opened with Enter)
   
   if area.isEmpty or area.height < 6:
     return
   
-  # Split area horizontally: Systems (30%), Fleets (70%)
-  let systemsWidth = (area.width * 30) div 100
-  let fleetsWidth = area.width - systemsWidth
+  # Calculate exact widths needed for each table
+  let systemsWidth = tableWidthFromColumns(
+    fleetConsoleSystemsColumns(), area.width, showBorders = true)
+  let fleetsWidth = tableWidthFromColumns(
+    fleetConsoleFleetsColumns(), area.width, showBorders = true)
   
   let systemsPane = rect(area.x, area.y, systemsWidth, area.height)
   let fleetsPane = rect(area.x + systemsWidth, area.y, fleetsWidth, area.height)
@@ -1404,37 +1373,43 @@ proc renderReportDetail*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
 proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
-  ## Render colony view as centered table modal
-  let modal = newModal()
-    .title("COLONY")
-    .maxWidth(148)
-    .minWidth(80)
-    .borderStyle(primaryBorderStyle())
-    .bgStyle(modalBgStyle())
-
-  var baseTable = buildPlanetsTable(model, ScrollState())
-  let maxWidth = max(10, min(canvas.width - 4, 148))  # -4 for modal borders
-  let tableWidth = baseTable.renderWidth(maxWidth)
-
+  ## Render colony view as centered table modal with content-aware sizing
+  
+  # Calculate actual table width from column definitions
+  let columns = planetsColumns()
+  let maxTableWidth = canvas.width - 4
+  let tableWidth = tableWidthFromColumns(columns, maxTableWidth, showBorders = true)
+  
+  # Calculate visible rows and height
   let totalRows = model.view.planetsRows.len
+  var baseTable = buildPlanetsTable(model, ScrollState())
   let baseHeight = baseTable.renderHeight(0)
-  let maxHeight = max(6, min(canvas.height - 4, totalRows + baseHeight))  # -4 for modal borders + footer
-  let visibleRows = max(0, min(totalRows, maxHeight - baseHeight))
-
-  # Create local copy for scroll calculations
+  let maxVisibleRows = max(1, canvas.height - baseHeight - 6)
+  let visibleRows = min(totalRows, maxVisibleRows)
+  
+  # Create scroll state
   var localScroll = scroll
   localScroll.contentLength = totalRows
   localScroll.viewportLength = visibleRows
   localScroll.clampOffsets()
-
+  
   let table = buildPlanetsTable(model, localScroll)
   let tableHeight = table.renderHeight(visibleRows)
-  # +2 for modal borders, +2 for footer
-  let modalArea = modal.calculateArea(canvas, tableHeight + 4)
-
+  
+  # Create modal sized to fit actual content
+  let modal = newModal()
+    .title("COLONY")
+    .maxWidth(tableWidth + 2)
+    .minWidth(min(80, tableWidth + 2))
+    .minHeight(1)  # Don't force extra height
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  
+  # Use content-aware sizing: +2 for footer separator + text
+  let modalArea = modal.calculateArea(canvas, tableWidth, tableHeight + 2)
+  
   modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll")
   
-  # Render table inside modal content area
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   table.render(contentArea, buf)
 
@@ -1461,17 +1436,18 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     renderFleetList(contentArea, buf, model)
   
   of FleetViewMode.SystemView:
-    # 2-pane fleet console as centered modal with dynamic width and height
-    # Calculate content-based width:
-    # - Fleets pane needs ~80 chars (11 columns + borders/padding)
-    # - Fleets pane is 70% of total width
-    # - Therefore minimum total: 80 / 0.7 ≈ 115 chars
-    let minContentWidth = 110
+    # 2-pane fleet console with content-aware sizing
+    # Calculate actual table widths from column definitions
     let maxAvailableWidth = canvas.width - 4
-    let modalWidth = max(minContentWidth, min(maxAvailableWidth, 120))
+    let systemsWidth = tableWidthFromColumns(
+      fleetConsoleSystemsColumns(), maxAvailableWidth, showBorders = true)
+    let fleetsWidth = tableWidthFromColumns(
+      fleetConsoleFleetsColumns(), maxAvailableWidth, showBorders = true)
+    
+    # Total content width = both tables side by side
+    let contentWidth = systemsWidth + fleetsWidth
     
     # Calculate dynamic height based on content
-    # Get cached data to determine row counts
     let systems = model.ui.fleetConsoleSystems
     var maxFleetCount = 0
     for sys in systems:
@@ -1479,8 +1455,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
         let fleets = model.ui.fleetConsoleFleetsBySystem[sys.systemId]
         maxFleetCount = max(maxFleetCount, fleets.len)
     
-    # Calculate heights
-    # Table height = 2 (top/bottom border) + 1 (header) + 1 (separator) + rows
+    # Table height = borders + header + separator + rows
     let systemsRowCount = systems.len
     let fleetsRowCount = maxFleetCount
     let tableOverhead = 4  # borders + header + separator
@@ -1490,16 +1465,19 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     # Apply constraints: min 8, max 75% of screen height
     let minHeight = 8
     let maxHeight = (canvas.height * 75) div 100
-    # +2 for footer (1 separator + 1 text line)
+    # +2 for footer separator + text
     let contentHeight = clamp(desiredHeight, minHeight, maxHeight) + 2
     
     let modal = newModal()
       .title("FLEET COMMAND")
-      .maxWidth(modalWidth)
-      .minWidth(minContentWidth)
+      .maxWidth(contentWidth + 2)
+      .minWidth(min(90, contentWidth + 2))
+      .minHeight(1)  # Don't force extra height
       .borderStyle(primaryBorderStyle())
       .bgStyle(modalBgStyle())
-    let modalArea = modal.calculateArea(canvas, contentHeight)
+    
+    # Use content-aware sizing
+    let modalArea = modal.calculateArea(canvas, contentWidth, contentHeight)
     modal.renderWithFooter(modalArea, buf, "[↑↓←→] Navigate  [Enter] Details  [Tab] Switch Pane")
     let contentArea = modal.contentArea(modalArea, hasFooter = true)
     renderFleetConsole(contentArea, buf, model, ps)
@@ -1631,7 +1609,7 @@ proc renderListPanel*(
     of ViewMode.Espionage: "Intel Operations"
     of ViewMode.Economy: "General Policy"
     of ViewMode.Reports: "Reports Inbox"
-    of ViewMode.Messages: "Intel Database"
+    of ViewMode.IntelDb: "Intel Database"
     of ViewMode.Settings: "Game Settings"
     of ViewMode.PlanetDetail: "Planet Info"
     of ViewMode.FleetDetail: "Fleet Info"
@@ -1674,7 +1652,7 @@ proc renderListPanel*(
       "General view (TODO)", dimStyle())
   of ViewMode.Reports:
     renderReportsList(inner, buf, model)
-  of ViewMode.Messages:
+  of ViewMode.IntelDb:
     discard buf.setString(inner.x, inner.y,
       "Intel DB view (deprecated)", dimStyle())
   of ViewMode.Settings:
@@ -1754,7 +1732,7 @@ proc activeViewKey*(mode: ViewMode): string =
     return "F7"
   of ViewMode.Settings:
     return "F8"
-  of ViewMode.Messages:
+  of ViewMode.IntelDb:
     return ""
 
 proc buildCommandDockData*(model: TuiModel): CommandDockData =
@@ -1799,7 +1777,7 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
     result.contextActions = reportsContextActions(
       model.currentListLength() > 0
     )
-  of ViewMode.Messages:
+  of ViewMode.IntelDb:
     result.contextActions = @[]
   of ViewMode.Settings:
     result.contextActions = settingsContextActions()
@@ -1877,7 +1855,7 @@ proc renderDashboard*(
       renderEconomyModal(canvasArea, buf, model, model.ui.economyScroll)
     of ViewMode.Reports:
       renderReportsModal(canvasArea, buf, model, model.ui.reportTurnScroll)
-    of ViewMode.Messages:
+    of ViewMode.IntelDb:
       discard
     of ViewMode.Settings:
       renderSettingsModal(canvasArea, buf, model, model.ui.settingsScroll)

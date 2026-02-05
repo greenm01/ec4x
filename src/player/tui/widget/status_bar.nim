@@ -202,6 +202,22 @@ proc renderStatusBar*(area: Rect, buf: var CellBuffer,
 
     return
 
+  # Render modifier prefix if showing global view tabs
+  # Check if first item is a view switcher (has ViewModifier)
+  if data.items.len > 0 and 
+     data.items[0].binding.context == BindingContext.Global and
+     data.items[0].binding.actionKind == ActionKind.switchView:
+    let prefix = getViewModifierPrefix()
+    for ch in prefix:
+      if x >= area.x + area.width:
+        break
+      discard buf.put(x, y, $ch, barTextStyle())
+      x += 1
+    # Add a space after prefix
+    if x < area.x + area.width:
+      discard buf.put(x, y, " ", barTextStyle())
+      x += 1
+
   # Render each item
   var isFirst = true
   for item in data.items:

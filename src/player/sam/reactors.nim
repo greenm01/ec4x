@@ -120,7 +120,7 @@ proc statusMessageReactor*(model: var TuiModel) =
     of ViewMode.Reports:
       model.ui.statusMessage = "Reports Inbox"
     
-    of ViewMode.Messages:
+    of ViewMode.IntelDb:
       model.ui.statusMessage = "Intel Database"
     
     

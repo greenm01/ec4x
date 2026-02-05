@@ -286,15 +286,15 @@ type
     ## Current UI view (maps to primary view number)
     ##
     ## Primary views:
-    Overview = 1      ## F1 Strategic dashboard
-    Planets = 2       ## F2 Colony management
-    Fleets = 3        ## F3 Fleet console
-    Research = 4      ## F4 Tech & research
-    Espionage = 5     ## F5 Intel operations
-    Economy = 6       ## F6 General (tax/diplomacy)
-    Reports = 7       ## F7 Turn reports
-    Messages = 8      ## Deprecated
-    Settings = 9      ## F8 Game settings
+    Overview = 1      ## Strategic dashboard
+    Planets = 2       ## Colony management
+    Fleets = 3        ## Fleet console
+    Research = 4      ## Tech & research
+    Espionage = 5     ## Intel operations
+    Economy = 6       ## General (tax/diplomacy)
+    Reports = 7       ## Turn reports
+    IntelDb = 8       ## Intel database (Starmap)
+    Settings = 9      ## Game settings
     # Sub-views (not directly accessible via primary hotkeys)
     PlanetDetail = 20 ## Planet detail (Summary/Economy/Construction/etc.)
     FleetDetail = 30  ## Fleet detail view
@@ -1096,7 +1096,7 @@ proc currentListLength*(model: TuiModel): int =
   of ViewMode.Espionage: 0  # Espionage operations list (TODO)
   of ViewMode.Economy: 0   # Economy has no list
   of ViewMode.Reports: model.filteredReports().len
-  of ViewMode.Messages: 0
+  of ViewMode.IntelDb: 0
   of ViewMode.Settings: 0  # TODO: settings list
   of ViewMode.PlanetDetail: 0
   of ViewMode.FleetDetail: 0
@@ -1165,7 +1165,7 @@ proc viewModeLabel*(mode: ViewMode): string =
   of ViewMode.Espionage: "Espionage"
   of ViewMode.Economy: "General"
   of ViewMode.Reports: "Reports"
-  of ViewMode.Messages: "Intel"
+  of ViewMode.IntelDb: "Intel"
   of ViewMode.Settings: "Settings"
   of ViewMode.PlanetDetail: "Colony"
   of ViewMode.FleetDetail: "Fleet"

@@ -340,13 +340,19 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   
   let modalArea = modal.calculateArea(viewport, contentHeight)
 
-  # Render modal frame with title and footer
+  # Render modal frame with title
+  # Only show main footer when no sub-modal is active
   let title = "FLEET DETAIL"
-  let footerText = "[C]Command [R]ROE [PgUp/PgDn]Scroll [Esc]Close"
-  modal.title(title).renderWithFooter(modalArea, buf, footerText)
+  let hasMainFooter = state.subModal == FleetSubModal.None
+  
+  if hasMainFooter:
+    let footerText = "[C]Command [R]ROE [PgUp/PgDn]Scroll [Esc]Close"
+    modal.title(title).renderWithFooter(modalArea, buf, footerText)
+  else:
+    modal.title(title).render(modalArea, buf)
 
-  # Get content area (excludes footer)
-  let inner = modal.contentArea(modalArea, hasFooter = true)
+  # Get content area (excludes footer if present)
+  let inner = modal.contentArea(modalArea, hasFooter = hasMainFooter)
 
   # Check for sub-modals
   case state.subModal
