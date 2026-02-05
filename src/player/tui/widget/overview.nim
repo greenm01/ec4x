@@ -20,12 +20,12 @@ import ./frame
 import ./leaderboard
 import ./empire_status
 import ./action_queue
-import ./view_modal
+import ./modal
 import ./scroll_state
 
 export ec_palette
 export leaderboard, empire_status, action_queue
-export view_modal, scroll_state
+export modal, scroll_state
 
 type
   RecentEvent* = object
@@ -200,16 +200,21 @@ proc renderOverviewModal*(canvas: Rect, buf: var CellBuffer,
   ## Render overview as centered floating modal.
   ## This is the modal variant used when Overview is rendered as a primary view.
 
-  let vm = newViewModal("STRATEGIC OVERVIEW").maxWidth(120).minWidth(80)
+  let modal = newModal()
+    .title("STRATEGIC OVERVIEW")
+    .maxWidth(120)
+    .minWidth(80)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
 
   # Overview has a relatively fixed layout height
   # Top row needs ~10 lines, bottom row needs ~8-10 lines, plus spacing
+  # No footer needed - F1-F8 navigation is in the status bar
   let contentHeight = 22
 
-  let modalArea = vm.calculateViewArea(canvas, contentHeight)
-  vm.render(modalArea, buf)
+  let modalArea = modal.calculateArea(canvas, contentHeight)
+  modal.render(modalArea, buf)
 
   # Render the overview content in the inner area
-  let innerArea = vm.innerArea(modalArea)
-  renderOverview(innerArea, buf, data)
-  vm.renderFooter(modalArea, buf, "[F1-F8] Switch Views")
+  let contentArea = modal.contentArea(modalArea, hasFooter = false)
+  renderOverview(contentArea, buf, data)

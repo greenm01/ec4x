@@ -18,8 +18,8 @@ import ../tui/widget/breadcrumb
 import ../tui/widget/command_dock
 import ../tui/widget/status_bar
 import ../tui/widget/scrollbar
-import ../tui/widget/view_modal
-import ../tui/widget/table_modal
+import ../tui/widget/modal
+import ../tui/widget/table
 import ../tui/widget/build_modal
 import ../tui/widget/fleet_detail_modal
 import ../sam/bindings
@@ -1405,15 +1405,20 @@ proc renderReportDetail*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
   ## Render colony view as centered table modal
-  let tm = newTableModal("COLONY").maxWidth(148)
+  let modal = newModal()
+    .title("COLONY")
+    .maxWidth(148)
+    .minWidth(80)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
 
   var baseTable = buildPlanetsTable(model, ScrollState())
-  let maxWidth = max(10, min(canvas.width - 2, tm.maxWidth))
+  let maxWidth = max(10, min(canvas.width - 4, 148))  # -4 for modal borders
   let tableWidth = baseTable.renderWidth(maxWidth)
 
   let totalRows = model.view.planetsRows.len
   let baseHeight = baseTable.renderHeight(0)
-  let maxHeight = max(6, min(canvas.height - 2, totalRows + baseHeight))
+  let maxHeight = max(6, min(canvas.height - 4, totalRows + baseHeight))  # -4 for modal borders + footer
   let visibleRows = max(0, min(totalRows, maxHeight - baseHeight))
 
   # Create local copy for scroll calculations
@@ -1424,10 +1429,14 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
 
   let table = buildPlanetsTable(model, localScroll)
   let tableHeight = table.renderHeight(visibleRows)
-  let modalArea = tm.calculateArea(canvas, tableWidth, tableHeight)
+  # +2 for modal borders, +2 for footer
+  let modalArea = modal.calculateArea(canvas, tableHeight + 4)
 
-  tm.render(modalArea, buf, table)
-  tm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll")
+  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll")
+  
+  # Render table inside modal content area
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+  table.render(contentArea, buf)
 
 proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
                         model: TuiModel, ps: ps_types.PlayerState,
@@ -1438,13 +1447,18 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
   case model.ui.fleetViewMode
   of FleetViewMode.ListView:
     # Original list view (modal with flat list)
-    let vm = newViewModal("YOUR FLEETS").maxWidth(120).minWidth(80)
-    let contentHeight = max(10, model.view.fleets.len + 4)
-    let modalArea = vm.calculateViewArea(canvas, contentHeight)
-    vm.render(modalArea, buf)
-    let innerArea = vm.innerArea(modalArea)
-    renderFleetList(innerArea, buf, model)
-    vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [x] Select")
+    let modal = newModal()
+      .title("YOUR FLEETS")
+      .maxWidth(120)
+      .minWidth(80)
+      .borderStyle(primaryBorderStyle())
+      .bgStyle(modalBgStyle())
+    # +2 for footer (1 separator + 1 text line)
+    let contentHeight = max(10, model.view.fleets.len + 4) + 2
+    let modalArea = modal.calculateArea(canvas, contentHeight)
+    modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [x] Select")
+    let contentArea = modal.contentArea(modalArea, hasFooter = true)
+    renderFleetList(contentArea, buf, model)
   
   of FleetViewMode.SystemView:
     # 2-pane fleet console as centered modal with dynamic width and height
@@ -1476,76 +1490,104 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     # Apply constraints: min 8, max 75% of screen height
     let minHeight = 8
     let maxHeight = (canvas.height * 75) div 100
-    let contentHeight = clamp(desiredHeight, minHeight, maxHeight)
+    # +2 for footer (1 separator + 1 text line)
+    let contentHeight = clamp(desiredHeight, minHeight, maxHeight) + 2
     
-    let vm = newViewModal("FLEET COMMAND")
+    let modal = newModal()
+      .title("FLEET COMMAND")
       .maxWidth(modalWidth)
       .minWidth(minContentWidth)
-    let modalArea = vm.calculateViewArea(canvas, contentHeight)
-    vm.render(modalArea, buf)
-    let innerArea = vm.innerArea(modalArea)
-    renderFleetConsole(innerArea, buf, model, ps)
-    vm.renderFooter(modalArea, buf, "[↑↓←→] Navigate  [Enter] Details  [Tab] Switch Pane")
+      .borderStyle(primaryBorderStyle())
+      .bgStyle(modalBgStyle())
+    let modalArea = modal.calculateArea(canvas, contentHeight)
+    modal.renderWithFooter(modalArea, buf, "[↑↓←→] Navigate  [Enter] Details  [Tab] Switch Pane")
+    let contentArea = modal.contentArea(modalArea, hasFooter = true)
+    renderFleetConsole(contentArea, buf, model, ps)
 
 proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
   ## Render research view as centered floating modal
-  let vm = newViewModal("TECH PROGRESS").maxWidth(120).minWidth(80)
-  let contentHeight = 15
-  let modalArea = vm.calculateViewArea(canvas, contentHeight)
-  vm.render(modalArea, buf)
-  let innerArea = vm.innerArea(modalArea)
-  discard buf.setString(innerArea.x, innerArea.y,
+  let modal = newModal()
+    .title("TECH PROGRESS")
+    .maxWidth(120)
+    .minWidth(80)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  # +2 for footer (1 separator + 1 text line)
+  let contentHeight = 15 + 2
+  let modalArea = modal.calculateArea(canvas, contentHeight)
+  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+  discard buf.setString(contentArea.x, contentArea.y,
     "Tech view (TODO)", dimStyle())
-  vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
 
 proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
                            model: TuiModel, scroll: ScrollState) =
   ## Render espionage view as centered floating modal
-  let vm = newViewModal("INTEL OPERATIONS").maxWidth(120).minWidth(80)
-  let contentHeight = 12
-  let modalArea = vm.calculateViewArea(canvas, contentHeight)
-  vm.render(modalArea, buf)
-  let innerArea = vm.innerArea(modalArea)
-  discard buf.setString(innerArea.x, innerArea.y,
+  let modal = newModal()
+    .title("INTEL OPERATIONS")
+    .maxWidth(120)
+    .minWidth(80)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  # +2 for footer (1 separator + 1 text line)
+  let contentHeight = 12 + 2
+  let modalArea = modal.calculateArea(canvas, contentHeight)
+  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+  discard buf.setString(contentArea.x, contentArea.y,
     "Espionage view (TODO)", dimStyle())
-  vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
 
 proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
   ## Render general view as centered floating modal
-  let vm = newViewModal("GENERAL POLICY").maxWidth(120).minWidth(80)
-  let contentHeight = 12
-  let modalArea = vm.calculateViewArea(canvas, contentHeight)
-  vm.render(modalArea, buf)
-  let innerArea = vm.innerArea(modalArea)
-  discard buf.setString(innerArea.x, innerArea.y,
+  let modal = newModal()
+    .title("GENERAL POLICY")
+    .maxWidth(120)
+    .minWidth(80)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  # +2 for footer (1 separator + 1 text line)
+  let contentHeight = 12 + 2
+  let modalArea = modal.calculateArea(canvas, contentHeight)
+  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+  discard buf.setString(contentArea.x, contentArea.y,
     "General view (TODO)", dimStyle())
-  vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
 
 proc renderReportsModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
   ## Render reports view as centered floating modal
-  let vm = newViewModal("REPORTS INBOX").maxWidth(120).minWidth(80)
+  let modal = newModal()
+    .title("REPORTS INBOX")
+    .maxWidth(120)
+    .minWidth(80)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
   # Reports view height is dynamic based on content
-  let contentHeight = max(15, 20)  # Use scrolling for long lists
-  let modalArea = vm.calculateViewArea(canvas, contentHeight)
-  vm.render(modalArea, buf)
-  let innerArea = vm.innerArea(modalArea)
-  renderReportsList(innerArea, buf, model)
-  vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll")
+  # +2 for footer (1 separator + 1 text line)
+  let contentHeight = max(15, 20) + 2  # Use scrolling for long lists
+  let modalArea = modal.calculateArea(canvas, contentHeight)
+  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll")
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+  renderReportsList(contentArea, buf, model)
 
 proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
   ## Render settings view as centered floating modal
-  let vm = newViewModal("GAME SETTINGS").maxWidth(120).minWidth(80)
-  let contentHeight = 10
-  let modalArea = vm.calculateViewArea(canvas, contentHeight)
-  vm.render(modalArea, buf)
-  let innerArea = vm.innerArea(modalArea)
-  discard buf.setString(innerArea.x, innerArea.y,
+  let modal = newModal()
+    .title("GAME SETTINGS")
+    .maxWidth(120)
+    .minWidth(80)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  # +2 for footer (1 separator + 1 text line)
+  let contentHeight = 10 + 2
+  let modalArea = modal.calculateArea(canvas, contentHeight)
+  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+  discard buf.setString(contentArea.x, contentArea.y,
     "Settings view (TODO)", dimStyle())
-  vm.renderFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
 
 proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
                                model: TuiModel, ps: PlayerState) =
@@ -1557,14 +1599,19 @@ proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
   let planetData = colonyToDetailDataFromPS(ps, ColonyId(model.ui.selectedColonyId))
   let title = "COLONY: " & planetData.systemName.toUpperAscii()
 
-  let vm = newViewModal(title).maxWidth(120).minWidth(100)
+  let modal = newModal()
+    .title(title)
+    .maxWidth(120)
+    .minWidth(100)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
   let contentHeight = 25  # Enough for tabs + content
-  let modalArea = vm.calculateViewArea(canvas, contentHeight)
-  vm.render(modalArea, buf)
-  let innerArea = vm.innerArea(modalArea)
+  let modalArea = modal.calculateArea(canvas, contentHeight)
+  modal.render(modalArea, buf)
+  let contentArea = modal.contentArea(modalArea, hasFooter = false)
 
   # Render planet detail inside the modal
-  renderPlanetDetailFromPS(innerArea, buf, model, ps)
+  renderPlanetDetailFromPS(contentArea, buf, model, ps)
 
 proc renderListPanel*(
     area: Rect,

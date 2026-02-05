@@ -145,3 +145,22 @@ proc renderWithSeparator*(m: Modal, area: Rect, buf: var CellBuffer,
       discard buf.put(x, sepY, bs.horizontal, m.borderStyle)
     # Right junction
     discard buf.put(area.right - 1, sepY, "┤", m.borderStyle)
+
+proc renderWithFooter*(m: Modal, area: Rect, buf: var CellBuffer,
+                       footerText: string) =
+  ## Render modal border with title, separator, and footer text
+  ## This is a convenience wrapper around renderWithSeparator that also
+  ## renders the footer text in the bottom section
+  m.renderWithSeparator(area, buf, 2)
+  let inner = m.inner(area)
+  discard buf.setString(inner.x, inner.bottom - 1, footerText, canvasDimStyle())
+
+proc contentArea*(m: Modal, area: Rect, hasFooter: bool): Rect =
+  ## Get area for content rendering
+  ## If hasFooter, reserves 2 lines at bottom for separator + footer text
+  ## Otherwise returns full inner area
+  let inner = m.inner(area)
+  if hasFooter:
+    rect(inner.x, inner.y, inner.width, max(1, inner.height - 2))
+  else:
+    inner

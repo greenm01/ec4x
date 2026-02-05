@@ -340,12 +340,13 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   
   let modalArea = modal.calculateArea(viewport, contentHeight)
 
-  # Render modal frame with title
+  # Render modal frame with title and footer
   let title = "FLEET DETAIL"
-  modal.title(title).renderWithSeparator(modalArea, buf, 2)
+  let footerText = "[C]Command [R]ROE [PgUp/PgDn]Scroll [Esc]Close"
+  modal.title(title).renderWithFooter(modalArea, buf, footerText)
 
-  # Get inner content area
-  let inner = modal.inner(modalArea)
+  # Get content area (excludes footer)
+  let inner = modal.contentArea(modalArea, hasFooter = true)
 
   # Check for sub-modals
   case state.subModal
@@ -386,11 +387,3 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       shipsArea.width,
       shipsArea.height - FleetDetailShipsHeaderHeight)
     shipTable.render(tableArea, buf)
-    
-    # Footer with action hints
-    let footerY = inner.bottom - 1
-    if footerY >= inner.y:
-      let hint = "[C]Command [R]ROE [PgUp/PgDn]Scroll [Esc]Close"
-      for i, ch in hint:
-        if inner.x + i < inner.right:
-          discard buf.put(inner.x + i, footerY, $ch, canvasDimStyle())
