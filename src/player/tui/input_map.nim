@@ -35,10 +35,14 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     else:
       # Allow meta+key to pass through to global bindings
       if modifier != KeyModifier.Alt:
-        if not model.ui.quitConfirmationActive:
-          if model.ui.expertModeActive:
-            if event.rune.int >= 0x20:
-              return some(actionExpertInputAppend($event.rune))
+          if not model.ui.quitConfirmationActive:
+            if model.ui.fleetListState.searchActive:
+              if event.rune.int >= 0x20:
+                return some(actionFleetSearchAppend($event.rune))
+              return none(Proposal)
+            if model.ui.expertModeActive:
+              if event.rune.int >= 0x20:
+                return some(actionExpertInputAppend($event.rune))
             return none(Proposal)
           # Entry modal import mode: append characters to nsec buffer
           if model.ui.appPhase == AppPhase.Lobby and
@@ -140,6 +144,8 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
         keyCode = KeyCode.KeyU
       of ":":
         keyCode = KeyCode.KeyColon
+      of "/":
+        keyCode = KeyCode.KeySlash
       else:
         discard
   of Key.Up:

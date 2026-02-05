@@ -54,6 +54,18 @@ type
     toggleFleetSelect
     switchPlanetTab
     switchFleetView
+    fleetSortCycle
+    fleetFilterAll
+    fleetFilterIdle
+    fleetFilterTransit
+    fleetFilterAttention
+    fleetSearchStart
+    fleetSearchAppend
+    fleetSearchBackspace
+    fleetSearchConfirm
+    fleetSearchCancel
+    fleetBatchCommand
+    fleetBatchROE
     cycleReportFilter
     reportFocusNext
     reportFocusPrev

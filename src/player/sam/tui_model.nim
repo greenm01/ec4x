@@ -282,6 +282,32 @@ type
     commandDigitTime*: float     # Time when first digit was entered (for timeout)
     shipCount*: int
 
+  FleetListSort* {.pure.} = enum
+    FleetId
+    Location
+    Sector
+    Ships
+    AttackStrength
+    DefenseStrength
+    Command
+    Destination
+    ETA
+    ROE
+    Status
+
+  FleetListFilter* {.pure.} = enum
+    All
+    Idle
+    InTransit
+    NeedsAttention
+
+  FleetListState* = object
+    sort*: FleetListSort
+    sortAscending*: bool
+    filter*: FleetListFilter
+    searchActive*: bool
+    searchQuery*: string
+
   ViewMode* {.pure.} = enum
     ## Current UI view (maps to primary view number)
     ##
@@ -400,12 +426,23 @@ type
     id*: int
     location*: int          ## System ID
     locationName*: string
+    sectorLabel*: string
     shipCount*: int
     owner*: int
     command*: int           ## Fleet command (0-19, see 06-operations.md)
     commandLabel*: string   ## Human-readable command ("Hold", "Move", "Patrol")
     isIdle*: bool           ## True if command is Hold (00)
     roe*: int               ## Rules of Engagement (0-10)
+    attackStrength*: int
+    defenseStrength*: int
+    statusLabel*: string    ## Active/Reserve/Mothballed
+    destinationLabel*: string
+    destinationSystemId*: int
+    eta*: int
+    hasCrippled*: bool
+    hasCombatShips*: bool
+    hasSupportShips*: bool
+    needsAttention*: bool
 
   CommandInfo* = object
     ## Fleet command info (renamed from OrderInfo)
@@ -572,6 +609,9 @@ type
     # Fleet console cached data (synced from PlayerState)
     fleetConsoleSystems*: seq[FleetConsoleSystem]
     fleetConsoleFleetsBySystem*: Table[int, seq[FleetConsoleFleet]]  # systemId -> fleets
+
+    # Fleet list state (ListView mode)
+    fleetListState*: FleetListState
 
     # Reports UI
     reportFilter*: ReportCategory
@@ -766,6 +806,13 @@ proc initTuiUiState*(): TuiUiState =
     fleetConsoleShipScroll: initScrollState(),
     fleetConsoleSystems: @[],
     fleetConsoleFleetsBySystem: initTable[int, seq[FleetConsoleFleet]](),
+    fleetListState: FleetListState(
+      sort: FleetListSort.FleetId,
+      sortAscending: true,
+      filter: FleetListFilter.All,
+      searchActive: false,
+      searchQuery: ""
+    ),
     reportFilter: ReportCategory.Summary,
     reportFocus: ReportPaneFocus.TurnList,
     reportTurnIdx: 0,
@@ -1078,6 +1125,8 @@ proc selectedReport*(model: TuiModel): Option[ReportEntry] =
     return some(reports[model.ui.selectedIdx])
   none(ReportEntry)
 
+proc filteredFleets*(model: TuiModel): seq[FleetInfo]
+
 proc currentListLength*(model: TuiModel): int =
   ## Get length of current list based on mode
   if model.ui.appPhase == AppPhase.Lobby:
@@ -1091,7 +1140,11 @@ proc currentListLength*(model: TuiModel): int =
   case model.ui.mode
   of ViewMode.Overview: 0  # Overview has no list selection
   of ViewMode.Planets: model.view.planetsRows.len
-  of ViewMode.Fleets: model.view.fleets.len
+  of ViewMode.Fleets:
+    if model.ui.fleetViewMode == FleetViewMode.ListView:
+      model.filteredFleets().len
+    else:
+      model.view.fleets.len
   of ViewMode.Research: 0  # Research has no list
   of ViewMode.Espionage: 0  # Espionage operations list (TODO)
   of ViewMode.Economy: 0   # Economy has no list
@@ -1108,6 +1161,98 @@ proc idleFleetsCount*(model: TuiModel): int =
   for fleet in model.view.fleets:
     if fleet.isIdle:
       result.inc
+
+proc fleetSortLabel*(sort: FleetListSort): string =
+  ## Label for fleet list sort column
+  case sort
+  of FleetListSort.FleetId: "Fleet ID"
+  of FleetListSort.Location: "Location"
+  of FleetListSort.Sector: "Sector"
+  of FleetListSort.Ships: "Ships"
+  of FleetListSort.AttackStrength: "AS"
+  of FleetListSort.DefenseStrength: "DS"
+  of FleetListSort.Command: "Command"
+  of FleetListSort.Destination: "Destination"
+  of FleetListSort.ETA: "ETA"
+  of FleetListSort.ROE: "ROE"
+  of FleetListSort.Status: "Status"
+
+proc fleetFilterLabel*(filter: FleetListFilter): string =
+  ## Label for fleet list filter
+  case filter
+  of FleetListFilter.All: "All"
+  of FleetListFilter.Idle: "Idle"
+  of FleetListFilter.InTransit: "In Transit"
+  of FleetListFilter.NeedsAttention: "Needs Attention"
+
+proc fleetMatchesSearch*(fleet: FleetInfo, query: string): bool =
+  ## Match fleet against search query (fleet ID or sector coords)
+  if query.len == 0:
+    return true
+  let q = query.strip().toUpperAscii()
+  if q.len == 0:
+    return true
+  if $fleet.id == q:
+    return true
+  fleet.sectorLabel.toUpperAscii().contains(q)
+
+proc compareFleetSort(a, b: FleetInfo, sort: FleetListSort): int =
+  ## Compare fleets for sorting
+  case sort
+  of FleetListSort.FleetId:
+    cmp(a.id, b.id)
+  of FleetListSort.Location:
+    cmp(a.locationName, b.locationName)
+  of FleetListSort.Sector:
+    cmp(a.sectorLabel, b.sectorLabel)
+  of FleetListSort.Ships:
+    cmp(a.shipCount, b.shipCount)
+  of FleetListSort.AttackStrength:
+    cmp(a.attackStrength, b.attackStrength)
+  of FleetListSort.DefenseStrength:
+    cmp(a.defenseStrength, b.defenseStrength)
+  of FleetListSort.Command:
+    cmp(a.commandLabel, b.commandLabel)
+  of FleetListSort.Destination:
+    cmp(a.destinationLabel, b.destinationLabel)
+  of FleetListSort.ETA:
+    cmp(a.eta, b.eta)
+  of FleetListSort.ROE:
+    cmp(a.roe, b.roe)
+  of FleetListSort.Status:
+    cmp(a.statusLabel, b.statusLabel)
+
+proc filteredFleets*(model: TuiModel): seq[FleetInfo] =
+  ## Filter and sort fleet list for ListView
+  let state = model.ui.fleetListState
+  result = @[]
+  for fleet in model.view.fleets:
+    if not fleetMatchesSearch(fleet, state.searchQuery):
+      continue
+    case state.filter
+    of FleetListFilter.All:
+      discard
+    of FleetListFilter.Idle:
+      if not fleet.isIdle:
+        continue
+    of FleetListFilter.InTransit:
+      if fleet.destinationSystemId == 0:
+        continue
+    of FleetListFilter.NeedsAttention:
+      if not fleet.needsAttention:
+        continue
+    result.add(fleet)
+  let ascending = state.sortAscending
+  let sortMode = state.sort
+  result.sort(proc(a, b: FleetInfo): int =
+    let cmpResult = compareFleetSort(a, b, sortMode)
+    if cmpResult == 0:
+      cmp(a.id, b.id)
+    elif ascending:
+      cmpResult
+    else:
+      -cmpResult
+  )
 
 proc systemAt*(model: TuiModel, coord: HexCoord): Option[SystemInfo] =
   ## Get system at coordinate
@@ -1138,11 +1283,12 @@ proc selectedColony*(model: TuiModel): Option[ColonyInfo] =
 
 proc selectedFleet*(model: TuiModel): Option[FleetInfo] =
   ## Get selected fleet
-  if model.ui.mode == ViewMode.Fleets and
-      model.ui.selectedIdx < model.view.fleets.len:
-    some(model.view.fleets[model.ui.selectedIdx])
-  else:
-    none(FleetInfo)
+  if model.ui.mode != ViewMode.Fleets:
+    return none(FleetInfo)
+  let fleets = model.filteredFleets()
+  if model.ui.selectedIdx < fleets.len:
+    return some(fleets[model.ui.selectedIdx])
+  none(FleetInfo)
 
 proc ownedColonyCoords*(model: TuiModel): seq[HexCoord] =
   ## Get coordinates of all owned colonies

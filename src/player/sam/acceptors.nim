@@ -63,6 +63,22 @@ proc resetFleetDetailSubModal(model: var TuiModel) =
   model.ui.fleetDetailModal.confirmMessage = ""
   model.ui.fleetDetailModal.pendingCommandType = FleetCommandType.Hold
 
+proc advanceFleetSort(model: var TuiModel) =
+  let next =
+    case model.ui.fleetListState.sort
+    of FleetListSort.FleetId: FleetListSort.Location
+    of FleetListSort.Location: FleetListSort.Sector
+    of FleetListSort.Sector: FleetListSort.Ships
+    of FleetListSort.Ships: FleetListSort.AttackStrength
+    of FleetListSort.AttackStrength: FleetListSort.DefenseStrength
+    of FleetListSort.DefenseStrength: FleetListSort.Command
+    of FleetListSort.Command: FleetListSort.Destination
+    of FleetListSort.Destination: FleetListSort.ETA
+    of FleetListSort.ETA: FleetListSort.ROE
+    of FleetListSort.ROE: FleetListSort.Status
+    of FleetListSort.Status: FleetListSort.FleetId
+  model.ui.fleetListState.sort = next
+
 proc resetExpertPaletteSelection(model: var TuiModel) =
   let matches = matchExpertCommands(model.ui.expertModeInput)
   if matches.len == 0:
@@ -308,8 +324,9 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.clearExpertFeedback()
   of ActionKind.toggleFleetSelect:
     if model.ui.mode == ViewMode.Fleets:
-      if model.ui.selectedIdx < model.view.fleets.len:
-        let fleetId = model.view.fleets[model.ui.selectedIdx].id
+      let fleets = model.filteredFleets()
+      if model.ui.selectedIdx < fleets.len:
+        let fleetId = fleets[model.ui.selectedIdx].id
         model.toggleFleetSelection(fleetId)
   of ActionKind.deselect:
     model.ui.mapState.selected = none(HexCoord)
@@ -415,6 +432,78 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     let maxIdx = model.currentListLength() - 1
     let pageSize = max(1, model.ui.termHeight - 10)
     model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + pageSize)
+  of ActionKind.fleetSortCycle:
+    if model.ui.mode == ViewMode.Fleets and
+        model.ui.fleetViewMode == FleetViewMode.ListView:
+      if model.ui.fleetListState.sortAscending:
+        model.ui.fleetListState.sortAscending = false
+      else:
+        model.ui.fleetListState.sortAscending = true
+        advanceFleetSort(model)
+  of ActionKind.fleetFilterAll:
+    if model.ui.mode == ViewMode.Fleets:
+      model.ui.fleetListState.filter = FleetListFilter.All
+      model.ui.selectedIdx = 0
+      model.ui.fleetsScroll.verticalOffset = 0
+  of ActionKind.fleetFilterIdle:
+    if model.ui.mode == ViewMode.Fleets:
+      model.ui.fleetListState.filter = FleetListFilter.Idle
+      model.ui.selectedIdx = 0
+      model.ui.fleetsScroll.verticalOffset = 0
+  of ActionKind.fleetFilterTransit:
+    if model.ui.mode == ViewMode.Fleets:
+      model.ui.fleetListState.filter = FleetListFilter.InTransit
+      model.ui.selectedIdx = 0
+      model.ui.fleetsScroll.verticalOffset = 0
+  of ActionKind.fleetFilterAttention:
+    if model.ui.mode == ViewMode.Fleets:
+      model.ui.fleetListState.filter = FleetListFilter.NeedsAttention
+      model.ui.selectedIdx = 0
+      model.ui.fleetsScroll.verticalOffset = 0
+  of ActionKind.fleetSearchStart:
+    if model.ui.mode == ViewMode.Fleets:
+      model.ui.fleetListState.searchActive = true
+      model.ui.fleetListState.searchQuery = ""
+      model.ui.statusMessage = "Search fleets: [Enter] confirm  [Esc] cancel"
+      model.ui.selectedIdx = 0
+      model.ui.fleetsScroll.verticalOffset = 0
+  of ActionKind.fleetSearchBackspace:
+    if model.ui.fleetListState.searchActive and
+        model.ui.fleetListState.searchQuery.len > 0:
+      model.ui.fleetListState.searchQuery =
+        model.ui.fleetListState.searchQuery[0 ..<
+          model.ui.fleetListState.searchQuery.len - 1]
+  of ActionKind.fleetSearchConfirm:
+    if model.ui.fleetListState.searchActive:
+      model.ui.fleetListState.searchActive = false
+      model.ui.selectedIdx = 0
+      model.ui.statusMessage = ""
+      model.ui.fleetsScroll.verticalOffset = 0
+  of ActionKind.fleetSearchCancel:
+    if model.ui.mode == ViewMode.Fleets:
+      model.ui.fleetListState.searchActive = false
+      model.ui.fleetListState.searchQuery = ""
+      model.ui.selectedIdx = 0
+      model.ui.statusMessage = ""
+      model.ui.fleetsScroll.verticalOffset = 0
+  of ActionKind.fleetBatchCommand:
+    if model.ui.mode == ViewMode.Fleets and
+        model.ui.selectedFleetIds.len > 0:
+      model.ui.mode = ViewMode.FleetDetail
+      model.resetBreadcrumbs(ViewMode.FleetDetail)
+      model.ui.fleetDetailModal.subModal = FleetSubModal.CommandPicker
+      model.ui.fleetDetailModal.commandIdx = 0
+      model.ui.fleetDetailModal.fleetId = 0
+      model.ui.fleetDetailModal.commandDigitBuffer = ""
+      model.ui.fleetDetailModal.commandDigitTime = 0.0
+  of ActionKind.fleetBatchROE:
+    if model.ui.mode == ViewMode.Fleets and
+        model.ui.selectedFleetIds.len > 0:
+      model.ui.mode = ViewMode.FleetDetail
+      model.resetBreadcrumbs(ViewMode.FleetDetail)
+      model.ui.fleetDetailModal.subModal = FleetSubModal.ROEPicker
+      model.ui.fleetDetailModal.fleetId = 0
+      model.ui.fleetDetailModal.roeValue = 6
   else:
     discard
 
@@ -1180,9 +1269,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       else:
         model.ui.statusMessage = "No systems with fleets"
     elif model.ui.mode == ViewMode.Fleets and model.ui.fleetViewMode == FleetViewMode.ListView:
-      # ListView: Get fleet from selected index
-      if model.ui.selectedIdx < model.view.fleets.len:
-        let fleet = model.view.fleets[model.ui.selectedIdx]
+      # ListView: Get fleet from filtered list
+      let fleets = model.filteredFleets()
+      if model.ui.selectedIdx < fleets.len:
+        let fleet = fleets[model.ui.selectedIdx]
         let fleetId = fleet.id
         # Transition to FleetDetail ViewMode with breadcrumb
         model.ui.mode = ViewMode.FleetDetail
@@ -1250,6 +1340,35 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       
       if idx >= 0 and idx < commands.len:
         let cmdType = commands[idx]
+
+        # Batch command for selected fleets
+        if model.ui.selectedFleetIds.len > 0:
+          if cmdType in {FleetCommandType.Bombard, FleetCommandType.Salvage,
+                        FleetCommandType.Reserve, FleetCommandType.Mothball}:
+            model.ui.fleetDetailModal.subModal = FleetSubModal.ConfirmPrompt
+            model.ui.fleetDetailModal.pendingCommandType = cmdType
+            model.ui.fleetDetailModal.confirmMessage = case cmdType
+              of FleetCommandType.Bombard: "Bombard will destroy population"
+              of FleetCommandType.Salvage: "Salvage will scrap this fleet"
+              of FleetCommandType.Reserve: "Reserve reduces readiness to 50%"
+              of FleetCommandType.Mothball: "Mothball takes fleet offline"
+              else: "Confirm this action?"
+            return
+          for fleetId in model.ui.selectedFleetIds:
+            let cmd = FleetCommand(
+              fleetId: FleetId(fleetId),
+              commandType: cmdType,
+              targetSystem: none(SystemId),
+              targetFleet: none(FleetId),
+              roe: some(int32(model.ui.fleetDetailModal.roeValue))
+            )
+            model.ui.stagedFleetCommands.add(cmd)
+          model.ui.statusMessage = "Staged " & $model.ui.selectedFleetIds.len &
+            " fleet command(s)"
+          resetFleetDetailSubModal(model)
+          model.ui.mode = ViewMode.Fleets
+          model.resetBreadcrumbs(ViewMode.Fleets)
+          return
         
         # Check if command requires confirmation
         if cmdType in {FleetCommandType.Bombard, FleetCommandType.Salvage,
@@ -1291,11 +1410,53 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   of ActionKind.fleetDetailSelectROE:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       model.ui.fleetDetailModal.subModal = FleetSubModal.None
-      model.ui.statusMessage = "ROE set to " & $model.ui.fleetDetailModal.roeValue
+      if model.ui.selectedFleetIds.len > 0:
+        for fleetId in model.ui.selectedFleetIds:
+          let cmd = FleetCommand(
+            fleetId: FleetId(fleetId),
+            commandType: FleetCommandType.Hold,
+            targetSystem: none(SystemId),
+            targetFleet: none(FleetId),
+            roe: some(int32(model.ui.fleetDetailModal.roeValue))
+          )
+          model.ui.stagedFleetCommands.add(cmd)
+        model.ui.statusMessage = "Staged ROE " &
+          $model.ui.fleetDetailModal.roeValue & " for " &
+          $model.ui.selectedFleetIds.len & " fleets"
+        model.ui.mode = ViewMode.Fleets
+        model.resetBreadcrumbs(ViewMode.Fleets)
+      else:
+        # Single-fleet ROE change: stage a Hold command with updated ROE
+        let cmd = FleetCommand(
+          fleetId: FleetId(model.ui.fleetDetailModal.fleetId),
+          commandType: FleetCommandType.Hold,
+          targetSystem: none(SystemId),
+          targetFleet: none(FleetId),
+          roe: some(int32(model.ui.fleetDetailModal.roeValue))
+        )
+        model.ui.stagedFleetCommands.add(cmd)
+        model.ui.statusMessage = "Staged ROE " &
+          $model.ui.fleetDetailModal.roeValue
   of ActionKind.fleetDetailConfirm:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.ConfirmPrompt:
       # User confirmed destructive action, stage the command
       let cmdType = model.ui.fleetDetailModal.pendingCommandType
+      if model.ui.selectedFleetIds.len > 0:
+        for fleetId in model.ui.selectedFleetIds:
+          let cmd = FleetCommand(
+            fleetId: FleetId(fleetId),
+            commandType: cmdType,
+            targetSystem: none(SystemId),
+            targetFleet: none(FleetId),
+            roe: some(int32(model.ui.fleetDetailModal.roeValue))
+          )
+          model.ui.stagedFleetCommands.add(cmd)
+        model.ui.statusMessage = "Staged " & $model.ui.selectedFleetIds.len &
+          " fleet command(s)"
+        resetFleetDetailSubModal(model)
+        model.ui.mode = ViewMode.Fleets
+        model.resetBreadcrumbs(ViewMode.Fleets)
+        return
       let cmd = FleetCommand(
         fleetId: FleetId(model.ui.fleetDetailModal.fleetId),
         commandType: cmdType,
@@ -1364,6 +1525,18 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   else:
     discard
 
+proc fleetListInputAcceptor*(model: var TuiModel, proposal: Proposal) =
+  ## Handle fleet list search input
+  if proposal.kind != ProposalKind.pkGameAction:
+    return
+  case proposal.actionKind
+  of ActionKind.fleetSearchAppend:
+    if model.ui.fleetListState.searchActive and
+        proposal.gameActionData.len > 0:
+      model.ui.fleetListState.searchQuery.add(proposal.gameActionData)
+  else:
+    discard
+
 # ============================================================================
 # Create All Acceptors
 # ============================================================================
@@ -1372,5 +1545,6 @@ proc createAcceptors*(): seq[AcceptorProc[TuiModel]] =
   ## Create the standard set of acceptors for the TUI
   @[
     navigationAcceptor, selectionAcceptor, viewportAcceptor, gameActionAcceptor,
-    orderEntryAcceptor, buildModalAcceptor, fleetDetailModalAcceptor, quitAcceptor, errorAcceptor,
+    orderEntryAcceptor, buildModalAcceptor, fleetDetailModalAcceptor,
+    fleetListInputAcceptor, quitAcceptor, errorAcceptor,
   ]

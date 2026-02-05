@@ -240,6 +240,34 @@ Command and Control for fleets.
     Colonize, Scout, Merge, Split.
   - `ZeroTurn`: Rename, Scrap ships.
 
+==== Fleet List View (ListView)
+
+ListView is a full-width bordered table for empire-wide fleet management.
+SystemView remains the 2-pane location-focused console.
+
+* Toggle views: `L`
+* Sorting: `S` (cycles columns, press twice to reverse direction)
+* Filters: `1-4` (All, Idle, In Transit, Needs Attention)
+* Search: `/` (matches fleet ID or sector coordinates)
+* Batch: `X` to select fleets, `C` for batch command, `R` for batch ROE
+
+Columns (120 cols target):
+* Flt (Fleet ID with prefix glyphs)
+* Location
+* Sect (sector coordinates)
+* Ships
+* AS
+* DS
+* CMD
+* Dest (destination coordinates)
+* ETA
+* ROE
+* Status
+
+Status prefixes:
+* `●` staged command pending
+* `⚠` needs attention (crippled ships, no orders, or unescorted support)
+
 === Fleet Command Console (`F` - Detailed)
 Intent: fast, multi-fleet command and per-ship zero-turn management.
 

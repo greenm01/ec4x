@@ -187,25 +187,81 @@ proc syncGameStateToModel*(
   model.view.fleets = @[]
   for fleet in state.fleetsOwned(viewingHouse):
     let sysOpt = state.system(fleet.location)
-    let locName =
-      if sysOpt.isSome:
-        sysOpt.get().name
-      else:
-        "???"
+    var locName = "???"
+    var sectorLabel = "?"
+    if sysOpt.isSome:
+      let sys = sysOpt.get()
+      locName = sys.name
+      sectorLabel = coordLabel(int(sys.coords.q), int(sys.coords.r))
     let cmdType = int(fleet.command.commandType)
-    model.view.fleets.add(
-      sam_pkg.FleetInfo(
+    var destLabel = "-"
+    var destSystemId = 0
+    var eta = 0
+    if fleet.command.targetSystem.isSome:
+      let targetId = fleet.command.targetSystem.get()
+      destSystemId = int(targetId)
+      let targetOpt = state.system(targetId)
+      if targetOpt.isSome:
+        let target = targetOpt.get()
+        destLabel = coordLabel(int(target.coords.q), int(target.coords.r))
+      else:
+        destLabel = $targetId
+      let path = state.findPath(fleet.location, targetId, fleet)
+      if path.found:
+        eta = int(path.totalCost)
+    var statusLabel = "Active"
+    case fleet.status
+    of FleetStatus.Active:
+      statusLabel = "Active"
+    of FleetStatus.Reserve:
+      statusLabel = "Reserve"
+    of FleetStatus.Mothballed:
+      statusLabel = "Mothballed"
+    var hasCrippled = false
+    var hasCombatShips = false
+    var hasSupportShips = false
+    var attackStr = 0
+    var defenseStr = 0
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isNone:
+        continue
+      let ship = shipOpt.get()
+      if ship.state == CombatState.Crippled:
+        hasCrippled = true
+      if ship.state != CombatState.Destroyed:
+        attackStr += int(ship.stats.attackStrength)
+        defenseStr += int(ship.stats.defenseStrength)
+      case ship.shipClass
+      of ShipClass.ETAC, ShipClass.TroopTransport:
+        hasSupportShips = true
+      else:
+        hasCombatShips = true
+    var info = sam_pkg.FleetInfo(
         id: int(fleet.id),
         location: int(fleet.location),
         locationName: locName,
+        sectorLabel: sectorLabel,
         shipCount: fleet.ships.len,
         owner: int(viewingHouse),
         command: cmdType,
         commandLabel: sam_pkg.commandLabel(cmdType),
         isIdle: fleet.command.commandType == FleetCommandType.Hold,
         roe: int(fleet.roe),
+        attackStrength: attackStr,
+        defenseStrength: defenseStr,
+        statusLabel: statusLabel,
+        destinationLabel: destLabel,
+        destinationSystemId: destSystemId,
+        eta: eta,
+        hasCrippled: hasCrippled,
+        hasCombatShips: hasCombatShips,
+        hasSupportShips: hasSupportShips,
+        needsAttention: false,
       )
-    )
+    info.needsAttention = info.hasCrippled or info.isIdle or
+      (info.hasSupportShips and not info.hasCombatShips)
+    model.view.fleets.add(info)
 
 # =============================================================================
 # Fleet Console Data Sync (SystemView mode)
@@ -531,6 +587,7 @@ proc syncPlayerStateToModel*(
   model.view.fleets = @[]
   for fleet in ps.ownFleets:
     var locName = "System " & $fleet.location.uint32
+    var sectorLabel = "?"
     if ps.visibleSystems.hasKey(fleet.location):
       let visSys = ps.visibleSystems[fleet.location]
       if visSys.coordinates.isSome:
@@ -539,20 +596,73 @@ proc syncPlayerStateToModel*(
           locName = visSys.name
         else:
           locName = "(" & $coords.q & "," & $coords.r & ")"
+        sectorLabel = coordLabel(coords.q.int, coords.r.int)
     let cmdType = int(fleet.command.commandType)
-    model.view.fleets.add(
-      sam_pkg.FleetInfo(
+    var destLabel = "-"
+    var destSystemId = 0
+    var eta = 0
+    if fleet.command.targetSystem.isSome:
+      let targetId = fleet.command.targetSystem.get()
+      destSystemId = int(targetId)
+      if ps.visibleSystems.hasKey(targetId):
+        let target = ps.visibleSystems[targetId]
+        if target.coordinates.isSome:
+          destLabel = coordLabel(int(target.coordinates.get().q),
+            int(target.coordinates.get().r))
+      else:
+        destLabel = $targetId
+    var statusLabel = "Active"
+    case fleet.status
+    of FleetStatus.Active:
+      statusLabel = "Active"
+    of FleetStatus.Reserve:
+      statusLabel = "Reserve"
+    of FleetStatus.Mothballed:
+      statusLabel = "Mothballed"
+    var hasCrippled = false
+    var hasCombatShips = false
+    var hasSupportShips = false
+    var attackStr = 0
+    var defenseStr = 0
+    for shipId in fleet.ships:
+      for ship in ps.ownShips:
+        if ship.id == shipId:
+          if ship.state == CombatState.Crippled:
+            hasCrippled = true
+          if ship.state != CombatState.Destroyed:
+            attackStr += int(ship.stats.attackStrength)
+            defenseStr += int(ship.stats.defenseStrength)
+          case ship.shipClass
+          of ShipClass.ETAC, ShipClass.TroopTransport:
+            hasSupportShips = true
+          else:
+            hasCombatShips = true
+          break
+    var info = sam_pkg.FleetInfo(
         id: int(fleet.id),
         location: int(fleet.location),
         locationName: locName,
+        sectorLabel: sectorLabel,
         shipCount: fleet.ships.len,
         owner: int(ps.viewingHouse),
         command: cmdType,
         commandLabel: sam_pkg.commandLabel(cmdType),
         isIdle: fleet.command.commandType == FleetCommandType.Hold,
         roe: int(fleet.roe),
+        attackStrength: attackStr,
+        defenseStrength: defenseStr,
+        statusLabel: statusLabel,
+        destinationLabel: destLabel,
+        destinationSystemId: destSystemId,
+        eta: eta,
+        hasCrippled: hasCrippled,
+        hasCombatShips: hasCombatShips,
+        hasSupportShips: hasSupportShips,
+        needsAttention: false,
       )
-    )
+    info.needsAttention = info.hasCrippled or info.isIdle or
+      (info.hasSupportShips and not info.hasCombatShips)
+    model.view.fleets.add(info)
   
   # Prestige rank
   var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]

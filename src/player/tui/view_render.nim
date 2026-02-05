@@ -482,34 +482,86 @@ proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
 
   intelTable.render(area, buf)
 
+proc buildFleetListTable*(model: TuiModel,
+                          scroll: ScrollState): table.Table =
+  ## Build fleet list table (ListView)
+  let columns = fleetListColumns()
+  let fleets = model.filteredFleets()
+  let startIdx = scroll.verticalOffset
+  let endIdx = min(fleets.len, startIdx + scroll.viewportLength)
+  let selectedIdx =
+    if model.ui.selectedIdx >= startIdx and
+        model.ui.selectedIdx < endIdx:
+      model.ui.selectedIdx - startIdx
+    else:
+      -1
+
+  result = table(columns)
+    .selectedIdx(selectedIdx)
+    .zebraStripe(true)
+    .showBorders(true)
+
+  if startIdx >= endIdx:
+    return
+
+  for i in startIdx ..< endIdx:
+    let fleet = fleets[i]
+    var prefix = " " & $fleet.id
+    if fleet.needsAttention:
+      prefix = GlyphWarning & $fleet.id
+    else:
+      for cmd in model.ui.stagedFleetCommands:
+        if int(cmd.fleetId) == fleet.id:
+          prefix = GlyphOk & $fleet.id
+          break
+    let etaLabel = if fleet.destinationSystemId != 0 and fleet.eta > 0:
+      $fleet.eta
+    else:
+      "-"
+    let dataRow = @[
+      prefix,
+      fleet.locationName,
+      fleet.sectorLabel,
+      $fleet.shipCount,
+      $fleet.attackStrength,
+      $fleet.defenseStrength,
+      fleet.commandLabel,
+      fleet.destinationLabel,
+      etaLabel,
+      $fleet.roe,
+      fleet.statusLabel
+    ]
+    result.addRow(dataRow)
+
 proc renderFleetList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
-  ## Render list of player's fleets from SAM model
-  var y = area.y
-  var idx = 0
+  ## Render fleet list table (ListView)
+  if area.isEmpty:
+    return
 
-  for fleet in model.view.fleets:
-    if y >= area.bottom:
-      break
+  let fleets = model.filteredFleets()
+  let columns = fleetListColumns()
+  let maxTableWidth = area.width
+  let tableWidth = tableWidthFromColumns(columns, maxTableWidth,
+    showBorders = true)
 
-    let isSelected = idx == model.ui.selectedIdx
-    let style =
-      if isSelected:
-        selectedStyle()
-      else:
-        normalStyle()
+  var baseTable = buildFleetListTable(model, ScrollState())
+  let baseHeight = baseTable.renderHeight(0)
+  let maxVisibleRows = max(1, area.height - baseHeight)
+  let visibleRows = min(fleets.len, maxVisibleRows)
 
-    let prefix = if isSelected: "> " else: "  "
-    let fleetName = "Fleet #" & $fleet.id
-    let line =
-      prefix & fleetName.alignLeft(12) & " @ " &
-      fleet.locationName.alignLeft(10) & " Ships:" & $fleet.shipCount
-    let clipped = line[0 ..< min(line.len, area.width)]
-    discard buf.setString(area.x, y, clipped, style)
-    y += 1
-    idx += 1
+  var localScroll = model.ui.fleetsScroll
+  localScroll.contentLength = fleets.len
+  localScroll.viewportLength = visibleRows
+  localScroll.clampOffsets()
 
-  if idx == 0:
-    discard buf.setString(area.x, y, "No fleets", dimStyle())
+  let table = buildFleetListTable(model, localScroll)
+  let tableHeight = table.renderHeight(visibleRows)
+  let tableArea = rect(area.x, area.y, tableWidth,
+    min(tableHeight, area.height))
+  table.render(tableArea, buf)
+  if model.ui.fleetListState.searchActive and tableArea.bottom < area.bottom:
+    let hint = "/" & model.ui.fleetListState.searchQuery
+    discard buf.setString(area.x, tableArea.bottom, hint, dimStyle())
 
 # ============================================================================
 # Deprecated: Old fleet detail render functions (replaced by modal)
@@ -1421,19 +1473,50 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
   
   case model.ui.fleetViewMode
   of FleetViewMode.ListView:
-    # Original list view (modal with flat list)
+    # List view (modal with full table)
+    let columns = fleetListColumns()
+    let maxTableWidth = canvas.width - 4
+    let tableWidth = tableWidthFromColumns(columns, maxTableWidth,
+      showBorders = true)
+    let fleets = model.filteredFleets()
+    var baseTable = buildFleetListTable(model, ScrollState())
+    let baseHeight = baseTable.renderHeight(0)
+    let maxVisibleRows = max(1, canvas.height - baseHeight - 6)
+    let visibleRows = min(fleets.len, maxVisibleRows)
+    var localScroll = model.ui.fleetsScroll
+    localScroll.contentLength = fleets.len
+    localScroll.viewportLength = visibleRows
+    localScroll.clampOffsets()
+    let table = buildFleetListTable(model, localScroll)
+    let tableHeight = table.renderHeight(visibleRows)
     let modal = newModal()
       .title("YOUR FLEETS")
-      .maxWidth(120)
-      .minWidth(80)
+      .maxWidth(tableWidth + 2)
+      .minWidth(min(90, tableWidth + 2))
+      .minHeight(1)
       .borderStyle(primaryBorderStyle())
       .bgStyle(modalBgStyle())
-    # +2 for footer (1 separator + 1 text line)
-    let contentHeight = max(10, model.view.fleets.len + 4) + 2
-    let modalArea = modal.calculateArea(canvas, contentHeight)
-    modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [x] Select")
+    var footerText = "[↑↓] Navigate  [Enter] Details  [X] Select" &
+      "  [S] Sort  [1-4] Filter  [/] Search"
+    let sortLabel = fleetSortLabel(model.ui.fleetListState.sort)
+    let sortDir = if model.ui.fleetListState.sortAscending: "▲" else: "▼"
+    let filterLabel = fleetFilterLabel(model.ui.fleetListState.filter)
+    let meta = "  Sort: " & sortLabel & " " & sortDir &
+      "  Filter: " & filterLabel & " (" & $fleets.len & ")"
+    let searchSuffix = if model.ui.fleetListState.searchQuery.len > 0:
+      "  Search: " & model.ui.fleetListState.searchQuery
+    else:
+      ""
+    let fullMeta = meta & searchSuffix
+    if footerText.len + fullMeta.len <= tableWidth:
+      footerText.add(fullMeta)
+    elif footerText.len + meta.len <= tableWidth:
+      footerText.add(meta)
+    let modalArea = modal.calculateArea(canvas, tableWidth,
+      tableHeight + 2)
+    modal.renderWithFooter(modalArea, buf, footerText)
     let contentArea = modal.contentArea(modalArea, hasFooter = true)
-    renderFleetList(contentArea, buf, model)
+    table.render(contentArea, buf)
   
   of FleetViewMode.SystemView:
     # 2-pane fleet console with content-aware sizing
