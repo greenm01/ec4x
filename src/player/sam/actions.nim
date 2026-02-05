@@ -1049,8 +1049,8 @@ type
       Key0, Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9
       # Letter keys
       KeyQ, KeyC, KeyF, KeyO, KeyM, KeyE, KeyH, KeyX, KeyS, KeyL
-      KeyB, KeyG, KeyR, KeyJ, KeyD, KeyP, KeyV, KeyN, KeyW, KeyI, KeyT, KeyA
-      KeyY, KeyU
+      KeyB, KeyG, KeyR, KeyJ, KeyK, KeyD, KeyP, KeyV, KeyN, KeyW, KeyI, KeyT
+      KeyA, KeyY, KeyU
       # Navigation
       KeyUp, KeyDown, KeyLeft, KeyRight
       KeyEnter, KeyEscape, KeyTab, KeyShiftTab
@@ -1060,7 +1060,4 @@ type
       KeyF7, KeyF8, KeyF9, KeyF10, KeyF11, KeyF12
       # Special
       KeyColon  # Expert mode trigger
-      KeyCtrlC
-      KeyCtrlE  # Turn submission
       KeyCtrlL
-      KeyCtrlQ  # Emergency quit

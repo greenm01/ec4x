@@ -1160,7 +1160,7 @@ proc runTui*(gameId: string = "") =
       sam.model.clearPendingOrder()
       needsRender = true
 
-    # Handle turn submission (Ctrl+E pressed)
+    # Handle turn submission (expert :submit)
     if sam.model.ui.turnSubmissionPending:
       # Build command packet from staged commands
       let packet = sam.model.buildCommandPacket(

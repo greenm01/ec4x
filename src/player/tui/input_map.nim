@@ -14,15 +14,13 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
   var keyCode = KeyCode.KeyNone
   var modifier = KeyModifier.None
   
-  # Detect modifiers using bitmask (supports combos like Ctrl+Shift)
+  # Detect modifiers using bitmask
   let hasCtrl = (event.modifiers and ModCtrl) != ModNone
   let hasShift = (event.modifiers and ModShift) != ModNone
   let hasAlt = (event.modifiers and ModAlt) != ModNone
   
   # Check for combinations first, then single modifiers
-  if hasCtrl and hasShift:
-    modifier = KeyModifier.CtrlShift
-  elif hasAlt:
+  if hasAlt:
     modifier = KeyModifier.Alt
   elif hasCtrl:
     modifier = KeyModifier.Ctrl
@@ -130,6 +128,8 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
         keyCode = KeyCode.KeyW
       of "i", "I":
         keyCode = KeyCode.KeyI
+      of "k", "K":
+        keyCode = KeyCode.KeyK
       of "t", "T":
         keyCode = KeyCode.KeyT
       of "a", "A":
@@ -162,14 +162,38 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
       keyCode = KeyCode.KeyShiftTab
     else:
       keyCode = KeyCode.KeyTab
+  of Key.CtrlO:
+    keyCode = KeyCode.KeyO
+    modifier = KeyModifier.Ctrl
+  of Key.CtrlP:
+    keyCode = KeyCode.KeyP
+    modifier = KeyModifier.Ctrl
+  of Key.CtrlG:
+    keyCode = KeyCode.KeyG
+    modifier = KeyModifier.Ctrl
+  of Key.CtrlY:
+    keyCode = KeyCode.KeyY
+    modifier = KeyModifier.Ctrl
+  of Key.CtrlF:
+    keyCode = KeyCode.KeyF
+    modifier = KeyModifier.Ctrl
+  of Key.CtrlT:
+    keyCode = KeyCode.KeyT
+    modifier = KeyModifier.Ctrl
+  of Key.CtrlE:
+    keyCode = KeyCode.KeyE
+    modifier = KeyModifier.Ctrl
+  of Key.CtrlI:
+    keyCode = KeyCode.KeyI
+    modifier = KeyModifier.Ctrl
+  of Key.CtrlK:
+    keyCode = KeyCode.KeyK
+    modifier = KeyModifier.Ctrl
+  of Key.CtrlX:
+    keyCode = KeyCode.KeyX
+    modifier = KeyModifier.Ctrl
   of Key.CtrlL:
     keyCode = KeyCode.KeyCtrlL
-  of Key.CtrlE:
-    keyCode = KeyCode.KeyCtrlE
-  of Key.CtrlQ:
-    keyCode = KeyCode.KeyCtrlQ
-  of Key.CtrlC:
-    keyCode = KeyCode.KeyCtrlC
   of Key.F1:
     keyCode = KeyCode.KeyF1
   of Key.F2:

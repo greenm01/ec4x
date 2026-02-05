@@ -54,7 +54,7 @@ Example (narrow terminal):
 |                                                                              |
 +------------------------------------------------------------------------------+
 | STATUS BAR (1 line)                                                          |
-|   <O> OVR  <C> CLN  <F> FLT ... <:> EXPERT    or    :command input_          |
+|   Ctrl+ [O] OVR  [Y] CLN  [F] FLT ... [:] EXPERT  :command input_             |
 +------------------------------------------------------------------------------+
 ----
 
@@ -76,17 +76,17 @@ LTU rules:
 * Colonized systems: use ltuColonies[colonyId] if present, else fall back to
   ltuSystems[systemId].
 
-== Primary Views (Global Alt+Key)
-* `Alt+O` Overview     (Info Dashboard)
-* `Alt+R` Reports      (Turn Reports / Event Inbox)
-* `Alt+G` General      (Diplomacy & Empire Policy)
-* `Alt+C` Colony       (Colony Management)
-* `Alt+F` Fleet        (Fleet Operations)
-* `Alt+T` Tech         (Research & Development)
-* `Alt+E` Espionage    (Intel Operations & Budget)
-* `Alt+I` Intel db     (Starmap Database)
-* `Alt+S` Settings     (Client Configuration)
-* `Alt+Q` Quit
+== Primary Views (Global Ctrl+Key)
+* `Ctrl+O` Overview     (Info Dashboard)
+* `Ctrl+P` Reports      (Turn Reports / Event Inbox)
+* `Ctrl+G` General      (Diplomacy & Empire Policy)
+* `Ctrl+Y` Colony       (Colony Management)
+* `Ctrl+F` Fleet        (Fleet Operations)
+* `Ctrl+T` Tech         (Research & Development)
+* `Ctrl+E` Espionage    (Intel Operations & Budget)
+* `Ctrl+I` Intel db     (Starmap Database)
+* `Ctrl+K` Settings     (Client Configuration)
+* `Ctrl+X` Quit
 
 === Overview (`O`)
 Dashboard summary of the current turn state.
@@ -377,7 +377,7 @@ Target Aesthetic: **Tokyo Night** (Deep charcoal backgrounds, slate borders, hig
 
 === Navigation
 ----
-[Alt + Key]       Switch primary views (e.g., Alt+F for Fleets)
+[Ctrl + Key]      Switch primary views (e.g., Ctrl+F for Fleets)
 [Tab/S-Tab]       Cycle focusable widgets within view
 [Enter]           Drill into selected item / confirm action
 [Esc]             Step up breadcrumb / Cancel overlay / Exit mode
@@ -546,7 +546,7 @@ The sleep uses `readByteTimeout(sleepTime)` which:
 
 === Normal Mode
 ----
-<Alt+O> OVR  <Alt+C> CLN  <Alt+F> FLT  <Alt+T> TECH  ... <:> EXPERT
+Ctrl+ [O] OVR  [Y] CLN  [F] FLT  [T] TECH  ... [:] EXPERT
 ----
 
 === Expert Mode

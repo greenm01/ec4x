@@ -27,14 +27,9 @@ type
     Ctrl
     Alt
     Shift
-    CtrlShift  ## For macOS (Ctrl+Shift+Letter)
-
-# Platform detection for view switching hotkeys
-const IsMacOS* = defined(macosx)
-when IsMacOS:
-  const ViewModifier* = KeyModifier.CtrlShift
-else:
-  const ViewModifier* = KeyModifier.Alt
+ 
+# View switching hotkeys use Ctrl across platforms
+const ViewModifier* = KeyModifier.Ctrl
 
 type
   BindingContext* {.pure.} = enum
@@ -162,6 +157,7 @@ proc formatKeyCode*(key: actions.KeyCode): string =
   of actions.KeyCode.KeyG: "g"
   of actions.KeyCode.KeyR: "r"
   of actions.KeyCode.KeyJ: "j"
+  of actions.KeyCode.KeyK: "k"
   of actions.KeyCode.KeyD: "d"
   of actions.KeyCode.KeyP: "p"
   of actions.KeyCode.KeyV: "v"
@@ -197,10 +193,7 @@ proc formatKeyCode*(key: actions.KeyCode): string =
   of actions.KeyCode.KeyF11: "F11"
   of actions.KeyCode.KeyF12: "F12"
   of actions.KeyCode.KeyColon: ":"
-  of actions.KeyCode.KeyCtrlC: "c"
-  of actions.KeyCode.KeyCtrlE: "e"
-  of actions.KeyCode.KeyCtrlL: "l"
-  of actions.KeyCode.KeyCtrlQ: "q"
+  of actions.KeyCode.KeyCtrlL: "Ctrl-L"
   of actions.KeyCode.KeyNone: ""
 
 proc formatModifier*(m: KeyModifier): string =
@@ -210,7 +203,6 @@ proc formatModifier*(m: KeyModifier): string =
   of KeyModifier.Ctrl: "Ctrl"
   of KeyModifier.Alt: "Alt"
   of KeyModifier.Shift: "Shift"
-  of KeyModifier.CtrlShift: "Ctrl+Shift"
 
 proc formatKey*(key: actions.KeyCode, modifier: KeyModifier): string =
   ## Format a key with modifier for display
@@ -227,11 +219,7 @@ proc formatKeyAngle*(key: actions.KeyCode, modifier: KeyModifier): string =
 
 proc getViewModifierPrefix*(): string =
   ## Get the modifier prefix for status bar display
-  ## Returns "Alt+" on Linux/Windows, "Ctrl+Shift+" on macOS
-  when IsMacOS:
-    "Ctrl+Shift+"
-  else:
-    "Alt+"
+  "Ctrl+"
 
 # =============================================================================
 # Context Mapping
@@ -348,7 +336,7 @@ proc initBindings*() =
 
   # =========================================================================
   # Global Bindings (View Tabs) - Always visible in game
-  # Alt+Letter (Linux/Windows) or Ctrl+Shift+Letter (macOS)
+  # Ctrl+Letter across all platforms
   # =========================================================================
 
   registerBinding(Binding(
@@ -358,7 +346,7 @@ proc initBindings*() =
     longLabel: "OVERVIEW", shortLabel: "OVR", priority: 1))
 
   registerBinding(Binding(
-    key: KeyCode.KeyR, modifier: ViewModifier,
+    key: KeyCode.KeyP, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
     longLabel: "REPORTS", shortLabel: "RPT", priority: 2))
@@ -370,7 +358,7 @@ proc initBindings*() =
     longLabel: "GENERAL", shortLabel: "GEN", priority: 3))
 
   registerBinding(Binding(
-    key: KeyCode.KeyC, modifier: ViewModifier,
+    key: KeyCode.KeyY, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
     longLabel: "COLONY", shortLabel: "CLN", priority: 4))
@@ -400,13 +388,13 @@ proc initBindings*() =
     longLabel: "INTEL", shortLabel: "INT", priority: 8))
 
   registerBinding(Binding(
-    key: KeyCode.KeyS, modifier: ViewModifier,
+    key: KeyCode.KeyK, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
     longLabel: "SETTINGS", shortLabel: "SET", priority: 9))
 
   registerBinding(Binding(
-    key: KeyCode.KeyQ, modifier: ViewModifier,
+    key: KeyCode.KeyX, modifier: ViewModifier,
     actionKind: ActionKind.quit,
     context: BindingContext.Global,
     longLabel: "QUIT", shortLabel: "QUIT", priority: 10))
@@ -1069,14 +1057,14 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.switchView:
     let viewNum = case key
       of KeyCode.KeyO: 1   # Overview
-      of KeyCode.KeyC: 2   # Colony (Planets)
+      of KeyCode.KeyY: 2   # Colony (Planets)
       of KeyCode.KeyF: 3   # Fleet
       of KeyCode.KeyT: 4   # Tech (Research)
       of KeyCode.KeyE: 5   # Espionage
       of KeyCode.KeyG: 6   # General (Economy)
-      of KeyCode.KeyR: 7   # Reports
+      of KeyCode.KeyP: 7   # Reports
       of KeyCode.KeyI: 8   # Intel db
-      of KeyCode.KeyS: 9   # Settings
+      of KeyCode.KeyK: 9   # Settings
       else: 0
     if viewNum > 0:
       return some(actionSwitchView(viewNum))
@@ -1328,11 +1316,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
     if backAction.isSome:
       return backAction
 
-  # Ctrl+C / Ctrl+Q / F12 always quit (global)
-  if key == KeyCode.KeyCtrlC:
-    return some(actionQuit())
-  if key == KeyCode.KeyCtrlQ:
-    return some(actionQuit())
+  # F12 always quits (global)
   if key == KeyCode.KeyF12:
     return some(actionQuit())
 
@@ -1389,7 +1373,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       if fleetDetailResult.isSome:
         return fleetDetailResult
       # Allow global bindings to pass through, block other keys
-      if modifier != KeyModifier.Alt:
+      if modifier != ViewModifier:
         return none(Proposal)
 
   # Order entry mode: use registry
@@ -1425,7 +1409,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyBackspace:
         return some(actionEntryImportBackspace())
       else:
-        if modifier != KeyModifier.Alt:
+        if modifier != ViewModifier:
           return none(Proposal)
 
     elif model.ui.entryModal.editingRelay:
@@ -1435,7 +1419,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyBackspace:
         return some(actionEntryRelayBackspace())
       else:
-        if modifier != KeyModifier.Alt:
+        if modifier != ViewModifier:
           return none(Proposal)
 
     elif model.ui.entryModal.mode == EntryModalMode.CreateGame:
@@ -1455,7 +1439,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyBackspace:
         return some(actionCreateGameBackspace())
       else:
-        if modifier != KeyModifier.Alt:
+        if modifier != ViewModifier:
           return none(Proposal)
 
     elif model.ui.entryModal.mode == EntryModalMode.ManageGames:
@@ -1463,7 +1447,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyEscape:
         return some(actionManageGamesCancel())
       else:
-        if modifier != KeyModifier.Alt:
+        if modifier != ViewModifier:
           return none(Proposal)
 
     else:
@@ -1492,10 +1476,10 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
           return none(Proposal)
       of KeyCode.KeyI:
         return some(actionEntryImport())
-      of KeyCode.KeyCtrlC, KeyCode.KeyCtrlQ, KeyCode.KeyF12:
+      of KeyCode.KeyF12:
         return some(actionQuit())
       else:
-        if modifier != KeyModifier.Alt:
+        if modifier != ViewModifier:
           return none(Proposal)
 
   # In-game Ctrl+L returns to lobby
@@ -1534,21 +1518,21 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
       not model.ui.orderEntryActive
 
   if showGlobalTabs:
-    # Show view tabs (Alt+Letter or Ctrl+Shift+Letter) + quit + expert mode hint
+  # Show view tabs (Ctrl+Letter) + quit + expert mode hint
     let globalBindings = getGlobalBindings()
     var idx = 0
     for b in globalBindings:
       let label = if useShortLabels: b.shortLabel else: b.longLabel
       let isSelected = case b.key
         of KeyCode.KeyO: model.ui.mode == ViewMode.Overview
-        of KeyCode.KeyC: model.ui.mode == ViewMode.Planets
+        of KeyCode.KeyY: model.ui.mode == ViewMode.Planets
         of KeyCode.KeyF: model.ui.mode == ViewMode.Fleets
         of KeyCode.KeyT: model.ui.mode == ViewMode.Research
         of KeyCode.KeyE: model.ui.mode == ViewMode.Espionage
         of KeyCode.KeyG: model.ui.mode == ViewMode.Economy
-        of KeyCode.KeyR: model.ui.mode == ViewMode.Reports
+        of KeyCode.KeyP: model.ui.mode == ViewMode.Reports
         of KeyCode.KeyI: model.ui.mode == ViewMode.IntelDb
-        of KeyCode.KeyS: model.ui.mode == ViewMode.Settings
+        of KeyCode.KeyK: model.ui.mode == ViewMode.Settings
         else: false
 
       let mode = if isSelected: BarItemMode.Selected

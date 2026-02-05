@@ -29,7 +29,7 @@ type
     None
     Clear          ## Clear all staged commands
     List           ## List all staged commands
-    Submit         ## Submit turn (same as Ctrl+E)
+    Submit         ## Submit turn
     Help           ## Show available commands
     Drop           ## Drop staged command by index
 

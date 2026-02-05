@@ -85,7 +85,7 @@ proc statusMessageReactor*(model: var TuiModel) =
   let stagedCount = model.stagedCommandCount()
   if stagedCount > 0 and model.ui.statusMessage.len == 0:
     model.ui.statusMessage =
-      &"{stagedCount} command(s) staged | Ctrl+E to submit turn"
+      &"{stagedCount} command(s) staged | :submit to submit turn"
     return
   
   if model.ui.statusMessage.len == 0:
@@ -165,7 +165,7 @@ proc turnSubmissionReactor*(model: var TuiModel) =
   ## Handle turn submission flag set by acceptor
   ## Requires confirmation before setting turnSubmissionPending
   if model.ui.turnSubmissionRequested:
-    # Check if already confirmed (via :submit command or second Ctrl+E)
+    # Check if already confirmed (via :submit command or second submit)
     if model.ui.turnSubmissionConfirmed:
       model.ui.turnSubmissionPending = true
       model.ui.turnSubmissionRequested = false
@@ -173,7 +173,7 @@ proc turnSubmissionReactor*(model: var TuiModel) =
     else:
       # First press - ask for confirmation
       let count = model.stagedCommandCount()
-      model.ui.statusMessage = "Press Ctrl+E again to confirm submitting " &
+      model.ui.statusMessage = "Type :submit again to confirm submitting " &
         $count & " commands, or :clear to cancel"
       model.ui.turnSubmissionConfirmed = true
       model.ui.turnSubmissionRequested = false

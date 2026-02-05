@@ -245,10 +245,10 @@ proc renderStatusBar*(area: Rect, buf: var CellBuffer,
       discard buf.put(x, y, " ", barBgStyle())
       x += 1
 
-    # Draw " <"
+    # Draw " ["
     discard buf.put(x, y, " ", textStyle)
     x += 1
-    discard buf.put(x, y, "<", textStyle)
+    discard buf.put(x, y, "[", textStyle)
     x += 1
 
     # Draw key
@@ -258,8 +258,8 @@ proc renderStatusBar*(area: Rect, buf: var CellBuffer,
       discard buf.put(x, y, $ch, keyStyle)
       x += 1
 
-    # Draw "> "
-    discard buf.put(x, y, ">", textStyle)
+    # Draw "] "
+    discard buf.put(x, y, "]", textStyle)
     x += 1
     discard buf.put(x, y, " ", textStyle)
     x += 1

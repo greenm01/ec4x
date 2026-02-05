@@ -120,7 +120,7 @@ truncate long fields with ellipsis. Status bar uses shortened labels (OVR, PLN, 
 ### Navigation Hierarchy
 
 ```
-[Alt+Key]       Switch primary views
+[Ctrl+Key]      Switch primary views
 [Tab/S-Tab]     Cycle focusable widgets within view
 [Enter]         Drill into selected item / confirm action
 [Esc]           Step up breadcrumb history / cancel overlay
@@ -1412,7 +1412,7 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
 │ [L] Diplomatic matrix    │ ✉ 1 Unread report             [R]                 │
 └──────────────────────────────────────────────────────────────────────────────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Alt+Key Views  [Alt+Q]Quit  [L]Diplo Matrix                  [:] Expert Mode
+ Ctrl+Key Views  [Ctrl+X]Quit  [L]Diplo Matrix                [:] Expert Mode
 ```
 
 ### Fleet List (80 columns)
