@@ -168,6 +168,7 @@ proc formatKeyCode*(key: actions.KeyCode): string =
   of actions.KeyCode.KeyA: "a"
   of actions.KeyCode.KeyY: "y"
   of actions.KeyCode.KeyU: "u"
+  of actions.KeyCode.KeyZ: "z"
   of actions.KeyCode.KeyUp: "↑"
   of actions.KeyCode.KeyDown: "↓"
   of actions.KeyCode.KeyLeft: "←"
@@ -614,15 +615,19 @@ proc initBindings*() =
     key: KeyCode.KeyC, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetBatchCommand,
     context: BindingContext.Fleets,
-    longLabel: "BATCH CMD", shortLabel: "Cmd", priority: 30,
-    enabledCheck: "hasFleetSelection"))
+    longLabel: "CMD", shortLabel: "Cmd", priority: 30))
 
   registerBinding(Binding(
     key: KeyCode.KeyR, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetBatchROE,
     context: BindingContext.Fleets,
-    longLabel: "BATCH ROE", shortLabel: "ROE", priority: 31,
-    enabledCheck: "hasFleetSelection"))
+    longLabel: "ROE", shortLabel: "ROE", priority: 31))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyZ, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetBatchZeroTurn,
+    context: BindingContext.Fleets,
+    longLabel: "ZTC", shortLabel: "ZTC", priority: 32))
 
   
   # Fleet Console pane navigation (SystemView mode only)
@@ -660,6 +665,12 @@ proc initBindings*() =
     actionKind: ActionKind.fleetDetailOpenROE,
     context: BindingContext.FleetDetail,
     longLabel: "ROE", shortLabel: "ROE", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyZ, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailOpenZTC,
+    context: BindingContext.FleetDetail,
+    longLabel: "ZTC", shortLabel: "ZTC", priority: 25))
 
   registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
@@ -1130,6 +1141,8 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionFleetBatchCommand())
   of ActionKind.fleetBatchROE:
     return some(actionFleetBatchROE())
+  of ActionKind.fleetBatchZeroTurn:
+    return some(actionFleetBatchZeroTurn())
 
   # Expert mode
   of ActionKind.enterExpertMode:
@@ -1279,6 +1292,10 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.fleetDetailDigitInput:
     # This is handled specially - digit passed via gameActionData
     return none(Proposal)
+  of ActionKind.fleetDetailOpenZTC:
+    return some(actionFleetDetailOpenZTC())
+  of ActionKind.fleetDetailSelectZTC:
+    return some(actionFleetDetailSelectZTC())
 
   else:
     discard
@@ -1379,8 +1396,9 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
   # Fleet detail view mode: use registry
   if model.ui.mode == ViewMode.FleetDetail:
-    # Handle digit keys for quick command entry in CommandPicker sub-modal
-    if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
+    # Handle digit keys for quick entry in CommandPicker, ROEPicker, or ZTCPicker sub-modals
+    if model.ui.fleetDetailModal.subModal in {FleetSubModal.CommandPicker,
+        FleetSubModal.ROEPicker, FleetSubModal.ZTCPicker}:
       if modifier == KeyModifier.None:
         let digitChar = case key
           of KeyCode.Key0: '0'
@@ -1412,7 +1430,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       modifier == KeyModifier.None:
     # Fleet label jump: type 2-char label (e.g. A1, B3) to jump to fleet
     # Excludes letters bound in Fleets context: S(sort), L(list), X(select),
-    # C(batch cmd), R(batch ROE)
+    # C(batch cmd), R(batch ROE), Z(batch ZTC)
     let jumpChar = case key
       of KeyCode.Key0: '0'
       of KeyCode.Key1: '1'

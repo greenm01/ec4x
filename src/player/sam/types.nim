@@ -58,6 +58,7 @@ type
     fleetDigitJump
     fleetBatchCommand
     fleetBatchROE
+    fleetBatchZeroTurn
     cycleReportFilter
     reportFocusNext
     reportFocusPrev
@@ -145,6 +146,8 @@ type
     fleetDetailPageUp
     fleetDetailPageDown
     fleetDetailDigitInput
+    fleetDetailOpenZTC
+    fleetDetailSelectZTC
 
   # ============================================================================
   # Core SAM Types

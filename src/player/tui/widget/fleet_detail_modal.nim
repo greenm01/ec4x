@@ -233,6 +233,64 @@ proc renderConfirmDialog(state: FleetDetailModalState, area: Rect,
         discard buf.put(lineX + i, y, $ch, canvasStyle())
     y += 1
 
+proc renderZTCPicker(state: FleetDetailModalState, area: Rect,
+                    buf: var CellBuffer) =
+  ## Render Zero-Turn Command picker sub-modal
+  if area.isEmpty:
+    return
+
+  # Header
+  var y = area.y
+  let header = "Zero-Turn Commands"
+  for i, ch in header:
+    if area.x + i < area.right:
+      discard buf.put(area.x + i, y, $ch, canvasHeaderStyle())
+  y += 2
+
+  # ZTC list (1-9)
+  let ztcCommands = allZeroTurnCommands()
+  for idx, ztcType in ztcCommands:
+    if y >= area.bottom - 2:
+      break
+
+    let isSelected = idx == state.ztcIdx
+    let prefix = if isSelected: "► " else: "  "
+    let num = $(idx + 1)  # Display as 1-9
+    let label = ztcLabel(ztcType)
+    let desc = ztcDescription(ztcType)
+    let text = prefix & num & "  " & label & " - " & desc
+
+    let style = if isSelected:
+      selectedStyle()
+    else:
+      canvasStyle()
+
+    for i, ch in text:
+      if area.x + i < area.right:
+        discard buf.put(area.x + i, y, $ch, style)
+
+    y += 1
+
+  # Footer hint
+  let footerY = area.bottom - 1
+  if footerY >= area.y:
+    let hint = "[↑↓]Select [1-9]Quick [Enter]Confirm [Esc]Cancel"
+    discard buf.setString(area.x, footerY, hint, canvasDimStyle())
+
+proc renderPlaceholderSubModal(label: string, area: Rect,
+                              buf: var CellBuffer) =
+  ## Render placeholder for not-yet-implemented sub-modals
+  if area.isEmpty:
+    return
+  let centerY = area.y + area.height div 2
+  let msg = label & " - Not Yet Implemented"
+  let msgX = area.x + max(0, (area.width - msg.len) div 2)
+  discard buf.setString(msgX, centerY, msg, canvasStyle())
+  let hint = "Press [Esc] to go back"
+  let hintX = area.x + max(0, (area.width - hint.len) div 2)
+  if centerY + 2 < area.bottom:
+    discard buf.setString(hintX, centerY + 2, hint, canvasDimStyle())
+
 proc renderFleetInfo(fleetData: FleetDetailData, area: Rect,
                     buf: var CellBuffer) =
   ## Render basic fleet info (top section)
@@ -331,6 +389,33 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     of FleetSubModal.ConfirmPrompt:
       # Confirmation dialog: compact centered message
       10
+    of FleetSubModal.OrderEntry:
+      # OrderEntry: not rendered in modal (uses hex map), treat as None
+      let shipsContentHeight = FleetDetailShipsHeaderHeight +
+        shipTable.renderHeight(visibleRows)
+      FleetDetailInfoHeight + FleetDetailSeparatorHeight +
+        shipsContentHeight + FleetDetailFooterHeight
+    of FleetSubModal.FleetPicker:
+      # FleetPicker: TODO Phase 3 - for now use compact height
+      15
+    of FleetSubModal.Staged:
+      # Staged: success message, compact
+      8
+    of FleetSubModal.ZTCPicker:
+      # ZTC picker: 9 commands + header + spacer + footer
+      let ztcCount = 9
+      let headerHeight = 2  # "Zero-Turn Commands" + blank line
+      let footerHeight = 2
+      ztcCount + headerHeight + footerHeight
+    of FleetSubModal.ShipSelector:
+      # Placeholder for ship selection sub-modal
+      10
+    of FleetSubModal.CargoParams:
+      # Placeholder for cargo parameter sub-modal
+      10
+    of FleetSubModal.FighterParams:
+      # Placeholder for fighter parameter sub-modal
+      10
     of FleetSubModal.None:
       # Normal fleet detail view with ship list
       let shipsContentHeight = FleetDetailShipsHeaderHeight +
@@ -346,7 +431,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   let hasMainFooter = state.subModal == FleetSubModal.None
   
   if hasMainFooter:
-    let footerText = "[C]Command [R]ROE [PgUp/PgDn]Scroll [Esc]Close"
+    let footerText = "[C]md [R]OE [Z]TC [PgUp/PgDn]Scroll [Esc]Close"
     modal.title(title).renderWithFooter(modalArea, buf, footerText)
   else:
     modal.title(title).render(modalArea, buf)
@@ -362,6 +447,58 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     renderROEPicker(state, inner, buf)
   of FleetSubModal.ConfirmPrompt:
     renderConfirmDialog(state, inner, buf)
+  of FleetSubModal.OrderEntry:
+    # OrderEntry is handled by switching to Overview mode (hex map)
+    # If we somehow end up here, render as if None
+    # Fleet info section (top 4 lines)
+    let infoArea = rect(inner.x, inner.y, inner.width,
+      FleetDetailInfoHeight)
+    renderFleetInfo(fleetData, infoArea, buf)
+    
+    # Separator
+    let separatorY = inner.y + FleetDetailInfoHeight
+    let bs = PlainBorderSet
+    discard buf.put(modalArea.x, separatorY, "├", modalBorderStyle())
+    for x in (modalArea.x + 1)..<(modalArea.right - 1):
+      discard buf.put(x, separatorY, bs.horizontal, modalBorderStyle())
+    discard buf.put(modalArea.right - 1, separatorY, "┤", modalBorderStyle())
+    
+    # Ship list (boxed table)
+    let shipsHeight = max(1, inner.height - (FleetDetailInfoHeight +
+      FleetDetailSeparatorHeight + FleetDetailFooterHeight))
+    let shipsArea = rect(inner.x, separatorY + 1, inner.width, shipsHeight)
+    let shipHeader = "SHIPS (" & $state.shipCount & ")"
+    for i, ch in shipHeader:
+      if shipsArea.x + i < shipsArea.right:
+        discard buf.put(shipsArea.x + i, shipsArea.y, $ch,
+          canvasHeaderStyle())
+    
+    let tableArea = rect(shipsArea.x,
+      shipsArea.y + FleetDetailShipsHeaderHeight,
+      shipsArea.width,
+      shipsArea.height - FleetDetailShipsHeaderHeight)
+    shipTable.render(tableArea, buf)
+  of FleetSubModal.FleetPicker:
+    # TODO Phase 3: Render fleet picker UI
+    # For now, just show placeholder text
+    let centerY = inner.y + inner.height div 2
+    let msg = "FleetPicker - TODO Phase 3"
+    let msgX = inner.x + (inner.width - msg.len) div 2
+    discard buf.put(msgX, centerY, msg, canvasStyle())
+  of FleetSubModal.Staged:
+    # Show success message
+    let centerY = inner.y + inner.height div 2
+    let msg = "Command staged successfully"
+    let msgX = inner.x + (inner.width - msg.len) div 2
+    discard buf.put(msgX, centerY, msg, canvasStyle())
+  of FleetSubModal.ZTCPicker:
+    renderZTCPicker(state, inner, buf)
+  of FleetSubModal.ShipSelector:
+    renderPlaceholderSubModal("Ship Selector", inner, buf)
+  of FleetSubModal.CargoParams:
+    renderPlaceholderSubModal("Cargo Parameters", inner, buf)
+  of FleetSubModal.FighterParams:
+    renderPlaceholderSubModal("Fighter Parameters", inner, buf)
   of FleetSubModal.None:
     # Render main fleet detail view
     

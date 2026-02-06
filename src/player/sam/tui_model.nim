@@ -21,10 +21,11 @@ import ../tui/widget/scroll_state
 import ../tui/widget/entry_modal
 import ../state/identity
 import ../../engine/types/[core, fleet, production, command, tech, ship,
-  facilities, ground_unit]
+  facilities, ground_unit, zero_turn]
 
 export entry_modal
 export identity
+export zero_turn
 
 # =============================================================================
 # Fleet Command Constants (from 06-operations.md)
@@ -254,6 +255,13 @@ type
     CommandPicker
     ROEPicker
     ConfirmPrompt
+    OrderEntry        # Target system selection on hex map (for Move, Patrol, etc.)
+    FleetPicker       # Select target fleet (for JoinFleet command)
+    Staged            # Terminal state: command staged successfully
+    ZTCPicker         # Zero-Turn Command picker (1-9)
+    ShipSelector      # Ship checkbox list (for Detach/Transfer ZTCs) - placeholder
+    CargoParams       # Cargo parameter entry (for Load/Unload Cargo) - placeholder
+    FighterParams     # Fighter parameter entry (for Load/Unload/Transfer Fighters) - placeholder
 
   CommandCategory* {.pure.} = enum
     ## Command categories for organization in picker
@@ -282,6 +290,16 @@ type
     commandDigitBuffer*: string  # Buffer for two-digit quick entry (e.g., "0", "07")
     commandDigitTime*: float     # Time when first digit was entered (for timeout)
     shipCount*: int
+    # FleetPicker state (for JoinFleet target selection)
+    fleetPickerIdx*: int       # Selected fleet index in picker
+    fleetPickerScroll*: ScrollState  # Scroll state for fleet picker list
+    # ZTCPicker state (for Zero-Turn Commands)
+    ztcIdx*: int               # Selected ZTC index (0-8, maps to ZeroTurnCommandType)
+    ztcDigitBuffer*: string    # Single-digit quick select buffer (1-9)
+    # Direct sub-modal tracking: when true, Esc from the top-level sub-modal
+    # closes the entire FleetDetail modal (because it was opened directly into
+    # a sub-modal via C/R/Z from the fleet list, not via Enter→detail view)
+    directSubModal*: bool
 
   FleetListSort* {.pure.} = enum
     FleetId
@@ -1357,6 +1375,90 @@ proc isFleetSelected*(model: TuiModel, fleetId: int): bool =
 proc selectedFleetCount*(model: TuiModel): int =
   ## Get number of selected fleets
   model.ui.selectedFleetIds.len
+
+# =============================================================================
+# Cursor Fleet Resolution Helpers
+# =============================================================================
+
+proc getCursorFleetId*(model: TuiModel): Option[int] =
+  ## Returns the fleet ID under the cursor, considering view mode.
+  ## ListView: uses selectedIdx + filteredFleets()
+  ## SystemView: uses fleetConsoleSystemIdx + fleetConsoleFleetIdx
+  if model.ui.fleetViewMode == FleetViewMode.ListView:
+    let fleets = model.filteredFleets()
+    if model.ui.selectedIdx < fleets.len:
+      return some(fleets[model.ui.selectedIdx].id)
+  elif model.ui.fleetViewMode == FleetViewMode.SystemView:
+    let systems = model.ui.fleetConsoleSystems
+    if systems.len > 0:
+      let sysIdx = clamp(model.ui.fleetConsoleSystemIdx, 0, systems.len - 1)
+      let systemId = systems[sysIdx].systemId
+      if model.ui.fleetConsoleFleetsBySystem.hasKey(systemId):
+        let fleets = model.ui.fleetConsoleFleetsBySystem[systemId]
+        let fleetIdx = model.ui.fleetConsoleFleetIdx
+        if fleetIdx >= 0 and fleetIdx < fleets.len:
+          return some(fleets[fleetIdx].fleetId)
+  return none(int)
+
+proc getCursorFleetRoe*(model: TuiModel): int =
+  ## Returns the ROE of the fleet under the cursor (default 6 if not found)
+  if model.ui.fleetViewMode == FleetViewMode.ListView:
+    let fleets = model.filteredFleets()
+    if model.ui.selectedIdx < fleets.len:
+      return fleets[model.ui.selectedIdx].roe
+  elif model.ui.fleetViewMode == FleetViewMode.SystemView:
+    let systems = model.ui.fleetConsoleSystems
+    if systems.len > 0:
+      let sysIdx = clamp(model.ui.fleetConsoleSystemIdx, 0, systems.len - 1)
+      let systemId = systems[sysIdx].systemId
+      if model.ui.fleetConsoleFleetsBySystem.hasKey(systemId):
+        let fleets = model.ui.fleetConsoleFleetsBySystem[systemId]
+        let fleetIdx = model.ui.fleetConsoleFleetIdx
+        if fleetIdx >= 0 and fleetIdx < fleets.len:
+          return fleets[fleetIdx].roe
+  return 6  # Default standard ROE
+
+# =============================================================================
+# Zero-Turn Command Helpers
+# =============================================================================
+
+proc allZeroTurnCommands*(): seq[ZeroTurnCommandType] =
+  ## Returns the 9 ZTC types in display order (1-9)
+  @[ZeroTurnCommandType.DetachShips,
+    ZeroTurnCommandType.TransferShips,
+    ZeroTurnCommandType.MergeFleets,
+    ZeroTurnCommandType.LoadCargo,
+    ZeroTurnCommandType.UnloadCargo,
+    ZeroTurnCommandType.LoadFighters,
+    ZeroTurnCommandType.UnloadFighters,
+    ZeroTurnCommandType.TransferFighters,
+    ZeroTurnCommandType.Reactivate]
+
+proc ztcLabel*(ztc: ZeroTurnCommandType): string =
+  ## Human-readable label for a ZTC
+  case ztc
+  of ZeroTurnCommandType.DetachShips: "Detach Ships"
+  of ZeroTurnCommandType.TransferShips: "Transfer Ships"
+  of ZeroTurnCommandType.MergeFleets: "Merge Fleets"
+  of ZeroTurnCommandType.LoadCargo: "Load Cargo"
+  of ZeroTurnCommandType.UnloadCargo: "Unload Cargo"
+  of ZeroTurnCommandType.LoadFighters: "Load Fighters"
+  of ZeroTurnCommandType.UnloadFighters: "Unload Fighters"
+  of ZeroTurnCommandType.TransferFighters: "Transfer Fighters"
+  of ZeroTurnCommandType.Reactivate: "Reactivate"
+
+proc ztcDescription*(ztc: ZeroTurnCommandType): string =
+  ## Short description for a ZTC
+  case ztc
+  of ZeroTurnCommandType.DetachShips: "Split ships from fleet into new fleet"
+  of ZeroTurnCommandType.TransferShips: "Move ships to another fleet (same system)"
+  of ZeroTurnCommandType.MergeFleets: "Dissolve this fleet into another"
+  of ZeroTurnCommandType.LoadCargo: "Load marines/colonists onto transport ships"
+  of ZeroTurnCommandType.UnloadCargo: "Unload cargo from transport ships"
+  of ZeroTurnCommandType.LoadFighters: "Load fighter ships from colony to carrier"
+  of ZeroTurnCommandType.UnloadFighters: "Unload fighter ships from carrier to colony"
+  of ZeroTurnCommandType.TransferFighters: "Transfer fighter ships between carriers"
+  of ZeroTurnCommandType.Reactivate: "Return Reserved/Mothballed fleet to active"
 
 # =============================================================================
 # Expert Mode Helpers

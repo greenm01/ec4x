@@ -283,6 +283,18 @@ proc actionFleetBatchROE*(): Proposal =
   ## Open batch ROE picker for selected fleets
   gameActionProposal(ActionKind.fleetBatchROE, "")
 
+proc actionFleetBatchZeroTurn*(): Proposal =
+  ## Open batch zero-turn command picker for selected fleets
+  gameActionProposal(ActionKind.fleetBatchZeroTurn, "")
+
+proc actionFleetDetailOpenZTC*(): Proposal =
+  ## Open ZTC picker from fleet detail modal
+  gameActionProposal(ActionKind.fleetDetailOpenZTC, "")
+
+proc actionFleetDetailSelectZTC*(): Proposal =
+  ## Confirm ZTC selection in ZTC picker
+  gameActionProposal(ActionKind.fleetDetailSelectZTC, "")
+
 # ============================================================================
 # Fleet Multi-Select Actions
 # ============================================================================
@@ -1070,7 +1082,7 @@ type
       # Letter keys
       KeyQ, KeyC, KeyF, KeyO, KeyM, KeyE, KeyH, KeyX, KeyS, KeyL
       KeyB, KeyG, KeyR, KeyJ, KeyK, KeyD, KeyP, KeyV, KeyN, KeyW, KeyI, KeyT
-      KeyA, KeyY, KeyU
+      KeyA, KeyY, KeyU, KeyZ
       # Navigation
       KeyUp, KeyDown, KeyLeft, KeyRight
       KeyEnter, KeyEscape, KeyTab, KeyShiftTab

@@ -1509,8 +1509,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
       else:
         ""
     let hintLine =
-      "[↑↓] Navigate  [Enter] Details  [X] Select" &
-      "  [←→] Sort  [S] Asc/Desc" & jumpSuffix
+      "[↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc [C]md [R]OE [Z]TC" & jumpSuffix
     let footerY = inner.bottom - 1
     discard buf.setString(inner.x, footerY, hintLine,
       canvasDimStyle())
@@ -1559,7 +1558,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     
     # Use content-aware sizing
     let modalArea = modal.calculateArea(canvas, contentWidth, contentHeight)
-    modal.renderWithFooter(modalArea, buf, "[↑↓←→] Navigate  [Enter] Details  [Tab] Switch Pane")
+    modal.renderWithFooter(modalArea, buf, "[↑↓←→]Nav [Enter]Details [Tab]Pane [X]Select [C]md [R]OE [Z]eroTurn")
     let contentArea = modal.contentArea(modalArea, hasFooter = true)
     renderFleetConsole(contentArea, buf, model, ps)
 

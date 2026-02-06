@@ -138,6 +138,8 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
         keyCode = KeyCode.KeyY
       of "u", "U":
         keyCode = KeyCode.KeyU
+      of "z", "Z":
+        keyCode = KeyCode.KeyZ
       of ":":
         keyCode = KeyCode.KeyColon
       of "/":
