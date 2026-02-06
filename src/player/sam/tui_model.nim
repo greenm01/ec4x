@@ -1461,6 +1461,58 @@ proc ztcDescription*(ztc: ZeroTurnCommandType): string =
   of ZeroTurnCommandType.Reactivate: "Return Reserved/Mothballed fleet to active"
 
 # =============================================================================
+# ROE (Rules of Engagement) Helpers
+# =============================================================================
+
+proc roeLabel*(value: int): string =
+  ## Get label for ROE value
+  case value
+  of 0: "Avoid"
+  of 1: "Flee"
+  of 2: "Flee"
+  of 3: "Cautious"
+  of 4: "Cautious"
+  of 5: "Defensive"
+  of 6: "Standard"
+  of 7: "Aggressive"
+  of 8: "Aggressive"
+  of 9: "Desperate"
+  of 10: "Suicidal"
+  else: "Unknown"
+
+proc roeDescription*(value: int): string =
+  ## Get meaning for ROE value (from spec 7.2.3)
+  case value
+  of 0: "Avoid all hostile forces"
+  of 1: "Engage only defenseless"
+  of 2: "Need 4:1 advantage"
+  of 3: "Need 3:1 advantage"
+  of 4: "Need 2:1 advantage"
+  of 5: "Need 3:2 advantage"
+  of 6: "Fight if equal or superior"
+  of 7: "Fight even at 2:3 disadvantage"
+  of 8: "Fight even at 1:2 disadvantage"
+  of 9: "Fight even at 1:3 disadvantage"
+  of 10: "Fight regardless of odds"
+  else: ""
+
+proc roeUseCase*(value: int): string =
+  ## Use case for ROE value (from spec 7.2.3)
+  case value
+  of 0: "Pure scouts, intel gathering"
+  of 1: "Extreme caution"
+  of 2: "Scout fleets, recon forces"
+  of 3: "Cautious patrols"
+  of 4: "Conservative operations"
+  of 5: "Defensive posture"
+  of 6: "Standard combat fleets"
+  of 7: "Aggressive fleets"
+  of 8: "Battle fleets"
+  of 9: "Desperate defense"
+  of 10: "Suicidal last stands, homeworld defense"
+  else: ""
+
+# =============================================================================
 # Expert Mode Helpers
 # =============================================================================
 

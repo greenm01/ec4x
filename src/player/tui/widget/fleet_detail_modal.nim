@@ -62,42 +62,45 @@ proc commandsInCategory*(category: CommandCategory): seq[FleetCommandType] =
   of CommandCategory.Status:
     @[FleetCommandType.Reserve, FleetCommandType.Mothball]
 
-proc roeLabel*(value: int): string =
-  ## Get label for ROE value
-  case value
-  of 0: "Avoid"
-  of 1: "Flee"
-  of 2: "Flee"
-  of 3: "Cautious"
-  of 4: "Cautious"
-  of 5: "Defensive"
-  of 6: "Standard"
-  of 7: "Aggressive"
-  of 8: "Aggressive"
-  of 9: "Desperate"
-  of 10: "Suicidal"
-  else: "Unknown"
-
-proc roeDescription*(value: int): string =
-  ## Get description for ROE value
-  case value
-  of 0: "Avoid all hostile forces"
-  of 1: "Engage only defenseless targets"
-  of 2: "Need 4:1 advantage to engage"
-  of 3: "Need 3:1 advantage to engage"
-  of 4: "Need 2:1 advantage to engage"
-  of 5: "Need 3:2 advantage to engage"
-  of 6: "Fight if equal or superior"
-  of 7: "Fight even at 2:3 disadvantage"
-  of 8: "Fight even at 1:2 disadvantage"
-  of 9: "Fight even at 1:3 disadvantage"
-  of 10: "Fight regardless of odds"
-  else: ""
-
 proc requiresConfirmation*(cmdType: FleetCommandType): bool =
   ## Check if command requires confirmation
   cmdType in {FleetCommandType.Bombard, FleetCommandType.Salvage,
               FleetCommandType.Reserve, FleetCommandType.Mothball}
+
+proc renderPickerTable(t: var Table, area: Rect, buf: var CellBuffer,
+                       selectedIdx: int, itemCount: int,
+                       hint: string, digitBuffer: string = "",
+                       bufferLabel: string = "") =
+  ## Shared rendering for picker sub-modals (Command, ROE, ZTC).
+  ## Handles scroll offset calculation, selection, table rendering, and footer.
+  let availableHeight = area.height - 2  # Reserve 2 for footer
+  let tableBaseHeight = 4  # top border + header + separator + bottom border
+  let maxVisibleRows = max(1, availableHeight - tableBaseHeight)
+
+  # Calculate scroll offset to keep selected item visible
+  var scrollOffset = 0
+  if maxVisibleRows < itemCount:
+    if selectedIdx >= scrollOffset + maxVisibleRows:
+      scrollOffset = selectedIdx - maxVisibleRows + 1
+    elif selectedIdx < scrollOffset:
+      scrollOffset = selectedIdx
+
+  t = t.selectedIdx(selectedIdx).scrollOffset(scrollOffset)
+
+  # Render table
+  let actualVisibleRows = min(itemCount - scrollOffset, maxVisibleRows)
+  let tableHeight = t.renderHeight(actualVisibleRows)
+  let tableArea = rect(area.x, area.y, area.width, tableHeight)
+  t.render(tableArea, buf)
+
+  # Render footer hint below table
+  let footerY = tableArea.bottom + 1
+  if footerY < area.bottom:
+    let fullHint = if digitBuffer.len > 0:
+      bufferLabel & ": " & digitBuffer & "_ " & hint
+    else:
+      hint
+    discard buf.setString(area.x, footerY, fullHint, canvasDimStyle())
 
 proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
                         buf: var CellBuffer) =
@@ -128,83 +131,42 @@ proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
     let cmdReq = commandRequirements(cmdType)
     commandTable.addRow([cmdCode, cmdLabel, cmdReq])
 
-  # Calculate visible rows and scrolling
-  let commandCount = commands.len  # 20
-  let availableHeight = area.height - 2  # Reserve 2 for footer
-  let tableBaseHeight = 4  # header + separator + top/bottom borders
-  let maxVisibleRows = max(1, availableHeight - tableBaseHeight)
-
-  # Calculate scroll offset to keep selected item visible
-  var scrollOffset = 0
-  if maxVisibleRows < commandCount:
-    if state.commandIdx >= scrollOffset + maxVisibleRows:
-      scrollOffset = state.commandIdx - maxVisibleRows + 1
-    elif state.commandIdx < scrollOffset:
-      scrollOffset = state.commandIdx
-
-  # Apply selection and scrolling
-  commandTable = commandTable
-    .selectedIdx(state.commandIdx)
-    .scrollOffset(scrollOffset)
-
-  # Render table
-  let actualVisibleRows = min(commandCount - scrollOffset, maxVisibleRows)
-  let tableHeight = commandTable.renderHeight(actualVisibleRows)
-  let tableArea = rect(area.x, area.y, area.width, tableHeight)
-  commandTable.render(tableArea, buf)
-
-  # Render footer below table
-  let footerY = tableArea.bottom + 1
-  if footerY < area.bottom:
-    let hint = "[↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel"
-    let fullHint = if state.commandDigitBuffer.len > 0:
-      "Cmd: " & state.commandDigitBuffer & "_ " & hint
-    else:
-      hint
-    discard buf.setString(area.x, footerY, fullHint, canvasDimStyle())
+  renderPickerTable(commandTable, area, buf,
+    selectedIdx = state.commandIdx,
+    itemCount = commands.len,
+    hint = "[↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel",
+    digitBuffer = state.commandDigitBuffer,
+    bufferLabel = "Cmd")
 
 proc renderROEPicker(state: FleetDetailModalState, area: Rect,
                     buf: var CellBuffer) =
-  ## Render ROE picker sub-modal
+  ## Render ROE picker using Table widget
   if area.isEmpty:
     return
 
-  # Header
-  var y = area.y
-  let header = "Rules of Engagement"
-  for i, ch in header:
-    if area.x + i < area.right:
-      discard buf.put(area.x + i, y, $ch, canvasHeaderStyle())
-  y += 2
+  var roeTable = table([
+    tableColumn("ROE", width = 3, align = table.Alignment.Right),
+    tableColumn("Meaning", width = 30, align = table.Alignment.Left),
+    tableColumn("Use Case", width = 0, align = table.Alignment.Left,
+                minWidth = 14)
+  ])
+    .showBorders(true)
+    .showHeader(true)
+    .showSeparator(true)
+    .cellPadding(1)
+    .headerStyle(canvasHeaderStyle())
+    .rowStyle(canvasStyle())
+    .selectedStyle(selectedStyle())
 
-  # ROE values (0-10)
   for roe in 0..10:
-    if y >= area.bottom - 2:
-      break
+    roeTable.addRow([$roe, roeDescription(roe), roeUseCase(roe)])
 
-    let isSelected = roe == state.roeValue
-    let prefix = if isSelected: "► " else: "  "
-    let roeNum = if roe < 10: " " & $roe else: $roe
-    let label = roeLabel(roe)
-    let desc = roeDescription(roe)
-    let text = prefix & roeNum & "  " & label & " - " & desc
-
-    let style = if isSelected:
-      selectedStyle()
-    else:
-      canvasStyle()
-
-    for i, ch in text:
-      if area.x + i < area.right:
-        discard buf.put(area.x + i, y, $ch, style)
-
-    y += 1
-
-  # Footer hint
-  let footerY = area.bottom - 1
-  if footerY >= area.y:
-    let hint = "[↑↓]Select [Enter]Confirm [Esc]Cancel"
-    discard buf.setString(area.x, footerY, hint, canvasDimStyle())
+  renderPickerTable(roeTable, area, buf,
+    selectedIdx = state.roeValue,
+    itemCount = 11,
+    hint = "[↑↓]Select [0-9]Quick [Enter]Confirm [Esc]Cancel",
+    digitBuffer = state.commandDigitBuffer,
+    bufferLabel = "ROE")
 
 proc renderConfirmDialog(state: FleetDetailModalState, area: Rect,
                         buf: var CellBuffer) =
@@ -235,47 +197,32 @@ proc renderConfirmDialog(state: FleetDetailModalState, area: Rect,
 
 proc renderZTCPicker(state: FleetDetailModalState, area: Rect,
                     buf: var CellBuffer) =
-  ## Render Zero-Turn Command picker sub-modal
+  ## Render Zero-Turn Command picker using Table widget
   if area.isEmpty:
     return
 
-  # Header
-  var y = area.y
-  let header = "Zero-Turn Commands"
-  for i, ch in header:
-    if area.x + i < area.right:
-      discard buf.put(area.x + i, y, $ch, canvasHeaderStyle())
-  y += 2
+  var ztcTable = table([
+    tableColumn("No", width = 3, align = table.Alignment.Right),
+    tableColumn("Command", width = 18, align = table.Alignment.Left),
+    tableColumn("Description", width = 0, align = table.Alignment.Left,
+                minWidth = 20)
+  ])
+    .showBorders(true)
+    .showHeader(true)
+    .showSeparator(true)
+    .cellPadding(1)
+    .headerStyle(canvasHeaderStyle())
+    .rowStyle(canvasStyle())
+    .selectedStyle(selectedStyle())
 
-  # ZTC list (1-9)
   let ztcCommands = allZeroTurnCommands()
   for idx, ztcType in ztcCommands:
-    if y >= area.bottom - 2:
-      break
+    ztcTable.addRow([$(idx + 1), ztcLabel(ztcType), ztcDescription(ztcType)])
 
-    let isSelected = idx == state.ztcIdx
-    let prefix = if isSelected: "► " else: "  "
-    let num = $(idx + 1)  # Display as 1-9
-    let label = ztcLabel(ztcType)
-    let desc = ztcDescription(ztcType)
-    let text = prefix & num & "  " & label & " - " & desc
-
-    let style = if isSelected:
-      selectedStyle()
-    else:
-      canvasStyle()
-
-    for i, ch in text:
-      if area.x + i < area.right:
-        discard buf.put(area.x + i, y, $ch, style)
-
-    y += 1
-
-  # Footer hint
-  let footerY = area.bottom - 1
-  if footerY >= area.y:
-    let hint = "[↑↓]Select [1-9]Quick [Enter]Confirm [Esc]Cancel"
-    discard buf.setString(area.x, footerY, hint, canvasDimStyle())
+  renderPickerTable(ztcTable, area, buf,
+    selectedIdx = state.ztcIdx,
+    itemCount = ztcCommands.len,
+    hint = "[↑↓]Select [1-9]Quick [Enter]Confirm [Esc]Cancel")
 
 proc renderPlaceholderSubModal(label: string, area: Rect,
                               buf: var CellBuffer) =
@@ -353,10 +300,30 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   let infoWidth = max(line1.len,
     max(line2.len, max(line3.len, shipHeader.len)))
   let desiredInnerWidth = max(tableWidth, infoWidth)
-  let desiredWidth = min(maxWidth, desiredInnerWidth + 2)
+
+  # Sub-modal picker tables may need more width than the ship table.
+  # Compute minimum inner width from known column content + padding + borders:
+  #   innerWidth = sum(colContentWidths) + cols*cellPadding*2 + (cols+1)
+  let subModalMinInner = case state.subModal
+    of FleetSubModal.CommandPicker:
+      # No(4) + Mission(14) + Requirements(34) + padding(6) + borders(4)
+      62
+    of FleetSubModal.ROEPicker:
+      # ROE(3) + Meaning(30) + UseCase(38) + padding(6) + borders(4)
+      81
+    of FleetSubModal.ZTCPicker:
+      # No(3) + Command(18) + Description(44) + padding(6) + borders(4)
+      75
+    else:
+      0
+
+  let desiredWidth = min(maxWidth, max(desiredInnerWidth, subModalMinInner) + 2)
+  let isSubModal = state.subModal != FleetSubModal.None and
+                   state.subModal != FleetSubModal.OrderEntry
   let modal = widget.modal
     .maxWidth(desiredWidth)
     .minWidth(desiredWidth)
+    .minHeight(if isSubModal: 0 else: 25)
 
   var shipTable = shipTableBase
     .scrollOffset(renderScroll.verticalOffset)
@@ -381,11 +348,11 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       let footerHeight = 2
       commandCount + tableBaseHeight + footerHeight
     of FleetSubModal.ROEPicker:
-      # ROE picker: 11 values (0-10) + header + spacer + footer
+      # Table-based picker: itemCount + tableBase(4) + footer(2)
       let roeCount = 11
-      let headerHeight = 2  # "Rules of Engagement" + blank line
+      let tableBaseHeight = 4
       let footerHeight = 2
-      roeCount + headerHeight + footerHeight
+      roeCount + tableBaseHeight + footerHeight
     of FleetSubModal.ConfirmPrompt:
       # Confirmation dialog: compact centered message
       10
@@ -402,11 +369,11 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       # Staged: success message, compact
       8
     of FleetSubModal.ZTCPicker:
-      # ZTC picker: 9 commands + header + spacer + footer
+      # Table-based picker: itemCount + tableBase(4) + footer(2)
       let ztcCount = 9
-      let headerHeight = 2  # "Zero-Turn Commands" + blank line
+      let tableBaseHeight = 4
       let footerHeight = 2
-      ztcCount + headerHeight + footerHeight
+      ztcCount + tableBaseHeight + footerHeight
     of FleetSubModal.ShipSelector:
       # Placeholder for ship selection sub-modal
       10
